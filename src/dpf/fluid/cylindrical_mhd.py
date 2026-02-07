@@ -33,6 +33,13 @@ import numpy as np
 from dpf.constants import e as e_charge
 from dpf.constants import k_B, m_d, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
+from dpf.fluid.constrained_transport import (
+    cell_centered_to_face,
+    compute_div_B,
+    ct_update,
+    emf_from_fluxes,
+    face_to_cell_centered,
+)
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.mhd_solver import (
     _hll_flux_1d_core,
@@ -86,6 +93,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         enable_energy_equation: bool = True,
         ion_mass: float | None = None,
         riemann_solver: str = "hll",
+        enable_ct: bool = False,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -99,6 +107,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.enable_energy_equation = enable_energy_equation
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
+        self.enable_ct = enable_ct
         self.eos = IdealEOS(gamma=gamma)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
@@ -117,10 +126,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
             "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, WENO5=%s, "
-            "Riemann=%s, ion_mass=%.3e kg",
+            "Riemann=%s, CT=%s, ion_mass=%.3e kg",
             nr, nz, dr, dz, gamma, enable_hall,
             self.enable_resistive, self.enable_energy_equation,
-            self.use_weno5, self.riemann_solver, self.ion_mass,
+            self.use_weno5, self.riemann_solver, self.enable_ct, self.ion_mass,
         )
 
     def _squeeze(self, arr: np.ndarray) -> np.ndarray:
@@ -377,13 +386,15 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         else:
             dp_dt = -self.gamma * p * div_v
 
-        # --- Dedner cleaning ---
-        ch = self.dedner_ch_init if self.dedner_ch_init > 0 else max(np.max(np.abs(vel)), 1.0)
-        cp = ch
-        div_B = geom.div_B_cylindrical(B)
-        dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
-        grad_psi = geom.gradient(psi)
-        dB_dt = dB_dt - grad_psi
+        # --- Dedner cleaning (skipped when CT is active) ---
+        dpsi_dt = np.zeros_like(psi)
+        if not self.enable_ct:
+            ch = self.dedner_ch_init if self.dedner_ch_init > 0 else max(np.max(np.abs(vel)), 1.0)
+            cp = ch
+            div_B = geom.div_B_cylindrical(B)
+            dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
+            grad_psi = geom.gradient(psi)
+            dB_dt = dB_dt - grad_psi
 
         return {
             "drho_dt": drho_dt,
@@ -392,6 +403,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "dB_dt": dB_dt,
             "dpsi_dt": dpsi_dt,
             "ohmic_heating": ohmic_heating,
+            "E_field": E_field,
         }
 
     def apply_electrode_bfield_bc(
@@ -537,6 +549,41 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B_new = self.apply_electrode_bfield_bc(
                 B_new, current, anode_radius, cathode_radius,
             )
+
+        # --- Constrained transport correction (optional) ---
+        if self.enable_ct:
+            # Average E-field from both RK stages
+            E_avg = 0.5 * (rhs1["E_field"] + rhs2["E_field"])
+            # Expand 2D (3, nr, nz) -> 3D (3, nr, 1, nz) for CT module
+            E_3d = E_avg[:, :, np.newaxis, :]
+            B_3d = B_new[:, :, np.newaxis, :]
+
+            # Convert cell-centred B to face-centred
+            staggered = cell_centered_to_face(
+                B_3d[0], B_3d[1], B_3d[2],
+                dx=self.dr, dy=self.dr, dz=self.dz,
+            )
+            # Compute edge EMFs from face-centred E-field contributions
+            E_face_x = np.zeros((self.nr + 1, 1, self.nz))
+            E_face_y = np.zeros((self.nr, 2, self.nz))
+            E_face_z = np.zeros((self.nr, 1, self.nz + 1))
+            # Use E_avg components as face flux contributions
+            for d in range(3):
+                E_face_x[:-1, :, :] += 0.5 * E_3d[d, :, :, :] / 3.0
+                E_face_x[1:, :, :] += 0.5 * E_3d[d, :, :, :] / 3.0
+            Ex_edge, Ey_edge, Ez_edge = emf_from_fluxes(
+                E_face_x, E_face_y, E_face_z,
+                dx=self.dr, dy=self.dr, dz=self.dz,
+            )
+            # Apply CT update
+            staggered_new = ct_update(staggered, Ex_edge, Ey_edge, Ez_edge, dt)
+            # Convert back to cell-centred
+            Bx_cc, By_cc, Bz_cc = face_to_cell_centered(staggered_new)
+            B_new[0] = Bx_cc[:, 0, :]
+            B_new[1] = By_cc[:, 0, :]
+            B_new[2] = Bz_cc[:, 0, :]
+            # Store div(B) for diagnostics
+            self._last_div_B = float(np.max(np.abs(compute_div_B(staggered_new))))
 
         # --- Two-temperature update (preserve Te ≠ Ti) ---
         n_i = rho_new / self.ion_mass

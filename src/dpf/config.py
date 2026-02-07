@@ -98,6 +98,8 @@ class FluidConfig(BaseModel):
     gamma: float = Field(5.0 / 3.0, gt=1, description="Adiabatic index")
     enable_resistive: bool = Field(True, description="Enable resistive MHD (eta*J in induction)")
     enable_energy_equation: bool = Field(True, description="Use conservative total energy equation")
+    enable_nernst: bool = Field(False, description="Enable Nernst B-field advection by grad(Te)")
+    enable_viscosity: bool = Field(False, description="Enable Braginskii ion viscosity (eta_0)")
     diffusion_method: str = Field(
         "explicit",
         description=(
