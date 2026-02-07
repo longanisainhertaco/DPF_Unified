@@ -6,8 +6,6 @@ and correct array shapes.
 
 from __future__ import annotations
 
-from typing import Dict
-
 import numpy as np
 
 
@@ -132,10 +130,10 @@ class FieldManager:
 
     # --- Checkpoint/restart ---
 
-    def checkpoint(self) -> Dict[str, np.ndarray]:
+    def checkpoint(self) -> dict[str, np.ndarray]:
         return {"E": self.E.copy(), "B": self.B.copy(), "J": self.J.copy()}
 
-    def restart(self, data: Dict[str, np.ndarray]) -> None:
+    def restart(self, data: dict[str, np.ndarray]) -> None:
         self.E = data["E"]
         self.B = data["B"]
         self.J = data["J"]

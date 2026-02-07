@@ -7,8 +7,7 @@ an HDF5 file for post-processing.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -24,6 +23,9 @@ except ImportError:
     HAS_H5PY = False
     logger.warning("h5py not available; HDF5 diagnostics disabled")
 
+# Field names to include in snapshots
+_SNAPSHOT_FIELDS = ("rho", "B", "Te", "Ti", "velocity", "pressure")
+
 
 class HDF5Writer(DiagnosticsBase):
     """Write simulation diagnostics to an HDF5 file.
@@ -31,7 +33,8 @@ class HDF5Writer(DiagnosticsBase):
     Creates datasets for:
     - Scalar time series: time, current, voltage, energy_cap, energy_ind,
       max_div_B, mean_density, max_temperature
-    - Field snapshots (optional): rho, B, velocity at specified intervals
+    - Field snapshots (optional): rho, B, velocity, pressure, Te, Ti
+      at specified intervals
 
     Args:
         filename: Output HDF5 file path.
@@ -46,8 +49,8 @@ class HDF5Writer(DiagnosticsBase):
         self.filename = filename
         self.field_output_interval = field_output_interval
         self._call_count = 0
-        self._file: Optional[Any] = None
-        self._scalars: Dict[str, list] = {
+        self._file: Any | None = None
+        self._scalars: dict[str, list] = {
             "time": [],
             "current": [],
             "voltage": [],
@@ -60,8 +63,9 @@ class HDF5Writer(DiagnosticsBase):
             "max_Te": [],
             "max_Ti": [],
         }
+        self._field_snapshots: list[dict[str, Any]] = []
 
-    def record(self, state: Dict[str, Any], time: float) -> None:
+    def record(self, state: dict[str, Any], time: float) -> None:
         """Record diagnostics from current simulation state.
 
         Args:
@@ -94,11 +98,11 @@ class HDF5Writer(DiagnosticsBase):
             self._scalars["mean_rho"].append(0.0)
 
         if B is not None:
-            div_B = (
-                np.gradient(B[0], axis=0)
-                + np.gradient(B[1], axis=1)
-                + np.gradient(B[2], axis=2)
-            )
+            # Handle cylindrical geometry (ny=1) where gradient along axis=1 fails
+            div_B = np.gradient(B[0], axis=0)
+            if B.shape[2] > 1:
+                div_B = div_B + np.gradient(B[1], axis=1)
+            div_B = div_B + np.gradient(B[2], axis=2)
             self._scalars["max_div_B"].append(float(np.max(np.abs(div_B))))
         else:
             self._scalars["max_div_B"].append(0.0)
@@ -113,6 +117,22 @@ class HDF5Writer(DiagnosticsBase):
         else:
             self._scalars["max_Ti"].append(0.0)
 
+        # === Field snapshots ===
+        if (
+            self.field_output_interval > 0
+            and self._call_count % self.field_output_interval == 0
+        ):
+            snapshot: dict[str, Any] = {"time": time}
+            for field_name in _SNAPSHOT_FIELDS:
+                arr = state.get(field_name)
+                if arr is not None and isinstance(arr, np.ndarray):
+                    snapshot[field_name] = arr.copy()
+            self._field_snapshots.append(snapshot)
+            logger.debug(
+                "Captured field snapshot %d at t=%.4e",
+                len(self._field_snapshots), time,
+            )
+
     def finalize(self) -> None:
         """Write all accumulated data to the HDF5 file."""
         if not HAS_H5PY:
@@ -125,6 +145,20 @@ class HDF5Writer(DiagnosticsBase):
             grp = f.create_group("scalars")
             for key, values in self._scalars.items():
                 grp.create_dataset(key, data=np.array(values))
+
+            # Write field snapshots
+            if self._field_snapshots:
+                fields_grp = f.create_group("fields")
+                for idx, snap in enumerate(self._field_snapshots):
+                    snap_grp = fields_grp.create_group(f"snapshot_{idx:04d}")
+                    snap_grp.attrs["time"] = snap["time"]
+                    for key, val in snap.items():
+                        if key != "time" and isinstance(val, np.ndarray):
+                            snap_grp.create_dataset(key, data=val)
+                fields_grp.attrs["num_snapshots"] = len(self._field_snapshots)
+                logger.info(
+                    "Wrote %d field snapshots", len(self._field_snapshots),
+                )
 
             f.attrs["num_records"] = self._call_count
 

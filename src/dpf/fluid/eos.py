@@ -10,8 +10,6 @@ which broke two-temperature physics.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 from dpf.constants import k_B, m_p

@@ -9,7 +9,6 @@ import json
 import os
 import tempfile
 
-import numpy as np
 import pytest
 
 from dpf.config import SimulationConfig

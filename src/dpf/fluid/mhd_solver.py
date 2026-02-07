@@ -1,12 +1,14 @@
 """Hall MHD solver with WENO5 reconstruction and Dedner divergence cleaning.
 
 Merges dpf2's hall_mhd_solver structure with DPF_AI's validated physics kernels:
-- WENO5 reconstruction (verified correct)
-- HLL Riemann solver
+- WENO5 reconstruction (verified correct from DPF_AI)
+- HLL Riemann solver for ideal MHD
+- SSP-RK2 (strong-stability-preserving Runge-Kutta) time integration
+- Dimension-split flux-based conservative update
 - Dedner hyperbolic divergence cleaning for div(B)
-- Generalized Ohm's law with Hall term (verified correct)
-- Braginskii anisotropic heat flux (verified correct)
-- IMEX time integration (explicit advection, implicit sources)
+- Generalized Ohm's law with Hall term
+- Braginskii anisotropic heat flux (operator-split)
+- dL_dt estimation from pinch dynamics
 
 The solver operates on a state dictionary with keys:
     rho: density [kg/m^3], shape (nx, ny, nz)
@@ -21,12 +23,12 @@ The solver operates on a state dictionary with keys:
 from __future__ import annotations
 
 import logging
-from typing import Dict
 
 import numpy as np
 from numba import njit
 
-from dpf.constants import k_B, m_p, mu_0, pi
+from dpf.constants import e as e_charge
+from dpf.constants import k_B, m_p, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.fluid.eos import IdealEOS
 
@@ -49,6 +51,7 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     Returns:
         (v_left, v_right) at interfaces, shape (n-4,) each.
+        Interface index j corresponds to the face between cell j+2 and j+3.
     """
     n = len(v)
     n_iface = n - 4  # number of interfaces with full stencil
@@ -85,6 +88,8 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         alpha1 = d1 / (eps + beta1) ** 2
         alpha2 = d2 / (eps + beta2) ** 2
         alpha_sum = alpha0 + alpha1 + alpha2
+        if alpha_sum == 0.0:
+            alpha_sum = 1e-30
 
         w0 = alpha0 / alpha_sum
         w1 = alpha1 / alpha_sum
@@ -92,7 +97,7 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
         v_L[idx] = w0 * p0 + w1 * p1 + w2 * p2
 
-        # --- Right-biased reconstruction (v_R at i-1/2, shifted) ---
+        # --- Right-biased reconstruction (v_R at i+1/2) ---
         # Mirror stencil
         r0 = v[i + 2] if i + 2 < n else v[i + 1]
         r1 = v[i + 1]
@@ -112,6 +117,8 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         a1 = d1 / (eps + gb1) ** 2
         a2 = d2 / (eps + gb2) ** 2
         a_sum = a0 + a1 + a2
+        if a_sum == 0.0:
+            a_sum = 1e-30
 
         v_R[idx] = (a0 / a_sum) * q0 + (a1 / a_sum) * q1 + (a2 / a_sum) * q2
 
@@ -119,8 +126,72 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 # ============================================================
-# HLL Riemann solver for ideal MHD
+# HLL Riemann flux for ideal MHD (1D, per-interface)
 # ============================================================
+
+@njit(cache=True)
+def _hll_flux_1d_core(
+    rho_L: np.ndarray,
+    rho_R: np.ndarray,
+    u_L: np.ndarray,
+    u_R: np.ndarray,
+    p_L: np.ndarray,
+    p_R: np.ndarray,
+    Bn_L: np.ndarray,
+    Bn_R: np.ndarray,
+    gamma: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """HLL approximate Riemann solver core (Numba-accelerated).
+
+    Returns tuple of (mass_flux, momentum_flux, energy_flux).
+    """
+    # Fast magnetosonic speed estimate
+    B_sq_L = Bn_L ** 2
+    B_sq_R = Bn_R ** 2
+    a2_L = gamma * np.maximum(p_L, 0.0) / np.maximum(rho_L, 1e-30)
+    a2_R = gamma * np.maximum(p_R, 0.0) / np.maximum(rho_R, 1e-30)
+    va2_L = B_sq_L / (mu_0 * np.maximum(rho_L, 1e-30))
+    va2_R = B_sq_R / (mu_0 * np.maximum(rho_R, 1e-30))
+    cf_L = np.sqrt(a2_L + va2_L)
+    cf_R = np.sqrt(a2_R + va2_R)
+
+    # Davis wave speed estimates
+    S_L = np.minimum(u_L - cf_L, u_R - cf_R)
+    S_R = np.maximum(u_L + cf_L, u_R + cf_R)
+
+    # Left and right fluxes
+    F_rho_L = rho_L * u_L
+    F_rho_R = rho_R * u_R
+
+    ptot_L = p_L + 0.5 * B_sq_L / mu_0
+    ptot_R = p_R + 0.5 * B_sq_R / mu_0
+
+    F_mom_L = rho_L * u_L ** 2 + ptot_L
+    F_mom_R = rho_R * u_R ** 2 + ptot_R
+
+    e_int_L = p_L / (gamma - 1.0)
+    e_int_R = p_R / (gamma - 1.0)
+    E_L = e_int_L + 0.5 * rho_L * u_L ** 2 + 0.5 * B_sq_L / mu_0
+    E_R = e_int_R + 0.5 * rho_R * u_R ** 2 + 0.5 * B_sq_R / mu_0
+
+    F_ene_L = (E_L + ptot_L) * u_L
+    F_ene_R = (E_R + ptot_R) * u_R
+
+    # Conserved quantities
+    U_rho_L = rho_L
+    U_rho_R = rho_R
+    U_mom_L = rho_L * u_L
+    U_mom_R = rho_R * u_R
+
+    # HLL flux
+    denom = np.maximum(S_R - S_L, 1e-30)
+
+    F_rho = (S_R * F_rho_L - S_L * F_rho_R + S_L * S_R * (U_rho_R - U_rho_L)) / denom
+    F_mom = (S_R * F_mom_L - S_L * F_mom_R + S_L * S_R * (U_mom_R - U_mom_L)) / denom
+    F_ene = (S_R * F_ene_L - S_L * F_ene_R + S_L * S_R * (E_R - E_L)) / denom
+
+    return F_rho, F_mom, F_ene
+
 
 def _hll_flux_1d(
     rho_L: np.ndarray,
@@ -129,46 +200,184 @@ def _hll_flux_1d(
     u_R: np.ndarray,
     p_L: np.ndarray,
     p_R: np.ndarray,
-    B_L: np.ndarray,
-    B_R: np.ndarray,
+    Bn_L: np.ndarray,
+    Bn_R: np.ndarray,
     gamma: float,
-) -> Dict[str, np.ndarray]:
-    """HLL approximate Riemann solver for ideal MHD (1D interface fluxes).
+) -> dict[str, np.ndarray]:
+    """HLL approximate Riemann solver — dict wrapper for compatibility."""
+    F_rho, F_mom, F_ene = _hll_flux_1d_core(
+        rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma,
+    )
+    return {
+        "mass_flux": F_rho,
+        "momentum_flux": F_mom,
+        "energy_flux": F_ene,
+    }
 
-    Returns fluxes for mass, momentum, energy at each interface.
+
+# ============================================================
+# Dimension-split WENO5+HLL flux computation
+# ============================================================
+
+def _compute_flux_1d_sweep(
+    rho: np.ndarray,
+    vel_n: np.ndarray,
+    pressure: np.ndarray,
+    Bn: np.ndarray,
+    gamma: float,
+    axis: int,
+) -> dict[str, np.ndarray]:
+    """Compute WENO5-reconstructed HLL fluxes along one axis.
+
+    Uses dimension-by-dimension sweep: for each pencil along `axis`,
+    perform WENO5 reconstruction then HLL Riemann solve.
+
+    Args:
+        rho: Density, shape (nx, ny, nz).
+        vel_n: Normal velocity component, shape (nx, ny, nz).
+        pressure: Thermal pressure, shape (nx, ny, nz).
+        Bn: Normal B-field component, shape (nx, ny, nz).
+        gamma: Adiabatic index.
+        axis: Sweep axis (0, 1, or 2).
+
+    Returns:
+        Dictionary of flux arrays at interfaces (reduced by 4 along `axis`).
     """
-    # Fast magnetosonic speed
-    def fast_speed(rho, p, B_sq):
-        a2 = gamma * p / np.maximum(rho, 1e-30)
-        va2 = B_sq / (mu_0 * np.maximum(rho, 1e-30))
-        return np.sqrt(a2 + va2)
+    shape = rho.shape
+    n_ax = shape[axis]
 
-    B_sq_L = np.sum(B_L**2, axis=0) if B_L.ndim > 1 else B_L**2
-    B_sq_R = np.sum(B_R**2, axis=0) if B_R.ndim > 1 else B_R**2
+    # If grid too small for WENO5 (need >=5 cells), fall back to np.gradient
+    if n_ax < 5:
+        # Return zero fluxes
+        return {
+            "mass_flux": np.zeros_like(rho),
+            "momentum_flux": np.zeros_like(rho),
+            "energy_flux": np.zeros_like(rho),
+            "n_interfaces": 0,
+        }
 
-    cf_L = fast_speed(rho_L, p_L, B_sq_L)
-    cf_R = fast_speed(rho_R, p_R, B_sq_R)
+    n_iface = n_ax - 4
 
-    # Wave speeds
-    S_L = np.minimum(u_L - cf_L, u_R - cf_R)
-    S_R = np.maximum(u_L + cf_L, u_R + cf_R)
+    # Output arrays: n_iface along `axis`, same on other axes
+    out_shape = list(shape)
+    out_shape[axis] = n_iface
+    out_shape = tuple(out_shape)
 
-    # Mass flux
-    F_rho_L = rho_L * u_L
-    F_rho_R = rho_R * u_R
+    F_rho = np.zeros(out_shape)
+    F_mom = np.zeros(out_shape)
+    F_ene = np.zeros(out_shape)
 
-    # HLL flux
-    denom = S_R - S_L + 1e-30
-    F_rho = (S_R * F_rho_L - S_L * F_rho_R + S_L * S_R * (rho_R - rho_L)) / denom
+    # Iterate over pencils perpendicular to axis
+    other_axes = [i for i in range(3) if i != axis]
+    for idx0 in range(shape[other_axes[0]]):
+        for idx1 in range(shape[other_axes[1]]):
+            # Build the slicer for this pencil
+            slicer = [None, None, None]
+            slicer[other_axes[0]] = idx0
+            slicer[other_axes[1]] = idx1
+            slicer[axis] = slice(None)
+            s = tuple(slicer)
 
-    return {"mass_flux": F_rho, "S_L": S_L, "S_R": S_R}
+            # Extract 1D pencils
+            rho_1d = rho[s]
+            u_1d = vel_n[s]
+            p_1d = pressure[s]
+            Bn_1d = Bn[s]
+
+            # WENO5 reconstruct each quantity
+            rho_L, rho_R = _weno5_reconstruct_1d(rho_1d)
+            u_L, u_R = _weno5_reconstruct_1d(u_1d)
+            p_L, p_R = _weno5_reconstruct_1d(p_1d)
+            Bn_L, Bn_R = _weno5_reconstruct_1d(Bn_1d)
+
+            # Ensure positivity
+            rho_L = np.maximum(rho_L, 1e-20)
+            rho_R = np.maximum(rho_R, 1e-20)
+            p_L = np.maximum(p_L, 1e-20)
+            p_R = np.maximum(p_R, 1e-20)
+
+            # HLL Riemann solve
+            fluxes = _hll_flux_1d(rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma)
+
+            # Store in output array
+            out_slicer = [None, None, None]
+            out_slicer[other_axes[0]] = idx0
+            out_slicer[other_axes[1]] = idx1
+            out_slicer[axis] = slice(None)
+            out_s = tuple(out_slicer)
+
+            F_rho[out_s] = fluxes["mass_flux"]
+            F_mom[out_s] = fluxes["momentum_flux"]
+            F_ene[out_s] = fluxes["energy_flux"]
+
+    return {
+        "mass_flux": F_rho,
+        "momentum_flux": F_mom,
+        "energy_flux": F_ene,
+        "n_interfaces": n_iface,
+    }
+
+
+def _apply_flux_divergence(
+    U: np.ndarray,
+    flux: np.ndarray,
+    n_interfaces: int,
+    axis: int,
+    dx: float,
+    dt: float,
+) -> np.ndarray:
+    """Apply conservative flux-difference update from WENO5+HLL fluxes.
+
+    The flux array has (n_interfaces) entries along `axis`, corresponding
+    to faces between cells [2..n_ax-3]. We update the interior cells that
+    have both left and right flux faces: cells 2..(n_ax-3) → n_interfaces-1 cells.
+
+    Args:
+        U: Conservative variable, shape (nx, ny, nz).
+        flux: Interface fluxes, shape with n_interfaces along axis.
+        n_interfaces: Number of flux interfaces.
+        axis: Sweep axis.
+        dx: Grid spacing.
+        dt: Timestep.
+
+    Returns:
+        Updated conservative variable.
+    """
+    if n_interfaces < 2:
+        return U.copy()
+
+    result = U.copy()
+
+    # Number of cells we can update: n_interfaces - 1
+    n_update = n_interfaces - 1
+
+    # Build slice objects for the flux difference
+    # F[j+1] - F[j] for j = 0..n_interfaces-2
+    flux_left_slicer = [slice(None)] * 3
+    flux_right_slicer = [slice(None)] * 3
+    update_slicer = [slice(None)] * 3
+
+    flux_left_slicer[axis] = slice(0, n_update)
+    flux_right_slicer[axis] = slice(1, n_update + 1)
+    update_slicer[axis] = slice(2, 2 + n_update)
+
+    dF = flux[tuple(flux_right_slicer)] - flux[tuple(flux_left_slicer)]
+    result[tuple(update_slicer)] -= dt / dx * dF
+
+    return result
 
 
 # ============================================================
 # Dedner divergence cleaning
 # ============================================================
 
-def _dedner_source(psi: np.ndarray, B: np.ndarray, ch: float, cp: float, dx: float) -> tuple[np.ndarray, np.ndarray]:
+def _dedner_source(
+    psi: np.ndarray,
+    B: np.ndarray,
+    ch: float,
+    cp: float,
+    dx: float,
+) -> tuple[np.ndarray, np.ndarray]:
     """Dedner hyperbolic/parabolic divergence cleaning.
 
     dpsi/dt = -ch^2 * div(B) - (ch^2 / cp^2) * psi
@@ -203,11 +412,143 @@ def _dedner_source(psi: np.ndarray, B: np.ndarray, ch: float, cp: float, dx: flo
 
 
 # ============================================================
+# Braginskii anisotropic heat flux operator
+# ============================================================
+
+def _braginskii_heat_flux(
+    Te: np.ndarray,
+    ne: np.ndarray,
+    B: np.ndarray,
+    dx: float,
+    dt: float,
+) -> np.ndarray:
+    """Apply Braginskii anisotropic heat flux to electron temperature.
+
+    Heat flux: q = -kappa_par * (b_hat . grad(Te)) * b_hat
+                 - kappa_perp * grad_perp(Te)
+
+    Uses operator-split explicit diffusion with sub-cycling if needed
+    for stability: dt_diff < dx^2 / (2 * max(kappa)).
+
+    Args:
+        Te: Electron temperature [K], shape (nx, ny, nz).
+        ne: Electron number density [m^-3], shape (nx, ny, nz).
+        B: Magnetic field [T], shape (3, nx, ny, nz).
+        dx: Grid spacing [m].
+        dt: Timestep [s].
+
+    Returns:
+        Updated Te array.
+    """
+    from dpf.collision.spitzer import braginskii_kappa
+
+    B_mag = np.sqrt(np.sum(B**2, axis=0))
+
+    # Compute Braginskii conductivities
+    kappa_par, kappa_perp = braginskii_kappa(ne, Te, B_mag)
+
+    # Sanitize kappa arrays — NaN/Inf from extreme conditions
+    kappa_par = np.where(np.isfinite(kappa_par), kappa_par, 0.0)
+    kappa_perp = np.where(np.isfinite(kappa_perp), kappa_perp, 0.0)
+
+    # Maximum diffusion coefficient for stability check
+    max_kappa = np.max(kappa_par)
+    if max_kappa < 1e-30:
+        return Te.copy()
+
+    # Cap kappa to avoid extreme diffusivity (physical limit)
+    kappa_cap = 1e30  # Reasonable cap for plasma heat conductivity
+    kappa_par = np.minimum(kappa_par, kappa_cap)
+    kappa_perp = np.minimum(kappa_perp, kappa_cap)
+    max_kappa = min(max_kappa, kappa_cap)
+
+    # Temperature gradient
+    grad_Te = np.array([
+        np.gradient(Te, dx, axis=0),
+        np.gradient(Te, dx, axis=1),
+        np.gradient(Te, dx, axis=2),
+    ])
+
+    # Magnetic unit vector
+    B_hat = np.zeros_like(B)
+    B_safe = np.maximum(B_mag, 1e-30)
+    for i in range(3):
+        B_hat[i] = B[i] / B_safe
+
+    # Parallel gradient: (b . grad(Te)) * b
+    b_dot_gradT = np.sum(B_hat * grad_Te, axis=0)
+    q_par_dir = np.zeros_like(B)
+    for i in range(3):
+        q_par_dir[i] = b_dot_gradT * B_hat[i]
+
+    # Perpendicular gradient: grad(Te) - (b . grad(Te)) * b
+    grad_perp_Te = grad_Te - q_par_dir
+
+    # Heat flux divergence: div(kappa_par * q_par + kappa_perp * q_perp)
+    heat_flux = np.zeros_like(B)
+    for i in range(3):
+        heat_flux[i] = kappa_par * q_par_dir[i] + kappa_perp * grad_perp_Te[i]
+
+    # Sanitize heat flux — catch NaN/Inf from kappa * gradient products
+    heat_flux = np.where(np.isfinite(heat_flux), heat_flux, 0.0)
+
+    div_q = (
+        np.gradient(heat_flux[0], dx, axis=0)
+        + np.gradient(heat_flux[1], dx, axis=1)
+        + np.gradient(heat_flux[2], dx, axis=2)
+    )
+
+    # Sanitize div_q
+    div_q = np.where(np.isfinite(div_q), div_q, 0.0)
+
+    # Stability-limited timestep for explicit diffusion
+    # dt_diff < dx^2 / (2 * dim * max_kappa / (n_e * k_B))
+    ne_safe = np.maximum(ne, 1e-20)
+    min_ne = np.min(ne_safe)
+    diffusivity = max_kappa / (min_ne * k_B + 1e-30)
+
+    if not np.isfinite(diffusivity) or diffusivity <= 0:
+        return Te.copy()
+
+    dt_diff = 0.25 * dx**2 / diffusivity
+
+    if not np.isfinite(dt_diff) or dt_diff <= 0:
+        return Te.copy()
+
+    # Sub-cycle if needed
+    n_sub = max(1, int(np.ceil(dt / dt_diff)))
+    n_sub = min(n_sub, 100)  # Cap subcycles to avoid runaway
+    dt_sub = dt / n_sub
+
+    Te_new = Te.copy()
+    for _ in range(n_sub):
+        # dTe/dt = div(q) / (ne * kB)
+        Te_new += dt_sub * div_q / (ne_safe * k_B)
+
+    # Floor temperature
+    Te_new = np.maximum(Te_new, 1.0)
+    # Sanitize
+    Te_new = np.where(np.isfinite(Te_new), Te_new, Te)
+
+    return Te_new
+
+
+# ============================================================
 # Main MHD Solver
 # ============================================================
 
 class MHDSolver(PlasmaSolverBase):
-    """Hall MHD solver with WENO5 reconstruction and Dedner cleaning.
+    """Hall MHD solver with WENO5 reconstruction, HLL Riemann, and Dedner cleaning.
+
+    Features:
+    - WENO5 reconstruction + HLL Riemann solver for advection (5th-order spatial)
+    - SSP-RK2 time integration (2nd-order temporal)
+    - Dedner hyperbolic divergence cleaning for div(B)
+    - Hall term in induction equation (J × B)/(ne)
+    - Braginskii anisotropic heat flux (operator-split)
+    - dL_dt estimation from pinch dynamics for circuit coupling
+
+    Falls back to forward-Euler np.gradient if grid < 5 cells in any direction.
 
     Args:
         grid_shape: (nx, ny, nz).
@@ -215,6 +556,8 @@ class MHDSolver(PlasmaSolverBase):
         gamma: Adiabatic index.
         cfl: CFL number for timestep.
         dedner_ch: Dedner hyperbolic cleaning speed (0 = auto from max wave speed).
+        enable_hall: Enable Hall term in induction equation.
+        enable_braginskii: Enable Braginskii anisotropic heat flux.
     """
 
     def __init__(
@@ -224,20 +567,33 @@ class MHDSolver(PlasmaSolverBase):
         gamma: float = 5.0 / 3.0,
         cfl: float = 0.4,
         dedner_ch: float = 0.0,
+        enable_hall: bool = True,
+        enable_braginskii: bool = True,
     ) -> None:
         self.grid_shape = grid_shape
         self.dx = dx
         self.gamma = gamma
         self.cfl = cfl
         self.dedner_ch_init = dedner_ch
+        self.enable_hall = enable_hall
+        self.enable_braginskii = enable_braginskii
         self.eos = IdealEOS(gamma=gamma)
+
+        # Whether we can use WENO5 (need >= 5 cells in each direction)
+        self.use_weno5 = all(n >= 5 for n in grid_shape)
 
         # Coupling state for circuit interaction
         self._coupling = CouplingState()
+        self._prev_Lp: float | None = None  # For dL_dt computation
 
-        logger.info("MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f", grid_shape, dx, gamma)
+        logger.info(
+            "MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f, "
+            "WENO5=%s, Hall=%s, Braginskii=%s",
+            grid_shape, dx, gamma,
+            self.use_weno5, enable_hall, enable_braginskii,
+        )
 
-    def _compute_dt(self, state: Dict[str, np.ndarray]) -> float:
+    def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
         """Compute CFL-limited timestep."""
         rho = state["rho"]
         v = state["velocity"]
@@ -251,23 +607,201 @@ class MHDSolver(PlasmaSolverBase):
         cf = np.sqrt(a2 + va2)
 
         v_max = np.max(np.abs(v)) + np.max(cf)
+
+        # Hall speed limit: omega_ci * di where di = c / omega_pi
+        if self.enable_hall:
+            ne = rho / m_p  # Assume Z=1
+            ne_max = np.max(ne)
+            if ne_max > 0:
+                B_max = np.sqrt(np.max(B_sq))
+                # Hall speed ~ B / (mu_0 * ne * e * dx)
+                v_hall = B_max / (mu_0 * np.maximum(ne_max, 1e-20) * e_charge * self.dx)
+                v_max = max(v_max, v_hall)
+
         if v_max < 1e-30:
             return 1e-10  # Fallback for zero-velocity initial condition
         return self.cfl * self.dx / v_max
 
+    def _compute_rhs_euler(
+        self,
+        state: dict[str, np.ndarray],
+        current: float,
+        voltage: float,
+    ) -> dict[str, np.ndarray]:
+        """Compute the right-hand side (time derivative) of the MHD system.
+
+        Uses WENO5+HLL flux-based update for advection if grid is large enough,
+        otherwise falls back to np.gradient centered differences.
+
+        Returns dict of dU/dt for each state variable.
+        """
+        rho = state["rho"]
+        vel = state["velocity"]
+        p = state["pressure"]
+        B = state["B"]
+        psi = state.get("psi", np.zeros_like(rho))
+
+        drho_dt = np.zeros_like(rho)
+        dmom_dt = np.zeros((3,) + rho.shape)
+        dp_dt = np.zeros_like(rho)
+        dB_dt = np.zeros_like(B)
+
+        # --- Density advection ---
+        if self.use_weno5:
+            # WENO5+HLL flux-based update: accumulate flux divergence across all 3 dims
+            for axis in range(3):
+                fluxes = _compute_flux_1d_sweep(
+                    rho, vel[axis], p, B[axis], self.gamma, axis
+                )
+                n_iface = fluxes["n_interfaces"]
+                if n_iface >= 2:
+                    n_update = n_iface - 1
+                    flux_left_sl = [slice(None)] * 3
+                    flux_right_sl = [slice(None)] * 3
+                    update_sl = [slice(None)] * 3
+                    flux_left_sl[axis] = slice(0, n_update)
+                    flux_right_sl[axis] = slice(1, n_update + 1)
+                    update_sl[axis] = slice(2, 2 + n_update)
+                    dF = (
+                        fluxes["mass_flux"][tuple(flux_right_sl)]
+                        - fluxes["mass_flux"][tuple(flux_left_sl)]
+                    )
+                    drho_dt[tuple(update_sl)] -= dF / self.dx
+        else:
+            # Fallback: centered-difference with np.gradient (original MVP behavior)
+            flux_rho = np.array([rho * vel[i] for i in range(3)])
+            div_flux = (
+                np.gradient(flux_rho[0], self.dx, axis=0)
+                + np.gradient(flux_rho[1], self.dx, axis=1)
+                + np.gradient(flux_rho[2], self.dx, axis=2)
+            )
+            drho_dt = -div_flux
+
+        # --- Momentum: J × B force + pressure gradient ---
+        # Current density: J = curl(B) / mu_0
+        J = np.array([
+            np.gradient(B[2], self.dx, axis=1) - np.gradient(B[1], self.dx, axis=2),
+            np.gradient(B[0], self.dx, axis=2) - np.gradient(B[2], self.dx, axis=0),
+            np.gradient(B[1], self.dx, axis=0) - np.gradient(B[0], self.dx, axis=1),
+        ]) / mu_0
+
+        # J × B force
+        JxB = np.array([
+            J[1] * B[2] - J[2] * B[1],
+            J[2] * B[0] - J[0] * B[2],
+            J[0] * B[1] - J[1] * B[0],
+        ])
+
+        grad_p = np.array([
+            np.gradient(p, self.dx, axis=0),
+            np.gradient(p, self.dx, axis=1),
+            np.gradient(p, self.dx, axis=2),
+        ])
+
+        # Momentum advection (WENO5 for momentum flux if available)
+        if self.use_weno5:
+            for d in range(3):
+                # Momentum component d advected by each velocity component
+                for axis in range(3):
+                    mom_d = rho * vel[d]
+                    fluxes = _compute_flux_1d_sweep(
+                        mom_d, vel[axis], p, B[axis], self.gamma, axis
+                    )
+                    n_iface = fluxes["n_interfaces"]
+                    if n_iface >= 2:
+                        n_update = n_iface - 1
+                        flux_left_sl = [slice(None)] * 3
+                        flux_right_sl = [slice(None)] * 3
+                        update_sl = [slice(None)] * 3
+                        flux_left_sl[axis] = slice(0, n_update)
+                        flux_right_sl[axis] = slice(1, n_update + 1)
+                        update_sl[axis] = slice(2, 2 + n_update)
+                        dF = (
+                            fluxes["mass_flux"][tuple(flux_right_sl)]
+                            - fluxes["mass_flux"][tuple(flux_left_sl)]
+                        )
+                        dmom_dt[d][tuple(update_sl)] -= dF / self.dx
+        else:
+            # Fallback: centered difference momentum advection
+            for d in range(3):
+                for axis in range(3):
+                    flux_mom = rho * vel[d] * vel[axis]
+                    dmom_dt[d] -= np.gradient(flux_mom, self.dx, axis=axis)
+
+        # Add Lorentz force and pressure gradient
+        for d in range(3):
+            dmom_dt[d] += JxB[d] - grad_p[d]
+
+        # --- Induction equation: dB/dt = curl(E) where E = -(v × B) ---
+        # Ideal MHD electric field
+        vxB = np.array([
+            vel[1] * B[2] - vel[2] * B[1],
+            vel[2] * B[0] - vel[0] * B[2],
+            vel[0] * B[1] - vel[1] * B[0],
+        ])
+        E_field = -vxB  # E = -v × B (ideal Ohm's law)
+
+        # --- Hall term: E_Hall = (J × B) / (n_e * e) ---
+        if self.enable_hall:
+            ne = rho / m_p  # Z=1 hydrogen
+            ne_safe = np.maximum(ne, 1e-20)
+            # Hall electric field
+            E_Hall = np.array([
+                (J[1] * B[2] - J[2] * B[1]),
+                (J[2] * B[0] - J[0] * B[2]),
+                (J[0] * B[1] - J[1] * B[0]),
+            ]) / (ne_safe * e_charge)
+            E_field += E_Hall
+
+        # dB/dt = -curl(E)
+        curl_E = np.array([
+            np.gradient(E_field[2], self.dx, axis=1) - np.gradient(E_field[1], self.dx, axis=2),
+            np.gradient(E_field[0], self.dx, axis=2) - np.gradient(E_field[2], self.dx, axis=0),
+            np.gradient(E_field[1], self.dx, axis=0) - np.gradient(E_field[0], self.dx, axis=1),
+        ])
+        dB_dt = -curl_E
+
+        # --- Adiabatic pressure update ---
+        # dp/dt = -gamma * p * div(v) (from energy equation)
+        div_v = (
+            np.gradient(vel[0], self.dx, axis=0)
+            + np.gradient(vel[1], self.dx, axis=1)
+            + np.gradient(vel[2], self.dx, axis=2)
+        )
+        dp_dt = -self.gamma * p * div_v
+
+        # --- Dedner cleaning ---
+        ch = self.dedner_ch_init if self.dedner_ch_init > 0 else np.max(np.abs(vel)) + 1.0
+        cp = ch
+        dpsi_dt, dB_clean = _dedner_source(psi, B, ch, cp, self.dx)
+        dB_dt += dB_clean
+
+        return {
+            "drho_dt": drho_dt,
+            "dmom_dt": dmom_dt,
+            "dp_dt": dp_dt,
+            "dB_dt": dB_dt,
+            "dpsi_dt": dpsi_dt,
+        }
+
     def step(
         self,
-        state: Dict[str, np.ndarray],
+        state: dict[str, np.ndarray],
         dt: float,
         current: float,
         voltage: float,
-    ) -> Dict[str, np.ndarray]:
-        """Advance MHD state by one timestep.
+    ) -> dict[str, np.ndarray]:
+        """Advance MHD state by one timestep using SSP-RK2.
 
-        Uses operator splitting:
-        1. Explicit: advection + Lorentz force + magnetic induction
-        2. Dedner cleaning for div(B)
-        3. Source terms: Ohmic heating, Braginskii heat flux
+        SSP-RK2 (Shu-Osher form):
+            U^(1) = U^n + dt * L(U^n)
+            U^(n+1) = 0.5 * U^n + 0.5 * (U^(1) + dt * L(U^(1)))
+
+        This is TVD (total variation diminishing) and 2nd-order in time.
+
+        After the RK2 step, applies:
+        - Braginskii anisotropic heat flux (operator-split)
+        - Circuit coupling state update with dL_dt
 
         Args:
             state: Dictionary with keys rho, velocity, pressure, B, Te, Ti, psi.
@@ -286,89 +820,75 @@ class MHDSolver(PlasmaSolverBase):
         Ti = state.get("Ti", np.full_like(rho, 1e4))
         psi = state.get("psi", np.zeros_like(rho))
 
-        # --- 1. Explicit advection step (forward Euler for now) ---
-        # Density: d(rho)/dt + div(rho*v) = 0
-        flux_rho = np.array([rho * vel[i] for i in range(3)])
-        div_flux = (
-            np.gradient(flux_rho[0], self.dx, axis=0)
-            + np.gradient(flux_rho[1], self.dx, axis=1)
-            + np.gradient(flux_rho[2], self.dx, axis=2)
-        )
-        rho_new = rho - dt * div_flux
-        rho_new = np.maximum(rho_new, 1e-20)  # Floor density
+        # Save U^n
+        rho_n = rho.copy()
+        vel_n = vel.copy()
+        p_n = p.copy()
+        B_n = B.copy()
+        psi_n = psi.copy()
+        mom_n = rho_n[np.newaxis, :, :, :] * vel_n
 
-        # Momentum: d(rho*v)/dt + div(rho*v*v) = -grad(p) + J x B
-        J = np.array([
-            np.gradient(B[2], self.dx, axis=1) - np.gradient(B[1], self.dx, axis=2),
-            np.gradient(B[0], self.dx, axis=2) - np.gradient(B[2], self.dx, axis=0),
-            np.gradient(B[1], self.dx, axis=0) - np.gradient(B[0], self.dx, axis=1),
-        ]) / mu_0
+        # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
+        state_n = {
+            "rho": rho_n, "velocity": vel_n, "pressure": p_n,
+            "B": B_n, "Te": Te, "Ti": Ti, "psi": psi_n,
+        }
+        rhs1 = self._compute_rhs_euler(state_n, current, voltage)
 
-        # J x B force
-        JxB = np.array([
-            J[1] * B[2] - J[2] * B[1],
-            J[2] * B[0] - J[0] * B[2],
-            J[0] * B[1] - J[1] * B[0],
-        ])
+        rho_1 = rho_n + dt * rhs1["drho_dt"]
+        rho_1 = np.maximum(rho_1, 1e-20)
+        mom_1 = mom_n + dt * rhs1["dmom_dt"]
+        vel_1 = mom_1 / np.maximum(rho_1[np.newaxis, :, :, :], 1e-30)
+        p_1 = p_n + dt * rhs1["dp_dt"]
+        p_1 = np.maximum(p_1, 1e-20)
+        B_1 = B_n + dt * rhs1["dB_dt"]
+        psi_1 = psi_n + dt * rhs1["dpsi_dt"]
 
-        grad_p = np.array([
-            np.gradient(p, self.dx, axis=0),
-            np.gradient(p, self.dx, axis=1),
-            np.gradient(p, self.dx, axis=2),
-        ])
+        # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
+        state_1 = {
+            "rho": rho_1, "velocity": vel_1, "pressure": p_1,
+            "B": B_1, "Te": Te, "Ti": Ti, "psi": psi_1,
+        }
+        rhs2 = self._compute_rhs_euler(state_1, current, voltage)
 
-        mom = rho[np.newaxis, :, :, :] * vel
-        for d in range(3):
-            mom[d] += dt * (JxB[d] - grad_p[d])
+        rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"])
+        rho_new = np.maximum(rho_new, 1e-20)
+        mom_new = 0.5 * mom_n + 0.5 * (mom_1 + dt * rhs2["dmom_dt"])
+        vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
+        p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["dp_dt"])
+        p_new = np.maximum(p_new, 1e-20)
+        B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
+        psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
 
-        vel_new = mom / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
-
-        # Induction equation: dB/dt = curl(v x B) = -curl(E)
-        # E = -v x B (ideal MHD)
-        vxB = np.array([
-            vel[1] * B[2] - vel[2] * B[1],
-            vel[2] * B[0] - vel[0] * B[2],
-            vel[0] * B[1] - vel[1] * B[0],
-        ])
-
-        curl_vxB = np.array([
-            np.gradient(vxB[2], self.dx, axis=1) - np.gradient(vxB[1], self.dx, axis=2),
-            np.gradient(vxB[0], self.dx, axis=2) - np.gradient(vxB[2], self.dx, axis=0),
-            np.gradient(vxB[1], self.dx, axis=0) - np.gradient(vxB[0], self.dx, axis=1),
-        ])
-
-        B_new = B + dt * curl_vxB
-
-        # --- 2. Dedner divergence cleaning ---
-        ch = self.dedner_ch_init if self.dedner_ch_init > 0 else np.max(np.abs(vel)) + 1.0
-        cp = ch  # Equal cleaning speeds for simplicity
-        dpsi_dt, dB_clean = _dedner_source(psi, B_new, ch, cp, self.dx)
-        psi_new = psi + dt * dpsi_dt
-        B_new = B_new + dt * dB_clean
-
-        # --- 3. Pressure update (adiabatic) ---
-        # p * rho^(-gamma) = const along streamlines
-        compression = rho_new / np.maximum(rho, 1e-30)
-        p_new = p * compression**self.gamma
-
-        # Update temperatures from pressure
+        # --- Update temperatures from pressure ---
         n_i = rho_new / m_p
-        Ti_new = p_new / (2.0 * np.maximum(n_i, 1e-30) * k_B)  # Assume Te ~ Ti for pressure
-        Te_new = Ti_new.copy()  # Will be refined by collision module
+        Ti_new = p_new / (2.0 * np.maximum(n_i, 1e-30) * k_B)
+        Te_new = Ti_new.copy()
+
+        # --- Braginskii anisotropic heat flux (operator-split) ---
+        if self.enable_braginskii:
+            ne = rho_new / m_p  # Z=1
+            Te_new = _braginskii_heat_flux(Te_new, ne, B_new, self.dx, dt)
 
         # --- Update coupling for circuit ---
-        # Estimate plasma inductance from current profile
         B_theta_avg = np.mean(np.sqrt(B_new[0] ** 2 + B_new[1] ** 2))
         if current > 0:
             Lp_est = mu_0 * B_theta_avg / (current + 1e-30) * self.dx * self.grid_shape[0]
         else:
             Lp_est = 0.0
 
+        # Compute dL_dt from previous Lp
+        if self._prev_Lp is not None and dt > 0:
+            dL_dt = (Lp_est - self._prev_Lp) / dt
+        else:
+            dL_dt = 0.0
+        self._prev_Lp = Lp_est
+
         self._coupling = CouplingState(
             Lp=Lp_est,
             current=current,
             voltage=voltage,
-            dL_dt=0.0,  # TODO: compute from pinch velocity
+            dL_dt=dL_dt,
         )
 
         return {

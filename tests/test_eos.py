@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from dpf.constants import k_B, m_p
 from dpf.fluid.eos import IdealEOS

@@ -1,0 +1,41 @@
+{
+  "grid_shape": [32, 1, 32],
+  "dx": 5e-4,
+  "sim_time": 1e-6,
+  "dt_init": 1e-11,
+  "geometry": {
+    "type": "cylindrical",
+    "dz": 1e-3
+  },
+  "circuit": {
+    "C": 1e-6,
+    "V0": 15000,
+    "L0": 1e-7,
+    "R0": 0.01,
+    "anode_radius": 0.005,
+    "cathode_radius": 0.01,
+    "ESR": 0.005,
+    "ESL": 0.0
+  },
+  "collision": {
+    "coulomb_log": 10.0,
+    "dynamic_coulomb_log": true,
+    "sigma_en": 1e-19
+  },
+  "radiation": {
+    "bremsstrahlung_enabled": true,
+    "gaunt_factor": 1.2,
+    "fld_enabled": false
+  },
+  "fluid": {
+    "reconstruction": "weno5",
+    "riemann_solver": "hll",
+    "cfl": 0.4,
+    "dedner_ch": 0.0,
+    "gamma": 1.6667
+  },
+  "diagnostics": {
+    "hdf5_filename": "dpf_cylindrical_output.h5",
+    "output_interval": 10
+  }
+}

@@ -51,6 +51,12 @@ gpu = [
 mpi = [
     "mpi4py>=3.1",
 ]
+server = [
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.23",
+    "websockets>=11.0",
+    "httpx>=0.24",
+]
 
 [project.scripts]
 dpf = "dpf.cli.main:cli"
@@ -64,7 +70,16 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # Line too long (handled by line-length)
+    "N802",   # Function name should be lowercase — physics names (max_div_B, etc.)
+    "N803",   # Argument name should be lowercase — physics variables (B, Te, Lp, etc.)
+    "N806",   # Variable in function should be lowercase — physics variables
+    "N815",   # Variable in class scope mixedCase — physics variables (dL_dt, etc.)
+    "N816",   # Variable in global scope mixedCase — physics constants (k_B, eV)
+    "SIM108", # Use ternary operator — readability preference
+    "B027",   # Empty method in ABC without abstract decorator — intentional default
+]
 
 [tool.mypy]
 python_version = "3.10"

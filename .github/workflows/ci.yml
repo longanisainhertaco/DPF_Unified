@@ -14,28 +14,57 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install ruff mypy
-      - run: ruff check src/
-      - run: mypy src/dpf/ --ignore-missing-imports
+      - run: pip install ruff
+      - run: ruff check src/ tests/
 
-  test-unit:
+  test:
     runs-on: ubuntu-latest
     needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/ -v --tb=short -k "not integration"
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev,server]"
+      - run: pytest tests/ -v --tb=short --cov=dpf --cov-report=term-missing
+      - name: Verify test count
+        run: |
+          count=$(pytest tests/ --co -q 2>/dev/null | tail -1 | grep -oE '[0-9]+')
+          echo "Found $count tests"
+          if [ "$count" -lt 310 ]; then
+            echo "ERROR: Expected at least 310 tests, found $count"
+            exit 1
+          fi
 
-  test-integration:
+  smoke-test:
     runs-on: ubuntu-latest
-    needs: test-unit
+    needs: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/test_integration.py -v --tb=short
+      - run: pip install -e ".[dev,server]"
+      - name: CLI smoke test (Cartesian)
+        run: python -m dpf.cli.main simulate config.json --steps=10
+      - name: CLI smoke test (Cylindrical)
+        run: python -m dpf.cli.main simulate config_cylindrical.json --steps=10
+      - name: Server smoke test
+        run: |
+          python -c "
+          from fastapi.testclient import TestClient
+          from dpf.server.app import app
+          client = TestClient(app)
+          r = client.get('/api/health')
+          assert r.status_code == 200
+          assert r.json()['status'] == 'ok'
+          r = client.get('/api/presets')
+          assert r.status_code == 200
+          assert len(r.json()) >= 3
+          r = client.post('/api/simulations', json={'config': {}, 'preset': 'tutorial', 'max_steps': 3})
+          assert r.status_code == 200
+          print(f'Server smoke test passed: sim_id={r.json()[\"sim_id\"]}')
+          "

@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from dpf.collision.spitzer import (
     braginskii_kappa,
     coulomb_log,
-    nu_ei,
     nu_ee,
-    nu_ii,
+    nu_ei,
     nu_en,
     relax_temperatures,
 )
-from dpf.constants import e, epsilon_0, k_B, m_e, m_p
+from dpf.constants import e, k_B
 
 
 class TestCoulombLog:

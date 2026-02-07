@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -133,7 +132,7 @@ class RLCSolver(CircuitSolverBase):
         Lp = coupling.Lp
         dLp_dt = coupling.dL_dt
         L_total = self.L_ext + Lp
-        R_eff = self.R_total
+        R_eff = self.R_total + coupling.R_plasma
 
         # Implicit midpoint for I and V
         # At midpoint: I_mid = (I_n + I_{n+1}) / 2, V_mid = (V_n + V_{n+1}) / 2

@@ -10,6 +10,7 @@ Functions:
     nu_ee: Electron-electron collision frequency.
     nu_ii: Ion-ion collision frequency.
     nu_en: Electron-neutral collision frequency.
+    spitzer_resistivity: Spitzer resistivity [Ohm*m].
     braginskii_kappa: Parallel and perpendicular thermal conductivity.
     relax_temperatures: Implicit e-i temperature relaxation.
 """
@@ -102,6 +103,30 @@ def nu_en(ne: np.ndarray, Te: np.ndarray, nn: np.ndarray, sigma_en: float = 1e-1
     """
     v_th_e = np.sqrt(k_B * Te / m_e)
     return nn * sigma_en * v_th_e
+
+
+@njit(cache=True)
+def spitzer_resistivity(
+    ne: np.ndarray, Te: np.ndarray, lnL: np.ndarray | float = 10.0, Z: float = 1.0
+) -> np.ndarray:
+    """Spitzer resistivity [Ohm*m].
+
+    eta = m_e * nu_ei / (ne * e^2)
+
+    For a hydrogen plasma at 1 keV, eta ~ 10^-7 Ohm*m.
+    Reference: NRL Plasma Formulary, Spitzer (1962).
+
+    Args:
+        ne: Electron number density [m^-3].
+        Te: Electron temperature [K].
+        lnL: Coulomb logarithm (scalar or array).
+        Z: Ion charge state.
+
+    Returns:
+        Spitzer resistivity [Ohm*m].
+    """
+    freq = nu_ei(ne, Te, lnL, Z)
+    return m_e * freq / (ne * e**2 + 1e-300)
 
 
 @njit(cache=True)

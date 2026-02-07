@@ -10,10 +10,49 @@ Defines the interface contracts that all physics modules implement:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+
+
+@dataclass
+class StepResult:
+    """Result of a single simulation timestep.
+
+    Attributes:
+        time: Simulation time after this step [s].
+        step: Step number after this step.
+        dt: Timestep size used [s].
+        current: Circuit current [A].
+        voltage: Capacitor voltage [V].
+        energy_conservation: E_total / E_initial.
+        max_Te: Peak electron temperature [K].
+        max_rho: Peak density [kg/m^3].
+        Z_bar: Average ionization state.
+        R_plasma: Plasma resistance [Ohm].
+        eta_anomalous: Anomalous resistivity [Ohm*m].
+        total_radiated_energy: Cumulative radiated energy [J].
+        neutron_rate: Instantaneous DD neutron production rate [1/s].
+        total_neutron_yield: Cumulative DD neutron yield (dimensionless count).
+        finished: True when sim_time reached or max_steps exceeded.
+    """
+
+    time: float = 0.0
+    step: int = 0
+    dt: float = 0.0
+    current: float = 0.0
+    voltage: float = 0.0
+    energy_conservation: float = 1.0
+    max_Te: float = 0.0
+    max_rho: float = 0.0
+    Z_bar: float = 1.0
+    R_plasma: float = 0.0
+    eta_anomalous: float = 0.0
+    total_radiated_energy: float = 0.0
+    neutron_rate: float = 0.0
+    total_neutron_yield: float = 0.0
+    finished: bool = False
 
 
 @dataclass
@@ -25,18 +64,18 @@ class CouplingState:
         emf: Electromotive force from plasma [V].
         current: Circuit current [A].
         voltage: Capacitor voltage [V].
-        mutual_inductance: Mutual inductance [H].
-        back_reaction: Back-reaction term on circuit from plasma dynamics.
         dL_dt: Rate of change of plasma inductance [H/s].
+        R_plasma: Plasma resistance [Ohm] (from Spitzer resistivity).
+        Z_bar: Average ionization state (1.0 for fully ionized H).
     """
 
     Lp: float = 0.0
     emf: float = 0.0
     current: float = 0.0
     voltage: float = 0.0
-    mutual_inductance: float = 0.0
-    back_reaction: float = 0.0
     dL_dt: float = 0.0
+    R_plasma: float = 0.0
+    Z_bar: float = 1.0
 
 
 class PlasmaSolverBase(ABC):
@@ -45,11 +84,11 @@ class PlasmaSolverBase(ABC):
     @abstractmethod
     def step(
         self,
-        state: Dict[str, np.ndarray],
+        state: dict[str, np.ndarray],
         dt: float,
         current: float,
         voltage: float,
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """Advance the plasma state by one timestep.
 
         Args:
@@ -95,7 +134,7 @@ class DiagnosticsBase(ABC):
     @abstractmethod
     def record(
         self,
-        state: Dict[str, Any],
+        state: dict[str, Any],
         time: float,
     ) -> None:
         """Record diagnostic quantities at the current timestep.

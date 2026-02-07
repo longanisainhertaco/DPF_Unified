@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.core.bases import CouplingState
