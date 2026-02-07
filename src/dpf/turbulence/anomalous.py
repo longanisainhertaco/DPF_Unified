@@ -210,6 +210,40 @@ def total_resistivity(
 
 
 @njit(cache=True)
+def anomalous_resistivity_field(
+    J_mag: np.ndarray,
+    ne: np.ndarray,
+    Ti: np.ndarray,
+    alpha: float = 0.05,
+    mi: float = m_p,
+) -> np.ndarray:
+    """Compute anomalous resistivity field from spatially-resolved J, ne, Ti.
+
+    Vectorized version of anomalous_resistivity for 3D fields — avoids
+    the np.ndindex loop of the original for better performance.
+
+    Args:
+        J_mag: Current density magnitude [A/m^2], any shape.
+        ne: Electron number density [m^-3], same shape.
+        Ti: Ion temperature [K], same shape.
+        alpha: Turbulence parameter (0.01-0.1, default 0.05).
+        mi: Ion mass [kg].
+
+    Returns:
+        Anomalous resistivity field [Ohm*m], same shape.
+    """
+    v_d = np.abs(J_mag) / np.maximum(ne * e, 1e-300)
+    v_ti = np.sqrt(k_B * np.maximum(Ti, 0.0) / mi)
+    omega_pe = np.sqrt(np.maximum(ne, 0.0) * e**2 / (epsilon_0 * m_e))
+
+    eta_anom = alpha * m_e * omega_pe / np.maximum(ne * e**2, 1e-300)
+    # Only active where v_d > v_ti (Buneman threshold)
+    mask = v_d > v_ti
+    result = np.where(mask, eta_anom, 0.0)
+    return result
+
+
+@njit(cache=True)
 def total_resistivity_scalar(
     eta_spitzer: float,
     eta_anomalous: float,

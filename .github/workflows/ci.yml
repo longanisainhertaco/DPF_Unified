@@ -34,8 +34,8 @@ jobs:
         run: |
           count=$(pytest tests/ --co -q 2>/dev/null | tail -1 | grep -oE '[0-9]+')
           echo "Found $count tests"
-          if [ "$count" -lt 350 ]; then
-            echo "ERROR: Expected at least 350 tests, found $count"
+          if [ "$count" -lt 390 ]; then
+            echo "ERROR: Expected at least 390 tests, found $count"
             exit 1
           fi
 

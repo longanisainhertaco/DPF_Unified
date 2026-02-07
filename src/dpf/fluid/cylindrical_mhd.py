@@ -34,6 +34,11 @@ from dpf.constants import e as e_charge
 from dpf.constants import k_B, m_d, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.fluid.eos import IdealEOS
+from dpf.fluid.mhd_solver import (
+    _hll_flux_1d_core,
+    _hlld_flux_1d_core,
+    _weno5_reconstruct_1d,
+)
 from dpf.geometry.cylindrical import CylindricalGeometry
 
 logger = logging.getLogger(__name__)
@@ -80,6 +85,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         enable_resistive: bool = True,
         enable_energy_equation: bool = True,
         ion_mass: float | None = None,
+        riemann_solver: str = "hll",
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -92,7 +98,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.enable_resistive = enable_resistive
         self.enable_energy_equation = enable_energy_equation
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
+        self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
         self.eos = IdealEOS(gamma=gamma)
+
+        # Whether we can use WENO5 (need >= 5 cells in each direction)
+        self.use_weno5 = nr >= 5 and nz >= 5
 
         # Geometry operator
         self.geom = CylindricalGeometry(nr, nz, dr, dz)
@@ -106,10 +116,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
-            "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, ion_mass=%.3e kg",
+            "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, WENO5=%s, "
+            "Riemann=%s, ion_mass=%.3e kg",
             nr, nz, dr, dz, gamma, enable_hall,
             self.enable_resistive, self.enable_energy_equation,
-            self.ion_mass,
+            self.use_weno5, self.riemann_solver, self.ion_mass,
         )
 
     def _squeeze(self, arr: np.ndarray) -> np.ndarray:
@@ -131,6 +142,91 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         elif arr.ndim == 3 and arr.shape[0] == 3:
             return arr[:, :, np.newaxis, :]
         return arr
+
+    def _weno5_flux_sweep_2d(
+        self,
+        rho: np.ndarray,
+        vel_n: np.ndarray,
+        pressure: np.ndarray,
+        Bn: np.ndarray,
+        axis: int,
+    ) -> dict[str, np.ndarray]:
+        """WENO5+Riemann flux sweep along one axis of a 2D (nr, nz) grid.
+
+        Args:
+            rho: Density (nr, nz).
+            vel_n: Normal velocity component (nr, nz).
+            pressure: Pressure (nr, nz).
+            Bn: Normal B-field component (nr, nz).
+            axis: 0 for radial, 1 for axial.
+
+        Returns:
+            Dict with mass_flux, momentum_flux, energy_flux, n_interfaces.
+        """
+        n_ax = rho.shape[axis]
+        n_other = rho.shape[1 - axis]
+
+        if n_ax < 5:
+            return {
+                "mass_flux": np.zeros_like(rho),
+                "momentum_flux": np.zeros_like(rho),
+                "energy_flux": np.zeros_like(rho),
+                "n_interfaces": 0,
+            }
+
+        n_iface = n_ax - 4
+        if axis == 0:
+            out_shape = (n_iface, n_other)
+        else:
+            out_shape = (n_other, n_iface)
+
+        F_rho = np.zeros(out_shape)
+        F_mom = np.zeros(out_shape)
+        F_ene = np.zeros(out_shape)
+
+        riemann_fn = _hlld_flux_1d_core if self.riemann_solver == "hlld" else _hll_flux_1d_core
+
+        for idx in range(n_other):
+            if axis == 0:
+                rho_1d = rho[:, idx]
+                u_1d = vel_n[:, idx]
+                p_1d = pressure[:, idx]
+                Bn_1d = Bn[:, idx]
+            else:
+                rho_1d = rho[idx, :]
+                u_1d = vel_n[idx, :]
+                p_1d = pressure[idx, :]
+                Bn_1d = Bn[idx, :]
+
+            rL, rR = _weno5_reconstruct_1d(rho_1d)
+            uL, uR = _weno5_reconstruct_1d(u_1d)
+            pL, pR = _weno5_reconstruct_1d(p_1d)
+            BnL, BnR = _weno5_reconstruct_1d(Bn_1d)
+
+            rL = np.maximum(rL, 1e-20)
+            rR = np.maximum(rR, 1e-20)
+            pL = np.maximum(pL, 1e-20)
+            pR = np.maximum(pR, 1e-20)
+
+            f_rho, f_mom, f_ene = riemann_fn(
+                rL, rR, uL, uR, pL, pR, BnL, BnR, self.gamma,
+            )
+
+            if axis == 0:
+                F_rho[:, idx] = f_rho
+                F_mom[:, idx] = f_mom
+                F_ene[:, idx] = f_ene
+            else:
+                F_rho[idx, :] = f_rho
+                F_mom[idx, :] = f_mom
+                F_ene[idx, :] = f_ene
+
+        return {
+            "mass_flux": F_rho,
+            "momentum_flux": F_mom,
+            "energy_flux": F_ene,
+            "n_interfaces": n_iface,
+        }
 
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
         """Compute CFL-limited timestep for cylindrical geometry."""
@@ -193,10 +289,28 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         J = curl_B / mu_0
 
         # --- Density: d(rho)/dt = -div(rho*v) ---
-        rho_v = np.zeros((3, self.nr, self.nz))
-        for d in range(3):
-            rho_v[d] = rho * vel[d]
-        drho_dt = -geom.divergence(rho_v)
+        if self.use_weno5:
+            # WENO5+Riemann flux-based density update along r and z
+            drho_dt = np.zeros_like(rho)
+            # Radial sweep (axis=0): use v_r and B_r
+            fl_r = self._weno5_flux_sweep_2d(rho, vel[0], p, B[0], axis=0)
+            n_r = fl_r["n_interfaces"]
+            if n_r >= 2:
+                n_upd = n_r - 1
+                dF = fl_r["mass_flux"][1:n_upd + 1, :] - fl_r["mass_flux"][:n_upd, :]
+                drho_dt[2:2 + n_upd, :] -= dF / self.dr
+            # Axial sweep (axis=1): use v_z and B_z
+            fl_z = self._weno5_flux_sweep_2d(rho, vel[2], p, B[2], axis=1)
+            n_z = fl_z["n_interfaces"]
+            if n_z >= 2:
+                n_upd = n_z - 1
+                dF = fl_z["mass_flux"][:, 1:n_upd + 1] - fl_z["mass_flux"][:, :n_upd]
+                drho_dt[:, 2:2 + n_upd] -= dF / self.dz
+        else:
+            rho_v = np.zeros((3, self.nr, self.nz))
+            for d in range(3):
+                rho_v[d] = rho * vel[d]
+            drho_dt = -geom.divergence(rho_v)
 
         # --- Momentum: d(rho*v)/dt = -div(rho*v*v) - grad(p) + J×B + S_geom ---
         # Pressure gradient

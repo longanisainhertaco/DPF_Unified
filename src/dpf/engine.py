@@ -24,6 +24,7 @@ from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
 from dpf.constants import k_B, pi
+from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
 from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
 from dpf.diagnostics.hdf5_writer import HDF5Writer
@@ -35,7 +36,11 @@ from dpf.fluid.mhd_solver import MHDSolver
 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
 from dpf.radiation.transport import apply_radiation_transport
 from dpf.sheath.bohm import apply_sheath_bc, floating_potential
-from dpf.turbulence.anomalous import anomalous_resistivity_scalar, total_resistivity_scalar
+from dpf.turbulence.anomalous import (
+    anomalous_resistivity_field,
+    anomalous_resistivity_scalar,
+    total_resistivity_scalar,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +109,7 @@ class SimulationEngine:
                 enable_resistive=fc.enable_resistive,
                 enable_energy_equation=fc.enable_energy_equation,
                 ion_mass=self.ion_mass,
+                riemann_solver=fc.riemann_solver,
             )
             self._cell_volume = None  # Computed on demand from cylindrical geometry
         else:
@@ -116,6 +122,7 @@ class SimulationEngine:
                 enable_resistive=fc.enable_resistive,
                 enable_energy_equation=fc.enable_energy_equation,
                 ion_mass=self.ion_mass,
+                riemann_solver=fc.riemann_solver,
             )
             self._cell_volume = dx**3  # Uniform Cartesian cell volume
 
@@ -339,10 +346,10 @@ class SimulationEngine:
         eta_field = None
         eta_anom = 0.0
         R_plasma = 0.0
+        L_plasma = 0.0
 
         if Te_avg > 1000.0 and ne_avg > 1e10:
             # Cell-by-cell Spitzer resistivity with temperature floor
-            # Floor at 1000K to prevent astronomical resistivity in cold cells
             Te_floored = np.maximum(Te, 1000.0)
             ne_floored = np.maximum(ne, 1e10)
             lnL_field = coulomb_log(ne_floored, Te_floored)
@@ -350,7 +357,7 @@ class SimulationEngine:
                 ne_floored, Te_floored, lnL_field, Z=Z_bar,
             )
 
-            # Volume-averaged for circuit coupling (still needed for R_plasma)
+            # Volume-averaged for fallback and scalar coupling
             lnL_avg = coulomb_log(
                 np.array([ne_avg]), np.array([Te_avg])
             )[0]
@@ -358,9 +365,46 @@ class SimulationEngine:
                 np.array([ne_avg]), np.array([Te_avg]), lnL_avg, Z=Z_bar
             )[0])
 
-            # Anomalous resistivity from Buneman instability (scalar for now)
-            A_column = pi * self.anode_radius**2
+            # Spatially-resolved anomalous resistivity from Buneman instability
+            # Compute J field from curl(B)/mu_0 for threshold check
             I_current = self._coupling.current
+            A_column = pi * self.anode_radius**2
+            B_field = self.state["B"]
+            Ti_field = self.state["Ti"]
+
+            if self.geometry_type == "cylindrical":
+                # Cylindrical: curl(B)/mu_0 for J magnitude
+                B_2d = np.squeeze(B_field, axis=2) if B_field.ndim == 4 else B_field
+                curl_B = self.fluid.geom.curl(B_2d)
+                J_field = curl_B / _mu_0
+                J_mag = np.sqrt(np.sum(J_field**2, axis=0))  # (nr, nz)
+                ne_2d = np.squeeze(ne, axis=1) if ne.ndim == 3 else ne
+                Ti_2d = np.squeeze(Ti_field, axis=1) if Ti_field.ndim == 3 else Ti_field
+                eta_anom_field = anomalous_resistivity_field(
+                    J_mag, np.maximum(ne_2d, 1e10), np.maximum(Ti_2d, 1.0),
+                    alpha=self.config.anomalous_alpha,
+                    mi=self.ion_mass,
+                )
+                # Unsqueeze to (nr, 1, nz)
+                eta_anom_field_3d = eta_anom_field[:, np.newaxis, :]
+                eta_field = eta_spitzer_field + eta_anom_field_3d
+            else:
+                # Cartesian: compute J from curl(B)
+                dx = self.config.dx
+                J_field = np.array([
+                    np.gradient(B_field[2], dx, axis=1) - np.gradient(B_field[1], dx, axis=2),
+                    np.gradient(B_field[0], dx, axis=2) - np.gradient(B_field[2], dx, axis=0),
+                    np.gradient(B_field[1], dx, axis=0) - np.gradient(B_field[0], dx, axis=1),
+                ]) / _mu_0
+                J_mag = np.sqrt(np.sum(J_field**2, axis=0))
+                eta_anom_field = anomalous_resistivity_field(
+                    J_mag, np.maximum(ne, 1e10), np.maximum(Ti_field, 1.0),
+                    alpha=self.config.anomalous_alpha,
+                    mi=self.ion_mass,
+                )
+                eta_field = eta_spitzer_field + eta_anom_field
+
+            # Scalar anomalous for diagnostics
             J_avg = abs(I_current) / max(A_column, 1e-30)
             Ti_avg = float(np.mean(self.state["Ti"]))
             eta_anom = anomalous_resistivity_scalar(
@@ -368,20 +412,43 @@ class SimulationEngine:
             )
             eta_total_avg = total_resistivity_scalar(eta_spitzer_avg, eta_anom)
 
-            # Spatially-resolved total eta (Spitzer field + anomalous scalar)
-            eta_field = eta_spitzer_field + eta_anom
             # Sanitize: cap extreme values and NaN
             eta_field = np.where(np.isfinite(eta_field), eta_field, eta_total_avg)
-            # Cap at physically reasonable value (copper at room temp ~ 2e-8 Ohm*m,
-            # cold plasma ~ 1e-3 Ohm*m, maximum physical ~ 1 Ohm*m)
             eta_field = np.minimum(eta_field, 1.0)
 
-            R_plasma = eta_total_avg * self.column_length / max(A_column, 1e-30)
+            # --- Volume-integral R_plasma: R = integral(eta*|J|^2 dV) / I^2 ---
+            I_sq = max(I_current**2, 1e-30)
+            if self.geometry_type == "cylindrical":
+                cell_vol = self.fluid.geom.cell_volumes()  # (nr, nz)
+                eta_2d = np.squeeze(eta_field, axis=1) if eta_field.ndim == 3 else eta_field
+                J_sq = J_mag**2
+                R_plasma = float(np.sum(eta_2d * J_sq * cell_vol)) / I_sq
+            else:
+                dV = self.config.dx**3
+                J_sq = np.sum(J_field**2, axis=0)
+                R_plasma = float(np.sum(eta_field * J_sq * dV)) / I_sq
 
-        # === Step 2: Circuit advance (with plasma resistance) ===
+            # Cap R_plasma to prevent runaway (physically: few Ohm max)
+            R_plasma = min(R_plasma, 10.0)
+
+            # --- Volume-integral L_plasma: L = 2 * integral(B^2/(2*mu_0) dV) / I^2 ---
+            B_sq = np.sum(B_field**2, axis=0)
+            if self.geometry_type == "cylindrical":
+                B_sq_2d = np.squeeze(B_sq, axis=1) if B_sq.ndim == 3 else B_sq
+                L_plasma = float(np.sum(B_sq_2d / _mu_0 * cell_vol)) / I_sq
+            else:
+                L_plasma = float(np.sum(B_sq / _mu_0 * dV)) / I_sq
+
+        # === Step 1b: Collision+Radiation (first half-step of Strang) ===
+        self._apply_collision_radiation(dt / 2.0, Z_bar)
+
+        # === Step 2: Circuit advance (with plasma resistance + inductance) ===
         coupling = self.fluid.coupling_interface()
         coupling.R_plasma = R_plasma
         coupling.Z_bar = Z_bar
+        # Use volume-integral L_plasma if available
+        if L_plasma > 0:
+            coupling.Lp = L_plasma
         back_emf = coupling.emf
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
@@ -418,62 +485,8 @@ class SimulationEngine:
                     boundary=self.sheath_cfg.boundary,
                 )
 
-        # === Step 4: Collision physics (temperature relaxation) ===
-        Te = self.state["Te"]
-        Ti = self.state["Ti"]
-        rho = self.state["rho"]
-        ne = rho / self.ion_mass
-
-        col_cfg = self.config.collision
-        if col_cfg.dynamic_coulomb_log:
-            lnL = coulomb_log(ne, Te)
-        else:
-            lnL = col_cfg.coulomb_log
-
-        freq_ei = nu_ei(ne, Te, lnL, Z=Z_bar)
-        Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt)
-        self.state["Te"] = Te_new
-        self.state["Ti"] = Ti_new
-
-        # Update pressure from new temperatures
-        self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
-        self._sanitize_state("after collision step")
-
-        # === Step 5: Radiation losses ===
-        if self.rad_cfg.bremsstrahlung_enabled:
-            if self.rad_cfg.fld_enabled:
-                self.state = apply_radiation_transport(
-                    self.state,
-                    dx=self.config.dx,
-                    dt=dt,
-                    Z=Z_bar,
-                    gaunt_factor=self.rad_cfg.gaunt_factor,
-                )
-            else:
-                Te_rad, P_rad = apply_bremsstrahlung_losses(
-                    self.state["Te"],
-                    ne,
-                    dt,
-                    Z=Z_bar,
-                    gaunt_factor=self.rad_cfg.gaunt_factor,
-                )
-                self.state["Te"] = Te_rad
-                if self.geometry_type == "cylindrical":
-                    cell_vol = self.fluid.geom.cell_volumes()
-                    P_rad_2d = np.squeeze(P_rad, axis=1) if P_rad.ndim == 3 else P_rad
-                    self.total_radiated_energy += float(
-                        np.sum(P_rad_2d * cell_vol) * dt
-                    )
-                else:
-                    self.total_radiated_energy += float(
-                        np.sum(P_rad) * np.prod([self.config.dx] * 3) * dt
-                    )
-
-            # Update pressure after radiation
-            self.state["pressure"] = self.eos.total_pressure(
-                self.state["rho"], self.state["Ti"], self.state["Te"]
-            )
-            self._sanitize_state("after radiation step")
+        # === Step 4+5: Collision+Radiation (second half-step of Strang) ===
+        self._apply_collision_radiation(dt / 2.0, Z_bar)
 
         # === Step 5b: Neutron yield (DD thermonuclear) ===
         Ti_yield = self.state["Ti"]
@@ -588,6 +601,79 @@ class SimulationEngine:
             total_neutron_yield=self.total_neutron_yield,
             finished=finished,
         )
+
+    # ------------------------------------------------------------------
+    # Strang-split collision + radiation sub-step
+    # ------------------------------------------------------------------
+
+    def _apply_collision_radiation(self, dt_sub: float, Z_bar: float) -> None:
+        """Apply collision (temperature relaxation) and radiation losses.
+
+        This is the combined collision + radiation operator used in Strang
+        splitting.  Called twice per timestep with dt/2 each (once before
+        and once after the MHD advance) for 2nd-order temporal accuracy.
+
+        Args:
+            dt_sub: Sub-step duration [s] (typically dt/2).
+            Z_bar: Average ionization state.
+        """
+        # --- Collision physics (electron-ion temperature relaxation) ---
+        Te = self.state["Te"]
+        Ti = self.state["Ti"]
+        rho = self.state["rho"]
+        ne = rho / self.ion_mass
+
+        col_cfg = self.config.collision
+        if col_cfg.dynamic_coulomb_log:
+            lnL = coulomb_log(ne, Te)
+        else:
+            lnL = col_cfg.coulomb_log
+
+        freq_ei = nu_ei(ne, Te, lnL, Z=Z_bar)
+        Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
+        self.state["Te"] = Te_new
+        self.state["Ti"] = Ti_new
+
+        # Update pressure from new temperatures
+        self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
+        self._sanitize_state("after collision step")
+
+        # --- Radiation losses ---
+        if self.rad_cfg.bremsstrahlung_enabled:
+            ne_rad = rho / self.ion_mass
+            if self.rad_cfg.fld_enabled:
+                self.state = apply_radiation_transport(
+                    self.state,
+                    dx=self.config.dx,
+                    dt=dt_sub,
+                    Z=Z_bar,
+                    gaunt_factor=self.rad_cfg.gaunt_factor,
+                )
+            else:
+                Te_rad, P_rad = apply_bremsstrahlung_losses(
+                    self.state["Te"],
+                    ne_rad,
+                    dt_sub,
+                    Z=Z_bar,
+                    gaunt_factor=self.rad_cfg.gaunt_factor,
+                )
+                self.state["Te"] = Te_rad
+                if self.geometry_type == "cylindrical":
+                    cell_vol = self.fluid.geom.cell_volumes()
+                    P_rad_2d = np.squeeze(P_rad, axis=1) if P_rad.ndim == 3 else P_rad
+                    self.total_radiated_energy += float(
+                        np.sum(P_rad_2d * cell_vol) * dt_sub
+                    )
+                else:
+                    self.total_radiated_energy += float(
+                        np.sum(P_rad) * np.prod([self.config.dx] * 3) * dt_sub
+                    )
+
+            # Update pressure after radiation
+            self.state["pressure"] = self.eos.total_pressure(
+                self.state["rho"], self.state["Ti"], self.state["Te"]
+            )
+            self._sanitize_state("after radiation step")
 
     # ------------------------------------------------------------------
     # Field snapshot access (for server/GUI)
