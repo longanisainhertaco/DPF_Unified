@@ -98,6 +98,15 @@ class FluidConfig(BaseModel):
     gamma: float = Field(5.0 / 3.0, gt=1, description="Adiabatic index")
     enable_resistive: bool = Field(True, description="Enable resistive MHD (eta*J in induction)")
     enable_energy_equation: bool = Field(True, description="Use conservative total energy equation")
+    diffusion_method: str = Field(
+        "explicit",
+        description=(
+            "Diffusion treatment: 'explicit' (standard CFL-limited), "
+            "'sts' (super time-stepping RKL2), 'implicit' (Crank-Nicolson ADI)"
+        ),
+    )
+    sts_stages: int = Field(8, ge=2, le=32, description="RKL2 super time-stepping stages")
+    implicit_tol: float = Field(1e-8, gt=0, description="Implicit diffusion solver tolerance")
 
 
 class DiagnosticsConfig(BaseModel):
