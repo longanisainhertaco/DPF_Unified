@@ -33,6 +33,13 @@ from dpf.diagnostics.neutron_yield import neutron_yield_rate
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.mhd_solver import MHDSolver
+from dpf.fluid.nernst import apply_nernst_advection
+from dpf.fluid.viscosity import (
+    braginskii_eta0,
+    ion_collision_time,
+    viscous_heating_rate,
+    viscous_stress_rate,
+)
 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
 from dpf.radiation.transport import apply_radiation_transport
 from dpf.sheath.bohm import apply_sheath_bc, floating_potential
@@ -467,6 +474,12 @@ class SimulationEngine:
         )
         self._sanitize_state("after fluid step")
 
+        # === Step 3a: Nernst B-field advection ===
+        fc = self.config.fluid
+        if fc.enable_nernst:
+            self._apply_nernst(dt, Z_bar)
+            self._sanitize_state("after Nernst step")
+
         # === Step 3b: Sheath boundary conditions ===
         if self.sheath_cfg.enabled:
             Te_bc = self.state["Te"]
@@ -638,6 +651,11 @@ class SimulationEngine:
         self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
         self._sanitize_state("after collision step")
 
+        # --- Braginskii ion viscosity ---
+        if self.config.fluid.enable_viscosity:
+            self._apply_viscosity(dt_sub)
+            self._sanitize_state("after viscosity step")
+
         # --- Radiation losses ---
         if self.rad_cfg.bremsstrahlung_enabled:
             ne_rad = rho / self.ion_mass
@@ -674,6 +692,109 @@ class SimulationEngine:
                 self.state["rho"], self.state["Ti"], self.state["Te"]
             )
             self._sanitize_state("after radiation step")
+
+    # ------------------------------------------------------------------
+    # Nernst B-field advection sub-step
+    # ------------------------------------------------------------------
+
+    def _apply_nernst(self, dt: float, Z_bar: float) -> None:
+        """Advect B-field by Nernst velocity (grad Te driven).
+
+        The Nernst effect sweeps magnetic field along electron temperature
+        gradients.  It is applied as an operator-split step after the MHD
+        advance.
+
+        Args:
+            dt: Timestep [s].
+            Z_bar: Average ionization state.
+        """
+        B = self.state["B"]
+        Te = self.state["Te"]
+        rho = self.state["rho"]
+        ne = rho / self.ion_mass
+
+        dx = self.config.dx
+        if self.geometry_type == "cylindrical":
+            dz = self.config.geometry.dz if self.config.geometry.dz is not None else dx
+            # Nernst module uses np.gradient on all 3 axes — needs ny >= 2.
+            # Pad ny=1 -> ny=3 by repeating the single slice, then extract back.
+            pad_n = 3
+            B_pad = np.repeat(B, pad_n, axis=2)          # (3, nr, 3, nz)
+            ne_pad = np.repeat(ne, pad_n, axis=1)         # (nr, 3, nz)
+            Te_pad = np.repeat(Te, pad_n, axis=1)         # (nr, 3, nz)
+            Bx_new, By_new, Bz_new = apply_nernst_advection(
+                B_pad[0], B_pad[1], B_pad[2],
+                ne_pad, Te_pad, dx, dx, dz, dt,
+                Z_eff=max(Z_bar, 0.01),
+            )
+            # Extract middle y-slice back to (nr, 1, nz)
+            Bx_new = Bx_new[:, 1:2, :]
+            By_new = By_new[:, 1:2, :]
+            Bz_new = Bz_new[:, 1:2, :]
+        else:
+            Bx_new, By_new, Bz_new = apply_nernst_advection(
+                B[0], B[1], B[2],
+                ne, Te, dx, dx, dx, dt,
+                Z_eff=max(Z_bar, 0.01),
+            )
+
+        self.state["B"] = np.array([Bx_new, By_new, Bz_new])
+
+    # ------------------------------------------------------------------
+    # Braginskii ion viscosity sub-step
+    # ------------------------------------------------------------------
+
+    def _apply_viscosity(self, dt_sub: float) -> None:
+        """Apply Braginskii parallel viscosity (eta_0).
+
+        Updates velocity via viscous stress and adds viscous heating to
+        ion temperature.
+
+        Args:
+            dt_sub: Sub-step duration [s] (typically dt/2 from Strang).
+        """
+        rho = self.state["rho"]
+        vel = self.state["velocity"]
+        Ti = self.state["Ti"]
+
+        ni = rho / self.ion_mass
+        tau_i = ion_collision_time(ni, Ti)
+        eta0 = braginskii_eta0(ni, Ti, tau_i)
+
+        dx = self.config.dx
+        if self.geometry_type == "cylindrical":
+            dz = self.config.geometry.dz if self.config.geometry.dz is not None else dx
+            dy = dx
+            # Viscosity module uses finite differences on all 3 axes,
+            # which requires ny >= 2.  Pad ny=1 -> ny=3 then extract.
+            pad_n = 3
+            vel_pad = np.repeat(vel, pad_n, axis=2)       # (3, nr, 3, nz)
+            rho_pad = np.repeat(rho, pad_n, axis=1)        # (nr, 3, nz)
+            eta0_pad = np.repeat(eta0, pad_n, axis=1)      # (nr, 3, nz)
+
+            accel_pad = viscous_stress_rate(vel_pad, rho_pad, eta0_pad, dx, dy, dz)
+            Q_visc_pad = viscous_heating_rate(vel_pad, eta0_pad, dx, dy, dz)
+
+            accel = accel_pad[:, :, 1:2, :]     # middle slice
+            Q_visc = Q_visc_pad[:, 1:2, :]
+            ni_safe = np.maximum(ni, 1e-30)
+        else:
+            dy = dx
+            dz = dx
+            accel = viscous_stress_rate(vel, rho, eta0, dx, dy, dz)
+            Q_visc = viscous_heating_rate(vel, eta0, dx, dy, dz)
+            ni_safe = np.maximum(ni, 1e-30)
+
+        self.state["velocity"] = vel + dt_sub * accel
+
+        # Viscous heating: Q_visc -> Ti
+        dTi = (2.0 / 3.0) * Q_visc * dt_sub / (ni_safe * k_B)
+        self.state["Ti"] = self.state["Ti"] + dTi
+
+        # Update pressure after viscous heating
+        self.state["pressure"] = self.eos.total_pressure(
+            rho, self.state["Ti"], self.state["Te"]
+        )
 
     # ------------------------------------------------------------------
     # Field snapshot access (for server/GUI)
