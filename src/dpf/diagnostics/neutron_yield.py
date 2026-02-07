@@ -142,7 +142,12 @@ def neutron_yield_rate(
     # Compute reactivity <sigma*v>(Ti)
     sv = dd_reactivity_array(Ti_keV)
 
-    # Thermonuclear rate density: (1/4) * n_D^2 * <sigma*v>
+    # Thermonuclear neutron rate density: (1/4) * n_D^2 * <sigma*v>_total
+    # Factor breakdown:
+    #   1/2 for identical-particle DD reactions
+    #   1/2 because only the D(d,n)He3 branch produces neutrons
+    #   (dd_reactivity sums both branches: D(d,n)He3 + D(d,p)T)
+    # Combined: (1/2) * (1/2) = 1/4
     rate_density = 0.25 * n_D**2 * sv
 
     # Total rate: integrate over volume

@@ -23,7 +23,7 @@ from dpf.atomic.ionization import saha_ionization_fraction
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
-from dpf.constants import k_B, m_p, pi
+from dpf.constants import k_B, pi
 from dpf.core.bases import CouplingState, StepResult
 from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
 from dpf.diagnostics.hdf5_writer import HDF5Writer
@@ -84,6 +84,12 @@ class SimulationEngine:
         fc = config.fluid
         self.geometry_type = config.geometry.type
 
+        # Ion mass from config
+        self.ion_mass = config.ion_mass
+
+        # Boundary config
+        self.boundary_cfg = config.boundary
+
         if self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx
             self.fluid = CylindricalMHDSolver(
@@ -95,6 +101,9 @@ class SimulationEngine:
                 cfl=fc.cfl,
                 dedner_ch=fc.dedner_ch,
                 enable_hall=True,
+                enable_resistive=fc.enable_resistive,
+                enable_energy_equation=fc.enable_energy_equation,
+                ion_mass=self.ion_mass,
             )
             self._cell_volume = None  # Computed on demand from cylindrical geometry
         else:
@@ -104,6 +113,9 @@ class SimulationEngine:
                 gamma=fc.gamma,
                 cfl=fc.cfl,
                 dedner_ch=fc.dedner_ch,
+                enable_resistive=fc.enable_resistive,
+                enable_energy_equation=fc.enable_energy_equation,
+                ion_mass=self.ion_mass,
             )
             self._cell_volume = dx**3  # Uniform Cartesian cell volume
 
@@ -164,7 +176,10 @@ class SimulationEngine:
         """Create initial plasma state (uniform fill gas)."""
         rho0 = self.config.rho0
         T0 = self.config.T0
-        p0 = (rho0 / m_p) * k_B * T0  # Ideal gas
+        # Total pressure = p_e + p_i = n_i*k_B*Te + n_i*k_B*Ti
+        # With Te = Ti = T0: p_total = 2 * n_i * k_B * T0
+        n_i = rho0 / self.ion_mass
+        p0 = 2.0 * n_i * k_B * T0
 
         return {
             "rho": np.full((nx, ny, nz), rho0),
@@ -310,7 +325,7 @@ class SimulationEngine:
         # === Step 1: Compute ionization state and plasma resistance ===
         Te = self.state["Te"]
         rho = self.state["rho"]
-        ne = rho / m_p  # Number density (assume fully ionized for ne)
+        ne = rho / self.ion_mass  # Number density (assume fully ionized for ne)
 
         # Volume-averaged quantities for scalar coupling
         Te_avg = float(np.mean(Te))
@@ -320,18 +335,30 @@ class SimulationEngine:
         Z_bar = saha_ionization_fraction(Te_avg, ne_avg)
         Z_bar = max(Z_bar, 0.01)  # Floor at 0.01 to avoid division by zero
 
-        # Plasma resistance from Spitzer + anomalous resistivity
+        # Compute spatially-resolved resistivity field for MHD solver
+        eta_field = None
         eta_anom = 0.0
         R_plasma = 0.0
+
         if Te_avg > 1000.0 and ne_avg > 1e10:
+            # Cell-by-cell Spitzer resistivity with temperature floor
+            # Floor at 1000K to prevent astronomical resistivity in cold cells
+            Te_floored = np.maximum(Te, 1000.0)
+            ne_floored = np.maximum(ne, 1e10)
+            lnL_field = coulomb_log(ne_floored, Te_floored)
+            eta_spitzer_field = spitzer_resistivity(
+                ne_floored, Te_floored, lnL_field, Z=Z_bar,
+            )
+
+            # Volume-averaged for circuit coupling (still needed for R_plasma)
             lnL_avg = coulomb_log(
                 np.array([ne_avg]), np.array([Te_avg])
             )[0]
-            eta_spitzer = float(spitzer_resistivity(
+            eta_spitzer_avg = float(spitzer_resistivity(
                 np.array([ne_avg]), np.array([Te_avg]), lnL_avg, Z=Z_bar
             )[0])
 
-            # Anomalous resistivity from Buneman instability
+            # Anomalous resistivity from Buneman instability (scalar for now)
             A_column = pi * self.anode_radius**2
             I_current = self._coupling.current
             J_avg = abs(I_current) / max(A_column, 1e-30)
@@ -339,9 +366,17 @@ class SimulationEngine:
             eta_anom = anomalous_resistivity_scalar(
                 J_avg, ne_avg, Ti_avg, alpha=self.config.anomalous_alpha,
             )
-            eta_total = total_resistivity_scalar(eta_spitzer, eta_anom)
+            eta_total_avg = total_resistivity_scalar(eta_spitzer_avg, eta_anom)
 
-            R_plasma = eta_total * self.column_length / max(A_column, 1e-30)
+            # Spatially-resolved total eta (Spitzer field + anomalous scalar)
+            eta_field = eta_spitzer_field + eta_anom
+            # Sanitize: cap extreme values and NaN
+            eta_field = np.where(np.isfinite(eta_field), eta_field, eta_total_avg)
+            # Cap at physically reasonable value (copper at room temp ~ 2e-8 Ohm*m,
+            # cold plasma ~ 1e-3 Ohm*m, maximum physical ~ 1 Ohm*m)
+            eta_field = np.minimum(eta_field, 1.0)
+
+            R_plasma = eta_total_avg * self.column_length / max(A_column, 1e-30)
 
         # === Step 2: Circuit advance (with plasma resistance) ===
         coupling = self.fluid.coupling_interface()
@@ -351,19 +386,24 @@ class SimulationEngine:
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
 
-        # === Step 3: Fluid/MHD advance ===
+        # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs) ===
+        cc = self.config.circuit
         self.state = self.fluid.step(
             self.state,
             dt,
             current=new_coupling.current,
             voltage=new_coupling.voltage,
+            eta_field=eta_field,
+            anode_radius=cc.anode_radius,
+            cathode_radius=cc.cathode_radius,
+            apply_electrode_bc=self.boundary_cfg.electrode_bc,
         )
         self._sanitize_state("after fluid step")
 
         # === Step 3b: Sheath boundary conditions ===
         if self.sheath_cfg.enabled:
             Te_bc = self.state["Te"]
-            ne_bc = self.state["rho"] / m_p
+            ne_bc = self.state["rho"] / self.ion_mass
             Te_boundary = float(np.mean(Te_bc))
             ne_boundary = float(np.mean(ne_bc))
             V_sh = self.sheath_cfg.V_sheath
@@ -382,7 +422,7 @@ class SimulationEngine:
         Te = self.state["Te"]
         Ti = self.state["Ti"]
         rho = self.state["rho"]
-        ne = rho / m_p
+        ne = rho / self.ion_mass
 
         col_cfg = self.config.collision
         if col_cfg.dynamic_coulomb_log:
@@ -438,7 +478,7 @@ class SimulationEngine:
         # === Step 5b: Neutron yield (DD thermonuclear) ===
         Ti_yield = self.state["Ti"]
         rho_yield = self.state["rho"]
-        n_D = rho_yield / m_p  # Assume pure deuterium for neutron yield
+        n_D = rho_yield / self.ion_mass  # Number density for neutron yield
         if self.geometry_type == "cylindrical":
             cell_vol = self.fluid.geom.cell_volumes()
             # Expand from (nr, nz) to (nr, 1, nz) for broadcasting
@@ -453,7 +493,7 @@ class SimulationEngine:
 
         # === Step 5c: Synthetic interferometry (cylindrical only) ===
         if self.geometry_type == "cylindrical":
-            ne_interf = rho_yield / m_p
+            ne_interf = rho_yield / self.ion_mass
             # Take midplane slice (z = nz//2)
             nz_mid = ne_interf.shape[2] // 2
             ne_midplane = ne_interf[:, 0, nz_mid]  # shape (nr,)

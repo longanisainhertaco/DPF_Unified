@@ -75,6 +75,19 @@ class GeometryConfig(BaseModel):
         return self
 
 
+class BoundaryConfig(BaseModel):
+    """Electrode and domain boundary conditions."""
+
+    electrode_bc: bool = Field(
+        False,
+        description="Apply electrode B-field BC: B_theta = mu0*I/(2*pi*r) at electrode radii",
+    )
+    axis_bc: bool = Field(
+        True,
+        description="Enforce symmetry BCs at r=0 axis (cylindrical only): B_r=0, dB_z/dr=0",
+    )
+
+
 class FluidConfig(BaseModel):
     """Fluid / MHD solver parameters."""
 
@@ -83,6 +96,8 @@ class FluidConfig(BaseModel):
     cfl: float = Field(0.4, gt=0, lt=1, description="CFL number")
     dedner_ch: float = Field(0.0, ge=0, description="Dedner cleaning speed (0 = auto)")
     gamma: float = Field(5.0 / 3.0, gt=1, description="Adiabatic index")
+    enable_resistive: bool = Field(True, description="Enable resistive MHD (eta*J in induction)")
+    enable_energy_equation: bool = Field(True, description="Use conservative total energy equation")
 
 
 class DiagnosticsConfig(BaseModel):
@@ -111,6 +126,10 @@ class SimulationConfig(BaseModel):
         0.05, ge=0, le=1.0,
         description="Buneman anomalous resistivity alpha parameter",
     )
+    ion_mass: float = Field(
+        3.34358377e-27, gt=0,
+        description="Ion mass [kg] (default: deuterium m_d = 3.34e-27 kg)",
+    )
 
     circuit: CircuitConfig
     collision: CollisionConfig = Field(default_factory=CollisionConfig)
@@ -118,6 +137,7 @@ class SimulationConfig(BaseModel):
     sheath: SheathConfig = Field(default_factory=SheathConfig)
     geometry: GeometryConfig = Field(default_factory=GeometryConfig)
     fluid: FluidConfig = Field(default_factory=FluidConfig)
+    boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     diagnostics: DiagnosticsConfig = Field(default_factory=DiagnosticsConfig)
 
     @model_validator(mode="after")

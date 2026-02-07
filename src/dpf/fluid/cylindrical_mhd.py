@@ -31,12 +31,15 @@ import logging
 import numpy as np
 
 from dpf.constants import e as e_charge
-from dpf.constants import k_B, m_p, mu_0
+from dpf.constants import k_B, m_d, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.fluid.eos import IdealEOS
 from dpf.geometry.cylindrical import CylindricalGeometry
 
 logger = logging.getLogger(__name__)
+
+# Default ion mass: deuterium
+_DEFAULT_ION_MASS = m_d
 
 
 class CylindricalMHDSolver(PlasmaSolverBase):
@@ -74,6 +77,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         cfl: float = 0.4,
         dedner_ch: float = 0.0,
         enable_hall: bool = True,
+        enable_resistive: bool = True,
+        enable_energy_equation: bool = True,
+        ion_mass: float | None = None,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -83,6 +89,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.cfl = cfl
         self.dedner_ch_init = dedner_ch
         self.enable_hall = enable_hall
+        self.enable_resistive = enable_resistive
+        self.enable_energy_equation = enable_energy_equation
+        self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.eos = IdealEOS(gamma=gamma)
 
         # Geometry operator
@@ -97,8 +106,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
-            "gamma=%.3f, Hall=%s",
+            "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, ion_mass=%.3e kg",
             nr, nz, dr, dz, gamma, enable_hall,
+            self.enable_resistive, self.enable_energy_equation,
+            self.ion_mass,
         )
 
     def _squeeze(self, arr: np.ndarray) -> np.ndarray:
@@ -139,7 +150,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         # Hall speed limit
         if self.enable_hall:
-            ne = rho / m_p
+            ne = rho / self.ion_mass
             ne_max = np.max(ne)
             if ne_max > 0:
                 B_max = np.sqrt(np.max(B_sq))
@@ -163,10 +174,15 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         p: np.ndarray,
         B: np.ndarray,
         psi: np.ndarray,
+        eta_field: np.ndarray | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute RHS of the MHD equations in cylindrical coordinates.
 
         All arrays are 2D: scalars (nr, nz), vectors (3, nr, nz).
+
+        Args:
+            rho, vel, p, B, psi: State variables.
+            eta_field: Spatially-resolved resistivity [Ohm*m], shape (nr, nz).
 
         Returns time derivatives for all state variables.
         """
@@ -216,9 +232,20 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         vxB[2] = vel[0] * B[1] - vel[1] * B[0]
         E_field = -vxB
 
+        # --- Resistive term: E_resistive = eta * J ---
+        ohmic_heating = np.zeros((self.nr, self.nz))
+        if self.enable_resistive and eta_field is not None:
+            E_resistive = np.zeros((3, self.nr, self.nz))
+            for d in range(3):
+                E_resistive[d] = eta_field * J[d]
+            E_field = E_field + E_resistive
+            # Ohmic heating: Q_ohm = eta * |J|^2 [W/m^3]
+            J_sq = np.sum(J**2, axis=0)
+            ohmic_heating = eta_field * J_sq
+
         # Hall term: E_Hall = (J × B) / (ne * e)
         if self.enable_hall:
-            ne = rho / m_p
+            ne = rho / self.ion_mass
             ne_safe = np.maximum(ne, 1e-20)
             E_Hall = np.zeros((3, self.nr, self.nz))
             E_Hall[0] = (J[1] * B[2] - J[2] * B[1]) / (ne_safe * e_charge)
@@ -228,9 +255,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         dB_dt = -geom.curl(E_field)
 
-        # --- Pressure: dp/dt = -gamma * p * div(v) ---
+        # --- Pressure / Energy equation ---
         div_v = geom.divergence(vel)
-        dp_dt = -self.gamma * p * div_v
+        if self.enable_energy_equation:
+            # dp/dt = -gamma * p * div(v) + (gamma-1) * eta * J^2
+            dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * ohmic_heating
+        else:
+            dp_dt = -self.gamma * p * div_v
 
         # --- Dedner cleaning ---
         ch = self.dedner_ch_init if self.dedner_ch_init > 0 else max(np.max(np.abs(vel)), 1.0)
@@ -246,7 +277,69 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "dp_dt": dp_dt,
             "dB_dt": dB_dt,
             "dpsi_dt": dpsi_dt,
+            "ohmic_heating": ohmic_heating,
         }
+
+    def apply_electrode_bfield_bc(
+        self,
+        B: np.ndarray,
+        current: float,
+        anode_radius: float,
+        cathode_radius: float,
+    ) -> np.ndarray:
+        """Apply electrode B-field BC in cylindrical coordinates.
+
+        Imposes B_theta = mu_0 * I / (2 * pi * r) at cells near the
+        electrode radii. This is the magnetic piston that drives the DPF.
+
+        Also enforces axis symmetry: B_r = 0 at r=0.
+
+        Args:
+            B: Magnetic field (3, nr, nz) in 2D cylindrical.
+            current: Circuit current [A].
+            anode_radius: Anode radius [m].
+            cathode_radius: Cathode radius [m].
+
+        Returns:
+            Modified B-field array.
+        """
+        r = self.geom.r  # shape (nr,)
+
+        # Enforce axis symmetry: B_r = 0 at r=0
+        B[0, 0, :] = 0.0
+
+        if abs(current) < 1e-10:
+            return B
+
+        # Find cells closest to cathode_radius (outer electrode)
+        idx_cath = np.argmin(np.abs(r - cathode_radius))
+        # Find cells closest to anode_radius (inner electrode)
+        idx_anode = np.argmin(np.abs(r - anode_radius))
+
+        # Apply B_theta = mu_0 * I / (2 * pi * r) at cathode boundary
+        r_cath = max(r[idx_cath], 1e-10)
+        B_theta_cath = mu_0 * current / (2.0 * np.pi * r_cath)
+        B[1, idx_cath, :] = B_theta_cath
+
+        # If there's more than one cell to the cathode, also set the last cell
+        if idx_cath < self.nr - 1:
+            r_outer = max(r[-1], 1e-10)
+            B[1, -1, :] = mu_0 * current / (2.0 * np.pi * r_outer)
+
+        # Apply B_theta at anode boundary
+        if idx_anode > 0:
+            r_an = max(r[idx_anode], 1e-10)
+            B_theta_anode = mu_0 * current / (2.0 * np.pi * r_an)
+            B[1, idx_anode, :] = B_theta_anode
+
+        # For cells between anode and cathode at the z-boundaries (electrodes),
+        # impose B_theta profile at z=0 and z=nz-1 (electrode faces)
+        for iz in [0, self.nz - 1]:
+            for ir in range(idx_anode, min(idx_cath + 1, self.nr)):
+                r_local = max(r[ir], 1e-10)
+                B[1, ir, iz] = mu_0 * current / (2.0 * np.pi * r_local)
+
+        return B
 
     def step(
         self,
@@ -254,6 +347,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         dt: float,
         current: float,
         voltage: float,
+        eta_field: np.ndarray | None = None,
+        anode_radius: float = 0.0,
+        cathode_radius: float = 0.0,
+        apply_electrode_bc: bool = False,
     ) -> dict[str, np.ndarray]:
         """Advance MHD state by one timestep using SSP-RK2.
 
@@ -265,6 +362,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             dt: Timestep [s].
             current: Circuit current [A].
             voltage: Circuit voltage [V].
+            eta_field: Spatially-resolved resistivity [Ohm*m], shape (nr, 1, nz).
+            anode_radius: Anode radius [m] for electrode BC.
+            cathode_radius: Cathode radius [m] for electrode BC.
+            apply_electrode_bc: Whether to apply electrode B-field BC.
 
         Returns:
             Updated state dictionary with 3D arrays.
@@ -274,7 +375,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         vel = self._squeeze(state["velocity"])
         p = self._squeeze(state["pressure"])
         B = self._squeeze(state["B"])
+        Te = self._squeeze(state.get("Te", np.full((self.nr, 1, self.nz), 1e4)))
+        Ti = self._squeeze(state.get("Ti", np.full((self.nr, 1, self.nz), 1e4)))
         psi = self._squeeze(state.get("psi", np.zeros((self.nr, 1, self.nz))))
+
+        # Squeeze eta_field if provided
+        eta_2d = None
+        if eta_field is not None:
+            eta_2d = self._squeeze(eta_field) if eta_field.ndim == 3 else eta_field
 
         # Save U^n
         rho_n = rho.copy()
@@ -285,7 +393,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         mom_n = rho_n[np.newaxis, :, :] * vel_n
 
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, psi_n)
+        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, psi_n, eta_2d)
 
         rho_1 = np.maximum(rho_n + dt * rhs1["drho_dt"], 1e-20)
         mom_1 = mom_n + dt * rhs1["dmom_dt"]
@@ -294,8 +402,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         B_1 = B_n + dt * rhs1["dB_dt"]
         psi_1 = psi_n + dt * rhs1["dpsi_dt"]
 
+        # Apply electrode BC after stage 1
+        if apply_electrode_bc and cathode_radius > 0:
+            B_1 = self.apply_electrode_bfield_bc(
+                B_1, current, anode_radius, cathode_radius,
+            )
+
         # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, psi_1)
+        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, psi_1, eta_2d)
 
         rho_new = np.maximum(0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"]), 1e-20)
         mom_new = 0.5 * mom_n + 0.5 * (mom_1 + dt * rhs2["dmom_dt"])
@@ -304,10 +418,33 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
         psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
 
-        # --- Update temperatures from pressure ---
-        n_i = rho_new / m_p
-        Ti_new = p_new / (2.0 * np.maximum(n_i, 1e-30) * k_B)
-        Te_new = Ti_new.copy()
+        # Apply electrode BC after stage 2
+        if apply_electrode_bc and cathode_radius > 0:
+            B_new = self.apply_electrode_bfield_bc(
+                B_new, current, anode_radius, cathode_radius,
+            )
+
+        # --- Two-temperature update (preserve Te ≠ Ti) ---
+        n_i = rho_new / self.ion_mass
+        n_i_safe = np.maximum(n_i, 1e-30)
+
+        # Preserve Te/(Te+Ti) fraction through pressure-based temperature split
+        Te_old = Te
+        Ti_old = Ti
+        T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
+        f_e = Te_old / T_sum_old  # Electron fraction of total temperature
+
+        # Total temperature from new pressure: T_total = p_new / (n_i * k_B)
+        T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
+        Te_new = f_e * T_total_new
+        Ti_new = (1.0 - f_e) * T_total_new
+        # Ohmic heating preferentially heats electrons
+        ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
+        dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
+        Te_new = Te_new + dTe_ohmic
+
+        Te_new = np.maximum(Te_new, 1.0)
+        Ti_new = np.maximum(Ti_new, 1.0)
 
         # --- Update coupling ---
         # In cylindrical coords, B_theta is the azimuthal field from axial current

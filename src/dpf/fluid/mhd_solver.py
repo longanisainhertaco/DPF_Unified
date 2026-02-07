@@ -28,11 +28,14 @@ import numpy as np
 from numba import njit
 
 from dpf.constants import e as e_charge
-from dpf.constants import k_B, m_p, mu_0
+from dpf.constants import k_B, m_d, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.fluid.eos import IdealEOS
 
 logger = logging.getLogger(__name__)
+
+# Default ion mass: deuterium
+_DEFAULT_ION_MASS = m_d
 
 
 # ============================================================
@@ -569,6 +572,9 @@ class MHDSolver(PlasmaSolverBase):
         dedner_ch: float = 0.0,
         enable_hall: bool = True,
         enable_braginskii: bool = True,
+        enable_resistive: bool = True,
+        enable_energy_equation: bool = True,
+        ion_mass: float | None = None,
     ) -> None:
         self.grid_shape = grid_shape
         self.dx = dx
@@ -577,6 +583,9 @@ class MHDSolver(PlasmaSolverBase):
         self.dedner_ch_init = dedner_ch
         self.enable_hall = enable_hall
         self.enable_braginskii = enable_braginskii
+        self.enable_resistive = enable_resistive
+        self.enable_energy_equation = enable_energy_equation
+        self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.eos = IdealEOS(gamma=gamma)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
@@ -588,9 +597,12 @@ class MHDSolver(PlasmaSolverBase):
 
         logger.info(
             "MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f, "
-            "WENO5=%s, Hall=%s, Braginskii=%s",
+            "WENO5=%s, Hall=%s, Braginskii=%s, Resistive=%s, EnergyEq=%s, "
+            "ion_mass=%.3e kg",
             grid_shape, dx, gamma,
             self.use_weno5, enable_hall, enable_braginskii,
+            self.enable_resistive, self.enable_energy_equation,
+            self.ion_mass,
         )
 
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
@@ -610,7 +622,7 @@ class MHDSolver(PlasmaSolverBase):
 
         # Hall speed limit: omega_ci * di where di = c / omega_pi
         if self.enable_hall:
-            ne = rho / m_p  # Assume Z=1
+            ne = rho / self.ion_mass  # Assume Z=1
             ne_max = np.max(ne)
             if ne_max > 0:
                 B_max = np.sqrt(np.max(B_sq))
@@ -627,11 +639,19 @@ class MHDSolver(PlasmaSolverBase):
         state: dict[str, np.ndarray],
         current: float,
         voltage: float,
+        eta_field: np.ndarray | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute the right-hand side (time derivative) of the MHD system.
 
         Uses WENO5+HLL flux-based update for advection if grid is large enough,
         otherwise falls back to np.gradient centered differences.
+
+        Args:
+            state: Current state dict.
+            current: Circuit current [A].
+            voltage: Circuit voltage [V].
+            eta_field: Spatially-resolved resistivity [Ohm*m], shape (nx,ny,nz).
+                       If None, resistive term is skipped.
 
         Returns dict of dU/dt for each state variable.
         """
@@ -732,8 +752,8 @@ class MHDSolver(PlasmaSolverBase):
         for d in range(3):
             dmom_dt[d] += JxB[d] - grad_p[d]
 
-        # --- Induction equation: dB/dt = curl(E) where E = -(v × B) ---
-        # Ideal MHD electric field
+        # --- Induction equation: dB/dt = -curl(E) ---
+        # Ideal MHD: E = -v × B
         vxB = np.array([
             vel[1] * B[2] - vel[2] * B[1],
             vel[2] * B[0] - vel[0] * B[2],
@@ -741,9 +761,18 @@ class MHDSolver(PlasmaSolverBase):
         ])
         E_field = -vxB  # E = -v × B (ideal Ohm's law)
 
+        # --- Resistive term: E_resistive = eta * J ---
+        ohmic_heating = np.zeros_like(rho)
+        if self.enable_resistive and eta_field is not None:
+            E_resistive = eta_field[np.newaxis, :, :, :] * J
+            E_field += E_resistive
+            # Ohmic heating: Q_ohm = eta * |J|^2 [W/m^3]
+            J_sq = np.sum(J**2, axis=0)
+            ohmic_heating = eta_field * J_sq
+
         # --- Hall term: E_Hall = (J × B) / (n_e * e) ---
         if self.enable_hall:
-            ne = rho / m_p  # Z=1 hydrogen
+            ne = rho / self.ion_mass  # Z=1
             ne_safe = np.maximum(ne, 1e-20)
             # Hall electric field
             E_Hall = np.array([
@@ -761,14 +790,24 @@ class MHDSolver(PlasmaSolverBase):
         ])
         dB_dt = -curl_E
 
-        # --- Adiabatic pressure update ---
-        # dp/dt = -gamma * p * div(v) (from energy equation)
+        # --- Pressure / Energy equation ---
         div_v = (
             np.gradient(vel[0], self.dx, axis=0)
             + np.gradient(vel[1], self.dx, axis=1)
             + np.gradient(vel[2], self.dx, axis=2)
         )
-        dp_dt = -self.gamma * p * div_v
+
+        if self.enable_energy_equation:
+            # Conservative total energy equation:
+            # dE_total/dt = -div(F_energy) + eta*J^2 - P_rad
+            # E_total = p/(gamma-1) + 0.5*rho*|v|^2 + |B|^2/(2*mu_0)
+            # For the pressure update, we use:
+            # dp/dt = -gamma*p*div(v) + (gamma-1)*eta*J^2
+            # The Ohmic heating term adds (gamma-1)*Q_ohm to pressure rate
+            dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * ohmic_heating
+        else:
+            # Adiabatic: dp/dt = -gamma * p * div(v)
+            dp_dt = -self.gamma * p * div_v
 
         # --- Dedner cleaning ---
         ch = self.dedner_ch_init if self.dedner_ch_init > 0 else np.max(np.abs(vel)) + 1.0
@@ -782,7 +821,68 @@ class MHDSolver(PlasmaSolverBase):
             "dp_dt": dp_dt,
             "dB_dt": dB_dt,
             "dpsi_dt": dpsi_dt,
+            "ohmic_heating": ohmic_heating,
         }
+
+    def apply_electrode_bfield_bc(
+        self,
+        B: np.ndarray,
+        current: float,
+        anode_radius: float,
+        cathode_radius: float,
+    ) -> np.ndarray:
+        """Apply electrode B-field boundary conditions for Cartesian solver.
+
+        In Cartesian 3D, we approximate the azimuthal B-field from the
+        circuit current at cells near the electrode radii. This is a
+        simplified version — the cylindrical solver has a more physical
+        implementation.
+
+        B_theta = mu_0 * I / (2 * pi * r) at the boundary cells.
+
+        For Cartesian, we map B_theta onto (B_x, B_y) components using
+        the local azimuthal angle.
+
+        Args:
+            B: Magnetic field (3, nx, ny, nz).
+            current: Circuit current [A].
+            anode_radius: Anode radius [m].
+            cathode_radius: Cathode radius [m].
+
+        Returns:
+            Modified B-field array.
+        """
+        if abs(current) < 1e-10:
+            return B
+
+        nx, ny, nz = self.grid_shape
+        dx = self.dx
+
+        # Build radial coordinate from grid center
+        x = (np.arange(nx) - nx / 2.0 + 0.5) * dx
+        y = (np.arange(ny) - ny / 2.0 + 0.5) * dx
+
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        R = np.sqrt(X**2 + Y**2)
+        R_safe = np.maximum(R, 1e-30)
+
+        # Azimuthal unit vectors: theta_hat = (-sin(theta), cos(theta), 0)
+        #   = (-y/r, x/r, 0)
+        sin_theta = Y / R_safe  # -sin is for Bx component
+        cos_theta = X / R_safe  # cos is for By component
+
+        # Apply at outer boundary cells (near cathode radius)
+        # Find cells within one cell of cathode_radius
+        mask_cathode = np.abs(R - cathode_radius) < 1.5 * dx
+
+        if np.any(mask_cathode):
+            for k in range(nz):
+                B_th_local = mu_0 * current / (2.0 * np.pi * np.maximum(R, cathode_radius * 0.5))
+                # B_x = -B_theta * sin(theta), B_y = B_theta * cos(theta)
+                B[0, :, :, k] = np.where(mask_cathode, -B_th_local * sin_theta, B[0, :, :, k])
+                B[1, :, :, k] = np.where(mask_cathode, B_th_local * cos_theta, B[1, :, :, k])
+
+        return B
 
     def step(
         self,
@@ -790,6 +890,10 @@ class MHDSolver(PlasmaSolverBase):
         dt: float,
         current: float,
         voltage: float,
+        eta_field: np.ndarray | None = None,
+        anode_radius: float = 0.0,
+        cathode_radius: float = 0.0,
+        apply_electrode_bc: bool = False,
     ) -> dict[str, np.ndarray]:
         """Advance MHD state by one timestep using SSP-RK2.
 
@@ -800,7 +904,9 @@ class MHDSolver(PlasmaSolverBase):
         This is TVD (total variation diminishing) and 2nd-order in time.
 
         After the RK2 step, applies:
+        - Electrode B-field boundary conditions
         - Braginskii anisotropic heat flux (operator-split)
+        - Two-temperature update (preserving Te ≠ Ti)
         - Circuit coupling state update with dL_dt
 
         Args:
@@ -808,6 +914,10 @@ class MHDSolver(PlasmaSolverBase):
             dt: Timestep [s].
             current: Circuit current [A].
             voltage: Circuit voltage [V].
+            eta_field: Spatially-resolved resistivity [Ohm*m], shape (nx,ny,nz).
+            anode_radius: Anode radius [m] for electrode BC.
+            cathode_radius: Cathode radius [m] for electrode BC.
+            apply_electrode_bc: Whether to apply electrode B-field BC.
 
         Returns:
             Updated state dictionary.
@@ -819,6 +929,7 @@ class MHDSolver(PlasmaSolverBase):
         Te = state.get("Te", np.full_like(rho, 1e4))
         Ti = state.get("Ti", np.full_like(rho, 1e4))
         psi = state.get("psi", np.zeros_like(rho))
+        e_electron = state.get("e_electron")
 
         # Save U^n
         rho_n = rho.copy()
@@ -833,7 +944,7 @@ class MHDSolver(PlasmaSolverBase):
             "rho": rho_n, "velocity": vel_n, "pressure": p_n,
             "B": B_n, "Te": Te, "Ti": Ti, "psi": psi_n,
         }
-        rhs1 = self._compute_rhs_euler(state_n, current, voltage)
+        rhs1 = self._compute_rhs_euler(state_n, current, voltage, eta_field)
 
         rho_1 = rho_n + dt * rhs1["drho_dt"]
         rho_1 = np.maximum(rho_1, 1e-20)
@@ -844,12 +955,18 @@ class MHDSolver(PlasmaSolverBase):
         B_1 = B_n + dt * rhs1["dB_dt"]
         psi_1 = psi_n + dt * rhs1["dpsi_dt"]
 
+        # Apply electrode BC after stage 1
+        if apply_electrode_bc and cathode_radius > 0:
+            B_1 = self.apply_electrode_bfield_bc(
+                B_1, current, anode_radius, cathode_radius,
+            )
+
         # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
         state_1 = {
             "rho": rho_1, "velocity": vel_1, "pressure": p_1,
             "B": B_1, "Te": Te, "Ti": Ti, "psi": psi_1,
         }
-        rhs2 = self._compute_rhs_euler(state_1, current, voltage)
+        rhs2 = self._compute_rhs_euler(state_1, current, voltage, eta_field)
 
         rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"])
         rho_new = np.maximum(rho_new, 1e-20)
@@ -860,14 +977,63 @@ class MHDSolver(PlasmaSolverBase):
         B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
         psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
 
-        # --- Update temperatures from pressure ---
-        n_i = rho_new / m_p
-        Ti_new = p_new / (2.0 * np.maximum(n_i, 1e-30) * k_B)
-        Te_new = Ti_new.copy()
+        # Apply electrode BC after stage 2
+        if apply_electrode_bc and cathode_radius > 0:
+            B_new = self.apply_electrode_bfield_bc(
+                B_new, current, anode_radius, cathode_radius,
+            )
+
+        # --- Two-temperature update (preserve Te ≠ Ti) ---
+        # Compute total pressure change ratio to scale temperatures
+        n_i = rho_new / self.ion_mass
+        n_i_safe = np.maximum(n_i, 1e-30)
+
+        if e_electron is not None:
+            # We have a separate electron energy — use it to get Te
+            # Advect electron energy: de_e/dt = -div(e_e * v) - p_e * div(v) + Q_ohm_e
+            div_v = (
+                np.gradient(vel_new[0], self.dx, axis=0)
+                + np.gradient(vel_new[1], self.dx, axis=1)
+                + np.gradient(vel_new[2], self.dx, axis=2)
+            )
+            p_e_old = n_i_safe * k_B * Te
+            # Simple advection + compression
+            de_e_dt = -p_e_old * div_v
+            # Ohmic heating goes primarily to electrons
+            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
+            de_e_dt += ohmic_avg
+            e_electron_new = e_electron + dt * de_e_dt
+            e_electron_new = np.maximum(e_electron_new, n_i_safe * k_B * 1.0)  # Floor 1 K
+            Te_new = (2.0 / 3.0) * e_electron_new / (n_i_safe * k_B)
+            # Ion temperature from total pressure minus electron pressure
+            p_e_new = n_i_safe * k_B * Te_new
+            p_i_new = np.maximum(p_new - p_e_new, 1e-20)
+            Ti_new = p_i_new / (n_i_safe * k_B)
+        else:
+            # No separate electron energy tracked — recover Te, Ti from
+            # total pressure split.  T_total = p/(n_i*k_B) = Te + Ti.
+            # Preserve the Te/(Te+Ti) fraction from the previous step.
+            Te_old = Te
+            Ti_old = Ti
+            T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
+            f_e = Te_old / T_sum_old  # Electron fraction of total temperature
+
+            # Total temperature from new pressure: T_total = p_new / (n_i * k_B)
+            T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
+            Te_new = f_e * T_total_new
+            Ti_new = (1.0 - f_e) * T_total_new
+
+            # Add Ohmic heating preferentially to electrons
+            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
+            dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
+            Te_new = Te_new + dTe_ohmic
+
+        Te_new = np.maximum(Te_new, 1.0)
+        Ti_new = np.maximum(Ti_new, 1.0)
 
         # --- Braginskii anisotropic heat flux (operator-split) ---
         if self.enable_braginskii:
-            ne = rho_new / m_p  # Z=1
+            ne = rho_new / self.ion_mass  # Z=1
             Te_new = _braginskii_heat_flux(Te_new, ne, B_new, self.dx, dt)
 
         # --- Update coupling for circuit ---
@@ -891,7 +1057,7 @@ class MHDSolver(PlasmaSolverBase):
             dL_dt=dL_dt,
         )
 
-        return {
+        result = {
             "rho": rho_new,
             "velocity": vel_new,
             "pressure": p_new,
@@ -900,6 +1066,9 @@ class MHDSolver(PlasmaSolverBase):
             "Ti": Ti_new,
             "psi": psi_new,
         }
+        if e_electron is not None:
+            result["e_electron"] = e_electron_new
+        return result
 
     def coupling_interface(self) -> CouplingState:
         return self._coupling
