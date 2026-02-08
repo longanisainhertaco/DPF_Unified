@@ -315,12 +315,43 @@ void set_circuit_params(AthenaHandle handle, double current, double voltage) {
     handle->circuit_current = static_cast<Real>(current);
     handle->circuit_voltage = static_cast<Real>(voltage);
 
-    // NOTE: Circuit parameters are stored in the AthenaState struct for now.
-    // In Phase G, the custom dpf_zpinch.cpp problem generator will allocate
-    // ruser_mesh_data via AllocateRealUserMeshDataField() and we can then
-    // push these values into the mesh for access by source terms.
-    // The stock magnoh.cpp does NOT allocate ruser_mesh_data, so the pointer
-    // is uninitialized — we must NOT access it.
+    // Push circuit parameters into ruser_mesh_data if the problem generator
+    // allocated it (dpf_zpinch.cpp does; magnoh.cpp does not).
+    Mesh* pmesh = handle->pmesh.get();
+    if (pmesh != nullptr && pmesh->nreal_user_mesh_data_ >= 2) {
+        pmesh->ruser_mesh_data[0](0) = static_cast<Real>(current);
+        pmesh->ruser_mesh_data[1](0) = static_cast<Real>(voltage);
+    }
+}
+
+/**
+ * @brief Get coupling data computed by dpf_zpinch.cpp UserWorkInLoop.
+ *
+ * Returns a Python dict with diagnostics stored in ruser_mesh_data:
+ *   R_plasma:       Plasma resistance [Ohm]
+ *   L_plasma:       Plasma inductance [H]
+ *   total_rad_power: Total radiated power [W]
+ *   peak_Te:        Peak electron temperature [K]
+ *
+ * Returns empty values if ruser_mesh_data is not allocated (e.g. magnoh.cpp).
+ */
+py::dict get_coupling_data(AthenaHandle handle) {
+    py::dict result;
+    Mesh* pmesh = handle->pmesh.get();
+
+    if (pmesh != nullptr && pmesh->nreal_user_mesh_data_ >= 6) {
+        result["R_plasma"]        = static_cast<double>(pmesh->ruser_mesh_data[2](0));
+        result["L_plasma"]        = static_cast<double>(pmesh->ruser_mesh_data[3](0));
+        result["total_rad_power"] = static_cast<double>(pmesh->ruser_mesh_data[4](0));
+        result["peak_Te"]         = static_cast<double>(pmesh->ruser_mesh_data[5](0));
+    } else {
+        result["R_plasma"]        = 0.0;
+        result["L_plasma"]        = 0.0;
+        result["total_rad_power"] = 0.0;
+        result["peak_Te"]         = 0.0;
+    }
+
+    return result;
 }
 
 /**
@@ -394,6 +425,10 @@ PYBIND11_MODULE(_athena_core, m) {
     m.def("set_circuit_params", &set_circuit_params,
           py::arg("handle"), py::arg("current"), py::arg("voltage"),
           "Set circuit current and voltage for DPF coupling.");
+
+    m.def("get_coupling_data", &get_coupling_data,
+          py::arg("handle"),
+          "Get coupling diagnostics (R_plasma, L_plasma, peak_Te) from ruser_mesh_data.");
 
     // Mesh info
     m.def("get_num_meshblocks", &get_num_meshblocks,

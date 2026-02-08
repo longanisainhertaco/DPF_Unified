@@ -1,0 +1,82 @@
+<comment>
+problem = DPF Z-Pinch with circuit coupling (dpf_zpinch.cpp)
+configure = --prob=dpf_zpinch --coord=cylindrical -b --flux=hlld
+
+<job>
+problem_id  = dpf_zpinch
+
+<output1>
+file_type   = hst
+dt          = 1.000000e-08
+
+<output2>
+file_type = hdf5
+variable  = prim
+dt        = 1.000000e-07
+
+<time>
+cfl_number  = 0.3
+nlim        = -1
+tlim        = 1.000000e-06
+integrator  = vl2
+xorder      = 2
+ncycle_out  = 100
+dt          = 1.000000e-12
+
+<mesh>
+nx1        = 32
+x1min      = 1.000000e-04
+x1max      = 1.000000e-02
+ix1_bc     = reflecting
+ox1_bc     = user
+
+nx2        = 64
+x2min      = 0.000000e+00
+x2max      = 5.000000e-02
+ix2_bc     = reflecting
+ox2_bc     = outflow
+
+nx3        = 1
+x3min      = 0.0
+x3max      = 6.283185307
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 32
+nx2        = 64
+nx3        = 1
+
+<hydro>
+gamma      = 1.4000
+
+<problem>
+# Fill gas initial conditions
+d          = 1.000000e-04
+T0         = 300.0
+ion_mass   = 3.343584e-27
+B_seed     = 1.000000e-06
+# magnoh.cpp compatibility (required parameters, set to DPF defaults)
+alpha      = 0.0
+beta       = 0.0
+pcoeff     = 1.000000e-06
+vr         = 0.0
+bphi       = 0.0
+bz         = 0.0
+perturb    = 0.0
+mphi       = 0.0
+# Circuit parameters
+V0         = 15000.0
+C          = 3.000000e-05
+L0         = 1.100000e-07
+R0         = 1.200000e-02
+anode_r    = 4.750000e-03
+cathode_r  = 1.000000e-02
+# Physics toggles
+enable_resistive  = 1
+enable_radiation  = 0
+enable_braginskii = 0
+# Resistivity parameters
+Z_eff             = 1.0
+eta_max           = 1.0
+anomalous_alpha   = 0.0
