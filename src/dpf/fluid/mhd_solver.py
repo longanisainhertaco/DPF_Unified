@@ -568,6 +568,162 @@ def _dedner_source(
     return dpsi_dt, dB_dt
 
 
+def _dedner_source_mt2010(
+    psi: np.ndarray,
+    B: np.ndarray,
+    ch: float,
+    cr: float,
+    dx: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Dedner divergence cleaning with Mignone & Tzeferacos (2010) tuning.
+
+    Improved Dedner cleaning with separate damping coefficient cr
+    (Mignone & Tzeferacos, JCP 229, 5896, 2010):
+
+        dpsi/dt = -ch^2 * div(B) - cr * psi
+        dB/dt  += -grad(psi)
+
+    The damping rate cr controls how quickly psi decays. The original
+    Dedner uses cr = ch^2/cp^2, while M&T2010 prescribes cr ~ ch/dx
+    for optimal damping.
+
+    Args:
+        psi: Cleaning scalar field, shape (nx, ny, nz).
+        B: Magnetic field, shape (3, nx, ny, nz).
+        ch: Hyperbolic cleaning speed [m/s].
+        cr: Damping rate [1/s].
+        dx: Grid spacing [m].
+
+    Returns:
+        (dpsi_dt, dB_dt): Source terms.
+    """
+    div_B = (
+        np.gradient(B[0], dx, axis=0)
+        + np.gradient(B[1], dx, axis=1)
+        + np.gradient(B[2], dx, axis=2)
+    )
+
+    dpsi_dt = -ch**2 * div_B - cr * psi
+
+    grad_psi = np.array([
+        np.gradient(psi, dx, axis=0),
+        np.gradient(psi, dx, axis=1),
+        np.gradient(psi, dx, axis=2),
+    ])
+    dB_dt = -grad_psi
+
+    return dpsi_dt, dB_dt
+
+
+# ============================================================
+# Powell 8-wave source terms
+# ============================================================
+
+def powell_source_terms(
+    state: dict[str, np.ndarray],
+    dx: float,
+    dy: float,
+    dz: float,
+) -> dict[str, np.ndarray]:
+    """Compute Powell 8-wave div(B) source terms.
+
+    Powell et al. (1999) source terms that complement Dedner divergence
+    cleaning by proportionally correcting momentum, energy, and induction:
+
+        S_Powell = -div(B) * [0, Bx, By, Bz, v.B, vx, vy, vz, 0]^T
+
+    In conservative variable ordering (rho, rho*v, E, B, psi):
+        - Mass: 0
+        - Momentum: -div(B) * B
+        - Energy: -div(B) * (v . B)
+        - Induction: -div(B) * v
+        - Psi: 0
+
+    Args:
+        state: State dictionary with keys rho, velocity, pressure, B, psi.
+        dx, dy, dz: Grid spacings [m].
+
+    Returns:
+        Dictionary with source term arrays:
+            dmom_powell: shape (3, nx, ny, nz)
+            denergy_powell: shape (nx, ny, nz)
+            dB_powell: shape (3, nx, ny, nz)
+    """
+    B = state["B"]
+    vel = state["velocity"]
+
+    # Compute div(B) using central differences
+    div_B = (
+        np.gradient(B[0], dx, axis=0)
+        + np.gradient(B[1], dy, axis=1)
+        + np.gradient(B[2], dz, axis=2)
+    )
+
+    # Momentum source: -div(B) * B
+    dmom_powell = np.zeros_like(B)
+    for d in range(3):
+        dmom_powell[d] = -div_B * B[d]
+
+    # Energy source: -div(B) * (v . B)
+    v_dot_B = np.sum(vel * B, axis=0)
+    denergy_powell = -div_B * v_dot_B
+
+    # Induction source: -div(B) * v
+    dB_powell = np.zeros_like(B)
+    for d in range(3):
+        dB_powell[d] = -div_B * vel[d]
+
+    return {
+        "dmom_powell": dmom_powell,
+        "denergy_powell": denergy_powell,
+        "dB_powell": dB_powell,
+        "div_B": div_B,
+    }
+
+
+def powell_source_terms_cylindrical(
+    state_2d: dict[str, np.ndarray],
+    geom,
+) -> dict[str, np.ndarray]:
+    """Powell source terms for cylindrical coordinates.
+
+    Uses cylindrical div(B): (1/r) * d(r * B_r)/dr + dB_z/dz.
+
+    Args:
+        state_2d: State dictionary with 2D arrays (nr, nz).
+        geom: CylindricalGeometry instance with div_B_cylindrical method.
+
+    Returns:
+        Dictionary with source term arrays (same as powell_source_terms).
+    """
+    B = state_2d["B"]
+    vel = state_2d["velocity"]
+
+    # Cylindrical divergence of B
+    div_B = geom.div_B_cylindrical(B)
+
+    # Momentum source: -div(B) * B
+    dmom_powell = np.zeros_like(B)
+    for d in range(3):
+        dmom_powell[d] = -div_B * B[d]
+
+    # Energy source: -div(B) * (v . B)
+    v_dot_B = np.sum(vel * B, axis=0)
+    denergy_powell = -div_B * v_dot_B
+
+    # Induction source: -div(B) * v
+    dB_powell = np.zeros_like(B)
+    for d in range(3):
+        dB_powell[d] = -div_B * vel[d]
+
+    return {
+        "dmom_powell": dmom_powell,
+        "denergy_powell": denergy_powell,
+        "dB_powell": dB_powell,
+        "div_B": div_B,
+    }
+
+
 # ============================================================
 # Braginskii anisotropic heat flux operator
 # ============================================================

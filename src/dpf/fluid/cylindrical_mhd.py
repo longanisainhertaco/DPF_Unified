@@ -93,7 +93,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         enable_energy_equation: bool = True,
         ion_mass: float | None = None,
         riemann_solver: str = "hll",
-        enable_ct: bool = False,
+        enable_ct: bool = True,
     ) -> None:
         self.nr = nr
         self.nz = nz

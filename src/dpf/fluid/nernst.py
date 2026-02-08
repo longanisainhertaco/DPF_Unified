@@ -27,7 +27,7 @@ Functions:
 from __future__ import annotations
 
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_e, pi
@@ -270,7 +270,7 @@ def nernst_electric_field(
 # Nernst advection update of B-field
 # ============================================================
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _upwind_advect_component(
     B_comp: np.ndarray,
     vx: np.ndarray,
@@ -299,7 +299,7 @@ def _upwind_advect_component(
     nx, ny, nz = B_comp.shape
     B_new = B_comp.copy()
 
-    for i in range(1, nx - 1):
+    for i in prange(1, nx - 1):
         for j in range(1, ny - 1):
             for k in range(1, nz - 1):
                 # Upwind x-derivative

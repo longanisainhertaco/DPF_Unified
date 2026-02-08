@@ -4,7 +4,7 @@ Provides patch-based AMR with gradient-based tagging, bilinear prolongation,
 and volume-weighted restriction for cylindrical (r, z) geometry.
 """
 
-from dpf.amr.grid import (
+from dpf.experimental.amr.grid import (
     AMRConfig,
     AMRGrid,
     AMRPatch,

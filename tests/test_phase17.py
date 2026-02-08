@@ -242,12 +242,12 @@ class TestConstrainedTransportOption:
         )
         assert solver.enable_ct is True
 
-    def test_ct_default_off(self):
-        """CT is disabled by default."""
+    def test_ct_default_on(self):
+        """CT is enabled by default for div(B)=0 preservation."""
         from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
         solver = CylindricalMHDSolver(nr=16, nz=16, dr=1e-3, dz=1e-3)
-        assert solver.enable_ct is False
+        assert solver.enable_ct is True
 
     def test_ct_solver_runs_without_error(self):
         """Solver with CT enabled can complete a step."""

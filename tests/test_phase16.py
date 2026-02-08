@@ -360,7 +360,7 @@ class TestBorisPush:
 
     def test_straight_line_no_field(self):
         """Particles move in straight lines with no E or B."""
-        from dpf.pic import boris_push
+        from dpf.experimental.pic import boris_push
 
         N = 10
         pos = np.zeros((N, 3))
@@ -376,7 +376,7 @@ class TestBorisPush:
 
     def test_e_field_acceleration(self):
         """Uniform E-field accelerates particles."""
-        from dpf.pic import boris_push
+        from dpf.experimental.pic import boris_push
 
         N = 5
         pos = np.zeros((N, 3))
@@ -392,7 +392,7 @@ class TestBorisPush:
 
     def test_gyration_in_b_field(self):
         """Particle in uniform B-field gyrates (speed conserved)."""
-        from dpf.pic import boris_push
+        from dpf.experimental.pic import boris_push
 
         pos = np.array([[0.0, 0.0, 0.0]])
         vel = np.array([[1e5, 0.0, 0.0]])  # v_perp to B
@@ -416,7 +416,7 @@ class TestDeposition:
 
     def test_single_particle_conservation(self):
         """Total deposited density equals particle weight."""
-        from dpf.pic import deposit_density
+        from dpf.experimental.pic import deposit_density
 
         pos = np.array([[0.005, 0.005, 0.005]])  # center of domain
         weights = np.array([1e10])
@@ -430,7 +430,7 @@ class TestDeposition:
 
     def test_density_is_nonnegative(self):
         """Deposited density should never be negative."""
-        from dpf.pic import deposit_density
+        from dpf.experimental.pic import deposit_density
 
         rng = np.random.default_rng(42)
         N = 100
@@ -448,7 +448,7 @@ class TestHybridPIC:
 
     def test_add_species(self):
         """Can add a species to the hybrid PIC."""
-        from dpf.pic import HybridPIC
+        from dpf.experimental.pic import HybridPIC
 
         hybrid = HybridPIC((8, 8, 8), 0.001, 0.001, 0.001, 1e-9)
         sp = hybrid.add_species(
@@ -460,7 +460,7 @@ class TestHybridPIC:
 
     def test_deposit_produces_density(self):
         """Depositing particles produces nonzero density."""
-        from dpf.pic import HybridPIC
+        from dpf.experimental.pic import HybridPIC
 
         hybrid = HybridPIC((8, 8, 8), 0.001, 0.001, 0.001, 1e-9)
         rng = np.random.default_rng(42)
@@ -477,7 +477,7 @@ class TestInstabilityDetection:
 
     def test_uniform_no_instability(self):
         """Uniform density gives no instability."""
-        from dpf.pic.hybrid import detect_instability
+        from dpf.experimental.pic.hybrid import detect_instability
 
         rho = np.ones((16, 16, 16))
         B = np.zeros((16, 16, 16, 3))
@@ -486,7 +486,7 @@ class TestInstabilityDetection:
 
     def test_strong_compression_triggers(self):
         """Strong density compression triggers instability detection."""
-        from dpf.pic.hybrid import detect_instability
+        from dpf.experimental.pic.hybrid import detect_instability
 
         rho = np.ones((16, 16, 16))
         rho[7:9, 7:9, :] = 20.0  # 20× compression

@@ -3,7 +3,7 @@
 Exports all public symbols from :mod:`dpf.pic.hybrid`.
 """
 
-from dpf.pic.hybrid import (
+from dpf.experimental.pic.hybrid import (
     HybridPIC,
     ParticleSpecies,
     boris_push,
