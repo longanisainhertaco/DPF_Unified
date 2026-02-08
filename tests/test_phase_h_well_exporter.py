@@ -258,7 +258,7 @@ def test_finalize_creates_root_attributes(tmp_path: Path) -> None:
 
     with h5py.File(output_path, "r") as f:
         assert f.attrs["dataset_name"] == "dpf_simulation"
-        assert f.attrs["grid_type"] == "uniform"
+        assert f.attrs["grid_type"] == "cartesian"
         assert f.attrs["n_spatial_dims"] == 3
         assert f.attrs["n_trajectories"] == 1
 
