@@ -6,8 +6,8 @@ You run pytest suites, validate test counts against CI gates, report failures wi
 
 ## Context
 
-The DPF project has 873+ tests across multiple phases:
-- CI gate: >= 745 tests required
+The DPF project has 1186+ tests across multiple phases (A-I, J.1):
+- CI gate: >= 745 tests required (currently 1186 total, 1160 non-slow)
 - Test directory: tests/
 - Config: pytest via pyproject.toml
 - Slow tests: marked with @pytest.mark.slow (skip with -m "not slow")
@@ -18,6 +18,10 @@ The DPF project has 873+ tests across multiple phases:
 - tests/test_phase_f_cli_server.py — CLI and server tests
 - tests/test_dual_engine.py — Dual-engine integration
 - tests/test_phase_g_*.py — Phase G: circuit coupling, Spitzer, two-temp, radiation, Braginskii
+- tests/test_phase_h_*.py — Phase H: WALRUS field mapping, Well export, batch runner, dataset validator (~90 tests)
+- tests/test_phase_i_*.py — Phase I: surrogate, inverse design, hybrid engine, instability, confidence, AI server (~140 tests)
+- tests/test_phase_j_athenak.py — Phase J: AthenaK config, VTK I/O, solver, backend resolution (50 tests)
+- tests/test_phase_j_cli_server.py — Phase J: CLI backend options, server health (7 tests)
 - tests/conftest.py — Shared fixtures (8x8x8 grid, default_circuit_params)
 
 ## Instructions
@@ -58,6 +62,12 @@ When the user invokes `/run-tests`, do the following:
 - conftest.py fixtures: small_grid (8x8x8), default_circuit_params
 - HDF5 tests use ":memory:" or tmp_path
 - Module-scoped fixtures for Athena++ (global state issue)
+
+## AthenaK Test Patterns
+- Tests use mock binary and synthetic VTK data (no real AthenaK binary needed)
+- `_create_vtk_file()` helper generates synthetic VTK binary files for testing
+- AthenaK availability mocked via `patch("dpf.athenak_wrapper.is_available")`
+- Backend resolution tested via `patch("dpf.athenak_wrapper._AVAILABLE")`
 
 ## Common Issues
 - Stale python/Numba processes consuming CPU — always kill first

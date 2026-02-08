@@ -3,7 +3,7 @@
 ## Context & What's Done
 
 We are building a modern dense plasma focus (DPF) simulator with:
-- **Backend**: Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary via pybind11
+- **Backend**: Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess)
 - **Frontend**: Unity UI with Teaching Mode + Engineering Mode (future)
 - **Platform**: Apple Silicon local execution (MVP), HPC cluster (future)
 - **AI**: Polymathic AI WALRUS integration for surrogate models and inverse design
@@ -26,8 +26,14 @@ We are building a modern dense plasma focus (DPF) simulator with:
 - ✅ **Phase H**: WALRUS training data pipeline — Field mapping, Well HDF5 exporter, dataset validator, batch trajectory runner
 - ✅ **Phase I**: AI features — Surrogate inference, inverse design, hybrid engine, instability detector, confidence/ensemble, real-time server, CLI + config extensions
 
-**1129 total tests** (1103 non-slow, 25 slow), 0 failures.
-**Current fidelity: 6-7/10** with dual-engine architecture and full AI/ML integration.
+- ✅ **Phase J.1**: AthenaK integration — Kokkos subprocess wrapper (4 modules), VTK I/O, build scripts, CLI/server backend, 57 tests
+  - J.1.a: Research spike (build Serial + OpenMP, benchmark, VTK format analysis, coordinate/physics survey)
+  - J.1.b: Build infrastructure (setup_athenak.sh, build_athenak.sh, athinput.athenak_blast)
+  - J.1.c: Subprocess wrapper (athenak_config, athenak_io, athenak_solver, __init__)
+  - J.1.d: Integration (config.py athenak backend, engine.py dispatch, CLI --backend=athenak, server /api/health)
+
+**1186 total tests** (1160 non-slow, 25 slow), 0 failures.
+**Current fidelity: 6-7/10** with tri-engine architecture and full AI/ML integration.
 
 ---
 
@@ -449,10 +455,13 @@ WALRUS predictions need uncertainty bounds:
 | ~~G~~ | ~~Athena++ DPF physics~~ | 7/10 | ~~Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii~~ | ✅ Done |
 | ~~H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
 | ~~I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
-| **J** (next) | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, AthenaK GPU | 🔜 |
+| ~~J.1~~ | ~~AthenaK integration~~ | — | ~~Kokkos subprocess wrapper, VTK I/O, build scripts, 57 tests~~ | ✅ Done |
+| **J.2** (next) | Unity frontend | — | Teaching/Engineering mode (greenfield, same repo) | 🔜 |
+| **J.3** | HPC scaling | 8/10 | MPI via AthenaK, cloud GPU (CUDA Kokkos) | 🔜 |
+| **J.4** | Advanced AthenaK physics | — | Custom DPF z-pinch pgen, circuit coupling, resistive MHD | 🔜 |
 
-**Phases A-I complete**: 1129 tests, dual-engine architecture + full AI/ML integration operational.
-**Next**: Phase J adds Unity frontend and HPC scaling.
+**Phases A-I and J.1 complete**: 1186 tests, tri-engine architecture + full AI/ML integration operational.
+**Next**: Phase J.2 adds Unity frontend, J.3 adds HPC scaling, J.4 adds custom AthenaK physics.
 
 ---
 
@@ -469,10 +478,12 @@ WALRUS predictions need uncertainty bounds:
 | `src/dpf/validation/suite.py` | Full waveform RMSE comparison |
 | `README.md` | Update roadmap, add WALRUS section |
 
-### New Files to Create (for Phase J)
+### New Files to Create (for Phases J.2-J.4)
 | File | Purpose |
 |------|---------|
-| TBD | Unity frontend integration, HPC scaling |
+| TBD | J.2: Unity frontend integration |
+| TBD | J.3: MPI scaling, cloud GPU deployment |
+| `external/athenak/src/pgen/dpf_zpinch_k.cpp` | J.4: Custom AthenaK DPF z-pinch problem generator |
 
 ### Files Created in Phases A-I
 | File | Purpose | Phase |
@@ -493,8 +504,15 @@ WALRUS predictions need uncertainty bounds:
 | `src/dpf/ai/instability_detector.py` | Anomaly detection via WALRUS divergence | I |
 | `src/dpf/ai/confidence.py` | Ensemble prediction with uncertainty quantification | I |
 | `src/dpf/ai/realtime_server.py` | FastAPI router for AI endpoints + WebSocket | I |
+| `src/dpf/athenak_wrapper/__init__.py` | AthenaK module init, binary detection, is_available() | J.1 |
+| `src/dpf/athenak_wrapper/athenak_config.py` | SimulationConfig → AthenaK athinput translation | J.1 |
+| `src/dpf/athenak_wrapper/athenak_io.py` | VTK binary reader + DPF state conversion | J.1 |
+| `src/dpf/athenak_wrapper/athenak_solver.py` | AthenaKSolver subprocess wrapper | J.1 |
+| `scripts/setup_athenak.sh` | AthenaK submodule + Kokkos setup script | J.1 |
+| `scripts/build_athenak.sh` | Platform-detecting AthenaK build script | J.1 |
+| `docs/ATHENAK_RESEARCH.md` | AthenaK research spike findings and recommendations | J.1 |
 
-### Test Files (Phases H-I)
+### Test Files (Phases H-I, J.1)
 | File | Tests | Coverage |
 |------|-------|---------|
 | `tests/test_phase_h_field_mapping.py` | ~15 | Field name mapping, shape transforms, geometry inference |
@@ -507,6 +525,8 @@ WALRUS predictions need uncertainty bounds:
 | `tests/test_phase_i_instability.py` | ~15 | Divergence detection, severity classification |
 | `tests/test_phase_i_confidence.py` | ~15 | Ensemble mean/std, OOD detection, confidence scoring |
 | `tests/test_phase_i_ai_server.py` | ~25 | REST endpoints, WebSocket, surrogate loading |
+| `tests/test_phase_j_athenak.py` | 50 | AthenaK config, VTK I/O, solver, backend resolution |
+| `tests/test_phase_j_cli_server.py` | 7 | CLI --backend=athenak, server health AthenaK |
 
 ---
 

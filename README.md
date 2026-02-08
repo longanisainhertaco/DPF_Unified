@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**A modern dense plasma focus (DPF) simulator** — dual-engine architecture with a Python (NumPy/Numba) fallback and an Athena++ C++ primary backend, targeting high-fidelity multi-physics simulation of plasma focus devices on local hardware (Apple Silicon) and eventually HPC clusters.
+**A modern dense plasma focus (DPF) simulator** — tri-engine architecture with a Python (NumPy/Numba) fallback, Athena++ C++ primary backend (pybind11), and AthenaK Kokkos GPU-ready backend (subprocess), targeting high-fidelity multi-physics simulation of plasma focus devices on local hardware (Apple Silicon) and eventually HPC clusters.
 
 ---
 
@@ -14,7 +14,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 | Layer | Description | Status |
 |-------|-------------|--------|
-| **Simulation Backend** | Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary backend via pybind11. Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport | **Phase G complete** |
+| **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready). Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport | **Phase J.1 complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
 | **AI Integration** | WALRUS surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server | **Phase I complete** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
@@ -29,7 +29,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 > **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 7/10.
 
-The simulation backend features a dual-engine architecture (Python + Athena++ C++) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1129 tests pass with 0 failures (1103 non-slow, 25 slow). Phases A–I are complete.
+The simulation backend features a tri-engine architecture (Python + Athena++ C++ + AthenaK Kokkos) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The AthenaK backend adds GPU-ready MHD via Kokkos (Serial/OpenMP on Apple Silicon, CUDA/HIP/SYCL on HPC), operating in subprocess mode with VTK I/O. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1186 tests pass with 0 failures (1160 non-slow, 25 slow). Phases A–I and J.1 are complete.
 
 ### Active Modules (What Actually Runs)
 
@@ -64,6 +64,16 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **Braginskii Conduction** | EnrollConductionCoefficient: κ_∥ = 3.16·n_e·k_B²·T_e·τ_e/m_e, κ_⊥/(1+(ω_ce·τ_e)²), Sharma-Hammett flux limiter | Complete — harmonic-mean limiter |
 | **Electrode BCs** | EnrollUserBoundaryFunction for anode/cathode current injection | Complete |
 | **Volume Diagnostics** | UserWorkInLoop: R_plasma, L_plasma, peak Te, total radiated power | Complete |
+
+#### AthenaK Engine (`backend="athenak"`) — Phase J.1
+
+| Module | Implementation | Quality |
+|--------|----------------|---------|
+| **Subprocess Solver** | AthenaKSolver runs AthenaK binary as child process, batch mode (N timesteps per call) | Complete — tested with mock binary |
+| **Config Translation** | SimulationConfig → AthenaK athinput format (mesh, MHD, time, problem blocks) | Complete — handles reconstruction, Riemann solver, ghost zone mapping |
+| **VTK I/O** | Reads AthenaK VTK legacy binary (big-endian float32), converts to DPF state dict | Complete — handles all 8 variables |
+| **Binary Detection** | Auto-detects AthenaK binary in 3 search paths, `is_available()` API | Complete |
+| **Backend Resolution** | Auto-priority: athenak > athena > python; CLI `--backend=athenak` | Complete |
 
 #### AI/ML Layer (Phases H-I)
 
@@ -152,7 +162,7 @@ We study these established MHD codes to guide our development:
 
 ### Honorable Mentions
 
-- **[Athena++ / AthenaK](https://www.athena-astro.app/)** (Princeton) — Best architecture, Kokkos GPU portability, now integrated as primary C++ backend via pybind11
+- **[Athena++ / AthenaK](https://www.athena-astro.app/)** (Princeton/IAS) — Best architecture, Kokkos GPU portability. Athena++ integrated as primary C++ backend via pybind11; AthenaK integrated as GPU-ready backend via subprocess + VTK I/O
 - **[PLUTO / gPLUTO](https://plutocode.ph.unito.it/)** (Torino) — Hall MHD, new GPU implementation via OpenACC, strong astrophysical MHD
 - **[Lee Model](http://plasmafocus.net/)** — DPF-specific semi-empirical code, gold standard for circuit-level validation of plasma focus devices
 
@@ -171,7 +181,8 @@ We study these established MHD codes to guide our development:
 | ~~Phase G~~ | ~~Athena++ DPF physics~~ | 6-7/10 | ~~Circuit coupling, Spitzer η, two-temp, bremsstrahlung, Braginskii~~ | ✅ Done |
 | ~~Phase H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
 | ~~Phase I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
-| **Phase J** (next) | Unity frontend + HPC | — | Teaching/Engineering mode, AthenaK GPU | 🔜 |
+| ~~Phase J.1~~ | ~~AthenaK integration~~ | — | ~~Kokkos subprocess wrapper, VTK I/O, build scripts, 57 tests~~ | ✅ Done |
+| **Phase J.2+** (next) | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, custom AthenaK pgens, MPI scaling | 🔜 |
 
 > **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. The AI layer provides surrogate inference, inverse design, hybrid physics-surrogate engine, instability detection, ensemble confidence, and a real-time server. All AI dependencies (torch, optuna) are optional — the simulator works without them. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
@@ -228,6 +239,11 @@ pip install -e ".[ai]"
 pip install -e ".[dev,server,athena]"
 # See docs/ATHENA_BUILD.md for Athena++ compilation instructions
 
+# AthenaK Kokkos backend (requires CMake + Kokkos build)
+bash scripts/setup_athenak.sh    # Clone submodule + init Kokkos
+bash scripts/build_athenak.sh    # Auto-detect OpenMP vs Serial
+# See docs/ATHENAK_RESEARCH.md for details
+
 # All extras (dev + server + AI)
 pip install -e ".[dev,server,ai]"
 ```
@@ -248,7 +264,7 @@ Options:
   -o, --output TEXT        Override output HDF5 filename
   --restart PATH           Restart from checkpoint file
   --checkpoint-interval N  Auto-checkpoint every N steps (0=off)
-  --backend [python|athena|auto]  MHD solver backend (default: from config)
+  --backend [python|athena|athenak|auto]  MHD solver backend (default: from config)
   -v, --verbose            Enable debug logging
 
 Examples:
@@ -441,6 +457,11 @@ DPF_Unified/
 │   ├── server/                    # [ACTIVE] FastAPI REST + WebSocket
 │   ├── cli/                       # [ACTIVE] Click CLI (12 commands)
 │   ├── athena_wrapper/            # [ACTIVE] Athena++ C++ pybind11 wrapper
+│   ├── athenak_wrapper/           # [ACTIVE] AthenaK Kokkos subprocess wrapper
+│   │   ├── __init__.py            #   Binary detection, is_available()
+│   │   ├── athenak_config.py      #   SimulationConfig → athinput translation
+│   │   ├── athenak_io.py          #   VTK binary reader + DPF state conversion
+│   │   └── athenak_solver.py      #   AthenaKSolver(PlasmaSolverBase) subprocess
 │   ├── core/                      # [ACTIVE] Base classes, field manager
 │   │
 │   ├── ai/                        # [ACTIVE] AI/ML integration (Phase H-I)
@@ -464,13 +485,20 @@ DPF_Unified/
 │
 │   ├── benchmarks/                # [ACTIVE] Apple Silicon performance benchmarks
 │
+├── scripts/
+│   ├── setup_athenak.sh           # AthenaK submodule + Kokkos setup
+│   └── build_athenak.sh           # Platform-detecting AthenaK build (Serial/OpenMP)
+│
 ├── external/
 │   ├── athena/                    # Athena++ git submodule (Princeton MHD code)
 │   │   └── src/pgen/dpf_zpinch.cpp  # Custom DPF z-pinch problem generator (1,003 LOC)
+│   ├── athenak/                   # AthenaK git submodule (Kokkos MHD code)
+│   │   └── kokkos/               # Kokkos submodule (performance portability)
 │   └── athinput/
-│       └── athinput.dpf_zpinch    # Athena++ input deck for DPF simulations
+│       ├── athinput.dpf_zpinch    # Athena++ input deck for DPF simulations
+│       └── athinput.athenak_blast # AthenaK MHD blast wave verification
 │
-└── tests/                         # 1129 tests (pytest, 1103 non-slow + 25 slow)
+└── tests/                         # 1186 tests (pytest, 1160 non-slow + 25 slow)
 ```
 
 ---
@@ -507,6 +535,7 @@ pytest tests/ -v -m "not slow"
 | Server/API | 60+ | Good — REST + WebSocket functional |
 | **WALRUS pipeline (Phase H)** | **~90** | **Strong — field mapping, Well export, batch runner, dataset validator** |
 | **AI features (Phase I)** | **~140** | **Strong — surrogate, inverse, hybrid, instability, confidence, server** |
+| **AthenaK integration (Phase J.1)** | **57** | **Strong — config, VTK I/O, solver, CLI, server, backend resolution** |
 | Integration | 50+ | Moderate — pipeline runs, peak-value validation |
 | Dormant modules | 0 | Missing |
 
