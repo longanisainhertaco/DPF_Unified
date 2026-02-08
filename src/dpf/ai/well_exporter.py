@@ -165,7 +165,7 @@ class WellExporter:
         with h5py.File(self.output_path, "w") as f:
             # Root attributes
             f.attrs["dataset_name"] = "dpf_simulation"
-            f.attrs["grid_type"] = "uniform"
+            f.attrs["grid_type"] = "cartesian"
             f.attrs["n_spatial_dims"] = 2 if self.geometry == "cylindrical" else 3
             f.attrs["n_trajectories"] = n_trajectories
 
@@ -212,6 +212,9 @@ class WellExporter:
                 dataset = t0_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
                     dataset.attrs["units"] = FIELD_UNITS[dpf_name]
+                dataset.attrs["dim_varying"] = True
+                dataset.attrs["sample_varying"] = True
+                dataset.attrs["time_varying"] = True
 
             # t1_fields: vector fields
             t1_grp = f.create_group("t1_fields")
@@ -231,6 +234,9 @@ class WellExporter:
                 dataset = t1_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
                     dataset.attrs["units"] = FIELD_UNITS[dpf_name]
+                dataset.attrs["dim_varying"] = True
+                dataset.attrs["sample_varying"] = True
+                dataset.attrs["time_varying"] = True
 
             # Scalars: circuit quantities
             if any(self._circuit_history):

@@ -219,10 +219,7 @@ async def ai_sweep(configs: list[dict[str, Any]], n_steps: int = 100) -> dict[st
     if n_steps <= 0:
         raise HTTPException(status_code=422, detail="n_steps must be positive")
 
-    # Lazy import
-    from dpf.ai.parameter_sweep import parameter_sweep
-
-    results = await asyncio.to_thread(parameter_sweep, surrogate, configs, n_steps)
+    results = await asyncio.to_thread(surrogate.parameter_sweep, configs, n_steps)
 
     # Convert results to JSON-serializable format
     results_lists = [_arrays_to_lists(r) for r in results]
@@ -280,9 +277,16 @@ async def ai_inverse(
 
     designer = InverseDesigner(surrogate, parameter_ranges=default_ranges)
 
-    result = await asyncio.to_thread(designer.optimize, targets, method=method, n_trials=n_trials)
+    inverse_result = await asyncio.to_thread(
+        designer.find_config, targets, method=method, n_trials=n_trials
+    )
 
-    return _arrays_to_lists(result)
+    return {
+        "best_config": inverse_result.best_params,
+        "predicted_outcomes": {},
+        "loss": inverse_result.best_score,
+        "n_trials": inverse_result.n_trials,
+    }
 
 
 # ── Ensemble Confidence ──────────────────────────────────────
@@ -308,18 +312,15 @@ async def ai_confidence(history: list[dict[str, Any]]) -> dict[str, Any]:
     history_arrays = [_lists_to_arrays(state) for state in history]
 
     start = time.perf_counter()
-    result = await asyncio.to_thread(ensemble.predict, history_arrays)
+    prediction = await asyncio.to_thread(ensemble.predict, history_arrays)
     elapsed_ms = (time.perf_counter() - start) * 1000.0
 
-    # result is dict with keys: mean, std, ood_score
-    result_lists = _arrays_to_lists(result)
-    result_lists["inference_time_ms"] = elapsed_ms
-
-    # Rename for clarity
     return {
-        "predicted_state": result_lists.get("mean", {}),
-        "confidence": result_lists.get("std", {}),
-        "ood_score": result_lists.get("ood_score", 0.0),
+        "predicted_state": _arrays_to_lists(prediction.mean_state),
+        "confidence": _arrays_to_lists(prediction.std_state),
+        "ood_score": prediction.ood_score,
+        "confidence_score": prediction.confidence,
+        "n_models": prediction.n_models,
         "inference_time_ms": elapsed_ms,
     }
 

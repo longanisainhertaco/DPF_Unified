@@ -46,11 +46,19 @@ class MockEnsemble:
         self.device = "cpu"
 
     def predict(self, history):
-        """Return mean, std, ood_score."""
+        """Return PredictionWithConfidence dataclass."""
+        from dpf.ai.confidence import PredictionWithConfidence
+
         last = history[-1]
         mean = {k: v.copy() for k, v in last.items()}
         std = {k: np.ones_like(v) * 0.1 for k, v in last.items()}
-        return {"mean": mean, "std": std, "ood_score": 0.05}
+        return PredictionWithConfidence(
+            mean_state=mean,
+            std_state=std,
+            confidence=0.95,
+            ood_score=0.05,
+            n_models=5,
+        )
 
 
 # ── Fixtures ────────────────────────────────────────────────────
@@ -344,8 +352,12 @@ def test_confidence_returns_uncertainty_when_ensemble_loaded(client_with_ensembl
     assert "predicted_state" in data
     assert "confidence" in data
     assert "ood_score" in data
+    assert "confidence_score" in data
+    assert "n_models" in data
     assert "inference_time_ms" in data
     assert data["ood_score"] == pytest.approx(0.05, abs=1e-6)
+    assert data["confidence_score"] == pytest.approx(0.95, abs=1e-6)
+    assert data["n_models"] == 5
 
 
 # ── Module-level Function Tests ─────────────────────────────────

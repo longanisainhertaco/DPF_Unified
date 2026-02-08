@@ -6,20 +6,25 @@ from typing import Any
 
 import numpy as np
 
-from dpf.ai import HAS_TORCH
+from dpf.ai import HAS_TORCH, HAS_WALRUS
 from dpf.ai.field_mapping import (
     SCALAR_FIELDS,
     VECTOR_FIELDS,
     dpf_scalar_to_well,
     dpf_vector_to_well,
-    well_scalar_to_dpf,
-    well_vector_to_dpf,
+    well_scalar_to_dpf,  # noqa: F401 — used by _states_to_tensor, monkeypatched in tests
+    well_vector_to_dpf,  # noqa: F401 — used by _states_to_tensor, monkeypatched in tests
 )
 
 if HAS_TORCH:
     import torch
 
 logger = logging.getLogger(__name__)
+
+# Channel order for WALRUS tensor: 5 scalars + 2×3 vector components = 11
+_SCALAR_KEYS = ("rho", "Te", "Ti", "pressure", "psi")
+_VECTOR_KEYS = ("B", "velocity")
+_N_CHANNELS = len(_SCALAR_KEYS) + len(_VECTOR_KEYS) * 3  # 11
 
 
 class DPFSurrogate:
@@ -28,6 +33,10 @@ class DPFSurrogate:
 
     Wraps a fine-tuned WALRUS checkpoint and provides prediction interfaces for DPF state
     evolution. Handles conversion between DPF field format and WALRUS tensor format.
+
+    When the ``walrus`` package is installed, loads a real ``IsotropicModel`` with RevIN
+    normalization and runs delta-prediction inference. Otherwise falls back to a
+    placeholder that returns the last input state unchanged.
 
     Args:
         checkpoint_path: Path to WALRUS checkpoint file (.pt or .pth)
@@ -55,37 +64,39 @@ class DPFSurrogate:
         self.device = device
         self.history_length = history_length
         self._model = None
+        self._revin = None
+        self._formatter = None
 
         self._load_model()
 
     def _load_model(self) -> None:
-        """
-        Load WALRUS checkpoint from disk.
+        """Load WALRUS checkpoint from disk.
 
-        For now, stores a placeholder indicating model location exists. Full WALRUS loading
-        will be implemented when walrus package integration is complete.
+        When ``walrus`` is installed (``HAS_WALRUS=True``), instantiates a real
+        ``IsotropicModel`` with RevIN normalization. Otherwise stores a placeholder
+        dict indicating the checkpoint was loaded successfully.
 
         Raises:
             RuntimeError: If checkpoint loading fails
         """
         try:
-            # Attempt to load checkpoint to verify it's valid
             checkpoint_data = torch.load(
                 self.checkpoint_path, map_location=self.device, weights_only=False
             )
 
-            # For now, store placeholder indicating checkpoint is valid
-            # Full WALRUS model instantiation will be added in Phase I
-            self._model = {
-                "checkpoint_path": self.checkpoint_path,
-                "device": self.device,
-                "data": checkpoint_data,
-            }
-
-            logger.info(
-                f"Loaded checkpoint placeholder from {self.checkpoint_path} "
-                f"(device: {self.device})"
-            )
+            if HAS_WALRUS:
+                self._load_walrus_model(checkpoint_data)
+            else:
+                # Placeholder — store checkpoint info for later
+                self._model = {
+                    "checkpoint_path": self.checkpoint_path,
+                    "device": self.device,
+                    "data": checkpoint_data,
+                }
+                logger.info(
+                    f"Loaded checkpoint placeholder from {self.checkpoint_path} "
+                    f"(device: {self.device}, walrus not installed)"
+                )
 
         except Exception as e:
             self._model = None
@@ -94,10 +105,63 @@ class DPFSurrogate:
                 "Model will not be available for predictions."
             )
 
+    def _load_walrus_model(self, checkpoint_data: dict) -> None:
+        """Instantiate real WALRUS IsotropicModel from checkpoint data.
+
+        Parameters
+        ----------
+        checkpoint_data : dict
+            Loaded checkpoint containing ``model_state_dict`` and ``config``.
+        """
+        from hydra.utils import instantiate
+        from walrus.data.well_to_multi_transformer import ChannelsFirstWithTimeFormatter
+
+        config = checkpoint_data.get("config")
+        if config is None:
+            logger.warning("Checkpoint missing 'config' key; falling back to placeholder")
+            self._model = {
+                "checkpoint_path": self.checkpoint_path,
+                "device": self.device,
+                "data": checkpoint_data,
+            }
+            return
+
+        # Instantiate model with correct number of DPF channels
+        model = instantiate(config.model, n_states=_N_CHANNELS)
+
+        # Load trained weights
+        state_dict = checkpoint_data.get("model_state_dict", checkpoint_data.get("state_dict"))
+        if state_dict is not None:
+            model.load_state_dict(state_dict)
+
+        model.eval()
+        model.to(self.device)
+        self._model = model
+
+        # Set up RevIN normalization
+        try:
+            self._revin = instantiate(config.trainer.revin)()
+        except Exception:
+            logger.warning("Failed to instantiate RevIN from config; inference may be degraded")
+            self._revin = None
+
+        # Set up input formatter
+        self._formatter = ChannelsFirstWithTimeFormatter()
+
+        logger.info(
+            f"Loaded WALRUS IsotropicModel from {self.checkpoint_path} "
+            f"(n_states={_N_CHANNELS}, device={self.device})"
+        )
+
     @property
     def is_loaded(self) -> bool:
         """Check if model is loaded and ready for inference."""
         return self._model is not None
+
+    @property
+    def _is_walrus_model(self) -> bool:
+        """Return True if ``_model`` is a real WALRUS model (not a placeholder dict)."""
+        return self._model is not None and not isinstance(self._model, dict)
 
     def predict_next_step(
         self, history: list[dict[str, np.ndarray]]
@@ -129,15 +193,111 @@ class DPFSurrogate:
         # Use last history_length states
         recent_history = history[-self.history_length :]
 
-        # Convert to tensor format (used when real WALRUS model is loaded)
-        _input_tensor = self._states_to_tensor(recent_history)
+        if self._is_walrus_model:
+            return self._walrus_predict(recent_history)
 
-        # Run forward pass (placeholder implementation until WALRUS integration)
-        # For now, predict zero delta (return last state unchanged)
-        logger.debug("Running placeholder prediction (WALRUS integration pending)")
+        # Placeholder: return copy of last state
+        logger.debug("Running placeholder prediction (walrus not installed)")
         predicted_state = {k: v.copy() for k, v in recent_history[-1].items()}
-
         return predicted_state
+
+    def _walrus_predict(
+        self, recent_history: list[dict[str, np.ndarray]]
+    ) -> dict[str, np.ndarray]:
+        """Run real WALRUS inference on recent history.
+
+        Pipeline: states → tensor → RevIN normalize → model forward →
+                  denormalize delta → add residual → state dict.
+
+        Parameters
+        ----------
+        recent_history : list[dict[str, np.ndarray]]
+            Last ``history_length`` DPF state dicts.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Predicted next state.
+        """
+        # Convert DPF states to WALRUS input tensor: (1, T, C, *spatial)
+        input_tensor = self._states_to_walrus_tensor(recent_history)
+
+        with torch.no_grad():
+            if self._revin is not None:
+                # RevIN normalize
+                stats = self._revin.compute_stats(input_tensor, metadata=None, epsilon=1e-5)
+                normalized_x = self._revin.normalize_stdmean(input_tensor, stats)
+            else:
+                normalized_x = input_tensor
+                stats = None
+
+            # Forward pass — simplified direct call (no formatter/metadata)
+            y_pred = self._model(normalized_x)
+
+            if self._revin is not None and stats is not None:
+                # Denormalize delta and add residual
+                y_pred = input_tensor[-y_pred.shape[0]:].float() + self._revin.denormalize_delta(
+                    y_pred, stats
+                )
+            else:
+                # Delta mode without RevIN: output + last input
+                y_pred = input_tensor[:, -1:, ...] + y_pred
+
+        # Extract last predicted step: (1, 1, C, *spatial) → (C, *spatial)
+        predicted_tensor = y_pred[0, -1]  # (C, *spatial)
+
+        return self._tensor_to_state(predicted_tensor, recent_history[-1])
+
+    def _states_to_walrus_tensor(
+        self, states: list[dict[str, np.ndarray]]
+    ) -> Any:
+        """Convert DPF states to WALRUS input tensor.
+
+        Builds a tensor of shape ``(1, T, C, *spatial)`` where ``C=11`` channels are
+        ordered: rho, Te, Ti, pressure, psi, Bx, By, Bz, vx, vy, vz.
+
+        Parameters
+        ----------
+        states : list[dict[str, np.ndarray]]
+            List of DPF state dicts.
+
+        Returns
+        -------
+        torch.Tensor
+            Shape ``(1, T, 11, *spatial)``, float32, on ``self.device``.
+        """
+        T = len(states)
+        # Infer spatial shape from first scalar field in first state
+        ref_state = states[0]
+        for key in _SCALAR_KEYS:
+            if key in ref_state:
+                spatial_shape = ref_state[key].shape
+                break
+        else:
+            raise ValueError("No scalar field found in state dict")
+
+        # Pre-allocate: (T, C, *spatial)
+        arr = np.zeros((T, _N_CHANNELS, *spatial_shape), dtype=np.float32)
+
+        for t, state in enumerate(states):
+            ch = 0
+            # Scalars: rho, Te, Ti, pressure, psi
+            for key in _SCALAR_KEYS:
+                if key in state:
+                    arr[t, ch] = state[key].astype(np.float32)
+                ch += 1
+
+            # Vectors: B (3 components), velocity (3 components)
+            for key in _VECTOR_KEYS:
+                if key in state:
+                    vec = state[key].astype(np.float32)  # (3, *spatial)
+                    for comp in range(3):
+                        arr[t, ch + comp] = vec[comp]
+                ch += 3
+
+        # Add batch dim: (1, T, C, *spatial)
+        tensor = torch.from_numpy(arr).unsqueeze(0).float()
+        return tensor.to(self.device)
 
     def rollout(
         self, initial_states: list[dict[str, np.ndarray]], n_steps: int
@@ -263,8 +423,11 @@ class DPFSurrogate:
         """
         Convert WALRUS output tensor back to DPF state format.
 
+        Uses the same channel ordering as ``_states_to_walrus_tensor``:
+        rho, Te, Ti, pressure, psi, Bx, By, Bz, vx, vy, vz.
+
         Args:
-            tensor: PyTorch tensor from model output
+            tensor: PyTorch tensor or numpy array — shape (C, *spatial) or (1, C, *spatial)
             reference_state: Reference DPF state for shape information
 
         Returns:
@@ -277,27 +440,24 @@ class DPFSurrogate:
             array = np.asarray(tensor)
 
         # Remove batch dimension if present
-        if array.ndim == 4:  # (1, n_fields, *spatial)
+        if array.ndim >= 4 and array.shape[0] == 1:
             array = array[0]
 
-        state = {}
-        field_idx = 0
+        state: dict[str, np.ndarray] = {}
+        ch = 0
 
-        # Extract scalar fields
-        for field_name in SCALAR_FIELDS:
-            if field_name in reference_state:
-                well_field = array[field_idx]
-                state[field_name] = well_scalar_to_dpf(well_field, field_name)
-                field_idx += 1
+        # Extract scalar fields: rho, Te, Ti, pressure, psi
+        for key in _SCALAR_KEYS:
+            if key in reference_state:
+                state[key] = array[ch].astype(np.float64)
+            ch += 1
 
-        # Extract vector fields
-        for field_name in VECTOR_FIELDS:
-            if field_name in reference_state:
-                # Vector fields have 3 components
-                components = [array[field_idx + i] for i in range(3)]
-                well_field = np.stack(components, axis=0)
-                state[field_name] = well_vector_to_dpf(well_field, field_name)
-                field_idx += 3
+        # Extract vector fields: B (3 components), velocity (3 components)
+        for key in _VECTOR_KEYS:
+            if key in reference_state:
+                components = [array[ch + i].astype(np.float64) for i in range(3)]
+                state[key] = np.stack(components, axis=0)
+            ch += 3
 
         return state
 

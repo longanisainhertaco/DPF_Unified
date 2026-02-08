@@ -198,8 +198,10 @@ class BatchRunner:
             output_path = self.output_dir / f"trajectory_{idx:04d}.h5"
             exporter = WellExporter(
                 output_path=output_path,
-                dt=config.physics.dt,
-                field_interval=self.field_interval,
+                grid_shape=tuple(config.grid_shape),
+                dx=config.dx,
+                geometry=config.geometry.type,
+                sim_params=params,
             )
 
             # Extract field snapshots from diagnostics
@@ -207,13 +209,8 @@ class BatchRunner:
             if hasattr(diagnostics, 'field_snapshots') and diagnostics.field_snapshots:
                 for snapshot_idx, snapshot in enumerate(diagnostics.field_snapshots):
                     if snapshot_idx % self.field_interval == 0:
-                        exporter.add_snapshot(
-                            t=snapshot.get('time', snapshot_idx * config.physics.dt),
-                            rho=snapshot['rho'],
-                            velocity=snapshot['velocity'],
-                            pressure=snapshot['pressure'],
-                            B=snapshot['B'],
-                        )
+                        t = snapshot.get('time', float(snapshot_idx))
+                        exporter.add_snapshot(state=snapshot, time=t)
 
             # Finalize and write
             exporter.finalize()

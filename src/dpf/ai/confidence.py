@@ -71,7 +71,7 @@ class EnsemblePredictor:
         self._models: list[DPFSurrogate] = []
         for ckpt_path in self.checkpoint_paths:
             try:
-                model = DPFSurrogate.load(ckpt_path, device=device)
+                model = DPFSurrogate(ckpt_path, device=device)
                 self._models.append(model)
                 logger.info(f"Loaded checkpoint: {ckpt_path}")
             except Exception as e:
