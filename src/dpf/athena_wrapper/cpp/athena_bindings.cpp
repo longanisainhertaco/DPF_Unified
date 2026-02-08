@@ -315,22 +315,12 @@ void set_circuit_params(AthenaHandle handle, double current, double voltage) {
     handle->circuit_current = static_cast<Real>(current);
     handle->circuit_voltage = static_cast<Real>(voltage);
 
-    // Store in mesh user data for access by problem generator source terms.
-    // The ruser_mesh_data arrays must be allocated by the problem generator
-    // in Mesh::InitUserMeshData() via AllocateRealUserMeshDataField().
-    // For the stock magnoh problem generator, these arrays won't exist,
-    // so we guard carefully. Circuit coupling will be active in Phase G
-    // with the custom dpf_zpinch.cpp problem generator.
-    Mesh* pmesh = handle->pmesh.get();
-    if (pmesh->ruser_mesh_data != nullptr) {
-        // Check if arrays are allocated and non-empty before writing
-        if (!pmesh->ruser_mesh_data[0].IsEmpty()) {
-            pmesh->ruser_mesh_data[0](0) = handle->circuit_current;
-        }
-        if (!pmesh->ruser_mesh_data[1].IsEmpty()) {
-            pmesh->ruser_mesh_data[1](0) = handle->circuit_voltage;
-        }
-    }
+    // NOTE: Circuit parameters are stored in the AthenaState struct for now.
+    // In Phase G, the custom dpf_zpinch.cpp problem generator will allocate
+    // ruser_mesh_data via AllocateRealUserMeshDataField() and we can then
+    // push these values into the mesh for access by source terms.
+    // The stock magnoh.cpp does NOT allocate ruser_mesh_data, so the pointer
+    // is uninitialized — we must NOT access it.
 }
 
 /**

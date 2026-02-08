@@ -28,6 +28,7 @@ Example::
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import subprocess
@@ -46,6 +47,12 @@ logger = logging.getLogger(__name__)
 
 # Constants
 _MU_0 = 4.0e-7 * np.pi  # Vacuum permeability [H/m]
+
+# Module-level reference to the current active linked-mode handle.
+# Athena++ uses global state (signal handlers, etc.) that doesn't support
+# multiple simultaneous Mesh instances.  We must finalize the previous
+# instance before creating a new one.
+_active_linked_handle: Any = None
 
 
 class AthenaPPSolver(PlasmaSolverBase):
@@ -133,8 +140,19 @@ class AthenaPPSolver(PlasmaSolverBase):
 
     def _init_linked(self) -> None:
         """Initialize linked mode via pybind11 C++ extension."""
+        global _active_linked_handle
+
         from dpf.athena_wrapper import _athena_core
         from dpf.athena_wrapper.athena_config import generate_athinput
+
+        # Athena++ uses global state (signal handlers, etc.) that does not
+        # support multiple simultaneous Mesh instances.  Finalize any
+        # previously active handle before creating a new one.
+        if _active_linked_handle is not None:
+            with contextlib.suppress(Exception):
+                _athena_core.finalize(_active_linked_handle)
+                logger.debug("Finalized previous Athena++ instance")
+            _active_linked_handle = None
 
         # Generate athinput text
         athinput_text = generate_athinput(self.config)
@@ -143,9 +161,26 @@ class AthenaPPSolver(PlasmaSolverBase):
         self._core = _athena_core
         self._mesh_handle = _athena_core.init_from_string(athinput_text)
         self._initialized = True
+        _active_linked_handle = self._mesh_handle
 
         logger.info("Athena++ linked mode initialized: %d mesh blocks",
                      _athena_core.get_num_meshblocks(self._mesh_handle))
+
+    def finalize(self) -> None:
+        """Explicitly release Athena++ resources."""
+        global _active_linked_handle
+        if self.mode == "linked" and self._initialized and self._core is not None:
+            with contextlib.suppress(Exception):
+                self._core.finalize(self._mesh_handle)
+            self._initialized = False
+            self._mesh_handle = None
+            if _active_linked_handle is self._mesh_handle:
+                _active_linked_handle = None
+
+    def __del__(self) -> None:
+        """Clean up Athena++ state on garbage collection."""
+        with contextlib.suppress(Exception):
+            self.finalize()
 
     # ------------------------------------------------------------------
     # PlasmaSolverBase interface
