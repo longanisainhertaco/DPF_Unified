@@ -16,7 +16,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 |-------|-------------|--------|
 | **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready). Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport | **Phase J.1 complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
-| **AI Integration** | WALRUS surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server | **Phase I complete** |
+| **AI Integration** | WALRUS (1.3B IsotropicModel, delta prediction, RevIN, Hydra config) surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server. Surrogate stubs need real WALRUS model loading (Phase J.2). | **Phase I complete, J.2 next** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
 
 **Current MVP focus**: Get the simulation backend to the highest fidelity possible, running locally on Apple Silicon (M3 Pro MacBook Pro). The Unity frontend and HPC support come after the physics is right.
@@ -83,7 +83,7 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **Well Exporter** | DPF HDF5 → Well HDF5 format conversion with metadata | Complete, tested |
 | **Batch Runner** | Latin Hypercube parameter sweep, multiprocessing, Well export | Complete, tested |
 | **Dataset Validator** | NaN/Inf checks, Well schema validation, energy conservation, statistics | Complete, tested |
-| **Surrogate Model** | WALRUS inference wrapper: predict, rollout, parameter_sweep | Complete, tested (torch optional) |
+| **Surrogate Model** | WALRUS inference wrapper: predict, rollout, parameter_sweep (model loading stubbed — needs real IsotropicModel instantiation) | Tested (torch optional), inference stubs need WALRUS API |
 | **Inverse Design** | Bayesian (optuna) + evolutionary (scipy) optimization | Complete, tested (optuna optional) |
 | **Hybrid Engine** | Physics → surrogate handoff with periodic L2 validation and fallback | Complete, tested |
 | **Instability Detector** | WALRUS divergence monitoring with severity classification | Complete, tested |
@@ -182,9 +182,10 @@ We study these established MHD codes to guide our development:
 | ~~Phase H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
 | ~~Phase I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
 | ~~Phase J.1~~ | ~~AthenaK integration~~ | — | ~~Kokkos subprocess wrapper, VTK I/O, build scripts, 57 tests~~ | ✅ Done |
-| **Phase J.2+** (next) | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, custom AthenaK pgens, MPI scaling | 🔜 |
+| **Phase J.2** (next) | WALRUS live integration | — | Real IsotropicModel inference, fix Well exporter, resolve API stubs | 🔜 |
+| **Phase J.3+** | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, custom AthenaK pgens, MPI scaling | 🔜 |
 
-> **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. The AI layer provides surrogate inference, inverse design, hybrid physics-surrogate engine, instability detection, ensemble confidence, and a real-time server. All AI dependencies (torch, optuna) are optional — the simulator works without them. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
+> **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter Encoder-Processor-Decoder Transformer (IsotropicModel) pretrained on 19 physical systems including MHD. Uses delta prediction (`u(t+1) = u(t) + model(U(t))`) with RevIN normalization and Hydra config. The AI layer provides surrogate inference, inverse design, hybrid physics-surrogate engine, instability detection, ensemble confidence, and a real-time server. WALRUS requires `torch==2.5.1` (pinned) — use a separate venv for training. All AI dependencies are optional — the simulator works without them. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
 ---
 
@@ -235,6 +236,11 @@ pip install -e ".[server]"
 # AI/ML support (PyTorch, optuna, pyDOE2 for surrogate models & inverse design)
 pip install -e ".[ai]"
 
+# WALRUS surrogate model (requires separate install due to pinned deps)
+# IMPORTANT: Use a separate venv if torch version conflicts arise
+pip install git+https://github.com/PolymathicAI/walrus.git
+pip install "the_well[benchmark] @ git+https://github.com/PolymathicAI/the_well@master"
+
 # Athena++ C++ backend (requires building from source)
 pip install -e ".[dev,server,athena]"
 # See docs/ATHENA_BUILD.md for Athena++ compilation instructions
@@ -248,7 +254,7 @@ bash scripts/build_athenak.sh    # Auto-detect OpenMP vs Serial
 pip install -e ".[dev,server,ai]"
 ```
 
-> **Note**: AI dependencies (torch, optuna, pyDOE2) are optional. All AI modules use import guards (`HAS_TORCH`, `HAS_OPTUNA`) and degrade gracefully — the simulator and server work without them. The `pyproject.toml` also lists `gpu` (CuPy) and `mpi` (mpi4py) extras as placeholders for future work.
+> **Note**: AI dependencies (torch, optuna, pyDOE2) are optional. All AI modules use import guards (`HAS_TORCH`, `HAS_OPTUNA`, `HAS_WALRUS`) and degrade gracefully — the simulator and server work without them. **WALRUS** pins `torch==2.5.1` and `numpy==1.26.4` — use a separate virtual environment for WALRUS training/fine-tuning to avoid version conflicts. The `pyproject.toml` also lists `gpu` (CuPy) and `mpi` (mpi4py) extras as placeholders for future work.
 
 ---
 
