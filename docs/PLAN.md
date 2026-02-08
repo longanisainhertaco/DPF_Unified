@@ -456,12 +456,13 @@ WALRUS predictions need uncertainty bounds:
 | ~~H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
 | ~~I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
 | ~~J.1~~ | ~~AthenaK integration~~ | — | ~~Kokkos subprocess wrapper, VTK I/O, build scripts, 57 tests~~ | ✅ Done |
-| **J.2** (next) | Unity frontend | — | Teaching/Engineering mode (greenfield, same repo) | 🔜 |
-| **J.3** | HPC scaling | 8/10 | MPI via AthenaK, cloud GPU (CUDA Kokkos) | 🔜 |
-| **J.4** | Advanced AthenaK physics | — | Custom DPF z-pinch pgen, circuit coupling, resistive MHD | 🔜 |
+| **J.2** (next) | WALRUS live integration | — | Real IsotropicModel inference in surrogate.py, fix Well exporter, fix API mismatches | 🔜 |
+| **J.3** | Unity frontend | — | Teaching/Engineering mode (greenfield, same repo) | 🔜 |
+| **J.4** | HPC scaling | 8/10 | MPI via AthenaK, cloud GPU (CUDA Kokkos) | 🔜 |
+| **J.5** | Advanced AthenaK physics | — | Custom DPF z-pinch pgen, circuit coupling, resistive MHD | 🔜 |
 
 **Phases A-I and J.1 complete**: 1186 tests, tri-engine architecture + full AI/ML integration operational.
-**Next**: Phase J.2 adds Unity frontend, J.3 adds HPC scaling, J.4 adds custom AthenaK physics.
+**Next**: Phase J.2 implements real WALRUS model loading and inference (replacing stubs), fixes Well format compliance, and resolves API mismatches. J.3 adds Unity frontend, J.4 adds HPC scaling, J.5 adds custom AthenaK physics.
 
 ---
 
@@ -552,15 +553,78 @@ WALRUS predictions need uncertainty bounds:
 ## Dependencies & Installation for AI Integration
 
 ```toml
-# Add to pyproject.toml [project.optional-dependencies]
+# pyproject.toml [project.optional-dependencies]
 ai = [
     "torch>=2.1",           # PyTorch with MPS backend for Apple Silicon
-    "walrus",               # Polymathic AI WALRUS (pip install from git)
-    "the-well",             # Well dataset tools
     "optuna",               # Bayesian optimization for inverse design
     "pyDOE2",               # Latin Hypercube Sampling for training data generation
 ]
+
+# WALRUS requires separate installation due to pinned versions:
+# pip install git+https://github.com/PolymathicAI/walrus.git
+# pip install "the_well[benchmark] @ git+https://github.com/PolymathicAI/the_well@master"
+#
+# WALRUS pins: torch==2.5.1, numpy==1.26.4, einops~=0.8,
+#              hydra-core>=1.3, timm>=1.0, wandb>=0.17.9, h5py>=3.9.0,<4
+#
+# IMPORTANT: Use a separate venv for WALRUS training to avoid version conflicts.
+# DPF inference can use the main venv if torch version is compatible.
 ```
+
+### WALRUS Real API Reference
+
+The current `surrogate.py` is **stubbed** — it does NOT instantiate the actual WALRUS model. The real inference pipeline requires:
+
+```python
+# Real WALRUS inference pattern (to replace surrogate.py stubs)
+from walrus.models import IsotropicModel
+from walrus.data.well_to_multi_transformer import ChannelsFirstWithTimeFormatter
+from hydra.utils import instantiate
+
+# 1. Load checkpoint
+ckpt = torch.load(checkpoint_path, map_location=device)
+config = ckpt["config"]  # Hydra config stored in checkpoint
+
+# 2. Instantiate model
+model = instantiate(config.model, n_states=total_input_fields)
+model.load_state_dict(ckpt["model_state_dict"])
+model.eval().to(device)
+
+# 3. Inference (delta prediction + RevIN normalization)
+formatter = ChannelsFirstWithTimeFormatter()
+revin = instantiate(config.trainer.revin)()
+
+with torch.no_grad():
+    inputs, y_ref = formatter.process_input(batch, causal_in_time=True, predict_delta=True)
+    stats = revin.compute_stats(inputs[0], metadata, epsilon=1e-5)
+    normalized_x = revin.normalize_stdmean(inputs[0], stats)
+    y_pred = model(normalized_x, inputs[1], inputs[2].tolist(), metadata=metadata)
+    y_pred = inputs[0][-y_pred.shape[0]:].float() + revin.denormalize_delta(y_pred, stats)
+```
+
+### WALRUS Model Configs
+| Config | Hidden Dim | Blocks | Params | Use |
+|--------|-----------|--------|--------|-----|
+| Pretrain | 768 | 12 | ~300M | Base model training |
+| Finetune | 1408 | 40 | 1.3B | Fine-tuning from checkpoint |
+
+### Apple Silicon Hardware Budget (M3 Pro, 36GB)
+| Workload | Memory | Status |
+|----------|--------|--------|
+| Float16 inference | ~2.6 GB | ✅ Easy |
+| LoRA fine-tuning (batch=1, grad ckpt) | ~19-25 GB | ✅ Feasible |
+| Full fine-tuning (batch=1, grad ckpt) | ~30-35 GB | ⚠️ Tight |
+| MLX inference | ~2.6 GB + lower latency | ✅ Recommended |
+
+### WALRUS Integration Gaps (Action Items)
+1. **surrogate.py**: Replace stub `_load_model()` with real `IsotropicModel` instantiation + RevIN
+2. **surrogate.py**: Replace stub `predict_next_step()` with actual forward pass + delta prediction
+3. **well_exporter.py**: Change `grid_type="uniform"` → `"cartesian"`
+4. **well_exporter.py**: Add `dim_varying`, `sample_varying`, `time_varying` attributes
+5. **batch_runner.py**: Fix WellExporter API call mismatch (lines 199-219)
+6. **confidence.py**: Fix `DPFSurrogate.load()` → use constructor instead
+7. **realtime_server.py**: Fix 3 wrong API calls (parameter_sweep, optimize, field access)
+8. **pyproject.toml**: Document WALRUS installation separately (pinned deps conflict)
 
 ---
 
