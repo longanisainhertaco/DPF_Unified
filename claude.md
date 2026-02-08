@@ -45,8 +45,8 @@ State dict: {rho, velocity, pressure, B, Te, Ti, psi} as NumPy arrays.
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon)
-Active: F (Athena++ integration), G (Athena++ DPF physics)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration)
+Active: G (Athena++ DPF physics)
 Planned: H (WALRUS pipeline), I (AI features), J (backlog)
 
 ### Test Patterns
@@ -54,7 +54,7 @@ Planned: H (WALRUS pipeline), I (AI features), J (backlog)
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 590 tests (increase to 700+ after Phase F)
+- CI gate: >= 745 tests (745 non-slow pass after Phase F)
 
 ## Key File Paths
 
@@ -68,6 +68,11 @@ Planned: H (WALRUS pipeline), I (AI features), J (backlog)
 | Athena++ wrapper | src/dpf/athena_wrapper/ |
 | Athena++ submodule | external/athena/ |
 | DPF input files | external/athinput/ |
+| CLI entry point | src/dpf/cli/main.py |
+| CLI/server tests (F.4) | tests/test_phase_f_cli_server.py |
+| Dual-engine tests (F.2) | tests/test_dual_engine.py |
+| Athena++ verification (F.3) | tests/test_phase_f_verification.py |
+| Athena++ binaries | external/athena/bin/ |
 | AI/ML modules | src/dpf/ai/ |
 | Server API | src/dpf/server/app.py |
 | Circuit solver | src/dpf/circuit/rlc_solver.py |
@@ -83,7 +88,7 @@ Planned: H (WALRUS pipeline), I (AI features), J (backlog)
 3. After pybind11 changes: `pip install -e ".[dev,athena]"`
 4. After any change: `ruff check src/ tests/`
 5. Kill stale processes before heavy compute: `pkill -f "pytest|python.*dpf"`
-6. Commit naming: "Phase X.Y: description"
+6. Commit naming: "Phase X.Y: description" (e.g., "Phase F.4: CLI and server backend integration")
 
 ## Lessons Learned (Phases A-E)
 
@@ -95,6 +100,11 @@ Planned: H (WALRUS pipeline), I (AI features), J (backlog)
 6. **Memory on M3 Pro (36GB)**: Use small grids for unit tests (8x8x8). Multiple parallel pytest processes can exhaust memory.
 7. **HDF5 conflicts**: Use ":memory:" for diagnostics in test configs. Use tmp_path fixture for file-writing tests.
 8. **Physics naming**: Ruff must ignore N802/N803/N806 for physics variables (Te, Ti, B, Z_bar).
+9. **Athena++ global state**: Athena++ cannot be re-initialized in the same process (signal handlers, global vars). Use module-scoped test fixtures and singleton pattern for linked-mode engines.
+10. **Athena++ nghost**: Default compile uses nghost=2, which only supports xorder<=2 (PLM). PPM (xorder=3) and WENO5 require nghost>=3.
+11. **ruser_mesh_data**: Stock Athena++ problem generators (magnoh.cpp, etc.) do NOT allocate ruser_mesh_data. Accessing it will segfault. Only custom problem generators that call AllocateRealUserMeshDataField() can use it.
+12. **Separate Athena++ binaries**: Different problem generators require separate compiled binaries (e.g., athena_sod for shock_tube, athena_briowu for MHD shock_tube, athena for magnoh).
+13. **Athena++ HDF5 format**: Variable ordering in .athdf files is NOT fixed — read VariableNames attribute to build var_idx map. Time attribute is scalar, not array.
 
 ## Working with Athena++ C++
 

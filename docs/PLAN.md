@@ -1,22 +1,29 @@
-# DPF Unified — Forward Development Plan (v2)
+# DPF Unified — Forward Development Plan (v3)
 
 ## Context & What's Done
 
 We are building a modern dense plasma focus (DPF) simulator with:
-- **Backend**: Multi-physics MHD solver in Python (NumPy/Numba) with circuit coupling
+- **Backend**: Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary via pybind11
 - **Frontend**: Unity UI with Teaching Mode + Engineering Mode (future)
 - **Platform**: Apple Silicon local execution (MVP), HPC cluster (future)
 - **AI**: Polymathic AI WALRUS integration for surrogate models and inverse design
 
-### Completed (Steps 1-2 from v1 plan)
-- ✅ **README rewrite** — Honest assessment with fidelity grade 3-4/10
-- ✅ **Dormant code moved** to `src/dpf/experimental/` (AMR, PIC, GPU, multi-species, ML deleted)
-- ✅ **Implicit diffusion (ADI + RKL2)** wired into engine via `_apply_diffusion()`
-- ✅ **Line radiation** wired into `_apply_collision_radiation()` with impurity config
-- ✅ **Constrained transport** default flipped to ON in cylindrical solver
-- ✅ **All 623 tests passing**, 0 failures
+### Completed Phases
+- ✅ **Phase A**: README rewrite — Honest assessment with fidelity grade
+- ✅ **Phase B**: Wire dormant physics — ADI/RKL2, line radiation, CT default ON
+- ✅ **Phase C**: Verification & Validation — Diffusion convergence, Orszag-Tang, Sedov, Lee Model, shock tubes
+- ✅ **Phase D**: Physics improvements — Full Braginskii, Powell div-B, anisotropic conduction, Dedner GLM
+- ✅ **Phase E**: Apple Silicon optimization — Numba prange, benchmarks
+- ✅ **Phase F**: Athena++ integration — Submodule, pybind11, dual-engine, verification, CLI/server
+  - F.0: Athena++ submodule setup and M3 Pro build (magnoh, resist, shock_tube)
+  - F.1: pybind11 wrapper layer (linked-mode via `_athena_core.so`)
+  - F.2: Dual-engine architecture (backend="python"/"athena"/"auto" in config)
+  - F.3: Athena++ verification suite (Sod, Brio-Wu, magnoh, cross-backend)
+  - F.4: CLI `--backend` flag, server health backend reporting, `dpf backends` command
+  - F.5: Documentation (CLAUDE.md, README, ATHENA_BUILD.md, CI, PLAN.md)
 
-**Current fidelity: ~4/10** (up from 3-4/10 before wiring dormant physics)
+**745+ tests passing** (745 non-slow, 25 slow), 0 failures.
+**Current fidelity: 5-6/10** with dual-engine architecture ready for Phase G physics.
 
 ---
 
@@ -427,21 +434,21 @@ WALRUS predictions need uncertainty bounds:
 
 ## Updated Roadmap
 
-| Phase | Goal | Fidelity | Key Work | Effort |
+| Phase | Goal | Fidelity | Key Work | Status |
 |-------|------|----------|----------|--------|
-| ~~A~~ | ~~README + triage~~ | — | ✅ Done | ✅ Done |
-| ~~B~~ | ~~Wire dormant physics~~ | 4/10 | ✅ Done (ADI, RKL2, line rad, CT) | ✅ Done |
-| **C** (next) | Verification & validation | 5/10 | Convergence studies, Orszag-Tang, PF-1000 waveform, Lee Model | 4-6 days |
-| **D** | Physics improvements | 6/10 | Full Braginskii, Powell div-B, multi-species, aniso conduction | 5-7 days |
-| **E** | Apple Silicon optimization | 6/10 fast | Numba prange, Accelerate BLAS, profiling | 2-3 days |
-| **F** | WALRUS data pipeline | — | Well exporter, batch trajectory generator, dataset validation | 4-5 days |
-| **G** | WALRUS fine-tuning | — | Fine-tune on DPF data, surrogate server, Apple Silicon inference | 5-7 days |
-| **H** | AI-powered features | — | Inverse design, real-time server, uncertainty estimation | 4-6 days |
-| **I** | Unity frontend | — | Teaching Mode + Engineering Mode, WebSocket integration | TBD |
-| **J** | HPC backend | 7-8/10 | MPI decomposition, GPU kernels, production runs | TBD |
+| ~~A~~ | ~~Honest documentation~~ | — | ~~README rewrite, dormant code triage~~ | ✅ Done |
+| ~~B~~ | ~~Wire dormant physics~~ | 4/10 | ~~ADI/RKL2 diffusion, line radiation, CT default on~~ | ✅ Done |
+| ~~C~~ | ~~Verification & validation~~ | 5/10 | ~~Diffusion convergence, Orszag-Tang, Sedov, Lee Model~~ | ✅ Done |
+| ~~D~~ | ~~Physics improvements~~ | 6/10 | ~~Full Braginskii, Powell div-B, anisotropic conduction~~ | ✅ Done |
+| ~~E~~ | ~~Apple Silicon optimization~~ | 6/10 | ~~Numba prange, Accelerate BLAS, benchmarks~~ | ✅ Done |
+| ~~F~~ | ~~Athena++ integration~~ | — | ~~Submodule, pybind11, dual-engine, verification, CLI/server~~ | ✅ Done |
+| **G** (next) | Athena++ DPF physics | 7/10 | Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii | 🔜 |
+| **H** | WALRUS data pipeline | — | Well exporter, batch trajectory generator, dataset validation | |
+| **I** | WALRUS fine-tuning + AI | — | Surrogate, inverse design, real-time server | |
+| **J** | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, AthenaK GPU | |
 
-**Total to 6/10 fidelity**: ~11-16 days (Steps C-E)
-**Total to AI integration**: ~24-37 days (Steps C-H)
+**Phases A-F complete**: 745+ tests, dual-engine architecture operational.
+**Next**: Phase G adds DPF-specific physics to Athena++ C++ backend.
 
 ---
 
