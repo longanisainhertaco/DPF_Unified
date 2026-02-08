@@ -157,6 +157,84 @@ class DiagnosticsConfig(BaseModel):
     )
 
 
+class SweepConfig(BaseModel):
+    """Parameter sweep configuration for batch trajectory generation."""
+
+    method: str = Field(
+        "lhs",
+        description="Sampling method: 'lhs' (Latin Hypercube), 'grid', 'random'",
+    )
+    n_samples: int = Field(100, ge=1, le=10000, description="Number of parameter samples")
+    parameter_ranges: dict[str, dict[str, float]] = Field(
+        default_factory=dict,
+        description="Parameter ranges: {'circuit.V0': {'low': 10e3, 'high': 40e3}}",
+    )
+    resolution: list[int] = Field(
+        default_factory=lambda: [64, 1, 128],
+        min_length=3,
+        max_length=3,
+        description="Grid resolution for sweep trajectories",
+    )
+
+    @model_validator(mode="after")
+    def validate_method(self) -> SweepConfig:
+        if self.method not in ("lhs", "grid", "random"):
+            raise ValueError(f"method must be 'lhs', 'grid', or 'random', got '{self.method}'")
+        return self
+
+
+class InverseConfig(BaseModel):
+    """Inverse design optimization configuration."""
+
+    method: str = Field(
+        "bayesian",
+        description="Optimization method: 'bayesian' or 'evolutionary'",
+    )
+    targets: dict[str, float] = Field(
+        default_factory=dict,
+        description="Target outputs: {'neutron_yield': 1e10, 'I_peak': 2e6}",
+    )
+    constraints: dict[str, float] = Field(
+        default_factory=dict,
+        description="Constraints: {'V0_max': 30e3, 'C_max': 50e-6}",
+    )
+    n_trials: int = Field(100, ge=1, le=10000, description="Number of optimization trials")
+
+    @model_validator(mode="after")
+    def validate_method(self) -> InverseConfig:
+        if self.method not in ("bayesian", "evolutionary"):
+            raise ValueError(
+                f"method must be 'bayesian' or 'evolutionary', got '{self.method}'"
+            )
+        return self
+
+
+class AIConfig(BaseModel):
+    """AI/ML surrogate model configuration."""
+
+    surrogate_checkpoint: str | None = Field(
+        None, description="Path to fine-tuned WALRUS checkpoint"
+    )
+    device: str = Field("cpu", description="Inference device: 'cpu', 'mps', 'cuda'")
+    history_length: int = Field(
+        4, ge=1, le=32, description="Number of history timesteps for WALRUS input"
+    )
+    ensemble_size: int = Field(
+        1, ge=1, le=10, description="Number of ensemble models for uncertainty estimation"
+    )
+    confidence_threshold: float = Field(
+        0.8, gt=0, le=1.0, description="Minimum confidence for predictions"
+    )
+    sweep: SweepConfig = Field(default_factory=SweepConfig)
+    inverse: InverseConfig = Field(default_factory=InverseConfig)
+
+    @model_validator(mode="after")
+    def validate_device(self) -> AIConfig:
+        if self.device not in ("cpu", "mps", "cuda"):
+            raise ValueError(f"device must be 'cpu', 'mps', or 'cuda', got '{self.device}'")
+        return self
+
+
 class SimulationConfig(BaseModel):
     """Top-level simulation configuration."""
 
@@ -185,6 +263,7 @@ class SimulationConfig(BaseModel):
     fluid: FluidConfig = Field(default_factory=FluidConfig)
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     diagnostics: DiagnosticsConfig = Field(default_factory=DiagnosticsConfig)
+    ai: AIConfig | None = Field(None, description="AI/ML surrogate configuration (optional)")
 
     @model_validator(mode="after")
     def validate_grid(self) -> SimulationConfig:

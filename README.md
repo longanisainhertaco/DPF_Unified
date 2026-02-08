@@ -16,7 +16,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 |-------|-------------|--------|
 | **Simulation Backend** | Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary backend via pybind11. Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport | **Phase G complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
-| **AI Integration** | Surrogate models via [Polymathic.ai](https://polymathic-ai.org/) for fast estimates and inverse design ("what config yields X neutrons?") | **Planned** |
+| **AI Integration** | WALRUS surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server | **Phase I complete** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
 
 **Current MVP focus**: Get the simulation backend to the highest fidelity possible, running locally on Apple Silicon (M3 Pro MacBook Pro). The Unity frontend and HPC support come after the physics is right.
@@ -29,7 +29,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 > **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 7/10.
 
-The simulation backend features a dual-engine architecture (Python + Athena++ C++) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 873 tests pass with 0 failures across 898 total (25 slow). Phases A–G are complete.
+The simulation backend features a dual-engine architecture (Python + Athena++ C++) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1129 tests pass with 0 failures (1103 non-slow, 25 slow). Phases A–I are complete.
 
 ### Active Modules (What Actually Runs)
 
@@ -65,13 +65,28 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **Electrode BCs** | EnrollUserBoundaryFunction for anode/cathode current injection | Complete |
 | **Volume Diagnostics** | UserWorkInLoop: R_plasma, L_plasma, peak Te, total radiated power | Complete |
 
+#### AI/ML Layer (Phases H-I)
+
+| Module | Implementation | Quality |
+|--------|----------------|---------|
+| **Field Mapping** | Bidirectional DPF ↔ Well field name/shape transforms, geometry inference | Complete, tested |
+| **Well Exporter** | DPF HDF5 → Well HDF5 format conversion with metadata | Complete, tested |
+| **Batch Runner** | Latin Hypercube parameter sweep, multiprocessing, Well export | Complete, tested |
+| **Dataset Validator** | NaN/Inf checks, Well schema validation, energy conservation, statistics | Complete, tested |
+| **Surrogate Model** | WALRUS inference wrapper: predict, rollout, parameter_sweep | Complete, tested (torch optional) |
+| **Inverse Design** | Bayesian (optuna) + evolutionary (scipy) optimization | Complete, tested (optuna optional) |
+| **Hybrid Engine** | Physics → surrogate handoff with periodic L2 validation and fallback | Complete, tested |
+| **Instability Detector** | WALRUS divergence monitoring with severity classification | Complete, tested |
+| **Confidence/Ensemble** | Multi-checkpoint ensemble prediction, OOD detection, uncertainty | Complete, tested |
+| **AI Server** | FastAPI router: `/api/ai/{status,predict,rollout,sweep,inverse,confidence}` + WS | Complete, tested |
+
 #### Shared Infrastructure
 
 | Module | Implementation | Quality |
 |--------|----------------|---------|
-| **REST API + WebSocket** | FastAPI server with binary field encoding, pause/resume control | Functional, tested |
+| **REST API + WebSocket** | FastAPI server with binary field encoding, pause/resume control + AI router | Functional, tested |
 | **Diagnostics** | HDF5 time-series output, checkpoint/restart framework | Working |
-| **CLI** | `dpf simulate`, `dpf verify`, `dpf backends`, `dpf serve` with backend selection | Complete |
+| **CLI** | `dpf simulate`, `dpf verify`, `dpf backends`, `dpf serve`, `dpf export-well`, `dpf sweep`, `dpf validate-dataset`, `dpf predict`, `dpf inverse`, `dpf serve-ai` | Complete |
 
 ### Python Engine Extended Physics (Phases B–D)
 
@@ -154,11 +169,11 @@ We study these established MHD codes to guide our development:
 | ~~Phase E~~ | ~~Apple Silicon optimization~~ | 6/10 (faster) | ~~Numba prange in viscosity, CT, Nernst; benchmark suite~~ | ✅ Done |
 | ~~Phase F~~ | ~~Athena++ integration~~ | — | ~~Submodule, pybind11, dual-engine, verification, CLI/server~~ | ✅ Done |
 | ~~Phase G~~ | ~~Athena++ DPF physics~~ | 6-7/10 | ~~Circuit coupling, Spitzer η, two-temp, bremsstrahlung, Braginskii~~ | ✅ Done |
-| **Phase H** (next) | WALRUS data pipeline | — | Well exporter, batch runner, dataset validator | 🔜 |
-| **Phase I** | WALRUS fine-tuning + AI | — | Surrogate, inverse design, real-time server | |
-| **Phase J** | Unity frontend + HPC | — | Teaching/Engineering mode, AthenaK GPU | |
+| ~~Phase H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
+| ~~Phase I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
+| **Phase J** (next) | Unity frontend + HPC | — | Teaching/Engineering mode, AthenaK GPU | 🔜 |
 
-> **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. We fine-tune it on DPF simulation data to create fast surrogate models for parameter sweeps, inverse design ("what config yields X neutrons?"), and real-time Unity visualization. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
+> **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. The AI layer provides surrogate inference, inverse design, hybrid physics-surrogate engine, instability detection, ensemble confidence, and a real-time server. All AI dependencies (torch, optuna) are optional — the simulator works without them. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
 ---
 
@@ -206,15 +221,18 @@ pip install -e ".[dev]"
 # Server/API support (FastAPI, uvicorn, websockets)
 pip install -e ".[server]"
 
+# AI/ML support (PyTorch, optuna, pyDOE2 for surrogate models & inverse design)
+pip install -e ".[ai]"
+
 # Athena++ C++ backend (requires building from source)
 pip install -e ".[dev,server,athena]"
 # See docs/ATHENA_BUILD.md for Athena++ compilation instructions
 
-# All currently useful extras
-pip install -e ".[dev,server]"
+# All extras (dev + server + AI)
+pip install -e ".[dev,server,ai]"
 ```
 
-> **Note**: The `pyproject.toml` also lists `gpu` (CuPy), `mpi` (mpi4py), and `ml` (PyTorch) extras. These are placeholders for future work — no GPU kernels, MPI decomposition, or ML models exist yet.
+> **Note**: AI dependencies (torch, optuna, pyDOE2) are optional. All AI modules use import guards (`HAS_TORCH`, `HAS_OPTUNA`) and degrade gracefully — the simulator and server work without them. The `pyproject.toml` also lists `gpu` (CuPy) and `mpi` (mpi4py) extras as placeholders for future work.
 
 ---
 
@@ -263,6 +281,28 @@ Options:
   --reload         Auto-reload on code changes (dev only)
 ```
 
+### AI/ML Commands (Phase H-I)
+
+```bash
+# Export simulation data to WALRUS Well format
+dpf export-well <hdf5_file> --output well_data.h5
+
+# Run parameter sweep for training data generation
+dpf sweep <config_file> --samples 100 --output-dir sweep_results/
+
+# Validate WALRUS training dataset
+dpf validate-dataset <well_file_or_directory>
+
+# Surrogate model prediction
+dpf predict <checkpoint> <config_file> --steps 100
+
+# Inverse design optimization
+dpf inverse <checkpoint> --target neutron_yield=1e10 --method bayesian
+
+# Start AI-only server
+dpf serve-ai <checkpoint> --host 127.0.0.1 --port 8766
+```
+
 ---
 
 ## Server & API
@@ -285,9 +325,23 @@ DPF Unified includes a FastAPI server for real-time simulation control and futur
 | `POST` | `/api/simulations/{id}/stop` | Stop simulation |
 | `GET` | `/api/simulations/{id}/fields` | Get field data metadata |
 
+### AI Endpoints (Phase I)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/ai/status` | AI subsystem status (surrogate loaded, model info) |
+| `POST` | `/api/ai/predict` | Single next-step surrogate prediction |
+| `POST` | `/api/ai/rollout` | Multi-step autoregressive rollout |
+| `POST` | `/api/ai/sweep` | Parameter sweep via surrogate |
+| `POST` | `/api/ai/inverse` | Inverse design optimization |
+| `GET` | `/api/ai/confidence` | Ensemble confidence + OOD score |
+| `WS` | `/ws/ai/stream` | Real-time AI prediction streaming |
+
+> AI endpoints require loading a surrogate checkpoint first. All AI dependencies are optional.
+
 ### WebSocket Streaming
 
-Connect to `ws://host:port/ws/{sim_id}` for real-time step-by-step updates. Binary field encoding supported with configurable downsampling.
+Connect to `ws://host:port/ws/{sim_id}` for real-time step-by-step updates. Binary field encoding supported with configurable downsampling. AI streaming available at `ws://host:port/ws/ai/stream`.
 
 Interactive docs at `http://localhost:8765/docs` when the server is running.
 
@@ -385,9 +439,22 @@ DPF_Unified/
 │   ├── validation/                # [ACTIVE] Experimental comparison suite
 │   ├── verification/              # [ACTIVE] Shock tubes, convergence tests
 │   ├── server/                    # [ACTIVE] FastAPI REST + WebSocket
-│   ├── cli/                       # [ACTIVE] Click CLI
+│   ├── cli/                       # [ACTIVE] Click CLI (12 commands)
 │   ├── athena_wrapper/            # [ACTIVE] Athena++ C++ pybind11 wrapper
 │   ├── core/                      # [ACTIVE] Base classes, field manager
+│   │
+│   ├── ai/                        # [ACTIVE] AI/ML integration (Phase H-I)
+│   │   ├── __init__.py            #   HAS_TORCH, HAS_WALRUS, HAS_OPTUNA guards
+│   │   ├── field_mapping.py       #   DPF ↔ Well field name/shape mapping
+│   │   ├── well_exporter.py       #   DPF → Well HDF5 format converter
+│   │   ├── batch_runner.py        #   LHS parameter sweep + trajectory generation
+│   │   ├── dataset_validator.py   #   Training data QA (NaN, schema, energy)
+│   │   ├── surrogate.py           #   WALRUS inference wrapper
+│   │   ├── inverse_design.py      #   Bayesian/evolutionary config optimizer
+│   │   ├── hybrid_engine.py       #   Physics → surrogate handoff engine
+│   │   ├── instability_detector.py #  WALRUS divergence-based anomaly detection
+│   │   ├── confidence.py          #   Ensemble prediction + OOD detection
+│   │   └── realtime_server.py     #   FastAPI AI router + WebSocket streaming
 │   │
 │   └── experimental/              # [DORMANT] Code exists but not integrated
 │       ├── amr/                   #   Adaptive mesh refinement
@@ -403,7 +470,7 @@ DPF_Unified/
 │   └── athinput/
 │       └── athinput.dpf_zpinch    # Athena++ input deck for DPF simulations
 │
-└── tests/                         # 873+ tests (pytest, 898 total)
+└── tests/                         # 1129 tests (pytest, 1103 non-slow + 25 slow)
 ```
 
 ---
@@ -438,6 +505,8 @@ pytest tests/ -v -m "not slow"
 | Athena++ / dual-engine | 70+ | Good — Sod, Brio-Wu, magnoh, cross-backend, CLI |
 | **Athena++ DPF physics (Phase G)** | **128** | **Strong — circuit, Spitzer, two-temp, radiation, Braginskii** |
 | Server/API | 60+ | Good — REST + WebSocket functional |
+| **WALRUS pipeline (Phase H)** | **~90** | **Strong — field mapping, Well export, batch runner, dataset validator** |
+| **AI features (Phase I)** | **~140** | **Strong — surrogate, inverse, hybrid, instability, confidence, server** |
 | Integration | 50+ | Moderate — pipeline runs, peak-value validation |
 | Dormant modules | 0 | Missing |
 
