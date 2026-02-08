@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**A modern dense plasma focus (DPF) simulator** — built from scratch in Python, targeting high-fidelity multi-physics simulation of plasma focus devices on local hardware (Apple Silicon) and eventually HPC clusters.
+**A modern dense plasma focus (DPF) simulator** — dual-engine architecture with a Python (NumPy/Numba) fallback and an Athena++ C++ primary backend, targeting high-fidelity multi-physics simulation of plasma focus devices on local hardware (Apple Silicon) and eventually HPC clusters.
 
 ---
 
@@ -14,26 +14,28 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 | Layer | Description | Status |
 |-------|-------------|--------|
-| **Simulation Backend** | Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary backend via pybind11. Circuit coupling, radiation, collisions, neutron production | **Active development** |
+| **Simulation Backend** | Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary backend via pybind11. Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport | **Phase G complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
 | **AI Integration** | Surrogate models via [Polymathic.ai](https://polymathic-ai.org/) for fast estimates and inverse design ("what config yields X neutrons?") | **Planned** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
 
-**Current MVP focus**: Get the simulation backend to the highest fidelity possible, running locally on Apple Silicon (M3 Ultra MacBook Pro / Mac Studio). The Unity frontend and HPC support come after the physics is right.
+**Current MVP focus**: Get the simulation backend to the highest fidelity possible, running locally on Apple Silicon (M3 Pro MacBook Pro). The Unity frontend and HPC support come after the physics is right.
 
 ---
 
 ## Current State — Honest Assessment
 
-### Fidelity Grade: 5–6 / 10
+### Fidelity Grade: 6–7 / 10
 
-> **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 6/10.
+> **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 7/10.
 
-The simulation backend now has a complete V&V (Verification & Validation) framework, full Braginskii anisotropic transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 745+ tests pass with 0 failures. Phases A–E are complete, and Phase F (Athena++ integration) has successfully delivered a dual-engine architecture with backend selection.
+The simulation backend features a dual-engine architecture (Python + Athena++ C++) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 873 tests pass with 0 failures across 898 total (25 slow). Phases A–G are complete.
 
 ### Active Modules (What Actually Runs)
 
 These modules are wired into `engine.py` and execute during every simulation:
+
+#### Python Engine (`backend="python"`)
 
 | Module | Implementation | Quality |
 |--------|----------------|---------|
@@ -49,12 +51,29 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **Anomalous Resistivity** | Buneman threshold model: eta_anom when v_drift > v_crit | Phenomenological |
 | **Cylindrical Geometry** | 2D (r,z) axisymmetric with proper 1/r metric, axis protection at r=0 | Well-implemented |
 | **Strang Splitting** | collision/radiation <-> MHD <-> circuit, 2nd-order | Correct |
+
+#### Athena++ Engine (`backend="athena"`) — Phase G
+
+| Module | Implementation | Quality |
+|--------|----------------|---------|
+| **Circuit Coupling** | ruser_mesh_data exchange: I, V → C++ source terms; R_plasma, L_plasma → Python circuit solver | Complete — bidirectional |
+| **Spitzer Resistivity** | EnrollFieldDiffusivity with GMS Coulomb log + Buneman anomalous threshold | Strong — matches Python engine |
+| **Two-Temperature** | Passive scalars (NSCALARS=2) for e/i energy densities with Spitzer equilibration | Complete |
+| **Bremsstrahlung Radiation** | Implicit Newton-Raphson (4 iterations) with Te floor at 1 eV and Gaunt factor | Robust — handles stiff cooling |
+| **Braginskii Viscosity** | EnrollViscosityCoefficient: η₀ = 0.96·n_i·k_B·T_i·τ_i (parallel), η₁ with ω_ci suppression (perpendicular) | Complete — NRL ion collision time |
+| **Braginskii Conduction** | EnrollConductionCoefficient: κ_∥ = 3.16·n_e·k_B²·T_e·τ_e/m_e, κ_⊥/(1+(ω_ce·τ_e)²), Sharma-Hammett flux limiter | Complete — harmonic-mean limiter |
+| **Electrode BCs** | EnrollUserBoundaryFunction for anode/cathode current injection | Complete |
+| **Volume Diagnostics** | UserWorkInLoop: R_plasma, L_plasma, peak Te, total radiated power | Complete |
+
+#### Shared Infrastructure
+
+| Module | Implementation | Quality |
+|--------|----------------|---------|
 | **REST API + WebSocket** | FastAPI server with binary field encoding, pause/resume control | Functional, tested |
 | **Diagnostics** | HDF5 time-series output, checkpoint/restart framework | Working |
+| **CLI** | `dpf simulate`, `dpf verify`, `dpf backends`, `dpf serve` with backend selection | Complete |
 
-### Recently Integrated (Phases B–D — completed)
-
-These modules were dormant or newly implemented and are now wired into the engine:
+### Python Engine Extended Physics (Phases B–D)
 
 | Module | Status | How Activated |
 |--------|--------|---------------|
@@ -78,7 +97,7 @@ These live in `src/dpf/experimental/` to clearly communicate their status:
 | **Hybrid PIC** | 978 | Boris pusher + CIC deposition complete | Never instantiated; kinetic effects are fidelity-6+ |
 | **Multi-Species** | 409 | SpeciesMixture class complete | Will be integrated in Phase D (after line radiation validation) |
 
-**Bottom line**: After Phase B integration, ~20-25% of source code remains dormant (AMR, PIC, GPU, multi-species). The core physics pipeline is now substantially complete.
+**Bottom line**: The core physics pipeline is substantially complete in both engines. ~20-25% of Python source code remains dormant (AMR, PIC, GPU, multi-species). The Athena++ C++ problem generator (`dpf_zpinch.cpp`, 1,003 LOC) implements all DPF-specific physics as Athena++ enrolled callbacks.
 
 ### Verification & Validation (Phase C — completed)
 
@@ -134,8 +153,8 @@ We study these established MHD codes to guide our development:
 | ~~Phase D~~ | ~~Physics improvements~~ | 6/10 | ~~Full Braginskii, Powell div-B, anisotropic conduction, Dedner GLM~~ | ✅ Done |
 | ~~Phase E~~ | ~~Apple Silicon optimization~~ | 6/10 (faster) | ~~Numba prange in viscosity, CT, Nernst; benchmark suite~~ | ✅ Done |
 | ~~Phase F~~ | ~~Athena++ integration~~ | — | ~~Submodule, pybind11, dual-engine, verification, CLI/server~~ | ✅ Done |
-| **Phase G** (next) | Athena++ DPF physics | — | Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii | 🔜 |
-| **Phase H** | WALRUS data pipeline | — | Well exporter, batch runner, dataset validator | |
+| ~~Phase G~~ | ~~Athena++ DPF physics~~ | 6-7/10 | ~~Circuit coupling, Spitzer η, two-temp, bremsstrahlung, Braginskii~~ | ✅ Done |
+| **Phase H** (next) | WALRUS data pipeline | — | Well exporter, batch runner, dataset validator | 🔜 |
 | **Phase I** | WALRUS fine-tuning + AI | — | Surrogate, inverse design, real-time server | |
 | **Phase J** | Unity frontend + HPC | — | Teaching/Engineering mode, AthenaK GPU | |
 
@@ -379,9 +398,12 @@ DPF_Unified/
 │   ├── benchmarks/                # [ACTIVE] Apple Silicon performance benchmarks
 │
 ├── external/
-│   └── athena/                    # Athena++ git submodule (Princeton MHD code)
+│   ├── athena/                    # Athena++ git submodule (Princeton MHD code)
+│   │   └── src/pgen/dpf_zpinch.cpp  # Custom DPF z-pinch problem generator (1,003 LOC)
+│   └── athinput/
+│       └── athinput.dpf_zpinch    # Athena++ input deck for DPF simulations
 │
-└── tests/                         # 745+ tests (pytest)
+└── tests/                         # 873+ tests (pytest, 898 total)
 ```
 
 ---
@@ -414,6 +436,7 @@ pytest tests/ -v -m "not slow"
 | Braginskii/Anisotropic | 14 | Good — limits, backward compat, field alignment |
 | V&V Benchmarks | 40+ | Good — diffusion, Orszag-Tang, Sedov, Lee Model |
 | Athena++ / dual-engine | 70+ | Good — Sod, Brio-Wu, magnoh, cross-backend, CLI |
+| **Athena++ DPF physics (Phase G)** | **128** | **Strong — circuit, Spitzer, two-temp, radiation, Braginskii** |
 | Server/API | 60+ | Good — REST + WebSocket functional |
 | Integration | 50+ | Moderate — pipeline runs, peak-value validation |
 | Dormant modules | 0 | Missing |
@@ -454,14 +477,21 @@ MIT License — see [LICENSE](LICENSE).
 7. S.I. Braginskii, "Transport processes in a plasma," *Rev. Plasma Phys.* 1, 205 (1965)
 8. T. Miyoshi & K. Kusano, "A multi-state HLL approximate Riemann solver for ideal MHD," *J. Comput. Phys.* 208, 315 (2005)
 
+### Transport & Collisions
+
+9. S.I. Braginskii, "Transport processes in a plasma," *Rev. Plasma Phys.* 1, 205 (1965)
+10. D.O. Gericke, M.S. Murillo & M. Schlanges, "Dense plasma temperature equilibration in the binary collision approximation," *Phys. Rev. E* 65, 036418 (2002)
+11. P. Sharma & G.W. Hammett, "Preserving monotonicity in anisotropic diffusion," *J. Comput. Phys.* 227, 123 (2007)
+
 ### Reference Codes
 
-9. S. Zenitani, "OpenMHD: Open-source magnetohydrodynamics code," [github.com/zenitani/OpenMHD](https://github.com/zenitani/OpenMHD)
-10. FLASH Center, "FLASH User's Guide," University of Chicago, [flash.uchicago.edu](http://flash.uchicago.edu/)
-11. R. Keppens et al., "MPI-AMRVAC 3.0," *Astron. Astrophys.* 673, A66 (2023)
-12. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
+12. S. Zenitani, "OpenMHD: Open-source magnetohydrodynamics code," [github.com/zenitani/OpenMHD](https://github.com/zenitani/OpenMHD)
+13. FLASH Center, "FLASH User's Guide," University of Chicago, [flash.uchicago.edu](http://flash.uchicago.edu/)
+14. R. Keppens et al., "MPI-AMRVAC 3.0," *Astron. Astrophys.* 673, A66 (2023)
+15. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
+16. J.M. Stone et al., "Athena++: An adaptive mesh refinement framework for astrophysical magnetohydrodynamics," *ApJS* 249, 4 (2020)
 
 ### DPF Simulation Codes
 
-13. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
-14. M. Liu, "Soft X-rays from compact plasma focus," PhD Thesis, NIE Singapore (1996)
+17. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
+18. M. Liu, "Soft X-rays from compact plasma focus," PhD Thesis, NIE Singapore (1996)
