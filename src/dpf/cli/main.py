@@ -149,5 +149,200 @@ def serve(host: str, port: int, reload: bool) -> None:
     )
 
 
+# ── AI / ML commands ─────────────────────────────────────────────
+
+
+@cli.command("export-well")
+@click.argument("config_file", type=click.Path(exists=True))
+@click.option("--output", "-o", type=str, default="well_output.h5", help="Output HDF5 file.")
+@click.option("--field-interval", type=int, default=10, help="Steps between field snapshots.")
+@click.option("--steps", type=int, default=None, help="Max timesteps.")
+@click.option("--backend", type=click.Choice(["python", "athena", "auto"]), default=None)
+def export_well(
+    config_file: str, output: str, field_interval: int, steps: int | None, backend: str | None,
+) -> None:
+    """Run a simulation and export to Well format for WALRUS training."""
+    from dpf.ai.well_exporter import WellExporter
+    from dpf.config import SimulationConfig
+    from dpf.engine import SimulationEngine
+
+    config = SimulationConfig.from_file(config_file)
+    if backend:
+        config.fluid.backend = backend
+
+    engine = SimulationEngine(config)
+    click.echo(f"Running simulation (backend={engine.backend}) ...")
+
+    exporter = WellExporter(
+        output_path=output,
+        grid_shape=tuple(config.grid_shape),
+        dx=config.dx,
+        dz=config.geometry.dz,
+        geometry=config.geometry.type,
+        sim_params={"V0": config.circuit.V0, "C": config.circuit.C},
+    )
+
+    step_count = 0
+    while True:
+        result = engine.step()
+        step_count += 1
+        if step_count % field_interval == 0:
+            snapshot = engine.get_field_snapshot()
+            exporter.add_snapshot(
+                snapshot, result.time,
+                {"current": result.current, "voltage": result.voltage},
+            )
+        if result.finished or (steps and step_count >= steps):
+            break
+
+    path = exporter.finalize()
+    click.echo(f"Exported {len(exporter._times)} snapshots to {path}")
+
+
+@cli.command()
+@click.argument("sweep_config", type=click.Path(exists=True))
+@click.option("--output", "-o", type=str, default="sweep_output", help="Output directory.")
+@click.option("--workers", "-w", type=int, default=4, help="Parallel workers.")
+def sweep(sweep_config: str, output: str, workers: int) -> None:
+    """Run a parameter sweep to generate WALRUS training data."""
+    import json as json_mod
+
+    from dpf.ai.batch_runner import BatchRunner, ParameterRange
+    from dpf.config import SimulationConfig
+
+    with open(sweep_config) as f:
+        sweep_data = json_mod.load(f)
+
+    base_config = SimulationConfig(**sweep_data["base_config"])
+    ranges = [
+        ParameterRange(
+            name=r["name"], low=r["low"], high=r["high"],
+            log_scale=r.get("log_scale", False),
+        )
+        for r in sweep_data.get("parameter_ranges", [])
+    ]
+    n_samples = sweep_data.get("n_samples", 100)
+
+    runner = BatchRunner(
+        base_config=base_config,
+        parameter_ranges=ranges,
+        n_samples=n_samples,
+        output_dir=output,
+        workers=workers,
+    )
+    click.echo(f"Running {n_samples} samples with {workers} workers ...")
+    result = runner.run()
+    click.echo(f"Done: {result.n_success}/{result.n_total} succeeded")
+    if result.failed_configs:
+        click.echo(f"  {result.n_failed} failures", err=True)
+
+
+@cli.command("validate-dataset")
+@click.argument("directory", type=click.Path(exists=True))
+def validate_dataset(directory: str) -> None:
+    """Validate a Well-format training dataset."""
+    from dpf.ai.dataset_validator import DatasetValidator
+
+    validator = DatasetValidator()
+    results = validator.validate_directory(directory)
+    report = validator.summary_report(results)
+    click.echo(report)
+
+
+@cli.command()
+@click.argument("config_file", type=click.Path(exists=True))
+@click.option("--checkpoint", type=click.Path(exists=True), required=True, help="WALRUS checkpoint.")
+@click.option("--steps", type=int, default=100, help="Rollout steps.")
+@click.option("--device", type=click.Choice(["cpu", "mps", "cuda"]), default="cpu")
+def predict(config_file: str, checkpoint: str, steps: int, device: str) -> None:
+    """Run WALRUS surrogate prediction for a configuration."""
+    from dpf.ai.surrogate import DPFSurrogate
+    from dpf.config import SimulationConfig
+    from dpf.engine import SimulationEngine
+
+    config = SimulationConfig.from_file(config_file)
+    surrogate = DPFSurrogate(checkpoint, device=device)
+    click.echo(f"Loaded surrogate on {device}")
+
+    # Generate initial states from a short physics run
+    engine = SimulationEngine(config)
+    history = []
+    for _ in range(surrogate.history_length):
+        engine.step()
+        history.append(engine.get_field_snapshot())
+
+    # Run surrogate rollout
+    trajectory = surrogate.rollout(history, n_steps=steps)
+    click.echo(f"Rollout complete: {len(trajectory)} steps predicted")
+
+
+@cli.command()
+@click.argument("targets_file", type=click.Path(exists=True))
+@click.option("--checkpoint", type=click.Path(exists=True), required=True, help="WALRUS checkpoint.")
+@click.option(
+    "--method", type=click.Choice(["bayesian", "evolutionary"]), default="bayesian",
+)
+@click.option("--n-trials", type=int, default=100, help="Optimization trials.")
+@click.option("--device", type=click.Choice(["cpu", "mps", "cuda"]), default="cpu")
+def inverse(
+    targets_file: str, checkpoint: str, method: str, n_trials: int, device: str,
+) -> None:
+    """Run inverse design to find configurations matching targets."""
+    import json as json_mod
+
+    from dpf.ai.inverse_design import InverseDesigner
+    from dpf.ai.surrogate import DPFSurrogate
+
+    with open(targets_file) as f:
+        data = json_mod.load(f)
+
+    targets = data["targets"]
+    constraints = data.get("constraints", {})
+    param_ranges = {k: tuple(v) for k, v in data.get("parameter_ranges", {}).items()}
+
+    surrogate = DPFSurrogate(checkpoint, device=device)
+    designer = InverseDesigner(surrogate, parameter_ranges=param_ranges)
+
+    click.echo(f"Running {method} optimization ({n_trials} trials) ...")
+    result = designer.find_config(
+        targets=targets, constraints=constraints, method=method, n_trials=n_trials,
+    )
+
+    click.echo("\n--- Inverse Design Result ---")
+    click.echo(f"  Best score: {result.best_score:.6e}")
+    for key, val in result.best_params.items():
+        click.echo(f"  {key}: {val:.6e}")
+
+
+@cli.command("serve-ai")
+@click.option("--checkpoint", type=click.Path(exists=True), required=True, help="WALRUS checkpoint.")
+@click.option("--host", default="127.0.0.1", help="Bind address.")
+@click.option("--port", type=int, default=8766, help="Port number.")
+@click.option("--device", type=click.Choice(["cpu", "mps", "cuda"]), default="cpu")
+def serve_ai(checkpoint: str, host: str, port: int, device: str) -> None:
+    """Start the AI inference server with a loaded WALRUS model."""
+    try:
+        import uvicorn
+    except ImportError:
+        click.echo("Server deps missing. Run: pip install dpf-unified[server]", err=True)
+        sys.exit(1)
+
+    from dpf.ai.realtime_server import load_surrogate
+
+    click.echo(f"Loading WALRUS model from {checkpoint} on {device} ...")
+    load_surrogate(checkpoint, device=device)
+
+    click.echo(f"Starting AI server on {host}:{port}")
+    click.echo(f"  Status: http://{host}:{port}/api/ai/status")
+    click.echo(f"  Docs: http://{host}:{port}/docs")
+
+    uvicorn.run(
+        "dpf.server.app:app",
+        host=host,
+        port=port,
+        log_level="info",
+    )
+
+
 if __name__ == "__main__":
     cli()

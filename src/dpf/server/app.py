@@ -43,11 +43,22 @@ from dpf.server.simulation import SimulationManager
 
 logger = logging.getLogger(__name__)
 
+# AI router — optional, loaded only if dpf.ai is available
+try:
+    from dpf.ai.realtime_server import ai_router
+
+    _HAS_AI_ROUTER = True
+except ImportError:
+    _HAS_AI_ROUTER = False
+
 app = FastAPI(
     title="DPF Simulation Server",
     description="Dense Plasma Focus simulator — REST + WebSocket API for Unity GUI",
     version="0.1.0",
 )
+
+if _HAS_AI_ROUTER:
+    app.include_router(ai_router)
 
 # Allow Unity to connect from any origin (localhost development)
 app.add_middleware(

@@ -109,3 +109,100 @@ class FieldHeader(BaseModel):
         ..., description="Per-field metadata: shape, dtype, offset, nbytes"
     )
     total_bytes: int
+
+
+# ── AI request / response models ───────────────────────────────────
+
+
+class PredictRequest(BaseModel):
+    """Request for single next-step AI prediction."""
+
+    type: str = "predict"
+    history: list[dict[str, Any]] = Field(
+        ..., description="List of state dicts (arrays as nested lists)"
+    )
+
+
+class PredictResponse(BaseModel):
+    """Response with predicted state."""
+
+    type: str = "prediction"
+    predicted_state: dict[str, Any] = Field(
+        ..., description="Predicted state dict (arrays as nested lists)"
+    )
+    inference_time_ms: float = 0.0
+
+
+class RolloutRequest(BaseModel):
+    """Request for multi-step rollout."""
+
+    type: str = "rollout"
+    initial_states: list[dict[str, Any]] = Field(
+        ..., description="Initial history states"
+    )
+    n_steps: int = Field(10, ge=1, le=1000, description="Number of rollout steps")
+
+
+class RolloutResponse(BaseModel):
+    """Response with rollout trajectory."""
+
+    type: str = "rollout_result"
+    trajectory: list[dict[str, Any]] = Field(default_factory=list)
+    n_steps: int = 0
+    total_inference_time_ms: float = 0.0
+
+
+class SweepRequest(BaseModel):
+    """Request for parameter sweep."""
+
+    type: str = "sweep"
+    configs: list[dict[str, Any]] = Field(
+        ..., description="List of config parameter dicts"
+    )
+    n_steps: int = Field(100, ge=1, description="Rollout steps per config")
+
+
+class SweepResponse(BaseModel):
+    """Response with sweep results."""
+
+    type: str = "sweep_result"
+    results: list[dict[str, Any]] = Field(default_factory=list)
+    n_configs: int = 0
+
+
+class InverseRequest(BaseModel):
+    """Request for inverse design."""
+
+    type: str = "inverse"
+    targets: dict[str, float] = Field(..., description="Target outputs")
+    constraints: dict[str, float] = Field(default_factory=dict)
+    method: str = Field("bayesian", description="Optimization method")
+    n_trials: int = Field(100, ge=1, le=10000)
+
+
+class InverseResponse(BaseModel):
+    """Response with inverse design results."""
+
+    type: str = "inverse_result"
+    best_params: dict[str, float] = Field(default_factory=dict)
+    best_score: float = 0.0
+    n_trials: int = 0
+
+
+class ConfidenceResponse(BaseModel):
+    """Response with prediction + confidence."""
+
+    type: str = "confidence"
+    predicted_state: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = 1.0
+    ood_score: float = 0.0
+
+
+class AIStatusResponse(BaseModel):
+    """AI module status."""
+
+    type: str = "ai_status"
+    torch_available: bool = False
+    model_loaded: bool = False
+    device: str = "cpu"
+    ensemble_size: int = 0

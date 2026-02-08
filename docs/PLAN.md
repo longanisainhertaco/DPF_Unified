@@ -22,8 +22,12 @@ We are building a modern dense plasma focus (DPF) simulator with:
   - F.4: CLI `--backend` flag, server health backend reporting, `dpf backends` command
   - F.5: Documentation (CLAUDE.md, README, ATHENA_BUILD.md, CI, PLAN.md)
 
-**745+ tests passing** (745 non-slow, 25 slow), 0 failures.
-**Current fidelity: 5-6/10** with dual-engine architecture ready for Phase G physics.
+- ✅ **Phase G**: Athena++ DPF physics — Circuit coupling C++, Spitzer resistivity, two-temperature, bremsstrahlung, Braginskii transport
+- ✅ **Phase H**: WALRUS training data pipeline — Field mapping, Well HDF5 exporter, dataset validator, batch trajectory runner
+- ✅ **Phase I**: AI features — Surrogate inference, inverse design, hybrid engine, instability detector, confidence/ensemble, real-time server, CLI + config extensions
+
+**1129 total tests** (1103 non-slow, 25 slow), 0 failures.
+**Current fidelity: 6-7/10** with dual-engine architecture and full AI/ML integration.
 
 ---
 
@@ -442,13 +446,13 @@ WALRUS predictions need uncertainty bounds:
 | ~~D~~ | ~~Physics improvements~~ | 6/10 | ~~Full Braginskii, Powell div-B, anisotropic conduction~~ | ✅ Done |
 | ~~E~~ | ~~Apple Silicon optimization~~ | 6/10 | ~~Numba prange, Accelerate BLAS, benchmarks~~ | ✅ Done |
 | ~~F~~ | ~~Athena++ integration~~ | — | ~~Submodule, pybind11, dual-engine, verification, CLI/server~~ | ✅ Done |
-| **G** (next) | Athena++ DPF physics | 7/10 | Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii | 🔜 |
-| **H** | WALRUS data pipeline | — | Well exporter, batch trajectory generator, dataset validation | |
-| **I** | WALRUS fine-tuning + AI | — | Surrogate, inverse design, real-time server | |
-| **J** | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, AthenaK GPU | |
+| ~~G~~ | ~~Athena++ DPF physics~~ | 7/10 | ~~Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii~~ | ✅ Done |
+| ~~H~~ | ~~WALRUS data pipeline~~ | — | ~~Field mapping, Well exporter, batch runner, dataset validator~~ | ✅ Done |
+| ~~I~~ | ~~AI features~~ | — | ~~Surrogate, inverse design, hybrid engine, instability, confidence, server~~ | ✅ Done |
+| **J** (next) | Unity frontend + HPC | 8/10 | Teaching/Engineering mode, AthenaK GPU | 🔜 |
 
-**Phases A-F complete**: 745+ tests, dual-engine architecture operational.
-**Next**: Phase G adds DPF-specific physics to Athena++ C++ backend.
+**Phases A-I complete**: 1129 tests, dual-engine architecture + full AI/ML integration operational.
+**Next**: Phase J adds Unity frontend and HPC scaling.
 
 ---
 
@@ -465,23 +469,44 @@ WALRUS predictions need uncertainty bounds:
 | `src/dpf/validation/suite.py` | Full waveform RMSE comparison |
 | `README.md` | Update roadmap, add WALRUS section |
 
-### New Files to Create
+### New Files to Create (for Phase J)
 | File | Purpose |
 |------|---------|
-| `src/dpf/verification/diffusion_convergence.py` | Resistive diffusion convergence test |
-| `src/dpf/verification/orszag_tang.py` | Orszag-Tang vortex benchmark |
-| `src/dpf/verification/sedov_cylindrical.py` | Cylindrical Sedov blast |
-| `src/dpf/validation/lee_model_comparison.py` | Lee Model cross-check |
-| `src/dpf/fluid/anisotropic_conduction.py` | Field-aligned thermal conduction |
-| `src/dpf/ai/__init__.py` | AI module init |
-| `src/dpf/ai/well_exporter.py` | DPF → Well HDF5 format converter |
-| `src/dpf/ai/batch_runner.py` | Parallel trajectory generation |
-| `src/dpf/ai/dataset_validator.py` | Training data QA |
-| `src/dpf/ai/surrogate.py` | WALRUS inference wrapper |
-| `src/dpf/ai/inverse_design.py` | Target → config optimizer |
-| `src/dpf/ai/realtime_server.py` | WebSocket endpoint for Unity |
-| `src/dpf/ai/hybrid_engine.py` | DPF engine + WALRUS handoff |
-| `src/dpf/ai/instability_detector.py` | Anomaly detection via WALRUS |
+| TBD | Unity frontend integration, HPC scaling |
+
+### Files Created in Phases A-I
+| File | Purpose | Phase |
+|------|---------|-------|
+| `src/dpf/verification/diffusion_convergence.py` | Resistive diffusion convergence test | C |
+| `src/dpf/verification/orszag_tang.py` | Orszag-Tang vortex benchmark | C |
+| `src/dpf/verification/sedov_cylindrical.py` | Cylindrical Sedov blast | C |
+| `src/dpf/validation/lee_model_comparison.py` | Lee Model cross-check | C |
+| `src/dpf/fluid/anisotropic_conduction.py` | Field-aligned thermal conduction | D |
+| `src/dpf/ai/__init__.py` | AI module init (HAS_TORCH, HAS_WALRUS guards) | H |
+| `src/dpf/ai/field_mapping.py` | DPF ↔ Well field name/shape mapping | H |
+| `src/dpf/ai/well_exporter.py` | DPF → Well HDF5 format converter | H |
+| `src/dpf/ai/batch_runner.py` | Parallel trajectory generation (LHS sampling) | H |
+| `src/dpf/ai/dataset_validator.py` | Training data QA (NaN/Inf, schema, energy) | H |
+| `src/dpf/ai/surrogate.py` | WALRUS inference wrapper (predict, rollout, sweep) | I |
+| `src/dpf/ai/inverse_design.py` | Target → config optimizer (Bayesian/evolutionary) | I |
+| `src/dpf/ai/hybrid_engine.py` | DPF engine + WALRUS handoff with validation | I |
+| `src/dpf/ai/instability_detector.py` | Anomaly detection via WALRUS divergence | I |
+| `src/dpf/ai/confidence.py` | Ensemble prediction with uncertainty quantification | I |
+| `src/dpf/ai/realtime_server.py` | FastAPI router for AI endpoints + WebSocket | I |
+
+### Test Files (Phases H-I)
+| File | Tests | Coverage |
+|------|-------|---------|
+| `tests/test_phase_h_field_mapping.py` | ~15 | Field name mapping, shape transforms, geometry inference |
+| `tests/test_phase_h_well_exporter.py` | ~30 | HDF5 Well format export, metadata, cylindrical geometry |
+| `tests/test_phase_h_dataset_validator.py` | ~20 | NaN/Inf checks, schema validation, energy conservation |
+| `tests/test_phase_h_batch_runner.py` | ~27 | LHS sampling, config building, parallel execution |
+| `tests/test_phase_i_surrogate.py` | ~25 | Load/predict/rollout/sweep, mock torch |
+| `tests/test_phase_i_inverse_design.py` | ~20 | Bayesian/evolutionary search, constraints |
+| `tests/test_phase_i_hybrid_engine.py` | ~15 | Physics→surrogate handoff, validation, fallback |
+| `tests/test_phase_i_instability.py` | ~15 | Divergence detection, severity classification |
+| `tests/test_phase_i_confidence.py` | ~15 | Ensemble mean/std, OOD detection, confidence scoring |
+| `tests/test_phase_i_ai_server.py` | ~25 | REST endpoints, WebSocket, surrogate loading |
 
 ---
 
