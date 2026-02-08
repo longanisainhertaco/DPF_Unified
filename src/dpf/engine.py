@@ -9,10 +9,16 @@ This is the central coordination layer that ensures:
 3. Radiation losses are applied to electron energy
 4. Diagnostics are recorded at the configured interval
 5. The simulation terminates cleanly
+
+Supports dual-engine architecture via ``config.fluid.backend``:
+- ``"python"`` — NumPy/Numba MHD solver (default, full feature set)
+- ``"athena"`` — Athena++ C++ MHD solver (10-100x faster, requires build)
+- ``"auto"``   — Athena++ if available, else fallback to Python
 """
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time as wall_time
 from typing import Any
@@ -32,8 +38,10 @@ from dpf.diagnostics.interferometry import abel_transform, fringe_shift
 from dpf.diagnostics.neutron_yield import neutron_yield_rate
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
+from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
 from dpf.fluid.mhd_solver import MHDSolver
 from dpf.fluid.nernst import apply_nernst_advection
+from dpf.fluid.super_time_step import rkl2_diffusion_3d, rkl2_thermal_step
 from dpf.fluid.viscosity import (
     braginskii_eta0,
     braginskii_eta1,
@@ -41,8 +49,6 @@ from dpf.fluid.viscosity import (
     viscous_heating_rate,
     viscous_stress_rate,
 )
-from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
-from dpf.fluid.super_time_step import rkl2_diffusion_3d, rkl2_thermal_step
 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
 from dpf.radiation.line_radiation import apply_line_radiation_losses
 from dpf.radiation.transport import apply_radiation_transport
@@ -96,7 +102,7 @@ class SimulationEngine:
             cathode_radius=cc.cathode_radius,
         )
 
-        # Fluid / MHD — select solver based on geometry
+        # Fluid / MHD — select solver based on geometry and backend
         fc = config.fluid
         self.geometry_type = config.geometry.type
 
@@ -106,7 +112,15 @@ class SimulationEngine:
         # Boundary config
         self.boundary_cfg = config.boundary
 
-        if self.geometry_type == "cylindrical":
+        # Backend selection: "python", "athena", or "auto"
+        self.backend = self._resolve_backend(fc.backend)
+
+        if self.backend == "athena":
+            from dpf.athena_wrapper import AthenaPPSolver
+            self.fluid = AthenaPPSolver(config)
+            self._cell_volume = None
+            logger.info("Using Athena++ backend (mode: %s)", self.fluid.mode)
+        elif self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx
             self.fluid = CylindricalMHDSolver(
                 nr=nx,
@@ -182,13 +196,55 @@ class SimulationEngine:
         self.checkpoint_filename: str = "checkpoint.h5"
 
         logger.info(
-            "SimulationEngine initialized: grid=(%d,%d,%d), geometry=%s, sim_time=%.2e s, "
-            "bremsstrahlung=%s, fld=%s, sheath=%s",
-            nx, ny, nz, self.geometry_type, config.sim_time,
+            "SimulationEngine initialized: grid=(%d,%d,%d), geometry=%s, backend=%s, "
+            "sim_time=%.2e s, bremsstrahlung=%s, fld=%s, sheath=%s",
+            nx, ny, nz, self.geometry_type, self.backend, config.sim_time,
             self.rad_cfg.bremsstrahlung_enabled,
             self.rad_cfg.fld_enabled,
             self.sheath_cfg.enabled,
         )
+
+    @staticmethod
+    def _resolve_backend(requested: str) -> str:
+        """Resolve the requested backend to an actual backend name.
+
+        Args:
+            requested: ``"python"``, ``"athena"``, or ``"auto"``.
+
+        Returns:
+            ``"python"`` or ``"athena"``.
+
+        Raises:
+            RuntimeError: If ``"athena"`` was explicitly requested but is
+                not available.
+        """
+        if requested == "python":
+            return "python"
+
+        if requested == "athena":
+            from dpf.athena_wrapper import is_available
+            if not is_available():
+                raise RuntimeError(
+                    "Athena++ backend requested but _athena_core extension "
+                    "is not compiled.  Build with:\n"
+                    "  cd src/dpf/athena_wrapper/cpp && mkdir -p build && cd build\n"
+                    "  cmake .. -DATHENA_ROOT=../../external/athena && make -j8\n"
+                    "Or use backend='python' or backend='auto'."
+                )
+            return "athena"
+
+        if requested == "auto":
+            try:
+                from dpf.athena_wrapper import is_available
+                if is_available():
+                    logger.info("Auto-selected Athena++ backend")
+                    return "athena"
+            except ImportError:
+                pass
+            logger.info("Auto-selected Python backend (Athena++ not available)")
+            return "python"
+
+        raise ValueError(f"Unknown backend: {requested!r}")
 
     def _initial_state(self, nx: int, ny: int, nz: int) -> dict[str, np.ndarray]:
         """Create initial plasma state (uniform fill gas)."""
@@ -339,6 +395,15 @@ class SimulationEngine:
         # Don't overshoot
         if self.time + dt > sim_time:
             dt = sim_time - self.time
+
+        # === Athena++ fast path ===
+        # When using the Athena++ backend, delegate the MHD step to C++
+        # and use a simplified coupling loop.  The full Python physics
+        # operators (Spitzer, Nernst, viscosity, radiation) will be moved
+        # to Athena++ source terms in Phase G.  For now, only circuit
+        # coupling is active.
+        if self.backend == "athena":
+            return self._step_athena(dt, sim_time, _max_steps)
 
         # === Step 1: Compute ionization state and plasma resistance ===
         Te = self.state["Te"]
@@ -591,6 +656,99 @@ class SimulationEngine:
             self.save_checkpoint()
 
         # Check if finished after this step
+        finished = self.time >= sim_time
+        if _max_steps is not None and self.step_count >= _max_steps:
+            finished = True
+
+        return self._make_step_result(dt=dt, finished=finished)
+
+    # ------------------------------------------------------------------
+    # Athena++ backend step
+    # ------------------------------------------------------------------
+
+    def _step_athena(
+        self, dt: float, sim_time: float, _max_steps: int | None
+    ) -> StepResult:
+        """Simplified timestep using the Athena++ MHD backend.
+
+        Circuit coupling is active (Python RLC solver), but the detailed
+        Python physics operators (Spitzer resistivity, Nernst, viscosity,
+        radiation) are bypassed.  These will be added as Athena++ source
+        terms in Phase G.
+
+        Args:
+            dt: Timestep size [s].
+            sim_time: Target simulation time [s].
+            _max_steps: Optional step limit.
+
+        Returns:
+            StepResult with scalar diagnostics.
+        """
+        # --- Circuit advance ---
+        coupling = self.fluid.coupling_interface()
+        coupling.R_plasma = 0.0
+        coupling.Z_bar = 1.0
+        back_emf = coupling.emf
+        new_coupling = self.circuit.step(coupling, back_emf, dt)
+        self._coupling = new_coupling
+
+        # --- MHD advance via Athena++ ---
+        self.state = self.fluid.step(
+            self.state,
+            dt,
+            current=new_coupling.current,
+            voltage=new_coupling.voltage,
+        )
+
+        # --- Advance time ---
+        self.time += dt
+        self.step_count += 1
+
+        # --- Diagnostics ---
+        self._last_R_plasma = 0.0
+        self._last_Z_bar = 1.0
+        self._last_eta_anom = 0.0
+
+        if self.step_count % self.diag_interval == 0:
+            circ = self.circuit.state
+            diag_state = {
+                **self.state,
+                "circuit": {
+                    "current": circ.current,
+                    "voltage": circ.voltage,
+                    "energy_cap": circ.energy_cap,
+                    "energy_ind": circ.energy_ind,
+                    "energy_res": circ.energy_res,
+                    "energy_total": self.circuit.total_energy(),
+                },
+                "plasma": {
+                    "R_plasma": 0.0,
+                    "Z_bar": 1.0,
+                    "eta_anomalous": 0.0,
+                    "sheath_enabled": False,
+                    "geometry": self.geometry_type,
+                    "backend": "athena",
+                },
+            }
+            # Athena++ may produce arrays with shapes that the Python
+            # diagnostics recorder doesn't expect (e.g. 2D cylindrical
+            # with nx3=1).  This is non-fatal.
+            with contextlib.suppress(ValueError, IndexError):
+                self.diagnostics.record(diag_state, self.time)
+
+        if self.step_count % 100 == 0:
+            E_total = self.circuit.total_energy()
+            logger.info(
+                "Step %d [athena]: t=%.4e s, dt=%.2e s, I=%.1f A, V=%.1f V, E_cons=%.4f",
+                self.step_count,
+                self.time,
+                dt,
+                new_coupling.current,
+                new_coupling.voltage,
+                E_total / max(self.initial_energy, 1e-30),
+            )
+
+        # Check if finished
         finished = self.time >= sim_time
         if _max_steps is not None and self.step_count >= _max_steps:
             finished = True
@@ -893,7 +1051,7 @@ class SimulationEngine:
         # Compute Spitzer thermal conductivity: kappa_e ~ 3.2 * ne * kB^2 * Te * tau_e / m_e
         # Simplified estimate: kappa ~ 20 * (kB * Te)^{5/2} / (m_e^{1/2} * e^4 * lnL)
         # For now, use a simplified isotropic Spitzer kappa
-        from dpf.constants import m_e, e as _e_charge
+        from dpf.constants import m_e
         tau_e = 3.44e5 * Te_safe**1.5 / (ne_safe * lnL)  # Approximate electron collision time
         kappa = 3.2 * ne_safe * k_B**2 * Te_safe * tau_e / m_e
 

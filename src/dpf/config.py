@@ -103,6 +103,13 @@ class BoundaryConfig(BaseModel):
 class FluidConfig(BaseModel):
     """Fluid / MHD solver parameters."""
 
+    backend: str = Field(
+        "python",
+        description=(
+            "MHD solver backend: 'python' (NumPy/Numba), 'athena' (Athena++ C++), "
+            "or 'auto' (Athena++ if available, else Python)"
+        ),
+    )
     reconstruction: str = Field("weno5", description="Reconstruction scheme")
     riemann_solver: str = Field("hll", description="Riemann solver type")
     cfl: float = Field(0.4, gt=0, lt=1, description="CFL number")
@@ -129,6 +136,14 @@ class FluidConfig(BaseModel):
     full_braginskii_viscosity: bool = Field(
         False, description="Enable full Braginskii viscosity (eta_0 + eta_1 + eta_3)"
     )
+
+    @model_validator(mode="after")
+    def validate_backend(self) -> FluidConfig:
+        if self.backend not in ("python", "athena", "auto"):
+            raise ValueError(
+                f"backend must be 'python', 'athena', or 'auto', got '{self.backend}'"
+            )
+        return self
 
 
 class DiagnosticsConfig(BaseModel):

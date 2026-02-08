@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import scipy.constants as const
+
 if TYPE_CHECKING:
     from dpf.config import SimulationConfig
 
@@ -84,11 +86,14 @@ def generate_athinput(
     }
     flux = riemann_map.get(fc.riemann_solver, "hlld")
 
-    # Map reconstruction
+    # Map reconstruction order.
+    # NOTE: Athena++ was compiled with default nghost=2, which only
+    # supports xorder <= 2 (PLM).  PPM/WENO require nghost >= 3.
+    # Until we recompile with --nghost=3, cap xorder at 2.
     recon_map = {
         "plm": 2,
-        "ppm": 3,
-        "weno5": 3,  # Athena++ uses xorder=3 for PPM/WENO
+        "ppm": 2,  # Would be 3 with --nghost=3 build
+        "weno5": 2,  # Would be 3 with --nghost=3 build
     }
     xorder = recon_map.get(fc.reconstruction, 2)
 
@@ -194,10 +199,28 @@ def generate_athinput(
     lines.append(f"gamma      = {fc.gamma:.4f}")
     lines.append("")
 
-    # Problem block — DPF-specific parameters
+    # Problem block — magnoh.cpp required parameters + DPF-specific parameters
+    #
+    # The compiled Athena++ binary uses magnoh.cpp as the problem generator.
+    # It requires: alpha, beta, pcoeff, d, vr, bphi, bz (all mandatory).
+    # For DPF: uniform fill gas (alpha=0), no initial B-field power law
+    # (beta=0), stationary gas (vr=0), B driven by circuit coupling later.
+    #
+    # Compute initial pressure from ideal gas law: p = rho * kB * T0 / m_ion
+    p0 = config.rho0 * const.k * config.T0 / config.ion_mass
+
     lines.append("<problem>")
-    lines.append("# DPF simulation parameters")
+    lines.append("# Magnetized Noh z-pinch parameters (required by magnoh.cpp)")
+    lines.append("alpha      = 0.0           # density power law: rho ~ r^alpha (uniform)")
+    lines.append("beta       = 0.0           # B-field power law: B ~ r^beta")
+    lines.append(f"pcoeff     = {p0:.6e}      # pressure coefficient [Pa]")
     lines.append(f"d          = {config.rho0:.6e}    # initial density [kg/m^3]")
+    lines.append("vr         = 0.0           # initial radial velocity [m/s]")
+    lines.append("bphi       = 0.0           # initial B_phi [T] (circuit-driven)")
+    lines.append("bz         = 0.0           # initial B_z [T]")
+    lines.append("perturb    = 0.0           # perturbation amplitude")
+    lines.append("mphi       = 0.0           # azimuthal mode number")
+    lines.append("# DPF-specific parameters")
     lines.append(f"T0         = {config.T0:.2f}       # initial temperature [K]")
     lines.append(f"ion_mass   = {config.ion_mass:.6e}  # ion mass [kg]")
     lines.append("# Circuit parameters")
