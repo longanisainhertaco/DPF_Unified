@@ -1,0 +1,67 @@
+# AthenaK MHD blast wave — DPF verification test
+#
+# 2D blast wave in magnetized medium.
+# Tests MHD solver, shock capturing, and magnetic field advection.
+# Built with: cmake -D PROBLEM=blast
+
+<comment>
+problem   = spherical blast wave (AthenaK)
+reference = Gardiner & Stone, JCP 205, 509 (2005)
+
+<job>
+basename  = Blast
+
+<mesh>
+nghost    = 4
+nx1       = 64
+x1min     = -0.5
+x1max     = 0.5
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 64
+x2min     = -0.5
+x2max     = 0.5
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 1
+x3min     = -0.5
+x3max     = 0.5
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 64
+nx2       = 64
+nx3       = 1
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim       = -1
+tlim       = 0.2
+ndiag      = 1
+
+<mhd>
+eos         = ideal
+reconstruct = ppm4
+rsolver     = hlld
+gamma       = 1.6666667
+
+<problem>
+pi_amb       = 0.1
+b_amb        = 1.0
+prat         = 100.
+inner_radius = 0.1
+outer_radius = 0.1
+
+<output1>
+file_type  = hst
+dt         = 0.01
+
+<output2>
+file_type  = vtk
+variable   = mhd_w_bcc
+dt         = 0.01

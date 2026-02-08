@@ -89,12 +89,14 @@ def _get_sim(sim_id: str) -> SimulationManager:
 async def health() -> dict[str, Any]:
     """Health check with backend availability info."""
     from dpf.athena_wrapper import is_available as athena_available
+    from dpf.athenak_wrapper import is_available as athenak_available
 
     return {
         "status": "ok",
         "backends": {
             "python": True,
             "athena": athena_available(),
+            "athenak": athenak_available(),
         },
     }
 

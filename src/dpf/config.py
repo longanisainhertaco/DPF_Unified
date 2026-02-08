@@ -139,9 +139,9 @@ class FluidConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_backend(self) -> FluidConfig:
-        if self.backend not in ("python", "athena", "auto"):
+        if self.backend not in ("python", "athena", "athenak", "auto"):
             raise ValueError(
-                f"backend must be 'python', 'athena', or 'auto', got '{self.backend}'"
+                f"backend must be 'python', 'athena', 'athenak', or 'auto', got '{self.backend}'"
             )
         return self
 
