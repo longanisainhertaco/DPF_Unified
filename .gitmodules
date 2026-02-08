@@ -1,0 +1,3 @@
+[submodule "external/athena"]
+	path = external/athena
+	url = https://github.com/PrincetonUniversity/athena.git
