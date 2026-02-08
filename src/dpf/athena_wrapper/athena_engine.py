@@ -539,38 +539,51 @@ class AthenaPPSolver(PlasmaSolverBase):
     ) -> None:
         """Update plasma coupling quantities from current state.
 
-        Computes volume-integral R_plasma and L_plasma for the
-        circuit solver.
+        Uses C++ ruser_mesh_data diagnostics (computed by dpf_zpinch.cpp
+        UserWorkInLoop) when available.  Falls back to Python volume
+        integrals for magnoh.cpp or subprocess mode.
 
         Args:
             state: Current DPF state dictionary.
             current: Circuit current [A].
         """
-        rho = state["rho"]
-        B = state["B"]
-        state["Te"]
-        dx = self.config.dx
+        R_plasma = 0.0
+        L_plasma = 0.0
 
-        I_sq = max(current**2, 1e-30)
+        # Try to get coupling data from C++ ruser_mesh_data (Phase G)
+        if self.mode == "linked" and self._initialized:
+            try:
+                coupling_data = self._core.get_coupling_data(self._mesh_handle)
+                R_plasma = coupling_data.get("R_plasma", 0.0)
+                L_from_cpp = coupling_data.get("L_plasma", 0.0)
+                if L_from_cpp > 0:
+                    L_plasma = L_from_cpp
+            except (AttributeError, RuntimeError):
+                pass  # get_coupling_data not available (old bindings)
 
-        # Rough estimate of B-field energy for inductance
-        B_sq = np.sum(B**2, axis=0)
-        if self._is_cylindrical:
-            dz = self.config.geometry.dz or dx
-            dr = dx
-            # Cell volumes: 2*pi*r*dr*dz
-            nr = rho.shape[0]
-            r = np.linspace(dr, nr * dr, nr)
-            r_vol = 2.0 * np.pi * r[:, np.newaxis, np.newaxis] * dr * dz
-            L_plasma = float(np.sum(B_sq / _MU_0 * r_vol)) / I_sq
-        else:
-            dV = dx**3
-            L_plasma = float(np.sum(B_sq / _MU_0 * dV)) / I_sq
+        # Fallback: compute L_plasma from Python state if C++ didn't provide it
+        if L_plasma <= 0.0:
+            rho = state["rho"]
+            B = state["B"]
+            dx = self.config.dx
+            I_sq = max(current**2, 1e-30)
+            B_sq = np.sum(B**2, axis=0)
+
+            if self._is_cylindrical:
+                dz = self.config.geometry.dz or dx
+                dr = dx
+                nr = rho.shape[0]
+                r = np.linspace(dr, nr * dr, nr)
+                r_vol = 2.0 * np.pi * r[:, np.newaxis, np.newaxis] * dr * dz
+                L_plasma = float(np.sum(B_sq / _MU_0 * r_vol)) / I_sq
+            else:
+                dV = dx**3
+                L_plasma = float(np.sum(B_sq / _MU_0 * dV)) / I_sq
 
         self._coupling = CouplingState(
             Lp=L_plasma,
             current=current,
-            R_plasma=0.0,  # TODO: compute from Spitzer in Phase G
+            R_plasma=R_plasma,
             Z_bar=1.0,
         )
 
