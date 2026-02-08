@@ -37,6 +37,7 @@ class SimulationInfo(BaseModel):
 
     sim_id: str
     status: SimulationStatus
+    backend: str = "python"
     step: int = 0
     time: float = 0.0
     current: float = 0.0

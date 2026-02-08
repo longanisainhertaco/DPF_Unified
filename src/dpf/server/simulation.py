@@ -131,9 +131,13 @@ class SimulationManager:
     def info(self) -> dict[str, Any]:
         """Build a SimulationInfo-compatible dict."""
         r = self.last_result
+        backend = "python"
+        if self.engine is not None:
+            backend = getattr(self.engine, "backend", "python")
         return {
             "sim_id": self.sim_id,
             "status": self.status.value,
+            "backend": backend,
             "step": r.step if r else 0,
             "time": r.time if r else 0.0,
             "current": r.current if r else 0.0,

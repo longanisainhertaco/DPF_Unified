@@ -31,12 +31,20 @@ def cli(verbose: bool) -> None:
 @click.option("--output", "-o", type=str, default=None, help="Override output HDF5 filename.")
 @click.option("--restart", type=click.Path(exists=True), default=None, help="Restart from checkpoint.")
 @click.option("--checkpoint-interval", type=int, default=0, help="Auto-checkpoint every N steps (0=off).")
+@click.option(
+    "--backend",
+    type=click.Choice(["python", "athena", "auto"], case_sensitive=False),
+    default=None,
+    help="MHD solver backend. Overrides config file setting. "
+    "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'auto'=best available.",
+)
 def simulate(
     config_file: str,
     steps: int | None,
     output: str | None,
     restart: str | None,
     checkpoint_interval: int,
+    backend: str | None,
 ) -> None:
     """Run a DPF simulation from a configuration file."""
     from dpf.config import SimulationConfig
@@ -45,10 +53,14 @@ def simulate(
     click.echo(f"Loading config from {config_file}")
     config = SimulationConfig.from_file(config_file)
 
+    if backend:
+        config.fluid.backend = backend
+
     if output:
         config.diagnostics.hdf5_filename = output
 
     engine = SimulationEngine(config)
+    click.echo(f"Backend: {engine.backend}")
 
     if checkpoint_interval > 0:
         engine.checkpoint_interval = checkpoint_interval
@@ -81,9 +93,28 @@ def verify(config_file: str) -> None:
         click.echo(f"  sim_time: {config.sim_time:.2e} s")
         click.echo(f"  Circuit: C={config.circuit.C:.2e} F, V0={config.circuit.V0:.1f} V")
         click.echo(f"  Fluid: {config.fluid.reconstruction}, CFL={config.fluid.cfl}")
+        click.echo(f"  Backend: {config.fluid.backend}")
     except Exception as exc:
         click.echo(f"Configuration error: {exc}", err=True)
         sys.exit(1)
+
+
+@cli.command()
+def backends() -> None:
+    """Show available MHD solver backends."""
+    from dpf.athena_wrapper import is_available as athena_available
+
+    click.echo("Available backends:")
+    click.echo("  python  — NumPy/Numba MHD solver (always available)")
+
+    if athena_available():
+        click.echo("  athena  — Athena++ C++ MHD solver (available ✓)")
+    else:
+        click.echo("  athena  — Athena++ C++ MHD solver (not compiled)")
+
+    click.echo("\nDefault: python")
+    if athena_available():
+        click.echo("Auto selection: athena (preferred when available)")
 
 
 @cli.command()

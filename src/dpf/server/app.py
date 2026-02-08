@@ -75,8 +75,17 @@ def _get_sim(sim_id: str) -> SimulationManager:
 
 
 @app.get("/api/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, Any]:
+    """Health check with backend availability info."""
+    from dpf.athena_wrapper import is_available as athena_available
+
+    return {
+        "status": "ok",
+        "backends": {
+            "python": True,
+            "athena": athena_available(),
+        },
+    }
 
 
 # ── Simulation CRUD ──────────────────────────────────────────────
