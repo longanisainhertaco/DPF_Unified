@@ -4,81 +4,142 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Dense Plasma Focus (DPF) multi-physics simulator** — a comprehensive, modular simulation framework that couples validated physics kernels (circuit dynamics, magnetohydrodynamics, collisions, radiation transport, neutron production) with modern software infrastructure (REST/WebSocket API, real-time streaming, checkpoint/restart, validation against experimental devices).
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Command-Line Interface](#command-line-interface)
-- [Configuration Reference](#configuration-reference)
-- [Presets](#presets)
-- [Server & API](#server--api)
-- [Physics Modules](#physics-modules)
-- [Validation Suite](#validation-suite)
-- [Project Layout](#project-layout)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
-- [References](#references)
+**A modern dense plasma focus (DPF) simulator** — built from scratch in Python, targeting high-fidelity multi-physics simulation of plasma focus devices on local hardware (Apple Silicon) and eventually HPC clusters.
 
 ---
 
-## Overview
+## Vision
 
-Dense Plasma Focus (DPF) devices are compact pulsed-power machines that produce high-temperature, high-density plasmas by magnetically compressing a current-carrying plasma sheath. DPF devices are used for:
+DPF Unified is being built as a complete simulation platform for dense plasma focus research and engineering:
 
-- **Neutron production** (DD fusion yields of 10^8–10^11 neutrons/shot)
-- **X-ray generation** (for lithography, radiography)
-- **Ion beam acceleration**
-- **Fundamental plasma physics research**
+| Layer | Description | Status |
+|-------|-------------|--------|
+| **Simulation Backend** | Multi-physics MHD solver in Python (NumPy/Numba) with circuit coupling, radiation, collisions, and neutron production | **Active development** |
+| **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
+| **AI Integration** | Surrogate models via [Polymathic.ai](https://polymathic-ai.org/) for fast estimates and inverse design ("what config yields X neutrons?") | **Planned** |
+| **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
 
-**DPF Unified** provides a fully-coupled simulation environment that models:
-
-1. **Circuit dynamics** — capacitor discharge, plasma inductance, resistive losses
-2. **Plasma fluid dynamics** — compressible MHD with Hall term, resistive diffusion
-3. **Collisions & transport** — Spitzer resistivity, temperature relaxation, Braginskii coefficients
-4. **Radiation** — Bremsstrahlung cooling, optional flux-limited diffusion
-5. **Atomic physics** — Saha ionization equilibrium, ablation models
-6. **Diagnostics** — neutron yield, synthetic interferometry, HDF5 time-series output
-
-The code supports both **3D Cartesian** and **2D axisymmetric (r,z) cylindrical** geometries with appropriate metric terms.
+**Current MVP focus**: Get the simulation backend to the highest fidelity possible, running locally on Apple Silicon (M3 Ultra MacBook Pro / Mac Studio). The Unity frontend and HPC support come after the physics is right.
 
 ---
 
-## Features
+## Current State — Honest Assessment
 
-### Physics
+### Fidelity Grade: 5–6 / 10
 
-| Module | Description |
-|--------|-------------|
-| **Circuit** | Implicit midpoint RLC solver with dynamic plasma inductance and resistance coupling |
-| **Fluid/MHD** | WENO5 reconstruction, HLL/HLLC Riemann solvers, Dedner divergence cleaning, Hall MHD |
-| **Collisions** | Spitzer electron-ion frequencies, dynamic Coulomb logarithm, implicit temperature relaxation |
-| **Radiation** | Bremsstrahlung with Gaunt factor, flux-limited diffusion (FLD) radiation transport |
-| **Turbulence** | Buneman anomalous resistivity model with threshold-based activation |
-| **Sheath** | Bohm sheath boundary conditions at electrodes |
-| **Atomic** | Saha ionization equilibrium, electrode ablation models |
-| **Neutron yield** | DD thermonuclear reaction rate integration |
+> **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 6/10.
 
-### Numerical Methods
+The simulation backend now has a complete V&V (Verification & Validation) framework, full Braginskii anisotropic transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 655 tests pass with 0 failures. Phases A–E are complete.
 
-- **Temporal**: Strang operator splitting (collision+radiation ↔ MHD ↔ circuit)
-- **Spatial**: 5th-order WENO reconstruction, HLL/HLLC approximate Riemann solvers
-- **Diffusion**: Explicit, super-time-stepping (RKL2), or implicit (Crank-Nicolson ADI)
-- **Div-B cleaning**: Dedner mixed hyperbolic-parabolic cleaning
-- **CFL-adaptive timestep** with circuit and diffusion constraints
+### Active Modules (What Actually Runs)
 
-### Software Infrastructure
+These modules are wired into `engine.py` and execute during every simulation:
 
-- **CLI** via [Click](https://click.palletsprojects.com/) — `dpf simulate`, `dpf verify`, `dpf serve`
-- **REST + WebSocket API** via [FastAPI](https://fastapi.tiangolo.com/) for real-time GUI integration
-- **Checkpoint/restart** in HDF5 format
-- **Pydantic v2** configuration with JSON Schema export and validation
-- **Device presets** for well-known DPF machines (PF-1000, NX2, LLNL-DPF)
-- **Validation suite** comparing against published experimental data
+| Module | Implementation | Quality |
+|--------|----------------|---------|
+| **Circuit RLC** | Implicit midpoint solver with dynamic plasma inductance/resistance | Solid — energy conservation to 1% |
+| **MHD Solver** | WENO5 reconstruction + HLL Riemann solver, Numba-accelerated | Good — 5th-order convergence verified on smooth data |
+| **Two-Temperature Plasma** | Separate Te, Ti with implicit relaxation via Spitzer collision rates | Strong — matches NRL Plasma Formulary |
+| **Spitzer Collisions** | Quantum-corrected Coulomb logarithm (Gericke-Murillo-Schlanges), nu_ei, resistivity | Strong — analytically verified |
+| **Bremsstrahlung** | Backward Euler cooling with Gaunt factor, stable for large dt | Good |
+| **Saha Ionization** | Temperature-dependent Z_bar from tabulated data | Basic but functional |
+| **DD Neutron Yield** | Thermonuclear cross-section integration <sigma*v>(Ti) | Implemented |
+| **Nernst Effect** | First-order upwind advection of B by temperature gradient | Simplified — operator-split, no gyropolarization |
+| **Braginskii Viscosity** | Full anisotropic tensor: eta_0 (parallel) + eta_1, eta_2 (perpendicular) with field-aligned decomposition | Complete — Phase D |
+| **Anomalous Resistivity** | Buneman threshold model: eta_anom when v_drift > v_crit | Phenomenological |
+| **Cylindrical Geometry** | 2D (r,z) axisymmetric with proper 1/r metric, axis protection at r=0 | Well-implemented |
+| **Strang Splitting** | collision/radiation <-> MHD <-> circuit, 2nd-order | Correct |
+| **REST API + WebSocket** | FastAPI server with binary field encoding, pause/resume control | Functional, tested |
+| **Diagnostics** | HDF5 time-series output, checkpoint/restart framework | Working |
+
+### Recently Integrated (Phases B–D — completed)
+
+These modules were dormant or newly implemented and are now wired into the engine:
+
+| Module | Status | How Activated |
+|--------|--------|---------------|
+| **Implicit Diffusion (ADI)** | ✅ Active | `fluid.diffusion_method: "implicit"` in config |
+| **Super Time-Stepping (RKL2)** | ✅ Active | `fluid.diffusion_method: "sts"` in config |
+| **Line Radiation** | ✅ Active | `radiation.line_radiation_enabled: true` + `impurity_fraction > 0` |
+| **Constrained Transport** | ✅ Active | Default ON in cylindrical solver |
+| **Anisotropic Thermal Conduction** | ✅ Active | `fluid.enable_anisotropic_conduction: true` — Sharma-Hammett slope-limited, field-aligned |
+| **Full Braginskii Viscosity** | ✅ Active | `fluid.full_braginskii_viscosity: true` — eta_0 + eta_1 + eta_2 tensor decomposition |
+| **Powell 8-wave div(B)** | ✅ Active | `fluid.enable_powell: true` — non-conservative source terms for div(B) control |
+| **Dedner GLM Tuning** | ✅ Active | `fluid.dedner_cr` — Mignone-Tzeferacos (2010) optimal ch/cp prescription |
+
+### Dormant Modules (Code Exists, Not Integrated)
+
+These live in `src/dpf/experimental/` to clearly communicate their status:
+
+| Module | Lines | Completeness | Why Dormant |
+|--------|-------|--------------|-------------|
+| **Adaptive Mesh Refinement** | 755 | Code complete | MHD solvers assume uniform grids; needs solver refactoring |
+| **GPU Backend** | ~100 | CuPy detection stub only | No actual GPU kernels; Apple Silicon needs MLX, not CUDA |
+| **Hybrid PIC** | 978 | Boris pusher + CIC deposition complete | Never instantiated; kinetic effects are fidelity-6+ |
+| **Multi-Species** | 409 | SpeciesMixture class complete | Will be integrated in Phase D (after line radiation validation) |
+
+**Bottom line**: After Phase B integration, ~20-25% of source code remains dormant (AMR, PIC, GPU, multi-species). The core physics pipeline is now substantially complete.
+
+### Verification & Validation (Phase C — completed)
+
+| Benchmark | Status |
+|-----------|--------|
+| **Resistive diffusion convergence** | ✅ Explicit, ADI, RKL2 — Gaussian B-field vs analytical solution |
+| **Orszag-Tang vortex** | ✅ Canonical 2D MHD benchmark (Cartesian) |
+| **Cylindrical Sedov blast** | ✅ Best-effort — analytical similarity solution, documents solver limitations |
+| **Lee Model comparison** | ✅ 2-phase snowplow model for PF-1000 and NX2 device validation |
+| **Sod / Brio-Wu shock tubes** | ✅ Correct wave structure, L1 errors verified |
+
+### Testing Reality
+
+| Category | Status |
+|----------|--------|
+| **Unit physics** (collision, EOS, circuit, radiation) | **Strong** — verified against analytical formulas |
+| **Shock tubes** (Sod, Brio-Wu) | **Good** — correct wave structure, L1 errors reasonable |
+| **Convergence studies** | **Good** — diffusion convergence (3 methods), Orszag-Tang, Sedov |
+| **Experimental validation** | **Improved** — Lee Model comparison for PF-1000 and NX2 |
+| **Braginskii / anisotropic transport** | **Good** — 14 tests covering limits, backward compatibility, field alignment |
+| **Dormant module tests** | **Missing** — AMR, GPU, PIC, multi-species have zero coverage |
+| **Turbulence/sheath tests** | **Empty** — stub files with no actual tests |
+
+---
+
+## Reference Codes
+
+We study these established MHD codes to guide our development:
+
+### Top 3
+
+| Code | Institution | Why It Matters | What We Learn |
+|------|-------------|----------------|---------------|
+| **[OpenMHD](https://github.com/zenitani/OpenMHD)** | JAXA (Zenitani) | Compact resistive MHD with CUDA GPU. Excellent for magnetic reconnection — directly relevant to DPF pinch dynamics. | Resistive MHD patterns, HLLD solver reference, GPU kernel design |
+| **[FLASH](http://flash.uchicago.edu/)** | U. Chicago | Proven in High Energy Density Physics (HEDP) and laboratory plasma experiments. Multi-physics coupling closest to DPF needs. | Multi-physics architecture, radiation MHD, experimental validation methodology |
+| **[MPI-AMRVAC](https://amrvac.org/)** | KU Leuven | Best-in-class div(B) control (Powell + Dedner GLM), excellent shock handling, mature block-structured AMR. | Powell source terms, Dedner tuning, divergence control, AMR patterns |
+
+### Honorable Mentions
+
+- **[Athena++ / AthenaK](https://www.athena-astro.app/)** (Princeton) — Best architecture, Kokkos GPU portability, but over-engineered for DPF-specific physics
+- **[PLUTO / gPLUTO](https://plutocode.ph.unito.it/)** (Torino) — Hall MHD, new GPU implementation via OpenACC, strong astrophysical MHD
+- **[Lee Model](http://plasmafocus.net/)** — DPF-specific semi-empirical code, gold standard for circuit-level validation of plasma focus devices
+
+---
+
+## Roadmap
+
+| Phase | Goal | Target Fidelity | Key Work | Status |
+|-------|------|-----------------|----------|--------|
+| ~~Phase A~~ | ~~Honest documentation~~ | — | ~~README rewrite, dormant code triage~~ | ✅ Done |
+| ~~Phase B~~ | ~~Wire dormant physics~~ | 4/10 | ~~ADI/RKL2 diffusion, line radiation, CT default on~~ | ✅ Done |
+| ~~Phase C~~ | ~~Verification & validation~~ | 5/10 | ~~Diffusion convergence, Orszag-Tang, Sedov, Lee Model~~ | ✅ Done |
+| ~~Phase D~~ | ~~Physics improvements~~ | 6/10 | ~~Full Braginskii, Powell div-B, anisotropic conduction, Dedner GLM~~ | ✅ Done |
+| ~~Phase E~~ | ~~Apple Silicon optimization~~ | 6/10 (faster) | ~~Numba prange in viscosity, CT, Nernst; benchmark suite~~ | ✅ Done |
+| **Phase F** (next) | WALRUS data pipeline | — | Well-format exporter, batch trajectory generator, dataset validation | 🔜 |
+| **Phase G** | WALRUS fine-tuning | — | Fine-tune on DPF data, surrogate server, Apple Silicon inference | |
+| **Phase H** | AI-powered features | — | Inverse design, real-time prediction, uncertainty estimation | |
+| **Phase I** | Unity frontend | — | Teaching Mode + Engineering Mode, WebSocket integration | |
+| **Phase J** | HPC backend | 7-8/10 | MPI decomposition, GPU kernels, production runs | |
+
+> **AI Integration**: Phases F-H use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. We fine-tune it on DPF simulation data to create fast surrogate models for parameter sweeps, inverse design ("what config yields X neutrons?"), and real-time Unity visualization. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
 ---
 
@@ -126,37 +187,15 @@ pip install -e ".[dev]"
 # Server/API support (FastAPI, uvicorn, websockets)
 pip install -e ".[server]"
 
-# GPU acceleration (CuPy)
-pip install -e ".[gpu]"
-
-# MPI parallelization (mpi4py)
-pip install -e ".[mpi]"
-
-# Machine learning extensions (PyTorch, transformers)
-pip install -e ".[ml]"
-
-# All extras
-pip install -e ".[dev,server,gpu,mpi,ml]"
+# All currently useful extras
+pip install -e ".[dev,server]"
 ```
 
-### Verifying Installation
-
-```bash
-# Check the CLI is accessible
-dpf --help
-
-# Verify a config file
-dpf verify config.json
-
-# Run unit tests
-pytest tests/ -v --tb=short
-```
+> **Note**: The `pyproject.toml` also lists `gpu` (CuPy), `mpi` (mpi4py), and `ml` (PyTorch) extras. These are placeholders for future work — no GPU kernels, MPI decomposition, or ML models exist yet.
 
 ---
 
 ## Command-Line Interface
-
-DPF Unified provides a command-line interface via the `dpf` command:
 
 ### `dpf simulate` — Run a Simulation
 
@@ -171,33 +210,15 @@ Options:
   -v, --verbose            Enable debug logging
 
 Examples:
-  # Run 100 steps
   dpf simulate config.json --steps=100
-
-  # Run to completion with custom output
   dpf simulate config.json -o my_run.h5
-
-  # Restart from checkpoint
   dpf simulate config.json --restart=checkpoint.h5
-
-  # Enable auto-checkpointing every 1000 steps
-  dpf simulate config.json --checkpoint-interval=1000
 ```
 
 ### `dpf verify` — Validate Configuration
 
 ```bash
 dpf verify <config_file>
-
-Example:
-  dpf verify config.json
-  # Output:
-  # Configuration is valid:
-  #   Grid: [16, 16, 16]
-  #   dx: 1.00e-03 m
-  #   sim_time: 1.00e-06 s
-  #   Circuit: C=1.00e-06 F, V0=15000.0 V
-  #   Fluid: weno5, CFL=0.4
 ```
 
 ### `dpf serve` — Start the API Server
@@ -209,186 +230,13 @@ Options:
   --host TEXT      Bind address (default: 127.0.0.1)
   --port INTEGER   Port number (default: 8765)
   --reload         Auto-reload on code changes (dev only)
-
-Example:
-  dpf serve --host=0.0.0.0 --port=8000
-  # Output:
-  # Starting DPF server on 0.0.0.0:8000
-  #   REST API: http://0.0.0.0:8000/api/health
-  #   WebSocket: ws://0.0.0.0:8000/ws/{sim_id}
-  #   Docs: http://0.0.0.0:8000/docs
-```
-
----
-
-## Configuration Reference
-
-Configuration files are JSON format validated by Pydantic. All physical units are SI.
-
-### Minimal Configuration
-
-```json
-{
-  "grid_shape": [16, 16, 16],
-  "dx": 1e-3,
-  "sim_time": 1e-6,
-  "circuit": {
-    "C": 1e-6,
-    "V0": 15000,
-    "L0": 1e-7,
-    "anode_radius": 0.005,
-    "cathode_radius": 0.01
-  }
-}
-```
-
-### Full Configuration Reference
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| **Top-level** ||||
-| `grid_shape` | `[int, int, int]` | *required* | Grid dimensions (nx, ny, nz). For cylindrical: (nr, 1, nz) |
-| `dx` | `float` | *required* | Grid spacing [m] |
-| `sim_time` | `float` | *required* | Total simulation time [s] |
-| `dt_init` | `float` | `null` | Initial timestep [s] (null = auto) |
-| `rho0` | `float` | `1e-4` | Initial fill gas density [kg/m³] |
-| `T0` | `float` | `300.0` | Initial temperature [K] |
-| `anomalous_alpha` | `float` | `0.05` | Buneman anomalous resistivity coefficient |
-| `ion_mass` | `float` | `3.34e-27` | Ion mass [kg] (default: deuterium) |
-| **circuit** ||||
-| `C` | `float` | *required* | Capacitance [F] |
-| `V0` | `float` | *required* | Initial voltage [V] |
-| `L0` | `float` | *required* | External inductance [H] |
-| `R0` | `float` | `0.0` | External resistance [Ω] |
-| `anode_radius` | `float` | *required* | Anode radius [m] |
-| `cathode_radius` | `float` | *required* | Cathode radius [m] (must be > anode_radius) |
-| `ESR` | `float` | `0.0` | Equivalent series resistance [Ω] |
-| `ESL` | `float` | `0.0` | Equivalent series inductance [H] |
-| **geometry** ||||
-| `type` | `str` | `"cartesian"` | Coordinate system: `"cartesian"` or `"cylindrical"` |
-| `dz` | `float` | `null` | Axial spacing for cylindrical [m] (default: use dx) |
-| **fluid** ||||
-| `reconstruction` | `str` | `"weno5"` | Reconstruction scheme |
-| `riemann_solver` | `str` | `"hll"` | Riemann solver: `"hll"`, `"hllc"` |
-| `cfl` | `float` | `0.4` | CFL number |
-| `dedner_ch` | `float` | `0.0` | Dedner cleaning speed (0 = auto) |
-| `gamma` | `float` | `1.6667` | Adiabatic index |
-| `enable_resistive` | `bool` | `true` | Enable resistive MHD |
-| `enable_energy_equation` | `bool` | `true` | Use conservative energy equation |
-| `diffusion_method` | `str` | `"explicit"` | `"explicit"`, `"sts"` (RKL2), or `"implicit"` (ADI) |
-| `sts_stages` | `int` | `8` | RKL2 super-time-stepping stages (2-32) |
-| `implicit_tol` | `float` | `1e-8` | Implicit solver tolerance |
-| **collision** ||||
-| `coulomb_log` | `float` | `10.0` | Coulomb logarithm (fixed or initial) |
-| `dynamic_coulomb_log` | `bool` | `true` | Compute Coulomb log dynamically |
-| `sigma_en` | `float` | `1e-19` | Electron-neutral cross-section [m²] |
-| **radiation** ||||
-| `bremsstrahlung_enabled` | `bool` | `true` | Enable bremsstrahlung cooling |
-| `gaunt_factor` | `float` | `1.2` | Gaunt factor |
-| `fld_enabled` | `bool` | `false` | Enable flux-limited diffusion transport |
-| `flux_limiter` | `float` | `0.333` | Flux limiter λ (0 < λ ≤ 1) |
-| **sheath** ||||
-| `enabled` | `bool` | `false` | Enable sheath boundary conditions |
-| `boundary` | `str` | `"z_high"` | Boundary to apply sheath (`"z_high"`, `"z_low"`) |
-| `V_sheath` | `float` | `0.0` | Sheath voltage drop [V] (0 = auto from Te) |
-| **boundary** ||||
-| `electrode_bc` | `bool` | `false` | Apply electrode B-field BC |
-| `axis_bc` | `bool` | `true` | Enforce symmetry at r=0 (cylindrical) |
-| **diagnostics** ||||
-| `hdf5_filename` | `str` | `"diagnostics.h5"` | Output HDF5 file |
-| `output_interval` | `int` | `10` | Steps between scalar outputs |
-| `field_output_interval` | `int` | `0` | Steps between field snapshots (0 = off) |
-
-### Example: Cylindrical Configuration
-
-```json
-{
-  "grid_shape": [32, 1, 64],
-  "dx": 5e-4,
-  "sim_time": 1e-6,
-  "dt_init": 1e-11,
-  "geometry": {
-    "type": "cylindrical",
-    "dz": 1e-3
-  },
-  "circuit": {
-    "C": 1e-6,
-    "V0": 15000,
-    "L0": 1e-7,
-    "R0": 0.01,
-    "anode_radius": 0.005,
-    "cathode_radius": 0.01
-  },
-  "radiation": {
-    "bremsstrahlung_enabled": true,
-    "fld_enabled": true
-  },
-  "sheath": {
-    "enabled": true,
-    "boundary": "z_high"
-  }
-}
-```
-
----
-
-## Presets
-
-DPF Unified includes configuration presets for well-known DPF devices:
-
-| Preset | Device | Energy | Description |
-|--------|--------|--------|-------------|
-| `tutorial` | Generic | — | Minimal 8³ Cartesian grid for quick tests |
-| `pf1000` | PF-1000 (IPPLM Warsaw) | 1 MJ | Largest DPF in Europe, deuterium fill |
-| `nx2` | NX2 (NIE Singapore) | 3 kJ | Compact Mather-type DPF |
-| `llnl_dpf` | LLNL-DPF | 100 kJ | Research device |
-| `cartesian_demo` | Generic | — | 32³ Cartesian with all physics enabled |
-
-### Using Presets
-
-**CLI:**
-```bash
-# Presets are accessed via the server API or Python
-```
-
-**Python:**
-```python
-from dpf.presets import get_preset, list_presets
-from dpf.config import SimulationConfig
-from dpf.engine import SimulationEngine
-
-# List available presets
-for p in list_presets():
-    print(f"{p['name']}: {p['description']}")
-
-# Load a preset
-config = SimulationConfig(**get_preset("pf1000"))
-engine = SimulationEngine(config)
-summary = engine.run(max_steps=100)
-```
-
-**Server API:**
-```bash
-# List presets
-curl http://localhost:8765/api/presets
-
-# Create simulation from preset
-curl -X POST http://localhost:8765/api/simulations \
-  -H "Content-Type: application/json" \
-  -d '{"preset": "tutorial", "max_steps": 100}'
 ```
 
 ---
 
 ## Server & API
 
-DPF Unified includes a FastAPI server for real-time simulation control and GUI integration.
-
-### Starting the Server
-
-```bash
-dpf serve --host=0.0.0.0 --port=8765
-```
+DPF Unified includes a FastAPI server for real-time simulation control and future Unity frontend integration.
 
 ### REST Endpoints
 
@@ -408,166 +256,74 @@ dpf serve --host=0.0.0.0 --port=8765
 
 ### WebSocket Streaming
 
-Connect to `ws://host:port/ws/{sim_id}` for real-time updates:
+Connect to `ws://host:port/ws/{sim_id}` for real-time step-by-step updates. Binary field encoding supported with configurable downsampling.
 
-**Server → Client (JSON):**
-```json
-{
-  "step": 100,
-  "time": 1.5e-7,
-  "dt": 1.2e-11,
-  "current": 45000.0,
-  "voltage": 12000.0,
-  "energy_conservation": 0.9995,
-  "max_Te": 1.5e6,
-  "max_rho": 0.002,
-  "Z_bar": 1.0,
-  "R_plasma": 0.001,
-  "eta_anomalous": 0.0,
-  "total_radiated_energy": 1.2,
-  "neutron_rate": 1e8,
-  "total_neutron_yield": 1e6,
-  "finished": false
-}
-```
-
-**Client → Server (Field Request):**
-```json
-{
-  "type": "request_fields",
-  "fields": ["rho", "Te", "B"],
-  "downsample": 2
-}
-```
-
-### Interactive API Docs
-
-When the server is running, visit:
-- **Swagger UI**: `http://localhost:8765/docs`
-- **ReDoc**: `http://localhost:8765/redoc`
+Interactive docs at `http://localhost:8765/docs` when the server is running.
 
 ---
 
-## Physics Modules
+## Configuration
 
-### Circuit Module (`dpf.circuit`)
+Configuration files are JSON, validated by Pydantic v2. All physical units are SI.
 
-Implicit midpoint RLC solver with dynamic plasma coupling:
+### Minimal Configuration
 
-```
-L_total = L0 + L_plasma(t)
-R_total = R0 + R_plasma(Te, ne, Z)
-
-L * dI/dt + R * I = V_cap - V_back_emf
-C * dV/dt = -I
-```
-
-- **Plasma inductance**: Computed from magnetic field energy integral
-- **Plasma resistance**: Spitzer + anomalous resistivity
-
-### Fluid/MHD Module (`dpf.fluid`)
-
-Compressible Hall MHD equations:
-
-```
-∂ρ/∂t + ∇·(ρv) = 0
-∂(ρv)/∂t + ∇·(ρvv + P*I - BB/μ₀) = J×B
-∂E/∂t + ∇·((E+P)v - (v·B)B/μ₀) = -Q_rad
-∂B/∂t + ∇×E = 0   with E = -v×B + ηJ + J×B/(en_e)
+```json
+{
+  "grid_shape": [16, 16, 16],
+  "dx": 1e-3,
+  "sim_time": 1e-6,
+  "circuit": {
+    "C": 1e-6,
+    "V0": 15000,
+    "L0": 1e-7,
+    "anode_radius": 0.005,
+    "cathode_radius": 0.01
+  }
+}
 ```
 
-Features:
-- 5th-order WENO reconstruction for shock capturing
-- HLL/HLLC approximate Riemann solvers
-- Dedner divergence cleaning (∇·B control)
-- Super-time-stepping for diffusion stability
-- Cylindrical (r,z) axisymmetric geometry with proper metric terms
+### Cylindrical Configuration (Recommended for DPF)
 
-### Collision Module (`dpf.collision`)
-
-- **Spitzer resistivity**: η = 5.2×10⁻⁵ Z ln(Λ) / Te^(3/2) [Ω·m]
-- **Dynamic Coulomb log**: ln(Λ) = 23 - ln(ne^(1/2) / Te^(3/2))
-- **Electron-ion relaxation**: Implicit temperature equilibration
-- **Braginskii transport**: Thermal conductivity, viscosity coefficients
-
-### Radiation Module (`dpf.radiation`)
-
-- **Bremsstrahlung**: P_ff = 1.69×10⁻³² g_ff Z² n_e n_i √Te [W/m³]
-- **Flux-limited diffusion**: ∂E_rad/∂t = ∇·(D ∇E_rad) - κ(E_rad - aT⁴)
-- **Line radiation**: Coronal equilibrium for impurity cooling (optional)
-
-### Turbulence Module (`dpf.turbulence`)
-
-Buneman anomalous resistivity model for current-driven instabilities:
-
-```
-η_anom = α * m_e * v_d / (e² n_e)   when v_d > v_critical
+```json
+{
+  "grid_shape": [32, 1, 64],
+  "dx": 5e-4,
+  "sim_time": 1e-6,
+  "dt_init": 1e-11,
+  "geometry": { "type": "cylindrical", "dz": 1e-3 },
+  "circuit": {
+    "C": 1e-6, "V0": 15000, "L0": 1e-7,
+    "R0": 0.01, "anode_radius": 0.005, "cathode_radius": 0.01
+  },
+  "radiation": { "bremsstrahlung_enabled": true, "fld_enabled": true },
+  "sheath": { "enabled": true, "boundary": "z_high" }
+}
 ```
 
-where v_d = J/(e n_e) is the electron drift velocity.
-
-### Atomic Module (`dpf.atomic`)
-
-- **Saha ionization**: Temperature-dependent ionization equilibrium
-- **Ablation**: Electrode material injection into plasma
-
-### Diagnostics Module (`dpf.diagnostics`)
-
-- **HDF5 output**: Time-series scalars + optional field snapshots
-- **Neutron yield**: DD thermonuclear reaction rate integration
-- **Synthetic interferometry**: Abel transform for line-integrated density
-- **Beam-target reactions**: Accelerated ion fusion contributions
-- **Checkpointing**: Full state save/restore in HDF5
+Full configuration reference: see `dpf verify <config_file>` for all available fields and defaults.
 
 ---
 
-## Validation Suite
+## Presets
 
-DPF Unified includes a validation framework comparing simulations to published experimental data.
-
-### Supported Devices
-
-| Device | Institution | Energy | Peak Current | Neutron Yield | Reference |
-|--------|-------------|--------|--------------|---------------|-----------|
-| PF-1000 | IPPLM Warsaw | 1 MJ | 2.5 MA | 10^11 | Scholz et al., Nukleonika 51 (2006) |
-| NX2 | NIE Singapore | 3 kJ | 400 kA | 10^8 | Lee & Saw, J. Fusion Energy 27 (2008) |
-| UNU-ICTP | UNU-ICTP PFF | 3 kJ | 170 kA | 10^8 | Lee et al., Am. J. Phys. 56 (1988) |
-
-### Usage
+| Preset | Device | Energy | Description |
+|--------|--------|--------|-------------|
+| `tutorial` | Generic | — | Minimal 8x8x8 Cartesian grid for quick tests |
+| `pf1000` | PF-1000 (IPPLM Warsaw) | 1 MJ | Largest DPF in Europe |
+| `nx2` | NX2 (NIE Singapore) | 3 kJ | Compact Mather-type DPF |
+| `llnl_dpf` | LLNL-DPF | 100 kJ | Research device |
+| `cartesian_demo` | Generic | — | 32x32x32 with all active physics |
 
 ```python
-from dpf.validation.suite import ValidationSuite
+from dpf.presets import get_preset
+from dpf.config import SimulationConfig
+from dpf.engine import SimulationEngine
 
-suite = ValidationSuite()
-
-# Run simulation and get summary
-sim_summary = {
-    "peak_current_A": 2.3e6,
-    "peak_current_time_s": 5.2e-6,
-    "energy_conservation": 0.98,
-    "neutron_yield": 8e10,
-}
-
-# Validate against PF-1000
-result = suite.validate_full("PF-1000", sim_summary)
-print(f"Score: {result.overall_score:.1%}")
-print(f"Passed: {result.passed}")
-
-# Generate report
-report = suite.report({"PF-1000": result})
-print(report)
+config = SimulationConfig(**get_preset("pf1000"))
+engine = SimulationEngine(config)
+summary = engine.run(max_steps=100)
 ```
-
-### Validation Metrics
-
-| Metric | Tolerance | Description |
-|--------|-----------|-------------|
-| Peak current | 15-20% | Maximum discharge current |
-| Current timing | 20-25% | Time to peak current |
-| Energy conservation | 5% | E_total / E_initial at end |
-| Neutron yield | 1 decade | Order-of-magnitude comparison |
-| Peak n_e | 50% | Maximum electron density |
-| Peak T_e | 50% | Maximum electron temperature |
 
 ---
 
@@ -575,112 +331,46 @@ print(report)
 
 ```
 DPF_Unified/
-├── README.md                 # This file
-├── pyproject.toml            # Package metadata, dependencies
-├── config.json               # Example Cartesian configuration
-├── config_cylindrical.json   # Example cylindrical configuration
-├── .github/
-│   └── workflows/
-│       └── ci.yml            # CI pipeline (lint, test, smoke)
-├── src/
-│   └── dpf/
-│       ├── __init__.py
-│       ├── config.py         # Pydantic v2 configuration models
-│       ├── constants.py      # Physical constants (from scipy)
-│       ├── engine.py         # Simulation orchestrator
-│       ├── presets.py        # Named device presets
-│       ├── species.py        # Ion species definitions
-│       │
-│       ├── core/
-│       │   ├── bases.py      # ABC interfaces (CouplingState, etc.)
-│       │   └── field_manager.py
-│       │
-│       ├── circuit/
-│       │   └── rlc_solver.py # Implicit RLC circuit solver
-│       │
-│       ├── fluid/
-│       │   ├── mhd_solver.py        # 3D Cartesian MHD
-│       │   ├── cylindrical_mhd.py   # 2D axisymmetric MHD
-│       │   ├── eos.py               # Ideal gas EOS
-│       │   ├── tabulated_eos.py     # Tabulated EOS
-│       │   ├── constrained_transport.py
-│       │   ├── super_time_step.py   # RKL2 diffusion
-│       │   ├── implicit_diffusion.py
-│       │   ├── nernst.py            # Nernst effect
-│       │   ├── viscosity.py         # Braginskii viscosity
-│       │   └── gpu_backend.py       # CuPy acceleration
-│       │
-│       ├── collision/
-│       │   └── spitzer.py    # Spitzer resistivity, relaxation
-│       │
-│       ├── radiation/
-│       │   ├── bremsstrahlung.py
-│       │   ├── transport.py  # Flux-limited diffusion
-│       │   └── line_radiation.py
-│       │
-│       ├── turbulence/
-│       │   └── anomalous.py  # Buneman anomalous resistivity
-│       │
-│       ├── sheath/
-│       │   └── bohm.py       # Bohm sheath BCs
-│       │
-│       ├── atomic/
-│       │   ├── ionization.py # Saha equilibrium
-│       │   └── ablation.py   # Electrode ablation
-│       │
-│       ├── geometry/
-│       │   └── cylindrical.py # Metric tensors, operators
-│       │
-│       ├── amr/
-│       │   └── grid.py       # Adaptive mesh refinement
-│       │
-│       ├── pic/
-│       │   └── hybrid.py     # Particle-in-cell hybrid
-│       │
-│       ├── ml/
-│       │   └── __init__.py   # Machine learning extensions
-│       │
-│       ├── diagnostics/
-│       │   ├── hdf5_writer.py
-│       │   ├── checkpoint.py
-│       │   ├── neutron_yield.py
-│       │   ├── interferometry.py
-│       │   ├── beam_target.py
-│       │   └── derived.py
-│       │
-│       ├── validation/
-│       │   ├── suite.py      # Validation framework
-│       │   └── experimental.py # Device reference data
-│       │
-│       ├── server/
-│       │   ├── app.py        # FastAPI application
-│       │   ├── models.py     # Pydantic API models
-│       │   ├── simulation.py # SimulationManager
-│       │   └── encoding.py   # Binary field encoding
-│       │
-│       └── cli/
-│           └── main.py       # Click CLI
+├── README.md
+├── pyproject.toml
+├── config.json                    # Example Cartesian config
+├── config_cylindrical.json        # Example cylindrical config
 │
-└── tests/
-    ├── conftest.py
-    ├── test_circuit.py
-    ├── test_collision.py
-    ├── test_fluid.py
-    ├── test_radiation.py
-    ├── test_engine_step.py
-    ├── test_integration.py
-    ├── test_validation.py
-    ├── test_server.py
-    └── ... (590+ tests total)
+├── src/dpf/
+│   ├── engine.py                  # Simulation orchestrator (central loop)
+│   ├── config.py                  # Pydantic v2 configuration
+│   ├── constants.py               # Physical constants
+│   ├── presets.py                 # Device presets
+│   │
+│   ├── circuit/                   # [ACTIVE] RLC circuit solver
+│   ├── fluid/                     # [ACTIVE] MHD solvers, EOS, viscosity, Nernst
+│   ├── collision/                 # [ACTIVE] Spitzer resistivity, temperature relaxation
+│   ├── radiation/                 # [ACTIVE] Bremsstrahlung, FLD transport
+│   ├── turbulence/                # [ACTIVE] Anomalous resistivity (Buneman)
+│   ├── sheath/                    # [ACTIVE] Bohm sheath BCs
+│   ├── atomic/                    # [ACTIVE] Saha ionization
+│   ├── geometry/                  # [ACTIVE] Cylindrical metric operators
+│   ├── diagnostics/               # [ACTIVE] HDF5, neutron yield, interferometry
+│   ├── validation/                # [ACTIVE] Experimental comparison suite
+│   ├── verification/              # [ACTIVE] Shock tubes, convergence tests
+│   ├── server/                    # [ACTIVE] FastAPI REST + WebSocket
+│   ├── cli/                       # [ACTIVE] Click CLI
+│   ├── core/                      # [ACTIVE] Base classes, field manager
+│   │
+│   └── experimental/              # [DORMANT] Code exists but not integrated
+│       ├── amr/                   #   Adaptive mesh refinement
+│       ├── pic/                   #   Hybrid particle-in-cell
+│       ├── species.py             #   Multi-species tracking
+│       └── gpu_backend.py         #   CuPy detection stub
+│
+│   ├── benchmarks/                # [ACTIVE] Apple Silicon performance benchmarks
+│
+└── tests/                         # 655+ tests (pytest)
 ```
 
 ---
 
 ## Testing
-
-DPF Unified has comprehensive test coverage with 590+ tests.
-
-### Running Tests
 
 ```bash
 # Run all tests
@@ -689,73 +379,45 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ -v --cov=dpf --cov-report=term-missing
 
-# Run specific test module
+# Run specific module
 pytest tests/test_circuit.py -v
 
-# Run tests matching a pattern
-pytest tests/ -k "test_spitzer" -v
-
-# Skip slow integration tests
+# Skip slow tests
 pytest tests/ -v -m "not slow"
 ```
 
-### Test Categories
+### Test Coverage by Module
 
-| Category | Description |
-|----------|-------------|
-| `test_circuit.py` | RLC solver, energy conservation |
-| `test_collision.py` | Spitzer resistivity, temperature relaxation |
-| `test_fluid.py` | MHD solver, WENO reconstruction, Riemann |
-| `test_radiation.py` | Bremsstrahlung, FLD transport |
-| `test_cylindrical.py` | 2D axisymmetric geometry |
-| `test_engine_step.py` | Full engine timestep |
-| `test_integration.py` | End-to-end simulations |
-| `test_validation.py` | Experimental comparison |
-| `test_server.py` | REST/WebSocket API |
-| `test_e2e_server.py` | Server integration tests |
-
-### Linting
-
-```bash
-# Run ruff linter
-ruff check src/ tests/
-
-# Run type checker
-mypy src/dpf/
-```
+| Module | Tests | Quality |
+|--------|-------|---------|
+| Circuit | 20+ | Strong — frequency + energy conservation |
+| Collision/Spitzer | 15+ | Strong — matches NRL formulary |
+| EOS | 10+ | Strong — numerical roundtrip verified |
+| MHD/Fluid | 100+ | Good — WENO5 convergence, shock tubes |
+| Radiation | 40+ | Good — scaling laws verified |
+| Braginskii/Anisotropic | 14 | Good — limits, backward compat, field alignment |
+| V&V Benchmarks | 40+ | Good — diffusion, Orszag-Tang, Sedov, Lee Model |
+| Server/API | 60+ | Good — REST + WebSocket functional |
+| Integration | 50+ | Moderate — pipeline runs, peak-value validation |
+| Dormant modules | 0 | Missing |
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+Contributions are welcome. When adding physics:
 
-1. **Fork the repository** and create a feature branch
-2. **Write tests** for new functionality
-3. **Run the test suite** to ensure all tests pass
-4. **Run the linter** (`ruff check src/ tests/`)
-5. **Submit a pull request** with a clear description
-
-### Code Style
-
-- Follow PEP 8 with 100-character line limit
-- Use type hints for all public functions
-- Physics variable names (B, Te, Lp, etc.) are exempt from lowercase conventions
-- Docstrings follow NumPy style
-
-### Physics Contributions
-
-When adding new physics modules:
-1. Implement the appropriate base class from `dpf.core.bases`
+1. Implement against the base classes in `dpf.core.bases`
 2. Add unit tests with known analytical solutions
-3. Add validation against published experimental data if applicable
-4. Update this README with the new capability
+3. Wire into `engine.py` (don't create dormant code)
+4. Validate against published data where applicable
+5. Run `pytest tests/ -v` and `ruff check src/ tests/`
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE).
 
 ---
 
@@ -772,9 +434,17 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 5. C.-W. Shu, "Essentially non-oscillatory and weighted essentially non-oscillatory schemes," *ICASE Report* 97-65 (1997)
 6. A. Dedner et al., "Hyperbolic divergence cleaning for the MHD equations," *J. Comput. Phys.* 175, 645 (2002)
-7. L. Braginskii, "Transport processes in a plasma," *Rev. Plasma Phys.* 1, 205 (1965)
+7. S.I. Braginskii, "Transport processes in a plasma," *Rev. Plasma Phys.* 1, 205 (1965)
+8. T. Miyoshi & K. Kusano, "A multi-state HLL approximate Riemann solver for ideal MHD," *J. Comput. Phys.* 208, 315 (2005)
+
+### Reference Codes
+
+9. S. Zenitani, "OpenMHD: Open-source magnetohydrodynamics code," [github.com/zenitani/OpenMHD](https://github.com/zenitani/OpenMHD)
+10. FLASH Center, "FLASH User's Guide," University of Chicago, [flash.uchicago.edu](http://flash.uchicago.edu/)
+11. R. Keppens et al., "MPI-AMRVAC 3.0," *Astron. Astrophys.* 673, A66 (2023)
+12. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
 
 ### DPF Simulation Codes
 
-8. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
-9. M. Liu, "Soft X-rays from compact plasma focus," PhD Thesis, NIE Singapore (1996)
+13. S. Lee, "Radiative Dense Plasma Focus Model," *IEEE Trans. Plasma Sci.* 19(6), 912 (1991)
+14. M. Liu, "Soft X-rays from compact plasma focus," PhD Thesis, NIE Singapore (1996)

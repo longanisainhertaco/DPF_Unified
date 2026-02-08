@@ -46,6 +46,18 @@ class RadiationConfig(BaseModel):
     gaunt_factor: float = Field(1.2, gt=0, description="Gaunt factor")
     fld_enabled: bool = Field(False, description="Enable flux-limited diffusion")
     flux_limiter: float = Field(1.0 / 3.0, gt=0, le=1.0, description="Flux limiter lambda")
+    line_radiation_enabled: bool = Field(
+        False,
+        description="Enable impurity line + recombination radiation cooling",
+    )
+    impurity_Z: float = Field(
+        29.0, ge=1, le=74,
+        description="Atomic number of dominant impurity (default 29 = copper)",
+    )
+    impurity_fraction: float = Field(
+        0.0, ge=0, le=1.0,
+        description="Impurity number density as fraction of ne (e.g. 0.01 = 1%)",
+    )
 
 
 class SheathConfig(BaseModel):
@@ -109,6 +121,14 @@ class FluidConfig(BaseModel):
     )
     sts_stages: int = Field(8, ge=2, le=32, description="RKL2 super time-stepping stages")
     implicit_tol: float = Field(1e-8, gt=0, description="Implicit diffusion solver tolerance")
+    enable_powell: bool = Field(False, description="Enable Powell 8-wave div(B) source terms")
+    dedner_cr: float = Field(0.0, ge=0, description="Dedner damping rate (0 = auto)")
+    enable_anisotropic_conduction: bool = Field(
+        False, description="Enable field-aligned Braginskii thermal conduction"
+    )
+    full_braginskii_viscosity: bool = Field(
+        False, description="Enable full Braginskii viscosity (eta_0 + eta_1 + eta_3)"
+    )
 
 
 class DiagnosticsConfig(BaseModel):

@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from dpf.amr import (
+from dpf.experimental.amr import (
     AMRConfig,
     AMRGrid,
     AMRPatch,
@@ -19,7 +19,7 @@ from dpf.amr import (
     restrict_patch,
     tag_cells_gradient,
 )
-from dpf.fluid.gpu_backend import (
+from dpf.experimental.gpu_backend import (
     get_device_info,
     is_gpu_available,
     synchronize,

@@ -54,7 +54,7 @@ from dpf.radiation.line_radiation import (
     recombination_power,
     total_radiation_power,
 )
-from dpf.species import (
+from dpf.experimental.species import (
     COPPER,
     DEUTERIUM,
     HYDROGEN,

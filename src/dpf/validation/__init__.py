@@ -19,10 +19,19 @@ from dpf.validation.suite import (
     relative_error,
 )
 
+from dpf.validation.lee_model_comparison import (
+    LeeModel,
+    LeeModelComparison,
+    LeeModelResult,
+)
+
 __all__ = [
     "DEVICE_REGISTRY",
     "DEVICES",
     "ExperimentalDevice",
+    "LeeModel",
+    "LeeModelComparison",
+    "LeeModelResult",
     "NX2_DATA",
     "PF1000_DATA",
     "UNU_ICTP_DATA",

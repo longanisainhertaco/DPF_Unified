@@ -1,16 +1,16 @@
 """Braginskii ion viscosity for magnetised plasmas.
 
-Implements the leading-order Braginskii viscosity coefficients and the
-resulting viscous stress tensor for compressible MHD.  The three
-viscosity coefficients are:
+Implements the full Braginskii viscosity coefficients and the
+resulting viscous stress tensor for compressible MHD.  The viscosity
+coefficients are:
 
     eta_0:  Parallel (unmagnetised) viscosity -- dominates when ions are
             weakly magnetised (omega_ci * tau_i << 1).
+    eta_1:  First perpendicular viscosity -- suppressed by
+            (omega_ci * tau_i)^{-2} relative to eta_0.
+    eta_2:  Second perpendicular viscosity -- eta_2 = 4 * eta_1.
     eta_3:  Gyroviscosity -- the non-dissipative off-diagonal stress that
             arises from Larmor gyration (finite Larmor radius effect).
-    eta_1, eta_2:  Perpendicular viscosities (not implemented here; they
-            are suppressed by (omega_ci * tau_i)^{-2} and are rarely
-            significant in DPF conditions).
 
 The viscous stress acceleration and heating rate are computed on a
 uniform 3-D Cartesian grid using second-order centred finite differences.
@@ -22,6 +22,8 @@ References:
 Functions:
     ion_collision_time: Spitzer ion self-collision time.
     braginskii_eta0: Parallel viscosity coefficient.
+    braginskii_eta1: First perpendicular viscosity coefficient.
+    braginskii_eta2: Second perpendicular viscosity coefficient.
     braginskii_eta3: Gyroviscosity coefficient.
     viscous_stress_rate: Viscous acceleration dv/dt.
     viscous_heating_rate: Viscous dissipation Q_visc.
@@ -30,7 +32,7 @@ Functions:
 from __future__ import annotations
 
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_d, pi
@@ -105,6 +107,84 @@ def braginskii_eta0(
 
 
 # ============================================================
+# Braginskii eta_1 (first perpendicular viscosity)
+# ============================================================
+
+@njit(cache=True)
+def braginskii_eta1(
+    ni: np.ndarray,
+    Ti: np.ndarray,
+    tau_i: np.ndarray,
+    B_mag: np.ndarray,
+    m_ion: float = m_d,
+) -> np.ndarray:
+    r"""Braginskii first perpendicular ion viscosity coefficient.
+
+    eta_1 = 0.3 * ni * k_B * Ti / (omega_ci^2 * tau_i)
+
+    For weakly magnetised plasmas (omega_ci * tau_i << 1):
+        eta_1 -> 0.3 * ni * k_B * Ti * tau_i / (omega_ci * tau_i)^2
+        which approaches eta_0 when omega_ci * tau_i << 1
+    For strongly magnetised plasmas (omega_ci * tau_i >> 1):
+        eta_1 -> 0 (suppressed by (omega_ci * tau_i)^{-2}).
+
+    Implementation note: to avoid divergence when B -> 0, we cap
+    eta_1 at eta_0 = 0.96 * ni * k_B * Ti * tau_i.
+
+    Args:
+        ni: Ion number density [m^-3].
+        Ti: Ion temperature [K].
+        tau_i: Ion collision time [s].
+        B_mag: Magnetic field magnitude [T].
+        m_ion: Ion mass [kg] (default: deuterium).
+
+    Returns:
+        eta_1 [Pa * s].
+    """
+    omega_ci = e_charge * B_mag / m_ion
+    omega_ci_sq = omega_ci * omega_ci
+    tau_i_safe = np.maximum(tau_i, 1e-30)
+
+    # eta_1 = 0.3 * n * kB * T / (omega_ci^2 * tau_i)
+    eta1_raw = 0.3 * ni * k_B * Ti / np.maximum(omega_ci_sq * tau_i_safe, 1e-300)
+
+    # Cap at eta_0 for weakly magnetised limit
+    eta0_val = 0.96 * ni * k_B * Ti * tau_i_safe
+    return np.minimum(eta1_raw, eta0_val)
+
+
+# ============================================================
+# Braginskii eta_2 (second perpendicular viscosity)
+# ============================================================
+
+@njit(cache=True)
+def braginskii_eta2(
+    ni: np.ndarray,
+    Ti: np.ndarray,
+    tau_i: np.ndarray,
+    B_mag: np.ndarray,
+    m_ion: float = m_d,
+) -> np.ndarray:
+    r"""Braginskii second perpendicular ion viscosity coefficient.
+
+    eta_2 = 4 * eta_1
+
+    This is exactly four times the first perpendicular viscosity.
+
+    Args:
+        ni: Ion number density [m^-3].
+        Ti: Ion temperature [K].
+        tau_i: Ion collision time [s].
+        B_mag: Magnetic field magnitude [T].
+        m_ion: Ion mass [kg] (default: deuterium).
+
+    Returns:
+        eta_2 [Pa * s].
+    """
+    return 4.0 * braginskii_eta1(ni, Ti, tau_i, B_mag, m_ion)
+
+
+# ============================================================
 # Braginskii eta_3 (gyroviscosity)
 # ============================================================
 
@@ -141,7 +221,7 @@ def braginskii_eta3(
 # Viscous stress rate (acceleration dv/dt)
 # ============================================================
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _compute_strain_rate(
     vx: np.ndarray,
     vy: np.ndarray,
@@ -177,7 +257,7 @@ def _compute_strain_rate(
     Sxz = np.zeros((nx, ny, nz))
     Syz = np.zeros((nx, ny, nz))
 
-    for i in range(nx):
+    for i in prange(nx):
         for j in range(ny):
             for k in range(nz):
                 # dvx/dx
@@ -264,7 +344,7 @@ def _compute_strain_rate(
     return Sxx, Syy, Szz, Sxy, Sxz, Syz, S_trace
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _div_stress(
     sigma_xx: np.ndarray,
     sigma_yy: np.ndarray,
@@ -294,10 +374,10 @@ def _div_stress(
     div_y = np.zeros((nx, ny, nz))
     div_z = np.zeros((nx, ny, nz))
 
-    for i in range(nx):
+    for i in prange(nx):
         for j in range(ny):
             for k in range(nz):
-                # --- x-component: d(sigma_xx)/dx + d(sigma_xy)/dy + d(sigma_xz)/dz ---
+                # --- x-component ---
                 if i == 0:
                     dsxx_dx = (sigma_xx[1, j, k] - sigma_xx[0, j, k]) / dx
                 elif i == nx - 1:
@@ -321,7 +401,7 @@ def _div_stress(
 
                 div_x[i, j, k] = dsxx_dx + dsxy_dy + dsxz_dz
 
-                # --- y-component: d(sigma_xy)/dx + d(sigma_yy)/dy + d(sigma_yz)/dz ---
+                # --- y-component ---
                 if i == 0:
                     dsxy_dx = (sigma_xy[1, j, k] - sigma_xy[0, j, k]) / dx
                 elif i == nx - 1:
@@ -345,7 +425,7 @@ def _div_stress(
 
                 div_y[i, j, k] = dsxy_dx + dsyy_dy + dsyz_dz
 
-                # --- z-component: d(sigma_xz)/dx + d(sigma_yz)/dy + d(sigma_zz)/dz ---
+                # --- z-component ---
                 if i == 0:
                     dsxz_dx = (sigma_xz[1, j, k] - sigma_xz[0, j, k]) / dx
                 elif i == nx - 1:
@@ -379,13 +459,25 @@ def viscous_stress_rate(
     dx: float,
     dy: float,
     dz: float,
+    *,
+    full_braginskii: bool = False,
+    B: np.ndarray | None = None,
+    eta1: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Viscous acceleration from the traceless symmetric stress tensor.
+    """Viscous acceleration from the Braginskii stress tensor.
 
-    Computes dv/dt = -div(sigma) / rho where:
+    When ``full_braginskii=False`` (default), computes the isotropic
+    traceless stress:
+
         sigma_ij = eta_0 * (S_ij - S_trace/3 * delta_ij)
 
-    and S_ij = 0.5 * (dv_i/dx_j + dv_j/dx_i) is the strain rate.
+    When ``full_braginskii=True``, decomposes the stress into parallel
+    (along B) and perpendicular (cross-field) parts:
+
+        sigma_ij = eta_0 * W^(0)_ij + eta_1 * W^(1)_ij
+
+    where W^(0) is the parallel rate-of-strain projected along bb and
+    W^(1) is the perpendicular remainder.
 
     Accepts velocity in either layout:
         (3, nx, ny, nz) -- component-first (internal convention)
@@ -398,6 +490,11 @@ def viscous_stress_rate(
         rho: Mass density [kg/m^3], shape (nx, ny, nz).
         eta0: Parallel viscosity [Pa*s], shape (nx, ny, nz).
         dx, dy, dz: Grid spacings [m].
+        full_braginskii: If True, use anisotropic decomposition with eta_0 and eta_1.
+        B: Magnetic field [T], shape (3, nx, ny, nz).  Required when
+           ``full_braginskii=True``.
+        eta1: Perpendicular viscosity [Pa*s], shape (nx, ny, nz).
+              Required when ``full_braginskii=True``.
 
     Returns:
         Viscous acceleration [m/s^2], same shape as velocity.
@@ -415,14 +512,61 @@ def viscous_stress_rate(
 
     Sxx, Syy, Szz, Sxy, Sxz, Syz, S_trace = _compute_strain_rate(vx, vy, vz, dx, dy, dz)
 
-    # Traceless part
     S_tr_third = S_trace / 3.0
-    sigma_xx = eta0 * (Sxx - S_tr_third)
-    sigma_yy = eta0 * (Syy - S_tr_third)
-    sigma_zz = eta0 * (Szz - S_tr_third)
-    sigma_xy = eta0 * Sxy
-    sigma_xz = eta0 * Sxz
-    sigma_yz = eta0 * Syz
+
+    if full_braginskii and B is not None and eta1 is not None:
+        # --- Full Braginskii: decompose into parallel and perp parts ---
+        # Compute B-hat (unit vector along B)
+        B_mag = np.sqrt(B[0]**2 + B[1]**2 + B[2]**2)
+        B_safe = np.maximum(B_mag, 1e-30)
+        bx = B[0] / B_safe
+        by = B[1] / B_safe
+        bz = B[2] / B_safe
+
+        # Traceless strain: T_ij = S_ij - S_trace/3 * delta_ij
+        Txx = Sxx - S_tr_third
+        Tyy = Syy - S_tr_third
+        Tzz = Szz - S_tr_third
+        Txy = Sxy
+        Txz = Sxz
+        Tyz = Syz
+
+        # Parallel projection: W^(0)_ij = (bb_i bb_j - delta_ij/3) * (bb_k bb_l S_kl)
+        # First compute bb_k bb_l S_kl = b_i b_j S_ij (contraction with S)
+        bbS = (bx * bx * Sxx + by * by * Syy + bz * bz * Szz
+               + 2.0 * bx * by * Sxy + 2.0 * bx * bz * Sxz + 2.0 * by * bz * Syz)
+
+        # W^(0)_ij = (bb_i bb_j - delta_ij/3) * bbS
+        W0_xx = (bx * bx - 1.0 / 3.0) * bbS
+        W0_yy = (by * by - 1.0 / 3.0) * bbS
+        W0_zz = (bz * bz - 1.0 / 3.0) * bbS
+        W0_xy = bx * by * bbS
+        W0_xz = bx * bz * bbS
+        W0_yz = by * bz * bbS
+
+        # Perpendicular part: W^(1)_ij = T_ij - W^(0)_ij
+        W1_xx = Txx - W0_xx
+        W1_yy = Tyy - W0_yy
+        W1_zz = Tzz - W0_zz
+        W1_xy = Txy - W0_xy
+        W1_xz = Txz - W0_xz
+        W1_yz = Tyz - W0_yz
+
+        # Total stress: sigma = eta_0 * W^(0) + eta_1 * W^(1)
+        sigma_xx = eta0 * W0_xx + eta1 * W1_xx
+        sigma_yy = eta0 * W0_yy + eta1 * W1_yy
+        sigma_zz = eta0 * W0_zz + eta1 * W1_zz
+        sigma_xy = eta0 * W0_xy + eta1 * W1_xy
+        sigma_xz = eta0 * W0_xz + eta1 * W1_xz
+        sigma_yz = eta0 * W0_yz + eta1 * W1_yz
+    else:
+        # --- Default isotropic traceless stress ---
+        sigma_xx = eta0 * (Sxx - S_tr_third)
+        sigma_yy = eta0 * (Syy - S_tr_third)
+        sigma_zz = eta0 * (Szz - S_tr_third)
+        sigma_xy = eta0 * Sxy
+        sigma_xz = eta0 * Sxz
+        sigma_yz = eta0 * Syz
 
     div_x, div_y, div_z = _div_stress(
         sigma_xx, sigma_yy, sigma_zz, sigma_xy, sigma_xz, sigma_yz, dx, dy, dz,

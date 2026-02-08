@@ -46,7 +46,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 # ============================================================
 # Staggered B-field data structure
@@ -159,7 +159,7 @@ def face_to_cell_centered(
 # Constrained transport update
 # ============================================================
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _ct_update_kernel(
     Bx_face: np.ndarray,
     By_face: np.ndarray,
@@ -214,7 +214,7 @@ def _ct_update_kernel(
     # dBx/dt = -(dEz/dy - dEy/dz)
     # Ez lives on z-edges: (nx+1, ny+1, nz) -> dEz/dy at (i+1/2, j, k)
     # Ey lives on y-edges: (nx+1, ny, nz+1) -> dEy/dz at (i+1/2, j, k)
-    for i in range(nxp1):
+    for i in prange(nxp1):
         for j in range(ny_):
             for k in range(nz_):
                 dEz_dy = (Ez_edge[i, j + 1, k] - Ez_edge[i, j, k]) / dy
@@ -225,7 +225,7 @@ def _ct_update_kernel(
     # dBy/dt = -(dEx/dz - dEz/dx)
     # Ex lives on x-edges: (nx, ny+1, nz+1) -> dEx/dz at (i, j+1/2, k)
     # Ez lives on z-edges: (nx+1, ny+1, nz) -> dEz/dx at (i, j+1/2, k)
-    for i in range(nx_):
+    for i in prange(nx_):
         for j in range(nyp1):
             for k in range(nz_):
                 dEx_dz = (Ex_edge[i, j, k + 1] - Ex_edge[i, j, k]) / dz
@@ -236,7 +236,7 @@ def _ct_update_kernel(
     # dBz/dt = -(dEy/dx - dEx/dy)
     # Ey lives on y-edges: (nx+1, ny, nz+1) -> dEy/dx at (i, j, k+1/2)
     # Ex lives on x-edges: (nx, ny+1, nz+1) -> dEx/dy at (i, j, k+1/2)
-    for i in range(nx_):
+    for i in prange(nx_):
         for j in range(ny_):
             for k in range(nzp1):
                 dEy_dx = (Ey_edge[i + 1, j, k] - Ey_edge[i, j, k]) / dx
@@ -298,7 +298,7 @@ def ct_update(
 # Divergence diagnostic
 # ============================================================
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _compute_div_B_kernel(
     Bx_face: np.ndarray,
     By_face: np.ndarray,
@@ -328,7 +328,7 @@ def _compute_div_B_kernel(
 
     div_B = np.zeros((nx, ny, nz))
 
-    for i in range(nx):
+    for i in prange(nx):
         for j in range(ny):
             for k in range(nz):
                 div_B[i, j, k] = (

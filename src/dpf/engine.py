@@ -36,11 +36,15 @@ from dpf.fluid.mhd_solver import MHDSolver
 from dpf.fluid.nernst import apply_nernst_advection
 from dpf.fluid.viscosity import (
     braginskii_eta0,
+    braginskii_eta1,
     ion_collision_time,
     viscous_heating_rate,
     viscous_stress_rate,
 )
+from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
+from dpf.fluid.super_time_step import rkl2_diffusion_3d, rkl2_thermal_step
 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+from dpf.radiation.line_radiation import apply_line_radiation_losses
 from dpf.radiation.transport import apply_radiation_transport
 from dpf.sheath.bohm import apply_sheath_bc, floating_potential
 from dpf.turbulence.anomalous import (
@@ -693,6 +697,39 @@ class SimulationEngine:
             )
             self._sanitize_state("after radiation step")
 
+        # --- Line radiation (impurity cooling) ---
+        if self.rad_cfg.line_radiation_enabled and self.rad_cfg.impurity_fraction > 0:
+            ne_line = self.state["rho"] / self.ion_mass
+            Te_line, P_line = apply_line_radiation_losses(
+                self.state["Te"],
+                ne_line,
+                dt_sub,
+                Z_eff=0.0,  # bremsstrahlung already applied above; only line + recomb here
+                n_imp_frac=self.rad_cfg.impurity_fraction,
+                Z_imp=self.rad_cfg.impurity_Z,
+                Te_floor=1.0,
+            )
+            self.state["Te"] = Te_line
+            # Track radiated energy from line radiation
+            if self.geometry_type == "cylindrical":
+                cell_vol = self.fluid.geom.cell_volumes()
+                P_line_2d = np.squeeze(P_line, axis=1) if P_line.ndim == 3 else P_line
+                self.total_radiated_energy += float(np.sum(P_line_2d * cell_vol) * dt_sub)
+            else:
+                self.total_radiated_energy += float(
+                    np.sum(P_line) * np.prod([self.config.dx] * 3) * dt_sub
+                )
+            self.state["pressure"] = self.eos.total_pressure(
+                self.state["rho"], self.state["Ti"], self.state["Te"]
+            )
+            self._sanitize_state("after line radiation step")
+
+        # --- Implicit / STS magnetic and thermal diffusion ---
+        fc = self.config.fluid
+        if fc.diffusion_method != "explicit" and fc.enable_resistive:
+            self._apply_diffusion(dt_sub, Z_bar)
+            self._sanitize_state("after diffusion step")
+
     # ------------------------------------------------------------------
     # Nernst B-field advection sub-step
     # ------------------------------------------------------------------
@@ -745,10 +782,13 @@ class SimulationEngine:
     # ------------------------------------------------------------------
 
     def _apply_viscosity(self, dt_sub: float) -> None:
-        """Apply Braginskii parallel viscosity (eta_0).
+        """Apply Braginskii ion viscosity.
 
         Updates velocity via viscous stress and adds viscous heating to
-        ion temperature.
+        ion temperature.  If ``full_braginskii_viscosity`` is enabled in
+        the config, the full anisotropic Braginskii stress tensor
+        (eta_0 parallel + eta_1 perpendicular) is used instead of the
+        simple isotropic traceless approximation.
 
         Args:
             dt_sub: Sub-step duration [s] (typically dt/2 from Strang).
@@ -756,10 +796,20 @@ class SimulationEngine:
         rho = self.state["rho"]
         vel = self.state["velocity"]
         Ti = self.state["Ti"]
+        B = self.state["B"]
 
         ni = rho / self.ion_mass
         tau_i = ion_collision_time(ni, Ti)
         eta0 = braginskii_eta0(ni, Ti, tau_i)
+
+        fc = self.config.fluid
+        use_full = fc.full_braginskii_viscosity
+
+        # Compute eta_1 if using full Braginskii
+        eta1_field = None
+        if use_full:
+            B_mag = np.sqrt(np.sum(B**2, axis=0))
+            eta1_field = braginskii_eta1(ni, Ti, tau_i, B_mag, self.ion_mass)
 
         dx = self.config.dx
         if self.geometry_type == "cylindrical":
@@ -772,7 +822,15 @@ class SimulationEngine:
             rho_pad = np.repeat(rho, pad_n, axis=1)        # (nr, 3, nz)
             eta0_pad = np.repeat(eta0, pad_n, axis=1)      # (nr, 3, nz)
 
-            accel_pad = viscous_stress_rate(vel_pad, rho_pad, eta0_pad, dx, dy, dz)
+            if use_full and eta1_field is not None:
+                eta1_pad = np.repeat(eta1_field, pad_n, axis=1)
+                B_pad = np.repeat(B, pad_n, axis=2)
+                accel_pad = viscous_stress_rate(
+                    vel_pad, rho_pad, eta0_pad, dx, dy, dz,
+                    full_braginskii=True, B=B_pad, eta1=eta1_pad,
+                )
+            else:
+                accel_pad = viscous_stress_rate(vel_pad, rho_pad, eta0_pad, dx, dy, dz)
             Q_visc_pad = viscous_heating_rate(vel_pad, eta0_pad, dx, dy, dz)
 
             accel = accel_pad[:, :, 1:2, :]     # middle slice
@@ -781,7 +839,13 @@ class SimulationEngine:
         else:
             dy = dx
             dz = dx
-            accel = viscous_stress_rate(vel, rho, eta0, dx, dy, dz)
+            if use_full and eta1_field is not None:
+                accel = viscous_stress_rate(
+                    vel, rho, eta0, dx, dy, dz,
+                    full_braginskii=True, B=B, eta1=eta1_field,
+                )
+            else:
+                accel = viscous_stress_rate(vel, rho, eta0, dx, dy, dz)
             Q_visc = viscous_heating_rate(vel, eta0, dx, dy, dz)
             ni_safe = np.maximum(ni, 1e-30)
 
@@ -792,6 +856,90 @@ class SimulationEngine:
         self.state["Ti"] = self.state["Ti"] + dTi
 
         # Update pressure after viscous heating
+        self.state["pressure"] = self.eos.total_pressure(
+            rho, self.state["Ti"], self.state["Te"]
+        )
+
+    # ------------------------------------------------------------------
+    # Implicit / STS diffusion sub-step
+    # ------------------------------------------------------------------
+
+    def _apply_diffusion(self, dt_sub: float, Z_bar: float) -> None:
+        """Apply implicit or super-time-stepping magnetic and thermal diffusion.
+
+        Called from _apply_collision_radiation when diffusion_method != 'explicit'.
+        Solves the resistive diffusion dB/dt = (eta/mu_0)*Laplacian(B) and
+        thermal conduction dTe/dt = kappa/(1.5*ne*kB)*Laplacian(Te) using either
+        Crank-Nicolson ADI or RKL2 super time-stepping.
+
+        Args:
+            dt_sub: Sub-step duration [s] (typically dt/2 from Strang).
+            Z_bar: Average ionization state.
+        """
+        fc = self.config.fluid
+        dx = self.config.dx
+        B = self.state["B"]
+        Te = self.state["Te"]
+        rho = self.state["rho"]
+        ne = np.maximum(rho / self.ion_mass, 1e10)
+
+        # Compute resistivity field for diffusion coefficient
+        Te_safe = np.maximum(Te, 1000.0)
+        ne_safe = np.maximum(ne, 1e10)
+        from dpf.collision.spitzer import spitzer_resistivity as _spitz_eta
+        lnL = coulomb_log(ne_safe, Te_safe)
+        eta = _spitz_eta(ne_safe, Te_safe, lnL, Z=Z_bar)
+
+        # Compute Spitzer thermal conductivity: kappa_e ~ 3.2 * ne * kB^2 * Te * tau_e / m_e
+        # Simplified estimate: kappa ~ 20 * (kB * Te)^{5/2} / (m_e^{1/2} * e^4 * lnL)
+        # For now, use a simplified isotropic Spitzer kappa
+        from dpf.constants import m_e, e as _e_charge
+        tau_e = 3.44e5 * Te_safe**1.5 / (ne_safe * lnL)  # Approximate electron collision time
+        kappa = 3.2 * ne_safe * k_B**2 * Te_safe * tau_e / m_e
+
+        if self.geometry_type == "cylindrical":
+            dz = self.config.geometry.dz if self.config.geometry.dz is not None else dx
+            dy = dx
+        else:
+            dy = dx
+            dz = dx
+
+        if fc.diffusion_method == "implicit":
+            # Crank-Nicolson ADI for magnetic diffusion
+            Bx_new, By_new, Bz_new = implicit_resistive_diffusion(
+                B[0], B[1], B[2], eta, dt_sub, dx, dy, dz,
+            )
+            self.state["B"] = np.array([Bx_new, By_new, Bz_new])
+
+            # Crank-Nicolson ADI for thermal diffusion
+            Te_new = implicit_thermal_diffusion(Te, kappa, ne, dt_sub, dx, dy, dz)
+            self.state["Te"] = np.maximum(Te_new, 1.0)
+
+        elif fc.diffusion_method == "sts":
+            # RKL2 super time-stepping for magnetic diffusion
+            s = fc.sts_stages
+            Bx_new, By_new, Bz_new = rkl2_diffusion_3d(
+                B[0], B[1], B[2], eta, dt_sub, dx, dy, dz, s_stages=s,
+            )
+            self.state["B"] = np.array([Bx_new, By_new, Bz_new])
+
+            # RKL2 for thermal diffusion
+            Te_new = rkl2_thermal_step(Te, kappa, ne, dt_sub, dx, s_stages=s)
+            self.state["Te"] = np.maximum(Te_new, 1.0)
+
+        # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
+        if fc.enable_anisotropic_conduction:
+            from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
+            B_ac = self.state["B"]
+            Te_ac = self.state["Te"]
+            ne_ac = np.maximum(self.state["rho"] / self.ion_mass, 1e10)
+            Te_aniso = anisotropic_thermal_conduction(
+                Te_ac, B_ac, ne_ac, dt_sub, dx, dy, dz,
+                Z_eff=max(Z_bar, 0.01),
+            )
+            self.state["Te"] = np.maximum(Te_aniso, 1.0)
+
+        # Update pressure from new Te
         self.state["pressure"] = self.eos.total_pressure(
             rho, self.state["Ti"], self.state["Te"]
         )
