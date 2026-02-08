@@ -33,10 +33,10 @@ def cli(verbose: bool) -> None:
 @click.option("--checkpoint-interval", type=int, default=0, help="Auto-checkpoint every N steps (0=off).")
 @click.option(
     "--backend",
-    type=click.Choice(["python", "athena", "auto"], case_sensitive=False),
+    type=click.Choice(["python", "athena", "athenak", "auto"], case_sensitive=False),
     default=None,
     help="MHD solver backend. Overrides config file setting. "
-    "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'auto'=best available.",
+    "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'athenak'=AthenaK Kokkos, 'auto'=best available.",
 )
 def simulate(
     config_file: str,
@@ -103,17 +103,25 @@ def verify(config_file: str) -> None:
 def backends() -> None:
     """Show available MHD solver backends."""
     from dpf.athena_wrapper import is_available as athena_available
+    from dpf.athenak_wrapper import is_available as athenak_available
 
     click.echo("Available backends:")
     click.echo("  python  — NumPy/Numba MHD solver (always available)")
 
     if athena_available():
-        click.echo("  athena  — Athena++ C++ MHD solver (available ✓)")
+        click.echo("  athena  — Athena++ C++ MHD solver (available)")
     else:
         click.echo("  athena  — Athena++ C++ MHD solver (not compiled)")
 
+    if athenak_available():
+        click.echo("  athenak — AthenaK Kokkos MHD solver (available)")
+    else:
+        click.echo("  athenak — AthenaK Kokkos MHD solver (not built)")
+
     click.echo("\nDefault: python")
-    if athena_available():
+    if athenak_available():
+        click.echo("Auto selection: athenak (preferred when available)")
+    elif athena_available():
         click.echo("Auto selection: athena (preferred when available)")
 
 
@@ -157,7 +165,7 @@ def serve(host: str, port: int, reload: bool) -> None:
 @click.option("--output", "-o", type=str, default="well_output.h5", help="Output HDF5 file.")
 @click.option("--field-interval", type=int, default=10, help="Steps between field snapshots.")
 @click.option("--steps", type=int, default=None, help="Max timesteps.")
-@click.option("--backend", type=click.Choice(["python", "athena", "auto"]), default=None)
+@click.option("--backend", type=click.Choice(["python", "athena", "athenak", "auto"]), default=None)
 def export_well(
     config_file: str, output: str, field_interval: int, steps: int | None, backend: str | None,
 ) -> None:

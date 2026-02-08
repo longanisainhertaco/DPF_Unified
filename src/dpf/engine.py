@@ -112,10 +112,15 @@ class SimulationEngine:
         # Boundary config
         self.boundary_cfg = config.boundary
 
-        # Backend selection: "python", "athena", or "auto"
+        # Backend selection: "python", "athena", "athenak", or "auto"
         self.backend = self._resolve_backend(fc.backend)
 
-        if self.backend == "athena":
+        if self.backend == "athenak":
+            from dpf.athenak_wrapper import AthenaKSolver
+            self.fluid = AthenaKSolver(config)
+            self._cell_volume = None
+            logger.info("Using AthenaK backend (Kokkos)")
+        elif self.backend == "athena":
             from dpf.athena_wrapper import AthenaPPSolver
             self.fluid = AthenaPPSolver(config)
             self._cell_volume = None
@@ -209,17 +214,28 @@ class SimulationEngine:
         """Resolve the requested backend to an actual backend name.
 
         Args:
-            requested: ``"python"``, ``"athena"``, or ``"auto"``.
+            requested: ``"python"``, ``"athena"``, ``"athenak"``, or ``"auto"``.
 
         Returns:
-            ``"python"`` or ``"athena"``.
+            ``"python"``, ``"athena"``, or ``"athenak"``.
 
         Raises:
-            RuntimeError: If ``"athena"`` was explicitly requested but is
+            RuntimeError: If an explicit backend was requested but is
                 not available.
         """
         if requested == "python":
             return "python"
+
+        if requested == "athenak":
+            from dpf.athenak_wrapper import is_available as athenak_available
+            if not athenak_available():
+                raise RuntimeError(
+                    "AthenaK backend requested but binary not found. Build with:\n"
+                    "  bash scripts/setup_athenak.sh\n"
+                    "  bash scripts/build_athenak.sh\n"
+                    "Or use backend='python' or backend='auto'."
+                )
+            return "athenak"
 
         if requested == "athena":
             from dpf.athena_wrapper import is_available
@@ -234,6 +250,14 @@ class SimulationEngine:
             return "athena"
 
         if requested == "auto":
+            # Prefer AthenaK > Athena++ > Python
+            try:
+                from dpf.athenak_wrapper import is_available as athenak_available
+                if athenak_available():
+                    logger.info("Auto-selected AthenaK backend")
+                    return "athenak"
+            except ImportError:
+                pass
             try:
                 from dpf.athena_wrapper import is_available
                 if is_available():
@@ -241,7 +265,7 @@ class SimulationEngine:
                     return "athena"
             except ImportError:
                 pass
-            logger.info("Auto-selected Python backend (Athena++ not available)")
+            logger.info("Auto-selected Python backend (no C++ backends available)")
             return "python"
 
         raise ValueError(f"Unknown backend: {requested!r}")
