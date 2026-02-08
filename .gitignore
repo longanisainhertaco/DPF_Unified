@@ -37,3 +37,18 @@ htmlcov/
 
 # mypy
 .mypy_cache/
+
+# Athena++ build artifacts
+external/athena/bin/
+external/athena/obj/
+external/athena/Makefile
+external/athena/Makefile.in
+*.o
+*.so
+*.dylib
+
+# C++ build
+_athena_core*.so
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

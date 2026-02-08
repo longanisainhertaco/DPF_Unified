@@ -1,0 +1,66 @@
+<comment>
+problem = DPF-tuned Z-pinch; Magnetized Noh in cylindrical coordinates
+configure = --prob=magnoh --coord=cylindrical -b --flux=hlld --cxx=clang++-apple -omp -hdf5
+reference = Based on magnoh.cpp problem generator, tuned for Dense Plasma Focus parameters.
+            Giuliani et al., Phys. of Plasmas (2018) - self-similar z-pinch solutions
+
+<job>
+problem_id  = DPF_magnoh  # problem ID: basename of output filenames
+
+<output1>
+file_type   = hst          # History data dump
+dt          = 1e-9         # time increment between outputs (1 ns)
+data_format = %12.5e
+
+<output2>
+file_type = hdf5           # HDF5 data dump
+variable  = prim           # primitive variables
+dt        = 1e-8           # time increment between outputs (10 ns)
+
+<time>
+cfl_number  = 0.4          # CFL number (conservative for stability)
+nlim        = -1           # no cycle limit
+tlim        = 1.0e-6       # time limit: 1 microsecond (typical DPF timescale)
+integrator  = vl2          # Van Leer predictor-corrector (2nd order)
+xorder      = 2            # order of spatial reconstruction
+ncycle_out  = 100          # stdout every 100 cycles
+
+<mesh>
+# Cylindrical coordinates: x1 = R (radial), x2 = z (axial)
+nx1        = 128           # Number of zones in R-direction
+x1min      = 0.001         # minimum R (avoid axis singularity) [m]
+x1max      = 0.025         # maximum R = cathode radius [m]
+ix1_bc     = reflecting    # Inner R boundary (axis symmetry)
+ox1_bc     = outflow       # Outer R boundary (cathode)
+
+nx2        = 256           # Number of zones in z-direction
+x2min      = 0.0           # minimum z [m]
+x2max      = 0.16          # maximum z = anode length [m]
+ix2_bc     = reflecting    # Bottom z boundary (electrode)
+ox2_bc     = outflow       # Top z boundary
+
+nx3        = 1             # Azimuthal symmetry (2D r-z)
+x3min      = 0.0
+x3max      = 6.283185307   # 2*pi
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 64
+nx2        = 128
+nx3        = 1
+
+<hydro>
+gamma      = 1.6667        # gamma = 5/3 (monatomic gas - deuterium)
+
+<problem>
+# Magnetized Noh z-pinch parameters tuned for DPF
+alpha      = 0.0           # density power law: rho ~ r^alpha (uniform fill gas)
+beta       = 0.0           # B-field power law: B ~ r^beta
+pcoeff     = 1e-6          # pressure coefficient
+d          = 1e-4          # initial density [kg/m^3] (typical DPF fill gas)
+vr         = 0.0           # initial radial velocity [m/s] (stationary fill gas)
+bphi       = 0.0           # initial B_phi [T] (driven by circuit later)
+bz         = 0.0           # initial B_z [T]
+perturb    = 0.0           # perturbation amplitude (0 = unperturbed)
+mphi       = 0.0           # azimuthal mode number
