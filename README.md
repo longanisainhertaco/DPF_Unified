@@ -14,7 +14,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 | Layer | Description | Status |
 |-------|-------------|--------|
-| **Simulation Backend** | Multi-physics MHD solver in Python (NumPy/Numba) with circuit coupling, radiation, collisions, and neutron production | **Active development** |
+| **Simulation Backend** | Dual-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ primary backend via pybind11. Circuit coupling, radiation, collisions, neutron production | **Active development** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
 | **AI Integration** | Surrogate models via [Polymathic.ai](https://polymathic-ai.org/) for fast estimates and inverse design ("what config yields X neutrons?") | **Planned** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
@@ -29,7 +29,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 > **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 6/10.
 
-The simulation backend now has a complete V&V (Verification & Validation) framework, full Braginskii anisotropic transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 655 tests pass with 0 failures. Phases A–E are complete.
+The simulation backend now has a complete V&V (Verification & Validation) framework, full Braginskii anisotropic transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. 745+ tests pass with 0 failures. Phases A–E are complete, and Phase F (Athena++ integration) has successfully delivered a dual-engine architecture with backend selection.
 
 ### Active Modules (What Actually Runs)
 
@@ -118,7 +118,7 @@ We study these established MHD codes to guide our development:
 
 ### Honorable Mentions
 
-- **[Athena++ / AthenaK](https://www.athena-astro.app/)** (Princeton) — Best architecture, Kokkos GPU portability, but over-engineered for DPF-specific physics
+- **[Athena++ / AthenaK](https://www.athena-astro.app/)** (Princeton) — Best architecture, Kokkos GPU portability, now integrated as primary C++ backend via pybind11
 - **[PLUTO / gPLUTO](https://plutocode.ph.unito.it/)** (Torino) — Hall MHD, new GPU implementation via OpenACC, strong astrophysical MHD
 - **[Lee Model](http://plasmafocus.net/)** — DPF-specific semi-empirical code, gold standard for circuit-level validation of plasma focus devices
 
@@ -133,13 +133,13 @@ We study these established MHD codes to guide our development:
 | ~~Phase C~~ | ~~Verification & validation~~ | 5/10 | ~~Diffusion convergence, Orszag-Tang, Sedov, Lee Model~~ | ✅ Done |
 | ~~Phase D~~ | ~~Physics improvements~~ | 6/10 | ~~Full Braginskii, Powell div-B, anisotropic conduction, Dedner GLM~~ | ✅ Done |
 | ~~Phase E~~ | ~~Apple Silicon optimization~~ | 6/10 (faster) | ~~Numba prange in viscosity, CT, Nernst; benchmark suite~~ | ✅ Done |
-| **Phase F** (next) | WALRUS data pipeline | — | Well-format exporter, batch trajectory generator, dataset validation | 🔜 |
-| **Phase G** | WALRUS fine-tuning | — | Fine-tune on DPF data, surrogate server, Apple Silicon inference | |
-| **Phase H** | AI-powered features | — | Inverse design, real-time prediction, uncertainty estimation | |
-| **Phase I** | Unity frontend | — | Teaching Mode + Engineering Mode, WebSocket integration | |
-| **Phase J** | HPC backend | 7-8/10 | MPI decomposition, GPU kernels, production runs | |
+| ~~Phase F~~ | ~~Athena++ integration~~ | — | ~~Submodule, pybind11, dual-engine, verification, CLI/server~~ | ✅ Done |
+| **Phase G** (next) | Athena++ DPF physics | — | Circuit coupling C++, Spitzer η, two-temp, radiation, Braginskii | 🔜 |
+| **Phase H** | WALRUS data pipeline | — | Well exporter, batch runner, dataset validator | |
+| **Phase I** | WALRUS fine-tuning + AI | — | Surrogate, inverse design, real-time server | |
+| **Phase J** | Unity frontend + HPC | — | Teaching/Engineering mode, AthenaK GPU | |
 
-> **AI Integration**: Phases F-H use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. We fine-tune it on DPF simulation data to create fast surrogate models for parameter sweeps, inverse design ("what config yields X neutrons?"), and real-time Unity visualization. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
+> **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter foundation model pretrained on 19 physical systems including MHD. We fine-tune it on DPF simulation data to create fast surrogate models for parameter sweeps, inverse design ("what config yields X neutrons?"), and real-time Unity visualization. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
 ---
 
@@ -187,6 +187,10 @@ pip install -e ".[dev]"
 # Server/API support (FastAPI, uvicorn, websockets)
 pip install -e ".[server]"
 
+# Athena++ C++ backend (requires building from source)
+pip install -e ".[dev,server,athena]"
+# See docs/ATHENA_BUILD.md for Athena++ compilation instructions
+
 # All currently useful extras
 pip install -e ".[dev,server]"
 ```
@@ -207,18 +211,26 @@ Options:
   -o, --output TEXT        Override output HDF5 filename
   --restart PATH           Restart from checkpoint file
   --checkpoint-interval N  Auto-checkpoint every N steps (0=off)
+  --backend [python|athena|auto]  MHD solver backend (default: from config)
   -v, --verbose            Enable debug logging
 
 Examples:
   dpf simulate config.json --steps=100
   dpf simulate config.json -o my_run.h5
   dpf simulate config.json --restart=checkpoint.h5
+  dpf simulate config.json --backend=athena
 ```
 
 ### `dpf verify` — Validate Configuration
 
 ```bash
 dpf verify <config_file>
+```
+
+### `dpf backends` — Show Available Backends
+
+```bash
+dpf backends
 ```
 
 ### `dpf serve` — Start the API Server
@@ -242,7 +254,7 @@ DPF Unified includes a FastAPI server for real-time simulation control and futur
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/health` | Health check |
+| `GET` | `/api/health` | Health check + backend availability |
 | `GET` | `/api/presets` | List available presets |
 | `GET` | `/api/config/schema` | JSON Schema for configuration |
 | `POST` | `/api/config/validate` | Validate configuration JSON |
@@ -355,6 +367,7 @@ DPF_Unified/
 │   ├── verification/              # [ACTIVE] Shock tubes, convergence tests
 │   ├── server/                    # [ACTIVE] FastAPI REST + WebSocket
 │   ├── cli/                       # [ACTIVE] Click CLI
+│   ├── athena_wrapper/            # [ACTIVE] Athena++ C++ pybind11 wrapper
 │   ├── core/                      # [ACTIVE] Base classes, field manager
 │   │
 │   └── experimental/              # [DORMANT] Code exists but not integrated
@@ -365,7 +378,10 @@ DPF_Unified/
 │
 │   ├── benchmarks/                # [ACTIVE] Apple Silicon performance benchmarks
 │
-└── tests/                         # 655+ tests (pytest)
+├── external/
+│   └── athena/                    # Athena++ git submodule (Princeton MHD code)
+│
+└── tests/                         # 745+ tests (pytest)
 ```
 
 ---
@@ -397,6 +413,7 @@ pytest tests/ -v -m "not slow"
 | Radiation | 40+ | Good — scaling laws verified |
 | Braginskii/Anisotropic | 14 | Good — limits, backward compat, field alignment |
 | V&V Benchmarks | 40+ | Good — diffusion, Orszag-Tang, Sedov, Lee Model |
+| Athena++ / dual-engine | 70+ | Good — Sod, Brio-Wu, magnoh, cross-backend, CLI |
 | Server/API | 60+ | Good — REST + WebSocket functional |
 | Integration | 50+ | Moderate — pipeline runs, peak-value validation |
 | Dormant modules | 0 | Missing |

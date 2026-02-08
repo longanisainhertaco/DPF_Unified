@@ -34,8 +34,8 @@ jobs:
         run: |
           count=$(pytest tests/ --co -q 2>/dev/null | tail -1 | grep -oE '[0-9]+')
           echo "Found $count tests"
-          if [ "$count" -lt 590 ]; then
-            echo "ERROR: Expected at least 590 tests, found $count"
+          if [ "$count" -lt 700 ]; then
+            echo "ERROR: Expected at least 700 tests, found $count"
             exit 1
           fi
 
@@ -60,7 +60,10 @@ jobs:
           client = TestClient(app)
           r = client.get('/api/health')
           assert r.status_code == 200
-          assert r.json()['status'] == 'ok'
+          data = r.json()
+          assert data['status'] == 'ok'
+          assert 'backends' in data
+          assert data['backends']['python'] is True
           r = client.get('/api/presets')
           assert r.status_code == 200
           assert len(r.json()) >= 3
@@ -68,3 +71,33 @@ jobs:
           assert r.status_code == 200
           print(f'Server smoke test passed: sim_id={r.json()[\"sim_id\"]}')
           "
+
+  # Optional Athena++ tests — requires compiled C++ binaries (macOS only).
+  # This job is expected to fail on GitHub-hosted runners since Athena++ is
+  # not compiled in CI. It exists as a template for self-hosted runners with
+  # Athena++ built.
+  athena-test:
+    runs-on: macos-latest
+    needs: lint
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,server]"
+      - name: Check Athena++ availability
+        run: |
+          python -c "
+          from dpf.athena_wrapper import is_available
+          avail = is_available()
+          print(f'Athena++ available: {avail}')
+          if not avail:
+              print('Athena++ not compiled — skipping Athena++ tests')
+          "
+      - name: Run Athena++ wrapper tests
+        run: pytest tests/test_athena_wrapper.py tests/test_dual_engine.py -v --tb=short || true
+      - name: Run Athena++ verification tests (non-slow)
+        run: pytest tests/test_phase_f_verification.py -v --tb=short -m "not slow" || true
