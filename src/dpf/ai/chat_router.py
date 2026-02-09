@@ -186,7 +186,8 @@ _INTENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
             r"(?:sweep|scan|vary)\s+"
             r"(?:the\s+)?(?:voltage|V0|capacitance|C0?|pressure|"
             r"fill[\s-]?pressure|inductance|L0?|resistance|R0?)\s+"
-            r"(?:from|between)\s+([\d.eE+-]+)\s+(?:to|and)\s+([\d.eE+-]+)",
+            r"(?:from|between)\s+([\d.eE+-]+)\s*(?:kV|V|uF|mF|nH|uH|mOhm|Ohm|Torr|Pa|mbar)?\s+"
+            r"(?:to|and)\s+([\d.eE+-]+)\s*(?:kV|V|uF|mF|nH|uH|mOhm|Ohm|Torr|Pa|mbar)?",
             re.IGNORECASE,
         ),
     ),

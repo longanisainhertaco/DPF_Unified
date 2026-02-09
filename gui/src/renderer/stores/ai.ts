@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { fetchAIStatus, runAISweep, runAIInverse, runAIConfidence, chatWithWALRUS } from '../api/client';
+import { localChatRouter } from '../api/chatRouter';
 import type { SimulationConfig } from '../api/types';
 
 interface Advisory {
@@ -222,6 +223,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     });
 
     try {
+      // Try the Python backend first
       const response = await chatWithWALRUS(question);
 
       const assistantMsg: ChatMessage = {
@@ -237,19 +239,23 @@ export const useAIStore = create<AIState>((set, get) => ({
         chatMessages: [...state.chatMessages, assistantMsg],
         chatStatus: 'idle',
       }));
-    } catch (error) {
-      console.error('Chat failed:', error);
+    } catch {
+      // Backend unreachable — fall back to client-side pattern matcher
+      console.info('Backend unreachable, using local chat router');
+      const local = localChatRouter(question);
 
-      const errorMsg: ChatMessage = {
+      const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Failed to reach WALRUS. The AI backend may not be running.',
+        content: local.response,
+        intent: local.intent,
+        suggestions: local.suggestions,
         timestamp: Date.now(),
       };
 
       set((state) => ({
-        chatMessages: [...state.chatMessages, errorMsg],
-        chatStatus: 'error',
+        chatMessages: [...state.chatMessages, assistantMsg],
+        chatStatus: 'idle',
       }));
     }
   },

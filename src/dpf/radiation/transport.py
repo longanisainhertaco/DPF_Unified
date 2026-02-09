@@ -116,7 +116,7 @@ def compute_rosseland_opacity(
     Returns:
         Absorption opacity [1/m].
     """
-    Te_safe = np.maximum(Te, 100.0)  # Floor at 100 K to avoid divergence
+    Te_safe = np.maximum(Te, 1000.0)  # Floor at 1000 K — cold gas has negligible opacity
     ne_safe = np.maximum(ne, 0.0)
 
     # Kramers free-free opacity coefficient in SI
@@ -128,6 +128,11 @@ def compute_rosseland_opacity(
 
     # Floor at very small opacity (optically thin limit)
     kappa = np.maximum(kappa, 1e-20)
+
+    # Cap opacity to prevent numerical overflow (inf/nan) in diffusion solver.
+    # With the Te floor at 1000 K above, opacity stays physical.
+    # This cap only guards against extreme edge cases (e.g., ne > 1e28).
+    kappa = np.minimum(kappa, 1e30)
 
     return kappa
 
@@ -295,6 +300,16 @@ def apply_radiation_transport(
     Te = state["Te"]
     rho = state["rho"]
     ne = Z * rho / m_p  # Electron density assuming Z ionization
+
+    # Skip FLD when plasma is too cold — radiation transport is negligible
+    # below ~10,000 K (< 1 eV) and the opacity formula produces overflow.
+    Te_max = float(np.max(Te))
+    if Te_max < 1e4:
+        # Cold plasma: no significant radiation. Return state unchanged.
+        new_state = dict(state)
+        if "E_rad" not in new_state:
+            new_state["E_rad"] = np.zeros_like(Te)
+        return new_state
 
     # Initialize radiation energy if not present
     if "E_rad" not in state:

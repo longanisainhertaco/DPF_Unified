@@ -139,15 +139,22 @@ class InverseDesigner:
             logger.error(f"Objective evaluation error: {e}")
             return 1e10
 
+        # Extract metrics from parameter_sweep result
+        # parameter_sweep returns list of dicts with "config" and "metrics" keys
+        metrics = predicted.get("metrics", {})
+        if not metrics:
+            logger.warning(f"No metrics in prediction result: {predicted}")
+            return 1e10
+
         # Compute target matching score
         score = 0.0
         for metric, target_val in targets.items():
-            if metric not in predicted:
+            if metric not in metrics:
                 logger.warning(f"Metric {metric} not in predictions")
                 score += 1e6  # Large penalty for missing metrics
                 continue
 
-            pred_val = predicted[metric]
+            pred_val = metrics[metric]
             # Normalized absolute error
             error = abs(pred_val - target_val) / max(abs(target_val), 1e-10)
             score += error
@@ -155,10 +162,10 @@ class InverseDesigner:
         # Add constraint violations
         if constraints:
             for metric, max_val in constraints.items():
-                if metric not in predicted:
+                if metric not in metrics:
                     continue
 
-                pred_val = predicted[metric]
+                pred_val = metrics[metric]
                 if pred_val > max_val:
                     # Quadratic penalty for constraint violation
                     violation = (pred_val - max_val) / max(abs(max_val), 1e-10)

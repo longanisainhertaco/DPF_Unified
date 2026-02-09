@@ -196,10 +196,13 @@ class BatchRunner:
 
             # Export to WELL format
             output_path = self.output_dir / f"trajectory_{idx:04d}.h5"
+            # Extract dz from config (defaults to dx if not specified)
+            dz = getattr(config, 'dz', None) or config.dx
             exporter = WellExporter(
                 output_path=output_path,
                 grid_shape=tuple(config.grid_shape),
                 dx=config.dx,
+                dz=dz,
                 geometry=config.geometry.type,
                 sim_params=params,
             )
