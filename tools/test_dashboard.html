@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DPF Slow Test Status</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --green: #3fb950;
+    --green-dim: #238636;
+    --red: #f85149;
+    --red-dim: #da3633;
+    --yellow: #d29922;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    -webkit-app-region: drag;
+  }
+
+  .header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header h1 .icon { font-size: 20px; }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-badge.running { background: var(--blue); color: #000; animation: pulse 2s infinite; }
+  .status-badge.done { background: var(--green-dim); color: var(--text); }
+  .status-badge.idle { background: var(--border); color: var(--text-dim); }
+  .status-badge.failed { background: var(--red-dim); color: var(--text); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .main { padding: 20px 24px; }
+
+  /* ── Big Counter ── */
+  .counter-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .counter {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .counter .value {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .counter .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .counter.passed .value { color: var(--green); }
+  .counter.failed .value { color: var(--red); }
+  .counter.skipped .value { color: var(--yellow); }
+  .counter.total .value { color: var(--blue); }
+
+  .counter .glow {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0 0 12px 12px;
+  }
+  .counter.passed .glow { background: var(--green); }
+  .counter.failed .glow { background: var(--red); }
+  .counter.skipped .glow { background: var(--yellow); }
+  .counter.total .glow { background: var(--blue); }
+
+  /* ── Progress Bar ── */
+  .progress-section {
+    margin-bottom: 20px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .progress-header .pct {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--blue);
+  }
+
+  .progress-header .detail {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .progress-bar .seg {
+    height: 100%;
+    transition: width 0.5s ease;
+  }
+
+  .progress-bar .seg.pass { background: var(--green); }
+  .progress-bar .seg.fail { background: var(--red); }
+  .progress-bar .seg.skip { background: var(--yellow); }
+
+  /* ── Currently Running ── */
+  .running-banner {
+    background: linear-gradient(135deg, #161b22, #1a2332);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+  }
+
+  .running-banner .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .running-banner .test-name {
+    font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: var(--blue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .running-banner .idle-msg {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* ── Timer ── */
+  .timer-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .timer-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .timer-card .value {
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .timer-card .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  /* ── Test Feed ── */
+  .feed-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .feed-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .feed-list {
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .feed-list::-webkit-scrollbar { width: 6px; }
+  .feed-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .feed-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+    gap: 10px;
+    font-size: 12px;
+    transition: background 0.2s;
+  }
+
+  .feed-item:hover { background: rgba(88, 166, 255, 0.05); }
+  .feed-item:last-child { border-bottom: none; }
+
+  .feed-item .symbol { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+  .feed-item .name {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 11px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .feed-item .duration {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .feed-item.failed .name { color: var(--red); }
+  .feed-item.passed .name { color: var(--text); }
+
+  .feed-item .fail-msg {
+    font-size: 10px;
+    color: var(--red);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Completion Banner ── */
+  .completion-banner {
+    display: none;
+    background: linear-gradient(135deg, #0d2818, #0d1117);
+    border: 1px solid var(--green-dim);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .completion-banner.show { display: block; animation: fadeIn 0.5s ease; }
+  .completion-banner.all-pass { border-color: var(--green); }
+  .completion-banner.has-failures {
+    background: linear-gradient(135deg, #2d1015, #0d1117);
+    border-color: var(--red);
+  }
+
+  .completion-banner .big-icon { font-size: 48px; margin-bottom: 8px; }
+  .completion-banner .msg { font-size: 16px; font-weight: 600; }
+  .completion-banner .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+  /* ── No data state ── */
+  .no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .no-data .icon { font-size: 48px; margin-bottom: 12px; }
+  .no-data .msg { font-size: 14px; }
+  .no-data code {
+    display: inline-block;
+    margin-top: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--green);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="icon">🔬</span> DPF Slow Test Status</h1>
+  <span id="statusBadge" class="status-badge idle">Idle</span>
+</div>
+
+<div class="main" id="mainContent">
+  <div class="no-data" id="noData">
+    <div class="icon">🧪</div>
+    <div class="msg">Waiting for test runner...</div>
+    <code>python tools/test_status_runner.py</code>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <!-- Completion Banner -->
+    <div id="completionBanner" class="completion-banner">
+      <div class="big-icon" id="completionIcon"></div>
+      <div class="msg" id="completionMsg"></div>
+      <div class="sub" id="completionSub"></div>
+    </div>
+
+    <!-- Counters -->
+    <div class="counter-row">
+      <div class="counter passed">
+        <div class="value" id="passedCount">0</div>
+        <div class="label">Passed</div>
+        <div class="glow"></div>
+      </div>
+      <div class="counter failed">
+        <div class="value" id="failedCount">0</div>
+        <div class="label">Failed</div>
+        <div class="glow"></div>
+      </div>
+      <div class="counter skipped">
+        <div class="value" id="skippedCount">0</div>
+        <div class="label">Skipped</div>
+        <div class="glow"></div>
+      </div>
+      <div class="counter total">
+        <div class="value" id="totalCount">0</div>
+        <div class="label">Total</div>
+        <div class="glow"></div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="pct" id="progressPct">0%</span>
+        <span class="detail" id="progressDetail">0 / 0 tests</span>
+      </div>
+      <div class="progress-bar">
+        <div class="seg pass" id="progressPass" style="width:0"></div>
+        <div class="seg fail" id="progressFail" style="width:0"></div>
+        <div class="seg skip" id="progressSkip" style="width:0"></div>
+      </div>
+    </div>
+
+    <!-- Currently Running -->
+    <div class="running-banner" id="runningBanner">
+      <div class="spinner" id="runningSpinner" style="display:none"></div>
+      <span class="idle-msg" id="runningIdle">Waiting...</span>
+      <span class="test-name" id="runningName" style="display:none"></span>
+    </div>
+
+    <!-- Timers -->
+    <div class="timer-row">
+      <div class="timer-card">
+        <div class="value" id="elapsedTime">00:00</div>
+        <div class="label">Elapsed</div>
+      </div>
+      <div class="timer-card">
+        <div class="value" id="estRemaining">--:--</div>
+        <div class="label">Est. Remaining</div>
+      </div>
+      <div class="timer-card">
+        <div class="value" id="avgDuration">0.0s</div>
+        <div class="label">Avg / Test</div>
+      </div>
+    </div>
+
+    <!-- Live Feed -->
+    <div class="feed-section">
+      <div class="feed-header">Live Results</div>
+      <div class="feed-list" id="feedList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUS_URL = 'test_status.json';
+const POLL_MS = 500;
+let lastTimestamp = 0;
+let runStartTime = 0;      // epoch seconds when run started
+let lastData = null;        // most recent data for timer ticks
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function shortName(nodeid) {
+  // "tests/test_foo.py::TestClass::test_method" → "TestClass::test_method"
+  const parts = nodeid.split('::');
+  return parts.length > 1 ? parts.slice(1).join('::') : nodeid;
+}
+
+function update(data) {
+  if (!data) return;
+  // Track when the run started (first data we see minus its elapsed)
+  if (data.status === 'running' && runStartTime === 0) {
+    runStartTime = data.timestamp - data.elapsed_seconds;
+  }
+  if (data.status === 'idle') runStartTime = 0;
+  lastData = data;
+  if (data.timestamp === lastTimestamp) return;
+  lastTimestamp = data.timestamp;
+
+  document.getElementById('noData').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Status badge
+  const badge = document.getElementById('statusBadge');
+  badge.className = 'status-badge ' + (data.failed > 0 && data.status === 'done' ? 'failed' : data.status);
+  badge.textContent = data.failed > 0 && data.status === 'done' ? 'FAILURES' : data.status.toUpperCase();
+
+  // Counters with animation
+  animateCounter('passedCount', data.passed);
+  animateCounter('failedCount', data.failed);
+  animateCounter('skippedCount', data.skipped);
+  animateCounter('totalCount', data.total);
+
+  // Progress
+  const total = Math.max(data.total, 1);
+  document.getElementById('progressPct').textContent = data.progress_pct + '%';
+  document.getElementById('progressDetail').textContent = `${data.completed} / ${data.total} tests`;
+  document.getElementById('progressPass').style.width = (data.passed / total * 100) + '%';
+  document.getElementById('progressFail').style.width = (data.failed / total * 100) + '%';
+  document.getElementById('progressSkip').style.width = (data.skipped / total * 100) + '%';
+
+  // Running test
+  const spinner = document.getElementById('runningSpinner');
+  const idle = document.getElementById('runningIdle');
+  const name = document.getElementById('runningName');
+  if (data.running) {
+    spinner.style.display = 'block';
+    idle.style.display = 'none';
+    name.style.display = 'block';
+    name.textContent = shortName(data.running);
+  } else {
+    spinner.style.display = 'none';
+    name.style.display = 'none';
+    idle.style.display = 'block';
+    idle.textContent = data.status === 'done' ? 'All tests completed' : 'Waiting...';
+  }
+
+  // Timers — elapsed is computed live, not from stale JSON
+  updateTimers(data);
+
+  // Feed (newest first)
+  const feedEl = document.getElementById('feedList');
+  const results = (data.results || []).slice().reverse();
+  feedEl.innerHTML = results.map(r => {
+    const cls = r.outcome === 'failed' ? 'failed' : r.outcome === 'passed' ? 'passed' : '';
+    const failMsg = r.message ? `<div class="fail-msg">${escapeHtml(r.message)}</div>` : '';
+    return `<div class="feed-item ${cls}">
+      <span class="symbol">${r.symbol || '?'}</span>
+      <div style="flex:1;min-width:0">
+        <div class="name">${shortName(r.nodeid)}</div>
+        ${failMsg}
+      </div>
+      <span class="duration">${r.duration}s</span>
+    </div>`;
+  }).join('');
+
+  // Completion banner
+  const banner = document.getElementById('completionBanner');
+  if (data.status === 'done') {
+    banner.classList.add('show');
+    if (data.failed === 0) {
+      banner.classList.add('all-pass');
+      banner.classList.remove('has-failures');
+      document.getElementById('completionIcon').textContent = '🎉';
+      document.getElementById('completionMsg').textContent = `All ${data.passed} tests passed!`;
+    } else {
+      banner.classList.remove('all-pass');
+      banner.classList.add('has-failures');
+      document.getElementById('completionIcon').textContent = '⚠️';
+      document.getElementById('completionMsg').textContent =
+        `${data.failed} test${data.failed > 1 ? 's' : ''} failed`;
+    }
+    const finalElapsed = runStartTime > 0 ? (data.timestamp - runStartTime) : data.elapsed_seconds;
+    document.getElementById('completionSub').textContent =
+      `${data.passed}P / ${data.failed}F / ${data.skipped}S — ${formatTime(finalElapsed)}`;
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function animateCounter(id, target) {
+  const el = document.getElementById(id);
+  const current = parseInt(el.textContent) || 0;
+  if (current !== target) {
+    el.textContent = target;
+    el.style.transform = 'scale(1.15)';
+    setTimeout(() => el.style.transform = 'scale(1)', 200);
+    el.style.transition = 'transform 0.2s ease';
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updateTimers(data) {
+  if (!data) return;
+  let elapsed;
+  if (data.status === 'running' && runStartTime > 0) {
+    elapsed = Date.now() / 1000 - runStartTime;
+  } else {
+    elapsed = data.elapsed_seconds;
+  }
+  document.getElementById('elapsedTime').textContent = formatTime(elapsed);
+
+  if (data.completed > 0 && data.status === 'running') {
+    const avgSec = elapsed / data.completed;
+    const remaining = (data.total - data.completed) * avgSec;
+    document.getElementById('estRemaining').textContent = formatTime(remaining);
+    document.getElementById('avgDuration').textContent = avgSec.toFixed(1) + 's';
+  } else if (data.status === 'done') {
+    document.getElementById('estRemaining').textContent = '00:00';
+    if (data.completed > 0) {
+      document.getElementById('avgDuration').textContent =
+        (data.elapsed_seconds / data.completed).toFixed(1) + 's';
+    }
+  }
+}
+
+// Update timers every second even when no new JSON data arrives
+setInterval(() => { if (lastData) updateTimers(lastData); }, 1000);
+
+async function poll() {
+  try {
+    const resp = await fetch(STATUS_URL + '?t=' + Date.now());
+    if (resp.ok) {
+      const data = await resp.json();
+      update(data);
+    }
+  } catch (e) {
+    // file not ready yet — that's fine
+  }
+  setTimeout(poll, POLL_MS);
+}
+
+poll();
+</script>
+</body>
+</html>
