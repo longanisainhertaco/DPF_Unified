@@ -156,3 +156,40 @@ body {
     @apply dpf-btn border border-dpf-border text-gray-300 hover:border-dpf-border-hover hover:text-white;
   }
 }
+
+/* ── Tooltip (CSS-only, dark theme) ─────────────────────────── */
+
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  width: max-content;
+  max-width: 220px;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}

@@ -9,6 +9,7 @@ interface ScientificInputProps {
   max?: number;
   validation?: 'valid' | 'warning' | 'error' | 'none';
   disabled?: boolean;
+  tooltip?: string;
 }
 
 export const ScientificInput: React.FC<ScientificInputProps> = ({
@@ -20,12 +21,15 @@ export const ScientificInput: React.FC<ScientificInputProps> = ({
   max,
   validation = 'none',
   disabled = false,
+  tooltip,
 }) => {
   const formatScientific = (num: number): string => {
     if (num === 0) return '0';
     const exp = Math.floor(Math.log10(Math.abs(num)));
     if (exp >= -2 && exp <= 3) {
-      return num.toString();
+      // Use toPrecision to avoid floating-point noise
+      const sigFigs = Math.max(4, exp + 2);
+      return parseFloat(num.toPrecision(sigFigs)).toString();
     }
     return num.toExponential(2);
   };
@@ -60,7 +64,15 @@ export const ScientificInput: React.FC<ScientificInputProps> = ({
 
   return (
     <div>
-      <label className="dpf-label text-xs mb-1 block">{label}</label>
+      <label className="dpf-label text-xs mb-1 block">
+        {tooltip ? (
+          <span data-tooltip={tooltip} className="cursor-help border-b border-dotted border-gray-600">
+            {label}
+          </span>
+        ) : (
+          label
+        )}
+      </label>
       <div className="flex items-center gap-2">
         <input
           type="text"

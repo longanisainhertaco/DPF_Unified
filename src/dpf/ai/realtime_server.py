@@ -27,6 +27,24 @@ _surrogate: Any | None = None
 _ensemble: Any | None = None
 
 
+# Module-level chat router — created lazily
+_chat_router_instance: Any | None = None
+
+
+def _get_chat_router() -> Any:
+    """Lazily create the WALRUSChatRouter."""
+    global _chat_router_instance
+    if _chat_router_instance is None:
+        from dpf.ai.chat_router import WALRUSChatRouter
+
+        _chat_router_instance = WALRUSChatRouter(surrogate=_surrogate, ensemble=_ensemble)
+    else:
+        # Update surrogate/ensemble refs if they changed
+        _chat_router_instance.surrogate = _surrogate
+        _chat_router_instance.ensemble = _ensemble
+    return _chat_router_instance
+
+
 def load_surrogate(checkpoint_path: str, device: str = "cpu") -> None:
     """Load a WALRUS surrogate model."""
     if not HAS_TORCH:
@@ -323,6 +341,29 @@ async def ai_confidence(history: list[dict[str, Any]]) -> dict[str, Any]:
         "n_models": prediction.n_models,
         "inference_time_ms": elapsed_ms,
     }
+
+
+# ── Chat ─────────────────────────────────────────────────────
+
+
+@ai_router.post("/chat")
+async def ai_chat(body: dict[str, Any]) -> dict[str, Any]:
+    """Route a natural-language question through the WALRUS chat router.
+
+    Args:
+        body: {"question": str, "config": optional dict}
+
+    Returns:
+        {"response": str, "intent": str, "data": dict, "suggestions": list[str]}
+    """
+    question = body.get("question", "").strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="question field is required")
+
+    config = body.get("config")
+    router = _get_chat_router()
+    result = await router.answer(question, config=config)
+    return result
 
 
 # ── WebSocket Streaming ──────────────────────────────────────

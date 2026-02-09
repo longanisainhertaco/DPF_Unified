@@ -1,7 +1,7 @@
 /**
  * Wire-format types mirroring the DPF server Pydantic models.
  *
- * These types match `src/dpf/server/models.py` exactly.
+ * These types match `src/dpf/server/models.py` and `src/dpf/config.py` exactly.
  */
 
 // ── Enums ───────────────────────────────────────────────────
@@ -114,7 +114,34 @@ export interface SweepResult {
   metrics?: Record<string, number>;
 }
 
-// ── Config types (mirrors SimulationConfig sub-models) ────────
+export interface InverseDesignResult {
+  best_config: Record<string, number>;
+  predicted_outcomes: Record<string, unknown>;
+  loss: number;
+  n_trials: number;
+}
+
+export interface PredictionResult {
+  predicted_state: Record<string, unknown>;
+  inference_time_ms: number;
+}
+
+export interface ConfidenceResult {
+  predicted_state: Record<string, unknown>;
+  confidence: Record<string, unknown>;
+  ood_score: number;
+  confidence_score: number;
+  n_models: number;
+  inference_time_ms: number;
+}
+
+export interface RolloutResult {
+  trajectory: Record<string, unknown>[];
+  n_steps: number;
+  total_inference_time_ms: number;
+}
+
+// ── Config types (mirrors src/dpf/config.py Pydantic models) ──
 
 export interface CircuitConfig {
   C: number;
@@ -123,37 +150,83 @@ export interface CircuitConfig {
   R0: number;
   anode_radius: number;
   cathode_radius: number;
+  ESR: number;
+  ESL: number;
+}
+
+export interface CollisionConfig {
+  coulomb_log: number;
+  dynamic_coulomb_log: boolean;
+  sigma_en: number;
+}
+
+export interface RadiationConfig {
+  bremsstrahlung_enabled: boolean;
+  gaunt_factor: number;
+  fld_enabled: boolean;
+  flux_limiter: number;
+  line_radiation_enabled: boolean;
+  impurity_Z: number;
+  impurity_fraction: number;
+}
+
+export interface SheathConfig {
+  enabled: boolean;
+  boundary: string;
+  V_sheath: number;
+}
+
+export interface GeometryConfig {
+  type: string;
+  dz?: number;
+}
+
+export interface BoundaryConfig {
+  electrode_bc: boolean;
+  axis_bc: boolean;
 }
 
 export interface FluidConfig {
-  backend: "python" | "athena" | "athenak";
+  backend: "python" | "athena" | "athenak" | "auto";
   reconstruction: string;
   riemann_solver: string;
   cfl: number;
-  resistive: boolean;
-  viscosity: boolean;
-  thermal_conduction: boolean;
-  braginskii: boolean;
-  hall: boolean;
+  dedner_ch: number;
+  gamma: number;
+  enable_resistive: boolean;
+  enable_energy_equation: boolean;
+  enable_nernst: boolean;
+  enable_viscosity: boolean;
+  diffusion_method: string;
+  sts_stages: number;
+  implicit_tol: number;
+  enable_powell: boolean;
+  dedner_cr: number;
+  enable_anisotropic_conduction: boolean;
+  full_braginskii_viscosity: boolean;
+}
+
+export interface DiagnosticsConfig {
+  hdf5_filename: string;
+  output_interval: number;
+  field_output_interval: number;
 }
 
 export interface SimulationConfig {
   grid_shape: number[];
   dx: number;
   sim_time: number;
-  dt_init: number;
+  dt_init?: number;
   rho0: number;
   T0: number;
-  anomalous_alpha?: number;
+  anomalous_alpha: number;
+  ion_mass: number;
   circuit: CircuitConfig;
+  collision?: Partial<CollisionConfig>;
+  radiation?: Partial<RadiationConfig>;
+  sheath?: Partial<SheathConfig>;
+  geometry?: Partial<GeometryConfig>;
   fluid?: Partial<FluidConfig>;
-  geometry?: { type: string };
-  radiation?: {
-    bremsstrahlung_enabled?: boolean;
-    fld_enabled?: boolean;
-  };
-  sheath?: {
-    enabled?: boolean;
-    boundary?: string;
-  };
+  boundary?: Partial<BoundaryConfig>;
+  diagnostics?: Partial<DiagnosticsConfig>;
 }

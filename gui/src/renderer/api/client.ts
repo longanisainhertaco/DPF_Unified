@@ -13,6 +13,10 @@ import type {
   PresetInfo,
   SimulationConfig,
   SimulationInfo,
+  InverseDesignResult,
+  PredictionResult,
+  ConfidenceResult,
+  RolloutResult,
 } from "./types";
 
 /** Base URL — can be overridden for testing */
@@ -144,5 +148,89 @@ export async function runAISweep(
   return apiFetch(`/api/ai/sweep?n_steps=${nSteps}`, {
     method: "POST",
     body: JSON.stringify(configs),
+  });
+}
+
+// ── AI Prediction ─────────────────────────────────────────────
+
+export async function runAIPredict(
+  history: Record<string, unknown>[]
+): Promise<{
+  predicted_state: Record<string, unknown>;
+  inference_time_ms: number;
+}> {
+  return apiFetch("/api/ai/predict", {
+    method: "POST",
+    body: JSON.stringify(history),
+  });
+}
+
+// ── AI Rollout ────────────────────────────────────────────────
+
+export async function runAIRollout(
+  history: Record<string, unknown>[],
+  nSteps: number = 10
+): Promise<{
+  trajectory: Record<string, unknown>[];
+  n_steps: number;
+  total_inference_time_ms: number;
+}> {
+  return apiFetch(`/api/ai/rollout?n_steps=${nSteps}`, {
+    method: "POST",
+    body: JSON.stringify(history),
+  });
+}
+
+// ── AI Inverse Design ─────────────────────────────────────────
+
+export async function runAIInverse(
+  targets: Record<string, number>,
+  constraints?: Record<string, number>,
+  method: string = "bayesian",
+  nTrials: number = 100
+): Promise<{
+  best_config: Record<string, number>;
+  predicted_outcomes: Record<string, unknown>;
+  loss: number;
+  n_trials: number;
+}> {
+  return apiFetch(`/api/ai/inverse?method=${method}&n_trials=${nTrials}`, {
+    method: "POST",
+    body: JSON.stringify({ targets, constraints: constraints ?? {} }),
+  });
+}
+
+// ── AI Chat ──────────────────────────────────────────────────
+
+export async function chatWithWALRUS(
+  question: string,
+  config?: Record<string, unknown>
+): Promise<{
+  response: string;
+  intent: string;
+  data: Record<string, unknown>;
+  suggestions: string[];
+}> {
+  return apiFetch("/api/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({ question, config }),
+  });
+}
+
+// ── AI Confidence ─────────────────────────────────────────────
+
+export async function runAIConfidence(
+  history: Record<string, unknown>[]
+): Promise<{
+  predicted_state: Record<string, unknown>;
+  confidence: Record<string, unknown>;
+  ood_score: number;
+  confidence_score: number;
+  n_models: number;
+  inference_time_ms: number;
+}> {
+  return apiFetch("/api/ai/confidence", {
+    method: "POST",
+    body: JSON.stringify(history),
   });
 }
