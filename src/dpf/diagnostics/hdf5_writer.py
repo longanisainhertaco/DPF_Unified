@@ -65,6 +65,11 @@ class HDF5Writer(DiagnosticsBase):
         }
         self._field_snapshots: list[dict[str, Any]] = []
 
+    @property
+    def field_snapshots(self) -> list[dict[str, Any]]:
+        """Public access to accumulated field snapshots."""
+        return self._field_snapshots
+
     def record(self, state: dict[str, Any], time: float) -> None:
         """Record diagnostics from current simulation state.
 

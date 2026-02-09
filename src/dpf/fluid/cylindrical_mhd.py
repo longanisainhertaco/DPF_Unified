@@ -389,7 +389,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # --- Dedner cleaning (skipped when CT is active) ---
         dpsi_dt = np.zeros_like(psi)
         if not self.enable_ct:
-            ch = self.dedner_ch_init if self.dedner_ch_init > 0 else max(np.max(np.abs(vel)), 1.0)
+            if self.dedner_ch_init > 0:
+                ch = self.dedner_ch_init
+            else:
+                # Use max(|v| + c_f) where c_f is the fast magnetosonic speed
+                B_sq_ded = np.sum(B**2, axis=0)
+                cs2_ded = self.gamma * p / np.maximum(rho, 1e-30)
+                va2_ded = B_sq_ded / (mu_0 * np.maximum(rho, 1e-30))
+                cf_ded = np.sqrt(cs2_ded + va2_ded)
+                v_abs = np.sqrt(np.sum(vel**2, axis=0))
+                ch = max(float(np.max(v_abs + cf_ded)), 1.0)
             cp = ch
             div_B = geom.div_B_cylindrical(B)
             dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
@@ -521,7 +530,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
         rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, psi_n, eta_2d)
 
-        rho_1 = np.maximum(rho_n + dt * rhs1["drho_dt"], 1e-20)
+        # Floor density at 1e-10 kg/m³ (prevents extreme Alfven speeds from very low density)
+        rho_1 = np.maximum(rho_n + dt * rhs1["drho_dt"], 1e-10)
         mom_1 = mom_n + dt * rhs1["dmom_dt"]
         vel_1 = mom_1 / np.maximum(rho_1[np.newaxis, :, :], 1e-30)
         p_1 = np.maximum(p_n + dt * rhs1["dp_dt"], 1e-20)
@@ -537,12 +547,23 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
         rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, psi_1, eta_2d)
 
-        rho_new = np.maximum(0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"]), 1e-20)
+        # Floor density at 1e-10 kg/m³ (prevents extreme Alfven speeds from very low density)
+        rho_new = np.maximum(0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"]), 1e-10)
         mom_new = 0.5 * mom_n + 0.5 * (mom_1 + dt * rhs2["dmom_dt"])
         vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
         p_new = np.maximum(0.5 * p_n + 0.5 * (p_1 + dt * rhs2["dp_dt"]), 1e-20)
         B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
         psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
+
+        # Cap velocity at 10x the fast magnetosonic speed to prevent runaway
+        B_sq = np.sum(B_new**2, axis=0)
+        cs2 = self.gamma * p_new / np.maximum(rho_new, 1e-20)
+        va2 = B_sq / (mu_0 * np.maximum(rho_new, 1e-20))
+        v_max = 10.0 * np.sqrt(np.maximum(cs2 + va2, 1e-10))
+        v_mag = np.sqrt(np.sum(vel_new**2, axis=0))
+        v_excess = v_mag / np.maximum(v_max, 1e-10)
+        limiter = np.where(v_excess > 1.0, 1.0 / v_excess, 1.0)
+        vel_new *= limiter[np.newaxis, :, :]
 
         # Apply electrode BC after stage 2
         if apply_electrode_bc and cathode_radius > 0:
@@ -606,6 +627,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         Te_new = np.maximum(Te_new, 1.0)
         Ti_new = np.maximum(Ti_new, 1.0)
+
+        # Cap temperatures at physically reasonable maximum (100 keV ~ 1.16e9 K)
+        T_max = 1.16e9  # 100 keV in Kelvin
+        Te_new = np.minimum(Te_new, T_max)
+        Ti_new = np.minimum(Ti_new, T_max)
 
         # --- Update coupling ---
         # In cylindrical coords, B_theta is the azimuthal field from axial current

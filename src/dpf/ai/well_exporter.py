@@ -209,6 +209,14 @@ class WellExporter:
                     if dpf_name in snap:
                         field_array[0, step_idx] = snap[dpf_name].astype(np.float32)
 
+                # Sanitize: replace NaN/Inf with 0 for ML training stability
+                n_bad = np.count_nonzero(~np.isfinite(field_array))
+                if n_bad > 0:
+                    logger.warning(
+                        "Sanitized %d non-finite values in %s", n_bad, well_name,
+                    )
+                    field_array = np.nan_to_num(field_array, nan=0.0, posinf=0.0, neginf=0.0)
+
                 dataset = t0_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
                     dataset.attrs["units"] = FIELD_UNITS[dpf_name]
@@ -230,6 +238,14 @@ class WellExporter:
                         # Convert from (3, nx, ny, nz) to (nx, ny, nz, 3)
                         vec = snap[dpf_name]
                         field_array[0, step_idx] = np.moveaxis(vec, 0, -1).astype(np.float32)
+
+                # Sanitize: replace NaN/Inf with 0 for ML training stability
+                n_bad = np.count_nonzero(~np.isfinite(field_array))
+                if n_bad > 0:
+                    logger.warning(
+                        "Sanitized %d non-finite values in %s", n_bad, well_name,
+                    )
+                    field_array = np.nan_to_num(field_array, nan=0.0, posinf=0.0, neginf=0.0)
 
                 dataset = t1_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
