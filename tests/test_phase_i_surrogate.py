@@ -353,20 +353,25 @@ class TestDPFSurrogateParameterSweep:
         assert len(results) == 1
         result = results[0]
 
-        # Check expected keys
-        assert "max_rho" in result
-        assert "max_Te" in result
-        assert "max_Ti" in result
-        assert "max_pressure" in result
-        assert "mean_B" in result
-        assert "max_B" in result
-        assert "final_rho" in result
-        assert "final_pressure" in result
-        assert "n_steps" in result
+        # New format: {config: {...}, metrics: {...}}
+        assert "config" in result
+        assert "metrics" in result
+
+        metrics = result["metrics"]
+        # Check expected metric keys
+        assert "max_rho" in metrics
+        assert "max_Te" in metrics
+        assert "max_Ti" in metrics
+        assert "max_pressure" in metrics
+        assert "mean_B" in metrics
+        assert "max_B" in metrics
+        assert "final_rho" in metrics
+        assert "final_pressure" in metrics
+        assert "n_steps" in metrics
 
         # Check config parameters are included
-        assert result["rho0"] == 1e-6
-        assert result["Te0"] == 5.0
+        assert result["config"]["rho0"] == 1e-6
+        assert result["config"]["Te0"] == 5.0
 
 
 class TestDPFSurrogateHelpers:
@@ -435,7 +440,10 @@ class TestDPFSurrogateHelpers:
 
         summary = surrogate._extract_summary(trajectory, config)
 
-        expected_keys = {
+        # New format: {config: {...}, metrics: {...}}
+        assert set(summary.keys()) == {"config", "metrics"}
+
+        expected_metric_keys = {
             "max_rho",
             "max_Te",
             "max_Ti",
@@ -445,10 +453,9 @@ class TestDPFSurrogateHelpers:
             "final_rho",
             "final_pressure",
             "n_steps",
-            "V0",
         }
-
-        assert set(summary.keys()) == expected_keys
+        assert set(summary["metrics"].keys()) == expected_metric_keys
+        assert summary["config"] == {"V0": 10e3}
 
     def test_extract_summary_max_values_correct(self, mock_torch):
         """_extract_summary max values are correct."""
@@ -467,8 +474,8 @@ class TestDPFSurrogateHelpers:
         config = {}
         summary = surrogate._extract_summary(trajectory, config)
 
-        assert summary["max_rho"] == pytest.approx(3.0)
-        assert summary["max_Te"] == pytest.approx(4.0 * 1e4)
+        assert summary["metrics"]["max_rho"] == pytest.approx(3.0)
+        assert summary["metrics"]["max_Te"] == pytest.approx(4.0 * 1e4)
 
     def test_extract_summary_final_values_correct(self, mock_torch):
         """_extract_summary final values are correct."""
@@ -483,8 +490,8 @@ class TestDPFSurrogateHelpers:
         config = {}
         summary = surrogate._extract_summary(trajectory, config)
 
-        assert summary["final_rho"] == pytest.approx(5.0)
-        assert summary["final_pressure"] == pytest.approx(300.0)
+        assert summary["metrics"]["final_rho"] == pytest.approx(5.0)
+        assert summary["metrics"]["final_pressure"] == pytest.approx(300.0)
 
     def test_extract_summary_includes_config_parameters(self, mock_torch):
         """_extract_summary includes original config parameters."""
@@ -497,9 +504,9 @@ class TestDPFSurrogateHelpers:
 
         summary = surrogate._extract_summary(trajectory, config)
 
-        assert summary["V0"] == 15e3
-        assert summary["pressure0"] == 200.0
-        assert summary["custom_param"] == "test"
+        assert summary["config"]["V0"] == 15e3
+        assert summary["config"]["pressure0"] == 200.0
+        assert summary["config"]["custom_param"] == "test"
 
 
 class TestDPFSurrogateAttributes:

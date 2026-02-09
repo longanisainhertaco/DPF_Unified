@@ -25,10 +25,10 @@ except ImportError:
     logger.info("torch not available; AI surrogate features disabled")
 
 try:
-    import walrus  # noqa: F401
+    from walrus.models import IsotropicModel  # noqa: F401
 
     HAS_WALRUS = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     logger.info("walrus not available; WALRUS model loading disabled")
 
 

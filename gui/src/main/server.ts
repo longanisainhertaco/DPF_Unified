@@ -42,8 +42,16 @@ export function startServer(
   serverPort = port;
 
   return new Promise((resolve, reject) => {
-    // Spawn `dpf serve --port <port>`
-    const proc = spawn("dpf", ["serve", "--port", String(port)], {
+    // Build command args, optionally including WALRUS checkpoint
+    const args = ["serve", "--port", String(port)];
+    const checkpointPath = process.env.DPF_WALRUS_CHECKPOINT;
+    if (checkpointPath) {
+      args.push("--checkpoint", checkpointPath);
+      const device = process.env.DPF_WALRUS_DEVICE || "cpu";
+      args.push("--device", device);
+    }
+
+    const proc = spawn("dpf", args, {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env },
     });

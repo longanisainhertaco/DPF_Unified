@@ -129,7 +129,19 @@ def backends() -> None:
 @click.option("--host", default="127.0.0.1", help="Bind address.")
 @click.option("--port", type=int, default=8765, help="Port number.")
 @click.option("--reload", is_flag=True, help="Auto-reload on code changes (dev only).")
-def serve(host: str, port: int, reload: bool) -> None:
+@click.option(
+    "--checkpoint",
+    type=click.Path(exists=True),
+    default=None,
+    help="WALRUS checkpoint directory (contains walrus.pt + extended_config.yaml).",
+)
+@click.option(
+    "--device",
+    type=click.Choice(["cpu", "mps", "cuda"]),
+    default="cpu",
+    help="Device for AI inference.",
+)
+def serve(host: str, port: int, reload: bool, checkpoint: str | None, device: str) -> None:
     """Start the DPF simulation server (FastAPI + WebSocket)."""
     try:
         import uvicorn
@@ -143,10 +155,19 @@ def serve(host: str, port: int, reload: bool) -> None:
         )
         sys.exit(1)
 
+    if checkpoint:
+        click.echo(f"Loading WALRUS model from {checkpoint} on {device} ...")
+        from dpf.ai.realtime_server import load_surrogate
+
+        load_surrogate(checkpoint, device=device)
+        click.echo("WALRUS model loaded successfully")
+
     click.echo(f"Starting DPF server on {host}:{port}")
     click.echo(f"  REST API: http://{host}:{port}/api/health")
     click.echo(f"  WebSocket: ws://{host}:{port}/ws/{{sim_id}}")
     click.echo(f"  Docs: http://{host}:{port}/docs")
+    if checkpoint:
+        click.echo(f"  AI Status: http://{host}:{port}/api/ai/status")
 
     uvicorn.run(
         "dpf.server.app:app",

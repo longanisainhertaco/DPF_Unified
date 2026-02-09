@@ -98,9 +98,10 @@ class TestWALRUSModelLoading:
         monkeypatch.setattr("dpf.ai.surrogate.torch", mock_torch_mod)
 
         # Patch the lazy imports inside _load_walrus_model
+        # New signature: (self, state_dict, config_yaml_path, checkpoint_data)
         monkeypatch.setattr(
             "dpf.ai.surrogate.DPFSurrogate._load_walrus_model",
-            lambda self, cd: _fake_load_walrus(
+            lambda self, sd, cyp, cd: _fake_load_walrus(
                 self, cd, mock_instantiate, mock_formatter_class, mock_revin_constructor
             ),
         )
@@ -203,9 +204,10 @@ class TestWALRUSModelLoading:
         monkeypatch.setattr("dpf.ai.surrogate.torch", mock_torch_mod)
 
         # Patch _load_walrus_model to avoid hydra import
+        # New signature: (self, state_dict, config_yaml_path, checkpoint_data)
         monkeypatch.setattr(
             "dpf.ai.surrogate.DPFSurrogate._load_walrus_model",
-            lambda self, cd: _fake_load_walrus(
+            lambda self, sd, cyp, cd: _fake_load_walrus(
                 self, cd, MagicMock(), MagicMock(), MagicMock()
             ),
         )
