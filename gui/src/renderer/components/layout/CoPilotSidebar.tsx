@@ -2,15 +2,34 @@ import React, { useEffect } from 'react';
 import { useAIStore } from '../../stores/ai';
 import { AdvisoryPanel } from '../copilot/AdvisoryPanel';
 import { SweepPanel } from '../copilot/SweepPanel';
+import { ScalingCurve } from '../copilot/ScalingCurve';
+import { InverseDesignPanel } from '../copilot/InverseDesignPanel';
+import { ChatPanel } from '../copilot/ChatPanel';
 
 export const CoPilotSidebar: React.FC = () => {
   const aiAvailable = useAIStore((s) => s.aiAvailable);
   const checkAIStatus = useAIStore((s) => s.checkAIStatus);
+  const sweepStatus = useAIStore((s) => s.sweepStatus);
+  const sweepResults = useAIStore((s) => s.sweepResults);
+  const sweepVariable = useAIStore((s) => s.sweepVariable);
+  const sweepMetric = useAIStore((s) => s.sweepMetric);
+  const setSweepMetric = useAIStore((s) => s.setSweepMetric);
 
   // Check AI status on mount
   useEffect(() => {
     checkAIStatus();
   }, [checkAIStatus]);
+
+  const METRIC_OPTIONS = [
+    { value: 'max_Te', label: 'Max Tₑ' },
+    { value: 'max_rho', label: 'Max ρ' },
+    { value: 'max_Ti', label: 'Max Tᵢ' },
+    { value: 'max_B', label: 'Max B' },
+    { value: 'neutron_rate', label: 'Neutron Rate' },
+    { value: 'R_plasma', label: 'R_plasma' },
+    { value: 'total_radiated_energy', label: 'Radiated Energy' },
+    { value: 'Z_bar', label: 'Z̄' },
+  ];
 
   return (
     <div className="h-full flex flex-col bg-dpf-panel">
@@ -36,6 +55,44 @@ export const CoPilotSidebar: React.FC = () => {
 
         {/* Parameter Sweep */}
         <SweepPanel />
+
+        {/* Scaling Curve with metric selector (shown after sweep completes) */}
+        {sweepStatus === 'complete' && sweepResults.length > 0 && sweepVariable && (
+          <div className="space-y-2">
+            {/* Metric selector */}
+            <div>
+              <label className="dpf-label text-xs mb-1 block">PLOT METRIC</label>
+              <select
+                value={sweepMetric}
+                onChange={(e) => setSweepMetric(e.target.value)}
+                className="dpf-input w-full text-sm"
+              >
+                {METRIC_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <ScalingCurve
+              variable={sweepVariable}
+              metric={sweepMetric}
+              data={sweepResults.map((r) => {
+                const cfg = r.config as Record<string, any>;
+                const paramVal = cfg.circuit?.[sweepVariable] ?? cfg[sweepVariable] ?? 0;
+                const metricVal = r.metrics?.[sweepMetric] ?? 0;
+                return [paramVal as number, metricVal] as [number, number];
+              })}
+            />
+          </div>
+        )}
+
+        {/* Inverse Design */}
+        <InverseDesignPanel />
+
+        {/* Chat with WALRUS */}
+        <ChatPanel />
       </div>
 
       {/* Footer: WALRUS Badge */}

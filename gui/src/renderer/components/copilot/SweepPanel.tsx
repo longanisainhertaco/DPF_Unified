@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAIStore } from '../../stores/ai';
+import { useConfigStore } from '../../stores/config';
 
 const SWEEP_VARIABLES = [
   { value: 'V0', label: 'V\u2080 (Voltage)' },
@@ -13,6 +14,7 @@ const SWEEP_VARIABLES = [
 export const SweepPanel: React.FC = () => {
   const sweepStatus = useAIStore((s) => s.sweepStatus);
   const runSweep = useAIStore((s) => s.runSweep);
+  const config = useConfigStore((s) => s.config);
 
   const [variable, setVariable] = useState('V0');
   const [minValue, setMinValue] = useState('10000');
@@ -27,13 +29,21 @@ export const SweepPanel: React.FC = () => {
       return;
     }
 
-    // Generate configs for each point in the sweep
+    // Generate configs for each point in the sweep, merged with current config
     const step = (max - min) / (nPoints - 1);
-    const configs = Array.from({ length: nPoints }, (_, i) => ({
-      [variable]: min + i * step,
-    }));
+    const baseCircuit = config.circuit ?? {};
+    const circuitParams = ['V0', 'C', 'L0', 'R0', 'anode_radius', 'cathode_radius'];
+    const isCircuitParam = circuitParams.includes(variable);
 
-    runSweep(configs, 100);
+    const configs = Array.from({ length: nPoints }, (_, i) => {
+      const val = min + i * step;
+      if (isCircuitParam) {
+        return { ...config, circuit: { ...baseCircuit, [variable]: val } };
+      }
+      return { ...config, [variable]: val };
+    });
+
+    runSweep(configs, 100, variable);
   };
 
   const isRunning = sweepStatus === 'running';

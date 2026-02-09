@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchAIStatus, runAISweep } from '../api/client';
+import { fetchAIStatus, runAISweep, runAIInverse, runAIConfidence, chatWithWALRUS } from '../api/client';
 import type { SimulationConfig } from '../api/types';
 
 interface Advisory {
@@ -14,6 +14,15 @@ interface SweepResult {
   metrics: Record<string, number>;
 }
 
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  intent?: string;
+  suggestions?: string[];
+  timestamp: number;
+}
+
 interface AIState {
   // AI availability
   aiAvailable: boolean;
@@ -24,13 +33,33 @@ interface AIState {
   // Parameter sweep state
   sweepStatus: 'idle' | 'running' | 'complete';
   sweepResults: SweepResult[];
+  sweepVariable: string | null;
+
+  // Inverse design state
+  inverseStatus: 'idle' | 'running' | 'complete' | 'error';
+  inverseResult: {
+    best_config: Record<string, number>;
+    loss: number;
+    n_trials: number;
+  } | null;
+
+  // Sweep metric selection
+  sweepMetric: string;
+
+  // Chat state
+  chatMessages: ChatMessage[];
+  chatStatus: 'idle' | 'sending' | 'error';
 
   // Actions
   checkAIStatus: () => Promise<void>;
   generatePreShotAdvisory: (config: Partial<SimulationConfig>) => void;
   addAdvisory: (severity: Advisory['severity'], message: string) => void;
   clearAdvisories: () => void;
-  runSweep: (configs: Record<string, unknown>[], nSteps: number) => Promise<void>;
+  runSweep: (configs: Record<string, unknown>[], nSteps: number, variable?: string) => Promise<void>;
+  runInverse: (targets: Record<string, number>, constraints?: Record<string, number>, method?: string, nTrials?: number) => Promise<void>;
+  setSweepMetric: (metric: string) => void;
+  sendChat: (question: string) => Promise<void>;
+  clearChat: () => void;
 }
 
 export const useAIStore = create<AIState>((set, get) => ({
@@ -38,6 +67,12 @@ export const useAIStore = create<AIState>((set, get) => ({
   advisories: [],
   sweepStatus: 'idle',
   sweepResults: [],
+  sweepVariable: null,
+  inverseStatus: 'idle',
+  inverseResult: null,
+  sweepMetric: 'max_Te',
+  chatMessages: [],
+  chatStatus: 'idle',
 
   checkAIStatus: async () => {
     try {
@@ -78,6 +113,24 @@ export const useAIStore = create<AIState>((set, get) => ({
       addAdvisory('warning', 'High inductance limits peak current');
     }
 
+    // Radiation check: bremsstrahlung disabled at high voltage
+    const bremsEnabled = config.radiation?.bremsstrahlung_enabled ?? true;
+    if (!bremsEnabled && V0 > 10000) {
+      addAdvisory('warning', 'Bremsstrahlung disabled at high voltage — radiation losses may be underestimated');
+    }
+
+    // Grid resolution check
+    const gridShape = config.grid_shape ?? [];
+    if (gridShape.length > 0 && gridShape.every((dim) => dim <= 8)) {
+      addAdvisory('warning', 'Very coarse grid (8\u00b3) — results are qualitative only');
+    }
+
+    // CFL stability check
+    const cfl = config.fluid?.cfl ?? 0.4;
+    if (cfl > 0.8) {
+      addAdvisory('warning', 'High CFL number may cause numerical instabilities');
+    }
+
     // If no warnings were added, report nominal
     const { advisories } = get();
     const hasWarnings = advisories.some(a => a.severity === 'warning' || a.severity === 'critical');
@@ -106,8 +159,8 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ advisories: [] });
   },
 
-  runSweep: async (configs, nSteps) => {
-    set({ sweepStatus: 'running', sweepResults: [] });
+  runSweep: async (configs, nSteps, variable) => {
+    set({ sweepStatus: 'running', sweepResults: [], sweepVariable: variable ?? null });
 
     try {
       const response = await runAISweep(configs, nSteps);
@@ -127,5 +180,81 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ sweepStatus: 'idle' });
       throw error;
     }
+  },
+
+  runInverse: async (targets, constraints, method = 'bayesian', nTrials = 100) => {
+    set({ inverseStatus: 'running', inverseResult: null });
+    try {
+      const response = await runAIInverse(targets, constraints, method, nTrials);
+      set({
+        inverseStatus: 'complete',
+        inverseResult: {
+          best_config: response.best_config,
+          loss: response.loss,
+          n_trials: response.n_trials,
+        },
+      });
+    } catch (error) {
+      console.error('Inverse design failed:', error);
+      set({ inverseStatus: 'error' });
+      throw error;
+    }
+  },
+
+  setSweepMetric: (metric) => {
+    set({ sweepMetric: metric });
+  },
+
+  sendChat: async (question) => {
+    const { chatMessages } = get();
+
+    // Add user message
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: question,
+      timestamp: Date.now(),
+    };
+
+    set({
+      chatMessages: [...chatMessages, userMsg],
+      chatStatus: 'sending',
+    });
+
+    try {
+      const response = await chatWithWALRUS(question);
+
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response.response,
+        intent: response.intent,
+        suggestions: response.suggestions,
+        timestamp: Date.now(),
+      };
+
+      set((state) => ({
+        chatMessages: [...state.chatMessages, assistantMsg],
+        chatStatus: 'idle',
+      }));
+    } catch (error) {
+      console.error('Chat failed:', error);
+
+      const errorMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Failed to reach WALRUS. The AI backend may not be running.',
+        timestamp: Date.now(),
+      };
+
+      set((state) => ({
+        chatMessages: [...state.chatMessages, errorMsg],
+        chatStatus: 'error',
+      }));
+    }
+  },
+
+  clearChat: () => {
+    set({ chatMessages: [], chatStatus: 'idle' });
   },
 }));
