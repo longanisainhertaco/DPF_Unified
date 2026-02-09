@@ -1123,10 +1123,21 @@ class MHDSolver(PlasmaSolverBase):
             # Adiabatic: dp/dt = -gamma * p * div(v)
             dp_dt = -self.gamma * p * div_v
 
-        # --- Dedner cleaning ---
-        ch = self.dedner_ch_init if self.dedner_ch_init > 0 else np.max(np.abs(vel)) + 1.0
-        cp = ch
-        dpsi_dt, dB_clean = _dedner_source(psi, B, ch, cp, self.dx)
+        # --- Dedner cleaning (Mignone & Tzeferacos 2010 tuning) ---
+        # ch = max fast magnetosonic speed across the grid
+        # cr = ch / dx for optimal parabolic damping (M&T2010 prescription)
+        if self.dedner_ch_init > 0:
+            ch = self.dedner_ch_init
+        else:
+            # Auto: ch = max(|v| + c_f) where c_f is fast magnetosonic speed
+            B_sq = np.sum(B**2, axis=0)
+            cs2 = self.gamma * p / np.maximum(rho, 1e-20)
+            va2 = B_sq / (mu_0 * np.maximum(rho, 1e-20))
+            cf = np.sqrt(cs2 + va2)  # Fast magnetosonic speed
+            v_mag = np.sqrt(np.sum(vel**2, axis=0))
+            ch = float(np.max(v_mag + cf)) + 1.0
+        cr = ch / self.dx  # M&T2010 optimal damping rate
+        dpsi_dt, dB_clean = _dedner_source_mt2010(psi, B, ch, cr, self.dx)
         dB_dt += dB_clean
 
         return {

@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from dpf.atomic.ionization import saha_ionization_fraction
+from dpf.atomic.ionization import saha_ionization_fraction_array
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
@@ -438,9 +438,13 @@ class SimulationEngine:
         Te_avg = float(np.mean(Te))
         ne_avg = float(np.mean(ne))
 
-        # Compute average ionization state from Saha equation
-        Z_bar = saha_ionization_fraction(Te_avg, ne_avg)
-        Z_bar = max(Z_bar, 0.01)  # Floor at 0.01 to avoid division by zero
+        # Spatially-varying ionization state from Saha equation
+        Te_flat = Te.ravel()
+        ne_flat = ne.ravel()
+        Z_bar_field = saha_ionization_fraction_array(Te_flat, ne_flat).reshape(Te.shape)
+        Z_bar_field = np.maximum(Z_bar_field, 0.01)  # Floor to avoid division by zero
+        # Scalar Z_bar for circuit coupling and scalar operators
+        Z_bar = max(float(np.mean(Z_bar_field)), 0.01)
 
         # Compute spatially-resolved resistivity field for MHD solver
         eta_field = None
@@ -450,11 +454,12 @@ class SimulationEngine:
 
         if Te_avg > 1000.0 and ne_avg > 1e10:
             # Cell-by-cell Spitzer resistivity with temperature floor
+            # and spatially-varying Z_bar for accurate transport
             Te_floored = np.maximum(Te, 1000.0)
             ne_floored = np.maximum(ne, 1e10)
             lnL_field = coulomb_log(ne_floored, Te_floored)
             eta_spitzer_field = spitzer_resistivity(
-                ne_floored, Te_floored, lnL_field, Z=Z_bar,
+                ne_floored, Te_floored, lnL_field, Z=Z_bar_field,
             )
 
             # Volume-averaged for fallback and scalar coupling
@@ -540,7 +545,7 @@ class SimulationEngine:
                 L_plasma = float(np.sum(B_sq / _mu_0 * dV)) / I_sq
 
         # === Step 1b: Collision+Radiation (first half-step of Strang) ===
-        self._apply_collision_radiation(dt / 2.0, Z_bar)
+        self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
 
         # === Step 2: Circuit advance (with plasma resistance + inductance) ===
         coupling = self.fluid.coupling_interface()
@@ -567,6 +572,11 @@ class SimulationEngine:
         )
         self._sanitize_state("after fluid step")
 
+        # === Step 3.5: Powell 8-wave div(B) source terms ===
+        if self.config.fluid.enable_powell:
+            self._apply_powell_sources(dt)
+            self._sanitize_state("after Powell step")
+
         # === Step 3a: Nernst B-field advection ===
         fc = self.config.fluid
         if fc.enable_nernst:
@@ -592,7 +602,7 @@ class SimulationEngine:
                 )
 
         # === Step 4+5: Collision+Radiation (second half-step of Strang) ===
-        self._apply_collision_radiation(dt / 2.0, Z_bar)
+        self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
 
         # === Step 5b: Neutron yield (DD thermonuclear) ===
         Ti_yield = self.state["Ti"]
@@ -805,7 +815,13 @@ class SimulationEngine:
     # Strang-split collision + radiation sub-step
     # ------------------------------------------------------------------
 
-    def _apply_collision_radiation(self, dt_sub: float, Z_bar: float) -> None:
+    def _apply_collision_radiation(
+        self,
+        dt_sub: float,
+        Z_bar: float,
+        *,
+        Z_bar_field: np.ndarray | None = None,
+    ) -> None:
         """Apply collision (temperature relaxation) and radiation losses.
 
         This is the combined collision + radiation operator used in Strang
@@ -814,7 +830,10 @@ class SimulationEngine:
 
         Args:
             dt_sub: Sub-step duration [s] (typically dt/2).
-            Z_bar: Average ionization state.
+            Z_bar: Scalar average ionization state (fallback).
+            Z_bar_field: Spatially-varying ionization state array, same shape
+                as Te/rho. If provided, used for collision/radiation operators
+                instead of scalar Z_bar for improved physics fidelity.
         """
         # --- Collision physics (electron-ion temperature relaxation) ---
         Te = self.state["Te"]
@@ -828,7 +847,9 @@ class SimulationEngine:
         else:
             lnL = col_cfg.coulomb_log
 
-        freq_ei = nu_ei(ne, Te, lnL, Z=Z_bar)
+        # Use spatially-varying Z for collision rate if available
+        Z_for_collisions = Z_bar_field if Z_bar_field is not None else Z_bar
+        freq_ei = nu_ei(ne, Te, lnL, Z=Z_for_collisions)
         Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
         self.state["Te"] = Te_new
         self.state["Ti"] = Ti_new
@@ -843,6 +864,8 @@ class SimulationEngine:
             self._sanitize_state("after viscosity step")
 
         # --- Radiation losses ---
+        # Use spatially-varying Z for bremsstrahlung (P ~ Z^2) if available
+        Z_for_rad = Z_bar_field if Z_bar_field is not None else Z_bar
         if self.rad_cfg.bremsstrahlung_enabled:
             ne_rad = rho / self.ion_mass
             if self.rad_cfg.fld_enabled:
@@ -850,7 +873,7 @@ class SimulationEngine:
                     self.state,
                     dx=self.config.dx,
                     dt=dt_sub,
-                    Z=Z_bar,
+                    Z=Z_for_rad,
                     gaunt_factor=self.rad_cfg.gaunt_factor,
                 )
             else:
@@ -858,7 +881,7 @@ class SimulationEngine:
                     self.state["Te"],
                     ne_rad,
                     dt_sub,
-                    Z=Z_bar,
+                    Z=Z_for_rad,
                     gaunt_factor=self.rad_cfg.gaunt_factor,
                 )
                 self.state["Te"] = Te_rad
@@ -909,7 +932,7 @@ class SimulationEngine:
         # --- Implicit / STS magnetic and thermal diffusion ---
         fc = self.config.fluid
         if fc.diffusion_method != "explicit" and fc.enable_resistive:
-            self._apply_diffusion(dt_sub, Z_bar)
+            self._apply_diffusion(dt_sub, Z_bar, Z_bar_field=Z_bar_field)
             self._sanitize_state("after diffusion step")
 
     # ------------------------------------------------------------------
@@ -958,6 +981,68 @@ class SimulationEngine:
             )
 
         self.state["B"] = np.array([Bx_new, By_new, Bz_new])
+
+    # ------------------------------------------------------------------
+    # Powell 8-wave div(B) source terms
+    # ------------------------------------------------------------------
+
+    def _apply_powell_sources(self, dt: float) -> None:
+        """Apply Powell 8-wave div(B) source terms.
+
+        These non-conservative source terms help control magnetic field
+        divergence by correcting momentum, induction, and energy proportional
+        to div(B). They complement Dedner GLM cleaning.
+
+        Reference: Powell et al., J. Comp. Phys. 154, 284 (1999).
+        """
+        from dpf.fluid.mhd_solver import powell_source_terms, powell_source_terms_cylindrical
+
+        rho = self.state["rho"]
+        gamma = self.config.fluid.gamma
+
+        if self.geometry_type == "cylindrical":
+            # Squeeze to 2D for cylindrical Powell
+            state_2d = {}
+            for key, arr in self.state.items():
+                if isinstance(arr, np.ndarray):
+                    if arr.ndim == 4:  # (3, nr, 1, nz) -> (3, nr, nz)
+                        state_2d[key] = np.squeeze(arr, axis=2)
+                    elif arr.ndim == 3:  # (nr, 1, nz) -> (nr, nz)
+                        state_2d[key] = np.squeeze(arr, axis=1)
+                    else:
+                        state_2d[key] = arr
+                else:
+                    state_2d[key] = arr
+
+            powell = powell_source_terms_cylindrical(state_2d, self.fluid.geom)
+
+            # Apply sources (2D) then unsqueeze back
+            rho_2d = np.squeeze(rho, axis=1)
+            rho_safe = np.maximum(rho_2d, 1e-20)
+
+            vel_2d = np.squeeze(self.state["velocity"], axis=2)
+            vel_2d += dt * powell["dmom_powell"] / rho_safe[np.newaxis, :, :]
+            self.state["velocity"][:, :, 0, :] = vel_2d
+
+            B_2d = np.squeeze(self.state["B"], axis=2)
+            B_2d += dt * powell["dB_powell"]
+            self.state["B"][:, :, 0, :] = B_2d
+
+            p_2d = np.squeeze(self.state["pressure"], axis=1)
+            p_2d += dt * powell["denergy_powell"] * (gamma - 1.0)
+            self.state["pressure"][:, 0, :] = p_2d
+        else:
+            # Cartesian 3D
+            dx = self.config.dx
+            powell = powell_source_terms(self.state, dx, dx, dx)
+
+            rho_safe = np.maximum(rho, 1e-20)
+            self.state["velocity"] += dt * powell["dmom_powell"] / rho_safe[np.newaxis, :, :, :]
+            self.state["B"] += dt * powell["dB_powell"]
+            self.state["pressure"] += dt * powell["denergy_powell"] * (gamma - 1.0)
+
+        # Enforce positivity
+        self.state["pressure"] = np.maximum(self.state["pressure"], 1e-20)
 
     # ------------------------------------------------------------------
     # Braginskii ion viscosity sub-step
@@ -1046,7 +1131,13 @@ class SimulationEngine:
     # Implicit / STS diffusion sub-step
     # ------------------------------------------------------------------
 
-    def _apply_diffusion(self, dt_sub: float, Z_bar: float) -> None:
+    def _apply_diffusion(
+        self,
+        dt_sub: float,
+        Z_bar: float,
+        *,
+        Z_bar_field: np.ndarray | None = None,
+    ) -> None:
         """Apply implicit or super-time-stepping magnetic and thermal diffusion.
 
         Called from _apply_collision_radiation when diffusion_method != 'explicit'.
@@ -1056,7 +1147,8 @@ class SimulationEngine:
 
         Args:
             dt_sub: Sub-step duration [s] (typically dt/2 from Strang).
-            Z_bar: Average ionization state.
+            Z_bar: Scalar average ionization state (fallback).
+            Z_bar_field: Spatially-varying ionization state array, if available.
         """
         fc = self.config.fluid
         dx = self.config.dx
@@ -1066,11 +1158,13 @@ class SimulationEngine:
         ne = np.maximum(rho / self.ion_mass, 1e10)
 
         # Compute resistivity field for diffusion coefficient
+        # Use spatially-varying Z for accurate Spitzer resistivity
+        Z_for_diff = Z_bar_field if Z_bar_field is not None else Z_bar
         Te_safe = np.maximum(Te, 1000.0)
         ne_safe = np.maximum(ne, 1e10)
         from dpf.collision.spitzer import spitzer_resistivity as _spitz_eta
         lnL = coulomb_log(ne_safe, Te_safe)
-        eta = _spitz_eta(ne_safe, Te_safe, lnL, Z=Z_bar)
+        eta = _spitz_eta(ne_safe, Te_safe, lnL, Z=Z_for_diff)
 
         # Compute Spitzer thermal conductivity: kappa_e ~ 3.2 * ne * kB^2 * Te * tau_e / m_e
         # Simplified estimate: kappa ~ 20 * (kB * Te)^{5/2} / (m_e^{1/2} * e^4 * lnL)
@@ -1115,9 +1209,11 @@ class SimulationEngine:
             B_ac = self.state["B"]
             Te_ac = self.state["Te"]
             ne_ac = np.maximum(self.state["rho"] / self.ion_mass, 1e10)
+            # Anisotropic conduction accepts scalar Z_eff
+            Z_eff_aniso = max(Z_bar, 0.01)
             Te_aniso = anisotropic_thermal_conduction(
                 Te_ac, B_ac, ne_ac, dt_sub, dx, dy, dz,
-                Z_eff=max(Z_bar, 0.01),
+                Z_eff=Z_eff_aniso,
             )
             self.state["Te"] = np.maximum(Te_aniso, 1.0)
 

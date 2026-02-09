@@ -408,12 +408,12 @@ Root attributes: dataset_name, grid_type ("cartesian"), n_spatial_dims,
 | Module | Status | Notes |
 |--------|--------|-------|
 | `field_mapping.py` | ✅ Ready | Bidirectional DPF ↔ Well transforms |
-| `well_exporter.py` | ⚠️ Minor fix | Uses `grid_type="uniform"`, Well spec expects `"cartesian"` |
+| `well_exporter.py` | ✅ Ready | `grid_type` fixed to `"cartesian"` (was `"uniform"`) |
 | `dataset_validator.py` | ✅ Ready | NaN/Inf, schema, energy conservation checks |
-| `batch_runner.py` | ⚠️ Minor fix | WellExporter API call mismatch (lines 199-219) |
+| `batch_runner.py` | ✅ Ready | WellExporter API mismatch fixed |
 | `surrogate.py` | ✅ **Implemented** | Real WALRUS IsotropicModel loading + RevIN + inference pipeline. 4.8GB checkpoint at `models/walrus-pretrained/walrus.pt`. |
-| `confidence.py` | ⚠️ Minor fix | Calls `DPFSurrogate.load()` which doesn't exist |
-| `realtime_server.py` | ⚠️ Minor fix | 3 wrong API calls (parameter_sweep, optimize, field access) |
+| `confidence.py` | ✅ Ready | Uses `DPFSurrogate()` constructor (`.load()` bug fixed) |
+| `realtime_server.py` | ✅ Ready | All 3 API calls fixed (parameter_sweep, inverse, confidence) |
 
 **Status**: WALRUS inference in `surrogate.py` is now fully implemented using IsotropicModel + RevIN + ChannelsFirstWithTimeFormatter. Next step: fine-tune on DPF-specific training data for improved predictions.
 

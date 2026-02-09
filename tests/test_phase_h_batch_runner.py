@@ -272,40 +272,51 @@ class TestBuildConfig:
 class TestRunSingle:
     """Test single simulation runs."""
 
+    @staticmethod
+    def _make_mock_engine():
+        """Create a mock engine that supports step-by-step execution.
+
+        The batch runner calls engine.step() in a loop (checking result.finished),
+        captures field snapshots via engine.get_field_snapshot(), and reads
+        engine.circuit.current, engine.circuit.voltage, engine.time.
+        """
+        mock_engine = MagicMock()
+        # step() returns a StepResult-like object; finished=True on first call
+        step_result = MagicMock()
+        step_result.finished = True
+        mock_engine.step.return_value = step_result
+        # get_field_snapshot returns a minimal state dict
+        mock_engine.get_field_snapshot.return_value = {
+            "rho": np.zeros((8, 8, 8)),
+            "velocity": np.zeros((3, 8, 8, 8)),
+            "pressure": np.zeros((8, 8, 8)),
+            "B": np.zeros((3, 8, 8, 8)),
+            "Te": np.zeros((8, 8, 8)),
+            "Ti": np.zeros((8, 8, 8)),
+        }
+        mock_engine.circuit = MagicMock()
+        mock_engine.circuit.current = 0.0
+        mock_engine.circuit.voltage = 1000.0
+        mock_engine.time = 1e-7
+        mock_engine.diagnostics = MagicMock()
+        return mock_engine
+
     def test_run_single_returns_success_tuple(self, base_config, parameter_ranges, monkeypatch, tmp_path):
         """Test run_single returns (idx, None) on success.
 
-        NOTE: The actual batch_runner.py code tries to access config.physics.dt on line 201,
-        but SimulationConfig has no physics attribute. This appears to be a bug in the source code.
-        We work around it by mocking build_config to inject a physics attribute using __dict__.
+        The batch runner runs step-by-step, capturing field snapshots directly
+        from the engine state, then exports to Well HDF5 format.
         """
-        # Mock SimulationEngine
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.return_value = None
-        mock_engine.diagnostics = MagicMock()
-        mock_engine.diagnostics.field_snapshots = []
-        mock_engine_class.return_value = mock_engine
+        mock_engine = self._make_mock_engine()
+        mock_engine_class = MagicMock(return_value=mock_engine)
         monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
 
         # Mock WellExporter
         mock_exporter_class = MagicMock()
         mock_exporter = MagicMock()
+        mock_exporter._snapshots = [{}]  # Non-empty to check logging
         mock_exporter_class.return_value = mock_exporter
         monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", mock_exporter_class)
-
-        # Patch build_config to inject physics.dt using __dict__ (bypass Pydantic validation)
-        original_build_config = BatchRunner.build_config
-
-        def patched_build_config(self, params):
-            config = original_build_config(self, params)
-            # Inject physics attribute via __dict__ to bypass Pydantic validation
-            physics_mock = MagicMock()
-            physics_mock.dt = 1e-9
-            object.__setattr__(config, 'physics', physics_mock)
-            return config
-
-        monkeypatch.setattr(BatchRunner, "build_config", patched_build_config)
 
         runner = BatchRunner(
             base_config=base_config,
@@ -318,15 +329,19 @@ class TestRunSingle:
         idx, error = runner.run_single(0, params)
         assert idx == 0
         assert error is None
-        mock_engine.run.assert_called_once()
+        # Verify step-by-step execution was used
+        mock_engine.step.assert_called()
+        # Verify field snapshots were captured
+        mock_engine.get_field_snapshot.assert_called()
+        # Verify exporter was finalized
+        mock_exporter.finalize.assert_called_once()
 
     def test_run_single_returns_error_on_failure(self, base_config, parameter_ranges, monkeypatch):
         """Test run_single returns (idx, error_msg) on failure."""
-        # Mock SimulationEngine to raise exception in dpf.engine module
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.side_effect = RuntimeError("Simulation diverged")
-        mock_engine_class.return_value = mock_engine
+        # Mock SimulationEngine to raise exception in step()
+        mock_engine = self._make_mock_engine()
+        mock_engine.step.side_effect = RuntimeError("Simulation diverged")
+        mock_engine_class = MagicMock(return_value=mock_engine)
 
         monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
 
@@ -345,19 +360,41 @@ class TestRunSingle:
 class TestRun:
     """Test batch run execution."""
 
+    @staticmethod
+    def _make_mock_engine():
+        """Create a mock engine for step-by-step execution in batch runs."""
+        mock_engine = MagicMock()
+        step_result = MagicMock()
+        step_result.finished = True
+        mock_engine.step.return_value = step_result
+        mock_engine.get_field_snapshot.return_value = {
+            "rho": np.zeros((8, 8, 8)),
+            "velocity": np.zeros((3, 8, 8, 8)),
+            "pressure": np.zeros((8, 8, 8)),
+            "B": np.zeros((3, 8, 8, 8)),
+            "Te": np.zeros((8, 8, 8)),
+            "Ti": np.zeros((8, 8, 8)),
+        }
+        mock_engine.circuit = MagicMock()
+        mock_engine.circuit.current = 0.0
+        mock_engine.circuit.voltage = 1000.0
+        mock_engine.time = 1e-7
+        mock_engine.diagnostics = MagicMock()
+        return mock_engine
+
     def test_run_with_workers_1_sequential(
         self, base_config, parameter_ranges, monkeypatch, tmp_path
     ):
         """Test run with workers=1 runs sequentially."""
-        # Mock SimulationEngine in dpf.engine module
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.return_value = None
-        mock_engine.diagnostics = MagicMock()
-        mock_engine.diagnostics.field_snapshots = []
-        mock_engine_class.return_value = mock_engine
-
+        mock_engine = self._make_mock_engine()
+        mock_engine_class = MagicMock(return_value=mock_engine)
         monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
+
+        # Mock WellExporter
+        mock_exporter = MagicMock()
+        mock_exporter._snapshots = [{}]
+        mock_exporter_class = MagicMock(return_value=mock_exporter)
+        monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", mock_exporter_class)
 
         runner = BatchRunner(
             base_config=base_config,
@@ -369,48 +406,31 @@ class TestRun:
 
         result = runner.run()
 
-        # Should have called engine 3 times
-        assert mock_engine.run.call_count == 3
+        # Should have instantiated engine 3 times
+        assert mock_engine_class.call_count == 3
         assert result.n_total == 3
 
     def test_run_returns_batch_result_with_correct_counts(
         self, base_config, parameter_ranges, monkeypatch, tmp_path
     ):
         """Test run returns BatchResult with correct counts."""
-        # Mock SimulationEngine with some failures in dpf.engine module
+        # Mock engine where the 2nd instantiation fails during step()
         call_count = [0]
 
-        def mock_run():
+        def make_engine(*args, **kwargs):
             call_count[0] += 1
+            engine = self._make_mock_engine()
             if call_count[0] == 2:
-                raise ValueError("Simulation 2 failed")
+                engine.step.side_effect = ValueError("Simulation 2 failed")
+            return engine
 
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.side_effect = mock_run
-        mock_engine.diagnostics = MagicMock()
-        mock_engine.diagnostics.field_snapshots = []
-        mock_engine_class.return_value = mock_engine
-
-        monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
+        monkeypatch.setattr("dpf.engine.SimulationEngine", make_engine)
 
         # Mock WellExporter
-        mock_exporter_class = MagicMock()
         mock_exporter = MagicMock()
-        mock_exporter_class.return_value = mock_exporter
+        mock_exporter._snapshots = [{}]
+        mock_exporter_class = MagicMock(return_value=mock_exporter)
         monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", mock_exporter_class)
-
-        # Patch build_config to inject physics.dt
-        original_build_config = BatchRunner.build_config
-
-        def patched_build_config(self, params):
-            config = original_build_config(self, params)
-            physics_mock = MagicMock()
-            physics_mock.dt = 1e-9
-            object.__setattr__(config, 'physics', physics_mock)
-            return config
-
-        monkeypatch.setattr(BatchRunner, "build_config", patched_build_config)
 
         runner = BatchRunner(
             base_config=base_config,
@@ -431,15 +451,15 @@ class TestRun:
         self, base_config, parameter_ranges, monkeypatch, tmp_path
     ):
         """Test run calls progress_callback after each simulation."""
-        # Mock SimulationEngine in dpf.engine module
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.return_value = None
-        mock_engine.diagnostics = MagicMock()
-        mock_engine.diagnostics.field_snapshots = []
-        mock_engine_class.return_value = mock_engine
-
+        mock_engine = self._make_mock_engine()
+        mock_engine_class = MagicMock(return_value=mock_engine)
         monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
+
+        # Mock WellExporter
+        mock_exporter = MagicMock()
+        mock_exporter._snapshots = [{}]
+        mock_exporter_class = MagicMock(return_value=mock_exporter)
+        monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", mock_exporter_class)
 
         runner = BatchRunner(
             base_config=base_config,
@@ -465,15 +485,15 @@ class TestRun:
 
     def test_run_creates_output_directory(self, base_config, parameter_ranges, monkeypatch, tmp_path):
         """Test run creates output directory."""
-        # Mock SimulationEngine in dpf.engine module
-        mock_engine_class = MagicMock()
-        mock_engine = MagicMock()
-        mock_engine.run.return_value = None
-        mock_engine.diagnostics = MagicMock()
-        mock_engine.diagnostics.field_snapshots = []
-        mock_engine_class.return_value = mock_engine
-
+        mock_engine = self._make_mock_engine()
+        mock_engine_class = MagicMock(return_value=mock_engine)
         monkeypatch.setattr("dpf.engine.SimulationEngine", mock_engine_class)
+
+        # Mock WellExporter
+        mock_exporter = MagicMock()
+        mock_exporter._snapshots = [{}]
+        mock_exporter_class = MagicMock(return_value=mock_exporter)
+        monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", mock_exporter_class)
 
         output_dir = tmp_path / "test_output_dir"
         assert not output_dir.exists()

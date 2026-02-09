@@ -689,8 +689,8 @@ class DPFSurrogate:
             logger.debug(f"Parameter sweep: config {i + 1}/{len(configs)}")
 
             # Create initial states (zeros with appropriate shape)
-            # Use 8x8x8 default grid for parameter sweeps
-            shape = (8, 8, 8)
+            # Use 16x16x16 default grid — WALRUS minimum kernel size requires >= 16
+            shape = (16, 16, 16)
             initial_state = self._create_initial_state(config, shape)
 
             # Create history by repeating initial state

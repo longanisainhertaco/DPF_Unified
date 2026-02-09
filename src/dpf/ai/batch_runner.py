@@ -169,6 +169,11 @@ class BatchRunner:
     def run_single(self, idx: int, params: dict[str, float]) -> tuple[int, str | None]:
         """Run single simulation with given parameters.
 
+        Runs the simulation step-by-step, capturing field snapshots at regular
+        intervals directly from the engine state. This avoids dependency on
+        HDF5Writer's internal snapshot storage and ensures snapshots are always
+        captured regardless of diagnostics config.
+
         Parameters
         ----------
         idx : int
@@ -191,13 +196,9 @@ class BatchRunner:
 
             logger.info(f"Starting simulation {idx}/{self.n_samples}")
 
-            # Run simulation
-            engine.run()
-
-            # Export to WELL format
+            # Set up Well exporter
             output_path = self.output_dir / f"trajectory_{idx:04d}.h5"
-            # Extract dz from config (defaults to dx if not specified)
-            dz = getattr(config, 'dz', None) or config.dx
+            dz = config.geometry.dz if config.geometry.dz is not None else config.dx
             exporter = WellExporter(
                 output_path=output_path,
                 grid_shape=tuple(config.grid_shape),
@@ -207,18 +208,55 @@ class BatchRunner:
                 sim_params=params,
             )
 
-            # Extract field snapshots from diagnostics
-            diagnostics = engine.diagnostics
-            if hasattr(diagnostics, 'field_snapshots') and diagnostics.field_snapshots:
-                for snapshot_idx, snapshot in enumerate(diagnostics.field_snapshots):
-                    if snapshot_idx % self.field_interval == 0:
-                        t = snapshot.get('time', float(snapshot_idx))
-                        exporter.add_snapshot(state=snapshot, time=t)
+            # Capture initial state
+            exporter.add_snapshot(
+                state=engine.get_field_snapshot(),
+                time=0.0,
+                circuit_scalars={
+                    "current": engine.circuit.current,
+                    "voltage": engine.circuit.voltage,
+                },
+            )
 
-            # Finalize and write
+            # Run simulation step-by-step, capturing snapshots at intervals
+            step_count = 0
+            while True:
+                result = engine.step()
+                step_count += 1
+
+                # Capture snapshot at interval
+                if step_count % self.field_interval == 0:
+                    exporter.add_snapshot(
+                        state=engine.get_field_snapshot(),
+                        time=engine.time,
+                        circuit_scalars={
+                            "current": engine.circuit.current,
+                            "voltage": engine.circuit.voltage,
+                        },
+                    )
+
+                if result.finished:
+                    break
+
+            # Capture final state if not already captured
+            if step_count % self.field_interval != 0:
+                exporter.add_snapshot(
+                    state=engine.get_field_snapshot(),
+                    time=engine.time,
+                    circuit_scalars={
+                        "current": engine.circuit.current,
+                        "voltage": engine.circuit.voltage,
+                    },
+                )
+
+            # Finalize diagnostics and write Well HDF5
+            engine.diagnostics.finalize()
             exporter.finalize()
 
-            logger.info(f"Completed simulation {idx} -> {output_path}")
+            logger.info(
+                f"Completed simulation {idx} -> {output_path} "
+                f"({step_count} steps, {len(exporter._snapshots)} snapshots)"
+            )
             return (idx, None)
 
         except Exception as e:
