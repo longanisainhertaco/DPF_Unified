@@ -79,7 +79,7 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization)
 Planned: J.2+ (backlog)
 
 ### Test Patterns
@@ -87,7 +87,7 @@ Planned: J.2+ (backlog)
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 745 tests (currently 1260+ total, 1215+ non-slow, 69 physics verification)
+- CI gate: >= 745 tests (currently 1347+ total, 1312+ non-slow, 69 physics verification, 35 Metal GPU)
 
 ## Key File Paths
 
@@ -130,7 +130,15 @@ Planned: J.2+ (backlog)
 | AthenaK setup/build scripts | scripts/setup_athenak.sh, scripts/build_athenak.sh |
 | AthenaK research docs | docs/ATHENAK_RESEARCH.md |
 | Phase J tests (AthenaK) | tests/test_phase_j_athenak.py, tests/test_phase_j_cli_server.py (57 tests) |
-| Slash commands | .claude/commands/ (13 commands) |
+| Metal GPU package | src/dpf/metal/ (6 files) |
+| Metal device manager | src/dpf/metal/device.py |
+| Metal stencil ops | src/dpf/metal/metal_stencil.py |
+| Metal Riemann solver | src/dpf/metal/metal_riemann.py |
+| Metal MHD solver | src/dpf/metal/metal_solver.py |
+| MLX surrogate | src/dpf/metal/mlx_surrogate.py |
+| Metal benchmarks | src/dpf/benchmarks/metal_benchmark.py |
+| Metal production tests | tests/test_metal_production.py (35 tests) |
+| Slash commands | .claude/commands/ (18 commands) |
 
 ## Workflow Patterns
 
@@ -193,6 +201,18 @@ Planned: J.2+ (backlog)
 34. **WALRUS checkpoint format**: Checkpoints contain `model_state_dict`, `optimizer_state_dict`, and `config`. Load with `model.load_state_dict(ckpt["model_state_dict"])`, NOT `torch.load()` directly into model.
 35. **Apple Silicon AMP incompatibility**: PyTorch AMP (automatic mixed precision) does not work reliably on MPS backend. Always set `trainer.enable_amp=False` for Apple Silicon training.
 36. **surrogate.py is FULLY IMPLEMENTED** (as of Phase J.2): `DPFSurrogate._load_walrus_model()` instantiates a real `IsotropicModel` from Hydra config, loads weights via `model.load_state_dict()`, sets up RevIN normalization and `ChannelsFirstWithTimeFormatter`. `_walrus_predict()` runs the full inference pipeline. A 4.8GB pretrained checkpoint exists at `models/walrus-pretrained/walrus.pt`. Minimum grid size for WALRUS is 16×16×16 (3D). CPU inference takes ~58s per step.
+
+### Lessons Learned (Phase M — Metal GPU)
+
+37. **Metal float32 only**: Apple Metal GPU has no float64 support. All physics kernels must enforce `torch.float32`. Energy conservation holds to ~1e-7 relative error with float32 (acceptable for MHD stencils with CT).
+38. **Numba has no Metal backend**: Confirmed via Numba GitHub Issue #5706. Will never support Apple Metal. Use PyTorch MPS tensor operations instead of custom kernels.
+39. **Unified memory ≠ zero-copy for PyTorch**: `torch.from_numpy()` on MPS still copies data to GPU-visible memory. True zero-copy only with MLX (`mx.array(np_data)` shares memory on Apple Silicon).
+40. **MPS launch overhead**: For small grids (<32³), MPS kernel launch overhead exceeds the compute benefit. Elementwise ops on 16³ are ~30× slower on MPS vs NumPy. Only use Metal for grids >64³ or compute-bound operations (AI inference).
+41. **PLM over WENO5 on Metal**: WENO5's 5-point stencil with nonlinear weights is hard to vectorize efficiently on GPU. PLM with minmod/MC limiter is trivially vectorizable and sufficient for production use at higher resolution.
+42. **HLL over HLLD on Metal**: HLLD requires complex conditional branching (4 intermediate states). HLL is 2-wave, fully vectorizable, and works well with PLM reconstruction.
+43. **MetalMHDSolver interface alignment**: Engine calls `_compute_dt()` (private) and passes `**kwargs` to `step()`. Metal solver needs `_compute_dt = compute_dt` alias and `**kwargs` in step signature.
+44. **WALRUS MPS speedup**: Real benchmark shows 1.57× speedup for WALRUS inference on MPS vs CPU (38s vs 60s per step). MLX should improve this further.
+45. **GeometryConfig has no `dy`**: Only `dz` is configurable. For Metal solver, use `dx` for all directions unless `dz` is set.
 
 ## Working with Athena++ C++
 

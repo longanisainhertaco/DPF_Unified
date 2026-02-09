@@ -33,7 +33,7 @@ def cli(verbose: bool) -> None:
 @click.option("--checkpoint-interval", type=int, default=0, help="Auto-checkpoint every N steps (0=off).")
 @click.option(
     "--backend",
-    type=click.Choice(["python", "athena", "athenak", "auto"], case_sensitive=False),
+    type=click.Choice(["python", "athena", "athenak", "metal", "auto"], case_sensitive=False),
     default=None,
     help="MHD solver backend. Overrides config file setting. "
     "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'athenak'=AthenaK Kokkos, 'auto'=best available.",
@@ -118,11 +118,34 @@ def backends() -> None:
     else:
         click.echo("  athenak — AthenaK Kokkos MHD solver (not built)")
 
+    # Metal GPU backend
+    try:
+        from dpf.metal.metal_solver import MetalMHDSolver
+        if MetalMHDSolver.is_available():
+            click.echo("  metal   — Apple Metal GPU MHD solver (available)")
+        else:
+            click.echo("  metal   — Apple Metal GPU MHD solver (no MPS device)")
+    except ImportError:
+        click.echo("  metal   — Apple Metal GPU MHD solver (not installed)")
+
     click.echo("\nDefault: python")
     if athenak_available():
         click.echo("Auto selection: athenak (preferred when available)")
     elif athena_available():
         click.echo("Auto selection: athena (preferred when available)")
+
+
+@cli.command("metal-info")
+def metal_info() -> None:
+    """Show Apple Silicon Metal GPU capabilities."""
+    try:
+        from dpf.metal.device import get_device_manager
+        dm = get_device_manager()
+        click.echo(dm.summary())
+    except ImportError:
+        click.echo("Metal module not installed. Install with: pip install mlx torch")
+    except Exception as e:
+        click.echo(f"Error detecting Metal capabilities: {e}")
 
 
 @cli.command()
