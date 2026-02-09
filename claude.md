@@ -29,6 +29,10 @@ State dict: {rho, velocity, pressure, B, Te, Ti, psi} as NumPy arrays.
 | Implementation (Python, C++ source, tests) | sonnet | Balance of speed + capability |
 | Physics design, architecture, V&V analysis, debugging | opus | Deep reasoning for complex physics |
 | Athena++ / AthenaK C++ problem generators, source terms | opus | Physics + systems programming expertise |
+| WALRUS integration (surrogate.py, Hydra configs, tensor shapes) | opus | Complex API mapping, tensor math, ML architecture |
+| WALRUS fine-tuning setup, hyperparameter selection | opus | ML training expertise, hardware memory planning |
+| WALRUS data pipeline (Well export, batch runner, validation) | sonnet | Data engineering, HDF5 schema compliance |
+| Hardware compatibility checks (MPS, MLX, memory estimation) | sonnet | Systems profiling, dependency resolution |
 | Documentation, README, plan updates | sonnet | Clear technical writing |
 | Code review, refactoring | sonnet | Pattern recognition |
 
@@ -138,6 +142,9 @@ Planned: J.2+ (backlog)
 6. Commit naming: "Phase X.Y: description" (e.g., "Phase F.4: CLI and server backend integration")
 7. After AthenaK source changes: `bash scripts/build_athenak.sh`
 8. AthenaK uses subprocess mode only (no pybind11 linking)
+9. WALRUS training/fine-tuning: use separate venv due to pinned torch==2.5.1
+10. WALRUS inference: load checkpoint → instantiate IsotropicModel → RevIN normalize → forward → denormalize delta → add residual
+11. Well format export: always use `grid_type="cartesian"`, axis order `[x, y, z]`, float32
 
 ## Lessons Learned (Phases A-I)
 
@@ -174,6 +181,18 @@ Planned: J.2+ (backlog)
 25. **No native cylindrical coordinates**: AthenaK uses Cartesian mesh only (DynGR supports curvilinear but only for GR). This is a limitation for DPF cylindrical geometry.
 26. **Runtime physics params**: Unlike Athena++ (compile-time `--flux`, `--coord`), AthenaK sets reconstruction, Riemann solver, and ghost zones at runtime via the athinput file.
 27. **Shell CWD destruction**: NEVER `rm -rf` the Bash tool's current working directory or any parent of it. The CWD persists across calls, and if deleted, ALL subsequent Bash commands fail with exit code 1 and no output. Fix by using Write tool to recreate the directory, then `cd` to a valid path.
+
+### Lessons Learned (WALRUS Integration)
+
+28. **WALRUS pinned torch version**: WALRUS requires `torch==2.5.1` (exact pin). This can conflict with other ML tools. Use a separate venv for WALRUS training/fine-tuning.
+29. **RevIN normalization required**: WALRUS uses Reversible Instance Normalization (RMS-based, sample-wise). Skipping RevIN or using wrong stats produces garbage predictions. Always compute stats per-sample, normalize before model, denormalize after.
+30. **Delta prediction mode**: WALRUS predicts state *changes* (`Δu`), NOT absolute states. Reconstruct: `u(t+1) = u(t) + denormalize(model_output)`. Forgetting the residual connection produces zero-mean noise.
+31. **Hydra config system**: All WALRUS configuration is via Hydra YAML overrides on the command line. Do NOT modify Python defaults — use `key=value` CLI args or create override YAML files.
+32. **Well grid_type must be "cartesian"**: The Well spec uses `grid_type="cartesian"` for uniform grids, NOT `"uniform"`. Our `well_exporter.py` currently uses `"uniform"` — needs fixing.
+33. **Well axis ordering**: Well uses `[x, y, z]` spatial axis order. NumPy image-style `[y, x]` or DPF's `[r, z]` must be mapped correctly when creating Well datasets.
+34. **WALRUS checkpoint format**: Checkpoints contain `model_state_dict`, `optimizer_state_dict`, and `config`. Load with `model.load_state_dict(ckpt["model_state_dict"])`, NOT `torch.load()` directly into model.
+35. **Apple Silicon AMP incompatibility**: PyTorch AMP (automatic mixed precision) does not work reliably on MPS backend. Always set `trainer.enable_amp=False` for Apple Silicon training.
+36. **surrogate.py is stubbed**: The current `DPFSurrogate._load_model()` stores the checkpoint as a raw dict — it does NOT instantiate `IsotropicModel`. The `predict_next_step()` method returns a trivial copy of the last input state. This must be replaced with real WALRUS model loading and inference.
 
 ## Working with Athena++ C++
 
@@ -263,6 +282,140 @@ cmake -S . -B build_omp -D Kokkos_ENABLE_OPENMP=ON \
 ### Performance (M3 Pro)
 - Serial: ~2.6M zone-cycles/sec (200×200 blast)
 - OpenMP 8T: ~4.2M zone-cycles/sec (1.63× speedup)
+
+## Working with WALRUS (Polymathic AI)
+
+WALRUS is a 1.3B-parameter Encoder-Processor-Decoder Transformer for continuum dynamical systems (MIT license, github.com/PolymathicAI/walrus). DPF uses it as a surrogate model for fast parameter sweeps, inverse design, and real-time prediction.
+
+### Installation & Dependencies
+
+WALRUS has **pinned** dependency versions — install in an isolated environment or use extras carefully:
+
+```bash
+# WALRUS core (from git — not on PyPI)
+pip install git+https://github.com/PolymathicAI/walrus.git
+
+# The Well dataset tools (required by WALRUS)
+pip install "the_well[benchmark] @ git+https://github.com/PolymathicAI/the_well@master"
+
+# Key pinned versions (WALRUS requirements):
+# torch==2.5.1, numpy==1.26.4, einops~=0.8, h5py>=3.9.0,<4
+# hydra-core>=1.3, timm>=1.0, wandb>=0.17.9
+```
+
+**Warning**: WALRUS pins `torch==2.5.1` and `numpy==1.26.4`. These may conflict with DPF's broader dependency set. Use a separate venv or conda environment for WALRUS fine-tuning.
+
+### Architecture Overview
+
+```
+IsotropicModel (walrus.models)
+├── Encoder: SpaceBagAdaptiveDVstrideEncoder (strided conv + stride modulation)
+├── Processor: 12-40 SpaceTimeSplitBlocks (axial or full attention)
+└── Decoder: AdaptiveDVstrideDecoder (transposed conv, state-dependent)
+```
+
+- **Pretrain config**: 768 hidden, 12 blocks (~300M params)
+- **Finetune config**: 1408 hidden, 40 blocks (1.3B params)
+- **Prediction mode**: Delta — `u(t+1) = u(t) + model(U(t))`
+- **Normalization**: RevIN (RMS-based, sample-wise)
+- **Loss**: Per-field normalized MAE (L1)
+- **Config system**: Hydra (`@hydra.main()`) — all config via YAML overrides
+
+### WALRUS Inference API
+
+```python
+from walrus.models import IsotropicModel
+from walrus.data.well_to_multi_transformer import ChannelsFirstWithTimeFormatter
+
+# Load model
+model = instantiate(config.model, n_states=total_input_fields)
+model.load_state_dict(checkpoint["model_state_dict"])
+model.eval()
+
+# Inference
+formatter = ChannelsFirstWithTimeFormatter()
+revin = instantiate(config.trainer.revin)()
+
+with torch.no_grad():
+    inputs, y_ref = formatter.process_input(batch, causal_in_time=True, predict_delta=True)
+    stats = revin.compute_stats(inputs[0], metadata, epsilon=1e-5)
+    normalized_x = revin.normalize_stdmean(inputs[0], stats)
+    y_pred = model(normalized_x, inputs[1], inputs[2].tolist(), metadata=metadata)
+    y_pred = inputs[0][-y_pred.shape[0]:].float() + revin.denormalize_delta(y_pred, stats)
+```
+
+### WALRUS Training (Local, Single GPU / Apple Silicon)
+
+```bash
+python train.py \
+    distribution=local \
+    model=isotropic_model \
+    finetune=True \
+    optimizer=adam optimizer.lr=1.e-4 \
+    trainer.enable_amp=False \
+    model.gradient_checkpointing_freq=1 \
+    data.module_parameters.batch_size=1 \
+    data.module_parameters.n_steps_input=6 \
+    data.module_parameters.n_steps_output=1 \
+    trainer.prediction_type="delta" \
+    model.causal_in_time=True
+```
+
+### WALRUS Batch Dict (DataLoader Output)
+
+```python
+batch = {
+    "input_fields":       Tensor,   # [B, T_in, H, W, (D), C]
+    "output_fields":      Tensor,   # [B, T_out, H, W, (D), C]
+    "constant_fields":    Tensor,   # [B, H, W, (D), C_const]
+    "boundary_conditions": list,    # [[bc_dim0_lo, bc_dim0_hi], ...]
+    "padded_field_mask":  Tensor,   # [C] bool
+    "field_indices":      dict,     # field_name -> index
+    "metadata":           object,
+}
+```
+
+### The Well HDF5 Format
+
+```
+Root attributes: dataset_name, grid_type ("cartesian"), n_spatial_dims,
+                 n_trajectories, simulation_parameters
+/dimensions/            → spatial coords + time array
+/boundary_conditions/   → "WALL"=0, "OPEN"=1, "PERIODIC"=2 with masks
+/t0_fields/             → scalars: shape (n_traj, n_steps, nx, ny [,nz]), float32
+/t1_fields/             → vectors: shape (n_traj, n_steps, nx, ny [,nz], D), float32
+/t2_fields/             → tensors: shape (n_traj, n_steps, nx, ny [,nz], D²), float32
+```
+
+**Important**: Well uses axis ordering `[x, y, z]` (NOT image-style `[y, x]`). Each field dataset should have `dim_varying`, `sample_varying`, `time_varying` boolean attributes. Directory layout: `dataset_name/{train,valid,test}/sample_NNNN.hdf5`.
+
+### Apple Silicon Compatibility (M3 Pro, 36GB)
+
+| Scenario | Memory | Feasibility |
+|----------|--------|-------------|
+| Float16 inference (1.3B) | ~2.6 GB weights | ✅ Easy |
+| LoRA fine-tuning (batch=1, grad ckpt) | ~19-25 GB total | ✅ Feasible |
+| Full fine-tuning (batch=1, grad ckpt) | ~30-35 GB total | ⚠️ Tight, may OOM |
+| MLX inference | ~2.6 GB + faster than MPS | ✅ Recommended path |
+
+- **Gradient checkpointing is essential** for fine-tuning: `model.gradient_checkpointing_freq=1`
+- **AMP disabled** on MPS: set `trainer.enable_amp=False`
+- **Batch size 1-2**, gradient accumulation 4-8 steps
+- **MLX** is preferred over PyTorch MPS for Apple Silicon (native Metal, lower overhead)
+
+### DPF Module Readiness for WALRUS
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| `field_mapping.py` | ✅ Ready | Bidirectional DPF ↔ Well transforms |
+| `well_exporter.py` | ⚠️ Minor fix | Uses `grid_type="uniform"`, Well spec expects `"cartesian"` |
+| `dataset_validator.py` | ✅ Ready | NaN/Inf, schema, energy conservation checks |
+| `batch_runner.py` | ⚠️ Minor fix | WellExporter API call mismatch (lines 199-219) |
+| `surrogate.py` | 🚨 **Stubbed** | `_load_model()` stores raw checkpoint dict, not actual IsotropicModel. `predict_next_step()` returns trivial copy. Needs real WALRUS model instantiation + forward pass. |
+| `confidence.py` | ⚠️ Minor fix | Calls `DPFSurrogate.load()` which doesn't exist |
+| `realtime_server.py` | ⚠️ Minor fix | 3 wrong API calls (parameter_sweep, optimize, field access) |
+
+**Critical next step**: Implement real WALRUS inference in `surrogate.py` using the IsotropicModel + RevIN + ChannelsFirstWithTimeFormatter pattern shown above.
 
 ## Project Health Notes
 
