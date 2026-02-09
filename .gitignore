@@ -52,3 +52,8 @@ _athena_core*.so
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+
+# Local WALRUS checkout and model weights
+walrus/
+references/
+models/

@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Custom Properties (Design Tokens) ──────────────────── */
+
+:root {
+  /* Primary palette */
+  --dpf-bg: #121212;
+  --dpf-panel: #1e1e1e;
+  --dpf-input: #2a2a2a;
+  --dpf-border: #333333;
+  --dpf-border-hover: #555555;
+
+  /* Accent colors */
+  --accent-cyan: #00e5ff;
+  --accent-cyan-dim: #006677;
+  --accent-amber: #ffc107;
+  --accent-amber-dim: #664d00;
+  --accent-crimson: #ff5252;
+  --accent-crimson-dim: #661f1f;
+  --accent-green: #4caf50;
+  --accent-green-dim: #1b5e20;
+
+  /* Scope / oscilloscope */
+  --scope-bg: #0a0a0a;
+  --scope-grid: #003300;
+  --scope-grid-dim: #1a1a1a;
+
+  /* Typography */
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Menlo", monospace;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Spacing */
+  --panel-gap: 4px;
+  --panel-padding: 12px;
+  --panel-radius: 6px;
+}
+
+/* ── Base Styles ────────────────────────────────────────────── */
+
+html,
+body {
+  @apply bg-dpf-bg text-gray-200;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dpf-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dpf-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dpf-border-hover);
+}
+
+/* ── Utility Classes ────────────────────────────────────────── */
+
+@layer components {
+  /* Glass panel with subtle border */
+  .dpf-panel {
+    @apply rounded-md border border-dpf-border;
+    background-color: var(--dpf-panel);
+    padding: var(--panel-padding);
+  }
+
+  /* Input field styling */
+  .dpf-input {
+    @apply rounded border border-dpf-border bg-dpf-input px-3 py-1.5 font-mono text-sm text-gray-200
+      outline-none transition-colors;
+  }
+
+  .dpf-input:focus {
+    @apply border-accent-cyan;
+    box-shadow: 0 0 0 1px var(--accent-cyan);
+  }
+
+  .dpf-input:hover:not(:focus) {
+    @apply border-dpf-border-hover;
+  }
+
+  /* Validation states */
+  .dpf-input-valid {
+    @apply border-accent-green;
+  }
+
+  .dpf-input-warning {
+    @apply border-accent-amber;
+  }
+
+  .dpf-input-error {
+    @apply border-accent-crimson;
+  }
+
+  /* Status indicator dot */
+  .status-dot {
+    @apply inline-block h-2 w-2 rounded-full;
+  }
+
+  .status-dot-ok {
+    @apply bg-accent-green;
+    box-shadow: 0 0 4px var(--accent-green);
+  }
+
+  .status-dot-warn {
+    @apply bg-accent-amber;
+    box-shadow: 0 0 4px var(--accent-amber);
+  }
+
+  .status-dot-error {
+    @apply bg-accent-crimson animate-pulse-glow;
+    box-shadow: 0 0 4px var(--accent-crimson);
+  }
+
+  .status-dot-idle {
+    @apply bg-gray-500;
+  }
+
+  /* Readout — large numeric display */
+  .readout {
+    @apply font-mono text-readout-lg text-accent-cyan;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+  }
+
+  /* Label */
+  .dpf-label {
+    @apply text-label-xs font-medium uppercase tracking-widest text-gray-500;
+  }
+
+  /* Button base */
+  .dpf-btn {
+    @apply rounded px-4 py-2 text-sm font-medium transition-all duration-150;
+  }
+
+  .dpf-btn-primary {
+    @apply dpf-btn bg-accent-cyan text-dpf-bg hover:brightness-110 active:brightness-90;
+  }
+
+  .dpf-btn-danger {
+    @apply dpf-btn bg-accent-crimson text-white hover:brightness-110 active:brightness-90;
+  }
+
+  .dpf-btn-ghost {
+    @apply dpf-btn border border-dpf-border text-gray-300 hover:border-dpf-border-hover hover:text-white;
+  }
+}

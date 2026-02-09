@@ -1,0 +1,123 @@
+/**
+ * Oscilloscope / Tektronix aesthetic overrides for ECharts.
+ *
+ * Applied via CSS to the chart container divs.
+ */
+
+/* Phosphor glow effect on trace containers */
+.scope-container {
+  background-color: var(--scope-bg);
+  border: 1px solid var(--dpf-border);
+  border-radius: var(--panel-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle scan-line overlay */
+.scope-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Trace glow effect — applied to ECharts canvas parent */
+.scope-trace-glow {
+  filter: drop-shadow(0 0 2px var(--accent-cyan));
+}
+
+/* Crosshair readout badge */
+.scope-readout {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  background: rgba(10, 10, 10, 0.85);
+  padding: 4px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--dpf-border);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Channel indicator badges */
+.scope-channel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  opacity: 0.8;
+}
+
+.scope-channel-badge.ch1 {
+  color: var(--accent-cyan);
+}
+
+.scope-channel-badge.ch2 {
+  color: var(--accent-amber);
+}
+
+.scope-channel-badge.ch3 {
+  color: var(--accent-crimson);
+}
+
+.scope-channel-badge.ch4 {
+  color: var(--accent-green);
+}
+
+/* Time/div and V/div readout */
+.scope-div-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: #666;
+  letter-spacing: 0.05em;
+}
+
+/* Graticule grid lines (CSS overlay alternative) */
+.scope-graticule {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background-image: linear-gradient(
+      var(--scope-grid-dim) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, var(--scope-grid-dim) 1px, transparent 1px);
+  background-size: 10% 10%;
+}
+
+/* Thicker center lines */
+.scope-graticule::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--scope-grid);
+}
+
+.scope-graticule::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--scope-grid);
+}
