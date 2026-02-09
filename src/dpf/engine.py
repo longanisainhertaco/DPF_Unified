@@ -112,7 +112,7 @@ class SimulationEngine:
         # Boundary config
         self.boundary_cfg = config.boundary
 
-        # Backend selection: "python", "athena", "athenak", or "auto"
+        # Backend selection: "python", "athena", "athenak", "metal", or "auto"
         self.backend = self._resolve_backend(fc.backend)
 
         if self.backend == "athenak":
@@ -125,6 +125,21 @@ class SimulationEngine:
             self.fluid = AthenaPPSolver(config)
             self._cell_volume = None
             logger.info("Using Athena++ backend (mode: %s)", self.fluid.mode)
+        elif self.backend == "metal":
+            from dpf.metal.metal_solver import MetalMHDSolver
+            dz = config.geometry.dz if config.geometry.dz is not None else dx
+            self.fluid = MetalMHDSolver(
+                grid_shape=(nx, ny, nz),
+                dx=dx,
+                dz=dz,
+                gamma=fc.gamma,
+                cfl=fc.cfl,
+                device="mps",
+                limiter="minmod",
+                use_ct=True,
+            )
+            self._cell_volume = dx * dx * dz
+            logger.info("Using Metal GPU backend (PyTorch MPS)")
         elif self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx
             self.fluid = CylindricalMHDSolver(
@@ -214,10 +229,11 @@ class SimulationEngine:
         """Resolve the requested backend to an actual backend name.
 
         Args:
-            requested: ``"python"``, ``"athena"``, ``"athenak"``, or ``"auto"``.
+            requested: ``"python"``, ``"athena"``, ``"athenak"``,
+                ``"metal"``, or ``"auto"``.
 
         Returns:
-            ``"python"``, ``"athena"``, or ``"athenak"``.
+            ``"python"``, ``"athena"``, ``"athenak"``, or ``"metal"``.
 
         Raises:
             RuntimeError: If an explicit backend was requested but is
@@ -225,6 +241,16 @@ class SimulationEngine:
         """
         if requested == "python":
             return "python"
+
+        if requested == "metal":
+            from dpf.metal.metal_solver import MetalMHDSolver
+            if not MetalMHDSolver.is_available():
+                raise RuntimeError(
+                    "Metal GPU backend requested but PyTorch MPS is not available. "
+                    "Requires Apple Silicon with PyTorch >= 2.0.\n"
+                    "Or use backend='python' or backend='auto'."
+                )
+            return "metal"
 
         if requested == "athenak":
             from dpf.athenak_wrapper import is_available as athenak_available

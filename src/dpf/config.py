@@ -107,6 +107,7 @@ class FluidConfig(BaseModel):
         "python",
         description=(
             "MHD solver backend: 'python' (NumPy/Numba), 'athena' (Athena++ C++), "
+            "'metal' (PyTorch MPS on Apple GPU), "
             "or 'auto' (Athena++ if available, else Python)"
         ),
     )
@@ -139,9 +140,9 @@ class FluidConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_backend(self) -> FluidConfig:
-        if self.backend not in ("python", "athena", "athenak", "auto"):
+        if self.backend not in ("python", "athena", "athenak", "metal", "auto"):
             raise ValueError(
-                f"backend must be 'python', 'athena', 'athenak', or 'auto', got '{self.backend}'"
+                f"backend must be 'python', 'athena', 'athenak', 'metal', or 'auto', got '{self.backend}'"
             )
         return self
 
