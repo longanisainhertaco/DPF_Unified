@@ -27,17 +27,23 @@ class MockSurrogate:
         - max_Te = V0 * 0.1
         - max_Ti = V0 * 0.05
         - max_B = (V0/1e4) * (C/1e-6) * 0.01
+
+        Returns nested format matching real DPFSurrogate._extract_summary():
+        {"config": {...}, "metrics": {...}}
         """
         results = []
         for config in configs:
             V0 = config.get("V0", 1e4)
             C = config.get("C", 1e-6)
             results.append({
-                "max_rho": (V0 / 1e4) * (C / 1e-6),
-                "max_Te": V0 * 0.1,
-                "max_Ti": V0 * 0.05,
-                "max_B": (V0 / 1e4) * (C / 1e-6) * 0.01,
-                "n_steps": n_steps,
+                "config": config,
+                "metrics": {
+                    "max_rho": (V0 / 1e4) * (C / 1e-6),
+                    "max_Te": V0 * 0.1,
+                    "max_Ti": V0 * 0.05,
+                    "max_B": (V0 / 1e4) * (C / 1e-6) * 0.01,
+                    "n_steps": n_steps,
+                },
             })
         return results
 

@@ -87,7 +87,7 @@ Planned: J.2+ (backlog)
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 745 tests (currently 1186 total, 1160 non-slow)
+- CI gate: >= 745 tests (currently 1260+ total, 1215+ non-slow, 69 physics verification)
 
 ## Key File Paths
 
@@ -192,7 +192,7 @@ Planned: J.2+ (backlog)
 33. **Well axis ordering**: Well uses `[x, y, z]` spatial axis order. NumPy image-style `[y, x]` or DPF's `[r, z]` must be mapped correctly when creating Well datasets.
 34. **WALRUS checkpoint format**: Checkpoints contain `model_state_dict`, `optimizer_state_dict`, and `config`. Load with `model.load_state_dict(ckpt["model_state_dict"])`, NOT `torch.load()` directly into model.
 35. **Apple Silicon AMP incompatibility**: PyTorch AMP (automatic mixed precision) does not work reliably on MPS backend. Always set `trainer.enable_amp=False` for Apple Silicon training.
-36. **surrogate.py is stubbed**: The current `DPFSurrogate._load_model()` stores the checkpoint as a raw dict — it does NOT instantiate `IsotropicModel`. The `predict_next_step()` method returns a trivial copy of the last input state. This must be replaced with real WALRUS model loading and inference.
+36. **surrogate.py is FULLY IMPLEMENTED** (as of Phase J.2): `DPFSurrogate._load_walrus_model()` instantiates a real `IsotropicModel` from Hydra config, loads weights via `model.load_state_dict()`, sets up RevIN normalization and `ChannelsFirstWithTimeFormatter`. `_walrus_predict()` runs the full inference pipeline. A 4.8GB pretrained checkpoint exists at `models/walrus-pretrained/walrus.pt`. Minimum grid size for WALRUS is 16×16×16 (3D). CPU inference takes ~58s per step.
 
 ## Working with Athena++ C++
 
@@ -411,11 +411,11 @@ Root attributes: dataset_name, grid_type ("cartesian"), n_spatial_dims,
 | `well_exporter.py` | ⚠️ Minor fix | Uses `grid_type="uniform"`, Well spec expects `"cartesian"` |
 | `dataset_validator.py` | ✅ Ready | NaN/Inf, schema, energy conservation checks |
 | `batch_runner.py` | ⚠️ Minor fix | WellExporter API call mismatch (lines 199-219) |
-| `surrogate.py` | 🚨 **Stubbed** | `_load_model()` stores raw checkpoint dict, not actual IsotropicModel. `predict_next_step()` returns trivial copy. Needs real WALRUS model instantiation + forward pass. |
+| `surrogate.py` | ✅ **Implemented** | Real WALRUS IsotropicModel loading + RevIN + inference pipeline. 4.8GB checkpoint at `models/walrus-pretrained/walrus.pt`. |
 | `confidence.py` | ⚠️ Minor fix | Calls `DPFSurrogate.load()` which doesn't exist |
 | `realtime_server.py` | ⚠️ Minor fix | 3 wrong API calls (parameter_sweep, optimize, field access) |
 
-**Critical next step**: Implement real WALRUS inference in `surrogate.py` using the IsotropicModel + RevIN + ChannelsFirstWithTimeFormatter pattern shown above.
+**Status**: WALRUS inference in `surrogate.py` is now fully implemented using IsotropicModel + RevIN + ChannelsFirstWithTimeFormatter. Next step: fine-tune on DPF-specific training data for improved predictions.
 
 ## Project Health Notes
 
