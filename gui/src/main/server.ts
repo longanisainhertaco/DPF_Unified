@@ -14,6 +14,15 @@ import {
   MAX_HEALTH_RETRIES,
 } from "../shared/constants";
 
+/** Safe log that swallows EPIPE errors from broken stdout pipes. */
+function safeLog(...args: unknown[]): void {
+  try {
+    console.log(...args);
+  } catch {
+    // stdout pipe broken — ignore
+  }
+}
+
 let serverProcess: ChildProcess | null = null;
 let serverPort: number = DEFAULT_SERVER_PORT;
 
@@ -24,6 +33,7 @@ export interface ServerStatus {
     python: boolean;
     athena: boolean;
     athenak: boolean;
+    metal: boolean;
   };
   error?: string;
 }
@@ -131,6 +141,7 @@ function pollHealth(
                   python: true,
                   athena: false,
                   athenak: false,
+                  metal: false,
                 },
               });
             } catch {
@@ -157,13 +168,13 @@ function pollHealth(
  */
 export function stopServer(): void {
   if (serverProcess) {
-    console.log("[server] Stopping Python backend...");
+    safeLog("[server] Stopping Python backend...");
     serverProcess.kill("SIGTERM");
 
     // Force kill after 5 seconds if still alive
     const forceKillTimeout = setTimeout(() => {
       if (serverProcess) {
-        console.log("[server] Force-killing Python backend...");
+        safeLog("[server] Force-killing Python backend...");
         serverProcess.kill("SIGKILL");
       }
     }, 5000);
