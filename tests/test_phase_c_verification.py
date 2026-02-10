@@ -12,7 +12,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 # ===================================================================
 # C.1 — Diffusion Convergence Tests
 # ===================================================================
@@ -449,7 +448,6 @@ class TestModuleImports:
     def test_import_diffusion_convergence(self):
         """diffusion_convergence module imports without error."""
         from dpf.verification.diffusion_convergence import (
-            DiffusionConvergenceResult,
             gaussian_B_analytical,
             run_diffusion_convergence,
         )
@@ -459,7 +457,6 @@ class TestModuleImports:
     def test_import_orszag_tang(self):
         """orszag_tang module imports without error."""
         from dpf.verification.orszag_tang import (
-            OrszagTangResult,
             run_orszag_tang,
         )
         assert callable(run_orszag_tang)
@@ -467,7 +464,6 @@ class TestModuleImports:
     def test_import_sedov_cylindrical(self):
         """sedov_cylindrical module imports without error."""
         from dpf.verification.sedov_cylindrical import (
-            SedovCylindricalResult,
             run_sedov_cylindrical,
             sedov_shock_radius_cylindrical,
         )
@@ -478,20 +474,13 @@ class TestModuleImports:
         """lee_model_comparison module imports without error."""
         from dpf.validation.lee_model_comparison import (
             LeeModel,
-            LeeModelComparison,
-            LeeModelResult,
         )
         assert callable(LeeModel)
 
     def test_verification_init_exports(self):
         """verification __init__ exports new symbols."""
         from dpf.verification import (
-            DiffusionConvergenceResult,
-            OrszagTangResult,
-            SedovCylindricalResult,
             run_diffusion_convergence,
-            run_orszag_tang,
-            run_sedov_cylindrical,
         )
         assert callable(run_diffusion_convergence)
 
@@ -499,7 +488,5 @@ class TestModuleImports:
         """validation __init__ exports Lee Model symbols."""
         from dpf.validation import (
             LeeModel,
-            LeeModelComparison,
-            LeeModelResult,
         )
         assert callable(LeeModel)

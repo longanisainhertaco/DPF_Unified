@@ -47,13 +47,6 @@ from dpf.diagnostics.beam_target import (
     detect_pinch_disruption,
     neutron_anisotropy,
 )
-from dpf.radiation.line_radiation import (
-    apply_line_radiation_losses,
-    cooling_function,
-    line_radiation_power,
-    recombination_power,
-    total_radiation_power,
-)
 from dpf.experimental.species import (
     COPPER,
     DEUTERIUM,
@@ -61,6 +54,13 @@ from dpf.experimental.species import (
     TUNGSTEN,
     SpeciesConfig,
     SpeciesMixture,
+)
+from dpf.radiation.line_radiation import (
+    apply_line_radiation_losses,
+    cooling_function,
+    line_radiation_power,
+    recombination_power,
+    total_radiation_power,
 )
 
 

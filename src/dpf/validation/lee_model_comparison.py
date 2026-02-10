@@ -77,7 +77,7 @@ class LeeModelResult:
     """
 
     t: np.ndarray
-    I: np.ndarray
+    I: np.ndarray  # noqa: E741
     V: np.ndarray
     z_sheet: np.ndarray
     r_shock: np.ndarray
@@ -264,7 +264,7 @@ class LeeModel:
         # dvz/dt = (mu_0/2) * ln(b/a) * fm^2 * I^2 / M_swept(z)
 
         def axial_rhs(t: float, y: np.ndarray) -> np.ndarray:
-            I, Vcap, z_pos, vz = y
+            I, Vcap, z_pos, vz = y  # noqa: E741
 
             # Clamp
             z_pos = max(z_pos, 0.0)
@@ -329,7 +329,7 @@ class LeeModel:
         I1 = sol1.y[0]
         V1 = sol1.y[1]
         z1 = sol1.y[2]
-        vz1 = sol1.y[3]
+        _vz1 = sol1.y[3]  # noqa: F841
 
         # Find when current sheet reaches end of anode
         phase1_end_idx = len(t1) - 1

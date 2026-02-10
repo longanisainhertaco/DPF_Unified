@@ -238,6 +238,396 @@ def _hll_flux_1d(
 # ============================================================
 
 @njit(cache=True)
+def _hlld_flux_1d_8comp(
+    rho_L: np.ndarray,
+    rho_R: np.ndarray,
+    vn_L: np.ndarray,
+    vn_R: np.ndarray,
+    vt1_L: np.ndarray,
+    vt1_R: np.ndarray,
+    vt2_L: np.ndarray,
+    vt2_R: np.ndarray,
+    p_L: np.ndarray,
+    p_R: np.ndarray,
+    Bn: np.ndarray,
+    Bt1_L: np.ndarray,
+    Bt1_R: np.ndarray,
+    Bt2_L: np.ndarray,
+    Bt2_R: np.ndarray,
+    gamma: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+           np.ndarray, np.ndarray]:
+    """Full 8-component HLLD approximate Riemann solver (Numba-accelerated).
+
+    Resolves 4 intermediate states: outer fast shocks + Alfven rotational
+    discontinuities + contact.  Returns fluxes for all 7 MHD conserved
+    quantities (mass, normal momentum, 2 transverse momenta, energy,
+    2 transverse B components).
+
+    Reference: Miyoshi & Kusano, JCP 208, 315 (2005).
+
+    Args:
+        rho_L, rho_R: Reconstructed density at interfaces.
+        vn_L, vn_R: Normal velocity.
+        vt1_L, vt1_R: First transverse velocity.
+        vt2_L, vt2_R: Second transverse velocity.
+        p_L, p_R: Thermal pressure.
+        Bn: Normal magnetic field (continuous across interface).
+        Bt1_L, Bt1_R: First transverse B-field.
+        Bt2_L, Bt2_R: Second transverse B-field.
+        gamma: Adiabatic index.
+
+    Returns:
+        (F_rho, F_momn, F_momt1, F_momt2, F_ene, F_Bt1, F_Bt2):
+        Fluxes at each interface.
+    """
+    n = len(rho_L)
+    F_rho = np.empty(n)
+    F_momn = np.empty(n)
+    F_momt1 = np.empty(n)
+    F_momt2 = np.empty(n)
+    F_ene = np.empty(n)
+    F_Bt1 = np.empty(n)
+    F_Bt2 = np.empty(n)
+
+    epsilon = 1e-20 * mu_0  # Degeneracy guard scaled to code units
+
+    for i in range(n):
+        # --- Primitives with floors ---
+        rL = max(rho_L[i], 1e-30)
+        rR = max(rho_R[i], 1e-30)
+        vnL = vn_L[i]
+        vnR = vn_R[i]
+        vt1L = vt1_L[i]
+        vt1R = vt1_R[i]
+        vt2L = vt2_L[i]
+        vt2R = vt2_R[i]
+        pL = max(p_L[i], 0.0)
+        pR = max(p_R[i], 0.0)
+        bn = Bn[i]
+        bt1L = Bt1_L[i]
+        bt1R = Bt1_R[i]
+        bt2L = Bt2_L[i]
+        bt2R = Bt2_R[i]
+
+        bn2 = bn * bn
+
+        # --- Total magnetic pressure on each side ---
+        B_sq_L = bn2 + bt1L * bt1L + bt2L * bt2L
+        B_sq_R = bn2 + bt1R * bt1R + bt2R * bt2R
+        ptL = pL + 0.5 * B_sq_L / mu_0
+        ptR = pR + 0.5 * B_sq_R / mu_0
+
+        # --- Fast magnetosonic speeds ---
+        a2L = gamma * pL / rL
+        a2R = gamma * pR / rR
+        va2L = B_sq_L / (mu_0 * rL)
+        va2R = B_sq_R / (mu_0 * rR)
+        bn2_over_mu0_rL = bn2 / (mu_0 * rL)
+        bn2_over_mu0_rR = bn2 / (mu_0 * rR)
+
+        disc_L = (a2L + va2L) * (a2L + va2L) - 4.0 * a2L * bn2_over_mu0_rL
+        disc_R = (a2R + va2R) * (a2R + va2R) - 4.0 * a2R * bn2_over_mu0_rR
+        cf2L = 0.5 * (a2L + va2L + max(disc_L, 0.0) ** 0.5)
+        cf2R = 0.5 * (a2R + va2R + max(disc_R, 0.0) ** 0.5)
+        cfL = max(cf2L, 0.0) ** 0.5
+        cfR = max(cf2R, 0.0) ** 0.5
+
+        # --- Davis wave speed estimates ---
+        SL = min(vnL - cfL, vnR - cfR)
+        SR = max(vnL + cfL, vnR + cfR)
+
+        # --- Conserved total energies ---
+        v2L = vnL * vnL + vt1L * vt1L + vt2L * vt2L
+        v2R = vnR * vnR + vt1R * vt1R + vt2R * vt2R
+        eL = pL / (gamma - 1.0) + 0.5 * rL * v2L + 0.5 * B_sq_L / mu_0
+        eR = pR / (gamma - 1.0) + 0.5 * rR * v2R + 0.5 * B_sq_R / mu_0
+
+        # --- Contact speed SM (Eq. 38) ---
+        denom_SM = rR * (SR - vnR) - rL * (SL - vnL)
+        if abs(denom_SM) < 1e-30:
+            SM = 0.5 * (vnL + vnR)
+        else:
+            SM = (rR * vnR * (SR - vnR) - rL * vnL * (SL - vnL) + ptL - ptR) / denom_SM
+
+        # --- Star total pressure (Eq. 41) ---
+        pt_star = ptL + rL * (SL - vnL) * (SM - vnL)
+
+        # --- Star densities (Eq. 43) ---
+        denom_L = SL - SM
+        denom_R = SR - SM
+        if abs(denom_L) < 1e-30:
+            rho_sL = rL
+        else:
+            rho_sL = rL * (SL - vnL) / denom_L
+        if abs(denom_R) < 1e-30:
+            rho_sR = rR
+        else:
+            rho_sR = rR * (SR - vnR) / denom_R
+
+        rho_sL = max(rho_sL, 1e-30)
+        rho_sR = max(rho_sR, 1e-30)
+
+        # --- Star transverse velocities and B (Eqs. 44-45) ---
+        denom_star_L = rL * (SL - vnL) * (SL - SM) - bn2 / mu_0
+        denom_star_R = rR * (SR - vnR) * (SR - SM) - bn2 / mu_0
+
+        if abs(denom_star_L) < epsilon:
+            vt1_sL = vt1L
+            vt2_sL = vt2L
+            Bt1_sL = bt1L
+            Bt2_sL = bt2L
+        else:
+            vt1_sL = vt1L - bn * bt1L * (SM - vnL) / (mu_0 * denom_star_L)
+            vt2_sL = vt2L - bn * bt2L * (SM - vnL) / (mu_0 * denom_star_L)
+            num_L = rL * (SL - vnL) * (SL - vnL) - bn2 / mu_0
+            Bt1_sL = bt1L * num_L / denom_star_L
+            Bt2_sL = bt2L * num_L / denom_star_L
+
+        if abs(denom_star_R) < epsilon:
+            vt1_sR = vt1R
+            vt2_sR = vt2R
+            Bt1_sR = bt1R
+            Bt2_sR = bt2R
+        else:
+            vt1_sR = vt1R - bn * bt1R * (SM - vnR) / (mu_0 * denom_star_R)
+            vt2_sR = vt2R - bn * bt2R * (SM - vnR) / (mu_0 * denom_star_R)
+            num_R = rR * (SR - vnR) * (SR - vnR) - bn2 / mu_0
+            Bt1_sR = bt1R * num_R / denom_star_R
+            Bt2_sR = bt2R * num_R / denom_star_R
+
+        # --- Star energies (Eq. 48) ---
+        vB_L = vnL * bn + vt1L * bt1L + vt2L * bt2L
+        vB_sL = SM * bn + vt1_sL * Bt1_sL + vt2_sL * Bt2_sL
+        if abs(denom_L) < 1e-30:
+            e_sL = eL
+        else:
+            e_sL = ((SL - vnL) * eL - ptL * vnL + pt_star * SM
+                    + bn / mu_0 * (vB_L - vB_sL)) / denom_L
+
+        vB_R = vnR * bn + vt1R * bt1R + vt2R * bt2R
+        vB_sR = SM * bn + vt1_sR * Bt1_sR + vt2_sR * Bt2_sR
+        if abs(denom_R) < 1e-30:
+            e_sR = eR
+        else:
+            e_sR = ((SR - vnR) * eR - ptR * vnR + pt_star * SM
+                    + bn / mu_0 * (vB_R - vB_sR)) / denom_R
+
+        # --- Alfven wave speeds (Eq. 51) ---
+        sqrt_rho_sL = max(rho_sL, 0.0) ** 0.5
+        sqrt_rho_sR = max(rho_sR, 0.0) ** 0.5
+        abs_bn_over_sqrt_mu0 = abs(bn) / mu_0 ** 0.5
+        SL_star = SM - abs_bn_over_sqrt_mu0 / max(sqrt_rho_sL, 1e-30)
+        SR_star = SM + abs_bn_over_sqrt_mu0 / max(sqrt_rho_sR, 1e-30)
+
+        # --- Double-star states (Eqs. 59-62) ---
+        if abs(bn) < epsilon:
+            # Degenerate: no Alfven rotation, double-star = star
+            vt1_ssL = vt1_sL
+            vt2_ssL = vt2_sL
+            Bt1_ssL = Bt1_sL
+            Bt2_ssL = Bt2_sL
+            e_ssL = e_sL
+            vt1_ssR = vt1_sR
+            vt2_ssR = vt2_sR
+            Bt1_ssR = Bt1_sR
+            Bt2_ssR = Bt2_sR
+            e_ssR = e_sR
+        else:
+            sign_bn = 1.0 if bn >= 0.0 else -1.0
+            denom_ss = sqrt_rho_sL + sqrt_rho_sR
+            if denom_ss < 1e-30:
+                denom_ss = 1e-30
+            sqrt_mu0 = mu_0 ** 0.5
+            inv_denom_ss = 1.0 / denom_ss
+
+            vt1_ss = (sqrt_rho_sL * vt1_sL + sqrt_rho_sR * vt1_sR
+                      + sign_bn * (Bt1_sR - Bt1_sL) / sqrt_mu0) * inv_denom_ss
+            vt2_ss = (sqrt_rho_sL * vt2_sL + sqrt_rho_sR * vt2_sR
+                      + sign_bn * (Bt2_sR - Bt2_sL) / sqrt_mu0) * inv_denom_ss
+            Bt1_ss = (sqrt_rho_sL * Bt1_sR + sqrt_rho_sR * Bt1_sL
+                      + sign_bn * sqrt_mu0 * sqrt_rho_sL * sqrt_rho_sR
+                      * (vt1_sR - vt1_sL)) * inv_denom_ss
+            Bt2_ss = (sqrt_rho_sL * Bt2_sR + sqrt_rho_sR * Bt2_sL
+                      + sign_bn * sqrt_mu0 * sqrt_rho_sL * sqrt_rho_sR
+                      * (vt2_sR - vt2_sL)) * inv_denom_ss
+
+            vB_ssL = SM * bn + vt1_ss * Bt1_ss + vt2_ss * Bt2_ss
+            vB_ssR = vB_ssL  # Same by construction
+
+            e_ssL = e_sL - sign_bn * sqrt_rho_sL / sqrt_mu0 * (vB_sL - vB_ssL)
+            e_ssR = e_sR + sign_bn * sqrt_rho_sR / sqrt_mu0 * (vB_sR - vB_ssR)
+
+            vt1_ssL = vt1_ss
+            vt2_ssL = vt2_ss
+            Bt1_ssL = Bt1_ss
+            Bt2_ssL = Bt2_ss
+            vt1_ssR = vt1_ss
+            vt2_ssR = vt2_ss
+            Bt1_ssR = Bt1_ss
+            Bt2_ssR = Bt2_ss
+
+        # --- Physical fluxes (left and right) ---
+        Frho_L = rL * vnL
+        Frho_R = rR * vnR
+        Fmomn_L = rL * vnL * vnL + ptL - bn2 / mu_0
+        Fmomn_R = rR * vnR * vnR + ptR - bn2 / mu_0
+        Fmomt1_L = rL * vnL * vt1L - bn * bt1L / mu_0
+        Fmomt1_R = rR * vnR * vt1R - bn * bt1R / mu_0
+        Fmomt2_L = rL * vnL * vt2L - bn * bt2L / mu_0
+        Fmomt2_R = rR * vnR * vt2R - bn * bt2R / mu_0
+        Fene_L = (eL + ptL) * vnL - bn * vB_L / mu_0
+        Fene_R = (eR + ptR) * vnR - bn * vB_R / mu_0
+        FBt1_L = vnL * bt1L - vt1L * bn
+        FBt1_R = vnR * bt1R - vt1R * bn
+        FBt2_L = vnL * bt2L - vt2L * bn
+        FBt2_R = vnR * bt2R - vt2R * bn
+
+        # Note: normal momentum flux includes total pressure ptL
+        # but must subtract bn^2/mu_0 because ptL already has it
+        # Actually, the standard MHD flux for normal momentum is:
+        #   rho*vn*vn + p_total - Bn^2/mu_0
+        # But p_total = p + 0.5*(Bn^2+Bt1^2+Bt2^2)/mu_0
+        # So the flux = rho*vn*vn + p + (Bt1^2+Bt2^2-Bn^2)/(2*mu_0)
+        # We use the pt_star formula in the Riemann solver regions,
+        # so recalculate the normal momentum flux correctly:
+        Fmomn_L = rL * vnL * vnL + ptL - bn2 / mu_0
+        Fmomn_R = rR * vnR * vnR + ptR - bn2 / mu_0
+        # Correction: actually the standard form is rho*vn^2 + pt
+        # where pt = p + |B|^2/(2*mu_0) already includes Bn^2.
+        # The Rankine-Hugoniot jump conditions use pt directly.
+        # For HLLD the normal momentum flux is:
+        #   F_momn = rho*vn*vn + pt - Bn^2/mu_0
+        # = rho*vn^2 + p + (Bt1^2+Bt2^2)/(2*mu_0) - Bn^2/(2*mu_0)
+        # This is correct for the MHD equations in conservative form.
+
+        # --- Conserved state vectors for HLL jump formula ---
+        # U_L = [rho, rho*vn, rho*vt1, rho*vt2, e_total, Bt1, Bt2]
+        U_rho_L = rL
+        U_momn_L = rL * vnL
+        U_momt1_L = rL * vt1L
+        U_momt2_L = rL * vt2L
+        U_ene_L = eL
+        U_Bt1_L = bt1L
+        U_Bt2_L = bt2L
+
+        U_rho_R = rR
+        U_momn_R = rR * vnR
+        U_momt1_R = rR * vt1R
+        U_momt2_R = rR * vt2R
+        U_ene_R = eR
+        U_Bt1_R = bt1R
+        U_Bt2_R = bt2R
+
+        # Star conserved states
+        U_rho_sL = rho_sL
+        U_momn_sL = rho_sL * SM
+        U_momt1_sL = rho_sL * vt1_sL
+        U_momt2_sL = rho_sL * vt2_sL
+        U_ene_sL = e_sL
+        U_Bt1_sL = Bt1_sL
+        U_Bt2_sL = Bt2_sL
+
+        U_rho_sR = rho_sR
+        U_momn_sR = rho_sR * SM
+        U_momt1_sR = rho_sR * vt1_sR
+        U_momt2_sR = rho_sR * vt2_sR
+        U_ene_sR = e_sR
+        U_Bt1_sR = Bt1_sR
+        U_Bt2_sR = Bt2_sR
+
+        # Double-star conserved states
+        U_rho_ssL = rho_sL
+        U_momn_ssL = rho_sL * SM
+        U_momt1_ssL = rho_sL * vt1_ssL
+        U_momt2_ssL = rho_sL * vt2_ssL
+        U_ene_ssL = e_ssL
+        U_Bt1_ssL = Bt1_ssL
+        U_Bt2_ssL = Bt2_ssL
+
+        U_rho_ssR = rho_sR
+        U_momn_ssR = rho_sR * SM
+        U_momt1_ssR = rho_sR * vt1_ssR
+        U_momt2_ssR = rho_sR * vt2_ssR
+        U_ene_ssR = e_ssR
+        U_Bt1_ssR = Bt1_ssR
+        U_Bt2_ssR = Bt2_ssR
+
+        # --- 5-region flux selection ---
+        if SL >= 0.0:
+            F_rho[i] = Frho_L
+            F_momn[i] = Fmomn_L
+            F_momt1[i] = Fmomt1_L
+            F_momt2[i] = Fmomt2_L
+            F_ene[i] = Fene_L
+            F_Bt1[i] = FBt1_L
+            F_Bt2[i] = FBt2_L
+        elif SR <= 0.0:
+            F_rho[i] = Frho_R
+            F_momn[i] = Fmomn_R
+            F_momt1[i] = Fmomt1_R
+            F_momt2[i] = Fmomt2_R
+            F_ene[i] = Fene_R
+            F_Bt1[i] = FBt1_R
+            F_Bt2[i] = FBt2_R
+        elif SM >= 0.0:
+            # Left of contact
+            if SL_star >= 0.0:
+                # Between SL and SL*: use star-L
+                F_rho[i] = Frho_L + SL * (U_rho_sL - U_rho_L)
+                F_momn[i] = Fmomn_L + SL * (U_momn_sL - U_momn_L)
+                F_momt1[i] = Fmomt1_L + SL * (U_momt1_sL - U_momt1_L)
+                F_momt2[i] = Fmomt2_L + SL * (U_momt2_sL - U_momt2_L)
+                F_ene[i] = Fene_L + SL * (U_ene_sL - U_ene_L)
+                F_Bt1[i] = FBt1_L + SL * (U_Bt1_sL - U_Bt1_L)
+                F_Bt2[i] = FBt2_L + SL * (U_Bt2_sL - U_Bt2_L)
+            else:
+                # Between SL* and SM: use double-star-L
+                F_rho[i] = (Frho_L + SL * (U_rho_sL - U_rho_L)
+                            + SL_star * (U_rho_ssL - U_rho_sL))
+                F_momn[i] = (Fmomn_L + SL * (U_momn_sL - U_momn_L)
+                             + SL_star * (U_momn_ssL - U_momn_sL))
+                F_momt1[i] = (Fmomt1_L + SL * (U_momt1_sL - U_momt1_L)
+                              + SL_star * (U_momt1_ssL - U_momt1_sL))
+                F_momt2[i] = (Fmomt2_L + SL * (U_momt2_sL - U_momt2_L)
+                              + SL_star * (U_momt2_ssL - U_momt2_sL))
+                F_ene[i] = (Fene_L + SL * (U_ene_sL - U_ene_L)
+                            + SL_star * (U_ene_ssL - U_ene_sL))
+                F_Bt1[i] = (FBt1_L + SL * (U_Bt1_sL - U_Bt1_L)
+                            + SL_star * (U_Bt1_ssL - U_Bt1_sL))
+                F_Bt2[i] = (FBt2_L + SL * (U_Bt2_sL - U_Bt2_L)
+                            + SL_star * (U_Bt2_ssL - U_Bt2_sL))
+        else:
+            # Right of contact
+            if SR_star <= 0.0:
+                # Between SR* and SR: use double-star-R
+                F_rho[i] = (Frho_R + SR * (U_rho_sR - U_rho_R)
+                            + SR_star * (U_rho_ssR - U_rho_sR))
+                F_momn[i] = (Fmomn_R + SR * (U_momn_sR - U_momn_R)
+                             + SR_star * (U_momn_ssR - U_momn_sR))
+                F_momt1[i] = (Fmomt1_R + SR * (U_momt1_sR - U_momt1_R)
+                              + SR_star * (U_momt1_ssR - U_momt1_sR))
+                F_momt2[i] = (Fmomt2_R + SR * (U_momt2_sR - U_momt2_R)
+                              + SR_star * (U_momt2_ssR - U_momt2_sR))
+                F_ene[i] = (Fene_R + SR * (U_ene_sR - U_ene_R)
+                            + SR_star * (U_ene_ssR - U_ene_sR))
+                F_Bt1[i] = (FBt1_R + SR * (U_Bt1_sR - U_Bt1_R)
+                            + SR_star * (U_Bt1_ssR - U_Bt1_sR))
+                F_Bt2[i] = (FBt2_R + SR * (U_Bt2_sR - U_Bt2_R)
+                            + SR_star * (U_Bt2_ssR - U_Bt2_sR))
+            else:
+                # Between SM and SR*: use star-R
+                F_rho[i] = Frho_R + SR * (U_rho_sR - U_rho_R)
+                F_momn[i] = Fmomn_R + SR * (U_momn_sR - U_momn_R)
+                F_momt1[i] = Fmomt1_R + SR * (U_momt1_sR - U_momt1_R)
+                F_momt2[i] = Fmomt2_R + SR * (U_momt2_sR - U_momt2_R)
+                F_ene[i] = Fene_R + SR * (U_ene_sR - U_ene_R)
+                F_Bt1[i] = FBt1_R + SR * (U_Bt1_sR - U_Bt1_R)
+                F_Bt2[i] = FBt2_R + SR * (U_Bt2_sR - U_Bt2_R)
+
+    return F_rho, F_momn, F_momt1, F_momt2, F_ene, F_Bt1, F_Bt2
+
+
 def _hlld_flux_1d_core(
     rho_L: np.ndarray,
     rho_R: np.ndarray,
@@ -249,136 +639,52 @@ def _hlld_flux_1d_core(
     Bn_R: np.ndarray,
     gamma: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """HLLD approximate Riemann solver for ideal MHD (Numba-accelerated).
+    """Backward-compatible HLLD wrapper returning only (mass, momentum, energy) fluxes.
 
-    Resolves 4 intermediate states: outer fast shocks + Alfven rotational
-    discontinuities + contact. Much less diffusive than HLL for contact
-    and Alfven waves.
-
-    Reference: Miyoshi & Kusano, JCP 208, 315 (2005).
-
-    Note: This is a simplified 1D HLLD that resolves density, normal
-    momentum, and energy fluxes. The full HLLD resolves 7 or 8
-    components; this version captures the key physics improvement.
-
-    Returns tuple of (mass_flux, momentum_flux, energy_flux).
+    Calls the full 8-component solver with zero transverse velocities and B-fields,
+    then returns only the first 3 flux components.  Used by the cylindrical solver.
     """
     n = len(rho_L)
-    F_rho = np.empty(n)
-    F_mom = np.empty(n)
-    F_ene = np.empty(n)
-
-    for i in range(n):
-        rL = max(rho_L[i], 1e-30)
-        rR = max(rho_R[i], 1e-30)
-        uL = u_L[i]
-        uR = u_R[i]
-        pL = max(p_L[i], 0.0)
-        pR = max(p_R[i], 0.0)
-        BnL = Bn_L[i]
-        BnR = Bn_R[i]
-
-        # Fast magnetosonic speeds
-        Bn2L = BnL * BnL
-        Bn2R = BnR * BnR
-        a2L = gamma * pL / rL
-        a2R = gamma * pR / rR
-        va2L = Bn2L / (mu_0 * rL)
-        va2R = Bn2R / (mu_0 * rR)
-        cfL = (a2L + va2L) ** 0.5
-        cfR = (a2R + va2R) ** 0.5
-
-        # Davis wave speed estimates for outer shocks
-        SL = min(uL - cfL, uR - cfR)
-        SR = max(uL + cfL, uR + cfR)
-
-        # Conserved quantities
-        eL = pL / (gamma - 1.0) + 0.5 * rL * uL * uL + 0.5 * Bn2L / mu_0
-        eR = pR / (gamma - 1.0) + 0.5 * rR * uR * uR + 0.5 * Bn2R / mu_0
-
-        ptL = pL + 0.5 * Bn2L / mu_0
-        ptR = pR + 0.5 * Bn2R / mu_0
-
-        # HLL contact speed S_M (Eq. 38 of Miyoshi & Kusano)
-        denom_SM = rR * (SR - uR) - rL * (SL - uL)
-        if abs(denom_SM) < 1e-30:
-            SM = 0.5 * (uL + uR)
-        else:
-            SM = (rR * uR * (SR - uR) - rL * uL * (SL - uL) + ptL - ptR) / denom_SM
-
-        # Total pressure in star region (Eq. 41)
-        pt_star = ptL + rL * (SL - uL) * (SM - uL)
-
-        # Star state densities (Eq. 43)
-        denom_L = SL - SM
-        denom_R = SR - SM
-        if abs(denom_L) < 1e-30:
-            rho_sL = rL
-        else:
-            rho_sL = rL * (SL - uL) / denom_L
-        if abs(denom_R) < 1e-30:
-            rho_sR = rR
-        else:
-            rho_sR = rR * (SR - uR) / denom_R
-
-        rho_sL = max(rho_sL, 1e-30)
-        rho_sR = max(rho_sR, 1e-30)
-
-        # Star state energies (from Rankine-Hugoniot across outer shocks)
-        e_sL = ((SL - uL) * eL - ptL * uL + pt_star * SM) / max(abs(denom_L), 1e-30)
-        e_sR = ((SR - uR) * eR - ptR * uR + pt_star * SM) / max(abs(denom_R), 1e-30)
-
-        # Left and right physical fluxes
-        Frho_L = rL * uL
-        Frho_R = rR * uR
-        Fmom_L = rL * uL * uL + ptL
-        Fmom_R = rR * uR * uR + ptR
-        Fene_L = (eL + ptL) * uL
-        Fene_R = (eR + ptR) * uR
-
-        if SL >= 0.0:
-            # Fully left
-            F_rho[i] = Frho_L
-            F_mom[i] = Fmom_L
-            F_ene[i] = Fene_L
-        elif SR <= 0.0:
-            # Fully right
-            F_rho[i] = Frho_R
-            F_mom[i] = Fmom_R
-            F_ene[i] = Fene_R
-        elif SM >= 0.0:
-            # Left star region (between SL and SM)
-            F_rho[i] = Frho_L + SL * (rho_sL - rL)
-            F_mom[i] = Fmom_L + SL * (rho_sL * SM - rL * uL)
-            F_ene[i] = Fene_L + SL * (e_sL - eL)
-        else:
-            # Right star region (between SM and SR)
-            F_rho[i] = Frho_R + SR * (rho_sR - rR)
-            F_mom[i] = Fmom_R + SR * (rho_sR * SM - rR * uR)
-            F_ene[i] = Fene_R + SR * (e_sR - eR)
-
-    return F_rho, F_mom, F_ene
+    zeros = np.zeros(n)
+    Bn_avg = 0.5 * (Bn_L + Bn_R)
+    F_rho, F_momn, _, _, F_ene, _, _ = _hlld_flux_1d_8comp(
+        rho_L, rho_R, u_L, u_R, zeros, zeros, zeros, zeros,
+        p_L, p_R, Bn_avg, zeros, zeros, zeros, zeros, gamma,
+    )
+    return F_rho, F_momn, F_ene
 
 
 def _hlld_flux_1d(
     rho_L: np.ndarray,
     rho_R: np.ndarray,
-    u_L: np.ndarray,
-    u_R: np.ndarray,
+    vn_L: np.ndarray,
+    vn_R: np.ndarray,
+    vt1_L: np.ndarray,
+    vt1_R: np.ndarray,
+    vt2_L: np.ndarray,
+    vt2_R: np.ndarray,
     p_L: np.ndarray,
     p_R: np.ndarray,
-    Bn_L: np.ndarray,
-    Bn_R: np.ndarray,
+    Bn: np.ndarray,
+    Bt1_L: np.ndarray,
+    Bt1_R: np.ndarray,
+    Bt2_L: np.ndarray,
+    Bt2_R: np.ndarray,
     gamma: float,
 ) -> dict[str, np.ndarray]:
     """HLLD approximate Riemann solver — dict wrapper."""
-    F_rho, F_mom, F_ene = _hlld_flux_1d_core(
-        rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma,
+    F_rho, F_momn, F_momt1, F_momt2, F_ene, F_Bt1, F_Bt2 = _hlld_flux_1d_8comp(
+        rho_L, rho_R, vn_L, vn_R, vt1_L, vt1_R, vt2_L, vt2_R,
+        p_L, p_R, Bn, Bt1_L, Bt1_R, Bt2_L, Bt2_R, gamma,
     )
     return {
         "mass_flux": F_rho,
-        "momentum_flux": F_mom,
+        "momentum_flux": F_momn,
+        "momentum_t1_flux": F_momt1,
+        "momentum_t2_flux": F_momt2,
         "energy_flux": F_ene,
+        "Bt1_flux": F_Bt1,
+        "Bt2_flux": F_Bt2,
     }
 
 
@@ -389,8 +695,12 @@ def _hlld_flux_1d(
 def _compute_flux_1d_sweep(
     rho: np.ndarray,
     vel_n: np.ndarray,
+    vel_t1: np.ndarray,
+    vel_t2: np.ndarray,
     pressure: np.ndarray,
     Bn: np.ndarray,
+    Bt1: np.ndarray,
+    Bt2: np.ndarray,
     gamma: float,
     axis: int,
     riemann_solver: str = "hll",
@@ -403,14 +713,19 @@ def _compute_flux_1d_sweep(
     Args:
         rho: Density, shape (nx, ny, nz).
         vel_n: Normal velocity component, shape (nx, ny, nz).
+        vel_t1: First transverse velocity component, shape (nx, ny, nz).
+        vel_t2: Second transverse velocity component, shape (nx, ny, nz).
         pressure: Thermal pressure, shape (nx, ny, nz).
         Bn: Normal B-field component, shape (nx, ny, nz).
+        Bt1: First transverse B-field component, shape (nx, ny, nz).
+        Bt2: Second transverse B-field component, shape (nx, ny, nz).
         gamma: Adiabatic index.
         axis: Sweep axis (0, 1, or 2).
         riemann_solver: "hll" or "hlld".
 
     Returns:
         Dictionary of flux arrays at interfaces (reduced by 4 along `axis`).
+        For HLLD, includes transverse momentum and B-field fluxes.
     """
     shape = rho.shape
     n_ax = shape[axis]
@@ -435,6 +750,14 @@ def _compute_flux_1d_sweep(
     F_rho = np.zeros(out_shape)
     F_mom = np.zeros(out_shape)
     F_ene = np.zeros(out_shape)
+
+    # Additional arrays for HLLD transverse fluxes
+    use_hlld = riemann_solver == "hlld"
+    if use_hlld:
+        F_momt1 = np.zeros(out_shape)
+        F_momt2 = np.zeros(out_shape)
+        F_Bt1 = np.zeros(out_shape)
+        F_Bt2 = np.zeros(out_shape)
 
     # Iterate over pencils perpendicular to axis
     other_axes = [i for i in range(3) if i != axis]
@@ -466,10 +789,30 @@ def _compute_flux_1d_sweep(
             p_R = np.maximum(p_R, 1e-20)
 
             # Riemann solve (HLL or HLLD)
-            if riemann_solver == "hlld":
-                fluxes = _hlld_flux_1d(rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma)
+            if use_hlld:
+                # Reconstruct transverse quantities for full 8-component HLLD
+                vt1_1d = vel_t1[s]
+                vt2_1d = vel_t2[s]
+                Bt1_1d = Bt1[s]
+                Bt2_1d = Bt2[s]
+
+                vt1_L, vt1_R = _weno5_reconstruct_1d(vt1_1d)
+                vt2_L, vt2_R = _weno5_reconstruct_1d(vt2_1d)
+                Bt1_L_r, Bt1_R_r = _weno5_reconstruct_1d(Bt1_1d)
+                Bt2_L_r, Bt2_R_r = _weno5_reconstruct_1d(Bt2_1d)
+
+                # Average Bn at interface (continuous in ideal MHD)
+                Bn_avg = 0.5 * (Bn_L + Bn_R)
+
+                fluxes = _hlld_flux_1d(
+                    rho_L, rho_R, u_L, u_R, vt1_L, vt1_R, vt2_L, vt2_R,
+                    p_L, p_R, Bn_avg, Bt1_L_r, Bt1_R_r, Bt2_L_r, Bt2_R_r,
+                    gamma,
+                )
             else:
-                fluxes = _hll_flux_1d(rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma)
+                fluxes = _hll_flux_1d(
+                    rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma,
+                )
 
             # Store in output array
             out_slicer = [None, None, None]
@@ -482,12 +825,25 @@ def _compute_flux_1d_sweep(
             F_mom[out_s] = fluxes["momentum_flux"]
             F_ene[out_s] = fluxes["energy_flux"]
 
-    return {
+            if use_hlld:
+                F_momt1[out_s] = fluxes["momentum_t1_flux"]
+                F_momt2[out_s] = fluxes["momentum_t2_flux"]
+                F_Bt1[out_s] = fluxes["Bt1_flux"]
+                F_Bt2[out_s] = fluxes["Bt2_flux"]
+
+    result = {
         "mass_flux": F_rho,
         "momentum_flux": F_mom,
         "energy_flux": F_ene,
         "n_interfaces": n_iface,
     }
+    if use_hlld:
+        result["momentum_t1_flux"] = F_momt1
+        result["momentum_t2_flux"] = F_momt2
+        result["Bt1_flux"] = F_Bt1
+        result["Bt2_flux"] = F_Bt2
+
+    return result
 
 
 def _apply_flux_divergence(
@@ -904,6 +1260,7 @@ class MHDSolver(PlasmaSolverBase):
         ion_mass: float | None = None,
         riemann_solver: str = "hlld",
         time_integrator: str = "ssp_rk3",
+        use_ct: bool = False,
     ) -> None:
         self.grid_shape = grid_shape
         self.dx = dx
@@ -917,6 +1274,7 @@ class MHDSolver(PlasmaSolverBase):
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hlld"
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
+        self.use_ct = use_ct
         self.eos = IdealEOS(gamma=gamma)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
@@ -929,11 +1287,12 @@ class MHDSolver(PlasmaSolverBase):
         logger.info(
             "MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f, "
             "WENO5-Z=%s, Hall=%s, Braginskii=%s, Resistive=%s, EnergyEq=%s, "
-            "Riemann=%s, TimeInt=%s, ion_mass=%.3e kg",
+            "Riemann=%s, TimeInt=%s, CT=%s, ion_mass=%.3e kg",
             grid_shape, dx, gamma,
             self.use_weno5, enable_hall, enable_braginskii,
             self.enable_resistive, self.enable_energy_equation,
-            self.riemann_solver, self.time_integrator, self.ion_mass,
+            self.riemann_solver, self.time_integrator, self.use_ct,
+            self.ion_mass,
         )
 
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
@@ -997,14 +1356,31 @@ class MHDSolver(PlasmaSolverBase):
         dp_dt = np.zeros_like(rho)
         dB_dt = np.zeros_like(B)
 
-        # --- Density advection ---
+        # --- Density advection + HLLD full flux update ---
+        # Transverse index mapping for each sweep axis:
+        #   axis=0: vn=vel[0], vt1=vel[1], vt2=vel[2], Bn=B[0], Bt1=B[1], Bt2=B[2]
+        #   axis=1: vn=vel[1], vt1=vel[2], vt2=vel[0], Bn=B[1], Bt1=B[2], Bt2=B[0]
+        #   axis=2: vn=vel[2], vt1=vel[0], vt2=vel[1], Bn=B[2], Bt1=B[0], Bt2=B[1]
+        _transverse_map = {
+            0: (1, 2),
+            1: (2, 0),
+            2: (0, 1),
+        }
+
+        # Store per-axis flux results for reuse by momentum and induction
+        _axis_fluxes: list[dict[str, np.ndarray] | None] = [None, None, None]
+
         if self.use_weno5:
-            # WENO5+HLL flux-based update: accumulate flux divergence across all 3 dims
+            # WENO5+Riemann flux-based update: accumulate flux divergence
             for axis in range(3):
+                t1_idx, t2_idx = _transverse_map[axis]
                 fluxes = _compute_flux_1d_sweep(
-                    rho, vel[axis], p, B[axis], self.gamma, axis,
+                    rho, vel[axis], vel[t1_idx], vel[t2_idx],
+                    p, B[axis], B[t1_idx], B[t2_idx],
+                    self.gamma, axis,
                     riemann_solver=self.riemann_solver,
                 )
+                _axis_fluxes[axis] = fluxes
                 n_iface = fluxes["n_interfaces"]
                 if n_iface >= 2:
                     n_update = n_iface - 1
@@ -1029,7 +1405,7 @@ class MHDSolver(PlasmaSolverBase):
             )
             drho_dt = -div_flux
 
-        # --- Momentum: J × B force + pressure gradient ---
+        # --- Momentum: J x B force + pressure gradient ---
         # Current density: J = curl(B) / mu_0
         J = np.array([
             np.gradient(B[2], self.dx, axis=1) - np.gradient(B[1], self.dx, axis=2),
@@ -1037,7 +1413,7 @@ class MHDSolver(PlasmaSolverBase):
             np.gradient(B[1], self.dx, axis=0) - np.gradient(B[0], self.dx, axis=1),
         ]) / mu_0
 
-        # J × B force
+        # J x B force
         JxB = np.array([
             J[1] * B[2] - J[2] * B[1],
             J[2] * B[0] - J[0] * B[2],
@@ -1052,28 +1428,73 @@ class MHDSolver(PlasmaSolverBase):
 
         # Momentum advection (WENO5 for momentum flux if available)
         if self.use_weno5:
-            for d in range(3):
-                # Momentum component d advected by each velocity component
+            use_hlld = self.riemann_solver == "hlld"
+            if use_hlld:
+                # Full 8-component HLLD: use momentum_flux (normal), momentum_t1_flux,
+                # momentum_t2_flux from the already-computed per-axis sweeps.
                 for axis in range(3):
-                    mom_d = rho * vel[d]
-                    fluxes = _compute_flux_1d_sweep(
-                        mom_d, vel[axis], p, B[axis], self.gamma, axis,
-                        riemann_solver=self.riemann_solver,
-                    )
+                    fluxes = _axis_fluxes[axis]
+                    if fluxes is None:
+                        continue
                     n_iface = fluxes["n_interfaces"]
-                    if n_iface >= 2:
-                        n_update = n_iface - 1
-                        flux_left_sl = [slice(None)] * 3
-                        flux_right_sl = [slice(None)] * 3
-                        update_sl = [slice(None)] * 3
-                        flux_left_sl[axis] = slice(0, n_update)
-                        flux_right_sl[axis] = slice(1, n_update + 1)
-                        update_sl[axis] = slice(2, 2 + n_update)
-                        dF = (
-                            fluxes["mass_flux"][tuple(flux_right_sl)]
-                            - fluxes["mass_flux"][tuple(flux_left_sl)]
+                    if n_iface < 2:
+                        continue
+                    n_update = n_iface - 1
+                    flux_left_sl = [slice(None)] * 3
+                    flux_right_sl = [slice(None)] * 3
+                    update_sl = [slice(None)] * 3
+                    flux_left_sl[axis] = slice(0, n_update)
+                    flux_right_sl[axis] = slice(1, n_update + 1)
+                    update_sl[axis] = slice(2, 2 + n_update)
+
+                    t1_idx, t2_idx = _transverse_map[axis]
+
+                    # Normal momentum flux -> updates momentum[axis]
+                    dF_n = (
+                        fluxes["momentum_flux"][tuple(flux_right_sl)]
+                        - fluxes["momentum_flux"][tuple(flux_left_sl)]
+                    )
+                    dmom_dt[axis][tuple(update_sl)] -= dF_n / self.dx
+
+                    # Transverse momentum flux t1 -> updates momentum[t1_idx]
+                    dF_t1 = (
+                        fluxes["momentum_t1_flux"][tuple(flux_right_sl)]
+                        - fluxes["momentum_t1_flux"][tuple(flux_left_sl)]
+                    )
+                    dmom_dt[t1_idx][tuple(update_sl)] -= dF_t1 / self.dx
+
+                    # Transverse momentum flux t2 -> updates momentum[t2_idx]
+                    dF_t2 = (
+                        fluxes["momentum_t2_flux"][tuple(flux_right_sl)]
+                        - fluxes["momentum_t2_flux"][tuple(flux_left_sl)]
+                    )
+                    dmom_dt[t2_idx][tuple(update_sl)] -= dF_t2 / self.dx
+            else:
+                # HLL: only has mass_flux, use old approach
+                for d in range(3):
+                    for axis in range(3):
+                        mom_d = rho * vel[d]
+                        t1_idx, t2_idx = _transverse_map[axis]
+                        fluxes = _compute_flux_1d_sweep(
+                            mom_d, vel[axis], vel[t1_idx], vel[t2_idx],
+                            p, B[axis], B[t1_idx], B[t2_idx],
+                            self.gamma, axis,
+                            riemann_solver="hll",
                         )
-                        dmom_dt[d][tuple(update_sl)] -= dF / self.dx
+                        n_iface = fluxes["n_interfaces"]
+                        if n_iface >= 2:
+                            n_update = n_iface - 1
+                            flux_left_sl = [slice(None)] * 3
+                            flux_right_sl = [slice(None)] * 3
+                            update_sl = [slice(None)] * 3
+                            flux_left_sl[axis] = slice(0, n_update)
+                            flux_right_sl[axis] = slice(1, n_update + 1)
+                            update_sl[axis] = slice(2, 2 + n_update)
+                            dF = (
+                                fluxes["mass_flux"][tuple(flux_right_sl)]
+                                - fluxes["mass_flux"][tuple(flux_left_sl)]
+                            )
+                            dmom_dt[d][tuple(update_sl)] -= dF / self.dx
         else:
             # Fallback: centered difference momentum advection
             for d in range(3):
@@ -1123,6 +1544,44 @@ class MHDSolver(PlasmaSolverBase):
         ])
         dB_dt = -curl_E
 
+        # --- HLLD B-field flux correction for transverse B in WENO5 interior ---
+        # When HLLD provides Bt1/Bt2 fluxes, apply their divergence to interior
+        # cells.  This adds the higher-order WENO5-reconstructed induction flux
+        # on top of the np.gradient-based curl(E).  The HLLD flux captures the
+        # same ideal MHD induction physics but with 5th-order reconstruction,
+        # providing better shock-capturing for the magnetic field.
+        if self.use_weno5 and self.riemann_solver == "hlld":
+            for axis in range(3):
+                fluxes = _axis_fluxes[axis]
+                if fluxes is None:
+                    continue
+                n_iface = fluxes["n_interfaces"]
+                if n_iface < 2 or "Bt1_flux" not in fluxes:
+                    continue
+                n_update = n_iface - 1
+                flux_left_sl = [slice(None)] * 3
+                flux_right_sl = [slice(None)] * 3
+                update_sl = [slice(None)] * 3
+                flux_left_sl[axis] = slice(0, n_update)
+                flux_right_sl[axis] = slice(1, n_update + 1)
+                update_sl[axis] = slice(2, 2 + n_update)
+
+                t1_idx, t2_idx = _transverse_map[axis]
+
+                # Bt1 flux -> updates B[t1_idx]
+                dF_Bt1 = (
+                    fluxes["Bt1_flux"][tuple(flux_right_sl)]
+                    - fluxes["Bt1_flux"][tuple(flux_left_sl)]
+                )
+                dB_dt[t1_idx][tuple(update_sl)] -= dF_Bt1 / self.dx
+
+                # Bt2 flux -> updates B[t2_idx]
+                dF_Bt2 = (
+                    fluxes["Bt2_flux"][tuple(flux_right_sl)]
+                    - fluxes["Bt2_flux"][tuple(flux_left_sl)]
+                )
+                dB_dt[t2_idx][tuple(update_sl)] -= dF_Bt2 / self.dx
+
         # --- Pressure / Energy equation ---
         div_v = (
             np.gradient(vel[0], self.dx, axis=0)
@@ -1143,21 +1602,26 @@ class MHDSolver(PlasmaSolverBase):
             dp_dt = -self.gamma * p * div_v
 
         # --- Dedner cleaning (Mignone & Tzeferacos 2010 tuning) ---
-        # ch = max fast magnetosonic speed across the grid
-        # cr = ch / dx for optimal parabolic damping (M&T2010 prescription)
-        if self.dedner_ch_init > 0:
-            ch = self.dedner_ch_init
+        # Skip Dedner when CT is enabled (mutually exclusive)
+        if not self.use_ct:
+            # ch = max fast magnetosonic speed across the grid
+            # cr = ch / dx for optimal parabolic damping (M&T2010 prescription)
+            if self.dedner_ch_init > 0:
+                ch = self.dedner_ch_init
+            else:
+                # Auto: ch = max(|v| + c_f) where c_f is fast magnetosonic speed
+                B_sq = np.sum(B**2, axis=0)
+                cs2 = self.gamma * p / np.maximum(rho, 1e-20)
+                va2 = B_sq / (mu_0 * np.maximum(rho, 1e-20))
+                cf = np.sqrt(cs2 + va2)  # Fast magnetosonic speed
+                v_mag = np.sqrt(np.sum(vel**2, axis=0))
+                ch = float(np.max(v_mag + cf)) + 1.0
+            cr = ch / self.dx  # M&T2010 optimal damping rate
+            dpsi_dt, dB_clean = _dedner_source_mt2010(psi, B, ch, cr, self.dx)
+            dB_dt += dB_clean
         else:
-            # Auto: ch = max(|v| + c_f) where c_f is fast magnetosonic speed
-            B_sq = np.sum(B**2, axis=0)
-            cs2 = self.gamma * p / np.maximum(rho, 1e-20)
-            va2 = B_sq / (mu_0 * np.maximum(rho, 1e-20))
-            cf = np.sqrt(cs2 + va2)  # Fast magnetosonic speed
-            v_mag = np.sqrt(np.sum(vel**2, axis=0))
-            ch = float(np.max(v_mag + cf)) + 1.0
-        cr = ch / self.dx  # M&T2010 optimal damping rate
-        dpsi_dt, dB_clean = _dedner_source_mt2010(psi, B, ch, cr, self.dx)
-        dB_dt += dB_clean
+            # CT mode: no Dedner cleaning, psi is unused
+            dpsi_dt = np.zeros_like(rho)
 
         return {
             "drho_dt": drho_dt,
@@ -1287,6 +1751,89 @@ class MHDSolver(PlasmaSolverBase):
 
         return rho_out, mom_out, p_out, B_out, psi_out, rhs
 
+    def _apply_ct_correction_numpy(
+        self,
+        B_new: np.ndarray,
+        B_old: np.ndarray,
+        dt: float,
+    ) -> np.ndarray:
+        """Apply constrained transport divergence correction to B (NumPy).
+
+        Converts cell-centred B → face-centred, builds EMFs from the
+        induction-equation dB/dt, applies the CT update, then converts back
+        to cell centres.  This is the same simplified CT approach used by
+        the Metal solver.
+
+        Parameters
+        ----------
+        B_new : np.ndarray
+            Updated cell-centred B after the RK stage, shape (3, nx, ny, nz).
+        B_old : np.ndarray
+            Previous cell-centred B, shape (3, nx, ny, nz).
+        dt : float
+            Timestep [s].
+
+        Returns
+        -------
+        np.ndarray
+            Corrected cell-centred B, shape (3, nx, ny, nz).
+        """
+        from dpf.fluid.constrained_transport import (
+            cell_centered_to_face,
+            ct_update,
+            emf_from_fluxes,
+            face_to_cell_centered,
+        )
+
+        nx, ny, nz = self.grid_shape
+        dx = self.dx
+
+        # Skip CT if grid is too small for meaningful stencils
+        if nx < 3 or ny < 3 or nz < 3:
+            return B_new
+
+        # Compute the effective induction dB/dt from the RK update
+        dB_dt = (B_new - B_old) / max(dt, 1e-30)
+
+        # Convert old B to face-centred
+        staggered = cell_centered_to_face(
+            B_old[0], B_old[1], B_old[2], dx, dx, dx,
+        )
+
+        # Build face-centred EMF contributions from dB/dt
+        # The EMF at x-faces represents the induction flux for Bx, etc.
+        # We construct face arrays from cell-centred dB_dt by averaging
+        Fx = np.zeros((nx + 1, ny, nz))
+        Fx[1:-1, :, :] = 0.5 * (dB_dt[0, :-1, :, :] + dB_dt[0, 1:, :, :])
+        Fx[0, :, :] = dB_dt[0, 0, :, :]
+        Fx[-1, :, :] = dB_dt[0, -1, :, :]
+
+        Fy = np.zeros((nx, ny + 1, nz))
+        Fy[:, 1:-1, :] = 0.5 * (dB_dt[1, :, :-1, :] + dB_dt[1, :, 1:, :])
+        Fy[:, 0, :] = dB_dt[1, :, 0, :]
+        Fy[:, -1, :] = dB_dt[1, :, -1, :]
+
+        Fz = np.zeros((nx, ny, nz + 1))
+        Fz[:, :, 1:-1] = 0.5 * (dB_dt[2, :, :, :-1] + dB_dt[2, :, :, 1:])
+        Fz[:, :, 0] = dB_dt[2, :, :, 0]
+        Fz[:, :, -1] = dB_dt[2, :, :, -1]
+
+        # Build edge EMFs via simple CT averaging
+        Ex_edge, Ey_edge, Ez_edge = emf_from_fluxes(Fx, Fy, Fz, dx, dx, dx)
+
+        # Apply CT update to face-centred B
+        staggered_new = ct_update(staggered, Ex_edge, Ey_edge, Ez_edge, dt)
+
+        # Convert back to cell-centred
+        Bx_cc, By_cc, Bz_cc = face_to_cell_centered(staggered_new)
+
+        B_corrected = np.empty_like(B_new)
+        B_corrected[0] = Bx_cc
+        B_corrected[1] = By_cc
+        B_corrected[2] = Bz_cc
+
+        return B_corrected
+
     def _step_ssp_rk2_core(
         self,
         rho_n: np.ndarray,
@@ -1314,6 +1861,8 @@ class MHDSolver(PlasmaSolverBase):
         rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
             rho_n, mom_n, p_n, B_n, psi_n, Te, Ti, dt, current, voltage, eta_field,
         )
+        if self.use_ct:
+            B_1 = self._apply_ct_correction_numpy(B_1, B_n, dt)
         if apply_electrode_bc and cathode_radius > 0:
             B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
 
@@ -1329,6 +1878,8 @@ class MHDSolver(PlasmaSolverBase):
         p_new = 0.5 * p_n + 0.5 * p_2
         p_new = np.maximum(p_new, 1e-20)
         B_new = 0.5 * B_n + 0.5 * B_2
+        if self.use_ct:
+            B_new = self._apply_ct_correction_numpy(B_new, B_n, dt)
         psi_new = 0.5 * psi_n + 0.5 * psi_2
 
         return rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs2
@@ -1365,6 +1916,8 @@ class MHDSolver(PlasmaSolverBase):
         rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
             rho_n, mom_n, p_n, B_n, psi_n, Te, Ti, dt, current, voltage, eta_field,
         )
+        if self.use_ct:
+            B_1 = self._apply_ct_correction_numpy(B_1, B_n, dt)
         if apply_electrode_bc and cathode_radius > 0:
             B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
 
@@ -1378,6 +1931,8 @@ class MHDSolver(PlasmaSolverBase):
         p_2 = 0.75 * p_n + 0.25 * p_2e
         p_2 = np.maximum(p_2, 1e-20)
         B_2 = 0.75 * B_n + 0.25 * B_2e
+        if self.use_ct:
+            B_2 = self._apply_ct_correction_numpy(B_2, B_n, dt)
         psi_2 = 0.75 * psi_n + 0.25 * psi_2e
         if apply_electrode_bc and cathode_radius > 0:
             B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
@@ -1393,6 +1948,8 @@ class MHDSolver(PlasmaSolverBase):
         p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e
         p_new = np.maximum(p_new, 1e-20)
         B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
+        if self.use_ct:
+            B_new = self._apply_ct_correction_numpy(B_new, B_n, dt)
         psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
 
         return rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs3
