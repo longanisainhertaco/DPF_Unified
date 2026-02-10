@@ -89,7 +89,7 @@ const DEFAULT_CONFIG: Partial<SimulationConfig> = {
   fluid: {
     backend: 'python',
     reconstruction: 'weno5',
-    riemann_solver: 'hll',
+    riemann_solver: 'hlld',
     cfl: 0.4,
     gamma: 1.6667,
     dedner_ch: 0.0,
@@ -104,6 +104,9 @@ const DEFAULT_CONFIG: Partial<SimulationConfig> = {
     diffusion_method: 'explicit',
     sts_stages: 8,
     implicit_tol: 1e-8,
+    time_integrator: 'ssp_rk3',
+    precision: 'float32',
+    use_ct: false,
   },
   boundary: {
     electrode_bc: false,
@@ -181,6 +184,17 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           grid_shape: [32, 32, 32], dx: 5e-4, sim_time: 5e-7, dt_init: 1e-10,
           rho0: 1e-4, T0: 300,
           circuit: { C: 5e-6, V0: 5e3, L0: 5e-8, R0: 0.01, anode_radius: 0.005, cathode_radius: 0.01, ESR: 0.0, ESL: 0.0 },
+          radiation: { bremsstrahlung_enabled: true },
+          boundary: { electrode_bc: false, axis_bc: false },
+        },
+        phase_p_fidelity: {
+          grid_shape: [32, 32, 32], dx: 5e-4, sim_time: 1e-7, dt_init: 1e-10,
+          rho0: 1e-4, T0: 300,
+          circuit: { C: 5e-6, V0: 5e3, L0: 5e-8, R0: 0.01, anode_radius: 0.005, cathode_radius: 0.01, ESR: 0.0, ESL: 0.0 },
+          fluid: {
+            backend: 'python', reconstruction: 'weno5', riemann_solver: 'hlld',
+            time_integrator: 'ssp_rk3', precision: 'float64',
+          },
           radiation: { bremsstrahlung_enabled: true },
           boundary: { electrode_bc: false, axis_bc: false },
         },

@@ -91,12 +91,21 @@ async def health() -> dict[str, Any]:
     from dpf.athena_wrapper import is_available as athena_available
     from dpf.athenak_wrapper import is_available as athenak_available
 
+    def _metal_available() -> bool:
+        try:
+            from dpf.metal.metal_solver import MetalMHDSolver
+
+            return MetalMHDSolver.is_available()
+        except Exception:
+            return False
+
     return {
         "status": "ok",
         "backends": {
             "python": True,
             "athena": athena_available(),
             "athenak": athenak_available(),
+            "metal": _metal_available(),
         },
     }
 

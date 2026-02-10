@@ -112,7 +112,7 @@ class FluidConfig(BaseModel):
         ),
     )
     reconstruction: str = Field("weno5", description="Reconstruction scheme")
-    riemann_solver: str = Field("hll", description="Riemann solver type")
+    riemann_solver: str = Field("hlld", description="Riemann solver type (Phase P default: HLLD)")
     cfl: float = Field(0.4, gt=0, lt=1, description="CFL number")
     dedner_ch: float = Field(0.0, ge=0, description="Dedner cleaning speed (0 = auto)")
     gamma: float = Field(5.0 / 3.0, gt=1, description="Adiabatic index")
@@ -136,6 +136,18 @@ class FluidConfig(BaseModel):
     )
     full_braginskii_viscosity: bool = Field(
         False, description="Enable full Braginskii viscosity (eta_0 + eta_1 + eta_3)"
+    )
+    time_integrator: str = Field(
+        "ssp_rk3",
+        description="Time integrator: 'ssp_rk2' (2nd-order SSP), 'ssp_rk3' (3rd-order SSP, Phase P default)",
+    )
+    precision: str = Field(
+        "float32",
+        description="Floating-point precision: 'float32' (fast, GPU) or 'float64' (accurate, CPU only)",
+    )
+    use_ct: bool = Field(
+        False,
+        description="Use Constrained Transport for div(B)=0 (Metal GPU only, requires MPS device)",
     )
 
     @model_validator(mode="after")

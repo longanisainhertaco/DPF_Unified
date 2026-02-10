@@ -9,6 +9,7 @@ export interface ServerStatus {
     python: boolean;
     athena: boolean;
     athenak: boolean;
+    metal: boolean;
   };
   error?: string;
 }
