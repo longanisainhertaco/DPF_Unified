@@ -13,11 +13,30 @@ import { DEFAULT_SERVER_PORT } from "../shared/constants";
 
 import { ServerStatus, startServer, stopServer } from "./server";
 
+// Guard against EPIPE when parent shell disconnects (stdout pipe closed)
+process.on("uncaughtException", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EPIPE" || err.message?.includes("EPIPE")) {
+    // Silently ignore — stdout pipe is gone, app continues running
+    return;
+  }
+  // Re-throw non-EPIPE errors
+  throw err;
+});
+
+/** Safe log that swallows EPIPE errors from broken stdout pipes. */
+function safeLog(...args: unknown[]): void {
+  try {
+    console.log(...args);
+  } catch {
+    // stdout pipe broken — ignore
+  }
+}
+
 let mainWindow: BrowserWindow | null = null;
 let serverStatus: ServerStatus = {
   ready: false,
   port: DEFAULT_SERVER_PORT,
-  backends: { python: false, athena: false, athenak: false },
+  backends: { python: false, athena: false, athenak: false, metal: false },
 };
 
 function createWindow(): void {
@@ -60,7 +79,7 @@ async function bootBackend(): Promise<void> {
 
   try {
     serverStatus = await startServer(port, (line: string) => {
-      console.log(line);
+      safeLog(line);
       // Forward logs to renderer
       mainWindow?.webContents.send("server:log", line);
     });
@@ -69,11 +88,11 @@ async function bootBackend(): Promise<void> {
     mainWindow?.webContents.send("server:status", serverStatus);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[main] Server boot failed: ${errorMsg}`);
+    safeLog(`[main] Server boot failed: ${errorMsg}`);
     serverStatus = {
       ready: false,
       port,
-      backends: { python: false, athena: false, athenak: false },
+      backends: { python: false, athena: false, athenak: false, metal: false },
       error: errorMsg,
     };
     mainWindow?.webContents.send("server:status", serverStatus);
