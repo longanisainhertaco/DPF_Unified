@@ -55,6 +55,7 @@ export interface HealthResponse {
     python: boolean;
     athena: boolean;
     athenak: boolean;
+    metal: boolean;
   };
 }
 
@@ -187,7 +188,7 @@ export interface BoundaryConfig {
 }
 
 export interface FluidConfig {
-  backend: "python" | "athena" | "athenak" | "auto";
+  backend: "python" | "athena" | "athenak" | "metal" | "auto";
   reconstruction: string;
   riemann_solver: string;
   cfl: number;
@@ -204,6 +205,9 @@ export interface FluidConfig {
   dedner_cr: number;
   enable_anisotropic_conduction: boolean;
   full_braginskii_viscosity: boolean;
+  time_integrator?: string;
+  precision?: string;
+  use_ct?: boolean;
 }
 
 export interface DiagnosticsConfig {

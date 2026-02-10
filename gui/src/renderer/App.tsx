@@ -83,6 +83,7 @@ export default function App() {
             python: false,
             athena: false,
             athenak: false,
+            metal: false,
           }
         }
         simStatus={simStatus}

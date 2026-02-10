@@ -132,6 +132,28 @@ export const useAIStore = create<AIState>((set, get) => ({
       addAdvisory('warning', 'High CFL number may cause numerical instabilities');
     }
 
+    // Phase P solver checks
+    const riemannSolver = config.fluid?.riemann_solver ?? 'hlld';
+    if (riemannSolver !== 'hlld') {
+      addAdvisory('warning', 'HLLD Riemann solver recommended for MHD accuracy (Phase P default). HLL is more diffusive.');
+    }
+
+    const timeIntegrator = config.fluid?.time_integrator ?? 'ssp_rk3';
+    if (timeIntegrator === 'ssp_rk2') {
+      addAdvisory('info', 'SSP-RK3 provides 3rd-order temporal accuracy vs 2nd-order for RK2.');
+    }
+
+    const backend = config.fluid?.backend ?? 'python';
+    const reconstruction = config.fluid?.reconstruction ?? 'weno5';
+    if (backend === 'python' && reconstruction === 'weno5') {
+      addAdvisory('warning', 'Python WENO5 has boundary instabilities on dynamic problems. Use Metal backend or PLM for stability.');
+    }
+
+    const precision = config.fluid?.precision ?? 'float32';
+    if (precision === 'float32' && reconstruction === 'weno5') {
+      addAdvisory('info', 'Float64 precision improves WENO5 accuracy. Set precision to float64 for V&V runs.');
+    }
+
     // If no warnings were added, report nominal
     const { advisories } = get();
     const hasWarnings = advisories.some(a => a.severity === 'warning' || a.severity === 'critical');

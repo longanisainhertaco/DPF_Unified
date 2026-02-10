@@ -424,6 +424,7 @@ export const ParameterStack: React.FC = () => {
                 <option value="python">Python (NumPy/Numba)</option>
                 <option value="athena">Athena++ (C++)</option>
                 <option value="athenak">AthenaK (Kokkos/GPU)</option>
+                <option value="metal">Metal GPU (Apple Silicon)</option>
                 <option value="auto">Auto (best available)</option>
               </select>
             </div>
@@ -435,7 +436,7 @@ export const ParameterStack: React.FC = () => {
                 disabled={locked}
                 className={`dpf-input w-full text-xs font-mono ${locked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <option value="weno5">WENO5 (5th order)</option>
+                <option value="weno5">WENO5-Z (5th order)</option>
                 <option value="plm">PLM (2nd order)</option>
                 <option value="ppm">PPM (3rd order)</option>
               </select>
@@ -443,13 +444,37 @@ export const ParameterStack: React.FC = () => {
             <div>
               <label className="dpf-label text-xs mb-2 block">Riemann Solver</label>
               <select
-                value={fluid.riemann_solver ?? 'hll'}
+                value={fluid.riemann_solver ?? 'hlld'}
                 onChange={(e) => updateFluid({ riemann_solver: e.target.value })}
                 disabled={locked}
                 className={`dpf-input w-full text-xs font-mono ${locked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <option value="hll">HLL (robust)</option>
-                <option value="hlld">HLLD (accurate MHD)</option>
+                <option value="hll">HLL (robust, 2-wave)</option>
+                <option value="hlld">HLLD (accurate, 4-wave MHD)</option>
+              </select>
+            </div>
+            <div>
+              <label className="dpf-label text-xs mb-2 block">Time Integrator</label>
+              <select
+                value={fluid.time_integrator ?? 'ssp_rk3'}
+                onChange={(e) => updateFluid({ time_integrator: e.target.value })}
+                disabled={locked}
+                className={`dpf-input w-full text-xs font-mono ${locked ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <option value="ssp_rk2">SSP-RK2 (2nd order)</option>
+                <option value="ssp_rk3">SSP-RK3 (3rd order, recommended)</option>
+              </select>
+            </div>
+            <div>
+              <label className="dpf-label text-xs mb-2 block">Precision</label>
+              <select
+                value={fluid.precision ?? 'float32'}
+                onChange={(e) => updateFluid({ precision: e.target.value })}
+                disabled={locked}
+                className={`dpf-input w-full text-xs font-mono ${locked ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <option value="float32">Float32 (fast, GPU compatible)</option>
+                <option value="float64">Float64 (accurate, CPU only)</option>
               </select>
             </div>
             <ScientificInput
@@ -492,6 +517,7 @@ export const ParameterStack: React.FC = () => {
             <ToggleSwitch label="Powell 8-wave" checked={fluid.enable_powell ?? false} onChange={(v) => updateFluid({ enable_powell: v })} disabled={locked} tooltip="Powell divergence cleaning — adds source terms to reduce ∇·B errors." />
             <ToggleSwitch label="Anisotropic Conduction" checked={fluid.enable_anisotropic_conduction ?? false} onChange={(v) => updateFluid({ enable_anisotropic_conduction: v })} disabled={locked} tooltip="Heat conducts primarily along B-field lines (Braginskii κ∥ >> κ⊥)." />
             <ToggleSwitch label="Full Braginskii Viscosity" checked={fluid.full_braginskii_viscosity ?? false} onChange={(v) => updateFluid({ full_braginskii_viscosity: v })} disabled={locked} tooltip="Full anisotropic viscous stress tensor with parallel and gyroviscous components." />
+            <ToggleSwitch label="Constrained Transport" checked={fluid.use_ct ?? false} onChange={(v) => updateFluid({ use_ct: v })} disabled={locked} tooltip="Maintain div(B)=0 to machine precision via CT flux averaging. Metal GPU + MPS device required." />
           </div>
         </Section>
 

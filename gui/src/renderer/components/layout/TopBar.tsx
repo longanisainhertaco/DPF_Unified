@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface TopBarProps {
-  backends: { python: boolean; athena: boolean; athenak: boolean };
+  backends: { python: boolean; athena: boolean; athenak: boolean; metal: boolean };
   simStatus: 'idle' | 'running' | 'paused' | 'finished' | 'error';
   step: number;
   time: number;
@@ -107,7 +107,11 @@ export const TopBar: React.FC<TopBarProps> = ({
                 ? 'Python'
                 : backend === 'athena'
                 ? 'Athena++'
-                : 'AthenaK'}
+                : backend === 'athenak'
+                ? 'AthenaK'
+                : backend === 'metal'
+                ? 'Metal GPU'
+                : backend}
             </span>
           ))
         ) : (

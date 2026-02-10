@@ -134,6 +134,35 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
         "radiation": {"bremsstrahlung_enabled": True},
     },
+    "phase_p_fidelity": {
+        "_meta": {
+            "description": "Phase P maximum fidelity: WENO5-Z + HLLD + SSP-RK3 + float64 (8.9/10)",
+            "device": "Generic",
+            "geometry": "cartesian",
+        },
+        "grid_shape": [32, 32, 32],
+        "dx": 5e-4,
+        "sim_time": 1e-7,
+        "dt_init": 1e-10,
+        "rho0": 1e-4,
+        "T0": 300.0,
+        "circuit": {
+            "C": 5e-6,
+            "V0": 5e3,
+            "L0": 5e-8,
+            "R0": 0.01,
+            "anode_radius": 0.005,
+            "cathode_radius": 0.01,
+        },
+        "fluid": {
+            "backend": "python",
+            "reconstruction": "weno5",
+            "riemann_solver": "hlld",
+            "time_integrator": "ssp_rk3",
+            "precision": "float64",
+        },
+        "radiation": {"bremsstrahlung_enabled": True},
+    },
 }
 
 
