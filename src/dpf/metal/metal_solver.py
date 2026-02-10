@@ -409,12 +409,94 @@ class MetalMHDSolver(PlasmaSolverBase):
         B_new = B + dt * rhs["B"]
         return rho_new, vel_new, p_new, B_new
 
+    def _apply_resistive_diffusion(
+        self,
+        B: torch.Tensor,
+        p: torch.Tensor,
+        rho: torch.Tensor,
+        eta: torch.Tensor,
+        dt: float,
+        gamma: float,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Apply resistive MHD operator-split step: dB/dt += eta * laplacian(B).
+
+        Also computes Ohmic heating: Q_ohm = eta * |J|^2 which is added
+        to the pressure equation.
+
+        Parameters
+        ----------
+        B : torch.Tensor
+            Magnetic field, shape (3, nx, ny, nz).
+        p : torch.Tensor
+            Pressure, shape (nx, ny, nz).
+        rho : torch.Tensor
+            Density, shape (nx, ny, nz) — unused but kept for signature.
+        eta : torch.Tensor
+            Resistivity field, shape (nx, ny, nz) [Ohm*m].
+        dt : float
+            Timestep [s].
+        gamma : float
+            Adiabatic index.
+
+        Returns
+        -------
+        B_new : torch.Tensor
+            Updated B after resistive diffusion.
+        p_new : torch.Tensor
+            Updated pressure after Ohmic heating.
+        """
+        # Current density J = curl(B) / mu_0
+        # Using central differences
+        mu_0 = 4.0e-7 * 3.14159265358979323846
+        dBz_dy = torch.gradient(B[2], dim=1, spacing=self.dy)[0]
+        dBy_dz = torch.gradient(B[1], dim=2, spacing=self.dz)[0]
+        dBx_dz = torch.gradient(B[0], dim=2, spacing=self.dz)[0]
+        dBz_dx = torch.gradient(B[2], dim=0, spacing=self.dx)[0]
+        dBy_dx = torch.gradient(B[1], dim=0, spacing=self.dx)[0]
+        dBx_dy = torch.gradient(B[0], dim=1, spacing=self.dy)[0]
+
+        Jx = (dBz_dy - dBy_dz) / mu_0
+        Jy = (dBx_dz - dBz_dx) / mu_0
+        Jz = (dBy_dx - dBx_dy) / mu_0
+
+        # Ohmic heating: Q = eta * |J|^2
+        J_sq = Jx ** 2 + Jy ** 2 + Jz ** 2
+        Q_ohm = eta * J_sq
+
+        # Resistive term: dB/dt = -curl(eta * J)
+        # For uniform eta: dB/dt = eta/mu_0 * laplacian(B) (magnetic diffusion)
+        # For non-uniform eta: use curl(eta * J) form
+        eta_Jx = eta * Jx
+        eta_Jy = eta * Jy
+        eta_Jz = eta * Jz
+
+        # curl(eta * J)
+        d_etaJz_dy = torch.gradient(eta_Jz, dim=1, spacing=self.dy)[0]
+        d_etaJy_dz = torch.gradient(eta_Jy, dim=2, spacing=self.dz)[0]
+        d_etaJx_dz = torch.gradient(eta_Jx, dim=2, spacing=self.dz)[0]
+        d_etaJz_dx = torch.gradient(eta_Jz, dim=0, spacing=self.dx)[0]
+        d_etaJy_dx = torch.gradient(eta_Jy, dim=0, spacing=self.dx)[0]
+        d_etaJx_dy = torch.gradient(eta_Jx, dim=1, spacing=self.dy)[0]
+
+        dB_dt = torch.zeros_like(B)
+        dB_dt[0] = -(d_etaJz_dy - d_etaJy_dz)
+        dB_dt[1] = -(d_etaJx_dz - d_etaJz_dx)
+        dB_dt[2] = -(d_etaJy_dx - d_etaJx_dy)
+
+        B_new = B + dt * dB_dt
+        # Ohmic heating adds to pressure: dp/dt = (gamma-1) * Q_ohm
+        p_new = p + dt * (gamma - 1.0) * Q_ohm
+        p_new = torch.clamp(p_new, min=P_FLOOR)
+
+        return B_new, p_new
+
     def step(
         self,
         state: dict[str, np.ndarray],
         dt: float,
         current: float,
         voltage: float,
+        eta_field: np.ndarray | None = None,
         **kwargs: object,
     ) -> dict[str, np.ndarray]:
         """Advance the MHD state by one timestep.
@@ -431,6 +513,9 @@ class MetalMHDSolver(PlasmaSolverBase):
             U^(1)   = U^n + dt * L(U^n)
             U^(2)   = 3/4 * U^n + 1/4 * (U^(1) + dt * L(U^(1)))
             U^(n+1) = 1/3 * U^n + 2/3 * (U^(2) + dt * L(U^(2)))
+
+        Optionally applies resistive MHD (operator-split) when ``eta_field``
+        is provided: dB/dt += -curl(eta * J), dp/dt += (gamma-1)*eta*|J|^2.
 
         Parameters
         ----------
@@ -449,6 +534,9 @@ class MetalMHDSolver(PlasmaSolverBase):
             Circuit current [A].
         voltage : float
             Capacitor voltage [V].
+        eta_field : np.ndarray | None
+            Spatially-resolved resistivity [Ohm*m], shape (nx, ny, nz).
+            If None, resistive diffusion is skipped (ideal MHD).
 
         Returns
         -------
@@ -480,6 +568,17 @@ class MetalMHDSolver(PlasmaSolverBase):
         else:
             rho_new, vel_new, p_new, B_new = self._step_ssp_rk2(
                 rho_n, vel_n, p_n, B_n, dt,
+            )
+
+        # -------------------------------------------------------------- #
+        #  Resistive MHD operator-split step (if eta_field provided)
+        # -------------------------------------------------------------- #
+        if eta_field is not None:
+            eta_gpu = torch.tensor(
+                eta_field, dtype=self._dtype, device=self.device,
+            )
+            B_new, p_new = self._apply_resistive_diffusion(
+                B_new, p_new, rho_new, eta_gpu, dt, self.gamma,
             )
 
         # -------------------------------------------------------------- #

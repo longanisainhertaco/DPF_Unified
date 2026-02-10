@@ -1,9 +1,9 @@
-"""Hall MHD solver with WENO5 reconstruction and Dedner divergence cleaning.
+"""Hall MHD solver with WENO5-Z reconstruction and Dedner divergence cleaning.
 
 Merges dpf2's hall_mhd_solver structure with DPF_AI's validated physics kernels:
-- WENO5 reconstruction (verified correct from DPF_AI)
-- HLL Riemann solver for ideal MHD
-- SSP-RK2 (strong-stability-preserving Runge-Kutta) time integration
+- WENO5-Z reconstruction (Borges et al. 2008 weights, Jiang-Shu 1996 polynomials)
+- HLLD Riemann solver for ideal MHD (Miyoshi & Kusano 2005, default)
+- SSP-RK2/RK3 time integration (selectable, RK3 default)
 - Dimension-split flux-based conservative update
 - Dedner hyperbolic divergence cleaning for div(B)
 - Generalized Ohm's law with Hall term
@@ -39,15 +39,24 @@ _DEFAULT_ION_MASS = m_d
 
 
 # ============================================================
-# WENO5 reconstruction kernels (from DPF_AI, verified correct)
+# WENO5-Z reconstruction kernels (Borges et al. 2008)
+# FV candidate polynomials + WENO-Z nonlinear weights
 # ============================================================
 
 @njit(cache=True)
 def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """WENO5 reconstruction for a 1D array at cell interfaces.
+    """WENO5-Z reconstruction for a 1D array at cell interfaces.
 
-    Returns left and right states at each interface i+1/2.
-    Requires at least 5 cells (2 ghost cells on each side).
+    Uses Jiang-Shu (1996) candidate polynomials with WENO-Z nonlinear
+    weights (Borges et al. 2008).  The WENO-Z indicator tau5 = |beta0 - beta2|
+    provides better accuracy at critical points (where f and f' vanish)
+    compared to the classical WENO-JS weights.
+
+    Note: The Python MHD solver uses a hybrid scheme (WENO flux divergence
+    for density/momentum + np.gradient for induction/pressure).  FV-style
+    candidate polynomials are more stable in this hybrid context than
+    pure FD point-value formulas.  The Metal GPU solver uses FD formulas
+    because it has a fully conservative formulation.
 
     Args:
         v: 1D array of cell-centered values, shape (n,).
@@ -55,13 +64,20 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     Returns:
         (v_left, v_right) at interfaces, shape (n-4,) each.
         Interface index j corresponds to the face between cell j+2 and j+3.
+
+    References:
+        Borges R. et al., JCP 227, 3191 (2008) — WENO-Z weights.
+        Jiang G.-S. & Shu C.-W., JCP 126, 202 (1996) — WENO5 candidate polynomials.
     """
     n = len(v)
     n_iface = n - 4  # number of interfaces with full stencil
     v_L = np.empty(n_iface)
     v_R = np.empty(n_iface)
 
-    eps = 1e-6  # smoothness parameter
+    eps = 1e-6  # Smoothness parameter
+
+    # FV ideal weights (Jiang-Shu 1996)
+    d0, d1, d2 = 0.1, 0.6, 0.3
 
     for i in range(2, n - 2):
         idx = i - 2  # output index
@@ -73,23 +89,21 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         v3 = v[i + 1]
         v4 = v[i + 2] if i + 2 < n else v[i + 1]
 
-        # Candidate polynomials
+        # FV candidate polynomials (Jiang-Shu 1996)
         p0 = (2.0 * v0 - 7.0 * v1 + 11.0 * v2) / 6.0
         p1 = (-v1 + 5.0 * v2 + 2.0 * v3) / 6.0
         p2 = (2.0 * v2 + 5.0 * v3 - v4) / 6.0
 
-        # Smoothness indicators
+        # Smoothness indicators (Jiang-Shu)
         beta0 = (13.0 / 12.0) * (v0 - 2.0 * v1 + v2) ** 2 + 0.25 * (v0 - 4.0 * v1 + 3.0 * v2) ** 2
         beta1 = (13.0 / 12.0) * (v1 - 2.0 * v2 + v3) ** 2 + 0.25 * (v1 - v3) ** 2
         beta2 = (13.0 / 12.0) * (v2 - 2.0 * v3 + v4) ** 2 + 0.25 * (3.0 * v2 - 4.0 * v3 + v4) ** 2
 
-        # Ideal weights
-        d0, d1, d2 = 0.1, 0.6, 0.3
-
-        # Non-linear weights
-        alpha0 = d0 / (eps + beta0) ** 2
-        alpha1 = d1 / (eps + beta1) ** 2
-        alpha2 = d2 / (eps + beta2) ** 2
+        # WENO-Z weights: tau5 = |beta0 - beta2| (Borges et al. 2008)
+        tau5 = abs(beta0 - beta2)
+        alpha0 = d0 * (1.0 + (tau5 / (eps + beta0)) ** 2)
+        alpha1 = d1 * (1.0 + (tau5 / (eps + beta1)) ** 2)
+        alpha2 = d2 * (1.0 + (tau5 / (eps + beta2)) ** 2)
         alpha_sum = alpha0 + alpha1 + alpha2
         if alpha_sum == 0.0:
             alpha_sum = 1e-30
@@ -116,9 +130,10 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         gb1 = (13.0 / 12.0) * (r1 - 2.0 * r2 + r3) ** 2 + 0.25 * (r1 - r3) ** 2
         gb2 = (13.0 / 12.0) * (r2 - 2.0 * r3 + r4) ** 2 + 0.25 * (3.0 * r2 - 4.0 * r3 + r4) ** 2
 
-        a0 = d0 / (eps + gb0) ** 2
-        a1 = d1 / (eps + gb1) ** 2
-        a2 = d2 / (eps + gb2) ** 2
+        tau5_r = abs(gb0 - gb2)
+        a0 = d0 * (1.0 + (tau5_r / (eps + gb0)) ** 2)
+        a1 = d1 * (1.0 + (tau5_r / (eps + gb1)) ** 2)
+        a2 = d2 * (1.0 + (tau5_r / (eps + gb2)) ** 2)
         a_sum = a0 + a1 + a2
         if a_sum == 0.0:
             a_sum = 1e-30
@@ -851,11 +866,11 @@ def _braginskii_heat_flux(
 # ============================================================
 
 class MHDSolver(PlasmaSolverBase):
-    """Hall MHD solver with WENO5 reconstruction, HLL Riemann, and Dedner cleaning.
+    """Hall MHD solver with WENO5-Z reconstruction, HLLD Riemann, and Dedner cleaning.
 
     Features:
-    - WENO5 reconstruction + HLL Riemann solver for advection (5th-order spatial)
-    - SSP-RK2 time integration (2nd-order temporal)
+    - WENO5-Z reconstruction + HLLD Riemann solver for advection (5th-order spatial)
+    - SSP-RK3 time integration (3rd-order temporal, default) or SSP-RK2
     - Dedner hyperbolic divergence cleaning for div(B)
     - Hall term in induction equation (J × B)/(ne)
     - Braginskii anisotropic heat flux (operator-split)
@@ -871,6 +886,8 @@ class MHDSolver(PlasmaSolverBase):
         dedner_ch: Dedner hyperbolic cleaning speed (0 = auto from max wave speed).
         enable_hall: Enable Hall term in induction equation.
         enable_braginskii: Enable Braginskii anisotropic heat flux.
+        time_integrator: "ssp_rk3" (default, 3rd-order) or "ssp_rk2" (2nd-order).
+        riemann_solver: "hlld" (default) or "hll".
     """
 
     def __init__(
@@ -885,7 +902,8 @@ class MHDSolver(PlasmaSolverBase):
         enable_resistive: bool = True,
         enable_energy_equation: bool = True,
         ion_mass: float | None = None,
-        riemann_solver: str = "hll",
+        riemann_solver: str = "hlld",
+        time_integrator: str = "ssp_rk3",
     ) -> None:
         self.grid_shape = grid_shape
         self.dx = dx
@@ -897,7 +915,8 @@ class MHDSolver(PlasmaSolverBase):
         self.enable_resistive = enable_resistive
         self.enable_energy_equation = enable_energy_equation
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
-        self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
+        self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hlld"
+        self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.eos = IdealEOS(gamma=gamma)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
@@ -909,12 +928,12 @@ class MHDSolver(PlasmaSolverBase):
 
         logger.info(
             "MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f, "
-            "WENO5=%s, Hall=%s, Braginskii=%s, Resistive=%s, EnergyEq=%s, "
-            "Riemann=%s, ion_mass=%.3e kg",
+            "WENO5-Z=%s, Hall=%s, Braginskii=%s, Resistive=%s, EnergyEq=%s, "
+            "Riemann=%s, TimeInt=%s, ion_mass=%.3e kg",
             grid_shape, dx, gamma,
             self.use_weno5, enable_hall, enable_braginskii,
             self.enable_resistive, self.enable_energy_equation,
-            self.riemann_solver, self.ion_mass,
+            self.riemann_solver, self.time_integrator, self.ion_mass,
         )
 
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
@@ -1209,6 +1228,175 @@ class MHDSolver(PlasmaSolverBase):
 
         return B
 
+    def _euler_stage(
+        self,
+        rho: np.ndarray,
+        mom: np.ndarray,
+        p: np.ndarray,
+        B: np.ndarray,
+        psi: np.ndarray,
+        Te: np.ndarray,
+        Ti: np.ndarray,
+        dt: float,
+        current: float,
+        voltage: float,
+        eta_field: np.ndarray | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
+        """Single Euler stage: U^(1) = U + dt * L(U).
+
+        Returns (rho, mom, p, B, psi, rhs).
+
+        Note: When WENO5 is active, the density/momentum flux divergence only
+        updates interior cells [2, N-3].  Boundary cells get zero drho_dt from
+        the WENO path but non-zero dmom_dt from np.gradient.  After the update,
+        we clamp momentum in boundary cells to prevent extreme velocities from
+        contaminating multi-stage RK reconstructions.
+        """
+        vel = mom / np.maximum(rho[np.newaxis, :, :, :], 1e-30)
+        state_in = {
+            "rho": rho, "velocity": vel, "pressure": p,
+            "B": B, "Te": Te, "Ti": Ti, "psi": psi,
+        }
+        rhs = self._compute_rhs_euler(state_in, current, voltage, eta_field)
+
+        rho_out = rho + dt * rhs["drho_dt"]
+        rho_out = np.maximum(rho_out, 1e-20)
+        mom_out = mom + dt * rhs["dmom_dt"]
+        p_out = p + dt * rhs["dp_dt"]
+        p_out = np.maximum(p_out, 1e-20)
+        B_out = B + dt * rhs["dB_dt"]
+        psi_out = psi + dt * rhs["dpsi_dt"]
+
+        # --- Velocity clamping for hybrid WENO5 stability ---
+        # When WENO5 is active, boundary cells (indices 0,1 and N-2,N-1 along
+        # each axis) get mismatched updates (no density flux but non-zero
+        # momentum flux from np.gradient).  Clamp velocity at all cells to
+        # prevent extreme values from destabilizing multi-stage RK methods.
+        if self.use_weno5:
+            B_sq = np.sum(B_out**2, axis=0)
+            a2 = self.gamma * p_out / np.maximum(rho_out, 1e-30)
+            va2 = B_sq / (mu_0 * np.maximum(rho_out, 1e-30))
+            v_max_local = np.sqrt(a2 + va2)  # fast magnetosonic speed
+            # Allow 10× the local fast magnetosonic speed
+            v_clamp = np.maximum(v_max_local, 1.0) * 10.0
+            vel_out = mom_out / np.maximum(rho_out[np.newaxis, :, :, :], 1e-30)
+            v_mag = np.sqrt(np.sum(vel_out**2, axis=0))
+            # Only clamp where velocity exceeds the bound
+            scale = np.where(v_mag > v_clamp, v_clamp / np.maximum(v_mag, 1e-30), 1.0)
+            mom_out = mom_out * scale[np.newaxis, :, :, :]
+
+        return rho_out, mom_out, p_out, B_out, psi_out, rhs
+
+    def _step_ssp_rk2_core(
+        self,
+        rho_n: np.ndarray,
+        vel_n: np.ndarray,
+        mom_n: np.ndarray,
+        p_n: np.ndarray,
+        B_n: np.ndarray,
+        psi_n: np.ndarray,
+        Te: np.ndarray,
+        Ti: np.ndarray,
+        dt: float,
+        current: float,
+        voltage: float,
+        eta_field: np.ndarray | None,
+        apply_electrode_bc: bool,
+        anode_radius: float,
+        cathode_radius: float,
+    ) -> tuple:
+        """SSP-RK2 (Shu-Osher): 2 stages, 2nd-order.
+
+        U^(1) = U^n + dt * L(U^n)
+        U^(n+1) = 1/2*U^n + 1/2*(U^(1) + dt * L(U^(1)))
+        """
+        # Stage 1
+        rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
+            rho_n, mom_n, p_n, B_n, psi_n, Te, Ti, dt, current, voltage, eta_field,
+        )
+        if apply_electrode_bc and cathode_radius > 0:
+            B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
+
+        # Stage 2
+        rho_2, mom_2, p_2, B_2, psi_2, rhs2 = self._euler_stage(
+            rho_1, mom_1, p_1, B_1, psi_1, Te, Ti, dt, current, voltage, eta_field,
+        )
+
+        rho_new = 0.5 * rho_n + 0.5 * rho_2
+        rho_new = np.maximum(rho_new, 1e-20)
+        mom_new = 0.5 * mom_n + 0.5 * mom_2
+        vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
+        p_new = 0.5 * p_n + 0.5 * p_2
+        p_new = np.maximum(p_new, 1e-20)
+        B_new = 0.5 * B_n + 0.5 * B_2
+        psi_new = 0.5 * psi_n + 0.5 * psi_2
+
+        return rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs2
+
+    def _step_ssp_rk3_core(
+        self,
+        rho_n: np.ndarray,
+        vel_n: np.ndarray,
+        mom_n: np.ndarray,
+        p_n: np.ndarray,
+        B_n: np.ndarray,
+        psi_n: np.ndarray,
+        Te: np.ndarray,
+        Ti: np.ndarray,
+        dt: float,
+        current: float,
+        voltage: float,
+        eta_field: np.ndarray | None,
+        apply_electrode_bc: bool,
+        anode_radius: float,
+        cathode_radius: float,
+    ) -> tuple:
+        """SSP-RK3 (Shu-Osher 1988): 3 stages, 3rd-order.
+
+        U^(1) = U^n + dt * L(U^n)
+        U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1)))
+        U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2)))
+
+        References:
+            Shu C.-W. & Osher S., J. Comput. Phys. 77, 439 (1988).
+            Gottlieb S. et al., SIAM Rev. 43, 89-112 (2001).
+        """
+        # Stage 1: U^(1) = U^n + dt * L(U^n)
+        rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
+            rho_n, mom_n, p_n, B_n, psi_n, Te, Ti, dt, current, voltage, eta_field,
+        )
+        if apply_electrode_bc and cathode_radius > 0:
+            B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
+
+        # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1)))
+        rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2 = self._euler_stage(
+            rho_1, mom_1, p_1, B_1, psi_1, Te, Ti, dt, current, voltage, eta_field,
+        )
+        rho_2 = 0.75 * rho_n + 0.25 * rho_2e
+        rho_2 = np.maximum(rho_2, 1e-20)
+        mom_2 = 0.75 * mom_n + 0.25 * mom_2e
+        p_2 = 0.75 * p_n + 0.25 * p_2e
+        p_2 = np.maximum(p_2, 1e-20)
+        B_2 = 0.75 * B_n + 0.25 * B_2e
+        psi_2 = 0.75 * psi_n + 0.25 * psi_2e
+        if apply_electrode_bc and cathode_radius > 0:
+            B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
+
+        # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2)))
+        rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3 = self._euler_stage(
+            rho_2, mom_2, p_2, B_2, psi_2, Te, Ti, dt, current, voltage, eta_field,
+        )
+        rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e
+        rho_new = np.maximum(rho_new, 1e-20)
+        mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
+        vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
+        p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e
+        p_new = np.maximum(p_new, 1e-20)
+        B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
+        psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
+
+        return rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs3
+
     def step(
         self,
         state: dict[str, np.ndarray],
@@ -1219,16 +1407,20 @@ class MHDSolver(PlasmaSolverBase):
         anode_radius: float = 0.0,
         cathode_radius: float = 0.0,
         apply_electrode_bc: bool = False,
+        **kwargs,
     ) -> dict[str, np.ndarray]:
-        """Advance MHD state by one timestep using SSP-RK2.
+        """Advance MHD state by one timestep using SSP-RK3 (default) or SSP-RK2.
+
+        SSP-RK3 (Shu-Osher 1988, Gottlieb et al. 2001):
+            U^(1) = U^n + dt * L(U^n)
+            U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1)))
+            U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2)))
 
         SSP-RK2 (Shu-Osher form):
             U^(1) = U^n + dt * L(U^n)
             U^(n+1) = 0.5 * U^n + 0.5 * (U^(1) + dt * L(U^(1)))
 
-        This is TVD (total variation diminishing) and 2nd-order in time.
-
-        After the RK2 step, applies:
+        After the RK step, applies:
         - Electrode B-field boundary conditions
         - Braginskii anisotropic heat flux (operator-split)
         - Two-temperature update (preserving Te ≠ Ti)
@@ -1264,43 +1456,22 @@ class MHDSolver(PlasmaSolverBase):
         psi_n = psi.copy()
         mom_n = rho_n[np.newaxis, :, :, :] * vel_n
 
-        # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
-        state_n = {
-            "rho": rho_n, "velocity": vel_n, "pressure": p_n,
-            "B": B_n, "Te": Te, "Ti": Ti, "psi": psi_n,
-        }
-        rhs1 = self._compute_rhs_euler(state_n, current, voltage, eta_field)
-
-        rho_1 = rho_n + dt * rhs1["drho_dt"]
-        rho_1 = np.maximum(rho_1, 1e-20)
-        mom_1 = mom_n + dt * rhs1["dmom_dt"]
-        vel_1 = mom_1 / np.maximum(rho_1[np.newaxis, :, :, :], 1e-30)
-        p_1 = p_n + dt * rhs1["dp_dt"]
-        p_1 = np.maximum(p_1, 1e-20)
-        B_1 = B_n + dt * rhs1["dB_dt"]
-        psi_1 = psi_n + dt * rhs1["dpsi_dt"]
-
-        # Apply electrode BC after stage 1
-        if apply_electrode_bc and cathode_radius > 0:
-            B_1 = self.apply_electrode_bfield_bc(
-                B_1, current, anode_radius, cathode_radius,
+        if self.time_integrator == "ssp_rk3":
+            rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs_last = (
+                self._step_ssp_rk3_core(
+                    rho_n, vel_n, mom_n, p_n, B_n, psi_n, Te, Ti,
+                    dt, current, voltage, eta_field,
+                    apply_electrode_bc, anode_radius, cathode_radius,
+                )
             )
-
-        # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
-        state_1 = {
-            "rho": rho_1, "velocity": vel_1, "pressure": p_1,
-            "B": B_1, "Te": Te, "Ti": Ti, "psi": psi_1,
-        }
-        rhs2 = self._compute_rhs_euler(state_1, current, voltage, eta_field)
-
-        rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"])
-        rho_new = np.maximum(rho_new, 1e-20)
-        mom_new = 0.5 * mom_n + 0.5 * (mom_1 + dt * rhs2["dmom_dt"])
-        vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
-        p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["dp_dt"])
-        p_new = np.maximum(p_new, 1e-20)
-        B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
-        psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
+        else:
+            rho_new, mom_new, vel_new, p_new, B_new, psi_new, rhs1, rhs_last = (
+                self._step_ssp_rk2_core(
+                    rho_n, vel_n, mom_n, p_n, B_n, psi_n, Te, Ti,
+                    dt, current, voltage, eta_field,
+                    apply_electrode_bc, anode_radius, cathode_radius,
+                )
+            )
 
         # Apply electrode BC after stage 2
         if apply_electrode_bc and cathode_radius > 0:
@@ -1325,7 +1496,7 @@ class MHDSolver(PlasmaSolverBase):
             # Simple advection + compression
             de_e_dt = -p_e_old * div_v
             # Ohmic heating goes primarily to electrons
-            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
+            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs_last["ohmic_heating"])
             de_e_dt += ohmic_avg
             e_electron_new = e_electron + dt * de_e_dt
             e_electron_new = np.maximum(e_electron_new, n_i_safe * k_B * 1.0)  # Floor 1 K
@@ -1349,7 +1520,7 @@ class MHDSolver(PlasmaSolverBase):
             Ti_new = (1.0 - f_e) * T_total_new
 
             # Add Ohmic heating preferentially to electrons
-            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
+            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs_last["ohmic_heating"])
             dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
             Te_new = Te_new + dTe_ohmic
 

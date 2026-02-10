@@ -79,7 +79,7 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD)
 Planned: J.2+ (backlog)
 
 ### Test Patterns
@@ -87,7 +87,7 @@ Planned: J.2+ (backlog)
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 745 tests (currently 1452 total, 1331 non-slow, 121 slow, 45 Phase O physics accuracy)
+- CI gate: >= 745 tests (currently 1475 total, 1353 non-slow, 122 slow, 45 Phase O + 23 Phase P)
 
 ## Key File Paths
 
@@ -140,6 +140,7 @@ Planned: J.2+ (backlog)
 | Metal production tests | tests/test_metal_production.py (35 tests) |
 | Phase N cross-backend tests | tests/test_phase_n_cross_backend.py (17 tests) |
 | Phase O physics accuracy tests | tests/test_phase_o_physics_accuracy.py (45 tests) |
+| Phase P engine accuracy tests | tests/test_phase_p_accuracy.py (22 non-slow + 1 slow) |
 | Slash commands | .claude/commands/ (18 commands) |
 
 ## Iterative Accuracy Workflow
@@ -186,7 +187,8 @@ This is the core development loop for physics accuracy improvement. Follow this 
 |----------|---------------|--------|
 | 6.5-7/10 | PLM + HLL + SSP-RK2 + float32 + CT | Phase M/N |
 | 8.0/10 | WENO5 + HLLD + SSP-RK3 + float32 | Phase O (interim) |
-| **8.7/10** | **WENO5-Z + HLLD + SSP-RK3 + float64 + CT + MC limiter** | **Phase O (current)** |
+| 8.7/10 | WENO5-Z + HLLD + SSP-RK3 + float64 + CT + MC limiter | Phase O |
+| **8.9/10** | **+ Python WENO-Z + SSP-RK3 + HLLD defaults + Metal resistive MHD** | **Phase P (current)** |
 | 9.0/10 | + characteristic decomposition, or Athena++ PPM+characteristic | Future |
 | 9.5/10 | + AMR, higher-order CT, production HPC scaling | Future |
 
@@ -292,6 +294,14 @@ MetalMHDSolver(
 53. **Float64 precision mode**: `MetalMHDSolver(precision="float64")` forces CPU + float64 for maximum accuracy. MPS only supports float32. Eliminates round-off accumulation. Use for production V&V runs.
 54. **Characteristic WENO5 not worth it for Metal**: Requires ~500 LOC of MHD eigenvector computation (L/R matrices), 3 degenerate case handlers, complex torch.where branching. Cost too high vs benefit. Better to use float64 mode or route through Athena++ PPM+characteristic.
 55. **Energy floor after WENO5 reconstruction**: Clamp total energy (IEN component) above P_FLOOR after reconstruction to prevent negative energy states reaching Riemann solver. Guard with `if UL_out.shape[0] > IEN:` since convergence tests may pass 1-component tensors.
+
+### Lessons Learned (Phase P — Engine Accuracy)
+
+56. **Python hybrid WENO5 is inconsistent**: The Python MHD solver's WENO5 flux divergence only updates density/momentum in interior cells [2, N-3], while induction, pressure gradient, and other terms use np.gradient on all cells. This boundary mismatch causes instability under sound wave propagation with both RK2 and RK3. For full WENO5+HLLD+SSP-RK3 fidelity, use the Metal engine instead.
+57. **CT requires MPS device**: The `emf_from_fluxes_mps()` function in `metal_stencil.py` requires tensors on MPS device. Tests using Metal solver on CPU must set `use_ct=False`.
+58. **Resistive diffusion CFL**: The explicit resistive diffusion operator-split step has CFL limit `dt < dx^2 * mu_0 / (2*eta)`. For typical MHD CFL timesteps (~1e-3 s) with dx=0.01, this requires `eta < ~3e-8 Ohm·m`. Large resistivities (>1e-4) cause blowup without sub-cycling.
+59. **WENO-Z weights in Python engine**: The Python engine uses FV (Jiang-Shu 1996) candidate polynomials with WENO-Z (Borges 2008) nonlinear weights `alpha_k = d_k * (1 + (tau5/(eps+beta_k))^2)`. FD point-value formulas are unstable in the hybrid scheme. The Metal engine uses FD formulas because it has a fully conservative formulation.
+60. **Velocity clamping for hybrid WENO5**: When WENO5 is active in the Python engine, boundary cells get zero `drho_dt` but non-zero `dmom_dt`, causing extreme velocities. The `_euler_stage` method clamps velocity to 10× the local fast magnetosonic speed to prevent multi-stage RK methods from amplifying these boundary artifacts.
 
 ## Working with Athena++ C++
 
