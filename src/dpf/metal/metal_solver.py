@@ -55,8 +55,9 @@ _M_D: float = 3.34358377e-27  # Deuterium mass [kg]
 class MetalMHDSolver(PlasmaSolverBase):
     """MHD solver on Apple Metal GPU via PyTorch MPS.
 
-    Uses SSP-RK2 time integration with HLL Riemann solver and PLM
-    reconstruction.  All physics computation runs on Metal GPU in float32.
+    Uses SSP-RK2 time integration with selectable Riemann solver
+    (HLL or HLLD) and reconstruction (PLM or WENO5).  All physics
+    computation runs on Metal GPU in float32 (or CPU in float64).
     Accepts/returns ``dict[str, np.ndarray]`` per ``PlasmaSolverBase``
     contract.
 
@@ -120,6 +121,10 @@ class MetalMHDSolver(PlasmaSolverBase):
         dz: float | None = None,
         limiter: str = "minmod",
         use_ct: bool = True,
+        riemann_solver: str = "hll",
+        precision: str = "float32",
+        reconstruction: str = "plm",
+        time_integrator: str = "ssp_rk2",
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -129,6 +134,22 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.cfl: float = float(cfl)
         self.limiter: str = limiter
         self.use_ct: bool = use_ct
+        self.riemann_solver: str = riemann_solver
+        self.precision: str = precision
+        self.reconstruction: str = reconstruction
+        self.time_integrator: str = time_integrator
+
+        # Determine dtype from precision setting ---------------------------
+        if precision == "float64":
+            self._dtype: torch.dtype = torch.float64
+            # MPS does not support float64 → force CPU for max accuracy
+            device = "cpu"
+            logger.info(
+                "Float64 precision requested — using CPU backend for "
+                "maximum numerical accuracy"
+            )
+        else:
+            self._dtype = torch.float32
 
         # Resolve device --------------------------------------------------
         if device == "mps" and not self.is_available():
@@ -145,17 +166,20 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Pre-allocate a zero tensor for quick allocation in _to_device ----
         nx, ny, nz = self.grid_shape
         self._zero_scalar: torch.Tensor = torch.zeros(
-            nx, ny, nz, dtype=torch.float32, device=self.device
+            nx, ny, nz, dtype=self._dtype, device=self.device
         )
         self._zero_vector: torch.Tensor = torch.zeros(
-            3, nx, ny, nz, dtype=torch.float32, device=self.device
+            3, nx, ny, nz, dtype=self._dtype, device=self.device
         )
 
         logger.info(
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
-            "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s",
+            "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
+            "riemann=%s  recon=%s  time=%s  precision=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
+            self.riemann_solver, self.reconstruction, self.time_integrator,
+            self.precision,
         )
 
     # ------------------------------------------------------------------ #
@@ -205,7 +229,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             arr = state.get(key)
             if arr is not None:
                 gpu_state[key] = torch.as_tensor(
-                    arr, dtype=torch.float32
+                    arr, dtype=self._dtype
                 ).to(self.device)
             else:
                 # Provide sensible defaults for optional fields
@@ -349,8 +373,41 @@ class MetalMHDSolver(PlasmaSolverBase):
         }
 
     # ------------------------------------------------------------------ #
-    #  SSP-RK2 time integration  (main step method)
+    #  SSP Runge-Kutta time integration  (main step method)
     # ------------------------------------------------------------------ #
+
+    def _compute_rhs(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        """Compute MHD RHS for a given primitive state."""
+        return mhd_rhs_mps(
+            {"rho": rho, "velocity": vel, "pressure": p, "B": B},
+            self.gamma,
+            self.dx, self.dy, self.dz,
+            self.limiter,
+            self.riemann_solver,
+            self.reconstruction,
+        )
+
+    def _euler_update(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+        rhs: dict[str, torch.Tensor],
+        dt: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Forward Euler update with floor enforcement."""
+        rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR)
+        vel_new = vel + dt * rhs["velocity"]
+        p_new = torch.clamp(p + dt * rhs["pressure"], min=P_FLOOR)
+        B_new = B + dt * rhs["B"]
+        return rho_new, vel_new, p_new, B_new
 
     def step(
         self,
@@ -360,15 +417,20 @@ class MetalMHDSolver(PlasmaSolverBase):
         voltage: float,
         **kwargs: object,
     ) -> dict[str, np.ndarray]:
-        """Advance the MHD state by one timestep using SSP-RK2.
+        """Advance the MHD state by one timestep.
 
-        SSP-RK2 (Shu-Osher form):
+        Supports two SSP Runge-Kutta schemes (Shu & Osher 1988):
+
+        **SSP-RK2** (2 stages, 2nd-order)::
 
             U^(1)   = U^n + dt * L(U^n)
             U^(n+1) = 0.5 * U^n + 0.5 * (U^(1) + dt * L(U^(1)))
 
-        This is TVD (total variation diminishing) and 2nd-order accurate
-        in time.
+        **SSP-RK3** (3 stages, 3rd-order)::
+
+            U^(1)   = U^n + dt * L(U^n)
+            U^(2)   = 3/4 * U^n + 1/4 * (U^(1) + dt * L(U^(1)))
+            U^(n+1) = 1/3 * U^n + 2/3 * (U^(2) + dt * L(U^(2)))
 
         Parameters
         ----------
@@ -411,60 +473,14 @@ class MetalMHDSolver(PlasmaSolverBase):
         p_n = state_gpu["pressure"].clone()
         B_n = state_gpu["B"].clone()
 
-        # -------------------------------------------------------------- #
-        #  Stage 1: U^(1) = U^n + dt * L(U^n)
-        # -------------------------------------------------------------- #
-        rhs1 = mhd_rhs_mps(
-            {"rho": rho_n, "velocity": vel_n, "pressure": p_n, "B": B_n},
-            self.gamma,
-            self.dx, self.dy, self.dz,
-            self.limiter,
-        )
-
-        rho_1 = rho_n + dt * rhs1["rho"]
-        vel_1 = vel_n + dt * rhs1["velocity"]
-        p_1 = p_n + dt * rhs1["pressure"]
-        B_1 = B_n + dt * rhs1["B"]
-
-        # Enforce floors after stage 1
-        rho_1 = torch.clamp(rho_1, min=RHO_FLOOR)
-        p_1 = torch.clamp(p_1, min=P_FLOOR)
-
-        # Optional CT div(B) cleaning after stage 1
-        if self.use_ct:
-            B_1 = self._apply_ct_correction(B_1, B_n, dt)
-
-        # -------------------------------------------------------------- #
-        #  Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
-        # -------------------------------------------------------------- #
-        rhs2 = mhd_rhs_mps(
-            {"rho": rho_1, "velocity": vel_1, "pressure": p_1, "B": B_1},
-            self.gamma,
-            self.dx, self.dy, self.dz,
-            self.limiter,
-        )
-
-        rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
-        vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
-        p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["pressure"])
-        B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["B"])
-
-        # Enforce floors after stage 2
-        rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
-        p_new = torch.clamp(p_new, min=P_FLOOR)
-
-        # Optional CT div(B) cleaning after stage 2
-        if self.use_ct:
-            B_new = self._apply_ct_correction(B_new, B_n, dt)
-
-        # -------------------------------------------------------------- #
-        #  Derive Te, Ti from pressure if not externally managed
-        # -------------------------------------------------------------- #
-        # The engine normally manages Te/Ti evolution.  If the caller
-        # provides Te/Ti, we pass them through unchanged.  As a fallback,
-        # derive single-temperature T from the EOS.
-        Te_out = Te_pass
-        Ti_out = Ti_pass
+        if self.time_integrator == "ssp_rk3":
+            rho_new, vel_new, p_new, B_new = self._step_ssp_rk3(
+                rho_n, vel_n, p_n, B_n, dt,
+            )
+        else:
+            rho_new, vel_new, p_new, B_new = self._step_ssp_rk2(
+                rho_n, vel_n, p_n, B_n, dt,
+            )
 
         # -------------------------------------------------------------- #
         #  Update coupling state for the circuit solver
@@ -479,12 +495,91 @@ class MetalMHDSolver(PlasmaSolverBase):
             "velocity": vel_new,
             "pressure": p_new,
             "B": B_new,
-            "Te": Te_out,
-            "Ti": Ti_out,
+            "Te": Te_pass,
+            "Ti": Ti_pass,
             "psi": psi_pass,
         }
 
         return self._to_numpy(out_gpu)
+
+    def _step_ssp_rk2(
+        self,
+        rho_n: torch.Tensor,
+        vel_n: torch.Tensor,
+        p_n: torch.Tensor,
+        B_n: torch.Tensor,
+        dt: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """SSP-RK2 (Shu-Osher): 2 stages, 2nd-order."""
+        # Stage 1: U^(1) = U^n + dt * L(U^n)
+        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n)
+        rho_1, vel_1, p_1, B_1 = self._euler_update(
+            rho_n, vel_n, p_n, B_n, rhs1, dt,
+        )
+        if self.use_ct:
+            B_1 = self._apply_ct_correction(B_1, B_n, dt)
+
+        # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
+        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1)
+        rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
+        vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
+        p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["pressure"])
+        B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["B"])
+
+        rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
+        p_new = torch.clamp(p_new, min=P_FLOOR)
+        if self.use_ct:
+            B_new = self._apply_ct_correction(B_new, B_n, dt)
+
+        return rho_new, vel_new, p_new, B_new
+
+    def _step_ssp_rk3(
+        self,
+        rho_n: torch.Tensor,
+        vel_n: torch.Tensor,
+        p_n: torch.Tensor,
+        B_n: torch.Tensor,
+        dt: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """SSP-RK3 (Shu-Osher): 3 stages, 3rd-order.
+
+        References:
+            Shu C.-W. & Osher S., J. Comput. Phys. 77, 439 (1988).
+            Gottlieb S. et al., SIAM Rev. 43, 89-112 (2001).
+        """
+        # Stage 1: U^(1) = U^n + dt * L(U^n)
+        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n)
+        rho_1, vel_1, p_1, B_1 = self._euler_update(
+            rho_n, vel_n, p_n, B_n, rhs1, dt,
+        )
+        if self.use_ct:
+            B_1 = self._apply_ct_correction(B_1, B_n, dt)
+
+        # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
+        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1)
+        rho_2 = 0.75 * rho_n + 0.25 * (rho_1 + dt * rhs2["rho"])
+        vel_2 = 0.75 * vel_n + 0.25 * (vel_1 + dt * rhs2["velocity"])
+        p_2 = 0.75 * p_n + 0.25 * (p_1 + dt * rhs2["pressure"])
+        B_2 = 0.75 * B_n + 0.25 * (B_1 + dt * rhs2["B"])
+
+        rho_2 = torch.clamp(rho_2, min=RHO_FLOOR)
+        p_2 = torch.clamp(p_2, min=P_FLOOR)
+        if self.use_ct:
+            B_2 = self._apply_ct_correction(B_2, B_n, dt)
+
+        # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
+        rhs3 = self._compute_rhs(rho_2, vel_2, p_2, B_2)
+        rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * (rho_2 + dt * rhs3["rho"])
+        vel_new = (1.0 / 3.0) * vel_n + (2.0 / 3.0) * (vel_2 + dt * rhs3["velocity"])
+        p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * (p_2 + dt * rhs3["pressure"])
+        B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * (B_2 + dt * rhs3["B"])
+
+        rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
+        p_new = torch.clamp(p_new, min=P_FLOOR)
+        if self.use_ct:
+            B_new = self._apply_ct_correction(B_new, B_n, dt)
+
+        return rho_new, vel_new, p_new, B_new
 
     # ------------------------------------------------------------------ #
     #  Constrained transport correction
@@ -533,7 +628,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Construct face-centred B_old by averaging cell centres
         # Bx_face: (nx+1, ny, nz)
         Bx_face = torch.zeros(
-            nx + 1, ny, nz, dtype=torch.float32, device=self.device
+            nx + 1, ny, nz, dtype=self._dtype, device=self.device
         )
         Bx_face[1:-1, :, :] = 0.5 * (B_old[0, :-1, :, :] + B_old[0, 1:, :, :])
         Bx_face[0, :, :] = B_old[0, 0, :, :]
@@ -541,7 +636,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # By_face: (nx, ny+1, nz)
         By_face = torch.zeros(
-            nx, ny + 1, nz, dtype=torch.float32, device=self.device
+            nx, ny + 1, nz, dtype=self._dtype, device=self.device
         )
         By_face[:, 1:-1, :] = 0.5 * (B_old[1, :, :-1, :] + B_old[1, :, 1:, :])
         By_face[:, 0, :] = B_old[1, :, 0, :]
@@ -549,7 +644,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # Bz_face: (nx, ny, nz+1)
         Bz_face = torch.zeros(
-            nx, ny, nz + 1, dtype=torch.float32, device=self.device
+            nx, ny, nz + 1, dtype=self._dtype, device=self.device
         )
         Bz_face[:, :, 1:-1] = 0.5 * (B_old[2, :, :, :-1] + B_old[2, :, :, 1:])
         Bz_face[:, :, 0] = B_old[2, :, :, 0]
@@ -564,7 +659,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # dBx/dt face contributions at x-faces
         flux_x = torch.zeros(
-            nx + 1, ny, nz, dtype=torch.float32, device=self.device
+            nx + 1, ny, nz, dtype=self._dtype, device=self.device
         )
         flux_x[1:-1, :, :] = 0.5 * (dB_dt[0, :-1, :, :] + dB_dt[0, 1:, :, :])
         flux_x[0, :, :] = dB_dt[0, 0, :, :]
@@ -572,7 +667,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # dBy/dt face contributions at y-faces
         flux_y = torch.zeros(
-            nx, ny + 1, nz, dtype=torch.float32, device=self.device
+            nx, ny + 1, nz, dtype=self._dtype, device=self.device
         )
         flux_y[:, 1:-1, :] = 0.5 * (dB_dt[1, :, :-1, :] + dB_dt[1, :, 1:, :])
         flux_y[:, 0, :] = dB_dt[1, :, 0, :]
@@ -580,7 +675,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # dBz/dt face contributions at z-faces
         flux_z = torch.zeros(
-            nx, ny, nz + 1, dtype=torch.float32, device=self.device
+            nx, ny, nz + 1, dtype=self._dtype, device=self.device
         )
         flux_z[:, :, 1:-1] = 0.5 * (dB_dt[2, :, :, :-1] + dB_dt[2, :, :, 1:])
         flux_z[:, :, 0] = dB_dt[2, :, :, 0]
@@ -718,28 +813,28 @@ class MetalMHDSolver(PlasmaSolverBase):
             Divergence of B, shape ``(nx, ny, nz)``.
         """
         B = torch.as_tensor(
-            state["B"], dtype=torch.float32
+            state["B"], dtype=self._dtype
         ).to(self.device)
 
         nx, ny, nz = self.grid_shape
 
         # Build face-centred B by averaging cell centres
         Bx_face = torch.zeros(
-            nx + 1, ny, nz, dtype=torch.float32, device=self.device
+            nx + 1, ny, nz, dtype=self._dtype, device=self.device
         )
         Bx_face[1:-1, :, :] = 0.5 * (B[0, :-1, :, :] + B[0, 1:, :, :])
         Bx_face[0, :, :] = B[0, 0, :, :]
         Bx_face[-1, :, :] = B[0, -1, :, :]
 
         By_face = torch.zeros(
-            nx, ny + 1, nz, dtype=torch.float32, device=self.device
+            nx, ny + 1, nz, dtype=self._dtype, device=self.device
         )
         By_face[:, 1:-1, :] = 0.5 * (B[1, :, :-1, :] + B[1, :, 1:, :])
         By_face[:, 0, :] = B[1, :, 0, :]
         By_face[:, -1, :] = B[1, :, -1, :]
 
         Bz_face = torch.zeros(
-            nx, ny, nz + 1, dtype=torch.float32, device=self.device
+            nx, ny, nz + 1, dtype=self._dtype, device=self.device
         )
         Bz_face[:, :, 1:-1] = 0.5 * (B[2, :, :, :-1] + B[2, :, :, 1:])
         Bz_face[:, :, 0] = B[2, :, :, 0]
@@ -757,5 +852,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             f"MetalMHDSolver(grid={self.grid_shape}, dx={self.dx:.3e}, "
             f"gamma={self.gamma:.4f}, cfl={self.cfl:.2f}, "
             f"device={self.device}, limiter={self.limiter!r}, "
-            f"use_ct={self.use_ct})"
+            f"use_ct={self.use_ct}, riemann={self.riemann_solver!r}, "
+            f"recon={self.reconstruction!r}, "
+            f"time={self.time_integrator!r})"
         )
