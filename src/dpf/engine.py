@@ -137,6 +137,11 @@ class SimulationEngine:
                 device="mps",
                 limiter="minmod",
                 use_ct=True,
+                enable_hall=True,
+                enable_braginskii_conduction=fc.enable_anisotropic_conduction,
+                enable_braginskii_viscosity=fc.enable_viscosity,
+                enable_nernst=fc.enable_nernst,
+                ion_mass=self.ion_mass,
             )
             self._cell_volume = dx * dx * dz
             logger.info("Using Metal GPU backend (PyTorch MPS)")
@@ -168,6 +173,8 @@ class SimulationEngine:
                 enable_energy_equation=fc.enable_energy_equation,
                 ion_mass=self.ion_mass,
                 riemann_solver=fc.riemann_solver,
+                time_integrator=fc.time_integrator,
+                use_ct=fc.use_ct,
             )
             self._cell_volume = dx**3  # Uniform Cartesian cell volume
 
@@ -605,7 +612,7 @@ class SimulationEngine:
 
         # === Step 3a: Nernst B-field advection ===
         fc = self.config.fluid
-        if fc.enable_nernst:
+        if fc.enable_nernst and self.backend != "metal":
             self._apply_nernst(dt, Z_bar)
             self._sanitize_state("after Nernst step")
 
@@ -885,7 +892,7 @@ class SimulationEngine:
         self._sanitize_state("after collision step")
 
         # --- Braginskii ion viscosity ---
-        if self.config.fluid.enable_viscosity:
+        if self.config.fluid.enable_viscosity and self.backend != "metal":
             self._apply_viscosity(dt_sub)
             self._sanitize_state("after viscosity step")
 
@@ -1230,7 +1237,7 @@ class SimulationEngine:
             self.state["Te"] = np.maximum(Te_new, 1.0)
 
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
-        if fc.enable_anisotropic_conduction:
+        if fc.enable_anisotropic_conduction and self.backend != "metal":
             from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
             B_ac = self.state["B"]
             Te_ac = self.state["Te"]

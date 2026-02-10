@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from dpf.constants import k_B, mu_0, pi
+from dpf.constants import k_B, pi
 
 logger = logging.getLogger(__name__)
 

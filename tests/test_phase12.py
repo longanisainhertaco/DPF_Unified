@@ -148,16 +148,28 @@ class TestHLLDSolver:
         assert F_ene.shape == (n,)
 
     def test_hlld_dict_wrapper(self):
-        """_hlld_flux_1d returns dict with correct keys."""
+        """_hlld_flux_1d returns dict with correct keys (full 8-component)."""
         n = 5
         ones = np.ones(n)
+        zeros = np.zeros(n)
         result = _hlld_flux_1d(
-            ones, ones * 0.5, np.zeros(n), np.zeros(n),
-            ones, ones * 0.5, ones * 0.5, ones * 0.5, 5.0 / 3.0,
+            ones, ones * 0.5,           # rho_L, rho_R
+            zeros, zeros,               # vn_L, vn_R
+            zeros, zeros,               # vt1_L, vt1_R
+            zeros, zeros,               # vt2_L, vt2_R
+            ones, ones * 0.5,           # p_L, p_R
+            ones * 0.5,                 # Bn
+            zeros, zeros,               # Bt1_L, Bt1_R
+            zeros, zeros,               # Bt2_L, Bt2_R
+            5.0 / 3.0,                  # gamma
         )
         assert "mass_flux" in result
         assert "momentum_flux" in result
         assert "energy_flux" in result
+        assert "momentum_t1_flux" in result
+        assert "momentum_t2_flux" in result
+        assert "Bt1_flux" in result
+        assert "Bt2_flux" in result
 
     def test_hlld_uniform_state_zero_flux(self):
         """Uniform state produces zero net mass flux through interfaces."""

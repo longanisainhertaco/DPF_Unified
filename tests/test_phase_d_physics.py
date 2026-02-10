@@ -16,9 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from dpf.constants import e as e_charge
-from dpf.constants import k_B, m_d
-
+from dpf.constants import m_d
 
 # ===================================================================
 # D.1: Braginskii eta_1 limits

@@ -201,11 +201,17 @@ class TestFluxSweep:
         n = 16
         rho = np.ones((n, n, n))
         vel_n = np.zeros((n, n, n))
+        vel_t1 = np.zeros((n, n, n))
+        vel_t2 = np.zeros((n, n, n))
         p = np.ones((n, n, n))
         Bn = np.zeros((n, n, n))
+        Bt1 = np.zeros((n, n, n))
+        Bt2 = np.zeros((n, n, n))
         gamma = 5.0 / 3.0
 
-        result = _compute_flux_1d_sweep(rho, vel_n, p, Bn, gamma, axis=0)
+        result = _compute_flux_1d_sweep(
+            rho, vel_n, vel_t1, vel_t2, p, Bn, Bt1, Bt2, gamma, axis=0,
+        )
         assert result["n_interfaces"] == n - 4
         # All fluxes should be near zero (no velocity)
         assert np.max(np.abs(result["mass_flux"])) < 1e-10
@@ -215,10 +221,16 @@ class TestFluxSweep:
         n = 4  # < 5, can't use WENO5
         rho = np.ones((n, n, n))
         vel_n = np.zeros((n, n, n))
+        vel_t1 = np.zeros((n, n, n))
+        vel_t2 = np.zeros((n, n, n))
         p = np.ones((n, n, n))
         Bn = np.zeros((n, n, n))
+        Bt1 = np.zeros((n, n, n))
+        Bt2 = np.zeros((n, n, n))
 
-        result = _compute_flux_1d_sweep(rho, vel_n, p, Bn, 5.0 / 3.0, axis=0)
+        result = _compute_flux_1d_sweep(
+            rho, vel_n, vel_t1, vel_t2, p, Bn, Bt1, Bt2, 5.0 / 3.0, axis=0,
+        )
         assert result["n_interfaces"] == 0
 
 

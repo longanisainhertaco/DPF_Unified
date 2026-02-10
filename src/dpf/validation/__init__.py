@@ -10,6 +10,11 @@ from dpf.validation.experimental import (
     validate_current_waveform,
     validate_neutron_yield,
 )
+from dpf.validation.lee_model_comparison import (
+    LeeModel,
+    LeeModelComparison,
+    LeeModelResult,
+)
 from dpf.validation.suite import (
     DEVICE_REGISTRY,
     ValidationResult,
@@ -17,12 +22,6 @@ from dpf.validation.suite import (
     config_hash,
     normalized_rmse,
     relative_error,
-)
-
-from dpf.validation.lee_model_comparison import (
-    LeeModel,
-    LeeModelComparison,
-    LeeModelResult,
 )
 
 __all__ = [

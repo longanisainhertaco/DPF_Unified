@@ -147,7 +147,11 @@ class FluidConfig(BaseModel):
     )
     use_ct: bool = Field(
         False,
-        description="Use Constrained Transport for div(B)=0 (Metal GPU only, requires MPS device)",
+        description="Use Constrained Transport for div(B)=0 (available in both Python and Metal backends)",
+    )
+    enable_hall: bool = Field(
+        True,
+        description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
 
     @model_validator(mode="after")

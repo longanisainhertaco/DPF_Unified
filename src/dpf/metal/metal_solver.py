@@ -125,6 +125,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         precision: str = "float32",
         reconstruction: str = "plm",
         time_integrator: str = "ssp_rk2",
+        enable_hall: bool = False,
+        enable_braginskii_conduction: bool = False,
+        enable_braginskii_viscosity: bool = False,
+        enable_nernst: bool = False,
+        ion_mass: float = 3.34358377e-27,
+        Z_eff: float = 1.0,
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -138,6 +144,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.precision: str = precision
         self.reconstruction: str = reconstruction
         self.time_integrator: str = time_integrator
+        self.enable_hall: bool = enable_hall
+        self.enable_braginskii_conduction: bool = enable_braginskii_conduction
+        self.enable_braginskii_viscosity: bool = enable_braginskii_viscosity
+        self.enable_nernst: bool = enable_nernst
+        self.ion_mass: float = float(ion_mass)
+        self.Z_eff: float = float(Z_eff)
 
         # Determine dtype from precision setting ---------------------------
         if precision == "float64":
@@ -175,11 +187,13 @@ class MetalMHDSolver(PlasmaSolverBase):
         logger.info(
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
-            "riemann=%s  recon=%s  time=%s  precision=%s",
+            "riemann=%s  recon=%s  time=%s  precision=%s  "
+            "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.time_integrator,
-            self.precision,
+            self.precision, self.enable_hall, self.enable_braginskii_conduction,
+            self.enable_braginskii_viscosity, self.enable_nernst,
         )
 
     # ------------------------------------------------------------------ #
@@ -580,6 +594,48 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_new, p_new = self._apply_resistive_diffusion(
                 B_new, p_new, rho_new, eta_gpu, dt, self.gamma,
             )
+
+        # -------------------------------------------------------------- #
+        #  Operator-split transport physics (Phase Q)
+        # -------------------------------------------------------------- #
+        if (self.enable_hall or self.enable_braginskii_conduction
+                or self.enable_braginskii_viscosity or self.enable_nernst):
+            from dpf.metal.metal_transport import (
+                apply_braginskii_conduction_mps,
+                apply_braginskii_viscosity_mps,
+                apply_hall_mhd_mps,
+                apply_nernst_advection_mps,
+            )
+
+            if self.enable_hall:
+                B_new = apply_hall_mhd_mps(
+                    B_new, rho_new, dt,
+                    self.dx, self.dy, self.dz, self.ion_mass,
+                )
+
+            if self.enable_braginskii_conduction:
+                ne = rho_new / self.ion_mass
+                Te_pass = apply_braginskii_conduction_mps(
+                    Te_pass, B_new, ne, dt,
+                    self.dx, self.dy, self.dz,
+                    Z_eff=self.Z_eff,
+                )
+
+            if self.enable_braginskii_viscosity:
+                vel_new, p_new = apply_braginskii_viscosity_mps(
+                    vel_new, rho_new, p_new, B_new,
+                    Ti_pass, dt,
+                    self.dx, self.dy, self.dz,
+                    ion_mass=self.ion_mass,
+                )
+
+            if self.enable_nernst:
+                ne = rho_new / self.ion_mass
+                B_new = apply_nernst_advection_mps(
+                    B_new, ne, Te_pass, dt,
+                    self.dx, self.dy, self.dz,
+                    Z_eff=self.Z_eff,
+                )
 
         # -------------------------------------------------------------- #
         #  Update coupling state for the circuit solver

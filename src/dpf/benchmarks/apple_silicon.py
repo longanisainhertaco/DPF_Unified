@@ -17,13 +17,12 @@ import time
 
 import numpy as np
 
-from dpf.constants import k_B, m_d, mu_0
+from dpf.constants import k_B, m_d
 from dpf.fluid.viscosity import (
     braginskii_eta0,
     ion_collision_time,
     viscous_stress_rate,
 )
-
 
 # ------------------------------------------------------------------
 # Helpers
