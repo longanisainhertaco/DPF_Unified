@@ -14,7 +14,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 | Layer | Description | Status |
 |-------|-------------|--------|
-| **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready) + Metal GPU (PyTorch MPS). Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport. Metal GPU: WENO5-Z + HLLD + SSP-RK3 + float64 | **Phase O complete** |
+| **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready) + Metal GPU (PyTorch MPS). Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport. Metal GPU: WENO5-Z + HLLD + SSP-RK3 + float64 + resistive MHD. Python engine: WENO-Z + HLLD + SSP-RK3 defaults | **Phase P complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
 | **AI Integration** | WALRUS (1.3B IsotropicModel, delta prediction, RevIN, Hydra config) surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server. Surrogate stubs need real WALRUS model loading (Phase J.2). | **Phase I complete, J.2 next** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
@@ -25,11 +25,11 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 ## Current State — Honest Assessment
 
-### Fidelity Grade: 8.7 / 10
+### Fidelity Grade: 8.9 / 10
 
 > **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 8+/10.
 
-The simulation backend features a tri-engine architecture (Python + Athena++ C++ + AthenaK Kokkos) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The AthenaK backend adds GPU-ready MHD via Kokkos (Serial/OpenMP on Apple Silicon, CUDA/HIP/SYCL on HPC), operating in subprocess mode with VTK I/O. The Python engine retains V&V-verified physics including WENO5 reconstruction, Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels for Apple Silicon. The Metal GPU backend (Phase O) implements production-grade physics: WENO5-Z reconstruction (Borges et al. 2008), HLLD Riemann solver (Miyoshi & Kusano 2005), SSP-RK3 time integration (Shu-Osher 1988), float64 precision mode, and constrained transport — matching or exceeding established open-source code accuracy. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1452 tests pass with 0 failures (1331 non-slow, 121 slow). Phases A–O are complete.
+The simulation backend features a tri-engine architecture (Python + Athena++ C++ + AthenaK Kokkos) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The AthenaK backend adds GPU-ready MHD via Kokkos (Serial/OpenMP on Apple Silicon, CUDA/HIP/SYCL on HPC), operating in subprocess mode with VTK I/O. The Python engine (Phase P) now defaults to HLLD Riemann solver (Miyoshi & Kusano 2005) and SSP-RK3 time integration (Shu-Osher 1988), with WENO-Z nonlinear weights (Borges et al. 2008), Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels. The Metal GPU backend implements production-grade physics: WENO5-Z reconstruction, HLLD solver, SSP-RK3 integrator, float64 precision mode, constrained transport, and operator-split resistive MHD with CFL sub-cycling — matching or exceeding established open-source code accuracy. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1475 tests pass with 0 failures (1353 non-slow, 122 slow). Phases A–P are complete.
 
 ### Active Modules (What Actually Runs)
 
@@ -40,7 +40,7 @@ These modules are wired into `engine.py` and execute during every simulation:
 | Module | Implementation | Quality |
 |--------|----------------|---------|
 | **Circuit RLC** | Implicit midpoint solver with dynamic plasma inductance/resistance | Solid — energy conservation to 1% |
-| **MHD Solver** | WENO5 reconstruction + HLL Riemann solver, Numba-accelerated | Good — 5th-order convergence verified on smooth data |
+| **MHD Solver** | WENO-Z reconstruction + HLLD Riemann solver (default) + SSP-RK3 time integrator, Numba-accelerated | Good — HLLD + SSP-RK3 defaults, 5th-order WENO-Z convergence on smooth data |
 | **Two-Temperature Plasma** | Separate Te, Ti with implicit relaxation via Spitzer collision rates | Strong — matches NRL Plasma Formulary |
 | **Spitzer Collisions** | Quantum-corrected Coulomb logarithm (Gericke-Murillo-Schlanges), nu_ei, resistivity | Strong — analytically verified |
 | **Bremsstrahlung** | Backward Euler cooling with Gaunt factor, stable for large dt | Good |
