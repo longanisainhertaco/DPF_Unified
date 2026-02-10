@@ -79,7 +79,7 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy)
 Planned: J.2+ (backlog)
 
 ### Test Patterns
@@ -87,7 +87,7 @@ Planned: J.2+ (backlog)
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 745 tests (currently 1347+ total, 1312+ non-slow, 69 physics verification, 35 Metal GPU)
+- CI gate: >= 745 tests (currently 1452 total, 1331 non-slow, 121 slow, 45 Phase O physics accuracy)
 
 ## Key File Paths
 
@@ -138,7 +138,69 @@ Planned: J.2+ (backlog)
 | MLX surrogate | src/dpf/metal/mlx_surrogate.py |
 | Metal benchmarks | src/dpf/benchmarks/metal_benchmark.py |
 | Metal production tests | tests/test_metal_production.py (35 tests) |
+| Phase N cross-backend tests | tests/test_phase_n_cross_backend.py (17 tests) |
+| Phase O physics accuracy tests | tests/test_phase_o_physics_accuracy.py (45 tests) |
 | Slash commands | .claude/commands/ (18 commands) |
+
+## Iterative Accuracy Workflow
+
+This is the core development loop for physics accuracy improvement. Follow this cycle for every physics feature, solver enhancement, or accuracy improvement:
+
+### The Cycle: Create → Test → Rate → Research → Improve → Repeat
+
+1. **Create**: Implement the physics feature or solver improvement
+   - Follow established coding conventions (NumPy style docstrings, type hints, 100-char lines)
+   - Use reference literature (Miyoshi & Kusano for HLLD, Borges et al. for WENO-Z, Shu-Osher for SSP-RK3)
+   - Write clean, vectorized code (prefer torch tensor ops for Metal, numpy for Python engine)
+
+2. **Test**: Write comprehensive tests covering the new feature
+   - Unit tests: instantiation, single step, uniform state preservation
+   - Shock tests: Sod, Brio-Wu stability (no NaN, no blowup)
+   - Conservation tests: energy, mass, momentum conservation
+   - Convergence tests: measure order of accuracy on smooth problems
+   - Cross-backend parity: compare against Python engine or Athena++
+   - Mark slow tests (>1s) with `@pytest.mark.slow`
+   - Run full suite: `pytest tests/ -x -q` (non-slow) and `pytest tests/ -x -q -m slow` (slow)
+
+3. **Rate Accuracy**: Assess current fidelity grade (scale of 1-10)
+   - Consider: reconstruction order, Riemann solver sophistication, time integrator accuracy, precision mode
+   - Reference scale: Sandia production codes = 8/10, established open-source (Athena++, FLASH) = 6-7/10
+   - Document the rating and what limits it
+
+4. **Research**: Investigate what would improve accuracy further
+   - Use opus agents for deep physics research (characteristic decomposition, higher-order methods)
+   - Consult reference implementations (OpenMHD, MPI-AMRVAC, Athena++)
+   - Evaluate cost vs. benefit (e.g., characteristic WENO5 = ~500 LOC for marginal gain → not worth it)
+   - Check academic literature (arXiv, JCP, ApJS) for modern best practices
+
+5. **Improve**: Implement the most impactful improvement identified by research
+   - Prioritize: correctness > accuracy > performance
+   - Prefer well-tested algorithms from the literature over novel approaches
+   - When in doubt, use float64 mode for maximum accuracy
+
+6. **Repeat**: Go back to step 2 and verify the improvement didn't regress anything
+
+### Accuracy Milestones
+
+| Fidelity | What It Takes | Status |
+|----------|---------------|--------|
+| 6.5-7/10 | PLM + HLL + SSP-RK2 + float32 + CT | Phase M/N |
+| 8.0/10 | WENO5 + HLLD + SSP-RK3 + float32 | Phase O (interim) |
+| **8.7/10** | **WENO5-Z + HLLD + SSP-RK3 + float64 + CT + MC limiter** | **Phase O (current)** |
+| 9.0/10 | + characteristic decomposition, or Athena++ PPM+characteristic | Future |
+| 9.5/10 | + AMR, higher-order CT, production HPC scaling | Future |
+
+### Maximum Accuracy Configuration (Phase O)
+```python
+MetalMHDSolver(
+    reconstruction="weno5",      # 5th-order WENO-Z (Borges et al. 2008)
+    riemann_solver="hlld",       # Miyoshi & Kusano (2005) 4-wave solver
+    time_integrator="ssp_rk3",   # Shu-Osher (1988) 3rd-order SSP
+    precision="float64",         # CPU float64 for maximum accuracy
+    use_ct=True,                 # Constrained transport for div(B)=0
+    limiter="mc",                # Monotonized Central slope limiter
+)
+```
 
 ## Workflow Patterns
 
@@ -153,6 +215,7 @@ Planned: J.2+ (backlog)
 9. WALRUS training/fine-tuning: use separate venv due to pinned torch==2.5.1
 10. WALRUS inference: load checkpoint → instantiate IsotropicModel → RevIN normalize → forward → denormalize delta → add residual
 11. Well format export: always use `grid_type="cartesian"`, axis order `[x, y, z]`, float32
+12. Follow the iterative accuracy workflow: Create → Test → Rate → Research → Improve → Repeat
 
 ## Lessons Learned (Phases A-I)
 
@@ -213,6 +276,22 @@ Planned: J.2+ (backlog)
 43. **MetalMHDSolver interface alignment**: Engine calls `_compute_dt()` (private) and passes `**kwargs` to `step()`. Metal solver needs `_compute_dt = compute_dt` alias and `**kwargs` in step signature.
 44. **WALRUS MPS speedup**: Real benchmark shows 1.57× speedup for WALRUS inference on MPS vs CPU (38s vs 60s per step). MLX should improve this further.
 45. **GeometryConfig has no `dy`**: Only `dz` is configurable. For Metal solver, use `dx` for all directions unless `dz` is set.
+
+### Lessons Learned (Phase N — Cross-Backend V&V)
+
+46. **Metal cross-backend parity**: Sod shock L1(rho) < 15% between Python engine (WENO5+HLL) and Metal (PLM+HLL). Different reconstruction orders explain the gap.
+47. **Metal test grids must be cubic-ish**: Non-cubic grids with very thin transverse dimensions (e.g., 32×4×4) cause spurious 3D HLL flux behavior. Use 16×16×16 or similar.
+
+### Lessons Learned (Phase O — Physics Accuracy)
+
+48. **HLLD NaN for strong By discontinuities**: Metal HLL produced NaN for Brio-Wu due to catastrophic cancellation in float32 discriminant `(a²+va²)²-4a²van²`. Fix: numerically stable form `(a²-va²)²+4a²Bt²/rho` + NaN guards + velocity clamping + Lax-Friedrichs fallback.
+49. **HLLD 8-component solver**: Full HLLD (Miyoshi & Kusano 2005) resolves contact + Alfven waves. Less diffusive than HLL. Select with `riemann_solver="hlld"`. Falls back to HLL where NaN detected.
+50. **WENO5-Z over WENO-JS**: WENO-Z (Borges et al. 2008) uses global smoothness indicator `tau5=|beta0-beta2|` for better accuracy at critical points. Weight formula: `alpha_k = d_k * (1 + (tau5/(eps+beta_k))^2)`.
+51. **WENO5 FV vs FD formula pitfall**: Jiang-Shu (1996) coefficients (2/6, -7/6, 11/6) and ideal weights (0.1, 0.6, 0.3) are for finite-volume cell-average reconstruction. DPF's cell-centered code uses point values, requiring different coefficients: (3/8, -10/8, 15/8), (-1/8, 6/8, 3/8), (3/8, 6/8, -1/8) with ideal weights d0=1/16, d1=10/16, d2=5/16. Using FV formulas on point values gives ~3rd order instead of 5th.
+52. **SSP-RK3 time integration**: 3-stage SSP-RK3 (Shu-Osher 1988): U1=Un+dt*L(Un), U2=3/4*Un+1/4*(U1+dt*L(U1)), Un+1=1/3*Un+2/3*(U2+dt*L(U2)). Verified lower error than SSP-RK2 on smooth problems. Overall solver order ~1.86 (limited by MHD nonlinearity, not temporal).
+53. **Float64 precision mode**: `MetalMHDSolver(precision="float64")` forces CPU + float64 for maximum accuracy. MPS only supports float32. Eliminates round-off accumulation. Use for production V&V runs.
+54. **Characteristic WENO5 not worth it for Metal**: Requires ~500 LOC of MHD eigenvector computation (L/R matrices), 3 degenerate case handlers, complex torch.where branching. Cost too high vs benefit. Better to use float64 mode or route through Athena++ PPM+characteristic.
+55. **Energy floor after WENO5 reconstruction**: Clamp total energy (IEN component) above P_FLOOR after reconstruction to prevent negative energy states reaching Riemann solver. Guard with `if UL_out.shape[0] > IEN:` since convergence tests may pass 1-component tensors.
 
 ## Working with Athena++ C++
 

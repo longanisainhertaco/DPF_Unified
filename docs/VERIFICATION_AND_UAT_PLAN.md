@@ -12,7 +12,7 @@
 
 ### 1.1 Verification Philosophy
 
-The DPF simulator implements multi-physics MHD with circuit coupling, radiation transport, and fusion diagnostics across three computational backends (Python, Athena++, AthenaK). Verification proceeds in four tiers:
+The DPF simulator implements multi-physics MHD with circuit coupling, radiation transport, and fusion diagnostics across three computational backends (Python, Athena++, AthenaK) plus a Metal GPU backend for Apple Silicon. Verification proceeds in five tiers:
 
 | Tier | Scope | Method | Pass Criteria |
 |------|-------|--------|---------------|
@@ -20,6 +20,7 @@ The DPF simulator implements multi-physics MHD with circuit coupling, radiation 
 | **T2 — Integration** | Coupled subsystems | Manufactured solutions, convergence | 2nd-order convergence rate |
 | **T3 — System** | Full DPF simulation | Experimental data comparison | Qualitative agreement + correct scaling |
 | **T4 — Surrogate** | WALRUS vs. physics | Cross-validation, rollout divergence | < 10% L2 error over 50 steps |
+| **T5 — Metal GPU** | Metal backend parity + physics accuracy | Cross-backend L1 norm, convergence order, solver accuracy | < 5% L1 error vs Python; 5th-order WENO5 verified |
 
 ### 1.2 Tier 1 — Unit Verification
 
@@ -161,6 +162,38 @@ The DPF simulator implements multi-physics MHD with circuit coupling, radiation 
 | t_pinch vs sqrt(LC) | Quarter-period scaling | Vary L and C independently |
 
 **Pass criteria**: Power-law exponents within 30% of theoretical values.
+
+#### 1.4.4 NEW — Metal GPU Cross-Backend Verification
+
+| Test | Method | Tolerance |
+|------|--------|-----------|
+| Sod shock (Metal vs Python) | Run identical IC on both backends, compare L1(rho) | < 10% relative difference |
+| Long-run energy conservation | 100+ step Metal simulation, track cumulative energy drift | < 2% drift |
+| Float32 vs float64 stencil | CT update with same input, compare results | Relative error < 1e-5 |
+
+**Pass criteria**: Metal backend reproduces Python engine physics to within float32 tolerance for standard benchmarks.
+
+#### 1.4.5 Phase O — Metal GPU Physics Accuracy (COMPLETE)
+
+| Test | Method | Tolerance | Status |
+|------|--------|-----------|--------|
+| HLLD Riemann solver | Miyoshi & Kusano (2005) 8-component solver, contact+Alfven resolution | No NaN, stable for Brio-Wu | PASSING |
+| WENO5-Z reconstruction | Borges et al. (2008) with point-value FD formulas | 5th-order interior convergence (5.47-5.79) | PASSING |
+| SSP-RK3 time integration | Shu-Osher (1988) 3-stage 3rd-order SSP | Lower error than SSP-RK2 on smooth problems | PASSING |
+| Float64 precision mode | CPU float64 fallback (MPS only supports float32) | Eliminates round-off accumulation | PASSING |
+| Maximum accuracy config | WENO5-Z + HLLD + SSP-RK3 + float64 + CT + MC limiter | Stable for 50+ steps on Brio-Wu | PASSING |
+| Overall convergence order | Richardson extrapolation on smooth MHD wave | Order >= 1.7 (measured 1.86, limited by MHD nonlinearity) | PASSING |
+
+**45 tests total** in `test_phase_o_physics_accuracy.py`. All passing.
+
+#### 1.4.6 NEW — AthenaK Cross-Backend Verification
+
+| Test | Method | Tolerance |
+|------|--------|-----------|
+| Blast wave (AthenaK vs Python) | Run MHD blast on both backends, compare density evolution | Qualitative agreement: density ratio > 2 in both |
+| State dict parity | Compare state dict keys and shapes between backends | Identical keys, compatible shapes |
+
+**Pass criteria**: AthenaK subprocess produces physically correct results matching Python engine qualitatively.
 
 ### 1.5 Tier 4 — WALRUS Surrogate Verification
 
@@ -482,6 +515,9 @@ The DPF simulator implements multi-physics MHD with circuit coupling, radiation 
 | Braginskii transport | -- | Anisotropic ring | -- | -- |
 | Nernst effect | -- | -- | Te modification | -- |
 | Anomalous resistivity | -- | -- | Pinch dynamics | -- |
+| Metal GPU (HLLD+WENO5-Z+SSP-RK3+CT) | Sod shock parity, HLLD stability, WENO5-Z convergence | Energy conservation, SSP-RK3 accuracy | Cross-backend L1, max accuracy config | -- |
+| Metal GPU float64 | Float64 precision mode | Convergence order >= 1.7 | -- | -- |
+| AthenaK (Kokkos) | -- | Blast parity | State dict parity | -- |
 
 ### UAT Coverage Map
 
@@ -529,6 +565,19 @@ The DPF simulator implements multi-physics MHD with circuit coupling, radiation 
 | T4.3 | Sweep fidelity | NEW — test_verification_sweep.py | TODO |
 | T4.4 | Ensemble uncertainty | NEW — test_verification_ensemble.py | TODO |
 | T4.5 | Hybrid engine fallback | NEW — test_verification_hybrid.py | TODO |
+| T5.1 | Metal Sod shock parity | test_phase_n_cross_backend.py | PASSING |
+| T5.2 | Metal energy conservation (100+ steps) | test_phase_n_cross_backend.py | PASSING |
+| T5.3 | AthenaK blast parity | test_phase_n_cross_backend.py | PASSING |
+| T5.4 | HLLD solver instantiation + single step | test_phase_o_physics_accuracy.py | PASSING |
+| T5.5 | HLLD Brio-Wu MHD shock stability | test_phase_o_physics_accuracy.py | PASSING |
+| T5.6 | WENO5-Z reconstruction (5th-order convergence) | test_phase_o_physics_accuracy.py | PASSING |
+| T5.7 | WENO5-Z interior convergence order 5.47-5.79 | test_phase_o_physics_accuracy.py | PASSING |
+| T5.8 | Float64 precision mode (CPU fallback) | test_phase_o_physics_accuracy.py | PASSING |
+| T5.9 | SSP-RK3 instantiation + single step | test_phase_o_physics_accuracy.py | PASSING |
+| T5.10 | SSP-RK3 Sod shock stability | test_phase_o_physics_accuracy.py | PASSING |
+| T5.11 | SSP-RK3 lower error than SSP-RK2 | test_phase_o_physics_accuracy.py | PASSING |
+| T5.12 | SSP-RK3 + WENO5-Z + float64 convergence (order >= 1.7) | test_phase_o_physics_accuracy.py | PASSING |
+| T5.13 | Maximum accuracy config (WENO5-Z + HLLD + SSP-RK3 + float64 + CT) | test_phase_o_physics_accuracy.py | PASSING |
 
 ---
 

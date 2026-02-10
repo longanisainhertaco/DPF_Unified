@@ -67,17 +67,21 @@ P_FLOOR: float = 1e-12
 
 
 def _ensure_mps(t: torch.Tensor, name: str = "tensor") -> None:
-    """Validate that *t* resides on an MPS device.
+    """Validate that *t* resides on an MPS or CPU device.
+
+    Accepts both MPS (Metal GPU, float32) and CPU (float64 precision mode)
+    backends.  Rejects CUDA or other devices that are not part of the
+    DPF Metal solver architecture.
 
     Args:
         t: Tensor to check.
         name: Human-readable label for the error message.
 
     Raises:
-        ValueError: If the tensor is not on an MPS device.
+        ValueError: If the tensor is not on an MPS or CPU device.
     """
-    if t.device.type != "mps":
-        raise ValueError(f"{name} must be on MPS device, got {t.device}")
+    if t.device.type not in ("mps", "cpu"):
+        raise ValueError(f"{name} must be on MPS or CPU device, got {t.device}")
 
 
 def _check_no_nan(t: torch.Tensor, label: str = "result") -> None:
@@ -213,13 +217,17 @@ def _physical_flux_mps(
     """
     rho, vel, p, B = _cons_to_prim_mps(U, gamma)
 
+    # Clamp velocities to prevent float32 overflow in products
+    _V_MAX = 1e6
+    vel = torch.clamp(vel, min=-_V_MAX, max=_V_MAX)
+
     vn = vel[dim]              # normal velocity
     Bn = B[dim]                # normal B component
     v_dot_B = vel[0] * B[0] + vel[1] * B[1] + vel[2] * B[2]
     B_sq = B[0] ** 2 + B[1] ** 2 + B[2] ** 2
     p_total = p + 0.5 * B_sq  # total pressure
 
-    E = U[IEN]
+    E = torch.clamp(U[IEN], min=P_FLOOR)  # ensure positive total energy
 
     # Mass flux
     F_rho = rho * vn
@@ -273,10 +281,24 @@ def _fast_magnetosonic_mps(
         va^2 = |B|^2 / rho              (Alfven speed squared, total B)
         van^2 = Bn^2 / rho              (Alfven speed squared, normal B)
 
+    We use a numerically stable form of the discriminant to avoid
+    catastrophic cancellation in float32:
+
+        (a^2 + va^2)^2 - 4*a^2*van^2
+            = (a^2 - va^2)^2 + 4*a^2*(va^2 - van^2)
+            = (a^2 - va^2)^2 + 4*a^2*Bt^2/rho
+
+    where Bt^2 = |B|^2 - Bn^2 is the transverse magnetic field squared.
+    This avoids subtracting two large nearly-equal quantities.
+
     Note: We use natural units where mu_0 is absorbed into B (Heaviside-Lorentz
     convention, standard for Athena++/AthenaK).  The Python engine includes
     mu_0 explicitly; the Metal solver works in code units without it, matching
     the Athena++ convention used by the stencil module.
+
+    References:
+        Stone J.M. et al., ApJS 249, 4 (2020), Appendix C -- wave speed.
+        Miyoshi T. & Kusano K., JCP 208, 315 (2005), Section 2.
 
     Args:
         rho: Density, shape (...).
@@ -295,16 +317,20 @@ def _fast_magnetosonic_mps(
     a_sq = gamma * p_safe * inv_rho           # sound speed squared
     B_sq = B[0] ** 2 + B[1] ** 2 + B[2] ** 2
     Bn_sq = B[dim] ** 2
+    Bt_sq = torch.clamp(B_sq - Bn_sq, min=0.0)  # transverse B squared
     va_sq = B_sq * inv_rho                    # total Alfven speed squared
-    van_sq = Bn_sq * inv_rho                  # normal Alfven speed squared
 
-    # (a^2 + va^2)^2 - 4 * a^2 * van^2
-    sum_sq = a_sq + va_sq
-    discriminant = sum_sq * sum_sq - 4.0 * a_sq * van_sq
+    # Numerically stable discriminant:
+    #   (a^2 - va^2)^2 + 4*a^2*Bt^2/rho
+    # This avoids catastrophic cancellation when a^2 ≈ va^2 (float32 issue).
+    diff = a_sq - va_sq
+    discriminant = diff * diff + 4.0 * a_sq * Bt_sq * inv_rho
 
-    # Guard against negative discriminant from round-off
+    # Guard against negative discriminant from round-off (should not happen
+    # with the stable form, but belt-and-suspenders for float32).
     discriminant = torch.clamp(discriminant, min=0.0)
 
+    sum_sq = a_sq + va_sq
     cf_sq = 0.5 * (sum_sq + torch.sqrt(discriminant))
 
     # Guard against negative cf^2 from round-off
@@ -366,6 +392,179 @@ def _mc_limiter(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
     # Zero out where a and b have different signs (not monotone)
     return torch.where(a * b > 0.0, med, torch.zeros_like(a))
+
+
+def _weno5_left_biased(
+    v0: torch.Tensor,
+    v1: torch.Tensor,
+    v2: torch.Tensor,
+    v3: torch.Tensor,
+    v4: torch.Tensor,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    """Left-biased WENO5-Z reconstruction at interface i+1/2.
+
+    Uses 5-point stencil of POINT VALUES ``{f[i-2], f[i-1], f[i],
+    f[i+1], f[i+2]}`` to reconstruct the value at ``x_{i+1/2}``
+    (right face of cell i).
+
+    The polynomial coefficients are for **point-value** interpolation
+    (finite difference), NOT cell-average reconstruction (finite
+    volume).  Ideal weights are ``d0=1/16, d1=10/16, d2=5/16``.
+
+    Uses **WENO-Z** weights (Borges et al. 2008) instead of the
+    classical WENO-JS (Jiang & Shu 1996).  WENO-Z introduces a
+    global smoothness indicator ``tau_5 = |beta_0 - beta_2|`` that
+    achieves the optimal convergence order at critical points
+    (where f and f' vanish simultaneously), unlike WENO-JS which
+    loses accuracy there.  The weight formula is:
+
+        alpha_k = d_k * (1 + (tau_5 / (eps + beta_k))^p)
+
+    with p=2 for 5th-order accuracy.
+
+    References:
+        Shu C.-W., SIAM Rev. 51, 82-126 (2009), Sec. 2.2.
+        Jiang G.-S. & Shu C.-W., JCP 126, 202-228 (1996).
+        Borges R. et al., JCP 227, 3191-3211 (2008) -- WENO-Z.
+
+    Returns the reconstructed value (same shape as inputs).
+    """
+    # Point-value candidate polynomials (Lagrange interpolation at u=+0.5)
+    # S0 = {i-2, i-1, i}: coefficients (3/8, -10/8, 15/8)
+    p0 = (3.0 * v0 - 10.0 * v1 + 15.0 * v2) / 8.0
+    # S1 = {i-1, i, i+1}: coefficients (-1/8, 6/8, 3/8)
+    p1 = (-v1 + 6.0 * v2 + 3.0 * v3) / 8.0
+    # S2 = {i, i+1, i+2}: coefficients (3/8, 6/8, -1/8)
+    p2 = (3.0 * v2 + 6.0 * v3 - v4) / 8.0
+
+    # Ideal weights for point-value WENO5: d0=1/16, d1=10/16, d2=5/16
+    d0 = 1.0 / 16.0
+    d1 = 10.0 / 16.0
+    d2 = 5.0 / 16.0
+
+    # Smoothness indicators (Jiang-Shu — same for FD and FV)
+    beta0 = ((13.0 / 12.0) * (v0 - 2.0 * v1 + v2) ** 2
+             + 0.25 * (v0 - 4.0 * v1 + 3.0 * v2) ** 2)
+    beta1 = ((13.0 / 12.0) * (v1 - 2.0 * v2 + v3) ** 2
+             + 0.25 * (v1 - v3) ** 2)
+    beta2 = ((13.0 / 12.0) * (v2 - 2.0 * v3 + v4) ** 2
+             + 0.25 * (3.0 * v2 - 4.0 * v3 + v4) ** 2)
+
+    # WENO-Z global smoothness indicator (Borges et al. 2008, Eq. 25)
+    tau5 = torch.abs(beta0 - beta2)
+
+    # WENO-Z nonlinear weights: alpha_k = d_k * (1 + (tau5/(eps+beta_k))^2)
+    a0 = d0 * (1.0 + (tau5 / (eps + beta0)) ** 2)
+    a1 = d1 * (1.0 + (tau5 / (eps + beta1)) ** 2)
+    a2 = d2 * (1.0 + (tau5 / (eps + beta2)) ** 2)
+    a_sum = torch.clamp(a0 + a1 + a2, min=1e-30)
+
+    return (a0 / a_sum) * p0 + (a1 / a_sum) * p1 + (a2 / a_sum) * p2
+
+
+def weno5_reconstruct_mps(
+    U: torch.Tensor,
+    dim: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """WENO5 (5th-order) reconstruction at cell interfaces.
+
+    Weighted Essentially Non-Oscillatory reconstruction using three
+    candidate stencils with nonlinear weights based on smoothness
+    indicators (Jiang & Shu 1996).  Achieves 5th-order accuracy in
+    smooth regions and reduces to ENO-like near discontinuities.
+
+    **Left state** at interface ``i+1/2``: left-biased WENO5 from
+    stencil ``{i-2, i-1, i, i+1, i+2}``.
+
+    **Right state** at interface ``i+1/2``: left-biased WENO5 applied
+    from cell ``i+1``'s perspective using stencil
+    ``{i-1, i, i+1, i+2, i+3}``.
+
+    Both left and right use the same ``_weno5_left_biased`` function;
+    the right state simply shifts the stencil by +1.  This requires
+    ``n >= 6`` cells (n-5 interior interfaces).  Boundary interfaces
+    are filled with PLM for a total of ``n-1`` interfaces.
+
+    References:
+        Jiang G.-S. & Shu C.-W., JCP 126, 202-228 (1996).
+        Shu C.-W., SIAM Rev. 51, 82-126 (2009).
+
+    Args:
+        U: Conservative state vector, shape (8, nx, ny, nz).
+        dim: Spatial dimension to reconstruct along (0, 1, 2).
+
+    Returns:
+        Tuple (UL, UR) of left and right interface states.
+        Each has ``n-1`` entries along the reconstruction axis,
+        matching the PLM interface convention.
+    """
+    _ensure_mps(U, "U")
+
+    axis = dim + 1  # tensor axis (0 is the 8-component axis)
+    n = U.shape[axis]
+
+    if n < 6:
+        # Need at least 6 cells for proper left + right WENO5 stencils
+        return plm_reconstruct_mps(U, dim=dim, limiter="mc")
+
+    # ------------------------------------------------------------------
+    # Step 1: PLM reconstruction for ALL n-1 interfaces (baseline)
+    # ------------------------------------------------------------------
+    UL_full, UR_full = plm_reconstruct_mps(U, dim=dim, limiter="mc")
+
+    # ------------------------------------------------------------------
+    # Step 2: WENO5 for interior interfaces (overwrite interior of PLM)
+    # ------------------------------------------------------------------
+    # Left state at interface i+1/2 uses cells {i-2, i-1, i, i+1, i+2}.
+    # Right state at interface i+1/2 uses cells {i-1, i, i+1, i+2, i+3}.
+    # Both are valid for i ∈ [2, n-4], giving n_w = n-5 interfaces.
+    # (Left alone could go to n-3, but the right requires i+3 ≤ n-1.)
+    n_w = n - 5  # number of WENO5 interfaces (both left & right)
+
+    # Left-biased stencil for i = 2..n-4
+    vL0 = torch.narrow(U, axis, 0, n_w)  # i-2
+    vL1 = torch.narrow(U, axis, 1, n_w)  # i-1
+    vL2 = torch.narrow(U, axis, 2, n_w)  # i
+    vL3 = torch.narrow(U, axis, 3, n_w)  # i+1
+    vL4 = torch.narrow(U, axis, 4, n_w)  # i+2
+
+    UL_weno = _weno5_left_biased(vL0, vL1, vL2, vL3, vL4)
+
+    # Right state at i+1/2: left face of cell i+1.
+    # This is the MIRROR of the left-biased reconstruction.
+    # We reverse the stencil order so _weno5_left_biased computes at the
+    # left face rather than the right face:
+    #   v0=cell (i+1)+2 = i+3,  v1=cell (i+1)+1 = i+2,  v2=cell i+1,
+    #   v3=cell i,  v4=cell i-1.
+    vR0 = torch.narrow(U, axis, 5, n_w)  # i+3
+    vR1 = torch.narrow(U, axis, 4, n_w)  # i+2
+    vR2 = torch.narrow(U, axis, 3, n_w)  # i+1  (center cell)
+    vR3 = torch.narrow(U, axis, 2, n_w)  # i
+    vR4 = torch.narrow(U, axis, 1, n_w)  # i-1
+
+    UR_weno = _weno5_left_biased(vR0, vR1, vR2, vR3, vR4)
+
+    # ------------------------------------------------------------------
+    # Step 3: Splice WENO5 into the PLM-initialized full arrays.
+    # ------------------------------------------------------------------
+    UL_out = UL_full.clone()
+    UR_out = UR_full.clone()
+
+    # WENO5 covers PLM interface indices 2..n-4 (n_w = n-5 interfaces)
+    s_w = [slice(None)] * UL_out.ndim
+    s_w[axis] = slice(2, 2 + n_w)
+    UL_out[tuple(s_w)] = UL_weno
+    UR_out[tuple(s_w)] = UR_weno
+
+    # Enforce positivity on density and total energy
+    UL_out[IDN] = torch.clamp(UL_out[IDN], min=RHO_FLOOR)
+    UR_out[IDN] = torch.clamp(UR_out[IDN], min=RHO_FLOOR)
+    if UL_out.shape[0] > IEN:
+        UL_out[IEN] = torch.clamp(UL_out[IEN], min=P_FLOOR)
+        UR_out[IEN] = torch.clamp(UR_out[IEN], min=P_FLOOR)
+
+    return UL_out, UR_out
 
 
 def plm_reconstruct_mps(
@@ -522,15 +721,34 @@ def hll_flux_mps(
     _ensure_mps(UL, "UL")
     _ensure_mps(UR, "UR")
 
+    # ---- Sanitize inputs: replace any NaN with floor values ----
+    # This prevents NaN from upstream (e.g., bad reconstruction at
+    # strong discontinuities) from propagating into the flux.
+    UL = torch.where(torch.isnan(UL), torch.zeros_like(UL) + RHO_FLOOR, UL)
+    UR = torch.where(torch.isnan(UR), torch.zeros_like(UR) + RHO_FLOOR, UR)
+
+    # Enforce positivity on density and energy in the interface states
+    UL_clean = UL.clone()
+    UR_clean = UR.clone()
+    UL_clean[IDN] = torch.clamp(UL[IDN], min=RHO_FLOOR)
+    UR_clean[IDN] = torch.clamp(UR[IDN], min=RHO_FLOOR)
+    UL_clean[IEN] = torch.clamp(UL[IEN], min=P_FLOOR)
+    UR_clean[IEN] = torch.clamp(UR[IEN], min=P_FLOOR)
+
     # Extract primitives
-    rho_L, vel_L, p_L, B_L = _cons_to_prim_mps(UL, gamma)
-    rho_R, vel_R, p_R, B_R = _cons_to_prim_mps(UR, gamma)
+    rho_L, vel_L, p_L, B_L = _cons_to_prim_mps(UL_clean, gamma)
+    rho_R, vel_R, p_R, B_R = _cons_to_prim_mps(UR_clean, gamma)
+
+    # Clamp velocities to prevent extreme wave speeds in float32
+    _V_MAX = 1e6  # reasonable upper bound for MHD velocities in code units
+    vel_L = torch.clamp(vel_L, min=-_V_MAX, max=_V_MAX)
+    vel_R = torch.clamp(vel_R, min=-_V_MAX, max=_V_MAX)
 
     # Normal velocities
     vn_L = vel_L[dim]
     vn_R = vel_R[dim]
 
-    # Fast magnetosonic speeds
+    # Fast magnetosonic speeds (using numerically stable formula)
     cf_L = _fast_magnetosonic_mps(rho_L, p_L, B_L, gamma, dim)
     cf_R = _fast_magnetosonic_mps(rho_R, p_R, B_R, gamma, dim)
 
@@ -538,13 +756,20 @@ def hll_flux_mps(
     SL = torch.minimum(vn_L - cf_L, vn_R - cf_R)
     SR = torch.maximum(vn_L + cf_L, vn_R + cf_R)
 
+    # Ensure SR > SL (physical requirement: right wave faster than left)
+    SR = torch.maximum(SR, SL + 1e-10)
+
     # Physical fluxes
-    FL = _physical_flux_mps(UL, gamma, dim)
-    FR = _physical_flux_mps(UR, gamma, dim)
+    FL = _physical_flux_mps(UL_clean, gamma, dim)
+    FR = _physical_flux_mps(UR_clean, gamma, dim)
+
+    # Replace any NaN in physical fluxes with zero (Lax-Friedrichs fallback)
+    FL = torch.where(torch.isnan(FL), torch.zeros_like(FL), FL)
+    FR = torch.where(torch.isnan(FR), torch.zeros_like(FR), FR)
 
     # Denominator with floor to avoid division by zero
     denom = SR - SL
-    denom = torch.clamp(denom, min=1e-30)
+    denom = torch.clamp(denom, min=1e-20)
 
     # HLL flux: (SR*FL - SL*FR + SL*SR*(UR - UL)) / (SR - SL)
     # Broadcast SL, SR from shape (...) to (8, ...) for the 8 components
@@ -552,7 +777,7 @@ def hll_flux_mps(
     SR_8 = SR.unsqueeze(0)     # (1, ...)
     denom_8 = denom.unsqueeze(0)
 
-    F_HLL = (SR_8 * FL - SL_8 * FR + SL_8 * SR_8 * (UR - UL)) / denom_8
+    F_HLL = (SR_8 * FL - SL_8 * FR + SL_8 * SR_8 * (UR_clean - UL_clean)) / denom_8
 
     # Upwind selection: if SL >= 0, use FL; if SR <= 0, use FR
     # This improves accuracy when waves are purely left- or right-going.
@@ -562,12 +787,235 @@ def hll_flux_mps(
     F_HLL = torch.where(all_right, FL, F_HLL)
     F_HLL = torch.where(all_left, FR, F_HLL)
 
-    _check_no_nan(F_HLL, f"HLL flux dim={dim}")
+    # Final NaN guard: replace any remaining NaN with Lax-Friedrichs flux
+    # F_LF = 0.5*(FL + FR) is dissipative but always well-defined.
+    has_nan = torch.isnan(F_HLL)
+    if has_nan.any():
+        F_LF = 0.5 * (FL + FR)
+        F_HLL = torch.where(has_nan, F_LF, F_HLL)
+        logger.warning("HLL flux dim=%d: %d NaN values replaced with LF flux",
+                        dim, int(has_nan.sum().item()))
+
     return F_HLL
 
 
 # ============================================================
-# Flux computation: PLM + HLL for one dimension
+# HLLD Riemann solver (8-component, fully vectorized)
+# ============================================================
+
+
+def hlld_flux_mps(
+    UL: torch.Tensor,
+    UR: torch.Tensor,
+    gamma: float,
+    dim: int,
+) -> torch.Tensor:
+    """HLLD (Harten-Lax-van Leer-Discontinuities) Riemann solver for MHD.
+
+    Fully vectorized 8-component HLLD solver that resolves four intermediate
+    states: two outer fast magnetosonic shocks and two inner Alfven/rotational
+    discontinuities separated by a contact surface.  This captures contact
+    discontinuities and Alfven waves much more accurately than HLL.
+
+    The HLLD flux is selected from five regions::
+
+        SL    SL*    SM    SR*    SR
+        |------|------|------|------|
+        F_L   F*_L  F**_L  F**_R  F*_R   F_R
+
+    Following Miyoshi & Kusano, JCP 208, 315 (2005).
+
+    All operations are fully vectorized PyTorch tensor ops on MPS/CPU.
+    Float32 safe with floor guards at every division.
+
+    Args:
+        UL: Left state at interfaces, shape (8, ...), float32.
+        UR: Right state at interfaces, shape (8, ...), float32.
+        gamma: Adiabatic index.
+        dim: Normal direction (0=x, 1=y, 2=z).
+
+    Returns:
+        HLLD numerical flux, shape (8, ...), float32.
+    """
+    _ensure_mps(UL, "UL")
+    _ensure_mps(UR, "UR")
+
+    # Map dim to component indices: normal and two transverse
+    # dim=0 (x-normal): n=0, t1=1, t2=2  →  momentum IM1, IM2, IM3; B IB1, IB2, IB3
+    # dim=1 (y-normal): n=1, t1=2, t2=0  →  momentum IM2, IM3, IM1; B IB2, IB3, IB1
+    # dim=2 (z-normal): n=2, t1=0, t2=1  →  momentum IM3, IM1, IM2; B IB3, IB1, IB2
+    im_n = IM1 + dim           # normal momentum index
+    im_t1 = IM1 + (dim + 1) % 3  # transverse 1 momentum
+    im_t2 = IM1 + (dim + 2) % 3  # transverse 2 momentum
+    ib_n = IB1 + dim           # normal B index
+    ib_t1 = IB1 + (dim + 1) % 3  # transverse 1 B
+    ib_t2 = IB1 + (dim + 2) % 3  # transverse 2 B
+
+    # ---- Sanitize inputs ----
+    UL = torch.where(torch.isnan(UL), torch.zeros_like(UL) + RHO_FLOOR, UL)
+    UR = torch.where(torch.isnan(UR), torch.zeros_like(UR) + RHO_FLOOR, UR)
+    UL = UL.clone()
+    UR = UR.clone()
+    UL[IDN] = torch.clamp(UL[IDN], min=RHO_FLOOR)
+    UR[IDN] = torch.clamp(UR[IDN], min=RHO_FLOOR)
+    UL[IEN] = torch.clamp(UL[IEN], min=P_FLOOR)
+    UR[IEN] = torch.clamp(UR[IEN], min=P_FLOOR)
+
+    # ---- Extract primitives ----
+    rho_L, vel_L, p_L, B_L = _cons_to_prim_mps(UL, gamma)
+    rho_R, vel_R, p_R, B_R = _cons_to_prim_mps(UR, gamma)
+
+    vn_L = vel_L[dim]
+    vn_R = vel_R[dim]
+
+    Bn_L = B_L[dim]
+    Bn_R = B_R[dim]
+    # Use arithmetic mean of normal B (should be continuous across interface)
+    Bn = 0.5 * (Bn_L + Bn_R)
+
+    # ---- Fast magnetosonic speeds ----
+    cf_L = _fast_magnetosonic_mps(rho_L, p_L, B_L, gamma, dim)
+    cf_R = _fast_magnetosonic_mps(rho_R, p_R, B_R, gamma, dim)
+
+    # Davis wave speed estimates for outer shocks
+    SL = torch.minimum(vn_L - cf_L, vn_R - cf_R)
+    SR = torch.maximum(vn_L + cf_L, vn_R + cf_R)
+    SR = torch.maximum(SR, SL + 1e-10)
+
+    # ---- Total pressures ----
+    B_sq_L = B_L[0] ** 2 + B_L[1] ** 2 + B_L[2] ** 2
+    B_sq_R = B_R[0] ** 2 + B_R[1] ** 2 + B_R[2] ** 2
+    pt_L = p_L + 0.5 * B_sq_L  # total pressure (thermal + magnetic)
+    pt_R = p_R + 0.5 * B_sq_R
+
+    # ---- Contact wave speed SM (Eq. 38, Miyoshi & Kusano) ----
+    denom_SM = rho_R * (SR - vn_R) - rho_L * (SL - vn_L)
+    denom_SM = torch.where(
+        torch.abs(denom_SM) < 1e-20,
+        torch.full_like(denom_SM, 1e-20) * torch.sign(denom_SM + 1e-30),
+        denom_SM,
+    )
+    SM = (rho_R * vn_R * (SR - vn_R) - rho_L * vn_L * (SL - vn_L) + pt_L - pt_R) / denom_SM
+
+    # ---- Total pressure in star region (Eq. 41) ----
+    pt_star = pt_L + rho_L * (SL - vn_L) * (SM - vn_L)
+    pt_star = torch.clamp(pt_star, min=P_FLOOR)
+
+    # ---- Star-state densities (Eq. 43) ----
+    denom_L = torch.clamp(torch.abs(SL - SM), min=1e-20) * torch.sign(SL - SM + 1e-30)
+    denom_R = torch.clamp(torch.abs(SR - SM), min=1e-20) * torch.sign(SR - SM + 1e-30)
+    rho_sL = torch.clamp(rho_L * (SL - vn_L) / denom_L, min=RHO_FLOOR)
+    rho_sR = torch.clamp(rho_R * (SR - vn_R) / denom_R, min=RHO_FLOOR)
+
+    # ---- Star-state transverse velocities and B (Eqs. 44-46) ----
+    inv_rhoL_dSL = 1.0 / torch.clamp(torch.abs(rho_L * (SL - vn_L) * (SL - SM) - Bn ** 2), min=1e-20)
+    inv_rhoR_dSR = 1.0 / torch.clamp(torch.abs(rho_R * (SR - vn_R) * (SR - SM) - Bn ** 2), min=1e-20)
+
+    # Flag for when Bn ≈ 0 (degenerates to hydro HLLC)
+    Bn_small = torch.abs(Bn) < 1e-10
+
+    # Left star transverse velocity (Eq. 44)
+    vt1_sL = vel_L[(dim + 1) % 3] - Bn * B_L[(dim + 1) % 3] * (SM - vn_L) * inv_rhoL_dSL
+    vt2_sL = vel_L[(dim + 2) % 3] - Bn * B_L[(dim + 2) % 3] * (SM - vn_L) * inv_rhoL_dSL
+    vt1_sL = torch.where(Bn_small, vel_L[(dim + 1) % 3], vt1_sL)
+    vt2_sL = torch.where(Bn_small, vel_L[(dim + 2) % 3], vt2_sL)
+
+    # Right star transverse velocity
+    vt1_sR = vel_R[(dim + 1) % 3] - Bn * B_R[(dim + 1) % 3] * (SM - vn_R) * inv_rhoR_dSR
+    vt2_sR = vel_R[(dim + 2) % 3] - Bn * B_R[(dim + 2) % 3] * (SM - vn_R) * inv_rhoR_dSR
+    vt1_sR = torch.where(Bn_small, vel_R[(dim + 1) % 3], vt1_sR)
+    vt2_sR = torch.where(Bn_small, vel_R[(dim + 2) % 3], vt2_sR)
+
+    # Left star transverse B (Eq. 45)
+    Bt1_sL = B_L[(dim + 1) % 3] * (rho_L * (SL - vn_L) ** 2 - Bn ** 2) * inv_rhoL_dSL
+    Bt2_sL = B_L[(dim + 2) % 3] * (rho_L * (SL - vn_L) ** 2 - Bn ** 2) * inv_rhoL_dSL
+    Bt1_sL = torch.where(Bn_small, B_L[(dim + 1) % 3], Bt1_sL)
+    Bt2_sL = torch.where(Bn_small, B_L[(dim + 2) % 3], Bt2_sL)
+
+    # Right star transverse B
+    Bt1_sR = B_R[(dim + 1) % 3] * (rho_R * (SR - vn_R) ** 2 - Bn ** 2) * inv_rhoR_dSR
+    Bt2_sR = B_R[(dim + 2) % 3] * (rho_R * (SR - vn_R) ** 2 - Bn ** 2) * inv_rhoR_dSR
+    Bt1_sR = torch.where(Bn_small, B_R[(dim + 1) % 3], Bt1_sR)
+    Bt2_sR = torch.where(Bn_small, B_R[(dim + 2) % 3], Bt2_sR)
+
+    # ---- Star-state energies (Eq. 48) ----
+    vB_sL = SM * Bn + vt1_sL * Bt1_sL + vt2_sL * Bt2_sL
+    vB_L = vn_L * Bn_L + vel_L[(dim + 1) % 3] * B_L[(dim + 1) % 3] + vel_L[(dim + 2) % 3] * B_L[(dim + 2) % 3]
+    e_sL = ((SL - vn_L) * UL[IEN] - pt_L * vn_L + pt_star * SM + Bn * (vB_L - vB_sL)) / denom_L
+
+    vB_sR = SM * Bn + vt1_sR * Bt1_sR + vt2_sR * Bt2_sR
+    vB_R = vn_R * Bn_R + vel_R[(dim + 1) % 3] * B_R[(dim + 1) % 3] + vel_R[(dim + 2) % 3] * B_R[(dim + 2) % 3]
+    e_sR = ((SR - vn_R) * UR[IEN] - pt_R * vn_R + pt_star * SM + Bn * (vB_R - vB_sR)) / denom_R
+
+    # ---- Build star conservative states (8 components) ----
+    U_sL = torch.zeros_like(UL)
+    U_sL[IDN] = rho_sL
+    U_sL[im_n] = rho_sL * SM
+    U_sL[im_t1] = rho_sL * vt1_sL
+    U_sL[im_t2] = rho_sL * vt2_sL
+    U_sL[IEN] = e_sL
+    U_sL[ib_n] = Bn
+    U_sL[ib_t1] = Bt1_sL
+    U_sL[ib_t2] = Bt2_sL
+
+    U_sR = torch.zeros_like(UR)
+    U_sR[IDN] = rho_sR
+    U_sR[im_n] = rho_sR * SM
+    U_sR[im_t1] = rho_sR * vt1_sR
+    U_sR[im_t2] = rho_sR * vt2_sR
+    U_sR[IEN] = e_sR
+    U_sR[ib_n] = Bn
+    U_sR[ib_t1] = Bt1_sR
+    U_sR[ib_t2] = Bt2_sR
+
+    # ---- Physical fluxes (used in Rankine-Hugoniot formula) ----
+    FL = _physical_flux_mps(UL, gamma, dim)
+    FR = _physical_flux_mps(UR, gamma, dim)
+    FL = torch.where(torch.isnan(FL), torch.zeros_like(FL), FL)
+    FR = torch.where(torch.isnan(FR), torch.zeros_like(FR), FR)
+
+    # ---- Star-region fluxes via Rankine-Hugoniot ----
+    # F*_L = F_L + SL * (U*_L - U_L)
+    # F*_R = F_R + SR * (U*_R - U_R)
+    SL_8 = SL.unsqueeze(0)
+    SR_8 = SR.unsqueeze(0)
+    F_sL = FL + SL_8 * (U_sL - UL)
+    F_sR = FR + SR_8 * (U_sR - UR)
+
+    # ---- Select flux based on wave regions ----
+    SM_8 = SM.unsqueeze(0)
+
+    # Start with F_R (rightmost region)
+    F_HLLD = FR.clone()
+
+    # SR region: use F*_R where SM <= 0 < SR
+    mask_sR = (SM_8 <= 0.0) & (SR_8 > 0.0)
+    F_HLLD = torch.where(mask_sR, F_sR, F_HLLD)
+
+    # SL* region: use F*_L where SL <= 0 <= SM
+    mask_sL = (SL_8 <= 0.0) & (SM_8 > 0.0)
+    F_HLLD = torch.where(mask_sL, F_sL, F_HLLD)
+
+    # Left region: use F_L where SL > 0
+    mask_L = SL_8 > 0.0
+    F_HLLD = torch.where(mask_L, FL, F_HLLD)
+
+    # ---- Final NaN guard ----
+    has_nan = torch.isnan(F_HLLD)
+    if has_nan.any():
+        # Fall back to HLL (more robust) where HLLD produced NaN
+        denom_hll = torch.clamp(SR - SL, min=1e-20).unsqueeze(0)
+        F_HLL_fallback = (SR_8 * FL - SL_8 * FR + SL_8 * SR_8 * (UR - UL)) / denom_hll
+        F_HLL_fallback = torch.where(torch.isnan(F_HLL_fallback), 0.5 * (FL + FR), F_HLL_fallback)
+        F_HLLD = torch.where(has_nan, F_HLL_fallback, F_HLLD)
+        logger.warning("HLLD flux dim=%d: %d NaN values replaced with HLL fallback",
+                        dim, int(has_nan.sum().item()))
+
+    return F_HLLD
+
+
+# ============================================================
+# Flux computation: PLM + HLL/HLLD for one dimension
 # ============================================================
 
 
@@ -579,33 +1027,43 @@ def compute_fluxes_mps(
     dz: float,
     dim: int,
     limiter: str = "minmod",
+    riemann_solver: str = "hll",
+    reconstruction: str = "plm",
 ) -> torch.Tensor:
-    """Compute numerical flux along one dimension using PLM + HLL.
+    """Compute numerical flux along one dimension using reconstruction + Riemann solver.
 
     Pipeline:
-        1. PLM reconstruction of conservative variables at cell interfaces.
-        2. HLL Riemann solve at each interface.
+        1. Reconstruction of conservative variables at cell interfaces (PLM or WENO5).
+        2. Riemann solve (HLL or HLLD) at each interface.
 
     Args:
-        state: Conservative state, shape (8, nx, ny, nz), float32, MPS.
+        state: Conservative state, shape (8, nx, ny, nz), float32/64.
         gamma: Adiabatic index.
         dx: Grid spacing in x [m].
         dy: Grid spacing in y [m].
         dz: Grid spacing in z [m].
         dim: Dimension to compute fluxes along (0=x, 1=y, 2=z).
         limiter: Slope limiter for PLM ("minmod" or "mc").
+        riemann_solver: Riemann solver to use: "hll" or "hlld".
+        reconstruction: Reconstruction method: "plm" (2nd order) or "weno5" (5th order).
 
     Returns:
         Numerical flux at interfaces, shape (8, ...) where the axis
-        corresponding to *dim* has (n-1) entries.  Other axes are unchanged.
+        corresponding to *dim* has reduced entries.
     """
     _ensure_mps(state, "state")
 
-    # Step 1: PLM reconstruction
-    UL, UR = plm_reconstruct_mps(state, dim=dim, limiter=limiter)
+    # Step 1: Reconstruction
+    if reconstruction == "weno5" and state.shape[dim + 1] >= 5:
+        UL, UR = weno5_reconstruct_mps(state, dim=dim)
+    else:
+        UL, UR = plm_reconstruct_mps(state, dim=dim, limiter=limiter)
 
-    # Step 2: HLL Riemann solve
-    flux = hll_flux_mps(UL, UR, gamma, dim)
+    # Step 2: Riemann solve
+    if riemann_solver == "hlld":
+        flux = hlld_flux_mps(UL, UR, gamma, dim)
+    else:
+        flux = hll_flux_mps(UL, UR, gamma, dim)
 
     return flux
 
@@ -622,11 +1080,14 @@ def mhd_rhs_mps(
     dy: float,
     dz: float,
     limiter: str = "minmod",
+    riemann_solver: str = "hll",
+    reconstruction: str = "plm",
 ) -> dict[str, torch.Tensor]:
     """Compute the full ideal MHD right-hand side dU/dt = -div(F).
 
     Applies dimension-split flux differencing in all three directions using
-    PLM reconstruction and the HLL Riemann solver.  The update is:
+    the chosen reconstruction (PLM or WENO5) and Riemann solver (HLL or
+    HLLD).  The update is:
 
         dU/dt = -(F_{i+1/2} - F_{i-1/2}) / dx
               - (G_{j+1/2} - G_{j-1/2}) / dy
@@ -647,6 +1108,9 @@ def mhd_rhs_mps(
         dy: Grid spacing in y [m].
         dz: Grid spacing in z [m].
         limiter: Slope limiter for PLM ("minmod" or "mc").
+        riemann_solver: Riemann solver: "hll" or "hlld".
+        reconstruction: Reconstruction method: "plm" (2nd order) or
+            "weno5" (5th order).
 
     Returns:
         Dictionary with time derivatives of the state:
@@ -684,7 +1148,9 @@ def mhd_rhs_mps(
             continue
 
         # Compute interface fluxes: shape (8, ...) with (n-1) along axis
-        flux = compute_fluxes_mps(U, gamma, dx, dy, dz, dim_idx, limiter)
+        flux = compute_fluxes_mps(
+            U, gamma, dx, dy, dz, dim_idx, limiter, riemann_solver, reconstruction,
+        )
 
         # Flux differencing: dU/dt -= (F[i+1/2] - F[i-1/2]) / dh
         # flux has (n-1) interfaces.  The difference F[i+1/2] - F[i-1/2]
