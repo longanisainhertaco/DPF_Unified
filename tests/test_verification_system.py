@@ -136,11 +136,11 @@ class TestT31PF1000CircuitWaveform:
         )
 
     def test_quarter_period_timing(self, pf1000_circuit: RLCSolver) -> None:
-        """Quarter period T/4 should be 3 - 5 us for PF-1000 parameters.
+        """Quarter period T/4 should be 5 - 12 us for PF-1000 parameters.
 
         Analytical: T = 2*pi*sqrt(L*C), so T/4 = (pi/2)*sqrt(L*C).
-        For L=15nH, C=1.332mF: T/4 ~ 2.2 us (ideal). Including stray
-        inductance and plasma loading, observed T/4 ~ 3-5 us.
+        For L=33.5nH, C=1.332mF: T/4 ~ 10.5 us (ideal). Including stray
+        inductance and plasma loading, observed T/4 ~ 5-12 us.
         """
         C = pf1000_circuit.C
         L = pf1000_circuit.L_ext
@@ -156,10 +156,10 @@ class TestT31PF1000CircuitWaveform:
         t_peak = times[i_peak]
 
         # The first peak of current occurs at T/4 in an ideal LC circuit
-        # Allow generous range: 1-8 us (no plasma load → closer to analytical)
-        assert 1e-6 < t_peak < 8e-6, (
+        # Allow generous range: 1-12 us (no plasma load → closer to analytical)
+        assert 1e-6 < t_peak < 12e-6, (
             f"Time of peak current {t_peak*1e6:.2f} us outside expected "
-            f"range 1-8 us (analytical T/4 = {T_quarter_analytical*1e6:.2f} us)"
+            f"range 1-12 us (analytical T/4 = {T_quarter_analytical*1e6:.2f} us)"
         )
 
     def test_underdamped_oscillation(self, pf1000_circuit: RLCSolver) -> None:
@@ -857,9 +857,9 @@ class TestT36CrossDeviceScaling:
     def test_stored_energy_ordering(self, all_circuit_solvers: dict) -> None:
         """PF-1000 > LLNL > NX2 in stored energy.
 
-        PF-1000: 0.5 * 1.332e-3 * (27e3)^2 ~ 485 J
-        LLNL: 0.5 * 3.6e-4 * (24e3)^2 ~ 103 J
-        NX2: 0.5 * 0.9e-6 * (12e3)^2 ~ 0.065 J
+        PF-1000: 0.5 * 1.332e-3 * (27e3)^2 ~ 485 kJ
+        LLNL: 0.5 * 16e-6 * (22e3)^2 ~ 3.9 kJ
+        NX2: 0.5 * 28e-6 * (14e3)^2 ~ 2.7 kJ
         """
         energies = {}
         for name, solver in all_circuit_solvers.items():
@@ -876,9 +876,12 @@ class TestT36CrossDeviceScaling:
         )
 
     def test_peak_current_ordering(self, all_circuit_solvers: dict) -> None:
-        """Peak current should be ordered: PF-1000 > LLNL > NX2.
+        """Peak current should be ordered: PF-1000 > NX2 > LLNL.
 
         Ideal peak: I_max = V0 * sqrt(C/L).
+        PF-1000: 27e3 * sqrt(1.332e-3 / 33.5e-9) ~ 5.4 MA
+        NX2: 14e3 * sqrt(28e-6 / 20e-9) ~ 524 kA
+        LLNL: 22e3 * sqrt(16e-6 / 50e-9) ~ 394 kA
         """
         peak_currents = {}
         for name, solver in all_circuit_solvers.items():
@@ -887,13 +890,13 @@ class TestT36CrossDeviceScaling:
             _, currents, _ = _run_rlc_no_plasma(solver, sim_time, dt)
             peak_currents[name] = np.max(np.abs(currents))
 
-        assert peak_currents["pf1000"] > peak_currents["llnl_dpf"], (
+        assert peak_currents["pf1000"] > peak_currents["nx2"], (
             f"PF-1000 ({peak_currents['pf1000']:.3e} A) should exceed "
-            f"LLNL ({peak_currents['llnl_dpf']:.3e} A)"
-        )
-        assert peak_currents["llnl_dpf"] > peak_currents["nx2"], (
-            f"LLNL ({peak_currents['llnl_dpf']:.3e} A) should exceed "
             f"NX2 ({peak_currents['nx2']:.3e} A)"
+        )
+        assert peak_currents["nx2"] > peak_currents["llnl_dpf"], (
+            f"NX2 ({peak_currents['nx2']:.3e} A) should exceed "
+            f"LLNL ({peak_currents['llnl_dpf']:.3e} A)"
         )
 
     def test_nx2_peak_in_ka_range(self, all_circuit_solvers: dict) -> None:

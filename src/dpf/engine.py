@@ -32,6 +32,9 @@ from dpf.config import SimulationConfig
 from dpf.constants import k_B, pi
 from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
+
+# FieldManager (Phase 5)
+from dpf.core.field_manager import FieldManager
 from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.interferometry import abel_transform, fringe_shift
@@ -41,6 +44,7 @@ from dpf.fluid.eos import IdealEOS
 from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
 from dpf.fluid.mhd_solver import MHDSolver
 from dpf.fluid.nernst import apply_nernst_advection
+from dpf.fluid.snowplow import SnowplowModel
 from dpf.fluid.super_time_step import rkl2_diffusion_3d, rkl2_thermal_step
 from dpf.fluid.viscosity import (
     braginskii_eta0,
@@ -49,6 +53,7 @@ from dpf.fluid.viscosity import (
     viscous_heating_rate,
     viscous_stress_rate,
 )
+from dpf.kinetic.manager import KineticManager
 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
 from dpf.radiation.line_radiation import apply_line_radiation_losses
 from dpf.radiation.transport import apply_radiation_transport
@@ -100,6 +105,10 @@ class SimulationEngine:
             ESL=cc.ESL,
             anode_radius=cc.anode_radius,
             cathode_radius=cc.cathode_radius,
+            crowbar_enabled=cc.crowbar_enabled,
+            crowbar_mode=cc.crowbar_mode,
+            crowbar_time=cc.crowbar_time,
+            crowbar_resistance=cc.crowbar_resistance,
         )
 
         # Fluid / MHD — select solver based on geometry and backend
@@ -112,10 +121,20 @@ class SimulationEngine:
         # Boundary config
         self.boundary_cfg = config.boundary
 
-        # Backend selection: "python", "athena", "athenak", "metal", or "auto"
+        # Backend selection: "python", "athena", "athenak", "metal", "hybrid", or "auto"
         self.backend = self._resolve_backend(fc.backend)
 
-        if self.backend == "athenak":
+        if self.backend == "hybrid":
+            # Hybrid: Athena++ for physics phase, WALRUS surrogate for acceleration
+            from dpf.athena_wrapper import AthenaPPSolver
+            self.fluid = AthenaPPSolver(config)
+            self._cell_volume = None
+            self._hybrid_engine = None  # Lazily initialized in run()
+            logger.info(
+                "Using hybrid backend (Athena++ + WALRUS surrogate, "
+                "handoff=%.0f%%)", fc.handoff_fraction * 100
+            )
+        elif self.backend == "athenak":
             from dpf.athenak_wrapper import AthenaKSolver
             self.fluid = AthenaKSolver(config)
             self._cell_volume = None
@@ -189,11 +208,33 @@ class SimulationEngine:
         )
         self.diag_interval = dc.output_interval
 
+        # Well Exporter (Phase J.2)
+        from pathlib import Path
+
+        from dpf.io.well_exporter import WellExporter
+
+        # Use same directory as HDF5 output
+        out_dir = Path(dc.hdf5_filename).parent
+        self.well_exporter = WellExporter(
+            output_dir=out_dir,
+            filename_prefix=dc.well_filename_prefix,
+            enable=(dc.well_output_interval > 0),
+        )
+        self.well_interval = dc.well_output_interval
+
         # Initialize plasma state
         self.state = self._initial_state(nx, ny, nz)
 
         # Coupling
+        # Coupling
         self._coupling = CouplingState()
+        self._prev_L_plasma: float = 0.0
+
+        # Diagnostics tracking
+        self._last_R_plasma: float = 0.0
+        self._last_Z_bar: float = 0.0
+        self._last_eta_anom: float = 0.0
+        self._last_div_B: float = 0.0
 
         # Radiation config
         self.rad_cfg = config.radiation
@@ -218,9 +259,42 @@ class SimulationEngine:
         # Interferometry (cylindrical only)
         self._last_fringe_shifts: np.ndarray | None = None
 
+        # Source terms for coupling (e.g. J_kin from PIC)
+        self._current_source_terms: dict[str, np.ndarray] | None = None
+
         # Checkpoint settings
         self.checkpoint_interval: int = 0  # 0 = disabled
         self.checkpoint_filename: str = "checkpoint.h5"
+
+        # Kinetic (PIC) Manager
+        self.kinetic: KineticManager | None = None
+        if config.kinetic.enabled:
+            self.kinetic = KineticManager(config)
+
+        # Snowplow dynamics (Phase S)
+        self.snowplow: SnowplowModel | None = None
+        if config.snowplow.enabled:
+            cc = config.circuit
+            self.snowplow = SnowplowModel(
+                anode_radius=cc.anode_radius,
+                cathode_radius=cc.cathode_radius,
+                fill_density=config.rho0,
+                anode_length=config.snowplow.anode_length,
+                mass_fraction=config.snowplow.mass_fraction,
+                current_fraction=config.snowplow.current_fraction,
+                radial_mass_fraction=config.snowplow.radial_mass_fraction,
+                fill_pressure_Pa=config.snowplow.fill_pressure_Pa,
+            )
+
+        # Field Manager for vector calculus and inductance (Phase 5)
+        self.field_manager = FieldManager(
+            grid_shape=(nx, ny, nz),
+            dx=dx,
+            # geometry handled internally in FieldManager via logic
+            geometry=self.geometry_type,
+        )
+        if self.geometry_type == "cylindrical":
+            self.field_manager.dz = config.geometry.dz if config.geometry.dz else dx
 
         logger.info(
             "SimulationEngine initialized: grid=(%d,%d,%d), geometry=%s, backend=%s, "
@@ -230,6 +304,61 @@ class SimulationEngine:
             self.rad_cfg.fld_enabled,
             self.sheath_cfg.enabled,
         )
+
+        # Warn about physics modules skipped by non-Python backends
+        if self.backend in ("metal", "athenak", "athena", "hybrid"):
+            skipped = []
+            if fc.enable_viscosity and self.backend != "metal":
+                skipped.append("Braginskii viscosity")
+            if fc.enable_nernst and self.backend != "metal":
+                skipped.append("Nernst effect")
+            if fc.enable_anisotropic_conduction and self.backend != "metal":
+                skipped.append("anisotropic thermal conduction")
+            if self.rad_cfg.bremsstrahlung_enabled or self.rad_cfg.line_radiation_enabled:
+                skipped.append("radiation transport (bremsstrahlung/line)")
+            if self.sheath_cfg.enabled:
+                skipped.append("sheath boundary conditions")
+            if fc.diffusion_method == "sts":
+                skipped.append("RKL2 super time-stepping")
+            if fc.diffusion_method == "implicit":
+                skipped.append("implicit diffusion (ADI)")
+
+            if skipped and self.backend != "metal":
+                logger.warning(
+                    "Backend '%s' skips physics modules: %s. "
+                    "These modules are handled by the Python engine's operator-split "
+                    "loop but are NOT applied for Athena++/AthenaK backends. "
+                    "Use backend='metal' (supports Hall, Braginskii, Nernst) "
+                    "or backend='python' (all physics, but non-conservative).",
+                    self.backend, ", ".join(skipped),
+                )
+            elif skipped and self.backend == "metal":
+                # Metal supports Hall, Braginskii conduction/viscosity, Nernst, resistive MHD
+                metal_unsupported = [
+                    s for s in skipped
+                    if "radiation" in s.lower()
+                    or "sheath" in s.lower()
+                    or "super time-stepping" in s.lower()
+                    or "implicit diffusion" in s.lower()
+                ]
+                if metal_unsupported:
+                    logger.warning(
+                        "Metal backend (production tier) does not support: %s. "
+                        "Radiation and sheath physics require the Python engine.",
+                        ", ".join(metal_unsupported),
+                    )
+
+    @property
+    def engine_tier(self) -> str:
+        """Return the engine tier based on backend.
+
+        Returns:
+            ``"production"`` for conservative backends (Athena++, Metal),
+            ``"teaching"`` for the Python backend (non-conservative dp/dt).
+        """
+        if self.backend in ("athena", "metal", "hybrid"):
+            return "production"
+        return "teaching"
 
     @staticmethod
     def _resolve_backend(requested: str) -> str:
@@ -248,6 +377,10 @@ class SimulationEngine:
         """
         if requested == "python":
             return "python"
+
+        if requested == "hybrid":
+            # Hybrid uses Athena++ for physics + WALRUS surrogate for acceleration
+            return "hybrid"
 
         if requested == "metal":
             from dpf.metal.metal_solver import MetalMHDSolver
@@ -283,19 +416,28 @@ class SimulationEngine:
             return "athena"
 
         if requested == "auto":
-            # Prefer AthenaK > Athena++ > Python
+            # Priority: Athena++ > Metal > AthenaK > Python
+            # Athena++ and Metal are "production" tier (conservative dE/dt).
+            # Python is "teaching" tier (non-conservative dp/dt).
+            try:
+                from dpf.athena_wrapper import is_available
+                if is_available():
+                    logger.info("Auto-selected Athena++ backend (primary)")
+                    return "athena"
+            except ImportError:
+                pass
+            try:
+                from dpf.metal.metal_solver import MetalMHDSolver
+                if MetalMHDSolver.is_available():
+                    logger.info("Auto-selected Metal backend (GPU)")
+                    return "metal"
+            except ImportError:
+                pass
             try:
                 from dpf.athenak_wrapper import is_available as athenak_available
                 if athenak_available():
                     logger.info("Auto-selected AthenaK backend")
                     return "athenak"
-            except ImportError:
-                pass
-            try:
-                from dpf.athena_wrapper import is_available
-                if is_available():
-                    logger.info("Auto-selected Athena++ backend")
-                    return "athena"
             except ImportError:
                 pass
             logger.info("Auto-selected Python backend (no C++ backends available)")
@@ -459,8 +601,51 @@ class SimulationEngine:
         # operators (Spitzer, Nernst, viscosity, radiation) will be moved
         # to Athena++ source terms in Phase G.  For now, only circuit
         # coupling is active.
-        if self.backend == "athena":
+        if self.backend in ("athena", "hybrid"):
             return self._step_athena(dt, sim_time, _max_steps)
+
+        # Deprecation warning for Python backend on production workloads
+        # The Python engine uses dp/dt (non-conservative) instead of dE/dt,
+        # which violates Rankine-Hugoniot at shocks.  Warn early and often.
+        if self.step_count == 0 and self.backend == "python":
+            nx, ny, nz = self.config.grid_shape
+            import warnings
+            if nx * ny * nz > 16**3 or self.config.sim_time > 1e-7:
+                warnings.warn(
+                    "Python MHD backend uses a non-conservative pressure equation "
+                    "(dp/dt instead of dE/dt) which violates Rankine-Hugoniot at "
+                    f"shocks (grid {nx}x{ny}x{nz}, sim_time={self.config.sim_time:.1e}). "
+                    "For production accuracy, use backend='metal' (conservative, GPU) "
+                    "or backend='athena' (Athena++ C++). "
+                    "The Python engine is recommended only for teaching and prototyping.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
+        # === Phase 5: Pulse Power Circuit Step ===
+        # 1. Update fields for inductance calculation
+        self.field_manager.B = self.state["B"]
+
+        # 2. Compute variable inductance and derivative
+        # Use previous current for inductance calc (explicit coupling)
+        L_p = self.field_manager.compute_plasma_inductance(self.circuit.current)
+
+        if self.step_count > 0:
+            dL_dt = (L_p - self._prev_L_plasma) / max(dt, 1e-16)
+        else:
+            dL_dt = 0.0
+        self._prev_L_plasma = L_p
+
+        # 3. Step Circuit (Implicit Midpoint)
+        # TODO: Compute Back-EMF from field motion (-v x B)
+        back_emf = 0.0
+
+        coupling = CouplingState(Lp=L_p, dL_dt=dL_dt, R_plasma=0.0)
+        new_coupling = self.circuit.step(coupling, back_emf, dt)
+
+        # 4. Apply magnetic boundary conditions
+        if self.boundary_cfg.electrode_bc:
+            self._apply_electrode_bc(new_coupling.current)
 
         # === Step 1: Compute ionization state and plasma resistance ===
         Te = self.state["Te"]
@@ -566,7 +751,7 @@ class SimulationEngine:
                 J_sq = np.sum(J_field**2, axis=0)
                 R_plasma = float(np.sum(eta_field * J_sq * dV)) / I_sq
 
-            # Cap R_plasma to prevent runaway (physically: few Ohm max)
+            # Cap R_plasma to physical range (DPF: ~10 mOhm normal, ~1-10 Ohm at pinch disruption)
             R_plasma = min(R_plasma, 10.0)
 
             # --- Volume-integral L_plasma: L = 2 * integral(B^2/(2*mu_0) dV) / I^2 ---
@@ -584,14 +769,56 @@ class SimulationEngine:
         coupling = self.fluid.coupling_interface()
         coupling.R_plasma = R_plasma
         coupling.Z_bar = Z_bar
-        # Use volume-integral L_plasma if available
-        if L_plasma > 0:
+
+        # Snowplow dynamics: sheath-derived L_plasma overrides field-based L_plasma
+        # when the snowplow model is active (Lee model Phases 2-3: axial + radial).
+        if self.snowplow is not None and self.snowplow.is_active:
+            sp_result = self.snowplow.step(
+                dt, self._coupling.current,
+                pressure=self.config.snowplow.fill_pressure_Pa,
+            )
+            coupling.Lp = sp_result["L_plasma"]
+            coupling.dL_dt = sp_result["dL_dt"]
+            self._prev_L_plasma = sp_result["L_plasma"]
+        elif L_plasma > 0:
+            # Fallback: use volume-integral L_plasma from MHD fields
             coupling.Lp = L_plasma
-        back_emf = coupling.emf
+            if self._prev_L_plasma > 0 and dt > 0:
+                coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
+            self._prev_L_plasma = L_plasma
+
+        # back_emf = 0: This is CORRECT. The inductive back-EMF (I * dL/dt) is already
+        # accounted for in the circuit solver via R_star = R_eff + dLp_dt (rlc_solver.py:152).
+        # The implicit midpoint method includes dL/dt in the circuit equation, so adding
+        # a separate back_emf term here would double-count the inductive voltage drop.
+        back_emf = 0.0
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
 
-        # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs) ===
+        # === Step 2.5: Kinetic / PIC Step ===
+        # Run kinetic step *before* fluid to provide J_kin source terms for this step
+        if self.kinetic and self.kinetic.kc.enabled:
+            # Convert E, B to (nx, ny, nz, 3) for HybridPIC
+            # Engine state["B"] is (3, nx, ny, nz)
+            B_fld = np.moveaxis(self.state["B"], 0, -1)
+
+            # E field reconstruction: E = -v x B + eta*J (simplified to -v x B for pushing)
+            # Ideally should use E from previous step or predictor-corrector
+            v = np.moveaxis(self.state["velocity"], 0, -1)
+            E_fld = -np.cross(v, B_fld)
+
+            self.kinetic.step(dt, self.time, E_fld, B_fld)
+
+            # Get current density deposition for feedback to MHD
+            Jx, Jy, Jz = self.kinetic.get_current_density()
+            # Pack into source_terms (3, nx, ny, nz)
+            # KineticManager returns (nx, ny, nz) arrays, Engine expects (3, nx, ny, nz)
+            J_kin = np.stack([Jx, Jy, Jz], axis=0)
+            self._current_source_terms = {"J_kin": J_kin}
+        else:
+            self._current_source_terms = None
+
+        # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs + Kinetics) ===
         cc = self.config.circuit
         self.state = self.fluid.step(
             self.state,
@@ -599,11 +826,31 @@ class SimulationEngine:
             current=new_coupling.current,
             voltage=new_coupling.voltage,
             eta_field=eta_field,
+            source_terms=self._current_source_terms,
             anode_radius=cc.anode_radius,
             cathode_radius=cc.cathode_radius,
             apply_electrode_bc=self.boundary_cfg.electrode_bc,
         )
         self._sanitize_state("after fluid step")
+
+        # === Step 3.1: Ablation operator-split step ===
+        if self.config.ablation.enabled:
+            from dpf.atomic.ablation import ablation_source_array
+            I_abl = abs(new_coupling.current)
+            A_col = pi * self.anode_radius**2
+            J_bdy = I_abl / max(A_col, 1e-30)
+            J_arr = np.full_like(self.state["rho"], J_bdy)
+            # Boundary mask: anode face (inner radial boundary)
+            mask = np.zeros(self.state["rho"].shape, dtype=np.int64)
+            mask[0, :, :] = 1
+            eta_abl = eta_field if eta_field is not None else np.full_like(
+                self.state["rho"], 1e-7,
+            )
+            S_rho = ablation_source_array(
+                J_arr, eta_abl, self.config.ablation.efficiency, mask,
+            )
+            self.state["rho"] = self.state["rho"] + S_rho * dt
+            self._sanitize_state("after ablation step")
 
         # === Step 3.5: Powell 8-wave div(B) source terms ===
         if self.config.fluid.enable_powell:
@@ -653,6 +900,13 @@ class SimulationEngine:
         self._last_neutron_rate = neutron_rate
         self.total_neutron_yield += neutron_rate * dt
 
+        # === Step 5c: Well Exporter ===
+        if self.well_interval > 0 and self.step_count % self.well_interval == 0:
+            self.well_exporter.append_state(self.state)
+
+
+
+
         # === Step 5c: Synthetic interferometry (cylindrical only) ===
         if self.geometry_type == "cylindrical":
             ne_interf = rho_yield / self.ion_mass
@@ -700,6 +954,14 @@ class SimulationEngine:
                     "neutron_rate": self._last_neutron_rate,
                     "total_neutron_yield": self.total_neutron_yield,
                 },
+                "snowplow": {
+                    "z_sheath": self.snowplow.z if self.snowplow else 0.0,
+                    "v_sheath": self.snowplow.v if self.snowplow else 0.0,
+                    "swept_mass": self.snowplow.swept_mass if self.snowplow else 0.0,
+                    "rundown_complete": (
+                        self.snowplow.rundown_complete if self.snowplow else False
+                    ),
+                },
             }
             self.diagnostics.record(diag_state, self.time)
 
@@ -729,6 +991,19 @@ class SimulationEngine:
 
         return self._make_step_result(dt=dt, finished=finished)
 
+    def _apply_electrode_bc(self, current: float) -> None:
+        """Apply circuit-driven magnetic boundary conditions."""
+        if self.backend == "python" and self.geometry_type == "cylindrical":
+            if hasattr(self.fluid, "apply_electrode_bfield_bc"):
+                cc = self.config.circuit
+                self.state["B"] = self.fluid.apply_electrode_bfield_bc(
+                    self.state["B"], current, cc.anode_radius, cc.cathode_radius
+                )
+        elif self.backend == "athena":
+            pass
+        else:
+            pass
+
     # ------------------------------------------------------------------
     # Athena++ backend step
     # ------------------------------------------------------------------
@@ -752,10 +1027,19 @@ class SimulationEngine:
             StepResult with scalar diagnostics.
         """
         # --- Circuit advance ---
+        # Use coupling data from Athena++ C++ (R_plasma, L_plasma computed by
+        # dpf_zpinch.cpp UserWorkInLoop via volume integrals)
         coupling = self.fluid.coupling_interface()
-        coupling.R_plasma = 0.0
         coupling.Z_bar = 1.0
-        back_emf = coupling.emf
+
+        # Track dL/dt for inductive coupling
+        L_plasma = coupling.Lp
+        if L_plasma > 0:
+            if self._prev_L_plasma > 0 and dt > 0:
+                coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
+            self._prev_L_plasma = L_plasma
+
+        back_emf = 0.0  # dL/dt already in R_star inside rlc_solver.py
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
 
@@ -772,7 +1056,8 @@ class SimulationEngine:
         self.step_count += 1
 
         # --- Diagnostics ---
-        self._last_R_plasma = 0.0
+        R_plasma = coupling.R_plasma
+        self._last_R_plasma = R_plasma
         self._last_Z_bar = 1.0
         self._last_eta_anom = 0.0
 
@@ -789,7 +1074,7 @@ class SimulationEngine:
                     "energy_total": self.circuit.total_energy(),
                 },
                 "plasma": {
-                    "R_plasma": 0.0,
+                    "R_plasma": R_plasma,
                     "Z_bar": 1.0,
                     "eta_anomalous": 0.0,
                     "sheath_enabled": False,
@@ -814,6 +1099,10 @@ class SimulationEngine:
                 new_coupling.voltage,
                 E_total / max(self.initial_energy, 1e-30),
             )
+
+        # === Step 5c: Well Exporter ===
+        if self.well_interval > 0 and self.step_count % self.well_interval == 0:
+            self.well_exporter.append_state(self.state)
 
         # Check if finished
         finished = self.time >= sim_time
@@ -1259,6 +1548,11 @@ class SimulationEngine:
     # Field snapshot access (for server/GUI)
     # ------------------------------------------------------------------
 
+    def close(self) -> None:
+        """Finalize the simulation and flush exporters."""
+        if hasattr(self, "well_exporter"):
+            self.well_exporter.close()
+
     def get_field_snapshot(self) -> dict[str, np.ndarray]:
         """Return a copy of the current field state arrays.
 
@@ -1280,6 +1574,32 @@ class SimulationEngine:
         Returns:
             Dictionary with summary statistics.
         """
+        # Hybrid engine delegation (live integration)
+        if self.backend == "hybrid":
+            if self._hybrid_engine is None:
+                from dpf.ai.hybrid_engine import HybridEngine
+                from dpf.ai.surrogate import DPFSurrogate
+
+                # Check config
+                ckpt = self.config.ai.surrogate_checkpoint if self.config.ai else None
+                handoff = self.config.fluid.handoff_fraction
+                val_interval = self.config.fluid.validation_interval
+
+                logger.info(
+                    "Switching to HybridEngine (handoff=%.0f%%, validation=%d)",
+                    handoff * 100, val_interval
+                )
+
+                surrogate = DPFSurrogate(checkpoint_path=ckpt, device=self.config.ai.device if self.config.ai else "cpu")
+                self._hybrid_engine = HybridEngine(
+                    config=self.config,
+                    surrogate=surrogate,
+                    handoff_fraction=handoff,
+                    validation_interval=val_interval,
+                )
+
+            return self._hybrid_engine.run(max_steps=max_steps)
+
         t_wall_start = wall_time.monotonic()
 
         # Store initial energy

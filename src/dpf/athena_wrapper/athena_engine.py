@@ -133,8 +133,8 @@ class AthenaPPSolver(PlasmaSolverBase):
         raise FileNotFoundError(
             "Athena++ binary not found. Build it with:\n"
             "  cd external/athena\n"
-            "  python3 configure.py --prob=magnoh --coord=cylindrical -b "
-            "--flux=hlld --hdf5_path=/opt/homebrew/opt/hdf5\n"
+            "  python3 configure.py --prob=dpf_zpinch --coord=cylindrical -b "
+            "--flux=hlld --nscalars=2 --nghost=3\n"
             "  make -j8"
         )
 
@@ -290,17 +290,62 @@ class AthenaPPSolver(PlasmaSolverBase):
         #   B:        (3, nx, ny, nz)
         prim = core.get_primitive_data(handle)  # dict of numpy arrays
 
+        rho = prim["rho"]
+        pressure = prim["pressure"]
+
+        # Try to read Te/Ti from passive scalar fields (two-temperature model)
+        Te, Ti = self._read_Te_Ti_from_scalars(rho, pressure)
+
         # Map Athena++ primitives to DPF state dict
         state = {
-            "rho": prim["rho"],
+            "rho": rho,
             "velocity": prim["velocity"],
-            "pressure": prim["pressure"],
+            "pressure": pressure,
             "B": prim["B"],
-            "Te": prim.get("Te", self._estimate_Te(prim["rho"], prim["pressure"])),
-            "Ti": prim.get("Ti", self._estimate_Ti(prim["rho"], prim["pressure"])),
-            "psi": prim.get("psi", np.zeros_like(prim["rho"])),
+            "Te": Te,
+            "Ti": Ti,
+            "psi": prim.get("psi", np.zeros_like(rho)),
         }
         return state
+
+    def _read_Te_Ti_from_scalars(
+        self, rho: np.ndarray, pressure: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Read Te/Ti from passive scalar fields if available.
+
+        Athena++ with nscalars=2 stores:
+          s[0] = electron specific energy (e_e / rho)
+          s[1] = ion specific energy (e_i / rho)
+        Convert to temperatures: T = e_spec * (gamma-1) * m_ion / k_B
+
+        Falls back to single-fluid estimate if scalars not available.
+
+        Args:
+            rho: Density array [kg/m^3].
+            pressure: Total thermal pressure [Pa].
+
+        Returns:
+            Tuple of (Te, Ti) arrays [K].
+        """
+        k_B = 1.380649e-23
+        gamma = self.config.fluid.gamma
+
+        try:
+            scalar_data = self._core.get_scalar_data(self._mesh_handle)
+            if scalar_data is not None and len(scalar_data) >= 2:
+                # s[0], s[1] are specific energies (energy/mass)
+                e_e_spec = scalar_data[0]  # electron specific energy
+                e_i_spec = scalar_data[1]  # ion specific energy
+
+                n_i = np.maximum(rho, 1e-30) / self.config.ion_mass
+                Te = np.maximum(e_e_spec * rho * (gamma - 1.0) / (n_i * k_B), 1.0)
+                Ti = np.maximum(e_i_spec * rho * (gamma - 1.0) / (n_i * k_B), 1.0)
+                return Te, Ti
+        except (AttributeError, RuntimeError):
+            pass  # get_scalar_data not available (old bindings)
+
+        # Fallback: single-fluid estimate
+        return self._estimate_Te(rho, pressure), self._estimate_Ti(rho, pressure)
 
     def _estimate_Te(self, rho: np.ndarray, pressure: np.ndarray) -> np.ndarray:
         """Estimate electron temperature from total pressure (single-fluid).

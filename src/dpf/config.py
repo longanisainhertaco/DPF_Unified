@@ -23,11 +23,30 @@ class CircuitConfig(BaseModel):
     cathode_radius: float = Field(..., gt=0, description="Cathode radius [m]")
     ESR: float = Field(0.0, ge=0, description="Equivalent series resistance [Ohm]")
     ESL: float = Field(0.0, ge=0, description="Equivalent series inductance [H]")
+    crowbar_enabled: bool = Field(False, description="Enable crowbar switch")
+    crowbar_mode: str = Field(
+        "voltage_zero",
+        description="Crowbar trigger mode: 'voltage_zero' (V_cap crosses zero) or 'fixed_time'",
+    )
+    crowbar_time: float = Field(
+        0.0, ge=0, description="Crowbar trigger time [s] (only used if mode='fixed_time')"
+    )
+    crowbar_resistance: float = Field(
+        0.0, ge=0, description="Additional crowbar switch resistance [Ohm]"
+    )
 
     @model_validator(mode="after")
     def check_radii(self) -> CircuitConfig:
         if self.anode_radius >= self.cathode_radius:
             raise ValueError("anode_radius must be less than cathode_radius")
+        return self
+
+    @model_validator(mode="after")
+    def check_crowbar(self) -> CircuitConfig:
+        if self.crowbar_mode not in ("voltage_zero", "fixed_time"):
+            raise ValueError(
+                f"crowbar_mode must be 'voltage_zero' or 'fixed_time', got '{self.crowbar_mode}'"
+            )
         return self
 
 
@@ -107,8 +126,8 @@ class FluidConfig(BaseModel):
         "python",
         description=(
             "MHD solver backend: 'python' (NumPy/Numba), 'athena' (Athena++ C++), "
-            "'metal' (PyTorch MPS on Apple GPU), "
-            "or 'auto' (Athena++ if available, else Python)"
+            "'metal' (PyTorch MPS on Apple GPU), 'hybrid' (Athena++ + WALRUS surrogate), "
+            "or 'auto' (Athena++ > Metal > Python)"
         ),
     )
     reconstruction: str = Field("weno5", description="Reconstruction scheme")
@@ -153,12 +172,27 @@ class FluidConfig(BaseModel):
         True,
         description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
+    handoff_fraction: float = Field(
+        0.1,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Fraction of sim_time to run with full physics before switching to "
+            "WALRUS surrogate (hybrid backend only). 0.1 = 10%% physics, 90%% surrogate."
+        ),
+    )
+    validation_interval: int = Field(
+        50,
+        ge=1,
+        description="How often (in steps) to validate surrogate against physics (hybrid backend only)",
+    )
 
     @model_validator(mode="after")
     def validate_backend(self) -> FluidConfig:
-        if self.backend not in ("python", "athena", "athenak", "metal", "auto"):
+        valid = ("python", "athena", "athenak", "metal", "hybrid", "auto")
+        if self.backend not in valid:
             raise ValueError(
-                f"backend must be 'python', 'athena', 'athenak', 'metal', or 'auto', got '{self.backend}'"
+                f"backend must be one of {valid}, got '{self.backend}'"
             )
         return self
 
@@ -171,6 +205,14 @@ class DiagnosticsConfig(BaseModel):
     field_output_interval: int = Field(
         0, ge=0,
         description="Steps between field snapshots in HDF5 (0 = off)",
+    )
+    well_output_interval: int = Field(
+        0, ge=0,
+        description="Steps between Well-format snapshots (0 = off)",
+    )
+    well_filename_prefix: str = Field(
+        "well_output",
+        description="Prefix for Well-format output files",
     )
 
 
@@ -252,7 +294,87 @@ class AIConfig(BaseModel):
         return self
 
 
+
+class SnowplowConfig(BaseModel):
+    """Snowplow sheath dynamics configuration (Lee model Phase 2).
+
+    References:
+        Lee, S. & Saw, S.H., Phys. Plasmas 21, 072501 (2014).
+    """
+
+    enabled: bool = Field(True, description="Enable snowplow sheath dynamics")
+    mass_fraction: float = Field(
+        0.3, gt=0, le=1.0,
+        description="Fraction of fill gas swept by sheath (f_m, Lee & Saw 2014)",
+    )
+    fill_pressure_Pa: float = Field(
+        400.0, ge=0,
+        description="Fill gas pressure [Pa] (typical: 266-533 Pa for 2-4 Torr D2)",
+    )
+    anode_length: float = Field(
+        0.16, gt=0,
+        description="Anode length (rundown distance) [m]",
+    )
+    current_fraction: float = Field(
+        0.7, gt=0, le=1.0,
+        description="Fraction of total current in sheath (f_c, Lee & Saw 2014: ~0.7)",
+    )
+    radial_mass_fraction: float | None = Field(
+        None, gt=0, le=1.0,
+        description="Fraction of gas swept radially (f_mr). Defaults to mass_fraction.",
+    )
+
+
+class AblationConfig(BaseModel):
+    """Electrode ablation configuration.
+
+    References:
+        Bruzzone & Aranchuk, J. Phys. D: Appl. Phys. 36 (2003) 2218.
+    """
+
+    enabled: bool = Field(False, description="Enable electrode ablation")
+    material: str = Field(
+        "copper",
+        description="Electrode material: 'copper' or 'tungsten'",
+    )
+    efficiency: float = Field(
+        5e-5, gt=0,
+        description="Ablation efficiency [kg/J] (copper ~5e-5, tungsten ~2e-5)",
+    )
+
+    @model_validator(mode="after")
+    def validate_material(self) -> AblationConfig:
+        if self.material not in ("copper", "tungsten"):
+            raise ValueError(
+                f"material must be 'copper' or 'tungsten', got '{self.material}'"
+            )
+        return self
+
+
+class KineticConfig(BaseModel):
+    """Kinetic (PIC) module parameters."""
+
+    enabled: bool = Field(False, description="Enable hybrid-kinetic PIC module")
+    start_time: float = Field(
+        1e-6, gt=0, description="Simulation time to activate kinetic module [s]"
+    )
+    inject_beam: bool = Field(True, description="Inject high-energy ion beam")
+    n_particles: int = Field(10000, ge=1, description="Number of macro-particles")
+    beam_energy: float = Field(100e3, gt=0, description="Beam energy [eV]")
+
+    # New parameters from Phase 4.3 Review
+    beam_position_ratio: tuple[float, float, float] = Field(
+        (0.5, 0.5, 0.1),
+        description="Beam injection center as fraction of grid (x, y, z)",
+    )
+    beam_direction: tuple[float, float, float] = Field(
+        (0.0, 0.0, 1.0),
+        description="Beam injection direction vector (normalized automatically)",
+    )
+
+
 class SimulationConfig(BaseModel):
+
     """Top-level simulation configuration."""
 
     grid_shape: list[int] = Field(..., min_length=3, max_length=3, description="Grid (nx, ny, nz)")
@@ -280,6 +402,9 @@ class SimulationConfig(BaseModel):
     fluid: FluidConfig = Field(default_factory=FluidConfig)
     boundary: BoundaryConfig = Field(default_factory=BoundaryConfig)
     diagnostics: DiagnosticsConfig = Field(default_factory=DiagnosticsConfig)
+    kinetic: KineticConfig = Field(default_factory=KineticConfig)
+    snowplow: SnowplowConfig = Field(default_factory=SnowplowConfig)
+    ablation: AblationConfig = Field(default_factory=AblationConfig)
     ai: AIConfig | None = Field(None, description="AI/ML surrogate configuration (optional)")
 
     @model_validator(mode="after")

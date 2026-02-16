@@ -71,7 +71,7 @@ class DPFSurrogate:
     """
 
     def __init__(
-        self, checkpoint_path: str | Path, device: str = "cpu", history_length: int = 4
+        self, checkpoint_path: str | Path | None = None, device: str = "cpu", history_length: int = 4
     ) -> None:
         if not HAS_TORCH:
             raise ImportError(
@@ -79,9 +79,16 @@ class DPFSurrogate:
                 "Install with: pip install dpf-unified[ai]"
             )
 
-        self.checkpoint_path = Path(checkpoint_path)
-        if not self.checkpoint_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {self.checkpoint_path}")
+        if checkpoint_path is None:
+            checkpoint_path = self._find_default_checkpoint()
+
+        if checkpoint_path is not None:
+            self.checkpoint_path = Path(checkpoint_path)
+            if not self.checkpoint_path.exists():
+                logger.warning(f"Checkpoint not found: {self.checkpoint_path}, falling back to placeholder")
+                self.checkpoint_path = None
+        else:
+            self.checkpoint_path = None
 
         self.device = device
         self.history_length = history_length
@@ -93,6 +100,10 @@ class DPFSurrogate:
         self._dpf_field_indices: Any = None  # torch.Tensor when loaded
 
         self._load_model()
+
+    def _find_default_checkpoint(self) -> Path | None:
+        """Attempt to locate a default checkpoint."""
+        return None  # Placeholder logic for now, or scan directories
 
     def _resolve_checkpoint_files(self) -> tuple[Path, Path | None]:
         """Resolve checkpoint .pt file and optional config YAML.
@@ -137,6 +148,11 @@ class DPFSurrogate:
         When ``walrus`` is installed (``HAS_WALRUS=True``), instantiates a real
         ``IsotropicModel``. Otherwise stores a placeholder dict.
         """
+        if self.checkpoint_path is None:
+            logger.warning("No checkpoint path provided. Using prediction placeholder.")
+            self._model = {"placeholder": True}
+            return
+
         try:
             pt_path, config_yaml_path = self._resolve_checkpoint_files()
 
@@ -172,11 +188,12 @@ class DPFSurrogate:
                 )
 
         except Exception as e:
-            self._model = None
+            # Fallback to placeholder if load fails
             logger.warning(
                 f"Failed to load checkpoint from {self.checkpoint_path}: {e}. "
-                "Model will not be available for predictions."
+                "Using prediction placeholder."
             )
+            self._model = {"placeholder": True}
 
     def _load_walrus_model(
         self,

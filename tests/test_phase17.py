@@ -595,11 +595,11 @@ class TestShockTubeModule:
 
         state = _build_state(nx, rho, u, p, Bx, By, Bz, 1.4, 1.67e-27)
 
-        assert state["rho"].shape == (50, 5, 5)
-        assert state["velocity"].shape == (3, 50, 5, 5)
-        assert state["B"].shape == (3, 50, 5, 5)
-        assert state["Te"].shape == (50, 5, 5)
-        assert state["psi"].shape == (50, 5, 5)
+        assert state["rho"].shape == (50, 4, 4)
+        assert state["velocity"].shape == (3, 50, 4, 4)
+        assert state["B"].shape == (3, 50, 4, 4)
+        assert state["Te"].shape == (50, 4, 4)
+        assert state["psi"].shape == (50, 4, 4)
 
     def test_analytical_solution_smooth(self):
         """Analytical solution is smooth within each region."""

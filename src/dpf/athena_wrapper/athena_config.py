@@ -87,15 +87,14 @@ def generate_athinput(
     flux = riemann_map.get(fc.riemann_solver, "hlld")
 
     # Map reconstruction order.
-    # NOTE: Athena++ was compiled with default nghost=2, which only
-    # supports xorder <= 2 (PLM).  PPM/WENO require nghost >= 3.
-    # Until we recompile with --nghost=3, cap xorder at 2.
+    # Athena++ compiled with --nghost=3: supports xorder up to 3 (PPM).
+    # Athena++ does NOT implement WENO — only PLM (xorder=2) and PPM (xorder=3).
     recon_map = {
         "plm": 2,
-        "ppm": 2,  # Would be 3 with --nghost=3 build
-        "weno5": 2,  # Would be 3 with --nghost=3 build
+        "ppm": 3,
+        "weno5": 3,  # Best available in Athena++ is PPM
     }
-    xorder = recon_map.get(fc.reconstruction, 2)
+    xorder = recon_map.get(fc.reconstruction, 3)
 
     # History output interval — every N steps or dt-based
     hst_dt = config.sim_time / max(dc.output_interval, 1)
@@ -125,19 +124,21 @@ def generate_athinput(
     lines.append(f"dt          = {hst_dt:.6e}")
     lines.append("")
 
-    # HDF5 output
+    # Field output (VTK format — works without HDF5 compilation flag)
     lines.append("<output2>")
-    lines.append("file_type = hdf5")
+    lines.append("file_type = vtk")
     lines.append("variable  = prim")
     lines.append(f"dt        = {hdf5_dt:.6e}")
     lines.append("")
 
     # Time block
+    # Use RK3 integrator for xorder=3 (PPM), vl2 for PLM
+    integrator = "rk3" if xorder >= 3 else "vl2"
     lines.append("<time>")
     lines.append(f"cfl_number  = {fc.cfl}")
     lines.append("nlim        = -1")
     lines.append(f"tlim        = {config.sim_time:.6e}")
-    lines.append("integrator  = vl2")
+    lines.append(f"integrator  = {integrator}")
     lines.append(f"xorder      = {xorder}")
     lines.append("ncycle_out  = 100")
     if config.dt_init is not None:
@@ -151,7 +152,9 @@ def generate_athinput(
         lines.append(f"x1min      = {r_min:.6e}")
         lines.append(f"x1max      = {r_max:.6e}")
         lines.append("ix1_bc     = reflecting")
-        lines.append("ox1_bc     = outflow")
+        # Use 'user' BC at outer radial boundary when circuit coupling is active
+        # — triggers electrode BC enrollment in dpf_zpinch.cpp
+        lines.append("ox1_bc     = user")
         lines.append("")
         lines.append(f"nx2        = {nz_grid}")
         lines.append(f"x2min      = {z_min:.6e}")
@@ -199,28 +202,29 @@ def generate_athinput(
     lines.append(f"gamma      = {fc.gamma:.4f}")
     lines.append("")
 
-    # Problem block — magnoh.cpp required parameters + DPF-specific parameters
+    # Problem block — dpf_zpinch.cpp problem generator parameters
     #
-    # The compiled Athena++ binary uses magnoh.cpp as the problem generator.
-    # It requires: alpha, beta, pcoeff, d, vr, bphi, bz (all mandatory).
-    # For DPF: uniform fill gas (alpha=0), no initial B-field power law
-    # (beta=0), stationary gas (vr=0), B driven by circuit coupling later.
+    # The compiled Athena++ binary uses dpf_zpinch.cpp as the problem generator
+    # with circuit coupling, Spitzer resistivity, Braginskii transport, and
+    # bremsstrahlung radiation.
     #
-    # Compute initial pressure from ideal gas law: p = rho * kB * T0 / m_ion
-    p0 = config.rho0 * const.k * config.T0 / config.ion_mass
+    # Compute initial pressure from ideal gas law: p = 2 * n_i * kB * T0
+    n_i = config.rho0 / config.ion_mass
+    p0 = 2.0 * n_i * const.k * config.T0
+
+    rc = config.radiation
 
     lines.append("<problem>")
-    lines.append("# Magnetized Noh z-pinch parameters (required by magnoh.cpp)")
-    lines.append("alpha      = 0.0           # density power law: rho ~ r^alpha (uniform)")
-    lines.append("beta       = 0.0           # B-field power law: B ~ r^beta")
-    lines.append(f"pcoeff     = {p0:.6e}      # pressure coefficient [Pa]")
+    lines.append("# Common initial conditions (compatible with both magnoh.cpp and dpf_zpinch.cpp)")
+    lines.append("alpha      = 0.0           # density power law (magnoh compat)")
+    lines.append("beta       = 0.0           # B-field power law (magnoh compat)")
     lines.append(f"d          = {config.rho0:.6e}    # initial density [kg/m^3]")
+    lines.append(f"pcoeff     = {p0:.6e}      # initial pressure [Pa]")
     lines.append("vr         = 0.0           # initial radial velocity [m/s]")
-    lines.append("bphi       = 0.0           # initial B_phi [T] (circuit-driven)")
+    lines.append("bphi       = 0.0           # initial B_phi [T]")
     lines.append("bz         = 0.0           # initial B_z [T]")
     lines.append("perturb    = 0.0           # perturbation amplitude")
     lines.append("mphi       = 0.0           # azimuthal mode number")
-    lines.append("# DPF-specific parameters")
     lines.append(f"T0         = {config.T0:.2f}       # initial temperature [K]")
     lines.append(f"ion_mass   = {config.ion_mass:.6e}  # ion mass [kg]")
     lines.append("# Circuit parameters")
@@ -231,10 +235,14 @@ def generate_athinput(
     lines.append(f"anode_r    = {cc.anode_radius:.6e}  # anode radius [m]")
     lines.append(f"cathode_r  = {cc.cathode_radius:.6e}# cathode radius [m]")
     lines.append("# Physics toggles")
-    lines.append(f"enable_resistive = {int(fc.enable_resistive)}")
-    lines.append(f"enable_nernst    = {int(fc.enable_nernst)}")
-    lines.append(f"enable_viscosity = {int(fc.enable_viscosity)}")
-    lines.append(f"anomalous_alpha  = {config.anomalous_alpha:.4f}")
+    lines.append(f"enable_resistive  = {int(fc.enable_resistive)}")
+    lines.append(f"enable_nernst     = {int(fc.enable_nernst)}")
+    lines.append(f"enable_viscosity  = {int(fc.enable_viscosity)}")
+    lines.append(f"enable_radiation  = {int(rc.bremsstrahlung_enabled)}")
+    lines.append(f"enable_braginskii = {int(fc.enable_viscosity or fc.enable_nernst)}")
+    lines.append(f"anomalous_alpha   = {config.anomalous_alpha:.4f}")
+    lines.append(f"gaunt_factor      = {rc.gaunt_factor:.2f}")
+    lines.append("nscalars          = 2  # two-temperature: s[0]=e_e, s[1]=e_i")
     lines.append("")
 
     return "\n".join(lines)

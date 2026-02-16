@@ -6,11 +6,13 @@ reference values (p. 34). Key physics:
 - Spitzer resistivity: eta ~ Z * ln(Lambda) * Te^(-3/2), independent of ne
 - Coulomb logarithm: ln(Lambda) = ln(lambda_D / b_min)
 - Temperature scaling: eta(10eV) / eta(100eV) ~ 31.6 (from Te^(-3/2))
-- NRL formula: eta_perp = 1.03e-2 * Z * ln(Lambda) / Te_eV^(3/2) [Ohm*cm]
-                        = 1.03e-4 * Z * ln(Lambda) / Te_eV^(3/2) [Ohm*m]
+- NRL formula (uncorrected): eta = 1.03e-4 * Z * ln(Lambda) / Te_eV^(3/2) [Ohm*m]
+- With Braginskii alpha(Z): eta = 1.03e-4 * Z * ln(Lambda) / (Te_eV^(3/2) * alpha(Z))
 
 Note: The NRL coefficient is 1.03e-2 in Ohm*cm (CGS practical).
       Converting to SI: 1 Ohm*cm = 1e-2 Ohm*m, so coefficient = 1.03e-4 Ohm*m.
+      The Braginskii alpha(Z) correction accounts for electron-electron collisions;
+      alpha(1)=0.5064 for hydrogen, reducing to 0.2949 for Z→∞ (Lorentz gas).
 
 References:
     NRL Plasma Formulary (2019), p. 34
@@ -20,7 +22,7 @@ References:
 import numpy as np
 import pytest
 
-from dpf.collision.spitzer import coulomb_log, nu_ei, spitzer_resistivity
+from dpf.collision.spitzer import coulomb_log, nu_ei, spitzer_alpha, spitzer_resistivity
 from dpf.constants import e, k_B
 
 
@@ -49,45 +51,51 @@ class TestSpitzerResistivity:
     """Tests for Spitzer resistivity against NRL Plasma Formulary."""
 
     def test_spitzer_resistivity_vs_nrl_10eV(self):
-        """Verify against NRL at Te=10 eV."""
+        """Verify against NRL at Te=10 eV (with Braginskii alpha correction)."""
         Te_eV = 10.0
         Te_K = Te_eV * e / k_B
         ne = np.array([1e20])
         Te = np.array([Te_K])
+        Z = 1.0
 
         lnL_val = float(coulomb_log(ne, Te)[0])
-        eta_NRL = 1.03e-4 * 1.0 * lnL_val / (Te_eV ** 1.5)
-        eta = spitzer_resistivity(ne, Te, lnL_val, 1.0)[0]
+        alpha_Z = float(spitzer_alpha(Z))
+        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV ** 1.5) / alpha_Z
+        eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
 
         assert eta == pytest.approx(eta_NRL, rel=0.30), (
             f"Spitzer mismatch at 10 eV: computed={eta:.3e}, NRL={eta_NRL:.3e}"
         )
 
     def test_spitzer_resistivity_vs_nrl_100eV(self):
-        """Verify against NRL at Te=100 eV."""
+        """Verify against NRL at Te=100 eV (with Braginskii alpha correction)."""
         Te_eV = 100.0
         Te_K = Te_eV * e / k_B
         ne = np.array([1e20])
         Te = np.array([Te_K])
+        Z = 1.0
 
         lnL_val = float(coulomb_log(ne, Te)[0])
-        eta_NRL = 1.03e-4 * 1.0 * lnL_val / (Te_eV ** 1.5)
-        eta = spitzer_resistivity(ne, Te, lnL_val, 1.0)[0]
+        alpha_Z = float(spitzer_alpha(Z))
+        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV ** 1.5) / alpha_Z
+        eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
 
         assert eta == pytest.approx(eta_NRL, rel=0.30), (
             f"Spitzer mismatch at 100 eV: computed={eta:.3e}, NRL={eta_NRL:.3e}"
         )
 
     def test_spitzer_resistivity_vs_nrl_1keV(self):
-        """Verify against NRL at Te=1 keV."""
+        """Verify against NRL at Te=1 keV (with Braginskii alpha correction)."""
         Te_eV = 1000.0
         Te_K = Te_eV * e / k_B
         ne = np.array([1e20])
         Te = np.array([Te_K])
+        Z = 1.0
 
         lnL_val = float(coulomb_log(ne, Te)[0])
-        eta_NRL = 1.03e-4 * 1.0 * lnL_val / (Te_eV ** 1.5)
-        eta = spitzer_resistivity(ne, Te, lnL_val, 1.0)[0]
+        alpha_Z = float(spitzer_alpha(Z))
+        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV ** 1.5) / alpha_Z
+        eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
 
         assert 1e-9 < eta < 5e-6, f"Resistivity out of range at 1 keV: {eta:.3e}"
         assert eta == pytest.approx(eta_NRL, rel=0.30), (
@@ -103,12 +111,16 @@ class TestSpitzerResistivity:
         assert ratio == pytest.approx(10.0 ** 1.5, rel=0.05)
 
     def test_spitzer_Z_scaling(self):
-        """Resistivity should scale linearly with Z at fixed ln(Lambda)."""
+        """Resistivity scales as Z/alpha(Z) with Braginskii correction."""
         ne = np.array([1e20])
         Te = np.array([1e6])
         eta_Z1 = spitzer_resistivity(ne, Te, 10.0, 1.0)[0]
         eta_Z2 = spitzer_resistivity(ne, Te, 10.0, 2.0)[0]
-        assert eta_Z2 / eta_Z1 == pytest.approx(2.0, rel=0.05)
+        # With alpha(Z) correction: ratio = (Z2/Z1) * (alpha(Z1)/alpha(Z2))
+        alpha_1 = float(spitzer_alpha(1.0))
+        alpha_2 = float(spitzer_alpha(2.0))
+        expected_ratio = 2.0 * alpha_1 / alpha_2
+        assert eta_Z2 / eta_Z1 == pytest.approx(expected_ratio, rel=0.05)
 
     def test_resistivity_independent_of_density(self):
         """Spitzer resistivity is independent of ne (cancels) with fixed ln(Lambda)."""

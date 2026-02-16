@@ -1,5 +1,24 @@
 """Hall MHD solver with WENO5-Z reconstruction and Dedner divergence cleaning.
 
+.. warning::
+
+    **Teaching / fallback engine only.**  This Python MHD solver evolves
+    **pressure** (dp/dt) rather than **total energy** (dE/dt).  This is a
+    non-conservative formulation that violates the Rankine-Hugoniot jump
+    conditions at shocks and can produce incorrect post-shock states.
+
+    For production simulations and any work requiring quantitative accuracy,
+    use one of the conservative backends:
+
+    - ``backend="metal"``  — Metal GPU solver (HLLD + WENO5 + SSP-RK3, conservative)
+    - ``backend="athena"`` — Athena++ C++ solver (PPM + HLLD + CT, conservative)
+
+    The Python engine remains useful for:
+    - Quick prototyping and debugging (no compilation needed)
+    - Teaching / demonstrating MHD algorithms
+    - Unit testing individual physics modules
+    - Small-grid parameter scans where accuracy is not critical
+
 Merges dpf2's hall_mhd_solver structure with DPF_AI's validated physics kernels:
 - WENO5-Z reconstruction (Borges et al. 2008 weights, Jiang-Shu 1996 polynomials)
 - HLLD Riemann solver for ideal MHD (Miyoshi & Kusano 2005, default)
@@ -9,6 +28,12 @@ Merges dpf2's hall_mhd_solver structure with DPF_AI's validated physics kernels:
 - Generalized Ohm's law with Hall term
 - Braginskii anisotropic heat flux (operator-split)
 - dL_dt estimation from pinch dynamics
+
+**Known limitation (Phase R assessment):**
+The pressure equation dp/dt = -gamma*p*div(v) + (gamma-1)*eta*J^2 (line ~1597)
+is NOT equivalent to the conservative total energy equation.  At shocks, this
+produces incorrect jump conditions.  See the Metal engine
+(:mod:`dpf.metal.metal_solver`) for the correct conservative formulation.
 
 The solver operates on a state dictionary with keys:
     rho: density [kg/m^3], shape (nx, ny, nz)
@@ -1330,6 +1355,7 @@ class MHDSolver(PlasmaSolverBase):
         current: float,
         voltage: float,
         eta_field: np.ndarray | None = None,
+        source_terms: dict[str, np.ndarray] | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute the right-hand side (time derivative) of the MHD system.
 
@@ -1342,6 +1368,7 @@ class MHDSolver(PlasmaSolverBase):
             voltage: Circuit voltage [V].
             eta_field: Spatially-resolved resistivity [Ohm*m], shape (nx,ny,nz).
                        If None, resistive term is skipped.
+            source_terms: Optional dictionary of external source terms (e.g. 'J_kin').
 
         Returns dict of dU/dt for each state variable.
         """
@@ -1503,6 +1530,24 @@ class MHDSolver(PlasmaSolverBase):
                     dmom_dt[d] -= np.gradient(flux_mom, self.dx, axis=axis)
 
         # Add Lorentz force and pressure gradient
+        # Kinetic Feedback: J_plasma = J_tot - J_kin
+        # J_tot = curl(B)/mu_0 (calculated above as 'J')
+        J_plasma = J.copy()
+        if source_terms is not None and "J_kin" in source_terms:
+            J_kin = source_terms["J_kin"]
+            # Ensure shape matches (3, nx, ny, nz)
+            if J_kin.shape == J.shape:
+                J_plasma -= J_kin
+            else:
+                pass # TODO: Add shape check/warning
+
+        # J x B force uses J_plasma (force on the fluid)
+        JxB = np.array([
+            J_plasma[1] * B[2] - J_plasma[2] * B[1],
+            J_plasma[2] * B[0] - J_plasma[0] * B[2],
+            J_plasma[0] * B[1] - J_plasma[1] * B[0],
+        ])
+
         for d in range(3):
             dmom_dt[d] += JxB[d] - grad_p[d]
 
@@ -1515,24 +1560,25 @@ class MHDSolver(PlasmaSolverBase):
         ])
         E_field = -vxB  # E = -v × B (ideal Ohm's law)
 
-        # --- Resistive term: E_resistive = eta * J ---
+        # --- Resistive term: E_resistive = eta * J_plasma ---
         ohmic_heating = np.zeros_like(rho)
         if self.enable_resistive and eta_field is not None:
-            E_resistive = eta_field[np.newaxis, :, :, :] * J
+            # Resistivity acts on the conduction current (J_plasma), not total
+            E_resistive = eta_field[np.newaxis, :, :, :] * J_plasma
             E_field += E_resistive
-            # Ohmic heating: Q_ohm = eta * |J|^2 [W/m^3]
-            J_sq = np.sum(J**2, axis=0)
+            # Ohmic heating: Q_ohm = eta * |J_plasma|^2 [W/m^3]
+            J_sq = np.sum(J_plasma**2, axis=0)
             ohmic_heating = eta_field * J_sq
 
-        # --- Hall term: E_Hall = (J × B) / (n_e * e) ---
+        # --- Hall term: E_Hall = (J_plasma × B) / (n_e * e) ---
         if self.enable_hall:
             ne = rho / self.ion_mass  # Z=1
             ne_safe = np.maximum(ne, 1e-20)
-            # Hall electric field
+            # Hall electric field depends on J_plasma (current carried by fluid species)
             E_Hall = np.array([
-                (J[1] * B[2] - J[2] * B[1]),
-                (J[2] * B[0] - J[0] * B[2]),
-                (J[0] * B[1] - J[1] * B[0]),
+                (J_plasma[1] * B[2] - J_plasma[2] * B[1]),
+                (J_plasma[2] * B[0] - J_plasma[0] * B[2]),
+                (J_plasma[0] * B[1] - J_plasma[1] * B[0]),
             ]) / (ne_safe * e_charge)
             E_field += E_Hall
 
@@ -2090,9 +2136,13 @@ class MHDSolver(PlasmaSolverBase):
             Te_new = _braginskii_heat_flux(Te_new, ne, B_new, self.dx, dt)
 
         # --- Update coupling for circuit ---
-        B_theta_avg = np.mean(np.sqrt(B_new[0] ** 2 + B_new[1] ** 2))
+        # Lp from magnetic energy: Lp = 2*W_mag/I² = ∫B²/µ₀ dV / I²
+        # Standard energy-based inductance formula. For Cartesian grids,
+        # cell volume is dx³ (uniform spacing).
         if current > 0:
-            Lp_est = mu_0 * B_theta_avg / (current + 1e-30) * self.dx * self.grid_shape[0]
+            B_sq = np.sum(B_new**2, axis=0)
+            dV = self.dx**3
+            Lp_est = float(np.sum(B_sq / mu_0 * dV)) / (current**2 + 1e-30)
         else:
             Lp_est = 0.0
 

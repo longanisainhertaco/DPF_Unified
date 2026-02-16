@@ -14,7 +14,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 | Layer | Description | Status |
 |-------|-------------|--------|
-| **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready) + Metal GPU (PyTorch MPS). Full DPF physics: circuit coupling, Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport. Metal GPU: WENO5-Z + HLLD + SSP-RK3 + float64 + resistive MHD. Python engine: WENO-Z + HLLD + SSP-RK3 defaults | **Phase P complete** |
+| **Simulation Backend** | Tri-engine MHD solver — Python (NumPy/Numba) fallback + Athena++ C++ (pybind11) + AthenaK Kokkos (subprocess, GPU-ready) + Metal GPU (PyTorch MPS). Full DPF physics: circuit coupling, snowplow dynamics (axial + radial + pinch), Spitzer resistivity, two-temperature plasma, bremsstrahlung radiation, Braginskii transport, crowbar model. Metal GPU: WENO5-Z + HLLD + SSP-RK3 + float64 + resistive MHD. First I(t) validation vs PF-1000 experimental data. | **Phase T complete** |
 | **Unity Frontend** | Two-mode UI — *Teaching Mode* (educational visualization) and *Engineering Mode* (parameter sweeps, optimization) | **Planned** |
 | **AI Integration** | WALRUS (1.3B IsotropicModel, delta prediction, RevIN, Hydra config) surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server. Surrogate stubs need real WALRUS model loading (Phase J.2). | **Phase I complete, J.2 next** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
@@ -25,11 +25,52 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 ## Current State — Honest Assessment
 
-### Fidelity Grade: 8.9 / 10
+### Fidelity Grade: ~6.5 / 10 (as DPF simulator) | 7.5 / 10 (as generic MHD code)
 
-> **Grading scale**: Sandia National Laboratories production codes (e.g., ALEGRA, HYDRA) = 8/10. Established open-source codes (Athena++, FLASH, PLUTO) = 6-7/10. Our target for this development cycle = 8+/10.
+> **Grading scale**: Sandia production codes (ALEGRA, HYDRA) = 8/10. Established open-source (Athena++, FLASH, PLUTO) = 6-7/10. Lee Model (RADPF, DPF-specific) = 7/10.
+>
+> **PhD Debate Panel Assessment #4** (2026-02-16): Four rounds of expert review. Assessment #3 gave 4.5/10, Assessment #4 gave 5.2/10. Phase T fixes (snowplow L_coeff, current fraction f_c, radial compression, first I(t) validation) address the critical DPF identity gap. Full reports: [`docs/PHD_DEBATE_4_VERDICT.md`](docs/PHD_DEBATE_4_VERDICT.md).
 
-The simulation backend features a tri-engine architecture (Python + Athena++ C++ + AthenaK Kokkos) with complete DPF z-pinch physics in the Athena++ problem generator: circuit coupling, Spitzer resistivity (GMS Coulomb log + Buneman anomalous threshold), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The AthenaK backend adds GPU-ready MHD via Kokkos (Serial/OpenMP on Apple Silicon, CUDA/HIP/SYCL on HPC), operating in subprocess mode with VTK I/O. The Python engine (Phase P) now defaults to HLLD Riemann solver (Miyoshi & Kusano 2005) and SSP-RK3 time integration (Shu-Osher 1988), with WENO-Z nonlinear weights (Borges et al. 2008), Braginskii transport, Powell + Dedner div(B) control, and Numba-parallelized kernels. The Metal GPU backend implements production-grade physics: WENO5-Z reconstruction, HLLD solver, SSP-RK3 integrator, float64 precision mode, constrained transport, and operator-split resistive MHD with CFL sub-cycling — matching or exceeding established open-source code accuracy. The AI/ML layer provides WALRUS surrogate model inference, inverse design optimization, hybrid physics-surrogate engine, instability detection, ensemble confidence estimation, and a real-time AI server with REST + WebSocket endpoints. 1475 tests pass with 0 failures (1353 non-slow, 122 slow). Phases A–P are complete.
+#### Component Ratings (Post-Phase T Estimate)
+
+| Component | Rating | Key Change from Debate #4 |
+|-----------|--------|---------------------------|
+| MHD Numerics | 7.5/10 | WENO5-Z + HLLD + SSP-RK3 + CT + float64 — competitive with open-source codes |
+| Transport Coefficients | 7.5/10 | Spitzer + alpha(Z) Braginskii + Z-dependent kappa; LHDI threshold added |
+| Circuit Solver | 6.5/10 | Implicit midpoint + crowbar model + BDF2 dL/dt + snowplow coupling |
+| DPF-Specific Physics | **5.5/10** | **Snowplow + radial compression + pinch + current fraction — produces current dip** |
+| Experimental Validation | **4.0/10** | **First I(t) validation: PF-1000 peak within 13%, 59% current dip, multi-device** |
+| AI/ML (WALRUS) | 3.0/10 | Fully implemented but trained on unvalidated data — premature |
+| Software Engineering | 7.5/10 | Clean tri-engine architecture, 1825 tests, Pydantic v2 config |
+
+#### Progress on the Identity Gap
+
+As of Phase T, the project **can now reproduce the primary diagnostic observable of a DPF discharge** — the current waveform with its characteristic dip at pinch time. The coupled circuit + snowplow model produces:
+- **Peak current within 13%** of PF-1000 experimental data (2.1 MA simulated vs 1.87 MA measured)
+- **59% current dip** during radial compression (caused by dL/dt extracting energy from the circuit)
+- **Three-phase dynamics**: axial rundown (2.2 μs) → radial compression (0.5 μs) → pinch
+- **Multi-device validation**: PF-1000, NX2, UNU-ICTP all produce correct order-of-magnitude peak currents
+
+The snowplow model implements Lee model Phases 2-4 with velocity-Verlet integration, current fraction f_c (Lee & Saw 2014), and proper coaxial inductance formulas. The radial phase uses a cylindrical slug model with mass pickup drag. Remaining gaps: ablation module unvalidated, Metal engine lacks cylindrical geometry, and full 2D MHD + snowplow coupling is not yet implemented.
+
+#### What's Good
+
+The simulation backend features a tri-engine architecture (Python + Athena++ C++ + AthenaK Kokkos) with DPF z-pinch physics: **snowplow dynamics** (Lee model Phases 2-4: axial rundown, radial compression, pinch), circuit coupling with crowbar model and BDF2 dL/dt, Spitzer resistivity (GMS Coulomb log + ion-acoustic + LHDI thresholds), two-temperature e/i model, bremsstrahlung radiation with implicit Newton-Raphson, and full Braginskii anisotropic viscosity and thermal conduction. The Python engine defaults to HLLD (Miyoshi & Kusano 2005) + SSP-RK3 (Shu-Osher 1988) + WENO-Z (Borges 2008). The Metal GPU backend implements WENO5-Z + HLLD + SSP-RK3 + float64 + CT + resistive MHD. The AthenaK backend adds GPU-ready MHD via Kokkos. The AI/ML layer provides WALRUS surrogate model inference, inverse design, hybrid engine, and ensemble confidence. **First experimental validation**: PF-1000 I(t) within 13% of Scholz et al. (2006), with characteristic 59% current dip reproduced. 1825 non-slow tests + 127 slow tests pass. Phases A-T complete.
+
+#### What's Been Fixed (Phases S-T)
+
+- **Snowplow dynamics**: Full Lee model Phases 2-4 — axial rundown + radial compression + pinch, coupled to circuit via L_plasma and dL/dt
+- **Crowbar model**: Voltage-zero and fixed-time trigger modes, L-R post-crowbar decay
+- **Current fraction f_c**: Lee & Saw 2014 mass/current fractions for sheath coupling
+- **Anomalous resistivity**: Renamed to ion-acoustic (was mislabeled "Buneman"), LHDI threshold added
+- **First I(t) validation**: PF-1000, NX2, UNU-ICTP order-of-magnitude validation completed
+
+#### What's Still Missing
+
+- **Cylindrical geometry on Metal**: Metal engine is Cartesian-only — DPF requires 1/r J×B force scaling
+- **Ablation V&V**: Module wired into engine but unvalidated
+- **Full 2D MHD + snowplow coupling**: Currently 0D snowplow + 3D MHD run separately; need mass-sweep source terms in the MHD field equations
+- **End-to-end validation**: 0D circuit+snowplow validated, but no full MHD + circuit + snowplow simulation compared to experiment yet
 
 ### Active Modules (What Actually Runs)
 
@@ -39,7 +80,7 @@ These modules are wired into `engine.py` and execute during every simulation:
 
 | Module | Implementation | Quality |
 |--------|----------------|---------|
-| **Circuit RLC** | Implicit midpoint solver with dynamic plasma inductance/resistance | Solid — energy conservation to 1% |
+| **Circuit RLC** | Implicit midpoint solver with dynamic plasma inductance/resistance, crowbar model (voltage-zero + fixed-time), BDF2 dL/dt | Solid — energy conservation to 1% |
 | **MHD Solver** | WENO-Z reconstruction + HLLD Riemann solver (default) + SSP-RK3 time integrator, Numba-accelerated | Good — HLLD + SSP-RK3 defaults, 5th-order WENO-Z convergence on smooth data |
 | **Two-Temperature Plasma** | Separate Te, Ti with implicit relaxation via Spitzer collision rates | Strong — matches NRL Plasma Formulary |
 | **Spitzer Collisions** | Quantum-corrected Coulomb logarithm (Gericke-Murillo-Schlanges), nu_ei, resistivity | Strong — analytically verified |
@@ -48,7 +89,8 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **DD Neutron Yield** | Thermonuclear cross-section integration <sigma*v>(Ti) | Implemented |
 | **Nernst Effect** | First-order upwind advection of B by temperature gradient | Simplified — operator-split, no gyropolarization |
 | **Braginskii Viscosity** | Full anisotropic tensor: eta_0 (parallel) + eta_1, eta_2 (perpendicular) with field-aligned decomposition | Complete — Phase D |
-| **Anomalous Resistivity** | Buneman threshold model: eta_anom when v_drift > v_crit | Phenomenological |
+| **Anomalous Resistivity** | Ion-acoustic threshold (v_drift > v_ti) + LHDI threshold (v_drift > v_LHDI) | Phenomenological — dual threshold model |
+| **Snowplow Dynamics** | Lee model Phases 2-4: axial rundown (velocity-Verlet) + radial compression (slug model) + pinch. Current fraction f_c, mass fractions f_m/f_mr. Coupled to circuit via L_plasma and dL/dt. | Strong — reproduces PF-1000 current dip |
 | **Cylindrical Geometry** | 2D (r,z) axisymmetric with proper 1/r metric, axis protection at r=0 | Well-implemented |
 | **Strang Splitting** | collision/radiation <-> MHD <-> circuit, 2nd-order | Correct |
 
@@ -102,6 +144,7 @@ These modules are wired into `engine.py` and execute during every simulation:
 | **Hybrid Engine** | Physics → surrogate handoff with periodic L2 validation and fallback | Complete, tested |
 | **Instability Detector** | WALRUS divergence monitoring with severity classification | Complete, tested |
 | **Confidence/Ensemble** | Multi-checkpoint ensemble prediction, OOD detection, uncertainty | Complete, tested |
+| **Neural Preconditioner** | Poisson solver acceleration via WALRUS or SimpleUNet3D fallback | Complete, training pipeline verified |
 | **AI Server** | FastAPI router: `/api/ai/{status,predict,rollout,sweep,inverse,confidence}` + WS | Complete, tested |
 
 #### Shared Infrastructure
@@ -136,7 +179,7 @@ These live in `src/dpf/experimental/` to clearly communicate their status:
 | **Hybrid PIC** | 978 | Boris pusher + CIC deposition complete | Never instantiated; kinetic effects are fidelity-6+ |
 | **Multi-Species** | 409 | SpeciesMixture class complete | Will be integrated in Phase D (after line radiation validation) |
 
-**Bottom line**: The core physics pipeline is substantially complete in both engines. ~20-25% of Python source code remains dormant (AMR, PIC, GPU, multi-species). The Athena++ C++ problem generator (`dpf_zpinch.cpp`, 1,003 LOC) implements all DPF-specific physics as Athena++ enrolled callbacks.
+**Bottom line**: The MHD solver infrastructure is competitive with established open-source codes, and the DPF-specific physics now includes the defining snowplow dynamics with experimental validation. The coupled circuit + snowplow model reproduces the PF-1000 current waveform within 13% and produces the characteristic current dip. Remaining gaps: Metal engine needs cylindrical geometry, ablation module is wired but unvalidated, and full 2D MHD + snowplow mass-sweep coupling is not yet implemented. ~15-20% of Python source code remains dormant (AMR, GPU, multi-species).
 
 ### Verification & Validation (Phase C — completed)
 
@@ -155,7 +198,7 @@ These live in `src/dpf/experimental/` to clearly communicate their status:
 | **Unit physics** (collision, EOS, circuit, radiation) | **Strong** — verified against analytical formulas |
 | **Shock tubes** (Sod, Brio-Wu) | **Good** — correct wave structure, L1 errors reasonable |
 | **Convergence studies** | **Good** — diffusion convergence (3 methods), Orszag-Tang, Sedov |
-| **Experimental validation** | **Improved** — Lee Model comparison for PF-1000 and NX2 |
+| **Experimental validation** | **First pass** — 0D circuit+snowplow validated against PF-1000 (peak I within 13%, current dip reproduced), NX2 and UNU-ICTP order-of-magnitude. Full MHD validation pending. |
 | **Braginskii / anisotropic transport** | **Good** — 14 tests covering limits, backward compatibility, field alignment |
 | **Dormant module tests** | **Missing** — AMR, GPU, PIC, multi-species have zero coverage |
 | **Turbulence/sheath tests** | **Empty** — stub files with no actual tests |
@@ -199,8 +242,10 @@ We study these established MHD codes to guide our development:
 | ~~Phase M~~ | ~~Metal GPU optimization~~ | — | ~~MetalMHDSolver (MPS), stencil kernels, MLX surrogate, 35 tests~~ | ✅ Done |
 | ~~Phase N~~ | ~~Hardening & cross-backend V&V~~ | 7/10 | ~~Metal parity, AthenaK parity, energy conservation, coverage~~ | ✅ Done |
 | ~~Phase O~~ | ~~Physics accuracy~~ | 8.7/10 | ~~WENO5-Z, HLLD, SSP-RK3, float64, 45 accuracy tests~~ | ✅ Done |
-| **Phase J.2** (next) | WALRUS live integration | — | Real IsotropicModel inference, fix Well exporter, resolve API stubs | 🔜 |
-| **Phase J.3+** | Unity frontend + HPC | 9/10 | Teaching/Engineering mode, custom AthenaK pgens, MPI scaling | 🔜 |
+| ~~Phase S~~ | ~~DPF-specific physics~~ | 5.2/10 | ~~Snowplow dynamics, crowbar model, BDF2 dL/dt, ablation wiring, LHDI resistivity, Braginskii kappa(Z)~~ | ✅ Done |
+| ~~Phase T~~ | ~~Snowplow fixes + validation~~ | ~6.5/10 | ~~L_coeff fix, f_c current fraction, radial compression, pinch, first I(t) validation vs PF-1000~~ | ✅ Done |
+| **Phase U** (next) | Advanced physics + AI | 7.5/10 | Cylindrical geometry for Metal, ablation V&V, WALRUS retraining on validated data | 🔜 |
+| **Phase V** | Unity frontend + HPC | 9/10 | Teaching/Engineering mode, custom AthenaK pgens, MPI scaling | 🔜 |
 
 > **AI Integration**: Phases H-I use [Polymathic AI WALRUS](https://huggingface.co/polymathic-ai/walrus) — a 1.3B-parameter Encoder-Processor-Decoder Transformer (IsotropicModel) pretrained on 19 physical systems including MHD. Uses delta prediction (`u(t+1) = u(t) + model(U(t))`) with RevIN normalization and Hydra config. The AI layer provides surrogate inference, inverse design, hybrid physics-surrogate engine, instability detection, ensemble confidence, and a real-time server. WALRUS requires `torch==2.5.1` (pinned) — use a separate venv for training. All AI dependencies are optional — the simulator works without them. See the [forward plan](docs/PLAN.md) for full WALRUS integration architecture.
 
@@ -436,7 +481,7 @@ Full configuration reference: see `dpf verify <config_file>` for all available f
 | `tutorial` | Generic | — | Minimal 8x8x8 Cartesian grid for quick tests |
 | `pf1000` | PF-1000 (IPPLM Warsaw) | 1 MJ | Largest DPF in Europe |
 | `nx2` | NX2 (NIE Singapore) | 3 kJ | Compact Mather-type DPF |
-| `llnl_dpf` | LLNL-DPF | 100 kJ | Research device |
+| `llnl_dpf` | LLNL-DPF | 4 kJ | Research device (reconciled from 100 kJ inconsistency) |
 | `cartesian_demo` | Generic | — | 32x32x32 with all active physics |
 
 ```python
@@ -470,7 +515,7 @@ DPF_Unified/
 │   ├── fluid/                     # [ACTIVE] MHD solvers, EOS, viscosity, Nernst
 │   ├── collision/                 # [ACTIVE] Spitzer resistivity, temperature relaxation
 │   ├── radiation/                 # [ACTIVE] Bremsstrahlung, FLD transport
-│   ├── turbulence/                # [ACTIVE] Anomalous resistivity (Buneman)
+│   ├── turbulence/                # [ACTIVE] Anomalous resistivity (ion-acoustic threshold)
 │   ├── sheath/                    # [ACTIVE] Bohm sheath BCs
 │   ├── atomic/                    # [ACTIVE] Saha ionization
 │   ├── geometry/                  # [ACTIVE] Cylindrical metric operators
@@ -521,7 +566,7 @@ DPF_Unified/
 │       ├── athinput.dpf_zpinch    # Athena++ input deck for DPF simulations
 │       └── athinput.athenak_blast # AthenaK MHD blast wave verification
 │
-└── tests/                         # 1452 tests (1331 non-slow + 121 slow)
+└── tests/                         # 1825 non-slow + 127 slow tests
 ```
 
 ---
@@ -562,6 +607,8 @@ pytest tests/ -v -m "not slow"
 | **Metal GPU (Phase M)** | **35** | **Strong — device, stencils, solver, float32 accuracy, benchmarks, cross-backend** |
 | **Cross-backend V&V (Phase N)** | **17** | **Strong — Metal parity, AthenaK parity, energy conservation** |
 | **Physics Accuracy (Phase O)** | **45** | **Strong — HLLD, WENO5-Z, SSP-RK3, float64, convergence order, max accuracy config** |
+| **DPF Snowplow (Phase S)** | **148** | **Strong — axial, radial, crowbar, BDF2 dL/dt, ablation, LHDI, Braginskii kappa(Z)** |
+| **Snowplow Fixes + Validation (Phase T)** | **104** | **Strong — L_coeff, f_c, radial physics, I(t) vs PF-1000, multi-device, parameter sensitivity** |
 | Integration | 50+ | Moderate — pipeline runs, peak-value validation |
 | Dormant modules | 0 | Missing |
 
@@ -582,6 +629,24 @@ Contributions are welcome. When adding physics:
 ## License
 
 MIT License — see [LICENSE](LICENSE).
+
+---
+
+## PhD Debate Panel History
+
+Independent academic review panels have assessed this project at multiple milestones:
+
+| Assessment | Date | Scope | Verdict | Report |
+|------------|------|-------|---------|--------|
+| PhD Debate #2 | 2026-02-16 | Phase R review | 5.0/10 composite (bifurcated: MHD 8.5, DPF 3.0) | [`docs/PHASE_R_DEBATE_VERDICT.md`](docs/PHASE_R_DEBATE_VERDICT.md) |
+| PhD Debate #3 | 2026-02-16 | Full project | 4.5/10 consensus (3-0) | [`docs/PHD_DEBATE_3_FULL_PROJECT_VERDICT.md`](docs/PHD_DEBATE_3_FULL_PROJECT_VERDICT.md) |
+| **PhD Debate #4** | **2026-02-16** | **Post-Phase S** | **5.2/10 consensus (3-0)** | [`docs/PHD_DEBATE_4_VERDICT.md`](docs/PHD_DEBATE_4_VERDICT.md) |
+
+Key findings across debates:
+- **Debate #3**: Identity gap — good MHD code (7.5/10) but not a DPF simulator (2.0/10 DPF-specific)
+- **Debate #4**: Found L_coeff factor-of-2 bug and missing f_c — "most dangerous class of bug, produces plausible results for wrong reasons"
+- **Phase T response**: Fixed all 3 critical bugs, implemented radial compression, achieved first I(t) validation
+- The Lee Model (~2000 LOC) was the benchmark; DPF-Unified now reproduces its key predictions (current dip, peak timing)
 
 ---
 

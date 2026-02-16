@@ -11,7 +11,7 @@ This implementation covers phases 1 and 2 only (MVP):
    and accelerates axially along the anode.  The equation of motion is a
    snowplow model:
 
-       d^2z/dt^2 = (mu_0 / 2) * ln(b/a) * I^2 / M_swept
+       d^2z/dt^2 = (mu_0 / (4*pi)) * ln(b/a) * (f_m*I)^2 / M_swept
 
    where M_swept = m0 + rho0 * pi * (b^2 - a^2) * z is the accumulated
    mass.  The circuit equation is simultaneously integrated.
@@ -261,7 +261,7 @@ class LeeModel:
         # dI/dt = (V_cap - R0*I - I*dL_p/dt) / L_total
         # dV/dt = -I / C
         # dz/dt = vz
-        # dvz/dt = (mu_0/2) * ln(b/a) * fm^2 * I^2 / M_swept(z)
+        # dvz/dt = (mu_0/(4*pi)) * ln(b/a) * (fm*I)^2 / M_swept(z)
 
         def axial_rhs(t: float, y: np.ndarray) -> np.ndarray:
             I, Vcap, z_pos, vz = y  # noqa: E741
@@ -286,15 +286,14 @@ class LeeModel:
             # Capacitor voltage
             dV_dt = -I / C
 
-            # Snowplow acceleration
-            # F = (mu_0/2) * ln(b/a) * (fm*I)^2 / (2*pi)
-            # ... actually the standard Lee formulation:
-            # M * d^2z/dt^2 = (mu_0*ln(b/a))/(2) * fm^2 * I^2
+            # Snowplow acceleration (Lee & Saw 2014)
+            # F = (mu_0/(4*pi)) * ln(b/a) * (fm*I)^2
+            # Derived from dW/dz where W = (mu_0*I^2/(4*pi))*ln(b/a)*z
             # minus mass pickup: M * dvz/dt + vz * dM/dt = F
             # dM/dt = fc * rho0 * annulus_area * vz
             dM_dt = self.fc * rho0 * annulus_area * vz
 
-            F_magnetic = 0.5 * mu_0 * np.log(b / a) * (self.fm * I)**2
+            F_magnetic = (mu_0 / (4.0 * pi)) * np.log(b / a) * (self.fm * I)**2
 
             if M_swept > 1e-15:
                 dvz_dt = (F_magnetic - vz * dM_dt) / M_swept

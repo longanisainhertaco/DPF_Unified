@@ -93,7 +93,8 @@ class TestAthinputGeneration:
         text = generate_athinput(dpf_config)
         # Cylindrical: should have reflecting inner R BC
         assert "ix1_bc     = reflecting" in text
-        assert "ox1_bc     = outflow" in text
+        # User BC at outer radial boundary (electrode BC enrollment for circuit coupling)
+        assert "ox1_bc     = user" in text
         # nx3=1 for axisymmetric
         assert "nx3        = 1" in text
 
