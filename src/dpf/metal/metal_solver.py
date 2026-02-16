@@ -144,6 +144,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         enable_nernst: bool = False,
         ion_mass: float = 3.34358377e-27,
         Z_eff: float = 1.0,
+        coordinates: str = "cartesian",
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -163,6 +164,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.enable_nernst: bool = enable_nernst
         self.ion_mass: float = float(ion_mass)
         self.Z_eff: float = float(Z_eff)
+        self.coordinates: str = coordinates
 
         # Determine dtype from precision setting ---------------------------
         if precision == "float64":
@@ -197,15 +199,27 @@ class MetalMHDSolver(PlasmaSolverBase):
             3, nx, ny, nz, dtype=self._dtype, device=self.device
         )
 
+        # Cylindrical coordinate support -----------------------------------
+        # r[i] = (i + 0.5) * dx, shape (nx, 1, 1) for broadcasting
+        # In cylindrical mode, axis 0 = radial, axis 2 = axial (z)
+        if self.coordinates == "cylindrical":
+            r_1d = (torch.arange(nx, dtype=self._dtype, device=self.device)
+                    + 0.5) * self.dx
+            self._r = r_1d.reshape(nx, 1, 1)
+            self._inv_r = 1.0 / torch.clamp(self._r, min=1e-30)
+        else:
+            self._r = None
+            self._inv_r = None
+
         logger.info(
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
-            "riemann=%s  recon=%s  time=%s  precision=%s  "
+            "riemann=%s  recon=%s  time=%s  precision=%s  coords=%s  "
             "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.time_integrator,
-            self.precision,
+            self.precision, self.coordinates,
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
         )
@@ -663,6 +677,127 @@ class MetalMHDSolver(PlasmaSolverBase):
         B_new = B + dt * rhs["B"]
         return rho_new, vel_new, p_new, B_new
 
+    # ------------------------------------------------------------------ #
+    #  Cylindrical geometric source terms
+    # ------------------------------------------------------------------ #
+
+    def _apply_cylindrical_sources(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+        dt: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Operator-split cylindrical geometric source terms.
+
+        Corrects for the difference between Cartesian flux divergence
+        (dF/dr) and cylindrical flux divergence ((1/r) d(rF)/dr), plus
+        geometric momentum sources from curvilinear coordinates.
+
+        In Heaviside-Lorentz units (mu_0 absorbed into B), the total
+        corrections relative to the Cartesian solver are:
+
+        Continuity:
+            S_rho = -rho * v_r / r
+
+        r-momentum (flux correction + geometric source):
+            S_mr = (rho(v_theta^2 - v_r^2) + B_r^2 - B_theta^2) / r
+
+        theta-momentum:
+            S_mtheta = -2(rho*v_r*v_theta - B_r*B_theta) / r
+
+        z-momentum (flux correction only):
+            S_mz = -(rho*v_r*v_z - B_r*B_z) / r
+
+        Pressure (adiabatic correction):
+            S_p = -gamma * p * v_r / r
+
+        B_theta induction:
+            S_Btheta = -(v_r*B_theta - v_theta*B_r) / r
+
+        B_z induction:
+            S_Bz = -(v_r*B_z - v_z*B_r) / r
+
+        References
+        ----------
+        Stone & Norman, ApJS 80:753 (1992) -- ZEUS-2D.
+        Mignone et al., ApJS 170:228 (2007) -- PLUTO code.
+        Stone et al., ApJS 249:4 (2020) -- Athena++ methods paper.
+
+        Parameters
+        ----------
+        rho, vel, p, B : torch.Tensor
+            Primitive state after Cartesian RK integration.
+        dt : float
+            Timestep [s].
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+            Corrected (rho, vel, p, B).
+        """
+        inv_r = self._inv_r  # shape (nx, 1, 1)
+
+        v_r = vel[0]
+        v_theta = vel[1]
+        v_z = vel[2]
+        B_r = B[0]
+        B_theta = B[1]
+        B_z = B[2]
+
+        # --- Conservative source terms ---
+
+        # Continuity: S_rho = -rho * v_r / r
+        S_rho = -rho * v_r * inv_r
+
+        # r-momentum (combined flux correction + geometric source):
+        # S_mr = (rho(v_theta^2 - v_r^2) + B_r^2 - B_theta^2) / r
+        S_mr = (rho * (v_theta ** 2 - v_r ** 2)
+                + B_r ** 2 - B_theta ** 2) * inv_r
+
+        # theta-momentum:
+        # S_mtheta = -2(rho*v_r*v_theta - B_r*B_theta) / r
+        S_mtheta = -2.0 * (rho * v_r * v_theta
+                           - B_r * B_theta) * inv_r
+
+        # z-momentum (flux correction only):
+        # S_mz = -(rho*v_r*v_z - B_r*B_z) / r
+        S_mz = -(rho * v_r * v_z - B_r * B_z) * inv_r
+
+        # Pressure (adiabatic correction for cylindrical div(v)):
+        # div(v)_cyl = dv_r/dr + v_r/r + dv_z/dz
+        # Cartesian solver computes dv_r/dr + dv_z/dz, correction: v_r/r
+        # dp/dt += -gamma * p * v_r / r
+        S_p = -self.gamma * p * v_r * inv_r
+
+        # Induction corrections:
+        # B_theta: -(v_r*B_theta - v_theta*B_r) / r
+        S_Btheta = -(v_r * B_theta - v_theta * B_r) * inv_r
+        # B_z: -(v_r*B_z - v_z*B_r) / r
+        S_Bz = -(v_r * B_z - v_z * B_r) * inv_r
+
+        # --- Apply forward Euler update ---
+        rho_new = torch.clamp(rho + dt * S_rho, min=RHO_FLOOR)
+
+        # Convert conservative momentum sources to primitive velocity updates
+        # dv = (S_mom - v * S_rho) / rho
+        rho_safe = torch.clamp(rho, min=RHO_FLOOR)
+        inv_rho = 1.0 / rho_safe
+
+        vel_new = vel.clone()
+        vel_new[0] = v_r + dt * (S_mr - v_r * S_rho) * inv_rho
+        vel_new[1] = v_theta + dt * (S_mtheta - v_theta * S_rho) * inv_rho
+        vel_new[2] = v_z + dt * (S_mz - v_z * S_rho) * inv_rho
+
+        p_new = torch.clamp(p + dt * S_p, min=P_FLOOR)
+
+        B_new = B.clone()
+        B_new[1] = B_theta + dt * S_Btheta
+        B_new[2] = B_z + dt * S_Bz
+
+        return rho_new, vel_new, p_new, B_new
+
     def _apply_resistive_diffusion(
         self,
         B: torch.Tensor,
@@ -813,6 +948,14 @@ class MetalMHDSolver(PlasmaSolverBase):
         else:
             rho_new, vel_new, p_new, B_new = self._step_ssp_rk2(
                 rho_n, vel_n, p_n, B_n, dt,
+            )
+
+        # -------------------------------------------------------------- #
+        #  Cylindrical geometric source terms (operator-split)
+        # -------------------------------------------------------------- #
+        if self.coordinates == "cylindrical":
+            rho_new, vel_new, p_new, B_new = self._apply_cylindrical_sources(
+                rho_new, vel_new, p_new, B_new, dt,
             )
 
         # -------------------------------------------------------------- #
@@ -1260,5 +1403,6 @@ class MetalMHDSolver(PlasmaSolverBase):
             f"device={self.device}, limiter={self.limiter!r}, "
             f"use_ct={self.use_ct}, riemann={self.riemann_solver!r}, "
             f"recon={self.reconstruction!r}, "
-            f"time={self.time_integrator!r})"
+            f"time={self.time_integrator!r}, "
+            f"coords={self.coordinates!r})"
         )
