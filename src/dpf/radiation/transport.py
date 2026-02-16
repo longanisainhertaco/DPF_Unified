@@ -294,12 +294,12 @@ def apply_radiation_transport(
     Returns:
         Updated state dict with modified 'Te' and 'E_rad'.
     """
-    from dpf.constants import m_p
+    from dpf.constants import m_d
     from dpf.radiation.bremsstrahlung import bremsstrahlung_power
 
     Te = state["Te"]
     rho = state["rho"]
-    ne = Z * rho / m_p  # Electron density assuming Z ionization
+    ne = Z * rho / m_d  # Electron density assuming Z ionization
 
     # Skip FLD when plasma is too cold — radiation transport is negligible
     # below ~10,000 K (< 1 eV) and the opacity formula produces overflow.

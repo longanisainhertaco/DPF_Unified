@@ -22,16 +22,18 @@ class TestSpitzerResistivity:
     """Tests for Spitzer resistivity function."""
 
     def test_analytic_formula(self):
-        """eta = m_e * nu_ei / (ne * e^2) should match direct computation."""
-        from dpf.collision.spitzer import nu_ei, spitzer_resistivity
+        """eta = m_e * nu_ei / (ne * e^2 * alpha(Z)) — with Braginskii correction."""
+        from dpf.collision.spitzer import nu_ei, spitzer_alpha, spitzer_resistivity
 
         ne = np.array([1e20])
         Te = np.array([1e6])
         lnL = 10.0
+        Z = 1.0
 
-        eta = spitzer_resistivity(ne, Te, lnL)
-        freq = nu_ei(ne, Te, lnL)
-        eta_expected = m_e * freq / (ne * e**2)
+        eta = spitzer_resistivity(ne, Te, lnL, Z=Z)
+        freq = nu_ei(ne, Te, lnL, Z=Z)
+        alpha_Z = spitzer_alpha(Z)
+        eta_expected = m_e * freq / (ne * e**2) / alpha_Z
 
         np.testing.assert_allclose(eta, eta_expected, rtol=1e-10)
 

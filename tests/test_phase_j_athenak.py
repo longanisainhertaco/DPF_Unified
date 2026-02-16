@@ -463,29 +463,45 @@ class TestBackendResolution:
             result = SimulationEngine._resolve_backend("athenak")
             assert result == "athenak"
 
-    def test_auto_prefers_athenak(self):
+    def test_auto_prefers_athena_over_athenak(self):
+        """Auto resolution prefers Athena++ over AthenaK (Phase R priority change)."""
         from dpf.engine import SimulationEngine
         with (
             patch("dpf.athenak_wrapper.is_available", return_value=True),
             patch("dpf.athena_wrapper.is_available", return_value=True),
         ):
             result = SimulationEngine._resolve_backend("auto")
-            assert result == "athenak"
+            assert result == "athena"
 
-    def test_auto_falls_back_to_athena(self):
+    def test_auto_falls_back_to_athenak_when_athena_unavailable(self):
+        """Auto resolution falls back to AthenaK when Athena++ and Metal unavailable."""
         from dpf.engine import SimulationEngine
+
+        class FakeMetal:
+            @staticmethod
+            def is_available():
+                return False
+
         with (
-            patch("dpf.athenak_wrapper.is_available", return_value=False),
-            patch("dpf.athena_wrapper.is_available", return_value=True),
+            patch("dpf.athenak_wrapper.is_available", return_value=True),
+            patch("dpf.athena_wrapper.is_available", return_value=False),
+            patch("dpf.metal.metal_solver.MetalMHDSolver", FakeMetal),
         ):
             result = SimulationEngine._resolve_backend("auto")
-            assert result == "athena"
+            assert result == "athenak"
 
     def test_auto_falls_back_to_python(self):
         from dpf.engine import SimulationEngine
+
+        class FakeMetal:
+            @staticmethod
+            def is_available():
+                return False
+
         with (
             patch("dpf.athenak_wrapper.is_available", return_value=False),
             patch("dpf.athena_wrapper.is_available", return_value=False),
+            patch("dpf.metal.metal_solver.MetalMHDSolver", FakeMetal),
         ):
             result = SimulationEngine._resolve_backend("auto")
             assert result == "python"

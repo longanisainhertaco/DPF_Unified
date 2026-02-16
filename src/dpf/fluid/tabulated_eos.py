@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import numpy as np
 from numba import njit
 
-from dpf.constants import k_B
+from dpf.constants import k_B, m_d
 
 # ============================================================
 # Data structure for a single material's EOS table
@@ -313,14 +313,14 @@ class TabulatedEOS:
         if result is not None:
             return result
 
-        # Ideal gas fallback: assume Z=1, m_i = m_p ~ 1.67e-27 kg
+        # Ideal gas fallback: assume Z=1, deuterium (m_i = m_d ~ 3.34e-27 kg)
         rho_arr = np.atleast_1d(np.asarray(rho, dtype=np.float64))
         T_arr = np.atleast_1d(np.asarray(T, dtype=np.float64))
         # p = rho * k_B * T / m_i * (1 + Z)  with Z=1 gives factor of 2
         # but we use gamma-based ideal: p = (gamma - 1) * rho * e
         # Simplest ideal gas: p = n * k_B * T  where n = rho / m_i
         # For fully ionized Z=1: p = 2 * n_i * k_B * T
-        m_i = 1.6726e-27  # proton mass fallback
+        m_i = m_d  # deuterium mass fallback (default material)
         return 2.0 * (rho_arr / m_i) * k_B * T_arr
 
     def internal_energy(
@@ -349,7 +349,7 @@ class TabulatedEOS:
 
         # Ideal gas fallback
         T_arr = np.atleast_1d(np.asarray(T, dtype=np.float64))
-        m_i = 1.6726e-27
+        m_i = m_d  # deuterium mass fallback (default material)
         return (
             (1.0 / (self.gamma - 1.0))
             * 2.0

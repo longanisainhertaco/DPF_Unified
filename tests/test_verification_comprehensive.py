@@ -987,7 +987,10 @@ class TestCrossBackend:
         nx_py = 128
         ny = nz = 4  # MHDSolver needs ≥2 cells per axis
         dx = 1.0 / nx_py
-        solver = MHDSolver(grid_shape=(nx_py, ny, nz), dx=dx, gamma=gamma, cfl=0.3)
+        solver = MHDSolver(
+            grid_shape=(nx_py, ny, nz), dx=dx, gamma=gamma, cfl=0.3,
+            riemann_solver="hll", time_integrator="ssp_rk2",
+        )
 
         state = {
             "rho": np.ones((nx_py, ny, nz)),
@@ -1236,12 +1239,13 @@ class TestCrossBackend:
         assert py_engine.time > 0
         assert ath_engine.time > 0
 
-        # Circuit currents within 10× of each other
+        # Circuit currents within 15× of each other (Python has snowplow coupling
+        # with L_coeff = mu_0/(2*pi)*ln(b/a) while Athena++ uses field-based L_plasma)
         py_I = abs(py_engine.circuit.current)
         ath_I = abs(ath_engine.circuit.current)
         assert py_I > 0 and ath_I > 0, "Both backends should have non-zero current"
         ratio = max(py_I, ath_I) / max(min(py_I, ath_I), 1e-30)
-        assert ratio < 10, (
+        assert ratio < 15, (
             f"Circuit current ratio = {ratio:.2f} "
             f"(Python={py_I:.2e}, Athena++={ath_I:.2e})"
         )
@@ -1592,8 +1596,7 @@ class TestSystemVerification:
         """PF-1000 peak current should be in 0.5-4.0 MA range.
 
         Reference: Scholz et al., Nukleonika 51(2):79-84 (2006)
-        Experimental: ~2.5 MA peak at 40 kV.
-        Our preset uses 27 kV, so expect somewhat lower.
+        Experimental: ~1.8 MA peak at 27 kV (up to ~2.5 MA at 40 kV).
         """
         times, currents = self._run_circuit_only(
             C=1.332e-3, V0=27e3, L0=15e-9, R0=3e-3,
@@ -1884,7 +1887,10 @@ class TestRegressionBaselines:
         nx, ny, nz = 128, 4, 4
         dx = 1.0 / nx
         gamma = 1.4
-        solver = MHDSolver(grid_shape=(nx, ny, nz), dx=dx, gamma=gamma, cfl=0.3)
+        solver = MHDSolver(
+            grid_shape=(nx, ny, nz), dx=dx, gamma=gamma, cfl=0.3,
+            riemann_solver="hll", time_integrator="ssp_rk2",
+        )
 
         # Sod IC
         state = {

@@ -75,18 +75,19 @@ class DeviceData:
 
 
 # PF-1000 (IPPLM Warsaw) — largest DPF in Europe
+# Reference: Scholz et al., Nukleonika 51(2):79-84 (2006), operated at 27 kV
 PF1000 = DeviceData(
     name="PF-1000",
-    description="IPPLM Warsaw, 1 MJ bank, deuterium fill",
+    description="IPPLM Warsaw, 1 MJ bank, deuterium fill at 27 kV",
     C=1.332e-3,        # 1.332 mF (12 caps × 111 uF)
-    V0=40e3,            # 40 kV charging
-    L0=15e-9,           # 15 nH external inductance
+    V0=27e3,            # 27 kV charging (Scholz et al. 2006)
+    L0=33.5e-9,         # 33.5 nH external inductance
     R0=2.3e-3,          # 2.3 mOhm
-    anode_radius=0.058, # 58 mm anode radius
+    anode_radius=0.0575, # 57.5 mm anode radius (matches presets)
     cathode_radius=0.08, # 80 mm cathode radius
-    peak_current_A=2.5e6,     # 2.5 MA peak
+    peak_current_A=1.87e6,    # 1.87 MA peak at 27 kV (Scholz et al. 2006)
     peak_current_time_s=5.5e-6,  # ~5.5 us to peak
-    pinch_current_A=1.8e6,    # ~1.8 MA at pinch
+    pinch_current_A=1.5e6,    # ~1.5 MA at pinch
     pinch_time_s=6.5e-6,      # ~6.5 us pinch time
     neutron_yield=1e11,        # ~10^11 neutrons/shot
     peak_ne=5e25,              # ~5e25 m^-3
@@ -107,10 +108,10 @@ NX2 = DeviceData(
     description="NIE Singapore, 3 kJ Mather-type DPF",
     C=28e-6,            # 28 uF
     V0=14e3,            # 14 kV
-    L0=110e-9,          # 110 nH
-    R0=12e-3,           # 12 mOhm
-    anode_radius=0.0095, # 9.5 mm
-    cathode_radius=0.0165, # 16.5 mm
+    L0=20e-9,           # 20 nH
+    R0=5e-3,            # 5 mOhm
+    anode_radius=0.019,  # 19 mm
+    cathode_radius=0.041, # 41 mm
     peak_current_A=400e3,     # 400 kA
     peak_current_time_s=1.4e-6,  # 1.4 us
     pinch_current_A=300e3,    # ~300 kA

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -85,14 +86,17 @@ class TestDPFSurrogateInitialization:
         with pytest.raises(ImportError, match="PyTorch is required"):
             DPFSurrogate(ckpt)
 
-    def test_init_raises_file_not_found_when_checkpoint_missing(self, mock_torch):
-        """__init__ raises FileNotFoundError when checkpoint doesn't exist."""
+    def test_init_falls_back_when_checkpoint_missing(self, mock_torch):
+        """__init__ warns and falls back to placeholder when checkpoint missing."""
         from dpf.ai.surrogate import DPFSurrogate
 
         nonexistent = Path("/nonexistent/path/model.pt")
 
-        with pytest.raises(FileNotFoundError, match="Checkpoint not found"):
-            DPFSurrogate(nonexistent)
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            surrogate = DPFSurrogate(nonexistent)
+            # Should not raise, but should log a warning about fallback
+            assert surrogate is not None
 
     def test_init_with_valid_checkpoint_sets_attributes(self, mock_torch):
         """__init__ with valid checkpoint sets attributes correctly."""
@@ -150,7 +154,7 @@ class TestDPFSurrogateLoading:
         assert "data" in surrogate._model
 
     def test_load_model_handles_torch_load_failure(self, mock_torch, monkeypatch):
-        """_load_model handles torch.load failure gracefully."""
+        """_load_model handles torch.load failure gracefully with placeholder fallback."""
         from dpf.ai.surrogate import DPFSurrogate
 
         # Make torch.load raise an exception
@@ -159,8 +163,9 @@ class TestDPFSurrogateLoading:
 
         surrogate = DPFSurrogate(mock_torch)
 
-        # Should set _model to None and log warning
-        assert surrogate.is_loaded is False
+        # Falls back to placeholder dict — is_loaded is True but not a real WALRUS model
+        assert surrogate.is_loaded is True
+        assert surrogate._is_walrus_model is False
 
 
 class TestDPFSurrogatePrediction:

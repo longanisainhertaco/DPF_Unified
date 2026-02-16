@@ -4,7 +4,7 @@ Provides volumetric power density for electron-ion bremsstrahlung,
 the dominant radiation loss mechanism in DPF plasma at ~1-10 keV.
 
 Physics:
-    P_ff = 1.69e-32 * g_ff * Z^2 * ne^2 * sqrt(Te)  [W/m^3]
+    P_ff = 1.42e-40 * g_ff * Z^2 * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
 
     where:
         g_ff  = Gaunt factor (dimensionless, ~1.0-1.5 for DPF conditions)
@@ -22,7 +22,8 @@ from numba import njit
 
 # Bremsstrahlung coefficient in SI (W m^3 K^{-1/2})
 # P_ff = BREM_COEFF * g_ff * Z^2 * ne^2 * sqrt(Te)
-BREM_COEFF = 1.69e-32
+# SI coefficient (ne in m^-3, T in K) — NOT the CGS coefficient 1.69e-32
+BREM_COEFF = 1.42e-40
 
 
 @njit(cache=True)

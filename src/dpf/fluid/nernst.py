@@ -29,36 +29,9 @@ from __future__ import annotations
 import numpy as np
 from numba import njit, prange
 
+from dpf.collision.spitzer import coulomb_log
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_e, pi
-
-# ============================================================
-# Coulomb logarithm (local helper, consistent with spitzer.py)
-# ============================================================
-
-@njit(cache=True)
-def _coulomb_log(ne: np.ndarray, Te: np.ndarray) -> np.ndarray:
-    """Coulomb logarithm for electron-ion collisions.
-
-    Uses the NRL Plasma Formulary expression, floored at 2.0.
-
-    Args:
-        ne: Electron number density [m^-3].
-        Te: Electron temperature [K].
-
-    Returns:
-        Coulomb logarithm array (floored at 2.0).
-    """
-    # NRL expression: ln Lambda = 23 - ln(sqrt(ne [cm^-3]) * Z / Te^(3/2) [eV])
-    # Convert ne from m^-3 to cm^-3: ne * 1e-6
-    # Convert Te from K to eV: Te * k_B / e_charge
-    Te_eV = Te * k_B / e_charge
-    Te_eV_safe = np.maximum(Te_eV, 1e-3)
-    ne_cm3 = ne * 1e-6
-    arg = np.sqrt(np.maximum(ne_cm3, 1.0)) / np.maximum(Te_eV_safe, 1e-3) ** 1.5
-    lnL = 23.0 - np.log(np.maximum(arg, 1e-30))
-    return np.maximum(lnL, 2.0)
-
 
 # ============================================================
 # Electron collision time
@@ -120,7 +93,7 @@ def nernst_coefficient(
     Returns:
         Dimensionless beta_wedge coefficient.
     """
-    lnL = _coulomb_log(ne, Te)
+    lnL = coulomb_log(ne, Te)
     tau_e = _electron_collision_time(ne, Te, Z_eff, lnL)
     omega_ce = e_charge * B_mag / m_e
     x_e = omega_ce * tau_e
@@ -142,6 +115,9 @@ def nernst_velocity(
     Te: np.ndarray,
     B_field: np.ndarray,
     Z_eff: float = 1.0,
+    dx: float = 1.0,
+    dy: float = 1.0,
+    dz: float = 1.0,
 ) -> np.ndarray:
     r"""Nernst advection velocity for the magnetic field.
 
@@ -155,6 +131,9 @@ def nernst_velocity(
         Te: Electron temperature [K], shape (nx, ny, nz).
         B_field: Magnetic field [T], shape (3, nx, ny, nz).
         Z_eff: Effective ion charge state.
+        dx: Grid spacing in x [m].
+        dy: Grid spacing in y [m].
+        dz: Grid spacing in z [m].
 
     Returns:
         Nernst velocity [m/s], shape (3, nx, ny, nz).
@@ -167,9 +146,9 @@ def nernst_velocity(
 
     # Temperature gradient
     grad_Te = np.array([
-        np.gradient(Te, axis=0),
-        np.gradient(Te, axis=1),
-        np.gradient(Te, axis=2),
+        np.gradient(Te, dx, axis=0),
+        np.gradient(Te, dy, axis=1),
+        np.gradient(Te, dz, axis=2),
     ])
 
     # b_hat x grad(Te)
@@ -362,7 +341,7 @@ def apply_nernst_advection(
     B_field = np.array([Bx, By, Bz])
 
     # Compute Nernst velocity
-    v_N = nernst_velocity(ne, Te, B_field, Z_eff)
+    v_N = nernst_velocity(ne, Te, B_field, Z_eff, dx, dy, dz)
 
     # Upwind advection of each B component
     Bx_new = _upwind_advect_component(Bx, v_N[0], v_N[1], v_N[2], dx, dy, dz, dt)

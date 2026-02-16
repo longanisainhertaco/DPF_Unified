@@ -982,18 +982,97 @@ def hlld_flux_mps(
     F_sL = FL + SL_8 * (U_sL - UL)
     F_sR = FR + SR_8 * (U_sR - UR)
 
-    # ---- Select flux based on wave regions ----
+    # ---- Alfven wave speeds in star region (Miyoshi & Kusano Eq. 51) ----
+    sqrt_rho_sL = torch.sqrt(torch.clamp(rho_sL, min=RHO_FLOOR))
+    sqrt_rho_sR = torch.sqrt(torch.clamp(rho_sR, min=RHO_FLOOR))
+    SL_star = SM - torch.abs(Bn) / sqrt_rho_sL
+    SR_star = SM + torch.abs(Bn) / sqrt_rho_sR
+
+    # ---- Double-star transverse quantities (Eqs. 59-62) ----
+    sign_Bn = torch.sign(Bn + 1e-30)  # avoid sign(0)
+    denom_ds = torch.clamp(sqrt_rho_sL + sqrt_rho_sR, min=1e-20)
+
+    # Double-star transverse velocities (Eq. 59) — same on both sides
+    vt1_ds = (sqrt_rho_sL * vt1_sL + sqrt_rho_sR * vt1_sR
+              + (Bt1_sR - Bt1_sL) * sign_Bn) / denom_ds
+    vt2_ds = (sqrt_rho_sL * vt2_sL + sqrt_rho_sR * vt2_sR
+              + (Bt2_sR - Bt2_sL) * sign_Bn) / denom_ds
+
+    # Double-star transverse B (Eq. 60) — same on both sides
+    Bt1_ds = (sqrt_rho_sL * Bt1_sR + sqrt_rho_sR * Bt1_sL
+              + sqrt_rho_sL * sqrt_rho_sR * (vt1_sR - vt1_sL) * sign_Bn) / denom_ds
+    Bt2_ds = (sqrt_rho_sL * Bt2_sR + sqrt_rho_sR * Bt2_sL
+              + sqrt_rho_sL * sqrt_rho_sR * (vt2_sR - vt2_sL) * sign_Bn) / denom_ds
+
+    # When Bn ≈ 0, Alfven waves collapse → double-star = single-star
+    vt1_dsL = torch.where(Bn_small, vt1_sL, vt1_ds)
+    vt2_dsL = torch.where(Bn_small, vt2_sL, vt2_ds)
+    vt1_dsR = torch.where(Bn_small, vt1_sR, vt1_ds)
+    vt2_dsR = torch.where(Bn_small, vt2_sR, vt2_ds)
+    Bt1_ds_L = torch.where(Bn_small, Bt1_sL, Bt1_ds)
+    Bt2_ds_L = torch.where(Bn_small, Bt2_sL, Bt2_ds)
+    Bt1_ds_R = torch.where(Bn_small, Bt1_sR, Bt1_ds)
+    Bt2_ds_R = torch.where(Bn_small, Bt2_sR, Bt2_ds)
+
+    # Double-star energy (Eq. 62)
+    vB_dsL = SM * Bn + vt1_dsL * Bt1_ds_L + vt2_dsL * Bt2_ds_L
+    e_dsL = e_sL - sqrt_rho_sL * (vB_sL - vB_dsL) * sign_Bn
+
+    vB_dsR = SM * Bn + vt1_dsR * Bt1_ds_R + vt2_dsR * Bt2_ds_R
+    e_dsR = e_sR + sqrt_rho_sR * (vB_sR - vB_dsR) * sign_Bn
+
+    # ---- Build double-star conservative states (8 components) ----
+    U_dsL = torch.zeros_like(UL)
+    U_dsL[IDN] = rho_sL             # density continuous across Alfven wave
+    U_dsL[im_n] = rho_sL * SM
+    U_dsL[im_t1] = rho_sL * vt1_dsL
+    U_dsL[im_t2] = rho_sL * vt2_dsL
+    U_dsL[IEN] = e_dsL
+    U_dsL[ib_n] = Bn
+    U_dsL[ib_t1] = Bt1_ds_L
+    U_dsL[ib_t2] = Bt2_ds_L
+
+    U_dsR = torch.zeros_like(UR)
+    U_dsR[IDN] = rho_sR
+    U_dsR[im_n] = rho_sR * SM
+    U_dsR[im_t1] = rho_sR * vt1_dsR
+    U_dsR[im_t2] = rho_sR * vt2_dsR
+    U_dsR[IEN] = e_dsR
+    U_dsR[ib_n] = Bn
+    U_dsR[ib_t1] = Bt1_ds_R
+    U_dsR[ib_t2] = Bt2_ds_R
+
+    # ---- Double-star fluxes via Rankine-Hugoniot ----
+    # F**_L = F*_L + SL* * (U**_L - U*_L)
+    # F**_R = F*_R + SR* * (U**_R - U*_R)
+    SL_star_8 = SL_star.unsqueeze(0)
+    SR_star_8 = SR_star.unsqueeze(0)
+    F_dsL = F_sL + SL_star_8 * (U_dsL - U_sL)
+    F_dsR = F_sR + SR_star_8 * (U_dsR - U_sR)
+
+    # ---- Select flux based on 6 wave regions ----
+    #   SL      SL*     SM     SR*     SR
+    #    | F*_L  | F**_L  | F**_R | F*_R  |
+    # F_L                                    F_R
     SM_8 = SM.unsqueeze(0)
 
-    # Start with F_R (rightmost region)
+    # Start with F_R (rightmost region: SR <= 0)
     F_HLLD = FR.clone()
 
-    # SR region: use F*_R where SM <= 0 < SR
-    mask_sR = (SM_8 <= 0.0) & (SR_8 > 0.0)
+    # SR* to SR: use F*_R
+    mask_sR = (SR_star_8 <= 0.0) & (SR_8 > 0.0)
     F_HLLD = torch.where(mask_sR, F_sR, F_HLLD)
 
-    # SL* region: use F*_L where SL <= 0 <= SM
-    mask_sL = (SL_8 <= 0.0) & (SM_8 > 0.0)
+    # SM to SR*: use F**_R
+    mask_dsR = (SM_8 <= 0.0) & (SR_star_8 > 0.0)
+    F_HLLD = torch.where(mask_dsR, F_dsR, F_HLLD)
+
+    # SL* to SM: use F**_L
+    mask_dsL = (SL_star_8 <= 0.0) & (SM_8 > 0.0)
+    F_HLLD = torch.where(mask_dsL, F_dsL, F_HLLD)
+
+    # SL to SL*: use F*_L
+    mask_sL = (SL_8 <= 0.0) & (SL_star_8 > 0.0)
     F_HLLD = torch.where(mask_sL, F_sL, F_HLLD)
 
     # Left region: use F_L where SL > 0

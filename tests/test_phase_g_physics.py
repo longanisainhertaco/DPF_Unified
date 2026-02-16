@@ -244,7 +244,7 @@ class TestBindingsGetCouplingData:
             / "athena_bindings.cpp"
         )
         content = bindings_path.read_text()
-        assert "nreal_user_mesh_data_" in content
+        assert "n_ruser_mesh_data" in content
         assert "ruser_mesh_data[0]" in content
 
     def test_bindings_returns_coupling_dict(self):
@@ -776,7 +776,7 @@ class TestSpitzerPhysicsFormulas:
 
     def test_c_vs_python_spitzer_eta(self):
         """C++ Spitzer eta formula matches Python at same (ne, Te)."""
-        from dpf.collision.spitzer import coulomb_log, spitzer_resistivity
+        from dpf.collision.spitzer import coulomb_log, spitzer_alpha, spitzer_resistivity
         from dpf.constants import e as elem_e
         from dpf.constants import epsilon_0 as eps0
         from dpf.constants import h as h_planck
@@ -805,7 +805,8 @@ class TestSpitzerPhysicsFormulas:
         coeff = 4.0 * math.sqrt(2.0 * pi_val) * ne_val * Z * elem_e**4 * lnL
         denom = 3.0 * (4.0 * pi_val * eps0) ** 2 * math.sqrt(m_e) * (kB * Te_val) ** 1.5
         nu_ei_val = coeff / denom
-        eta_cpp = m_e * nu_ei_val / (ne_val * elem_e**2 + 1e-300)
+        alpha_Z = float(spitzer_alpha(Z))
+        eta_cpp = m_e * nu_ei_val / (ne_val * elem_e**2 + 1e-300) / alpha_Z
 
         # Should agree within 1%
         assert eta_cpp == pytest.approx(eta_python, rel=0.01), (
@@ -1155,8 +1156,8 @@ class TestRadiationPhysicsFormulas:
         Te = np.array([1e7])  # K (~860 eV)
 
         P_ff = bremsstrahlung_power(ne, Te, Z=1.0, gaunt_factor=1.2)
-        # P_ff = 1.69e-32 * 1.2 * 1 * (1e24)^2 * sqrt(1e7) ~ 6.4e19 W/m^3
-        assert 1e18 < float(P_ff[0]) < 1e21, f"P_ff = {P_ff[0]:.2e}"
+        # P_ff = 1.42e-40 * 1.2 * 1 * (1e24)^2 * sqrt(1e7) ~ 5.39e11 W/m^3  (SI)
+        assert 1e10 < float(P_ff[0]) < 1e13, f"P_ff = {P_ff[0]:.2e}"
 
     def test_bremsstrahlung_scales_with_ne_squared(self):
         """Bremsstrahlung P_ff ~ ne^2."""

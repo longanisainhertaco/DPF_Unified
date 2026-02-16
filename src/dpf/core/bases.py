@@ -88,6 +88,7 @@ class PlasmaSolverBase(ABC):
         dt: float,
         current: float,
         voltage: float,
+        source_terms: dict[str, np.ndarray] | None = None,
     ) -> dict[str, np.ndarray]:
         """Advance the plasma state by one timestep.
 
@@ -96,6 +97,7 @@ class PlasmaSolverBase(ABC):
             dt: Timestep size [s].
             current: Circuit current [A] for boundary forcing.
             voltage: Capacitor voltage [V].
+            source_terms: Optional dictionary of external source terms (e.g. 'J_kin').
 
         Returns:
             Updated state dictionary.

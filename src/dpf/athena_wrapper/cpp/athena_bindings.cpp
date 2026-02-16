@@ -50,6 +50,7 @@
 #include "hydro/hydro.hpp"
 #include "field/field.hpp"
 #include "coordinates/coordinates.hpp"
+#include "scalars/scalars.hpp"
 
 namespace py = pybind11;
 
@@ -68,6 +69,10 @@ struct AthenaState {
     // DPF circuit coupling parameters (set from Python each step)
     Real circuit_current = 0.0;
     Real circuit_voltage = 0.0;
+
+    // Track whether ruser_mesh_data was allocated by the problem generator
+    // dpf_zpinch.cpp allocates 6 real + 2 int user mesh data fields
+    int n_ruser_mesh_data = 0;
 
     ~AthenaState() {
         // Ensure proper cleanup order
@@ -110,6 +115,18 @@ AthenaHandle init_from_file(const std::string& filepath) {
     state->pouts = std::make_unique<Outputs>(
         state->pmesh.get(), state->pinput.get());
 
+    // Check if ruser_mesh_data was allocated by the problem generator
+    // dpf_zpinch.cpp allocates 6 fields; magnoh.cpp allocates 0
+    // We detect this by trying to access ruser_mesh_data safely
+    try {
+        if (state->pmesh->ruser_mesh_data != nullptr) {
+            // dpf_zpinch allocates exactly 6 fields
+            state->n_ruser_mesh_data = 6;
+        }
+    } catch (...) {
+        state->n_ruser_mesh_data = 0;
+    }
+
     return state;
 }
 
@@ -140,6 +157,15 @@ AthenaHandle init_from_string(const std::string& athinput_text) {
     // Create outputs
     state->pouts = std::make_unique<Outputs>(
         state->pmesh.get(), state->pinput.get());
+
+    // Check ruser_mesh_data allocation (same as init_from_file)
+    try {
+        if (state->pmesh->ruser_mesh_data != nullptr) {
+            state->n_ruser_mesh_data = 6;
+        }
+    } catch (...) {
+        state->n_ruser_mesh_data = 0;
+    }
 
     return state;
 }
@@ -292,6 +318,60 @@ py::dict get_primitive_data(AthenaHandle handle) {
 }
 
 /**
+ * @brief Get passive scalar data from all mesh blocks.
+ *
+ * Returns a Python list of numpy arrays, one per scalar field.
+ * For nscalars=2 (two-temperature model):
+ *   [0] = electron specific energy (s[0] / rho)
+ *   [1] = ion specific energy (s[1] / rho)
+ *
+ * Returns None if no scalars are present.
+ *
+ * @param handle Athena++ state handle.
+ * @return Python list of numpy arrays, or None.
+ */
+py::object get_scalar_data(AthenaHandle handle) {
+    Mesh* pmesh = handle->pmesh.get();
+    MeshBlock* pmb = pmesh->my_blocks(0);
+
+    int nscalars = NSCALARS;
+    if (nscalars == 0) {
+        return py::none();
+    }
+
+    int nblocks = pmesh->nblocal;
+    int ni = pmb->ie - pmb->is + 1;
+    int nj = pmb->je - pmb->js + 1;
+    int nk = pmb->ke - pmb->ks + 1;
+
+    py::list result;
+    for (int s = 0; s < nscalars; ++s) {
+        auto arr = py::array_t<double>({nblocks, nk, nj, ni});
+        auto r = arr.mutable_unchecked<4>();
+
+        for (int b = 0; b < nblocks; ++b) {
+            MeshBlock* pmb_b = pmesh->my_blocks(b);
+            for (int k = pmb_b->ks; k <= pmb_b->ke; ++k) {
+                for (int j = pmb_b->js; j <= pmb_b->je; ++j) {
+                    for (int i = pmb_b->is; i <= pmb_b->ie; ++i) {
+                        int kk = k - pmb_b->ks;
+                        int jj = j - pmb_b->js;
+                        int ii = i - pmb_b->is;
+                        // Passive scalars: r(s, k, j, i) stored as
+                        // concentration = s[n] / rho
+                        r(b, kk, jj, ii) = static_cast<double>(
+                            pmb_b->pscalars->r(s, k, j, i));
+                    }
+                }
+            }
+        }
+        result.append(arr);
+    }
+
+    return result;
+}
+
+/**
  * @brief Get current CFL-limited timestep.
  */
 double get_dt(AthenaHandle handle) {
@@ -318,7 +398,7 @@ void set_circuit_params(AthenaHandle handle, double current, double voltage) {
     // Push circuit parameters into ruser_mesh_data if the problem generator
     // allocated it (dpf_zpinch.cpp does; magnoh.cpp does not).
     Mesh* pmesh = handle->pmesh.get();
-    if (pmesh != nullptr && pmesh->nreal_user_mesh_data_ >= 2) {
+    if (pmesh != nullptr && handle->n_ruser_mesh_data >= 2) {
         pmesh->ruser_mesh_data[0](0) = static_cast<Real>(current);
         pmesh->ruser_mesh_data[1](0) = static_cast<Real>(voltage);
     }
@@ -339,7 +419,7 @@ py::dict get_coupling_data(AthenaHandle handle) {
     py::dict result;
     Mesh* pmesh = handle->pmesh.get();
 
-    if (pmesh != nullptr && pmesh->nreal_user_mesh_data_ >= 6) {
+    if (pmesh != nullptr && handle->n_ruser_mesh_data >= 6) {
         result["R_plasma"]        = static_cast<double>(pmesh->ruser_mesh_data[2](0));
         result["L_plasma"]        = static_cast<double>(pmesh->ruser_mesh_data[3](0));
         result["total_rad_power"] = static_cast<double>(pmesh->ruser_mesh_data[4](0));
@@ -408,6 +488,10 @@ PYBIND11_MODULE(_athena_core, m) {
     m.def("get_primitive_data", &get_primitive_data,
           py::arg("handle"),
           "Get primitive variable arrays from all mesh blocks.");
+
+    m.def("get_scalar_data", &get_scalar_data,
+          py::arg("handle"),
+          "Get passive scalar arrays from all mesh blocks (nscalars arrays).");
 
     m.def("get_dt", &get_dt,
           py::arg("handle"),

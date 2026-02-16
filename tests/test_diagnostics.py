@@ -315,7 +315,7 @@ class TestValidationFull:
 
         suite = ValidationSuite(devices=["PF-1000"])
         sim = {
-            "peak_current_A": 2.5e6,
+            "peak_current_A": 1.8e6,
             "peak_current_time_s": 5.5e-6,
             "energy_conservation": 1.0,
             "final_current_A": 1e6,

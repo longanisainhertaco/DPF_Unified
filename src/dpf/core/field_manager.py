@@ -22,15 +22,57 @@ class FieldManager:
         dx: float,
         dy: float | None = None,
         dz: float | None = None,
+        geometry: str = "cartesian",
     ) -> None:
         self.nx, self.ny, self.nz = grid_shape
         self.dx = dx
         self.dy = dy if dy is not None else dx
         self.dz = dz if dz is not None else dx
+        self.geometry = geometry
 
         self.E = np.zeros((3, self.nx, self.ny, self.nz))
         self.B = np.zeros((3, self.nx, self.ny, self.nz))
         self.J = np.zeros((3, self.nx, self.ny, self.nz))
+
+    def compute_plasma_inductance(self, current: float, min_inductance: float = 1e-9) -> float:
+        """Compute plasma inductance from magnetic energy.
+
+        L_p = 2 * Integral(B^2 / 2*mu0) dV / I^2
+
+        Args:
+            current: Total circuit current [A].
+            min_inductance: Fallback inductance floor [H].
+
+        Returns:
+            Inductance [H].
+        """
+        if abs(current) < 1e-3:
+            return min_inductance
+
+        from dpf.constants import mu_0, pi
+
+        # Magnetic energy density: u_B = B^2 / (2 * mu_0)
+        # B is (3, nx, ny, nz)
+        B_sq = np.sum(self.B**2, axis=0)  # (nx, ny, nz)
+        u_B = B_sq / (2.0 * mu_0)
+
+        if self.geometry == "cylindrical":
+            # Volume element dV = 2*pi*r * dr * dz
+            # r for cell i is (i + 0.5) * dx
+            # We construct a radial array (nx, 1, 1)
+            r = (np.arange(self.nx) + 0.5) * self.dx
+            r = r[:, np.newaxis, np.newaxis]  # Broadcast to (nx, 1, 1)
+            
+            # Integrate: sum(u_B * 2*pi*r) * dr * dz
+            # Note: dy is ignored in cylindrical (axisymmetric)
+            integrand = u_B * 2.0 * pi * r
+            total_energy = np.sum(integrand) * self.dx * self.dz
+        else:
+            # Cartesian: dV = dx * dy * dz
+            total_energy = np.sum(u_B) * self.dx * self.dy * self.dz
+
+        # L = 2 * W / I^2
+        return 2.0 * total_energy / (current**2)
 
     # --- Vector calculus ---
 

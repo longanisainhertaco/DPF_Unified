@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from dpf.config import SimulationConfig
+
 
 @pytest.fixture
 def grid_shape():
@@ -40,3 +42,9 @@ def sample_config_dict(grid_shape, dx, default_circuit_params):
         "sim_time": 1e-6,
         "circuit": default_circuit_params,
     }
+
+
+@pytest.fixture
+def small_config(sample_config_dict):
+    """Small SimulationConfig for fast unit tests."""
+    return SimulationConfig(**sample_config_dict)

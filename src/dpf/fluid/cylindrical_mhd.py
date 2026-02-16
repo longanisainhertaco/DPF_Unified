@@ -440,6 +440,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         """
         r = self.geom.r  # shape (nr,)
 
+        # Handle 4D input (3, nr, 1, nz) by squeezing to (3, nr, nz)
+        needs_unsqueeze = B.ndim == 4
+        if needs_unsqueeze:
+            B = self._squeeze(B)
+
         # Enforce axis symmetry: B_r = 0 at r=0
         B[0, 0, :] = 0.0
 
@@ -474,6 +479,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 r_local = max(r[ir], 1e-10)
                 B[1, ir, iz] = mu_0 * current / (2.0 * np.pi * r_local)
 
+        if needs_unsqueeze:
+            B = self._unsqueeze(B)
         return B
 
     def step(
@@ -486,6 +493,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         anode_radius: float = 0.0,
         cathode_radius: float = 0.0,
         apply_electrode_bc: bool = False,
+        **kwargs,
     ) -> dict[str, np.ndarray]:
         """Advance MHD state by one timestep using SSP-RK2.
 
@@ -634,10 +642,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Ti_new = np.minimum(Ti_new, T_max)
 
         # --- Update coupling ---
-        # In cylindrical coords, B_theta is the azimuthal field from axial current
-        B_theta_avg = np.mean(np.abs(B_new[1]))
+        # Lp from magnetic energy: Lp = 2*W_mag/I² = ∫B²/µ₀ dV / I²
+        # Standard energy-based inductance formula for coaxial geometry.
+        # For a z-pinch: Lp = (µ₀/2π)*z*ln(b/a) emerges naturally.
         if current > 0:
-            Lp_est = mu_0 * B_theta_avg / (current + 1e-30) * self.dz * self.nz
+            B_sq = B_new[0] ** 2 + B_new[1] ** 2 + B_new[2] ** 2
+            cell_vol = self.geom.cell_volumes()  # (nr, nz), includes 2πr factor
+            Lp_est = float(np.sum(B_sq / mu_0 * cell_vol)) / (current**2 + 1e-30)
         else:
             Lp_est = 0.0
 
