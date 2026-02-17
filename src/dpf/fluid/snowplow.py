@@ -318,6 +318,23 @@ class SnowplowModel:
         dL_dt = self.L_coeff * self.v
         return self._make_result(dL_dt=dL_dt, F_magnetic=F_mag, F_pressure=F_press)
 
+    def _adiabatic_back_pressure(self, r_s: float) -> float:
+        """Adiabatic back-pressure from compressed fill gas ahead of the shock.
+
+        As the cylindrical shock compresses inward from radius *b* to *r_s*,
+        the fill gas is compressed adiabatically.  For a 2-D cylindrical
+        compression the area ratio gives:
+
+            p(r_s) = p_fill * (b / r_s)^(2 * gamma)
+
+        where gamma = 5/3 for monatomic gas (deuterium).
+
+        Returns the pressure [Pa] at radius *r_s*.
+        """
+        gamma = 5.0 / 3.0
+        ratio = self.b / max(r_s, self.r_pinch_min)
+        return self.p_fill * ratio ** (2.0 * gamma)
+
     def _step_radial(self, dt: float, current: float) -> dict[str, float]:
         """Advance radial inward shock phase by one timestep.
 
@@ -326,6 +343,10 @@ class SnowplowModel:
 
         The radial J×B force drives the current sheath inward:
             F_rad = (mu_0 / 4pi) * (f_c * I)^2 * z_f / r_s
+
+        Adiabatic back-pressure opposes the implosion:
+            F_back = p_back * 2*pi * r_s * z_f
+            p_back = p_fill * (b / r_s)^(2*gamma)
 
         Plasma inductance increases as the sheath compresses:
             L_radial = (mu_0 / 2pi) * z_f * ln(b / r_s)
@@ -338,14 +359,18 @@ class SnowplowModel:
         r_s = max(self.r_shock, self.r_pinch_min)
         F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
 
+        # Adiabatic back-pressure force (opposes inward motion)
+        p_back = self._adiabatic_back_pressure(r_s)
+        F_pressure = p_back * 2.0 * pi * r_s * z_f
+
         # Current radial slug mass and mass pickup rate
         M_slug = max(self.radial_swept_mass, 1e-20)
         # dM/dt = f_mr * rho0 * 2*pi * r_s * |vr| * z_f
         dm_dt = self.f_mr * self.rho0 * 2.0 * pi * r_s * abs(self.vr) * z_f
 
-        # Equation of motion: d(M*vr)/dt = -F_rad (inward)
-        # => M * dvr/dt = -F_rad - vr * dM/dt
-        a_n = (-F_rad - self.vr * dm_dt) / M_slug
+        # Equation of motion: d(M*vr)/dt = -F_rad + F_pressure (inward)
+        # => M * dvr/dt = -F_rad + F_pressure - vr * dM/dt
+        a_n = (-F_rad + F_pressure - self.vr * dm_dt) / M_slug
 
         # Velocity-Verlet: half-step
         vr_half = self.vr + 0.5 * dt * a_n
@@ -371,7 +396,9 @@ class SnowplowModel:
             )
             # dL/dt at pinch
             dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
-            return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=0.0)
+            return self._make_result(
+                dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+            )
 
         # Recompute acceleration at new position
         r_new_eff = max(r_new, self.r_pinch_min)
@@ -379,7 +406,9 @@ class SnowplowModel:
         M_new = max(M_new, 1e-20)
         dm_dt_new = self.f_mr * self.rho0 * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
         F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
-        a_new = (-F_rad_new - vr_half * dm_dt_new) / M_new
+        p_back_new = self._adiabatic_back_pressure(r_new_eff)
+        F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
+        a_new = (-F_rad_new + F_pressure_new - vr_half * dm_dt_new) / M_new
 
         # Full-step velocity
         vr_new = vr_half + 0.5 * dt * a_new
@@ -392,4 +421,4 @@ class SnowplowModel:
         # dL/dt from radial compression
         dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
 
-        return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=0.0)
+        return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure)

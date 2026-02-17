@@ -333,8 +333,8 @@ class TestLeeModel:
         from dpf.validation.lee_model_comparison import LeeModel
 
         model = LeeModel(current_fraction=0.8, mass_fraction=0.6)
-        assert model.fm == 0.8
-        assert model.fc == 0.6
+        assert model.fm == 0.6   # fm = mass fraction (Lee convention)
+        assert model.fc == 0.8   # fc = current fraction (Lee convention)
 
     @pytest.mark.slow
     def test_lee_model_pf1000(self):
