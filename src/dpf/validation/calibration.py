@@ -62,21 +62,26 @@ class LeeModelCalibrator:
         method: Optimization method for ``scipy.optimize.minimize``.
             Default: ``"nelder-mead"`` (derivative-free, robust for noisy
             objective).
-        peak_weight: Weight for peak current error in objective (default 0.6).
-        timing_weight: Weight for timing error in objective (default 0.4).
+        peak_weight: Weight for peak current error in objective (default 0.4).
+        timing_weight: Weight for timing error in objective (default 0.3).
+        waveform_weight: Weight for waveform NRMSE in objective (default 0.3).
+            This provides 1+ DOF when a digitized waveform is available
+            (3 metrics vs 2 parameters).
     """
 
     def __init__(
         self,
         device_name: str,
         method: str = "nelder-mead",
-        peak_weight: float = 0.6,
-        timing_weight: float = 0.4,
+        peak_weight: float = 0.4,
+        timing_weight: float = 0.3,
+        waveform_weight: float = 0.3,
     ) -> None:
         self.device_name = device_name
         self.method = method
         self.peak_weight = peak_weight
         self.timing_weight = timing_weight
+        self.waveform_weight = waveform_weight
         self._n_evals = 0
 
     def calibrate(
@@ -165,10 +170,16 @@ class LeeModelCalibrator:
             logger.debug("Objective evaluation failed for fc=%.3f, fm=%.3f", fc, fm)
             return 10.0  # Large penalty for failed runs
 
-        return (
+        obj = (
             self.peak_weight * comparison.peak_current_error
             + self.timing_weight * comparison.timing_error
         )
+        # Add waveform NRMSE term if available (provides 1+ DOF)
+        if self.waveform_weight > 0:
+            nrmse = getattr(comparison, "waveform_nrmse", float("nan"))
+            if isinstance(nrmse, (int, float)) and np.isfinite(nrmse):
+                obj += self.waveform_weight * nrmse
+        return obj
 
     def _run_comparison(self, fc: float, fm: float) -> Any:
         """Run LeeModel and compare against experiment.
@@ -211,3 +222,96 @@ def calibrate_default_params(
             logger.warning("Calibration failed for %s: %s", dev, exc)
 
     return results
+
+
+# =====================================================================
+# Cross-validation framework
+# =====================================================================
+
+
+@dataclass
+class CrossValidationResult:
+    """Result of cross-device validation.
+
+    Calibrate fc/fm on *train_device*, then predict on *test_device*
+    and measure generalization error.
+
+    Attributes:
+        train_device: Device used for calibration.
+        test_device: Device used for prediction.
+        calibration: Calibration result from train_device.
+        prediction_peak_error: Relative peak current error on test_device.
+        prediction_timing_error: Relative timing error on test_device.
+        generalization_score: 1 - average prediction error (higher = better).
+    """
+
+    train_device: str
+    test_device: str
+    calibration: CalibrationResult
+    prediction_peak_error: float
+    prediction_timing_error: float
+    generalization_score: float
+
+
+class CrossValidator:
+    """Cross-validate Lee model calibration across devices.
+
+    Calibrates fc/fm on one device, then evaluates prediction quality
+    on a different device.  This tests whether the calibrated parameters
+    generalize across different DPF geometries and operating conditions.
+    """
+
+    def validate(
+        self,
+        train_device: str,
+        test_device: str,
+        maxiter: int = 100,
+    ) -> CrossValidationResult:
+        """Calibrate on train_device, predict on test_device.
+
+        Args:
+            train_device: Device name for calibration.
+            test_device: Device name for prediction evaluation.
+            maxiter: Maximum optimizer iterations.
+
+        Returns:
+            :class:`CrossValidationResult` with generalization metrics.
+        """
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        # Step 1: Calibrate on train device
+        cal = LeeModelCalibrator(train_device)
+        cal_result = cal.calibrate(maxiter=maxiter)
+
+        # Step 2: Run prediction on test device with calibrated params
+        model = LeeModel(
+            current_fraction=cal_result.best_fc,
+            mass_fraction=cal_result.best_fm,
+        )
+        comparison = model.compare_with_experiment(test_device)
+
+        # Step 3: Compute generalization score
+        avg_error = 0.5 * (
+            comparison.peak_current_error + comparison.timing_error
+        )
+        generalization_score = max(1.0 - avg_error, 0.0)
+
+        logger.info(
+            "Cross-validation %s→%s: fc=%.3f, fm=%.3f, "
+            "pred_peak_err=%.1f%%, pred_timing_err=%.1f%%, "
+            "generalization=%.2f",
+            train_device, test_device,
+            cal_result.best_fc, cal_result.best_fm,
+            comparison.peak_current_error * 100,
+            comparison.timing_error * 100,
+            generalization_score,
+        )
+
+        return CrossValidationResult(
+            train_device=train_device,
+            test_device=test_device,
+            calibration=cal_result,
+            prediction_peak_error=comparison.peak_current_error,
+            prediction_timing_error=comparison.timing_error,
+            generalization_score=generalization_score,
+        )

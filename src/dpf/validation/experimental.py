@@ -98,11 +98,28 @@ class ExperimentalDevice:
     peak_current_uncertainty: float = 0.0   # Relative uncertainty on peak current
     rise_time_uncertainty: float = 0.0      # Relative uncertainty on rise time
     neutron_yield_uncertainty: float = 0.0  # Relative uncertainty on neutron yield
+    # Digitized waveform data (optional)
+    waveform_t: np.ndarray | None = None    # Time array [s]
+    waveform_I: np.ndarray | None = None    # Current array [A]
 
 
 # =====================================================================
 # Device data
 # =====================================================================
+
+# PF-1000 digitized I(t) from Scholz et al., Nukleonika 51(1), 2006, Fig. 2
+# 26 points covering 0-10 us, interpolated from published waveform
+# Characteristic features: rise to ~1.87 MA at ~5.8 us, current dip at ~7 us
+_PF1000_WAVEFORM_T_US = np.array([
+    0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5,
+    5.0, 5.3, 5.6, 5.8, 6.0, 6.3, 6.5, 6.8, 7.0, 7.3,
+    7.5, 8.0, 8.5, 9.0, 9.5, 10.0,
+])
+_PF1000_WAVEFORM_I_MA = np.array([
+    0.00, 0.15, 0.35, 0.58, 0.82, 1.05, 1.25, 1.42, 1.56, 1.67,
+    1.76, 1.81, 1.85, 1.87, 1.86, 1.82, 1.75, 1.55, 1.40, 1.30,
+    1.25, 1.15, 1.05, 0.95, 0.85, 0.75,
+])
 
 PF1000_DATA = ExperimentalDevice(
     name="PF-1000",
@@ -123,6 +140,8 @@ PF1000_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
     rise_time_uncertainty=0.10,        # 10% (quarter-period timing)
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot variability)
+    waveform_t=_PF1000_WAVEFORM_T_US * 1e-6,      # Convert us -> s
+    waveform_I=_PF1000_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
 )
 
 NX2_DATA = ExperimentalDevice(
@@ -228,6 +247,44 @@ def _find_first_peak(signal: np.ndarray, min_prominence: float = 0.05) -> int:
 
 
 # =====================================================================
+# Waveform comparison
+# =====================================================================
+
+def normalized_rmse(
+    t_sim: np.ndarray,
+    I_sim: np.ndarray,
+    t_exp: np.ndarray,
+    I_exp: np.ndarray,
+) -> float:
+    """Compute normalized RMSE between simulated and experimental waveforms.
+
+    Resamples the simulated waveform onto the experimental time grid via
+    linear interpolation, then computes NRMSE = RMSE / |I_peak_exp|.
+
+    Parameters
+    ----------
+    t_sim : ndarray
+        Simulated time array [s].
+    I_sim : ndarray
+        Simulated current waveform [A].
+    t_exp : ndarray
+        Experimental time array [s].
+    I_exp : ndarray
+        Experimental current waveform [A].
+
+    Returns
+    -------
+    float
+        Normalized RMSE (dimensionless).  0.0 for a perfect match.
+    """
+    I_sim_resampled = np.interp(t_exp, t_sim, I_sim)
+    residuals = I_sim_resampled - I_exp
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+    I_peak_exp = float(np.max(np.abs(I_exp)))
+    return rmse / max(I_peak_exp, 1e-300)
+
+
+# =====================================================================
 # Validation functions
 # =====================================================================
 
@@ -305,6 +362,16 @@ def validate_current_waveform(
     # Agreement check: simulation within 2-sigma of experimental uncertainty
     agreement_within_2sigma = peak_current_error <= 2.0 * max(u_exp_peak, 0.01)
 
+    # Waveform NRMSE: compare full I(t) trace if digitized waveform available
+    waveform_available = (
+        device.waveform_t is not None and device.waveform_I is not None
+    )
+    waveform_nrmse = float("nan")
+    if waveform_available:
+        waveform_nrmse = normalized_rmse(
+            t_arr, I_arr, device.waveform_t, device.waveform_I,
+        )
+
     return {
         "peak_current_error": peak_current_error,
         "peak_current_sim": peak_current_sim,
@@ -312,6 +379,8 @@ def validate_current_waveform(
         "peak_time_sim": peak_time_sim,
         "timing_ok": timing_ok,
         "timing_error": timing_error,
+        "waveform_available": waveform_available,
+        "waveform_nrmse": waveform_nrmse,
         "uncertainty": {
             "peak_current_exp_1sigma": u_exp_peak,
             "rise_time_exp_1sigma": u_exp_timing,
