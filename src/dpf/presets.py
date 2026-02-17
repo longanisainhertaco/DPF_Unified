@@ -58,6 +58,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 2.3e-3,
             "anode_radius": 0.0575,
             "cathode_radius": 0.08,
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
         },
         "geometry": {"type": "cylindrical"},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
