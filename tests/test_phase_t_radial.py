@@ -670,11 +670,12 @@ class TestRadialEdgeCases:
         assert np.isfinite(result["r_shock"])
         assert np.isfinite(result["vr_shock"])
 
-    def test_pressure_not_used_in_radial(self) -> None:
-        """Radial phase should return F_pressure=0 (no back-pressure)."""
+    def test_adiabatic_back_pressure_in_radial(self) -> None:
+        """Radial phase should return F_pressure > 0 (adiabatic back-pressure)."""
         sp = make_radial_snowplow()
         result = sp.step(1e-9, current=1e6)
-        assert result["F_pressure"] == 0.0
+        # Phase V: adiabatic back-pressure p_fill*(b/r_s)^(2*gamma) opposes implosion
+        assert result["F_pressure"] > 0.0
 
     def test_axial_position_frozen_in_radial(self) -> None:
         """z_sheath should remain at L_anode throughout radial phase."""

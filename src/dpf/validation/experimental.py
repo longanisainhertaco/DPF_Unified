@@ -164,6 +164,57 @@ DEVICES: dict[str, ExperimentalDevice] = {
 
 
 # =====================================================================
+# Helpers
+# =====================================================================
+
+def _find_first_peak(signal: np.ndarray, min_prominence: float = 0.05) -> int:
+    """Find the index of the first local maximum (first peak) in *signal*.
+
+    The algorithm identifies the first point where the signal transitions
+    from rising to falling, provided the peak is at least *min_prominence*
+    times the global maximum.  This avoids picking up early noise spikes.
+
+    Falls back to ``np.argmax(signal)`` if no qualifying local peak is
+    found (e.g. a monotonically rising signal).
+
+    Parameters
+    ----------
+    signal : ndarray, shape (N,)
+        Non-negative signal (typically ``np.abs(I)``).
+    min_prominence : float
+        Minimum fraction of the global max that a local peak must reach
+        to qualify.  Default 0.05 (5 %).
+
+    Returns
+    -------
+    int
+        Index of the first qualifying local peak.
+    """
+    if len(signal) < 3:
+        return int(np.argmax(signal))
+
+    global_max = float(np.max(signal))
+    threshold = min_prominence * global_max
+
+    # Walk through signal and find first point where signal starts decreasing
+    # after having risen above the threshold.
+    rising = False
+    for i in range(1, len(signal) - 1):
+        if signal[i] >= threshold:
+            rising = True
+        if (
+            rising
+            and signal[i] >= signal[i - 1]
+            and signal[i] >= signal[i + 1]
+            and signal[i] >= threshold
+        ):
+            return i
+
+    # Fallback: global maximum
+    return int(np.argmax(signal))
+
+
+# =====================================================================
 # Validation functions
 # =====================================================================
 
@@ -209,9 +260,12 @@ def validate_current_waveform(
     t_arr = np.asarray(t_sim, dtype=np.float64)
     I_arr = np.asarray(I_sim, dtype=np.float64)
 
-    # Peak current (use absolute value to handle sign conventions)
+    # Peak current: find the FIRST local maximum of |I(t)|.
+    # For DPF waveforms, the first peak (before the current dip) is the
+    # physically meaningful one.  Post-pinch oscillation peaks can exceed
+    # the first peak and must not be mistaken for the primary peak.
     abs_I = np.abs(I_arr)
-    peak_idx = int(np.argmax(abs_I))
+    peak_idx = _find_first_peak(abs_I)
     peak_current_sim = float(abs_I[peak_idx])
     peak_time_sim = float(t_arr[peak_idx])
 
@@ -231,6 +285,7 @@ def validate_current_waveform(
         "peak_current_error": peak_current_error,
         "peak_current_sim": peak_current_sim,
         "peak_current_exp": peak_current_exp,
+        "peak_time_sim": peak_time_sim,
         "timing_ok": timing_ok,
     }
 

@@ -194,8 +194,8 @@ class LeeModel:
         mass_fraction: float = 0.7,
     ) -> None:
         self.fill_gas_mass = fill_gas_mass
-        self.fm = current_fraction  # Current fraction factor
-        self.fc = mass_fraction     # Mass fraction factor
+        self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
+        self.fc = current_fraction   # Current fraction factor (Lee's f_c)
 
     def run(
         self,
@@ -271,7 +271,7 @@ class LeeModel:
             vz = max(vz, 0.0)
 
             # Swept mass
-            M_swept = self.fc * rho0 * annulus_area * max(z_pos, 1e-6)
+            M_swept = self.fm * rho0 * annulus_area * max(z_pos, 1e-6)
 
             # Plasma inductance: L_p = L_per_length * z
             L_p = L_per_length * max(z_pos, 1e-6)
@@ -291,9 +291,9 @@ class LeeModel:
             # Derived from dW/dz where W = (mu_0*I^2/(4*pi))*ln(b/a)*z
             # minus mass pickup: M * dvz/dt + vz * dM/dt = F
             # dM/dt = fc * rho0 * annulus_area * vz
-            dM_dt = self.fc * rho0 * annulus_area * vz
+            dM_dt = self.fm * rho0 * annulus_area * vz
 
-            F_magnetic = (mu_0 / (4.0 * pi)) * np.log(b / a) * (self.fm * I)**2
+            F_magnetic = (mu_0 / (4.0 * pi)) * np.log(b / a) * (self.fc * I)**2
 
             if M_swept > 1e-15:
                 dvz_dt = (F_magnetic - vz * dM_dt) / M_swept
@@ -391,7 +391,10 @@ class LeeModel:
                 # Radial slug equation (simplified)
                 # F = (mu_0/(4*pi)) * fm^2 * I^2 / r
                 # M * d^2r/dt^2 = -F (inward)
-                F_rad = (mu_0 / (4.0 * pi)) * (self.fm * I_r)**2 / max(r_s, 1e-10)
+                F_rad = (
+                    (mu_0 / (4.0 * pi)) * (self.fc * I_r)**2 * L_pinch
+                    / max(r_s, 1e-10)
+                )
 
                 if M_radial > 1e-15:
                     dvr_dt = -F_rad / M_radial
@@ -455,9 +458,11 @@ class LeeModel:
             z_combined = z1
             r_combined = np.full(len(t1), b)
 
-        # Diagnostics
+        # Diagnostics — use first-peak finder to avoid post-pinch oscillation
+        from dpf.validation.experimental import _find_first_peak
+
         abs_I = np.abs(I_combined)
-        peak_idx = int(np.argmax(abs_I))
+        peak_idx = _find_first_peak(abs_I)
         peak_current = float(abs_I[peak_idx])
         peak_current_time = float(t_combined[peak_idx])
 
