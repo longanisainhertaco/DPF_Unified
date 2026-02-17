@@ -94,6 +94,10 @@ class ExperimentalDevice:
     neutron_yield: float
     current_rise_time: float  # [s]
     reference: str
+    # Experimental uncertainties (1-sigma)
+    peak_current_uncertainty: float = 0.0   # Relative uncertainty on peak current
+    rise_time_uncertainty: float = 0.0      # Relative uncertainty on rise time
+    neutron_yield_uncertainty: float = 0.0  # Relative uncertainty on neutron yield
 
 
 # =====================================================================
@@ -116,6 +120,9 @@ PF1000_DATA = ExperimentalDevice(
     neutron_yield=1e11,
     current_rise_time=5.8e-6,      # 5.8 us
     reference="Scholz et al., Nukleonika 51(1), 2006",
+    peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
+    rise_time_uncertainty=0.10,        # 10% (quarter-period timing)
+    neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot variability)
 )
 
 NX2_DATA = ExperimentalDevice(
@@ -134,6 +141,9 @@ NX2_DATA = ExperimentalDevice(
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
     reference="Lee & Saw, J. Fusion Energy 27, 2008",
+    peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
+    rise_time_uncertainty=0.12,        # 12%
+    neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
 )
 
 UNU_ICTP_DATA = ExperimentalDevice(
@@ -152,6 +162,9 @@ UNU_ICTP_DATA = ExperimentalDevice(
     neutron_yield=1e8,
     current_rise_time=2.8e-6,      # 2.8 us
     reference="Lee et al., Am. J. Phys. 56, 1988",
+    peak_current_uncertainty=0.10,     # 10% (training device, less precise)
+    rise_time_uncertainty=0.15,        # 15%
+    neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
 )
 
 
@@ -247,7 +260,7 @@ def validate_current_waveform(
         ``peak_current_exp`` : float
             Experimental peak current [A].
         ``timing_ok`` : bool
-            True if simulated peak time is within 50 % of experimental
+            True if simulated peak time is within 10 % of experimental
             rise time.
 
     Raises
@@ -277,9 +290,20 @@ def validate_current_waveform(
         abs(peak_current_exp), 1e-300
     )
 
-    # Timing check: peak time within 50% of experimental rise time
+    # Timing check: peak time within 10% of experimental rise time
     timing_error = abs(peak_time_sim - rise_time_exp) / max(rise_time_exp, 1e-300)
-    timing_ok = timing_error < 0.5
+    timing_ok = timing_error < 0.10
+
+    # Uncertainty budget: combine experimental uncertainty with simulation error
+    # Following GUM (Guide to Uncertainty in Measurement) principles:
+    # u_combined = sqrt(u_exp^2 + u_sim^2) where u_sim = relative error
+    u_exp_peak = device.peak_current_uncertainty
+    u_exp_timing = device.rise_time_uncertainty
+    # Combined uncertainty (quadrature sum of experimental and simulation error)
+    u_combined_peak = np.sqrt(u_exp_peak**2 + peak_current_error**2)
+    u_combined_timing = np.sqrt(u_exp_timing**2 + timing_error**2)
+    # Agreement check: simulation within 2-sigma of experimental uncertainty
+    agreement_within_2sigma = peak_current_error <= 2.0 * max(u_exp_peak, 0.01)
 
     return {
         "peak_current_error": peak_current_error,
@@ -287,6 +311,14 @@ def validate_current_waveform(
         "peak_current_exp": peak_current_exp,
         "peak_time_sim": peak_time_sim,
         "timing_ok": timing_ok,
+        "timing_error": timing_error,
+        "uncertainty": {
+            "peak_current_exp_1sigma": u_exp_peak,
+            "rise_time_exp_1sigma": u_exp_timing,
+            "peak_current_combined_1sigma": u_combined_peak,
+            "timing_combined_1sigma": u_combined_timing,
+            "agreement_within_2sigma": agreement_within_2sigma,
+        },
     }
 
 
@@ -323,11 +355,15 @@ def validate_neutron_yield(
     yield_exp = device.neutron_yield
     yield_ratio = Y_sim / max(yield_exp, 1e-300)
 
+    u_exp_yield = device.neutron_yield_uncertainty
     return {
         "yield_ratio": yield_ratio,
         "within_order_magnitude": 0.1 < yield_ratio < 10.0,
         "yield_sim": float(Y_sim),
         "yield_exp": yield_exp,
+        "uncertainty": {
+            "neutron_yield_exp_1sigma": u_exp_yield,
+        },
     }
 
 

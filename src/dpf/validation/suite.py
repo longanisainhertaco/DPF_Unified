@@ -94,7 +94,7 @@ PF1000 = DeviceData(
     peak_Te_eV=2000.0,        # ~2 keV
     tolerances={
         "peak_current": 0.15,     # 15% tolerance
-        "peak_current_time": 0.20, # 20% tolerance
+        "peak_current_time": 0.10, # 10% tolerance (tightened from 20%)
         "energy_conservation": 0.05, # 5% tolerance
         "neutron_yield": 1.0,     # 1 order of magnitude
         "peak_ne": 0.50,          # 50% tolerance
@@ -121,7 +121,7 @@ NX2 = DeviceData(
     peak_Te_eV=500.0,         # ~500 eV
     tolerances={
         "peak_current": 0.15,
-        "peak_current_time": 0.20,
+        "peak_current_time": 0.10,  # 10% tolerance (tightened from 20%)
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,
@@ -148,7 +148,7 @@ LLNL_DPF = DeviceData(
     peak_Te_eV=300.0,         # ~300 eV
     tolerances={
         "peak_current": 0.20,
-        "peak_current_time": 0.25,
+        "peak_current_time": 0.15,  # 15% tolerance (tightened from 25%)
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,

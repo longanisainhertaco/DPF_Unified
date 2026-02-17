@@ -182,9 +182,9 @@ class LeeModel:
         fill_gas_mass: Mass of fill gas ion [kg].
             Default: deuterium (3.34e-27 kg).
         current_fraction: Fraction of total current in the current sheet
-            (Lee's fm factor, typically 0.7-0.9).
+            (Lee's fc factor, typically 0.7-0.9).
         mass_fraction: Fraction of swept mass retained by the sheet
-            (Lee's fc factor, typically 0.5-0.7).
+            (Lee's fm factor, typically 0.5-0.7).
     """
 
     def __init__(
@@ -362,9 +362,10 @@ class LeeModel:
             # Pinch column length
             L_pinch = z_max
 
-            # Mass of gas in the radial slug (per unit length)
-            # At the start of radial phase, gas between a and b
-            M_radial = rho0 * pi * (b**2 - a**2) * L_pinch
+            # Adiabatic back-pressure parameters
+            gamma = 5.0 / 3.0  # Monatomic gas
+            p_fill = p_Pa  # Fill gas pressure [Pa]
+            r_min = 0.1 * a  # Minimum pinch radius
 
             # Plasma inductance during radial phase
             # L_p = L_per_length * z_max + (mu_0/(2*pi)) * L_pinch * ln(b/r)
@@ -388,18 +389,27 @@ class LeeModel:
                 dI_dt = (Vcap_r - R0 * I_r - I_r * dLp_dt_rad) / max(L_total, 1e-15)
                 dV_dt = -I_r / C
 
-                # Radial slug equation (simplified)
-                # F = (mu_0/(4*pi)) * fm^2 * I^2 / r
-                # M * d^2r/dt^2 = -F (inward)
+                # Dynamic radial slug mass: f_m * rho0 * pi * (b^2 - r_s^2) * z_f
+                # Increases as shock sweeps inward (r_s decreases)
+                M_slug = self.fm * rho0 * pi * (b**2 - r_s**2) * L_pinch
+                M_slug = max(M_slug, 1e-20)
+
+                # Mass pickup rate: dM/dt = f_m * rho0 * 2*pi * r_s * |vr| * z_f
+                dm_dt = self.fm * rho0 * 2.0 * pi * r_s * abs(vr) * L_pinch
+
+                # Radial J×B force: (mu_0/(4*pi)) * (fc*I)^2 * z_f / r_s
                 F_rad = (
                     (mu_0 / (4.0 * pi)) * (self.fc * I_r)**2 * L_pinch
                     / max(r_s, 1e-10)
                 )
 
-                if M_radial > 1e-15:
-                    dvr_dt = -F_rad / M_radial
-                else:
-                    dvr_dt = 0.0
+                # Adiabatic back-pressure: p_fill * (b/r_s)^(2*gamma)
+                r_eff = max(r_s, r_min)
+                p_back = p_fill * (b / r_eff) ** (2.0 * gamma)
+                F_pressure = p_back * 2.0 * pi * r_eff * L_pinch
+
+                # Equation of motion: M * dvr/dt = -F_rad + F_pressure - vr * dM/dt
+                dvr_dt = (-F_rad + F_pressure - vr * dm_dt) / M_slug
 
                 dvr_dt = np.clip(dvr_dt, -1e15, 0.0)
 
