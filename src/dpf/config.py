@@ -387,7 +387,11 @@ class SimulationConfig(BaseModel):
     T0: float = Field(300.0, gt=0, description="Initial temperature [K]")
     anomalous_alpha: float = Field(
         0.05, ge=0, le=1.0,
-        description="Buneman anomalous resistivity alpha parameter",
+        description="Anomalous resistivity turbulence alpha parameter",
+    )
+    anomalous_threshold_model: str = Field(
+        "ion_acoustic",
+        description="Anomalous resistivity threshold: 'ion_acoustic', 'lhdi', 'buneman_classic'",
     )
     ion_mass: float = Field(
         3.34358377e-27, gt=0,

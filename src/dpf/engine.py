@@ -707,6 +707,8 @@ class SimulationEngine:
                     J_mag, np.maximum(ne_2d, 1e10), np.maximum(Ti_2d, 1.0),
                     alpha=self.config.anomalous_alpha,
                     mi=self.ion_mass,
+                    threshold_model=self.config.anomalous_threshold_model,
+                    Te=np.maximum(self.state["Te"], 1.0),  # Pass full 3D Te, function handles it
                 )
                 # Unsqueeze to (nr, 1, nz)
                 eta_anom_field_3d = eta_anom_field[:, np.newaxis, :]
@@ -724,14 +726,20 @@ class SimulationEngine:
                     J_mag, np.maximum(ne, 1e10), np.maximum(Ti_field, 1.0),
                     alpha=self.config.anomalous_alpha,
                     mi=self.ion_mass,
+                    threshold_model=self.config.anomalous_threshold_model,
+                    Te=np.maximum(self.state["Te"], 1.0),
                 )
                 eta_field = eta_spitzer_field + eta_anom_field
 
             # Scalar anomalous for diagnostics
             J_avg = abs(I_current) / max(A_column, 1e-30)
             Ti_avg = float(np.mean(self.state["Ti"]))
+            Te_avg_scalar = float(np.mean(self.state["Te"]))
             eta_anom = anomalous_resistivity_scalar(
                 J_avg, ne_avg, Ti_avg, alpha=self.config.anomalous_alpha,
+                mi=self.ion_mass,
+                threshold_model=self.config.anomalous_threshold_model,
+                Te_val=Te_avg_scalar,
             )
             eta_total_avg = total_resistivity_scalar(eta_spitzer_avg, eta_anom)
 
@@ -961,6 +969,8 @@ class SimulationEngine:
                     "rundown_complete": (
                         self.snowplow.rundown_complete if self.snowplow else False
                     ),
+                    "r_shock": self.snowplow.r_shock if self.snowplow else 0.0,
+                    "phase": self.snowplow.phase if self.snowplow else "none",
                 },
             }
             self.diagnostics.record(diag_state, self.time)
@@ -999,6 +1009,30 @@ class SimulationEngine:
                 self.state["B"] = self.fluid.apply_electrode_bfield_bc(
                     self.state["B"], current, cc.anode_radius, cc.cathode_radius
                 )
+
+                # Snowplow "Zipper" BC: Zero out B-field ahead of the sheath
+                if self.snowplow and self.snowplow.is_active:
+                    z_sheath = self.snowplow.z
+                    dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
+                    # Index corresponding to z_sheath
+                    iz_sheath = int(z_sheath / dz)
+
+                    # Ensure valid index range
+                    nx, ny, nz = self.config.grid_shape
+                    if 0 <= iz_sheath < nz:
+                        # Zero out B_theta (index 1) for z > z_sheath
+                        # Note: B is (3, nr, 1, nz) here
+                        self.state["B"][1, :, :, iz_sheath + 1:] = 0.0
+
+                    # Radial zipper during radial phase:
+                    # Zero B_theta outside the radial shock front
+                    if self.snowplow.phase == "radial":
+                        r_shock = self.snowplow.r_shock
+                        dr = self.config.dx  # radial spacing
+                        ir_shock = int(r_shock / dr)
+                        if 0 <= ir_shock < nx:
+                            self.state["B"][1, ir_shock + 1:, :, :] = 0.0
+
         elif self.backend == "athena":
             pass
         else:
@@ -1605,10 +1639,21 @@ class SimulationEngine:
         # Store initial energy
         self.initial_energy = self.circuit.total_energy()
 
+        # Peak current tracking
+        self._peak_current_A = 0.0
+        self._peak_current_time_s = 0.0
+
         logger.info("Starting simulation: t_end=%.2e s", self.config.sim_time)
 
         while True:
             result = self.step(_max_steps=max_steps)
+
+            # Track peak current
+            I_abs = abs(self.circuit.current)
+            if I_abs > self._peak_current_A:
+                self._peak_current_A = I_abs
+                self._peak_current_time_s = self.time
+
             if result.finished:
                 break
 
@@ -1628,6 +1673,8 @@ class SimulationEngine:
             "final_voltage_V": self.circuit.voltage,
             "total_radiated_energy_J": self.total_radiated_energy,
             "total_neutron_yield": self.total_neutron_yield,
+            "peak_current_A": self._peak_current_A,
+            "peak_current_time_s": self._peak_current_time_s,
         }
 
         logger.info(
