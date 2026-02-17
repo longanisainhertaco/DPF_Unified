@@ -301,21 +301,19 @@ def anomalous_resistivity(
 
 
 @njit(cache=True)
-def anomalous_resistivity_scalar(
+def _anomalous_resistivity_scalar_core(
     J_mag: float,
     ne_val: float,
-    Ti_val: float,
-    alpha: float = 0.05,
-    mi: float = m_p,
+    v_threshold: float,
+    alpha: float,
 ) -> float:
-    """Scalar version of anomalous resistivity for volume-averaged values.
+    """Core scalar anomalous resistivity (njit-compatible).
 
     Args:
         J_mag: Current density magnitude [A/m^2].
         ne_val: Electron number density [m^-3].
-        Ti_val: Ion temperature [K].
-        alpha: Turbulence parameter (0.01-0.1, default 0.05).
-        mi: Ion mass [kg].
+        v_threshold: Threshold velocity [m/s].
+        alpha: Turbulence parameter.
 
     Returns:
         Anomalous resistivity [Ohm*m].
@@ -324,13 +322,57 @@ def anomalous_resistivity_scalar(
         return 0.0
 
     v_d = abs(J_mag) / max(ne_val * e, 1e-300)
-    v_ti = (k_B * max(Ti_val, 0.0) / mi) ** 0.5
 
-    if v_d <= v_ti:
+    if v_d <= v_threshold:
         return 0.0
 
     omega_pe = (ne_val * e**2 / (epsilon_0 * m_e)) ** 0.5
     return alpha * m_e * omega_pe / max(ne_val * e**2, 1e-300)
+
+
+def anomalous_resistivity_scalar(
+    J_mag: float,
+    ne_val: float,
+    Ti_val: float,
+    alpha: float = 0.05,
+    mi: float = m_p,
+    threshold_model: str = "ion_acoustic",
+    Te_val: float = 0.0,
+) -> float:
+    """Scalar version of anomalous resistivity for volume-averaged values.
+
+    Dispatches to the appropriate threshold model, matching the behaviour
+    of :func:`anomalous_resistivity_field`.
+
+    Args:
+        J_mag: Current density magnitude [A/m^2].
+        ne_val: Electron number density [m^-3].
+        Ti_val: Ion temperature [K].
+        alpha: Turbulence parameter (0.01-0.1, default 0.05).
+        mi: Ion mass [kg].
+        threshold_model: ``"ion_acoustic"`` (default), ``"lhdi"``,
+            or ``"buneman_classic"``.
+        Te_val: Electron temperature [K], required for ``"buneman_classic"``.
+
+    Returns:
+        Anomalous resistivity [Ohm*m].
+    """
+    v_ti = (k_B * max(Ti_val, 0.0) / mi) ** 0.5
+
+    if threshold_model == "ion_acoustic":
+        v_threshold = v_ti
+    elif threshold_model == "lhdi":
+        factor = (m_e / mi) ** 0.25
+        v_threshold = factor * v_ti
+    elif threshold_model == "buneman_classic":
+        v_threshold = (k_B * max(Te_val, 0.0) / m_e) ** 0.5
+    else:
+        raise ValueError(
+            f"Unknown threshold_model '{threshold_model}'. "
+            "Options: 'ion_acoustic', 'lhdi', 'buneman_classic'."
+        )
+
+    return _anomalous_resistivity_scalar_core(J_mag, ne_val, v_threshold, alpha)
 
 
 @njit(cache=True)

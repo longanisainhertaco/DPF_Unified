@@ -51,6 +51,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "rho0": 4e-4,
         "T0": 300.0,
         "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
         "circuit": {
             "C": 1.332e-3,
             "V0": 27e3,
@@ -62,6 +63,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "crowbar_mode": "voltage_zero",
         },
         "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
     },
@@ -78,6 +80,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "rho0": 8e-5,
         "T0": 300.0,
         "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
         "circuit": {
             "C": 28e-6,
             "V0": 14e3,
@@ -87,6 +90,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.041,
         },
         "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
     },
     "llnl_dpf": {
@@ -103,6 +107,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "rho0": 1e-4,
         "T0": 300.0,
         "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
         "circuit": {
             "C": 16e-6,
             "V0": 22e3,
@@ -112,6 +117,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.015,
         },
         "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
     },
     "cartesian_demo": {

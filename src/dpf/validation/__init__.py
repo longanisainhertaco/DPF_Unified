@@ -1,5 +1,10 @@
 """Validation suite for DPF simulations against experimental data."""
 
+from dpf.validation.calibration import (
+    CalibrationResult,
+    LeeModelCalibrator,
+    calibrate_default_params,
+)
 from dpf.validation.experimental import (
     DEVICES,
     NX2_DATA,
@@ -25,10 +30,12 @@ from dpf.validation.suite import (
 )
 
 __all__ = [
+    "CalibrationResult",
     "DEVICE_REGISTRY",
     "DEVICES",
     "ExperimentalDevice",
     "LeeModel",
+    "LeeModelCalibrator",
     "LeeModelComparison",
     "LeeModelResult",
     "NX2_DATA",
@@ -36,6 +43,7 @@ __all__ = [
     "UNU_ICTP_DATA",
     "ValidationResult",
     "ValidationSuite",
+    "calibrate_default_params",
     "config_hash",
     "device_to_config_dict",
     "normalized_rmse",
