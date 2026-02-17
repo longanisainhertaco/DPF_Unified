@@ -98,6 +98,7 @@ class LeeModelComparison:
         peak_current_rmse: RMSE between current waveforms (if available).
         peak_current_error: Relative error on peak current.
         timing_error: Relative error on peak current timing.
+        waveform_nrmse: Normalized RMSE of full I(t) vs experimental waveform.
         device_name: Device name.
     """
 
@@ -105,6 +106,7 @@ class LeeModelComparison:
     peak_current_rmse: float = 0.0
     peak_current_error: float = 0.0
     timing_error: float = 0.0
+    waveform_nrmse: float = float("nan")
     device_name: str = ""
 
 
@@ -540,9 +542,20 @@ class LeeModel:
         else:
             timing_err = 0.0
 
+        # Waveform NRMSE against experimental digitized I(t)
+        waveform_nrmse = float("nan")
+        from dpf.validation.experimental import DEVICES, normalized_rmse
+        if device_name in DEVICES:
+            dev = DEVICES[device_name]
+            if dev.waveform_t is not None and dev.waveform_I is not None:
+                waveform_nrmse = normalized_rmse(
+                    result.t, result.I, dev.waveform_t, dev.waveform_I,
+                )
+
         return LeeModelComparison(
             lee_result=result,
             peak_current_error=peak_err,
             timing_error=timing_err,
+            waveform_nrmse=waveform_nrmse,
             device_name=device_name,
         )

@@ -185,10 +185,10 @@ class SnowplowModel:
     def is_active(self) -> bool:
         """Whether the snowplow is still dynamically evolving.
 
-        True during axial rundown and radial compression.
-        False after pinch (frozen state).
+        True during axial rundown, radial compression, and reflected shock.
+        False after final pinch (frozen state).
         """
-        return not self._pinch_complete
+        return self.phase in ("rundown", "radial", "reflected")
 
     def step(
         self,
@@ -225,8 +225,10 @@ class SnowplowModel:
 
         if self.phase == "rundown":
             return self._step_axial(dt, current, pressure)
+        elif self.phase == "reflected":
+            return self._step_reflected(dt, current)
         else:
-            return self._step_radial(dt, current)
+            return self._step_radial(dt, current, pressure)
 
     def _make_result(
         self, dL_dt: float, F_magnetic: float, F_pressure: float,
@@ -335,7 +337,9 @@ class SnowplowModel:
         ratio = self.b / max(r_s, self.r_pinch_min)
         return self.p_fill * ratio ** (2.0 * gamma)
 
-    def _step_radial(self, dt: float, current: float) -> dict[str, float]:
+    def _step_radial(
+        self, dt: float, current: float, pressure: float | None = None,
+    ) -> dict[str, float]:
         """Advance radial inward shock phase by one timestep.
 
         Lee model Phase 3: slug model for cylindrical implosion.
@@ -360,7 +364,10 @@ class SnowplowModel:
         F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
 
         # Adiabatic back-pressure force (opposes inward motion)
+        # Use max of adiabatic estimate and external MHD pressure if provided
         p_back = self._adiabatic_back_pressure(r_s)
+        if pressure is not None:
+            p_back = max(p_back, pressure)
         F_pressure = p_back * 2.0 * pi * r_s * z_f
 
         # Current radial slug mass and mass pickup rate
@@ -379,17 +386,20 @@ class SnowplowModel:
         # Position update
         r_new = self.r_shock + dt * vr_half
 
-        # Check if pinch reached
+        # Check if pinch reached — transition to reflected shock phase
         if r_new <= self.r_pinch_min:
             r_new = self.r_pinch_min
-            self._pinch_complete = True
             self.r_shock = r_new
-            self.vr = vr_half
+            self.vr = 0.0  # Stagnate at pinch, then reflected shock drives outward
             self._pinch_time = self._elapsed_time
-            self.phase = "pinch"
+            self.phase = "reflected"
+            # Store pinch pressure for reflected shock driving force
+            self._p_pinch = self._adiabatic_back_pressure(self.r_pinch_min)
+            # Store slug mass at pinch for reflected phase EOM
+            self._M_slug_pinch = max(self.radial_swept_mass, 1e-20)
             logger.info(
                 "Radial pinch at t=%.2e s: r_s=%.2e m (%.1f%% of a), "
-                "vr=%.0f m/s, L_p=%.2e H, I=%.0f A",
+                "vr=%.0f m/s, L_p=%.2e H, I=%.0f A → entering reflected phase",
                 self._elapsed_time, self.r_shock,
                 100.0 * self.r_shock / self.a, self.vr,
                 self.plasma_inductance, I_current,
@@ -419,6 +429,92 @@ class SnowplowModel:
         self.vr = vr_new
 
         # dL/dt from radial compression
+        dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
+
+        return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure)
+
+    def _step_reflected(self, dt: float, current: float) -> dict[str, float]:
+        """Advance reflected shock phase (Lee Phase 5) by one timestep.
+
+        After pinch, adiabatic back-pressure at r_min drives outward expansion
+        of the shock front.  The inward J×B force opposes the expansion.
+
+        The reflected shock terminates when:
+        - r_shock reaches cathode radius b (full expansion), or
+        - radial velocity reverses to negative (re-stagnation).
+
+        Physics:
+            F_pressure = p_back(r_s) * 2*pi * r_s * z_f   (drives outward)
+            F_rad = (mu_0/4pi) * (f_c*I)^2 * z_f / r_s   (opposes, inward)
+            M_slug * dvr/dt = F_pressure - F_rad
+
+        During reflected phase dL/dt < 0 (inductance decreasing as r grows).
+        """
+        I_current = current
+        z_f = self.L_anode
+
+        r_s = max(self.r_shock, self.r_pinch_min)
+
+        # Back-pressure at current radius (decreasing as shock expands)
+        p_back = self._adiabatic_back_pressure(r_s)
+        F_pressure = p_back * 2.0 * pi * r_s * z_f
+
+        # J×B force (inward, opposing expansion)
+        F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
+
+        # Slug mass from pinch (approximately constant during reflected phase)
+        M_slug = self._M_slug_pinch
+
+        # Equation of motion: M * dvr/dt = F_pressure - F_rad
+        # Sign convention: vr > 0 = outward expansion
+        a_n = (F_pressure - F_rad) / M_slug
+
+        # Velocity-Verlet: half-step
+        vr_half = self.vr + 0.5 * dt * a_n
+
+        # Position update
+        r_new = self.r_shock + dt * vr_half
+
+        # Termination: reached cathode or re-stagnation (vr reverses inward)
+        terminate = False
+        if r_new >= self.b:
+            r_new = self.b
+            terminate = True
+        if vr_half < 0.0 and self.vr >= 0.0:
+            # Velocity reversed — re-stagnation
+            terminate = True
+            vr_half = 0.0
+
+        if terminate:
+            self.r_shock = r_new
+            self.vr = vr_half
+            self._pinch_complete = True
+            self.phase = "pinch"
+            logger.info(
+                "Reflected shock terminated at t=%.2e s: r_s=%.2e m, "
+                "vr=%.0f m/s → frozen pinch state",
+                self._elapsed_time, self.r_shock, self.vr,
+            )
+            dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
+            return self._make_result(
+                dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+            )
+
+        # Recompute acceleration at new position
+        r_new_eff = max(r_new, self.r_pinch_min)
+        p_back_new = self._adiabatic_back_pressure(r_new_eff)
+        F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
+        F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
+        a_new = (F_pressure_new - F_rad_new) / M_slug
+
+        # Full-step velocity
+        vr_new = vr_half + 0.5 * dt * a_new
+
+        # Update state
+        self.r_shock = r_new
+        self.vr = vr_new
+
+        # dL/dt during expansion: r increasing → L decreasing → dL/dt < 0
         dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
 
         return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure)

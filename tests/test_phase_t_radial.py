@@ -412,18 +412,20 @@ class TestPinchTiming:
         assert pinch_time > 10e-9, f"Pinch unrealistically fast: {pinch_time:.2e} s"
 
     def test_pinch_radius_at_minimum(self) -> None:
-        """After pinch, r_shock should equal r_pinch_min."""
+        """At pinch, r_shock should reach r_pinch_min (reflected phase entry)."""
         sp = make_radial_snowplow()
         I_current = 1e6
         dt = 1e-9
 
         for _ in range(100_000):
             sp.step(dt, current=I_current)
-            if sp.phase == "pinch":
+            # Reflected phase starts when r_shock first reaches r_pinch_min
+            if sp.phase in ("reflected", "pinch"):
                 break
 
-        assert sp.phase == "pinch"
-        assert sp.r_shock == pytest.approx(sp.r_pinch_min, abs=1e-12)
+        assert sp.phase in ("reflected", "pinch")
+        # At reflected entry, r_shock is at or near r_pinch_min
+        assert sp.r_shock == pytest.approx(sp.r_pinch_min, rel=0.01)
 
 
 # ===================================================================

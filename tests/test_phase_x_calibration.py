@@ -104,8 +104,9 @@ class TestLeeModelCalibrator:
         cal = LeeModelCalibrator("PF-1000")
         assert cal.device_name == "PF-1000"
         assert cal.method == "nelder-mead"
-        assert cal.peak_weight == pytest.approx(0.6)
-        assert cal.timing_weight == pytest.approx(0.4)
+        assert cal.peak_weight == pytest.approx(0.4)
+        assert cal.timing_weight == pytest.approx(0.3)
+        assert cal.waveform_weight == pytest.approx(0.3)
 
     def test_instantiation_custom_weights(self):
         """Custom peak_weight and timing_weight are stored correctly."""
@@ -124,6 +125,7 @@ class TestLeeModelCalibrator:
         mock_comparison = MagicMock()
         mock_comparison.peak_current_error = 0.15
         mock_comparison.timing_error = 0.10
+        mock_comparison.waveform_nrmse = float("nan")
 
         cal = LeeModelCalibrator("PF-1000")
         cal._fc_bounds = (0.5, 0.95)
@@ -139,6 +141,7 @@ class TestLeeModelCalibrator:
         mock_comparison = MagicMock()
         mock_comparison.peak_current_error = 0.20
         mock_comparison.timing_error = 0.15
+        mock_comparison.waveform_nrmse = float("nan")
 
         cal = LeeModelCalibrator("PF-1000")
         cal._fc_bounds = (0.5, 0.95)
@@ -272,8 +275,10 @@ class TestCalibrateDefaultParams:
         original_init = LeeModelCalibrator.__init__
 
         def patched_init(self, device_name, method="nelder-mead",
-                         peak_weight=0.6, timing_weight=0.4):
-            original_init(self, device_name, method, peak_weight, timing_weight)
+                         peak_weight=0.4, timing_weight=0.3,
+                         waveform_weight=0.3):
+            original_init(self, device_name, method, peak_weight,
+                          timing_weight, waveform_weight)
             self._run_comparison = lambda fc, fm: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
@@ -291,8 +296,10 @@ class TestCalibrateDefaultParams:
         original_init = LeeModelCalibrator.__init__
 
         def patched_init(self, device_name, method="nelder-mead",
-                         peak_weight=0.6, timing_weight=0.4):
-            original_init(self, device_name, method, peak_weight, timing_weight)
+                         peak_weight=0.4, timing_weight=0.3,
+                         waveform_weight=0.3):
+            original_init(self, device_name, method, peak_weight,
+                          timing_weight, waveform_weight)
             self._run_comparison = lambda fc, fm: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
@@ -310,8 +317,10 @@ class TestCalibrateDefaultParams:
         original_init = LeeModelCalibrator.__init__
 
         def patched_init(self, device_name, method="nelder-mead",
-                         peak_weight=0.6, timing_weight=0.4):
-            original_init(self, device_name, method, peak_weight, timing_weight)
+                         peak_weight=0.4, timing_weight=0.3,
+                         waveform_weight=0.3):
+            original_init(self, device_name, method, peak_weight,
+                          timing_weight, waveform_weight)
             self._run_comparison = lambda fc, fm: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
@@ -372,6 +381,7 @@ class TestEdgeCases:
         mock_comparison = MagicMock()
         mock_comparison.peak_current_error = 0.10
         mock_comparison.timing_error = 0.05
+        mock_comparison.waveform_nrmse = float("nan")
 
         cal = LeeModelCalibrator("PF-1000")
         cal._fc_bounds = (0.5, 0.95)

@@ -779,15 +779,16 @@ class SimulationEngine:
         coupling.Z_bar = Z_bar
 
         # Snowplow dynamics: sheath-derived L_plasma overrides field-based L_plasma
-        # when the snowplow model is active (Lee model Phases 2-3: axial + radial).
+        # when the snowplow model is active (Lee model Phases 2-5).
         if self.snowplow is not None and self.snowplow.is_active:
             sp_result = self.snowplow.step(
                 dt, self._coupling.current,
-                pressure=self.config.snowplow.fill_pressure_Pa,
+                pressure=self._dynamic_sheath_pressure(),
             )
             coupling.Lp = sp_result["L_plasma"]
             coupling.dL_dt = sp_result["dL_dt"]
             self._prev_L_plasma = sp_result["L_plasma"]
+            self._last_sp_dL_dt = sp_result["dL_dt"]
         elif L_plasma > 0:
             # Fallback: use volume-integral L_plasma from MHD fields
             coupling.Lp = L_plasma
@@ -908,6 +909,28 @@ class SimulationEngine:
         self._last_neutron_rate = neutron_rate
         self.total_neutron_yield += neutron_rate * dt
 
+        # === Step 5b2: Beam-target neutron yield (during pinch/reflected) ===
+        self._last_beam_target_rate = 0.0
+        if self.snowplow and self.snowplow.phase in ("reflected", "pinch"):
+            from dpf.diagnostics.beam_target import beam_target_yield_rate
+            _sp_dL_dt = getattr(self, "_last_sp_dL_dt", 0.0)
+            V_pinch = abs(self._coupling.current * _sp_dL_dt)
+            n_target = float(np.mean(self.state["rho"])) / self.ion_mass
+            bt_rate = beam_target_yield_rate(
+                abs(self._coupling.current), V_pinch, n_target,
+                self.snowplow.L_anode, f_beam=0.2,
+            )
+            self.total_neutron_yield += bt_rate * dt
+            self._last_beam_target_rate = bt_rate
+
+        # === Step 5b3: m=0 sausage instability growth rate ===
+        self._last_m0_result = None
+        if self.snowplow and self.snowplow.phase in ("radial", "reflected", "pinch"):
+            from dpf.diagnostics.instability import m0_growth_rate_from_state
+            self._last_m0_result = m0_growth_rate_from_state(
+                self.state, self.snowplow, self.config,
+            )
+
         # === Step 5c: Well Exporter ===
         if self.well_interval > 0 and self.step_count % self.well_interval == 0:
             self.well_exporter.append_state(self.state)
@@ -960,7 +983,26 @@ class SimulationEngine:
                 },
                 "neutrons": {
                     "neutron_rate": self._last_neutron_rate,
+                    "beam_target_rate": getattr(self, "_last_beam_target_rate", 0.0),
                     "total_neutron_yield": self.total_neutron_yield,
+                },
+                "instability": {
+                    "m0_growth_rate": (
+                        self._last_m0_result["growth_rate"]
+                        if self._last_m0_result else 0.0
+                    ),
+                    "m0_growth_time": (
+                        self._last_m0_result["growth_time"]
+                        if self._last_m0_result else float("inf")
+                    ),
+                    "m0_beta_p": (
+                        self._last_m0_result["beta_p"]
+                        if self._last_m0_result else 0.0
+                    ),
+                    "m0_is_unstable": (
+                        self._last_m0_result["is_unstable"]
+                        if self._last_m0_result else False
+                    ),
                 },
                 "snowplow": {
                     "z_sheath": self.snowplow.z if self.snowplow else 0.0,
@@ -1015,7 +1057,7 @@ class SimulationEngine:
                     z_sheath = self.snowplow.z
                     dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
                     # Index corresponding to z_sheath
-                    iz_sheath = int(z_sheath / dz)
+                    iz_sheath = round(z_sheath / dz)
 
                     # Ensure valid index range
                     nx, ny, nz = self.config.grid_shape
@@ -1026,10 +1068,10 @@ class SimulationEngine:
 
                     # Radial zipper during radial phase:
                     # Zero B_theta outside the radial shock front
-                    if self.snowplow.phase == "radial":
+                    if self.snowplow.phase in ("radial", "reflected"):
                         r_shock = self.snowplow.r_shock
                         dr = self.config.dx  # radial spacing
-                        ir_shock = int(r_shock / dr)
+                        ir_shock = round(r_shock / dr)
                         if 0 <= ir_shock < nx:
                             self.state["B"][1, ir_shock + 1:, :, :] = 0.0
 
@@ -1037,6 +1079,46 @@ class SimulationEngine:
             pass
         else:
             pass
+
+    def _dynamic_sheath_pressure(self) -> float:
+        """Compute volume-averaged MHD pressure near the sheath/shock front.
+
+        During axial phase: averages pressure for z > z_sheath cells.
+        During radial/reflected phase: averages pressure for r < r_shock cells.
+        Falls back to config fill_pressure_Pa if snowplow inactive or no valid cells.
+
+        Returns:
+            Pressure [Pa] from MHD state, or fill_pressure_Pa as fallback.
+        """
+        fallback = self.config.snowplow.fill_pressure_Pa
+        if self.snowplow is None or not self.snowplow.is_active:
+            return fallback
+
+        p = self.state.get("pressure")
+        if p is None:
+            return fallback
+
+        dr = self.config.dx
+        dz = self.config.geometry.dz if self.config.geometry.dz else dr
+
+        if self.snowplow.phase == "rundown":
+            # Axial: average pressure ahead of sheath (z > z_sheath)
+            iz = round(self.snowplow.z / dz) if dz > 0 else 0
+            nz = p.shape[-1]
+            if 0 <= iz < nz - 1:
+                p_ahead = p[..., iz + 1:]
+                if p_ahead.size > 0:
+                    return max(float(np.mean(p_ahead)), fallback)
+        elif self.snowplow.phase in ("radial", "reflected"):
+            # Radial: average pressure inside shock front (r < r_shock)
+            ir = round(self.snowplow.r_shock / dr) if dr > 0 else 0
+            nx = p.shape[0]
+            if 0 < ir <= nx:
+                p_inside = p[:ir]
+                if p_inside.size > 0:
+                    return max(float(np.mean(p_inside)), fallback)
+
+        return fallback
 
     # ------------------------------------------------------------------
     # Athena++ backend step
