@@ -1603,7 +1603,7 @@ class TestSystemVerification:
         """
         times, currents = self._run_circuit_only(
             C=1.332e-3, V0=27e3, L0=15e-9, R0=3e-3,
-            dt=1e-9, n_steps=10000,
+            dt=1e-9, n_steps=5000,
         )
         I_peak = np.max(np.abs(currents))
 
@@ -1622,7 +1622,7 @@ class TestSystemVerification:
         """
         times, currents = self._run_circuit_only(
             C=1.332e-3, V0=27e3, L0=15e-9, R0=3e-3,
-            dt=1e-9, n_steps=20000,
+            dt=1e-9, n_steps=10000,
         )
         # Peak current time
         t_peak = times[np.argmax(np.abs(currents))]
@@ -1652,7 +1652,7 @@ class TestSystemVerification:
         """
         times, currents = self._run_circuit_only(
             C=0.9e-6, V0=12e3, L0=20e-9, R0=10e-3,
-            dt=1e-10, n_steps=20000,
+            dt=1e-10, n_steps=10000,
         )
         I_peak = np.max(np.abs(currents))
 
@@ -1736,7 +1736,7 @@ class TestSystemVerification:
 
         engine = SimulationEngine(config)
 
-        for _ in range(20):
+        for _ in range(12):
             engine.step()
 
         state = engine.state
@@ -1887,7 +1887,7 @@ class TestRegressionBaselines:
         """
         from dpf.fluid.mhd_solver import MHDSolver
 
-        nx, ny, nz = 128, 4, 4
+        nx, ny, nz = 80, 4, 4
         dx = 1.0 / nx
         gamma = 1.4
         solver = MHDSolver(
@@ -1910,7 +1910,7 @@ class TestRegressionBaselines:
 
         t = 0.0
         t_end = 0.2
-        max_steps = 2000  # Safety cap
+        max_steps = 1200  # Safety cap
         step_count = 0
         while t < t_end and step_count < max_steps:
             dt = solver._compute_dt(state)

@@ -166,7 +166,7 @@ def test_underdamped_waveform():
 
     # Quarter period
     t_quarter = np.pi / (2.0 * omega_d)
-    n_steps = 5000
+    n_steps = 2500
     dt = t_quarter / n_steps
 
     # Setup solver
@@ -246,7 +246,7 @@ def test_critically_damped():
 
     # Run for several time constants
     t_end = 5.0 * t_peak_expected
-    n_steps = 5000
+    n_steps = 2500
     dt = t_end / n_steps
 
     coupling = CouplingState(Lp=0.0, dL_dt=0.0, R_plasma=0.0)

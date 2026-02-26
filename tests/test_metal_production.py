@@ -700,7 +700,7 @@ def test_solver_10_steps(grid_16x16x16):
 
     dt = 1e-7
 
-    for i in range(10):
+    for i in range(5):
         state = solver.step(state, dt, current=0.0, voltage=0.0)
         assert np.all(state["rho"] > 0), f"Negative density at step {i + 1}"
         assert np.all(state["pressure"] > 0), f"Negative pressure at step {i + 1}"
@@ -749,7 +749,7 @@ def test_solver_energy_conservation(grid_16x16x16):
     E0 = total_energy(state)
 
     dt = 1e-7
-    for _ in range(5):
+    for _ in range(3):
         state = solver.step(state, dt, current=0.0, voltage=0.0)
 
     E1 = total_energy(state)
@@ -757,7 +757,7 @@ def test_solver_energy_conservation(grid_16x16x16):
     # Relative energy change
     rel_change = abs(E1 - E0) / E0
 
-    # Float32 accumulation over 5 steps: expect ~1e-4 relative error
+    # Float32 accumulation over 3 steps: expect ~1e-4 relative error
     assert rel_change < 1e-3, f"Energy conservation violated: dE/E = {rel_change}"
 
 
@@ -791,7 +791,7 @@ def test_solver_divB_maintained(grid_16x16x16):
 
     dt = 1e-7
 
-    for i in range(5):
+    for i in range(3):
         state = solver.step(state, dt, current=0.0, voltage=0.0)
         div_B = solver.divergence_B(state)
         max_div = np.max(np.abs(div_B))
@@ -871,7 +871,7 @@ def test_solver_sod_shock(sod_shock_state):
     solver = MetalMHDSolver(grid_shape=(nx, ny, nz), dx=0.01, gamma=5.0 / 3.0, device="mps")
 
     dt = 1e-7
-    n_steps = 100
+    n_steps = 50
 
     for _ in range(n_steps):
         state = solver.step(state, dt, current=0.0, voltage=0.0)

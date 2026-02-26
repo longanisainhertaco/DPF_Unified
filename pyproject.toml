@@ -99,8 +99,12 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --tb=short"
+addopts = "-x --tb=short"
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "slow: marks tests as slow (> 1 second)",
     "ai: marks tests requiring AI/torch dependencies",
+    "metal_gpu: marks tests that require Metal GPU (MPS)",
+    "walrus: marks tests that require WALRUS model",
+    "athenak: marks tests that require AthenaK binary",
+    "athena: marks tests that require Athena++ binary",
 ]

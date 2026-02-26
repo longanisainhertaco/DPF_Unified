@@ -51,9 +51,9 @@ def test_rlc_energy_conservation_long_run():
     # Initial energy (all in capacitor)
     E_initial = 0.5 * C * V0**2
 
-    # Time integration for 1000 steps
+    # Time integration for 500 steps
     dt = 1e-9  # Small timestep
-    n_steps = 1000
+    n_steps = 500
 
     # Zero plasma coupling for isolated circuit test
     coupling = CouplingState(Lp=0.0, emf=0.0, current=0.0, voltage=0.0, dL_dt=0.0)

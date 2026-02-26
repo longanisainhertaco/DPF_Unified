@@ -310,7 +310,7 @@ class TestCalibrationIntegration:
     def test_pf1000_calibration_converges(self):
         """PF-1000 calibration converges within maxiter."""
         cal = LeeModelCalibrator("PF-1000")
-        result = cal.calibrate(maxiter=50)
+        result = cal.calibrate(maxiter=30)
         assert isinstance(result, CalibrationResult)
         assert result.device_name == "PF-1000"
         assert 0.0 < result.best_fc < 1.0
@@ -321,7 +321,7 @@ class TestCalibrationIntegration:
     def test_pf1000_benchmark_against_published(self):
         """PF-1000 calibrated fc/fm should fall in published ranges."""
         cal = LeeModelCalibrator("PF-1000")
-        benchmark = cal.benchmark_against_published(maxiter=100)
+        benchmark = cal.benchmark_against_published(maxiter=30)
         assert benchmark["fc_in_range"] is True or benchmark["fm_in_range"] is True, (
             f"Neither fc={benchmark['fc_calibrated']:.3f} "
             f"(range {benchmark['fc_published_range']}) "

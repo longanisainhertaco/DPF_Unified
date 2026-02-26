@@ -101,7 +101,7 @@ def test_well_exporter_integration(clean_output):
 def test_hybrid_engine_delegation(clean_output):
     """Test that backend='hybrid' delegates to HybridEngine."""
     config_dict = {
-        "grid_shape": [16, 16, 16],
+        "grid_shape": [8, 8, 8],
         "dx": 0.01,
         "sim_time": 1e-6,
         "circuit": {

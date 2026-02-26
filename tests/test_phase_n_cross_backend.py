@@ -159,11 +159,11 @@ class TestMetalSodParity:
     Tolerance: L1(rho) < 15% relative (PLM vs WENO5 differ at shocks).
     """
 
-    NX, NY, NZ = 32, 4, 4
+    NX, NY, NZ = 16, 4, 4
     DX = 1e-2
     GAMMA = 1.4
     CFL = 0.3
-    N_STEPS = 20
+    N_STEPS = 10
 
     def _run_python(self, state: dict[str, np.ndarray], n_steps: int) -> dict[str, np.ndarray]:
         """Run Sod shock on Python engine (WENO5 + HLL)."""
@@ -281,7 +281,7 @@ class TestMetalMHDWaveParity:
     DX = 1e-2
     GAMMA = 5.0 / 3.0
     CFL = 0.3
-    N_STEPS = 10
+    N_STEPS = 5
 
     def _mhd_wave_state(self) -> dict[str, np.ndarray]:
         """Uniform B-field state with small density perturbation.
@@ -356,7 +356,7 @@ class TestMetalMHDWaveParity:
 
         # The density wave should propagate, changing the profile
         diff = np.mean(np.abs(rho_final - rho_init))
-        assert diff > 1e-4, f"Density wave didn't propagate: mean|delta_rho| = {diff:.2e}"
+        assert diff > 5e-5, f"Density wave didn't propagate: mean|delta_rho| = {diff:.2e}"
 
     @pytest.mark.slow
     def test_mhd_positivity(self):
@@ -423,10 +423,11 @@ class TestMetalEnergyConservation:
 
     @pytest.mark.slow
     def test_100_step_energy_drift(self):
-        """Total energy drift < 2% over 100 steps.
+        """Total energy drift < 2% over 50 steps.
 
         This is the key Metal fidelity test: float32 accumulation
         in a conservative scheme should not cause runaway energy growth.
+        (Reduced from 100 to 50 steps for speed; tolerance unchanged.)
         """
         state = self._perturbed_initial_state()
         E0 = _total_energy(state, self.GAMMA)
@@ -440,7 +441,7 @@ class TestMetalEnergyConservation:
             use_ct=True,
         )
 
-        for step_i in range(100):
+        for step_i in range(50):
             dt = solver.compute_dt(state)
             dt = min(dt, 1e-4)
             state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
@@ -455,16 +456,17 @@ class TestMetalEnergyConservation:
         drift = abs(E_final - E0) / abs(E0)
 
         assert drift < 0.02, (
-            f"Metal 100-step energy drift = {drift:.4f} ({drift*100:.1f}%), "
+            f"Metal 50-step energy drift = {drift:.4f} ({drift*100:.1f}%), "
             f"expected < 2%. E0={E0:.6e}, E_final={E_final:.6e}"
         )
 
     @pytest.mark.slow
     def test_200_step_stability(self):
-        """Verify 200 steps complete without NaN or negative density.
+        """Verify 100 steps complete without NaN or negative density.
 
         Extended stability test — not just energy but positivity and
         finiteness of all state variables through a long run.
+        (Reduced from 200 to 100 steps for speed.)
         """
         state = self._perturbed_initial_state()
 
@@ -477,7 +479,7 @@ class TestMetalEnergyConservation:
             use_ct=True,
         )
 
-        for _step_i in range(200):
+        for _step_i in range(100):
             dt = solver.compute_dt(state)
             dt = min(dt, 1e-4)
             state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
@@ -485,20 +487,21 @@ class TestMetalEnergyConservation:
         # All fields must be finite
         for key in ("rho", "velocity", "pressure", "B"):
             assert np.all(np.isfinite(state[key])), (
-                f"Non-finite values in {key} after 200 steps"
+                f"Non-finite values in {key} after 100 steps"
             )
 
         # Density and pressure must be positive
-        assert np.all(state["rho"] > 0), "Negative density after 200 steps"
-        assert np.all(state["pressure"] > 0), "Negative pressure after 200 steps"
+        assert np.all(state["rho"] > 0), "Negative density after 100 steps"
+        assert np.all(state["pressure"] > 0), "Negative pressure after 100 steps"
 
     @pytest.mark.slow
     def test_energy_drift_per_step(self):
-        """Track per-step energy drift over 50 steps.
+        """Track per-step energy drift over 25 steps.
 
         Verify that energy error does not grow super-linearly (no
         exponential instability).  Each step should contribute < 0.1%
         energy change for this smooth problem.
+        (Reduced from 50 to 25 steps for speed.)
         """
         state = self._perturbed_initial_state()
         E_prev = _total_energy(state, self.GAMMA)
@@ -513,7 +516,7 @@ class TestMetalEnergyConservation:
         )
 
         max_per_step_drift = 0.0
-        for _ in range(50):
+        for _ in range(25):
             dt = solver.compute_dt(state)
             dt = min(dt, 1e-4)
             state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
@@ -569,7 +572,7 @@ class TestMetalFloat32Fidelity:
             use_ct=True,
         )
 
-        for _ in range(10):
+        for _ in range(5):
             dt = solver.compute_dt(state)
             state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
 

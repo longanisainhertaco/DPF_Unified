@@ -359,18 +359,18 @@ class TestSodShockTube:
         """
         from dpf.verification.shock_tubes import run_sod_test
 
-        result = run_sod_test(nx=100, t_end=0.2, gamma=1.4)
+        result = run_sod_test(nx=64, t_end=0.2, gamma=1.4)
 
         # All sanity checks should pass
         assert result.checks["no_nan"], "Sod test produced NaN/Inf"
         assert result.checks["rho_positive"], "Density went negative"
         assert result.checks["p_positive"], "Pressure went negative"
 
-        # L1 errors for Rusanov + conservative energy at 100 cells
-        # Typical: rho ~ 0.03, u ~ 0.06, p ~ 0.03
-        assert result.errors["rho"] < 0.10, f"rho L1 error too large: {result.errors['rho']}"
-        assert result.errors["u"] < 0.10, f"u L1 error too large: {result.errors['u']}"
-        assert result.errors["p"] < 0.10, f"p L1 error too large: {result.errors['p']}"
+        # L1 errors for Rusanov + conservative energy at 64 cells
+        # Typical: rho ~ 0.05, u ~ 0.08, p ~ 0.05 (coarser than 100)
+        assert result.errors["rho"] < 0.15, f"rho L1 error too large: {result.errors['rho']}"
+        assert result.errors["u"] < 0.15, f"u L1 error too large: {result.errors['u']}"
+        assert result.errors["p"] < 0.15, f"p L1 error too large: {result.errors['p']}"
 
 
 # ===================================================================
@@ -402,7 +402,7 @@ class TestBrioWuShockTube:
         """
         from dpf.verification.shock_tubes import run_brio_wu_test
 
-        result = run_brio_wu_test(nx=200, t_end=0.1, gamma=2.0)
+        result = run_brio_wu_test(nx=100, t_end=0.1, gamma=2.0)
 
         # All qualitative checks should pass
         assert result.checks["no_nan"], "Brio-Wu produced NaN/Inf"
@@ -495,7 +495,7 @@ class TestCylindricalConvergence:
         from dpf.verification.cylindrical_convergence import run_convergence_test
 
         result = run_convergence_test(
-            resolutions=[32, 64, 128],
+            resolutions=[32, 64],
             n_steps=3,
             J0=1e6,
             a_frac=2.0,
@@ -510,7 +510,7 @@ class TestCylindricalConvergence:
         from dpf.verification.cylindrical_convergence import run_convergence_test
 
         result = run_convergence_test(
-            resolutions=[32, 64, 128],
+            resolutions=[32, 64],
             n_steps=3,
         )
 

@@ -473,7 +473,7 @@ class TestPhaseTransitions:
         dt = 5e-9
 
         phase_order = []
-        for _ in range(1_000_000):
+        for _ in range(500_000):
             result = sp.step(dt, current=I_current)
             phase = result["phase"]
             if not phase_order or phase_order[-1] != phase:

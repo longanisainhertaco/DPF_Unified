@@ -28,22 +28,18 @@ class KineticManager:
 
         # Initialize HybridPIC driver
         nx, ny, nz = config.grid_shape
+        dz = (getattr(config.geometry, "dz", None) if hasattr(config, "geometry") else None) or config.dx
         self.driver = HybridPIC(
             grid_shape=(nx, ny, nz),
             dx=config.dx,
-            dy=config.dx, # Cartesian assumption for now
-            dz=config.dx, # Cartesian assumption
-            dt=1e-9,  # placeholder, will be overridden in step
+            dy=config.dx,
+            dz=dz,
+            dt=1e-9,  # initial dt; overridden each step() call
         )
 
         self.beam_injected = False
 
-        # Define simulation species (e.g. Deuterium)
-        # For now, we only create the "Beam" species if requested,
-        # or a background thermal species.
-        # Let's create a placeholder "ions" species
-        # In a real run, this might be initialized from the fluid state,
-        # but for Phase 3.1 we focus on the BEAM.
+        # Beam species — initialized empty, populated on first inject
         self.ion_species = self.driver.add_species(
             name="deuterium_beam",
             mass=config.ion_mass,

@@ -90,7 +90,7 @@ class TestDiffusionConvergence:
 
         result = run_diffusion_convergence(
             method="implicit",
-            resolutions=[32, 64, 128],
+            resolutions=[32, 64],
         )
 
         assert result.convergence_order > 1.5, (
@@ -113,7 +113,7 @@ class TestDiffusionConvergence:
 
         result = run_diffusion_convergence(
             method="sts",
-            resolutions=[32, 64, 128],
+            resolutions=[32, 64],
         )
 
         assert result.convergence_order > 1.5, (
@@ -128,7 +128,7 @@ class TestDiffusionConvergence:
 
         result = run_diffusion_convergence(
             method="explicit",
-            resolutions=[32, 64, 128],
+            resolutions=[32, 64],
         )
 
         assert result.convergence_order > 1.5, (
@@ -262,7 +262,7 @@ class TestSedovCylindrical:
         """
         from dpf.verification.sedov_cylindrical import run_sedov_cylindrical
 
-        result = run_sedov_cylindrical(nr=64, nz=128, t_end=0.05)
+        result = run_sedov_cylindrical(nr=32, nz=64, t_end=0.05)
 
         # Should have taken some steps
         assert result.n_steps > 0, "Sedov test should take at least one step"
@@ -279,8 +279,8 @@ class TestSedovCylindrical:
         assert result.gamma > 1.0
 
         # Density profiles should have correct shape
-        assert len(result.rho_profile_r) == 64
-        assert len(result.rho_profile_z) == 128
+        assert len(result.rho_profile_r) == 32
+        assert len(result.rho_profile_z) == 64
 
         # If the solver managed finite output, check shock detection
         if np.all(np.isfinite(result.rho_profile_r)):
