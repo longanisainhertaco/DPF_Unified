@@ -192,8 +192,8 @@ class ValidationResult:
     config_hash: str = ""
 
 
-def normalized_rmse(sim_values: np.ndarray, ref_values: np.ndarray) -> float:
-    """Compute normalized RMSE between simulation and reference.
+def nrmse_range(sim_values: np.ndarray, ref_values: np.ndarray) -> float:
+    """Compute range-normalized RMSE between simulation and reference.
 
     NRMSE = sqrt(mean((sim - ref)^2)) / (max(ref) - min(ref))
 
@@ -204,7 +204,7 @@ def normalized_rmse(sim_values: np.ndarray, ref_values: np.ndarray) -> float:
         ref_values: Reference/experimental values.
 
     Returns:
-        Normalized RMSE (dimensionless).
+        Range-normalized RMSE (dimensionless).
     """
     if len(sim_values) == 0 or len(ref_values) == 0:
         return float("inf")
@@ -216,6 +216,10 @@ def normalized_rmse(sim_values: np.ndarray, ref_values: np.ndarray) -> float:
         return float(np.sqrt(mse))
 
     return float(np.sqrt(mse) / ref_range)
+
+
+# Backward-compatible alias (CRIT-1: prefer nrmse_range for clarity)
+normalized_rmse = nrmse_range
 
 
 def relative_error(sim: float, ref: float) -> float:

@@ -251,7 +251,7 @@ def _fake_load_walrus(self, checkpoint_data, mock_instantiate, mock_formatter_cl
 
 
 class TestWALRUSTensorConversion:
-    """Test _states_to_walrus_tensor and _tensor_to_state."""
+    """Test _build_walrus_batch and _well_output_to_state (active conversion methods)."""
 
     @pytest.fixture
     def surrogate(self, monkeypatch, tmp_path):
@@ -277,100 +277,57 @@ class TestWALRUSTensorConversion:
         obj._model = {"placeholder": True}  # dict → not walrus model
         obj._revin = None
         obj._formatter = None
+        obj._walrus_config = None
+        obj._field_to_index_map = None
+        obj._dpf_field_indices = torch.zeros(11, dtype=torch.long)
         return obj
 
-    def test_states_to_walrus_tensor_shape(self, surrogate):
-        """_states_to_walrus_tensor returns shape (1, T, 11, *spatial)."""
-        states = [_make_state(shape=(4, 4, 4)) for _ in range(3)]
+    def test_dead_methods_removed(self, surrogate):
+        """_states_to_walrus_tensor and _tensor_to_state have been removed."""
+        assert not hasattr(surrogate, "_states_to_walrus_tensor")
+        assert not hasattr(surrogate, "_tensor_to_state")
 
-        tensor = surrogate._states_to_walrus_tensor(states)
+    def test_build_walrus_batch_exists(self, surrogate):
+        """_build_walrus_batch is the active batch builder."""
+        assert hasattr(surrogate, "_build_walrus_batch")
 
-        assert tensor.shape == (1, 3, 11, 4, 4, 4)
+    def test_well_output_to_state_exists(self, surrogate):
+        """_well_output_to_state is the active output converter."""
+        assert hasattr(surrogate, "_well_output_to_state")
 
-    def test_states_to_walrus_tensor_dtype_float32(self, surrogate):
-        """_states_to_walrus_tensor returns float32 tensor."""
-        states = [_make_state(shape=(4, 4, 4)) for _ in range(2)]
-
-        tensor = surrogate._states_to_walrus_tensor(states)
-
-        import torch
-
-        assert tensor.dtype == torch.float32
-
-    def test_states_to_walrus_tensor_channel_order(self, surrogate):
-        """Channel order: rho=0, Te=1, Ti=2, pressure=3, psi=4, Bx=5..Bz=7, vx=8..vz=10."""
-        state = _make_state(shape=(2, 2, 2))
-        state["rho"][:] = 1.0
-        state["Te"][:] = 2.0
-        state["Ti"][:] = 3.0
-        state["pressure"][:] = 4.0
-        state["psi"][:] = 5.0
-        state["B"][0, :] = 6.0  # Bx
-        state["B"][1, :] = 7.0  # By
-        state["B"][2, :] = 8.0  # Bz
-        state["velocity"][0, :] = 9.0   # vx
-        state["velocity"][1, :] = 10.0  # vy
-        state["velocity"][2, :] = 11.0  # vz
-
-        tensor = surrogate._states_to_walrus_tensor([state])
-
-        # tensor shape: (1, 1, 11, 2, 2, 2)
-        arr = tensor[0, 0].numpy()  # (11, 2, 2, 2)
-        assert np.allclose(arr[0], 1.0)   # rho
-        assert np.allclose(arr[1], 2.0)   # Te
-        assert np.allclose(arr[2], 3.0)   # Ti
-        assert np.allclose(arr[3], 4.0)   # pressure
-        assert np.allclose(arr[4], 5.0)   # psi
-        assert np.allclose(arr[5], 6.0)   # Bx
-        assert np.allclose(arr[6], 7.0)   # By
-        assert np.allclose(arr[7], 8.0)   # Bz
-        assert np.allclose(arr[8], 9.0)   # vx
-        assert np.allclose(arr[9], 10.0)  # vy
-        assert np.allclose(arr[10], 11.0)  # vz
-
-    def test_tensor_to_state_roundtrip(self, surrogate):
-        """_states_to_walrus_tensor → _tensor_to_state preserves values."""
-        state = _make_state(shape=(4, 4, 4))
-        state["rho"][:] = 2.5
-        state["Te"][:] = 1e5
-        state["B"][0, :] = 0.5
-
-        tensor = surrogate._states_to_walrus_tensor([state])
-        # Extract single step: (1, 1, 11, 4, 4, 4) → (11, 4, 4, 4)
-        single = tensor[0, 0]
-
-        recovered = surrogate._tensor_to_state(single, state)
-
-        assert set(recovered.keys()) == set(state.keys())
-        np.testing.assert_allclose(recovered["rho"], state["rho"], atol=1e-5)
-        np.testing.assert_allclose(recovered["Te"], state["Te"], atol=1e-1)
-        np.testing.assert_allclose(recovered["B"], state["B"], atol=1e-5)
-
-    def test_tensor_to_state_correct_shapes(self, surrogate):
-        """_tensor_to_state produces correct shapes for scalars and vectors."""
-        import torch
-
+    def test_well_output_to_state_correct_shapes(self, surrogate):
+        """_well_output_to_state produces correct shapes for scalars and vectors."""
         ref_state = _make_state(shape=(4, 4, 4))
-        # Create a (11, 4, 4, 4) tensor
-        tensor = torch.zeros(11, 4, 4, 4, dtype=torch.float32)
+        # Well format: channels-last (H, W, D, C) with C=11
+        pred_array = np.zeros((4, 4, 4, 11), dtype=np.float32)
 
-        result = surrogate._tensor_to_state(tensor, ref_state)
+        result = surrogate._well_output_to_state(pred_array, ref_state)
 
         for key in ["rho", "Te", "Ti", "pressure", "psi"]:
             assert result[key].shape == (4, 4, 4), f"{key} shape mismatch"
         for key in ["B", "velocity"]:
             assert result[key].shape == (3, 4, 4, 4), f"{key} shape mismatch"
 
-    def test_tensor_to_state_removes_batch_dim(self, surrogate):
-        """_tensor_to_state handles (1, C, *spatial) input by removing batch dim."""
-        import torch
+    def test_well_output_to_state_channel_order(self, surrogate):
+        """Channel order: rho=0, Te=1, Ti=2, pressure=3, psi=4, Bx=5..Bz=7, vx=8..vz=10."""
+        ref_state = _make_state(shape=(2, 2, 2))
+        pred_array = np.zeros((2, 2, 2, 11), dtype=np.float32)
+        for ch in range(11):
+            pred_array[..., ch] = float(ch + 1)
 
-        ref_state = _make_state(shape=(4, 4, 4))
-        tensor = torch.zeros(1, 11, 4, 4, 4, dtype=torch.float32)
+        result = surrogate._well_output_to_state(pred_array, ref_state)
 
-        result = surrogate._tensor_to_state(tensor, ref_state)
-
-        assert result["rho"].shape == (4, 4, 4)
+        np.testing.assert_allclose(result["rho"], 1.0, atol=1e-6)
+        np.testing.assert_allclose(result["Te"], 2.0, atol=1e-6)
+        np.testing.assert_allclose(result["Ti"], 3.0, atol=1e-6)
+        np.testing.assert_allclose(result["pressure"], 4.0, atol=1e-6)
+        np.testing.assert_allclose(result["psi"], 5.0, atol=1e-6)
+        np.testing.assert_allclose(result["B"][0], 6.0, atol=1e-6)
+        np.testing.assert_allclose(result["B"][1], 7.0, atol=1e-6)
+        np.testing.assert_allclose(result["B"][2], 8.0, atol=1e-6)
+        np.testing.assert_allclose(result["velocity"][0], 9.0, atol=1e-6)
+        np.testing.assert_allclose(result["velocity"][1], 10.0, atol=1e-6)
+        np.testing.assert_allclose(result["velocity"][2], 11.0, atol=1e-6)
 
 
 # ── Well Exporter Compliance Tests ───────────────────────────────
@@ -910,20 +867,16 @@ class TestValidateAgainstPhysics:
 class TestDeadCodeRemoval:
     """Verify dead _states_to_tensor was removed from surrogate.py."""
 
-    def test_no_states_to_tensor_method(self):
-        """_states_to_tensor (the dead method using field_mapping) was removed."""
-        import inspect
-
+    def test_dead_methods_removed(self):
+        """Dead _states_to_walrus_tensor and _tensor_to_state have been removed."""
         from dpf.ai.surrogate import DPFSurrogate
 
-        # _states_to_walrus_tensor should still exist
-        assert hasattr(DPFSurrogate, "_states_to_walrus_tensor")
-        # _tensor_to_state should still exist
-        assert hasattr(DPFSurrogate, "_tensor_to_state")
-        # The old _states_to_tensor (using dpf_scalar_to_well signature) should be gone
-        source = inspect.getsource(DPFSurrogate)
-        # It should NOT contain the old method that called dpf_scalar_to_well incorrectly
-        assert "dpf_scalar_to_well(state[field_name], field_name)" not in source
+        # Both dead methods should be gone (replaced by _build_walrus_batch / _well_output_to_state)
+        assert not hasattr(DPFSurrogate, "_states_to_walrus_tensor")
+        assert not hasattr(DPFSurrogate, "_tensor_to_state")
+        # Active methods should exist
+        assert hasattr(DPFSurrogate, "_build_walrus_batch")
+        assert hasattr(DPFSurrogate, "_well_output_to_state")
 
     def test_validate_endpoint_exists(self):
         """realtime_server has /validate endpoint."""

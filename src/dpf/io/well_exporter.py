@@ -24,7 +24,6 @@ except ImportError:
 from dpf.ai.field_mapping import (
     SCALAR_FIELDS,
     VECTOR_FIELDS,
-    dpf_scalar_to_well,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,10 +103,6 @@ class WellExporter:
             Dict with keys corresponding to Well fields (e.g. 'density', 'velocity').
             Shapes will be (n_traj=1, n_steps, *spatial, [dims]).
         """
-        n_steps = len(self._buffer)
-        n_traj = 1
-        traj_idx = 0
-
         well_data = {}
 
         # 1. Inspect first state to get spatial shapes
@@ -118,29 +113,11 @@ class WellExporter:
             if dpf_name not in ref:
                 continue
 
-            # Allocate: (n_traj, n_steps, nx, ny, nz)
-            spatial = ref[dpf_name].shape
-            arr = np.zeros((n_traj, n_steps, *spatial), dtype=np.float32)
-
-            for t, state in enumerate(self._buffer):
-                arr = dpf_scalar_to_well(
-                    state[dpf_name], traj_idx, t, n_traj, n_steps
-                )
-                # Optimize: direct assignment if dpf_scalar_to_well returns full array
-                # But dpf_scalar_to_well returns a full (1,1,...) array.
-                # Let's perform a simpler loop here to avoid alloc turnover.
-                pass
-
-            # Re-implementation for efficiency avoiding repeated allocs
-            # dpf.ai.field_mapping helpers are 'one-shot'.
-            # We'll just loop and assign.
+            # Stack over time: (n_steps, nx, ny, nz), then add traj dim
             arr = np.stack(
                 [s[dpf_name].astype(np.float32) for s in self._buffer], axis=0
             )
-            # arr shape: (n_steps, nx, ny, nz)
-            # Add n_traj dim
-            arr = arr[np.newaxis, ...]
-            well_data[well_name] = arr
+            well_data[well_name] = arr[np.newaxis, ...]
 
         # 3. Convert Vectors
         for dpf_name, well_name in VECTOR_FIELDS.items():

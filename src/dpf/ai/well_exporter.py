@@ -69,6 +69,11 @@ class WellExporter:
         self._times: list[float] = []
         self._circuit_history: list[dict] = []
 
+    @property
+    def n_snapshots(self) -> int:
+        """Number of snapshots accumulated so far."""
+        return len(self._times)
+
     def add_snapshot(
         self,
         state: dict[str, np.ndarray],
@@ -82,7 +87,7 @@ class WellExporter:
             time: Simulation time [s].
             circuit_scalars: Optional circuit quantities (current, voltage, etc.).
         """
-        self._snapshots.append(state.copy())
+        self._snapshots.append({k: v.copy() if isinstance(v, np.ndarray) else v for k, v in state.items()})
         self._times.append(time)
         self._circuit_history.append(circuit_scalars.copy() if circuit_scalars else {})
 

@@ -218,6 +218,8 @@ MetalMHDSolver(
 10. WALRUS inference: load checkpoint → instantiate IsotropicModel → RevIN normalize → forward → denormalize delta → add residual
 11. Well format export: always use `grid_type="cartesian"`, axis order `[x, y, z]`, float32
 12. Follow the iterative accuracy workflow: Create → Test → Rate → Research → Improve → Repeat
+13. Memory system: MEMORY.md (auto-loaded) contains Session Protocol with automatic behaviors. Follow it every session — read `memory/session.md` on start, load relevant topic files based on task, save checkpoint before ending.
+14. Memory commands: `/session-save`, `/session-resume`, `/recall <query>`, `/remember <fact>`, `/memory-status`
 
 ## Lessons Learned (Phases A-I)
 

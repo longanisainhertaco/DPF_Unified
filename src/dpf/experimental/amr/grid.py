@@ -264,6 +264,10 @@ def prolong_patch(coarse_data: np.ndarray, ratio: int) -> np.ndarray:
 def _add_buffer(tagged: np.ndarray, buffer_cells: int) -> np.ndarray:
     """Expand tagged region by buffer_cells in all directions.
 
+    Uses ``scipy.ndimage.binary_dilation`` with a cross-shaped structuring
+    element (4-connected, no diagonal) for O(N) performance instead of the
+    previous O(N²) nested Python loop.
+
     Args:
         tagged: Boolean mask, shape (nr, nz).
         buffer_cells: Number of cells to expand.
@@ -271,24 +275,17 @@ def _add_buffer(tagged: np.ndarray, buffer_cells: int) -> np.ndarray:
     Returns:
         Expanded boolean mask, same shape.
     """
-    result = tagged.copy()
-    nr, nz = tagged.shape
-    for _ in range(buffer_cells):
-        expanded = result.copy()
-        for i in range(nr):
-            for j in range(nz):
-                if result[i, j]:
-                    # Expand to neighbors
-                    if i > 0:
-                        expanded[i - 1, j] = True
-                    if i < nr - 1:
-                        expanded[i + 1, j] = True
-                    if j > 0:
-                        expanded[i, j - 1] = True
-                    if j < nz - 1:
-                        expanded[i, j + 1] = True
-        result = expanded
-    return result
+    from scipy.ndimage import binary_dilation  # noqa: PLC0415
+
+    # Cross-shaped (4-connected) structuring element — matches the original
+    # neighbor-expansion logic that did not include diagonals.
+    struct = np.array(
+        [[False, True, False],
+         [True,  True, True],
+         [False, True, False]],
+        dtype=bool,
+    )
+    return binary_dilation(tagged, structure=struct, iterations=buffer_cells)
 
 
 # ============================================================
@@ -299,14 +296,13 @@ def _add_buffer(tagged: np.ndarray, buffer_cells: int) -> np.ndarray:
 def _find_tagged_bbox(
     tagged: np.ndarray,
 ) -> list[tuple[int, int, int, int]]:
-    """Find the bounding box of contiguous tagged regions.
+    """Find the bounding boxes of contiguous tagged regions.
 
     Returns a list of (i_start, j_start, ni, nj) tuples, one per
-    connected cluster. Uses a simple single-pass bounding box (no
-    connected-component analysis) for efficiency.
-
-    For the DPF use case, the pinch column is typically a single
-    connected region, so a single bounding box is usually sufficient.
+    connected cluster.  Uses ``scipy.ndimage.label`` for connected-component
+    analysis so that disconnected regions (e.g. a pinch column and a
+    separate current-sheet) each get their own tight patch rather than
+    being wrapped in a single oversized bounding box.
 
     Args:
         tagged: Boolean mask, shape (nr, nz).
@@ -314,25 +310,30 @@ def _find_tagged_bbox(
     Returns:
         List of (i_start, j_start, ni, nj) bounding boxes.
     """
+    from scipy.ndimage import label  # noqa: PLC0415
+
     if not np.any(tagged):
         return []
 
-    # Find global bounding box of all tagged cells
-    rows = np.any(tagged, axis=1)
-    cols = np.any(tagged, axis=0)
+    labeled, n_features = label(tagged)
 
-    i_min = int(np.argmax(rows))
-    i_max = int(len(rows) - 1 - np.argmax(rows[::-1]))
-    j_min = int(np.argmax(cols))
-    j_max = int(len(cols) - 1 - np.argmax(cols[::-1]))
+    bboxes: list[tuple[int, int, int, int]] = []
+    for region_id in range(1, n_features + 1):
+        rows = np.any(labeled == region_id, axis=1)
+        cols = np.any(labeled == region_id, axis=0)
 
-    ni = i_max - i_min + 1
-    nj = j_max - j_min + 1
+        i_min = int(np.argmax(rows))
+        i_max = int(len(rows) - 1 - np.argmax(rows[::-1]))
+        j_min = int(np.argmax(cols))
+        j_max = int(len(cols) - 1 - np.argmax(cols[::-1]))
 
-    if ni <= 0 or nj <= 0:
-        return []
+        ni = i_max - i_min + 1
+        nj = j_max - j_min + 1
 
-    return [(i_min, j_min, ni, nj)]
+        if ni > 0 and nj > 0:
+            bboxes.append((i_min, j_min, ni, nj))
+
+    return bboxes
 
 
 # ============================================================

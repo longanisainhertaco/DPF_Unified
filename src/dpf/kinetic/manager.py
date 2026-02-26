@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class KineticManager:
     """Manages the Kinetic (Hybrid-PIC) subsystem.
-    
+
     Wraps the ``HybridPIC`` driver and handles:
     1. Initialization from config.
     2. Beam injection logic.
@@ -65,7 +66,7 @@ class KineticManager:
             time: Current simulation time [s].
             E_field: Electric field (nx, ny, nz, 3) [V/m].
             B_field: Magnetic field (nx, ny, nz, 3) [T].
-            
+
         Returns:
             Dictionary of kinetic methods/stats (e.g. max_energy).
         """

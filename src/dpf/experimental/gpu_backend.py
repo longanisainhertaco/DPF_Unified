@@ -1,5 +1,12 @@
 """GPU acceleration backend: CuPy when available, NumPy fallback.
 
+.. deprecated::
+    **This module is dead code on Apple Silicon (the DPF target platform).**
+    CuPy requires CUDA, which is not available on M-series Macs.  The
+    production GPU path uses PyTorch MPS via
+    :class:`dpf.metal.metal_solver.MetalMHDSolver`.  This module is
+    retained only for Linux/CUDA environments and for historical reference.
+
 Provides a unified array interface ``xp`` that is either CuPy (GPU) or
 NumPy (CPU), allowing the same code to run on both without modification.
 
@@ -18,7 +25,17 @@ Usage::
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
+
+warnings.warn(
+    "dpf.experimental.gpu_backend is a CUDA/CuPy backend and is not functional "
+    "on Apple Silicon.  Use dpf.metal.metal_solver.MetalMHDSolver for GPU "
+    "acceleration on M-series Macs.",
+    stacklevel=2,
+    category=DeprecationWarning,
+)
 
 try:
     import cupy as cp  # type: ignore[import-untyped]

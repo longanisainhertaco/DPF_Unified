@@ -85,6 +85,16 @@ class FieldManager:
         Returns:
             Scalar field of shape ``(nx, ny, nz)``.
         """
+        if self.geometry == "cylindrical":
+            # Cylindrical (axisymmetric): div(F) = (1/r)*d(r*F_r)/dr + dF_z/dz
+            # Component 0 = F_r, component 1 = F_theta (ignored, axisymmetric),
+            # component 2 = F_z
+            r = (np.arange(self.nx) + 0.5) * self.dx
+            r = r[:, np.newaxis, np.newaxis]  # (nx, 1, 1)
+            rFr = field[0] * r
+            dFr_dr = np.gradient(rFr, self.dx, axis=0) / np.maximum(r, 1e-30)
+            dFz_dz = np.gradient(field[2], self.dz, axis=2)
+            return dFr_dr + dFz_dz
         return (
             np.gradient(field[0], self.dx, axis=0)
             + np.gradient(field[1], self.dy, axis=1)
@@ -100,6 +110,22 @@ class FieldManager:
         Returns:
             Vector field of shape ``(3, nx, ny, nz)``.
         """
+        if self.geometry == "cylindrical":
+            # Cylindrical (axisymmetric): components 0=r, 1=theta, 2=z
+            # curl_r     = -dF_theta/dz
+            # curl_theta = dF_r/dz - dF_z/dr
+            # curl_z     = (1/r) * d(r*F_theta)/dr
+            r = (np.arange(self.nx) + 0.5) * self.dx
+            r = r[:, np.newaxis, np.newaxis]  # (nx, 1, 1)
+            curl_r = -np.gradient(field[1], self.dz, axis=2)
+            curl_theta = (
+                np.gradient(field[0], self.dz, axis=2)
+                - np.gradient(field[2], self.dx, axis=0)
+            )
+            rFt = field[1] * r
+            curl_z = np.gradient(rFt, self.dx, axis=0) / np.maximum(r, 1e-30)
+            return np.array([curl_r, curl_theta, curl_z])
+
         dFz_dy = np.gradient(field[2], self.dy, axis=1)
         dFy_dz = np.gradient(field[1], self.dz, axis=2)
         dFx_dz = np.gradient(field[0], self.dz, axis=2)

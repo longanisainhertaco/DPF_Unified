@@ -86,8 +86,8 @@ class LeeModelCalibrator:
 
     def calibrate(
         self,
-        fc_bounds: tuple[float, float] = (0.5, 0.95),
-        fm_bounds: tuple[float, float] = (0.05, 0.95),
+        fc_bounds: tuple[float, float] = (0.65, 0.85),
+        fm_bounds: tuple[float, float] = (0.05, 0.25),
         maxiter: int = 100,
         x0: tuple[float, float] | None = None,
     ) -> CalibrationResult:
@@ -95,14 +95,15 @@ class LeeModelCalibrator:
 
         Args:
             fc_bounds: Bounds for current fraction (fc).
-            fm_bounds: Bounds for mass fraction (fm).
+            fm_bounds: Bounds for mass fraction (fm). Default tightened
+                to ``(0.05, 0.25)`` per Lee & Saw (2014) published range.
             maxiter: Maximum optimizer iterations.
             x0: Initial guess ``(fc, fm)``. Default: midpoint of bounds.
 
         Returns:
             :class:`CalibrationResult` with optimized parameters.
         """
-        from scipy.optimize import minimize
+        from scipy.optimize import Bounds, minimize
 
         if x0 is None:
             x0_arr = np.array([
@@ -113,8 +114,6 @@ class LeeModelCalibrator:
             x0_arr = np.array(x0)
 
         self._n_evals = 0
-
-        # Nelder-Mead doesn't support bounds directly; clamp inside objective
         self._fc_bounds = fc_bounds
         self._fm_bounds = fm_bounds
 
@@ -122,6 +121,10 @@ class LeeModelCalibrator:
             self._objective,
             x0_arr,
             method=self.method,
+            bounds=Bounds(
+                [fc_bounds[0], fm_bounds[0]],
+                [fc_bounds[1], fm_bounds[1]],
+            ),
             options={"maxiter": maxiter, "xatol": 0.005, "fatol": 0.001},
         )
 
@@ -166,19 +169,30 @@ class LeeModelCalibrator:
 
         try:
             comparison = self._run_comparison(fc, fm)
-        except Exception:
+        except (RuntimeError, ValueError, FloatingPointError):
             logger.debug("Objective evaluation failed for fc=%.3f, fm=%.3f", fc, fm)
             return 10.0  # Large penalty for failed runs
 
-        obj = (
-            self.peak_weight * comparison.peak_current_error
-            + self.timing_weight * comparison.timing_error
-        )
-        # Add waveform NRMSE term if available (provides 1+ DOF)
-        if self.waveform_weight > 0:
-            nrmse = getattr(comparison, "waveform_nrmse", float("nan"))
-            if isinstance(nrmse, (int, float)) and np.isfinite(nrmse):
-                obj += self.waveform_weight * nrmse
+        # Check if waveform NRMSE is available
+        nrmse = getattr(comparison, "waveform_nrmse", float("nan"))
+        has_waveform = isinstance(nrmse, (int, float)) and np.isfinite(nrmse)
+
+        if has_waveform and self.waveform_weight > 0:
+            obj = (
+                self.peak_weight * comparison.peak_current_error
+                + self.timing_weight * comparison.timing_error
+                + self.waveform_weight * nrmse
+            )
+        else:
+            # Renormalize weights when waveform unavailable (MED-3)
+            total = self.peak_weight + self.timing_weight
+            if total > 0:
+                obj = (
+                    (self.peak_weight / total) * comparison.peak_current_error
+                    + (self.timing_weight / total) * comparison.timing_error
+                )
+            else:
+                obj = comparison.peak_current_error
         return obj
 
     def benchmark_against_published(

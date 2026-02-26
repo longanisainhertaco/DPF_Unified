@@ -83,7 +83,7 @@ class TestCurlB:
         B = torch.zeros((3, N, N, N), dtype=torch.float32)
         B[1] = x.view(N, 1, 1).expand(N, N, N)
 
-        J = curl_B_mps(B, dx=0.01, dy=0.01, dz=0.01)
+        J = curl_B_mps(B, dx=0.01, dy=0.01, dz=0.01, mu_0=MU_0)
 
         # dBy/dx = (x[-1] - x[0]) / ((N-1) * dx) = 0.15 / (15 * 0.01) = 1.0
         # J_z = dBy/dx / mu_0 = 1.0 / mu_0

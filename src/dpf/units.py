@@ -19,7 +19,7 @@ HL (Code Units):
 Relations:
   B_hl = B_si / sqrt(mu_0)
   J_hl = J_si * sqrt(mu_0)
-  
+
   rho_hl = rho_si
   p_hl   = p_si
   v_hl   = v_si
@@ -27,11 +27,17 @@ Relations:
   x_hl   = x_si
 """
 
-import numpy as np
-import torch
+from __future__ import annotations
 
-# Constants
-MU_0 = 4.0e-7 * 3.14159265358979323846
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from dpf.constants import mu_0 as MU_0  # noqa: N812
+
+if TYPE_CHECKING:
+    import torch
+
 SQRT_MU_0 = np.sqrt(MU_0)
 
 def to_code_units(B_si: np.ndarray | torch.Tensor) -> np.ndarray | torch.Tensor:

@@ -489,10 +489,12 @@ class TestCalibrationObjectiveNaNHandling:
 
         obj = cal._objective(np.array([0.7, 0.1]))
 
-        expected = 0.4 * peak_err + 0.3 * timing_err  # waveform term excluded
+        # MED-3: weights renormalized when waveform unavailable
+        total = 0.4 + 0.3  # peak_weight + timing_weight
+        expected = (0.4 / total) * peak_err + (0.3 / total) * timing_err
         assert obj == pytest.approx(expected, rel=1e-9), (
             f"Objective with NaN waveform: expected {expected:.4f}, got {obj:.4f}. "
-            "This confirms waveform term is correctly excluded when nan."
+            "Weights are renormalized when waveform is unavailable."
         )
 
     def test_objective_includes_finite_waveform_term(self, monkeypatch) -> None:

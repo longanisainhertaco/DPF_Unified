@@ -93,7 +93,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         enable_energy_equation: bool = True,
         ion_mass: float | None = None,
         riemann_solver: str = "hll",
-        enable_ct: bool = True,
+        enable_ct: bool = False,
+        time_integrator: str = "ssp_rk3",
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -107,8 +108,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.enable_energy_equation = enable_energy_equation
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
-        self.enable_ct = enable_ct
-        self.eos = IdealEOS(gamma=gamma)
+        self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
+        # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
+        # metric (see H5 in Troubleshooting.md). Use Dedner cleaning instead.
+        if enable_ct:
+            logger.warning(
+                "CT is not supported in cylindrical coordinates (uses Cartesian metric). "
+                "Falling back to Dedner divergence cleaning."
+            )
+        self.enable_ct = False
+        self.eos = IdealEOS(gamma=gamma, ion_mass=self.ion_mass)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
         self.use_weno5 = nr >= 5 and nz >= 5
@@ -126,10 +135,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
             "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, WENO5=%s, "
-            "Riemann=%s, CT=%s, ion_mass=%.3e kg",
+            "Riemann=%s, TimeInt=%s, ion_mass=%.3e kg",
             nr, nz, dr, dz, gamma, enable_hall,
             self.enable_resistive, self.enable_energy_equation,
-            self.use_weno5, self.riemann_solver, self.enable_ct, self.ion_mass,
+            self.use_weno5, self.riemann_solver, self.time_integrator, self.ion_mass,
         )
 
     def _squeeze(self, arr: np.ndarray) -> np.ndarray:
@@ -449,6 +458,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         B[0, 0, :] = 0.0
 
         if abs(current) < 1e-10:
+            if needs_unsqueeze:
+                B = self._unsqueeze(B)
             return B
 
         # Find cells closest to cathode_radius (outer electrode)
@@ -483,6 +494,26 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B = self._unsqueeze(B)
         return B
 
+    def _euler_stage(
+        self,
+        rho: np.ndarray,
+        mom: np.ndarray,
+        p: np.ndarray,
+        B: np.ndarray,
+        psi: np.ndarray,
+        dt: float,
+        eta_2d: np.ndarray | None,
+    ) -> tuple:
+        """Compute one forward-Euler stage: U^(1) = U^n + dt * L(U^n)."""
+        vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)
+        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d)
+        rho_new = np.maximum(rho + dt * rhs["drho_dt"], 1e-10)
+        mom_new = mom + dt * rhs["dmom_dt"]
+        p_new = np.maximum(p + dt * rhs["dp_dt"], 1e-20)
+        B_new = B + dt * rhs["dB_dt"]
+        psi_new = psi + dt * rhs["dpsi_dt"]
+        return rho_new, mom_new, p_new, B_new, psi_new, rhs
+
     def step(
         self,
         state: dict[str, np.ndarray],
@@ -495,10 +526,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         apply_electrode_bc: bool = False,
         **kwargs,
     ) -> dict[str, np.ndarray]:
-        """Advance MHD state by one timestep using SSP-RK2.
+        """Advance MHD state by one timestep using SSP-RK3 (default) or SSP-RK2.
 
-        Same interface as Cartesian MHDSolver.step().
-        Internally squeezes to 2D, computes, then unsqueezes to 3D.
+        SSP-RK3 (Shu-Osher 1988):
+            U^(1) = U^n + dt * L(U^n)
+            U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1)))
+            U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2)))
+
+        SSP-RK2:
+            U^(1) = U^n + dt * L(U^n)
+            U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt * L(U^(1)))
 
         Args:
             state: Dictionary with 3D arrays (nr, 1, nz).
@@ -529,39 +566,54 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         # Save U^n
         rho_n = rho.copy()
-        vel_n = vel.copy()
         p_n = p.copy()
         B_n = B.copy()
         psi_n = psi.copy()
-        mom_n = rho_n[np.newaxis, :, :] * vel_n
+        mom_n = rho_n[np.newaxis, :, :] * vel.copy()
 
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, psi_n, eta_2d)
-
-        # Floor density at 1e-10 kg/m³ (prevents extreme Alfven speeds from very low density)
-        rho_1 = np.maximum(rho_n + dt * rhs1["drho_dt"], 1e-10)
-        mom_1 = mom_n + dt * rhs1["dmom_dt"]
-        vel_1 = mom_1 / np.maximum(rho_1[np.newaxis, :, :], 1e-30)
-        p_1 = np.maximum(p_n + dt * rhs1["dp_dt"], 1e-20)
-        B_1 = B_n + dt * rhs1["dB_dt"]
-        psi_1 = psi_n + dt * rhs1["dpsi_dt"]
-
-        # Apply electrode BC after stage 1
+        rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
+            rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d,
+        )
         if apply_electrode_bc and cathode_radius > 0:
-            B_1 = self.apply_electrode_bfield_bc(
-                B_1, current, anode_radius, cathode_radius,
+            B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
+
+        if self.time_integrator == "ssp_rk3":
+            # === Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1))) ===
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2 = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d,
             )
+            rho_2 = np.maximum(0.75 * rho_n + 0.25 * rho_2e, 1e-10)
+            mom_2 = 0.75 * mom_n + 0.25 * mom_2e
+            p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
+            B_2 = 0.75 * B_n + 0.25 * B_2e
+            psi_2 = 0.75 * psi_n + 0.25 * psi_2e
+            if apply_electrode_bc and cathode_radius > 0:
+                B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
 
-        # === Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, psi_1, eta_2d)
-
-        # Floor density at 1e-10 kg/m³ (prevents extreme Alfven speeds from very low density)
-        rho_new = np.maximum(0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["drho_dt"]), 1e-10)
-        mom_new = 0.5 * mom_n + 0.5 * (mom_1 + dt * rhs2["dmom_dt"])
-        vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
-        p_new = np.maximum(0.5 * p_n + 0.5 * (p_1 + dt * rhs2["dp_dt"]), 1e-20)
-        B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["dB_dt"])
-        psi_new = 0.5 * psi_n + 0.5 * (psi_1 + dt * rhs2["dpsi_dt"])
+            # === Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2))) ===
+            rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3 = self._euler_stage(
+                rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d,
+            )
+            rho_new = np.maximum((1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e, 1e-10)
+            mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            p_new = np.maximum((1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e, 1e-20)
+            B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
+            psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
+            ohmic_avg = (1.0 / 3.0) * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"] + rhs3["ohmic_heating"])
+        else:
+            # === SSP-RK2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2 = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d,
+            )
+            rho_new = np.maximum(0.5 * rho_n + 0.5 * rho_2e, 1e-10)
+            mom_new = 0.5 * mom_n + 0.5 * mom_2e
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            p_new = np.maximum(0.5 * p_n + 0.5 * p_2e, 1e-20)
+            B_new = 0.5 * B_n + 0.5 * B_2e
+            psi_new = 0.5 * psi_n + 0.5 * psi_2e
+            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
 
         # Cap velocity at 10x the fast magnetosonic speed to prevent runaway
         B_sq = np.sum(B_new**2, axis=0)
@@ -629,7 +681,6 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Te_new = f_e * T_total_new
         Ti_new = (1.0 - f_e) * T_total_new
         # Ohmic heating preferentially heats electrons
-        ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
         dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
         Te_new = Te_new + dTe_ohmic
 
@@ -653,9 +704,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             Lp_est = 0.0
 
         if self._prev_Lp is not None and dt > 0:
-            dL_dt = (Lp_est - self._prev_Lp) / dt
+            dL_dt: float | None = (Lp_est - self._prev_Lp) / dt
         else:
-            dL_dt = 0.0
+            dL_dt = None
         self._prev_Lp = Lp_est
 
         self._coupling = CouplingState(

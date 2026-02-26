@@ -22,6 +22,7 @@ from dpf.validation.experimental import (
     UNU_ICTP_DATA,
     ExperimentalDevice,
     device_to_config_dict,
+    nrmse_peak,
     validate_current_waveform,
     validate_neutron_yield,
 )
@@ -44,7 +45,7 @@ from dpf.validation.suite import (
     ValidationResult,
     ValidationSuite,
     config_hash,
-    normalized_rmse,
+    nrmse_range,
     relative_error,
 )
 
@@ -73,7 +74,8 @@ __all__ = [
     "calibrate_default_params",
     "config_hash",
     "device_to_config_dict",
-    "normalized_rmse",
+    "nrmse_peak",
+    "nrmse_range",
     "relative_error",
     "validate_current_waveform",
     "validate_neutron_yield",

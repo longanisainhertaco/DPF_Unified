@@ -260,8 +260,11 @@ class TestScalarVersions:
         """Scalar version returns zero below threshold."""
         from dpf.turbulence.anomalous import anomalous_resistivity_scalar
 
+        # Default threshold_model="ion_acoustic" uses c_s = sqrt(kB*Te/mi).
+        # With Te_val=1e7 K, c_s ~ 9090 m/s; v_d = 1e2/(1e24*e) ~ 6.25e-4 m/s
+        # so v_d << c_s and eta must be zero.
         eta = anomalous_resistivity_scalar(
-            J_mag=1e2, ne_val=1e24, Ti_val=1e7, alpha=0.05,
+            J_mag=1e2, ne_val=1e24, Ti_val=1e7, alpha=0.05, Te_val=1e7,
         )
         assert eta == 0.0
 
@@ -281,13 +284,15 @@ class TestScalarVersions:
             anomalous_resistivity_scalar,
         )
 
-        J_val, ne_val, Ti_val = 1e12, 1e24, 300.0
+        J_val, ne_val, Te_val = 1e12, 1e24, 300.0
+        # anomalous_resistivity takes (J, ne, Te, alpha, mi)
         eta_arr = anomalous_resistivity(
-            np.array([J_val]), np.array([ne_val]), np.array([Ti_val]),
+            np.array([J_val]), np.array([ne_val]), np.array([Te_val]),
             alpha=0.05,
         )
+        # anomalous_resistivity_scalar uses Te_val for ion_acoustic threshold
         eta_scalar = anomalous_resistivity_scalar(
-            J_val, ne_val, Ti_val, alpha=0.05,
+            J_val, ne_val, Ti_val=Te_val, alpha=0.05, Te_val=Te_val,
         )
         np.testing.assert_allclose(eta_arr[0], eta_scalar, rtol=1e-10)
 

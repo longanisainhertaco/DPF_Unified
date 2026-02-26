@@ -141,9 +141,10 @@ def sedov_shock_radius_cylindrical(
     #
     # With a geometry-dependent constant alpha ~ 1.0 for gamma=5/3.
 
-    # Standard 2D Sedov constant (approximate, varies slightly with gamma)
-    # For nu=2 (cylindrical), Kamm & Timmes give alpha ~ 1.0 - 1.15
-    alpha = 1.0
+    # Standard 2D Sedov constant from Kamm & Timmes LA-UR-07-2849 (2007), Table I.
+    # For nu=2 (cylindrical), gamma=5/3: alpha ~ 1.152.  Using the lower bound
+    # (1.0) underestimates the reference shock position by ~15%.
+    alpha = 1.152
 
     # 2D scaling: R ~ (E0/rho0)^(1/4) * t^(1/2)
     R_s = alpha * (E0 / rho0) ** 0.25 * t ** 0.5
@@ -262,12 +263,16 @@ def run_sedov_cylindrical(
         cell_vol = pi * (r_out**2 - r_in**2) * dz
         total_volume += cell_vol * n_deposit_z
 
+    E0_actual = E0  # will be updated below if cap is active
     if total_volume > 0:
         e_density = E0 / total_volume  # [J/m^3]
         p_deposit = (gamma - 1.0) * e_density
 
-        # Cap the deposit pressure to prevent extreme ratios
+        # Cap the deposit pressure to prevent extreme ratios.
+        # Recompute the actual deposited energy so the analytical reference
+        # uses the same energy as the simulation (HIGH-2 fix).
         p_deposit = min(p_deposit, 20.0 * p_bg)
+        E0_actual = p_deposit / (gamma - 1.0) * total_volume
 
         z_start = z_center_idx - n_deposit_z // 2
         z_end = z_start + n_deposit_z
@@ -352,8 +357,9 @@ def run_sedov_cylindrical(
     # Detect shock position in the radial direction
     shock_r_num = _detect_shock_position(rho_r, r, rho0)
 
-    # Analytical shock radius
-    shock_r_ana = sedov_shock_radius_cylindrical(E0, rho0, t, gamma)
+    # Analytical shock radius — use E0_actual (energy after pressure cap)
+    # so the reference is consistent with what was actually deposited.
+    shock_r_ana = sedov_shock_radius_cylindrical(E0_actual, rho0, t, gamma)
 
     # Relative error
     if shock_r_ana > 0:
@@ -374,7 +380,7 @@ def run_sedov_cylindrical(
         shock_position_numerical=shock_r_num,
         shock_position_analytical=shock_r_ana,
         relative_error=rel_err,
-        E0=E0,
+        E0=E0_actual,
         rho0=rho0,
         t_end=t,
         n_steps=step_count,
@@ -387,5 +393,7 @@ def run_sedov_cylindrical(
             "R_max": R_max,
             "Z_max": Z_max,
             "p_bg": p_bg,
+            "E0_requested": E0,
+            "E0_actual": E0_actual,
         },
     )

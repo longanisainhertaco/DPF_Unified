@@ -289,8 +289,18 @@ class SpeciesMixture:
 
         for d in range(min(ndim, 3)):
             v_d = velocity[d]
-            # Forward difference for downwind flux
-            rho_fwd = np.roll(rho_s, -1, axis=d)
+            # Forward neighbor rho_{i+1} along axis d.
+            # Use zero-gradient outflow BC at the high boundary instead of
+            # np.roll which would wrap periodically (wrong for DPF geometry).
+            rho_fwd = np.empty_like(rho_s)
+            sl_dst: list = [slice(None)] * ndim
+            sl_src: list = [slice(None)] * ndim
+            sl_dst[d] = slice(None, -1)
+            sl_src[d] = slice(1, None)
+            rho_fwd[tuple(sl_dst)] = rho_s[tuple(sl_src)]
+            sl_last: list = [slice(None)] * ndim
+            sl_last[d] = -1
+            rho_fwd[tuple(sl_last)] = rho_s[tuple(sl_last)]  # zero-gradient outflow
 
             # Upwind flux: use rho_s where v > 0, rho_fwd where v < 0
             flux_plus = v_d * rho_s           # flux at i+1/2 (upwind, v > 0)
@@ -298,7 +308,17 @@ class SpeciesMixture:
             flux_half = np.where(v_d >= 0, flux_plus, flux_minus)
 
             # Divergence: (F_{i+1/2} - F_{i-1/2}) / dx
-            flux_half_shifted = np.roll(flux_half, 1, axis=d)
+            # Shift flux_half by +1 to obtain F_{i-1/2}; zero at low boundary
+            # (no mass entering from outside the domain — outflow BC).
+            flux_half_shifted = np.empty_like(flux_half)
+            sl_dst2: list = [slice(None)] * ndim
+            sl_src2: list = [slice(None)] * ndim
+            sl_dst2[d] = slice(1, None)
+            sl_src2[d] = slice(None, -1)
+            flux_half_shifted[tuple(sl_dst2)] = flux_half[tuple(sl_src2)]
+            sl_first: list = [slice(None)] * ndim
+            sl_first[d] = 0
+            flux_half_shifted[tuple(sl_first)] = 0.0  # zero inflow at low boundary
             flux_div += (flux_half - flux_half_shifted) / dx
 
         rho_s_new = rho_s - dt * flux_div

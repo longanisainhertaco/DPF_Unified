@@ -450,7 +450,7 @@ class TestDLdt:
         }
         solver.step(state, dt=1e-10, current=100.0, voltage=1000.0)
         cs = solver.coupling_interface()
-        assert cs.dL_dt == 0.0
+        assert cs.dL_dt is None or cs.dL_dt == 0.0
 
     def test_dLdt_computed_after_two_steps(self):
         """After two steps, dL_dt should be computed (possibly zero for static case)."""

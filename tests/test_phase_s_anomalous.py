@@ -163,19 +163,22 @@ class TestAnomalousResistivityField:
         from dpf.turbulence.anomalous import anomalous_resistivity_field
         ne = np.array([1e23])
         Ti = np.array([1e6])
-        v_ti = np.sqrt(k_B * Ti[0] / m_p)
-        J = np.array([2.0 * v_ti * ne[0] * e])
-        eta = anomalous_resistivity_field(J, ne, Ti)
+        Te = np.array([1e6])
+        # ion_acoustic uses c_s = sqrt(k_B*Te/m_i)
+        c_s = np.sqrt(k_B * Te[0] / m_p)
+        J = np.array([2.0 * c_s * ne[0] * e])
+        eta = anomalous_resistivity_field(J, ne, Ti, Te=Te)
         assert eta[0] > 0.0
 
     def test_ion_acoustic_model(self):
         from dpf.turbulence.anomalous import anomalous_resistivity_field
         ne = np.array([1e23])
         Ti = np.array([1e6])
-        v_ti = np.sqrt(k_B * Ti[0] / m_p)
-        J = np.array([2.0 * v_ti * ne[0] * e])
+        Te = np.array([1e6])
+        c_s = np.sqrt(k_B * Te[0] / m_p)
+        J = np.array([2.0 * c_s * ne[0] * e])
         eta = anomalous_resistivity_field(
-            J, ne, Ti, threshold_model="ion_acoustic",
+            J, ne, Ti, threshold_model="ion_acoustic", Te=Te,
         )
         assert eta[0] > 0.0
 
@@ -183,6 +186,7 @@ class TestAnomalousResistivityField:
         from dpf.turbulence.anomalous import anomalous_resistivity_field
         ne = np.array([1e23])
         Ti = np.array([1e6])
+        Te = np.array([1e6])
         mi = M_D
         v_ti = np.sqrt(k_B * Ti[0] / mi)
         factor = (m_e / mi) ** 0.25
@@ -191,10 +195,10 @@ class TestAnomalousResistivityField:
         J = np.array([v_d * ne[0] * e])
 
         eta_lhdi = anomalous_resistivity_field(
-            J, ne, Ti, mi=mi, threshold_model="lhdi",
+            J, ne, Ti, mi=mi, threshold_model="lhdi", Te=Te,
         )
         eta_ia = anomalous_resistivity_field(
-            J, ne, Ti, mi=mi, threshold_model="ion_acoustic",
+            J, ne, Ti, mi=mi, threshold_model="ion_acoustic", Te=Te,
         )
         # LHDI should give nonzero, ion-acoustic should give zero
         assert eta_lhdi[0] > 0.0
@@ -237,10 +241,11 @@ class TestAnomalousResistivityField:
         from dpf.turbulence.anomalous import anomalous_resistivity_field
         ne = np.array([1e23])
         Ti = np.array([1e6])
+        Te = np.array([1e6])
         # Very small J — below all thresholds
         J = np.array([1.0])
         for model in ("ion_acoustic", "lhdi"):
-            eta = anomalous_resistivity_field(J, ne, Ti, threshold_model=model)
+            eta = anomalous_resistivity_field(J, ne, Ti, threshold_model=model, Te=Te)
             assert eta[0] == 0.0
 
 

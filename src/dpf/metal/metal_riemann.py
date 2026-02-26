@@ -908,8 +908,16 @@ def hlld_flux_mps(
     rho_sR = torch.clamp(rho_R * (SR - vn_R) / denom_R, min=RHO_FLOOR)
 
     # ---- Star-state transverse velocities and B (Eqs. 44-46) ----
-    inv_rhoL_dSL = 1.0 / torch.clamp(torch.abs(rho_L * (SL - vn_L) * (SL - SM) - Bn ** 2), min=1e-20)
-    inv_rhoR_dSR = 1.0 / torch.clamp(torch.abs(rho_R * (SR - vn_R) * (SR - SM) - Bn ** 2), min=1e-20)
+    # Sign-preserving clamp (Miyoshi & Kusano 2005, Eq. 43-44):
+    # D_L can legitimately be negative when Bn^2 > rho*(S-v)*(S-SM).
+    # Using torch.abs() would flip the sign of transverse star states.
+    D_L = rho_L * (SL - vn_L) * (SL - SM) - Bn ** 2
+    safe_D_L = torch.where(torch.abs(D_L) < 1e-20, torch.full_like(D_L, 1e-20), D_L)
+    inv_rhoL_dSL = 1.0 / safe_D_L
+
+    D_R = rho_R * (SR - vn_R) * (SR - SM) - Bn ** 2
+    safe_D_R = torch.where(torch.abs(D_R) < 1e-20, torch.full_like(D_R, 1e-20), D_R)
+    inv_rhoR_dSR = 1.0 / safe_D_R
 
     # Flag for when Bn ≈ 0 (degenerates to hydro HLLC)
     Bn_small = torch.abs(Bn) < 1e-10

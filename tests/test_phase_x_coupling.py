@@ -415,25 +415,30 @@ class TestLHDIConfigPlumbing:
         """anomalous_resistivity_scalar returns eta>0 for LHDI but eta=0 for ion_acoustic at same J."""
         ne_val = 1e23
         Ti_val = 1000.0  # K, cold
+        Te_val = 1000.0  # K, same as Ti for this test
         mi = m_d
 
         # Compute thresholds
-        v_ti = (k_B * Ti_val / mi) ** 0.5
+        # ion_acoustic uses c_s = sqrt(k_B * Te / m_i) after the v_ti→c_s fix
+        c_s = (k_B * Te_val / mi) ** 0.5
         factor = (m_e / mi) ** 0.25
-        # Set drift just above LHDI threshold but below ion-acoustic threshold
-        v_d_target = factor * v_ti * 1.5  # 1.5× LHDI, still << v_ti
-        assert v_d_target < v_ti, "Test drift must be below ion-acoustic threshold"
+        v_ti = (k_B * Ti_val / mi) ** 0.5
+        # Set drift just above LHDI threshold but below ion-acoustic (c_s) threshold
+        v_d_target = factor * v_ti * 1.5  # 1.5× LHDI, still << c_s
+        assert v_d_target < c_s, "Test drift must be below ion-acoustic threshold"
         J_mag = v_d_target * ne_val * e
 
         eta_lhdi = anomalous_resistivity_scalar(
-            J_mag, ne_val, Ti_val, alpha=0.05, mi=mi, threshold_model="lhdi"
+            J_mag, ne_val, Ti_val, alpha=0.05, mi=mi, threshold_model="lhdi",
+            Te_val=Te_val,
         )
         eta_ia = anomalous_resistivity_scalar(
-            J_mag, ne_val, Ti_val, alpha=0.05, mi=mi, threshold_model="ion_acoustic"
+            J_mag, ne_val, Ti_val, alpha=0.05, mi=mi, threshold_model="ion_acoustic",
+            Te_val=Te_val,
         )
 
         assert eta_lhdi > 0.0, "LHDI model should trigger above LHDI threshold"
-        assert eta_ia == 0.0, "Ion-acoustic model should not trigger below v_ti"
+        assert eta_ia == 0.0, "Ion-acoustic model should not trigger below c_s"
 
     def test_config_description_fixed(self):
         """anomalous_alpha field description should say 'Anomalous' not 'Buneman'."""

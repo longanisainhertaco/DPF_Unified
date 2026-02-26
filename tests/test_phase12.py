@@ -38,25 +38,28 @@ class TestSpatiallyResolvedResistivity:
         J_mag = np.full((nr, nz), 1e8)
         ne = np.full((nr, nz), 1e24)
         Ti = np.full((nr, nz), 1e5)
-        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d)
+        Te = np.full((nr, nz), 1e5)
+        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d, Te=Te)
         assert eta.shape == (nr, nz)
 
     def test_anomalous_resistivity_zero_below_threshold(self):
-        """Below Buneman threshold (v_d < v_ti), eta_anom = 0."""
+        """Below ion-acoustic threshold (v_d < c_s), eta_anom = 0."""
         nr, nz = 8, 8
         ne = np.full((nr, nz), 1e24)
-        Ti = np.full((nr, nz), 1e7)  # Very hot ions -> large v_ti
+        Ti = np.full((nr, nz), 1e7)  # Very hot ions
+        Te = np.full((nr, nz), 1e7)  # Very hot electrons -> large c_s
         J_mag = np.full((nr, nz), 1e4)  # Small J -> small v_d
-        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d)
+        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d, Te=Te)
         np.testing.assert_array_equal(eta, 0.0)
 
     def test_anomalous_resistivity_nonzero_above_threshold(self):
-        """Above Buneman threshold, eta_anom > 0."""
+        """Above ion-acoustic threshold, eta_anom > 0."""
         nr, nz = 8, 8
         ne = np.full((nr, nz), 1e22)  # Low density -> high v_d
-        Ti = np.full((nr, nz), 300.0)  # Cold ions -> small v_ti
+        Ti = np.full((nr, nz), 300.0)  # Cold ions
+        Te = np.full((nr, nz), 300.0)  # Cold electrons -> small c_s
         J_mag = np.full((nr, nz), 1e10)  # Large current density
-        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d)
+        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d, Te=Te)
         assert np.all(eta > 0.0)
         # Should be physically reasonable (< 1 Ohm·m)
         assert np.all(eta < 1.0)
@@ -66,10 +69,11 @@ class TestSpatiallyResolvedResistivity:
         nr, nz = 16, 16
         ne = np.full((nr, nz), 1e22)
         Ti = np.full((nr, nz), 300.0)
+        Te = np.full((nr, nz), 300.0)
         J_mag = np.zeros((nr, nz))
         # Only half the domain has strong current
         J_mag[:8, :] = 1e10
-        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d)
+        eta = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.05, mi=m_d, Te=Te)
         # Active region has eta > 0, inactive region has eta = 0
         assert np.all(eta[:8, :] > 0.0)
         assert np.all(eta[8:, :] == 0.0)
@@ -79,8 +83,9 @@ class TestSpatiallyResolvedResistivity:
         J_mag = np.array([[1e10]])
         ne = np.array([[1e22]])
         Ti = np.array([[300.0]])
-        eta1 = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.01, mi=m_d)
-        eta2 = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.10, mi=m_d)
+        Te = np.array([[300.0]])
+        eta1 = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.01, mi=m_d, Te=Te)
+        eta2 = anomalous_resistivity_field(J_mag, ne, Ti, alpha=0.10, mi=m_d, Te=Te)
         # eta_anom = alpha * m_e * omega_pe / (ne * e^2)
         # So ratio should be 0.10 / 0.01 = 10
         np.testing.assert_allclose(eta2 / eta1, 10.0, rtol=1e-10)

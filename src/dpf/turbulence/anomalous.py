@@ -3,9 +3,10 @@
 Implements three threshold models for anomalous resistivity in dense
 plasma focus devices:
 
-1. **Ion-acoustic** (default): v_d > v_ti — the electron drift velocity
-   exceeds the ion thermal speed. This is the correct threshold for
-   ion-acoustic turbulence-driven anomalous resistivity.
+1. **Ion-acoustic** (default): v_d > c_s = sqrt(k_B * Te / m_i) — the
+   electron drift velocity exceeds the ion sound speed. The restoring
+   force is electron pressure (Te), and ion inertia (m_i) sets the
+   wave speed, giving c_s not v_ti.
 
 2. **LHDI** (lower-hybrid drift instability): v_d > (m_e/m_i)^{1/4} * v_ti.
    Lower threshold than ion-acoustic; triggers first in DPF sheaths.
@@ -27,6 +28,7 @@ References:
     Sagdeev, Rev. Plasma Phys. 4:23 (1966) — anomalous resistivity
     Haines, Plasma Phys. Control. Fusion 53:093001 (2011) — DPF review
     Davidson & Gladd, Phys. Fluids 18:1327 (1975) — LHDI threshold
+    Krall & Trivelpiece, Principles of Plasma Physics (1973), Sec. 8.4 — c_s
 """
 
 from __future__ import annotations
@@ -78,6 +80,30 @@ def ion_thermal_speed(
 
 
 @njit(cache=True)
+def ion_sound_speed(
+    Te: np.ndarray,
+    mi: float = m_p,
+) -> np.ndarray:
+    """Compute ion sound speed.
+
+    c_s = sqrt(k_B * Te / m_i)
+
+    The ion sound speed uses the ELECTRON temperature because electron
+    pressure provides the restoring force, while ion inertia sets the
+    wave speed. This is the correct threshold velocity for ion-acoustic
+    instability.
+
+    Args:
+        Te: Electron temperature [K].
+        mi: Ion mass [kg] (default: proton mass).
+
+    Returns:
+        Ion sound speed [m/s].
+    """
+    return np.sqrt(k_B * np.maximum(Te, 0.0) / mi)
+
+
+@njit(cache=True)
 def electron_thermal_speed(Te: np.ndarray) -> np.ndarray:
     """Compute electron thermal speed.
 
@@ -116,19 +142,22 @@ def plasma_frequency(ne: np.ndarray) -> np.ndarray:
 def ion_acoustic_threshold(
     J: np.ndarray,
     ne: np.ndarray,
-    Ti: np.ndarray,
+    Te: np.ndarray,
     mi: float = m_p,
 ) -> np.ndarray:
-    """Check ion-acoustic instability threshold: v_d > v_ti.
+    """Check ion-acoustic instability threshold: v_d > c_s.
 
-    This is the correct threshold for ion-acoustic turbulence-driven
-    anomalous resistivity. Previously mislabeled as "Buneman" in this
-    codebase (the Buneman threshold is v_d > v_te, much higher).
+    The threshold velocity is the ion sound speed c_s = sqrt(k_B * Te / m_i),
+    NOT the ion thermal speed v_ti = sqrt(k_B * Ti / m_i). Electron pressure
+    (Te) provides the restoring force for the acoustic wave, while ion inertia
+    (m_i) sets the wave speed. For Te >> Ti (DPF sheath conditions),
+    c_s >> v_ti, so using v_ti triggers anomalous resistivity at too-low
+    drift velocities.
 
     Args:
         J: Current density magnitude [A/m^2].
         ne: Electron number density [m^-3].
-        Ti: Ion temperature [K].
+        Te: Electron temperature [K].
         mi: Ion mass [kg].
 
     Returns:
@@ -136,10 +165,11 @@ def ion_acoustic_threshold(
 
     References:
         Sagdeev, Rev. Plasma Phys. 4:23 (1966).
+        Krall & Trivelpiece, Principles of Plasma Physics (1973), Sec. 8.4.
     """
     v_d = electron_drift_velocity(J, ne)
-    v_ti = ion_thermal_speed(Ti, mi)
-    return v_d > v_ti
+    c_s = ion_sound_speed(Te, mi)
+    return v_d > c_s
 
 
 def buneman_threshold(
@@ -147,24 +177,27 @@ def buneman_threshold(
     ne: np.ndarray,
     Ti: np.ndarray,
     mi: float = m_p,
+    Te: np.ndarray | None = None,
 ) -> np.ndarray:
     """Deprecated alias for ion_acoustic_threshold.
 
-    The code checks v_d > v_ti (ion-acoustic), NOT the true Buneman
-    threshold v_d > v_te. Use ``ion_acoustic_threshold`` instead.
+    The correct ion-acoustic threshold is v_d > c_s = sqrt(k_B*Te/m_i).
+    Use ``ion_acoustic_threshold`` with ``Te`` (electron temperature) instead.
     For the true Buneman threshold, use ``buneman_classic_threshold``.
 
     .. deprecated::
-        Use ``ion_acoustic_threshold`` instead.
+        Use ``ion_acoustic_threshold(J, ne, Te, mi)`` instead.
     """
     warnings.warn(
-        "buneman_threshold is deprecated. The code checks v_d > v_ti "
-        "(ion-acoustic instability), not the true Buneman threshold "
-        "(v_d > v_te). Use ion_acoustic_threshold() instead.",
+        "buneman_threshold is deprecated. Use ion_acoustic_threshold(J, ne, Te, mi) "
+        "with electron temperature Te. The correct ion-acoustic threshold is "
+        "v_d > c_s = sqrt(k_B*Te/m_i). Use buneman_classic_threshold() for v_d > v_te.",
         DeprecationWarning,
         stacklevel=2,
     )
-    return ion_acoustic_threshold(J, ne, Ti, mi)
+    # Use Te if provided; fall back to Ti for backward compatibility (approximation)
+    Te_arr = Te if Te is not None else Ti
+    return ion_acoustic_threshold(J, ne, Te_arr, mi)
 
 
 @njit(cache=True)
@@ -262,14 +295,14 @@ def _compute_eta_anom(
 def anomalous_resistivity(
     J: np.ndarray,
     ne: np.ndarray,
-    Ti: np.ndarray,
+    Te: np.ndarray,
     alpha: float = 0.05,
     mi: float = m_p,
 ) -> np.ndarray:
     """Compute anomalous resistivity using ion-acoustic threshold.
 
-    When the electron drift velocity exceeds the ion thermal speed,
-    the anomalous resistivity is:
+    When the electron drift velocity exceeds the ion sound speed
+    c_s = sqrt(k_B * Te / m_i), the anomalous resistivity is:
 
         eta_anom = alpha * m_e * omega_pe / (n_e * e^2)
 
@@ -278,7 +311,7 @@ def anomalous_resistivity(
     Args:
         J: Current density magnitude [A/m^2].
         ne: Electron number density [m^-3].
-        Ti: Ion temperature [K].
+        Te: Electron temperature [K].
         alpha: Turbulence parameter (0.01-0.1, default 0.05).
         mi: Ion mass [kg].
 
@@ -288,11 +321,11 @@ def anomalous_resistivity(
     result = np.zeros_like(J)
 
     v_d = electron_drift_velocity(J, ne)
-    v_ti = ion_thermal_speed(Ti, mi)
+    c_s = ion_sound_speed(Te, mi)
     omega_pe = plasma_frequency(ne)
 
     for idx in np.ndindex(J.shape):
-        if v_d[idx] > v_ti[idx]:
+        if v_d[idx] > c_s[idx]:
             ne_local = ne[idx]
             if ne_local > 0.0:
                 result[idx] = alpha * m_e * omega_pe[idx] / np.maximum(ne_local * e**2, 1e-300)
@@ -352,7 +385,8 @@ def anomalous_resistivity_scalar(
         mi: Ion mass [kg].
         threshold_model: ``"ion_acoustic"`` (default), ``"lhdi"``,
             or ``"buneman_classic"``.
-        Te_val: Electron temperature [K], required for ``"buneman_classic"``.
+        Te_val: Electron temperature [K], required for ``"ion_acoustic"``
+            (sound speed uses Te) and ``"buneman_classic"``.
 
     Returns:
         Anomalous resistivity [Ohm*m].
@@ -360,7 +394,8 @@ def anomalous_resistivity_scalar(
     v_ti = (k_B * max(Ti_val, 0.0) / mi) ** 0.5
 
     if threshold_model == "ion_acoustic":
-        v_threshold = v_ti
+        # Correct threshold: ion sound speed c_s = sqrt(k_B * Te / m_i)
+        v_threshold = (k_B * max(Te_val, 0.0) / mi) ** 0.5
     elif threshold_model == "lhdi":
         factor = (m_e / mi) ** 0.25
         v_threshold = factor * v_ti
@@ -421,20 +456,27 @@ def anomalous_resistivity_field(
         alpha: Turbulence parameter (0.01-0.1, default 0.05).
         mi: Ion mass [kg].
         threshold_model: Threshold model to use:
-            ``"ion_acoustic"`` — v_d > v_ti (default, most common for DPF).
+            ``"ion_acoustic"`` — v_d > c_s = sqrt(k_B*Te/m_i) (default).
             ``"lhdi"`` — v_d > (m_e/m_i)^{1/4} * v_ti (lower threshold).
             ``"buneman_classic"`` — v_d > v_te (highest threshold).
-        Te: Electron temperature [K], required for ``"buneman_classic"``.
+        Te: Electron temperature [K], required for ``"ion_acoustic"`` and
+            ``"buneman_classic"``.
 
     Returns:
         Anomalous resistivity field [Ohm*m], same shape as J_mag.
 
     Raises:
-        ValueError: If threshold_model is ``"buneman_classic"`` and Te is None,
-            or if threshold_model is unknown.
+        ValueError: If threshold_model is ``"ion_acoustic"`` or
+            ``"buneman_classic"`` and Te is None, or if threshold_model
+            is unknown.
     """
     if threshold_model == "ion_acoustic":
-        mask = ion_acoustic_threshold(J_mag, ne, Ti, mi)
+        if Te is None:
+            raise ValueError(
+                "Te (electron temperature) is required for ion_acoustic "
+                "threshold model (c_s = sqrt(k_B*Te/m_i))."
+            )
+        mask = ion_acoustic_threshold(J_mag, ne, Te, mi)
     elif threshold_model == "lhdi":
         mask = lhdi_threshold(J_mag, ne, Ti, mi)
     elif threshold_model == "buneman_classic":

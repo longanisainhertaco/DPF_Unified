@@ -248,7 +248,7 @@ def export_well(
             break
 
     path = exporter.finalize()
-    click.echo(f"Exported {len(exporter._times)} snapshots to {path}")
+    click.echo(f"Exported {exporter.n_snapshots} snapshots to {path}")
 
 
 @cli.command()
