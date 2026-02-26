@@ -7,5 +7,4 @@ Modules:
     amr/        - Adaptive mesh refinement (block-structured, gradient tagging)
     pic/        - Hybrid particle-in-cell (Boris pusher, CIC deposition)
     species.py  - Multi-species tracking (SpeciesMixture, advection)
-    gpu_backend.py - CuPy GPU detection stub (no actual kernels)
 """

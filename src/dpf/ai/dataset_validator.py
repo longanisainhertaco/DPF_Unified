@@ -143,8 +143,7 @@ class DatasetValidator:
         """
         directory = Path(directory)
         if not directory.exists():
-            logger.error(f"Directory not found: {directory}")
-            return {}
+            raise FileNotFoundError(f"Validation directory not found: {directory}")
 
         results: dict[str, ValidationResult] = {}
         for path in directory.rglob("*.h5"):

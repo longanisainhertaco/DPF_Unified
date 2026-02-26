@@ -19,14 +19,20 @@ from dpf.experimental.amr import (
     restrict_patch,
     tag_cells_gradient,
 )
-from dpf.experimental.gpu_backend import (
-    get_device_info,
-    is_gpu_available,
-    synchronize,
-    to_device,
-    to_numpy,
-    xp,
-)
+
+try:
+    from dpf.experimental.gpu_backend import (  # noqa: E402
+        get_device_info,
+        is_gpu_available,
+        synchronize,
+        to_device,
+        to_numpy,
+        xp,
+    )
+    _HAS_GPU_BACKEND = True
+except ImportError:
+    _HAS_GPU_BACKEND = False
+    xp = np  # Fallback so AMR tests still work if they reference xp
 from dpf.fluid.tabulated_eos import EOSTable, TabulatedEOS
 
 # ===================================================================
@@ -277,6 +283,7 @@ class TestTabulatedEos:
 # ===================================================================
 
 
+@pytest.mark.skipif(not _HAS_GPU_BACKEND, reason="gpu_backend module removed (replaced by dpf.metal)")
 class TestGpuBackend:
     """Tests for GPU/CPU backend abstraction."""
 

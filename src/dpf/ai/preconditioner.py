@@ -44,12 +44,36 @@ class NeuralPreconditioner:
 
         if _WALRUS_AVAILABLE and model_path:
             try:
-                self.model = IsotropicModel.load_from_checkpoint(model_path)
+                # WALRUS IsotropicModel uses instantiate() + load_state_dict(),
+                # NOT a load_from_checkpoint() class method.
+                checkpoint = torch.load(
+                    model_path, map_location=self.device, weights_only=False
+                )
+                if "model_state_dict" in checkpoint:
+                    state_dict = checkpoint["model_state_dict"]
+                elif "app" in checkpoint and "model" in checkpoint["app"]:
+                    state_dict = checkpoint["app"]["model"]
+                else:
+                    state_dict = checkpoint
+                # Instantiate via Hydra if config available, else direct load
+                if "config" in checkpoint:
+                    from hydra.utils import instantiate
+                    cfg = checkpoint["config"]
+                    n_states = state_dict[
+                        next(k for k in state_dict if "weight" in k)
+                    ].shape[1] if state_dict else 10
+                    self.model = instantiate(cfg.model, n_states=n_states)
+                else:
+                    self.model = IsotropicModel(n_states=10)
+                self.model.load_state_dict(state_dict, strict=False)
                 self.model.to(self.device)
                 self.model.eval()
                 logger.info(f"Loaded WALRUS model from {model_path} on {self.device}")
             except Exception as e:
-                logger.error(f"Failed to load model: {e}")
+                logger.warning(
+                    f"Failed to load WALRUS model: {e}. "
+                    "Falling back to identity preconditioner."
+                )
         else:
             # Fallback: Check for custom trained surrogate
             from pathlib import Path

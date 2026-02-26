@@ -227,7 +227,7 @@ def braginskii_kappa_mps(
     # kappa_perp = 4.66 * ne * kB^2 * Te / (m_e * omega_ce^2 * tau_e)
     omega_ce = E_CHARGE * B_safe / M_E
     kappa_perp = 4.66 * ne_safe * K_B**2 * Te_safe / (
-        M_E * torch.clamp(omega_ce**2 * tau_e, min=1e-300)
+        M_E * torch.clamp(omega_ce**2 * tau_e, min=1e-30)
     )
     kappa_perp = torch.minimum(kappa_perp, kappa_par)
     kappa_perp = torch.where(torch.isfinite(kappa_perp), kappa_perp, torch.zeros_like(kappa_perp))
@@ -436,10 +436,17 @@ def apply_braginskii_viscosity_mps(
     arg = torch.sqrt(torch.clamp(ni_cm3, min=1.0)) / torch.clamp(Ti_eV, min=1e-3) ** 1.5
     lnL = torch.clamp(23.0 - torch.log(torch.clamp(arg, min=1e-30)), min=2.0)
 
-    # Ion collision time
-    numerator = 3.0 * math.sqrt(2.0 * math.pi) * EPSILON_0**2 * math.sqrt(ion_mass) * (K_B * Ti_safe) ** 1.5
-    denominator = ni_safe * E_CHARGE**4 * lnL
-    tau_i = numerator / torch.clamp(denominator, min=1e-300)
+    # Ion collision time (NRL Formulary shorthand, float32-safe).
+    # The SI formula (eps0^2 * sqrt(m_i) * (kT)^1.5) / (ni * e^4 * lnL)
+    # underflows float32 (numerator ~1e-61). Use NRL shorthand instead:
+    # tau_i = 2.09e7 * Ti_eV^{3/2} * sqrt(A) / (ni_cm3 * Z^4 * lnL)  [s]
+    # where A = ion_mass / proton_mass (mass number).
+    M_PROTON = 1.6726e-27
+    A_ion = ion_mass / M_PROTON
+    tau_i = (
+        2.09e7 * Ti_eV ** 1.5 * math.sqrt(A_ion)
+        / torch.clamp(ni_cm3 * lnL, min=1e-30)
+    )
 
     # eta_0 = 0.96 * ni * kB * Ti * tau_i
     eta0 = 0.96 * ni_safe * K_B * Ti_safe * tau_i
@@ -449,7 +456,7 @@ def apply_braginskii_viscosity_mps(
         B_mag = torch.sqrt((B**2).sum(dim=0))
         B_safe = torch.clamp(B_mag, min=1e-30)
         omega_ci = E_CHARGE * B_safe / ion_mass
-        eta1 = 0.3 * ni_safe * K_B * Ti_safe / torch.clamp(omega_ci**2 * tau_i, min=1e-300)
+        eta1 = 0.3 * ni_safe * K_B * Ti_safe / torch.clamp(omega_ci**2 * tau_i, min=1e-30)
         eta1 = torch.minimum(eta1, eta0)
 
         # B unit vector
@@ -570,22 +577,21 @@ def nernst_coefficient_mps(
     arg = torch.sqrt(torch.clamp(ne_cm3, min=1.0)) * Z_eff / torch.clamp(Te_eV, min=1e-3) ** 1.5
     lnL = torch.clamp(23.0 - torch.log(torch.clamp(arg, min=1e-30)), min=2.0)
 
-    # Electron collision time
-    numerator = (
-        3.0 * math.sqrt(2.0 * math.pi) * EPSILON_0**2
-        * math.sqrt(M_E) * (K_B * Te_safe) ** 1.5
-    )
-    denominator = ne_safe * Z_eff * E_CHARGE**4 * lnL
-    tau_e = numerator / torch.clamp(denominator, min=1e-300)
+    # Electron collision time (NRL Formulary shorthand, float32-safe).
+    # The SI formula (eps0^2 * sqrt(m_e) * (kT)^1.5) / (ne * e^4 * lnL)
+    # underflows float32 (~1e-63 numerator) causing 0/0 = NaN.
+    # NRL shorthand: tau_e = 3.44e5 * Te_eV^{3/2} / (ne_cm3 * Z * lnL)  [seconds]
+    tau_e = 3.44e5 * Te_eV ** 1.5 / torch.clamp(ne_cm3 * Z_eff * lnL, min=1e-30)
 
     # Hall parameter x_e = omega_ce * tau_e
-    omega_ce = E_CHARGE * B_mag / M_E
+    B_safe = torch.clamp(B_mag, min=1e-30)
+    omega_ce = E_CHARGE * B_safe / M_E
     x_e = omega_ce * tau_e
 
     # Epperlein-Haines rational polynomial
     num = x_e * (2.5 * x_e**2 + 4.664 * x_e + 11.92)
     den = x_e**4 + 14.79 * x_e**3 + 16.86 * x_e**2 + 7.095 * x_e + 3.774
-    beta_wedge = num / torch.clamp(den, min=1e-300)
+    beta_wedge = num / torch.clamp(den, min=1e-30)
 
     return beta_wedge
 

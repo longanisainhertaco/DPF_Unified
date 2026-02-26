@@ -399,18 +399,38 @@ class TestNernst:
     def test_nernst_coefficient_limits(self):
         """beta_wedge runs without NaN for various B strengths.
 
-        NOTE: Current implementation has NaN issues for weak B. Skip this test
-        until the tau_e formula bug is fixed.
+        The tau_e formula now uses the NRL Formulary shorthand which avoids
+        float32 underflow in intermediate SI-unit products.
         """
-        pytest.skip("Nernst coefficient has NaN for weak B - implementation bug")
-
         ne = torch.full((16, 16, 16), 1e20, dtype=torch.float32)
         Te = torch.full((16, 16, 16), 1e6, dtype=torch.float32)
 
-        # Strong magnetization
+        # Strong magnetization (x_e >> 1, strongly magnetized limit)
         B_strong = torch.full((16, 16, 16), 10.0, dtype=torch.float32)
         beta_strong = nernst_coefficient_mps(ne, Te, B_strong)
         assert torch.isfinite(beta_strong).all(), "beta_wedge contains NaN for strong B"
+
+        # Weak magnetization (previously caused NaN due to float32 underflow)
+        B_weak = torch.full((16, 16, 16), 1e-4, dtype=torch.float32)
+        beta_weak = nernst_coefficient_mps(ne, Te, B_weak)
+        assert torch.isfinite(beta_weak).all(), "beta_wedge contains NaN for weak B"
+
+        # Very weak magnetization
+        B_tiny = torch.full((16, 16, 16), 1e-10, dtype=torch.float32)
+        beta_tiny = nernst_coefficient_mps(ne, Te, B_tiny)
+        assert torch.isfinite(beta_tiny).all(), "beta_wedge contains NaN for tiny B"
+
+        # Epperlein-Haines beta_wedge peaks at intermediate x_e and
+        # decreases for both very strong B (beta ~ 2.5/x_e → 0) and
+        # very weak B (beta ~ 3.16*x_e → 0).
+        # For B=10T: x_e ~ 3.6e5, beta ~ 7e-6 (strongly magnetized)
+        # For B=1e-4T: x_e ~ 3.6, beta ~ 0.2 (near peak)
+        assert beta_weak.mean() > beta_strong.mean(), (
+            "beta_wedge should be larger at intermediate x_e than at very large x_e"
+        )
+        assert beta_weak.mean() > beta_tiny.mean(), (
+            "beta_wedge should be larger at intermediate x_e than at very small x_e"
+        )
 
     def test_nernst_direction(self):
         """Nernst advection runs without error."""

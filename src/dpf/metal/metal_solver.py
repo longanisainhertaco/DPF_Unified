@@ -526,7 +526,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         IB1, IB2, IB3 = 5, 6, 7
 
         # Clamp rho for division
-        rho_safe = torch.clamp(rho, min=1e-12) # RHO_FLOOR hardcoded or import?
+        rho_safe = torch.clamp(rho, min=RHO_FLOOR)
         inv_rho = 1.0 / rho_safe
 
         drho_dt = dU_dt[IDN]
@@ -966,13 +966,13 @@ class MetalMHDSolver(PlasmaSolverBase):
                 eta_field, dtype=self._dtype, device=self.device,
             )
 
-            # Handle Kinetic Source Terms (J_kin) — computed for future use
+            # Kinetic source terms (J_kin): PIC-MHD coupling not yet integrated
+            # into the Metal resistive diffusion step.  When implemented, convert
+            # J_kin to code units and subtract from J_tot before computing eta*J.
             if source_terms is not None and "J_kin" in source_terms:
-                J_kin_si = torch.tensor(
-                    source_terms["J_kin"], dtype=self._dtype, device=self.device
+                logger.debug(
+                    "J_kin source term present but not yet applied in Metal solver"
                 )
-                from dpf.units import current_to_code_units
-                _J_kin_code = current_to_code_units(J_kin_si)  # noqa: F841
 
             # Apply resistivity (B is in Code Units here)
             # We must use Code Unit logic in _apply_resistive_diffusion
