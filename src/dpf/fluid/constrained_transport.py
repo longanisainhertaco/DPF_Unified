@@ -366,7 +366,7 @@ def compute_div_B(staggered: StaggeredBField) -> np.ndarray:
 # EMF from face-centred fluxes (Gardiner & Stone 2005 "simple CT")
 # ============================================================
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def _emf_from_fluxes_kernel(
     Fx: np.ndarray,
     Fy: np.ndarray,
@@ -423,7 +423,7 @@ def _emf_from_fluxes_kernel(
 
     # Ex at x-edges: (nx, ny+1, nz+1)
     Ex_edge = np.zeros((nx_, nyp1, nzp1))
-    for i in range(nx_):
+    for i in prange(nx_):
         for j in range(nyp1):
             for k in range(nzp1):
                 # Simple average of the 4 adjacent face contributions
@@ -433,59 +433,91 @@ def _emf_from_fluxes_kernel(
                         + Fy[i, j, k - 1] + Fy[i, j, k]
                     )
                 else:
-                    # Boundary: use available data
-                    jm = max(j - 1, 0)
-                    jm = min(jm, ny_ - 1)
-                    jp = min(j, ny_ - 1)
-                    km = max(k - 1, 0)
-                    km = min(km, nz_ - 1)
-                    kp = min(k, nz_ - 1)
+                    # Boundary: clamp indices with if-statements
+                    # (max/min cause float64 under prange)
+                    jm = j - 1
+                    if jm < 0:
+                        jm = 0
+                    if jm > ny_ - 1:
+                        jm = ny_ - 1
+                    jp = j
+                    if jp > ny_ - 1:
+                        jp = ny_ - 1
+                    km = k - 1
+                    if km < 0:
+                        km = 0
+                    if km > nz_ - 1:
+                        km = nz_ - 1
+                    kp = k
+                    if kp > nz_ - 1:
+                        kp = nz_ - 1
                     Ex_edge[i, j, k] = 0.25 * (
                         Fz[i, jm, k] + Fz[i, jp, k]
                         + Fy[i, j, km] + Fy[i, j, kp]
                     )
 
     # Ey at y-edges: (nx+1, ny, nz+1)
+    # NOTE: range (not prange) because boundary clamping uses i-1 which
+    # Numba's prange promotes to float64, causing array index type errors.
     Ey_edge = np.zeros((nxp1, ny_, nzp1))
     for i in range(nxp1):
         for j in range(ny_):
             for k in range(nzp1):
-                im = max(i - 1, 0)
-                im = min(im, nx_ - 1)
-                ip = min(i, nx_ - 1)
-                km = max(k - 1, 0)
-                km = min(km, nz_ - 1)
-                kp = min(k, nz_ - 1)
-
                 if i > 0 and i < nxp1 - 1 and k > 0 and k < nzp1 - 1:
                     Ey_edge[i, j, k] = 0.25 * (
                         Fx[i, j, k - 1] + Fx[i, j, k]
                         + Fz[i - 1, j, k] + Fz[i, j, k]
                     )
                 else:
+                    im = i - 1
+                    if im < 0:
+                        im = 0
+                    if im > nx_ - 1:
+                        im = nx_ - 1
+                    ip = i
+                    if ip > nx_ - 1:
+                        ip = nx_ - 1
+                    km = k - 1
+                    if km < 0:
+                        km = 0
+                    if km > nz_ - 1:
+                        km = nz_ - 1
+                    kp = k
+                    if kp > nz_ - 1:
+                        kp = nz_ - 1
                     Ey_edge[i, j, k] = 0.25 * (
                         Fx[i, j, km] + Fx[i, j, kp]
                         + Fz[im, j, k] + Fz[ip, j, k]
                     )
 
     # Ez at z-edges: (nx+1, ny+1, nz)
+    # NOTE: range (not prange) for same reason as Ey — see above.
     Ez_edge = np.zeros((nxp1, nyp1, nz_))
     for i in range(nxp1):
         for j in range(nyp1):
             for k in range(nz_):
-                im = max(i - 1, 0)
-                im = min(im, nx_ - 1)
-                ip = min(i, nx_ - 1)
-                jm = max(j - 1, 0)
-                jm = min(jm, ny_ - 1)
-                jp = min(j, ny_ - 1)
-
                 if i > 0 and i < nxp1 - 1 and j > 0 and j < nyp1 - 1:
                     Ez_edge[i, j, k] = 0.25 * (
                         Fy[i - 1, j, k] + Fy[i, j, k]
                         + Fx[i, j - 1, k] + Fx[i, j, k]
                     )
                 else:
+                    im = i - 1
+                    if im < 0:
+                        im = 0
+                    if im > nx_ - 1:
+                        im = nx_ - 1
+                    ip = i
+                    if ip > nx_ - 1:
+                        ip = nx_ - 1
+                    jm = j - 1
+                    if jm < 0:
+                        jm = 0
+                    if jm > ny_ - 1:
+                        jm = ny_ - 1
+                    jp = j
+                    if jp > ny_ - 1:
+                        jp = ny_ - 1
                     Ez_edge[i, j, k] = 0.25 * (
                         Fy[im, j, k] + Fy[ip, j, k]
                         + Fx[i, jm, k] + Fx[i, jp, k]

@@ -483,12 +483,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B_theta_anode = mu_0 * current / (2.0 * np.pi * r_an)
             B[1, idx_anode, :] = B_theta_anode
 
-        # For cells between anode and cathode at the z-boundaries (electrodes),
-        # impose B_theta profile at z=0 and z=nz-1 (electrode faces)
-        for iz in [0, self.nz - 1]:
+        # For cells between anode and cathode at the closed end (z=0, insulator face),
+        # impose B_theta = mu_0*I/(2*pi*r).  The open end (z=nz-1) uses zero-gradient
+        # extrapolation — forcing B_theta there is non-physical for Mather-type geometry
+        # where the sheath exits freely.  Reference: Lee (1984), Scholz (2006).
+        for iz in [0]:  # Only closed end (insulator face)
             for ir in range(idx_anode, min(idx_cath + 1, self.nr)):
                 r_local = max(r[ir], 1e-10)
                 B[1, ir, iz] = mu_0 * current / (2.0 * np.pi * r_local)
+        # Open end (z=nz-1): zero-gradient extrapolation
+        B[1, :, -1] = B[1, :, -2]
 
         if needs_unsqueeze:
             B = self._unsqueeze(B)

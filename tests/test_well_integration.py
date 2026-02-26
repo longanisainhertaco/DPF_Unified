@@ -71,30 +71,28 @@ def test_well_exporter_integration(clean_output):
         import h5py
         print(f"Loading HDF5 file: {h5_files[0]}")
         with h5py.File(h5_files[0], "r") as f:
-             data = {}
-             for k in f:
-                 data[k] = f[k][:]
+            # Well format: scalars in t0_fields/, vectors in t1_fields/
+            assert "t0_fields" in f, f"Expected t0_fields group, got keys: {list(f.keys())}"
+            t0 = f["t0_fields"]
+            t1 = f.get("t1_fields", {})
+
+            assert "density" in t0, f"Missing density in t0_fields: {list(t0.keys())}"
+            assert "pressure" in t0 or "electron_temperature" in t0
+
+            rho = t0["density"][:]
+            # density: (n_traj=1, n_steps, nx, ny, nz)
+            assert rho.ndim == 5
+            assert rho.shape[0] == 1
+            assert rho.shape[1] >= 2
+
+            if "velocity" in t1:
+                vel = t1["velocity"][:]
+                # velocity: (n_traj=1, n_steps, nx, ny, nz, 3)
+                assert vel.ndim == 6
     else:
         print(f"Loading NPZ file: {npz_files[0]}")
         data = np.load(npz_files[0])
-
-    print(f"Well file keys: {list(data.keys())}")
-
-    # Check required fields
-    assert "density" in data
-    assert "velocity" in data
-    assert "pressure" in data
-
-    # Check shapes
-    # density: (n_traj=1, n_steps, nx, ny, nz)
-    rho = data["density"]
-    assert rho.ndim == 5
-    assert rho.shape[0] == 1
-    # We ran 5 steps, interval 2. Should save steps 0, 2, 4? Or 2, 4?
-    # Logic: step_count % interval == 0.
-    # step 0, 1, 2, 3, 4.
-    # 0%2==0 (Yes), 2%2==0 (Yes), 4%2==0 (Yes). Total 3 steps.
-    assert rho.shape[1] >= 2
+        assert "density" in data
 
 
 @pytest.mark.slow

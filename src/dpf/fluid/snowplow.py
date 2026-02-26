@@ -462,12 +462,19 @@ class SnowplowModel:
         # J×B force (inward, opposing expansion)
         F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
 
-        # Slug mass from pinch (approximately constant during reflected phase)
-        M_slug = self._M_slug_pinch
+        # Slug mass with mass pickup: reflected shock sweeps additional fill gas
+        # as it expands from r_pinch_min to r_s (Lee & Saw 2014)
+        M_slug = self._M_slug_pinch + (
+            self.f_m * self.rho0 * pi
+            * (r_s**2 - self.r_pinch_min**2) * z_f
+        )
+        # Mass pickup rate: dM/dt = f_m * rho0 * 2*pi * r_s * |vr| * z_f
+        dM_dt = self.f_m * self.rho0 * 2.0 * pi * r_s * abs(self.vr) * z_f
 
-        # Equation of motion: M * dvr/dt = F_pressure - F_rad
+        # Equation of motion: d(M*vr)/dt = F_pressure - F_rad
+        # => M * dvr/dt = F_pressure - F_rad - vr * dM/dt
         # Sign convention: vr > 0 = outward expansion
-        a_n = (F_pressure - F_rad) / M_slug
+        a_n = (F_pressure - F_rad - self.vr * dM_dt) / M_slug
 
         # Velocity-Verlet: half-step
         vr_half = self.vr + 0.5 * dt * a_n
@@ -500,12 +507,17 @@ class SnowplowModel:
                 dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
             )
 
-        # Recompute acceleration at new position
+        # Recompute acceleration at new position with updated mass
         r_new_eff = max(r_new, self.r_pinch_min)
+        M_slug_new = self._M_slug_pinch + (
+            self.f_m * self.rho0 * pi
+            * (r_new_eff**2 - self.r_pinch_min**2) * z_f
+        )
+        dM_dt_new = self.f_m * self.rho0 * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
         p_back_new = self._adiabatic_back_pressure(r_new_eff)
         F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
         F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
-        a_new = (F_pressure_new - F_rad_new) / M_slug
+        a_new = (F_pressure_new - F_rad_new - vr_half * dM_dt_new) / M_slug_new
 
         # Full-step velocity
         vr_new = vr_half + 0.5 * dt * a_new
