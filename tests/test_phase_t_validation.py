@@ -416,14 +416,14 @@ class TestPF1000Consistency:
         assert PF1000_DATA.peak_current == pytest.approx(1.87e6, rel=1e-10)
 
     def test_anode_radius_consistency(self) -> None:
-        """Anode radius should be 57.5 mm = 0.0575 m in both sources."""
-        assert DEVICE_REGISTRY["PF-1000"].anode_radius == pytest.approx(0.0575, rel=1e-10)
-        assert PF1000_DATA.anode_radius == pytest.approx(0.0575, rel=1e-10)
+        """Anode radius should be 115 mm = 0.115 m (outer radius, IPPLM OD 230mm)."""
+        assert DEVICE_REGISTRY["PF-1000"].anode_radius == pytest.approx(0.115, rel=1e-10)
+        assert PF1000_DATA.anode_radius == pytest.approx(0.115, rel=1e-10)
 
     def test_cathode_radius_consistency(self) -> None:
-        """Cathode radius should be 80 mm = 0.08 m in both sources."""
-        assert DEVICE_REGISTRY["PF-1000"].cathode_radius == pytest.approx(0.08, rel=1e-10)
-        assert PF1000_DATA.cathode_radius == pytest.approx(0.08, rel=1e-10)
+        """Cathode radius should be 160 mm = 0.16 m (Lee & Saw 2014 effective)."""
+        assert DEVICE_REGISTRY["PF-1000"].cathode_radius == pytest.approx(0.16, rel=1e-10)
+        assert PF1000_DATA.cathode_radius == pytest.approx(0.16, rel=1e-10)
 
     def test_capacitance_consistency(self) -> None:
         """Bank capacitance should be consistent between suite and experimental."""
