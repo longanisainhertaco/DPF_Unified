@@ -87,10 +87,27 @@ def dd_reactivity(Ti_keV: float) -> float:
     # Reactivity for branch 1 (D(d,n)He3)
     sv_1 = C1 * theta * np.sqrt(xi / (mu_c2 * T**3)) * np.exp(-3.0 * xi)
 
-    # Branch 2: D(d,p)T — roughly same at DPF temperatures
-    # Use the same order of magnitude (within factor ~1 for T < 50 keV)
+    # Branch 2: D(d,p)T — separate Bosch-Hale coefficients (Table IV)
+    # B_G and mu_c2 are the same (same entrance channel D+D)
     C1_2 = 5.65718e-12
-    sv_2 = C1_2 * theta * np.sqrt(xi / (mu_c2 * T**3)) * np.exp(-3.0 * xi)
+    C2_2 = 3.41267e-3
+    C3_2 = 1.99167e-3
+    C4_2 = 0.0
+    C5_2 = 1.05060e-5
+    C6_2 = 0.0
+    C7_2 = 0.0
+
+    denom_2 = 1.0 + T * (C3_2 + T * (C5_2 + T * C7_2))
+    if abs(denom_2) < 1e-30:
+        return max(sv_1 * 1e-6, 0.0)
+    numer_2 = T * (C2_2 + T * (C4_2 + T * C6_2))
+    theta_2 = T / (1.0 - numer_2 / denom_2)
+
+    if theta_2 <= 0:
+        return max(sv_1 * 1e-6, 0.0)
+
+    xi_2 = (B_G**2 / (4.0 * theta_2)) ** (1.0 / 3.0)
+    sv_2 = C1_2 * theta_2 * np.sqrt(xi_2 / (mu_c2 * T**3)) * np.exp(-3.0 * xi_2)
 
     # Total reactivity (both branches)
     # Convert from cm^3/s to m^3/s: multiply by 1e-6
