@@ -226,7 +226,6 @@ class SimulationEngine:
         self.state = self._initial_state(nx, ny, nz)
 
         # Coupling
-        # Coupling
         self._coupling = CouplingState()
         self._prev_L_plasma: float = 0.0
 
@@ -503,10 +502,22 @@ class SimulationEngine:
             "energy_ind": self.circuit.state.energy_ind,
             "energy_res": self.circuit.state.energy_res,
         }
+        snowplow_state = None
+        if self.snowplow is not None:
+            snowplow_state = {
+                "z": self.snowplow.z,
+                "v": self.snowplow.v,
+                "r_shock": self.snowplow.r_shock,
+                "v_r": self.snowplow.vr,
+                "phase": self.snowplow.phase,
+                "swept_mass": self.snowplow.swept_mass,
+                "rundown_complete": self.snowplow.rundown_complete,
+            }
         config_json = self.config.model_dump_json()
         save_checkpoint(
             fname, self.state, circuit_state,
             self.time, self.step_count, config_json,
+            snowplow_state=snowplow_state,
         )
 
     def load_from_checkpoint(self, filename: str) -> None:
@@ -528,6 +539,19 @@ class SimulationEngine:
         self.circuit.state.energy_ind = circ.get("energy_ind", 0.0)
         self.circuit.state.energy_res = circ.get("energy_res", 0.0)
 
+        # Restore snowplow state if present
+        if self.snowplow is not None and "snowplow" in data:
+            sp = data["snowplow"]
+            for attr, val in sp.items():
+                # Some attributes are read-only properties (e.g. rundown_complete)
+                # with private backing fields (_rundown_complete).
+                try:
+                    setattr(self.snowplow, attr, val)
+                except AttributeError:
+                    private = f"_{attr}"
+                    if hasattr(self.snowplow, private):
+                        setattr(self.snowplow, private, val)
+
         # Set initial energy for conservation tracking
         self.initial_energy = self.circuit.total_energy()
 
@@ -548,6 +572,10 @@ class SimulationEngine:
 
         Returns:
             Total number of non-finite values repaired.
+
+        Raises:
+            RuntimeError: If cumulative repairs exceed 10000, indicating solver
+                instability rather than benign boundary artifacts.
         """
         total_repaired = 0
         floors = {
@@ -568,6 +596,13 @@ class SimulationEngine:
                 logger.warning(
                     "%s: %d non-finite values in '%s', replaced with %.1e",
                     label, count, key, floor,
+                )
+        if total_repaired > 0:
+            self._cumulative_repairs = getattr(self, "_cumulative_repairs", 0) + total_repaired
+            if self._cumulative_repairs > 10000:
+                raise RuntimeError(
+                    f"Solver instability: {self._cumulative_repairs} cumulative NaN/Inf "
+                    f"repairs. Latest: {total_repaired} in '{label}'."
                 )
         return total_repaired
 
@@ -629,28 +664,19 @@ class SimulationEngine:
         # 1. Update fields for inductance calculation
         self.field_manager.B = self.state["B"]
 
-        # 2. Compute variable inductance and derivative
-        # Use previous current for inductance calc (explicit coupling)
+        # 2. Track field-based inductance for _prev_L_plasma history.
+        # The actual dL/dt used by the circuit is computed from snowplow or
+        # volume-integral L_plasma in the circuit step below (Step 2).
         L_p = self.field_manager.compute_plasma_inductance(self.circuit.current)
-
-        if self.step_count > 0:
-            dL_dt = (L_p - self._prev_L_plasma) / max(dt, 1e-16)
-        else:
-            dL_dt = 0.0
         self._prev_L_plasma = L_p
 
-        # 3. Step Circuit (Implicit Midpoint)
-        # Back-EMF from MHD field advection: E_z = -(v × B)_z
-        # For cylindrical Z-pinch: (v × B)_z = v_r * B_theta
-        # Circuit back-EMF [V] = volume-averaged (-v_r * B_theta) * L_z
-        back_emf = self._compute_back_emf(dt)
-
-        coupling = CouplingState(Lp=L_p, dL_dt=dL_dt, R_plasma=0.0)
-        new_coupling = self.circuit.step(coupling, back_emf, dt)
-
-        # 4. Apply magnetic boundary conditions
+        # 3. Apply magnetic boundary conditions using current from previous step.
+        # The circuit is advanced ONCE per step, after computing R_plasma and L_plasma
+        # from the full MHD state (see Step 2 below).  Using previous-step current here
+        # is standard explicit coupling — the electrode B_theta BC is set before the
+        # MHD advance, which is then used to compute the updated plasma state.
         if self.boundary_cfg.electrode_bc:
-            self._apply_electrode_bc(new_coupling.current)
+            self._apply_electrode_bc(self._coupling.current)
 
         # === Step 1: Compute ionization state and plasma resistance ===
         Te = self.state["Te"]
@@ -708,12 +734,13 @@ class SimulationEngine:
                 J_mag = np.sqrt(np.sum(J_field**2, axis=0))  # (nr, nz)
                 ne_2d = np.squeeze(ne, axis=1) if ne.ndim == 3 else ne
                 Ti_2d = np.squeeze(Ti_field, axis=1) if Ti_field.ndim == 3 else Ti_field
+                Te_2d = np.squeeze(self.state["Te"], axis=1) if self.state["Te"].ndim == 3 else self.state["Te"]
                 eta_anom_field = anomalous_resistivity_field(
                     J_mag, np.maximum(ne_2d, 1e10), np.maximum(Ti_2d, 1.0),
                     alpha=self.config.anomalous_alpha,
                     mi=self.ion_mass,
                     threshold_model=self.config.anomalous_threshold_model,
-                    Te=np.maximum(self.state["Te"], 1.0),  # Pass full 3D Te, function handles it
+                    Te=np.maximum(Te_2d, 1.0),
                 )
                 # Unsqueeze to (nr, 1, nz)
                 eta_anom_field_3d = eta_anom_field[:, np.newaxis, :]
@@ -809,11 +836,10 @@ class SimulationEngine:
                 coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
             self._prev_L_plasma = L_plasma
 
-        # back_emf = 0: This is CORRECT. The inductive back-EMF (I * dL/dt) is already
-        # accounted for in the circuit solver via R_star = R_eff + dLp_dt (rlc_solver.py:152).
-        # The implicit midpoint method includes dL/dt in the circuit equation, so adding
-        # a separate back_emf term here would double-count the inductive voltage drop.
-        back_emf = 0.0
+        # Inductive back-EMF (I * dL/dt) is handled by R_star in rlc_solver.py:272.
+        # Motional back-EMF (integral v x B . dl) is a separate term from resolved
+        # MHD fields that feeds back to the circuit. See Lee & Saw (2014), Eq. (4).
+        back_emf = self._compute_back_emf(dt)
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
 
@@ -1106,8 +1132,17 @@ class SimulationEngine:
             B = self.state["B"]
             for ir in range(nr):
                 r = (ir + 0.5) * dr
-                if cc.anode_radius <= r <= cc.cathode_radius and r > 0 or r < cc.anode_radius and r > 0:
-                    B[1, ir, :, :] = _mu_0 * current / (2.0 * pi * r)
+                if cc.anode_radius <= r <= cc.cathode_radius and r > 0:
+                    val = _mu_0 * current / (2.0 * pi * r)
+                    if B.ndim == 4:
+                        B[1, ir, :, :] = val
+                    else:
+                        B[1, ir, :] = val
+                elif r < cc.anode_radius:
+                    if B.ndim == 4:
+                        B[1, ir, :, :] = 0.0
+                    else:
+                        B[1, ir, :] = 0.0
             self.state["B"] = B
 
         # Snowplow zipper BC: applies to ALL backends with cylindrical geometry
@@ -1117,9 +1152,13 @@ class SimulationEngine:
             iz_sheath = round(z_sheath / dz)
 
             nx, ny, nz = self.config.grid_shape
+            B = self.state["B"]
             if 0 <= iz_sheath < nz:
                 # Zero B_theta for z > z_sheath (ahead of axial sheath)
-                self.state["B"][1, :, :, iz_sheath + 1:] = 0.0
+                if B.ndim == 4:
+                    B[1, :, :, iz_sheath + 1:] = 0.0
+                else:  # 3D (3, nr, nz) — squeezed cylindrical
+                    B[1, :, iz_sheath + 1:] = 0.0
 
             # Radial zipper: zero B_theta outside radial shock front
             if self.snowplow.phase in ("radial", "reflected"):
@@ -1127,7 +1166,10 @@ class SimulationEngine:
                 dr = self.config.dx
                 ir_shock = round(r_shock / dr)
                 if 0 <= ir_shock < nx:
-                    self.state["B"][1, ir_shock + 1:, :, :] = 0.0
+                    if B.ndim == 4:
+                        B[1, ir_shock + 1:, :, :] = 0.0
+                    else:  # 3D
+                        B[1, ir_shock + 1:, :] = 0.0
 
     def _initialize_radial_bfield(self) -> None:
         """One-shot B_theta initialization when snowplow enters radial phase.

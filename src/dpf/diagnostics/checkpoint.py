@@ -39,6 +39,7 @@ def save_checkpoint(
     time: float,
     step_count: int,
     config_json: str | None = None,
+    snowplow_state: dict[str, Any] | None = None,
 ) -> None:
     """Save full simulation state to an HDF5 checkpoint file.
 
@@ -49,6 +50,7 @@ def save_checkpoint(
         time: Current simulation time [s].
         step_count: Current timestep number.
         config_json: JSON string of the simulation config (for reference).
+        snowplow_state: Snowplow dynamics state (phase, z, v, r_shock, etc.).
     """
     if not HAS_H5PY:
         logger.warning("Cannot save checkpoint: h5py not installed")
@@ -60,7 +62,7 @@ def save_checkpoint(
         # Metadata
         f.attrs["time"] = time
         f.attrs["step_count"] = step_count
-        f.attrs["checkpoint_version"] = 1
+        f.attrs["checkpoint_version"] = 2
 
         if config_json is not None:
             f.attrs["config_json"] = config_json
@@ -75,6 +77,15 @@ def save_checkpoint(
         grp_circuit = f.create_group("circuit")
         for key, val in circuit_state.items():
             grp_circuit.attrs[key] = val
+
+        # Snowplow state
+        if snowplow_state is not None:
+            grp_sp = f.create_group("snowplow")
+            for key, val in snowplow_state.items():
+                if isinstance(val, str):
+                    grp_sp.attrs[key] = val
+                else:
+                    grp_sp.attrs[key] = val
 
     logger.info("Checkpoint saved: %s", filename)
 
@@ -116,15 +127,30 @@ def load_checkpoint(filename: str) -> dict[str, Any]:
         for key in f["circuit"].attrs:
             circuit[key] = float(f["circuit"].attrs[key])
 
+        # Load snowplow state if present (checkpoint_version >= 2)
+        snowplow = None
+        if "snowplow" in f:
+            snowplow = {}
+            for key in f["snowplow"].attrs:
+                val = f["snowplow"].attrs[key]
+                if isinstance(val, bytes):
+                    snowplow[key] = val.decode("utf-8")
+                else:
+                    snowplow[key] = val
+
     logger.info(
         "Checkpoint loaded: t=%.4e s, step=%d, state keys=%s",
         time, step_count, list(state.keys()),
     )
 
-    return {
+    result: dict[str, Any] = {
         "state": state,
         "circuit": circuit,
         "time": time,
         "step_count": step_count,
         "config_json": config_json,
     }
+    if snowplow is not None:
+        result["snowplow"] = snowplow
+
+    return result
