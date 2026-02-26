@@ -57,3 +57,8 @@ cmake_install.cmake
 walrus/
 references/
 models/
+
+# Research PDFs and training data
+research_reference/
+training_data/
+*.npz
