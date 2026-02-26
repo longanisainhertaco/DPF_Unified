@@ -481,7 +481,7 @@ class TestPhaseTransitions:
             if phase == "pinch":
                 break
 
-        assert phase_order == ["rundown", "radial", "pinch"]
+        assert phase_order == ["rundown", "radial", "reflected", "pinch"]
 
     def test_rundown_complete_flag(self) -> None:
         """After transition to radial, rundown_complete should be True."""
