@@ -661,8 +661,10 @@ class SimulationEngine:
                 )
 
         # === Phase 5: Pulse Power Circuit Step ===
-        # 1. Update fields for inductance calculation
-        self.field_manager.B = self.state["B"]
+        # 1. Update fields for inductance calculation (copy to avoid aliasing —
+        # the fluid step may later modify state["B"] in-place, and we need the
+        # pre-step B for inductance computation).
+        self.field_manager.B = self.state["B"].copy()
 
         # 2. Track field-based inductance for _prev_L_plasma history.
         # The actual dL/dt used by the circuit is computed from snowplow or
@@ -930,7 +932,17 @@ class SimulationEngine:
                 )
 
         # === Step 4+5: Collision+Radiation (second half-step of Strang) ===
-        self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
+        # Recompute Z_bar from post-MHD Te to avoid stale ionization state.
+        # The MHD step may have significantly changed Te (e.g. shock heating),
+        # so using pre-step Z_bar introduces O(dt) splitting error.
+        Te_post = self.state["Te"]
+        ne_post = self.state["rho"] / self.ion_mass
+        Z_bar_field_post = saha_ionization_fraction_array(
+            Te_post.ravel(), ne_post.ravel(),
+        ).reshape(Te_post.shape)
+        Z_bar_field_post = np.maximum(Z_bar_field_post, 0.01)
+        Z_bar_post = max(float(np.mean(Z_bar_field_post)), 0.01)
+        self._apply_collision_radiation(dt / 2.0, Z_bar_post, Z_bar_field=Z_bar_field_post)
 
         # === Step 5b: Neutron yield (DD thermonuclear) ===
         Ti_yield = self.state["Ti"]
@@ -972,7 +984,7 @@ class SimulationEngine:
 
         # === Step 5c: Well Exporter ===
         if self.well_interval > 0 and self.step_count % self.well_interval == 0:
-            self.well_exporter.append_state(self.state)
+            self.well_exporter.append_state(self.state, time=self.time)
 
 
 
@@ -1385,7 +1397,7 @@ class SimulationEngine:
 
         # === Step 5c: Well Exporter ===
         if self.well_interval > 0 and self.step_count % self.well_interval == 0:
-            self.well_exporter.append_state(self.state)
+            self.well_exporter.append_state(self.state, time=self.time)
 
         # Check if finished
         finished = self.time >= sim_time

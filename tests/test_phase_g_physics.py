@@ -1391,15 +1391,14 @@ class TestBraginskiiPhysicsFormulas:
         tau_i = ion_collision_time(ni, Ti, Z_eff=1.0, m_ion=m_ion)
         eta0_py = braginskii_eta0(ni, Ti, tau_i)
 
-        # Manual C++ formula reproduction
+        # Manual reference formula using centralized GMS Coulomb log
+        from dpf.collision.spitzer import coulomb_log
         from dpf.constants import e as elem_e
         from dpf.constants import epsilon_0 as eps0
         from dpf.constants import k_B as kB
 
-        Ti_eV = float(Ti[0]) * kB / elem_e
-        ni_cm3 = float(ni[0]) * 1e-6
-        arg = math.sqrt(max(ni_cm3, 1.0)) * 1.0 / max(Ti_eV, 1e-3) ** 1.5
-        lnL_i = max(23.0 - math.log(max(arg, 1e-30)), 2.0)
+        ne_equiv = 1.0 * float(ni[0])  # Z_eff * ni (quasi-neutrality)
+        lnL_i = max(float(coulomb_log(np.array([ne_equiv]), Ti)[0]), 2.0)
 
         numerator = 3.0 * math.sqrt(2.0 * math.pi) * eps0**2 * math.sqrt(m_ion) * (kB * float(Ti[0])) ** 1.5
         denominator = float(ni[0]) * 1.0**4 * elem_e**4 * lnL_i

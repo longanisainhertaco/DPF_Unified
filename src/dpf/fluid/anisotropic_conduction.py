@@ -35,6 +35,7 @@ import logging
 
 import numpy as np
 
+from dpf.collision.spitzer import coulomb_log
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_e, pi
 
@@ -68,11 +69,9 @@ def braginskii_kappa_parallel(
     Te_safe = np.maximum(Te, 1.0)
     ne_safe = np.maximum(ne, 1e-10)
 
-    # Coulomb log (NRL formula for electron-ion)
-    Te_eV = Te_safe * k_B / e_charge
-    ne_cm3 = ne_safe * 1e-6
-    arg = np.sqrt(np.maximum(ne_cm3, 1.0)) * Z_eff / np.maximum(Te_eV, 1e-3) ** 1.5
-    lnL = np.maximum(23.0 - np.log(np.maximum(arg, 1e-30)), 2.0)
+    # Coulomb log — centralized GMS formula (electron-ion, correct for kappa_par)
+    lnL = coulomb_log(ne_safe, Te_safe)
+    lnL = np.maximum(lnL, 2.0)
 
     # Electron collision time (full Spitzer, SI units: Te [K], ne [m^-3])
     tau_e = (
@@ -112,11 +111,9 @@ def braginskii_kappa_perp(
     ne_safe = np.maximum(ne, 1e-10)
     B_safe = np.maximum(B_mag, 1e-30)
 
-    # Coulomb log
-    Te_eV = Te_safe * k_B / e_charge
-    ne_cm3 = ne_safe * 1e-6
-    arg = np.sqrt(np.maximum(ne_cm3, 1.0)) * Z_eff / np.maximum(Te_eV, 1e-3) ** 1.5
-    lnL = np.maximum(23.0 - np.log(np.maximum(arg, 1e-30)), 2.0)
+    # Coulomb log — centralized GMS formula (electron-ion, correct for kappa_perp)
+    lnL = coulomb_log(ne_safe, Te_safe)
+    lnL = np.maximum(lnL, 2.0)
 
     # Electron collision time (full Spitzer, SI units)
     tau_e = (

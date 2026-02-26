@@ -40,6 +40,8 @@ import logging
 
 import torch
 
+from dpf.metal._utils import _check_no_nan, _ensure_mps  # noqa: F401
+
 logger = logging.getLogger(__name__)
 
 # Number of conservative MHD variables:
@@ -59,42 +61,6 @@ IB3: int = 7   # Bz
 # Density and pressure floors
 RHO_FLOOR: float = 1e-12
 P_FLOOR: float = 1e-12
-
-
-# ============================================================
-# Device / NaN helpers (shared with metal_stencil.py API)
-# ============================================================
-
-
-def _ensure_mps(t: torch.Tensor, name: str = "tensor") -> None:
-    """Validate that *t* resides on an MPS or CPU device.
-
-    Accepts both MPS (Metal GPU, float32) and CPU (float64 precision mode)
-    backends.  Rejects CUDA or other devices that are not part of the
-    DPF Metal solver architecture.
-
-    Args:
-        t: Tensor to check.
-        name: Human-readable label for the error message.
-
-    Raises:
-        ValueError: If the tensor is not on an MPS or CPU device.
-    """
-    if t.device.type not in ("mps", "cpu"):
-        raise ValueError(f"{name} must be on MPS or CPU device, got {t.device}")
-
-
-def _check_no_nan(t: torch.Tensor, label: str = "result") -> None:
-    """Assert that *t* contains no NaN values.
-
-    Args:
-        t: Tensor to validate.
-        label: Context string for the assertion message.
-
-    Raises:
-        AssertionError: If any element is NaN.
-    """
-    assert not torch.isnan(t).any(), f"NaN detected in {label}"
 
 
 # ============================================================

@@ -34,6 +34,7 @@ from __future__ import annotations
 import numpy as np
 from numba import njit, prange
 
+from dpf.collision.spitzer import coulomb_log
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_d, pi
 
@@ -65,12 +66,9 @@ def ion_collision_time(
     Returns:
         Ion collision time [s].
     """
-    # Coulomb logarithm
-    Ti_eV = Ti * k_B / e_charge
-    Ti_eV_safe = np.maximum(Ti_eV, 1e-3)
-    ni_cm3 = ni * 1e-6
-    arg = np.sqrt(np.maximum(ni_cm3, 1.0)) * Z_eff / np.maximum(Ti_eV_safe, 1e-3) ** 1.5
-    lnL = 23.0 - np.log(np.maximum(arg, 1e-30))
+    # Coulomb logarithm — use centralized GMS formula (quasi-neutrality: ne = Z*ni)
+    ne_equiv = Z_eff * ni
+    lnL = coulomb_log(ne_equiv, Ti)
     lnL = np.maximum(lnL, 2.0)
 
     numerator = 3.0 * np.sqrt(2.0 * pi) * epsilon_0**2 * np.sqrt(m_ion) * (k_B * Ti) ** 1.5
@@ -241,7 +239,7 @@ def _compute_strain_rate(
     S_ij = 0.5 * (dv_i/dx_j + dv_j/dx_i)
 
     Uses second-order centred differences on the interior and
-    one-sided differences at the boundaries.
+    second-order one-sided differences at the boundaries.
 
     Args:
         vx, vy, vz: Velocity components, each shape (nx, ny, nz).
@@ -262,75 +260,75 @@ def _compute_strain_rate(
     for i in prange(nx):
         for j in range(ny):
             for k in range(nz):
-                # dvx/dx
+                # dvx/dx (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dvx_dx = (vx[1, j, k] - vx[0, j, k]) / dx
+                    dvx_dx = (-1.5 * vx[0, j, k] + 2.0 * vx[1, j, k] - 0.5 * vx[2, j, k]) / dx
                 elif i == nx - 1:
-                    dvx_dx = (vx[nx - 1, j, k] - vx[nx - 2, j, k]) / dx
+                    dvx_dx = (0.5 * vx[nx - 3, j, k] - 2.0 * vx[nx - 2, j, k] + 1.5 * vx[nx - 1, j, k]) / dx
                 else:
                     dvx_dx = (vx[i + 1, j, k] - vx[i - 1, j, k]) / (2.0 * dx)
 
-                # dvy/dy
+                # dvy/dy (2nd-order one-sided at boundaries)
                 if j == 0:
-                    dvy_dy = (vy[i, 1, k] - vy[i, 0, k]) / dy
+                    dvy_dy = (-1.5 * vy[i, 0, k] + 2.0 * vy[i, 1, k] - 0.5 * vy[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dvy_dy = (vy[i, ny - 1, k] - vy[i, ny - 2, k]) / dy
+                    dvy_dy = (0.5 * vy[i, ny - 3, k] - 2.0 * vy[i, ny - 2, k] + 1.5 * vy[i, ny - 1, k]) / dy
                 else:
                     dvy_dy = (vy[i, j + 1, k] - vy[i, j - 1, k]) / (2.0 * dy)
 
-                # dvz/dz
+                # dvz/dz (2nd-order one-sided at boundaries)
                 if k == 0:
-                    dvz_dz = (vz[i, j, 1] - vz[i, j, 0]) / dz
+                    dvz_dz = (-1.5 * vz[i, j, 0] + 2.0 * vz[i, j, 1] - 0.5 * vz[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dvz_dz = (vz[i, j, nz - 1] - vz[i, j, nz - 2]) / dz
+                    dvz_dz = (0.5 * vz[i, j, nz - 3] - 2.0 * vz[i, j, nz - 2] + 1.5 * vz[i, j, nz - 1]) / dz
                 else:
                     dvz_dz = (vz[i, j, k + 1] - vz[i, j, k - 1]) / (2.0 * dz)
 
-                # dvx/dy
+                # dvx/dy (2nd-order one-sided at boundaries)
                 if j == 0:
-                    dvx_dy = (vx[i, 1, k] - vx[i, 0, k]) / dy
+                    dvx_dy = (-1.5 * vx[i, 0, k] + 2.0 * vx[i, 1, k] - 0.5 * vx[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dvx_dy = (vx[i, ny - 1, k] - vx[i, ny - 2, k]) / dy
+                    dvx_dy = (0.5 * vx[i, ny - 3, k] - 2.0 * vx[i, ny - 2, k] + 1.5 * vx[i, ny - 1, k]) / dy
                 else:
                     dvx_dy = (vx[i, j + 1, k] - vx[i, j - 1, k]) / (2.0 * dy)
 
-                # dvy/dx
+                # dvy/dx (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dvy_dx = (vy[1, j, k] - vy[0, j, k]) / dx
+                    dvy_dx = (-1.5 * vy[0, j, k] + 2.0 * vy[1, j, k] - 0.5 * vy[2, j, k]) / dx
                 elif i == nx - 1:
-                    dvy_dx = (vy[nx - 1, j, k] - vy[nx - 2, j, k]) / dx
+                    dvy_dx = (0.5 * vy[nx - 3, j, k] - 2.0 * vy[nx - 2, j, k] + 1.5 * vy[nx - 1, j, k]) / dx
                 else:
                     dvy_dx = (vy[i + 1, j, k] - vy[i - 1, j, k]) / (2.0 * dx)
 
-                # dvx/dz
+                # dvx/dz (2nd-order one-sided at boundaries)
                 if k == 0:
-                    dvx_dz = (vx[i, j, 1] - vx[i, j, 0]) / dz
+                    dvx_dz = (-1.5 * vx[i, j, 0] + 2.0 * vx[i, j, 1] - 0.5 * vx[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dvx_dz = (vx[i, j, nz - 1] - vx[i, j, nz - 2]) / dz
+                    dvx_dz = (0.5 * vx[i, j, nz - 3] - 2.0 * vx[i, j, nz - 2] + 1.5 * vx[i, j, nz - 1]) / dz
                 else:
                     dvx_dz = (vx[i, j, k + 1] - vx[i, j, k - 1]) / (2.0 * dz)
 
-                # dvz/dx
+                # dvz/dx (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dvz_dx = (vz[1, j, k] - vz[0, j, k]) / dx
+                    dvz_dx = (-1.5 * vz[0, j, k] + 2.0 * vz[1, j, k] - 0.5 * vz[2, j, k]) / dx
                 elif i == nx - 1:
-                    dvz_dx = (vz[nx - 1, j, k] - vz[nx - 2, j, k]) / dx
+                    dvz_dx = (0.5 * vz[nx - 3, j, k] - 2.0 * vz[nx - 2, j, k] + 1.5 * vz[nx - 1, j, k]) / dx
                 else:
                     dvz_dx = (vz[i + 1, j, k] - vz[i - 1, j, k]) / (2.0 * dx)
 
-                # dvy/dz
+                # dvy/dz (2nd-order one-sided at boundaries)
                 if k == 0:
-                    dvy_dz = (vy[i, j, 1] - vy[i, j, 0]) / dz
+                    dvy_dz = (-1.5 * vy[i, j, 0] + 2.0 * vy[i, j, 1] - 0.5 * vy[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dvy_dz = (vy[i, j, nz - 1] - vy[i, j, nz - 2]) / dz
+                    dvy_dz = (0.5 * vy[i, j, nz - 3] - 2.0 * vy[i, j, nz - 2] + 1.5 * vy[i, j, nz - 1]) / dz
                 else:
                     dvy_dz = (vy[i, j, k + 1] - vy[i, j, k - 1]) / (2.0 * dz)
 
-                # dvz/dy
+                # dvz/dy (2nd-order one-sided at boundaries)
                 if j == 0:
-                    dvz_dy = (vz[i, 1, k] - vz[i, 0, k]) / dy
+                    dvz_dy = (-1.5 * vz[i, 0, k] + 2.0 * vz[i, 1, k] - 0.5 * vz[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dvz_dy = (vz[i, ny - 1, k] - vz[i, ny - 2, k]) / dy
+                    dvz_dy = (0.5 * vz[i, ny - 3, k] - 2.0 * vz[i, ny - 2, k] + 1.5 * vz[i, ny - 1, k]) / dy
                 else:
                     dvz_dy = (vz[i, j + 1, k] - vz[i, j - 1, k]) / (2.0 * dy)
 
@@ -362,7 +360,7 @@ def _div_stress(
 
     (div sigma)_i = d(sigma_ix)/dx + d(sigma_iy)/dy + d(sigma_iz)/dz
 
-    Uses centred differences on the interior, one-sided at boundaries.
+    Uses centred differences on the interior, second-order one-sided at boundaries.
 
     Args:
         sigma_xx ... sigma_yz: Stress tensor components, shape (nx, ny, nz).
@@ -379,73 +377,73 @@ def _div_stress(
     for i in prange(nx):
         for j in range(ny):
             for k in range(nz):
-                # --- x-component ---
+                # --- x-component --- (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dsxx_dx = (sigma_xx[1, j, k] - sigma_xx[0, j, k]) / dx
+                    dsxx_dx = (-1.5 * sigma_xx[0, j, k] + 2.0 * sigma_xx[1, j, k] - 0.5 * sigma_xx[2, j, k]) / dx
                 elif i == nx - 1:
-                    dsxx_dx = (sigma_xx[nx - 1, j, k] - sigma_xx[nx - 2, j, k]) / dx
+                    dsxx_dx = (0.5 * sigma_xx[nx - 3, j, k] - 2.0 * sigma_xx[nx - 2, j, k] + 1.5 * sigma_xx[nx - 1, j, k]) / dx
                 else:
                     dsxx_dx = (sigma_xx[i + 1, j, k] - sigma_xx[i - 1, j, k]) / (2.0 * dx)
 
                 if j == 0:
-                    dsxy_dy = (sigma_xy[i, 1, k] - sigma_xy[i, 0, k]) / dy
+                    dsxy_dy = (-1.5 * sigma_xy[i, 0, k] + 2.0 * sigma_xy[i, 1, k] - 0.5 * sigma_xy[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dsxy_dy = (sigma_xy[i, ny - 1, k] - sigma_xy[i, ny - 2, k]) / dy
+                    dsxy_dy = (0.5 * sigma_xy[i, ny - 3, k] - 2.0 * sigma_xy[i, ny - 2, k] + 1.5 * sigma_xy[i, ny - 1, k]) / dy
                 else:
                     dsxy_dy = (sigma_xy[i, j + 1, k] - sigma_xy[i, j - 1, k]) / (2.0 * dy)
 
                 if k == 0:
-                    dsxz_dz = (sigma_xz[i, j, 1] - sigma_xz[i, j, 0]) / dz
+                    dsxz_dz = (-1.5 * sigma_xz[i, j, 0] + 2.0 * sigma_xz[i, j, 1] - 0.5 * sigma_xz[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dsxz_dz = (sigma_xz[i, j, nz - 1] - sigma_xz[i, j, nz - 2]) / dz
+                    dsxz_dz = (0.5 * sigma_xz[i, j, nz - 3] - 2.0 * sigma_xz[i, j, nz - 2] + 1.5 * sigma_xz[i, j, nz - 1]) / dz
                 else:
                     dsxz_dz = (sigma_xz[i, j, k + 1] - sigma_xz[i, j, k - 1]) / (2.0 * dz)
 
                 div_x[i, j, k] = dsxx_dx + dsxy_dy + dsxz_dz
 
-                # --- y-component ---
+                # --- y-component --- (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dsxy_dx = (sigma_xy[1, j, k] - sigma_xy[0, j, k]) / dx
+                    dsxy_dx = (-1.5 * sigma_xy[0, j, k] + 2.0 * sigma_xy[1, j, k] - 0.5 * sigma_xy[2, j, k]) / dx
                 elif i == nx - 1:
-                    dsxy_dx = (sigma_xy[nx - 1, j, k] - sigma_xy[nx - 2, j, k]) / dx
+                    dsxy_dx = (0.5 * sigma_xy[nx - 3, j, k] - 2.0 * sigma_xy[nx - 2, j, k] + 1.5 * sigma_xy[nx - 1, j, k]) / dx
                 else:
                     dsxy_dx = (sigma_xy[i + 1, j, k] - sigma_xy[i - 1, j, k]) / (2.0 * dx)
 
                 if j == 0:
-                    dsyy_dy = (sigma_yy[i, 1, k] - sigma_yy[i, 0, k]) / dy
+                    dsyy_dy = (-1.5 * sigma_yy[i, 0, k] + 2.0 * sigma_yy[i, 1, k] - 0.5 * sigma_yy[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dsyy_dy = (sigma_yy[i, ny - 1, k] - sigma_yy[i, ny - 2, k]) / dy
+                    dsyy_dy = (0.5 * sigma_yy[i, ny - 3, k] - 2.0 * sigma_yy[i, ny - 2, k] + 1.5 * sigma_yy[i, ny - 1, k]) / dy
                 else:
                     dsyy_dy = (sigma_yy[i, j + 1, k] - sigma_yy[i, j - 1, k]) / (2.0 * dy)
 
                 if k == 0:
-                    dsyz_dz = (sigma_yz[i, j, 1] - sigma_yz[i, j, 0]) / dz
+                    dsyz_dz = (-1.5 * sigma_yz[i, j, 0] + 2.0 * sigma_yz[i, j, 1] - 0.5 * sigma_yz[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dsyz_dz = (sigma_yz[i, j, nz - 1] - sigma_yz[i, j, nz - 2]) / dz
+                    dsyz_dz = (0.5 * sigma_yz[i, j, nz - 3] - 2.0 * sigma_yz[i, j, nz - 2] + 1.5 * sigma_yz[i, j, nz - 1]) / dz
                 else:
                     dsyz_dz = (sigma_yz[i, j, k + 1] - sigma_yz[i, j, k - 1]) / (2.0 * dz)
 
                 div_y[i, j, k] = dsxy_dx + dsyy_dy + dsyz_dz
 
-                # --- z-component ---
+                # --- z-component --- (2nd-order one-sided at boundaries)
                 if i == 0:
-                    dsxz_dx = (sigma_xz[1, j, k] - sigma_xz[0, j, k]) / dx
+                    dsxz_dx = (-1.5 * sigma_xz[0, j, k] + 2.0 * sigma_xz[1, j, k] - 0.5 * sigma_xz[2, j, k]) / dx
                 elif i == nx - 1:
-                    dsxz_dx = (sigma_xz[nx - 1, j, k] - sigma_xz[nx - 2, j, k]) / dx
+                    dsxz_dx = (0.5 * sigma_xz[nx - 3, j, k] - 2.0 * sigma_xz[nx - 2, j, k] + 1.5 * sigma_xz[nx - 1, j, k]) / dx
                 else:
                     dsxz_dx = (sigma_xz[i + 1, j, k] - sigma_xz[i - 1, j, k]) / (2.0 * dx)
 
                 if j == 0:
-                    dsyz_dy = (sigma_yz[i, 1, k] - sigma_yz[i, 0, k]) / dy
+                    dsyz_dy = (-1.5 * sigma_yz[i, 0, k] + 2.0 * sigma_yz[i, 1, k] - 0.5 * sigma_yz[i, 2, k]) / dy
                 elif j == ny - 1:
-                    dsyz_dy = (sigma_yz[i, ny - 1, k] - sigma_yz[i, ny - 2, k]) / dy
+                    dsyz_dy = (0.5 * sigma_yz[i, ny - 3, k] - 2.0 * sigma_yz[i, ny - 2, k] + 1.5 * sigma_yz[i, ny - 1, k]) / dy
                 else:
                     dsyz_dy = (sigma_yz[i, j + 1, k] - sigma_yz[i, j - 1, k]) / (2.0 * dy)
 
                 if k == 0:
-                    dszz_dz = (sigma_zz[i, j, 1] - sigma_zz[i, j, 0]) / dz
+                    dszz_dz = (-1.5 * sigma_zz[i, j, 0] + 2.0 * sigma_zz[i, j, 1] - 0.5 * sigma_zz[i, j, 2]) / dz
                 elif k == nz - 1:
-                    dszz_dz = (sigma_zz[i, j, nz - 1] - sigma_zz[i, j, nz - 2]) / dz
+                    dszz_dz = (0.5 * sigma_zz[i, j, nz - 3] - 2.0 * sigma_zz[i, j, nz - 2] + 1.5 * sigma_zz[i, j, nz - 1]) / dz
                 else:
                     dszz_dz = (sigma_zz[i, j, k + 1] - sigma_zz[i, j, k - 1]) / (2.0 * dz)
 

@@ -41,7 +41,7 @@ def abel_transform(
 
     N_L(y_j) = 2 * integral_{y_j}^{R} ne(r) * r / sqrt(r^2 - y_j^2) dr
 
-    Uses trapezoidal quadrature with singularity handling at r = y.
+    Uses vectorized trapezoidal quadrature with singularity handling at r = y.
 
     Args:
         ne_r: Electron density profile ne(r), shape (nr,).
@@ -53,38 +53,34 @@ def abel_transform(
         y[j] = r[j] (impact parameters coincide with radial grid).
     """
     nr = len(r)
-    N_L = np.zeros(nr)
+    if nr == 0:
+        return np.zeros(nr)
 
-    for j in range(nr):
-        y = r[j]
-        # Integrate from r = y to r = R (index j to nr-1)
-        integral = 0.0
-        for i in range(j, nr):
-            r_i = r[i]
-            r_sq_diff = r_i**2 - y**2
-            if r_sq_diff < 1e-30:
-                # At the singularity (r = y), use L'Hopital approximation
-                # The integrand ~ ne(r) * sqrt(2*r) / sqrt(r - y) near r = y
-                # For the first cell, approximate with midpoint rule
-                if i + 1 < nr:
-                    dr = r[i + 1] - r[i]
-                    # Regularized: replace sqrt(r^2 - y^2) with sqrt(2*r*dr)
-                    r_sq_diff_reg = 2.0 * r_i * dr
-                    integral += ne_r[i] * r_i / np.sqrt(max(r_sq_diff_reg, 1e-30)) * dr
-                continue
-            # Standard trapezoidal contribution
-            integrand = ne_r[i] * r_i / np.sqrt(r_sq_diff)
-            if i + 1 < nr:
-                dr = r[i + 1] - r[i]
-            elif i > 0:
-                dr = r[i] - r[i - 1]
-            else:
-                dr = r[0]
-            integral += integrand * dr
+    # Quadrature weights: forward differences, last cell uses backward
+    dr = np.empty(nr)
+    dr[:-1] = np.diff(r)
+    dr[-1] = dr[-2] if nr > 1 else r[0]
 
-        N_L[j] = 2.0 * integral
+    # Build kernel matrix K[j, i] via broadcasting
+    ri = r[np.newaxis, :]  # (1, nr) — integration variable
+    yj = r[:, np.newaxis]  # (nr, 1) — impact parameter
+    r2_y2 = ri**2 - yj**2  # (nr, nr)
 
-    return N_L
+    # Upper triangular mask (i >= j) with non-singular points
+    mask_upper = np.triu(np.ones((nr, nr), dtype=bool))
+    valid = mask_upper & (r2_y2 > 1e-30)
+
+    # Standard contribution: r_i / sqrt(r_i^2 - y_j^2) * dr_i
+    K = np.where(valid, ri / np.sqrt(np.maximum(r2_y2, 1e-30)) * dr[np.newaxis, :], 0.0)
+
+    # Diagonal regularization (i = j, j < nr-1): L'Hopital approximation
+    # At singularity r = y: use sqrt(2*r*dr) instead of sqrt(r^2 - y^2)
+    if nr > 1:
+        diag = np.arange(nr - 1)
+        r_sq_reg = np.maximum(2.0 * r[diag] * dr[diag], 1e-30)
+        K[diag, diag] = r[diag] / np.sqrt(r_sq_reg) * dr[diag]
+
+    return 2.0 * (K @ ne_r)
 
 
 def abel_inversion(
@@ -95,7 +91,7 @@ def abel_inversion(
 
     ne(r_i) = -(1/pi) * integral_{r_i}^{R} dN_L/dy / sqrt(y^2 - r_i^2) dy
 
-    Uses numerical differentiation of N_L and trapezoidal quadrature.
+    Uses vectorized numerical differentiation and trapezoidal quadrature.
 
     Args:
         N_L: Line-integrated density, shape (nr,).
@@ -105,28 +101,28 @@ def abel_inversion(
         Recovered density profile ne(r), shape (nr,).
     """
     nr = len(r)
-    ne_recovered = np.zeros(nr)
+    if nr == 0:
+        return np.zeros(nr)
 
     # Numerical derivative of N_L with respect to y (= r)
     dr = np.gradient(r)
     dNL_dy = np.gradient(N_L, r)
 
-    for i in range(nr):
-        r_i = r[i]
-        integral = 0.0
-        for j in range(i, nr):
-            y = r[j]
-            y_sq_diff = y**2 - r_i**2
-            if y_sq_diff < 1e-30:
-                continue
-            integrand = dNL_dy[j] / np.sqrt(y_sq_diff)
-            integral += integrand * dr[j]
+    # Build kernel K[i, j] via broadcasting
+    yj = r[np.newaxis, :]  # (1, nr) — y values (columns)
+    ri = r[:, np.newaxis]  # (nr, 1) — r values (rows)
+    y2_r2 = yj**2 - ri**2  # (nr, nr)
 
-        ne_recovered[i] = -integral / pi
+    # Upper triangular mask (j >= i) with non-singular points
+    mask_upper = np.triu(np.ones((nr, nr), dtype=bool))
+    valid = mask_upper & (y2_r2 > 1e-30)
+
+    K = np.where(valid, dr[np.newaxis, :] / np.sqrt(np.maximum(y2_r2, 1e-30)), 0.0)
+
+    ne_recovered = -(K @ dNL_dy) / pi
 
     # Enforce non-negative density
-    ne_recovered = np.maximum(ne_recovered, 0.0)
-    return ne_recovered
+    return np.maximum(ne_recovered, 0.0)
 
 
 def phase_shift(
