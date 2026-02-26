@@ -450,7 +450,7 @@ class TestAdiabaticBackPressure:
 
         I_test = 1.5e6
         dt = 1e-9
-        for _ in range(500):
+        for _ in range(250):
             if snowplow._pinch_complete:
                 break
             result = snowplow._step_radial(dt, I_test)

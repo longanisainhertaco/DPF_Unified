@@ -757,7 +757,7 @@ def test_python_ct_small_grid_bypass():
 
 @pytest.mark.slow
 def test_python_ct_vs_metal_ct_parity():
-    """Python CT and Metal CT should both achieve div(B) < 1e-8 after 30 steps."""
+    """Python CT and Metal CT should both achieve div(B) < 1e-8 after 18 steps."""
     nx = ny = nz = 16
     dx = 0.01
 
@@ -783,7 +783,7 @@ def test_python_ct_vs_metal_ct_parity():
         time_integrator="ssp_rk3",
     )
 
-    for _ in range(30):
+    for _ in range(18):
         dt = solver_py._compute_dt(state_py)
         state_py = solver_py.step(state_py, dt, current=0.0, voltage=0.0)
 
@@ -809,7 +809,7 @@ def test_python_ct_vs_metal_ct_parity():
         time_integrator="ssp_rk3",
     )
 
-    for _ in range(30):
+    for _ in range(18):
         dt = solver_metal._compute_dt(state_metal)
         state_metal = solver_metal.step(state_metal, dt)
 

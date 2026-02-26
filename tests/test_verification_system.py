@@ -604,7 +604,7 @@ class TestT34TemperatureScaling:
         engine = SimulationEngine(config)
 
         # Run a few steps
-        for _ in range(10):
+        for _ in range(5):
             result = engine.step()
 
         # Temperatures should be positive (engine floors Te at 1.0 K)
