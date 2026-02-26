@@ -34,22 +34,22 @@ import logging
 import numpy as np
 import torch
 
-from dpf.core.bases import PlasmaSolverBase, CouplingState
+from dpf.core.bases import CouplingState, PlasmaSolverBase
+from dpf.metal.metal_kernel import MetalKernelWrapper
 from dpf.metal.metal_riemann import (
-    mhd_rhs_mps,
-    _prim_to_cons_mps,
+    P_FLOOR,
+    RHO_FLOOR,
     _cons_to_prim_mps,
     _fast_magnetosonic_mps,
-    RHO_FLOOR,
-    P_FLOOR,
+    _prim_to_cons_mps,
+    mhd_rhs_mps,
 )
 from dpf.metal.metal_stencil import ct_update_mps, div_B_mps, emf_from_fluxes_mps
-from dpf.metal.metal_kernel import MetalKernelWrapper
 
 # Try to check if Metal is available via the wrapper's internal check
 try:
-    import Quartz
     import Metal
+    import Quartz
     _NATIVE_METAL_AVAILABLE = True
 except ImportError:
     _NATIVE_METAL_AVAILABLE = False
@@ -227,10 +227,10 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Initialize Metal Kernel Wrapper (Native Path) -------------------
         self.metal_wrapper: MetalKernelWrapper | None = None
         self.use_native_metal: bool = False
-        
+
         if _NATIVE_METAL_AVAILABLE and device == "mps":
             self.use_native_metal = True # Assume success until proven otherwise
-        
+
         if self.use_native_metal:
             try:
                 from dpf.metal.metal_kernel import MetalKernelWrapper
@@ -474,14 +474,14 @@ class MetalMHDSolver(PlasmaSolverBase):
         U_cons = self._prim_to_cons(
             {"rho": rho, "velocity": vel, "pressure": p, "B": B}
         )
-        
+
         # 2. Compute Fluxes for each dimension
         # flux_x, flux_y, flux_z shape (8, nx, ny, nz)
         # Note: Native kernel returns F at interfaces i+1/2
         flux_x = self._dispatch_sweep(U_cons, dim=0)
         flux_y = self._dispatch_sweep(U_cons, dim=1)
         flux_z = self._dispatch_sweep(U_cons, dim=2)
-        
+
         # 3. Compute Divergence dF/dx (PyTorch)
         # dU/dt = - (dFx/dx + dFy/dy + dFz/dz)
         # Fluxes are at i+1/2.
@@ -489,65 +489,65 @@ class MetalMHDSolver(PlasmaSolverBase):
         # flux_x has size (nx-1) at interfaces?
         # mhd_sweep_x.metal comment: "We compute fluxes at interfaces i+1/2 for i=0..nx-2"
         # So flux_x corresponds to F_{i+1/2}.
-        # We need to pad to get F_{-1/2} and F_{nx+1/2}? 
+        # We need to pad to get F_{-1/2} and F_{nx+1/2}?
         # Boundary conditions are handled by ghost cells?
         # The Python solver usually assumes ghost cells are part of the input.
         # mhd_rhs_mps handles 2 ghost cells on each side.
-        
+
         # Divergence
         # Pad fluxes with zeros or boundary values?
         # For now, mimic mhd_rhs_mps divergence:
         # It slices [2:-2] usually.
         # Let's assume standard behavior: dF[i] = (F[i] - F[i-1])/dx
-        
+
         dU_dt = torch.zeros_like(U_cons)
-        
+
         # X-direction
         dFx = (flux_x - torch.roll(flux_x, 1, dims=1)) / self.dx
         # Fix boundaries? For periodic/outflow? Let's just use central diff for now or valid domain.
-        # mhd_rhs_mps returns valid domain in center? 
+        # mhd_rhs_mps returns valid domain in center?
         # Actually mhd_rhs_mps returns dU of same size as input, filling ghosts with 0.
         dU_dt -= dFx
-        
+
         # Y-direction
         dFy = (flux_y - torch.roll(flux_y, 1, dims=2)) / self.dy
         dU_dt -= dFy
-        
+
         # Z-direction
         dFz = (flux_z - torch.roll(flux_z, 1, dims=3)) / self.dz
         dU_dt -= dFz
-        
+
         # 4. Convert dU_dt (conservative) back to dPrim/dt
         # Matches logic in mhd_rhs_mps to be compatible with _euler_update
-        
+
         # Indices
         IDN, IM1, IM2, IM3, IEN = 0, 1, 2, 3, 4
         IB1, IB2, IB3 = 5, 6, 7
-        
+
         # Clamp rho for division
         rho_safe = torch.clamp(rho, min=1e-12) # RHO_FLOOR hardcoded or import?
         inv_rho = 1.0 / rho_safe
-        
+
         drho_dt = dU_dt[IDN]
-        
+
         # Velocity: d(v)/dt = (d(rho*v)/dt - v * drho/dt) / rho
         dvx_dt = (dU_dt[IM1] - vel[0] * drho_dt) * inv_rho
         dvy_dt = (dU_dt[IM2] - vel[1] * drho_dt) * inv_rho
         dvz_dt = (dU_dt[IM3] - vel[2] * drho_dt) * inv_rho
         dvel_dt = torch.stack([dvx_dt, dvy_dt, dvz_dt], dim=0)
-        
+
         # B-field: direct
         dB_dt = dU_dt[IB1:IB1+3]
-        
+
         # Pressure: dp/dt
         v_dot_dmom = (vel[0] * dU_dt[IM1] + vel[1] * dU_dt[IM2] + vel[2] * dU_dt[IM3])
         v_sq = vel[0]**2 + vel[1]**2 + vel[2]**2
         B_dot_dB = B[0] * dU_dt[IB1] + B[1] * dU_dt[IB2] + B[2] * dU_dt[IB3]
-        
+
         dp_dt = (self.gamma - 1.0) * (
             dU_dt[IEN] - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
         )
-        
+
         return {
             "rho": drho_dt,
             "velocity": dvel_dt,
@@ -580,61 +580,61 @@ class MetalMHDSolver(PlasmaSolverBase):
             U_p = U[perm_vars, ...]
             U_in = U_p.permute(3, 1, 2, 0).contiguous() # (nz, nx, ny, 8)
             dims = (U.shape[3], U.shape[1], U.shape[2]) # nz, nx, ny
-            
+
         # 2. Prepare persistent buffers (Zero-Copy-ish)
         # We reuse the same shared MTLBuffer for all sweeps to avoid allocation overhead.
-        
+
         nx, ny, nz = dims
         total_elements = nx * ny * nz * 8
-        
+
         # Check/allocate persistent buffers
         # Key "U" stores (MTLBuffer, np.ndarray_view)
         if "U" not in self.buffers or self.buffers["U"][1].size != total_elements:
              # Allocate flat shared buffers
              self.buffers["U"] = self.metal_wrapper.create_shared_buffer((total_elements,), dtype=np.float32)
              self.buffers["F"] = self.metal_wrapper.create_shared_buffer((total_elements,), dtype=np.float32)
-             
+
         buf_U, np_U_flat = self.buffers["U"]
         buf_F, np_F_flat = self.buffers["F"]
-        
+
         # Write data to shared buffer
         # Reshape the flat view to match the current permuted shape
         # U_in shape is e.g. (nx, ny, nz, 8)
         # We use np.copyto for fast copy into existing shared memory
         np_U_view = np_U_flat.reshape(U_in.shape)
         np.copyto(np_U_view, U_in.cpu().numpy())
-        
+
         # Clear output buffer? (Not strictly necessary if kernel overwrites, but safe)
-        # np_F_flat.fill(0.0) 
-        
+        # np_F_flat.fill(0.0)
+
         # Params buffers (small, can recreate or cache too)
         # For now, recreate them as they are tiny
         dims_arr = np.array([nx, ny, nz], dtype=np.int32)
         buf_dims = self.metal_wrapper.numpy_to_buffer(dims_arr)
-        
+
         gamma_arr = np.array([self.gamma], dtype=np.float32)
         buf_gamma = self.metal_wrapper.numpy_to_buffer(gamma_arr)
-        
-        limiter_val = 1 if self.limiter == "mc" else 0 
+
+        limiter_val = 1 if self.limiter == "mc" else 0
         limiter_arr = np.array([limiter_val], dtype=np.int32)
         buf_limiter = self.metal_wrapper.numpy_to_buffer(limiter_arr)
-        
+
         # Dispatch
         self.metal_wrapper.dispatch(
             "mhd_sweep_x",
             (nx, ny, nz),
             [buf_U, buf_F, buf_dims, buf_gamma, buf_limiter]
         )
-        
+
         # Read back
         # Result is in np_F_flat (shared memory)
         # Reshape to expected output shape
         F_out_np = np_F_flat.reshape(U_in.shape)
-        
+
         # Convert to Tensor (on device)
         # MUST clone() because F_out_np is a view into shared memory that will be overwritten
         F_out = torch.from_numpy(F_out_np).to(self.device).clone()
-        
+
         # 3. Unpermute
         if dim == 0:
             # (nx, ny, nz, 8) -> (8, nx, ny, nz)
@@ -644,7 +644,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             # Permute spatial: (ny, nz, nx) -> (nx, ny, nz) => (2, 0, 1)
             F_spatial = F_out.permute(3, 2, 0, 1) # (8, nx, ny, nz) with permuted vars
             # Unpermute vars: (rho, My, Mz, Mx...) -> (rho, Mx, My, Mz...)
-            # Current: 0, 2, 3, 1... 
+            # Current: 0, 2, 3, 1...
             # We want: 0, 1, 2, 3...
             # The inverse of [0, 2, 3, 1, 4, 6, 7, 5] is [0, 3, 1, 2, 4, 7, 5, 6]
             # (Same as Z permutation!)
@@ -658,7 +658,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             # (Same as Y permutation)
             unperm_vars = [0, 2, 3, 1, 4, 6, 7, 5]
             return F_spatial[unperm_vars, ...]
-        
+
         return F_out
 
     def _euler_update(
@@ -820,7 +820,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # eta_code = eta_si / mu_0_si
         mu_0_si = 4.0e-7 * 3.14159265358979323846
         eta_eff = eta / mu_0_si
-        
+
         # Current density J = curl(B) / mu_0 (mu_0=1)
         dBz_dy = torch.gradient(B[2], dim=1, spacing=self.dy)[0]
         dBy_dz = torch.gradient(B[1], dim=2, spacing=self.dz)[0]
@@ -832,7 +832,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         Jx = (dBz_dy - dBy_dz) # / 1.0
         Jy = (dBx_dz - dBz_dx)
         Jz = (dBy_dx - dBx_dy)
-        
+
         # Two-Way Coupling: J_plasma = J_total - J_kin
         # J_kin is already in Code Units
         if J_kin is not None:
@@ -965,7 +965,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             eta_gpu = torch.tensor(
                 eta_field, dtype=self._dtype, device=self.device,
             )
-            
+
             # Handle Kinetic Source Terms (J_kin)
             J_kin_code = None
             if source_terms is not None and "J_kin" in source_terms:

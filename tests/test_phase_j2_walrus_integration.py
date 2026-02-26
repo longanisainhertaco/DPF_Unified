@@ -802,3 +802,394 @@ class TestConfidenceFix:
         source = inspect.getsource(EnsemblePredictor)
         assert "DPFSurrogate.load(" not in source
         assert "DPFSurrogate(" in source
+
+
+# ── Phase Z: WALRUS Cross-Validation Tests ──────────────────────
+
+
+class TestValidateAgainstPhysics:
+    """Test DPFSurrogate.validate_against_physics cross-validation method."""
+
+    @pytest.fixture
+    def placeholder_surrogate(self, monkeypatch, tmp_path):
+        """Create placeholder surrogate for validation testing."""
+        mock_torch = MagicMock()
+        mock_torch.load.return_value = {"state_dict": {}}
+        mock_tensor = MagicMock()
+        mock_tensor.unsqueeze.return_value = mock_tensor
+        mock_tensor.float.return_value = mock_tensor
+        mock_tensor.to.return_value = mock_tensor
+        mock_torch.from_numpy.return_value = mock_tensor
+
+        monkeypatch.setitem(sys.modules, "torch", mock_torch)
+        monkeypatch.setattr("dpf.ai.HAS_TORCH", True)
+        monkeypatch.setattr("dpf.ai.HAS_WALRUS", False)
+        monkeypatch.setattr("dpf.ai.surrogate.HAS_TORCH", True)
+        monkeypatch.setattr("dpf.ai.surrogate.HAS_WALRUS", False)
+        monkeypatch.setattr("dpf.ai.surrogate.torch", mock_torch)
+        monkeypatch.setattr(
+            "dpf.ai.surrogate.dpf_scalar_to_well",
+            lambda field, *a, **kw: field.astype(np.float32),
+        )
+        monkeypatch.setattr(
+            "dpf.ai.surrogate.dpf_vector_to_well",
+            lambda field, *a, **kw: field.astype(np.float32),
+        )
+
+        ckpt = tmp_path / "model.pt"
+        ckpt.write_bytes(b"fake")
+
+        from dpf.ai.surrogate import DPFSurrogate
+
+        return DPFSurrogate(ckpt, history_length=2)
+
+    def test_validate_returns_report_dict(self, placeholder_surrogate):
+        """validate_against_physics returns a dict with required keys."""
+        trajectory = [_make_state() for _ in range(5)]
+        report = placeholder_surrogate.validate_against_physics(trajectory)
+
+        assert "n_steps" in report
+        assert "per_field_l2" in report
+        assert "mean_l2" in report
+        assert "max_l2" in report
+        assert "diverging_steps" in report
+
+    def test_validate_n_steps_correct(self, placeholder_surrogate):
+        """n_steps = len(trajectory) - history_length."""
+        trajectory = [_make_state() for _ in range(7)]
+        report = placeholder_surrogate.validate_against_physics(trajectory)
+        # history_length=2, so we validate steps 2..6 = 5 steps
+        assert report["n_steps"] == 5
+
+    def test_validate_identical_trajectory_zero_error(self, placeholder_surrogate):
+        """Placeholder surrogate copies last state, so identical trajectory → 0 L2."""
+        # All states identical → prediction = copy of last = same as actual
+        state = _make_state()
+        trajectory = [state.copy() for _ in range(5)]
+        # Make all states truly identical (same arrays)
+        for t in trajectory:
+            for k in t:
+                t[k] = state[k].copy()
+
+        report = placeholder_surrogate.validate_against_physics(trajectory)
+        assert report["mean_l2"] == pytest.approx(0.0, abs=1e-10)
+
+    def test_validate_diverging_steps_detected(self, placeholder_surrogate):
+        """States diverging from placeholder should produce nonzero L2."""
+        trajectory = [_make_state() for _ in range(5)]
+        # Make step 3 very different from step 2 (placeholder returns copy of step 2)
+        trajectory[3]["rho"][:] = 1e6
+        trajectory[4]["rho"][:] = 1e6
+
+        report = placeholder_surrogate.validate_against_physics(trajectory)
+        # L2 should be nonzero where states diverge
+        assert report["max_l2"] > 0
+
+    def test_validate_too_short_trajectory_raises(self, placeholder_surrogate):
+        """Trajectory shorter than history_length + 1 raises ValueError."""
+        trajectory = [_make_state() for _ in range(2)]
+        with pytest.raises(ValueError, match="too short"):
+            placeholder_surrogate.validate_against_physics(trajectory)
+
+    def test_validate_specific_fields(self, placeholder_surrogate):
+        """Can validate only specific fields."""
+        trajectory = [_make_state() for _ in range(5)]
+        report = placeholder_surrogate.validate_against_physics(
+            trajectory, fields=["rho", "Te"]
+        )
+        assert set(report["per_field_l2"].keys()) == {"rho", "Te"}
+
+    def test_validate_method_exists(self):
+        """DPFSurrogate has validate_against_physics method."""
+        from dpf.ai.surrogate import DPFSurrogate
+
+        assert hasattr(DPFSurrogate, "validate_against_physics")
+        assert callable(DPFSurrogate.validate_against_physics)
+
+
+class TestDeadCodeRemoval:
+    """Verify dead _states_to_tensor was removed from surrogate.py."""
+
+    def test_no_states_to_tensor_method(self):
+        """_states_to_tensor (the dead method using field_mapping) was removed."""
+        import inspect
+
+        from dpf.ai.surrogate import DPFSurrogate
+
+        # _states_to_walrus_tensor should still exist
+        assert hasattr(DPFSurrogate, "_states_to_walrus_tensor")
+        # _tensor_to_state should still exist
+        assert hasattr(DPFSurrogate, "_tensor_to_state")
+        # The old _states_to_tensor (using dpf_scalar_to_well signature) should be gone
+        source = inspect.getsource(DPFSurrogate)
+        # It should NOT contain the old method that called dpf_scalar_to_well incorrectly
+        assert "dpf_scalar_to_well(state[field_name], field_name)" not in source
+
+    def test_validate_endpoint_exists(self):
+        """realtime_server has /validate endpoint."""
+        import inspect
+
+        from dpf.ai import realtime_server
+
+        source = inspect.getsource(realtime_server)
+        assert "ai_validate" in source
+        assert "/validate" in source
+
+
+class TestWebSocketEnhancements:
+    """Test enhanced WebSocket streaming rollout support."""
+
+    def test_websocket_supports_rollout_type(self):
+        """WebSocket handler recognizes 'rollout' message type."""
+        import inspect
+
+        from dpf.ai import realtime_server
+
+        source = inspect.getsource(realtime_server.ai_stream)
+        assert '"rollout"' in source or "'rollout'" in source
+
+    def test_websocket_supports_stop_type(self):
+        """WebSocket handler recognizes 'stop' message type."""
+        import inspect
+
+        from dpf.ai import realtime_server
+
+        source = inspect.getsource(realtime_server.ai_stream)
+        assert '"stop"' in source or "'stop'" in source
+
+    def test_websocket_rollout_sends_step_events(self):
+        """WebSocket rollout sends 'rollout_step' events per step."""
+        import inspect
+
+        from dpf.ai import realtime_server
+
+        source = inspect.getsource(realtime_server.ai_stream)
+        assert "rollout_step" in source
+        assert "rollout_start" in source
+        assert "rollout_complete" in source
+
+
+# ── HTTP-level Validate Endpoint Tests ──────────────────────────
+
+
+class TestValidateEndpointHTTP:
+    """HTTP-level tests for POST /api/ai/validate."""
+
+    @pytest.fixture
+    def mock_surrogate_with_validate(self, monkeypatch):
+        """Install a mock surrogate with validate_against_physics."""
+        from dpf.ai import realtime_server
+
+        mock_surrogate = MagicMock()
+        mock_surrogate.history_length = 2
+        mock_surrogate.validate_against_physics.return_value = {
+            "n_steps": 3,
+            "mean_l2": 0.05,
+            "max_l2": 0.12,
+            "diverging_steps": [],
+            "per_field_l2": {"rho": [0.04, 0.05, 0.06], "Te": [0.03, 0.04, 0.05]},
+        }
+
+        original = realtime_server._surrogate
+        realtime_server._surrogate = mock_surrogate
+        yield mock_surrogate
+        realtime_server._surrogate = original
+
+    def test_validate_returns_200(self, mock_surrogate_with_validate):
+        """POST /api/ai/validate with valid trajectory returns 200."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        traj = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        response = client.post("/api/ai/validate", json={"trajectory": traj})
+
+        assert response.status_code == 200
+
+    def test_validate_response_has_required_keys(self, mock_surrogate_with_validate):
+        """Response contains n_steps, mean_l2, max_l2, diverging_steps, per_field_l2."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        traj = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        response = client.post("/api/ai/validate", json={"trajectory": traj})
+
+        data = response.json()
+        assert "n_steps" in data
+        assert "mean_l2" in data
+        assert "max_l2" in data
+        assert "diverging_steps" in data
+        assert "per_field_l2" in data
+        assert "inference_time_ms" in data
+
+    def test_validate_response_values_correct(self, mock_surrogate_with_validate):
+        """Response values match the mocked validate_against_physics return."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        traj = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        response = client.post("/api/ai/validate", json={"trajectory": traj})
+
+        data = response.json()
+        assert data["n_steps"] == 3
+        assert data["mean_l2"] == pytest.approx(0.05, abs=1e-6)
+        assert data["max_l2"] == pytest.approx(0.12, abs=1e-6)
+        assert data["diverging_steps"] == []
+
+    def test_validate_too_short_trajectory_returns_422(self):
+        """Trajectory with 1 state (< 2 required) returns 422."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.ai import realtime_server
+        from dpf.server.app import app
+
+        mock_surrogate = MagicMock()
+        original = realtime_server._surrogate
+        realtime_server._surrogate = mock_surrogate
+
+        try:
+            client = TestClient(app)
+            traj = [{"rho": [[1.0, 2.0]]}]  # Only 1 state — below the 2-state minimum
+            response = client.post("/api/ai/validate", json={"trajectory": traj})
+            assert response.status_code == 422
+        finally:
+            realtime_server._surrogate = original
+
+    def test_validate_no_surrogate_returns_503(self):
+        """If no surrogate loaded, /validate returns 503."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.ai import realtime_server
+        from dpf.server.app import app
+
+        original = realtime_server._surrogate
+        realtime_server._surrogate = None
+
+        try:
+            client = TestClient(app)
+            traj = [{"rho": [[1.0]]} for _ in range(4)]
+            response = client.post("/api/ai/validate", json={"trajectory": traj})
+            assert response.status_code == 503
+        finally:
+            realtime_server._surrogate = original
+
+    def test_validate_calls_validate_against_physics(self, mock_surrogate_with_validate):
+        """Surrogate.validate_against_physics is called once with trajectory arrays."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        traj = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        client.post("/api/ai/validate", json={"trajectory": traj})
+
+        mock_surrogate_with_validate.validate_against_physics.assert_called_once()
+
+
+# ── HTTP-level Rollout Endpoint Tests ───────────────────────────
+
+
+class TestRolloutEndpointHTTP:
+    """HTTP-level tests for POST /api/ai/rollout."""
+
+    @pytest.fixture
+    def mock_surrogate_with_rollout(self, monkeypatch):
+        """Install a mock surrogate with rollout method."""
+        from dpf.ai import realtime_server
+
+        predicted_state = {"rho": np.ones((2, 2, 2))}
+
+        mock_surrogate = MagicMock()
+        mock_surrogate.history_length = 2
+        mock_surrogate.rollout.return_value = [predicted_state] * 5
+
+        original = realtime_server._surrogate
+        realtime_server._surrogate = mock_surrogate
+        yield mock_surrogate
+        realtime_server._surrogate = original
+
+    def test_rollout_returns_200(self, mock_surrogate_with_rollout):
+        """POST /api/ai/rollout with valid history returns 200."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        history = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        response = client.post("/api/ai/rollout?n_steps=5", json=history)
+
+        assert response.status_code == 200
+
+    def test_rollout_response_has_trajectory_key(self, mock_surrogate_with_rollout):
+        """Rollout response has 'trajectory', 'n_steps', 'total_inference_time_ms'."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        history = [{"rho": [[1.0, 2.0], [3.0, 4.0]]} for _ in range(4)]
+        response = client.post("/api/ai/rollout?n_steps=5", json=history)
+
+        data = response.json()
+        assert "trajectory" in data
+        assert "n_steps" in data
+        assert "total_inference_time_ms" in data
+
+    def test_rollout_zero_steps_returns_422(self, mock_surrogate_with_rollout):
+        """n_steps=0 returns 422 (must be positive)."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        history = [{"rho": [[1.0, 2.0]]} for _ in range(4)]
+        response = client.post("/api/ai/rollout?n_steps=0", json=history)
+
+        assert response.status_code == 422
+
+    def test_rollout_too_many_steps_returns_422(self, mock_surrogate_with_rollout):
+        """n_steps > 1000 returns 422."""
+        pytest.importorskip("fastapi")
+        pytest.importorskip("httpx")
+
+        from fastapi.testclient import TestClient
+
+        from dpf.server.app import app
+
+        client = TestClient(app)
+        history = [{"rho": [[1.0, 2.0]]} for _ in range(4)]
+        response = client.post("/api/ai/rollout?n_steps=1001", json=history)
+
+        assert response.status_code == 422

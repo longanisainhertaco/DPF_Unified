@@ -49,7 +49,7 @@ from typing import Any
 
 import numpy as np
 
-from dpf.constants import k_B, mu_0, pi
+from dpf.constants import k_B, m_d, mu_0, pi
 
 logger = logging.getLogger(__name__)
 
@@ -289,16 +289,17 @@ class LeeModel:
             dV_dt = -I / C
 
             # Snowplow acceleration (Lee & Saw 2014)
-            # F = (mu_0/(4*pi)) * ln(b/a) * (fm*I)^2
-            # Derived from dW/dz where W = (mu_0*I^2/(4*pi))*ln(b/a)*z
-            # minus mass pickup: M * dvz/dt + vz * dM/dt = F
-            # dM/dt = fc * rho0 * annulus_area * vz
+            # F = (mu_0/(4*pi)) * ln(b/a) * (fc*I)^2 - p_fill * A_annulus
+            # Full equation: M * dvz/dt + vz * dM/dt = F_mag - F_back
+            # where F_back = fill gas back-pressure force (opposes sheet motion)
+            # dM/dt = fm * rho0 * annulus_area * vz
             dM_dt = self.fm * rho0 * annulus_area * vz
 
             F_magnetic = (mu_0 / (4.0 * pi)) * np.log(b / a) * (self.fc * I)**2
+            F_back = p_Pa * annulus_area
 
             if M_swept > 1e-15:
-                dvz_dt = (F_magnetic - vz * dM_dt) / M_swept
+                dvz_dt = (F_magnetic - F_back - vz * dM_dt) / M_swept
             else:
                 dvz_dt = 0.0
 
@@ -559,3 +560,120 @@ class LeeModel:
             waveform_nrmse=waveform_nrmse,
             device_name=device_name,
         )
+
+
+# ============================================================
+# Neutron yield estimation
+# ============================================================
+
+
+def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
+    """Estimate total DD neutron yield per shot from a Lee Model pinch.
+
+    Uses the beam-target fusion mechanism, which dominates thermonuclear
+    yield in DPF devices operating below ~1 MJ stored energy.
+
+    **Algorithm** (Lee & Saw 2008, Section III):
+
+    1. Extract pinch geometry from ``result.metadata``:
+       ``a``, ``b``, ``z_f``, ``rho0``, ``fm``.
+    2. Estimate pinch density via adiabatic cylindrical compression from
+       the fill gas to radius ``r_pinch_min = 0.1 * a``::
+
+           M_slug = fm * rho0 * pi * (b^2 - r_pinch_min^2) * z_f
+           V_pinch = pi * r_pinch_min^2 * z_f
+           n_target = M_slug / (m_D * V_pinch)
+
+    3. Estimate pinch Alfven speed::
+
+           B_theta = mu_0 * I_pinch / (2 * pi * r_pinch_min)
+           rho_slug = M_slug / V_pinch
+           v_Alfven = B_theta / sqrt(mu_0 * rho_slug)
+
+    4. Estimate pinch voltage (back-EMF from inductance change)::
+
+           V_pinch_V = (mu_0/(2*pi)) * z_f * v_Alfven * I_pinch / r_pinch_min
+
+       Note: DPF pinch voltages of 100 kV – 2 MV are physically expected
+       for megaampere-class devices (Lee & Saw 2008, Table II).
+
+    5. Compute Alfven transit time (dwell time) and integrate yield::
+
+           tau_dwell = r_pinch_min / v_Alfven
+           dY_dt = beam_target_yield_rate(I_pinch, V_pinch_V, n_target, z_f)
+           Y_total = dY_dt * tau_dwell
+
+    Accuracy: This 0D model gives order-of-magnitude estimates (factor
+    1–100 of experimental). Shot-to-shot variability alone is typically
+    a factor 2–5x.
+
+    Args:
+        result: Completed :class:`LeeModelResult` with metadata populated.
+
+    Returns:
+        Estimated total neutron yield per shot (dimensionless count).
+        Returns 0.0 if metadata is incomplete or pinch was not reached.
+    """
+    from dpf.diagnostics.beam_target import beam_target_yield_rate
+
+    meta = result.metadata
+    if not meta:
+        return 0.0
+
+    # Extract device geometry
+    a: float = meta.get("anode_radius", 0.0)
+    b: float = meta.get("cathode_radius", 0.0)
+    z_f: float = meta.get("anode_length", 0.0)
+    rho0: float = meta.get("rho0", 0.0)
+    fm: float = meta.get("fm", 0.3)
+
+    if a <= 0.0 or b <= 0.0 or z_f <= 0.0 or rho0 <= 0.0:
+        return 0.0
+
+    # Pinch radius (Lee standard: 10% of anode radius)
+    r_pinch_min = 0.1 * a
+
+    # Pinch-phase current: approximately equal to peak current
+    # (current dip occurs DURING compression; at minimum radius, I ~ I_peak)
+    I_pinch = max(result.peak_current, 0.0)
+    if I_pinch <= 0.0:
+        return 0.0
+
+    # Swept mass in radial phase (cylindrical slug from b to r_pinch_min)
+    M_slug = fm * rho0 * pi * (b**2 - r_pinch_min**2) * z_f
+    M_slug = max(M_slug, 1.0e-30)
+
+    # Pinch volume
+    V_pinch_vol = pi * r_pinch_min**2 * z_f
+
+    # Target number density (deuterium) in pinch column
+    n_target = M_slug / (m_d * V_pinch_vol)
+    n_target = max(n_target, 0.0)
+
+    # Azimuthal B-field at pinch surface
+    B_theta = mu_0 * I_pinch / (2.0 * pi * r_pinch_min)
+
+    # Mass density in pinch slug
+    rho_slug = M_slug / V_pinch_vol
+
+    # Alfven speed in compressed slug
+    v_Alfven = B_theta / max(np.sqrt(mu_0 * rho_slug), 1.0e-30)
+    v_Alfven = max(v_Alfven, 1.0)  # floor at 1 m/s to avoid division by zero
+
+    # Pinch voltage from inductive back-EMF during radial compression
+    # V = (mu_0 / 2pi) * z_f * v_Alfven * I / r_pinch_min
+    # [H/m * m * (m/s) * A / m] = H * A / (m * s) = V (dimensional check OK)
+    V_pinch_V = (mu_0 / (2.0 * pi)) * z_f * v_Alfven * I_pinch / r_pinch_min
+
+    # Alfven transit time = dwell time of pinch
+    tau_dwell = r_pinch_min / v_Alfven
+
+    # Beam-target yield rate [neutrons/s]
+    dY_dt = beam_target_yield_rate(
+        I_pinch=I_pinch,
+        V_pinch=V_pinch_V,
+        n_target=n_target,
+        L_target=z_f,
+    )
+
+    return float(dY_dt * tau_dwell)

@@ -1,5 +1,15 @@
 """Validation suite for DPF simulations against experimental data."""
 
+from dpf.validation.bennett_equilibrium import (
+    bennett_btheta,
+    bennett_current_density,
+    bennett_current_from_temperature,
+    bennett_density,
+    bennett_line_density,
+    bennett_pressure,
+    create_bennett_state,
+    verify_force_balance,
+)
 from dpf.validation.calibration import (
     CalibrationResult,
     LeeModelCalibrator,
@@ -20,6 +30,15 @@ from dpf.validation.lee_model_comparison import (
     LeeModelComparison,
     LeeModelResult,
 )
+from dpf.validation.magnetized_noh import (
+    compression_ratio,
+    create_noh_state,
+    noh_downstream,
+    noh_exact_solution,
+    noh_upstream,
+    shock_velocity,
+    verify_rankine_hugoniot,
+)
 from dpf.validation.suite import (
     DEVICE_REGISTRY,
     ValidationResult,
@@ -30,6 +49,14 @@ from dpf.validation.suite import (
 )
 
 __all__ = [
+    "bennett_btheta",
+    "bennett_current_density",
+    "bennett_current_from_temperature",
+    "bennett_density",
+    "bennett_line_density",
+    "bennett_pressure",
+    "create_bennett_state",
+    "verify_force_balance",
     "CalibrationResult",
     "DEVICE_REGISTRY",
     "DEVICES",
@@ -50,4 +77,11 @@ __all__ = [
     "relative_error",
     "validate_current_waveform",
     "validate_neutron_yield",
+    "compression_ratio",
+    "create_noh_state",
+    "noh_downstream",
+    "noh_exact_solution",
+    "noh_upstream",
+    "shock_velocity",
+    "verify_rankine_hugoniot",
 ]

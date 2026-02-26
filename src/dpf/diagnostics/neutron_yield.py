@@ -11,8 +11,8 @@ where the factor 1/4 accounts for identical particle reactions (DD).
 For beam-target contribution (dominant in many DPF devices):
     dY/dt_beam ~ n_D * n_beam * <sigma*v>(E_beam) * V_interaction
 
-This module computes the thermonuclear component; beam-target is a
-correction that requires particle tracking (future Phase).
+This module computes the thermonuclear component.  For beam-target yields
+(dominant in many DPF devices), see ``dpf.diagnostics.beam_target``.
 
 Reference:
     Bosch & Hale, Nuclear Fusion 32:611 (1992)

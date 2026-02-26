@@ -369,15 +369,66 @@ async def ai_chat(body: dict[str, Any]) -> dict[str, Any]:
 # ── WebSocket Streaming ──────────────────────────────────────
 
 
+@ai_router.post("/validate")
+async def ai_validate(
+    trajectory: list[dict[str, Any]],
+    fields: list[str] | None = None,
+) -> dict[str, Any]:
+    """Cross-validate surrogate predictions against a physics trajectory.
+
+    Slides a window over the trajectory and computes per-field L2 divergence
+    at each step.  Useful for identifying where fine-tuning data would have
+    the highest impact.
+
+    Args:
+        trajectory: List of state dicts from a physics simulation
+        fields: Optional list of field names to compare (default: all)
+
+    Returns:
+        Validation report with per-field L2 errors and divergence summary
+    """
+    surrogate = _require_surrogate()
+
+    if len(trajectory) < 2:
+        raise HTTPException(
+            status_code=422, detail="Trajectory must have at least 2 states"
+        )
+
+    traj_arrays = [_lists_to_arrays(state) for state in trajectory]
+
+    start = time.perf_counter()
+    report = await asyncio.to_thread(
+        surrogate.validate_against_physics, traj_arrays, fields
+    )
+    elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+    # Convert per-field lists for JSON
+    report_json = {
+        "n_steps": report["n_steps"],
+        "mean_l2": report["mean_l2"],
+        "max_l2": report["max_l2"],
+        "diverging_steps": report["diverging_steps"],
+        "per_field_l2": {k: v for k, v in report["per_field_l2"].items()},
+        "inference_time_ms": elapsed_ms,
+    }
+    return report_json
+
+
 @ai_router.websocket("/ws/stream")
 async def ai_stream(websocket: WebSocket) -> None:
     """WebSocket endpoint for streaming AI predictions.
 
-    Full implementation deferred to Unity integration phase.
-    Currently accepts connections and sends status messages.
+    Supports commands:
+    - ``{"type": "ping"}`` — responds with ``{"type": "pong"}``
+    - ``{"type": "status"}`` — responds with model status
+    - ``{"type": "rollout", "history": [...], "n_steps": N}`` — streams
+      autoregressive predictions one step at a time
+    - ``{"type": "stop"}`` — cancels an in-progress rollout
     """
     await websocket.accept()
     logger.info("AI WebSocket client connected")
+
+    rollout_cancel = False
 
     try:
         # Send initial status
@@ -389,15 +440,80 @@ async def ai_stream(websocket: WebSocket) -> None:
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 msg = json.loads(data)
+                msg_type = msg.get("type", "")
 
-                if msg.get("type") == "ping":
+                if msg_type == "ping":
                     await websocket.send_json({"type": "pong"})
-                elif msg.get("type") == "status":
+
+                elif msg_type == "status":
                     status = await ai_status()
                     await websocket.send_json({"type": "status", "data": status})
+
+                elif msg_type == "stop":
+                    rollout_cancel = True
+                    await websocket.send_json({"type": "stopped"})
+
+                elif msg_type == "rollout":
+                    rollout_cancel = False
+                    if _surrogate is None:
+                        await websocket.send_json(
+                            {"type": "error", "message": "No surrogate loaded"}
+                        )
+                        continue
+
+                    history_raw = msg.get("history", [])
+                    n_steps = int(msg.get("n_steps", 10))
+                    n_steps = min(n_steps, 1000)
+
+                    if not history_raw:
+                        await websocket.send_json(
+                            {"type": "error", "message": "history is required"}
+                        )
+                        continue
+
+                    history_arrays = [_lists_to_arrays(s) for s in history_raw]
+                    window = list(history_arrays)
+
+                    await websocket.send_json(
+                        {"type": "rollout_start", "n_steps": n_steps}
+                    )
+
+                    for step in range(n_steps):
+                        if rollout_cancel:
+                            await websocket.send_json(
+                                {"type": "rollout_cancelled", "steps_completed": step}
+                            )
+                            break
+
+                        t0 = time.perf_counter()
+                        pred = await asyncio.to_thread(
+                            _surrogate.predict_next_step, window
+                        )
+                        dt_ms = (time.perf_counter() - t0) * 1000.0
+
+                        pred_lists = _arrays_to_lists(pred)
+                        await websocket.send_json({
+                            "type": "rollout_step",
+                            "step": step,
+                            "state": pred_lists,
+                            "inference_ms": dt_ms,
+                        })
+
+                        window.append(pred)
+                        # Keep sliding window bounded
+                        if len(window) > _surrogate.history_length * 2:
+                            window = window[-_surrogate.history_length:]
+
+                        # Yield control to allow stop messages
+                        await asyncio.sleep(0)
+                    else:
+                        await websocket.send_json(
+                            {"type": "rollout_complete", "n_steps": n_steps}
+                        )
+
                 else:
                     await websocket.send_json(
-                        {"type": "error", "message": f"Unknown message type: {msg.get('type')}"}
+                        {"type": "error", "message": f"Unknown message type: {msg_type}"}
                     )
             except asyncio.TimeoutError:
                 # Send keepalive
