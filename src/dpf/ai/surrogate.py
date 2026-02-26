@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -221,8 +222,14 @@ class DPFSurrogate(WalrusInferenceMixin):
         if self._is_walrus_model:
             return self._walrus_predict(recent_history)
 
-        # Placeholder: return copy of last state
-        logger.debug("Running placeholder prediction (walrus not installed)")
+        # Placeholder: return copy of last state (no real prediction)
+        warnings.warn(
+            "WALRUS model not loaded — returning placeholder prediction. "
+            "Downstream results (confidence, inverse design) are meaningless.",
+            UserWarning,
+            stacklevel=2,
+        )
+        logger.warning("Placeholder prediction: returning last state unchanged")
         predicted_state = {k: v.copy() for k, v in recent_history[-1].items()}
         return predicted_state
 

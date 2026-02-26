@@ -3,9 +3,14 @@
 # Opens a live visual counter in your browser showing slow test progress.
 #
 # Usage:
-#   ./tools/launch_dashboard.sh          # slow tests only (default)
-#   ./tools/launch_dashboard.sh --all    # ALL tests
-#   ./tools/launch_dashboard.sh --fast   # non-slow tests only
+#   ./tools/launch_dashboard.sh              # HTML dashboard + slow tests (default)
+#   ./tools/launch_dashboard.sh --all        # ALL tests
+#   ./tools/launch_dashboard.sh --fast       # non-slow tests only
+#   ./tools/launch_dashboard.sh --terminal   # Rich terminal dashboard (no browser)
+#
+# See also:
+#   python tools/test_dashboard.py           # Rich terminal dashboard (standalone)
+#   python tools/test_dashboard.py --watch   # Watch mode (pair with test_status_runner.py)
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -35,6 +40,24 @@ echo -e "${BLUE}║   🔬 DPF Test Status Dashboard       ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════╝${NC}"
 echo ""
 
+# Check for --terminal flag
+TERMINAL_MODE=false
+PASSTHROUGH_ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--terminal" ]; then
+        TERMINAL_MODE=true
+    else
+        PASSTHROUGH_ARGS+=("$arg")
+    fi
+done
+
+if $TERMINAL_MODE; then
+    echo -e "${GREEN}Launching Rich terminal dashboard...${NC}"
+    echo ""
+    cd "$PROJECT_ROOT"
+    exec $PYTHON "$SCRIPT_DIR/test_dashboard.py" "${PASSTHROUGH_ARGS[@]}"
+fi
+
 # Kill any stale processes
 pkill -f "test_status_runner.py" 2>/dev/null || true
 pkill -f "http.server.*${PORT}" 2>/dev/null || true
@@ -62,7 +85,7 @@ echo -e "${DIM}Starting test runner...${NC}"
 echo ""
 
 cd "$PROJECT_ROOT"
-$PYTHON "$SCRIPT_DIR/test_status_runner.py" "$@"
+$PYTHON "$SCRIPT_DIR/test_status_runner.py" "${PASSTHROUGH_ARGS[@]}"
 EXIT_CODE=$?
 
 # Cleanup

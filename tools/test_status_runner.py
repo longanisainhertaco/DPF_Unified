@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -172,7 +171,7 @@ def main():
         if not args.watch:
             break
 
-        print(f"\nWaiting 60s before next run... (Ctrl+C to stop)")
+        print("\nWaiting 60s before next run... (Ctrl+C to stop)")
         try:
             time.sleep(60)
         except KeyboardInterrupt:

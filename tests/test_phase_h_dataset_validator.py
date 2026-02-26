@@ -341,11 +341,10 @@ def test_validate_directory_finds_all_files(tmp_path: Path):
 
 
 def test_validate_directory_nonexistent(tmp_path: Path):
-    """validate_directory returns empty dict for nonexistent dir."""
+    """validate_directory raises FileNotFoundError for nonexistent dir."""
     validator = DatasetValidator()
-    results = validator.validate_directory(tmp_path / "nonexistent")
-
-    assert results == {}
+    with pytest.raises(FileNotFoundError, match="Validation directory not found"):
+        validator.validate_directory(tmp_path / "nonexistent")
 
 
 def test_summary_report_formatting(tmp_path: Path):
