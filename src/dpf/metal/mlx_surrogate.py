@@ -31,6 +31,12 @@ from typing import Any
 
 import numpy as np
 
+from dpf.ai._walrus_base import (
+    WALRUS_SCALAR_KEYS,
+    WALRUS_VECTOR_KEYS,
+    WalrusInferenceMixin,
+)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -53,35 +59,12 @@ try:
 except ImportError:
     torch = None  # type: ignore[assignment]
 
-# Channel layout (mirrors src/dpf/ai/surrogate.py)
-_SCALAR_KEYS = ("rho", "Te", "Ti", "pressure", "psi")
-_VECTOR_KEYS = ("B", "velocity")
-_N_CHANNELS = len(_SCALAR_KEYS) + len(_VECTOR_KEYS) * 3  # 11
-
-# DPF field -> WALRUS (name, embedding index)
-_DPF_TO_WALRUS_FIELD = {
-    "rho": ("density", 28),
-    "Te": ("temperature", 46),
-    "Ti": ("temperature", 46),
-    "pressure": ("pressure", 3),
-    "psi": ("A", 42),
-    "Bx": ("magnetic_field_x", 39),
-    "By": ("magnetic_field_y", 40),
-    "Bz": ("magnetic_field_z", 41),
-    "vx": ("velocity_x", 4),
-    "vy": ("velocity_y", 5),
-    "vz": ("velocity_z", 6),
-}
-
-# WALRUS field ordering for DPF channels
-_DPF_FIELD_NAMES = [
-    "density", "temperature", "temperature", "pressure", "A",
-    "magnetic_field_x", "magnetic_field_y", "magnetic_field_z",
-    "velocity_x", "velocity_y", "velocity_z",
-]
+# Backward-compatible aliases (kept for any code referencing module-level names)
+_SCALAR_KEYS = WALRUS_SCALAR_KEYS
+_VECTOR_KEYS = WALRUS_VECTOR_KEYS
 
 
-class MLXSurrogate:
+class MLXSurrogate(WalrusInferenceMixin):
     """WALRUS surrogate inference via MLX on Apple Metal.
 
     Strategy: Load PyTorch model, run inference by converting tensors between
@@ -180,34 +163,6 @@ class MLXSurrogate:
     # Model loading
     # ------------------------------------------------------------------
 
-    def _resolve_checkpoint_files(self) -> tuple[Path, Path | None]:
-        """Resolve checkpoint ``.pt`` file and optional config YAML.
-
-        Returns
-        -------
-        tuple[Path, Path | None]
-            ``(pt_path, config_yaml_path)`` -- config may be ``None``.
-        """
-        if self.checkpoint_path.is_dir():
-            pt_path = self.checkpoint_path / "walrus.pt"
-            if not pt_path.exists():
-                pt_files = list(self.checkpoint_path.glob("*.pt"))
-                if pt_files:
-                    pt_path = pt_files[0]
-                else:
-                    raise FileNotFoundError(
-                        f"No .pt file found in {self.checkpoint_path}"
-                    )
-            config_path = self.checkpoint_path / "extended_config.yaml"
-            if not config_path.exists():
-                config_path = None
-            return pt_path, config_path
-        else:
-            config_path = self.checkpoint_path.parent / "extended_config.yaml"
-            if not config_path.exists():
-                config_path = None
-            return self.checkpoint_path, config_path
-
     def _load_model(self) -> None:
         """Load WALRUS checkpoint and instantiate model.
 
@@ -250,113 +205,6 @@ class MLXSurrogate:
                 self.checkpoint_path, exc,
             )
             raise
-
-    def _load_walrus_model(
-        self,
-        state_dict: dict,
-        config_yaml_path: Path | None,
-        checkpoint_data: dict,
-    ) -> None:
-        """Instantiate the real WALRUS IsotropicModel.
-
-        Parameters
-        ----------
-        state_dict : dict
-            Model weights already extracted from the checkpoint.
-        config_yaml_path : Path or None
-            Path to ``extended_config.yaml``.
-        checkpoint_data : dict
-            Raw checkpoint data for fallback config extraction.
-        """
-        from hydra.utils import instantiate
-        from omegaconf import OmegaConf
-        from walrus.data.well_to_multi_transformer import (
-            ChannelsFirstWithTimeFormatter,
-        )
-
-        # Load Hydra/OmegaConf config
-        config = None
-        if config_yaml_path is not None and config_yaml_path.exists():
-            config = OmegaConf.load(config_yaml_path)
-            logger.info("Loaded WALRUS config from %s", config_yaml_path)
-        elif "config" in checkpoint_data:
-            config = checkpoint_data["config"]
-            logger.info("Using embedded config from checkpoint")
-
-        if config is None:
-            raise RuntimeError(
-                "No WALRUS config found -- cannot instantiate model. "
-                "Provide extended_config.yaml alongside the checkpoint."
-            )
-
-        self._walrus_config = config
-
-        # Field index map
-        field_map = dict(config.data.get("field_index_map_override", {}))
-        if field_map:
-            self._field_to_index_map = field_map
-        else:
-            self._field_to_index_map = {
-                name: idx for _, (name, idx) in _DPF_TO_WALRUS_FIELD.items()
-            }
-
-        n_states = max(self._field_to_index_map.values()) + 1
-
-        # Instantiate model via Hydra
-        model = instantiate(config.model, n_states=n_states)
-
-        # Align weights if possible
-        try:
-            from walrus.utils.experiment_utils import (
-                align_checkpoint_with_field_to_index_map,
-            )
-            checkpoint_field_map = field_map
-            model_field_map = dict(self._field_to_index_map)
-            aligned = align_checkpoint_with_field_to_index_map(
-                checkpoint_state_dict=state_dict,
-                model_state_dict=model.state_dict(),
-                checkpoint_field_to_index_map=checkpoint_field_map,
-                model_field_to_index_map=model_field_map,
-            )
-            model.load_state_dict(aligned)
-        except Exception:
-            model.load_state_dict(state_dict)
-
-        model.eval()
-        model.to(self._device)
-        self._model = model
-
-        # DPF field indices tensor
-        self._dpf_field_indices = torch.tensor(
-            [self._field_to_index_map.get(name, 0) for name in _DPF_FIELD_NAMES],
-            device=self._device,
-            dtype=torch.long,
-        )
-
-        # RevIN normalization
-        try:
-            self._revin = instantiate(config.trainer.revin)()
-        except Exception:
-            logger.warning(
-                "Failed to instantiate RevIN from config; "
-                "trying SamplewiseRevNormalization directly"
-            )
-            try:
-                from walrus.trainer.normalization_strat import (
-                    SamplewiseRevNormalization,
-                )
-                self._revin = SamplewiseRevNormalization()
-            except Exception:
-                logger.warning("RevIN unavailable -- inference may be degraded")
-                self._revin = None
-
-        # Formatter
-        self._formatter = ChannelsFirstWithTimeFormatter()
-
-        logger.info(
-            "Loaded WALRUS IsotropicModel (n_states=%d, device=%s, mlx=%s)",
-            n_states, self._device, self._use_mlx,
-        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -704,164 +552,6 @@ class MLXSurrogate:
 
         pred_array = y_pred[0, -1].cpu().numpy()
         return self._well_output_to_state(pred_array, recent_history[-1])
-
-    # ------------------------------------------------------------------
-    # Batch construction (mirrors DPFSurrogate._build_walrus_batch)
-    # ------------------------------------------------------------------
-
-    def _build_walrus_batch(
-        self, states: list[dict[str, np.ndarray]]
-    ) -> dict[str, Any]:
-        """Build a WALRUS-compatible batch dict from DPF state history.
-
-        Creates the synthetic batch format expected by the WALRUS
-        ``ChannelsFirstWithTimeFormatter``.
-
-        Parameters
-        ----------
-        states : list[dict[str, np.ndarray]]
-            DPF state dicts with keys: rho, Te, Ti, pressure, psi,
-            B ``(3, *spatial)``, velocity ``(3, *spatial)``.
-
-        Returns
-        -------
-        dict
-            Batch dict with keys: ``input_fields``, ``output_fields``,
-            ``constant_fields``, ``boundary_conditions``,
-            ``padded_field_mask``, ``field_indices``, ``metadata``.
-        """
-        from the_well.data.datasets import WellMetadata
-
-        T = len(states)
-        ref = states[0]
-        spatial = ref["rho"].shape
-
-        # Pad to 3D
-        if len(spatial) == 2:
-            spatial = (*spatial, 1)
-        elif len(spatial) == 1:
-            spatial = (*spatial, 1, 1)
-
-        C = _N_CHANNELS
-
-        # input_fields: [B=1, T, H, W, D, C] channels-last
-        input_arr = np.zeros((1, T, *spatial, C), dtype=np.float32)
-
-        for t, state in enumerate(states):
-            ch = 0
-            for key in _SCALAR_KEYS:
-                if key in state:
-                    field = state[key].astype(np.float32)
-                    if field.ndim < 3:
-                        field = field.reshape(spatial)
-                    input_arr[0, t, ..., ch] = field
-                ch += 1
-            for key in _VECTOR_KEYS:
-                if key in state:
-                    vec = state[key].astype(np.float32)
-                    for comp in range(3):
-                        comp_field = vec[comp]
-                        if comp_field.ndim < 3:
-                            comp_field = comp_field.reshape(spatial)
-                        input_arr[0, t, ..., ch + comp] = comp_field
-                ch += 3
-
-        device = self._device
-        input_tensor = torch.from_numpy(input_arr).to(device)
-
-        output_tensor = torch.zeros(
-            (1, 1, *spatial, C), dtype=torch.float32, device=device
-        )
-        const_tensor = torch.zeros(
-            (1, *spatial, 0), dtype=torch.float32, device=device
-        )
-        bcs = torch.tensor(
-            [[[0, 0], [0, 0], [0, 0]]],
-            dtype=torch.long, device=device,
-        )
-        padded_mask = torch.ones(C, dtype=torch.bool, device=device)
-        field_indices = self._dpf_field_indices.clone()
-
-        metadata = WellMetadata(
-            dataset_name="dpf_plasma",
-            n_spatial_dims=3,
-            spatial_resolution=spatial,
-            scalar_names=list(_SCALAR_KEYS),
-            constant_scalar_names=[],
-            field_names={
-                0: [
-                    "density", "temperature", "temperature",
-                    "pressure", "A",
-                ],
-                1: [
-                    "velocity_x", "velocity_y", "velocity_z",
-                    "magnetic_field_x", "magnetic_field_y",
-                    "magnetic_field_z",
-                ],
-                2: [],
-            },
-            constant_field_names={0: [], 1: [], 2: []},
-            boundary_condition_types=["WALL"],
-            n_files=1,
-            n_trajectories_per_file=[1],
-            n_steps_per_trajectory=[T],
-        )
-
-        return {
-            "input_fields": input_tensor,
-            "output_fields": output_tensor,
-            "constant_fields": const_tensor,
-            "boundary_conditions": bcs,
-            "padded_field_mask": padded_mask,
-            "field_indices": field_indices,
-            "metadata": metadata,
-        }
-
-    # ------------------------------------------------------------------
-    # Output conversion
-    # ------------------------------------------------------------------
-
-    def _well_output_to_state(
-        self, pred_array: np.ndarray, reference_state: dict[str, np.ndarray]
-    ) -> dict[str, np.ndarray]:
-        """Convert WALRUS output array to a DPF state dict.
-
-        Parameters
-        ----------
-        pred_array : np.ndarray
-            Shape ``(H, W, D, C)`` -- channels-last Well format.
-        reference_state : dict[str, np.ndarray]
-            Reference DPF state for shape information.
-
-        Returns
-        -------
-        dict[str, np.ndarray]
-            DPF state dict with float64 arrays matching reference shapes.
-        """
-        orig_spatial = reference_state["rho"].shape
-        state: dict[str, np.ndarray] = {}
-        ch = 0
-
-        for key in _SCALAR_KEYS:
-            if key in reference_state:
-                field = pred_array[..., ch].astype(np.float64)
-                if field.shape != orig_spatial:
-                    field = field.reshape(orig_spatial)
-                state[key] = field
-            ch += 1
-
-        for key in _VECTOR_KEYS:
-            if key in reference_state:
-                components = []
-                for comp in range(3):
-                    c = pred_array[..., ch + comp].astype(np.float64)
-                    if c.shape != orig_spatial:
-                        c = c.reshape(orig_spatial)
-                    components.append(c)
-                state[key] = np.stack(components, axis=0)
-            ch += 3
-
-        return state
 
     # ------------------------------------------------------------------
     # Helpers

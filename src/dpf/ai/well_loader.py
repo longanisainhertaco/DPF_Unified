@@ -54,8 +54,12 @@ class WellDataset(Dataset):
         self.stats = normalization_stats or {}
 
         # Index the dataset
-        self.samples = [] # List of (file_idx, traj_idx, start_step)
+        self.samples = []  # List of (file_idx, traj_idx, start_step)
         self._index_files()
+
+        # Auto-compute stats when normalization requested but no stats provided
+        if self.normalize and not self.stats and len(self.samples) > 0:
+            self.compute_stats()
 
     def _index_files(self):
         """Scan files to build sample index."""
@@ -112,17 +116,8 @@ class WellDataset(Dataset):
 
             data = {}
             for field in self.fields:
-                dset = None
-                # Locate dataset
-                if field in f:
-                    dset = f[field]
-                elif "t0_fields" in f and field in f["t0_fields"]:
-                    dset = f["t0_fields"][field]
-                elif "t1_fields" in f and field in f["t1_fields"]:
-                    dset = f["t1_fields"][field]
-
+                dset = self._find_field_dataset(f, field)
                 if dset is None:
-                    # Should handle missing fields better?
                     continue
 
                 # Read chunk: (n_steps, ...)
@@ -160,36 +155,47 @@ class WellDataset(Dataset):
         return data
 
     def compute_stats(self, max_samples: int = 100) -> dict:
-        """Compute per-field mean/std for normalization from a subset.
+        """Compute per-field mean/std/rms for normalization from a subset.
 
         First attempts to read statistics from HDF5 dataset attributes
         (``mean``, ``std``).  If attributes are absent, computes online
         statistics by sampling up to ``max_samples`` raw sequences.
 
+        The returned dict includes ``rms`` (root mean square) per field,
+        which is used by WALRUS RevIN (Reversible Instance Normalization)
+        for RMS-based sample-wise normalization.
+
         Returns
         -------
         dict[str, dict[str, float]]
-            Mapping ``field_name -> {"mean": float, "std": float}``.
+            Mapping ``field_name -> {"mean": float, "std": float, "rms": float}``.
+            Never returns empty ``{}`` — missing fields get safe defaults.
         """
         logger.info("Computing normalization stats...")
 
         # --- Strategy 1: read from HDF5 attributes ---
         stats: dict[str, dict[str, float]] = {}
         if self.paths:
-            with h5py.File(self.paths[0], "r") as f:
-                for field in self.fields:
-                    dset = None
-                    if field in f:
-                        dset = f[field]
-                    elif "t0_fields" in f and field in f["t0_fields"]:
-                        dset = f["t0_fields"][field]
-                    elif "t1_fields" in f and field in f["t1_fields"]:
-                        dset = f["t1_fields"][field]
-                    if dset is not None and "mean" in dset.attrs:
-                        stats[field] = {
-                            "mean": float(dset.attrs["mean"]),
-                            "std": float(dset.attrs.get("std", 1.0)),
-                        }
+            try:
+                with h5py.File(self.paths[0], "r") as f:
+                    for field in self.fields:
+                        dset = self._find_field_dataset(f, field)
+                        if dset is not None and "mean" in dset.attrs:
+                            mean_val = float(dset.attrs["mean"])
+                            std_val = float(dset.attrs.get("std", 1.0))
+                            rms_val = float(
+                                dset.attrs.get(
+                                    "rms",
+                                    np.sqrt(mean_val ** 2 + std_val ** 2),
+                                )
+                            )
+                            stats[field] = {
+                                "mean": mean_val,
+                                "std": max(std_val, 1e-10),
+                                "rms": max(rms_val, 1e-10),
+                            }
+            except Exception as e:
+                logger.warning("Failed to read HDF5 attributes: %s", e)
 
         if len(stats) == len(self.fields):
             logger.info("Loaded stats from HDF5 attributes for all fields.")
@@ -198,7 +204,15 @@ class WellDataset(Dataset):
 
         # --- Strategy 2: online computation from sampled data ---
         if len(self) == 0:
-            logger.warning("No samples available for stats computation.")
+            logger.warning(
+                "No samples available for stats computation; "
+                "using safe defaults (mean=0, std=1, rms=1) for %d fields.",
+                len(self.fields),
+            )
+            for field in self.fields:
+                if field not in stats:
+                    stats[field] = {"mean": 0.0, "std": 1.0, "rms": 1.0}
+            self.stats = stats
             return stats
 
         # Temporarily disable normalization to read raw values
@@ -221,6 +235,11 @@ class WellDataset(Dataset):
                 if dpf_name not in sample:
                     continue
                 arr = sample[dpf_name].float()
+                # Filter NaN/Inf values
+                finite_mask = torch.isfinite(arr)
+                if not finite_mask.any():
+                    continue
+                arr = arr[finite_mask]
                 n = arr.numel()
                 sums[field] += float(arr.sum())
                 sq_sums[field] += float((arr * arr).sum())
@@ -236,9 +255,17 @@ class WellDataset(Dataset):
                 mean = sums[field] / n
                 var = sq_sums[field] / n - mean * mean
                 std = float(np.sqrt(max(var, 0.0)))
-                stats[field] = {"mean": mean, "std": max(std, 1e-10)}
+                rms = float(np.sqrt(sq_sums[field] / n))
+                stats[field] = {
+                    "mean": mean,
+                    "std": max(std, 1e-10),
+                    "rms": max(rms, 1e-10),
+                }
             else:
-                stats[field] = {"mean": 0.0, "std": 1.0}
+                logger.warning(
+                    "Field '%s' had no finite values; using safe defaults.", field
+                )
+                stats[field] = {"mean": 0.0, "std": 1.0, "rms": 1.0}
 
         logger.info(
             "Computed stats from %d samples for %d fields.",
@@ -246,3 +273,28 @@ class WellDataset(Dataset):
         )
         self.stats = stats
         return stats
+
+    @staticmethod
+    def _find_field_dataset(f, field: str):
+        """Locate a field dataset in an HDF5 file.
+
+        Searches in root, ``t0_fields/``, and ``t1_fields/`` groups.
+
+        Parameters
+        ----------
+        f : h5py.File
+            Open HDF5 file handle.
+        field : str
+            Field name to locate.
+
+        Returns
+        -------
+        h5py.Dataset or None
+        """
+        if field in f:
+            return f[field]
+        if "t0_fields" in f and field in f["t0_fields"]:
+            return f["t0_fields"][field]
+        if "t1_fields" in f and field in f["t1_fields"]:
+            return f["t1_fields"][field]
+        return None

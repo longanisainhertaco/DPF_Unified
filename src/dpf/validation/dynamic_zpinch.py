@@ -39,14 +39,13 @@ Haines M.G., Plasma Phys. Control. Fusion 53, 093001 (2011).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 from scipy.integrate import solve_ivp
 
 from dpf.constants import mu_0, pi
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -223,7 +222,7 @@ def slug_model_rhs(
     r_p = max(float(y[0]), 1e-10)
     v_p = float(y[1])
 
-    I = I_func(t)
+    I = I_func(t)  # noqa: E741 — physics convention for current
 
     # Swept mass per unit length [kg/m]
     m = rho0 * pi * (r0**2 - r_p**2)
@@ -393,7 +392,6 @@ def zpinch_profiles(
         v_s = (gamma + 1.0) * r_p * v_p / (2.0 * r_s)
 
     # Region masks
-    undisturbed = r < r_s
     postshock = (r >= r_s) & (r <= r_p)
     vacuum = r > r_p
 

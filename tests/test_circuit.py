@@ -39,15 +39,6 @@ class TestRLCSolver:
 
     def test_variable_inductance(self):
         """Test circuit response to increasing inductance (compression)."""
-        solver = RLCSolver(C=1e-3, V0=1000, L0=1e-6)
-        dt = 1e-6
-        # Simulate linearly increasing inductance: L(t) = L0 + alpha*t
-        # dL/dt = alpha
-        alpha = 1.0 # 1 H/s (huge)
-        currents = []
-
-        coupling = CouplingState(Lp=0.0, dL_dt=alpha, R_plasma=0.0)
-
         # d/dt (LI) + RI = V
         # L dI/dt + I dL/dt = V
         # If L constant, dI/dt = V/L. I ~ V/L * t
@@ -68,9 +59,8 @@ class TestInductance:
         # Volume = 1.0
         # Energy W = 1/(2mu0)
         # L = 2W / I^2
-        I = 1.0
-        L_calc = fm.compute_plasma_inductance(I)
-        L_expected = 2.0 * (1.0/(2*mu_0)) / (1.0**2) # = 1/mu_0
+        I_current = 1.0  # noqa: N806
+        L_calc = fm.compute_plasma_inductance(I_current)
 
         assert np.isclose(L_calc, 1.0/mu_0)
 
@@ -85,7 +75,7 @@ class TestInductance:
         # u = 1/(2mu0)
         # W = pi/(2mu0)
         # L = 2W/I^2 = pi/mu0
-        I = 1.0
-        L_calc = fm.compute_plasma_inductance(I)
+        I_current = 1.0  # noqa: N806
+        L_calc = fm.compute_plasma_inductance(I_current)
 
         assert np.isclose(L_calc, pi/mu_0)

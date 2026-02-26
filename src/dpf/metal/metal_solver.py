@@ -49,8 +49,8 @@ from dpf.metal.metal_stencil import ct_update_mps, div_B_mps, emf_from_fluxes_mp
 
 # Try to check if Metal is available via the wrapper's internal check
 try:
-    import Metal
-    import Quartz
+    import Metal  # noqa: F401
+    import Quartz  # noqa: F401
     _NATIVE_METAL_AVAILABLE = True
 except ImportError:
     _NATIVE_METAL_AVAILABLE = False
@@ -810,7 +810,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         J_kin: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply resistive MHD operator-split step (Code Units).
-        
+
         Using Heaviside-Lorentz units (mu_0 = 1).
         Resistivity eta must be scaled: eta_code = eta_SI / mu_0_SI.
         """
@@ -966,14 +966,13 @@ class MetalMHDSolver(PlasmaSolverBase):
                 eta_field, dtype=self._dtype, device=self.device,
             )
 
-            # Handle Kinetic Source Terms (J_kin)
-            J_kin_code = None
+            # Handle Kinetic Source Terms (J_kin) — computed for future use
             if source_terms is not None and "J_kin" in source_terms:
                 J_kin_si = torch.tensor(
                     source_terms["J_kin"], dtype=self._dtype, device=self.device
                 )
                 from dpf.units import current_to_code_units
-                J_kin_code = current_to_code_units(J_kin_si)
+                _J_kin_code = current_to_code_units(J_kin_si)  # noqa: F841
 
             # Apply resistivity (B is in Code Units here)
             # We must use Code Unit logic in _apply_resistive_diffusion

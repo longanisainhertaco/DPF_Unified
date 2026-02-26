@@ -208,6 +208,52 @@ class TestRadialZipperBC:
 
 
 # ---------------------------------------------------------------------------
+# TestElectrodeBCAllBackends (C2 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestElectrodeBCAllBackends:
+    """Electrode BC applies B_theta = mu_0*I/(2*pi*r) for all backends (C2 fix)."""
+
+    @pytest.mark.parametrize("backend_name", ["metal", "athena", "athenak"])
+    def test_electrode_bc_sets_btheta_for_backend(self, backend_name):
+        """Non-Python backends get electrode B_theta via generic branch."""
+        from math import pi
+
+        engine = _make_cylindrical_engine(nr=10, nz=20, dx=0.01)
+        # Override backend attribute to simulate non-Python backend
+        engine.backend = backend_name
+
+        # Zero out B initially
+        engine.state["B"][:] = 0.0
+        # Disable snowplow so only electrode BC runs (not zipper)
+        engine.snowplow = None
+
+        current = 100e3
+        engine._apply_electrode_bc(current)
+
+        B_theta = engine.state["B"][1]
+        cc = engine.config.circuit
+        dr = engine.config.dx
+        mu_0 = 4e-7 * pi
+
+        # Check B_theta is set between electrode radii
+        for ir in range(10):
+            r = (ir + 0.5) * dr
+            if cc.anode_radius <= r <= cc.cathode_radius and r > 0:
+                expected = mu_0 * current / (2.0 * pi * r)
+                assert np.allclose(B_theta[ir], expected), (
+                    f"B_theta at ir={ir} (r={r:.3f}) should be {expected:.4f} "
+                    f"for backend={backend_name}"
+                )
+            elif r < cc.anode_radius:
+                assert np.all(B_theta[ir] == 0.0), (
+                    f"B_theta inside anode (ir={ir}) should be 0 "
+                    f"for backend={backend_name}"
+                )
+
+
+# ---------------------------------------------------------------------------
 # TestAxialZipperBC
 # ---------------------------------------------------------------------------
 

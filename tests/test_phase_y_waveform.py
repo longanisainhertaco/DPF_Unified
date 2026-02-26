@@ -121,10 +121,10 @@ class TestWaveformNRMSE:
     def test_perfect_match_nrmse_zero(self):
         """normalized_rmse with identical sim and exp arrays must return 0.0."""
         t = np.linspace(0, 10e-6, 26)
-        I = 1.87e6 * np.sin(np.pi * t / (2.0 * 5.8e-6))
-        I = np.maximum(I, 0.0)
+        I_wave = 1.87e6 * np.sin(np.pi * t / (2.0 * 5.8e-6))
+        I_wave = np.maximum(I_wave, 0.0)
 
-        result = normalized_rmse(t, I, t, I)
+        result = normalized_rmse(t, I_wave, t, I_wave)
         assert result == pytest.approx(0.0, abs=1e-12), (
             f"Perfect match should give NRMSE=0, got {result}"
         )
