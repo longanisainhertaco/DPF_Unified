@@ -1187,7 +1187,7 @@ def _braginskii_heat_flux(
         return Te.copy()
 
     # Cap kappa to avoid extreme diffusivity (physical limit)
-    kappa_cap = 1e30  # Reasonable cap for plasma heat conductivity
+    kappa_cap = 1e20  # Cap conductivity to prevent overflow at shock fronts
     kappa_par = np.minimum(kappa_par, kappa_cap)
     kappa_perp = np.minimum(kappa_perp, kappa_cap)
     max_kappa = min(max_kappa, kappa_cap)

@@ -486,6 +486,30 @@ class DPFSurrogate:
         from the_well.data.datasets import WellMetadata
 
         T = len(states)
+
+        # Squeeze singleton leading dims from Athena++ (which returns 4D arrays
+        # like (1, nx, ny, nz) instead of 3D (nx, ny, nz))
+        squeezed_states = []
+        for state in states:
+            squeezed = {}
+            for key, val in state.items():
+                if isinstance(val, np.ndarray):
+                    while val.ndim > 3 and key not in ("B", "velocity"):
+                        if val.shape[0] == 1:
+                            val = val.squeeze(0)
+                        else:
+                            break
+                    while val.ndim > 4 and key in ("B", "velocity"):
+                        if val.shape[0] == 3 and val.shape[1] == 1:
+                            val = val.squeeze(1)
+                        elif val.shape[0] == 1:
+                            val = val.squeeze(0)
+                        else:
+                            break
+                squeezed[key] = val
+            squeezed_states.append(squeezed)
+        states = squeezed_states
+
         ref = states[0]
 
         # Infer spatial shape from rho
