@@ -70,7 +70,7 @@ class ActiveLearner(BatchRunner):
                 self.surrogate, 
                 handoff_fraction=0.2,
                 validation_interval=20,
-                max_div_b_error=1e-2 
+                max_l2_divergence=1e-2
             )
             
             logger.info(f"[{idx}] Running Hybrid Simulation...")

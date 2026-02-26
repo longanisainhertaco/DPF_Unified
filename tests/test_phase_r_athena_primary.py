@@ -472,6 +472,8 @@ def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
     engine.total_neutron_yield = 0.0
     engine.well_interval = 0
     engine.well_exporter = Mock()
+    engine.boundary_cfg = config.boundary
+    engine.geometry_type = getattr(config.geometry, "coord_system", "cartesian")
     engine.snowplow = None
     engine.circuit.total_energy.return_value = 1.0
     engine.circuit.current = 100e3

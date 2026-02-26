@@ -297,3 +297,86 @@ class TestMonitorTrajectory:
         events = detector.monitor_trajectory(trajectory)
 
         assert events == []
+
+    def test_monitor_trajectory_uses_explicit_times(self):
+        """monitor_trajectory uses explicit times array for event timestamps (M9 fix)."""
+        np.random.seed(42)
+        surrogate = MockSurrogate(noise_level=10.0)
+        detector = InstabilityDetector(surrogate, threshold_low=0.01)
+
+        trajectory = [_make_state()] * 10
+        # Non-uniform physical timestamps (adaptive dt)
+        times = [i * 1e-7 + i**2 * 1e-9 for i in range(10)]
+
+        events = detector.monitor_trajectory(trajectory, times=times)
+
+        assert len(events) > 0
+        for event in events:
+            # Each event's time must match the explicit times array
+            assert event.time == pytest.approx(times[event.step])
+
+    def test_monitor_trajectory_uses_state_time_key(self):
+        """monitor_trajectory reads 'time' key from state dicts when present (M9 fix)."""
+        np.random.seed(42)
+        surrogate = MockSurrogate(noise_level=10.0)
+        detector = InstabilityDetector(surrogate, threshold_low=0.01)
+
+        trajectory = []
+        for i in range(10):
+            state = _make_state()
+            state["time"] = np.float64(i * 2.5e-7)  # Non-trivial timestamps
+            trajectory.append(state)
+
+        events = detector.monitor_trajectory(trajectory)
+
+        assert len(events) > 0
+        for event in events:
+            expected_time = event.step * 2.5e-7
+            assert event.time == pytest.approx(expected_time)
+
+    def test_monitor_trajectory_explicit_times_overrides_state_time(self):
+        """Explicit times parameter takes priority over per-state 'time' key."""
+        np.random.seed(42)
+        surrogate = MockSurrogate(noise_level=10.0)
+        detector = InstabilityDetector(surrogate, threshold_low=0.01)
+
+        trajectory = []
+        for _i in range(10):
+            state = _make_state()
+            state["time"] = np.float64(999.0)  # Should be ignored
+            trajectory.append(state)
+
+        real_times = [i * 1e-8 for i in range(10)]
+        events = detector.monitor_trajectory(trajectory, times=real_times)
+
+        assert len(events) > 0
+        for event in events:
+            assert event.time == pytest.approx(real_times[event.step])
+            assert event.time != pytest.approx(999.0)
+
+    def test_monitor_trajectory_times_length_mismatch_raises(self):
+        """monitor_trajectory raises ValueError if times length != trajectory length."""
+        surrogate = MockSurrogate()
+        detector = InstabilityDetector(surrogate)
+
+        trajectory = [_make_state()] * 10
+        wrong_times = [0.0, 1.0, 2.0]  # Too short
+
+        with pytest.raises(ValueError, match="times length"):
+            detector.monitor_trajectory(trajectory, times=wrong_times)
+
+    def test_monitor_trajectory_dt_fallback(self):
+        """monitor_trajectory falls back to i*dt when no times or state time key."""
+        np.random.seed(42)
+        surrogate = MockSurrogate(noise_level=10.0)
+        detector = InstabilityDetector(surrogate, threshold_low=0.01)
+
+        trajectory = [_make_state()] * 10
+        dt = 5e-8
+
+        events = detector.monitor_trajectory(trajectory, dt=dt)
+
+        assert len(events) > 0
+        for event in events:
+            expected_time = event.step * dt
+            assert event.time == pytest.approx(expected_time)

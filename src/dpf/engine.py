@@ -1124,8 +1124,10 @@ class SimulationEngine:
                 self.state["B"] = self.fluid.apply_electrode_bfield_bc(
                     self.state["B"], current, cc.anode_radius, cc.cathode_radius
                 )
-        elif self.backend == "metal" and self.geometry_type == "cylindrical":
-            # Metal backend: set B_theta = mu_0 * I / (2*pi*r)
+        elif self.geometry_type == "cylindrical":
+            # Generic electrode BC for Metal, Athena++, AthenaK, and future
+            # backends.  Operates directly on self.state["B"] (always NumPy).
+            # Sets B_theta = mu_0 * I / (2*pi*r) between electrodes, zero inside anode.
             cc = self.config.circuit
             dr = self.config.dx
             nr = self.config.grid_shape[0]
@@ -1325,6 +1327,12 @@ class SimulationEngine:
             current=new_coupling.current,
             voltage=new_coupling.voltage,
         )
+
+        # --- Apply electrode BC post-hoc (Athena++ manages its own BCs but
+        # does not know about the DPF circuit-coupled B_theta prescription) ---
+        _bc = getattr(self, "boundary_cfg", None)
+        if _bc is not None and _bc.electrode_bc:
+            self._apply_electrode_bc(new_coupling.current)
 
         # --- Advance time ---
         self.time += dt

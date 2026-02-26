@@ -10,14 +10,14 @@ import torch.nn as nn
 
 class SimplePoissonNet(nn.Module):
     """Simple 3D CNN for solving Poisson Equation: rho -> phi.
-    
+
     Architecture:
         Conv3d(1, 16) -> ReLU
         Conv3d(16, 32) -> ReLU
         Conv3d(32, 32) -> ReLU
         Conv3d(32, 16) -> ReLU
         Conv3d(16, 1)
-        
+
     Maintains spatial resolution (padding=SAME).
     """
     def __init__(self):

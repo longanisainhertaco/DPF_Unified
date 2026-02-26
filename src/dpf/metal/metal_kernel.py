@@ -15,9 +15,8 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Try to import Metal/Quartz (PyObjC)
+# Try to import Metal (PyObjC)
 try:
-    import Quartz
     from Metal import (
         MTLCreateSystemDefaultDevice,
         MTLResourceStorageModePrivate,
@@ -39,7 +38,7 @@ class MetalKernelWrapper:
 
     def __init__(self, lib_path: str | None = None):
         """Initialize the Metal device and load the kernel library.
-        
+
         Args:
             lib_path: Path to the .metallib file. If None, looks for
                       'src/dpf/metal/build/default.metallib'.
@@ -138,7 +137,7 @@ class MetalKernelWrapper:
         # But for perf, we return immediately.
         return cmd_buffer
 
-    def numpy_to_buffer(self, arr: np.ndarray) -> 'MTLBuffer':
+    def numpy_to_buffer(self, arr: np.ndarray):
         """Create a zero-copy Metal buffer from a numpy array."""
         # Ensure array is contiguous and page-aligned if possible?
         # Shared memory requires StorageModeShared
@@ -155,13 +154,13 @@ class MetalKernelWrapper:
             options
         )
 
-    def create_shared_buffer(self, shape: tuple[int, ...], dtype=np.float32) -> tuple['MTLBuffer', np.ndarray]:
+    def create_shared_buffer(self, shape: tuple[int, ...], dtype=np.float32) -> tuple:
         """Create a shared Metal buffer and a numpy view into it.
-        
+
         Args:
             shape: Shape of the array.
             dtype: Numpy data type.
-            
+
         Returns:
             Tuple of (MTLBuffer, np.ndarray).
         """
@@ -183,7 +182,6 @@ class MetalKernelWrapper:
              raise ValueError(f"Unsupported dtype: {dtype}")
 
         num_elements = int(np.prod(shape))
-        ArrayType = ctype * num_elements
 
         # Cast ptr to correct type and create ctypes array
         # PyObjC contents() returns an integer address usually

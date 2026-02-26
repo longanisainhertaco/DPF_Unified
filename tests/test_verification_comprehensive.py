@@ -301,7 +301,7 @@ class TestSpitzerTransport:
         for ne in [1e20, 1e22, 1e24, 1e26]:
             for Te_eV in [1.0, 10.0, 100.0, 1000.0]:
                 Te_K = Te_eV * eV / k_B
-                lnL = float(coulomb_log(np.array([ne]), np.array([Te_K])))
+                lnL = coulomb_log(np.array([ne]), np.array([Te_K])).item()
                 assert lnL >= 0.0, (
                     f"lnL={lnL:.3f} at ne={ne:.1e}, Te={Te_eV} eV — must be >= 0"
                 )
@@ -310,7 +310,7 @@ class TestSpitzerTransport:
         for ne in [1e20, 1e22, 1e24]:
             for Te_eV in [10.0, 100.0, 1000.0]:
                 Te_K = Te_eV * eV / k_B
-                lnL = float(coulomb_log(np.array([ne]), np.array([Te_K])))
+                lnL = coulomb_log(np.array([ne]), np.array([Te_K])).item()
                 assert 1.0 <= lnL <= 30.0, (
                     f"lnL={lnL:.1f} at ne={ne:.1e}, Te={Te_eV} eV — out of [1, 30]"
                 )
@@ -352,12 +352,12 @@ class TestBraginskiiViscosity:
 
         omega_ci = e_charge * B_mag / m_d
         x_i = omega_ci * tau_i
-        assert float(x_i) > 10, f"omega_ci*tau_i={float(x_i):.1f}, need >10"
+        assert x_i.item() > 10, f"omega_ci*tau_i={x_i.item():.1f}, need >10"
 
         eta0 = braginskii_eta0(ni, Ti, tau_i)
         eta1 = braginskii_eta1(ni, Ti, tau_i, B_mag)
 
-        ratio = float(eta1 / eta0)
+        ratio = (eta1 / eta0).item()
         assert ratio < 0.01, f"eta_1/eta_0 = {ratio:.4f}, expected <0.01"
 
     def test_eta2_equals_4eta1(self):
@@ -420,8 +420,8 @@ class TestBremsstrahlungRadiation:
         Te1 = np.array([1e6])
         Te2 = np.array([4e6])
 
-        P1 = float(bremsstrahlung_power(ne, Te1))
-        P2 = float(bremsstrahlung_power(ne, Te2))
+        P1 = bremsstrahlung_power(ne, Te1).item()
+        P2 = bremsstrahlung_power(ne, Te2).item()
 
         expected_ratio = np.sqrt(4e6 / 1e6)  # = 2.0
         actual_ratio = P2 / P1
@@ -481,9 +481,9 @@ class TestNernstEffect:
         Te = np.array([[[1e6]]])  # 1 MK
         B_tiny = np.array([[[1e-10]]])  # Very small B => x_e ~ 0
 
-        beta = nernst_coefficient(ne, Te, B_tiny)
-        assert float(beta) < 0.1, (
-            f"beta_wedge = {float(beta):.4f} at tiny B, expected <0.1"
+        beta = np.asarray(nernst_coefficient(ne, Te, B_tiny)).item()
+        assert beta < 0.1, (
+            f"beta_wedge = {beta:.4f} at tiny B, expected <0.1"
         )
 
     def test_nernst_velocity_perpendicular_to_B(self):
@@ -1547,11 +1547,11 @@ class TestConservationLaws:
         ne = np.array([1e24])
         Te = np.array([1e7])  # 10 MK
 
-        P = float(bremsstrahlung_power(ne, Te))
+        P = bremsstrahlung_power(ne, Te).item()
 
         # Choose dt small enough that Te remains positive.
         # dTe = P * dt / (1.5 * ne * kB); require dTe < Te => dt < Te * 1.5 * ne * kB / P
-        dt_max = float(Te) * 1.5 * float(ne) * k_B / P
+        dt_max = Te.item() * 1.5 * ne.item() * k_B / P
         dt = dt_max * 0.01  # 1% of maximum — safe margin
 
         E_removed = P * dt  # Energy per unit volume
@@ -1560,15 +1560,15 @@ class TestConservationLaws:
         assert E_removed > 0, "Bremsstrahlung power should be positive"
 
         # Compare with expected cooling: dTe = -P * dt / (1.5 * ne * kB)
-        dTe = P * dt / (1.5 * float(ne) * k_B)
-        Te_new = float(Te) - dTe
+        dTe = P * dt / (1.5 * ne.item() * k_B)
+        Te_new = Te.item() - dTe
 
         # Temperature should decrease but remain positive
         assert Te_new > 0, f"Temperature went negative from bremsstrahlung (dTe={dTe:.3e})"
-        assert Te_new < float(Te), "Temperature should decrease"
+        assert Te_new < Te.item(), "Temperature should decrease"
         # Fractional cooling should be ~1%
-        assert abs(dTe / float(Te) - 0.01) < 0.005, (
-            f"Fractional cooling = {dTe/float(Te):.4f}, expected ~0.01"
+        assert abs(dTe / Te.item() - 0.01) < 0.005, (
+            f"Fractional cooling = {dTe/Te.item():.4f}, expected ~0.01"
         )
 
 
@@ -1778,7 +1778,7 @@ class TestRegressionBaselines:
             for ne, Te_K in points:
                 lnL = coulomb_log(ne, Te_K)
                 eta = spitzer_resistivity(ne, Te_K, lnL, Z=1.0)
-                values.append(float(eta))
+                values.append(np.asarray(eta).item())
             return values
 
         baseline = _load_or_create_baseline("spitzer_resistivity", compute)
@@ -1811,11 +1811,11 @@ class TestRegressionBaselines:
         def compute():
             tau_i = ion_collision_time(ni, Ti)
             return {
-                "eta0": float(braginskii_eta0(ni, Ti, tau_i)),
-                "eta1": float(braginskii_eta1(ni, Ti, tau_i, B_mag)),
-                "eta2": float(braginskii_eta2(ni, Ti, tau_i, B_mag)),
-                "eta3": float(braginskii_eta3(ni, Ti, B_mag)),
-                "tau_i": float(tau_i),
+                "eta0": np.asarray(braginskii_eta0(ni, Ti, tau_i)).item(),
+                "eta1": np.asarray(braginskii_eta1(ni, Ti, tau_i, B_mag)).item(),
+                "eta2": np.asarray(braginskii_eta2(ni, Ti, tau_i, B_mag)).item(),
+                "eta3": np.asarray(braginskii_eta3(ni, Ti, B_mag)).item(),
+                "tau_i": np.asarray(tau_i).item(),
             }
 
         baseline = _load_or_create_baseline("braginskii_coefficients", compute)

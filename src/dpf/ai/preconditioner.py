@@ -26,7 +26,7 @@ except ImportError:
 
 class NeuralPreconditioner:
     """AI-based preconditioner for the Poisson equation.
-    
+
     Attributes:
         model: The loaded PyTorch model (WALRUS/FNO/U-Net).
         device: 'mps' or 'cpu'.
@@ -34,7 +34,7 @@ class NeuralPreconditioner:
 
     def __init__(self, model_path: str | None = None, device: str = "mps"):
         """Initialize the preconditioner.
-        
+
         Args:
             model_path: Path to the .pt checkpoint. If None, uses mock mode.
             device: Compute device.
@@ -77,10 +77,10 @@ class NeuralPreconditioner:
 
     def predict(self, rho: np.ndarray | torch.Tensor) -> np.ndarray | torch.Tensor:
         """Predict potential phi given charge density rho.
-        
+
         Args:
             rho: Input density field (N, N, N).
-            
+
         Returns:
             phi: Predicted potential field (N, N, N).
         """

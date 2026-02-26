@@ -166,6 +166,7 @@ class InstabilityDetector:
         self,
         trajectory: list[dict[str, np.ndarray]],
         dt: float = 1.0,
+        times: list[float] | np.ndarray | None = None,
     ) -> list[InstabilityEvent]:
         """
         Monitor full trajectory for instability events.
@@ -174,9 +175,13 @@ class InstabilityDetector:
         step for surrogate-physics divergence.
 
         Args:
-            trajectory: Complete simulation trajectory
-            dt: Physical timestep in seconds. Used to compute physical time
-                for each step (``time = step * dt``).
+            trajectory: Complete simulation trajectory. Each state dict may
+                optionally contain a ``"time"`` key with the physical time.
+            dt: Fallback physical timestep in seconds. Only used when
+                ``times`` is not provided and states lack a ``"time"`` key.
+            times: Explicit physical timestamps for each trajectory state.
+                Length must equal ``len(trajectory)``. Takes priority over
+                per-state ``"time"`` keys and the ``dt`` fallback.
 
         Returns:
             List of detected InstabilityEvents (chronological order)
@@ -191,6 +196,12 @@ class InstabilityDetector:
             )
             return events
 
+        if times is not None and len(times) != len(trajectory):
+            raise ValueError(
+                f"times length ({len(times)}) must match trajectory length "
+                f"({len(trajectory)})"
+            )
+
         logger.info(
             f"Monitoring trajectory: {len(trajectory)} states, "
             f"history_length={history_length}"
@@ -201,7 +212,15 @@ class InstabilityDetector:
             history = trajectory[i - history_length : i]
             actual_next = trajectory[i]
 
-            event = self.check(history, actual_next, step=i, time=float(i * dt))
+            # Resolve physical time: explicit times > per-state key > dt fallback
+            if times is not None:
+                t = float(times[i])
+            elif "time" in actual_next:
+                t = float(actual_next["time"])
+            else:
+                t = float(i * dt)
+
+            event = self.check(history, actual_next, step=i, time=t)
 
             if event is not None:
                 events.append(event)

@@ -49,7 +49,6 @@ class TestKineticManager:
         # Expected Larmor radius: r = mv / qB
         # Expected period: T = 2pi m / qB
         mass = config.ion_mass
-        r_L = mass * v0 / (e * B0)
         T_c = 2 * np.pi * mass / (e * B0)
 
         dt = T_c / 20.0 # Resolve gyro-period
@@ -61,7 +60,6 @@ class TestKineticManager:
         for _ in range(5):
             km.step(dt, 0.0, E_field, B_field)
 
-        pos = km.ion_species.positions[0]
         vel = km.ion_species.velocities[0]
 
         # Verify energy conservation (Boris push should reserve E in static B)

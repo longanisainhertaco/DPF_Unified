@@ -44,9 +44,9 @@ def generate_random_density(grid_size: int) -> np.ndarray:
 
 def solve_poisson_fft(rho: np.ndarray, L: float = 2.0) -> np.ndarray:
     """Solve Poisson equation using FFT (Periodic boundary conditions).
-    
+
     nabla^2 phi = -rho / eps0
-    
+
     In k-space: -k^2 * phi_k = -rho_k / eps0
     => phi_k = rho_k / (eps0 * k^2)
     """
