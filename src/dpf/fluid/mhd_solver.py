@@ -99,7 +99,7 @@ def _weno5_reconstruct_1d(v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     v_L = np.empty(n_iface)
     v_R = np.empty(n_iface)
 
-    eps = 1e-6  # Smoothness parameter
+    eps = 1e-6  # Smoothness parameter — kept conservative for hybrid FV/gradient scheme stability
 
     # FV ideal weights (Jiang-Shu 1996)
     d0, d1, d2 = 0.1, 0.6, 0.3
@@ -183,14 +183,24 @@ def _hll_flux_1d_core(
     Bn_L: np.ndarray,
     Bn_R: np.ndarray,
     gamma: float,
+    Bt_sq_L: np.ndarray | None = None,
+    Bt_sq_R: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """HLL approximate Riemann solver core (Numba-accelerated).
 
     Returns tuple of (mass_flux, momentum_flux, energy_flux).
+
+    Args:
+        Bt_sq_L, Bt_sq_R: Transverse B-field squared at left/right states.
+            If provided, included in fast magnetosonic speed estimate.
     """
-    # Fast magnetosonic speed estimate
+    # Fast magnetosonic speed estimate — include transverse B for correct cf
     B_sq_L = Bn_L ** 2
     B_sq_R = Bn_R ** 2
+    if Bt_sq_L is not None:
+        B_sq_L = B_sq_L + Bt_sq_L
+    if Bt_sq_R is not None:
+        B_sq_R = B_sq_R + Bt_sq_R
     a2_L = gamma * np.maximum(p_L, 0.0) / np.maximum(rho_L, 1e-30)
     a2_R = gamma * np.maximum(p_R, 0.0) / np.maximum(rho_R, 1e-30)
     va2_L = B_sq_L / (mu_0 * np.maximum(rho_L, 1e-30))
@@ -246,10 +256,13 @@ def _hll_flux_1d(
     Bn_L: np.ndarray,
     Bn_R: np.ndarray,
     gamma: float,
+    Bt_sq_L: np.ndarray | None = None,
+    Bt_sq_R: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """HLL approximate Riemann solver — dict wrapper for compatibility."""
     F_rho, F_mom, F_ene = _hll_flux_1d_core(
         rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma,
+        Bt_sq_L, Bt_sq_R,
     )
     return {
         "mass_flux": F_rho,
@@ -835,8 +848,16 @@ def _compute_flux_1d_sweep(
                     gamma,
                 )
             else:
+                # Reconstruct transverse B for correct fast magnetosonic speed
+                Bt1_1d = Bt1[s]
+                Bt2_1d = Bt2[s]
+                Bt1_L_r, Bt1_R_r = _weno5_reconstruct_1d(Bt1_1d)
+                Bt2_L_r, Bt2_R_r = _weno5_reconstruct_1d(Bt2_1d)
+                Bt_sq_L = Bt1_L_r**2 + Bt2_L_r**2
+                Bt_sq_R = Bt1_R_r**2 + Bt2_R_r**2
                 fluxes = _hll_flux_1d(
                     rho_L, rho_R, u_L, u_R, p_L, p_R, Bn_L, Bn_R, gamma,
+                    Bt_sq_L, Bt_sq_R,
                 )
 
             # Store in output array
@@ -1230,9 +1251,36 @@ def _braginskii_heat_flux(
     dt_sub = dt / n_sub
 
     Te_new = Te.copy()
-    for _ in range(n_sub):
-        # dTe/dt = div(q) / (ne * kB)
-        Te_new += dt_sub * div_q / (ne_safe * k_B)
+    for _isub in range(n_sub):
+        if _isub > 0:
+            # Recompute kappa, heat flux, and div_q from updated Te_new
+            kappa_par_sub, kappa_perp_sub = braginskii_kappa(ne, Te_new, B_mag)
+            kappa_par_sub = np.where(np.isfinite(kappa_par_sub), kappa_par_sub, 0.0)
+            kappa_perp_sub = np.where(np.isfinite(kappa_perp_sub), kappa_perp_sub, 0.0)
+            kappa_par_sub = np.minimum(kappa_par_sub, kappa_cap)
+            kappa_perp_sub = np.minimum(kappa_perp_sub, kappa_cap)
+            grad_Te_sub = np.array([
+                np.gradient(Te_new, dx, axis=0),
+                np.gradient(Te_new, dx, axis=1),
+                np.gradient(Te_new, dx, axis=2),
+            ])
+            b_dot_gradT_sub = np.sum(B_hat * grad_Te_sub, axis=0)
+            q_par_dir_sub = np.zeros_like(B)
+            for i in range(3):
+                q_par_dir_sub[i] = b_dot_gradT_sub * B_hat[i]
+            grad_perp_sub = grad_Te_sub - q_par_dir_sub
+            heat_flux_sub = np.zeros_like(B)
+            for i in range(3):
+                heat_flux_sub[i] = kappa_par_sub * q_par_dir_sub[i] + kappa_perp_sub * grad_perp_sub[i]
+            heat_flux_sub = np.where(np.isfinite(heat_flux_sub), heat_flux_sub, 0.0)
+            div_q = (
+                np.gradient(heat_flux_sub[0], dx, axis=0)
+                + np.gradient(heat_flux_sub[1], dx, axis=1)
+                + np.gradient(heat_flux_sub[2], dx, axis=2)
+            )
+            div_q = np.where(np.isfinite(div_q), div_q, 0.0)
+        # dTe/dt = div(q) / (1.5 * ne * kB)  [u_e = 3/2 * n_e * k_B * Te]
+        Te_new += dt_sub * div_q / (1.5 * ne_safe * k_B)
 
     # Floor temperature
     Te_new = np.maximum(Te_new, 1.0)
@@ -1347,7 +1395,7 @@ class MHDSolver(PlasmaSolverBase):
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hlld"
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.use_ct = use_ct
-        self.eos = IdealEOS(gamma=gamma)
+        self.eos = IdealEOS(gamma=gamma, ion_mass=self.ion_mass)
 
         # Whether we can use WENO5 (need >= 5 cells in each direction)
         self.use_weno5 = all(n >= 5 for n in grid_shape)

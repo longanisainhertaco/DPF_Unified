@@ -226,42 +226,6 @@ class HybridEngine:
         logger.info(f"Surrogate phase complete: {len(surrogate_history)} states")
         return surrogate_history
 
-    def _validate_step(
-        self, surrogate_state: dict[str, np.ndarray], physics_state: dict[str, np.ndarray]
-    ) -> float:
-        """
-        Compute normalized L2 divergence between surrogate and physics.
-
-        Args:
-            surrogate_state: Surrogate prediction
-            physics_state: Ground truth physics state
-
-        Returns:
-            Normalized L2 divergence (0 = perfect match)
-        """
-        divergence_sum = 0.0
-        n_fields = 0
-
-        for field in surrogate_state:
-            if field not in physics_state:
-                continue
-
-            pred = surrogate_state[field]
-            actual = physics_state[field]
-
-            if pred.shape != actual.shape:
-                logger.warning(f"Shape mismatch for field {field}: {pred.shape} vs {actual.shape}")
-                continue
-
-            diff_norm = np.linalg.norm(pred - actual)
-            actual_norm = max(np.linalg.norm(actual), 1e-10)
-            field_divergence = diff_norm / actual_norm
-
-            divergence_sum += field_divergence
-            n_fields += 1
-
-        return divergence_sum / max(n_fields, 1)
-
     @property
     def trajectory(self) -> list[dict[str, np.ndarray]]:
         """Complete simulation trajectory (physics + surrogate phases)."""

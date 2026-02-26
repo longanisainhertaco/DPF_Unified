@@ -73,9 +73,16 @@ class CouplingState:
     emf: float = 0.0
     current: float = 0.0
     voltage: float = 0.0
-    dL_dt: float = 0.0
+    dL_dt: float | None = None  # None = "not provided"; circuit solver uses BDF2 internally
     R_plasma: float = 0.0
     Z_bar: float = 1.0
+
+    def __post_init__(self) -> None:
+        """Clamp non-physical values to prevent silent circuit solver errors."""
+        if self.Lp < 0.0:
+            self.Lp = 0.0
+        if self.R_plasma < 0.0:
+            self.R_plasma = 0.0
 
 
 class PlasmaSolverBase(ABC):
@@ -102,6 +109,17 @@ class PlasmaSolverBase(ABC):
         Returns:
             Updated state dictionary.
         """
+
+    def compute_dt(self, state: dict[str, np.ndarray]) -> float:
+        """Compute CFL-limited timestep for this solver.
+
+        Args:
+            state: Current simulation state.
+
+        Returns:
+            Maximum stable timestep [s].
+        """
+        return 1e-6  # Safe default fallback
 
     def coupling_interface(self) -> CouplingState:
         """Return coupling quantities for the circuit solver."""

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -139,7 +140,7 @@ class FluidConfig(BaseModel):
     enable_energy_equation: bool = Field(True, description="Use conservative total energy equation")
     enable_nernst: bool = Field(False, description="Enable Nernst B-field advection by grad(Te)")
     enable_viscosity: bool = Field(False, description="Enable Braginskii ion viscosity (eta_0)")
-    diffusion_method: str = Field(
+    diffusion_method: Literal["explicit", "sts", "implicit"] = Field(
         "explicit",
         description=(
             "Diffusion treatment: 'explicit' (standard CFL-limited), "
@@ -156,11 +157,11 @@ class FluidConfig(BaseModel):
     full_braginskii_viscosity: bool = Field(
         False, description="Enable full Braginskii viscosity (eta_0 + eta_1 + eta_3)"
     )
-    time_integrator: str = Field(
+    time_integrator: Literal["ssp_rk2", "ssp_rk3"] = Field(
         "ssp_rk3",
         description="Time integrator: 'ssp_rk2' (2nd-order SSP), 'ssp_rk3' (3rd-order SSP, Phase P default)",
     )
-    precision: str = Field(
+    precision: Literal["float32", "float64"] = Field(
         "float32",
         description="Floating-point precision: 'float32' (fast, GPU) or 'float64' (accurate, CPU only)",
     )

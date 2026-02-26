@@ -404,9 +404,9 @@ def _total_rad_power_scalar(
     if ne <= 0.0 or Te_K <= 0.0:
         return 0.0
 
-    # Bremsstrahlung: P_ff = 1.42e-40 * g_ff * Z_eff^2 * ne^2 * sqrt(Te)  (SI coefficient)
+    # Bremsstrahlung: P_ff = 1.42e-40 * g_ff * Z_eff * ne^2 * sqrt(Te)  (SI, quasi-neutral ni=ne/Z)
     g_ff = 1.2
-    P_brem = 1.42e-40 * g_ff * Z_eff * Z_eff * ne * ne * np.sqrt(Te_K)
+    P_brem = 1.42e-40 * g_ff * Z_eff * ne * ne * np.sqrt(Te_K)
 
     # Impurity line radiation
     P_line = 0.0
@@ -432,7 +432,7 @@ def total_radiation_power(
 
     Combines the three main radiation loss channels:
 
-    1. **Bremsstrahlung** (free-free): P_ff ~ ne^2 * Z_eff^2 * sqrt(Te)
+    1. **Bremsstrahlung** (free-free): P_ff ~ ne^2 * Z_eff * sqrt(Te)  (quasi-neutral: ni=ne/Z)
     2. **Line radiation** (bound-bound): P_line = ne * n_imp * Lambda(Te, Z)
     3. **Recombination** (free-bound):  P_rec ~ ne^2 * Z^2 * sqrt(chi/Te)/sqrt(Te)
 

@@ -622,57 +622,6 @@ class DPFSurrogate:
 
         return state
 
-    def _states_to_walrus_tensor(
-        self, states: list[dict[str, np.ndarray]]
-    ) -> Any:
-        """Convert DPF states to WALRUS input tensor.
-
-        Builds a tensor of shape ``(1, T, C, *spatial)`` where ``C=11`` channels are
-        ordered: rho, Te, Ti, pressure, psi, Bx, By, Bz, vx, vy, vz.
-
-        Parameters
-        ----------
-        states : list[dict[str, np.ndarray]]
-            List of DPF state dicts.
-
-        Returns
-        -------
-        torch.Tensor
-            Shape ``(1, T, 11, *spatial)``, float32, on ``self.device``.
-        """
-        T = len(states)
-        # Infer spatial shape from first scalar field in first state
-        ref_state = states[0]
-        for key in _SCALAR_KEYS:
-            if key in ref_state:
-                spatial_shape = ref_state[key].shape
-                break
-        else:
-            raise ValueError("No scalar field found in state dict")
-
-        # Pre-allocate: (T, C, *spatial)
-        arr = np.zeros((T, _N_CHANNELS, *spatial_shape), dtype=np.float32)
-
-        for t, state in enumerate(states):
-            ch = 0
-            # Scalars: rho, Te, Ti, pressure, psi
-            for key in _SCALAR_KEYS:
-                if key in state:
-                    arr[t, ch] = state[key].astype(np.float32)
-                ch += 1
-
-            # Vectors: B (3 components), velocity (3 components)
-            for key in _VECTOR_KEYS:
-                if key in state:
-                    vec = state[key].astype(np.float32)  # (3, *spatial)
-                    for comp in range(3):
-                        arr[t, ch + comp] = vec[comp]
-                ch += 3
-
-        # Add batch dim: (1, T, C, *spatial)
-        tensor = torch.from_numpy(arr).unsqueeze(0).float()
-        return tensor.to(self.device)
-
     def rollout(
         self, initial_states: list[dict[str, np.ndarray]], n_steps: int
     ) -> list[dict[str, np.ndarray]]:
@@ -749,50 +698,6 @@ class DPFSurrogate:
                 results.append({"error": str(e), "config_idx": i})
 
         return results
-
-    def _tensor_to_state(
-        self, tensor: Any, reference_state: dict[str, np.ndarray]
-    ) -> dict[str, np.ndarray]:
-        """
-        Convert WALRUS output tensor back to DPF state format.
-
-        Uses the same channel ordering as ``_states_to_walrus_tensor``:
-        rho, Te, Ti, pressure, psi, Bx, By, Bz, vx, vy, vz.
-
-        Args:
-            tensor: PyTorch tensor or numpy array — shape (C, *spatial) or (1, C, *spatial)
-            reference_state: Reference DPF state for shape information
-
-        Returns:
-            DPF state dict with same structure as reference_state
-        """
-        # Convert to numpy
-        if hasattr(tensor, "cpu"):
-            array = tensor.cpu().numpy()
-        else:
-            array = np.asarray(tensor)
-
-        # Remove batch dimension if present
-        if array.ndim >= 4 and array.shape[0] == 1:
-            array = array[0]
-
-        state: dict[str, np.ndarray] = {}
-        ch = 0
-
-        # Extract scalar fields: rho, Te, Ti, pressure, psi
-        for key in _SCALAR_KEYS:
-            if key in reference_state:
-                state[key] = array[ch].astype(np.float64)
-            ch += 1
-
-        # Extract vector fields: B (3 components), velocity (3 components)
-        for key in _VECTOR_KEYS:
-            if key in reference_state:
-                components = [array[ch + i].astype(np.float64) for i in range(3)]
-                state[key] = np.stack(components, axis=0)
-            ch += 3
-
-        return state
 
     def validate_against_physics(
         self,

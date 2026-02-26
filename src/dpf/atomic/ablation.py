@@ -48,10 +48,12 @@ AMU = 1.66054e-27  # Atomic mass unit [kg]
 # Copper electrode parameters
 COPPER_ABLATION_EFFICIENCY = 5.0e-5    # [kg/J]
 COPPER_MASS = 63.546 * AMU            # Atomic mass [kg]
+COPPER_MELT_TEMP = 1356.0             # Melting point [K]
 
 # Tungsten electrode parameters
 TUNGSTEN_ABLATION_EFFICIENCY = 2.0e-5  # [kg/J]
 TUNGSTEN_MASS = 183.84 * AMU          # Atomic mass [kg]
+TUNGSTEN_MELT_TEMP = 3695.0           # Melting point [K]
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +98,7 @@ def ablation_source(
     dx: float,
     ablation_efficiency: float,
     material_mass: float,
+    T_threshold_K: float = 0.0,
 ) -> float:
     """Compute volumetric mass source from electrode ablation.
 
@@ -111,13 +114,17 @@ def ablation_source(
     volumetric densities, the area cancels and the result is
     independent of the transverse geometry.
 
+    Note: The ablation efficiency is constant (does not vary with
+    temperature). For higher fidelity, a temperature-dependent efficiency
+    or plasma shielding factor could be applied. See MOD-3 in
+    Troubleshooting.md.
+
     Args:
         rho_boundary: Mass density at the boundary cell [kg/m^3].
                       Used for diagnostic context; does not affect the
                       source magnitude in this simple model.
         Te_boundary: Electron temperature at the boundary cell [K].
-                     Included for interface consistency and future
-                     temperature-dependent efficiency models.
+                     Ablation is suppressed below T_threshold_K.
         ne_boundary: Electron number density at the boundary [m^-3].
                      Included for interface consistency.
         J_boundary: Current density magnitude at the boundary [A/m^2].
@@ -128,6 +135,10 @@ def ablation_source(
         material_mass: Atomic mass of the electrode material [kg].
                        Included for downstream species tracking and
                        momentum injection calculations.
+        T_threshold_K: Minimum surface temperature for ablation onset [K].
+                       Typically the material melting point (COPPER_MELT_TEMP
+                       or TUNGSTEN_MELT_TEMP). Default 0.0 disables the
+                       threshold for backward compatibility.
 
     Returns:
         Volumetric mass source rate S_rho [kg/(m^3 s)].
@@ -135,6 +146,10 @@ def ablation_source(
     """
     # Guard against unphysical inputs
     if J_boundary <= 0.0 or eta_boundary <= 0.0 or ablation_efficiency <= 0.0:
+        return 0.0
+
+    # Temperature threshold: no ablation below melting/sublimation point
+    if T_threshold_K > 0.0 and Te_boundary < T_threshold_K:
         return 0.0
 
     # Ohmic volumetric power density [W/m^3]

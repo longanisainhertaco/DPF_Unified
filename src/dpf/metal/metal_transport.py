@@ -30,7 +30,7 @@ M_D = 3.34358377e-27             # Deuterium mass [kg]
 K_B = 1.380649e-23               # Boltzmann constant [J/K]
 EPSILON_0 = 8.8541878128e-12     # Vacuum permittivity [F/m]
 MU_0 = 4.0e-7 * math.pi         # Vacuum permeability [H/m]
-P_FLOOR = 1e-20                  # Minimum pressure floor
+P_FLOOR = 1e-12                  # Minimum pressure floor (matches metal_riemann.py)
 
 
 # ── Shared Utilities ────────────────────────────────────────────
@@ -40,9 +40,12 @@ def curl_B_mps(
     dx: float,
     dy: float,
     dz: float,
-    mu_0: float = MU_0,
+    mu_0: float = 1.0,
 ) -> torch.Tensor:
     """Compute current density J = curl(B) / mu_0.
+
+    Default mu_0=1.0 corresponds to Heaviside-Lorentz code units
+    (consistent with metal_solver.py).  Pass mu_0=MU_0 for SI units.
 
     Parameters
     ----------
@@ -51,7 +54,7 @@ def curl_B_mps(
     dx, dy, dz : float
         Grid spacings [m].
     mu_0 : float
-        Vacuum permeability [H/m].
+        Vacuum permeability.  Default 1.0 (HL code units).
 
     Returns
     -------
@@ -213,8 +216,9 @@ def braginskii_kappa_mps(
     arg = torch.sqrt(torch.clamp(ne_cm3, min=1.0)) * Z_eff / torch.clamp(Te_eV, min=1e-3) ** 1.5
     lnL = torch.clamp(23.0 - torch.log(torch.clamp(arg, min=1e-30)), min=2.0)
 
-    # Electron collision time: tau_e ~ 3.44e5 * Te^{3/2} / (ne * lnL)
-    tau_e = 3.44e5 * Te_safe ** 1.5 / torch.clamp(ne_safe * lnL, min=1e-30)
+    # Electron collision time (NRL Formulary): tau_e = 3.44e5 * Te_eV^{3/2} / (ne_cm3 * Z * lnL)
+    # Uses Te in eV and ne in cm^-3 to match the NRL shorthand coefficient.
+    tau_e = 3.44e5 * Te_eV ** 1.5 / torch.clamp(ne_cm3 * Z_eff * lnL, min=1e-30)
 
     # kappa_par = 3.16 * ne * kB^2 * Te * tau_e / m_e
     kappa_par = 3.16 * ne_safe * K_B**2 * Te_safe * tau_e / M_E
@@ -285,48 +289,7 @@ def apply_braginskii_conduction_mps(
     if max_kappa < 1e-30:
         return Te.clone()
 
-    # Temperature gradient
-    grad_Tx = torch.gradient(Te, dim=0, spacing=dx)[0]
-    grad_Ty = torch.gradient(Te, dim=1, spacing=dy)[0]
-    grad_Tz = torch.gradient(Te, dim=2, spacing=dz)[0]
-    grad_T = torch.stack([grad_Tx, grad_Ty, grad_Tz], dim=0)  # (3, nx, ny, nz)
-
-    # Parallel gradient: (b . grad_T) * b
-    b_dot_gradT = (b_hat * grad_T).sum(dim=0)  # (nx, ny, nz)
-    grad_T_par = b_hat * b_dot_gradT.unsqueeze(0)
-
-    # Perpendicular gradient
-    grad_T_perp = grad_T - grad_T_par
-
-    # Sharma-Hammett flux limiter
-    Te_safe = torch.clamp(Te, min=1.0)
     ne_safe = torch.clamp(ne, min=1e-10)
-    v_th_e = torch.sqrt(K_B * Te_safe / M_E)
-    q_free = ne_safe * K_B * Te_safe * v_th_e
-
-    q_par_mag = kappa_par * torch.abs(b_dot_gradT)
-    q_denom = q_par_mag + flux_limiter * q_free
-    limiter_factor = torch.where(
-        q_denom > 1e-30,
-        flux_limiter * q_free / q_denom,
-        torch.ones_like(q_denom),
-    )
-    kappa_par_limited = kappa_par * limiter_factor
-
-    # Heat flux
-    heat_flux = (
-        kappa_par_limited.unsqueeze(0) * grad_T_par
-        + kappa_perp.unsqueeze(0) * grad_T_perp
-    )
-    heat_flux = torch.where(torch.isfinite(heat_flux), heat_flux, torch.zeros_like(heat_flux))
-
-    # Divergence of heat flux
-    div_q = (
-        torch.gradient(heat_flux[0], dim=0, spacing=dx)[0]
-        + torch.gradient(heat_flux[1], dim=1, spacing=dy)[0]
-        + torch.gradient(heat_flux[2], dim=2, spacing=dz)[0]
-    )
-    div_q = torch.where(torch.isfinite(div_q), div_q, torch.zeros_like(div_q))
 
     # Stability sub-cycling
     dx_min = min(dx, dy, dz)
@@ -346,6 +309,44 @@ def apply_braginskii_conduction_mps(
 
     Te_new = Te.clone()
     for _ in range(n_sub):
+        # Recompute heat flux from updated Te each sub-step
+        Te_cur = torch.clamp(Te_new, min=1.0)
+        grad_Tx = torch.gradient(Te_cur, dim=0, spacing=dx)[0]
+        grad_Ty = torch.gradient(Te_cur, dim=1, spacing=dy)[0]
+        grad_Tz = torch.gradient(Te_cur, dim=2, spacing=dz)[0]
+        grad_T = torch.stack([grad_Tx, grad_Ty, grad_Tz], dim=0)
+
+        b_dot_gradT = (b_hat * grad_T).sum(dim=0)
+        grad_T_par = b_hat * b_dot_gradT.unsqueeze(0)
+        grad_T_perp = grad_T - grad_T_par
+
+        # Sharma-Hammett flux limiter
+        v_th_e = torch.sqrt(K_B * Te_cur / M_E)
+        q_free = ne_safe * K_B * Te_cur * v_th_e
+        q_par_mag = kappa_par * torch.abs(b_dot_gradT)
+        q_denom = q_par_mag + flux_limiter * q_free
+        limiter_factor = torch.where(
+            q_denom > 1e-30,
+            flux_limiter * q_free / q_denom,
+            torch.ones_like(q_denom),
+        )
+        kappa_par_limited = kappa_par * limiter_factor
+
+        heat_flux = (
+            kappa_par_limited.unsqueeze(0) * grad_T_par
+            + kappa_perp.unsqueeze(0) * grad_T_perp
+        )
+        heat_flux = torch.where(
+            torch.isfinite(heat_flux), heat_flux, torch.zeros_like(heat_flux)
+        )
+
+        div_q = (
+            torch.gradient(heat_flux[0], dim=0, spacing=dx)[0]
+            + torch.gradient(heat_flux[1], dim=1, spacing=dy)[0]
+            + torch.gradient(heat_flux[2], dim=2, spacing=dz)[0]
+        )
+        div_q = torch.where(torch.isfinite(div_q), div_q, torch.zeros_like(div_q))
+
         Te_new = Te_new + dt_sub * div_q / (1.5 * ne_safe * K_B)
 
     Te_new = torch.clamp(Te_new, min=1.0)
@@ -512,10 +513,11 @@ def apply_braginskii_viscosity_mps(
     vel_new[1] = velocity[1] + dt * div_sigma_y / rho_safe
     vel_new[2] = velocity[2] + dt * div_sigma_z / rho_safe
 
-    # Viscous heating: Q = eta_0 * |S_traceless|^2
-    Q_visc = eta0 * (
-        (Sxx - S_tr_third)**2 + (Syy - S_tr_third)**2 + (Szz - S_tr_third)**2
-        + 2.0 * Sxy**2 + 2.0 * Sxz**2 + 2.0 * Syz**2
+    # Viscous heating: Q = sigma_ij * S_ij (full tensor contraction)
+    Q_visc = (
+        sigma_xx * (Sxx - S_tr_third) + sigma_yy * (Syy - S_tr_third)
+        + sigma_zz * (Szz - S_tr_third)
+        + 2.0 * (sigma_xy * Sxy + sigma_xz * Sxz + sigma_yz * Syz)
     )
     gamma = 5.0 / 3.0  # Adiabatic index
     p_new = pressure + dt * (gamma - 1.0) * Q_visc

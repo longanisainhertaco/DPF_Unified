@@ -194,28 +194,29 @@ def test_lists_to_arrays_handles_nested_dicts():
 
 
 def test_lists_to_arrays_handles_non_numeric_lists():
-    """_lists_to_arrays converts string lists to numpy arrays (np.array succeeds on strings)."""
+    """_lists_to_arrays keeps non-numeric lists unconverted (rejects non-numeric dtypes)."""
     from dpf.ai.realtime_server import _lists_to_arrays
 
     state = {"strings": ["a", "b", "c"]}
     result = _lists_to_arrays(state)
 
-    # np.array(["a", "b", "c"]) succeeds, producing a string array
-    assert isinstance(result["strings"], np.ndarray)
-    np.testing.assert_array_equal(result["strings"], np.array(["a", "b", "c"]))
+    # Non-numeric dtype (string) is rejected — list stays as-is
+    assert isinstance(result["strings"], list)
+    assert result["strings"] == ["a", "b", "c"]
 
 
 def test_lists_to_arrays_handles_lists_of_dicts():
     """_lists_to_arrays converts list of dicts via np.array (produces object array)."""
     from dpf.ai.realtime_server import _lists_to_arrays
 
-    # np.array([{"data": [1.0]}, {"data": [2.0]}]) succeeds (creates object array)
-    # so the function will convert the list to a numpy array, not recurse into dicts
+    # np.array([{"data": [1.0]}, {"data": [2.0]}]) succeeds (creates object array),
+    # but the fixed _lists_to_arrays rejects non-numeric dtypes (object arrays),
+    # so the list of dicts remains unconverted.
     state = {"items": [{"data": [1.0]}, {"data": [2.0]}]}
     result = _lists_to_arrays(state)
 
-    # The result is a numpy object array containing the dicts
-    assert isinstance(result["items"], np.ndarray)
+    # The result should remain a list (non-numeric dtype rejected)
+    assert isinstance(result["items"], list)
 
 
 # ── REST Endpoint Tests ─────────────────────────────────────────

@@ -234,20 +234,22 @@ class TestConstrainedTransportOption:
     """Verify the CT option in CylindricalMHDSolver."""
 
     def test_ct_flag_in_constructor(self):
-        """CylindricalMHDSolver accepts enable_ct parameter."""
+        """CylindricalMHDSolver disables CT in cylindrical coords (Cartesian metric)."""
         from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
         solver = CylindricalMHDSolver(
             nr=16, nz=16, dr=1e-3, dz=1e-3, enable_ct=True,
         )
-        assert solver.enable_ct is True
+        # CT is correctly disabled in cylindrical coordinates — the CT module
+        # uses Cartesian metric and is incompatible with cylindrical geometry.
+        assert solver.enable_ct is False
 
-    def test_ct_default_on(self):
-        """CT is enabled by default for div(B)=0 preservation."""
+    def test_ct_default_off_cylindrical(self):
+        """CT defaults to off in cylindrical coordinates (Dedner cleaning instead)."""
         from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
         solver = CylindricalMHDSolver(nr=16, nz=16, dr=1e-3, dz=1e-3)
-        assert solver.enable_ct is True
+        assert solver.enable_ct is False
 
     def test_ct_solver_runs_without_error(self):
         """Solver with CT enabled can complete a step."""

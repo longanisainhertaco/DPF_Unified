@@ -745,6 +745,18 @@ class HybridPIC:
     ) -> None:
         """Push all species using the Boris algorithm and apply BCs.
 
+        .. note::
+            **Known limitation — no Coulomb collision operator.**
+            The Boris pusher is collisionless.  For DPF beam-target scenarios,
+            beam slowing-down in the dense target plasma requires a collision
+            operator (Fokker-Planck or binary Monte Carlo Coulomb scattering).
+            Without it, beam ions pass through the target without energy loss,
+            underestimating thermalisation and over-estimating beam-target
+            neutron yields.  This is planned for a future phase.
+            The PIC module is currently gated by ``config.kinetic.enabled``
+            (default ``False``) and is not called from ``engine.py``, so
+            this has no impact on production simulations.
+
         Parameters
         ----------
         E : ndarray, shape (nx, ny, nz, 3)

@@ -14,9 +14,9 @@ Crowbar model: When enabled, the crowbar switch short-circuits the
 capacitor bank (typically when V_cap crosses zero or at a fixed time).
 Post-crowbar, the circuit becomes an L-R decay: I(t) = I_cb * exp(-R*t/L).
 
-dL/dt computation: Uses 2nd-order central difference when sufficient
-history is available (>= 3 points), falling back to 1st-order backward
-difference for the first two steps.
+dL/dt computation: Uses 2nd-order BDF2 (backward difference) when sufficient
+history is available (>= 2 points), falling back to 1st-order backward
+difference for the first step.
 """
 
 from __future__ import annotations
@@ -99,6 +99,9 @@ class RLCSolver(CircuitSolverBase):
         # Stores (time, L_plasma) tuples; max 3 entries needed
         self._Lp_history: deque[tuple[float, float]] = deque(maxlen=3)
 
+        # Store initial energy as a constant for energy conservation audits
+        self._initial_energy_J: float = 0.5 * C * V0**2
+
         # Initial state
         self.state = CircuitState(
             voltage=V0,
@@ -167,7 +170,7 @@ class RLCSolver(CircuitSolverBase):
             dt1 = t_nm1 - t_nm2
             dt2 = t_now - t_nm1
             if dt1 > 0 and dt2 > 0:
-                if abs(dt1 - dt2) < 1e-20 * max(dt1, dt2, 1e-30):
+                if abs(dt1 - dt2) < 1e-8 * max(dt1, dt2, 1e-30):
                     # Uniform spacing: use standard BDF2
                     dt = dt2
                     return (3.0 * Lp - 4.0 * Lp_nm1 + Lp_nm2) / (2.0 * dt)
@@ -238,8 +241,8 @@ class RLCSolver(CircuitSolverBase):
         V_n = self.state.voltage
         Lp = coupling.Lp
 
-        # Use 2nd-order dL/dt if coupling doesn't provide it, or if we have history
-        if coupling.dL_dt != 0.0:
+        # Use coupling-provided dL/dt when available; fall back to BDF2 estimate
+        if coupling.dL_dt is not None:
             dLp_dt = coupling.dL_dt
         else:
             dLp_dt = self.compute_dLp_dt(Lp)
@@ -330,5 +333,5 @@ class RLCSolver(CircuitSolverBase):
         return self.state.energy_cap + self.state.energy_ind + self.state.energy_res
 
     def initial_energy(self) -> float:
-        """Return the initial energy stored in the capacitor."""
-        return 0.5 * self.C * (self.state.charge / self.C) ** 2
+        """Return the initial energy stored in the capacitor (constant = 0.5*C*V0²)."""
+        return self._initial_energy_J

@@ -458,123 +458,21 @@ def test_run_surrogate_phase_stable_variance_continues(
 
 
 # ============================================================================
-# Test _validate_step L2 Divergence
+# Test _validate_step Removed (Dead Code)
 # ============================================================================
 
 
-def test_validate_step_identical_states(
+def test_validate_step_removed_as_dead_code(
     minimal_config: SimulationConfig,
     mock_surrogate: MockSurrogate,
 ) -> None:
-    """Test _validate_step returns 0 for identical states."""
+    """HybridEngine._validate_step was removed (dead code, MOD-4 fix)."""
     engine = HybridEngine(
         config=minimal_config,
         surrogate=mock_surrogate,
         handoff_fraction=0.2,
     )
-
-    shape = (8, 8, 8)
-    state = {
-        "rho": np.full(shape, 1e-6),
-        "velocity": np.zeros((3, *shape)),
-        "pressure": np.full(shape, 100.0),
-        "B": np.zeros((3, *shape)),
-        "Te": np.full(shape, 1.0),
-        "Ti": np.full(shape, 1.0),
-        "psi": np.zeros(shape),
-    }
-
-    divergence = engine._validate_step(state, state)
-
-    assert divergence == pytest.approx(0.0, abs=1e-10)
-
-
-def test_validate_step_different_states(
-    minimal_config: SimulationConfig,
-    mock_surrogate: MockSurrogate,
-) -> None:
-    """Test _validate_step computes normalized L2 divergence correctly."""
-    engine = HybridEngine(
-        config=minimal_config,
-        surrogate=mock_surrogate,
-        handoff_fraction=0.2,
-    )
-
-    shape = (8, 8, 8)
-    state1 = {
-        "rho": np.full(shape, 1.0),
-        "pressure": np.full(shape, 100.0),
-    }
-    state2 = {
-        "rho": np.full(shape, 1.1),  # 10% difference
-        "pressure": np.full(shape, 110.0),  # 10% difference
-    }
-
-    divergence = engine._validate_step(state1, state2)
-
-    # Expected: for each field, L2(diff) / L2(actual)
-    # rho: L2([0.1, 0.1, ...]) / L2([1.1, ...]) = 0.1*sqrt(N) / 1.1*sqrt(N) = 0.1/1.1 ≈ 0.0909
-    # pressure: same
-    # Average: 0.0909
-    expected = 0.1 / 1.1  # ≈ 0.0909
-    assert divergence == pytest.approx(expected, rel=0.01)
-
-
-def test_validate_step_shape_mismatch_skips_field(
-    minimal_config: SimulationConfig,
-    mock_surrogate: MockSurrogate,
-) -> None:
-    """Test _validate_step skips fields with shape mismatch."""
-    engine = HybridEngine(
-        config=minimal_config,
-        surrogate=mock_surrogate,
-        handoff_fraction=0.2,
-    )
-
-    state1 = {
-        "rho": np.full((8, 8, 8), 1.0),
-        "pressure": np.full((8, 8, 8), 100.0),
-    }
-    state2 = {
-        "rho": np.full((4, 4, 4), 1.1),  # Different shape
-        "pressure": np.full((8, 8, 8), 110.0),
-    }
-
-    divergence = engine._validate_step(state1, state2)
-
-    # Should skip rho (shape mismatch), only compute pressure divergence
-    # pressure divergence: 0.1 / 1.1
-    assert divergence == pytest.approx(0.1 / 1.1, rel=0.01)
-
-
-def test_validate_step_missing_field_skips(
-    minimal_config: SimulationConfig,
-    mock_surrogate: MockSurrogate,
-) -> None:
-    """Test _validate_step skips fields missing in physics_state."""
-    engine = HybridEngine(
-        config=minimal_config,
-        surrogate=mock_surrogate,
-        handoff_fraction=0.2,
-    )
-
-    surrogate_state = {
-        "rho": np.full((8, 8, 8), 1.0),
-        "pressure": np.full((8, 8, 8), 100.0),
-        "Te": np.full((8, 8, 8), 2.0),
-    }
-    physics_state = {
-        "rho": np.full((8, 8, 8), 1.1),
-        "pressure": np.full((8, 8, 8), 110.0),
-        # Te missing
-    }
-
-    divergence = engine._validate_step(surrogate_state, physics_state)
-
-    # Should only compute divergence for rho and pressure
-    # Average: 0.0909
-    expected = 0.1 / 1.1
-    assert divergence == pytest.approx(expected, rel=0.01)
+    assert not hasattr(engine, "_validate_step")
 
 
 # ============================================================================

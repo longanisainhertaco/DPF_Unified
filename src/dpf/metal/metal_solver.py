@@ -34,6 +34,7 @@ import logging
 import numpy as np
 import torch
 
+from dpf.constants import mu_0 as mu_0_si  # noqa: N812
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.metal.metal_kernel import MetalKernelWrapper
 from dpf.metal.metal_riemann import (
@@ -818,7 +819,6 @@ class MetalMHDSolver(PlasmaSolverBase):
         # However, input `eta` is likely in SI (Ohm-m).
         # We need to scale eta.
         # eta_code = eta_si / mu_0_si
-        mu_0_si = 4.0e-7 * 3.14159265358979323846
         eta_eff = eta / mu_0_si
 
         # Current density J = curl(B) / mu_0 (mu_0=1)
@@ -1287,11 +1287,11 @@ class MetalMHDSolver(PlasmaSolverBase):
         else:
             Lp_est = 0.0
 
-        # Compute dL/dt from previous Lp
+        # Compute dL/dt from previous Lp; None signals RLC solver to use BDF2 internally
         if self._prev_Lp is not None and dt > 0.0:
-            dL_dt = (Lp_est - self._prev_Lp) / dt
+            dL_dt: float | None = (Lp_est - self._prev_Lp) / dt
         else:
-            dL_dt = 0.0
+            dL_dt = None
         self._prev_Lp = Lp_est
 
         self._coupling = CouplingState(

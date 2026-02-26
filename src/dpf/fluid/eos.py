@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dpf.constants import k_B, m_p
+from dpf.constants import k_B, m_d
 
 
 class IdealEOS:
@@ -24,7 +24,7 @@ class IdealEOS:
     e_e = p_e / (gamma - 1) / rho
     """
 
-    def __init__(self, gamma: float = 5.0 / 3.0, ion_mass: float = m_p, Z: float = 1.0) -> None:
+    def __init__(self, gamma: float = 5.0 / 3.0, ion_mass: float = m_d, Z: float = 1.0) -> None:
         self.gamma = gamma
         self.mi = ion_mass
         self.Z = Z
@@ -57,6 +57,11 @@ class IdealEOS:
         return np.sqrt(self.gamma * p / np.maximum(rho, 1e-30))
 
     def temperature_from_energy(self, rho: np.ndarray, e_int: np.ndarray) -> np.ndarray:
-        """Recover temperature from specific internal energy (single-temperature)."""
+        """Recover temperature from specific internal energy (single-temperature).
+
+        For a fully ionized plasma with charge state Z, the total particle
+        density is n_total = n_i * (1 + Z), so T = (gamma-1) * e_int * rho
+        / (n_total * k_B).
+        """
         n = rho / self.mi
-        return (self.gamma - 1.0) * e_int * rho / (np.maximum(n, 1e-30) * k_B)
+        return (self.gamma - 1.0) * e_int * rho / (np.maximum(n, 1e-30) * (1.0 + self.Z) * k_B)

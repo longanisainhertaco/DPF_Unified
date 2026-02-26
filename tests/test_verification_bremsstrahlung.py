@@ -1,11 +1,14 @@
 """Bremsstrahlung radiation verification against NRL Plasma Formulary.
 
 Tests the bremsstrahlung radiation module against reference values from
-NRL Plasma Formulary (2019, p. 58):
-    P_ff = 1.69e-32 * ne^2 * Z^2 * Te^{1/2} * g_ff  [W/m^3]
+Rybicki & Lightman (1979) Eq. 5.14a with quasi-neutrality (ni = ne/Z):
+    P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)  [W/m^3]  (SI)
+
+The fundamental formula is P ~ Z^2 * ne * ni, but with quasi-neutrality
+ni = ne/Z applied, this reduces to P ~ Z * ne^2 when ne is the input.
 
 References:
-    NRL Plasma Formulary (2019), p. 58
+    Rybicki & Lightman (1979) Eq. 5.14a; NRL Plasma Formulary (2019), p. 58
 """
 
 import numpy as np
@@ -50,13 +53,17 @@ def test_brem_power_scales_with_sqrt_Te():
 
 
 def test_brem_power_scales_with_Z_squared():
-    """Z=2 should give 4x power vs Z=1."""
+    """At fixed ne, P ~ Z (quasi-neutral: ni=ne/Z, so P = Z^2*ne*ni = Z*ne^2).
+
+    With quasi-neutrality applied (ni = ne/Z), the bremsstrahlung power is
+    P = coeff * Z * ne^2 * sqrt(Te).  Doubling Z at fixed ne gives 2x power.
+    """
     ne = np.array([1e24])
     Te = np.array([1e7])
     # bremsstrahlung_power(ne, Te, Z, gaunt_factor) — positional args
     P_Z1 = bremsstrahlung_power(ne, Te, 1.0, 1.2)
     P_Z2 = bremsstrahlung_power(ne, Te, 2.0, 1.2)
-    assert P_Z2[0] / P_Z1[0] == pytest.approx(4.0, rel=1e-10)
+    assert P_Z2[0] / P_Z1[0] == pytest.approx(2.0, rel=1e-10)
 
 
 def test_brem_power_zero_for_zero_inputs():

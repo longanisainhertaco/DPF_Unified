@@ -66,6 +66,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
+        "snowplow": {"anode_length": 0.6},  # Scholz (2006) Table 1: 600 mm
     },
     "nx2": {
         "_meta": {
@@ -92,6 +93,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {"anode_length": 0.05, "fill_pressure_Pa": 133.0},  # ~50 mm, ~1 Torr D2
     },
     "llnl_dpf": {
         "_meta": {
@@ -119,6 +121,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {"anode_length": 0.08},  # ~80 mm for LLNL DPF
     },
     "cartesian_demo": {
         "_meta": {

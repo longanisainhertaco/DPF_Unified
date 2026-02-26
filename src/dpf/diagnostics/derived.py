@@ -29,6 +29,37 @@ def current_density_magnitude(
     Returns:
         |J| array with shape (nx, ny, nz), units [A/m^2].
     """
+    if geometry == "cylindrical":
+        # Cylindrical (r, theta, z) with B = (Br, Btheta, Bz)
+        # B[0]=Br, B[1]=Btheta, B[2]=Bz; axis 0 = r, axis 1 = theta, axis 2 = z
+        Br, Btheta, Bz = B[0], B[1], B[2]
+        nr = B.shape[1]
+        # Build radial coordinate array, broadcast to match grid shape
+        r = np.arange(nr, dtype=B.dtype) * dx + 0.5 * dx  # cell-centered r
+        r_shape = [1] * (B.ndim - 1)
+        r_shape[0] = nr
+        r = r.reshape(r_shape)
+        r_safe = np.maximum(r, 1e-30)
+
+        # curl(B)_r = (1/r)*dBz/dtheta - dBtheta/dz
+        curl_r = (
+            np.gradient(Bz, dx, axis=1) / r_safe
+            - np.gradient(Btheta, dx, axis=2)
+        )
+        # curl(B)_theta = dBr/dz - dBz/dr
+        curl_theta = (
+            np.gradient(Br, dx, axis=2) - np.gradient(Bz, dx, axis=0)
+        )
+        # curl(B)_z = (1/r)*d(r*Btheta)/dr - (1/r)*dBr/dtheta
+        curl_z = (
+            np.gradient(r * Btheta, dx, axis=0) / r_safe
+            - np.gradient(Br, dx, axis=1) / r_safe
+        )
+
+        J_mag = np.sqrt(curl_r**2 + curl_theta**2 + curl_z**2) / mu_0
+        return J_mag
+
+    # Cartesian geometry (default)
     Bx, By, Bz = B[0], B[1], B[2]
 
     # curl(B)_x = dBz/dy - dBy/dz

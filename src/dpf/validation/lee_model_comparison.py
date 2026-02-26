@@ -378,7 +378,6 @@ class LeeModel:
                 I_r, Vcap_r, r_s, vr = y
 
                 r_s = max(r_s, 0.001 * a)  # Minimum radius
-                vr = min(vr, 0.0)  # vr should be negative (inward)
 
                 # Plasma inductance
                 L_p_rad = (mu_0 / (2.0 * pi)) * L_pinch * np.log(max(b / r_s, 1.01))
@@ -414,7 +413,7 @@ class LeeModel:
                 # Equation of motion: M * dvr/dt = -F_rad + F_pressure - vr * dM/dt
                 dvr_dt = (-F_rad + F_pressure - vr * dm_dt) / M_slug
 
-                dvr_dt = np.clip(dvr_dt, -1e15, 0.0)
+                dvr_dt = np.clip(dvr_dt, -1e15, 1e15)
 
                 return np.array([dI_dt, dV_dt, vr, dvr_dt])
 
@@ -545,11 +544,11 @@ class LeeModel:
 
         # Waveform NRMSE against experimental digitized I(t)
         waveform_nrmse = float("nan")
-        from dpf.validation.experimental import DEVICES, normalized_rmse
+        from dpf.validation.experimental import DEVICES, nrmse_peak
         if device_name in DEVICES:
             dev = DEVICES[device_name]
             if dev.waveform_t is not None and dev.waveform_I is not None:
-                waveform_nrmse = normalized_rmse(
+                waveform_nrmse = nrmse_peak(
                     result.t, result.I, dev.waveform_t, dev.waveform_I,
                 )
 
@@ -633,9 +632,14 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
     # Pinch radius (Lee standard: 10% of anode radius)
     r_pinch_min = 0.1 * a
 
-    # Pinch-phase current: approximately equal to peak current
-    # (current dip occurs DURING compression; at minimum radius, I ~ I_peak)
-    I_pinch = max(result.peak_current, 0.0)
+    # Pinch-phase current: use current at pinch time, not peak current
+    # Peak current occurs before pinch; pinch current is typically 60-80% of peak
+    if result.pinch_time > 0 and len(result.t) > 0:
+        pinch_idx = int(np.searchsorted(result.t, result.pinch_time))
+        pinch_idx = min(pinch_idx, len(result.I) - 1)
+        I_pinch = max(float(np.abs(result.I[pinch_idx])), 0.0)
+    else:
+        I_pinch = max(result.peak_current, 0.0)  # fallback
     if I_pinch <= 0.0:
         return 0.0
 

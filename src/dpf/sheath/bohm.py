@@ -127,7 +127,7 @@ def sheath_thickness(ne: float, Te: float, V_sheath: float, mi: float = m_p) -> 
 
 
 @njit(cache=True)
-def floating_potential(Te: float) -> float:
+def floating_potential(Te: float, mi: float = m_p) -> float:
     """Compute the floating potential of an isolated surface.
 
     V_f = -(k_B * Te / (2*e)) * ln(m_i / (2*pi*m_e))
@@ -139,6 +139,7 @@ def floating_potential(Te: float) -> float:
 
     Args:
         Te: Electron temperature [K].
+        mi: Ion mass [kg] (default: proton mass).
 
     Returns:
         Floating potential [V] (negative for electron-repelling).
@@ -146,7 +147,7 @@ def floating_potential(Te: float) -> float:
     Te_safe = max(Te, 0.0)
     # V_f = -(kT/2e) * ln(mi/(2*pi*me))
     # For hydrogen: ln(mp/(2*pi*me)) ~ 5.68
-    return -(k_B * Te_safe / (2.0 * e)) * np.log(m_p / (2.0 * np.pi * m_e))
+    return -(k_B * Te_safe / (2.0 * e)) * np.log(mi / (2.0 * np.pi * m_e))
 
 
 def poisson_1d(

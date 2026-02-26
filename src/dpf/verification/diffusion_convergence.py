@@ -48,6 +48,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from dpf.constants import k_B, mu_0
+from dpf.verification.utils import estimate_convergence_order as _estimate_convergence_order
 
 logger = logging.getLogger(__name__)
 
@@ -111,45 +112,6 @@ def gaussian_B_analytical(
     sigma_sq = sigma0**2 + 2.0 * D * t
     sigma = np.sqrt(sigma_sq)
     return B0 * (sigma0 / sigma) * np.exp(-x**2 / (2.0 * sigma_sq))
-
-
-# ============================================================
-# Convergence order estimation
-# ============================================================
-
-def _estimate_convergence_order(
-    resolutions: list[int],
-    errors: list[float],
-) -> float:
-    """Estimate convergence order from (resolution, error) pairs via log-log fit.
-
-    Args:
-        resolutions: Grid sizes.
-        errors: Corresponding L2 errors.
-
-    Returns:
-        Estimated convergence order (positive = error decreases with N).
-    """
-    if len(resolutions) < 2:
-        return 0.0
-
-    log_N: list[float] = []
-    log_e: list[float] = []
-    for N, err in zip(resolutions, errors, strict=False):
-        if np.isfinite(err) and err > 0 and N > 0:
-            log_N.append(np.log(float(N)))
-            log_e.append(np.log(err))
-
-    if len(log_N) < 2:
-        return 0.0
-
-    log_N_arr = np.array(log_N)
-    log_e_arr = np.array(log_e)
-    A = np.vstack([log_N_arr, np.ones(len(log_N_arr))]).T
-    result = np.linalg.lstsq(A, log_e_arr, rcond=None)
-    slope = result[0][0]
-
-    return float(-slope)
 
 
 # ============================================================

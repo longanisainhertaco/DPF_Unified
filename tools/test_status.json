@@ -1,0 +1,37 @@
+{
+  "timestamp": 1770667139.291378,
+  "elapsed_seconds": 1996.5,
+  "total": 55,
+  "completed": 3,
+  "passed": 2,
+  "failed": 1,
+  "skipped": 0,
+  "errors": 0,
+  "running": "tests/test_phase17.py::TestBrioWuShockTube::test_brio_wu_run_passes",
+  "progress_pct": 5.5,
+  "status": "running",
+  "results": [
+    {
+      "nodeid": "tests/test_athena_wrapper.py::TestSubprocessMode::test_subprocess_single_step",
+      "outcome": "passed",
+      "duration": 0.02,
+      "timestamp": 1770665145.0402281,
+      "symbol": "\u2705"
+    },
+    {
+      "nodeid": "tests/test_athena_wrapper.py::TestSubprocessMode::test_subprocess_updates_time",
+      "outcome": "passed",
+      "duration": 0.04,
+      "timestamp": 1770665145.0815518,
+      "symbol": "\u2705"
+    },
+    {
+      "nodeid": "tests/test_phase17.py::TestSodShockTube::test_sod_run_passes",
+      "outcome": "failed",
+      "duration": 1994.21,
+      "timestamp": 1770667139.2888489,
+      "symbol": "\u274c",
+      "message": "E   assert False"
+    }
+  ]
+}

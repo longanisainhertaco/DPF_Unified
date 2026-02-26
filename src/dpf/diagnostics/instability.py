@@ -9,7 +9,7 @@ tau_m0 ~ 10-100 ns is shorter than the confinement time, the pinch
 disrupts and beam-target neutron production commences.
 
 Physics:
-    gamma_m0 = k * v_A * sqrt(1 - beta_p / (2 + gamma_gas * beta_p))
+    gamma_m0 = k * v_A * sqrt(1 - gamma_gas * beta_p / 2)
 
     where:
         k = mode_number / a_pinch        [1/m]
@@ -17,7 +17,7 @@ Physics:
         beta_p = 2*mu_0*p / B_theta^2     [dimensionless] (plasma beta)
 
     Stability criterion (Kadomtsev):
-        beta_p > 2/(gamma_gas - 1)  =>  stable (for gamma=5/3: beta_p > 3)
+        beta_p > 2/gamma_gas  =>  stable (for gamma=5/3: beta_p > 1.2)
 
 References:
     Kruskal, M. & Schwarzschild, M., Proc. R. Soc. A 223, 348 (1954).
@@ -74,17 +74,16 @@ def m0_growth_rate(
     B_sq = B_theta**2
     beta_p = 2.0 * mu_0 * pressure / max(B_sq, 1e-30)
 
-    # Critical beta for stability: beta_p_crit = 2/(gamma - 1)
-    beta_p_crit = 2.0 / (gamma - 1.0)
+    # Critical beta for stability (Kadomtsev 1966): beta_p_crit = 2/gamma
+    beta_p_crit = 2.0 / gamma
     stability_margin = beta_p_crit - beta_p
 
     # Wave number
     k = mode_number / a_pinch
 
-    # Growth rate: gamma_m0 = k * v_A * sqrt(1 - beta_p / (2 + gamma*beta_p))
-    # The argument under the sqrt must be positive for instability
-    denom = 2.0 + gamma * beta_p
-    arg = 1.0 - beta_p / max(denom, 1e-30)
+    # Growth rate (Kadomtsev 1966): gamma_m0 = k * v_A * sqrt(1 - gamma*beta_p/2)
+    # Stable when gamma*beta_p/2 >= 1, i.e. beta_p >= 2/gamma
+    arg = 1.0 - gamma * beta_p / 2.0
 
     if arg > 0:
         growth_rate = k * v_A * np.sqrt(arg)

@@ -318,10 +318,13 @@ def apply_nernst_advection(
     dt: float,
     Z_eff: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Advect the magnetic field by the Nernst velocity.
+    """Update B-field via the Nernst induction equation dB/dt = -curl(E_Nernst).
 
-    Computes the Nernst velocity from ne, Te, and B, then performs a
-    first-order upwind advection step on each B component.
+    Uses the curl-based formulation instead of component-wise advection
+    to preserve div(B) = 0 by construction (Ridgers et al. 2008, Eq. 8).
+
+    E_Nernst = -v_N x B, where v_N is the Nernst velocity.
+    dB/dt = -curl(E_Nernst) = curl(v_N x B)
 
     The Nernst term moves B along -grad(Te) in the plane perpendicular
     to B.  This can compress field into cold regions or expel it from
@@ -336,17 +339,33 @@ def apply_nernst_advection(
         Z_eff: Effective ion charge state.
 
     Returns:
-        Tuple (Bx_new, By_new, Bz_new) after Nernst advection.
+        Tuple (Bx_new, By_new, Bz_new) after Nernst induction update.
+
+    Reference:
+        Ridgers et al., Phys. Plasmas 15, 092311 (2008), Eq. 8.
     """
     B_field = np.array([Bx, By, Bz])
 
-    # Compute Nernst velocity
-    v_N = nernst_velocity(ne, Te, B_field, Z_eff, dx, dy, dz)
+    # Compute Nernst electric field: E_N = -v_N x B
+    grad_Te = np.array([
+        np.gradient(Te, dx, axis=0),
+        np.gradient(Te, dy, axis=1),
+        np.gradient(Te, dz, axis=2),
+    ])
+    E_nernst = nernst_electric_field(ne, Te, B_field, grad_Te, Z_eff)
 
-    # Upwind advection of each B component
-    Bx_new = _upwind_advect_component(Bx, v_N[0], v_N[1], v_N[2], dx, dy, dz, dt)
-    By_new = _upwind_advect_component(By, v_N[0], v_N[1], v_N[2], dx, dy, dz, dt)
-    Bz_new = _upwind_advect_component(Bz, v_N[0], v_N[1], v_N[2], dx, dy, dz, dt)
+    # dB/dt = -curl(E_Nernst)
+    curl_E = np.array([
+        np.gradient(E_nernst[2], dy, axis=1) - np.gradient(E_nernst[1], dz, axis=2),
+        np.gradient(E_nernst[0], dz, axis=2) - np.gradient(E_nernst[2], dx, axis=0),
+        np.gradient(E_nernst[1], dx, axis=0) - np.gradient(E_nernst[0], dy, axis=1),
+    ])
+
+    dB_dt = -curl_E
+
+    Bx_new = Bx + dt * dB_dt[0]
+    By_new = By + dt * dB_dt[1]
+    Bz_new = Bz + dt * dB_dt[2]
 
     # Replace non-finite values from numerical artifacts
     Bx_new = np.where(np.isfinite(Bx_new), Bx_new, Bx)

@@ -250,13 +250,13 @@ def _find_first_peak(signal: np.ndarray, min_prominence: float = 0.05) -> int:
 # Waveform comparison
 # =====================================================================
 
-def normalized_rmse(
+def nrmse_peak(
     t_sim: np.ndarray,
     I_sim: np.ndarray,
     t_exp: np.ndarray,
     I_exp: np.ndarray,
 ) -> float:
-    """Compute normalized RMSE between simulated and experimental waveforms.
+    """Compute peak-normalized RMSE between simulated and experimental waveforms.
 
     Resamples the simulated waveform onto the experimental time grid via
     linear interpolation, then computes NRMSE = RMSE / |I_peak_exp|.
@@ -275,13 +275,17 @@ def normalized_rmse(
     Returns
     -------
     float
-        Normalized RMSE (dimensionless).  0.0 for a perfect match.
+        Peak-normalized RMSE (dimensionless).  0.0 for a perfect match.
     """
     I_sim_resampled = np.interp(t_exp, t_sim, I_sim)
     residuals = I_sim_resampled - I_exp
     rmse = float(np.sqrt(np.mean(residuals**2)))
     I_peak_exp = float(np.max(np.abs(I_exp)))
     return rmse / max(I_peak_exp, 1e-300)
+
+
+# Backward-compatible alias (CRIT-1: prefer nrmse_peak for clarity)
+normalized_rmse = nrmse_peak
 
 
 # =====================================================================

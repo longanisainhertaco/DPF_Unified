@@ -36,7 +36,7 @@ import logging
 import numpy as np
 
 from dpf.constants import e as e_charge
-from dpf.constants import k_B, m_e
+from dpf.constants import epsilon_0, k_B, m_e, pi
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +74,12 @@ def braginskii_kappa_parallel(
     arg = np.sqrt(np.maximum(ne_cm3, 1.0)) * Z_eff / np.maximum(Te_eV, 1e-3) ** 1.5
     lnL = np.maximum(23.0 - np.log(np.maximum(arg, 1e-30)), 2.0)
 
-    # Electron collision time: tau_e ~ 3.44e5 * Te^{3/2} / (ne * lnL)
-    tau_e = 3.44e5 * Te_safe ** 1.5 / np.maximum(ne_safe * lnL, 1e-30)
+    # Electron collision time (full Spitzer, SI units: Te [K], ne [m^-3])
+    tau_e = (
+        3.0 * np.sqrt(2.0 * pi) * epsilon_0**2 * np.sqrt(m_e)
+        * (k_B * Te_safe) ** 1.5
+        / np.maximum(ne_safe * Z_eff * e_charge**4 * lnL, 1e-300)
+    )
 
     kappa_par = 3.16 * ne_safe * k_B**2 * Te_safe * tau_e / m_e
 
@@ -114,8 +118,12 @@ def braginskii_kappa_perp(
     arg = np.sqrt(np.maximum(ne_cm3, 1.0)) * Z_eff / np.maximum(Te_eV, 1e-3) ** 1.5
     lnL = np.maximum(23.0 - np.log(np.maximum(arg, 1e-30)), 2.0)
 
-    # Electron collision time
-    tau_e = 3.44e5 * Te_safe ** 1.5 / np.maximum(ne_safe * lnL, 1e-30)
+    # Electron collision time (full Spitzer, SI units)
+    tau_e = (
+        3.0 * np.sqrt(2.0 * pi) * epsilon_0**2 * np.sqrt(m_e)
+        * (k_B * Te_safe) ** 1.5
+        / np.maximum(ne_safe * Z_eff * e_charge**4 * lnL, 1e-300)
+    )
 
     # Electron cyclotron frequency
     omega_ce = e_charge * B_safe / m_e
@@ -269,7 +277,41 @@ def anisotropic_thermal_conduction(
     dt_sub = dt / n_sub
 
     Te_new = Te.copy()
-    for _ in range(n_sub):
+    for _isub in range(n_sub):
+        if _isub > 0:
+            # Recompute conductivities, heat flux, and div_q from updated Te_new
+            kappa_par_sub = braginskii_kappa_parallel(ne, Te_new, Z_eff)
+            kappa_perp_sub = braginskii_kappa_perp(ne, Te_new, B_mag, Z_eff)
+            kappa_par_sub = np.minimum(kappa_par_sub, kappa_cap)
+            kappa_perp_sub = np.minimum(kappa_perp_sub, kappa_cap)
+            grad_T_sub = np.array([
+                np.gradient(Te_new, dx, axis=0),
+                np.gradient(Te_new, dy, axis=1),
+                np.gradient(Te_new, dz, axis=2),
+            ])
+            b_dot_gradT_sub = np.sum(b_hat * grad_T_sub, axis=0)
+            grad_T_par_sub = np.zeros_like(B)
+            for i in range(3):
+                grad_T_par_sub[i] = b_dot_gradT_sub * b_hat[i]
+            grad_T_perp_sub = grad_T_sub - grad_T_par_sub
+            # Re-apply Sharma-Hammett flux limiter
+            Te_sub_safe = np.maximum(Te_new, 1.0)
+            v_th_sub = np.sqrt(k_B * Te_sub_safe / m_e)
+            q_free_sub = ne_safe * k_B * Te_sub_safe * v_th_sub
+            q_par_mag_sub = kappa_par_sub * np.abs(b_dot_gradT_sub)
+            q_denom_sub = q_par_mag_sub + flux_limiter * q_free_sub
+            limiter_sub = np.where(q_denom_sub > 1e-30, flux_limiter * q_free_sub / q_denom_sub, 1.0)
+            kappa_par_lim_sub = kappa_par_sub * limiter_sub
+            heat_flux_sub = np.zeros_like(B)
+            for i in range(3):
+                heat_flux_sub[i] = kappa_par_lim_sub * grad_T_par_sub[i] + kappa_perp_sub * grad_T_perp_sub[i]
+            heat_flux_sub = np.where(np.isfinite(heat_flux_sub), heat_flux_sub, 0.0)
+            div_q = (
+                np.gradient(heat_flux_sub[0], dx, axis=0)
+                + np.gradient(heat_flux_sub[1], dy, axis=1)
+                + np.gradient(heat_flux_sub[2], dz, axis=2)
+            )
+            div_q = np.where(np.isfinite(div_q), div_q, 0.0)
         # dTe/dt = div(q) / (1.5 * ne * kB)
         Te_new += dt_sub * div_q / (1.5 * ne_safe * k_B)
 

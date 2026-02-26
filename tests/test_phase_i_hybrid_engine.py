@@ -256,45 +256,15 @@ def test_run_surrogate_phase_returns_predicted_states():
     assert all("rho" in state for state in surrogate_history)
 
 
-def test_validate_step_returns_zero_for_identical_states():
-    """HybridEngine._validate_step returns 0.0 for identical states."""
+def test_validate_step_removed_as_dead_code():
+    """HybridEngine._validate_step was removed (dead code, MOD-4 fix)."""
     config = _make_config()
     surrogate = MockSurrogate()
     engine = HybridEngine(config, surrogate)
 
-    state1 = _make_state()
-    state2 = {k: v.copy() for k, v in state1.items()}
-
-    divergence = engine._validate_step(state1, state2)
-    assert divergence == pytest.approx(0.0, abs=1e-10)
-
-
-def test_validate_step_returns_positive_for_different_states():
-    """HybridEngine._validate_step returns positive value for different states."""
-    config = _make_config()
-    surrogate = MockSurrogate()
-    engine = HybridEngine(config, surrogate)
-
-    state1 = _make_state()
-    state2 = _make_state()
-    state2["rho"] = state2["rho"] * 1.1  # 10% difference
-
-    divergence = engine._validate_step(state1, state2)
-    assert divergence > 0.0
-
-
-def test_validate_step_handles_missing_fields():
-    """HybridEngine._validate_step handles missing fields gracefully."""
-    config = _make_config()
-    surrogate = MockSurrogate()
-    engine = HybridEngine(config, surrogate)
-
-    state1 = _make_state()
-    state2 = {k: v for k, v in state1.items() if k != "psi"}  # Missing field
-
-    # Should not crash, just skip missing field
-    divergence = engine._validate_step(state1, state2)
-    assert divergence >= 0.0
+    # _validate_step was unused dead code that was removed.
+    # Divergence checking is handled inline in step() instead.
+    assert not hasattr(engine, "_validate_step")
 
 
 def test_surrogate_fallback_when_divergence_exceeds_threshold():

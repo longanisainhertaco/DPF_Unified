@@ -103,7 +103,10 @@ def _lists_to_arrays(state: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, list):
             # Try to convert to array if it's a numeric list
             try:
-                result[key] = np.array(value)
+                arr = np.array(value)
+                if arr.dtype.kind not in ("f", "i", "u", "b"):
+                    raise ValueError(f"Non-numeric array dtype {arr.dtype} for key '{key}'")
+                result[key] = arr
             except (ValueError, TypeError):
                 # Not a numeric array — keep as list or recurse if dict list
                 if value and isinstance(value[0], dict):

@@ -39,9 +39,14 @@ from dpf.validation.lee_model_comparison import (
 
 def _make_pf1000_result(peak_current: float = 1.87e6) -> LeeModelResult:
     """Minimal LeeModelResult with PF-1000 geometry metadata."""
+    t = np.linspace(0, 10e-6, 100)
+    # Realistic current waveform: sinusoidal rise, peak at ~5.8 us, dip at pinch
+    I_wfm = peak_current * np.sin(np.pi * t / (2 * 5.8e-6))
+    I_wfm = np.clip(I_wfm, 0, peak_current)
+    # At pinch time (~7.0 us), current is ~70% of peak (typical for DPF)
     return LeeModelResult(
-        t=np.linspace(0, 10e-6, 100),
-        I=np.zeros(100),
+        t=t,
+        I=I_wfm,
         V=np.zeros(100),
         z_sheet=np.zeros(100),
         r_shock=np.zeros(100),
@@ -68,13 +73,17 @@ def _make_pf1000_result(peak_current: float = 1.87e6) -> LeeModelResult:
 
 def _make_nx2_result() -> LeeModelResult:
     """Minimal LeeModelResult with NX2 geometry metadata."""
+    t = np.linspace(0, 4e-6, 100)
+    peak = 400e3
+    I_wfm = peak * np.sin(np.pi * t / (2 * 1.8e-6))
+    I_wfm = np.clip(I_wfm, 0, peak)
     return LeeModelResult(
-        t=np.linspace(0, 4e-6, 100),
-        I=np.zeros(100),
+        t=t,
+        I=I_wfm,
         V=np.zeros(100),
         z_sheet=np.zeros(100),
         r_shock=np.zeros(100),
-        peak_current=400e3,
+        peak_current=peak,
         peak_current_time=1.8e-6,
         pinch_time=2.2e-6,
         device_name="NX2",
@@ -97,13 +106,17 @@ def _make_nx2_result() -> LeeModelResult:
 
 def _make_unu_result() -> LeeModelResult:
     """Minimal LeeModelResult with UNU-ICTP geometry metadata."""
+    t = np.linspace(0, 6e-6, 100)
+    peak = 170e3
+    I_wfm = peak * np.sin(np.pi * t / (2 * 2.8e-6))
+    I_wfm = np.clip(I_wfm, 0, peak)
     return LeeModelResult(
-        t=np.linspace(0, 6e-6, 100),
-        I=np.zeros(100),
+        t=t,
+        I=I_wfm,
         V=np.zeros(100),
         z_sheet=np.zeros(100),
         r_shock=np.zeros(100),
-        peak_current=170e3,
+        peak_current=peak,
         peak_current_time=2.8e-6,
         pinch_time=3.5e-6,
         device_name="UNU-ICTP",

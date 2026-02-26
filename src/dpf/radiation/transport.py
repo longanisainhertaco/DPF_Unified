@@ -301,21 +301,23 @@ def apply_radiation_transport(
     rho = state["rho"]
     ne = Z * rho / m_d  # Electron density assuming Z ionization
 
+    # Work on a shallow copy so the caller's state dict is never mutated.
+    new_state = dict(state)
+
     # Skip FLD when plasma is too cold — radiation transport is negligible
     # below ~10,000 K (< 1 eV) and the opacity formula produces overflow.
     Te_max = float(np.max(Te))
     if Te_max < 1e4:
         # Cold plasma: no significant radiation. Return state unchanged.
-        new_state = dict(state)
         if "E_rad" not in new_state:
             new_state["E_rad"] = np.zeros_like(Te)
         return new_state
 
     # Initialize radiation energy if not present
-    if "E_rad" not in state:
-        state["E_rad"] = compute_radiation_energy(Te, ne)
+    if "E_rad" not in new_state:
+        new_state["E_rad"] = compute_radiation_energy(Te, ne)
 
-    E_rad = state["E_rad"]
+    E_rad = new_state["E_rad"]
 
     # Compute bremsstrahlung power
     P_brem = bremsstrahlung_power(ne, Te, Z, gaunt_factor)
@@ -347,7 +349,7 @@ def apply_radiation_transport(
     # Sanitize
     Te_new = np.where(np.isfinite(Te_new), Te_new, Te)
 
-    state["Te"] = Te_new
-    state["E_rad"] = E_rad_new
+    new_state["Te"] = Te_new
+    new_state["E_rad"] = E_rad_new
 
-    return state
+    return new_state

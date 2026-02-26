@@ -194,6 +194,7 @@ def braginskii_eta3(
     Ti: np.ndarray,
     B_mag: np.ndarray,
     m_ion: float = m_d,
+    Z_eff: float = 1.0,
 ) -> np.ndarray:
     r"""Braginskii gyroviscosity coefficient.
 
@@ -208,11 +209,12 @@ def braginskii_eta3(
         Ti: Ion temperature [K].
         B_mag: Magnetic field magnitude [T].
         m_ion: Ion mass [kg] (default: deuterium).
+        Z_eff: Effective ion charge state (default: 1.0 for deuterium).
 
     Returns:
         eta_3 [Pa * s].
     """
-    omega_ci = e_charge * B_mag / m_ion
+    omega_ci = Z_eff * e_charge * B_mag / m_ion
     omega_ci_safe = np.maximum(omega_ci, 1e-30)
     return ni * k_B * Ti / (2.0 * omega_ci_safe)
 

@@ -4,7 +4,12 @@ Provides volumetric power density for electron-ion bremsstrahlung,
 the dominant radiation loss mechanism in DPF plasma at ~1-10 keV.
 
 Physics:
-    P_ff = 1.42e-40 * g_ff * Z^2 * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
+    P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
+
+    Derived from Rybicki & Lightman (1979) Eq. 5.14a:
+        P_ff = 1.426e-40 * g_ff * ne * ni * Z^2 * sqrt(Te)
+    with quasi-neutrality ni = ne / Z:
+        P_ff = 1.426e-40 * g_ff * Z * ne^2 * sqrt(Te)
 
     where:
         g_ff  = Gaunt factor (dimensionless, ~1.0-1.5 for DPF conditions)
@@ -12,7 +17,7 @@ Physics:
         ne    = Electron number density [m^-3]
         Te    = Electron temperature [K]
 
-Reference: NRL Plasma Formulary (2019), p. 58
+Reference: Rybicki & Lightman (1979) Eq. 5.14a; NRL Plasma Formulary (2019), p. 58
 """
 
 from __future__ import annotations
@@ -21,7 +26,7 @@ import numpy as np
 from numba import njit
 
 # Bremsstrahlung coefficient in SI (W m^3 K^{-1/2})
-# P_ff = BREM_COEFF * g_ff * Z^2 * ne^2 * sqrt(Te)
+# P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)    [quasi-neutral: ni = ne/Z]
 # SI coefficient (ne in m^-3, T in K) — NOT the CGS coefficient 1.69e-32
 BREM_COEFF = 1.42e-40
 
@@ -48,7 +53,7 @@ def bremsstrahlung_power(
     Te_safe = np.maximum(Te, 0.0)
     ne_safe = np.maximum(ne, 0.0)
 
-    P_ff = BREM_COEFF * gaunt_factor * Z * Z * ne_safe * ne_safe * np.sqrt(Te_safe)
+    P_ff = BREM_COEFF * gaunt_factor * Z * ne_safe * ne_safe * np.sqrt(Te_safe)
     return P_ff
 
 
@@ -97,7 +102,7 @@ def apply_bremsstrahlung_losses(
         Te_new = Te_old - dt * P_ff(ne, Te_new) / (1.5 * ne * k_B)
 
     For P_ff ~ sqrt(Te), the implicit solve is:
-        Let alpha = dt * BREM_COEFF * g_ff * Z^2 * ne / (1.5 * k_B)
+        Let alpha = dt * BREM_COEFF * g_ff * Z * ne / (1.5 * k_B)
         Then: Te_new + alpha * sqrt(Te_new) = Te_old
         Solve via Newton iteration (2-3 iterations suffice).
 
@@ -116,9 +121,9 @@ def apply_bremsstrahlung_losses(
     k_B = 1.380649e-23
 
     # Coefficient for implicit solve
-    # alpha = dt * BREM_COEFF * g_ff * Z^2 * ne / (1.5 * k_B)
+    # alpha = dt * BREM_COEFF * g_ff * Z * ne / (1.5 * k_B)
     ne_safe = np.maximum(ne, 0.0)
-    alpha = dt * BREM_COEFF * gaunt_factor * Z * Z * ne_safe / (1.5 * k_B)
+    alpha = dt * BREM_COEFF * gaunt_factor * Z * ne_safe / (1.5 * k_B)
 
     # Newton iteration for: f(T) = T + alpha * sqrt(T) - Te_old = 0
     # f'(T) = 1 + alpha / (2 * sqrt(T))

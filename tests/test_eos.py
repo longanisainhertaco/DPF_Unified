@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dpf.constants import k_B, m_p
+from dpf.constants import k_B, m_d
 from dpf.fluid.eos import IdealEOS
 
 
@@ -18,7 +18,7 @@ class TestIdealEOS:
         """p_i = n_i * k_B * T_i."""
         rho = np.array([1e-4])  # kg/m^3
         Ti = np.array([1e4])    # K
-        n_i = rho / m_p
+        n_i = rho / m_d
         expected = n_i * k_B * Ti
         result = self.eos.ion_pressure(rho, Ti)
         np.testing.assert_allclose(result, expected, rtol=1e-10)
@@ -65,9 +65,13 @@ class TestIdealEOS:
         assert cs > 0
 
     def test_temperature_recovery(self):
-        """Temperature -> energy -> temperature roundtrip."""
+        """Temperature -> energy -> temperature roundtrip.
+
+        temperature_from_energy recovers T from total specific internal energy
+        (ion + electron), so we must sum both contributions for the roundtrip.
+        """
         rho = np.array([1e-3])
         T_orig = np.array([5e4])
-        e_int = self.eos.ion_energy(rho, T_orig)
+        e_int = self.eos.ion_energy(rho, T_orig) + self.eos.electron_energy(rho, T_orig)
         T_recovered = self.eos.temperature_from_energy(rho, e_int)
         np.testing.assert_allclose(T_recovered, T_orig, rtol=1e-6)

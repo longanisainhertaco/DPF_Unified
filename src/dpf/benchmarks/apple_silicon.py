@@ -1,8 +1,10 @@
-"""Apple Silicon performance benchmarks for DPF solvers.
+"""Apple Silicon CPU performance benchmarks for DPF solvers.
 
 Exercises the Numba-parallelised hot loops (viscosity, constrained transport,
-Nernst advection) and the MHD solver to measure throughput on Apple Silicon
-(M-series) hardware.
+Nernst advection) and the MHD solver to measure CPU throughput on Apple Silicon
+(M-series) hardware.  This module benchmarks the **Python/NumPy/Numba engine
+only** — all operations run on the CPU.  For GPU (Metal/MPS) benchmarks see
+``metal_benchmark.py``.
 
 Usage:
     python -m dpf.benchmarks.apple_silicon
@@ -153,7 +155,7 @@ def benchmark_sod(nx: int = 256, iterations: int = 10) -> dict:
         for _ in range(5):
             s = solver.step(s, dt, current=0.0, voltage=0.0)
 
-    mean_t, std_t = _timer(_run, warmup=1, iterations=iterations)
+    mean_t, std_t = _timer(_run, warmup=2, iterations=iterations)
     return {"nx": nx, "steps": 5, "mean_s": mean_t, "std_s": std_t}
 
 
@@ -200,7 +202,7 @@ def benchmark_cylindrical_mhd(nr: int = 64, nz: int = 64, iterations: int = 10) 
         s = {k: v.copy() for k, v in state.items()}
         solver.step(s, dt, current=1e5, voltage=2e4)
 
-    mean_t, std_t = _timer(_run, warmup=1, iterations=iterations)
+    mean_t, std_t = _timer(_run, warmup=2, iterations=iterations)
     return {"grid": f"{nr}x{nz}", "mean_s": mean_t, "std_s": std_t}
 
 

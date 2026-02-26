@@ -163,7 +163,9 @@ class InstabilityDetector:
             return "low"
 
     def monitor_trajectory(
-        self, trajectory: list[dict[str, np.ndarray]]
+        self,
+        trajectory: list[dict[str, np.ndarray]],
+        dt: float = 1.0,
     ) -> list[InstabilityEvent]:
         """
         Monitor full trajectory for instability events.
@@ -173,6 +175,8 @@ class InstabilityDetector:
 
         Args:
             trajectory: Complete simulation trajectory
+            dt: Physical timestep in seconds. Used to compute physical time
+                for each step (``time = step * dt``).
 
         Returns:
             List of detected InstabilityEvents (chronological order)
@@ -197,8 +201,7 @@ class InstabilityDetector:
             history = trajectory[i - history_length : i]
             actual_next = trajectory[i]
 
-            # Use index as step number, placeholder time
-            event = self.check(history, actual_next, step=i, time=float(i))
+            event = self.check(history, actual_next, step=i, time=float(i * dt))
 
             if event is not None:
                 events.append(event)
