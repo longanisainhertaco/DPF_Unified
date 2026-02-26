@@ -26,6 +26,7 @@ import pytest
 
 torch = pytest.importorskip("torch")  # noqa: E402, I001
 from dpf.metal.metal_solver import MetalMHDSolver  # noqa: E402
+from dpf.metal.metal_stencil import ct_update_mps, div_B_mps, emf_from_fluxes_mps  # noqa: E402
 
 # ============================================================
 # Helpers
@@ -737,6 +738,85 @@ class TestFloat64Precision:
         assert drift_f64 <= drift_f32 * 1.1, (
             f"Float64 drift ({drift_f64:.4e}) worse than f32 ({drift_f32:.4e})"
         )
+
+    def test_ct_update_cpu_float64(self):
+        """ct_update_mps accepts CPU float64 tensors after _ensure_mps fix.
+
+        Prior to the fix, _ensure_mps raised ValueError for any non-MPS
+        device.  After the fix it also accepts CPU, enabling CT in float64
+        precision mode.
+        """
+        nx, ny, nz = 8, 8, 8
+        dtype = torch.float64
+        device = torch.device("cpu")
+
+        Bx_face = torch.zeros(nx + 1, ny, nz, dtype=dtype, device=device)
+        By_face = torch.zeros(nx, ny + 1, nz, dtype=dtype, device=device)
+        Bz_face = torch.zeros(nx, ny, nz + 1, dtype=dtype, device=device)
+        Ex_edge = torch.zeros(nx, ny + 1, nz + 1, dtype=dtype, device=device)
+        Ey_edge = torch.zeros(nx + 1, ny, nz + 1, dtype=dtype, device=device)
+        Ez_edge = torch.zeros(nx + 1, ny + 1, nz, dtype=dtype, device=device)
+
+        dx = dy = dz = 0.1
+        dt = 1e-3
+        # Should NOT raise ValueError now that CPU is accepted
+        Bx_new, By_new, Bz_new = ct_update_mps(
+            Bx_face, By_face, Bz_face,
+            Ex_edge, Ey_edge, Ez_edge,
+            dx, dy, dz, dt,
+        )
+        assert Bx_new.shape == (nx + 1, ny, nz)
+        assert By_new.shape == (nx, ny + 1, nz)
+        assert Bz_new.shape == (nx, ny, nz + 1)
+        assert not torch.isnan(Bx_new).any()
+
+    def test_emf_from_fluxes_cpu(self):
+        """emf_from_fluxes_mps accepts CPU tensors after _ensure_mps fix."""
+        nx, ny, nz = 8, 8, 8
+        dtype = torch.float32
+        device = torch.device("cpu")
+
+        flux_x = torch.zeros(nx + 1, ny, nz, dtype=dtype, device=device)
+        flux_y = torch.zeros(nx, ny + 1, nz, dtype=dtype, device=device)
+        flux_z = torch.zeros(nx, ny, nz + 1, dtype=dtype, device=device)
+
+        Ex, Ey, Ez = emf_from_fluxes_mps(flux_x, flux_y, flux_z)
+        assert Ex.shape == (nx, ny + 1, nz + 1)
+        assert Ey.shape == (nx + 1, ny, nz + 1)
+        assert Ez.shape == (nx + 1, ny + 1, nz)
+
+    def test_float64_solver_with_ct(self):
+        """MetalMHDSolver(precision='float64', use_ct=True) runs without error.
+
+        This was the failing combination before the _ensure_mps fix.
+        Float64 forces CPU; CT path now accepts CPU tensors.
+        """
+        nx, ny, nz = 8, 8, 8
+        state = _make_sod_state(nx, ny, nz)
+        solver = MetalMHDSolver(
+            grid_shape=(nx, ny, nz), dx=1.0 / nx,
+            precision="float64", use_ct=True,
+        )
+        dt = solver.compute_dt(state)
+        state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
+        assert np.all(np.isfinite(state["rho"]))
+        assert np.all(state["rho"] > 0)
+        assert np.all(np.isfinite(state["pressure"]))
+
+    def test_divb_cpu_float64(self):
+        """div_B_mps accepts CPU float64 tensors and returns correct result."""
+        nx, ny, nz = 8, 8, 8
+        dtype = torch.float64
+        device = torch.device("cpu")
+
+        # Uniform B = (1, 0, 0): Bx_face[i] = 1 for all i → dBx/dx = 0
+        Bx_face = torch.ones(nx + 1, ny, nz, dtype=dtype, device=device)
+        By_face = torch.zeros(nx, ny + 1, nz, dtype=dtype, device=device)
+        Bz_face = torch.zeros(nx, ny, nz + 1, dtype=dtype, device=device)
+
+        div = div_B_mps(Bx_face, By_face, Bz_face, 0.1, 0.1, 0.1)
+        assert div.shape == (nx, ny, nz)
+        assert div.abs().max().item() == pytest.approx(0.0, abs=1e-12)
 
 
 # ============================================================

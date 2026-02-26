@@ -262,6 +262,9 @@ class SimulationEngine:
         # Source terms for coupling (e.g. J_kin from PIC)
         self._current_source_terms: dict[str, np.ndarray] | None = None
 
+        # Snowplow → MHD B-field coupling: one-shot initialization at radial entry
+        self._radial_bfield_initialized: bool = False
+
         # Checkpoint settings
         self.checkpoint_interval: int = 0  # 0 = disabled
         self.checkpoint_filename: str = "checkpoint.h5"
@@ -637,8 +640,10 @@ class SimulationEngine:
         self._prev_L_plasma = L_p
 
         # 3. Step Circuit (Implicit Midpoint)
-        # TODO: Compute Back-EMF from field motion (-v x B)
-        back_emf = 0.0
+        # Back-EMF from MHD field advection: E_z = -(v × B)_z
+        # For cylindrical Z-pinch: (v × B)_z = v_r * B_theta
+        # Circuit back-EMF [V] = volume-averaged (-v_r * B_theta) * L_z
+        back_emf = self._compute_back_emf(dt)
 
         coupling = CouplingState(Lp=L_p, dL_dt=dL_dt, R_plasma=0.0)
         new_coupling = self.circuit.step(coupling, back_emf, dt)
@@ -789,6 +794,14 @@ class SimulationEngine:
             coupling.dL_dt = sp_result["dL_dt"]
             self._prev_L_plasma = sp_result["L_plasma"]
             self._last_sp_dL_dt = sp_result["dL_dt"]
+
+            # One-shot B-field initialization at axial→radial phase transition
+            if (
+                self.snowplow.phase in ("radial", "reflected", "pinch")
+                and not self._radial_bfield_initialized
+            ):
+                self._initialize_radial_bfield()
+
         elif L_plasma > 0:
             # Fallback: use volume-integral L_plasma from MHD fields
             coupling.Lp = L_plasma
@@ -1043,42 +1056,146 @@ class SimulationEngine:
 
         return self._make_step_result(dt=dt, finished=finished)
 
+    def _compute_back_emf(self, dt: float) -> float:
+        """Compute motional back-EMF from MHD field advection.
+
+        The back-EMF arises from the -(v x B) electric field in the plasma.
+        For a cylindrical Z-pinch, the z-component is -(v_r * B_theta).
+        For Cartesian geometry, it is -(v_x * B_y - v_y * B_x).
+
+        Returns the volume-averaged motional EMF times the axial length [V].
+        """
+        velocity = self.state.get("velocity")
+        B = self.state.get("B")
+        if velocity is None or B is None:
+            return 0.0
+        if velocity.shape[0] < 2 or B.shape[0] < 2:
+            return 0.0
+
+        # Compute z-component of -(v x B) as electric field density [V/m]
+        if self.geometry_type == "cylindrical":
+            # (v x B)_z = v_r * B_theta (components [0] and [1])
+            emf_density = -(velocity[0] * B[1])
+        else:
+            # (v x B)_z = v_x * B_y - v_y * B_x
+            emf_density = -(velocity[0] * B[1] - velocity[1] * B[0])
+
+        # Convert from E-field [V/m] to circuit voltage [V]
+        # by multiplying by the axial length (electrode gap)
+        dx = self.config.dx
+        dz = self.config.geometry.dz if self.config.geometry.dz else dx
+        nz = self.config.grid_shape[2]
+        z_length = nz * dz
+
+        return float(np.mean(emf_density)) * z_length
+
     def _apply_electrode_bc(self, current: float) -> None:
         """Apply circuit-driven magnetic boundary conditions."""
+        # Backend-specific electrode B-field BC (sets B_theta from current)
         if self.backend == "python" and self.geometry_type == "cylindrical":
             if hasattr(self.fluid, "apply_electrode_bfield_bc"):
                 cc = self.config.circuit
                 self.state["B"] = self.fluid.apply_electrode_bfield_bc(
                     self.state["B"], current, cc.anode_radius, cc.cathode_radius
                 )
+        elif self.backend == "metal" and self.geometry_type == "cylindrical":
+            # Metal backend: set B_theta = mu_0 * I / (2*pi*r)
+            cc = self.config.circuit
+            dr = self.config.dx
+            nr = self.config.grid_shape[0]
+            B = self.state["B"]
+            for ir in range(nr):
+                r = (ir + 0.5) * dr
+                if cc.anode_radius <= r <= cc.cathode_radius and r > 0 or r < cc.anode_radius and r > 0:
+                    B[1, ir, :, :] = _mu_0 * current / (2.0 * pi * r)
+            self.state["B"] = B
 
-                # Snowplow "Zipper" BC: Zero out B-field ahead of the sheath
-                if self.snowplow and self.snowplow.is_active:
-                    z_sheath = self.snowplow.z
-                    dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
-                    # Index corresponding to z_sheath
-                    iz_sheath = round(z_sheath / dz)
+        # Snowplow zipper BC: applies to ALL backends with cylindrical geometry
+        if self.geometry_type == "cylindrical" and self.snowplow and self.snowplow.is_active:
+            z_sheath = self.snowplow.z
+            dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
+            iz_sheath = round(z_sheath / dz)
 
-                    # Ensure valid index range
-                    nx, ny, nz = self.config.grid_shape
-                    if 0 <= iz_sheath < nz:
-                        # Zero out B_theta (index 1) for z > z_sheath
-                        # Note: B is (3, nr, 1, nz) here
-                        self.state["B"][1, :, :, iz_sheath + 1:] = 0.0
+            nx, ny, nz = self.config.grid_shape
+            if 0 <= iz_sheath < nz:
+                # Zero B_theta for z > z_sheath (ahead of axial sheath)
+                self.state["B"][1, :, :, iz_sheath + 1:] = 0.0
 
-                    # Radial zipper during radial phase:
-                    # Zero B_theta outside the radial shock front
-                    if self.snowplow.phase in ("radial", "reflected"):
-                        r_shock = self.snowplow.r_shock
-                        dr = self.config.dx  # radial spacing
-                        ir_shock = round(r_shock / dr)
-                        if 0 <= ir_shock < nx:
-                            self.state["B"][1, ir_shock + 1:, :, :] = 0.0
+            # Radial zipper: zero B_theta outside radial shock front
+            if self.snowplow.phase in ("radial", "reflected"):
+                r_shock = self.snowplow.r_shock
+                dr = self.config.dx
+                ir_shock = round(r_shock / dr)
+                if 0 <= ir_shock < nx:
+                    self.state["B"][1, ir_shock + 1:, :, :] = 0.0
 
-        elif self.backend == "athena":
-            pass
+    def _initialize_radial_bfield(self) -> None:
+        """One-shot B_theta initialization when snowplow enters radial phase.
+
+        Sets B_theta(r) = mu_0 * I / (2*pi*r) for r < r_shock and zero outside,
+        closing the snowplow→MHD coupling loop.  Called once at the axial→radial
+        phase transition.  The MHD solver then evolves B freely inside r_shock
+        while the zipper BC (in ``_apply_electrode_bc``) maintains B_theta = 0
+        outside.
+
+        Works for all backends (Python, Metal, Athena++, AthenaK) because it
+        writes directly to ``self.state["B"]``, which is always a NumPy array
+        regardless of the active fluid solver backend.  Cell-centre radial
+        positions are obtained from ``self.fluid.geom.r`` (Python backend) or
+        derived from ``self.config.grid_shape`` and ``self.config.dx`` (all
+        other backends).
+
+        Physics:
+            At the instant the sheath reaches the anode end and begins radial
+            implosion, the azimuthal field inside the sheath is that of a
+            current-carrying wire: B_theta = mu_0 * I / (2*pi*r).  Outside the
+            sheath (thin-sheath approximation), B_theta = 0.
+        """
+        if self.snowplow is None:
+            return
+        if self.geometry_type != "cylindrical":
+            return
+
+        I_current = abs(self._coupling.current)
+        r_shock = self.snowplow.r_shock
+        dr = self.config.dx
+
+        # Build cell-centre radial positions.
+        # Python CylindricalMHDSolver exposes self.fluid.geom.r; all other
+        # backends (Metal, Athena++, AthenaK) derive r from the grid config.
+        if hasattr(self.fluid, "geom") and hasattr(self.fluid.geom, "r"):
+            r_grid = self.fluid.geom.r
         else:
-            pass
+            nr = self.config.grid_shape[0]
+            r_grid = np.array([(ir + 0.5) * dr for ir in range(nr)])
+
+        ir_shock = round(r_shock / dr) if dr > 0 else len(r_grid)
+        ir_shock = min(ir_shock, len(r_grid))
+
+        B = self.state["B"]  # shape (3, nr, 1, nz)
+
+        # Inside shock: B_theta = mu_0 * I / (2*pi*r)
+        for ir in range(ir_shock):
+            r_val = r_grid[ir]
+            if r_val > 0:
+                B[1, ir, :, :] = _mu_0 * I_current / (2.0 * pi * r_val)
+            else:
+                # On-axis: B_theta → 0 by symmetry
+                B[1, ir, :, :] = 0.0
+
+        # Outside shock: B_theta = 0 (thin-sheath assumption)
+        if ir_shock < B.shape[1]:
+            B[1, ir_shock:, :, :] = 0.0
+
+        self.state["B"] = B
+        self._radial_bfield_initialized = True
+
+        logger.info(
+            "Radial B-field initialized: I=%.2e A, r_shock=%.3e m, "
+            "ir_shock=%d/%d, B_theta_max=%.2f T",
+            I_current, r_shock, ir_shock, len(r_grid),
+            float(np.max(np.abs(B[1]))),
+        )
 
     def _dynamic_sheath_pressure(self) -> float:
         """Compute volume-averaged MHD pressure near the sheath/shock front.

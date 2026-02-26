@@ -22,7 +22,6 @@ from dpf.validation.calibration import (
     CrossValidator,
 )
 
-
 # ============================================================
 # Helpers
 # ============================================================
@@ -224,8 +223,8 @@ class TestCrossValidator:
         mock_comparison.timing_error = 0.12
         mock_comparison.waveform_nrmse = float("nan")
 
-        from dpf.validation.calibration import LeeModelCalibrator
         from dpf.validation import lee_model_comparison as lmc_mod
+        from dpf.validation.calibration import LeeModelCalibrator
 
         monkeypatch.setattr(
             LeeModelCalibrator,
@@ -255,8 +254,8 @@ class TestCrossValidator:
         mock_comparison.timing_error = 0.10
         mock_comparison.waveform_nrmse = float("nan")
 
-        from dpf.validation.calibration import LeeModelCalibrator
         from dpf.validation import lee_model_comparison as lmc_mod
+        from dpf.validation.calibration import LeeModelCalibrator
 
         monkeypatch.setattr(
             LeeModelCalibrator,
@@ -282,8 +281,8 @@ class TestCrossValidator:
         mock_comparison.timing_error = 0.20
         mock_comparison.waveform_nrmse = float("nan")
 
-        from dpf.validation.calibration import LeeModelCalibrator
         from dpf.validation import lee_model_comparison as lmc_mod
+        from dpf.validation.calibration import LeeModelCalibrator
 
         monkeypatch.setattr(
             LeeModelCalibrator,
@@ -311,8 +310,8 @@ class TestCrossValidator:
         mock_comparison.timing_error = timing_err
         mock_comparison.waveform_nrmse = float("nan")
 
-        from dpf.validation.calibration import LeeModelCalibrator
         from dpf.validation import lee_model_comparison as lmc_mod
+        from dpf.validation.calibration import LeeModelCalibrator
 
         monkeypatch.setattr(
             LeeModelCalibrator,
@@ -338,8 +337,8 @@ class TestCrossValidator:
         mock_comparison.timing_error = 0.08
         mock_comparison.waveform_nrmse = float("nan")
 
-        from dpf.validation.calibration import LeeModelCalibrator
         from dpf.validation import lee_model_comparison as lmc_mod
+        from dpf.validation.calibration import LeeModelCalibrator
 
         monkeypatch.setattr(
             LeeModelCalibrator,

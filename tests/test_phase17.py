@@ -350,7 +350,10 @@ class TestSodShockTube:
     def test_sod_run_passes(self):
         """Full Sod shock tube test completes and passes sanity checks.
 
-        Uses reduced resolution (nx=100) for test speed.
+        The Python engine uses conservative total energy with Rusanov
+        (Lax-Friedrichs) diffusion.  At nx=100, L1 errors are typically
+        rho~0.03, u~0.06, p~0.03.  For higher-order results, use the
+        Metal engine (WENO5+HLLD+SSP-RK3).
         """
         from dpf.verification.shock_tubes import run_sod_test
 
@@ -361,8 +364,8 @@ class TestSodShockTube:
         assert result.checks["rho_positive"], "Density went negative"
         assert result.checks["p_positive"], "Pressure went negative"
 
-        # L1 errors should be reasonable for 100-cell WENO5+HLL
-        # Typical: rho ~ 0.02-0.05, u ~ 0.02-0.05, p ~ 0.02-0.05
+        # L1 errors for Rusanov + conservative energy at 100 cells
+        # Typical: rho ~ 0.03, u ~ 0.06, p ~ 0.03
         assert result.errors["rho"] < 0.10, f"rho L1 error too large: {result.errors['rho']}"
         assert result.errors["u"] < 0.10, f"u L1 error too large: {result.errors['u']}"
         assert result.errors["p"] < 0.10, f"p L1 error too large: {result.errors['p']}"

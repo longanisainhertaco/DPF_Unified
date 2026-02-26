@@ -62,7 +62,7 @@ class FieldManager:
             # We construct a radial array (nx, 1, 1)
             r = (np.arange(self.nx) + 0.5) * self.dx
             r = r[:, np.newaxis, np.newaxis]  # Broadcast to (nx, 1, 1)
-            
+
             # Integrate: sum(u_B * 2*pi*r) * dr * dz
             # Note: dy is ignored in cylindrical (axisymmetric)
             integrand = u_B * 2.0 * pi * r

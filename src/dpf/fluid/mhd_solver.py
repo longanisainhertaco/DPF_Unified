@@ -1243,6 +1243,53 @@ def _braginskii_heat_flux(
 
 
 # ============================================================
+# Lax-Friedrichs numerical diffusion
+# ============================================================
+
+def _rusanov_diffusion(
+    U: np.ndarray,
+    alpha: np.ndarray | float,
+    dx: float,
+) -> np.ndarray:
+    """Rusanov (local Lax-Friedrichs) numerical diffusion for a 3-D field.
+
+    Computes ``0.5 * alpha * sum_axis (U[i+1] - 2*U[i] + U[i-1]) / dx``
+    across all three spatial axes using zero-gradient (edge) boundary padding.
+
+    Unlike global Lax-Friedrichs (which uses a single ``alpha_max``), this
+    accepts a per-cell wave speed array, dramatically reducing unnecessary
+    diffusion in smooth regions while maintaining stability at shocks.
+
+    Args:
+        U: Scalar field, shape ``(nx, ny, nz)``.
+        alpha: Wave speed ``|v| + c_f``, either a scalar (global LF) or
+            an array with the same shape as *U* (local Rusanov).
+        dx: Cell spacing.
+
+    Returns:
+        Diffusion contribution ``d(U)/dt``, same shape as *U*.
+    """
+    result = np.zeros_like(U)
+    for axis in range(U.ndim):
+        n = U.shape[axis]
+        if n < 3:
+            continue
+        pad_w = [(0, 0)] * U.ndim
+        pad_w[axis] = (1, 1)
+        U_pad = np.pad(U, pad_w, mode="edge")
+        sl_m = [slice(None)] * U.ndim
+        sl_0 = [slice(None)] * U.ndim
+        sl_p = [slice(None)] * U.ndim
+        sl_m[axis] = slice(0, n)
+        sl_0[axis] = slice(1, n + 1)
+        sl_p[axis] = slice(2, n + 2)
+        result += (
+            U_pad[tuple(sl_p)] - 2 * U_pad[tuple(sl_0)] + U_pad[tuple(sl_m)]
+        )
+    return 0.5 * alpha * result / dx
+
+
+# ============================================================
 # Main MHD Solver
 # ============================================================
 
@@ -1423,14 +1470,26 @@ class MHDSolver(PlasmaSolverBase):
                     )
                     drho_dt[tuple(update_sl)] -= dF / self.dx
         else:
-            # Fallback: centered-difference with np.gradient (original MVP behavior)
+            # Fallback: Lax-Friedrichs scheme for shock-stable non-WENO5 path.
+            # Central differences (np.gradient) have no numerical dissipation and
+            # are unstable at discontinuities (Godunov's theorem).  The LF term
+            # 0.5*alpha*(U[i+1]-2*U[i]+U[i-1])/dx provides first-order
+            # upwind dissipation that stabilizes shocks.
+            # Wave speed for Rusanov diffusion: alpha = max(|v| + c_f)
+            B_sq_lf = np.sum(B**2, axis=0)
+            cs2_lf = self.gamma * p / np.maximum(rho, 1e-20)
+            va2_lf = B_sq_lf / (mu_0 * np.maximum(rho, 1e-20))
+            cf_lf = np.sqrt(cs2_lf + va2_lf)
+            v_mag_lf = np.sqrt(np.sum(vel**2, axis=0))
+            alpha_lf = float(np.max(v_mag_lf + cf_lf))
+
             flux_rho = np.array([rho * vel[i] for i in range(3)])
             div_flux = (
                 np.gradient(flux_rho[0], self.dx, axis=0)
                 + np.gradient(flux_rho[1], self.dx, axis=1)
                 + np.gradient(flux_rho[2], self.dx, axis=2)
             )
-            drho_dt = -div_flux
+            drho_dt = -div_flux + _rusanov_diffusion(rho, alpha_lf, self.dx)
 
         # --- Momentum: J x B force + pressure gradient ---
         # Current density: J = curl(B) / mu_0
@@ -1523,11 +1582,15 @@ class MHDSolver(PlasmaSolverBase):
                             )
                             dmom_dt[d][tuple(update_sl)] -= dF / self.dx
         else:
-            # Fallback: centered difference momentum advection
+            # Fallback: centered difference momentum advection + LF diffusion
             for d in range(3):
                 for axis in range(3):
                     flux_mom = rho * vel[d] * vel[axis]
                     dmom_dt[d] -= np.gradient(flux_mom, self.dx, axis=axis)
+                # Rusanov diffusion on conserved momentum rho*v_d
+                dmom_dt[d] += _rusanov_diffusion(
+                    rho * vel[d], alpha_lf, self.dx
+                )
 
         # Add Lorentz force and pressure gradient
         # Kinetic Feedback: J_plasma = J_tot - J_kin
@@ -1539,7 +1602,10 @@ class MHDSolver(PlasmaSolverBase):
             if J_kin.shape == J.shape:
                 J_plasma -= J_kin
             else:
-                pass # TODO: Add shape check/warning
+                logger.warning(
+                    "J_kin shape %s != J shape %s; skipping kinetic subtraction",
+                    J_kin.shape, J.shape,
+                )
 
         # J x B force uses J_plasma (force on the fluid)
         JxB = np.array([
@@ -1629,23 +1695,80 @@ class MHDSolver(PlasmaSolverBase):
                 dB_dt[t2_idx][tuple(update_sl)] -= dF_Bt2 / self.dx
 
         # --- Pressure / Energy equation ---
-        div_v = (
-            np.gradient(vel[0], self.dx, axis=0)
-            + np.gradient(vel[1], self.dx, axis=1)
-            + np.gradient(vel[2], self.dx, axis=2)
-        )
-
-        if self.enable_energy_equation:
-            # Conservative total energy equation:
-            # dE_total/dt = -div(F_energy) + eta*J^2 - P_rad
+        if self.use_weno5:
+            # Conservative approach: derive dp/dt from WENO5 total energy flux
             # E_total = p/(gamma-1) + 0.5*rho*|v|^2 + |B|^2/(2*mu_0)
-            # For the pressure update, we use:
-            # dp/dt = -gamma*p*div(v) + (gamma-1)*eta*J^2
-            # The Ohmic heating term adds (gamma-1)*Q_ohm to pressure rate
-            dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * ohmic_heating
+            # dE_total/dt = -div(F_energy)  [from WENO5+HLL/HLLD]
+            # dp/dt = (gamma-1) * (dE_total/dt - v·dmom/dt + 0.5|v|^2 drho/dt
+            #          - B·dB/dt/mu_0) + (gamma-1)*Q_ohm
+            dE_total_dt = np.zeros_like(rho)
+            for axis in range(3):
+                fluxes = _axis_fluxes[axis]
+                if fluxes is None:
+                    continue
+                n_iface = fluxes["n_interfaces"]
+                if n_iface < 2:
+                    continue
+                n_update = n_iface - 1
+                flux_left_sl = [slice(None)] * 3
+                flux_right_sl = [slice(None)] * 3
+                update_sl = [slice(None)] * 3
+                flux_left_sl[axis] = slice(0, n_update)
+                flux_right_sl[axis] = slice(1, n_update + 1)
+                update_sl[axis] = slice(2, 2 + n_update)
+                dF_ene = (
+                    fluxes["energy_flux"][tuple(flux_right_sl)]
+                    - fluxes["energy_flux"][tuple(flux_left_sl)]
+                )
+                dE_total_dt[tuple(update_sl)] -= dF_ene / self.dx
+
+            # Recover dp/dt from total energy rate
+            v_dot_dmom = np.sum(vel * dmom_dt, axis=0)
+            v_sq = np.sum(vel**2, axis=0)
+            B_dot_dB = np.sum(B * dB_dt, axis=0) / mu_0
+            dp_dt = (self.gamma - 1.0) * (
+                dE_total_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
+            )
+            if self.enable_energy_equation:
+                dp_dt += (self.gamma - 1.0) * ohmic_heating
         else:
-            # Adiabatic: dp/dt = -gamma * p * div(v)
-            dp_dt = -self.gamma * p * div_v
+            # Conservative total energy approach + Rusanov diffusion.
+            # The non-conservative dp/dt = -gamma*p*div(v) gives wrong
+            # Rankine-Hugoniot jump conditions at shocks.  Instead, we
+            # evolve total energy E = p/(gamma-1) + 0.5*rho*v^2 + B^2/(2*mu0)
+            # and derive dp/dt from dE/dt.
+            gm1 = self.gamma - 1.0
+            v_sq = np.sum(vel**2, axis=0)
+            B_sq_e = np.sum(B**2, axis=0)
+            E_total = (
+                p / gm1
+                + 0.5 * rho * v_sq
+                + B_sq_e / (2.0 * mu_0)
+            )
+            p_total = p + B_sq_e / (2.0 * mu_0)
+            v_dot_B = np.sum(vel * B, axis=0)
+
+            # MHD energy flux: F_E,i = (E+p_tot)*v_i - B_i*(v.B)
+            div_flux_E = np.zeros_like(rho)
+            for i in range(3):
+                F_Ei = (E_total + p_total) * vel[i] - B[i] * v_dot_B
+                div_flux_E += np.gradient(F_Ei, self.dx, axis=i)
+
+            dE_total_dt = (
+                -div_flux_E
+                + _rusanov_diffusion(E_total, alpha_lf, self.dx)
+            )
+
+            # Recover dp/dt from dE/dt:
+            # dE/dt = dp/dt/(gamma-1) + v.dmom/dt - 0.5*v^2*drho/dt
+            #         + B.dB/dt/mu0
+            v_dot_dmom = np.sum(vel * dmom_dt, axis=0)
+            B_dot_dB = np.sum(B * dB_dt, axis=0) / mu_0
+            dp_dt = gm1 * (
+                dE_total_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
+            )
+            if self.enable_energy_equation:
+                dp_dt += gm1 * ohmic_heating
 
         # --- Dedner cleaning (Mignone & Tzeferacos 2010 tuning) ---
         # Skip Dedner when CT is enabled (mutually exclusive)
@@ -1668,6 +1791,29 @@ class MHDSolver(PlasmaSolverBase):
         else:
             # CT mode: no Dedner cleaning, psi is unused
             dpsi_dt = np.zeros_like(rho)
+
+        # --- WENO5 boundary consistency ---
+        # When WENO5 is active, drho_dt is only non-zero at interior cells
+        # [2:N-2].  Zero out dp_dt and dmom_dt at the same boundary cells
+        # so that all conservative variables evolve consistently.  Without
+        # this, boundary cells accumulate momentum/pressure while density
+        # stays frozen, causing runaway velocities.
+        if self.use_weno5:
+            for axis in range(3):
+                n = self.grid_shape[axis]
+                if n < 5:
+                    continue
+                lo = [slice(None)] * 3
+                hi = [slice(None)] * 3
+                lo[axis] = slice(0, 2)
+                hi[axis] = slice(n - 2, n)
+                dp_dt[tuple(lo)] = 0.0
+                dp_dt[tuple(hi)] = 0.0
+                dB_dt[:, lo[0], lo[1], lo[2]] = 0.0
+                dB_dt[:, hi[0], hi[1], hi[2]] = 0.0
+                for d in range(3):
+                    dmom_dt[d][tuple(lo)] = 0.0
+                    dmom_dt[d][tuple(hi)] = 0.0
 
         return {
             "drho_dt": drho_dt,
@@ -1777,23 +1923,22 @@ class MHDSolver(PlasmaSolverBase):
         B_out = B + dt * rhs["dB_dt"]
         psi_out = psi + dt * rhs["dpsi_dt"]
 
-        # --- Velocity clamping for hybrid WENO5 stability ---
-        # When WENO5 is active, boundary cells (indices 0,1 and N-2,N-1 along
-        # each axis) get mismatched updates (no density flux but non-zero
-        # momentum flux from np.gradient).  Clamp velocity at all cells to
-        # prevent extreme values from destabilizing multi-stage RK methods.
-        if self.use_weno5:
-            B_sq = np.sum(B_out**2, axis=0)
-            a2 = self.gamma * p_out / np.maximum(rho_out, 1e-30)
-            va2 = B_sq / (mu_0 * np.maximum(rho_out, 1e-30))
-            v_max_local = np.sqrt(a2 + va2)  # fast magnetosonic speed
-            # Allow 10× the local fast magnetosonic speed
-            v_clamp = np.maximum(v_max_local, 1.0) * 10.0
-            vel_out = mom_out / np.maximum(rho_out[np.newaxis, :, :, :], 1e-30)
-            v_mag = np.sqrt(np.sum(vel_out**2, axis=0))
-            # Only clamp where velocity exceeds the bound
-            scale = np.where(v_mag > v_clamp, v_clamp / np.maximum(v_mag, 1e-30), 1.0)
-            mom_out = mom_out * scale[np.newaxis, :, :, :]
+        # --- Velocity clamping for numerical stability ---
+        # np.gradient-based derivatives and hybrid WENO5 boundary updates
+        # can produce extreme velocities at shock discontinuities or boundary
+        # cells.  Clamp velocity everywhere to 10× the local fast
+        # magnetosonic speed to prevent blowup in multi-stage RK methods.
+        B_sq = np.sum(B_out**2, axis=0)
+        a2 = self.gamma * p_out / np.maximum(rho_out, 1e-30)
+        va2 = B_sq / (mu_0 * np.maximum(rho_out, 1e-30))
+        v_max_local = np.sqrt(a2 + va2)  # fast magnetosonic speed
+        # Allow 10× the local fast magnetosonic speed
+        v_clamp = np.maximum(v_max_local, 1.0) * 10.0
+        vel_out = mom_out / np.maximum(rho_out[np.newaxis, :, :, :], 1e-30)
+        v_mag = np.sqrt(np.sum(vel_out**2, axis=0))
+        # Only clamp where velocity exceeds the bound
+        scale = np.where(v_mag > v_clamp, v_clamp / np.maximum(v_mag, 1e-30), 1.0)
+        mom_out = mom_out * scale[np.newaxis, :, :, :]
 
         return rho_out, mom_out, p_out, B_out, psi_out, rhs
 

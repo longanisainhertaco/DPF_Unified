@@ -46,18 +46,21 @@ import torch.nn.functional as F  # noqa: N812
 
 
 def _ensure_mps(t: torch.Tensor, name: str = "tensor") -> None:
-    """Validate that a tensor resides on the MPS device.
+    """Validate that a tensor resides on the MPS or CPU device.
+
+    CPU is accepted to support float64 precision mode, which PyTorch MPS
+    does not support and therefore forces the Metal solver to run on CPU.
 
     Args:
         t: Tensor to check.
         name: Human-readable label for error messages.
 
     Raises:
-        ValueError: If the tensor is not on an MPS device.
+        ValueError: If the tensor is not on an MPS or CPU device.
     """
-    if t.device.type != "mps":
+    if t.device.type not in ("mps", "cpu"):
         raise ValueError(
-            f"{name} must be on MPS device, got {t.device}"
+            f"{name} must be on MPS or CPU device, got {t.device}"
         )
 
 

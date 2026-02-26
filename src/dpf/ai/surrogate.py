@@ -8,12 +8,12 @@ import numpy as np
 
 from dpf.ai import HAS_TORCH, HAS_WALRUS
 from dpf.ai.field_mapping import (
-    SCALAR_FIELDS,
-    VECTOR_FIELDS,
-    dpf_scalar_to_well,
-    dpf_vector_to_well,
-    well_scalar_to_dpf,  # noqa: F401 — used by _states_to_tensor, monkeypatched in tests
-    well_vector_to_dpf,  # noqa: F401 — used by _states_to_tensor, monkeypatched in tests
+    SCALAR_FIELDS,  # noqa: F401 — re-exported for external use
+    VECTOR_FIELDS,  # noqa: F401 — re-exported for external use
+    dpf_scalar_to_well,  # noqa: F401 — re-exported for external use
+    dpf_vector_to_well,  # noqa: F401 — re-exported for external use
+    well_scalar_to_dpf,  # noqa: F401 — re-exported for external use
+    well_vector_to_dpf,  # noqa: F401 — re-exported for external use
 )
 
 if HAS_TORCH:
@@ -102,8 +102,31 @@ class DPFSurrogate:
         self._load_model()
 
     def _find_default_checkpoint(self) -> Path | None:
-        """Attempt to locate a default checkpoint."""
-        return None  # Placeholder logic for now, or scan directories
+        """Attempt to locate a default checkpoint.
+
+        Scans common locations in priority order:
+        1. ``WALRUS_CHECKPOINT`` environment variable
+        2. ``models/walrus-pretrained/walrus.pt`` (project-relative)
+        3. ``~/.dpf/walrus.pt`` (user home)
+        """
+        import os
+
+        # 1. Environment variable
+        env_path = os.environ.get("WALRUS_CHECKPOINT")
+        if env_path and Path(env_path).is_file():
+            return Path(env_path)
+
+        # 2. Project-relative (from cwd)
+        project_path = Path("models/walrus-pretrained/walrus.pt")
+        if project_path.is_file():
+            return project_path
+
+        # 3. User home
+        home_path = Path.home() / ".dpf" / "walrus.pt"
+        if home_path.is_file():
+            return home_path
+
+        return None
 
     def _resolve_checkpoint_files(self) -> tuple[Path, Path | None]:
         """Resolve checkpoint .pt file and optional config YAML.
@@ -727,47 +750,6 @@ class DPFSurrogate:
 
         return results
 
-    def _states_to_tensor(self, states: list[dict[str, np.ndarray]]) -> Any:
-        """
-        Convert DPF states to WALRUS input tensor format.
-
-        Args:
-            states: List of DPF state dicts
-
-        Returns:
-            PyTorch tensor of shape (1, history_length, n_fields, *spatial)
-        """
-        # Stack all fields from all timesteps
-        field_arrays = []
-
-        for state in states:
-            # Process scalar fields
-            for field_name in SCALAR_FIELDS:
-                if field_name in state:
-                    well_field = dpf_scalar_to_well(state[field_name], field_name)
-                    field_arrays.append(well_field)
-
-            # Process vector fields
-            for field_name in VECTOR_FIELDS:
-                if field_name in state:
-                    well_field = dpf_vector_to_well(state[field_name], field_name)
-                    # Split components
-                    for comp in range(well_field.shape[0]):
-                        field_arrays.append(well_field[comp])
-
-        # Stack into single array: (history_length, n_fields, *spatial)
-        n_fields = len(field_arrays) // len(states)
-        spatial_dims = field_arrays[0].shape
-
-        # Reshape into (history_length, n_fields, *spatial)
-        stacked = np.stack(field_arrays, axis=0)
-        stacked = stacked.reshape(len(states), n_fields, *spatial_dims)
-
-        # Add batch dimension: (1, history_length, n_fields, *spatial)
-        tensor = torch.from_numpy(stacked).unsqueeze(0).float()
-
-        return tensor.to(self.device)
-
     def _tensor_to_state(
         self, tensor: Any, reference_state: dict[str, np.ndarray]
     ) -> dict[str, np.ndarray]:
@@ -811,6 +793,85 @@ class DPFSurrogate:
             ch += 3
 
         return state
+
+    def validate_against_physics(
+        self,
+        trajectory: list[dict[str, np.ndarray]],
+        fields: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Cross-validate surrogate predictions against a physics trajectory.
+
+        Slides a window over the physics trajectory, predicts each next step
+        with the surrogate, and computes per-field L2 errors. This quantifies
+        how well the surrogate tracks the physics engine, which is useful for
+        identifying where fine-tuning data would have the highest impact.
+
+        Parameters
+        ----------
+        trajectory : list[dict[str, np.ndarray]]
+            Full physics trajectory (at least ``history_length + 1`` states).
+        fields : list[str] or None
+            Fields to compare. If None, uses all scalar + vector fields.
+
+        Returns
+        -------
+        dict[str, Any]
+            Validation report with keys:
+            - ``n_steps``: number of steps validated
+            - ``per_field_l2``: dict mapping field name to list of L2 errors
+            - ``mean_l2``: overall mean L2 error across all fields/steps
+            - ``max_l2``: maximum L2 error seen
+            - ``diverging_steps``: list of step indices where L2 > 0.3
+        """
+        if not self.is_loaded:
+            raise RuntimeError("Model not loaded")
+
+        hl = self.history_length
+        if len(trajectory) < hl + 1:
+            raise ValueError(
+                f"Trajectory too short for validation: need {hl + 1}, "
+                f"got {len(trajectory)}"
+            )
+
+        if fields is None:
+            fields = list(_SCALAR_KEYS) + list(_VECTOR_KEYS)
+
+        per_field_l2: dict[str, list[float]] = {f: [] for f in fields}
+        diverging_steps: list[int] = []
+        all_l2: list[float] = []
+
+        for i in range(hl, len(trajectory)):
+            history = trajectory[i - hl:i]
+            actual = trajectory[i]
+            predicted = self.predict_next_step(history)
+
+            step_l2_values: list[float] = []
+            for field in fields:
+                if field not in actual or field not in predicted:
+                    continue
+                pred_arr = predicted[field]
+                actual_arr = actual[field]
+                if pred_arr.shape != actual_arr.shape:
+                    continue
+                diff_norm = float(np.linalg.norm(pred_arr - actual_arr))
+                actual_norm = max(float(np.linalg.norm(actual_arr)), 1e-10)
+                l2 = diff_norm / actual_norm
+                per_field_l2[field].append(l2)
+                step_l2_values.append(l2)
+
+            if step_l2_values:
+                step_mean = float(np.mean(step_l2_values))
+                all_l2.append(step_mean)
+                if step_mean > 0.3:
+                    diverging_steps.append(i)
+
+        return {
+            "n_steps": len(all_l2),
+            "per_field_l2": per_field_l2,
+            "mean_l2": float(np.mean(all_l2)) if all_l2 else 0.0,
+            "max_l2": float(np.max(all_l2)) if all_l2 else 0.0,
+            "diverging_steps": diverging_steps,
+        }
 
     def _create_initial_state(
         self, config: dict[str, Any], shape: tuple[int, ...]

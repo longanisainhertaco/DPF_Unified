@@ -24,15 +24,13 @@ import math
 import numpy as np
 import pytest
 
+from dpf.validation.calibration import LeeModelCalibrator
 from dpf.validation.experimental import (
-    DEVICES,
     NX2_DATA,
     PF1000_DATA,
     normalized_rmse,
     validate_current_waveform,
 )
-from dpf.validation.calibration import LeeModelCalibrator
-from dpf.validation.lee_model_comparison import LeeModelComparison
 
 # ---------------------------------------------------------------------------
 # Helpers — synthetic simulated I(t) for validate_current_waveform calls
