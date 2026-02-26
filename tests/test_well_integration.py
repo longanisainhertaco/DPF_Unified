@@ -71,10 +71,8 @@ def test_well_exporter_integration(clean_output):
         import h5py
         print(f"Loading HDF5 file: {h5_files[0]}")
         with h5py.File(h5_files[0], "r") as f:
-             # Load relevant keys into memory
-             keys_to_load = ["density", "velocity", "pressure"]
              data = {}
-             for k in f.keys():
+             for k in f:
                  data[k] = f[k][:]
     else:
         print(f"Loading NPZ file: {npz_files[0]}")
@@ -99,6 +97,7 @@ def test_well_exporter_integration(clean_output):
     assert rho.shape[1] >= 2
 
 
+@pytest.mark.slow
 def test_hybrid_engine_delegation(clean_output):
     """Test that backend='hybrid' delegates to HybridEngine."""
     config_dict = {

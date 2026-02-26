@@ -80,8 +80,10 @@ class HybridEngine:
 
         start_time = time.time()
 
-        # Phase 1: Physics
-        engine = SimulationEngine(self.config)
+        # Phase 1: Physics — use Python backend to avoid Athena++ global state issues
+        physics_config = self.config.model_copy(deep=True)
+        physics_config.fluid.backend = "python"
+        engine = SimulationEngine(physics_config)
         physics_history = self._run_physics_phase(engine, physics_steps)
         self._trajectory.extend(physics_history)
 
