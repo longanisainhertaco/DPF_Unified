@@ -1,10 +1,17 @@
-"""Metal Kernel Wrapper for DPF Unified.
+# STATUS: PROTOTYPE — not functional
+# This module requires a compiled .metallib file that does not exist.
+# The DPF Metal solver uses PyTorch MPS tensor operations instead.
+# See metal_solver.py for the production implementation.
+"""Metal Kernel Wrapper for DPF Unified (DEPRECATED).
 
-This module provides a Python interface to the compiled Metal Shading Language
-kernels using PyObjC and the Metal framework. It handles:
-1. Loading the .metallib library.
-2. Creating compute pipelines for specific kernels (PLM, HLL, MHD Sweep).
-3. Dispatching compute threads with zero-copy buffer access.
+.. deprecated::
+    This module is non-functional prototype code.  It requires a compiled
+    Metal Shading Language library (``default.metallib``) that was never
+    created.  The production Metal solver uses PyTorch MPS operations —
+    see :mod:`dpf.metal.metal_solver`.
+
+Original design intent: provide a Python interface to compiled MSL kernels
+using PyObjC and the Metal framework for PLM, HLL, and MHD sweep dispatch.
 """
 
 import ctypes
