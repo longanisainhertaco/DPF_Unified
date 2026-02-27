@@ -44,7 +44,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "device": "PF-1000",
             "geometry": "cylindrical",
         },
-        "grid_shape": [128, 1, 256],
+        "grid_shape": [214, 1, 800],
         "dx": 7.5e-4,
         "sim_time": 5e-6,
         "dt_init": 1e-10,
