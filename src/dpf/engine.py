@@ -845,42 +845,60 @@ class SimulationEngine:
         self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
 
         # === Step 2: Circuit advance (with plasma resistance + inductance) ===
+        # Sub-cycle the circuit + snowplow to resolve their dynamics properly.
+        # The MHD CFL timestep can be ~1 µs for cold gas, but the circuit LC
+        # period is ~40 µs and the snowplow needs ~10 ns steps for accurate
+        # sheath trajectory.  Without sub-cycling, the snowplow blows through
+        # the entire anode in a single oversized step.
         coupling = self.fluid.coupling_interface()
         coupling.R_plasma = R_plasma
         coupling.Z_bar = Z_bar
 
-        # Snowplow dynamics: sheath-derived L_plasma overrides field-based L_plasma
-        # when the snowplow model is active (Lee model Phases 2-5).
-        if self.snowplow is not None and self.snowplow.is_active:
-            sp_result = self.snowplow.step(
-                dt, self._coupling.current,
-                pressure=self._dynamic_sheath_pressure(),
-            )
-            coupling.Lp = sp_result["L_plasma"]
-            coupling.dL_dt = sp_result["dL_dt"]
-            self._prev_L_plasma = sp_result["L_plasma"]
-            self._last_sp_dL_dt = sp_result["dL_dt"]
+        # Compute sub-step size: resolve the circuit LC timescale
+        L_total = self.circuit.L_ext + self._coupling.Lp
+        dt_lc = np.sqrt(max(L_total, 1e-12) * self.circuit.C)
+        # Target ~500 sub-steps per quarter period for accurate snowplow trajectory
+        dt_sub_target = max(dt_lc / 500.0, 1e-12)
+        n_sub = max(1, int(np.ceil(dt / dt_sub_target)))
+        dt_sub = dt / n_sub
 
-            # One-shot B-field initialization at axial→radial phase transition
-            if (
-                self.snowplow.phase in ("radial", "reflected", "pinch")
-                and not self._radial_bfield_initialized
-            ):
-                self._initialize_radial_bfield()
-
-        elif L_plasma > 0:
-            # Fallback: use volume-integral L_plasma from MHD fields
-            coupling.Lp = L_plasma
-            if self._prev_L_plasma > 0 and dt > 0:
-                coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
-            self._prev_L_plasma = L_plasma
-
-        # Inductive back-EMF (I * dL/dt) is handled by R_star in rlc_solver.py:272.
-        # Motional back-EMF (integral v x B . dl) is a separate term from resolved
-        # MHD fields that feeds back to the circuit. See Lee & Saw (2014), Eq. (4).
+        sheath_pressure = self._dynamic_sheath_pressure()
         back_emf = self._compute_back_emf(dt)
-        new_coupling = self.circuit.step(coupling, back_emf, dt)
-        self._coupling = new_coupling
+
+        for _isub in range(n_sub):
+            # Snowplow dynamics: sheath-derived L_plasma overrides field-based
+            # L_plasma when the snowplow model is active (Lee model Phases 2-5).
+            if self.snowplow is not None and self.snowplow.is_active:
+                sp_result = self.snowplow.step(
+                    dt_sub, self._coupling.current,
+                    pressure=sheath_pressure,
+                )
+                coupling.Lp = sp_result["L_plasma"]
+                coupling.dL_dt = sp_result["dL_dt"]
+                self._prev_L_plasma = sp_result["L_plasma"]
+                self._last_sp_dL_dt = sp_result["dL_dt"]
+
+            elif L_plasma > 0:
+                # Fallback: use volume-integral L_plasma from MHD fields
+                coupling.Lp = L_plasma
+                if self._prev_L_plasma > 0 and dt_sub > 0:
+                    coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt_sub
+                self._prev_L_plasma = L_plasma
+
+            # Advance circuit one sub-step
+            new_coupling = self.circuit.step(coupling, back_emf, dt_sub)
+            self._coupling = new_coupling
+            # Update coupling R_plasma for next sub-step (R_plasma is constant
+            # during sub-cycling since MHD state is frozen)
+            coupling.R_plasma = R_plasma
+
+        # One-shot B-field initialization at axial→radial phase transition
+        if (
+            self.snowplow is not None
+            and self.snowplow.phase in ("radial", "reflected", "pinch")
+            and not self._radial_bfield_initialized
+        ):
+            self._initialize_radial_bfield()
 
         # === Step 2.5: Kinetic / PIC Step ===
         # Run kinetic step *before* fluid to provide J_kin source terms for this step
