@@ -462,14 +462,16 @@ class SnowplowModel:
         # J×B force (inward, opposing expansion)
         F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
 
-        # Slug mass with mass pickup: reflected shock sweeps additional fill gas
-        # as it expands from r_pinch_min to r_s (Lee & Saw 2014)
+        # Slug mass with mass pickup: reflected shock sweeps gas compressed by
+        # the inward shock. For a strong cylindrical shock in gamma=5/3 gas,
+        # post-shock density ~ (gamma+1)/(gamma-1) * rho0 = 4*rho0 (Rankine-Hugoniot).
+        rho_post_shock = 4.0 * self.rho0
         M_slug = self._M_slug_pinch + (
-            self.f_m * self.rho0 * pi
+            self.f_m * rho_post_shock * pi
             * (r_s**2 - self.r_pinch_min**2) * z_f
         )
-        # Mass pickup rate: dM/dt = f_m * rho0 * 2*pi * r_s * |vr| * z_f
-        dM_dt = self.f_m * self.rho0 * 2.0 * pi * r_s * abs(self.vr) * z_f
+        # Mass pickup rate: dM/dt = f_m * rho_post * 2*pi * r_s * |vr| * z_f
+        dM_dt = self.f_m * rho_post_shock * 2.0 * pi * r_s * abs(self.vr) * z_f
 
         # Equation of motion: d(M*vr)/dt = F_pressure - F_rad
         # => M * dvr/dt = F_pressure - F_rad - vr * dM/dt
