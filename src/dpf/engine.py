@@ -982,6 +982,15 @@ class SimulationEngine:
                 self.state, self.snowplow, self.config,
             )
 
+        # === Step 5b4: Pease-Braginskii radiative collapse check ===
+        from dpf.diagnostics.pease_braginskii import check_pease_braginskii
+        self._last_pb_result = check_pease_braginskii(
+            I_current=abs(self._coupling.current),
+            Z=Z_bar,
+            gaunt_factor=1.2,
+            ln_Lambda=self.config.collision.coulomb_log,
+        )
+
         # === Step 5c: Well Exporter ===
         if self.well_interval > 0 and self.step_count % self.well_interval == 0:
             self.well_exporter.append_state(self.state, time=self.time)
@@ -1064,6 +1073,12 @@ class SimulationEngine:
                     ),
                     "r_shock": self.snowplow.r_shock if self.snowplow else 0.0,
                     "phase": self.snowplow.phase if self.snowplow else "none",
+                },
+                "pease_braginskii": {
+                    "I_PB_MA": self._last_pb_result["I_PB_MA"],
+                    "ratio": self._last_pb_result["ratio"],
+                    "exceeds_PB": self._last_pb_result["exceeds_PB"],
+                    "regime": self._last_pb_result["regime"],
                 },
             }
             self.diagnostics.record(diag_state, self.time)
@@ -1355,6 +1370,14 @@ class SimulationEngine:
         self._last_R_plasma = R_plasma
         self._last_Z_bar = 1.0
         self._last_eta_anom = 0.0
+
+        from dpf.diagnostics.pease_braginskii import check_pease_braginskii
+        self._last_pb_result = check_pease_braginskii(
+            I_current=abs(self._coupling.current),
+            Z=1.0,
+            gaunt_factor=1.2,
+            ln_Lambda=self.config.collision.coulomb_log,
+        )
 
         if self.step_count % self.diag_interval == 0:
             circ = self.circuit.state
