@@ -54,6 +54,18 @@ from dpf.validation.magnetized_noh import (
     shock_velocity,
     verify_rankine_hugoniot,
 )
+from dpf.validation.riemann_exact import (
+    BLAST_LEFT,
+    BLAST_RIGHT,
+    DOUBLE_RAREFACTION_LEFT,
+    DOUBLE_RAREFACTION_RIGHT,
+    LAX_LEFT,
+    LAX_RIGHT,
+    SOD_LEFT,
+    SOD_RIGHT,
+    ExactRiemannSolver,
+    RiemannState,
+)
 from dpf.validation.sedov_exact import SedovExact
 from dpf.validation.suite import (
     DEVICE_REGISTRY,
@@ -101,6 +113,16 @@ __all__ = [
     "noh_upstream",
     "shock_velocity",
     "verify_rankine_hugoniot",
+    "BLAST_LEFT",
+    "BLAST_RIGHT",
+    "DOUBLE_RAREFACTION_LEFT",
+    "DOUBLE_RAREFACTION_RIGHT",
+    "ExactRiemannSolver",
+    "LAX_LEFT",
+    "LAX_RIGHT",
+    "RiemannState",
+    "SOD_LEFT",
+    "SOD_RIGHT",
     "SedovExact",
     "ZPinchResult",
     "create_zpinch_state",
