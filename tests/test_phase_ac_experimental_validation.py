@@ -419,6 +419,48 @@ class TestCoulombLogFloor:
 # ═══════════════════════════════════════════════════════
 
 
+class TestLiftoffDelay:
+    """Test insulator flashover liftoff delay feature."""
+
+    def test_liftoff_delay_shifts_time(self):
+        """Liftoff delay shifts output time by specified amount."""
+        model_no = LeeModel(current_fraction=0.7, mass_fraction=0.15)
+        model_yes = LeeModel(current_fraction=0.7, mass_fraction=0.15, liftoff_delay=1e-6)
+        r_no = model_no.run("PF-1000")
+        r_yes = model_yes.run("PF-1000")
+        # Peak time should shift by ~1 us
+        assert r_yes.peak_current_time > r_no.peak_current_time
+        shift = r_yes.peak_current_time - r_no.peak_current_time
+        assert shift == pytest.approx(1e-6, rel=0.01)
+
+    def test_liftoff_delay_improves_nrmse(self):
+        """0.7 us liftoff delay reduces NRMSE vs no delay for calibrated params."""
+        r_no = LeeModel(current_fraction=0.650, mass_fraction=0.178).run("PF-1000")
+        r_yes = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+        ).run("PF-1000")
+        nrmse_no = nrmse_peak(
+            r_no.t, r_no.I, PF1000_DATA.waveform_t, PF1000_DATA.waveform_I
+        )
+        nrmse_yes = nrmse_peak(
+            r_yes.t, r_yes.I, PF1000_DATA.waveform_t, PF1000_DATA.waveform_I
+        )
+        assert nrmse_yes < nrmse_no, (
+            f"Delay NRMSE {nrmse_yes:.4f} not better than no-delay {nrmse_no:.4f}"
+        )
+
+    def test_liftoff_delay_in_metadata(self):
+        """Liftoff delay stored in result metadata."""
+        model = LeeModel(current_fraction=0.7, mass_fraction=0.15, liftoff_delay=0.5e-6)
+        r = model.run("PF-1000")
+        assert r.metadata["liftoff_delay"] == pytest.approx(0.5e-6)
+
+    def test_zero_delay_is_default(self):
+        """Default liftoff_delay is 0 (no shift)."""
+        model = LeeModel()
+        assert model.liftoff_delay == 0.0
+
+
 class TestNX2LeeModel:
     """Verify Lee model works for NX2 device as well."""
 
