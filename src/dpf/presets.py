@@ -49,7 +49,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "dx": 7.5e-4,
         "sim_time": 5e-6,
         "dt_init": 1e-10,
-        "rho0": 4e-4,
+        "rho0": 7.53e-4,  # 3.5 Torr D2 at 300K: n*m_D2 (molecular mass)
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
@@ -90,7 +90,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "anomalous_threshold_model": "lhdi",
         "circuit": {
             "C": 28e-6,
-            "V0": 14e3,
+            "V0": 11.5e3,         # 11.5 kV operating voltage (Lee & Saw 2008, Table 1)
             "L0": 20e-9,
             "R0": 5e-3,
             "anode_radius": 0.019,
