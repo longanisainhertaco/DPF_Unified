@@ -483,3 +483,337 @@ class TestNX2LeeModel:
         comp = model.compare_with_experiment("NX2")
         assert comp.timing_error >= 0
         assert comp.peak_current_error >= 0
+
+
+# ============================================================
+# AC.10: Circuit Cross-Verification (Debate #10 P0.2)
+# ============================================================
+class TestCircuitCrossVerification:
+    """Cross-verify RLCSolver against analytical solution and LeeModel.
+
+    This addresses the key finding from PhD Debate #10: the two circuit
+    implementations (RLCSolver in rlc_solver.py and the circuit ODE in
+    lee_model_comparison.py) had never been cross-verified.
+    """
+
+    def test_rlcsolver_vs_analytical_pf1000_params(self):
+        """RLCSolver matches analytical damped sinusoid for PF-1000 circuit.
+
+        Uses unloaded circuit (R_plasma=0, L_plasma=0) with PF-1000 preset
+        parameters: C=1.332 mF, L0=33.5 nH, R0=2.3 mOhm, V0=27 kV.
+
+        The analytical solution is:
+            I(t) = (V0 / (omega_d * L)) * exp(-alpha*t) * sin(omega_d*t)
+        where alpha = R/(2L) and omega_d = sqrt(1/(LC) - alpha^2).
+        """
+        from dpf.circuit.rlc_solver import RLCSolver
+        from dpf.core.bases import CouplingState
+
+        C = 1.332e-3
+        V0 = 27000.0
+        L0 = 33.5e-9
+        R0 = 2.3e-3
+
+        # Analytical solution parameters
+        alpha = R0 / (2.0 * L0)
+        omega_0 = 1.0 / np.sqrt(L0 * C)
+        omega_d = np.sqrt(omega_0**2 - alpha**2)
+
+        # Time to peak: t_peak = atan(omega_d / alpha) / omega_d
+        t_peak = np.arctan(omega_d / alpha) / omega_d
+
+        # Run to 2x peak time to capture peak and some decay
+        t_end = 2.5 * t_peak
+        dt = t_end / 20000  # Fine timestep for accuracy
+
+        solver = RLCSolver(C=C, V0=V0, L0=L0, R0=R0)
+        zero_coupling = CouplingState(current=0.0, voltage=V0, Lp=0.0, R_plasma=0.0)
+
+        times = []
+        currents = []
+        t = 0.0
+        for _ in range(20000):
+            zero_coupling.current = solver.current
+            zero_coupling.voltage = solver.voltage
+            solver.step(zero_coupling, back_emf=0.0, dt=dt)
+            t += dt
+            times.append(t)
+            currents.append(solver.current)
+
+        times = np.array(times)
+        currents = np.array(currents)
+
+        # Analytical solution
+        I_analytical = (V0 / (omega_d * L0)) * np.exp(-alpha * times) * np.sin(omega_d * times)
+
+        # Find peak in both
+        idx_peak_num = np.argmax(np.abs(currents))
+        idx_peak_ana = np.argmax(np.abs(I_analytical))
+
+        # Peak current should match within 1%
+        rel_peak_err = abs(currents[idx_peak_num] - I_analytical[idx_peak_num]) / abs(I_analytical[idx_peak_num])
+        assert rel_peak_err < 0.01, f"Peak current error {rel_peak_err:.4f} > 1%"
+
+        # Waveform NRMSE should be < 2% over the full interval
+        residuals = currents - I_analytical
+        nrmse_val = np.sqrt(np.mean(residuals**2)) / np.max(np.abs(I_analytical))
+        assert nrmse_val < 0.02, f"RLCSolver-vs-analytical NRMSE {nrmse_val:.4f} > 2%"
+
+    def test_rlcsolver_analytical_peak_timing(self):
+        """RLCSolver peak timing matches analytical for PF-1000 unloaded circuit."""
+        from dpf.circuit.rlc_solver import RLCSolver
+        from dpf.core.bases import CouplingState
+
+        C = 1.332e-3
+        V0 = 27000.0
+        L0 = 33.5e-9
+        R0 = 2.3e-3
+
+        alpha = R0 / (2.0 * L0)
+        omega_0 = 1.0 / np.sqrt(L0 * C)
+        omega_d = np.sqrt(omega_0**2 - alpha**2)
+        t_peak_analytical = np.arctan(omega_d / alpha) / omega_d
+
+        # Run solver
+        dt = 1e-9  # 1 ns steps
+        n_steps = int(2 * t_peak_analytical / dt)
+        solver = RLCSolver(C=C, V0=V0, L0=L0, R0=R0)
+        zero_coupling = CouplingState(current=0.0, voltage=V0, Lp=0.0, R_plasma=0.0)
+
+        peak_I = 0.0
+        peak_t = 0.0
+        for i in range(n_steps):
+            zero_coupling.current = solver.current
+            zero_coupling.voltage = solver.voltage
+            solver.step(zero_coupling, back_emf=0.0, dt=dt)
+            if abs(solver.current) > peak_I:
+                peak_I = abs(solver.current)
+                peak_t = (i + 1) * dt
+
+        # Peak timing should match within 2%
+        timing_err = abs(peak_t - t_peak_analytical) / t_peak_analytical
+        assert timing_err < 0.02, f"Peak timing error {timing_err:.4f} > 2%"
+
+    def test_rlcsolver_energy_conservation_lossless(self):
+        """Lossless RLC circuit conserves energy to < 0.1% over 2 quarter-periods."""
+        from dpf.circuit.rlc_solver import RLCSolver
+        from dpf.core.bases import CouplingState
+
+        C = 1.332e-3
+        V0 = 27000.0
+        L0 = 33.5e-9
+        R0 = 0.0  # Lossless
+
+        E0 = 0.5 * C * V0**2
+
+        solver = RLCSolver(C=C, V0=V0, L0=L0, R0=R0)
+        T_quarter = np.pi * np.sqrt(L0 * C)
+        dt = T_quarter / 5000
+        n_steps = int(2 * T_quarter / dt)
+
+        zero_coupling = CouplingState(current=0.0, voltage=V0, Lp=0.0, R_plasma=0.0)
+
+        for _ in range(n_steps):
+            zero_coupling.current = solver.current
+            zero_coupling.voltage = solver.voltage
+            solver.step(zero_coupling, back_emf=0.0, dt=dt)
+
+        E_final = solver.total_energy()
+        conservation = abs(E_final - E0) / E0
+        assert conservation < 1e-3, f"Energy conservation error {conservation:.6e} > 0.1%"
+
+    def test_fc_squared_over_fm_degeneracy(self):
+        """Verify fc^2/fm degeneracy: pairs with same ratio produce similar I(t).
+
+        This tests the key analytical finding from PhD Debate #10:
+        the Lee model ODE has F_mag ~ (fc*I)^2 and M ~ fm*rho*A*z,
+        so dynamics depend on fc^2/fm, not fc and fm independently.
+        """
+        # Three points on the fc^2/fm = 2.374 manifold
+        pairs = [
+            (0.650, 0.178),  # Calibrated values
+            (0.700, 0.206),  # Same ratio: 0.700^2/0.206 = 2.379
+            (0.750, 0.237),  # Same ratio: 0.750^2/0.237 = 2.373
+        ]
+
+        results = []
+        for fc, fm in pairs:
+            model = LeeModel(current_fraction=fc, mass_fraction=fm)
+            result = model.run("PF-1000")
+            results.append(result)
+
+        # Peak currents should be within 3% of each other
+        peaks = [r.peak_current for r in results]
+        for i in range(1, len(peaks)):
+            rel_diff = abs(peaks[i] - peaks[0]) / peaks[0]
+            assert rel_diff < 0.03, (
+                f"Peak current divergence {rel_diff:.4f} between "
+                f"(fc={pairs[i][0]}, fm={pairs[i][1]}) and "
+                f"(fc={pairs[0][0]}, fm={pairs[0][1]})"
+            )
+
+        # Peak timings should be within 5% of each other
+        for i in range(1, len(results)):
+            t0 = results[0].pinch_time if results[0].pinch_time > 0 else results[0].t[-1]
+            ti = results[i].pinch_time if results[i].pinch_time > 0 else results[i].t[-1]
+            if t0 > 0 and ti > 0:
+                rel_diff = abs(ti - t0) / t0
+                assert rel_diff < 0.05, f"Timing divergence {rel_diff:.4f} for pair {i}"
+
+
+# ============================================================
+# AC.11: Engine PF-1000 I(t) Comparison (Debate #10 P0.1)
+# ============================================================
+class TestEnginePF1000Comparison:
+    """Compare the production MHD engine I(t) against Scholz waveform.
+
+    This addresses the critical finding from PhD Debate #10: the production
+    solver (engine.py + RLCSolver + SnowplowModel) had never been compared
+    against experimental data. Only the standalone LeeModel was validated.
+    """
+
+    @pytest.mark.slow
+    def test_engine_pf1000_current_waveform(self):
+        """Engine PF-1000 simulation produces I(t) comparable to Scholz (2006).
+
+        Runs the full engine (Python backend, cylindrical geometry, snowplow)
+        for PF-1000 parameters and compares I(t) against the 26-point
+        digitized waveform from Scholz et al. (2006).
+
+        This is the FIRST test that validates the production code path
+        (RLCSolver + SnowplowModel) against experimental data.
+        """
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        # Get PF-1000 preset and configure for a full discharge
+        preset = get_preset("pf1000")
+        preset["sim_time"] = 12e-6  # 12 us covers full waveform
+        preset["diagnostics_path"] = ":memory:"
+        # Use smaller grid for Python engine stability
+        preset["grid_shape"] = [32, 1, 64]
+        preset["dx"] = 3e-3  # coarser grid
+        # Disable radiation/collision to isolate circuit+snowplow dynamics
+        preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
+        preset["collision"] = {"enabled": False}
+        config = SimulationConfig(**preset)
+
+        engine = SimulationEngine(config)
+
+        # Collect I(t) waveform from engine
+        engine_times = []
+        engine_currents = []
+
+        max_steps = 50000
+        for _ in range(max_steps):
+            result = engine.step()
+            engine_times.append(engine.time)
+            engine_currents.append(abs(engine.circuit.current))
+            if result.finished:
+                break
+
+        engine_times = np.array(engine_times)
+        engine_currents = np.array(engine_currents)
+
+        # Basic sanity: engine ran and produced current
+        assert len(engine_times) > 100, "Engine ran too few steps"
+        assert np.max(engine_currents) > 100e3, "Peak current < 100 kA"
+
+        # Peak current should be in MA range (PF-1000 peak ~ 1.87 MA)
+        peak_I = np.max(engine_currents)
+        assert 0.5e6 < peak_I < 5e6, f"Peak current {peak_I:.2e} outside [0.5, 5] MA"
+
+        # Compare against Scholz waveform
+        exp_t = np.array(PF1000_DATA.waveform_t_us) * 1e-6  # Convert to seconds
+        exp_I = np.array(PF1000_DATA.waveform_I_MA) * 1e6  # Convert to Amperes
+
+        # Interpolate engine waveform onto experimental time grid
+        sim_I_interp = np.interp(exp_t, engine_times, engine_currents)
+
+        # Compute NRMSE
+        residuals = sim_I_interp - exp_I
+        rmse = np.sqrt(np.mean(residuals**2))
+        I_peak_exp = np.max(np.abs(exp_I))
+        engine_nrmse = rmse / I_peak_exp
+
+        # Engine NRMSE should be < 0.50 (relaxed threshold for first comparison)
+        # The Lee model achieves 0.192; the engine with full MHD may differ
+        assert engine_nrmse < 0.50, f"Engine NRMSE {engine_nrmse:.3f} > 0.50"
+
+        # Peak region [4, 7] us NRMSE (where model should work best)
+        peak_mask = (exp_t >= 4e-6) & (exp_t <= 7e-6)
+        if np.sum(peak_mask) >= 3:
+            peak_residuals = sim_I_interp[peak_mask] - exp_I[peak_mask]
+            peak_rmse = np.sqrt(np.mean(peak_residuals**2))
+            peak_nrmse = peak_rmse / I_peak_exp
+            # Peak region should be better than full waveform
+            assert peak_nrmse < 0.40, f"Peak region NRMSE {peak_nrmse:.3f} > 0.40"
+
+    def test_engine_pf1000_peak_current_order_of_magnitude(self):
+        """Engine PF-1000 produces peak current within order of magnitude of 1.87 MA.
+
+        Note: The Python engine (non-conservative pressure) may go unstable before
+        reaching the full 8 μs peak. We use a smaller grid and catch blowup gracefully,
+        recording the peak current achieved before instability.
+        """
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        preset = get_preset("pf1000")
+        preset["sim_time"] = 8e-6  # 8 us to cover peak
+        preset["diagnostics_path"] = ":memory:"
+        # Use smaller grid for Python engine stability
+        preset["grid_shape"] = [32, 1, 64]
+        preset["dx"] = 3e-3  # coarser grid
+        # Disable radiation/collision to isolate circuit+snowplow dynamics
+        preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
+        preset["collision"] = {"enabled": False}
+        config = SimulationConfig(**preset)
+
+        engine = SimulationEngine(config)
+
+        peak_I = 0.0
+        for _ in range(20000):
+            try:
+                result = engine.step()
+            except (RuntimeError, OverflowError):
+                # Python engine may blow up — record what we got
+                break
+            I_abs = abs(engine.circuit.current)
+            if I_abs > peak_I:
+                peak_I = I_abs
+            if result.finished:
+                break
+
+        # Peak should be at least 100 kA (order of magnitude test)
+        # Full 1.87 MA may not be reached if engine goes unstable before peak
+        assert peak_I > 100e3, f"Peak current {peak_I:.2e} < 100 kA"
+
+    def test_engine_pf1000_current_rises(self):
+        """Engine PF-1000 current increases from zero (capacitor discharge)."""
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        preset = get_preset("pf1000")
+        preset["sim_time"] = 1e-6  # 1 us
+        preset["diagnostics_path"] = ":memory:"
+        # Use smaller grid for Python engine stability
+        preset["grid_shape"] = [32, 1, 64]
+        preset["dx"] = 3e-3  # coarser grid
+        # Disable radiation/collision to isolate circuit+snowplow dynamics
+        preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
+        preset["collision"] = {"enabled": False}
+        config = SimulationConfig(**preset)
+
+        engine = SimulationEngine(config)
+
+        # Run 100 steps
+        for _ in range(100):
+            engine.step()
+
+        # Current should be positive and growing
+        I = abs(engine.circuit.current)
+        assert I > 1e3, f"Current {I:.2e} A too low after 100 steps"
