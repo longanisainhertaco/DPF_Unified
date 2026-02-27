@@ -660,6 +660,71 @@ class TestCircuitCrossVerification:
                 rel_diff = abs(ti - t0) / t0
                 assert rel_diff < 0.05, f"Timing divergence {rel_diff:.4f} for pair {i}"
 
+    def test_leemodel_vs_rlcsolver_unloaded(self):
+        """Direct LeeModel vs RLCSolver comparison for unloaded PF-1000 circuit.
+
+        This is the key cross-verification from Debate #10 P0.2:
+        Both solvers use the same circuit (C, V0, L0, R0) with no plasma load.
+        The LeeModel uses scipy solve_ivp (RK45), RLCSolver uses implicit midpoint.
+        They should produce identical I(t) for the damped sinusoidal case.
+        """
+        from dpf.circuit.rlc_solver import RLCSolver
+        from dpf.core.bases import CouplingState
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        # PF-1000 circuit params
+        C = 1.332e-3
+        V0 = 27000.0
+        L0 = 33.5e-9
+        R0 = 2.3e-3
+
+        # Run LeeModel with minimal snowplow effect (fm→0 makes snowplow negligible)
+        # We can't set fm=0 exactly (division by zero), so use fm=1e-6
+        lee = LeeModel(current_fraction=0.01, mass_fraction=1e-6)
+        lee_result = lee.run("PF-1000")
+
+        # Run RLCSolver with zero coupling
+        dt = 1e-9  # 1 ns
+        t_end = lee_result.t[-1]
+        n_steps = int(t_end / dt) + 1
+
+        solver = RLCSolver(C=C, V0=V0, L0=L0, R0=R0, crowbar_enabled=False)
+        zero_coupling = CouplingState(current=0.0, voltage=V0, Lp=0.0, R_plasma=0.0)
+
+        rlc_times = []
+        rlc_currents = []
+        for _ in range(n_steps):
+            zero_coupling.current = solver.current
+            zero_coupling.voltage = solver.voltage
+            solver.step(zero_coupling, back_emf=0.0, dt=dt)
+            rlc_times.append(solver.state.time)
+            rlc_currents.append(solver.current)
+
+        rlc_times = np.array(rlc_times)
+        rlc_currents = np.array(rlc_currents)
+
+        # Interpolate RLCSolver onto LeeModel time grid for comparison
+        rlc_interp = np.interp(lee_result.t, rlc_times, rlc_currents)
+
+        # Peak current comparison: < 2% difference
+        lee_peak = np.max(np.abs(lee_result.I))
+        rlc_peak = np.max(np.abs(rlc_currents))
+        peak_err = abs(lee_peak - rlc_peak) / lee_peak
+        assert peak_err < 0.02, (
+            f"Peak current mismatch: Lee={lee_peak:.0f} A, RLC={rlc_peak:.0f} A, "
+            f"error={peak_err:.4f}"
+        )
+
+        # Waveform NRMSE over first quarter-period (before any snowplow effect)
+        T_quarter = np.pi * np.sqrt(L0 * C)
+        early_mask = lee_result.t < T_quarter
+        if np.sum(early_mask) > 10:
+            residuals = rlc_interp[early_mask] - lee_result.I[early_mask]
+            nrmse = np.sqrt(np.mean(residuals**2)) / lee_peak
+            assert nrmse < 0.05, (
+                f"Early waveform NRMSE {nrmse:.4f} > 5% between LeeModel and RLCSolver"
+            )
+
 
 # ============================================================
 # AC.11: Engine PF-1000 I(t) Comparison (Debate #10 P0.1)
