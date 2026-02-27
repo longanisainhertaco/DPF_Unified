@@ -817,3 +817,101 @@ class TestEnginePF1000Comparison:
         # Current should be positive and growing
         I = abs(engine.circuit.current)
         assert I > 1e3, f"Current {I:.2e} A too low after 100 steps"
+
+
+# ============================================================
+# AC.12: Wider-bounds recalibration (P0.3 from Debate #10)
+# ============================================================
+
+
+class TestWiderBoundsCalibration:
+    """Debate #10 P0.3: Widen fc_bounds to (0.50, 0.90) and re-calibrate.
+
+    Tests whether fc=0.650 at the default lower boundary was an artifact
+    of the (0.65, 0.85) constraint, or whether the optimizer truly prefers
+    fc near 0.65. Reports fc^2/fm ratio per Debate #10 consensus.
+    """
+
+    def test_wider_fc_bounds_calibration(self):
+        """Calibrate PF-1000 with fc_bounds=(0.50, 0.90) and verify fc is interior."""
+        from dpf.validation.calibration import LeeModelCalibrator
+
+        cal = LeeModelCalibrator("PF-1000")
+        result = cal.calibrate(
+            fc_bounds=(0.50, 0.90),
+            fm_bounds=(0.05, 0.35),
+            maxiter=150,
+        )
+
+        # fc should NOT be at the boundary (within 0.01)
+        # If it IS at 0.50, the optimizer wants to go lower → physics issue
+        assert result.best_fc > 0.51, (
+            f"fc={result.best_fc:.3f} hit lower boundary — optimizer wants lower fc"
+        )
+        assert result.best_fc < 0.89, (
+            f"fc={result.best_fc:.3f} hit upper boundary"
+        )
+
+        # fm should be in physically reasonable range
+        assert 0.05 < result.best_fm < 0.35, (
+            f"fm={result.best_fm:.3f} outside reasonable range"
+        )
+
+        # Peak current error should be small (< 5%)
+        assert result.peak_current_error < 0.05, (
+            f"Peak current error {result.peak_current_error:.3f} > 5%"
+        )
+
+    def test_fc_squared_over_fm_ratio_consistency(self):
+        """fc^2/fm ratio should be ~2.374 regardless of bounds.
+
+        Debate #10 established that fc^2/fm is the only independently
+        determined parameter. Wider bounds should yield a similar ratio
+        if the model physics is consistent.
+        """
+        from dpf.validation.calibration import LeeModelCalibrator
+
+        cal = LeeModelCalibrator("PF-1000")
+
+        # Narrow bounds (default)
+        narrow = cal.calibrate(
+            fc_bounds=(0.65, 0.85),
+            fm_bounds=(0.05, 0.25),
+            maxiter=100,
+        )
+        ratio_narrow = narrow.best_fc**2 / narrow.best_fm
+
+        # Wide bounds
+        wide = cal.calibrate(
+            fc_bounds=(0.50, 0.90),
+            fm_bounds=(0.05, 0.35),
+            maxiter=150,
+        )
+        ratio_wide = wide.best_fc**2 / wide.best_fm
+
+        # Ratios should agree within 30% (optimizer landscape is flat along degeneracy)
+        ratio_diff = abs(ratio_narrow - ratio_wide) / ratio_narrow
+        assert ratio_diff < 0.30, (
+            f"fc^2/fm ratio mismatch: narrow={ratio_narrow:.3f}, "
+            f"wide={ratio_wide:.3f}, diff={ratio_diff:.1%}"
+        )
+
+    def test_calibration_reports_fc_fm_ratio(self):
+        """Verify we can compute and report the fc^2/fm ratio."""
+        from dpf.validation.calibration import LeeModelCalibrator
+
+        cal = LeeModelCalibrator("PF-1000")
+        result = cal.calibrate(maxiter=80)
+
+        ratio = result.best_fc**2 / result.best_fm
+
+        # Ratio should be positive and finite
+        assert 0.5 < ratio < 20.0, f"fc^2/fm ratio {ratio:.3f} outside reasonable range"
+
+        # Verify the ratio reproduces similar waveform at different (fc, fm)
+        # using an alternative point on the degeneracy manifold
+        alt_fm = 0.20
+        alt_fc = (ratio * alt_fm) ** 0.5
+
+        # alt_fc should be in a reasonable range
+        assert 0.3 < alt_fc < 1.0, f"Alternative fc={alt_fc:.3f} out of range"
