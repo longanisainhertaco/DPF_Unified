@@ -399,7 +399,7 @@ class TestBremsstrahlungRadiation:
     """Verify bremsstrahlung against NRL Plasma Formulary (2019, p. 58)."""
 
     def test_brem_power_nrl_formulary(self):
-        """P_ff = 1.69e-32 * g_ff * Z^2 * ne^2 * sqrt(Te_K) [W/m^3]."""
+        """P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te_K) [W/m^3, SI]."""
         from dpf.radiation.bremsstrahlung import BREM_COEFF, bremsstrahlung_power
 
         ne = np.array([1e24])

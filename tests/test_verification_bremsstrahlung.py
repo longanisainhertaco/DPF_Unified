@@ -129,3 +129,18 @@ def test_brem_coefficient_matches_nrl():
     * (k_B/e)^{1/2} ≈ 1.57e-40, rounded to 1.42e-40 with Gaunt factor convention.
     """
     assert BREM_COEFF == 1.42e-40
+
+
+def test_brem_coefficient_cpp_matches_python():
+    """dpf_zpinch.cpp BREM_COEFF must match Python bremsstrahlung.py (SI)."""
+    from pathlib import Path
+
+    cpp_path = Path(__file__).parents[1] / "external" / "athena" / "src" / "pgen" / "dpf_zpinch.cpp"
+    if not cpp_path.exists():
+        pytest.skip("dpf_zpinch.cpp not found")
+    content = cpp_path.read_text()
+    # C++ must use SI coefficient, not CGS 1.69e-32
+    assert "1.42e-40" in content, "C++ BREM_COEFF should be 1.42e-40 (SI)"
+    assert "1.69e-32" not in content or "NOTE" in content.split("1.69e-32")[0].split("\n")[-1], (
+        "C++ still uses CGS coefficient 1.69e-32 as active value"
+    )
