@@ -158,3 +158,21 @@ class TestCheckPeaseBraginskii:
         assert not result["exceeds_PB"]
         assert result["regime"] == "stable"
         assert result["ratio"] == 0.0
+
+
+class TestEngineIntegration:
+    """Test that PB diagnostic is wired into the engine."""
+
+    def test_engine_has_pb_result_after_step(self, small_config):
+        """Engine stores _last_pb_result after a step."""
+        from dpf.engine import SimulationEngine
+
+        small_config.diagnostics.hdf5_filename = ":memory:"
+        engine = SimulationEngine(small_config)
+        engine.step()
+        assert hasattr(engine, "_last_pb_result")
+        pb = engine._last_pb_result
+        assert "I_PB_MA" in pb
+        assert "ratio" in pb
+        assert "regime" in pb
+        assert pb["I_PB_MA"] > 0
