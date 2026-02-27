@@ -5,7 +5,8 @@ Presets provide physically meaningful starting points for:
 - Tutorial / quick-start (small grid, fast)
 - PF-1000 (IPPLM Warsaw, 1 MJ)
 - NX2 (NIE Singapore, 3 kJ)
-- LLNL-DPF (Livermore, 100 kJ)
+- LLNL-DPF (Livermore, 4 kJ)
+- MJOLNIR (LLNL, 2 MJ)
 
 Usage:
     from dpf.presets import get_preset, list_presets
@@ -91,6 +92,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 5e-3,
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
@@ -124,6 +127,42 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {"anode_length": 0.08},  # ~80 mm for LLNL DPF
+    },
+    "mjolnir": {
+        "_meta": {
+            "description": "MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF",
+            "device": "MJOLNIR",
+            "geometry": "cylindrical",
+            "reference": "Goyon et al., Phys. Plasmas 32:033105 (2025)",
+        },
+        "grid_shape": [128, 1, 512],
+        "dx": 1e-3,
+        "sim_time": 8e-6,
+        "dt_init": 1e-10,
+        "rho0": 6e-4,  # ~7 Torr D2 fill
+        "T0": 300.0,
+        "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
+        # Circuit: Goyon et al. (2025) — 2 MJ stored at 100 kV design,
+        # typical operation at 60 kV (0.75 MJ), 2.8 MA peak.
+        # C = 2*E/V^2 = 2*2e6/100e3^2 = 0.4 mF (at design voltage)
+        # L0, R0 estimated from quarter-period and peak current scaling.
+        "circuit": {
+            "C": 4e-4,             # 0.4 mF (2 MJ at 100 kV)
+            "V0": 60e3,            # 60 kV typical operation
+            "L0": 15e-9,           # ~15 nH external (MA-class low-inductance)
+            "R0": 1e-3,            # ~1 mOhm (MA-class low-resistance)
+            "anode_radius": 0.1143,  # 228.6 mm diameter / 2 (Goyon 2025)
+            "cathode_radius": 0.16,  # estimated outer radius
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
+        "sheath": {"enabled": True, "boundary": "z_high"},
+        # R_imp = 2.5 cm, anode length estimated from 15-degree taper geometry
+        "snowplow": {"anode_length": 0.5},
     },
     "cartesian_demo": {
         "_meta": {

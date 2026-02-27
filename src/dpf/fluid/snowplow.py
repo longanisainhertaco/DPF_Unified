@@ -42,6 +42,54 @@ from dpf.constants import mu_0, pi
 logger = logging.getLogger(__name__)
 
 
+def implosion_scaling(
+    I_MA: float,
+    R_imp_cm: float,
+    P_fill_Torr: float,
+    CR: float = 10.0,
+) -> dict[str, float]:
+    """1D shock theory scaling relations for DPF radial implosion.
+
+    Reduced-order analytical estimates from Goyon et al., Phys. Plasmas
+    32:033105 (2025), Eqs. 1-4. Provides implosion velocity, stagnation
+    temperature, expansion time, and m=0 breakup time as functions of
+    peak implosion current, implosion radius, and fill pressure.
+
+    These formulas assume a strong cylindrical shock with uniform current
+    distribution. They break down above ~10 Torr due to parasitic current
+    losses that do not reach the pinch.
+
+    Args:
+        I_MA: Peak implosion current [MA].
+        R_imp_cm: Implosion radius [cm].
+        P_fill_Torr: Fill gas pressure [Torr].
+        CR: Convergence ratio (default 10, typical for DPF).
+
+    Returns:
+        Dictionary with:
+            v_imp: Implosion velocity [m/s].
+            T_stag_keV: Stagnation temperature [keV].
+            tau_exp_ns: Expansion time [ns].
+            tau_m0_ns: m=0 breakup time [ns].
+
+    References:
+        Goyon et al., Phys. Plasmas 32, 033105 (2025), Eqs. 1-4.
+    """
+    sqrt_P = np.sqrt(max(P_fill_Torr, 1e-10))
+
+    v_imp = 950e3 * I_MA / (R_imp_cm * sqrt_P)  # [m/s]
+    T_stag_keV = 21.0 * I_MA**2 / (R_imp_cm**2 * P_fill_Torr)  # [keV]
+    tau_exp_ns = 31.5 * R_imp_cm**2 * sqrt_P / (CR * I_MA)  # [ns]
+    tau_m0_ns = 31.0 * R_imp_cm**2 * sqrt_P / (CR * I_MA)  # [ns]
+
+    return {
+        "v_imp": v_imp,
+        "T_stag_keV": T_stag_keV,
+        "tau_exp_ns": tau_exp_ns,
+        "tau_m0_ns": tau_m0_ns,
+    }
+
+
 class SnowplowModel:
     """0D snowplow model for DPF axial rundown and radial compression.
 

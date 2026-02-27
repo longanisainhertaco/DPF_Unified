@@ -137,38 +137,51 @@ def run_orszag_tang(
     nx: int = 256,
     t_end: float = 0.5,
     gamma: float = 5.0 / 3.0,
+    backend: str = "python",
 ) -> OrszagTangResult:
     """Run the Orszag-Tang vortex benchmark.
 
     Sets up the standard Orszag-Tang initial conditions on a 2D grid
-    (mapped to 3D as (nx, nx, nz_pad)) and advances to *t_end* using
-    the MHD solver.
+    (mapped to 3D as (nx, nx, nz_pad)) and advances to *t_end*.
 
-    The solver uses zero-gradient (Neumann) boundary conditions.
-    For best results, use *t_end* < 1.0 or moderate resolution so
-    that boundary effects remain small.
+    Two backends are available:
+
+    - ``"python"``: MHDSolver with Neumann BCs and [0, 2*pi] domain.
+      Boundary effects degrade accuracy at late times.
+    - ``"metal"``: MetalMHDSolver with periodic BCs and [0, 1] domain
+      (Formulation A, Athena++ convention). Recommended for production.
 
     Args:
         nx: Number of cells in x and y (square grid).
         t_end: Final time. Standard choices: 0.5, pi.
         gamma: Adiabatic index (default 5/3).
+        backend: ``"python"`` or ``"metal"`` (default ``"python"``).
 
     Returns:
         :class:`OrszagTangResult` with density field, diagnostics, and
         metadata.
     """
-    from dpf.fluid.mhd_solver import MHDSolver
-
     nz = _NZ_PAD
-    dx = 2.0 * pi / nx
-    grid_shape = (nx, nx, nz)
 
-    # Cell-centered coordinates
-    x = np.linspace(0.5 * dx, 2.0 * pi - 0.5 * dx, nx)
-    y = np.linspace(0.5 * dx, 2.0 * pi - 0.5 * dx, nx)
+    if backend == "metal":
+        return _run_orszag_tang_metal(nx, nz, t_end, gamma)
+    return _run_orszag_tang_python(nx, nz, t_end, gamma)
+
+
+def _run_orszag_tang_metal(
+    nx: int, nz: int, t_end: float, gamma: float,
+) -> OrszagTangResult:
+    """Metal backend: periodic BCs, [0,1] domain, Heaviside-Lorentz units."""
+    from dpf.metal.metal_solver import MetalMHDSolver
+
+    dx = 1.0 / nx
+    grid_shape = (nx, nx, nz)
+    B0 = 1.0 / np.sqrt(4.0 * pi)
+
+    x = (np.arange(nx) + 0.5) * dx
+    y = (np.arange(nx) + 0.5) * dx
     X, Y = np.meshgrid(x, y, indexing="ij")
 
-    # Initial conditions (Orszag-Tang standard)
     rho0 = 25.0 / (36.0 * pi)
     p0 = 5.0 / (12.0 * pi)
 
@@ -177,37 +190,117 @@ def run_orszag_tang(
     velocity = np.zeros((3,) + grid_shape)
     B = np.zeros((3,) + grid_shape)
 
-    # Fill x-y plane, uniform in z
+    for k in range(nz):
+        velocity[0, :, :, k] = -np.sin(2.0 * pi * Y)
+        velocity[1, :, :, k] = np.sin(2.0 * pi * X)
+        B[0, :, :, k] = -B0 * np.sin(2.0 * pi * Y)
+        B[1, :, :, k] = B0 * np.sin(4.0 * pi * X)
+
+    ion_mass = 1.67e-27
+    T = pressure * ion_mass / (2.0 * np.maximum(rho, 1e-30) * k_B)
+
+    state = {
+        "rho": rho, "velocity": velocity, "pressure": pressure, "B": B,
+        "Te": T.copy(), "Ti": T.copy(), "psi": np.zeros(grid_shape),
+    }
+
+    # Energy in HL units (mu_0 = 1)
+    e_th = pressure / (gamma - 1.0)
+    e_kin = 0.5 * rho * np.sum(velocity**2, axis=0)
+    e_mag = 0.5 * np.sum(B**2, axis=0)
+    E0 = float(np.sum(e_th + e_kin + e_mag))
+
+    solver = MetalMHDSolver(
+        grid_shape=grid_shape, dx=dx, gamma=gamma, cfl=0.3,
+        device="cpu",
+        reconstruction="plm", riemann_solver="hll", limiter="mc",
+        use_ct=False, bc=("periodic", "periodic", "periodic"),
+        enable_bremsstrahlung=False, enable_hall=False,
+        enable_braginskii_conduction=False, enable_braginskii_viscosity=False,
+    )
+
+    t, step_count = 0.0, 0
+    rho_floor, p_floor = 1e-8 * rho0, 1e-8 * p0
+
+    while t < t_end and step_count < 500_000:
+        dt = solver.compute_dt(state)
+        if t + dt > t_end:
+            dt = t_end - t
+        if dt <= 0:
+            break
+        state = solver.step(state, dt, current=0.0, voltage=0.0)
+        state["rho"] = np.maximum(state["rho"], rho_floor)
+        state["pressure"] = np.maximum(state["pressure"], p_floor)
+        if not np.all(np.isfinite(state["rho"])):
+            logger.warning("NaN at step %d, t=%.6e", step_count, t)
+            break
+        t += dt
+        step_count += 1
+
+    km = nz // 2
+    e_th_f = state["pressure"] / (gamma - 1.0)
+    e_kin_f = 0.5 * state["rho"] * np.sum(state["velocity"]**2, axis=0)
+    e_mag_f = 0.5 * np.sum(state["B"]**2, axis=0)
+    E_final = float(np.sum(e_th_f + e_kin_f + e_mag_f))
+
+    Bx, By, Bz = state["B"][0], state["B"][1], state["B"][2]
+    div_B = (np.gradient(Bx, dx, axis=0) + np.gradient(By, dx, axis=1)
+             + np.gradient(Bz, dx, axis=2))
+
+    return OrszagTangResult(
+        rho_final=state["rho"][:, :, km],
+        rho_min=float(np.min(state["rho"])),
+        rho_max=float(np.max(state["rho"])),
+        energy_initial=E0, energy_final=E_final,
+        energy_conservation=E_final / E0 if E0 > 0 else 0.0,
+        max_div_B=float(np.max(np.abs(div_B))),
+        nx=nx, t_end=t, n_steps=step_count, gamma=gamma,
+        bc_note="Periodic BCs (Metal solver, Formulation A, [0,1]^2)",
+        metadata={"rho0": rho0, "p0": p0, "dx": dx, "domain": "[0, 1]^2",
+                  "backend": "metal"},
+    )
+
+
+def _run_orszag_tang_python(
+    nx: int, nz: int, t_end: float, gamma: float,
+) -> OrszagTangResult:
+    """Python backend: Neumann BCs, [0, 2*pi] domain."""
+    from dpf.fluid.mhd_solver import MHDSolver
+
+    dx = 2.0 * pi / nx
+    grid_shape = (nx, nx, nz)
+
+    x = np.linspace(0.5 * dx, 2.0 * pi - 0.5 * dx, nx)
+    y = np.linspace(0.5 * dx, 2.0 * pi - 0.5 * dx, nx)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+
+    rho0 = 25.0 / (36.0 * pi)
+    p0 = 5.0 / (12.0 * pi)
+
+    rho = np.full(grid_shape, rho0)
+    pressure = np.full(grid_shape, p0)
+    velocity = np.zeros((3,) + grid_shape)
+    B = np.zeros((3,) + grid_shape)
+
     for k in range(nz):
         velocity[0, :, :, k] = -np.sin(Y)
         velocity[1, :, :, k] = np.sin(X)
         B[0, :, :, k] = -np.sin(Y)
         B[1, :, :, k] = np.sin(2.0 * X)
 
-    # Temperature (arbitrary; not used by ideal MHD fluxes)
     ion_mass = 1.67e-27
     rho_safe = np.maximum(rho, 1e-30)
     T = pressure * ion_mass / (2.0 * rho_safe * k_B)
 
-    psi = np.zeros(grid_shape)
-
     state = {
-        "rho": rho,
-        "velocity": velocity,
-        "pressure": pressure,
-        "B": B,
-        "Te": T.copy(),
-        "Ti": T.copy(),
-        "psi": psi,
+        "rho": rho, "velocity": velocity, "pressure": pressure, "B": B,
+        "Te": T.copy(), "Ti": T.copy(), "psi": np.zeros(grid_shape),
     }
 
-    # Compute initial energy
     E0 = _total_energy(rho, velocity, pressure, B, gamma)
 
-    # Use a moderate CFL and Dedner divergence cleaning for stability.
-    # Dedner ch = max signal speed ~ sqrt(gamma * p0 / rho0 + |B|^2 / (mu_0 * rho0))
     cs = np.sqrt(gamma * p0 / rho0)
-    va = np.sqrt((1.0**2 + 1.0**2) / (mu_0 * rho0))  # Approximate Alfven speed
+    va = np.sqrt((1.0**2 + 1.0**2) / (mu_0 * rho0))
     ch_dedner = 2.0 * max(cs, va)
 
     solver = MHDSolver(
@@ -288,7 +381,8 @@ def run_orszag_tang(
     rho_max = float(np.max(state["rho"]))
 
     bc_note = (
-        "Zero-gradient (Neumann) BCs used; periodic BCs not yet supported. "
+        "Zero-gradient (Neumann) BCs used (Python backend). "
+        "Use backend='metal' for periodic BCs. "
         "Boundary effects may degrade accuracy at late times."
     )
 

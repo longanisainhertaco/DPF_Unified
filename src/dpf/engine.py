@@ -291,6 +291,9 @@ class SimulationEngine:
         # Interferometry (cylindrical only)
         self._last_fringe_shifts: np.ndarray | None = None
 
+        # Regime validity diagnostics (Phase AE)
+        self._last_regime_result: dict | None = None
+
         # Source terms for coupling (e.g. J_kin from PIC)
         self._current_source_terms: dict[str, np.ndarray] | None = None
 
@@ -1042,6 +1045,25 @@ class SimulationEngine:
             N_L = abel_transform(ne_midplane, r_grid)
             self._last_fringe_shifts = fringe_shift(N_L)
 
+        # === Step 5d: Plasma regime validity check (Phase AE) ===
+        # Periodic check (every 100 steps) of MHD validity criteria:
+        # ND (collisionality), Rm (frozen-in flux), Debye length, ion skin depth.
+        if self.step_count % 100 == 0:
+            from dpf.diagnostics.plasma_regime import regime_validity
+            ne_rv = self.state["rho"] / self.ion_mass
+            Te_rv = self.state["Te"]
+            Ti_rv = self.state["Ti"]
+            v_mag = np.sqrt(np.sum(self.state["velocity"] ** 2, axis=0))
+            rv = regime_validity(ne_rv, Te_rv, Ti_rv, v_mag, dx=self.config.dx)
+            self._last_regime_result = rv
+            frac = rv["fraction_valid"]
+            if frac < 0.5:
+                logger.warning(
+                    "MHD regime validity: %.0f%% of cells outside MHD-valid regime "
+                    "(ND>1 or dx<10*lambda_De). Consider kinetic model.",
+                    (1.0 - frac) * 100,
+                )
+
         # === Step 6: Advance time and record diagnostics ===
         self.time += dt
         self.step_count += 1
@@ -1113,6 +1135,20 @@ class SimulationEngine:
                     "ratio": self._last_pb_result["ratio"],
                     "exceeds_PB": self._last_pb_result["exceeds_PB"],
                     "regime": self._last_pb_result["regime"],
+                },
+                "regime_validity": {
+                    "fraction_valid": (
+                        self._last_regime_result["fraction_valid"]
+                        if self._last_regime_result else 1.0
+                    ),
+                    "ND_max": (
+                        float(np.max(self._last_regime_result["ND"]))
+                        if self._last_regime_result else 0.0
+                    ),
+                    "Rm_min": (
+                        float(np.min(self._last_regime_result["Rm"]))
+                        if self._last_regime_result else 0.0
+                    ),
                 },
             }
             self.diagnostics.record(diag_state, self.time)
