@@ -62,10 +62,13 @@ def m0_growth_rate(
             is_unstable: True if growth_rate > 0.
             stability_margin: beta_p_critical - beta_p (positive = unstable).
     """
-    B_theta = abs(B_theta)
-    rho = max(rho, 1e-20)
-    pressure = max(pressure, 0.0)
-    a_pinch = max(a_pinch, 1e-10)
+    B_theta = abs(float(B_theta))
+    rho = max(float(rho), 1e-20)
+    pressure = max(float(pressure), 0.0)
+    a_pinch = max(float(a_pinch), 1e-10)
+
+    # Cap B_theta to prevent overflow in B_sq (float64 max ~ 1.8e308)
+    B_theta = min(B_theta, 1e150)
 
     # Alfven speed
     v_A = B_theta / np.sqrt(mu_0 * rho)
