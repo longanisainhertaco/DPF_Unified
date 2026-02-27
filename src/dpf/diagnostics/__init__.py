@@ -1,1 +1,1 @@
-"""Diagnostics module — HDF5 output, neutron yield, interferometry."""
+"""Diagnostics module — HDF5 output, neutron yield, interferometry, Pease-Braginskii."""
