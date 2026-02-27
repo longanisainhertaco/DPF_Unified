@@ -322,14 +322,17 @@ class SimulationEngine:
             self.sheath_cfg.enabled,
         )
 
-        # Warn about physics modules skipped by non-Python backends
-        if self.backend in ("metal", "athenak", "athena", "hybrid"):
+        # Warn about physics modules skipped by non-Python backends.
+        # Note: Metal and Python backends share the engine's operator-split
+        # loop, so radiation/sheath/diffusion physics ARE applied for Metal.
+        # Athena++/AthenaK have their own fast path and skip these modules.
+        if self.backend in ("athenak", "athena", "hybrid"):
             skipped = []
-            if fc.enable_viscosity and self.backend != "metal":
+            if fc.enable_viscosity:
                 skipped.append("Braginskii viscosity")
-            if fc.enable_nernst and self.backend != "metal":
+            if fc.enable_nernst:
                 skipped.append("Nernst effect")
-            if fc.enable_anisotropic_conduction and self.backend != "metal":
+            if fc.enable_anisotropic_conduction:
                 skipped.append("anisotropic thermal conduction")
             if self.rad_cfg.bremsstrahlung_enabled or self.rad_cfg.line_radiation_enabled:
                 skipped.append("radiation transport (bremsstrahlung/line)")
@@ -340,30 +343,28 @@ class SimulationEngine:
             if fc.diffusion_method == "implicit":
                 skipped.append("implicit diffusion (ADI)")
 
-            if skipped and self.backend != "metal":
+            if skipped:
                 logger.warning(
                     "Backend '%s' skips physics modules: %s. "
                     "These modules are handled by the Python engine's operator-split "
                     "loop but are NOT applied for Athena++/AthenaK backends. "
-                    "Use backend='metal' (supports Hall, Braginskii, Nernst) "
+                    "Use backend='metal' (supports all operator-split physics) "
                     "or backend='python' (all physics, but non-conservative).",
                     self.backend, ", ".join(skipped),
                 )
-            elif skipped and self.backend == "metal":
-                # Metal supports Hall, Braginskii conduction/viscosity, Nernst, resistive MHD
-                metal_unsupported = [
-                    s for s in skipped
-                    if "radiation" in s.lower()
-                    or "sheath" in s.lower()
-                    or "super time-stepping" in s.lower()
-                    or "implicit diffusion" in s.lower()
-                ]
-                if metal_unsupported:
-                    logger.warning(
-                        "Metal backend (production tier) does not support: %s. "
-                        "Radiation and sheath physics require the Python engine.",
-                        ", ".join(metal_unsupported),
-                    )
+        elif self.backend == "metal":
+            # Metal shares the engine operator-split loop (radiation, sheath,
+            # collision) AND has its own transport physics (Hall, Braginskii,
+            # Nernst, resistive MHD, bremsstrahlung).
+            metal_only = []
+            if fc.diffusion_method == "sts":
+                metal_only.append("RKL2 super time-stepping (using explicit instead)")
+            if fc.diffusion_method == "implicit":
+                metal_only.append("implicit diffusion (using explicit instead)")
+            if metal_only:
+                logger.info(
+                    "Metal backend note: %s", ", ".join(metal_only),
+                )
 
     @property
     def engine_tier(self) -> str:

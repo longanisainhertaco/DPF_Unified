@@ -130,6 +130,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         enable_braginskii_conduction: bool = False,
         enable_braginskii_viscosity: bool = False,
         enable_nernst: bool = False,
+        enable_bremsstrahlung: bool = False,
+        gaunt_factor: float = 1.2,
         ion_mass: float = 3.34358377e-27,
         Z_eff: float = 1.0,
         coordinates: str = "cartesian",
@@ -150,9 +152,13 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.enable_braginskii_conduction: bool = enable_braginskii_conduction
         self.enable_braginskii_viscosity: bool = enable_braginskii_viscosity
         self.enable_nernst: bool = enable_nernst
+        self.enable_bremsstrahlung: bool = enable_bremsstrahlung
+        self.gaunt_factor: float = float(gaunt_factor)
         self.ion_mass: float = float(ion_mass)
         self.Z_eff: float = float(Z_eff)
         self.coordinates: str = coordinates
+        self._last_P_radiated: float = 0.0
+        self.total_radiated_energy: float = 0.0
 
         # Determine dtype from precision setting ---------------------------
         if precision == "float64":
@@ -203,13 +209,15 @@ class MetalMHDSolver(PlasmaSolverBase):
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
             "riemann=%s  recon=%s  time=%s  precision=%s  coords=%s  "
-            "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s",
+            "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s  "
+            "bremsstrahlung=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.time_integrator,
             self.precision, self.coordinates,
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
+            self.enable_bremsstrahlung,
         )
 
 
@@ -631,6 +639,79 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         return B_new, p_new
 
+    def _apply_bremsstrahlung(
+        self,
+        rho: torch.Tensor,
+        p: torch.Tensor,
+        Te: torch.Tensor,
+        dt: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Apply bremsstrahlung radiation cooling (operator-split).
+
+        Uses implicit backward Euler for numerical stability on the
+        nonlinear cooling equation (P_ff ~ sqrt(Te)):
+
+            Te_new + alpha * sqrt(Te_new) = Te_old
+
+        where alpha = dt * C_brem * g_ff * Z * ne / (1.5 * k_B).
+
+        The electron pressure loss is coupled to the MHD pressure:
+            dp = ne * k_B * (Te_new - Te_old)
+
+        Parameters
+        ----------
+        rho : torch.Tensor
+            Mass density, shape ``(nx, ny, nz)``.
+        p : torch.Tensor
+            Total pressure, shape ``(nx, ny, nz)``.
+        Te : torch.Tensor
+            Electron temperature [K], shape ``(nx, ny, nz)``.
+        dt : float
+            Timestep [s].
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+            (p_new, Te_new, P_radiated) where P_radiated is volumetric
+            power density [W/m^3], shape ``(nx, ny, nz)``.
+
+        References
+        ----------
+        Rybicki & Lightman (1979), Eq. 5.14a.
+        NRL Plasma Formulary (2019), p. 58.
+        """
+        # BREM_COEFF = 1.42e-40 [W m^3 K^{-1/2}] (Rybicki & Lightman 1979)
+        # Pre-combine small constants to avoid float32 underflow:
+        # alpha_coeff = BREM_COEFF / (1.5 * k_B) = 1.42e-40 / 2.07e-23 = 6.86e-18
+        # Then alpha = alpha_coeff * gaunt * Z * ne * dt (all float32-safe)
+        _ALPHA_COEFF = 1.42e-40 / (1.5 * _K_B)  # ~6.86e-18  [m^3 K^{-3/2} s]
+        Te_floor = 1.0
+
+        ne = torch.clamp(rho, min=0.0) / self.ion_mass
+
+        # Implicit backward Euler coefficient (float32-safe ordering)
+        alpha = (_ALPHA_COEFF * self.gaunt_factor * self.Z_eff) * ne * dt
+
+        # Newton iteration: f(T) = T + alpha*sqrt(T) - Te = 0
+        Te_new = Te.clone()
+        for _ in range(4):
+            sqrt_T = torch.sqrt(torch.clamp(Te_new, min=Te_floor))
+            f = Te_new + alpha * sqrt_T - Te
+            fp = 1.0 + alpha / (2.0 * sqrt_T)
+            Te_new = Te_new - f / fp
+            Te_new = torch.clamp(Te_new, min=Te_floor)
+
+        # Electron pressure loss: dp_e = ne * k_B * (Te_new - Te_old)
+        dp_e = ne * _K_B * (Te_new - Te)
+        p_new = torch.clamp(p + dp_e, min=P_FLOOR)
+
+        # Volumetric radiated power for diagnostics
+        P_radiated = (1.5 * ne * _K_B
+                      * torch.clamp(Te - Te_new, min=0.0)
+                      / max(dt, 1e-30))
+
+        return p_new, Te_new, P_radiated
+
     def step(
         self,
         state: dict[str, np.ndarray],
@@ -784,6 +865,19 @@ class MetalMHDSolver(PlasmaSolverBase):
                     self.dx, self.dy, self.dz,
                     Z_eff=self.Z_eff,
                 )
+
+        # -------------------------------------------------------------- #
+        #  Bremsstrahlung radiation cooling (operator-split)
+        # -------------------------------------------------------------- #
+        if self.enable_bremsstrahlung:
+            p_new, Te_pass, P_rad = self._apply_bremsstrahlung(
+                rho_new, p_new, Te_pass, dt,
+            )
+            self._last_P_radiated = float(P_rad.sum().item())
+            cell_vol = self.dx * self.dy * self.dz
+            self.total_radiated_energy += float(
+                P_rad.sum().item() * cell_vol * dt
+            )
 
         # -------------------------------------------------------------- #
         #  Update coupling state for the circuit solver

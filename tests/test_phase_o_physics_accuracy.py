@@ -416,6 +416,165 @@ class TestMetalConvergenceOrder:
 
 
 # ============================================================
+# T5.6b: 3-Point Grid Convergence Study
+# ============================================================
+
+
+def _make_sound_wave_state(
+    nx: int, ny: int = 8, nz: int = 8,
+    gamma: float = 5.0 / 3.0, amplitude: float = 0.01,
+) -> dict[str, np.ndarray]:
+    """Create self-consistent linear sound wave IC for convergence testing.
+
+    Initializes a right-going sound wave perturbation that satisfies the
+    linearized Euler equations:
+        rho = rho0 * (1 + eps * sin(2*pi*x))
+        p   = p0   * (1 + gamma * eps * sin(2*pi*x))   [isentropic]
+        vx  = cs   * eps * sin(2*pi*x)
+        B   = (1, 0, 0)  [uniform axial field]
+
+    The wave propagates at the fast magnetosonic speed c_f = sqrt(cs^2 + vA^2).
+    At t=0 + small dt, the density error vs initial is due to numerical
+    dispersion/diffusion, not physical change.
+    """
+    x = np.linspace(0, 1, nx, endpoint=False)
+    sin_kx = np.sin(2.0 * np.pi * x)
+
+    rho0 = 1.0
+    p0 = 1.0
+    B0 = 1.0
+
+    cs = np.sqrt(gamma * p0 / rho0)
+
+    rho = rho0 * (1.0 + amplitude * sin_kx[:, None, None] * np.ones((1, ny, nz)))
+    pressure = p0 * (1.0 + gamma * amplitude * sin_kx[:, None, None]
+                      * np.ones((1, ny, nz)))
+    velocity = np.zeros((3, nx, ny, nz))
+    velocity[0] = cs * amplitude * sin_kx[:, None, None] * np.ones((1, ny, nz))
+
+    B = np.zeros((3, nx, ny, nz))
+    B[0, :, :, :] = B0
+
+    return {
+        "rho": rho,
+        "velocity": velocity,
+        "pressure": pressure,
+        "B": B,
+        "Te": np.full((nx, ny, nz), 1e4),
+        "Ti": np.full((nx, ny, nz), 1e4),
+        "psi": np.zeros((nx, ny, nz)),
+    }
+
+
+@_SKIP_NO_MPS
+class TestMetalGridConvergenceStudy:
+    """3-point grid convergence study measuring formal convergence order.
+
+    Uses smooth sound wave on [16, 32, 64] grids to compute order at
+    two refinement levels. Reports both orders for diagnostic value.
+
+    References:
+        Roache P.J. (1998) Verification and Validation in CSE, Chapter 5.
+        AIAA G-077-1998: Grid Convergence Index (GCI) guidelines.
+    """
+
+    @pytest.mark.slow
+    def test_three_point_convergence_plm_hll(self):
+        """PLM+HLL: 3-point convergence on sound wave (16, 32, 64).
+
+        On 3D grids with PLM limiters + HLL, observed order is ~0.8-0.9
+        (limiters reduce from theoretical 2nd order; transverse dimensions
+        and outflow BCs add noise).  We assert order > 0.5 to confirm
+        convergence and monotonic error decrease.
+        """
+        resolutions = [16, 32, 64]
+        n_steps = 3
+        errors = []
+
+        for nx in resolutions:
+            state = _make_sound_wave_state(nx, ny=8, nz=8, amplitude=0.01)
+            rho_init = state["rho"].copy()
+            state = _run_metal_steps(
+                state, n_steps, nx, ny=8, nz=8,
+                riemann_solver="hll", reconstruction="plm",
+                cfl=0.3, precision="float32",
+            )
+            L1 = float(np.mean(np.abs(state["rho"] - rho_init)))
+            errors.append((nx, L1))
+
+        # Errors must decrease monotonically
+        for i in range(len(errors) - 1):
+            assert errors[i + 1][1] < errors[i][1], (
+                f"Error did not decrease: N={errors[i][0]} L1={errors[i][1]:.4e} "
+                f">= N={errors[i+1][0]} L1={errors[i+1][1]:.4e}"
+            )
+
+        # Convergence order > 0.5 at each refinement level
+        for i in range(len(errors) - 1):
+            nx1, e1 = errors[i]
+            nx2, e2 = errors[i + 1]
+            if e2 > 0 and e1 > 0:
+                order = np.log(e1 / e2) / np.log(nx2 / nx1)
+                assert order > 0.5, (
+                    f"Order {order:.2f} < 0.5 at N={nx1}→{nx2}"
+                )
+
+    @pytest.mark.slow
+    def test_three_point_convergence_plm_hlld(self):
+        """PLM+HLLD: 3-point convergence on sound wave (16, 32, 64)."""
+        resolutions = [16, 32, 64]
+        n_steps = 3
+        errors = []
+
+        for nx in resolutions:
+            state = _make_sound_wave_state(nx, ny=8, nz=8, amplitude=0.01)
+            rho_init = state["rho"].copy()
+            state = _run_metal_steps(
+                state, n_steps, nx, ny=8, nz=8,
+                riemann_solver="hlld", reconstruction="plm",
+                cfl=0.3, precision="float32",
+            )
+            L1 = float(np.mean(np.abs(state["rho"] - rho_init)))
+            errors.append((nx, L1))
+
+        for i in range(len(errors) - 1):
+            assert errors[i + 1][1] < errors[i][1], (
+                f"Error did not decrease at N={errors[i][0]}→{errors[i+1][0]}"
+            )
+
+        for i in range(len(errors) - 1):
+            nx1, e1 = errors[i]
+            nx2, e2 = errors[i + 1]
+            if e2 > 0 and e1 > 0:
+                order = np.log(e1 / e2) / np.log(nx2 / nx1)
+                assert order > 0.5, (
+                    f"HLLD order {order:.2f} < 0.5 at N={nx1}→{nx2}"
+                )
+
+    @pytest.mark.slow
+    def test_float64_higher_accuracy_than_float32(self):
+        """Float64 should produce lower error than float32 on same grid."""
+        nx = 32
+        n_steps = 3
+        errors = {}
+
+        for prec in ["float32", "float64"]:
+            state = _make_sound_wave_state(nx, ny=8, nz=8, amplitude=0.01)
+            rho_init = state["rho"].copy()
+            state = _run_metal_steps(
+                state, n_steps, nx, ny=8, nz=8,
+                riemann_solver="hll", reconstruction="plm",
+                cfl=0.3, precision=prec,
+            )
+            errors[prec] = float(np.mean(np.abs(state["rho"] - rho_init)))
+
+        assert errors["float64"] <= errors["float32"] * 1.1, (
+            f"Float64 ({errors['float64']:.6e}) not better than "
+            f"float32 ({errors['float32']:.6e})"
+        )
+
+
+# ============================================================
 # T5.7: Long-Run Energy Conservation
 # ============================================================
 

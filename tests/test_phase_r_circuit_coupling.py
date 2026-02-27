@@ -205,11 +205,11 @@ class TestBackendPhysicsWarnings:
     def test_backend_physics_warnings_metal(
         self, small_config: SimulationConfig, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Verify Metal backend logs warnings for unsupported physics."""
+        """Metal does NOT warn about radiation/sheath (supported via engine loop)."""
         config = small_config
         config.fluid.backend = "metal"
-        config.radiation.bremsstrahlung_enabled = True  # Not supported by Metal
-        config.sheath.enabled = True  # Not supported by Metal
+        config.radiation.bremsstrahlung_enabled = True  # Supported (engine + solver)
+        config.sheath.enabled = True  # Applied via engine operator-split
 
         # Mock Metal solver availability
         mock_solver = MagicMock()
@@ -221,11 +221,11 @@ class TestBackendPhysicsWarnings:
         ):
             _engine = SimulationEngine(config)
 
-        # Check that warnings were logged
+        # Metal should NOT warn about unsupported radiation/sheath
         warnings = [rec.message for rec in caplog.records if rec.levelname == "WARNING"]
-        assert any("Metal backend" in w and "does not support" in w for w in warnings), (
-            "Metal backend should warn about unsupported physics"
-        )
+        assert not any(
+            "Metal backend" in w and "does not support" in w for w in warnings
+        ), "Metal shares engine operator-split loop — no physics is skipped"
 
     def test_backend_physics_warnings_athenak(
         self, small_config: SimulationConfig, caplog: pytest.LogCaptureFixture
