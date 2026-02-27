@@ -69,7 +69,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
-        "snowplow": {"anode_length": 0.6},  # Scholz (2006) Table 1: 600 mm
+        "snowplow": {
+            "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
+            "radial_mass_fraction": 0.1,  # Lee & Saw (2014): f_mr ~ 0.07-0.12
+        },
     },
     "nx2": {
         "_meta": {
@@ -98,7 +101,11 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
-        "snowplow": {"anode_length": 0.05, "fill_pressure_Pa": 133.0},  # ~50 mm, ~1 Torr D2
+        "snowplow": {
+            "anode_length": 0.05,
+            "fill_pressure_Pa": 133.0,  # ~1 Torr D2
+            "radial_mass_fraction": 0.12,  # Lee & Saw (2008): f_mr < f_m for NX2
+        },
     },
     "llnl_dpf": {
         "_meta": {

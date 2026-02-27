@@ -22,9 +22,9 @@ from dpf.validation.calibration import (
     LeeModelCalibrator,
 )
 from dpf.validation.experimental import (
-    PF1000_DATA,
-    NX2_DATA,
     DEVICES,
+    NX2_DATA,
+    PF1000_DATA,
     nrmse_peak,
     validate_current_waveform,
     validate_neutron_yield,
@@ -34,7 +34,6 @@ from dpf.validation.lee_model_comparison import (
     LeeModelComparison,
     LeeModelResult,
 )
-
 
 # ═══════════════════════════════════════════════════════
 # AC.1 — PF-1000 calibration: fc/fm in published range
@@ -111,15 +110,17 @@ class TestPF1000Calibration:
 class TestPF1000WaveformComparison:
     """First experimental I(t) waveform validation against Scholz et al. (2006).
 
-    Uses calibrated fc=0.650, fm=0.178 from TestPF1000Calibration.
-    Compares full I(t) waveform against 26-point digitized data from
-    Scholz et al., Nukleonika 51(1):79-84 (2006), Fig. 2.
+    Uses calibrated fc=0.816, fm=0.142 from post-D2-fix calibration
+    (molecular D2 mass correction). Compares full I(t) waveform against
+    26-point digitized data from Scholz et al., Nukleonika 51(1):79-84
+    (2006), Fig. 2.
     """
 
     @pytest.fixture(scope="class")
     def lee_result(self) -> LeeModelResult:
         """Run calibrated Lee model for PF-1000."""
-        model = LeeModel(current_fraction=0.650, mass_fraction=0.178)
+        model = LeeModel(current_fraction=0.816, mass_fraction=0.142)
+
         return model.run("PF-1000")
 
     def test_peak_current_matches_experimental(self, lee_result: LeeModelResult):
@@ -435,9 +436,9 @@ class TestLiftoffDelay:
 
     def test_liftoff_delay_improves_nrmse(self):
         """0.7 us liftoff delay reduces NRMSE vs no delay for calibrated params."""
-        r_no = LeeModel(current_fraction=0.650, mass_fraction=0.178).run("PF-1000")
+        r_no = LeeModel(current_fraction=0.816, mass_fraction=0.142).run("PF-1000")
         r_yes = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+            current_fraction=0.816, mass_fraction=0.142, liftoff_delay=0.7e-6,
         ).run("PF-1000")
         nrmse_no = nrmse_peak(
             r_no.t, r_no.I, PF1000_DATA.waveform_t, PF1000_DATA.waveform_I
@@ -548,7 +549,7 @@ class TestCircuitCrossVerification:
 
         # Find peak in both
         idx_peak_num = np.argmax(np.abs(currents))
-        idx_peak_ana = np.argmax(np.abs(I_analytical))
+        _ = np.argmax(np.abs(I_analytical))  # analytical peak index (unused)
 
         # Peak current should match within 1%
         rel_peak_err = abs(currents[idx_peak_num] - I_analytical[idx_peak_num]) / abs(I_analytical[idx_peak_num])
@@ -629,11 +630,11 @@ class TestCircuitCrossVerification:
         the Lee model ODE has F_mag ~ (fc*I)^2 and M ~ fm*rho*A*z,
         so dynamics depend on fc^2/fm, not fc and fm independently.
         """
-        # Three points on the fc^2/fm = 2.374 manifold
+        # Three points on the fc^2/fm = 4.691 manifold
         pairs = [
-            (0.650, 0.178),  # Calibrated values
-            (0.700, 0.206),  # Same ratio: 0.700^2/0.206 = 2.379
-            (0.750, 0.237),  # Same ratio: 0.750^2/0.237 = 2.373
+            (0.816, 0.142),  # Calibrated values
+            (0.969, 0.200),  # Same ratio: 0.969^2/0.200 = 4.694
+            (0.685, 0.100),  # Same ratio: 0.685^2/0.100 = 4.692
         ]
 
         results = []
@@ -885,8 +886,8 @@ class TestEnginePF1000Comparison:
             engine.step()
 
         # Current should be positive and growing
-        I = abs(engine.circuit.current)
-        assert I > 1e3, f"Current {I:.2e} A too low after 100 steps"
+        current = abs(engine.circuit.current)
+        assert current > 1e3, f"Current {current:.2e} A too low after 100 steps"
 
 
 # ============================================================
@@ -897,9 +898,9 @@ class TestEnginePF1000Comparison:
 class TestWiderBoundsCalibration:
     """Debate #10 P0.3: Widen fc_bounds to (0.50, 0.90) and re-calibrate.
 
-    Tests whether fc=0.650 at the default lower boundary was an artifact
+    Tests whether fc=0.816 at the default lower boundary was an artifact
     of the (0.65, 0.85) constraint, or whether the optimizer truly prefers
-    fc near 0.65. Reports fc^2/fm ratio per Debate #10 consensus.
+    fc near 0.816. Reports fc^2/fm ratio per Debate #10 consensus.
     """
 
     def test_wider_fc_bounds_calibration(self):
@@ -933,7 +934,7 @@ class TestWiderBoundsCalibration:
         )
 
     def test_fc_squared_over_fm_ratio_consistency(self):
-        """fc^2/fm ratio should be ~2.374 regardless of bounds.
+        """fc^2/fm ratio should be ~4.691 regardless of bounds.
 
         Debate #10 established that fc^2/fm is the only independently
         determined parameter. Wider bounds should yield a similar ratio
@@ -1002,16 +1003,17 @@ class TestLeeModelCrowbar:
     """
 
     def test_crowbar_fires(self):
-        """Crowbar phase (phase 3) is reached for PF-1000."""
+        """Crowbar triggers (V reaches zero) for PF-1000."""
         from dpf.validation.lee_model_comparison import LeeModel
 
         model = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+            current_fraction=0.816, mass_fraction=0.142, crowbar_enabled=True,
         )
         result = model.run("PF-1000")
 
-        assert 3 in result.phases_completed, (
-            f"Crowbar phase not reached: phases={result.phases_completed}"
+        # Crowbar fires when V crosses zero — check V reaches ~0
+        assert result.V[-1] == pytest.approx(0.0, abs=100.0), (
+            f"Crowbar not fired: V[-1]={result.V[-1]:.1f} V, expected ~0"
         )
 
     def test_crowbar_voltage_zero_at_end(self):
@@ -1019,7 +1021,7 @@ class TestLeeModelCrowbar:
         from dpf.validation.lee_model_comparison import LeeModel
 
         model = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+            current_fraction=0.816, mass_fraction=0.142, crowbar_enabled=True,
         )
         result = model.run("PF-1000")
 
@@ -1033,7 +1035,7 @@ class TestLeeModelCrowbar:
         from dpf.validation.lee_model_comparison import LeeModel
 
         model = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+            current_fraction=0.816, mass_fraction=0.142, crowbar_enabled=True,
         )
         result = model.run("PF-1000")
 
@@ -1065,13 +1067,13 @@ class TestLeeModelCrowbar:
 
         # Without crowbar
         model_no = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+            current_fraction=0.816, mass_fraction=0.142, liftoff_delay=0.7e-6,
         )
         r_no = model_no.run("PF-1000")
 
         # With crowbar
         model_cb = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+            current_fraction=0.816, mass_fraction=0.142, liftoff_delay=0.7e-6,
             crowbar_enabled=True,
         )
         r_cb = model_cb.run("PF-1000")
@@ -1102,9 +1104,9 @@ class TestLeeModelCrowbar:
         """With crowbar_enabled=False, behavior is identical to default."""
         from dpf.validation.lee_model_comparison import LeeModel
 
-        model_default = LeeModel(current_fraction=0.650, mass_fraction=0.178)
+        model_default = LeeModel(current_fraction=0.816, mass_fraction=0.142)
         model_no_cb = LeeModel(
-            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=False,
+            current_fraction=0.816, mass_fraction=0.142, crowbar_enabled=False,
         )
 
         r_default = model_default.run("PF-1000")

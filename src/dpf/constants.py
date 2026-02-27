@@ -16,7 +16,8 @@ c = _sc.c                     # Speed of light [m/s]
 m_e = _sc.m_e                 # Electron mass [kg]
 m_p = _sc.m_p                 # Proton mass [kg]
 m_n = _sc.m_n                 # Neutron mass [kg]
-m_d = 3.34358377e-27           # Deuterium mass [kg]
+m_d = 3.34358377e-27           # Deuterium atom mass [kg]
+m_D2 = 2 * m_d                 # Deuterium molecule (D2) mass [kg]
 
 # Thermodynamic
 k_B = _sc.k                   # Boltzmann constant [J/K]

@@ -878,6 +878,20 @@ class SimulationEngine:
                 self._prev_L_plasma = sp_result["L_plasma"]
                 self._last_sp_dL_dt = sp_result["dL_dt"]
 
+            elif self.snowplow is not None and not self.snowplow.is_active:
+                # Snowplow reached final pinch — freeze L_plasma at its pinch
+                # value and set dL/dt=0.  The snowplow.plasma_inductance property
+                # returns L_axial_frozen + L_radial(r_pinch_min), which is the
+                # correct inductance for a stagnated Z-pinch column.
+                #
+                # Without this branch, the code falls through to the MHD field-
+                # based L_plasma, which is ~0 on coarse grids because the B-field
+                # hasn't been properly evolved by the Metal solver at ~16 MHD
+                # steps.  The resulting L_total → L_ext = 33.5 nH produces a
+                # catastrophic current spike (10^7 MA).
+                coupling.Lp = self.snowplow.plasma_inductance
+                coupling.dL_dt = 0.0
+
             elif L_plasma > 0:
                 # Fallback: use volume-integral L_plasma from MHD fields
                 coupling.Lp = L_plasma

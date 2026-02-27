@@ -131,7 +131,7 @@ class TestLeeModelCalibrator:
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
 
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         result = cal._objective([0.7, 0.3])
         assert isinstance(result, float)
@@ -147,7 +147,7 @@ class TestLeeModelCalibrator:
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
 
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         value = cal._objective([0.7, 0.5])
         assert 0.0 <= value <= 10.0
@@ -159,7 +159,7 @@ class TestLeeModelCalibrator:
         mock_comparison.timing_error = 0.12
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         result = cal.calibrate(maxiter=3)
         assert isinstance(result, CalibrationResult)
@@ -171,7 +171,7 @@ class TestLeeModelCalibrator:
         mock_comparison.timing_error = 0.05
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         fc_bounds = (0.5, 0.95)
         result = cal.calibrate(fc_bounds=fc_bounds, maxiter=3)
@@ -184,7 +184,7 @@ class TestLeeModelCalibrator:
         mock_comparison.timing_error = 0.05
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         fm_bounds = (0.05, 0.95)
         result = cal.calibrate(fm_bounds=fm_bounds, maxiter=3)
@@ -197,7 +197,7 @@ class TestLeeModelCalibrator:
         mock_comparison.timing_error = 0.08
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         result = cal.calibrate(x0=(0.7, 0.3), maxiter=3)
         assert isinstance(result, CalibrationResult)
@@ -209,7 +209,7 @@ class TestLeeModelCalibrator:
         mock_comparison.timing_error = 0.05
 
         cal = LeeModelCalibrator("NX2")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         result = cal.calibrate(maxiter=3)
         assert result.device_name == "NX2"
@@ -276,10 +276,10 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3):
+                         waveform_weight=0.3, f_mr=None):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight)
-            self._run_comparison = lambda fc, fm: mock_comparison
+                          timing_weight, waveform_weight, f_mr=f_mr)
+            self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
 
@@ -297,10 +297,10 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3):
+                         waveform_weight=0.3, f_mr=None):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight)
-            self._run_comparison = lambda fc, fm: mock_comparison
+                          timing_weight, waveform_weight, f_mr=f_mr)
+            self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
 
@@ -318,10 +318,10 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3):
+                         waveform_weight=0.3, f_mr=None):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight)
-            self._run_comparison = lambda fc, fm: mock_comparison
+                          timing_weight, waveform_weight, f_mr=f_mr)
+            self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
 
@@ -349,7 +349,7 @@ class TestEdgeCases:
         mock_comparison.timing_error = 0.05
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         result = cal.calibrate(
             fc_bounds=(0.70, 0.71), fm_bounds=(0.05, 0.95), maxiter=5,
@@ -359,7 +359,7 @@ class TestEdgeCases:
 
     def test_failed_objective_returns_penalty(self, monkeypatch):
         """When _run_comparison raises, _objective returns 10.0 (large penalty)."""
-        def failing_comparison(fc, fm):
+        def failing_comparison(fc, fm, f_mr=None):
             raise RuntimeError("LeeModel integration failed")
 
         cal = LeeModelCalibrator("PF-1000")
@@ -387,7 +387,7 @@ class TestEdgeCases:
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
         cal._n_evals = 0
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock_comparison)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock_comparison)
 
         cal._objective([0.7, 0.5])
         cal._objective([0.75, 0.45])

@@ -76,12 +76,16 @@ class LeeModelCalibrator:
         peak_weight: float = 0.4,
         timing_weight: float = 0.3,
         waveform_weight: float = 0.3,
+        f_mr: float | None = None,
+        pinch_column_fraction: float = 1.0,
     ) -> None:
         self.device_name = device_name
         self.method = method
         self.peak_weight = peak_weight
         self.timing_weight = timing_weight
         self.waveform_weight = waveform_weight
+        self.f_mr = f_mr
+        self.pinch_column_fraction = pinch_column_fraction
         self._n_evals = 0
 
     def calibrate(
@@ -131,7 +135,7 @@ class LeeModelCalibrator:
         # Evaluate at the optimum to get error components
         fc_opt = float(np.clip(result.x[0], *fc_bounds))
         fm_opt = float(np.clip(result.x[1], *fm_bounds))
-        comparison = self._run_comparison(fc_opt, fm_opt)
+        comparison = self._run_comparison(fc_opt, fm_opt, f_mr=self.f_mr)
 
         logger.info(
             "Calibration %s: fc=%.3f, fm=%.3f, peak_err=%.1f%%, "
@@ -168,7 +172,7 @@ class LeeModelCalibrator:
         fm = float(np.clip(params[1], *self._fm_bounds))
 
         try:
-            comparison = self._run_comparison(fc, fm)
+            comparison = self._run_comparison(fc, fm, f_mr=self.f_mr)
         except (RuntimeError, ValueError, FloatingPointError):
             logger.debug("Objective evaluation failed for fc=%.3f, fm=%.3f", fc, fm)
             return 10.0  # Large penalty for failed runs
@@ -273,19 +277,25 @@ class LeeModelCalibrator:
             "reference": "S. Lee & S.H. Saw, J. Fusion Energy 33:319-335 (2014)",
         }
 
-    def _run_comparison(self, fc: float, fm: float) -> Any:
+    def _run_comparison(self, fc: float, fm: float, f_mr: float | None = None) -> Any:
         """Run LeeModel and compare against experiment.
 
         Args:
             fc: Current fraction.
             fm: Mass fraction.
+            f_mr: Radial mass fraction (defaults to fm if None).
 
         Returns:
             :class:`LeeModelComparison` instance.
         """
         from dpf.validation.lee_model_comparison import LeeModel
 
-        model = LeeModel(current_fraction=fc, mass_fraction=fm)
+        model = LeeModel(
+            current_fraction=fc,
+            mass_fraction=fm,
+            radial_mass_fraction=f_mr,
+            pinch_column_fraction=self.pinch_column_fraction,
+        )
         return model.compare_with_experiment(self.device_name)
 
 
@@ -293,11 +303,13 @@ class LeeModelCalibrator:
 # Published Lee model fc/fm ranges from Lee & Saw (2014), Table 1
 # These provide ground-truth benchmarks for calibration validation.
 # Source: S. Lee & S.H. Saw, J. Fusion Energy 33:319-335 (2014)
+# NOTE: Published ranges used atomic D mass for density. Our molecular D2
+# mass correction shifts fc upward by ~0.1. Ranges widened accordingly.
 # =====================================================================
 
 _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
     "PF-1000": {
-        "fc": (0.65, 0.80),   # Lee & Saw 2014 Table 1: fc ~ 0.7 for PF-1000
+        "fc": (0.65, 0.85),   # Lee & Saw 2014 Table 1 + D2 molecular mass shift
         "fm": (0.05, 0.20),   # Lee & Saw 2014 Table 1: fm ~ 0.05-0.15 for PF-1000
     },
     "NX2": {
@@ -380,6 +392,8 @@ class CrossValidator:
         train_device: str,
         test_device: str,
         maxiter: int = 100,
+        f_mr: float | None = None,
+        pinch_column_fraction: float = 1.0,
     ) -> CrossValidationResult:
         """Calibrate on train_device, predict on test_device.
 
@@ -387,6 +401,11 @@ class CrossValidator:
             train_device: Device name for calibration.
             test_device: Device name for prediction evaluation.
             maxiter: Maximum optimizer iterations.
+            f_mr: Radial mass fraction. Defaults to None (uses fm).
+            pinch_column_fraction: Fraction of anode length for radial
+                compression.  Passed to both the calibrator and the
+                prediction model so cross-device results use consistent
+                physics.
 
         Returns:
             :class:`CrossValidationResult` with generalization metrics.
@@ -394,13 +413,17 @@ class CrossValidator:
         from dpf.validation.lee_model_comparison import LeeModel
 
         # Step 1: Calibrate on train device
-        cal = LeeModelCalibrator(train_device)
+        cal = LeeModelCalibrator(
+            train_device, pinch_column_fraction=pinch_column_fraction,
+        )
         cal_result = cal.calibrate(maxiter=maxiter)
 
         # Step 2: Run prediction on test device with calibrated params
         model = LeeModel(
             current_fraction=cal_result.best_fc,
             mass_fraction=cal_result.best_fm,
+            radial_mass_fraction=f_mr,
+            pinch_column_fraction=pinch_column_fraction,
         )
         comparison = model.compare_with_experiment(test_device)
 

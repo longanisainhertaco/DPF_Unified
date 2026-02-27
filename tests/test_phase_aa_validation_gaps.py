@@ -483,7 +483,7 @@ class TestCalibrationObjectiveNaNHandling:
 
         cal = LeeModelCalibrator("NX2", peak_weight=0.4, timing_weight=0.3,
                                   waveform_weight=0.3)
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock)
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
 
@@ -511,7 +511,7 @@ class TestCalibrationObjectiveNaNHandling:
 
         cal = LeeModelCalibrator("PF-1000", peak_weight=0.4, timing_weight=0.3,
                                   waveform_weight=0.3)
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock)
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
 
@@ -537,7 +537,7 @@ class TestCalibrationObjectiveNaNHandling:
 
         cal = LeeModelCalibrator("PF-1000", peak_weight=0.6, timing_weight=0.4,
                                   waveform_weight=0.0)
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock)
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
 
@@ -549,7 +549,7 @@ class TestCalibrationObjectiveNaNHandling:
         """_objective clamps params to bounds before calling _run_comparison."""
         received: dict[str, float] = {}
 
-        def mock_comparison(fc: float, fm: float) -> object:
+        def mock_comparison(fc: float, fm: float, f_mr: float | None = None) -> object:
             received["fc"] = fc
             received["fm"] = fm
             return _make_mock_comparison()
@@ -574,7 +574,7 @@ class TestCalibrationObjectiveNaNHandling:
         mock = _make_mock_comparison()
 
         cal = LeeModelCalibrator("PF-1000")
-        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm: mock)
+        monkeypatch.setattr(cal, "_run_comparison", lambda fc, fm, f_mr=None: mock)
         cal._fc_bounds = (0.5, 0.95)
         cal._fm_bounds = (0.05, 0.95)
         cal._n_evals = 0
@@ -586,7 +586,7 @@ class TestCalibrationObjectiveNaNHandling:
 
     def test_objective_returns_penalty_on_exception(self, monkeypatch) -> None:
         """_objective returns 10.0 (large penalty) when _run_comparison raises."""
-        def _fail(fc: float, fm: float) -> object:
+        def _fail(fc: float, fm: float, f_mr: float | None = None) -> object:
             raise RuntimeError("LeeModel crashed")
 
         cal = LeeModelCalibrator("PF-1000")
