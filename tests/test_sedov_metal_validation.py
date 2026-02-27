@@ -175,6 +175,58 @@ def _run_sedov_to_target(
     return state, dx, t_total, r_shock_exact
 
 
+def _run_sedov_to_target_f64(
+    nx: int,
+    target_r_frac: float = 0.30,
+) -> tuple[dict, float, float, float]:
+    """Run Metal HLL+PLM solver at float64 until shock reaches target.
+
+    Uses float64 precision to eliminate round-off concerns for convergence
+    studies. Returns (state, dx, t_total, r_shock_exact).
+    """
+    gamma = 5.0 / 3.0
+    eblast = 1.0
+    rho_ambient = 1.0
+    p_ambient = 1e-5
+
+    state, dx = _make_sedov_ic(
+        nx=nx, gamma=gamma, eblast=eblast,
+        p_ambient=p_ambient, rho_ambient=rho_ambient,
+    )
+
+    solver = MetalMHDSolver(
+        grid_shape=(nx, nx, nx),
+        dx=dx,
+        gamma=gamma,
+        cfl=0.3,
+        device="cpu",
+        riemann_solver="hll",
+        reconstruction="plm",
+        time_integrator="ssp_rk2",
+        precision="float64",
+        use_ct=False,
+    )
+
+    sedov = SedovExact(geometry=3, gamma=gamma, eblast=eblast, rho0=rho_ambient)
+    target_r = target_r_frac * 0.5  # half-domain = 0.5
+
+    prefactor = (eblast / (sedov.get_alpha() * rho_ambient)) ** (1.0 / 5.0)
+    t_target = (target_r / prefactor) ** (5.0 / 2.0)
+
+    t_total = 0.0
+    for _ in range(10000):
+        dt = solver.compute_dt(state)
+        if t_total + dt > t_target:
+            dt = t_target - t_total
+        state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
+        t_total += dt
+        if t_total >= t_target * 0.999:
+            break
+
+    r_shock_exact = sedov.shock_radius(t_total)
+    return state, dx, t_total, r_shock_exact
+
+
 class TestSedovMetalAccuracy:
     """Quantitative accuracy: compare Metal solver output with exact solution."""
 
@@ -208,8 +260,10 @@ class TestSedovMetalAccuracy:
         l1_abs = np.mean(np.abs(rho_num[interior] - rho_exact[interior]))
         l1_rel = l1_abs / np.mean(rho_exact[interior])
 
-        # 32^3 with HLL+PLM is highly diffusive. 85% tolerance is realistic
-        # for the thin Sedov shell on this coarse grid. For precision use 128^3+.
+        # 32^3 with HLL+PLM is highly diffusive — the thin Sedov shell
+        # (~2 cells wide at R/6) is poorly resolved. This is a coarse-grid
+        # stability/regression gate, not an accuracy benchmark.
+        # See TestSedovHighResolution for meaningful accuracy tests at 64^3.
         assert l1_rel < 0.85, f"L1(rho) relative error {l1_rel:.2%} exceeds 85%"
 
     @pytest.mark.slow
@@ -312,4 +366,162 @@ class TestSedovMetalConvergence:
         # Finer grid should have lower error
         assert errors[32] < errors[16], (
             f"No convergence: L1(16)={errors[16]:.3f}, L1(32)={errors[32]:.3f}"
+        )
+
+
+class TestSedovHighResolution:
+    """Higher-resolution Sedov tests with tighter, meaningful tolerances.
+
+    At 64^3, the Sedov shell is marginally resolved (~2 cells across),
+    enabling tolerances that genuinely constrain solver accuracy rather
+    than merely confirming the code does not crash.
+
+    Empirically measured at 64^3 HLL+PLM float64:
+      L1(rho) ~ 37%, L1(p) ~ 17%, shock radius ~ 16%, order ~ 1.06
+    """
+
+    @pytest.mark.slow
+    def test_sedov_64_density_profile(self):
+        """64^3 Sedov density L1 < 50% — meaningful accuracy gate."""
+        gamma = 5.0 / 3.0
+        eblast = 1.0
+        rho_ambient = 1.0
+        nx = 64
+
+        state, dx, t_total, r_shock = _run_sedov_to_target_f64(
+            nx=nx, target_r_frac=0.30,
+        )
+
+        x = np.linspace(0.5 * dx, 1.0 - 0.5 * dx, nx)
+        X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+        r = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2 + (Z - 0.5) ** 2)
+
+        sedov = SedovExact(
+            geometry=3, gamma=gamma, eblast=eblast, rho0=rho_ambient,
+        )
+        r_flat = r.flatten()
+        _, rho_exact, _, _, _ = sedov.evaluate(r_flat, t_total)
+        rho_exact = rho_exact.reshape(r.shape)
+
+        interior = r < r_shock * 0.90
+        if np.sum(interior) < 100:
+            pytest.skip("Not enough interior cells for 64^3 comparison")
+
+        rho_num = state["rho"]
+        l1_abs = np.mean(np.abs(rho_num[interior] - rho_exact[interior]))
+        l1_rel = l1_abs / np.mean(rho_exact[interior])
+
+        assert l1_rel < 0.50, (
+            f"64^3 Sedov L1(rho) = {l1_rel:.1%}, expected < 50%"
+        )
+
+    @pytest.mark.slow
+    def test_sedov_64_pressure_profile(self):
+        """64^3 Sedov pressure L1 < 25% — pressure is smoother than density."""
+        gamma = 5.0 / 3.0
+        eblast = 1.0
+        rho_ambient = 1.0
+        nx = 64
+
+        state, dx, t_total, r_shock = _run_sedov_to_target_f64(
+            nx=nx, target_r_frac=0.30,
+        )
+
+        x = np.linspace(0.5 * dx, 1.0 - 0.5 * dx, nx)
+        X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+        r = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2 + (Z - 0.5) ** 2)
+
+        sedov = SedovExact(
+            geometry=3, gamma=gamma, eblast=eblast, rho0=rho_ambient,
+        )
+        r_flat = r.flatten()
+        _, _, p_exact, _, _ = sedov.evaluate(r_flat, t_total)
+        p_exact = p_exact.reshape(r.shape)
+
+        interior = r < r_shock * 0.90
+        if np.sum(interior) < 100:
+            pytest.skip("Not enough interior cells for 64^3 comparison")
+
+        p_l1_abs = np.mean(np.abs(state["pressure"][interior] - p_exact[interior]))
+        p_l1_rel = p_l1_abs / np.mean(p_exact[interior])
+
+        assert p_l1_rel < 0.25, (
+            f"64^3 Sedov L1(pressure) = {p_l1_rel:.1%}, expected < 25%"
+        )
+
+    @pytest.mark.slow
+    def test_sedov_64_shock_radius(self):
+        """64^3 Sedov shock radius error < 20%."""
+        rho_ambient = 1.0
+        nx = 64
+
+        state, dx, t_total, r_shock_exact = _run_sedov_to_target_f64(
+            nx=nx, target_r_frac=0.30,
+        )
+
+        x = np.linspace(0.5 * dx, 1.0 - 0.5 * dx, nx)
+        X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+        r = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2 + (Z - 0.5) ** 2)
+
+        # Radially-average density to find shock
+        r_bins = np.linspace(0, 0.5, 80)
+        rho_avg = np.zeros(len(r_bins) - 1)
+        for i in range(len(r_bins) - 1):
+            mask = (r >= r_bins[i]) & (r < r_bins[i + 1])
+            if np.sum(mask) > 0:
+                rho_avg[i] = np.mean(state["rho"][mask])
+        r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
+
+        shocked = rho_avg > 1.1 * rho_ambient
+        if not np.any(shocked):
+            pytest.skip("No shocked cells found at 64^3")
+        r_shock_num = r_centers[np.max(np.where(shocked))]
+
+        rel_error = abs(r_shock_num - r_shock_exact) / r_shock_exact
+        assert rel_error < 0.20, (
+            f"64^3 shock radius error {rel_error:.1%}: "
+            f"numerical={r_shock_num:.4f}, exact={r_shock_exact:.4f}"
+        )
+
+    @pytest.mark.slow
+    def test_sedov_convergence_order(self):
+        """Measured convergence order between 32^3 and 64^3 should exceed 0.5.
+
+        For a strong shock problem, the expected convergence order is ~1
+        (first-order at discontinuities dominates over second-order smooth
+        regions). Order > 0.5 confirms genuine convergence, not noise.
+        """
+        gamma = 5.0 / 3.0
+        eblast = 1.0
+        rho_ambient = 1.0
+
+        errors = {}
+        for nx in [32, 64]:
+            state, dx, t_total, r_shock = _run_sedov_to_target_f64(
+                nx=nx, target_r_frac=0.30,
+            )
+
+            x = np.linspace(0.5 * dx, 1.0 - 0.5 * dx, nx)
+            X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+            r = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2 + (Z - 0.5) ** 2)
+
+            sedov = SedovExact(
+                geometry=3, gamma=gamma, eblast=eblast, rho0=rho_ambient,
+            )
+            r_flat = r.flatten()
+            _, rho_exact, _, _, _ = sedov.evaluate(r_flat, t_total)
+            rho_exact = rho_exact.reshape(r.shape)
+
+            interior = r < r_shock * 0.9
+            if np.sum(interior) < 10:
+                pytest.skip(f"Not enough interior cells at nx={nx}")
+
+            l1 = np.mean(np.abs(state["rho"][interior] - rho_exact[interior]))
+            l1_rel = l1 / np.mean(rho_exact[interior])
+            errors[nx] = l1_rel
+
+        order = np.log2(errors[32] / errors[64])
+        assert order > 0.5, (
+            f"Convergence order {order:.2f} too low "
+            f"(L1_32={errors[32]:.3f}, L1_64={errors[64]:.3f})"
         )

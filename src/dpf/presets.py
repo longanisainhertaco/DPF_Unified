@@ -166,7 +166,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.01,
         },
         "fluid": {
-            "backend": "python",
+            "backend": "metal",
             "reconstruction": "weno5",
             "riemann_solver": "hlld",
             "time_integrator": "ssp_rk3",

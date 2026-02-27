@@ -264,7 +264,7 @@ class TestPresetsBackend:
         for name in get_preset_names():
             data = get_preset(name)
             config = SimulationConfig(**data)
-            assert config.fluid.backend in ("python", "athena", "auto")
+            assert config.fluid.backend in ("python", "athena", "athenak", "metal", "auto")
 
 
 # ============================================================
