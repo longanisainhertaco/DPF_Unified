@@ -135,6 +135,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         ion_mass: float = 3.34358377e-27,
         Z_eff: float = 1.0,
         coordinates: str = "cartesian",
+        bc: str | tuple[str, str, str] = "outflow",
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -157,6 +158,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.ion_mass: float = float(ion_mass)
         self.Z_eff: float = float(Z_eff)
         self.coordinates: str = coordinates
+        # Boundary conditions: "outflow" (zero-gradient) or "periodic"
+        # Can be a single string (applied to all dims) or a 3-tuple per dim.
+        if isinstance(bc, str):
+            self.bc: tuple[str, str, str] = (bc, bc, bc)
+        else:
+            self.bc = tuple(bc)  # type: ignore[arg-type]
         self._last_P_radiated: float = 0.0
         self.total_radiated_energy: float = 0.0
 
@@ -430,6 +437,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             self.limiter,
             self.riemann_solver,
             self.reconstruction,
+            bc=self.bc,
         )
 
     def _euler_update(
