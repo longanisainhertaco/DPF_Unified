@@ -35,7 +35,7 @@ from typing import Any
 
 import numpy as np
 
-from dpf.constants import k_B, m_d
+from dpf.constants import k_B, m_d, m_D2
 
 # =====================================================================
 # Experimental device dataclass
@@ -148,7 +148,7 @@ NX2_DATA = ExperimentalDevice(
     name="NX2",
     institution="NIE Singapore",
     capacitance=28e-6,             # 28 uF
-    voltage=14e3,                  # 14 kV
+    voltage=11.5e3,                # 11.5 kV operating voltage (Lee & Saw 2008, Table 1)
     inductance=20e-9,              # 20 nH
     resistance=5e-3,               # 5 mOhm
     anode_radius=0.019,            # 19 mm
@@ -156,7 +156,7 @@ NX2_DATA = ExperimentalDevice(
     anode_length=0.05,             # 50 mm
     fill_pressure_torr=4.0,
     fill_gas="deuterium",
-    peak_current=400e3,            # 400 kA
+    peak_current=400e3,            # 400 kA (at 11.5 kV operating point)
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
     reference="Lee & Saw, J. Fusion Energy 27, 2008",
@@ -454,7 +454,7 @@ def device_to_config_dict(device_name: str) -> dict[str, Any]:
     room temperature (300 K)::
 
         n = p / (k_B * T)
-        rho = n * m_d
+        rho = n * m_D2  # D2 molecular mass at room temperature
 
     where *p* is the fill pressure converted from Torr to Pa.
 
@@ -502,7 +502,7 @@ def device_to_config_dict(device_name: str) -> dict[str, Any]:
     T_room = 300.0  # K
 
     n_fill = pressure_Pa / (k_B * T_room)  # number density [m^-3]
-    rho_fill = n_fill * m_d                 # mass density [kg/m^3]
+    rho_fill = n_fill * m_D2                # mass density [kg/m^3] — D2 molecular
 
     # --- Simulation time ------------------------------------------------
     # A few quarter-periods is usually enough to capture peak current + pinch

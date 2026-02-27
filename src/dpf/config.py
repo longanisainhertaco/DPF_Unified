@@ -322,7 +322,10 @@ class SnowplowConfig(BaseModel):
     )
     radial_mass_fraction: float | None = Field(
         None, gt=0, le=1.0,
-        description="Fraction of gas swept radially (f_mr). Defaults to mass_fraction.",
+        description=(
+            "Fraction of gas swept radially (f_mr). Defaults to mass_fraction if None. "
+            "Lee & Saw (2014): f_mr ~ 0.07-0.12 for PF-1000, typically < f_m."
+        ),
     )
 
 

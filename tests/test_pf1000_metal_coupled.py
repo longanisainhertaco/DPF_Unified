@@ -42,6 +42,7 @@ from dpf.validation.experimental import (  # noqa: E402, I001
 # Snowplow calibration from Phase AC: fc^2/fm = 2.374 (degeneracy ratio)
 _FC = 0.65       # Current fraction (Lee & Saw 2014)
 _FM = 0.178      # Mass fraction (Phase AC calibration)
+_FMR = 0.1       # Radial mass fraction (Lee & Saw 2014: f_mr ~ 0.07-0.12)
 _P_FILL = 3.5 * 133.322   # 3.5 Torr D2 → Pa
 
 
@@ -60,6 +61,7 @@ def _pf1000_metal_config(
     precision: str = "float32",
     fc: float = _FC,
     fm: float = _FM,
+    f_mr: float = _FMR,
 ) -> SimulationConfig:
     """Create a PF-1000 config targeting the Metal backend.
 
@@ -108,6 +110,7 @@ def _pf1000_metal_config(
             "anode_length": 0.6,
             "mass_fraction": fm,
             "current_fraction": fc,
+            "radial_mass_fraction": f_mr,
             "fill_pressure_Pa": _P_FILL,
         },
         fluid={
@@ -222,6 +225,7 @@ class TestPF1000MetalSmoke:
         assert engine.snowplow is not None
         assert abs(engine.snowplow.f_c - _FC) < 1e-6
         assert abs(engine.snowplow.f_m - _FM) < 1e-6
+        assert abs(engine.snowplow.f_mr - _FMR) < 1e-6
 
 
 # ═══════════════════════════════════════════════════════════════════

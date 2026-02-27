@@ -1,11 +1,11 @@
-"""Simplified Lee Model for cross-checking DPF MHD results.
+"""Lee Model for cross-checking DPF MHD results.
 
 The Lee Model (Lee & Saw, 2008) is a lumped-circuit 5-phase model of
 Dense Plasma Focus dynamics.  It couples the electrical circuit to the
 plasma dynamics through a snowplow equation for the axial and radial
 phases, providing I(t), pinch timing, and estimated neutron yield.
 
-This implementation covers phases 1 and 2 only (MVP):
+This implementation covers phases 1, 2, and 4 (reflected shock):
 
 1. **Axial rundown phase**: The current sheet is launched at the insulator
    and accelerates axially along the anode.  The equation of motion is a
@@ -175,7 +175,7 @@ def _get_device_params(device_name: str) -> dict[str, Any]:
 # ============================================================
 
 class LeeModel:
-    """Simplified Lee Model for DPF dynamics (phases 1-2 + crowbar).
+    """Lee Model for DPF dynamics (phases 1, 2, 4 + crowbar).
 
     Integrates the coupled circuit + snowplow ODEs for the axial
     rundown phase, then transitions to the radial slug model.
@@ -188,6 +188,9 @@ class LeeModel:
             (Lee's fc factor, typically 0.7-0.9).
         mass_fraction: Fraction of swept mass retained by the sheet
             (Lee's fm factor, typically 0.5-0.7).
+        radial_mass_fraction: Fraction of gas swept radially (Lee's f_mr).
+            Defaults to mass_fraction if None.  Lee & Saw (2014):
+            f_mr ~ 0.07-0.12 for PF-1000, typically < f_m.
         liftoff_delay: Insulator flashover delay [s].  Accounts for the
             finite time before the current sheet lifts off the insulator
             and begins sweeping fill gas.  The model output time is shifted
@@ -201,15 +204,19 @@ class LeeModel:
 
     def __init__(
         self,
-        fill_gas_mass: float = 3.34e-27,
+        fill_gas_mass: float = 6.687e-27,  # D2 molecular mass (2 * m_d)
         current_fraction: float = 0.7,
         mass_fraction: float = 0.7,
+        radial_mass_fraction: float | None = None,
+        pinch_column_fraction: float = 1.0,
         liftoff_delay: float = 0.0,
         crowbar_enabled: bool = False,
     ) -> None:
         self.fill_gas_mass = fill_gas_mass
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
         self.fc = current_fraction   # Current fraction factor (Lee's f_c)
+        self.f_mr = radial_mass_fraction if radial_mass_fraction is not None else mass_fraction
+        self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
         self.crowbar_enabled = crowbar_enabled
 
@@ -376,8 +383,8 @@ class LeeModel:
             r_start = b  # Start at cathode radius
             vr_start = 0.0  # Initially at rest radially
 
-            # Pinch column length
-            L_pinch = z_max
+            # Pinch column length (effective length for radial phase)
+            L_pinch = z_max * self.pinch_column_fraction
 
             # Adiabatic back-pressure parameters
             gamma = 5.0 / 3.0  # Monatomic gas
@@ -405,13 +412,13 @@ class LeeModel:
                 dI_dt = (Vcap_r - R0 * I_r - I_r * dLp_dt_rad) / max(L_total, 1e-15)
                 dV_dt = -I_r / C
 
-                # Dynamic radial slug mass: f_m * rho0 * pi * (b^2 - r_s^2) * z_f
+                # Dynamic radial slug mass: f_mr * rho0 * pi * (b^2 - r_s^2) * z_f
                 # Increases as shock sweeps inward (r_s decreases)
-                M_slug = self.fm * rho0 * pi * (b**2 - r_s**2) * L_pinch
+                M_slug = self.f_mr * rho0 * pi * (b**2 - r_s**2) * L_pinch
                 M_slug = max(M_slug, 1e-20)
 
-                # Mass pickup rate: dM/dt = f_m * rho0 * 2*pi * r_s * |vr| * z_f
-                dm_dt = self.fm * rho0 * 2.0 * pi * r_s * abs(vr) * L_pinch
+                # Mass pickup rate: dM/dt = f_mr * rho0 * 2*pi * r_s * |vr| * z_f
+                dm_dt = self.f_mr * rho0 * 2.0 * pi * r_s * abs(vr) * L_pinch
 
                 # Radial J×B force: (mu_0/(4*pi)) * (fc*I)^2 * z_f / r_s
                 F_rad = (
@@ -464,9 +471,139 @@ class LeeModel:
             else:
                 pinch_time = float(t2[-1]) if len(t2) > 0 else 0.0
 
+            # ── Phase 4: Reflected shock (outward expansion) ──
+            # After pinch, the compressed gas creates maximum back-pressure
+            # that drives the shock front outward against the J×B force.
+            # Physics: Rankine-Hugoniot post-shock density = 4*rho0,
+            # mass accumulation from swept compressed gas.
+            t4 = np.array([])
+            I4 = np.array([])
+            V4 = np.array([])
+            r4 = np.array([])
+
+            if len(t2) > 0:
+                t_start_4 = float(t2[-1])
+                I_start_4 = float(I2[-1])
+                V_start_4 = float(V2[-1])
+                r_pinch_start = float(r2[-1])
+
+                # Pinch slug mass at stagnation
+                M_slug_pinch = (
+                    self.f_mr * rho0 * pi * (b**2 - r_pinch_start**2) * L_pinch
+                )
+                M_slug_pinch = max(M_slug_pinch, 1e-20)
+
+                # Post-shock density (Rankine-Hugoniot strong shock limit)
+                rho_post = 4.0 * rho0
+
+                def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:
+                    I_r4, Vcap_r4, r_s, vr4 = y
+
+                    r_s = max(r_s, 0.001 * a)
+
+                    # Plasma inductance (same formula as Phase 2)
+                    L_p_rad = (
+                        (mu_0 / (2.0 * pi)) * L_pinch
+                        * np.log(max(b / r_s, 1.01))
+                    )
+                    L_p_total = L_p_axial + L_p_rad
+                    L_total = L0 + L_p_total
+
+                    # dL_p/dt: vr4 > 0 (outward) → dL/dt < 0
+                    dLp_dt_r4 = (
+                        -(mu_0 / (2.0 * pi)) * L_pinch * vr4
+                        / max(r_s, 1e-10)
+                    )
+
+                    # Circuit equation
+                    dI_dt = (
+                        (Vcap_r4 - R0 * I_r4 - I_r4 * dLp_dt_r4)
+                        / max(L_total, 1e-15)
+                    )
+                    dV_dt = -I_r4 / C
+
+                    # Reflected shock slug mass: initial pinch mass + swept gas
+                    M_slug = M_slug_pinch + (
+                        self.f_mr * rho_post * pi
+                        * max(r_s**2 - r_pinch_start**2, 0.0) * L_pinch
+                    )
+                    M_slug = max(M_slug, 1e-20)
+
+                    # Mass pickup rate from compressed gas
+                    dm_dt = (
+                        self.f_mr * rho_post * 2.0 * pi * r_s
+                        * abs(vr4) * L_pinch
+                    )
+
+                    # Back-pressure drives outward expansion
+                    r_eff = max(r_s, r_min)
+                    p_back = p_fill * (b / r_eff) ** (2.0 * gamma)
+                    F_pressure = p_back * 2.0 * pi * r_eff * L_pinch
+
+                    # J×B force opposes outward motion
+                    F_rad = (
+                        (mu_0 / (4.0 * pi)) * (self.fc * I_r4)**2 * L_pinch
+                        / max(r_s, 1e-10)
+                    )
+
+                    # EOM: F_pressure - F_rad - drag
+                    dvr_dt = (F_pressure - F_rad - vr4 * dm_dt) / M_slug
+                    dvr_dt = np.clip(dvr_dt, -1e15, 1e15)
+
+                    return np.array([dI_dt, dV_dt, vr4, dvr_dt])
+
+                # Terminal events for Phase 4
+                def cathode_event(t: float, y: np.ndarray) -> float:
+                    return b - y[2]  # trigger when r_shock reaches b
+
+                cathode_event.terminal = True  # type: ignore[attr-defined]
+                cathode_event.direction = -1  # type: ignore[attr-defined]
+
+                def reversal_event(t: float, y: np.ndarray) -> float:
+                    return y[3]  # trigger when vr crosses zero (re-stagnation)
+
+                reversal_event.terminal = True  # type: ignore[attr-defined]
+                reversal_event.direction = -1  # type: ignore[attr-defined]
+
+                t_end_4 = t_start_4 + 2.0 * T_quarter
+                y0_phase4 = np.array([
+                    I_start_4, V_start_4, r_pinch_start, 0.0,
+                ])
+
+                sol4 = solve_ivp(
+                    reflected_rhs,
+                    [t_start_4, t_end_4],
+                    y0_phase4,
+                    method="RK45",
+                    max_step=(t_end_4 - t_start_4) / 2000,
+                    rtol=1e-8,
+                    atol=1e-10,
+                    events=[cathode_event, reversal_event],
+                )
+
+                if len(sol4.t) > 1:
+                    t4 = sol4.t[1:]  # skip duplicate first point
+                    I4 = sol4.y[0][1:]
+                    V4 = sol4.y[1][1:]
+                    r4 = sol4.y[2][1:]
+                    phases_completed.append(4)
+
+                    # Append reflected shock data to Phase 2 arrays
+                    t2 = np.concatenate([t2, t4])
+                    I2 = np.concatenate([I2, I4])
+                    V2 = np.concatenate([V2, V4])
+                    r2 = np.concatenate([r2, r4])
+
+                    logger.info(
+                        "Phase 4 reflected shock: r_min=%.4f m → "
+                        "r_final=%.4f m, duration=%.2e s",
+                        r_pinch_start, float(r4[-1]),
+                        float(t4[-1] - t4[0]) if len(t4) > 1 else 0.0,
+                    )
+
             # ── Post-pinch continuation (for crowbar detection) ──
-            # After pinch, continue circuit integration with frozen plasma
-            # inductance until V_cap crosses zero or time budget expires.
+            # After reflected shock (or pinch), continue circuit integration
+            # with frozen plasma inductance until V_cap crosses zero.
             if self.crowbar_enabled and len(t2) > 0 and V2[-1] > 0:
                 t_post_start = float(t2[-1])
                 I_post_start = float(I2[-1])
@@ -625,6 +762,7 @@ class LeeModel:
                 "fill_pressure_torr": p_torr,
                 "rho0": rho0,
                 "fm": self.fm,
+                "f_mr": self.f_mr,
                 "fc": self.fc,
                 "liftoff_delay": self.liftoff_delay,
             },
@@ -741,7 +879,8 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
     b: float = meta.get("cathode_radius", 0.0)
     z_f: float = meta.get("anode_length", 0.0)
     rho0: float = meta.get("rho0", 0.0)
-    fm: float = meta.get("fm", 0.3)
+    # Use f_mr for radial phase slug mass; fall back to fm for backward compat
+    fm: float = meta.get("f_mr", meta.get("fm", 0.3))
 
     if a <= 0.0 or b <= 0.0 or z_f <= 0.0 or rho0 <= 0.0:
         return 0.0

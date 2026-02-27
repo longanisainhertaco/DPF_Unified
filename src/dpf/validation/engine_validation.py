@@ -37,7 +37,7 @@ from typing import Any
 
 import numpy as np
 
-from dpf.constants import k_B, m_d
+from dpf.constants import k_B, m_D2
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +83,10 @@ def run_rlc_snowplow_pf1000(
     *,
     sim_time: float = 10e-6,
     dt: float = 1e-9,
-    fc: float = 0.650,
-    fm: float = 0.178,
+    fc: float = 0.816,
+    fm: float = 0.142,
+    f_mr: float = 0.1,
+    pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
     crowbar_enabled: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
@@ -100,6 +102,10 @@ def run_rlc_snowplow_pf1000(
         dt: Timestep [s]. Default 1 ns (fine enough for ~24 kHz dynamics).
         fc: Current fraction (Lee's f_c). Default from Phase AC calibration.
         fm: Mass fraction (Lee's f_m). Default from Phase AC calibration.
+        f_mr: Radial mass fraction (Lee's f_mr). Default 0.1 per Lee & Saw (2014).
+        pinch_column_fraction: Fraction of anode length for radial phase.
+            For PF-1000: 0.12 (effective pinch column ~72 mm of 600 mm anode).
+            This controls the current dip depth via radial inductance.
         liftoff_delay: Insulator flashover delay [s]. Default 0.7 us.
         crowbar_enabled: Enable crowbar at V_cap zero crossing. Default True.
 
@@ -122,7 +128,7 @@ def run_rlc_snowplow_pf1000(
 
     # Fill density from ideal gas law
     p_Pa = p_torr * 133.322
-    rho0 = (p_Pa / (k_B * 300.0)) * m_d
+    rho0 = (p_Pa / (k_B * 300.0)) * m_D2  # D2 molecular mass
 
     # Create production solvers (same code as SimulationEngine)
     circuit = RLCSolver(
@@ -139,7 +145,9 @@ def run_rlc_snowplow_pf1000(
         anode_length=z_max,
         mass_fraction=fm,
         current_fraction=fc,
+        radial_mass_fraction=f_mr,
         fill_pressure_Pa=p_Pa,
+        pinch_column_fraction=pinch_column_fraction,
     )
 
     # Integration loop
@@ -205,8 +213,8 @@ def compare_engine_vs_experiment(
     t: np.ndarray,
     I: np.ndarray,  # noqa: E741
     device_name: str = "PF-1000",
-    fc: float = 0.650,
-    fm: float = 0.178,
+    fc: float = 0.816,
+    fm: float = 0.142,
 ) -> EngineValidationResult:
     """Compare engine I(t) against experimental data.
 
@@ -258,8 +266,10 @@ def compare_engine_vs_experiment(
 
 def compare_rlc_vs_lee(
     *,
-    fc: float = 0.650,
-    fm: float = 0.178,
+    fc: float = 0.816,
+    fm: float = 0.142,
+    f_mr: float = 0.1,
+    pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
 ) -> dict[str, Any]:
     """Cross-verify RLCSolver+Snowplow vs LeeModel (solve_ivp) for PF-1000.
@@ -275,6 +285,7 @@ def compare_rlc_vs_lee(
     Args:
         fc: Current fraction.
         fm: Mass fraction.
+        f_mr: Radial mass fraction (Lee & Saw 2014).
         liftoff_delay: Insulator flashover delay [s].
 
     Returns:
@@ -285,13 +296,17 @@ def compare_rlc_vs_lee(
 
     # Run production solver
     t_rlc, I_rlc, _ = run_rlc_snowplow_pf1000(
-        fc=fc, fm=fm, liftoff_delay=liftoff_delay,
+        fc=fc, fm=fm, f_mr=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        liftoff_delay=liftoff_delay,
     )
 
     # Run cross-check solver
     lee = LeeModel(
         current_fraction=fc,
         mass_fraction=fm,
+        radial_mass_fraction=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
         liftoff_delay=liftoff_delay,
         crowbar_enabled=True,
     )

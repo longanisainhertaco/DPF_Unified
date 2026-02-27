@@ -200,7 +200,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
 
         # Patch LeeModel.compare_with_experiment for the test-device prediction step
@@ -229,7 +229,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
         monkeypatch.setattr(
             lmc_mod.LeeModel,
@@ -260,7 +260,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
         monkeypatch.setattr(
             lmc_mod.LeeModel,
@@ -287,7 +287,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
         monkeypatch.setattr(
             lmc_mod.LeeModel,
@@ -316,7 +316,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
         monkeypatch.setattr(
             lmc_mod.LeeModel,
@@ -343,7 +343,7 @@ class TestCrossValidator:
         monkeypatch.setattr(
             LeeModelCalibrator,
             "_run_comparison",
-            lambda self, fc, fm: mock_comparison,
+            lambda self, fc, fm, f_mr=None: mock_comparison,
         )
         monkeypatch.setattr(
             lmc_mod.LeeModel,

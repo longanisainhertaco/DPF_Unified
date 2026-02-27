@@ -113,6 +113,12 @@ class SnowplowModel:
         radial_mass_fraction: Fraction of gas swept radially (f_mr).
             Defaults to mass_fraction if not specified.
             Typical values: 0.1-0.3 for DPF (usually < f_m).
+        pinch_column_fraction: Fraction of anode length that participates
+            in radial compression (0 < f_zf <= 1).  In large DPF devices
+            the curved current sheath means only the central portion
+            focuses radially.  For PF-1000: ~0.12 (Lee & Saw 2014).
+            For small devices (NX2): ~0.5-1.0.
+            Default 1.0 (backward compatible — full anode length).
     """
 
     def __init__(
@@ -125,6 +131,7 @@ class SnowplowModel:
         fill_pressure_Pa: float = 400.0,
         current_fraction: float = 0.7,
         radial_mass_fraction: float | None = None,
+        pinch_column_fraction: float = 1.0,
     ) -> None:
         self.a = anode_radius           # [m]
         self.b = cathode_radius         # [m]
@@ -134,6 +141,7 @@ class SnowplowModel:
         self.p_fill = fill_pressure_Pa  # [Pa]
         self.f_c = current_fraction     # dimensionless (Lee & Saw 2014: ~0.7)
         self.f_mr = radial_mass_fraction if radial_mass_fraction is not None else mass_fraction
+        self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
 
         # Derived geometric constants
         self.ln_ba = np.log(self.b / self.a)             # ln(b/a)
@@ -167,10 +175,13 @@ class SnowplowModel:
         self._pinch_time = 0.0
         self._elapsed_time = 0.0
 
+        # Effective pinch column length for radial phase
+        self.z_f = self.L_anode * self.pinch_column_fraction
+
         logger.info(
-            "SnowplowModel: a=%.1f mm, b=%.1f mm, L_anode=%.0f mm, "
+            "SnowplowModel: a=%.1f mm, b=%.1f mm, L_anode=%.0f mm, z_f=%.0f mm, "
             "f_m=%.2f, f_c=%.2f, f_mr=%.2f, rho0=%.2e kg/m^3, p_fill=%.0f Pa",
-            self.a * 1e3, self.b * 1e3, self.L_anode * 1e3,
+            self.a * 1e3, self.b * 1e3, self.L_anode * 1e3, self.z_f * 1e3,
             self.f_m, self.f_c, self.f_mr, self.rho0, self.p_fill,
         )
 
@@ -203,7 +214,7 @@ class SnowplowModel:
 
         M_slug = f_mr * rho_0 * pi * (b^2 - r_s^2) * z_f
         """
-        return self.f_mr * self.rho0 * pi * (self.b**2 - self.r_shock**2) * self.L_anode
+        return self.f_mr * self.rho0 * pi * (self.b**2 - self.r_shock**2) * self.z_f
 
     @property
     def plasma_inductance(self) -> float:
@@ -211,12 +222,16 @@ class SnowplowModel:
 
         Axial: L_plasma = (mu_0 / 2pi) * ln(b/a) * z
         Radial: L_plasma = L_axial + (mu_0 / 2pi) * z_f * ln(b / r_s)
+
+        Note: z_f = L_anode * pinch_column_fraction (effective pinch column
+        length).  For large DPF devices the curved sheath means only a
+        fraction of the anode length participates in radial compression.
         """
         if self.phase == "rundown":
             return self.L_coeff * self.z
         # Radial or pinch: axial contribution frozen + radial contribution
         r_eff = max(self.r_shock, self.r_pinch_min)
-        L_radial = (mu_0 / (2.0 * pi)) * self.L_anode * np.log(self.b / r_eff)
+        L_radial = (mu_0 / (2.0 * pi)) * self.z_f * np.log(self.b / r_eff)
         return self._L_axial_frozen + L_radial
 
     @property
@@ -405,7 +420,7 @@ class SnowplowModel:
             dL/dt = -(mu_0 / 2pi) * z_f * vr / r_s   (vr < 0 → dL/dt > 0)
         """
         I_current = current
-        z_f = self.L_anode  # Pinch column length
+        z_f = self.z_f  # Effective pinch column length
 
         # Radial force: J×B on cylindrical current sheet
         r_s = max(self.r_shock, self.r_pinch_min)
@@ -499,7 +514,7 @@ class SnowplowModel:
         During reflected phase dL/dt < 0 (inductance decreasing as r grows).
         """
         I_current = current
-        z_f = self.L_anode
+        z_f = self.z_f  # Effective pinch column length
 
         r_s = max(self.r_shock, self.r_pinch_min)
 
