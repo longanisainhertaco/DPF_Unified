@@ -1712,11 +1712,23 @@ class MHDSolver(PlasmaSolverBase):
         dB_dt = -curl_E
 
         # --- HLLD B-field flux correction for transverse B in WENO5 interior ---
-        # When HLLD provides Bt1/Bt2 fluxes, apply their divergence to interior
-        # cells.  This adds the higher-order WENO5-reconstructed induction flux
-        # on top of the np.gradient-based curl(E).  The HLLD flux captures the
-        # same ideal MHD induction physics but with 5th-order reconstruction,
-        # providing better shock-capturing for the magnetic field.
+        # NOTE: This section has a known induction double-counting issue.
+        # The curl_E above already computes dB/dt = -curl(E) at 2nd order for
+        # ALL cells. The HLLD Bt1/Bt2 fluxes below ADD the same ideal induction
+        # physics at 5th order in the interior — double-counting the axis-direction
+        # derivative of E at interior cells.
+        #
+        # WHY NOT FIXED: The chain-rule pressure recovery (dp/dt from dE/dt)
+        # at lines ~1780-1786 subtracts B·dB/dt/μ₀ from the HLLD energy flux.
+        # The doubled dB/dt creates a metastable balance with the energy equation.
+        # Removing the double-counting in dB/dt alone (without also refactoring
+        # the pressure equation to avoid the chain rule) causes NaN because the
+        # B·dB/dt term no longer matches the HLLD energy flux.
+        #
+        # PROPER FIX (future): Evolve total energy E_total directly as a
+        # conservative variable (not chain-rule dp/dt), compute p = (γ-1)*
+        # (E_total - 0.5*ρ*v² - B²/(2μ₀)) at the end of each stage.
+        # This decouples induction from pressure and allows clean HLLD fluxes.
         if self.use_weno5 and self.riemann_solver == "hlld":
             for axis in range(3):
                 fluxes = _axis_fluxes[axis]
