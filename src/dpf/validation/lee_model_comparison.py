@@ -175,10 +175,11 @@ def _get_device_params(device_name: str) -> dict[str, Any]:
 # ============================================================
 
 class LeeModel:
-    """Simplified Lee Model for DPF dynamics (phases 1-2).
+    """Simplified Lee Model for DPF dynamics (phases 1-2 + crowbar).
 
     Integrates the coupled circuit + snowplow ODEs for the axial
     rundown phase, then transitions to the radial slug model.
+    Optionally models crowbar activation (V_cap=0 → L-R decay).
 
     Args:
         fill_gas_mass: Mass of fill gas ion [kg].
@@ -192,6 +193,10 @@ class LeeModel:
             and begins sweeping fill gas.  The model output time is shifted
             by this amount.  Typical values: 0.5-1.5 us for MJ-class DPF
             (Lee 2005, IAEA/IC).  Default: 0 (no delay).
+        crowbar_enabled: If True, crowbar fires when V_cap first crosses
+            zero (voltage-zero trigger).  Post-crowbar, the capacitor is
+            short-circuited and current decays as L-R with constant
+            inductance (frozen plasma column).  Default: False.
     """
 
     def __init__(
@@ -200,11 +205,13 @@ class LeeModel:
         current_fraction: float = 0.7,
         mass_fraction: float = 0.7,
         liftoff_delay: float = 0.0,
+        crowbar_enabled: bool = False,
     ) -> None:
         self.fill_gas_mass = fill_gas_mass
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
         self.fc = current_fraction   # Current fraction factor (Lee's f_c)
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
+        self.crowbar_enabled = crowbar_enabled
 
     def run(
         self,
@@ -457,6 +464,53 @@ class LeeModel:
             else:
                 pinch_time = float(t2[-1]) if len(t2) > 0 else 0.0
 
+            # ── Post-pinch continuation (for crowbar detection) ──
+            # After pinch, continue circuit integration with frozen plasma
+            # inductance until V_cap crosses zero or time budget expires.
+            if self.crowbar_enabled and len(t2) > 0 and V2[-1] > 0:
+                t_post_start = float(t2[-1])
+                I_post_start = float(I2[-1])
+                V_post_start = float(V2[-1])
+                r_pinch = float(r2[-1])
+
+                # Frozen plasma inductance at pinch
+                L_p_frozen = L_per_length * z_max
+                L_p_frozen += (
+                    (mu_0 / (2.0 * pi)) * z_max
+                    * np.log(max(b / max(r_pinch, 0.001 * a), 1.01))
+                )
+                L_total_frozen = L0 + L_p_frozen
+
+                def post_pinch_rhs(t: float, y: np.ndarray) -> np.ndarray:
+                    I_pp, V_pp = y
+                    dI_dt = (V_pp - R0 * I_pp) / L_total_frozen
+                    dV_dt = -I_pp / C
+                    return np.array([dI_dt, dV_dt])
+
+                def voltage_zero_event(t: float, y: np.ndarray) -> float:
+                    return y[1]  # V_cap
+
+                voltage_zero_event.terminal = True  # type: ignore[attr-defined]
+                voltage_zero_event.direction = -1  # type: ignore[attr-defined]
+
+                t_post_end = t_post_start + 3.0 * T_quarter
+                sol_post = solve_ivp(
+                    post_pinch_rhs,
+                    [t_post_start, t_post_end],
+                    np.array([I_post_start, V_post_start]),
+                    method="RK45",
+                    max_step=(t_post_end - t_post_start) / 2000,
+                    rtol=1e-8,
+                    atol=1e-10,
+                    events=voltage_zero_event,
+                )
+
+                # Append post-pinch data
+                t2 = np.concatenate([t2, sol_post.t[1:]])
+                I2 = np.concatenate([I2, sol_post.y[0][1:]])
+                V2 = np.concatenate([V2, sol_post.y[1][1:]])
+                r2 = np.concatenate([r2, np.full(len(sol_post.t) - 1, r_pinch)])
+
         # Combine phases
         if len(t2) > 0:
             t_combined = np.concatenate([t1[:phase1_end_idx + 1], t2])
@@ -476,6 +530,53 @@ class LeeModel:
             V_combined = V1
             z_combined = z1
             r_combined = np.full(len(t1), b)
+
+        # ── Crowbar phase: L-R decay after V_cap crosses zero ──
+        if self.crowbar_enabled:
+            # Find first zero-crossing of V_combined (after peak current)
+            # Look for sign change in V_combined
+            cb_idx = None
+            for i in range(1, len(V_combined)):
+                if V_combined[i - 1] > 0 and V_combined[i] <= 0:
+                    cb_idx = i
+                    break
+
+            if cb_idx is not None:
+                t_cb = float(t_combined[cb_idx])
+                I_cb = float(I_combined[cb_idx])
+
+                # Total inductance at crowbar time (frozen)
+                # Use the last known plasma inductance
+                L_p_at_cb = L_per_length * z_max
+                if len(r2) > 0:
+                    # Add radial phase inductance
+                    r_at_cb = max(float(r_combined[cb_idx]), 0.001 * a)
+                    L_p_at_cb += (mu_0 / (2.0 * pi)) * z_max * np.log(max(b / r_at_cb, 1.01))
+                L_total_cb = L0 + L_p_at_cb
+
+                # L-R decay: I(t) = I_cb * exp(-R0 * (t - t_cb) / L_total_cb)
+                # Extend to 3 e-folding times or until 10x the crowbar time
+                tau_LR = L_total_cb / max(R0, 1e-10)
+                t_end_cb = t_cb + min(5.0 * tau_LR, 3.0 * T_quarter)
+                n_cb_pts = 500
+                t_cb_arr = np.linspace(t_cb, t_end_cb, n_cb_pts)
+                I_cb_arr = I_cb * np.exp(-R0 * (t_cb_arr - t_cb) / L_total_cb)
+                V_cb_arr = np.zeros(n_cb_pts)  # Capacitor shorted
+                z_cb_arr = np.full(n_cb_pts, z_max)
+                r_cb_arr = np.full(n_cb_pts, float(r_combined[cb_idx]))
+
+                # Truncate pre-crowbar waveform and append crowbar decay
+                t_combined = np.concatenate([t_combined[:cb_idx], t_cb_arr])
+                I_combined = np.concatenate([I_combined[:cb_idx], I_cb_arr])
+                V_combined = np.concatenate([V_combined[:cb_idx], V_cb_arr])
+                z_combined = np.concatenate([z_combined[:cb_idx], z_cb_arr])
+                r_combined = np.concatenate([r_combined[:cb_idx], r_cb_arr])
+                phases_completed.append(3)  # Crowbar phase
+
+                logger.info(
+                    "Crowbar fired at t=%.2e s, I_cb=%.2e A, tau_LR=%.2e s",
+                    t_cb, I_cb, tau_LR,
+                )
 
         # Apply liftoff delay: shift time origin to account for insulator
         # flashover period before current sheet formation.
