@@ -54,6 +54,7 @@ from dpf.validation.magnetized_noh import (
     shock_velocity,
     verify_rankine_hugoniot,
 )
+from dpf.validation.sedov_exact import SedovExact
 from dpf.validation.suite import (
     DEVICE_REGISTRY,
     ValidationResult,
@@ -100,6 +101,7 @@ __all__ = [
     "noh_upstream",
     "shock_velocity",
     "verify_rankine_hugoniot",
+    "SedovExact",
     "ZPinchResult",
     "create_zpinch_state",
     "implosion_time_constant_current",
