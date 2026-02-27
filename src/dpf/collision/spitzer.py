@@ -35,7 +35,7 @@ def coulomb_log(ne: np.ndarray, Te: np.ndarray) -> np.ndarray:
         Te: Electron temperature [K].
 
     Returns:
-        Coulomb logarithm (floored at 1.0 to prevent unphysical values).
+        Coulomb logarithm (floored at 2.0; Spitzer theory invalid below this).
     """
     # Debye length
     lambda_D = np.sqrt(epsilon_0 * k_B * Te / (ne * e**2 + 1e-30))
@@ -47,7 +47,7 @@ def coulomb_log(ne: np.ndarray, Te: np.ndarray) -> np.ndarray:
     b_min = np.maximum(b_class, lambda_db)
     # Coulomb logarithm
     Lambda = lambda_D / (b_min + 1e-30)
-    return np.log(np.maximum(Lambda, 1.0))
+    return np.maximum(np.log(np.maximum(Lambda, 1.0)), 2.0)
 
 
 @njit(cache=True)
