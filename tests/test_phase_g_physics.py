@@ -1095,10 +1095,10 @@ class TestRadiationCoolingCpp:
         return (pgen_path / "dpf_zpinch.cpp").read_text()
 
     def test_has_bremsstrahlung_coefficient(self):
-        """dpf_zpinch.cpp defines BREM_COEFF = 1.69e-32."""
+        """dpf_zpinch.cpp defines BREM_COEFF = 1.42e-40 (SI)."""
         content = self._read_dpf_zpinch()
         assert "BREM_COEFF" in content
-        assert "1.69e-32" in content
+        assert "1.42e-40" in content
 
     def test_has_gaunt_factor(self):
         """dpf_zpinch.cpp defines GAUNT_FACTOR."""
@@ -1215,12 +1215,13 @@ class TestRadiationPhysicsFormulas:
         dt_val = 1e-10
         Z = 1.0
         g_ff = 1.2
-        brem_coeff = 1.69e-32
+        brem_coeff = 1.42e-40  # SI coefficient (Rybicki & Lightman)
         Te_floor = 1.0
 
         C_v = 1.5 * ne_val * kB
         inv_cv_dt = dt_val / C_v
-        alpha_rad = inv_cv_dt * brem_coeff * g_ff * Z * Z * ne_val * ne_val
+        # Quasi-neutral form: Z (not Z^2) since we use ne^2
+        alpha_rad = inv_cv_dt * brem_coeff * g_ff * Z * ne_val * ne_val
 
         Te_new = Te_old
         for _ in range(4):
@@ -1230,11 +1231,11 @@ class TestRadiationPhysicsFormulas:
             Te_new = Te_new - f / fp
             Te_new = max(Te_new, Te_floor)
 
-        # Te should decrease
+        # Te should decrease (slightly — correct SI coefficient gives mild cooling)
         assert Te_new < Te_old
         # Should not hit floor (implicit solve prevents overcooling)
         assert Te_new > Te_floor
-        # At these conditions Te_new/Te_old ~ 0.39 (strong but stable cooling)
+        # With correct SI coefficient, cooling is physical (not catastrophic)
         assert Te_new > 0.1 * Te_old
 
 

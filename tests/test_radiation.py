@@ -24,7 +24,7 @@ class TestBremsstrahlung:
     """Tests for bremsstrahlung power density."""
 
     def test_power_matches_analytic(self):
-        """P_ff = 1.69e-32 * g_ff * Z^2 * ne^2 * sqrt(Te)."""
+        """P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te) [SI]."""
         from dpf.radiation.bremsstrahlung import BREM_COEFF, bremsstrahlung_power
 
         ne = np.array([1e20, 1e22, 1e24])  # m^-3
@@ -89,11 +89,11 @@ class TestBremsstrahlung:
         """Check bremsstrahlung power for typical DPF conditions.
 
         At ne ~ 1e25 m^-3, Te ~ 1 keV = 1.16e7 K:
-        P_ff = 1.69e-32 * 1.2 * 1 * (1e25)^2 * sqrt(1.16e7)
-             = 1.69e-32 * 1.2 * 1e50 * 3405.9
-             = 6.91e21 W/m^3
+        P_ff = 1.42e-40 * 1.2 * 1 * (1e25)^2 * sqrt(1.16e7)
+             = 1.42e-40 * 1.2 * 1e50 * 3405.9
+             = 5.80e13 W/m^3
 
-        This is ~7e21 W/m^3 — extremely high, but correct for dense DPF pinch.
+        This is ~58 TW/m^3 — physical for dense DPF pinch (~58 kW from 1 mm^3).
         """
         from dpf.radiation.bremsstrahlung import BREM_COEFF, bremsstrahlung_power
 
