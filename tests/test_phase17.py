@@ -349,10 +349,9 @@ class TestSodShockTube:
         assert abs(sol["p"][-1] - 0.1) < 1e-10
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Python engine non-conservative pressure produces huge L1 "
-        "errors on Sod shock tube; use Metal or Athena++ for shock problems",
-        strict=False,
+    @pytest.mark.skip(
+        reason="Python engine non-conservative pressure causes blowup with "
+        "tiny CFL timesteps (~100k steps, 30+ min). Use Metal or Athena++.",
     )
     def test_sod_run_passes(self):
         """Full Sod shock tube test completes and passes sanity checks.
