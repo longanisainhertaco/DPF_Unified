@@ -10,6 +10,7 @@ References:
 
 import math
 
+import numpy as np
 import pytest
 
 from dpf.diagnostics.pease_braginskii import (
@@ -158,6 +159,72 @@ class TestCheckPeaseBraginskii:
         assert not result["exceeds_PB"]
         assert result["regime"] == "stable"
         assert result["ratio"] == 0.0
+
+
+class TestDerivedDiagnostics:
+    """Test fast_magnetosonic_speed and bennett_radius from derived.py."""
+
+    def test_fast_magnetosonic_pure_hydro(self):
+        """With B=0, fast magnetosonic speed = sound speed."""
+        from dpf.diagnostics.derived import fast_magnetosonic_speed
+
+        B = np.zeros((3, 4, 4, 4))
+        rho = np.ones((4, 4, 4)) * 1e-3
+        p = np.ones((4, 4, 4)) * 1e5
+        gamma = 5.0 / 3.0
+
+        c_f = fast_magnetosonic_speed(B, p, rho, gamma)
+        c_s = np.sqrt(gamma * p / rho)
+        np.testing.assert_allclose(c_f, c_s, rtol=1e-10)
+
+    def test_fast_magnetosonic_pure_magnetic(self):
+        """With p=0, fast magnetosonic speed = Alfven speed."""
+        from dpf.diagnostics.derived import alfven_speed, fast_magnetosonic_speed
+
+        B = np.zeros((3, 4, 4, 4))
+        B[2] = 1.0  # Bz = 1 T
+        rho = np.ones((4, 4, 4)) * 1e-3
+        p = np.zeros((4, 4, 4))
+
+        c_f = fast_magnetosonic_speed(B, p, rho, gamma=5.0 / 3.0)
+        v_A = alfven_speed(B, rho)
+        np.testing.assert_allclose(c_f, v_A, rtol=1e-10)
+
+    def test_fast_magnetosonic_positive(self):
+        """Fast magnetosonic speed is always positive."""
+        from dpf.diagnostics.derived import fast_magnetosonic_speed
+
+        B = np.random.randn(3, 4, 4, 4) * 0.1
+        rho = np.ones((4, 4, 4)) * 1e-3
+        p = np.ones((4, 4, 4)) * 1e5
+        assert np.all(fast_magnetosonic_speed(B, p, rho) > 0)
+
+    def test_bennett_radius_scales_with_current(self):
+        """Bennett radius ~ I (doubles when current doubles)."""
+        from dpf.diagnostics.derived import bennett_radius
+
+        a1 = bennett_radius(current=1e6, Te=1e7, ne=1e24)
+        a2 = bennett_radius(current=2e6, Te=1e7, ne=1e24)
+        assert a2 / a1 == pytest.approx(2.0, rel=1e-10)
+
+    def test_bennett_radius_pf1000(self):
+        """Bennett radius for PF-1000 conditions is mm-scale.
+
+        PF-1000: I ~ 1.87 MA, Te ~ 1 keV = 1.16e7 K, ne ~ 1e25 m^-3.
+        a_B = I * sqrt(mu_0 / (8*pi^2*ne*kB*2*Te))
+        """
+        from dpf.diagnostics.derived import bennett_radius
+
+        a_B = bennett_radius(current=1.87e6, Te=1.16e7, ne=1e25)
+        # Bennett radius should be ~1-10 mm for PF-1000 at high compression
+        assert 1e-4 < a_B < 0.05, f"Bennett radius {a_B:.4e} m outside [0.1mm, 50mm]"
+
+    def test_bennett_radius_positive(self):
+        """Bennett radius is always positive."""
+        from dpf.diagnostics.derived import bennett_radius
+
+        assert bennett_radius(current=1e6, Te=1e7, ne=1e24) > 0
+        assert bennett_radius(current=0, Te=1e7, ne=1e24) >= 0
 
 
 class TestEngineIntegration:
