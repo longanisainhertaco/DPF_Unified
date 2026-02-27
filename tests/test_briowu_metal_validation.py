@@ -99,12 +99,12 @@ class TestBrioWuMetalStability:
         assert np.all(state["rho"] > 0), "Negative density"
         assert np.all(state["pressure"] > 0), "Negative pressure"
 
-    @pytest.mark.xfail(
-        strict=False,
-        reason="HLLD float32 discriminant can NaN on strong By discontinuity",
-    )
     def test_hlld_weno5_no_nan(self):
-        """HLLD+WENO5 on Brio-Wu (stress test for float32 stability)."""
+        """HLLD+WENO5 on Brio-Wu (stress test for float32 stability).
+
+        Previously xfail due to HLLD float32 discriminant NaN on strong By
+        discontinuity. Fixed in Phase O via Lax-Friedrichs fallback mechanism.
+        """
         nx = 100
         state, dx = _make_briowu_ic(nx=nx)
         solver = MetalMHDSolver(

@@ -5,8 +5,8 @@ a magnetized plasma and measures the L1 error against the exact linear
 solution. This tests the MHD solver's accuracy on smooth magnetized flow,
 complementing the hydro-only sound wave convergence test.
 
-Fast magnetosonic wave (propagating along B):
-  Perturbations in rho, p, vx, By with wave speed c_f = sqrt(cs^2 + vA^2)
+Fast magnetosonic wave (propagating along B, degenerate k||B):
+  Perturbations in rho, p, vx only (no transverse B), wave speed c_f = max(cs, vA)
 
 Alfven wave (propagating along B):
   Perturbations in vy, Bz only (incompressible), wave speed vA = Bx/sqrt(rho)
