@@ -129,3 +129,68 @@ def alfven_speed(
     """
     B_mag = np.sqrt(B[0] ** 2 + B[1] ** 2 + B[2] ** 2)
     return B_mag / np.sqrt(mu_0 * np.maximum(rho, 1e-30))
+
+
+def fast_magnetosonic_speed(
+    B: np.ndarray,
+    pressure: np.ndarray,
+    rho: np.ndarray,
+    gamma: float = 5.0 / 3.0,
+) -> np.ndarray:
+    """Compute fast magnetosonic speed c_f = sqrt(c_s^2 + v_A^2).
+
+    Args:
+        B: Magnetic field array, shape (3, nx, ny, nz) [T].
+        pressure: Thermal pressure [Pa], shape (nx, ny, nz).
+        rho: Mass density [kg/m^3], shape (nx, ny, nz).
+        gamma: Adiabatic index.
+
+    Returns:
+        Fast magnetosonic speed [m/s], same shape as rho.
+    """
+    rho_safe = np.maximum(rho, 1e-30)
+    c_s2 = gamma * np.maximum(pressure, 0.0) / rho_safe
+    B_sq = B[0] ** 2 + B[1] ** 2 + B[2] ** 2
+    v_A2 = B_sq / (mu_0 * rho_safe)
+    return np.sqrt(c_s2 + v_A2)
+
+
+def bennett_radius(
+    current: float,
+    Te: np.ndarray | float,
+    ne: float,
+) -> float:
+    """Compute the Bennett equilibrium pinch radius.
+
+    The Bennett relation balances magnetic pinch pressure against
+    kinetic pressure:  mu_0 * I^2 / (8*pi) = N_L * k_B * (Te + Ti)
+
+    For a uniform-density pinch with N_L = ne * pi * a^2:
+
+        a_B = I * sqrt(mu_0 / (8 * pi^2 * ne * k_B * (Te + Ti)))
+
+    where we assume Te = Ti (thermal equilibrium).
+
+    Args:
+        current: Pinch current [A].
+        Te: Electron temperature [K] (scalar or array — mean used).
+        ne: Electron number density [m^-3].
+
+    Returns:
+        Bennett radius [m].
+
+    References:
+        Bennett, W.H., Phys. Rev. 45, 890 (1934).
+        Haines, M.G., Plasma Phys. Control. Fusion 53, 093001 (2011), Sec. 3.1.
+    """
+    k_B = 1.380649e-23
+    Te_val = float(np.mean(Te)) if hasattr(Te, "__len__") else float(Te)
+    T_total = 2.0 * max(Te_val, 1.0)  # Te + Ti
+    ne_val = max(float(ne), 1e10)
+    I_abs = abs(float(current))
+
+    import math
+
+    # a_B = I * sqrt(mu_0 / (8 * pi^2 * ne * kB * 2*Te))
+    a_B = I_abs * math.sqrt(mu_0 / (8.0 * math.pi**2 * ne_val * k_B * T_total))
+    return a_B
