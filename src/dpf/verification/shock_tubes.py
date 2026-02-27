@@ -49,8 +49,8 @@ logger = logging.getLogger(__name__)
 # architectural limitations with its hybrid WENO5/np.gradient scheme at
 # shock discontinuities.  The non-WENO5 path uses Lax-Friedrichs
 # numerical diffusion for stability at shocks.
-_NY_PAD: int = 4
-_NZ_PAD: int = 4
+_NY_PAD: int = 5
+_NZ_PAD: int = 5
 
 
 # ============================================================

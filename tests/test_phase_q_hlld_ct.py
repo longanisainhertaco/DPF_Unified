@@ -607,10 +607,6 @@ def test_python_ct_sod_shock_stability():
     assert np.all(np.isfinite(state["B"]))
 
 
-@pytest.mark.xfail(
-    reason="Python engine CT is unstable for shock ICs — use Metal or Athena++ for CT (Phase P lesson #56)",
-    strict=True,
-)
 def test_python_ct_briowu_stability():
     """Brio-Wu with CT should remain stable for 20 steps."""
     nx, ny, nz = 32, 16, 16
