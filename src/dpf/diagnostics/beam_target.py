@@ -318,3 +318,147 @@ def neutron_anisotropy(
     A_total = (Y_beam * A_bt + Y_thermal * A_th) / Y_total
 
     return A_total
+
+
+# ---------------------------------------------------------------------------
+# Multi-event neutron decomposition (Goyon et al. 2025)
+# ---------------------------------------------------------------------------
+
+
+def decompose_neutron_events(
+    times: np.ndarray,
+    rates: np.ndarray,
+    threshold_fraction: float = 0.1,
+    min_separation_ns: float = 10.0,
+) -> dict:
+    """Decompose time-resolved neutron signal into distinct emission events.
+
+    MJOLNIR and other large DPF devices can produce multiple distinct neutron
+    emission events during a single discharge, corresponding to separate pinch
+    compressions or instability-driven re-pinches.  This function identifies
+    and characterizes each event from the time-resolved neutron yield rate.
+
+    Algorithm:
+        1. Smooth the signal (3-point moving average) to suppress noise.
+        2. Identify peaks above a threshold (fraction of global maximum).
+        3. Merge peaks closer than min_separation_ns into a single event.
+        4. For each event, compute: peak time, peak rate, FWHM duration,
+           and integrated yield (trapezoidal rule over the event).
+
+    Args:
+        times: Time array [s].
+        rates: Neutron yield rate array [1/s], same length as times.
+        threshold_fraction: Minimum peak height as fraction of global max
+            to count as an event (default 0.1 = 10%).
+        min_separation_ns: Minimum time between distinct events [ns]
+            (default 10 ns).  Peaks closer than this are merged.
+
+    Returns:
+        Dictionary with:
+            n_events: Number of distinct neutron events.
+            events: List of dicts, each with keys:
+                peak_time: Time of event peak [s].
+                peak_rate: Peak neutron rate [1/s].
+                fwhm_ns: Full-width at half-maximum [ns].
+                yield_count: Integrated yield for this event.
+                start_time: Event start time [s].
+                end_time: Event end time [s].
+            total_yield: Total integrated yield across all events.
+            primary_fraction: Fraction of yield in the largest event.
+
+    References:
+        Goyon et al., Phys. Plasmas 32:033105 (2025) — multi-event
+        neutron dynamics in MJOLNIR DPF.
+    """
+    times = np.asarray(times, dtype=np.float64)
+    rates = np.asarray(rates, dtype=np.float64)
+
+    if len(times) < 3 or np.max(rates) <= 0:
+        return {
+            "n_events": 0,
+            "events": [],
+            "total_yield": 0.0,
+            "primary_fraction": 0.0,
+        }
+
+    # Step 1: Smooth with 3-point moving average
+    smoothed = np.copy(rates)
+    for i in range(1, len(smoothed) - 1):
+        smoothed[i] = (rates[i - 1] + rates[i] + rates[i + 1]) / 3.0
+
+    # Step 2: Find local maxima above threshold
+    rate_max = float(np.max(smoothed))
+    threshold = threshold_fraction * rate_max
+    min_sep_s = min_separation_ns * 1e-9
+
+    peaks: list[int] = []
+    for i in range(1, len(smoothed) - 1):
+        if (smoothed[i] > smoothed[i - 1]
+                and smoothed[i] >= smoothed[i + 1]
+                and smoothed[i] >= threshold):
+            peaks.append(i)
+
+    if not peaks:
+        return {
+            "n_events": 0,
+            "events": [],
+            "total_yield": float(np.trapezoid(rates, times)),
+            "primary_fraction": 0.0,
+        }
+
+    # Step 3: Merge peaks closer than min_separation
+    merged: list[list[int]] = [[peaks[0]]]
+    for pk in peaks[1:]:
+        if times[pk] - times[merged[-1][-1]] < min_sep_s:
+            merged[-1].append(pk)
+        else:
+            merged.append([pk])
+
+    # Step 4: Characterize each event
+    events = []
+    for group in merged:
+        # Pick the highest peak in the group
+        best_idx = max(group, key=lambda i: smoothed[i])
+        peak_rate = float(smoothed[best_idx])
+        peak_time = float(times[best_idx])
+
+        # Find FWHM: half-max level
+        half_max = peak_rate / 2.0
+
+        # Search left for half-max crossing
+        left_idx = best_idx
+        while left_idx > 0 and smoothed[left_idx] > half_max:
+            left_idx -= 1
+
+        # Search right for half-max crossing
+        right_idx = best_idx
+        while right_idx < len(smoothed) - 1 and smoothed[right_idx] > half_max:
+            right_idx += 1
+
+        start_time = float(times[left_idx])
+        end_time = float(times[right_idx])
+        fwhm_ns = (end_time - start_time) * 1e9
+
+        # Integrated yield over this event window
+        event_yield = float(np.trapezoid(rates[left_idx:right_idx + 1],
+                                     times[left_idx:right_idx + 1]))
+
+        events.append({
+            "peak_time": peak_time,
+            "peak_rate": peak_rate,
+            "fwhm_ns": fwhm_ns,
+            "yield_count": event_yield,
+            "start_time": start_time,
+            "end_time": end_time,
+        })
+
+    total_yield = float(np.trapezoid(rates, times))
+    primary_yield = max(ev["yield_count"] for ev in events) if events else 0.0
+    primary_fraction = primary_yield / max(total_yield, 1e-300)
+
+    return {
+        "n_events": len(events),
+        "events": events,
+        "total_yield": total_yield,
+        "primary_fraction": min(primary_fraction, 1.0),
+    }

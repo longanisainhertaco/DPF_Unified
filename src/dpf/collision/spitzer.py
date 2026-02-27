@@ -298,6 +298,12 @@ def relax_temperatures(
     Equilibrium temperature accounts for charge state Z:
         T_eq = (Z * Te + Ti) / (Z + 1)
 
+    Note: The frozen-nu_ei exponential is accurate at all DPF CFL
+    conditions (alpha = nu_ei * dt * 2*m_e/m_d ~ 0.004-0.014).
+    A Rosen (1954) midpoint-nu_ei correction would improve accuracy
+    in the strongly-stiff regime (nu_ei*dt > 100) but this regime
+    is not reached at DPF's actual CFL timestep.
+
     Args:
         Te: Electron temperature [K].
         Ti: Ion temperature [K].
@@ -307,6 +313,9 @@ def relax_temperatures(
 
     Returns:
         Tuple of (Te_new, Ti_new).
+
+    References:
+        Rosen M., Phys. Fluids 7, 491 (1954).
     """
     alpha = freq_ei * dt * 2.0 * m_e / m_d
     # Implicit: T_new = T_old + alpha * (T_other_mid - T_self_mid)
