@@ -187,6 +187,11 @@ class LeeModel:
             (Lee's fc factor, typically 0.7-0.9).
         mass_fraction: Fraction of swept mass retained by the sheet
             (Lee's fm factor, typically 0.5-0.7).
+        liftoff_delay: Insulator flashover delay [s].  Accounts for the
+            finite time before the current sheet lifts off the insulator
+            and begins sweeping fill gas.  The model output time is shifted
+            by this amount.  Typical values: 0.5-1.5 us for MJ-class DPF
+            (Lee 2005, IAEA/IC).  Default: 0 (no delay).
     """
 
     def __init__(
@@ -194,10 +199,12 @@ class LeeModel:
         fill_gas_mass: float = 3.34e-27,
         current_fraction: float = 0.7,
         mass_fraction: float = 0.7,
+        liftoff_delay: float = 0.0,
     ) -> None:
         self.fill_gas_mass = fill_gas_mass
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
         self.fc = current_fraction   # Current fraction factor (Lee's f_c)
+        self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
 
     def run(
         self,
@@ -470,6 +477,13 @@ class LeeModel:
             z_combined = z1
             r_combined = np.full(len(t1), b)
 
+        # Apply liftoff delay: shift time origin to account for insulator
+        # flashover period before current sheet formation.
+        if self.liftoff_delay > 0:
+            t_combined = t_combined + self.liftoff_delay
+            if pinch_time > 0:
+                pinch_time += self.liftoff_delay
+
         # Diagnostics — use first-peak finder to avoid post-pinch oscillation
         from dpf.validation.experimental import _find_first_peak
 
@@ -483,8 +497,9 @@ class LeeModel:
 
         logger.info(
             "Lee Model completed: phases=%s, peak_I=%.2e A at t=%.2e s, "
-            "pinch_time=%.2e s",
+            "pinch_time=%.2e s, liftoff_delay=%.2e s",
             phases_completed, peak_current, peak_current_time, pinch_time,
+            self.liftoff_delay,
         )
 
         return LeeModelResult(
@@ -510,6 +525,7 @@ class LeeModel:
                 "rho0": rho0,
                 "fm": self.fm,
                 "fc": self.fc,
+                "liftoff_delay": self.liftoff_delay,
             },
         )
 
