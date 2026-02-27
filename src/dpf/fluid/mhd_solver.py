@@ -1640,13 +1640,12 @@ class MHDSolver(PlasmaSolverBase):
                     rho * vel[d], alpha_lf, self.dx
                 )
 
-        # Add Lorentz force and pressure gradient
         # Kinetic Feedback: J_plasma = J_tot - J_kin
         # J_tot = curl(B)/mu_0 (calculated above as 'J')
+        # J_plasma is needed downstream for resistive/Hall terms.
         J_plasma = J.copy()
         if source_terms is not None and "J_kin" in source_terms:
             J_kin = source_terms["J_kin"]
-            # Ensure shape matches (3, nx, ny, nz)
             if J_kin.shape == J.shape:
                 J_plasma -= J_kin
             else:
@@ -1655,15 +1654,23 @@ class MHDSolver(PlasmaSolverBase):
                     J_kin.shape, J.shape,
                 )
 
-        # J x B force uses J_plasma (force on the fluid)
-        JxB = np.array([
-            J_plasma[1] * B[2] - J_plasma[2] * B[1],
-            J_plasma[2] * B[0] - J_plasma[0] * B[2],
-            J_plasma[0] * B[1] - J_plasma[1] * B[0],
-        ])
+        # Add Lorentz force and pressure gradient.
+        # When HLLD is active with WENO5, the conservative momentum flux
+        # divergence (computed above) already encodes the full MHD forces:
+        # rho*v*v + (p + B^2/(2*mu_0))*I - B*B/mu_0.
+        # Adding JxB - grad_p again would double-count these forces.
+        # Only add explicit JxB - grad_p for non-HLLD paths (HLL/Rusanov)
+        # where momentum advection doesn't include the full stress tensor.
+        _hlld_active = self.use_weno5 and self.riemann_solver == "hlld"
 
-        for d in range(3):
-            dmom_dt[d] += JxB[d] - grad_p[d]
+        if not _hlld_active:
+            JxB = np.array([
+                J_plasma[1] * B[2] - J_plasma[2] * B[1],
+                J_plasma[2] * B[0] - J_plasma[0] * B[2],
+                J_plasma[0] * B[1] - J_plasma[1] * B[0],
+            ])
+            for d in range(3):
+                dmom_dt[d] += JxB[d] - grad_p[d]
 
         # --- Induction equation: dB/dt = -curl(E) ---
         # Ideal MHD: E = -v × B
