@@ -237,14 +237,7 @@ class ExactRiemannSolver:
                 if xi < self.SHL:
                     return self.L.rho, self.L.u, self.L.p
                 elif xi < self.STL:
-                    # Inside rarefaction fan
-                    c = self.g5 * (
-                        self.aL + self.g7 * (self.L.u - xi)
-                    )
-                    v = self.g5 * (
-                        self.aL * self.g4 + self.L.u + xi
-                    ) / (1.0 + self.g4)
-                    # Cleaner form from Toro:
+                    # Inside rarefaction fan (Toro 2009, Eq. 4.56)
                     v = (2.0 / (g + 1.0)) * (
                         self.aL + 0.5 * (g - 1.0) * self.L.u + xi
                     )

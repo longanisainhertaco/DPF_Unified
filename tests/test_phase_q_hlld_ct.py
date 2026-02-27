@@ -607,13 +607,12 @@ def test_python_ct_sod_shock_stability():
     assert np.all(np.isfinite(state["B"]))
 
 
-@pytest.mark.xfail(
-    reason="Python engine non-conservative pressure + CT produces NaN on "
-    "Brio-Wu shock IC; use Metal or Athena++ for MHD shocks with CT",
-    strict=False,
-)
 def test_python_ct_briowu_stability():
-    """Brio-Wu with CT should remain stable for 20 steps."""
+    """Brio-Wu with CT should remain stable for 20 steps.
+
+    Previously xfail: Python engine non-conservative pressure + CT produced
+    NaN on Brio-Wu shock ICs. Now passes after Phase AD HLLD fixes.
+    """
     nx, ny, nz = 32, 16, 16
     state = {
         "rho": np.ones((nx, ny, nz)),

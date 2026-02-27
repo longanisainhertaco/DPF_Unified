@@ -52,13 +52,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
+        # Circuit: Scholz et al., Nukleonika 51(1):79-84, 2006, Table 1
+        # L0, R0 from short-circuit discharge calibration (includes AC effects)
         "circuit": {
-            "C": 1.332e-3,
-            "V0": 27e3,
-            "L0": 33.5e-9,
-            "R0": 2.3e-3,
-            "anode_radius": 0.115,
-            "cathode_radius": 0.16,
+            "C": 1.332e-3,     # 1.332 mF (Scholz 2006)
+            "V0": 27e3,        # 27 kV charging voltage
+            "L0": 33.5e-9,     # 33.5 nH external inductance
+            "R0": 2.3e-3,      # 2.3 mOhm external resistance
+            "anode_radius": 0.115,   # 115 mm (Scholz 2006)
+            "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
         },
