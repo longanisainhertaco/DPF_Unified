@@ -35,6 +35,16 @@ P_FLOOR = 1e-12                  # Minimum pressure floor (matches metal_riemann
 
 # ── Shared Utilities ────────────────────────────────────────────
 
+
+def _safe_gradient(
+    field: torch.Tensor, dim: int, spacing: float,
+) -> torch.Tensor:
+    """Compute torch.gradient along *dim*, returning zeros if size < 2."""
+    if field.shape[dim] < 2:
+        return torch.zeros_like(field)
+    return torch.gradient(field, dim=dim, spacing=spacing)[0]
+
+
 def curl_B_mps(
     B: torch.Tensor,
     dx: float,
@@ -61,12 +71,12 @@ def curl_B_mps(
     torch.Tensor
         Current density J, shape (3, nx, ny, nz).
     """
-    dBz_dy = torch.gradient(B[2], dim=1, spacing=dy)[0]
-    dBy_dz = torch.gradient(B[1], dim=2, spacing=dz)[0]
-    dBx_dz = torch.gradient(B[0], dim=2, spacing=dz)[0]
-    dBz_dx = torch.gradient(B[2], dim=0, spacing=dx)[0]
-    dBy_dx = torch.gradient(B[1], dim=0, spacing=dx)[0]
-    dBx_dy = torch.gradient(B[0], dim=1, spacing=dy)[0]
+    dBz_dy = _safe_gradient(B[2], dim=1, spacing=dy)
+    dBy_dz = _safe_gradient(B[1], dim=2, spacing=dz)
+    dBx_dz = _safe_gradient(B[0], dim=2, spacing=dz)
+    dBz_dx = _safe_gradient(B[2], dim=0, spacing=dx)
+    dBy_dx = _safe_gradient(B[1], dim=0, spacing=dx)
+    dBx_dy = _safe_gradient(B[0], dim=1, spacing=dy)
 
     J = torch.zeros_like(B)
     J[0] = (dBz_dy - dBy_dz) / mu_0
@@ -88,12 +98,12 @@ def _curl_field(
     F: torch.Tensor, dx: float, dy: float, dz: float,
 ) -> torch.Tensor:
     """Compute curl(F) for a (3, nx, ny, nz) vector field."""
-    dFz_dy = torch.gradient(F[2], dim=1, spacing=dy)[0]
-    dFy_dz = torch.gradient(F[1], dim=2, spacing=dz)[0]
-    dFx_dz = torch.gradient(F[0], dim=2, spacing=dz)[0]
-    dFz_dx = torch.gradient(F[2], dim=0, spacing=dx)[0]
-    dFy_dx = torch.gradient(F[1], dim=0, spacing=dx)[0]
-    dFx_dy = torch.gradient(F[0], dim=1, spacing=dy)[0]
+    dFz_dy = _safe_gradient(F[2], dim=1, spacing=dy)
+    dFy_dz = _safe_gradient(F[1], dim=2, spacing=dz)
+    dFx_dz = _safe_gradient(F[0], dim=2, spacing=dz)
+    dFz_dx = _safe_gradient(F[2], dim=0, spacing=dx)
+    dFy_dx = _safe_gradient(F[1], dim=0, spacing=dx)
+    dFx_dy = _safe_gradient(F[0], dim=1, spacing=dy)
 
     curl = torch.zeros_like(F)
     curl[0] = dFz_dy - dFy_dz
@@ -311,9 +321,9 @@ def apply_braginskii_conduction_mps(
     for _ in range(n_sub):
         # Recompute heat flux from updated Te each sub-step
         Te_cur = torch.clamp(Te_new, min=1.0)
-        grad_Tx = torch.gradient(Te_cur, dim=0, spacing=dx)[0]
-        grad_Ty = torch.gradient(Te_cur, dim=1, spacing=dy)[0]
-        grad_Tz = torch.gradient(Te_cur, dim=2, spacing=dz)[0]
+        grad_Tx = _safe_gradient(Te_cur, dim=0, spacing=dx)
+        grad_Ty = _safe_gradient(Te_cur, dim=1, spacing=dy)
+        grad_Tz = _safe_gradient(Te_cur, dim=2, spacing=dz)
         grad_T = torch.stack([grad_Tx, grad_Ty, grad_Tz], dim=0)
 
         b_dot_gradT = (b_hat * grad_T).sum(dim=0)
@@ -341,9 +351,9 @@ def apply_braginskii_conduction_mps(
         )
 
         div_q = (
-            torch.gradient(heat_flux[0], dim=0, spacing=dx)[0]
-            + torch.gradient(heat_flux[1], dim=1, spacing=dy)[0]
-            + torch.gradient(heat_flux[2], dim=2, spacing=dz)[0]
+            _safe_gradient(heat_flux[0], dim=0, spacing=dx)
+            + _safe_gradient(heat_flux[1], dim=1, spacing=dy)
+            + _safe_gradient(heat_flux[2], dim=2, spacing=dz)
         )
         div_q = torch.where(torch.isfinite(div_q), div_q, torch.zeros_like(div_q))
 
@@ -406,15 +416,15 @@ def apply_braginskii_viscosity_mps(
     vx, vy, vz = velocity[0], velocity[1], velocity[2]
 
     # Strain rate via central differences
-    dvx_dx = torch.gradient(vx, dim=0, spacing=dx)[0]
-    dvy_dy = torch.gradient(vy, dim=1, spacing=dy)[0]
-    dvz_dz = torch.gradient(vz, dim=2, spacing=dz)[0]
-    dvx_dy = torch.gradient(vx, dim=1, spacing=dy)[0]
-    dvy_dx = torch.gradient(vy, dim=0, spacing=dx)[0]
-    dvx_dz = torch.gradient(vx, dim=2, spacing=dz)[0]
-    dvz_dx = torch.gradient(vz, dim=0, spacing=dx)[0]
-    dvy_dz = torch.gradient(vy, dim=2, spacing=dz)[0]
-    dvz_dy = torch.gradient(vz, dim=1, spacing=dy)[0]
+    dvx_dx = _safe_gradient(vx, dim=0, spacing=dx)
+    dvy_dy = _safe_gradient(vy, dim=1, spacing=dy)
+    dvz_dz = _safe_gradient(vz, dim=2, spacing=dz)
+    dvx_dy = _safe_gradient(vx, dim=1, spacing=dy)
+    dvy_dx = _safe_gradient(vy, dim=0, spacing=dx)
+    dvx_dz = _safe_gradient(vx, dim=2, spacing=dz)
+    dvz_dx = _safe_gradient(vz, dim=0, spacing=dx)
+    dvy_dz = _safe_gradient(vy, dim=2, spacing=dz)
+    dvz_dy = _safe_gradient(vz, dim=1, spacing=dy)
 
     Sxx = dvx_dx
     Syy = dvy_dy
@@ -497,19 +507,19 @@ def apply_braginskii_viscosity_mps(
 
     # Divergence of stress tensor
     div_sigma_x = (
-        torch.gradient(sigma_xx, dim=0, spacing=dx)[0]
-        + torch.gradient(sigma_xy, dim=1, spacing=dy)[0]
-        + torch.gradient(sigma_xz, dim=2, spacing=dz)[0]
+        _safe_gradient(sigma_xx, dim=0, spacing=dx)
+        + _safe_gradient(sigma_xy, dim=1, spacing=dy)
+        + _safe_gradient(sigma_xz, dim=2, spacing=dz)
     )
     div_sigma_y = (
-        torch.gradient(sigma_xy, dim=0, spacing=dx)[0]
-        + torch.gradient(sigma_yy, dim=1, spacing=dy)[0]
-        + torch.gradient(sigma_yz, dim=2, spacing=dz)[0]
+        _safe_gradient(sigma_xy, dim=0, spacing=dx)
+        + _safe_gradient(sigma_yy, dim=1, spacing=dy)
+        + _safe_gradient(sigma_yz, dim=2, spacing=dz)
     )
     div_sigma_z = (
-        torch.gradient(sigma_xz, dim=0, spacing=dx)[0]
-        + torch.gradient(sigma_yz, dim=1, spacing=dy)[0]
-        + torch.gradient(sigma_zz, dim=2, spacing=dz)[0]
+        _safe_gradient(sigma_xz, dim=0, spacing=dx)
+        + _safe_gradient(sigma_yz, dim=1, spacing=dy)
+        + _safe_gradient(sigma_zz, dim=2, spacing=dz)
     )
 
     rho_safe = torch.clamp(rho, min=1e-30)
@@ -639,9 +649,9 @@ def apply_nernst_advection_mps(
     b_hat = B / B_safe.unsqueeze(0)
 
     # Temperature gradient
-    grad_Tx = torch.gradient(Te, dim=0, spacing=dx)[0]
-    grad_Ty = torch.gradient(Te, dim=1, spacing=dy)[0]
-    grad_Tz = torch.gradient(Te, dim=2, spacing=dz)[0]
+    grad_Tx = _safe_gradient(Te, dim=0, spacing=dx)
+    grad_Ty = _safe_gradient(Te, dim=1, spacing=dy)
+    grad_Tz = _safe_gradient(Te, dim=2, spacing=dz)
     grad_Te = torch.stack([grad_Tx, grad_Ty, grad_Tz], dim=0)
 
     # b_hat x grad(Te)

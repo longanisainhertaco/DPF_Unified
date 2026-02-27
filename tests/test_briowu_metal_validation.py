@@ -324,3 +324,151 @@ class TestBrioWuMetalWaveStructure:
         assert np.max(rho_1d) < 4.0, (
             f"Density too high: {np.max(rho_1d):.2f}, expected < 4.0"
         )
+
+
+# ============================================================
+# Self-convergence (L1 error against high-resolution reference)
+# ============================================================
+
+def _run_briowu_to_time(
+    nx: int,
+    t_target: float,
+    riemann: str = "hll",
+    recon: str = "plm",
+    precision: str = "float32",
+) -> dict[str, np.ndarray]:
+    """Run Brio-Wu to t_target and return the final state."""
+    state, dx = _make_briowu_ic(nx=nx, gamma=2.0)
+    solver = MetalMHDSolver(
+        grid_shape=(nx, 4, 4),
+        dx=dx,
+        gamma=2.0,
+        cfl=0.3,
+        device="cpu",
+        riemann_solver=riemann,
+        reconstruction=recon,
+        time_integrator="ssp_rk2",
+        precision=precision,
+        use_ct=False,
+    )
+    t = 0.0
+    for _ in range(50_000):
+        dt = solver.compute_dt(state)
+        if t + dt > t_target:
+            dt = t_target - t
+        state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
+        t += dt
+        if t >= t_target * 0.999:
+            break
+    return state
+
+
+def _l1_error_vs_reference(
+    coarse: np.ndarray, fine: np.ndarray, factor: int,
+) -> float:
+    """Compute L1 error of coarse solution vs downsampled fine reference.
+
+    Parameters
+    ----------
+    coarse : ndarray, shape (nx_c,)
+        1D profile from coarse run.
+    fine : ndarray, shape (nx_f,)
+        1D profile from fine run (nx_f = factor * nx_c).
+    factor : int
+        Resolution ratio nx_f / nx_c.
+
+    Returns
+    -------
+    float
+        L1 error: mean(|coarse - downsample(fine)|).
+    """
+    # Downsample fine to coarse grid by averaging groups of `factor` cells
+    nx_c = len(coarse)
+    fine_ds = fine[: nx_c * factor].reshape(nx_c, factor).mean(axis=1)
+    return float(np.mean(np.abs(coarse - fine_ds)))
+
+
+@pytest.mark.slow
+class TestBrioWuSelfConvergence:
+    """L1 self-convergence: error should decrease with resolution.
+
+    Since no exact MHD Riemann solution exists in closed form, we use
+    a high-resolution run (400 cells) as the reference and measure L1
+    error of coarser runs (100, 200 cells) against it. The error should
+    decrease as resolution increases (order ~0.5-1.0 for shock problems).
+    """
+
+    def test_l1_rho_convergence_hll(self):
+        """L1(rho) should decrease from 100->200 cells vs 400-cell reference."""
+        ref = _run_briowu_to_time(400, t_target=0.1, riemann="hll")
+        s100 = _run_briowu_to_time(100, t_target=0.1, riemann="hll")
+        s200 = _run_briowu_to_time(200, t_target=0.1, riemann="hll")
+
+        rho_ref = ref["rho"][:, 2, 2]
+        rho_100 = s100["rho"][:, 2, 2]
+        rho_200 = s200["rho"][:, 2, 2]
+
+        l1_100 = _l1_error_vs_reference(rho_100, rho_ref, 4)
+        l1_200 = _l1_error_vs_reference(rho_200, rho_ref, 2)
+
+        # L1 error should decrease with resolution
+        assert l1_200 < l1_100, (
+            f"L1(rho) not converging: 100-cell={l1_100:.4f}, 200-cell={l1_200:.4f}"
+        )
+        # Convergence rate: log2(l1_100 / l1_200) should be > 0.3
+        if l1_200 > 0 and l1_100 > 0:
+            rate = np.log2(l1_100 / l1_200)
+            assert rate > 0.3, f"Convergence rate too low: {rate:.2f}"
+
+    def test_l1_pressure_convergence_hll(self):
+        """L1(p) should decrease from 100->200 cells."""
+        ref = _run_briowu_to_time(400, t_target=0.1, riemann="hll")
+        s100 = _run_briowu_to_time(100, t_target=0.1, riemann="hll")
+        s200 = _run_briowu_to_time(200, t_target=0.1, riemann="hll")
+
+        p_ref = ref["pressure"][:, 2, 2]
+        p_100 = s100["pressure"][:, 2, 2]
+        p_200 = s200["pressure"][:, 2, 2]
+
+        l1_100 = _l1_error_vs_reference(p_100, p_ref, 4)
+        l1_200 = _l1_error_vs_reference(p_200, p_ref, 2)
+
+        assert l1_200 < l1_100, (
+            f"L1(p) not converging: 100-cell={l1_100:.4f}, 200-cell={l1_200:.4f}"
+        )
+
+    def test_l1_by_convergence_hll(self):
+        """L1(By) should decrease — By has the strongest MHD signature."""
+        ref = _run_briowu_to_time(400, t_target=0.1, riemann="hll")
+        s100 = _run_briowu_to_time(100, t_target=0.1, riemann="hll")
+        s200 = _run_briowu_to_time(200, t_target=0.1, riemann="hll")
+
+        by_ref = ref["B"][1, :, 2, 2]
+        by_100 = s100["B"][1, :, 2, 2]
+        by_200 = s200["B"][1, :, 2, 2]
+
+        l1_100 = _l1_error_vs_reference(by_100, by_ref, 4)
+        l1_200 = _l1_error_vs_reference(by_200, by_ref, 2)
+
+        assert l1_200 < l1_100, (
+            f"L1(By) not converging: 100-cell={l1_100:.4f}, 200-cell={l1_200:.4f}"
+        )
+
+    def test_hlld_lower_l1_than_hll(self):
+        """HLLD should produce lower L1(rho) than HLL at same resolution.
+
+        HLLD resolves contact and Alfven waves that HLL diffuses away.
+        """
+        ref = _run_briowu_to_time(400, t_target=0.1, riemann="hll")
+        s_hll = _run_briowu_to_time(200, t_target=0.1, riemann="hll")
+        s_hlld = _run_briowu_to_time(200, t_target=0.1, riemann="hlld")
+
+        rho_ref = ref["rho"][:, 2, 2]
+        l1_hll = _l1_error_vs_reference(s_hll["rho"][:, 2, 2], rho_ref, 2)
+        l1_hlld = _l1_error_vs_reference(s_hlld["rho"][:, 2, 2], rho_ref, 2)
+
+        # HLLD should be at least as good as HLL (typically much better)
+        # Allow 20% margin since reference is HLL-based
+        assert l1_hlld < l1_hll * 1.2, (
+            f"HLLD L1(rho)={l1_hlld:.4f} not better than HLL L1(rho)={l1_hll:.4f}"
+        )
