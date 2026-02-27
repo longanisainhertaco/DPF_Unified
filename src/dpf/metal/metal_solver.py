@@ -45,6 +45,7 @@ from dpf.metal.metal_riemann import (
     mhd_rhs_mps,
 )
 from dpf.metal.metal_stencil import ct_update_mps, div_B_mps, emf_from_fluxes_mps
+from dpf.metal.metal_transport import _safe_gradient
 
 logger = logging.getLogger(__name__)
 
@@ -600,12 +601,13 @@ class MetalMHDSolver(PlasmaSolverBase):
         eta_eff = eta / mu_0_si
 
         # Current density J = curl(B) / mu_0 (mu_0=1)
-        dBz_dy = torch.gradient(B[2], dim=1, spacing=self.dy)[0]
-        dBy_dz = torch.gradient(B[1], dim=2, spacing=self.dz)[0]
-        dBx_dz = torch.gradient(B[0], dim=2, spacing=self.dz)[0]
-        dBz_dx = torch.gradient(B[2], dim=0, spacing=self.dx)[0]
-        dBy_dx = torch.gradient(B[1], dim=0, spacing=self.dx)[0]
-        dBx_dy = torch.gradient(B[0], dim=1, spacing=self.dy)[0]
+        # Use _safe_gradient to handle degenerate dimensions (e.g. ny=1)
+        dBz_dy = _safe_gradient(B[2], dim=1, spacing=self.dy)
+        dBy_dz = _safe_gradient(B[1], dim=2, spacing=self.dz)
+        dBx_dz = _safe_gradient(B[0], dim=2, spacing=self.dz)
+        dBz_dx = _safe_gradient(B[2], dim=0, spacing=self.dx)
+        dBy_dx = _safe_gradient(B[1], dim=0, spacing=self.dx)
+        dBx_dy = _safe_gradient(B[0], dim=1, spacing=self.dy)
 
         Jx = (dBz_dy - dBy_dz) # / 1.0
         Jy = (dBx_dz - dBz_dx)
@@ -628,12 +630,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         eta_Jz = eta_eff * Jz
 
         # curl(eta * J)
-        d_etaJz_dy = torch.gradient(eta_Jz, dim=1, spacing=self.dy)[0]
-        d_etaJy_dz = torch.gradient(eta_Jy, dim=2, spacing=self.dz)[0]
-        d_etaJx_dz = torch.gradient(eta_Jx, dim=2, spacing=self.dz)[0]
-        d_etaJz_dx = torch.gradient(eta_Jz, dim=0, spacing=self.dx)[0]
-        d_etaJy_dx = torch.gradient(eta_Jy, dim=0, spacing=self.dx)[0]
-        d_etaJx_dy = torch.gradient(eta_Jx, dim=1, spacing=self.dy)[0]
+        d_etaJz_dy = _safe_gradient(eta_Jz, dim=1, spacing=self.dy)
+        d_etaJy_dz = _safe_gradient(eta_Jy, dim=2, spacing=self.dz)
+        d_etaJx_dz = _safe_gradient(eta_Jx, dim=2, spacing=self.dz)
+        d_etaJz_dx = _safe_gradient(eta_Jz, dim=0, spacing=self.dx)
+        d_etaJy_dx = _safe_gradient(eta_Jy, dim=0, spacing=self.dx)
+        d_etaJx_dy = _safe_gradient(eta_Jx, dim=1, spacing=self.dy)
 
         dB_dt = torch.zeros_like(B)
         dB_dt[0] = -(d_etaJz_dy - d_etaJy_dz)

@@ -155,15 +155,33 @@ class SimulationEngine:
                 cfl=fc.cfl,
                 device="mps",
                 limiter="minmod",
-                use_ct=True,
+                use_ct=fc.use_ct,
+                riemann_solver=fc.riemann_solver,
+                reconstruction=fc.reconstruction,
+                time_integrator=fc.time_integrator,
+                precision=fc.precision,
                 enable_hall=True,
                 enable_braginskii_conduction=fc.enable_anisotropic_conduction,
                 enable_braginskii_viscosity=fc.enable_viscosity,
                 enable_nernst=fc.enable_nernst,
+                enable_bremsstrahlung=getattr(
+                    config.radiation, "bremsstrahlung_enabled", False
+                ),
                 ion_mass=self.ion_mass,
+                coordinates=self.geometry_type,
             )
+            # Attach cylindrical geometry provider for diagnostics
+            if self.geometry_type == "cylindrical":
+                from dpf.geometry.cylindrical import CylindricalGeometry
+                self.fluid.geom = CylindricalGeometry(
+                    nr=nx, nz=nz, dr=dx, dz=dz,
+                )
             self._cell_volume = dx * dx * dz
-            logger.info("Using Metal GPU backend (PyTorch MPS)")
+            logger.info(
+                "Using Metal GPU backend (PyTorch MPS, %s, %s+%s+%s)",
+                self.geometry_type, fc.reconstruction,
+                fc.riemann_solver, fc.time_integrator,
+            )
         elif self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx
             self.fluid = CylindricalMHDSolver(
