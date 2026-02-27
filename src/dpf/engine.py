@@ -181,6 +181,21 @@ class SimulationEngine:
                 riemann_solver=fc.riemann_solver,
             )
             self._cell_volume = None  # Computed on demand from cylindrical geometry
+            # Validate grid covers electrodes for cylindrical geometry
+            r_max = nx * dx
+            if r_max < cc.cathode_radius:
+                logger.warning(
+                    "Cylindrical grid r_max=%.3f m < cathode_radius=%.3f m. "
+                    "Electrode BCs will degenerate (both map to outermost cell). "
+                    "Increase nr or dx so r_max >= cathode_radius.",
+                    r_max, cc.cathode_radius,
+                )
+            elif r_max < cc.cathode_radius * 1.05:
+                logger.warning(
+                    "Cylindrical grid r_max=%.3f m barely covers cathode_radius=%.3f m "
+                    "(< 5%% margin). Consider increasing nr for proper boundary resolution.",
+                    r_max, cc.cathode_radius,
+                )
         else:
             self.fluid = MHDSolver(
                 grid_shape=(nx, ny, nz),
