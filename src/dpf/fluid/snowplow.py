@@ -512,10 +512,10 @@ class SnowplowModel:
         # Recompute acceleration at new position with updated mass
         r_new_eff = max(r_new, self.r_pinch_min)
         M_slug_new = self._M_slug_pinch + (
-            self.f_m * self.rho0 * pi
+            self.f_m * rho_post_shock * pi
             * (r_new_eff**2 - self.r_pinch_min**2) * z_f
         )
-        dM_dt_new = self.f_m * self.rho0 * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
+        dM_dt_new = self.f_m * rho_post_shock * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
         p_back_new = self._adiabatic_back_pressure(r_new_eff)
         F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
         F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
