@@ -1604,7 +1604,7 @@ class MHDSolver(PlasmaSolverBase):
                     )
                     dmom_dt[t2_idx][tuple(update_sl)] -= dF_t2 / self.dx
             else:
-                # HLL: only has mass_flux, use old approach
+                # HLL: use conservative momentum_flux from HLL solver
                 for d in range(3):
                     for axis in range(3):
                         mom_d = rho * vel[d]
@@ -1625,8 +1625,8 @@ class MHDSolver(PlasmaSolverBase):
                             flux_right_sl[axis] = slice(1, n_update + 1)
                             update_sl[axis] = slice(2, 2 + n_update)
                             dF = (
-                                fluxes["mass_flux"][tuple(flux_right_sl)]
-                                - fluxes["mass_flux"][tuple(flux_left_sl)]
+                                fluxes["momentum_flux"][tuple(flux_right_sl)]
+                                - fluxes["momentum_flux"][tuple(flux_left_sl)]
                             )
                             dmom_dt[d][tuple(update_sl)] -= dF / self.dx
         else:
