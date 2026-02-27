@@ -1135,6 +1135,7 @@ def mhd_rhs_mps(
     limiter: str = "minmod",
     riemann_solver: str = "hll",
     reconstruction: str = "plm",
+    bc: tuple[str, str, str] = ("outflow", "outflow", "outflow"),
 ) -> dict[str, torch.Tensor]:
     """Compute the full ideal MHD right-hand side dU/dt = -div(F).
 
@@ -1200,77 +1201,49 @@ def mhd_rhs_mps(
             # Cannot compute fluxes with fewer than 2 cells
             continue
 
-        # Compute interface fluxes: shape (8, ...) with (n-1) along axis
-        flux = compute_fluxes_mps(
-            U, gamma, dx, dy, dz, dim_idx, limiter, riemann_solver, reconstruction,
-        )
-
-        # Flux differencing: dU/dt -= (F[i+1/2] - F[i-1/2]) / dh
-        # flux has (n-1) interfaces.  The difference F[i+1/2] - F[i-1/2]
-        # applies to interior cells i = 1..n-2, yielding (n-2) values.
-        #
-        # For cells at the boundary (i=0 and i=n-1), we use one-sided
-        # differences:
-        #   cell 0:     dU/dt -= (F[1/2] - F_boundary) / dh
-        #               where F_boundary = physical flux at left wall
-        #               For outflow BCs: F_boundary = F[1/2] -> no update
-        #               Here we use: dU/dt[0] -= (F[1/2] - F[-1/2]) / dh
-        #               with F[-1/2] approximated by _physical_flux of U[0].
-        #
-        # For simplicity and robustness, we apply zero-gradient (outflow)
-        # boundary conditions: the boundary cells see zero flux difference.
-        # Only interior cells (1..n-2) are updated with centred differences.
-        # Boundary cells are updated with one-sided differences.
-
         axis = dim_idx + 1  # tensor axis (0 is the 8-component axis)
+        dim_bc = bc[dim_idx] if dim_idx < len(bc) else "outflow"
 
-        # All cells:
-        #   cell i gets: -(F[i+1/2] - F[i-1/2]) / dh
-        #   F[i+1/2] corresponds to flux index i
-        #   F[i-1/2] corresponds to flux index i-1
-        #
-        # For i=0: F[-1/2] doesn't exist; use zero-gradient -> F[-1/2] = F[0]
-        # For i=n-1: F[(n-1)+1/2] doesn't exist; use F[n-2] = F[n_iface-1]
+        if dim_bc == "periodic":
+            # ---- Periodic boundary conditions ----
+            # Pad state circularly so reconstruction sees wrapped neighbors.
+            # Ghost width: 2 for PLM, 3 for WENO5.
+            gh = 3 if (reconstruction == "weno5" and n_dim >= 5) else 2
+            pad_spec_p = [0, 0, 0, 0, 0, 0]
+            pad_idx_p = 2 * (3 - axis)
+            pad_spec_p[pad_idx_p] = gh
+            pad_spec_p[pad_idx_p + 1] = gh
+            U_padded = torch.nn.functional.pad(U, pad_spec_p, mode="circular")
 
-        # Build padded flux with ghost interfaces at boundaries
-        # Pad flux with replicate at both ends along the spatial axis
-        # flux shape along axis: (n_dim - 1)
-        # After padding: (n_dim + 1), but we only need (n_dim) for cell updates
-        # Actually: we need F[i+1/2] for i=0..n-1 and F[i-1/2] for i=0..n-1
-        #   F[i+1/2] for i in [0, n-1]: indices 0..n-1 in flux (but flux has n-1 entries)
-        #     => i=n-1 needs flux index n-1, which exists (0-indexed, flux has n_dim-1 entries)
-        #     Wait: n_iface = n_dim - 1. Max flux index = n_iface - 1 = n_dim - 2.
-        #     So F[(n-1)+1/2] needs index n_dim-1 which is OUT OF BOUNDS.
-        #
-        # Correct approach: pad flux by 1 on each side (replicating boundary values).
+            flux = compute_fluxes_mps(
+                U_padded, gamma, dx, dy, dz, dim_idx,
+                limiter, riemann_solver, reconstruction,
+            )
+            # flux has (n_dim + 2*gh - 1) interfaces.
+            # We need n interfaces for periodic flux differencing:
+            #   F_right[i] = flux at interface (gh+i), i.e. between padded
+            #                cell (gh+i) and (gh+i+1)
+            #   F_left[i]  = flux at interface (gh+i-1)
+            F_right = torch.narrow(flux, axis, gh, n_dim)
+            F_left = torch.narrow(flux, axis, gh - 1, n_dim)
 
-        # Pad along the correct axis.
-        # The tensor has shape (8, nx, ny, nz).  We need to pad along axis.
-        # torch.nn.functional.pad pads from the LAST dimension backwards.
-        # For axis=1 (x): pad dims are (0,0, 0,0, 1,1) for (z_lo,z_hi, y_lo,y_hi, x_lo,x_hi)
-        # For axis=2 (y): pad dims are (0,0, 1,1, 0,0)
-        # For axis=3 (z): pad dims are (1,1, 0,0, 0,0)
+        else:
+            # ---- Outflow (zero-gradient) boundary conditions ----
+            flux = compute_fluxes_mps(
+                U, gamma, dx, dy, dz, dim_idx,
+                limiter, riemann_solver, reconstruction,
+            )
+            # Pad flux by 1 on each side with replicate (outflow).
+            pad_spec = [0, 0, 0, 0, 0, 0]
+            pad_idx = 2 * (3 - axis)
+            pad_spec[pad_idx] = 1
+            pad_spec[pad_idx + 1] = 1
 
-        pad_spec = [0, 0, 0, 0, 0, 0]  # z_lo, z_hi, y_lo, y_hi, x_lo, x_hi
-        # axis 1 -> x -> indices 4,5
-        # axis 2 -> y -> indices 2,3
-        # axis 3 -> z -> indices 0,1
-        pad_idx = 2 * (3 - axis)  # axis 1->4, axis 2->2, axis 3->0
-        pad_spec[pad_idx] = 1      # lo
-        pad_spec[pad_idx + 1] = 1  # hi
-
-        # flux_padded has (n_dim+1) entries along the spatial axis
-        # but we need (n_dim) entries, so actually we just need +1 on each side
-        # giving n_iface + 2 = n_dim + 1 entries.
-        # Then F_right[i] = flux_padded[i+1], F_left[i] = flux_padded[i]
-        # for i = 0..n_dim-1.  Since padded has n_dim+1 entries, max index = n_dim.
-        # F_right[n_dim-1] = flux_padded[n_dim] = OK (padded).
-        # F_left[0] = flux_padded[0] = replicated left boundary.
-
-        flux_padded = torch.nn.functional.pad(flux, pad_spec, mode="replicate")
-
-        F_right = torch.narrow(flux_padded, axis, 1, n_dim)  # F[i+1/2]
-        F_left = torch.narrow(flux_padded, axis, 0, n_dim)   # F[i-1/2]
+            flux_padded = torch.nn.functional.pad(
+                flux, pad_spec, mode="replicate",
+            )
+            F_right = torch.narrow(flux_padded, axis, 1, n_dim)
+            F_left = torch.narrow(flux_padded, axis, 0, n_dim)
 
         dU_dt = dU_dt - (F_right - F_left) / dh[dim_idx]
 
