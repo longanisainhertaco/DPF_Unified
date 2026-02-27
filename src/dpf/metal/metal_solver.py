@@ -693,8 +693,10 @@ class MetalMHDSolver(PlasmaSolverBase):
         alpha = (_ALPHA_COEFF * self.gaunt_factor * self.Z_eff) * ne * dt
 
         # Newton iteration: f(T) = T + alpha*sqrt(T) - Te = 0
+        # Use 8 iterations (not 4) to ensure convergence when alpha > 1e3
+        # (strong radiation regime at pinch conditions, ne~1e27, Te~1e7 K).
         Te_new = Te.clone()
-        for _ in range(4):
+        for _ in range(8):
             sqrt_T = torch.sqrt(torch.clamp(Te_new, min=Te_floor))
             f = Te_new + alpha * sqrt_T - Te
             fp = 1.0 + alpha / (2.0 * sqrt_T)
