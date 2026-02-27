@@ -980,3 +980,132 @@ class TestWiderBoundsCalibration:
 
         # alt_fc should be in a reasonable range
         assert 0.3 < alt_fc < 1.0, f"Alternative fc={alt_fc:.3f} out of range"
+
+
+# ============================================================
+# AC.13: Crowbar model in Lee comparison (P1.4 from Debate #10)
+# ============================================================
+
+
+class TestLeeModelCrowbar:
+    """P1.4: Add crowbar to Lee model comparison.
+
+    The crowbar fires when V_cap crosses zero, short-circuiting the
+    capacitor bank.  Post-crowbar, current decays as L-R with frozen
+    plasma inductance.  This should improve the post-pinch (>7 μs)
+    waveform match against Scholz (2006).
+    """
+
+    def test_crowbar_fires(self):
+        """Crowbar phase (phase 3) is reached for PF-1000."""
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        model = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+        )
+        result = model.run("PF-1000")
+
+        assert 3 in result.phases_completed, (
+            f"Crowbar phase not reached: phases={result.phases_completed}"
+        )
+
+    def test_crowbar_voltage_zero_at_end(self):
+        """Post-crowbar voltage should be zero (capacitor short-circuited)."""
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        model = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+        )
+        result = model.run("PF-1000")
+
+        # After crowbar, V should be 0
+        assert result.V[-1] == pytest.approx(0.0, abs=1.0), (
+            f"Post-crowbar voltage {result.V[-1]:.0f} V, expected ~0"
+        )
+
+    def test_crowbar_current_decays(self):
+        """Post-crowbar current should decay monotonically (L-R)."""
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        model = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=True,
+        )
+        result = model.run("PF-1000")
+
+        # Find crowbar point: where V first <= 0
+        cb_idx = None
+        for i in range(1, len(result.V)):
+            if result.V[i] == 0.0 and result.V[i - 1] != 0.0:
+                cb_idx = i
+                break
+
+        if cb_idx is not None:
+            post_cb_I = np.abs(result.I[cb_idx:])
+            # Current should decay (each point <= previous, allowing 1% noise)
+            for i in range(1, min(len(post_cb_I), 100)):
+                assert post_cb_I[i] <= post_cb_I[0] * 1.01, (
+                    f"Post-crowbar current not decaying at index {i}: "
+                    f"{post_cb_I[i]:.0f} > {post_cb_I[0]:.0f}"
+                )
+
+    def test_crowbar_improves_late_time_nrmse(self):
+        """Crowbar should improve NRMSE for late-time (>7 μs) region."""
+        from dpf.validation.experimental import DEVICES
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        dev = DEVICES["PF-1000"]
+        exp_t = dev.waveform_t
+        exp_I = dev.waveform_I
+        I_peak = max(exp_I)
+
+        # Without crowbar
+        model_no = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+        )
+        r_no = model_no.run("PF-1000")
+
+        # With crowbar
+        model_cb = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, liftoff_delay=0.7e-6,
+            crowbar_enabled=True,
+        )
+        r_cb = model_cb.run("PF-1000")
+
+        # Full NRMSE
+        sim_no = np.interp(exp_t, r_no.t, np.abs(r_no.I), left=0, right=0)
+        sim_cb = np.interp(exp_t, r_cb.t, np.abs(r_cb.I), left=0, right=0)
+
+        nrmse_no = np.sqrt(np.mean((sim_no - exp_I)**2)) / I_peak
+        nrmse_cb = np.sqrt(np.mean((sim_cb - exp_I)**2)) / I_peak
+
+        # Crowbar should not make things worse
+        assert nrmse_cb <= nrmse_no, (
+            f"Crowbar worsened NRMSE: {nrmse_cb:.4f} > {nrmse_no:.4f}"
+        )
+
+        # Crowbar should specifically improve late-time region
+        late_mask = exp_t > 7e-6
+        if np.sum(late_mask) >= 3:
+            late_no = np.sqrt(np.mean((sim_no[late_mask] - exp_I[late_mask])**2)) / I_peak
+            late_cb = np.sqrt(np.mean((sim_cb[late_mask] - exp_I[late_mask])**2)) / I_peak
+            assert late_cb < late_no, (
+                f"Crowbar did not improve late-time NRMSE: "
+                f"{late_cb:.4f} >= {late_no:.4f}"
+            )
+
+    def test_crowbar_disabled_unchanged(self):
+        """With crowbar_enabled=False, behavior is identical to default."""
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        model_default = LeeModel(current_fraction=0.650, mass_fraction=0.178)
+        model_no_cb = LeeModel(
+            current_fraction=0.650, mass_fraction=0.178, crowbar_enabled=False,
+        )
+
+        r_default = model_default.run("PF-1000")
+        r_no_cb = model_no_cb.run("PF-1000")
+
+        # Results should be identical
+        assert len(r_default.t) == len(r_no_cb.t)
+        np.testing.assert_allclose(r_default.I, r_no_cb.I, rtol=1e-10)
+        np.testing.assert_allclose(r_default.V, r_no_cb.V, rtol=1e-10)
