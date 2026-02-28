@@ -787,6 +787,7 @@ class LeeModel:
         self,
         device_name: str,
         truncate_at_dip: bool = False,
+        override_params: dict[str, Any] | None = None,
     ) -> LeeModelComparison:
         """Run the Lee Model and compare against experimental data.
 
@@ -794,12 +795,17 @@ class LeeModel:
             device_name: Name of the device.
             truncate_at_dip: If True, compute NRMSE only up to the current
                 dip, excluding the post-pinch frozen-L region.
+            override_params: If given, override specific device parameters
+                (e.g. ``{"C": 1.35e-3}``) for Monte Carlo uncertainty
+                propagation.  Keys must match _get_device_params() keys.
 
         Returns:
             :class:`LeeModelComparison` with error metrics.
         """
         params = _get_device_params(device_name)
-        result = self.run(device_name=device_name)
+        if override_params:
+            params = {**params, **override_params}
+        result = self.run(device_params=params)
 
         # Compare peak current
         Ipeak_exp = params.get("peak_current_exp", 0.0)
