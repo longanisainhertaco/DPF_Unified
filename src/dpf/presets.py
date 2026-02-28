@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 _PRESETS: dict[str, dict[str, Any]] = {
@@ -64,6 +65,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
+            "crowbar_resistance": 1.5e-3,  # 1.5 mOhm spark gap (PhD Debate #30)
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
@@ -71,8 +73,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
-            "current_fraction": 0.816,  # Post-D2 calibration (Phase AC)
-            "mass_fraction": 0.142,  # Post-D2 calibration (Phase AC)
+            "current_fraction": 0.800,  # Phase AR: correct bounds (0.6,0.8) + crowbar R=1.5mOhm
+            "mass_fraction": 0.094,  # Phase AR: recalibrated (was 0.142 with incorrect bounds)
             "radial_mass_fraction": 0.1,  # Lee & Saw (2014): f_mr ~ 0.07-0.12
             "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
@@ -317,7 +319,7 @@ def get_preset(name: str) -> dict[str, Any]:
     if name not in _PRESETS:
         available = ", ".join(_PRESETS.keys())
         raise KeyError(f"Unknown preset '{name}'. Available: {available}")
-    preset = dict(_PRESETS[name])
+    preset = copy.deepcopy(_PRESETS[name])
     preset.pop("_meta", None)
     return preset
 

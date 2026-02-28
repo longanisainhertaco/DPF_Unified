@@ -26,7 +26,14 @@ import pytest
 
 
 def _make_metal_pf1000_config():
-    """Create a PF-1000 SimulationConfig with Metal backend, coarse grid."""
+    """Create a PF-1000 SimulationConfig with Metal backend, coarse grid.
+
+    Uses fc=0.816, fm=0.142 (Phase AC Lee-model calibration) for the
+    Metal engine tests.  The PF-1000 preset was re-calibrated in Phase AR
+    to fc=0.800, fm=0.094 (correct Lee & Saw 2014 bounds), but the Metal
+    engine (full MHD + grid) needs separate calibration because MHD-computed
+    R_plasma shifts the current waveform differently than the lumped Lee model.
+    """
     from dpf.config import SimulationConfig
     from dpf.presets import get_preset
 
@@ -45,6 +52,9 @@ def _make_metal_pf1000_config():
     }
     preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
     preset["collision"] = {"enabled": False}
+    # Override snowplow to Phase AC values validated for Metal engine
+    preset["snowplow"]["current_fraction"] = 0.816
+    preset["snowplow"]["mass_fraction"] = 0.142
     return SimulationConfig(**preset)
 
 

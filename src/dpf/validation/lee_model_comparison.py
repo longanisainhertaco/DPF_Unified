@@ -145,6 +145,7 @@ def _get_device_params(device_name: str) -> dict[str, Any]:
             "fill_pressure_torr": dev.fill_pressure_torr,
             "peak_current_exp": dev.peak_current,
             "current_rise_time_exp": dev.current_rise_time,
+            "crowbar_resistance": dev.crowbar_resistance,
         }
 
     from dpf.validation.suite import DEVICE_REGISTRY
@@ -211,6 +212,7 @@ class LeeModel:
         pinch_column_fraction: float = 1.0,
         liftoff_delay: float = 0.0,
         crowbar_enabled: bool = False,
+        crowbar_resistance: float = 0.0,
     ) -> None:
         self.fill_gas_mass = fill_gas_mass
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
@@ -219,6 +221,7 @@ class LeeModel:
         self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
         self.crowbar_enabled = crowbar_enabled
+        self.crowbar_resistance = crowbar_resistance  # [Ohm] spark gap arc resistance
 
     def run(
         self,
@@ -259,6 +262,9 @@ class LeeModel:
         b = device_params["cathode_radius"]
         z_max = device_params["anode_length"]
         p_torr = device_params["fill_pressure_torr"]
+
+        # Crowbar resistance: prefer device_params, fall back to constructor
+        R_crowbar = device_params.get("crowbar_resistance", self.crowbar_resistance)
 
         # Fill gas density from pressure
         p_Pa = p_torr * 133.322  # Torr -> Pa
@@ -695,13 +701,15 @@ class LeeModel:
                     L_p_at_cb += (mu_0 / (2.0 * pi)) * z_max * np.log(max(b / r_at_cb, 1.01))
                 L_total_cb = L0 + L_p_at_cb
 
-                # L-R decay: I(t) = I_cb * exp(-R0 * (t - t_cb) / L_total_cb)
+                # L-R decay: I(t) = I_cb * exp(-R_post * (t - t_cb) / L_total_cb)
+                # Post-crowbar resistance = R0 + crowbar spark gap arc resistance
+                R_post_cb = R0 + R_crowbar
                 # Extend to 3 e-folding times or until 10x the crowbar time
-                tau_LR = L_total_cb / max(R0, 1e-10)
+                tau_LR = L_total_cb / max(R_post_cb, 1e-10)
                 t_end_cb = t_cb + min(5.0 * tau_LR, 3.0 * T_quarter)
                 n_cb_pts = 500
                 t_cb_arr = np.linspace(t_cb, t_end_cb, n_cb_pts)
-                I_cb_arr = I_cb * np.exp(-R0 * (t_cb_arr - t_cb) / L_total_cb)
+                I_cb_arr = I_cb * np.exp(-R_post_cb * (t_cb_arr - t_cb) / L_total_cb)
                 V_cb_arr = np.zeros(n_cb_pts)  # Capacitor shorted
                 z_cb_arr = np.full(n_cb_pts, z_max)
                 r_cb_arr = np.full(n_cb_pts, float(r_combined[cb_idx]))
@@ -760,6 +768,7 @@ class LeeModel:
                 "V0": V0,
                 "L0": L0,
                 "R0": R0,
+                "R_crowbar": R_crowbar,
                 "anode_radius": a,
                 "cathode_radius": b,
                 "anode_length": z_max,

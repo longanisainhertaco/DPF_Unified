@@ -105,6 +105,10 @@ class ExperimentalDevice:
     # Waveform digitization uncertainty (1-sigma, relative)
     waveform_digitization_uncertainty: float = 0.0  # Amplitude digitization error
     waveform_time_uncertainty: float = 0.0          # Temporal digitization error
+    # Crowbar switch resistance [Ohm] — physical arc resistance of the
+    # crowbar spark gap.  Default 0.0 for backward compatibility.
+    # PF-1000: ~1-3 mOhm (spark gap arc, PhD Debate #30 Finding 4).
+    crowbar_resistance: float = 0.0
     # Measurement provenance note
     measurement_notes: str = ""
 
@@ -143,6 +147,7 @@ PF1000_DATA = ExperimentalDevice(
     neutron_yield=1e11,
     current_rise_time=5.8e-6,      # 5.8 us
     reference="Scholz et al., Nukleonika 51(1), 2006",
+    crowbar_resistance=1.5e-3,     # 1.5 mOhm (spark gap arc, PhD Debate #30)
     peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
     rise_time_uncertainty=0.10,        # 10% (quarter-period timing)
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot variability)
@@ -249,6 +254,7 @@ PF1000_16KV_DATA = ExperimentalDevice(
     neutron_yield=2.33e9,          # 2.33e9 n/shot at 1.05 Torr (average of 16 shots)
     current_rise_time=6.0e-6,      # ~6 us (estimated from Lee model fit in paper)
     reference="Akel et al., Radiat. Phys. Chem. 188:109638, 2021",
+    crowbar_resistance=1.5e-3,     # Same crowbar as 27 kV (PhD Debate #30)
     peak_current_uncertainty=0.10,     # 10% (range 1.1-1.3 MA = ±8.3%)
     rise_time_uncertainty=0.15,        # 15% (no explicit timing stated)
     neutron_yield_uncertainty=0.40,    # 40% (shot-to-shot, Akel Table 1)
