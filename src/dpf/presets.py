@@ -79,23 +79,26 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "nx2": {
         "_meta": {
-            "description": "NX2 (NIE Singapore) — 3 kJ fast miniature DPF",
+            "description": "NX2 (NIE Singapore) — 1.85 kJ fast miniature DPF",
             "device": "NX2",
             "geometry": "cylindrical",
+            "reference": "Lee & Saw, J. Fusion Energy 27:292 (2008); RADPF Module 1",
         },
         "grid_shape": [192, 1, 384],
         "dx": 2.5e-4,
         "sim_time": 1e-6,
         "dt_init": 1e-11,
-        "rho0": 8e-5,
+        "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
+        # Circuit: Lee & Saw (2008), RADPF Module 1 (plasmafocus.net)
+        # r0 = 2.3 mOhm from RADPF preset (RESF=0.1, L0=20 nH, C0=28 uF)
         "circuit": {
             "C": 28e-6,
-            "V0": 11.5e3,         # 11.5 kV operating voltage (Lee & Saw 2008, Table 1)
-            "L0": 20e-9,
-            "R0": 5e-3,
+            "V0": 11.5e3,         # 11.5 kV operating voltage (Lee & Saw 2008)
+            "L0": 20e-9,          # 20 nH (RADPF Module 1)
+            "R0": 2.3e-3,         # 2.3 mOhm (RADPF; RESF=0.1)
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
             "crowbar_enabled": True,
@@ -106,11 +109,50 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {
             "anode_length": 0.05,
-            "fill_pressure_Pa": 133.0,  # ~1 Torr D2
-            "current_fraction": 0.7,  # Lee & Saw (2008) Table 1
-            "mass_fraction": 0.1,  # Lee & Saw (2008) Table 1
-            "radial_mass_fraction": 0.12,  # Lee & Saw (2008): f_mr < f_m for NX2
+            "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
+            "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
+            "mass_fraction": 0.1,  # Lee et al., J. Appl. Phys. 106 (2009)
+            "radial_mass_fraction": 0.12,  # Lee et al. (2009): fmr=0.12
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
+        },
+    },
+    "unu_ictp": {
+        "_meta": {
+            "description": "UNU-ICTP PFF — 3 kJ deuterium DPF (Lee et al. 1988)",
+            "device": "UNU-ICTP",
+            "geometry": "cylindrical",
+            "reference": "Lee et al., Am. J. Phys. 56:62 (1988); Lee (2014) Review",
+        },
+        "grid_shape": [64, 1, 256],
+        "dx": 3e-4,
+        "sim_time": 5e-6,
+        "dt_init": 1e-11,
+        "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
+        "T0": 300.0,
+        "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
+        # Circuit: Lee et al. (1988), Lee (2014) Review
+        # RESF = r0/sqrt(L0/C0) = 12e-3/sqrt(110e-9/30e-6) = 0.198
+        "circuit": {
+            "C": 30e-6,           # 30 uF
+            "V0": 14e3,           # 14 kV
+            "L0": 110e-9,         # 110 nH
+            "R0": 12e-3,          # 12 mOhm (RESF~0.2)
+            "anode_radius": 0.0095,
+            "cathode_radius": 0.032,
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {
+            "anode_length": 0.16,        # 160 mm
+            "fill_pressure_Pa": 400.0,   # 3 Torr D2 = 400 Pa
+            "current_fraction": 0.7,     # Lee & Saw (2009, 2010)
+            "mass_fraction": 0.05,       # Lee & Saw (2009): fm=0.05
+            "radial_mass_fraction": 0.2,  # Lee & Saw (2009): fmr=0.2
+            "pinch_column_fraction": 0.06,  # ~1 cm pinch of 16 cm anode
         },
     },
     "llnl_dpf": {
