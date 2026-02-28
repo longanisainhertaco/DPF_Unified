@@ -276,9 +276,11 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3, f_mr=None):
+                         waveform_weight=0.3, f_mr=None,
+                         pinch_column_fraction=1.0):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight, f_mr=f_mr)
+                          timing_weight, waveform_weight, f_mr=f_mr,
+                          pinch_column_fraction=pinch_column_fraction)
             self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
@@ -297,9 +299,11 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3, f_mr=None):
+                         waveform_weight=0.3, f_mr=None,
+                         pinch_column_fraction=1.0):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight, f_mr=f_mr)
+                          timing_weight, waveform_weight, f_mr=f_mr,
+                          pinch_column_fraction=pinch_column_fraction)
             self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)
@@ -318,9 +322,11 @@ class TestCalibrateDefaultParams:
 
         def patched_init(self, device_name, method="nelder-mead",
                          peak_weight=0.4, timing_weight=0.3,
-                         waveform_weight=0.3, f_mr=None):
+                         waveform_weight=0.3, f_mr=None,
+                         pinch_column_fraction=1.0):
             original_init(self, device_name, method, peak_weight,
-                          timing_weight, waveform_weight, f_mr=f_mr)
+                          timing_weight, waveform_weight, f_mr=f_mr,
+                          pinch_column_fraction=pinch_column_fraction)
             self._run_comparison = lambda fc, fm, f_mr=None: mock_comparison
 
         monkeypatch.setattr(LeeModelCalibrator, "__init__", patched_init)

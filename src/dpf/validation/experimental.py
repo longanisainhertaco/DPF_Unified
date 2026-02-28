@@ -255,6 +255,7 @@ def nrmse_peak(
     I_sim: np.ndarray,
     t_exp: np.ndarray,
     I_exp: np.ndarray,
+    truncate_at_dip: bool = False,
 ) -> float:
     """Compute peak-normalized RMSE between simulated and experimental waveforms.
 
@@ -271,16 +272,41 @@ def nrmse_peak(
         Experimental time array [s].
     I_exp : ndarray
         Experimental current waveform [A].
+    truncate_at_dip : bool, optional
+        If True, truncate comparison at the current dip (first minimum
+        of |I| after peak).  This excludes the post-pinch region where
+        frozen-L_plasma makes the model invalid.  Default False.
 
     Returns
     -------
     float
         Peak-normalized RMSE (dimensionless).  0.0 for a perfect match.
     """
-    I_sim_resampled = np.interp(t_exp, t_sim, I_sim)
-    residuals = I_sim_resampled - I_exp
+    t_e = np.asarray(t_exp, dtype=np.float64)
+    I_e = np.asarray(I_exp, dtype=np.float64)
+
+    if truncate_at_dip:
+        # Find the current dip in the SIMULATED waveform — the model is
+        # invalid after the dip (frozen L_plasma region).  Truncate the
+        # experimental time grid to only include times up to the sim dip.
+        abs_I_sim = np.abs(np.asarray(I_sim, dtype=np.float64))
+        sim_peak_idx = int(np.argmax(abs_I_sim))
+        post_peak_sim = abs_I_sim[sim_peak_idx:]
+        if len(post_peak_sim) > 2:
+            dip_offset = int(np.argmin(post_peak_sim))
+            if dip_offset > 1:
+                t_sim_arr = np.asarray(t_sim, dtype=np.float64)
+                t_dip = t_sim_arr[sim_peak_idx + dip_offset]
+                # Truncate experimental grid at sim dip time
+                mask = t_e <= t_dip
+                if np.sum(mask) > 2:
+                    t_e = t_e[mask]
+                    I_e = I_e[mask]
+
+    I_sim_resampled = np.interp(t_e, t_sim, I_sim)
+    residuals = I_sim_resampled - I_e
     rmse = float(np.sqrt(np.mean(residuals**2)))
-    I_peak_exp = float(np.max(np.abs(I_exp)))
+    I_peak_exp = float(np.max(np.abs(I_e)))
     return rmse / max(I_peak_exp, 1e-300)
 
 
@@ -296,6 +322,7 @@ def validate_current_waveform(
     t_sim: np.ndarray,
     I_sim: np.ndarray,
     device_name: str,
+    truncate_at_dip: bool = False,
 ) -> dict[str, Any]:
     """Validate a simulated current waveform against experimental data.
 
@@ -374,6 +401,7 @@ def validate_current_waveform(
     if waveform_available:
         waveform_nrmse = normalized_rmse(
             t_arr, I_arr, device.waveform_t, device.waveform_I,
+            truncate_at_dip=truncate_at_dip,
         )
 
     return {

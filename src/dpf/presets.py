@@ -71,7 +71,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
+            "current_fraction": 0.816,  # Post-D2 calibration (Phase AC)
+            "mass_fraction": 0.142,  # Post-D2 calibration (Phase AC)
             "radial_mass_fraction": 0.1,  # Lee & Saw (2014): f_mr ~ 0.07-0.12
+            "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
     },
     "nx2": {
@@ -104,7 +107,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "snowplow": {
             "anode_length": 0.05,
             "fill_pressure_Pa": 133.0,  # ~1 Torr D2
+            "current_fraction": 0.7,  # Lee & Saw (2008) Table 1
+            "mass_fraction": 0.1,  # Lee & Saw (2008) Table 1
             "radial_mass_fraction": 0.12,  # Lee & Saw (2008): f_mr < f_m for NX2
+            "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
         },
     },
     "llnl_dpf": {
@@ -133,7 +139,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
-        "snowplow": {"anode_length": 0.08},  # ~80 mm for LLNL DPF
+        "snowplow": {
+            "anode_length": 0.08,
+            "current_fraction": 0.7,  # Typical lab-scale DPF
+            "mass_fraction": 0.15,  # Typical lab-scale DPF
+            "pinch_column_fraction": 0.4,  # Lab-scale: moderate fraction
+        },
     },
     "mjolnir": {
         "_meta": {
@@ -169,7 +180,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
         # R_imp = 2.5 cm, anode length estimated from 15-degree taper geometry
-        "snowplow": {"anode_length": 0.5},
+        "snowplow": {
+            "anode_length": 0.5,
+            "current_fraction": 0.7,  # MA-class: similar to PF-1000
+            "mass_fraction": 0.1,  # MA-class: similar to PF-1000
+            "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
+        },
     },
     "cartesian_demo": {
         "_meta": {

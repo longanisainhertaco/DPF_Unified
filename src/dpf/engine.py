@@ -322,6 +322,7 @@ class SimulationEngine:
                 current_fraction=config.snowplow.current_fraction,
                 radial_mass_fraction=config.snowplow.radial_mass_fraction,
                 fill_pressure_Pa=config.snowplow.fill_pressure_Pa,
+                pinch_column_fraction=config.snowplow.pinch_column_fraction,
             )
 
         # Field Manager for vector calculus and inductance (Phase 5)
@@ -863,7 +864,19 @@ class SimulationEngine:
         dt_sub = dt / n_sub
 
         sheath_pressure = self._dynamic_sheath_pressure()
-        back_emf = self._compute_back_emf(dt)
+
+        # back-EMF treatment: when the snowplow model is active, the motional
+        # EMF (integral of v x B . dl) is already captured by I * dL/dt inside
+        # the circuit solver's R_star = R_eff + dLp/dt.  Computing a separate
+        # MHD-field-based back_emf AND including dL/dt in R_star would double-
+        # count the inductive coupling.  Only use MHD back-EMF when there is
+        # no snowplow model providing dL/dt.
+        # (Debate #20 finding: Python engine was double-counting ~100-300 kV
+        # at pinch compression while Athena++ correctly set back_emf=0.)
+        if self.snowplow is not None:
+            back_emf = 0.0
+        else:
+            back_emf = self._compute_back_emf(dt)
 
         for _isub in range(n_sub):
             # Snowplow dynamics: sheath-derived L_plasma overrides field-based
