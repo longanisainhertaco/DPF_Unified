@@ -771,11 +771,14 @@ class LeeModel:
     def compare_with_experiment(
         self,
         device_name: str,
+        truncate_at_dip: bool = False,
     ) -> LeeModelComparison:
         """Run the Lee Model and compare against experimental data.
 
         Args:
             device_name: Name of the device.
+            truncate_at_dip: If True, compute NRMSE only up to the current
+                dip, excluding the post-pinch frozen-L region.
 
         Returns:
             :class:`LeeModelComparison` with error metrics.
@@ -805,6 +808,7 @@ class LeeModel:
             if dev.waveform_t is not None and dev.waveform_I is not None:
                 waveform_nrmse = nrmse_peak(
                     result.t, result.I, dev.waveform_t, dev.waveform_I,
+                    truncate_at_dip=truncate_at_dip,
                 )
 
         return LeeModelComparison(

@@ -90,7 +90,7 @@ class LeeModelCalibrator:
 
     def calibrate(
         self,
-        fc_bounds: tuple[float, float] = (0.65, 0.85),
+        fc_bounds: tuple[float, float] = (0.6, 0.8),
         fm_bounds: tuple[float, float] = (0.05, 0.25),
         maxiter: int = 100,
         x0: tuple[float, float] | None = None,
@@ -303,13 +303,13 @@ class LeeModelCalibrator:
 # Published Lee model fc/fm ranges from Lee & Saw (2014), Table 1
 # These provide ground-truth benchmarks for calibration validation.
 # Source: S. Lee & S.H. Saw, J. Fusion Energy 33:319-335 (2014)
-# NOTE: Published ranges used atomic D mass for density. Our molecular D2
-# mass correction shifts fc upward by ~0.1. Ranges widened accordingly.
+# NOTE: Ranges match Lee & Saw (2014) published values directly.
+# Previous versions widened bounds to (0.65, 0.85) which was circular.
 # =====================================================================
 
 _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
     "PF-1000": {
-        "fc": (0.65, 0.85),   # Lee & Saw 2014 Table 1 + D2 molecular mass shift
+        "fc": (0.6, 0.8),    # Lee & Saw 2014 Table 1: fc ~ 0.7 for PF-1000
         "fm": (0.05, 0.20),   # Lee & Saw 2014 Table 1: fm ~ 0.05-0.15 for PF-1000
     },
     "NX2": {
@@ -323,11 +323,19 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
+_DEFAULT_DEVICE_PCF: dict[str, float] = {
+    "PF-1000": 0.14,
+    "NX2": 0.5,
+}
+
+
 def calibrate_default_params(
     devices: list[str] | None = None,
     maxiter: int = 100,
 ) -> dict[str, CalibrationResult]:
     """Run calibration for multiple devices with default settings.
+
+    Uses device-specific pinch_column_fraction values where known.
 
     Args:
         devices: Device names to calibrate. Default: ``["PF-1000", "NX2"]``.
@@ -342,7 +350,8 @@ def calibrate_default_params(
     results: dict[str, CalibrationResult] = {}
     for dev in devices:
         try:
-            cal = LeeModelCalibrator(dev)
+            pcf = _DEFAULT_DEVICE_PCF.get(dev, 1.0)
+            cal = LeeModelCalibrator(dev, pinch_column_fraction=pcf)
             results[dev] = cal.calibrate(maxiter=maxiter)
         except Exception as exc:
             logger.warning("Calibration failed for %s: %s", dev, exc)

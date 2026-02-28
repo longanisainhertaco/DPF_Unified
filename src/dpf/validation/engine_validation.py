@@ -215,6 +215,7 @@ def compare_engine_vs_experiment(
     device_name: str = "PF-1000",
     fc: float = 0.816,
     fm: float = 0.142,
+    truncate_at_dip: bool = False,
 ) -> EngineValidationResult:
     """Compare engine I(t) against experimental data.
 
@@ -227,13 +228,15 @@ def compare_engine_vs_experiment(
         device_name: Device name for experimental data lookup.
         fc: Current fraction used.
         fm: Mass fraction used.
+        truncate_at_dip: If True, compute NRMSE only up to current dip,
+            excluding the post-pinch frozen-L region.
 
     Returns:
         :class:`EngineValidationResult` with comparison metrics.
     """
     from dpf.validation.experimental import validate_current_waveform
 
-    metrics = validate_current_waveform(t, I, device_name)
+    metrics = validate_current_waveform(t, I, device_name, truncate_at_dip=truncate_at_dip)
 
     result = EngineValidationResult(
         t=t,

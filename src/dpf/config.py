@@ -327,6 +327,14 @@ class SnowplowConfig(BaseModel):
             "Lee & Saw (2014): f_mr ~ 0.07-0.12 for PF-1000, typically < f_m."
         ),
     )
+    pinch_column_fraction: float = Field(
+        1.0, gt=0, le=1.0,
+        description=(
+            "Fraction of anode length participating in radial compression (z_f/L_anode). "
+            "Large DPF devices: ~0.12-0.14 (PF-1000). Small devices: ~0.5-1.0 (NX2). "
+            "Default 1.0 for backward compatibility."
+        ),
+    )
 
 
 class AblationConfig(BaseModel):
