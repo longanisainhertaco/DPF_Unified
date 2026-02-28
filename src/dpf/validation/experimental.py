@@ -170,24 +170,26 @@ NX2_DATA = ExperimentalDevice(
     name="NX2",
     institution="NIE Singapore",
     capacitance=28e-6,             # 28 uF
-    voltage=11.5e3,                # 11.5 kV operating voltage (Lee & Saw 2008, Table 1)
-    inductance=20e-9,              # 20 nH
-    resistance=5e-3,               # 5 mOhm
+    voltage=11.5e3,                # 11.5 kV operating voltage (Lee & Saw 2008)
+    inductance=20e-9,              # 20 nH (RADPF Module 1)
+    resistance=2.3e-3,             # 2.3 mOhm (RADPF; RESF=0.1)
     anode_radius=0.019,            # 19 mm
     cathode_radius=0.041,          # 41 mm
     anode_length=0.05,             # 50 mm
-    fill_pressure_torr=4.0,
+    fill_pressure_torr=3.0,        # 3 Torr D2 (Lee & Saw 2008)
     fill_gas="deuterium",
-    peak_current=400e3,            # 400 kA (at 11.5 kV operating point)
+    peak_current=400e3,            # 400 kA (Lee & Saw 2008)
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
-    reference="Lee & Saw, J. Fusion Energy 27, 2008",
+    reference="Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1",
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
     rise_time_uncertainty=0.12,        # 12%
     neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
     measurement_notes=(
         "No digitized waveform available. Peak current and rise time from "
-        "Lee & Saw, J. Fusion Energy 27, 2008, Table 1. "
+        "Lee & Saw, J. Fusion Energy 27:292, 2008. R0=2.3 mOhm from RADPF "
+        "Module 1 preset (plasmafocus.net), consistent with RESF=0.1. "
+        "Fill pressure 3 Torr D2 for neutron operation. "
         "Uncertainties are Type B estimates (not stated in source)."
     ),
 )
