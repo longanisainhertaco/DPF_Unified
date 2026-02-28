@@ -94,9 +94,15 @@ class TestFindFirstPeak:
         assert idx == 2
 
     def test_first_peak_returned_not_later_larger_one(self) -> None:
-        """With two peaks, the FIRST qualifying peak is returned, not the global max."""
-        # First peak at index 3 (value 0.8), second at index 7 (value 1.0)
-        sig = np.array([0.0, 0.3, 0.6, 0.8, 0.5, 0.3, 0.7, 1.0, 0.6, 0.2])
+        """With two well-separated peaks, the FIRST is returned (not global max).
+
+        The sustained-decline criterion requires 3+ consecutive declining
+        points after the candidate to confirm a true peak (avoids
+        phase-transition artifacts in DPF waveforms).
+        """
+        # First peak at index 3 (value 0.8), sustained decline [0.5, 0.3, 0.1],
+        # then second peak at index 8 (value 1.0).
+        sig = np.array([0.0, 0.3, 0.6, 0.8, 0.5, 0.3, 0.1, 0.5, 1.0, 0.6, 0.2])
         idx = _find_first_peak(sig)
         assert idx == 3, (
             f"Expected first peak at index 3, got {idx} (value={sig[idx]:.2f})"

@@ -106,10 +106,9 @@ class TestUNUICTPWaveform:
             _UNU_PARAMS, fc=_UNU_FC, fm=_UNU_FM, f_mr=0.2, pcf=0.06,
         )
         error = abs(result.peak_current_time - 2.8e-6) / 2.8e-6
-        # Timing error ~18% expected: Lee model omits liftoff delay (~0.2-0.5 us)
-        # which shifts the entire waveform earlier. Also b/a=3.37 exceeds
-        # flat-piston validity (b/a < 2).
-        assert error < 0.25, (
+        # With fixed _find_first_peak (sustained-decline criterion),
+        # UNU-ICTP timing is ~2.5% (true peak at 2.73 us vs 2.80 us exp).
+        assert error < 0.10, (
             f"Native timing {result.peak_current_time*1e6:.2f} us, error {error:.1%}"
         )
 
@@ -187,13 +186,13 @@ class TestTimingValidation:
         assert err < 0.15, f"PF-1000 timing error {err:.1%}"
 
     def test_unu_native_timing(self):
-        """UNU-ICTP native timing error < 25% (no liftoff delay)."""
+        """UNU-ICTP native timing error < 10% (fixed peak finder)."""
         result = _run_lee_model(
             _UNU_PARAMS, fc=_UNU_FC, fm=_UNU_FM, f_mr=0.2, pcf=0.06,
         )
         err = self._timing_error(result, _EXP_RISE["UNU-ICTP"])
-        # ~18% expected: missing liftoff delay + b/a=3.37 exceeds flat-piston
-        assert err < 0.25, f"UNU-ICTP timing error {err:.1%}"
+        # With sustained-decline peak finder: ~2.5% (true peak at 2.73 us)
+        assert err < 0.10, f"UNU-ICTP timing error {err:.1%}"
 
     def test_unu_blind_timing(self):
         """UNU-ICTP blind timing error (PF-1000 fc/fm) reported."""
@@ -210,17 +209,17 @@ class TestTimingValidation:
         """NX2 native timing error reported (large due to parameter uncertainty).
 
         NX2 has significant parameter uncertainty: L0 = 15-20 nH,
-        and the 400 kA peak is likely model-derived. Timing ~52% error
-        reflects the combined effect of uncertain circuit parameters
-        and the flat-piston assumption at b/a=2.16.
+        and the 400 kA peak is likely model-derived. Timing ~45% error
+        reflects uncertain circuit parameters and the flat-piston
+        assumption at b/a=2.16.
         """
         result = _run_lee_model(
             _NX2_PARAMS, fc=_NX2_FC, fm=_NX2_FM, f_mr=0.12, pcf=0.5,
         )
         err = self._timing_error(result, _EXP_RISE["NX2"])
         print(f"NX2 native timing error: {err:.1%}")
-        # NX2 timing is expected to be poor due to parameter ambiguity
-        assert err < 0.60, f"NX2 timing error {err:.1%} exceeds even generous 60%"
+        # NX2 timing is poor due to parameter ambiguity
+        assert err < 0.50, f"NX2 timing error {err:.1%} exceeds 50%"
 
     def test_nx2_blind_timing(self):
         """NX2 blind timing error (PF-1000 fc/fm) reported."""
@@ -230,7 +229,7 @@ class TestTimingValidation:
         err = self._timing_error(result, _EXP_RISE["NX2"])
         print(f"NX2 blind timing error: {err:.1%}")
         # NX2 timing is poor for both native and blind due to parameter uncertainty
-        assert err < 0.60, f"NX2 blind timing error {err:.1%} exceeds 60%"
+        assert err < 0.55, f"NX2 blind timing error {err:.1%} exceeds 55%"
 
     def test_timing_and_peak_sensitivity_comparison(self):
         """Compare timing vs peak sensitivity to fc/fm transfer.
@@ -277,23 +276,41 @@ class TestTimingValidation:
     def test_asme_vv20_timing_unu_native(self):
         """ASME V&V 20 timing assessment for UNU-ICTP native prediction.
 
-        |E|/u_val should be < 1.0 for a valid prediction.
+        Per ASME V&V 20-2009 Section 2.4, u_val combines experimental and
+        numerical uncertainty only. Model-form error is the OUTPUT of
+        validation (measured by |E|), not an input to u_val.
         """
         result = _run_lee_model(
             _UNU_PARAMS, fc=_UNU_FC, fm=_UNU_FM, f_mr=0.2, pcf=0.06,
         )
         E = abs(result.peak_current_time - _EXP_RISE["UNU-ICTP"]) / _EXP_RISE["UNU-ICTP"]
         # Timing uncertainty budget (GUM Type B estimates)
+        # u_val = u_exp only; u_model is the output, per Section 2.4
         u_exp = 0.15      # 15% experimental timing uncertainty
-        u_model = 0.10    # 10% model form uncertainty (Lee model timing)
-        u_val = math.sqrt(u_exp**2 + u_model**2)
+        u_val = u_exp
         ratio = E / u_val
         print(f"UNU-ICTP native timing: |E|/u_val = {E:.3f}/{u_val:.3f} = {ratio:.3f}")
-        # Report but do not require pass (may fail due to model limitations)
         if ratio < 1.0:
             print("  ASME V&V 20 PASS")
         else:
             print(f"  ASME V&V 20 FAIL (ratio {ratio:.2f} > 1.0)")
+        assert ratio < 1.0, (
+            f"ASME V&V 20 timing FAIL: |E|/u_val = {ratio:.3f} > 1.0"
+        )
+
+    def test_asme_vv20_timing_pf1000_native(self):
+        """ASME V&V 20 timing assessment for PF-1000 native prediction."""
+        result = _run_lee_model(
+            _PF1000_PARAMS, fc=_PF1000_FC, fm=_PF1000_FM, f_mr=0.1, pcf=0.14,
+        )
+        E = abs(result.peak_current_time - _EXP_RISE["PF-1000"]) / _EXP_RISE["PF-1000"]
+        u_exp = 0.15  # 15% experimental timing uncertainty
+        u_val = u_exp
+        ratio = E / u_val
+        print(f"PF-1000 native timing: |E|/u_val = {E:.3f}/{u_val:.3f} = {ratio:.3f}")
+        assert ratio < 1.0, (
+            f"ASME V&V 20 timing FAIL: |E|/u_val = {ratio:.3f} > 1.0"
+        )
 
     def test_three_device_timing_summary(self):
         """Print timing comparison table for all three devices."""
@@ -468,10 +485,10 @@ class TestCrossDeviceTimingMatrix:
     def test_diagonal_timing_errors(self, timing_matrix):
         """Native predictions (diagonal) — timing errors documented.
 
-        PF-1000: ~9% (good). UNU-ICTP: ~18% (no liftoff delay).
-        NX2: ~52% (parameter uncertainty dominates).
+        PF-1000: ~9% (good). UNU-ICTP: ~2.5% (fixed peak finder).
+        NX2: ~45% (parameter uncertainty dominates).
         """
-        thresholds = {"PF-1000": 0.15, "NX2": 0.60, "UNU-ICTP": 0.25}
+        thresholds = {"PF-1000": 0.15, "NX2": 0.50, "UNU-ICTP": 0.10}
         for device in ["PF-1000", "NX2", "UNU-ICTP"]:
             entry = timing_matrix[(device, device)]
             thresh = thresholds[device]
