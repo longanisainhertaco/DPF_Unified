@@ -34,8 +34,8 @@ class TestPCFRecalibration:
         cal = LeeModelCalibrator("PF-1000", pinch_column_fraction=0.14)
         return cal.calibrate(
             maxiter=50,
-            fc_bounds=(0.55, 0.85),
-            fm_bounds=(0.05, 0.35),
+            fc_bounds=(0.6, 0.8),
+            fm_bounds=(0.05, 0.20),
         )
 
     def test_calibration_converges(self, recalibrated):
@@ -43,15 +43,15 @@ class TestPCFRecalibration:
         assert recalibrated.converged
 
     def test_fc_in_published_range(self, recalibrated):
-        """Calibrated fc within Lee & Saw (2014) published range [0.65, 0.80]."""
-        assert 0.55 <= recalibrated.best_fc <= 0.85, (
-            f"fc={recalibrated.best_fc:.3f} outside [0.55, 0.85]"
+        """Calibrated fc within Lee & Saw (2014) published range [0.6, 0.8]."""
+        assert 0.6 <= recalibrated.best_fc <= 0.8, (
+            f"fc={recalibrated.best_fc:.3f} outside published [0.6, 0.8]"
         )
 
     def test_fm_in_published_range(self, recalibrated):
         """Calibrated fm within Lee & Saw (2014) published range [0.05, 0.20]."""
-        assert 0.05 <= recalibrated.best_fm <= 0.35, (
-            f"fm={recalibrated.best_fm:.3f} outside [0.05, 0.35]"
+        assert 0.05 <= recalibrated.best_fm <= 0.20, (
+            f"fm={recalibrated.best_fm:.3f} outside published [0.05, 0.20]"
         )
 
     def test_peak_current_error_below_10pct(self, recalibrated):
@@ -205,19 +205,17 @@ class TestPublishedBenchmark:
         )
 
     def test_pf1000_pcf014_fc_in_range(self):
-        """PF-1000 with pcf=0.14: fc within broadened range [0.55, 0.85]."""
+        """PF-1000 with pcf=0.14: fc within published range [0.6, 0.8]."""
         from dpf.validation.calibration import LeeModelCalibrator
 
         cal = LeeModelCalibrator("PF-1000", pinch_column_fraction=0.14)
         result = cal.calibrate(
             maxiter=50,
-            fc_bounds=(0.55, 0.85),
-            fm_bounds=(0.05, 0.35),
+            fc_bounds=(0.6, 0.8),
+            fm_bounds=(0.05, 0.20),
         )
-        # Published range is [0.65, 0.80], but pcf=0.14 changes the physics
-        # so the optimal fc may shift slightly outside the range
-        assert 0.55 <= result.best_fc <= 0.85, (
-            f"fc={result.best_fc:.3f} outside broadened range"
+        assert 0.6 <= result.best_fc <= 0.8, (
+            f"fc={result.best_fc:.3f} outside published range [0.6, 0.8]"
         )
 
     def test_unknown_device_raises(self):

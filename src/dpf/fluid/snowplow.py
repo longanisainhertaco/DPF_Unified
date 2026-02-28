@@ -525,10 +525,15 @@ class SnowplowModel:
         # J×B force (inward, opposing expansion)
         F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
 
-        # Slug mass with mass pickup: reflected shock sweeps gas compressed by
-        # the inward shock. For a strong cylindrical shock in gamma=5/3 gas,
-        # post-shock density ~ (gamma+1)/(gamma-1) * rho0 = 4*rho0 (Rankine-Hugoniot).
-        rho_post_shock = 4.0 * self.rho0
+        # Slug mass with mass pickup: reflected shock sweeps gas already
+        # compressed by the inward shock (Phase 2).  For a strong cylindrical
+        # shock in gamma=5/3 gas, first-shock density = (gamma+1)/(gamma-1) *
+        # rho0 = 4*rho0 (Rankine-Hugoniot).  The reflected shock then
+        # re-compresses this gas.  For a moderate reflected shock (Mach ~2 in
+        # pre-heated gas): compression ratio ~2, giving ~8*rho0 total.
+        # Strong limit: 4 * 4 = 16*rho0.  We use 8*rho0 as a compromise
+        # (PhD Debate #21 finding, Rankine-Hugoniot double-shock estimate).
+        rho_post_shock = 8.0 * self.rho0
         M_slug = self._M_slug_pinch + (
             self.f_m * rho_post_shock * pi
             * (r_s**2 - self.r_pinch_min**2) * z_f
