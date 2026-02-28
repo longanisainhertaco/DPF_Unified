@@ -268,20 +268,28 @@ def _find_first_peak(signal: np.ndarray, min_prominence: float = 0.05) -> int:
 
     global_max = float(np.max(signal))
     threshold = min_prominence * global_max
+    n_decline = 3  # Points ahead to verify sustained decline
 
-    # Walk through signal and find first point where signal starts decreasing
-    # after having risen above the threshold.
+    # Walk through signal and find first point where signal shows a
+    # sustained decline, confirming a true local maximum rather than a
+    # phase-transition plateau (common in DPF current waveforms).
+    # A candidate peak at index i is confirmed if:
+    # 1. Signal has been rising above threshold
+    # 2. signal[i] >= signal[i-1] (local max candidate)
+    # 3. All n_decline points after i are strictly below signal[i]
+    #    AND the signal does not recover above signal[i] within that window
     rising = False
-    for i in range(1, len(signal) - 1):
+    for i in range(1, len(signal) - n_decline):
         if signal[i] >= threshold:
             rising = True
-        if (
-            rising
-            and signal[i] >= signal[i - 1]
-            and signal[i] >= signal[i + 1]
-            and signal[i] >= threshold
-        ):
-            return i
+        if rising and signal[i] >= threshold and signal[i] >= signal[i - 1]:
+            # Confirm: all following n_decline points are below peak value
+            is_peak = all(
+                signal[i + k + 1] < signal[i]
+                for k in range(n_decline)
+            )
+            if is_peak:
+                return i
 
     # Fallback: global maximum
     return int(np.argmax(signal))
