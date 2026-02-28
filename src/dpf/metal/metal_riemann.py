@@ -62,6 +62,32 @@ IB3: int = 7   # Bz
 RHO_FLOOR: float = 1e-12
 P_FLOOR: float = 1e-12
 
+# ============================================================
+# Positivity fallback repair diagnostics
+# ============================================================
+
+_repair_stats: dict[str, int] = {"total_checked": 0, "total_repaired": 0, "calls": 0}
+
+
+def get_repair_stats() -> dict[str, int]:
+    """Return cumulative repair statistics from positivity fallback.
+
+    Returns
+    -------
+    dict[str, int]
+        Keys: ``total_checked`` (interfaces evaluated), ``total_repaired``
+        (interfaces replaced with donor cell), ``calls`` (number of
+        ``_positivity_fallback`` invocations).
+    """
+    return dict(_repair_stats)
+
+
+def reset_repair_stats() -> None:
+    """Reset positivity fallback repair counters to zero."""
+    _repair_stats["total_checked"] = 0
+    _repair_stats["total_repaired"] = 0
+    _repair_stats["calls"] = 0
+
 
 # ============================================================
 # Primitive <-> Conservative conversion
@@ -1138,10 +1164,15 @@ def _positivity_fallback(
     bad = bad | torch.isnan(p_L) | torch.isnan(p_R)
     bad = bad | torch.isnan(UL[IDN]) | torch.isnan(UR[IDN])
 
+    # --- Update repair diagnostics ---
+    _repair_stats["calls"] += 1
+    _repair_stats["total_checked"] += int(bad.numel())
+
     if not bad.any():
         return UL, UR
 
     n_bad = int(bad.sum().item())
+    _repair_stats["total_repaired"] += n_bad
     if n_bad > 100:
         logger.debug(
             "Positivity fallback dim=%d: %d/%d interfaces to donor cell",
