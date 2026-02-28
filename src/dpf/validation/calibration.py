@@ -318,7 +318,7 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
     },
     "UNU-ICTP": {
         "fc": (0.55, 0.80),   # Lee et al., Am. J. Phys. 56 (1988): fc ~ 0.7
-        "fm": (0.10, 0.35),   # UNU devices typically have higher fm
+        "fm": (0.04, 0.35),   # Lee & Saw (2009): fm=0.05 for UNU-ICTP; widened to 0.04 lower bound
     },
 }
 

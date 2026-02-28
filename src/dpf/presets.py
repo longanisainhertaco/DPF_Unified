@@ -98,7 +98,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "C": 28e-6,
             "V0": 11.5e3,         # 11.5 kV operating voltage (Lee & Saw 2008)
             "L0": 20e-9,          # 20 nH (RADPF Module 1)
-            "R0": 2.3e-3,         # 2.3 mOhm (RADPF; RESF=0.1)
+            "R0": 2.3e-3,         # 2.3 mOhm (RADPF; actual RESF=0.086)
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
             "crowbar_enabled": True,
