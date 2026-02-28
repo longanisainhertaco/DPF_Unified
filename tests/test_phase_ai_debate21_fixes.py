@@ -255,6 +255,10 @@ class TestHighResMetalEngine:
     with resolution, providing evidence that the coarse-grid result
     (NRMSE ~0.20-0.31) is not converged and finer grids approach the
     standalone snowplow baseline (NRMSE ~0.16).
+
+    Previously xfailed due to NaN instability at 64x1x128 — FIXED by
+    positivity-preserving reconstruction fallback + neighbor-averaging
+    NaN repair in Phase AJ (metal_riemann.py + metal_solver.py).
     """
 
     @pytest.fixture(scope="class")
@@ -295,12 +299,6 @@ class TestHighResMetalEngine:
         return np.array(times), np.array(currents), engine
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Metal engine float32 NaN instability at 64x1x128 — pre-existing "
-        "issue (cumulative NaN repairs exceed threshold during PF-1000 pinch). "
-        "Needs float64 CPU mode or improved NaN handling for grid convergence.",
-        strict=False,
-    )
     def test_highres_engine_completes(self, highres_result):
         """64x1x128 Metal engine completes full 12 us simulation."""
         times, _, _ = highres_result
@@ -309,10 +307,6 @@ class TestHighResMetalEngine:
         )
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Depends on highres_result fixture which may fail (NaN instability)",
-        strict=False,
-    )
     def test_highres_peak_current_physical(self, highres_result):
         """64x1x128 peak current in physical range [0.5, 5.0] MA."""
         _, currents, _ = highres_result
@@ -320,10 +314,6 @@ class TestHighResMetalEngine:
         assert 0.5e6 < peak < 5e6, f"Peak {peak/1e6:.2f} MA outside range"
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Depends on highres_result fixture which may fail (NaN instability)",
-        strict=False,
-    )
     def test_highres_nrmse_below_coarse(self, highres_result):
         """64x1x128 NRMSE <= coarse (32x1x64) NRMSE.
 
@@ -340,10 +330,6 @@ class TestHighResMetalEngine:
         )
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Depends on highres_result fixture which may fail (NaN instability)",
-        strict=False,
-    )
     def test_highres_nrmse_reported(self, highres_result):
         """Report 64x1x128 NRMSE for grid convergence documentation."""
         from dpf.validation.experimental import PF1000_DATA, nrmse_peak
@@ -368,9 +354,10 @@ class TestHighResMetalEngine:
 class TestHighResMetalFloat64:
     """Grid convergence using Metal solver in float64 CPU mode.
 
-    Float64 avoids the float32 NaN instability that plagues the MPS
-    GPU path at higher resolutions.  This is the recommended path for
-    production validation (CLAUDE.md: Phase O lesson #53).
+    Float64 mode forces CPU execution for maximum numerical accuracy.
+    Both float32 (MPS GPU) and float64 (CPU) modes now complete at
+    64x1x128 thanks to positivity-preserving reconstruction fallback
+    and neighbor-averaging NaN repair in the Metal solver.
     """
 
     @pytest.fixture(scope="class")
@@ -411,13 +398,6 @@ class TestHighResMetalFloat64:
         return np.array(times), np.array(currents), engine
 
     @pytest.mark.slow
-    @pytest.mark.xfail(
-        reason="Metal engine 64x1x128 NaN instability at PF-1000 pinch conditions "
-        "(strong gradients, cumulative NaN repairs exceed threshold). Not precision-"
-        "dependent — occurs in both float32 and float64. Root cause: HLL flux NaN "
-        "in strong-gradient cells near the current sheath.",
-        strict=False,
-    )
     def test_float64_engine_completes(self, float64_result):
         """64x1x128 float64 Metal engine completes 12 us simulation."""
         times, _, _ = float64_result
@@ -426,7 +406,6 @@ class TestHighResMetalFloat64:
         )
 
     @pytest.mark.slow
-    @pytest.mark.xfail(reason="Depends on float64_result (NaN instability)", strict=False)
     def test_float64_peak_current_physical(self, float64_result):
         """Float64 peak current in physical range."""
         _, currents, _ = float64_result
@@ -434,7 +413,6 @@ class TestHighResMetalFloat64:
         assert 0.5e6 < peak < 5e6, f"Peak {peak/1e6:.2f} MA outside range"
 
     @pytest.mark.slow
-    @pytest.mark.xfail(reason="Depends on float64_result (NaN instability)", strict=False)
     def test_float64_nrmse_better_than_coarse(self, float64_result):
         """Float64 64x1x128 NRMSE < 0.30 (better than coarse float32)."""
         from dpf.validation.experimental import PF1000_DATA, nrmse_peak
@@ -448,7 +426,6 @@ class TestHighResMetalFloat64:
         )
 
     @pytest.mark.slow
-    @pytest.mark.xfail(reason="Depends on float64_result (NaN instability)", strict=False)
     def test_float64_grid_convergence_report(self, float64_result):
         """Report float64 grid convergence metrics."""
         from dpf.validation.experimental import PF1000_DATA, nrmse_peak
