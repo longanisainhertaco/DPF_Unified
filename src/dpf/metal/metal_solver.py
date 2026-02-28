@@ -450,11 +450,29 @@ class MetalMHDSolver(PlasmaSolverBase):
         rhs: dict[str, torch.Tensor],
         dt: float,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Forward Euler update with floor enforcement."""
+        """Forward Euler update with floor enforcement and velocity clamping.
+
+        After the primitive variable update, clamp velocity to a
+        physically motivated upper bound: 10x the local fast
+        magnetosonic speed.  This prevents catastrophic runaway at
+        cells where reconstruction overshoots produced extreme RHS
+        values.
+        """
         rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR)
         vel_new = vel + dt * rhs["velocity"]
         p_new = torch.clamp(p + dt * rhs["pressure"], min=P_FLOOR)
         B_new = B + dt * rhs["B"]
+
+        # Velocity clamping: cap at 10x local fast magnetosonic speed
+        # (prevents runaway from extreme RHS at strong discontinuities)
+        cf = _fast_magnetosonic_mps(rho_new, p_new, B_new, self.gamma, dim=0)
+        for d in range(1, 3):
+            cf = torch.maximum(cf, _fast_magnetosonic_mps(
+                rho_new, p_new, B_new, self.gamma, dim=d,
+            ))
+        v_max = torch.clamp(10.0 * cf, min=1e3, max=1e7)  # at least 1 km/s
+        vel_new = torch.clamp(vel_new, min=-v_max, max=v_max)
+
         return rho_new, vel_new, p_new, B_new
 
     # ------------------------------------------------------------------ #
@@ -892,6 +910,13 @@ class MetalMHDSolver(PlasmaSolverBase):
             )
 
         # -------------------------------------------------------------- #
+        #  Neighbor-averaging NaN/Inf repair (before returning to engine)
+        # -------------------------------------------------------------- #
+        rho_new, vel_new, p_new, B_new = self._repair_nonfinite(
+            rho_new, vel_new, p_new, B_new,
+        )
+
+        # -------------------------------------------------------------- #
         #  Update coupling state for the circuit solver
         # -------------------------------------------------------------- #
         self._update_coupling(B_new, current, voltage, dt)
@@ -910,6 +935,108 @@ class MetalMHDSolver(PlasmaSolverBase):
         }
 
         return self._to_numpy(out_gpu)
+
+    @staticmethod
+    def _neighbor_average_3d(field: torch.Tensor) -> torch.Tensor:
+        """Compute 6-neighbor average of a 3D field for NaN repair.
+
+        At boundaries, uses replicate padding (copies boundary value).
+        Returns a tensor where each cell contains the average of its
+        6 face-neighbors (or fewer at boundaries).
+
+        Args:
+            field: 3D tensor, shape (nx, ny, nz).
+
+        Returns:
+            Neighbor-averaged tensor, same shape.
+        """
+        # Use conv3d with a 3x3x3 kernel that averages face neighbors
+        inp = field.unsqueeze(0).unsqueeze(0)  # (1, 1, nx, ny, nz)
+        padded = torch.nn.functional.pad(inp, (1, 1, 1, 1, 1, 1), mode="replicate")
+
+        # Sum of 6 face-neighbors (no center cell)
+        kernel = torch.zeros(1, 1, 3, 3, 3, device=field.device, dtype=field.dtype)
+        kernel[0, 0, 1, 1, 0] = 1.0  # z-1
+        kernel[0, 0, 1, 1, 2] = 1.0  # z+1
+        kernel[0, 0, 1, 0, 1] = 1.0  # y-1
+        kernel[0, 0, 1, 2, 1] = 1.0  # y+1
+        kernel[0, 0, 0, 1, 1] = 1.0  # x-1
+        kernel[0, 0, 2, 1, 1] = 1.0  # x+1
+
+        result = torch.nn.functional.conv3d(padded, kernel, padding=0)
+        return (result / 6.0).squeeze(0).squeeze(0)
+
+    def _repair_nonfinite(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Replace NaN/Inf values with neighbor-averaged values.
+
+        Unlike floor replacement (which creates artificial discontinuities
+        that regenerate NaN on the next step), neighbor averaging produces
+        smooth transitions that are stable under subsequent evolution.
+
+        This is called at the end of each Metal solver step, before the
+        state is returned to the engine.
+        """
+        # Check for any non-finite values across all fields
+        bad_rho = ~torch.isfinite(rho)
+        bad_vel = ~torch.isfinite(vel)
+        bad_p = ~torch.isfinite(p)
+        bad_B = ~torch.isfinite(B)
+
+        has_bad = bad_rho.any() or bad_vel.any() or bad_p.any() or bad_B.any()
+        if not has_bad:
+            return rho, vel, p, B
+
+        # Replace NaN/Inf in each field before computing neighbor averages
+        # (so NaN doesn't poison the averaging kernel)
+        rho_clean = torch.where(bad_rho, torch.full_like(rho, RHO_FLOOR), rho)
+        rho_avg = self._neighbor_average_3d(rho_clean)
+        rho = torch.where(bad_rho, torch.clamp(rho_avg, min=RHO_FLOOR), rho)
+
+        p_clean = torch.where(bad_p, torch.full_like(p, P_FLOOR), p)
+        p_avg = self._neighbor_average_3d(p_clean)
+        p = torch.where(bad_p, torch.clamp(p_avg, min=P_FLOOR), p)
+
+        # Velocity: zero bad values before averaging, then repair
+        for comp in range(3):
+            bad_comp = bad_vel[comp]
+            if bad_comp.any():
+                v_clean = torch.where(bad_comp, torch.zeros_like(vel[comp]), vel[comp])
+                v_avg = self._neighbor_average_3d(v_clean)
+                vel = vel.clone()
+                vel[comp] = torch.where(bad_comp, v_avg, vel[comp])
+
+        # B-field: same approach
+        for comp in range(3):
+            bad_comp = bad_B[comp]
+            if bad_comp.any():
+                b_clean = torch.where(bad_comp, torch.zeros_like(B[comp]), B[comp])
+                b_avg = self._neighbor_average_3d(b_clean)
+                B = B.clone()
+                B[comp] = torch.where(bad_comp, b_avg, B[comp])
+
+        return rho, vel, p, B
+
+    def _clamp_velocity(
+        self,
+        vel: torch.Tensor,
+        rho: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+    ) -> torch.Tensor:
+        """Clamp velocity to 10x local fast magnetosonic speed."""
+        cf = _fast_magnetosonic_mps(rho, p, B, self.gamma, dim=0)
+        for d in range(1, 3):
+            cf = torch.maximum(cf, _fast_magnetosonic_mps(
+                rho, p, B, self.gamma, dim=d,
+            ))
+        v_max = torch.clamp(10.0 * cf, min=1e3, max=1e7)
+        return torch.clamp(vel, min=-v_max, max=v_max)
 
     def _step_ssp_rk2(
         self,
@@ -937,6 +1064,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
         p_new = torch.clamp(p_new, min=P_FLOOR)
+        vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
 
@@ -973,6 +1101,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         rho_2 = torch.clamp(rho_2, min=RHO_FLOOR)
         p_2 = torch.clamp(p_2, min=P_FLOOR)
+        vel_2 = self._clamp_velocity(vel_2, rho_2, p_2, B_2)
         if self.use_ct:
             B_2 = self._apply_ct_correction(B_2, B_n, dt)
 
@@ -985,6 +1114,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
         p_new = torch.clamp(p_new, min=P_FLOOR)
+        vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
 

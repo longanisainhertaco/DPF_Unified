@@ -1072,6 +1072,95 @@ def hlld_flux_mps(
 # ============================================================
 
 
+def _positivity_fallback(
+    UL: torch.Tensor,
+    UR: torch.Tensor,
+    U: torch.Tensor,
+    gamma: float,
+    dim: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Replace unphysical reconstructed states with first-order donor cell.
+
+    After PLM/WENO5 reconstruction, some interface states may have
+    negative pressure (E < KE + ME) or extreme velocities from
+    overshooting at strong discontinuities.  These are replaced with
+    the safe donor cell (piecewise constant) values::
+
+        UL[i+1/2] = U[i],   UR[i+1/2] = U[i+1]
+
+    Cell-centre values are guaranteed positive (floors enforced every
+    step), so donor cell is always a safe fallback.
+
+    This is the standard positivity-preserving approach used in
+    production MHD codes (Athena++, FLASH, PLUTO).
+
+    References:
+        Balsara D.S. & Spicer D.S., JCP 149, 270 (1999).
+        Stone J.M. et al., ApJS 249, 4 (2020), Sec. 4.7.
+
+    Args:
+        UL: Left reconstructed state, shape (8, ...).
+        UR: Right reconstructed state, shape (8, ...).
+        U: Cell-centre conservative state, shape (8, nx, ny, nz).
+        gamma: Adiabatic index.
+        dim: Spatial dimension (0, 1, 2).
+
+    Returns:
+        Corrected (UL, UR) with unphysical interfaces replaced.
+    """
+    axis = dim + 1
+    n = U.shape[axis]
+
+    # --- Compute pressure from reconstructed left states ---
+    rho_L = torch.clamp(UL[IDN], min=RHO_FLOOR)
+    inv_rho_L = 1.0 / rho_L
+    KE_L = 0.5 * (UL[IM1] ** 2 + UL[IM2] ** 2 + UL[IM3] ** 2) * inv_rho_L
+    ME_L = 0.5 * (UL[IB1] ** 2 + UL[IB2] ** 2 + UL[IB3] ** 2)
+    p_L = (gamma - 1.0) * (UL[IEN] - KE_L - ME_L)
+
+    # --- Compute pressure from reconstructed right states ---
+    rho_R = torch.clamp(UR[IDN], min=RHO_FLOOR)
+    inv_rho_R = 1.0 / rho_R
+    KE_R = 0.5 * (UR[IM1] ** 2 + UR[IM2] ** 2 + UR[IM3] ** 2) * inv_rho_R
+    ME_R = 0.5 * (UR[IB1] ** 2 + UR[IB2] ** 2 + UR[IB3] ** 2)
+    p_R = (gamma - 1.0) * (UR[IEN] - KE_R - ME_R)
+
+    # --- Velocity magnitudes ---
+    v_sq_L = (UL[IM1] ** 2 + UL[IM2] ** 2 + UL[IM3] ** 2) * inv_rho_L ** 2
+    v_sq_R = (UR[IM1] ** 2 + UR[IM2] ** 2 + UR[IM3] ** 2) * inv_rho_R ** 2
+
+    # --- Flag bad interfaces ---
+    # Negative pressure on either side
+    bad = (p_L < P_FLOOR) | (p_R < P_FLOOR)
+    # Extreme velocity (> 500 km/s typical DPF upper bound)
+    bad = bad | (v_sq_L > 2.5e11) | (v_sq_R > 2.5e11)
+    # NaN in any quantity
+    bad = bad | torch.isnan(p_L) | torch.isnan(p_R)
+    bad = bad | torch.isnan(UL[IDN]) | torch.isnan(UR[IDN])
+
+    if not bad.any():
+        return UL, UR
+
+    n_bad = int(bad.sum().item())
+    if n_bad > 100:
+        logger.debug(
+            "Positivity fallback dim=%d: %d/%d interfaces to donor cell",
+            dim, n_bad, bad.numel(),
+        )
+
+    # Donor cell values: UL[i+1/2] = U[i], UR[i+1/2] = U[i+1]
+    UL_donor = torch.narrow(U, axis, 0, n - 1)
+    UR_donor = torch.narrow(U, axis, 1, n - 1)
+
+    # Expand bad mask to all 8 components
+    bad_8 = bad.unsqueeze(0).expand_as(UL)
+
+    UL_out = torch.where(bad_8, UL_donor, UL)
+    UR_out = torch.where(bad_8, UR_donor, UR)
+
+    return UL_out, UR_out
+
+
 def compute_fluxes_mps(
     state: torch.Tensor,
     gamma: float,
@@ -1087,7 +1176,8 @@ def compute_fluxes_mps(
 
     Pipeline:
         1. Reconstruction of conservative variables at cell interfaces (PLM or WENO5).
-        2. Riemann solve (HLL or HLLD) at each interface.
+        2. Positivity-preserving fallback at troubled interfaces.
+        3. Riemann solve (HLL or HLLD) at each interface.
 
     Args:
         state: Conservative state, shape (8, nx, ny, nz), float32/64.
@@ -1111,6 +1201,10 @@ def compute_fluxes_mps(
         UL, UR = weno5_reconstruct_mps(state, dim=dim)
     else:
         UL, UR = plm_reconstruct_mps(state, dim=dim, limiter=limiter)
+
+    # Step 1.5: Positivity-preserving fallback — replace interfaces with
+    # negative pressure or extreme velocity with safe donor cell values.
+    UL, UR = _positivity_fallback(UL, UR, state, gamma, dim)
 
     # Step 2: Riemann solve
     if riemann_solver == "hlld":
