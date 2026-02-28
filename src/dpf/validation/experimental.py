@@ -228,12 +228,160 @@ UNU_ICTP_DATA = ExperimentalDevice(
 )
 
 
+# PF-1000 at 16 kV — Akel et al., Radiat. Phys. Chem. 188:109638, 2021
+# Same device (IPPLM Warsaw), different operating conditions:
+#   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
+# Peak current measured at 1.1-1.3 MA for multiple shots.
+# Digitized I(t) waveform available in paper (Fig. 3).
+PF1000_16KV_DATA = ExperimentalDevice(
+    name="PF-1000-16kV",
+    institution="IPPLM Warsaw",
+    capacitance=1.332e-3,          # Same bank
+    voltage=16e3,                  # 16 kV (reduced from 27 kV)
+    inductance=33.5e-9,            # Same circuit
+    resistance=2.3e-3,             # Same circuit
+    anode_radius=0.115,            # Same geometry
+    cathode_radius=0.16,           # Same geometry
+    anode_length=0.60,             # Same geometry
+    fill_pressure_torr=1.05,       # 1.05 Torr D2 (Akel 2021)
+    fill_gas="deuterium",
+    peak_current=1.2e6,            # 1.2 MA (midpoint of 1.1-1.3 MA range)
+    neutron_yield=2.33e9,          # 2.33e9 n/shot at 1.05 Torr (average of 16 shots)
+    current_rise_time=6.0e-6,      # ~6 us (estimated from Lee model fit in paper)
+    reference="Akel et al., Radiat. Phys. Chem. 188:109638, 2021",
+    peak_current_uncertainty=0.10,     # 10% (range 1.1-1.3 MA = ±8.3%)
+    rise_time_uncertainty=0.15,        # 15% (no explicit timing stated)
+    neutron_yield_uncertainty=0.40,    # 40% (shot-to-shot, Akel Table 1)
+    measurement_notes=(
+        "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
+        "Measured I(t) waveform in Fig. 3 of Akel et al. (2021). "
+        "Peak current 1.1-1.3 MA across multiple shots (16 shots at 1.05 Torr). "
+        "Lee model fitted with good agreement to measured traces. "
+        "Neutron yield 2.33e9 ± 40% shot-to-shot. "
+        "DOI: 10.1016/j.radphyschem.2021.109638"
+    ),
+)
+
+
 # Registry mapping device name -> ExperimentalDevice
 DEVICES: dict[str, ExperimentalDevice] = {
     "PF-1000": PF1000_DATA,
+    "PF-1000-16kV": PF1000_16KV_DATA,
     "NX2": NX2_DATA,
     "UNU-ICTP": UNU_ICTP_DATA,
 }
+
+
+# =====================================================================
+# L_p / L0 diagnostic (Debate #29)
+# =====================================================================
+
+def compute_lp_l0_ratio(
+    L0: float,
+    anode_radius: float,
+    cathode_radius: float,
+    anode_length: float,
+) -> dict[str, float]:
+    """Compute the plasma-to-circuit inductance ratio L_p/L0.
+
+    This diagnostic determines whether a DPF device's validation is
+    informative (plasma-significant) or vacuously true (circuit-dominated).
+
+    The axial plasma inductance at the end of the anode is::
+
+        L_p = (mu_0 / 2pi) * ln(b/a) * z_max
+
+    where *a* is anode radius, *b* is cathode radius, *z_max* is anode
+    length.
+
+    PhD Debate #29 classification:
+        - L_p/L0 > 1.0: **Plasma-significant** — physics fundamentally
+          alters the waveform.  Bare RLC gives large timing error.
+        - L_p/L0 < 0.5: **Circuit-dominated** — bare damped RLC gives
+          reasonable timing.  Validation is vacuously true.
+
+    Parameters
+    ----------
+    L0 : float
+        External (circuit) inductance [H].
+    anode_radius : float
+        Anode radius [m].
+    cathode_radius : float
+        Cathode radius [m].
+    anode_length : float
+        Anode length [m].
+
+    Returns
+    -------
+    dict
+        ``L_p_axial`` : float
+            Axial plasma inductance at end of anode [H].
+        ``L_p_over_L0`` : float
+            Ratio L_p / L0 (dimensionless).
+        ``regime`` : str
+            "plasma-significant" if ratio > 1.0,
+            "transitional" if 0.5 <= ratio <= 1.0,
+            "circuit-dominated" if ratio < 0.5.
+        ``L_per_length`` : float
+            Inductance per unit length [H/m].
+
+    References
+    ----------
+    PhD Debate #29 (2026-02-28): L_p/L0 diagnostic for validation
+    informativeness.
+    """
+    mu_0 = 4.0 * np.pi * 1e-7  # [H/m]
+    L_per_length = (mu_0 / (2.0 * np.pi)) * np.log(cathode_radius / anode_radius)
+    L_p_axial = L_per_length * anode_length
+    ratio = L_p_axial / max(L0, 1e-15)
+
+    if ratio > 1.0:
+        regime = "plasma-significant"
+    elif ratio >= 0.5:
+        regime = "transitional"
+    else:
+        regime = "circuit-dominated"
+
+    return {
+        "L_p_axial": L_p_axial,
+        "L_p_over_L0": ratio,
+        "regime": regime,
+        "L_per_length": L_per_length,
+    }
+
+
+def compute_bare_rlc_timing(
+    C: float,
+    L0: float,
+    R0: float,
+) -> float:
+    """Compute the quarter-period of a bare damped RLC circuit.
+
+    For a lossless RLC, the quarter-period is T/4 = pi * sqrt(L0 * C).
+    With damping, the underdamped period is
+    T = 2*pi / sqrt(1/(L0*C) - (R0/(2*L0))^2) and T/4 is one quarter.
+
+    Parameters
+    ----------
+    C : float
+        Capacitance [F].
+    L0 : float
+        External inductance [H].
+    R0 : float
+        External resistance [Ohm].
+
+    Returns
+    -------
+    float
+        Quarter-period [s].
+    """
+    omega_0_sq = 1.0 / (L0 * C)
+    gamma_sq = (R0 / (2.0 * L0)) ** 2
+    if omega_0_sq <= gamma_sq:
+        # Overdamped — no oscillation, return RC timescale
+        return np.pi * np.sqrt(L0 * C)
+    omega_d = np.sqrt(omega_0_sq - gamma_sq)
+    return np.pi / (2.0 * omega_d)
 
 
 # =====================================================================
