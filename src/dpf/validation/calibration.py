@@ -403,6 +403,8 @@ class CrossValidator:
         maxiter: int = 100,
         f_mr: float | None = None,
         pinch_column_fraction: float = 1.0,
+        train_pcf: float | None = None,
+        test_pcf: float | None = None,
     ) -> CrossValidationResult:
         """Calibrate on train_device, predict on test_device.
 
@@ -412,27 +414,38 @@ class CrossValidator:
             maxiter: Maximum optimizer iterations.
             f_mr: Radial mass fraction. Defaults to None (uses fm).
             pinch_column_fraction: Fraction of anode length for radial
-                compression.  Passed to both the calibrator and the
-                prediction model so cross-device results use consistent
-                physics.
+                compression.  Used as fallback if device-specific pcf
+                values are not provided.
+            train_pcf: pcf for the training device.  If None, uses
+                ``_DEFAULT_DEVICE_PCF[train_device]`` or falls back to
+                ``pinch_column_fraction``.
+            test_pcf: pcf for the test device.  If None, uses
+                ``_DEFAULT_DEVICE_PCF[test_device]`` or falls back to
+                ``pinch_column_fraction``.
 
         Returns:
             :class:`CrossValidationResult` with generalization metrics.
         """
         from dpf.validation.lee_model_comparison import LeeModel
 
-        # Step 1: Calibrate on train device
+        # Resolve device-specific pcf values
+        if train_pcf is None:
+            train_pcf = _DEFAULT_DEVICE_PCF.get(train_device, pinch_column_fraction)
+        if test_pcf is None:
+            test_pcf = _DEFAULT_DEVICE_PCF.get(test_device, pinch_column_fraction)
+
+        # Step 1: Calibrate on train device with its own pcf
         cal = LeeModelCalibrator(
-            train_device, pinch_column_fraction=pinch_column_fraction,
+            train_device, pinch_column_fraction=train_pcf,
         )
         cal_result = cal.calibrate(maxiter=maxiter)
 
-        # Step 2: Run prediction on test device with calibrated params
+        # Step 2: Run prediction on test device with TEST device's pcf
         model = LeeModel(
             current_fraction=cal_result.best_fc,
             mass_fraction=cal_result.best_fm,
             radial_mass_fraction=f_mr,
-            pinch_column_fraction=pinch_column_fraction,
+            pinch_column_fraction=test_pcf,
         )
         comparison = model.compare_with_experiment(test_device)
 

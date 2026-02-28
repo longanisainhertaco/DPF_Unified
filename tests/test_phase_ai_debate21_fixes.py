@@ -467,3 +467,106 @@ class TestHighResMetalFloat64:
         print(f"NRMSE (full):      {nrmse_full:.4f}")
         print(f"NRMSE (truncated): {nrmse_trunc:.4f}")
         print(f"Experimental peak: {PF1000_DATA.peak_current/1e6:.3f} MA")
+
+
+# =====================================================================
+# NX2 blind prediction with device-specific pcf
+# =====================================================================
+
+
+class TestCrossDeviceCorrectPCF:
+    """Cross-device prediction with device-specific pcf values.
+
+    PhD Debate #21 recommendation #5: fix CrossValidator to use
+    device-specific pcf (PF-1000->0.14, NX2->0.5) instead of a single
+    shared pcf value.  This is the highest-impact action (+0.2 projected).
+    """
+
+    @pytest.fixture(scope="class")
+    def pf1000_to_nx2_correct_pcf(self):
+        """Cross-validate PF-1000 -> NX2 with correct device-specific pcf."""
+        from dpf.validation.calibration import CrossValidator
+
+        cv = CrossValidator()
+        return cv.validate(
+            "PF-1000", "NX2",
+            maxiter=50, f_mr=0.1,
+            train_pcf=0.14,  # PF-1000 pcf
+            test_pcf=0.5,    # NX2 pcf
+        )
+
+    @pytest.fixture(scope="class")
+    def pf1000_to_nx2_old_shared_pcf(self):
+        """Cross-validate PF-1000 -> NX2 with old shared pcf=0.14."""
+        from dpf.validation.calibration import CrossValidator
+
+        cv = CrossValidator()
+        return cv.validate(
+            "PF-1000", "NX2",
+            maxiter=50, f_mr=0.1,
+            train_pcf=0.14,
+            test_pcf=0.14,  # Wrong: using PF-1000's pcf for NX2
+        )
+
+    def test_cross_validator_accepts_separate_pcf(self, pf1000_to_nx2_correct_pcf):
+        """CrossValidator API supports train_pcf and test_pcf separately."""
+        result = pf1000_to_nx2_correct_pcf
+        assert result.train_device == "PF-1000"
+        assert result.test_device == "NX2"
+
+    def test_correct_pcf_has_positive_generalization(self, pf1000_to_nx2_correct_pcf):
+        """Correct pcf cross-validation has generalization > 0."""
+        assert pf1000_to_nx2_correct_pcf.generalization_score > 0.0
+
+    def test_correct_pcf_peak_error_below_50pct(self, pf1000_to_nx2_correct_pcf):
+        """NX2 peak error < 50% with correct pcf."""
+        assert pf1000_to_nx2_correct_pcf.prediction_peak_error < 0.50, (
+            f"Peak error {pf1000_to_nx2_correct_pcf.prediction_peak_error:.0%}"
+        )
+
+    def test_correct_pcf_improves_over_shared(
+        self, pf1000_to_nx2_correct_pcf, pf1000_to_nx2_old_shared_pcf,
+    ):
+        """Correct device-specific pcf should improve or maintain prediction.
+
+        Using NX2's pcf=0.5 (50% of anode in compression) instead of
+        PF-1000's pcf=0.14 (14%) should give a more physically realistic
+        NX2 prediction because NX2 is a small device where more of the
+        anode length participates in radial compression.
+        """
+        improved = (
+            pf1000_to_nx2_correct_pcf.prediction_peak_error
+            <= pf1000_to_nx2_old_shared_pcf.prediction_peak_error + 0.05
+        )
+        assert improved, (
+            f"Correct pcf peak error "
+            f"{pf1000_to_nx2_correct_pcf.prediction_peak_error:.0%} "
+            f"worse than shared pcf "
+            f"{pf1000_to_nx2_old_shared_pcf.prediction_peak_error:.0%}"
+        )
+
+    def test_default_pcf_uses_device_registry(self):
+        """CrossValidator defaults to _DEFAULT_DEVICE_PCF when no pcf given."""
+        from dpf.validation.calibration import _DEFAULT_DEVICE_PCF, CrossValidator
+
+        cv = CrossValidator()
+        result = cv.validate("PF-1000", "NX2", maxiter=50, f_mr=0.1)
+        assert _DEFAULT_DEVICE_PCF.get("PF-1000") == 0.14
+        assert _DEFAULT_DEVICE_PCF.get("NX2") == 0.5
+        assert result.generalization_score > 0.0
+
+    def test_cross_validation_report(
+        self, pf1000_to_nx2_correct_pcf, pf1000_to_nx2_old_shared_pcf,
+    ):
+        """Report cross-validation comparison for documentation."""
+        correct = pf1000_to_nx2_correct_pcf
+        shared = pf1000_to_nx2_old_shared_pcf
+        print("\n=== Cross-Device Prediction: PF-1000 -> NX2 ===")
+        print(f"Shared pcf=0.14: peak_err={shared.prediction_peak_error:.1%}, "
+              f"timing_err={shared.prediction_timing_error:.1%}, "
+              f"gen_score={shared.generalization_score:.3f}")
+        print(f"Correct pcf:     peak_err={correct.prediction_peak_error:.1%}, "
+              f"timing_err={correct.prediction_timing_error:.1%}, "
+              f"gen_score={correct.generalization_score:.3f}")
+        print(f"Calibrated: fc={correct.calibration.best_fc:.3f}, "
+              f"fm={correct.calibration.best_fm:.3f}")
