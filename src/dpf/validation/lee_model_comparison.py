@@ -681,10 +681,12 @@ class LeeModel:
         # ── Crowbar phase: L-R decay after V_cap crosses zero ──
         if self.crowbar_enabled:
             # Find first zero-crossing of V_combined (after peak current)
-            # Look for sign change in V_combined
+            # Use a small tolerance to handle floating-point precision:
+            # solve_ivp terminal event may stop at V ~ 1e-12 > 0
+            V_threshold = max(abs(V0) * 1e-6, 1.0)  # ~0.027 V for PF-1000
             cb_idx = None
             for i in range(1, len(V_combined)):
-                if V_combined[i - 1] > 0 and V_combined[i] <= 0:
+                if V_combined[i - 1] > V_threshold and V_combined[i] <= V_threshold:
                     cb_idx = i
                     break
 
