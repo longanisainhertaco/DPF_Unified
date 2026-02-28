@@ -493,8 +493,12 @@ class LeeModel:
                 )
                 M_slug_pinch = max(M_slug_pinch, 1e-20)
 
-                # Post-shock density (Rankine-Hugoniot strong shock limit)
-                rho_post = 4.0 * rho0
+                # Post-shock density: reflected shock encounters gas already
+                # compressed to 4*rho0 by the inward shock (R-H strong limit,
+                # gamma=5/3).  Reflected shock re-compresses by ~2x (Mach ~2
+                # in pre-heated gas), giving ~8*rho0 total.  Strong limit
+                # would give 16*rho0.  (PhD Debate #21 double-shock estimate.)
+                rho_post = 8.0 * rho0
 
                 def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:
                     I_r4, Vcap_r4, r_s, vr4 = y

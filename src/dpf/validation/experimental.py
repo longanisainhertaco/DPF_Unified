@@ -94,13 +94,19 @@ class ExperimentalDevice:
     neutron_yield: float
     current_rise_time: float  # [s]
     reference: str
-    # Experimental uncertainties (1-sigma)
+    # Experimental uncertainties (1-sigma, relative)
+    # Following GUM (JCGM 100:2008) and ASME V&V 20-2009 uncertainty framework.
     peak_current_uncertainty: float = 0.0   # Relative uncertainty on peak current
     rise_time_uncertainty: float = 0.0      # Relative uncertainty on rise time
     neutron_yield_uncertainty: float = 0.0  # Relative uncertainty on neutron yield
     # Digitized waveform data (optional)
     waveform_t: np.ndarray | None = None    # Time array [s]
     waveform_I: np.ndarray | None = None    # Current array [A]
+    # Waveform digitization uncertainty (1-sigma, relative)
+    waveform_digitization_uncertainty: float = 0.0  # Amplitude digitization error
+    waveform_time_uncertainty: float = 0.0          # Temporal digitization error
+    # Measurement provenance note
+    measurement_notes: str = ""
 
 
 # =====================================================================
@@ -142,6 +148,22 @@ PF1000_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot variability)
     waveform_t=_PF1000_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_PF1000_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
+    # Digitization uncertainty for hand-digitized Fig. 2 of Scholz et al. (2006).
+    # Amplitude: ±3% (trace width ~0.06 MA on ~2 MA full scale).
+    # Time: ±0.5% of full scale (~0.05 us on 10 us trace).
+    # Combined current uncertainty: sqrt(5%^2 + 3%^2) = 5.8% (1-sigma).
+    waveform_digitization_uncertainty=0.03,  # 3% amplitude from trace reading
+    waveform_time_uncertainty=0.005,         # 0.5% of full scale (~0.05 us)
+    measurement_notes=(
+        "26 points hand-digitized from Scholz et al., Nukleonika 51(1), 2006, Fig. 2. "
+        "Rogowski coil uncertainty ~5% (Type B, estimated — not stated in source). "
+        "Digitization amplitude uncertainty ~3% (Type B, trace width / full scale). "
+        "Combined waveform uncertainty: u_I = sqrt(0.05^2 + 0.03^2) = 5.8% (1-sigma). "
+        "Temporal uncertainty ~0.05 us (Type B, 0.5% of 10 us trace). "
+        "Effective independent data points ~5 (autocorrelation time ~1-2 us on 10 us trace). "
+        "Scholz (2006) does not state measurement uncertainty; values above are estimates. "
+        "Framework: ASME V&V 20-2009 for validation, GUM (JCGM 100:2008) for measurement."
+    ),
 )
 
 NX2_DATA = ExperimentalDevice(
@@ -163,6 +185,11 @@ NX2_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
     rise_time_uncertainty=0.12,        # 12%
     neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
+    measurement_notes=(
+        "No digitized waveform available. Peak current and rise time from "
+        "Lee & Saw, J. Fusion Energy 27, 2008, Table 1. "
+        "Uncertainties are Type B estimates (not stated in source)."
+    ),
 )
 
 UNU_ICTP_DATA = ExperimentalDevice(
@@ -184,6 +211,10 @@ UNU_ICTP_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.10,     # 10% (training device, less precise)
     rise_time_uncertainty=0.15,        # 15%
     neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
+    measurement_notes=(
+        "No digitized waveform available. Parameters from Lee et al., Am. J. Phys. 56, 1988. "
+        "Uncertainties are Type B estimates (not stated in source)."
+    ),
 )
 
 
@@ -382,16 +413,19 @@ def validate_current_waveform(
     timing_error = abs(peak_time_sim - rise_time_exp) / max(rise_time_exp, 1e-300)
     timing_ok = timing_error < 0.10
 
-    # Uncertainty budget: combine experimental uncertainty with simulation error
-    # Following GUM (Guide to Uncertainty in Measurement) principles:
-    # u_combined = sqrt(u_exp^2 + u_sim^2) where u_sim = relative error
+    # Uncertainty budget following GUM (JCGM 100:2008) and ASME V&V 20-2009.
+    # Components: Rogowski coil (Type B), digitization (Type B), simulation error.
+    # u_combined = sqrt(u_rogowski^2 + u_digitization^2 + u_sim^2)
     u_exp_peak = device.peak_current_uncertainty
     u_exp_timing = device.rise_time_uncertainty
-    # Combined uncertainty (quadrature sum of experimental and simulation error)
-    u_combined_peak = np.sqrt(u_exp_peak**2 + peak_current_error**2)
+    u_digitization = device.waveform_digitization_uncertainty
+    # Total experimental uncertainty (Rogowski + digitization in quadrature)
+    u_exp_total = np.sqrt(u_exp_peak**2 + u_digitization**2)
+    # Combined uncertainty (experimental + simulation error)
+    u_combined_peak = np.sqrt(u_exp_total**2 + peak_current_error**2)
     u_combined_timing = np.sqrt(u_exp_timing**2 + timing_error**2)
-    # Agreement check: simulation within 2-sigma of experimental uncertainty
-    agreement_within_2sigma = peak_current_error <= 2.0 * max(u_exp_peak, 0.01)
+    # Agreement check: simulation within 2-sigma of total experimental uncertainty
+    agreement_within_2sigma = peak_current_error <= 2.0 * max(u_exp_total, 0.01)
 
     # Waveform NRMSE: compare full I(t) trace if digitized waveform available
     waveform_available = (
@@ -415,11 +449,14 @@ def validate_current_waveform(
         "waveform_nrmse": waveform_nrmse,
         "uncertainty": {
             "peak_current_exp_1sigma": u_exp_peak,
+            "digitization_1sigma": u_digitization,
+            "peak_current_total_exp_1sigma": float(u_exp_total),
             "rise_time_exp_1sigma": u_exp_timing,
-            "peak_current_combined_1sigma": u_combined_peak,
-            "timing_combined_1sigma": u_combined_timing,
-            "agreement_within_2sigma": agreement_within_2sigma,
+            "peak_current_combined_1sigma": float(u_combined_peak),
+            "timing_combined_1sigma": float(u_combined_timing),
+            "agreement_within_2sigma": bool(agreement_within_2sigma),
         },
+        "measurement_notes": device.measurement_notes,
     }
 
 
