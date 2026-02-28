@@ -33,7 +33,13 @@ def _run_metal_engine(
     sim_time: float = 12e-6,
     precision: str = "float32",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Run Metal engine PF-1000 and return (times, currents)."""
+    """Run Metal engine PF-1000 and return (times, currents).
+
+    Uses fc=0.816, fm=0.142 (Phase AC Lee-model calibration) which were
+    validated for the Metal MHD engine. Phase AR re-calibrated the Lee
+    model preset to fc=0.800, fm=0.094, but the Metal engine (with grid-
+    based MHD R_plasma) needs its own calibration.
+    """
     from dpf.config import SimulationConfig
     from dpf.engine import SimulationEngine
     from dpf.presets import get_preset
@@ -53,6 +59,9 @@ def _run_metal_engine(
     }
     preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
     preset["collision"] = {"enabled": False}
+    # Override snowplow to Phase AC values validated for Metal engine
+    preset["snowplow"]["current_fraction"] = 0.816
+    preset["snowplow"]["mass_fraction"] = 0.142
 
     config = SimulationConfig(**preset)
     engine = SimulationEngine(config)

@@ -78,6 +78,8 @@ class LeeModelCalibrator:
         waveform_weight: float = 0.3,
         f_mr: float | None = None,
         pinch_column_fraction: float = 1.0,
+        crowbar_enabled: bool = False,
+        crowbar_resistance: float = 0.0,
     ) -> None:
         self.device_name = device_name
         self.method = method
@@ -86,6 +88,8 @@ class LeeModelCalibrator:
         self.waveform_weight = waveform_weight
         self.f_mr = f_mr
         self.pinch_column_fraction = pinch_column_fraction
+        self.crowbar_enabled = crowbar_enabled
+        self.crowbar_resistance = crowbar_resistance
         self._n_evals = 0
 
     def calibrate(
@@ -295,6 +299,8 @@ class LeeModelCalibrator:
             mass_fraction=fm,
             radial_mass_fraction=f_mr,
             pinch_column_fraction=self.pinch_column_fraction,
+            crowbar_enabled=self.crowbar_enabled,
+            crowbar_resistance=self.crowbar_resistance,
         )
         return model.compare_with_experiment(self.device_name)
 
@@ -328,6 +334,14 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "NX2": 0.5,
 }
 
+# Default crowbar spark gap arc resistance [Ohm] per device.
+# PhD Debate #30 Finding 4: R_crowbar=0 is physically incorrect and
+# systematically biases fc upward during calibration.
+# PF-1000: ~1-3 mOhm for ignitron/spark gap (Dr. PP estimate).
+_DEFAULT_CROWBAR_R: dict[str, float] = {
+    "PF-1000": 1.5e-3,  # 1.5 mOhm midpoint of 1-3 mOhm range
+}
+
 
 def calibrate_default_params(
     devices: list[str] | None = None,
@@ -351,7 +365,15 @@ def calibrate_default_params(
     for dev in devices:
         try:
             pcf = _DEFAULT_DEVICE_PCF.get(dev, 1.0)
-            cal = LeeModelCalibrator(dev, pinch_column_fraction=pcf)
+            # Enable crowbar with device-specific resistance for PF-1000
+            # PhD Debate #30: R_crowbar=0 biases fc upward during calibration
+            crowbar_r = _DEFAULT_CROWBAR_R.get(dev, 0.0)
+            cal = LeeModelCalibrator(
+                dev,
+                pinch_column_fraction=pcf,
+                crowbar_enabled=crowbar_r > 0,
+                crowbar_resistance=crowbar_r,
+            )
             results[dev] = cal.calibrate(maxiter=maxiter)
         except Exception as exc:
             logger.warning("Calibration failed for %s: %s", dev, exc)
