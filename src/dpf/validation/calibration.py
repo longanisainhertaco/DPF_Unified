@@ -410,6 +410,268 @@ class CrossValidationResult:
     generalization_score: float
 
 
+@dataclass
+class MonteCarloNRMSEResult:
+    """Result of Monte Carlo NRMSE uncertainty propagation.
+
+    Attributes:
+        nrmse_mean: Mean NRMSE across all Monte Carlo samples.
+        nrmse_std: Standard deviation of NRMSE across samples.
+        nrmse_median: Median NRMSE.
+        nrmse_ci_lo: Lower bound of 95% confidence interval.
+        nrmse_ci_hi: Upper bound of 95% confidence interval.
+        peak_error_mean: Mean peak current error.
+        peak_error_std: Standard deviation of peak current error.
+        timing_error_mean: Mean timing error.
+        timing_error_std: Standard deviation of timing error.
+        n_samples: Number of Monte Carlo samples.
+        n_failures: Number of failed runs.
+        all_nrmse: All NRMSE values (for histogram plotting).
+        dominant_parameter: Parameter contributing most to variance.
+        sensitivity: Dict mapping parameter name to variance fraction.
+    """
+
+    nrmse_mean: float
+    nrmse_std: float
+    nrmse_median: float
+    nrmse_ci_lo: float
+    nrmse_ci_hi: float
+    peak_error_mean: float
+    peak_error_std: float
+    timing_error_mean: float
+    timing_error_std: float
+    n_samples: int
+    n_failures: int
+    all_nrmse: np.ndarray
+    dominant_parameter: str
+    sensitivity: dict[str, float]
+
+
+def monte_carlo_nrmse(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    n_samples: int = 200,
+    seed: int = 42,
+    pinch_column_fraction: float = 0.14,
+    f_mr: float = 0.1,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    parameter_uncertainties: dict[str, float] | None = None,
+) -> MonteCarloNRMSEResult:
+    """Monte Carlo propagation of input parameter uncertainty to NRMSE.
+
+    Perturbs circuit and geometry parameters within their measurement
+    uncertainties (1-sigma, Gaussian), runs the Lee model for each sample,
+    and computes the distribution of NRMSE values.
+
+    Default uncertainties (1-sigma relative) for PF-1000:
+        C: 2% (capacitor bank tolerance)
+        V0: 1% (voltage monitor calibration)
+        L0: 5% (short-circuit discharge calibration)
+        R0: 10% (short-circuit, frequency-dependent)
+        a: 1% (machining tolerance)
+        b: 1% (machining tolerance)
+        z: 1% (machining tolerance)
+        fc: 5% (calibration valley width)
+        fm: 20% (calibration valley width)
+        pcf: 30% (Lee & Saw 2014: 0.07-0.21)
+
+    Args:
+        device_name: Device to validate against.
+        fc: Current fraction (central value).
+        fm: Mass fraction (central value).
+        n_samples: Number of Monte Carlo draws.
+        seed: Random seed for reproducibility.
+        pinch_column_fraction: Central pcf value.
+        f_mr: Radial mass fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        parameter_uncertainties: Override default uncertainties.
+            Keys: 'C', 'V0', 'L0', 'R0', 'a', 'b', 'z', 'fc', 'fm', 'pcf'.
+            Values: 1-sigma relative uncertainty (e.g. 0.05 for 5%).
+
+    Returns:
+        :class:`MonteCarloNRMSEResult` with NRMSE distribution statistics.
+    """
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    # Default PF-1000 parameter uncertainties (1-sigma relative)
+    default_u = {
+        "C": 0.02, "V0": 0.01, "L0": 0.05, "R0": 0.10,
+        "a": 0.01, "b": 0.01, "z": 0.01,
+        "fc": 0.05, "fm": 0.20, "pcf": 0.30,
+    }
+    if parameter_uncertainties:
+        default_u.update(parameter_uncertainties)
+
+    rng = np.random.default_rng(seed)
+    nrmse_arr = []
+    peak_err_arr = []
+    timing_err_arr = []
+    n_fail = 0
+
+    # Get nominal device parameters
+    from dpf.validation.experimental import DEVICES
+    device = DEVICES[device_name]
+    C_nom = device.capacitance
+    V0_nom = device.voltage
+    L0_nom = device.inductance
+    R0_nom = device.resistance
+    a_nom = device.anode_radius
+    b_nom = device.cathode_radius
+    z_nom = device.anode_length
+
+    for _ in range(n_samples):
+        # Perturb each parameter
+        C_s = C_nom * (1 + rng.normal(0, default_u["C"]))
+        V0_s = V0_nom * (1 + rng.normal(0, default_u["V0"]))
+        L0_s = L0_nom * (1 + rng.normal(0, default_u["L0"]))
+        R0_s = R0_nom * (1 + rng.normal(0, default_u["R0"]))
+        a_s = a_nom * (1 + rng.normal(0, default_u["a"]))
+        b_s = b_nom * (1 + rng.normal(0, default_u["b"]))
+        z_s = z_nom * (1 + rng.normal(0, default_u["z"]))
+        fc_s = fc * (1 + rng.normal(0, default_u["fc"]))
+        fm_s = fm * (1 + rng.normal(0, default_u["fm"]))
+        pcf_s = pinch_column_fraction * (1 + rng.normal(0, default_u["pcf"]))
+
+        # Clamp to physical bounds
+        fc_s = float(np.clip(fc_s, 0.3, 1.0))
+        fm_s = float(np.clip(fm_s, 0.01, 0.5))
+        pcf_s = float(np.clip(pcf_s, 0.01, 1.0))
+        a_s = max(a_s, 0.001)
+        b_s = max(b_s, a_s * 1.1)
+        R0_s = max(R0_s, 1e-6)
+        L0_s = max(L0_s, 1e-12)
+        C_s = max(C_s, 1e-9)
+
+        try:
+            model = LeeModel(
+                current_fraction=fc_s,
+                mass_fraction=fm_s,
+                radial_mass_fraction=f_mr,
+                pinch_column_fraction=pcf_s,
+                crowbar_enabled=crowbar_enabled,
+                crowbar_resistance=crowbar_resistance,
+            )
+            # Override device parameters for this sample
+            comp = model.compare_with_experiment(
+                device_name,
+                override_params={
+                    "C": C_s, "V0": V0_s, "L0": L0_s, "R0": R0_s,
+                    "anode_radius": a_s, "cathode_radius": b_s,
+                    "anode_length": z_s,
+                },
+            )
+            nrmse_arr.append(comp.waveform_nrmse)
+            peak_err_arr.append(comp.peak_current_error)
+            timing_err_arr.append(comp.timing_error)
+        except Exception:
+            n_fail += 1
+
+    nrmse = np.array(nrmse_arr)
+    peak_err = np.array(peak_err_arr)
+    timing_err = np.array(timing_err_arr)
+
+    # Sensitivity analysis: compute variance contribution of each parameter
+    # Use one-at-a-time perturbation at ±1 sigma
+    sensitivity = {}
+    nominal_model = LeeModel(
+        current_fraction=fc, mass_fraction=fm,
+        radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance,
+    )
+    nominal_model.compare_with_experiment(device_name)
+
+    param_map = {
+        "C": ("C", C_nom), "V0": ("V0", V0_nom),
+        "L0": ("L0", L0_nom), "R0": ("R0", R0_nom),
+        "a": ("anode_radius", a_nom), "b": ("cathode_radius", b_nom),
+        "z": ("anode_length", z_nom),
+    }
+    total_var = 0.0
+    for pname, (okey, pnom) in param_map.items():
+        u = default_u[pname]
+        try:
+            m_plus = LeeModel(
+                current_fraction=fc, mass_fraction=fm,
+                radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance,
+            )
+            c_plus = m_plus.compare_with_experiment(
+                device_name, override_params={okey: pnom * (1 + u)}
+            )
+            m_minus = LeeModel(
+                current_fraction=fc, mass_fraction=fm,
+                radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance,
+            )
+            c_minus = m_minus.compare_with_experiment(
+                device_name, override_params={okey: pnom * (1 - u)}
+            )
+            delta = (c_plus.waveform_nrmse - c_minus.waveform_nrmse) / 2
+            sensitivity[pname] = delta ** 2
+            total_var += delta ** 2
+        except Exception:
+            sensitivity[pname] = 0.0
+
+    # Add fc, fm, pcf sensitivity
+    for pname, pval, _pkey in [("fc", fc, None), ("fm", fm, None), ("pcf", pinch_column_fraction, None)]:
+        u = default_u[pname]
+        try:
+            if pname == "fc":
+                m_p = LeeModel(current_fraction=pval*(1+u), mass_fraction=fm,
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+                m_m = LeeModel(current_fraction=pval*(1-u), mass_fraction=fm,
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+            elif pname == "fm":
+                m_p = LeeModel(current_fraction=fc, mass_fraction=pval*(1+u),
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+                m_m = LeeModel(current_fraction=fc, mass_fraction=pval*(1-u),
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+            else:  # pcf
+                m_p = LeeModel(current_fraction=fc, mass_fraction=fm,
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pval*(1+u),
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+                m_m = LeeModel(current_fraction=fc, mass_fraction=fm,
+                    radial_mass_fraction=f_mr, pinch_column_fraction=pval*(1-u),
+                    crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance)
+            c_p = m_p.compare_with_experiment(device_name)
+            c_m = m_m.compare_with_experiment(device_name)
+            delta = (c_p.waveform_nrmse - c_m.waveform_nrmse) / 2
+            sensitivity[pname] = delta ** 2
+            total_var += delta ** 2
+        except Exception:
+            sensitivity[pname] = 0.0
+
+    # Normalize to fractions of total variance
+    if total_var > 0:
+        sensitivity = {k: v / total_var for k, v in sensitivity.items()}
+
+    dominant = max(sensitivity, key=sensitivity.get) if sensitivity else "unknown"
+
+    return MonteCarloNRMSEResult(
+        nrmse_mean=float(np.mean(nrmse)),
+        nrmse_std=float(np.std(nrmse)),
+        nrmse_median=float(np.median(nrmse)),
+        nrmse_ci_lo=float(np.percentile(nrmse, 2.5)),
+        nrmse_ci_hi=float(np.percentile(nrmse, 97.5)),
+        peak_error_mean=float(np.mean(peak_err)),
+        peak_error_std=float(np.std(peak_err)),
+        timing_error_mean=float(np.mean(timing_err)),
+        timing_error_std=float(np.std(timing_err)),
+        n_samples=len(nrmse),
+        n_failures=n_fail,
+        all_nrmse=nrmse,
+        dominant_parameter=dominant,
+        sensitivity=sensitivity,
+    )
+
+
 class CrossValidator:
     """Cross-validate Lee model calibration across devices.
 
