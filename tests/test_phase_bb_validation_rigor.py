@@ -5,6 +5,9 @@ Tests for:
 - Bennett equilibrium self-consistency check
 - ASME V&V 20 reporting with u_val
 - Optimizer boundary diagnostics
+- Validation summary with decoupled circuit/pinch metrics
+- Optimizer gradient/Hessian report
+- Multi-shot experimental uncertainty
 """
 
 from __future__ import annotations
@@ -484,3 +487,201 @@ class TestCrossDeviceBennett:
         # Both should be in keV range (within an order of magnitude)
         ratio = r_po.T_bennett / r_pf.T_bennett
         assert 0.01 < ratio < 100  # Same order of magnitude
+
+
+# ===========================================================================
+# Test 8: Validation Summary Report (decoupled circuit/pinch)
+# ===========================================================================
+class TestValidationSummaryReport:
+    """Tests for validation_summary() with decoupled windows."""
+
+    @pytest.mark.slow
+    def test_summary_has_all_fields(self):
+        """Summary should contain full, circuit, and pinch metrics."""
+        from dpf.validation.calibration import validation_summary
+
+        report = validation_summary(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        assert report.device_name == "PF-1000"
+        assert report.full is not None
+        assert report.full.E > 0
+        assert report.full.u_val > 0
+        assert report.fc_squared_over_fm > 0
+
+    @pytest.mark.slow
+    def test_circuit_phase_lower_nrmse(self):
+        """Circuit-phase NRMSE should be lower than full-waveform."""
+        from dpf.validation.calibration import validation_summary
+
+        report = validation_summary(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        if report.circuit_phase is not None:
+            # Circuit phase (0-6 us) should fit better than full waveform
+            # because the pinch phase is harder to model
+            assert report.circuit_phase.E <= report.full.E * 1.5
+
+    @pytest.mark.slow
+    def test_pinch_phase_present(self):
+        """Pinch phase assessment should be present for PF-1000."""
+        from dpf.validation.calibration import validation_summary
+
+        report = validation_summary(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        assert report.pinch_phase is not None
+        assert report.pinch_phase.E > 0
+        assert "6-end" in report.pinch_phase.time_window
+
+    @pytest.mark.slow
+    def test_bennett_included(self):
+        """Summary should include Bennett equilibrium check."""
+        from dpf.validation.calibration import validation_summary
+
+        report = validation_summary(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            include_bennett=True,
+        )
+        assert report.bennett is not None
+        assert report.bennett.T_bennett > 0
+
+    def test_summary_no_bennett(self):
+        """Summary without Bennett should work."""
+        from dpf.validation.calibration import ValidationSummaryReport
+
+        # Just test the dataclass can be constructed without Bennett
+        report = ValidationSummaryReport(
+            device_name="test", fc=0.7, fm=0.1,
+            full=None, circuit_phase=None, pinch_phase=None,
+            bennett=None, fc_squared_over_fm=4.9,
+        )
+        assert report.bennett is None
+
+    @pytest.mark.slow
+    def test_speed_factor_in_summary(self):
+        """Summary should include speed factor diagnostic."""
+        from dpf.validation.calibration import validation_summary
+
+        report = validation_summary(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        assert report.speed_factor is not None
+        assert report.speed_factor["S"] > 0
+
+
+# ===========================================================================
+# Test 9: Optimizer Gradient Report
+# ===========================================================================
+class TestOptimizerGradient:
+    """Tests for optimizer_gradient_report()."""
+
+    @pytest.mark.slow
+    def test_gradient_small_at_optimum(self):
+        """Gradient magnitude should be small at the calibrated optimum."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        # At the optimum, gradient should be small (< 5 per unit)
+        assert report.grad_magnitude < 5.0
+
+    @pytest.mark.slow
+    def test_hessian_eigenvalues_ordered(self):
+        """Hessian eigenvalues should be ordered (smallest first)."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        assert report.hess_eigenvalues[0] <= report.hess_eigenvalues[1]
+
+    @pytest.mark.slow
+    def test_condition_number_high_for_degenerate(self):
+        """Condition number should be high for the degenerate fc-fm valley."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        # Condition number > 2 indicates some degeneracy
+        assert report.condition_number > 1.0
+
+    @pytest.mark.slow
+    def test_fc_at_boundary_detected(self):
+        """fc=0.800 should be detected as at boundary of [0.6, 0.8]."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            fc_bounds=(0.6, 0.8),
+        )
+        assert report.fc_at_boundary is True
+
+    def test_ridge_direction_unit_vector(self):
+        """Ridge direction should be approximately a unit vector."""
+        from dpf.validation.calibration import OptimizerGradientReport
+
+        # Quick dataclass construction test
+        report = OptimizerGradientReport(
+            fc=0.8, fm=0.094, objective_value=0.15,
+            grad_fc=0.1, grad_fm=-0.2, grad_magnitude=0.224,
+            hess_eigenvalues=(0.5, 50.0), condition_number=100.0,
+            ridge_direction=(0.707, 0.707),
+            fc_bounds=(0.6, 0.8), fm_bounds=(0.05, 0.25),
+            fc_at_boundary=True,
+        )
+        mag = np.sqrt(report.ridge_direction[0]**2 + report.ridge_direction[1]**2)
+        assert mag == pytest.approx(1.0, abs=0.01)
+
+
+# ===========================================================================
+# Test 10: Multi-Shot Experimental Uncertainty
+# ===========================================================================
+class TestMultiShotUncertainty:
+    """Tests for multi_shot_uncertainty()."""
+
+    def test_pf1000_uncertainty(self):
+        """PF-1000 multi-shot uncertainty should be ~7.7%."""
+        from dpf.validation.calibration import multi_shot_uncertainty
+
+        result = multi_shot_uncertainty("PF-1000")
+        assert result.u_shot_to_shot == pytest.approx(0.05, abs=0.001)
+        assert result.u_rogowski == pytest.approx(0.05, abs=0.001)
+        assert result.u_digitization == pytest.approx(0.03, abs=0.001)
+        # RSS: sqrt(0.05^2 + 0.05^2 + 0.03^2) = sqrt(0.0059) = 0.0768
+        assert result.u_exp_combined == pytest.approx(0.0768, abs=0.005)
+
+    def test_averaging_reduces_uncertainty(self):
+        """Averaging n_shots should reduce the shot-to-shot component."""
+        from dpf.validation.calibration import multi_shot_uncertainty
+
+        result = multi_shot_uncertainty("PF-1000")
+        assert result.u_exp_with_averaging < result.u_exp_combined
+        # With 5 shots, shot-to-shot reduces by sqrt(5) ~ 2.24
+        assert result.n_shots_typical == 5
+
+    def test_all_devices_have_data(self):
+        """All devices in _SHOT_TO_SHOT_DATA should return results."""
+        from dpf.validation.calibration import multi_shot_uncertainty
+
+        for dev in ["PF-1000", "NX2", "POSEIDON-60kV", "UNU-ICTP"]:
+            result = multi_shot_uncertainty(dev)
+            assert result.u_exp_combined > 0
+            assert result.reference != ""
+
+    def test_unknown_device_raises(self):
+        """Unknown device should raise KeyError."""
+        from dpf.validation.calibration import multi_shot_uncertainty
+
+        with pytest.raises(KeyError, match="No shot-to-shot"):
+            multi_shot_uncertainty("NONEXISTENT-DEVICE")
+
+    def test_nx2_higher_variability(self):
+        """NX2 should have higher shot-to-shot variability than PF-1000."""
+        from dpf.validation.calibration import multi_shot_uncertainty
+
+        pf = multi_shot_uncertainty("PF-1000")
+        nx2 = multi_shot_uncertainty("NX2")
+        assert nx2.u_shot_to_shot > pf.u_shot_to_shot

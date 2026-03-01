@@ -1272,3 +1272,501 @@ def bennett_equilibrium_check(
         I_ratio=I_ratio,
         is_consistent=is_consistent,
     )
+
+
+# =====================================================================
+# Validation summary report (path-to-7.0: u_val alongside every NRMSE)
+# =====================================================================
+
+
+@dataclass
+class ValidationSummaryReport:
+    """Comprehensive validation report with NRMSE + u_val for multiple windows.
+
+    Reports decoupled circuit-phase (0-6 us) and pinch-phase (6-10 us) metrics
+    alongside full-waveform metrics.  Every NRMSE is accompanied by its
+    validation uncertainty u_val per ASME V&V 20-2009.
+
+    Attributes:
+        device_name: Device name.
+        fc: Current fraction used.
+        fm: Mass fraction used.
+        full: ASME result for full waveform.
+        circuit_phase: ASME result for 0-6 us (circuit-dominated).
+        pinch_phase: ASME result for pinch window (if waveform extends past 6 us).
+        bennett: Bennett equilibrium check result.
+        fc_squared_over_fm: Degeneracy diagnostic fc^2/fm.
+        speed_factor: Speed factor S/S_opt (if available).
+    """
+
+    device_name: str
+    fc: float
+    fm: float
+    full: ASMEValidationResult
+    circuit_phase: ASMEValidationResult | None
+    pinch_phase: ASMEValidationResult | None
+    bennett: BennettEquilibriumResult | None
+    fc_squared_over_fm: float
+    speed_factor: dict[str, float] | None = None
+
+
+def validation_summary(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    f_mr: float = 0.1,
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    circuit_window_us: float = 6.0,
+    include_bennett: bool = True,
+) -> ValidationSummaryReport:
+    """Generate comprehensive validation summary with decoupled metrics.
+
+    Reports NRMSE + u_val for:
+    - Full waveform
+    - Circuit phase only (0 to circuit_window_us)
+    - Pinch phase only (circuit_window_us to end)
+
+    Args:
+        device_name: Registered device name.
+        fc: Current fraction.
+        fm: Mass fraction.
+        f_mr: Radial mass fraction.
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        circuit_window_us: End of circuit phase in microseconds.
+        include_bennett: Whether to include Bennett equilibrium check.
+
+    Returns:
+        :class:`ValidationSummaryReport` with decoupled metrics.
+    """
+    # Full waveform ASME assessment
+    full = asme_vv20_assessment(
+        device_name=device_name, fc=fc, fm=fm, f_mr=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+    )
+
+    # Circuit-phase only (0 to circuit_window_us)
+    circuit_max_time = circuit_window_us * 1e-6
+    try:
+        circuit = asme_vv20_assessment(
+            device_name=device_name, fc=fc, fm=fm, f_mr=f_mr,
+            pinch_column_fraction=pinch_column_fraction,
+            crowbar_enabled=crowbar_enabled,
+            crowbar_resistance=crowbar_resistance,
+            max_time=circuit_max_time,
+        )
+    except Exception:
+        circuit = None
+
+    # Pinch-phase NRMSE: compute from waveform data beyond circuit_window_us
+    pinch = _pinch_phase_asme(
+        device_name=device_name, fc=fc, fm=fm, f_mr=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        t_start_us=circuit_window_us,
+    )
+
+    # Bennett equilibrium
+    bennett = None
+    if include_bennett:
+        import contextlib
+        with contextlib.suppress(Exception):
+            bennett = bennett_equilibrium_check(
+                device_name=device_name, fc=fc, fm=fm,
+                pinch_column_fraction=pinch_column_fraction,
+            )
+
+    # Speed factor
+    speed = None
+    try:
+        from dpf.validation.experimental import DEVICES, compute_speed_factor
+        dev = DEVICES[device_name]
+        if dev.peak_current > 0:
+            speed = compute_speed_factor(
+                dev.peak_current, dev.anode_radius, dev.fill_pressure_torr,
+            )
+    except Exception:
+        pass
+
+    report = ValidationSummaryReport(
+        device_name=device_name,
+        fc=fc,
+        fm=fm,
+        full=full,
+        circuit_phase=circuit,
+        pinch_phase=pinch,
+        bennett=bennett,
+        fc_squared_over_fm=fc**2 / fm if fm > 0 else float("inf"),
+        speed_factor=speed,
+    )
+
+    logger.info(
+        "Validation summary %s: full NRMSE=%.3f (u_val=%.3f, ratio=%.2f), "
+        "circuit NRMSE=%s, pinch NRMSE=%s, Bennett=%s",
+        device_name,
+        full.E, full.u_val, full.ratio,
+        f"{circuit.E:.3f}" if circuit else "N/A",
+        f"{pinch.E:.3f}" if pinch else "N/A",
+        f"ratio={bennett.I_ratio:.2f}" if bennett else "N/A",
+    )
+
+    return report
+
+
+def _pinch_phase_asme(
+    device_name: str,
+    fc: float,
+    fm: float,
+    f_mr: float,
+    pinch_column_fraction: float,
+    crowbar_enabled: bool,
+    crowbar_resistance: float,
+    t_start_us: float,
+) -> ASMEValidationResult | None:
+    """Compute ASME assessment for the pinch phase only.
+
+    Computes NRMSE only for waveform data after t_start_us.
+    """
+    from dpf.validation.experimental import DEVICES
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        return None
+
+    t_start = t_start_us * 1e-6
+    mask = device.waveform_t >= t_start
+    if np.sum(mask) < 3:
+        return None
+
+    t_exp_pinch = device.waveform_t[mask]
+    I_exp_pinch = device.waveform_I[mask]
+
+    model = LeeModel(
+        current_fraction=fc,
+        mass_fraction=fm,
+        radial_mass_fraction=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+    )
+    result = model.run(device_name)
+
+    # Interpolate simulation to experimental time points
+    I_sim_interp = np.interp(t_exp_pinch, result.t, result.I)
+    I_peak = float(np.max(np.abs(device.waveform_I)))
+
+    # NRMSE (peak-normalized)
+    E = float(np.sqrt(np.mean((I_sim_interp - I_exp_pinch) ** 2)) / I_peak)
+
+    u_exp = float(np.sqrt(
+        device.peak_current_uncertainty**2
+        + device.waveform_digitization_uncertainty**2
+    ))
+    u_input = 0.027
+    u_num = 0.001
+    u_val = float(np.sqrt(u_exp**2 + u_input**2 + u_num**2))
+    ratio = E / max(u_val, 1e-15)
+
+    delta_model = float(np.sqrt(max(0.0, E**2 - u_val**2)))
+
+    return ASMEValidationResult(
+        E=E,
+        u_exp=u_exp,
+        u_input=u_input,
+        u_num=u_num,
+        u_val=u_val,
+        ratio=ratio,
+        passes=ratio <= 1.0,
+        delta_model=delta_model,
+        metric_name="NRMSE",
+        device_name=device_name,
+        time_window=f"{t_start_us:.0f}-end us",
+    )
+
+
+# =====================================================================
+# Optimizer gradient report (path-to-7.0: document gradient at optimum)
+# =====================================================================
+
+
+@dataclass
+class OptimizerGradientReport:
+    """Finite-difference gradient and curvature at the calibration optimum.
+
+    Attributes:
+        fc: Current fraction at optimum.
+        fm: Mass fraction at optimum.
+        objective_value: Objective function value at optimum.
+        grad_fc: Partial derivative of objective w.r.t. fc.
+        grad_fm: Partial derivative of objective w.r.t. fm.
+        grad_magnitude: |grad|.
+        hess_eigenvalues: Eigenvalues of the 2x2 Hessian.
+        condition_number: Ratio of max/min eigenvalue (high = degenerate).
+        ridge_direction: Unit vector along the degenerate ridge.
+        fc_bounds: Bounds used for fc.
+        fm_bounds: Bounds used for fm.
+        fc_at_boundary: Whether fc is within 0.5% of a bound.
+    """
+
+    fc: float
+    fm: float
+    objective_value: float
+    grad_fc: float
+    grad_fm: float
+    grad_magnitude: float
+    hess_eigenvalues: tuple[float, float]
+    condition_number: float
+    ridge_direction: tuple[float, float]
+    fc_bounds: tuple[float, float]
+    fm_bounds: tuple[float, float]
+    fc_at_boundary: bool
+
+
+def optimizer_gradient_report(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    fc_bounds: tuple[float, float] = (0.6, 0.8),
+    fm_bounds: tuple[float, float] = (0.05, 0.25),
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    delta: float = 0.005,
+) -> OptimizerGradientReport:
+    """Compute finite-difference gradient and Hessian at the calibration optimum.
+
+    Uses central differences with step size delta to estimate the gradient
+    and 2x2 Hessian matrix of the calibration objective at (fc, fm).
+
+    Args:
+        device_name: Registered device name.
+        fc: Current fraction at optimum.
+        fm: Mass fraction at optimum.
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction.
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        delta: Step size for finite differences.
+
+    Returns:
+        :class:`OptimizerGradientReport`.
+    """
+    from dpf.validation.experimental import DEVICES, nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    def obj(fc_v: float, fm_v: float) -> float:
+        try:
+            model = LeeModel(
+                current_fraction=fc_v,
+                mass_fraction=fm_v,
+                pinch_column_fraction=pinch_column_fraction,
+                crowbar_enabled=crowbar_enabled,
+                crowbar_resistance=crowbar_resistance,
+            )
+            result = model.run(device_name)
+            return float(nrmse_peak(
+                result.t, result.I, device.waveform_t, device.waveform_I,
+            ))
+        except Exception:
+            return 1.0
+
+    f0 = obj(fc, fm)
+
+    # Gradient via central differences
+    f_fc_p = obj(fc + delta, fm)
+    f_fc_m = obj(fc - delta, fm)
+    f_fm_p = obj(fc, fm + delta)
+    f_fm_m = obj(fc, fm - delta)
+
+    grad_fc = (f_fc_p - f_fc_m) / (2 * delta)
+    grad_fm = (f_fm_p - f_fm_m) / (2 * delta)
+    grad_mag = float(np.sqrt(grad_fc**2 + grad_fm**2))
+
+    # Hessian via central differences
+    H_ff = (f_fc_p - 2 * f0 + f_fc_m) / (delta**2)
+    H_mm = (f_fm_p - 2 * f0 + f_fm_m) / (delta**2)
+
+    f_pp = obj(fc + delta, fm + delta)
+    f_pm = obj(fc + delta, fm - delta)
+    f_mp = obj(fc - delta, fm + delta)
+    f_mm = obj(fc - delta, fm - delta)
+    H_fm = (f_pp - f_pm - f_mp + f_mm) / (4 * delta**2)
+
+    H = np.array([[H_ff, H_fm], [H_fm, H_mm]])
+    eigvals = np.sort(np.linalg.eigvalsh(H))
+    eigvecs = np.linalg.eigh(H)[1]
+
+    # Ridge direction = eigenvector of smallest eigenvalue
+    min_idx = 0
+    ridge = eigvecs[:, min_idx]
+
+    # Condition number
+    if abs(eigvals[0]) > 1e-15:
+        cond = abs(eigvals[1]) / abs(eigvals[0])
+    else:
+        cond = float("inf")
+
+    fc_at_boundary = (
+        fc <= fc_bounds[0] + 0.005 or fc >= fc_bounds[1] - 0.005
+    )
+
+    logger.info(
+        "Gradient at (fc=%.3f, fm=%.3f): |grad|=%.4f, "
+        "eigenvalues=(%.4f, %.4f), condition=%.1f, "
+        "ridge=(%.2f, %.2f), at_boundary=%s",
+        fc, fm, grad_mag, eigvals[0], eigvals[1], cond,
+        ridge[0], ridge[1], fc_at_boundary,
+    )
+
+    return OptimizerGradientReport(
+        fc=fc,
+        fm=fm,
+        objective_value=f0,
+        grad_fc=grad_fc,
+        grad_fm=grad_fm,
+        grad_magnitude=grad_mag,
+        hess_eigenvalues=(float(eigvals[0]), float(eigvals[1])),
+        condition_number=cond,
+        ridge_direction=(float(ridge[0]), float(ridge[1])),
+        fc_bounds=fc_bounds,
+        fm_bounds=fm_bounds,
+        fc_at_boundary=fc_at_boundary,
+    )
+
+
+# =====================================================================
+# Multi-shot experimental uncertainty (path-to-7.0)
+# =====================================================================
+
+
+@dataclass
+class MultiShotUncertainty:
+    """Estimated experimental uncertainty from shot-to-shot variability.
+
+    PF-1000 shot-to-shot variability is well-documented in the literature:
+    - Scholz et al. (2006): sigma_I/I ~ 5% for peak current
+    - Lee & Saw (2014): reproducibility to ~5-8% for well-conditioned shots
+
+    Attributes:
+        u_shot_to_shot: Shot-to-shot relative uncertainty (1-sigma).
+        u_rogowski: Rogowski coil calibration uncertainty (1-sigma).
+        u_digitization: Waveform digitization uncertainty (1-sigma).
+        u_exp_combined: Combined experimental uncertainty (RSS).
+        n_shots_typical: Typical number of shots for the estimate.
+        u_exp_with_averaging: u_exp after averaging n_shots.
+        reference: Literature reference.
+    """
+
+    u_shot_to_shot: float
+    u_rogowski: float
+    u_digitization: float
+    u_exp_combined: float
+    n_shots_typical: int
+    u_exp_with_averaging: float
+    reference: str
+
+
+# Published shot-to-shot variability data
+_SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
+    "PF-1000": {
+        "u_shot_to_shot": 0.05,  # 5% sigma_I/I per Scholz et al. (2006)
+        "u_rogowski": 0.05,      # 5% Rogowski coil calibration
+        "u_digitization": 0.03,  # 3% digitization error
+        "n_shots_typical": 5,    # Scholz et al. averaged ~5 reproducible shots
+        "reference": (
+            "Scholz et al., Nukleonika 51(1), 2006; "
+            "Lee & Saw, J. Fusion Energy 33:319-335 (2014)"
+        ),
+    },
+    "NX2": {
+        "u_shot_to_shot": 0.08,  # 8% — smaller devices show more variability
+        "u_rogowski": 0.05,
+        "u_digitization": 0.03,
+        "n_shots_typical": 10,
+        "reference": "Lee & Saw, J. Fusion Energy 27:292-295 (2008)",
+    },
+    "POSEIDON-60kV": {
+        "u_shot_to_shot": 0.06,  # 6% estimated from IPFS data scatter
+        "u_rogowski": 0.05,
+        "u_digitization": 0.03,
+        "n_shots_typical": 3,
+        "reference": "IPFS plasmafocus.net (Lee fitting)",
+    },
+    "UNU-ICTP": {
+        "u_shot_to_shot": 0.10,  # 10% — teaching device, higher variability
+        "u_rogowski": 0.05,
+        "u_digitization": 0.03,
+        "n_shots_typical": 10,
+        "reference": "Lee et al., Am. J. Phys. 56 (1988)",
+    },
+}
+
+
+def multi_shot_uncertainty(
+    device_name: str = "PF-1000",
+) -> MultiShotUncertainty:
+    """Estimate experimental uncertainty from published shot-to-shot data.
+
+    Combines three independent uncertainty sources in quadrature:
+    1. Shot-to-shot variability (from published data)
+    2. Rogowski coil calibration uncertainty
+    3. Waveform digitization uncertainty
+
+    Also computes the reduced uncertainty from averaging multiple shots.
+
+    Args:
+        device_name: Registered device name.
+
+    Returns:
+        :class:`MultiShotUncertainty`.
+
+    Raises:
+        KeyError: If no shot-to-shot data available for device.
+    """
+    if device_name not in _SHOT_TO_SHOT_DATA:
+        raise KeyError(
+            f"No shot-to-shot data for '{device_name}'. "
+            f"Available: {list(_SHOT_TO_SHOT_DATA.keys())}"
+        )
+
+    data = _SHOT_TO_SHOT_DATA[device_name]
+    u_shot = data["u_shot_to_shot"]
+    u_rog = data["u_rogowski"]
+    u_dig = data["u_digitization"]
+    n_shots = data["n_shots_typical"]
+
+    # Combined uncertainty (RSS)
+    u_combined = float(np.sqrt(u_shot**2 + u_rog**2 + u_dig**2))
+
+    # Reduced by averaging n_shots (only shot-to-shot component reduces)
+    u_shot_avg = u_shot / np.sqrt(n_shots)
+    u_with_avg = float(np.sqrt(u_shot_avg**2 + u_rog**2 + u_dig**2))
+
+    logger.info(
+        "Multi-shot %s: u_shot=%.1f%%, u_rog=%.1f%%, u_dig=%.1f%%, "
+        "u_combined=%.1f%%, u_avg(%d shots)=%.1f%%",
+        device_name, u_shot * 100, u_rog * 100, u_dig * 100,
+        u_combined * 100, n_shots, u_with_avg * 100,
+    )
+
+    return MultiShotUncertainty(
+        u_shot_to_shot=u_shot,
+        u_rogowski=u_rog,
+        u_digitization=u_dig,
+        u_exp_combined=u_combined,
+        n_shots_typical=n_shots,
+        u_exp_with_averaging=u_with_avg,
+        reference=data["reference"],
+    )
