@@ -672,6 +672,145 @@ def monte_carlo_nrmse(
     )
 
 
+@dataclass
+class ASMEValidationResult:
+    """ASME V&V 20-2009 formal validation assessment.
+
+    Follows ASME V&V 20-2009 Section 5: comparison error E, validation
+    standard uncertainty u_val, and the ratio E/u_val.  Validation passes
+    when |E| <= u_val (ratio <= 1.0).
+
+    Attributes:
+        E: Comparison error (model error metric, e.g. NRMSE).
+        u_exp: Experimental measurement uncertainty (1-sigma).
+        u_input: Input parameter uncertainty (from Monte Carlo, 1-sigma).
+        u_num: Numerical solution uncertainty (1-sigma).
+        u_val: Validation standard uncertainty = sqrt(u_exp² + u_input² + u_num²).
+        ratio: E / u_val.  Pass if <= 1.0.
+        passes: True if ratio <= 1.0.
+        metric_name: Name of the error metric used for E.
+        device_name: Device assessed.
+        time_window: Description of the time window used.
+    """
+
+    E: float
+    u_exp: float
+    u_input: float
+    u_num: float
+    u_val: float
+    ratio: float
+    passes: bool
+    metric_name: str = "NRMSE"
+    device_name: str = ""
+    time_window: str = "full"
+
+
+def asme_vv20_assessment(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    f_mr: float = 0.1,
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    liftoff_delay: float = 0.0,
+    max_time: float | None = None,
+    u_num: float = 0.001,
+    mc_result: MonteCarloNRMSEResult | None = None,
+) -> ASMEValidationResult:
+    """Compute formal ASME V&V 20-2009 validation assessment.
+
+    Computes comparison error E (NRMSE), experimental uncertainty u_exp,
+    input parameter uncertainty u_input (from Monte Carlo), and numerical
+    uncertainty u_num.  The validation standard uncertainty is:
+
+        u_val = sqrt(u_exp² + u_input² + u_num²)
+
+    Validation passes when |E| <= u_val.
+
+    Args:
+        device_name: Device to assess.
+        fc: Current fraction.
+        fm: Mass fraction.
+        f_mr: Radial mass fraction.
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        max_time: If given, compute NRMSE only up to this time [s].
+        u_num: Numerical uncertainty (1-sigma, relative).  Default 0.001
+            (0.1%) for ODE solver with rtol=1e-8.
+        mc_result: Pre-computed Monte Carlo result for u_input.
+            If None, uses NRMSE_std = 0.027 as default.
+
+    Returns:
+        :class:`ASMEValidationResult` with pass/fail assessment.
+    """
+    from dpf.validation.experimental import DEVICES, nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    # Run the model
+    model = LeeModel(
+        current_fraction=fc,
+        mass_fraction=fm,
+        radial_mass_fraction=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        liftoff_delay=liftoff_delay,
+    )
+    result = model.run(device_name)
+
+    # Compute NRMSE (comparison error E)
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    E = nrmse_peak(
+        result.t, result.I, device.waveform_t, device.waveform_I,
+        max_time=max_time,
+    )
+
+    # Experimental uncertainty: Rogowski + digitization in quadrature
+    u_exp = float(np.sqrt(
+        device.peak_current_uncertainty**2
+        + device.waveform_digitization_uncertainty**2
+    ))
+
+    # Input parameter uncertainty from Monte Carlo
+    if mc_result is not None:
+        u_input = mc_result.nrmse_std
+    else:
+        u_input = 0.027  # Default from Phase AS Monte Carlo
+
+    # Validation standard uncertainty
+    u_val = float(np.sqrt(u_exp**2 + u_input**2 + u_num**2))
+
+    ratio = E / max(u_val, 1e-15)
+    passes = ratio <= 1.0
+
+    time_desc = f"0-{max_time*1e6:.1f} us" if max_time else "full waveform"
+
+    logger.info(
+        "ASME V&V 20: %s (%s) — E=%.3f, u_exp=%.3f, u_input=%.3f, "
+        "u_num=%.4f, u_val=%.3f, ratio=%.2f → %s",
+        device_name, time_desc, E, u_exp, u_input, u_num, u_val,
+        ratio, "PASS" if passes else "FAIL",
+    )
+
+    return ASMEValidationResult(
+        E=E,
+        u_exp=u_exp,
+        u_input=u_input,
+        u_num=u_num,
+        u_val=u_val,
+        ratio=ratio,
+        passes=passes,
+        metric_name="NRMSE",
+        device_name=device_name,
+        time_window=time_desc,
+    )
+
+
 class CrossValidator:
     """Cross-validate Lee model calibration across devices.
 
