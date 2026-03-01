@@ -739,6 +739,7 @@ class ASMEValidationResult:
     u_val: float
     ratio: float
     passes: bool
+    delta_model: float = 0.0
     metric_name: str = "NRMSE"
     device_name: str = ""
     time_window: str = "full"
@@ -827,13 +828,16 @@ def asme_vv20_assessment(
     ratio = E / max(u_val, 1e-15)
     passes = ratio <= 1.0
 
+    # Model-form error per ASME V&V 20-2009 Section 5.3
+    delta_model = float(np.sqrt(max(0.0, E**2 - u_val**2)))
+
     time_desc = f"0-{max_time*1e6:.1f} us" if max_time else "full waveform"
 
     logger.info(
         "ASME V&V 20: %s (%s) — E=%.3f, u_exp=%.3f, u_input=%.3f, "
-        "u_num=%.4f, u_val=%.3f, ratio=%.2f → %s",
+        "u_num=%.4f, u_val=%.3f, delta_model=%.3f, ratio=%.2f → %s",
         device_name, time_desc, E, u_exp, u_input, u_num, u_val,
-        ratio, "PASS" if passes else "FAIL",
+        delta_model, ratio, "PASS" if passes else "FAIL",
     )
 
     return ASMEValidationResult(
@@ -844,6 +848,7 @@ def asme_vv20_assessment(
         u_val=u_val,
         ratio=ratio,
         passes=passes,
+        delta_model=delta_model,
         metric_name="NRMSE",
         device_name=device_name,
         time_window=time_desc,
