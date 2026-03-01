@@ -231,6 +231,43 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
     },
+    "poseidon": {
+        "_meta": {
+            "description": "POSEIDON (IPF Stuttgart) — 480 kJ MA-class deuterium DPF",
+            "device": "POSEIDON",
+            "geometry": "cylindrical",
+            "reference": "Herold et al., Nucl. Fusion 29:33 (1989); Lee & Saw (2014)",
+        },
+        "grid_shape": [128, 1, 512],
+        "dx": 1e-3,
+        "sim_time": 8e-6,
+        "dt_init": 1e-10,
+        "rho0": 7.53e-4,  # 3.5 Torr D2 at 300K
+        "T0": 300.0,
+        "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
+        "circuit": {
+            "C": 450e-6,           # 450 uF
+            "V0": 40e3,            # 40 kV typical
+            "L0": 20e-9,           # 20 nH (MA-class low-inductance)
+            "R0": 2e-3,            # ~2 mOhm
+            "anode_radius": 0.055,
+            "cathode_radius": 0.10,
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
+        "sheath": {"enabled": True, "boundary": "z_high"},
+        "snowplow": {
+            "anode_length": 0.5,
+            "current_fraction": 0.7,
+            "mass_fraction": 0.08,
+            "radial_mass_fraction": 0.1,
+            "pinch_column_fraction": 0.14,
+        },
+    },
     "cartesian_demo": {
         "_meta": {
             "description": "32^3 Cartesian demo — all physics enabled",

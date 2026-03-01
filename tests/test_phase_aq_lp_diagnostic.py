@@ -171,28 +171,24 @@ class TestLpL0Diagnostic:
         # Ratio should be O(1) for PF-1000
         assert 0.1 < result["L_p_over_L0"] < 10.0
 
-    def test_only_pf1000_variants_are_plasma_significant(self):
-        """Among registered devices, only PF-1000 variants have L_p/L0 > 1."""
-        z_max_map = {
-            "PF-1000": 0.6, "PF-1000-16kV": 0.6,
-            "NX2": 0.05, "UNU-ICTP": 0.16,
-        }
+    def test_plasma_significant_device_classification(self):
+        """PF-1000 variants and POSEIDON are plasma-significant; small devices are not."""
         results = {}
         for name, data in DEVICES.items():
-            z_max = z_max_map[name]
             r = compute_lp_l0_ratio(
                 L0=data.inductance,
                 anode_radius=data.anode_radius,
                 cathode_radius=data.cathode_radius,
-                anode_length=z_max,
+                anode_length=data.anode_length,
             )
             results[name] = r
         plasma_sig = sorted(
             n for n, r in results.items() if r["regime"] == "plasma-significant"
         )
-        # Both PF-1000 variants should be plasma-significant (same geometry)
+        # PF-1000 variants and POSEIDON should be plasma-significant
         assert "PF-1000" in plasma_sig
         assert "PF-1000-16kV" in plasma_sig
+        assert "POSEIDON" in plasma_sig
         # NX2 and UNU-ICTP should NOT be
         assert "NX2" not in plasma_sig
         assert "UNU-ICTP" not in plasma_sig
