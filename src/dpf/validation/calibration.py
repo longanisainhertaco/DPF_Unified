@@ -774,7 +774,9 @@ def calibrate_with_liftoff(
         include_shot_to_shot=include_shot_to_shot,
     )
 
-    # Standard 2-parameter calibration for comparison
+    # Standard 2-parameter calibration for comparison.
+    # Uses the SAME fc_bounds as the 3-param optimization to avoid
+    # the bound asymmetry confound identified in PhD Debate #40.
     std_cal = LeeModelCalibrator(
         device_name,
         pinch_column_fraction=pinch_column_fraction,
@@ -782,7 +784,7 @@ def calibrate_with_liftoff(
         crowbar_resistance=crowbar_resistance,
     )
     std_result = std_cal.calibrate(
-        fc_bounds=(fc_bounds[0], min(fc_bounds[1], 0.80)),
+        fc_bounds=fc_bounds,
         fm_bounds=fm_bounds,
         maxiter=maxiter,
     )
