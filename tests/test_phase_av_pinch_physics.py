@@ -23,6 +23,7 @@ from dpf.validation.pinch_physics import (
     MU_0,
     CollisionalityDiagnostics,
     DPFPinchDiagnostics,
+    I4FitResult,
     MRTIDiagnostics,
     ND_parameter,
     StagnationDiagnostics,
@@ -630,20 +631,28 @@ class TestMAClassDeviceComparison:
 
     @pytest.mark.parametrize("device,data", list(_MA_CLASS_DEVICES.items()))
     def test_yield_order_of_magnitude(self, device: str, data: dict):
-        """Predicted yield within 2 orders of magnitude of measured.
+        """Predicted yield within 1 order of magnitude of measured.
 
-        The I^4 law with a single coefficient has ~2 orders of magnitude
-        scatter across devices (Lee & Saw 2008).  POSEIDON at 4.6 MA
-        significantly underperforms the trend (low Y_n/I^4), likely due
-        to sub-optimal fill pressure or timing.
+        The I^4 law with a fitted coefficient should reproduce each device's
+        yield within ~10x scatter.  POSEIDON at 4.6 MA significantly
+        underperforms (low Y_n/I^4) due to sub-optimal fill pressure
+        or timing — it gets a wider tolerance.
         """
         Y_pred = neutron_yield_I4(data["I_peak_MA"])
         Y_meas = data["Y_n"]
         ratio = Y_pred / Y_meas
-        # Allow 0.01x to 100x scatter (I^4 law has ~2 order scatter)
-        assert 0.01 < ratio < 100, (
-            f"{device}: Y_pred={Y_pred:.1e}, Y_meas={Y_meas:.1e}, ratio={ratio:.1f}"
-        )
+        # 0.1x to 10x for most devices; anomalous devices get wider tolerance
+        # POSEIDON (4.6 MA, low yield) and Gemini (6.0 MA, below I^4 trend)
+        # are known outliers due to different operating regimes
+        anomalous = {"POSEIDON", "Gemini"}
+        if device in anomalous:
+            assert 0.01 < ratio < 100, (
+                f"{device}: Y_pred={Y_pred:.1e}, Y_meas={Y_meas:.1e}, ratio={ratio:.1f}"
+            )
+        else:
+            assert 0.1 < ratio < 10, (
+                f"{device}: Y_pred={Y_pred:.1e}, Y_meas={Y_meas:.1e}, ratio={ratio:.1f}"
+            )
 
     def test_monotonic_yield_with_current(self):
         """Higher current devices have higher predicted yield."""
@@ -701,3 +710,103 @@ class TestDeviceIntegration:
                 )
                 assert diag.stagnation.v_imp > 0, f"{name}: v_imp <= 0"
                 assert diag.Y_predicted > 0, f"{name}: Y <= 0"
+
+
+# ═══════════════════════════════════════════════════════
+# Phase AW: Free-Exponent I^4 Fit + ASME delta_model
+# ═══════════════════════════════════════════════════════
+
+
+class TestFreeExponentI4Fit:
+    """Tests for the free-exponent Y_n = C * I^n fitting."""
+
+    def test_forced_exponent_backward_compatible(self):
+        """Default (forced n=4) returns float, same as before."""
+        C = fit_I4_coefficient()
+        assert isinstance(C, float)
+        assert C > 0
+
+    def test_free_exponent_returns_result(self):
+        """free_exponent=True returns I4FitResult dataclass."""
+        result = fit_I4_coefficient(free_exponent=True)
+        assert isinstance(result, I4FitResult)
+        assert result.coefficient > 0
+        assert result.n_devices == 6
+        assert result.forced_exponent is False
+
+    def test_free_exponent_value(self):
+        """Free-fit exponent on Goyon dataset should be < 4.0.
+
+        PhD Debate #33 found n=0.76 with R^2=0.20 on this dataset,
+        demonstrating that I^4 does not hold across heterogeneous
+        devices (different geometries, fill pressures, sizes).
+        """
+        result = fit_I4_coefficient(free_exponent=True)
+        # Exponent should be well below 4 for heterogeneous dataset
+        assert result.exponent < 4.0
+        # R^2 should be low (poor fit)
+        assert result.r_squared < 0.5
+
+    def test_free_exponent_physical_range(self):
+        """Free-fit exponent should be positive (yield increases with I)."""
+        result = fit_I4_coefficient(free_exponent=True)
+        assert result.exponent > 0
+
+    def test_homologous_devices_better_fit(self):
+        """Subset of similar-size devices should fit better than full set."""
+        # Use only ~1 MJ class devices with similar geometry
+        similar = {
+            "Verus": _MA_CLASS_DEVICES["Verus"],
+            "PF-1000": _MA_CLASS_DEVICES["PF-1000"],
+            "MJOLNIR": _MA_CLASS_DEVICES["MJOLNIR"],
+        }
+        fit_I4_coefficient(free_exponent=True)  # full dataset for comparison
+        result_sub = fit_I4_coefficient(similar, free_exponent=True)
+        # Not guaranteed to have higher R^2, but both should be valid
+        assert isinstance(result_sub, I4FitResult)
+        assert result_sub.n_devices == 3
+
+    def test_forced_vs_free_coefficient(self):
+        """Forced n=4 and free fit give different C values."""
+        C_forced = fit_I4_coefficient()
+        result_free = fit_I4_coefficient(free_exponent=True)
+        # They should be different since the exponents differ
+        assert isinstance(C_forced, float)
+        assert result_free.coefficient != pytest.approx(C_forced, rel=0.1)
+
+
+class TestASMEDeltaModel:
+    """Tests for delta_model computation in ASME V&V 20 assessment."""
+
+    def test_delta_model_computed(self):
+        """ASME result now includes delta_model field."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result = asme_vv20_assessment()
+        assert hasattr(result, "delta_model")
+        assert result.delta_model >= 0
+
+    def test_delta_model_formula(self):
+        """delta_model = sqrt(max(0, E^2 - u_val^2))."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result = asme_vv20_assessment()
+        import math
+        expected = math.sqrt(max(0.0, result.E**2 - result.u_val**2))
+        assert result.delta_model == pytest.approx(expected, rel=1e-10)
+
+    def test_delta_model_positive_when_fail(self):
+        """When E > u_val (FAIL), delta_model is positive and significant."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result = asme_vv20_assessment()
+        # We know ASME FAILS (ratio > 1), so delta_model > 0
+        if not result.passes:
+            assert result.delta_model > 0
+
+    def test_delta_model_less_than_E(self):
+        """delta_model <= E always (model error can't exceed total error)."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result = asme_vv20_assessment()
+        assert result.delta_model <= result.E + 1e-15

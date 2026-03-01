@@ -54,9 +54,11 @@ def implosion_velocity(
 ) -> float:
     """Estimate sheath implosion velocity from 1D shock theory.
 
-    From Angus (2021) / Goyon et al. (2025) Eq. 1, based on
-    Rankine-Hugoniot analysis of a magnetically-driven cylindrical
-    implosion in a uniform fill gas.
+    From Angus (2021) / Goyon et al. (2025) Eq. 1.  Empirical fit
+    calibrated against Rankine-Hugoniot simulations of magnetically-driven
+    cylindrical implosion in a uniform fill gas.  The coefficient 950 is
+    a dimensional fit constant, not derived analytically from conservation
+    laws.
 
     Args:
         I_MA: Drive current at implosion [MA].
@@ -510,25 +512,51 @@ _MA_CLASS_DEVICES: dict[str, dict[str, float]] = {
 }
 
 
+@dataclass
+class I4FitResult:
+    """Result of fitting Y_n = C * I^n to multi-device data.
+
+    Attributes:
+        coefficient: Best-fit C.
+        exponent: Best-fit n (4.0 if forced, free otherwise).
+        r_squared: Coefficient of determination R^2.
+        n_devices: Number of devices used in fit.
+        forced_exponent: Whether exponent was fixed at 4.0.
+    """
+
+    coefficient: float
+    exponent: float
+    r_squared: float
+    n_devices: int
+    forced_exponent: bool
+
+
 def fit_I4_coefficient(
     device_data: dict[str, dict[str, float]] | None = None,
-) -> float:
-    """Fit the I^4 scaling coefficient from multi-device data.
+    *,
+    free_exponent: bool = False,
+) -> float | I4FitResult:
+    """Fit the I^n scaling coefficient from multi-device data.
 
-    Uses least-squares fit of log(Y_n) = log(C) + 4*log(I_peak)
+    Uses least-squares fit of log(Y_n) = log(C) + n*log(I_peak)
     to published device data.
 
     Args:
         device_data: Dict of device data, each with 'I_peak_MA'
             and 'Y_n' keys. Default: MA-class devices from Goyon (2025).
+        free_exponent: If True, fit both C and n freely and return
+            an :class:`I4FitResult`. If False, fix n=4 and return
+            just the coefficient C (backward compatible).
 
     Returns:
-        Best-fit coefficient C in Y_n = C * I^4.
+        If ``free_exponent=False``: best-fit coefficient C (float).
+        If ``free_exponent=True``: :class:`I4FitResult` with C, n, R^2.
 
     Notes:
-        The I^4 law is empirical with significant device-to-device
-        scatter (~1 order of magnitude). The fitted C is a geometric
-        mean across devices.
+        The I^4 law (Lee & Saw 2008) is derived under assumptions of
+        beam-target dominance, optimal fill pressure, and similar
+        geometry class.  The free-exponent fit tests whether these
+        assumptions hold for the given dataset.
     """
     if device_data is None:
         device_data = _MA_CLASS_DEVICES
@@ -542,10 +570,29 @@ def fit_I4_coefficient(
     log_I_arr = np.array(log_I)
     log_Y_arr = np.array(log_Y)
 
-    # Linear regression: log(Y) = log(C) + n * log(I)
-    # Fix n=4, solve for log(C) = mean(log(Y) - 4*log(I))
-    log_C = np.mean(log_Y_arr - 4 * log_I_arr)
-    return float(np.exp(log_C))
+    if not free_exponent:
+        # Fix n=4, solve for log(C) = mean(log(Y) - 4*log(I))
+        log_C = np.mean(log_Y_arr - 4 * log_I_arr)
+        return float(np.exp(log_C))
+
+    # Free-exponent fit: log(Y) = log(C) + n * log(I)
+    coeffs = np.polyfit(log_I_arr, log_Y_arr, 1)
+    n_fit = float(coeffs[0])
+    log_C_fit = float(coeffs[1])
+
+    # R^2
+    y_pred = coeffs[0] * log_I_arr + coeffs[1]
+    ss_res = float(np.sum((log_Y_arr - y_pred) ** 2))
+    ss_tot = float(np.sum((log_Y_arr - np.mean(log_Y_arr)) ** 2))
+    r_squared = 1.0 - ss_res / max(ss_tot, 1e-30)
+
+    return I4FitResult(
+        coefficient=float(np.exp(log_C_fit)),
+        exponent=n_fit,
+        r_squared=r_squared,
+        n_devices=len(device_data),
+        forced_exponent=False,
+    )
 
 
 # =====================================================================

@@ -54,21 +54,10 @@ from dpf.validation.magnetized_noh import (
     shock_velocity,
     verify_rankine_hugoniot,
 )
-from dpf.validation.riemann_exact import (
-    BLAST_LEFT,
-    BLAST_RIGHT,
-    DOUBLE_RAREFACTION_LEFT,
-    DOUBLE_RAREFACTION_RIGHT,
-    LAX_LEFT,
-    LAX_RIGHT,
-    SOD_LEFT,
-    SOD_RIGHT,
-    ExactRiemannSolver,
-    RiemannState,
-)
 from dpf.validation.pinch_physics import (
     CollisionalityDiagnostics,
     DPFPinchDiagnostics,
+    I4FitResult,
     MRTIDiagnostics,
     StagnationDiagnostics,
     alfven_velocity,
@@ -86,6 +75,18 @@ from dpf.validation.pinch_physics import (
     neutron_yield_I4,
     stagnation_diagnostics,
     stagnation_temperature,
+)
+from dpf.validation.riemann_exact import (
+    BLAST_LEFT,
+    BLAST_RIGHT,
+    DOUBLE_RAREFACTION_LEFT,
+    DOUBLE_RAREFACTION_RIGHT,
+    LAX_LEFT,
+    LAX_RIGHT,
+    SOD_LEFT,
+    SOD_RIGHT,
+    ExactRiemannSolver,
+    RiemannState,
 )
 from dpf.validation.sedov_exact import SedovExact
 from dpf.validation.suite import (
@@ -159,6 +160,7 @@ __all__ = [
     "zpinch_profiles",
     # Pinch physics diagnostics (Phase AV)
     "CollisionalityDiagnostics",
+    "I4FitResult",
     "DPFPinchDiagnostics",
     "MRTIDiagnostics",
     "StagnationDiagnostics",
