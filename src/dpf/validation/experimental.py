@@ -522,6 +522,83 @@ def compute_bare_rlc_timing(
 
 
 # =====================================================================
+# Speed factor diagnostic (Debate #36)
+# =====================================================================
+
+# Optimal speed factor from Lee & Saw (2008, 2014):
+# S_opt ~ 89 kA/(cm * sqrt(Torr)) for deuterium Mather-type DPF.
+_S_OPTIMAL_KA_CM_TORR = 89.0
+
+
+def compute_speed_factor(
+    peak_current: float,
+    anode_radius: float,
+    fill_pressure_torr: float,
+) -> dict[str, float]:
+    """Compute the Lee speed factor S = I_peak / (a * sqrt(p)).
+
+    The speed factor is a dimensionless scaling parameter that
+    characterizes the drive condition of a DPF device.  Lee & Saw
+    (2008) showed that neutron yield peaks at an optimal speed
+    factor S_opt ~ 89 kA/(cm * sqrt(Torr)) for deuterium fill.
+
+    Classification (PhD Debate #36):
+
+    - S/S_opt ~ 0.8-1.2: **Optimal** — thin-sheath snowplow valid,
+      Lee model fc/fm are most transferable.
+    - S/S_opt < 0.8: **Sub-driven** — slow sheath, thick and diffuse,
+      under-compressed pinch.
+    - S/S_opt > 1.2: **Super-driven** — sheath outruns fill gas,
+      snowplow approximation breaks down, fc/fm become strongly
+      device-dependent.
+
+    Parameters
+    ----------
+    peak_current : float
+        Peak discharge current [A].
+    anode_radius : float
+        Anode radius [m].
+    fill_pressure_torr : float
+        Fill gas pressure [Torr].
+
+    Returns
+    -------
+    dict
+        ``S`` : float
+            Speed factor [kA / (cm * sqrt(Torr))].
+        ``S_over_S_opt`` : float
+            Ratio S / S_opt (dimensionless).
+        ``regime`` : str
+            "optimal", "sub-driven", or "super-driven".
+
+    References
+    ----------
+    S. Lee & S. H. Saw, J. Fusion Energy 27:292-295 (2008).
+    S. Lee, J. Fusion Energy 33:319-335 (2014).
+    """
+    # Convert to kA/(cm * sqrt(Torr))
+    I_kA = peak_current / 1e3
+    a_cm = anode_radius * 100.0
+    p_torr = max(fill_pressure_torr, 1e-10)
+
+    S = I_kA / (a_cm * np.sqrt(p_torr))
+    S_ratio = S / _S_OPTIMAL_KA_CM_TORR
+
+    if 0.8 <= S_ratio <= 1.2:
+        regime = "optimal"
+    elif S_ratio < 0.8:
+        regime = "sub-driven"
+    else:
+        regime = "super-driven"
+
+    return {
+        "S": S,
+        "S_over_S_opt": S_ratio,
+        "regime": regime,
+    }
+
+
+# =====================================================================
 # Helpers
 # =====================================================================
 

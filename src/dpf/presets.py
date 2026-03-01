@@ -300,9 +300,9 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.30,
-            "current_fraction": 0.7,
-            "mass_fraction": 0.08,
-            "radial_mass_fraction": 0.1,
+            "current_fraction": 0.595,   # IPFS Lee model fit (plasmafocus.net)
+            "mass_fraction": 0.275,      # IPFS Lee model fit
+            "radial_mass_fraction": 0.45,  # IPFS Lee model fit (fmr)
             "pinch_column_fraction": 0.14,
         },
     },
