@@ -692,6 +692,7 @@ def calibrate_with_liftoff(
     crowbar_resistance: float = 1.5e-3,
     maxiter: int = 200,
     include_shot_to_shot: bool = True,
+    mc_result: MonteCarloNRMSEResult | None = None,
 ) -> LiftoffCalibrationResult:
     """Three-parameter calibration: fc, fm, and insulator liftoff delay.
 
@@ -712,6 +713,10 @@ def calibrate_with_liftoff(
         crowbar_resistance: Crowbar resistance [Ohm].
         maxiter: Maximum optimizer iterations.
         include_shot_to_shot: Include shot-to-shot uncertainty in ASME.
+        mc_result: Pre-computed Monte Carlo result for u_input.  If None,
+            uses default u_input=0.027 from Phase AS.  Pass result from
+            ``monte_carlo_nrmse(liftoff_delay=...)`` to include delay
+            uncertainty in u_val (PhD Debate #40 recommendation).
 
     Returns:
         :class:`LiftoffCalibrationResult` with optimized parameters and
@@ -772,6 +777,7 @@ def calibrate_with_liftoff(
         crowbar_resistance=crowbar_resistance,
         liftoff_delay=delay_opt_s,
         include_shot_to_shot=include_shot_to_shot,
+        mc_result=mc_result,
     )
 
     # Standard 2-parameter calibration for comparison.
@@ -794,6 +800,7 @@ def calibrate_with_liftoff(
         crowbar_enabled=crowbar_enabled,
         crowbar_resistance=crowbar_resistance,
         include_shot_to_shot=include_shot_to_shot,
+        mc_result=mc_result,
     )
 
     nrmse_opt = asme_opt.E
