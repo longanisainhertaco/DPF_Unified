@@ -49,16 +49,24 @@ def _blind_model() -> LeeModel:
 
 
 def _bare_rlc_peak(device_name: str) -> float:
-    """Compute bare RLC peak current (no plasma physics)."""
+    """Compute bare RLC peak current (no plasma physics).
+
+    Underdamped series RLC: I(t) = V0/(omega_d*L) * exp(-alpha*t) * sin(omega_d*t)
+    Peak at t_peak = arctan(omega_d/alpha) / omega_d.
+    I_peak = V0 * sqrt(C/L) * exp(-alpha * t_peak)  [Amperes].
+    """
     dev = DEVICES[device_name]
-    omega = 1.0 / np.sqrt(dev.inductance * dev.capacitance)
-    R_crit = 2.0 * np.sqrt(dev.inductance / dev.capacitance)
-    zeta = dev.resistance / R_crit
-    if zeta >= 1.0:
-        return dev.voltage / dev.resistance  # overdamped
-    omega_d = omega * np.sqrt(1.0 - zeta**2)
-    t_peak = np.pi / (2.0 * omega_d) if omega_d > 0 else 0
-    return dev.voltage * omega / omega_d * np.exp(-zeta * omega * t_peak)
+    L = dev.inductance
+    C = dev.capacitance
+    R = dev.resistance
+    V0 = dev.voltage
+    omega0 = 1.0 / np.sqrt(L * C)
+    alpha = R / (2.0 * L)
+    if alpha >= omega0:
+        return V0 / R  # overdamped limit
+    omega_d = np.sqrt(omega0**2 - alpha**2)
+    t_peak = np.arctan2(omega_d, alpha) / omega_d
+    return V0 * np.sqrt(C / L) * np.exp(-alpha * t_peak)
 
 
 # ═══════════════════════════════════════════════════════
