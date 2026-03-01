@@ -459,6 +459,7 @@ def nrmse_peak(
     t_exp: np.ndarray,
     I_exp: np.ndarray,
     truncate_at_dip: bool = False,
+    max_time: float | None = None,
 ) -> float:
     """Compute peak-normalized RMSE between simulated and experimental waveforms.
 
@@ -476,9 +477,14 @@ def nrmse_peak(
     I_exp : ndarray
         Experimental current waveform [A].
     truncate_at_dip : bool, optional
-        If True, truncate comparison at the current dip (first minimum
-        of |I| after peak).  This excludes the post-pinch region where
+        If True, truncate comparison at the current dip (first local
+        minimum of |I| after peak, searched within a limited window of
+        2× the peak time).  This excludes the post-pinch region where
         frozen-L_plasma makes the model invalid.  Default False.
+    max_time : float or None, optional
+        If given, truncate comparison at this time [s].  Only
+        experimental points with t <= max_time are included.
+        Useful for windowed validation (e.g. rise-phase only).
 
     Returns
     -------
@@ -488,19 +494,34 @@ def nrmse_peak(
     t_e = np.asarray(t_exp, dtype=np.float64)
     I_e = np.asarray(I_exp, dtype=np.float64)
 
+    # Explicit time window truncation
+    if max_time is not None:
+        mask = t_e <= max_time
+        if np.sum(mask) > 2:
+            t_e = t_e[mask]
+            I_e = I_e[mask]
+
     if truncate_at_dip:
         # Find the current dip in the SIMULATED waveform — the model is
-        # invalid after the dip (frozen L_plasma region).  Truncate the
-        # experimental time grid to only include times up to the sim dip.
+        # invalid after the dip (frozen L_plasma region).  Search only
+        # within a limited window (2× peak time) to avoid picking up
+        # the L-R crowbar decay tail at late times.
         abs_I_sim = np.abs(np.asarray(I_sim, dtype=np.float64))
+        t_sim_arr = np.asarray(t_sim, dtype=np.float64)
         sim_peak_idx = int(np.argmax(abs_I_sim))
-        post_peak_sim = abs_I_sim[sim_peak_idx:]
+        t_peak = t_sim_arr[sim_peak_idx]
+
+        # Search window: peak to 2× peak time (captures the dip but not
+        # the crowbar L-R decay which can extend to 10× peak time)
+        t_search_end = 2.0 * t_peak
+        search_end_idx = int(np.searchsorted(t_sim_arr, t_search_end))
+        search_end_idx = min(search_end_idx, len(abs_I_sim))
+
+        post_peak_sim = abs_I_sim[sim_peak_idx:search_end_idx]
         if len(post_peak_sim) > 2:
             dip_offset = int(np.argmin(post_peak_sim))
             if dip_offset > 1:
-                t_sim_arr = np.asarray(t_sim, dtype=np.float64)
                 t_dip = t_sim_arr[sim_peak_idx + dip_offset]
-                # Truncate experimental grid at sim dip time
                 mask = t_e <= t_dip
                 if np.sum(mask) > 2:
                     t_e = t_e[mask]
