@@ -268,6 +268,44 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,
         },
     },
+    "poseidon_60kv": {
+        "_meta": {
+            "description": "POSEIDON (IPF Stuttgart) — 280.8 kJ at 60 kV, IPFS digitized I(t)",
+            "device": "POSEIDON-60kV",
+            "geometry": "cylindrical",
+            "reference": "IPFS (plasmafocus.net); Herold et al., Nucl. Fusion 29:33 (1989)",
+        },
+        "grid_shape": [96, 1, 300],
+        "dx": 1e-3,
+        "sim_time": 6e-6,
+        "dt_init": 1e-10,
+        "rho0": 8.18e-4,  # 3.8 Torr D2 at 300K
+        "T0": 300.0,
+        "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
+        "circuit": {
+            "C": 156e-6,           # 156 uF
+            "V0": 60e3,            # 60 kV
+            "L0": 17.7e-9,         # 17.7 nH (Lee model fitted)
+            "R0": 1.7e-3,          # 1.7 mOhm
+            "anode_radius": 0.0655,
+            "cathode_radius": 0.095,
+            "crowbar_enabled": True,
+            "crowbar_mode": "voltage_zero",
+            "crowbar_resistance": 1.5e-3,
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
+        "sheath": {"enabled": True, "boundary": "z_high"},
+        "snowplow": {
+            "anode_length": 0.30,
+            "current_fraction": 0.7,
+            "mass_fraction": 0.08,
+            "radial_mass_fraction": 0.1,
+            "pinch_column_fraction": 0.14,
+        },
+    },
     "cartesian_demo": {
         "_meta": {
             "description": "32^3 Cartesian demo — all physics enabled",

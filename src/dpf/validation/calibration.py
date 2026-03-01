@@ -330,6 +330,10 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
         "fc": (0.60, 0.85),   # Lee & Saw 2014: fc ~ 0.7 for POSEIDON
         "fm": (0.05, 0.20),   # Lee & Saw 2014: fm ~ 0.08-0.12 for POSEIDON (MJ-class)
     },
+    "POSEIDON-60kV": {
+        "fc": (0.50, 0.70),   # IPFS fit: fc=0.595 (different bank/geometry)
+        "fm": (0.15, 0.40),   # IPFS fit: fm=0.275 (higher mass fraction)
+    },
 }
 
 
@@ -339,6 +343,7 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "PF-1000-20kV": 0.14,
     "NX2": 0.5,
     "POSEIDON": 0.14,  # Similar to PF-1000 (Lee & Saw 2014 scaling)
+    "POSEIDON-60kV": 0.14,  # Lee & Saw scaling for MA-class
 }
 
 # Default crowbar spark gap arc resistance [Ohm] per device.
@@ -347,6 +352,7 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
 # PF-1000: ~1-3 mOhm for ignitron/spark gap (Dr. PP estimate).
 _DEFAULT_CROWBAR_R: dict[str, float] = {
     "PF-1000": 1.5e-3,  # 1.5 mOhm midpoint of 1-3 mOhm range
+    "POSEIDON-60kV": 1.5e-3,  # estimated, same as PF-1000
 }
 
 
