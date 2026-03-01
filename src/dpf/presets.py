@@ -238,7 +238,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "reference": "Herold et al., Nucl. Fusion 29:33 (1989); Lee & Saw (2014)",
         },
-        "grid_shape": [128, 1, 512],
+        "grid_shape": [140, 1, 480],
         "dx": 1e-3,
         "sim_time": 8e-6,
         "dt_init": 1e-10,
@@ -251,8 +251,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "V0": 40e3,            # 40 kV typical
             "L0": 20e-9,           # 20 nH (MA-class low-inductance)
             "R0": 2e-3,            # ~2 mOhm
-            "anode_radius": 0.055,
-            "cathode_radius": 0.10,
+            "anode_radius": 0.104,
+            "cathode_radius": 0.135,
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
         },
@@ -261,7 +261,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
-            "anode_length": 0.5,
+            "anode_length": 0.47,
             "current_fraction": 0.7,
             "mass_fraction": 0.08,
             "radial_mass_fraction": 0.1,

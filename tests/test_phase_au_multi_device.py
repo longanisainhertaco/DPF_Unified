@@ -218,9 +218,9 @@ class TestCrossDevicePOSEIDON:
         print(f"  POSEIDON t_peak = {result.peak_current_time*1e6:.2f} us")
         print(f"  Phases completed: {result.phases_completed}")
 
-        # Accept up to 50% for truly blind cross-device transfer
-        # POSEIDON is 480 kJ MA-class vs PF-1000 590 kJ — very different scales
-        assert error < 0.50, f"POSEIDON blind error {error:.1%} > 50%"
+        # With corrected geometry (a=104mm, b=135mm from Herold 1989),
+        # blind cross-device error should be < 25%
+        assert error < 0.25, f"POSEIDON blind error {error:.1%} > 25%"
         # Must complete at least phase 1 (axial rundown)
         assert 1 in result.phases_completed
 
@@ -278,8 +278,8 @@ class TestCrossDevicePOSEIDON:
         # Both fc values should be physically reasonable (0.5-0.95 range)
         assert 0.4 < result_pf.best_fc < 1.0
         assert 0.4 < result_pos.best_fc < 1.0
-        # fc may differ significantly between devices with very different L_p/L0
-        # POSEIDON (L_p/L0=2.99) vs PF-1000 (L_p/L0=1.18) — legitimate variation
+        # fc may differ between devices with different L_p/L0
+        # POSEIDON (L_p/L0=1.23) vs PF-1000 (L_p/L0=1.18) — similar scale
 
     def test_cross_device_bidirectional(self):
         """Cross-validate in both directions: PF-1000→POSEIDON and POSEIDON→PF-1000."""
