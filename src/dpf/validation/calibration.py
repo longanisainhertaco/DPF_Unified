@@ -1347,18 +1347,28 @@ def bennett_equilibrium_check(
                 r_rad = r_all[radial_mask]
                 t_rad = t_all[radial_mask]
                 if len(r_rad) >= 3:
-                    # Compute velocity near pinch (last 5 points of radial phase)
+                    # Compute velocity near pinch from converging (inward) motion only.
+                    # Filter for dr/dt < 0 to exclude Phase 4 reflected shock (outward).
                     n_tail = min(5, len(r_rad) - 1)
                     dr = np.diff(r_rad[-n_tail - 1:])
                     dt_r = np.diff(t_rad[-n_tail - 1:])
-                    v_arr = np.abs(dr / np.maximum(dt_r, 1e-15))
-                    v_imp = float(np.mean(v_arr))
+                    v_raw = dr / np.maximum(dt_r, 1e-15)
+                    # Select only converging motion (dr/dt < 0 = inward)
+                    inward_mask = v_raw < 0
+                    if np.any(inward_mask):
+                        v_imp = float(np.mean(np.abs(v_raw[inward_mask])))
+                    else:
+                        # All points are expanding; use absolute values as fallback
+                        v_imp = float(np.mean(np.abs(v_raw)))
 
         if v_imp > 1e3:  # Physically reasonable (> 1 km/s)
-            # Thermalization: kinetic → thermal, equal partition Te ≈ Ti
-            T_kinetic_K = m_D * v_imp**2 / (3.0 * K_B)
-            T_total_K = T_kinetic_K  # T_e + T_i ≈ T_kinetic
-            T_bennett_eV = T_total_K / (2 * EV_TO_K)
+            # Rankine-Hugoniot strong shock temperature for gamma=5/3:
+            # T_post = 3 * m * v^2 / (16 * k_B)  [per species, post-shock]
+            # At DPF pinch conditions, tau_ei >> tau_pinch, so T_e << T_i.
+            # Bennett relation uses (T_e + T_i) ≈ T_i for the pressure balance.
+            T_ion_K = 3.0 * m_D * v_imp**2 / (16.0 * K_B)
+            T_total_K = T_ion_K  # T_e + T_i ≈ T_i (T_e << T_i at pinch)
+            T_bennett_eV = T_total_K / EV_TO_K
         else:
             # Fallback: adiabatic compression T = T_fill * (b/r_pinch)^(2(gamma-1))
             gamma = 5.0 / 3.0
