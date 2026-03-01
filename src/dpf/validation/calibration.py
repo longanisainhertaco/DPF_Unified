@@ -763,6 +763,7 @@ def asme_vv20_assessment(
     max_time: float | None = None,
     u_num: float = 0.001,
     mc_result: MonteCarloNRMSEResult | None = None,
+    include_shot_to_shot: bool = True,
 ) -> ASMEValidationResult:
     """Compute formal ASME V&V 20-2009 validation assessment.
 
@@ -787,6 +788,8 @@ def asme_vv20_assessment(
             (0.1%) for ODE solver with rtol=1e-8.
         mc_result: Pre-computed Monte Carlo result for u_input.
             If None, uses NRMSE_std = 0.027 as default.
+        include_shot_to_shot: Whether to include shot-to-shot variability
+            in u_exp (from multi_shot_uncertainty data).  Default True.
 
     Returns:
         :class:`ASMEValidationResult` with pass/fail assessment.
@@ -816,11 +819,18 @@ def asme_vv20_assessment(
         max_time=max_time,
     )
 
-    # Experimental uncertainty: Rogowski + digitization in quadrature
-    u_exp = float(np.sqrt(
+    # Experimental uncertainty: combine Rogowski + digitization + shot-to-shot
+    u_exp_sq = (
         device.peak_current_uncertainty**2
         + device.waveform_digitization_uncertainty**2
-    ))
+    )
+    if include_shot_to_shot and device_name in _SHOT_TO_SHOT_DATA:
+        u_shot = _SHOT_TO_SHOT_DATA[device_name]["u_shot_to_shot"]
+        n_shots = _SHOT_TO_SHOT_DATA[device_name]["n_shots_typical"]
+        # Shot-to-shot component reduces with averaging
+        u_shot_avg = u_shot / np.sqrt(n_shots)
+        u_exp_sq += u_shot_avg**2
+    u_exp = float(np.sqrt(u_exp_sq))
 
     # Input parameter uncertainty from Monte Carlo
     if mc_result is not None:
@@ -984,6 +994,47 @@ class BootstrapCIResult:
     degeneracy_ratio_std: float
 
 
+def _estimate_block_size(t: np.ndarray, I_data: np.ndarray) -> int:  # noqa: N803
+    """Estimate optimal block size for block bootstrap from autocorrelation.
+
+    Uses the first lag where autocorrelation drops below 1/e ≈ 0.368,
+    clamped to [2, n//3].  Falls back to n^(1/3) rule (Kunsch 1989)
+    if autocorrelation doesn't decay.
+
+    Args:
+        t: Time array.
+        I_data: Current array.
+
+    Returns:
+        Estimated block size (integer >= 2).
+    """
+    n = len(I_data)
+    if n < 6:
+        return 2
+
+    # Normalize
+    I_centered = I_data - np.mean(I_data)
+    var = np.var(I_centered)
+    if var < 1e-30:
+        return max(2, int(np.ceil(n ** (1.0 / 3.0))))
+
+    # Compute autocorrelation up to n//2 lags
+    max_lag = n // 2
+    acf = np.zeros(max_lag)
+    for lag in range(max_lag):
+        acf[lag] = float(np.mean(I_centered[: n - lag] * I_centered[lag:])) / var
+
+    # Find first lag where acf drops below 1/e
+    threshold = 1.0 / np.e
+    for lag in range(1, max_lag):
+        if acf[lag] < threshold:
+            block_size = max(2, lag + 1)
+            return min(block_size, n // 3)
+
+    # Fallback: Kunsch (1989) n^(1/3) rule
+    return max(2, min(int(np.ceil(n ** (1.0 / 3.0))), n // 3))
+
+
 def bootstrap_calibration(
     device_name: str = "PF-1000",
     n_resamples: int = 50,
@@ -994,13 +1045,14 @@ def bootstrap_calibration(
     crowbar_enabled: bool = True,
     crowbar_resistance: float = 1.5e-3,
     seed: int = 42,
+    block_size: int | None = None,
 ) -> BootstrapCIResult:
-    """Bootstrap confidence intervals for fc/fm calibration.
+    """Block bootstrap confidence intervals for fc/fm calibration.
 
-    Resamples the experimental waveform data points with replacement and
-    re-runs the Nelder-Mead calibration for each resample.  This provides
-    nonparametric confidence intervals that properly account for the
-    degenerate fc-fm valley.
+    Uses the moving block bootstrap (Kunsch 1989, Liu & Singh 1992) to
+    resample contiguous blocks of the experimental waveform, preserving
+    temporal autocorrelation.  Re-runs Nelder-Mead calibration for each
+    resample.
 
     Args:
         device_name: Registered device name.
@@ -1012,6 +1064,8 @@ def bootstrap_calibration(
         crowbar_enabled: Whether crowbar is enabled.
         crowbar_resistance: Crowbar resistance [Ohm].
         seed: Random seed for reproducibility.
+        block_size: Block size for moving block bootstrap.  If None,
+            estimated from autocorrelation (recommended).
 
     Returns:
         :class:`BootstrapCIResult` with confidence intervals and
@@ -1029,16 +1083,41 @@ def bootstrap_calibration(
     I_exp = device.waveform_I
     n_pts = len(t_exp)
 
+    # Estimate or use provided block size
+    if block_size is None:
+        block_size = _estimate_block_size(t_exp, I_exp)
+    block_size = max(2, min(block_size, n_pts // 2))
+
+    logger.info(
+        "Block bootstrap %s: n_pts=%d, block_size=%d, n_resamples=%d",
+        device_name, n_pts, block_size, n_resamples,
+    )
+
     fc_samples = []
     fm_samples = []
 
+    n_blocks_needed = int(np.ceil(n_pts / block_size))
+
     for _i in range(n_resamples):
-        # Resample waveform with replacement
-        idx = rng.choice(n_pts, size=n_pts, replace=True)
-        idx = np.sort(idx)
-        # Ensure uniqueness for interpolation
+        # Moving block bootstrap: sample n_blocks_needed start indices,
+        # concatenate blocks, truncate to n_pts
+        max_start = n_pts - block_size
+        if max_start < 1:
+            max_start = 1
+        starts = rng.integers(0, max_start + 1, size=n_blocks_needed)
+
+        idx = np.concatenate([
+            np.arange(s, min(s + block_size, n_pts)) for s in starts
+        ])[:n_pts]
+
         t_boot = t_exp[idx]
         I_boot = I_exp[idx]
+
+        # Sort by time for interpolation
+        sort_order = np.argsort(t_boot)
+        t_boot = t_boot[sort_order]
+        I_boot = I_boot[sort_order]
+
         # Remove duplicate times (keep first)
         unique_mask = np.concatenate([[True], np.diff(t_boot) > 0])
         t_boot = t_boot[unique_mask]
@@ -1241,9 +1320,51 @@ def bennett_equilibrium_check(
         T_total_K = T_assumed_eV * EV_TO_K * 2  # T_e + T_i ~ 2T
         T_bennett_eV = T_assumed_eV
     else:
-        # Estimate from Bennett relation: T = mu_0 * I^2 / (8*pi * N_L * k_B)
-        T_total_K = MU_0 * I_pinch**2 / (8 * np.pi * N_L * K_B)
-        T_bennett_eV = T_total_K / (2 * EV_TO_K)  # per species
+        # Non-tautological: run the Lee model to get the implosion velocity
+        # at pinch.  T = m_D * v_imp^2 / (3 * k_B).
+        # This is independent of the Bennett relation because v_imp comes
+        # from the snowplow ODE dynamics (I(t) history), not from local I.
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        m_D = 3.3436e-27  # deuteron mass [kg]
+        lee = LeeModel(
+            current_fraction=fc,
+            mass_fraction=fm,
+            pinch_column_fraction=pinch_column_fraction,
+        )
+        lee_result = lee.run(device_name)
+
+        # Extract implosion velocity from r_shock trajectory.
+        # r_shock = b during axial phase, then decreases during radial phase.
+        # Find the radial phase portion (where r < b) and compute dr/dt.
+        v_imp = 0.0
+        r_all = lee_result.r_shock
+        t_all = lee_result.t
+        if len(r_all) >= 4 and len(t_all) == len(r_all):
+            # Identify radial phase: r < 0.99 * b
+            radial_mask = r_all < 0.99 * b
+            if np.any(radial_mask):
+                r_rad = r_all[radial_mask]
+                t_rad = t_all[radial_mask]
+                if len(r_rad) >= 3:
+                    # Compute velocity near pinch (last 5 points of radial phase)
+                    n_tail = min(5, len(r_rad) - 1)
+                    dr = np.diff(r_rad[-n_tail - 1:])
+                    dt_r = np.diff(t_rad[-n_tail - 1:])
+                    v_arr = np.abs(dr / np.maximum(dt_r, 1e-15))
+                    v_imp = float(np.mean(v_arr))
+
+        if v_imp > 1e3:  # Physically reasonable (> 1 km/s)
+            # Thermalization: kinetic → thermal, equal partition Te ≈ Ti
+            T_kinetic_K = m_D * v_imp**2 / (3.0 * K_B)
+            T_total_K = T_kinetic_K  # T_e + T_i ≈ T_kinetic
+            T_bennett_eV = T_total_K / (2 * EV_TO_K)
+        else:
+            # Fallback: adiabatic compression T = T_fill * (b/r_pinch)^(2(gamma-1))
+            gamma = 5.0 / 3.0
+            T_fill_K = 300.0  # room temperature
+            T_total_K = T_fill_K * (b / max(r_pinch, 1e-6)) ** (2 * (gamma - 1))
+            T_bennett_eV = T_total_K / (2 * EV_TO_K)
 
     # Bennett current for the given T and N_L
     I_bennett = np.sqrt(8 * np.pi * N_L * K_B * T_total_K / MU_0)
@@ -1465,10 +1586,17 @@ def _pinch_phase_asme(
     # NRMSE (peak-normalized)
     E = float(np.sqrt(np.mean((I_sim_interp - I_exp_pinch) ** 2)) / I_peak)
 
-    u_exp = float(np.sqrt(
+    # Experimental uncertainty with shot-to-shot (same as asme_vv20_assessment)
+    u_exp_sq = (
         device.peak_current_uncertainty**2
         + device.waveform_digitization_uncertainty**2
-    ))
+    )
+    if device_name in _SHOT_TO_SHOT_DATA:
+        u_shot = _SHOT_TO_SHOT_DATA[device_name]["u_shot_to_shot"]
+        n_shots = _SHOT_TO_SHOT_DATA[device_name]["n_shots_typical"]
+        u_shot_avg = u_shot / np.sqrt(n_shots)
+        u_exp_sq += u_shot_avg**2
+    u_exp = float(np.sqrt(u_exp_sq))
     u_input = 0.027
     u_num = 0.001
     u_val = float(np.sqrt(u_exp**2 + u_input**2 + u_num**2))
@@ -1584,25 +1712,58 @@ def optimizer_gradient_report(
 
     f0 = obj(fc, fm)
 
-    # Gradient via central differences
-    f_fc_p = obj(fc + delta, fm)
-    f_fc_m = obj(fc - delta, fm)
-    f_fm_p = obj(fc, fm + delta)
-    f_fm_m = obj(fc, fm - delta)
+    # Gradient: use one-sided differences at boundaries, central otherwise
+    fc_at_lo = fc <= fc_bounds[0] + delta
+    fc_at_hi = fc >= fc_bounds[1] - delta
+    fm_at_lo = fm <= fm_bounds[0] + delta
+    fm_at_hi = fm >= fm_bounds[1] - delta
 
-    grad_fc = (f_fc_p - f_fc_m) / (2 * delta)
-    grad_fm = (f_fm_p - f_fm_m) / (2 * delta)
+    if fc_at_hi:
+        # Backward difference at upper bound
+        f_fc_m = obj(fc - delta, fm)
+        grad_fc = (f0 - f_fc_m) / delta
+        f_fc_p = f0  # not used for Hessian; use 2nd-order backward
+        H_ff = (f0 - 2 * obj(fc - delta, fm) + obj(fc - 2 * delta, fm)) / (delta**2)
+    elif fc_at_lo:
+        # Forward difference at lower bound
+        f_fc_p = obj(fc + delta, fm)
+        grad_fc = (f_fc_p - f0) / delta
+        f_fc_m = f0
+        H_ff = (obj(fc + 2 * delta, fm) - 2 * f_fc_p + f0) / (delta**2)
+    else:
+        f_fc_p = obj(fc + delta, fm)
+        f_fc_m = obj(fc - delta, fm)
+        grad_fc = (f_fc_p - f_fc_m) / (2 * delta)
+        H_ff = (f_fc_p - 2 * f0 + f_fc_m) / (delta**2)
+
+    if fm_at_hi:
+        f_fm_m = obj(fc, fm - delta)
+        grad_fm = (f0 - f_fm_m) / delta
+        H_mm = (f0 - 2 * obj(fc, fm - delta) + obj(fc, fm - 2 * delta)) / (delta**2)
+    elif fm_at_lo:
+        f_fm_p = obj(fc, fm + delta)
+        grad_fm = (f_fm_p - f0) / delta
+        H_mm = (obj(fc, fm + 2 * delta) - 2 * f_fm_p + f0) / (delta**2)
+    else:
+        f_fm_p = obj(fc, fm + delta)
+        f_fm_m = obj(fc, fm - delta)
+        grad_fm = (f_fm_p - f_fm_m) / (2 * delta)
+        H_mm = (f_fm_p - 2 * f0 + f_fm_m) / (delta**2)
+
     grad_mag = float(np.sqrt(grad_fc**2 + grad_fm**2))
 
-    # Hessian via central differences
-    H_ff = (f_fc_p - 2 * f0 + f_fc_m) / (delta**2)
-    H_mm = (f_fm_p - 2 * f0 + f_fm_m) / (delta**2)
-
-    f_pp = obj(fc + delta, fm + delta)
-    f_pm = obj(fc + delta, fm - delta)
-    f_mp = obj(fc - delta, fm + delta)
-    f_mm = obj(fc - delta, fm - delta)
-    H_fm = (f_pp - f_pm - f_mp + f_mm) / (4 * delta**2)
+    # Cross-Hessian: use central differences where possible, one-sided at bounds
+    fc_lo = max(fc - delta, fc_bounds[0])
+    fc_hi = min(fc + delta, fc_bounds[1])
+    fm_lo = max(fm - delta, fm_bounds[0])
+    fm_hi = min(fm + delta, fm_bounds[1])
+    f_pp = obj(fc_hi, fm_hi)
+    f_pm = obj(fc_hi, fm_lo)
+    f_mp = obj(fc_lo, fm_hi)
+    f_mm = obj(fc_lo, fm_lo)
+    dfc = fc_hi - fc_lo
+    dfm = fm_hi - fm_lo
+    H_fm = (f_pp - f_pm - f_mp + f_mm) / max(dfc * dfm, delta**2 * 0.01)
 
     H = np.array([[H_ff, H_fm], [H_fm, H_mm]])
     eigvals = np.sort(np.linalg.eigvalsh(H))
