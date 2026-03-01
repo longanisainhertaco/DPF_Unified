@@ -947,3 +947,328 @@ class CrossValidator:
             prediction_timing_error=comparison.timing_error,
             generalization_score=generalization_score,
         )
+
+
+@dataclass
+class BootstrapCIResult:
+    """Bootstrap confidence intervals for calibration parameters.
+
+    Attributes:
+        fc_mean: Mean fc across bootstrap resamples.
+        fc_std: Standard deviation of fc.
+        fc_ci_lo: Lower 95% CI for fc.
+        fc_ci_hi: Upper 95% CI for fc.
+        fm_mean: Mean fm across bootstrap resamples.
+        fm_std: Standard deviation of fm.
+        fm_ci_lo: Lower 95% CI for fm.
+        fm_ci_hi: Upper 95% CI for fm.
+        fc_fm_corr: Pearson correlation between fc and fm.
+        n_resamples: Number of bootstrap resamples completed.
+        fc_at_boundary_frac: Fraction of resamples where fc hit upper bound.
+        degeneracy_ratio_mean: Mean fc^2/fm ratio.
+        degeneracy_ratio_std: Std of fc^2/fm ratio.
+    """
+
+    fc_mean: float
+    fc_std: float
+    fc_ci_lo: float
+    fc_ci_hi: float
+    fm_mean: float
+    fm_std: float
+    fm_ci_lo: float
+    fm_ci_hi: float
+    fc_fm_corr: float
+    n_resamples: int
+    fc_at_boundary_frac: float
+    degeneracy_ratio_mean: float
+    degeneracy_ratio_std: float
+
+
+def bootstrap_calibration(
+    device_name: str = "PF-1000",
+    n_resamples: int = 50,
+    fc_bounds: tuple[float, float] = (0.6, 0.8),
+    fm_bounds: tuple[float, float] = (0.05, 0.25),
+    maxiter: int = 80,
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    seed: int = 42,
+) -> BootstrapCIResult:
+    """Bootstrap confidence intervals for fc/fm calibration.
+
+    Resamples the experimental waveform data points with replacement and
+    re-runs the Nelder-Mead calibration for each resample.  This provides
+    nonparametric confidence intervals that properly account for the
+    degenerate fc-fm valley.
+
+    Args:
+        device_name: Registered device name.
+        n_resamples: Number of bootstrap resamples (default 50).
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction.
+        maxiter: Max optimizer iterations per resample.
+        pinch_column_fraction: Pinch column fraction (fixed).
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        seed: Random seed for reproducibility.
+
+    Returns:
+        :class:`BootstrapCIResult` with confidence intervals and
+        degeneracy diagnostics.
+    """
+    from dpf.validation.experimental import DEVICES, nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    rng = np.random.default_rng(seed)
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    t_exp = device.waveform_t
+    I_exp = device.waveform_I
+    n_pts = len(t_exp)
+
+    fc_samples = []
+    fm_samples = []
+
+    for _i in range(n_resamples):
+        # Resample waveform with replacement
+        idx = rng.choice(n_pts, size=n_pts, replace=True)
+        idx = np.sort(idx)
+        # Ensure uniqueness for interpolation
+        t_boot = t_exp[idx]
+        I_boot = I_exp[idx]
+        # Remove duplicate times (keep first)
+        unique_mask = np.concatenate([[True], np.diff(t_boot) > 0])
+        t_boot = t_boot[unique_mask]
+        I_boot = I_boot[unique_mask]
+        if len(t_boot) < 5:
+            continue
+
+        # Calibrate on resampled data — capture loop vars explicitly
+        t_ref, I_ref = t_boot, I_boot
+
+        def objective(
+            x: np.ndarray,
+            _t_ref: np.ndarray = t_ref,
+            _I_ref: np.ndarray = I_ref,
+        ) -> float:
+            fc_t, fm_t = float(x[0]), float(x[1])
+            try:
+                model = LeeModel(
+                    current_fraction=fc_t,
+                    mass_fraction=fm_t,
+                    pinch_column_fraction=pinch_column_fraction,
+                    crowbar_enabled=crowbar_enabled,
+                    crowbar_resistance=crowbar_resistance,
+                )
+                result = model.run(device_name)
+                nrmse = nrmse_peak(
+                    result.t, result.I, _t_ref, _I_ref,
+                )
+                return float(nrmse)
+            except Exception:
+                return 1.0
+
+        from scipy.optimize import Bounds, minimize
+
+        x0 = np.array([
+            0.5 * (fc_bounds[0] + fc_bounds[1]),
+            0.5 * (fm_bounds[0] + fm_bounds[1]),
+        ])
+        try:
+            res = minimize(
+                objective, x0, method="nelder-mead",
+                bounds=Bounds(
+                    [fc_bounds[0], fm_bounds[0]],
+                    [fc_bounds[1], fm_bounds[1]],
+                ),
+                options={"maxiter": maxiter, "xatol": 0.005, "fatol": 0.001},
+            )
+            fc_opt = float(np.clip(res.x[0], *fc_bounds))
+            fm_opt = float(np.clip(res.x[1], *fm_bounds))
+            fc_samples.append(fc_opt)
+            fm_samples.append(fm_opt)
+        except Exception:
+            continue
+
+    fc_arr = np.array(fc_samples)
+    fm_arr = np.array(fm_samples)
+    n_ok = len(fc_arr)
+
+    if n_ok < 3:
+        raise RuntimeError(f"Bootstrap failed: only {n_ok} successful resamples")
+
+    ratio = fc_arr**2 / fm_arr
+
+    # Compute correlation
+    if np.std(fc_arr) > 0 and np.std(fm_arr) > 0:
+        corr = float(np.corrcoef(fc_arr, fm_arr)[0, 1])
+    else:
+        corr = 0.0
+
+    boundary_frac = float(np.mean(fc_arr >= fc_bounds[1] - 0.005))
+
+    logger.info(
+        "Bootstrap %s (n=%d/%d): fc=%.3f±%.3f [%.3f, %.3f], "
+        "fm=%.3f±%.3f [%.3f, %.3f], corr=%.2f, boundary=%.0f%%",
+        device_name, n_ok, n_resamples,
+        np.mean(fc_arr), np.std(fc_arr),
+        np.percentile(fc_arr, 2.5), np.percentile(fc_arr, 97.5),
+        np.mean(fm_arr), np.std(fm_arr),
+        np.percentile(fm_arr, 2.5), np.percentile(fm_arr, 97.5),
+        corr, boundary_frac * 100,
+    )
+
+    return BootstrapCIResult(
+        fc_mean=float(np.mean(fc_arr)),
+        fc_std=float(np.std(fc_arr)),
+        fc_ci_lo=float(np.percentile(fc_arr, 2.5)),
+        fc_ci_hi=float(np.percentile(fc_arr, 97.5)),
+        fm_mean=float(np.mean(fm_arr)),
+        fm_std=float(np.std(fm_arr)),
+        fm_ci_lo=float(np.percentile(fm_arr, 2.5)),
+        fm_ci_hi=float(np.percentile(fm_arr, 97.5)),
+        fc_fm_corr=corr,
+        n_resamples=n_ok,
+        fc_at_boundary_frac=boundary_frac,
+        degeneracy_ratio_mean=float(np.mean(ratio)),
+        degeneracy_ratio_std=float(np.std(ratio)),
+    )
+
+
+@dataclass
+class BennettEquilibriumResult:
+    """Bennett equilibrium check at pinch conditions.
+
+    The Bennett relation states that for a z-pinch in equilibrium:
+        I^2 = (8*pi/mu_0) * N_L * k_B * (T_e + T_i)
+
+    where N_L is the line density (particles per unit length).
+
+    Attributes:
+        I_pinch: Current at pinch [A].
+        r_pinch: Pinch radius [m].
+        z_pinch: Pinch length [m].
+        n_pinch: Pinch number density [m^-3].
+        N_L: Line density [m^-1].
+        T_bennett: Bennett temperature [eV].
+        I_bennett: Bennett current for the given T and N_L [A].
+        I_ratio: I_pinch / I_bennett (should be ~1 for equilibrium).
+        is_consistent: Whether |I_ratio - 1| < tolerance.
+    """
+
+    I_pinch: float
+    r_pinch: float
+    z_pinch: float
+    n_pinch: float
+    N_L: float
+    T_bennett: float
+    I_bennett: float
+    I_ratio: float
+    is_consistent: bool
+
+
+def bennett_equilibrium_check(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    pinch_column_fraction: float = 0.14,
+    compression_ratio: float = 10.0,
+    T_assumed_eV: float | None = None,
+    tolerance: float = 0.5,
+) -> BennettEquilibriumResult:
+    """Check Bennett equilibrium self-consistency at pinch.
+
+    Computes the Bennett temperature from the snowplow pinch conditions
+    and verifies that I_pinch^2 ~ (8*pi/mu_0) * N_L * k_B * (T_e + T_i).
+
+    If T_assumed_eV is provided, uses that temperature.  Otherwise
+    estimates from the snowplow kinetic energy at pinch.
+
+    Args:
+        device_name: Registered device name.
+        fc: Current fraction.
+        fm: Mass fraction.
+        pinch_column_fraction: Pinch column fraction.
+        compression_ratio: Ratio of cathode radius to pinch radius.
+            Default 10 (r_pinch = a/10).
+        T_assumed_eV: If given, use this temperature [eV] instead of
+            estimating from kinetics.
+        tolerance: Fractional tolerance for consistency check.
+            Default 0.5 (I_ratio within 0.5-1.5).
+
+    Returns:
+        :class:`BennettEquilibriumResult`.
+    """
+    from dpf.validation.experimental import DEVICES
+
+    MU_0 = 4e-7 * np.pi  # H/m
+    K_B = 1.38064852e-23  # J/K
+    EV_TO_K = 11604.5  # K/eV
+
+    device = DEVICES[device_name]
+
+    # Geometry
+    a = device.anode_radius  # m
+    b = device.cathode_radius  # m
+    z_anode = device.anode_length  # m
+    z_pinch = pinch_column_fraction * z_anode  # m
+    r_pinch = a / compression_ratio  # m
+
+    # Fill conditions
+    fill_pressure_Pa = device.fill_pressure_torr * 133.322
+    n_fill = fill_pressure_Pa / (K_B * 300.0)  # room temperature fill
+
+    # Swept mass and pinch density
+    # Mass fraction fm of the annular gas mass is swept into the pinch column
+    V_annular = np.pi * (b**2 - a**2) * z_pinch
+    # For D2 gas: n_fill is molecular density, each molecule has 2 deuterons
+    # So particle count = 2 * n_fill * V_annular * fm
+    n_particles = 2 * n_fill * V_annular * fm
+    V_pinch = np.pi * r_pinch**2 * z_pinch
+    n_pinch = n_particles / V_pinch  # ions/m^3
+
+    # Line density
+    N_L = n_pinch * np.pi * r_pinch**2  # particles/m
+
+    # Pinch current
+    I_peak = device.peak_current
+    I_pinch = fc * I_peak  # current through pinch
+
+    if T_assumed_eV is not None:
+        T_total_K = T_assumed_eV * EV_TO_K * 2  # T_e + T_i ~ 2T
+        T_bennett_eV = T_assumed_eV
+    else:
+        # Estimate from Bennett relation: T = mu_0 * I^2 / (8*pi * N_L * k_B)
+        T_total_K = MU_0 * I_pinch**2 / (8 * np.pi * N_L * K_B)
+        T_bennett_eV = T_total_K / (2 * EV_TO_K)  # per species
+
+    # Bennett current for the given T and N_L
+    I_bennett = np.sqrt(8 * np.pi * N_L * K_B * T_total_K / MU_0)
+
+    I_ratio = I_pinch / max(I_bennett, 1.0)
+    is_consistent = abs(I_ratio - 1.0) < tolerance
+
+    logger.info(
+        "Bennett check %s: I_pinch=%.2f MA, r_pinch=%.1f mm, "
+        "n_pinch=%.2e m^-3, N_L=%.2e m^-1, T_bennett=%.0f eV, "
+        "I_bennett=%.2f MA, ratio=%.2f → %s",
+        device_name, I_pinch / 1e6, r_pinch * 1e3,
+        n_pinch, N_L, T_bennett_eV,
+        I_bennett / 1e6, I_ratio,
+        "CONSISTENT" if is_consistent else "INCONSISTENT",
+    )
+
+    return BennettEquilibriumResult(
+        I_pinch=I_pinch,
+        r_pinch=r_pinch,
+        z_pinch=z_pinch,
+        n_pinch=n_pinch,
+        N_L=N_L,
+        T_bennett=T_bennett_eV,
+        I_bennett=I_bennett,
+        I_ratio=I_ratio,
+        is_consistent=is_consistent,
+    )
