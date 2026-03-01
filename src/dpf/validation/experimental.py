@@ -280,7 +280,7 @@ POSEIDON_DATA = ExperimentalDevice(
     name="POSEIDON",
     institution="IPF Stuttgart",
     capacitance=450e-6,            # 450 uF (H. Herold, private comm.; Lee RADPF)
-    voltage=40e3,                  # 40 kV typical operation (320 kJ stored)
+    voltage=40e3,                  # 40 kV typical operation (360 kJ stored)
     inductance=20e-9,              # 20 nH (very low, MA-class design)
     resistance=2e-3,               # ~2 mOhm (estimated from RESF ~0.05)
     anode_radius=0.104,            # 104 mm (208 mm diameter; Herold 1989)
@@ -297,7 +297,7 @@ POSEIDON_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
     measurement_notes=(
         "POSEIDON (IPF Stuttgart): large Mather-type DPF, operated 1980s-2000s. "
-        "480 kJ at 46 kV max, typically 320 kJ at 40 kV. "
+        "480 kJ at 46 kV max, typically 360 kJ at 40 kV (0.5*450uF*40kV^2). "
         "Peak current ~2.6 MA at 40 kV from Herold et al. (1989). "
         "Electrode geometry: anode diameter 208 mm, cathode diameter 270 mm, "
         "anode length 470 mm (Herold 1989, confirmed by multiple published sources). "
@@ -308,6 +308,63 @@ POSEIDON_DATA = ExperimentalDevice(
         "DOI (Herold 1989): 10.1088/0029-5515/29/1/005"
     ),
 )
+
+# POSEIDON at 60 kV — IPFS (plasmafocus.net) digitized I(t) waveform
+# Different bank configuration from POSEIDON (40 kV): C=156 uF, V=60 kV
+# Electrode geometry: a=65.5 mm, b=95 mm, zo=300 mm (Lee model fitted)
+# Source: plasmafocus.net/IPFS/machines/poseidon%2005.15.xls
+# Lee model fit: fm=0.275, fc=0.595, fmr=0.45, fcr=0.44
+# 35 subsampled points from 103-point digitized waveform
+_POSEIDON60KV_WAVEFORM_T_US = np.array([
+    0.007, 0.092, 0.148, 0.205, 0.261, 0.339, 0.395, 0.452, 0.530, 0.608,
+    0.686, 0.764, 0.849, 0.927, 1.027, 1.141, 1.262, 1.405, 1.577, 1.770,
+    1.978, 2.186, 2.394, 2.537, 2.603, 2.675, 2.734, 2.814, 2.929, 3.123,
+    3.281, 3.439, 3.619, 3.770, 3.914,
+])
+_POSEIDON60KV_WAVEFORM_I_KA = np.array([
+    0, 267, 499, 697, 918, 1130, 1290, 1460, 1660, 1850,
+    2010, 2170, 2330, 2460, 2620, 2760, 2890, 3010, 3110, 3170,
+    3190, 3180, 3150, 3050, 2890, 2680, 2490, 2280, 2140, 2100,
+    1990, 1890, 1800, 1700, 1580,
+])
+
+POSEIDON_60KV_DATA = ExperimentalDevice(
+    name="POSEIDON-60kV",
+    institution="IPF Stuttgart",
+    capacitance=156e-6,            # 156 uF (IPFS Lee model fit)
+    voltage=60e3,                  # 60 kV (IPFS configuration)
+    inductance=17.7e-9,            # 17.7 nH (Lee model fitted value)
+    resistance=1.7e-3,             # 1.7 mOhm (IPFS Lee model fit)
+    anode_radius=0.0655,           # 65.5 mm (IPFS: a=6.55 cm)
+    cathode_radius=0.095,          # 95 mm (IPFS: b=9.5 cm)
+    anode_length=0.30,             # 300 mm (IPFS: zo=30 cm, Lee model fitted)
+    fill_pressure_torr=3.8,        # 3.8 Torr D2 (IPFS)
+    fill_gas="deuterium",
+    peak_current=3.19e6,           # 3.19 MA (IPFS digitized peak)
+    neutron_yield=1e11,            # ~10^11 (estimated, same order as 40 kV)
+    current_rise_time=1.98e-6,     # 1.98 us (time of peak from waveform)
+    reference="IPFS (plasmafocus.net); Herold et al., Nucl. Fusion 29:33, 1989",
+    crowbar_resistance=1.5e-3,     # estimated spark gap
+    peak_current_uncertainty=0.05,     # 5% (Rogowski coil)
+    rise_time_uncertainty=0.05,        # 5% (well-digitized waveform)
+    neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
+    waveform_t=_POSEIDON60KV_WAVEFORM_T_US * 1e-6,    # Convert us -> s
+    waveform_I=_POSEIDON60KV_WAVEFORM_I_KA * 1e3,      # Convert kA -> A
+    waveform_digitization_uncertainty=0.02,  # 2% (IPFS digitization, high quality)
+    waveform_time_uncertainty=0.005,         # 0.5% temporal
+    measurement_notes=(
+        "POSEIDON at 60 kV / 156 uF (E0=280.8 kJ) with 3.8 Torr D2 fill. "
+        "Digitized I(t) waveform from IPFS (plasmafocus.net) Excel file. "
+        "35 subsampled points from 103-point original. Peak 3.19 MA at 1.98 us. "
+        "Electrode geometry: a=65.5 mm, b=95 mm — DIFFERENT from POSEIDON 40 kV "
+        "(a=104 mm, b=135 mm). This is a different bank/electrode configuration "
+        "of the same physical device. Lee model fitted: fm=0.275, fc=0.595, "
+        "fmr=0.45, fcr=0.44, L0=17.7 nH, R0=1.7 mOhm, zo=300 mm. "
+        "Source: S. Lee, IPFS (Institute for Plasma Focus Studies). "
+        "DOI (parent): 10.1088/0029-5515/29/1/005"
+    ),
+)
+
 
 # PF-1000 at 20 kV — from PF-1000 voltage scan
 # Same device, different operating conditions: V0=20 kV, 2.0 Torr D2
@@ -348,6 +405,7 @@ DEVICES: dict[str, ExperimentalDevice] = {
     "NX2": NX2_DATA,
     "UNU-ICTP": UNU_ICTP_DATA,
     "POSEIDON": POSEIDON_DATA,
+    "POSEIDON-60kV": POSEIDON_60KV_DATA,
 }
 
 
