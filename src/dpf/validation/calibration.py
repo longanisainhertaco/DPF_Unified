@@ -395,6 +395,244 @@ def calibrate_default_params(
 
 
 # =====================================================================
+# Circuit-only calibration (path-to-7.0: blind prediction of pinch)
+# =====================================================================
+
+
+@dataclass
+class CircuitOnlyCalibrationResult:
+    """Result of circuit-window-only calibration with blind pinch prediction.
+
+    Calibrates fc/fm using only the circuit phase (0 to circuit_window_us),
+    then evaluates the pinch phase as a genuine blind prediction.  This
+    converts the ASME assessment from "calibration residual" to true
+    validation for the pinch phase.
+
+    Attributes:
+        device_name: Device name.
+        circuit_window_us: End of circuit window [us].
+        best_fc: Optimal current fraction (from circuit-only calibration).
+        best_fm: Optimal mass fraction (from circuit-only calibration).
+        n_evals: Number of objective evaluations.
+        converged: Whether the optimizer converged.
+        circuit_asme: ASME assessment for the circuit window (calibration).
+        pinch_asme: ASME assessment for the pinch phase (blind prediction).
+        full_asme: ASME assessment for the full waveform.
+        circuit_nrmse: NRMSE in the circuit window.
+        pinch_nrmse: NRMSE in the pinch phase (blind prediction).
+        full_nrmse: NRMSE for the full waveform.
+        nrmse_ratio: pinch_nrmse / circuit_nrmse — amplification factor.
+        standard_fc: fc from standard full-waveform calibration (for comparison).
+        standard_fm: fm from standard full-waveform calibration.
+    """
+
+    device_name: str
+    circuit_window_us: float
+    best_fc: float
+    best_fm: float
+    n_evals: int
+    converged: bool
+    circuit_asme: ASMEValidationResult
+    pinch_asme: ASMEValidationResult | None
+    full_asme: ASMEValidationResult
+    circuit_nrmse: float
+    pinch_nrmse: float | None
+    full_nrmse: float
+    nrmse_ratio: float | None
+    standard_fc: float
+    standard_fm: float
+
+
+def circuit_only_calibration(
+    device_name: str = "PF-1000",
+    circuit_window_us: float = 6.0,
+    fc_bounds: tuple[float, float] = (0.6, 0.8),
+    fm_bounds: tuple[float, float] = (0.05, 0.25),
+    maxiter: int = 100,
+    pinch_column_fraction: float | None = None,
+    crowbar_enabled: bool | None = None,
+    crowbar_resistance: float | None = None,
+) -> CircuitOnlyCalibrationResult:
+    """Calibrate fc/fm on circuit window only, blind-predict pinch phase.
+
+    This is the key insight from PhD Debate #38 path-to-7.0: if we calibrate
+    fc/fm using only the 0-6 us circuit phase, then the pinch-phase NRMSE
+    becomes a genuine blind prediction rather than a calibration residual.
+    This transforms the ASME assessment from Section 5.1 (calibration) to
+    Section 5.3 (validation) compliance.
+
+    Args:
+        device_name: Registered device name.
+        circuit_window_us: End of circuit calibration window [us].
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction.
+        maxiter: Maximum optimizer iterations.
+        pinch_column_fraction: Pinch column fraction.  Uses device default
+            if None.
+        crowbar_enabled: Whether crowbar is enabled.  Auto-detected if None.
+        crowbar_resistance: Crowbar resistance [Ohm].  Auto-detected if None.
+
+    Returns:
+        :class:`CircuitOnlyCalibrationResult` with calibration and blind
+        prediction metrics.
+    """
+    from scipy.optimize import Bounds, minimize
+
+    from dpf.validation.experimental import DEVICES, nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    # Device defaults
+    pcf = pinch_column_fraction
+    if pcf is None:
+        pcf = _DEFAULT_DEVICE_PCF.get(device_name, 1.0)
+    if crowbar_enabled is None:
+        cr = _DEFAULT_CROWBAR_R.get(device_name, 0.0)
+        crowbar_enabled = cr > 0
+        if crowbar_resistance is None:
+            crowbar_resistance = cr
+    if crowbar_resistance is None:
+        crowbar_resistance = 0.0
+
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    circuit_max_time = circuit_window_us * 1e-6
+    n_evals = 0
+
+    def _circuit_objective(params: np.ndarray) -> float:
+        """Objective: NRMSE in circuit window only."""
+        nonlocal n_evals
+        n_evals += 1
+
+        fc = float(np.clip(params[0], *fc_bounds))
+        fm = float(np.clip(params[1], *fm_bounds))
+
+        try:
+            model = LeeModel(
+                current_fraction=fc,
+                mass_fraction=fm,
+                radial_mass_fraction=fm,
+                pinch_column_fraction=pcf,
+                crowbar_enabled=crowbar_enabled,
+                crowbar_resistance=crowbar_resistance,
+            )
+            result = model.run(device_name)
+
+            # NRMSE in circuit window only
+            nrmse = nrmse_peak(
+                result.t, result.I,
+                device.waveform_t, device.waveform_I,
+                max_time=circuit_max_time,
+            )
+        except (RuntimeError, ValueError, FloatingPointError):
+            return 10.0
+
+        return nrmse
+
+    # Run circuit-only optimization
+    x0 = np.array([
+        0.5 * (fc_bounds[0] + fc_bounds[1]),
+        0.5 * (fm_bounds[0] + fm_bounds[1]),
+    ])
+
+    opt_result = minimize(
+        _circuit_objective,
+        x0,
+        method="nelder-mead",
+        bounds=Bounds(
+            [fc_bounds[0], fm_bounds[0]],
+            [fc_bounds[1], fm_bounds[1]],
+        ),
+        options={"maxiter": maxiter, "xatol": 0.005, "fatol": 0.001},
+    )
+
+    fc_cir = float(np.clip(opt_result.x[0], *fc_bounds))
+    fm_cir = float(np.clip(opt_result.x[1], *fm_bounds))
+
+    logger.info(
+        "Circuit-only calibration %s (0-%.0f us): fc=%.3f, fm=%.3f, "
+        "NRMSE_circuit=%.4f, n_evals=%d, converged=%s",
+        device_name, circuit_window_us, fc_cir, fm_cir,
+        float(opt_result.fun), n_evals, opt_result.success,
+    )
+
+    # --- Evaluate at circuit-only optimum ---
+
+    # Circuit-window ASME
+    circuit_asme = asme_vv20_assessment(
+        device_name=device_name, fc=fc_cir, fm=fm_cir,
+        f_mr=fm_cir, pinch_column_fraction=pcf,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        max_time=circuit_max_time,
+    )
+
+    # Pinch-phase ASME (blind prediction)
+    pinch_asme = _pinch_phase_asme(
+        device_name=device_name, fc=fc_cir, fm=fm_cir,
+        f_mr=fm_cir, pinch_column_fraction=pcf,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        t_start_us=circuit_window_us,
+    )
+
+    # Full-waveform ASME (for comparison)
+    full_asme = asme_vv20_assessment(
+        device_name=device_name, fc=fc_cir, fm=fm_cir,
+        f_mr=fm_cir, pinch_column_fraction=pcf,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+    )
+
+    # Also run standard full-waveform calibration for comparison
+    std_cal = LeeModelCalibrator(
+        device_name,
+        pinch_column_fraction=pcf,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+    )
+    std_result = std_cal.calibrate(
+        fc_bounds=fc_bounds, fm_bounds=fm_bounds, maxiter=maxiter,
+    )
+
+    pinch_nrmse = pinch_asme.E if pinch_asme else None
+    circuit_nrmse = circuit_asme.E
+    full_nrmse = full_asme.E
+    nrmse_ratio = (pinch_nrmse / circuit_nrmse) if (
+        pinch_nrmse is not None and circuit_nrmse > 0
+    ) else None
+
+    logger.info(
+        "Circuit-only result %s: circuit_NRMSE=%.3f, pinch_NRMSE=%s, "
+        "full_NRMSE=%.3f, ratio=%.2f, standard fc=%.3f/fm=%.3f",
+        device_name, circuit_nrmse,
+        f"{pinch_nrmse:.3f}" if pinch_nrmse is not None else "N/A",
+        full_nrmse,
+        nrmse_ratio if nrmse_ratio is not None else float("nan"),
+        std_result.best_fc, std_result.best_fm,
+    )
+
+    return CircuitOnlyCalibrationResult(
+        device_name=device_name,
+        circuit_window_us=circuit_window_us,
+        best_fc=fc_cir,
+        best_fm=fm_cir,
+        n_evals=n_evals,
+        converged=bool(opt_result.success),
+        circuit_asme=circuit_asme,
+        pinch_asme=pinch_asme,
+        full_asme=full_asme,
+        circuit_nrmse=circuit_nrmse,
+        pinch_nrmse=pinch_nrmse,
+        full_nrmse=full_nrmse,
+        nrmse_ratio=nrmse_ratio,
+        standard_fc=std_result.best_fc,
+        standard_fm=std_result.best_fm,
+    )
+
+
+# =====================================================================
 # Cross-validation framework
 # =====================================================================
 
@@ -1402,6 +1640,153 @@ def bennett_equilibrium_check(
         I_bennett=I_bennett,
         I_ratio=I_ratio,
         is_consistent=is_consistent,
+    )
+
+
+# =====================================================================
+# NRMSE timing/amplitude decomposition
+# (path-to-7.0: separate timing error from amplitude error)
+# =====================================================================
+
+
+@dataclass
+class NRMSEDecomposition:
+    """Decomposition of NRMSE into timing and amplitude components.
+
+    The total NRMSE conflates two distinct error sources:
+    1. Timing error: the simulated waveform is time-shifted relative to
+       the experimental waveform (phase error).
+    2. Amplitude error: after optimal time alignment, the residual
+       amplitude mismatch.
+
+    The decomposition uses cross-correlation to find the optimal time
+    shift that minimizes the aligned NRMSE.
+
+    Attributes:
+        total_nrmse: Original (unaligned) NRMSE.
+        aligned_nrmse: NRMSE after optimal time alignment (amplitude error).
+        timing_nrmse: sqrt(total^2 - aligned^2) — timing contribution.
+        optimal_shift_us: Optimal time shift [us] (positive = sim is late).
+        timing_fraction: Fraction of NRMSE^2 attributable to timing.
+        amplitude_fraction: Fraction of NRMSE^2 attributable to amplitude.
+        device_name: Device name.
+    """
+
+    total_nrmse: float
+    aligned_nrmse: float
+    timing_nrmse: float
+    optimal_shift_us: float
+    timing_fraction: float
+    amplitude_fraction: float
+    device_name: str = ""
+
+
+def nrmse_timing_amplitude_decomposition(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.094,
+    f_mr: float = 0.1,
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    max_shift_us: float = 2.0,
+    shift_resolution_ns: float = 10.0,
+) -> NRMSEDecomposition:
+    """Decompose NRMSE into timing and amplitude components.
+
+    Uses brute-force time-shift search: shift the simulated waveform
+    by dt in [-max_shift_us, +max_shift_us] and compute NRMSE at each
+    shift.  The minimum-NRMSE shift gives the optimal alignment.
+
+    This addresses PhD Debate #38 Finding #11: "NRMSE conflates ~8%
+    timing error + ~7% amplitude error."
+
+    Args:
+        device_name: Registered device name.
+        fc: Current fraction.
+        fm: Mass fraction.
+        f_mr: Radial mass fraction.
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        max_shift_us: Maximum time shift to search [us].
+        shift_resolution_ns: Resolution of time shift search [ns].
+
+    Returns:
+        :class:`NRMSEDecomposition` with timing/amplitude breakdown.
+    """
+    from dpf.validation.experimental import DEVICES, nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    # Run the model
+    model = LeeModel(
+        current_fraction=fc,
+        mass_fraction=fm,
+        radial_mass_fraction=f_mr,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+    )
+    result = model.run(device_name)
+
+    # Unshifted NRMSE
+    total_nrmse = nrmse_peak(
+        result.t, result.I,
+        device.waveform_t, device.waveform_I,
+    )
+
+    # Brute-force time-shift search
+    max_shift_s = max_shift_us * 1e-6
+    resolution_s = shift_resolution_ns * 1e-9
+    n_shifts = int(2 * max_shift_s / resolution_s) + 1
+    shifts = np.linspace(-max_shift_s, max_shift_s, n_shifts)
+
+    t_exp = np.asarray(device.waveform_t, dtype=np.float64)
+    I_exp = np.asarray(device.waveform_I, dtype=np.float64)
+    I_peak = float(np.max(np.abs(I_exp)))
+
+    best_nrmse = total_nrmse
+    best_shift = 0.0
+
+    for dt in shifts:
+        # Shift the simulated waveform: t_sim -> t_sim + dt
+        # This is equivalent to evaluating sim at (t_exp - dt)
+        I_sim_shifted = np.interp(t_exp - dt, result.t, result.I)
+        residuals = I_sim_shifted - I_exp
+        nrmse = float(np.sqrt(np.mean(residuals**2))) / max(I_peak, 1e-300)
+        if nrmse < best_nrmse:
+            best_nrmse = nrmse
+            best_shift = dt
+
+    aligned_nrmse = best_nrmse
+    timing_nrmse_sq = max(0.0, total_nrmse**2 - aligned_nrmse**2)
+    timing_nrmse = float(np.sqrt(timing_nrmse_sq))
+
+    total_sq = total_nrmse**2
+    timing_frac = timing_nrmse_sq / total_sq if total_sq > 0 else 0.0
+    amplitude_frac = 1.0 - timing_frac
+
+    optimal_shift_us = best_shift * 1e6
+
+    logger.info(
+        "NRMSE decomposition %s: total=%.3f, aligned=%.3f, timing=%.3f, "
+        "shift=%.2f us, timing_frac=%.1f%%, amplitude_frac=%.1f%%",
+        device_name, total_nrmse, aligned_nrmse, timing_nrmse,
+        optimal_shift_us, timing_frac * 100, amplitude_frac * 100,
+    )
+
+    return NRMSEDecomposition(
+        total_nrmse=total_nrmse,
+        aligned_nrmse=aligned_nrmse,
+        timing_nrmse=timing_nrmse,
+        optimal_shift_us=optimal_shift_us,
+        timing_fraction=timing_frac,
+        amplitude_fraction=amplitude_frac,
+        device_name=device_name,
     )
 
 
