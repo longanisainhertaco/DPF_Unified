@@ -269,12 +269,83 @@ PF1000_16KV_DATA = ExperimentalDevice(
 )
 
 
+# POSEIDON (Stuttgart) — 480 kJ Mather-type DPF
+# One of the largest Mather-type DPF devices, operated at IPF Stuttgart
+# (now retired).  Published I(t) and neutron yield data available from
+# Herold et al., Nuclear Fusion 29:33 (1989) and subsequent publications.
+# Parameters from: Herold et al. (1989), Lee & Saw (2014) RADPF fitting.
+POSEIDON_DATA = ExperimentalDevice(
+    name="POSEIDON",
+    institution="IPF Stuttgart",
+    capacitance=450e-6,            # 450 uF (H. Herold, private comm.; Lee RADPF)
+    voltage=40e3,                  # 40 kV typical operation (320 kJ stored)
+    inductance=20e-9,              # 20 nH (very low, MA-class design)
+    resistance=2e-3,               # ~2 mOhm (estimated from RESF ~0.05)
+    anode_radius=0.055,            # 55 mm (Herold 1989; 110 mm diameter)
+    cathode_radius=0.10,           # 100 mm (estimated from b/a ~ 1.8)
+    anode_length=0.50,             # 500 mm (Herold 1989)
+    fill_pressure_torr=3.5,        # 3.5 Torr D2 (typical neutron operation)
+    fill_gas="deuterium",
+    peak_current=2.6e6,            # 2.6 MA (Herold et al. 1989, at 40 kV)
+    neutron_yield=1e11,            # ~10^11 (Herold 1989)
+    current_rise_time=5.0e-6,      # ~5 us (estimated from Lee model quarter-period)
+    reference="Herold et al., Nucl. Fusion 29:33, 1989; Lee & Saw, J. Fusion Energy 33:319, 2014",
+    peak_current_uncertainty=0.08,     # 8% (large device, Rogowski + integration)
+    rise_time_uncertainty=0.15,        # 15% (not explicitly stated in source)
+    neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
+    measurement_notes=(
+        "POSEIDON (IPF Stuttgart): large Mather-type DPF, operated 1980s-2000s. "
+        "480 kJ at 46 kV max, typically 320 kJ at 40 kV. "
+        "Peak current ~2.6 MA at 40 kV from Herold et al. (1989). "
+        "Electrode geometry from Herold (1989) and RADPF fitting (Lee & Saw 2014). "
+        "L0=20 nH and R0=2 mOhm are estimates from RADPF default configuration; "
+        "not directly stated in Herold (1989). "
+        "Cathode radius b=100 mm estimated from typical b/a ratio ~1.8. "
+        "Uncertainties are Type B estimates. "
+        "This device has L_p/L0 >> 1 (plasma-significant). "
+        "DOI (Herold 1989): 10.1088/0029-5515/29/1/005"
+    ),
+)
+
+# PF-1000 at 20 kV — from PF-1000 voltage scan
+# Same device, different operating conditions: V0=20 kV, 2.0 Torr D2
+# Peak current estimated from Akel et al. (2021) trend and Lee model.
+PF1000_20KV_DATA = ExperimentalDevice(
+    name="PF-1000-20kV",
+    institution="IPPLM Warsaw",
+    capacitance=1.332e-3,          # Same bank
+    voltage=20e3,                  # 20 kV
+    inductance=33.5e-9,            # Same circuit
+    resistance=2.3e-3,             # Same circuit
+    anode_radius=0.115,            # Same geometry
+    cathode_radius=0.16,           # Same geometry
+    anode_length=0.60,             # Same geometry
+    fill_pressure_torr=2.0,        # 2.0 Torr D2 (interpolated)
+    fill_gas="deuterium",
+    peak_current=1.4e6,            # 1.4 MA (estimated from voltage scaling)
+    neutron_yield=5e9,             # estimated
+    current_rise_time=6.3e-6,      # ~6.3 us (estimated)
+    reference="Akel et al., Radiat. Phys. Chem. 188:109638, 2021 (voltage trend)",
+    crowbar_resistance=1.5e-3,
+    peak_current_uncertainty=0.12,     # 12% (interpolated, higher uncertainty)
+    rise_time_uncertainty=0.15,
+    neutron_yield_uncertainty=0.50,
+    measurement_notes=(
+        "PF-1000 at 20 kV / 2.0 Torr D2 — interpolated from voltage scan trend. "
+        "Peak current 1.4 MA estimated from Akel et al. (2021) multi-voltage data. "
+        "Not a direct measurement — higher uncertainty than 27 kV reference."
+    ),
+)
+
+
 # Registry mapping device name -> ExperimentalDevice
 DEVICES: dict[str, ExperimentalDevice] = {
     "PF-1000": PF1000_DATA,
     "PF-1000-16kV": PF1000_16KV_DATA,
+    "PF-1000-20kV": PF1000_20KV_DATA,
     "NX2": NX2_DATA,
     "UNU-ICTP": UNU_ICTP_DATA,
+    "POSEIDON": POSEIDON_DATA,
 }
 
 

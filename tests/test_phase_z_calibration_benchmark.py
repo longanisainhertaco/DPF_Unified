@@ -32,9 +32,9 @@ class TestPublishedRanges:
     """Verify _PUBLISHED_FC_FM_RANGES structure and values."""
 
     def test_all_devices_present(self):
-        """Published ranges exist for PF-1000, NX2, UNU-ICTP."""
+        """Published ranges exist for at least PF-1000, NX2, UNU-ICTP."""
         expected = {"PF-1000", "NX2", "UNU-ICTP"}
-        assert set(_PUBLISHED_FC_FM_RANGES.keys()) == expected
+        assert expected <= set(_PUBLISHED_FC_FM_RANGES.keys())
 
     @pytest.mark.parametrize("device", ["PF-1000", "NX2", "UNU-ICTP"])
     def test_range_keys(self, device: str):

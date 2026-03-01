@@ -326,12 +326,19 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
         "fc": (0.55, 0.80),   # Lee et al., Am. J. Phys. 56 (1988): fc ~ 0.7
         "fm": (0.04, 0.35),   # Lee & Saw (2009): fm=0.05 for UNU-ICTP; widened to 0.04 lower bound
     },
+    "POSEIDON": {
+        "fc": (0.60, 0.85),   # Lee & Saw 2014: fc ~ 0.7 for POSEIDON
+        "fm": (0.05, 0.20),   # Lee & Saw 2014: fm ~ 0.08-0.12 for POSEIDON (MJ-class)
+    },
 }
 
 
 _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "PF-1000": 0.14,
+    "PF-1000-16kV": 0.14,
+    "PF-1000-20kV": 0.14,
     "NX2": 0.5,
+    "POSEIDON": 0.14,  # Similar to PF-1000 (Lee & Saw 2014 scaling)
 }
 
 # Default crowbar spark gap arc resistance [Ohm] per device.
@@ -457,6 +464,7 @@ def monte_carlo_nrmse(
     f_mr: float = 0.1,
     crowbar_enabled: bool = True,
     crowbar_resistance: float = 1.5e-3,
+    liftoff_delay: float = 0.0,
     parameter_uncertainties: dict[str, float] | None = None,
 ) -> MonteCarloNRMSEResult:
     """Monte Carlo propagation of input parameter uncertainty to NRMSE.
@@ -487,9 +495,12 @@ def monte_carlo_nrmse(
         f_mr: Radial mass fraction.
         crowbar_enabled: Whether crowbar is enabled.
         crowbar_resistance: Crowbar resistance [Ohm].
+        liftoff_delay: Insulator flashover delay [s].  Default 0.0.
+            Perturbed with additive Gaussian noise (sigma=0.3 us).
         parameter_uncertainties: Override default uncertainties.
-            Keys: 'C', 'V0', 'L0', 'R0', 'a', 'b', 'z', 'fc', 'fm', 'pcf'.
-            Values: 1-sigma relative uncertainty (e.g. 0.05 for 5%).
+            Keys: 'C', 'V0', 'L0', 'R0', 'a', 'b', 'z', 'fc', 'fm', 'pcf',
+            'liftoff_delay'.  Values: 1-sigma uncertainty.  For liftoff_delay,
+            the value is absolute [s] (not relative).
 
     Returns:
         :class:`MonteCarloNRMSEResult` with NRMSE distribution statistics.
@@ -497,10 +508,12 @@ def monte_carlo_nrmse(
     from dpf.validation.lee_model_comparison import LeeModel
 
     # Default PF-1000 parameter uncertainties (1-sigma relative)
+    # liftoff_delay uses absolute uncertainty [s] (Lee 2005: 0.5-1.5 us for MJ)
     default_u = {
         "C": 0.02, "V0": 0.01, "L0": 0.05, "R0": 0.10,
         "a": 0.01, "b": 0.01, "z": 0.01,
         "fc": 0.05, "fm": 0.20, "pcf": 0.30,
+        "liftoff_delay": 0.3e-6,  # ±0.3 us absolute (Lee 2005: 0.5-1.5 us)
     }
     if parameter_uncertainties:
         default_u.update(parameter_uncertainties)
@@ -534,6 +547,9 @@ def monte_carlo_nrmse(
         fc_s = fc * (1 + rng.normal(0, default_u["fc"]))
         fm_s = fm * (1 + rng.normal(0, default_u["fm"]))
         pcf_s = pinch_column_fraction * (1 + rng.normal(0, default_u["pcf"]))
+        # Liftoff delay: additive Gaussian perturbation (absolute, not relative)
+        delay_s = liftoff_delay + rng.normal(0, default_u["liftoff_delay"])
+        delay_s = max(delay_s, 0.0)  # Cannot be negative
 
         # Clamp to physical bounds
         fc_s = float(np.clip(fc_s, 0.3, 1.0))
@@ -553,6 +569,7 @@ def monte_carlo_nrmse(
                 pinch_column_fraction=pcf_s,
                 crowbar_enabled=crowbar_enabled,
                 crowbar_resistance=crowbar_resistance,
+                liftoff_delay=delay_s,
             )
             # Override device parameters for this sample
             comp = model.compare_with_experiment(
@@ -614,6 +631,28 @@ def monte_carlo_nrmse(
             total_var += delta ** 2
         except Exception:
             sensitivity[pname] = 0.0
+
+    # Add liftoff_delay sensitivity (absolute perturbation)
+    if liftoff_delay > 0 and default_u.get("liftoff_delay", 0) > 0:
+        u_delay = default_u["liftoff_delay"]
+        try:
+            m_p = LeeModel(
+                current_fraction=fc, mass_fraction=fm,
+                radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance,
+                liftoff_delay=liftoff_delay + u_delay)
+            m_m = LeeModel(
+                current_fraction=fc, mass_fraction=fm,
+                radial_mass_fraction=f_mr, pinch_column_fraction=pinch_column_fraction,
+                crowbar_enabled=crowbar_enabled, crowbar_resistance=crowbar_resistance,
+                liftoff_delay=max(liftoff_delay - u_delay, 0.0))
+            c_p = m_p.compare_with_experiment(device_name)
+            c_m = m_m.compare_with_experiment(device_name)
+            delta = (c_p.waveform_nrmse - c_m.waveform_nrmse) / 2
+            sensitivity["liftoff_delay"] = delta ** 2
+            total_var += delta ** 2
+        except Exception:
+            sensitivity["liftoff_delay"] = 0.0
 
     # Add fc, fm, pcf sensitivity
     for pname, pval, _pkey in [("fc", fc, None), ("fm", fm, None), ("pcf", pinch_column_fraction, None)]:
