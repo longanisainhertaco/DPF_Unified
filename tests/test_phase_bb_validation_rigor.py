@@ -158,8 +158,8 @@ class TestBennettEquilibrium:
         # Line density should be positive
         assert result.N_L > 0
 
-    def test_bennett_pf1000_self_consistent(self):
-        """Without assumed T, Bennett check is self-consistent by definition."""
+    def test_bennett_pf1000_kinetic_estimate(self):
+        """Without assumed T, Bennett uses kinetic energy estimate (non-tautological)."""
         from dpf.validation.calibration import bennett_equilibrium_check
 
         result = bennett_equilibrium_check(
@@ -167,9 +167,13 @@ class TestBennettEquilibrium:
             fc=_PF1000_FC,
             fm=_PF1000_FM,
         )
-        # When T is derived from Bennett relation, I_ratio should be ~1
-        assert result.I_ratio == pytest.approx(1.0, abs=0.01)
-        assert result.is_consistent
+        # Kinetic energy T gives an independent estimate; I_ratio is no longer
+        # trivially 1.0.  For PF-1000 at CR=10, expect I_ratio > 1 (current
+        # exceeds Bennett equilibrium → compression-dominated regime).
+        assert result.I_ratio > 0.1
+        assert result.I_ratio < 10.0  # physically bounded
+        # T_bennett from kinetic energy should be keV-range
+        assert result.T_bennett > 0
 
     def test_bennett_with_assumed_temperature(self):
         """Bennett with assumed T=1 keV should give non-trivial ratio."""
@@ -212,7 +216,8 @@ class TestBennettEquilibrium:
         # I_pinch ~ 0.595 * 3.19 MA ~ 1.90 MA
         assert 1.0e6 < result.I_pinch < 3.0e6
         assert result.T_bennett > 0
-        assert result.is_consistent  # self-consistent by construction
+        # With kinetic T, I_ratio is non-trivial but physically bounded
+        assert 0.1 < result.I_ratio < 20.0
 
     def test_bennett_result_fields(self):
         """BennettEquilibriumResult has all expected fields."""
@@ -454,13 +459,14 @@ class TestCrossDeviceBennett:
         ("PF-1000", _PF1000_FC, _PF1000_FM),
         ("POSEIDON-60kV", _POSEIDON60KV_FC, _POSEIDON60KV_FM),
     ])
-    def test_bennett_self_consistent(self, device, fc, fm):
-        """Bennett check is self-consistent when T derived from I."""
+    def test_bennett_kinetic_non_tautological(self, device, fc, fm):
+        """Bennett with kinetic T estimate gives non-trivial I_ratio."""
         from dpf.validation.calibration import bennett_equilibrium_check
 
         result = bennett_equilibrium_check(device_name=device, fc=fc, fm=fm)
-        assert result.I_ratio == pytest.approx(1.0, abs=0.01)
-        assert result.is_consistent
+        # With kinetic energy T, I_ratio is no longer trivially 1.0
+        assert result.I_ratio > 0.1
+        assert result.I_ratio < 20.0  # physically bounded for MA-class DPF
 
     @pytest.mark.parametrize("device,fc,fm", [
         ("PF-1000", _PF1000_FC, _PF1000_FM),
@@ -685,3 +691,209 @@ class TestMultiShotUncertainty:
         pf = multi_shot_uncertainty("PF-1000")
         nx2 = multi_shot_uncertainty("NX2")
         assert nx2.u_shot_to_shot > pf.u_shot_to_shot
+
+
+# ===========================================================================
+# Test 11: Block Bootstrap (Fix #1 from Debate #37)
+# ===========================================================================
+class TestBlockBootstrap:
+    """Tests that bootstrap uses block resampling, not iid."""
+
+    def test_estimate_block_size_returns_positive(self):
+        """Block size estimator should return a positive integer >= 2."""
+        from dpf.validation.calibration import _estimate_block_size
+
+        t = np.linspace(0, 10e-6, 26)
+        I_data = np.sin(2 * np.pi * t / 10e-6)
+        bs = _estimate_block_size(t, I_data)
+        assert isinstance(bs, int)
+        assert bs >= 2
+
+    def test_estimate_block_size_short_series(self):
+        """Short series should return minimum block size."""
+        from dpf.validation.calibration import _estimate_block_size
+
+        t = np.array([0, 1, 2, 3])
+        I_data = np.array([0, 1, 0, -1])
+        bs = _estimate_block_size(t, I_data)
+        assert bs == 2
+
+    def test_estimate_block_size_constant_signal(self):
+        """Constant signal should use fallback rule."""
+        from dpf.validation.calibration import _estimate_block_size
+
+        t = np.linspace(0, 1, 30)
+        I_data = np.ones(30)
+        bs = _estimate_block_size(t, I_data)
+        assert bs >= 2
+        # n^(1/3) rule for n=30 → ceil(3.1) = 4
+        assert bs <= 10
+
+    def test_bootstrap_accepts_block_size_param(self):
+        """bootstrap_calibration should accept block_size parameter."""
+        import inspect
+
+        from dpf.validation.calibration import bootstrap_calibration
+
+        sig = inspect.signature(bootstrap_calibration)
+        assert "block_size" in sig.parameters
+
+    def test_block_size_clamped(self):
+        """Block size should be clamped to [2, n_pts//2]."""
+        from dpf.validation.calibration import _estimate_block_size
+
+        t = np.linspace(0, 1, 10)
+        # Highly autocorrelated (all same) → fallback
+        I_data = np.ones(10) * 5.0
+        bs = _estimate_block_size(t, I_data)
+        assert 2 <= bs <= 5  # n//2 = 5, but also <= n//3=3
+
+
+# ===========================================================================
+# Test 12: Multi-Shot Integrated into ASME (Fix #2 from Debate #37)
+# ===========================================================================
+class TestMultiShotASMEIntegration:
+    """Tests that shot-to-shot variability is included in ASME u_exp."""
+
+    @pytest.mark.slow
+    def test_asme_u_exp_includes_shot_to_shot(self):
+        """ASME u_exp should be larger with shot-to-shot than without."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result_with = asme_vv20_assessment(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            pinch_column_fraction=_PF1000_PCF,
+            include_shot_to_shot=True,
+        )
+        result_without = asme_vv20_assessment(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            pinch_column_fraction=_PF1000_PCF,
+            include_shot_to_shot=False,
+        )
+        # With shot-to-shot, u_exp should be strictly larger
+        assert result_with.u_exp > result_without.u_exp
+        # u_val should also increase
+        assert result_with.u_val > result_without.u_val
+        # Ratio should decrease (more generous denominator)
+        assert result_with.ratio < result_without.ratio
+
+    @pytest.mark.slow
+    def test_asme_default_includes_shot_to_shot(self):
+        """Default ASME assessment should include shot-to-shot."""
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        result = asme_vv20_assessment(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            pinch_column_fraction=_PF1000_PCF,
+        )
+        # u_exp should be larger than just sqrt(0.05^2 + 0.03^2) = 0.0583
+        assert result.u_exp > 0.059
+
+    def test_include_shot_to_shot_param_exists(self):
+        """asme_vv20_assessment should accept include_shot_to_shot."""
+        import inspect
+
+        from dpf.validation.calibration import asme_vv20_assessment
+
+        sig = inspect.signature(asme_vv20_assessment)
+        assert "include_shot_to_shot" in sig.parameters
+        # Default should be True
+        assert sig.parameters["include_shot_to_shot"].default is True
+
+
+# ===========================================================================
+# Test 13: Bennett Non-Tautological (Fix #3 from Debate #37)
+# ===========================================================================
+class TestBennettNonTautological:
+    """Tests that Bennett check is no longer tautological."""
+
+    def test_default_mode_not_identity(self):
+        """Default Bennett (no T_assumed) should NOT give I_ratio=1.0."""
+        from dpf.validation.calibration import bennett_equilibrium_check
+
+        result = bennett_equilibrium_check(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        # The old tautological behavior gave exactly 1.0.
+        # The new kinetic energy estimate should give a different ratio.
+        assert abs(result.I_ratio - 1.0) > 0.05
+
+    def test_kinetic_temperature_physical(self):
+        """Kinetic energy temperature should be in eV-to-keV range."""
+        from dpf.validation.calibration import bennett_equilibrium_check
+
+        result = bennett_equilibrium_check(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+        )
+        # Kinetic T should be 10 eV - 100 keV for MA-class DPF
+        assert 1.0 < result.T_bennett < 200_000
+
+    def test_assumed_T_still_works(self):
+        """Providing T_assumed_eV should override kinetic estimate."""
+        from dpf.validation.calibration import bennett_equilibrium_check
+
+        result = bennett_equilibrium_check(
+            device_name="PF-1000", fc=_PF1000_FC, fm=_PF1000_FM,
+            T_assumed_eV=500.0,
+        )
+        assert result.T_bennett == pytest.approx(500.0)
+
+    def test_i_ratio_varies_with_fm(self):
+        """I_ratio should change with fm (more swept mass → different T)."""
+        from dpf.validation.calibration import bennett_equilibrium_check
+
+        r_lo = bennett_equilibrium_check(
+            device_name="PF-1000", fc=_PF1000_FC, fm=0.05,
+        )
+        r_hi = bennett_equilibrium_check(
+            device_name="PF-1000", fc=_PF1000_FC, fm=0.20,
+        )
+        # Different fm → different n_particles → different N_L → different I_ratio
+        assert abs(r_lo.I_ratio - r_hi.I_ratio) > 0.01
+
+
+# ===========================================================================
+# Test 14: Gradient Boundary Handling (Fix #4 from Debate #37)
+# ===========================================================================
+class TestGradientBoundary:
+    """Tests that gradient uses one-sided differences at bounds."""
+
+    @pytest.mark.slow
+    def test_gradient_at_upper_bound_no_artifact(self):
+        """Gradient at fc=0.800 (upper bound) should not have boundary artifact."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=0.800, fm=_PF1000_FM,
+            fc_bounds=(0.6, 0.8),
+        )
+        # The gradient should be finite (no out-of-bounds evaluation artifact)
+        assert np.isfinite(report.grad_fc)
+        assert np.isfinite(report.grad_fm)
+        assert report.fc_at_boundary is True
+
+    @pytest.mark.slow
+    def test_gradient_at_lower_fm_bound(self):
+        """Gradient at fm near lower bound should use forward difference."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=0.700, fm=0.055,
+            fc_bounds=(0.6, 0.8), fm_bounds=(0.05, 0.25),
+        )
+        assert np.isfinite(report.grad_fm)
+        assert np.isfinite(report.grad_fc)
+
+    @pytest.mark.slow
+    def test_gradient_interior_uses_central(self):
+        """Gradient at interior point should use central differences."""
+        from dpf.validation.calibration import optimizer_gradient_report
+
+        report = optimizer_gradient_report(
+            device_name="PF-1000", fc=0.700, fm=0.150,
+            fc_bounds=(0.6, 0.8), fm_bounds=(0.05, 0.25),
+        )
+        assert np.isfinite(report.grad_fc)
+        assert np.isfinite(report.grad_fm)
+        # Interior point → not at boundary
+        assert report.fc_at_boundary is False
