@@ -295,6 +295,87 @@ PF1000_16KV_DATA = ExperimentalDevice(
 )
 
 
+# PF-1000 at 27 kV — Gribkov et al., J. Phys. D: Appl. Phys. 40:3592, 2007
+# INDEPENDENTLY DIGITIZED waveform from plasmafocus.net RADPF archive.
+# Same device and operating conditions as Scholz (2006), but DIFFERENT shot
+# and DIFFERENT digitization source. Peak 1.846 MA at 6.39 us.
+# 94 data points (vs 26 for Scholz), covering -1.68 to 14.73 us.
+# Source: plasmafocus.net/IPFS/machines/PF1000 05.15.xls, Sheet2
+# Original: Gribkov et al., J. Phys. D: Appl. Phys. 40:3592-3607, 2007
+# Use for cross-publication validation: calibrate on Scholz, predict Gribkov.
+_PF1000_GRIBKOV_WAVEFORM_T_US = np.array([
+    -1.682, -1.169, -0.599, -0.285, 0.000, 0.085, 0.141, 0.198, 0.310,
+    0.367, 0.592, 0.648, 0.732, 0.845, 0.930, 1.072, 1.099, 1.213,
+    1.354, 1.496, 1.581, 1.638, 1.837, 2.064, 2.262, 2.518, 2.660,
+    2.745, 2.859, 3.143, 3.342, 3.428, 3.569, 3.712, 3.911, 4.139,
+    4.338, 4.509, 4.652, 4.822, 4.908, 5.193, 5.421, 5.677, 5.905,
+    6.133, 6.390, 6.590, 6.818, 6.932, 7.103, 7.331, 7.445, 7.702,
+    7.874, 8.017, 8.246, 8.390, 8.477, 8.563, 8.593, 8.679, 8.737,
+    8.881, 8.995, 9.109, 9.280, 9.423, 9.536, 9.651, 9.965, 10.222,
+    10.365, 10.622, 10.907, 11.136, 11.136, 11.335, 11.564, 11.564,
+    11.792, 12.049, 12.049, 12.534, 12.705, 12.934, 13.105, 13.362,
+    13.562, 13.819, 14.019, 14.304, 14.532, 14.732,
+])
+_PF1000_GRIBKOV_WAVEFORM_I_KA = np.array([
+    -12.188, -22.772, -11.396, -16.646, -10.959, 49.377, 93.254,
+    148.090, 235.843, 290.679, 504.542, 581.295, 652.590, 707.467,
+    762.323, 844.619, 899.433, 954.311, 1031.130, 1102.460, 1129.920,
+    1157.360, 1201.340, 1267.260, 1349.600, 1382.660, 1421.120,
+    1475.980, 1503.460, 1596.820, 1591.480, 1618.940, 1662.880,
+    1701.340, 1706.970, 1734.530, 1751.110, 1784.120, 1767.780,
+    1811.740, 1811.800, 1822.970, 1817.660, 1839.760, 1845.410,
+    1845.580, 1845.760, 1840.430, 1840.600, 1840.000, 1829.600,
+    1835.490, 1830.100, 1820.000, 1790.000, 1748.320, 1655.340,
+    1584.210, 1507.560, 1430.910, 1370.660, 1315.930, 1261.180,
+    1173.610, 1160.000, 1173.780, 1168.420, 1146.610, 1171.000,
+    1135.820, 1130.570, 1125.280, 1081.550, 1076.250, 1049.060,
+    1032.790, 1032.790, 1032.940, 1016.670, 1016.670, 1000.400,
+    989.625, 989.625, 940.664, 935.310, 908.080, 897.246, 875.516,
+    859.223, 848.452, 821.201, 810.450, 794.179, 794.325,
+])
+
+# Trim to t >= 0 for consistency with other waveforms
+_gribkov_mask = _PF1000_GRIBKOV_WAVEFORM_T_US >= 0.0
+_PF1000_GRIBKOV_T_TRIMMED = _PF1000_GRIBKOV_WAVEFORM_T_US[_gribkov_mask]
+_PF1000_GRIBKOV_I_TRIMMED = _PF1000_GRIBKOV_WAVEFORM_I_KA[_gribkov_mask]
+
+PF1000_GRIBKOV_DATA = ExperimentalDevice(
+    name="PF-1000-Gribkov",
+    institution="IPPLM Warsaw",
+    capacitance=1.332e-3,
+    voltage=27e3,
+    inductance=33.5e-9,
+    resistance=2.3e-3,
+    anode_radius=0.115,
+    cathode_radius=0.16,
+    anode_length=0.60,
+    fill_pressure_torr=3.5,
+    fill_gas="deuterium",
+    peak_current=1.846e6,           # 1.846 MA (Gribkov 2007, different shot from Scholz)
+    neutron_yield=1e11,
+    current_rise_time=6.39e-6,      # 6.39 us (peak timing from data)
+    reference="Gribkov et al., J. Phys. D: Appl. Phys. 40:3592, 2007",
+    crowbar_resistance=1.5e-3,
+    peak_current_uncertainty=0.05,
+    rise_time_uncertainty=0.10,
+    neutron_yield_uncertainty=0.50,
+    waveform_t=_PF1000_GRIBKOV_T_TRIMMED * 1e-6,    # us -> s
+    waveform_I=_PF1000_GRIBKOV_I_TRIMMED * 1e3,      # kA -> A
+    waveform_digitization_uncertainty=0.02,  # 2% (digital oscilloscope, not hand-digitized)
+    waveform_time_uncertainty=0.003,         # 0.3% (digital acquisition)
+    measurement_notes=(
+        "94-point digitized waveform from plasmafocus.net RADPF archive (PF1000 05.15.xls). "
+        "Original source: Gribkov et al., J. Phys. D: Appl. Phys. 40:3592-3607, 2007. "
+        "Same device and conditions as Scholz (2006) PF-1000 at 27 kV, 3.5 Torr D2, "
+        "but DIFFERENT shot and DIFFERENT digitization. Peak 1.846 MA at 6.39 us "
+        "(vs Scholz: 1.87 MA at 5.8 us — shot-to-shot variability). "
+        "Lower digitization uncertainty (2%) because this is from digital oscilloscope data "
+        "archived in the Lee model RADPF package, not hand-digitized from a paper figure. "
+        "DOI: 10.1088/0022-3727/40/12/008"
+    ),
+)
+
+
 # POSEIDON (Stuttgart) — 480 kJ Mather-type DPF
 # One of the largest Mather-type DPF devices, operated at IPF Stuttgart
 # (now retired).  Published I(t) and neutron yield data available from
@@ -426,6 +507,7 @@ PF1000_20KV_DATA = ExperimentalDevice(
 # Registry mapping device name -> ExperimentalDevice
 DEVICES: dict[str, ExperimentalDevice] = {
     "PF-1000": PF1000_DATA,
+    "PF-1000-Gribkov": PF1000_GRIBKOV_DATA,
     "PF-1000-16kV": PF1000_16KV_DATA,
     "PF-1000-20kV": PF1000_20KV_DATA,
     "NX2": NX2_DATA,

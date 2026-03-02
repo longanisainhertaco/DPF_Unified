@@ -339,6 +339,7 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
 
 _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "PF-1000": 0.14,
+    "PF-1000-Gribkov": 0.14,  # Same device, different shot/publication
     "PF-1000-16kV": 0.14,
     "PF-1000-20kV": 0.14,
     "NX2": 0.5,
@@ -352,6 +353,7 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
 # PF-1000: ~1-3 mOhm for ignitron/spark gap (Dr. PP estimate).
 _DEFAULT_CROWBAR_R: dict[str, float] = {
     "PF-1000": 1.5e-3,  # 1.5 mOhm midpoint of 1-3 mOhm range
+    "PF-1000-Gribkov": 1.5e-3,  # Same device as PF-1000
     "POSEIDON-60kV": 1.5e-3,  # estimated, same as PF-1000
 }
 
@@ -1014,6 +1016,8 @@ def fisher_information_matrix(
     crowbar_enabled: bool = True,
     crowbar_resistance: float = 1.5e-3,
     step_size: float = 0.01,
+    nondimensionalize: bool = False,
+    param_ranges: tuple[float, float, float] | None = None,
 ) -> FIMResult:
     """Compute Fisher Information Matrix at a parameter point.
 
@@ -1025,6 +1029,12 @@ def fisher_information_matrix(
       - cond 1e3-1e6: weakly identified (ridges)
       - cond > 1e6: practically non-identifiable
 
+    If ``nondimensionalize=True``, the Jacobian columns are scaled by
+    ``param_ranges`` (fc_range, fm_range, delay_range) so that the FIM
+    condition number is unit-independent.  This addresses the issue that
+    the raw FIM mixes dimensionless (fc, fm) with microsecond (delay)
+    parameters.
+
     Args:
         device_name: Device to evaluate.
         fc, fm, delay_us: Parameter point for evaluation.
@@ -1032,6 +1042,9 @@ def fisher_information_matrix(
         crowbar_enabled: Whether crowbar is enabled.
         crowbar_resistance: Crowbar resistance [Ohm].
         step_size: Relative step size for finite differences.
+        nondimensionalize: If True, scale Jacobian by param_ranges.
+        param_ranges: (fc_range, fm_range, delay_range_us) for scaling.
+            Required when ``nondimensionalize=True``.
 
     Returns:
         :class:`FIMResult` with FIM, eigenvalues, and condition number.
@@ -1080,6 +1093,13 @@ def fisher_information_matrix(
         y_plus = _run_model(*theta_plus)
         y_minus = _run_model(*theta_minus)
         J[:, j] = (y_plus - y_minus) / (2.0 * eps * sigma)
+
+    # Nondimensionalize: scale Jacobian columns by parameter ranges
+    if nondimensionalize:
+        if param_ranges is None:
+            raise ValueError("param_ranges required when nondimensionalize=True")
+        scales = np.array(param_ranges, dtype=float)
+        J = J * scales[np.newaxis, :]  # J_scaled[:, j] = J[:, j] * range_j
 
     # FIM = J^T @ J
     fim = J.T @ J
