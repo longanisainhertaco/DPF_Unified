@@ -693,6 +693,7 @@ def calibrate_with_liftoff(
     maxiter: int = 200,
     include_shot_to_shot: bool = True,
     mc_result: MonteCarloNRMSEResult | None = None,
+    seed: int = 42,
 ) -> LiftoffCalibrationResult:
     """Three-parameter calibration: fc, fm, and insulator liftoff delay.
 
@@ -717,6 +718,7 @@ def calibrate_with_liftoff(
             uses default u_input=0.027 from Phase AS.  Pass result from
             ``monte_carlo_nrmse(liftoff_delay=...)`` to include delay
             uncertainty in u_val (PhD Debate #40 recommendation).
+        seed: Random seed for differential evolution optimizer.
 
     Returns:
         :class:`LiftoffCalibrationResult` with optimized parameters and
@@ -759,7 +761,7 @@ def calibrate_with_liftoff(
 
     de_bounds = [fc_bounds, fm_bounds, delay_bounds_us]
     opt = differential_evolution(
-        _objective, de_bounds, maxiter=maxiter, seed=42,
+        _objective, de_bounds, maxiter=maxiter, seed=seed,
         tol=1e-5, atol=1e-5, polish=True, workers=1,
     )
     fc_opt, fm_opt, delay_opt_us = float(opt.x[0]), float(opt.x[1]), float(opt.x[2])

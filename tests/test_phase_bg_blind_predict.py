@@ -202,15 +202,12 @@ class TestMultiSeedRobustness:
 
     @pytest.fixture(scope="class")
     def results(self):
-        """Run calibration with 5 different seeds."""
+        """Run calibration with 5 different optimizer seeds."""
         from dpf.validation.calibration import calibrate_with_liftoff
 
         seeds = [42, 123, 456, 789, 0]
         outcomes = []
         for seed in seeds:
-            import numpy as np
-
-            np.random.seed(seed)
             result = calibrate_with_liftoff(
                 device_name="PF-1000",
                 fc_bounds=(0.6, 0.80),
@@ -220,6 +217,7 @@ class TestMultiSeedRobustness:
                 crowbar_enabled=True,
                 crowbar_resistance=1.5e-3,
                 maxiter=200,
+                seed=seed,
             )
             outcomes.append(result)
         return outcomes
