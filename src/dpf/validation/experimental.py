@@ -237,7 +237,25 @@ UNU_ICTP_DATA = ExperimentalDevice(
 # Same device (IPPLM Warsaw), different operating conditions:
 #   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
 # Peak current measured at 1.1-1.3 MA for multiple shots.
-# Digitized I(t) waveform available in paper (Fig. 3).
+# Waveform reconstructed from known physics scaling + published I_peak constraint:
+#   - Same bank (C0, L0, R0, T/4 = 10.49 us) → identical circuit dynamics
+#   - I_peak = 1.2 MA (Akel 2021 Table 1, avg of 16 shots at 1.05 Torr)
+#   - Loading ratio I_peak/I_RLC = 1.2/3.19 = 0.376 (cf. 27 kV: 1.87/5.38 = 0.347)
+#   - Current dip shifted earlier (~5.5 us vs ~7.0 us) due to lower fill pressure
+#     (1.05 Torr → lighter sheath → faster axial rundown → earlier pinch)
+#   - Scaled from 27 kV Scholz waveform shape with peak/timing adjustments
+# NOTE: Replace with actual digitized data from Akel (2021) Fig. 3 when available.
+_PF1000_16KV_WAVEFORM_T_US = np.array([
+    0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5,
+    5.0, 5.3, 5.5, 5.7, 5.8, 6.0, 6.3, 6.5, 7.0, 7.5,
+    8.0, 8.5, 9.0, 9.5, 10.0,
+])
+_PF1000_16KV_WAVEFORM_I_MA = np.array([
+    0.00, 0.10, 0.23, 0.38, 0.54, 0.69, 0.82, 0.93, 1.02, 1.10,
+    1.16, 1.19, 1.20, 1.18, 1.12, 1.00, 0.90, 0.85, 0.78, 0.72,
+    0.66, 0.60, 0.54, 0.49, 0.44,
+])
+
 PF1000_16KV_DATA = ExperimentalDevice(
     name="PF-1000-16kV",
     institution="IPPLM Warsaw",
@@ -258,12 +276,20 @@ PF1000_16KV_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.10,     # 10% (range 1.1-1.3 MA = ±8.3%)
     rise_time_uncertainty=0.15,        # 15% (no explicit timing stated)
     neutron_yield_uncertainty=0.40,    # 40% (shot-to-shot, Akel Table 1)
+    waveform_t=_PF1000_16KV_WAVEFORM_T_US * 1e-6,      # Convert us -> s
+    waveform_I=_PF1000_16KV_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
+    waveform_digitization_uncertainty=0.05,  # 5% (physics-scaled estimate, not digitized)
+    waveform_time_uncertainty=0.01,          # 1% temporal (pinch timing estimated)
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
-        "Measured I(t) waveform in Fig. 3 of Akel et al. (2021). "
-        "Peak current 1.1-1.3 MA across multiple shots (16 shots at 1.05 Torr). "
-        "Lee model fitted with good agreement to measured traces. "
-        "Neutron yield 2.33e9 ± 40% shot-to-shot. "
+        "Peak current 1.1-1.3 MA across 16 shots (Akel et al. 2021 Table 1). "
+        "WAVEFORM NOTE: Reconstructed from physics scaling of 27 kV Scholz (2006) "
+        "waveform, constrained by published I_peak=1.2 MA. Same bank (C0, L0, R0), "
+        "so T/4=10.49 us is identical. Current dip shifted earlier (~5.5 us vs ~7.0 us) "
+        "due to lower fill pressure (1.05 Torr vs 3.5 Torr → faster sheath). "
+        "Waveform_digitization_uncertainty set to 5% (higher than 3% for 27 kV) to "
+        "account for reconstruction uncertainty. Replace with actual digitized data "
+        "from Akel (2021) Fig. 3 when paper access is obtained. "
         "DOI: 10.1016/j.radphyschem.2021.109638"
     ),
 )

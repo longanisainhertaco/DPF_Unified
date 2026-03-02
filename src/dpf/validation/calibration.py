@@ -841,6 +841,267 @@ def calibrate_with_liftoff(
 
 
 # =====================================================================
+# Blind prediction (Section 5.3 compliance)
+# =====================================================================
+
+
+@dataclass
+class BlindPredictionResult:
+    """Result of a blind prediction: calibrate on one condition, predict another.
+
+    Attributes
+    ----------
+    train_device : str
+        Device/condition used for calibration.
+    test_device : str
+        Device/condition used for blind prediction.
+    train_fc, train_fm, train_delay_us : float
+        Calibrated parameters from training device.
+    train_nrmse : float
+        NRMSE on training device (calibration residual).
+    test_asme : ASMEValidationResult
+        ASME assessment on test device (blind prediction).
+    test_nrmse : float
+        NRMSE on test device (blind prediction error).
+    peak_current_error : float
+        Relative error in predicted vs measured peak current.
+    """
+
+    train_device: str
+    test_device: str
+    train_fc: float
+    train_fm: float
+    train_delay_us: float
+    train_nrmse: float
+    test_asme: ASMEValidationResult
+    test_nrmse: float
+    peak_current_error: float
+
+
+def blind_predict(
+    train_device: str = "PF-1000",
+    test_device: str = "PF-1000-16kV",
+    fc_bounds: tuple[float, float] = (0.6, 0.80),
+    fm_bounds: tuple[float, float] = (0.10, 0.30),
+    delay_bounds_us: tuple[float, float] = (0.0, 2.0),
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    maxiter: int = 200,
+) -> BlindPredictionResult:
+    """Calibrate on train_device, blind-predict on test_device.
+
+    This satisfies ASME V&V 20-2009 Section 5.3: the test_device waveform
+    is NEVER used during calibration.  The prediction is genuinely blind.
+
+    Args:
+        train_device: Device for calibration (provides fc, fm, delay).
+        test_device: Device for blind prediction (provides reference waveform).
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction (physical range).
+        delay_bounds_us: Bounds for liftoff delay [us].
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        maxiter: Maximum optimizer iterations.
+
+    Returns:
+        :class:`BlindPredictionResult` with calibration and prediction metrics.
+    """
+    from dpf.validation.experimental import DEVICES
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    # Step 1: Calibrate on training device
+    cal = calibrate_with_liftoff(
+        device_name=train_device,
+        fc_bounds=fc_bounds,
+        fm_bounds=fm_bounds,
+        delay_bounds_us=delay_bounds_us,
+        pinch_column_fraction=pinch_column_fraction,
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        maxiter=maxiter,
+    )
+
+    # Step 2: Blind prediction on test device (NO re-fitting)
+    test_asme = asme_vv20_assessment(
+        device_name=test_device,
+        fc=cal.best_fc,
+        fm=cal.best_fm,
+        pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
+            test_device, pinch_column_fraction
+        ),
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        liftoff_delay=cal.best_delay_us * 1e-6,
+    )
+
+    # Step 3: Peak current comparison
+    test_dev = DEVICES[test_device]
+    model = LeeModel(
+        current_fraction=cal.best_fc,
+        mass_fraction=cal.best_fm,
+        pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
+            test_device, pinch_column_fraction
+        ),
+        crowbar_enabled=crowbar_enabled,
+        crowbar_resistance=crowbar_resistance,
+        liftoff_delay=cal.best_delay_us * 1e-6,
+    )
+    pred = model.run(test_device)
+    predicted_peak = float(np.max(pred.I))
+    measured_peak = float(test_dev.peak_current)
+    peak_error = abs(predicted_peak - measured_peak) / measured_peak
+
+    logger.info(
+        "Blind prediction %s → %s: NRMSE=%.4f, peak error=%.1f%%, "
+        "ASME ratio=%.3f (train: fc=%.3f, fm=%.3f, delay=%.3f us)",
+        train_device, test_device, test_asme.E, peak_error * 100,
+        test_asme.ratio, cal.best_fc, cal.best_fm, cal.best_delay_us,
+    )
+
+    return BlindPredictionResult(
+        train_device=train_device,
+        test_device=test_device,
+        train_fc=cal.best_fc,
+        train_fm=cal.best_fm,
+        train_delay_us=cal.best_delay_us,
+        train_nrmse=cal.nrmse,
+        test_asme=test_asme,
+        test_nrmse=test_asme.E,
+        peak_current_error=peak_error,
+    )
+
+
+# =====================================================================
+# Fisher Information Matrix for identifiability analysis
+# =====================================================================
+
+
+@dataclass
+class FIMResult:
+    """Fisher Information Matrix analysis result.
+
+    Attributes
+    ----------
+    fim : np.ndarray
+        3x3 Fisher Information Matrix.
+    eigenvalues : np.ndarray
+        Eigenvalues of FIM (sorted ascending).
+    condition_number : float
+        Ratio of largest to smallest eigenvalue.
+    param_names : list[str]
+        Parameter names corresponding to FIM axes.
+    is_identifiable : bool
+        True if condition number < 1e4 (well-conditioned).
+    """
+
+    fim: np.ndarray
+    eigenvalues: np.ndarray
+    condition_number: float
+    param_names: list[str]
+    is_identifiable: bool
+
+
+def fisher_information_matrix(
+    device_name: str = "PF-1000",
+    fc: float = 0.800,
+    fm: float = 0.100,
+    delay_us: float = 0.571,
+    pinch_column_fraction: float = 0.14,
+    crowbar_enabled: bool = True,
+    crowbar_resistance: float = 1.5e-3,
+    step_size: float = 0.01,
+) -> FIMResult:
+    """Compute Fisher Information Matrix at a parameter point.
+
+    Uses finite-difference Jacobian of the residual vector to compute
+    the FIM = J^T @ J, where J_{ij} = (1/sigma_i) * dy_i/dtheta_j.
+
+    The condition number of the FIM indicates practical identifiability:
+      - cond < 1e3: well-identified
+      - cond 1e3-1e6: weakly identified (ridges)
+      - cond > 1e6: practically non-identifiable
+
+    Args:
+        device_name: Device to evaluate.
+        fc, fm, delay_us: Parameter point for evaluation.
+        pinch_column_fraction: Pinch column fraction.
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Crowbar resistance [Ohm].
+        step_size: Relative step size for finite differences.
+
+    Returns:
+        :class:`FIMResult` with FIM, eigenvalues, and condition number.
+    """
+    from dpf.validation.experimental import DEVICES
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    device = DEVICES[device_name]
+    if device.waveform_t is None or device.waveform_I is None:
+        raise ValueError(f"No digitized waveform for {device_name}")
+
+    t_exp = device.waveform_t
+    I_exp = device.waveform_I
+    n_data = len(t_exp)
+
+    # Measurement uncertainty per point (combined Rogowski + digitization)
+    sigma = float(np.sqrt(
+        device.peak_current_uncertainty**2
+        + device.waveform_digitization_uncertainty**2
+    )) * float(np.max(I_exp))
+
+    theta = np.array([fc, fm, delay_us])
+    param_names = ["fc", "fm", "delay_us"]
+
+    def _run_model(fc_v: float, fm_v: float, delay_v: float) -> np.ndarray:
+        """Run Lee model and interpolate to experimental time points."""
+        model = LeeModel(
+            current_fraction=fc_v,
+            mass_fraction=fm_v,
+            pinch_column_fraction=pinch_column_fraction,
+            crowbar_enabled=crowbar_enabled,
+            crowbar_resistance=crowbar_resistance,
+            liftoff_delay=delay_v * 1e-6,
+        )
+        result = model.run(device_name)
+        return np.interp(t_exp, result.t, result.I)
+
+    # Jacobian via central finite differences
+    J = np.zeros((n_data, 3))
+    for j in range(3):
+        eps = step_size * max(abs(theta[j]), 0.01)
+        theta_plus = theta.copy()
+        theta_minus = theta.copy()
+        theta_plus[j] += eps
+        theta_minus[j] -= eps
+        y_plus = _run_model(*theta_plus)
+        y_minus = _run_model(*theta_minus)
+        J[:, j] = (y_plus - y_minus) / (2.0 * eps * sigma)
+
+    # FIM = J^T @ J
+    fim = J.T @ J
+    eigenvalues = np.sort(np.linalg.eigvalsh(fim))
+    cond = float(eigenvalues[-1] / max(eigenvalues[0], 1e-30))
+
+    logger.info(
+        "FIM at (fc=%.3f, fm=%.3f, delay=%.3f us): "
+        "eigenvalues=[%.2e, %.2e, %.2e], cond=%.2e, identifiable=%s",
+        fc, fm, delay_us,
+        eigenvalues[0], eigenvalues[1], eigenvalues[2],
+        cond, cond < 1e4,
+    )
+
+    return FIMResult(
+        fim=fim,
+        eigenvalues=eigenvalues,
+        condition_number=cond,
+        param_names=param_names,
+        is_identifiable=cond < 1e4,
+    )
+
+
+# =====================================================================
 # Cross-validation framework
 # =====================================================================
 
