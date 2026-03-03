@@ -142,6 +142,7 @@ Planned: J.2+ (backlog)
 | Phase O physics accuracy tests | tests/test_phase_o_physics_accuracy.py (45 tests) |
 | Phase P engine accuracy tests | tests/test_phase_p_accuracy.py (22 non-slow + 1 slow) |
 | Slash commands | .claude/commands/ (18 commands) |
+| Research document index | docs/RESEARCH_INDEX.md |
 
 ## Iterative Accuracy Workflow
 
