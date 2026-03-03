@@ -2817,3 +2817,520 @@ def multi_shot_uncertainty(
         u_exp_with_averaging=u_with_avg,
         reference=data["reference"],
     )
+
+
+# =====================================================================
+# Multi-device simultaneous calibration (Phase BJ)
+# =====================================================================
+
+
+@dataclass
+class MultiDeviceResult:
+    """Result of multi-device simultaneous calibration.
+
+    Attributes
+    ----------
+    mode : str
+        Calibration mode: "shared", "shared_fc", or "pareto".
+    devices : list[str]
+        Device names used.
+    shared_fc : float
+        Shared current fraction (all modes).
+    shared_fm : float
+        Shared mass fraction (mode="shared" only; NaN for others).
+    shared_delay_us : float
+        Shared liftoff delay [us] (mode="shared" only).
+    device_fm : dict[str, float]
+        Per-device mass fraction (mode="shared_fc").
+    device_delay_us : dict[str, float]
+        Per-device liftoff delay [us] (mode="shared_fc").
+    device_nrmse : dict[str, float]
+        Per-device NRMSE at the multi-device optimum.
+    combined_nrmse : float
+        Weighted sum of per-device NRMSEs.
+    independent_nrmse : dict[str, float]
+        Per-device NRMSE from independent calibration (baseline).
+    independent_fc : dict[str, float]
+        Per-device fc from independent calibration.
+    independent_fm : dict[str, float]
+        Per-device fm from independent calibration.
+    nrmse_penalty : dict[str, float]
+        Per-device NRMSE increase vs independent: (multi - indep) / indep.
+    combined_improvement : float
+        Improvement vs naive transfer: 1 - combined / naive_combined.
+    converged : bool
+        Whether the optimizer converged.
+    n_evals : int
+        Total number of model evaluations.
+    """
+
+    mode: str
+    devices: list[str]
+    shared_fc: float
+    shared_fm: float
+    shared_delay_us: float
+    device_fm: dict[str, float]
+    device_delay_us: dict[str, float]
+    device_nrmse: dict[str, float]
+    combined_nrmse: float
+    independent_nrmse: dict[str, float]
+    independent_fc: dict[str, float]
+    independent_fm: dict[str, float]
+    nrmse_penalty: dict[str, float]
+    combined_improvement: float
+    converged: bool
+    n_evals: int
+
+
+@dataclass
+class ParetoPoint:
+    """A single point on the Pareto front.
+
+    Attributes
+    ----------
+    fc : float
+        Current fraction.
+    fm : float
+        Mass fraction.
+    delay_us : float
+        Liftoff delay [us].
+    nrmse : dict[str, float]
+        Per-device NRMSE.
+    combined : float
+        Weighted combined NRMSE.
+    """
+
+    fc: float
+    fm: float
+    delay_us: float
+    nrmse: dict[str, float]
+    combined: float
+
+
+@dataclass
+class ParetoFrontResult:
+    """Pareto front of multi-device NRMSE trade-offs.
+
+    Attributes
+    ----------
+    devices : list[str]
+        Device names (exactly 2 for 2D Pareto).
+    points : list[ParetoPoint]
+        Pareto-optimal points.
+    n_evaluated : int
+        Total points evaluated on the grid.
+    independent_nrmse : dict[str, float]
+        Per-device NRMSE from independent calibration.
+    utopia_point : dict[str, float]
+        Minimum achievable NRMSE per device (independent calibration).
+    nadir_point : dict[str, float]
+        Worst NRMSE on Pareto front per device.
+    """
+
+    devices: list[str]
+    points: list[ParetoPoint]
+    n_evaluated: int
+    independent_nrmse: dict[str, float]
+    utopia_point: dict[str, float]
+    nadir_point: dict[str, float]
+
+
+class MultiDeviceCalibrator:
+    """Simultaneous calibration of Lee model across multiple DPF devices.
+
+    Tests whether fc/fm can be shared across devices (universality
+    hypothesis) or whether device-specific values are required (as
+    suggested by Phase BI cross-device blind prediction results).
+
+    Three calibration modes:
+
+    1. **"shared"**: Single (fc, fm, delay) optimized to minimize the
+       weighted sum of per-device NRMSE.  Tests universal fc/fm.
+
+    2. **"shared_fc"**: Shared fc, but device-specific fm and delay.
+       Tests whether current fraction is more universal than mass fraction
+       (physical motivation: fc depends on insulator surface flashover
+       physics, fm depends on electrode gap geometry).
+
+    3. **"pareto"**: Maps the Pareto front of device-specific NRMSE
+       trade-offs as (fc, fm) are varied.  No single optimum — shows
+       the full trade-off landscape.
+
+    Args:
+        devices: List of device names (must have digitized waveforms).
+        weights: Optional per-device weights for combined NRMSE.
+            Default: equal weight (1/N_devices).
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction.
+        delay_bounds_us: Bounds for liftoff delay [us].
+        pinch_column_fraction: Default pcf (overridden by device-specific).
+        crowbar_enabled: Whether crowbar is enabled.
+        crowbar_resistance: Default crowbar resistance [Ohm].
+        maxiter: Maximum optimizer iterations.
+        seed: Random seed for differential evolution.
+    """
+
+    def __init__(
+        self,
+        devices: list[str] | None = None,
+        weights: dict[str, float] | None = None,
+        fc_bounds: tuple[float, float] = (0.5, 0.95),
+        fm_bounds: tuple[float, float] = (0.01, 0.40),
+        delay_bounds_us: tuple[float, float] = (0.0, 2.0),
+        pinch_column_fraction: float = 0.14,
+        crowbar_enabled: bool = True,
+        crowbar_resistance: float = 1.5e-3,
+        maxiter: int = 200,
+        seed: int = 42,
+    ) -> None:
+        if devices is None:
+            devices = ["PF-1000", "POSEIDON-60kV"]
+        self.devices = devices
+        self.fc_bounds = fc_bounds
+        self.fm_bounds = fm_bounds
+        self.delay_bounds_us = delay_bounds_us
+        self.pinch_column_fraction = pinch_column_fraction
+        self.crowbar_enabled = crowbar_enabled
+        self.crowbar_resistance = crowbar_resistance
+        self.maxiter = maxiter
+        self.seed = seed
+
+        # Equal weights by default
+        if weights is None:
+            w = 1.0 / len(devices)
+            self.weights = {d: w for d in devices}
+        else:
+            total = sum(weights.values())
+            self.weights = {d: weights[d] / total for d in devices}
+
+    def _compute_nrmse(
+        self,
+        device_name: str,
+        fc: float,
+        fm: float,
+        delay_us: float,
+    ) -> float:
+        """Run Lee model for a device and return NRMSE."""
+        from dpf.validation.experimental import DEVICES, nrmse_peak
+        from dpf.validation.lee_model_comparison import LeeModel
+
+        device = DEVICES[device_name]
+        if device.waveform_t is None or device.waveform_I is None:
+            return 1.0
+
+        pcf = _DEFAULT_DEVICE_PCF.get(device_name, self.pinch_column_fraction)
+        cr = _DEFAULT_CROWBAR_R.get(device_name, self.crowbar_resistance)
+
+        try:
+            model = LeeModel(
+                current_fraction=fc,
+                mass_fraction=fm,
+                pinch_column_fraction=pcf,
+                crowbar_enabled=self.crowbar_enabled,
+                crowbar_resistance=cr,
+                liftoff_delay=delay_us * 1e-6,
+            )
+            result = model.run(device_name)
+            return float(nrmse_peak(
+                result.t, result.I, device.waveform_t, device.waveform_I,
+            ))
+        except Exception:
+            return 1.0
+
+    def _independent_calibrations(self) -> dict[str, LiftoffCalibrationResult]:
+        """Run independent per-device calibrations as baseline."""
+        results = {}
+        for dev in self.devices:
+            results[dev] = calibrate_with_liftoff(
+                device_name=dev,
+                fc_bounds=self.fc_bounds,
+                fm_bounds=self.fm_bounds,
+                delay_bounds_us=self.delay_bounds_us,
+                pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
+                    dev, self.pinch_column_fraction
+                ),
+                crowbar_enabled=self.crowbar_enabled,
+                crowbar_resistance=_DEFAULT_CROWBAR_R.get(
+                    dev, self.crowbar_resistance
+                ),
+                maxiter=self.maxiter,
+                seed=self.seed,
+            )
+        return results
+
+    def calibrate_shared(self) -> MultiDeviceResult:
+        """Optimize a single (fc, fm, delay) across all devices.
+
+        Minimizes weighted_sum(NRMSE_i) over shared (fc, fm, delay).
+
+        Returns:
+            :class:`MultiDeviceResult` with mode="shared".
+        """
+        from scipy.optimize import differential_evolution
+
+        n_evals = 0
+
+        def _objective(x: np.ndarray) -> float:
+            nonlocal n_evals
+            n_evals += 1
+            fc, fm, delay_us = float(x[0]), float(x[1]), float(x[2])
+            total = 0.0
+            for dev in self.devices:
+                nrmse = self._compute_nrmse(dev, fc, fm, delay_us)
+                total += self.weights[dev] * nrmse
+            return total
+
+        bounds = [self.fc_bounds, self.fm_bounds, self.delay_bounds_us]
+        opt = differential_evolution(
+            _objective, bounds, maxiter=self.maxiter, seed=self.seed,
+            tol=1e-5, atol=1e-5, polish=True, workers=1,
+        )
+
+        fc_opt = float(np.clip(opt.x[0], *self.fc_bounds))
+        fm_opt = float(np.clip(opt.x[1], *self.fm_bounds))
+        delay_opt = float(np.clip(opt.x[2], *self.delay_bounds_us))
+
+        # Per-device NRMSE at shared optimum
+        dev_nrmse = {}
+        for dev in self.devices:
+            dev_nrmse[dev] = self._compute_nrmse(dev, fc_opt, fm_opt, delay_opt)
+
+        combined = sum(
+            self.weights[d] * dev_nrmse[d] for d in self.devices
+        )
+
+        # Independent baselines
+        indep = self._independent_calibrations()
+        indep_nrmse = {d: indep[d].nrmse for d in self.devices}
+        indep_fc = {d: indep[d].best_fc for d in self.devices}
+        indep_fm = {d: indep[d].best_fm for d in self.devices}
+
+        # Penalty: how much worse is each device vs its independent optimum
+        penalty = {}
+        for d in self.devices:
+            if indep_nrmse[d] > 0:
+                penalty[d] = (dev_nrmse[d] - indep_nrmse[d]) / indep_nrmse[d]
+            else:
+                penalty[d] = 0.0
+
+        # Improvement vs naive combined (using device A's params on device B)
+        naive_combined = sum(self.weights[d] * 0.5 for d in self.devices)
+        improvement = 1.0 - combined / naive_combined if naive_combined > 0 else 0.0
+
+        logger.info(
+            "Multi-device shared: fc=%.4f, fm=%.4f, delay=%.3f us, "
+            "combined NRMSE=%.4f, penalties=%s",
+            fc_opt, fm_opt, delay_opt, combined,
+            {d: f"{penalty[d]:.1%}" for d in self.devices},
+        )
+
+        return MultiDeviceResult(
+            mode="shared",
+            devices=list(self.devices),
+            shared_fc=fc_opt,
+            shared_fm=fm_opt,
+            shared_delay_us=delay_opt,
+            device_fm={d: fm_opt for d in self.devices},
+            device_delay_us={d: delay_opt for d in self.devices},
+            device_nrmse=dev_nrmse,
+            combined_nrmse=combined,
+            independent_nrmse=indep_nrmse,
+            independent_fc=indep_fc,
+            independent_fm=indep_fm,
+            nrmse_penalty=penalty,
+            combined_improvement=improvement,
+            converged=bool(opt.success),
+            n_evals=n_evals,
+        )
+
+    def calibrate_shared_fc(self) -> MultiDeviceResult:
+        """Optimize shared fc with device-specific (fm, delay).
+
+        The parameter vector is [fc, fm_1, delay_1, fm_2, delay_2, ...].
+
+        Returns:
+            :class:`MultiDeviceResult` with mode="shared_fc".
+        """
+        from scipy.optimize import differential_evolution
+
+        n_evals = 0
+
+        def _objective(x: np.ndarray) -> float:
+            nonlocal n_evals
+            n_evals += 1
+            fc = float(x[0])
+            total = 0.0
+            for i, dev in enumerate(self.devices):
+                fm_i = float(x[1 + 2 * i])
+                delay_i = float(x[2 + 2 * i])
+                nrmse = self._compute_nrmse(dev, fc, fm_i, delay_i)
+                total += self.weights[dev] * nrmse
+            return total
+
+        # Bounds: [fc, fm_1, delay_1, fm_2, delay_2, ...]
+        bounds = [self.fc_bounds]
+        for _ in self.devices:
+            bounds.append(self.fm_bounds)
+            bounds.append(self.delay_bounds_us)
+
+        opt = differential_evolution(
+            _objective, bounds, maxiter=self.maxiter, seed=self.seed,
+            tol=1e-5, atol=1e-5, polish=True, workers=1,
+        )
+
+        fc_opt = float(np.clip(opt.x[0], *self.fc_bounds))
+        dev_fm = {}
+        dev_delay = {}
+        dev_nrmse = {}
+        for i, dev in enumerate(self.devices):
+            fm_i = float(np.clip(opt.x[1 + 2 * i], *self.fm_bounds))
+            delay_i = float(np.clip(opt.x[2 + 2 * i], *self.delay_bounds_us))
+            dev_fm[dev] = fm_i
+            dev_delay[dev] = delay_i
+            dev_nrmse[dev] = self._compute_nrmse(dev, fc_opt, fm_i, delay_i)
+
+        combined = sum(
+            self.weights[d] * dev_nrmse[d] for d in self.devices
+        )
+
+        # Independent baselines
+        indep = self._independent_calibrations()
+        indep_nrmse = {d: indep[d].nrmse for d in self.devices}
+        indep_fc = {d: indep[d].best_fc for d in self.devices}
+        indep_fm = {d: indep[d].best_fm for d in self.devices}
+
+        penalty = {}
+        for d in self.devices:
+            if indep_nrmse[d] > 0:
+                penalty[d] = (dev_nrmse[d] - indep_nrmse[d]) / indep_nrmse[d]
+            else:
+                penalty[d] = 0.0
+
+        naive_combined = sum(self.weights[d] * 0.5 for d in self.devices)
+        improvement = 1.0 - combined / naive_combined if naive_combined > 0 else 0.0
+
+        logger.info(
+            "Multi-device shared_fc: fc=%.4f, device_fm=%s, "
+            "combined NRMSE=%.4f, penalties=%s",
+            fc_opt,
+            {d: f"{dev_fm[d]:.4f}" for d in self.devices},
+            combined,
+            {d: f"{penalty[d]:.1%}" for d in self.devices},
+        )
+
+        return MultiDeviceResult(
+            mode="shared_fc",
+            devices=list(self.devices),
+            shared_fc=fc_opt,
+            shared_fm=float("nan"),
+            shared_delay_us=float("nan"),
+            device_fm=dev_fm,
+            device_delay_us=dev_delay,
+            device_nrmse=dev_nrmse,
+            combined_nrmse=combined,
+            independent_nrmse=indep_nrmse,
+            independent_fc=indep_fc,
+            independent_fm=indep_fm,
+            nrmse_penalty=penalty,
+            combined_improvement=improvement,
+            converged=bool(opt.success),
+            n_evals=n_evals,
+        )
+
+    def pareto_front(
+        self,
+        fc_grid: int = 15,
+        fm_grid: int = 15,
+        delay_us: float = 0.5,
+    ) -> ParetoFrontResult:
+        """Map the Pareto front of per-device NRMSE trade-offs.
+
+        Evaluates Lee model on a (fc, fm) grid for each device and
+        extracts the Pareto-optimal points (no point dominates another
+        on all device NRMSEs simultaneously).
+
+        Args:
+            fc_grid: Number of fc grid points.
+            fm_grid: Number of fm grid points.
+            delay_us: Fixed liftoff delay [us] (to reduce dimensionality).
+
+        Returns:
+            :class:`ParetoFrontResult` with Pareto-optimal points.
+        """
+        fc_vals = np.linspace(self.fc_bounds[0], self.fc_bounds[1], fc_grid)
+        fm_vals = np.linspace(self.fm_bounds[0], self.fm_bounds[1], fm_grid)
+
+        all_points: list[ParetoPoint] = []
+
+        for fc_v in fc_vals:
+            for fm_v in fm_vals:
+                nrmse = {}
+                for dev in self.devices:
+                    nrmse[dev] = self._compute_nrmse(
+                        dev, float(fc_v), float(fm_v), delay_us,
+                    )
+                combined = sum(
+                    self.weights[d] * nrmse[d] for d in self.devices
+                )
+                all_points.append(ParetoPoint(
+                    fc=float(fc_v),
+                    fm=float(fm_v),
+                    delay_us=delay_us,
+                    nrmse=nrmse,
+                    combined=combined,
+                ))
+
+        # Extract Pareto front (non-dominated points)
+        pareto = []
+        for p in all_points:
+            dominated = False
+            for q in all_points:
+                if p is q:
+                    continue
+                # q dominates p if q is <= p on all devices and < on at least one
+                all_leq = all(
+                    q.nrmse[d] <= p.nrmse[d] for d in self.devices
+                )
+                any_lt = any(
+                    q.nrmse[d] < p.nrmse[d] for d in self.devices
+                )
+                if all_leq and any_lt:
+                    dominated = True
+                    break
+            if not dominated:
+                pareto.append(p)
+
+        # Sort by first device's NRMSE
+        pareto.sort(key=lambda p: p.nrmse[self.devices[0]])
+
+        # Independent baselines
+        indep = self._independent_calibrations()
+        indep_nrmse = {d: indep[d].nrmse for d in self.devices}
+
+        # Utopia = independent optimum per device
+        utopia = dict(indep_nrmse)
+
+        # Nadir = worst NRMSE on Pareto front per device
+        nadir = {}
+        for d in self.devices:
+            if pareto:
+                nadir[d] = max(p.nrmse[d] for p in pareto)
+            else:
+                nadir[d] = 1.0
+
+        logger.info(
+            "Pareto front: %d points from %d evaluated, "
+            "utopia=%s, nadir=%s",
+            len(pareto), len(all_points),
+            {d: f"{utopia[d]:.4f}" for d in self.devices},
+            {d: f"{nadir[d]:.4f}" for d in self.devices},
+        )
+
+        return ParetoFrontResult(
+            devices=list(self.devices),
+            points=pareto,
+            n_evaluated=len(all_points),
+            independent_nrmse=indep_nrmse,
+            utopia_point=utopia,
+            nadir_point=nadir,
+        )
