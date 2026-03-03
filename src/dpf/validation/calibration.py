@@ -3334,3 +3334,84 @@ class MultiDeviceCalibrator:
             utopia_point=utopia,
             nadir_point=nadir,
         )
+
+    def leave_one_out(self) -> dict[str, dict[str, float]]:
+        """Leave-one-out cross-validation across devices.
+
+        For each device D_held:
+        1. Calibrate on remaining devices (train set)
+        2. Predict D_held with trained parameters
+        3. Compare prediction NRMSE to independent calibration NRMSE
+
+        Returns:
+            Dict mapping held-out device name to a dict with keys:
+            - "train_nrmse": avg NRMSE on training devices
+            - "blind_nrmse": NRMSE on held-out device using trained params
+            - "independent_nrmse": NRMSE from independent calibration
+            - "degradation": blind / independent ratio (1.0 = perfect)
+            - "trained_fc", "trained_fm", "trained_delay_us": parameters
+        """
+        if len(self.devices) < 2:
+            raise ValueError("Need >= 2 devices for leave-one-out")
+
+        indep = self._independent_calibrations()
+        results: dict[str, dict[str, float]] = {}
+
+        for held_out in self.devices:
+            train_devs = [d for d in self.devices if d != held_out]
+
+            # Create a sub-calibrator on the training set
+            sub_cal = MultiDeviceCalibrator(
+                devices=train_devs,
+                fc_bounds=self.fc_bounds,
+                fm_bounds=self.fm_bounds,
+                delay_bounds_us=self.delay_bounds_us,
+                pinch_column_fraction=self.pinch_column_fraction,
+                crowbar_enabled=self.crowbar_enabled,
+                crowbar_resistance=self.crowbar_resistance,
+                maxiter=self.maxiter,
+                seed=self.seed,
+            )
+
+            # Calibrate on training set (shared mode)
+            train_result = sub_cal.calibrate_shared()
+            fc_train = train_result.shared_fc
+            fm_train = train_result.shared_fm
+            delay_train = train_result.shared_delay_us
+
+            # Predict held-out device
+            blind_nrmse = self._compute_nrmse(
+                held_out, fc_train, fm_train, delay_train,
+            )
+
+            # Average training NRMSE
+            train_nrmse = np.mean([
+                train_result.device_nrmse[d] for d in train_devs
+            ])
+
+            indep_nrmse = indep[held_out].nrmse
+
+            results[held_out] = {
+                "train_nrmse": float(train_nrmse),
+                "blind_nrmse": float(blind_nrmse),
+                "independent_nrmse": float(indep_nrmse),
+                "degradation": (
+                    float(blind_nrmse / indep_nrmse)
+                    if indep_nrmse > 0 else float("inf")
+                ),
+                "trained_fc": fc_train,
+                "trained_fm": fm_train,
+                "trained_delay_us": delay_train,
+            }
+
+            logger.info(
+                "LOO held=%s: blind=%.4f, indep=%.4f, degrad=%.2fx, "
+                "trained fc=%.4f fm=%.4f delay=%.3f us",
+                held_out,
+                blind_nrmse,
+                indep_nrmse,
+                results[held_out]["degradation"],
+                fc_train, fm_train, delay_train,
+            )
+
+        return results
