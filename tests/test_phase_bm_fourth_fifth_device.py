@@ -575,3 +575,54 @@ class TestReconstructedUncertainty:
 
         dev = DEVICES["MJOLNIR"]
         assert "RECONSTRUCTED" in dev.measurement_notes
+
+
+# =====================================================================
+# N=5 LOO Cross-Validation Tests (SLOW)
+# =====================================================================
+
+class TestN5LOOCrossValidation:
+    """N=5 leave-one-out cross-validation with all 5 devices.
+
+    This is the key PhD-panel milestone: df=4 gives finite variance
+    for the t-distribution (vs df=2 with N=3 devices where variance
+    is infinite).  Requires ~8 minutes of compute.
+    """
+
+    @pytest.mark.slow
+    def test_n5_loo_all_devices(self):
+        """N=5 LOO should produce finite mean and std with df=4."""
+        from dpf.validation.calibration import MultiDeviceCalibrator
+
+        cal = MultiDeviceCalibrator(
+            devices=["PF-1000", "POSEIDON-60kV", "UNU-ICTP", "FAETON-I", "MJOLNIR"],
+            fc_bounds=(0.5, 0.95),
+            fm_bounds=(0.04, 0.40),
+            delay_bounds_us=(0.0, 2.0),
+            maxiter=1,
+            seed=42,
+        )
+        loo = cal.leave_one_out()
+
+        assert len(loo) == 5
+        blind_nrmses = [m["blind_nrmse"] for m in loo.values()]
+        mean_loo = float(np.mean(blind_nrmses))
+        std_loo = float(np.std(blind_nrmses, ddof=1))
+
+        # All blind NRMSEs should be finite and < 1.0
+        for dev, m in loo.items():
+            assert 0 < m["blind_nrmse"] < 1.0, f"{dev} blind={m['blind_nrmse']}"
+            assert m["degradation"] > 0
+
+        # Mean and std should be finite
+        assert 0 < mean_loo < 1.0
+        assert 0 < std_loo < 1.0
+
+        # df=4 gives finite variance (key milestone)
+        from scipy import stats
+        t_crit = stats.t.ppf(0.975, df=4)
+        se = std_loo / np.sqrt(5)
+        ci_low = mean_loo - t_crit * se
+        ci_high = mean_loo + t_crit * se
+        assert ci_low < ci_high
+        assert ci_high - ci_low < 1.0  # CI width should be bounded
