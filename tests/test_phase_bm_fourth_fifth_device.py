@@ -124,7 +124,7 @@ class TestDeviceRegistration:
         from dpf.validation.experimental import DEVICES
 
         dev = DEVICES["MJOLNIR"]
-        assert dev.anode_radius == pytest.approx(0.076, rel=0.01)
+        assert dev.anode_radius == pytest.approx(0.114, rel=0.01)
         assert dev.cathode_radius == pytest.approx(0.157, rel=0.05)  # estimated
         assert dev.anode_length == pytest.approx(0.20, rel=0.10)
 
@@ -201,7 +201,7 @@ class TestLpL0Diagnostic:
         assert result["L_p_over_L0"] == pytest.approx(0.107, abs=0.01)
 
     def test_mjolnir_circuit_dominated(self):
-        """MJOLNIR: L_p/L0 ~ 0.37 — circuit-dominated."""
+        """MJOLNIR: L_p/L0 ~ 0.16 — circuit-dominated (anode_radius=114mm)."""
         from dpf.validation.experimental import DEVICES, compute_lp_l0_ratio
 
         dev = DEVICES["MJOLNIR"]
@@ -209,7 +209,7 @@ class TestLpL0Diagnostic:
             dev.inductance, dev.anode_radius, dev.cathode_radius, dev.anode_length,
         )
         assert result["regime"] == "circuit-dominated"
-        assert 0.25 < result["L_p_over_L0"] < 0.50
+        assert 0.10 < result["L_p_over_L0"] < 0.25
 
     def test_pf1000_plasma_significant(self):
         """PF-1000 should be plasma-significant (reference check)."""
@@ -241,16 +241,16 @@ class TestSpeedFactor:
         assert result["regime"] == "sub-driven"
         assert result["S_over_S_opt"] == pytest.approx(0.65, abs=0.05)
 
-    def test_mjolnir_super_driven(self):
-        """MJOLNIR: S/S_opt > 1.2 — super-driven."""
+    def test_mjolnir_optimal(self):
+        """MJOLNIR: S/S_opt ~ 1.04 — optimal (with corrected anode_radius=114mm)."""
         from dpf.validation.experimental import DEVICES, compute_speed_factor
 
         dev = DEVICES["MJOLNIR"]
         result = compute_speed_factor(
             dev.peak_current, dev.anode_radius, dev.fill_pressure_torr,
         )
-        assert result["regime"] == "super-driven"
-        assert result["S_over_S_opt"] > 1.2
+        assert result["regime"] == "optimal"
+        assert 0.8 < result["S_over_S_opt"] < 1.2
 
 
 # =====================================================================
