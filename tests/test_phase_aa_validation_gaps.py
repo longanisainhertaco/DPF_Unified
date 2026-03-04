@@ -246,14 +246,14 @@ class TestValidateCurrentWaveformCoverage:
         assert "peak_time_sim" in metrics
         assert metrics["peak_time_sim"] > 0.0
 
-    def test_unu_ictp_no_waveform(self) -> None:
-        """UNU-ICTP (like NX2) has no digitized waveform → waveform_available=False."""
-        t = np.linspace(0, 8e-6, 500)
-        I_arr = 170e3 * np.sin(np.pi * t / (2.0 * 2.8e-6))
+    def test_unu_ictp_has_waveform(self) -> None:
+        """UNU-ICTP has a digitized waveform (Phase BL) → waveform_available=True."""
+        t = np.linspace(0, 5e-6, 500)
+        I_arr = 169e3 * np.sin(np.pi * t / (2.0 * 2.2e-6))
         I_arr = np.maximum(I_arr, 0.0)
         metrics = validate_current_waveform(t, I_arr, "UNU-ICTP")
-        assert metrics["waveform_available"] is False
-        assert math.isnan(metrics["waveform_nrmse"])
+        assert metrics["waveform_available"] is True
+        assert not math.isnan(metrics["waveform_nrmse"])
 
     def test_unknown_device_raises_keyerror(self) -> None:
         """KeyError is raised for a device_name not in DEVICES."""

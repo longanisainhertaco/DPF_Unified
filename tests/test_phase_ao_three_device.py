@@ -562,10 +562,11 @@ class TestDataConsistency:
               f"R0={unu['circuit']['R0']*1e3:.0f} mOhm")
 
     def test_unu_experimental_data_exists(self):
-        """UNU-ICTP experimental data should exist."""
+        """UNU-ICTP experimental data should exist with digitized waveform."""
         from dpf.validation.experimental import UNU_ICTP_DATA
-        assert UNU_ICTP_DATA.peak_current == pytest.approx(170e3)
-        assert UNU_ICTP_DATA.current_rise_time == pytest.approx(2.8e-6)
+        assert UNU_ICTP_DATA.peak_current == pytest.approx(169e3)
+        assert UNU_ICTP_DATA.current_rise_time == pytest.approx(2.2e-6)
+        assert UNU_ICTP_DATA.waveform_t is not None  # Phase BL: digitized
         print(f"\nUNU-ICTP experimental: peak={UNU_ICTP_DATA.peak_current/1e3:.0f} kA, "
               f"rise={UNU_ICTP_DATA.current_rise_time*1e6:.1f} us")
 

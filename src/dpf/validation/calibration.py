@@ -343,6 +343,7 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "PF-1000-16kV": 0.14,
     "PF-1000-20kV": 0.14,
     "NX2": 0.5,
+    "UNU-ICTP": 0.5,  # Small device: larger fraction focuses (same as NX2)
     "POSEIDON": 0.14,  # Similar to PF-1000 (Lee & Saw 2014 scaling)
     "POSEIDON-60kV": 0.14,  # Lee & Saw scaling for MA-class
 }
@@ -355,6 +356,7 @@ _DEFAULT_CROWBAR_R: dict[str, float] = {
     "PF-1000": 1.5e-3,  # 1.5 mOhm midpoint of 1-3 mOhm range
     "PF-1000-Gribkov": 1.5e-3,  # Same device as PF-1000
     "POSEIDON-60kV": 1.5e-3,  # estimated, same as PF-1000
+    "UNU-ICTP": 0.0,  # No crowbar in UNU-ICTP PFF (simple capacitor bank)
 }
 
 
@@ -689,9 +691,9 @@ def calibrate_with_liftoff(
     fc_bounds: tuple[float, float] = (0.5, 0.95),
     fm_bounds: tuple[float, float] = (0.01, 0.3),
     delay_bounds_us: tuple[float, float] = (0.0, 2.0),
-    pinch_column_fraction: float = 0.14,
-    crowbar_enabled: bool = True,
-    crowbar_resistance: float = 1.5e-3,
+    pinch_column_fraction: float | None = None,
+    crowbar_enabled: bool | None = None,
+    crowbar_resistance: float | None = None,
     maxiter: int = 200,
     include_shot_to_shot: bool = True,
     mc_result: MonteCarloNRMSEResult | None = None,
@@ -711,9 +713,13 @@ def calibrate_with_liftoff(
         fc_bounds: Bounds for current fraction (fc).
         fm_bounds: Bounds for mass fraction (fm).
         delay_bounds_us: Bounds for liftoff delay [us].
-        pinch_column_fraction: Pinch column fraction.
-        crowbar_enabled: Whether crowbar is enabled.
-        crowbar_resistance: Crowbar resistance [Ohm].
+        pinch_column_fraction: Pinch column fraction.  If None, uses
+            device-specific default from ``_DEFAULT_DEVICE_PCF``.
+        crowbar_enabled: Whether crowbar is enabled.  If None, auto-detects
+            from ``_DEFAULT_CROWBAR_R`` (enabled only for devices with a
+            known crowbar resistance).
+        crowbar_resistance: Crowbar resistance [Ohm].  If None, uses
+            device-specific default from ``_DEFAULT_CROWBAR_R``.
         maxiter: Maximum optimizer iterations.
         include_shot_to_shot: Include shot-to-shot uncertainty in ASME.
         mc_result: Pre-computed Monte Carlo result for u_input.  If None,
@@ -728,6 +734,14 @@ def calibrate_with_liftoff(
     """
     from dpf.validation.experimental import DEVICES, nrmse_peak
     from dpf.validation.lee_model_comparison import LeeModel
+
+    # Resolve device-specific defaults (matching calibrate_default_params)
+    if pinch_column_fraction is None:
+        pinch_column_fraction = _DEFAULT_DEVICE_PCF.get(device_name, 0.14)
+    if crowbar_resistance is None:
+        crowbar_resistance = _DEFAULT_CROWBAR_R.get(device_name, 0.0)
+    if crowbar_enabled is None:
+        crowbar_enabled = crowbar_resistance > 0
 
     device = DEVICES[device_name]
     if device.waveform_t is None or device.waveform_I is None:
@@ -758,15 +772,32 @@ def calibrate_with_liftoff(
 
     # Use differential evolution for global optimization over 3-parameter
     # space.  The landscape has ridges (fc^2/fm degeneracy) that trap local
-    # optimizers.  DE explores the full bounds, then polishes with L-BFGS-B.
-    from scipy.optimize import differential_evolution
+    # optimizers.  DE explores the full bounds.
+    # NOTE: polish=False because scipy's built-in L-BFGS-B polish uses
+    # default maxiter=15000*ndim which can take hours on noisy Lee model
+    # objectives (~0.2s/eval).  Instead we do a bounded manual polish.
+    from scipy.optimize import differential_evolution, minimize
 
     de_bounds = [fc_bounds, fm_bounds, delay_bounds_us]
     opt = differential_evolution(
         _objective, de_bounds, maxiter=maxiter, seed=seed,
-        tol=1e-5, atol=1e-5, polish=True, workers=1,
+        tol=1e-5, atol=1e-5, polish=False, workers=1,
     )
-    fc_opt, fm_opt, delay_opt_us = float(opt.x[0]), float(opt.x[1]), float(opt.x[2])
+
+    # Bounded L-BFGS-B polish: cap at 50 iterations to avoid runaway
+    # convergence on noisy/flat objectives (e.g. UNU-ICTP with wrong pcf).
+    polish = minimize(
+        _objective, opt.x, method="L-BFGS-B",
+        bounds=de_bounds, options={"maxiter": 50},
+    )
+    if polish.fun <= opt.fun:
+        opt_x = polish.x
+    else:
+        opt_x = opt.x
+
+    fc_opt, fm_opt, delay_opt_us = (
+        float(opt_x[0]), float(opt_x[1]), float(opt_x[2])
+    )
     # Clamp to bounds
     fc_opt = float(np.clip(fc_opt, *fc_bounds))
     fm_opt = float(np.clip(fm_opt, *fm_bounds))
@@ -888,9 +919,9 @@ def blind_predict(
     fc_bounds: tuple[float, float] = (0.6, 0.80),
     fm_bounds: tuple[float, float] = (0.10, 0.30),
     delay_bounds_us: tuple[float, float] = (0.0, 2.0),
-    pinch_column_fraction: float = 0.14,
-    crowbar_enabled: bool = True,
-    crowbar_resistance: float = 1.5e-3,
+    pinch_column_fraction: float | None = None,
+    crowbar_enabled: bool | None = None,
+    crowbar_resistance: float | None = None,
     maxiter: int = 200,
 ) -> BlindPredictionResult:
     """Calibrate on train_device, blind-predict on test_device.
@@ -915,7 +946,18 @@ def blind_predict(
     from dpf.validation.experimental import DEVICES
     from dpf.validation.lee_model_comparison import LeeModel
 
-    # Step 1: Calibrate on training device
+    # Resolve device-specific defaults for test device
+    test_pcf = _DEFAULT_DEVICE_PCF.get(test_device, 0.14)
+    if pinch_column_fraction is not None:
+        test_pcf = pinch_column_fraction
+    test_cr = _DEFAULT_CROWBAR_R.get(test_device, 0.0)
+    if crowbar_resistance is not None:
+        test_cr = crowbar_resistance
+    test_cb = test_cr > 0
+    if crowbar_enabled is not None:
+        test_cb = crowbar_enabled
+
+    # Step 1: Calibrate on training device (uses its own device-specific defaults)
     cal = calibrate_with_liftoff(
         device_name=train_device,
         fc_bounds=fc_bounds,
@@ -932,11 +974,9 @@ def blind_predict(
         device_name=test_device,
         fc=cal.best_fc,
         fm=cal.best_fm,
-        pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
-            test_device, pinch_column_fraction
-        ),
-        crowbar_enabled=crowbar_enabled,
-        crowbar_resistance=crowbar_resistance,
+        pinch_column_fraction=test_pcf,
+        crowbar_enabled=test_cb,
+        crowbar_resistance=test_cr,
         liftoff_delay=cal.best_delay_us * 1e-6,
     )
 
@@ -945,11 +985,9 @@ def blind_predict(
     model = LeeModel(
         current_fraction=cal.best_fc,
         mass_fraction=cal.best_fm,
-        pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
-            test_device, pinch_column_fraction
-        ),
-        crowbar_enabled=crowbar_enabled,
-        crowbar_resistance=crowbar_resistance,
+        pinch_column_fraction=test_pcf,
+        crowbar_enabled=test_cb,
+        crowbar_resistance=test_cr,
         liftoff_delay=cal.best_delay_us * 1e-6,
     )
     pred = model.run(test_device)
@@ -3020,13 +3058,14 @@ class MultiDeviceCalibrator:
 
         pcf = _DEFAULT_DEVICE_PCF.get(device_name, self.pinch_column_fraction)
         cr = _DEFAULT_CROWBAR_R.get(device_name, self.crowbar_resistance)
+        cb_enabled = self.crowbar_enabled and cr > 0
 
         try:
             model = LeeModel(
                 current_fraction=fc,
                 mass_fraction=fm,
                 pinch_column_fraction=pcf,
-                crowbar_enabled=self.crowbar_enabled,
+                crowbar_enabled=cb_enabled,
                 crowbar_resistance=cr,
                 liftoff_delay=delay_us * 1e-6,
             )
@@ -3041,6 +3080,9 @@ class MultiDeviceCalibrator:
         """Run independent per-device calibrations as baseline."""
         results = {}
         for dev in self.devices:
+            cr = _DEFAULT_CROWBAR_R.get(dev, self.crowbar_resistance)
+            # Enable crowbar only if device has a non-zero crowbar resistance
+            cb_enabled = self.crowbar_enabled and cr > 0
             results[dev] = calibrate_with_liftoff(
                 device_name=dev,
                 fc_bounds=self.fc_bounds,
@@ -3049,10 +3091,8 @@ class MultiDeviceCalibrator:
                 pinch_column_fraction=_DEFAULT_DEVICE_PCF.get(
                     dev, self.pinch_column_fraction
                 ),
-                crowbar_enabled=self.crowbar_enabled,
-                crowbar_resistance=_DEFAULT_CROWBAR_R.get(
-                    dev, self.crowbar_resistance
-                ),
+                crowbar_enabled=cb_enabled,
+                crowbar_resistance=cr,
                 maxiter=self.maxiter,
                 seed=self.seed,
             )
@@ -3066,7 +3106,7 @@ class MultiDeviceCalibrator:
         Returns:
             :class:`MultiDeviceResult` with mode="shared".
         """
-        from scipy.optimize import differential_evolution
+        from scipy.optimize import differential_evolution, minimize
 
         n_evals = 0
 
@@ -3083,12 +3123,19 @@ class MultiDeviceCalibrator:
         bounds = [self.fc_bounds, self.fm_bounds, self.delay_bounds_us]
         opt = differential_evolution(
             _objective, bounds, maxiter=self.maxiter, seed=self.seed,
-            tol=1e-5, atol=1e-5, polish=True, workers=1,
+            tol=1e-5, atol=1e-5, polish=False, workers=1,
         )
 
-        fc_opt = float(np.clip(opt.x[0], *self.fc_bounds))
-        fm_opt = float(np.clip(opt.x[1], *self.fm_bounds))
-        delay_opt = float(np.clip(opt.x[2], *self.delay_bounds_us))
+        # Bounded L-BFGS-B polish (maxiter=50 to avoid runaway)
+        polish = minimize(
+            _objective, opt.x, method="L-BFGS-B",
+            bounds=bounds, options={"maxiter": 50},
+        )
+        opt_x = polish.x if polish.fun <= opt.fun else opt.x
+
+        fc_opt = float(np.clip(opt_x[0], *self.fc_bounds))
+        fm_opt = float(np.clip(opt_x[1], *self.fm_bounds))
+        delay_opt = float(np.clip(opt_x[2], *self.delay_bounds_us))
 
         # Per-device NRMSE at shared optimum
         dev_nrmse = {}
@@ -3151,7 +3198,7 @@ class MultiDeviceCalibrator:
         Returns:
             :class:`MultiDeviceResult` with mode="shared_fc".
         """
-        from scipy.optimize import differential_evolution
+        from scipy.optimize import differential_evolution, minimize
 
         n_evals = 0
 
@@ -3175,16 +3222,23 @@ class MultiDeviceCalibrator:
 
         opt = differential_evolution(
             _objective, bounds, maxiter=self.maxiter, seed=self.seed,
-            tol=1e-5, atol=1e-5, polish=True, workers=1,
+            tol=1e-5, atol=1e-5, polish=False, workers=1,
         )
 
-        fc_opt = float(np.clip(opt.x[0], *self.fc_bounds))
+        # Bounded L-BFGS-B polish (maxiter=50 to avoid runaway)
+        polish = minimize(
+            _objective, opt.x, method="L-BFGS-B",
+            bounds=bounds, options={"maxiter": 50},
+        )
+        opt_x = polish.x if polish.fun <= opt.fun else opt.x
+
+        fc_opt = float(np.clip(opt_x[0], *self.fc_bounds))
         dev_fm = {}
         dev_delay = {}
         dev_nrmse = {}
         for i, dev in enumerate(self.devices):
-            fm_i = float(np.clip(opt.x[1 + 2 * i], *self.fm_bounds))
-            delay_i = float(np.clip(opt.x[2 + 2 * i], *self.delay_bounds_us))
+            fm_i = float(np.clip(opt_x[1 + 2 * i], *self.fm_bounds))
+            delay_i = float(np.clip(opt_x[2 + 2 * i], *self.delay_bounds_us))
             dev_fm[dev] = fm_i
             dev_delay[dev] = delay_i
             dev_nrmse[dev] = self._compute_nrmse(dev, fc_opt, fm_i, delay_i)
