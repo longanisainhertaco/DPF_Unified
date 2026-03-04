@@ -222,6 +222,8 @@ class LeeModel:
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
         self.crowbar_enabled = crowbar_enabled
         self.crowbar_resistance = crowbar_resistance  # [Ohm] spark gap arc resistance
+        self._rhs_evals = 0
+        self._max_rhs_evals = 500_000  # Safety limit to prevent ODE hang
 
     def run(
         self,
@@ -245,6 +247,8 @@ class LeeModel:
             ValueError: If neither device_name nor device_params is given.
         """
         from scipy.integrate import solve_ivp
+
+        self._rhs_evals = 0  # Reset per-run evaluation counter
 
         if device_params is None:
             if device_name is None:
@@ -293,6 +297,9 @@ class LeeModel:
         # dvz/dt = (mu_0/(4*pi)) * ln(b/a) * (fm*I)^2 / M_swept(z)
 
         def axial_rhs(t: float, y: np.ndarray) -> np.ndarray:
+            self._rhs_evals += 1
+            if self._rhs_evals > self._max_rhs_evals:
+                raise RuntimeError("Lee model ODE exceeded max RHS evaluations")
             I, Vcap, z_pos, vz = y  # noqa: E741
 
             # Clamp
@@ -402,6 +409,9 @@ class LeeModel:
             L_p_axial = L_per_length * z_max
 
             def radial_rhs(t: float, y: np.ndarray) -> np.ndarray:
+                self._rhs_evals += 1
+                if self._rhs_evals > self._max_rhs_evals:
+                    raise RuntimeError("Lee model ODE exceeded max RHS evaluations")
                 I_r, Vcap_r, r_s, vr = y
 
                 r_s = max(r_s, 0.001 * a)  # Minimum radius
@@ -507,6 +517,9 @@ class LeeModel:
                 rho_post = 8.0 * rho0
 
                 def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:
+                    self._rhs_evals += 1
+                    if self._rhs_evals > self._max_rhs_evals:
+                        raise RuntimeError("Lee model ODE exceeded max RHS evaluations")
                     I_r4, Vcap_r4, r_s, vr4 = y
 
                     r_s = max(r_s, 0.001 * a)
@@ -629,6 +642,9 @@ class LeeModel:
                 L_total_frozen = L0 + L_p_frozen
 
                 def post_pinch_rhs(t: float, y: np.ndarray) -> np.ndarray:
+                    self._rhs_evals += 1
+                    if self._rhs_evals > self._max_rhs_evals:
+                        raise RuntimeError("Lee model ODE exceeded max RHS evaluations")
                     I_pp, V_pp = y
                     dI_dt = (V_pp - R0 * I_pp) / L_total_frozen
                     dV_dt = -I_pp / C

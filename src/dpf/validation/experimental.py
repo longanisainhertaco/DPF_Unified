@@ -207,11 +207,30 @@ NX2_DATA = ExperimentalDevice(
     ),
 )
 
+# UNU-ICTP PFF measured I(t) from IPFS "UNU ICTPPFF D2 05.15.xls"
+# 45 points covering 0-5 us at 13.5 kV, 3.0 Torr D2
+# Median-filtered to remove EMI spike at pinch (~2.72-2.73 us)
+# Characteristic features: rise to ~169 kA at ~2.2-2.6 us, shallow 14% dip at ~2.76 us
+_UNU_ICTP_WAVEFORM_T_US = np.array([
+    0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+    2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.65, 2.70, 2.73,
+    2.76, 2.80, 2.85, 2.90, 2.95, 3.0, 3.1, 3.2, 3.3, 3.5,
+    3.7, 4.0, 4.3, 4.5, 5.0,
+])
+_UNU_ICTP_WAVEFORM_I_KA = np.array([
+    8.7, 18.8, 28.1, 40.6, 56.3, 65.6, 73.8, 84.4, 93.8, 103.1,
+    112.5, 112.5, 121.9, 131.3, 140.6, 140.6, 150.0, 150.0, 159.4, 159.4,
+    159.4, 161.9, 168.8, 168.8, 168.8, 168.8, 168.8, 164.4, 159.4, 151.3,
+    145.0, 153.8, 155.0, 150.0, 150.0, 148.8, 150.0, 140.6, 140.6, 131.3,
+    121.9, 112.5, 103.1, 93.8, 63.1,
+])
+
 UNU_ICTP_DATA = ExperimentalDevice(
     name="UNU-ICTP",
     institution="UNU-ICTP PFF",
     capacitance=30e-6,             # 30 uF
-    voltage=14e3,                  # 14 kV
+    voltage=13.5e3,                # 13.5 kV (IPFS measured waveform conditions)
     inductance=110e-9,             # 110 nH
     resistance=12e-3,              # 12 mOhm
     anode_radius=0.0095,           # 9.5 mm
@@ -219,16 +238,30 @@ UNU_ICTP_DATA = ExperimentalDevice(
     anode_length=0.16,             # 160 mm
     fill_pressure_torr=3.0,
     fill_gas="deuterium",
-    peak_current=170e3,            # 170 kA
+    peak_current=169e3,            # 169 kA (from digitized waveform)
     neutron_yield=1e8,
-    current_rise_time=2.8e-6,      # 2.8 us
-    reference="Lee et al., Am. J. Phys. 56, 1988",
+    current_rise_time=2.2e-6,      # ~2.2 us to peak (from waveform)
+    reference=(
+        "Lee et al., Am. J. Phys. 56, 1988; "
+        "IPFS plasmafocus.net 'UNU ICTPPFF D2 05.15.xls'"
+    ),
     peak_current_uncertainty=0.10,     # 10% (training device, less precise)
     rise_time_uncertainty=0.15,        # 15%
     neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
+    waveform_t=_UNU_ICTP_WAVEFORM_T_US * 1e-6,      # Convert us -> s
+    waveform_I=_UNU_ICTP_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
+    waveform_digitization_uncertainty=0.06,  # 6% amplitude (9.3 kA quantization / 169 kA peak)
+    waveform_time_uncertainty=0.002,         # 0.2% (~1 ns digitization on ~5 us trace)
     measurement_notes=(
-        "No digitized waveform available. Parameters from Lee et al., Am. J. Phys. 56, 1988. "
-        "Uncertainties are Type B estimates (not stated in source)."
+        "45 points from IPFS 'UNU ICTPPFF D2 05.15.xls' (plasmafocus.net). "
+        "Original: 5556 points at ~1 ns resolution, digitized oscilloscope trace. "
+        "Quantization: 9.3 kA steps (~6% at peak). "
+        "EMI spike at pinch time (2.72-2.73 us) removed by median filtering. "
+        "Smoothed with 15-sample uniform filter + 51-sample median filter. "
+        "V0=13.5 kV (from IPFS file, not 14 kV sometimes quoted). "
+        "Lee model params from IPFS: fm=0.08, fc=0.7, fmr=0.16, fcr=0.7. "
+        "Uncertainties are Type B estimates. Rogowski coil uncertainty ~10%. "
+        "Combined waveform uncertainty: u_I = sqrt(0.10^2 + 0.06^2) = 11.7%."
     ),
 )
 
