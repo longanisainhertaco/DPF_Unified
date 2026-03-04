@@ -86,9 +86,9 @@ class TestUNUICTPWaveform:
         assert DEVICES["UNU-ICTP"] is UNU_ICTP_DATA
 
     def test_digitization_uncertainty(self):
-        """Digitization uncertainty should reflect 9.3 kA quantization."""
-        # 9.3 kA / 169 kA peak = ~5.5%, rounded to 6%
-        assert UNU_ICTP_DATA.waveform_digitization_uncertainty == pytest.approx(0.06, abs=0.01)
+        """Digitization uncertainty should reflect 9.3 kA quantization (GUM)."""
+        # GUM rectangular: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6%
+        assert UNU_ICTP_DATA.waveform_digitization_uncertainty == pytest.approx(0.016, abs=0.005)
 
     def test_current_dip_exists(self):
         """Waveform should show a current dip after the peak."""
@@ -201,7 +201,7 @@ def unu_independent():
         fc_bounds=(0.5, 0.95),
         fm_bounds=(0.01, 0.40),
         delay_bounds_us=(0.0, 2.0),
-        pinch_column_fraction=0.5,  # UNU-ICTP device-specific (not PF-1000's 0.14)
+        pinch_column_fraction=0.06,  # ~1 cm pinch of 16 cm anode (Lee & Saw 2009)
         maxiter=20,
     )
 
