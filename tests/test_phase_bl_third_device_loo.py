@@ -229,8 +229,10 @@ def three_device_shared():
 def three_device_loo():
     """Three-device LOO cross-validation.
 
-    Uses maxiter=3 for DE.  With cached-independent optimization in
-    leave_one_out(), total: 3 independent + 3 shared DEs ~ 9 min on M3 Pro.
+    Uses maxiter=1 for DE (minimum for mechanism verification).
+    Even at maxiter=1, the 3 independent + 3 shared DE calibrations
+    take ~12 min on M3 Pro due to Lee model ODE integration cost.
+    Full-quality runs should use maxiter=200.
     """
     from dpf.validation.calibration import MultiDeviceCalibrator
     cal = MultiDeviceCalibrator(
@@ -238,7 +240,7 @@ def three_device_loo():
         fc_bounds=(0.5, 0.95),
         fm_bounds=(0.10, 0.40),
         delay_bounds_us=(0.0, 2.0),
-        maxiter=3,
+        maxiter=1,
         seed=42,
     )
     return cal.leave_one_out()

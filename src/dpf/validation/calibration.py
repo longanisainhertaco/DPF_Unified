@@ -334,6 +334,14 @@ _PUBLISHED_FC_FM_RANGES: dict[str, dict[str, tuple[float, float]]] = {
         "fc": (0.50, 0.70),   # IPFS fit: fc=0.595 (different bank/geometry)
         "fm": (0.15, 0.40),   # IPFS fit: fm=0.275 (higher mass fraction)
     },
+    "FAETON-I": {
+        "fc": (0.55, 0.85),   # Wide range: circuit-dominated, Lee is co-author
+        "fm": (0.04, 0.25),   # Wide range: no published Lee model fit yet
+    },
+    "MJOLNIR": {
+        "fc": (0.55, 0.80),   # MA-class: similar to PF-1000 range
+        "fm": (0.05, 0.20),   # MA-class: similar to PF-1000 range
+    },
 }
 
 
@@ -346,6 +354,8 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "UNU-ICTP": 0.06,  # ~1 cm pinch of 16 cm anode (Lee & Saw 2009; matches presets.py)
     "POSEIDON": 0.14,  # Similar to PF-1000 (Lee & Saw 2014 scaling)
     "POSEIDON-60kV": 0.14,  # Lee & Saw scaling for MA-class
+    "FAETON-I": 0.14,  # Starting estimate (no published Lee model fit)
+    "MJOLNIR": 0.14,   # MA-class: same as PF-1000
 }
 
 # Default crowbar spark gap arc resistance [Ohm] per device.
@@ -357,6 +367,8 @@ _DEFAULT_CROWBAR_R: dict[str, float] = {
     "PF-1000-Gribkov": 1.5e-3,  # Same device as PF-1000
     "POSEIDON-60kV": 1.5e-3,  # estimated, same as PF-1000
     "UNU-ICTP": 0.0,  # No crowbar in UNU-ICTP PFF (simple capacitor bank)
+    "FAETON-I": 0.0,   # No crowbar switch (Damideh 2025)
+    "MJOLNIR": 1.5e-3,  # Estimated spark gap resistance
 }
 
 
@@ -2795,6 +2807,20 @@ _SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
         "u_digitization": 0.03,
         "n_shots_typical": 10,
         "reference": "Lee et al., Am. J. Phys. 56 (1988)",
+    },
+    "FAETON-I": {
+        "u_shot_to_shot": 0.08,  # 8% (re-strikes cause variability)
+        "u_rogowski": 0.05,
+        "u_digitization": 0.08,  # 8% (reconstructed waveform, not digitized)
+        "n_shots_typical": 5,
+        "reference": "Damideh et al., Sci. Rep. 15:23048 (2025)",
+    },
+    "MJOLNIR": {
+        "u_shot_to_shot": 0.10,  # 10% (large device, high-power variability)
+        "u_rogowski": 0.05,
+        "u_digitization": 0.10,  # 10% (reconstructed waveform, high uncertainty)
+        "n_shots_typical": 5,
+        "reference": "Schmidt et al., IEEE TPS (2021); Goyon et al., Phys. Plasmas (2025)",
     },
 }
 

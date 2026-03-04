@@ -191,43 +191,90 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "mjolnir": {
         "_meta": {
-            "description": "MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF",
+            "description": "MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF at 60 kV",
             "device": "MJOLNIR",
             "geometry": "cylindrical",
-            "reference": "Goyon et al., Phys. Plasmas 32:033105 (2025)",
+            "reference": (
+                "Schmidt et al., IEEE TPS (2021); "
+                "Goyon et al., Phys. Plasmas 32:033105 (2025)"
+            ),
         },
-        "grid_shape": [128, 1, 512],
+        "grid_shape": [128, 1, 256],
         "dx": 1e-3,
-        "sim_time": 8e-6,
+        "sim_time": 12e-6,
         "dt_init": 1e-10,
         "rho0": 6e-4,  # ~7 Torr D2 fill
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Goyon et al. (2025) — 2 MJ stored at 100 kV design,
-        # typical operation at 60 kV (0.75 MJ), 2.8 MA peak.
-        # C = 2*E/V^2 = 2*2e6/100e3^2 = 0.4 mF (at design voltage)
-        # L0, R0 estimated from quarter-period and peak current scaling.
+        # Circuit: ATLAS-heritage Marx, 24 modules, 2 x 34 uF each
+        # C_erected = 24 x 17 uF = 408 uF. Design V=100 kV (2 MJ).
+        # Typical operation: 60 kV (734 kJ), peak current 2.8 MA.
+        # L0 = 80 nH estimated from I_peak/I_sc ~ 0.65 loading factor.
+        # 84 flexible transmission line cables from Marx pit to collector.
+        # R0 = 1.4 mOhm from RESF ~ 0.1.
         "circuit": {
-            "C": 4e-4,             # 0.4 mF (2 MJ at 100 kV)
+            "C": 408e-6,           # 408 uF (24 modules x 17 uF erected)
             "V0": 60e3,            # 60 kV typical operation
-            "L0": 15e-9,           # ~15 nH external (MA-class low-inductance)
-            "R0": 1e-3,            # ~1 mOhm (MA-class low-resistance)
-            "anode_radius": 0.1143,  # 228.6 mm diameter / 2 (Goyon 2025)
-            "cathode_radius": 0.16,  # estimated outer radius
+            "L0": 80e-9,           # ~80 nH (estimated from loading factor)
+            "R0": 1.4e-3,          # ~1.4 mOhm (RESF ~ 0.1)
+            "anode_radius": 0.1143,  # 114.3 mm (Goyon et al., Phys. Plasmas 32:033105, 2025)
+            "cathode_radius": 0.157,  # ~157 mm (A-K gap + anode)
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
+            "crowbar_resistance": 1.5e-3,  # estimated spark gap
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
-        # R_imp = 2.5 cm, anode length estimated from 15-degree taper geometry
+        # Anode effective length 18.3-22.1 cm (Petrov 2022)
         "snowplow": {
-            "anode_length": 0.5,
+            "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
             "current_fraction": 0.7,  # MA-class: similar to PF-1000
             "mass_fraction": 0.1,  # MA-class: similar to PF-1000
+            "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
+        },
+    },
+    "faeton": {
+        "_meta": {
+            "description": "FAETON-I (Fuse Energy) — 125 kJ, 100 kV, ~1 MA DPF",
+            "device": "FAETON-I",
+            "geometry": "cylindrical",
+            "reference": "Damideh et al., Sci. Rep. 15:23048 (2025)",
+        },
+        "grid_shape": [64, 1, 192],
+        "dx": 1.5e-3,
+        "sim_time": 8e-6,
+        "dt_init": 1e-10,
+        "rho0": 1.29e-3,  # 12 Torr D2 at 300K: P/(kB*T) * m_D2
+        "T0": 300.0,
+        "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
+        # Circuit: 5 x 5 uF Marx = 25 uF, 100 kV direct-charge
+        # L0 = 220 nH (static, Damideh 2025)
+        # R0 = 7.6 mOhm (estimated from I_peak damping, RESF=0.081)
+        # No crowbar switch
+        "circuit": {
+            "C": 25e-6,            # 25 uF (5 x 5 uF Marx bank)
+            "V0": 100e3,           # 100 kV direct-charge
+            "L0": 220e-9,          # 220 nH static inductance (Damideh 2025)
+            "R0": 7.6e-3,          # 7.6 mOhm (estimated, RESF ~ 0.08)
+            "anode_radius": 0.05,  # 50 mm (Damideh 2025)
+            "cathode_radius": 0.10,  # ~100 mm (estimated, 5 cm A-K gap)
+            "crowbar_enabled": False,
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {
+            "anode_length": 0.17,      # 170 mm (Damideh 2025)
+            "fill_pressure_Pa": 1600.0,  # 12 Torr D2 = 1600 Pa
+            "current_fraction": 0.7,   # Starting estimate (Sing Lee is co-author)
+            "mass_fraction": 0.1,      # Starting estimate
+            "radial_mass_fraction": 0.1,
+            "pinch_column_fraction": 0.14,
         },
     },
     "poseidon": {
