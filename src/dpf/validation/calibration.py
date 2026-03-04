@@ -3098,10 +3098,17 @@ class MultiDeviceCalibrator:
             )
         return results
 
-    def calibrate_shared(self) -> MultiDeviceResult:
+    def calibrate_shared(
+        self,
+        _cached_independent: dict[str, LiftoffCalibrationResult] | None = None,
+    ) -> MultiDeviceResult:
         """Optimize a single (fc, fm, delay) across all devices.
 
         Minimizes weighted_sum(NRMSE_i) over shared (fc, fm, delay).
+
+        Args:
+            _cached_independent: Pre-computed independent calibrations to avoid
+                redundant work in leave-one-out loops.  Keys are device names.
 
         Returns:
             :class:`MultiDeviceResult` with mode="shared".
@@ -3146,8 +3153,11 @@ class MultiDeviceCalibrator:
             self.weights[d] * dev_nrmse[d] for d in self.devices
         )
 
-        # Independent baselines
-        indep = self._independent_calibrations()
+        # Independent baselines (use cache if provided)
+        if _cached_independent is not None:
+            indep = {d: _cached_independent[d] for d in self.devices}
+        else:
+            indep = self._independent_calibrations()
         indep_nrmse = {d: indep[d].nrmse for d in self.devices}
         indep_fc = {d: indep[d].best_fc for d in self.devices}
         indep_fm = {d: indep[d].best_fm for d in self.devices}
@@ -3397,6 +3407,9 @@ class MultiDeviceCalibrator:
         2. Predict D_held with trained parameters
         3. Compare prediction NRMSE to independent calibration NRMSE
 
+        Pre-computes independent calibrations once and caches them across
+        LOO iterations to avoid redundant DE runs (O(N) instead of O(N^2)).
+
         Returns:
             Dict mapping held-out device name to a dict with keys:
             - "train_nrmse": avg NRMSE on training devices
@@ -3408,6 +3421,7 @@ class MultiDeviceCalibrator:
         if len(self.devices) < 2:
             raise ValueError("Need >= 2 devices for leave-one-out")
 
+        # Pre-compute all independent calibrations once (avoids O(N^2) work)
         indep = self._independent_calibrations()
         results: dict[str, dict[str, float]] = {}
 
@@ -3427,8 +3441,10 @@ class MultiDeviceCalibrator:
                 seed=self.seed,
             )
 
-            # Calibrate on training set (shared mode)
-            train_result = sub_cal.calibrate_shared()
+            # Calibrate on training set (pass cached independents)
+            train_result = sub_cal.calibrate_shared(
+                _cached_independent=indep,
+            )
             fc_train = train_result.shared_fc
             fm_train = train_result.shared_fm
             delay_train = train_result.shared_delay_us
