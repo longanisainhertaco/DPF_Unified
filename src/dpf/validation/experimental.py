@@ -250,18 +250,19 @@ UNU_ICTP_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
     waveform_t=_UNU_ICTP_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_UNU_ICTP_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
-    waveform_digitization_uncertainty=0.06,  # 6% amplitude (9.3 kA quantization / 169 kA peak)
+    waveform_digitization_uncertainty=0.016,  # GUM: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6% (rectangular)
     waveform_time_uncertainty=0.002,         # 0.2% (~1 ns digitization on ~5 us trace)
     measurement_notes=(
         "45 points from IPFS 'UNU ICTPPFF D2 05.15.xls' (plasmafocus.net). "
         "Original: 5556 points at ~1 ns resolution, digitized oscilloscope trace. "
-        "Quantization: 9.3 kA steps (~6% at peak). "
+        "Quantization: 9.3 kA steps (5.5% of 169 kA peak). "
+        "GUM (JCGM 100:2008) rectangular distribution: u = step/(2*sqrt(3)) = 1.6%. "
         "EMI spike at pinch time (2.72-2.73 us) removed by median filtering. "
         "Smoothed with 15-sample uniform filter + 51-sample median filter. "
         "V0=13.5 kV (from IPFS file, not 14 kV sometimes quoted). "
         "Lee model params from IPFS: fm=0.08, fc=0.7, fmr=0.16, fcr=0.7. "
         "Uncertainties are Type B estimates. Rogowski coil uncertainty ~10%. "
-        "Combined waveform uncertainty: u_I = sqrt(0.10^2 + 0.06^2) = 11.7%."
+        "Combined waveform uncertainty: u_I = sqrt(0.10^2 + 0.016^2) = 10.0%."
     ),
 )
 
@@ -537,6 +538,153 @@ PF1000_20KV_DATA = ExperimentalDevice(
 )
 
 
+# FAETON-I (Fuse Energy) — 100 kV, 125 kJ, ~1 MA dense plasma focus
+# Damideh et al., Scientific Reports 15:23048 (2025)
+# DOI: 10.1038/s41598-025-07939-x
+# 5 x 5 uF = 25 uF Marx bank, V0=100 kV direct-charge
+# Static inductance L0 ~ 220 nH, R0 ~ 7.6 mOhm (estimated from damping)
+# Anode radius 5 cm, cathode radius ~10 cm (5 cm A-K gap), anode length 17 cm
+# Insulator: 6.5 cm MACOR
+# Fill gas: D2 at 10-40 Torr (optimal 12 Torr for neutrons)
+# Peak current ~1 MA at T/4 ~ 3.6 us
+# No crowbar switch — current oscillates freely
+# WAVEFORM: Reconstructed from damped RLC (C=25uF, L=220nH, R=7.6mOhm)
+# with 4% current dip at pinch (~4.1 us). FAETON-I is extremely
+# circuit-dominated (L_p/L0 = 0.107) so plasma loading is minimal.
+# Replace with digitized data from Damideh (2025) Fig. 3 when available.
+_FAETON_WAVEFORM_T_US = np.array([
+    0.0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7,
+    3.0, 3.2, 3.4, 3.6, 3.7, 3.8, 4.0, 4.2, 4.5, 5.0,
+    5.5, 6.0, 6.5, 7.0, 7.4,
+])
+_FAETON_WAVEFORM_I_KA = np.array([
+    0.0, 135.3, 267.0, 393.0, 511.3, 620.1, 717.6, 802.5, 873.5, 929.6,
+    969.9, 987.9, 998.5, 991.4, 983.7, 973.1, 949.1, 932.3, 913.7, 829.1,
+    694.8, 531.4, 346.8, 149.9, -10.5,
+])
+
+FAETON_DATA = ExperimentalDevice(
+    name="FAETON-I",
+    institution="Fuse Energy Technologies",
+    capacitance=25e-6,             # 25 uF (5 x 5 uF Marx)
+    voltage=100e3,                 # 100 kV direct-charge
+    inductance=220e-9,             # 220 nH static inductance (Damideh 2025)
+    resistance=7.6e-3,             # 7.6 mOhm (estimated from I_peak damping)
+    anode_radius=0.05,             # 50 mm (Damideh 2025)
+    cathode_radius=0.10,           # ~100 mm (estimated from 5 cm A-K gap)
+    anode_length=0.17,             # 170 mm (Damideh 2025)
+    fill_pressure_torr=12.0,       # 12 Torr D2 (optimal for neutron yield)
+    fill_gas="deuterium",
+    peak_current=1.0e6,            # ~1 MA (Damideh 2025)
+    neutron_yield=2.5e10,          # 2.5e10 D-D n/shot typical (8e10 peak)
+    current_rise_time=3.6e-6,      # 3.6 us (T/4 from RLC parameters)
+    reference=(
+        "Damideh et al., Scientific Reports 15:23048, 2025; "
+        "DOI: 10.1038/s41598-025-07939-x"
+    ),
+    crowbar_resistance=0.0,        # No crowbar switch
+    peak_current_uncertainty=0.08, # 8% (Rogowski coil + Marx jitter)
+    rise_time_uncertainty=0.10,    # 10% (not precisely stated)
+    neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot + re-strikes)
+    waveform_t=_FAETON_WAVEFORM_T_US * 1e-6,      # Convert us -> s
+    waveform_I=_FAETON_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
+    waveform_digitization_uncertainty=0.08,  # 8% (reconstructed, not digitized)
+    waveform_time_uncertainty=0.02,          # 2% temporal (reconstructed)
+    measurement_notes=(
+        "FAETON-I: 100 kV, 125 kJ DPF by Fuse Energy Technologies. "
+        "Highest direct-charged voltage PF device. 5 x 5 uF Marx bank = 25 uF total. "
+        "Static inductance L0 = 220 nH (Damideh 2025). R0 = 7.6 mOhm estimated from "
+        "measured I_peak/I_sc ratio (I_peak ~ 1 MA vs I_sc_undamped = 1.066 MA, RESF = 0.081). "
+        "Cathode radius ~10 cm estimated from stated 5 cm A-K gap. "
+        "WAVEFORM: RECONSTRUCTED from damped RLC parameters, NOT digitized from paper. "
+        "L_p/L0 = 0.107 — extremely circuit-dominated; plasma loading is minimal. "
+        "The reconstructed waveform is essentially a bare damped sinusoid with 4% pinch dip. "
+        "Damideh (2025) uses modified Lee model with two-step radial fitting for re-strikes. "
+        "Replace with digitized data from Damideh (2025) Fig. 3 when full paper is obtained. "
+        "Uncertainties on waveform are higher than digitized sources (8% vs 2-3%). "
+        "Fill pressure 12 Torr D2 is optimal for neutron yield (range 10-40 Torr). "
+        "Best pinch voltage measured at 194 kV. Peak neutron yield 8e10 at 12 Torr."
+    ),
+)
+
+
+# MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF at 60 kV typical operation
+# Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313
+# Schmidt et al., IEEE TPS (2024) DOI: 10.1109/TPS.2024.3471791
+# Goyon et al., Phys. Plasmas 32:033105 (2025)
+# ATLAS-heritage Marx: 24 modules, 2 x 34 uF each → C_erected = 408 uF
+# Typical operation 60 kV (734 kJ), peak current 2.8 MA
+# Design: 100 kV (2.04 MJ), 4.5 MA target
+# Anode: 228.6 mm OD (9"), implosion radius 7.6 cm
+# Cathode: 24 rods, estimated inner radius ~15.7 cm (4.3 cm A-K gap)
+# Anode effective length: 18.3-22.1 cm (Petrov et al. 2022)
+# WAVEFORM: Reconstructed from known peak current (2.8 MA), rise time (~5 us),
+# and estimated circuit parameters. Phenomenological DPF shape with
+# sinusoidal rise, 22% current dip at pinch, crowbar L-R decay.
+# L0 = 80 nH estimated from loading factor I_peak/I_sc ~ 0.65.
+# Replace with digitized data from Schmidt (2021) or Goyon (2025) figures.
+_MJOLNIR_WAVEFORM_T_US = np.array([
+    0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.3,
+    4.5, 4.7, 5.0, 5.2, 5.5, 5.8, 6.0, 6.5, 7.0, 7.5,
+    8.0, 8.5, 9.0, 9.5, 10.0,
+])
+_MJOLNIR_WAVEFORM_I_KA = np.array([
+    0, 438, 865, 1271, 1646, 1980, 2265, 2495, 2663, 2733,
+    2766, 2788, 2800, 2554, 2184, 2318, 2408, 2329, 2253, 2179,
+    2107, 2038, 1972, 1907, 1844,
+])
+
+MJOLNIR_DATA = ExperimentalDevice(
+    name="MJOLNIR",
+    institution="Lawrence Livermore National Laboratory",
+    capacitance=408e-6,            # 408 uF (24 Marx modules, 2 x 34 uF each, erected)
+    voltage=60e3,                  # 60 kV typical operation (734 kJ stored)
+    inductance=80e-9,              # 80 nH (estimated from I_peak/I_sc ~ 0.65)
+    resistance=1.4e-3,             # 1.4 mOhm (RESF ~ 0.1)
+    anode_radius=0.076,            # 76 mm (implosion radius, Schmidt 2021)
+    cathode_radius=0.157,          # ~157 mm (estimated from 4.3 cm A-K gap + anode OD)
+    anode_length=0.20,             # 200 mm (midpoint of 183-221 mm range, Petrov 2022)
+    fill_pressure_torr=7.0,        # 7 Torr D2 (estimated, pressure scans performed)
+    fill_gas="deuterium",
+    peak_current=2.8e6,            # 2.8 MA at 60 kV (Goyon 2025)
+    neutron_yield=3.8e11,          # 3.8e11 D-D at 1 MJ / 2.5 MA (Schmidt 2021)
+    current_rise_time=5.0e-6,      # ~5 us (Schmidt 2024)
+    reference=(
+        "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313; "
+        "Goyon et al., Phys. Plasmas 32:033105, 2025; "
+        "Petrov et al., Phys. Plasmas 29:062708, 2022"
+    ),
+    crowbar_resistance=1.5e-3,     # estimated spark gap resistance
+    peak_current_uncertainty=0.08, # 8% (Rogowski coil + integration)
+    rise_time_uncertainty=0.10,    # 10% (stated as ~5 us, not precise)
+    neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot)
+    waveform_t=_MJOLNIR_WAVEFORM_T_US * 1e-6,      # Convert us -> s
+    waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
+    waveform_digitization_uncertainty=0.10,  # 10% (reconstructed, high uncertainty)
+    waveform_time_uncertainty=0.03,          # 3% temporal (reconstructed)
+    measurement_notes=(
+        "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
+        "ATLAS-heritage pulsed power: 24 Marx modules, 2 x 34 uF caps each, single-stage "
+        "erection. C_erected = 24 x 17 uF = 408 uF. Charged to +/- 50 kV (100 kV erected). "
+        "Typical operation at 60 kV (E = 734 kJ). Design: 100 kV / 2.04 MJ / 4.5 MA. "
+        "Electrode: oxygen-free copper. 228.6 mm OD anode, 24-rod cathode, 6.5 cm MACOR insulator. "
+        "Implosion radius 7.6 cm (Schmidt 2021). A-K gap 4.3 cm (Petrov 2022). "
+        "Anode effective lengths: 18.3-22.1 cm (multiple anodes fielded). "
+        "L0 = 80 nH ESTIMATED from loading factor I_peak/I_sc ~ 0.65 (NOT measured directly). "
+        "84 flexible transmission line cables from Marx towers to disk collector add stray inductance. "
+        "WAVEFORM: RECONSTRUCTED (phenomenological), NOT digitized from paper. "
+        "Rise: sinusoidal to 2.8 MA at 5 us. Dip: 22% at pinch (5.5 us). "
+        "Post-dip: crowbar L-R decay with ~15 us effective time constant. "
+        "Uncertainties are higher than digitized sources (10% amplitude, 3% temporal). "
+        "Replace with digitized data from Schmidt (2021) Fig. 4-5 or Goyon (2025) when available. "
+        "Performance records: 2.5 MA / 3.8e11 DD neutrons at 1 MJ (Schmidt 2021); "
+        "3.7-3.8 MA / >1e12 DD neutrons with rebuilt 24-module bank (Schmidt 2024); "
+        "1.84e12 DT neutrons at 2 MA (Schmidt 2024). "
+        "LLNL uses Chicago PIC code for simulation, not Lee model."
+    ),
+)
+
+
 # Registry mapping device name -> ExperimentalDevice
 DEVICES: dict[str, ExperimentalDevice] = {
     "PF-1000": PF1000_DATA,
@@ -547,6 +695,8 @@ DEVICES: dict[str, ExperimentalDevice] = {
     "UNU-ICTP": UNU_ICTP_DATA,
     "POSEIDON": POSEIDON_DATA,
     "POSEIDON-60kV": POSEIDON_60KV_DATA,
+    "FAETON-I": FAETON_DATA,
+    "MJOLNIR": MJOLNIR_DATA,
 }
 
 

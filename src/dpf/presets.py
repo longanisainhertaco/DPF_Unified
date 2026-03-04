@@ -142,8 +142,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 12e-3,          # 12 mOhm (RESF~0.2)
             "anode_radius": 0.0095,
             "cathode_radius": 0.032,
-            "crowbar_enabled": True,
-            "crowbar_mode": "voltage_zero",
+            "crowbar_enabled": False,  # No crowbar in UNU-ICTP PFF (simple capacitor bank)
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},

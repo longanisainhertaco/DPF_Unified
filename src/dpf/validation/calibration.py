@@ -343,7 +343,7 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
     "PF-1000-16kV": 0.14,
     "PF-1000-20kV": 0.14,
     "NX2": 0.5,
-    "UNU-ICTP": 0.5,  # Small device: larger fraction focuses (same as NX2)
+    "UNU-ICTP": 0.06,  # ~1 cm pinch of 16 cm anode (Lee & Saw 2009; matches presets.py)
     "POSEIDON": 0.14,  # Similar to PF-1000 (Lee & Saw 2014 scaling)
     "POSEIDON-60kV": 0.14,  # Lee & Saw scaling for MA-class
 }
