@@ -208,14 +208,18 @@ def unu_independent():
 
 @pytest.fixture(scope="module")
 def three_device_shared():
-    """Three-device shared calibration."""
+    """Three-device shared calibration.
+
+    Uses maxiter=3 for DE (minimum for reasonable exploration).
+    Full-quality runs should use maxiter=200.
+    """
     from dpf.validation.calibration import MultiDeviceCalibrator
     cal = MultiDeviceCalibrator(
         devices=["PF-1000", "POSEIDON-60kV", "UNU-ICTP"],
         fc_bounds=(0.5, 0.95),
         fm_bounds=(0.10, 0.40),  # fm >= 0.10 physical constraint
         delay_bounds_us=(0.0, 2.0),
-        maxiter=5,
+        maxiter=3,
         seed=42,
     )
     return cal.calibrate_shared()
@@ -223,14 +227,18 @@ def three_device_shared():
 
 @pytest.fixture(scope="module")
 def three_device_loo():
-    """Three-device LOO cross-validation."""
+    """Three-device LOO cross-validation.
+
+    Uses maxiter=3 for DE.  With cached-independent optimization in
+    leave_one_out(), total: 3 independent + 3 shared DEs ~ 9 min on M3 Pro.
+    """
     from dpf.validation.calibration import MultiDeviceCalibrator
     cal = MultiDeviceCalibrator(
         devices=["PF-1000", "POSEIDON-60kV", "UNU-ICTP"],
         fc_bounds=(0.5, 0.95),
         fm_bounds=(0.10, 0.40),
         delay_bounds_us=(0.0, 2.0),
-        maxiter=5,
+        maxiter=3,
         seed=42,
     )
     return cal.leave_one_out()
