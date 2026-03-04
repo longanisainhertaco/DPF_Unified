@@ -365,6 +365,8 @@ _DEFAULT_DEVICE_PCF: dict[str, float] = {
 _DEFAULT_CROWBAR_R: dict[str, float] = {
     "PF-1000": 1.5e-3,  # 1.5 mOhm midpoint of 1-3 mOhm range
     "PF-1000-Gribkov": 1.5e-3,  # Same device as PF-1000
+    "PF-1000-16kV": 1.5e-3,  # Same device as PF-1000 (different operating conditions)
+    "PF-1000-20kV": 1.5e-3,  # Same device as PF-1000 (different operating conditions)
     "POSEIDON-60kV": 1.5e-3,  # estimated, same as PF-1000
     "UNU-ICTP": 0.0,  # No crowbar in UNU-ICTP PFF (simple capacitor bank)
     "FAETON-I": 0.0,   # No crowbar switch (Damideh 2025)
@@ -3511,3 +3513,197 @@ class MultiDeviceCalibrator:
             )
 
         return results
+
+
+# ── Multi-condition validation ────────────────────────────────────────
+
+
+@dataclass
+class MultiConditionResult:
+    """Result of multi-condition validation (same device, different V0/p0).
+
+    Calibrate on condition A, predict condition B.  This tests whether the
+    Lee model parameters (fc, fm, delay) are truly device-specific constants
+    or depend on operating conditions.
+
+    Attributes:
+        train_device: Device/condition used for calibration.
+        test_device: Device/condition used for blind prediction.
+        train_fc: Calibrated fc on training condition.
+        train_fm: Calibrated fm on training condition.
+        train_delay_us: Calibrated liftoff delay [us] on training condition.
+        train_nrmse: NRMSE on training condition (self-fit).
+        blind_nrmse: NRMSE on test condition using trained params.
+        independent_nrmse: NRMSE on test condition from independent calibration.
+        degradation: blind / independent ratio (1.0 = perfect transfer).
+        asme_blind: ASME V&V 20 result using trained params on test condition.
+        asme_independent: ASME V&V 20 result using independent params.
+    """
+
+    train_device: str
+    test_device: str
+    train_fc: float
+    train_fm: float
+    train_delay_us: float
+    train_nrmse: float
+    blind_nrmse: float
+    independent_nrmse: float
+    degradation: float
+    asme_blind: ASMEValidationResult | None = None
+    asme_independent: ASMEValidationResult | None = None
+
+
+def multi_condition_validation(
+    train_device: str = "PF-1000",
+    test_device: str = "PF-1000-16kV",
+    fc_bounds: tuple[float, float] = (0.5, 0.95),
+    fm_bounds: tuple[float, float] = (0.04, 0.40),
+    delay_bounds_us: tuple[float, float] = (0.0, 2.0),
+    maxiter: int = 10,
+    seed: int = 42,
+    run_asme: bool = True,
+) -> MultiConditionResult:
+    """Multi-condition validation: calibrate on one condition, predict another.
+
+    This is the strongest form of model validation for parameter-based models:
+    same device hardware, different operating conditions (V0, fill pressure).
+    If fc/fm are true device constants, they should transfer across conditions.
+
+    Args:
+        train_device: Device name for calibration (e.g. "PF-1000").
+        test_device: Device name for blind prediction (e.g. "PF-1000-16kV").
+        fc_bounds: Bounds for current fraction.
+        fm_bounds: Bounds for mass fraction.
+        delay_bounds_us: Bounds for liftoff delay [us].
+        maxiter: Maximum DE iterations for calibration.
+        seed: Random seed.
+        run_asme: Whether to run ASME V&V 20 assessments.
+
+    Returns:
+        :class:`MultiConditionResult` with train/blind/independent NRMSE,
+        degradation ratio, and optional ASME assessments.
+
+    References:
+        Lee & Saw, J. Fusion Energy 27, 292-295 (2008) — fc/fm universality.
+        ASME V&V 20-2009 — formal validation standard.
+    """
+    from dpf.validation.experimental import DEVICES
+
+    # Validate devices exist and have waveforms
+    for dev_name in (train_device, test_device):
+        if dev_name not in DEVICES:
+            raise ValueError(f"Device '{dev_name}' not in DEVICES registry")
+        dev = DEVICES[dev_name]
+        if dev.waveform_t is None or dev.waveform_I is None:
+            raise ValueError(f"Device '{dev_name}' has no digitized waveform")
+
+    # Get device-specific settings
+    train_pcf = _DEFAULT_DEVICE_PCF.get(train_device, 0.14)
+    test_pcf = _DEFAULT_DEVICE_PCF.get(test_device, 0.14)
+    train_cr = _DEFAULT_CROWBAR_R.get(train_device, 1.5e-3)
+    test_cr = _DEFAULT_CROWBAR_R.get(test_device, 1.5e-3)
+
+    # Step 1: Calibrate on training condition
+    train_result = calibrate_with_liftoff(
+        device_name=train_device,
+        fc_bounds=fc_bounds,
+        fm_bounds=fm_bounds,
+        delay_bounds_us=delay_bounds_us,
+        pinch_column_fraction=train_pcf,
+        crowbar_enabled=train_cr > 0,
+        crowbar_resistance=train_cr,
+        maxiter=maxiter,
+        seed=seed,
+    )
+    fc_train = train_result.best_fc
+    fm_train = train_result.best_fm
+    delay_train = train_result.best_delay_us  # already in us
+
+    # Step 2: Blind prediction on test condition
+    from dpf.validation.experimental import nrmse_peak
+    from dpf.validation.lee_model_comparison import LeeModel
+
+    test_dev = DEVICES[test_device]
+    model_blind = LeeModel(
+        current_fraction=fc_train,
+        mass_fraction=fm_train,
+        radial_mass_fraction=0.1,
+        pinch_column_fraction=test_pcf,
+        crowbar_enabled=test_cr > 0,
+        crowbar_resistance=test_cr,
+        liftoff_delay=delay_train * 1e-6,  # us → s
+    )
+    sim_blind = model_blind.run(test_device)
+    blind_nrmse = nrmse_peak(
+        sim_blind.t, sim_blind.I,
+        test_dev.waveform_t, test_dev.waveform_I,
+    )
+
+    # Step 3: Independent calibration on test condition (baseline)
+    indep_result = calibrate_with_liftoff(
+        device_name=test_device,
+        fc_bounds=fc_bounds,
+        fm_bounds=fm_bounds,
+        delay_bounds_us=delay_bounds_us,
+        pinch_column_fraction=test_pcf,
+        crowbar_enabled=test_cr > 0,
+        crowbar_resistance=test_cr,
+        maxiter=maxiter,
+        seed=seed,
+    )
+    indep_nrmse = indep_result.nrmse
+
+    degradation = blind_nrmse / max(indep_nrmse, 1e-15)
+
+    logger.info(
+        "Multi-condition: train=%s -> test=%s: blind=%.4f, indep=%.4f, "
+        "degrad=%.2fx, fc=%.3f, fm=%.3f, delay=%.3f us",
+        train_device, test_device, blind_nrmse, indep_nrmse,
+        degradation, fc_train, fm_train, delay_train,
+    )
+
+    # Step 4: ASME V&V 20 assessments
+    asme_blind = None
+    asme_indep = None
+    if run_asme:
+        try:
+            asme_blind = asme_vv20_assessment(
+                device_name=test_device,
+                fc=fc_train,
+                fm=fm_train,
+                liftoff_delay=delay_train * 1e-6,
+                pinch_column_fraction=test_pcf,
+                crowbar_enabled=test_cr > 0,
+                crowbar_resistance=test_cr,
+                u_num=0.001,
+            )
+        except Exception:
+            logger.warning("ASME blind assessment failed for %s", test_device)
+
+        try:
+            asme_indep = asme_vv20_assessment(
+                device_name=test_device,
+                fc=indep_result.best_fc,
+                fm=indep_result.best_fm,
+                liftoff_delay=indep_result.best_delay_us * 1e-6,
+                pinch_column_fraction=test_pcf,
+                crowbar_enabled=test_cr > 0,
+                crowbar_resistance=test_cr,
+                u_num=0.001,
+            )
+        except Exception:
+            logger.warning("ASME indep assessment failed for %s", test_device)
+
+    return MultiConditionResult(
+        train_device=train_device,
+        test_device=test_device,
+        train_fc=fc_train,
+        train_fm=fm_train,
+        train_delay_us=delay_train,
+        train_nrmse=train_result.nrmse,
+        blind_nrmse=float(blind_nrmse),
+        independent_nrmse=float(indep_nrmse),
+        degradation=float(degradation),
+        asme_blind=asme_blind,
+        asme_independent=asme_indep,
+    )
