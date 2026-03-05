@@ -15,7 +15,7 @@ Key metrics:
 
 References:
     Scholz et al., Nukleonika 51(1), 2006 (27 kV reference).
-    Akel et al., Radiat. Phys. Chem. 188:109638, 2021 (16 kV data).
+    Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (16 kV data).
 """
 
 from __future__ import annotations

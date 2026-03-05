@@ -1115,7 +1115,7 @@ def fisher_information_matrix(
     # Measurement uncertainty per point (combined Rogowski + digitization)
     sigma = float(np.sqrt(
         device.peak_current_uncertainty**2
-        + device.waveform_digitization_uncertainty**2
+        + device.waveform_amplitude_uncertainty**2
     )) * float(np.max(I_exp))
 
     theta = np.array([fc, fm, delay_us])
@@ -1600,12 +1600,17 @@ def asme_vv20_assessment(
         max_time=max_time,
     )
 
-    # Experimental uncertainty: combine Rogowski + digitization + shot-to-shot
+    # Experimental uncertainty: combine Rogowski + amplitude + shot-to-shot
+    # Per GUM (JCGM 100:2008), each component identified by physical source.
     u_exp_sq = (
         device.peak_current_uncertainty**2
-        + device.waveform_digitization_uncertainty**2
+        + device.waveform_amplitude_uncertainty**2
     )
-    if include_shot_to_shot and device_name in _SHOT_TO_SHOT_DATA:
+    # Skip shot-to-shot if peak_current_uncertainty already incorporates it
+    # (e.g. PF-1000-16kV: 10% from 1.1-1.3 MA range). Per GUM, components
+    # must be independent — adding both would be double-counting.
+    _skip_shot = getattr(device, "peak_current_from_shot_spread", False)
+    if include_shot_to_shot and device_name in _SHOT_TO_SHOT_DATA and not _skip_shot:
         u_shot = _SHOT_TO_SHOT_DATA[device_name]["u_shot_to_shot"]
         n_shots = _SHOT_TO_SHOT_DATA[device_name]["n_shots_typical"]
         # Shot-to-shot component reduces with averaging
@@ -2527,9 +2532,10 @@ def _pinch_phase_asme(
     # Experimental uncertainty with shot-to-shot (same as asme_vv20_assessment)
     u_exp_sq = (
         device.peak_current_uncertainty**2
-        + device.waveform_digitization_uncertainty**2
+        + device.waveform_amplitude_uncertainty**2
     )
-    if device_name in _SHOT_TO_SHOT_DATA:
+    _skip_shot = getattr(device, "peak_current_from_shot_spread", False)
+    if device_name in _SHOT_TO_SHOT_DATA and not _skip_shot:
         u_shot = _SHOT_TO_SHOT_DATA[device_name]["u_shot_to_shot"]
         n_shots = _SHOT_TO_SHOT_DATA[device_name]["n_shots_typical"]
         u_shot_avg = u_shot / np.sqrt(n_shots)
@@ -2761,7 +2767,9 @@ class MultiShotUncertainty:
     Attributes:
         u_shot_to_shot: Shot-to-shot relative uncertainty (1-sigma).
         u_rogowski: Rogowski coil calibration uncertainty (1-sigma).
-        u_digitization: Waveform digitization uncertainty (1-sigma).
+        u_amplitude: Waveform amplitude uncertainty (1-sigma). Per GUM,
+            this is "digitization" for measured waveforms or "reconstruction"
+            for model-generated waveforms.
         u_exp_combined: Combined experimental uncertainty (RSS).
         n_shots_typical: Typical number of shots for the estimate.
         u_exp_with_averaging: u_exp after averaging n_shots.
@@ -2770,7 +2778,7 @@ class MultiShotUncertainty:
 
     u_shot_to_shot: float
     u_rogowski: float
-    u_digitization: float
+    u_amplitude: float
     u_exp_combined: float
     n_shots_typical: int
     u_exp_with_averaging: float
@@ -2782,7 +2790,7 @@ _SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
     "PF-1000": {
         "u_shot_to_shot": 0.05,  # 5% sigma_I/I per Scholz et al. (2006)
         "u_rogowski": 0.05,      # 5% Rogowski coil calibration
-        "u_digitization": 0.03,  # 3% digitization error
+        "u_amplitude": 0.03,  # 3% digitization error
         "n_shots_typical": 5,    # Scholz et al. averaged ~5 reproducible shots
         "reference": (
             "Scholz et al., Nukleonika 51(1), 2006; "
@@ -2792,49 +2800,49 @@ _SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
     "NX2": {
         "u_shot_to_shot": 0.08,  # 8% — smaller devices show more variability
         "u_rogowski": 0.05,
-        "u_digitization": 0.03,
+        "u_amplitude": 0.03,
         "n_shots_typical": 10,
         "reference": "Lee & Saw, J. Fusion Energy 27:292-295 (2008)",
     },
     "POSEIDON-60kV": {
         "u_shot_to_shot": 0.06,  # 6% estimated from IPFS data scatter
         "u_rogowski": 0.05,
-        "u_digitization": 0.03,
+        "u_amplitude": 0.03,
         "n_shots_typical": 3,
         "reference": "IPFS plasmafocus.net (Lee fitting)",
     },
     "UNU-ICTP": {
         "u_shot_to_shot": 0.10,  # 10% — teaching device, higher variability
         "u_rogowski": 0.05,
-        "u_digitization": 0.03,
+        "u_amplitude": 0.03,
         "n_shots_typical": 10,
         "reference": "Lee et al., Am. J. Phys. 56 (1988)",
     },
     "FAETON-I": {
         "u_shot_to_shot": 0.08,  # 8% (re-strikes cause variability)
         "u_rogowski": 0.05,
-        "u_digitization": 0.08,  # 8% (reconstructed waveform, not digitized)
+        "u_amplitude": 0.08,  # 8% (reconstructed waveform, not digitized)
         "n_shots_typical": 5,
         "reference": "Damideh et al., Sci. Rep. 15:23048 (2025)",
     },
     "MJOLNIR": {
         "u_shot_to_shot": 0.10,  # 10% (large device, high-power variability)
         "u_rogowski": 0.05,
-        "u_digitization": 0.10,  # 10% (reconstructed waveform, high uncertainty)
+        "u_amplitude": 0.10,  # 10% (reconstructed waveform, high uncertainty)
         "n_shots_typical": 5,
         "reference": "Schmidt et al., IEEE TPS (2021); Goyon et al., Phys. Plasmas (2025)",
     },
     "PF-1000-16kV": {
         "u_shot_to_shot": 0.05,  # 5% — same bank as PF-1000 (Scholz 2006)
         "u_rogowski": 0.05,      # 5% — same Rogowski coil
-        "u_digitization": 0.05,  # 5% (reconstructed from 27 kV Scholz scaling)
+        "u_amplitude": 0.05,  # 5% (reconstructed from 27 kV Scholz scaling)
         "n_shots_typical": 16,   # Akel et al. (2021) Table 1: 16 shots at 1.05 Torr
-        "reference": "Akel et al., Radiat. Phys. Chem. 188:109638, 2021",
+        "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
     },
     "PF-1000-Gribkov": {
         "u_shot_to_shot": 0.05,  # 5% — same bank as PF-1000
         "u_rogowski": 0.05,      # 5% — same Rogowski coil
-        "u_digitization": 0.03,  # 3% (digitized from IPFS archive, 94 points)
+        "u_amplitude": 0.03,  # 3% (digitized from IPFS archive, 94 points)
         "n_shots_typical": 5,    # Gribkov et al. (2007) — similar campaign
         "reference": "Gribkov et al., J. Phys. D 40:3592, 2007",
     },
@@ -2871,7 +2879,7 @@ def multi_shot_uncertainty(
     data = _SHOT_TO_SHOT_DATA[device_name]
     u_shot = data["u_shot_to_shot"]
     u_rog = data["u_rogowski"]
-    u_dig = data["u_digitization"]
+    u_dig = data["u_amplitude"]
     n_shots = data["n_shots_typical"]
 
     # Combined uncertainty (RSS)
@@ -2891,7 +2899,7 @@ def multi_shot_uncertainty(
     return MultiShotUncertainty(
         u_shot_to_shot=u_shot,
         u_rogowski=u_rog,
-        u_digitization=u_dig,
+        u_amplitude=u_dig,
         u_exp_combined=u_combined,
         n_shots_typical=n_shots,
         u_exp_with_averaging=u_with_avg,

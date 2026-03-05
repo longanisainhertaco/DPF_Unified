@@ -678,7 +678,7 @@ class TestPF1000VoltageASME:
 class TestPF100016kVBlindPrediction:
     """Blind prediction of PF-1000 at 16 kV / 1.05 Torr D2.
 
-    Akel et al., Radiat. Phys. Chem. 188:109638 (2021) measured PF-1000
+    Akel et al., Radiat. Phys. Chem. 188:109633 (2021) measured PF-1000
     at V0=16 kV (170.5 kJ) with 1.05 Torr D2.  Measured peak current:
     1.1-1.3 MA across 16 shots.
 
