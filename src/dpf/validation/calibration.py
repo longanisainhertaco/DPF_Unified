@@ -1517,6 +1517,11 @@ class ASMEValidationResult:
         metric_name: Name of the error metric used for E.
         device_name: Device assessed.
         time_window: Description of the time window used.
+        waveform_provenance: "measured" or "reconstructed".
+        qualified: True if comparison uses reconstructed (model-derived)
+            waveform — result is model-vs-model, not model-vs-experiment.
+            Per ASME V&V 20 §4.1, validation data should be independent
+            of the computational model.
     """
 
     E: float
@@ -1530,6 +1535,8 @@ class ASMEValidationResult:
     metric_name: str = "NRMSE"
     device_name: str = ""
     time_window: str = "full"
+    waveform_provenance: str = ""
+    qualified: bool = False
 
 
 def asme_vv20_assessment(
@@ -1635,11 +1642,19 @@ def asme_vv20_assessment(
 
     time_desc = f"0-{max_time*1e6:.1f} us" if max_time else "full waveform"
 
+    # Provenance: flag model-vs-model comparisons as qualified
+    provenance = device.waveform_provenance
+    is_qualified = provenance == "reconstructed"
+
+    status_str = "PASS" if passes else "FAIL"
+    if is_qualified:
+        status_str += " (qualified: reconstructed waveform)"
+
     logger.info(
         "ASME V&V 20: %s (%s) — E=%.3f, u_exp=%.3f, u_input=%.3f, "
         "u_num=%.4f, u_val=%.3f, delta_model=%.3f, ratio=%.2f → %s",
         device_name, time_desc, E, u_exp, u_input, u_num, u_val,
-        delta_model, ratio, "PASS" if passes else "FAIL",
+        delta_model, ratio, status_str,
     )
 
     return ASMEValidationResult(
@@ -1654,6 +1669,72 @@ def asme_vv20_assessment(
         metric_name="NRMSE",
         device_name=device_name,
         time_window=time_desc,
+        waveform_provenance=provenance,
+        qualified=is_qualified,
+    )
+
+
+@dataclass
+class ASMEStratifiedSummary:
+    """Stratified ASME summary splitting measured vs reconstructed waveforms.
+
+    Per ASME V&V 20 §4.1, validation data should be independent of the
+    computational model.  Reconstructed waveforms are model-derived and
+    therefore "qualified" — their PASS/FAIL status is informative but
+    should not be combined with measured-waveform results.
+
+    Attributes:
+        all_results: All ASME results.
+        measured_results: Results using measured (independent) waveforms.
+        reconstructed_results: Results using reconstructed (model-derived)
+            waveforms — qualified, model-vs-model.
+        n_measured_pass: Number of measured-waveform PASSes.
+        n_measured_total: Total measured-waveform assessments.
+        n_reconstructed_pass: Number of reconstructed-waveform PASSes.
+        n_reconstructed_total: Total reconstructed-waveform assessments.
+    """
+
+    all_results: list[ASMEValidationResult]
+    measured_results: list[ASMEValidationResult]
+    reconstructed_results: list[ASMEValidationResult]
+    n_measured_pass: int
+    n_measured_total: int
+    n_reconstructed_pass: int
+    n_reconstructed_total: int
+
+    @property
+    def n_total_pass(self) -> int:
+        return self.n_measured_pass + self.n_reconstructed_pass
+
+    @property
+    def n_total(self) -> int:
+        return self.n_measured_total + self.n_reconstructed_total
+
+
+def asme_stratified_summary(
+    results: list[ASMEValidationResult],
+) -> ASMEStratifiedSummary:
+    """Stratify ASME results by waveform provenance.
+
+    Separates measured (genuine validation) from reconstructed
+    (model-vs-model, qualified) results.
+
+    Args:
+        results: List of ASME validation results.
+
+    Returns:
+        :class:`ASMEStratifiedSummary` with per-provenance breakdowns.
+    """
+    measured = [r for r in results if r.waveform_provenance == "measured"]
+    reconstructed = [r for r in results if r.qualified]
+    return ASMEStratifiedSummary(
+        all_results=results,
+        measured_results=measured,
+        reconstructed_results=reconstructed,
+        n_measured_pass=sum(1 for r in measured if r.passes),
+        n_measured_total=len(measured),
+        n_reconstructed_pass=sum(1 for r in reconstructed if r.passes),
+        n_reconstructed_total=len(reconstructed),
     )
 
 
@@ -2548,6 +2629,9 @@ def _pinch_phase_asme(
 
     delta_model = float(np.sqrt(max(0.0, E**2 - u_val**2)))
 
+    provenance = device.waveform_provenance
+    is_qualified = provenance == "reconstructed"
+
     return ASMEValidationResult(
         E=E,
         u_exp=u_exp,
@@ -2560,6 +2644,8 @@ def _pinch_phase_asme(
         metric_name="NRMSE",
         device_name=device_name,
         time_window=f"{t_start_us:.0f}-end us",
+        waveform_provenance=provenance,
+        qualified=is_qualified,
     )
 
 
