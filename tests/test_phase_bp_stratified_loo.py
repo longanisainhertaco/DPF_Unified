@@ -22,12 +22,12 @@ LOO_RESULTS = {
     "POSEIDON-60kV": {
         "blind": 0.1917, "indep": 0.0751, "degrad": 2.55,
         "fc": 0.843, "fm": 0.239, "delay_us": 0.051,
-        "measured": True, "lp_l0": 1.23,
+        "measured": True, "lp_l0": 1.26,
     },
     "UNU-ICTP": {
         "blind": 0.0978, "indep": 0.0661, "degrad": 1.48,
         "fc": 0.701, "fm": 0.159, "delay_us": 0.067,
-        "measured": True, "lp_l0": 0.07,
+        "measured": True, "lp_l0": 0.35,
     },
     "FAETON-I": {
         "blind": 0.1720, "indep": 0.0172, "degrad": 10.01,

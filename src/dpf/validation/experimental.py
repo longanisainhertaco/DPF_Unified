@@ -810,6 +810,24 @@ def compute_lp_l0_ratio(
     }
 
 
+def lp_l0_for_device(device_name: str) -> float:
+    """Return L_p/L0 ratio for a named device.
+
+    Convenience wrapper around :func:`compute_lp_l0_ratio`.
+
+    Args:
+        device_name: Key in ``DEVICES`` dict.
+
+    Returns:
+        L_p/L0 ratio (dimensionless).
+    """
+    dev = DEVICES[device_name]
+    result = compute_lp_l0_ratio(
+        dev.inductance, dev.anode_radius, dev.cathode_radius, dev.anode_length,
+    )
+    return result["L_p_over_L0"]
+
+
 def compute_bare_rlc_timing(
     C: float,
     L0: float,
