@@ -284,7 +284,7 @@ class TestGribkovWaveformAnalytical:
 
         scholz = DEVICES["PF-1000"]
         gribkov = DEVICES["PF-1000-Gribkov"]
-        assert gribkov.waveform_digitization_uncertainty < scholz.waveform_digitization_uncertainty
+        assert gribkov.waveform_amplitude_uncertainty < scholz.waveform_amplitude_uncertainty
 
     def test_cross_publication_meaning(self):
         """Cross-publication validation tests measurement independence.

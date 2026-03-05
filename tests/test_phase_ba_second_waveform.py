@@ -280,7 +280,7 @@ class TestASMEWithPOSEIDON60kV:
         # Compute ASME-style metrics
         u_exp = np.sqrt(
             dev.peak_current_uncertainty**2
-            + dev.waveform_digitization_uncertainty**2
+            + dev.waveform_amplitude_uncertainty**2
         )
         u_num = 0.01  # 1% numerical uncertainty estimate
         u_val = np.sqrt(u_exp**2 + u_num**2)

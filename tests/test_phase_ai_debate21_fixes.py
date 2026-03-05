@@ -26,10 +26,10 @@ class TestMeasurementUncertainty:
         """PF-1000 data includes digitization uncertainty."""
         from dpf.validation.experimental import PF1000_DATA
 
-        assert PF1000_DATA.waveform_digitization_uncertainty > 0, (
-            "PF-1000 waveform_digitization_uncertainty must be > 0"
+        assert PF1000_DATA.waveform_amplitude_uncertainty > 0, (
+            "PF-1000 waveform_amplitude_uncertainty must be > 0"
         )
-        assert PF1000_DATA.waveform_digitization_uncertainty == pytest.approx(0.03, abs=0.01)
+        assert PF1000_DATA.waveform_amplitude_uncertainty == pytest.approx(0.03, abs=0.01)
 
     def test_pf1000_has_time_uncertainty(self):
         """PF-1000 data includes temporal digitization uncertainty."""
@@ -53,7 +53,7 @@ class TestMeasurementUncertainty:
         from dpf.validation.experimental import PF1000_DATA
 
         u_rog = PF1000_DATA.peak_current_uncertainty  # 5%
-        u_dig = PF1000_DATA.waveform_digitization_uncertainty  # 3%
+        u_dig = PF1000_DATA.waveform_amplitude_uncertainty  # 3%
         u_combined = np.sqrt(u_rog**2 + u_dig**2)
         assert u_combined == pytest.approx(0.058, abs=0.005)
 

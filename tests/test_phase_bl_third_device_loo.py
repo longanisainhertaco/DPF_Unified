@@ -88,7 +88,7 @@ class TestUNUICTPWaveform:
     def test_digitization_uncertainty(self):
         """Digitization uncertainty should reflect 9.3 kA quantization (GUM)."""
         # GUM rectangular: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6%
-        assert UNU_ICTP_DATA.waveform_digitization_uncertainty == pytest.approx(0.016, abs=0.005)
+        assert UNU_ICTP_DATA.waveform_amplitude_uncertainty == pytest.approx(0.016, abs=0.005)
 
     def test_current_dip_exists(self):
         """Waveform should show a current dip after the peak."""
