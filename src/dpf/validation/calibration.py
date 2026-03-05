@@ -2824,6 +2824,20 @@ _SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
         "n_shots_typical": 5,
         "reference": "Schmidt et al., IEEE TPS (2021); Goyon et al., Phys. Plasmas (2025)",
     },
+    "PF-1000-16kV": {
+        "u_shot_to_shot": 0.05,  # 5% — same bank as PF-1000 (Scholz 2006)
+        "u_rogowski": 0.05,      # 5% — same Rogowski coil
+        "u_digitization": 0.05,  # 5% (reconstructed from 27 kV Scholz scaling)
+        "n_shots_typical": 16,   # Akel et al. (2021) Table 1: 16 shots at 1.05 Torr
+        "reference": "Akel et al., Radiat. Phys. Chem. 188:109638, 2021",
+    },
+    "PF-1000-Gribkov": {
+        "u_shot_to_shot": 0.05,  # 5% — same bank as PF-1000
+        "u_rogowski": 0.05,      # 5% — same Rogowski coil
+        "u_digitization": 0.03,  # 3% (digitized from IPFS archive, 94 points)
+        "n_shots_typical": 5,    # Gribkov et al. (2007) — similar campaign
+        "reference": "Gribkov et al., J. Phys. D 40:3592, 2007",
+    },
 }
 
 
