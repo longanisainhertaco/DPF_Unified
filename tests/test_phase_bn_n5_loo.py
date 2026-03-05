@@ -100,6 +100,21 @@ class TestN5DeviceCoverage:
         assert len(has_crowbar) >= 1, "Need >=1 with crowbar"
         assert len(no_crowbar) >= 1, "Need >=1 without crowbar"
 
+    def test_waveform_provenance_set(self):
+        """All 5 LOO devices must have waveform_provenance set."""
+        for dev_name in N5_DEVICES:
+            dev = DEVICES[dev_name]
+            assert dev.waveform_provenance in ("measured", "reconstructed"), (
+                f"{dev_name}: waveform_provenance={dev.waveform_provenance!r}"
+            )
+
+    def test_measured_count(self):
+        """Exactly 3 measured + 2 reconstructed in N=5 LOO."""
+        measured = [d for d in N5_DEVICES if DEVICES[d].waveform_provenance == "measured"]
+        recon = [d for d in N5_DEVICES if DEVICES[d].waveform_provenance == "reconstructed"]
+        assert len(measured) == 3
+        assert len(recon) == 2
+
 
 class TestN5LOOStatistics:
     """Validate the statistical properties of N=5 LOO (from recorded results)."""
