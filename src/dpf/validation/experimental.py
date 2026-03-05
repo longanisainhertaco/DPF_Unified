@@ -102,9 +102,19 @@ class ExperimentalDevice:
     # Digitized waveform data (optional)
     waveform_t: np.ndarray | None = None    # Time array [s]
     waveform_I: np.ndarray | None = None    # Current array [A]
-    # Waveform digitization uncertainty (1-sigma, relative)
-    waveform_digitization_uncertainty: float = 0.0  # Amplitude digitization error
-    waveform_time_uncertainty: float = 0.0          # Temporal digitization error
+    # Waveform amplitude uncertainty (1-sigma, relative).
+    # Per GUM (JCGM 100:2008), each component identified by physical source:
+    #   - "digitization": genuine digitization error from reading a published figure
+    #   - "reconstruction": model-based reconstruction error (physics scaling, RLC fit)
+    #   - "": unknown/unset
+    waveform_amplitude_uncertainty: float = 0.0     # Amplitude uncertainty (1-sigma, relative)
+    waveform_time_uncertainty: float = 0.0          # Temporal uncertainty (1-sigma, relative)
+    waveform_uncertainty_type: str = ""             # "digitization" or "reconstruction" per GUM
+    # Whether peak_current_uncertainty already incorporates shot-to-shot spread.
+    # True for devices where I_peak uncertainty was derived FROM shot spread range
+    # (e.g. PF-1000-16kV: range 1.1-1.3 MA → 10%). When True, ASME budget should
+    # NOT add separate u_shot_to_shot to avoid double-counting per GUM.
+    peak_current_from_shot_spread: bool = False
     # Crowbar switch resistance [Ohm] — physical arc resistance of the
     # crowbar spark gap.  Default 0.0 for backward compatibility.
     # PF-1000: ~1-3 mOhm (spark gap arc, PhD Debate #30 Finding 4).
@@ -161,8 +171,9 @@ PF1000_DATA = ExperimentalDevice(
     # Amplitude: ±3% (trace width ~0.06 MA on ~2 MA full scale).
     # Time: ±0.5% of full scale (~0.05 us on 10 us trace).
     # Combined current uncertainty: sqrt(5%^2 + 3%^2) = 5.8% (1-sigma).
-    waveform_digitization_uncertainty=0.03,  # 3% amplitude from trace reading
-    waveform_time_uncertainty=0.005,         # 0.5% of full scale (~0.05 us)
+    waveform_amplitude_uncertainty=0.03,  # 3% amplitude from trace reading
+    waveform_time_uncertainty=0.005,      # 0.5% of full scale (~0.05 us)
+    waveform_uncertainty_type="digitization",  # Type B: hand-digitized from published figure
     waveform_provenance="measured",
     measurement_notes=(
         "26 points hand-digitized from Scholz et al., Nukleonika 51(1), 2006, Fig. 2. "
@@ -256,8 +267,9 @@ UNU_ICTP_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
     waveform_t=_UNU_ICTP_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_UNU_ICTP_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
-    waveform_digitization_uncertainty=0.016,  # GUM: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6% (rectangular)
-    waveform_time_uncertainty=0.002,         # 0.2% (~1 ns digitization on ~5 us trace)
+    waveform_amplitude_uncertainty=0.016,  # GUM: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6% (rectangular)
+    waveform_time_uncertainty=0.002,       # 0.2% (~1 ns digitization on ~5 us trace)
+    waveform_uncertainty_type="digitization",  # Type B: quantization from digital oscilloscope
     waveform_provenance="measured",
     measurement_notes=(
         "45 points from IPFS 'UNU ICTPPFF D2 05.15.xls' (plasmafocus.net). "
@@ -274,7 +286,7 @@ UNU_ICTP_DATA = ExperimentalDevice(
 )
 
 
-# PF-1000 at 16 kV — Akel et al., Radiat. Phys. Chem. 188:109638, 2021
+# PF-1000 at 16 kV — Akel et al., Radiat. Phys. Chem. 188:109633, 2021
 # Same device (IPPLM Warsaw), different operating conditions:
 #   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
 # Peak current measured at 1.1-1.3 MA for multiple shots.
@@ -312,15 +324,17 @@ PF1000_16KV_DATA = ExperimentalDevice(
     peak_current=1.2e6,            # 1.2 MA (midpoint of 1.1-1.3 MA range)
     neutron_yield=2.33e9,          # 2.33e9 n/shot at 1.05 Torr (average of 16 shots)
     current_rise_time=6.0e-6,      # ~6 us (estimated from Lee model fit in paper)
-    reference="Akel et al., Radiat. Phys. Chem. 188:109638, 2021",
+    reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
     crowbar_resistance=1.5e-3,     # Same crowbar as 27 kV (PhD Debate #30)
     peak_current_uncertainty=0.10,     # 10% (range 1.1-1.3 MA = ±8.3%)
     rise_time_uncertainty=0.15,        # 15% (no explicit timing stated)
     neutron_yield_uncertainty=0.40,    # 40% (shot-to-shot, Akel Table 1)
     waveform_t=_PF1000_16KV_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_PF1000_16KV_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
-    waveform_digitization_uncertainty=0.05,  # 5% (physics-scaled estimate, not digitized)
-    waveform_time_uncertainty=0.01,          # 1% temporal (pinch timing estimated)
+    waveform_amplitude_uncertainty=0.05,  # 5% reconstruction model uncertainty
+    waveform_time_uncertainty=0.01,       # 1% temporal (pinch timing estimated)
+    waveform_uncertainty_type="reconstruction",  # Physics-scaled from 27kV Scholz waveform
+    peak_current_from_shot_spread=True,  # 10% derives from 1.1-1.3 MA shot range
     waveform_provenance="reconstructed",
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
@@ -332,7 +346,7 @@ PF1000_16KV_DATA = ExperimentalDevice(
         "Waveform_digitization_uncertainty set to 5% (higher than 3% for 27 kV) to "
         "account for reconstruction uncertainty. Replace with actual digitized data "
         "from Akel (2021) Fig. 3 when paper access is obtained. "
-        "DOI: 10.1016/j.radphyschem.2021.109638"
+        "DOI: 10.1016/j.radphyschem.2021.109633"
     ),
 )
 
@@ -403,8 +417,9 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,
     waveform_t=_PF1000_GRIBKOV_T_TRIMMED * 1e-6,    # us -> s
     waveform_I=_PF1000_GRIBKOV_I_TRIMMED * 1e3,      # kA -> A
-    waveform_digitization_uncertainty=0.02,  # 2% (digital oscilloscope, not hand-digitized)
-    waveform_time_uncertainty=0.003,         # 0.3% (digital acquisition)
+    waveform_amplitude_uncertainty=0.02,  # 2% (digital oscilloscope, not hand-digitized)
+    waveform_time_uncertainty=0.003,      # 0.3% (digital acquisition)
+    waveform_uncertainty_type="digitization",  # Type B: IPFS digital archive
     waveform_provenance="measured",
     measurement_notes=(
         "94-point digitized waveform from plasmafocus.net RADPF archive (PF1000 05.15.xls). "
@@ -501,8 +516,9 @@ POSEIDON_60KV_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
     waveform_t=_POSEIDON60KV_WAVEFORM_T_US * 1e-6,    # Convert us -> s
     waveform_I=_POSEIDON60KV_WAVEFORM_I_KA * 1e3,      # Convert kA -> A
-    waveform_digitization_uncertainty=0.02,  # 2% (IPFS digitization, high quality)
-    waveform_time_uncertainty=0.005,         # 0.5% temporal
+    waveform_amplitude_uncertainty=0.02,  # 2% (IPFS digitization, high quality)
+    waveform_time_uncertainty=0.005,      # 0.5% temporal
+    waveform_uncertainty_type="digitization",  # Type B: IPFS digital archive
     waveform_provenance="measured",
     measurement_notes=(
         "POSEIDON at 60 kV / 156 uF (E0=280.8 kJ) with 3.8 Torr D2 fill. "
@@ -536,7 +552,7 @@ PF1000_20KV_DATA = ExperimentalDevice(
     peak_current=1.4e6,            # 1.4 MA (estimated from voltage scaling)
     neutron_yield=5e9,             # estimated
     current_rise_time=6.3e-6,      # ~6.3 us (estimated)
-    reference="Akel et al., Radiat. Phys. Chem. 188:109638, 2021 (voltage trend)",
+    reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (voltage trend)",
     crowbar_resistance=1.5e-3,
     peak_current_uncertainty=0.12,     # 12% (interpolated, higher uncertainty)
     rise_time_uncertainty=0.15,
@@ -600,8 +616,9 @@ FAETON_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot + re-strikes)
     waveform_t=_FAETON_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_FAETON_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
-    waveform_digitization_uncertainty=0.08,  # 8% (reconstructed, not digitized)
-    waveform_time_uncertainty=0.02,          # 2% temporal (reconstructed)
+    waveform_amplitude_uncertainty=0.08,  # 8% reconstruction model uncertainty
+    waveform_time_uncertainty=0.02,       # 2% temporal (reconstructed)
+    waveform_uncertainty_type="reconstruction",  # Reconstructed from damped RLC parameters
     waveform_provenance="reconstructed",
     measurement_notes=(
         "FAETON-I: 100 kV, 125 kJ DPF by Fuse Energy Technologies. "
@@ -673,8 +690,9 @@ MJOLNIR_DATA = ExperimentalDevice(
     neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot)
     waveform_t=_MJOLNIR_WAVEFORM_T_US * 1e-6,      # Convert us -> s
     waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
-    waveform_digitization_uncertainty=0.10,  # 10% (reconstructed, high uncertainty)
-    waveform_time_uncertainty=0.03,          # 3% temporal (reconstructed)
+    waveform_amplitude_uncertainty=0.10,  # 10% reconstruction model uncertainty
+    waveform_time_uncertainty=0.03,       # 3% temporal (reconstructed)
+    waveform_uncertainty_type="reconstruction",  # Reconstructed from peak current + circuit params
     waveform_provenance="reconstructed",
     measurement_notes=(
         "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
@@ -1160,7 +1178,7 @@ def validate_current_waveform(
     # u_combined = sqrt(u_rogowski^2 + u_digitization^2 + u_sim^2)
     u_exp_peak = device.peak_current_uncertainty
     u_exp_timing = device.rise_time_uncertainty
-    u_digitization = device.waveform_digitization_uncertainty
+    u_digitization = device.waveform_amplitude_uncertainty
     # Total experimental uncertainty (Rogowski + digitization in quadrature)
     u_exp_total = np.sqrt(u_exp_peak**2 + u_digitization**2)
     # Combined uncertainty (experimental + simulation error)

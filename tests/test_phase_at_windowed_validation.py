@@ -22,7 +22,7 @@ This phase validates:
 References:
 - S. Lee, Radiative Dense Plasma Focus Model, IAEA/IC (2005): liftoff 0.5-1.5 us
 - Scholz et al., Nukleonika 51(1), 2006: PF-1000 at 27 kV
-- Akel et al., Radiat. Phys. Chem. 188:109638, 2021: PF-1000 at 16 kV
+- Akel et al., Radiat. Phys. Chem. 188:109633, 2021: PF-1000 at 16 kV
 - ASME V&V 20-2009: Standard for Verification and Validation in CFD and Heat Transfer
 """
 

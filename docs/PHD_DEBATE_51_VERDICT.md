@@ -97,7 +97,7 @@ None. Debate #51 reinforces Debate #50 findings without new retractions.
 
 ### Recommendations for Further Investigation
 
-1. **CRITICAL: Obtain Akel (2021) measured I(t) waveform.** Digitize Fig. 3 from Radiat. Phys. Chem. 188:109638. This single action removes the reconstructed waveform circularity and enables a genuine ASME assessment. DOI: 10.1016/j.radphyschem.2021.109638.
+1. **CRITICAL: Obtain Akel (2021) measured I(t) waveform.** Digitize Fig. 3 from Radiat. Phys. Chem. 188:109633. This single action removes the reconstructed waveform circularity and enables a genuine ASME assessment. DOI: 10.1016/j.radphyschem.2021.109633.
 
 2. **Fix uncertainty taxonomy.** Rename `waveform_digitization_uncertainty` to `waveform_amplitude_uncertainty` and add `uncertainty_type` field (Type A or Type B per GUM).
 
