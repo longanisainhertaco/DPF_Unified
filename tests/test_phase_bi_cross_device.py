@@ -104,7 +104,7 @@ class TestCrossDeviceSetup:
 
         pos = DEVICES["POSEIDON-60kV"]
         # Digitized waveforms have low uncertainty (2%)
-        assert pos.waveform_digitization_uncertainty <= 0.03
+        assert pos.waveform_amplitude_uncertainty <= 0.03
 
     def test_blind_predict_result_fields(self):
         """BlindPredictionResult has all necessary fields."""

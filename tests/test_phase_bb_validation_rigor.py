@@ -655,7 +655,7 @@ class TestMultiShotUncertainty:
         result = multi_shot_uncertainty("PF-1000")
         assert result.u_shot_to_shot == pytest.approx(0.05, abs=0.001)
         assert result.u_rogowski == pytest.approx(0.05, abs=0.001)
-        assert result.u_digitization == pytest.approx(0.03, abs=0.001)
+        assert result.u_amplitude == pytest.approx(0.03, abs=0.001)
         # RSS: sqrt(0.05^2 + 0.05^2 + 0.03^2) = sqrt(0.0059) = 0.0768
         assert result.u_exp_combined == pytest.approx(0.0768, abs=0.005)
 

@@ -554,7 +554,7 @@ class TestReconstructedUncertainty:
         faeton = DEVICES["FAETON-I"]
         pf1000 = DEVICES["PF-1000"]
         # Reconstructed should have higher uncertainty than hand-digitized
-        assert faeton.waveform_digitization_uncertainty > pf1000.waveform_digitization_uncertainty
+        assert faeton.waveform_amplitude_uncertainty > pf1000.waveform_amplitude_uncertainty
 
     def test_mjolnir_higher_digitization_uncertainty(self):
         from dpf.validation.experimental import DEVICES
@@ -562,7 +562,7 @@ class TestReconstructedUncertainty:
         mjolnir = DEVICES["MJOLNIR"]
         poseidon = DEVICES["POSEIDON-60kV"]
         # Reconstructed should have higher uncertainty than IPFS-digitized
-        assert mjolnir.waveform_digitization_uncertainty > poseidon.waveform_digitization_uncertainty
+        assert mjolnir.waveform_amplitude_uncertainty > poseidon.waveform_amplitude_uncertainty
 
     def test_faeton_notes_reconstructed(self):
         from dpf.validation.experimental import DEVICES

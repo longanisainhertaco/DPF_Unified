@@ -392,8 +392,8 @@ class TestWaveformProvenance:
         from dpf.validation.experimental import get_devices_by_provenance
         measured = get_devices_by_provenance("measured")
         recon = get_devices_by_provenance("reconstructed")
-        avg_meas = np.mean([d.waveform_digitization_uncertainty for d in measured.values()])
-        avg_recon = np.mean([d.waveform_digitization_uncertainty for d in recon.values()])
+        avg_meas = np.mean([d.waveform_amplitude_uncertainty for d in measured.values()])
+        avg_recon = np.mean([d.waveform_amplitude_uncertainty for d in recon.values()])
         assert avg_recon > avg_meas
 
     def test_loo_devices_have_provenance(self):
