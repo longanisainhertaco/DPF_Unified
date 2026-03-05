@@ -255,6 +255,85 @@ class TestASMENearPass:
         assert MULTI_CONDITION["16kV_to_27kV"]["blind"] / 0.0680 > 1.4
 
 
+# ── Formal ASME V&V 20 Uncertainty Budget ──────────────────────────────
+
+class TestASMEUncertaintyBudget:
+    """Formal ASME V&V 20-2009 uncertainty budget for LOO devices."""
+
+    LOO_DEVICE_UNCERTAINTIES = {
+        # u_exp = sqrt(u_rogowski^2 + u_digit^2 + u_shot_avg^2)
+        # u_input from Phase AS Monte Carlo: 0.027 default
+        # u_num: 0.001 (ODE solver with rtol=1e-8)
+        "PF-1000": {
+            "u_rogowski": 0.05, "u_digit": 0.03,
+            "u_shot": 0.05, "n_shots": 5,
+        },
+        "POSEIDON-60kV": {
+            "u_rogowski": 0.05, "u_digit": 0.02,
+            "u_shot": 0.08, "n_shots": 5,
+        },
+        "UNU-ICTP": {
+            "u_rogowski": 0.10, "u_digit": 0.016,
+            "u_shot": 0.10, "n_shots": 5,
+        },
+        "FAETON-I": {
+            "u_rogowski": 0.08, "u_digit": 0.08,
+            "u_shot": 0.10, "n_shots": 3,
+        },
+        "MJOLNIR": {
+            "u_rogowski": 0.08, "u_digit": 0.10,
+            "u_shot": 0.10, "n_shots": 3,
+        },
+    }
+
+    def _u_val(self, device: str) -> float:
+        """Compute u_val = sqrt(u_exp^2 + u_input^2 + u_num^2)."""
+        d = self.LOO_DEVICE_UNCERTAINTIES[device]
+        u_shot_avg = d["u_shot"] / np.sqrt(d["n_shots"])
+        u_exp = np.sqrt(d["u_rogowski"]**2 + d["u_digit"]**2 + u_shot_avg**2)
+        u_input = 0.027  # Phase AS default
+        u_num = 0.001
+        return float(np.sqrt(u_exp**2 + u_input**2 + u_num**2))
+
+    def test_u_val_ordering(self):
+        """MJOLNIR and FAETON-I should have larger u_val (reconstructed)."""
+        u_pf = self._u_val("PF-1000")
+        u_mj = self._u_val("MJOLNIR")
+        u_fa = self._u_val("FAETON-I")
+        assert u_mj > u_pf
+        assert u_fa > u_pf
+
+    def test_pf1000_asme_clear_fail(self):
+        """PF-1000 blind=0.4377 is a clear FAIL regardless of uncertainty."""
+        u_val = self._u_val("PF-1000")
+        ratio = LOO_RESULTS["PF-1000"]["blind"] / u_val
+        assert ratio > 3.0  # way above 1.0
+
+    def test_unu_ictp_asme_with_budget(self):
+        """UNU-ICTP: low blind NRMSE, large u_exp → should pass."""
+        u_val = self._u_val("UNU-ICTP")
+        ratio = LOO_RESULTS["UNU-ICTP"]["blind"] / u_val
+        # UNU-ICTP has u_rogowski=10% → large u_val
+        assert ratio < 1.5  # near-pass with proper uncertainty
+
+    def test_reconstructed_higher_u_exp(self):
+        """Reconstructed devices have higher u_exp than measured."""
+        meas_u = np.mean([self._u_val(d) for d in LOO_RESULTS if LOO_RESULTS[d]["measured"]])
+        recon_u = np.mean([self._u_val(d) for d in LOO_RESULTS if not LOO_RESULTS[d]["measured"]])
+        assert recon_u > meas_u
+
+    def test_total_uncertainty_dominance(self):
+        """u_exp dominates over u_input and u_num for all devices."""
+        for dev in LOO_RESULTS:
+            d = self.LOO_DEVICE_UNCERTAINTIES[dev]
+            u_shot_avg = d["u_shot"] / np.sqrt(d["n_shots"])
+            u_exp = np.sqrt(d["u_rogowski"]**2 + d["u_digit"]**2 + u_shot_avg**2)
+            u_input = 0.027
+            # u_exp should be > 50% of u_val
+            u_val = self._u_val(dev)
+            assert u_exp / u_val > 0.5, f"{dev}: u_exp/u_val = {u_exp/u_val:.2f}"
+
+
 # ── LOO Diagnostic: Boundary Trapping ──────────────────────────────────
 
 class TestBoundaryTrapping:
