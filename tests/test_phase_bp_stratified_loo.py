@@ -278,3 +278,62 @@ class TestBoundaryTrapping:
     def test_unu_ictp_moderate_fc(self):
         """UNU-ICTP fold: fc=0.701 is well within bounds."""
         assert 0.6 < LOO_RESULTS["UNU-ICTP"]["fc"] < 0.8
+
+
+# ── Waveform Provenance Metadata Tests ────────────────────────────────
+
+class TestWaveformProvenance:
+    """Tests for the waveform_provenance field on ExperimentalDevice."""
+
+    def test_provenance_field_exists(self):
+        """All devices have waveform_provenance attribute."""
+        from dpf.validation.experimental import DEVICES
+        for name, dev in DEVICES.items():
+            assert hasattr(dev, "waveform_provenance"), f"{name}: missing provenance"
+
+    def test_measured_devices(self):
+        """Measured devices: PF-1000, PF-1000-Gribkov, UNU-ICTP, POSEIDON-60kV."""
+        from dpf.validation.experimental import get_devices_by_provenance
+        measured = get_devices_by_provenance("measured")
+        assert "PF-1000" in measured
+        assert "UNU-ICTP" in measured
+        assert "POSEIDON-60kV" in measured
+        assert "PF-1000-Gribkov" in measured
+
+    def test_reconstructed_devices(self):
+        """Reconstructed devices: PF-1000-16kV, FAETON-I, MJOLNIR."""
+        from dpf.validation.experimental import get_devices_by_provenance
+        recon = get_devices_by_provenance("reconstructed")
+        assert "PF-1000-16kV" in recon
+        assert "FAETON-I" in recon
+        assert "MJOLNIR" in recon
+
+    def test_reconstructed_higher_digitization_uncertainty(self):
+        """Reconstructed waveforms should have higher digitization uncertainty."""
+        from dpf.validation.experimental import get_devices_by_provenance
+        measured = get_devices_by_provenance("measured")
+        recon = get_devices_by_provenance("reconstructed")
+        avg_meas = np.mean([d.waveform_digitization_uncertainty for d in measured.values()])
+        avg_recon = np.mean([d.waveform_digitization_uncertainty for d in recon.values()])
+        assert avg_recon > avg_meas
+
+    def test_loo_devices_have_provenance(self):
+        """All 5 LOO devices have provenance set."""
+        from dpf.validation.experimental import DEVICES
+        for name in LOO_RESULTS:
+            dev = DEVICES[name]
+            assert dev.waveform_provenance in ("measured", "reconstructed"), (
+                f"{name}: provenance={dev.waveform_provenance!r}, expected measured/reconstructed"
+            )
+
+    def test_stratification_matches_hardcoded(self):
+        """Provenance field matches our hardcoded metadata."""
+        from dpf.validation.experimental import DEVICES
+        for name, r in LOO_RESULTS.items():
+            dev = DEVICES[name]
+            expected_measured = r["measured"]
+            actual_measured = dev.waveform_provenance == "measured"
+            assert expected_measured == actual_measured, (
+                f"{name}: hardcoded measured={expected_measured}, "
+                f"provenance says measured={actual_measured}"
+            )

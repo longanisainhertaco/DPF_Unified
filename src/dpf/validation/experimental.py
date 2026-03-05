@@ -109,6 +109,10 @@ class ExperimentalDevice:
     # crowbar spark gap.  Default 0.0 for backward compatibility.
     # PF-1000: ~1-3 mOhm (spark gap arc, PhD Debate #30 Finding 4).
     crowbar_resistance: float = 0.0
+    # Waveform provenance: "measured" (digitized from published oscillogram),
+    # "reconstructed" (generated from RLC parameters or physics scaling),
+    # or "" (unknown/unset)
+    waveform_provenance: str = ""
     # Measurement provenance note
     measurement_notes: str = ""
 
@@ -159,6 +163,7 @@ PF1000_DATA = ExperimentalDevice(
     # Combined current uncertainty: sqrt(5%^2 + 3%^2) = 5.8% (1-sigma).
     waveform_digitization_uncertainty=0.03,  # 3% amplitude from trace reading
     waveform_time_uncertainty=0.005,         # 0.5% of full scale (~0.05 us)
+    waveform_provenance="measured",
     measurement_notes=(
         "26 points hand-digitized from Scholz et al., Nukleonika 51(1), 2006, Fig. 2. "
         "Rogowski coil uncertainty ~5% (Type B, estimated — not stated in source). "
@@ -190,6 +195,7 @@ NX2_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
     rise_time_uncertainty=0.12,        # 12%
     neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
+    waveform_provenance="",  # No waveform data available
     measurement_notes=(
         "No digitized waveform available. Peak current and rise time from "
         "Lee & Saw, J. Fusion Energy 27:292, 2008. R0=2.3 mOhm from RADPF "
@@ -252,6 +258,7 @@ UNU_ICTP_DATA = ExperimentalDevice(
     waveform_I=_UNU_ICTP_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
     waveform_digitization_uncertainty=0.016,  # GUM: 9.3 kA / (2*sqrt(3)*169 kA) = 1.6% (rectangular)
     waveform_time_uncertainty=0.002,         # 0.2% (~1 ns digitization on ~5 us trace)
+    waveform_provenance="measured",
     measurement_notes=(
         "45 points from IPFS 'UNU ICTPPFF D2 05.15.xls' (plasmafocus.net). "
         "Original: 5556 points at ~1 ns resolution, digitized oscilloscope trace. "
@@ -314,6 +321,7 @@ PF1000_16KV_DATA = ExperimentalDevice(
     waveform_I=_PF1000_16KV_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
     waveform_digitization_uncertainty=0.05,  # 5% (physics-scaled estimate, not digitized)
     waveform_time_uncertainty=0.01,          # 1% temporal (pinch timing estimated)
+    waveform_provenance="reconstructed",
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
         "Peak current 1.1-1.3 MA across 16 shots (Akel et al. 2021 Table 1). "
@@ -397,6 +405,7 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     waveform_I=_PF1000_GRIBKOV_I_TRIMMED * 1e3,      # kA -> A
     waveform_digitization_uncertainty=0.02,  # 2% (digital oscilloscope, not hand-digitized)
     waveform_time_uncertainty=0.003,         # 0.3% (digital acquisition)
+    waveform_provenance="measured",
     measurement_notes=(
         "94-point digitized waveform from plasmafocus.net RADPF archive (PF1000 05.15.xls). "
         "Original source: Gribkov et al., J. Phys. D: Appl. Phys. 40:3592-3607, 2007. "
@@ -436,6 +445,7 @@ POSEIDON_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08,     # 8% (large device, Rogowski + integration)
     rise_time_uncertainty=0.15,        # 15% (not explicitly stated in source)
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
+    waveform_provenance="",  # No waveform data available
     measurement_notes=(
         "POSEIDON (IPF Stuttgart): large Mather-type DPF, operated 1980s-2000s. "
         "480 kJ at 46 kV max, typically 360 kJ at 40 kV (0.5*450uF*40kV^2). "
@@ -493,6 +503,7 @@ POSEIDON_60KV_DATA = ExperimentalDevice(
     waveform_I=_POSEIDON60KV_WAVEFORM_I_KA * 1e3,      # Convert kA -> A
     waveform_digitization_uncertainty=0.02,  # 2% (IPFS digitization, high quality)
     waveform_time_uncertainty=0.005,         # 0.5% temporal
+    waveform_provenance="measured",
     measurement_notes=(
         "POSEIDON at 60 kV / 156 uF (E0=280.8 kJ) with 3.8 Torr D2 fill. "
         "Digitized I(t) waveform from IPFS (plasmafocus.net) Excel file. "
@@ -530,6 +541,7 @@ PF1000_20KV_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.12,     # 12% (interpolated, higher uncertainty)
     rise_time_uncertainty=0.15,
     neutron_yield_uncertainty=0.50,
+    waveform_provenance="",  # No waveform data
     measurement_notes=(
         "PF-1000 at 20 kV / 2.0 Torr D2 — interpolated from voltage scan trend. "
         "Peak current 1.4 MA estimated from Akel et al. (2021) multi-voltage data. "
@@ -590,6 +602,7 @@ FAETON_DATA = ExperimentalDevice(
     waveform_I=_FAETON_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
     waveform_digitization_uncertainty=0.08,  # 8% (reconstructed, not digitized)
     waveform_time_uncertainty=0.02,          # 2% temporal (reconstructed)
+    waveform_provenance="reconstructed",
     measurement_notes=(
         "FAETON-I: 100 kV, 125 kJ DPF by Fuse Energy Technologies. "
         "Highest direct-charged voltage PF device. 5 x 5 uF Marx bank = 25 uF total. "
@@ -662,6 +675,7 @@ MJOLNIR_DATA = ExperimentalDevice(
     waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
     waveform_digitization_uncertainty=0.10,  # 10% (reconstructed, high uncertainty)
     waveform_time_uncertainty=0.03,          # 3% temporal (reconstructed)
+    waveform_provenance="reconstructed",
     measurement_notes=(
         "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
         "ATLAS-heritage pulsed power: 24 Marx modules, 2 x 34 uF caps each, single-stage "
@@ -698,6 +712,24 @@ DEVICES: dict[str, ExperimentalDevice] = {
     "FAETON-I": FAETON_DATA,
     "MJOLNIR": MJOLNIR_DATA,
 }
+
+
+def get_devices_by_provenance(
+    provenance: str = "measured",
+) -> dict[str, ExperimentalDevice]:
+    """Return devices filtered by waveform provenance.
+
+    Args:
+        provenance: One of "measured", "reconstructed", or "" (no waveform).
+
+    Returns:
+        Dict of device_name -> ExperimentalDevice for matching devices.
+    """
+    return {
+        name: dev for name, dev in DEVICES.items()
+        if dev.waveform_provenance == provenance
+        and dev.waveform_t is not None
+    }
 
 
 # =====================================================================
