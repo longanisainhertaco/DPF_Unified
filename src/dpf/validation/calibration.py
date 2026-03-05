@@ -3503,6 +3503,12 @@ class MultiDeviceCalibrator:
 
             indep_nrmse = indep[held_out].nrmse
 
+            # Compute metadata for stratified analysis
+            from dpf.validation.experimental import DEVICES, lp_l0_for_device
+            dev_data = DEVICES.get(held_out)
+            lp_l0 = lp_l0_for_device(held_out) if dev_data else 0.0
+            provenance = dev_data.waveform_provenance if dev_data else ""
+
             results[held_out] = {
                 "train_nrmse": float(train_nrmse),
                 "blind_nrmse": float(blind_nrmse),
@@ -3514,6 +3520,8 @@ class MultiDeviceCalibrator:
                 "trained_fc": fc_train,
                 "trained_fm": fm_train,
                 "trained_delay_us": delay_train,
+                "lp_l0": lp_l0,
+                "waveform_provenance": provenance,
             }
 
             logger.info(
