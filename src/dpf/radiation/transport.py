@@ -200,6 +200,12 @@ def fld_step(
     # Diffusion coefficient D = c * lambda / kappa
     D = c_light * lam / np.maximum(kappa, 1e-30)
 
+    # Physical cap: free-streaming limit. Photons cannot transport energy
+    # faster than c, so the effective D must satisfy F = D*grad(E)/dx <= c*E.
+    # A safe upper bound: D <= c * dx / ndim (one cell per light-crossing time).
+    D_max_phys = c_light * dx / max(ndim, 1)
+    D = np.minimum(D, D_max_phys)
+
     # Sub-cycle for stability: dt_diff < dx^2 / (2 * ndim * D_max)
     D_max = float(np.max(D))
     if D_max > 0:
@@ -208,7 +214,7 @@ def fld_step(
         dt_diff = dt
 
     n_sub = max(1, int(np.ceil(dt / dt_diff)))
-    n_sub = min(n_sub, 1000)  # Safety cap
+    n_sub = min(n_sub, 10000)  # Safety cap (raised for stiff presets)
     dt_sub = dt / n_sub
 
     # Track total absorption for coupling back to matter
@@ -252,10 +258,12 @@ def fld_step(
         # Source: bremsstrahlung emission into radiation field
         emission = brem_power
 
-        # Update
+        # Update with overflow guard
         dE = dt_sub * (div_flux + emission - absorption)
+        dE = np.where(np.isfinite(dE), dE, 0.0)
         E_new = E_new + dE
         E_new = np.maximum(E_new, 0.0)  # Floor at zero
+        E_new = np.where(np.isfinite(E_new), E_new, 0.0)
 
         # Track net absorbed energy (absorption - emission)
         Q_total += dt_sub * (absorption - emission)
