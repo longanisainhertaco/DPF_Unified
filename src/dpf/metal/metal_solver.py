@@ -847,6 +847,14 @@ class MetalMHDSolver(PlasmaSolverBase):
                     "J_kin source term present but not yet applied in Metal solver"
                 )
 
+            # Circuit-MHD ohmic correction: add J^2-weighted gap to pressure
+            if source_terms is not None and "Q_ohmic_correction" in source_terms:
+                Q_corr = source_terms["Q_ohmic_correction"]
+                Q_gpu = torch.as_tensor(
+                    Q_corr, dtype=p_new.dtype, device=p_new.device,
+                )
+                p_new = p_new + (self.gamma - 1.0) * Q_gpu * dt
+
             # Apply resistivity (B is in Code Units here)
             # We must use Code Unit logic in _apply_resistive_diffusion
 
