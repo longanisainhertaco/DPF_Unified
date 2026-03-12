@@ -23,6 +23,71 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 ---
 
+## Web Interface
+
+A fully interactive Gradio web UI for running DPF simulations — the **only free, web-accessible, DPF-native simulation tool that exists**.
+
+```bash
+python3 app.py
+# Open http://localhost:7860
+```
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-fidelity backends** | Lee model (0D, <1s), Metal GPU PLM/WENO5, Python MHD, Athena++ C++ |
+| **Physics narrative** | Step-by-step derivation with LaTeX equations for every simulation phase |
+| **D-D neutron yield** | Bennett temperature + Bosch-Hale reactivity estimate for deuterium fills |
+| **3D animated playback** | Plotly 3D plasma evolution from breakdown through pinch (iframe srcdoc rendering) |
+| **Phase portrait** | (r, dr/dt) trajectory during radial implosion showing shock acceleration |
+| **Comparison mode** | Overlay up to 8 simulation runs to compare backends, parameters, or devices |
+| **2D MHD field plots** | Density and pressure heatmaps with physical (mm) axes from MHD snapshots |
+| **Device presets** | PF-1000, NX2, UNU-ICTP, LLNL-DPF with auto-populated parameters |
+| **7 fill gases** | D2, He, Ne, Ar, Kr, Xe, N2 with correct thermodynamic properties |
+| **Input validation** | Real-time geometry/physics checks with user-friendly error messages |
+| **Save/load configs** | JSON export/import of all simulation parameters |
+| **CSV data export** | Full time-series data (I, V, L_p, z, r, phase, energies) |
+| **Runtime estimates** | Per-backend, per-grid wall-clock time predictions |
+| **Concurrency control** | Queue with max_size=5, concurrency_limit=1 for heavy simulations |
+
+### Tabs
+
+1. **Physics Narrative** — LaTeX-rendered step-by-step physics with computed values
+2. **Waveforms** — Phase-colored I(t) and V(t) with peak/dip annotations
+3. **Physics Breakdown** — Inductance, sheath position, energy partition, phase timeline
+4. **Phase Portrait** — Radial implosion dynamics (r vs dr/dt)
+5. **2D Fields** — MHD density/pressure heatmaps (MHD backends only)
+6. **3D Plasma** — Static 3D electrode + plasma visualization
+7. **3D Playback** — Animated plasma evolution with Play/Pause/Slider
+8. **Compare Runs** — Multi-run I(t)/V(t) overlay with metrics table
+
+### Architecture
+
+```
+app.py          — Main UI layout, simulation orchestrator, event wiring (483 lines)
+app_engine.py   — Lee model runner, gas species data, D-D neutron yield (305 lines)
+app_mhd.py      — Metal/Athena++/Python MHD backends, 2D field plots (562 lines)
+app_plots.py    — Plotly figures: waveforms, physics, phase portrait, comparison (459 lines)
+app_narrative.py — LaTeX physics narrative generator (369 lines)
+app_anim.py     — 3D animated Plotly playback (240 lines)
+app_compare.py  — Comparison mode, save/load config (104 lines)
+```
+
+### Competitive Landscape
+
+No other tool combines DPF-native + web-accessible + free + full-MHD + circuit-coupled:
+
+| Tool | DPF-Native | Web | Free | Full MHD | Circuit-Coupled |
+|------|-----------|-----|------|----------|----------------|
+| **DPF-Unified** | Yes | Yes | Yes | Yes | Yes |
+| Lee Model (RADPF) | Yes | No (Excel) | Yes | No (0D) | Yes |
+| USim | No | No | No ($10-50K) | Yes | No |
+| ALEGRA | No | No | No (classified) | Yes | No |
+| COMSOL | No | No | No ($$$) | Partial | No |
+
+---
+
 ## Current State — Honest Assessment
 
 ### Fidelity Grade: ~6.5 / 10 (as DPF simulator) | 7.5 / 10 (as generic MHD code)
