@@ -95,7 +95,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         riemann_solver: str = "hll",
         enable_ct: bool = False,
         time_integrator: str = "ssp_rk3",
-        conservative_energy: bool = False,
+        conservative_energy: bool = True,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -111,6 +111,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.conservative_energy = conservative_energy
+        self._last_eta_max = 0.0  # For resistive diffusion CFL
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
         # metric (see H5 in Troubleshooting.md). Use Dedner cleaning instead.
         if enable_ct:
@@ -278,6 +279,12 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         dt_r = self.cfl * self.dr / max(v_max_r, 1e-30)
         dt_z = self.cfl * self.dz / max(v_max_z, 1e-30)
         dt = min(dt_r, dt_z)
+
+        # Resistive diffusion CFL: dt < 0.5 * dx^2 * mu_0 / eta_max
+        if self.enable_resistive and hasattr(self, "_last_eta_max") and self._last_eta_max > 0:
+            dx_min = min(self.dr, self.dz)
+            dt_diff = 0.5 * dx_min**2 * mu_0 / self._last_eta_max
+            dt = min(dt, dt_diff)
 
         if dt < 1e-30:
             dt = 1e-10
@@ -642,6 +649,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         eta_2d = None
         if eta_field is not None:
             eta_2d = self._squeeze(eta_field) if eta_field.ndim == 3 else eta_field
+            self._last_eta_max = float(np.max(eta_2d))
 
         # Save U^n
         rho_n = rho.copy()

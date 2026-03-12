@@ -1403,6 +1403,7 @@ class MHDSolver(PlasmaSolverBase):
         # Coupling state for circuit interaction
         self._coupling = CouplingState()
         self._prev_Lp: float | None = None  # For dL_dt computation
+        self._last_eta_max = 0.0  # For resistive diffusion CFL
 
         logger.info(
             "MHDSolver initialized: grid=%s, dx=%.2e, gamma=%.3f, "
@@ -1442,7 +1443,15 @@ class MHDSolver(PlasmaSolverBase):
 
         if v_max < 1e-30:
             return 1e-10  # Fallback for zero-velocity initial condition
-        return self.cfl * self.dx / v_max
+
+        dt = self.cfl * self.dx / v_max
+
+        # Resistive diffusion CFL: dt < 0.5 * dx^2 * mu_0 / eta_max
+        if self.enable_resistive and hasattr(self, "_last_eta_max") and self._last_eta_max > 0:
+            dt_diff = 0.5 * self.dx**2 * mu_0 / self._last_eta_max
+            dt = min(dt, dt_diff)
+
+        return dt
 
     def _compute_rhs_euler(
         self,
@@ -1684,6 +1693,7 @@ class MHDSolver(PlasmaSolverBase):
         # --- Resistive term: E_resistive = eta * J_plasma ---
         ohmic_heating = np.zeros_like(rho)
         if self.enable_resistive and eta_field is not None:
+            self._last_eta_max = float(np.max(eta_field))
             # Resistivity acts on the conduction current (J_plasma), not total
             E_resistive = eta_field[np.newaxis, :, :, :] * J_plasma
             E_field += E_resistive
