@@ -65,10 +65,10 @@ def _sod_state(nr, nz, dr, dz, gamma=5.0 / 3.0):
 class TestConservativeEnergy:
     """Test conservative total energy formulation."""
 
-    def test_default_is_nonconservative(self):
-        """Default is non-conservative for backward compatibility."""
+    def test_default_is_conservative(self):
+        """Default is conservative for correct shock-capturing physics."""
         solver = CylindricalMHDSolver(nr=8, nz=8, dr=0.01, dz=0.01)
-        assert solver.conservative_energy is False
+        assert solver.conservative_energy is True
 
     def test_nonconservative_flag(self):
         solver = CylindricalMHDSolver(
