@@ -1,0 +1,562 @@
+"""MHD backend connector for DPF web UI.
+
+Wraps MetalMHDSolver and Python MHD engine to produce the same output
+format as the Lee model runner, enabling backend switching in the UI.
+"""
+from __future__ import annotations
+
+import logging
+import time as wall_time
+from typing import Any
+
+import numpy as np
+
+from app_engine import GAS_SPECIES, kB
+
+logger = logging.getLogger(__name__)
+
+BACKENDS = {
+    "lee": "Lee Model (0D snowplow + circuit, <1s)",
+    "metal_plm": "Metal GPU — PLM+HLL+SSP-RK2 (fast, ~6.5/10 fidelity)",
+    "metal_weno5": "Metal GPU — WENO5+HLLD+SSP-RK3 (high fidelity, ~8.7/10)",
+    "athena": "Athena++ — PPM+HLLD (reference C++ engine, ~9.0/10 fidelity)",
+    "python": "Python MHD — NumPy/Numba (full physics, moderate speed)",
+}
+
+BACKEND_CONFIGS = {
+    "metal_plm": {
+        "reconstruction": "plm", "riemann_solver": "hll",
+        "time_integrator": "ssp_rk2", "precision": "float32",
+    },
+    "metal_weno5": {
+        "reconstruction": "weno5", "riemann_solver": "hlld",
+        "time_integrator": "ssp_rk3", "precision": "float64",
+    },
+}
+
+MHD_GRID_PRESETS = {
+    "coarse": (16, 16, 32),
+    "medium": (32, 32, 64),
+    "fine": (64, 64, 128),
+}
+
+
+def run_mhd_simulation(
+    backend: str,
+    grid_preset: str,
+    preset_name: str,
+    sim_time_us: float,
+    gas_key: str = "D2",
+    V0_kV: float | None = None,
+    pressure_torr: float | None = None,
+    C_uF: float | None = None,
+    L0_nH: float | None = None,
+    R0_mOhm: float | None = None,
+    anode_r_mm: float | None = None,
+    cathode_r_mm: float | None = None,
+    anode_len_mm: float | None = None,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run MHD simulation and return data in the same format as Lee model."""
+    from dpf.presets import _PRESETS, get_preset
+
+    preset = get_preset(preset_name)
+    cc = preset["circuit"]
+    sc = preset.get("snowplow", {})
+    gas = GAS_SPECIES.get(gas_key, GAS_SPECIES["D2"])
+
+    if V0_kV is not None and V0_kV > 0:
+        cc["V0"] = V0_kV * 1e3
+    if C_uF is not None and C_uF > 0:
+        cc["C"] = C_uF * 1e-6
+    if L0_nH is not None and L0_nH > 0:
+        cc["L0"] = L0_nH * 1e-9
+    if R0_mOhm is not None and R0_mOhm > 0:
+        cc["R0"] = R0_mOhm * 1e-3
+    if anode_r_mm is not None and anode_r_mm > 0:
+        cc["anode_radius"] = anode_r_mm * 1e-3
+    if cathode_r_mm is not None and cathode_r_mm > 0:
+        cc["cathode_radius"] = cathode_r_mm * 1e-3
+
+    a = cc["anode_radius"]
+    b = cc["cathode_radius"]
+    L_anode = sc.get("anode_length", 0.16)
+    if anode_len_mm is not None and anode_len_mm > 0:
+        L_anode = anode_len_mm * 1e-3
+
+    p_pa = sc.get("fill_pressure_Pa", 400.0)
+    if pressure_torr is not None and pressure_torr > 0:
+        p_pa = pressure_torr * 133.322
+    rho0 = p_pa * gas["m_mol"] / (kB * 300.0)
+
+    grid_shape = MHD_GRID_PRESETS.get(grid_preset, (32, 32, 64))
+    nr, ny, nz = grid_shape
+    dr = (b - a) / nr
+    dz = L_anode / nz
+
+    t_end = sim_time_us * 1e-6
+    meta = _PRESETS.get(preset_name, {}).get("_meta", {})
+    E_bank = 0.5 * cc["C"] * cc["V0"] ** 2
+
+    t0_wall = wall_time.perf_counter()
+
+    if backend.startswith("metal"):
+        result = _run_metal(
+            backend, grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, t_end, a, b, L_anode, progress_fn,
+        )
+    elif backend == "athena":
+        result = _run_athena(
+            grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, sc, t_end, a, b, L_anode, progress_fn,
+        )
+    else:
+        result = _run_python_mhd(
+            grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, t_end, a, b, L_anode, progress_fn,
+        )
+
+    elapsed = wall_time.perf_counter() - t0_wall
+
+    result.update({
+        "E_bank_kJ": E_bank / 1e3,
+        "T_LC_us": 2 * np.pi * np.sqrt(cc["L0"] * cc["C"]) * 1e6,
+        "elapsed_s": elapsed,
+        "device": meta.get("device", preset_name),
+        "circuit": cc, "snowplow_cfg": sc,
+        "gas": gas, "gas_key": gas_key,
+        "rho0": rho0,
+        "backend": backend,
+        "grid_shape": grid_shape,
+    })
+    return result
+
+
+def _run_metal(
+    backend: str,
+    grid_shape: tuple[int, int, int],
+    dr: float, dz: float,
+    gas: dict, rho0: float, p_pa: float,
+    cc: dict, t_end: float,
+    a: float, b: float, L_anode: float,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run Metal GPU MHD solver."""
+    import torch
+
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+    from dpf.metal.metal_solver import MetalMHDSolver
+
+    cfg = BACKEND_CONFIGS.get(backend, BACKEND_CONFIGS["metal_plm"])
+
+    use_mps = cfg["precision"] != "float64" and torch.backends.mps.is_available()
+    device = "mps" if use_mps else "cpu"
+
+    solver = MetalMHDSolver(
+        grid_shape=grid_shape, dx=dr, dz=dz,
+        gamma=gas.get("gamma", 5 / 3),
+        cfl=0.3, device=device,
+        use_ct=False,
+        coordinates="cylindrical",
+        ion_mass=gas["m_mol"],
+        **cfg,
+    )
+
+    circuit = RLCSolver(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+    )
+
+    nr, ny, nz = grid_shape
+    state = {
+        "rho": np.full((nr, ny, nz), rho0),
+        "velocity": np.zeros((3, nr, ny, nz)),
+        "pressure": np.full((nr, ny, nz), p_pa),
+        "B": np.zeros((3, nr, ny, nz)),
+        "Te": np.full((nr, ny, nz), 300.0),
+        "Ti": np.full((nr, ny, nz), 300.0),
+        "psi": np.zeros((nr, ny, nz)),
+    }
+    B_theta = cc["V0"] / (2 * np.pi * np.sqrt(cc["L0"] / cc["C"]))
+    state["B"][1] = B_theta * 1e-6
+
+    coupling = CouplingState()
+    t = 0.0
+    times, currents, voltages, L_plasmas = [], [], [], []
+    E_cap, E_ind, E_res = [], [], []
+    rho_max_arr, T_max_arr, B_max_arr = [], [], []
+    mhd_snapshots = []
+    snap_interval = max(1, int(t_end / (80 * solver.cfl * min(dr, dz) / 1e4)))
+
+    step = 0
+    while t < t_end:
+        dt_mhd = solver.compute_dt(state)
+        dt = min(dt_mhd, t_end - t)
+        if dt <= 0:
+            break
+
+        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+        t += dt
+        step += 1
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+        rho_max_arr.append(float(np.max(state["rho"])))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+
+        if step % snap_interval == 0:
+            mhd_snapshots.append({
+                "t_us": t * 1e6,
+                "rho_mid": state["rho"][:, ny // 2, :].copy(),
+                "B_mid": state["B"][:, :, ny // 2, :].copy(),
+                "P_mid": state["pressure"][:, ny // 2, :].copy(),
+            })
+
+        if progress_fn and step % 50 == 0:
+            progress_fn(min(t / t_end, 1.0), desc=f"MHD t={t*1e6:.1f}us, step={step}")
+
+    t_arr = np.array(times)
+    I_arr = np.array(currents)
+    I_peak_idx = int(np.argmax(np.abs(I_arr)))
+
+    return {
+        "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+        "L_p_nH": np.array(L_plasmas),
+        "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+        "E_res_kJ": np.array(E_res),
+        "rho_max": np.array(rho_max_arr),
+        "T_max": np.array(T_max_arr),
+        "B_max": np.array(B_max_arr),
+        "mhd_snapshots": mhd_snapshots,
+        "final_state": state,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])),
+        "t_peak": float(t_arr[I_peak_idx]),
+        "n_steps": step,
+        "has_snowplow": False,
+        "has_mhd": True,
+        "phases": ["mhd"] * len(times),
+        "z_mm": np.zeros(len(times)),
+        "r_mm": np.zeros(len(times)),
+        "dip_pct": 0.0, "I_pre_dip": 0.0, "I_dip": 0.0, "t_dip": 0.0,
+        "scaling": None, "crowbar_t": None,
+        "snowplow_obj": None, "dt_ns": 0,
+    }
+
+
+def _run_athena(
+    grid_shape: tuple[int, int, int],
+    dr: float, dz: float,
+    gas: dict, rho0: float, p_pa: float,
+    cc: dict, sc: dict, t_end: float,
+    a: float, b: float, L_anode: float,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run Athena++ C++ MHD solver via subprocess mode."""
+    from pathlib import Path
+
+    from dpf.athena_wrapper import AthenaPPSolver
+    from dpf.config import (
+        CircuitConfig,
+        DiagnosticsConfig,
+        FluidConfig,
+        GeometryConfig,
+        SimulationConfig,
+        SnowplowConfig,
+    )
+
+    nr, ny, nz = grid_shape
+
+    circuit_cfg = CircuitConfig(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+    )
+
+    sim_cfg = SimulationConfig(
+        grid_shape=[nr, 1, nz],
+        dx=dr,
+        sim_time=t_end,
+        rho0=rho0,
+        T0=300.0,
+        ion_mass=gas["m_mol"],
+        circuit=circuit_cfg,
+        geometry=GeometryConfig(type="cylindrical", dz=dz),
+        fluid=FluidConfig(
+            backend="athena",
+            reconstruction="plm",
+            riemann_solver="hlld",
+            gamma=gas.get("gamma", 5 / 3),
+            cfl=0.3,
+            time_integrator="ssp_rk2",
+        ),
+        snowplow=SnowplowConfig(
+            enabled=True,
+            fill_pressure_Pa=p_pa,
+            anode_length=L_anode,
+            current_fraction=sc.get("current_fraction", 0.7),
+            mass_fraction=sc.get("mass_fraction", 0.15),
+        ),
+        diagnostics=DiagnosticsConfig(hdf5_filename=":memory:"),
+    )
+
+    athena_bin = str(Path(__file__).resolve().parent / "external" / "athena" / "bin" / "athena_cylindrical")
+    solver = AthenaPPSolver(sim_cfg, athena_binary=athena_bin, use_subprocess=True)
+
+    state = solver.initial_state()
+    t = 0.0
+    times, currents, voltages, L_plasmas = [], [], [], []
+    E_cap, E_ind, E_res = [], [], []
+    rho_max_arr, T_max_arr, B_max_arr = [], [], []
+    mhd_snapshots = []
+
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+
+    circuit = RLCSolver(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+    )
+    coupling = CouplingState()
+
+    step = 0
+    while t < t_end:
+        dt = solver._compute_dt(state)
+        dt = min(dt, t_end - t)
+        if dt <= 0:
+            break
+
+        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+        t += dt
+        step += 1
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+        rho_max_arr.append(float(np.max(state["rho"])))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+
+        if step % 80 == 0:
+            mhd_snapshots.append({
+                "t_us": t * 1e6,
+                "rho_mid": state["rho"][:, 0, :].copy(),
+                "P_mid": state["pressure"][:, 0, :].copy(),
+            })
+
+        if progress_fn and step % 20 == 0:
+            progress_fn(min(t / t_end, 1.0), desc=f"Athena++ t={t*1e6:.1f}us, step={step}")
+
+    t_arr = np.array(times)
+    I_arr = np.array(currents)
+    I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
+
+    return {
+        "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+        "L_p_nH": np.array(L_plasmas),
+        "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+        "E_res_kJ": np.array(E_res),
+        "rho_max": np.array(rho_max_arr),
+        "T_max": np.array(T_max_arr),
+        "B_max": np.array(B_max_arr),
+        "mhd_snapshots": mhd_snapshots,
+        "final_state": state,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0,
+        "t_peak": float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0,
+        "n_steps": step,
+        "has_snowplow": False,
+        "has_mhd": True,
+        "phases": ["mhd"] * len(times),
+        "z_mm": np.zeros(len(times)),
+        "r_mm": np.zeros(len(times)),
+        "dip_pct": 0.0, "I_pre_dip": 0.0, "I_dip": 0.0, "t_dip": 0.0,
+        "scaling": None, "crowbar_t": None,
+        "snowplow_obj": None, "dt_ns": 0,
+    }
+
+
+def _run_python_mhd(
+    grid_shape: tuple[int, int, int],
+    dr: float, dz: float,
+    gas: dict, rho0: float, p_pa: float,
+    cc: dict, t_end: float,
+    a: float, b: float, L_anode: float,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run Python NumPy MHD solver (CylindricalMHDSolver)."""
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+    from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
+
+    nr, ny, nz = grid_shape
+
+    solver = CylindricalMHDSolver(
+        nr=nr, nz=nz, dr=dr, dz=dz,
+        gamma=gas.get("gamma", 5 / 3),
+        cfl=0.3,
+        enable_hall=False,
+        enable_resistive=True,
+        ion_mass=gas["m_mol"],
+    )
+
+    circuit = RLCSolver(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+    )
+
+    state = {
+        "rho": np.full((nr, 1, nz), rho0),
+        "velocity": np.zeros((3, nr, 1, nz)),
+        "pressure": np.full((nr, 1, nz), p_pa),
+        "B": np.zeros((3, nr, 1, nz)),
+        "Te": np.full((nr, 1, nz), 300.0),
+        "Ti": np.full((nr, 1, nz), 300.0),
+        "psi": np.zeros((nr, 1, nz)),
+    }
+
+    coupling = CouplingState()
+    t = 0.0
+    times, currents, voltages, L_plasmas = [], [], [], []
+    E_cap, E_ind, E_res = [], [], []
+    mhd_snapshots = []
+
+    step = 0
+    while t < t_end:
+        dt_mhd = solver.compute_dt(state)
+        dt = min(dt_mhd, t_end - t)
+        if dt <= 0:
+            break
+
+        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+        t += dt
+        step += 1
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+
+        if step % 100 == 0:
+            mhd_snapshots.append({
+                "t_us": t * 1e6,
+                "rho_mid": state["rho"][:, 0, :].copy(),
+                "P_mid": state["pressure"][:, 0, :].copy(),
+            })
+
+        if progress_fn and step % 50 == 0:
+            progress_fn(min(t / t_end, 1.0), desc=f"Python MHD t={t*1e6:.1f}us")
+
+    t_arr = np.array(times)
+    I_arr = np.array(currents)
+    I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
+
+    return {
+        "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+        "L_p_nH": np.array(L_plasmas),
+        "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+        "E_res_kJ": np.array(E_res),
+        "mhd_snapshots": mhd_snapshots,
+        "final_state": state,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0,
+        "t_peak": float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0,
+        "n_steps": step,
+        "has_snowplow": False,
+        "has_mhd": True,
+        "phases": ["mhd"] * len(times),
+        "z_mm": np.zeros(len(times)),
+        "r_mm": np.zeros(len(times)),
+        "rho_max": np.zeros(len(times)),
+        "T_max": np.zeros(len(times)),
+        "B_max": np.zeros(len(times)),
+        "dip_pct": 0.0, "I_pre_dip": 0.0, "I_dip": 0.0, "t_dip": 0.0,
+        "scaling": None, "crowbar_t": None,
+        "snowplow_obj": None, "dt_ns": 0,
+    }
+
+
+def create_mhd_fields_fig(d: dict[str, Any]) -> Any:
+    """Create 2D field plots from MHD snapshots with physical coordinates."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    snapshots = d.get("mhd_snapshots", [])
+    if not snapshots:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No MHD snapshots available", x=0.5, y=0.5,
+            showarrow=False, font=dict(size=16, color="#aaa"),
+        )
+        fig.update_layout(height=400, template="plotly_dark")
+        return fig
+
+    snap = snapshots[-1]
+    rho = snap["rho_mid"]
+    P = snap["P_mid"]
+
+    cc = d.get("circuit", {})
+    sc = d.get("snowplow_cfg", {})
+    a_m = cc.get("anode_radius", 0.01)
+    b_m = cc.get("cathode_radius", 0.02)
+    L_m = sc.get("anode_length", 0.16)
+    nr, nz = rho.shape
+
+    r_mm = np.linspace(a_m * 1e3, b_m * 1e3, nr)
+    z_mm = np.linspace(0, L_m * 1e3, nz)
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=[
+            f"Density (t={snap['t_us']:.1f} us)",
+            f"Pressure (t={snap['t_us']:.1f} us)",
+        ],
+        horizontal_spacing=0.15,
+    )
+
+    fig.add_trace(go.Heatmap(
+        z=rho, x=z_mm, y=r_mm, colorscale="Viridis", name="rho",
+        colorbar=dict(title="kg/m<sup>3</sup>", x=0.42, len=0.9),
+    ), row=1, col=1)
+
+    fig.add_trace(go.Heatmap(
+        z=P, x=z_mm, y=r_mm, colorscale="Inferno", name="P",
+        colorbar=dict(title="Pa", x=1.0, len=0.9),
+    ), row=1, col=2)
+
+    fig.update_layout(
+        height=400, template="plotly_dark",
+        margin=dict(l=60, r=20, t=40, b=40),
+    )
+    fig.update_xaxes(title_text="z [mm]")
+    fig.update_yaxes(title_text="r [mm]")
+    return fig

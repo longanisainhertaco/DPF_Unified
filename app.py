@@ -1,0 +1,483 @@
+"""DPF-Unified Web Interface — Dense Plasma Focus Simulator.
+
+Lee model + MHD backends, 3D animated playback, physics narrative with math.
+Comparison mode, neutron yield, phase portraits, save/load configurations.
+Run: python3 app.py
+"""
+from __future__ import annotations
+
+import csv
+import io
+import sys
+import tempfile
+from pathlib import Path
+
+import gradio as gr
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from app_anim import create_animated_3d
+from app_compare import (
+    add_to_comparison,
+    clear_comparison,
+    comparison_summary,
+    load_config,
+    save_config,
+)
+from app_engine import GAS_SPECIES, run_simulation_core
+from app_mhd import BACKENDS, MHD_GRID_PRESETS, create_mhd_fields_fig, run_mhd_simulation
+from app_narrative import generate_narrative
+from app_plots import (
+    create_3d_plasma_fig,
+    create_comparison_fig,
+    create_phase_portrait,
+    create_physics_fig,
+    create_schematic_fig,
+    create_waveform_fig,
+)
+from dpf.presets import _PRESETS, get_preset, list_presets
+
+RUNTIME_PER_US = {
+    ("lee", "coarse"): 0.02, ("lee", "medium"): 0.02, ("lee", "fine"): 0.02,
+    ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
+    ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
+    ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
+    ("athena", "coarse"): 0.5, ("athena", "medium"): 3.0, ("athena", "fine"): 18.0,
+}
+
+FIDELITY = {
+    "lee": "0D", "metal_plm": "6.5/10", "metal_weno5": "8.7/10",
+    "athena": "9.0/10", "python": "7.0/10",
+}
+
+BACKEND_HELP = {
+    "lee": "Fastest option. 0D lumped-parameter model (Lee snowplow + RLC circuit). "
+           "Computes I(t) waveforms, sheath dynamics, and pinch radius. No spatial resolution.",
+    "metal_plm": "Apple Metal GPU solver. 2nd-order accurate, fast for parameter scans. "
+                 "PLM reconstruction, HLL Riemann solver, SSP-RK2 time integration.",
+    "metal_weno5": "Apple Metal GPU solver. 5th-order WENO-Z + HLLD 4-wave solver + "
+                   "SSP-RK3. High fidelity, significantly longer runtime.",
+    "athena": "Princeton Athena++ C++ engine. PPM reconstruction, HLLD solver. "
+              "Reference-quality MHD. Runs via compiled binary.",
+    "python": "Pure Python MHD solver (NumPy). WENO5 + HLLD + SSP-RK3. "
+              "Full physics including resistive MHD. Moderate speed.",
+}
+
+
+def get_preset_choices() -> list[tuple[str, str]]:
+    presets = list_presets()
+    return [(f"{p['device']} -- {p['description']}", p["name"]) for p in presets
+            if p.get("geometry") == "cylindrical"]
+
+
+def get_gas_choices() -> list[tuple[str, str]]:
+    return [(v["name"], k) for k, v in GAS_SPECIES.items()]
+
+
+def get_backend_choices() -> list[tuple[str, str]]:
+    return [(desc, key) for key, desc in BACKENDS.items()]
+
+
+def get_grid_choices() -> list[tuple[str, str]]:
+    return [(f"{k} ({v[0]}x{v[1]}x{v[2]})", k) for k, v in MHD_GRID_PRESETS.items()]
+
+
+def get_device_info(preset_name: str) -> str:
+    if not preset_name:
+        return ""
+    preset = get_preset(preset_name)
+    meta = _PRESETS.get(preset_name, {}).get("_meta", {})
+    cc = preset["circuit"]
+    E_kJ = 0.5 * cc["C"] * cc["V0"] ** 2 / 1e3
+    sc = preset.get("snowplow", {})
+    lines = [
+        f"### {meta.get('device', preset_name)}",
+        f"*{meta.get('description', '')}*", "",
+        "| Parameter | Value |", "|-----------|-------|",
+        f"| Charging Voltage | {cc['V0']/1e3:.0f} kV |",
+        f"| Capacitance | {cc['C']*1e6:.0f} uF |",
+        f"| Bank Energy | {E_kJ:.0f} kJ |",
+        f"| Inductance L0 | {cc['L0']*1e9:.1f} nH |",
+        f"| Resistance R0 | {cc.get('R0',0)*1e3:.1f} mOhm |",
+        f"| Anode Radius | {cc['anode_radius']*1e3:.1f} mm |",
+        f"| Cathode Radius | {cc['cathode_radius']*1e3:.1f} mm |",
+    ]
+    if sc:
+        lines.extend([
+            f"| Anode Length | {sc.get('anode_length',0)*1e3:.0f} mm |",
+            f"| Current Fraction | {sc.get('current_fraction',0.7):.2f} |",
+            f"| Mass Fraction | {sc.get('mass_fraction',0.15):.3f} |",
+        ])
+    ref = meta.get("reference", "")
+    if ref:
+        lines.append(f"\n*Ref: {ref}*")
+    return "\n".join(lines)
+
+
+def load_preset_values(preset_name: str):
+    if not preset_name:
+        return [None] * 12
+    preset = get_preset(preset_name)
+    cc = preset["circuit"]
+    sc = preset.get("snowplow", {})
+    return [
+        cc["V0"] / 1e3, cc["C"] * 1e6, cc["L0"] * 1e9,
+        cc.get("R0", 0) * 1e3,
+        cc["anode_radius"] * 1e3, cc["cathode_radius"] * 1e3,
+        sc.get("anode_length", 0.16) * 1e3,
+        sc.get("current_fraction", 0.7), sc.get("mass_fraction", 0.15),
+        cc.get("crowbar_enabled", False),
+        cc.get("crowbar_resistance", 0) * 1e3,
+        sc.get("fill_pressure_Pa", 400) / 133.322,
+    ]
+
+
+def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
+    is_lee = backend == "lee"
+    rate = RUNTIME_PER_US.get(
+        (backend, grid_preset), RUNTIME_PER_US.get((backend, "medium"), 1.0),
+    )
+    est_s = rate * sim_time_us
+    if est_s < 2:
+        est = "< 2 seconds"
+    elif est_s < 60:
+        est = f"~{est_s:.0f} seconds"
+    elif est_s < 3600:
+        est = f"~{est_s/60:.1f} minutes"
+    else:
+        est = f"~{est_s/3600:.1f} hours (consider reducing grid or sim time)"
+
+    grid = MHD_GRID_PRESETS.get(grid_preset, (32, 32, 64))
+    fid = FIDELITY.get(backend, "?")
+    help_text = BACKEND_HELP.get(backend, "")
+
+    if is_lee:
+        info = f"**{est}** | Lee model (0D) | {help_text}"
+    else:
+        total_cells = grid[0] * grid[1] * grid[2]
+        info = (
+            f"**{est}** | Grid: {grid[0]}x{grid[1]}x{grid[2]} "
+            f"= {total_cells:,} cells | Fidelity: {fid}\n\n*{help_text}*"
+        )
+    return [gr.update(visible=is_lee), gr.update(visible=not is_lee), info]
+
+
+def _validate_inputs(
+    anode_r: float, cathode_r: float, V0_kV: float, C_uF: float,
+    L0_nH: float, sim_time_us: float,
+) -> str | None:
+    if anode_r >= cathode_r:
+        return f"Anode radius ({anode_r} mm) must be < cathode radius ({cathode_r} mm)."
+    if V0_kV <= 0 or C_uF <= 0 or L0_nH <= 0:
+        return "Charging voltage, capacitance, and inductance must all be positive."
+    if sim_time_us <= 0:
+        return "Simulation time must be positive."
+    return None
+
+
+def _build_metrics(data: dict, backend: str) -> str:
+    fid = FIDELITY.get(backend, "")
+    fid_str = f" | Fidelity: {fid}" if fid != "0D" else ""
+    parts = [f"**I_peak = {data['I_peak']:.3f} MA** at {data['t_peak']:.1f} us"]
+
+    if data.get("has_snowplow") and data["dip_pct"] > 1:
+        parts.append(f"Current dip: **{data['dip_pct']:.0f}%**")
+        sp = data.get("snowplow_obj")
+        if sp:
+            r_p = sp.shock_radius * 1e3
+            b_mm = data["circuit"]["cathode_radius"] * 1e3
+            parts.append(f"Pinch: **{r_p:.1f} mm** ({b_mm/r_p:.0f}:1)")
+
+    if data.get("scaling"):
+        parts.append(f"T_stag: **{data['scaling']['T_stag_keV']:.1f} keV**")
+
+    ny = data.get("neutron_yield")
+    if ny and ny["Y_neutron"] > 0:
+        parts.append(f"D-D yield: **{ny['Y_neutron']:.2e} n**")
+
+    if data.get("has_mhd"):
+        rho_max = data.get("rho_max", [])
+        rho0 = data.get("rho0", 1)
+        if len(rho_max) > 0 and rho0 > 0:
+            parts.append(f"Density ratio: {float(np.max(rho_max))/rho0:.1f}x")
+
+    parts.append(
+        f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
+        f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"
+    )
+    return " | ".join(parts)
+
+
+def _export_csv(data: dict) -> str | None:
+    if data is None:
+        return None
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    t = data["t_us"]
+    writer.writerow(["t_us", "I_MA", "V_kV", "L_p_nH", "z_mm", "r_mm",
+                      "phase", "E_cap_kJ", "E_ind_kJ", "E_res_kJ"])
+    for i in range(len(t)):
+        writer.writerow([
+            f"{t[i]:.4f}", f"{data['I_MA'][i]:.6f}", f"{data['V_kV'][i]:.4f}",
+            f"{data['L_p_nH'][i]:.2f}", f"{data['z_mm'][i]:.3f}",
+            f"{data['r_mm'][i]:.3f}", data["phases"][i],
+            f"{data['E_cap_kJ'][i]:.4f}", f"{data['E_ind_kJ'][i]:.4f}",
+            f"{data['E_res_kJ'][i]:.4f}",
+        ])
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", prefix="dpf_") as tmp:
+        tmp.write(buf.getvalue().encode())
+    return tmp.name
+
+
+def run_simulation(
+    backend, grid_preset, preset_name, sim_time_us, gas_key,
+    V0_kV, C_uF, L0_nH, R0_mOhm,
+    anode_r, cathode_r, anode_len,
+    fc, fm, crowbar_on, crowbar_R, pressure,
+    comparison_runs,
+    progress=gr.Progress(),  # noqa: B008
+):
+    err = _validate_inputs(anode_r, cathode_r, V0_kV, C_uF, L0_nH, sim_time_us)
+    if err:
+        raise gr.Error(err)
+
+    try:
+        if backend == "lee":
+            data = run_simulation_core(
+                preset_name=preset_name, sim_time_us=sim_time_us, gas_key=gas_key,
+                V0_kV=V0_kV, C_uF=C_uF, L0_nH=L0_nH, R0_mOhm=R0_mOhm,
+                anode_r_mm=anode_r, cathode_r_mm=cathode_r, anode_len_mm=anode_len,
+                fc=fc, fm=fm, crowbar_on=crowbar_on, crowbar_R_mOhm=crowbar_R,
+                pressure_torr=pressure, progress_fn=progress,
+            )
+        else:
+            data = run_mhd_simulation(
+                backend=backend, grid_preset=grid_preset,
+                preset_name=preset_name, sim_time_us=sim_time_us, gas_key=gas_key,
+                V0_kV=V0_kV, pressure_torr=pressure,
+                C_uF=C_uF, L0_nH=L0_nH, R0_mOhm=R0_mOhm,
+                anode_r_mm=anode_r, cathode_r_mm=cathode_r, anode_len_mm=anode_len,
+                progress_fn=progress,
+            )
+    except Exception as exc:
+        raise gr.Error(f"Simulation failed ({backend}): {exc}") from exc
+
+    fig_wave = create_waveform_fig(data)
+    fig_phys = create_physics_fig(data)
+    fig_portrait = create_phase_portrait(data)
+
+    if data.get("has_mhd"):
+        fig_schem = create_mhd_fields_fig(data)
+        fig_3d = create_3d_plasma_fig(data) if data.get("has_snowplow") else fig_schem
+        anim_html = (
+            "<div style='color:#999;padding:40px;text-align:center;'>"
+            "3D playback available for Lee model only. See 2D Fields tab.</div>"
+        )
+    else:
+        fig_schem = create_schematic_fig(data)
+        fig_3d = create_3d_plasma_fig(data)
+        anim_fig = create_animated_3d(data)
+        full_html = anim_fig.to_html(
+            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
+        )
+        escaped = full_html.replace("&", "&amp;").replace('"', "&quot;")
+        anim_html = (
+            f'<iframe srcdoc="{escaped}" '
+            f'style="width:100%;height:620px;border:none;background:#111;"></iframe>'
+        )
+
+    narrative = generate_narrative(data)
+    metrics = _build_metrics(data, backend)
+    csv_path = _export_csv(data)
+
+    runs = add_to_comparison(comparison_runs or [], data, backend)
+    fig_compare = create_comparison_fig(runs)
+    compare_md = comparison_summary(runs)
+
+    return (
+        metrics, narrative,
+        fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d, anim_html,
+        fig_compare, compare_md,
+        csv_path, data, runs,
+    )
+
+
+# ---- Build UI ----
+CSS = """
+.metrics-banner {
+    background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 8px;
+    color: #fff; font-size: 14px;
+}
+.metrics-banner strong { color: #90caf9; }
+"""
+
+with gr.Blocks(title="DPF-Unified Simulator") as app:
+    sim_state = gr.State(None)
+    comparison_state = gr.State([])
+
+    gr.Markdown("# DPF-Unified Simulator")
+    gr.Markdown(
+        "Dense Plasma Focus simulation with multi-fidelity backends. "
+        "Lee model for fast exploration, MHD solvers for high-fidelity physics. "
+        "[No commercial DPF sim tool like this exists.](https://github.com/dpf-unified)"
+    )
+
+    with gr.Row():
+        with gr.Column(scale=1, min_width=340):
+            backend_dd = gr.Dropdown(
+                choices=get_backend_choices(), value="lee",
+                label="Simulation Backend",
+                info="Select physics fidelity vs. speed tradeoff",
+            )
+            grid_dd = gr.Dropdown(
+                choices=get_grid_choices(), value="medium",
+                label="MHD Grid Resolution", visible=False,
+                info="Higher resolution = more accurate but slower",
+            )
+            runtime_est = gr.Markdown(
+                value=f"**< 2 seconds** | Lee model (0D)\n\n*{BACKEND_HELP['lee']}*",
+            )
+            preset_dd = gr.Dropdown(
+                choices=get_preset_choices(), value="pf1000",
+                label="Device Preset",
+                info="Select a known DPF device to auto-fill parameters",
+            )
+            device_info = gr.Markdown(value=get_device_info("pf1000"))
+            gas_dd = gr.Dropdown(
+                choices=get_gas_choices(), value="D2", label="Fill Gas",
+                info="Gas species affects density, gamma, and radiation",
+            )
+
+            with gr.Accordion("Circuit Parameters", open=False):
+                inp_V0 = gr.Number(value=27, label="Charging Voltage [kV]", minimum=1,
+                                   info="Capacitor bank charging voltage")
+                inp_C = gr.Number(value=1332, label="Capacitance [uF]", minimum=0.1,
+                                  info="Total bank capacitance (parallel capacitors)")
+                inp_L0 = gr.Number(value=33.5, label="Ext. Inductance L0 [nH]", minimum=0.1,
+                                   info="External circuit inductance (cables, headers, switch)")
+                inp_R0 = gr.Number(value=2.3, label="Ext. Resistance R0 [mOhm]", minimum=0,
+                                   info="External circuit resistance")
+                inp_crowbar = gr.Checkbox(value=True, label="Crowbar Switch")
+                inp_crowbar_R = gr.Number(value=1.5, label="Crowbar Resistance [mOhm]",
+                                          minimum=0, info="Resistance at V=0 crossing")
+
+            with gr.Accordion("Electrode Geometry", open=False):
+                inp_anode_r = gr.Number(value=115, label="Anode Radius [mm]", minimum=1,
+                                        info="Inner electrode radius. Must be < cathode radius.")
+                inp_cathode_r = gr.Number(value=160, label="Cathode Radius [mm]", minimum=2,
+                                           info="Outer electrode radius. Must be > anode radius.")
+                inp_anode_len = gr.Number(value=600, label="Anode Length [mm]", minimum=10,
+                                          info="Rundown distance from insulator to anode tip")
+
+            lee_params = gr.Group(visible=True)
+            with lee_params, gr.Accordion("Plasma Model (Lee)", open=False):
+                inp_fc = gr.Slider(0.3, 1.0, value=0.80, step=0.01,
+                                   label="Current Fraction (fc)",
+                                   info="Fraction of circuit current in sheath. Typical: 0.6-0.8")
+                inp_fm = gr.Slider(0.01, 0.5, value=0.094, step=0.001,
+                                   label="Mass Fraction (fm)",
+                                   info="Fraction of fill gas swept by sheath. Typical: 0.05-0.2")
+                inp_pressure = gr.Number(value=None, label="Fill Pressure [Torr]",
+                                          info="Leave empty for preset default", minimum=0.1)
+
+            sim_time = gr.Slider(1, 100, value=40, step=0.5, label="Simulation Time [us]",
+                                  info="Total simulation duration in microseconds")
+            run_btn = gr.Button("Run Simulation", variant="primary", size="lg")
+
+            with gr.Accordion("Save / Load Configuration", open=False):
+                save_btn = gr.Button("Save Current Config", size="sm")
+                save_file = gr.File(label="Download Config", visible=False)
+                load_file = gr.File(label="Load Config (.json)", file_types=[".json"])
+                load_btn = gr.Button("Apply Loaded Config", size="sm")
+
+            export_file = gr.File(label="Export Data (CSV)", visible=False)
+
+        with gr.Column(scale=3):
+            metrics_md = gr.Markdown(
+                value="<div class='metrics-banner'>Run a simulation to see results.</div>",
+                elem_classes=["metrics-banner"],
+            )
+            with gr.Tab("Physics Narrative"):
+                narrative_md = gr.Markdown(
+                    value="*Run a simulation for step-by-step physics breakdown with equations.*",
+                    latex_delimiters=[
+                        {"left": "$$", "right": "$$", "display": True},
+                        {"left": "$", "right": "$", "display": False},
+                    ],
+                )
+            with gr.Tab("Waveforms"):
+                fig_waveform = gr.Plot(label="Current & Voltage")
+            with gr.Tab("Physics Breakdown"):
+                fig_physics = gr.Plot(label="Physics")
+            with gr.Tab("Phase Portrait"):
+                fig_portrait = gr.Plot(label="Radial Implosion Dynamics")
+            with gr.Tab("2D Fields"):
+                fig_geometry = gr.Plot(label="Cross-Section / Fields")
+            with gr.Tab("3D Plasma"):
+                fig_3d_plot = gr.Plot(label="3D Visualization")
+            with gr.Tab("3D Playback"):
+                fig_anim = gr.HTML(
+                    value="<div style='color:#999;padding:40px;text-align:center;'>"
+                    "Run a Lee model simulation, then press Play.</div>",
+                )
+            with gr.Tab("Compare Runs"):
+                fig_compare = gr.Plot(label="Comparison Overlay")
+                compare_md = gr.Markdown("*Run multiple simulations to compare waveforms.*")
+                clear_btn = gr.Button("Clear Comparison History", size="sm")
+
+    # ---- Event wiring ----
+    settings_inputs = [backend_dd, grid_dd, sim_time]
+    settings_outputs = [lee_params, grid_dd, runtime_est]
+    for trigger in (backend_dd.change, grid_dd.change, sim_time.change):
+        trigger(fn=on_settings_change, inputs=settings_inputs, outputs=settings_outputs)
+
+    preset_dd.change(fn=get_device_info, inputs=[preset_dd], outputs=[device_info])
+    preset_dd.change(
+        fn=load_preset_values, inputs=[preset_dd],
+        outputs=[inp_V0, inp_C, inp_L0, inp_R0, inp_anode_r, inp_cathode_r,
+                 inp_anode_len, inp_fc, inp_fm, inp_crowbar, inp_crowbar_R, inp_pressure],
+    )
+
+    all_param_inputs = [
+        backend_dd, grid_dd, preset_dd, sim_time, gas_dd,
+        inp_V0, inp_C, inp_L0, inp_R0,
+        inp_anode_r, inp_cathode_r, inp_anode_len,
+        inp_fc, inp_fm, inp_crowbar, inp_crowbar_R, inp_pressure,
+    ]
+
+    run_btn.click(
+        fn=run_simulation,
+        inputs=all_param_inputs + [comparison_state],
+        outputs=[
+            metrics_md, narrative_md,
+            fig_waveform, fig_physics, fig_portrait,
+            fig_geometry, fig_3d_plot, fig_anim,
+            fig_compare, compare_md,
+            export_file, sim_state, comparison_state,
+        ],
+        concurrency_limit=1,
+    )
+
+    clear_btn.click(fn=clear_comparison,
+                    outputs=[comparison_state, fig_compare, compare_md])
+
+    sim_state.change(
+        fn=lambda s: gr.update(visible=s is not None),
+        inputs=[sim_state], outputs=[export_file],
+    )
+
+    save_btn.click(fn=save_config, inputs=all_param_inputs, outputs=[save_file]).then(
+        fn=lambda: gr.update(visible=True), outputs=[save_file],
+    )
+    load_btn.click(fn=load_config, inputs=[load_file], outputs=all_param_inputs)
+
+
+if __name__ == "__main__":
+    app.queue(max_size=5)
+    app.launch(
+        server_name="0.0.0.0", server_port=7860, share=False,
+        theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
+        css=CSS,
+    )
