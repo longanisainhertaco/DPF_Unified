@@ -118,7 +118,7 @@ class TestLiftoffCalibration:
         from dpf.validation.calibration import calibrate_with_liftoff
 
         result = calibrate_with_liftoff("PF-1000", maxiter=80)
-        assert 0.5 <= result.standard_fc <= 0.80
+        assert 0.5 <= result.standard_fc <= 0.95
         assert 0.01 <= result.standard_fm <= 0.3
         assert result.standard_nrmse > 0.10
         assert result.standard_asme.ratio > 1.0

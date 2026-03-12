@@ -95,6 +95,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         riemann_solver: str = "hll",
         enable_ct: bool = False,
         time_integrator: str = "ssp_rk3",
+        conservative_energy: bool = False,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -109,6 +110,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.ion_mass = ion_mass if ion_mass is not None else _DEFAULT_ION_MASS
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
+        self.conservative_energy = conservative_energy
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
         # metric (see H5 in Troubleshooting.md). Use Dedner cleaning instead.
         if enable_ct:
@@ -289,6 +291,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         B: np.ndarray,
         psi: np.ndarray,
         eta_field: np.ndarray | None = None,
+        source_terms: dict | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute RHS of the MHD equations in cylindrical coordinates.
 
@@ -297,6 +300,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Args:
             rho, vel, p, B, psi: State variables.
             eta_field: Spatially-resolved resistivity [Ohm*m], shape (nr, nz).
+            source_terms: Optional dict with external source terms.
 
         Returns time derivatives for all state variables.
         """
@@ -387,13 +391,55 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         dB_dt = -geom.curl(E_field)
 
-        # --- Pressure / Energy equation ---
-        div_v = geom.divergence(vel)
-        if self.enable_energy_equation:
-            # dp/dt = -gamma * p * div(v) + (gamma-1) * eta * J^2
-            dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * ohmic_heating
+        # --- Energy equation ---
+        # External source terms (snowplow, ohmic correction, etc.)
+        src = source_terms or {}
+        ext_drho = src.get("S_rho_snowplow")
+        ext_dmom = src.get("S_mom_snowplow")
+        ext_dE = src.get("S_energy_snowplow")
+        Q_ohmic_corr = src.get("Q_ohmic_correction")
+
+        if ext_drho is not None:
+            ext_drho_2d = self._squeeze(ext_drho) if ext_drho.ndim == 3 else ext_drho
+            drho_dt = drho_dt + ext_drho_2d
+        if ext_dmom is not None:
+            ext_dmom_2d = self._squeeze(ext_dmom) if ext_dmom.ndim == 4 else ext_dmom
+            dmom_dt = dmom_dt + ext_dmom_2d
+
+        total_heating = ohmic_heating
+        if Q_ohmic_corr is not None:
+            Q_corr_2d = self._squeeze(Q_ohmic_corr) if Q_ohmic_corr.ndim == 3 else Q_ohmic_corr
+            total_heating = total_heating + Q_corr_2d
+
+        if self.conservative_energy and self.enable_energy_equation:
+            # Conservative total energy: E = p/(γ-1) + 0.5·ρ·v² + B²/(2μ₀)
+            gm1 = self.gamma - 1.0
+            v_sq = np.sum(vel**2, axis=0)
+            B_sq = np.sum(B**2, axis=0)
+            E_total = p / gm1 + 0.5 * rho * v_sq + B_sq / (2.0 * mu_0)
+            p_total = p + B_sq / (2.0 * mu_0)
+            v_dot_B = np.sum(vel * B, axis=0)
+
+            # Energy flux vector: F_E = (E + p_tot)·v - B·(v·B)
+            F_E = np.zeros((3, self.nr, self.nz))
+            for d in range(3):
+                F_E[d] = (E_total + p_total) * vel[d] - B[d] * v_dot_B
+
+            # dE/dt = -div(F_E) + Q_ohm + Q_ext
+            dE_dt = -geom.divergence(F_E) + total_heating
+            if ext_dE is not None:
+                ext_dE_2d = self._squeeze(ext_dE) if ext_dE.ndim == 3 else ext_dE
+                dE_dt = dE_dt + ext_dE_2d
+
+            # dp_dt not used when conservative — set to None sentinel
+            dp_dt = None
         else:
-            dp_dt = -self.gamma * p * div_v
+            div_v = geom.divergence(vel)
+            if self.enable_energy_equation:
+                dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * total_heating
+            else:
+                dp_dt = -self.gamma * p * div_v
+            dE_dt = None
 
         # --- Dedner cleaning (skipped when CT is active) ---
         dpsi_dt = np.zeros_like(psi)
@@ -414,15 +460,19 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             grad_psi = geom.gradient(psi)
             dB_dt = dB_dt - grad_psi
 
-        return {
+        result = {
             "drho_dt": drho_dt,
             "dmom_dt": dmom_dt,
-            "dp_dt": dp_dt,
             "dB_dt": dB_dt,
             "dpsi_dt": dpsi_dt,
             "ohmic_heating": ohmic_heating,
             "E_field": E_field,
         }
+        if dE_dt is not None:
+            result["dE_dt"] = dE_dt
+        else:
+            result["dp_dt"] = dp_dt
+        return result
 
     def apply_electrode_bfield_bc(
         self,
@@ -507,16 +557,44 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         psi: np.ndarray,
         dt: float,
         eta_2d: np.ndarray | None,
+        source_terms: dict | None = None,
     ) -> tuple:
-        """Compute one forward-Euler stage: U^(1) = U^n + dt * L(U^n)."""
+        """Compute one forward-Euler stage: U^(1) = U^n + dt * L(U^n).
+
+        Returns:
+            (rho, mom, p, B, psi, rhs, E_total_or_None)
+        """
         vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)
-        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d)
+        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d, source_terms)
         rho_new = np.maximum(rho + dt * rhs["drho_dt"], 1e-10)
         mom_new = mom + dt * rhs["dmom_dt"]
-        p_new = np.maximum(p + dt * rhs["dp_dt"], 1e-20)
         B_new = B + dt * rhs["dB_dt"]
         psi_new = psi + dt * rhs["dpsi_dt"]
-        return rho_new, mom_new, p_new, B_new, psi_new, rhs
+
+        E_total_new = None
+        if "dE_dt" in rhs:
+            # Conservative energy path: evolve E_total, recover p
+            gm1 = self.gamma - 1.0
+            v_sq = np.sum(vel**2, axis=0)
+            B_sq = np.sum(B**2, axis=0)
+            E_n = p / gm1 + 0.5 * rho * v_sq + B_sq / (2.0 * mu_0)
+            E_total_new = np.maximum(E_n + dt * rhs["dE_dt"], 1e-20)
+            # Recover pressure from updated conserved variables
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            v_sq_new = np.sum(vel_new**2, axis=0)
+            B_sq_new = np.sum(B_new**2, axis=0)
+            p_new = np.maximum(
+                gm1 * (E_total_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
+                1e-20,
+            )
+        else:
+            p_new = np.maximum(p + dt * rhs["dp_dt"], 1e-20)
+
+        # Axis boundary conditions: v_r=0, B_r=0 at r=0
+        mom_new[0, 0, :] = 0.0
+        B_new[0, 0, :] = 0.0
+
+        return rho_new, mom_new, p_new, B_new, psi_new, rhs, E_total_new
 
     def step(
         self,
@@ -528,18 +606,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         anode_radius: float = 0.0,
         cathode_radius: float = 0.0,
         apply_electrode_bc: bool = False,
+        source_terms: dict | None = None,
         **kwargs,
     ) -> dict[str, np.ndarray]:
         """Advance MHD state by one timestep using SSP-RK3 (default) or SSP-RK2.
 
-        SSP-RK3 (Shu-Osher 1988):
-            U^(1) = U^n + dt * L(U^n)
-            U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1)))
-            U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2)))
-
-        SSP-RK2:
-            U^(1) = U^n + dt * L(U^n)
-            U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt * L(U^(1)))
+        When conservative_energy=True (default), total energy E is the conserved
+        variable for the SSP combination instead of pressure. Pressure is recovered
+        after each stage via p = (γ-1)·(E - 0.5·ρ·v² - B²/(2μ₀)).
 
         Args:
             state: Dictionary with 3D arrays (nr, 1, nz).
@@ -550,6 +624,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             anode_radius: Anode radius [m] for electrode BC.
             cathode_radius: Cathode radius [m] for electrode BC.
             apply_electrode_bc: Whether to apply electrode B-field BC.
+            source_terms: External source terms (snowplow, ohmic correction).
 
         Returns:
             Updated state dictionary with 3D arrays.
@@ -575,48 +650,85 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         psi_n = psi.copy()
         mom_n = rho_n[np.newaxis, :, :] * vel.copy()
 
+        # Compute E_total^n for conservative SSP combining
+        use_E = self.conservative_energy and self.enable_energy_equation
+        gm1 = self.gamma - 1.0
+        if use_E:
+            v_sq_n = np.sum(vel**2, axis=0)
+            B_sq_n = np.sum(B_n**2, axis=0)
+            E_n = p_n / gm1 + 0.5 * rho_n * v_sq_n + B_sq_n / (2.0 * mu_0)
+
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
-        rho_1, mom_1, p_1, B_1, psi_1, rhs1 = self._euler_stage(
-            rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d,
+        rho_1, mom_1, p_1, B_1, psi_1, rhs1, E_1 = self._euler_stage(
+            rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d, source_terms,
         )
         if apply_electrode_bc and cathode_radius > 0:
             B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
 
         if self.time_integrator == "ssp_rk3":
             # === Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1))) ===
-            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2 = self._euler_stage(
-                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d,
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms,
             )
             rho_2 = np.maximum(0.75 * rho_n + 0.25 * rho_2e, 1e-10)
             mom_2 = 0.75 * mom_n + 0.25 * mom_2e
-            p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
             B_2 = 0.75 * B_n + 0.25 * B_2e
             psi_2 = 0.75 * psi_n + 0.25 * psi_2e
+
+            if use_E and E_2e is not None:
+                # SSP combine on conserved E_total, then recover p
+                E_2 = np.maximum(0.75 * E_n + 0.25 * E_2e, 1e-20)
+                vel_2 = mom_2 / np.maximum(rho_2[np.newaxis, :, :], 1e-30)
+                v_sq_2 = np.sum(vel_2**2, axis=0)
+                B_sq_2 = np.sum(B_2**2, axis=0)
+                p_2 = np.maximum(gm1 * (E_2 - 0.5 * rho_2 * v_sq_2 - B_sq_2 / (2.0 * mu_0)), 1e-20)
+            else:
+                p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
+                E_2 = None
+
             if apply_electrode_bc and cathode_radius > 0:
                 B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
 
             # === Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2))) ===
-            rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3 = self._euler_stage(
-                rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d,
+            rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e = self._euler_stage(
+                rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d, source_terms,
             )
             rho_new = np.maximum((1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e, 1e-10)
             mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
-            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
-            p_new = np.maximum((1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e, 1e-20)
             B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
             psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
+
+            if use_E and E_3e is not None:
+                E_new = np.maximum((1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e, 1e-20)
+                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+                v_sq_new = np.sum(vel_new**2, axis=0)
+                B_sq_new = np.sum(B_new**2, axis=0)
+                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+            else:
+                p_new = np.maximum((1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e, 1e-20)
+
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
             ohmic_avg = (1.0 / 3.0) * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"] + rhs3["ohmic_heating"])
         else:
             # === SSP-RK2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
-            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2 = self._euler_stage(
-                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d,
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms,
             )
             rho_new = np.maximum(0.5 * rho_n + 0.5 * rho_2e, 1e-10)
             mom_new = 0.5 * mom_n + 0.5 * mom_2e
-            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
-            p_new = np.maximum(0.5 * p_n + 0.5 * p_2e, 1e-20)
             B_new = 0.5 * B_n + 0.5 * B_2e
             psi_new = 0.5 * psi_n + 0.5 * psi_2e
+
+            if use_E and E_2e is not None:
+                E_new = np.maximum(0.5 * E_n + 0.5 * E_2e, 1e-20)
+                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+                v_sq_new = np.sum(vel_new**2, axis=0)
+                B_sq_new = np.sum(B_new**2, axis=0)
+                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+            else:
+                p_new = np.maximum(0.5 * p_n + 0.5 * p_2e, 1e-20)
+
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
             ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
 
         # Cap velocity at 10x the fast magnetosonic speed to prevent runaway
@@ -625,9 +737,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         va2 = B_sq / (mu_0 * np.maximum(rho_new, 1e-20))
         v_max = 10.0 * np.sqrt(np.maximum(cs2 + va2, 1e-10))
         v_mag = np.sqrt(np.sum(vel_new**2, axis=0))
-        v_excess = v_mag / np.maximum(v_max, 1e-10)
-        limiter = np.where(v_excess > 1.0, 1.0 / v_excess, 1.0)
+        v_excess = v_mag / np.maximum(v_max, 1e-30)
+        limiter = np.where(v_excess > 1.0, 1.0 / np.maximum(v_excess, 1e-30), 1.0)
         vel_new *= limiter[np.newaxis, :, :]
+
+        # Final axis BC enforcement: v_r=0, B_r=0 at r=0
+        vel_new[0, 0, :] = 0.0
+        B_new[0, 0, :] = 0.0
 
         # Apply electrode BC after stage 2
         if apply_electrode_bc and cathode_radius > 0:

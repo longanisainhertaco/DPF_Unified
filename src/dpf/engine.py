@@ -197,6 +197,7 @@ class SimulationEngine:
                 enable_energy_equation=fc.enable_energy_equation,
                 ion_mass=self.ion_mass,
                 riemann_solver=fc.riemann_solver,
+                conservative_energy=fc.conservative_energy,
             )
             self._cell_volume = None  # Computed on demand from cylindrical geometry
             # Validate grid covers electrodes for cylindrical geometry
@@ -968,6 +969,14 @@ class SimulationEngine:
             )
             self._current_source_terms = src
 
+        # Inject snowplow source terms into MHD grid
+        if self.config.snowplow.enable_mhd_coupling and self.snowplow is not None:
+            sp_src = self._compute_snowplow_source_terms(dt)
+            if sp_src:
+                src = self._current_source_terms or {}
+                src.update(sp_src)
+                self._current_source_terms = src
+
         cc = self.config.circuit
         self.state = self.fluid.step(
             self.state,
@@ -1321,6 +1330,123 @@ class SimulationEngine:
 
         # Distribute gap proportional to local J^2 [W/m^3]
         return (self._last_ohmic_gap / total_J_sq_dV) * J_sq
+
+    def _compute_snowplow_source_terms(self, dt: float) -> dict:
+        """Compute density, momentum, and energy source terms from snowplow sheath.
+
+        Injects swept mass, momentum, and post-shock energy into the MHD grid
+        using Gaussian-smeared windows centered at the sheath position. This
+        couples the 0D snowplow model to the 2D/3D MHD fluid.
+
+        Returns dict with keys: S_rho_snowplow, S_mom_snowplow, S_energy_snowplow.
+        Empty dict if coupling is disabled or snowplow inactive.
+        """
+        if not self.config.snowplow.enable_mhd_coupling:
+            return {}
+        if self.snowplow is None or not self.snowplow.is_active:
+            return {}
+
+        nx, ny, nz = self.config.grid_shape
+        dx = self.config.dx
+        dz_cfg = self.config.geometry.dz
+        dz = dz_cfg if dz_cfg else dx
+        gamma = self.config.fluid.gamma
+        rho0 = self.config.rho0
+        m_ion = self.ion_mass
+        k_B = 1.381e-23
+
+        source_terms = {}
+        grid_shape = self.state["rho"].shape  # (nx, ny, nz)
+
+        if self.snowplow.phase == "rundown":
+            z_sheath = self.snowplow.sheath_position
+            v_sheath = self.snowplow.sheath_velocity
+
+            if abs(v_sheath) < 1e-6:
+                return {}
+
+            # Axial coordinate array
+            z_arr = np.array([(k + 0.5) * dz for k in range(nz)])
+
+            # Gaussian window: sigma = 2*dz, normalized
+            sigma_z = 2.0 * dz
+            W_z = np.exp(-0.5 * ((z_arr - z_sheath) / sigma_z) ** 2)
+            W_z /= np.sum(W_z) * dz + 1e-30  # Normalize
+
+            # Mass injection rate [kg/s]
+            f_m = self.snowplow.f_m
+            A_ann = self.snowplow.A_annular
+            dm_dt = rho0 * A_ann * abs(v_sheath) * f_m
+
+            # Broadcast to grid shape
+            S_rho = np.zeros(grid_shape)
+            if self.geometry_type == "cylindrical":
+                # (nr, 1, nz) — inject along z at all radii
+                S_rho[:, :, :] = dm_dt * W_z[np.newaxis, np.newaxis, :]
+            else:
+                S_rho[:, :, :] = dm_dt * W_z[np.newaxis, np.newaxis, :]
+
+            # Momentum: injected gas enters at sheath velocity (z-direction)
+            S_mom = np.zeros((3, *grid_shape))
+            S_mom[2] = S_rho * v_sheath  # z-momentum
+
+            # Energy: Rankine-Hugoniot post-shock
+            rho_post = ((gamma + 1) / (gamma - 1)) * rho0
+            T_post = (3.0 / 16.0) * m_ion * v_sheath**2 / k_B
+            p_post = rho_post * k_B * T_post / m_ion
+            e_kin = 0.5 * rho_post * v_sheath**2
+            E_post = p_post / (gamma - 1.0) + e_kin
+            S_energy = np.zeros(grid_shape)
+            S_energy[:, :, :] = E_post * abs(v_sheath) * W_z[np.newaxis, np.newaxis, :]
+
+            source_terms["S_rho_snowplow"] = S_rho
+            source_terms["S_mom_snowplow"] = S_mom
+            source_terms["S_energy_snowplow"] = S_energy
+
+        elif self.snowplow.phase == "radial":
+            r_shock = self.snowplow.shock_radius
+            vr_shock = self.snowplow.vr
+
+            if abs(vr_shock) < 1e-6:
+                return {}
+
+            # Radial coordinate array
+            r_arr = np.array([(i + 0.5) * dx for i in range(nx)])
+
+            # Gaussian window in r
+            sigma_r = 2.0 * dx
+            W_r = np.exp(-0.5 * ((r_arr - r_shock) / sigma_r) ** 2)
+            W_r /= np.sum(W_r) * dx + 1e-30
+
+            # Radial mass injection rate [kg/s]
+            f_mr = self.snowplow.f_mr
+            z_f = self.snowplow.z_f
+            dm_dt = rho0 * 2.0 * np.pi * r_shock * abs(vr_shock) * z_f * f_mr
+
+            S_rho = np.zeros(grid_shape)
+            if self.geometry_type == "cylindrical":
+                S_rho[:, :, :] = dm_dt * W_r[:, np.newaxis, np.newaxis]
+            else:
+                S_rho[:, :, :] = dm_dt * W_r[:, np.newaxis, np.newaxis]
+
+            # Momentum: radial inward
+            S_mom = np.zeros((3, *grid_shape))
+            S_mom[0] = S_rho * vr_shock  # r-momentum (negative = inward)
+
+            # Energy: Rankine-Hugoniot post-shock (radial)
+            rho_post = ((gamma + 1) / (gamma - 1)) * rho0
+            T_post = (3.0 / 16.0) * m_ion * vr_shock**2 / k_B
+            p_post = rho_post * k_B * T_post / m_ion
+            e_kin = 0.5 * rho_post * vr_shock**2
+            E_post = p_post / (gamma - 1.0) + e_kin
+            S_energy = np.zeros(grid_shape)
+            S_energy[:, :, :] = E_post * abs(vr_shock) * W_r[:, np.newaxis, np.newaxis]
+
+            source_terms["S_rho_snowplow"] = S_rho
+            source_terms["S_mom_snowplow"] = S_mom
+            source_terms["S_energy_snowplow"] = S_energy
+
+        return source_terms
 
     def _compute_back_emf(self, dt: float) -> float:
         """Compute motional back-EMF from MHD field advection.
