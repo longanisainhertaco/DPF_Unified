@@ -17,7 +17,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from app_anim import create_animated_3d
+from app_anim import create_animated_3d, create_animated_mhd
 from app_compare import (
     add_to_comparison,
     clear_comparison,
@@ -36,6 +36,7 @@ from app_plots import (
     create_schematic_fig,
     create_waveform_fig,
 )
+from app_validation import format_validation_markdown, validate_against_published
 from dpf.presets import _PRESETS, get_preset, list_presets
 
 RUNTIME_PER_US = {
@@ -176,10 +177,15 @@ def _validate_inputs(
     return None
 
 
-def _build_metrics(data: dict, backend: str) -> str:
+def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     fid = FIDELITY.get(backend, "")
     fid_str = f" | Fidelity: {fid}" if fid != "0D" else ""
     parts = [f"**I_peak = {data['I_peak']:.3f} MA** at {data['t_peak']:.1f} us"]
+
+    if val:
+        dI = val["I_peak_dev_pct"]
+        label = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
+        parts.append(f"vs. expt: **{dI:.0f}% ({label})**")
 
     if data.get("has_snowplow") and data["dip_pct"] > 1:
         parts.append(f"Current dip: **{data['dip_pct']:.0f}%**")
@@ -270,9 +276,14 @@ def run_simulation(
     if data.get("has_mhd"):
         fig_schem = create_mhd_fields_fig(data)
         fig_3d = create_3d_plasma_fig(data) if data.get("has_snowplow") else fig_schem
+        anim_fig = create_animated_mhd(data)
+        full_html = anim_fig.to_html(
+            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
+        )
+        escaped = full_html.replace("&", "&amp;").replace('"', "&quot;")
         anim_html = (
-            "<div style='color:#999;padding:40px;text-align:center;'>"
-            "3D playback available for Lee model only. See 2D Fields tab.</div>"
+            f'<iframe srcdoc="{escaped}" '
+            f'style="width:100%;height:580px;border:none;background:#111;"></iframe>'
         )
     else:
         fig_schem = create_schematic_fig(data)
@@ -288,7 +299,11 @@ def run_simulation(
         )
 
     narrative = generate_narrative(data)
-    metrics = _build_metrics(data, backend)
+    val = validate_against_published(data, preset_name)
+    val_md = format_validation_markdown(val)
+    if val_md:
+        narrative = narrative + "\n\n" + val_md
+    metrics = _build_metrics(data, backend, val)
     csv_path = _export_csv(data)
 
     runs = add_to_comparison(comparison_runs or [], data, backend)
@@ -321,7 +336,7 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
     gr.Markdown(
         "Dense Plasma Focus simulation with multi-fidelity backends. "
         "Lee model for fast exploration, MHD solvers for high-fidelity physics. "
-        "[No commercial DPF sim tool like this exists.](https://github.com/dpf-unified)"
+        "[GitHub](https://github.com/longanisainhertaco/DPF_Unified)"
     )
 
     with gr.Row():

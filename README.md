@@ -25,7 +25,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 
 ## Web Interface
 
-A fully interactive Gradio web UI for running DPF simulations — the **only free, web-accessible, DPF-native simulation tool that exists**.
+Interactive Gradio web UI for running DPF simulations.
 
 ```bash
 python3 app.py
@@ -73,18 +73,6 @@ app_narrative.py — LaTeX physics narrative generator (369 lines)
 app_anim.py     — 3D animated Plotly playback (240 lines)
 app_compare.py  — Comparison mode, save/load config (104 lines)
 ```
-
-### Competitive Landscape
-
-No other tool combines DPF-native + web-accessible + free + full-MHD + circuit-coupled:
-
-| Tool | DPF-Native | Web | Free | Full MHD | Circuit-Coupled |
-|------|-----------|-----|------|----------|----------------|
-| **DPF-Unified** | Yes | Yes | Yes | Yes | Yes |
-| Lee Model (RADPF) | Yes | No (Excel) | Yes | No (0D) | Yes |
-| USim | No | No | No ($10-50K) | Yes | No |
-| ALEGRA | No | No | No (classified) | Yes | No |
-| COMSOL | No | No | No ($$$) | Partial | No |
 
 ---
 
