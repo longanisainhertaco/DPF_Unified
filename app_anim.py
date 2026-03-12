@@ -238,3 +238,100 @@ def _frame_label(t_us: float, I_MA: float, z_mm: float, r_mm: float, phase: str)
     elif phase in ("radial", "reflected", "pinch"):
         parts.append(f"r={r_mm:.1f}mm")
     return "  ".join(parts)
+
+
+def create_animated_mhd(d: dict[str, Any]) -> go.Figure:
+    """Animated 2D density heatmap from MHD snapshots with play/pause slider."""
+    snapshots = d.get("mhd_snapshots", [])
+    if not snapshots:
+        fig = go.Figure()
+        fig.update_layout(
+            template="plotly_dark", height=500,
+            annotations=[dict(
+                text="No MHD snapshots recorded", showarrow=False,
+                font=dict(size=16, color="#999"), xref="paper", yref="paper",
+                x=0.5, y=0.5,
+            )],
+        )
+        return fig
+
+    cc = d["circuit"]
+    sc = d.get("snowplow_cfg", {})
+    a_mm = cc["anode_radius"] * 1e3
+    b_mm = cc["cathode_radius"] * 1e3
+    L_mm = sc.get("anode_length", 0.16) * 1e3
+
+    rho0 = d.get("rho0", 1.0)
+    snap0 = snapshots[0]
+    rho_2d = snap0["rho_mid"]
+    nr, nz = rho_2d.shape
+
+    r_axis = np.linspace(a_mm, b_mm, nr)
+    z_axis = np.linspace(0, L_mm, nz)
+
+    global_max = max(float(np.max(s["rho_mid"])) for s in snapshots)
+    zmax = max(global_max / rho0, 2.0)
+
+    fig = go.Figure(
+        data=[go.Heatmap(
+            z=(rho_2d / rho0).T,
+            x=r_axis, y=z_axis,
+            colorscale="Inferno", zmin=0, zmax=zmax,
+            colorbar=dict(title="rho/rho0"),
+        )],
+    )
+
+    frames = []
+    slider_steps = []
+    for fi, snap in enumerate(snapshots):
+        t_us = snap["t_us"]
+        rho_norm = (snap["rho_mid"] / rho0).T
+        frames.append(go.Frame(
+            data=[go.Heatmap(
+                z=rho_norm, x=r_axis, y=z_axis,
+                colorscale="Inferno", zmin=0, zmax=zmax,
+                colorbar=dict(title="rho/rho0"),
+            )],
+            name=f"f{fi}",
+        ))
+        slider_steps.append(dict(
+            args=[[f"f{fi}"], dict(frame=dict(duration=80, redraw=True), mode="immediate")],
+            label=f"{t_us:.1f}",
+            method="animate",
+        ))
+
+    fig.frames = frames
+
+    I_arr = d.get("I_MA", np.array([0]))
+    t_arr = d.get("t_us", np.array([0]))
+    I_peak = float(np.max(np.abs(I_arr)))
+    t_peak = float(t_arr[int(np.argmax(np.abs(I_arr)))])
+
+    fig.update_layout(
+        xaxis=dict(title="r [mm]"),
+        yaxis=dict(title="z [mm]", scaleanchor="x"),
+        height=550, template="plotly_dark",
+        title=f"MHD Density Evolution | I_peak={I_peak:.2f} MA at {t_peak:.1f} us",
+        margin=dict(l=60, r=20, t=50, b=60),
+        updatemenus=[dict(
+            type="buttons", showactive=False,
+            x=0.05, y=-0.08, xanchor="left", yanchor="top",
+            buttons=[
+                dict(label="Play", method="animate",
+                     args=[None, dict(frame=dict(duration=120, redraw=True),
+                                      fromcurrent=True, transition=dict(duration=0))]),
+                dict(label="Pause", method="animate",
+                     args=[[None], dict(frame=dict(duration=0, redraw=False),
+                                        mode="immediate", transition=dict(duration=0))]),
+            ],
+        )],
+        sliders=[dict(
+            active=0, yanchor="top", xanchor="left",
+            currentvalue=dict(prefix="t = ", suffix=" us", font=dict(size=13)),
+            transition=dict(duration=0),
+            pad=dict(b=10, t=50),
+            len=0.9, x=0.05, y=-0.02,
+            steps=slider_steps,
+        )],
+    )
+    return fig
