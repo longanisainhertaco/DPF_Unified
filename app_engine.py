@@ -208,6 +208,7 @@ def run_simulation_core(
             sp = snowplow.step(dt, circuit.current)
             coupling.Lp = sp["L_plasma"]
             coupling.dL_dt = sp["dL_dt"]
+            coupling.R_plasma = sp.get("R_plasma", 0.0)
             sheath_zs.append(sp["z_sheath"] * 1e3)
             shock_rs.append(sp["r_shock"] * 1e3)
             phases_list.append(sp["phase"])
@@ -242,19 +243,23 @@ def run_simulation_core(
 
     dip_pct = 0.0
     I_pre_dip = I_peak
+    t_pre_dip = t_peak
     I_dip = I_peak
     t_dip = t_peak
     scaling = None
     crowbar_t = None
 
     if snowplow is not None:
-        dip_mask = np.array([(p in ("radial", "pinch")) for p in phases_list])
+        dip_mask = np.array([(p in ("radial", "pinch", "reflected")) for p in phases_list])
         if np.any(dip_mask):
             dip_region = np.where(dip_mask)[0]
             dip_idx = dip_region[int(np.argmin(I_arr[dip_region]))]
             I_dip = float(I_arr[dip_idx])
             t_dip = float(t_arr[dip_idx])
-            I_pre_dip = float(np.max(I_arr[:dip_region[0]]))
+            pre_dip_slice = I_arr[:dip_region[0]]
+            pre_dip_idx = int(np.argmax(pre_dip_slice))
+            I_pre_dip = float(pre_dip_slice[pre_dip_idx])
+            t_pre_dip = float(t_arr[pre_dip_idx])
             dip_pct = (1 - I_dip / I_pre_dip) * 100 if I_pre_dip > 0 else 0
 
             P_fill_Torr = sc.get("fill_pressure_Pa", 400) / 133.322
@@ -291,7 +296,8 @@ def run_simulation_core(
         "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
         "E_res_kJ": np.array(E_res),
         "I_peak": I_peak, "t_peak": t_peak,
-        "I_pre_dip": I_pre_dip, "I_dip": I_dip, "t_dip": t_dip,
+        "I_pre_dip": I_pre_dip, "t_pre_dip": t_pre_dip,
+        "I_dip": I_dip, "t_dip": t_dip,
         "dip_pct": dip_pct, "scaling": scaling, "crowbar_t": crowbar_t,
         "E_bank_kJ": E_bank / 1e3, "T_LC_us": T_LC * 1e6, "dt_ns": dt * 1e9,
         "n_steps": n_steps, "elapsed_s": elapsed,

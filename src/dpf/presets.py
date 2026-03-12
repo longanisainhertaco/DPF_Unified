@@ -98,7 +98,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # r0 = 2.3 mOhm from RADPF preset (RESF=0.1, L0=20 nH, C0=28 uF)
         "circuit": {
             "C": 28e-6,
-            "V0": 11.5e3,         # 11.5 kV operating voltage (Lee & Saw 2008)
+            "V0": 11e3,           # 11 kV operating voltage (Lee & Saw 2008)
             "L0": 20e-9,          # 20 nH (RADPF Module 1)
             "R0": 2.3e-3,         # 2.3 mOhm (RADPF; actual RESF=0.086)
             "anode_radius": 0.019,
@@ -231,8 +231,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Anode effective length 18.3-22.1 cm (Petrov 2022)
         "snowplow": {
             "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
-            "current_fraction": 0.7,  # MA-class: similar to PF-1000
-            "mass_fraction": 0.1,  # MA-class: similar to PF-1000
+            "current_fraction": 0.55,  # Fitted: 3.6% I_peak, 2.3% t_peak vs Schmidt (2021)
+            "mass_fraction": 0.45,    # Fitted: heavy mass loading for MA-class (ATLAS-heritage)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
@@ -308,8 +308,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.47,
-            "current_fraction": 0.7,
-            "mass_fraction": 0.08,
+            "current_fraction": 0.70,
+            "mass_fraction": 0.15,    # Fitted: 2.7% I_peak vs Herold (1989)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },

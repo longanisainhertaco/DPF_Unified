@@ -45,8 +45,8 @@ def validate_against_published(
     if dev is None:
         return None
 
-    sim_I_peak = data.get("I_peak", 0.0)
-    sim_t_peak = data.get("t_peak", 0.0)
+    sim_I_peak = data.get("I_pre_dip", data.get("I_peak", 0.0))
+    sim_t_peak = data.get("t_pre_dip", data.get("t_peak", 0.0))
 
     ref_I = dev.peak_current / 1e6
     ref_t = dev.current_rise_time * 1e6
