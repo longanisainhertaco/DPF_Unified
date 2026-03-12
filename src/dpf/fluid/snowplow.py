@@ -311,8 +311,22 @@ class SnowplowModel:
         }
 
     def _frozen_result(self) -> dict[str, float]:
-        """Return frozen state after pinch."""
-        return self._make_result(dL_dt=0.0, F_magnetic=0.0, F_pressure=0.0)
+        """Return frozen state after pinch.
+
+        Post-pinch, the plasma column has finite Spitzer resistivity that
+        damps the circuit current.  Without this, the RLC circuit oscillates
+        with constant L and no dissipation, producing unphysical current rise.
+
+        Estimate: R_plasma = eta_spitzer * z_f / (pi * r_pinch^2)
+        At Bennett temperature ~1 keV in D2: eta ~ 2e-5 Ohm*m,
+        giving R ~ 1-10 mOhm for typical DPF pinch columns.
+        """
+        r_p = max(self.r_shock, self.r_pinch_min)
+        eta_spitzer = 2e-5  # Ohm*m, rough estimate for ~1 keV D plasma
+        R_plasma = eta_spitzer * self.z_f / (pi * r_p**2)
+        result = self._make_result(dL_dt=0.0, F_magnetic=0.0, F_pressure=0.0)
+        result["R_plasma"] = R_plasma
+        return result
 
     def _step_axial(
         self, dt: float, current: float, pressure: float | None,
