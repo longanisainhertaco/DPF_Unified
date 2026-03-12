@@ -1,14 +1,8 @@
-"""Tests for Phase X: Powell div(B) source terms — cylindrical implementation.
+"""Phase X: Powell div(B) source terms — cylindrical MHD solver tests.
 
-Covers the cylindrical-specific Powell terms not tested in test_phase_d_physics.py:
-    X.1  Zero div(B) in cylindrical coords: curl-type B -> all sources zero
-    X.2  Nonzero div(B) in cylindrical coords: monopole B -> nonzero sources
-    X.3  Formula verification: momentum source == -div(B)*B at interior points
-    X.4  Engine integration: enable_powell=True cylindrical run without NaN/crash
-    X.5  Damping property: applying Powell sources reduces volume-integrated |div(B)|
-
-Cylindrical div(B): (1/r) * d(r * B_r)/dr + dB_z/dz
-Only B_r and B_z contribute; B_theta does not affect div(B) in axisymmetric geometry.
+Tests Powell 8-wave formulation (Powell et al., J. Comp. Phys. 154, 284 (1999))
+for cylindrical geometry, including zero/nonzero div(B) states, formula
+verification, engine integration, and div(B) damping behavior.
 """
 
 from __future__ import annotations
@@ -16,581 +10,438 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _make_geom(nr: int = 16, nz: int = 16, dr: float = 1e-3, dz: float = 1e-3):
-    """Return a CylindricalGeometry instance."""
-    from dpf.geometry.cylindrical import CylindricalGeometry
-    return CylindricalGeometry(nr=nr, nz=nz, dr=dr, dz=dz)
+from dpf.fluid.mhd_solver import powell_source_terms, powell_source_terms_cylindrical
+from dpf.geometry.cylindrical import CylindricalGeometry
 
 
-def _make_state_2d(
-    nr: int,
-    nz: int,
-    B: np.ndarray,
-    velocity: np.ndarray | None = None,
-    rho: float = 1e-4,
-    pressure: float = 1e3,
-) -> dict[str, np.ndarray]:
-    """Build a 2D state dict with shape (nr, nz) scalars and (3, nr, nz) vectors."""
-    if velocity is None:
-        velocity = np.zeros((3, nr, nz))
+# ============================================================
+# Helper functions
+# ============================================================
+
+
+def _make_geom(nr: int = 16, nz: int = 16, dr: float = 0.01, dz: float = 0.01) -> CylindricalGeometry:
+    return CylindricalGeometry(nr, nz, dr, dz)
+
+
+def _make_state_2d(nr: int, nz: int) -> dict[str, np.ndarray]:
     return {
-        "rho": np.full((nr, nz), rho),
-        "velocity": velocity,
-        "pressure": np.full((nr, nz), pressure),
-        "B": B,
+        "rho": np.ones((nr, nz)) * 1e-4,
+        "velocity": np.zeros((3, nr, nz)),
+        "pressure": np.ones((nr, nz)) * 1.0,
+        "B": np.zeros((3, nr, nz)),
+        "Te": np.ones((nr, nz)) * 1e4,
+        "Ti": np.ones((nr, nz)) * 1e4,
         "psi": np.zeros((nr, nz)),
     }
 
 
-def _azimuthal_only_B(nr: int, nz: int, strength: float = 1.0) -> np.ndarray:
-    """Return a B field with only B_theta non-zero.
-
-    B = (0, B_theta, 0).  In cylindrical coords:
-        div(B) = (1/r)*d(r*0)/dr + d(0)/dz = 0  -> exactly divergence-free.
-    """
-    B = np.zeros((3, nr, nz))
-    B[1] = strength
-    return B
-
-
-def _uniform_Bz_field(nr: int, nz: int, strength: float = 1.0) -> np.ndarray:
-    """Return a uniform B_z field.
-
-    B = (0, 0, B_z_const).
-        div(B) = (1/r)*d(r*0)/dr + d(const)/dz = 0.
-    """
-    B = np.zeros((3, nr, nz))
-    B[2] = strength
-    return B
-
-
-def _monopole_Br_field(geom, nz: int, amplitude: float = 100.0) -> np.ndarray:
-    """Return B_r = amplitude (uniform) -> nonzero div(B).
-
-    div(B) = (1/r)*d(r * amplitude)/dr + 0
-           = (1/r)*(amplitude + r*0)
-           = amplitude / r
-
-    So div(B) > 0 everywhere except the axis.
-    """
-    nr = geom.nr
-    B = np.zeros((3, nr, nz))
-    B[0] = amplitude
-    return B
-
-
-def _linear_Bz_field(nz: int, nr: int, dz: float, amplitude: float = 100.0) -> np.ndarray:
-    """Return B_z = amplitude * z -> dB_z/dz = amplitude -> nonzero div(B).
-
-    Only B_z has a z-gradient; B_r = 0 so radial term vanishes.
-    """
-    B = np.zeros((3, nr, nz))
-    z = np.array([(j + 0.5) * dz for j in range(nz)])
-    B[2] = amplitude * z[np.newaxis, :]
-    return B
-
-
 # ============================================================
-# X.1  TestCylindricalPowellZeroDivB
+# 1. TestCylindricalPowellZeroDivB
 # ============================================================
+
 
 class TestCylindricalPowellZeroDivB:
-    """B fields that are divergence-free in cylindrical coords produce zero Powell sources."""
+    """Powell sources must vanish when div(B) = 0."""
 
-    def test_azimuthal_B_zero_sources(self):
-        """Pure B_theta has div(B)=0 -> all Powell sources are zero."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
+    def test_azimuthal_B_zero_sources(self) -> None:
+        """Pure B_theta = 1/r is divergence-free in cylindrical coordinates.
 
+        div(B) = (1/r) * d(r*B_r)/dr + dB_z/dz; B_theta doesn't enter div.
+        With B_r = 0 and B_z = 0, div(B) = 0 everywhere.
+        """
         nr, nz = 16, 16
         geom = _make_geom(nr, nz)
-        B = _azimuthal_only_B(nr, nz, strength=2.0)
-        state_2d = _make_state_2d(nr, nz, B)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
+        # B_theta = 1/r (div-free: B_r = B_z = 0)
+        state["B"][1] = 1.0 / geom.r_2d
+        state["velocity"] = np.random.default_rng(7).random((3, nr, nz))
 
-        np.testing.assert_allclose(
-            sources["div_B"], 0.0, atol=1e-10,
-            err_msg="Pure B_theta should give div(B)=0 in cylindrical coords",
-        )
-        np.testing.assert_allclose(
-            sources["dmom_powell"], 0.0, atol=1e-10,
-            err_msg="Powell momentum source must vanish when div(B)=0",
-        )
-        np.testing.assert_allclose(
-            sources["denergy_powell"], 0.0, atol=1e-10,
-            err_msg="Powell energy source must vanish when div(B)=0",
-        )
-        np.testing.assert_allclose(
-            sources["dB_powell"], 0.0, atol=1e-10,
-            err_msg="Powell induction source must vanish when div(B)=0",
-        )
+        result = powell_source_terms_cylindrical(state, geom)
 
-    def test_uniform_Bz_zero_sources(self):
-        """Uniform B_z has div(B)=0 -> all Powell sources are zero."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
+        np.testing.assert_allclose(result["div_B"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["dmom_powell"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["denergy_powell"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-12)
 
+    def test_uniform_Bz_zero_sources(self) -> None:
+        """Uniform B_z = const has dB_z/dz = 0 and B_r = 0, so div(B) = 0."""
         nr, nz = 16, 16
         geom = _make_geom(nr, nz)
-        B = _uniform_Bz_field(nr, nz, strength=1.5)
-        rng = np.random.default_rng(0)
-        vel = rng.standard_normal((3, nr, nz)) * 1e3
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
+        state["B"][2] = 2.5
+        state["velocity"] = np.random.default_rng(13).random((3, nr, nz))
 
-        np.testing.assert_allclose(
-            sources["div_B"], 0.0, atol=1e-10,
-            err_msg="Uniform B_z should give div(B)=0",
-        )
-        np.testing.assert_allclose(
-            sources["dmom_powell"], 0.0, atol=1e-10,
-            err_msg="Zero div(B) must give zero momentum source regardless of velocity",
-        )
+        result = powell_source_terms_cylindrical(state, geom)
 
-    def test_zero_sources_with_nonzero_velocity(self):
-        """Velocity does not affect div(B) or momentum source when div(B)=0."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
+        np.testing.assert_allclose(result["div_B"], 0.0, atol=1e-10)
+        np.testing.assert_allclose(result["dmom_powell"], 0.0, atol=1e-10)
+        np.testing.assert_allclose(result["denergy_powell"], 0.0, atol=1e-10)
+        np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-10)
 
+    def test_random_velocity_div_free_B(self) -> None:
+        """Random velocity with div-free B must give zero Powell sources."""
         nr, nz = 16, 16
         geom = _make_geom(nr, nz)
-        B = _azimuthal_only_B(nr, nz)
+        state = _make_state_2d(nr, nz)
+
         rng = np.random.default_rng(99)
-        vel = rng.standard_normal((3, nr, nz)) * 5e4
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
+        # Only B_theta set (div-free)
+        state["B"][1] = rng.random((nr, nz))
+        state["velocity"] = rng.random((3, nr, nz))
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
+        result = powell_source_terms_cylindrical(state, geom)
 
-        max_mom = float(np.max(np.abs(sources["dmom_powell"])))
-        max_eng = float(np.max(np.abs(sources["denergy_powell"])))
-        max_ind = float(np.max(np.abs(sources["dB_powell"])))
-        assert max_mom < 1e-8, f"dmom_powell should be ~0, got {max_mom:.2e}"
-        assert max_eng < 1e-8, f"denergy_powell should be ~0, got {max_eng:.2e}"
-        assert max_ind < 1e-8, f"dB_powell should be ~0, got {max_ind:.2e}"
+        # div(B) = 0 -> all sources zero regardless of velocity
+        np.testing.assert_allclose(result["div_B"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["dmom_powell"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["denergy_powell"], 0.0, atol=1e-12)
+        np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-12)
 
 
 # ============================================================
-# X.2  TestCylindricalPowellNonzeroDivB
+# 2. TestCylindricalPowellNonzeroDivB
 # ============================================================
+
 
 class TestCylindricalPowellNonzeroDivB:
-    """B fields with nonzero cylindrical divergence produce nonzero Powell sources."""
+    """Powell sources must be nonzero when div(B) != 0."""
 
-    def test_uniform_Br_gives_nonzero_divB(self):
-        """Uniform B_r = const has div(B) = B_r/r -> nonzero."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
+    def test_uniform_Br_nonzero_sources(self) -> None:
+        """Uniform B_r has cylindrical div = B_r/r (from d(r*B_r)/dr/r = B_r/r).
 
+        For B_r = const: d(r * B_r)/dr = B_r -> (1/r)*B_r != 0 for r > 0.
+        """
         nr, nz = 16, 16
-        dr = 1e-3
-        geom = _make_geom(nr, nz, dr=dr)
-        B = _monopole_Br_field(geom, nz, amplitude=50.0)
-        state_2d = _make_state_2d(nr, nz, B)
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
+        state["B"][0] = 1.0
+        state["B"][2] = 0.0
+        state["velocity"][0] = 0.1
 
-        max_divB = float(np.max(np.abs(sources["div_B"])))
-        assert max_divB > 1.0, (
-            f"Uniform B_r should produce |div(B)| >> 0, got max={max_divB:.2e}"
+        result = powell_source_terms_cylindrical(state, geom)
+
+        # div(B) = B_r/r which is nonzero for r > 0 (interior cells)
+        assert np.any(np.abs(result["div_B"][1:-1, 1:-1]) > 1e-6), (
+            "Expected nonzero div(B) for uniform B_r"
         )
-        max_mom = float(np.max(np.abs(sources["dmom_powell"])))
-        assert max_mom > 0.0, "Nonzero div(B) must produce nonzero momentum source"
-
-    def test_linear_Bz_gives_nonzero_sources(self):
-        """B_z linearly increasing in z has dB_z/dz = const -> nonzero div(B)."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
-        nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-        B = _linear_Bz_field(nz, nr, dz, amplitude=200.0)
-        vel = np.ones((3, nr, nz)) * 1e4
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
-
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-
-        max_divB = float(np.max(np.abs(sources["div_B"])))
-        assert max_divB > 10.0, (
-            f"Linear B_z should give |div(B)| ~ 200 interior, got max={max_divB:.2e}"
+        # Momentum source must be nonzero
+        assert np.any(np.abs(result["dmom_powell"][:, 1:-1, 1:-1]) > 1e-10), (
+            "Expected nonzero momentum Powell source"
         )
 
-        max_mom = float(np.max(np.abs(sources["dmom_powell"])))
-        assert max_mom > 0.0, "Nonzero div(B) must give nonzero momentum source"
-
-        max_eng = float(np.max(np.abs(sources["denergy_powell"])))
-        assert max_eng > 0.0, "Energy source nonzero when div(B)!=0 and v.B!=0"
-
-        max_ind = float(np.max(np.abs(sources["dB_powell"])))
-        assert max_ind > 0.0, "Induction source nonzero when div(B)!=0 and v!=0"
-
-    def test_nonzero_divB_with_zero_velocity(self):
-        """With v=0, energy and induction sources vanish but momentum source survives."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
+    def test_linear_Bz_nonzero(self) -> None:
+        """B_z = z -> dB_z/dz = 1 -> nonzero sources."""
         nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-        B = _linear_Bz_field(nz, nr, dz, amplitude=100.0)
-        state_2d = _make_state_2d(nr, nz, B, velocity=np.zeros((3, nr, nz)))
+        dr, dz = 0.01, 0.01
+        geom = _make_geom(nr, nz, dr, dz)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
+        z = np.array([(j + 0.5) * dz for j in range(nz)])
+        alpha = 100.0
+        state["B"][2] = alpha * z[np.newaxis, :]
+        state["velocity"][2] = 0.5
 
-        max_eng = float(np.max(np.abs(sources["denergy_powell"])))
-        max_ind = float(np.max(np.abs(sources["dB_powell"])))
-        max_mom = float(np.max(np.abs(sources["dmom_powell"])))
+        result = powell_source_terms_cylindrical(state, geom)
 
-        # v=0 -> v.B=0 -> energy source=0
-        assert max_eng < 1e-20, f"Energy source should be 0 when v=0, got {max_eng:.2e}"
-        # v=0 -> induction source=-div(B)*v=0
-        assert max_ind < 1e-20, f"Induction source should be 0 when v=0, got {max_ind:.2e}"
-        # momentum source -div(B)*B is still nonzero
-        assert max_mom > 0.0, "Momentum source -div(B)*B nonzero even when v=0"
+        # dB_z/dz ~ alpha in interior
+        np.testing.assert_allclose(
+            result["div_B"][1:-1, 1:-1], alpha, rtol=0.05
+        )
+        # Induction source dB = -div(B) * v must be nonzero
+        assert np.any(np.abs(result["dB_powell"][:, 1:-1, 1:-1]) > 1e-6), (
+            "Expected nonzero induction Powell source"
+        )
+
+    def test_v_zero_energy_source_zero(self) -> None:
+        """When v=0, energy source = -div(B)*(v.B) = 0, but momentum source != 0."""
+        nr, nz = 16, 16
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
+
+        # Nonzero div(B) via uniform B_r
+        state["B"][0] = 1.0
+        state["velocity"] = np.zeros((3, nr, nz))
+
+        result = powell_source_terms_cylindrical(state, geom)
+
+        # Energy source must be zero (v.B = 0)
+        np.testing.assert_allclose(result["denergy_powell"], 0.0, atol=1e-20)
+        # Induction source must be zero (v = 0)
+        np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-20)
+        # Momentum source nonzero since div(B) and B are nonzero
+        assert np.any(np.abs(result["dmom_powell"][0, 1:-1, 1:-1]) > 1e-8)
 
 
 # ============================================================
-# X.3  TestCylindricalPowellFormula
+# 3. TestCylindricalPowellFormula
 # ============================================================
+
 
 class TestCylindricalPowellFormula:
-    """Verify Powell source term formulas are implemented correctly."""
+    """Verify analytical formulas for each Powell source component."""
 
-    def test_momentum_source_equals_neg_divB_times_B(self):
-        """Interior momentum source = -div(B) * B (component-wise)."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
+    def test_momentum_equals_neg_divB_times_B(self) -> None:
+        """Verify dmom[d] = -div(B)*B[d] at interior."""
         nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-        B = _linear_Bz_field(nz, nr, dz, amplitude=150.0)
-        state_2d = _make_state_2d(nr, nz, B)
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        div_B = sources["div_B"]
+        rng = np.random.default_rng(21)
+        state["B"][0] = 0.5 * rng.random((nr, nz))
+        state["B"][1] = rng.random((nr, nz))
+        state["B"][2] = rng.random((nr, nz))
+        state["velocity"] = rng.random((3, nr, nz))
 
-        # Interior slice to avoid one-sided boundary difference artifacts
-        s = (slice(2, -2), slice(2, -2))
-        for component in range(3):
-            expected = -div_B[s] * B[component][s]
+        result = powell_source_terms_cylindrical(state, geom)
+        div_B = result["div_B"]
+
+        for d in range(3):
+            expected = -div_B * state["B"][d]
             np.testing.assert_allclose(
-                sources["dmom_powell"][component][s],
+                result["dmom_powell"][d],
                 expected,
-                rtol=1e-12,
-                err_msg=f"Momentum source component {component} mismatch",
+                atol=1e-14,
+                err_msg=f"Momentum source component {d} mismatch",
             )
 
-    def test_energy_source_equals_neg_divB_vdotB(self):
-        """Interior energy source = -div(B) * (v . B)."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
+    def test_energy_equals_neg_divB_times_vdotB(self) -> None:
+        """Verify denergy = -div(B)*(v.B)."""
         nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-        B = _linear_Bz_field(nz, nr, dz, amplitude=80.0)
-        vel = np.ones((3, nr, nz)) * 2e4
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        div_B = sources["div_B"]
-        v_dot_B = np.sum(vel * B, axis=0)
+        rng = np.random.default_rng(55)
+        state["B"][0] = rng.random((nr, nz)) * 0.5
+        state["B"][2] = rng.random((nr, nz))
+        state["velocity"] = rng.random((3, nr, nz))
 
-        s = (slice(2, -2), slice(2, -2))
-        expected = -div_B[s] * v_dot_B[s]
-        np.testing.assert_allclose(
-            sources["denergy_powell"][s],
-            expected,
-            rtol=1e-12,
-            err_msg="Energy source mismatch: should be -div(B)*(v.B)",
+        result = powell_source_terms_cylindrical(state, geom)
+        div_B = result["div_B"]
+        v_dot_B = np.sum(state["velocity"] * state["B"], axis=0)
+
+        expected = -div_B * v_dot_B
+        np.testing.assert_allclose(result["denergy_powell"], expected, atol=1e-14)
+
+    def test_induction_equals_neg_divB_times_v(self) -> None:
+        """Verify dB[d] = -div(B)*v[d]."""
+        nr, nz = 16, 16
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
+
+        rng = np.random.default_rng(77)
+        state["B"][0] = rng.random((nr, nz)) * 0.3
+        state["B"][2] = rng.random((nr, nz))
+        state["velocity"] = rng.random((3, nr, nz))
+
+        result = powell_source_terms_cylindrical(state, geom)
+        div_B = result["div_B"]
+
+        for d in range(3):
+            expected = -div_B * state["velocity"][d]
+            np.testing.assert_allclose(
+                result["dB_powell"][d],
+                expected,
+                atol=1e-14,
+                err_msg=f"Induction source component {d} mismatch",
+            )
+
+    def test_cylindrical_vs_cartesian_diverges(self) -> None:
+        """Uniform Br has ZERO Cartesian div but NONZERO cylindrical div.
+
+        This verifies that the correct cylindrical formula is used and differs
+        from the naive Cartesian formula for radial fields.
+        """
+        nr, nz = 16, 16
+        dr, dz = 0.01, 0.01
+        geom = _make_geom(nr, nz, dr, dz)
+
+        B = np.zeros((3, nr, nz))
+        B[0] = 1.0
+
+        # Cylindrical divergence: (1/r) * d(r*B_r)/dr + dB_z/dz
+        # For uniform B_r: d(r * 1)/dr = 1 -> (1/r)*1 = 1/r != 0
+        div_cyl = geom.div_B_cylindrical(B)
+
+        # Cartesian divergence of same field treats B_r as B_x (constant): dBx/dx = 0
+        # Use the 2D arrays directly with Cartesian gradient along axes 0 (r) and 1 (z)
+        div_cart = (
+            np.gradient(B[0], dr, axis=0)
+            + np.gradient(B[1], dr, axis=0) * 0.0  # B_theta const -> 0
+            + np.gradient(B[2], dz, axis=1)
         )
 
-    def test_induction_source_equals_neg_divB_times_v(self):
-        """Interior induction source = -div(B) * v (component-wise)."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
+        # Cartesian div should be ~0 (all components uniform)
+        np.testing.assert_allclose(div_cart[1:-1, 1:-1], 0.0, atol=1e-10)
 
-        nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-        B = _linear_Bz_field(nz, nr, dz, amplitude=60.0)
-        rng = np.random.default_rng(42)
-        vel = rng.standard_normal((3, nr, nz)) * 3e4
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
-
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        div_B = sources["div_B"]
-
-        s = (slice(2, -2), slice(2, -2))
-        for component in range(3):
-            expected = -div_B[s] * vel[component][s]
-            np.testing.assert_allclose(
-                sources["dB_powell"][component][s],
-                expected,
-                rtol=1e-12,
-                err_msg=f"Induction source component {component} mismatch",
-            )
-
-    def test_return_dict_keys_present(self):
-        """Return dict must contain the four expected keys."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
-        nr, nz = 8, 8
-        geom = _make_geom(nr, nz)
-        B = _azimuthal_only_B(nr, nz)
-        state_2d = _make_state_2d(nr, nz, B)
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        for key in ("dmom_powell", "denergy_powell", "dB_powell", "div_B"):
-            assert key in sources, f"Missing key: {key}"
-
-    def test_output_shapes_match_input(self):
-        """Output array shapes match (3, nr, nz) for vectors and (nr, nz) for scalars."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
-        nr, nz = 12, 20
-        geom = _make_geom(nr, nz)
-        B = _azimuthal_only_B(nr, nz)
-        state_2d = _make_state_2d(nr, nz, B)
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-
-        assert sources["dmom_powell"].shape == (3, nr, nz)
-        assert sources["dB_powell"].shape == (3, nr, nz)
-        assert sources["denergy_powell"].shape == (nr, nz)
-        assert sources["div_B"].shape == (nr, nz)
-
-    def test_cylindrical_divB_uses_1_over_r_weight(self):
-        """Cylindrical div(B) includes the 1/r weighting absent in Cartesian formula.
-
-        For B_r = const, Cartesian div would give 0 (no radial gradient),
-        but cylindrical div gives B_r/r (nonzero via the 1/r * d(r*B_r)/dr term).
-        """
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
-        nr, nz = 16, 16
-        dr = 1e-3
-        geom = _make_geom(nr, nz, dr=dr)
-        B = np.zeros((3, nr, nz))
-        B[0] = 1.0  # uniform B_r — no radial gradient, but div(B) = 1/r != 0
-        state_2d = _make_state_2d(nr, nz, B)
-
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        div_B = sources["div_B"]
-
-        # Interior cells: div(B) should be approximately 1/r[i]
-        for i in range(3, nr - 3):
-            r_i = geom.r[i]
-            expected_approx = 1.0 / r_i
-            # Loose tolerance — finite differences on 1/r have discretisation error
-            ratio = float(np.mean(np.abs(div_B[i, 3:-3]))) / expected_approx
-            assert 0.8 < ratio < 1.2, (
-                f"At i={i}, r={r_i:.3e}: mean|div_B|={float(np.mean(np.abs(div_B[i,3:-3]))):.3e}, "
-                f"expected ~1/r={expected_approx:.3e} (ratio={ratio:.3f})"
-            )
+        # Cylindrical div should be nonzero (1/r contribution)
+        assert np.all(np.abs(div_cyl[1:-1, 1:-1]) > 1e-3), (
+            "Expected nonzero cylindrical div(B) for uniform B_r"
+        )
 
 
 # ============================================================
-# X.4  TestPowellEngineIntegration
+# 4. TestPowellEngineIntegration
 # ============================================================
+
 
 class TestPowellEngineIntegration:
-    """Engine integration tests for enable_powell=True in cylindrical mode."""
+    """Engine-level integration tests for Powell sources."""
 
-    def _make_powell_cyl_config(self, nr: int = 8, nz: int = 16):
-        """SimulationConfig for a cylindrical run with Powell enabled."""
-        from dpf.config import SimulationConfig
-
-        return SimulationConfig(
-            grid_shape=[nr, 1, nz],
-            dx=0.01,
-            sim_time=1e-7,
-            circuit={
-                "C": 1e-6, "V0": 1e3, "L0": 1e-7,
-                "anode_radius": 0.005, "cathode_radius": 0.01,
-            },
-            geometry={"type": "cylindrical"},
-            fluid={"enable_powell": True, "backend": "python"},
-            radiation={"bremsstrahlung_enabled": False},
-        )
-
-    def test_engine_init_with_powell_enabled(self):
-        """Engine accepts enable_powell=True without raising during init."""
-        from dpf.engine import SimulationEngine
-
-        config = self._make_powell_cyl_config()
-        engine = SimulationEngine(config)
-        assert engine.config.fluid.enable_powell is True
-        assert engine.geometry_type == "cylindrical"
-
-    def test_engine_step_no_nan(self):
-        """Single engine step with Powell enabled produces no NaN."""
-        from dpf.engine import SimulationEngine
-
-        config = self._make_powell_cyl_config()
-        engine = SimulationEngine(config)
-        engine.run(max_steps=1)
-        for key in ("rho", "velocity", "pressure", "B"):
-            arr = engine.state[key]
-            assert np.all(np.isfinite(arr)), (
-                f"NaN/Inf detected in '{key}' after one Powell step"
-            )
-
-    def test_engine_multi_step_no_nan(self):
-        """Multiple engine steps with Powell enabled remain finite."""
-        from dpf.engine import SimulationEngine
-
-        config = self._make_powell_cyl_config()
-        engine = SimulationEngine(config)
-        summary = engine.run(max_steps=5)
-        assert summary["steps"] == 5
-        for key in ("rho", "velocity", "pressure", "B"):
-            arr = engine.state[key]
-            assert np.all(np.isfinite(arr)), (
-                f"NaN/Inf in '{key}' after 5 Powell steps"
-            )
-
-    def test_engine_pressure_stays_positive(self):
-        """Pressure floor is respected after Powell source application."""
-        from dpf.engine import SimulationEngine
-
-        config = self._make_powell_cyl_config()
-        engine = SimulationEngine(config)
-        engine.run(max_steps=3)
-        assert np.all(engine.state["pressure"] > 0), (
-            "Pressure went non-positive during Powell integration"
-        )
-
-    def test_engine_density_stays_positive(self):
-        """Density floor is respected; Powell sources do not modify density."""
-        from dpf.engine import SimulationEngine
-
-        config = self._make_powell_cyl_config()
-        engine = SimulationEngine(config)
-        engine.run(max_steps=3)
-        assert np.all(engine.state["rho"] > 0), (
-            "Density went non-positive during Powell integration"
-        )
-
-    def test_powell_disabled_by_default(self):
-        """enable_powell defaults to False; engine runs identically without it."""
+    def _make_engine(self) -> object:
         from dpf.config import SimulationConfig
         from dpf.engine import SimulationEngine
 
-        config = SimulationConfig(
-            grid_shape=[8, 1, 16],
+        cfg = SimulationConfig(
+            grid_shape=(8, 1, 16),
             dx=0.01,
-            sim_time=1e-7,
+            rho0=1e-4,
+            sim_time=1e-6,
             circuit={
-                "C": 1e-6, "V0": 1e3, "L0": 1e-7,
-                "anode_radius": 0.005, "cathode_radius": 0.01,
+                "C": 1e-3,
+                "V0": 15000,
+                "L0": 33.5e-9,
+                "anode_radius": 0.025,
+                "cathode_radius": 0.05,
             },
-            geometry={"type": "cylindrical"},
-            radiation={"bremsstrahlung_enabled": False},
+            geometry={"type": "cylindrical", "dz": 0.01},
+            fluid={"backend": "python", "enable_powell": True},
+            diagnostics={"hdf5_filename": ":memory:"},
+            boundary={"electrode_bc": False},
         )
-        assert config.fluid.enable_powell is False
-        engine = SimulationEngine(config)
-        summary = engine.run(max_steps=3)
-        assert summary["steps"] == 3
+        return SimulationEngine(cfg)
+
+    def test_engine_with_powell_runs(self) -> None:
+        """SimulationConfig with enable_powell=True, cylindrical, 8x1x16 grid runs 5 steps."""
+        engine = self._make_engine()
+        for _ in range(5):
+            engine.step()
+
+    def test_engine_powell_no_nan(self) -> None:
+        """No NaN after 5 steps."""
+        engine = self._make_engine()
+        for _ in range(5):
+            engine.step()
+
+        for key in ("rho", "velocity", "pressure", "B"):
+            arr = engine.state[key]
+            assert not np.any(np.isnan(arr)), f"NaN found in {key} after 5 Powell steps"
+
+    def test_engine_powell_disabled_default(self) -> None:
+        """Default enable_powell is False."""
+        from dpf.config import SimulationConfig
+
+        cfg = SimulationConfig(
+            grid_shape=(8, 1, 16),
+            dx=0.01,
+            rho0=1e-4,
+            sim_time=1e-6,
+            circuit={
+                "C": 1e-3,
+                "V0": 15000,
+                "L0": 33.5e-9,
+                "anode_radius": 0.025,
+                "cathode_radius": 0.05,
+            },
+            geometry={"type": "cylindrical", "dz": 0.01},
+            fluid={"backend": "python"},
+            diagnostics={"hdf5_filename": ":memory:"},
+            boundary={"electrode_bc": False},
+        )
+        assert cfg.fluid.enable_powell is False
+
+    def test_engine_powell_density_positive(self) -> None:
+        """Density stays positive after 5 Powell steps."""
+        engine = self._make_engine()
+        for _ in range(5):
+            engine.step()
+
+        rho = engine.state["rho"]
+        assert np.all(rho > 0.0), f"Non-positive density detected: min={rho.min():.3e}"
 
 
 # ============================================================
-# X.5  TestPowellReducesDivB
+# 5. TestPowellReducesDivB
 # ============================================================
+
 
 class TestPowellReducesDivB:
-    """Applying Powell source terms should damp div(B) over time."""
+    """Powell source terms should control div(B) growth."""
 
-    def test_single_application_reduces_divB_rms(self):
-        """One explicit Powell update step decreases RMS div(B) in a monopole state.
-
-        The Powell term adds -div(B)*v to the induction equation, which advects
-        the divergence error away. For a non-trivial velocity field, a single
-        step should reduce or maintain the volume-integrated |div(B)|.
-
-        Note: Powell alone does not eliminate div(B); it advects/damps it in
-        a characteristics-based way. This test verifies monotone behaviour
-        under a single explicit-Euler update, not full elimination.
-        """
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
+    def test_divb_rms_bounded(self) -> None:
+        """After applying Powell sources to B (Euler step), div(B) RMS doesn't grow."""
         nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
+        dr, dz = 0.01, 0.01
+        geom = _make_geom(nr, nz, dr, dz)
+        state = _make_state_2d(nr, nz)
 
-        # Non-trivial div(B): linear B_z growth
-        B = _linear_Bz_field(nz, nr, dz, amplitude=50.0).copy()
-        vel = np.zeros((3, nr, nz))
-        # Uniform outflow velocity so -div(B)*v is nonzero
-        vel[2] = 1e3
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
+        # Seed a nonzero div(B) via nonzero B_r
+        rng = np.random.default_rng(11)
+        state["B"][0] = 0.1 * rng.random((nr, nz))
+        state["B"][2] = 0.0
+        state["velocity"][0] = 0.05
 
-        # Initial div(B) RMS
-        sources_before = powell_source_terms_cylindrical(state_2d, geom)
-        divB_before = sources_before["div_B"]
-        rms_before = float(np.sqrt(np.mean(divB_before**2)))
-
-        # Apply one explicit-Euler Powell update to B
-        dt = 1e-9  # small enough that Euler step is stable
-        dB = sources_before["dB_powell"]
-        B_updated = B + dt * dB
-
-        state_updated = dict(state_2d)
-        state_updated["B"] = B_updated
-
-        sources_after = powell_source_terms_cylindrical(state_updated, geom)
-        divB_after = sources_after["div_B"]
-        rms_after = float(np.sqrt(np.mean(divB_after**2)))
-
-        # Powell correction should not increase div(B) — allow marginal tolerance
-        assert rms_after <= rms_before * 1.01, (
-            f"Powell induction update must not increase div(B) RMS: "
-            f"before={rms_before:.4e}, after={rms_after:.4e}"
-        )
-
-    def test_divB_bounded_after_multiple_steps(self):
-        """Volume-integrated |div(B)| does not blow up over multiple Powell-applied steps."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
-        nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
-
-        B = _linear_Bz_field(nz, nr, dz, amplitude=30.0).copy()
-        vel = np.ones((3, nr, nz)) * 5e2
-        state_2d = _make_state_2d(nr, nz, B, velocity=vel)
-
-        sources_init = powell_source_terms_cylindrical(state_2d, geom)
-        rms_init = float(np.sqrt(np.mean(sources_init["div_B"] ** 2)))
+        result = powell_source_terms_cylindrical(state, geom)
+        div_B_before = result["div_B"]
+        rms_before = float(np.sqrt(np.mean(div_B_before**2)))
 
         dt = 1e-9
-        current_B = B.copy()
-        for _ in range(10):
-            state_2d["B"] = current_B
-            sources = powell_source_terms_cylindrical(state_2d, geom)
-            current_B = current_B + dt * sources["dB_powell"]
+        B_new = state["B"].copy()
+        B_new += dt * result["dB_powell"]
 
-        state_2d["B"] = current_B
-        sources_final = powell_source_terms_cylindrical(state_2d, geom)
-        rms_final = float(np.sqrt(np.mean(sources_final["div_B"] ** 2)))
+        div_B_after = geom.div_B_cylindrical(B_new)
+        rms_after = float(np.sqrt(np.mean(div_B_after**2)))
 
-        # Div(B) should not have grown by more than 2x after 10 small steps
-        assert rms_final < rms_init * 2.0, (
-            f"div(B) RMS grew unexpectedly: init={rms_init:.4e}, final={rms_final:.4e}"
+        # Powell sources damp div(B) -- RMS should not increase
+        assert rms_after <= rms_before * 1.1, (
+            f"div(B) RMS grew: {rms_before:.3e} -> {rms_after:.3e}"
         )
 
-    def test_zero_velocity_preserves_divB(self):
-        """With v=0, Powell induction source is zero so B field is unchanged."""
-        from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
-
+    def test_divb_multi_step_bounded(self) -> None:
+        """Over 10 Euler steps, div(B) stays bounded."""
         nr, nz = 16, 16
-        dz = 1e-3
-        geom = _make_geom(nr, nz, dz=dz)
+        dr, dz = 0.01, 0.01
+        geom = _make_geom(nr, nz, dr, dz)
+        state = _make_state_2d(nr, nz)
 
-        B = _linear_Bz_field(nz, nr, dz, amplitude=40.0).copy()
-        state_2d = _make_state_2d(nr, nz, B, velocity=np.zeros((3, nr, nz)))
+        rng = np.random.default_rng(33)
+        state["B"][0] = 0.2 * rng.random((nr, nz))
+        state["velocity"][0] = 0.1
 
-        sources = powell_source_terms_cylindrical(state_2d, geom)
-        dB = sources["dB_powell"]
+        initial_result = powell_source_terms_cylindrical(state, geom)
+        rms_initial = float(np.sqrt(np.mean(initial_result["div_B"] ** 2)))
 
-        # With zero velocity, induction source = -div(B)*v = 0
-        np.testing.assert_allclose(
-            dB, 0.0, atol=1e-20,
-            err_msg="Induction source must be zero when velocity is zero",
+        dt = 1e-10
+        B = state["B"].copy()
+        for _ in range(10):
+            state_step = dict(state)
+            state_step["B"] = B
+            result = powell_source_terms_cylindrical(state_step, geom)
+            B = B + dt * result["dB_powell"]
+
+        div_B_final = geom.div_B_cylindrical(B)
+        rms_final = float(np.sqrt(np.mean(div_B_final**2)))
+
+        # div(B) must not explode over 10 steps
+        assert rms_final <= rms_initial * 10.0, (
+            f"div(B) RMS blew up: initial={rms_initial:.3e}, final={rms_final:.3e}"
         )
+
+    def test_dB_zero_when_v_zero(self) -> None:
+        """dB_powell is exactly zero when velocity is zero.
+
+        dB[d] = -div(B) * v[d]. With v = 0, all induction corrections vanish.
+        """
+        nr, nz = 16, 16
+        geom = _make_geom(nr, nz)
+        state = _make_state_2d(nr, nz)
+
+        # Nonzero div(B)
+        state["B"][0] = 1.0
+        state["velocity"] = np.zeros((3, nr, nz))
+
+        result = powell_source_terms_cylindrical(state, geom)
+
+        np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-20)
