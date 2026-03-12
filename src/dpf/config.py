@@ -151,6 +151,10 @@ class FluidConfig(BaseModel):
     implicit_tol: float = Field(1e-8, gt=0, description="Implicit diffusion solver tolerance")
     enable_powell: bool = Field(False, description="Enable Powell 8-wave div(B) source terms")
     dedner_cr: float = Field(0.0, ge=0, description="Dedner damping rate (0 = auto)")
+    conservative_energy: bool = Field(
+        False,
+        description="Use conservative total energy (dE/dt) instead of pressure (dp/dt) in cylindrical solver",
+    )
     enable_anisotropic_conduction: bool = Field(
         False, description="Enable field-aligned Braginskii thermal conduction"
     )
@@ -341,6 +345,13 @@ class SnowplowConfig(BaseModel):
             "Fraction of anode length participating in radial compression (z_f/L_anode). "
             "Large DPF devices: ~0.12-0.14 (PF-1000). Small devices: ~0.5-1.0 (NX2). "
             "Default 1.0 for backward compatibility."
+        ),
+    )
+    enable_mhd_coupling: bool = Field(
+        False,
+        description=(
+            "Inject snowplow sheath mass/momentum/energy into the MHD grid as source terms. "
+            "When False (default), snowplow only couples via L_plasma/dL_dt to the circuit."
         ),
     )
 

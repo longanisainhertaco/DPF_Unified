@@ -1696,6 +1696,13 @@ class MHDSolver(PlasmaSolverBase):
         if source_terms is not None and "Q_ohmic_correction" in source_terms:
             ohmic_correction = source_terms["Q_ohmic_correction"]
 
+        # Snowplow sheath source terms (mass, momentum, energy)
+        if source_terms is not None and "S_rho_snowplow" in source_terms:
+            drho_dt = drho_dt + source_terms["S_rho_snowplow"]
+        if source_terms is not None and "S_mom_snowplow" in source_terms:
+            dmom_dt = dmom_dt + source_terms["S_mom_snowplow"]
+        # S_energy_snowplow is added to dp_dt after the energy equation below
+
         # --- Hall term: E_Hall = (J_plasma × B) / (n_e * e) ---
         if self.enable_hall:
             ne = rho / self.ion_mass  # Z=1
@@ -1841,6 +1848,10 @@ class MHDSolver(PlasmaSolverBase):
             )
             if self.enable_energy_equation:
                 dp_dt += gm1 * (ohmic_heating + ohmic_correction)
+
+        # Snowplow energy source term
+        if source_terms is not None and "S_energy_snowplow" in source_terms:
+            dp_dt += (self.gamma - 1.0) * source_terms["S_energy_snowplow"]
 
         # --- Dedner cleaning (Mignone & Tzeferacos 2010 tuning) ---
         # Skip Dedner when CT is enabled (mutually exclusive)
