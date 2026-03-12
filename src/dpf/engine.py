@@ -199,7 +199,9 @@ class SimulationEngine:
                 riemann_solver=fc.riemann_solver,
                 conservative_energy=fc.conservative_energy,
             )
-            self._cell_volume = None  # Computed on demand from cylindrical geometry
+            # Cylindrical cell volumes from geometry: pi*(r_out^2-r_in^2)*dz
+            # Expand (nr, nz) → (nr, 1, nz) for broadcast with 3D state arrays
+            self._cell_volume = self.fluid.geom.cell_volumes()[:, np.newaxis, :]
             # Validate grid covers electrodes for cylindrical geometry
             r_max = nx * dx
             if r_max < cc.cathode_radius:
@@ -685,23 +687,26 @@ class SimulationEngine:
         if self.backend in ("athena", "hybrid"):
             return self._step_athena(dt, sim_time, _max_steps)
 
-        # Deprecation warning for Python backend on production workloads
-        # The Python engine uses dp/dt (non-conservative) instead of dE/dt,
-        # which violates Rankine-Hugoniot at shocks.  Warn early and often.
+        # Deprecation warning for Python Cartesian backend on production workloads.
+        # The Cartesian MHDSolver uses dp/dt (non-conservative) which violates
+        # Rankine-Hugoniot at shocks.  The CylindricalMHDSolver now defaults to
+        # conservative_energy=True, so this warning only applies to Cartesian.
         if self.step_count == 0 and self.backend == "python":
-            nx, ny, nz = self.config.grid_shape
-            import warnings
-            if nx * ny * nz > 16**3 or self.config.sim_time > 1e-7:
-                warnings.warn(
-                    "Python MHD backend uses a non-conservative pressure equation "
-                    "(dp/dt instead of dE/dt) which violates Rankine-Hugoniot at "
-                    f"shocks (grid {nx}x{ny}x{nz}, sim_time={self.config.sim_time:.1e}). "
-                    "For production accuracy, use backend='metal' (conservative, GPU) "
-                    "or backend='athena' (Athena++ C++). "
-                    "The Python engine is recommended only for teaching and prototyping.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
+            is_conservative = getattr(self.fluid, "conservative_energy", False)
+            if not is_conservative:
+                nx, ny, nz = self.config.grid_shape
+                import warnings
+                if nx * ny * nz > 16**3 or self.config.sim_time > 1e-7:
+                    warnings.warn(
+                        "Python MHD backend uses a non-conservative pressure equation "
+                        "(dp/dt instead of dE/dt) which violates Rankine-Hugoniot at "
+                        f"shocks (grid {nx}x{ny}x{nz}, sim_time={self.config.sim_time:.1e}). "
+                        "For production accuracy, use backend='metal' (conservative, GPU) "
+                        "or backend='athena' (Athena++ C++). "
+                        "The Python engine is recommended only for teaching and prototyping.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
 
         # === Phase 5: Pulse Power Circuit Step ===
         # 1. Update fields for inductance calculation (copy to avoid aliasing —
@@ -956,18 +961,20 @@ class SimulationEngine:
             self._current_source_terms = None
 
         # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs + Kinetics) ===
-        # Inject ohmic correction from previous step's gap measurement
+        # Measure ohmic gap using CURRENT state and inject correction in THIS step
+        # (eliminates one-step lag from previous approach)
         if (
             self.config.fluid.enable_ohmic_correction
-            and self._last_ohmic_gap != 0.0
             and eta_field is not None
             and self._cell_volume is not None
         ):
-            src = self._current_source_terms or {}
-            src["Q_ohmic_correction"] = self._compute_ohmic_correction(
-                eta_field, new_coupling.current, dt,
-            )
-            self._current_source_terms = src
+            self._measure_ohmic_gap(eta_field, new_coupling, dt)
+            if self._last_ohmic_gap != 0.0:
+                src = self._current_source_terms or {}
+                src["Q_ohmic_correction"] = self._compute_ohmic_correction(
+                    eta_field, new_coupling.current, dt,
+                )
+                self._current_source_terms = src
 
         # Inject snowplow source terms into MHD grid
         if self.config.snowplow.enable_mhd_coupling and self.snowplow is not None:
@@ -991,13 +998,7 @@ class SimulationEngine:
         )
         self._sanitize_state("after fluid step")
 
-        # Measure the ohmic heating gap for correction on next step
-        if (
-            self.config.fluid.enable_ohmic_correction
-            and eta_field is not None
-            and self._cell_volume is not None
-        ):
-            self._measure_ohmic_gap(eta_field, new_coupling, dt)
+        # (ohmic gap measurement moved to before fluid step — no longer lagged)
 
         # === Step 3.1: Ablation operator-split step ===
         if self.config.ablation.enabled:
@@ -1258,6 +1259,32 @@ class SimulationEngine:
 
         return self._make_step_result(dt=dt, finished=finished)
 
+    def _compute_J_from_B(self, B: np.ndarray) -> np.ndarray:
+        """Compute current density J = curl(B) / mu_0.
+
+        Handles both Cartesian (3D) and cylindrical (ny=1) grids.
+        Returns J with same shape as B.
+        """
+        mu_0 = _mu_0
+        dx = self.config.dx
+
+        if self.geometry_type == "cylindrical" and hasattr(self.fluid, "geom"):
+            # Use cylindrical curl operator (handles ny=1)
+            B_2d = np.squeeze(B, axis=2) if B.ndim == 4 else B
+            curl_B = self.fluid.geom.curl(B_2d)
+            J_2d = curl_B / mu_0
+            if B.ndim == 4:
+                return J_2d[:, :, np.newaxis, :]
+            return J_2d
+
+        # Cartesian: standard gradient curl
+        J = np.array([
+            np.gradient(B[2], dx, axis=1) - np.gradient(B[1], dx, axis=2),
+            np.gradient(B[0], dx, axis=2) - np.gradient(B[2], dx, axis=0),
+            np.gradient(B[1], dx, axis=0) - np.gradient(B[0], dx, axis=1),
+        ]) / mu_0
+        return J
+
     def _measure_ohmic_gap(
         self,
         eta_field: np.ndarray,
@@ -1275,16 +1302,7 @@ class SimulationEngine:
         if B is None or B.shape[0] < 3:
             return
 
-        mu_0 = _mu_0
-        dx = self.config.dx
-
-        # J = curl(B) / mu_0
-        J = np.array([
-            np.gradient(B[2], dx, axis=1) - np.gradient(B[1], dx, axis=2),
-            np.gradient(B[0], dx, axis=2) - np.gradient(B[2], dx, axis=0),
-            np.gradient(B[1], dx, axis=0) - np.gradient(B[0], dx, axis=1),
-        ]) / mu_0
-
+        J = self._compute_J_from_B(B)
         J_sq = np.sum(J**2, axis=0)
         dV = self._cell_volume
         Q_mhd = float(np.sum(eta_field * J_sq * dV))
@@ -1312,15 +1330,7 @@ class SimulationEngine:
         if B is None or B.shape[0] < 3:
             return np.zeros_like(self.state["rho"])
 
-        mu_0 = _mu_0
-        dx = self.config.dx
-
-        J = np.array([
-            np.gradient(B[2], dx, axis=1) - np.gradient(B[1], dx, axis=2),
-            np.gradient(B[0], dx, axis=2) - np.gradient(B[2], dx, axis=0),
-            np.gradient(B[1], dx, axis=0) - np.gradient(B[0], dx, axis=1),
-        ]) / mu_0
-
+        J = self._compute_J_from_B(B)
         J_sq = np.sum(J**2, axis=0)
         dV = self._cell_volume
         total_J_sq_dV = float(np.sum(J_sq * dV))
