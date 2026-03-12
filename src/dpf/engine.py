@@ -297,6 +297,10 @@ class SimulationEngine:
         # Source terms for coupling (e.g. J_kin from PIC)
         self._current_source_terms: dict[str, np.ndarray] | None = None
 
+        # Ohmic heating gap tracking (circuit→plasma energy consistency)
+        self._ohmic_gap_history: list[float] = []
+        self._last_ohmic_gap: float = 0.0
+
         # Snowplow → MHD B-field coupling: one-shot initialization at radial entry
         self._radial_bfield_initialized: bool = False
 
@@ -951,6 +955,19 @@ class SimulationEngine:
             self._current_source_terms = None
 
         # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs + Kinetics) ===
+        # Inject ohmic correction from previous step's gap measurement
+        if (
+            self.config.fluid.enable_ohmic_correction
+            and self._last_ohmic_gap != 0.0
+            and eta_field is not None
+            and self._cell_volume is not None
+        ):
+            src = self._current_source_terms or {}
+            src["Q_ohmic_correction"] = self._compute_ohmic_correction(
+                eta_field, new_coupling.current, dt,
+            )
+            self._current_source_terms = src
+
         cc = self.config.circuit
         self.state = self.fluid.step(
             self.state,
@@ -964,6 +981,14 @@ class SimulationEngine:
             apply_electrode_bc=self.boundary_cfg.electrode_bc,
         )
         self._sanitize_state("after fluid step")
+
+        # Measure the ohmic heating gap for correction on next step
+        if (
+            self.config.fluid.enable_ohmic_correction
+            and eta_field is not None
+            and self._cell_volume is not None
+        ):
+            self._measure_ohmic_gap(eta_field, new_coupling, dt)
 
         # === Step 3.1: Ablation operator-split step ===
         if self.config.ablation.enabled:
@@ -1223,6 +1248,79 @@ class SimulationEngine:
             finished = True
 
         return self._make_step_result(dt=dt, finished=finished)
+
+    def _measure_ohmic_gap(
+        self,
+        eta_field: np.ndarray,
+        coupling: CouplingState,
+        dt: float,
+    ) -> None:
+        """Measure gap between circuit and MHD ohmic heating rates.
+
+        Circuit says: P_ohmic = R_plasma * I^2
+        MHD says:     P_ohmic = integral(eta * J^2 * dV)
+
+        The difference is stored for J^2-weighted correction on the next step.
+        """
+        B = self.state.get("B")
+        if B is None or B.shape[0] < 3:
+            return
+
+        mu_0 = _mu_0
+        dx = self.config.dx
+
+        # J = curl(B) / mu_0
+        J = np.array([
+            np.gradient(B[2], dx, axis=1) - np.gradient(B[1], dx, axis=2),
+            np.gradient(B[0], dx, axis=2) - np.gradient(B[2], dx, axis=0),
+            np.gradient(B[1], dx, axis=0) - np.gradient(B[0], dx, axis=1),
+        ]) / mu_0
+
+        J_sq = np.sum(J**2, axis=0)
+        dV = self._cell_volume
+        Q_mhd = float(np.sum(eta_field * J_sq * dV))
+        Q_circuit = coupling.R_plasma * coupling.current**2
+
+        gap = Q_circuit - Q_mhd
+        self._last_ohmic_gap = gap
+        self._ohmic_gap_history.append(gap)
+        if len(self._ohmic_gap_history) > 100:
+            self._ohmic_gap_history = self._ohmic_gap_history[-50:]
+
+    def _compute_ohmic_correction(
+        self,
+        eta_field: np.ndarray,
+        current: float,
+        dt: float,
+    ) -> np.ndarray:
+        """Distribute the ohmic gap as a J^2-weighted pressure source [W/m^3].
+
+        Returns Q_correction(x,y,z) such that:
+            integral(Q_correction * dV) = last_ohmic_gap
+        and the spatial distribution follows local J^2.
+        """
+        B = self.state.get("B")
+        if B is None or B.shape[0] < 3:
+            return np.zeros_like(self.state["rho"])
+
+        mu_0 = _mu_0
+        dx = self.config.dx
+
+        J = np.array([
+            np.gradient(B[2], dx, axis=1) - np.gradient(B[1], dx, axis=2),
+            np.gradient(B[0], dx, axis=2) - np.gradient(B[2], dx, axis=0),
+            np.gradient(B[1], dx, axis=0) - np.gradient(B[0], dx, axis=1),
+        ]) / mu_0
+
+        J_sq = np.sum(J**2, axis=0)
+        dV = self._cell_volume
+        total_J_sq_dV = float(np.sum(J_sq * dV))
+
+        if total_J_sq_dV < 1e-30:
+            return np.zeros_like(self.state["rho"])
+
+        # Distribute gap proportional to local J^2 [W/m^3]
+        return (self._last_ohmic_gap / total_J_sq_dV) * J_sq
 
     def _compute_back_emf(self, dt: float) -> float:
         """Compute motional back-EMF from MHD field advection.

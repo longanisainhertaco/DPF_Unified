@@ -1691,6 +1691,11 @@ class MHDSolver(PlasmaSolverBase):
             J_sq = np.sum(J_plasma**2, axis=0)
             ohmic_heating = eta_field * J_sq
 
+        # Circuit-MHD ohmic correction: J^2-weighted gap distribution
+        ohmic_correction = np.zeros_like(rho)
+        if source_terms is not None and "Q_ohmic_correction" in source_terms:
+            ohmic_correction = source_terms["Q_ohmic_correction"]
+
         # --- Hall term: E_Hall = (J_plasma × B) / (n_e * e) ---
         if self.enable_hall:
             ne = rho / self.ion_mass  # Z=1
@@ -1797,7 +1802,7 @@ class MHDSolver(PlasmaSolverBase):
                 dE_total_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
             )
             if self.enable_energy_equation:
-                dp_dt += (self.gamma - 1.0) * ohmic_heating
+                dp_dt += (self.gamma - 1.0) * (ohmic_heating + ohmic_correction)
         else:
             # Conservative total energy approach + Rusanov diffusion.
             # The non-conservative dp/dt = -gamma*p*div(v) gives wrong
@@ -1835,7 +1840,7 @@ class MHDSolver(PlasmaSolverBase):
                 dE_total_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
             )
             if self.enable_energy_equation:
-                dp_dt += gm1 * ohmic_heating
+                dp_dt += gm1 * (ohmic_heating + ohmic_correction)
 
         # --- Dedner cleaning (Mignone & Tzeferacos 2010 tuning) ---
         # Skip Dedner when CT is enabled (mutually exclusive)

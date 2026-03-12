@@ -173,6 +173,14 @@ class FluidConfig(BaseModel):
         True,
         description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
+    enable_ohmic_correction: bool = Field(
+        True,
+        description=(
+            "Apply circuit-MHD ohmic heating correction. Adds the difference "
+            "between R_plasma*I^2 and integral(eta*J^2*dV) as a J^2-weighted "
+            "pressure source to ensure circuit-plasma energy consistency."
+        ),
+    )
     handoff_fraction: float = Field(
         0.1,
         ge=0.0,
