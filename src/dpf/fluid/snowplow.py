@@ -440,10 +440,10 @@ class SnowplowModel:
 
         # Anomalous resistance from m=0 disruption
         # Must exceed |dL/dt| for current to decay net of inductance release.
-        # R_anom_peak ~ 2 * |dL/dt_peak| (factor 2 ensures dissipation dominates)
+        # EMPIRICAL: factor 2 ensures R_anom > |dL/dt| (dissipation dominates)
         if self._tau_m0 > 0 and self._v_expand > 0:
             dL_dt_peak = (mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / self._r_pinch_at_stagnation
-            R_anom_peak = 2.0 * dL_dt_peak
+            R_anom_peak = 2.0 * dL_dt_peak  # EMPIRICAL: 2x for net dissipation
             tau_decay = 3.0 * self._tau_m0
             R_anom = R_anom_peak * np.exp(-dt_since_pinch / tau_decay)
         else:

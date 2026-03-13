@@ -390,7 +390,7 @@ def run_simulation_core(
     crowbar_t = None
 
     if snowplow is not None:
-        dip_mask = np.array([(p in ("radial", "pinch", "reflected")) for p in phases_list])
+        dip_mask = np.array([(p in ("radial", "reflected")) for p in phases_list])
         if np.any(dip_mask):
             dip_region = np.where(dip_mask)[0]
             dip_idx = dip_region[int(np.argmin(I_arr[dip_region]))]
@@ -423,7 +423,7 @@ def run_simulation_core(
 
         # Compute V_pinch = I * dL/dt at the current dip (maximum pinch voltage)
         # This is the inductive voltage that accelerates ions during m=0 disruption
-        dip_mask_arr = np.array([(p in ("radial", "pinch", "reflected")) for p in phases_list])
+        dip_mask_arr = np.array([(p in ("radial", "reflected")) for p in phases_list])
         if np.any(dip_mask_arr):
             dip_indices = np.where(dip_mask_arr)[0]
             dLdt_arr = np.gradient(np.array(L_plasmas) * 1e-9, np.array(times) * 1e-6)
