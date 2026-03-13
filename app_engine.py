@@ -50,7 +50,6 @@ GAS_SPECIES: dict[str, dict[str, Any]] = {
     },
 }
 
-kB = k_B
 
 
 def _bosch_hale_dd(T_keV: float) -> float:
@@ -203,8 +202,8 @@ def dd_neutron_yield(
     N_l = mass_fraction * n_fill * np.pi * (cathode_r_m**2 - anode_r_m**2)
     n_pinch = N_l / (np.pi * r_pinch_m**2)
 
-    T_K = mu_0 * I_pinch_A**2 / (8 * np.pi * N_l * 2 * kB)
-    T_bennett_keV = T_K * kB / 1.602e-16
+    T_K = mu_0 * I_pinch_A**2 / (8 * np.pi * N_l * 2 * k_B)
+    T_bennett_keV = T_K * k_B / 1.602e-16
 
     # Apply radiation cooling correction (critical for high-current devices)
     T_eff_keV = _radiation_corrected_temperature(
@@ -243,10 +242,10 @@ def dd_neutron_yield(
 def density_from_pressure(
     gas_key: str, pressure_torr: float, temp_K: float = 300.0,
 ) -> float:
-    """Compute mass density from ideal gas law: rho = P * m / (kB * T)."""
+    """Compute mass density from ideal gas law: rho = P * m / (k_B * T)."""
     gas = GAS_SPECIES[gas_key]
     pressure_pa = pressure_torr * 133.322
-    return pressure_pa * gas["m_mol"] / (kB * temp_K)
+    return pressure_pa * gas["m_mol"] / (k_B * temp_K)
 
 
 def run_simulation_core(
@@ -300,10 +299,10 @@ def run_simulation_core(
     if pressure_torr is not None and pressure_torr > 0:
         p_pa = pressure_torr * 133.322
         sc["fill_pressure_Pa"] = p_pa
-        rho0 = p_pa * gas["m_mol"] / (kB * 300.0)
+        rho0 = p_pa * gas["m_mol"] / (k_B * 300.0)
     elif gas_key and gas_key != "D2":
         p_pa = sc.get("fill_pressure_Pa", 400.0)
-        rho0 = p_pa * gas["m_mol"] / (kB * 300.0)
+        rho0 = p_pa * gas["m_mol"] / (k_B * 300.0)
 
     t_end = sim_time_us * 1e-6
 

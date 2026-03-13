@@ -37,7 +37,7 @@ import logging
 
 import numpy as np
 
-from dpf.constants import mu_0, pi
+from dpf.constants import eV, k_B, m_d, m_D2, mu_0, pi
 
 logger = logging.getLogger(__name__)
 
@@ -341,10 +341,9 @@ class SnowplowModel:
             # Estimate current density J = I / (2*pi*r*z_f) for cylindrical sheet
             J_mag = abs(current) / (2.0 * pi * r_s * self.z_f) if self.z_f > 0 else 0.0
             # Estimate electron density from compression
-            n_fill = self.rho0 / 3.344e-27  # D2 ion density
+            n_fill = self.rho0 / m_D2  # D2 ion density
             n_e = n_fill * (self.b / r_s) ** 2  # cylindrical compression
             # Ion temperature from adiabatic compression
-            m_D = 3.344e-27
             T_fill = 300.0  # room temperature [K]
             gamma = 5.0 / 3.0
             T_ion = T_fill * (self.b / r_s) ** (2 * (gamma - 1))
@@ -353,7 +352,7 @@ class SnowplowModel:
 
             eta_anom = anomalous_resistivity_scalar(
                 J_mag=J_mag, ne_val=n_e, Ti_val=T_ion,
-                alpha=self._alpha_anom, mi=m_D,
+                alpha=self._alpha_anom, mi=m_d,
                 threshold_model="ion_acoustic", Te_val=T_e,
             )
             # Convert resistivity [Ohm*m] to resistance [Ohm]
@@ -426,11 +425,11 @@ class SnowplowModel:
 
         # Temperature-dependent Spitzer resistivity
         I_eff = max(abs(self._I_at_pinch), 1e3)
-        n_fill = self.rho0 / 3.344e-27
+        n_fill = self.rho0 / m_D2
         N_l = self.f_m * n_fill * pi * (self.b**2 - self.a**2)
         if N_l > 0:
-            T_K = mu_0 * I_eff**2 / (8.0 * pi * N_l * 2.0 * 1.381e-23)
-            T_eV = T_K * 1.381e-23 / 1.602e-19
+            T_K = mu_0 * I_eff**2 / (8.0 * pi * N_l * 2.0 * k_B)
+            T_eV = T_K * k_B / eV
         else:
             T_eV = 100.0
 
