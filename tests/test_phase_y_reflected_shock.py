@@ -394,25 +394,25 @@ class TestReflectedEdgeCases:
             assert sp._pinch_complete is True
 
     def test_frozen_after_reflected(self) -> None:
-        """Once reflected phase terminates, subsequent steps return frozen result."""
+        """Once reflected phase terminates, phase stays 'pinch' with zero forces.
+
+        Post-pinch expansion (Lee Phase 5) produces non-zero dL/dt as the
+        column expands outward — this is physically correct.
+        """
         sp = _make_snowplow()
         _drive_to_reflected(sp)
         _drive_through_reflected(sp)
 
         assert sp._pinch_complete is True, "Prerequisite: pinch must be complete"
 
-        # Take several more steps — should all return frozen (dL_dt=0, F_magnetic=0)
         for _ in range(10):
             result = sp.step(1e-9, 1.5e6)
-            assert result["dL_dt"] == pytest.approx(0.0), (
-                f"Frozen state must have dL_dt=0; got {result['dL_dt']:.4e}"
-            )
             assert result["F_magnetic"] == pytest.approx(0.0), (
-                f"Frozen state must have F_magnetic=0; got {result['F_magnetic']:.4e}"
+                f"Post-pinch must have F_magnetic=0; got {result['F_magnetic']:.4e}"
             )
             assert result["F_pressure"] == pytest.approx(0.0), (
-                f"Frozen state must have F_pressure=0; got {result['F_pressure']:.4e}"
+                f"Post-pinch must have F_pressure=0; got {result['F_pressure']:.4e}"
             )
             assert result["phase"] == "pinch", (
-                f"Frozen state must report phase='pinch'; got {result['phase']!r}"
+                f"Post-pinch must report phase='pinch'; got {result['phase']!r}"
             )

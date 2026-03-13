@@ -320,9 +320,13 @@ class TestInductanceEvolution:
             coupling.dL_dt = sp_res["dL_dt"]
             coupling = circuit.step(coupling, 0.0, dt)
             L_now = sp_res["L_plasma"]
-            assert L_now >= prev_L - 1e-15, (
-                f"L_plasma decreased: {L_now:.4e} < {prev_L:.4e}"
-            )
+            # L increases monotonically during rundown and radial compression.
+            # After pinch, post-pinch expansion (Lee Phase 5) decreases L
+            # as the column expands outward — this is physically correct.
+            if not sp.pinch_complete:
+                assert L_now >= prev_L - 1e-15, (
+                    f"L_plasma decreased before pinch: {L_now:.4e} < {prev_L:.4e}"
+                )
             prev_L = L_now
 
     def test_final_inductance_nanohenry_range(self):

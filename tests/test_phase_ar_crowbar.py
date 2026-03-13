@@ -202,14 +202,14 @@ class TestPresetUpdate:
     """PF-1000 preset reflects Phase AR recalibration."""
 
     def test_pf1000_fc_updated(self):
-        """PF-1000 preset fc = 0.800 (Phase AR)."""
+        """PF-1000 preset fc = 0.7 (Lee & Saw 2014, supersedes Phase AR)."""
         preset = get_preset("pf1000")
-        assert preset["snowplow"]["current_fraction"] == pytest.approx(0.800)
+        assert preset["snowplow"]["current_fraction"] == pytest.approx(0.7)
 
     def test_pf1000_fm_updated(self):
-        """PF-1000 preset fm = 0.094 (Phase AR)."""
+        """PF-1000 preset fm = 0.08 (Lee & Saw 2014, supersedes Phase AR)."""
         preset = get_preset("pf1000")
-        assert preset["snowplow"]["mass_fraction"] == pytest.approx(0.094)
+        assert preset["snowplow"]["mass_fraction"] == pytest.approx(0.08)
 
     def test_pf1000_crowbar_resistance_in_preset(self):
         """PF-1000 preset has crowbar_resistance = 1.5 mOhm."""

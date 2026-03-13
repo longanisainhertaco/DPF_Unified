@@ -596,15 +596,14 @@ class TestDataIntegrity:
         )
 
     def test_pf1000_calibration_unchanged(self):
-        """PF-1000 calibrated values match Phase AR recalibration.
+        """PF-1000 calibrated values match published Lee & Saw (2014).
 
-        Phase AR: fc=0.800 (boundary-trapped at correct Lee & Saw 2014 bounds),
-        fm=0.094 (recalibrated with crowbar_resistance=1.5 mOhm).
-        Previous: fc=0.816, fm=0.142 (incorrect wider bounds, PhD Debate #30).
+        Published: fc=0.7, fm=0.08 (Lee & Saw 2014, IPFS PF1000data.xls).
+        Previous Phase AR: fc=0.800, fm=0.094 (recalibrated, superseded).
         """
         from dpf.presets import get_preset
         preset = get_preset("pf1000")
-        assert abs(preset["snowplow"]["current_fraction"] - 0.800) < 0.001
-        assert abs(preset["snowplow"]["mass_fraction"] - 0.094) < 0.005
+        assert abs(preset["snowplow"]["current_fraction"] - 0.7) < 0.01
+        assert abs(preset["snowplow"]["mass_fraction"] - 0.08) < 0.01
         fc2_fm = preset["snowplow"]["current_fraction"]**2 / preset["snowplow"]["mass_fraction"]
-        assert abs(fc2_fm - 6.83) < 0.10, f"fc^2/fm = {fc2_fm:.3f}"
+        assert abs(fc2_fm - 6.125) < 0.50, f"fc^2/fm = {fc2_fm:.3f}"

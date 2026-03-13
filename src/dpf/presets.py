@@ -48,7 +48,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
-        "sim_time": 5e-6,
+        "sim_time": 10e-6,  # 10 us: covers peak (5.8us), radial, pinch, post-pinch
         "dt_init": 1e-10,
         "rho0": 7.53e-4,  # 3.5 Torr D2 at 300K: n*m_D2 (molecular mass)
         "T0": 300.0,
@@ -74,8 +74,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
-            "current_fraction": 0.800,  # Phase AR: correct bounds (0.6,0.8) + crowbar R=1.5mOhm
-            "mass_fraction": 0.094,  # Phase AR: recalibrated (was 0.142 with incorrect bounds)
+            "current_fraction": 0.7,  # Lee & Saw (2014): fc=0.7 (published Lee model fit)
+            "mass_fraction": 0.08,  # Lee & Saw (2014): fm=0.08 (published Lee model fit)
             "radial_mass_fraction": 0.1,  # Lee & Saw (2014): f_mr ~ 0.07-0.12
             "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
@@ -89,7 +89,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
         "grid_shape": [192, 1, 384],
         "dx": 2.5e-4,
-        "sim_time": 1e-6,
+        "sim_time": 4e-6,  # 4 us: covers peak (1.8us), radial, pinch
         "dt_init": 1e-11,
         "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
@@ -151,9 +151,9 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "snowplow": {
             "anode_length": 0.16,        # 160 mm
             "fill_pressure_Pa": 400.0,   # 3 Torr D2 = 400 Pa
-            "current_fraction": 0.7,     # Lee & Saw (2009, 2010)
-            "mass_fraction": 0.05,       # Lee & Saw (2009): fm=0.05
-            "radial_mass_fraction": 0.2,  # Lee & Saw (2009): fmr=0.2
+            "current_fraction": 0.7,     # Lee & Saw (2009, 2014): fc=0.7
+            "mass_fraction": 0.08,       # Lee & Saw (2014): fm=0.08 (published Lee model fit)
+            "radial_mass_fraction": 0.16,  # Lee & Saw (2014): fmr=0.16
             "pinch_column_fraction": 0.06,  # ~1 cm pinch of 16 cm anode
         },
     },
@@ -218,7 +218,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "circuit": {
             "C": 408e-6,           # 408 uF (24 modules x 17 uF erected)
             "V0": 60e3,            # 60 kV typical operation
-            "L0": 140e-9,          # 140 nH (calibrated to I_peak=2.0 MA, Schmidt 2021)
+            "L0": 80e-9,           # 80 nH (IPFS Lee model; loading factor I_peak/I_sc ~ 0.65)
             "R0": 1.4e-3,          # ~1.4 mOhm (RESF ~ 0.1)
             "anode_radius": 0.1143,  # 114.3 mm (Goyon et al., Phys. Plasmas 32:033105, 2025)
             "cathode_radius": 0.157,  # ~157 mm (A-K gap + anode)
@@ -262,8 +262,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "circuit": {
             "C": 25e-6,            # 25 uF (5 x 5 uF)
             "V0": 100e3,           # 100 kV direct-charge
-            "L0": 40e-9,           # 40 nH effective dynamic inductance
-            "R0": 35e-3,           # 35 mOhm (includes Marx switch losses)
+            "L0": 220e-9,          # 220 nH static inductance (Damideh 2025)
+            "R0": 7.6e-3,          # 7.6 mOhm (estimated from damping, Damideh 2025)
             "anode_radius": 0.05,  # 50 mm (Damideh 2025)
             "cathode_radius": 0.10,  # ~100 mm (estimated, 5 cm A-K gap)
             "crowbar_enabled": False,
@@ -274,8 +274,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "snowplow": {
             "anode_length": 0.17,      # 170 mm (Damideh 2025)
             "fill_pressure_Pa": 1600.0,  # 12 Torr D2 = 1600 Pa
-            "current_fraction": 0.7,   # Starting estimate (Sing Lee is co-author)
-            "mass_fraction": 0.1,      # Starting estimate
+            "current_fraction": 0.7,   # Lee model fit (Damideh 2025, Lee co-author)
+            "mass_fraction": 0.70,     # Lee model fit: fm=0.70 (Damideh 2025)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },
@@ -311,8 +311,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.47,
-            "current_fraction": 0.75,  # Fitted: 1.3% I_peak, 0.14 Yn_log vs Herold (1989)
-            "mass_fraction": 0.05,     # Low fm for narrow A-K gap (b/a=1.30)
+            "current_fraction": 0.65,  # Adjusted toward Lee model range for large Mather-type
+            "mass_fraction": 0.15,     # EMPIRICAL: increased from 0.05 (unrealistically low)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },

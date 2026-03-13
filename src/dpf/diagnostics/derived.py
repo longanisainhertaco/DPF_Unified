@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dpf.constants import mu_0
+from dpf.constants import k_B, mu_0
 
 
 def current_density_magnitude(
@@ -183,7 +183,6 @@ def bennett_radius(
         Bennett, W.H., Phys. Rev. 45, 890 (1934).
         Haines, M.G., Plasma Phys. Control. Fusion 53, 093001 (2011), Sec. 3.1.
     """
-    k_B = 1.380649e-23
     Te_val = float(np.mean(Te)) if hasattr(Te, "__len__") else float(Te)
     T_total = 2.0 * max(Te_val, 1.0)  # Te + Ti
     ne_val = max(float(ne), 1e10)

@@ -35,7 +35,7 @@ from typing import Any
 
 import numpy as np
 
-from dpf.constants import k_B, m_d, m_D2
+from dpf.constants import k_B, m_d, m_D2, mu_0
 
 # =====================================================================
 # Experimental device dataclass
@@ -94,6 +94,12 @@ class ExperimentalDevice:
     neutron_yield: float
     current_rise_time: float  # [s]
     reference: str
+    # Published Lee model fitting parameters (from RADPF calibration)
+    lee_fc: float = 0.0       # Axial current fraction (published Lee model fit)
+    lee_fm: float = 0.0       # Axial mass fraction (published Lee model fit)
+    lee_fmr: float = 0.0      # Radial mass fraction (published Lee model fit)
+    lee_fcr: float = 0.0      # Radial current fraction (published Lee model fit)
+    lee_reference: str = ""   # Reference for Lee model fit parameters
     # Experimental uncertainties (1-sigma, relative)
     # Following GUM (JCGM 100:2008) and ASME V&V 20-2009 uncertainty framework.
     peak_current_uncertainty: float = 0.0   # Relative uncertainty on peak current
@@ -161,6 +167,8 @@ PF1000_DATA = ExperimentalDevice(
     neutron_yield=1e11,
     current_rise_time=5.8e-6,      # 5.8 us
     reference="Scholz et al., Nukleonika 51(1), 2006",
+    lee_fc=0.7, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.7,
+    lee_reference="Lee & Saw, J. Fusion Energy 33:319 (2014); IPFS PF1000data.xls",
     crowbar_resistance=1.5e-3,     # 1.5 mOhm (spark gap arc, PhD Debate #30)
     peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
     rise_time_uncertainty=0.10,        # 10% (quarter-period timing)
@@ -203,6 +211,8 @@ NX2_DATA = ExperimentalDevice(
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
     reference="Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1",
+    lee_fc=0.7, lee_fm=0.10, lee_fmr=0.12, lee_fcr=0.7,
+    lee_reference="Lee & Saw, J. Fusion Energy 27:292 (2008)",
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
     rise_time_uncertainty=0.12,        # 12%
     neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
@@ -262,6 +272,8 @@ UNU_ICTP_DATA = ExperimentalDevice(
         "Lee et al., Am. J. Phys. 56, 1988; "
         "IPFS plasmafocus.net 'UNU ICTPPFF D2 05.15.xls'"
     ),
+    lee_fc=0.7, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.7,
+    lee_reference="IPFS plasmafocus.net preset; Lee & Saw (2014)",
     peak_current_uncertainty=0.10,     # 10% (training device, less precise)
     rise_time_uncertainty=0.15,        # 15%
     neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot)
@@ -336,6 +348,8 @@ PF1000_16KV_DATA = ExperimentalDevice(
     waveform_uncertainty_type="reconstruction",  # Physics-scaled from 27kV Scholz waveform
     peak_current_from_shot_spread=True,  # 10% derives from 1.1-1.3 MA shot range
     waveform_provenance="reconstructed",
+    lee_fc=0.70, lee_fm=0.20, lee_fmr=0.12, lee_fcr=0.47,
+    lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (24-shot avg at 16 kV)",
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
         "Peak current 1.1-1.3 MA across 16 shots (Akel et al. 2021 Table 1). "
@@ -421,6 +435,8 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.003,      # 0.3% (digital acquisition)
     waveform_uncertainty_type="digitization",  # Type B: IPFS digital archive
     waveform_provenance="measured",
+    lee_fc=0.70, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.70,
+    lee_reference="Lee & Saw 2014, IPFS PF1000data.xls (same device/voltage as PF-1000 standard)",
     measurement_notes=(
         "94-point digitized waveform from plasmafocus.net RADPF archive (PF1000 05.15.xls). "
         "Original source: Gribkov et al., J. Phys. D: Appl. Phys. 40:3592-3607, 2007. "
@@ -457,6 +473,8 @@ POSEIDON_DATA = ExperimentalDevice(
     neutron_yield=1e11,            # ~10^11 (Herold 1989)
     current_rise_time=5.0e-6,      # ~5 us (estimated from Lee model quarter-period)
     reference="Herold et al., Nucl. Fusion 29:33, 1989; Lee & Saw, J. Fusion Energy 33:319, 2014",
+    lee_fc=0.60, lee_fm=0.275, lee_fmr=0.45, lee_fcr=0.44,
+    lee_reference="Lee & Saw, J. Fusion Energy 33:319 (2014), at 60 kV",
     peak_current_uncertainty=0.08,     # 8% (large device, Rogowski + integration)
     rise_time_uncertainty=0.15,        # 15% (not explicitly stated in source)
     neutron_yield_uncertainty=0.50,    # 50% (shot-to-shot)
@@ -520,6 +538,8 @@ POSEIDON_60KV_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.005,      # 0.5% temporal
     waveform_uncertainty_type="digitization",  # Type B: IPFS digital archive
     waveform_provenance="measured",
+    lee_fc=0.60, lee_fm=0.275, lee_fmr=0.45, lee_fcr=0.44,
+    lee_reference="IPFS (plasmafocus.net) Lee model fit; Lee & Saw 2014",
     measurement_notes=(
         "POSEIDON at 60 kV / 156 uF (E0=280.8 kJ) with 3.8 Torr D2 fill. "
         "Digitized I(t) waveform from IPFS (plasmafocus.net) Excel file. "
@@ -610,6 +630,8 @@ FAETON_DATA = ExperimentalDevice(
         "Damideh et al., Scientific Reports 15:23048, 2025; "
         "DOI: 10.1038/s41598-025-07939-x"
     ),
+    lee_fc=0.70, lee_fm=0.70, lee_fmr=0.10, lee_fcr=0.14,
+    lee_reference="Damideh et al., Sci. Rep. 15:23048 (2025); Lee co-author",
     crowbar_resistance=0.0,        # No crowbar switch
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + Marx jitter)
     rise_time_uncertainty=0.10,    # 10% (not precisely stated)
@@ -694,6 +716,8 @@ MJOLNIR_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.03,       # 3% temporal (reconstructed)
     waveform_uncertainty_type="reconstruction",  # Reconstructed from peak current + circuit params
     waveform_provenance="reconstructed",
+    lee_fc=0.70, lee_fm=0.50, lee_fmr=0.10, lee_fcr=0.14,
+    lee_reference="Gemini research synthesis (2026-03-13); Lee model conventions",
     measurement_notes=(
         "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
         "ATLAS-heritage pulsed power: 24 Marx modules, 2 x 34 uF caps each, single-stage "
@@ -808,7 +832,6 @@ def compute_lp_l0_ratio(
     PhD Debate #29 (2026-02-28): L_p/L0 diagnostic for validation
     informativeness.
     """
-    mu_0 = 4.0 * np.pi * 1e-7  # [H/m]
     L_per_length = (mu_0 / (2.0 * np.pi)) * np.log(cathode_radius / anode_radius)
     L_p_axial = L_per_length * anode_length
     ratio = L_p_axial / max(L0, 1e-15)

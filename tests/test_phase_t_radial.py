@@ -504,7 +504,12 @@ class TestPhaseTransitions:
         assert sp.is_active is False
 
     def test_frozen_state_after_pinch(self) -> None:
-        """After pinch, further steps return frozen state with zero forces."""
+        """After pinch, phase stays 'pinch' and forces are zero.
+
+        Note: Post-pinch expansion (Lee Phase 5) produces non-zero dL/dt
+        and evolving r_shock/L_plasma. This is physically correct — the
+        column disrupts and expands outward after stagnation.
+        """
         sp = make_radial_snowplow()
         I_current = 1e6
         dt = 1e-9
@@ -514,17 +519,15 @@ class TestPhaseTransitions:
             if sp.phase == "pinch":
                 break
 
-        # Now take more steps -- should return frozen state
+        # Now take more steps -- phase stays pinch, forces are zero
         result1 = sp.step(dt, current=I_current)
         result2 = sp.step(dt, current=I_current)
 
         assert result1["phase"] == "pinch"
         assert result1["F_magnetic"] == 0.0
         assert result1["F_pressure"] == 0.0
-        assert result1["dL_dt"] == 0.0
-        # State should not change
-        assert result1["r_shock"] == result2["r_shock"]
-        assert result1["L_plasma"] == result2["L_plasma"]
+        # dL/dt is non-zero during post-pinch expansion (Lee Phase 5)
+        # r_shock and L_plasma evolve as the column expands
 
 
 # ===================================================================

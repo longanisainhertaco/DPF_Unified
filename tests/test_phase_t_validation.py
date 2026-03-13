@@ -290,7 +290,12 @@ class TestRadialCompression:
         assert sp.shock_radius <= 0.1 * sp.a + 1e-10
 
     def test_frozen_state_after_pinch(self) -> None:
-        """After pinch, state should be frozen (dL/dt=0, F=0)."""
+        """After pinch, forces are zero but post-pinch expansion evolves L.
+
+        Post-pinch column disruption (Lee Phase 5) produces non-zero dL/dt
+        as the column expands outward. Forces are zero because the
+        radial dynamics are no longer being solved.
+        """
         sp = _make_radial_snowplow(r_shock=0.02, vr=-5e4)
 
         # Run to pinch
@@ -302,16 +307,11 @@ class TestRadialCompression:
 
         assert sp.pinch_complete
 
-        # Take additional steps -- state should be frozen
-        r_at_pinch = sp.shock_radius
-        L_at_pinch = sp.plasma_inductance
         result = sp.step(dt, 500e3)
 
-        assert result["dL_dt"] == pytest.approx(0.0, abs=1e-20)
         assert result["F_magnetic"] == pytest.approx(0.0, abs=1e-20)
         assert result["F_pressure"] == pytest.approx(0.0, abs=1e-20)
-        assert sp.shock_radius == pytest.approx(r_at_pinch, rel=1e-15)
-        assert sp.plasma_inductance == pytest.approx(L_at_pinch, rel=1e-15)
+        assert result["phase"] == "pinch"
         assert not sp.is_active
 
 
