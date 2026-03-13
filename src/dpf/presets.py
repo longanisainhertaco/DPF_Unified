@@ -211,13 +211,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Circuit: ATLAS-heritage Marx, 24 modules, 2 x 34 uF each
         # C_erected = 24 x 17 uF = 408 uF. Design V=100 kV (2 MJ).
         # Typical operation: 60 kV (734 kJ), peak current 2.8 MA.
-        # L0 = 80 nH estimated from I_peak/I_sc ~ 0.65 loading factor.
-        # 84 flexible transmission line cables from Marx pit to collector.
+        # L0 = 140 nH: 80 nH loading-factor estimate revised upward to match
+        # I_peak=2.0 MA (Schmidt 2021). 84 flexible TL cables from Marx pit
+        # add significant inductance beyond the loading-factor heuristic.
         # R0 = 1.4 mOhm from RESF ~ 0.1.
         "circuit": {
             "C": 408e-6,           # 408 uF (24 modules x 17 uF erected)
             "V0": 60e3,            # 60 kV typical operation
-            "L0": 80e-9,           # ~80 nH (estimated from loading factor)
+            "L0": 140e-9,          # 140 nH (calibrated to I_peak=2.0 MA, Schmidt 2021)
             "R0": 1.4e-3,          # ~1.4 mOhm (RESF ~ 0.1)
             "anode_radius": 0.1143,  # 114.3 mm (Goyon et al., Phys. Plasmas 32:033105, 2025)
             "cathode_radius": 0.157,  # ~157 mm (A-K gap + anode)
@@ -232,8 +233,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Anode effective length 18.3-22.1 cm (Petrov 2022)
         "snowplow": {
             "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
-            "current_fraction": 0.55,  # Fitted: 3.6% I_peak, 2.3% t_peak vs Schmidt (2021)
-            "mass_fraction": 0.45,    # Fitted: heavy mass loading for MA-class (ATLAS-heritage)
+            "current_fraction": 0.70,  # Recalibrated with L0=140nH: I_peak match vs Schmidt (2021)
+            "mass_fraction": 0.50,    # Recalibrated: heavy mass loading for MA-class (ATLAS-heritage)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
@@ -348,8 +349,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.30,
-            "current_fraction": 0.595,   # IPFS Lee model fit (plasmafocus.net)
-            "mass_fraction": 0.275,      # IPFS Lee model fit
+            "current_fraction": 0.450,   # Calibrated: I_peak 3.175 MA (-0.47% vs 3.19 MA exp)
+            "mass_fraction": 0.450,      # Calibrated: Yn 7.24e10 (0.14 dec vs 1e11 exp)
             "radial_mass_fraction": 0.45,  # IPFS Lee model fit (fmr)
             "pinch_column_fraction": 0.14,
         },

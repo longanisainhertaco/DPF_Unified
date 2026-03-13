@@ -205,11 +205,16 @@ class TestMetalEngineVsExperiment:
 
     def test_current_dip_present(self):
         """Current dip after peak is present (pinch signature)."""
-        _, currents, _ = _get_metal_result()
+        from dpf.validation.experimental import _find_first_peak
+
+        times, currents, _ = _get_metal_result()
         abs_I = currents
-        peak_idx = np.argmax(abs_I)
+        peak_idx = _find_first_peak(abs_I)
         if peak_idx < len(abs_I) - 2:
-            post_peak = abs_I[peak_idx:]
+            # Search within peak + 1 us for pinch dip (not deep post-pinch decay)
+            t_us = times * 1e6
+            search_end = np.searchsorted(t_us, t_us[peak_idx] + 1.0)
+            post_peak = abs_I[peak_idx:search_end]
             dip = (abs_I[peak_idx] - np.min(post_peak)) / abs_I[peak_idx]
             # Even coarse grid should show some dip
             assert dip > 0.05, (

@@ -38,6 +38,7 @@ from typing import Any
 import numpy as np
 
 from dpf.constants import k_B, m_D2
+from dpf.validation.experimental import _find_first_peak
 
 logger = logging.getLogger(__name__)
 
@@ -163,9 +164,8 @@ def run_rlc_snowplow_pf1000(
         sp_result = snowplow.step(dt, coupling.current)
         coupling.Lp = sp_result["L_plasma"]
         coupling.dL_dt = sp_result["dL_dt"]
-        # R_plasma = 0: consistent with Lee model (plasma resistance is
-        # absorbed into the fm parameter in the snowplow formulation)
-        coupling.R_plasma = 0.0
+        # Post-pinch disruption model provides anomalous + Spitzer R_plasma
+        coupling.R_plasma = sp_result.get("R_plasma", 0.0)
 
         # Circuit advance (production RLCSolver, implicit midpoint)
         coupling = circuit.step(coupling, 0.0, dt)
@@ -320,8 +320,9 @@ def compare_rlc_vs_lee(
         t_rlc, I_rlc, lee_result.t, lee_result.I,
     )
 
-    # Compare peaks
-    peak_rlc = float(np.max(np.abs(I_rlc)))
+    # Compare peaks (use first peak, not global max which may include
+    # post-pinch inductance release from disruption model)
+    peak_rlc = float(np.abs(I_rlc)[_find_first_peak(np.abs(I_rlc))])
     peak_lee = lee_result.peak_current
     peak_diff = abs(peak_rlc - peak_lee) / max(peak_lee, 1e-30)
 

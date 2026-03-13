@@ -261,17 +261,20 @@ class TestGribkovWaveformAnalytical:
         """Waveform should show current dip (pinch signature)."""
         import numpy as np  # noqa: I001
 
-        from dpf.validation.experimental import DEVICES
+        from dpf.validation.experimental import DEVICES, _find_first_peak
 
         dev = DEVICES["PF-1000-Gribkov"]
         I_MA = dev.waveform_I / 1e6  # MA
 
-        # Find peak
-        peak_idx = np.argmax(I_MA)
+        # Find first physical peak (not global max, which may be post-pinch)
+        peak_idx = _find_first_peak(I_MA)
         I_peak = I_MA[peak_idx]
 
-        # After peak, current should dip below 80% of peak
-        post_peak = I_MA[peak_idx:]
+        # Search within peak + 3 us for pinch dip. The Gribkov waveform has
+        # coarse digitization (~0.17 us/pt), so the dip develops over 2-3 us.
+        t_us = dev.waveform_t * 1e6
+        search_end = np.searchsorted(t_us, t_us[peak_idx] + 3.0)
+        post_peak = I_MA[peak_idx:search_end]
         I_min = np.min(post_peak)
         dip_ratio = I_min / I_peak
         assert dip_ratio < 0.80, (
