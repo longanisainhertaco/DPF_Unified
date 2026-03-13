@@ -185,6 +185,12 @@ class SnowplowModel:
         # Effective pinch column length for radial phase
         self.z_f = self.L_anode * self.pinch_column_fraction
 
+        # Post-pinch column expansion state
+        self._r_pinch_at_stagnation = self.r_pinch_min
+        self._tau_m0 = 0.0  # m=0 breakup time [s], set at pinch
+        self._v_expand = 0.0  # expansion velocity [m/s]
+        self._I_at_pinch = 0.0  # current at pinch for Spitzer calc
+
         logger.info(
             "SnowplowModel: a=%.1f mm, b=%.1f mm, L_anode=%.0f mm, z_f=%.0f mm, "
             "f_m=%.2f, f_c=%.2f, f_mr=%.2f, rho0=%.2e kg/m^3, p_fill=%.0f Pa",
@@ -205,6 +211,18 @@ class SnowplowModel:
     @property
     def shock_radius(self) -> float:
         """Current radial shock front radius [m]."""
+        return self.r_shock
+
+    @property
+    def pinch_radius(self) -> float:
+        """Minimum pinch radius [m] (for neutron yield diagnostics).
+
+        This is the radius at maximum compression (stagnation), before
+        post-pinch expansion. Use this for neutron yield calculations,
+        NOT shock_radius which may have expanded post-pinch.
+        """
+        if self._pinch_complete:
+            return self._r_pinch_at_stagnation
         return self.r_shock
 
     @property
@@ -368,20 +386,72 @@ class SnowplowModel:
         }
 
     def _frozen_result(self) -> dict[str, float]:
-        """Return frozen state after pinch.
+        """Post-pinch column disruption model (Lee Phase 5).
 
-        Post-pinch, the plasma column has finite Spitzer resistivity that
-        damps the circuit current.  Without this, the RLC circuit oscillates
-        with constant L and no dissipation, producing unphysical current rise.
+        After pinch, the plasma column disrupts via m=0 instabilities on
+        timescale tau_m0 (Goyon et al. 2025). The disruption has two effects:
 
-        Estimate: R_plasma = eta_spitzer * z_f / (pi * r_pinch^2)
-        At Bennett temperature ~1 keV in D2: eta ~ 2e-5 Ohm*m,
-        giving R ~ 1-10 mOhm for typical DPF pinch columns.
+        1. **Column expansion**: r(t) grows from r_pinch toward b, causing
+           L_plasma to decrease. This releases stored magnetic energy and
+           allows V_cap to cross zero (triggering the crowbar). Without this,
+           the crowbar never fires for devices with large L_plasma (PF-1000).
+
+        2. **Anomalous resistance**: The disruption creates micro-instabilities
+           (ion-acoustic, LHDI) that provide anomalous Ohmic dissipation.
+           R_anom must exceed |dL/dt| to ensure net current decay.
+
+        The expansion follows:
+            r(t) = r_pinch + v_expand * (t - t_pinch)
+            v_expand = r_pinch / tau_m0
+
+        The anomalous resistance ensures dissipation dominates inductance
+        release, providing monotonic current decay post-crowbar.
         """
+        dt_since_pinch = self._elapsed_time - self._pinch_time
+
+        # Column expansion: r grows due to m=0 disruption
+        if self._tau_m0 > 0 and dt_since_pinch > 0:
+            r_expanded = self._r_pinch_at_stagnation + self._v_expand * dt_since_pinch
+            r_expanded = min(r_expanded, self.b * 0.95)
+            self.r_shock = max(r_expanded, self.r_pinch_min)
+
         r_p = max(self.r_shock, self.r_pinch_min)
-        eta_spitzer = 2e-5  # Ohm*m, rough estimate for ~1 keV D plasma
-        R_plasma = eta_spitzer * self.z_f / (pi * r_p**2)
-        result = self._make_result(dL_dt=0.0, F_magnetic=0.0, F_pressure=0.0)
+
+        # dL/dt from expanding column (L decreasing as r grows toward b)
+        if r_p < self.b * 0.94 and self._v_expand > 0:
+            dL_dt = -(mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / r_p
+        else:
+            dL_dt = 0.0
+
+        # Temperature-dependent Spitzer resistivity
+        I_eff = max(abs(self._I_at_pinch), 1e3)
+        n_fill = self.rho0 / 3.344e-27
+        N_l = self.f_m * n_fill * pi * (self.b**2 - self.a**2)
+        if N_l > 0:
+            T_K = mu_0 * I_eff**2 / (8.0 * pi * N_l * 2.0 * 1.381e-23)
+            T_eV = T_K * 1.381e-23 / 1.602e-19
+        else:
+            T_eV = 100.0
+
+        ln_Lambda = 10.0
+        T_eff_eV = max(T_eV, 1.0)
+        eta_spitzer = 1.03e-4 * ln_Lambda / T_eff_eV**1.5
+        R_spitzer = eta_spitzer * self.z_f / (pi * r_p**2)
+
+        # Anomalous resistance from m=0 disruption
+        # Must exceed |dL/dt| for current to decay net of inductance release.
+        # R_anom_peak ~ 2 * |dL/dt_peak| (factor 2 ensures dissipation dominates)
+        if self._tau_m0 > 0 and self._v_expand > 0:
+            dL_dt_peak = (mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / self._r_pinch_at_stagnation
+            R_anom_peak = 2.0 * dL_dt_peak
+            tau_decay = 3.0 * self._tau_m0
+            R_anom = R_anom_peak * np.exp(-dt_since_pinch / tau_decay)
+        else:
+            R_anom = 0.0
+
+        R_plasma = R_spitzer + R_anom
+
+        result = self._make_result(dL_dt=dL_dt, F_magnetic=0.0, F_pressure=0.0)
         result["R_plasma"] = R_plasma
         return result
 
@@ -531,6 +601,9 @@ class SnowplowModel:
             self._p_pinch = self._adiabatic_back_pressure(self.r_pinch_min)
             # Store slug mass at pinch for reflected phase EOM
             self._M_slug_pinch = max(self.radial_swept_mass, 1e-20)
+            # Pre-initialize expansion params (used if reflected phase terminates immediately)
+            self._r_pinch_at_stagnation = self.r_pinch_min
+            self._I_at_pinch = abs(I_current)
             logger.info(
                 "Radial pinch at t=%.2e s: r_s=%.2e m (%.1f%% of a), "
                 "vr=%.0f m/s, L_p=%.2e H, I=%.0f A → entering reflected phase",
@@ -642,10 +715,36 @@ class SnowplowModel:
             self.vr = vr_half
             self._pinch_complete = True
             self.phase = "pinch"
+
+            # Initialize post-pinch expansion parameters
+            self._r_pinch_at_stagnation = max(r_new, self.r_pinch_min)
+            self._I_at_pinch = abs(I_current)
+            self._pinch_time = self._elapsed_time
+
+            # Compute m=0 breakup timescale from implosion scaling
+            P_fill_Torr = self.p_fill / 133.322
+            I_MA = abs(I_current) / 1e6
+            R_imp_cm = self.a * 100.0
+            if I_MA > 0.01:
+                scaling = implosion_scaling(I_MA, R_imp_cm, P_fill_Torr)
+                self._tau_m0 = scaling["tau_m0_ns"] * 1e-9
+            else:
+                self._tau_m0 = 50e-9  # fallback: 50 ns
+
+            # Expansion velocity: column disrupts at ~r_pinch/tau_m0.
+            # Factor 3: m=0 disruption creates axial bulges that reduce
+            # effective inductance 3x faster than uniform radial expansion
+            # (Haines 2011, column fragmentation is highly non-uniform).
+            if self._tau_m0 > 0:
+                self._v_expand = 3.0 * self._r_pinch_at_stagnation / self._tau_m0
+            else:
+                self._v_expand = 0.0
+
             logger.info(
                 "Reflected shock terminated at t=%.2e s: r_s=%.2e m, "
-                "vr=%.0f m/s → frozen pinch state",
+                "vr=%.0f m/s, tau_m0=%.1f ns, v_expand=%.0f m/s → post-pinch expansion",
                 self._elapsed_time, self.r_shock, self.vr,
+                self._tau_m0 * 1e9, self._v_expand,
             )
             dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
             return self._make_result(

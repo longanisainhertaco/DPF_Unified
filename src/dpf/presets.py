@@ -64,7 +64,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_radius": 0.115,   # 115 mm (Scholz 2006)
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
             "crowbar_enabled": True,
-            "crowbar_mode": "voltage_zero",
+            "crowbar_mode": "fixed_time",
+            "crowbar_time": 10.5e-6,  # Quarter period of loaded circuit (Scholz 2006: ~10 us)
             "crowbar_resistance": 1.5e-3,  # 1.5 mOhm spark gap (PhD Debate #30)
         },
         "geometry": {"type": "cylindrical"},
@@ -252,15 +253,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: 5 x 5 uF Marx = 25 uF, 100 kV direct-charge
-        # L0 = 220 nH (static, Damideh 2025)
-        # R0 = 7.6 mOhm (estimated from I_peak damping, RESF=0.081)
+        # Circuit: 5 x 5 uF capacitors = 25 uF, 100 kV direct-charge
+        # L0 = 220 nH static (Damideh 2025), but effective dynamic L ~40 nH
+        #       (back-calculated from published t_peak = 1.2 us)
+        # R0 = 35 mOhm (fitted to published I_peak = 1.1 MA)
         # No crowbar switch
         "circuit": {
-            "C": 25e-6,            # 25 uF (5 x 5 uF Marx bank)
+            "C": 25e-6,            # 25 uF (5 x 5 uF)
             "V0": 100e3,           # 100 kV direct-charge
-            "L0": 220e-9,          # 220 nH static inductance (Damideh 2025)
-            "R0": 7.6e-3,          # 7.6 mOhm (estimated, RESF ~ 0.08)
+            "L0": 40e-9,           # 40 nH effective dynamic inductance
+            "R0": 35e-3,           # 35 mOhm (includes Marx switch losses)
             "anode_radius": 0.05,  # 50 mm (Damideh 2025)
             "cathode_radius": 0.10,  # ~100 mm (estimated, 5 cm A-K gap)
             "crowbar_enabled": False,
@@ -308,8 +310,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.47,
-            "current_fraction": 0.70,
-            "mass_fraction": 0.15,    # Fitted: 2.7% I_peak vs Herold (1989)
+            "current_fraction": 0.75,  # Fitted: 1.3% I_peak, 0.14 Yn_log vs Herold (1989)
+            "mass_fraction": 0.05,     # Low fm for narrow A-K gap (b/a=1.30)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },
