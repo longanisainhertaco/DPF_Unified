@@ -215,11 +215,13 @@ class TestSnowplowRundownCompletion:
                 break
         assert snowplow.pinch_complete
         assert snowplow.phase == "pinch"
-        assert snowplow.r_shock <= snowplow.r_pinch_min
-        # After pinch, state is frozen
-        L_pinch = snowplow.plasma_inductance
+        # Stagnation radius is at r_pinch_min
+        assert snowplow.pinch_radius <= snowplow.r_pinch_min
+        # After pinch, post-pinch expansion changes r_shock (Lee Phase 5)
+        # but stagnation_radius is frozen at minimum compression
+        r_stag = snowplow.pinch_radius
         snowplow.step(dt, current=1e6)
-        assert snowplow.plasma_inductance == L_pinch
+        assert snowplow.pinch_radius == r_stag
 
     def test_sheath_does_not_overshoot(self, snowplow):
         """Position never exceeds anode length."""

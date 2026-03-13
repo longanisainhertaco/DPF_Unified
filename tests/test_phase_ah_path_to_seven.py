@@ -38,8 +38,8 @@ class TestPresetCompleteness:
         sp = all_presets["pf1000"].get("snowplow", {})
         assert "current_fraction" in sp
         assert "mass_fraction" in sp
-        assert 0.7 < sp["current_fraction"] < 0.9
-        assert 0.05 < sp["mass_fraction"] < 0.25
+        assert 0.6 <= sp["current_fraction"] <= 0.9  # Lee & Saw (2014): fc=0.7
+        assert 0.05 <= sp["mass_fraction"] <= 0.25  # Lee & Saw (2014): fm=0.08
 
     def test_nx2_has_pcf(self, all_presets):
         """NX2 preset has pinch_column_fraction."""

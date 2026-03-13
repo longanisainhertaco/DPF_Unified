@@ -419,12 +419,12 @@ class TestCrowbarInPresets:
         assert circuit.get("crowbar_enabled") is True
 
     def test_pf1000_preset_crowbar_mode(self) -> None:
-        """PF-1000 crowbar should use voltage_zero trigger mode."""
+        """PF-1000 crowbar uses fixed_time trigger at quarter-period."""
         from dpf.presets import get_preset
 
         preset = get_preset("pf1000")
         circuit = preset["circuit"]
-        assert circuit.get("crowbar_mode") == "voltage_zero"
+        assert circuit.get("crowbar_mode") == "fixed_time"
 
     def test_other_presets_no_crowbar(self) -> None:
         """Tutorial and cartesian presets should not have crowbar."""
@@ -447,7 +447,7 @@ class TestCrowbarInPresets:
 
         solver = RLCSolver(**circuit)
         assert solver.crowbar_enabled
-        assert solver.crowbar_mode == "voltage_zero"
+        assert solver.crowbar_mode == "fixed_time"
 
 
 # ================================================================

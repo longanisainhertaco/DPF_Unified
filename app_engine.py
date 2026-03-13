@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 from dpf.circuit.rlc_solver import RLCSolver
+from dpf.constants import k_B, mu_0
 from dpf.core.bases import CouplingState
 from dpf.fluid.snowplow import SnowplowModel, implosion_scaling
 from dpf.presets import _PRESETS, get_preset
@@ -49,8 +50,7 @@ GAS_SPECIES: dict[str, dict[str, Any]] = {
     },
 }
 
-kB = 1.381e-23
-mu_0 = 4 * np.pi * 1e-7
+kB = k_B
 
 
 def _bosch_hale_dd(T_keV: float) -> float:

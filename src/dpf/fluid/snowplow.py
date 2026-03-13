@@ -75,10 +75,11 @@ def implosion_scaling(
     References:
         Goyon et al., Phys. Plasmas 32, 033105 (2025), Eqs. 1-4.
     """
-    sqrt_P = np.sqrt(max(P_fill_Torr, 1e-10))
+    P_safe = max(P_fill_Torr, 1e-10)
+    sqrt_P = np.sqrt(P_safe)
 
     v_imp = 950e3 * I_MA / (R_imp_cm * sqrt_P)  # [m/s]
-    T_stag_keV = 21.0 * I_MA**2 / (R_imp_cm**2 * P_fill_Torr)  # [keV]
+    T_stag_keV = 21.0 * I_MA**2 / (R_imp_cm**2 * P_safe)  # [keV]
     tau_exp_ns = 31.5 * R_imp_cm**2 * sqrt_P / (CR * I_MA)  # [ns]
     tau_m0_ns = 31.0 * R_imp_cm**2 * sqrt_P / (CR * I_MA)  # [ns]
 
