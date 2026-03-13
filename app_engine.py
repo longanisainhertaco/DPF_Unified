@@ -76,25 +76,44 @@ def _beam_target_yield(
     r_pinch_m: float,
     tau_pinch_s: float,
     T_keV: float,
+    V_pinch_volts: float = 0.0,
 ) -> float:
     """Beam-target D-D neutron yield from instability-accelerated ions.
 
-    During m=0 instabilities, the pinch column develops necks that
-    accelerate deuterons to ~50-100 keV via induced electric fields.
-    These fast ions interact with the thermal background plasma.
+    Uses two models depending on available data:
+    1. If V_pinch (pinch voltage from circuit) is available, uses the
+       proper beam_target_yield_rate() from dpf.diagnostics.beam_target
+       which computes E_beam = e * V_pinch (Lee 2014).
+    2. Fallback: estimates beam energy from Bennett temperature.
 
-    Uses the Duane (1972) D-D cross-section at beam energy, with beam
-    velocity from the ion energy. The beam fraction f_beam ~ 1-2% of
-    pinch ions are accelerated (Lee & Saw 2008).
+    The pinch voltage V_pinch = I * dL/dt during radial compression
+    is the physically correct quantity — it's the inductive voltage
+    that accelerates ions during m=0 instability disruption.
     """
+    try:
+        from dpf.diagnostics.beam_target import beam_target_yield_rate
+        if V_pinch_volts > 1000.0:
+            # Use proper V_pinch-driven model (Lee 2014)
+            dY_dt = beam_target_yield_rate(
+                I_pinch=I_pinch_A,
+                V_pinch=V_pinch_volts,
+                n_target=n_pinch,
+                L_target=z_pinch_m,
+                f_beam=0.14,  # Lee (2014) uses 0.1-0.3; 0.14 calibrated
+            )
+            return float(dY_dt * tau_pinch_s)
+    except ImportError:
+        pass
+
+    # Fallback: estimate beam energy from Bennett temperature
     E_beam_keV = max(3.0 * T_keV, 20.0)
     E_beam_keV = min(E_beam_keV, 300.0)
 
-    m_D = 3.344e-27  # deuteron mass [kg]
+    m_D = 3.344e-27
     E_beam_J = E_beam_keV * 1.602e-16
     v_beam = np.sqrt(2 * E_beam_J / m_D)
 
-    E_cm = E_beam_keV / 2  # center-of-mass energy for beam on stationary target
+    E_cm = E_beam_keV / 2
     try:
         from dpf.diagnostics.beam_target import dd_cross_section
         sigma = dd_cross_section(E_cm)
@@ -102,12 +121,55 @@ def _beam_target_yield(
         sigma = 0.0
     sigma_v_beam = sigma * v_beam
 
-    V_pinch = np.pi * r_pinch_m**2 * z_pinch_m
-
-    f_beam = 0.02  # fraction of ions accelerated (~2%, Lee & Saw 2008)
+    V_vol = np.pi * r_pinch_m**2 * z_pinch_m
+    f_beam = 0.02
     n_beam = f_beam * n_pinch
-    Y_bt = n_beam * n_pinch * sigma_v_beam * V_pinch * tau_pinch_s
+    Y_bt = n_beam * n_pinch * sigma_v_beam * V_vol * tau_pinch_s
     return float(Y_bt)
+
+
+def _radiation_corrected_temperature(T_bennett_keV: float, n_pinch: float,
+                                      tau_pinch_s: float, Z: int = 1) -> float:
+    """Reduce Bennett temperature by bremsstrahlung radiation losses.
+
+    The Bennett equilibrium temperature T_B = mu_0 * I^2 / (8*pi*N_l*2*k_B)
+    is an upper bound. In practice, bremsstrahlung cooling is significant
+    for high-density, high-temperature pinches (Haines 2011).
+
+    The radiation-corrected temperature:
+        T_eff = T_B / (1 + tau_pinch / tau_rad)
+
+    where tau_rad = 3*n*T / (P_brem/V) is the cooling time and
+    P_brem = 1.69e-32 * n_e^2 * Z^2 * sqrt(T_keV) [W/m^3].
+
+    Only applied when T_bennett > 0.5 keV. Below that, bremsstrahlung
+    cooling is weak and the Bennett estimate is reasonable. This prevents
+    over-correction for small devices (NX2, UNU-ICTP) where thermonuclear
+    yield is negligible anyway.
+    """
+    if T_bennett_keV <= 0 or n_pinch <= 0 or tau_pinch_s <= 0:
+        return T_bennett_keV
+
+    # Only apply correction for high-temperature pinches where radiation matters
+    if T_bennett_keV < 0.5:
+        return T_bennett_keV
+
+    # Bremsstrahlung power density: P_brem = 1.69e-32 * ne^2 * Z^2 * sqrt(T_keV)
+    P_brem_density = 1.69e-32 * n_pinch**2 * Z**2 * np.sqrt(T_bennett_keV)
+
+    # Thermal energy density: e_th = 3*n*k_B*T (ions + electrons, 2 species)
+    e_th_J = 3.0 * n_pinch * T_bennett_keV * 1.602e-16  # [J/m^3]
+
+    if P_brem_density <= 0:
+        return T_bennett_keV
+
+    tau_rad = e_th_J / P_brem_density
+
+    # Correction factor: reduces T when tau_pinch >> tau_rad
+    correction = 1.0 / (1.0 + tau_pinch_s / tau_rad)
+
+    # Floor at 20% of Bennett (minimum from shock heating / non-equilibrium)
+    return max(T_bennett_keV * correction, 0.2 * T_bennett_keV)
 
 
 def dd_neutron_yield(
@@ -120,6 +182,7 @@ def dd_neutron_yield(
     cathode_r_m: float = 0.16,
     anode_r_m: float = 0.115,
     mass_fraction: float = 0.15,
+    V_pinch_volts: float = 0.0,
 ) -> dict[str, float]:
     """Estimate D-D neutron yield: thermonuclear + beam-target components.
 
@@ -132,31 +195,43 @@ def dd_neutron_yield(
 
     Line density N_l accounts for cylindrical compression: swept gas
     from the annular electrode gap compressed into the pinch column.
+
+    V_pinch_volts: Pinch voltage from circuit (I * dL/dt) [V]. If > 0,
+    used for proper beam energy calculation instead of T_bennett estimate.
     """
     n_fill = rho0 / ion_mass
     N_l = mass_fraction * n_fill * np.pi * (cathode_r_m**2 - anode_r_m**2)
     n_pinch = N_l / (np.pi * r_pinch_m**2)
 
     T_K = mu_0 * I_pinch_A**2 / (8 * np.pi * N_l * 2 * kB)
-    T_keV = T_K * kB / 1.602e-16
+    T_bennett_keV = T_K * kB / 1.602e-16
 
-    sigma_v = _bosch_hale_dd(T_keV)
+    # Apply radiation cooling correction (critical for high-current devices)
+    T_eff_keV = _radiation_corrected_temperature(
+        T_bennett_keV, n_pinch, tau_pinch_s,
+    )
 
-    V_pinch = np.pi * r_pinch_m**2 * z_pinch_m
-    Y_thermo = 0.5 * n_pinch**2 * sigma_v * V_pinch * tau_pinch_s
+    sigma_v = _bosch_hale_dd(T_eff_keV)
+
+    V_vol = np.pi * r_pinch_m**2 * z_pinch_m
+    Y_thermo = 0.5 * n_pinch**2 * sigma_v * V_vol * tau_pinch_s
 
     Y_bt = _beam_target_yield(
-        I_pinch_A, n_pinch, z_pinch_m, r_pinch_m, tau_pinch_s, T_keV,
+        I_pinch_A, n_pinch, z_pinch_m, r_pinch_m, tau_pinch_s, T_eff_keV,
+        V_pinch_volts=V_pinch_volts,
     )
 
     Y_total = Y_thermo + Y_bt
 
     return {
-        "T_bennett_keV": float(T_keV),
+        "T_bennett_keV": float(T_bennett_keV),
+        "T_eff_keV": float(T_eff_keV),
         "n_ion": float(n_fill),
         "n_pinch": float(n_pinch),
         "sigma_v": float(sigma_v),
-        "V_pinch_cm3": float(V_pinch * 1e6),
+        "V_pinch_cm3": float(V_vol * 1e6),
+        "V_pinch_kV": float(V_pinch_volts / 1e3),
+        "rad_cooling_factor": float(T_eff_keV / T_bennett_keV) if T_bennett_keV > 0 else 1.0,
         "Y_thermonuclear": float(Y_thermo),
         "Y_beam_target": float(Y_bt),
         "Y_neutron": float(Y_total),
@@ -338,11 +413,23 @@ def run_simulation_core(
             break
 
     neutron_yield = None
+    V_pinch_volts = 0.0
     if snowplow is not None and gas.get("A") == 2 and gas.get("Z") == 1:
         r_p = snowplow.shock_radius
         z_f = getattr(snowplow, "z_f", sc.get("anode_length", 0.16) * sc.get("pinch_column_fraction", 1.0))
         tau_ns = scaling["tau_exp_ns"] if scaling else 10.0
         fmr = sc.get("radial_mass_fraction", sc.get("mass_fraction", 0.15))
+
+        # Compute V_pinch = I * dL/dt at the current dip (maximum pinch voltage)
+        # This is the inductive voltage that accelerates ions during m=0 disruption
+        dip_mask_arr = np.array([(p in ("radial", "pinch", "reflected")) for p in phases_list])
+        if np.any(dip_mask_arr):
+            dip_indices = np.where(dip_mask_arr)[0]
+            dLdt_arr = np.gradient(np.array(L_plasmas) * 1e-9, np.array(times) * 1e-6)
+            # V_pinch = I * dL/dt; find peak during radial phase
+            V_pinch_arr = np.abs(I_arr[dip_indices] * 1e6 * dLdt_arr[dip_indices])
+            V_pinch_volts = float(np.max(V_pinch_arr)) if len(V_pinch_arr) > 0 else 0.0
+
         neutron_yield = dd_neutron_yield(
             I_pinch_A=I_dip * 1e6, r_pinch_m=r_p,
             z_pinch_m=z_f, tau_pinch_s=tau_ns * 1e-9,
@@ -350,6 +437,7 @@ def run_simulation_core(
             cathode_r_m=cc["cathode_radius"],
             anode_r_m=cc["anode_radius"],
             mass_fraction=fmr,
+            V_pinch_volts=V_pinch_volts,
         )
 
     return {

@@ -202,7 +202,14 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     ny = data.get("neutron_yield")
     if ny and ny["Y_neutron"] > 0:
         bt_pct = ny.get("bt_fraction", 0) * 100
-        parts.append(f"D-D yield: **{ny['Y_neutron']:.2e} n** ({bt_pct:.0f}% beam-target)")
+        V_kV = ny.get("V_pinch_kV", 0)
+        rad_cool = ny.get("rad_cooling_factor", 1.0)
+        extra = ""
+        if V_kV > 1:
+            extra += f", V_pinch={V_kV:.0f} kV"
+        if rad_cool < 0.95:
+            extra += f", T_rad/T_B={rad_cool:.2f}"
+        parts.append(f"D-D yield: **{ny['Y_neutron']:.2e} n** ({bt_pct:.0f}% BT{extra})")
 
     if data.get("has_mhd"):
         rho_max = data.get("rho_max", [])

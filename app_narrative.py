@@ -230,26 +230,73 @@ instability before it can expand --- this limits confinement time."""
 
     ny = d.get("neutron_yield")
     if ny and ny["Y_neutron"] > 0:
-        sections.append(f"""## D-D Neutron Yield Estimate
+        T_eff = ny.get("T_eff_keV", ny["T_bennett_keV"])
+        V_kV = ny.get("V_pinch_kV", 0)
+        rad_cool = ny.get("rad_cooling_factor", 1.0)
+        bt_pct = ny.get("bt_fraction", 0) * 100
 
-For deuterium fill gas, the thermonuclear neutron yield is estimated from:
+        yield_section = f"""## D-D Neutron Yield
 
-$$Y_n = \\frac{{1}}{{2}} n_i^2 \\langle\\sigma v\\rangle V_{{pinch}} \\tau_{{pinch}}$$
+**Thermonuclear + beam-target** yield model (Lee & Saw 2008, Haines 2011):
 
-**Bennett temperature** (from pinch equilibrium):
+$$Y_n = Y_{{thermo}} + Y_{{BT}}$$
 
-$$T_B = \\frac{{\\mu_0 I^2}}{{8\\pi N_l \\cdot 2 k_B}} = {ny['T_bennett_keV']:.2f}\\text{{ keV}}$$
+### Thermonuclear component
 
-Ion density: $n_i = {ny['n_ion']:.2e}$ m$^{{-3}}$
+$$Y_{{thermo}} = \\frac{{1}}{{2}} n_i^2 \\langle\\sigma v\\rangle V_{{pinch}} \\tau_{{pinch}}$$
 
-D-D reactivity (Bosch-Hale): $\\langle\\sigma v\\rangle = {ny['sigma_v']:.2e}$ m$^3$/s
+**Bennett temperature** (pinch equilibrium):
 
-Pinch volume: ${ny['V_pinch_cm3']:.2f}$ cm$^3$, confinement time: ${ny['tau_ns']:.0f}$ ns
+$$T_B = \\frac{{\\mu_0 I^2}}{{8\\pi N_l \\cdot 2 k_B}} = {ny['T_bennett_keV']:.2f}\\text{{ keV}}$$"""
 
-**Estimated yield: {ny['Y_neutron']:.2e} neutrons per shot**
+        if rad_cool < 0.95:
+            yield_section += f"""
 
-*Note: This is a thermonuclear estimate only. Beam-target neutrons from \
-instability-accelerated ions can dominate in real devices.*""")
+**Radiation-corrected temperature**: Bremsstrahlung cooling reduces the \
+effective temperature:
+
+$$T_{{eff}} = \\frac{{T_B}}{{1 + \\tau_{{pinch}} / \\tau_{{rad}}}} \
+= {T_eff:.2f}\\text{{ keV}} \\quad (\\times{rad_cool:.2f})$$"""
+
+        yield_section += f"""
+
+Pinch density: $n_{{pinch}} = {ny['n_pinch']:.2e}$ m$^{{-3}}$
+
+D-D reactivity (Bosch-Hale at {T_eff:.2f} keV): $\\langle\\sigma v\\rangle = {ny['sigma_v']:.2e}$ m$^3$/s
+
+Pinch volume: ${ny['V_pinch_cm3']:.2f}$ cm$^3$, confinement: ${ny['tau_ns']:.0f}$ ns
+
+$Y_{{thermo}} = {ny['Y_thermonuclear']:.2e}$"""
+
+        yield_section += """
+
+### Beam-target component"""
+
+        if V_kV > 1:
+            yield_section += f"""
+
+During m=0 instability, the pinch voltage $V_{{pinch}} = I \\cdot dL/dt = {V_kV:.0f}$ kV \
+accelerates a fraction of pinch ions to beam energies:
+
+$$E_{{beam}} = e \\cdot V_{{pinch}} = {V_kV:.0f}\\text{{ keV}}$$
+
+$$\\frac{{dY_{{BT}}}}{{dt}} = f_{{beam}} \\frac{{I_{{pinch}}}}{{e}} \
+\\cdot n_{{target}} \\cdot \\sigma_{{DD}}(E_{{cm}}) \\cdot L_{{target}}$$"""
+        else:
+            yield_section += """
+
+Beam energy estimated from $E_{beam} \\sim 3 T_B$."""
+
+        yield_section += f"""
+
+$Y_{{BT}} = {ny['Y_beam_target']:.2e}$ ({bt_pct:.0f}% of total)
+
+### Total yield
+
+**$Y_n = {ny['Y_neutron']:.2e}$ neutrons per shot** \
+(thermonuclear: {100-bt_pct:.0f}%, beam-target: {bt_pct:.0f}%)"""
+
+        sections.append(yield_section)
 
     sections.append(_circuit_coupling_section(d, cc))
     sections.append(_summary_section(d, gas, E_kJ, is_mhd=False, r_pinch_mm=r_pinch_mm))
@@ -358,8 +405,15 @@ def _summary_section(
         lines.append(f"| Grid | {grid[0]}x{grid[1]}x{grid[2]} |")
     ny = d.get("neutron_yield")
     if ny and ny["Y_neutron"] > 0:
-        lines.append(f"| D-D neutron yield | {ny['Y_neutron']:.2e} |")
+        bt_pct = ny.get("bt_fraction", 0) * 100
+        lines.append(f"| D-D neutron yield | {ny['Y_neutron']:.2e} ({bt_pct:.0f}% BT) |")
         lines.append(f"| Bennett temperature | {ny['T_bennett_keV']:.2f} keV |")
+        T_eff = ny.get("T_eff_keV")
+        if T_eff and T_eff != ny["T_bennett_keV"]:
+            lines.append(f"| Effective temperature | {T_eff:.2f} keV (rad-corrected) |")
+        V_kV = ny.get("V_pinch_kV", 0)
+        if V_kV > 1:
+            lines.append(f"| Pinch voltage | {V_kV:.0f} kV |")
 
     lines.extend([
         f"| Bank energy | {E_kJ:.0f} kJ |",
