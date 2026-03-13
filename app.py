@@ -37,6 +37,13 @@ from app_plots import (
     create_schematic_fig,
     create_waveform_fig,
 )
+from app_sweep import (
+    create_2d_sweep_fig,
+    create_sweep_fig,
+    format_sweep_markdown,
+    run_2d_sweep,
+    run_parameter_sweep,
+)
 from app_validation import format_validation_markdown, validate_against_published
 from dpf.presets import _PRESETS, get_preset, list_presets
 
@@ -453,6 +460,23 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                 fig_compare = gr.Plot(label="Comparison Overlay")
                 compare_md = gr.Markdown("*Run multiple simulations to compare waveforms.*")
                 clear_btn = gr.Button("Clear Comparison History", size="sm")
+            with gr.Tab("Parameter Sweep"):
+                gr.Markdown("Sweep a parameter to visualize its effect on I_peak, dip, and neutron yield.")
+                with gr.Row():
+                    sweep_param = gr.Dropdown(
+                        choices=[("Mass Fraction (fm)", "fm"), ("Current Fraction (fc)", "fc"),
+                                 ("Voltage (kV)", "V0_kV"), ("Fill Pressure (Torr)", "pressure")],
+                        value="fm", label="Sweep Parameter",
+                    )
+                    sweep_min = gr.Number(value=0.05, label="Min")
+                    sweep_max = gr.Number(value=0.30, label="Max")
+                    sweep_n = gr.Slider(5, 30, value=15, step=1, label="Points")
+                with gr.Row():
+                    sweep_btn = gr.Button("Run 1D Sweep", variant="primary", size="sm")
+                    sweep_2d_btn = gr.Button("Run 2D (fm x fc) Sweep", variant="secondary",
+                                              size="sm")
+                sweep_plot = gr.Plot(label="Sweep Results")
+                sweep_md = gr.Markdown("*Click 'Run Sweep' to explore parameter space.*")
 
     # ---- Event wiring ----
     settings_inputs = [backend_dd, grid_dd, sim_time]
@@ -517,6 +541,41 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
         fn=run_calibration,
         inputs=[preset_dd, sim_time],
         outputs=[cal_output, inp_fc, inp_fm],
+        concurrency_limit=1,
+    )
+
+    def run_sweep(preset_name, param, pmin, pmax, n, sim_time_us,
+                  progress=gr.Progress()):  # noqa: B008
+        progress(0.0, desc="Starting sweep...")
+        results = run_parameter_sweep(
+            preset_name, param, (pmin, pmax), n_points=int(n),
+            sim_time_us=sim_time_us, progress_fn=progress,
+        )
+        fig = create_sweep_fig(results)
+        md = format_sweep_markdown(results)
+        return fig, md
+
+    sweep_btn.click(
+        fn=run_sweep,
+        inputs=[preset_dd, sweep_param, sweep_min, sweep_max, sweep_n, sim_time],
+        outputs=[sweep_plot, sweep_md],
+        concurrency_limit=1,
+    )
+
+    def run_2d_sweep_handler(preset_name, sim_time_us,
+                              progress=gr.Progress()):  # noqa: B008
+        progress(0.0, desc="Starting 2D sweep...")
+        results = run_2d_sweep(
+            preset_name, sim_time_us=sim_time_us,
+            n_fm=10, n_fc=10, progress_fn=progress,
+        )
+        fig = create_2d_sweep_fig(results)
+        return fig, f"**2D sweep**: {results['preset']}, 10x10 grid (fm x fc)"
+
+    sweep_2d_btn.click(
+        fn=run_2d_sweep_handler,
+        inputs=[preset_dd, sim_time],
+        outputs=[sweep_plot, sweep_md],
         concurrency_limit=1,
     )
 
