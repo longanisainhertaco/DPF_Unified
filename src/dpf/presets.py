@@ -76,7 +76,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
             "current_fraction": 0.7,  # Lee & Saw (2014): fc=0.7 (published Lee model fit)
             "mass_fraction": 0.08,  # Lee & Saw (2014): fm=0.08 (published Lee model fit)
-            "radial_mass_fraction": 0.1,  # Lee & Saw (2014): f_mr ~ 0.07-0.12
+            "radial_mass_fraction": 0.16,  # Lee & Saw (2014): fmr=0.16 (published fit)
             "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
     },
