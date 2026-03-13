@@ -92,10 +92,11 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
     t = d["t_us"]
 
     fig = make_subplots(
-        rows=2, cols=2,
+        rows=2, cols=3,
         subplot_titles=["Plasma Inductance L_p(t)", "Sheath / Shock Position",
-                         "Energy Partition", "Phase Timeline"],
-        vertical_spacing=0.15, horizontal_spacing=0.1,
+                         "Pinch Voltage V_pinch(t)",
+                         "Energy Partition", "Phase Timeline", "dL/dt"],
+        vertical_spacing=0.15, horizontal_spacing=0.08,
     )
 
     fig.add_trace(go.Scatter(
@@ -113,6 +114,18 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
         line=dict(color="#FF5722", width=2, dash="dot"), name="r_shock [mm]",
     ), row=1, col=2)
     fig.update_yaxes(title_text="Position [mm]", row=1, col=2)
+
+    # Pinch voltage: V_pinch = I * dL/dt (key diagnostic for beam-target neutrons)
+    L_nH = np.array(d["L_p_nH"])
+    I_MA = np.array(d["I_MA"])
+    t_arr = np.array(t)
+    dLdt = np.gradient(L_nH * 1e-9, t_arr * 1e-6)  # [H/s]
+    V_pinch_kV = np.abs(I_MA * 1e6 * dLdt) / 1e3  # [kV]
+    fig.add_trace(go.Scatter(
+        x=t, y=V_pinch_kV, mode="lines",
+        line=dict(color="#E91E63", width=2), name="V_pinch [kV]",
+    ), row=1, col=3)
+    fig.update_yaxes(title_text="V_pinch [kV]", row=1, col=3)
 
     fig.add_trace(go.Scatter(
         x=t, y=d["E_cap_kJ"], mode="lines", fill="tozeroy",
@@ -143,14 +156,22 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
         row=2, col=2,
     )
 
+    # dL/dt plot: key for understanding current dip
+    dLdt_nH_us = np.gradient(L_nH, t_arr)  # [nH/us]
+    fig.add_trace(go.Scatter(
+        x=t, y=dLdt_nH_us, mode="lines",
+        line=dict(color="#00BCD4", width=2), name="dL/dt [nH/us]",
+    ), row=2, col=3)
+    fig.update_yaxes(title_text="dL/dt [nH/us]", row=2, col=3)
+
     for r in (1, 2):
-        for c in (1, 2):
+        for c in (1, 2, 3):
             fig.update_xaxes(title_text="Time [us]", row=r, col=c)
 
     fig.update_layout(
-        height=600, template="plotly_dark", showlegend=True,
+        height=650, template="plotly_dark", showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=9)),
-        margin=dict(l=60, r=20, t=60, b=40),
+        margin=dict(l=50, r=20, t=60, b=40),
     )
     return fig
 
