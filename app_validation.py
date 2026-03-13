@@ -88,6 +88,7 @@ def validate_against_published(
             result["Yn_ref"] = dev.neutron_yield
             result["Yn_log_ratio"] = log_ratio
             result["bt_fraction"] = ny.get("bt_fraction", 0)
+            result["V_pinch_kV"] = ny.get("V_pinch_kV", 0)
 
     return result
 
@@ -140,8 +141,13 @@ def format_validation_markdown(val: dict[str, Any] | None) -> str:
 
     if "Yn_sim" in val:
         bt_pct = val.get("bt_fraction", 0) * 100
+        V_kV = val.get("V_pinch_kV", 0)
+        yn_extra = f" ({bt_pct:.0f}% BT"
+        if V_kV > 1:
+            yn_extra += f", V={V_kV:.0f}kV"
+        yn_extra += ")"
         lines.append(
-            f"| Yn (D-D) | {val['Yn_sim']:.2e} ({bt_pct:.0f}% BT) | "
+            f"| Yn (D-D) | {val['Yn_sim']:.2e}{yn_extra} | "
             f"{val['Yn_ref']:.2e} | {val['Yn_log_ratio']:.1f} decades |"
         )
 
