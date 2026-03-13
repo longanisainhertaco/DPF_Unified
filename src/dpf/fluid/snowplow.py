@@ -303,17 +303,48 @@ class SnowplowModel:
     def _anomalous_resistance(self, current: float) -> float:
         """Anomalous plasma resistance during radial/pinch phase.
 
-        R_anom = alpha * mu_0 / (4*pi) * z_f / r_s^2 * |vr|
+        Uses physics-based anomalous resistivity from micro-instabilities
+        when the dpf.turbulence.anomalous module is available. Falls back
+        to the Lee (2014) empirical formula otherwise.
 
-        The anomalous resistivity arises from micro-instabilities
-        (lower-hybrid drift, ion-acoustic) in the pinch column.
-        It provides additional Ohmic dissipation that matches the
-        experimental current dip depth.
+        The ion-acoustic threshold model checks whether the electron drift
+        velocity v_d = J/(n_e*e) exceeds the ion sound speed c_s. When
+        triggered, eta_anom = alpha * m_e * omega_pe / (n_e * e^2).
         """
         if self.phase == "rundown":
             return 0.0
         r_s = max(self.r_shock, self.r_pinch_min)
         speed = abs(self.vr)
+
+        # Try physics-based anomalous resistivity from turbulence module
+        try:
+            from dpf.turbulence.anomalous import anomalous_resistivity_scalar
+            # Estimate current density J = I / (2*pi*r*z_f) for cylindrical sheet
+            J_mag = abs(current) / (2.0 * pi * r_s * self.z_f) if self.z_f > 0 else 0.0
+            # Estimate electron density from compression
+            n_fill = self.rho0 / 3.344e-27  # D2 ion density
+            n_e = n_fill * (self.b / r_s) ** 2  # cylindrical compression
+            # Ion temperature from adiabatic compression
+            m_D = 3.344e-27
+            T_fill = 300.0  # room temperature [K]
+            gamma = 5.0 / 3.0
+            T_ion = T_fill * (self.b / r_s) ** (2 * (gamma - 1))
+            # Electron temperature ~ ion temperature (equilibrated)
+            T_e = T_ion
+
+            eta_anom = anomalous_resistivity_scalar(
+                J_mag=J_mag, ne_val=n_e, Ti_val=T_ion,
+                alpha=self._alpha_anom, mi=m_D,
+                threshold_model="ion_acoustic", Te_val=T_e,
+            )
+            # Convert resistivity [Ohm*m] to resistance [Ohm]
+            # R = eta * z_f / (pi * r_s^2)
+            if eta_anom > 0:
+                return eta_anom * self.z_f / (pi * r_s**2)
+        except ImportError:
+            pass
+
+        # Fallback: Lee (2014) empirical formula
         return self._alpha_anom * mu_0 / (4.0 * pi) * self.z_f * speed / r_s**2
 
     def _make_result(
