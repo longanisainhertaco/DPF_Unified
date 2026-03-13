@@ -18,6 +18,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import create_animated_3d, create_animated_mhd
+from app_calibrate import auto_calibrate, format_calibration_markdown
 from app_compare import (
     add_to_comparison,
     clear_comparison,
@@ -200,7 +201,8 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
 
     ny = data.get("neutron_yield")
     if ny and ny["Y_neutron"] > 0:
-        parts.append(f"D-D yield: **{ny['Y_neutron']:.2e} n**")
+        bt_pct = ny.get("bt_fraction", 0) * 100
+        parts.append(f"D-D yield: **{ny['Y_neutron']:.2e} n** ({bt_pct:.0f}% beam-target)")
 
     if data.get("has_mhd"):
         rho_max = data.get("rho_max", [])
@@ -399,7 +401,10 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
             sim_time = gr.Slider(1, 100, value=40, step=0.5, label="Simulation Time [us]",
                                   info="Total simulation duration in microseconds")
-            run_btn = gr.Button("Run Simulation", variant="primary", size="lg")
+            with gr.Row():
+                run_btn = gr.Button("Run Simulation", variant="primary", size="lg")
+                cal_btn = gr.Button("Auto-Calibrate", variant="secondary", size="lg")
+            cal_output = gr.Markdown(visible=False)
 
             with gr.Accordion("Save / Load Configuration", open=False):
                 save_btn = gr.Button("Save Current Config", size="sm")
@@ -487,6 +492,26 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
         fn=lambda: gr.update(visible=True), outputs=[save_file],
     )
     load_btn.click(fn=load_config, inputs=[load_file], outputs=all_param_inputs)
+
+    def run_calibration(preset_name, sim_time_us, progress=gr.Progress()):  # noqa: B008
+        progress(0.1, desc="Auto-calibrating...")
+        cal = auto_calibrate(preset_name, sim_time_us=sim_time_us)
+        progress(1.0, desc="Done")
+        md = format_calibration_markdown(cal)
+        if "error" not in cal:
+            return (
+                gr.update(visible=True, value=md),
+                cal["best_fc"],
+                cal["best_fm"],
+            )
+        return gr.update(visible=True, value=md), gr.update(), gr.update()
+
+    cal_btn.click(
+        fn=run_calibration,
+        inputs=[preset_dd, sim_time],
+        outputs=[cal_output, inp_fc, inp_fm],
+        concurrency_limit=1,
+    )
 
 
 if __name__ == "__main__":
