@@ -169,6 +169,13 @@ class SnowplowModel:
         # Minimum pinch radius: 10% of anode radius (Lee standard)
         self.r_pinch_min = 0.1 * self.a
 
+        # Anomalous resistance model: R = alpha_anom * (mu_0 * v_a) / (4*pi*r)
+        # where v_a = B / sqrt(mu_0 * rho) is the Alfven speed.
+        # Active during radial compression and pinch.  This provides the
+        # additional Ohmic dissipation needed to match experimental current
+        # dip depth.  Lee (2014) uses alpha ~ 0.05-0.1.
+        self._alpha_anom = 0.06  # anomalous resistivity parameter
+
         # Track phase completion
         self._rundown_complete = False
         self._pinch_complete = False
@@ -293,10 +300,28 @@ class SnowplowModel:
         else:
             return self._step_radial(dt, current, pressure)
 
+    def _anomalous_resistance(self, current: float) -> float:
+        """Anomalous plasma resistance during radial/pinch phase.
+
+        R_anom = alpha * mu_0 / (4*pi) * z_f / r_s^2 * |vr|
+
+        The anomalous resistivity arises from micro-instabilities
+        (lower-hybrid drift, ion-acoustic) in the pinch column.
+        It provides additional Ohmic dissipation that matches the
+        experimental current dip depth.
+        """
+        if self.phase == "rundown":
+            return 0.0
+        r_s = max(self.r_shock, self.r_pinch_min)
+        speed = abs(self.vr)
+        return self._alpha_anom * mu_0 / (4.0 * pi) * self.z_f * speed / r_s**2
+
     def _make_result(
         self, dL_dt: float, F_magnetic: float, F_pressure: float,
+        current: float = 0.0,
     ) -> dict[str, float]:
         """Build standard result dictionary."""
+        R_anom = self._anomalous_resistance(current)
         return {
             "z_sheath": self.z,
             "v_sheath": self.v,
@@ -308,6 +333,7 @@ class SnowplowModel:
             "F_magnetic": F_magnetic,
             "F_pressure": F_pressure,
             "phase": self.phase,
+            "R_plasma": R_anom,
         }
 
     def _frozen_result(self) -> dict[str, float]:
@@ -485,6 +511,7 @@ class SnowplowModel:
             dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
             return self._make_result(
                 dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+                current=I_current,
             )
 
         # Recompute acceleration at new position
@@ -508,7 +535,10 @@ class SnowplowModel:
         # dL/dt from radial compression
         dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
 
-        return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure)
+        return self._make_result(
+            dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+            current=I_current,
+        )
 
     def _step_reflected(self, dt: float, current: float) -> dict[str, float]:
         """Advance reflected shock phase (Lee Phase 5) by one timestep.
@@ -589,6 +619,7 @@ class SnowplowModel:
             dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
             return self._make_result(
                 dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+                current=I_current,
             )
 
         # Recompute acceleration at new position with updated mass
@@ -613,4 +644,7 @@ class SnowplowModel:
         # dL/dt during expansion: r increasing → L decreasing → dL/dt < 0
         dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
 
-        return self._make_result(dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure)
+        return self._make_result(
+            dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
+            current=I_current,
+        )

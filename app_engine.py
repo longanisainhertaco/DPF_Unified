@@ -53,6 +53,63 @@ kB = 1.381e-23
 mu_0 = 4 * np.pi * 1e-7
 
 
+def _bosch_hale_dd(T_keV: float) -> float:
+    """Bosch-Hale D(d,n)3He reactivity <sigma*v> [m^3/s].
+
+    Valid 0.2-100 keV. Bosch & Hale, Nucl. Fusion 32:611 (1992).
+    """
+    T_keV = np.clip(T_keV, 0.2, 100.0)
+    a1, a2, a3, a4, a5 = 6.661, 643.41e-16, 15.136e-3, 75.189e-3, 4.6064e-3
+    a6, a7 = 13.5e-3, -0.10675e-3
+    theta = T_keV / (
+        1 - (T_keV * (a2 + T_keV * (a4 + T_keV * a6)))
+        / (1 + T_keV * (a3 + T_keV * (a5 + T_keV * a7)))
+    )
+    xi = (a1**2 / (4 * theta)) ** (1.0 / 3.0)
+    return 5.43e-21 * theta * np.sqrt(xi / (a1**3 * T_keV)) * np.exp(-3 * xi)
+
+
+def _beam_target_yield(
+    I_pinch_A: float,
+    n_pinch: float,
+    z_pinch_m: float,
+    r_pinch_m: float,
+    tau_pinch_s: float,
+    T_keV: float,
+) -> float:
+    """Beam-target D-D neutron yield from instability-accelerated ions.
+
+    During m=0 instabilities, the pinch column develops necks that
+    accelerate deuterons to ~50-100 keV via induced electric fields.
+    These fast ions interact with the thermal background plasma.
+
+    Uses the Duane (1972) D-D cross-section at beam energy, with beam
+    velocity from the ion energy. The beam fraction f_beam ~ 1-2% of
+    pinch ions are accelerated (Lee & Saw 2008).
+    """
+    E_beam_keV = max(3.0 * T_keV, 20.0)
+    E_beam_keV = min(E_beam_keV, 300.0)
+
+    m_D = 3.344e-27  # deuteron mass [kg]
+    E_beam_J = E_beam_keV * 1.602e-16
+    v_beam = np.sqrt(2 * E_beam_J / m_D)
+
+    E_cm = E_beam_keV / 2  # center-of-mass energy for beam on stationary target
+    try:
+        from dpf.diagnostics.beam_target import dd_cross_section
+        sigma = dd_cross_section(E_cm)
+    except ImportError:
+        sigma = 0.0
+    sigma_v_beam = sigma * v_beam
+
+    V_pinch = np.pi * r_pinch_m**2 * z_pinch_m
+
+    f_beam = 0.02  # fraction of ions accelerated (~2%, Lee & Saw 2008)
+    n_beam = f_beam * n_pinch
+    Y_bt = n_beam * n_pinch * sigma_v_beam * V_pinch * tau_pinch_s
+    return float(Y_bt)
+
+
 def dd_neutron_yield(
     I_pinch_A: float,
     r_pinch_m: float,
@@ -64,9 +121,15 @@ def dd_neutron_yield(
     anode_r_m: float = 0.115,
     mass_fraction: float = 0.15,
 ) -> dict[str, float]:
-    """Estimate D-D thermonuclear neutron yield from pinch parameters.
+    """Estimate D-D neutron yield: thermonuclear + beam-target components.
 
-    Uses Bennett temperature + Bosch-Hale reactivity parameterization.
+    Thermonuclear: Bennett temperature + Bosch-Hale reactivity.
+    Beam-target: instability-accelerated ions (dominant for most DPF devices).
+
+    The beam-target component typically dominates by 10-100x for MA-class
+    devices (Lee & Saw 2008, Haines 2011). For sub-kJ devices, thermonuclear
+    may dominate.
+
     Line density N_l accounts for cylindrical compression: swept gas
     from the annular electrode gap compressed into the pinch column.
     """
@@ -77,18 +140,16 @@ def dd_neutron_yield(
     T_K = mu_0 * I_pinch_A**2 / (8 * np.pi * N_l * 2 * kB)
     T_keV = T_K * kB / 1.602e-16
 
-    T_keV_clamped = np.clip(T_keV, 0.2, 100.0)
-    a1, a2, a3, a4, a5 = 6.661, 643.41e-16, 15.136e-3, 75.189e-3, 4.6064e-3
-    a6, a7 = 13.5e-3, -0.10675e-3
-    theta = T_keV_clamped / (
-        1 - (T_keV_clamped * (a2 + T_keV_clamped * (a4 + T_keV_clamped * a6)))
-        / (1 + T_keV_clamped * (a3 + T_keV_clamped * (a5 + T_keV_clamped * a7)))
-    )
-    xi = (a1**2 / (4 * theta)) ** (1.0 / 3.0)
-    sigma_v = 5.43e-21 * theta * np.sqrt(xi / (a1**3 * T_keV_clamped)) * np.exp(-3 * xi)
+    sigma_v = _bosch_hale_dd(T_keV)
 
     V_pinch = np.pi * r_pinch_m**2 * z_pinch_m
-    Y_n = 0.5 * n_pinch**2 * sigma_v * V_pinch * tau_pinch_s
+    Y_thermo = 0.5 * n_pinch**2 * sigma_v * V_pinch * tau_pinch_s
+
+    Y_bt = _beam_target_yield(
+        I_pinch_A, n_pinch, z_pinch_m, r_pinch_m, tau_pinch_s, T_keV,
+    )
+
+    Y_total = Y_thermo + Y_bt
 
     return {
         "T_bennett_keV": float(T_keV),
@@ -96,7 +157,10 @@ def dd_neutron_yield(
         "n_pinch": float(n_pinch),
         "sigma_v": float(sigma_v),
         "V_pinch_cm3": float(V_pinch * 1e6),
-        "Y_neutron": float(Y_n),
+        "Y_thermonuclear": float(Y_thermo),
+        "Y_beam_target": float(Y_bt),
+        "Y_neutron": float(Y_total),
+        "bt_fraction": float(Y_bt / Y_total) if Y_total > 0 else 0.0,
         "tau_ns": float(tau_pinch_s * 1e9),
     }
 
