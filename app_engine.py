@@ -313,6 +313,7 @@ def run_simulation_core(
         anode_radius=cc["anode_radius"], cathode_radius=cc["cathode_radius"],
         crowbar_enabled=cc.get("crowbar_enabled", False),
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
@@ -415,7 +416,7 @@ def run_simulation_core(
     neutron_yield = None
     V_pinch_volts = 0.0
     if snowplow is not None and gas.get("A") == 2 and gas.get("Z") == 1:
-        r_p = snowplow.shock_radius
+        r_p = getattr(snowplow, "pinch_radius", snowplow.shock_radius)
         z_f = getattr(snowplow, "z_f", sc.get("anode_length", 0.16) * sc.get("pinch_column_fraction", 1.0))
         tau_ns = scaling["tau_exp_ns"] if scaling else 10.0
         fmr = sc.get("radial_mass_fraction", sc.get("mass_fraction", 0.15))
