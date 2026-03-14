@@ -1,6 +1,8 @@
 """Plotly figure generators for DPF web UI — 2D waveforms, physics, schematic, 3D plasma."""
 from __future__ import annotations
 
+import csv
+import io
 from typing import Any
 
 import numpy as np
@@ -13,7 +15,72 @@ PHASE_COLORS = {
 }
 
 
-def create_waveform_fig(d: dict[str, Any]) -> go.Figure:
+def parse_experimental_csv(csv_content: str) -> dict[str, list[float]] | None:
+    """Parse CSV with time and current columns.
+
+    Accepts: time_us/current_MA, time_s/current_A, t/I (assumes us/MA)
+    Returns dict with t_us and I_MA keys, or None on failure.
+    """
+    try:
+        reader = csv.DictReader(io.StringIO(csv_content.strip()))
+        if reader.fieldnames is None:
+            return None
+
+        time_col: str | None = None
+        current_col: str | None = None
+        time_scale = 1.0
+        current_scale = 1.0
+
+        for h in reader.fieldnames:
+            hl = h.strip().lower()
+            if hl in ("time_us", "t_us"):
+                time_col = h
+                time_scale = 1.0
+            elif hl in ("time_s", "t_s"):
+                time_col = h
+                time_scale = 1e6
+            elif hl in ("t", "time") and time_col is None:
+                time_col = h
+                time_scale = 1.0
+
+        for h in reader.fieldnames:
+            hl = h.strip().lower()
+            if hl in ("current_ma", "i_ma"):
+                current_col = h
+                current_scale = 1.0
+            elif hl in ("current_a", "i_a"):
+                current_col = h
+                current_scale = 1e-6
+            elif hl in ("i", "current") and current_col is None:
+                current_col = h
+                current_scale = 1.0
+
+        if time_col is None or current_col is None:
+            return None
+
+        t_us: list[float] = []
+        i_ma: list[float] = []
+        for row in reader:
+            t_val = row.get(time_col, "").strip()
+            i_val = row.get(current_col, "").strip()
+            if not t_val or not i_val:
+                continue
+            t_us.append(float(t_val) * time_scale)
+            i_ma.append(float(i_val) * current_scale)
+
+        if not t_us:
+            return None
+
+        return {"t_us": t_us, "I_MA": i_ma}
+
+    except Exception:
+        return None
+
+
+def create_waveform_fig(
+    d: dict[str, Any],
+    experimental_data: dict[str, list[float]] | None = None,
+) -> go.Figure:
     t = d["t_us"]
     I_arr = d["I_MA"]  # noqa: N806
     V = d["V_kV"]
@@ -49,6 +116,13 @@ def create_waveform_fig(d: dict[str, Any]) -> go.Figure:
         fig.add_trace(go.Scatter(
             x=t, y=I_arr, mode="lines",
             line=dict(color="#2196F3", width=2.5), name="I(t)",
+        ), row=1, col=1)
+
+    if experimental_data is not None:
+        fig.add_trace(go.Scatter(
+            x=experimental_data["t_us"], y=experimental_data["I_MA"],
+            mode="lines", line=dict(color="red", width=2, dash="dash"),
+            name="Experimental",
         ), row=1, col=1)
 
     fig.add_trace(go.Scatter(

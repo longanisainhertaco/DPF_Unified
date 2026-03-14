@@ -133,6 +133,9 @@ class SnowplowModel:
         current_fraction: float = 0.7,
         radial_mass_fraction: float | None = None,
         pinch_column_fraction: float = 1.0,
+        radial_current_fraction: float | None = None,
+        radial_current_fraction_2: float | None = None,
+        radial_transition_time: float | None = None,
     ) -> None:
         self.a = anode_radius           # [m]
         self.b = cathode_radius         # [m]
@@ -143,6 +146,16 @@ class SnowplowModel:
         self.f_c = current_fraction     # dimensionless (Lee & Saw 2014: ~0.7)
         self.f_mr = radial_mass_fraction if radial_mass_fraction is not None else mass_fraction
         self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
+
+        # Two-step radial current fractions (Damideh et al. 2025)
+        # f_cr: radial current fraction before re-strike (defaults to f_c)
+        # f_cr2: radial current fraction after re-strike (enables two-step model)
+        # t_transition: time after radial phase start when re-strike occurs
+        self.f_cr = radial_current_fraction if radial_current_fraction is not None else current_fraction
+        self.f_cr2 = radial_current_fraction_2  # None = single-step model
+        self.t_transition = radial_transition_time  # [s] absolute time, None = disabled
+        # Smooth transition width: 50 ns avoids numerical discontinuity
+        self._tau_transition = 50e-9  # [s]
 
         # Derived geometric constants
         self.ln_ba = np.log(self.b / self.a)             # ln(b/a)
@@ -194,10 +207,35 @@ class SnowplowModel:
 
         logger.info(
             "SnowplowModel: a=%.1f mm, b=%.1f mm, L_anode=%.0f mm, z_f=%.0f mm, "
-            "f_m=%.2f, f_c=%.2f, f_mr=%.2f, rho0=%.2e kg/m^3, p_fill=%.0f Pa",
+            "f_m=%.2f, f_c=%.2f, f_cr=%.2f, f_mr=%.2f, rho0=%.2e kg/m^3, p_fill=%.0f Pa%s",
             self.a * 1e3, self.b * 1e3, self.L_anode * 1e3, self.z_f * 1e3,
-            self.f_m, self.f_c, self.f_mr, self.rho0, self.p_fill,
+            self.f_m, self.f_c, self.f_cr, self.f_mr, self.rho0, self.p_fill,
+            f", TWO-STEP: f_cr2={self.f_cr2:.2f} t_trans={self.t_transition*1e6:.2f}us"
+            if self.f_cr2 is not None and self.t_transition is not None else "",
         )
+
+    def _effective_radial_fc(self) -> float:
+        """Effective current fraction during radial phase.
+
+        Single-step model (default): returns f_cr for the entire radial phase.
+
+        Two-step model (when f_cr2 and t_transition are set): smooth sigmoid
+        transition from f_cr to f_cr2 at t_transition. Models re-strike current
+        diversion per Damideh et al., Sci. Rep. 15:23048 (2025).
+
+            f_c_eff(t) = f_cr2 + (f_cr - f_cr2) * 0.5 * (1 - tanh((t - t_trans) / tau))
+
+        The sigmoid width tau=50ns provides numerical smoothness while being
+        physically sharp relative to microsecond DPF timescales.
+        """
+        if self.f_cr2 is None or self.t_transition is None:
+            return self.f_cr
+
+        t = self._elapsed_time
+        dt = t - self.t_transition
+        # Smooth sigmoid: transitions from f_cr to f_cr2 over ~100ns
+        sigmoid = 0.5 * (1.0 + np.tanh(dt / self._tau_transition))
+        return self.f_cr + (self.f_cr2 - self.f_cr) * sigmoid
 
     @property
     def sheath_position(self) -> float:
@@ -383,6 +421,7 @@ class SnowplowModel:
             "F_pressure": F_pressure,
             "phase": self.phase,
             "R_plasma": R_anom,
+            "f_cr_eff": self._effective_radial_fc(),
         }
 
     def _frozen_result(self) -> dict[str, float]:
@@ -550,7 +589,11 @@ class SnowplowModel:
         Uses velocity-Verlet integration.
 
         The radial J×B force drives the current sheath inward:
-            F_rad = (mu_0 / 4pi) * (f_c * I)^2 * z_f / r_s
+            F_rad = (mu_0 / 4pi) * (f_cr_eff * I)^2 * z_f / r_s
+
+        where f_cr_eff is the effective radial current fraction, which may
+        transition from f_cr to f_cr2 at t_transition (two-step model for
+        re-strike current diversion, Damideh et al. 2025).
 
         Adiabatic back-pressure opposes the implosion:
             F_back = p_back * 2*pi * r_s * z_f
@@ -562,10 +605,11 @@ class SnowplowModel:
         """
         I_current = current
         z_f = self.z_f  # Effective pinch column length
+        f_cr_eff = self._effective_radial_fc()
 
         # Radial force: J×B on cylindrical current sheet
         r_s = max(self.r_shock, self.r_pinch_min)
-        F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
+        F_rad = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_s
 
         # Adiabatic back-pressure force (opposes inward motion)
         # Use max of adiabatic estimate and external MHD pressure if provided
@@ -623,7 +667,7 @@ class SnowplowModel:
         M_new = self.f_mr * self.rho0 * pi * (self.b**2 - r_new**2) * z_f
         M_new = max(M_new, 1e-20)
         dm_dt_new = self.f_mr * self.rho0 * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
-        F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
+        F_rad_new = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_new_eff
         p_back_new = self._adiabatic_back_pressure(r_new_eff)
         F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
         a_new = (-F_rad_new + F_pressure_new - vr_half * dm_dt_new) / M_new
@@ -663,6 +707,7 @@ class SnowplowModel:
         """
         I_current = current
         z_f = self.z_f  # Effective pinch column length
+        f_cr_eff = self._effective_radial_fc()
 
         r_s = max(self.r_shock, self.r_pinch_min)
 
@@ -671,7 +716,7 @@ class SnowplowModel:
         F_pressure = p_back * 2.0 * pi * r_s * z_f
 
         # J×B force (inward, opposing expansion)
-        F_rad = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_s
+        F_rad = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_s
 
         # Slug mass with mass pickup: reflected shock sweeps gas already
         # compressed by the inward shock (Phase 2).  For a strong cylindrical
@@ -761,7 +806,7 @@ class SnowplowModel:
         dM_dt_new = self.f_m * rho_post_shock * 2.0 * pi * r_new_eff * abs(vr_half) * z_f
         p_back_new = self._adiabatic_back_pressure(r_new_eff)
         F_pressure_new = p_back_new * 2.0 * pi * r_new_eff * z_f
-        F_rad_new = (mu_0 / (4.0 * pi)) * (self.f_c * I_current)**2 * z_f / r_new_eff
+        F_rad_new = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_new_eff
         a_new = (F_pressure_new - F_rad_new - vr_half * dM_dt_new) / M_slug_new
 
         # Full-step velocity

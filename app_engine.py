@@ -8,6 +8,8 @@ import numpy as np
 
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.constants import k_B, mu_0
+
+kB = k_B  # alias for app_mhd.py backward compatibility
 from dpf.core.bases import CouplingState
 from dpf.fluid.snowplow import SnowplowModel, implosion_scaling
 from dpf.presets import _PRESETS, get_preset
@@ -262,6 +264,8 @@ def run_simulation_core(
     anode_len_mm: float | None = None,
     fc: float | None = None,
     fm: float | None = None,
+    fmr: float | None = None,
+    fcr: float | None = None,
     crowbar_on: bool | None = None,
     crowbar_R_mOhm: float | None = None,
     progress_fn=None,
@@ -291,6 +295,10 @@ def run_simulation_core(
         sc["current_fraction"] = fc
     if fm is not None and fm > 0:
         sc["mass_fraction"] = fm
+    if fmr is not None and fmr > 0:
+        sc["radial_mass_fraction"] = fmr
+    if fcr is not None and fcr > 0:
+        sc["radial_current_fraction"] = fcr
     if crowbar_on is not None:
         cc["crowbar_enabled"] = crowbar_on
     if crowbar_R_mOhm is not None and crowbar_R_mOhm > 0:
@@ -327,6 +335,9 @@ def run_simulation_core(
             current_fraction=sc.get("current_fraction", 0.7),
             radial_mass_fraction=sc.get("radial_mass_fraction", None),
             pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
+            radial_current_fraction=sc.get("radial_current_fraction", None),
+            radial_current_fraction_2=sc.get("radial_current_fraction_2", None),
+            radial_transition_time=sc.get("radial_transition_time", None),
         )
 
     L_total = cc["L0"] + 1e-9
