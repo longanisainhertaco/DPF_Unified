@@ -58,6 +58,7 @@ def validate_against_published(
         "preset": preset_name,
         "device": dev.name,
         "source": dev.reference,
+        "reliability": getattr(dev, "reliability", "measured"),
         "I_peak_sim_MA": sim_I_peak,
         "I_peak_ref_MA": ref_I,
         "I_peak_dev_pct": dI_pct,
@@ -111,9 +112,14 @@ def format_validation_markdown(val: dict[str, Any] | None) -> str:
             return "POOR"
         return "FAIL"
 
+    reliability = val.get("reliability", "measured")
+    reliability_badge = ""
+    if reliability == "reference_only":
+        reliability_badge = " [REFERENCE ONLY — not validated]"
+
     lines = [
         "---",
-        "**Validation vs. Published Data**",
+        f"**Validation vs. Published Data**{reliability_badge}",
         f"*{val['source']}*",
         "",
         "| Quantity | Simulation | Published | Deviation |",

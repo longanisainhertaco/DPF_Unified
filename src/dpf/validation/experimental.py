@@ -131,6 +131,10 @@ class ExperimentalDevice:
     waveform_provenance: str = ""
     # Measurement provenance note
     measurement_notes: str = ""
+    # Data reliability: "measured" (direct Rogowski/probe measurement),
+    # "reference_only" (model output or unreliable source — exclude from validation claims)
+    reliability: str = "measured"
+    reliability_note: str = ""
 
 
 # =====================================================================
@@ -223,14 +227,18 @@ NX2_DATA = ExperimentalDevice(
         "Module 1 preset (plasmafocus.net); actual RESF=R0/sqrt(L0/C)=0.086 "
         "(not 0.1 as sometimes stated). "
         "Fill pressure 3 Torr D2 for neutron operation. "
-        "WARNING: The 400 kA peak current is likely a RADPF model output, "
-        "not a direct Rogowski coil measurement. The unloaded RLC peak is "
-        "402.5 kA (implying only 0.6% plasma loading, which is physically "
-        "implausible for any DPF discharge). Treat as 'reference' quality, "
-        "not 'experimental measurement' quality. "
         "L0 uncertainty: literature reports 15-20 nH (Sahyouni et al. 2021 "
         "DOI:10.1155/2021/6611925 vs RADPF preset). "
         "Uncertainties are Type B estimates (not stated in source)."
+    ),
+    reliability="reference_only",
+    reliability_note=(
+        "400 kA peak current is a RADPF model output, not a Rogowski coil "
+        "measurement. Unloaded RLC peak is 402.5 kA, implying 0.6% plasma "
+        "loading — physically implausible for any DPF discharge. No digitized "
+        "waveform available for NRMSE validation. fc^2/fm = 4.90, degenerate "
+        "with PF-1000 (4.69) — provides no independent parameter constraint. "
+        "Excluded from validation pass/fail claims."
     ),
 )
 
