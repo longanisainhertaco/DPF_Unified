@@ -1,10 +1,6 @@
-"""Experimental modules — code exists but is NOT integrated into the simulation engine.
-
-These modules are complete or near-complete implementations that have not yet been
-wired into engine.py. They are kept here as building blocks for future development.
+"""Experimental modules — not integrated into the simulation engine.
 
 Modules:
-    amr/        - Adaptive mesh refinement (block-structured, gradient tagging)
     pic/        - Hybrid particle-in-cell (Boris pusher, CIC deposition)
-    species.py  - Multi-species tracking (SpeciesMixture, advection)
+                  Live via kinetic/hybrid.py -> engine.py
 """

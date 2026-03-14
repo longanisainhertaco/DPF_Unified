@@ -1,9 +1,8 @@
 """Shared WALRUS inference utilities for DPF surrogate classes.
 
 Provides ``WalrusInferenceMixin`` — a mixin class that extracts the common
-model-loading, batch-construction, and output-conversion logic shared by
-:class:`~dpf.ai.surrogate.DPFSurrogate` and
-:class:`~dpf.metal.mlx_surrogate.MLXSurrogate`.
+model-loading, batch-construction, and output-conversion logic used by
+:class:`~dpf.ai.surrogate.DPFSurrogate`.
 
 All ``torch`` / ``walrus`` imports are lazy (inside methods) so that importing
 this module never triggers heavyweight dependency loading.

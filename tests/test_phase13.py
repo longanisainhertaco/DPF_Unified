@@ -1,7 +1,6 @@
-"""Tests for Phase 13: Multi-Species + Line Radiation + Beam-Target.
+"""Tests for Phase 13: Line Radiation + Beam-Target.
 
 Covers:
-    13.1 Multi-species framework (SpeciesConfig, SpeciesMixture)
     13.2 Electrode ablation source
     13.3 Line radiation + recombination radiation
     13.4 Non-LTE ionization (collisional-radiative model)
@@ -12,7 +11,6 @@ Covers:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from dpf.atomic.ablation import (
     COPPER_ABLATION_EFFICIENCY,
@@ -47,14 +45,6 @@ from dpf.diagnostics.beam_target import (
     detect_pinch_disruption,
     neutron_anisotropy,
 )
-from dpf.experimental.species import (
-    COPPER,
-    DEUTERIUM,
-    HYDROGEN,
-    TUNGSTEN,
-    SpeciesConfig,
-    SpeciesMixture,
-)
 from dpf.radiation.line_radiation import (
     apply_line_radiation_losses,
     cooling_function,
@@ -62,160 +52,6 @@ from dpf.radiation.line_radiation import (
     recombination_power,
     total_radiation_power,
 )
-
-
-class TestSpeciesConfig:
-    """Tests for SpeciesConfig dataclass."""
-
-    def test_deuterium_predefined(self):
-        """Predefined deuterium has correct mass and charge."""
-        assert DEUTERIUM.charge_number == 1
-        assert DEUTERIUM.label == "D"
-        assert abs(DEUTERIUM.mass - 3.3436e-27) < 1e-30
-
-    def test_copper_predefined(self):
-        """Predefined copper has Z=29."""
-        assert COPPER.charge_number == 29
-        assert COPPER.label == "Cu"
-        assert COPPER.initial_fraction == 0.0
-
-    def test_tungsten_predefined(self):
-        """Predefined tungsten has Z=74."""
-        assert TUNGSTEN.charge_number == 74
-        assert TUNGSTEN.label == "W"
-
-    def test_hydrogen_predefined(self):
-        """Predefined hydrogen has charge 1."""
-        assert HYDROGEN.charge_number == 1
-        assert HYDROGEN.label == "H"
-
-    def test_invalid_mass_raises(self):
-        """Negative mass should raise ValueError."""
-        with pytest.raises(ValueError, match="mass must be positive"):
-            SpeciesConfig(name="bad", mass=-1.0, charge_number=1)
-
-    def test_invalid_fraction_raises(self):
-        """Fraction outside [0, 1] should raise ValueError."""
-        with pytest.raises(ValueError, match="initial_fraction"):
-            SpeciesConfig(name="bad", mass=1e-27, charge_number=1, initial_fraction=1.5)
-
-    def test_auto_label(self):
-        """If label is empty, it auto-generates from name."""
-        sp = SpeciesConfig(name="neon", mass=3.35e-26, charge_number=10)
-        assert sp.label == "Neon"
-
-
-class TestSpeciesMixture:
-    """Tests for SpeciesMixture container."""
-
-    def test_single_species_total_density(self):
-        """Single deuterium species: total density matches initial."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(10,), rho_total=1e-3)
-        rho = mix.total_density()
-        np.testing.assert_allclose(rho, 1e-3, rtol=1e-12)
-
-    def test_multi_species_conservation(self):
-        """Multi-species: sum of rho_s equals rho_total."""
-        d = SpeciesConfig(name="deuterium", mass=3.3436e-27, charge_number=1,
-                          initial_fraction=0.9, label="D")
-        cu = SpeciesConfig(name="copper", mass=1.0552e-25, charge_number=29,
-                           initial_fraction=0.1, label="Cu")
-        mix = SpeciesMixture([d, cu], grid_shape=(20,), rho_total=5e-4)
-        rho = mix.total_density()
-        np.testing.assert_allclose(rho, 5e-4, rtol=1e-10)
-
-    def test_z_eff_pure_deuterium(self):
-        """Z_eff = 1 for pure deuterium (fully ionized)."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(8,), rho_total=1e-4)
-        z_eff = mix.z_eff()
-        np.testing.assert_allclose(z_eff, 1.0, atol=1e-12)
-
-    def test_z_eff_increases_with_impurity(self):
-        """Z_eff > 1 when high-Z impurity is present."""
-        d = SpeciesConfig(name="deuterium", mass=3.3436e-27, charge_number=1,
-                          initial_fraction=0.9, label="D")
-        cu = SpeciesConfig(name="copper", mass=1.0552e-25, charge_number=29,
-                           initial_fraction=0.1, label="Cu")
-        mix = SpeciesMixture([d, cu], grid_shape=(8,), rho_total=1e-4)
-        z_eff = mix.z_eff()
-        assert np.all(z_eff > 1.0)
-
-    def test_number_densities_positive(self):
-        """Number densities are positive."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(10,), rho_total=1e-3)
-        nd = mix.number_densities()
-        assert "deuterium" in nd
-        assert np.all(nd["deuterium"] > 0)
-
-    def test_electron_density(self):
-        """Electron density = Z * n_ion for single species."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-3)
-        ne = mix.electron_density()
-        nd = mix.number_densities()["deuterium"]
-        np.testing.assert_allclose(ne, nd, rtol=1e-12)
-
-    def test_advect_preserves_positivity(self):
-        """Advection does not produce negative density."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(16,), rho_total=1e-3)
-        v = np.zeros((3, 16))
-        v[0] = 1e5  # strong rightward flow
-        mix.advect("deuterium", v, dt=1e-9, dx=1e-3)
-        assert np.all(mix.rho_species["deuterium"] >= 0.0)
-
-    def test_advect_all(self):
-        """advect_all runs for all species without error."""
-        d = SpeciesConfig(name="deuterium", mass=3.3436e-27, charge_number=1,
-                          initial_fraction=0.9, label="D")
-        cu = SpeciesConfig(name="copper", mass=1.0552e-25, charge_number=29,
-                           initial_fraction=0.1, label="Cu")
-        mix = SpeciesMixture([d, cu], grid_shape=(10,), rho_total=1e-3)
-        v = np.zeros((3, 10))
-        mix.advect_all(v, dt=1e-9, dx=1e-3)
-        assert np.all(np.isfinite(mix.total_density()))
-
-    def test_add_source_increases_density(self):
-        """Adding a positive source increases species density."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-4)
-        rho_before = mix.total_density().copy()
-        mix.add_source("deuterium", 1e6, dt=1e-9)  # 1e6 kg/m^3/s * 1e-9 s
-        rho_after = mix.total_density()
-        assert np.all(rho_after > rho_before)
-
-    def test_add_source_floors_at_zero(self):
-        """Negative source does not produce negative density."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-4)
-        mix.add_source("deuterium", -1e30, dt=1e-9)
-        assert np.all(mix.rho_species["deuterium"] >= 0.0)
-
-    def test_species_names(self):
-        """species_names returns correct list."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-4)
-        assert mix.species_names() == ["deuterium"]
-
-    def test_get_config(self):
-        """get_config looks up species by name."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-4)
-        cfg = mix.get_config("deuterium")
-        assert cfg.charge_number == 1
-
-    def test_empty_species_raises(self):
-        """Empty species list should raise."""
-        with pytest.raises(ValueError, match="At least one"):
-            SpeciesMixture([], grid_shape=(5,), rho_total=1e-4)
-
-    def test_fractions_must_sum_to_one(self):
-        """Fractions not summing to 1 should raise."""
-        d = SpeciesConfig(name="d", mass=3.3e-27, charge_number=1,
-                          initial_fraction=0.5, label="D")
-        with pytest.raises(ValueError, match="sum to 1.0"):
-            SpeciesMixture([d], grid_shape=(5,), rho_total=1e-4)
-
-    def test_mean_ion_mass(self):
-        """Mean ion mass for pure deuterium = m_d."""
-        mix = SpeciesMixture([DEUTERIUM], grid_shape=(5,), rho_total=1e-4)
-        m_bar = mix.mean_ion_mass()
-        np.testing.assert_allclose(m_bar, DEUTERIUM.mass, rtol=1e-10)
-
 
 # ===================================================================
 # 13.2 — Electrode ablation

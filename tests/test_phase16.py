@@ -1,18 +1,15 @@
-"""Tests for Phase 16: Extended MHD + Kinetic Option.
+"""Tests for Phase 16: Extended MHD.
 
 Covers:
     16.1 Nernst effect (magnetic field advection by temperature gradient)
     16.2 Braginskii viscosity tensor
     16.3 Constrained transport for div(B) = 0
-    16.4 Hybrid fluid-PIC (Boris push, CIC deposition)
     16.5 Multi-device validation suite
 """
 
 from __future__ import annotations
 
 import numpy as np
-
-from dpf.constants import e, m_d
 
 # ===================================================================
 # 16.1 — Nernst Effect
@@ -348,152 +345,6 @@ class TestDivBConstraint:
         div_b = compute_div_B(stag_new)
         # CT should preserve div(B) = 0 to machine precision
         np.testing.assert_allclose(div_b, 0.0, atol=1e-10)
-
-
-# ===================================================================
-# 16.4 — Hybrid Fluid-PIC
-# ===================================================================
-
-
-class TestBorisPush:
-    """Tests for Boris particle pusher."""
-
-    def test_straight_line_no_field(self):
-        """Particles move in straight lines with no E or B."""
-        from dpf.experimental.pic import boris_push
-
-        N = 10
-        pos = np.zeros((N, 3))
-        vel = np.ones((N, 3)) * 1e5  # 100 km/s
-        E = np.zeros((N, 3))
-        B = np.zeros((N, 3))
-        dt = 1e-9
-
-        new_pos, new_vel = boris_push(pos, vel, E, B, e, m_d, dt)
-        expected_pos = vel * dt
-        np.testing.assert_allclose(new_pos, expected_pos, rtol=1e-10)
-        np.testing.assert_allclose(new_vel, vel, rtol=1e-10)
-
-    def test_e_field_acceleration(self):
-        """Uniform E-field accelerates particles."""
-        from dpf.experimental.pic import boris_push
-
-        N = 5
-        pos = np.zeros((N, 3))
-        vel = np.zeros((N, 3))
-        E = np.zeros((N, 3))
-        E[:, 0] = 1e6  # 1 MV/m in x
-        B = np.zeros((N, 3))
-        dt = 1e-9
-
-        new_pos, new_vel = boris_push(pos, vel, E, B, e, m_d, dt)
-        # Should have gained velocity in x direction
-        assert np.all(new_vel[:, 0] > 0)
-
-    def test_gyration_in_b_field(self):
-        """Particle in uniform B-field gyrates (speed conserved)."""
-        from dpf.experimental.pic import boris_push
-
-        pos = np.array([[0.0, 0.0, 0.0]])
-        vel = np.array([[1e5, 0.0, 0.0]])  # v_perp to B
-        E = np.zeros((1, 3))
-        B = np.array([[0.0, 0.0, 1.0]])  # 1 T in z
-        dt = 1e-10  # small enough for good resolution
-
-        speed0 = np.linalg.norm(vel)
-        # Take many steps
-        p, v = pos.copy(), vel.copy()
-        for _ in range(100):
-            p, v = boris_push(p, v, E, B, e, m_d, dt)
-
-        speed_final = np.linalg.norm(v)
-        # Boris pusher conserves speed exactly
-        np.testing.assert_allclose(speed_final, speed0, rtol=1e-6)
-
-
-class TestDeposition:
-    """Tests for particle-to-grid deposition."""
-
-    def test_single_particle_conservation(self):
-        """Total deposited density equals particle weight."""
-        from dpf.experimental.pic import deposit_density
-
-        pos = np.array([[0.005, 0.005, 0.005]])  # center of domain
-        weights = np.array([1e10])
-        grid_shape = (8, 8, 8)
-        dx = dy = dz = 0.01 / 8
-
-        rho = deposit_density(pos, weights, grid_shape, dx, dy, dz)
-        # Total deposited ≈ weight (within CIC bounds)
-        total = np.sum(rho) * dx * dy * dz
-        np.testing.assert_allclose(total, 1e10, rtol=0.1)
-
-    def test_density_is_nonnegative(self):
-        """Deposited density should never be negative."""
-        from dpf.experimental.pic import deposit_density
-
-        rng = np.random.default_rng(42)
-        N = 100
-        pos = rng.uniform(0.001, 0.009, (N, 3))
-        weights = np.ones(N) * 1e8
-        grid_shape = (8, 8, 8)
-        dx = dy = dz = 0.01 / 8
-
-        rho = deposit_density(pos, weights, grid_shape, dx, dy, dz)
-        assert np.all(rho >= 0)
-
-
-class TestHybridPIC:
-    """Tests for the HybridPIC class."""
-
-    def test_add_species(self):
-        """Can add a species to the hybrid PIC."""
-        from dpf.experimental.pic import HybridPIC
-
-        hybrid = HybridPIC((8, 8, 8), 0.001, 0.001, 0.001, 1e-9)
-        sp = hybrid.add_species(
-            "deuterium", m_d, e,
-            np.zeros((10, 3)), np.zeros((10, 3)), np.ones(10) * 1e8,
-        )
-        assert sp.n_particles() == 10
-        assert len(hybrid.species) == 1
-
-    def test_deposit_produces_density(self):
-        """Depositing particles produces nonzero density."""
-        from dpf.experimental.pic import HybridPIC
-
-        hybrid = HybridPIC((8, 8, 8), 0.001, 0.001, 0.001, 1e-9)
-        rng = np.random.default_rng(42)
-        pos = rng.uniform(0.001, 0.007, (50, 3))
-        vel = rng.normal(0, 1e5, (50, 3))
-        hybrid.add_species("D", m_d, e, pos, vel, np.ones(50) * 1e8)
-
-        rho, Jx, Jy, Jz = hybrid.deposit()
-        assert np.sum(rho) > 0
-
-
-class TestInstabilityDetection:
-    """Tests for m=0 instability detection."""
-
-    def test_uniform_no_instability(self):
-        """Uniform density gives no instability."""
-        from dpf.experimental.pic.hybrid import detect_instability
-
-        rho = np.ones((16, 16, 16))
-        B = np.zeros((16, 16, 16, 3))
-        B[:, :, :, 2] = 1.0
-        assert not detect_instability(rho, B)
-
-    def test_strong_compression_triggers(self):
-        """Strong density compression triggers instability detection."""
-        from dpf.experimental.pic.hybrid import detect_instability
-
-        rho = np.ones((16, 16, 16))
-        rho[7:9, 7:9, :] = 20.0  # 20× compression
-        B = np.zeros((16, 16, 16, 3))
-        B[:, :, :8, 2] = 1.0
-        B[:, :, 8:, 2] = -1.0  # field reversal
-        assert detect_instability(rho, B, threshold=5.0)
 
 
 # ===================================================================
