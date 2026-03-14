@@ -339,6 +339,31 @@ class SnowplowConfig(BaseModel):
             "Lee & Saw (2014): f_mr ~ 0.07-0.12 for PF-1000, typically < f_m."
         ),
     )
+    radial_current_fraction: float | None = Field(
+        None, gt=0, le=1.0,
+        description=(
+            "Current fraction during radial phase (f_cr). Defaults to current_fraction if None. "
+            "Damideh et al. (2025): f_cr ~ 0.7-0.9 for FAETON-I pre-re-strike."
+        ),
+    )
+    radial_current_fraction_2: float | None = Field(
+        None, gt=0, le=1.0,
+        description=(
+            "Current fraction after re-strike (f_cr2, two-step radial model). "
+            "When set, enables two-step radial fitting per Damideh et al. (2025). "
+            "Re-strikes reduce the current reaching the plasma sheath. "
+            "Typical: f_cr2 = 0.35-0.7 (always <= f_cr)."
+        ),
+    )
+    radial_transition_time: float | None = Field(
+        None, ge=0,
+        description=(
+            "Time after radial phase onset when re-strike occurs [s]. "
+            "At this point, radial current fraction transitions from f_cr to f_cr2. "
+            "Uses a smooth sigmoid (tau=50ns) to avoid numerical discontinuity. "
+            "If None, two-step model is disabled even if f_cr2 is set."
+        ),
+    )
     pinch_column_fraction: float = Field(
         1.0, gt=0, le=1.0,
         description=(

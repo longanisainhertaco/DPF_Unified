@@ -36,6 +36,7 @@ from app_plots import (
     create_physics_fig,
     create_schematic_fig,
     create_waveform_fig,
+    parse_experimental_csv,
 )
 from app_sweep import (
     create_2d_sweep_fig,
@@ -258,6 +259,7 @@ def run_simulation(
     anode_r, cathode_r, anode_len,
     fc, fm, crowbar_on, crowbar_R, pressure,
     comparison_runs,
+    experimental_csv=None,
     progress=gr.Progress(),  # noqa: B008
 ):
     err = _validate_inputs(anode_r, cathode_r, V0_kV, C_uF, L0_nH, sim_time_us)
@@ -285,7 +287,15 @@ def run_simulation(
     except Exception as exc:
         raise gr.Error(f"Simulation failed ({backend}): {exc}") from exc
 
-    fig_wave = create_waveform_fig(data)
+    exp_data: dict | None = None
+    if experimental_csv is not None:
+        csv_path = Path(experimental_csv) if isinstance(experimental_csv, str) else Path(experimental_csv.name)
+        try:
+            exp_data = parse_experimental_csv(csv_path.read_text())
+        except Exception:
+            exp_data = None
+
+    fig_wave = create_waveform_fig(data, experimental_data=exp_data)
     fig_phys = create_physics_fig(data)
     fig_portrait = create_phase_portrait(data)
 
@@ -442,6 +452,9 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     ],
                 )
             with gr.Tab("Waveforms"):
+                exp_csv_upload = gr.File(
+                    label="Experimental Data (CSV)", file_types=[".csv"],
+                )
                 fig_waveform = gr.Plot(label="Current & Voltage")
             with gr.Tab("Physics Breakdown"):
                 fig_physics = gr.Plot(label="Physics")
@@ -500,7 +513,7 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
     run_btn.click(
         fn=run_simulation,
-        inputs=all_param_inputs + [comparison_state],
+        inputs=all_param_inputs + [comparison_state, exp_csv_upload],
         outputs=[
             metrics_md, narrative_md,
             fig_waveform, fig_physics, fig_portrait,
@@ -509,6 +522,24 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             export_file, sim_state, comparison_state,
         ],
         concurrency_limit=1,
+    )
+
+    def refresh_waveform(sim_data: dict | None, exp_file):
+        if sim_data is None:
+            return None
+        exp_data: dict | None = None
+        if exp_file is not None:
+            csv_path = Path(exp_file) if isinstance(exp_file, str) else Path(exp_file.name)
+            try:
+                exp_data = parse_experimental_csv(csv_path.read_text())
+            except Exception:
+                exp_data = None
+        return create_waveform_fig(sim_data, experimental_data=exp_data)
+
+    exp_csv_upload.change(
+        fn=refresh_waveform,
+        inputs=[sim_state, exp_csv_upload],
+        outputs=[fig_waveform],
     )
 
     clear_btn.click(fn=clear_comparison,

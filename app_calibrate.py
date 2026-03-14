@@ -1,8 +1,8 @@
 """Auto-calibration of Lee model parameters against published experimental data.
 
-Optimizes f_m (mass fraction) and f_c (current fraction) to minimize deviation
-between simulated and published I_peak and t_peak. Uses differential evolution
-for global optimization over the (f_m, f_c) parameter space.
+Optimizes f_m, f_c, and optionally f_mr, f_cr to minimize deviation between
+simulated and published I_peak, t_peak, and Yn. Uses differential evolution
+for global optimization.
 
 This is a key differentiator vs existing DPF tools: RADPF requires manual trial-
 and-error fitting, taking hours of expert effort per device. Auto-calibration
@@ -10,10 +10,11 @@ achieves comparable or better fits in seconds.
 
 Usage:
     result = auto_calibrate("pf1000")
-    print(result["best_fm"], result["best_fc"], result["I_peak_dev_pct"])
+    result = auto_calibrate("faeton", optimize_radial=True)
 """
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
@@ -49,12 +50,19 @@ def _objective(
     w_I: float,
     w_t: float,
     w_nrmse: float,
+    w_Yn: float,
+    optimize_radial: bool,
 ) -> float:
-    """Objective function for optimization: weighted deviation from published data."""
-    fm, fc = params
+    """Objective function: weighted deviation from published data."""
+    if optimize_radial:
+        fm, fc, fmr, fcr = params
+    else:
+        fm, fc = params
+        fmr, fcr = None, None
+
     try:
         data = run_simulation_core(
-            preset_name, sim_time_us, fm=fm, fc=fc,
+            preset_name, sim_time_us, fm=fm, fc=fc, fmr=fmr, fcr=fcr,
         )
     except Exception:
         return 1e6
@@ -73,6 +81,16 @@ def _objective(
 
     cost = w_I * dI + w_t * dt_err
 
+    # Neutron yield cost (log-scale deviation in decades)
+    if w_Yn > 0 and "Yn" in ref:
+        ny = data.get("neutron_yield")
+        if isinstance(ny, dict):
+            sim_Yn = ny.get("Y_neutron", 0)
+            if sim_Yn > 0 and ref["Yn"] > 0:
+                log_dev = abs(math.log10(sim_Yn) - math.log10(ref["Yn"]))
+                cost += w_Yn * log_dev
+
+    # Waveform NRMSE cost
     if ref.get("has_waveform") and w_nrmse > 0:
         try:
             from app_validation import _get_device
@@ -94,31 +112,39 @@ def auto_calibrate(
     sim_time_us: float = 20.0,
     fm_bounds: tuple[float, float] = (0.02, 0.6),
     fc_bounds: tuple[float, float] = (0.4, 0.95),
+    fmr_bounds: tuple[float, float] = (0.05, 0.5),
+    fcr_bounds: tuple[float, float] = (0.4, 0.95),
+    optimize_radial: bool = False,
     w_I: float = 1.0,
     w_t: float = 0.5,
     w_nrmse: float = 0.3,
+    w_Yn: float = 0.5,
     maxiter: int = 30,
     popsize: int = 10,
     tol: float = 1e-3,
 ) -> dict[str, Any]:
-    """Auto-calibrate f_m and f_c for a preset against published data.
+    """Auto-calibrate Lee model parameters against published data.
 
     Uses scipy.optimize.differential_evolution for global optimization.
 
     Args:
         preset_name: Preset to calibrate.
         sim_time_us: Simulation time [us].
-        fm_bounds: Search range for mass fraction.
-        fc_bounds: Search range for current fraction.
-        w_I: Weight for I_peak deviation (default 1.0).
-        w_t: Weight for t_peak deviation (default 0.5).
-        w_nrmse: Weight for waveform NRMSE (default 0.3).
+        fm_bounds: Search range for axial mass fraction.
+        fc_bounds: Search range for axial current fraction.
+        fmr_bounds: Search range for radial mass fraction (if optimize_radial).
+        fcr_bounds: Search range for radial current fraction (if optimize_radial).
+        optimize_radial: If True, also optimize f_mr and f_cr (4D instead of 2D).
+        w_I: Weight for I_peak deviation.
+        w_t: Weight for t_peak deviation.
+        w_nrmse: Weight for waveform NRMSE.
+        w_Yn: Weight for neutron yield log-deviation.
         maxiter: Maximum DE iterations.
         popsize: DE population size multiplier.
         tol: Convergence tolerance.
 
     Returns:
-        Dictionary with best_fm, best_fc, deviations, and simulation results.
+        Dictionary with optimized parameters, deviations, and diagnostics.
     """
     ref = _get_reference(preset_name)
     if ref is None:
@@ -129,10 +155,15 @@ def auto_calibrate(
     except ImportError:
         return _grid_calibrate(preset_name, ref, sim_time_us, fm_bounds, fc_bounds)
 
+    if optimize_radial:
+        bounds = [fm_bounds, fc_bounds, fmr_bounds, fcr_bounds]
+    else:
+        bounds = [fm_bounds, fc_bounds]
+
     result = differential_evolution(
         _objective,
-        bounds=[fm_bounds, fc_bounds],
-        args=(preset_name, ref, sim_time_us, w_I, w_t, w_nrmse),
+        bounds=bounds,
+        args=(preset_name, ref, sim_time_us, w_I, w_t, w_nrmse, w_Yn, optimize_radial),
         maxiter=maxiter,
         popsize=popsize,
         tol=tol,
@@ -141,8 +172,15 @@ def auto_calibrate(
         updating="deferred",
     )
 
-    best_fm, best_fc = result.x
-    data = run_simulation_core(preset_name, sim_time_us, fm=best_fm, fc=best_fc)
+    if optimize_radial:
+        best_fm, best_fc, best_fmr, best_fcr = result.x
+    else:
+        best_fm, best_fc = result.x
+        best_fmr, best_fcr = None, None
+
+    data = run_simulation_core(
+        preset_name, sim_time_us, fm=best_fm, fc=best_fc, fmr=best_fmr, fcr=best_fcr,
+    )
     sim_I = data.get("I_pre_dip", data.get("I_peak", 0.0))
     sim_t = data.get("t_pre_dip", data.get("t_peak", 0.0))
 
@@ -159,7 +197,21 @@ def auto_calibrate(
         "cost": result.fun,
         "converged": result.success,
         "iterations": result.nit,
+        "optimize_radial": optimize_radial,
     }
+
+    if optimize_radial:
+        cal_result["best_fmr"] = round(best_fmr, 4)
+        cal_result["best_fcr"] = round(best_fcr, 4)
+
+    # Add Yn comparison if available
+    ny = data.get("neutron_yield")
+    if isinstance(ny, dict) and "Yn" in ref:
+        sim_Yn = ny.get("Y_neutron", 0)
+        cal_result["Yn_sim"] = sim_Yn
+        cal_result["Yn_ref"] = ref["Yn"]
+        if sim_Yn > 0 and ref["Yn"] > 0:
+            cal_result["Yn_log_dev"] = abs(math.log10(sim_Yn) - math.log10(ref["Yn"]))
 
     return cal_result
 
@@ -181,7 +233,8 @@ def _grid_calibrate(
     for fm in fm_vals:
         for fc in fc_vals:
             cost = _objective(
-                np.array([fm, fc]), preset_name, ref, sim_time_us, 1.0, 0.5, 0.0,
+                np.array([fm, fc]), preset_name, ref, sim_time_us,
+                1.0, 0.5, 0.0, 0.0, False,
             )
             if cost < best_cost:
                 best_cost = cost
@@ -229,13 +282,30 @@ def format_calibration_markdown(cal: dict[str, Any]) -> str:
     dt = cal["t_peak_dev_pct"]
     grade = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
 
-    return (
+    lines = [
         f"**Auto-calibrated** `{cal['preset']}`: "
-        f"f_m={cal['best_fm']:.3f}, f_c={cal['best_fc']:.3f}\n\n"
-        f"| Quantity | Simulation | Published | Deviation |\n"
-        f"|----------|-----------|-----------|----------|\n"
+        f"f_m={cal['best_fm']:.3f}, f_c={cal['best_fc']:.3f}",
+    ]
+    if cal.get("optimize_radial"):
+        lines[0] += f", f_mr={cal.get('best_fmr', '?')}, f_cr={cal.get('best_fcr', '?')}"
+
+    lines.append("")
+    lines.append("| Quantity | Simulation | Published | Deviation |")
+    lines.append("|----------|-----------|-----------|----------|")
+    lines.append(
         f"| I_peak | {cal['I_peak_sim_MA']:.3f} MA | "
-        f"{cal['I_peak_ref_MA']:.3f} MA | {dI:.1f}% ({grade}) |\n"
-        f"| t_peak | {cal['t_peak_sim_us']:.2f} us | "
-        f"{cal['t_peak_ref_us']:.1f} us | {dt:.1f}% |\n"
+        f"{cal['I_peak_ref_MA']:.3f} MA | {dI:.1f}% ({grade}) |"
     )
+    lines.append(
+        f"| t_peak | {cal['t_peak_sim_us']:.2f} us | "
+        f"{cal['t_peak_ref_us']:.1f} us | {dt:.1f}% |"
+    )
+
+    if "Yn_log_dev" in cal:
+        yn_grade = "PASS" if cal["Yn_log_dev"] < 1.0 else "FAIL"
+        lines.append(
+            f"| Yn | {cal['Yn_sim']:.2e} | "
+            f"{cal['Yn_ref']:.2e} | {cal['Yn_log_dev']:.2f} dec ({yn_grade}) |"
+        )
+
+    return "\n".join(lines) + "\n"

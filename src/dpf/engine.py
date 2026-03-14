@@ -330,6 +330,9 @@ class SimulationEngine:
                 radial_mass_fraction=config.snowplow.radial_mass_fraction,
                 fill_pressure_Pa=config.snowplow.fill_pressure_Pa,
                 pinch_column_fraction=config.snowplow.pinch_column_fraction,
+                radial_current_fraction=config.snowplow.radial_current_fraction,
+                radial_current_fraction_2=config.snowplow.radial_current_fraction_2,
+                radial_transition_time=config.snowplow.radial_transition_time,
             )
 
         # Field Manager for vector calculus and inductance (Phase 5)

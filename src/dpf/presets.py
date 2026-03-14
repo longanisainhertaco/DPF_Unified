@@ -278,6 +278,13 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "mass_fraction": 0.70,     # Lee model fit: fm=0.70 (Damideh 2025)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
+            # Two-step radial model (Damideh et al. 2025, FFV5-2 Lee code)
+            # Re-strikes occur during radial compression, after rundown (~6.2 us).
+            # Transition at ~7.0 us (0.8 us into radial phase) matches observed
+            # current slope deviation in Damideh 2025 Fig. 4.
+            "radial_current_fraction": 0.8,     # f_cr pre-re-strike (Table 3 avg)
+            "radial_current_fraction_2": 0.5,   # f_cr2 post-re-strike (Table 3 avg)
+            "radial_transition_time": 7.0e-6,   # ~7.0 us: onset of re-strike during radial
         },
     },
     "poseidon": {

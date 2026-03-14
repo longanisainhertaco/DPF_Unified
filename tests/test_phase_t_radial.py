@@ -697,7 +697,7 @@ class TestRadialEdgeCases:
         expected_keys = {
             "z_sheath", "v_sheath", "r_shock", "vr_shock",
             "L_plasma", "dL_dt", "swept_mass", "F_magnetic",
-            "F_pressure", "phase", "R_plasma",
+            "F_pressure", "phase", "R_plasma", "f_cr_eff",
         }
         assert set(result.keys()) == expected_keys
 
