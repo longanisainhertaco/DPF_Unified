@@ -521,7 +521,7 @@ class TestPhaseTransitions:
 
         # Now take more steps -- phase stays pinch, forces are zero
         result1 = sp.step(dt, current=I_current)
-        result2 = sp.step(dt, current=I_current)
+        sp.step(dt, current=I_current)
 
         assert result1["phase"] == "pinch"
         assert result1["F_magnetic"] == 0.0

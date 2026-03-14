@@ -32,7 +32,6 @@ References:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from dpf.validation.experimental import (
     DEVICES,
@@ -40,7 +39,6 @@ from dpf.validation.experimental import (
     nrmse_peak,
 )
 from dpf.validation.lee_model_comparison import LeeModel
-
 
 # ─────────────────────────────────────────────────────────
 # Constants
@@ -354,7 +352,7 @@ class TestCrossDeviceWaveform:
         )
 
         mean_nrmse = np.mean(list(nrmse_values.values()))
-        print(f"\nCross-device NRMSE (2 waveforms):")
+        print("\nCross-device NRMSE (2 waveforms):")
         for name, val in nrmse_values.items():
             print(f"  {name}: {val:.4f}")
         print(f"  Mean: {mean_nrmse:.4f}")

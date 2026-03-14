@@ -15,7 +15,6 @@ import pytest
 from dpf.constants import mu_0
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -44,7 +43,6 @@ def _total_energy_volume(state: dict, dr: float, dz: float,
                          gamma: float = 5.0 / 3.0) -> float:
     """Compute volume-integrated total energy for cylindrical geometry."""
     nr = state["rho"].shape[0]
-    nz = state["rho"].shape[2]
     rho = state["rho"][:, 0, :]
     p = state["pressure"][:, 0, :]
     v = state["velocity"][:, :, 0, :]
@@ -125,7 +123,7 @@ class TestEnergyConservation:
         E0 = _total_energy_volume(state, 0.001, 0.001)
         new = cons_solver.step(state, dt=1e-9, current=0.0, voltage=0.0)
         E1 = _total_energy_volume(new, 0.001, 0.001)
-        assert E1 == pytest.approx(E0, rel=1e-6)
+        assert pytest.approx(E0, rel=1e-6) == E1
 
     def test_sod_shock_energy_bounded(self, cons_solver):
         """Sod shock tube: total energy change < 10% over 5 steps."""
@@ -188,7 +186,7 @@ class TestPressureRecovery:
         # Known state
         rho_val, p_val = 2.0, 5e5
         vz_val, Bt_val = 1e3, 0.5
-        state = _make_state(16, 16, rho=rho_val, p=p_val, vz=vz_val, Btheta=Bt_val)
+        _make_state(16, 16, rho=rho_val, p=p_val, vz=vz_val, Btheta=Bt_val)
         # Compute expected E_total
         v_sq = vz_val**2
         B_sq = Bt_val**2

@@ -224,6 +224,7 @@ class TestConstrainedFcAnalysis:
         fc_bounds as the 3-param optimization.
         """
         import inspect
+
         from dpf.validation.calibration import calibrate_with_liftoff
 
         source = inspect.getsource(calibrate_with_liftoff)

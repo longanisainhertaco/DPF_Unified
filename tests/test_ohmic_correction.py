@@ -93,11 +93,11 @@ class TestOhmicGapMeasurement:
     def test_gap_is_circuit_minus_mhd(self) -> None:
         engine = _warm_engine()
         eta = np.full((8, 8, 8), 1e-4)
-        I = 1e4
+        current = 1e4
         R_p = 0.01
-        coupling = CouplingState(current=I, R_plasma=R_p)
+        coupling = CouplingState(current=current, R_plasma=R_p)
         engine._measure_ohmic_gap(eta, coupling, 1e-9)
-        Q_circuit = R_p * I**2
+        Q_circuit = R_p * current**2
         # Gap = Q_circuit - Q_mhd, so gap < Q_circuit
         assert abs(engine._last_ohmic_gap) <= Q_circuit * 2
 

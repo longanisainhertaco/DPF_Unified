@@ -8,7 +8,6 @@ Tests verify:
 """
 
 import numpy as np
-import pytest
 
 from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
 
