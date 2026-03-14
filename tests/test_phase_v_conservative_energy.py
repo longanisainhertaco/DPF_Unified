@@ -10,7 +10,7 @@ Tests verify that the cylindrical MHD solver:
 import numpy as np
 import pytest
 
-from dpf.constants import k_B, mu_0
+from dpf.constants import mu_0
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
 

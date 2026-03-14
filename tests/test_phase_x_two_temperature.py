@@ -27,7 +27,7 @@ from dpf.collision.spitzer import (
     relax_temperatures,
     spitzer_resistivity,
 )
-from dpf.constants import e, epsilon_0, k_B, m_d, m_e, m_p
+from dpf.constants import m_d, m_e
 from dpf.fluid.eos import IdealEOS
 
 

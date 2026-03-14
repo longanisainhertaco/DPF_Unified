@@ -206,9 +206,9 @@ class TestShortCircuitRLC:
         """Verify 2nd-order temporal convergence."""
         errors = []
         for dt in [100e-9, 50e-9, 25e-9]:
-            t, I, _, _ = _run_rlc_short_circuit(dt=dt, t_end=10e-6)
+            t, current, _, _ = _run_rlc_short_circuit(dt=dt, t_end=10e-6)
             I_ana = _analytical_current(t)
-            l2 = np.sqrt(np.mean((I - I_ana) ** 2)) / np.sqrt(np.mean(I_ana**2))
+            l2 = np.sqrt(np.mean((current - I_ana) ** 2)) / np.sqrt(np.mean(I_ana**2))
             errors.append(l2)
 
         # Convergence rate: error(dt/2) / error(dt) ~ 0.25 for 2nd order
@@ -413,7 +413,7 @@ class TestPF1000CoupledSimulation:
         from dpf.engine import SimulationEngine
         config = self._make_pf1000_config()
         engine = SimulationEngine(config)
-        result = engine.step()
+        engine.step()
         assert engine.circuit.current > 0
 
     def test_current_increases_over_multiple_steps(self):

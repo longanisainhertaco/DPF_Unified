@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 from scipy.stats import t as t_dist
 
-
 # ── LOO maxiter=3 results (ground truth from run) ──────────────────────
 
 LOO_RESULTS = {
@@ -328,7 +327,6 @@ class TestASMEUncertaintyBudget:
             d = self.LOO_DEVICE_UNCERTAINTIES[dev]
             u_shot_avg = d["u_shot"] / np.sqrt(d["n_shots"])
             u_exp = np.sqrt(d["u_rogowski"]**2 + d["u_digit"]**2 + u_shot_avg**2)
-            u_input = 0.027
             # u_exp should be > 50% of u_val
             u_val = self._u_val(dev)
             assert u_exp / u_val > 0.5, f"{dev}: u_exp/u_val = {u_exp/u_val:.2f}"

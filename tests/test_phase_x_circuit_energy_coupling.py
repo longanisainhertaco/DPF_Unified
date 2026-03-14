@@ -8,7 +8,6 @@ Tests verify:
 """
 
 import numpy as np
-import pytest
 
 from dpf.config import SimulationConfig
 from dpf.engine import SimulationEngine
@@ -178,9 +177,9 @@ class TestCircuitEnergyBalance:
         for _ in range(10):
             engine.step()
 
-        I = abs(engine._coupling.current)
+        current = abs(engine._coupling.current)
         R = engine._coupling.R_plasma
-        P_circuit = R * I**2
+        P_circuit = R * current**2
 
         gap = abs(engine._last_ohmic_gap)
 

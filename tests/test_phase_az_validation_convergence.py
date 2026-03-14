@@ -83,7 +83,7 @@ class TestODEConvergence:
         """
         model = _blind_model()
         peaks = []
-        for rtol_exp in [4, 6, 8, 10]:
+        for _rtol_exp in [4, 6, 8, 10]:
             result = model.run("PF-1000")
             peaks.append(result.peak_current)
 
@@ -461,7 +461,8 @@ class TestParameterSensitivity:
         The fc²/fm degeneracy means fm perturbations have stronger
         effect because fm is in the denominator.
         """
-        base = _blind_model().run("PF-1000").peak_current
+        baseline = _blind_model().run("PF-1000")
+        assert baseline.peak_current > 0
 
         # fc ±5%
         I_fc_lo = LeeModel(

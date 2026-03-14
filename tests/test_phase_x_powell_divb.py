@@ -8,11 +8,9 @@ verification, engine integration, and div(B) damping behavior.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from dpf.fluid.mhd_solver import powell_source_terms, powell_source_terms_cylindrical
+from dpf.fluid.mhd_solver import powell_source_terms_cylindrical
 from dpf.geometry.cylindrical import CylindricalGeometry
-
 
 # ============================================================
 # Helper functions
