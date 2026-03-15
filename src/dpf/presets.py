@@ -21,23 +21,44 @@ from typing import Any
 _PRESETS: dict[str, dict[str, Any]] = {
     "tutorial": {
         "_meta": {
-            "description": "Minimal 8^3 Cartesian grid for quick tests and tutorials",
-            "device": "Generic",
-            "geometry": "cartesian",
+            "device": "Tutorial Device (UNU-ICTP based)",
+            "description": "Small training device. Try changing voltage (15-25 kV) and fill pressure (1-8 Torr) to see how they affect the pinch.",
+            "geometry": "cylindrical",
+            "topology": "mather",
+            "reference": "Lee et al., Am. J. Phys. 56:62 (1988)",
+            "learning_notes": [
+                "1. Run with defaults first — watch the current rise, peak, then dip (the dip = radial implosion).",
+                "2. Increase V0 from 15 to 25 kV — I_peak rises because E = 0.5*C*V^2 stores more energy.",
+                "3. Increase fill pressure from 3 to 8 Torr — the sheath slows down, pinch happens later.",
+                "4. Try fm=0.05 vs fm=0.20 — lower fm means less mass swept, faster implosion, hotter pinch.",
+                "5. Run a parameter sweep on fm to see how neutron yield peaks at an optimal mass fraction.",
+            ],
         },
-        "grid_shape": [8, 8, 8],
-        "dx": 1e-3,
-        "sim_time": 1e-7,
-        "dt_init": 1e-10,
-        "rho0": 1e-4,
+        "grid_shape": [64, 1, 256],
+        "dx": 3e-4,
+        "sim_time": 5e-6,
+        "dt_init": 1e-11,
+        "rho0": 6.46e-4,
         "T0": 300.0,
+        "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
         "circuit": {
-            "C": 1e-6,
-            "V0": 1e3,
-            "L0": 1e-7,
-            "R0": 0.01,
-            "anode_radius": 0.005,
-            "cathode_radius": 0.01,
+            "C": 30e-6,           # 30 uF
+            "V0": 15e3,           # 15 kV
+            "L0": 110e-9,         # 110 nH
+            "R0": 12e-3,          # 12 mOhm
+            "anode_radius": 0.0095,
+            "cathode_radius": 0.032,
+            "crowbar_enabled": False,
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {
+            "anode_length": 0.16,        # 160 mm
+            "fill_pressure_Pa": 400,     # 3 Torr D2 = 400 Pa
+            "current_fraction": 0.7,
+            "mass_fraction": 0.15,
         },
     },
     "pf1000": {
@@ -45,6 +66,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "PF-1000 (IPPLM Warsaw) — 1 MJ deuterium DPF",
             "device": "PF-1000",
             "geometry": "cylindrical",
+            "topology": "mather",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
@@ -85,6 +107,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "NX2 (NIE Singapore) — 1.85 kJ fast miniature DPF",
             "device": "NX2",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "Lee & Saw, J. Fusion Energy 27:292 (2008); RADPF Module 1",
         },
         "grid_shape": [192, 1, 384],
@@ -124,6 +147,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "UNU-ICTP PFF — 3 kJ deuterium DPF (Lee et al. 1988)",
             "device": "UNU-ICTP",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "Lee et al., Am. J. Phys. 56:62 (1988); Lee (2014) Review",
         },
         "grid_shape": [64, 1, 256],
@@ -162,6 +186,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "LLNL compact DPF — 4 kJ diagnostic device",
             "device": "LLNL-DPF",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "Deutsch & Kies, Plasma Phys. Control. Fusion 30:263 (1988)",
         },
         "grid_shape": [64, 1, 128],
@@ -195,6 +220,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF at 60 kV",
             "device": "MJOLNIR",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": (
                 "Schmidt et al., IEEE TPS (2021); "
                 "Goyon et al., Phys. Plasmas 32:033105 (2025)"
@@ -244,6 +270,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "FAETON-I (Fuse Energy) — 125 kJ, 100 kV, ~1 MA DPF",
             "device": "FAETON-I",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "Damideh et al., Sci. Rep. 15:23048 (2025)",
         },
         "grid_shape": [64, 1, 192],
@@ -292,6 +319,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "POSEIDON (IPF Stuttgart) — 480 kJ MA-class deuterium DPF",
             "device": "POSEIDON",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "Herold et al., Nucl. Fusion 29:33 (1989); Lee & Saw (2014)",
         },
         "grid_shape": [140, 1, 480],
@@ -329,6 +357,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "POSEIDON (IPF Stuttgart) — 280.8 kJ at 60 kV, IPFS digitized I(t)",
             "device": "POSEIDON-60kV",
             "geometry": "cylindrical",
+            "topology": "mather",
             "reference": "IPFS (plasmafocus.net); Herold et al., Nucl. Fusion 29:33 (1989)",
         },
         "grid_shape": [96, 1, 300],
@@ -367,6 +396,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "32^3 Cartesian demo — all physics enabled",
             "device": "Generic",
             "geometry": "cartesian",
+            "topology": "cartesian_test",
         },
         "grid_shape": [32, 32, 32],
         "dx": 5e-4,
@@ -389,6 +419,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "description": "Phase P maximum fidelity: WENO5-Z + HLLD + SSP-RK3 + float64 (8.9/10)",
             "device": "Generic",
             "geometry": "cartesian",
+            "topology": "cartesian_test",
         },
         "grid_shape": [32, 32, 32],
         "dx": 5e-4,

@@ -13,23 +13,35 @@ from app_plots import create_comparison_fig
 MAX_COMPARISON_RUNS = 8
 
 
-def make_run_label(data: dict, backend: str) -> str:
-    device = data.get("device", "?")
-    gas_name = data.get("gas", {}).get("name", "?")
-    V0 = data.get("circuit", {}).get("V0", 0) / 1e3
-    return f"{device} {gas_name} {V0:.0f}kV ({backend})"
+def _next_seq(runs: list[dict]) -> int:
+    if not runs:
+        return 1
+    return max(r.get("_seq", 0) for r in runs) + 1
 
 
 def add_to_comparison(
     runs: list[dict], data: dict[str, Any], backend: str,
 ) -> list[dict]:
+    runs = runs or []
+    seq = _next_seq(runs)
+    device = data.get("device", "?")
+    snowplow = data.get("snowplow_params", {})
+    fc = snowplow.get("current_fraction", data.get("circuit", {}).get("fc"))
+    fm = snowplow.get("mass_fraction", data.get("circuit", {}).get("fm"))
+    V0_kV = data.get("circuit", {}).get("V0", 0) / 1e3
+    label = f"{device} {backend} #{seq}"
     run_entry = {
         "t_us": data["t_us"],
         "I_MA": data["I_MA"],
         "V_kV": data["V_kV"],
-        "_label": make_run_label(data, backend),
+        "_label": label,
+        "_seq": seq,
+        "_backend": backend,
+        "_V0_kV": V0_kV,
+        "_fc": fc,
+        "_fm": fm,
     }
-    runs = (runs or [])[-MAX_COMPARISON_RUNS + 1:] + [run_entry]
+    runs = runs[-MAX_COMPARISON_RUNS + 1:] + [run_entry]
     return runs
 
 
@@ -37,15 +49,21 @@ def comparison_summary(runs: list[dict]) -> str:
     if len(runs) < 2:
         return "*Run at least 2 simulations to see comparison metrics.*"
     lines = [
-        "| Run | I_peak [MA] | t_peak [us] |",
-        "|-----|------------|------------|",
+        "| # | Run | Backend | V0 [kV] | fc | fm | I_peak [MA] | t_peak [us] |",
+        "|---|-----|---------|---------|----|----|------------|------------|",
     ]
-    for r in runs:
+    for i, r in enumerate(runs):
         I_arr = np.array(r["I_MA"])
-        idx = int(np.argmax(np.abs(I_arr)))
+        pk = int(np.argmax(np.abs(I_arr)))
+        fc = f"{r['_fc']:.3f}" if r.get("_fc") is not None else "-"
+        fm = f"{r['_fm']:.3f}" if r.get("_fm") is not None else "-"
+        V0 = f"{r.get('_V0_kV', 0):.0f}"
         lines.append(
-            f"| {r['_label']} | {abs(I_arr[idx]):.3f} | {r['t_us'][idx]:.1f} |"
+            f"| {i} | {r['_label']} | {r.get('_backend', '?')} | {V0} "
+            f"| {fc} | {fm} | {abs(I_arr[pk]):.3f} | {r['t_us'][pk]:.1f} |"
         )
+    lines.append("")
+    lines.append("*Enter the **#** index above to remove a specific run.*")
     return "\n".join(lines)
 
 

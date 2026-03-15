@@ -245,75 +245,108 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
 
     fig = make_subplots(
         rows=2, cols=3,
-        subplot_titles=["Plasma Inductance L_p(t)", "Sheath / Shock Position",
-                         "Pinch Voltage V_pinch(t)",
-                         "Energy Partition", "Phase Timeline", "dL/dt"],
-        vertical_spacing=0.15, horizontal_spacing=0.08,
+        subplot_titles=[
+            "Plasma Inductance (rises as sheath moves)",
+            "Sheath & Shock Position (where the plasma is)",
+            "Pinch Voltage (drives beam-target neutrons)",
+            "Energy Flow (where the bank energy goes)",
+            "Phase of Operation (which stage is active)",
+            "Inductance Rate of Change (causes current dip)",
+        ],
+        vertical_spacing=0.18, horizontal_spacing=0.10,
     )
 
+    # -- Row 1, Col 1: Inductance --
     fig.add_trace(go.Scatter(
         x=t, y=d["L_p_nH"], mode="lines",
-        line=dict(color="#FF9800", width=2), name="L_plasma",
+        line=dict(color="#FF9800", width=2.5), name="L_plasma [nH]",
     ), row=1, col=1)
-    fig.update_yaxes(title_text="L_p [nH]", row=1, col=1)
+    fig.update_yaxes(title_text="Inductance [nH]", row=1, col=1)
 
+    # -- Row 1, Col 2: Positions --
     fig.add_trace(go.Scatter(
         x=t, y=d["z_mm"], mode="lines",
-        line=dict(color="#2196F3", width=2), name="z_sheath [mm]",
+        line=dict(color="#42A5F5", width=2.5), name="Sheath position z [mm]",
     ), row=1, col=2)
     fig.add_trace(go.Scatter(
         x=t, y=d["r_mm"], mode="lines",
-        line=dict(color="#FF5722", width=2, dash="dot"), name="r_shock [mm]",
+        line=dict(color="#EF5350", width=2.5, dash="dot"), name="Shock radius r [mm]",
     ), row=1, col=2)
     fig.update_yaxes(title_text="Position [mm]", row=1, col=2)
 
-    # Pinch voltage: V_pinch = I * dL/dt (key diagnostic for beam-target neutrons)
+    # -- Row 1, Col 3: Pinch voltage --
     L_nH = np.array(d["L_p_nH"])
     I_MA = np.array(d["I_MA"])
     t_arr = np.array(t)
-    dLdt = np.gradient(L_nH * 1e-9, t_arr * 1e-6)  # [H/s]
-    V_pinch_kV = np.abs(I_MA * 1e6 * dLdt) / 1e3  # [kV]
+    dLdt = np.gradient(L_nH * 1e-9, t_arr * 1e-6)
+    V_pinch_kV = np.abs(I_MA * 1e6 * dLdt) / 1e3
     fig.add_trace(go.Scatter(
         x=t, y=V_pinch_kV, mode="lines",
-        line=dict(color="#E91E63", width=2), name="V_pinch [kV]",
+        line=dict(color="#EC407A", width=2.5), name="V_pinch [kV]",
     ), row=1, col=3)
-    fig.update_yaxes(title_text="V_pinch [kV]", row=1, col=3)
+    fig.update_yaxes(title_text="Pinch Voltage [kV]", row=1, col=3)
 
+    # -- Row 2, Col 1: Energy partition (stacked area) --
     fig.add_trace(go.Scatter(
         x=t, y=d["E_cap_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#4CAF50"), name="E_cap [kJ]",
-        fillcolor="rgba(76,175,80,0.3)",
+        line=dict(color="#66BB6A", width=2), name="Capacitor energy [kJ]",
+        fillcolor="rgba(102,187,106,0.35)",
     ), row=2, col=1)
     fig.add_trace(go.Scatter(
         x=t, y=d["E_ind_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#2196F3"), name="E_ind [kJ]",
-        fillcolor="rgba(33,150,243,0.3)",
+        line=dict(color="#42A5F5", width=2), name="Magnetic energy [kJ]",
+        fillcolor="rgba(66,165,245,0.35)",
     ), row=2, col=1)
     fig.add_trace(go.Scatter(
         x=t, y=d["E_res_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#F44336"), name="E_res [kJ]",
-        fillcolor="rgba(244,67,54,0.3)",
+        line=dict(color="#EF5350", width=2), name="Resistive loss [kJ]",
+        fillcolor="rgba(239,83,80,0.35)",
     ), row=2, col=1)
     fig.update_yaxes(title_text="Energy [kJ]", row=2, col=1)
 
-    phase_map = {"rundown": 1, "radial": 2, "reflected": 3, "pinch": 4, "none": 0, "mhd": 5}
+    # -- Row 2, Col 2: Phase timeline (color-coded segments) --
+    phase_map = {
+        "rundown": 1, "radial": 2, "reflected": 3, "pinch": 4,
+        "none": 0, "mhd": 5, "mhd_radial": 5,
+    }
+    phase_colors_map = {
+        0: "#607D8B", 1: "#42A5F5", 2: "#EF5350",
+        3: "#FFA726", 4: "#AB47BC", 5: "#26A69A",
+    }
     phase_nums = [phase_map.get(p, 0) for p in d["phases"]]
-    fig.add_trace(go.Scatter(
-        x=t, y=phase_nums, mode="lines",
-        line=dict(color="#9C27B0", width=3), name="Phase",
-    ), row=2, col=2)
+
+    # Draw color-coded segments instead of a single line
+    prev_phase = phase_nums[0] if phase_nums else 0
+    seg_start = 0
+    for i in range(1, len(phase_nums)):
+        if phase_nums[i] != prev_phase or i == len(phase_nums) - 1:
+            end = i + 1 if i == len(phase_nums) - 1 else i
+            seg_t = t[seg_start:end]
+            seg_p = phase_nums[seg_start:end]
+            color = phase_colors_map.get(prev_phase, "#607D8B")
+            fig.add_trace(go.Scatter(
+                x=seg_t, y=seg_p, mode="lines",
+                line=dict(color=color, width=6),
+                showlegend=False,
+            ), row=2, col=2)
+            seg_start = i
+            prev_phase = phase_nums[i]
+
     fig.update_yaxes(
-        title_text="Phase", tickvals=[0, 1, 2, 3, 4, 5],
-        ticktext=["None", "Rundown", "Radial", "Reflected", "Pinch", "MHD"],
+        title_text="Phase",
+        tickvals=[0, 1, 2, 3, 4, 5],
+        ticktext=["Idle", "Rundown", "Radial", "Reflected", "Pinch", "MHD"],
         row=2, col=2,
     )
 
-    # dL/dt plot: key for understanding current dip
-    dLdt_nH_us = np.gradient(L_nH, t_arr)  # [nH/us]
+    # -- Row 2, Col 3: dL/dt --
+    dLdt_nH_us = np.gradient(L_nH, t_arr)
     fig.add_trace(go.Scatter(
         x=t, y=dLdt_nH_us, mode="lines",
-        line=dict(color="#00BCD4", width=2), name="dL/dt [nH/us]",
+        line=dict(color="#26C6DA", width=2.5), name="dL/dt [nH/us]",
     ), row=2, col=3)
+    # Add zero line for reference
+    fig.add_hline(y=0, line_dash="dash", line_color="#555", row=2, col=3)
     fig.update_yaxes(title_text="dL/dt [nH/us]", row=2, col=3)
 
     for r in (1, 2):
@@ -321,10 +354,19 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
             fig.update_xaxes(title_text="Time [us]", row=r, col=c)
 
     fig.update_layout(
-        height=650, template="plotly_dark", showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=9)),
-        margin=dict(l=50, r=20, t=60, b=40),
+        height=700, template="plotly_dark", showlegend=True,
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.04,
+            font=dict(size=10), bgcolor="rgba(0,0,0,0.5)",
+        ),
+        margin=dict(l=55, r=20, t=80, b=40),
+        font=dict(size=11),
     )
+
+    # Make subplot titles slightly larger and readable
+    for annotation in fig.layout.annotations:
+        annotation.font = dict(size=11, color="#ccc")
+
     return fig
 
 
@@ -552,7 +594,12 @@ def create_comparison_fig(runs: list[dict[str, Any]]) -> go.Figure:
 
 
 def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
-    """3D visualization of electrode geometry, current sheath, and pinch column."""
+    """3D visualization of electrode geometry, current sheath, and pinch column.
+
+    Orientation: z=0 at the insulator (breech), z=L_anode at the open end (muzzle).
+    Plasma forms at the anode tip (top of the visualization) — standard Mather-type DPF.
+    Camera looks slightly downward so the pinch region is clearly visible at the top.
+    """
     cc = d["circuit"]
     sc = d["snowplow_cfg"]
     sp = d["snowplow_obj"]
@@ -563,25 +610,58 @@ def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
 
     fig = go.Figure()
 
+    # Cathode (outer electrode) — extends full anode length
     fig.add_trace(_cylinder_mesh(
-        b, 0, L_anode, color="#555555", opacity=0.15, name="Cathode",
+        b, 0, L_anode, color="#555555", opacity=0.15,
+        name=f"Cathode (outer, r={b:.0f}mm)",
     ))
+    # Anode (inner electrode) — extends from insulator into the gap
     fig.add_trace(_cylinder_mesh(
-        a, -30, 0, color="#CCA030", opacity=0.4, name="Anode",
+        a, 0, L_anode, color="#CCA030", opacity=0.4,
+        name=f"Anode (inner, r={a:.0f}mm)",
+    ))
+    # Insulator disc at z=0 (breech)
+    fig.add_trace(_disc_mesh(
+        a * 0.3, b, 0, color="#4488AA", opacity=0.25,
+        name="Insulator (breech, z=0)",
+    ))
+
+    # Label annotations for electrodes
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[b + 5], z=[L_anode / 2],
+        mode="text", text=["Cathode"], textfont=dict(size=10, color="#999"),
+        showlegend=False,
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[a + 3], z=[L_anode * 0.8],
+        mode="text", text=["Anode"], textfont=dict(size=10, color="#CCA030"),
+        showlegend=False,
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[0], z=[-8],
+        mode="text", text=["Insulator (breech)"], textfont=dict(size=9, color="#4488AA"),
+        showlegend=False,
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[0], z=[L_anode + 10],
+        mode="text", text=["Open end (pinch forms here)"],
+        textfont=dict(size=9, color="#FF5722"),
+        showlegend=False,
     ))
 
     if sp is not None:
         z_sheath_mm = sp.sheath_position * 1e3
 
         if not sp.rundown_complete:
+            # Current sheath sweeping gas upward along the anode
             fig.add_trace(_disc_mesh(
                 a, b, z_sheath_mm, color="#2196F3", opacity=0.6,
-                name=f"Sheath (z={z_sheath_mm:.0f}mm)",
+                name=f"Current sheath (z={z_sheath_mm:.0f}mm, sweeping gas upward)",
             ))
         else:
             fig.add_trace(_disc_mesh(
                 a, b, L_anode, color="#2196F3", opacity=0.3,
-                name="Sheath (arrived)",
+                name="Sheath (reached anode tip)",
             ))
 
         r_shock_mm = sp.shock_radius * 1e3
@@ -591,7 +671,7 @@ def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
             fig.add_trace(_cylinder_mesh(
                 r_shock_mm, z_start, L_anode, n_theta=30, n_z=6,
                 color="#FF5722", opacity=0.5,
-                name=f"Shock front (r={r_shock_mm:.1f}mm)",
+                name=f"Radial shock (r={r_shock_mm:.1f}mm, compressing inward)",
             ))
 
         if sp.pinch_complete:
@@ -601,14 +681,14 @@ def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
             fig.add_trace(_cylinder_mesh(
                 r_p, z_start, L_anode, n_theta=30, n_z=8,
                 color="#FF1744", opacity=0.7,
-                name=f"Pinch (r={r_p:.1f}mm)",
+                name=f"Pinch column (r={r_p:.1f}mm, hot dense plasma)",
             ))
 
             fig.add_trace(go.Scatter3d(
                 x=[0], y=[0], z=[z_start + z_f_mm / 2],
                 mode="markers",
                 marker=dict(size=8, color="#FF1744", symbol="diamond"),
-                name="Pinch center",
+                name="Pinch center (max compression)",
             ))
 
     margin = b * 0.3
@@ -616,15 +696,17 @@ def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
         scene=dict(
             xaxis=dict(title="x [mm]", range=[-(b + margin), b + margin]),
             yaxis=dict(title="y [mm]", range=[-(b + margin), b + margin]),
-            zaxis=dict(title="z [mm]", range=[-50, L_anode + 20]),
+            zaxis=dict(title="z [mm] (insulator=0, open end=top)", range=[-20, L_anode + 25]),
             aspectmode="data",
             camera=dict(
-                eye=dict(x=1.5, y=1.5, z=0.8),
-                center=dict(x=0, y=0, z=0),
+                # Look from the side and slightly above — insulator at bottom, pinch at top
+                eye=dict(x=1.8, y=0.8, z=0.5),
+                center=dict(x=0, y=0, z=0.1),
+                up=dict(x=0, y=0, z=1),
             ),
         ),
         height=550, template="plotly_dark",
-        title="3D Plasma Visualization",
+        title="3D Plasma Visualization (Mather-type DPF — pinch forms at anode tip)",
         margin=dict(l=0, r=0, t=40, b=0),
         showlegend=True,
         legend=dict(x=0.02, y=0.98, font=dict(size=10)),
