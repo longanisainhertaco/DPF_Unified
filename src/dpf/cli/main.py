@@ -396,5 +396,209 @@ def serve_ai(checkpoint: str, host: str, port: int, device: str) -> None:
     )
 
 
+@cli.command()
+@click.option("--port", type=int, default=7860, help="Port to bind the web UI (default: 7860).")
+@click.option("--share", is_flag=True, help="Create a public Gradio share link.")
+def ui(port: int, share: bool) -> None:
+    """Launch the Gradio web interface."""
+    try:
+        import gradio as gr  # noqa: F401
+    except ImportError:
+        click.echo(
+            "Gradio is not installed. Install it with:\n"
+            "  pip install gradio",
+            err=True,
+        )
+        sys.exit(1)
+
+    import importlib.util
+    import pathlib
+
+    # app.py lives at the repo root (two levels above this file's package)
+    app_path = pathlib.Path(__file__).resolve().parents[3] / "app.py"
+    if not app_path.exists():
+        click.echo(f"Web UI not found at {app_path}", err=True)
+        sys.exit(1)
+
+    click.echo(f"Starting DPF web UI on http://localhost:{port}")
+    spec = importlib.util.spec_from_file_location("dpf_app", app_path)
+    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    module.app.queue(max_size=5)
+    module.app.launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        share=share,
+        theme=module.gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
+        css=module.CSS,
+    )
+
+
+@cli.command()
+@click.option("--all", "run_all", is_flag=True, help="Validate against all preset devices.")
+@click.option(
+    "--device",
+    type=str,
+    default=None,
+    help="Single device name to validate (e.g. PF-1000, UNU-ICTP).",
+)
+@click.option("--sim-time-us", type=float, default=40.0, help="Simulation time in microseconds.")
+def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
+    """Validate the Lee model against published device data.
+
+    Use --all to run validation for every preset device, or --device
+    to target a single device by name.
+    """
+    from dpf.validation.experimental import DEVICES
+
+    if not run_all and device is None:
+        click.echo(
+            "Specify --all to validate all devices, or --device NAME for one.",
+            err=True,
+        )
+        sys.exit(1)
+
+    if device is not None and device not in DEVICES:
+        available = ", ".join(sorted(DEVICES.keys()))
+        click.echo(f"Unknown device '{device}'. Available: {available}", err=True)
+        sys.exit(1)
+
+    targets: list[str] = list(DEVICES.keys()) if run_all else [device]  # type: ignore[list-item]
+
+    # Import simulation runner — avoid heavy imports at module level
+    try:
+        from app_engine import run_simulation_core
+    except ImportError:
+        # Fall back to package-relative import when not running from repo root
+        try:
+            import pathlib
+            import sys as _sys
+            repo_root = pathlib.Path(__file__).resolve().parents[3]
+            if str(repo_root) not in _sys.path:
+                _sys.path.insert(0, str(repo_root))
+            from app_engine import run_simulation_core
+        except ImportError:
+            click.echo(
+                "Could not import app_engine. Run from the dpf-unified repo root.",
+                err=True,
+            )
+            sys.exit(1)
+
+    # Preset name map: device name -> preset key
+    from dpf.presets import list_presets
+    preset_info = list_presets()
+    device_to_preset: dict[str, str] = {}
+    for p in preset_info:
+        meta_device = p.get("device", "")
+        if meta_device:
+            device_to_preset[meta_device] = p["name"]
+
+    # Supplemental manual mappings for name mismatches
+    _MANUAL_MAP: dict[str, str] = {
+        "UNU-ICTP": "unu_ictp",
+        "NX2": "nx2",
+        "PF-1000": "pf1000",
+    }
+    for dev_name, preset_key in _MANUAL_MAP.items():
+        device_to_preset.setdefault(dev_name, preset_key)
+
+    col_w = (14, 12, 12, 12, 12, 8)
+    header = (
+        f"{'Device':<{col_w[0]}}  "
+        f"{'I_peak sim':<{col_w[1]}}  "
+        f"{'I_peak ref':<{col_w[2]}}  "
+        f"{'Error':>{col_w[3]}}  "
+        f"{'t_peak sim':<{col_w[4]}}  "
+        f"{'Status':<{col_w[5]}}"
+    )
+    click.echo(header)
+    click.echo("-" * len(header))
+
+    any_fail = False
+    for dev_name in targets:
+        preset_key = device_to_preset.get(dev_name)
+        if preset_key is None:
+            row = (
+                f"{dev_name:<{col_w[0]}}  "
+                f"{'n/a':<{col_w[1]}}  "
+                f"{'n/a':<{col_w[2]}}  "
+                f"{'n/a':>{col_w[3]}}  "
+                f"{'n/a':<{col_w[4]}}  "
+                f"{'SKIP':<{col_w[5]}}"
+            )
+            click.echo(row)
+            continue
+
+        from dpf.validation.experimental import DEVICES as _DEVS
+        dev = _DEVS[dev_name]
+        if getattr(dev, "reliability", "measured") == "reference_only":
+            row = (
+                f"{dev_name:<{col_w[0]}}  "
+                f"{'n/a':<{col_w[1]}}  "
+                f"{'n/a':<{col_w[2]}}  "
+                f"{'n/a':>{col_w[3]}}  "
+                f"{'n/a':<{col_w[4]}}  "
+                f"{'EXCL':<{col_w[5]}}"
+            )
+            click.echo(row)
+            continue
+
+        try:
+            data = run_simulation_core(
+                preset_name=preset_key,
+                sim_time_us=sim_time_us,
+            )
+        except Exception as exc:
+            row = (
+                f"{dev_name:<{col_w[0]}}  "
+                f"{'ERROR':<{col_w[1]}}  "
+                f"{'n/a':<{col_w[2]}}  "
+                f"{'n/a':>{col_w[3]}}  "
+                f"{'n/a':<{col_w[4]}}  "
+                f"{'FAIL':<{col_w[5]}}"
+            )
+            click.echo(row)
+            click.echo(f"  -> {exc}", err=True)
+            any_fail = True
+            continue
+
+        from app_validation import validate_against_published
+
+        val = validate_against_published(data, preset_key)
+        if val is None:
+            row = (
+                f"{dev_name:<{col_w[0]}}  "
+                f"{'n/a':<{col_w[1]}}  "
+                f"{'n/a':<{col_w[2]}}  "
+                f"{'n/a':>{col_w[3]}}  "
+                f"{'n/a':<{col_w[4]}}  "
+                f"{'SKIP':<{col_w[5]}}"
+            )
+            click.echo(row)
+            continue
+
+        dI = val["I_peak_dev_pct"]
+        status = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
+        if status == "FAIL":
+            any_fail = True
+
+        I_sim = val["I_peak_sim_MA"]
+        I_ref = val["I_peak_ref_MA"]
+        t_sim = val["t_peak_sim_us"]
+
+        row = (
+            f"{dev_name:<{col_w[0]}}  "
+            f"{I_sim:.3f} MA   "
+            f"{I_ref:.3f} MA   "
+            f"{dI:>6.1f}%   "
+            f"{t_sim:.1f} us     "
+            f"{status:<{col_w[5]}}"
+        )
+        click.echo(row)
+
+    if any_fail:
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()

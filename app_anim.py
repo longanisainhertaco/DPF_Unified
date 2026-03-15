@@ -49,6 +49,9 @@ def _filled_disc(
     return np.array(xs), np.array(ys), np.array(zs)
 
 
+MAX_ANIMATION_FRAMES = 200
+
+
 def create_animated_3d(d: dict[str, Any], n_frames: int = 80) -> go.Figure:
     """Build a Plotly animated 3D figure with play/pause slider."""
     cc = d["circuit"]
@@ -65,10 +68,11 @@ def create_animated_3d(d: dict[str, Any], n_frames: int = 80) -> go.Figure:
     I_arr = d["I_MA"]
     phases = d["phases"]
     n_total = len(t_arr)
+    n_frames = min(n_frames, MAX_ANIMATION_FRAMES)
     step_size = max(1, n_total // n_frames)
-    frame_indices = list(range(0, n_total, step_size))
+    frame_indices = list(range(0, n_total, step_size))[:MAX_ANIMATION_FRAMES]
     if frame_indices[-1] != n_total - 1:
-        frame_indices.append(n_total - 1)
+        frame_indices[-1] = n_total - 1
 
     cathode_x, cathode_y, cathode_z = _cylinder_wireframe(b, 0, L_anode, n_rings=8)
     anode_x, anode_y, anode_z = _cylinder_wireframe(a, -30, 0, n_rings=4)
@@ -280,6 +284,13 @@ def create_animated_mhd(d: dict[str, Any]) -> go.Figure:
             colorbar=dict(title="rho/rho0"),
         )],
     )
+
+    if len(snapshots) > MAX_ANIMATION_FRAMES:
+        step = len(snapshots) // MAX_ANIMATION_FRAMES
+        indices = list(range(0, len(snapshots), step))[:MAX_ANIMATION_FRAMES]
+        if indices[-1] != len(snapshots) - 1:
+            indices[-1] = len(snapshots) - 1
+        snapshots = [snapshots[i] for i in indices]
 
     frames = []
     slider_steps = []

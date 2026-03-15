@@ -5,6 +5,7 @@ import csv
 import io
 from typing import Any
 
+import gradio as gr
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -13,6 +14,83 @@ PHASE_COLORS = {
     "rundown": "#2196F3", "radial": "#FF5722", "reflected": "#FF9800",
     "pinch": "#9C27B0", "none": "#607D8B",
 }
+
+
+def validate_experimental_csv(csv_content: str) -> None:
+    """Validate CSV schema and monotonicity for experimental overlay upload.
+
+    Raises gr.Error with a descriptive message if validation fails.
+    Checks:
+    - Required columns (time and current) are present.
+    - Time column is strictly monotonically increasing.
+    """
+    if not csv_content or not csv_content.strip():
+        raise gr.Error("CSV file is empty.")
+
+    try:
+        reader = csv.DictReader(io.StringIO(csv_content.strip()))
+    except Exception as exc:
+        raise gr.Error(f"CSV parse error: {exc}") from exc
+
+    if reader.fieldnames is None:
+        raise gr.Error("CSV has no header row.")
+
+    time_col: str | None = None
+    current_col: str | None = None
+    time_scale = 1.0
+
+    for h in reader.fieldnames:
+        hl = h.strip().lower()
+        if hl in ("time_us", "t_us"):
+            time_col = h
+            time_scale = 1.0
+        elif hl in ("time_s", "t_s"):
+            time_col = h
+            time_scale = 1e6
+        elif hl in ("t", "time") and time_col is None:
+            time_col = h
+            time_scale = 1.0
+
+    for h in reader.fieldnames:
+        hl = h.strip().lower()
+        if hl in ("current_ma", "i_ma", "current_a", "i_a") or (
+            hl in ("i", "current") and current_col is None
+        ):
+            current_col = h
+
+    if time_col is None:
+        raise gr.Error(
+            "CSV missing a time column. Expected one of: "
+            "time_us, t_us, time_s, t_s, t, time."
+        )
+    if current_col is None:
+        raise gr.Error(
+            "CSV missing a current column. Expected one of: "
+            "current_MA, I_MA, current_A, I_A, I, current."
+        )
+
+    t_vals: list[float] = []
+    for i, row in enumerate(reader, start=2):
+        t_raw = row.get(time_col, "").strip()
+        if not t_raw:
+            continue
+        try:
+            t_vals.append(float(t_raw) * time_scale)
+        except ValueError as exc:
+            raise gr.Error(
+                f"Non-numeric value in time column at row {i}: {t_raw!r}"
+            ) from exc
+
+    if len(t_vals) == 0:
+        raise gr.Error("CSV contains a header but no data rows.")
+
+    for i in range(1, len(t_vals)):
+        if t_vals[i] <= t_vals[i - 1]:
+            raise gr.Error(
+                f"Time column is not monotonically increasing at row {i + 1}: "
+                f"{t_vals[i - 1]} -> {t_vals[i]}. "
+                "Ensure rows are sorted by time in ascending order."
+            )
 
 
 def parse_experimental_csv(csv_content: str) -> dict[str, list[float]] | None:

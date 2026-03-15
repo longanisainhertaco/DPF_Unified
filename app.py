@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -37,6 +38,7 @@ from app_plots import (
     create_schematic_fig,
     create_waveform_fig,
     parse_experimental_csv,
+    validate_experimental_csv,
 )
 from app_sweep import (
     create_2d_sweep_fig,
@@ -531,7 +533,11 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
         if exp_file is not None:
             csv_path = Path(exp_file) if isinstance(exp_file, str) else Path(exp_file.name)
             try:
-                exp_data = parse_experimental_csv(csv_path.read_text())
+                csv_text = csv_path.read_text()
+                validate_experimental_csv(csv_text)
+                exp_data = parse_experimental_csv(csv_text)
+            except gr.Error:
+                raise
             except Exception:
                 exp_data = None
         return create_waveform_fig(sim_data, experimental_data=exp_data)
@@ -612,9 +618,10 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
 
 if __name__ == "__main__":
+    server_port = int(os.environ.get("DPF_UI_PORT", "7860"))
     app.queue(max_size=5)
     app.launch(
-        server_name="0.0.0.0", server_port=7860, share=False,
+        server_name="0.0.0.0", server_port=server_port, share=False,
         theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
         css=CSS,
     )
