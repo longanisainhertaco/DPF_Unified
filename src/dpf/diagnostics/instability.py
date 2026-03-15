@@ -107,6 +107,107 @@ def m0_growth_rate(
     }
 
 
+def tearing_mode_growth_rate(
+    B: np.ndarray,
+    rho: np.ndarray,
+    eta: float,
+    dx: float,
+    mu_0: float = 4 * np.pi * 1e-7,
+) -> dict[str, Any]:
+    """Compute tearing mode linear growth rate (Furth, Killeen, Rosenbluth 1963).
+
+    The resistive tearing instability grows at current sheets where field lines
+    reconnect.  The FKR scaling law gives:
+
+        gamma_tearing ~ (k*delta)^(2/5) * S^(-3/5) * tau_A^(-1)
+
+    where:
+        S     = Lundquist number = mu_0 * v_A * L / eta
+        tau_A = L / v_A  (Alfven transit time over system scale L)
+        delta = current sheet half-thickness ~ dx  (resolved at grid scale)
+        k     = pi / L  (fundamental reconnection mode wavenumber)
+
+    The pre-factor follows the standard FKR result:
+        gamma = (k * delta)^(2/5) * S^(-3/5) / tau_A
+
+    Args:
+        B: Magnetic field array.  Shape (3, ...) for vector field or (...) for
+            scalar magnitude.  Units: T.
+        rho: Mass density array matching B spatial shape.  Units: kg/m^3.
+        eta: Resistivity (scalar).  Units: Ohm·m.
+        dx: Grid cell size used as current-sheet thickness proxy.  Units: m.
+        mu_0: Magnetic permeability of free space [H/m].  Default 4*pi*1e-7.
+
+    Returns:
+        Dictionary with:
+            growth_rate: Linear growth rate gamma [1/s].
+            growth_time: e-folding time 1/gamma [s] (inf if non-growing).
+            lundquist_number: S = mu_0 * v_A * L / eta [dimensionless].
+            alfven_speed: Volume-averaged Alfven speed v_A [m/s].
+            alfven_time: tau_A = L / v_A [s].
+            system_scale: Characteristic length L [m].
+            is_tearing: True when S > 1 (resistive tearing is possible).
+
+    References:
+        Furth, H.P., Killeen, J. & Rosenbluth, M.N., Phys. Fluids 6, 459 (1963).
+        Biskamp, D., Magnetic Reconnection in Plasmas, Cambridge (2000) §3.2.
+    """
+    B = np.asarray(B, dtype=float)
+    rho = np.asarray(rho, dtype=float)
+    eta = float(eta)
+    dx = float(dx)
+
+    # Magnetic field magnitude — handle both scalar and vector layouts
+    if B.ndim > 1 and B.shape[0] == 3:
+        B_mag = np.sqrt(np.sum(B**2, axis=0))
+    else:
+        B_mag = np.abs(B)
+
+    # Volume-averaged quantities
+    rho_mean = float(np.mean(np.maximum(rho, 1e-20)))
+    B_mean = float(np.mean(B_mag))
+
+    # Alfven speed
+    v_A = B_mean / np.sqrt(mu_0 * rho_mean)
+
+    # System scale: largest spatial extent of the B array
+    n_cells = max(B_mag.size, 1)
+    L = n_cells * dx  # full domain length
+
+    # Current sheet thickness at grid scale
+    delta = dx
+
+    # Fundamental reconnection wavenumber
+    k = np.pi / L
+
+    # Alfven time
+    tau_A = L / max(v_A, 1e-30)
+
+    # Lundquist number S = mu_0 * v_A * L / eta
+    S = mu_0 * v_A * L / max(eta, 1e-30)
+
+    # FKR growth rate: gamma = (k*delta)^(2/5) * S^(-3/5) / tau_A
+    kd = k * delta
+    if S > 1.0 and kd > 0.0:
+        growth_rate = (kd ** 0.4) * (S ** (-0.6)) / tau_A
+        is_tearing = True
+    else:
+        growth_rate = 0.0
+        is_tearing = False
+
+    growth_time = 1.0 / growth_rate if growth_rate > 0.0 else float("inf")
+
+    return {
+        "growth_rate": growth_rate,
+        "growth_time": growth_time,
+        "lundquist_number": S,
+        "alfven_speed": v_A,
+        "alfven_time": tau_A,
+        "system_scale": L,
+        "is_tearing": is_tearing,
+    }
+
+
 def m0_growth_rate_from_state(
     state: dict[str, np.ndarray],
     snowplow: Any,
