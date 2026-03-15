@@ -49,6 +49,16 @@ def comparison_summary(runs: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def remove_from_comparison(runs: list[dict], index: int) -> tuple[list[dict], Any, str]:
+    if not runs or index < 0 or index >= len(runs):
+        return runs, create_comparison_fig(runs), comparison_summary(runs)
+    label = runs[index].get("_label", f"Run {index + 1}")
+    runs = runs[:index] + runs[index + 1:]
+    fig = create_comparison_fig(runs)
+    md = comparison_summary(runs) if runs else f"*Removed {label}. No runs remaining.*"
+    return runs, fig, md
+
+
 def clear_comparison():
     fig = create_comparison_fig([])
     return [], fig, "*Comparison cleared.*"
@@ -70,11 +80,12 @@ def save_config(
         "fc": fc, "fm": fm, "crowbar_on": crowbar_on,
         "crowbar_R_mOhm": crowbar_R, "pressure_torr": pressure,
     }
-    with tempfile.NamedTemporaryFile(
-        delete=False, suffix=".json", prefix="dpf_config_", mode="w",
-    ) as f:
+    import os
+    temp_dir = os.environ.get("DPF_TEMP_DIR", tempfile.gettempdir())
+    path = os.path.join(temp_dir, f"dpf_config_{os.getpid()}.json")
+    with open(path, "w") as f:
         json.dump(cfg, f, indent=2)
-    return f.name
+    return path
 
 
 def load_config(file_obj):

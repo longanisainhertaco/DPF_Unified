@@ -200,8 +200,8 @@ def _run_metal(
         "Ti": np.full((nr, ny, nz), 300.0),
         "psi": np.zeros((nr, ny, nz)),
     }
-    B_theta = cc["V0"] / (2 * np.pi * np.sqrt(cc["L0"] / cc["C"]))
-    state["B"][1] = B_theta * 1e-6
+    # B starts at zero — no current flows until the circuit fires.
+    # The circuit solver drives B_theta growth via dI/dt coupling.
 
     coupling = CouplingState()
     t = 0.0
