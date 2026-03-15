@@ -209,6 +209,24 @@ def run_mhd_simulation(
             except (ImportError, Exception) as exc:
                 logger.debug("Neutron yield computation skipped: %s", exc)
 
+    # Instability timing diagnostic (Goyon 2025, Eq. 4)
+    # tau_m0 = 31.0 * R_imp^2 * sqrt(P_fill) / (CR * I_imp)
+    # where R_imp = cathode radius [cm], CR = convergence ratio, I_imp = implosion current [MA]
+    I_arr = result.get("I_MA", np.array([]))
+    if len(I_arr) > 0:
+        I_imp_MA = float(np.max(np.abs(I_arr)))
+        R_imp_cm = b * 100  # cathode radius in cm
+        P_fill_Torr = p_pa / 133.322
+        CR = b / a if a > 0 else 10.0  # convergence ratio = cathode/anode radius
+        if I_imp_MA > 0:
+            tau_m0_ns = 31.0 * R_imp_cm**2 * np.sqrt(P_fill_Torr) / (CR * I_imp_MA)
+            result["instability"] = {
+                "tau_m0_ns": float(tau_m0_ns),
+                "convergence_ratio": float(CR),
+                "I_imp_MA": float(I_imp_MA),
+                "source": "Goyon et al. 2025, Eq. 4",
+            }
+
     return result
 
 
