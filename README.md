@@ -28,7 +28,18 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 Interactive Gradio web UI for running DPF simulations.
 
 ```bash
+# Option 1: Direct
 python3 app.py
+
+# Option 2: CLI
+dpf ui --port 7860
+
+# Option 3: Docker
+docker build -t dpf-unified . && docker run -p 7860:7860 dpf-unified
+
+# Option 4: With authentication (for public deployment)
+DPF_AUTH_USER=admin DPF_AUTH_PASS=secret python3 app.py
+
 # Open http://localhost:7860
 ```
 
@@ -43,13 +54,18 @@ python3 app.py
 | **Phase portrait** | (r, dr/dt) trajectory during radial implosion showing shock acceleration |
 | **Comparison mode** | Overlay up to 8 simulation runs to compare backends, parameters, or devices |
 | **2D MHD field plots** | Density and pressure heatmaps with physical (mm) axes from MHD snapshots |
-| **Device presets** | PF-1000, NX2, UNU-ICTP, LLNL-DPF with auto-populated parameters |
+| **Device presets** | PF-1000, NX2, UNU-ICTP, LLNL-DPF, MJOLNIR, FAETON-I, POSEIDON with auto-populated parameters |
 | **7 fill gases** | D2, He, Ne, Ar, Kr, Xe, N2 with correct thermodynamic properties |
 | **Input validation** | Real-time geometry/physics checks with user-friendly error messages |
 | **Save/load configs** | JSON export/import of all simulation parameters |
 | **CSV data export** | Full time-series data (I, V, L_p, z, r, phase, energies) |
 | **Runtime estimates** | Per-backend, per-grid wall-clock time predictions |
-| **Concurrency control** | Queue with max_size=5, concurrency_limit=1 for heavy simulations |
+| **Concurrency control** | Queue with max_size=5, concurrency_limit=2 for parallel simulations |
+| **Auto-calibration** | Nelder-Mead optimizer for Lee model fc/fm parameters, with published literature comparison |
+| **Parameter sweeps** | 1D sweep (fm, fc, V0, pressure) and 2D heatmap (fm x fc) with configurable ranges |
+| **Experimental validation** | Compare simulation I(t) against published data with NRMSE scoring |
+| **CSV overlay** | Upload experimental I(t) CSV for waveform overlay comparison |
+| **Authentication** | Optional `DPF_AUTH_USER`/`DPF_AUTH_PASS` env vars for public deployment |
 
 ### Tabs
 
@@ -60,7 +76,8 @@ python3 app.py
 5. **2D Fields** — MHD density/pressure heatmaps (MHD backends only)
 6. **3D Plasma** — Static 3D electrode + plasma visualization
 7. **3D Playback** — Animated plasma evolution with Play/Pause/Slider
-8. **Compare Runs** — Multi-run I(t)/V(t) overlay with metrics table
+8. **Compare Runs** — Multi-run I(t)/V(t) overlay with metrics table, per-run deletion
+9. **Parameter Sweep** — 1D and 2D (fm x fc) sweeps with heatmaps and optimization landscapes
 
 ### Architecture
 
