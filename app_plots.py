@@ -208,6 +208,34 @@ def create_waveform_fig(
         line=dict(color="#4CAF50", width=2), name="V_cap(t)",
     ), row=2, col=1)
 
+    # Phase-colored background bands
+    if d.get("has_snowplow"):
+        phase_bg = {
+            "rundown": "rgba(33,150,243,0.08)",
+            "radial": "rgba(255,87,34,0.12)",
+            "reflected": "rgba(255,152,0,0.08)",
+            "pinch": "rgba(156,39,176,0.12)",
+        }
+        prev_phase = phases[0]
+        seg_start_t = t[0]
+        for i in range(1, len(phases)):
+            if phases[i] != prev_phase or i == len(phases) - 1:
+                end_t = t[i] if i < len(phases) - 1 else t[-1]
+                bg = phase_bg.get(prev_phase)
+                if bg:
+                    fig.add_vrect(
+                        x0=seg_start_t, x1=end_t,
+                        fillcolor=bg, layer="below", line_width=0,
+                        row=1, col=1,
+                    )
+                    fig.add_vrect(
+                        x0=seg_start_t, x1=end_t,
+                        fillcolor=bg, layer="below", line_width=0,
+                        row=2, col=1,
+                    )
+                seg_start_t = t[i]
+                prev_phase = phases[i]
+
     # I_peak scatter marker + annotation
     fig.add_trace(go.Scatter(
         x=[d["t_peak"]], y=[d["I_peak"]], mode="markers",
@@ -278,130 +306,113 @@ def create_waveform_fig(
 
 def create_physics_fig(d: dict[str, Any]) -> go.Figure:
     t = d["t_us"]
+    phases = d["phases"]
 
     fig = make_subplots(
-        rows=2, cols=3,
+        rows=3, cols=1,
         subplot_titles=[
-            "Plasma Inductance (rises as sheath moves)",
-            "Sheath & Shock Position (where the plasma is)",
-            "Pinch Voltage (drives beam-target neutrons)",
-            "Energy Flow (where the bank energy goes)",
-            "Phase of Operation (which stage is active)",
-            "Inductance Rate of Change (causes current dip)",
+            "Where does the bank energy go?",
+            "Where is the plasma?",
+            "What drives the pinch?",
         ],
-        vertical_spacing=0.18, horizontal_spacing=0.10,
+        specs=[[{"secondary_y": False}],
+               [{"secondary_y": True}],
+               [{"secondary_y": True}]],
+        vertical_spacing=0.10,
+        shared_xaxes=True,
     )
 
-    # -- Row 1, Col 1: Inductance --
+    # -- Panel 1: Energy Story (stacked area) --
     fig.add_trace(go.Scatter(
-        x=t, y=d["L_p_nH"], mode="lines",
-        line=dict(color="#FF9800", width=2.5), name="L_plasma [nH]",
+        x=t, y=d["E_cap_kJ"], mode="lines", fill="tozeroy",
+        line=dict(color="#66BB6A", width=0), fillcolor="rgba(102,187,106,0.6)",
+        name="Capacitor (stored)", stackgroup="energy",
     ), row=1, col=1)
-    fig.update_yaxes(title_text="Inductance [nH]", row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=t, y=d["E_ind_kJ"], mode="lines", fill="tonexty",
+        line=dict(color="#42A5F5", width=0), fillcolor="rgba(66,165,245,0.6)",
+        name="Magnetic field (useful work)", stackgroup="energy",
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=t, y=d["E_res_kJ"], mode="lines", fill="tonexty",
+        line=dict(color="#EF5350", width=0), fillcolor="rgba(239,83,80,0.6)",
+        name="Resistive loss (wasted heat)", stackgroup="energy",
+    ), row=1, col=1)
+    fig.update_yaxes(title_text="Energy [kJ]", row=1, col=1)
 
-    # -- Row 1, Col 2: Positions --
+    # -- Panel 2: Position & Timing --
     fig.add_trace(go.Scatter(
         x=t, y=d["z_mm"], mode="lines",
         line=dict(color="#42A5F5", width=2.5), name="Sheath position z [mm]",
-    ), row=1, col=2)
+    ), row=2, col=1, secondary_y=False)
     fig.add_trace(go.Scatter(
         x=t, y=d["r_mm"], mode="lines",
-        line=dict(color="#EF5350", width=2.5, dash="dot"), name="Shock radius r [mm]",
-    ), row=1, col=2)
-    fig.update_yaxes(title_text="Position [mm]", row=1, col=2)
+        line=dict(color="#EF5350", width=2.5), name="Shock radius r [mm]",
+    ), row=2, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="Sheath z [mm]", row=2, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="Shock r [mm]", row=2, col=1, secondary_y=True)
 
-    # -- Row 1, Col 3: Pinch voltage --
+    # -- Panel 3: Pinch Diagnostics --
     L_nH = np.array(d["L_p_nH"])
     I_MA = np.array(d["I_MA"])
     t_arr = np.array(t)
     dLdt = np.gradient(L_nH * 1e-9, t_arr * 1e-6)
     V_pinch_kV = np.abs(I_MA * 1e6 * dLdt) / 1e3
+    dLdt_nH_us = np.gradient(L_nH, t_arr)
+
     fig.add_trace(go.Scatter(
         x=t, y=V_pinch_kV, mode="lines",
-        line=dict(color="#EC407A", width=2.5), name="V_pinch [kV]",
-    ), row=1, col=3)
-    fig.update_yaxes(title_text="Pinch Voltage [kV]", row=1, col=3)
-
-    # -- Row 2, Col 1: Energy partition (stacked area) --
-    fig.add_trace(go.Scatter(
-        x=t, y=d["E_cap_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#66BB6A", width=2), name="Capacitor energy [kJ]",
-        fillcolor="rgba(102,187,106,0.35)",
-    ), row=2, col=1)
-    fig.add_trace(go.Scatter(
-        x=t, y=d["E_ind_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#42A5F5", width=2), name="Magnetic energy [kJ]",
-        fillcolor="rgba(66,165,245,0.35)",
-    ), row=2, col=1)
-    fig.add_trace(go.Scatter(
-        x=t, y=d["E_res_kJ"], mode="lines", fill="tozeroy",
-        line=dict(color="#EF5350", width=2), name="Resistive loss [kJ]",
-        fillcolor="rgba(239,83,80,0.35)",
-    ), row=2, col=1)
-    fig.update_yaxes(title_text="Energy [kJ]", row=2, col=1)
-
-    # -- Row 2, Col 2: Phase timeline (color-coded segments) --
-    phase_map = {
-        "rundown": 1, "radial": 2, "reflected": 3, "pinch": 4,
-        "none": 0, "mhd": 5, "mhd_radial": 5,
-    }
-    phase_colors_map = {
-        0: "#607D8B", 1: "#42A5F5", 2: "#EF5350",
-        3: "#FFA726", 4: "#AB47BC", 5: "#26A69A",
-    }
-    phase_nums = [phase_map.get(p, 0) for p in d["phases"]]
-
-    # Draw color-coded segments instead of a single line
-    prev_phase = phase_nums[0] if phase_nums else 0
-    seg_start = 0
-    for i in range(1, len(phase_nums)):
-        if phase_nums[i] != prev_phase or i == len(phase_nums) - 1:
-            end = i + 1 if i == len(phase_nums) - 1 else i
-            seg_t = t[seg_start:end]
-            seg_p = phase_nums[seg_start:end]
-            color = phase_colors_map.get(prev_phase, "#607D8B")
-            fig.add_trace(go.Scatter(
-                x=seg_t, y=seg_p, mode="lines",
-                line=dict(color=color, width=6),
-                showlegend=False,
-            ), row=2, col=2)
-            seg_start = i
-            prev_phase = phase_nums[i]
-
-    fig.update_yaxes(
-        title_text="Phase",
-        tickvals=[0, 1, 2, 3, 4, 5],
-        ticktext=["Idle", "Rundown", "Radial", "Reflected", "Pinch", "MHD"],
-        row=2, col=2,
-    )
-
-    # -- Row 2, Col 3: dL/dt --
-    dLdt_nH_us = np.gradient(L_nH, t_arr)
+        line=dict(color="#EC407A", width=2.5), name="Pinch voltage [kV]",
+    ), row=3, col=1, secondary_y=False)
     fig.add_trace(go.Scatter(
         x=t, y=dLdt_nH_us, mode="lines",
-        line=dict(color="#26C6DA", width=2.5), name="dL/dt [nH/us]",
-    ), row=2, col=3)
-    # Add zero line for reference
-    fig.add_hline(y=0, line_dash="dash", line_color="#555", row=2, col=3)
-    fig.update_yaxes(title_text="dL/dt [nH/us]", row=2, col=3)
+        line=dict(color="#26C6DA", width=2), name="dL/dt [nH/us]",
+    ), row=3, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="V_pinch [kV]", row=3, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="dL/dt [nH/us]", row=3, col=1, secondary_y=True)
 
-    for r in (1, 2):
-        for c in (1, 2, 3):
-            fig.update_xaxes(title_text="Time [us]", row=r, col=c)
+    # Phase-colored background bands on panels 2 and 3
+    if d.get("has_snowplow"):
+        phase_bg = {
+            "rundown": "rgba(33,150,243,0.08)",
+            "radial": "rgba(255,87,34,0.12)",
+            "reflected": "rgba(255,152,0,0.08)",
+            "pinch": "rgba(156,39,176,0.12)",
+        }
+        prev_phase = phases[0]
+        seg_start_t = t[0]
+        for i in range(1, len(phases)):
+            if phases[i] != prev_phase or i == len(phases) - 1:
+                end_t = t[i] if i < len(phases) - 1 else t[-1]
+                bg = phase_bg.get(prev_phase)
+                if bg:
+                    fig.add_vrect(
+                        x0=seg_start_t, x1=end_t,
+                        fillcolor=bg, layer="below", line_width=0,
+                        row=2, col=1,
+                    )
+                    fig.add_vrect(
+                        x0=seg_start_t, x1=end_t,
+                        fillcolor=bg, layer="below", line_width=0,
+                        row=3, col=1,
+                    )
+                seg_start_t = t[i]
+                prev_phase = phases[i]
+
+    fig.update_xaxes(title_text="Time [us]", row=3, col=1)
 
     fig.update_layout(
-        height=700, template="plotly_dark", showlegend=True,
+        height=800, template="plotly_dark", showlegend=True,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.04,
             font=dict(size=10), bgcolor="rgba(0,0,0,0.5)",
         ),
-        margin=dict(l=55, r=20, t=80, b=40),
+        margin=dict(l=55, r=55, t=80, b=40),
         font=dict(size=11),
     )
 
-    # Make subplot titles slightly larger and readable
     for annotation in fig.layout.annotations:
-        annotation.font = dict(size=11, color="#ccc")
+        annotation.font = dict(size=12, color="#ccc")
 
     return fig
 
@@ -532,7 +543,7 @@ def _disc_mesh(
 
 
 def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
-    """Phase portrait: (r, dr/dt) during radial implosion. Shows shock dynamics."""
+    """Compression view: r(t) and compression ratio during radial implosion."""
     t = d["t_us"]
     r = d["r_mm"]
     phases = d["phases"]
@@ -541,7 +552,7 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
     if not np.any(rad_mask):
         fig = go.Figure()
         fig.add_annotation(
-            text="No radial phase detected — run Lee model with snowplow",
+            text="No radial phase detected -- run Lee model with snowplow",
             x=0.5, y=0.5, xref="paper", yref="paper",
             showarrow=False, font=dict(size=14, color="#aaa"),
         )
@@ -553,29 +564,66 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
     t_rad = np.array([t[i] for i in rad_idx])
     ph_rad = [phases[i] for i in rad_idx]
 
-    dt = np.diff(t_rad)
-    dr = np.diff(r_rad)
-    v_r = np.where(dt > 0, dr / dt, 0.0)
-    r_mid = 0.5 * (r_rad[:-1] + r_rad[1:])
-    ph_mid = ph_rad[:-1]
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True,
+        subplot_titles=[
+            "Shock Radius (how far the plasma has compressed)",
+            "Compression Ratio (how much denser the plasma is)",
+        ],
+        vertical_spacing=0.12,
+    )
 
-    fig = go.Figure()
-
-    for phase_name, color in [("radial", "#FF5722"), ("reflected", "#FF9800"), ("pinch", "#9C27B0")]:
-        mask = np.array([p == phase_name for p in ph_mid])
+    # Panel 1: r(t) with phase colors
+    for phase_name, color in [("radial", "#EF5350"), ("reflected", "#FFA726"), ("pinch", "#AB47BC")]:
+        mask = np.array([p == phase_name for p in ph_rad])
         if np.any(mask):
             fig.add_trace(go.Scatter(
-                x=r_mid[mask], y=v_r[mask], mode="markers+lines",
-                marker=dict(color=color, size=4),
-                line=dict(color=color, width=1.5),
+                x=t_rad[mask], y=r_rad[mask], mode="lines+markers",
+                marker=dict(color=color, size=3),
+                line=dict(color=color, width=2.5),
                 name=phase_name.capitalize(),
-            ))
+            ), row=1, col=1)
+
+    fig.add_annotation(
+        x=t_rad[0], y=r_rad[0],
+        text=f"Starts at cathode ({r_rad[0]:.0f} mm)",
+        showarrow=True, ax=50, ay=-20, font=dict(size=10),
+        row=1, col=1,
+    )
+    min_idx = int(np.argmin(r_rad))
+    fig.add_annotation(
+        x=t_rad[min_idx], y=r_rad[min_idx],
+        text=f"Minimum: {r_rad[min_idx]:.1f} mm",
+        showarrow=True, ax=-40, ay=30,
+        font=dict(size=11, color="#EF5350"),
+        row=1, col=1,
+    )
+
+    fig.update_yaxes(title_text="Radius [mm]", row=1, col=1)
+
+    # Panel 2: Compression ratio (b/r)^2
+    b_mm = d["circuit"]["cathode_radius"] * 1e3
+    comp_ratio = (b_mm / np.maximum(r_rad, 0.1)) ** 2
+    for phase_name, color in [("radial", "#EF5350"), ("reflected", "#FFA726"), ("pinch", "#AB47BC")]:
+        mask = np.array([p == phase_name for p in ph_rad])
+        if np.any(mask):
+            fig.add_trace(go.Scatter(
+                x=t_rad[mask], y=comp_ratio[mask], mode="lines+markers",
+                marker=dict(color=color, size=3),
+                line=dict(color=color, width=2.5),
+                name=phase_name.capitalize(), showlegend=False,
+            ), row=2, col=1)
+
+    fig.add_hline(y=10, line_dash="dash", line_color="#666",
+                  annotation_text="10x compression", row=2, col=1)
+    fig.add_hline(y=100, line_dash="dash", line_color="#999",
+                  annotation_text="100x compression", row=2, col=1)
+
+    fig.update_yaxes(title_text="Compression (b/r)^2", type="log", row=2, col=1)
+    fig.update_xaxes(title_text="Time [us]", row=2, col=1)
 
     fig.update_layout(
-        height=400, template="plotly_dark",
-        xaxis=dict(title="Shock Radius r [mm]", autorange="reversed"),
-        yaxis=dict(title="dr/dt [mm/us]"),
-        title="Phase Portrait: Radial Implosion Dynamics",
+        height=550, template="plotly_dark",
         margin=dict(l=60, r=20, t=40, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
     )
