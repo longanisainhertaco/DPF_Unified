@@ -590,14 +590,21 @@ def _run_python_mhd(
             except ImportError:
                 pass
 
-        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+        # Back-EMF from MHD plasma inductance change (Frontier A: full coupling)
+        mhd_coupling = solver.coupling_interface()
+        back_emf = 0.0
+        if mhd_coupling.dL_dt is not None and abs(circuit.current) > 1.0:
+            back_emf = mhd_coupling.dL_dt * circuit.current
+
+        coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
         t += dt
         step += 1
 
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
         voltages.append(circuit.voltage / 1e3)
-        L_plasmas.append(coupling.Lp * 1e9)
+        Lp_mhd = mhd_coupling.Lp if mhd_coupling.Lp > 0 else coupling.Lp
+        L_plasmas.append(Lp_mhd * 1e9)
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
