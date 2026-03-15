@@ -283,6 +283,18 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Plasmoid detection (Challenge 14)
+    if final_state is not None:
+        try:
+            from dpf.diagnostics.instability import detect_plasmoids
+            plasmoid_result = detect_plasmoids(
+                final_state["B"], final_state["rho"], dr, dz,
+            )
+            if plasmoid_result["n_plasmoids"] > 0 or plasmoid_result["magnetic_energy_J"] > 0:
+                result["plasmoids"] = plasmoid_result
+        except (ImportError, Exception):
+            pass
+
     return result
 
 
