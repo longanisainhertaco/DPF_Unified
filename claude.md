@@ -207,11 +207,13 @@ MetalMHDSolver(
 
 ## Workflow Patterns
 
-1. Before any work: `pytest tests/ -x -q` to verify baseline
+1. Before any work: `python3 -m pytest tests/ -x -q` to verify baseline
 2. After C++ changes: rebuild with `make -j8` in external/athena/
 3. After pybind11 changes: `pip install -e ".[dev,athena]"`
 4. After any change: `ruff check src/ tests/`
 5. Kill stale processes before heavy compute: `pkill -f "pytest|python.*dpf"`
+6. Always use `python3` in Bash commands (macOS has no `python` binary)
+7. During autonomous work: output a 5-line sitrep every 10 minutes (task, progress, blockers, next, ETA)
 6. Commit naming: "Phase X.Y: description" (e.g., "Phase F.4: CLI and server backend integration")
 7. After AthenaK source changes: `bash scripts/build_athenak.sh`
 8. AthenaK uses subprocess mode only (no pybind11 linking)

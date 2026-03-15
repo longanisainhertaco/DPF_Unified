@@ -1,25 +1,11 @@
-"""Auto-calibration of Lee model parameters against published experimental data.
+"""Auto-calibration of Lee model parameters via LeeModelCalibrator.
 
-Optimizes f_m, f_c, and optionally f_mr, f_cr to minimize deviation between
-simulated and published I_peak, t_peak, and Yn. Uses differential evolution
-for global optimization.
-
-This is a key differentiator vs existing DPF tools: RADPF requires manual trial-
-and-error fitting, taking hours of expert effort per device. Auto-calibration
-achieves comparable or better fits in seconds.
-
-Usage:
-    result = auto_calibrate("pf1000")
-    result = auto_calibrate("faeton", optimize_radial=True)
+Delegates optimization to dpf.validation.calibration.LeeModelCalibrator
+(Nelder-Mead + LeeModel.run()) instead of running its own optimizer.
 """
 from __future__ import annotations
 
-import math
 from typing import Any
-
-import numpy as np
-
-from app_engine import run_simulation_core
 
 
 def _get_reference(preset_name: str) -> dict[str, float] | None:
@@ -42,223 +28,90 @@ def _get_reference(preset_name: str) -> dict[str, float] | None:
         return None
 
 
-def _objective(
-    params: np.ndarray,
-    preset_name: str,
-    ref: dict[str, float],
-    sim_time_us: float,
-    w_I: float,
-    w_t: float,
-    w_nrmse: float,
-    w_Yn: float,
-    optimize_radial: bool,
-) -> float:
-    """Objective function: weighted deviation from published data."""
-    if optimize_radial:
-        fm, fc, fmr, fcr = params
-    else:
-        fm, fc = params
-        fmr, fcr = None, None
-
-    try:
-        data = run_simulation_core(
-            preset_name, sim_time_us, fm=fm, fc=fc, fmr=fmr, fcr=fcr,
-        )
-    except Exception:
-        return 1e6
-
-    sim_I = data.get("I_pre_dip", data.get("I_peak", 0.0))
-    sim_t = data.get("t_pre_dip", data.get("t_peak", 0.0))
-
-    ref_I = ref["I_peak_MA"]
-    ref_t = ref["t_peak_us"]
-
-    if ref_I <= 0 or sim_I <= 0:
-        return 1e6
-
-    dI = abs(sim_I - ref_I) / ref_I
-    dt_err = abs(sim_t - ref_t) / ref_t
-
-    cost = w_I * dI + w_t * dt_err
-
-    # Neutron yield cost (log-scale deviation in decades)
-    if w_Yn > 0 and "Yn" in ref:
-        ny = data.get("neutron_yield")
-        if isinstance(ny, dict):
-            sim_Yn = ny.get("Y_neutron", 0)
-            if sim_Yn > 0 and ref["Yn"] > 0:
-                log_dev = abs(math.log10(sim_Yn) - math.log10(ref["Yn"]))
-                cost += w_Yn * log_dev
-
-    # Waveform NRMSE cost
-    if ref.get("has_waveform") and w_nrmse > 0:
-        try:
-            from app_validation import _get_device
-            from dpf.validation.experimental import nrmse_peak
-            dev = _get_device(preset_name)
-            if dev and dev.waveform_t is not None:
-                t_sim_s = np.array(data["t_us"]) * 1e-6
-                I_sim_A = np.array(data["I_MA"]) * 1e6
-                nrmse = nrmse_peak(t_sim_s, I_sim_A, dev.waveform_t, dev.waveform_I)
-                cost += w_nrmse * nrmse
-        except Exception:
-            pass
-
-    return float(cost)
-
-
 def auto_calibrate(
     preset_name: str,
-    sim_time_us: float = 20.0,
-    fm_bounds: tuple[float, float] = (0.02, 0.6),
-    fc_bounds: tuple[float, float] = (0.4, 0.95),
-    fmr_bounds: tuple[float, float] = (0.05, 0.5),
-    fcr_bounds: tuple[float, float] = (0.4, 0.95),
+    sim_time_us: float | None = None,
     optimize_radial: bool = False,
-    w_I: float = 1.0,
-    w_t: float = 0.5,
-    w_nrmse: float = 0.3,
-    w_Yn: float = 0.5,
-    maxiter: int = 30,
-    popsize: int = 10,
-    tol: float = 1e-3,
 ) -> dict[str, Any]:
-    """Auto-calibrate Lee model parameters against published data.
+    """Auto-calibrate fc/fm via LeeModelCalibrator."""
+    from app_validation import PRESET_TO_DEVICE
+    from dpf.validation.calibration import (
+        _DEFAULT_CROWBAR_R,
+        _DEFAULT_DEVICE_PCF,
+        LeeModelCalibrator,
+    )
+    from dpf.validation.experimental import DEVICES
 
-    Uses scipy.optimize.differential_evolution for global optimization.
+    device_name = PRESET_TO_DEVICE.get(preset_name)
+    if device_name is None:
+        return {"error": f"Unknown preset: {preset_name}"}
 
-    Args:
-        preset_name: Preset to calibrate.
-        sim_time_us: Simulation time [us].
-        fm_bounds: Search range for axial mass fraction.
-        fc_bounds: Search range for axial current fraction.
-        fmr_bounds: Search range for radial mass fraction (if optimize_radial).
-        fcr_bounds: Search range for radial current fraction (if optimize_radial).
-        optimize_radial: If True, also optimize f_mr and f_cr (4D instead of 2D).
-        w_I: Weight for I_peak deviation.
-        w_t: Weight for t_peak deviation.
-        w_nrmse: Weight for waveform NRMSE.
-        w_Yn: Weight for neutron yield log-deviation.
-        maxiter: Maximum DE iterations.
-        popsize: DE population size multiplier.
-        tol: Convergence tolerance.
+    device = DEVICES.get(device_name)
+    if device is None:
+        return {"error": f"No experimental data for {device_name}"}
 
-    Returns:
-        Dictionary with optimized parameters, deviations, and diagnostics.
-    """
-    ref = _get_reference(preset_name)
-    if ref is None:
-        return {"error": f"No published data for preset '{preset_name}'"}
+    pcf = _DEFAULT_DEVICE_PCF.get(device_name, 0.14)
+    crowbar_r = _DEFAULT_CROWBAR_R.get(device_name, 0.0)
 
     try:
-        from scipy.optimize import differential_evolution
-    except ImportError:
-        return _grid_calibrate(preset_name, ref, sim_time_us, fm_bounds, fc_bounds)
+        cal = LeeModelCalibrator(
+            device_name=device_name,
+            pinch_column_fraction=pcf,
+            crowbar_enabled=crowbar_r > 0,
+            crowbar_resistance=crowbar_r,
+        )
+        result = cal.calibrate(
+            fc_bounds=(0.4, 0.95),
+            fm_bounds=(0.02, 0.6),
+            maxiter=100,
+        )
+    except Exception as e:
+        return {"error": f"Calibration failed: {e}"}
 
-    if optimize_radial:
-        bounds = [fm_bounds, fc_bounds, fmr_bounds, fcr_bounds]
-    else:
-        bounds = [fm_bounds, fc_bounds]
-
-    result = differential_evolution(
-        _objective,
-        bounds=bounds,
-        args=(preset_name, ref, sim_time_us, w_I, w_t, w_nrmse, w_Yn, optimize_radial),
-        maxiter=maxiter,
-        popsize=popsize,
-        tol=tol,
-        seed=42,
-        workers=1,
-        updating="deferred",
-    )
-
-    if optimize_radial:
-        best_fm, best_fc, best_fmr, best_fcr = result.x
-    else:
-        best_fm, best_fc = result.x
-        best_fmr, best_fcr = None, None
-
-    data = run_simulation_core(
-        preset_name, sim_time_us, fm=best_fm, fc=best_fc, fmr=best_fmr, fcr=best_fcr,
-    )
-    sim_I = data.get("I_pre_dip", data.get("I_peak", 0.0))
-    sim_t = data.get("t_pre_dip", data.get("t_peak", 0.0))
-
-    cal_result: dict[str, Any] = {
+    out: dict[str, Any] = {
+        "best_fc": result.best_fc,
+        "best_fm": result.best_fm,
+        "I_peak_error": result.peak_current_error,
+        "t_peak_error": result.timing_error,
+        "n_evals": result.n_evals,
+        "converged": result.converged,
+        "device_name": device_name,
         "preset": preset_name,
-        "best_fm": round(best_fm, 4),
-        "best_fc": round(best_fc, 4),
-        "I_peak_sim_MA": sim_I,
-        "I_peak_ref_MA": ref["I_peak_MA"],
-        "I_peak_dev_pct": abs(sim_I - ref["I_peak_MA"]) / ref["I_peak_MA"] * 100,
-        "t_peak_sim_us": sim_t,
-        "t_peak_ref_us": ref["t_peak_us"],
-        "t_peak_dev_pct": abs(sim_t - ref["t_peak_us"]) / ref["t_peak_us"] * 100,
-        "cost": result.fun,
-        "converged": result.success,
-        "iterations": result.nit,
-        "optimize_radial": optimize_radial,
     }
 
-    if optimize_radial:
-        cal_result["best_fmr"] = round(best_fmr, 4)
-        cal_result["best_fcr"] = round(best_fcr, 4)
+    # Add published Lee params for comparison
+    try:
+        benchmark = cal.benchmark_against_published(result)
+        out["published_fc"] = benchmark.get("fc_published_range")
+        out["published_fm"] = benchmark.get("fm_published_range")
+        out["fc_in_range"] = benchmark.get("fc_in_range")
+        out["fm_in_range"] = benchmark.get("fm_in_range")
+        out["published_reference"] = benchmark.get("reference")
+    except (KeyError, Exception):
+        pass
 
-    # Add Yn comparison if available
-    ny = data.get("neutron_yield")
-    if isinstance(ny, dict) and "Yn" in ref:
-        sim_Yn = ny.get("Y_neutron", 0)
-        cal_result["Yn_sim"] = sim_Yn
-        cal_result["Yn_ref"] = ref["Yn"]
-        if sim_Yn > 0 and ref["Yn"] > 0:
-            cal_result["Yn_log_dev"] = abs(math.log10(sim_Yn) - math.log10(ref["Yn"]))
+    if device is not None:
+        out["lee_fc"] = device.lee_fc
+        out["lee_fm"] = device.lee_fm
+        out["lee_fmr"] = device.lee_fmr
+        out["lee_fcr"] = device.lee_fcr
+        out["lee_reference"] = device.lee_reference
 
-    return cal_result
+    return out
 
 
-def _grid_calibrate(
-    preset_name: str,
-    ref: dict[str, float],
-    sim_time_us: float,
-    fm_bounds: tuple[float, float],
-    fc_bounds: tuple[float, float],
-) -> dict[str, Any]:
-    """Fallback grid search when scipy is not available."""
-    fm_vals = np.linspace(fm_bounds[0], fm_bounds[1], 15)
-    fc_vals = np.linspace(fc_bounds[0], fc_bounds[1], 10)
+def get_published_params(preset_name: str) -> tuple[float | None, float | None]:
+    """Get published Lee model fc/fm for a device preset."""
+    from app_validation import PRESET_TO_DEVICE
+    from dpf.validation.experimental import DEVICES
 
-    best_cost = 1e6
-    best_fm, best_fc = 0.15, 0.70
-
-    for fm in fm_vals:
-        for fc in fc_vals:
-            cost = _objective(
-                np.array([fm, fc]), preset_name, ref, sim_time_us,
-                1.0, 0.5, 0.0, 0.0, False,
-            )
-            if cost < best_cost:
-                best_cost = cost
-                best_fm, best_fc = fm, fc
-
-    data = run_simulation_core(preset_name, sim_time_us, fm=best_fm, fc=best_fc)
-    sim_I = data.get("I_pre_dip", data.get("I_peak", 0.0))
-    sim_t = data.get("t_pre_dip", data.get("t_peak", 0.0))
-
-    return {
-        "preset": preset_name,
-        "best_fm": round(best_fm, 4),
-        "best_fc": round(best_fc, 4),
-        "I_peak_sim_MA": sim_I,
-        "I_peak_ref_MA": ref["I_peak_MA"],
-        "I_peak_dev_pct": abs(sim_I - ref["I_peak_MA"]) / ref["I_peak_MA"] * 100,
-        "t_peak_sim_us": sim_t,
-        "t_peak_ref_us": ref["t_peak_us"],
-        "t_peak_dev_pct": abs(sim_t - ref["t_peak_us"]) / ref["t_peak_us"] * 100,
-        "cost": best_cost,
-        "converged": True,
-        "iterations": len(fm_vals) * len(fc_vals),
-        "method": "grid_search",
-    }
+    device_name = PRESET_TO_DEVICE.get(preset_name)
+    if device_name is None:
+        return None, None
+    device = DEVICES.get(device_name)
+    if device is None:
+        return None, None
+    return device.lee_fc, device.lee_fm
 
 
 def calibrate_all_presets(
@@ -266,6 +119,7 @@ def calibrate_all_presets(
 ) -> list[dict[str, Any]]:
     """Run auto-calibration on all presets with published data."""
     from app_validation import PRESET_TO_DEVICE
+
     results = []
     for preset_name in PRESET_TO_DEVICE:
         cal = auto_calibrate(preset_name, sim_time_us=sim_time_us)
@@ -276,36 +130,59 @@ def calibrate_all_presets(
 def format_calibration_markdown(cal: dict[str, Any]) -> str:
     """Format calibration result as markdown."""
     if "error" in cal:
-        return f"No published data for `{cal.get('preset', '?')}`."
+        return f"Calibration error: {cal['error']}"
 
-    dI = cal["I_peak_dev_pct"]
-    dt = cal["t_peak_dev_pct"]
-    grade = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
+    fc = cal["best_fc"]
+    fm = cal["best_fm"]
+    I_err_pct = cal.get("I_peak_error", 0.0) * 100
+    t_err_pct = cal.get("t_peak_error", 0.0) * 100 if cal.get("t_peak_error") is not None else None
+
+    grade = "PASS" if I_err_pct <= 5 else "FAIR" if I_err_pct <= 10 else "POOR" if I_err_pct <= 20 else "FAIL"
 
     lines = [
-        f"**Auto-calibrated** `{cal['preset']}`: "
-        f"f_m={cal['best_fm']:.3f}, f_c={cal['best_fc']:.3f}",
+        f"**Calibrated Parameters**: fc={fc:.3f}, fm={fm:.3f}",
+        "",
     ]
-    if cal.get("optimize_radial"):
-        lines[0] += f", f_mr={cal.get('best_fmr', '?')}, f_cr={cal.get('best_fcr', '?')}"
 
-    lines.append("")
-    lines.append("| Quantity | Simulation | Published | Deviation |")
-    lines.append("|----------|-----------|-----------|----------|")
-    lines.append(
-        f"| I_peak | {cal['I_peak_sim_MA']:.3f} MA | "
-        f"{cal['I_peak_ref_MA']:.3f} MA | {dI:.1f}% ({grade}) |"
-    )
-    lines.append(
-        f"| t_peak | {cal['t_peak_sim_us']:.2f} us | "
-        f"{cal['t_peak_ref_us']:.1f} us | {dt:.1f}% |"
-    )
+    pub_fc = cal.get("published_fc")
+    pub_fm = cal.get("published_fm")
+    pub_ref = cal.get("published_reference", "")
+    if pub_fc and pub_fm:
+        ref_label = f" ({pub_ref})" if pub_ref else ""
+        lines.append(f"**Published Lee Params**: fc={pub_fc[0]:.2f}–{pub_fc[1]:.2f}, fm={pub_fm[0]:.3f}–{pub_fm[1]:.3f}{ref_label}")
 
-    if "Yn_log_dev" in cal:
-        yn_grade = "PASS" if cal["Yn_log_dev"] < 1.0 else "FAIL"
-        lines.append(
-            f"| Yn | {cal['Yn_sim']:.2e} | "
-            f"{cal['Yn_ref']:.2e} | {cal['Yn_log_dev']:.2f} dec ({yn_grade}) |"
-        )
+        fc_ok = cal.get("fc_in_range")
+        fm_ok = cal.get("fm_in_range")
+        if fc_ok is not None and fm_ok is not None:
+            fc_str = "Yes" if fc_ok else "No"
+            fm_str = "Yes" if fm_ok else "No"
+            lines.append(f"**Within Published Range?**: fc={fc_str}, fm={fm_str}")
+        lines.append("")
+    elif cal.get("lee_fc") or cal.get("lee_fm"):
+        lee_fc = cal.get("lee_fc", 0.0)
+        lee_fm = cal.get("lee_fm", 0.0)
+        lee_ref = cal.get("lee_reference", "")
+        ref_label = f" ({lee_ref})" if lee_ref else ""
+        if lee_fc or lee_fm:
+            lines.append(f"**Published Lee Params**: fc={lee_fc:.3f}, fm={lee_fm:.3f}{ref_label}")
+            lines.append("")
+
+    lines.append(f"**I_peak Error**: {I_err_pct:.1f}% ({grade})")
+
+    if t_err_pct is not None:
+        lines.append(f"**t_peak Error**: {t_err_pct:.1f}%")
+
+    Yn_exp = cal.get("Yn_exp")
+    Yn_sim = cal.get("Yn_sim")
+    if Yn_exp and Yn_sim:
+        import math
+        log_dev = abs(math.log10(Yn_sim) - math.log10(Yn_exp)) if Yn_sim > 0 and Yn_exp > 0 else None
+        yn_grade = "PASS" if log_dev is not None and log_dev < 1.0 else "FAIL"
+        log_str = f" ({log_dev:.2f} dec {yn_grade})" if log_dev is not None else ""
+        lines.append(f"**Neutron Yield**: sim={Yn_sim:.2e}, exp={Yn_exp:.2e}{log_str}")
+
+    n_evals = cal.get("n_evals")
+    if n_evals:
+        lines.append(f"**Evaluations**: {n_evals}")
 
     return "\n".join(lines) + "\n"
