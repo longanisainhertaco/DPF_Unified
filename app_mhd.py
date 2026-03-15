@@ -147,6 +147,68 @@ def run_mhd_simulation(
         "backend": backend,
         "grid_shape": grid_shape,
     })
+
+    # Compute neutron yield from MHD state for deuterium fills
+    if gas.get("A") == 2 and gas.get("Z") == 1:
+        final_state = result.get("final_state")
+        if final_state is not None:
+            try:
+                from dpf.diagnostics.neutron_yield import neutron_yield_rate
+
+                rho = final_state["rho"]
+                ion_mass = gas["m_mol"]
+                n_D = rho / ion_mass
+                Ti = final_state.get("Ti", final_state["pressure"] * ion_mass / (2.0 * rho * kB))
+                nr, ny_g, nz = rho.shape
+                cell_vol = dr * (b - a) / nr * dz  # approximate cell volume
+                _, total_rate = neutron_yield_rate(n_D, Ti, cell_vol)
+
+                # Estimate confinement time from MHD evolution
+                t_arr = result.get("t_us", np.array([]))
+                if len(t_arr) > 1:
+                    tau_pinch = (t_arr[-1] - t_arr[0]) * 1e-6  # total sim time in seconds
+                else:
+                    tau_pinch = t_end
+
+                Y_thermo = total_rate * tau_pinch
+
+                # Beam-target from circuit (if current available)
+                I_arr = result.get("I_MA", np.array([]))
+                Y_bt = 0.0
+                if len(I_arr) > 0:
+                    try:
+                        from dpf.diagnostics.beam_target import beam_target_yield_rate
+                        I_peak_A = float(np.max(np.abs(I_arr))) * 1e6
+                        n_target = float(np.max(n_D))
+                        L_pinch = L_anode * 0.3  # EMPIRICAL: ~30% of anode length
+                        # V_pinch from dL/dt * I
+                        L_arr = result.get("L_p_nH", np.array([]))
+                        if len(L_arr) > 1 and len(t_arr) > 1:
+                            dLdt = np.gradient(L_arr * 1e-9, t_arr * 1e-6)
+                            V_pinch = float(np.max(np.abs(I_arr * 1e6 * dLdt)))
+                        else:
+                            V_pinch = 0.0
+                        if V_pinch > 1e3:
+                            bt_rate = beam_target_yield_rate(
+                                I_peak_A, V_pinch, n_target, L_pinch, f_beam=0.14,
+                            )
+                            Y_bt = bt_rate * tau_pinch
+                    except ImportError:
+                        pass
+
+                Y_total = Y_thermo + Y_bt
+                if Y_total > 0:
+                    result["neutron_yield"] = {
+                        "Y_thermonuclear": float(Y_thermo),
+                        "Y_beam_target": float(Y_bt),
+                        "Y_neutron": float(Y_total),
+                        "bt_fraction": float(Y_bt / Y_total) if Y_total > 0 else 0.0,
+                        "V_pinch_kV": float(V_pinch / 1e3) if "V_pinch" in dir() else 0.0,
+                        "tau_ns": float(tau_pinch * 1e9),
+                    }
+            except (ImportError, Exception) as exc:
+                logger.debug("Neutron yield computation skipped: %s", exc)
+
     return result
 
 
