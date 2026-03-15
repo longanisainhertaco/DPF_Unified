@@ -19,6 +19,7 @@ BACKENDS = {
     "lee": "Lee Model (0D snowplow + circuit, <1s)",
     "metal_plm": "Metal GPU — PLM+HLL+SSP-RK2 (fast, ~6.5/10 fidelity)",
     "metal_weno5": "Metal GPU — WENO5+HLLD+SSP-RK3 (high fidelity, ~8.7/10)",
+    "metal_3d": "Metal GPU 3D — PLM+HLL+SSP-RK2 (3D Cartesian, filamentation-capable)",
     "athena": "Athena++ — PPM+HLLD (reference C++ engine, ~9.0/10 fidelity)",
     "python": "Python MHD — NumPy/Numba (full physics, moderate speed)",
 }
@@ -31,6 +32,10 @@ BACKEND_CONFIGS = {
     "metal_weno5": {
         "reconstruction": "weno5", "riemann_solver": "hlld",
         "time_integrator": "ssp_rk3", "precision": "float64",
+    },
+    "metal_3d": {
+        "reconstruction": "plm", "riemann_solver": "hll",
+        "time_integrator": "ssp_rk2", "precision": "float32",
     },
 }
 
@@ -319,12 +324,18 @@ def _run_metal(
     use_mps = cfg["precision"] != "float64" and torch.backends.mps.is_available()
     device = "mps" if use_mps else "cpu"
 
+    is_3d = backend == "metal_3d"
+    coord_type = "cartesian" if is_3d else "cylindrical"
+    # For 3D Cartesian, use isotropic dx (average of dr and dz)
+    solver_dx = (dr + dz) / 2.0 if is_3d else dr
+    solver_dz = solver_dx if is_3d else dz
+
     solver = MetalMHDSolver(
-        grid_shape=grid_shape, dx=dr, dz=dz,
+        grid_shape=grid_shape, dx=solver_dx, dz=solver_dz,
         gamma=gas.get("gamma", 5 / 3),
         cfl=0.3, device=device,
         use_ct=False,
-        coordinates="cylindrical",
+        coordinates=coord_type,
         ion_mass=gas["m_mol"],
         **cfg,
     )
