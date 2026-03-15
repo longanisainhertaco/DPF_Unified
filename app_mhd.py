@@ -209,6 +209,36 @@ def run_mhd_simulation(
             except (ImportError, Exception) as exc:
                 logger.debug("Neutron yield computation skipped: %s", exc)
 
+    # Bennett equilibrium diagnostic — check if pinch achieves pressure balance
+    final_state = result.get("final_state")
+    if final_state is not None and len(I_arr) > 0:
+        I_peak_A = float(np.max(np.abs(I_arr))) * 1e6
+        rho_final = final_state["rho"]
+        p_final = final_state["pressure"]
+        B_final = final_state["B"]
+        # Magnetic pressure at peak B location
+        B2 = np.sum(B_final**2, axis=0)
+        mu_0 = 4 * np.pi * 1e-7
+        p_mag_max = float(np.max(B2)) / (2 * mu_0)
+        p_kin_max = float(np.max(p_final))
+        beta_pinch = p_kin_max / p_mag_max if p_mag_max > 0 else float("inf")
+        # Bennett temperature from I^2 = (8*pi*N_L*kB*(Te+Ti))/mu_0
+        # N_L = n * pi * r_p^2 — use peak density and anode radius as proxy
+        n_peak = float(np.max(rho_final)) / gas["m_mol"]
+        N_L = n_peak * np.pi * a**2
+        if N_L > 0:
+            T_bennett_K = mu_0 * I_peak_A**2 / (8 * np.pi * N_L * 2 * kB)
+            T_bennett_keV = T_bennett_K * kB / (1000 * 1.602e-19)
+        else:
+            T_bennett_keV = 0.0
+        result["bennett"] = {
+            "beta_pinch": float(beta_pinch),
+            "p_mag_max_Pa": float(p_mag_max),
+            "p_kin_max_Pa": float(p_kin_max),
+            "T_bennett_keV": float(T_bennett_keV),
+            "source": "Bennett 1934, Russell 2025",
+        }
+
     # Instability timing diagnostic (Goyon 2025, Eq. 4)
     # tau_m0 = 31.0 * R_imp^2 * sqrt(P_fill) / (CR * I_imp)
     # where R_imp = cathode radius [cm], CR = convergence ratio, I_imp = implosion current [MA]
