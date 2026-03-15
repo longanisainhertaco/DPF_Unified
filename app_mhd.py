@@ -564,7 +564,7 @@ def _run_python_mhd(
         nr=nr, nz=nz, dr=dr, dz=dz,
         gamma=gas.get("gamma", 5 / 3),
         cfl=0.3,
-        enable_hall=True,  # Frontier F: Hall MHD enables whistler-speed reconnection
+        enable_hall=False,  # Hall MHD causes overflow on coarse grids; enable for fine grids only
         enable_resistive=True,
         ion_mass=gas["m_mol"],
     )
@@ -610,7 +610,6 @@ def _run_python_mhd(
 
         state = solver.step(
             state, dt, current=circuit.current, voltage=circuit.voltage,
-            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
 
         # Radiation cooling (Frontier D): bremsstrahlung + line radiation
@@ -620,8 +619,8 @@ def _run_python_mhd(
                 rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
                 ne = rho_safe / gas["m_mol"]
                 Z_eff = gas.get("Z", 1)
-                state["Te"], state["pressure"], _ = apply_bremsstrahlung_losses(
-                    state["Te"], ne, Z_eff, dt, state["pressure"],
+                state["Te"], _ = apply_bremsstrahlung_losses(
+                    state["Te"], ne, dt, Z=Z_eff,
                 )
                 # Line + recombination radiation for high-Z fills (Ne, Ar, Kr, Xe)
                 if gas.get("Z", 1) > 1:
