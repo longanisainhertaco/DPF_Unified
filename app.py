@@ -57,13 +57,14 @@ RUNTIME_PER_US = {
     ("lee", "coarse"): 0.02, ("lee", "medium"): 0.02, ("lee", "fine"): 0.02,
     ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
     ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
+    ("metal_3d", "coarse"): 2.0, ("metal_3d", "medium"): 30.0, ("metal_3d", "fine"): 300.0,
     ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
     ("athena", "coarse"): 0.5, ("athena", "medium"): 3.0, ("athena", "fine"): 18.0,
 }
 
 FIDELITY = {
     "lee": "0D", "metal_plm": "6.5/10", "metal_weno5": "8.7/10",
-    "athena": "9.0/10", "python": "7.0/10",
+    "metal_3d": "7.0/10 (3D)", "athena": "9.0/10", "python": "7.0/10",
 }
 
 BACKEND_HELP = {
@@ -75,6 +76,9 @@ BACKEND_HELP = {
                    "SSP-RK3. High fidelity, significantly longer runtime.",
     "athena": "Princeton Athena++ C++ engine. PPM reconstruction, HLLD solver. "
               "Reference-quality MHD. Runs via compiled binary.",
+    "metal_3d": "Apple Metal GPU 3D Cartesian solver. PLM + HLL + SSP-RK2. "
+                "Full 3D grid captures m=1 kink, filamentation, and azimuthal asymmetries. "
+                "Significantly slower than 2D cylindrical.",
     "python": "Pure Python MHD solver (NumPy). WENO5 + HLLD + SSP-RK3. "
               "Full physics including resistive MHD. Moderate speed.",
 }
@@ -229,6 +233,22 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         rho0 = data.get("rho0", 1)
         if len(rho_max) > 0 and rho0 > 0:
             parts.append(f"Density ratio: {float(np.max(rho_max))/rho0:.1f}x")
+
+    bennett = data.get("bennett")
+    if bennett and bennett.get("T_bennett_keV", 0) > 0.01:
+        parts.append(f"T_Bennett: **{bennett['T_bennett_keV']:.2f} keV**")
+
+    inst = data.get("instability")
+    if inst:
+        parts.append(f"tau_m0: {inst['tau_m0_ns']:.0f} ns")
+
+    interf = data.get("interferometry")
+    if interf and interf.get("peak_fringes", 0) > 0.1:
+        parts.append(f"Fringes: {interf['peak_fringes']:.1f}")
+
+    plasmoids = data.get("plasmoids")
+    if plasmoids and plasmoids.get("n_plasmoids", 0) > 0:
+        parts.append(f"Plasmoids: {plasmoids['n_plasmoids']}")
 
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
