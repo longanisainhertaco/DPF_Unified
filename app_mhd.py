@@ -564,7 +564,7 @@ def _run_python_mhd(
         nr=nr, nz=nz, dr=dr, dz=dz,
         gamma=gas.get("gamma", 5 / 3),
         cfl=0.3,
-        enable_hall=False,
+        enable_hall=True,  # Frontier F: Hall MHD enables whistler-speed reconnection
         enable_resistive=True,
         ion_mass=gas["m_mol"],
     )
