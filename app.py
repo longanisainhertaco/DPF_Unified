@@ -6,9 +6,11 @@ Run: python3 app.py
 """
 from __future__ import annotations
 
+import atexit
 import csv
 import io
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -25,6 +27,7 @@ from app_compare import (
     clear_comparison,
     comparison_summary,
     load_config,
+    remove_from_comparison,
     save_config,
 )
 from app_engine import GAS_SPECIES, run_simulation_core
@@ -235,6 +238,8 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
 
 
 _TEMP_DIR = tempfile.mkdtemp(prefix="dpf_ui_")
+os.environ["DPF_TEMP_DIR"] = _TEMP_DIR
+atexit.register(shutil.rmtree, _TEMP_DIR, True)
 
 
 def _export_csv(data: dict) -> str | None:
@@ -509,7 +514,11 @@ Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8
             with gr.Tab("Compare Runs"):
                 fig_compare = gr.Plot(label="Comparison Overlay")
                 compare_md = gr.Markdown("*Run multiple simulations to compare waveforms.*")
-                clear_btn = gr.Button("Clear Comparison History", size="sm")
+                with gr.Row():
+                    remove_idx = gr.Number(value=0, label="Run # to remove (0-indexed)", precision=0,
+                                           minimum=0, maximum=7)
+                    remove_btn = gr.Button("Remove Run", size="sm", variant="secondary")
+                    clear_btn = gr.Button("Clear All", size="sm")
             with gr.Tab("Parameter Sweep"):
                 gr.Markdown(
                     "Sweep a parameter to visualize its effect on I_peak, dip, and neutron yield. "
@@ -586,6 +595,11 @@ Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8
         outputs=[fig_waveform],
     )
 
+    remove_btn.click(
+        fn=lambda runs, idx: remove_from_comparison(runs, int(idx)),
+        inputs=[comparison_state, remove_idx],
+        outputs=[comparison_state, fig_compare, compare_md],
+    )
     clear_btn.click(fn=clear_comparison,
                     outputs=[comparison_state, fig_compare, compare_md])
 
