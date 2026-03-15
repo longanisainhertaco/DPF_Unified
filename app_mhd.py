@@ -106,10 +106,23 @@ def run_mhd_simulation(
             cc, t_end, a, b, L_anode, progress_fn,
         )
     elif backend == "athena":
-        result = _run_athena(
-            grid_shape, dr, dz, gas, rho0, p_pa,
-            cc, sc, t_end, a, b, L_anode, progress_fn,
-        )
+        from pathlib import Path
+        _athena_bin = Path(__file__).resolve().parent / "external" / "athena" / "bin" / "athena_cylindrical"
+        if not _athena_bin.exists():
+            logger.warning(
+                "Athena++ binary not found at %s — falling back to Python engine", _athena_bin
+            )
+            backend = "python"
+            result = _run_python_mhd(
+                grid_shape, dr, dz, gas, rho0, p_pa,
+                cc, t_end, a, b, L_anode, progress_fn,
+            )
+            result["backend"] = "python"
+        else:
+            result = _run_athena(
+                grid_shape, dr, dz, gas, rho0, p_pa,
+                cc, sc, t_end, a, b, L_anode, progress_fn,
+            )
     else:
         result = _run_python_mhd(
             grid_shape, dr, dz, gas, rho0, p_pa,
@@ -255,6 +268,9 @@ def _run_metal(
     }
 
 
+_ATHENA_STEP_TIMEOUT_S = 30
+
+
 def _run_athena(
     grid_shape: tuple[int, int, int],
     dr: float, dz: float,
@@ -264,6 +280,7 @@ def _run_athena(
     progress_fn=None,
 ) -> dict[str, Any]:
     """Run Athena++ C++ MHD solver via subprocess mode."""
+    import concurrent.futures
     from pathlib import Path
 
     from dpf.athena_wrapper import AthenaPPSolver
@@ -344,7 +361,19 @@ def _run_athena(
         if dt <= 0:
             break
 
-        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _pool:
+            _fut = _pool.submit(
+                solver.step, state, dt,
+                current=circuit.current, voltage=circuit.voltage,
+            )
+            try:
+                state = _fut.result(timeout=_ATHENA_STEP_TIMEOUT_S)
+            except concurrent.futures.TimeoutError:
+                logger.error(
+                    "Athena++ step timed out after %ds at t=%.3e s — aborting",
+                    _ATHENA_STEP_TIMEOUT_S, t,
+                )
+                break
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1

@@ -1354,6 +1354,15 @@ class MHDSolver(PlasmaSolverBase):
 
     Falls back to forward-Euler np.gradient if grid < 5 cells in any direction.
 
+    Note (non-conservative formulation):
+        This solver integrates dp/dt (the primitive pressure equation) rather than
+        dE/dt (the conservative total energy equation). This violates the
+        Rankine-Hugoniot jump conditions at shocks, meaning shock heating is not
+        captured correctly and post-shock thermodynamic states will be inaccurate.
+        For production shock-dominated runs, use the Metal engine
+        (MetalMHDSolver) or route through Athena++, both of which integrate the
+        conservative energy equation.
+
     Args:
         grid_shape: (nx, ny, nz).
         dx: Grid spacing [m].
@@ -1446,10 +1455,10 @@ class MHDSolver(PlasmaSolverBase):
 
         dt = self.cfl * self.dx / v_max
 
-        # Resistive diffusion CFL: dt < 0.5 * dx^2 * mu_0 / eta_max
-        if self.enable_resistive and hasattr(self, "_last_eta_max") and self._last_eta_max > 0:
-            dt_diff = 0.5 * self.dx**2 * mu_0 / self._last_eta_max
-            dt = min(dt, dt_diff)
+        # Resistive diffusion CFL: dt_eta = dx^2 * mu_0 / (2 * eta_max)
+        if self.enable_resistive and self._last_eta_max > 0:
+            dt_eta = self.dx**2 * mu_0 / (2.0 * self._last_eta_max)
+            dt = min(dt, dt_eta)
 
         return dt
 

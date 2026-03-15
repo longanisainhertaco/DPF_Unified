@@ -1615,3 +1615,245 @@ def test_load_ensemble_raises_runtime_error_when_no_torch():
     with patch("dpf.ai.realtime_server.HAS_TORCH", False), \
          pytest.raises(RuntimeError, match="PyTorch not available"):
         realtime_server.load_ensemble(["/fake/path"])
+
+
+# ---------------------------------------------------------------------------
+# Section: Web UI Hardening (v0.2 Sprint)
+# ---------------------------------------------------------------------------
+
+
+class TestAnimationFrameCap:
+    """Animation frame count is capped at MAX_ANIMATION_FRAMES=200."""
+
+    def test_3d_anim_respects_max_frames(self) -> None:
+        """create_animated_3d never produces more than 200 frames."""
+        from app_anim import MAX_ANIMATION_FRAMES, create_animated_3d
+
+        n = 1000
+        d = {
+            "t_us": list(range(n)),
+            "z_mm": [float(i) for i in range(n)],
+            "r_mm": [float(i) for i in range(n)],
+            "I_MA": [float(i) / n for i in range(n)],
+            "phases": ["rundown"] * n,
+            "circuit": {"anode_radius": 0.115, "cathode_radius": 0.160},
+            "snowplow_cfg": {"anode_length": 0.60, "pinch_column_fraction": 1.0},
+        }
+        fig = create_animated_3d(d, n_frames=300)
+        assert len(fig.frames) <= MAX_ANIMATION_FRAMES
+
+    def test_3d_anim_small_dataset_unaffected(self) -> None:
+        """create_animated_3d with fewer than 200 steps is not truncated."""
+        from app_anim import MAX_ANIMATION_FRAMES, create_animated_3d
+
+        n = 50
+        d = {
+            "t_us": list(range(n)),
+            "z_mm": [float(i) for i in range(n)],
+            "r_mm": [float(i) for i in range(n)],
+            "I_MA": [0.1] * n,
+            "phases": ["rundown"] * n,
+            "circuit": {"anode_radius": 0.115, "cathode_radius": 0.160},
+            "snowplow_cfg": {"anode_length": 0.60, "pinch_column_fraction": 1.0},
+        }
+        fig = create_animated_3d(d, n_frames=80)
+        assert len(fig.frames) <= MAX_ANIMATION_FRAMES
+
+    def test_mhd_anim_respects_max_frames(self) -> None:
+        """create_animated_mhd subsamples snapshots beyond 200."""
+        from app_anim import MAX_ANIMATION_FRAMES, create_animated_mhd
+
+        n_snaps = 500
+        snapshots = [
+            {"t_us": float(i), "rho_mid": np.ones((4, 8)) * (i + 1)}
+            for i in range(n_snaps)
+        ]
+        d = {
+            "mhd_snapshots": snapshots,
+            "circuit": {"anode_radius": 0.115, "cathode_radius": 0.160},
+            "snowplow_cfg": {"anode_length": 0.60},
+            "rho0": 1.0,
+            "I_MA": np.array([0.5] * n_snaps),
+            "t_us": np.array([float(i) for i in range(n_snaps)]),
+        }
+        fig = create_animated_mhd(d)
+        assert len(fig.frames) <= MAX_ANIMATION_FRAMES
+
+    def test_mhd_anim_small_snapshot_count_unaffected(self) -> None:
+        """create_animated_mhd with <= 200 snapshots passes all through."""
+        from app_anim import MAX_ANIMATION_FRAMES, create_animated_mhd
+
+        n_snaps = 10
+        snapshots = [
+            {"t_us": float(i), "rho_mid": np.ones((4, 8))}
+            for i in range(n_snaps)
+        ]
+        d = {
+            "mhd_snapshots": snapshots,
+            "circuit": {"anode_radius": 0.115, "cathode_radius": 0.160},
+            "snowplow_cfg": {"anode_length": 0.60},
+            "rho0": 1.0,
+            "I_MA": np.array([0.5] * n_snaps),
+            "t_us": np.array([float(i) for i in range(n_snaps)]),
+        }
+        fig = create_animated_mhd(d)
+        assert len(fig.frames) == n_snaps
+        assert len(fig.frames) <= MAX_ANIMATION_FRAMES
+
+
+class TestCsvValidation:
+    """validate_experimental_csv raises gr.Error on invalid input."""
+
+    def test_valid_csv_passes(self) -> None:
+        """Valid monotonic CSV with required columns raises no error."""
+        from app_plots import validate_experimental_csv
+
+        csv = "time_us,current_MA\n0.0,0.0\n1.0,0.5\n2.0,1.0\n"
+        validate_experimental_csv(csv)
+
+    def test_missing_time_column_raises(self) -> None:
+        """CSV without a time column raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        csv = "step,current_MA\n1,0.5\n2,1.0\n"
+        with pytest.raises(gr.Error, match="time column"):
+            validate_experimental_csv(csv)
+
+    def test_missing_current_column_raises(self) -> None:
+        """CSV without a current column raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        csv = "time_us,voltage_kV\n0.0,27.0\n1.0,20.0\n"
+        with pytest.raises(gr.Error, match="current column"):
+            validate_experimental_csv(csv)
+
+    def test_non_monotonic_time_raises(self) -> None:
+        """CSV with non-monotonic time column raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        csv = "time_us,current_MA\n0.0,0.0\n2.0,1.0\n1.0,0.5\n"
+        with pytest.raises(gr.Error, match="monotonically increasing"):
+            validate_experimental_csv(csv)
+
+    def test_duplicate_time_values_raise(self) -> None:
+        """CSV with duplicate (non-strictly-increasing) time values raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        csv = "time_us,current_MA\n0.0,0.0\n1.0,0.5\n1.0,0.8\n"
+        with pytest.raises(gr.Error, match="monotonically increasing"):
+            validate_experimental_csv(csv)
+
+    def test_empty_csv_raises(self) -> None:
+        """Empty CSV string raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        with pytest.raises(gr.Error):
+            validate_experimental_csv("")
+
+    def test_header_only_raises(self) -> None:
+        """CSV with header but no data rows raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        with pytest.raises(gr.Error):
+            validate_experimental_csv("time_us,current_MA\n")
+
+    def test_time_s_column_accepted(self) -> None:
+        """time_s column is recognized as a valid time column."""
+        from app_plots import validate_experimental_csv
+
+        csv = "time_s,current_MA\n0.000001,0.5\n0.000002,1.0\n"
+        validate_experimental_csv(csv)
+
+    def test_non_numeric_time_raises(self) -> None:
+        """Non-numeric value in time column raises gr.Error."""
+        import gradio as gr
+
+        from app_plots import validate_experimental_csv
+
+        csv = "time_us,current_MA\nabc,0.5\n1.0,1.0\n"
+        with pytest.raises(gr.Error):
+            validate_experimental_csv(csv)
+
+
+class TestServerPortConfig:
+    """DPF_UI_PORT env var controls launch port."""
+
+    def test_default_port_is_7860(self) -> None:
+        """Without DPF_UI_PORT set, port defaults to 7860."""
+        import os
+        from unittest.mock import patch
+
+        env = {k: v for k, v in os.environ.items() if k != "DPF_UI_PORT"}
+        with patch.dict(os.environ, env, clear=True):
+            port = int(os.environ.get("DPF_UI_PORT", "7860"))
+
+        assert port == 7860
+
+    def test_custom_port_from_env(self) -> None:
+        """DPF_UI_PORT=9000 resolves to integer 9000."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"DPF_UI_PORT": "9000"}):
+            port = int(os.environ.get("DPF_UI_PORT", "7860"))
+
+        assert port == 9000
+
+    def test_port_cast_to_int(self) -> None:
+        """DPF_UI_PORT value is cast to int, not left as string."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"DPF_UI_PORT": "8080"}):
+            port = int(os.environ.get("DPF_UI_PORT", "7860"))
+
+        assert isinstance(port, int)
+        assert port == 8080
+
+
+class TestSweepConcurrencyLimit:
+    """Sweep buttons have concurrency_limit=1 enforced in app.py."""
+
+    def test_app_sweep_buttons_have_concurrency_limit(self) -> None:
+        """Verify concurrency_limit=1 appears on all sweep and cal button click handlers."""
+        import ast
+        from pathlib import Path
+
+        src = (Path(__file__).parent.parent / "app.py").read_text()
+        tree = ast.parse(src)
+
+        concurrency_calls: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if (
+                    isinstance(func, ast.Attribute)
+                    and func.attr == "click"
+                ):
+                    for kw in node.keywords:
+                        if (
+                            kw.arg == "concurrency_limit"
+                            and isinstance(kw.value, ast.Constant)
+                            and kw.value.value == 1
+                        ):
+                            concurrency_calls.append(
+                                ast.unparse(func.value)
+                            )
+        assert "sweep_btn" in concurrency_calls, (
+            "sweep_btn.click missing concurrency_limit=1"
+        )
+        assert "sweep_2d_btn" in concurrency_calls, (
+            "sweep_2d_btn.click missing concurrency_limit=1"
+        )
