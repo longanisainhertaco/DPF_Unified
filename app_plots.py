@@ -164,10 +164,17 @@ def create_waveform_fig(
     V = d["V_kV"]
     phases = d["phases"]
 
+    has_exp = experimental_data is not None
+    n_rows = 3 if has_exp else 2
+    titles = ["Circuit Current I(t)", "Capacitor Voltage V(t)"]
+    if has_exp:
+        titles.append("Residual: Simulation - Experiment")
+
     fig = make_subplots(
-        rows=2, cols=1, shared_xaxes=True,
-        subplot_titles=["Circuit Current I(t)", "Capacitor Voltage V(t)"],
+        rows=n_rows, cols=1, shared_xaxes=True,
+        subplot_titles=titles,
         vertical_spacing=0.08,
+        row_heights=[0.4, 0.3, 0.3] if has_exp else [0.5, 0.5],
     )
 
     if d.get("has_snowplow"):
@@ -203,6 +210,29 @@ def create_waveform_fig(
             name="Experimental",
         ), row=1, col=1)
 
+        t_exp = np.array(experimental_data["t_us"])
+        I_exp = np.array(experimental_data["I_MA"])  # noqa: N806
+        I_sim_interp = np.interp(t_exp, t, I_arr)  # noqa: N806
+        residual = I_sim_interp - I_exp
+
+        fig.add_trace(go.Scatter(
+            x=t_exp, y=residual, mode="lines",
+            line=dict(color="#FF9800", width=1.5),
+            name="Residual (sim - exp)",
+            fill="tozeroy", fillcolor="rgba(255,152,0,0.2)",
+        ), row=3, col=1)
+        fig.add_hline(y=0, line_dash="dash", line_color="#666", row=3, col=1)
+        fig.update_yaxes(title_text="Residual [MA]", row=3, col=1)
+        fig.update_xaxes(title_text="Time [us]", row=3, col=1)
+
+        rmse = float(np.sqrt(np.mean(residual**2)))
+        fig.add_annotation(
+            x=0.98, y=0.95, xref="x3 domain", yref="y3 domain",
+            text=f"RMSE = {rmse:.4f} MA",
+            showarrow=False, font=dict(size=12, color="#FF9800"),
+            bgcolor="rgba(0,0,0,0.5)",
+        )
+
     fig.add_trace(go.Scatter(
         x=t, y=V, mode="lines",
         line=dict(color="#4CAF50", width=2), name="V_cap(t)",
@@ -235,6 +265,16 @@ def create_waveform_fig(
                     )
                 seg_start_t = t[i]
                 prev_phase = phases[i]
+
+        # Phase band legend entries (invisible traces just for legend)
+        for phase_name, color_map in [("Rundown phase", "#2196F3"), ("Radial phase", "#FF5722"),
+                                       ("Reflected phase", "#FF9800"), ("Pinch phase", "#9C27B0")]:
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode="markers",
+                marker=dict(size=10, color=color_map, symbol="square"),
+                name=f"  {phase_name}",
+                showlegend=True,
+            ), row=1, col=1)
 
     # I_peak scatter marker + annotation
     fig.add_trace(go.Scatter(
@@ -297,7 +337,7 @@ def create_waveform_fig(
     fig.update_yaxes(title_text="Voltage [kV]", row=2, col=1)
     fig.update_xaxes(title_text="Time [us]", row=2, col=1)
     fig.update_layout(
-        height=500, template="plotly_dark",
+        height=650 if has_exp else 500, template="plotly_dark",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
         margin=dict(l=60, r=20, t=40, b=40),
     )
@@ -398,6 +438,16 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
                     )
                 seg_start_t = t[i]
                 prev_phase = phases[i]
+
+        # Phase band legend entries (invisible traces just for legend)
+        for phase_name, color_map in [("Rundown phase", "#2196F3"), ("Radial phase", "#FF5722"),
+                                       ("Reflected phase", "#FF9800"), ("Pinch phase", "#9C27B0")]:
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode="markers",
+                marker=dict(size=10, color=color_map, symbol="square"),
+                name=f"  {phase_name}",
+                showlegend=True,
+            ), row=1, col=1)
 
     fig.update_xaxes(title_text="Time [us]", row=3, col=1)
 
@@ -565,12 +615,14 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
     ph_rad = [phases[i] for i in rad_idx]
 
     fig = make_subplots(
-        rows=2, cols=1, shared_xaxes=True,
+        rows=3, cols=1, shared_xaxes=False,
         subplot_titles=[
             "Shock Radius (how far the plasma has compressed)",
             "Compression Ratio (how much denser the plasma is)",
+            "Phase Portrait: r vs dr/dt (dynamical systems view)",
         ],
-        vertical_spacing=0.12,
+        vertical_spacing=0.10,
+        row_heights=[0.35, 0.35, 0.30],
     )
 
     # Panel 1: r(t) with phase colors
@@ -599,6 +651,23 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
         row=1, col=1,
     )
 
+    # Peak velocity annotation
+    if len(t_rad) > 1:
+        dt_arr = np.diff(t_rad)
+        dr_arr = np.diff(r_rad)
+        v_r = np.where(dt_arr > 0, dr_arr / dt_arr, 0.0)
+        v_peak_idx = int(np.argmin(v_r))  # most negative = fastest inward
+        v_peak = abs(float(v_r[v_peak_idx]))
+        t_vpeak = float(0.5 * (t_rad[v_peak_idx] + t_rad[v_peak_idx + 1]))
+        r_vpeak = float(0.5 * (r_rad[v_peak_idx] + r_rad[v_peak_idx + 1]))
+        fig.add_annotation(
+            x=t_vpeak, y=r_vpeak,
+            text=f"Peak velocity: {v_peak:.0f} mm/us ({v_peak*1e3:.0f} km/s)",
+            showarrow=True, arrowhead=2, ax=60, ay=30,
+            font=dict(size=10, color="#26C6DA"),
+            row=1, col=1,
+        )
+
     fig.update_yaxes(title_text="Radius [mm]", row=1, col=1)
 
     # Panel 2: Compression ratio (b/r)^2
@@ -622,8 +691,29 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
     fig.update_yaxes(title_text="Compression (b/r)^2", type="log", row=2, col=1)
     fig.update_xaxes(title_text="Time [us]", row=2, col=1)
 
+    # Panel 3: Classic phase portrait for researchers
+    if len(t_rad) > 1:
+        dt_arr = np.diff(t_rad)
+        dr_arr = np.diff(r_rad)
+        v_r = np.where(dt_arr > 0, dr_arr / dt_arr, 0.0)
+        r_mid = 0.5 * (r_rad[:-1] + r_rad[1:])
+        ph_mid = ph_rad[:-1]
+
+        for phase_name, color in [("radial", "#EF5350"), ("reflected", "#FFA726"), ("pinch", "#AB47BC")]:
+            mask = np.array([p == phase_name for p in ph_mid])
+            if np.any(mask):
+                fig.add_trace(go.Scatter(
+                    x=r_mid[mask], y=v_r[mask], mode="lines+markers",
+                    marker=dict(color=color, size=3),
+                    line=dict(color=color, width=1.5),
+                    name=phase_name.capitalize(), showlegend=False,
+                ), row=3, col=1)
+
+        fig.update_xaxes(title_text="Shock Radius r [mm]", autorange="reversed", row=3, col=1)
+        fig.update_yaxes(title_text="dr/dt [mm/us]", row=3, col=1)
+
     fig.update_layout(
-        height=550, template="plotly_dark",
+        height=750, template="plotly_dark",
         margin=dict(l=60, r=20, t=40, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
     )
