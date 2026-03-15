@@ -218,7 +218,10 @@ def _run_metal(
         if dt <= 0:
             break
 
-        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        state = solver.step(
+            state, dt, current=circuit.current, voltage=circuit.voltage,
+            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+        )
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1
@@ -479,6 +482,7 @@ def _run_python_mhd(
     t = 0.0
     times, currents, voltages, L_plasmas = [], [], [], []
     E_cap, E_ind, E_res = [], [], []
+    rho_max_arr, T_max_arr, B_max_arr = [], [], []
     mhd_snapshots = []
 
     step = 0
@@ -488,7 +492,10 @@ def _run_python_mhd(
         if dt <= 0:
             break
 
-        state = solver.step(state, dt, current=circuit.current, voltage=circuit.voltage)
+        state = solver.step(
+            state, dt, current=circuit.current, voltage=circuit.voltage,
+            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+        )
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1
@@ -500,6 +507,10 @@ def _run_python_mhd(
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
+        rho_max_arr.append(float(np.max(state["rho"])))
+        rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / rho_safe))))
+        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 100 == 0:
             mhd_snapshots.append({
@@ -530,9 +541,9 @@ def _run_python_mhd(
         "phases": ["mhd"] * len(times),
         "z_mm": np.zeros(len(times)),
         "r_mm": np.zeros(len(times)),
-        "rho_max": np.zeros(len(times)),
-        "T_max": np.zeros(len(times)),
-        "B_max": np.zeros(len(times)),
+        "rho_max": np.array(rho_max_arr),
+        "T_max": np.array(T_max_arr),
+        "B_max": np.array(B_max_arr),
         "dip_pct": 0.0, "I_pre_dip": 0.0, "I_dip": 0.0, "t_dip": 0.0,
         "scaling": None, "crowbar_t": None,
         "snowplow_obj": None, "dt_ns": 0,
