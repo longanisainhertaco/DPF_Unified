@@ -10,6 +10,10 @@ Usage:
 """
 from __future__ import annotations
 
+import csv
+import io
+import os
+import tempfile
 from typing import Any
 
 import numpy as np
@@ -17,6 +21,19 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from app_engine import run_simulation_core
+
+_TEMP_DIR = os.environ.get("DPF_TEMP_DIR", tempfile.gettempdir())
+
+
+def _get_published_params(preset_name: str) -> dict[str, float | None]:
+    """Extract published fc/fm from preset snowplow config."""
+    from dpf.presets import _PRESETS
+    preset = _PRESETS.get(preset_name, {})
+    snowplow = preset.get("snowplow", {})
+    return {
+        "fc": snowplow.get("current_fraction"),
+        "fm": snowplow.get("mass_fraction"),
+    }
 
 
 def run_parameter_sweep(
@@ -192,6 +209,17 @@ def create_sweep_fig(results: dict[str, Any]) -> go.Figure:
     for r in range(1, n_rows + 1):
         fig.update_xaxes(title_text=param, row=r, col=1)
 
+    published = _get_published_params(results["preset"])
+    pub_val = published.get(param)
+    if pub_val is not None:
+        for r in range(1, n_rows + 1):
+            fig.add_vline(
+                x=pub_val, line_dash="dash", line_color="yellow",
+                annotation_text="Published", annotation_position="top",
+                annotation_font_color="yellow",
+                row=r, col=1,
+            )
+
     fig.update_layout(
         height=200 * n_rows + 100, template="plotly_dark", showlegend=False,
         margin=dict(l=60, r=20, t=60, b=40),
@@ -219,6 +247,20 @@ def create_2d_sweep_fig(results: dict[str, Any]) -> go.Figure:
         colorscale="Hot", name="log10(Yn)",
         colorbar=dict(title="log10(n)", x=1.0),
     ), row=1, col=2)
+
+    published = _get_published_params(results["preset"])
+    pub_fm = published.get("fm")
+    pub_fc = published.get("fc")
+    if pub_fm is not None and pub_fc is not None:
+        for c in (1, 2):
+            fig.add_trace(go.Scatter(
+                x=[pub_fm], y=[pub_fc], mode="markers+text",
+                text=["Published"], textposition="top center",
+                textfont=dict(color="yellow", size=12),
+                marker=dict(size=15, color="yellow", symbol="star",
+                            line=dict(color="black", width=1)),
+                showlegend=False,
+            ), row=1, col=c)
 
     for c in (1, 2):
         fig.update_xaxes(title_text="Mass Fraction (fm)", row=1, col=c)
@@ -254,3 +296,30 @@ def format_sweep_markdown(results: dict[str, Any]) -> str:
         )
 
     return "\n".join(lines)
+
+
+def export_sweep_csv(results: dict[str, Any]) -> str:
+    """Export 1D sweep results to a CSV file. Returns file path."""
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "parameter_value", "I_peak_MA", "t_peak_us",
+        "dip_pct", "Y_neutron", "V_pinch_kV", "T_bennett_keV",
+    ])
+    for i in range(len(results["param_values"])):
+        writer.writerow([
+            f"{results['param_values'][i]:.6f}",
+            f"{results['I_peak'][i]:.6f}",
+            f"{results['t_peak'][i]:.4f}",
+            f"{results['dip_pct'][i]:.2f}",
+            f"{results['Y_neutron'][i]:.6e}",
+            f"{results['V_pinch_kV'][i]:.2f}",
+            f"{results['T_bennett_keV'][i]:.4f}",
+        ])
+    path = os.path.join(
+        _TEMP_DIR,
+        f"sweep_{results['preset']}_{results['param_name']}_{os.getpid()}.csv",
+    )
+    with open(path, "w") as f:
+        f.write(buf.getvalue())
+    return path

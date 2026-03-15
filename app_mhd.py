@@ -16,12 +16,13 @@ from app_engine import GAS_SPECIES, kB
 logger = logging.getLogger(__name__)
 
 BACKENDS = {
-    "lee": "Lee Model (0D snowplow + circuit, <1s)",
-    "metal_plm": "Metal GPU — PLM+HLL+SSP-RK2 (fast, ~6.5/10 fidelity)",
-    "metal_weno5": "Metal GPU — WENO5+HLLD+SSP-RK3 (high fidelity, ~8.7/10)",
-    "metal_3d": "Metal GPU 3D — PLM+HLL+SSP-RK2 (3D Cartesian, filamentation-capable)",
-    "athena": "Athena++ — PPM+HLLD (reference C++ engine, ~9.0/10 fidelity)",
-    "python": "Python MHD — NumPy/Numba (full physics, moderate speed)",
+    "lee": "Lee Model (< 1 sec) -- waveforms only, no spatial detail",
+    "hybrid": "Hybrid (3-30 sec) -- Lee rundown + MHD pinch compression [RECOMMENDED]",
+    "metal_plm": "2D MHD Fast (10-60 sec) -- GPU spatial fields, moderate accuracy",
+    "metal_weno5": "2D MHD Precise (30-120 sec) -- GPU spatial fields, high accuracy",
+    "metal_3d": "3D MHD (2-10 min) -- full 3D instability physics, GPU required",
+    "athena": "Athena++ C++ (10-60 sec) -- Princeton reference engine, 3rd-order",
+    "python": "Python MHD -- auto-redirects to 2D MHD Fast (unstable at high currents)",
 }
 
 BACKEND_CONFIGS = {
@@ -105,7 +106,12 @@ def run_mhd_simulation(
 
     t0_wall = wall_time.perf_counter()
 
-    if backend.startswith("metal"):
+    if backend == "hybrid":
+        result = _run_hybrid_lee_mhd(
+            grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, sc, t_end, a, b, L_anode, progress_fn,
+        )
+    elif backend.startswith("metal"):
         result = _run_metal(
             backend, grid_shape, dr, dz, gas, rho0, p_pa,
             cc, t_end, a, b, L_anode, progress_fn,
@@ -114,33 +120,63 @@ def run_mhd_simulation(
         from pathlib import Path
         _athena_bin = Path(__file__).resolve().parent / "external" / "athena" / "bin" / "athena_cylindrical"
         if not _athena_bin.exists():
-            import gradio as gr
-            gr.Warning(
-                "Athena++ binary not found — falling back to Python MHD engine. "
-                "Build Athena++ with `cd external/athena && make -j8` for full fidelity."
-            )
+            try:
+                import gradio as gr
+                gr.Warning(
+                    "Athena++ binary not found — falling back to Metal PLM engine. "
+                    "Build Athena++ with `cd external/athena && make -j8` for native C++ fidelity."
+                )
+            except ImportError:
+                pass
             logger.warning(
-                "Athena++ binary not found at %s — falling back to Python engine", _athena_bin
+                "Athena++ binary not found at %s — falling back to Metal PLM", _athena_bin
             )
-            backend = "python"
-            result = _run_python_mhd(
-                grid_shape, dr, dz, gas, rho0, p_pa,
+            backend = "metal_plm"
+            result = _run_metal(
+                backend, grid_shape, dr, dz, gas, rho0, p_pa,
                 cc, t_end, a, b, L_anode, progress_fn,
             )
-            result["backend"] = "python (fallback from athena)"
+            result["backend"] = "metal_plm (fallback from athena)"
         else:
             result = _run_athena(
                 grid_shape, dr, dz, gas, rho0, p_pa,
                 cc, sc, t_end, a, b, L_anode, progress_fn,
             )
     else:
-        result = _run_python_mhd(
-            grid_shape, dr, dz, gas, rho0, p_pa,
-            cc, t_end, a, b, L_anode, progress_fn,
-        )
+        # Python MHD (np.gradient) is numerically unstable for DPF-scale
+        # currents. Fall back to Metal PLM which uses proper shock-capturing.
+        try:
+            import torch
+            has_metal = True
+        except ImportError:
+            has_metal = False
+
+        if has_metal:
+            try:
+                import gradio as gr
+                gr.Info(
+                    "Python MHD redirected to Metal PLM — the Python solver "
+                    "(np.gradient) is unstable at MA currents. Metal uses "
+                    "shock-capturing (PLM+HLL) for stable results."
+                )
+            except ImportError:
+                pass
+            logger.info("Python backend redirected to metal_plm (stability)")
+            result = _run_metal(
+                "metal_plm", grid_shape, dr, dz, gas, rho0, p_pa,
+                cc, t_end, a, b, L_anode, progress_fn,
+            )
+            result["backend"] = "metal_plm (redirected from python)"
+        else:
+            result = _run_python_mhd(
+                grid_shape, dr, dz, gas, rho0, p_pa,
+                cc, t_end, a, b, L_anode, progress_fn,
+            )
 
     elapsed = wall_time.perf_counter() - t0_wall
 
+    # Preserve custom backend label from redirect/fallback logic
+    effective_backend = result.get("backend", backend)
     result.update({
         "E_bank_kJ": E_bank / 1e3,
         "T_LC_us": 2 * np.pi * np.sqrt(cc["L0"] * cc["C"]) * 1e6,
@@ -149,7 +185,7 @@ def run_mhd_simulation(
         "circuit": cc, "snowplow_cfg": sc,
         "gas": gas, "gas_key": gas_key,
         "rho0": rho0,
-        "backend": backend,
+        "backend": effective_backend,
         "grid_shape": grid_shape,
     })
 
@@ -303,6 +339,313 @@ def run_mhd_simulation(
     return result
 
 
+def _run_hybrid_lee_mhd(
+    grid_shape: tuple[int, int, int],
+    dr: float, dz: float,
+    gas: dict, rho0: float, p_pa: float,
+    cc: dict, sc: dict, t_end: float,
+    a: float, b: float, L_anode: float,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Hybrid Lee+MHD: Lee model runs axial rundown, MHD handles radial implosion.
+
+    Phase 1 (Lee): Snowplow model sweeps gas along anode. Fast (0D), well-validated.
+        Provides: circuit state (I, V), swept mass, sheath velocity at transition.
+    Phase 2 (MHD): Metal solver takes over at start of radial phase.
+        IC: compressed gas column with B_theta from circuit current.
+        Resolves: radial implosion, pinch compression, instabilities.
+    """
+    import torch
+
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+    from dpf.fluid.snowplow import SnowplowModel
+    from dpf.metal.metal_solver import MetalMHDSolver
+
+    mu_0 = 4.0 * np.pi * 1e-7
+
+    # ---- Phase 1: Lee model axial rundown ----
+    circuit = RLCSolver(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+    )
+
+    snowplow = SnowplowModel(
+        anode_radius=a, cathode_radius=b,
+        fill_density=rho0,
+        anode_length=L_anode,
+        mass_fraction=sc.get("mass_fraction", 0.15),
+        fill_pressure_Pa=sc.get("fill_pressure_Pa", p_pa),
+        current_fraction=sc.get("current_fraction", 0.7),
+        radial_mass_fraction=sc.get("radial_mass_fraction", None),
+        pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
+    )
+
+    # Run Lee model until radial phase begins (or t_end)
+    L_total = cc["L0"] + 1e-9
+    T_LC = 2 * np.pi * np.sqrt(L_total * cc["C"])
+    dt_lee = T_LC / 5000
+
+    times, currents, voltages, L_plasmas = [], [], [], []
+    E_cap, E_ind, E_res = [], [], []
+    sheath_zs, shock_rs, phases_list = [], [], []
+
+    t = 0.0
+    coupling = CouplingState()
+    lee_steps = 0
+    handoff_time = None
+
+    while t < t_end:
+        sp = snowplow.step(dt_lee, circuit.current)
+        coupling.Lp = sp["L_plasma"]
+        coupling.dL_dt = sp["dL_dt"]
+        coupling.R_plasma = sp.get("R_plasma", 0.0)
+        coupling = circuit.step(coupling, back_emf=0.0, dt=dt_lee)
+        t += dt_lee
+        lee_steps += 1
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+        sheath_zs.append(sp["z_sheath"] * 1e3)
+        shock_rs.append(sp["r_shock"] * 1e3)
+        phases_list.append(sp["phase"])
+
+        if progress_fn and lee_steps % 200 == 0:
+            progress_fn(
+                min(t / t_end, 0.3),
+                desc=f"Lee rundown: t={t*1e6:.1f}us, z={sp['z_sheath']*1e3:.0f}mm",
+            )
+
+        # Handoff when Lee model enters radial phase
+        if sp["phase"] == "radial":
+            handoff_time = t
+            break
+
+    if handoff_time is None:
+        # Never reached radial phase — return Lee-only results
+        logger.warning("Hybrid: Lee model didn't reach radial phase in %.1f us", t_end * 1e6)
+        t_arr = np.array(times)
+        I_arr = np.array(currents)
+        I_peak_idx = int(np.argmax(np.abs(I_arr)))
+        return {
+            "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+            "L_p_nH": np.array(L_plasmas),
+            "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+            "E_res_kJ": np.array(E_res),
+            "z_mm": np.array(sheath_zs), "r_mm": np.array(shock_rs),
+            "phases": phases_list,
+            "I_peak": float(np.abs(I_arr[I_peak_idx])),
+            "t_peak": float(t_arr[I_peak_idx]),
+            "n_steps": lee_steps,
+            "has_snowplow": True, "has_mhd": False,
+            "mhd_snapshots": [], "final_state": None,
+            "dip_pct": 0.0, "I_pre_dip": 0.0, "I_dip": 0.0, "t_dip": 0.0,
+            "scaling": None, "crowbar_t": None,
+            "snowplow_obj": snowplow, "dt_ns": dt_lee * 1e9,
+            "rho_max": np.array([rho0] * len(times)),
+            "T_max": np.array([300.0] * len(times)),
+            "B_max": np.array([0.0] * len(times)),
+        }
+
+    # ---- Phase 2: MHD radial implosion ----
+    I_handoff = circuit.current  # [A] at start of radial phase
+    fc = sc.get("current_fraction", 0.7)
+    fm = sc.get("mass_fraction", 0.15)
+    fmr = sc.get("radial_mass_fraction", fm)
+    z_f = sc.get("pinch_column_fraction", 1.0) * L_anode
+
+    nr, ny, nz = grid_shape
+    cfg = BACKEND_CONFIGS["metal_plm"]
+    use_mps = torch.backends.mps.is_available()
+    device = "mps" if use_mps else "cpu"
+
+    # MHD domain: radial extent = cathode - anode, axial = z_f (pinch column)
+    dr_mhd = (b - a) / nr
+    dz_mhd = z_f / max(nz, 1)
+
+    solver = MetalMHDSolver(
+        grid_shape=grid_shape, dx=dr_mhd, dz=dz_mhd,
+        gamma=gas.get("gamma", 5 / 3),
+        cfl=0.3, device=device,
+        use_ct=False,
+        coordinates="cylindrical",
+        ion_mass=gas["m_mol"],
+        **cfg,
+    )
+
+    # Build physically motivated IC for MHD radial phase:
+    # - Swept mass concentrated near cathode (outer boundary)
+    # - Unswept gas fills the interior
+    # - B_theta = mu_0 * fc * I / (2*pi*r) throughout
+    r_cells = np.linspace(a + dr_mhd * 0.5, b - dr_mhd * 0.5, nr)
+
+    # Density: swept mass forms a shell near cathode, unswept gas elsewhere
+    rho_bg = rho0 * (1.0 - fmr)  # background (unswept)
+    # Swept mass distributed in outer 20% of radial cells (current sheath)
+    n_sheath = max(int(0.2 * nr), 2)
+    rho_mhd = np.full((nr, ny, nz), rho_bg)
+    # Sheath density: all swept mass in the thin shell
+    shell_vol = sum(
+        2.0 * np.pi * r_cells[nr - n_sheath + i] * dr_mhd * dz_mhd
+        for i in range(n_sheath)
+    )
+    swept_mass_per_z = fmr * rho0 * np.pi * (b**2 - a**2)  # [kg/m]
+    rho_sheath = swept_mass_per_z * dz_mhd / max(shell_vol, 1e-30)
+    rho_mhd[nr - n_sheath:, :, :] = max(rho_sheath, rho_bg * 2.0)
+
+    # B_theta profile from circuit current (the magnetic piston)
+    B_theta_1d = mu_0 * fc * I_handoff / (2.0 * np.pi * r_cells)
+    B_mhd = np.zeros((3, nr, ny, nz))
+    B_mhd[1] = B_theta_1d[:, np.newaxis, np.newaxis]  # B_theta
+
+    # Pressure: gas pressure + kinetic pressure from sheath velocity
+    # In the Lee model, the sheath starts radial phase with vr = 0
+    # but has high magnetic pressure behind it
+    p_mhd = np.full((nr, ny, nz), p_pa)
+
+    state = {
+        "rho": rho_mhd,
+        "velocity": np.zeros((3, nr, ny, nz)),
+        "pressure": p_mhd,
+        "B": B_mhd,
+        "Te": np.full((nr, ny, nz), 300.0),
+        "Ti": np.full((nr, ny, nz), 300.0),
+        "psi": np.zeros((nr, ny, nz)),
+    }
+
+    # Continue circuit from handoff state
+    rho_max_arr = [float(np.max(rho_mhd))]
+    T_max_arr = [300.0]
+    B_max_arr = [float(np.max(np.abs(B_mhd)))]
+    mhd_snapshots = []
+
+    t_mhd_start = t
+    mhd_step = 0
+    # Target ~30 snapshots during MHD phase; compute interval after first step
+    _target_snaps = 30
+    snap_interval = 3  # default; recalculated after first timestep
+
+    while t < t_end:
+        dt_mhd = solver.compute_dt(state)
+        dt = min(dt_mhd, t_end - t)
+        if dt <= 0:
+            break
+
+        state = solver.step(
+            state, dt, current=circuit.current, voltage=circuit.voltage,
+            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+        )
+        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+        t += dt
+        mhd_step += 1
+
+        # Recalculate snap_interval after first step (now we know dt)
+        if mhd_step == 1 and dt > 0:
+            est_total_steps = max(1, int((t_end - t_mhd_start) / dt))
+            snap_interval = max(1, est_total_steps // _target_snaps)
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+        sheath_zs.append(sp["z_sheath"] * 1e3)
+        shock_rs.append(0.0)
+        phases_list.append("mhd_radial")
+
+        rho_max_arr.append(float(np.max(state["rho"])))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+
+        if mhd_step % snap_interval == 0:
+            mhd_snapshots.append({
+                "t_us": t * 1e6,
+                "rho_mid": state["rho"][:, ny // 2, :].copy(),
+                "B_mid": state["B"][:, :, ny // 2, :].copy(),
+                "P_mid": state["pressure"][:, ny // 2, :].copy(),
+            })
+
+        if progress_fn and mhd_step % 20 == 0:
+            progress_fn(
+                min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0),
+                desc=f"MHD radial: t={t*1e6:.1f}us, step={mhd_step}",
+            )
+
+    t_arr = np.array(times)
+    I_arr = np.array(currents)
+    I_peak_idx = int(np.argmax(np.abs(I_arr)))
+
+    # Find Lee-phase peak for snowplow dip detection
+    lee_mask = [p != "mhd_radial" for p in phases_list]
+    lee_I = I_arr[lee_mask] if any(lee_mask) else I_arr
+    I_pre_dip = float(np.max(np.abs(lee_I)))
+
+    # Find MHD-phase minimum for dip detection
+    mhd_mask = np.array([p == "mhd_radial" for p in phases_list])
+    # Find pre-dip peak (Lee phase) and dip (MHD phase) with timestamps
+    lee_I_indices = [i for i, p in enumerate(phases_list) if p != "mhd_radial"]
+    if lee_I_indices:
+        lee_peak_idx = lee_I_indices[int(np.argmax(np.abs(I_arr[lee_I_indices])))]
+        I_pre_dip = float(np.abs(I_arr[lee_peak_idx]))
+        t_pre_dip = float(t_arr[lee_peak_idx])
+    else:
+        I_pre_dip = float(np.abs(I_arr[I_peak_idx]))
+        t_pre_dip = float(t_arr[I_peak_idx])
+
+    mhd_I_indices = [i for i, p in enumerate(phases_list) if p == "mhd_radial"]
+    if mhd_I_indices:
+        mhd_min_idx = mhd_I_indices[int(np.argmin(np.abs(I_arr[mhd_I_indices])))]
+        I_dip = float(np.abs(I_arr[mhd_min_idx]))
+        t_dip = float(t_arr[mhd_min_idx])
+        dip_pct = (1 - I_dip / I_pre_dip) * 100 if I_pre_dip > 0 else 0
+    else:
+        I_dip = I_pre_dip
+        t_dip = t_pre_dip
+        dip_pct = 0.0
+
+    return {
+        "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+        "L_p_nH": np.array(L_plasmas),
+        "z_mm": np.array(sheath_zs), "r_mm": np.array(shock_rs),
+        "phases": phases_list,
+        "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+        "E_res_kJ": np.array(E_res),
+        "rho_max": np.array(rho_max_arr),
+        "T_max": np.array(T_max_arr),
+        "B_max": np.array(B_max_arr),
+        "mhd_snapshots": mhd_snapshots,
+        "final_state": state,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])),
+        "t_peak": float(t_arr[I_peak_idx]),
+        "I_pre_dip": I_pre_dip,
+        "t_pre_dip": t_pre_dip,
+        "I_dip": I_dip,
+        "t_dip": t_dip,
+        "dip_pct": dip_pct,
+        "n_steps": lee_steps + mhd_step,
+        "has_snowplow": True,
+        "has_mhd": True,
+        "snowplow_obj": snowplow,
+        "scaling": None, "crowbar_t": None,
+        "dt_ns": 0,
+        "handoff_time_us": handoff_time * 1e6,
+        "lee_steps": lee_steps,
+        "mhd_steps": mhd_step,
+    }
+
+
 def _run_metal(
     backend: str,
     grid_shape: tuple[int, int, int],
@@ -369,7 +712,8 @@ def _run_metal(
     E_cap, E_ind, E_res = [], [], []
     rho_max_arr, T_max_arr, B_max_arr = [], [], []
     mhd_snapshots = []
-    snap_interval = max(1, int(t_end / (80 * solver.cfl * min(dr, dz) / 1e4)))
+    _target_snaps_metal = 30
+    snap_interval = 3  # recalculated after first step
 
     step = 0
     while t < t_end:
@@ -385,6 +729,10 @@ def _run_metal(
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1
+
+        if step == 1 and dt > 0:
+            est_total = max(1, int(t_end / dt))
+            snap_interval = max(1, est_total // _target_snaps_metal)
 
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
@@ -605,7 +953,13 @@ def _run_python_mhd(
     a: float, b: float, L_anode: float,
     progress_fn=None,
 ) -> dict[str, Any]:
-    """Run Python NumPy MHD solver (CylindricalMHDSolver)."""
+    """Run Python NumPy MHD solver (CylindricalMHDSolver).
+
+    The Python solver uses np.gradient for spatial derivatives, which cannot
+    handle the strong B-field electrode BC (overflow at MA currents). Instead,
+    it evolves the circuit + a gentle B_theta seed scaled to the current,
+    providing circuit waveforms with approximate MHD coupling.
+    """
     from dpf.circuit.rlc_solver import RLCSolver
     from dpf.core.bases import CouplingState
     from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
@@ -616,7 +970,7 @@ def _run_python_mhd(
         nr=nr, nz=nz, dr=dr, dz=dz,
         gamma=gas.get("gamma", 5 / 3),
         cfl=0.3,
-        enable_hall=False,  # Hall MHD causes overflow on coarse grids; enable for fine grids only
+        enable_hall=False,
         enable_resistive=True,
         ion_mass=gas["m_mol"],
     )
@@ -631,19 +985,9 @@ def _run_python_mhd(
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
-    # Stochastic IC for shot-to-shot reproducibility studies (Challenge 9)
-    # Random density perturbation with controllable seed for reproducibility
-    rng = np.random.default_rng()  # Different every shot — models real variability
-    delta_rho = 0.01  # 1% perturbation amplitude
-    noise = rng.normal(0, delta_rho, size=(nr, 1, nz))
-    # Add both structured (m=0) and random components
-    z_arr = np.linspace(0, L_anode, nz)
-    m0_pert = 0.005 * np.sin(4 * np.pi * z_arr / L_anode)
-    rho_3d = rho0 * (1.0 + noise + m0_pert[np.newaxis, np.newaxis, :])
-    rho_3d = np.maximum(rho_3d, rho0 * 0.01)  # floor at 1% of fill
-
+    # Uniform IC — no stochastic perturbation for Python solver (numerically fragile)
     state = {
-        "rho": rho_3d,
+        "rho": np.full((nr, 1, nz), rho0),
         "velocity": np.zeros((3, nr, 1, nz)),
         "pressure": np.full((nr, 1, nz), p_pa),
         "B": np.zeros((3, nr, 1, nz)),
@@ -660,6 +1004,7 @@ def _run_python_mhd(
     mhd_snapshots = []
 
     step = 0
+    nan_detected = False
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
         dt = min(dt_mhd, t_end - t)
@@ -669,6 +1014,12 @@ def _run_python_mhd(
         state = solver.step(
             state, dt, current=circuit.current, voltage=circuit.voltage,
         )
+
+        # NaN detection — break early and return valid data so far
+        if np.any(np.isnan(state["rho"])) or np.any(np.isnan(state["pressure"])):
+            nan_detected = True
+            logger.warning("Python MHD: NaN detected at step %d, t=%.3e — stopping early", step, t)
+            break
 
         # Radiation cooling (Frontier D): bremsstrahlung + line radiation
         if "Te" in state:
@@ -680,17 +1031,16 @@ def _run_python_mhd(
                 state["Te"], _ = apply_bremsstrahlung_losses(
                     state["Te"], ne, dt, Z=Z_eff,
                 )
-                # Line + recombination radiation for high-Z fills (Ne, Ar, Kr, Xe)
                 if gas.get("Z", 1) > 1:
                     from dpf.radiation.line_radiation import apply_line_radiation_losses
                     state["Te"], _ = apply_line_radiation_losses(
-                        state["Te"], ne, dt, Z_eff=0,  # brems already applied above
+                        state["Te"], ne, dt, Z_eff=0,
                         n_imp_frac=0.0, Z_imp=gas.get("Z", 10),
                     )
             except ImportError:
                 pass
 
-        # Back-EMF from MHD plasma inductance change (Frontier A: full coupling)
+        # Back-EMF from MHD plasma inductance change
         mhd_coupling = solver.coupling_interface()
         back_emf = 0.0
         if mhd_coupling.dL_dt is not None and abs(circuit.current) > 1.0:
@@ -708,10 +1058,10 @@ def _run_python_mhd(
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
-        rho_max_arr.append(float(np.max(state["rho"])))
+        rho_max_arr.append(float(np.nanmax(state["rho"])))
         rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
-        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / rho_safe))))
-        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+        T_max_arr.append(float(np.nanmax(state.get("Te", state["pressure"] / rho_safe))))
+        B_max_arr.append(float(np.nanmax(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 100 == 0:
             mhd_snapshots.append({

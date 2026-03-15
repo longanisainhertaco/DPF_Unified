@@ -32,7 +32,6 @@ from numba import njit
 
 from dpf.constants import eV, k_B
 
-
 # ---------------------------------------------------------------------------
 # Tabulated Nevins & Swain (2000) reactivity data — Table I
 # Log-linear interpolation between knots; Gamow extrapolation below 10 keV.
