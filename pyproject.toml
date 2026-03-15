@@ -30,6 +30,7 @@ dependencies = [
     "h5py>=3.8",
     "click>=8.0",
     "gradio>=4.0",
+    "plotly>=5.15",
 ]
 
 [project.optional-dependencies]

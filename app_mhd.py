@@ -109,6 +109,11 @@ def run_mhd_simulation(
         from pathlib import Path
         _athena_bin = Path(__file__).resolve().parent / "external" / "athena" / "bin" / "athena_cylindrical"
         if not _athena_bin.exists():
+            import gradio as gr
+            gr.Warning(
+                "Athena++ binary not found — falling back to Python MHD engine. "
+                "Build Athena++ with `cd external/athena && make -j8` for full fidelity."
+            )
             logger.warning(
                 "Athena++ binary not found at %s — falling back to Python engine", _athena_bin
             )
@@ -117,7 +122,7 @@ def run_mhd_simulation(
                 grid_shape, dr, dz, gas, rho0, p_pa,
                 cc, t_end, a, b, L_anode, progress_fn,
             )
-            result["backend"] = "python"
+            result["backend"] = "python (fallback from athena)"
         else:
             result = _run_athena(
                 grid_shape, dr, dz, gas, rho0, p_pa,
