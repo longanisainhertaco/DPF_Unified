@@ -50,6 +50,16 @@ GAS_SPECIES: dict[str, dict[str, Any]] = {
         "m_mol": 4.652e-26, "gamma": 7 / 5, "Z": 7, "A": 14,
         "diatomic": True,
     },
+    "H2": {
+        "name": "Hydrogen (H\u2082)", "formula": "H\u2082",
+        "m_mol": 3.347e-27, "gamma": 7 / 5, "Z": 1, "A": 1,
+        "diatomic": True,
+    },
+    "pB11": {
+        "name": "p-B\u00b9\u00b9 (aneutronic)", "formula": "p+B\u00b9\u00b9",
+        "m_mol": 1.994e-26, "gamma": 5 / 3, "Z": 5, "A": 11,
+        "diatomic": False, "fuel_type": "pB11",
+    },
 }
 
 
