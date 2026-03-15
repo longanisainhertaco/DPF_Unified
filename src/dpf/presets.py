@@ -393,6 +393,29 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,
         },
     },
+    "custom": {
+        "circuit": {
+            "C": 30e-6,        # 30 uF (generic small device)
+            "V0": 15000.0,     # 15 kV
+            "L0": 50e-9,       # 50 nH
+            "R0": 10e-3,       # 10 mOhm
+            "anode_radius": 0.01,    # 10 mm
+            "cathode_radius": 0.03,  # 30 mm
+            "crowbar_enabled": False,
+        },
+        "snowplow": {
+            "anode_length": 0.15,         # 150 mm
+            "fill_pressure_Pa": 400,
+            "current_fraction": 0.7,
+            "mass_fraction": 0.15,
+        },
+        "_meta": {
+            "device": "Custom Device",
+            "description": "Blank-slate device — modify all parameters to match your design",
+            "topology": "mather",
+            "geometry": "cylindrical",
+        },
+    },
     "cartesian_demo": {
         "_meta": {
             "description": "32^3 Cartesian demo — all physics enabled",

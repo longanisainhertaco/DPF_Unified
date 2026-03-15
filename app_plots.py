@@ -208,6 +208,12 @@ def create_waveform_fig(
         line=dict(color="#4CAF50", width=2), name="V_cap(t)",
     ), row=2, col=1)
 
+    # I_peak scatter marker + annotation
+    fig.add_trace(go.Scatter(
+        x=[d["t_peak"]], y=[d["I_peak"]], mode="markers",
+        marker=dict(color="#FFEB3B", size=10, symbol="star"),
+        showlegend=False,
+    ), row=1, col=1)
     fig.add_annotation(
         x=d["t_peak"], y=d["I_peak"],
         text=f"I_peak = {d['I_peak']:.2f} MA",
@@ -215,7 +221,22 @@ def create_waveform_fig(
         row=1, col=1,
     )
 
-    if d["has_snowplow"] and d["dip_pct"] > 1:
+    # Current dip marker (only when dip is significant)
+    if d["has_snowplow"] and d["dip_pct"] > 5:
+        fig.add_trace(go.Scatter(
+            x=[d["t_dip"]], y=[d["I_dip"]], mode="markers",
+            marker=dict(color="#FF5722", size=10, symbol="triangle-down"),
+            showlegend=False,
+        ), row=1, col=1)
+        fig.add_annotation(
+            x=d["t_dip"], y=d["I_dip"],
+            text=f"Dip: {d['dip_pct']:.0f}%",
+            showarrow=True, arrowhead=2, arrowcolor="#FF5722",
+            ax=-40, ay=-40,
+            font=dict(size=12, color="#FF5722", family="Arial Black"),
+            row=1, col=1,
+        )
+    elif d["has_snowplow"] and d["dip_pct"] > 1:
         fig.add_annotation(
             x=d["t_dip"], y=d["I_dip"],
             text=f"Dip = {d['I_dip']:.2f} MA ({d['dip_pct']:.0f}%)",
@@ -223,11 +244,26 @@ def create_waveform_fig(
             font=dict(size=11, color="#FF5722"), row=1, col=1,
         )
 
+    # Crowbar marker
     if d["crowbar_t"]:
         fig.add_vline(x=d["crowbar_t"], line=dict(color="red", dash="dash", width=1),
-                       annotation_text="Crowbar", row=2, col=1)
-        fig.add_vline(x=d["crowbar_t"], line=dict(color="red", dash="dash", width=1),
                        row=1, col=1)
+        fig.add_vline(x=d["crowbar_t"], line=dict(color="red", dash="dash", width=1),
+                       annotation_text="Crowbar fires",
+                       annotation_font=dict(size=10, color="red"),
+                       row=2, col=1)
+
+    # Phase boundary: rundown -> radial transition
+    for i in range(1, len(phases)):
+        if phases[i - 1] == "rundown" and phases[i] == "radial":
+            fig.add_vline(
+                x=t[i], line=dict(color="#FF9800", dash="dot", width=1.5),
+                annotation_text="Radial phase begins",
+                annotation_font=dict(size=10, color="#FF9800"),
+                annotation_position="top right",
+                row=1, col=1,
+            )
+            break
 
     fig.update_yaxes(title_text="Current [MA]", row=1, col=1)
     fig.update_yaxes(title_text="Voltage [kV]", row=2, col=1)

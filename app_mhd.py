@@ -22,7 +22,7 @@ BACKENDS = {
     "metal_weno5": "2D MHD Precise (30-120 sec) -- GPU spatial fields, high accuracy",
     "metal_3d": "3D MHD (2-10 min) -- full 3D instability physics, GPU required",
     "athena": "Athena++ C++ (10-60 sec) -- Princeton reference engine, 3rd-order",
-    "python": "Python MHD -- auto-redirects to 2D MHD Fast (unstable at high currents)",
+    "python": "Python MHD (redirects to 2D MHD Fast -- not recommended)",
 }
 
 BACKEND_CONFIGS = {
