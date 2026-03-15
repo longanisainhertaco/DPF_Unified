@@ -918,6 +918,38 @@ class MetalMHDSolver(PlasmaSolverBase):
             )
 
         # -------------------------------------------------------------- #
+        #  Electrode B-field BC (circuit → MHD magnetic piston)
+        # -------------------------------------------------------------- #
+        anode_r = kwargs.get("anode_radius", 0.0)
+        cathode_r = kwargs.get("cathode_radius", 0.0)
+        apply_bc = kwargs.get("apply_electrode_bc", False)
+        if apply_bc and cathode_r > 0 and abs(current) > 1e-10:
+            mu0 = 4.0 * 3.141592653589793e-7
+            nx = B_new.shape[1]
+            # Radial cell centers
+            r_arr = torch.linspace(
+                self.dx * 0.5, self.dx * nx - self.dx * 0.5, nx,
+                device=B_new.device, dtype=B_new.dtype,
+            )
+            # B_theta = mu_0 * I / (2*pi*r) at cathode boundary cells
+            idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
+            idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
+            r_safe = torch.clamp(r_arr, min=1e-10)
+            B_theta_profile = mu0 * current / (2.0 * 3.141592653589793 * r_safe)
+            # Apply at cathode boundary
+            B_new[1, idx_cath, :, :] = B_theta_profile[idx_cath]
+            if idx_cath < nx - 1:
+                B_new[1, -1, :, :] = B_theta_profile[-1]
+            # Apply at anode boundary
+            if idx_anode > 0:
+                B_new[1, idx_anode, :, :] = B_theta_profile[idx_anode]
+            # Apply at closed end (insulator face, iz=0)
+            for ir in range(idx_anode, min(idx_cath + 1, nx)):
+                B_new[1, ir, :, 0] = B_theta_profile[ir]
+            # Axis symmetry: B_r = 0 at r=0
+            B_new[0, 0, :, :] = 0.0
+
+        # -------------------------------------------------------------- #
         #  Neighbor-averaging NaN/Inf repair (before returning to engine)
         # -------------------------------------------------------------- #
         rho_new, vel_new, p_new, B_new = self._repair_nonfinite(
