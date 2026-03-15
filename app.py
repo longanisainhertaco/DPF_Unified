@@ -76,9 +76,10 @@ RUNTIME_PER_US = {
 }
 
 FIDELITY = {
-    "lee": "0D (fitted)", "hybrid": "0D + 2D MHD", "metal_plm": "2D MHD (2nd order)",
-    "metal_weno5": "2D MHD (5th order)", "metal_3d": "3D MHD (2nd order)",
-    "athena": "2D MHD (3rd order, C++)", "python": "redirects to 2D MHD Fast",
+    "lee": "0D (validated, fitted)", "hybrid": "0D + 2D MHD (best accuracy)",
+    "metal_plm": "2D MHD (fast, moderate detail)",
+    "metal_weno5": "2D MHD (slow, high detail)", "metal_3d": "3D MHD (slow, 3D effects)",
+    "athena": "2D MHD (C++ reference)", "python": "redirects to 2D MHD Fast",
 }
 
 # Status: whether the backend is fully operational
@@ -308,6 +309,12 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         rho0 = data.get("rho0", 1)
         if len(rho_max) > 0 and rho0 > 0:
             parts.append(f"Density ratio: {float(np.max(rho_max))/rho0:.1f}x")
+        if data.get("has_mhd") and not data.get("has_snowplow"):
+            if len(rho_max) > 0:
+                comp = float(np.max(rho_max)) / max(data.get("rho0", 1), 1e-30)
+                if comp < 5.0:
+                    grid = data.get("grid_shape", (0, 0, 0))
+                    parts.append("(under-resolved — increase grid for better compression)")
 
     bennett = data.get("bennett")
     if bennett and bennett.get("T_bennett_keV", 0) > 0.01:
@@ -386,6 +393,12 @@ def run_simulation(
     err = _validate_inputs(anode_r, cathode_r, V0_kV, C_uF, L0_nH, sim_time_us)
     if err:
         raise gr.Error(err)
+
+    if progress is not None:
+        try:
+            progress(0.0, desc=f"Starting {backend} simulation...")
+        except Exception:
+            pass
 
     try:
         if backend == "lee":
@@ -739,6 +752,17 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
 **Start with Lee Model or Hybrid.** Only move to MHD backends when you need spatial detail.
 
+## How Many Unique Solvers Are There?
+
+There are **4 distinct physics engines** behind the 7 backend options:
+
+1. **Lee Model** — 0D ordinary differential equations (snowplow + circuit). Used by: Lee, Hybrid (axial phase)
+2. **Metal MHD** — 2D/3D partial differential equations on GPU/CPU. Used by: 2D MHD Fast (PLM+HLL float32), 2D MHD Precise (WENO5+HLLD float64), 3D MHD (PLM+HLL 3D), Hybrid (radial phase)
+3. **Athena++ C++** — Independent C++ MHD solver from Princeton. Same physics, different implementation. Used for cross-validation.
+4. **Python MHD** — NumPy-based MHD (auto-redirects to Metal because it's numerically unstable at DPF currents)
+
+The different "backends" are configurations of the same underlying solvers with different accuracy/speed tradeoffs. This is similar to how a single car engine can run in "eco", "normal", and "sport" modes.
+
 ## Hardware Requirements
 
 | Backend | Minimum Hardware | Recommended | Memory (Fine grid) |
@@ -775,6 +799,8 @@ Unlike the Lee model, the current sheath and compression emerge from first princ
 
 **Accuracy:** 2nd-order spatial. Good for seeing structure; use "2D MHD Precise" for publication.
 
+**Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved — the MHD shows only 1-2x compression instead of the 50-100x seen in experiments. Use Medium or Fine grid for meaningful spatial results. On Coarse grid, the circuit waveform is still valid but the field maps are under-resolved. **For best results, use the Hybrid backend** which gets validated waveforms from the Lee model and spatial detail from MHD.
+
 ### 2D MHD Precise (30-120 sec)
 **What it computes:** Same physics as 2D MHD Fast, but with 5th-order spatial accuracy and double precision arithmetic.
 **How:** WENO5-Z reconstruction (less numerical diffusion) + 4-wave Riemann solver (resolves more wave types) + 3rd-order time integration.
@@ -782,6 +808,8 @@ Unlike the Lee model, the current sheath and compression emerge from first princ
 Runs on **CPU** (not GPU) because Apple Metal doesn't support float64. Slower but significantly sharper resolution of thin features like current sheaths and shock fronts.
 
 **Accuracy:** 5th-order spatial, float64 precision. Publication quality.
+
+**Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved — the MHD shows only 1-2x compression instead of the 50-100x seen in experiments. Use Medium or Fine grid for meaningful spatial results. On Coarse grid, the circuit waveform is still valid but the field maps are under-resolved. **For best results, use the Hybrid backend** which gets validated waveforms from the Lee model and spatial detail from MHD.
 
 ### 3D MHD (2-10 min)
 **What it computes:** Full 3D spatial fields on a Cartesian grid.
