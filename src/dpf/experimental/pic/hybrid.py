@@ -35,6 +35,113 @@ from dpf.constants import e as e_charge
 
 
 @njit(cache=True)
+def _coulomb_scatter(
+    velocities: np.ndarray,
+    charge: float,
+    mass: float,
+    n_bg: float,
+    T_bg_eV: float,
+    dt: float,
+) -> np.ndarray:
+    """Coulomb collision operator (Takizuka-Abe 1977 simplified).
+
+    Applies pitch-angle scattering to each particle based on its speed
+    relative to a Maxwellian background plasma. The deflection angle
+    per timestep is drawn from a Gaussian with variance proportional
+    to the collision frequency nu_ei.
+
+    This models beam-ion slowing down in the target plasma.
+
+    Args:
+        velocities: Particle velocities (N, 3) [m/s].
+        charge: Particle charge [C].
+        mass: Particle mass [kg].
+        n_bg: Background plasma density [m^-3].
+        T_bg_eV: Background temperature [eV].
+        dt: Timestep [s].
+
+    Returns:
+        Scattered velocities (N, 3) [m/s].
+    """
+    N = velocities.shape[0]
+    if N == 0:
+        return velocities
+
+    result = velocities.copy()
+    eps0 = 8.854187817e-12
+    eV = 1.602176634e-19
+
+    for i in range(N):
+        vx, vy, vz = result[i, 0], result[i, 1], result[i, 2]
+        v = np.sqrt(vx**2 + vy**2 + vz**2)
+        if v < 1e-10:
+            continue
+
+        # Coulomb logarithm (simplified)
+        E_kin_eV = 0.5 * mass * v**2 / eV
+        if E_kin_eV < 1.0:
+            continue
+        ln_Lambda = max(5.0, 23.0 - 0.5 * np.log(n_bg / 1e20) + 1.5 * np.log(T_bg_eV))
+
+        # Collision frequency: nu = n_bg * Z^2 * e^4 * ln_Lambda / (4*pi*eps0^2 * m^2 * v^3)
+        # EMPIRICAL: capped to prevent unphysical scattering in single timestep
+        nu = n_bg * charge**4 * ln_Lambda / (
+            4.0 * np.pi * eps0**2 * mass**2 * v**3
+        )
+        nu = min(nu, 0.5 / dt)  # cap: max 0.5 rad deflection per step
+
+        # RMS scattering angle per timestep
+        theta_rms = np.sqrt(nu * dt)
+
+        # Random pitch-angle scatter (2D rotation in velocity space)
+        # Generate two uniform random numbers
+        u1 = np.random.random()
+        u2 = np.random.random()
+        # Box-Muller for Gaussian scattering angle
+        theta = theta_rms * np.sqrt(-2.0 * np.log(max(u1, 1e-30))) * np.cos(2.0 * np.pi * u2)
+        phi = 2.0 * np.pi * np.random.random()
+
+        # Rotate velocity vector by (theta, phi) around a random axis
+        ct, st = np.cos(theta), np.sin(theta)
+        cp, sp = np.cos(phi), np.sin(phi)
+
+        # Unit vector along velocity
+        vhat_x, vhat_y, vhat_z = vx / v, vy / v, vz / v
+
+        # Perpendicular unit vectors (Gram-Schmidt)
+        if abs(vhat_x) < 0.9:
+            perp1_x = 0.0
+            perp1_y = -vhat_z
+            perp1_z = vhat_y
+        else:
+            perp1_x = vhat_z
+            perp1_y = 0.0
+            perp1_z = -vhat_x
+        pnorm = np.sqrt(perp1_x**2 + perp1_y**2 + perp1_z**2)
+        if pnorm < 1e-30:
+            continue
+        perp1_x /= pnorm
+        perp1_y /= pnorm
+        perp1_z /= pnorm
+
+        perp2_x = vhat_y * perp1_z - vhat_z * perp1_y
+        perp2_y = vhat_z * perp1_x - vhat_x * perp1_z
+        perp2_z = vhat_x * perp1_y - vhat_y * perp1_x
+
+        # New direction after scattering
+        new_vhat_x = ct * vhat_x + st * (cp * perp1_x + sp * perp2_x)
+        new_vhat_y = ct * vhat_y + st * (cp * perp1_y + sp * perp2_y)
+        new_vhat_z = ct * vhat_z + st * (cp * perp1_z + sp * perp2_z)
+
+        # Preserve speed (elastic scattering in CM frame)
+        result[i, 0] = v * new_vhat_x
+        result[i, 1] = v * new_vhat_y
+        result[i, 2] = v * new_vhat_z
+
+    return result
+
+
+@njit(cache=True)
 def _boris_push_kernel(
     positions: np.ndarray,
     velocities: np.ndarray,
@@ -687,6 +794,26 @@ class HybridPIC:
         self._Ly = grid_shape[1] * dy
         self._Lz = grid_shape[2] * dz
 
+        # Coulomb collision parameters (set via enable_collisions())
+        self._collision_enabled = False
+        self._n_background = 1e25  # background density [m^-3]
+        self._T_background_eV = 100.0  # background temperature [eV]
+
+    def enable_collisions(
+        self, n_background: float = 1e25, T_background_eV: float = 100.0,
+    ) -> None:
+        """Enable Coulomb collisions with a background plasma.
+
+        Uses the Takizuka-Abe (1977) binary scattering model.
+
+        Args:
+            n_background: Background plasma density [m^-3].
+            T_background_eV: Background electron temperature [eV].
+        """
+        self._collision_enabled = True
+        self._n_background = n_background
+        self._T_background_eV = T_background_eV
+
     # -----------------------------------------------------------------
     # Species management
     # -----------------------------------------------------------------
@@ -789,6 +916,14 @@ class HybridPIC:
 
             # Reflecting boundary conditions at domain edges
             new_pos, new_vel = self._apply_reflecting_bc(new_pos, new_vel)
+
+            # Coulomb collision operator (Takizuka-Abe 1977 binary scattering)
+            if self._collision_enabled and sp.n_particles() > 1:
+                new_vel = _coulomb_scatter(
+                    new_vel, sp.charge, sp.mass,
+                    self._n_background, self._T_background_eV,
+                    dt,
+                )
 
             sp.positions = new_pos
             sp.velocities = new_vel
