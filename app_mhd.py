@@ -211,6 +211,7 @@ def run_mhd_simulation(
 
     # Bennett equilibrium diagnostic — check if pinch achieves pressure balance
     final_state = result.get("final_state")
+    I_arr = result.get("I_MA", np.array([]))
     if final_state is not None and len(I_arr) > 0:
         I_peak_A = float(np.max(np.abs(I_arr))) * 1e6
         rho_final = final_state["rho"]
