@@ -576,6 +576,20 @@ def _run_python_mhd(
             state, dt, current=circuit.current, voltage=circuit.voltage,
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
+
+        # Bremsstrahlung radiation cooling (Frontier D)
+        if "Te" in state:
+            try:
+                from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                ne = rho_safe / gas["m_mol"]  # electron density ~ ion density for Z=1
+                Z_eff = gas.get("Z", 1)
+                state["Te"], state["pressure"], _ = apply_bremsstrahlung_losses(
+                    state["Te"], ne, Z_eff, dt, state["pressure"],
+                )
+            except ImportError:
+                pass
+
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1
