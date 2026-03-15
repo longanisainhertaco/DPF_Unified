@@ -298,6 +298,7 @@ def _run_metal(
         anode_radius=a, cathode_radius=b,
         crowbar_enabled=cc.get("crowbar_enabled", False),
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
@@ -420,6 +421,7 @@ def _run_athena(
         anode_radius=a, cathode_radius=b,
         crowbar_enabled=cc.get("crowbar_enabled", False),
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
@@ -469,6 +471,7 @@ def _run_athena(
         anode_radius=a, cathode_radius=b,
         crowbar_enabled=cc.get("crowbar_enabled", False),
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
     coupling = CouplingState()
@@ -576,6 +579,7 @@ def _run_python_mhd(
         anode_radius=a, cathode_radius=b,
         crowbar_enabled=cc.get("crowbar_enabled", False),
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
