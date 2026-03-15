@@ -578,8 +578,14 @@ def _run_python_mhd(
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
     )
 
+    # Seed m=0 density perturbation for instability growth (Frontier C.2)
+    # delta_rho/rho = 0.01 * sin(4*pi*z/L) — 2 wavelengths along anode
+    z_arr = np.linspace(0, L_anode, nz)
+    rho_init = rho0 * (1.0 + 0.01 * np.sin(4 * np.pi * z_arr / L_anode))
+    rho_3d = np.broadcast_to(rho_init[np.newaxis, np.newaxis, :], (nr, 1, nz)).copy()
+
     state = {
-        "rho": np.full((nr, 1, nz), rho0),
+        "rho": rho_3d,
         "velocity": np.zeros((3, nr, 1, nz)),
         "pressure": np.full((nr, 1, nz), p_pa),
         "B": np.zeros((3, nr, 1, nz)),
