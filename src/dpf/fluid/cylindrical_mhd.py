@@ -375,25 +375,33 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         vxB[2] = vel[0] * B[1] - vel[1] * B[0]
         E_field = -vxB
 
-        # --- Resistive term: E_resistive = eta * J ---
+        # --- Kinetic current coupling (Frontier E: PIC → MHD) ---
+        J_total = J
+        if source_terms and "J_kin" in source_terms:
+            J_kin = source_terms["J_kin"]
+            if J_kin.ndim == 4:  # (3, nr, 1, nz) → squeeze to (3, nr, nz)
+                J_kin = J_kin[:, :, 0, :]
+            J_total = J + J_kin
+
+        # --- Resistive term: E_resistive = eta * J_total ---
         ohmic_heating = np.zeros((self.nr, self.nz))
         if self.enable_resistive and eta_field is not None:
             E_resistive = np.zeros((3, self.nr, self.nz))
             for d in range(3):
-                E_resistive[d] = eta_field * J[d]
+                E_resistive[d] = eta_field * J_total[d]
             E_field = E_field + E_resistive
-            # Ohmic heating: Q_ohm = eta * |J|^2 [W/m^3]
-            J_sq = np.sum(J**2, axis=0)
+            # Ohmic heating: Q_ohm = eta * |J_total|^2 [W/m^3]
+            J_sq = np.sum(J_total**2, axis=0)
             ohmic_heating = eta_field * J_sq
 
-        # Hall term: E_Hall = (J × B) / (ne * e)
+        # Hall term: E_Hall = (J_total × B) / (ne * e)
         if self.enable_hall:
             ne = rho / self.ion_mass
             ne_safe = np.maximum(ne, 1e-20)
             E_Hall = np.zeros((3, self.nr, self.nz))
-            E_Hall[0] = (J[1] * B[2] - J[2] * B[1]) / (ne_safe * e_charge)
-            E_Hall[1] = (J[2] * B[0] - J[0] * B[2]) / (ne_safe * e_charge)
-            E_Hall[2] = (J[0] * B[1] - J[1] * B[0]) / (ne_safe * e_charge)
+            E_Hall[0] = (J_total[1] * B[2] - J_total[2] * B[1]) / (ne_safe * e_charge)
+            E_Hall[1] = (J_total[2] * B[0] - J_total[0] * B[2]) / (ne_safe * e_charge)
+            E_Hall[2] = (J_total[0] * B[1] - J_total[1] * B[0]) / (ne_safe * e_charge)
             E_field = E_field + E_Hall
 
         dB_dt = -geom.curl(E_field)
