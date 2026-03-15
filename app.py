@@ -234,6 +234,9 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     return " | ".join(parts)
 
 
+_TEMP_DIR = tempfile.mkdtemp(prefix="dpf_ui_")
+
+
 def _export_csv(data: dict) -> str | None:
     if data is None:
         return None
@@ -250,9 +253,10 @@ def _export_csv(data: dict) -> str | None:
             f"{data['E_cap_kJ'][i]:.4f}", f"{data['E_ind_kJ'][i]:.4f}",
             f"{data['E_res_kJ'][i]:.4f}",
         ])
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", prefix="dpf_") as tmp:
-        tmp.write(buf.getvalue().encode())
-    return tmp.name
+    path = os.path.join(_TEMP_DIR, f"dpf_{os.getpid()}_{id(data)}.csv")
+    with open(path, "w") as f:
+        f.write(buf.getvalue())
+    return path
 
 
 def run_simulation(
@@ -370,6 +374,27 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
     comparison_state = gr.State([])
 
     gr.Markdown("# DPF-Unified Simulator")
+
+    with gr.Accordion("Quick Start & Help", open=False):
+        gr.Markdown("""**Dense Plasma Focus (DPF)** simulator with multi-fidelity backends.
+
+**Workflow**: Select a device preset -> adjust parameters -> click **Run Simulation**.
+
+**Backends** (speed vs. fidelity):
+- **Lee model** — 0D lumped-parameter. Fastest (<2s). Good for parameter exploration and sweeps.
+- **Metal PLM/WENO5** — Apple GPU MHD solver. 2D/3D fields. PLM is faster, WENO5 is more accurate.
+- **Athena++** — Reference C++ MHD code from Princeton. Highest fidelity.
+- **Python MHD** — Pure NumPy solver. Teaching/prototyping only.
+
+**Key parameters**:
+- **fc** (current fraction): fraction of circuit current carried by the plasma sheath (typical 0.6-0.8)
+- **fm** (mass fraction): fraction of fill gas swept up by the sheath (typical 0.05-0.2)
+- Use **Auto-Calibrate** to optimize fc/fm, or **Use Published Params** for literature values.
+
+**Tips**: Upload experimental CSV (columns: `t_us,I_MA`) in the Waveforms tab for overlay comparison.
+Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8 overlays.
+""")
+
     gr.Markdown(
         "Dense Plasma Focus simulation with multi-fidelity backends. "
         "Lee model for fast exploration, MHD solvers for high-fidelity physics. "
@@ -536,7 +561,7 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],
-        concurrency_limit=1,
+        concurrency_limit=2,
     )
 
     def refresh_waveform(sim_data: dict | None, exp_file):
