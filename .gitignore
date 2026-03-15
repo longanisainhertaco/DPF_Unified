@@ -66,3 +66,10 @@ models/
 research_reference/
 training_data/
 *.npz
+docs/DPF_CRITICAL_REVIEW.md
+docs/DPF_PHASE_U_PROPOSAL.md
+docs/dpf-unified-system.mmd
+docs/gemini-strategy-query-*.md
+scripts/consolidate_tests.py
+tests/CONSOLIDATION_PLAN.md
+reference/
