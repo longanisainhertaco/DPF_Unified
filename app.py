@@ -293,8 +293,13 @@ def run_simulation(
     if experimental_csv is not None:
         csv_path = Path(experimental_csv) if isinstance(experimental_csv, str) else Path(experimental_csv.name)
         try:
-            exp_data = parse_experimental_csv(csv_path.read_text())
-        except Exception:
+            csv_text = csv_path.read_text()
+            validate_experimental_csv(csv_text)
+            exp_data = parse_experimental_csv(csv_text)
+        except gr.Error:
+            raise
+        except Exception as exc:
+            gr.Warning(f"Could not parse experimental CSV: {exc}")
             exp_data = None
 
     fig_wave = create_waveform_fig(data, experimental_data=exp_data)
@@ -303,7 +308,11 @@ def run_simulation(
 
     if data.get("has_mhd"):
         fig_schem = create_mhd_fields_fig(data)
-        fig_3d = create_3d_plasma_fig(data) if data.get("has_snowplow") else fig_schem
+        if data.get("has_snowplow"):
+            fig_3d = create_3d_plasma_fig(data)
+        else:
+            fig_3d = create_mhd_fields_fig(data)
+            gr.Info("MHD mode: 3D Plasma tab shows 2D field maps (no snowplow trajectory).")
         anim_fig = create_animated_mhd(data)
         full_html = anim_fig.to_html(
             full_html=True, include_plotlyjs="cdn", config={"responsive": True},
@@ -477,7 +486,10 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                 compare_md = gr.Markdown("*Run multiple simulations to compare waveforms.*")
                 clear_btn = gr.Button("Clear Comparison History", size="sm")
             with gr.Tab("Parameter Sweep"):
-                gr.Markdown("Sweep a parameter to visualize its effect on I_peak, dip, and neutron yield.")
+                gr.Markdown(
+                    "Sweep a parameter to visualize its effect on I_peak, dip, and neutron yield. "
+                    "*Sweeps use the Lee model (0D) regardless of backend selection for speed.*"
+                )
                 with gr.Row():
                     sweep_param = gr.Dropdown(
                         choices=[("Mass Fraction (fm)", "fm"), ("Current Fraction (fc)", "fc"),
@@ -586,6 +598,7 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
         fc, fm = get_published_params(preset_name)
         if fc is not None and fm is not None:
             return fc, fm
+        gr.Warning(f"No published Lee model parameters available for '{preset_name}'.")
         return gr.update(), gr.update()
 
     pub_btn.click(
@@ -596,6 +609,8 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
     def run_sweep(preset_name, param, pmin, pmax, n, sim_time_us,
                   progress=gr.Progress()):  # noqa: B008
+        if pmin >= pmax:
+            raise gr.Error(f"Sweep min ({pmin}) must be less than max ({pmax}).")
         progress(0.0, desc="Starting sweep...")
         results = run_parameter_sweep(
             preset_name, param, (pmin, pmax), n_points=int(n),
