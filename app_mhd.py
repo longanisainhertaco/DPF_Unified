@@ -33,6 +33,7 @@ BACKEND_CONFIGS = {
     "metal_weno5": {
         "reconstruction": "weno5", "riemann_solver": "hlld",
         "time_integrator": "ssp_rk3", "precision": "float64",
+        "enable_hall": True,
     },
     "metal_3d": {
         "reconstruction": "plm", "riemann_solver": "hll",
@@ -336,6 +337,26 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Reproducibility metadata
+    import subprocess as _sp
+    from datetime import datetime as _dt
+    try:
+        _git_hash = _sp.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, text=True,
+        ).strip()
+    except Exception:
+        _git_hash = "unknown"
+    result["reproducibility"] = {
+        "version": "v1.2",
+        "git_hash": _git_hash,
+        "timestamp": _dt.now().isoformat(),
+        "backend": effective_backend,
+        "grid_shape": grid_shape,
+        "sim_time_us": sim_time_us,
+        "preset": preset_name,
+    }
+
     return result
 
 
@@ -373,6 +394,7 @@ def _run_hybrid_lee_mhd(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
     snowplow = SnowplowModel(
@@ -531,9 +553,14 @@ def _run_hybrid_lee_mhd(
 
     t_mhd_start = t
     mhd_step = 0
-    # Target ~30 snapshots during MHD phase; compute interval after first step
+    mu_0_local = 4.0 * np.pi * 1e-7
+    # Initialize prev_Lp from Lee model's final inductance to avoid discontinuity
+    prev_Lp = coupling.Lp
+    # Maximum physically reasonable back-EMF: ~50 kV for any DPF device
+    MAX_BACK_EMF = 50e3  # [V]
+    # Target ~30 snapshots during MHD phase
     _target_snaps = 30
-    snap_interval = 3  # default; recalculated after first timestep
+    snap_interval = 3
 
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
@@ -545,7 +572,54 @@ def _run_hybrid_lee_mhd(
             state, dt, current=circuit.current, voltage=circuit.voltage,
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
-        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+
+        # Radiation cooling: bremsstrahlung
+        if "Te" in state:
+            try:
+                from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                ne = rho_safe / gas["m_mol"]
+                Z_eff = gas.get("Z", 1)
+                state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=Z_eff)
+            except ImportError:
+                pass
+
+        # Compute L_plasma from MHD density profile using Lee-model formula.
+        # Extract effective compression radius from density, then use the
+        # analytic coaxial inductance: L_p = L_axial + (mu_0/2pi)*z_f*ln(b/r_eff)
+        # This avoids including electrode BC energy (externally imposed, not plasma load).
+        rho_mid = state["rho"][:, ny // 2, nz // 2]  # midplane radial profile
+        rho_bg = rho0 * (1.0 - fmr)
+        # Effective compression radius: density-weighted mean radius
+        weights = np.maximum(rho_mid - rho_bg, 0.0)
+        w_sum = float(np.sum(weights))
+        if w_sum > 0:
+            r_eff = float(np.sum(r_cells * weights)) / w_sum
+        else:
+            r_eff = b  # no compression yet
+        r_eff = max(r_eff, a * 0.01)  # floor to prevent log(0)
+        # Lee-model inductance: axial (frozen) + radial compression
+        L_axial_frozen = coupling.Lp if mhd_step == 0 else (mu_0_local / (2.0 * np.pi)) * np.log(b / a) * sc.get("anode_length", L_anode)
+        Lp_mhd = L_axial_frozen + (mu_0_local / (2.0 * np.pi)) * z_f * np.log(b / r_eff)
+        I_current = circuit.current
+
+        # Back-EMF from changing plasma inductance: V_back = (dL/dt) * I
+        # Clamp to prevent numerical instability from Lp jumps at handoff
+        # or from numerical diffusion artifacts on coarse grids.
+        # Max physically reasonable back-EMF for any DPF: ~50 kV
+        _MAX_BEMF = 50e3  # [V]
+        if prev_Lp is not None and prev_Lp > 0 and dt > 0:
+            dLdt_mhd = (Lp_mhd - prev_Lp) / dt
+            back_emf = float(np.clip(dLdt_mhd * I_current, -_MAX_BEMF, _MAX_BEMF))
+        else:
+            dLdt_mhd = 0.0
+            back_emf = 0.0
+        prev_Lp = Lp_mhd
+
+        # Feed MHD-computed inductance back to circuit
+        coupling.Lp = Lp_mhd
+        coupling.dL_dt = dLdt_mhd
+        coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
         t += dt
         mhd_step += 1
 
@@ -691,6 +765,7 @@ def _run_metal(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
     nr, ny, nz = grid_shape
@@ -715,6 +790,12 @@ def _run_metal(
     _target_snaps_metal = 30
     snap_interval = 3  # recalculated after first step
 
+    prev_Lp = 0.0  # Initialize to zero; first step computes Lp, second gets valid dL/dt
+    mu_0 = 4.0 * np.pi * 1e-7
+    # Build r_cells for cylindrical cell volume computation
+    if not is_3d:
+        r_cells_metal = np.linspace(a + dr * 0.5, b - dr * 0.5, nr)
+
     step = 0
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
@@ -726,7 +807,63 @@ def _run_metal(
             state, dt, current=circuit.current, voltage=circuit.voltage,
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
-        coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
+
+        # Radiation cooling: bremsstrahlung
+        if "Te" in state:
+            try:
+                from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                ne = rho_safe / gas["m_mol"]
+                Z_eff = gas.get("Z", 1)
+                state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=Z_eff)
+            except ImportError:
+                pass
+
+        # Compute L_plasma from density profile using Lee-model formula.
+        # L_p = (mu_0/2pi) * L_anode * ln(b/r_eff)
+        # r_eff = density-weighted mean radius (effective compression radius)
+        mu_0 = 4.0 * np.pi * 1e-7
+        if not is_3d:
+            rho_mid = state["rho"][:, ny // 2, nz // 2]
+            r_cells_lp = np.linspace(a + dr * 0.5, b - dr * 0.5, nr)
+            weights = np.maximum(rho_mid - rho0, 0.0)
+            w_sum = float(np.sum(weights))
+            if w_sum > 0:
+                r_eff = float(np.sum(r_cells_lp * weights)) / w_sum
+            else:
+                r_eff = b
+            r_eff = max(r_eff, a * 0.01)
+            Lp_mhd = (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
+        else:
+            # 3D: use midplane density to estimate compression
+            mid = nr // 2
+            rho_line = state["rho"][:, mid, nz // 2]
+            r_vals_3d = np.linspace(-b + solver_dx * 0.5, b - solver_dx * 0.5, nr)
+            r_abs = np.abs(r_vals_3d)
+            weights = np.maximum(rho_line - rho0, 0.0)
+            w_sum = float(np.sum(weights))
+            r_eff = float(np.sum(r_abs * weights)) / w_sum if w_sum > 0 else b
+            r_eff = max(r_eff, a * 0.01)
+            Lp_mhd = (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
+        I_current = circuit.current
+
+        # Back-EMF from changing plasma inductance: V_back = (dL/dt) * I
+        # Clamp to prevent numerical instability from Lp jumps at handoff
+        # or from numerical diffusion artifacts on coarse grids.
+        # Max physically reasonable back-EMF for any DPF: ~50 kV
+        _MAX_BEMF = 50e3  # [V]
+        if prev_Lp is not None and prev_Lp > 0 and dt > 0:
+            dLdt_mhd = (Lp_mhd - prev_Lp) / dt
+            back_emf = float(np.clip(dLdt_mhd * I_current, -_MAX_BEMF, _MAX_BEMF))
+        else:
+            dLdt_mhd = 0.0
+            back_emf = 0.0
+        prev_Lp = Lp_mhd
+
+        # Feed MHD-computed inductance back to circuit
+        coupling.Lp = Lp_mhd
+        coupling.dL_dt = dLdt_mhd
+        coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
         t += dt
         step += 1
 
@@ -819,6 +956,7 @@ def _run_athena(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
     sim_cfg = SimulationConfig(
@@ -869,6 +1007,7 @@ def _run_athena(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
     coupling = CouplingState()
 
@@ -983,6 +1122,7 @@ def _run_python_mhd(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
     # Uniform IC — no stochastic perturbation for Python solver (numerically fragile)

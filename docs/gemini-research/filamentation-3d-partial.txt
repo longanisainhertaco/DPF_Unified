@@ -1,0 +1,5 @@
+### Sources
+*   *Angus, J. R., et al. (2022).* "Effect of anode shape on neutron and x-ray emission." *Physics of Plasmas*.
+*   *Schmidt, A., et al. (2012).* "Fully Kinetic Simulations of Megajoule-Scale DPF." *Physical Review Letters*.
+*   *Kaselouris, E., et al. (2017).* "Influence of solid to plasma phase transition on instabilities." *Nature Communications*.
+*   *Hansen, S., et al. (2023).* "FLASH simulations of gas-puff Z-pinches." *AIP Publishing*.

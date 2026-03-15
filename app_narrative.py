@@ -202,13 +202,31 @@ $$\\ln\\left(\\frac{{b}}{{a}}\\right) = \\ln\\left(\\frac{{{b_mm:.1f}}}{{{a_mm:.
 
     sections.append("""## Step 2.5: Gas Breakdown & Plasma Formation (Phase 1)
 
-> **Why this matters:** Before anything can move, the neutral gas between the electrodes must become a plasma — a hot, electrically conducting gas where electrons are stripped from atoms. This happens in the first few nanoseconds of the discharge and is called "breakdown."
+> **Why this matters:** Before anything can move, the neutral gas between the electrodes \
+must become a **plasma** — a hot, electrically conducting gas where electrons are stripped \
+from atoms. This happens in the first few nanoseconds of the discharge and is called \
+"breakdown." Without breakdown, there is no current sheath and no DPF.
 
-When the switch fires and voltage appears across the electrodes, the electric field ionizes the fill gas near the insulator surface at the breech (z = 0). This happens via **Townsend avalanche** — free electrons (from cosmic rays or UV) accelerate in the electric field, hit gas atoms, knock out more electrons, and the process cascades exponentially.
+**What happens physically:**
 
-Within ~10-100 nanoseconds, a thin layer of fully ionized plasma forms across the insulator surface. This conducting layer carries the circuit current and creates the magnetic field that will drive the snowplow.
+1. The switch fires and high voltage (~tens of kV) appears across the electrodes
+2. The electric field is strongest near the **insulator surface** at the breech (z = 0)
+3. Free electrons (always present from cosmic rays or UV) accelerate in the field
+4. These fast electrons hit neutral gas atoms, knocking out more electrons (**Townsend avalanche**)
+5. The process cascades exponentially — within ~10-100 nanoseconds, the gas is fully ionized
+6. A thin layer of hot, conducting plasma forms across the insulator surface
+7. This plasma layer carries the circuit current and creates the magnetic field (J x B) that drives the snowplow
 
-> *The simulator skips this phase (it happens too fast to affect the circuit waveform) and starts directly with the current sheath already formed. In experiments, breakdown quality affects shot-to-shot reproducibility — uneven breakdown leads to tilted or asymmetric sheaths.*""")
+> **Why does this simulator skip Phase 1?** Breakdown happens in ~10-100 ns, while the \
+DPF discharge lasts ~5-40 us (microseconds). That's a factor of 100-1000x difference in \
+timescale. At the circuit level, breakdown looks like a near-instantaneous switch closure — \
+the current hasn't risen appreciably before the sheath is fully formed. All standard DPF \
+simulation codes (Lee model, RADPF, ZPINCH) start with the sheath already formed.
+>
+> **Does skipping Phase 1 matter?** For the circuit waveform and neutron yield — no. \
+For shot-to-shot reproducibility — yes. In real experiments, uneven breakdown produces \
+tilted or asymmetric sheaths that reduce pinch quality. This is an active research area \
+(Challenge 9 in the DPF Simulation Challenge paper).""")
 
     sections.append(f"""## Step 3: Axial Rundown (Phase 2)
 

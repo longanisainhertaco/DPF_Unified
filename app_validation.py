@@ -158,3 +158,53 @@ def format_validation_markdown(val: dict[str, Any] | None) -> str:
         )
 
     return "\n".join(lines)
+
+
+def run_convergence_study(
+    preset_name: str,
+    backend: str = "metal_plm",
+    sim_time_us: float = 15.0,
+) -> dict[str, Any]:
+    """Run the same simulation at 3 grid resolutions and compare I_peak.
+
+    This checks whether the solution is grid-converged by measuring
+    how much I_peak changes between coarse, medium, and fine grids.
+
+    Usage::
+
+        from app_validation import run_convergence_study
+        results = run_convergence_study("pf1000", backend="metal_plm")
+        print(f"Converged: {results['converged']} ({results['convergence_pct']:.1f}%)")
+
+    Args:
+        preset_name: Device preset (e.g. "pf1000", "nx2").
+        backend: MHD backend to use.
+        sim_time_us: Simulation duration in microseconds.
+
+    Returns:
+        Dict with per-grid results, convergence_pct, and converged flag.
+        convergence_pct < 5% indicates grid convergence.
+    """
+    from app_mhd import MHD_GRID_PRESETS, run_mhd_simulation
+
+    results: dict[str, Any] = {}
+    for grid_name in ["coarse", "medium", "fine"]:
+        r = run_mhd_simulation(
+            backend=backend,
+            grid_preset=grid_name,
+            preset_name=preset_name,
+            sim_time_us=sim_time_us,
+        )
+        results[grid_name] = {
+            "grid": MHD_GRID_PRESETS[grid_name],
+            "I_peak_MA": r["I_peak"],
+            "n_steps": r["n_steps"],
+        }
+
+    I_coarse = results["coarse"]["I_peak_MA"]
+    I_fine = results["fine"]["I_peak_MA"]
+    convergence_pct = abs(I_coarse - I_fine) / max(abs(I_fine), 1e-10) * 100
+    results["convergence_pct"] = convergence_pct
+    results["converged"] = convergence_pct < 5.0
+
+    return results

@@ -461,6 +461,17 @@ def run_simulation_core(
             V_pinch_volts=V_pinch_volts,
         )
 
+    # Reproducibility metadata
+    import subprocess as _sp
+    from datetime import datetime as _dt
+    try:
+        _git_hash = _sp.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, text=True,
+        ).strip()
+    except Exception:
+        _git_hash = "unknown"
+
     return {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": V_arr,
         "L_p_nH": np.array(L_plasmas),
@@ -481,4 +492,12 @@ def run_simulation_core(
         "snowplow_obj": snowplow,
         "has_snowplow": snowplow is not None,
         "neutron_yield": neutron_yield,
+        "reproducibility": {
+            "version": "v1.2",
+            "git_hash": _git_hash,
+            "timestamp": _dt.now().isoformat(),
+            "backend": "lee",
+            "sim_time_us": sim_time_us,
+            "preset": preset_name,
+        },
     }
