@@ -16,13 +16,13 @@ from app_engine import GAS_SPECIES, kB
 logger = logging.getLogger(__name__)
 
 BACKENDS = {
-    "lee": "Lee Model (< 1 sec) -- waveforms only, no spatial detail",
-    "hybrid": "Hybrid (3-30 sec) -- Lee rundown + MHD pinch compression [RECOMMENDED]",
-    "metal_plm": "2D MHD Fast (10-60 sec) -- GPU spatial fields, moderate accuracy",
-    "metal_weno5": "2D MHD Precise (30-120 sec) -- GPU spatial fields, high accuracy",
-    "metal_3d": "3D MHD (2-10 min) -- full 3D instability physics, GPU required",
-    "athena": "Athena++ C++ (10-60 sec) -- Princeton reference engine, 3rd-order",
-    "python": "Python MHD (redirects to 2D MHD Fast -- not recommended)",
+    "lee": "Quick (< 1 sec) -- current waveform + neutron yield",
+    "hybrid": "Standard (3-30 sec) -- waveform + plasma compression [RECOMMENDED]",
+    "metal_plm": "Detailed (10-60 sec) -- full 2D plasma structure",
+    "metal_weno5": "High Accuracy (30-120 sec) -- publication-quality 2D fields",
+    "metal_3d": "3D (2-10 min) -- 3D instabilities and filamentation",
+    "athena": "Reference (10-60 sec) -- independent C++ verification",
+    "python": "Legacy (auto-redirects to Detailed)",
 }
 
 BACKEND_CONFIGS = {

@@ -739,26 +739,31 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             with gr.Tab("Backend Guide"):
                 gr.Markdown("""# Simulation Backend Guide
 
-## Which Backend Should I Use?
+## Which Should I Use?
 
-| If you want to... | Use this | Time | Status |
-|-------------------|----------|------|--------|
-| Quickly explore parameters or fit to data | **Lee Model** | < 1 sec | Ready |
-| Get accurate waveforms AND see compression | **Hybrid** | 3-30 sec | Ready |
-| See full spatial fields (density, B, temperature) | **2D MHD Fast** | 10-60 sec | Ready |
-| Publication-quality accuracy | **2D MHD Precise** | 30-120 sec | Ready |
-| Study 3D instabilities (kink, filamentation) | **3D MHD** | 2-10 min | Ready |
-| Cross-validate with a reference code | **Athena++ C++** | 10-60 sec | Needs compilation |
+**Most users only need two options:**
 
-**Start with Lee Model or Hybrid.** Only move to MHD backends when you need spatial detail.
+| I want to... | Choose | Time |
+|--------------|--------|------|
+| Explore parameters, fit to experiments | **Quick** | < 1 sec |
+| See plasma compression + accurate waveforms | **Standard** [RECOMMENDED] | 3-30 sec |
 
-## How Many Unique Solvers Are There?
+**Advanced users** who need spatial detail or 3D physics:
 
-There are **4 distinct physics engines** behind the 7 backend options:
+| I want to... | Choose | Time |
+|--------------|--------|------|
+| See full 2D plasma structure (density, B-field, temperature) | **Detailed** | 10-60 sec |
+| Maximum accuracy for publications | **High Accuracy** | 30-120 sec |
+| 3D instabilities (kink, filamentation) | **3D** | 2-10 min |
+| Independent verification with Princeton's Athena++ | **Reference** | 10-60 sec |
 
-1. **Lee Model** — 0D ordinary differential equations (snowplow + circuit). Used by: Lee, Hybrid (axial phase)
-2. **Metal MHD** — 2D/3D partial differential equations on GPU/CPU. Used by: 2D MHD Fast (PLM+HLL float32), 2D MHD Precise (WENO5+HLLD float64), 3D MHD (PLM+HLL 3D), Hybrid (radial phase)
-3. **Athena++ C++** — Independent C++ MHD solver from Princeton. Same physics, different implementation. Used for cross-validation.
+**Why are there multiple options?** They're like zoom levels on a camera:
+- **Quick** = wide shot (fast, sees the big picture)
+- **Standard** = portrait (balanced, captures the important detail)
+- **Detailed/High Accuracy** = macro lens (slow, sees fine structure)
+- **3D** = full 3D scan (slowest, sees everything including asymmetries)
+
+Under the hood, there are only **2 physics engines**: the Lee model (solves circuit equations) and the MHD solver (solves fluid equations on a grid). The different options configure the MHD solver at different accuracy/speed tradeoffs — like choosing JPEG quality.
 4. **Python MHD** — NumPy-based MHD (auto-redirects to Metal because it's numerically unstable at DPF currents)
 
 The different "backends" are configurations of the same underlying solvers with different accuracy/speed tradeoffs. This is similar to how a single car engine can run in "eco", "normal", and "sport" modes.
