@@ -65,6 +65,8 @@ class RLCSolver(CircuitSolverBase):
         crowbar_mode: Trigger mode — 'voltage_zero' or 'fixed_time'.
         crowbar_time: Fixed trigger time [s] (only if mode='fixed_time').
         crowbar_resistance: Additional resistance from crowbar switch [Ohm].
+        crowbar_inductance: Additional inductance from crowbar arc channel [H].
+            Typical ignitron values: 10-50 nH.
     """
 
     def __init__(
@@ -81,6 +83,7 @@ class RLCSolver(CircuitSolverBase):
         crowbar_mode: str = "voltage_zero",
         crowbar_time: float = 0.0,
         crowbar_resistance: float = 0.0,
+        crowbar_inductance: float = 0.0,
     ) -> None:
         self.C = C
         self.L0 = L0
@@ -94,6 +97,7 @@ class RLCSolver(CircuitSolverBase):
         self.crowbar_mode = crowbar_mode
         self.crowbar_time = crowbar_time
         self.crowbar_resistance = crowbar_resistance
+        self.crowbar_inductance = crowbar_inductance
 
         # dL/dt history for 2nd-order central difference
         # Stores (time, L_plasma) tuples; max 3 entries needed
@@ -250,9 +254,10 @@ class RLCSolver(CircuitSolverBase):
         L_total = self.L_ext + Lp
         R_eff = self.R_total + coupling.R_plasma
 
-        # Add crowbar resistance if already fired
+        # Add crowbar resistance and inductance if already fired
         if self.state.crowbar_fired:
             R_eff += self.crowbar_resistance
+            L_total += self.crowbar_inductance
 
         if self.state.crowbar_fired:
             # Post-crowbar: capacitor frozen, L-R decay

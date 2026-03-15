@@ -367,6 +367,27 @@ class MetalMHDSolver(PlasmaSolverBase):
             return self.cfl * min(self.dx, self.dy, self.dz) * 1e-6
 
         dt_cfl = self.cfl / max_signal
+
+        # Whistler wave CFL constraint (Hall MHD):
+        # dt_hall < dx^2 * n_e * e / (|B| * c)
+        # The whistler dispersion omega = k^2 * |B| / (mu_0 * n_e * e)
+        # gives a phase speed v_w = k * |B| / (mu_0 * n_e * e) that grows
+        # with k, making the CFL MORE restrictive on fine grids.
+        # EMPIRICAL: This constraint dominates on grids finer than ~64^3.
+        if self.enable_hall:
+            _E_CHARGE = 1.602176634e-19
+            B_sq = torch.sum(B ** 2, dim=0)
+            B_max = float(torch.sqrt(torch.max(B_sq)).item())
+            ne = rho / self.ion_mass
+            ne_max = float(torch.max(ne).item())
+            if B_max > 0 and ne_max > 0:
+                dx_min = min(self.dx, self.dy, self.dz)
+                # v_whistler = |B| / (mu_0 * n_e * e * dx)
+                v_hall = B_max / (mu_0_si * max(ne_max, 1e-20)
+                                  * _E_CHARGE * dx_min)
+                dt_hall = self.cfl * dx_min / max(v_hall, 1e-30)
+                dt_cfl = min(dt_cfl, dt_hall)
+
         return float(dt_cfl)
 
     # ------------------------------------------------------------------ #

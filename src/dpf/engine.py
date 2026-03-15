@@ -109,6 +109,7 @@ class SimulationEngine:
             crowbar_mode=cc.crowbar_mode,
             crowbar_time=cc.crowbar_time,
             crowbar_resistance=cc.crowbar_resistance,
+            crowbar_inductance=cc.crowbar_inductance,
         )
 
         # Fluid / MHD — select solver based on geometry and backend

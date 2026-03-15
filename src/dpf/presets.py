@@ -89,6 +89,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "crowbar_mode": "fixed_time",
             "crowbar_time": 10.5e-6,  # Quarter period of loaded circuit (Scholz 2006: ~10 us)
             "crowbar_resistance": 1.5e-3,  # 1.5 mOhm spark gap (PhD Debate #30)
+            "crowbar_inductance": 20e-9,  # 20 nH ignitron arc channel inductance
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
@@ -339,6 +340,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.135,
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
+            "crowbar_inductance": 30e-9,  # 30 nH ignitron arc channel inductance
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},

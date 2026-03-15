@@ -173,7 +173,8 @@ def get_device_info(preset_name: str) -> str:
     lines = [
         f"### {meta.get('device', preset_name)}",
         f"*{meta.get('description', '')}*", "",
-        f"**Topology:** {topology_label}", "",
+        f"**Topology:** {topology_label} *(all presets are Mather-type — no Filipov presets yet; "
+        "Filipov devices skip the axial phase and would need a modified model)*", "",
         "| Parameter | Value |", "|-----------|-------|",
         f"| Charging Voltage | {cc['V0']/1e3:.0f} kV |",
         f"| Capacitance | {cc['C']*1e6:.0f} uF |",
@@ -275,6 +276,9 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         else:
             label = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
             parts.append(f"vs. expt: **{dI:.0f}% ({label})**")
+        if val.get("waveform_nrmse") is not None:
+            nrmse = val["waveform_nrmse"]
+            parts.append(f"NRMSE: {nrmse:.1%}")
 
     if data.get("has_snowplow") and data["dip_pct"] > 1:
         parts.append(f"Current dip: **{data['dip_pct']:.0f}%**")
@@ -338,6 +342,20 @@ def _export_csv(data: dict) -> str | None:
     if data is None:
         return None
     buf = io.StringIO()
+
+    # Write reproducibility metadata as header comments
+    repro = data.get("reproducibility")
+    if repro:
+        buf.write(f"# DPF-Unified {repro.get('version', '?')}"
+                  f"@{repro.get('git_hash', '?')}\n")
+        buf.write(f"# timestamp: {repro.get('timestamp', '?')}\n")
+        buf.write(f"# backend: {repro.get('backend', '?')}\n")
+        buf.write(f"# preset: {repro.get('preset', '?')}\n")
+        buf.write(f"# sim_time_us: {repro.get('sim_time_us', '?')}\n")
+        grid = repro.get("grid_shape")
+        if grid:
+            buf.write(f"# grid_shape: {grid}\n")
+
     writer = csv.writer(buf)
     t = data["t_us"]
     writer.writerow(["t_us", "I_MA", "V_kV", "L_p_nH", "z_mm", "r_mm",

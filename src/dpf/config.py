@@ -35,6 +35,9 @@ class CircuitConfig(BaseModel):
     crowbar_resistance: float = Field(
         0.0, ge=0, description="Additional crowbar switch resistance [Ohm]"
     )
+    crowbar_inductance: float = Field(
+        0.0, ge=0, description="Additional crowbar arc channel inductance [H]"
+    )
 
     @model_validator(mode="after")
     def check_radii(self) -> CircuitConfig:
