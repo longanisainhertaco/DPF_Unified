@@ -35,6 +35,10 @@ __numba_cache__/
 .coverage
 htmlcov/
 
+# Cached results
+.last-test-result
+.last-validate-result
+
 # mypy
 .mypy_cache/
 

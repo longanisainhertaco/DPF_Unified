@@ -19,7 +19,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import create_animated_3d, create_animated_mhd
-from app_calibrate import auto_calibrate, format_calibration_markdown
+from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
     clear_comparison,
@@ -430,6 +430,7 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             with gr.Row():
                 run_btn = gr.Button("Run Simulation", variant="primary", size="lg")
                 cal_btn = gr.Button("Auto-Calibrate", variant="secondary", size="lg")
+                pub_btn = gr.Button("Use Published Params", variant="secondary", size="lg")
             cal_output = gr.Markdown(visible=False)
 
             with gr.Accordion("Save / Load Configuration", open=False):
@@ -579,6 +580,18 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
         inputs=[preset_dd, sim_time],
         outputs=[cal_output, inp_fc, inp_fm],
         concurrency_limit=1,
+    )
+
+    def apply_published_params(preset_name):
+        fc, fm = get_published_params(preset_name)
+        if fc is not None and fm is not None:
+            return fc, fm
+        return gr.update(), gr.update()
+
+    pub_btn.click(
+        fn=apply_published_params,
+        inputs=[preset_dd],
+        outputs=[inp_fc, inp_fm],
     )
 
     def run_sweep(preset_name, param, pmin, pmax, n, sim_time_us,
