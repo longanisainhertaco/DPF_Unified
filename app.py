@@ -537,6 +537,12 @@ Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8
                     sweep_btn = gr.Button("Run 1D Sweep", variant="primary", size="sm")
                     sweep_2d_btn = gr.Button("Run 2D (fm x fc) Sweep", variant="secondary",
                                               size="sm")
+                with gr.Accordion("2D Sweep Settings", open=False), gr.Row():
+                    sweep_2d_fm_min = gr.Number(value=0.05, label="fm min")
+                    sweep_2d_fm_max = gr.Number(value=0.30, label="fm max")
+                    sweep_2d_fc_min = gr.Number(value=0.50, label="fc min")
+                    sweep_2d_fc_max = gr.Number(value=0.90, label="fc max")
+                    sweep_2d_n = gr.Slider(5, 20, value=10, step=1, label="Grid size")
                 sweep_plot = gr.Plot(label="Sweep Results")
                 sweep_md = gr.Markdown("*Click 'Run Sweep' to explore parameter space.*")
 
@@ -667,18 +673,27 @@ Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8
     )
 
     def run_2d_sweep_handler(preset_name, sim_time_us,
+                              fm_lo, fm_hi, fc_lo, fc_hi, grid_n,
                               progress=gr.Progress()):  # noqa: B008
+        if fm_lo >= fm_hi:
+            raise gr.Error(f"fm min ({fm_lo}) must be less than fm max ({fm_hi}).")
+        if fc_lo >= fc_hi:
+            raise gr.Error(f"fc min ({fc_lo}) must be less than fc max ({fc_hi}).")
+        n = int(grid_n)
         progress(0.0, desc="Starting 2D sweep...")
         results = run_2d_sweep(
             preset_name, sim_time_us=sim_time_us,
-            n_fm=10, n_fc=10, progress_fn=progress,
+            fm_range=(fm_lo, fm_hi), fc_range=(fc_lo, fc_hi),
+            n_fm=n, n_fc=n, progress_fn=progress,
         )
         fig = create_2d_sweep_fig(results)
-        return fig, f"**2D sweep**: {results['preset']}, 10x10 grid (fm x fc)"
+        return fig, f"**2D sweep**: {results['preset']}, {n}x{n} grid (fm x fc)"
 
     sweep_2d_btn.click(
         fn=run_2d_sweep_handler,
-        inputs=[preset_dd, sim_time],
+        inputs=[preset_dd, sim_time,
+                sweep_2d_fm_min, sweep_2d_fm_max,
+                sweep_2d_fc_min, sweep_2d_fc_max, sweep_2d_n],
         outputs=[sweep_plot, sweep_md],
         concurrency_limit=1,
     )
@@ -687,8 +702,12 @@ Parameter sweeps always use the Lee model for speed. Compare Runs stores up to 8
 if __name__ == "__main__":
     server_port = int(os.environ.get("DPF_UI_PORT", "7860"))
     app.queue(max_size=5)
+    auth_user = os.environ.get("DPF_AUTH_USER")
+    auth_pass = os.environ.get("DPF_AUTH_PASS")
+    auth = (auth_user, auth_pass) if auth_user and auth_pass else None
     app.launch(
         server_name="0.0.0.0", server_port=server_port, share=False,
         theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
         css=CSS,
+        auth=auth,
     )
