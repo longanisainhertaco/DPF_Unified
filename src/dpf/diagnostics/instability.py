@@ -273,3 +273,92 @@ def m0_growth_rate_from_state(
         pressure=p_avg,
         a_pinch=a_pinch,
     )
+
+
+def detect_plasmoids(
+    B: np.ndarray,
+    rho: np.ndarray,
+    dx: float,
+    dz: float,
+    threshold: float = 0.5,
+) -> dict[str, Any]:
+    """Detect plasmoid-like structures in 2D MHD fields (Challenge 14).
+
+    Searches for O-points (local maxima of magnetic flux function psi)
+    and X-points (saddle points) in the (r,z) plane. Plasmoids appear
+    as closed magnetic flux surfaces around O-points.
+
+    The magnetic flux function for axisymmetric geometry:
+        psi(r,z) = r * A_theta(r,z)
+    where A_theta is computed from: B_r = -(1/r)*dpsi/dz, B_z = (1/r)*dpsi/dr
+
+    For the Cartesian proxy: psi ~ integral(B_z * dx) along r-direction.
+
+    Args:
+        B: Magnetic field (3, nr, nz) or (3, nr, ny, nz).
+        rho: Density field, matching spatial dims of B.
+        dx: Radial grid spacing [m].
+        dz: Axial grid spacing [m].
+        threshold: Minimum B_theta/B_max ratio to count as significant.
+
+    Returns:
+        Dictionary with:
+            n_plasmoids: Number of detected O-points.
+            o_points: List of (ir, iz) indices.
+            x_points: List of (ir, iz) indices.
+            psi_max: Peak flux function value.
+            magnetic_energy_J: Total magnetic energy in the domain.
+            source: Citation string.
+
+    Reference:
+        Kubes et al. (2016). Evolution of plasmoidal structure in pinched column.
+        Auluck (2011). Turner relaxed state as ion-trapping model.
+    """
+    mu_0 = 4.0 * np.pi * 1e-7
+
+    # Handle 4D input (3, nr, ny, nz) → squeeze to (3, nr, nz)
+    if B.ndim == 4:
+        B = B[:, :, B.shape[2] // 2, :]
+    if rho.ndim == 3 and rho.shape[1] > 1:
+        rho = rho[:, rho.shape[1] // 2, :]
+
+    nr, nz = B.shape[1], B.shape[2]
+    B_z = B[2]  # axial component
+
+    # Compute magnetic flux function: psi(r,z) = cumulative integral of B_z along r
+    psi = np.cumsum(B_z * dx, axis=0)
+
+    # Find O-points: local maxima of |psi|
+    # Use simple 3x3 neighborhood comparison
+    o_points = []
+    x_points = []
+    psi_abs = np.abs(psi)
+
+    for ir in range(2, nr - 2):
+        for iz in range(2, nz - 2):
+            val = psi_abs[ir, iz]
+            if val < threshold * float(np.max(psi_abs)):
+                continue
+            neighborhood = psi_abs[ir - 1:ir + 2, iz - 1:iz + 2]
+            if val == np.max(neighborhood) and val > 0:
+                o_points.append((int(ir), int(iz)))
+            # X-points: saddle points where psi changes sign in orthogonal directions
+            d2r = psi[ir + 1, iz] - 2 * psi[ir, iz] + psi[ir - 1, iz]
+            d2z = psi[ir, iz + 1] - 2 * psi[ir, iz] + psi[ir, iz - 1]
+            if d2r * d2z < 0 and abs(psi[ir, iz]) > threshold * float(np.max(psi_abs)) * 0.3:
+                x_points.append((int(ir), int(iz)))
+
+    # Magnetic energy
+    B_sq = np.sum(B[:, :, :]**2 if B.ndim == 3 else B**2, axis=0)
+    cell_vol = dx * dx * dz  # approximate
+    E_mag = float(np.sum(B_sq / (2 * mu_0) * cell_vol))
+
+    return {
+        "n_plasmoids": len(o_points),
+        "o_points": o_points,
+        "x_points": x_points,
+        "n_x_points": len(x_points),
+        "psi_max": float(np.max(psi_abs)),
+        "magnetic_energy_J": E_mag,
+        "source": "Kubes et al. 2016, Auluck 2011",
+    }
