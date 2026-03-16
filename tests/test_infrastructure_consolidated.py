@@ -961,7 +961,10 @@ class TestPresetSmoke:
         from dpf.presets import get_preset, get_preset_names
 
         for name in get_preset_names():
-            config = SimulationConfig(**get_preset(name))
+            preset = get_preset(name)
+            if "grid_shape" not in preset:
+                continue  # Skip override-only presets (e.g. 'custom')
+            config = SimulationConfig(**preset)
             engine = SimulationEngine(config)
             engine.run(max_steps=3)
             for key, arr in engine.state.items():
