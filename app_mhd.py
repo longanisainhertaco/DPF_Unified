@@ -324,6 +324,33 @@ def run_mhd_simulation(
         "advanced_physics": active_modules,
     })
 
+    _apply_post_processing(result, cc, gas, gas_key, p_pa, a, b, L_anode, dr, dz,
+                           active_modules, preset_name, effective_backend,
+                           grid_shape, sim_time_us)
+
+    return result
+
+
+def _apply_post_processing(
+    result: dict, cc: dict, gas: dict, gas_key: str,
+    p_pa: float, a: float, b: float, L_anode: float,
+    dr: float, dz: float, active_modules: list,
+    preset_name: str, effective_backend: str,
+    grid_shape: tuple, sim_time_us: float,
+) -> None:
+    """Apply all post-simulation diagnostics to the result dict."""
+    import subprocess as _sp
+    from datetime import datetime as _dt
+    try:
+        _git_hash = _sp.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, text=True,
+        ).strip()
+    except Exception:
+        _git_hash = "unknown"
+
+    final_state = result.get("final_state")
+
     # Phase 1 breakdown diagnostic: CIV or Paschen
     try:
         from dpf.experimental.civ_breakdown import (
@@ -669,16 +696,6 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
-    # Reproducibility metadata
-    import subprocess as _sp
-    from datetime import datetime as _dt
-    try:
-        _git_hash = _sp.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            stderr=_sp.DEVNULL, text=True,
-        ).strip()
-    except Exception:
-        _git_hash = "unknown"
     # Scaling law predictions
     try:
         from dpf.diagnostics.scaling_laws import compute_scaling
@@ -712,8 +729,6 @@ def run_mhd_simulation(
         "preset": preset_name,
         "advanced_physics": active_modules,
     }
-
-    return result
 
 
 def _run_hybrid_lee_mhd(
