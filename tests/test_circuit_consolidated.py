@@ -1622,6 +1622,7 @@ def _make_cartesian_engine(nx: int = 8, nz: int = 8) -> SimulationEngine:
     preset = get_preset("tutorial")
     preset["grid_shape"] = [nx, nx, nz]
     preset["sim_time"] = 1e-8
+    preset["geometry"] = {"type": "cartesian"}
     preset["diagnostics"] = {"hdf5_filename": ":memory:"}
     config = SimulationConfig(**preset)
     return SimulationEngine(config)

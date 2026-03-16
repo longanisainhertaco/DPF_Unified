@@ -1428,10 +1428,12 @@ class TestPresetCompleteness:
                 )
 
     def test_presets_instantiate_as_config(self, all_presets):
-        """All presets can be instantiated as SimulationConfig."""
+        """All presets with grid_shape can be instantiated as SimulationConfig."""
         from dpf.config import SimulationConfig
 
         for name, preset in all_presets.items():
+            if "grid_shape" not in preset:
+                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**preset)
             assert config.grid_shape is not None, f"Preset '{name}' failed"
 

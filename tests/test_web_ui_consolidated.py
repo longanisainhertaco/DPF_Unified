@@ -298,12 +298,14 @@ class TestPresets:
         assert "_meta" not in data
 
     def test_get_preset_creates_valid_config(self):
-        """Each preset creates a valid SimulationConfig."""
+        """Each preset with grid_shape creates a valid SimulationConfig."""
         from dpf.config import SimulationConfig
         from dpf.presets import get_preset, get_preset_names
 
         for name in get_preset_names():
             data = get_preset(name)
+            if "grid_shape" not in data:
+                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**data)
             assert config.sim_time > 0
 
