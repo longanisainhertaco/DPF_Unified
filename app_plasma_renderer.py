@@ -228,17 +228,32 @@ async function main() {{
   insMat.alpha = 0.5;
   ins.material = insMat;
 
-  // ---- Current sheath disc ----
-  const sheathMat = new BABYLON.StandardMaterial("sheathMat", scene);
+  // ---- Current sheath (torus = donut sweeping gas) ----
+  const sheathMat = new BABYLON.StandardMaterial("sheath", scene);
   sheathMat.emissiveColor = new BABYLON.Color3(0.2,0.5,1.0);
-  sheathMat.alpha = 0.5;
+  sheathMat.alpha = 0.55;
   sheathMat.disableLighting = true;
   sheathMat.backFaceCulling = false;
-  const sheath = BABYLON.MeshBuilder.CreateDisc("sheath", {{
-    radius:D.cathode_radius, tessellation:32
+  // Torus: major radius = midpoint between anode and cathode, tube = gap/3
+  const sheathR = (D.anode_radius + D.cathode_radius) / 2;
+  const sheathTube = (D.cathode_radius - D.anode_radius) / 2.5;
+  const sheath = BABYLON.MeshBuilder.CreateTorus("sheath", {{
+    diameter: sheathR * 2, thickness: sheathTube * 2, tessellation: 32
   }}, scene);
-  sheath.rotation.y = Math.PI/2;
+  sheath.rotation.z = Math.PI/2;  // align torus ring perpendicular to z-axis
   sheath.material = sheathMat;
+
+  // Swept plasma trail (faint glow behind the sheath)
+  const trailMat = new BABYLON.StandardMaterial("trailMat", scene);
+  trailMat.emissiveColor = new BABYLON.Color3(0.1,0.2,0.5);
+  trailMat.alpha = 0.15;
+  trailMat.disableLighting = true;
+  trailMat.backFaceCulling = false;
+  const trail = BABYLON.MeshBuilder.CreateCylinder("trail", {{
+    diameter:(D.anode_radius+D.cathode_radius), height:1, tessellation:24
+  }}, scene);
+  trail.rotation.z = Math.PI/2;
+  trail.material = trailMat;
 
   // ---- Pinch plasma (core + halo) ----
   const coreMat = new BABYLON.StandardMaterial("coreMat", scene);
@@ -348,11 +363,28 @@ async function main() {{
     sheath.position.x = f.z;
     sheathMat.emissiveColor.set(col[0],col[1],col[2]);
 
-    // Compression ratio
+    // Swept plasma trail: stretches from insulator to sheath position
+    const trailLen = Math.max(f.z, 0.5);
+    trail.scaling.x = trailLen;
+    trail.position.x = f.z / 2;
+    trailMat.emissiveColor.set(col[0]*0.4, col[1]*0.4, col[2]*0.4);
+    trailMat.alpha = 0.12 + Math.abs(f.I) * 0.08;
+
+    // Compression: during radial phase, torus shrinks (donut compressing inward)
     const isPinch = ["radial","mhd_radial","pinch","reflected","post_pinch"].includes(f.phase);
     const cr = Math.max(0.03, f.r / D.cathode_radius);
-    sheath.scaling.y = isPinch ? cr : 1;
-    sheath.scaling.z = isPinch ? cr : 1;
+    if (isPinch) {{
+      // Torus shrinks: scale Y and Z to compress the ring inward
+      sheath.scaling.y = cr;
+      sheath.scaling.z = cr;
+      // Move to anode tip during radial phase
+      sheath.position.x = D.anode_length;
+      sheathMat.alpha = 0.65;
+    }} else {{
+      sheath.scaling.y = 1;
+      sheath.scaling.z = 1;
+      sheathMat.alpha = 0.55;
+    }}
 
     // Pinch intensity
     const pInt = isPinch ? Math.min(1.0, Math.pow(1.0-cr,2)*2.5) : 0;
