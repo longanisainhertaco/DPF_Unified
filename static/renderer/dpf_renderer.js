@@ -232,12 +232,17 @@ async function createDPFScene(canvas, data) {
     ceramicMat.subSurface.translucencyIntensity = 0.3; } catch(_) {}
   ceramicMat.alpha = 0.75;
 
-  const insulator = BABYLON.MeshBuilder.CreateCylinder("insulator", {
-    diameter: G.cathode_radius * 2, height: G.anode_radius * 0.3, tessellation: 128,
+  // Insulator: use a thin torus + disc to avoid triangle fan artifacts
+  const insOuter = BABYLON.MeshBuilder.CreateTorus("insulator", {
+    diameter: G.cathode_radius * 2,
+    thickness: G.anode_radius * 0.3,
+    tessellation: 128,
   }, scene);
-  insulator.rotation.z = Math.PI / 2;
-  insulator.position.x = -G.anode_radius * 0.15;
-  insulator.material = ceramicMat;
+  insOuter.rotation.z = Math.PI / 2;
+  insOuter.position.x = -G.anode_radius * 0.15;
+  insOuter.material = ceramicMat;
+  // Alias for toggle
+  const insulator = insOuter;
 
   // ============================================================
   // CURRENT SHEATH (disc with Fresnel edge glow)
@@ -386,6 +391,7 @@ async function createDPFScene(canvas, data) {
   // Always available — generated from circuit current, not MHD grid
   // ============================================================
   const fieldLines = [];
+  const fieldLineData = []; // store base radii for dynamic scaling
   // Generate circular field lines at multiple radii and axial positions
   const N_RADII = 5;
   const N_ZPOS = 4;
@@ -393,27 +399,30 @@ async function createDPFScene(canvas, data) {
   for (let zi = 0; zi < N_ZPOS; zi++) {
     const zPos = G.anode_length * (0.15 + 0.7 * zi / (N_ZPOS - 1));
     for (let ri = 0; ri < N_RADII; ri++) {
-      const r = G.anode_radius * 1.2 + (G.cathode_radius - G.anode_radius * 1.2) * ri / (N_RADII - 1);
+      const baseR = G.anode_radius * 1.2 + (G.cathode_radius - G.anode_radius * 1.2) * ri / (N_RADII - 1);
       const pts = [];
       for (let k = 0; k <= N_CIRCLE_PTS; k++) {
         const theta = (k / N_CIRCLE_PTS) * Math.PI * 2;
-        pts.push(new BABYLON.Vector3(zPos, r * Math.sin(theta), r * Math.cos(theta)));
+        pts.push(new BABYLON.Vector3(zPos, baseR * Math.sin(theta), baseR * Math.cos(theta)));
       }
-      // Color by field strength: stronger closer to anode (1/r)
-      const bStrength = 1 - ri / N_RADII; // 1 at anode, 0 at cathode
+      const bStrength = 1 - ri / N_RADII;
       const lineMat = new BABYLON.StandardMaterial("flm" + zi + "_" + ri, scene);
-      const tube = BABYLON.MeshBuilder.CreateTube("fl" + zi + "_" + ri, {
-        path: pts, radius: G.cathode_radius * 0.008 * (0.5 + bStrength),
-        tessellation: 8, cap: BABYLON.Mesh.NO_CAP,
+      const tube = BABYLON.MeshBuilder.CreateTorus("fl" + zi + "_" + ri, {
+        diameter: baseR * 2,
+        thickness: G.cathode_radius * 0.015 * (0.5 + bStrength),
+        tessellation: 64,
       }, scene);
+      tube.rotation.z = Math.PI / 2;
+      tube.position.x = zPos;
       lineMat.emissiveColor = new BABYLON.Color3(
-        0.1 + bStrength * 0.2, 0.3 + bStrength * 0.4, 0.8 + bStrength * 0.2
+        0.1 + bStrength * 0.3, 0.3 + bStrength * 0.5, 0.8 + bStrength * 0.2
       );
       lineMat.disableLighting = true;
-      lineMat.alpha = 0.3 + bStrength * 0.3;
+      lineMat.alpha = 0.35 + bStrength * 0.35;
       tube.material = lineMat;
       tube.isVisible = false;
       fieldLines.push(tube);
+      fieldLineData.push({ baseR, zi, ri, zPos });
     }
   }
 
@@ -562,7 +571,7 @@ async function createDPFScene(canvas, data) {
     ps, psEmitter,
     pipeline, ssao, glowLayer,
     heatPlane, updateHeatmap,
-    fieldLines,
+    fieldLines, fieldLineData,
     activeOverlay,
 
     // Data
@@ -668,6 +677,34 @@ async function createDPFScene(canvas, data) {
           // Radial compression
           ps.gravity = new BABYLON.Vector3(0, -compR * 0.5, 0);
           ps.minEmitPower = 1.5; ps.maxEmitPower = 6;
+        }
+      }
+
+      // B-field lines: scale with compression ratio
+      // During radial phase, inner field lines compress inward
+      // B_theta ~ I/r, so as r shrinks, B gets stronger (brighter)
+      for (let fli = 0; fli < fieldLines.length; fli++) {
+        if (!fieldLines[fli].isVisible) continue;
+        const fld = fieldLineData[fli];
+        if (!fld) continue;
+        // Scale the torus Y/Z to match compression
+        if (isP) {
+          const scaleFactor = cr + (1 - cr) * (fld.ri / N_RADII);
+          fieldLines[fli].scaling.y = Math.max(0.05, scaleFactor);
+          fieldLines[fli].scaling.z = Math.max(0.05, scaleFactor);
+          // Brighter when compressed (B ~ 1/r)
+          if (fieldLines[fli].material && fieldLines[fli].material.emissiveColor) {
+            const boost = 1 / Math.max(scaleFactor, 0.1);
+            const bStr = 1 - fld.ri / N_RADII;
+            fieldLines[fli].material.alpha = Math.min(0.9, (0.35 + bStr * 0.35) * Math.min(boost, 3));
+          }
+        } else {
+          fieldLines[fli].scaling.y = 1;
+          fieldLines[fli].scaling.z = 1;
+        }
+        // Move to sheath position during rundown
+        if (f.phase === "rundown" && fld.zi >= 2) {
+          fieldLines[fli].position.x = Math.min(fld.zPos, f.z);
         }
       }
 
