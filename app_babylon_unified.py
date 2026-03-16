@@ -39,7 +39,7 @@ _HTML_HEAD = (
     f'<script src="{BABYLON_CDN}"></script>\n'
     f'<script src="{BABYLON_GUI}"></script>\n'
     "</head>\n<body>\n"
-    '<canvas id="c"></canvas>\n'
+    '<canvas id="c" tabindex="0"></canvas>\n'
     '<div id="hud">Initializing engine...</div>\n'
     '<div id="bar">\n'
     '  <button id="pb">Play</button>\n'
