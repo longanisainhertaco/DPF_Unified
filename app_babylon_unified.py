@@ -202,14 +202,25 @@ window.addEventListener("load", async function(){
     tl.textContent = "t = " + scene.S.frames[fi].t.toFixed(1) + " us";
   };
 
-  // ---- GUI Panel (layer toggles) ----
+  // ---- GUI Panel (layer toggles with dark background) ----
   var ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+  var panelBg = new BABYLON.GUI.Rectangle("panelBg");
+  panelBg.width = "240px"; panelBg.adaptHeightToChildren = true;
+  panelBg.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+  panelBg.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+  panelBg.left = "8px"; panelBg.top = "68px";
+  panelBg.background = "rgba(5,8,20,0.75)";
+  panelBg.color = "rgba(80,120,200,0.2)";
+  panelBg.thickness = 1;
+  panelBg.cornerRadius = 8;
+  panelBg.paddingBottom = "8px";
+  ui.addControl(panelBg);
+
   var panel = new BABYLON.GUI.StackPanel();
-  panel.width = "230px"; panel.isVertical = true;
-  panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-  panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
-  panel.paddingTop = "72px"; panel.paddingLeft = "12px";
-  ui.addControl(panel);
+  panel.width = "220px"; panel.isVertical = true;
+  panel.paddingTop = "8px"; panel.paddingLeft = "8px";
+  panelBg.addControl(panel);
 
   function addHeader(text, color) {
     var h = new BABYLON.GUI.TextBlock();
