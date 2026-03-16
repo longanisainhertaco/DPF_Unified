@@ -197,6 +197,21 @@ def get_device_info(preset_name: str) -> str:
     return "\n".join(lines)
 
 
+def get_gas_info(gas_key: str) -> str:
+    """Return CIV breakdown info for the selected gas species."""
+    try:
+        from dpf.experimental.civ_breakdown import get_gas
+        gas = get_gas(gas_key)
+        return (
+            f"**{gas.formula}** — {gas.purpose}\n\n"
+            f"CIV threshold: **{gas.v_crit/1e3:.0f} km/s** | "
+            f"Ionization potential: {gas.V_ionization:.1f} eV | "
+            f"Ion mass: {gas.ion_mass*1e27:.2f} x10^-27 kg"
+        )
+    except (ImportError, ValueError):
+        return ""
+
+
 def load_preset_values(preset_name: str):
     if not preset_name:
         return [None] * 12
@@ -562,8 +577,13 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             device_info = gr.Markdown(value=get_device_info("pf1000"))
             gas_dd = gr.Dropdown(
                 choices=get_gas_choices(), value="D2", label="Fill Gas",
-                info="D2 (deuterium) produces fusion neutrons. p-B11 is aneutronic. Noble gases (Ne, Ar, Kr, Xe) are used for X-ray sources.",
+                info=(
+                    "D2 (deuterium) produces fusion neutrons. Noble gases (Ne, Ar, Kr, Xe) "
+                    "are used for X-ray sources. Gas species affects CIV breakdown threshold, "
+                    "sheath formation time, and radiation properties."
+                ),
             )
+            gas_info_md = gr.Markdown(value=get_gas_info("D2"))
 
             with gr.Accordion("Circuit Parameters", open=False):
                 inp_V0 = gr.Number(value=27, label="Charging Voltage [kV]", minimum=1,
@@ -879,6 +899,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
         trigger(fn=on_settings_change, inputs=settings_inputs, outputs=settings_outputs)
 
     preset_dd.change(fn=get_device_info, inputs=[preset_dd], outputs=[device_info])
+    gas_dd.change(fn=get_gas_info, inputs=[gas_dd], outputs=[gas_info_md])
     preset_dd.change(
         fn=load_preset_values, inputs=[preset_dd],
         outputs=[inp_V0, inp_C, inp_L0, inp_R0, inp_anode_r, inp_cathode_r,
