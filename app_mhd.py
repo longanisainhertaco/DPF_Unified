@@ -814,6 +814,14 @@ def _run_hybrid_lee_mhd(
     snap_interval = 3
     _cr_fracs = None  # CR ionization charge-state fractions
 
+    # Time-resolved yield tracker (hybrid mode)
+    yield_tracker = None
+    try:
+        from dpf.diagnostics.yield_tracker import YieldTracker
+        yield_tracker = YieldTracker(ion_mass=gas["m_mol"], rho0=rho0)
+    except ImportError:
+        pass
+
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
         dt = min(dt_mhd, t_end - t)
@@ -854,6 +862,16 @@ def _run_hybrid_lee_mhd(
                 enable_fld=enable_fld, enable_sheath=enable_sheath,
                 enable_ablation=enable_ablation, enable_nernst=enable_nernst,
                 enable_cr=enable_cr, cr_fractions=_cr_fracs,
+            )
+
+        # Time-resolved yield accumulation (hybrid MHD phase)
+        if yield_tracker is not None:
+            V_p = abs(coupling.dL_dt) * abs(circuit.current) if coupling.dL_dt else 0.0
+            cell_vol = dr_mhd * (b - a) / nr * dz_mhd
+            yield_tracker.accumulate(
+                state, dt,
+                I_current=circuit.current, V_pinch=V_p,
+                cell_volume=cell_vol,
             )
 
         # Compute L_plasma from MHD density profile using Lee-model formula.
@@ -961,7 +979,7 @@ def _run_hybrid_lee_mhd(
         t_dip = t_pre_dip
         dip_pct = 0.0
 
-    return {
+    result = {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
         "L_p_nH": np.array(L_plasmas),
         "z_mm": np.array(sheath_zs), "r_mm": np.array(shock_rs),
@@ -990,6 +1008,24 @@ def _run_hybrid_lee_mhd(
         "lee_steps": lee_steps,
         "mhd_steps": mhd_step,
     }
+
+    # Attach time-resolved yield data
+    if yield_tracker is not None:
+        yr = yield_tracker.get_result()
+        if yr.Y_total > 0:
+            result["yield_time_resolved"] = {
+                "times_us": [t_v * 1e6 for t_v in yr.times],
+                "dY_thermo": yr.dY_thermo,
+                "dY_bt": yr.dY_bt,
+                "Y_thermo_cumulative": yr.Y_thermo_cumulative,
+                "Y_bt_cumulative": yr.Y_bt_cumulative,
+                "T_peak_keV": yr.T_peak_keV,
+                "Y_total": yr.Y_total,
+                "bt_fraction": yr.bt_fraction,
+                "peak_yield_time_us": yr.peak_yield_time * 1e6,
+            }
+
+    return result
 
 
 def _run_metal(
