@@ -197,6 +197,7 @@ async function createDPFScene(canvas, data) {
   anode.rotation.z = Math.PI / 2;
   anode.position.x = G.anode_length / 2;
   anode.material = copperMat;
+  anode.renderingGroupId = 0; // render opaque first
 
   const steelMat = new BABYLON.PBRMaterial("steel", scene);
   steelMat.metallic = 0.9;
@@ -399,7 +400,10 @@ async function createDPFScene(canvas, data) {
   for (let zi = 0; zi < N_ZPOS; zi++) {
     const zPos = G.anode_length * (0.15 + 0.7 * zi / (N_ZPOS - 1));
     for (let ri = 0; ri < N_RADII; ri++) {
-      const baseR = G.anode_radius * 1.2 + (G.cathode_radius - G.anode_radius * 1.2) * ri / (N_RADII - 1);
+      // Field lines only in the gap: start at anode_radius + 20% margin
+      const minR = G.anode_radius * 1.4;
+      const maxR = G.cathode_radius * 0.95;
+      const baseR = minR + (maxR - minR) * ri / (N_RADII - 1);
       const pts = [];
       for (let k = 0; k <= N_CIRCLE_PTS; k++) {
         const theta = (k / N_CIRCLE_PTS) * Math.PI * 2;
@@ -603,7 +607,11 @@ async function createDPFScene(canvas, data) {
       const col = PHASE_COLORS[f.phase] || [0.3, 0.3, 0.4];
       const isP = ["radial", "mhd_radial", "pinch", "reflected", "post_pinch"].includes(f.phase);
       const cr = Math.max(0.02, f.r / G.cathode_radius);
-      const pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
+      // Pinch intensity: high during compression, fading during post-pinch
+      let pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
+      // Post-pinch and reflected: dim the glow (plasma is disrupting/expanding)
+      if (f.phase === "post_pinch") pI *= 0.3;
+      if (f.phase === "reflected") pI *= 0.5;
 
       // Sheath
       sheath.position.x = isP ? G.anode_length : f.z;
