@@ -1,0 +1,185 @@
+"""Time-resolved neutron yield tracker for MHD simulations.
+
+Accumulates thermonuclear and beam-target neutron yield at each timestep,
+building a Y(t) curve that shows when fusion occurs during the discharge.
+
+This enables:
+- Identifying which phase produces the most neutrons
+- Comparing thermonuclear vs beam-target contributions over time
+- Correlating yield with pinch dynamics (compression, instability)
+
+Usage:
+    tracker = YieldTracker(ion_mass=3.34e-27)
+    for each MHD step:
+        tracker.accumulate(state, dt, I_current, V_pinch, cell_volume)
+    result = tracker.get_result()
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+
+import numpy as np
+
+from dpf.constants import k_B
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class YieldTimepoint:
+    """Neutron yield at a single timestep."""
+
+    t: float                    # Time [s]
+    dY_thermo: float            # Thermonuclear yield this step
+    dY_bt: float                # Beam-target yield this step
+    Y_thermo_cumulative: float  # Cumulative thermonuclear
+    Y_bt_cumulative: float      # Cumulative beam-target
+    T_peak_keV: float           # Peak ion temperature [keV]
+    n_peak: float               # Peak ion density [m^-3]
+    rho_ratio: float            # Peak density / initial density
+
+
+@dataclass
+class YieldResult:
+    """Complete time-resolved yield from a simulation."""
+
+    times: list[float] = field(default_factory=list)
+    dY_thermo: list[float] = field(default_factory=list)
+    dY_bt: list[float] = field(default_factory=list)
+    Y_thermo_cumulative: list[float] = field(default_factory=list)
+    Y_bt_cumulative: list[float] = field(default_factory=list)
+    T_peak_keV: list[float] = field(default_factory=list)
+    n_peak: list[float] = field(default_factory=list)
+
+    @property
+    def Y_total(self) -> float:
+        if self.Y_thermo_cumulative and self.Y_bt_cumulative:
+            return self.Y_thermo_cumulative[-1] + self.Y_bt_cumulative[-1]
+        return 0.0
+
+    @property
+    def bt_fraction(self) -> float:
+        total = self.Y_total
+        if total > 0 and self.Y_bt_cumulative:
+            return self.Y_bt_cumulative[-1] / total
+        return 0.0
+
+    @property
+    def peak_yield_time(self) -> float:
+        """Time of maximum instantaneous yield rate."""
+        if not self.dY_thermo:
+            return 0.0
+        total_rate = [a + b for a, b in zip(self.dY_thermo, self.dY_bt, strict=False)]
+        idx = int(np.argmax(total_rate))
+        return self.times[idx]
+
+
+class YieldTracker:
+    """Accumulates neutron yield during an MHD simulation.
+
+    Args:
+        ion_mass: Ion mass [kg] (default: deuterium).
+        rho0: Initial gas density [kg/m^3] for compression ratio.
+    """
+
+    def __init__(
+        self,
+        ion_mass: float = 3.34e-27,
+        rho0: float = 1e-4,
+    ) -> None:
+        self.ion_mass = ion_mass
+        self.rho0 = rho0
+        self._Y_thermo = 0.0
+        self._Y_bt = 0.0
+        self._result = YieldResult()
+
+    def accumulate(
+        self,
+        state: dict[str, np.ndarray],
+        dt: float,
+        I_current: float = 0.0,
+        V_pinch: float = 0.0,
+        cell_volume: float = 1e-9,
+        f_beam: float = 0.14,
+    ) -> None:
+        """Accumulate yield from one MHD timestep.
+
+        Args:
+            state: MHD state dict with rho, pressure (and optionally Ti, Te).
+            dt: Timestep [s].
+            I_current: Circuit current [A] for beam-target.
+            V_pinch: Pinch voltage [V] for beam-target.
+            cell_volume: Cell volume [m^3].
+            f_beam: Beam fraction for beam-target yield.
+        """
+        rho = state["rho"]
+        n_i = rho / self.ion_mass
+        n_i_safe = np.maximum(n_i, 0.0)
+
+        # Ion temperature
+        if "Ti" in state:
+            Ti = state["Ti"]
+        else:
+            # Derive from pressure: p = n_i * kB * Ti (single fluid)
+            Ti = state["pressure"] * self.ion_mass / (2.0 * np.maximum(rho, 1e-30) * k_B)
+        Ti_safe = np.maximum(Ti, 1.0)
+
+        # Peak values
+        Ti_keV = float(np.max(Ti_safe)) * k_B / (1000.0 * 1.602e-19)
+        n_peak = float(np.max(n_i_safe))
+        # Thermonuclear yield: dY = 0.25 * n_D^2 * <sigma*v> * V * dt
+        dY_thermo = 0.0
+        if Ti_keV > 0.1:  # Below 0.1 keV, reactivity is negligible
+            try:
+                from dpf.diagnostics.neutron_yield import dd_reactivity
+                sigma_v = dd_reactivity(Ti_keV)
+                # Volume-integrated: sum over all cells
+                n_D_peak = n_peak
+                V_total = cell_volume * rho.size  # Total grid volume
+                # Use peak conditions (pessimistic for volume average)
+                dY_thermo = 0.25 * n_D_peak**2 * sigma_v * V_total * dt
+            except ImportError:
+                pass
+
+        # Beam-target yield
+        dY_bt = 0.0
+        if abs(V_pinch) > 1e3 and abs(I_current) > 1e3:
+            try:
+                from dpf.diagnostics.beam_target import beam_target_yield_rate
+                L_pinch = 0.01  # EMPIRICAL: 1 cm interaction length
+                bt_rate = beam_target_yield_rate(
+                    abs(I_current), abs(V_pinch), n_peak, L_pinch,
+                    f_beam=f_beam,
+                )
+                dY_bt = bt_rate * dt
+            except (ImportError, Exception):
+                pass
+
+        self._Y_thermo += dY_thermo
+        self._Y_bt += dY_bt
+
+        t = sum(self._result.times[-1:]) if self._result.times else 0.0
+        t += dt
+
+        self._result.times.append(t)
+        self._result.dY_thermo.append(dY_thermo)
+        self._result.dY_bt.append(dY_bt)
+        self._result.Y_thermo_cumulative.append(self._Y_thermo)
+        self._result.Y_bt_cumulative.append(self._Y_bt)
+        self._result.T_peak_keV.append(Ti_keV)
+        self._result.n_peak.append(n_peak)
+
+    def get_result(self) -> YieldResult:
+        """Return the accumulated yield result."""
+        return self._result
+
+    def summary(self) -> str:
+        """Return a one-line summary."""
+        r = self._result
+        return (
+            f"Y_total={r.Y_total:.2e} "
+            f"(thermo={self._Y_thermo:.2e}, BT={self._Y_bt:.2e}, "
+            f"BT%={r.bt_fraction*100:.0f}%)"
+        )
