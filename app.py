@@ -352,6 +352,16 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         status = "STABLE" if shear["peak_margin"] > 1 else "UNSTABLE"
         parts.append(f"Shear: {shear['peak_margin']:.1f}x ({status})")
 
+    bd = data.get("breakdown")
+    if bd:
+        parts.append(f"Breakdown: {bd['mechanism']} (CIV={bd['civ_ratio']:.1f}x)")
+
+    rad_regime = data.get("radiation_regime")
+    if rad_regime and rad_regime.get("dominant") != "none":
+        dom = rad_regime["dominant"]
+        brem_pct = rad_regime.get("brem_fraction", 0) * 100
+        parts.append(f"Radiation: {dom} ({brem_pct:.0f}% brem)")
+
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
         f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"
