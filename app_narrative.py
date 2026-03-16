@@ -572,6 +572,22 @@ At T_e = {Te_keV:.2f} keV and B_max = {B_max:.1f} T, cyclotron radiation \
 {'is significant' if cyc_pct > 10 else 'is negligible'}. \
 Cyclotron equals bremsstrahlung at B_crit = {B_crit:.0f} T.""")
 
+    # Scaling law analysis
+    try:
+        from dpf.diagnostics.scaling_laws import compute_scaling, scaling_narrative
+        cc_s = d["circuit"]
+        I_pk_kA = d.get("I_peak", 0) * 1e3  # MA to kA
+        E_kJ_s = d.get("E_bank_kJ", 0.5 * cc_s["C"] * cc_s["V0"]**2 / 1e3)
+        scaling = compute_scaling(
+            I_pinch_kA=I_pk_kA,
+            E_bank_kJ=E_kJ_s,
+            a_mm=cc_s["anode_radius"] * 1e3,
+            b_mm=cc_s["cathode_radius"] * 1e3,
+        )
+        sections.append(scaling_narrative(scaling))
+    except (ImportError, Exception):
+        pass
+
     sections.append("""## References
 
 - **Lee S.** "Radiations in Plasmas" (1984) — Original Lee model formulation
