@@ -649,11 +649,13 @@ class TestE2ELifecycle:
 
     def test_field_shapes_match_grid(self, client):
         """Field shapes match the grid_shape from config."""
+        from dpf.presets import get_preset
+        expected_shape = get_preset("tutorial")["grid_shape"]
         sim_id = _create_sim(client, preset="tutorial")
         r = client.get(f"/api/simulations/{sim_id}/fields?fields=rho")
         assert r.status_code == 200
         shape = r.json()["fields"]["rho"]["shape"]
-        assert shape == [8, 8, 8]
+        assert shape == expected_shape
 
     def test_config_validate_roundtrip(self, client):
         """Validate a preset config via the REST endpoint."""
