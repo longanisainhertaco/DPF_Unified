@@ -435,8 +435,31 @@ def run_mhd_simulation(
         ).strip()
     except Exception:
         _git_hash = "unknown"
+    # Scaling law predictions
+    try:
+        from dpf.diagnostics.scaling_laws import compute_scaling
+        cc_s = result.get("circuit", {})
+        if cc_s and result.get("I_peak", 0) > 0:
+            scaling = compute_scaling(
+                I_pinch_kA=result["I_peak"] * 1e3,
+                E_bank_kJ=result.get("E_bank_kJ", 0),
+                a_mm=cc_s.get("anode_radius", 0.01) * 1e3,
+                b_mm=cc_s.get("cathode_radius", 0.03) * 1e3,
+            )
+            result["scaling_laws"] = {
+                "Yn_I4": scaling.Yn_lee_I4,
+                "Yn_I33": scaling.Yn_cross_I33,
+                "Yn_E2": scaling.Yn_energy_E2,
+                "T_bennett_keV": scaling.T_bennett_keV,
+                "r_pinch_mm": scaling.r_pinch_mm,
+                "device_class": scaling.device_class,
+                "saturation": scaling.saturation_flag,
+            }
+    except (ImportError, Exception):
+        pass
+
     result["reproducibility"] = {
-        "version": "v1.2",
+        "version": "v1.3.1",
         "git_hash": _git_hash,
         "timestamp": _dt.now().isoformat(),
         "backend": effective_backend,
