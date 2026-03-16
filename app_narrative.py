@@ -420,6 +420,56 @@ $$\\tau_{{m=0}} = \\frac{{31 \\cdot R_{{cm}}^2 \\sqrt{{P_{{Torr}}}}}}{{CR \\cdot
 If $\\tau_{{exp}} > \\tau_{{m=0}}$, the pinch disrupts via m=0 sausage \
 instability before it can expand --- this limits confinement time."""
 
+    # Reconnection + turbulence section
+    recon = d.get("reconnection")
+    ff = d.get("force_free")
+    turb = d.get("turbulence_spectrum")
+    if recon or ff:
+        recon_text = "\n## Magnetic Topology & Reconnection\n"
+        if recon:
+            recon_text += f"""
+The Lundquist number $S = L v_A \\mu_0 / \\eta = {recon['S_lundquist']:.1e}$ \
+determines the reconnection regime:
+
+| Regime | $S$ range | Physics |
+|--------|-----------|---------|
+| Collisionless | $S < 100$ | Kinetic effects dominate |
+| Sweet-Parker | $100 < S < 10^4$ | Slow reconnection, $v_{{in}}/v_A \\sim S^{{-1/2}}$ |
+| Plasmoid | $S > 10^4$ | Sheet fragments into magnetic islands (Loureiro 2007) |
+
+**This simulation**: {recon['regime']} regime, reconnection rate = \
+{recon['rate']:.1e}, SP sheet thickness = {recon['delta_sp_mm']:.2f} mm."""
+            if recon.get("plasmoid_unstable"):
+                recon_text += f" Estimated ~{recon['n_plasmoids_est']} plasmoids."
+
+        if ff:
+            status = "relaxed (force-free)" if ff["is_relaxed"] else "non-equilibrium"
+            recon_text += f"""
+
+**Force-free analysis** (Turner 1993): The magnetic field is \
+**{status}** with $|J \\times B| / (|J||B|)$ = {ff['force_free_error']:.0%}. \
+A force-free state ($\\nabla \\times B = \\alpha B$) indicates magnetic \
+relaxation has occurred, often associated with plasmoid-mediated \
+fast energy release (PMFE) events in DPF (Auluck 2023)."""
+
+        if turb and turb.get("has_spectrum"):
+            idx = turb["spectral_index"]
+            if idx < -2:
+                turb_type = "steeper than Kolmogorov (strong dissipation)"
+            elif idx < -1.5:
+                turb_type = "near Kolmogorov $k^{-5/3}$ (hydrodynamic turbulence)"
+            elif idx < -1:
+                turb_type = "near Iroshnikov-Kraichnan $k^{-3/2}$ (MHD turbulence)"
+            else:
+                turb_type = "shallow spectrum (insufficient turbulence)"
+            recon_text += f"""
+
+**Energy spectrum**: spectral index = {idx:.2f} ({turb_type}). \
+MHD turbulence in Z-pinches typically shows $k^{{-3/2}}$ to $k^{{-5/3}}$ \
+in the inertial range (Biskamp 1993)."""
+
+        sections.append(recon_text)
+
     ny = d.get("neutron_yield")
     if ny and ny.get("Y_neutron", 0) > 0:
         T_eff = ny.get("T_eff_keV", ny.get("T_bennett_keV", 0.5))
@@ -772,6 +822,30 @@ def _summary_section(
         V_kV = ny.get("V_pinch_kV", 0)
         if V_kV > 1:
             lines.append(f"| Pinch voltage | {V_kV:.0f} kV |")
+
+    # Reconnection diagnostic
+    recon = d.get("reconnection")
+    if recon:
+        lines.append(f"| Lundquist S | {recon['S_lundquist']:.1e} |")
+        lines.append(f"| Reconnection regime | {recon['regime']} |")
+        if recon.get("plasmoid_unstable"):
+            lines.append(f"| Plasmoid estimate | ~{recon['n_plasmoids_est']} |")
+
+    # Force-free diagnostic
+    ff = d.get("force_free")
+    if ff:
+        status = "YES" if ff["is_relaxed"] else "NO"
+        lines.append(f"| Force-free relaxed | {status} (err={ff['force_free_error']:.0%}) |")
+
+    # Turbulence spectrum
+    turb = d.get("turbulence_spectrum")
+    if turb and turb.get("has_spectrum"):
+        lines.append(f"| Spectral index | {turb['spectral_index']:.2f} |")
+
+    # Advanced physics modules
+    adv = d.get("advanced_physics", [])
+    if adv:
+        lines.append(f"| Active modules | {', '.join(adv)} |")
 
     lines.extend([
         f"| Bank energy | {E_kJ:.0f} kJ |",
