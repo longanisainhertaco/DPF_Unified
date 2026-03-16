@@ -154,6 +154,8 @@ async function createDPFScene(canvas, data) {
     -Math.PI / 4, Math.PI / 3, G.cathode_radius * 7,
     new BABYLON.Vector3(G.anode_length / 2, 0, 0), scene);
   cam.attachControl(canvas, true);
+  // Prevent scroll from bubbling to parent iframe/page
+  canvas.addEventListener("wheel", function(e) { e.preventDefault(); }, { passive: false });
   cam.lowerRadiusLimit = G.anode_radius * 0.2;
   cam.upperRadiusLimit = G.cathode_radius * 60;
   cam.wheelPrecision = 12;
@@ -236,6 +238,10 @@ async function createDPFScene(canvas, data) {
     );
     rod.material = steelMat;
     rod.renderingGroupId = 1;
+    // Depth occluder for each rod (same technique as anode)
+    const rodOcc = rod.clone("rodOcc" + i);
+    rodOcc.material = occMat;
+    rodOcc.renderingGroupId = 0;
     cathodeRods.push(rod);
   }
 
@@ -643,7 +649,15 @@ async function createDPFScene(canvas, data) {
       } else {
         sheath.scaling.set(1, 1, 1);
       }
-      sheathMat.alpha = 0.45 + Math.abs(f.I) * 0.2;
+      // Sheath alpha: proportional to current (fades as current decays after pinch)
+      const sheathAlpha = Math.min(0.7, 0.1 + Math.abs(f.I / S.I_peak) * 0.6);
+      sheathMat.alpha = sheathAlpha;
+      // After pinch: sheath is gone (plasma has disrupted)
+      if ((f.phase === "post_pinch" || f.phase === "reflected") && Math.abs(f.I / S.I_peak) < 0.1) {
+        sheath.isVisible = false;
+      } else {
+        sheath.isVisible = true;
+      }
 
       // Trail
       const tLen = Math.max(isP ? G.anode_length : f.z, 0.2);
@@ -710,31 +724,41 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // B-field lines: scale with compression ratio
-      // During radial phase, inner field lines compress inward
-      // B_theta ~ I/r, so as r shrinks, B gets stronger (brighter)
+      // B-field lines: scale with CURRENT (B_theta = mu0*I/(2*pi*r))
+      // Brightness ~ |I|/I_peak, compression during radial phase
+      const Ifrac = Math.abs(f.I) / Math.max(S.I_peak, 0.001);
       for (let fli = 0; fli < fieldLines.length; fli++) {
         if (!fieldLines[fli].isVisible) continue;
         const fld = fieldLineData[fli];
         if (!fld) continue;
-        // Scale the torus Y/Z to match compression
+        const bStr = 1 - fld.ri / N_RADII;
+
+        // Brightness proportional to current (B ~ I)
+        if (fieldLines[fli].material) {
+          fieldLines[fli].material.alpha = Math.min(0.85, (0.1 + bStr * 0.3) * Ifrac * 2);
+          if (fieldLines[fli].material.emissiveColor) {
+            const glow = Math.min(1, Ifrac * 1.5);
+            fieldLines[fli].material.emissiveColor.set(
+              0.1 + bStr * 0.3 * glow, 0.3 + bStr * 0.5 * glow, 0.7 + bStr * 0.3 * glow
+            );
+          }
+        }
+
+        // Compression during radial phase
         if (isP) {
           const scaleFactor = cr + (1 - cr) * (fld.ri / N_RADII);
           fieldLines[fli].scaling.y = Math.max(0.05, scaleFactor);
           fieldLines[fli].scaling.z = Math.max(0.05, scaleFactor);
-          // Brighter when compressed (B ~ 1/r)
-          if (fieldLines[fli].material && fieldLines[fli].material.emissiveColor) {
-            const boost = 1 / Math.max(scaleFactor, 0.1);
-            const bStr = 1 - fld.ri / N_RADII;
-            fieldLines[fli].material.alpha = Math.min(0.9, (0.35 + bStr * 0.35) * Math.min(boost, 3));
-          }
         } else {
           fieldLines[fli].scaling.y = 1;
           fieldLines[fli].scaling.z = 1;
         }
-        // Move to sheath position during rundown
+
+        // During rundown: forward field lines track sheath position
         if (f.phase === "rundown" && fld.zi >= 2) {
           fieldLines[fli].position.x = Math.min(fld.zPos, f.z);
+        } else {
+          fieldLines[fli].position.x = fld.zPos;
         }
       }
 
