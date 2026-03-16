@@ -1,0 +1,224 @@
+{
+  "n_devices": 25,
+  "devices": [
+    {
+      "name": "FAETON-I",
+      "I_peak_MA": 0.87,
+      "I_pinch_MA": null,
+      "Yn": 25300000000.0,
+      "anode_r_cm": 5.0,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12581, 1.2 Torr",
+      "I_peak_MA": 1.165,
+      "I_pinch_MA": 0.523,
+      "Yn": 6140000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12582, 1.2 Torr",
+      "I_peak_MA": 1.303,
+      "I_pinch_MA": 0.389,
+      "Yn": 1510000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12583, 1.2 Torr",
+      "I_peak_MA": 1.335,
+      "I_pinch_MA": 0.39,
+      "Yn": 1540000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12584, 1.2 Torr",
+      "I_peak_MA": 1.228,
+      "I_pinch_MA": 0.404,
+      "Yn": 1550000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12586, 1.2 Torr",
+      "I_peak_MA": 1.237,
+      "I_pinch_MA": 0.365,
+      "Yn": 1000000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12587, 1.2 Torr",
+      "I_peak_MA": 1.135,
+      "I_pinch_MA": 0.413,
+      "Yn": 1830000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12588, 1.2 Torr",
+      "I_peak_MA": 1.285,
+      "I_pinch_MA": 0.312,
+      "Yn": 320000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12589, 1.2 Torr",
+      "I_peak_MA": 1.321,
+      "I_pinch_MA": 0.312,
+      "Yn": 330000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12590, 1.05 Tor",
+      "I_peak_MA": 1.314,
+      "I_pinch_MA": 0.368,
+      "Yn": 1200000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12592, 1.05 Tor",
+      "I_peak_MA": 1.151,
+      "I_pinch_MA": 0.438,
+      "Yn": 2530000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12593, 1.05 Tor",
+      "I_peak_MA": 1.192,
+      "I_pinch_MA": 0.262,
+      "Yn": 170000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12594, 1.05 Tor",
+      "I_peak_MA": 1.224,
+      "I_pinch_MA": 0.332,
+      "Yn": 420000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12595, 1.05 Tor",
+      "I_peak_MA": 1.269,
+      "I_pinch_MA": 0.391,
+      "Yn": 1530000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12596, 1.05 Tor",
+      "I_peak_MA": 1.131,
+      "I_pinch_MA": 0.434,
+      "Yn": 1850000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12597, 1.05 Tor",
+      "I_peak_MA": 1.231,
+      "I_pinch_MA": 0.449,
+      "Yn": 2640000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12598, 1.05 Tor",
+      "I_peak_MA": 1.169,
+      "I_pinch_MA": 0.302,
+      "Yn": 310000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12599, 1.05 Tor",
+      "I_peak_MA": 1.223,
+      "I_pinch_MA": 0.304,
+      "Yn": 310000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12600, 1.05 Tor",
+      "I_peak_MA": 1.328,
+      "I_pinch_MA": 0.296,
+      "Yn": 330000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12601, 1.05 Tor",
+      "I_peak_MA": 1.263,
+      "I_pinch_MA": 0.348,
+      "Yn": 620000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12602, 1.05 Tor",
+      "I_peak_MA": 1.214,
+      "I_pinch_MA": 0.422,
+      "Yn": 2110000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12603, 1.05 Tor",
+      "I_peak_MA": 1.207,
+      "I_pinch_MA": 0.598,
+      "Yn": 11100000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12604, 1.05 Tor",
+      "I_peak_MA": 1.261,
+      "I_pinch_MA": 0.415,
+      "Yn": 2540000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12605, 1.05 Tor",
+      "I_peak_MA": 1.241,
+      "I_pinch_MA": 0.489,
+      "Yn": 5520000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    },
+    {
+      "name": "PF-1000:Shot 12606, 1.05 Tor",
+      "I_peak_MA": 1.268,
+      "I_pinch_MA": 0.457,
+      "Yn": 4200000000.0,
+      "anode_r_cm": null,
+      "E_kJ": null
+    }
+  ],
+  "power_law_I_peak": {
+    "alpha": -7.438171622583564,
+    "A": 6107259744.215333,
+    "log_A": 22.53274402249439,
+    "r2": 0.2593170346192367,
+    "n": 25
+  },
+  "power_law_I_pinch": {
+    "alpha": 5.515984392296632,
+    "A": 241246225704.44644,
+    "log_A": 26.209083932294718,
+    "r2": 0.9771202333453114,
+    "n": 24
+  },
+  "correlations": {},
+  "pysr": {
+    "status": "not_installed"
+  },
+  "notes": "power_law_I_peak: Yn = A * I_peak^alpha. power_law_I_pinch: Yn = A * I_pinch^alpha (physically motivated \u2014 pinch current drives thermonuclear yield). Published Lee/Saw: alpha in [3.3, 4.5]. PF-1000 24-shot campaign spans narrow I_peak range; shot scatter driven by radial Lee params (fmr, fcr). Correlations in log-space via Spearman rank."
+}
