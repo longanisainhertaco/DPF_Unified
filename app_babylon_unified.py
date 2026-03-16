@@ -177,20 +177,41 @@ window.addEventListener("load", async function(){
     tlProgress.style.width = pct + "%";
     tlProgress.style.background = PHASE_BAR_COLORS[f.phase] || "#48f";
 
-    // Data HUD — structured physics readout
+    // Data HUD — show ALL available physics data
     var lines = [];
     lines.push("t = " + f.t.toFixed(2) + " us");
     lines.push("I = " + f.I.toFixed(3) + " MA  (" +
       (f.I / scene.S.I_peak * 100).toFixed(0) + "%)");
-    if (isP) {
+    // Sheath position during rundown, radius during radial
+    if (!isP) {
+      lines.push("z = " + f.z.toFixed(1) + " mm");
+    } else {
       var ratio = (scene.G.cathode_radius / Math.max(f.r, 0.01)).toFixed(0);
       lines.push("r = " + f.r.toFixed(1) + " mm  (" + ratio + ":1)");
     }
-    if (scene.L.density) lines.push("rho = " + scene.L.density.max_val.toExponential(1) + " kg/m3");
+    // MHD field data (peak values from final state)
+    if (scene.L.density) lines.push("rho_peak = " + scene.L.density.max_val.toExponential(1) + " kg/m3");
     if (scene.L.temperature && scene.L.temperature.max_eV > 1)
-      lines.push("Te = " + scene.L.temperature.max_eV.toFixed(0) + " eV");
-    if (scene.L.bfield) lines.push("|B| = " + scene.L.bfield.max_T.toFixed(1) + " T");
-    if (pI > 0.1 && rippleAmp > 0) lines.push("m=0: " + (rippleAmp * 100).toFixed(0) + "%");
+      lines.push("Te_peak = " + scene.L.temperature.max_eV.toFixed(0) + " eV");
+    if (scene.L.bfield) lines.push("|B|_peak = " + scene.L.bfield.max_T.toFixed(1) + " T");
+    // Instability
+    if (pI > 0.1 && rippleAmp > 0) {
+      lines.push("m=0: " + (rippleAmp * 100).toFixed(0) + "%");
+      if (scene.L.instability) lines.push("tau_m0 = " + scene.L.instability.tau_m0_ns.toFixed(0) + " ns");
+    }
+    // Radiation (MHD only)
+    if (scene.L.radiation && isP)
+      lines.push("P_rad = " + scene.L.radiation.max_W_m3.toExponential(1) + " W/m3");
+    // Neutron yield (deuterium + MHD only)
+    if (scene.L.yield_map && pI > 0.1)
+      lines.push("Yn_rate = " + scene.L.yield_map.max_rate.toExponential(1) + " /m3/s");
+    // Beam ions
+    if (scene.L.beam && pI > 0.3)
+      lines.push("Beam: " + scene.L.beam.n_particles + " ions, " +
+        scene.L.beam.mean_energy_keV.toFixed(0) + " keV mean");
+    // Pinch metrics
+    if (scene.L.pinch && isP)
+      lines.push("Pinch r = " + scene.L.pinch.radius_mm.toFixed(2) + " mm");
     hudEl.textContent = lines.join("\n");
   }
 
