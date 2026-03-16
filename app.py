@@ -362,6 +362,12 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         brem_pct = rad_regime.get("brem_fraction", 0) * 100
         parts.append(f"Radiation: {dom} ({brem_pct:.0f}% brem)")
 
+    regime = data.get("plasma_regime")
+    if regime:
+        Kn = regime.get("knudsen", 0)
+        regime_tag = "KINETIC" if regime.get("kinetic_needed") else "MHD"
+        parts.append(f"Regime: {regime_tag} (Kn={Kn:.2f})")
+
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
         f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"

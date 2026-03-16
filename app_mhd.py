@@ -396,6 +396,35 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Plasma regime classification
+    if final_state is not None:
+        try:
+            from dpf.diagnostics.regime_classifier import classify_regime
+            rho_f = final_state["rho"]
+            Te_f = final_state.get("Te")
+            if Te_f is None:
+                Te_f = final_state["pressure"] * gas["m_mol"] / (2.0 * rho_f * kB)
+            B_f = final_state.get("B")
+            B_mag_f = float(np.max(np.sqrt(np.sum(B_f**2, axis=0)))) if B_f is not None else 0.0
+            Te_eV = float(np.max(Te_f)) * kB / 1.602e-19
+            ne_peak = float(np.max(rho_f)) / gas["m_mol"]
+            regime = classify_regime(
+                n_e=ne_peak, T_e_eV=Te_eV, B_T=B_mag_f,
+                L_m=min(b - a, 0.01), ion_mass_kg=gas["m_mol"],
+            )
+            result["plasma_regime"] = {
+                "lundquist_S": regime.lundquist_S,
+                "magnetic_reynolds": regime.magnetic_reynolds,
+                "beta": regime.beta,
+                "knudsen": regime.knudsen,
+                "mhd_valid": regime.mhd_valid,
+                "kinetic_needed": regime.kinetic_needed,
+                "recommended_backend": regime.recommended_backend,
+                "summary": regime.regime_summary,
+            }
+        except (ImportError, Exception):
+            pass
+
     # Reproducibility metadata
     import subprocess as _sp
     from datetime import datetime as _dt
