@@ -232,7 +232,7 @@ def run_mhd_simulation(
     elif backend.startswith("metal"):
         result = _run_metal(
             backend, grid_shape, dr, dz, gas, rho0, p_pa,
-            cc, t_end, a, b, L_anode, progress_fn,
+            cc, sc, t_end, a, b, L_anode, progress_fn,
             **adv_physics,
         )
     elif backend == "athena":
@@ -253,7 +253,7 @@ def run_mhd_simulation(
             backend = "metal_plm"
             result = _run_metal(
                 backend, grid_shape, dr, dz, gas, rho0, p_pa,
-                cc, t_end, a, b, L_anode, progress_fn,
+                cc, sc, t_end, a, b, L_anode, progress_fn,
                 **adv_physics,
             )
             result["backend"] = "metal_plm (fallback from athena)"
@@ -284,7 +284,7 @@ def run_mhd_simulation(
             logger.info("Python backend redirected to metal_plm (stability)")
             result = _run_metal(
                 "metal_plm", grid_shape, dr, dz, gas, rho0, p_pa,
-                cc, t_end, a, b, L_anode, progress_fn,
+                cc, sc, t_end, a, b, L_anode, progress_fn,
                 **adv_physics,
             )
             result["backend"] = "metal_plm (redirected from python)"
@@ -1180,7 +1180,7 @@ def _run_metal(
     grid_shape: tuple[int, int, int],
     dr: float, dz: float,
     gas: dict, rho0: float, p_pa: float,
-    cc: dict, t_end: float,
+    cc: dict, sc: dict, t_end: float,
     a: float, b: float, L_anode: float,
     progress_fn=None,
     enable_fld: bool = False,
@@ -1189,13 +1189,23 @@ def _run_metal(
     enable_nernst: bool = False,
     enable_cr: bool = False,
 ) -> dict[str, Any]:
-    """Run Metal GPU MHD solver."""
+    """Run Metal GPU MHD solver with Lee model axial rundown initialization.
+
+    Phase 1 (Lee): Snowplow model sweeps gas along anode (0D, fast).
+        Provides: circuit state (I, V), swept mass, sheath position at transition.
+    Phase 2 (MHD): Metal solver takes over at radial phase onset.
+        IC: compressed gas annulus with B_theta from circuit current.
+
+    For 3D Cartesian (metal_3d), the Lee phase is skipped since the 0D
+    axisymmetric snowplow model doesn't map to 3D Cartesian geometry.
+    """
     import torch
 
     from dpf.circuit.rlc_solver import RLCSolver
     from dpf.core.bases import CouplingState
     from dpf.metal.metal_solver import MetalMHDSolver
 
+    mu_0 = 4.0 * np.pi * 1e-7
     cfg = BACKEND_CONFIGS.get(backend, BACKEND_CONFIGS["metal_plm"])
 
     use_mps = cfg["precision"] != "float64" and torch.backends.mps.is_available()
@@ -1203,20 +1213,12 @@ def _run_metal(
 
     is_3d = backend == "metal_3d"
     coord_type = "cartesian" if is_3d else "cylindrical"
-    # For 3D Cartesian, use isotropic dx (average of dr and dz)
     solver_dx = (dr + dz) / 2.0 if is_3d else dr
     solver_dz = solver_dx if is_3d else dz
 
-    solver = MetalMHDSolver(
-        grid_shape=grid_shape, dx=solver_dx, dz=solver_dz,
-        gamma=gas.get("gamma", 5 / 3),
-        cfl=0.3, device=device,
-        use_ct=False,
-        coordinates=coord_type,
-        ion_mass=gas["m_mol"],
-        **cfg,
-    )
+    nr, ny, nz = grid_shape
 
+    # ---- Phase 1: Lee model axial rundown (skip for 3D Cartesian) ----
     circuit = RLCSolver(
         C=cc["C"], V0=cc["V0"], L0=cc["L0"],
         R0=cc.get("R0", 0.0),
@@ -1228,41 +1230,184 @@ def _run_metal(
         crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
-    nr, ny, nz = grid_shape
-    rho_ic = np.full((nr, ny, nz), rho0)
-
-    # 3D Cartesian: seed azimuthal density perturbation for filamentation
-    if is_3d:
-        x = (np.arange(nr) - nr / 2.0 + 0.5) * solver_dx
-        y = (np.arange(ny) - ny / 2.0 + 0.5) * solver_dx
-        X, Y = np.meshgrid(x, y, indexing="ij")
-        theta = np.arctan2(Y, X)
-        # m=1 kink + m=4 filamentary perturbation at 1% amplitude
-        for m in (1, 4):
-            pert = 0.01 * rho0 * np.cos(m * theta)  # EMPIRICAL: 1% amplitude
-            rho_ic += pert[:, :, np.newaxis]
-        rho_ic = np.maximum(rho_ic, rho0 * 0.01)  # floor
-
-    state = {
-        "rho": rho_ic,
-        "velocity": np.zeros((3, nr, ny, nz)),
-        "pressure": np.full((nr, ny, nz), p_pa),
-        "B": np.zeros((3, nr, ny, nz)),
-        "Te": np.full((nr, ny, nz), 300.0),
-        "Ti": np.full((nr, ny, nz), 300.0),
-        "psi": np.zeros((nr, ny, nz)),
-    }
-    # B starts at zero — no current flows until the circuit fires.
-    # The circuit solver drives B_theta growth via dI/dt coupling.
-
-    coupling = CouplingState()
-    t = 0.0
     times, currents, voltages, L_plasmas = [], [], [], []
     E_cap, E_ind, E_res = [], [], []
     rho_max_arr, T_max_arr, B_max_arr = [], [], []
+    sheath_zs, shock_rs, phases_list = [], [], []
+
+    t = 0.0
+    coupling = CouplingState()
+    lee_steps = 0
+    handoff_time = None
+    snowplow = None
+
+    fc = sc.get("current_fraction", 0.7)
+    fm = sc.get("mass_fraction", 0.15)
+    fmr = sc.get("radial_mass_fraction", fm)
+    z_f = sc.get("pinch_column_fraction", 1.0) * L_anode
+
+    if not is_3d:
+        from dpf.fluid.snowplow import SnowplowModel
+
+        snowplow = SnowplowModel(
+            anode_radius=a, cathode_radius=b,
+            fill_density=rho0,
+            anode_length=L_anode,
+            mass_fraction=fm,
+            fill_pressure_Pa=sc.get("fill_pressure_Pa", p_pa),
+            current_fraction=fc,
+            radial_mass_fraction=sc.get("radial_mass_fraction", None),
+            pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
+        )
+
+        L_total = cc["L0"] + 1e-9
+        T_LC = 2 * np.pi * np.sqrt(L_total * cc["C"])
+        dt_lee = T_LC / 5000
+
+        while t < t_end:
+            sp = snowplow.step(dt_lee, circuit.current)
+            coupling.Lp = sp["L_plasma"]
+            coupling.dL_dt = sp["dL_dt"]
+            coupling.R_plasma = sp.get("R_plasma", 0.0)
+            coupling = circuit.step(coupling, back_emf=0.0, dt=dt_lee)
+            t += dt_lee
+            lee_steps += 1
+
+            times.append(t * 1e6)
+            currents.append(circuit.current / 1e6)
+            voltages.append(circuit.voltage / 1e3)
+            L_plasmas.append(coupling.Lp * 1e9)
+            E_cap.append(circuit.state.energy_cap / 1e3)
+            E_ind.append(circuit.state.energy_ind / 1e3)
+            E_res.append(circuit.state.energy_res / 1e3)
+            sheath_zs.append(sp["z_sheath"] * 1e3)
+            shock_rs.append(sp["r_shock"] * 1e3)
+            phases_list.append(sp["phase"])
+            rho_max_arr.append(rho0)
+            T_max_arr.append(300.0)
+            B_max_arr.append(0.0)
+
+            if progress_fn and lee_steps % 200 == 0:
+                progress_fn(
+                    min(t / t_end, 0.3),
+                    desc=f"Lee rundown: t={t*1e6:.1f}us, z={sp['z_sheath']*1e3:.0f}mm",
+                )
+
+            if sp["phase"] == "radial":
+                handoff_time = t
+                break
+
+        if handoff_time is None:
+            # Never reached radial phase — return Lee-only results
+            logger.warning("Metal+Lee: Lee model didn't reach radial phase in %.1f us", t_end * 1e6)
+            t_arr = np.array(times)
+            I_arr = np.array(currents)
+            I_peak_idx = int(np.argmax(np.abs(I_arr)))
+            return {
+                "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+                "L_p_nH": np.array(L_plasmas),
+                "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+                "E_res_kJ": np.array(E_res),
+                "z_mm": np.array(sheath_zs), "r_mm": np.array(shock_rs),
+                "phases": phases_list,
+                "I_peak": float(np.abs(I_arr[I_peak_idx])),
+                "t_peak": float(t_arr[I_peak_idx]),
+                "n_steps": lee_steps,
+                "has_snowplow": True, "has_mhd": False,
+                "mhd_snapshots": [], "final_state": None,
+                "dip_pct": 0.0, "I_pre_dip": float(np.abs(I_arr[I_peak_idx])),
+                "I_dip": 0.0, "t_dip": 0.0,
+                "scaling": None, "crowbar_t": None,
+                "snowplow_obj": snowplow, "dt_ns": dt_lee * 1e9,
+                "rho_max": np.array(rho_max_arr),
+                "T_max": np.array(T_max_arr),
+                "B_max": np.array(B_max_arr),
+            }
+
+    # ---- Phase 2: MHD radial implosion (Metal solver) ----
+    I_handoff = circuit.current
+
+    # MHD domain: radial extent = cathode - anode, axial = z_f
+    dr_mhd = (b - a) / nr
+    dz_mhd = z_f / max(nz, 1)
+    solver_dx_mhd = (dr_mhd + dz_mhd) / 2.0 if is_3d else dr_mhd
+    solver_dz_mhd = solver_dx_mhd if is_3d else dz_mhd
+
+    solver = MetalMHDSolver(
+        grid_shape=grid_shape, dx=solver_dx_mhd, dz=solver_dz_mhd,
+        gamma=gas.get("gamma", 5 / 3),
+        cfl=0.3, device=device,
+        use_ct=False,
+        coordinates=coord_type,
+        ion_mass=gas["m_mol"],
+        **cfg,
+    )
+
+    if is_3d:
+        # 3D: uniform IC with azimuthal perturbation (no Lee phase)
+        rho_ic = np.full((nr, ny, nz), rho0)
+        x = (np.arange(nr) - nr / 2.0 + 0.5) * solver_dx_mhd
+        y = (np.arange(ny) - ny / 2.0 + 0.5) * solver_dx_mhd
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        theta = np.arctan2(Y, X)
+        for m in (1, 4):
+            pert = 0.01 * rho0 * np.cos(m * theta)  # EMPIRICAL: 1% amplitude
+            rho_ic += pert[:, :, np.newaxis]
+        rho_ic = np.maximum(rho_ic, rho0 * 0.01)
+
+        state = {
+            "rho": rho_ic,
+            "velocity": np.zeros((3, nr, ny, nz)),
+            "pressure": np.full((nr, ny, nz), p_pa),
+            "B": np.zeros((3, nr, ny, nz)),
+            "Te": np.full((nr, ny, nz), 300.0),
+            "Ti": np.full((nr, ny, nz), 300.0),
+            "psi": np.zeros((nr, ny, nz)),
+        }
+    else:
+        # Cylindrical: build physically motivated IC from Lee handoff state.
+        # Swept mass concentrated near cathode (outer boundary), unswept gas inside,
+        # B_theta = mu_0 * fc * I / (2*pi*r) from circuit current (magnetic piston).
+        r_cells = np.linspace(a + dr_mhd * 0.5, b - dr_mhd * 0.5, nr)
+
+        rho_bg = rho0 * (1.0 - fmr)
+        n_sheath = max(int(0.2 * nr), 2)
+        rho_mhd = np.full((nr, ny, nz), rho_bg)
+        shell_vol = sum(
+            2.0 * np.pi * r_cells[nr - n_sheath + i] * dr_mhd * dz_mhd
+            for i in range(n_sheath)
+        )
+        swept_mass_per_z = fmr * rho0 * np.pi * (b**2 - a**2)
+        rho_sheath = swept_mass_per_z * dz_mhd / max(shell_vol, 1e-30)
+        rho_mhd[nr - n_sheath:, :, :] = max(rho_sheath, rho_bg * 2.0)
+
+        B_theta_1d = mu_0 * fc * I_handoff / (2.0 * np.pi * r_cells)
+        B_mhd = np.zeros((3, nr, ny, nz))
+        B_mhd[1] = B_theta_1d[:, np.newaxis, np.newaxis]
+
+        state = {
+            "rho": rho_mhd,
+            "velocity": np.zeros((3, nr, ny, nz)),
+            "pressure": np.full((nr, ny, nz), p_pa),
+            "B": B_mhd,
+            "Te": np.full((nr, ny, nz), 300.0),
+            "Ti": np.full((nr, ny, nz), 300.0),
+            "psi": np.zeros((nr, ny, nz)),
+        }
+
+    # Continue from handoff state
+    rho_max_arr.append(float(np.max(state["rho"])))
+    T_max_arr.append(300.0)
+    B_max_arr.append(float(np.max(np.abs(state.get("B", np.zeros(1))))))
     mhd_snapshots = []
-    _target_snaps_metal = 30
-    snap_interval = 3  # recalculated after first step
+
+    t_mhd_start = t
+    mhd_step = 0
+    prev_Lp = coupling.Lp if not is_3d else 0.0
+    _MAX_BEMF = 50e3  # [V]
+    _target_snaps = 30
+    snap_interval = 3
+    _cr_fracs = None
 
     # Time-resolved yield tracker
     yield_tracker = None
@@ -1272,14 +1417,10 @@ def _run_metal(
     except ImportError:
         pass
 
-    _cr_fracs = None  # CR ionization charge-state fractions
-    prev_Lp = 0.0  # Initialize to zero; first step computes Lp, second gets valid dL/dt
-    mu_0 = 4.0 * np.pi * 1e-7
-    # Build r_cells for cylindrical cell volume computation
+    # r_cells for Lp computation (cylindrical only)
     if not is_3d:
-        r_cells_metal = np.linspace(a + dr * 0.5, b - dr * 0.5, nr)
+        r_cells_lp = np.linspace(a + dr_mhd * 0.5, b - dr_mhd * 0.5, nr)
 
-    step = 0
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
         dt = min(dt_mhd, t_end - t)
@@ -1327,10 +1468,10 @@ def _run_metal(
         # Advanced physics operator-split (FLD, sheath, ablation, Nernst, CR)
         any_adv = enable_fld or enable_sheath or enable_ablation or enable_nernst or enable_cr
         if any_adv:
-            solver_dx = (dr + dz) / 2.0 if is_3d else dr
-            solver_dz_adv = solver_dx if is_3d else dz
+            adv_dx = (dr_mhd + dz_mhd) / 2.0 if is_3d else dr_mhd
+            adv_dz = adv_dx if is_3d else dz_mhd
             state, _cr_fracs = _apply_advanced_physics(
-                state, dt, gas, solver_dx, solver_dz_adv, a, b,
+                state, dt, gas, adv_dx, adv_dz, a, b,
                 enable_fld=enable_fld, enable_sheath=enable_sheath,
                 enable_ablation=enable_ablation, enable_nernst=enable_nernst,
                 enable_cr=enable_cr, cr_fractions=_cr_fracs,
@@ -1338,35 +1479,31 @@ def _run_metal(
 
         # Time-resolved yield accumulation
         if yield_tracker is not None:
-            # Estimate V_pinch from dL/dt * I
             V_p = abs(coupling.dL_dt) * abs(circuit.current) if coupling.dL_dt else 0.0
-            cell_vol = dr * dr * dz if is_3d else dr * (b - a) / nr * dz
+            cell_vol = dr_mhd * dr_mhd * dz_mhd if is_3d else dr_mhd * (b - a) / nr * dz_mhd
             yield_tracker.accumulate(
                 state, dt,
                 I_current=circuit.current, V_pinch=V_p,
                 cell_volume=cell_vol,
             )
 
-        # Compute L_plasma from density profile using Lee-model formula.
-        # L_p = (mu_0/2pi) * L_anode * ln(b/r_eff)
-        # r_eff = density-weighted mean radius (effective compression radius)
-        mu_0 = 4.0 * np.pi * 1e-7
+        # Compute L_plasma from density profile (Lee-model formula)
         if not is_3d:
             rho_mid = state["rho"][:, ny // 2, nz // 2]
-            r_cells_lp = np.linspace(a + dr * 0.5, b - dr * 0.5, nr)
-            weights = np.maximum(rho_mid - rho0, 0.0)
+            rho_bg_lp = rho0 * (1.0 - fmr)
+            weights = np.maximum(rho_mid - rho_bg_lp, 0.0)
             w_sum = float(np.sum(weights))
             if w_sum > 0:
                 r_eff = float(np.sum(r_cells_lp * weights)) / w_sum
             else:
                 r_eff = b
             r_eff = max(r_eff, a * 0.01)
-            Lp_mhd = (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
+            L_axial_frozen = coupling.Lp if mhd_step == 0 else (mu_0 / (2.0 * np.pi)) * np.log(b / a) * sc.get("anode_length", L_anode)
+            Lp_mhd = L_axial_frozen + (mu_0 / (2.0 * np.pi)) * z_f * np.log(b / r_eff)
         else:
-            # 3D: use midplane density to estimate compression
             mid = nr // 2
             rho_line = state["rho"][:, mid, nz // 2]
-            r_vals_3d = np.linspace(-b + solver_dx * 0.5, b - solver_dx * 0.5, nr)
+            r_vals_3d = np.linspace(-b + solver_dx_mhd * 0.5, b - solver_dx_mhd * 0.5, nr)
             r_abs = np.abs(r_vals_3d)
             weights = np.maximum(rho_line - rho0, 0.0)
             w_sum = float(np.sum(weights))
@@ -1375,11 +1512,7 @@ def _run_metal(
             Lp_mhd = (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
         I_current = circuit.current
 
-        # Back-EMF from changing plasma inductance: V_back = (dL/dt) * I
-        # Clamp to prevent numerical instability from Lp jumps at handoff
-        # or from numerical diffusion artifacts on coarse grids.
-        # Max physically reasonable back-EMF for any DPF: ~50 kV
-        _MAX_BEMF = 50e3  # [V]
+        # Back-EMF from changing plasma inductance
         if prev_Lp is not None and prev_Lp > 0 and dt > 0:
             dLdt_mhd = (Lp_mhd - prev_Lp) / dt
             back_emf = float(np.clip(dLdt_mhd * I_current, -_MAX_BEMF, _MAX_BEMF))
@@ -1388,16 +1521,15 @@ def _run_metal(
             back_emf = 0.0
         prev_Lp = Lp_mhd
 
-        # Feed MHD-computed inductance back to circuit
         coupling.Lp = Lp_mhd
         coupling.dL_dt = dLdt_mhd
         coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
         t += dt
-        step += 1
+        mhd_step += 1
 
-        if step == 1 and dt > 0:
-            est_total = max(1, int(t_end / dt))
-            snap_interval = max(1, est_total // _target_snaps_metal)
+        if mhd_step == 1 and dt > 0:
+            est_total = max(1, int((t_end - t_mhd_start) / dt))
+            snap_interval = max(1, est_total // _target_snaps)
 
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
@@ -1406,11 +1538,26 @@ def _run_metal(
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
+
+        if not is_3d:
+            # Use Lee z_sheath for axial phase, frozen for MHD phase
+            sheath_zs.append(sp["z_sheath"] * 1e3)
+            # Compute effective compression radius from MHD density
+            rho_mid_r = state["rho"][:, ny // 2, nz // 2]
+            r_grid = np.linspace(a, b, nr)
+            rho_sum = np.sum(rho_mid_r)
+            r_eff_mm = float(np.sum(rho_mid_r * r_grid) / rho_sum * 1e3) if rho_sum > 0 else a * 1e3
+            shock_rs.append(r_eff_mm)
+        else:
+            sheath_zs.append(L_anode * 1e3)
+            shock_rs.append(0.0)
+        phases_list.append("mhd_radial")
+
         rho_max_arr.append(float(np.max(state["rho"])))
         T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * 3.34e-27 / (2.0 * state["rho"] * 1.380649e-23)))))
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
-        if step % snap_interval == 0:
+        if mhd_step % snap_interval == 0:
             mhd_snapshots.append({
                 "t_us": t * 1e6,
                 "rho_mid": state["rho"][:, ny // 2, :].copy(),
@@ -1418,12 +1565,36 @@ def _run_metal(
                 "P_mid": state["pressure"][:, ny // 2, :].copy(),
             })
 
-        if progress_fn and step % 50 == 0:
-            progress_fn(min(t / t_end, 1.0), desc=f"MHD t={t*1e6:.1f}us, step={step}")
+        if progress_fn and mhd_step % 20 == 0:
+            progress_fn(
+                min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0),
+                desc=f"MHD radial: t={t*1e6:.1f}us, step={mhd_step}",
+            )
 
     t_arr = np.array(times)
     I_arr = np.array(currents)
-    I_peak_idx = int(np.argmax(np.abs(I_arr)))
+    I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
+
+    # Dip detection: Lee-phase peak vs MHD-phase minimum
+    lee_I_indices = [i for i, p in enumerate(phases_list) if p != "mhd_radial"]
+    if lee_I_indices:
+        lee_peak_idx = lee_I_indices[int(np.argmax(np.abs(I_arr[lee_I_indices])))]
+        I_pre_dip = float(np.abs(I_arr[lee_peak_idx]))
+        t_pre_dip = float(t_arr[lee_peak_idx])
+    else:
+        I_pre_dip = float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0
+        t_pre_dip = float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0.0
+
+    mhd_I_indices = [i for i, p in enumerate(phases_list) if p == "mhd_radial"]
+    if mhd_I_indices:
+        mhd_min_idx = mhd_I_indices[int(np.argmin(np.abs(I_arr[mhd_I_indices])))]
+        I_dip = float(np.abs(I_arr[mhd_min_idx]))
+        t_dip = float(t_arr[mhd_min_idx])
+        dip_pct = (1 - I_dip / I_pre_dip) * 100 if I_pre_dip > 0 else 0
+    else:
+        I_dip = I_pre_dip
+        t_dip = t_pre_dip
+        dip_pct = 0.0
 
     result = {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
@@ -1435,26 +1606,34 @@ def _run_metal(
         "B_max": np.array(B_max_arr),
         "mhd_snapshots": mhd_snapshots,
         "final_state": state,
-        "I_peak": float(np.abs(I_arr[I_peak_idx])),
-        "t_peak": float(t_arr[I_peak_idx]),
-        "n_steps": step,
-        "has_snowplow": False,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0,
+        "t_peak": float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0,
+        "n_steps": lee_steps + mhd_step,
+        "has_snowplow": not is_3d,
         "has_mhd": True,
-        "phases": ["mhd"] * len(times),
-        "z_mm": np.full(len(times), L_anode * 1e3),
-        "r_mm": np.zeros(len(times)),
-        "dip_pct": 0.0, "I_pre_dip": float(np.abs(I_arr[I_peak_idx])),
-        "I_dip": 0.0, "t_dip": 0.0,
+        "phases": phases_list,
+        "z_mm": np.array(sheath_zs) if sheath_zs else np.full(len(times), L_anode * 1e3),
+        "r_mm": np.array(shock_rs) if shock_rs else np.zeros(len(times)),
+        "I_pre_dip": I_pre_dip,
+        "t_pre_dip": t_pre_dip if not is_3d else 0.0,
+        "I_dip": I_dip,
+        "t_dip": t_dip,
+        "dip_pct": dip_pct,
         "scaling": None, "crowbar_t": None,
-        "snowplow_obj": None, "dt_ns": 0,
+        "snowplow_obj": snowplow, "dt_ns": 0,
     }
+
+    if not is_3d and handoff_time is not None:
+        result["handoff_time_us"] = handoff_time * 1e6
+        result["lee_steps"] = lee_steps
+        result["mhd_steps"] = mhd_step
 
     # Attach time-resolved yield data
     if yield_tracker is not None:
         yr = yield_tracker.get_result()
         if yr.Y_total > 0:
             result["yield_time_resolved"] = {
-                "times_us": [t * 1e6 for t in yr.times],
+                "times_us": [t_v * 1e6 for t_v in yr.times],
                 "dY_thermo": yr.dY_thermo,
                 "dY_bt": yr.dY_bt,
                 "Y_thermo_cumulative": yr.Y_thermo_cumulative,
