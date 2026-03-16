@@ -180,6 +180,14 @@ class FluidConfig(BaseModel):
         True,
         description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
+    enable_poloidal: bool = Field(
+        False,
+        description=(
+            "Enable Auluck poloidal B-field via GV surface mechanism. "
+            "EXPERIMENTAL: adds dynamo-generated B_z from geomagnetic seed. "
+            "Ref: Auluck 2024, Phys. Plasmas 31, 010704."
+        ),
+    )
     enable_ohmic_correction: bool = Field(
         True,
         description=(

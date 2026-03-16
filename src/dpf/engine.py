@@ -1034,6 +1034,22 @@ class SimulationEngine:
             self._apply_nernst(dt, Z_bar)
             self._sanitize_state("after Nernst step")
 
+        # === Step 3a2: Auluck poloidal B-field (EXPERIMENTAL) ===
+        # Adds dynamo-generated B_z from GV surface mechanism.
+        # Ref: Auluck 2024, Phys. Plasmas 31, 010704.
+        if fc.enable_poloidal:
+            from dpf.experimental.poloidal_bfield import add_poloidal_field
+
+            cc = self.config.circuit
+            dx = self.config.dx
+            dz_cfg = self.config.geometry.dz
+            dz = dz_cfg if dz_cfg else dx
+            self.state = add_poloidal_field(
+                self.state, self.circuit.current,
+                cc.anode_radius, cc.cathode_radius,
+                self.config.rho0, dx, dz,
+            )
+
         # === Step 3b: Sheath boundary conditions ===
         if self.sheath_cfg.enabled:
             Te_bc = self.state["Te"]
