@@ -38,6 +38,17 @@ _HTML_HEAD = (
     "  #badge{position:absolute;top:70px;left:12px;z-index:10;pointer-events:none;"
     "background:rgba(20,30,60,0.8);border:1px solid rgba(100,160,255,0.3);"
     "border-radius:6px;padding:6px 12px;font:12px/1.5 monospace;color:#8af}\n"
+    # Layer toggles panel (HTML, not Babylon.GUI — scales on Retina)
+    "  #layers{position:absolute;bottom:70px;left:10px;z-index:12;"
+    "background:rgba(5,8,20,0.85);border:1px solid rgba(80,120,200,0.2);"
+    "border-radius:8px;padding:10px 14px;font:14px/1.8 'Helvetica Neue',Arial,sans-serif;"
+    "color:#cdf;max-height:50vh;overflow-y:auto}\n"
+    "  #layers label{display:flex;align-items:center;gap:8px;cursor:pointer;"
+    "padding:2px 0;transition:color 0.15s}\n"
+    "  #layers label:hover{color:#fff}\n"
+    "  #layers input[type=checkbox]{width:18px;height:18px;accent-color:#48f;cursor:pointer}\n"
+    "  #layers .hdr{color:#8af;font-weight:bold;font-size:13px;margin-top:6px;"
+    "margin-bottom:2px;letter-spacing:0.5px}\n"
     # Transport bar
     "  #bar{position:absolute;bottom:0;left:0;right:0;z-index:10;"
     "display:flex;gap:10px;align-items:center;justify-content:center;"
@@ -68,6 +79,7 @@ _HTML_HEAD = (
     '<div id="hud"></div>\n'
     '<div id="badge"></div>\n'
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
+    '<div id="layers"></div>\n'
     '<div id="bar">\n'
     '  <button id="pb">&#9654; Play</button>\n'
     '  <button id="sb">&#10074;&#10074; Pause</button>\n'
@@ -192,102 +204,77 @@ window.addEventListener("load", async function(){
     renderFrame(fi);
   };
   document.getElementById("rb").onclick = function() {
-    fi = 0; sl.value = 0; playing = false;
+    fi = 0; smoothFi = 0; sl.value = 0; playing = false;
     tl.textContent = "t = 0 us";
     renderFrame(0);
   };
   sl.oninput = function() {
-    fi = +sl.value;
+    fi = +sl.value; smoothFi = fi;
     renderFrame(fi);
     tl.textContent = "t = " + scene.S.frames[fi].t.toFixed(1) + " us";
   };
 
-  // ---- GUI Panel (layer toggles with dark background) ----
-  var ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+  // ---- Layer toggles (HTML DOM — scales properly on Retina) ----
+  var lp = document.getElementById("layers");
 
-  var panelBg = new BABYLON.GUI.Rectangle("panelBg");
-  panelBg.width = "240px"; panelBg.adaptHeightToChildren = true;
-  panelBg.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-  panelBg.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
-  panelBg.left = "8px"; panelBg.top = "68px";
-  panelBg.background = "rgba(5,8,20,0.75)";
-  panelBg.color = "rgba(80,120,200,0.2)";
-  panelBg.thickness = 1;
-  panelBg.cornerRadius = 8;
-  panelBg.paddingBottom = "8px";
-  ui.addControl(panelBg);
-
-  var panel = new BABYLON.GUI.StackPanel();
-  panel.width = "220px"; panel.isVertical = true;
-  panel.paddingTop = "8px"; panel.paddingLeft = "8px";
-  panelBg.addControl(panel);
-
-  function addHeader(text, color) {
-    var h = new BABYLON.GUI.TextBlock();
-    h.text = text; h.color = color; h.fontSize = 14; h.fontWeight = "bold";
-    h.height = "26px";
-    h.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-    panel.addControl(h);
+  function addHdr(text) {
+    var d = document.createElement("div");
+    d.className = "hdr"; d.textContent = text;
+    lp.appendChild(d);
   }
-  function addToggle(label, initial, fn, enabled) {
-    if (enabled === false) return;
-    var cb = BABYLON.GUI.Checkbox.AddCheckBoxWithHeader(label, function(v) { fn(v); });
-    cb.children[0].isChecked = initial; cb.children[0].color = "#7af";
-    cb.children[0].width = "22px"; cb.children[0].height = "22px";
-    cb.children[1].color = "#cdf"; cb.children[1].fontSize = 13; cb.height = "30px";
-    panel.addControl(cb); fn(initial);
+  function addTog(label, checked, fn) {
+    var lb = document.createElement("label");
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = checked;
+    cb.onchange = function() { fn(cb.checked); };
+    lb.appendChild(cb);
+    lb.appendChild(document.createTextNode(label));
+    lp.appendChild(lb);
+    fn(checked);
   }
 
-  addHeader("Layers", "#8af");
-  addToggle("Electrodes", true, function(v) {
+  addHdr("LAYERS");
+  addTog("Electrodes", true, function(v) {
     scene.anode.isVisible = v;
     scene.cathodeRods.forEach(function(r) { r.isVisible = v; });
     scene.insulator.isVisible = v;
   });
-  addToggle("Current Sheath", true, function(v) {
+  addTog("Current Sheath", true, function(v) {
     scene.sheath.isVisible = v; scene.trail.isVisible = v;
   });
-  addToggle("Plasma Ions", true, function(v) {
+  addTog("Plasma Ions", true, function(v) {
     if (v) scene.ps.start(); else scene.ps.stop();
   });
-  addToggle("Pinch Column", true, function(v) {
+  addTog("Pinch Column", true, function(v) {
     scene.pinch.isVisible = v; scene.halo.isVisible = v;
   });
-  addToggle("B-Field Lines", !!scene.L.bfield, function(v) {
+  addTog("B-Field Lines", !!scene.L.bfield, function(v) {
     scene.fieldLines.forEach(function(l) { l.isVisible = v; });
   });
 
-  // Only show overlay options if MHD data exists
-  if (scene.L.density || scene.L.temperature || scene.L.bfield) {
-    addHeader("Field Overlay", "#fa8");
-    addToggle("None", true, function(v) { if (v) scene.setOverlay("none"); });
-    addToggle("Density", false, function(v) { if (v) scene.setOverlay("density"); }, !!scene.L.density);
-    addToggle("Temperature", false, function(v) { if (v) scene.setOverlay("temperature"); }, !!scene.L.temperature);
-    addToggle("|B| Magnetic", false, function(v) { if (v) scene.setOverlay("bfield"); }, !!scene.L.bfield);
-    addToggle("Radiation", false, function(v) { if (v) scene.setOverlay("radiation"); }, !!scene.L.radiation);
-    addToggle("Yield Map", false, function(v) { if (v) scene.setOverlay("yield_map"); }, !!scene.L.yield_map);
-  }
-
-  addHeader("Rendering", "#af8");
-  addToggle("Cividis (colorblind)", false, function(v) { scene.setCmap(v); });
-  addToggle("Bloom", true, function(v) { scene.pipeline.bloomEnabled = v; });
+  addHdr("RENDERING");
+  addTog("Bloom", true, function(v) { scene.pipeline.bloomEnabled = v; });
   if (scene.ssao) {
-    addToggle("Ambient Occlusion", true, function(v) {
+    addTog("Ambient Occlusion", true, function(v) {
       scene.ssao.totalStrength = v ? 0.8 : 0;
     });
   }
 
-  // ---- Render loop ----
+  // ---- Render loop (smooth interpolated playback) ----
+  var smoothFi = 0;
   scene.engine.runRenderLoop(function() {
     try {
       if (playing) {
-        var now = performance.now();
-        if (now - lastAdv > frameMS()) {
-          fi = (fi + 1) % scene.S.n_frames;
+        var speed = SPEEDS[speedIdx] || 1;
+        // Advance by fractional frames for smooth motion
+        smoothFi += speed * 0.016 * 60 / Math.max(scene.S.n_frames, 1) * 2;
+        if (smoothFi >= scene.S.n_frames) smoothFi = 0;
+        var newFi = Math.floor(smoothFi);
+        if (newFi !== fi) {
+          fi = newFi;
           sl.value = fi;
           tl.textContent = "t = " + scene.S.frames[fi].t.toFixed(1) + " us";
           renderFrame(fi);
-          lastAdv = now;
         }
       }
       scene.scene.render();
