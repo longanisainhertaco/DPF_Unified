@@ -588,6 +588,23 @@ Cyclotron equals bremsstrahlung at B_crit = {B_crit:.0f} T.""")
     except (ImportError, Exception):
         pass
 
+    # Quality assessment
+    try:
+        from dpf.validation.quality_assessment import assess_quality
+        qa = assess_quality(d)
+        qa_lines = [
+            f"## Simulation Quality: Grade {qa.grade} ({qa.score*100:.0f}%)",
+            "",
+            "| Check | Status | Details |",
+            "|-------|--------|---------|",
+        ]
+        for c in qa.checks:
+            icon = "PASS" if c.passed else "FAIL"
+            qa_lines.append(f"| {c.name} | **{icon}** | {c.message} |")
+        sections.append("\n".join(qa_lines))
+    except (ImportError, Exception):
+        pass
+
     sections.append("""## References
 
 - **Lee S.** "Radiations in Plasmas" (1984) — Original Lee model formulation
