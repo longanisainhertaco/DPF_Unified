@@ -632,16 +632,26 @@ def _run_hybrid_lee_mhd(
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
 
-        # Radiation cooling: bremsstrahlung
+        # Radiation cooling: improved model (T-dependent Gaunt + cyclotron)
         if "Te" in state:
             try:
-                from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                from dpf.radiation.improved_radiation import apply_improved_radiation_losses
                 rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
                 ne = rho_safe / gas["m_mol"]
                 Z_eff = gas.get("Z", 1)
-                state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=Z_eff)
+                B_field = state.get("B")
+                B_mag = np.sqrt(np.sum(B_field**2, axis=0)) if B_field is not None else None
+                state["Te"], _ = apply_improved_radiation_losses(
+                    state["Te"], ne, dt, Z=Z_eff, B_mag=B_mag,
+                )
             except ImportError:
-                pass
+                try:
+                    from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                    rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                    ne = rho_safe / gas["m_mol"]
+                    state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=gas.get("Z", 1))
+                except ImportError:
+                    pass
 
         # Compute L_plasma from MHD density profile using Lee-model formula.
         # Extract effective compression radius from density, then use the
@@ -867,16 +877,26 @@ def _run_metal(
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
         )
 
-        # Radiation cooling: bremsstrahlung
+        # Radiation cooling: improved model (T-dependent Gaunt + cyclotron)
         if "Te" in state:
             try:
-                from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                from dpf.radiation.improved_radiation import apply_improved_radiation_losses
                 rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
                 ne = rho_safe / gas["m_mol"]
                 Z_eff = gas.get("Z", 1)
-                state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=Z_eff)
+                B_field = state.get("B")
+                B_mag = np.sqrt(np.sum(B_field**2, axis=0)) if B_field is not None else None
+                state["Te"], _ = apply_improved_radiation_losses(
+                    state["Te"], ne, dt, Z=Z_eff, B_mag=B_mag,
+                )
             except ImportError:
-                pass
+                try:
+                    from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                    rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                    ne = rho_safe / gas["m_mol"]
+                    state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=gas.get("Z", 1))
+                except ImportError:
+                    pass
 
         # Compute L_plasma from density profile using Lee-model formula.
         # L_p = (mu_0/2pi) * L_anode * ln(b/r_eff)
