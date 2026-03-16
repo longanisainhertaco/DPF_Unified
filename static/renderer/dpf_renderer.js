@@ -148,6 +148,24 @@ async function createDPFScene(canvas, data) {
   cam.minZ = 0.0005;
   cam.inertia = 0.88;
 
+  // Auto-orbit: slow rotation when not interacting
+  var autoOrbit = true;
+  var userInteracting = false;
+  var interactionTimeout = null;
+  canvas.addEventListener("pointerdown", function() {
+    userInteracting = true; autoOrbit = false;
+    if (interactionTimeout) clearTimeout(interactionTimeout);
+  });
+  canvas.addEventListener("pointerup", function() {
+    userInteracting = false;
+    interactionTimeout = setTimeout(function() { autoOrbit = true; }, 5000);
+  });
+  scene.registerBeforeRender(function() {
+    if (autoOrbit && !userInteracting) {
+      cam.alpha += 0.001;
+    }
+  });
+
   // ---- Lighting ----
   var hemiLight = new BABYLON.HemisphericLight("hemi",
     new BABYLON.Vector3(0, 1, 0), scene);
