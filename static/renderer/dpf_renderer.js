@@ -23,7 +23,8 @@
 // ============================================================
 // Constants
 // ============================================================
-const HDR_ENV = "https://assets.babylonjs.com/environments/environmentSpecular.env";
+// Studio softbox: small (203KB), clean metallic reflections
+const HDR_ENV = "https://assets.babylonjs.com/environments/Studio_Softbox_2Umbrellas_cube_specular.env";
 
 const VIRIDIS = [
   [0.267,0.004,0.329],[0.283,0.141,0.458],[0.254,0.265,0.530],[0.207,0.372,0.553],
@@ -266,18 +267,26 @@ async function createDPFScene(canvas, data) {
   // ============================================================
   // PINCH COLUMN (tube with m=0 instability ripple)
   // ============================================================
-  const pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
-  pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
-  pinchMat.disableLighting = true;
+  // Pinch material: try NME fire shader, fall back to Fresnel StandardMaterial
+  let pinchMat;
+  let pinchNME = false;
+  try {
+    pinchMat = await BABYLON.NodeMaterial.ParseFromSnippetAsync("ELI67P", scene);
+    pinchMat.alpha = 0;
+    pinchMat.backFaceCulling = false;
+    pinchNME = true;
+  } catch (_) {
+    pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
+    pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
+    pinchMat.disableLighting = true;
+    pinchMat.backFaceCulling = false;
+    pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
+    pinchMat.emissiveFresnelParameters.bias = 0.2;
+    pinchMat.emissiveFresnelParameters.power = 3;
+    pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
+    pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
+  }
   pinchMat.alpha = 0;
-  pinchMat.backFaceCulling = false;
-
-  // Fresnel on pinch: hot core, bright edges
-  pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-  pinchMat.emissiveFresnelParameters.bias = 0.2;
-  pinchMat.emissiveFresnelParameters.power = 3;
-  pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
-  pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
 
   const N_PINCH = 24;
   const pinchPath = [];
@@ -501,7 +510,7 @@ async function createDPFScene(canvas, data) {
 
     // Scene objects for animation
     sheath, sheathMat, trail, trailMat,
-    pinch, pinchMat, halo, haloMat,
+    pinch, pinchMat, pinchNME, halo, haloMat,
     pinchRadii, haloRadii, pinchPath, N_PINCH,
     anode, cathodeRods, insulator,
     ps, psEmitter,
