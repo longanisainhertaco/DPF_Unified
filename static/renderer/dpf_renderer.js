@@ -626,7 +626,7 @@ async function createDPFScene(canvas, data) {
       trail.scaling.x = tLen;
       trail.position.x = tLen / 2;
       if (isP) {
-        var trailScale = Math.max(0.05, cr * 0.8);
+        var trailScale = Math.max(0.05, cr);
         trail.scaling.y = trailScale;
         trail.scaling.z = trailScale;
       } else {
@@ -642,7 +642,7 @@ async function createDPFScene(canvas, data) {
 
       for (var pk = 0; pk <= N_PINCH; pk++) {
         var zFrac = pk / N_PINCH;
-        var baseR = cr * G.cathode_radius * 0.4;
+        var baseR = cr * G.cathode_radius;
         var ripple = rippleAmp * baseR * Math.cos(4 * Math.PI * zFrac);
         pinchRadii[pk] = Math.max(0.001, baseR + ripple);
         haloRadii[pk] = Math.max(0.002, (baseR + ripple) * 1.8);
@@ -697,8 +697,8 @@ async function createDPFScene(canvas, data) {
           ps.gravity = new BABYLON.Vector3(5, 0, 0);
           ps.minEmitPower = 3; ps.maxEmitPower = 12;
         } else {
-          ps.gravity = new BABYLON.Vector3(0, -compR * 0.5, 0);
-          ps.minEmitPower = 1.5; ps.maxEmitPower = 6;
+          ps.gravity = new BABYLON.Vector3(0, 0, 0);
+          ps.minEmitPower = 0.5; ps.maxEmitPower = 2;
         }
       }
 
