@@ -56,7 +56,7 @@ PUBLISHED_DATA: dict[str, dict[str, float]] = {
         "source": "Goyon et al. (2025), Offermann et al. (2021)",
     },
     "pf400j": {
-        "I_peak_kA": 123.0,  # Soto et al. 2009, base RLC amplitude
+        "I_peak_kA": 104.0,  # Damped peak (123 kA is undamped I_sc, not measured)
         "t_peak_us": 0.291,
         "Yn": 1e4,
         "source": "Soto et al., PSST 18:015007 (2009)",
