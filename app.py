@@ -32,7 +32,7 @@ _VERSION = "v1.2"
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section
-from app_plasma_renderer import create_babylon_iframe
+from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
@@ -526,18 +526,10 @@ def run_simulation(
             f'style="width:100%;height:620px;border:none;background:#111;"></iframe>'
         )
 
-    # Lee model cross-section animation (always available, shows plasma formation)
-    xsec_fig = create_lee_cross_section(data)
-    if xsec_fig is not None:
-        xsec_html = xsec_fig.to_html(
-            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
-        )
-        xsec_escaped = xsec_html.replace("&", "&amp;").replace('"', "&quot;")
-        xsec_anim = (
-            f'<iframe srcdoc="{xsec_escaped}" '
-            f'style="width:100%;height:450px;border:none;background:#111;"></iframe>'
-        )
-    else:
+    # Babylon.js 2D cross-section (replaces Plotly version)
+    try:
+        xsec_anim = create_cross_section_iframe(data, height=450)
+    except Exception:
         xsec_anim = ""
 
     # Babylon.js 3D renderer
