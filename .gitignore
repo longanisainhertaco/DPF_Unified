@@ -73,3 +73,5 @@ docs/gemini-strategy-query-*.md
 scripts/consolidate_tests.py
 tests/CONSOLIDATION_PLAN.md
 reference/
+docs/research-reference/core-dpf/
+docs/research-reference/adjacent-fields/
