@@ -332,6 +332,11 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     if plasmoids and plasmoids.get("n_plasmoids", 0) > 0:
         parts.append(f"Plasmoids: {plasmoids['n_plasmoids']}")
 
+    shear = data.get("shear_stabilization")
+    if shear and shear.get("peak_margin", 0) > 0.1:
+        status = "STABLE" if shear["peak_margin"] > 1 else "UNSTABLE"
+        parts.append(f"Shear: {shear['peak_margin']:.1f}x ({status})")
+
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
         f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"

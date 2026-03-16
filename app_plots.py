@@ -449,6 +449,24 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
                 showlegend=True,
             ), row=1, col=1)
 
+    # Shear stabilization annotation on position panel (row 2)
+    shear = d.get("shear_stabilization")
+    if shear and shear.get("peak_margin", 0) > 0.1:
+        margin = shear["peak_margin"]
+        status = "STABLE" if margin > 1 else "UNSTABLE"
+        color = "#66BB6A" if margin > 1 else "#EF5350"
+        fig.add_annotation(
+            x=0.98, y=0.95,
+            xref="x2 domain", yref="y2 domain",
+            text=f"Shear: {margin:.1f}x ({status})",
+            showarrow=False,
+            font=dict(size=11, color=color),
+            bgcolor="rgba(0,0,0,0.5)",
+            bordercolor=color,
+            borderwidth=1,
+            xanchor="right",
+        )
+
     fig.update_xaxes(title_text="Time [us]", row=3, col=1)
 
     fig.update_layout(
