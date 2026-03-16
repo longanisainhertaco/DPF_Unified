@@ -32,6 +32,7 @@ _VERSION = "v1.2"
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section
+from app_plasma_renderer import create_babylon_iframe
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
@@ -539,6 +540,12 @@ def run_simulation(
     else:
         xsec_anim = ""
 
+    # Babylon.js 3D renderer
+    try:
+        babylon_html = create_babylon_iframe(data, height=580)
+    except Exception:
+        babylon_html = ""
+
     narrative = generate_narrative(data)
     val = validate_against_published(data, preset_name)
     val_md = format_validation_markdown(val)
@@ -562,7 +569,8 @@ def run_simulation(
 
     return (
         metrics, narrative,
-        fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d, xsec_anim, anim_html,
+        fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d,
+        xsec_anim, babylon_html, anim_html,
         fig_compare, compare_md,
         csv_path, data, runs,
     )
@@ -788,12 +796,21 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
                     "Run a simulation, then press Play to watch the plasma form.</div>",
                 )
-            with gr.Tab("3D Playback"):
+            with gr.Tab("3D Plasma (Babylon.js)"):
                 gr.Markdown(
-                    "**What you're seeing:** An animated 3D replay of the plasma evolution. "
-                    "Use the Play button or drag the slider to watch the current sheath accelerate "
-                    "along the anode, then implode radially to form the pinch. The animation speed is "
-                    "not real-time -- the actual process takes microseconds (millionths of a second)."
+                    "**Interactive 3D plasma visualization** powered by Babylon.js (WebGPU/WebGL). "
+                    "Orbit the camera by dragging. The gold cylinder is the anode, gray wireframe "
+                    "is the cathode. Blue particles = current sheath sweeping gas. Red glow = "
+                    "pinch plasma where fusion occurs. Press Play to animate."
+                )
+                fig_babylon = gr.HTML(
+                    value="<div style='color:#999;padding:40px;text-align:center;'>"
+                    "Run a simulation to see the interactive 3D plasma.</div>",
+                )
+            with gr.Tab("3D Playback (Plotly)"):
+                gr.Markdown(
+                    "**Plotly 3D replay** of the plasma evolution. "
+                    "Use Play or drag the slider. For better graphics, see the Babylon.js tab above."
                 )
                 fig_anim = gr.HTML(
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
@@ -1005,7 +1022,8 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
         outputs=[
             metrics_md, narrative_md,
             fig_waveform, fig_physics, fig_portrait,
-            fig_geometry, fig_3d_plot, fig_xsec, fig_anim,
+            fig_geometry, fig_3d_plot,
+            fig_xsec, fig_babylon, fig_anim,
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],
