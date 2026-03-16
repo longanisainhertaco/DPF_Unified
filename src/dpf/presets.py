@@ -59,6 +59,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "fill_pressure_Pa": 400,     # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,
             "mass_fraction": 0.15,
+            "pinch_column_fraction": 1.0,
         },
     },
     "pf1000": {
@@ -487,6 +488,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "fill_pressure_Pa": 900,     # 9 mbar = 900 Pa
             "current_fraction": 0.7,
             "mass_fraction": 0.15,       # EMPIRICAL: small DPF
+            "pinch_column_fraction": 1.0,
         },
         "breakdown": {
             "gas_species": "D2",

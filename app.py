@@ -263,7 +263,13 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
             f"Grid: {grid[0]}x{grid[1]}x{grid[2]} = {total_cells:,} cells "
             f"(~{mem_mb:.0f} MB)\n\n{help_text}"
         )
-    return [gr.update(visible=is_lee), gr.update(visible=not is_lee), info]
+    is_mhd = not is_lee
+    return [
+        gr.update(visible=is_lee),
+        gr.update(visible=is_mhd),
+        info,
+        gr.update(visible=is_mhd),  # advanced physics accordion
+    ]
 
 
 def _validate_inputs(
@@ -376,6 +382,10 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     except (ImportError, Exception):
         pass
 
+    adv = data.get("advanced_physics", [])
+    if adv:
+        parts.append(f"Physics+: {', '.join(adv)}")
+
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
         f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"
@@ -430,6 +440,7 @@ def run_simulation(
     V0_kV, C_uF, L0_nH, R0_mOhm,
     anode_r, cathode_r, anode_len,
     fc, fm, crowbar_on, crowbar_R, pressure,
+    enable_fld, enable_sheath, enable_ablation, enable_nernst, enable_cr,
     comparison_runs,
     experimental_csv=None,
     progress=gr.Progress(),  # noqa: B008
@@ -461,6 +472,9 @@ def run_simulation(
                 C_uF=C_uF, L0_nH=L0_nH, R0_mOhm=R0_mOhm,
                 anode_r_mm=anode_r, cathode_r_mm=cathode_r, anode_len_mm=anode_len,
                 progress_fn=progress,
+                enable_fld=enable_fld, enable_sheath=enable_sheath,
+                enable_ablation=enable_ablation, enable_nernst=enable_nernst,
+                enable_cr=enable_cr,
             )
     except Exception as exc:
         raise gr.Error(f"Simulation failed ({backend}): {exc}") from exc
@@ -602,6 +616,19 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
             runtime_est = gr.Markdown(
                 value=f"**< 2 seconds** | Lee model (0D)\n\n*{BACKEND_HELP['lee']}*",
             )
+            with gr.Accordion("Advanced Physics Modules", open=False, visible=False) as adv_physics_acc:
+                gr.Markdown("Enable dormant physics modules (operator-split into MHD loop). "
+                            "Each adds realism but increases runtime.")
+                chk_fld = gr.Checkbox(label="FLD Radiation Transport (Levermore-Pomraning)",
+                                      value=False, info="Flux-limited diffusion for radiation energy transport")
+                chk_sheath = gr.Checkbox(label="Sheath BC (Bohm criterion)",
+                                         value=False, info="Plasma-electrode boundary conditions at anode surface")
+                chk_ablation = gr.Checkbox(label="Electrode Ablation (Cu)",
+                                           value=False, info="Mass injection from anode surface erosion")
+                chk_nernst = gr.Checkbox(label="Nernst B-field Advection",
+                                         value=False, info="Magnetic field swept by temperature gradients (Braginskii)")
+                chk_cr = gr.Checkbox(label="CR Ionization (non-LTE)",
+                                     value=False, info="Collisional-radiative charge state evolution")
             preset_dd = gr.Dropdown(
                 choices=get_preset_choices(), value="pf1000",
                 label="Device Preset",
@@ -927,7 +954,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
 
     # ---- Event wiring ----
     settings_inputs = [backend_dd, grid_dd, sim_time]
-    settings_outputs = [lee_params, grid_dd, runtime_est]
+    settings_outputs = [lee_params, grid_dd, runtime_est, adv_physics_acc]
     for trigger in (backend_dd.change, grid_dd.change, sim_time.change):
         trigger(fn=on_settings_change, inputs=settings_inputs, outputs=settings_outputs)
 
@@ -944,6 +971,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
         inp_V0, inp_C, inp_L0, inp_R0,
         inp_anode_r, inp_cathode_r, inp_anode_len,
         inp_fc, inp_fm, inp_crowbar, inp_crowbar_R, inp_pressure,
+        chk_fld, chk_sheath, chk_ablation, chk_nernst, chk_cr,
     ]
 
     run_btn.click(
