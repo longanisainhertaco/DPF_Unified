@@ -456,3 +456,259 @@ def create_babylon_iframe(d: dict[str, Any], height: int = 580) -> str:
         f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking" '
         f'sandbox="allow-scripts allow-same-origin"></iframe>'
     )
+
+
+def create_cross_section_renderer(d: dict[str, Any]) -> str:
+    """Babylon.js 2D cross-section: r-z plane with electrodes + glowing sheath + pinch."""
+    render_data = _simulation_to_render_data(d)
+    data_json = json.dumps(render_data)
+
+    return f"""<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+  html,body{{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#060610}}
+  #renderCanvas{{width:100%;height:100%;touch-action:none;display:block}}
+  #hud{{position:absolute;top:6px;left:10px;color:#9cf;font:12px/1.5 monospace;pointer-events:none;z-index:10;text-shadow:0 0 4px #00f6}}
+  #ctrl{{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.5);padding:5px 12px;border-radius:6px}}
+  #ctrl button{{background:#1a1a2e;color:#9cf;border:1px solid #336;padding:3px 10px;border-radius:3px;cursor:pointer;font:11px monospace}}
+  #ctrl button:hover{{background:#223}}
+  #tSlider{{width:240px;accent-color:#48f}}
+  #tLabel{{color:#8af;font:11px monospace;min-width:80px}}
+</style>
+<script src="{BABYLON_CDN}"></script>
+</head>
+<body>
+<canvas id="renderCanvas"></canvas>
+<div id="hud">Loading...</div>
+<div id="ctrl">
+  <button id="playBtn">Play</button>
+  <button id="pauseBtn">Pause</button>
+  <input type="range" id="tSlider" min="0" max="1" step="1" value="0">
+  <span id="tLabel">t=0.0 us</span>
+</div>
+<script>
+const D = {data_json};
+const PC = {{
+  rundown:[0.15,0.4,1.0], radial:[1.0,0.25,0.08], mhd_radial:[1.0,0.25,0.08],
+  reflected:[1.0,0.55,0.0], pinch:[1.0,0.08,0.03], post_pinch:[0.7,0.15,0.08]
+}};
+const PL = {{
+  rundown:"Axial rundown — sheath sweeps gas",
+  radial:"Radial implosion — plasma compressing",
+  mhd_radial:"MHD radial implosion",
+  reflected:"Reflected shock",
+  pinch:"Pinch — peak compression",
+  post_pinch:"Post-pinch disruption",
+  none:""
+}};
+
+async function main() {{
+  const canvas = document.getElementById("renderCanvas");
+  const hud = document.getElementById("hud");
+
+  let engine, gpu="WebGL2";
+  try {{
+    if(await BABYLON.WebGPUEngine.IsSupportedAsync){{
+      engine=new BABYLON.WebGPUEngine(canvas,{{antialias:true}});
+      await engine.initAsync(); gpu="WebGPU";
+    }}
+  }}catch(_){{}}
+  if(!engine) engine=new BABYLON.Engine(canvas,true);
+
+  const scene = new BABYLON.Scene(engine);
+  scene.clearColor = new BABYLON.Color4(0.025,0.025,0.05,1);
+
+  // Orthographic camera looking at r-z plane (side view)
+  const span = Math.max(D.cathode_radius*2.5, D.anode_length*1.2);
+  const cam = new BABYLON.FreeCamera("cam", new BABYLON.Vector3(D.anode_length/2, 0, -span*1.5), scene);
+  cam.setTarget(new BABYLON.Vector3(D.anode_length/2, 0, 0));
+  cam.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+  const aspect = canvas.width / canvas.height;
+  cam.orthoTop = span * 0.6;
+  cam.orthoBottom = -span * 0.6;
+  cam.orthoLeft = -span * aspect * 0.6;
+  cam.orthoRight = span * aspect * 0.6;
+
+  const hemi = new BABYLON.HemisphericLight("h", new BABYLON.Vector3(0,0,-1), scene);
+  hemi.intensity = 0.3;
+
+  // ---- Electrodes (2D cross-section = rectangles in x-y plane) ----
+  // Anode: two bars (top + bottom) along z-axis (displayed as x)
+  const a = D.anode_radius, b = D.cathode_radius, L = D.anode_length;
+
+  function makeBar(name, x, y, w, h, color, alpha) {{
+    const bar = BABYLON.MeshBuilder.CreatePlane(name, {{width:w, height:h}}, scene);
+    bar.position.set(x, y, 0);
+    const m = new BABYLON.StandardMaterial(name+"M", scene);
+    m.diffuseColor = new BABYLON.Color3(...color);
+    m.emissiveColor = new BABYLON.Color3(color[0]*0.3, color[1]*0.3, color[2]*0.3);
+    m.alpha = alpha;
+    m.backFaceCulling = false;
+    bar.material = m;
+    return bar;
+  }}
+
+  // Anode bars (copper, top + bottom)
+  makeBar("anodeTop", L/2, a, L, a*0.15, [0.9,0.72,0.18], 0.9);
+  makeBar("anodeBot", L/2, -a, L, a*0.15, [0.9,0.72,0.18], 0.9);
+  // Cathode bars (steel, top + bottom)
+  makeBar("cathTop", L/2, b, L, b*0.08, [0.5,0.5,0.55], 0.7);
+  makeBar("cathBot", L/2, -b, L, b*0.08, [0.5,0.5,0.55], 0.7);
+  // Insulator at z=0
+  makeBar("ins", 0, 0, b*0.06, b*2.2, [0.7,0.5,0.85], 0.5);
+
+  // ---- Swept plasma (trail behind sheath) ----
+  const trailMat = new BABYLON.StandardMaterial("trailM", scene);
+  trailMat.emissiveColor = new BABYLON.Color3(0.08,0.15,0.4);
+  trailMat.alpha = 0.2;
+  trailMat.disableLighting = true;
+  trailMat.backFaceCulling = false;
+  const trail = BABYLON.MeshBuilder.CreatePlane("trail", {{width:1, height:(b-a)*1.8}}, scene);
+  trail.material = trailMat;
+
+  // ---- Current sheath (bright vertical bar) ----
+  const sMat = new BABYLON.StandardMaterial("sM", scene);
+  sMat.emissiveColor = new BABYLON.Color3(0.2,0.5,1.0);
+  sMat.alpha = 0.7;
+  sMat.disableLighting = true;
+  sMat.backFaceCulling = false;
+  const sheathH = (b - a) * 2;
+  const sheathBar = BABYLON.MeshBuilder.CreatePlane("sheath", {{width:b*0.12, height:sheathH}}, scene);
+  sheathBar.material = sMat;
+
+  // ---- Pinch region (glowing rectangle at anode tip) ----
+  const pMat = new BABYLON.StandardMaterial("pM", scene);
+  pMat.emissiveColor = new BABYLON.Color3(1,0.3,0.1);
+  pMat.alpha = 0;
+  pMat.disableLighting = true;
+  pMat.backFaceCulling = false;
+  const pinchRect = BABYLON.MeshBuilder.CreatePlane("pinch", {{width:L*0.35, height:a*0.5}}, scene);
+  pinchRect.position.x = L*0.82;
+  pinchRect.material = pMat;
+
+  // Pinch halo (wider, dimmer)
+  const phMat = new BABYLON.StandardMaterial("phM", scene);
+  phMat.emissiveColor = new BABYLON.Color3(0.8,0.12,0.04);
+  phMat.alpha = 0;
+  phMat.disableLighting = true;
+  phMat.backFaceCulling = false;
+  const pinchHalo = BABYLON.MeshBuilder.CreatePlane("pinchH", {{width:L*0.4, height:a*1.2}}, scene);
+  pinchHalo.position.x = L*0.82;
+  pinchHalo.material = phMat;
+
+  // ---- Glow + Bloom ----
+  const gl = new BABYLON.GlowLayer("gl", scene, {{blurKernelSize:24, mainTextureFixedSize:256}});
+  gl.intensity = 0.6;
+  gl.customEmissiveColorSelector = (mesh,_s,_m,res) => {{
+    const glow=["sheath","pinch","pinchH","trail"];
+    if(glow.includes(mesh.name))
+      res.set(mesh.material.emissiveColor.r,mesh.material.emissiveColor.g,mesh.material.emissiveColor.b,mesh.material.alpha);
+    else res.set(0,0,0,0);
+  }};
+
+  const pp = new BABYLON.DefaultRenderingPipeline("pp",true,scene,[cam]);
+  pp.bloomEnabled = true;
+  pp.bloomThreshold = 0.5;
+  pp.bloomWeight = 0.6;
+  pp.bloomKernel = 48;
+
+  // ---- GPU Particles (small sparks along sheath) ----
+  const useGPU = BABYLON.GPUParticleSystem.IsSupported;
+  const PS = useGPU ? BABYLON.GPUParticleSystem : BABYLON.ParticleSystem;
+  const ps = new PS("sp", {{capacity: useGPU?8000:500}}, scene);
+  ps.emitter = new BABYLON.Vector3(0,0,0);
+  const em = new BABYLON.SphereParticleEmitter();
+  em.radius = (b-a)*0.8;
+  em.radiusRange = 0.5;
+  ps.particleEmitterType = em;
+  ps.minLifeTime=0.04; ps.maxLifeTime=0.12;
+  ps.emitRate = useGPU?3000:200;
+  ps.minSize=0.02; ps.maxSize=0.08;
+  ps.minEmitPower=0.3; ps.maxEmitPower=1.5;
+  ps.addColorGradient(0, new BABYLON.Color4(0.2,0.5,1,0));
+  ps.addColorGradient(0.3, new BABYLON.Color4(0.5,0.8,1,0.8));
+  ps.addColorGradient(1, new BABYLON.Color4(1,0.3,0.1,0));
+  ps.isBillboardBased = true;
+  ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+  ps.particleTexture = new BABYLON.Texture(
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAP0lEQVQY02P4z8DwHwMDw38GBgYGJiCBDYMEMDAw/Gf4z/CfAQv/k4EFA3CAgQkHAAAAAElFTkSuQmCC",scene);
+  ps.start();
+
+  // ---- Animation ----
+  let fi=0, playing=false, lastT=0;
+  const slider=document.getElementById("tSlider");
+  const tl=document.getElementById("tLabel");
+  slider.max=D.n_frames-1;
+
+  function apply(i) {{
+    if(i<0||i>=D.frames.length)return;
+    const f=D.frames[i];
+    const col=PC[f.phase]||[0.3,0.3,0.4];
+    const isPinch=["radial","mhd_radial","pinch","reflected","post_pinch"].includes(f.phase);
+
+    // Sheath bar position + height
+    sheathBar.position.x = isPinch ? L : f.z;
+    const sr = isPinch ? Math.max(f.r, a*0.05) : b;
+    sheathBar.scaling.y = sr / b;  // shrink height during compression
+    sMat.emissiveColor.set(col[0],col[1],col[2]);
+    sMat.alpha = 0.65 + Math.abs(f.I)*0.15;
+
+    // Trail from insulator to sheath
+    const tLen = Math.max(isPinch ? L : f.z, 0.3);
+    trail.scaling.x = tLen;
+    trail.position.x = tLen/2;
+    trailMat.emissiveColor.set(col[0]*0.35, col[1]*0.35, col[2]*0.5);
+    trailMat.alpha = 0.15 + Math.abs(f.I)*0.06;
+
+    // Pinch intensity
+    const cr = Math.max(0.02, f.r/b);
+    const pI = isPinch ? Math.min(1, Math.pow(1-cr,2)*3) : 0;
+    pMat.alpha = pI*0.8;
+    phMat.alpha = pI*0.3;
+    pMat.emissiveColor.set(1, pI*0.5, pI*0.3);
+    pinchRect.scaling.y = Math.max(0.05, cr*1.2);
+    pinchHalo.scaling.y = Math.max(0.08, cr*2.5);
+    gl.intensity = 0.5 + pI*2;
+
+    // Particles at sheath
+    ps.emitter.x = sheathBar.position.x;
+    ps.emitter.z = 0;
+
+    hud.textContent = D.device+" | "+gpu+" | t="+f.t.toFixed(1)+" us | I="+f.I.toFixed(3)+" MA | "+(PL[f.phase]||f.phase);
+  }}
+
+  document.getElementById("playBtn").onclick=()=>{{playing=true}};
+  document.getElementById("pauseBtn").onclick=()=>{{playing=false}};
+  slider.oninput=()=>{{fi=+slider.value;apply(fi);tl.textContent="t="+D.frames[fi].t.toFixed(1)+" us"}};
+
+  engine.runRenderLoop(()=>{{
+    if(playing){{
+      const now=performance.now();
+      if(now-lastT>90){{
+        fi=(fi+1)%D.n_frames;
+        slider.value=fi;
+        tl.textContent="t="+D.frames[fi].t.toFixed(1)+" us";
+        apply(fi);
+        lastT=now;
+      }}
+    }}
+    scene.render();
+  }});
+  window.addEventListener("resize",()=>engine.resize());
+  apply(0);
+  hud.textContent=D.device+" | "+gpu+" | Ready";
+}}
+main().catch(e=>document.getElementById("hud").textContent="Error: "+e.message);
+</script>
+</body></html>"""
+
+
+def create_cross_section_iframe(d: dict[str, Any], height: int = 450) -> str:
+    html = create_cross_section_renderer(d)
+    escaped = html_mod.escape(html, quote=True)
+    return (
+        f'<iframe srcdoc="{escaped}" '
+        f'style="width:100%;height:{height}px;border:none;background:#060610;" '
+        f'sandbox="allow-scripts allow-same-origin"></iframe>'
+    )
