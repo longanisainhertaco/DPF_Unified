@@ -298,14 +298,12 @@ class TestPresets:
         assert "_meta" not in data
 
     def test_get_preset_creates_valid_config(self):
-        """Each preset with grid_shape creates a valid SimulationConfig."""
+        """Each preset creates a valid SimulationConfig."""
         from dpf.config import SimulationConfig
         from dpf.presets import get_preset, get_preset_names
 
         for name in get_preset_names():
             data = get_preset(name)
-            if "grid_shape" not in data:
-                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**data)
             assert config.sim_time > 0
 
@@ -623,11 +621,9 @@ class TestE2ELifecycle:
 
     def test_preset_creates_valid_engine(self, client):
         """Each preset with grid_shape creates a sim that can run at least 1 step."""
-        from dpf.presets import get_preset, get_preset_names
+        from dpf.presets import get_preset_names
 
         for name in get_preset_names():
-            if "grid_shape" not in get_preset(name):
-                continue  # Skip override-only presets (e.g. 'custom')
             r = client.post(
                 "/api/simulations",
                 json={"config": {}, "preset": name, "max_steps": 1},
@@ -1195,8 +1191,6 @@ class TestPresetsBackend:
 
         for name in get_preset_names():
             data = get_preset(name)
-            if "grid_shape" not in data:
-                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**data)
             assert config.fluid.backend in ("python", "athena", "athenak", "metal", "auto")
 

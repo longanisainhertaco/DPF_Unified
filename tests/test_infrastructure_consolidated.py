@@ -962,8 +962,6 @@ class TestPresetSmoke:
 
         for name in get_preset_names():
             preset = get_preset(name)
-            if "grid_shape" not in preset:
-                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**preset)
             engine = SimulationEngine(config)
             engine.run(max_steps=3)

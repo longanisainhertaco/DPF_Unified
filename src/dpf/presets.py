@@ -496,6 +496,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
     },
     "custom": {
+        "grid_shape": [32, 1, 64],
+        "dx": 6e-4,
+        "sim_time": 5e-6,
+        "dt_init": 1e-11,
+        "rho0": 6.5e-4,
+        "T0": 300.0,
         "circuit": {
             "C": 30e-6,        # 30 uF (generic small device)
             "V0": 15000.0,     # 15 kV
@@ -505,12 +511,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.03,  # 30 mm
             "crowbar_enabled": False,
         },
+        "geometry": {"type": "cylindrical"},
         "snowplow": {
             "anode_length": 0.15,         # 150 mm
             "fill_pressure_Pa": 400,
             "current_fraction": 0.7,
             "mass_fraction": 0.15,
+            "pinch_column_fraction": 1.0,
         },
+        "diagnostics": {"hdf5_filename": ":memory:"},
         "_meta": {
             "device": "Custom Device",
             "description": "Blank-slate device — modify all parameters to match your design",
