@@ -1069,11 +1069,15 @@ def _run_hybrid_lee_mhd(
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
         sheath_zs.append(sp["z_sheath"] * 1e3)
-        shock_rs.append(0.0)
+        rho_mid = state["rho"][:, ny // 2, nz // 2]
+        r_grid = np.linspace(a, b, nr)
+        rho_sum = np.sum(rho_mid)
+        r_eff_mm = float(np.sum(rho_mid * r_grid) / rho_sum * 1e3) if rho_sum > 0 else a * 1e3
+        shock_rs.append(r_eff_mm)
         phases_list.append("mhd_radial")
 
         rho_max_arr.append(float(np.max(state["rho"])))
-        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * 3.34e-27 / (2.0 * state["rho"] * 1.380649e-23)))))
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if mhd_step % snap_interval == 0:
@@ -1403,7 +1407,7 @@ def _run_metal(
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
         rho_max_arr.append(float(np.max(state["rho"])))
-        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * 3.34e-27 / (2.0 * state["rho"] * 1.380649e-23)))))
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % snap_interval == 0:
@@ -1437,7 +1441,7 @@ def _run_metal(
         "has_snowplow": False,
         "has_mhd": True,
         "phases": ["mhd"] * len(times),
-        "z_mm": np.zeros(len(times)),
+        "z_mm": np.full(len(times), L_anode * 1e3),
         "r_mm": np.zeros(len(times)),
         "dip_pct": 0.0, "I_pre_dip": float(np.abs(I_arr[I_peak_idx])),
         "I_dip": 0.0, "t_dip": 0.0,
@@ -1586,7 +1590,7 @@ def _run_athena(
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
         rho_max_arr.append(float(np.max(state["rho"])))
-        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] / state["rho"]))))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * 3.34e-27 / (2.0 * state["rho"] * 1.380649e-23)))))
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 80 == 0:
@@ -1619,7 +1623,7 @@ def _run_athena(
         "has_snowplow": False,
         "has_mhd": True,
         "phases": ["mhd"] * len(times),
-        "z_mm": np.zeros(len(times)),
+        "z_mm": np.full(len(times), L_anode * 1e3),
         "r_mm": np.zeros(len(times)),
         "dip_pct": 0.0,
         "I_pre_dip": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0,
@@ -1745,7 +1749,7 @@ def _run_python_mhd(
         E_res.append(circuit.state.energy_res / 1e3)
         rho_max_arr.append(float(np.nanmax(state["rho"])))
         rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
-        T_max_arr.append(float(np.nanmax(state.get("Te", state["pressure"] / rho_safe))))
+        T_max_arr.append(float(np.nanmax(state.get("Te", state["pressure"] * 3.34e-27 / (2.0 * rho_safe * 1.380649e-23)))))
         B_max_arr.append(float(np.nanmax(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 100 == 0:
@@ -1775,7 +1779,7 @@ def _run_python_mhd(
         "has_snowplow": False,
         "has_mhd": True,
         "phases": ["mhd"] * len(times),
-        "z_mm": np.zeros(len(times)),
+        "z_mm": np.full(len(times), L_anode * 1e3),
         "r_mm": np.zeros(len(times)),
         "rho_max": np.array(rho_max_arr),
         "T_max": np.array(T_max_arr),

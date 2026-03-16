@@ -201,7 +201,7 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
         instability = {
             "tau_m0_ns": tau_ns,
             "n_efolds": n_efolds,
-            "amplitude": min(1.0, np.exp(n_efolds) - 1),
+            "amplitude": min(1.0, float(np.expm1(min(n_efolds, 50)))),
         }
 
     return {
