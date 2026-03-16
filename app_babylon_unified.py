@@ -70,9 +70,10 @@ window.addEventListener("load", async function(){
   const spdSlider = document.getElementById("spd");
   const spdLabel = document.getElementById("spdL");
 
-  let scene;
+  var scene;
   try {
     scene = await createDPFScene(canvas, DATA);
+    window._dpf = scene;  // expose for debugging
   } catch(e) {
     hud.textContent = "Engine error: " + e.message + "\n\nCheck browser console (F12) for details.";
     console.error("DPF Renderer Error:", e);
@@ -198,17 +199,22 @@ window.addEventListener("load", async function(){
 
   // ---- Render loop ----
   scene.engine.runRenderLoop(function() {
-    if (playing) {
-      var now = performance.now();
-      if (now - lastAdv > frameMS()) {
-        fi = (fi + 1) % scene.S.n_frames;
-        sl.value = fi;
-        tl.textContent = "t=" + scene.S.frames[fi].t.toFixed(1) + " us";
-        renderFrame(fi);
-        lastAdv = now;
+    try {
+      if (playing) {
+        var now = performance.now();
+        if (now - lastAdv > frameMS()) {
+          fi = (fi + 1) % scene.S.n_frames;
+          sl.value = fi;
+          tl.textContent = "t=" + scene.S.frames[fi].t.toFixed(1) + " us";
+          renderFrame(fi);
+          lastAdv = now;
+        }
       }
+      scene.scene.render();
+    } catch(err) {
+      hud.textContent = "RENDER ERROR at frame " + fi + ":\n" + err.message + "\n" + err.stack.substring(0, 200);
+      console.error("Render loop error:", err);
     }
-    scene.scene.render();
   });
 
   window.addEventListener("resize", function() { scene.engine.resize(); });
