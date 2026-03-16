@@ -190,6 +190,40 @@ def run_mhd_simulation(
         "grid_shape": grid_shape,
     })
 
+    # Phase 1 breakdown diagnostic: CIV or Paschen
+    try:
+        from dpf.experimental.civ_breakdown import (
+            breakdown_narrative,
+            compute_breakdown,
+            compute_initial_sheath_state,
+        )
+        bd = compute_breakdown(
+            V0=cc["V0"],
+            fill_pressure_Pa=p_pa,
+            anode_radius=a,
+            cathode_radius=b,
+            gas_name=gas_key,
+        )
+        bd_state = compute_initial_sheath_state(bd, a, b, p_pa)
+        result["breakdown"] = {
+            "mechanism": bd.mechanism,
+            "gas": bd.gas.formula,
+            "v_crit_km_s": bd.v_crit / 1e3,
+            "v_ExB_km_s": bd.v_ExB / 1e3,
+            "civ_ratio": bd.civ_ratio,
+            "sheath_thickness_mm": bd.sheath_thickness * 1e3,
+            "Te_eV": bd.Te_initial_eV,
+            "ionization_fraction": bd.ionization_fraction,
+            "breakdown_time_ns": bd.breakdown_time * 1e9,
+            "liftoff_delay_ns": bd_state["liftoff_delay"] * 1e9,
+            "paschen_voltage_V": bd.paschen_voltage,
+            "electron_magnetized": bd.is_magnetized,
+            "narrative": breakdown_narrative(bd),
+            "summary": bd.summary,
+        }
+    except Exception as exc:
+        logger.debug("CIV breakdown computation skipped: %s", exc)
+
     # Compute neutron yield from MHD state for deuterium fills
     if gas.get("A") == 2 and gas.get("Z") == 1:
         final_state = result.get("final_state")

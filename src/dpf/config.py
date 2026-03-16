@@ -319,6 +319,62 @@ class AIConfig(BaseModel):
 
 
 
+class BreakdownConfig(BaseModel):
+    """Phase 1 gas breakdown configuration.
+
+    Controls the CIV (Critical Ionization Velocity) or Paschen
+    breakdown model that computes initial conditions for the
+    snowplow model.
+
+    References:
+        Alfven, H., "On the Origin of the Solar System" (1954).
+        Brenning, N., Space Sci. Rev. 59:209-314 (1992).
+    """
+
+    enabled: bool = Field(
+        True,
+        description=(
+            "Enable Phase 1 breakdown model. When True, computes initial "
+            "sheath conditions from CIV/Paschen theory instead of assuming "
+            "fully ionized gas from t=0."
+        ),
+    )
+    gas_species: str = Field(
+        "D2",
+        description=(
+            "Fill gas species: 'D2' (deuterium), 'H2' (hydrogen), 'He' (helium), "
+            "'Ne' (neon), 'Ar' (argon), 'Kr' (krypton), 'Xe' (xenon), 'N2' (nitrogen)"
+        ),
+    )
+    insulator_length: float = Field(
+        0.05, gt=0,
+        description="Insulator surface length for Paschen pd product [m]",
+    )
+    I_seed: float = Field(
+        100.0, gt=0,
+        description=(
+            "Seed current for initial B-field calculation [A]. "
+            "Displacement current during voltage rise, typically 100-1000 A."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_gas(self) -> BreakdownConfig:
+        valid_gases = {"D2", "H2", "He", "Ne", "Ar", "Kr", "Xe", "N2"}
+        # Normalize: accept case-insensitive input
+        normalized = self.gas_species.strip()
+        # Map common variants
+        upper = normalized.upper()
+        _map = {"AR": "Ar", "NE": "Ne", "HE": "He", "KR": "Kr", "XE": "Xe"}
+        normalized = _map.get(upper, upper)
+        if normalized not in valid_gases:
+            raise ValueError(
+                f"gas_species must be one of {sorted(valid_gases)}, got '{self.gas_species}'"
+            )
+        self.gas_species = normalized
+        return self
+
+
 class SnowplowConfig(BaseModel):
     """Snowplow sheath dynamics configuration (Lee model Phase 2).
 
@@ -475,6 +531,7 @@ class SimulationConfig(BaseModel):
     diagnostics: DiagnosticsConfig = Field(default_factory=DiagnosticsConfig)
     kinetic: KineticConfig = Field(default_factory=KineticConfig)
     snowplow: SnowplowConfig = Field(default_factory=SnowplowConfig)
+    breakdown: BreakdownConfig = Field(default_factory=BreakdownConfig)
     ablation: AblationConfig = Field(default_factory=AblationConfig)
     ai: AIConfig | None = Field(None, description="AI/ML surrogate configuration (optional)")
 
