@@ -515,6 +515,45 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Sweet-Parker reconnection diagnostic + energy spectrum
+    if final_state is not None and final_state.get("B") is not None:
+        try:
+            from dpf.turbulence.subgrid import sweet_parker_diagnostic
+            rho_f = final_state["rho"]
+            Te_f = final_state.get("Te")
+            if Te_f is None:
+                Te_f = final_state["pressure"] * gas["m_mol"] / (2.0 * rho_f * kB)
+            ne_f = rho_f / gas["m_mol"]
+            sp = sweet_parker_diagnostic(
+                final_state["B"], rho_f, Te_f, ne_f,
+                dx=dr, L_system=L_anode,
+                ion_mass=gas["m_mol"],
+            )
+            result["reconnection"] = {
+                "S_lundquist": sp.S_lundquist,
+                "rate": sp.reconnection_rate,
+                "delta_sp_mm": sp.delta_sp * 1e3,
+                "regime": sp.regime,
+                "plasmoid_unstable": sp.plasmoid_unstable,
+                "n_plasmoids_est": sp.n_plasmoids_est,
+            }
+        except (ImportError, Exception):
+            pass
+
+        try:
+            from dpf.turbulence.subgrid import compute_energy_spectrum
+            spec = compute_energy_spectrum(
+                final_state.get("velocity", np.zeros((3, *final_state["rho"].shape))),
+                final_state["B"], final_state["rho"], dx=dr,
+            )
+            result["turbulence_spectrum"] = {
+                "spectral_index": spec.spectral_index,
+                "inertial_range": spec.inertial_range,
+                "has_spectrum": bool(np.sum(spec.E_k) > 0),
+            }
+        except (ImportError, Exception):
+            pass
+
     # Radiation regime diagnostic
     if final_state is not None:
         try:
