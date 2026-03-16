@@ -450,6 +450,49 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,
         },
     },
+    "pf400j": {
+        "_meta": {
+            "description": (
+                "PF-400J (CCHEN Chile) — 400 J portable DPF. Ultra-compact device "
+                "used for neutron production research and radiation biology studies. "
+                "Fastest DPF in operation (T/4 ~ 300 ns)."
+            ),
+            "device": "PF-400J",
+            "geometry": "cylindrical",
+            "topology": "mather",
+            "reference": "Soto et al., Plasma Sources Sci. Technol. 18:015007 (2009)",
+        },
+        "grid_shape": [32, 1, 64],
+        "dx": 3e-4,
+        "sim_time": 1.5e-6,  # 1.5 us — covers ~5 quarter periods
+        "dt_init": 1e-12,    # Very small: T/4 ~ 300 ns
+        "rho0": 1.48e-3,     # 9 mbar D2 at 300K: n*m_D2
+        "T0": 300.0,
+        "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
+        "circuit": {
+            "C": 850e-9,        # 850 nF (0.85 uF)
+            "V0": 26e3,         # 26 kV (maximum charging)
+            "L0": 39e-9,        # 39 nH external inductance
+            "R0": 42e-3,        # 42 mOhm external resistance
+            "anode_radius": 0.006,    # 6 mm (12 mm diameter tube)
+            "cathode_radius": 0.0155, # 15.5 mm (31 mm rod circle)
+            "crowbar_enabled": False,
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {
+            "anode_length": 0.013,       # 13 mm effective anode length
+            "fill_pressure_Pa": 900,     # 9 mbar = 900 Pa
+            "current_fraction": 0.7,
+            "mass_fraction": 0.15,       # EMPIRICAL: small DPF
+        },
+        "breakdown": {
+            "gas_species": "D2",
+            "insulator_length": 0.021,   # 21 mm alumina insulator
+        },
+    },
     "custom": {
         "circuit": {
             "C": 30e-6,        # 30 uF (generic small device)
