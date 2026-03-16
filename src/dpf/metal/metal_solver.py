@@ -946,29 +946,72 @@ class MetalMHDSolver(PlasmaSolverBase):
         apply_bc = kwargs.get("apply_electrode_bc", False)
         if apply_bc and cathode_r > 0 and abs(current) > 1e-10:
             mu0 = 4.0 * 3.141592653589793e-7
-            nx = B_new.shape[1]
-            # Radial cell centers
-            r_arr = torch.linspace(
-                self.dx * 0.5, self.dx * nx - self.dx * 0.5, nx,
-                device=B_new.device, dtype=B_new.dtype,
-            )
-            # B_theta = mu_0 * I / (2*pi*r) at cathode boundary cells
-            idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
-            idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
-            r_safe = torch.clamp(r_arr, min=1e-10)
-            B_theta_profile = mu0 * current / (2.0 * 3.141592653589793 * r_safe)
-            # Apply at cathode boundary
-            B_new[1, idx_cath, :, :] = B_theta_profile[idx_cath]
-            if idx_cath < nx - 1:
-                B_new[1, -1, :, :] = B_theta_profile[-1]
-            # Apply at anode boundary
-            if idx_anode > 0:
-                B_new[1, idx_anode, :, :] = B_theta_profile[idx_anode]
-            # Apply at closed end (insulator face, iz=0)
-            for ir in range(idx_anode, min(idx_cath + 1, nx)):
-                B_new[1, ir, :, 0] = B_theta_profile[ir]
-            # Axis symmetry: B_r = 0 at r=0
-            B_new[0, 0, :, :] = 0.0
+            pi = 3.141592653589793
+            nx, ny, nz = B_new.shape[1], B_new.shape[2], B_new.shape[3]
+
+            if self.coordinates == "cartesian":
+                # 3D Cartesian: decompose B_theta into (Bx, By)
+                # Grid centered at domain midpoint
+                x = torch.linspace(
+                    -(nx / 2.0 - 0.5) * self.dx, (nx / 2.0 - 0.5) * self.dx,
+                    nx, device=B_new.device, dtype=B_new.dtype,
+                )
+                y = torch.linspace(
+                    -(ny / 2.0 - 0.5) * self.dy, (ny / 2.0 - 0.5) * self.dy,
+                    ny, device=B_new.device, dtype=B_new.dtype,
+                )
+                X, Y = torch.meshgrid(x, y, indexing="ij")
+                R = torch.sqrt(X**2 + Y**2)
+                R_safe = torch.clamp(R, min=1e-10)
+                sin_theta = Y / R_safe
+                cos_theta = X / R_safe
+                # Cathode boundary: cells within 1.5*dx of cathode_radius
+                mask_cath = torch.abs(R - cathode_r) < 1.5 * self.dx
+                B_th = mu0 * current / (2.0 * pi * torch.clamp(R, min=cathode_r * 0.5))
+                # B_x = -B_theta * sin(theta), B_y = B_theta * cos(theta)
+                if mask_cath.any():
+                    for k in range(nz):
+                        B_new[0, :, :, k] = torch.where(mask_cath, -B_th * sin_theta, B_new[0, :, :, k])
+                        B_new[1, :, :, k] = torch.where(mask_cath, B_th * cos_theta, B_new[1, :, :, k])
+                # Anode boundary: cells within 1.5*dx of anode_radius
+                mask_anode = torch.abs(R - anode_r) < 1.5 * self.dx
+                if anode_r > 0 and mask_anode.any():
+                    for k in range(nz):
+                        B_new[0, :, :, k] = torch.where(mask_anode, -B_th * sin_theta, B_new[0, :, :, k])
+                        B_new[1, :, :, k] = torch.where(mask_anode, B_th * cos_theta, B_new[1, :, :, k])
+                # z=0 face: insulator boundary (apply B_theta at all radii between anode and cathode)
+                mask_z0 = (R >= anode_r) & (R <= cathode_r)
+                if mask_z0.any():
+                    B_new[0, :, :, 0] = torch.where(mask_z0, -B_th * sin_theta, B_new[0, :, :, 0])
+                    B_new[1, :, :, 0] = torch.where(mask_z0, B_th * cos_theta, B_new[1, :, :, 0])
+                # Axis guard: zero B at r < anode_r/2 to prevent singularity
+                mask_axis = R < anode_r * 0.5  # shape (nx, ny)
+                if mask_axis.any():
+                    mask_3d = mask_axis.unsqueeze(-1).expand(nx, ny, nz)
+                    for comp in range(3):
+                        B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
+            else:
+                # Cylindrical: axis 0 = r, axis 1 = theta/y, axis 2 = z
+                r_arr = torch.linspace(
+                    self.dx * 0.5, self.dx * nx - self.dx * 0.5, nx,
+                    device=B_new.device, dtype=B_new.dtype,
+                )
+                idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
+                idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
+                r_safe = torch.clamp(r_arr, min=1e-10)
+                B_theta_profile = mu0 * current / (2.0 * pi * r_safe)
+                # Cathode boundary
+                B_new[1, idx_cath, :, :] = B_theta_profile[idx_cath]
+                if idx_cath < nx - 1:
+                    B_new[1, -1, :, :] = B_theta_profile[-1]
+                # Anode boundary
+                if idx_anode > 0:
+                    B_new[1, idx_anode, :, :] = B_theta_profile[idx_anode]
+                # Insulator face (z=0)
+                for ir in range(idx_anode, min(idx_cath + 1, nx)):
+                    B_new[1, ir, :, 0] = B_theta_profile[ir]
+                # Axis symmetry: B_r = 0 at r=0
+                B_new[0, 0, :, :] = 0.0
 
         # -------------------------------------------------------------- #
         #  Neighbor-averaging NaN/Inf repair (before returning to engine)
