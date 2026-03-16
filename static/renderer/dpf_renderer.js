@@ -338,54 +338,12 @@ async function createDPFScene(canvas, data) {
   halo.material = haloMat;
 
   // ============================================================
-  // HEATMAP OVERLAY
+  // FIELD DATA — shown numerically in HUD, no midplane plane
   // ============================================================
-  var heatPlane = null, heatTex = null, heatBuf = null;
   var activeOverlay = "none";
 
-  if (L.density) {
-    var shape = L.density.shape;
-    var W = Math.min(shape[0] * 4, 256), H = Math.min(shape[1] * 4, 256);
-    heatBuf = new Uint8Array(W * H * 4);
-    heatTex = new BABYLON.RawTexture(heatBuf, W, H,
-      BABYLON.Engine.TEXTUREFORMAT_RGBA, scene, false, false,
-      BABYLON.Texture.BILINEAR_SAMPLINGMODE);
-
-    var heatMat = new BABYLON.StandardMaterial("heatMat", scene);
-    heatMat.emissiveTexture = heatTex;
-    heatMat.opacityTexture = heatTex;
-    heatMat.disableLighting = true;
-    heatMat.backFaceCulling = false;
-    heatMat.alpha = 0.7;
-    heatMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-    heatMat.needDepthPrePass = true;
-
-    heatPlane = BABYLON.MeshBuilder.CreatePlane("heatPlane", {
-      width: G.anode_length, height: G.cathode_radius * 2,
-    }, scene);
-    heatPlane.position.x = G.anode_length / 2;
-    heatPlane.rotation.y = Math.PI / 2;
-    heatPlane.material = heatMat;
-    heatPlane.isVisible = false;
-  }
-
   function updateHeatmap(key) {
-    if (!heatTex || !L[key]) return;
-    var fd = decodeBase64Float32(L[key].data, L[key].shape);
-    var nx = fd.shape[0], nz = fd.shape[1];
-    var tW = heatTex.getSize().width, tH = heatTex.getSize().height;
-    for (var j = 0; j < tH; j++) {
-      for (var ii = 0; ii < tW; ii++) {
-        var v = bilinearSample(fd.data, nx, nz, (ii / tW) * (nx - 1), (j / tH) * (nz - 1));
-        var rgb = cmap(v);
-        var idx = (j * tW + ii) * 4;
-        heatBuf[idx] = (rgb[0] * 255) | 0;
-        heatBuf[idx + 1] = (rgb[1] * 255) | 0;
-        heatBuf[idx + 2] = (rgb[2] * 255) | 0;
-        heatBuf[idx + 3] = Math.min(255, (v * 200 + 55)) | 0;
-      }
-    }
-    heatTex.update(heatBuf);
+    // Field data displayed in HUD text — no 3D plane needed
   }
 
   // ============================================================
@@ -539,6 +497,10 @@ async function createDPFScene(canvas, data) {
   pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
   pipeline.imageProcessing.exposure = 1.4;
   pipeline.imageProcessing.contrast = 1.1;
+  pipeline.chromaticAberrationEnabled = false;
+  pipeline.chromaticAberration.aberrationAmount = 0;
+  pipeline.sharpenEnabled = true;
+  pipeline.sharpen.edgeAmount = 0.2;
 
   var ssao = null;
   try {
@@ -584,21 +546,13 @@ async function createDPFScene(canvas, data) {
     anode: anode, cathodeRods: cathodeRods, insulator: insulator,
     ps: ps, psEmitter: psEmitter, fireSet: fireSet,
     pipeline: pipeline, ssao: ssao, glowLayer: glowLayer,
-    heatPlane: heatPlane, updateHeatmap: updateHeatmap,
+    updateHeatmap: updateHeatmap,
     fieldLines: fieldLines, fieldLineData: fieldLineData,
     activeOverlay: activeOverlay,
     G: G, S: S, L: L,
 
     setOverlay: function(key) {
       activeOverlay = key;
-      if (heatPlane) {
-        if (key === "none") {
-          heatPlane.isVisible = false;
-        } else if (L[key]) {
-          heatPlane.isVisible = true;
-          updateHeatmap(key);
-        }
-      }
     },
 
     setCmap: function(useCividis) {
@@ -663,7 +617,7 @@ async function createDPFScene(canvas, data) {
         var baseR = cr * G.cathode_radius;
         var ripple = rippleAmp * baseR * Math.cos(4 * Math.PI * zFrac);
         pinchRadii[pk] = Math.max(0.001, baseR + ripple);
-        haloRadii[pk] = Math.max(0.002, (baseR + ripple) * 1.8);
+        haloRadii[pk] = Math.min(G.cathode_radius * 0.8, Math.max(0.002, (baseR + ripple) * 1.8));
       }
 
       BABYLON.MeshBuilder.CreateTube("pinch", {
@@ -676,8 +630,12 @@ async function createDPFScene(canvas, data) {
         sideOrientation: BABYLON.Mesh.BACKSIDE, instance: halo,
       });
 
-      pinchMat.alpha = pI * 0.85;
-      haloMat.alpha = pI * 0.25;
+      // Only show pinch/halo when compression is significant (cr < 0.5)
+      var pinchVisible = isP && cr < 0.5;
+      pinch.isVisible = pinchVisible;
+      halo.isVisible = pinchVisible;
+      pinchMat.alpha = pinchVisible ? pI * 0.85 : 0;
+      haloMat.alpha = pinchVisible ? pI * 0.25 : 0;
       if (pinchMat.emissiveColor) pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
       haloMat.emissiveColor.set(0.8, 0.08 + pI * 0.15, 0.03);
       glowLayer.intensity = 0.35 + pI * 1.2;
@@ -708,12 +666,17 @@ async function createDPFScene(canvas, data) {
         ps.minSize = 0.3 + pI * 0.5;
         ps.maxSize = 1.0 + pI * 1.5;
         if (f.phase === "post_pinch" || f.phase === "reflected") {
-          ps.gravity = new BABYLON.Vector3(2, compR * 0.3, 0);
-          ps.minEmitPower = 1; ps.maxEmitPower = 4;
-          ps.emitRate = useGPU ? 3000 : 200;
+          // Post-pinch: plasma dispersing but contained within device
+          ps.gravity = new BABYLON.Vector3(0.5, 0, 0);
+          ps.minEmitPower = 0.5; ps.maxEmitPower = 2;
+          ps.emitRate = useGPU ? 2000 : 150;
+          ps.minLifeTime = 0.05; ps.maxLifeTime = 0.15;
+          psEmitter.radius = compR * 2;
         } else if (pI > 0.5) {
-          ps.gravity = new BABYLON.Vector3(5, 0, 0);
-          ps.minEmitPower = 3; ps.maxEmitPower = 12;
+          // Peak pinch: intense axial jets (beam ions) — short-lived
+          ps.gravity = new BABYLON.Vector3(4, 0, 0);
+          ps.minEmitPower = 3; ps.maxEmitPower = 8;
+          ps.minLifeTime = 0.05; ps.maxLifeTime = 0.12;
         } else {
           ps.gravity = new BABYLON.Vector3(0, 0, 0);
           ps.minEmitPower = 0.5; ps.maxEmitPower = 2;
@@ -754,6 +717,8 @@ async function createDPFScene(canvas, data) {
         }
       }
 
+      // ---- Cinematic effects ----
+
       // DOF focus on pinch during compression
       if (isP && pI > 0.3) {
         pipeline.depthOfFieldEnabled = true;
@@ -763,6 +728,30 @@ async function createDPFScene(canvas, data) {
           BABYLON.Vector3.Distance(cam.position, pinch.position) * 1000;
       } else {
         pipeline.depthOfFieldEnabled = false;
+      }
+
+      // Chromatic aberration during peak pinch (lens stress effect)
+      if (pI > 0.5) {
+        pipeline.chromaticAberrationEnabled = true;
+        pipeline.chromaticAberration.aberrationAmount = pI * 30;
+      } else {
+        pipeline.chromaticAberrationEnabled = false;
+      }
+
+      // Camera auto-zoom: pull in during radial, snap back after
+      if (isP && pI > 0.2 && autoOrbit) {
+        var targetRadius = G.cathode_radius * (3 + (1 - pI) * 4);
+        cam.radius += (targetRadius - cam.radius) * 0.02;
+      } else if (autoOrbit && !userInteracting) {
+        var defaultRadius = G.cathode_radius * 7;
+        cam.radius += (defaultRadius - cam.radius) * 0.01;
+      }
+
+      // Exposure flash during pinch onset
+      if (pI > 0.8) {
+        pipeline.imageProcessing.exposure = 1.4 + (pI - 0.8) * 3;
+      } else {
+        pipeline.imageProcessing.exposure += (1.4 - pipeline.imageProcessing.exposure) * 0.1;
       }
 
       return { f: f, col: col, isP: isP, cr: cr, pI: pI, rippleAmp: rippleAmp };
