@@ -119,6 +119,96 @@ def ct_update_mps(
     return Bx_new, By_new, Bz_new
 
 
+def ct_update_cylindrical_mps(
+    Bx_face: torch.Tensor,
+    By_face: torch.Tensor,
+    Bz_face: torch.Tensor,
+    Ex_edge: torch.Tensor,
+    Ey_edge: torch.Tensor,
+    Ez_edge: torch.Tensor,
+    dx: float,
+    dy: float,
+    dz: float,
+    dt: float,
+    r_cell: torch.Tensor,
+    r_face: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Cylindrical constrained transport update (Faraday's law, r-weighted).
+
+    In cylindrical coordinates (r, theta, z) with axisymmetry (ny=1):
+
+        dBr/dt  = -(dEz/dy - dEy/dz)  [identical to Cartesian: r-factors cancel]
+        dBz/dt  = -(1/(r*dr)) * d(r*Ey)/dr  [r-weighted along radial axis]
+        dBtheta: NOT updated by CT (cell-centred, evolved by Riemann + source)
+
+    The r-weighted B_z update preserves div(B)=0 in cylindrical geometry:
+
+        (1/r) * d(r*Br)/dr + dBz/dz = 0
+
+    Args:
+        Bx_face: B_r on r-faces, shape (nx+1, ny, nz), float32, MPS.
+        By_face: B_theta on theta-faces, shape (nx, ny+1, nz), float32, MPS.
+        Bz_face: B_z on z-faces, shape (nx, ny, nz+1), float32, MPS.
+        Ex_edge: x-edge EMF (y-z edges), shape (nx, ny+1, nz+1), float32, MPS.
+        Ey_edge: y-edge EMF (r-z edges), shape (nx+1, ny, nz+1), float32, MPS.
+        Ez_edge: z-edge EMF (r-theta edges), shape (nx+1, ny+1, nz), float32, MPS.
+        dx: Radial grid spacing [m].
+        dy: Azimuthal grid spacing [m].
+        dz: Axial grid spacing [m].
+        dt: Timestep [s].
+        r_cell: Cell-centre radii, shape (nx, 1, 1) or (nx,), float32, MPS.
+        r_face: Face radii at r_{i+1/2}, shape (nx+1, 1, 1) or (nx+1,), float32, MPS.
+
+    Returns:
+        Tuple (Bx_new, By_new, Bz_new) of updated face-centred B fields.
+    """
+    _ensure_mps(Bx_face, "Bx_face")
+    _ensure_mps(By_face, "By_face")
+    _ensure_mps(Bz_face, "Bz_face")
+    _ensure_mps(Ex_edge, "Ex_edge")
+    _ensure_mps(Ey_edge, "Ey_edge")
+    _ensure_mps(Ez_edge, "Ez_edge")
+    _ensure_mps(r_cell, "r_cell")
+    _ensure_mps(r_face, "r_face")
+
+    # --- Update B_r at r-faces: identical to Cartesian ---
+    # The r-factors cancel in the integral form of dBr/dt.
+    # dEz/dy: Ez is (nx+1, ny+1, nz). Difference along dim=1 -> (nx+1, ny, nz).
+    dEz_dy = (Ez_edge[:, 1:, :] - Ez_edge[:, :-1, :]) / dy
+    # dEy/dz: Ey is (nx+1, ny, nz+1). Difference along dim=2 -> (nx+1, ny, nz).
+    dEy_dz = (Ey_edge[:, :, 1:] - Ey_edge[:, :, :-1]) / dz
+    Bx_new = Bx_face - dt * (dEz_dy - dEy_dz)
+
+    # --- B_theta: not updated by CT (evolved cell-centred) ---
+    By_new = By_face.clone()
+
+    # --- Update B_z at z-faces: r-weighted along radial axis ---
+    # dBz/dt = -(1/(r_cell*dx)) * (r_face[i+1/2]*Ey[i+1/2] - r_face[i-1/2]*Ey[i-1/2])
+    #
+    # Ey_edge shape: (nx+1, ny, nz+1).  Differences along dim=0 give (nx, ny, nz+1).
+    # r_face shape: (nx+1, 1, 1) -> broadcast over ny, nz+1.
+    #
+    # r_face[i+1/2] = r_face[1:],  r_face[i-1/2] = r_face[:-1]
+    # r_face has nx+1 values; slicing gives nx values for the nx cells.
+    r_face_right = r_face[1:]    # (nx, 1, 1)
+    r_face_left = r_face[:-1]    # (nx, 1, 1)
+
+    # Ey_edge at right and left r-faces for the interior nx cells
+    Ey_right = Ey_edge[1:, :, :]   # (nx, ny, nz+1)
+    Ey_left = Ey_edge[:-1, :, :]   # (nx, ny, nz+1)
+
+    inv_r_cell = 1.0 / torch.clamp(r_cell, min=1e-30)  # (nx, 1, 1)
+
+    dBz_dt_r = -(r_face_right * Ey_right - r_face_left * Ey_left) * inv_r_cell / dx
+    Bz_new = Bz_face + dt * dBz_dt_r
+
+    _check_no_nan(Bx_new, "Bx_new after cyl CT update")
+    _check_no_nan(By_new, "By_new after cyl CT update")
+    _check_no_nan(Bz_new, "Bz_new after cyl CT update")
+
+    return Bx_new, By_new, Bz_new
+
+
 # ============================================================
 # 2. Divergence of face-centred B
 # ============================================================

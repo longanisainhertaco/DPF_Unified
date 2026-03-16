@@ -42,9 +42,15 @@ from dpf.metal.metal_riemann import (
     _cons_to_prim_mps,
     _fast_magnetosonic_mps,
     _prim_to_cons_mps,
+    mhd_rhs_cylindrical_mps,
     mhd_rhs_mps,
 )
-from dpf.metal.metal_stencil import ct_update_mps, div_B_mps, emf_from_fluxes_mps
+from dpf.metal.metal_stencil import (
+    ct_update_cylindrical_mps,
+    ct_update_mps,
+    div_B_mps,
+    emf_from_fluxes_mps,
+)
 from dpf.metal.metal_transport import _safe_gradient
 
 logger = logging.getLogger(__name__)
@@ -209,9 +215,13 @@ class MetalMHDSolver(PlasmaSolverBase):
                     + 0.5) * self.dx
             self._r = r_1d.reshape(nx, 1, 1)
             self._inv_r = 1.0 / torch.clamp(self._r, min=1e-30)
+            # Face radii: r_{i+1/2} = i * dx, shape (nx+1, 1, 1)
+            r_face_1d = torch.arange(nx + 1, dtype=self._dtype, device=self.device) * self.dx
+            self._r_face: torch.Tensor | None = r_face_1d.reshape(nx + 1, 1, 1)
         else:
             self._r = None
             self._inv_r = None
+            self._r_face = None
 
         logger.info(
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
@@ -452,6 +462,18 @@ class MetalMHDSolver(PlasmaSolverBase):
         B: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
         """Compute MHD RHS for a given primitive state."""
+        if self.coordinates == "cylindrical":
+            return mhd_rhs_cylindrical_mps(
+                {"rho": rho, "velocity": vel, "pressure": p, "B": B},
+                self.gamma,
+                self.dx, self.dy, self.dz,
+                r_cell=self._r,
+                r_face=self._r_face,
+                limiter=self.limiter,
+                riemann_solver=self.riemann_solver,
+                reconstruction=self.reconstruction,
+                bc=self.bc,
+            )
         return mhd_rhs_mps(
             {"rho": rho, "velocity": vel, "pressure": p, "B": B},
             self.gamma,
@@ -845,12 +867,11 @@ class MetalMHDSolver(PlasmaSolverBase):
             )
 
         # -------------------------------------------------------------- #
-        #  Cylindrical geometric source terms (operator-split)
+        #  Cylindrical geometric source terms
         # -------------------------------------------------------------- #
-        if self.coordinates == "cylindrical":
-            rho_new, vel_new, p_new, B_new = self._apply_cylindrical_sources(
-                rho_new, vel_new, p_new, B_new, dt,
-            )
+        # Sources are now embedded in mhd_rhs_cylindrical_mps via the
+        # r-weighted flux differencing + geometric source terms.
+        # The operator-split _apply_cylindrical_sources is no longer called.
 
         # -------------------------------------------------------------- #
         #  Resistive MHD operator-split step (if eta_field provided)
@@ -992,25 +1013,37 @@ class MetalMHDSolver(PlasmaSolverBase):
                         B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
             else:
                 # Cylindrical: axis 0 = r, axis 1 = theta/y, axis 2 = z
-                r_arr = torch.linspace(
-                    self.dx * 0.5, self.dx * nx - self.dx * 0.5, nx,
-                    device=B_new.device, dtype=B_new.dtype,
-                )
+                # Grid cell centres: r_i = (i + 0.5) * dx
+                r_arr = (torch.arange(nx, dtype=B_new.dtype, device=B_new.device)
+                         + 0.5) * self.dx
                 idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
                 idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
                 r_safe = torch.clamp(r_arr, min=1e-10)
                 B_theta_profile = mu0 * current / (2.0 * pi * r_safe)
-                # Cathode boundary
+
+                # Enforce B_theta = mu0*I/(2*pi*r) from circuit current
+                # at both electrode boundaries and the insulator face (z=0).
                 B_new[1, idx_cath, :, :] = B_theta_profile[idx_cath]
                 if idx_cath < nx - 1:
                     B_new[1, -1, :, :] = B_theta_profile[-1]
-                # Anode boundary
                 if idx_anode > 0:
                     B_new[1, idx_anode, :, :] = B_theta_profile[idx_anode]
-                # Insulator face (z=0)
+                # Insulator face (z=0): B_theta from current at all radii in gap
                 for ir in range(idx_anode, min(idx_cath + 1, nx)):
                     B_new[1, ir, :, 0] = B_theta_profile[ir]
-                # Axis symmetry: B_r = 0 at r=0
+
+                # Conducting wall BCs: no normal flow and no normal B at electrodes.
+                # Anode wall (inner conductor, left boundary, index 0..idx_anode):
+                #   v_r = 0, B_r = 0  (reflecting wall for normal velocity/field)
+                B_new[0, :idx_anode + 1, :, :] = 0.0
+                vel_new[0, :idx_anode + 1, :, :] = 0.0
+
+                # Cathode wall (outer conductor, right boundary, index idx_cath..nx-1):
+                #   v_r = 0, B_r = 0
+                B_new[0, idx_cath:, :, :] = 0.0
+                vel_new[0, idx_cath:, :, :] = 0.0
+
+                # Axis symmetry guard: B_r = 0 at r=0 (no normal B through axis)
                 B_new[0, 0, :, :] = 0.0
 
         # -------------------------------------------------------------- #
@@ -1327,12 +1360,20 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Compute edge EMFs from the face fluxes
         Ex_edge, Ey_edge, Ez_edge = emf_from_fluxes_mps(flux_x, flux_y, flux_z)
 
-        # Apply CT update to face-centred B
-        Bx_new_face, By_new_face, Bz_new_face = ct_update_mps(
-            Bx_face, By_face, Bz_face,
-            Ex_edge, Ey_edge, Ez_edge,
-            self.dx, self.dy, self.dz, dt,
-        )
+        # Apply CT update to face-centred B (r-weighted in cylindrical mode)
+        if self.coordinates == "cylindrical" and self._r_face is not None:
+            Bx_new_face, By_new_face, Bz_new_face = ct_update_cylindrical_mps(
+                Bx_face, By_face, Bz_face,
+                Ex_edge, Ey_edge, Ez_edge,
+                self.dx, self.dy, self.dz, dt,
+                r_cell=self._r, r_face=self._r_face,
+            )
+        else:
+            Bx_new_face, By_new_face, Bz_new_face = ct_update_mps(
+                Bx_face, By_face, Bz_face,
+                Ex_edge, Ey_edge, Ez_edge,
+                self.dx, self.dy, self.dz, dt,
+            )
 
         # Average face-centred values back to cell centres
         B_corrected = torch.empty_like(B_new)
