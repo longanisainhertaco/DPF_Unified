@@ -61,7 +61,8 @@ _HTML_HOST = r"""
 const DATA = %%DATA_JSON%%;
 
 // ---- Host: wire GUI + animation ----
-(async function(){
+// Wait for all CDN scripts to load before initializing
+window.addEventListener("load", async function(){
   const canvas = document.getElementById("c");
   const hud = document.getElementById("hud");
   const sl = document.getElementById("sl");
@@ -212,8 +213,8 @@ const DATA = %%DATA_JSON%%;
 
   window.addEventListener("resize", function() { scene.engine.resize(); });
   renderFrame(0);
-  hud.textContent = scene.L.device + " | " + scene.gpuBackend + " | Ready";
-})();
+  hud.textContent = scene.L.device + " | " + scene.gpuBackend + " | Ready — drag to orbit, scroll to zoom";
+});
 """
 
 

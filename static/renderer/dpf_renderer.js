@@ -107,18 +107,23 @@ async function createDPFScene(canvas, data) {
   const S = L.sheath;
 
   // ---- Engine (WebGPU → WebGL2 fallback) ----
+  // Use WebGL2 by default for maximum compatibility.
+  // WebGPU can be enabled via URL param ?webgpu=1
   let engine, gpuBackend = "WebGL2";
-  try {
-    if (await BABYLON.WebGPUEngine.IsSupportedAsync) {
-      engine = new BABYLON.WebGPUEngine(canvas, {
-        antialias: true,
-        adaptToDeviceRatio: true,
-        powerPreference: "high-performance",
-      });
-      await engine.initAsync();
-      gpuBackend = "WebGPU";
-    }
-  } catch (_) {}
+  const useWebGPU = (new URLSearchParams(window.location.search)).get("webgpu") === "1";
+  if (useWebGPU) {
+    try {
+      if (await BABYLON.WebGPUEngine.IsSupportedAsync) {
+        engine = new BABYLON.WebGPUEngine(canvas, {
+          antialias: true,
+          adaptToDeviceRatio: true,
+          powerPreference: "high-performance",
+        });
+        await engine.initAsync();
+        gpuBackend = "WebGPU";
+      }
+    } catch (_) {}
+  }
   if (!engine) {
     engine = new BABYLON.Engine(canvas, true, {
       stencil: true,
@@ -267,26 +272,27 @@ async function createDPFScene(canvas, data) {
   // ============================================================
   // PINCH COLUMN (tube with m=0 instability ripple)
   // ============================================================
-  // Pinch material: try NME fire shader, fall back to Fresnel StandardMaterial
-  let pinchMat;
+  // Pinch material: Fresnel StandardMaterial (NME loaded async later if available)
   let pinchNME = false;
-  try {
-    pinchMat = await BABYLON.NodeMaterial.ParseFromSnippetAsync("ELI67P", scene);
-    pinchMat.alpha = 0;
-    pinchMat.backFaceCulling = false;
-    pinchNME = true;
-  } catch (_) {
-    pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
-    pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
-    pinchMat.disableLighting = true;
-    pinchMat.backFaceCulling = false;
-    pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-    pinchMat.emissiveFresnelParameters.bias = 0.2;
-    pinchMat.emissiveFresnelParameters.power = 3;
-    pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
-    pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
-  }
+  var pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
+  pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
+  pinchMat.disableLighting = true;
+  pinchMat.backFaceCulling = false;
+  pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
+  pinchMat.emissiveFresnelParameters.bias = 0.2;
+  pinchMat.emissiveFresnelParameters.power = 3;
+  pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
+  pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
   pinchMat.alpha = 0;
+
+  // Try loading NME fire shader in background (non-blocking)
+  BABYLON.NodeMaterial.ParseFromSnippetAsync("ELI67P", scene).then(function(nme) {
+    nme.alpha = 0;
+    nme.backFaceCulling = false;
+    pinchMat = nme;
+    pinch.material = nme;
+    pinchNME = true;
+  }).catch(function() { /* keep Fresnel fallback */ });
 
   const N_PINCH = 24;
   const pinchPath = [];
@@ -486,12 +492,12 @@ async function createDPFScene(canvas, data) {
   glowLayer.intensity = 0.5;
   glowLayer.customEmissiveColorSelector = (mesh, _sub, _mat, result) => {
     const glowMeshes = ["sheath", "pinch", "halo", "trail"];
-    if (glowMeshes.includes(mesh.name)) {
+    if (glowMeshes.includes(mesh.name) && mesh.material && mesh.material.emissiveColor) {
       result.set(
         mesh.material.emissiveColor.r,
         mesh.material.emissiveColor.g,
         mesh.material.emissiveColor.b,
-        mesh.material.alpha
+        mesh.material.alpha || 0
       );
     } else {
       result.set(0, 0, 0, 0);
