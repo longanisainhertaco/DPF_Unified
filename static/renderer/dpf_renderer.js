@@ -136,6 +136,11 @@ async function createDPFScene(canvas, data) {
   scene.clearColor = new BABYLON.Color4(0.08, 0.09, 0.14, 1);
   scene.ambientColor = new BABYLON.Color3(0.2, 0.2, 0.25);
 
+  // Enable 3 rendering groups: 0=depth occluders, 1=opaque, 2=transparent/emissive
+  scene.setRenderingAutoClearDepthStencil(0, true);  // clear depth before occluders
+  scene.setRenderingAutoClearDepthStencil(1, false); // keep depth from group 0
+  scene.setRenderingAutoClearDepthStencil(2, false); // keep depth, transparent reads it
+
   // ---- HDR Environment ----
   let envTex = null;
   try {
@@ -197,7 +202,17 @@ async function createDPFScene(canvas, data) {
   anode.rotation.z = Math.PI / 2;
   anode.position.x = G.anode_length / 2;
   anode.material = copperMat;
-  anode.renderingGroupId = 0; // render opaque first
+
+  // Depth occlusion: anode is a solid occluder — nothing renders inside it
+  // Use a second invisible mesh for depth-only writes
+  const anodeOccluder = anode.clone("anodeOccluder");
+  anodeOccluder.isVisible = true;
+  const occMat = new BABYLON.StandardMaterial("occMat", scene);
+  occMat.disableColorWrite = true;  // writes depth only, no pixels
+  occMat.disableLighting = true;
+  anodeOccluder.material = occMat;
+  anodeOccluder.renderingGroupId = 0;
+  anode.renderingGroupId = 1;
 
   const steelMat = new BABYLON.PBRMaterial("steel", scene);
   steelMat.metallic = 0.9;
@@ -220,6 +235,7 @@ async function createDPFScene(canvas, data) {
       G.cathode_radius * Math.cos(angle)
     );
     rod.material = steelMat;
+    rod.renderingGroupId = 1;
     cathodeRods.push(rod);
   }
 
@@ -275,6 +291,7 @@ async function createDPFScene(canvas, data) {
   }, scene);
   sheath.rotation.z = Math.PI / 2;
   sheath.material = sheathMat;
+  sheath.renderingGroupId = 2;
 
   // Plasma trail (ionized gas behind sheath)
   const trailMat = new BABYLON.StandardMaterial("trailMat", scene);
@@ -288,6 +305,7 @@ async function createDPFScene(canvas, data) {
     tessellation: 24, cap: BABYLON.Mesh.NO_CAP, updatable: true,
   }, scene);
   trail.material = trailMat;
+  trail.renderingGroupId = 2;
 
   // ============================================================
   // PINCH COLUMN (tube with m=0 instability ripple)
@@ -321,6 +339,7 @@ async function createDPFScene(canvas, data) {
     tessellation: 48, cap: BABYLON.Mesh.CAP_ALL, updatable: true,
   }, scene);
   pinch.material = pinchMat;
+  pinch.renderingGroupId = 2;
 
   // Halo
   const haloMat = new BABYLON.StandardMaterial("haloMat", scene);
@@ -335,6 +354,7 @@ async function createDPFScene(canvas, data) {
     sideOrientation: BABYLON.Mesh.BACKSIDE, updatable: true,
   }, scene);
   halo.material = haloMat;
+  halo.renderingGroupId = 2;
 
   // ============================================================
   // HEATMAP OVERLAY (RawTexture on midplane)
@@ -424,6 +444,7 @@ async function createDPFScene(canvas, data) {
       lineMat.disableLighting = true;
       lineMat.alpha = 0.35 + bStrength * 0.35;
       tube.material = lineMat;
+      tube.renderingGroupId = 2;
       tube.isVisible = false;
       fieldLines.push(tube);
       fieldLineData.push({ baseR, zi, ri, zPos });
@@ -512,6 +533,7 @@ async function createDPFScene(canvas, data) {
   ptxCtx.fillRect(0, 0, ptexSize, ptexSize);
   ptex.update();
   ps.particleTexture = ptex;
+  ps.renderingGroupId = 2;
   ps.start();
 
   // ============================================================
