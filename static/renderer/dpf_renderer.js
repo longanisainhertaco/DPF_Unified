@@ -597,7 +597,7 @@ async function createDPFScene(canvas, data) {
 
       pinchMat.alpha = pI * 0.85;
       haloMat.alpha = pI * 0.35;
-      pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
+      if (pinchMat.emissiveColor) pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
       haloMat.emissiveColor.set(0.8, 0.08 + pI * 0.15, 0.03);
       glowLayer.intensity = 0.35 + pI * 2;
 
