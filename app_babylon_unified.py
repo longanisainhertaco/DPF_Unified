@@ -68,8 +68,9 @@ async function main(){{
   if(!eng)eng=new BABYLON.Engine(cv,true,{{stencil:true,adaptToDeviceRatio:true}});
 
   const sc=new BABYLON.Scene(eng);
-  sc.clearColor=new BABYLON.Color4(0.015,0.015,0.035,1);
-  sc.ambientColor=new BABYLON.Color3(0.06,0.06,0.1);
+  // Brighter background: deep navy, not black
+  sc.clearColor=new BABYLON.Color4(0.06,0.07,0.12,1);
+  sc.ambientColor=new BABYLON.Color3(0.15,0.15,0.2);
 
   // ======== CAMERA ========
   const cam=new BABYLON.ArcRotateCamera("cam",-Math.PI/3.5,Math.PI/3.2,G.cathode_radius*9,
@@ -77,19 +78,24 @@ async function main(){{
   cam.attachControl(cv,true);cam.lowerRadiusLimit=G.cathode_radius*2;
   cam.upperRadiusLimit=G.cathode_radius*35;cam.wheelPrecision=25;cam.minZ=0.01;cam.inertia=0.8;
 
-  // ======== LIGHTS ========
-  new BABYLON.HemisphericLight("h",new BABYLON.Vector3(0,1,0.2),sc).intensity=0.3;
-  const pt=new BABYLON.PointLight("p",new BABYLON.Vector3(G.anode_length/2,G.cathode_radius*2,G.cathode_radius),sc);
-  pt.intensity=0.5;pt.diffuse=new BABYLON.Color3(0.9,0.85,1);
+  // ======== LIGHTS (brighter for visibility) ========
+  const hemiL=new BABYLON.HemisphericLight("h",new BABYLON.Vector3(0,1,0.3),sc);
+  hemiL.intensity=0.55;hemiL.groundColor=new BABYLON.Color3(0.1,0.1,0.15);
+  const pt=new BABYLON.PointLight("p",new BABYLON.Vector3(G.anode_length/2,G.cathode_radius*2.5,G.cathode_radius*1.5),sc);
+  pt.intensity=0.7;pt.diffuse=new BABYLON.Color3(1,0.95,0.9);
+  const pt2=new BABYLON.PointLight("p2",new BABYLON.Vector3(G.anode_length,0,-G.cathode_radius*2),sc);
+  pt2.intensity=0.3;pt2.diffuse=new BABYLON.Color3(0.7,0.8,1);
 
   // ======== ELECTRODES (PBR) ========
-  const cuMat=new BABYLON.PBRMaterial("cu",sc);cuMat.metallic=1;cuMat.roughness=0.18;
-  cuMat.albedoColor=new BABYLON.Color3(0.955,0.638,0.538);
+  const cuMat=new BABYLON.PBRMaterial("cu",sc);cuMat.metallic=1;cuMat.roughness=0.25;
+  cuMat.albedoColor=new BABYLON.Color3(0.96,0.7,0.55);
+  cuMat.emissiveColor=new BABYLON.Color3(0.05,0.03,0.01);
   const anode=BABYLON.MeshBuilder.CreateCylinder("anode",{{diameter:G.anode_radius*2,height:G.anode_length,tessellation:48,cap:BABYLON.Mesh.CAP_ALL}},sc);
   anode.rotation.z=Math.PI/2;anode.position.x=G.anode_length/2;anode.material=cuMat;
 
-  const stMat=new BABYLON.PBRMaterial("st",sc);stMat.metallic=1;stMat.roughness=0.32;
-  stMat.albedoColor=new BABYLON.Color3(0.66,0.66,0.70);
+  const stMat=new BABYLON.PBRMaterial("st",sc);stMat.metallic=1;stMat.roughness=0.35;
+  stMat.albedoColor=new BABYLON.Color3(0.72,0.72,0.76);
+  stMat.emissiveColor=new BABYLON.Color3(0.03,0.03,0.04);
   const rodArr=[];
   for(let i=0;i<8;i++){{const a=(i/8)*Math.PI*2;
     const r=BABYLON.MeshBuilder.CreateCylinder("r"+i,{{diameter:G.cathode_radius*0.07,height:G.anode_length,tessellation:8}},sc);
@@ -104,7 +110,7 @@ async function main(){{
   // ======== SHEATH: thin annular disc (physics-accurate) ========
   // The current sheath is a thin shell spanning anode→cathode radii
   const shMat=new BABYLON.StandardMaterial("shM",sc);
-  shMat.emissiveColor=new BABYLON.Color3(0.2,0.5,1);shMat.alpha=0.6;
+  shMat.emissiveColor=new BABYLON.Color3(0.3,0.6,1);shMat.alpha=0.65;
   shMat.disableLighting=true;shMat.backFaceCulling=false;
   const sheath=BABYLON.MeshBuilder.CreateDisc("sheath",{{
     radius:G.cathode_radius, innerRadius:G.anode_radius, tessellation:48
@@ -113,7 +119,7 @@ async function main(){{
 
   // Ionized plasma trail behind sheath (annular tube matching gap)
   const trMat=new BABYLON.StandardMaterial("trM",sc);
-  trMat.emissiveColor=new BABYLON.Color3(0.06,0.1,0.3);trMat.alpha=0.12;
+  trMat.emissiveColor=new BABYLON.Color3(0.1,0.15,0.4);trMat.alpha=0.18;
   trMat.disableLighting=true;trMat.backFaceCulling=false;
   const trail=BABYLON.MeshBuilder.CreateTube("trail",{{
     path:[new BABYLON.Vector3(0,0,0),new BABYLON.Vector3(1,0,0)],
@@ -174,7 +180,7 @@ async function main(){{
       const dx=fx-ix,dz=fz-iz;
       const v=(1-dx)*(1-dz)*fd.d[ix*nz+iz]+dx*(1-dz)*fd.d[(ix+1)*nz+iz]+(1-dx)*dz*fd.d[ix*nz+iz+1]+dx*dz*fd.d[(ix+1)*nz+iz+1];
       const[r,g,b]=cmap(v);const idx=(j*W+i)*4;
-      heatBuf[idx]=r*255|0;heatBuf[idx+1]=g*255|0;heatBuf[idx+2]=b*255|0;heatBuf[idx+3]=(v*180+40)|0;
+      heatBuf[idx]=r*255|0;heatBuf[idx+1]=g*255|0;heatBuf[idx+2]=b*255|0;heatBuf[idx+3]=Math.min(255,(v*200+55))|0;
     }}
     heatTex.update(heatBuf);
   }}
@@ -247,7 +253,7 @@ async function main(){{
   // the camera/eye's response to bright point sources (diffraction, scattering)
   pp.imageProcessingEnabled=true;pp.imageProcessing.toneMappingEnabled=true;
   pp.imageProcessing.toneMappingType=BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  pp.imageProcessing.exposure=1.05;pp.imageProcessing.contrast=1.0;
+  pp.imageProcessing.exposure=1.4;pp.imageProcessing.contrast=1.1;
 
   let ssao=null;
   try{{ssao=new BABYLON.SSAO2RenderingPipeline("ssao",sc,{{ssaoRatio:0.5,blurRatio:1}},[cam],false);
@@ -286,14 +292,73 @@ async function main(){{
   tog("Current Sheath",true,v=>{{sheath.isVisible=v;trail.isVisible=v}});
   tog("Plasma Ions",true,v=>{{if(v)ps.start();else ps.stop()}});
   tog("Pinch Column",true,v=>{{pinch.isVisible=v;pHalo.isVisible=v}});
-  tog("Density (rho)",false,v=>{{if(heatPlane){{heatPlane.isVisible=v;if(v)updateHeatmap("density")}}}});
-  tog("Temperature (Te)",false,v=>{{if(heatPlane&&v){{heatPlane.isVisible=true;updateHeatmap("temperature")}}}});
-  tog("|B| Field",false,v=>{{if(heatPlane&&v&&L.bfield){{heatPlane.isVisible=true;updateHeatmap("bfield")}}}});
-  tog("B-Field Lines",false,v=>fieldLines.forEach(l=>l.isVisible=v));
-  tog("Radiation Loss",false,v=>{{if(heatPlane&&v&&L.radiation){{heatPlane.isVisible=true;updateHeatmap("radiation")}}}});
-  tog("Yield Map",false,v=>{{if(heatPlane&&v&&L.yield_map){{heatPlane.isVisible=true;updateHeatmap("yield_map")}}}});
+  tog("B-Field Lines",!!L.bfield,v=>fieldLines.forEach(l=>l.isVisible=v));
   tog("Ambient Occlusion",!!ssao,v=>{{if(ssao)ssao.totalStrength=v?0.9:0}});
   tog("Bloom",true,v=>{{pp.bloomEnabled=v}});
+
+  // ---- Field overlay selector (radio-style: only one active) ----
+  const fieldSep=new BABYLON.GUI.TextBlock();fieldSep.text="Field Overlay";fieldSep.color="#fa8";
+  fieldSep.fontSize=12;fieldSep.height="22px";fieldSep.textHorizontalAlignment=BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+  panel.addControl(fieldSep);
+
+  let activeOverlay="none";
+  const overlays=[
+    ["None","none"],["Density (rho)","density"],["Temperature (Te)","temperature"],
+    ["|B| Magnetic","bfield"],["Radiation Loss","radiation"],["Neutron Yield","yield_map"]
+  ];
+  overlays.forEach(([label,key])=>{{
+    const rb=BABYLON.GUI.Checkbox.AddCheckBoxWithHeader(label,(v)=>{{
+      if(v){{
+        activeOverlay=key;
+        if(heatPlane){{
+          if(key==="none"){{heatPlane.isVisible=false}}
+          else if(L[key]){{heatPlane.isVisible=true;updateHeatmap(key)}}
+          else if(key==="bfield"&&L.bfield){{heatPlane.isVisible=true;updateHeatmap("bfield")}}
+        }}
+      }}
+    }});
+    rb.children[0].isChecked=(key==="none");rb.children[0].color="#fa8";
+    rb.children[1].color="#edb";rb.children[1].fontSize=11;rb.height="24px";
+    panel.addControl(rb);
+  }});
+
+  // ---- Labels section ----
+  const lblSep=new BABYLON.GUI.TextBlock();lblSep.text="Labels";lblSep.color="#8fa";
+  lblSep.fontSize=12;lblSep.height="20px";lblSep.textHorizontalAlignment=BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+  panel.addControl(lblSep);
+
+  // 3D labels (billboard text planes attached to key objects)
+  const labels=[];
+  function makeLabel(text,pos,color){{
+    const plane=BABYLON.MeshBuilder.CreatePlane("lbl_"+text,{{width:G.cathode_radius*3,height:G.cathode_radius*0.6}},sc);
+    plane.position=pos;plane.billboardMode=BABYLON.Mesh.BILLBOARDMODE_ALL;
+    const dt=new BABYLON.DynamicTexture("dt_"+text,{{width:256,height:48}},sc,false);
+    dt.hasAlpha=true;
+    const ctx=dt.getContext();
+    ctx.clearRect(0,0,256,48);
+    ctx.font="bold 20px monospace";ctx.fillStyle=color;ctx.textAlign="center";
+    ctx.fillText(text,128,32);
+    dt.update();
+    const m=new BABYLON.StandardMaterial("lm_"+text,sc);
+    m.diffuseTexture=dt;m.emissiveTexture=dt;m.opacityTexture=dt;
+    m.disableLighting=true;m.backFaceCulling=false;
+    plane.material=m;
+    labels.push(plane);
+    return plane;
+  }}
+  makeLabel("ANODE (Cu)",new BABYLON.Vector3(G.anode_length/2,G.anode_radius*1.8,0),"#FFB74D");
+  makeLabel("CATHODE (Steel)",new BABYLON.Vector3(G.anode_length/2,G.cathode_radius*1.3,0),"#90A4AE");
+  makeLabel("INSULATOR",new BABYLON.Vector3(-G.cathode_radius*0.8,0,0),"#CE93D8");
+
+  // Dynamic labels for sheath and pinch (updated per frame)
+  const sheathLabel=makeLabel("SHEATH",new BABYLON.Vector3(0,G.cathode_radius*1.1,0),"#64B5F6");
+  const pinchLabel=makeLabel("PINCH",new BABYLON.Vector3(G.anode_length,G.anode_radius*1.5,0),"#FF5252");
+  pinchLabel.isVisible=false;
+  const instLabel=makeLabel("m=0 INSTABILITY",new BABYLON.Vector3(G.anode_length*0.9,G.anode_radius*2.5,0),"#FFD54F");
+  instLabel.isVisible=false;
+
+  let labelsVisible=true;
+  tog("Labels",true,v=>{{labelsVisible=v;labels.forEach(l=>l.isVisible=v)}});
 
   // ======== ANIMATION (physics-driven) ========
   let fi=0,playing=false,lastA=0;
@@ -371,11 +436,29 @@ async function main(){{
       ps.minEmitPower=1.5;ps.maxEmitPower=5;
     }}
 
-    // ---- HUD ----
+    // ---- Labels: follow their objects ----
+    if(labelsVisible){{
+      sheathLabel.position.x=sheath.position.x;
+      sheathLabel.isVisible=true;
+      pinchLabel.isVisible=pI>0.2;
+      // Show instability label when ripple is active
+      instLabel.isVisible=(rippleAmp>0.02&&pI>0.3);
+    }}
+
+    // ---- HUD (expert data + student-friendly phase description) ----
+    const phaseDesc={{
+      rundown:"Gas is being swept along the anode by the magnetic piston",
+      radial:"The plasma ring is compressing inward toward the axis",
+      mhd_radial:"MHD compression — plasma imploding radially",
+      reflected:"Shock wave bouncing back outward after hitting the axis",
+      pinch:"Maximum compression — this is where fusion happens!",
+      post_pinch:"Pinch is disrupting via instabilities",
+    }};
     let info=L.device+" | "+gpu+"\\n"+(PL[f.phase]||f.phase);
     info+="\\nt="+f.t.toFixed(1)+" us | I="+f.I.toFixed(3)+" MA";
-    if(isP)info+=" | r="+f.r.toFixed(1)+" mm";
+    if(isP)info+=" | r="+f.r.toFixed(1)+" mm | compression: "+(1/Math.max(cr,0.01)).toFixed(0)+"x";
     if(pI>0.1&&instAmp>0)info+=" | m=0 ripple: "+(rippleAmp*100).toFixed(0)+"%";
+    info+="\\n"+(phaseDesc[f.phase]||"");
     hud.textContent=info;
   }}
 
