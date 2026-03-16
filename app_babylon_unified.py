@@ -50,6 +50,10 @@ def create_unified_renderer(d: dict[str, Any]) -> str:
   <button id="rb">Reset</button>
   <input type="range" id="sl" min="0" max="1" step="1" value="0">
   <span id="tl">t=0 us</span>
+  <span style="color:#666;margin:0 4px">|</span>
+  <span style="color:#8af;font:10px monospace">Speed:</span>
+  <input type="range" id="spd" min="1" max="8" step="1" value="3" style="width:60px;accent-color:#fa8">
+  <span id="spdL" style="color:#fa8;font:10px monospace;min-width:30px">1x</span>
 </div>
 
 <script>
@@ -243,7 +247,16 @@ async function main(){{
   ps.addColorGradient(1,new BABYLON.Color4(1,1,1,0));
   ps.addSizeGradient(0,0.02);ps.addSizeGradient(0.3,0.12);ps.addSizeGradient(1,0);
   ps.isBillboardBased=true;ps.blendMode=BABYLON.ParticleSystem.BLENDMODE_ADD;
-  ps.particleTexture=new BABYLON.Texture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAP0lEQVQY02P4z8DwHwMDw38GBgYGJiCBDYMEMDAw/Gf4z/CfAQv/k4EFA3CAgQkHAAAAAElFTkSuQmCC",sc);
+  // Generate a 32x32 soft gaussian particle texture (higher fidelity than 8x8)
+  const ptex=new BABYLON.DynamicTexture("ptex",32,sc,false);
+  const pctx=ptex.getContext();
+  const grad=pctx.createRadialGradient(16,16,0,16,16,16);
+  grad.addColorStop(0,"rgba(255,255,255,1)");
+  grad.addColorStop(0.3,"rgba(255,240,200,0.8)");
+  grad.addColorStop(0.7,"rgba(200,150,80,0.3)");
+  grad.addColorStop(1,"rgba(100,50,20,0)");
+  pctx.fillStyle=grad;pctx.fillRect(0,0,32,32);ptex.update();
+  ps.particleTexture=ptex;
   ps.start();
 
   // ======== POST-PROCESSING (physics-justified only) ========
@@ -346,15 +359,16 @@ async function main(){{
     labels.push(plane);
     return plane;
   }}
-  makeLabel("ANODE (Cu)",new BABYLON.Vector3(G.anode_length/2,G.anode_radius*1.8,0),"#FFB74D");
-  makeLabel("CATHODE (Steel)",new BABYLON.Vector3(G.anode_length/2,G.cathode_radius*1.3,0),"#90A4AE");
-  makeLabel("INSULATOR",new BABYLON.Vector3(-G.cathode_radius*0.8,0,0),"#CE93D8");
+  // Spread labels: anode below, cathode above, insulator to left, no overlap
+  makeLabel("ANODE (Cu)",new BABYLON.Vector3(G.anode_length*0.3,-G.anode_radius*1.6,G.anode_radius*1.5),"#FFB74D");
+  makeLabel("CATHODE",new BABYLON.Vector3(G.anode_length*0.7,G.cathode_radius*1.4,0),"#90A4AE");
+  makeLabel("INSULATOR",new BABYLON.Vector3(-G.cathode_radius*1.2,G.cathode_radius*0.6,0),"#CE93D8");
 
-  // Dynamic labels for sheath and pinch (updated per frame)
-  const sheathLabel=makeLabel("SHEATH",new BABYLON.Vector3(0,G.cathode_radius*1.1,0),"#64B5F6");
-  const pinchLabel=makeLabel("PINCH",new BABYLON.Vector3(G.anode_length,G.anode_radius*1.5,0),"#FF5252");
+  // Dynamic labels (follow objects, offset to avoid overlap)
+  const sheathLabel=makeLabel("CURRENT SHEATH",new BABYLON.Vector3(0,-G.cathode_radius*1.3,0),"#64B5F6");
+  const pinchLabel=makeLabel("PINCH (fusion here)",new BABYLON.Vector3(G.anode_length*1.05,0,G.anode_radius*2),"#FF5252");
   pinchLabel.isVisible=false;
-  const instLabel=makeLabel("m=0 INSTABILITY",new BABYLON.Vector3(G.anode_length*0.9,G.anode_radius*2.5,0),"#FFD54F");
+  const instLabel=makeLabel("INSTABILITY (m=0)",new BABYLON.Vector3(G.anode_length*0.75,-G.anode_radius*2.5,0),"#FFD54F");
   instLabel.isVisible=false;
 
   let labelsVisible=true;
@@ -362,7 +376,12 @@ async function main(){{
 
   // ======== ANIMATION (physics-driven) ========
   let fi=0,playing=false,lastA=0;
-  const FM=80;
+  const SPEEDS=[0,0.125,0.25,0.5,1,2,4,8,16];  // index 0=unused, slider 1-8
+  let speedIdx=3;  // default 0.5x (slow enough to follow)
+  const spdSlider=document.getElementById("spd"),spdLabel=document.getElementById("spdL");
+  spdSlider.oninput=()=>{{speedIdx=+spdSlider.value;spdLabel.textContent=SPEEDS[speedIdx]+"x"}};
+  spdLabel.textContent=SPEEDS[speedIdx]+"x";
+  function getFrameMS(){{return 160/Math.max(SPEEDS[speedIdx],0.01)}}
   const sl=document.getElementById("sl"),tl=document.getElementById("tl");
   sl.max=S.n_frames-1;
 
@@ -425,15 +444,33 @@ async function main(){{
     phMat.emissiveColor.set(0.8,0.08+pI*0.12,0.03);
     gl.intensity=0.3+pI*1.8;
 
-    // ---- Particles: emit at sheath, density-weighted ----
+    // ---- Particles: behavior changes by phase ----
     ps.emitter.x=isP?G.anode_length:f.z;
     if(f.phase==="rundown"){{
+      // Sweeping along anode: moderate particles, axial drift
+      em.radius=G.cathode_radius*0.85;em.radiusRange=0.35;
       ps.gravity=new BABYLON.Vector3(1.5,0,0);
       ps.minEmitPower=0.5;ps.maxEmitPower=2;
+      ps.emitRate=useGPU?6000:400;
+      ps.minSize=0.04;ps.maxSize=0.14;
     }}else if(isP){{
-      // Radial collapse: particles drawn inward
-      ps.gravity=new BABYLON.Vector3(0,-Math.max(f.r,0.5)*0.4,0);
-      ps.minEmitPower=1.5;ps.maxEmitPower=5;
+      // Radial collapse + pinch: concentrate particles at compression radius
+      const compR=Math.max(f.r,G.anode_radius*0.05);
+      em.radius=compR*0.8;em.radiusRange=0.3;
+      // More particles at higher compression (density increases as r^-2)
+      const densityBoost=Math.min(8,Math.pow(G.cathode_radius/Math.max(compR,0.1),1.5));
+      ps.emitRate=useGPU?Math.min(50000,6000*densityBoost)|0:Math.min(4000,400*densityBoost)|0;
+      // Particles glow brighter and larger at pinch
+      ps.minSize=0.03+pI*0.08;ps.maxSize=0.12+pI*0.2;
+      // Radial inward + axial jets during pinch
+      if(pI>0.5){{
+        // At peak pinch: axial jets (beam ions escaping along axis)
+        ps.gravity=new BABYLON.Vector3(4,0,0);
+        ps.minEmitPower=3;ps.maxEmitPower=10;
+      }}else{{
+        ps.gravity=new BABYLON.Vector3(0,-compR*0.5,0);
+        ps.minEmitPower=1.5;ps.maxEmitPower=5;
+      }}
     }}
 
     // ---- Labels: follow their objects ----
@@ -468,7 +505,7 @@ async function main(){{
   sl.oninput=()=>{{fi=+sl.value;apply(fi);tl.textContent="t="+S.frames[fi].t.toFixed(1)+" us"}};
 
   eng.runRenderLoop(()=>{{
-    if(playing){{const now=performance.now();if(now-lastA>FM){{fi=(fi+1)%S.n_frames;sl.value=fi;
+    if(playing){{const now=performance.now();const FM=getFrameMS();if(now-lastA>FM){{fi=(fi+1)%S.n_frames;sl.value=fi;
       tl.textContent="t="+S.frames[fi].t.toFixed(1)+" us";apply(fi);lastA=now}}}}
     sc.render();
   }});
