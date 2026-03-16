@@ -520,6 +520,23 @@ def _apply_post_processing(
         except (ImportError, Exception):
             pass
 
+    # Filamentation diagnostic (3D only, Challenge 8)
+    if final_state is not None and len(final_state["rho"].shape) == 3:
+        rho_f = final_state["rho"]
+        if rho_f.shape[1] > 1:  # True 3D (ny > 1)
+            try:
+                from dpf.diagnostics.filamentation import detect_filaments
+                fil = detect_filaments(rho_f, dx=dr)
+                result["filamentation"] = {
+                    "n_filaments": fil.n_filaments,
+                    "dominant_m": fil.dominant_m,
+                    "density_contrast": fil.density_contrast,
+                    "filament_width_mm": fil.filament_width_mm,
+                    "is_filamented": fil.is_filamented,
+                }
+            except (ImportError, Exception):
+                pass
+
     # Plasmoid detection + force-free diagnostic (Challenge 14)
     if final_state is not None:
         try:
@@ -1207,8 +1224,22 @@ def _run_metal(
     )
 
     nr, ny, nz = grid_shape
+    rho_ic = np.full((nr, ny, nz), rho0)
+
+    # 3D Cartesian: seed azimuthal density perturbation for filamentation
+    if is_3d:
+        x = (np.arange(nr) - nr / 2.0 + 0.5) * solver_dx
+        y = (np.arange(ny) - ny / 2.0 + 0.5) * solver_dx
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        theta = np.arctan2(Y, X)
+        # m=1 kink + m=4 filamentary perturbation at 1% amplitude
+        for m in (1, 4):
+            pert = 0.01 * rho0 * np.cos(m * theta)  # EMPIRICAL: 1% amplitude
+            rho_ic += pert[:, :, np.newaxis]
+        rho_ic = np.maximum(rho_ic, rho0 * 0.01)  # floor
+
     state = {
-        "rho": np.full((nr, ny, nz), rho0),
+        "rho": rho_ic,
         "velocity": np.zeros((3, nr, ny, nz)),
         "pressure": np.full((nr, ny, nz), p_pa),
         "B": np.zeros((3, nr, ny, nz)),
