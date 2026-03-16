@@ -1189,12 +1189,14 @@ class TestPresetsBackend:
         assert config.fluid.backend == "auto"
 
     def test_all_presets_valid_with_backend(self):
-        """All presets produce valid configs with backend field accessible."""
+        """All presets with grid_shape produce valid configs with backend field accessible."""
         from dpf.config import SimulationConfig
         from dpf.presets import get_preset, get_preset_names
 
         for name in get_preset_names():
             data = get_preset(name)
+            if "grid_shape" not in data:
+                continue  # Skip override-only presets (e.g. 'custom')
             config = SimulationConfig(**data)
             assert config.fluid.backend in ("python", "athena", "athenak", "metal", "auto")
 
