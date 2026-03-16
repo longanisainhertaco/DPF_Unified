@@ -288,9 +288,11 @@ const DATA = {data_json};
 def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
     html = create_unified_renderer(d)
     escaped = html_mod.escape(html, quote=True)
+    # srcdoc approach — but must NOT use sandbox (it blocks CDN script loads
+    # and WebGPU engine init). Also ensure proper escaping.
+    escaped = html.replace("&", "&amp;").replace('"', "&quot;")
     return (
         f'<iframe srcdoc="{escaped}" '
         f'style="width:100%;height:{height}px;border:none;background:#050508;" '
-        f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking" '
-        f'sandbox="allow-scripts allow-same-origin"></iframe>'
+        f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking"></iframe>'
     )
