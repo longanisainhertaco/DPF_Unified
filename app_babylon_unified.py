@@ -102,6 +102,7 @@ var PHASE_BAR_COLORS = {
   rundown: "#2070ff",
   radial: "#ff6020",
   mhd_radial: "#ff6020",
+  mhd: "#5050aa",
   reflected: "#ff9000",
   pinch: "#ff2008",
   post_pinch: "#b03020",
@@ -181,7 +182,7 @@ window.addEventListener("load", async function(){
     var lines = [];
     lines.push("t = " + f.t.toFixed(2) + " us");
     lines.push("I = " + f.I.toFixed(3) + " MA  (" +
-      (f.I / scene.S.I_peak * 100).toFixed(0) + "%)");
+      (scene.S.I_peak > 0 ? (f.I / scene.S.I_peak * 100).toFixed(0) : "0") + "%)");
     // Sheath position during rundown, radius during radial
     if (!isP) {
       lines.push("z = " + f.z.toFixed(1) + " mm");
