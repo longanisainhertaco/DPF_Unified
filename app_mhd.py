@@ -48,6 +48,111 @@ MHD_GRID_PRESETS = {
 }
 
 
+def _apply_advanced_physics(
+    state: dict, dt: float, gas: dict, dr: float, dz: float,
+    a: float, b: float,
+    enable_fld: bool = False,
+    enable_sheath: bool = False,
+    enable_ablation: bool = False,
+    enable_nernst: bool = False,
+    enable_cr: bool = False,
+    cr_fractions: np.ndarray | None = None,
+) -> tuple[dict, np.ndarray | None]:
+    """Operator-split advanced physics modules onto MHD state.
+
+    Returns (updated_state, updated_cr_fractions).
+    Each module is guarded by its own try/except so failures are non-fatal.
+    """
+    mu_0 = 4.0 * np.pi * 1e-7
+    ion_mass = gas["m_mol"]
+    Z_eff = float(gas.get("Z", 1))
+
+    # 1. FLD radiation transport
+    if enable_fld and "Te" in state:
+        try:
+            from dpf.radiation.transport import apply_radiation_transport
+            state = apply_radiation_transport(state, dr, dt, Z=Z_eff)
+        except (ImportError, Exception) as exc:
+            logger.debug("FLD transport skipped: %s", exc)
+
+    # 2. Sheath boundary conditions (electrode surfaces)
+    if enable_sheath and "Te" in state:
+        try:
+            from dpf.sheath.bohm import apply_sheath_bc
+            rho_bnd = float(state["rho"][0, state["rho"].shape[1] // 2, -1])
+            ne_bnd = rho_bnd / ion_mass
+            Te_bnd = float(state["Te"][0, state["Te"].shape[1] // 2, -1])
+            V_sh = float(state.get("pressure", np.zeros(1)).flat[-1]) / max(ne_bnd * kB, 1e-30)
+            V_sh = min(V_sh, 1000.0)  # cap sheath voltage at 1 kV
+            state = apply_sheath_bc(
+                state, ne_boundary=ne_bnd, Te_boundary=Te_bnd,
+                V_sheath=V_sh, mi=ion_mass, Z=Z_eff, boundary="z_high",
+            )
+        except (ImportError, Exception) as exc:
+            logger.debug("Sheath BC skipped: %s", exc)
+
+    # 3. Electrode ablation (Cu anode mass injection)
+    if enable_ablation and "Te" in state and "B" in state:
+        try:
+            from dpf.atomic.ablation import COPPER_ABLATION_EFFICIENCY, ablation_source_array
+            B_field = state["B"]
+            # J ~ curl(B)/mu_0 — approximate as |dBz/dr| / mu_0
+            J_mag = np.abs(np.gradient(B_field[2], dr, axis=0)) / mu_0
+            # Spitzer resistivity at boundary (crude estimate)
+            Te_eV = state["Te"] * kB / 1.602e-19
+            eta_spitzer = 5.2e-5 * Z_eff / np.maximum(Te_eV, 0.1) ** 1.5
+            # Boundary mask: first radial cell = anode surface
+            boundary_mask = np.zeros_like(J_mag, dtype=np.int32)
+            boundary_mask[0, :, :] = 1
+            S_rho = ablation_source_array(
+                J_mag.ravel(), eta_spitzer.ravel(),
+                COPPER_ABLATION_EFFICIENCY, boundary_mask.ravel(),
+            ).reshape(state["rho"].shape)
+            state["rho"] = state["rho"] + S_rho * dt
+        except (ImportError, Exception) as exc:
+            logger.debug("Ablation skipped: %s", exc)
+
+    # 4. Nernst B-field advection
+    if enable_nernst and "Te" in state and "B" in state:
+        try:
+            from dpf.fluid.nernst import apply_nernst_advection
+            ne = state["rho"] / ion_mass
+            Bx, By, Bz = state["B"][0], state["B"][1], state["B"][2]
+            dy = dr  # approximate
+            Bx_new, By_new, Bz_new = apply_nernst_advection(
+                Bx, By, Bz, ne, state["Te"], dr, dy, dz, dt, Z_eff=Z_eff,
+            )
+            state["B"] = np.stack([Bx_new, By_new, Bz_new], axis=0)
+        except (ImportError, Exception) as exc:
+            logger.debug("Nernst advection skipped: %s", exc)
+
+    # 5. Collisional-radiative ionization (non-LTE Z_bar evolution)
+    if enable_cr and "Te" in state:
+        try:
+            from dpf.atomic.ionization import _IP_H, cr_evolve_field
+            ne = state["rho"] / ion_mass
+            # Use H ionization for deuterium, Cu for impurity tracking
+            ip_eV = _IP_H
+            Z_max = len(ip_eV)
+            shape = state["rho"].shape
+            if cr_fractions is None:
+                # Initialize: fully neutral
+                cr_fractions = np.zeros((*shape, Z_max + 1))
+                cr_fractions[..., 0] = 1.0
+            cr_fractions = cr_evolve_field(
+                ne.ravel(), state["Te"].ravel(), Z_max, dt,
+                cr_fractions.reshape(-1, Z_max + 1), ip_eV,
+            ).reshape(*shape, Z_max + 1)
+            # Compute Z_bar from fractions
+            z_indices = np.arange(Z_max + 1)
+            Z_bar = np.sum(cr_fractions * z_indices, axis=-1)
+            state["Z_bar"] = Z_bar
+        except (ImportError, Exception) as exc:
+            logger.debug("CR ionization skipped: %s", exc)
+
+    return state, cr_fractions
+
+
 def run_mhd_simulation(
     backend: str,
     grid_preset: str,
@@ -63,6 +168,11 @@ def run_mhd_simulation(
     cathode_r_mm: float | None = None,
     anode_len_mm: float | None = None,
     progress_fn=None,
+    enable_fld: bool = False,
+    enable_sheath: bool = False,
+    enable_ablation: bool = False,
+    enable_nernst: bool = False,
+    enable_cr: bool = False,
 ) -> dict[str, Any]:
     """Run MHD simulation and return data in the same format as Lee model."""
     from dpf.presets import _PRESETS, get_preset
@@ -107,15 +217,23 @@ def run_mhd_simulation(
 
     t0_wall = wall_time.perf_counter()
 
+    adv_physics = {
+        "enable_fld": enable_fld, "enable_sheath": enable_sheath,
+        "enable_ablation": enable_ablation, "enable_nernst": enable_nernst,
+        "enable_cr": enable_cr,
+    }
+
     if backend == "hybrid":
         result = _run_hybrid_lee_mhd(
             grid_shape, dr, dz, gas, rho0, p_pa,
             cc, sc, t_end, a, b, L_anode, progress_fn,
+            **adv_physics,
         )
     elif backend.startswith("metal"):
         result = _run_metal(
             backend, grid_shape, dr, dz, gas, rho0, p_pa,
             cc, t_end, a, b, L_anode, progress_fn,
+            **adv_physics,
         )
     elif backend == "athena":
         from pathlib import Path
@@ -136,6 +254,7 @@ def run_mhd_simulation(
             result = _run_metal(
                 backend, grid_shape, dr, dz, gas, rho0, p_pa,
                 cc, t_end, a, b, L_anode, progress_fn,
+                **adv_physics,
             )
             result["backend"] = "metal_plm (fallback from athena)"
         else:
@@ -166,6 +285,7 @@ def run_mhd_simulation(
             result = _run_metal(
                 "metal_plm", grid_shape, dr, dz, gas, rho0, p_pa,
                 cc, t_end, a, b, L_anode, progress_fn,
+                **adv_physics,
             )
             result["backend"] = "metal_plm (redirected from python)"
         else:
@@ -178,6 +298,19 @@ def run_mhd_simulation(
 
     # Preserve custom backend label from redirect/fallback logic
     effective_backend = result.get("backend", backend)
+    # Track which advanced physics modules are active
+    active_modules = []
+    if enable_fld:
+        active_modules.append("FLD radiation transport")
+    if enable_sheath:
+        active_modules.append("Sheath BC (Bohm)")
+    if enable_ablation:
+        active_modules.append("Electrode ablation (Cu)")
+    if enable_nernst:
+        active_modules.append("Nernst B-advection")
+    if enable_cr:
+        active_modules.append("CR ionization (non-LTE)")
+
     result.update({
         "E_bank_kJ": E_bank / 1e3,
         "T_LC_us": 2 * np.pi * np.sqrt(cc["L0"] * cc["C"]) * 1e6,
@@ -188,6 +321,7 @@ def run_mhd_simulation(
         "rho0": rho0,
         "backend": effective_backend,
         "grid_shape": grid_shape,
+        "advanced_physics": active_modules,
     })
 
     # Phase 1 breakdown diagnostic: CIV or Paschen
@@ -459,13 +593,14 @@ def run_mhd_simulation(
         pass
 
     result["reproducibility"] = {
-        "version": "v1.3.1",
+        "version": "v1.4.0",
         "git_hash": _git_hash,
         "timestamp": _dt.now().isoformat(),
         "backend": effective_backend,
         "grid_shape": grid_shape,
         "sim_time_us": sim_time_us,
         "preset": preset_name,
+        "advanced_physics": active_modules,
     }
 
     return result
@@ -478,6 +613,11 @@ def _run_hybrid_lee_mhd(
     cc: dict, sc: dict, t_end: float,
     a: float, b: float, L_anode: float,
     progress_fn=None,
+    enable_fld: bool = False,
+    enable_sheath: bool = False,
+    enable_ablation: bool = False,
+    enable_nernst: bool = False,
+    enable_cr: bool = False,
 ) -> dict[str, Any]:
     """Hybrid Lee+MHD: Lee model runs axial rundown, MHD handles radial implosion.
 
@@ -672,6 +812,7 @@ def _run_hybrid_lee_mhd(
     # Target ~30 snapshots during MHD phase
     _target_snaps = 30
     snap_interval = 3
+    _cr_fracs = None  # CR ionization charge-state fractions
 
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
@@ -704,6 +845,16 @@ def _run_hybrid_lee_mhd(
                     state["Te"], _ = apply_bremsstrahlung_losses(state["Te"], ne, dt, Z=gas.get("Z", 1))
                 except ImportError:
                     pass
+
+        # Advanced physics operator-split (FLD, sheath, ablation, Nernst, CR)
+        any_adv = enable_fld or enable_sheath or enable_ablation or enable_nernst or enable_cr
+        if any_adv:
+            state, _cr_fracs = _apply_advanced_physics(
+                state, dt, gas, dr_mhd, dz_mhd, a, b,
+                enable_fld=enable_fld, enable_sheath=enable_sheath,
+                enable_ablation=enable_ablation, enable_nernst=enable_nernst,
+                enable_cr=enable_cr, cr_fractions=_cr_fracs,
+            )
 
         # Compute L_plasma from MHD density profile using Lee-model formula.
         # Extract effective compression radius from density, then use the
@@ -849,6 +1000,11 @@ def _run_metal(
     cc: dict, t_end: float,
     a: float, b: float, L_anode: float,
     progress_fn=None,
+    enable_fld: bool = False,
+    enable_sheath: bool = False,
+    enable_ablation: bool = False,
+    enable_nernst: bool = False,
+    enable_cr: bool = False,
 ) -> dict[str, Any]:
     """Run Metal GPU MHD solver."""
     import torch
@@ -919,6 +1075,7 @@ def _run_metal(
     except ImportError:
         pass
 
+    _cr_fracs = None  # CR ionization charge-state fractions
     prev_Lp = 0.0  # Initialize to zero; first step computes Lp, second gets valid dL/dt
     mu_0 = 4.0 * np.pi * 1e-7
     # Build r_cells for cylindrical cell volume computation
@@ -969,6 +1126,18 @@ def _run_metal(
                 )
             except (ImportError, Exception):
                 pass
+
+        # Advanced physics operator-split (FLD, sheath, ablation, Nernst, CR)
+        any_adv = enable_fld or enable_sheath or enable_ablation or enable_nernst or enable_cr
+        if any_adv:
+            solver_dx = (dr + dz) / 2.0 if is_3d else dr
+            solver_dz_adv = solver_dx if is_3d else dz
+            state, _cr_fracs = _apply_advanced_physics(
+                state, dt, gas, solver_dx, solver_dz_adv, a, b,
+                enable_fld=enable_fld, enable_sheath=enable_sheath,
+                enable_ablation=enable_ablation, enable_nernst=enable_nernst,
+                enable_cr=enable_cr, cr_fractions=_cr_fracs,
+            )
 
         # Time-resolved yield accumulation
         if yield_tracker is not None:
@@ -1059,7 +1228,7 @@ def _run_metal(
     I_arr = np.array(currents)
     I_peak_idx = int(np.argmax(np.abs(I_arr)))
 
-    return {
+    result = {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
         "L_p_nH": np.array(L_plasmas),
         "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
