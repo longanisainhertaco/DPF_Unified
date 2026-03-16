@@ -96,3 +96,85 @@ Set up monitoring for these terms in new publications:
 - Plasma Physics and Controlled Fusion (IOP) — numerical experiments
 - Nuclear Fusion (IAEA) — major fusion results
 - Scientific Reports (Nature) — open access experimental results
+
+---
+
+## Adjacent Fields Search (175 papers found)
+
+DPF sits at the intersection of multiple physics disciplines. Breakthroughs will come from cross-pollination.
+
+Saved to: `docs/adjacent_field_papers_2023_2026.json`
+
+### MHD Numerics — Solver Methods
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| **MPI-AMRVAC 3.0** (Keppens et al.) | 2023 | 97 | Open-source MHD framework — AMR techniques applicable to our Metal solver |
+| **IDEFIX** (Lesur et al.) | 2023 | 26 | Performance-portable Godunov code — same class as our Metal solver |
+| Pressure anisotropy in plasma turbulence | 2023 | 24 | Non-ideal MHD effects relevant to our Hall MHD |
+
+### Fusion Diagnostics — What We're Trying to Measure
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| **NIF Target Gain > Unity** (Abu-Shawareb et al.) | 2024 | 338 | Milestone fusion result — same Bosch-Hale reactivity we use |
+| **ICF Physics Principles** (Hurricane et al.) | 2023 | 169 | Comprehensive fusion physics review — pinch physics overlaps |
+| ICF Instabilities and Mixing | 2024 | 135 | Rayleigh-Taylor/Richtmyer-Meshkov at compression — same physics in DPF |
+
+### ML/AI in Plasma — Where AI Meets Fusion
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| **Avoiding tearing instability with deep RL** (Nature) | 2024 | 114 | AI controlling plasma instabilities in real time — could inform our instability detection |
+| Machine learning in solar physics | 2023 | 60 | ML approaches to plasma diagnostics |
+| Learning sparse nonlinear dynamics | 2023 | 46 | Automated model discovery — could find DPF scaling laws |
+
+### Nuclear Cross Sections — Our Yield Calculations
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| PHITS particle transport code | 2023 | 312 | Monte Carlo for neutron transport — validation target |
+| **JET D-T results** | 2024 | 83 | D-T fusion data from world's largest tokamak — cross-validates Bosch-Hale |
+| JET D-T optimized non-thermal fusion | 2023 | 76 | Beam-target fusion at scale — validates our beam-target model |
+
+### Reconnection & Instabilities — DPF Pinch Physics
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| Magnetotail reconnection and kinetic instabilities | 2023 | 29 | Space physics reconnection — same tearing mode we model |
+| Supernova neutrinos and simulations | 2023 | 60 | Core-collapse simulations use same MHD methods as us |
+
+### Scaling Laws — How DPF Performance Scales
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| **Magneto-Inertial Fusion review** | 2023 | 54 | MIF covers same parameter space as DPF (high density, pulsed) |
+| **MagLIF similarity scaling** | 2023 | 29 | Scaling laws for magnetized compression — directly applicable to DPF |
+| Proton imaging of HED plasmas | 2023 | 45 | Diagnostic technique for pulsed plasma — potential DPF application |
+
+### Radiation Physics — Energy Balance
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| **MESA** (Modules for Stellar Astrophysics) | 2023 | 479 | Industry-standard radiation transport — our bremsstrahlung model follows same physics |
+
+### Circuit/Pulsed Power — Our Driver
+| Paper | Year | Cites | Relevance |
+|-------|------|-------|-----------|
+| Energy storage systems review | 2024 | 178 | Capacitor bank technology trends |
+
+---
+
+## Cross-Disciplinary Research Questions
+
+These questions bridge DPF with adjacent fields and could lead to novel contributions:
+
+1. **Can deep RL stabilize a DPF pinch?** (Nature 2024 tearing instability paper → apply to DPF m=0)
+2. **Can MagLIF scaling laws predict DPF yield?** (MagLIF similarity scaling → DPF parameter space)
+3. **Can WALRUS (our surrogate model) learn from JET data?** (JET D-T results → transfer learning to DPF)
+4. **Can AMR (from MPI-AMRVAC) resolve the current sheath on coarse grids?** (Addresses our resolution limitation)
+5. **Can proton imaging validate our MHD density fields?** (Diagnostic comparison target)
+
+## Search Tools Built
+
+```python
+# arXiv (installed): import arxiv
+# OpenAlex API: https://api.openalex.org/works?search=...
+# Semantic Scholar API: https://api.semanticscholar.org/graph/v1/paper/search?query=...
+# CrossRef API: https://api.crossref.org/works?query=...
+# cortana-dpf-ref: cortana-dpf-ref search "query"
+# paper-search-mcp: MCP server wired in ~/.claude/mcp.json
+```
