@@ -31,9 +31,9 @@ _VERSION = "v1.2"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section
+from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section  # noqa: F401
 from app_babylon_unified import create_unified_iframe
-from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe
+from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe  # noqa: F401
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
@@ -504,36 +504,11 @@ def run_simulation(
             fig_3d = create_3d_plasma_fig(data)
         else:
             fig_3d = create_mhd_fields_fig(data)
-        # Use 3D MHD animation for all MHD backends
-        anim_fig = create_animated_mhd_3d(data)
-        full_html = anim_fig.to_html(
-            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
-        )
-        escaped = full_html.replace("&", "&amp;").replace('"', "&quot;")
-        anim_html = (
-            f'<iframe srcdoc="{escaped}" '
-            f'style="width:100%;height:580px;border:none;background:#111;"></iframe>'
-        )
     else:
         fig_schem = create_schematic_fig(data)
         fig_3d = create_3d_plasma_fig(data)
-        anim_fig = create_animated_3d(data)
-        full_html = anim_fig.to_html(
-            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
-        )
-        escaped = full_html.replace("&", "&amp;").replace('"', "&quot;")
-        anim_html = (
-            f'<iframe srcdoc="{escaped}" '
-            f'style="width:100%;height:620px;border:none;background:#111;"></iframe>'
-        )
 
-    # Babylon.js 2D cross-section (replaces Plotly version)
-    try:
-        xsec_anim = create_cross_section_iframe(data, height=450)
-    except Exception:
-        xsec_anim = ""
-
-    # Unified Babylon.js renderer (all physics layers)
+    # Unified Babylon.js renderer (all physics layers — sole 3D visualization)
     try:
         babylon_html = create_unified_iframe(data, height=620)
     except Exception:
@@ -563,7 +538,7 @@ def run_simulation(
     return (
         metrics, narrative,
         fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d,
-        xsec_anim, babylon_html, anim_html,
+        babylon_html,
         fig_compare, compare_md,
         csv_path, data, runs,
     )
@@ -778,17 +753,6 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     "always forms at the anode tip (top)."
                 )
                 fig_3d_plot = gr.Plot(label="3D Visualization")
-            with gr.Tab("Plasma Cross-Section"):
-                gr.Markdown(
-                    "**What you're seeing:** A 2D side view (r-z plane) showing the electrode "
-                    "geometry and plasma evolution. The colored band is the current sheath sweeping "
-                    "gas along the anode (blue = rundown), then compressing inward (orange = radial "
-                    "implosion). The red region shows the hot, dense pinch plasma where fusion occurs."
-                )
-                fig_xsec = gr.HTML(
-                    value="<div style='color:#999;padding:40px;text-align:center;'>"
-                    "Run a simulation, then press Play to watch the plasma form.</div>",
-                )
             with gr.Tab("3D Physics (Babylon.js)"):
                 gr.Markdown(
                     "**All-in-one physics visualization** — Babylon.js WebGPU. "
@@ -799,15 +763,6 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                 fig_babylon = gr.HTML(
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
                     "Run a simulation to see the interactive 3D physics.</div>",
-                )
-            with gr.Tab("3D Playback (Plotly)"):
-                gr.Markdown(
-                    "**Plotly 3D replay** of the plasma evolution. "
-                    "Use Play or drag the slider. For better graphics, see the Babylon.js tab above."
-                )
-                fig_anim = gr.HTML(
-                    value="<div style='color:#999;padding:40px;text-align:center;'>"
-                    "Run a Lee model simulation, then press Play.</div>",
                 )
             with gr.Tab("Compare Runs"):
                 gr.Markdown(
@@ -1016,7 +971,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
             metrics_md, narrative_md,
             fig_waveform, fig_physics, fig_portrait,
             fig_geometry, fig_3d_plot,
-            fig_xsec, fig_babylon, fig_anim,
+            fig_babylon,
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],

@@ -307,11 +307,15 @@ async function createDPFScene(canvas, data) {
   pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
   pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
 
+  // Pinch column at anode tip: spans last 15% of anode length
+  // This is where the reflected shock creates the dense plasma core
   var N_PINCH = 24;
   var pinchPath = [];
+  var pinchStart = G.anode_length * 0.85;
+  var pinchEnd = G.anode_length * 1.02;
   for (var k = 0; k <= N_PINCH; k++) {
     pinchPath.push(new BABYLON.Vector3(
-      G.anode_length * (0.62 + 0.38 * k / N_PINCH), 0, 0
+      pinchStart + (pinchEnd - pinchStart) * k / N_PINCH, 0, 0
     ));
   }
   var pinchRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.3);
@@ -612,12 +616,25 @@ async function createDPFScene(canvas, data) {
       var instAmp = L.instability ? L.instability.amplitude : 0;
       var rippleAmp = isP ? instAmp * Math.min(1, (1 - cr) * 2) : 0;
 
+      // Pinch radius: dense core is much smaller than the sheath radius
+      // Bennett equilibrium: a_B ~ r_sheath * sqrt(kT / (I^2 * mu0/(8*pi*N*k)))
+      // Approximate: pinch core ~ 20-30% of minimum sheath radius
+      var pinchR = Math.max(G.anode_radius * 0.05, cr * G.cathode_radius * 0.25);
+
+      // m=0 sausage: most unstable wavelength ~ 2*pi*a (circumference)
+      // Mode number adapts to aspect ratio
+      var pinchLen = pinchEnd - pinchStart;
+      var nModes = Math.max(1, Math.round(pinchLen / (2 * Math.PI * Math.max(pinchR, 0.001))));
+      nModes = Math.min(nModes, 6);
+
       for (var pk = 0; pk <= N_PINCH; pk++) {
         var zFrac = pk / N_PINCH;
-        var baseR = cr * G.cathode_radius;
-        var ripple = rippleAmp * baseR * Math.cos(4 * Math.PI * zFrac);
-        pinchRadii[pk] = Math.max(0.001, baseR + ripple);
-        haloRadii[pk] = Math.min(G.cathode_radius * 0.8, Math.max(0.002, (baseR + ripple) * 1.8));
+        // Tapered ends (pinch is thicker at center, tapers at edges)
+        var taper = Math.sin(Math.PI * zFrac);
+        var localR = pinchR * (0.5 + 0.5 * taper);
+        var ripple = rippleAmp * localR * Math.cos(2 * Math.PI * nModes * zFrac);
+        pinchRadii[pk] = Math.max(0.001, localR + ripple);
+        haloRadii[pk] = Math.min(G.cathode_radius * 0.5, Math.max(0.002, (localR + ripple) * 2.5));
       }
 
       BABYLON.MeshBuilder.CreateTube("pinch", {
@@ -630,8 +647,10 @@ async function createDPFScene(canvas, data) {
         sideOrientation: BABYLON.Mesh.BACKSIDE, instance: halo,
       });
 
-      // Only show pinch/halo when compression is significant (cr < 0.5)
-      var pinchVisible = isP && cr < 0.5;
+      // Pinch column appears after significant compression (cr < 0.3)
+      // or during pinch/post_pinch/reflected phases
+      var pinchPhase = f.phase === "pinch" || f.phase === "post_pinch" || f.phase === "reflected";
+      var pinchVisible = pinchPhase || (isP && cr < 0.3);
       pinch.isVisible = pinchVisible;
       halo.isVisible = pinchVisible;
       pinchMat.alpha = pinchVisible ? pI * 0.85 : 0;
