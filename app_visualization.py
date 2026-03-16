@@ -197,10 +197,11 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
     inst = d.get("instability")
     if inst:
         tau_ns = inst.get("tau_m0_ns", 0)
+        n_efolds = float(d.get("t_peak", 0) * 1e3 / max(tau_ns, 1))
         instability = {
             "tau_m0_ns": tau_ns,
-            "n_efolds": float(d.get("t_peak", 0) * 1e3 / max(tau_ns, 1)),
-            "amplitude": min(1.0, float(d.get("t_peak", 0) * 1e3 / max(tau_ns, 1)) * 0.1),
+            "n_efolds": n_efolds,
+            "amplitude": min(1.0, np.exp(n_efolds) - 1),
         }
 
     return {
