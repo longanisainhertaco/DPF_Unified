@@ -368,6 +368,14 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
         regime_tag = "KINETIC" if regime.get("kinetic_needed") else "MHD"
         parts.append(f"Regime: {regime_tag} (Kn={Kn:.2f})")
 
+    # Quality grade
+    try:
+        from dpf.validation.quality_assessment import assess_quality
+        qa = assess_quality(data)
+        parts.append(f"Quality: **{qa.grade}** ({qa.score*100:.0f}%)")
+    except (ImportError, Exception):
+        pass
+
     parts.append(
         f"{data.get('device', '?')} | {data.get('gas', {}).get('name', '?')} | "
         f"{backend} | {data['n_steps']} steps in {data['elapsed_s']:.2f}s{fid_str}"
