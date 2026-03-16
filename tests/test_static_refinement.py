@@ -16,6 +16,7 @@ from dpf.experimental.static_refinement import (
     RefinementRegion,
     compute_refinement_region,
     create_stretched_grid,
+    current_density_sensor,
     detect_sheath_location,
     identify_refinement_cells,
     interpolate_to_fine_grid,
@@ -238,6 +239,30 @@ class TestLohnerIndicator:
 
 
 # --- Refinement cell identification ---
+
+
+class TestCurrentDensitySensor:
+    def test_uniform_b_low_sensor(self):
+        """Uniform B should have low current density sensor."""
+        B = np.ones((3, 32, 1, 64)) * 0.1
+        sensor = current_density_sensor(B, dr=0.001, dz=0.0025)
+        assert sensor.shape == (32, 1, 64)
+        assert np.max(sensor) < 0.1  # Low for uniform field
+
+    def test_sharp_b_jump_high_sensor(self):
+        """Sharp B-field jump should produce high sensor value."""
+        B = np.ones((3, 32, 1, 64)) * 0.01
+        B[2, 14:18, :, :] = 1.0  # Sharp Bz jump
+        sensor = current_density_sensor(B, dr=0.001, dz=0.0025)
+        # Near the jump, sensor should be high
+        assert np.max(sensor[13:19, :, :]) > 0.3
+
+    def test_sensor_bounded(self):
+        """Sensor should be in [0, 1]."""
+        B = np.random.rand(3, 16, 1, 32) * 0.5
+        sensor = current_density_sensor(B, dr=0.001, dz=0.0025)
+        assert np.all(sensor >= 0)
+        assert np.all(sensor <= 1.0 + 1e-10)
 
 
 class TestRefinementCells:

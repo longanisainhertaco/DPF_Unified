@@ -377,6 +377,54 @@ def lohner_error_indicator(
     return indicator
 
 
+def current_density_sensor(
+    B: np.ndarray,
+    dr: float,
+    dz: float,
+) -> np.ndarray:
+    """Magnetic current density sensor for MHD refinement.
+
+    Computes |J| = |curl B| / mu_0, normalized by local B.
+    This is the most physically motivated sensor for DPF —
+    it peaks at current sheets and the sheath boundary.
+
+    J_sensor = |curl B| * dr / (|B| + eps * B_max)
+
+    Args:
+        B: Magnetic field [3, nr, ny, nz].
+        dr: Radial cell spacing [m].
+        dz: Axial cell spacing [m].
+
+    Returns:
+        Sensor field [nr, ny, nz] in [0, 1].
+    """
+    Br = B[0]  # (nr, ny, nz)
+    Bz = B[2] if B.shape[0] > 2 else np.zeros_like(Br)
+
+    nr, ny, nz = Br.shape
+
+    # J_theta ~ dBr/dz - dBz/dr (dominant component in cylindrical)
+    J_theta = np.zeros_like(Br)
+    if nz > 2:
+        J_theta[:, :, 1:-1] += (Br[:, :, 2:] - Br[:, :, :-2]) / (2.0 * dz)
+    if nr > 2:
+        J_theta[1:-1, :, :] -= (Bz[2:, :, :] - Bz[:-2, :, :]) / (2.0 * dr)
+
+    # Normalize by local |B|
+    B_mag = np.sqrt(np.sum(B**2, axis=0))
+    B_max = float(np.max(B_mag))
+    eps = 0.01
+
+    sensor = np.abs(J_theta) * dr / (B_mag + eps * max(B_max, 1e-10))
+
+    # Normalize to [0, 1]
+    s_max = float(np.max(sensor))
+    if s_max > 0:
+        sensor /= s_max
+
+    return sensor
+
+
 def identify_refinement_cells(
     indicator: np.ndarray,
     threshold: float = 0.3,
