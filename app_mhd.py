@@ -493,15 +493,24 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
-    # Plasmoid detection (Challenge 14)
+    # Plasmoid detection + force-free diagnostic (Challenge 14)
     if final_state is not None:
         try:
-            from dpf.diagnostics.instability import detect_plasmoids
+            from dpf.diagnostics.plasmoid import detect_plasmoids, force_free_diagnostic
             plasmoid_result = detect_plasmoids(
                 final_state["B"], final_state["rho"], dr, dz,
             )
             if plasmoid_result["n_plasmoids"] > 0 or plasmoid_result["magnetic_energy_J"] > 0:
-                result["plasmoids"] = plasmoid_result
+                result["plasmoids"] = {
+                    k: v for k, v in plasmoid_result.items() if k != "psi_field"
+                }
+            ff = force_free_diagnostic(final_state["B"], dr, dz)
+            result["force_free"] = {
+                "alpha_ff": ff.alpha_ff,
+                "j_parallel_frac": ff.j_parallel_frac,
+                "force_free_error": ff.force_free_error,
+                "is_relaxed": ff.is_relaxed,
+            }
         except (ImportError, Exception):
             pass
 
