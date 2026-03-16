@@ -63,7 +63,27 @@ const PC={{rundown:[0.15,0.45,1],radial:[1,0.28,0.08],mhd_radial:[1,0.28,0.08],r
 const PL={{rundown:"Axial rundown",radial:"Radial implosion",mhd_radial:"MHD radial",reflected:"Reflected shock",pinch:"Pinch",post_pinch:"Post-pinch",none:""}};
 
 function decB64(s,shape){{const r=atob(s),b=new ArrayBuffer(r.length),u=new Uint8Array(b);for(let i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return{{d:new Float32Array(b),s:shape}}}}
-function cmap(t){{return[Math.min(1,.05+1.3*t),Math.max(0,.85*t-.25)*(1-t*.35),Math.max(0,.85-1.7*t)]}}
+
+// Viridis colormap (colorblind-safe, perceptually uniform)
+const VIRIDIS=[
+  [0.267,0.004,0.329],[0.283,0.141,0.458],[0.254,0.265,0.530],[0.207,0.372,0.553],
+  [0.164,0.471,0.558],[0.128,0.567,0.551],[0.134,0.658,0.517],[0.267,0.749,0.441],
+  [0.478,0.821,0.318],[0.741,0.873,0.150],[0.993,0.906,0.144]
+];
+// Cividis (optimized for deuteranopia/protanopia)
+const CIVIDIS=[
+  [0.0,0.135,0.305],[0.0,0.206,0.380],[0.133,0.273,0.385],[0.259,0.335,0.384],
+  [0.365,0.397,0.395],[0.463,0.461,0.420],[0.563,0.529,0.444],[0.666,0.604,0.452],
+  [0.775,0.685,0.432],[0.888,0.775,0.380],[1.0,0.871,0.298]
+];
+let cmapChoice=VIRIDIS;
+function cmap(t){{
+  const n=cmapChoice.length-1;
+  const i=Math.min(n-1,Math.max(0,Math.floor(t*n)));
+  const f=t*n-i;
+  const a=cmapChoice[i],b=cmapChoice[i+1];
+  return[a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+}}
 
 async function main(){{
   const cv=document.getElementById("c"),hud=document.getElementById("hud");
@@ -79,8 +99,13 @@ async function main(){{
   // ======== CAMERA ========
   const cam=new BABYLON.ArcRotateCamera("cam",-Math.PI/3.5,Math.PI/3.2,G.cathode_radius*9,
     new BABYLON.Vector3(G.anode_length/2,0,0),sc);
-  cam.attachControl(cv,true);cam.lowerRadiusLimit=G.cathode_radius*2;
-  cam.upperRadiusLimit=G.cathode_radius*35;cam.wheelPrecision=25;cam.minZ=0.01;cam.inertia=0.8;
+  cam.attachControl(cv,true);
+  cam.lowerRadiusLimit=G.anode_radius*0.3;  // zoom right into the pinch
+  cam.upperRadiusLimit=G.cathode_radius*50;
+  cam.wheelPrecision=15;  // more responsive zoom
+  cam.pinchPrecision=20;  // touch zoom
+  cam.minZ=0.001;cam.inertia=0.85;
+  cam.panningSensibility=80;  // right-click pan
 
   // ======== LIGHTS (brighter for visibility) ========
   const hemiL=new BABYLON.HemisphericLight("h",new BABYLON.Vector3(0,1,0.3),sc);
@@ -324,9 +349,10 @@ async function main(){{
       if(v){{
         activeOverlay=key;
         if(heatPlane){{
-          if(key==="none"){{heatPlane.isVisible=false}}
-          else if(L[key]){{heatPlane.isVisible=true;updateHeatmap(key)}}
-          else if(key==="bfield"&&L.bfield){{heatPlane.isVisible=true;updateHeatmap("bfield")}}
+          if(key==="none"){{heatPlane.isVisible=false;showColorbar("none")}}
+          else if(L[key]){{heatPlane.isVisible=true;updateHeatmap(key);showColorbar(key)}}
+          else if(key==="bfield"&&L.bfield){{heatPlane.isVisible=true;updateHeatmap("bfield");showColorbar("bfield")}}
+          else{{heatPlane.isVisible=false;showColorbar("none")}}
         }}
       }}
     }});
@@ -334,6 +360,76 @@ async function main(){{
     rb.children[1].color="#edb";rb.children[1].fontSize=11;rb.height="24px";
     panel.addControl(rb);
   }});
+
+  // ---- Colormap selector (accessibility) ----
+  const cmSep=new BABYLON.GUI.TextBlock();cmSep.text="Accessibility";cmSep.color="#af8";
+  cmSep.fontSize=12;cmSep.height="20px";cmSep.textHorizontalAlignment=BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+  panel.addControl(cmSep);
+
+  // Viridis (default) vs Cividis (colorblind-optimized) toggle
+  tog("Cividis (colorblind)",false,v=>{{
+    cmapChoice=v?CIVIDIS:VIRIDIS;
+    if(activeOverlay!=="none"&&heatPlane&&heatPlane.isVisible)updateHeatmap(activeOverlay);
+  }});
+
+  // ---- Colorbar (right side of screen) ----
+  const cbPanel=new BABYLON.GUI.StackPanel();
+  cbPanel.width="60px";cbPanel.isVertical=true;
+  cbPanel.horizontalAlignment=BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+  cbPanel.verticalAlignment=BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+  cbPanel.paddingRight="10px";
+  ui.addControl(cbPanel);
+  cbPanel.isVisible=false;
+
+  // Colorbar title
+  const cbTitle=new BABYLON.GUI.TextBlock();cbTitle.color="#ccc";cbTitle.fontSize=10;
+  cbTitle.height="18px";cbTitle.text="";cbPanel.addControl(cbTitle);
+
+  // Max value label
+  const cbMax=new BABYLON.GUI.TextBlock();cbMax.color="#eee";cbMax.fontSize=10;
+  cbMax.height="16px";cbMax.text="";cbPanel.addControl(cbMax);
+
+  // Gradient bar (rendered as stacked colored rectangles)
+  const N_CB=16;
+  const cbRects=[];
+  for(let i=N_CB-1;i>=0;i--){{
+    const rect=new BABYLON.GUI.Rectangle();
+    rect.width="30px";rect.height="12px";rect.thickness=0;
+    const t=i/(N_CB-1);
+    const[r,g,b]=cmap(t);
+    rect.background="rgb("+Math.round(r*255)+","+Math.round(g*255)+","+Math.round(b*255)+")";
+    cbPanel.addControl(rect);
+    cbRects.push(rect);
+  }}
+
+  // Min value label
+  const cbMin=new BABYLON.GUI.TextBlock();cbMin.color="#eee";cbMin.fontSize=10;
+  cbMin.height="16px";cbMin.text="";cbPanel.addControl(cbMin);
+
+  // Units label
+  const cbUnits=new BABYLON.GUI.TextBlock();cbUnits.color="#aaa";cbUnits.fontSize=9;
+  cbUnits.height="16px";cbUnits.text="";cbPanel.addControl(cbUnits);
+
+  function showColorbar(key){{
+    if(key==="none"){{cbPanel.isVisible=false;return}}
+    cbPanel.isVisible=true;
+    // Update gradient colors
+    for(let i=0;i<N_CB;i++){{
+      const t=(N_CB-1-i)/(N_CB-1);
+      const[r,g,b]=cmap(t);
+      cbRects[i].background="rgb("+Math.round(r*255)+","+Math.round(g*255)+","+Math.round(b*255)+")";
+    }}
+    // Labels with units
+    const info={{
+      density:{{title:"Density",max:L.density?L.density.max_val.toExponential(1):"?",min:L.density?L.density.min_val.toExponential(1):"0",unit:"kg/m3"}},
+      temperature:{{title:"Te",max:L.temperature?L.temperature.max_eV.toFixed(0):"?",min:L.temperature?L.temperature.min_eV.toFixed(1):"0",unit:"eV"}},
+      bfield:{{title:"|B|",max:L.bfield?L.bfield.max_T.toFixed(1):"?",min:"0",unit:"Tesla"}},
+      radiation:{{title:"P_rad",max:L.radiation?L.radiation.max_W_m3.toExponential(1):"?",min:"0",unit:"W/m3"}},
+      yield_map:{{title:"Yield",max:L.yield_map?L.yield_map.max_rate.toExponential(1):"?",min:"0",unit:"n/m3/s"}}
+    }};
+    const d=info[key]||{{title:key,max:"1",min:"0",unit:""}};
+    cbTitle.text=d.title;cbMax.text=d.max;cbMin.text=d.min;cbUnits.text=d.unit;
+  }}
 
   // ---- Labels section ----
   const lblSep=new BABYLON.GUI.TextBlock();lblSep.text="Labels";lblSep.color="#8fa";
@@ -482,19 +578,28 @@ async function main(){{
       instLabel.isVisible=(rippleAmp>0.02&&pI>0.3);
     }}
 
-    // ---- HUD (expert data + student-friendly phase description) ----
+    // ---- HUD: real-time simulation data (makes it obvious this is computed) ----
     const phaseDesc={{
-      rundown:"Gas is being swept along the anode by the magnetic piston",
-      radial:"The plasma ring is compressing inward toward the axis",
-      mhd_radial:"MHD compression — plasma imploding radially",
-      reflected:"Shock wave bouncing back outward after hitting the axis",
-      pinch:"Maximum compression — this is where fusion happens!",
-      post_pinch:"Pinch is disrupting via instabilities",
+      rundown:"Current sheath sweeping gas toward anode tip",
+      radial:"Plasma ring compressing inward — magnetic piston",
+      mhd_radial:"MHD radial implosion in progress",
+      reflected:"Reflected shock expanding outward",
+      pinch:"PEAK COMPRESSION — fusion zone active",
+      post_pinch:"Pinch disrupting — m=0 instability",
     }};
-    let info=L.device+" | "+gpu+"\\n"+(PL[f.phase]||f.phase);
-    info+="\\nt="+f.t.toFixed(1)+" us | I="+f.I.toFixed(3)+" MA";
-    if(isP)info+=" | r="+f.r.toFixed(1)+" mm | compression: "+(1/Math.max(cr,0.01)).toFixed(0)+"x";
-    if(pI>0.1&&instAmp>0)info+=" | m=0 ripple: "+(rippleAmp*100).toFixed(0)+"%";
+
+    // Build multi-line data readout
+    let info=L.device+" | "+gpu+" | "+(L.backend||"")+"\\n";
+    info+="Phase: "+(PL[f.phase]||f.phase)+"\\n";
+    info+="t = "+f.t.toFixed(2)+" us\\n";
+    info+="I = "+f.I.toFixed(3)+" MA  ("+(f.I/S.I_peak*100).toFixed(0)+"% of peak)\\n";
+    if(isP){{
+      info+="r = "+f.r.toFixed(2)+" mm  (compression: "+(G.cathode_radius/Math.max(f.r,0.01)).toFixed(0)+":1)\\n";
+      if(L.density)info+="rho_max = "+L.density.max_val.toExponential(2)+" kg/m3\\n";
+      if(L.temperature)info+="Te_max = "+L.temperature.max_eV.toFixed(0)+" eV\\n";
+      if(L.bfield)info+="|B|_max = "+L.bfield.max_T.toFixed(1)+" T\\n";
+    }}
+    if(pI>0.1&&instAmp>0)info+="m=0 instability: "+(rippleAmp*100).toFixed(0)+"% amplitude\\n";
     info+="\\n"+(phaseDesc[f.phase]||"");
     hud.textContent=info;
   }}
