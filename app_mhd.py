@@ -898,6 +898,18 @@ def _run_metal(
                 except ImportError:
                     pass
 
+            # Line radiation cooling (impurity species)
+            try:
+                from dpf.radiation.line_radiation import apply_line_radiation_losses
+                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                ne_lr = rho_safe / gas["m_mol"]
+                state["Te"], _ = apply_line_radiation_losses(
+                    state["Te"], ne_lr, dt, Z_impurity=29,
+                    impurity_fraction=0.001,  # EMPIRICAL: 0.1% Cu from electrode
+                )
+            except (ImportError, Exception):
+                pass
+
         # Compute L_plasma from density profile using Lee-model formula.
         # L_p = (mu_0/2pi) * L_anode * ln(b/r_eff)
         # r_eff = density-weighted mean radius (effective compression radius)
