@@ -32,6 +32,7 @@ _VERSION = "v1.2"
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section
+from app_babylon_unified import create_unified_iframe
 from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
@@ -532,9 +533,9 @@ def run_simulation(
     except Exception:
         xsec_anim = ""
 
-    # Babylon.js 3D renderer
+    # Unified Babylon.js renderer (all physics layers)
     try:
-        babylon_html = create_babylon_iframe(data, height=580)
+        babylon_html = create_unified_iframe(data, height=620)
     except Exception:
         babylon_html = ""
 
@@ -788,16 +789,16 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
                     "Run a simulation, then press Play to watch the plasma form.</div>",
                 )
-            with gr.Tab("3D Plasma (Babylon.js)"):
+            with gr.Tab("3D Physics (Babylon.js)"):
                 gr.Markdown(
-                    "**Interactive 3D plasma visualization** powered by Babylon.js (WebGPU/WebGL). "
-                    "Orbit the camera by dragging. The gold cylinder is the anode, gray wireframe "
-                    "is the cathode. Blue particles = current sheath sweeping gas. Red glow = "
-                    "pinch plasma where fusion occurs. Press Play to animate."
+                    "**All-in-one physics visualization** — Babylon.js WebGPU. "
+                    "Toggle layers at left: electrodes, sheath, plasma ions, pinch glow, "
+                    "density/temperature/B-field heatmaps, god rays, ambient occlusion, bloom. "
+                    "Drag to orbit, scroll to zoom. Press Play to animate."
                 )
                 fig_babylon = gr.HTML(
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
-                    "Run a simulation to see the interactive 3D plasma.</div>",
+                    "Run a simulation to see the interactive 3D physics.</div>",
                 )
             with gr.Tab("3D Playback (Plotly)"):
                 gr.Markdown(
