@@ -223,7 +223,7 @@ def static_refinement(coarse_result, refinement_factor=4):
 | 2B. CIV breakdown | 1-2 sessions | Medium | 80% | Yes — connects to space physics | **DONE** (8 gases, 35 tests) |
 | 3A. Static mesh refinement | 2 sessions | Low | 90% | Maybe — incremental | **DONE** (Lohner + interpolation) |
 | 3B. Improved radiation | 1 session | Low | 95% | No — incremental | **DONE** (Gaunt + cyclotron, 28 tests) |
-| 4A. FuZE preset | 1 session | Low | 85% | Yes — cross-device validation | Planned |
+| 4A. FuZE preset | 2+ sessions | Medium | 60% | Yes — cross-device validation | BLOCKED (FuZE is SFS z-pinch, not DPF — needs MHD, not Lee model) |
 | 4B. MAGPIE comparison | 0.5 session | Low | 90% | Maybe — qualitative | Planned |
 
 **Total: 9-12 sessions for all 8 upgrades.** Phases 1+2 are the priority — they produce 4 publishable results.
