@@ -162,10 +162,15 @@ class BeamTracker:
             # Position update
             self.positions[i] += self.velocities[i] * dt
 
-            # Boundary check: kill particles outside domain
+            # Reflecting boundary: bounce particles back into domain
             domain_size = np.array([nx, ny, nz]) * self.dx
-            if np.any(self.positions[i] < 0) or np.any(self.positions[i] > domain_size):
-                self.alive[i] = False
+            for dim in range(3):
+                if self.positions[i, dim] < 0:
+                    self.positions[i, dim] = -self.positions[i, dim]
+                    self.velocities[i, dim] = -self.velocities[i, dim]
+                elif self.positions[i, dim] > domain_size[dim]:
+                    self.positions[i, dim] = 2 * domain_size[dim] - self.positions[i, dim]
+                    self.velocities[i, dim] = -self.velocities[i, dim]
 
     def get_result(self, n_target: float = 0.0, L_pinch: float = 0.0) -> BeamTrackerResult:
         """Compute beam tracker diagnostics.

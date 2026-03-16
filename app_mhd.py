@@ -578,6 +578,68 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # QMF bremsstrahlung suppression diagnostic (p-B11 relevance)
+    if final_state is not None and final_state.get("B") is not None:
+        try:
+            from dpf.radiation.qmf_suppression import qmf_diagnostic
+            rho_f = final_state["rho"]
+            Te_f = final_state.get("Te")
+            if Te_f is None:
+                Te_f = final_state["pressure"] * gas["m_mol"] / (2.0 * rho_f * kB)
+            ne_f = rho_f / gas["m_mol"]
+            qmf = qmf_diagnostic(final_state["B"], Te_f, ne_f)
+            result["qmf"] = {
+                "B_qmf_T": qmf.B_qmf_T,
+                "ratio_Ec_Eth": qmf.ratio_Ec_Eth,
+                "suppression_factor": qmf.suppression_factor,
+                "is_qmf_regime": bool(qmf.is_qmf_regime),
+                "note": qmf.note,
+            }
+        except (ImportError, Exception):
+            pass
+
+    # Beam-ion tracker (post-processing: inject beam at pinch, push through fields)
+    if final_state is not None and gas.get("A") == 2 and gas.get("Z") == 1:
+        try:
+            from dpf.diagnostics.beam_tracker import BeamTracker
+            nr_bt, ny_bt, nz_bt = final_state["rho"].shape
+            # Beam energy from pinch voltage
+            V_pinch_V = 0.0
+            L_arr = result.get("L_p_nH", np.array([]))
+            t_arr_bt = result.get("t_us", np.array([]))
+            I_arr_bt = result.get("I_MA", np.array([]))
+            if len(L_arr) > 1 and len(t_arr_bt) > 1:
+                dLdt = np.gradient(L_arr * 1e-9, t_arr_bt * 1e-6)
+                V_pinch_V = float(np.max(np.abs(I_arr_bt * 1e6 * dLdt)))
+            beam_energy_eV = max(V_pinch_V, 50e3)  # minimum 50 keV
+            if beam_energy_eV > 10e3:
+                bt = BeamTracker(
+                    n_particles=200, ion_mass=gas["m_mol"],
+                    grid_shape=(nr_bt, ny_bt, nz_bt), dx=dr,
+                )
+                domain = np.array([nr_bt * dr, ny_bt * dr, nz_bt * dz])
+                center = domain / 2.0
+                bt.inject_beam(center, direction=np.array([0, 0, 1]),
+                               energy_eV=beam_energy_eV, spread_rad=0.3)
+                # Push dt: particle travels ~dx per step to stay on grid
+                v_beam = np.sqrt(2 * beam_energy_eV * 1.602e-19 / gas["m_mol"])
+                dt_push = min(dr / max(v_beam, 1.0), 1e-9)
+                E_field = np.zeros((3, nr_bt, ny_bt, nz_bt))
+                n_push = min(200, int(0.5 * min(domain) / max(v_beam * dt_push, 1e-30)))
+                for _ in range(n_push):
+                    bt.push(E_field, final_state["B"], dt_push)
+                n_target = float(np.max(final_state["rho"])) / gas["m_mol"]
+                bt_result = bt.get_result(n_target=n_target, L_pinch=L_anode * 0.3)
+                if bt_result.n_particles > 0:
+                    result["beam_tracker"] = {
+                        "n_particles": bt_result.n_particles,
+                        "mean_energy_keV": bt_result.mean_energy_keV,
+                        "max_energy_keV": bt_result.max_energy_keV,
+                        "beam_energy_input_keV": beam_energy_eV / 1e3,
+                    }
+        except (ImportError, Exception):
+            pass
+
     # Plasma regime classification
     if final_state is not None:
         try:
