@@ -38,8 +38,12 @@ except Exception:
 # Copy app files
 cp "$REPO_ROOT"/app*.py "$DEPLOY_DIR/"
 
-# Copy full src/ tree (all physics modules needed)
-cp -r "$REPO_ROOT/src" "$DEPLOY_DIR/"
+# Copy src/ tree excluding heavy files (WALRUS checkpoints, __pycache__, binaries)
+rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='*.so' \
+    --exclude='*.pt' --exclude='*.bin' --exclude='*.h5' --exclude='*.npz' \
+    --exclude='models/' --exclude='*.metal' --exclude='*.o' --exclude='*.a' \
+    --exclude='athena_wrapper/cpp/' \
+    "$REPO_ROOT/src/" "$DEPLOY_DIR/src/"
 
 # Requirements: pin versions that work on HF Spaces (CPU-only, no torch/Metal)
 cat > "$DEPLOY_DIR/requirements.txt" << 'REQS'
