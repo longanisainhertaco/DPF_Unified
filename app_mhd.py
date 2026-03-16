@@ -381,6 +381,21 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Radiation regime diagnostic
+    if final_state is not None:
+        try:
+            from dpf.radiation.improved_radiation import radiation_regime_diagnostic
+            rho_f = final_state["rho"]
+            Te_f = final_state.get("Te", final_state["pressure"] * gas["m_mol"] / (2.0 * rho_f * kB))
+            ne_f = rho_f / gas["m_mol"]
+            B_f = final_state.get("B")
+            B_mag_f = np.sqrt(np.sum(B_f**2, axis=0)) if B_f is not None else np.zeros_like(rho_f)
+            Z_eff = float(gas.get("Z", 1))
+            rad_diag = radiation_regime_diagnostic(Te_f, ne_f, B_mag_f, Z=Z_eff)
+            result["radiation_regime"] = rad_diag
+        except (ImportError, Exception):
+            pass
+
     # Reproducibility metadata
     import subprocess as _sp
     from datetime import datetime as _dt
