@@ -859,6 +859,14 @@ def _run_metal(
     _target_snaps_metal = 30
     snap_interval = 3  # recalculated after first step
 
+    # Time-resolved yield tracker
+    yield_tracker = None
+    try:
+        from dpf.diagnostics.yield_tracker import YieldTracker
+        yield_tracker = YieldTracker(ion_mass=gas["m_mol"], rho0=rho0)
+    except ImportError:
+        pass
+
     prev_Lp = 0.0  # Initialize to zero; first step computes Lp, second gets valid dL/dt
     mu_0 = 4.0 * np.pi * 1e-7
     # Build r_cells for cylindrical cell volume computation
@@ -909,6 +917,17 @@ def _run_metal(
                 )
             except (ImportError, Exception):
                 pass
+
+        # Time-resolved yield accumulation
+        if yield_tracker is not None:
+            # Estimate V_pinch from dL/dt * I
+            V_p = abs(coupling.dL_dt) * abs(circuit.current) if coupling.dL_dt else 0.0
+            cell_vol = dr * dr * dz if is_3d else dr * (b - a) / nr * dz
+            yield_tracker.accumulate(
+                state, dt,
+                I_current=circuit.current, V_pinch=V_p,
+                cell_volume=cell_vol,
+            )
 
         # Compute L_plasma from density profile using Lee-model formula.
         # L_p = (mu_0/2pi) * L_anode * ln(b/r_eff)
@@ -1010,6 +1029,24 @@ def _run_metal(
         "scaling": None, "crowbar_t": None,
         "snowplow_obj": None, "dt_ns": 0,
     }
+
+    # Attach time-resolved yield data
+    if yield_tracker is not None:
+        yr = yield_tracker.get_result()
+        if yr.Y_total > 0:
+            result["yield_time_resolved"] = {
+                "times_us": [t * 1e6 for t in yr.times],
+                "dY_thermo": yr.dY_thermo,
+                "dY_bt": yr.dY_bt,
+                "Y_thermo_cumulative": yr.Y_thermo_cumulative,
+                "Y_bt_cumulative": yr.Y_bt_cumulative,
+                "T_peak_keV": yr.T_peak_keV,
+                "Y_total": yr.Y_total,
+                "bt_fraction": yr.bt_fraction,
+                "peak_yield_time_us": yr.peak_yield_time * 1e6,
+            }
+
+    return result
 
 
 _ATHENA_STEP_TIMEOUT_S = 30
