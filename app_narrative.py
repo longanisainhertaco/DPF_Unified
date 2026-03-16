@@ -842,6 +842,16 @@ def _summary_section(
     if turb and turb.get("has_spectrum"):
         lines.append(f"| Spectral index | {turb['spectral_index']:.2f} |")
 
+    # QMF diagnostic
+    qmf = d.get("qmf")
+    if qmf:
+        lines.append(f"| QMF B-field ratio | E_c/E_th = {qmf['ratio_Ec_Eth']:.1e} |")
+
+    # Beam tracker
+    bt = d.get("beam_tracker")
+    if bt:
+        lines.append(f"| Beam ions | {bt['n_particles']} at {bt['mean_energy_keV']:.0f} keV |")
+
     # Advanced physics modules
     adv = d.get("advanced_physics", [])
     if adv:
