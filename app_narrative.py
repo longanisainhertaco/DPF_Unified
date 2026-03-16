@@ -538,6 +538,42 @@ $Y_{{BT}} = {ny['Y_beam_target']:.2e}$ ({bt_pct:.0f}% of total)
 
     sections.append("""## References
 
+""")
+
+    # Radiation regime diagnostic
+    rad_regime = d.get("radiation_regime")
+    if rad_regime and rad_regime.get("dominant") != "none":
+        brem_pct = rad_regime.get("brem_fraction", 0) * 100
+        rec_pct = rad_regime.get("rec_fraction", 0) * 100
+        cyc_pct = rad_regime.get("cyc_fraction", 0) * 100
+        Te_keV = rad_regime.get("Te_keV", 0)
+        B_max = rad_regime.get("B_max", 0)
+        B_crit = rad_regime.get("B_crit_T", 0)
+        g_ff = rad_regime.get("gaunt_factor_mean", 1.2)
+
+        sections.append(f"""## Radiation Balance
+
+> **Why this matters:** Radiation removes energy from the plasma, cooling it. \
+The balance between different radiation mechanisms determines how efficiently \
+energy is confined — and therefore how many neutrons are produced.
+
+**Dominant mechanism:** {rad_regime['dominant'].title()}
+
+| Mechanism | Fraction | Physics |
+|-----------|----------|---------|
+| Bremsstrahlung | {brem_pct:.0f}% | Free electrons decelerate near ions, emitting X-rays |
+| Recombination | {rec_pct:.0f}% | Free electrons captured by ions, emitting photons |
+| Cyclotron | {cyc_pct:.0f}% | Electrons spiral in B-field, emitting microwaves |
+
+**Temperature-dependent Gaunt factor:** g_ff = {g_ff:.2f} \
+*(Karzas & Latter, ApJS 6:167, 1961 — quantum correction to classical bremsstrahlung)*
+
+At T_e = {Te_keV:.2f} keV and B_max = {B_max:.1f} T, cyclotron radiation \
+{'is significant' if cyc_pct > 10 else 'is negligible'}. \
+Cyclotron equals bremsstrahlung at B_crit = {B_crit:.0f} T.""")
+
+    sections.append("""## References
+
 - **Lee S.** "Radiations in Plasmas" (1984) — Original Lee model formulation
 - **Lee S. & Saw S.H.** "Neutron scaling laws from a numerical experiment", J. Fusion Energy 27, 292-295 (2008) — Scaling laws and neutron yield model
 - **Lee S.** "Plasma Focus Radiative Model", J. Fusion Energy 28, 9-14 (2009) — Radial phase with radiation
