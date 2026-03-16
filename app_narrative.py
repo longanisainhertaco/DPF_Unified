@@ -540,6 +540,27 @@ def _mhd_narrative(d: dict[str, Any]) -> str:
     B_peak = float(np.max(B_max)) if len(B_max) > 0 else 0
     T_peak = float(np.max(T_max)) if len(T_max) > 0 else 0
 
+    shear = d.get("shear_stabilization")
+    shear_section = ""
+    if shear:
+        margin = shear["peak_margin"]
+        assessment = shear["assessment"]
+        shear_rate = shear["peak_shear_rate_1_s"]
+        v_A = shear["peak_v_A_m_s"]
+        shear_section = f"""
+
+**Velocity Shear Stabilization** *(Shumlak-Hartman criterion)*:
+
+The azimuthal velocity shear $|dv_\\theta/dr|$ suppresses MHD instabilities \
+when it exceeds the Alfven frequency $k v_A$ at the longest unstable wavelength \
+$\\lambda = L_{{anode}}$:
+
+$$\\text{{margin}} = \\frac{{|dv_\\theta/dr|}}{{k v_A}} \\quad (> 1 \\Rightarrow \\text{{stable}})$$
+
+- Peak shear rate: $|dv_\\theta/dr|_{{max}} = {shear_rate:.2e}$ s$^{{-1}}$
+- Peak Alfven speed: $v_{{A,max}} = {v_A:.2e}$ m/s
+- **Stabilization margin: {margin:.2f}x — {assessment}**"""
+
     return f"""## Step 3: MHD Simulation
 
 This simulation uses a **full magnetohydrodynamic (MHD)** solver instead of the \
@@ -567,7 +588,7 @@ where $p_{{tot}} = p + B^2/(2\\mu_0)$ is total (thermal + magnetic) pressure.
 **Results after {n_steps} timesteps**:
 - Peak density ratio: $\\rho_{{max}} / \\rho_0 = {rho_ratio:.1f}$
 - Peak magnetic field: $|B|_{{max}} = {B_peak:.3f}$ T
-- Peak temperature proxy: $T_{{max}} \\sim {T_peak:.0f}$ K"""
+- Peak temperature proxy: $T_{{max}} \\sim {T_peak:.0f}$ K{shear_section}"""
 
 
 def _circuit_coupling_section(d: dict[str, Any], cc: dict) -> str:

@@ -337,6 +337,16 @@ def run_mhd_simulation(
         except (ImportError, Exception):
             pass
 
+    # Velocity shear stabilization diagnostic (Shumlak-Hartman criterion)
+    if final_state is not None:
+        try:
+            from dpf.diagnostics.shear_stabilization import compute_shear_margin
+            shear = compute_shear_margin(final_state, dr, dz, L_anode)
+            if shear:
+                result["shear_stabilization"] = shear
+        except (ImportError, Exception):
+            pass
+
     # Reproducibility metadata
     import subprocess as _sp
     from datetime import datetime as _dt
