@@ -622,10 +622,12 @@ class TestE2ELifecycle:
         assert r.json()["status"] == "finished"
 
     def test_preset_creates_valid_engine(self, client):
-        """Each preset creates a sim that can run at least 1 step."""
-        from dpf.presets import get_preset_names
+        """Each preset with grid_shape creates a sim that can run at least 1 step."""
+        from dpf.presets import get_preset, get_preset_names
 
         for name in get_preset_names():
+            if "grid_shape" not in get_preset(name):
+                continue  # Skip override-only presets (e.g. 'custom')
             r = client.post(
                 "/api/simulations",
                 json={"config": {}, "preset": name, "max_steps": 1},
