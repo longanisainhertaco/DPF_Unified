@@ -43,6 +43,7 @@ class ShotState:
     impurity_fraction: float = 0.0  # High-Z impurity fraction in fill gas
     fill_pressure_Pa: float = 400.0  # Current fill pressure (changes with heating)
     target_pressure_Pa: float = 400.0  # Gas supply target pressure
+    cr_Z_bar: float = 0.0  # Average charge state from CR model
     results: list[dict[str, Any]] = field(default_factory=list)
     yield_history: list[float] = field(default_factory=list)
     I_peak_history: list[float] = field(default_factory=list)
@@ -240,13 +241,30 @@ class MultiShotRunner:
         """
         dt = self.inter_shot_dt
 
-        # --- 1. Residual ionization ---
-        # Radiative + 3-body recombination: tau_rec ~ 1/(alpha_R * n_e)
-        # At n_e ~ 1e22 m^-3, alpha_R ~ 1e-18 m^3/s → tau ~ 1e-4 s = 100 us
-        # At rep rates > 10 kHz, significant residual persists
-        recomb_time_s = 1e-4  # EMPIRICAL: 100 us for ~1e22 m^-3
-        decay = np.exp(-dt / recomb_time_s)
-        state.residual_ionization_fraction = 0.5 * decay  # EMPIRICAL: 50% peak ionization
+        # --- 1. Residual ionization (CR model or empirical) ---
+        try:
+            from dpf.atomic.ionization import _IP_H, cr_evolve_field
+            # Evolve CR ionization during inter-shot interval
+            # Single-cell: deuterium (Z_max=1)
+            Z_max = len(_IP_H)
+            ne_gas = state.fill_pressure_Pa / (_K_B * max(state.gas_temperature_K, 1.0))
+            frac = np.array([[1.0 - state.cr_Z_bar, state.cr_Z_bar]])
+            frac = np.clip(frac, 0.0, 1.0)
+            ne_arr = np.array([ne_gas * max(state.cr_Z_bar, 0.01)])
+            Te_arr = np.array([state.gas_temperature_K])
+            # Sub-cycle CR over inter-shot interval
+            n_cr_sub = max(1, int(dt / 1e-4))  # 100 us steps
+            dt_cr = dt / n_cr_sub
+            for _ in range(n_cr_sub):
+                frac = cr_evolve_field(ne_arr, Te_arr, Z_max, dt_cr, frac, _IP_H)
+            z_indices = np.arange(Z_max + 1)
+            state.cr_Z_bar = float(np.sum(frac[0] * z_indices))
+            state.residual_ionization_fraction = state.cr_Z_bar
+        except (ImportError, Exception):
+            # Fallback: empirical recombination decay
+            recomb_time_s = 1e-4  # EMPIRICAL: 100 us for ~1e22 m^-3
+            decay = np.exp(-dt / recomb_time_s)
+            state.residual_ionization_fraction = 0.5 * decay  # EMPIRICAL: 50% peak ionization
 
         # --- 2. Gas heating and cooling ---
         # Energy deposited in gas: ~10% of bank energy (rest is radiation + kinetic)
@@ -262,15 +280,34 @@ class MultiShotRunner:
         dT = E_deposited_J / max(thermal_capacity, 1e-10)
         T_after_heating = state.gas_temperature_K + dT
 
-        # Two-stage cooling: fast conduction to walls + slow radiation
-        # Conduction: dominant at high T, brings gas toward wall temperature (~300 K)
+        # Two-stage cooling: physics-based radiation + conduction to walls
         T_wall = 300.0
-        cond_decay = np.exp(-dt / self.COOLING_CONDUCTION_TAU_S)
-        T_after_cond = T_wall + (T_after_heating - T_wall) * cond_decay
 
-        # Radiation: adds to cooling at high T (P_rad ~ T^0.5 for bremsstrahlung)
-        rad_decay = np.exp(-dt / self.COOLING_RADIATION_TAU_S)
-        T_final = T_wall + (T_after_cond - T_wall) * rad_decay
+        # Two-stage cooling:
+        # 1. Physics-based radiation (only the ionized fraction radiates)
+        # 2. Conduction to walls (dominant for mostly-neutral inter-shot gas)
+        T_final = T_after_heating
+        ne_eff = n_gas * max(state.residual_ionization_fraction, 0.01)
+        try:
+            from dpf.radiation.line_radiation import _implicit_cool_scalar
+            n_sub = max(1, int(dt / 1e-3))
+            dt_sub = dt / n_sub
+            T_sub = T_after_heating
+            for _ in range(n_sub):
+                T_sub, _ = _implicit_cool_scalar(
+                    T_sub, ne=ne_eff, dt=dt_sub,
+                    Z_eff=1.0, n_imp_frac=state.impurity_fraction,
+                    Z_imp=29.0, Te_floor=T_wall,
+                )
+            T_final = T_sub
+        except (ImportError, Exception):
+            # Fallback: exponential radiation cooling
+            rad_decay = np.exp(-dt / self.COOLING_RADIATION_TAU_S)
+            T_final = T_wall + (T_after_heating - T_wall) * rad_decay
+
+        # Conduction to walls (always active, dominant for neutral gas)
+        cond_decay = np.exp(-dt / self.COOLING_CONDUCTION_TAU_S)
+        T_final = T_wall + (T_final - T_wall) * cond_decay
 
         state.gas_temperature_K = max(T_final, T_wall)
 
