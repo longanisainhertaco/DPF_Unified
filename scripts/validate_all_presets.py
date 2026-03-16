@@ -44,10 +44,10 @@ PUBLISHED_DATA: dict[str, dict[str, float]] = {
         "source": "Damideh et al. (2025)",
     },
     "poseidon": {
-        "I_peak_kA": 1500.0,  # Herold et al.
+        "I_peak_kA": 4600.0,  # IPF Stuttgart, 40 kV, 0.5 MJ
         "t_peak_us": 4.0,
-        "Yn": 1e9,
-        "source": "Herold et al., IPPLM",
+        "Yn": 4.6e11,
+        "source": "IPF Stuttgart (1987), published: 4.6 MA at 0.5 MJ",
     },
     "mjolnir": {
         "I_peak_kA": 3000.0,  # Goyon/Offermann
