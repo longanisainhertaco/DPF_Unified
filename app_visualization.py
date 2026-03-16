@@ -144,7 +144,7 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
             Bz_mid = _midplane(B[2]) if B.shape[0] > 2 else np.zeros_like(B_mid)
 
             bfield = {
-                "magnitude": _b64(B_norm),
+                "data": _b64(B_norm),
                 "Br": _b64(Br_mid.astype(np.float32)),
                 "Bz": _b64(Bz_mid.astype(np.float32)),
                 "shape": shape,
