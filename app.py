@@ -31,7 +31,7 @@ _VERSION = "v1.2"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d
+from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
@@ -525,6 +525,20 @@ def run_simulation(
             f'style="width:100%;height:620px;border:none;background:#111;"></iframe>'
         )
 
+    # Lee model cross-section animation (always available, shows plasma formation)
+    xsec_fig = create_lee_cross_section(data)
+    if xsec_fig is not None:
+        xsec_html = xsec_fig.to_html(
+            full_html=True, include_plotlyjs="cdn", config={"responsive": True},
+        )
+        xsec_escaped = xsec_html.replace("&", "&amp;").replace('"', "&quot;")
+        xsec_anim = (
+            f'<iframe srcdoc="{xsec_escaped}" '
+            f'style="width:100%;height:450px;border:none;background:#111;"></iframe>'
+        )
+    else:
+        xsec_anim = ""
+
     narrative = generate_narrative(data)
     val = validate_against_published(data, preset_name)
     val_md = format_validation_markdown(val)
@@ -548,7 +562,7 @@ def run_simulation(
 
     return (
         metrics, narrative,
-        fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d, anim_html,
+        fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d, xsec_anim, anim_html,
         fig_compare, compare_md,
         csv_path, data, runs,
     )
@@ -763,9 +777,20 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     "always forms at the anode tip (top)."
                 )
                 fig_3d_plot = gr.Plot(label="3D Visualization")
+            with gr.Tab("Plasma Cross-Section"):
+                gr.Markdown(
+                    "**What you're seeing:** A 2D side view (r-z plane) showing the electrode "
+                    "geometry and plasma evolution. The colored band is the current sheath sweeping "
+                    "gas along the anode (blue = rundown), then compressing inward (orange = radial "
+                    "implosion). The red region shows the hot, dense pinch plasma where fusion occurs."
+                )
+                fig_xsec = gr.HTML(
+                    value="<div style='color:#999;padding:40px;text-align:center;'>"
+                    "Run a simulation, then press Play to watch the plasma form.</div>",
+                )
             with gr.Tab("3D Playback"):
                 gr.Markdown(
-                    "**What you're seeing:** An animated replay of the plasma evolution over time. "
+                    "**What you're seeing:** An animated 3D replay of the plasma evolution. "
                     "Use the Play button or drag the slider to watch the current sheath accelerate "
                     "along the anode, then implode radially to form the pinch. The animation speed is "
                     "not real-time -- the actual process takes microseconds (millionths of a second)."
@@ -980,7 +1005,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
         outputs=[
             metrics_md, narrative_md,
             fig_waveform, fig_physics, fig_portrait,
-            fig_geometry, fig_3d_plot, fig_anim,
+            fig_geometry, fig_3d_plot, fig_xsec, fig_anim,
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],
