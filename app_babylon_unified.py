@@ -22,19 +22,19 @@ _HTML_HEAD = (
     '<!DOCTYPE html>\n<html><head>\n<meta charset="utf-8">\n<style>\n'
     "  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050508}\n"
     "  #c{width:100%;height:100%;touch-action:none;display:block}\n"
-    "  #hud{position:absolute;top:6px;right:10px;color:#9cf;font:11px/1.6 monospace;"
+    "  #hud{position:absolute;top:8px;right:12px;color:#9cf;font:13px/1.6 monospace;"
     "pointer-events:none;z-index:10;text-shadow:0 0 5px #0008;text-align:right;white-space:pre;"
-    "background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:6px}\n"
+    "background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:6px}\n"
     "  #bar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:10;"
     "display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.65);padding:6px 14px;"
-    "border-radius:8px;flex-wrap:wrap;max-width:95%}\n"
-    "  #bar button{background:#111828;color:#9cf;border:1px solid #2a3a5a;padding:4px 12px;"
-    "border-radius:4px;cursor:pointer;font:11px monospace;transition:background 0.2s}\n"
+    "border-radius:8px;flex-wrap:nowrap;white-space:nowrap;max-width:98%}\n"
+    "  #bar button{background:#111828;color:#9cf;border:1px solid #2a3a5a;padding:8px 16px;"
+    "border-radius:5px;cursor:pointer;font:14px monospace;transition:background 0.2s}\n"
     "  #bar button:hover{background:#1a2848}\n"
     "  .sl{accent-color:#48f}\n"
-    "  .lbl{color:#8af;font:10px monospace;min-width:50px}\n"
-    "  #sl{width:200px}\n"
-    "  #spd{width:60px;accent-color:#fa8}\n"
+    "  .lbl{color:#8af;font:13px monospace;min-width:50px}\n"
+    "  #sl{width:180px;height:6px}\n"
+    "  #spd{width:60px;height:6px;accent-color:#fa8}\n"
     "</style>\n"
     f'<script src="{BABYLON_CDN}"></script>\n'
     f'<script src="{BABYLON_GUI}"></script>\n'
@@ -139,22 +139,23 @@ window.addEventListener("load", async function(){
   // ---- GUI Panel ----
   var ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
   var panel = new BABYLON.GUI.StackPanel();
-  panel.width = "195px"; panel.isVertical = true;
+  panel.width = "220px"; panel.isVertical = true;
   panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
   panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
-  panel.paddingTop = "10px"; panel.paddingLeft = "10px";
+  panel.paddingTop = "12px"; panel.paddingLeft = "12px";
   ui.addControl(panel);
 
   function addHeader(text, color) {
     var h = new BABYLON.GUI.TextBlock();
-    h.text = text; h.color = color; h.fontSize = 12; h.height = "20px";
+    h.text = text; h.color = color; h.fontSize = 15; h.height = "24px";
     h.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
     panel.addControl(h);
   }
   function addToggle(label, initial, fn) {
     var cb = BABYLON.GUI.Checkbox.AddCheckBoxWithHeader(label, function(v) { fn(v); });
     cb.children[0].isChecked = initial; cb.children[0].color = "#7af";
-    cb.children[1].color = "#cdf"; cb.children[1].fontSize = 11; cb.height = "24px";
+    cb.children[0].width = "20px"; cb.children[0].height = "20px";
+    cb.children[1].color = "#cdf"; cb.children[1].fontSize = 13; cb.height = "28px";
     panel.addControl(cb); fn(initial);
   }
 

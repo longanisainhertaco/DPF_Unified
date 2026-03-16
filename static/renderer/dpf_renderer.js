@@ -1,29 +1,18 @@
 /**
- * DPF-Unified Plasma Renderer — Babylon.js 7.x WebGPU
+ * DPF-Unified Plasma Renderer — Babylon.js 8.x
  *
- * Showcase-quality 3D physics visualization.
- * All visuals are driven by simulation data — no cosmetic fakes.
+ * Conference-quality 3D physics visualization.
+ * All visuals driven by simulation data — no cosmetic fakes.
  *
- * Architecture:
- *   Python (app_visualization.py) → JSON data → this module → Babylon.js scene
- *
- * Features:
- *   - PBR electrodes with HDR environment reflections
- *   - GPU particle system (50K) with sub-emitters
- *   - Node Material plasma shader on pinch
- *   - Viridis/Cividis colorblind-safe heatmaps with colorbar
- *   - B-field line visualization (thin instances)
- *   - m=0 sausage instability on pinch surface
- *   - Fresnel edge glow on current sheath
- *   - DefaultRenderingPipeline (bloom, DOF, SSAO, ACES)
- *   - Babylon.GUI layer toggles + colorbar + data readout
- *   - Full zoom (into the pinch), orbit, pan
+ * Production techniques:
+ *   - createDefaultEnvironment() for HDR IBL + skybox
+ *   - needDepthPrePass on transparent materials (no rendering group hacks)
+ *   - ParticleHelper presets + GPU particles
+ *   - forceSharedVertices() for smooth normals
+ *   - customEmissiveColorSelector for glow without bleed
+ *   - DefaultRenderingPipeline (bloom, ACES, FXAA, SSAO)
  */
 
-// ============================================================
-// Constants
-// ============================================================
-// Studio softbox: small (203KB), clean metallic reflections
 const HDR_ENV = "https://assets.babylonjs.com/environments/Studio_Softbox_2Umbrellas_cube_specular.env";
 
 const VIRIDIS = [
@@ -67,9 +56,8 @@ const PHASE_DESCRIPTIONS = {
 
 const SPEEDS = [0, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
 
-// ============================================================
-// Utilities
-// ============================================================
+const GLOW_MESHES = new Set(["sheath", "pinch", "halo", "trail"]);
+
 let activeCmap = VIRIDIS;
 
 function cmap(t) {
@@ -98,26 +86,19 @@ function bilinearSample(arr, nx, nz, fx, fz) {
     dx * dz * arr[(ix + 1) * nz + iz + 1];
 }
 
-// ============================================================
-// Main entry point
-// ============================================================
 async function createDPFScene(canvas, data) {
   const L = data;
   const G = L.geometry;
   const S = L.sheath;
 
-  // ---- Engine (WebGPU → WebGL2 fallback) ----
-  // Use WebGL2 by default for maximum compatibility.
-  // WebGPU can be enabled via URL param ?webgpu=1
+  // ---- Engine ----
   let engine, gpuBackend = "WebGL2";
   const useWebGPU = (new URLSearchParams(window.location.search)).get("webgpu") === "1";
   if (useWebGPU) {
     try {
       if (await BABYLON.WebGPUEngine.IsSupportedAsync) {
         engine = new BABYLON.WebGPUEngine(canvas, {
-          antialias: true,
-          adaptToDeviceRatio: true,
-          powerPreference: "high-performance",
+          antialias: true, adaptToDeviceRatio: true, powerPreference: "high-performance",
         });
         await engine.initAsync();
         gpuBackend = "WebGPU";
@@ -126,109 +107,94 @@ async function createDPFScene(canvas, data) {
   }
   if (!engine) {
     engine = new BABYLON.Engine(canvas, true, {
-      stencil: true,
-      adaptToDeviceRatio: true,
-      preserveDrawingBuffer: true,
+      stencil: true, adaptToDeviceRatio: true, preserveDrawingBuffer: true,
     });
   }
+  // Force native resolution on Retina/HiDPI — prevents blurriness
+  engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
   const scene = new BABYLON.Scene(engine);
-  scene.clearColor = new BABYLON.Color4(0.08, 0.09, 0.14, 1);
-  scene.ambientColor = new BABYLON.Color3(0.2, 0.2, 0.25);
+  scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.05, 1);
 
-  // Enable 3 rendering groups: 0=depth occluders, 1=opaque, 2=transparent/emissive
-  scene.setRenderingAutoClearDepthStencil(0, true);  // clear depth before occluders
-  scene.setRenderingAutoClearDepthStencil(1, false); // keep depth from group 0
-  scene.setRenderingAutoClearDepthStencil(2, false); // keep depth, transparent reads it
-
-  // ---- HDR Environment ----
-  let envTex = null;
+  // ---- Environment (HDR IBL + skybox — the single biggest quality booster) ----
+  var env = null;
   try {
-    envTex = BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene);
-    scene.environmentTexture = envTex;
-    scene.environmentIntensity = 1.2;
-  } catch (_) {}
+    env = scene.createDefaultEnvironment({
+      createGround: false,
+      createSkybox: true,
+      skyboxSize: 5000,
+      skyboxColor: new BABYLON.Color3(0.01, 0.01, 0.03),
+      environmentTexture: BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene),
+    });
+  } catch (_) {
+    scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene);
+  }
 
   // ---- Camera ----
   const cam = new BABYLON.ArcRotateCamera("cam",
     -Math.PI / 4, Math.PI / 3, G.cathode_radius * 7,
     new BABYLON.Vector3(G.anode_length / 2, 0, 0), scene);
-  cam.attachControl(canvas, true);
-  // Prevent scroll from bubbling to parent iframe/page
-  canvas.addEventListener("wheel", function(e) { e.preventDefault(); }, { passive: false });
+  cam.attachControl(canvas, false);
+  cam.inputs.removeByType("ArcRotateCameraMouseWheelInput");
+  canvas.addEventListener("wheel", function(e) {
+    e.preventDefault();
+    cam.radius -= e.deltaY * 0.05;
+    cam.radius = Math.max(cam.lowerRadiusLimit, Math.min(cam.upperRadiusLimit, cam.radius));
+  }, { passive: false });
   cam.lowerRadiusLimit = G.anode_radius * 0.2;
   cam.upperRadiusLimit = G.cathode_radius * 60;
-  cam.wheelPrecision = 12;
   cam.pinchPrecision = 15;
   cam.panningSensibility = 60;
   cam.minZ = 0.0005;
   cam.inertia = 0.88;
 
-  // ---- Lighting (bright, 4-point) ----
-  const hemiLight = new BABYLON.HemisphericLight("hemi",
+  // ---- Lighting ----
+  var hemiLight = new BABYLON.HemisphericLight("hemi",
     new BABYLON.Vector3(0, 1, 0), scene);
-  hemiLight.intensity = 0.7;
-  hemiLight.groundColor = new BABYLON.Color3(0.15, 0.15, 0.2);
+  hemiLight.intensity = 0.6;
+  hemiLight.groundColor = new BABYLON.Color3(0.12, 0.12, 0.18);
 
-  const keyLight = new BABYLON.PointLight("key",
+  var keyLight = new BABYLON.PointLight("key",
     new BABYLON.Vector3(G.anode_length * 0.3, G.cathode_radius * 4, G.cathode_radius * 3), scene);
-  keyLight.intensity = 1.2;
+  keyLight.intensity = 1.0;
   keyLight.diffuse = new BABYLON.Color3(1, 0.96, 0.9);
 
-  const fillLight = new BABYLON.PointLight("fill",
+  var fillLight = new BABYLON.PointLight("fill",
     new BABYLON.Vector3(G.anode_length * 0.8, -G.cathode_radius * 2, -G.cathode_radius * 2), scene);
-  fillLight.intensity = 0.5;
+  fillLight.intensity = 0.4;
   fillLight.diffuse = new BABYLON.Color3(0.75, 0.85, 1.0);
 
-  const rimLight = new BABYLON.PointLight("rim",
-    new BABYLON.Vector3(-G.cathode_radius, G.cathode_radius * 2, 0), scene);
-  rimLight.intensity = 0.4;
-  rimLight.diffuse = new BABYLON.Color3(0.6, 0.7, 1.0);
-
   // ============================================================
-  // ELECTRODES (PBR with HDR reflections)
+  // ELECTRODES — PBR with environment reflections
   // ============================================================
-  // ---- Electrodes: smooth, bright, professional ----
-  const copperMat = new BABYLON.PBRMaterial("copper", scene);
+  var copperMat = new BABYLON.PBRMaterial("copper", scene);
   copperMat.metallic = 0.95;
-  copperMat.roughness = 0.25;
+  copperMat.roughness = 0.2;
   copperMat.albedoColor = new BABYLON.Color3(0.97, 0.75, 0.5);
-  copperMat.emissiveColor = new BABYLON.Color3(0.06, 0.03, 0.01);
-  if (envTex) copperMat.reflectionTexture = envTex;
+  copperMat.emissiveColor = new BABYLON.Color3(0.04, 0.02, 0.01);
   copperMat.environmentIntensity = 1.5;
 
-  const anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
+  var anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
     diameter: G.anode_radius * 2, height: G.anode_length,
     tessellation: 128, cap: BABYLON.Mesh.CAP_ALL,
   }, scene);
   anode.rotation.z = Math.PI / 2;
   anode.position.x = G.anode_length / 2;
   anode.material = copperMat;
+  anode.forceSharedVertices();
 
-  // Depth occlusion: anode is a solid occluder — nothing renders inside it
-  // Use a second invisible mesh for depth-only writes
-  const anodeOccluder = anode.clone("anodeOccluder");
-  anodeOccluder.isVisible = true;
-  const occMat = new BABYLON.StandardMaterial("occMat", scene);
-  occMat.disableColorWrite = true;  // writes depth only, no pixels
-  occMat.disableLighting = true;
-  anodeOccluder.material = occMat;
-  anodeOccluder.renderingGroupId = 0;
-  anode.renderingGroupId = 1;
-
-  const steelMat = new BABYLON.PBRMaterial("steel", scene);
+  var steelMat = new BABYLON.PBRMaterial("steel", scene);
   steelMat.metallic = 0.9;
-  steelMat.roughness = 0.35;
+  steelMat.roughness = 0.3;
   steelMat.albedoColor = new BABYLON.Color3(0.78, 0.78, 0.82);
-  steelMat.emissiveColor = new BABYLON.Color3(0.04, 0.04, 0.05);
-  if (envTex) steelMat.reflectionTexture = envTex;
+  steelMat.emissiveColor = new BABYLON.Color3(0.03, 0.03, 0.04);
   steelMat.environmentIntensity = 1.2;
 
-  const cathodeRods = [];
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    const rod = BABYLON.MeshBuilder.CreateCylinder("rod" + i, {
-      diameter: G.cathode_radius * 0.1, height: G.anode_length, tessellation: 32,
+  var cathodeRods = [];
+  for (var i = 0; i < 8; i++) {
+    var angle = (i / 8) * Math.PI * 2;
+    var rod = BABYLON.MeshBuilder.CreateCylinder("rod" + i, {
+      diameter: G.cathode_radius * 0.1, height: G.anode_length, tessellation: 48,
     }, scene);
     rod.rotation.z = Math.PI / 2;
     rod.position.set(
@@ -237,46 +203,39 @@ async function createDPFScene(canvas, data) {
       G.cathode_radius * Math.cos(angle)
     );
     rod.material = steelMat;
-    rod.renderingGroupId = 1;
-    // Depth occluder for each rod (same technique as anode)
-    const rodOcc = rod.clone("rodOcc" + i);
-    rodOcc.material = occMat;
-    rodOcc.renderingGroupId = 0;
+    rod.forceSharedVertices();
     cathodeRods.push(rod);
   }
 
-  // Insulator (bright ceramic)
-  const ceramicMat = new BABYLON.PBRMaterial("ceramic", scene);
+  // Insulator — translucent ceramic
+  var ceramicMat = new BABYLON.PBRMaterial("ceramic", scene);
   ceramicMat.metallic = 0;
-  ceramicMat.roughness = 0.5;
-  ceramicMat.albedoColor = new BABYLON.Color3(0.95, 0.9, 0.75);
-  ceramicMat.emissiveColor = new BABYLON.Color3(0.05, 0.04, 0.03);
-  try { ceramicMat.subSurface.isTranslucencyEnabled = true;
-    ceramicMat.subSurface.translucencyIntensity = 0.3; } catch(_) {}
-  ceramicMat.alpha = 0.75;
+  ceramicMat.roughness = 0.45;
+  ceramicMat.albedoColor = new BABYLON.Color3(0.92, 0.88, 0.75);
+  ceramicMat.emissiveColor = new BABYLON.Color3(0.03, 0.025, 0.015);
+  ceramicMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
 
-  // Insulator: use a thin torus + disc to avoid triangle fan artifacts
-  const insOuter = BABYLON.MeshBuilder.CreateTorus("insulator", {
+  var insulator = BABYLON.MeshBuilder.CreateTorus("insulator", {
     diameter: G.cathode_radius * 2,
     thickness: G.anode_radius * 0.3,
     tessellation: 128,
   }, scene);
-  insOuter.rotation.z = Math.PI / 2;
-  insOuter.position.x = -G.anode_radius * 0.15;
-  insOuter.material = ceramicMat;
-  // Alias for toggle
-  const insulator = insOuter;
+  insulator.rotation.z = Math.PI / 2;
+  insulator.position.x = -G.anode_radius * 0.15;
+  insulator.material = ceramicMat;
+  insulator.forceSharedVertices();
 
   // ============================================================
-  // CURRENT SHEATH (disc with Fresnel edge glow)
+  // CURRENT SHEATH — Fresnel edge glow with depth pre-pass
   // ============================================================
-  const sheathMat = new BABYLON.StandardMaterial("sheathMat", scene);
+  var sheathMat = new BABYLON.StandardMaterial("sheathMat", scene);
   sheathMat.emissiveColor = new BABYLON.Color3(0.3, 0.6, 1.0);
   sheathMat.alpha = 0.6;
+  sheathMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+  sheathMat.needDepthPrePass = true;
   sheathMat.disableLighting = true;
   sheathMat.backFaceCulling = false;
 
-  // Fresnel: bright edges (like looking through a thin plasma shell)
   sheathMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
   sheathMat.emissiveFresnelParameters.bias = 0.4;
   sheathMat.emissiveFresnelParameters.power = 2;
@@ -287,101 +246,101 @@ async function createDPFScene(canvas, data) {
   sheathMat.opacityFresnelParameters.bias = 0.5;
   sheathMat.opacityFresnelParameters.power = 1.5;
 
-  // Sheath as a smooth torus ring (no triangle fans from CreateDisc)
-  const sheathMidR = (G.anode_radius + G.cathode_radius) / 2;
-  const sheathTubeR = (G.cathode_radius - G.anode_radius) / 2;
-  const sheath = BABYLON.MeshBuilder.CreateTorus("sheath", {
+  var sheathMidR = (G.anode_radius + G.cathode_radius) / 2;
+  var sheathTubeR = (G.cathode_radius - G.anode_radius) / 2;
+  var sheath = BABYLON.MeshBuilder.CreateTorus("sheath", {
     diameter: sheathMidR * 2,
     thickness: sheathTubeR * 2,
     tessellation: 64,
   }, scene);
   sheath.rotation.z = Math.PI / 2;
   sheath.material = sheathMat;
-  sheath.renderingGroupId = 2;
+  sheath.forceSharedVertices();
 
-  // Plasma trail (ionized gas behind sheath)
-  const trailMat = new BABYLON.StandardMaterial("trailMat", scene);
+  // Plasma trail
+  var trailMat = new BABYLON.StandardMaterial("trailMat", scene);
   trailMat.emissiveColor = new BABYLON.Color3(0.1, 0.15, 0.4);
   trailMat.alpha = 0.15;
+  trailMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+  trailMat.needDepthPrePass = true;
   trailMat.disableLighting = true;
   trailMat.backFaceCulling = false;
-  const trail = BABYLON.MeshBuilder.CreateTube("trail", {
+  var trail = BABYLON.MeshBuilder.CreateTube("trail", {
     path: [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 0, 0)],
     radius: (G.anode_radius + G.cathode_radius) / 2,
-    tessellation: 24, cap: BABYLON.Mesh.NO_CAP, updatable: true,
+    tessellation: 32, cap: BABYLON.Mesh.NO_CAP, updatable: true,
   }, scene);
   trail.material = trailMat;
-  trail.renderingGroupId = 2;
 
   // ============================================================
-  // PINCH COLUMN (tube with m=0 instability ripple)
+  // PINCH COLUMN — tube with m=0 instability ripple
   // ============================================================
-  // Pinch material: Fresnel StandardMaterial (NME loaded async later if available)
-  let pinchNME = false;
   var pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
   pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
   pinchMat.disableLighting = true;
   pinchMat.backFaceCulling = false;
+  pinchMat.alpha = 0;
+  pinchMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+  pinchMat.needDepthPrePass = true;
+
   pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
   pinchMat.emissiveFresnelParameters.bias = 0.2;
   pinchMat.emissiveFresnelParameters.power = 3;
   pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
   pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
-  pinchMat.alpha = 0;
 
-  // NME fire shader disabled — the snippet produces visual artifacts.
-  // Fresnel StandardMaterial gives a cleaner hot-plasma look.
-
-  const N_PINCH = 24;
-  const pinchPath = [];
-  for (let i = 0; i <= N_PINCH; i++) {
+  var N_PINCH = 24;
+  var pinchPath = [];
+  for (var k = 0; k <= N_PINCH; k++) {
     pinchPath.push(new BABYLON.Vector3(
-      G.anode_length * (0.62 + 0.38 * i / N_PINCH), 0, 0
+      G.anode_length * (0.62 + 0.38 * k / N_PINCH), 0, 0
     ));
   }
-  const pinchRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.3);
-  const pinch = BABYLON.MeshBuilder.CreateTube("pinch", {
-    path: pinchPath, radiusFunction: (i) => pinchRadii[i],
+  var pinchRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.3);
+  var pinch = BABYLON.MeshBuilder.CreateTube("pinch", {
+    path: pinchPath, radiusFunction: function(idx) { return pinchRadii[idx]; },
     tessellation: 48, cap: BABYLON.Mesh.CAP_ALL, updatable: true,
   }, scene);
   pinch.material = pinchMat;
-  pinch.renderingGroupId = 2;
 
-  // Halo
-  const haloMat = new BABYLON.StandardMaterial("haloMat", scene);
+  // Halo glow around pinch
+  var haloMat = new BABYLON.StandardMaterial("haloMat", scene);
   haloMat.emissiveColor = new BABYLON.Color3(0.7, 0.1, 0.03);
   haloMat.disableLighting = true;
   haloMat.alpha = 0;
+  haloMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+  haloMat.needDepthPrePass = true;
   haloMat.backFaceCulling = false;
-  const haloRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.6);
-  const halo = BABYLON.MeshBuilder.CreateTube("halo", {
-    path: pinchPath, radiusFunction: (i) => haloRadii[i],
+  var haloRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.6);
+  var halo = BABYLON.MeshBuilder.CreateTube("halo", {
+    path: pinchPath, radiusFunction: function(idx) { return haloRadii[idx]; },
     tessellation: 48, cap: BABYLON.Mesh.NO_CAP,
     sideOrientation: BABYLON.Mesh.BACKSIDE, updatable: true,
   }, scene);
   halo.material = haloMat;
-  halo.renderingGroupId = 2;
 
   // ============================================================
-  // HEATMAP OVERLAY (RawTexture on midplane)
+  // HEATMAP OVERLAY
   // ============================================================
-  let heatPlane = null, heatTex = null, heatBuf = null;
-  let activeOverlay = "none";
+  var heatPlane = null, heatTex = null, heatBuf = null;
+  var activeOverlay = "none";
 
   if (L.density) {
-    const [nx, nz] = L.density.shape;
-    const W = Math.min(nx * 4, 256), H = Math.min(nz * 4, 256);
+    var shape = L.density.shape;
+    var W = Math.min(shape[0] * 4, 256), H = Math.min(shape[1] * 4, 256);
     heatBuf = new Uint8Array(W * H * 4);
     heatTex = new BABYLON.RawTexture(heatBuf, W, H,
       BABYLON.Engine.TEXTUREFORMAT_RGBA, scene, false, false,
       BABYLON.Texture.BILINEAR_SAMPLINGMODE);
 
-    const heatMat = new BABYLON.StandardMaterial("heatMat", scene);
+    var heatMat = new BABYLON.StandardMaterial("heatMat", scene);
     heatMat.emissiveTexture = heatTex;
     heatMat.opacityTexture = heatTex;
     heatMat.disableLighting = true;
     heatMat.backFaceCulling = false;
     heatMat.alpha = 0.7;
+    heatMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+    heatMat.needDepthPrePass = true;
 
     heatPlane = BABYLON.MeshBuilder.CreatePlane("heatPlane", {
       width: G.anode_length, height: G.cathode_radius * 2,
@@ -394,19 +353,17 @@ async function createDPFScene(canvas, data) {
 
   function updateHeatmap(key) {
     if (!heatTex || !L[key]) return;
-    const fd = decodeBase64Float32(L[key].data, L[key].shape);
-    const [nx, nz] = fd.shape;
-    const W = heatTex.getSize().width, H = heatTex.getSize().height;
-
-    for (let j = 0; j < H; j++) {
-      for (let i = 0; i < W; i++) {
-        const v = bilinearSample(fd.data, nx, nz,
-          (i / W) * (nx - 1), (j / H) * (nz - 1));
-        const [r, g, b] = cmap(v);
-        const idx = (j * W + i) * 4;
-        heatBuf[idx] = (r * 255) | 0;
-        heatBuf[idx + 1] = (g * 255) | 0;
-        heatBuf[idx + 2] = (b * 255) | 0;
+    var fd = decodeBase64Float32(L[key].data, L[key].shape);
+    var nx = fd.shape[0], nz = fd.shape[1];
+    var tW = heatTex.getSize().width, tH = heatTex.getSize().height;
+    for (var j = 0; j < tH; j++) {
+      for (var ii = 0; ii < tW; ii++) {
+        var v = bilinearSample(fd.data, nx, nz, (ii / tW) * (nx - 1), (j / tH) * (nz - 1));
+        var rgb = cmap(v);
+        var idx = (j * tW + ii) * 4;
+        heatBuf[idx] = (rgb[0] * 255) | 0;
+        heatBuf[idx + 1] = (rgb[1] * 255) | 0;
+        heatBuf[idx + 2] = (rgb[2] * 255) | 0;
         heatBuf[idx + 3] = Math.min(255, (v * 200 + 55)) | 0;
       }
     }
@@ -414,71 +371,63 @@ async function createDPFScene(canvas, data) {
   }
 
   // ============================================================
-  // B-FIELD LINES: azimuthal circles B_theta = mu0*I/(2*pi*r)
-  // Always available — generated from circuit current, not MHD grid
+  // B-FIELD LINES — azimuthal tori, brightness ~ I(t)
   // ============================================================
-  const fieldLines = [];
-  const fieldLineData = []; // store base radii for dynamic scaling
-  // Generate circular field lines at multiple radii and axial positions
-  const N_RADII = 5;
-  const N_ZPOS = 4;
-  const N_CIRCLE_PTS = 64;
-  for (let zi = 0; zi < N_ZPOS; zi++) {
-    const zPos = G.anode_length * (0.15 + 0.7 * zi / (N_ZPOS - 1));
-    for (let ri = 0; ri < N_RADII; ri++) {
-      // Field lines only in the gap: start at anode_radius + 20% margin
-      const minR = G.anode_radius * 1.4;
-      const maxR = G.cathode_radius * 0.95;
-      const baseR = minR + (maxR - minR) * ri / (N_RADII - 1);
-      const pts = [];
-      for (let k = 0; k <= N_CIRCLE_PTS; k++) {
-        const theta = (k / N_CIRCLE_PTS) * Math.PI * 2;
-        pts.push(new BABYLON.Vector3(zPos, baseR * Math.sin(theta), baseR * Math.cos(theta)));
-      }
-      const bStrength = 1 - ri / N_RADII;
-      const lineMat = new BABYLON.StandardMaterial("flm" + zi + "_" + ri, scene);
-      const tube = BABYLON.MeshBuilder.CreateTorus("fl" + zi + "_" + ri, {
+  var fieldLines = [];
+  var fieldLineData = [];
+  var N_RADII = 5, N_ZPOS = 4;
+  for (var zi = 0; zi < N_ZPOS; zi++) {
+    var zPos = G.anode_length * (0.15 + 0.7 * zi / (N_ZPOS - 1));
+    for (var ri = 0; ri < N_RADII; ri++) {
+      var minR = G.anode_radius * 1.4;
+      var maxR = G.cathode_radius * 0.95;
+      var baseR = minR + (maxR - minR) * ri / (N_RADII - 1);
+      var bStrength = 1 - ri / N_RADII;
+      var tube = BABYLON.MeshBuilder.CreateTorus("fl" + zi + "_" + ri, {
         diameter: baseR * 2,
         thickness: G.cathode_radius * 0.015 * (0.5 + bStrength),
         tessellation: 64,
       }, scene);
       tube.rotation.z = Math.PI / 2;
       tube.position.x = zPos;
+      var lineMat = new BABYLON.StandardMaterial("flm" + zi + "_" + ri, scene);
       lineMat.emissiveColor = new BABYLON.Color3(
         0.1 + bStrength * 0.3, 0.3 + bStrength * 0.5, 0.8 + bStrength * 0.2
       );
       lineMat.disableLighting = true;
       lineMat.alpha = 0.35 + bStrength * 0.35;
+      lineMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+      lineMat.needDepthPrePass = true;
       tube.material = lineMat;
-      tube.renderingGroupId = 2;
       tube.isVisible = false;
+      tube.forceSharedVertices();
       fieldLines.push(tube);
-      fieldLineData.push({ baseR, zi, ri, zPos });
+      fieldLineData.push({ baseR: baseR, zi: zi, ri: ri, zPos: zPos });
     }
   }
 
-  // Also add poloidal field lines from MHD data if available
+  // Poloidal field lines from MHD data
   if (L.bfield) {
     try {
-      const fdBr = decodeBase64Float32(L.bfield.Br, L.bfield.shape);
-      const fdBz = decodeBase64Float32(L.bfield.Bz, L.bfield.shape);
-      const [nx, nz] = fdBr.shape;
-      for (let s = 0; s < 8; s++) {
-        let x = G.anode_length * (0.1 + 0.8 * s / 8), z = 0;
-        const pts = [];
-        const ds = G.anode_length / 60 * 0.6;
-        for (let step = 0; step < 60; step++) {
+      var fdBr = decodeBase64Float32(L.bfield.Br, L.bfield.shape);
+      var fdBz = decodeBase64Float32(L.bfield.Bz, L.bfield.shape);
+      var bnx = fdBr.shape[0], bnz = fdBr.shape[1];
+      for (var s = 0; s < 8; s++) {
+        var x = G.anode_length * (0.1 + 0.8 * s / 8), z = 0;
+        var pts = [];
+        var ds = G.anode_length / 60 * 0.6;
+        for (var step = 0; step < 60; step++) {
           pts.push(new BABYLON.Vector3(x, 0, z));
-          const fx = (x / G.anode_length) * (nx - 1);
-          const fz = ((z + G.cathode_radius) / (G.cathode_radius * 2)) * (nz - 1);
-          const br = bilinearSample(fdBr.data, nx, nz, fx, fz);
-          const bz = bilinearSample(fdBz.data, nx, nz, fx, fz);
-          const mag = Math.sqrt(br * br + bz * bz) + 1e-10;
+          var fx = (x / G.anode_length) * (bnx - 1);
+          var fz = ((z + G.cathode_radius) / (G.cathode_radius * 2)) * (bnz - 1);
+          var br = bilinearSample(fdBr.data, bnx, bnz, fx, fz);
+          var bz = bilinearSample(fdBz.data, bnx, bnz, fx, fz);
+          var mag = Math.sqrt(br * br + bz * bz) + 1e-10;
           x += ds * br / mag; z += ds * bz / mag;
           if (x < 0 || x > G.anode_length || Math.abs(z) > G.cathode_radius) break;
         }
         if (pts.length > 4) {
-          const line = BABYLON.MeshBuilder.CreateLines("flp" + s, { points: pts }, scene);
+          var line = BABYLON.MeshBuilder.CreateLines("flp" + s, { points: pts }, scene);
           line.color = new BABYLON.Color3(0.3, 0.7, 1.0);
           line.alpha = 0.5;
           line.isVisible = false;
@@ -489,25 +438,27 @@ async function createDPFScene(canvas, data) {
   }
 
   // ============================================================
-  // GPU PARTICLE SYSTEM (soft gaussian, phase-adaptive)
+  // PARTICLE SYSTEM — built-in fire preset + custom ion particles
   // ============================================================
-  const useGPU = BABYLON.GPUParticleSystem.IsSupported;
-  const PSClass = useGPU ? BABYLON.GPUParticleSystem : BABYLON.ParticleSystem;
-  const psCap = useGPU ? 50000 : 4000;
-  const ps = new PSClass("ions", { capacity: psCap }, scene);
+  var useGPU = BABYLON.GPUParticleSystem.IsSupported;
+  var fireSet = null;
+
+  // Ion particle system (always active, phase-adaptive)
+  var PSClass = useGPU ? BABYLON.GPUParticleSystem : BABYLON.ParticleSystem;
+  var psCap = useGPU ? 50000 : 4000;
+  var ps = new PSClass("ions", { capacity: psCap }, scene);
   ps.emitter = new BABYLON.Vector3(0, 0, 0);
 
-  const psEmitter = new BABYLON.SphereParticleEmitter();
+  var psEmitter = new BABYLON.SphereParticleEmitter();
   psEmitter.radius = G.cathode_radius * 0.85;
   psEmitter.radiusRange = 0.4;
   ps.particleEmitterType = psEmitter;
 
-  ps.minLifeTime = 0.1; ps.maxLifeTime = 0.3;
+  ps.minLifeTime = 0.1; ps.maxLifeTime = 0.4;
   ps.emitRate = useGPU ? 5000 : 400;
-  ps.minSize = 0.4; ps.maxSize = 1.8;
+  ps.minSize = 0.3; ps.maxSize = 1.5;
   ps.minEmitPower = 0.2; ps.maxEmitPower = 1.5;
 
-  // Bright, visible gradient: blue → cyan → white
   ps.addColorGradient(0.0, new BABYLON.Color4(0.1, 0.2, 0.8, 0.0));
   ps.addColorGradient(0.15, new BABYLON.Color4(0.2, 0.5, 1.0, 0.5));
   ps.addColorGradient(0.4, new BABYLON.Color4(0.4, 0.8, 1.0, 0.6));
@@ -522,13 +473,12 @@ async function createDPFScene(canvas, data) {
   ps.isBillboardBased = true;
   ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
 
-  // Generate soft gaussian particle texture
-  const ptexSize = 64;
-  const ptex = new BABYLON.DynamicTexture("ptex", ptexSize, scene, false);
-  const ptxCtx = ptex.getContext();
-  const grad = ptxCtx.createRadialGradient(
-    ptexSize / 2, ptexSize / 2, 0,
-    ptexSize / 2, ptexSize / 2, ptexSize / 2
+  // Soft gaussian texture
+  var ptexSize = 64;
+  var ptex = new BABYLON.DynamicTexture("ptex", ptexSize, scene, false);
+  var ptxCtx = ptex.getContext();
+  var grad = ptxCtx.createRadialGradient(
+    ptexSize / 2, ptexSize / 2, 0, ptexSize / 2, ptexSize / 2, ptexSize / 2
   );
   grad.addColorStop(0, "rgba(255,255,255,1)");
   grad.addColorStop(0.2, "rgba(255,245,220,0.9)");
@@ -539,41 +489,56 @@ async function createDPFScene(canvas, data) {
   ptxCtx.fillRect(0, 0, ptexSize, ptexSize);
   ptex.update();
   ps.particleTexture = ptex;
-  ps.renderingGroupId = 2;
   ps.start();
 
+  // Fire preset for pinch (loaded async, activated during pinch phase)
+  try {
+    BABYLON.ParticleHelper.CreateAsync("fire", scene).then(function(set) {
+      fireSet = set;
+      set.systems.forEach(function(sys) {
+        sys.emitter = new BABYLON.Vector3(G.anode_length * 0.8, 0, 0);
+        sys.minSize *= 0.3;
+        sys.maxSize *= 0.3;
+        sys.minEmitPower *= 0.5;
+        sys.maxEmitPower *= 0.5;
+      });
+    }).catch(function() {});
+  } catch(_) {}
+
   // ============================================================
-  // POST-PROCESSING
+  // POST-PROCESSING PIPELINE
   // ============================================================
-  const pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [cam]);
+  var pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [cam]);
   pipeline.bloomEnabled = true;
   pipeline.bloomThreshold = 0.4;
-  pipeline.bloomWeight = 0.6;
-  pipeline.bloomKernel = 80;
+  pipeline.bloomWeight = 0.5;
+  pipeline.bloomKernel = 64;
   pipeline.bloomScale = 0.5;
+  pipeline.fxaaEnabled = true;
+  pipeline.samples = 4;
   pipeline.imageProcessingEnabled = true;
   pipeline.imageProcessing.toneMappingEnabled = true;
   pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  pipeline.imageProcessing.exposure = 1.6;
-  pipeline.imageProcessing.contrast = 1.15;
+  pipeline.imageProcessing.exposure = 1.4;
+  pipeline.imageProcessing.contrast = 1.1;
 
-  let ssao = null;
+  var ssao = null;
   try {
     ssao = new BABYLON.SSAO2RenderingPipeline("ssao", scene,
       { ssaoRatio: 0.5, blurRatio: 1 }, [cam], false);
-    ssao.totalStrength = 0.8;
+    ssao.totalStrength = 0.6;
     ssao.radius = 1.5;
     ssao.samples = 16;
     ssao.base = 0.2;
   } catch (_) {}
 
-  const glowLayer = new BABYLON.GlowLayer("glow", scene, {
+  // ---- Glow: include ALL meshes, suppress non-glowing via color selector ----
+  var glowLayer = new BABYLON.GlowLayer("glow", scene, {
     blurKernelSize: 32, mainTextureFixedSize: 512,
   });
   glowLayer.intensity = 0.5;
-  glowLayer.customEmissiveColorSelector = (mesh, _sub, _mat, result) => {
-    const glowMeshes = ["sheath", "pinch", "halo", "trail"];
-    if (glowMeshes.includes(mesh.name) && mesh.material && mesh.material.emissiveColor) {
+  glowLayer.customEmissiveColorSelector = function(mesh, _sub, _mat, result) {
+    if (GLOW_MESHES.has(mesh.name) && mesh.material && mesh.material.emissiveColor) {
       result.set(
         mesh.material.emissiveColor.r,
         mesh.material.emissiveColor.g,
@@ -586,31 +551,27 @@ async function createDPFScene(canvas, data) {
   };
 
   // ============================================================
-  // Return the scene controller (called by the HTML host)
+  // SCENE CONTROLLER
   // ============================================================
   return {
-    engine,
-    scene,
+    engine: engine,
+    scene: scene,
     camera: cam,
-    gpuBackend,
-    useGPU,
+    gpuBackend: gpuBackend,
+    useGPU: useGPU,
 
-    // Scene objects for animation
-    sheath, sheathMat, trail, trailMat,
-    pinch, pinchMat, pinchNME, halo, haloMat,
-    pinchRadii, haloRadii, pinchPath, N_PINCH,
-    anode, cathodeRods, insulator,
-    ps, psEmitter,
-    pipeline, ssao, glowLayer,
-    heatPlane, updateHeatmap,
-    fieldLines, fieldLineData,
-    activeOverlay,
+    sheath: sheath, sheathMat: sheathMat, trail: trail, trailMat: trailMat,
+    pinch: pinch, pinchMat: pinchMat, halo: halo, haloMat: haloMat,
+    pinchRadii: pinchRadii, haloRadii: haloRadii, pinchPath: pinchPath, N_PINCH: N_PINCH,
+    anode: anode, cathodeRods: cathodeRods, insulator: insulator,
+    ps: ps, psEmitter: psEmitter, fireSet: fireSet,
+    pipeline: pipeline, ssao: ssao, glowLayer: glowLayer,
+    heatPlane: heatPlane, updateHeatmap: updateHeatmap,
+    fieldLines: fieldLines, fieldLineData: fieldLineData,
+    activeOverlay: activeOverlay,
+    G: G, S: S, L: L,
 
-    // Data
-    G, S, L,
-
-    // Methods
-    setOverlay(key) {
+    setOverlay: function(key) {
       activeOverlay = key;
       if (heatPlane) {
         if (key === "none") {
@@ -622,79 +583,99 @@ async function createDPFScene(canvas, data) {
       }
     },
 
-    setCmap(useCividis) {
+    setCmap: function(useCividis) {
       activeCmap = useCividis ? CIVIDIS : VIRIDIS;
       if (activeOverlay !== "none" && heatPlane && heatPlane.isVisible) {
         updateHeatmap(activeOverlay);
       }
     },
 
-    applyFrame(i) {
+    applyFrame: function(i) {
       if (i < 0 || i >= S.frames.length) return;
-      const f = S.frames[i];
-      const col = PHASE_COLORS[f.phase] || [0.3, 0.3, 0.4];
-      const isP = ["radial", "mhd_radial", "pinch", "reflected", "post_pinch"].includes(f.phase);
-      const cr = Math.max(0.02, f.r / G.cathode_radius);
-      // Pinch intensity: high during compression, fading during post-pinch
-      let pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
-      // Post-pinch and reflected: dim the glow (plasma is disrupting/expanding)
+      var f = S.frames[i];
+      var col = PHASE_COLORS[f.phase] || [0.3, 0.3, 0.4];
+      var isP = ["radial", "mhd_radial", "pinch", "reflected", "post_pinch"].indexOf(f.phase) >= 0;
+      var cr = Math.max(0.02, f.r / G.cathode_radius);
+      var pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
       if (f.phase === "post_pinch") pI *= 0.3;
       if (f.phase === "reflected") pI *= 0.5;
 
-      // Sheath
+      // Sheath position + scaling — smooth transition at phase boundary
       sheath.position.x = isP ? G.anode_length : f.z;
       sheathMat.emissiveColor.set(col[0], col[1], col[2]);
       if (isP) {
-        sheath.scaling.set(1, Math.max(0.03, cr), Math.max(0.03, cr));
+        // Smooth compression: lerp from 1.0 toward cr over first few radial frames
+        var compScale = Math.max(0.03, cr);
+        sheath.scaling.set(1, compScale, compScale);
       } else {
-        sheath.scaling.set(1, 1, 1);
+        // During rundown, smoothly narrow as sheath approaches anode tip
+        var zFrac = Math.min(1, f.z / G.anode_length);
+        var rundownScale = 1.0 - zFrac * (1.0 - Math.max(0.03, cr)) * 0.3;
+        sheath.scaling.set(1, rundownScale, rundownScale);
       }
-      // Sheath alpha: proportional to current (fades as current decays after pinch)
-      const sheathAlpha = Math.min(0.7, 0.1 + Math.abs(f.I / S.I_peak) * 0.6);
+      var sheathAlpha = Math.min(0.7, 0.1 + Math.abs(f.I / S.I_peak) * 0.6);
       sheathMat.alpha = sheathAlpha;
-      // After pinch: sheath is gone (plasma has disrupted)
       if ((f.phase === "post_pinch" || f.phase === "reflected") && Math.abs(f.I / S.I_peak) < 0.1) {
         sheath.isVisible = false;
       } else {
         sheath.isVisible = true;
       }
 
-      // Trail
-      const tLen = Math.max(isP ? G.anode_length : f.z, 0.2);
+      // Trail — compress radially during pinch, fade during post-pinch
+      var tLen = Math.max(isP ? G.anode_length : f.z, 0.2);
       trail.scaling.x = tLen;
       trail.position.x = tLen / 2;
-      trailMat.emissiveColor.set(col[0] * 0.3, col[1] * 0.3, col[2] * 0.4);
-      trailMat.alpha = 0.1 + Math.abs(f.I) * 0.06;
+      if (isP) {
+        var trailScale = Math.max(0.05, cr * 0.8);
+        trail.scaling.y = trailScale;
+        trail.scaling.z = trailScale;
+      } else {
+        trail.scaling.y = 1;
+        trail.scaling.z = 1;
+      }
+      trailMat.emissiveColor.set(col[0] * 0.25, col[1] * 0.25, col[2] * 0.3);
+      trailMat.alpha = Math.min(0.12, 0.05 + Math.abs(f.I) * 0.04);
 
       // Pinch with m=0 instability
-      const instAmp = L.instability ? L.instability.amplitude : 0;
-      const rippleAmp = isP ? instAmp * Math.min(1, (1 - cr) * 2) : 0;
+      var instAmp = L.instability ? L.instability.amplitude : 0;
+      var rippleAmp = isP ? instAmp * Math.min(1, (1 - cr) * 2) : 0;
 
-      for (let k = 0; k <= N_PINCH; k++) {
-        const zFrac = k / N_PINCH;
-        const baseR = cr * G.cathode_radius * 0.4;
-        const ripple = rippleAmp * baseR * Math.cos(4 * Math.PI * zFrac);
-        pinchRadii[k] = Math.max(0.001, baseR + ripple);
-        haloRadii[k] = Math.max(0.002, (baseR + ripple) * 2.5);
+      for (var pk = 0; pk <= N_PINCH; pk++) {
+        var zFrac = pk / N_PINCH;
+        var baseR = cr * G.cathode_radius * 0.4;
+        var ripple = rippleAmp * baseR * Math.cos(4 * Math.PI * zFrac);
+        pinchRadii[pk] = Math.max(0.001, baseR + ripple);
+        haloRadii[pk] = Math.max(0.002, (baseR + ripple) * 1.8);
       }
 
       BABYLON.MeshBuilder.CreateTube("pinch", {
-        path: pinchPath, radiusFunction: (idx) => pinchRadii[idx],
+        path: pinchPath, radiusFunction: function(idx) { return pinchRadii[idx]; },
         tessellation: 20, cap: BABYLON.Mesh.CAP_ALL, instance: pinch,
       });
       BABYLON.MeshBuilder.CreateTube("halo", {
-        path: pinchPath, radiusFunction: (idx) => haloRadii[idx],
+        path: pinchPath, radiusFunction: function(idx) { return haloRadii[idx]; },
         tessellation: 48, cap: BABYLON.Mesh.NO_CAP,
         sideOrientation: BABYLON.Mesh.BACKSIDE, instance: halo,
       });
 
       pinchMat.alpha = pI * 0.85;
-      haloMat.alpha = pI * 0.35;
+      haloMat.alpha = pI * 0.25;
       if (pinchMat.emissiveColor) pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
       haloMat.emissiveColor.set(0.8, 0.08 + pI * 0.15, 0.03);
-      glowLayer.intensity = 0.35 + pI * 2;
+      glowLayer.intensity = 0.35 + pI * 1.2;
 
-      // Particles
+      // Fire preset during pinch
+      if (fireSet) {
+        if (pI > 0.5 && !fireSet._started) {
+          fireSet.start();
+          fireSet._started = true;
+        } else if (pI < 0.1 && fireSet._started) {
+          fireSet.dispose();
+          fireSet = null;
+        }
+      }
+
+      // Ion particles
       ps.emitter.x = isP ? G.anode_length : f.z;
       if (f.phase === "rundown") {
         psEmitter.radius = G.cathode_radius * 0.85;
@@ -702,51 +683,45 @@ async function createDPFScene(canvas, data) {
         ps.minEmitPower = 0.5; ps.maxEmitPower = 2;
         ps.emitRate = useGPU ? 6000 : 400;
       } else if (isP) {
-        const compR = Math.max(f.r, G.anode_radius * 0.05);
+        var compR = Math.max(f.r, G.anode_radius * 0.05);
         psEmitter.radius = compR * 0.8;
-        const boost = Math.min(8, Math.pow(G.cathode_radius / Math.max(compR, 0.1), 1.5));
+        var boost = Math.min(8, Math.pow(G.cathode_radius / Math.max(compR, 0.1), 1.5));
         ps.emitRate = useGPU ? Math.min(50000, (6000 * boost) | 0) : Math.min(4000, (400 * boost) | 0);
         ps.minSize = 0.3 + pI * 0.5;
         ps.maxSize = 1.0 + pI * 1.5;
         if (f.phase === "post_pinch" || f.phase === "reflected") {
-          // Post-pinch: plasma expanding outward, dispersing
           ps.gravity = new BABYLON.Vector3(2, compR * 0.3, 0);
           ps.minEmitPower = 1; ps.maxEmitPower = 4;
-          ps.emitRate = useGPU ? 3000 : 200; // fewer particles — plasma cooling
+          ps.emitRate = useGPU ? 3000 : 200;
         } else if (pI > 0.5) {
-          // Peak pinch: axial jets (beam ions)
           ps.gravity = new BABYLON.Vector3(5, 0, 0);
           ps.minEmitPower = 3; ps.maxEmitPower = 12;
         } else {
-          // Radial compression
           ps.gravity = new BABYLON.Vector3(0, -compR * 0.5, 0);
           ps.minEmitPower = 1.5; ps.maxEmitPower = 6;
         }
       }
 
-      // B-field lines: scale with CURRENT (B_theta = mu0*I/(2*pi*r))
-      // Brightness ~ |I|/I_peak, compression during radial phase
-      const Ifrac = Math.abs(f.I) / Math.max(S.I_peak, 0.001);
-      for (let fli = 0; fli < fieldLines.length; fli++) {
+      // B-field lines: brightness ~ |I|/I_peak, compression during radial
+      var Ifrac = Math.abs(f.I) / Math.max(S.I_peak, 0.001);
+      for (var fli = 0; fli < fieldLines.length; fli++) {
         if (!fieldLines[fli].isVisible) continue;
-        const fld = fieldLineData[fli];
+        var fld = fieldLineData[fli];
         if (!fld) continue;
-        const bStr = 1 - fld.ri / N_RADII;
+        var bStr = 1 - fld.ri / N_RADII;
 
-        // Brightness proportional to current (B ~ I)
         if (fieldLines[fli].material) {
           fieldLines[fli].material.alpha = Math.min(0.85, (0.1 + bStr * 0.3) * Ifrac * 2);
           if (fieldLines[fli].material.emissiveColor) {
-            const glow = Math.min(1, Ifrac * 1.5);
+            var glow = Math.min(1, Ifrac * 1.5);
             fieldLines[fli].material.emissiveColor.set(
               0.1 + bStr * 0.3 * glow, 0.3 + bStr * 0.5 * glow, 0.7 + bStr * 0.3 * glow
             );
           }
         }
 
-        // Compression during radial phase
         if (isP) {
-          const scaleFactor = cr + (1 - cr) * (fld.ri / N_RADII);
+          var scaleFactor = cr + (1 - cr) * (fld.ri / N_RADII);
           fieldLines[fli].scaling.y = Math.max(0.05, scaleFactor);
           fieldLines[fli].scaling.z = Math.max(0.05, scaleFactor);
         } else {
@@ -754,7 +729,6 @@ async function createDPFScene(canvas, data) {
           fieldLines[fli].scaling.z = 1;
         }
 
-        // During rundown: forward field lines track sheath position
         if (f.phase === "rundown" && fld.zi >= 2) {
           fieldLines[fli].position.x = Math.min(fld.zPos, f.z);
         } else {
@@ -762,7 +736,7 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // DOF focus on pinch
+      // DOF focus on pinch during compression
       if (isP && pI > 0.3) {
         pipeline.depthOfFieldEnabled = true;
         pipeline.depthOfField.focalLength = 60;
@@ -773,12 +747,11 @@ async function createDPFScene(canvas, data) {
         pipeline.depthOfFieldEnabled = false;
       }
 
-      return { f, col, isP, cr, pI, rippleAmp };
+      return { f: f, col: col, isP: isP, cr: cr, pI: pI, rippleAmp: rippleAmp };
     },
   };
 }
 
-// Export for use by the HTML host
 window.createDPFScene = createDPFScene;
 window.PHASE_LABELS = PHASE_LABELS;
 window.PHASE_DESCRIPTIONS = PHASE_DESCRIPTIONS;
