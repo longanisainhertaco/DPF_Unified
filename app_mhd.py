@@ -21,6 +21,7 @@ BACKENDS = {
     "metal_plm": "Detailed (10-60 sec) -- full 2D plasma structure",
     "metal_weno5": "High Accuracy (30-120 sec) -- publication-quality 2D fields",
     "metal_3d": "3D (2-10 min) -- 3D instabilities and filamentation",
+    "metal_cylindrical": "Cylindrical (10-60 sec) -- full-discharge cylindrical MHD from t=0",
     "athena": "Reference (10-60 sec) -- independent C++ verification",
     "python": "Legacy (auto-redirects to Detailed)",
 }
@@ -36,6 +37,10 @@ BACKEND_CONFIGS = {
         "enable_hall": True,
     },
     "metal_3d": {
+        "reconstruction": "plm", "riemann_solver": "hll",
+        "time_integrator": "ssp_rk2", "precision": "float32",
+    },
+    "metal_cylindrical": {
         "reconstruction": "plm", "riemann_solver": "hll",
         "time_integrator": "ssp_rk2", "precision": "float32",
     },
@@ -1212,11 +1217,24 @@ def _run_metal(
     device = "mps" if use_mps else "cpu"
 
     is_3d = backend == "metal_3d"
+    is_full_discharge = backend == "metal_cylindrical"
     coord_type = "cartesian" if is_3d else "cylindrical"
     solver_dx = (dr + dz) / 2.0 if is_3d else dr
     solver_dz = solver_dx if is_3d else dz
 
     nr, ny, nz = grid_shape
+
+    # ---- Full-discharge cylindrical path (no Lee phase) ----
+    # Starts from uniform gas fill at t=0; circuit provides B_theta from the
+    # first timestep.  Uses axis BC (reflecting) on the left radial boundary.
+    if is_full_discharge:
+        return _run_metal_cylindrical(
+            grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, sc, t_end, a, b, L_anode, progress_fn,
+            enable_fld=enable_fld, enable_sheath=enable_sheath,
+            enable_ablation=enable_ablation, enable_nernst=enable_nernst,
+            enable_cr=enable_cr,
+        )
 
     # ---- Phase 1: Lee model axial rundown (skip for 3D Cartesian) ----
     circuit = RLCSolver(
@@ -1629,6 +1647,327 @@ def _run_metal(
         result["mhd_steps"] = mhd_step
 
     # Attach time-resolved yield data
+    if yield_tracker is not None:
+        yr = yield_tracker.get_result()
+        if yr.Y_total > 0:
+            result["yield_time_resolved"] = {
+                "times_us": [t_v * 1e6 for t_v in yr.times],
+                "dY_thermo": yr.dY_thermo,
+                "dY_bt": yr.dY_bt,
+                "Y_thermo_cumulative": yr.Y_thermo_cumulative,
+                "Y_bt_cumulative": yr.Y_bt_cumulative,
+                "T_peak_keV": yr.T_peak_keV,
+                "Y_total": yr.Y_total,
+                "bt_fraction": yr.bt_fraction,
+                "peak_yield_time_us": yr.peak_yield_time * 1e6,
+            }
+
+    return result
+
+
+def _detect_plasma_phase(
+    state: dict,
+    a: float,
+    b: float,
+    rho0: float,
+    nr: int,
+    nz: int,
+    dr: float,
+    dz: float,
+) -> str:
+    """Classify current MHD phase from density distribution.
+
+    Returns one of: "rundown", "radial", "pinch".
+
+    Heuristic rules:
+    - If peak density is within the outer 30% radially -> still rundown/uniform
+    - If density-weighted mean radius is advancing axially (not yet compressed)
+      but B_max < 10x initial -> rundown
+    - If density-weighted mean radius < 0.5*(a+b)/2 -> radial compression
+    - If density-weighted mean radius < 2*a -> pinch
+    """
+    rho = state["rho"]
+    rho_mid = rho[:, 0, nz // 2]
+    weights = np.maximum(rho_mid - rho0 * 0.5, 0.0)
+    w_sum = float(np.sum(weights))
+    r_grid = (np.arange(nr) + 0.5) * dr + a
+    if w_sum > 0:
+        r_eff = float(np.sum(r_grid * weights)) / w_sum
+    else:
+        r_eff = b
+    r_mid = 0.5 * (a + b)
+    if r_eff > 0.7 * b:
+        return "rundown"
+    if r_eff > r_mid * 0.4:
+        return "radial"
+    return "pinch"
+
+
+def _run_metal_cylindrical(
+    grid_shape: tuple[int, int, int],
+    dr: float, dz: float,
+    gas: dict, rho0: float, p_pa: float,
+    cc: dict, sc: dict, t_end: float,
+    a: float, b: float, L_anode: float,
+    progress_fn=None,
+    enable_fld: bool = False,
+    enable_sheath: bool = False,
+    enable_ablation: bool = False,
+    enable_nernst: bool = False,
+    enable_cr: bool = False,
+) -> dict[str, Any]:
+    """Full-discharge cylindrical MHD from t=0 — no Lee model phase.
+
+    The simulation domain covers the inter-electrode gap [a, b] radially
+    and [0, L_anode] axially.  Initial conditions are a uniform gas fill
+    at the specified pressure; B=0 at t=0.  The circuit starts from V0 and
+    discharges through the plasma, providing B_theta = mu0*I/(2*pi*r) at
+    the electrode walls each timestep.
+
+    The axis (r=0 face) of the domain is at r=a (inner conductor / anode).
+    Because the grid starts at the anode, not at r=0, no axis BC is needed
+    for this domain — the left boundary is the anode conducting wall.
+
+    This backend is intended for studying the full DPF discharge cycle from
+    initial breakdown through axial rundown and radial implosion in a single
+    coupled simulation.
+    """
+    import torch
+
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+    from dpf.metal.metal_solver import MetalMHDSolver
+
+    mu_0 = 4.0 * np.pi * 1e-7
+    cfg = BACKEND_CONFIGS["metal_cylindrical"]
+
+    use_mps = torch.backends.mps.is_available()
+    device = "mps" if use_mps else "cpu"
+
+    nr, ny, nz = grid_shape
+
+    # Grid: radial extent [a, b], axial extent [0, L_anode]
+    dr_mhd = (b - a) / nr
+    dz_mhd = L_anode / max(nz, 1)
+
+    circuit = RLCSolver(
+        C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+        R0=cc.get("R0", 0.0),
+        anode_radius=a, cathode_radius=b,
+        crowbar_enabled=cc.get("crowbar_enabled", False),
+        crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+        crowbar_time=cc.get("crowbar_time", 0.0),
+        crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
+    )
+
+    # Boundary conditions: outflow on left (anode wall) and right (cathode wall)
+    # for the MHD solver — electrode B/v BCs are applied via apply_electrode_bc.
+    # Axis is at r=a (inner conductor), so left BC is a conducting wall, not a
+    # true axis.  Use "outflow" here; electrode BC enforces v_r=B_r=0 at walls.
+    solver = MetalMHDSolver(
+        grid_shape=(nr, ny, nz),
+        dx=dr_mhd, dz=dz_mhd,
+        gamma=gas.get("gamma", 5.0 / 3.0),
+        cfl=0.3, device=device,
+        use_ct=False,
+        coordinates="cylindrical",
+        ion_mass=gas["m_mol"],
+        bc=("outflow", "outflow", "outflow"),
+        **cfg,
+    )
+
+    # Initial conditions: uniform gas fill, B=0, v=0
+    state: dict[str, np.ndarray] = {
+        "rho": np.full((nr, ny, nz), rho0),
+        "velocity": np.zeros((3, nr, ny, nz)),
+        "pressure": np.full((nr, ny, nz), p_pa),
+        "B": np.zeros((3, nr, ny, nz)),
+        "Te": np.full((nr, ny, nz), 300.0),
+        "Ti": np.full((nr, ny, nz), 300.0),
+        "psi": np.zeros((nr, ny, nz)),
+    }
+
+    times, currents, voltages, L_plasmas = [], [], [], []
+    E_cap, E_ind, E_res = [], [], []
+    rho_max_arr, T_max_arr, B_max_arr = [], [], []
+    sheath_zs: list[float] = []
+    shock_rs: list[float] = []
+    phases_list: list[str] = []
+    mhd_snapshots = []
+
+    t = 0.0
+    coupling = CouplingState()
+    mhd_step = 0
+    prev_Lp: float | None = None
+    _MAX_BEMF = 50e3
+    _target_snaps = 30
+    snap_interval = 3
+    _cr_fracs = None
+
+    r_cells_lp = (np.arange(nr) + 0.5) * dr_mhd + a
+
+    yield_tracker = None
+    try:
+        from dpf.diagnostics.yield_tracker import YieldTracker
+        yield_tracker = YieldTracker(ion_mass=gas["m_mol"], rho0=rho0)
+    except ImportError:
+        pass
+
+    t_start = t
+
+    while t < t_end:
+        dt_mhd = solver.compute_dt(state)
+        dt = min(dt_mhd, t_end - t)
+        if dt <= 0:
+            break
+
+        state = solver.step(
+            state, dt,
+            current=circuit.current, voltage=circuit.voltage,
+            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+        )
+
+        # Radiation cooling
+        if "Te" in state:
+            try:
+                from dpf.radiation.improved_radiation import apply_improved_radiation_losses
+                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                ne = rho_safe / gas["m_mol"]
+                Z_eff = gas.get("Z", 1)
+                B_field = state.get("B")
+                B_mag = np.sqrt(np.sum(B_field**2, axis=0)) if B_field is not None else None
+                state["Te"], _ = apply_improved_radiation_losses(
+                    state["Te"], ne, dt, Z=Z_eff, B_mag=B_mag,
+                )
+            except ImportError:
+                try:
+                    from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+                    rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
+                    ne = rho_safe / gas["m_mol"]
+                    state["Te"], _ = apply_bremsstrahlung_losses(
+                        state["Te"], ne, dt, Z=gas.get("Z", 1),
+                    )
+                except ImportError:
+                    pass
+
+        # Advanced physics operator-split
+        any_adv = enable_fld or enable_sheath or enable_ablation or enable_nernst or enable_cr
+        if any_adv:
+            state, _cr_fracs = _apply_advanced_physics(
+                state, dt, gas, dr_mhd, dz_mhd, a, b,
+                enable_fld=enable_fld, enable_sheath=enable_sheath,
+                enable_ablation=enable_ablation, enable_nernst=enable_nernst,
+                enable_cr=enable_cr, cr_fractions=_cr_fracs,
+            )
+
+        # Time-resolved yield accumulation
+        if yield_tracker is not None:
+            V_p = abs(coupling.dL_dt) * abs(circuit.current) if coupling.dL_dt else 0.0
+            cell_vol = dr_mhd * (b - a) / nr * dz_mhd
+            yield_tracker.accumulate(
+                state, dt,
+                I_current=circuit.current, V_pinch=V_p,
+                cell_volume=cell_vol,
+            )
+
+        # Compute plasma inductance from density-weighted mean radius
+        rho_mid = state["rho"][:, ny // 2, nz // 2]
+        weights = np.maximum(rho_mid - rho0 * 0.5, 0.0)
+        w_sum = float(np.sum(weights))
+        if w_sum > 0:
+            r_eff = float(np.sum(r_cells_lp * weights)) / w_sum
+        else:
+            r_eff = b
+        r_eff = max(r_eff, a * 0.01)
+        L_axial = (mu_0 / (2.0 * np.pi)) * np.log(b / a) * L_anode
+        Lp_mhd = L_axial + (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
+
+        if prev_Lp is not None and prev_Lp > 0 and dt > 0:
+            dLdt_mhd = (Lp_mhd - prev_Lp) / dt
+            back_emf = float(np.clip(dLdt_mhd * circuit.current, -_MAX_BEMF, _MAX_BEMF))
+        else:
+            dLdt_mhd = 0.0
+            back_emf = 0.0
+        prev_Lp = Lp_mhd
+
+        coupling.Lp = Lp_mhd
+        coupling.dL_dt = dLdt_mhd
+        coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
+        t += dt
+        mhd_step += 1
+
+        if mhd_step == 1 and dt > 0:
+            est_total = max(1, int((t_end - t_start) / dt))
+            snap_interval = max(1, est_total // _target_snaps)
+
+        phase = _detect_plasma_phase(state, a, b, rho0, nr, nz, dr_mhd, dz_mhd)
+
+        times.append(t * 1e6)
+        currents.append(circuit.current / 1e6)
+        voltages.append(circuit.voltage / 1e3)
+        L_plasmas.append(coupling.Lp * 1e9)
+        E_cap.append(circuit.state.energy_cap / 1e3)
+        E_ind.append(circuit.state.energy_ind / 1e3)
+        E_res.append(circuit.state.energy_res / 1e3)
+
+        rho_mid_r = state["rho"][:, ny // 2, nz // 2]
+        rho_sum = np.sum(rho_mid_r)
+        r_eff_mm = float(np.sum(rho_mid_r * r_cells_lp) / rho_sum * 1e3) if rho_sum > 0 else a * 1e3
+        sheath_zs.append(L_anode * 1e3)
+        shock_rs.append(r_eff_mm)
+        phases_list.append(phase)
+
+        rho_max_arr.append(float(np.max(state["rho"])))
+        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * gas["m_mol"] / (2.0 * state["rho"] * 1.380649e-23)))))
+        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+
+        if mhd_step % snap_interval == 0:
+            mhd_snapshots.append({
+                "t_us": t * 1e6,
+                "rho_mid": state["rho"][:, ny // 2, :].copy(),
+                "B_mid": state["B"][:, :, ny // 2, :].copy(),
+                "P_mid": state["pressure"][:, ny // 2, :].copy(),
+            })
+
+        if progress_fn and mhd_step % 20 == 0:
+            progress_fn(
+                min((t - t_start) / max(t_end - t_start, 1e-30), 1.0),
+                desc=f"Cylindrical MHD: t={t*1e6:.2f}us, phase={phase}, step={mhd_step}",
+            )
+
+    t_arr = np.array(times)
+    I_arr = np.array(currents)
+    I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
+
+    result: dict[str, Any] = {
+        "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
+        "L_p_nH": np.array(L_plasmas),
+        "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
+        "E_res_kJ": np.array(E_res),
+        "rho_max": np.array(rho_max_arr),
+        "T_max": np.array(T_max_arr),
+        "B_max": np.array(B_max_arr),
+        "mhd_snapshots": mhd_snapshots,
+        "final_state": state,
+        "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0,
+        "t_peak": float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0.0,
+        "I_pre_dip": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0,
+        "t_pre_dip": 0.0,
+        "I_dip": 0.0,
+        "t_dip": 0.0,
+        "dip_pct": 0.0,
+        "n_steps": mhd_step,
+        "has_snowplow": False,
+        "has_mhd": True,
+        "phases": phases_list,
+        "z_mm": np.array(sheath_zs) if sheath_zs else np.full(len(times), L_anode * 1e3),
+        "r_mm": np.array(shock_rs) if shock_rs else np.zeros(len(times)),
+        "scaling": None, "crowbar_t": None,
+        "snowplow_obj": None, "dt_ns": 0,
+        "backend": "metal_cylindrical",
+    }
+
     if yield_tracker is not None:
         yr = yield_tracker.get_result()
         if yr.Y_total > 0:

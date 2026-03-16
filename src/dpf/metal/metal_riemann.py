@@ -28,10 +28,11 @@ References:
     Stone J.M. et al., ApJS 249, 4 (2020)  -- Athena++ methods paper.
 
 Functions:
-    plm_reconstruct_mps    -- PLM reconstruction with slope limiters.
-    hll_flux_mps           -- HLL approximate Riemann solver (8-component).
-    compute_fluxes_mps     -- Full reconstruction + Riemann solve for one dim.
-    mhd_rhs_mps            -- Full MHD right-hand side: -div(F) in 3D.
+    plm_reconstruct_mps           -- PLM reconstruction with slope limiters.
+    hll_flux_mps                  -- HLL approximate Riemann solver (8-component).
+    compute_fluxes_mps            -- Full reconstruction + Riemann solve for one dim.
+    mhd_rhs_mps                   -- Full MHD right-hand side: -div(F) in 3D.
+    mhd_rhs_cylindrical_mps       -- Cylindrical MHD RHS with r-weighted differencing.
 """
 
 from __future__ import annotations
@@ -1416,6 +1417,240 @@ def mhd_rhs_mps(
     dp_dt = (gamma - 1.0) * (
         dU_dt[IEN] - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
     )
+
+    return {
+        "rho": drho_dt,
+        "velocity": dvel_dt,
+        "pressure": dp_dt,
+        "B": dB_dt,
+    }
+
+
+# ============================================================
+# Cylindrical MHD right-hand side: r-weighted -div(F) + geometric sources
+# ============================================================
+
+
+def mhd_rhs_cylindrical_mps(
+    state: dict[str, torch.Tensor],
+    gamma: float,
+    dx: float,
+    dy: float,
+    dz: float,
+    r_cell: torch.Tensor,
+    r_face: torch.Tensor,
+    limiter: str = "minmod",
+    riemann_solver: str = "hll",
+    reconstruction: str = "plm",
+    bc: tuple[str, str, str] = ("outflow", "outflow", "outflow"),
+) -> dict[str, torch.Tensor]:
+    """Cylindrical MHD right-hand side using r-weighted finite-volume differencing.
+
+    Implements the conservative cylindrical MHD update:
+
+        dU/dt = -(1/(r*dr)) * (r_{i+1/2}*F_{i+1/2} - r_{i-1/2}*F_{i-1/2})
+              - (G_{j+1/2} - G_{j-1/2}) / dz
+              + S_geom
+
+    where axis=0 is radial (r), axis=1 is azimuthal (theta, axisymmetric
+    so ny=1), and axis=2 is axial (z).  The r-weighted differencing
+    absorbs the Cartesian-to-cylindrical flux correction terms (the -F/r
+    terms that appear in an operator-split approach), leaving only the
+    purely geometric centrifugal/hoop and Coriolis source terms.
+
+    Geometric source terms added after flux divergence (Heaviside-Lorentz
+    units, mu_0 absorbed into B):
+
+        r-momentum:  +(rho*vtheta^2 - Btheta^2) / r   (centrifugal + hoop stress)
+        theta-momentum: -2*(rho*vr*vtheta - Br*Btheta) / r   (Coriolis + magnetic tension)
+
+    References:
+        Stone & Norman, ApJS 80:753 (1992) -- ZEUS-2D cylindrical.
+        Mignone et al., ApJS 170:228 (2007) -- PLUTO code.
+        Stone et al., ApJS 249:4 (2020) -- Athena++ methods.
+
+    Args:
+        state: Dictionary of MPS tensors with keys:
+            'rho':      Density, shape (nx, ny, nz).
+            'velocity': Velocity, shape (3, nx, ny, nz).
+            'pressure': Thermal pressure, shape (nx, ny, nz).
+            'B':        Magnetic field, shape (3, nx, ny, nz).
+        gamma: Adiabatic index.
+        dx: Radial grid spacing [m].
+        dy: Azimuthal grid spacing [m] (unused for axisymmetric; kept for API compat).
+        dz: Axial grid spacing [m].
+        r_cell: Cell-centre radii, shape (nx, 1, 1), float32, MPS.
+        r_face: Face radii at r_{i+1/2}, shape (nx+1, 1, 1), float32, MPS.
+        limiter: Slope limiter for PLM ("minmod" or "mc").
+        riemann_solver: Riemann solver: "hll" or "hlld".
+        reconstruction: Reconstruction method: "plm" or "weno5".
+        bc: Boundary condition per dimension.
+
+    Returns:
+        Dictionary with time derivatives of the state:
+            'rho':      d(rho)/dt, shape (nx, ny, nz).
+            'velocity': d(velocity)/dt, shape (3, nx, ny, nz).
+            'pressure': d(pressure)/dt, shape (nx, ny, nz).
+            'B':        d(B)/dt, shape (3, nx, ny, nz).
+    """
+    rho = state["rho"]
+    vel = state["velocity"]
+    p = state["pressure"]
+    B = state["B"]
+
+    _ensure_mps(rho, "rho")
+    _ensure_mps(vel, "velocity")
+    _ensure_mps(p, "pressure")
+    _ensure_mps(B, "B")
+    _ensure_mps(r_cell, "r_cell")
+    _ensure_mps(r_face, "r_face")
+
+    nx, ny, nz = rho.shape
+
+    U = _prim_to_cons_mps(rho, vel, p, B, gamma)
+    dU_dt = torch.zeros_like(U)
+
+    # ---- Radial dimension (dim=0): r-weighted flux differencing ----
+    # (1/(r_cell * dx)) * (r_face[i+1/2]*F[i+1/2] - r_face[i-1/2]*F[i-1/2])
+    if nx >= 2:
+        axis = 1  # tensor axis for dim=0
+        dim_bc = bc[0] if len(bc) > 0 else "outflow"
+
+        if dim_bc == "periodic":
+            gh = 3 if (reconstruction == "weno5" and nx >= 5) else 2
+            pad_spec_p = [0, 0, 0, 0, gh, gh]
+            U_padded = torch.nn.functional.pad(U, pad_spec_p, mode="circular")
+            flux_r = compute_fluxes_mps(
+                U_padded, gamma, dx, dy, dz, 0,
+                limiter, riemann_solver, reconstruction,
+            )
+            F_right = torch.narrow(flux_r, axis, gh, nx)
+            F_left = torch.narrow(flux_r, axis, gh - 1, nx)
+            # r-weighted: r_{i+1/2}=r_face[1:], r_{i-1/2}=r_face[:-1]
+            r_right = r_face[gh:gh + nx]           # (nx, 1, 1)
+            r_left = r_face[gh - 1:gh - 1 + nx]   # (nx, 1, 1)
+        elif dim_bc == "axis":
+            # Axis BC (r=0): reflect ghost cells with even/odd symmetry.
+            # Even components (IDN, IM3, IEN, IB3): ghost = interior[0]
+            # Odd components (IM1, IM2, IB1, IB2): ghost = -interior[0]
+            # This preserves angular momentum and magnetic flux at the axis
+            # while ensuring v_r=0 and B_r=0 are enforced via antisymmetry.
+            # The right boundary uses replicate (outflow) padding.
+            #
+            # Ghost layer construction: prepend one reflected cell on the left.
+            # sign_mask: shape (8, 1, 1, 1)
+            sign_mask = torch.ones(8, 1, 1, 1, dtype=U.dtype, device=U.device)
+            sign_mask[IM1] = -1.0  # v_r: odd
+            sign_mask[IM2] = -1.0  # v_theta: odd
+            sign_mask[IB1] = -1.0  # B_r: odd
+            sign_mask[IB2] = -1.0  # B_theta: odd
+            ghost_left = sign_mask * U[:, :1, :, :]  # shape (8, 1, ny, nz)
+            # Right boundary: outflow (replicate)
+            ghost_right = U[:, -1:, :, :]
+            U_padded = torch.cat([ghost_left, U, ghost_right], dim=axis)  # (8, nx+2, ny, nz)
+            flux_r = compute_fluxes_mps(
+                U_padded, gamma, dx, dy, dz, 0,
+                limiter, riemann_solver, reconstruction,
+            )
+            # flux_r has shape (8, nx+1, ny, nz): indices 0..nx are interfaces
+            # Interface 0 = left face of padded[0] (axis face, will be zeroed by r_face[0]=0)
+            # Interface 1 = right face of ghost / left face of cell 0
+            # Interface nx = right face of cell nx-1
+            F_right = torch.narrow(flux_r, axis, 1, nx)   # interfaces 1..nx (right faces)
+            F_left = torch.narrow(flux_r, axis, 0, nx)    # interfaces 0..nx-1 (left faces)
+            r_right = r_face[1:]    # (nx, 1, 1) — right face radii
+            r_left = r_face[:-1]    # (nx, 1, 1) — left face radii; r_face[0]=0 enforces zero flux at axis
+        else:
+            flux_r = compute_fluxes_mps(
+                U, gamma, dx, dy, dz, 0,
+                limiter, riemann_solver, reconstruction,
+            )
+            # flux_r has shape (8, nx-1, ny, nz); pad by 1 on each side
+            pad_spec = [0, 0, 0, 0, 1, 1]
+            flux_r_padded = torch.nn.functional.pad(flux_r, pad_spec, mode="replicate")
+            F_right = torch.narrow(flux_r_padded, axis, 1, nx)   # (8, nx, ny, nz)
+            F_left = torch.narrow(flux_r_padded, axis, 0, nx)    # (8, nx, ny, nz)
+            # r_face has shape (nx+1, 1, 1): [0..nx-1] are left faces, [1..nx] are right
+            r_right = r_face[1:]    # (nx, 1, 1)
+            r_left = r_face[:-1]    # (nx, 1, 1)
+
+        # r-weighted finite-volume divergence: (1/(r_cell*dx)) * d(r*F)/dr
+        inv_r_cell = 1.0 / torch.clamp(r_cell, min=1e-30)  # (nx, 1, 1)
+        dU_dt = dU_dt - (r_right * F_right - r_left * F_left) * inv_r_cell / dx
+
+    # ---- Azimuthal dimension (dim=1): skip for axisymmetric (ny=1) ----
+    # No flux contribution in the theta direction.
+
+    # ---- Axial dimension (dim=2): standard Cartesian differencing ----
+    if nz >= 2:
+        axis = 3  # tensor axis for dim=2
+        dim_bc = bc[2] if len(bc) > 2 else "outflow"
+
+        if dim_bc == "periodic":
+            gh = 3 if (reconstruction == "weno5" and nz >= 5) else 2
+            pad_spec_p = [gh, gh, 0, 0, 0, 0]
+            U_padded = torch.nn.functional.pad(U, pad_spec_p, mode="circular")
+            flux_z = compute_fluxes_mps(
+                U_padded, gamma, dx, dy, dz, 2,
+                limiter, riemann_solver, reconstruction,
+            )
+            F_right = torch.narrow(flux_z, axis, gh, nz)
+            F_left = torch.narrow(flux_z, axis, gh - 1, nz)
+        else:
+            flux_z = compute_fluxes_mps(
+                U, gamma, dx, dy, dz, 2,
+                limiter, riemann_solver, reconstruction,
+            )
+            pad_spec = [1, 1, 0, 0, 0, 0]
+            flux_z_padded = torch.nn.functional.pad(flux_z, pad_spec, mode="replicate")
+            F_right = torch.narrow(flux_z_padded, axis, 1, nz)
+            F_left = torch.narrow(flux_z_padded, axis, 0, nz)
+
+        dU_dt = dU_dt - (F_right - F_left) / dz
+
+    # ---- Convert conservative RHS to primitive RHS ----
+    rho_safe = torch.clamp(rho, min=RHO_FLOOR)
+    inv_rho = 1.0 / rho_safe
+
+    drho_dt = dU_dt[IDN]
+
+    dvx_dt = (dU_dt[IM1] - vel[0] * drho_dt) * inv_rho
+    dvy_dt = (dU_dt[IM2] - vel[1] * drho_dt) * inv_rho
+    dvz_dt = (dU_dt[IM3] - vel[2] * drho_dt) * inv_rho
+
+    dBx_dt = dU_dt[IB1]
+    dBy_dt = dU_dt[IB2]
+    dBz_dt = dU_dt[IB3]
+    dB_dt = torch.stack([dBx_dt, dBy_dt, dBz_dt], dim=0)
+
+    v_dot_dmom = (vel[0] * dU_dt[IM1] + vel[1] * dU_dt[IM2] + vel[2] * dU_dt[IM3])
+    v_sq = vel[0] ** 2 + vel[1] ** 2 + vel[2] ** 2
+    B_dot_dB = B[0] * dBx_dt + B[1] * dBy_dt + B[2] * dBz_dt
+    dp_dt = (gamma - 1.0) * (
+        dU_dt[IEN] - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
+    )
+
+    # ---- Geometric source terms (purely physical, not flux corrections) ----
+    # These are NOT absorbed by the r-weighted differencing.
+    # In Heaviside-Lorentz units (mu_0=1 absorbed into B):
+    inv_r = 1.0 / torch.clamp(r_cell, min=1e-30)  # (nx, 1, 1)
+
+    v_r = vel[0]
+    v_theta = vel[1]
+    B_r = B[0]
+    B_theta = B[1]
+
+    # r-momentum: centrifugal + hoop stress
+    # S_mr_geom = (rho*vtheta^2 - Btheta^2) / r
+    S_mr_geom = (rho * v_theta ** 2 - B_theta ** 2) * inv_r
+    dvx_dt = dvx_dt + S_mr_geom * inv_rho
+
+    # theta-momentum: Coriolis + magnetic tension
+    # S_mtheta = -2*(rho*vr*vtheta - Br*Btheta) / r
+    S_mtheta = -2.0 * (rho * v_r * v_theta - B_r * B_theta) * inv_r
+    dvy_dt = dvy_dt + S_mtheta * inv_rho
+
+    dvel_dt = torch.stack([dvx_dt, dvy_dt, dvz_dt], dim=0)
 
     return {
         "rho": drho_dt,
