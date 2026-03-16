@@ -81,21 +81,25 @@ def _register_gas(
 
 # Register all common DPF fill gases
 # Sources: NIST Atomic Spectra Database, Lieberman & Lichtenberg (2005)
-_register_gas("D2", "D₂", 4.028, 15.47, 1.0e-19, 4.8, 138.0, 0.05,
+# Sources: NIST Atomic Spectra Database, Lieberman & Lichtenberg (2005) Table 1.2
+# Ionization potentials: NIST (2024), molecular values for D2/H2/N2
+# Paschen A,B coefficients: Meek & Craggs (1978), Lieberman & Lichtenberg (2005)
+# Cross sections: Lieberman & Lichtenberg Appendix A (~1-10 eV)
+_register_gas("D2", "D₂", 4.028, 15.467, 1.0e-19, 5.0, 130.0, 0.05,
               "Neutron production (D-D fusion)")
-_register_gas("H2", "H₂", 2.016, 15.43, 1.0e-19, 5.1, 138.6, 0.05,
+_register_gas("H2", "H₂", 2.016, 15.426, 1.0e-19, 5.0, 130.0, 0.05,
               "Light gas studies")
-_register_gas("He", "He", 4.003, 24.59, 0.5e-19, 2.8, 77.0, 0.02,
+_register_gas("He", "He", 4.003, 24.587, 0.5e-19, 3.0, 34.0, 0.02,
               "Inert fill, X-ray window studies")
-_register_gas("Ne", "Ne", 20.18, 21.56, 0.8e-19, 4.4, 111.5, 0.04,
+_register_gas("Ne", "Ne", 20.18, 21.565, 0.8e-19, 4.0, 100.0, 0.04,
               "Soft X-ray production")
-_register_gas("Ar", "Ar", 39.95, 15.76, 2.5e-19, 11.5, 176.0, 0.07,
+_register_gas("Ar", "Ar", 39.95, 15.759, 2.0e-19, 12.0, 180.0, 0.07,
               "Hard X-ray production, spectroscopy")
-_register_gas("Kr", "Kr", 83.80, 14.00, 3.0e-19, 13.0, 190.0, 0.06,
+_register_gas("Kr", "Kr", 83.80, 14.000, 3.0e-19, 17.0, 240.0, 0.06,
               "EUV lithography source")
-_register_gas("Xe", "Xe", 131.29, 12.13, 4.0e-19, 20.0, 220.0, 0.08,
+_register_gas("Xe", "Xe", 131.29, 12.130, 4.0e-19, 26.0, 350.0, 0.08,
               "EUV source, ion thruster studies")
-_register_gas("N2", "N₂", 28.01, 15.58, 1.8e-19, 9.0, 257.0, 0.04,
+_register_gas("N2", "N₂", 28.01, 15.581, 1.8e-19, 9.0, 257.0, 0.04,
               "Nitrogen plasma studies")
 
 
