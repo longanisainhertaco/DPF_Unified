@@ -207,7 +207,15 @@ def compute_breakdown(
 
     # --- E x B drift velocity ---
     # In crossed E and B fields, particles drift at v_ExB = E/B
-    v_ExB = E_field / B_seed if B_seed > 0 else 0.0
+    # Clamp to speed of light (v_ExB > c means B is too weak for drift physics)
+    c_light = 3.0e8  # m/s
+    v_ExB_raw = E_field / B_seed if B_seed > 0 else 0.0
+    v_ExB = min(v_ExB_raw, c_light)
+
+    # If v_ExB hit the c clamp, the B-field is too weak for CIV to apply.
+    # At initial breakdown, B ~ 0 — Paschen dominates. CIV only applies
+    # during the axial phase when current is already flowing at ~kA level.
+    b_field_sufficient = v_ExB_raw < c_light
 
     # --- CIV ratio ---
     civ_ratio = v_ExB / gas.v_crit if gas.v_crit > 0 else 0.0
@@ -234,7 +242,11 @@ def compute_breakdown(
     is_magnetized = larmor_e < electron_mfp
 
     # --- Determine mechanism and compute ICs ---
-    if civ_ratio > 1.0:
+    # CIV requires: (1) v_ExB > v_crit AND (2) B-field strong enough for
+    # magnetized drift physics (v_ExB < c). At initial breakdown with only
+    # seed current, B ~ 0 → v_ExB → infinity → always Paschen.
+    # CIV activates during axial phase when I > ~1 kA.
+    if civ_ratio > 1.0 and b_field_sufficient:
         mechanism = "CIV"
 
         # CIV ionization: sheath forms where E x B exceeds v_crit

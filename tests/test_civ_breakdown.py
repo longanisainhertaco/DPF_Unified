@@ -128,11 +128,14 @@ class TestComputeBreakdown:
         assert 1e-10 < result.breakdown_time < 1e-4  # 0.1 ns to 100 us
 
     def test_high_voltage_favors_civ(self):
-        """Higher voltage → higher E → higher v_ExB → more likely CIV."""
+        """Higher voltage → higher E → higher v_ExB → more likely CIV.
+        Use realistic I_seed (10 kA) so B is strong enough for drift physics."""
         low_v = compute_breakdown(V0=5e3, fill_pressure_Pa=400.0,
-                                   anode_radius=0.057, cathode_radius=0.08)
+                                   anode_radius=0.057, cathode_radius=0.08,
+                                   I_seed=10e3)
         high_v = compute_breakdown(V0=40e3, fill_pressure_Pa=400.0,
-                                    anode_radius=0.057, cathode_radius=0.08)
+                                    anode_radius=0.057, cathode_radius=0.08,
+                                    I_seed=10e3)
         assert high_v.civ_ratio > low_v.civ_ratio
 
     def test_argon_lower_v_crit(self):
