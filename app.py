@@ -505,6 +505,15 @@ def run_simulation(
     metrics = _build_metrics(data, backend, val)
     csv_path = _export_csv(data)
 
+    # Attach reproducibility metadata to result dict for narrative/export
+    try:
+        from dpf.validation.reproducibility import create_reproducibility_package
+        data["_reproducibility"] = create_reproducibility_package(
+            data, preset_name, backend, gas_key=gas_key, sim_time_us=sim_time_us,
+        )
+    except (ImportError, Exception):
+        pass
+
     runs = add_to_comparison(comparison_runs or [], data, backend)
     fig_compare = create_comparison_fig(runs)
     compare_md = comparison_summary(runs)
