@@ -200,7 +200,40 @@ $$\\ln\\left(\\frac{{b}}{{a}}\\right) = \\ln\\left(\\frac{{{b_mm:.1f}}}{{{a_mm:.
         t_rundown = t_arr[-1]
         I_at_rundown = I_arr[-1]
 
-    sections.append("""## Step 2.5: Gas Breakdown & Plasma Formation (Phase 1)
+    # Phase 1 breakdown narrative — use CIV model if available
+    bd_info = d.get("breakdown")
+    if bd_info and bd_info.get("narrative"):
+        bd_narrative = bd_info["narrative"]
+        bd_mechanism = bd_info.get("mechanism", "Unknown")
+        bd_liftoff = bd_info.get("liftoff_delay_ns", 0)
+        bd_civ_ratio = bd_info.get("civ_ratio", 0)
+        bd_Te = bd_info.get("Te_eV", 0)
+        bd_delta = bd_info.get("sheath_thickness_mm", 0)
+        bd_gas = bd_info.get("gas", "D2")
+
+        sections.append(f"""{bd_narrative}
+
+**Computed initial conditions for this shot:**
+
+| Parameter | Value |
+|-----------|-------|
+| Mechanism | {bd_mechanism} |
+| Gas | {bd_gas} |
+| CIV ratio (v_ExB/v_crit) | {bd_civ_ratio:.2f} |
+| Initial sheath thickness | {bd_delta:.2f} mm |
+| Initial T_e | {bd_Te:.1f} eV |
+| Estimated liftoff delay | {bd_liftoff:.0f} ns |
+
+> **How this affects the simulation:** The breakdown model computes self-consistent \
+initial conditions for the snowplow phase. The sheath thickness, electron temperature, \
+and ionization fraction depend on the gas species, fill pressure, and applied voltage. \
+Different gases break down at different speeds: heavier noble gases (Ar, Kr, Xe) have \
+lower CIV thresholds and ionize more easily.
+>
+> *References: Alfven (1954), Brenning, Space Sci. Rev. 59:209 (1992), \
+Danielsson, Phys. Fluids 13:2288 (1970)*""")
+    else:
+        sections.append("""## Step 2.5: Gas Breakdown & Plasma Formation (Phase 1)
 
 > **Why this matters:** Before anything can move, the neutral gas between the electrodes \
 must become a **plasma** — a hot, electrically conducting gas where electrons are stripped \
