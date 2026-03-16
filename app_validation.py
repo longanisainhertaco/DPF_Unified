@@ -157,6 +157,58 @@ def format_validation_markdown(val: dict[str, Any] | None) -> str:
             f"{val['Yn_ref']:.2e} | {val['Yn_log_ratio']:.1f} decades |"
         )
 
+    # Explanation of WHY deviations exist
+    lines.append("")
+    lines.append("**Why do simulation and experiment differ?**")
+
+    explanations = []
+    if dI > 15:
+        explanations.append(
+            "**Current**: The Lee model uses two empirical fitting parameters "
+            "(fc = current fraction, fm = mass fraction) that are calibrated to "
+            "specific operating conditions. At different voltages or pressures, "
+            "the optimal fc/fm change. Large I_peak deviations usually mean "
+            "the mass loading (fm) is wrong for this condition."
+        )
+    elif dI > 5:
+        explanations.append(
+            "**Current**: Minor deviation is typical. The 0D Lee model assumes "
+            "a uniform current sheath, but real DPF sheaths have non-uniform "
+            "mass loading and filamentary structure."
+        )
+
+    if dt > 15:
+        explanations.append(
+            "**Timing**: The rise time depends strongly on external inductance (L0) "
+            "and total circuit resistance. Published L0 values often exclude "
+            "bus bar and connection inductance (typically 5-20 nH extra)."
+        )
+
+    if "Yn_log_ratio" in val and val["Yn_log_ratio"] > 0.5:
+        explanations.append(
+            "**Yield**: Neutron yield is extremely sensitive to pinch conditions "
+            "(T ~ I^4 dependence). A 10% current error produces ~46% yield error. "
+            "The beam-target mechanism (70-90% of yield) depends on pinch voltage "
+            "V_pinch = (dL/dt)*I, which is hard to predict from 0D models."
+        )
+
+    if val.get("reliability") == "reference_only":
+        explanations.append(
+            "**Reference data**: This comparison uses model output (e.g. RADPF), "
+            "not direct experimental measurement. Deviations reflect model "
+            "differences, not physics errors."
+        )
+
+    if not explanations:
+        explanations.append(
+            "Good agreement. The Lee model captures the main circuit-plasma "
+            "coupling physics. Remaining differences are from 3D effects "
+            "(filaments, instabilities) that the 0D model cannot resolve."
+        )
+
+    for exp in explanations:
+        lines.append(f"\n> {exp}")
+
     return "\n".join(lines)
 
 

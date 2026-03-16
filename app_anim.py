@@ -602,3 +602,122 @@ def create_animated_mhd(d: dict[str, Any]) -> go.Figure:
         )],
     )
     return fig
+
+
+def create_lee_cross_section(d: dict[str, Any]) -> go.Figure | None:
+    """Animated 2D cross-section: electrodes + sheath + pinch evolution."""
+    t_us = d.get("t_us")
+    if t_us is None or len(t_us) < 5:
+        return None
+
+    cc = d.get("circuit", {})
+    a_mm = cc.get("anode_radius", 0.01) * 1e3
+    b_mm = cc.get("cathode_radius", 0.03) * 1e3
+    L_mm = d.get("snowplow_cfg", {}).get("anode_length", 0.16) * 1e3
+
+    z_mm = np.array(d.get("z_mm", [0] * len(t_us)))
+    r_mm = np.array(d.get("r_mm", [0] * len(t_us)))
+    I_MA = np.array(d.get("I_MA", [0] * len(t_us)))
+    phases = d.get("phases", ["none"] * len(t_us))
+
+    n = len(t_us)
+    step = max(1, n // 40)
+    idx = list(range(0, n, step))
+    if idx[-1] != n - 1:
+        idx.append(n - 1)
+
+    fig = go.Figure()
+
+    for sign in [1, -1]:
+        fig.add_trace(go.Scatter(
+            x=[0, L_mm], y=[sign * a_mm] * 2,
+            mode="lines", line=dict(color="#FFA726", width=4),
+            name="Anode" if sign == 1 else None, showlegend=(sign == 1),
+        ))
+        fig.add_trace(go.Scatter(
+            x=[0, L_mm], y=[sign * b_mm] * 2,
+            mode="lines", line=dict(color="#78909C", width=4),
+            name="Cathode" if sign == 1 else None, showlegend=(sign == 1),
+        ))
+    fig.add_trace(go.Scatter(
+        x=[0, 0], y=[-b_mm, b_mm],
+        mode="lines", line=dict(color="#CE93D8", width=3, dash="dot"),
+        name="Insulator",
+    ))
+    n_static = 5
+
+    fig.add_trace(go.Scatter(x=[], y=[], fill="toself",
+                             fillcolor="rgba(33,150,243,0.4)",
+                             line=dict(color="#2196F3", width=2), name="Sheath"))
+    fig.add_trace(go.Scatter(x=[], y=[], fill="toself",
+                             fillcolor="rgba(255,23,68,0.6)",
+                             line=dict(color="#FF1744", width=1), name="Pinch"))
+
+    frames, slider_steps = [], []
+    for fi, i in enumerate(idx):
+        t = float(t_us[i])
+        phase = phases[i]
+        sz = float(z_mm[i])
+        sr = float(r_mm[i]) if r_mm[i] > 0 else a_mm
+
+        pc = PHASE_COLORS.get(phase, "#607D8B")
+        rc, gc, bc_ = int(pc[1:3], 16), int(pc[3:5], 16), int(pc[5:7], 16)
+        sheath_x = [sz, sz, sz, sz, sz]
+        sheath_y = [-b_mm, -sr, 0, sr, b_mm]
+        sfill = f"rgba({rc},{gc},{bc_},0.45)"
+
+        if phase in ("radial", "mhd_radial", "reflected", "pinch", "post_pinch"):
+            pr = max(sr, a_mm * 0.05)
+            pz0, pz1 = L_mm * 0.65, L_mm
+            px = [pz0, pz1, pz1, pz0]
+            py = [-pr, -pr, pr, pr]
+            pfill = "rgba(255,23,68,0.55)"
+        else:
+            px, py, pfill = [], [], "rgba(0,0,0,0)"
+
+        phase_text = STAGE_DESCRIPTIONS.get(phase, phase)
+        frames.append(go.Frame(
+            data=[
+                go.Scatter(x=sheath_x, y=sheath_y, fill="toself",
+                           fillcolor=sfill, line=dict(color=pc, width=2)),
+                go.Scatter(x=px, y=py, fill="toself" if px else None,
+                           fillcolor=pfill,
+                           line=dict(color="#FF1744", width=1) if px else dict(width=0)),
+            ],
+            traces=[n_static, n_static + 1], name=f"f{fi}",
+            layout=go.Layout(annotations=[dict(
+                x=0.5, y=1.05, xref="paper", yref="paper",
+                text=f"t={t:.1f} us | {phase_text} | I={float(I_MA[i]):.3f} MA",
+                showarrow=False, font=dict(size=13, color="white"),
+            )]),
+        ))
+        slider_steps.append(dict(
+            args=[[f"f{fi}"], dict(frame=dict(duration=100, redraw=True), mode="immediate")],
+            label=f"{t:.1f}", method="animate",
+        ))
+
+    fig.frames = frames
+    fig.update_layout(
+        xaxis=dict(title="z [mm]", range=[-5, L_mm + 10]),
+        yaxis=dict(title="r [mm]", range=[-(b_mm + 5), b_mm + 5], scaleanchor="x"),
+        height=420, template="plotly_dark",
+        title=f"Plasma Cross-Section | {d.get('device', '?')}",
+        margin=dict(l=60, r=20, t=60, b=80),
+        updatemenus=[dict(
+            type="buttons", showactive=False, x=0.05, y=-0.12,
+            buttons=[
+                dict(label="Play", method="animate",
+                     args=[None, dict(frame=dict(duration=150, redraw=True),
+                                      fromcurrent=True, transition=dict(duration=50))]),
+                dict(label="Pause", method="animate",
+                     args=[[None], dict(frame=dict(duration=0, redraw=False),
+                                        mode="immediate")]),
+            ],
+        )],
+        sliders=[dict(
+            active=0, currentvalue=dict(prefix="t=", suffix=" us"),
+            pad=dict(b=10, t=50), len=0.9, x=0.05, y=-0.05, steps=slider_steps,
+        )],
+        legend=dict(x=0.85, y=0.95, font=dict(size=11)),
+    )
+    return fig
