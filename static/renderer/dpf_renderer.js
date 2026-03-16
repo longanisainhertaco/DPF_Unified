@@ -259,10 +259,15 @@ async function createDPFScene(canvas, data) {
   sheathMat.opacityFresnelParameters.bias = 0.5;
   sheathMat.opacityFresnelParameters.power = 1.5;
 
-  const sheath = BABYLON.MeshBuilder.CreateDisc("sheath", {
-    radius: G.cathode_radius, innerRadius: G.anode_radius, tessellation: 128,
+  // Sheath as a smooth torus ring (no triangle fans from CreateDisc)
+  const sheathMidR = (G.anode_radius + G.cathode_radius) / 2;
+  const sheathTubeR = (G.cathode_radius - G.anode_radius) / 2;
+  const sheath = BABYLON.MeshBuilder.CreateTorus("sheath", {
+    diameter: sheathMidR * 2,
+    thickness: sheathTubeR * 2,
+    tessellation: 64,
   }, scene);
-  sheath.rotation.y = Math.PI / 2;
+  sheath.rotation.z = Math.PI / 2;
   sheath.material = sheathMat;
 
   // Plasma trail (ionized gas behind sheath)
@@ -377,38 +382,70 @@ async function createDPFScene(canvas, data) {
   }
 
   // ============================================================
-  // B-FIELD LINES (from simulation Br/Bz)
+  // B-FIELD LINES: azimuthal circles B_theta = mu0*I/(2*pi*r)
+  // Always available — generated from circuit current, not MHD grid
   // ============================================================
   const fieldLines = [];
-  if (L.bfield) {
-    const fdBr = decodeBase64Float32(L.bfield.Br, L.bfield.shape);
-    const fdBz = decodeBase64Float32(L.bfield.Bz, L.bfield.shape);
-    const [nx, nz] = fdBr.shape;
-    const N_SEEDS = 12, N_STEPS = 80;
-    const ds = G.anode_length / N_STEPS * 0.6;
-
-    for (let s = 0; s < N_SEEDS; s++) {
-      let x = G.anode_length * (0.08 + 0.84 * s / N_SEEDS), z = 0;
+  // Generate circular field lines at multiple radii and axial positions
+  const N_RADII = 5;
+  const N_ZPOS = 4;
+  const N_CIRCLE_PTS = 64;
+  for (let zi = 0; zi < N_ZPOS; zi++) {
+    const zPos = G.anode_length * (0.15 + 0.7 * zi / (N_ZPOS - 1));
+    for (let ri = 0; ri < N_RADII; ri++) {
+      const r = G.anode_radius * 1.2 + (G.cathode_radius - G.anode_radius * 1.2) * ri / (N_RADII - 1);
       const pts = [];
-      for (let step = 0; step < N_STEPS; step++) {
-        pts.push(new BABYLON.Vector3(x, 0, z));
-        const fx = (x / G.anode_length) * (nx - 1);
-        const fz = ((z + G.cathode_radius) / (G.cathode_radius * 2)) * (nz - 1);
-        const br = bilinearSample(fdBr.data, nx, nz, fx, fz);
-        const bz = bilinearSample(fdBz.data, nx, nz, fx, fz);
-        const mag = Math.sqrt(br * br + bz * bz) + 1e-10;
-        x += ds * br / mag;
-        z += ds * bz / mag;
-        if (x < 0 || x > G.anode_length || Math.abs(z) > G.cathode_radius) break;
+      for (let k = 0; k <= N_CIRCLE_PTS; k++) {
+        const theta = (k / N_CIRCLE_PTS) * Math.PI * 2;
+        pts.push(new BABYLON.Vector3(zPos, r * Math.sin(theta), r * Math.cos(theta)));
       }
-      if (pts.length > 4) {
-        const line = BABYLON.MeshBuilder.CreateLines("fl" + s, { points: pts }, scene);
-        line.color = new BABYLON.Color3(0.3, 0.6, 1.0);
-        line.alpha = 0.6;
-        line.isVisible = false;
-        fieldLines.push(line);
-      }
+      // Color by field strength: stronger closer to anode (1/r)
+      const bStrength = 1 - ri / N_RADII; // 1 at anode, 0 at cathode
+      const lineMat = new BABYLON.StandardMaterial("flm" + zi + "_" + ri, scene);
+      const tube = BABYLON.MeshBuilder.CreateTube("fl" + zi + "_" + ri, {
+        path: pts, radius: G.cathode_radius * 0.008 * (0.5 + bStrength),
+        tessellation: 8, cap: BABYLON.Mesh.NO_CAP,
+      }, scene);
+      lineMat.emissiveColor = new BABYLON.Color3(
+        0.1 + bStrength * 0.2, 0.3 + bStrength * 0.4, 0.8 + bStrength * 0.2
+      );
+      lineMat.disableLighting = true;
+      lineMat.alpha = 0.3 + bStrength * 0.3;
+      tube.material = lineMat;
+      tube.isVisible = false;
+      fieldLines.push(tube);
     }
+  }
+
+  // Also add poloidal field lines from MHD data if available
+  if (L.bfield) {
+    try {
+      const fdBr = decodeBase64Float32(L.bfield.Br, L.bfield.shape);
+      const fdBz = decodeBase64Float32(L.bfield.Bz, L.bfield.shape);
+      const [nx, nz] = fdBr.shape;
+      for (let s = 0; s < 8; s++) {
+        let x = G.anode_length * (0.1 + 0.8 * s / 8), z = 0;
+        const pts = [];
+        const ds = G.anode_length / 60 * 0.6;
+        for (let step = 0; step < 60; step++) {
+          pts.push(new BABYLON.Vector3(x, 0, z));
+          const fx = (x / G.anode_length) * (nx - 1);
+          const fz = ((z + G.cathode_radius) / (G.cathode_radius * 2)) * (nz - 1);
+          const br = bilinearSample(fdBr.data, nx, nz, fx, fz);
+          const bz = bilinearSample(fdBz.data, nx, nz, fx, fz);
+          const mag = Math.sqrt(br * br + bz * bz) + 1e-10;
+          x += ds * br / mag; z += ds * bz / mag;
+          if (x < 0 || x > G.anode_length || Math.abs(z) > G.cathode_radius) break;
+        }
+        if (pts.length > 4) {
+          const line = BABYLON.MeshBuilder.CreateLines("flp" + s, { points: pts }, scene);
+          line.color = new BABYLON.Color3(0.3, 0.7, 1.0);
+          line.alpha = 0.5;
+          line.isVisible = false;
+          fieldLines.push(line);
+        }
+      }
+    } catch(_) {}
   }
 
   // ============================================================
@@ -618,10 +655,17 @@ async function createDPFScene(canvas, data) {
         ps.emitRate = useGPU ? Math.min(50000, (6000 * boost) | 0) : Math.min(4000, (400 * boost) | 0);
         ps.minSize = 0.3 + pI * 0.5;
         ps.maxSize = 1.0 + pI * 1.5;
-        if (pI > 0.5) {
+        if (f.phase === "post_pinch" || f.phase === "reflected") {
+          // Post-pinch: plasma expanding outward, dispersing
+          ps.gravity = new BABYLON.Vector3(2, compR * 0.3, 0);
+          ps.minEmitPower = 1; ps.maxEmitPower = 4;
+          ps.emitRate = useGPU ? 3000 : 200; // fewer particles — plasma cooling
+        } else if (pI > 0.5) {
+          // Peak pinch: axial jets (beam ions)
           ps.gravity = new BABYLON.Vector3(5, 0, 0);
           ps.minEmitPower = 3; ps.maxEmitPower = 12;
         } else {
+          // Radial compression
           ps.gravity = new BABYLON.Vector3(0, -compR * 0.5, 0);
           ps.minEmitPower = 1.5; ps.maxEmitPower = 6;
         }
