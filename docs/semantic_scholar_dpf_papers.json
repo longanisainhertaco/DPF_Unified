@@ -1,0 +1,90 @@
+[
+  {
+    "title": "Generalized plasma focus problem and its application to space propulsion",
+    "year": 2023,
+    "doi": "10.1063/5.0141622",
+    "citations": 6,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": true,
+    "abstract": "Space propulsion is unique among many proposed applications of the dense plasma focus in being critically dependent on the availability of a scaling theory that is well-grounded in physics, in conform",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "On the failure of neutron yield scaling in the dense plasma focus",
+    "year": 2023,
+    "doi": "10.1063/5.0157626",
+    "citations": 4,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": true,
+    "abstract": "The observed scaling of neutron yield in the dense plasma focus (DPF) as the fourth power of the current in the plasma was the principal driver of the growth of DPF research in its early days. Subsequ",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Numerical experiments on the total D\u2013D fusion neutron yield versus deuterium pressure for different energy plasma focus devices using the Lee model code",
+    "year": 2023,
+    "doi": "10.1088/1361-6587/acc610",
+    "citations": 3,
+    "journal": "Plasma Physics and Controlled Fusion",
+    "authors": "Samer Wahbe, Y. Abou-Ali, M. Akel et al.",
+    "open_access": false,
+    "abstract": "Numerical experiments using the Lee model code were carried out to compute the total D\u2013D fusion neutron yield versus initial deuterium pressure for nine different plasma focus devices [PF50, AACS, PF4",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "z-Pinch Stabilization by a Frozen-In Axial Magnetic Flux",
+    "year": 2024,
+    "doi": "10.1109/TPS.2024.3359665",
+    "citations": 1,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Pasquale Lucibello",
+    "open_access": false,
+    "abstract": "We consider a neutral plasma, within a tubular dielectric container, under the action of a screw pinch whose magnetic field has the axial component completely embedded in the plasma and the azimuthal ",
+    "query": "z-pinch instability sausage kink"
+  },
+  {
+    "title": "Neutron generation dynamics inside a MA-class dense plasma focus Z-pinch",
+    "year": 2025,
+    "doi": "10.1063/5.0253547",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "C. Goyon, A. Link, O. Drury et al.",
+    "open_access": true,
+    "abstract": "Dense plasma focii (DPFs) are appealing as energy efficient sources of short pulses of ions, neutrons, and x rays. The output of these sources is expected to scale with input current (I4), but has bee",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Symmetry and structure in the \u201cGeneralized Plasma Focus problem\u201d",
+    "year": 2024,
+    "doi": "10.1063/5.0225122",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": false,
+    "abstract": "The \u201cGeneralized Plasma Focus problem\u201d refers to a generic class of plasma propagation phenomena that share many features of a dense plasma focus device. Its recent theoretical development has been sh",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Experimental results and analysis of plasma dynamics and radiation output of the 100 kV dense plasma focus FAETON-I",
+    "year": 2025,
+    "doi": "10.1038/s41598-025-07939-x",
+    "citations": 0,
+    "journal": "Scientific Reports",
+    "authors": "Vahid Damideh, J. C. Btaiche, Alex Ho et al.",
+    "open_access": false,
+    "abstract": "FAETON-I is the highest direct-charged voltage plasma focus (PF), at 100 kV, 1 MA peak current. F-I produces consistent \\documentclass[12pt]{minimal} \\usepackage{amsmath} \\usepackage{wasysym} \\usepack",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Numerical simulation of the formation process of dense plasma focus",
+    "year": 2024,
+    "doi": "10.1109/icops58192.2024.10626474",
+    "citations": 0,
+    "journal": "2024 IEEE International Conference on Plasma Science (ICOPS)",
+    "authors": "Q. Sun",
+    "open_access": false,
+    "abstract": "The Dense Plasma Focusing (DPF) device is a compact, strong pulse, multi-radiation source, which is driven by electromagnetic force to form a high-temperature plasma. It has important applications in ",
+    "query": "plasma focus scaling law current"
+  }
+]

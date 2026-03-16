@@ -1,0 +1,828 @@
+[
+  {
+    "title": "Focus Fusion: Overview of Progress Towards p-B11 Fusion with the Dense Plasma Focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1007/s10894-023-00345-z",
+    "citations": 15,
+    "journal": "Journal of Fusion Energy",
+    "authors": "Eric J. Lerner, S. M. Hassan, Ivana Karamitsos-Zivkovic et al.",
+    "open_access": true
+  },
+  {
+    "title": "Generalized plasma focus problem and its application to space propulsion",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0141622",
+    "citations": 6,
+    "journal": "Physics of Plasmas",
+    "authors": "S. K. H. Auluck",
+    "open_access": false
+  },
+  {
+    "title": "Electrode durability and sheared-flow-stabilized Z-pinch fusion energy",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0163381",
+    "citations": 6,
+    "journal": "Physics of Plasmas",
+    "authors": "M. C. Thompson, Sarah Simpson, C. J. Beers et al.",
+    "open_access": true
+  },
+  {
+    "title": "Generalized plasma focus problem and its application to space propulsion",
+    "year": 2023,
+    "doi": "10.1063/5.0141622",
+    "citations": 6,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": true,
+    "abstract": "Space propulsion is unique among many proposed applications of the dense plasma focus in being critically dependent on the availability of a scaling theory that is well-grounded in physics, in conform",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Observation of filaments in mega-ampere dense plasma focus within pure deuterium by means of simultaneous schlieren and interferometry diagnostics",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0124093",
+    "citations": 5,
+    "journal": "Physics of Plasmas",
+    "authors": "P. Kube\u0161, M. Paduch, S. K. H. Auluck et al.",
+    "open_access": false
+  },
+  {
+    "title": "Experimental investigation and simulation of penetration depth of nitrogen ions emitted by plasma focus device inside titanium samples",
+    "year": 2023,
+    "doi": "https://doi.org/10.1016/j.rinp.2023.106897",
+    "citations": 5,
+    "journal": "Results in Physics",
+    "authors": "Mir mohammadreza Seyedhabashi, Morteza Ebrahimi, Dariush Rostamifard et al.",
+    "open_access": true
+  },
+  {
+    "title": "On the failure of neutron yield scaling in the dense plasma focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0157626",
+    "citations": 4,
+    "journal": "Physics of Plasmas",
+    "authors": "S. K. H. Auluck",
+    "open_access": false
+  },
+  {
+    "title": "MegaJOuLe Neutron Imaging Radiography (MJOLNIR) Dense Plasma Focus Rebuild and High Current Experiments",
+    "year": 2024,
+    "doi": "https://doi.org/10.1109/tps.2024.3382229",
+    "citations": 4,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Andr\u00e9a Schmidt, E. Anaya, Michael G. Anderson et al.",
+    "open_access": false
+  },
+  {
+    "title": "Effect of anode shape on neutron and x-ray emission in dense plasma focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0153177",
+    "citations": 4,
+    "journal": "Physics of Plasmas",
+    "authors": "J. Novotn\u00fd, J. Cikhardt, B. Cikhardtov\u00e1 et al.",
+    "open_access": true
+  },
+  {
+    "title": "Observation of plasma dynamics in a theta pinch by a novel method",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0144921",
+    "citations": 4,
+    "journal": "Matter and Radiation at Extremes",
+    "authors": "Zhao Wang, Rui Cheng, Guodong Wang et al.",
+    "open_access": true
+  },
+  {
+    "title": "On the failure of neutron yield scaling in the dense plasma focus",
+    "year": 2023,
+    "doi": "10.1063/5.0157626",
+    "citations": 4,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": true,
+    "abstract": "The observed scaling of neutron yield in the dense plasma focus (DPF) as the fourth power of the current in the plasma was the principal driver of the growth of DPF research in its early days. Subsequ",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Numerical experiments on the total D\u2013D fusion neutron yield versus deuterium pressure for different energy plasma focus devices using the Lee model code",
+    "year": 2023,
+    "doi": "https://doi.org/10.1088/1361-6587/acc610",
+    "citations": 3,
+    "journal": "Plasma Physics and Controlled Fusion",
+    "authors": "S Wahbe, Y. Abou\u2010Ali, M. Akel et al.",
+    "open_access": false
+  },
+  {
+    "title": "Development of a portable pulsed fast \u2a7e10<sup>6</sup> neutron generator based on a flexible miniature plasma focus tube",
+    "year": 2023,
+    "doi": "https://doi.org/10.1088/1361-6587/accfbd",
+    "citations": 3,
+    "journal": "Plasma Physics and Controlled Fusion",
+    "authors": "Ram Niranjan, Rohit Srivastava, J Joycee et al.",
+    "open_access": true
+  },
+  {
+    "title": "Total neutron emission from deuteron fusion and plasma pinch compression in a medium-sized plasma focus operating with D2 and D2 + Ne gas mixtures\u2014Experimental results",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0161686",
+    "citations": 3,
+    "journal": "Physics of Fluids",
+    "authors": "\u0141. Marciniak, A. Kuli\u0144ska, M. Scholz et al.",
+    "open_access": true
+  },
+  {
+    "title": "Characterization of the Plasma Generated by a Compact Theta Pinch",
+    "year": 2024,
+    "doi": "https://doi.org/10.3390/plasma7040053",
+    "citations": 3,
+    "journal": "Plasma",
+    "authors": "Sagi Turiel, A. N. Gribov, D. Maler et al.",
+    "open_access": true
+  },
+  {
+    "title": "Smoothed particle hydrodynamics method for pinch plasma simulation with non-ideal MHD model",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0138221",
+    "citations": 3,
+    "journal": "Physics of Plasmas",
+    "authors": "Su-San Park, Deok-Kyu Kim, Jin-Hyun Kim et al.",
+    "open_access": false
+  },
+  {
+    "title": "Investigation of Optical Properties and Chemical Structure of Nd2O3 Nanoparticles Deposited on NaX Zeolite Powder Using Plasma Focus Device",
+    "year": 2023,
+    "doi": "https://doi.org/10.1007/s10904-023-02825-3",
+    "citations": 3,
+    "journal": "Journal of Inorganic and Organometallic Polymers and Materials",
+    "authors": "Mir Mohammad Reza Seyedhabashi, Hesham Hosseinpour, Ehsanollah Noori",
+    "open_access": false
+  },
+  {
+    "title": "Sn/Pb ratio variation in spherical structures deposited on silicon surface using plasma focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1016/j.heliyon.2023.e17098",
+    "citations": 3,
+    "journal": "Heliyon",
+    "authors": "M. S. AHMAD, M. Akel, Sh. Al\u2010Hawat",
+    "open_access": true
+  },
+  {
+    "title": "Numerical experiments on the total D\u2013D fusion neutron yield versus deuterium pressure for different energy plasma focus devices using the Lee model code",
+    "year": 2023,
+    "doi": "10.1088/1361-6587/acc610",
+    "citations": 3,
+    "journal": "Plasma Physics and Controlled Fusion",
+    "authors": "Samer Wahbe, Y. Abou-Ali, M. Akel et al.",
+    "open_access": false,
+    "abstract": "Numerical experiments using the Lee model code were carried out to compute the total D\u2013D fusion neutron yield versus initial deuterium pressure for nine different plasma focus devices [PF50, AACS, PF4",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "First exploratory survey of poloidal magnetic flux emission from a dense plasma focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1063/5.0155807",
+    "citations": 2,
+    "journal": "Physics of Plasmas",
+    "authors": "Mahima Upadhyay, Mahesh Choudhary, Mayank Mishra et al.",
+    "open_access": false
+  },
+  {
+    "title": "Neutron generation dynamics inside a MA-class dense plasma focus Z-pinch",
+    "year": 2025,
+    "doi": "https://doi.org/10.1063/5.0253547",
+    "citations": 2,
+    "journal": "Physics of Plasmas",
+    "authors": "C. Goyon, A. Link, Owen B. Drury et al.",
+    "open_access": true
+  },
+  {
+    "title": "Evolution of filament-like compact structures in small 3 kJ dense plasma focus discharges",
+    "year": 2024,
+    "doi": "https://doi.org/10.1063/5.0187304",
+    "citations": 2,
+    "journal": "Physics of Plasmas",
+    "authors": "P. Kube\u0161, \u0141. Marciniak, Marek J. Sadowski et al.",
+    "open_access": true
+  },
+  {
+    "title": "Correction to: Focus Fusion: Overview of Progress Towards p-B11 Fusion with the Dense Plasma Focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1007/s10894-023-00348-w",
+    "citations": 2,
+    "journal": "Journal of Fusion Energy",
+    "authors": "Eric J. Lerner, S. M. Hassan, Ivana Karamitsos-Zivkovic et al.",
+    "open_access": true
+  },
+  {
+    "title": "The Investigation of Pre-ionization Effect on the Improvement of Pinch Quality and Increased Hard X-ray Radiation in a Dense Plasma Focus (DPF) Device",
+    "year": 2024,
+    "doi": "https://doi.org/10.1007/s10894-024-00415-w",
+    "citations": 2,
+    "journal": "Journal of Fusion Energy",
+    "authors": "Abdolhadi Hosseinzadeh, Naser Vosoughi, T. D. Mahabadi et al.",
+    "open_access": false
+  },
+  {
+    "title": "Effects of Electrode Geometric Parameters on Argon Soft X-Ray Radiation From Plasma Focus Machine: An Investigation by the Modified Lee Model",
+    "year": 2023,
+    "doi": "https://doi.org/10.1109/tps.2023.3341091",
+    "citations": 2,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Hadi Barati",
+    "open_access": false
+  },
+  {
+    "title": "Design and Characterization of One-Capacitor Compact Plasma Focus Device With Tapered Anode",
+    "year": 2023,
+    "doi": "https://doi.org/10.1109/tps.2023.3332833",
+    "citations": 2,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Kamal M. Ahmed, F. Diab, W. H. Gaber et al.",
+    "open_access": false
+  },
+  {
+    "title": "Investigating graphite surface and structural modifications induced by hydrogen ion bombardment in a plasma focus device",
+    "year": 2025,
+    "doi": "https://doi.org/10.1016/j.rinma.2025.100698",
+    "citations": 2,
+    "journal": "Results in Materials",
+    "authors": "Mir mohammadreza Seyedhabashi, Maryam Ebrahimi, Ehsanollah Noori et al.",
+    "open_access": true
+  },
+  {
+    "title": "Poloidal magnetic field in the dense plasma focus",
+    "year": 2024,
+    "doi": "https://doi.org/10.1063/5.0189593",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "S. K. H. Auluck",
+    "open_access": true
+  },
+  {
+    "title": "Preparations for pB11 tests in the FF-2B dense plasma focus",
+    "year": 2024,
+    "doi": "https://doi.org/10.3389/fphy.2024.1438880",
+    "citations": 1,
+    "journal": "Frontiers in Physics",
+    "authors": "Eric J. Lerner, S. M. Hassan",
+    "open_access": true
+  },
+  {
+    "title": "Double 3\u00a0MJ dense plasma focus for thermonuclear drive inertial confinement fusion",
+    "year": 2025,
+    "doi": "https://doi.org/10.1038/s41598-025-96736-7",
+    "citations": 1,
+    "journal": "Scientific Reports",
+    "authors": "S. M. Sadat Kiai, S. Adlparvar, H. Sadeghi et al.",
+    "open_access": true
+  },
+  {
+    "title": "Spot size measurement of a deuterium\u2013tritium dense plasma focus using neutron radiography",
+    "year": 2024,
+    "doi": "https://doi.org/10.1063/5.0187567",
+    "citations": 1,
+    "journal": "Review of Scientific Instruments",
+    "authors": "L. Tafoya, V. Geppert-Kleinrath, J. Allison et al.",
+    "open_access": true
+  },
+  {
+    "title": "First experiments looking at the symmetry of the plasma formation phase of the dense plasma focus using d-dot probes",
+    "year": 2024,
+    "doi": "https://doi.org/10.1088/1742-6596/2710/1/012033",
+    "citations": 1,
+    "journal": "Journal of Physics Conference Series",
+    "authors": "A. Blagoev, Vasil G. Yordanov, S. K. H. Auluck",
+    "open_access": true
+  },
+  {
+    "title": "(U) Detector Systems and Data Analysis for NDSE Experiments at the Dense Plasma Focus (DPF)",
+    "year": 2024,
+    "doi": "",
+    "citations": 1,
+    "journal": "OSTI OAI (U.S. Department of Energy Office of Scientific and Technical Information)",
+    "authors": "V. W. Yuan",
+    "open_access": true
+  },
+  {
+    "title": "Dense plasma focus: different cathode geometries and their influence on the hard x-ray production",
+    "year": 2023,
+    "doi": "https://doi.org/10.1088/1361-6587/acb845",
+    "citations": 1,
+    "journal": "Plasma Physics and Controlled Fusion",
+    "authors": "M. Barbaglia, R Giovachini, M. Milanese",
+    "open_access": true
+  },
+  {
+    "title": "Enhanced Growth Rate of ITO Thin Films via Pulsed Electron Beam-Assisted Deposition Using a 3.0 kJ Dense Plasma Focus (UMDPF02) Device",
+    "year": 2025,
+    "doi": "https://doi.org/10.1088/1402-4896/adeb07",
+    "citations": 1,
+    "journal": "Physica Scripta",
+    "authors": "Haruna P. Wante, S. L. Yap, K. Y. Tsung et al.",
+    "open_access": true
+  },
+  {
+    "title": "Comparison of density profiles measured via laser interferometry with MHD simulations during shock wave reflection on mega-ampere dense plasma focus",
+    "year": 2024,
+    "doi": "https://doi.org/10.1063/5.0193268",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "J. Malir, D. Kl\u00edr, J. Cikhardt et al.",
+    "open_access": true
+  },
+  {
+    "title": "Computational Estimate of the DT-to-DD Neutron Yield Ratio for Plasma Focus Chambers",
+    "year": 2023,
+    "doi": "https://doi.org/10.1134/s1063780x23600081",
+    "citations": 1,
+    "journal": "Plasma Physics Reports",
+    "authors": "\u0412. \u0412. \u0413\u0430\u0433\u0430\u043d\u043e\u0432, S. F. Garanin, V. Yu. Dolinskii",
+    "open_access": false
+  },
+  {
+    "title": "Differences in shots with high and low neutron yield production in mega-ampere plasma focus discharges",
+    "year": 2025,
+    "doi": "https://doi.org/10.1063/5.0246587",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "P. Kube\u0161, M. Paduch, B. Cikhardtov\u00e1 et al.",
+    "open_access": true
+  },
+  {
+    "title": "Neutron and Hard X-Ray Pulses of the Plasma Focus Chamber at Discharge Currents of 100\u2013200 kA",
+    "year": 2023,
+    "doi": "https://doi.org/10.1134/s1063778823100411",
+    "citations": 1,
+    "journal": "Physics of Atomic Nuclei",
+    "authors": "D. I. Yurkov, V. A. Lavrenin, \u0411. \u0414. \u041b\u0435\u043c\u0435\u0448\u043a\u043e et al.",
+    "open_access": false
+  },
+  {
+    "title": "Dependence of Soft X-Ray Yield on Plasma Focus Parameters and Its Kinetic and Magnetic Pressures",
+    "year": 2023,
+    "doi": "https://doi.org/10.1134/s1063780x23600251",
+    "citations": 1,
+    "journal": "Plasma Physics Reports",
+    "authors": "Sayed A. Ward, Tarek M. Allam, Kamal M. Ahmed et al.",
+    "open_access": false
+  },
+  {
+    "title": "Elemental Composition of Copper Films Deposited on the Surface of Metals Fe, V, and Ti at the Plasma Focus Facility",
+    "year": 2023,
+    "doi": "https://doi.org/10.20944/preprints202310.0134.v1",
+    "citations": 1,
+    "journal": "Preprints.org",
+    "authors": "\u0410. \u0410. \u0415\u0440\u0438\u0441\u043a\u0438\u043d, Aleksandr Kobzev, V. N. Kolokoltsev et al.",
+    "open_access": true
+  },
+  {
+    "title": "z-Pinch Stabilization by a Frozen-In Axial Magnetic Flux",
+    "year": 2024,
+    "doi": "10.1109/TPS.2024.3359665",
+    "citations": 1,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Pasquale Lucibello",
+    "open_access": false,
+    "abstract": "We consider a neutral plasma, within a tubular dielectric container, under the action of a screw pinch whose magnetic field has the axial component completely embedded in the plasma and the azimuthal ",
+    "query": "z-pinch instability sausage kink"
+  },
+  {
+    "title": "Neutron generation dynamics inside a MA-class dense plasma focus Z-pinch",
+    "year": 2025,
+    "doi": "10.1063/5.0253547",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "C. Goyon, A. Link, O. Drury et al.",
+    "open_access": true,
+    "abstract": "Dense plasma focii (DPFs) are appealing as energy efficient sources of short pulses of ions, neutrons, and x rays. The output of these sources is expected to scale with input current (I4), but has bee",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Symmetry and structure in the \u201cGeneralized Plasma Focus problem\u201d",
+    "year": 2024,
+    "doi": "10.1063/5.0225122",
+    "citations": 1,
+    "journal": "Physics of Plasmas",
+    "authors": "S. Auluck",
+    "open_access": false,
+    "abstract": "The \u201cGeneralized Plasma Focus problem\u201d refers to a generic class of plasma propagation phenomena that share many features of a dense plasma focus device. Its recent theoretical development has been sh",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Dense plasma focus device as a promising method for thin film deposition \u2013a numerical study of Ion beam features from Dense Plasma Focus device",
+    "year": 2023,
+    "doi": "https://doi.org/10.5281/zenodo.17528942",
+    "citations": 0,
+    "journal": "Zenodo (CERN European Organization for Nuclear Research)",
+    "authors": "Sahyouni, Walid, Nassif, Alaa",
+    "open_access": true
+  },
+  {
+    "title": "Dense plasma focus device as a promising method for thin film deposition \u2013a numerical study of Ion beam features from Dense Plasma Focus device",
+    "year": 2023,
+    "doi": "https://doi.org/10.5281/zenodo.17528941",
+    "citations": 0,
+    "journal": "Zenodo (CERN European Organization for Nuclear Research)",
+    "authors": "Sahyouni, Walid, Nassif, Alaa",
+    "open_access": true
+  },
+  {
+    "title": "On the failure of neutron yield scaling in the Dense Plasma Focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.48550/arxiv.2307.07715",
+    "citations": 0,
+    "journal": "arXiv (Cornell University)",
+    "authors": "S. K. H. Auluck",
+    "open_access": true
+  },
+  {
+    "title": "Neutron Yield Enhancement Through Gas Admixture and Cathode Radius Variation in a Plasma Focus Device",
+    "year": 2025,
+    "doi": "https://doi.org/10.1109/tps.2025.3565331",
+    "citations": 0,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "S. L. Yap, L. MUHAMMAD, Haiyun Tan et al.",
+    "open_access": false
+  },
+  {
+    "title": "Neutron Yield Optimization From a Palm Top Plasma Focus Device Using Lee Code",
+    "year": 2025,
+    "doi": "https://doi.org/10.1109/tps.2025.3525982",
+    "citations": 0,
+    "journal": "IEEE Transactions on Plasma Science",
+    "authors": "Mohammad Nayeem, Surajit Biswas, Md. Khairul Islam et al.",
+    "open_access": false
+  },
+  {
+    "title": "Study on the Influence of Key Parameters of Dense Plasma Focus on Neutron Yield",
+    "year": 2026,
+    "doi": "https://doi.org/10.7498/aps.75.20251704",
+    "citations": 0,
+    "journal": "Acta Physica Sinica",
+    "authors": "HUANG-Tian, WANG-Siyuan, DUAN-Shuchao",
+    "open_access": true
+  },
+  {
+    "title": "Operation of Plasma Focus Chamber as a Part of a Subkilojoule Pulsed Neutron Generator",
+    "year": 2023,
+    "doi": "https://doi.org/10.1134/s1063780x2360041x",
+    "citations": 0,
+    "journal": "Plasma Physics Reports",
+    "authors": "D. I. Yurkov, V. A. Lavrenin, \u0411. \u0414. \u041b\u0435\u043c\u0435\u0448\u043a\u043e et al.",
+    "open_access": false
+  },
+  {
+    "title": "Anomalous resistance and its effect on neutron yied production in Mather type dense plasma focus devices",
+    "year": 2023,
+    "doi": "https://doi.org/10.1049/icp.2022.2628",
+    "citations": 0,
+    "journal": "IET conference proceedings.",
+    "authors": "A. Singh, S. S. Heoh, L. Sing",
+    "open_access": false
+  },
+  {
+    "title": "Deuterium\u2013argon admixture for plasma focus neutron generation",
+    "year": 2026,
+    "doi": "https://doi.org/10.1140/epjp/s13360-026-07342-z",
+    "citations": 0,
+    "journal": "The European Physical Journal Plus",
+    "authors": "Muhammad Luqman Haqqim Omar, Seong Ling Yap, Han Yi Tan et al.",
+    "open_access": true
+  },
+  {
+    "title": "Numerical Study for Prediction of Neon Soft X-Ray Yield Emitted from the Plasma Focus Devices Using the Lee Model Code for Different Anode Shapes",
+    "year": 2025,
+    "doi": "https://doi.org/10.1134/s1063780x2460169x",
+    "citations": 0,
+    "journal": "Plasma Physics Reports",
+    "authors": "R. Albahri, Y. Abou\u2010Ali, M. Akel",
+    "open_access": false
+  },
+  {
+    "title": "AUTOMATED NUMERICAL EXPERIMENTS TO OPTIMIZE TAPERED ANODE CONFIGURATION FOR SOFT X-RAY YIELD IN A LOW-ENERGY PLASMA FOCUS",
+    "year": 2025,
+    "doi": "https://doi.org/10.55766/sujst8332",
+    "citations": 0,
+    "journal": "Suranaree Journal of Science and Technology",
+    "authors": "A. A. Lashin, Kamal M. Ahmed, Sayed A. Ward et al.",
+    "open_access": false
+  },
+  {
+    "title": "Deuteron beam fluence emitted from dense plasma focus: Comparative investigation and simulation",
+    "year": 2024,
+    "doi": "https://doi.org/10.22201/icat.24486736e.2024.22.4.2413",
+    "citations": 0,
+    "journal": "Journal of Applied Research and Technology",
+    "authors": "A. Altarabulsi, Y. Abou\u2010Ali, S. Alsheikh Salo et al.",
+    "open_access": true
+  },
+  {
+    "title": "Numerical Optimization of Neon Soft X-ray Emission in a Spherical Plasma Focus Device with Lee Code",
+    "year": 2026,
+    "doi": "https://doi.org/10.21203/rs.3.rs-8592689/v1",
+    "citations": 0,
+    "journal": "?",
+    "authors": "M I Nayeem, M A Malek",
+    "open_access": true
+  },
+  {
+    "title": "Nitrogen ion irradiation of carbon thin films using a dense plasma focus: enhanced doping and structural modifications",
+    "year": 2025,
+    "doi": "https://doi.org/10.1140/epjp/s13360-025-06761-8",
+    "citations": 0,
+    "journal": "The European Physical Journal Plus",
+    "authors": "Haruna P. Wante, S. L. Yap, K. Y. Tsung et al.",
+    "open_access": true
+  },
+  {
+    "title": "Numerical studies of plasma emission in a mega joule plasma focus using Lee code",
+    "year": 2025,
+    "doi": "https://doi.org/10.14311/ppt.2025.1.1",
+    "citations": 0,
+    "journal": "Plasma Physics and Technology",
+    "authors": "M. A. Malek, M. Nazmul Huda, Md. Khairul Islam et al.",
+    "open_access": true
+  },
+  {
+    "title": "Study of the plasma pinch and ion beam properties versus the nitrogen gas pressure using the Lee model code",
+    "year": 2024,
+    "doi": "https://doi.org/10.21203/rs.3.rs-4002830/v1",
+    "citations": 0,
+    "journal": "Research Square (Research Square)",
+    "authors": "Alaa Nassif, Walid Sahyouni, Ola Zeidan",
+    "open_access": true
+  },
+  {
+    "title": "Faeton-I: Investigation of plasma dynamics and radiation output of a 100 kV plasma focus device",
+    "year": 2025,
+    "doi": "https://doi.org/10.21203/rs.3.rs-6466595/v1",
+    "citations": 0,
+    "journal": "?",
+    "authors": "Vahid Damideh, J. C. Btaiche, A. Ho et al.",
+    "open_access": true
+  },
+  {
+    "title": "Experimental results and analysis of plasma dynamics and radiation output of the 100 kV dense plasma focus FAETON-I",
+    "year": 2025,
+    "doi": "https://doi.org/10.1038/s41598-025-07939-x",
+    "citations": 0,
+    "journal": "Scientific Reports",
+    "authors": "Vahid Damideh, J. C. Btaiche, A. Ho et al.",
+    "open_access": true
+  },
+  {
+    "title": "Three-Dimensional MHD Simulation of Z-Pinch Sausage and Kink Modes: A Proof of Concept",
+    "year": 2026,
+    "doi": "https://doi.org/10.5281/zenodo.18529049",
+    "citations": 0,
+    "journal": "Zenodo (CERN European Organization for Nuclear Research)",
+    "authors": "Mihai Alexandru Bucurenciu",
+    "open_access": true
+  },
+  {
+    "title": "Three-Dimensional MHD Simulation of Z-Pinch Sausage and Kink Modes: A Proof of Concept",
+    "year": 2026,
+    "doi": "https://doi.org/10.5281/zenodo.18529048",
+    "citations": 0,
+    "journal": "Zenodo (CERN European Organization for Nuclear Research)",
+    "authors": "Mihai Alexandru Bucurenciu",
+    "open_access": true
+  },
+  {
+    "title": "MHD simulations of turbulent development of the Z-pinch sausage instability.",
+    "year": 2024,
+    "doi": "https://doi.org/10.34854/icpaf.2023.50.2023.1.1.101",
+    "citations": 0,
+    "journal": "?",
+    "authors": "S. F. Garanin, V. Yu. Dolinskii",
+    "open_access": false
+  },
+  {
+    "title": "Investigation on the dynamics of Z-pinch in discharge-produced plasma sources via two-dimensional MHD simulations",
+    "year": 2025,
+    "doi": "https://doi.org/10.1063/5.0250789",
+    "citations": 0,
+    "journal": "AIP Advances",
+    "authors": "Yanxia Xu, M. Ying, Xuanyu Yuanhua et al.",
+    "open_access": true
+  },
+  {
+    "title": "The Effect of Time-Dependent Level Kinetics in a 1\u2013D MHD Simulation of an Argon Gas Z-Pinch Implosion",
+    "year": 2023,
+    "doi": "https://doi.org/10.1109/icops45740.2023.10481065",
+    "citations": 0,
+    "journal": "?",
+    "authors": "N. D. Ouart, A. Dasgupta, A. L. Velikovich et al.",
+    "open_access": false
+  },
+  {
+    "title": "The effect of time-dependent level kinetics in a 1-D MHD simulation of an argon gas z-pinch implosion*",
+    "year": 2023,
+    "doi": "https://doi.org/10.2172/2431061",
+    "citations": 0,
+    "journal": "?",
+    "authors": "Marc-Andre Schaeuble, N. D. Ouart, A. Dasgupta et al.",
+    "open_access": true
+  },
+  {
+    "title": "Axial confinement of wire array Z-pinch precursor plasmas by a pulsed magnetic mirror field",
+    "year": 2024,
+    "doi": "https://doi.org/10.1063/5.0207561",
+    "citations": 0,
+    "journal": "Physics of Plasmas",
+    "authors": "Chiatai Chen, E. S. Lavine, William Potter et al.",
+    "open_access": true
+  },
+  {
+    "title": "A hybrid-kinetic simulation tool for non-thermal warm x-ray z-pinch sources, with gas-puff and wire array exemplars",
+    "year": 2024,
+    "doi": "https://doi.org/10.2172/2480192",
+    "citations": 0,
+    "journal": "?",
+    "authors": "Nichelle Bennett",
+    "open_access": true
+  },
+  {
+    "title": "Overview of Flow Z-Pinch Theory and Modeling at Zap Energy",
+    "year": 2025,
+    "doi": "https://doi.org/10.1109/ppps56198.2025.11248263",
+    "citations": 0,
+    "journal": "?",
+    "authors": "Eric Meier, J. Coughlin, D. W. Crews et al.",
+    "open_access": false
+  },
+  {
+    "title": "Beam Target Neutron Production Using Laser Ablated Deuterated Polyethylene on a 1 MA, 100 ns z-Pinch Device",
+    "year": 2025,
+    "doi": "https://doi.org/10.1109/ppps56198.2025.11248664",
+    "citations": 0,
+    "journal": "?",
+    "authors": "Eric Dutra, A. M. Covington, Brian Appelbe et al.",
+    "open_access": false
+  },
+  {
+    "title": "Exploration of microscopic physical processes of Z-pinch by a modified electrostatic direct implicit particle-in-cell algorithm",
+    "year": 2024,
+    "doi": "https://doi.org/10.1088/1674-1056/ad553a",
+    "citations": 0,
+    "journal": "Chinese Physics B",
+    "authors": "Kaixuan Li, Cheng Ning, Dong Ye et al.",
+    "open_access": true
+  },
+  {
+    "title": "Acoustic Seeding in Liquid-Phase Targets for Pre-Conditioned Plasma Columns: From Liquid-Phase Structuring to Z-Pinch and Magnetic Reconnection",
+    "year": 2025,
+    "doi": "https://doi.org/10.6084/m9.figshare.30929417.v3",
+    "citations": 0,
+    "journal": "Figshare",
+    "authors": "Ali Saleh Ahmed",
+    "open_access": true
+  },
+  {
+    "title": "Acoustic Seeding in Liquid-Phase Targets for Pre-Conditioned Plasma Columns: From Liquid-Phase Structuring to Z-Pinch and Magnetic Reconnection",
+    "year": 2025,
+    "doi": "https://doi.org/10.6084/m9.figshare.30929417.v2",
+    "citations": 0,
+    "journal": "Figshare",
+    "authors": "Ali Saleh Ahmed",
+    "open_access": true
+  },
+  {
+    "title": "Acoustic Seeding in Liquid-Phase Targets for Pre-Conditioned Plasma Columns: From Liquid-Phase Structuring to Z-Pinch and Magnetic Reconnection",
+    "year": 2025,
+    "doi": "https://doi.org/10.6084/m9.figshare.30929417.v1",
+    "citations": 0,
+    "journal": "Figshare",
+    "authors": "Ali Saleh Ahmed",
+    "open_access": true
+  },
+  {
+    "title": "Acoustic Seeding in Liquid-Phase Targets for Pre-Conditioned Plasma Columns: From Liquid-Phase Structuring to Z-Pinch and Magnetic Reconnection",
+    "year": 2025,
+    "doi": "https://doi.org/10.6084/m9.figshare.30929417",
+    "citations": 0,
+    "journal": "Figshare",
+    "authors": "Ali Saleh Ahmed",
+    "open_access": true
+  },
+  {
+    "title": "Upgrading of Mather-type Dense Plasma Focus Machine for Advanced Plasma Dynamic Studies",
+    "year": 2023,
+    "doi": "https://doi.org/10.18690/um.4.2023.33",
+    "citations": 0,
+    "journal": "University of Maribor, University Press eBooks",
+    "authors": "Christos Karvounis",
+    "open_access": true
+  },
+  {
+    "title": "Atmospheric Influence on the Structural and Mechanical Properties of TiN Coating Deposited on NiTi Shape Memory Alloy via Mather-Type Dense Plasma Focus",
+    "year": 2025,
+    "doi": "https://doi.org/10.47176/jame.44.3.1098",
+    "citations": 0,
+    "journal": "Mav\u0101dd-i p\u012bshraftah dar muhandis\u012b",
+    "authors": "Mahdiyeh Soltanalipour, Jafar Khalil\u2010Allafi",
+    "open_access": true
+  },
+  {
+    "title": "Investigation of optical properties and chemical structure of Nd2O3 nanoparticles deposited on NaX zeolite powder using plasma focus device",
+    "year": 2023,
+    "doi": "https://doi.org/10.21203/rs.3.rs-2946288/v1",
+    "citations": 0,
+    "journal": "Research Square (Research Square)",
+    "authors": "Mir Mohammad Reza Seyedhabashi, Hesham Hosseinpour, Ehsanollah Noori",
+    "open_access": true
+  },
+  {
+    "title": "A pulsed neutron source with a sealed dense plasma focus chamber",
+    "year": 2024,
+    "doi": "https://doi.org/10.1088/1748-0221/19/10/p10035",
+    "citations": 0,
+    "journal": "Journal of Instrumentation",
+    "authors": "Chuan Liang, Ming-Jia Li, Jia Yun-he et al.",
+    "open_access": false
+  },
+  {
+    "title": "Parametric profiles of plasma current sheath in argon plasma focus during axial phase",
+    "year": 2025,
+    "doi": "https://doi.org/10.1007/s42452-025-06697-9",
+    "citations": 0,
+    "journal": "Discover Applied Sciences",
+    "authors": "Kamal M. Ahmed, Sayed A. Ward, T. M. Allam et al.",
+    "open_access": true
+  },
+  {
+    "title": "Hybrid X-Pinch as Localized Source of Fusion Protons",
+    "year": 2025,
+    "doi": "https://doi.org/10.1109/ppps56198.2025.11248172",
+    "citations": 0,
+    "journal": "?",
+    "authors": "J. Novotn\u00fd, D. Kl\u00edr, J. Cikhardt et al.",
+    "open_access": false
+  },
+  {
+    "title": "D\u2013D Fusion Neutron Emission and Plasma Dynamics in 3.1-kJ Plasma Focus Operating With O<sub>2</sub> and D2+Ar Gas Mixtures",
+    "year": 2023,
+    "doi": "https://doi.org/10.1109/icops45740.2023.10481265",
+    "citations": 0,
+    "journal": "?",
+    "authors": "\u0141. Marciniak, K. \u0158ez\u00e1\u010d, J. Novotn\u00fd et al.",
+    "open_access": false
+  },
+  {
+    "title": "Development and Implementation of Laser Schlieren Imaging and Interferometry to Diagnose Structure and Electron Density in a Dense Plasma Focus",
+    "year": 2023,
+    "doi": "https://doi.org/10.1109/icops45740.2023.10481241",
+    "citations": 0,
+    "journal": "?",
+    "authors": "S. Rocc, B. H. Shaw, C. Goyon et al.",
+    "open_access": false
+  },
+  {
+    "title": "Correlation of pinch voltage with ion angular emission characteristics at varying D2 gas filling pressures in a low energy plasma focus device",
+    "year": 2024,
+    "doi": "https://doi.org/10.1016/j.vacuum.2024.113748",
+    "citations": 0,
+    "journal": "Vacuum",
+    "authors": "Ram Niranjan, Rohit Srivastava, J Joycee et al.",
+    "open_access": false
+  },
+  {
+    "title": "Chromium Coated on Zirconium for Corrosion Resistance of Nuclear Fuel Rods by Plasma Focus Device",
+    "year": 2024,
+    "doi": "https://doi.org/10.2139/ssrn.5016727",
+    "citations": 0,
+    "journal": "SSRN Electronic Journal",
+    "authors": "A. Raeisdana, Dariush Sohrabi, A. Asle-Zaeem",
+    "open_access": true
+  },
+  {
+    "title": "Theoretical and numerical studies on motion process of dense plasma focus",
+    "year": 2025,
+    "doi": "https://doi.org/10.7498/aps.74.20250040",
+    "citations": 0,
+    "journal": "Acta Physica Sinica",
+    "authors": "Qiang Sun, Ye Dong, Yang Wei et al.",
+    "open_access": true
+  },
+  {
+    "title": "Experimental results and analysis of plasma dynamics and radiation output of the 100 kV dense plasma focus FAETON-I",
+    "year": 2025,
+    "doi": "10.1038/s41598-025-07939-x",
+    "citations": 0,
+    "journal": "Scientific Reports",
+    "authors": "Vahid Damideh, J. C. Btaiche, Alex Ho et al.",
+    "open_access": false,
+    "abstract": "FAETON-I is the highest direct-charged voltage plasma focus (PF), at 100 kV, 1 MA peak current. F-I produces consistent \\documentclass[12pt]{minimal} \\usepackage{amsmath} \\usepackage{wasysym} \\usepack",
+    "query": "plasma focus scaling law current"
+  },
+  {
+    "title": "Numerical simulation of the formation process of dense plasma focus",
+    "year": 2024,
+    "doi": "10.1109/icops58192.2024.10626474",
+    "citations": 0,
+    "journal": "2024 IEEE International Conference on Plasma Science (ICOPS)",
+    "authors": "Q. Sun",
+    "open_access": false,
+    "abstract": "The Dense Plasma Focusing (DPF) device is a compact, strong pulse, multi-radiation source, which is driven by electromagnetic force to form a high-temperature plasma. It has important applications in ",
+    "query": "plasma focus scaling law current"
+  }
+]
