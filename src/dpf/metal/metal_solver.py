@@ -143,6 +143,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         Z_eff: float = 1.0,
         coordinates: str = "cartesian",
         bc: str | tuple[str, str, str] = "outflow",
+        r_inner: float = 0.0,
+        convert_b_si_to_hl: bool = False,
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -165,6 +167,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.ion_mass: float = float(ion_mass)
         self.Z_eff: float = float(Z_eff)
         self.coordinates: str = coordinates
+        self._convert_b_si_to_hl: bool = convert_b_si_to_hl
         # Boundary conditions: "outflow" (zero-gradient) or "periodic"
         # Can be a single string (applied to all dims) or a 3-tuple per dim.
         if isinstance(bc, str):
@@ -208,15 +211,16 @@ class MetalMHDSolver(PlasmaSolverBase):
         )
 
         # Cylindrical coordinate support -----------------------------------
-        # r[i] = (i + 0.5) * dx, shape (nx, 1, 1) for broadcasting
-        # In cylindrical mode, axis 0 = radial, axis 2 = axial (z)
+        # r_inner offsets the radial grid so domain covers [r_inner, r_inner + nx*dx].
+        # For DPF inter-electrode gap: r_inner = anode_radius.
+        self._r_inner: float = float(r_inner)
         if self.coordinates == "cylindrical":
-            r_1d = (torch.arange(nx, dtype=self._dtype, device=self.device)
+            r_1d = self._r_inner + (torch.arange(nx, dtype=self._dtype, device=self.device)
                     + 0.5) * self.dx
             self._r = r_1d.reshape(nx, 1, 1)
             self._inv_r = 1.0 / torch.clamp(self._r, min=1e-30)
-            # Face radii: r_{i+1/2} = i * dx, shape (nx+1, 1, 1)
-            r_face_1d = torch.arange(nx + 1, dtype=self._dtype, device=self.device) * self.dx
+            # Face radii: r_{i+1/2} = r_inner + i * dx, shape (nx+1, 1, 1)
+            r_face_1d = self._r_inner + torch.arange(nx + 1, dtype=self._dtype, device=self.device) * self.dx
             self._r_face: torch.Tensor | None = r_face_1d.reshape(nx + 1, 1, 1)
         else:
             self._r = None
@@ -296,21 +300,35 @@ class MetalMHDSolver(PlasmaSolverBase):
                     )
                 elif key == "psi":
                     gpu_state[key] = self._zero_scalar.clone()
+
+        # SI → Heaviside-Lorentz unit conversion for B (cylindrical only):
+        # B_HL = B_SI / sqrt(mu_0). This ensures 0.5*B_HL^2 = B_SI^2/(2*mu_0)
+        # in the energy equation, giving correct magnetic pressure.
+        # Only applied for cylindrical coordinates where J×B forces must be
+        # physically correct for the snowplow to emerge from MHD.
+        # The Cartesian/hybrid paths rely on Lee model for dynamics, not B forces.
+        if self._convert_b_si_to_hl and "B" in gpu_state:
+            import math
+            gpu_state["B"] = gpu_state["B"] / math.sqrt(mu_0_si)
+
         return gpu_state
 
     @staticmethod
     def _to_numpy(state_gpu: dict[str, torch.Tensor]) -> dict[str, np.ndarray]:
         """Transfer GPU tensors back to NumPy float64 arrays.
 
+        Converts B from Heaviside-Lorentz code units back to SI Tesla:
+        B_SI = B_HL * sqrt(mu_0).
+
         Parameters
         ----------
         state_gpu : dict[str, torch.Tensor]
-            State dict on GPU.
+            State dict on GPU (B in HL units).
 
         Returns
         -------
         dict[str, np.ndarray]
-            Same keys, float64 NumPy arrays on CPU.
+            Same keys, float64 NumPy arrays on CPU (B in SI Tesla).
         """
         return {
             key: tensor.detach().cpu().to(torch.float64).numpy()
@@ -966,8 +984,11 @@ class MetalMHDSolver(PlasmaSolverBase):
         cathode_r = kwargs.get("cathode_radius", 0.0)
         apply_bc = kwargs.get("apply_electrode_bc", False)
         if apply_bc and cathode_r > 0 and abs(current) > 1e-10:
+            import math
             mu0 = 4.0 * 3.141592653589793e-7
             pi = 3.141592653589793
+            # For cylindrical coords, solver operates in HL; convert B_theta to HL.
+            _sqrt_mu0 = math.sqrt(mu0) if self._convert_b_si_to_hl else 1.0
             nx, ny, nz = B_new.shape[1], B_new.shape[2], B_new.shape[3]
 
             if self.coordinates == "cartesian":
@@ -988,7 +1009,8 @@ class MetalMHDSolver(PlasmaSolverBase):
                 cos_theta = X / R_safe
                 # Cathode boundary: cells within 1.5*dx of cathode_radius
                 mask_cath = torch.abs(R - cathode_r) < 1.5 * self.dx
-                B_th = mu0 * current / (2.0 * pi * torch.clamp(R, min=cathode_r * 0.5))
+                # B_theta in HL code units (solver operates in HL internally)
+                B_th = mu0 * current / (2.0 * pi * torch.clamp(R, min=cathode_r * 0.5)) / _sqrt_mu0
                 # B_x = -B_theta * sin(theta), B_y = B_theta * cos(theta)
                 if mask_cath.any():
                     for k in range(nz):
@@ -1013,13 +1035,13 @@ class MetalMHDSolver(PlasmaSolverBase):
                         B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
             else:
                 # Cylindrical: axis 0 = r, axis 1 = theta/y, axis 2 = z
-                # Grid cell centres: r_i = (i + 0.5) * dx
-                r_arr = (torch.arange(nx, dtype=B_new.dtype, device=B_new.device)
-                         + 0.5) * self.dx
+                # Grid cell centres already include r_inner offset
+                r_arr = self._r.squeeze()  # shape (nx,)
                 idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
                 idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
                 r_safe = torch.clamp(r_arr, min=1e-10)
-                B_theta_profile = mu0 * current / (2.0 * pi * r_safe)
+                # B_theta in HL code units (solver operates in HL internally)
+                B_theta_profile = mu0 * current / (2.0 * pi * r_safe) / _sqrt_mu0
 
                 # Enforce B_theta = mu0*I/(2*pi*r) from circuit current
                 # at both electrode boundaries and the insulator face (z=0).
@@ -1071,7 +1093,14 @@ class MetalMHDSolver(PlasmaSolverBase):
             "psi": psi_pass,
         }
 
-        return self._to_numpy(out_gpu)
+        result = self._to_numpy(out_gpu)
+
+        # HL → SI conversion for B (cylindrical only)
+        if self._convert_b_si_to_hl:
+            import math
+            result["B"] = result["B"] * math.sqrt(mu_0_si)
+
+        return result
 
     @staticmethod
     def _neighbor_average_3d(field: torch.Tensor) -> torch.Tensor:

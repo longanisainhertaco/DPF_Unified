@@ -1774,19 +1774,43 @@ def _run_metal_cylindrical(
         coordinates="cylindrical",
         ion_mass=gas["m_mol"],
         bc=("outflow", "outflow", "outflow"),
+        r_inner=a,
+        convert_b_si_to_hl=True,
         **cfg,
     )
 
-    # Initial conditions: uniform gas fill, B=0, v=0
+    # Physical r coordinate for each cell centre: r = a + (i+0.5)*dr
+    r_phys = a + (np.arange(nr) + 0.5) * dr_mhd  # shape (nr,)
+    z_phys = (np.arange(nz) + 0.5) * dz_mhd  # shape (nz,)
+
+    # Initial conditions: uniform gas fill with current-sheet B_theta near z=0.
+    # The circuit breaks down in ~100 ns — seed current: I_seed = V0 * 100ns / L0.
+    dt_seed = 1e-7  # 100 ns breakdown time  # EMPIRICAL
+    I_seed = cc["V0"] * dt_seed / cc["L0"]
+    B_theta_vac = mu_0 * I_seed / (2.0 * np.pi * r_phys)  # shape (nr,)
+    # Current sheet at z=0: B_theta decays exponentially from insulator face.
+    # Sheet thickness ~ 3 cells, consistent with Paschen breakdown channel.
+    z_decay = 3.0 * dz_mhd  # EMPIRICAL
+    z_profile = np.exp(-z_phys / z_decay)  # shape (nz,)
+    B_theta_2d = B_theta_vac[:, np.newaxis] * z_profile[np.newaxis, :]  # (nr, nz)
+    B_init = np.zeros((3, nr, ny, nz))
+    B_init[1] = B_theta_2d[:, np.newaxis, :]  # (nr, 1, nz)
+
     state: dict[str, np.ndarray] = {
         "rho": np.full((nr, ny, nz), rho0),
         "velocity": np.zeros((3, nr, ny, nz)),
         "pressure": np.full((nr, ny, nz), p_pa),
-        "B": np.zeros((3, nr, ny, nz)),
+        "B": B_init,
         "Te": np.full((nr, ny, nz), 300.0),
         "Ti": np.full((nr, ny, nz), 300.0),
         "psi": np.zeros((nr, ny, nz)),
     }
+
+    # Anomalous resistivity for initial breakdown — allows B_theta to diffuse
+    # into the plasma from electrode BCs.  Capped to satisfy resistive CFL:
+    #   eta_max = dx^2 * mu_0 / (4 * dt_mhd)   (factor of 4 for safety)
+    # Decreases with temperature as plasma ionizes (Spitzer-like scaling).
+    _ETA_ANOMALOUS = 1e-4  # Ohm*m — typical weakly-ionized DPF gas  # EMPIRICAL
 
     times, currents, voltages, L_plasmas = [], [], [], []
     E_cap, E_ind, E_res = [], [], []
@@ -1805,7 +1829,7 @@ def _run_metal_cylindrical(
     snap_interval = 3
     _cr_fracs = None
 
-    r_cells_lp = (np.arange(nr) + 0.5) * dr_mhd + a
+    r_cells_lp = r_phys  # physical radii: a + (i+0.5)*dr
 
     yield_tracker = None
     try:
@@ -1816,17 +1840,37 @@ def _run_metal_cylindrical(
 
     t_start = t
 
+    # Maximum timestep: resolve circuit dynamics (T/4 ≈ 5 us → dt_max = 50 ns)
+    _DT_MAX = 5e-8  # 50 ns  # EMPIRICAL
+
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
-        dt = min(dt_mhd, t_end - t)
+        dt = min(dt_mhd, _DT_MAX, t_end - t)
         if dt <= 0:
             break
 
+        # Compute spatially-varying resistivity: anomalous at low T, Spitzer at high T
+        Te_field = state.get("Te", np.full((nr, ny, nz), 300.0))
+        Te_eV = np.clip(Te_field, 300.0, None) / 11604.5  # K → eV
+        ln_lambda = 10.0  # Coulomb logarithm
+        eta_spitzer = 5.2e-5 * ln_lambda / np.power(Te_eV, 1.5)  # Ohm*m
+        eta_field = np.minimum(eta_spitzer, _ETA_ANOMALOUS)
+        # Cap to resistive CFL: eta < dx^2 * mu_0 / (4 * dt)
+        eta_max = dr_mhd**2 * mu_0 / (4.0 * max(dt, 1e-30))
+        eta_field = np.minimum(eta_field, eta_max)
+
+        # fc: only a fraction of circuit current drives the sheath (Lee model convention)
+        fc = sc.get("current_fraction", 0.7)
         state = solver.step(
             state, dt,
-            current=circuit.current, voltage=circuit.voltage,
+            current=fc * circuit.current, voltage=circuit.voltage,
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+            eta_field=eta_field,
         )
+
+        # Update Te from pressure (MHD evolves p, not Te directly)
+        rho_safe_te = np.where(state["rho"] > 1e-10, state["rho"], 1e-10)
+        state["Te"] = state["pressure"] * gas["m_mol"] / (2.0 * rho_safe_te * 1.380649e-23)
 
         # Radiation cooling
         if "Te" in state:
@@ -1871,7 +1915,20 @@ def _run_metal_cylindrical(
                 cell_volume=cell_vol,
             )
 
-        # Compute plasma inductance from density-weighted mean radius
+        # Compute plasma inductance from density and sheath position.
+        # z_sheath from density peak: the snowplow accumulates swept gas at the
+        # sheath front (density maximum). z_sheath = z of peak density.
+        # If no significant compression (rho_max < 1.1*rho0), sheath hasn't formed.
+        rho_z_avg = np.mean(state["rho"][:, ny // 2, :], axis=0)  # shape (nz,)
+        rho_z_max = float(np.max(rho_z_avg))
+        if rho_z_max > 1.1 * rho0:
+            z_sheath_idx = int(np.argmax(rho_z_avg))
+            z_sheath = float((z_sheath_idx + 1) * dz_mhd)
+        else:
+            z_sheath = dz_mhd  # sheath hasn't formed yet
+        z_sheath = min(z_sheath, L_anode)
+
+        # Density-weighted mean radius for radial inductance
         rho_mid = state["rho"][:, ny // 2, nz // 2]
         weights = np.maximum(rho_mid - rho0 * 0.5, 0.0)
         w_sum = float(np.sum(weights))
@@ -1880,11 +1937,19 @@ def _run_metal_cylindrical(
         else:
             r_eff = b
         r_eff = max(r_eff, a * 0.01)
-        L_axial = (mu_0 / (2.0 * np.pi)) * np.log(b / a) * L_anode
-        Lp_mhd = L_axial + (mu_0 / (2.0 * np.pi)) * L_anode * np.log(b / r_eff)
+
+        Lp_axial = (mu_0 / (2.0 * np.pi)) * np.log(b / a) * z_sheath
+        Lp_radial = (mu_0 / (2.0 * np.pi)) * z_sheath * np.log(b / max(r_eff, a))
+        # Effective Lp seen by circuit: fc * Lp_geometric (Lee model convention)
+        Lp_mhd = fc * (Lp_axial + Lp_radial)
+        # Lp is physically monotonic — sheath can't un-sweep gas.
+        # Enforce to prevent noisy z_sheath → oscillating back-EMF instability.
+        if prev_Lp is not None and Lp_mhd < prev_Lp:
+            Lp_mhd = prev_Lp
 
         if prev_Lp is not None and prev_Lp > 0 and dt > 0:
             dLdt_mhd = (Lp_mhd - prev_Lp) / dt
+            # Back-EMF: dLp_eff/dt * I (fc already included in Lp_mhd)
             back_emf = float(np.clip(dLdt_mhd * circuit.current, -_MAX_BEMF, _MAX_BEMF))
         else:
             dLdt_mhd = 0.0
