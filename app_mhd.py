@@ -1855,9 +1855,7 @@ def _run_metal_cylindrical(
         ln_lambda = 10.0  # Coulomb logarithm
         eta_spitzer = 5.2e-5 * ln_lambda / np.power(Te_eV, 1.5)  # Ohm*m
         eta_field = np.minimum(eta_spitzer, _ETA_ANOMALOUS)
-        # Cap to resistive CFL: eta < dx^2 * mu_0 / (4 * dt)
-        eta_max = dr_mhd**2 * mu_0 / (4.0 * max(dt, 1e-30))
-        eta_field = np.minimum(eta_field, eta_max)
+        # No CFL cap — sub-cycling in _apply_resistive_diffusion handles stability
 
         # fc: only a fraction of circuit current drives the sheath (Lee model convention)
         fc = sc.get("current_fraction", 0.7)
