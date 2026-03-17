@@ -721,10 +721,24 @@ class MetalMHDSolver(PlasmaSolverBase):
         dB_dt[1] = -(d_etaJx_dz - d_etaJz_dx)
         dB_dt[2] = -(d_etaJy_dx - d_etaJx_dy)
 
-        B_new = B + dt * dB_dt
-        # Ohmic heating adds to pressure: dp/dt = (gamma-1) * Q_ohm
-        p_new = p + dt * (gamma - 1.0) * Q_ohm
-        p_new = torch.clamp(p_new, min=1e-12) # P_FLOOR
+        # Sub-cycle resistive update for CFL stability:
+        #   dt_res < dx^2 / (2 * eta_eff_max)
+        dx_min = min(self.dx, self.dz)
+        eta_eff_max = float(eta_eff.max().item()) if eta_eff.numel() > 0 else 0.0
+        if eta_eff_max > 0:
+            dt_res_cfl = dx_min**2 / (2.0 * eta_eff_max)
+            n_sub = max(1, int(np.ceil(dt / dt_res_cfl)))
+        else:
+            n_sub = 1
+        n_sub = min(n_sub, 20)  # cap sub-cycles to avoid excessive cost
+        dt_sub = dt / n_sub
+
+        B_new = B.clone()
+        p_new = p.clone()
+        for _ in range(n_sub):
+            B_new = B_new + dt_sub * dB_dt
+            p_new = p_new + dt_sub * (gamma - 1.0) * Q_ohm
+        p_new = torch.clamp(p_new, min=1e-12)  # P_FLOOR
 
         return B_new, p_new
 
