@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 
-from dpf.config import SimulationConfig
+# Ensure project root is on sys.path so tests can import root-level
+# app modules (app_mhd.py, app_engine.py) that aren't part of the dpf package.
+_root = str(Path(__file__).resolve().parent.parent)
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+
+from dpf.config import SimulationConfig  # noqa: E402
 
 
 @pytest.fixture

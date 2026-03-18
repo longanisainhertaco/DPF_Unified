@@ -1,7 +1,16 @@
 """Tests for advanced physics modules wired into app_mhd."""
+import sys
+from pathlib import Path
+
 import numpy as np
 
-from app_engine import GAS_SPECIES
+# app_engine.py is a root-level Gradio app, not in dpf package.
+# Add project root to path for CI where PYTHONPATH doesn't include it.
+_root = str(Path(__file__).resolve().parent.parent)
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+
+from app_engine import GAS_SPECIES  # noqa: E402
 
 
 def _make_state(nr=8, ny=8, nz=16):
