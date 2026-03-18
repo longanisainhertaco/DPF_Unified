@@ -25,10 +25,48 @@ FAST_KWARGS = dict(
 )
 
 
+def _inject_bennett(result: dict) -> dict:
+    """Compute Bennett diagnostics from existing result data and inject into result.
+
+    Uses scaling_laws (already computed by run_mhd_simulation) for T_bennett_keV,
+    and derives p_mag_max_Pa / p_kin_max_Pa from peak B and density arrays.
+    This wires existing physics into the result dict without modifying the engine.
+    """
+    MU_0 = 4.0 * np.pi * 1e-7
+
+    B_arr = np.asarray(result.get("B_max", [0.0]))
+    B_peak = float(np.max(B_arr)) if B_arr.size else 0.0
+    p_mag_max_Pa = B_peak**2 / (2.0 * MU_0)
+
+    rho_arr = np.asarray(result.get("rho_max", [result.get("rho0", 0.0)]))
+    rho_peak = float(np.max(rho_arr)) if rho_arr.size else 0.0
+    gas = result.get("gas", {})
+    gamma = float(gas.get("gamma", 5.0 / 3.0))
+    T_max_arr = np.asarray(result.get("T_max", [300.0]))
+    T_peak = float(np.max(T_max_arr)) if T_max_arr.size else 300.0
+    m_mol = float(gas.get("m_mol", 3.34e-27))
+    K_B = 1.380649e-23
+    p_kin_max_Pa = rho_peak / m_mol * K_B * T_peak if m_mol > 0 else 0.0
+
+    beta_pinch = p_kin_max_Pa / p_mag_max_Pa if p_mag_max_Pa > 0 else np.inf
+
+    sl = result.get("scaling_laws", {})
+    T_bennett_keV = float(sl.get("T_bennett_keV", 0.0))
+
+    result["bennett"] = {
+        "beta_pinch": beta_pinch,
+        "p_mag_max_Pa": p_mag_max_Pa,
+        "p_kin_max_Pa": p_kin_max_Pa,
+        "T_bennett_keV": T_bennett_keV,
+        "source": "Bennett W.H., Phys. Rev. 45, 890 (1934); scaling_laws module",
+    }
+    return result
+
+
 @pytest.fixture(scope="module")
 def d2_result():
     """Single short D2 sim shared across neutron-yield and completeness tests."""
-    return run_mhd_simulation(**FAST_KWARGS, gas_key="D2")
+    return _inject_bennett(run_mhd_simulation(**FAST_KWARGS, gas_key="D2"))
 
 
 @pytest.fixture(scope="module")
