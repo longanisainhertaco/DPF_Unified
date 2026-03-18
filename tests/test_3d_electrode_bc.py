@@ -7,7 +7,7 @@ import pytest
 def metal_solver_3d():
     """Create a 3D Cartesian Metal MHD solver."""
     try:
-        import torch
+        import torch  # noqa: F401
     except ImportError:
         pytest.skip("torch not available")
     from dpf.metal.metal_solver import MetalMHDSolver
@@ -27,7 +27,7 @@ def metal_solver_3d():
 def metal_solver_cyl():
     """Create a cylindrical Metal MHD solver."""
     try:
-        import torch
+        import torch  # noqa: F401
     except ImportError:
         pytest.skip("torch not available")
     from dpf.metal.metal_solver import MetalMHDSolver
@@ -67,7 +67,6 @@ class TestCartesian3DElectrodeBC:
         )
         B = result["B"]
         # B should be nonzero near cathode radius
-        mid = 16 // 2
         # At the domain center, Bx and By should have azimuthal pattern
         B_mag = np.sqrt(B[0]**2 + B[1]**2)
         assert np.max(B_mag) > 0, "B-field should be nonzero after electrode BC"

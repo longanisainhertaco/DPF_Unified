@@ -198,8 +198,8 @@ def test_mhd_back_emf_L_plasma_non_negative(d2_result):
 
 def test_mhd_back_emf_circuit_current_evolves(d2_result):
     """I_MA array must have at least 1 sample (circuit is being stepped)."""
-    I = d2_result.get("I_MA", np.array([]))
-    assert len(I) >= 1, "I_MA is empty — circuit never stepped"
+    I_MA = d2_result.get("I_MA", np.array([]))
+    assert len(I_MA) >= 1, "I_MA is empty — circuit never stepped"
 
 
 # ── 7. m=0 perturbation seeding (lines 581-587) ───────────────────────────────

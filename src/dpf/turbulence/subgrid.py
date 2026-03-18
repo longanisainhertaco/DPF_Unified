@@ -198,13 +198,13 @@ def sweet_parker_diagnostic(
 
     # Plasmoid instability criterion (Loureiro 2007)
     S_crit = 1e4
-    plasmoid_unstable = S > S_crit
+    plasmoid_unstable = S_crit < S
     n_plasmoids = int(S**(3.0 / 8.0)) if plasmoid_unstable else 0
 
     # Regime classification
     if S < 100:
         regime = "collisionless"
-    elif S < S_crit:
+    elif S_crit > S:
         regime = "sweet_parker"
     else:
         regime = "plasmoid"
@@ -277,7 +277,7 @@ def compute_energy_spectrum(
     E_mag_k = np.zeros(n_bins)
 
     for i in range(n_bins):
-        mask = (K >= k_bins[i]) & (K < k_bins[i + 1])
+        mask = (k_bins[i] <= K) & (k_bins[i + 1] > K)
         if np.any(mask):
             dk = k_bins[i + 1] - k_bins[i]
             E_kin_k[i] = float(np.sum(E_kin_total[mask])) / max(dk, 1e-30)

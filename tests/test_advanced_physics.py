@@ -1,8 +1,7 @@
 """Tests for advanced physics modules wired into app_mhd."""
 import numpy as np
-import pytest
 
-from app_engine import GAS_SPECIES, kB
+from app_engine import GAS_SPECIES
 
 
 def _make_state(nr=8, ny=8, nz=16):
@@ -91,7 +90,6 @@ class TestApplyAdvancedPhysics:
         Te_grad = np.linspace(1e4, 1e6, state["rho"].shape[0])
         state["Te"] = Te_grad[:, np.newaxis, np.newaxis] * np.ones_like(state["Te"])
         state["B"][1] = 5.0  # uniform By (theta)
-        B_before = state["B"].copy()
 
         state_out, _ = _apply_advanced_physics(
             state, dt=1e-12, gas=_gas_d2(), dr=0.001, dz=0.002,

@@ -15,7 +15,6 @@ import pytest
 
 from dpf.diagnostics.instability import tearing_mode_growth_rate
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -208,7 +207,6 @@ class TestStochasticIC:
         rng_a = np.random.default_rng()
         rng_b = np.random.default_rng()
         nr, nz = 16, 32
-        rho0 = 1e-4
         noise_a = rng_a.normal(0, 0.01, size=(nr, 1, nz))
         noise_b = rng_b.normal(0, 0.01, size=(nr, 1, nz))
         # Probability of identical draws from two independent RNGs is negligible

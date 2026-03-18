@@ -1037,12 +1037,12 @@ class MetalMHDSolver(PlasmaSolverBase):
                         B_new[0, :, :, k] = torch.where(mask_anode, -B_th * sin_theta, B_new[0, :, :, k])
                         B_new[1, :, :, k] = torch.where(mask_anode, B_th * cos_theta, B_new[1, :, :, k])
                 # z=0 face: insulator boundary (apply B_theta at all radii between anode and cathode)
-                mask_z0 = (R >= anode_r) & (R <= cathode_r)
+                mask_z0 = (anode_r <= R) & (cathode_r >= R)
                 if mask_z0.any():
                     B_new[0, :, :, 0] = torch.where(mask_z0, -B_th * sin_theta, B_new[0, :, :, 0])
                     B_new[1, :, :, 0] = torch.where(mask_z0, B_th * cos_theta, B_new[1, :, :, 0])
                 # Axis guard: zero B at r < anode_r/2 to prevent singularity
-                mask_axis = R < anode_r * 0.5  # shape (nx, ny)
+                mask_axis = anode_r * 0.5 > R  # shape (nx, ny)
                 if mask_axis.any():
                     mask_3d = mask_axis.unsqueeze(-1).expand(nx, ny, nz)
                     for comp in range(3):
