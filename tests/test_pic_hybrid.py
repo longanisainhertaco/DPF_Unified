@@ -11,7 +11,8 @@ import math
 import numpy as np
 import pytest
 
-from dpf.constants import e as e_charge, m_d
+from dpf.constants import e as e_charge
+from dpf.constants import m_d
 from dpf.experimental.pic.hybrid import (
     HybridPIC,
     ParticleSpecies,

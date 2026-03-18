@@ -31,7 +31,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from dpf.constants import e, hbar, k_B, m_e, mu_0
+from dpf.constants import e, hbar, k_B, m_e
 
 
 @dataclass

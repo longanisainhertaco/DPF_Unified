@@ -8,7 +8,7 @@ class TestCyclotronEnergy:
         from dpf.radiation.qmf_suppression import cyclotron_energy
         E1 = cyclotron_energy(1.0)
         E2 = cyclotron_energy(2.0)
-        assert E2 == pytest.approx(2 * E1)
+        assert pytest.approx(2 * E1) == E2
 
     def test_known_value(self):
         from dpf.radiation.qmf_suppression import cyclotron_energy
@@ -35,7 +35,7 @@ class TestSuppressionFactor:
     def test_weak_field_no_suppression(self):
         from dpf.radiation.qmf_suppression import bremsstrahlung_suppression_factor
         S = bremsstrahlung_suppression_factor(B=10.0, Te_K=1e7)
-        assert S == pytest.approx(1.0, abs=0.01)
+        assert pytest.approx(1.0, abs=0.01) == S
 
     def test_strong_field_suppressed(self):
         from dpf.radiation.qmf_suppression import bremsstrahlung_suppression_factor

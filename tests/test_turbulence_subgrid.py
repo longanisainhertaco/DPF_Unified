@@ -1,6 +1,5 @@
 """Tests for sub-grid turbulence model and reconnection diagnostics (Campaign 2H)."""
 import numpy as np
-import pytest
 
 
 def _make_state(n=16):
