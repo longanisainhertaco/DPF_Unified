@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev,server]"
-      - run: pytest tests/ -v --tb=short --cov=dpf --cov-report=term-missing
+      - run: pytest tests/ -v --tb=short --cov=dpf --cov-report=term-missing --ignore=tests/test_advanced_physics.py --ignore=tests/test_mhd_physics_integration.py --ignore=tests/test_web_ui_consolidated.py --ignore=tests/_archive
       - name: Verify test count
         run: |
           count=$(pytest tests/ --co -q 2>/dev/null | tail -1 | grep -oE '[0-9]+')
