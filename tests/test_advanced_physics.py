@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 # app_engine.py is a root-level Gradio app, not in dpf package.
 # Add project root to path for CI where PYTHONPATH doesn't include it.
@@ -162,6 +163,11 @@ class TestApplyAdvancedPhysics:
         assert cr2 is not None
 
 
+@pytest.mark.skipif(
+    not hasattr(__import__("importlib"), "import_module") or
+    __import__("importlib").util.find_spec("torch") is None,
+    reason="torch not installed (Metal/hybrid backend unavailable)",
+)
 class TestRunMhdSimulationToggle:
     def test_advanced_physics_in_result(self):
         from app_mhd import run_mhd_simulation
