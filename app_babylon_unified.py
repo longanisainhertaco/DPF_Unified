@@ -274,6 +274,34 @@ window.addEventListener("load", async function(){
     scene.fieldLines.forEach(function(l) { l.isVisible = v; });
   });
 
+  if (scene.L.density || scene.L.temperature || scene.L.bfield) {
+    addHdr("MHD FIELD DATA");
+    if (scene.L.density) {
+      addTog("Density Heatmap", false, function(v) {
+        scene.setOverlay(v ? "density" : "none");
+        scene.updateHeatmap(v ? "density" : "none");
+      });
+    }
+    if (scene.L.temperature) {
+      addTog("Temperature Heatmap", false, function(v) {
+        scene.setOverlay(v ? "temperature" : "none");
+        scene.updateHeatmap(v ? "temperature" : "none");
+      });
+    }
+    if (scene.L.bfield) {
+      addTog("|B| Heatmap", false, function(v) {
+        scene.setOverlay(v ? "bfield" : "none");
+        scene.updateHeatmap(v ? "bfield" : "none");
+      });
+    }
+    if (scene.L.radiation) {
+      addTog("Radiation Heatmap", false, function(v) {
+        scene.setOverlay(v ? "radiation" : "none");
+        scene.updateHeatmap(v ? "radiation" : "none");
+      });
+    }
+  }
+
   addHdr("RENDERING");
   addTog("Bloom", true, function(v) { scene.pipeline.bloomEnabled = v; });
   if (scene.ssao) {
