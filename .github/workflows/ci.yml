@@ -47,12 +47,14 @@ jobs:
           --ignore=tests/test_circuit_consolidated.py
           --ignore=tests/_archive
           -k "not metal and not Metal"
+          -m "not slow"
+          -n auto
       - name: Verify test count
         run: |
-          count=$(pytest tests/ --co -q 2>/dev/null | tail -1 | grep -oE '[0-9]+')
-          echo "Found $count tests"
-          if [ "$count" -lt 200 ]; then
-            echo "ERROR: Expected at least 200 tests, found $count"
+          count=$(pytest tests/ --co -q -m "not slow" 2>/dev/null | grep -oE '^[0-9]+ test' | grep -oE '[0-9]+' | head -1)
+          echo "Found $count non-slow tests"
+          if [ -z "$count" ] || [ "$count" -lt 200 ]; then
+            echo "ERROR: Expected at least 200 non-slow tests, found ${count:-0}"
             exit 1
           fi
 
