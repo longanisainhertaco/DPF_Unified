@@ -11,7 +11,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from dpf.metal.metal_solver import MetalMHDSolver  # noqa: E402
+from dpf.metal.metal_solver import MetalMHDSolver  # noqa: E402, I001
 
 
 # ------------------------------------------------------------------ #
