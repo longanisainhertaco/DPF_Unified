@@ -39,7 +39,6 @@ from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
 from dpf.diagnostics.energy_balance import EnergyTracker
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.interferometry import abel_transform, fringe_shift
-from dpf.diagnostics.neutron_yield import neutron_yield_rate
 from dpf.diagnostics.yield_tracker import YieldTracker
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
@@ -1109,7 +1108,6 @@ class SimulationEngine:
         self._last_conservation_error = _energy_report.conservation_error[-1] if _energy_report.conservation_error else 0.0
 
         # === Step 5b: Neutron yield — via YieldTracker ===
-        Ti_yield = self.state["Ti"]
         rho_yield = self.state["rho"]
         if self.geometry_type == "cylindrical":
             _cell_vol_yield = float(np.mean(self.fluid.geom.cell_volumes()))
