@@ -384,6 +384,88 @@ async function createDPFScene(canvas, data) {
     ];
   }
 
+  // Pre-decode all snapshot frames for each field layer into cached RGBA Uint8Arrays.
+  // Shape: snapCache[fieldKey] = { times: Float64Array, rgba: Uint8Array[], texW, texH }
+  // Built once at scene creation so applyFrame never base64-decodes per tick.
+  var snapCache = {};
+
+  function _b64ToFloat32(b64) {
+    var raw = atob(b64);
+    var buf = new ArrayBuffer(raw.length);
+    var bytes = new Uint8Array(buf);
+    for (var ci = 0; ci < raw.length; ci++) bytes[ci] = raw.charCodeAt(ci);
+    return new Float32Array(buf);
+  }
+
+  function _buildSnapCache(fieldKey, layer) {
+    if (!layer || !layer.frames || layer.frames.length === 0) return;
+    var shape = layer.frames_shape || layer.shape;
+    if (!shape) return;
+    var nr = shape[0], nz = shape[1];
+    var texW = nz, texH = nr;
+    var n = layer.frames.length;
+    var times = new Float64Array(n);
+    var rgbaFrames = new Array(n);
+    for (var fi = 0; fi < n; fi++) {
+      var frame = layer.frames[fi];
+      times[fi] = frame.t_us;
+      var vals = _b64ToFloat32(frame.data);
+      var rgba = new Uint8Array(texW * texH * 4);
+      for (var ir = 0; ir < nr; ir++) {
+        for (var iz = 0; iz < nz; iz++) {
+          var v = vals[ir * nz + iz];
+          var c = _cmapLookup(v, activeCmap);
+          var pi = ((nr - 1 - ir) * nz + iz) * 4;
+          rgba[pi]     = Math.round(c[0] * 255);
+          rgba[pi + 1] = Math.round(c[1] * 255);
+          rgba[pi + 2] = Math.round(c[2] * 255);
+          rgba[pi + 3] = 200;
+        }
+      }
+      rgbaFrames[fi] = rgba;
+    }
+    snapCache[fieldKey] = { times: times, rgba: rgbaFrames, texW: texW, texH: texH };
+  }
+
+  // Build snap caches at scene creation for the three animated layers
+  _buildSnapCache("density", L.density);
+  _buildSnapCache("temperature", L.temperature);
+  _buildSnapCache("bfield", L.bfield);
+
+  function _nearestSnapIdx(fieldKey, t_us) {
+    var cache = snapCache[fieldKey];
+    if (!cache) return -1;
+    var times = cache.times;
+    var best = 0, bestDist = Math.abs(times[0] - t_us);
+    for (var si = 1; si < times.length; si++) {
+      var d = Math.abs(times[si] - t_us);
+      if (d < bestDist) { bestDist = d; best = si; }
+    }
+    return best;
+  }
+
+  // lastSnapIdx tracks the last applied snap index per field to avoid redundant texture swaps
+  var lastSnapIdx = { density: -1, temperature: -1, bfield: -1 };
+
+  function _applySnapTexture(fieldKey) {
+    var cache = snapCache[fieldKey];
+    if (!cache) return false;
+    var idx = lastSnapIdx[fieldKey];
+    if (idx < 0 || idx >= cache.rgba.length) return false;
+    if (heatTex) heatTex.dispose();
+    heatTex = new BABYLON.RawTexture(
+      cache.rgba[idx], cache.texW, cache.texH,
+      BABYLON.Engine.TEXTUREFORMAT_RGBA, scene,
+      false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE
+    );
+    heatMat.diffuseTexture = heatTex;
+    heatMat.emissiveTexture = heatTex;
+    heatMat.alpha = 0.8;
+    heatMat.useAlphaFromDiffuseTexture = true;
+    heatPlane.isVisible = true;
+    return true;
+  }
+
   function updateHeatmap(key) {
     if (!L || key === "none") {
       if (heatPlane) heatPlane.isVisible = false;
@@ -402,7 +484,14 @@ async function createDPFScene(canvas, data) {
       return;
     }
 
-    // Decode base64 float32 normalized data
+    // If this layer has snapshot frames, use the most-recently-cached snap index.
+    // If no snap index set yet, fall back to the final-state static data.
+    if (snapCache[key] && lastSnapIdx[key] >= 0) {
+      _applySnapTexture(key);
+      return;
+    }
+
+    // Decode base64 float32 normalized data (final state / static layers)
     var raw = atob(layer.data);
     var buf = new ArrayBuffer(raw.length);
     var bytes = new Uint8Array(buf);
@@ -647,6 +736,12 @@ async function createDPFScene(canvas, data) {
 
     setCmap: function(useCividis) {
       activeCmap = useCividis ? CIVIDIS : VIRIDIS;
+      // Rebuild snapshot RGBA caches with the new colormap
+      snapCache = {};
+      lastSnapIdx = { density: -1, temperature: -1, bfield: -1 };
+      _buildSnapCache("density", L.density);
+      _buildSnapCache("temperature", L.temperature);
+      _buildSnapCache("bfield", L.bfield);
       if (activeOverlay !== "none" && heatPlane && heatPlane.isVisible) {
         updateHeatmap(activeOverlay);
       }
@@ -655,6 +750,16 @@ async function createDPFScene(canvas, data) {
     applyFrame: function(i) {
       if (i < 0 || i >= S.frames.length) return;
       var f = S.frames[i];
+
+      // Update heatmap texture to the nearest MHD snapshot for this frame time.
+      // Only runs when a field overlay is active and snapshot frames exist.
+      if (activeOverlay !== "none" && snapCache[activeOverlay]) {
+        var newIdx = _nearestSnapIdx(activeOverlay, f.t);
+        if (newIdx !== lastSnapIdx[activeOverlay]) {
+          lastSnapIdx[activeOverlay] = newIdx;
+          _applySnapTexture(activeOverlay);
+        }
+      }
       var col = PHASE_COLORS[f.phase] || [0.3, 0.3, 0.4];
       var isP = ["radial", "mhd_radial", "pinch", "reflected", "post_pinch"].indexOf(f.phase) >= 0;
       var cr = Math.max(0.02, f.r / G.cathode_radius);
