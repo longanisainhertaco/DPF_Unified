@@ -382,7 +382,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             J_kin = source_terms["J_kin"]
             if J_kin.ndim == 4:  # (3, nr, 1, nz) → squeeze to (3, nr, nz)
                 J_kin = J_kin[:, :, 0, :]
-            J_total = J + J_kin
+            J_total = J - J_kin  # J_kin already carried by kinetic particles; subtract to avoid double-counting
 
         # --- Resistive term: E_resistive = eta * J_total ---
         ohmic_heating = np.zeros((self.nr, self.nz))
