@@ -11,10 +11,10 @@ across all 24 shots (mean abs error: 1.27%, std: 1.54%).
 """
 from __future__ import annotations
 
+import csv
 import re
 import sqlite3
 import sys
-import csv
 from pathlib import Path
 
 import numpy as np
@@ -173,8 +173,8 @@ def save_md(rows: list[dict], stats: dict) -> None:
         "",
         "## Statistical Summary",
         "",
-        f"| Metric | Value | Target | Status |",
-        f"|--------|-------|--------|--------|",
+        "| Metric | Value | Target | Status |",
+        "|--------|-------|--------|--------|",
         f"| Mean absolute error | {stats['mean_abs_err_pct']:.2f}% | < 10% | **{pass_fail_mean}** |",
         f"| NRMSE (by mean) | {stats['nrmse_mean_pct']:.2f}% | < 20% | **{pass_fail_nrmse}** |",
         f"| NRMSE (by range) | {stats['nrmse_range_pct']:.2f}% | — | — |",

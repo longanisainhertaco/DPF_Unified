@@ -4,8 +4,8 @@ Outputs:
     docs/research-reference/uncertainty_analysis.json
 """
 
-import sys
 import json
+import sys
 import time
 import warnings
 from pathlib import Path
