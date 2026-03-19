@@ -148,9 +148,7 @@ BACKEND_HELP = {
                          "Use COARSE grid and SHORT sim_time (5-10 us) for initial exploration. "
                          "DISABLE advanced physics modules (FLD, ablation, etc.) — they add ~1s/step overhead. "
                          "For validated results, use Hybrid or Lee backend instead.\n"
-                         "REQUIRES: Apple Silicon Mac or PyTorch CPU. Coarse grid recommended.
-                         "dynamics, early-time field structure, and current-sheet formation in (r, z) geometry.\n"
-                         "REQUIRES: Apple Silicon Mac (M1/M2/M3) or any machine with PyTorch.",
+                         "REQUIRES: Apple Silicon Mac or PyTorch CPU. Coarse grid recommended.",
 
     "athena": "STATUS: Working | SPEED: 10-60 seconds | ACCURACY: 3rd-order, reference quality\n\n"
               "Princeton's Athena++ code — a reference-quality astrophysical MHD solver used in "
