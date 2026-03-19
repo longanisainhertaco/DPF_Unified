@@ -1,0 +1,72 @@
+site_name: DPF Unified
+docs_dir: mkdocs-docs
+site_description: Dense Plasma Focus multi-physics MHD simulator
+site_url: https://anthonyzamora.github.io/dpf-unified
+repo_url: https://github.com/anthonyzamora/dpf-unified
+repo_name: anthonyzamora/dpf-unified
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide: user-guide.md
+  - API Reference:
+      - Overview: api/index.md
+      - Configuration: api/config.md
+      - Engine: api/engine.md
+      - Presets: api/presets.md
+      - Fluid / Snowplow: api/snowplow.md
+      - Circuit Solver: api/circuit.md
+      - Diagnostics: api/diagnostics.md
+      - Validation: api/validation.md
+  - Examples: examples.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
