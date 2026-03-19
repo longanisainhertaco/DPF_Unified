@@ -171,6 +171,8 @@ class SimulationEngine:
                 ),
                 ion_mass=self.ion_mass,
                 coordinates=self.geometry_type,
+                r_inner=config.geometry.anode_radius if self.geometry_type == "cylindrical" else None,
+                convert_b_si_to_hl=self.geometry_type == "cylindrical",
             )
             # Attach cylindrical geometry provider for diagnostics
             if self.geometry_type == "cylindrical":
