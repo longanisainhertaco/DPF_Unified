@@ -36,9 +36,11 @@ from dpf.core.bases import CouplingState, StepResult
 # FieldManager (Phase 5)
 from dpf.core.field_manager import FieldManager
 from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
+from dpf.diagnostics.energy_balance import EnergyTracker
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.interferometry import abel_transform, fringe_shift
 from dpf.diagnostics.neutron_yield import neutron_yield_rate
+from dpf.diagnostics.yield_tracker import YieldTracker
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
@@ -287,10 +289,17 @@ class SimulationEngine:
 
         # Energy tracking
         self.initial_energy: float | None = None
+        self._energy_tracker = EnergyTracker(gamma=config.fluid.gamma)
+        self._last_conservation_error: float = 0.0
 
         # Neutron yield tracking
         self.total_neutron_yield: float = 0.0
         self._last_neutron_rate: float = 0.0
+        self._yield_tracker = YieldTracker(
+            ion_mass=self.ion_mass,
+            rho0=float(config.fluid.rho0) if hasattr(config.fluid, "rho0") else 1e-4,
+        )
+        self._last_bt_fraction: float = 0.0
 
         # Interferometry (cylindrical only)
         self._last_fringe_shifts: np.ndarray | None = None
@@ -1001,6 +1010,7 @@ class SimulationEngine:
             apply_electrode_bc=self.boundary_cfg.electrode_bc,
         )
         self._sanitize_state("after fluid step")
+        self._last_div_B = getattr(self.fluid, "_last_div_B", 0.0)
 
         # (ohmic gap measurement moved to before fluid step — no longer lagged)
 
@@ -1081,35 +1091,47 @@ class SimulationEngine:
         Z_bar_post = max(float(np.mean(Z_bar_field_post)), 0.01)
         self._apply_collision_radiation(dt / 2.0, Z_bar_post, Z_bar_field=Z_bar_field_post)
 
-        # === Step 5b: Neutron yield (DD thermonuclear) ===
+        # === Step 5a2: Energy balance tracking ===
+        _circ_state = self.circuit.state
+        _L_total_energy = self.circuit.L_ext + self._coupling.Lp
+        self._energy_tracker.record(
+            state=self.state,
+            t=self.time,
+            dt=dt,
+            cell_volume=float(np.mean(self._cell_volume)) if hasattr(self._cell_volume, "__len__") else self._cell_volume,
+            radiated_power=self.total_radiated_energy / max(self.time, 1e-30) if self.time > 0 else 0.0,
+            C=self.circuit.C,
+            V_cap=_circ_state.voltage,
+            L_total=_L_total_energy,
+            I_current=_circ_state.current,
+        )
+        _energy_report = self._energy_tracker.get_report()
+        self._last_conservation_error = _energy_report.conservation_error[-1] if _energy_report.conservation_error else 0.0
+
+        # === Step 5b: Neutron yield — via YieldTracker ===
         Ti_yield = self.state["Ti"]
         rho_yield = self.state["rho"]
-        n_D = rho_yield / self.ion_mass  # Number density for neutron yield
         if self.geometry_type == "cylindrical":
-            cell_vol = self.fluid.geom.cell_volumes()
-            # Expand from (nr, nz) to (nr, 1, nz) for broadcasting
-            Ti_2d = np.squeeze(Ti_yield, axis=1) if Ti_yield.ndim == 3 else Ti_yield
-            nD_2d = np.squeeze(n_D, axis=1) if n_D.ndim == 3 else n_D
-            _, neutron_rate = neutron_yield_rate(nD_2d, Ti_2d, cell_vol)
+            _cell_vol_yield = float(np.mean(self.fluid.geom.cell_volumes()))
         else:
-            cell_vol_cart = self.config.dx**3
-            _, neutron_rate = neutron_yield_rate(n_D, Ti_yield, cell_vol_cart)
+            _cell_vol_yield = self.config.dx**3
+        _sp_dL_dt = getattr(self, "_last_sp_dL_dt", 0.0)
+        _V_pinch = abs(self._coupling.current * _sp_dL_dt)
+        self._yield_tracker.accumulate(
+            state=self.state,
+            dt=dt,
+            I_current=self._coupling.current,
+            V_pinch=_V_pinch,
+            cell_volume=_cell_vol_yield,
+        )
+        _yield_result = self._yield_tracker.get_result()
+        _dY_thermo = _yield_result.dY_thermo[-1] if _yield_result.dY_thermo else 0.0
+        _dY_bt = _yield_result.dY_bt[-1] if _yield_result.dY_bt else 0.0
+        neutron_rate = (_dY_thermo + _dY_bt) / max(dt, 1e-30)
         self._last_neutron_rate = neutron_rate
-        self.total_neutron_yield += neutron_rate * dt
-
-        # === Step 5b2: Beam-target neutron yield (during pinch/reflected) ===
-        self._last_beam_target_rate = 0.0
-        if self.snowplow and self.snowplow.phase in ("reflected", "pinch"):
-            from dpf.diagnostics.beam_target import beam_target_yield_rate
-            _sp_dL_dt = getattr(self, "_last_sp_dL_dt", 0.0)
-            V_pinch = abs(self._coupling.current * _sp_dL_dt)
-            n_target = float(np.mean(self.state["rho"])) / self.ion_mass
-            bt_rate = beam_target_yield_rate(
-                abs(self._coupling.current), V_pinch, n_target,
-                self.snowplow.L_anode, f_beam=0.2,
-            )
-            self.total_neutron_yield += bt_rate * dt
-            self._last_beam_target_rate = bt_rate
+        self.total_neutron_yield = _yield_result.Y_total
+        self._last_beam_target_rate = _dY_bt / max(dt, 1e-30)
+        self._last_bt_fraction = _yield_result.bt_fraction
 
         # === Step 5b3: m=0 sausage instability growth rate ===
         self._last_m0_result = None
@@ -1201,6 +1223,12 @@ class SimulationEngine:
                     "neutron_rate": self._last_neutron_rate,
                     "beam_target_rate": getattr(self, "_last_beam_target_rate", 0.0),
                     "total_neutron_yield": self.total_neutron_yield,
+                    "bt_fraction": self._last_bt_fraction,
+                },
+                "energy_balance": {
+                    "conservation_error": self._last_conservation_error,
+                    "is_conserved": self._last_conservation_error < 0.05,
+                    "div_B_max": self._last_div_B,
                 },
                 "instability": {
                     "m0_growth_rate": (

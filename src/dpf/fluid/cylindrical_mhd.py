@@ -112,6 +112,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.conservative_energy = conservative_energy
         self._last_eta_max = 0.0  # For resistive diffusion CFL
+        self._last_div_B: float = 0.0
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
         # metric (see H5 in Troubleshooting.md). Use Dedner cleaning instead.
         if enable_ct:
@@ -471,6 +472,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 ch = max(float(np.max(v_abs + cf_ded)), 1.0)
             cp = ch
             div_B = geom.div_B_cylindrical(B)
+            self._last_div_B = float(np.max(np.abs(div_B)))
             dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
             grad_psi = geom.gradient(psi)
             dB_dt = dB_dt - grad_psi
