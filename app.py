@@ -100,6 +100,7 @@ BACKEND_STATUS = {
     "metal_plm": "WORKING",
     "metal_weno5": "WORKING",
     "metal_3d": "WORKING",
+    "metal_cylindrical": "WORKING",
     "athena": "WORKING",
     "python": "REDIRECTS",
 }
@@ -137,6 +138,13 @@ BACKEND_HELP = {
                 "Uses significantly more memory than 2D.\n"
                 "REQUIRES: Apple Silicon Mac with 16+ GB unified memory. "
                 "Fine grid (64^3) needs ~64 MB; 200^3 needs ~2 GB.",
+
+    "metal_cylindrical": "STATUS: Working (Apple GPU) | SPEED: 10-60 seconds | ACCURACY: 2nd-order, cylindrical geometry\n\n"
+                         "Full-discharge cylindrical MHD solver running from t=0. Unlike the hybrid backend, "
+                         "this backend runs the entire discharge (axial rundown + radial implosion) as a single "
+                         "cylindrical MHD simulation — no Lee-model handoff. Best for: studying axial sheath "
+                         "dynamics, early-time field structure, and current-sheet formation in (r, z) geometry.\n"
+                         "REQUIRES: Apple Silicon Mac (M1/M2/M3) or any machine with PyTorch.",
 
     "athena": "STATUS: Working | SPEED: 10-60 seconds | ACCURACY: 3rd-order, reference quality\n\n"
               "Princeton's Athena++ code — a reference-quality astrophysical MHD solver used in "
@@ -300,6 +308,8 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     fid = FIDELITY.get(backend, "")
     fid_str = f" | Fidelity: {fid}" if fid != "0D" else ""
     parts = [f"**I_peak = {data['I_peak']:.3f} MA** at {data['t_peak']:.1f} us"]
+    if data.get("nan_detected"):
+        parts.insert(0, f"**NaN @ step {data.get('nan_step', '?')} — DIVERGED**")
 
     if val:
         dI = val["I_peak_dev_pct"]
@@ -528,6 +538,13 @@ def run_simulation(
     val_md = format_validation_markdown(val)
     if val_md:
         narrative = narrative + "\n\n" + val_md
+    if data.get("nan_detected"):
+        nan_step = data.get("nan_step", "?")
+        nan_warning = (
+            f"> **WARNING: Simulation diverged (NaN detected at step {nan_step}). "
+            f"Results beyond that point are unreliable.**"
+        )
+        narrative = nan_warning + "\n\n" + narrative
     metrics = _build_metrics(data, backend, val)
     csv_path = _export_csv(data)
 
