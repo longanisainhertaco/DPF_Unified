@@ -82,6 +82,7 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
 
     # Layers 3-5: MHD field data (only if final_state exists)
     final = d.get("final_state")
+    mhd_snapshots = d.get("mhd_snapshots", [])
     density = None
     temperature = None
     bfield = None
@@ -166,6 +167,61 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
                     "shape": shape,
                     "max_rate": float(yield_rate.max()),
                 }
+
+    # Encode mhd_snapshots as per-field time-series frames.
+    # Each snapshot is {t_us, rho_mid, B_mid, P_mid} from the solver.
+    # Normalisation is per-field-across-all-snaps so colours stay consistent.
+    if mhd_snapshots and density is not None:
+        snap_shape = list(np.asarray(mhd_snapshots[0]["rho_mid"]).shape)
+
+        # --- density frames ---
+        rho_arrays = [np.asarray(s["rho_mid"], dtype=np.float32) for s in mhd_snapshots]
+        rho_global_lo = float(min(a.min() for a in rho_arrays))
+        rho_global_hi = float(max(a.max() for a in rho_arrays))
+        rho_scale = max(rho_global_hi - rho_global_lo, 1e-30)
+        density["frames"] = [
+            {
+                "t_us": float(s["t_us"]),
+                "data": _b64((rho_arrays[i] - rho_global_lo) / rho_scale),
+            }
+            for i, s in enumerate(mhd_snapshots)
+        ]
+        density["frames_shape"] = snap_shape
+
+        # --- temperature frames (from P_mid via ideal-gas: T ~ P/rho) ---
+        if temperature is not None and "P_mid" in mhd_snapshots[0]:
+            P_arrays = [np.asarray(s["P_mid"], dtype=np.float32) for s in mhd_snapshots]
+            # T_norm ~ P/rho (relative, dimensionless for colouring)
+            T_arrays = [
+                P_arrays[i] / np.maximum(rho_arrays[i], 1e-30)
+                for i in range(len(mhd_snapshots))
+            ]
+            T_global_lo = float(min(a.min() for a in T_arrays))
+            T_global_hi = float(max(a.max() for a in T_arrays))
+            T_scale = max(T_global_hi - T_global_lo, 1e-30)
+            temperature["frames"] = [
+                {
+                    "t_us": float(s["t_us"]),
+                    "data": _b64((T_arrays[i] - T_global_lo) / T_scale),
+                }
+                for i, s in enumerate(mhd_snapshots)
+            ]
+            temperature["frames_shape"] = snap_shape
+
+        # --- bfield frames ---
+        if bfield is not None and "B_mid" in mhd_snapshots[0]:
+            B_arrays = [np.asarray(s["B_mid"], dtype=np.float32) for s in mhd_snapshots]
+            B_global_lo = float(min(a.min() for a in B_arrays))
+            B_global_hi = float(max(a.max() for a in B_arrays))
+            B_scale = max(B_global_hi - B_global_lo, 1e-30)
+            bfield["frames"] = [
+                {
+                    "t_us": float(s["t_us"]),
+                    "data": _b64((B_arrays[i] - B_global_lo) / B_scale),
+                }
+                for i, s in enumerate(mhd_snapshots)
+            ]
+            bfield["frames_shape"] = snap_shape
 
     # Layer 6: Pinch metrics
     pinch = None
