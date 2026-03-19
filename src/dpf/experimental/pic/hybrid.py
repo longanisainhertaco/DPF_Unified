@@ -1012,6 +1012,7 @@ class HybridPIC:
         direction: np.ndarray | list[float] | tuple[float, float, float],
         position: np.ndarray | list[float] | tuple[float, float, float],
         spread: float = 0.0,
+        weight_total: float = 1e16,
     ) -> None:
         """Inject a beam of particles into an existing species.
 
@@ -1032,6 +1033,10 @@ class HybridPIC:
             Starting position (x, y, z) [m].
         spread : float
             Angular spread in radians (half-angle of cone).
+        weight_total : float
+            Total number of physical ions represented by all macro-particles.
+            Macro-particle weight = weight_total / n_beam.
+            Default 1e16 ~ 1 mC at 100 keV over 10 ns.
         """
         sp = self.species[species_idx]
         dir_vec = np.asarray(direction, dtype=np.float64)
@@ -1075,8 +1080,10 @@ class HybridPIC:
         # All beam particles start at the same position
         beam_pos = np.tile(pos0, (n_beam, 1))
 
-        # Default weight = 1.0 for each beam macro-particle
-        beam_weights = np.ones(n_beam, dtype=np.float64)
+        # Physical weight: each macro-particle represents weight_total/n_beam physical ions.
+        # Using weight=1.0 (bare count) would underestimate current by ~17 orders of magnitude.
+        macro_weight = weight_total / max(n_beam, 1)
+        beam_weights = np.full(n_beam, macro_weight, dtype=np.float64)
 
         # Append to existing species arrays
         sp.positions = np.concatenate([sp.positions, beam_pos], axis=0)

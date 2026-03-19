@@ -299,12 +299,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # L0 = 140 nH: 80 nH loading-factor estimate revised upward to match
         # I_peak=2.0 MA (Schmidt 2021). 84 flexible TL cables from Marx pit
         # add significant inductance beyond the loading-factor heuristic.
-        # R0 = 1.4 mOhm from RESF ~ 0.1.
+        # R0 = 6.25 mOhm: 2MJ/6-tower config — 12.5 mOhm / 2 towers in parallel (Offermann 2021).
         "circuit": {
             "C": 408e-6,           # 408 uF (24 modules x 17 uF erected)
             "V0": 60e3,            # 60 kV typical operation
             "L0": 80e-9,           # 80 nH (IPFS Lee model; loading factor I_peak/I_sc ~ 0.65)
-            "R0": 1.4e-3,          # ~1.4 mOhm (RESF ~ 0.1)
+            "R0": 6.25e-3,         # 6.25 mOhm (2MJ/6-tower: 12.5 mOhm / 2 towers in parallel; Offermann 2021)
             "anode_radius": 0.1143,  # 114.3 mm (Goyon et al., Phys. Plasmas 32:033105, 2025)
             "cathode_radius": 0.157,  # ~157 mm (A-K gap + anode)
             "crowbar_enabled": True,

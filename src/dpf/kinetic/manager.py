@@ -114,10 +114,11 @@ class KineticManager:
             direction /= norm
 
         self.driver.inject_beam(
-            species_idx=0, # deuterium_beam
+            species_idx=0,  # deuterium_beam
             n_beam=self.kc.n_particles,
             energy_eV=self.kc.beam_energy,
             direction=direction,
             position=center,
-            spread=0.1, # 0.1 rad spread
+            spread=0.1,  # 0.1 rad spread
+            weight_total=self.kc.beam_weight_total,
         )

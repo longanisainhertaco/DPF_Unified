@@ -494,6 +494,17 @@ class KineticConfig(BaseModel):
         (0.0, 0.0, 1.0),
         description="Beam injection direction vector (normalized automatically)",
     )
+    beam_weight_total: float = Field(
+        1e16,
+        gt=0,
+        description=(
+            "Total number of physical ions represented by all beam macro-particles. "
+            "Macro-particle weight = beam_weight_total / n_particles. "
+            "Default 1e16 ~ 1 mC at 100 keV over 10 ns (physically motivated). "
+            "Each macro-particle weight must never be 1.0 (bare count) — "
+            "that underestimates current by ~17 orders of magnitude."
+        ),
+    )
 
 
 class SimulationConfig(BaseModel):
