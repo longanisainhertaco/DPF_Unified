@@ -1,0 +1,12 @@
+# Validation run 2026-03-19T10:45:25.261645
+# PASS=8 FAIL=2 ERROR=0 TOTAL=10
+{"device": "PF-1000", "I_peak_sim": "1.783 MA", "I_peak_exp": "1.870 MA", "I_peak_error": "4.6%", "t_peak_sim": "6.085 us", "t_peak_exp": "5.800 us", "t_peak_error": "4.9%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "PF-1000-Gribkov", "I_peak_sim": "1.783 MA", "I_peak_exp": "1.846 MA", "I_peak_error": "3.4%", "t_peak_sim": "6.085 us", "t_peak_exp": "6.390 us", "t_peak_error": "4.8%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "PF-1000-16kV", "I_peak_sim": "1.207 MA", "I_peak_exp": "1.200 MA", "I_peak_error": "0.6%", "t_peak_sim": "6.606 us", "t_peak_exp": "6.000 us", "t_peak_error": "10.1%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "PF-1000-20kV", "I_peak_sim": "2.909 MA", "I_peak_exp": "1.400 MA", "I_peak_error": "107.8%", "t_peak_sim": "9.185 us", "t_peak_exp": "6.300 us", "t_peak_error": "45.8%", "phases": [1], "reliability": "measured", "status": "FAIL"}
+{"device": "NX2", "I_peak_sim": "0.279 MA", "I_peak_exp": "0.400 MA", "I_peak_error": "30.4%", "t_peak_sim": "0.883 us", "t_peak_exp": "1.800 us", "t_peak_error": "51.0%", "phases": [1, 2, 4], "reliability": "reference_only", "status": "FAIL"}
+{"device": "UNU-ICTP", "I_peak_sim": "0.153 MA", "I_peak_exp": "0.169 MA", "I_peak_error": "9.3%", "t_peak_sim": "2.403 us", "t_peak_exp": "2.200 us", "t_peak_error": "9.2%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "POSEIDON", "I_peak_sim": "2.921 MA", "I_peak_exp": "2.600 MA", "I_peak_error": "12.3%", "t_peak_sim": "3.366 us", "t_peak_exp": "5.000 us", "t_peak_error": "32.7%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "POSEIDON-60kV", "I_peak_sim": "2.702 MA", "I_peak_exp": "3.190 MA", "I_peak_error": "15.3%", "t_peak_sim": "1.839 us", "t_peak_exp": "1.980 us", "t_peak_error": "7.1%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "FAETON-I", "I_peak_sim": "0.975 MA", "I_peak_exp": "1.000 MA", "I_peak_error": "2.5%", "t_peak_sim": "3.548 us", "t_peak_exp": "3.600 us", "t_peak_error": "1.4%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
+{"device": "MJOLNIR", "I_peak_sim": "2.622 MA", "I_peak_exp": "2.800 MA", "I_peak_error": "6.4%", "t_peak_sim": "5.954 us", "t_peak_exp": "5.000 us", "t_peak_error": "19.1%", "phases": [1, 2, 4], "reliability": "measured", "status": "PASS"}
