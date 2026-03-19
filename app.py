@@ -82,6 +82,7 @@ RUNTIME_PER_US = {
     ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
     ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
     ("metal_3d", "coarse"): 2.0, ("metal_3d", "medium"): 30.0, ("metal_3d", "fine"): 300.0,
+    ("metal_cylindrical", "coarse"): 1.5, ("metal_cylindrical", "medium"): 10.0, ("metal_cylindrical", "fine"): 120.0,
     ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
     ("athena", "coarse"): 0.5, ("athena", "medium"): 3.0, ("athena", "fine"): 18.0,
 }
@@ -90,6 +91,7 @@ FIDELITY = {
     "lee": "0D (validated, fitted)", "hybrid": "0D + 2D MHD (best accuracy)",
     "metal_plm": "2D MHD (fast, moderate detail)",
     "metal_weno5": "2D MHD (slow, high detail)", "metal_3d": "3D MHD (slow, 3D effects)",
+    "metal_cylindrical": "2D MHD (experimental, unvalidated)",
     "athena": "2D MHD (C++ reference)", "python": "redirects to 2D MHD Fast",
 }
 
@@ -100,7 +102,7 @@ BACKEND_STATUS = {
     "metal_plm": "WORKING",
     "metal_weno5": "WORKING",
     "metal_3d": "WORKING",
-    "metal_cylindrical": "WORKING",
+    "metal_cylindrical": "EXPERIMENTAL",
     "athena": "WORKING",
     "python": "REDIRECTS",
 }
@@ -139,10 +141,14 @@ BACKEND_HELP = {
                 "REQUIRES: Apple Silicon Mac with 16+ GB unified memory. "
                 "Fine grid (64^3) needs ~64 MB; 200^3 needs ~2 GB.",
 
-    "metal_cylindrical": "STATUS: Working (Apple GPU) | SPEED: 10-60 seconds | ACCURACY: 2nd-order, cylindrical geometry\n\n"
-                         "Full-discharge cylindrical MHD solver running from t=0. Unlike the hybrid backend, "
-                         "this backend runs the entire discharge (axial rundown + radial implosion) as a single "
-                         "cylindrical MHD simulation — no Lee-model handoff. Best for: studying axial sheath "
+    "metal_cylindrical": "STATUS: Experimental (Apple GPU) | SPEED: 8s coarse, 2-5min medium, 10+ min fine\n\n"
+                         "EXPERIMENTAL: Full-discharge cylindrical MHD from t=0 — no Lee model. "
+                         "Resolves axial sheath formation, current sheet structure, and field evolution "
+                         "in (r,z) geometry. NOT validated against experimental waveforms (no fc/fm calibration). "
+                         "Use COARSE grid and SHORT sim_time (5-10 us) for initial exploration. "
+                         "DISABLE advanced physics modules (FLD, ablation, etc.) — they add ~1s/step overhead. "
+                         "For validated results, use Hybrid or Lee backend instead.\n"
+                         "REQUIRES: Apple Silicon Mac or PyTorch CPU. Coarse grid recommended.
                          "dynamics, early-time field structure, and current-sheet formation in (r, z) geometry.\n"
                          "REQUIRES: Apple Silicon Mac (M1/M2/M3) or any machine with PyTorch.",
 
@@ -282,6 +288,12 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
             f"Grid: {grid[0]}x{grid[1]}x{grid[2]} = {total_cells:,} cells "
             f"(~{mem_mb:.0f} MB)\n\n{help_text}"
         )
+        if backend == "metal_cylindrical" and grid_preset == "fine":
+            info += (
+                "\n\n**WARNING: Fine grid + cylindrical full-discharge will take 10+ minutes. "
+                "Use COARSE grid for exploration. Disable advanced physics modules to avoid "
+                "~1s/step overhead. For validated waveforms, use Hybrid backend instead.**"
+            )
     is_mhd = not is_lee
     return [
         gr.update(visible=is_lee),
