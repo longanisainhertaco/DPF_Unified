@@ -87,6 +87,7 @@ def save_config(
     V0_kV, C_uF, L0_nH, R0_mOhm,
     anode_r, cathode_r, anode_len,
     fc, fm, crowbar_on, crowbar_R, pressure,
+    chk_fld, chk_sheath, chk_ablation, chk_nernst, chk_cr,
 ) -> str:
     cfg = {
         "backend": backend, "grid_preset": grid_preset,
@@ -97,6 +98,9 @@ def save_config(
         "anode_len_mm": anode_len,
         "fc": fc, "fm": fm, "crowbar_on": crowbar_on,
         "crowbar_R_mOhm": crowbar_R, "pressure_torr": pressure,
+        "chk_fld": chk_fld, "chk_sheath": chk_sheath,
+        "chk_ablation": chk_ablation, "chk_nernst": chk_nernst,
+        "chk_cr": chk_cr,
     }
     import os
     temp_dir = os.environ.get("DPF_TEMP_DIR", tempfile.gettempdir())
@@ -130,4 +134,9 @@ def load_config(file_obj):
         cfg.get("crowbar_on", True),
         cfg.get("crowbar_R_mOhm", 1.5),
         cfg.get("pressure_torr"),
+        cfg.get("chk_fld", False),
+        cfg.get("chk_sheath", False),
+        cfg.get("chk_ablation", False),
+        cfg.get("chk_nernst", False),
+        cfg.get("chk_cr", False),
     ]

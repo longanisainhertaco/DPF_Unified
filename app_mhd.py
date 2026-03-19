@@ -2381,6 +2381,8 @@ def _run_python_mhd(
         "I_dip": 0.0, "t_dip": 0.0,
         "scaling": None, "crowbar_t": None,
         "snowplow_obj": None, "dt_ns": 0,
+        "nan_detected": nan_detected,
+        "nan_step": step if nan_detected else None,
     }
 
 
