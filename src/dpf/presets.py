@@ -451,6 +451,50 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,
         },
     },
+    "aecs_pf2": {
+        "_meta": {
+            "description": (
+                "AECS-PF2 (Atomic Energy Commission of Syria) — 2.8 kJ high-impedance "
+                "deuterium DPF. Small Mather-type device used for neutron production "
+                "and Lee model benchmarking. Published in AAAPT (Asian African "
+                "Association for Plasma Training) device survey."
+            ),
+            "device": "AECS-PF2",
+            "geometry": "cylindrical",
+            "topology": "mather",
+            "reference": "Lee & Saw, AAAPT device survey; Lee (2014) Review",
+        },
+        "grid_shape": [64, 1, 192],
+        "dx": 2.5e-4,
+        "sim_time": 4e-6,   # 4 us: covers T/4 (~1.7 us) + radial + pinch
+        "dt_init": 1e-11,
+        "rho0": 4.30e-4,    # 2 Torr D2 at 300K: P/(kB*T) * m_D2
+        "T0": 300.0,
+        "anomalous_alpha": 0.03,
+        "anomalous_threshold_model": "lhdi",
+        # Circuit: Lee & Saw AAAPT device survey
+        # RESF = R0/sqrt(L0/C0) = 30e-3/sqrt(110e-9/25e-6) = 1.27 (overdamped!)
+        # High impedance is characteristic of small Syrian/AAAPT devices
+        "circuit": {
+            "C": 25e-6,           # 25 uF
+            "V0": 15e3,           # 15 kV (E = 0.5 * 25e-6 * 15e3^2 = 2.8 kJ)
+            "L0": 110e-9,         # 110 nH
+            "R0": 30e-3,          # 30 mOhm (high impedance, small device)
+            "anode_radius": 0.0095,   # 9.5 mm
+            "cathode_radius": 0.032,  # 32 mm
+            "crowbar_enabled": False,
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True},
+        "snowplow": {
+            "anode_length": 0.16,        # 160 mm
+            "fill_pressure_Pa": 267.0,   # 2 Torr D2 = 267 Pa (midpoint of 1-4 Torr range)
+            "current_fraction": 0.7,     # Lee & Saw AAAPT fit: fc=0.7
+            "mass_fraction": 0.15,       # Lee & Saw AAAPT fit: fm=0.15
+            "pinch_column_fraction": 1.0,
+        },
+    },
     "pf400j": {
         "_meta": {
             "description": (

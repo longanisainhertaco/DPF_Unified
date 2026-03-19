@@ -12,6 +12,7 @@ Devices included:
     - **PF-1000** (IPPLM Warsaw, Poland) -- the largest DPF in Europe.
     - **NX2** (NIE Singapore) -- compact Mather-type DPF.
     - **UNU-ICTP PFF** -- the widely-replicated training device.
+    - **AECS-PF2** (Atomic Energy Commission of Syria) -- 2.8 kJ high-impedance DPF.
 
 Usage::
 
@@ -749,6 +750,49 @@ MJOLNIR_DATA = ExperimentalDevice(
 )
 
 
+# AECS-PF2 (Atomic Energy Commission of Syria) — 2.8 kJ high-impedance DPF
+# V0=15 kV, C=25 uF, L0=110 nH, R0=30 mOhm (very high impedance)
+# Anode: 9.5 mm radius, cathode: 32 mm radius, anode length: 160 mm
+# Fill gas: D2 at 1-4 Torr; I_peak ~90 kA; T/4 ~1.7 us
+# Published in Lee & Saw AAAPT (Asian African Association for Plasma Training)
+# device survey and Lee (2014) Review of DPF devices.
+# No digitized waveform available — scalar validation only.
+AECS_PF2_DATA = ExperimentalDevice(
+    name="AECS-PF2",
+    institution="Atomic Energy Commission of Syria",
+    capacitance=25e-6,             # 25 uF
+    voltage=15e3,                  # 15 kV (E = 2.8 kJ)
+    inductance=110e-9,             # 110 nH
+    resistance=30e-3,              # 30 mOhm (high impedance)
+    anode_radius=0.0095,           # 9.5 mm
+    cathode_radius=0.032,          # 32 mm
+    anode_length=0.16,             # 160 mm
+    fill_pressure_torr=2.0,        # 2 Torr D2 (midpoint of 1-4 Torr range)
+    fill_gas="deuterium",
+    peak_current=90e3,             # ~90 kA (Lee & Saw AAAPT survey)
+    neutron_yield=1e6,             # ~1e6 (estimated, small device at 2 Torr)
+    current_rise_time=1.7e-6,      # ~1.7 us (T/4 from RLC params)
+    reference="Lee & Saw, AAAPT device survey; Lee, J. Fusion Energy 33:319 (2014)",
+    lee_fc=0.7, lee_fm=0.15, lee_fmr=0.0, lee_fcr=0.0,
+    lee_reference="Lee & Saw, AAAPT publications (Lee 2014 Review)",
+    peak_current_uncertainty=0.15,     # 15% (small device, limited diagnostics)
+    rise_time_uncertainty=0.20,        # 20% (not explicitly stated in source)
+    neutron_yield_uncertainty=0.70,    # 70% (shot-to-shot, small device)
+    waveform_provenance="",  # No waveform data available
+    measurement_notes=(
+        "AECS-PF2: 2.8 kJ DPF at the Atomic Energy Commission of Syria. "
+        "High-impedance small device: RESF = R0/sqrt(L0/C) = 30e-3/sqrt(110e-9/25e-6) = 1.27. "
+        "At RESF > 1, the circuit is overdamped without plasma loading — the DPF discharge "
+        "relies on plasma inductance growth to prevent overdamping. "
+        "I_peak ~90 kA from Lee & Saw AAAPT device survey and Lee (2014) Review. "
+        "Fill pressure range 1-4 Torr D2; 2 Torr used as midpoint reference. "
+        "Lee model fits fc=0.7, fm=0.15 from AAAPT publications. "
+        "No digitized waveform available — scalar validation (I_peak, timing) only. "
+        "Uncertainties are Type B estimates (not stated in source)."
+    ),
+)
+
+
 # Registry mapping device name -> ExperimentalDevice
 DEVICES: dict[str, ExperimentalDevice] = {
     "PF-1000": PF1000_DATA,
@@ -761,6 +805,7 @@ DEVICES: dict[str, ExperimentalDevice] = {
     "POSEIDON-60kV": POSEIDON_60KV_DATA,
     "FAETON-I": FAETON_DATA,
     "MJOLNIR": MJOLNIR_DATA,
+    "AECS-PF2": AECS_PF2_DATA,
 }
 
 
