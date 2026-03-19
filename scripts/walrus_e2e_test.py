@@ -63,8 +63,8 @@ def step1_load_checkpoint() -> object | None:
     logger.info("=" * 70)
 
     try:
+        from dpf.ai import HAS_TORCH, HAS_WALRUS
         from dpf.ai.surrogate import DPFSurrogate
-        from dpf.ai import HAS_WALRUS, HAS_TORCH
 
         logger.info(f"  HAS_TORCH  = {HAS_TORCH}")
         logger.info(f"  HAS_WALRUS = {HAS_WALRUS}")
@@ -339,9 +339,9 @@ def step5_field_mapping_roundtrip() -> None:
         from dpf.ai.field_mapping import (
             dpf_scalar_to_well,
             dpf_vector_to_well,
+            validate_state_dict,
             well_scalar_to_dpf,
             well_vector_to_dpf,
-            validate_state_dict,
         )
 
         state = create_dpf_state((16, 16, 16))
@@ -413,8 +413,8 @@ def step6_well_export_validate() -> None:
     logger.info("=" * 70)
 
     try:
-        from dpf.ai.well_exporter import WellExporter
         from dpf.ai.dataset_validator import DatasetValidator
+        from dpf.ai.well_exporter import WellExporter
 
         grid = (16, 16, 16)
         state1 = create_dpf_state(grid)
@@ -449,7 +449,7 @@ def step6_well_export_validate() -> None:
             validator = DatasetValidator(energy_drift_threshold=0.05)
             vresult = validator.validate_file(result_path)
 
-            logger.info(f"  Validation result:")
+            logger.info("  Validation result:")
             logger.info(f"    valid: {vresult.valid}")
             logger.info(f"    n_trajectories: {vresult.n_trajectories}")
             logger.info(f"    n_timesteps: {vresult.n_timesteps}")
@@ -461,7 +461,7 @@ def step6_well_export_validate() -> None:
 
             # Print field stats
             if vresult.field_stats:
-                logger.info(f"    field_stats:")
+                logger.info("    field_stats:")
                 for fname, stats in vresult.field_stats.items():
                     logger.info(
                         f"      {fname}: mean={stats['mean']:.6e}, "
@@ -473,7 +473,7 @@ def step6_well_export_validate() -> None:
             # Also verify HDF5 structure directly
             import h5py
             with h5py.File(result_path, "r") as f:
-                logger.info(f"\n  HDF5 structure:")
+                logger.info("\n  HDF5 structure:")
                 logger.info(f"    Root attrs: {dict(f.attrs)}")
                 logger.info(f"    Groups: {list(f.keys())}")
                 if "t0_fields" in f:
@@ -516,7 +516,7 @@ def main() -> int:
     import torch
     logger.info(f"PyTorch version: {torch.__version__}")
     logger.info(f"WALRUS checkpoint: {CHECKPOINT_DIR}")
-    logger.info(f"Device: CPU (forced)")
+    logger.info("Device: CPU (forced)")
     logger.info("")
 
     # Step 1: Load checkpoint

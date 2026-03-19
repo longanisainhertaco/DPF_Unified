@@ -9,11 +9,11 @@ Outputs:
     docs/research-reference/scaling_laws.json
 """
 
-import sys
 import json
+import sqlite3
+import sys
 import warnings
 from pathlib import Path
-import sqlite3
 
 import numpy as np
 
@@ -233,8 +233,8 @@ def main() -> None:
     print("\n=== I^alpha power law fit (I_peak) ===")
     fit = i4_law_fit(I_MA, Yn)
     print(f"  Yn = {fit['A']:.3e} * I_peak^{fit['alpha']:.2f}   (R²={fit['r2']:.3f}, n={fit['n']})")
-    print(f"  Published Lee/Saw law: alpha ≈ 3.3-4.5")
-    print(f"  Note: PF-1000 campaign spans only 1.13–1.33 MA; shot scatter driven by radial Lee params")
+    print("  Published Lee/Saw law: alpha ≈ 3.3-4.5")
+    print("  Note: PF-1000 campaign spans only 1.13–1.33 MA; shot scatter driven by radial Lee params")
 
     # Also fit on I_pinch where available (the true physical quantity for Yn scaling)
     devices_with_pinch = [d for d in devices if d.get("I_pinch_MA") and d.get("Yn")]

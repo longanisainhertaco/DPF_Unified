@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 
 from app_engine import run_simulation_core
-from app_validation import PRESET_TO_DEVICE, validate_against_published
+from app_validation import PRESET_TO_DEVICE
 
 
 def main() -> None:
@@ -52,7 +52,7 @@ def main() -> None:
         alpha, log_C = np.polyfit(log_I, log_Y, 1)
         C = 10**log_C
         print(f"\nScaling fit: Y_n = {C:.2e} * I_peak^{alpha:.2f}")
-        print(f"Expected: alpha ~ 4.0 (Lee & Saw 2014)")
+        print("Expected: alpha ~ 4.0 (Lee & Saw 2014)")
         print(f"Deviation from I^4: {abs(alpha - 4.0):.2f}")
     else:
         alpha, C = 4.0, 1e9
