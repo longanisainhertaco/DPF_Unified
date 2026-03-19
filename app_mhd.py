@@ -1365,6 +1365,7 @@ def _run_metal(
     solver_dx_mhd = (dr_mhd + dz_mhd) / 2.0 if is_3d else dr_mhd
     solver_dz_mhd = solver_dx_mhd if is_3d else dz_mhd
 
+    _cyl_kwargs = {"r_inner": a, "convert_b_si_to_hl": True} if not is_3d else {}
     solver = MetalMHDSolver(
         grid_shape=grid_shape, dx=solver_dx_mhd, dz=solver_dz_mhd,
         gamma=gas.get("gamma", 5 / 3),
@@ -1372,6 +1373,7 @@ def _run_metal(
         use_ct=False,
         coordinates=coord_type,
         ion_mass=gas["m_mol"],
+        **_cyl_kwargs,
         **cfg,
     )
 
