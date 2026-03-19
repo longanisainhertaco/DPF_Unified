@@ -99,8 +99,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Init Athena++ submodule (best-effort)
+        run: git submodule update --init --depth=1 external/athena || echo "Athena++ submodule fetch failed — skipping"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
