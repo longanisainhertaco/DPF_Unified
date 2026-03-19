@@ -31,9 +31,13 @@ _VERSION = "v1.2"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from app_anim import create_animated_3d, create_animated_mhd, create_animated_mhd_3d, create_lee_cross_section  # noqa: F401
+from app_anim import (  # noqa: F401
+    create_animated_3d,
+    create_animated_mhd,
+    create_animated_mhd_3d,
+    create_lee_cross_section,
+)
 from app_babylon_unified import create_unified_iframe
-from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe  # noqa: F401
 from app_calibrate import auto_calibrate, format_calibration_markdown, get_published_params
 from app_compare import (
     add_to_comparison,
@@ -46,6 +50,7 @@ from app_compare import (
 from app_engine import GAS_SPECIES, run_simulation_core
 from app_mhd import BACKENDS, MHD_GRID_PRESETS, create_mhd_fields_fig, run_mhd_simulation
 from app_narrative import generate_narrative
+from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe  # noqa: F401
 from app_plots import (
     create_3d_plasma_fig,
     create_comparison_fig,
