@@ -129,6 +129,12 @@ class YieldTracker:
         # Peak values
         Ti_keV = float(np.max(Ti_safe)) * k_B / (1000.0 * 1.602e-19)
         n_peak = float(np.max(n_i_safe))
+        # Physical cap: DPF peak densities are ~1e24-1e26 m^-3. Values above 1e28
+        # indicate unphysical MHD compression artifacts; clamp to prevent overflow.
+        _N_PEAK_MAX = 1.0e28  # m^-3
+        n_peak_safe = min(n_peak, _N_PEAK_MAX)
+        if n_peak > _N_PEAK_MAX:
+            logger.debug("YieldTracker: n_peak %.2e exceeds physical cap, clamped to %.2e", n_peak, _N_PEAK_MAX)
         # Thermonuclear yield: dY = 0.25 * n_D^2 * <sigma*v> * V * dt
         dY_thermo = 0.0
         if Ti_keV > 0.1:  # Below 0.1 keV, reactivity is negligible
@@ -136,10 +142,11 @@ class YieldTracker:
                 from dpf.diagnostics.neutron_yield import dd_reactivity
                 sigma_v = dd_reactivity(Ti_keV)
                 # Volume-integrated: sum over all cells
-                n_D_peak = n_peak
-                V_total = cell_volume * rho.size  # Total grid volume
+                n_D_peak = np.float64(n_peak_safe)
+                V_total = np.float64(cell_volume * rho.size)  # Total grid volume
                 # Use peak conditions (pessimistic for volume average)
-                dY_thermo = 0.25 * n_D_peak**2 * sigma_v * V_total * dt
+                dY_step = np.float64(0.25) * n_D_peak**2 * np.float64(sigma_v) * V_total * np.float64(dt)
+                dY_thermo = float(min(dY_step, 1.0e50))  # hard cap against float overflow
             except ImportError:
                 pass
 
@@ -150,7 +157,7 @@ class YieldTracker:
                 from dpf.diagnostics.beam_target import beam_target_yield_rate
                 L_pinch = 0.01  # EMPIRICAL: 1 cm interaction length
                 bt_rate = beam_target_yield_rate(
-                    abs(I_current), abs(V_pinch), n_peak, L_pinch,
+                    abs(I_current), abs(V_pinch), n_peak_safe, L_pinch,
                     f_beam=f_beam,
                 )
                 dY_bt = bt_rate * dt
