@@ -21,7 +21,7 @@ BACKENDS = {
     "metal_plm": "Detailed (10-60 sec) -- full 2D plasma structure",
     "metal_weno5": "High Accuracy (30-120 sec) -- publication-quality 2D fields",
     "metal_3d": "3D (2-10 min) -- 3D instabilities and filamentation",
-    "metal_cylindrical": "Cylindrical (10-60 sec) -- full-discharge cylindrical MHD from t=0",
+    "metal_cylindrical": "Cylindrical (8-300 sec) -- full-discharge MHD from t=0 [use coarse grid]",
     "athena": "Reference (10-60 sec) -- independent C++ verification",
     "python": "Legacy (auto-redirects to Detailed)",
 }
@@ -1857,7 +1857,7 @@ def _run_metal_cylindrical(
     _DT_MAX = 5e-8  # 50 ns  # EMPIRICAL
     # Safety limits — full-discharge is expensive; prevent runaway
     _MAX_STEPS = 500_000  # hard cap: avoid running for hours
-    _MAX_WALL_SECONDS = 300  # 5 minutes wall-clock timeout
+    _MAX_WALL_SECONDS = 600  # 10 minutes wall-clock timeout
     _wall_start = wall_time.time()
 
     # ---- GPU-resident hot loop ----
