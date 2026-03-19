@@ -61,7 +61,7 @@ def auto_calibrate(
             crowbar_resistance=crowbar_r,
         )
         result = cal.calibrate(
-            fc_bounds=(0.4, 0.95),
+            fc_bounds=(0.4, 0.80),
             fm_bounds=(0.02, 0.6),
             maxiter=100,
         )
