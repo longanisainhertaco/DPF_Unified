@@ -29,6 +29,10 @@ except Exception:
     _GIT_HASH = "unknown"
 _VERSION = "v1.2"
 
+# HF Spaces deployment: set DPF_DEFAULT_PRESET=tutorial to use a lightweight preset
+# that runs in < 1 second without requiring large device parameters.
+_DEFAULT_PRESET = os.environ.get("DPF_DEFAULT_PRESET", "pf1000")
+
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from app_anim import (  # noqa: F401
@@ -625,11 +629,11 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                 chk_cr = gr.Checkbox(label="CR Ionization (non-LTE)",
                                      value=False, info="Collisional-radiative charge state evolution")
             preset_dd = gr.Dropdown(
-                choices=get_preset_choices(), value="pf1000",
+                choices=get_preset_choices(), value=_DEFAULT_PRESET,
                 label="Device Preset",
                 info="Pre-configured device parameters from published experiments. Selecting a preset auto-fills all circuit and geometry values.",
             )
-            device_info = gr.Markdown(value=get_device_info("pf1000"))
+            device_info = gr.Markdown(value=get_device_info(_DEFAULT_PRESET))
             gas_dd = gr.Dropdown(
                 choices=get_gas_choices(), value="D2", label="Fill Gas",
                 info=(

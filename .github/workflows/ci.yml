@@ -51,8 +51,8 @@ jobs:
           -n auto
       - name: Verify test count
         run: |
-          count=$(pytest tests/ --co -q -m "not slow" 2>/dev/null | grep -oE '^[0-9]+ test' | grep -oE '[0-9]+' | head -1)
-          echo "Found $count non-slow tests"
+          count=$(pytest tests/ --co -q -m "not slow" 2>&1 | tail -1 | grep -oE '[0-9]+' | head -1)
+          echo "Found ${count:-0} non-slow tests"
           if [ -z "$count" ] || [ "$count" -lt 200 ]; then
             echo "ERROR: Expected at least 200 non-slow tests, found ${count:-0}"
             exit 1
