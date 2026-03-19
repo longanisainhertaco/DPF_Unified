@@ -145,6 +145,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         bc: str | tuple[str, str, str] = "outflow",
         r_inner: float = 0.0,
         convert_b_si_to_hl: bool = False,
+        enable_betatron: bool = False,
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -168,6 +169,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.Z_eff: float = float(Z_eff)
         self.coordinates: str = coordinates
         self._convert_b_si_to_hl: bool = convert_b_si_to_hl
+        self.enable_betatron: bool = enable_betatron
         # Boundary conditions: "outflow" (zero-gradient) or "periodic"
         # Can be a single string (applied to all dims) or a 3-tuple per dim.
         if isinstance(bc, str):
@@ -232,14 +234,14 @@ class MetalMHDSolver(PlasmaSolverBase):
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
             "riemann=%s  recon=%s  time=%s  precision=%s  coords=%s  "
             "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s  "
-            "bremsstrahlung=%s",
+            "bremsstrahlung=%s  betatron=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.time_integrator,
             self.precision, self.coordinates,
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
-            self.enable_bremsstrahlung,
+            self.enable_bremsstrahlung, self.enable_betatron,
         )
 
 
@@ -817,6 +819,51 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         return p_new, Te_new, P_radiated
 
+    def _apply_betatron_heating(
+        self,
+        Ti: torch.Tensor,
+        B: torch.Tensor,
+        B_prev: torch.Tensor,
+    ) -> torch.Tensor:
+        """Operator-split betatron heating: T_perp * B = const (adiabatic compression).
+
+        During magnetic compression, perpendicular ion temperature rises as
+        dT_perp = -T_perp * (dB / B) per cell per timestep (magnetic moment
+        conservation for ions).  Only applied in cells where |B| is increasing.
+
+        Physics reference: NRL Plasma Formulary, adiabatic invariant mu = T_perp / B.
+
+        Parameters
+        ----------
+        Ti : torch.Tensor
+            Ion temperature [K], shape (nx, ny, nz).
+        B : torch.Tensor
+            Updated B field [code units], shape (3, nx, ny, nz).
+        B_prev : torch.Tensor
+            Previous-step B field [code units], shape (3, nx, ny, nz).
+
+        Returns
+        -------
+        torch.Tensor
+            Updated Ti with betatron heating applied, same shape as input.
+        """
+        B_mag = torch.sqrt(torch.sum(B ** 2, dim=0).clamp(min=1e-30))
+        B_mag_prev = torch.sqrt(torch.sum(B_prev ** 2, dim=0).clamp(min=1e-30))
+
+        # dB/B: fractional change in |B| this step
+        dB_over_B = (B_mag - B_mag_prev) / B_mag_prev
+
+        # Magnetic moment conservation: T_perp_new = T_perp_old * (B_new / B_old)
+        # Equivalent to dT_perp = -T_perp * (dB/B) where dB = B_new - B_old
+        # Apply only in compression cells (dB/B > 0)
+        compression_mask = dB_over_B > 0.0
+        Ti_new = torch.where(
+            compression_mask,
+            Ti * (B_mag / B_mag_prev),
+            Ti,
+        )
+        return torch.clamp(Ti_new, min=1.0)  # 1 K floor
+
     def step(
         self,
         state: dict[str, np.ndarray],
@@ -977,6 +1024,12 @@ class MetalMHDSolver(PlasmaSolverBase):
                     self.dx, self.dy, self.dz,
                     Z_eff=self.Z_eff,
                 )
+
+        # -------------------------------------------------------------- #
+        #  Betatron heating (operator-split)
+        # -------------------------------------------------------------- #
+        if self.enable_betatron:
+            Ti_pass = self._apply_betatron_heating(Ti_pass, B_new, B_n)
 
         # -------------------------------------------------------------- #
         #  Bremsstrahlung radiation cooling (operator-split)

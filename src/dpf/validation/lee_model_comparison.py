@@ -763,11 +763,26 @@ class LeeModel:
         if pinch_time <= 0:
             pinch_time = peak_current_time * 1.2  # Rough estimate
 
+        # V_max = L_total * max(|dI/dt|) — peak inductive voltage across the load
+        L_p_final = L_per_length * z_max
+        L_total_final = L0 + L_p_final
+        if len(t_combined) > 1:
+            dt_arr = np.diff(t_combined)
+            dI_arr = np.diff(I_combined)
+            valid = dt_arr > 0.0
+            if valid.any():
+                dI_dt_vals = dI_arr[valid] / dt_arr[valid]
+                V_max_kV = float(L_total_final * np.max(np.abs(dI_dt_vals))) / 1e3
+            else:
+                V_max_kV = 0.0
+        else:
+            V_max_kV = 0.0
+
         logger.info(
             "Lee Model completed: phases=%s, peak_I=%.2e A at t=%.2e s, "
-            "pinch_time=%.2e s, liftoff_delay=%.2e s",
+            "pinch_time=%.2e s, liftoff_delay=%.2e s, V_max=%.1f kV",
             phases_completed, peak_current, peak_current_time, pinch_time,
-            self.liftoff_delay,
+            self.liftoff_delay, V_max_kV,
         )
 
         return LeeModelResult(
@@ -796,6 +811,7 @@ class LeeModel:
                 "f_mr": self.f_mr,
                 "fc": self.fc,
                 "liftoff_delay": self.liftoff_delay,
+                "V_max_kV": V_max_kV,
             },
         )
 
