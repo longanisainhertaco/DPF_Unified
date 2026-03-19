@@ -912,6 +912,8 @@ def _run_hybrid_lee_mhd(
         use_ct=False,
         coordinates="cylindrical",
         ion_mass=gas["m_mol"],
+        r_inner=a,
+        convert_b_si_to_hl=True,
         **cfg,
     )
 
