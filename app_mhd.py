@@ -1105,9 +1105,10 @@ def _run_hybrid_lee_mhd(
             })
 
         if progress_fn and mhd_step % 20 == 0:
+            _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
             progress_fn(
-                min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0),
-                desc=f"MHD radial: t={t*1e6:.1f}us, step={mhd_step}",
+                max(_mhd_frac, 0.001),
+                desc=f"MHD radial step {mhd_step}: t={t*1e6:.2f}us, dt={dt:.2e}s",
             )
 
     t_arr = np.array(times)
@@ -1595,9 +1596,10 @@ def _run_metal(
             })
 
         if progress_fn and mhd_step % 20 == 0:
+            _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
             progress_fn(
-                min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0),
-                desc=f"MHD radial: t={t*1e6:.1f}us, step={mhd_step}",
+                max(_mhd_frac, 0.001),
+                desc=f"MHD radial step {mhd_step}: t={t*1e6:.2f}us, dt={dt:.2e}s",
             )
 
     t_arr = np.array(times)
@@ -2005,10 +2007,18 @@ def _run_metal_cylindrical(
             })
 
         if progress_fn and mhd_step % 20 == 0:
-            progress_fn(
-                min((t - t_start) / max(t_end - t_start, 1e-30), 1.0),
-                desc=f"Cylindrical MHD: t={t*1e6:.2f}us, phase={phase}, step={mhd_step}",
-            )
+            t_frac = min((t - t_start) / max(t_end - t_start, 1e-30), 1.0)
+            # Show step count when time fraction is too small to be visible
+            if t_frac < 0.01:
+                progress_fn(
+                    max(t_frac, 0.001),  # keep bar visible
+                    desc=f"Cylindrical MHD step {mhd_step}: t={t*1e6:.3f}us / {t_end*1e6:.1f}us, dt={dt:.2e}s, phase={phase}",
+                )
+            else:
+                progress_fn(
+                    t_frac,
+                    desc=f"Cylindrical MHD: t={t*1e6:.2f}us / {t_end*1e6:.1f}us ({t_frac*100:.1f}%), step={mhd_step}, phase={phase}",
+                )
 
     t_arr = np.array(times)
     I_arr = np.array(currents)
