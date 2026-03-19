@@ -134,7 +134,7 @@ def _get_device_params(device_name: str) -> dict[str, Any]:
 
     if device_name in DEVICES:
         dev = DEVICES[device_name]
-        return {
+        params: dict[str, Any] = {
             "C": dev.capacitance,
             "V0": dev.voltage,
             "L0": dev.inductance,
@@ -147,6 +147,12 @@ def _get_device_params(device_name: str) -> dict[str, Any]:
             "current_rise_time_exp": dev.current_rise_time,
             "crowbar_resistance": dev.crowbar_resistance,
         }
+        # Include device-specific calibrated Lee model parameters if available
+        for key in ("lee_fc", "lee_fm", "lee_fcr", "lee_fmr"):
+            val = getattr(dev, key, None)
+            if val is not None:
+                params[key] = val
+        return params
 
     from dpf.validation.suite import DEVICE_REGISTRY
 
@@ -203,6 +209,9 @@ class LeeModel:
             inductance (frozen plasma column).  Default: False.
     """
 
+    _DEFAULT_FC = 0.7
+    _DEFAULT_FM = 0.7
+
     def __init__(
         self,
         fill_gas_mass: float = 6.687e-27,  # D2 molecular mass (2 * m_d)
@@ -218,6 +227,9 @@ class LeeModel:
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
         self.fc = current_fraction   # Current fraction factor (Lee's f_c)
         self.f_mr = radial_mass_fraction if radial_mass_fraction is not None else mass_fraction
+        # Track whether caller explicitly set fc/fm (non-default) to avoid device override
+        self._fc_explicit = current_fraction != self._DEFAULT_FC
+        self._fm_explicit = mass_fraction != self._DEFAULT_FM
         self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
         self.crowbar_enabled = crowbar_enabled
@@ -269,6 +281,15 @@ class LeeModel:
 
         # Crowbar resistance: prefer device_params, fall back to constructor
         R_crowbar = device_params.get("crowbar_resistance", self.crowbar_resistance)
+
+        # Device-specific calibrated Lee parameters override constructor defaults.
+        # Only apply when the user did NOT explicitly pass non-default fc/fm to the constructor.
+        _fc_save, _fm_save, _fmr_save = self.fc, self.fm, self.f_mr
+        if not self._fc_explicit:
+            self.fc = float(device_params.get("lee_fc", self.fc))
+        if not self._fm_explicit:
+            self.fm = float(device_params.get("lee_fm", self.fm))
+            self.f_mr = float(device_params.get("lee_fmr", self.f_mr))
 
         # Fill gas density from pressure
         p_Pa = p_torr * 133.322  # Torr -> Pa
@@ -785,7 +806,7 @@ class LeeModel:
             self.liftoff_delay, V_max_kV,
         )
 
-        return LeeModelResult(
+        _result = LeeModelResult(
             t=t_combined,
             I=I_combined,
             V=V_combined,
@@ -814,6 +835,9 @@ class LeeModel:
                 "V_max_kV": V_max_kV,
             },
         )
+        # Restore constructor defaults (device params are per-run overrides only)
+        self.fc, self.fm, self.f_mr = _fc_save, _fm_save, _fmr_save
+        return _result
 
     def compare_with_experiment(
         self,

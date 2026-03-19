@@ -1923,13 +1923,13 @@ class SimulationEngine:
                 if self.geometry_type == "cylindrical":
                     cell_vol = self.fluid.geom.cell_volumes()
                     P_rad_2d = np.squeeze(P_rad, axis=1) if P_rad.ndim == 3 else P_rad
-                    self.total_radiated_energy += float(
-                        np.sum(P_rad_2d * cell_vol) * dt_sub
-                    )
+                    _dE_rad = float(np.sum(np.minimum(P_rad_2d, 1e40) * cell_vol) * dt_sub)
+                    if np.isfinite(_dE_rad):
+                        self.total_radiated_energy += _dE_rad
                 else:
-                    self.total_radiated_energy += float(
-                        np.sum(P_rad) * np.prod([self.config.dx] * 3) * dt_sub
-                    )
+                    _dE_rad = float(np.sum(np.minimum(P_rad, 1e40)) * np.prod([self.config.dx] * 3) * dt_sub)
+                    if np.isfinite(_dE_rad):
+                        self.total_radiated_energy += _dE_rad
 
             # Update pressure after radiation
             self.state["pressure"] = self.eos.total_pressure(
@@ -1954,11 +1954,13 @@ class SimulationEngine:
             if self.geometry_type == "cylindrical":
                 cell_vol = self.fluid.geom.cell_volumes()
                 P_line_2d = np.squeeze(P_line, axis=1) if P_line.ndim == 3 else P_line
-                self.total_radiated_energy += float(np.sum(P_line_2d * cell_vol) * dt_sub)
+                _dE_line = float(np.sum(np.minimum(P_line_2d, 1e40) * cell_vol) * dt_sub)
+                if np.isfinite(_dE_line):
+                    self.total_radiated_energy += _dE_line
             else:
-                self.total_radiated_energy += float(
-                    np.sum(P_line) * np.prod([self.config.dx] * 3) * dt_sub
-                )
+                _dE_line = float(np.sum(np.minimum(P_line, 1e40)) * np.prod([self.config.dx] * 3) * dt_sub)
+                if np.isfinite(_dE_line):
+                    self.total_radiated_energy += _dE_line
             self.state["pressure"] = self.eos.total_pressure(
                 self.state["rho"], self.state["Ti"], self.state["Te"]
             )
