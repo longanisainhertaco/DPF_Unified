@@ -1855,8 +1855,22 @@ def _run_metal_cylindrical(
 
     # Maximum timestep: resolve circuit dynamics (T/4 ≈ 5 us → dt_max = 50 ns)
     _DT_MAX = 5e-8  # 50 ns  # EMPIRICAL
+    # Safety limits — full-discharge is expensive; prevent runaway
+    _MAX_STEPS = 500_000  # hard cap: avoid running for hours
+    _MAX_WALL_SECONDS = 300  # 5 minutes wall-clock timeout
+    _wall_start = wall_time.time()
 
     while t < t_end:
+        # Safety: hard step cap and wall-clock timeout
+        if mhd_step >= _MAX_STEPS:
+            logger.warning("Cylindrical MHD hit %d step limit at t=%.3e s (%.1f%% of sim time)",
+                           _MAX_STEPS, t, t / t_end * 100)
+            break
+        if mhd_step % 1000 == 0 and (wall_time.time() - _wall_start) > _MAX_WALL_SECONDS:
+            logger.warning("Cylindrical MHD wall-clock timeout (%ds) at step %d, t=%.3e s",
+                           _MAX_WALL_SECONDS, mhd_step, t)
+            break
+
         dt_mhd = solver.compute_dt(state)
         dt = min(dt_mhd, _DT_MAX, t_end - t)
         if dt <= 0:
@@ -2020,6 +2034,9 @@ def _run_metal_cylindrical(
                     desc=f"Cylindrical MHD: t={t*1e6:.2f}us / {t_end*1e6:.1f}us ({t_frac*100:.1f}%), step={mhd_step}, phase={phase}",
                 )
 
+    _wall_elapsed = wall_time.time() - _wall_start
+    _incomplete = (mhd_step >= _MAX_STEPS) or (_wall_elapsed > _MAX_WALL_SECONDS)
+
     t_arr = np.array(times)
     I_arr = np.array(currents)
     I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
@@ -2042,6 +2059,16 @@ def _run_metal_cylindrical(
         "t_dip": 0.0,
         "dip_pct": 0.0,
         "n_steps": mhd_step,
+        "wall_time_s": _wall_elapsed,
+        "incomplete": _incomplete,
+        "incomplete_reason": (
+            f"Hit {_MAX_STEPS} step limit at t={t*1e6:.2f}us ({t/t_end*100:.1f}% of sim time). "
+            f"CFL timestep too small (dt={dt:.2e}s). Try: coarser grid or shorter sim_time."
+            if mhd_step >= _MAX_STEPS else
+            f"Wall-clock timeout ({_MAX_WALL_SECONDS}s) at step {mhd_step}, t={t*1e6:.2f}us. "
+            f"Try: coarser grid or Hybrid backend."
+            if _incomplete else ""
+        ),
         "has_snowplow": False,
         "has_mhd": True,
         "phases": phases_list,
