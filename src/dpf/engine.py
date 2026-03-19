@@ -759,6 +759,7 @@ class SimulationEngine:
 
         # Compute spatially-resolved resistivity field for MHD solver
         eta_field = None
+        J_field = None  # (3, nx, ny, nz) current density; cached for PIC E-field
         eta_anom = 0.0
         R_plasma = 0.0
         L_plasma = 0.0
@@ -792,8 +793,9 @@ class SimulationEngine:
                 # Cylindrical: curl(B)/mu_0 for J magnitude
                 B_2d = np.squeeze(B_field, axis=2) if B_field.ndim == 4 else B_field
                 curl_B = self.fluid.geom.curl(B_2d)
-                J_field = curl_B / _mu_0
-                J_mag = np.sqrt(np.sum(J_field**2, axis=0))  # (nr, nz)
+                J_field_2d = curl_B / _mu_0  # (3, nr, nz)
+                J_field = J_field_2d[:, :, np.newaxis, :]  # (3, nr, 1, nz)
+                J_mag = np.sqrt(np.sum(J_field_2d**2, axis=0))  # (nr, nz)
                 ne_2d = np.squeeze(ne, axis=1) if ne.ndim == 3 else ne
                 Ti_2d = np.squeeze(Ti_field, axis=1) if Ti_field.ndim == 3 else Ti_field
                 Te_2d = np.squeeze(self.state["Te"], axis=1) if self.state["Te"].ndim == 3 else self.state["Te"]
@@ -952,14 +954,23 @@ class SimulationEngine:
         # === Step 2.5: Kinetic / PIC Step ===
         # Run kinetic step *before* fluid to provide J_kin source terms for this step
         if self.kinetic and self.kinetic.kc.enabled:
+            # Sync MHD background state for Coulomb collisions (local density/temperature)
+            self.kinetic.update_mhd_state(self.state)
+
             # Convert E, B to (nx, ny, nz, 3) for HybridPIC
             # Engine state["B"] is (3, nx, ny, nz)
             B_fld = np.moveaxis(self.state["B"], 0, -1)
 
-            # E field reconstruction: E = -v x B + eta*J (simplified to -v x B for pushing)
-            # Ideally should use E from previous step or predictor-corrector
+            # E field reconstruction: E = -v x B + eta*J
+            # eta*J term accounts for resistive diffusion experienced by beam ions.
+            # Omitted in snowplow-only runs where J_field/eta_field are not computed.
             v = np.moveaxis(self.state["velocity"], 0, -1)
             E_fld = -np.cross(v, B_fld)
+            if J_field is not None and eta_field is not None:
+                # J_field: (3, nx, ny, nz) → (nx, ny, nz, 3)
+                J_fld = np.moveaxis(J_field, 0, -1)
+                # eta_field: (nx, ny, nz) → (nx, ny, nz, 1) for broadcast
+                E_fld = E_fld + eta_field[..., np.newaxis] * J_fld
 
             self.kinetic.step(dt, self.time, E_fld, B_fld)
 
