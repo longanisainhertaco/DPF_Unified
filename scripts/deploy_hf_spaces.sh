@@ -90,6 +90,16 @@ sdk_version: "6.9.0"
 app_file: app.py
 pinned: false
 license: mit
+tags:
+  - physics
+  - plasma
+  - simulation
+  - mhd
+  - fusion
+  - dense-plasma-focus
+  - neutron
+  - education
+short_description: "Free browser-based Dense Plasma Focus simulator — Lee model through full MHD"
 variables:
   DPF_DEFAULT_PRESET: tutorial
 ---

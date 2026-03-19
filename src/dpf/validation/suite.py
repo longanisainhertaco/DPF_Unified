@@ -113,7 +113,7 @@ NX2 = DeviceData(
     anode_radius=0.019,  # 19 mm
     cathode_radius=0.041, # 41 mm
     peak_current_A=400e3,     # 400 kA
-    peak_current_time_s=1.4e-6,  # 1.4 us
+    peak_current_time_s=1.8e-6,  # 1.8 us (Lee & Saw, J. Fusion Energy 27:292, 2008)
     pinch_current_A=300e3,    # ~300 kA
     pinch_time_s=1.7e-6,      # ~1.7 us
     neutron_yield=1e8,         # ~10^8
@@ -263,16 +263,18 @@ class ValidationSuite:
         print(f"Score: {result.overall_score:.2%}")
     """
 
-    def __init__(self, devices: list[str] | None = None) -> None:
+    def __init__(self, devices: list[str] | str | None = None) -> None:
         """Initialize validation suite.
 
         Args:
-            devices: List of device names to validate against.
-                     None = all registered devices.
+            devices: List of device names to validate against, or a single
+                     device name string. None = all registered devices.
         """
         if devices is None:
             self.devices = list(DEVICE_REGISTRY.keys())
         else:
+            if isinstance(devices, str):
+                devices = [devices]
             self.devices = devices
             for name in devices:
                 if name not in DEVICE_REGISTRY:
