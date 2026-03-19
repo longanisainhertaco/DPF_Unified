@@ -8,6 +8,7 @@ import numpy as np
 
 from dpf.config import SimulationConfig
 from dpf.constants import e as e_charge
+from dpf.constants import k_B
 from dpf.kinetic.hybrid import HybridPIC
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,10 @@ class KineticManager:
 
         self.beam_injected = False
 
+        # MHD state cache for Coulomb collision background (updated each step)
+        self._n_bg: float = 1e25       # background density [m^-3]
+        self._T_bg_eV: float = 100.0   # background electron temperature [eV]
+
         # Beam species — initialized empty, populated on first inject
         self.ion_species = self.driver.add_species(
             name="deuterium_beam",
@@ -53,6 +58,33 @@ class KineticManager:
             "KineticManager initialized: enabled=%s, beam=%s, E=%.1f keV",
             self.kc.enabled, self.kc.inject_beam, self.kc.beam_energy / 1e3
         )
+
+    def update_mhd_state(self, state: dict[str, np.ndarray]) -> None:
+        """Update the background density and temperature from the current MHD state.
+
+        Called by the engine each step so that Coulomb collisions use the local
+        plasma conditions rather than hardcoded defaults.
+
+        Args:
+            state: Engine state dict containing at least ``rho`` and ``Te``.
+        """
+        rho = state.get("rho")
+        Te = state.get("Te")
+        if rho is None or Te is None:
+            return
+
+        # Peak density: beam ions scatter most strongly in the dense pinch region
+        n_peak = float(np.max(rho)) / self.config.ion_mass
+        # Peak electron temperature (convert K → eV if > 1 K, floor at 1 eV)
+        Te_peak_K = float(np.max(Te))
+        Te_peak_eV = max(Te_peak_K * k_B / e_charge, 1.0)
+
+        self._n_bg = max(n_peak, 1e10)
+        self._T_bg_eV = Te_peak_eV
+
+        # Keep the driver in sync
+        if self.driver._collision_enabled:
+            self.driver.enable_collisions(self._n_bg, self._T_bg_eV)
 
     def step(self, dt: float, time: float, E_field: np.ndarray, B_field: np.ndarray) -> dict[str, Any]:
         """Advance kinetic particles by one step.
@@ -76,6 +108,12 @@ class KineticManager:
         if self.kc.inject_beam and not self.beam_injected:
             self._inject_beam()
             self.beam_injected = True
+            # Enable Coulomb collisions using current MHD background state
+            self.driver.enable_collisions(self._n_bg, self._T_bg_eV)
+            logger.info(
+                "Coulomb collisions enabled: n_bg=%.2e m^-3, T_bg=%.1f eV",
+                self._n_bg, self._T_bg_eV,
+            )
 
         # Push Particles
         # Note: HybridPIC.push_particles expects (nx,ny,nz,3) fields
