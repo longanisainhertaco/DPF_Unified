@@ -356,6 +356,17 @@ def _apply_post_processing(
 
     final_state = result.get("final_state")
 
+    # V_max diagnostic: peak inductive voltage L_total * max(|dI/dt|)
+    I_arr_pp = result.get("I_MA", np.array([]))
+    t_arr_pp = result.get("t_us", np.array([]))
+    if len(I_arr_pp) > 1 and len(t_arr_pp) > 1:
+        dI_dt_arr = np.gradient(I_arr_pp * 1e6, t_arr_pp * 1e-6)
+        L_p_nH_arr = result.get("L_p_nH", np.array([]))
+        L_ext = cc.get("L0", 1e-9)
+        L_p_max = float(np.max(L_p_nH_arr) * 1e-9) if len(L_p_nH_arr) > 0 else 0.0
+        L_total_est = L_ext + L_p_max
+        result["V_max_kV"] = float(L_total_est * np.max(np.abs(dI_dt_arr))) / 1e3
+
     # Phase 1 breakdown diagnostic: CIV or Paschen
     try:
         from dpf.experimental.civ_breakdown import (
@@ -802,7 +813,7 @@ def _run_hybrid_lee_mhd(
         mass_fraction=sc.get("mass_fraction", 0.15),
         fill_pressure_Pa=sc.get("fill_pressure_Pa", p_pa),
         current_fraction=sc.get("current_fraction", 0.7),
-        radial_mass_fraction=sc.get("radial_mass_fraction", None),
+        radial_mass_fraction=sc.get("radial_mass_fraction"),
         pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
     )
 
@@ -1274,7 +1285,7 @@ def _run_metal(
             mass_fraction=fm,
             fill_pressure_Pa=sc.get("fill_pressure_Pa", p_pa),
             current_fraction=fc,
-            radial_mass_fraction=sc.get("radial_mass_fraction", None),
+            radial_mass_fraction=sc.get("radial_mass_fraction"),
             pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
         )
 
