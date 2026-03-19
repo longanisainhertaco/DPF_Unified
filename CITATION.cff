@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: DPF-Unified
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Zamora
+    given-names: Anthony
+version: 1.4.1
+date-released: "2026-03-16"
+url: "https://github.com/longanisainhertaco/DPF_Unified"
+repository-code: "https://github.com/longanisainhertaco/DPF_Unified"
+license: MIT
+keywords:
+  - dense-plasma-focus
+  - mhd
+  - plasma-physics
+  - fusion
+  - simulation
+  - lee-model
+  - neutron-yield
+  - z-pinch
+abstract: >-
+  Multi-fidelity Dense Plasma Focus simulator with Lee model snowplow,
+  cylindrical MHD, and 3D backends. Validated against 6 published devices
+  including 24-shot PF-1000 statistical validation (1.27% mean error).
+  Browser-based web UI via Gradio. 14 device presets, parameter sweeps,
+  auto-calibration, and 3D Babylon.js visualization.
