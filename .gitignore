@@ -75,3 +75,5 @@ tests/CONSOLIDATION_PLAN.md
 reference/
 docs/research-reference/core-dpf/
 docs/research-reference/adjacent-fields/
+spark33/
+:memory:
