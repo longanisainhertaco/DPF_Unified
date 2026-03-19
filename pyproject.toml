@@ -65,6 +65,12 @@ metal = [
     "mlx>=0.20",
 ]
 
+[project.urls]
+Homepage = "https://github.com/anthonyzamora/dpf-unified"
+Repository = "https://github.com/anthonyzamora/dpf-unified"
+"Bug Tracker" = "https://github.com/anthonyzamora/dpf-unified/issues"
+Changelog = "https://github.com/anthonyzamora/dpf-unified/blob/main/CHANGELOG.md"
+
 [project.scripts]
 dpf = "dpf.cli.main:cli"
 
