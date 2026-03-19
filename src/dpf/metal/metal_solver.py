@@ -864,65 +864,51 @@ class MetalMHDSolver(PlasmaSolverBase):
         )
         return torch.clamp(Ti_new, min=1.0)  # 1 K floor
 
-    def step(
+    def step_gpu(
         self,
-        state: dict[str, np.ndarray],
+        state_gpu: dict[str, torch.Tensor],
         dt: float,
         current: float,
         voltage: float,
-        eta_field: np.ndarray | None = None,
+        eta_field_gpu: torch.Tensor | None = None,
         source_terms: dict[str, np.ndarray] | None = None,
         **kwargs: object,
-    ) -> dict[str, np.ndarray]:
-        """Advance the MHD state by one timestep.
+    ) -> dict[str, torch.Tensor]:
+        """Advance the MHD state by one timestep, staying on GPU throughout.
 
-        Supports two SSP Runge-Kutta schemes (Shu & Osher 1988):
-
-        **SSP-RK2** (2 stages, 2nd-order)::
-
-            U^(1)   = U^n + dt * L(U^n)
-            U^(n+1) = 0.5 * U^n + 0.5 * (U^(1) + dt * L(U^(1)))
-
-        **SSP-RK3** (3 stages, 3rd-order)::
-
-            U^(1)   = U^n + dt * L(U^n)
-            U^(2)   = 3/4 * U^n + 1/4 * (U^(1) + dt * L(U^(1)))
-            U^(n+1) = 1/3 * U^n + 2/3 * (U^(2) + dt * L(U^(2)))
-
-        Optionally applies resistive MHD (operator-split) when ``eta_field``
-        is provided: dB/dt += -curl(eta * J), dp/dt += (gamma-1)*eta*|J|^2.
+        Identical physics to ``step()`` but accepts and returns
+        ``dict[str, torch.Tensor]`` directly, eliminating the NumPy↔GPU
+        transfers at the call boundary.  Use this method when the caller
+        can keep state resident on the GPU across multiple steps.
 
         Parameters
         ----------
-        state : dict[str, np.ndarray]
-            State dictionary with keys:
+        state_gpu : dict[str, torch.Tensor]
+            State dictionary on ``self.device`` with keys:
               - ``"rho"``:      ``(nx, ny, nz)`` density
               - ``"velocity"``: ``(3, nx, ny, nz)`` velocity
               - ``"pressure"``: ``(nx, ny, nz)`` pressure
               - ``"B"``:        ``(3, nx, ny, nz)`` magnetic field
-              - ``"Te"``:       ``(nx, ny, nz)`` electron temperature (passed through)
-              - ``"Ti"``:       ``(nx, ny, nz)`` ion temperature (passed through)
-              - ``"psi"``:      ``(nx, ny, nz)`` divergence cleaning scalar (passed through)
+              - ``"Te"``:       ``(nx, ny, nz)`` electron temperature
+              - ``"Ti"``:       ``(nx, ny, nz)`` ion temperature
+              - ``"psi"``:      ``(nx, ny, nz)`` divergence cleaning scalar
         dt : float
             Timestep size [s].
         current : float
             Circuit current [A].
         voltage : float
             Capacitor voltage [V].
-        eta_field : np.ndarray | None
-            Spatially-resolved resistivity [Ohm*m], shape (nx, ny, nz).
-            If None, resistive diffusion is skipped (ideal MHD).
+        eta_field_gpu : torch.Tensor | None
+            Spatially-resolved resistivity [Ohm*m] already on GPU,
+            shape (nx, ny, nz).  If None, resistive diffusion is skipped.
+        source_terms : dict[str, np.ndarray] | None
+            Optional source terms (Q_ohmic_correction, J_kin).
 
         Returns
         -------
-        dict[str, np.ndarray]
-            Updated state dictionary with the same keys.
+        dict[str, torch.Tensor]
+            Updated state dictionary on ``self.device``.
         """
-        # -------------------------------------------------------------- #
-        #  Transfer state to GPU
-        # -------------------------------------------------------------- #
-        state_gpu = self._to_device(state)
-
         # Save auxiliary fields (passed through, not evolved on GPU)
         Te_pass = state_gpu["Te"].clone()
         Ti_pass = state_gpu["Ti"].clone()
@@ -955,10 +941,9 @@ class MetalMHDSolver(PlasmaSolverBase):
         # -------------------------------------------------------------- #
         #  Resistive MHD operator-split step (if eta_field provided)
         # -------------------------------------------------------------- #
-        if eta_field is not None:
-            eta_gpu = torch.tensor(
-                eta_field, dtype=self._dtype, device=self.device,
-            )
+        if eta_field_gpu is not None:
+            # Accept torch.Tensor directly; no conversion needed.
+            eta_gpu = eta_field_gpu.to(dtype=self._dtype, device=self.device)
 
             # Kinetic source terms (J_kin): PIC-MHD coupling not yet integrated
             # into the Metal resistive diffusion step.  When implemented, convert
@@ -1147,10 +1132,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # -------------------------------------------------------------- #
         self._update_coupling(B_new, current, voltage, dt)
 
-        # -------------------------------------------------------------- #
-        #  Assemble output and transfer back to CPU
-        # -------------------------------------------------------------- #
-        out_gpu: dict[str, torch.Tensor] = {
+        return {
             "rho": rho_new,
             "velocity": vel_new,
             "pressure": p_new,
@@ -1159,6 +1141,79 @@ class MetalMHDSolver(PlasmaSolverBase):
             "Ti": Ti_pass,
             "psi": psi_pass,
         }
+
+    def step(
+        self,
+        state: dict[str, np.ndarray],
+        dt: float,
+        current: float,
+        voltage: float,
+        eta_field: np.ndarray | None = None,
+        source_terms: dict[str, np.ndarray] | None = None,
+        **kwargs: object,
+    ) -> dict[str, np.ndarray]:
+        """Advance the MHD state by one timestep.
+
+        Backwards-compatible wrapper around ``step_gpu()``.  Transfers
+        NumPy state to GPU, delegates all physics to ``step_gpu()``, and
+        transfers the result back to NumPy float64.
+
+        Supports two SSP Runge-Kutta schemes (Shu & Osher 1988):
+
+        **SSP-RK2** (2 stages, 2nd-order)::
+
+            U^(1)   = U^n + dt * L(U^n)
+            U^(n+1) = 0.5 * U^n + 0.5 * (U^(1) + dt * L(U^(1)))
+
+        **SSP-RK3** (3 stages, 3rd-order)::
+
+            U^(1)   = U^n + dt * L(U^n)
+            U^(2)   = 3/4 * U^n + 1/4 * (U^(1) + dt * L(U^(1)))
+            U^(n+1) = 1/3 * U^n + 2/3 * (U^(2) + dt * L(U^(2)))
+
+        Optionally applies resistive MHD (operator-split) when ``eta_field``
+        is provided: dB/dt += -curl(eta * J), dp/dt += (gamma-1)*eta*|J|^2.
+
+        Parameters
+        ----------
+        state : dict[str, np.ndarray]
+            State dictionary with keys:
+              - ``"rho"``:      ``(nx, ny, nz)`` density
+              - ``"velocity"``: ``(3, nx, ny, nz)`` velocity
+              - ``"pressure"``: ``(nx, ny, nz)`` pressure
+              - ``"B"``:        ``(3, nx, ny, nz)`` magnetic field
+              - ``"Te"``:       ``(nx, ny, nz)`` electron temperature (passed through)
+              - ``"Ti"``:       ``(nx, ny, nz)`` ion temperature (passed through)
+              - ``"psi"``:      ``(nx, ny, nz)`` divergence cleaning scalar (passed through)
+        dt : float
+            Timestep size [s].
+        current : float
+            Circuit current [A].
+        voltage : float
+            Capacitor voltage [V].
+        eta_field : np.ndarray | None
+            Spatially-resolved resistivity [Ohm*m], shape (nx, ny, nz).
+            If None, resistive diffusion is skipped (ideal MHD).
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Updated state dictionary with the same keys.
+        """
+        state_gpu = self._to_device(state)
+
+        eta_field_gpu: torch.Tensor | None = None
+        if eta_field is not None:
+            eta_field_gpu = torch.tensor(
+                eta_field, dtype=self._dtype, device=self.device,
+            )
+
+        out_gpu = self.step_gpu(
+            state_gpu, dt, current, voltage,
+            eta_field_gpu=eta_field_gpu,
+            source_terms=source_terms,
+            **kwargs,
+        )
 
         result = self._to_numpy(out_gpu)
 
@@ -1557,11 +1612,30 @@ class MetalMHDSolver(PlasmaSolverBase):
     #  CFL query (public)
     # ------------------------------------------------------------------ #
 
+    def compute_dt_gpu(self, state_gpu: dict[str, torch.Tensor]) -> float:
+        """Compute the CFL-limited timestep from a GPU-resident state.
+
+        Calls ``_compute_dt_cfl()`` directly without any NumPy→GPU transfer.
+        Use this when state is already on the device (e.g., inside a
+        GPU-resident multi-step loop).
+
+        Parameters
+        ----------
+        state_gpu : dict[str, torch.Tensor]
+            Current simulation state on ``self.device``.
+
+        Returns
+        -------
+        float
+            CFL-limited timestep [s].
+        """
+        return self._compute_dt_cfl(state_gpu)
+
     def compute_dt(self, state: dict[str, np.ndarray]) -> float:
         """Compute the CFL-limited timestep for the given state.
 
-        Convenience method that transfers state to GPU, computes the
-        fast magnetosonic CFL constraint, and returns the result.
+        Backwards-compatible wrapper around ``compute_dt_gpu()``.  Transfers
+        state to GPU, then delegates to ``_compute_dt_cfl()``.
 
         Parameters
         ----------
@@ -1573,8 +1647,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         float
             CFL-limited timestep [s].
         """
-        state_gpu = self._to_device(state)
-        return self._compute_dt_cfl(state_gpu)
+        return self.compute_dt_gpu(self._to_device(state))
 
     # Alias for engine.py compatibility (uses _compute_dt internally)
     _compute_dt = compute_dt

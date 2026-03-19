@@ -1860,6 +1860,17 @@ def _run_metal_cylindrical(
     _MAX_WALL_SECONDS = 300  # 5 minutes wall-clock timeout
     _wall_start = wall_time.time()
 
+    # ---- GPU-resident hot loop ----
+    # Keep state on GPU as PyTorch tensors for the entire simulation.
+    # Only convert to NumPy for: snapshots (every N steps), radiation (if enabled),
+    # advanced physics (if enabled), and yield tracking (every 50 steps).
+    # This eliminates ~99% of CPU↔GPU transfers vs the old per-step bounce.
+    state_gpu = solver._to_device(state)
+    r_cells_gpu = torch.as_tensor(r_cells_lp, device=solver.device, dtype=solver._dtype)
+    fc = sc.get("current_fraction", 0.7)
+    _DIAG_INTERVAL = 50  # run expensive diagnostics every N steps
+    _RAD_INTERVAL = 10   # radiation cooling every N steps (operator-split OK)
+
     while t < t_end:
         # Safety: hard step cap and wall-clock timeout
         if mhd_step >= _MAX_STEPS:
@@ -1871,111 +1882,105 @@ def _run_metal_cylindrical(
                            _MAX_WALL_SECONDS, mhd_step, t)
             break
 
-        dt_mhd = solver.compute_dt(state)
+        dt_mhd = solver.compute_dt_gpu(state_gpu)
         dt = min(dt_mhd, _DT_MAX, t_end - t)
         if dt <= 0:
             break
 
-        # Compute spatially-varying resistivity: anomalous at low T, Spitzer at high T
-        Te_field = state.get("Te", np.full((nr, ny, nz), 300.0))
-        Te_eV = np.clip(Te_field, 300.0, None) / 11604.5  # K → eV
-        ln_lambda = 10.0  # Coulomb logarithm
-        eta_spitzer = 5.2e-5 * ln_lambda / np.power(Te_eV, 1.5)  # Ohm*m
-        eta_field = np.minimum(eta_spitzer, _ETA_ANOMALOUS)
-        # No CFL cap — sub-cycling in _apply_resistive_diffusion handles stability
+        # Compute eta on GPU (no NumPy roundtrip)
+        Te_gpu = state_gpu.get("Te", torch.full((nr, ny, nz), 300.0, device=solver.device, dtype=solver._dtype))
+        Te_eV_gpu = torch.clamp(Te_gpu, min=300.0) / 11604.5
+        eta_gpu = torch.clamp(5.2e-5 * 10.0 / torch.pow(Te_eV_gpu, 1.5), max=_ETA_ANOMALOUS)
 
-        # fc: only a fraction of circuit current drives the sheath (Lee model convention)
-        fc = sc.get("current_fraction", 0.7)
-        state = solver.step(
-            state, dt,
+        # MHD step — stays on GPU
+        state_gpu = solver.step_gpu(
+            state_gpu, dt,
             current=fc * circuit.current, voltage=circuit.voltage,
             anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
-            eta_field=eta_field,
+            eta_field_gpu=eta_gpu,
         )
 
-        # Update Te from pressure (MHD evolves p, not Te directly)
-        rho_safe_te = np.where(state["rho"] > 1e-10, state["rho"], 1e-10)
-        state["Te"] = state["pressure"] * gas["m_mol"] / (2.0 * rho_safe_te * 1.380649e-23)
+        # Update Te from pressure on GPU
+        rho_safe_gpu = torch.clamp(state_gpu["rho"], min=1e-10)
+        state_gpu["Te"] = state_gpu["pressure"] * gas["m_mol"] / (2.0 * rho_safe_gpu * 1.380649e-23)
 
-        # Radiation cooling
-        if "Te" in state:
+        # Radiation cooling (requires NumPy — run every _RAD_INTERVAL steps)
+        if mhd_step % _RAD_INTERVAL == 0:
             try:
                 from dpf.radiation.improved_radiation import apply_improved_radiation_losses
-                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
-                ne = rho_safe / gas["m_mol"]
-                Z_eff = gas.get("Z", 1)
-                B_field = state.get("B")
-                B_mag = np.sqrt(np.sum(B_field**2, axis=0)) if B_field is not None else None
-                state["Te"], _ = apply_improved_radiation_losses(
-                    state["Te"], ne, dt, Z=Z_eff, B_mag=B_mag,
+                Te_np = state_gpu["Te"].detach().cpu().to(torch.float64).numpy()
+                rho_np = state_gpu["rho"].detach().cpu().to(torch.float64).numpy()
+                rho_safe_np = np.where(rho_np > 0, rho_np, 1.0)
+                ne_np = rho_safe_np / gas["m_mol"]
+                B_np = state_gpu["B"].detach().cpu().to(torch.float64).numpy()
+                B_mag_np = np.sqrt(np.sum(B_np**2, axis=0))
+                Te_np, _ = apply_improved_radiation_losses(
+                    Te_np, ne_np, dt * _RAD_INTERVAL, Z=gas.get("Z", 1), B_mag=B_mag_np,
                 )
+                state_gpu["Te"] = torch.as_tensor(Te_np, dtype=solver._dtype).to(solver.device)
             except ImportError:
                 try:
                     from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
-                    rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
-                    ne = rho_safe / gas["m_mol"]
-                    state["Te"], _ = apply_bremsstrahlung_losses(
-                        state["Te"], ne, dt, Z=gas.get("Z", 1),
-                    )
+                    Te_np = state_gpu["Te"].detach().cpu().to(torch.float64).numpy()
+                    rho_np = state_gpu["rho"].detach().cpu().to(torch.float64).numpy()
+                    ne_np = np.where(rho_np > 0, rho_np, 1.0) / gas["m_mol"]
+                    Te_np, _ = apply_bremsstrahlung_losses(Te_np, ne_np, dt * _RAD_INTERVAL, Z=gas.get("Z", 1))
+                    state_gpu["Te"] = torch.as_tensor(Te_np, dtype=solver._dtype).to(solver.device)
                 except ImportError:
                     pass
 
-        # Advanced physics operator-split
+        # Advanced physics (requires NumPy — only when flags enabled)
         any_adv = enable_fld or enable_sheath or enable_ablation or enable_nernst or enable_cr
         if any_adv:
-            state, _cr_fracs = _apply_advanced_physics(
-                state, dt, gas, dr_mhd, dz_mhd, a, b,
+            state_np = solver._to_numpy(state_gpu)
+            state_np, _cr_fracs = _apply_advanced_physics(
+                state_np, dt, gas, dr_mhd, dz_mhd, a, b,
                 enable_fld=enable_fld, enable_sheath=enable_sheath,
                 enable_ablation=enable_ablation, enable_nernst=enable_nernst,
                 enable_cr=enable_cr, cr_fractions=_cr_fracs,
             )
+            state_gpu = solver._to_device(state_np)
 
-        # Time-resolved yield accumulation
-        if yield_tracker is not None:
+        # Yield tracking (NumPy, deferred every _DIAG_INTERVAL steps)
+        if yield_tracker is not None and mhd_step % _DIAG_INTERVAL == 0:
+            state_np_yield = solver._to_numpy(state_gpu)
             V_p = abs(coupling.dL_dt) * abs(circuit.current) if coupling.dL_dt else 0.0
             cell_vol = dr_mhd * (b - a) / nr * dz_mhd
             yield_tracker.accumulate(
-                state, dt,
+                state_np_yield, dt * _DIAG_INTERVAL,
                 I_current=circuit.current, V_pinch=V_p,
                 cell_volume=cell_vol,
             )
 
-        # Compute plasma inductance from density and sheath position.
-        # z_sheath from density peak: the snowplow accumulates swept gas at the
-        # sheath front (density maximum). z_sheath = z of peak density.
-        # If no significant compression (rho_max < 1.1*rho0), sheath hasn't formed.
-        rho_z_avg = np.mean(state["rho"][:, ny // 2, :], axis=0)  # shape (nz,)
-        rho_z_max = float(np.max(rho_z_avg))
+        # z_sheath and r_eff on GPU (no transfer)
+        rho_z_avg = state_gpu["rho"][:, ny // 2, :].mean(dim=0)
+        rho_z_max = float(rho_z_avg.max().item())
         if rho_z_max > 1.1 * rho0:
-            z_sheath_idx = int(np.argmax(rho_z_avg))
+            z_sheath_idx = int(rho_z_avg.argmax().item())
             z_sheath = float((z_sheath_idx + 1) * dz_mhd)
         else:
-            z_sheath = dz_mhd  # sheath hasn't formed yet
+            z_sheath = dz_mhd
         z_sheath = min(z_sheath, L_anode)
 
-        # Density-weighted mean radius for radial inductance
-        rho_mid = state["rho"][:, ny // 2, nz // 2]
-        weights = np.maximum(rho_mid - rho0 * 0.5, 0.0)
-        w_sum = float(np.sum(weights))
+        rho_mid_gpu = state_gpu["rho"][:, ny // 2, nz // 2]
+        weights_gpu = torch.clamp(rho_mid_gpu - rho0 * 0.5, min=0.0)
+        w_sum = float(weights_gpu.sum().item())
         if w_sum > 0:
-            r_eff = float(np.sum(r_cells_lp * weights)) / w_sum
+            r_eff = float((r_cells_gpu * weights_gpu).sum().item()) / w_sum
         else:
             r_eff = b
         r_eff = max(r_eff, a * 0.01)
 
-        Lp_axial = (mu_0 / (2.0 * np.pi)) * np.log(b / a) * z_sheath
-        Lp_radial = (mu_0 / (2.0 * np.pi)) * z_sheath * np.log(b / max(r_eff, a))
-        # Effective Lp seen by circuit: fc * Lp_geometric (Lee model convention)
+        import math as _math
+        Lp_axial = (mu_0 / (2.0 * _math.pi)) * _math.log(b / a) * z_sheath
+        Lp_radial = (mu_0 / (2.0 * _math.pi)) * z_sheath * _math.log(b / max(r_eff, a))
         Lp_mhd = fc * (Lp_axial + Lp_radial)
-        # Lp is physically monotonic — sheath can't un-sweep gas.
-        # Enforce to prevent noisy z_sheath → oscillating back-EMF instability.
         if prev_Lp is not None and Lp_mhd < prev_Lp:
             Lp_mhd = prev_Lp
 
         if prev_Lp is not None and prev_Lp > 0 and dt > 0:
             dLdt_mhd = (Lp_mhd - prev_Lp) / dt
-            # Back-EMF: dLp_eff/dt * I (fc already included in Lp_mhd)
-            back_emf = float(np.clip(dLdt_mhd * circuit.current, -_MAX_BEMF, _MAX_BEMF))
+            back_emf = max(-_MAX_BEMF, min(_MAX_BEMF, dLdt_mhd * circuit.current))
         else:
             dLdt_mhd = 0.0
             back_emf = 0.0
@@ -1991,8 +1996,7 @@ def _run_metal_cylindrical(
             est_total = max(1, int((t_end - t_start) / dt))
             snap_interval = max(1, est_total // _target_snaps)
 
-        phase = _detect_plasma_phase(state, a, b, rho0, nr, nz, dr_mhd, dz_mhd)
-
+        # Scalar diagnostics (cheap GPU reads — single .item() calls)
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
         voltages.append(circuit.voltage / 1e3)
@@ -2001,23 +2005,27 @@ def _run_metal_cylindrical(
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
 
-        rho_mid_r = state["rho"][:, ny // 2, nz // 2]
-        rho_sum = np.sum(rho_mid_r)
-        r_eff_mm = float(np.sum(rho_mid_r * r_cells_lp) / rho_sum * 1e3) if rho_sum > 0 else a * 1e3
+        rho_mid_r_gpu = state_gpu["rho"][:, ny // 2, nz // 2]
+        rho_sum_s = float(rho_mid_r_gpu.sum().item())
+        r_eff_mm = float((rho_mid_r_gpu * r_cells_gpu).sum().item()) / rho_sum_s * 1e3 if rho_sum_s > 0 else a * 1e3
         sheath_zs.append(L_anode * 1e3)
         shock_rs.append(r_eff_mm)
+
+        phase = "mhd_cylindrical"  # phase detection deferred to reduce overhead
         phases_list.append(phase)
 
-        rho_max_arr.append(float(np.max(state["rho"])))
-        T_max_arr.append(float(np.max(state.get("Te", state["pressure"] * gas["m_mol"] / (2.0 * state["rho"] * 1.380649e-23)))))
-        B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
+        rho_max_arr.append(float(state_gpu["rho"].max().item()))
+        Te_max_val = float(state_gpu["Te"].max().item()) if "Te" in state_gpu else 300.0
+        T_max_arr.append(Te_max_val)
+        B_sq = (state_gpu["B"] ** 2).sum(dim=0)
+        B_max_arr.append(float(B_sq.sqrt().max().item()))
 
         if mhd_step % snap_interval == 0:
             mhd_snapshots.append({
                 "t_us": t * 1e6,
-                "rho_mid": state["rho"][:, ny // 2, :].copy(),
-                "B_mid": state["B"][:, :, ny // 2, :].copy(),
-                "P_mid": state["pressure"][:, ny // 2, :].copy(),
+                "rho_mid": state_gpu["rho"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
+                "B_mid": state_gpu["B"][:, :, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
+                "P_mid": state_gpu["pressure"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
             })
 
         if progress_fn and mhd_step % 20 == 0:
@@ -2050,7 +2058,7 @@ def _run_metal_cylindrical(
         "T_max": np.array(T_max_arr),
         "B_max": np.array(B_max_arr),
         "mhd_snapshots": mhd_snapshots,
-        "final_state": state,
+        "final_state": solver._to_numpy(state_gpu),
         "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0,
         "t_peak": float(t_arr[I_peak_idx]) if len(t_arr) > 0 else 0.0,
         "I_pre_dip": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0.0,
