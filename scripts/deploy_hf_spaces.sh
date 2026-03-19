@@ -99,7 +99,7 @@ tags:
   - dense-plasma-focus
   - neutron
   - education
-short_description: "Free browser-based Dense Plasma Focus simulator — Lee model through full MHD"
+short_description: "Free Dense Plasma Focus simulator — Lee model to MHD"
 variables:
   DPF_DEFAULT_PRESET: tutorial
 ---
