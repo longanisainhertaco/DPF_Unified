@@ -310,6 +310,8 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
     parts = [f"**I_peak = {data['I_peak']:.3f} MA** at {data['t_peak']:.1f} us"]
     if data.get("nan_detected"):
         parts.insert(0, f"**NaN @ step {data.get('nan_step', '?')} — DIVERGED**")
+    if data.get("incomplete"):
+        parts.insert(0, f"**INCOMPLETE: {data.get('incomplete_reason', 'simulation did not finish')}**")
 
     if val:
         dI = val["I_peak_dev_pct"]
