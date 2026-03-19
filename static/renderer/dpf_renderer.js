@@ -2,7 +2,7 @@
  * DPF-Unified Plasma Renderer — Babylon.js 8.x
  *
  * Conference-quality 3D physics visualization.
- * All visuals driven by simulation data — no cosmetic fakes.
+ * Sheath/pinch/particles driven by Lee 0D scalars. MHD field heatmap from actual 2D data when available.
  *
  * Production techniques:
  *   - createDefaultEnvironment() for HDR IBL + skybox
@@ -344,12 +344,96 @@ async function createDPFScene(canvas, data) {
   halo.material = haloMat;
 
   // ============================================================
-  // FIELD DATA — shown numerically in HUD, no midplane plane
+  // FIELD DATA — midplane heatmap from MHD field arrays
   // ============================================================
   var activeOverlay = "none";
+  var heatPlane = null;
+  var heatTex = null;
+
+  // Create midplane plane: spans r=[anode, cathode], z=[0, anode_length]
+  // Oriented in x-z plane (x=axial, z & y = radial cross-section)
+  // Plane width = anode_length, height = cathode_radius - anode_radius
+  var planeW = G.anode_length;
+  var planeH = G.cathode_radius - G.anode_radius;
+  heatPlane = BABYLON.MeshBuilder.CreatePlane("heatPlane", {
+    width: planeW, height: planeH, sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+  }, scene);
+  // Position: centered in the electrode gap, in the y=0 midplane
+  heatPlane.position.x = planeW / 2;
+  heatPlane.position.y = (G.anode_radius + G.cathode_radius) / 2;
+  heatPlane.position.z = 0;
+  heatPlane.rotation.z = -Math.PI / 2;
+  heatPlane.rotation.y = -Math.PI / 2;
+  heatPlane.isVisible = false;
+  heatPlane.isPickable = false;
+
+  var heatMat = new BABYLON.StandardMaterial("heatMat", scene);
+  heatMat.disableLighting = true;
+  heatMat.backFaceCulling = false;
+  heatPlane.material = heatMat;
+
+  function _cmapLookup(v, cmap) {
+    var t = Math.max(0, Math.min(1, v));
+    var idx = t * (cmap.length - 1);
+    var lo = Math.floor(idx), hi = Math.min(lo + 1, cmap.length - 1);
+    var f = idx - lo;
+    return [
+      cmap[lo][0] * (1 - f) + cmap[hi][0] * f,
+      cmap[lo][1] * (1 - f) + cmap[hi][1] * f,
+      cmap[lo][2] * (1 - f) + cmap[hi][2] * f,
+    ];
+  }
 
   function updateHeatmap(key) {
-    // Field data displayed in HUD text — no 3D plane needed
+    if (!L || key === "none") {
+      if (heatPlane) heatPlane.isVisible = false;
+      return;
+    }
+    // Pick the right layer data
+    var layer = null;
+    if (key === "density" && L.density) layer = L.density;
+    else if (key === "temperature" && L.temperature) layer = L.temperature;
+    else if (key === "bfield" && L.bfield) layer = L.bfield;
+    else if (key === "radiation" && L.radiation) layer = L.radiation;
+    else if (key === "yield" && L.yield_map) layer = L.yield_map;
+
+    if (!layer || !layer.data || !layer.shape) {
+      if (heatPlane) heatPlane.isVisible = false;
+      return;
+    }
+
+    // Decode base64 float32 normalized data
+    var raw = atob(layer.data);
+    var buf = new ArrayBuffer(raw.length);
+    var bytes = new Uint8Array(buf);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var vals = new Float32Array(buf);
+
+    var nr = layer.shape[0], nz = layer.shape[1];
+    // Build RGBA texture: map normalized value → colormap
+    var texW = nz, texH = nr;
+    var rgba = new Uint8Array(texW * texH * 4);
+    for (var ir = 0; ir < nr; ir++) {
+      for (var iz = 0; iz < nz; iz++) {
+        var v = vals[ir * nz + iz];
+        var c = _cmapLookup(v, activeCmap);
+        var pi = ((nr - 1 - ir) * nz + iz) * 4;  // flip r for correct orientation
+        rgba[pi] = Math.round(c[0] * 255);
+        rgba[pi + 1] = Math.round(c[1] * 255);
+        rgba[pi + 2] = Math.round(c[2] * 255);
+        rgba[pi + 3] = 200;  // semi-transparent
+      }
+    }
+
+    if (heatTex) heatTex.dispose();
+    heatTex = new BABYLON.RawTexture(rgba, texW, texH,
+      BABYLON.Engine.TEXTUREFORMAT_RGBA, scene,
+      false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
+    heatMat.diffuseTexture = heatTex;
+    heatMat.emissiveTexture = heatTex;
+    heatMat.alpha = 0.8;
+    heatMat.useAlphaFromDiffuseTexture = true;
+    heatPlane.isVisible = true;
   }
 
   // ============================================================
