@@ -101,9 +101,9 @@ BACKEND_STATUS = {
     "hybrid": "WORKING",
     "metal_plm": "WORKING",
     "metal_weno5": "WORKING",
-    "metal_3d": "WORKING",
+    "metal_3d": "EXPERIMENTAL",
     "metal_cylindrical": "EXPERIMENTAL",
-    "athena": "WORKING",
+    "athena": "REQUIRES COMPILATION",
     "python": "REDIRECTS",
 }
 
@@ -134,12 +134,12 @@ BACKEND_HELP = {
                    "results, validation studies, resolving thin current sheaths.\n"
                    "REQUIRES: Any modern CPU. Slower than GPU but more accurate.",
 
-    "metal_3d": "STATUS: Working (Apple GPU) | SPEED: 2-10 minutes | ACCURACY: 2nd-order, full 3D\n\n"
-                "Full 3D MHD on GPU. The ONLY backend that can capture non-axisymmetric physics: "
-                "m=1 kink instability, current filamentation, azimuthal asymmetries. "
-                "Uses significantly more memory than 2D.\n"
-                "REQUIRES: Apple Silicon Mac with 16+ GB unified memory. "
-                "Fine grid (64^3) needs ~64 MB; 200^3 needs ~2 GB.",
+    "metal_3d": "STATUS: Experimental (Apple GPU) | SPEED: 2-10 minutes | ACCURACY: 2nd-order, Cartesian 3D\n\n"
+                "EXPERIMENTAL: 3D MHD on GPU in Cartesian coordinates. Can capture m=1 kink, filamentation, "
+                "azimuthal asymmetries. Starts from uniform IC with perturbation — no Lee model, no validated "
+                "waveform. Currently runs very few steps at coarse grid. Needs long sim_time and fine grid "
+                "to develop meaningful instabilities.\n"
+                "REQUIRES: Apple Silicon Mac with 16+ GB unified memory.",
 
     "metal_cylindrical": "STATUS: Experimental (Apple GPU) | SPEED: 8s coarse, 2-5min medium, 10+ min fine\n\n"
                          "EXPERIMENTAL: Full-discharge cylindrical MHD from t=0 — no Lee model. "
@@ -150,11 +150,12 @@ BACKEND_HELP = {
                          "For validated results, use Hybrid or Lee backend instead.\n"
                          "REQUIRES: Apple Silicon Mac or PyTorch CPU. Coarse grid recommended.",
 
-    "athena": "STATUS: Working | SPEED: 10-60 seconds | ACCURACY: 3rd-order, reference quality\n\n"
-              "Princeton's Athena++ code — a reference-quality astrophysical MHD solver used in "
-              "hundreds of published papers. Provides independent verification of our Metal solver. "
-              "Uses PPM reconstruction + HLLD Riemann solver with constrained transport (div-B = 0).\n"
-              "REQUIRES: Compiled C++ binary (already built on this machine).",
+    "athena": "STATUS: Requires Compilation | SPEED: 10-60 seconds (if compiled) | ACCURACY: 3rd-order\n\n"
+              "Princeton's Athena++ MHD solver — reference quality but REQUIRES a compiled C++ binary "
+              "that is NOT included. If the binary is not found, this backend returns incomplete/incorrect "
+              "results silently. Build with: cd external/athena && python configure.py --prob=dpf_zpinch "
+              "--coord=cylindrical -b --flux=hlld && make -j8.\n"
+              "For most users: use Hybrid or metal_plm instead.",
 
     "python": "STATUS: Auto-redirects to 2D MHD Fast | NOT RECOMMENDED\n\n"
               "The pure Python MHD solver uses basic numerical methods (central differences) "
@@ -274,7 +275,8 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
     status = BACKEND_STATUS.get(backend, "UNKNOWN")
 
     status_emoji = {"WORKING": "Ready", "NEEDS COMPILATION": "Needs setup",
-                    "REDIRECTS": "Auto-redirects"}.get(status, status)
+                    "REDIRECTS": "Auto-redirects", "EXPERIMENTAL": "Experimental",
+                    "REQUIRES COMPILATION": "Needs Athena++ build"}.get(status, status)
 
     if is_lee or backend == "hybrid":
         info = f"**{est}** | {status_emoji} | {fid}\n\n{help_text}"
