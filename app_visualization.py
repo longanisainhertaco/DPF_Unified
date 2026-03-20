@@ -169,8 +169,9 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
                 }
 
     # Encode mhd_snapshots as per-field time-series frames.
-    # Each snapshot is {t_us, rho_mid, B_mid, P_mid} from the solver.
+    # Each snapshot is {t_us, rho_mid, B_mid, P_mid, vel_mid} from the solver.
     # Normalisation is per-field-across-all-snaps so colours stay consistent.
+    vel_layer: dict[str, Any] | None = None
     if mhd_snapshots and density is not None:
         snap_shape = list(np.asarray(mhd_snapshots[0]["rho_mid"]).shape)
 
@@ -208,20 +209,43 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
             ]
             temperature["frames_shape"] = snap_shape
 
-        # --- bfield frames ---
+        # --- bfield frames (magnitude + Br/Bz components for field line tracing) ---
         if bfield is not None and "B_mid" in mhd_snapshots[0]:
             B_arrays = [np.asarray(s["B_mid"], dtype=np.float32) for s in mhd_snapshots]
             B_global_lo = float(min(a.min() for a in B_arrays))
             B_global_hi = float(max(a.max() for a in B_arrays))
             B_scale = max(B_global_hi - B_global_lo, 1e-30)
-            bfield["frames"] = [
-                {
+            bfield["frames"] = []
+            for i, s in enumerate(mhd_snapshots):
+                frame_entry: dict[str, Any] = {
                     "t_us": float(s["t_us"]),
                     "data": _b64((B_arrays[i] - B_global_lo) / B_scale),
                 }
-                for i, s in enumerate(mhd_snapshots)
-            ]
+                b_full = np.asarray(s["B_mid"], dtype=np.float32)
+                if b_full.ndim == 3 and b_full.shape[0] >= 3:
+                    frame_entry["Br"] = _b64(b_full[0])
+                    frame_entry["Bz"] = _b64(b_full[2])
+                    frame_entry["Bt"] = _b64(b_full[1])
+                bfield["frames"].append(frame_entry)
             bfield["frames_shape"] = snap_shape
+
+        # --- velocity frames (vr, vz components for particle direction + isosurface) ---
+        if "vel_mid" in mhd_snapshots[0]:
+            vel_arrays = [np.asarray(s["vel_mid"], dtype=np.float32) for s in mhd_snapshots]
+            vel_layer: dict[str, Any] = {"frames": [], "frames_shape": snap_shape}
+            for i, s in enumerate(mhd_snapshots):
+                v = vel_arrays[i]
+                v_entry: dict[str, Any] = {"t_us": float(s["t_us"])}
+                if v.ndim == 3 and v.shape[0] >= 3:
+                    v_entry["vr"] = _b64(v[0])
+                    v_entry["vz"] = _b64(v[2])
+                    vmag = np.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+                    v_entry["vmag"] = _b64(_norm(vmag))
+                elif v.ndim == 2:
+                    v_entry["vmag"] = _b64(_norm(np.abs(v)))
+                vel_layer["frames"].append(v_entry)
+        else:
+            vel_layer = None
 
     # Layer 6: Pinch metrics
     pinch = None
@@ -266,6 +290,7 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
         "density": density,
         "temperature": temperature,
         "bfield": bfield,
+        "velocity": vel_layer,
         "pinch": pinch,
         "beam": beam,
         "instability": instability,

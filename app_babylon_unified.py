@@ -182,6 +182,7 @@ window.addEventListener("load", async function(){
   if (scene.L.density) layers.push("density");
   if (scene.L.temperature) layers.push("temperature");
   if (scene.L.bfield) layers.push("B-field");
+  if (scene.L.velocity) layers.push("velocity");
   if (scene.L.instability) layers.push("instability");
   if (scene.L.radiation) layers.push("radiation");
   if (scene.L.yield_map) layers.push("yield");
@@ -198,10 +199,10 @@ window.addEventListener("load", async function(){
   var visModeEl = document.getElementById("vis-mode");
   var backend = (scene.L.backend || "lee").toLowerCase();
   var hasMHD = !!scene.L.has_mhd;
-  var hasMHDFields = !!(scene.L.density || scene.L.temperature || scene.L.bfield);
+  var hasMHDFields = !!(scene.L.density || scene.L.temperature || scene.L.bfield || scene.L.velocity);
   if (hasMHD && hasMHDFields) {
     visModeEl.className = "mhd";
-    visModeEl.innerHTML = "3D geometry: Lee model schematic &bull; Heatmaps: MHD field data (" + backend + ")";
+    visModeEl.innerHTML = "3D geometry: MHD-driven (isosurface, field lines, particles) &bull; Heatmaps: MHD field data (" + backend + ")";
   } else {
     visModeEl.className = "lee";
     visModeEl.innerHTML = "Visualization: Lee model schematic (not MHD field data)";
