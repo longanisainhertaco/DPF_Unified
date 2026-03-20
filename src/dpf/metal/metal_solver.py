@@ -146,6 +146,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         r_inner: float = 0.0,
         convert_b_si_to_hl: bool = False,
         enable_betatron: bool = False,
+        implicit_resistivity: bool = False,
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -170,6 +171,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.coordinates: str = coordinates
         self._convert_b_si_to_hl: bool = convert_b_si_to_hl
         self.enable_betatron: bool = enable_betatron
+        self.implicit_resistivity: bool = implicit_resistivity
         # Boundary conditions: "outflow" (zero-gradient) or "periodic"
         # Can be a single string (applied to all dims) or a 3-tuple per dim.
         if isinstance(bc, str):
@@ -215,7 +217,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Cylindrical coordinate support -----------------------------------
         # r_inner offsets the radial grid so domain covers [r_inner, r_inner + nx*dx].
         # For DPF inter-electrode gap: r_inner = anode_radius.
-        self._r_inner: float = float(r_inner)
+        self._r_inner: float = float(r_inner if r_inner is not None else 0.0)
         if self.coordinates == "cylindrical":
             r_1d = self._r_inner + (torch.arange(nx, dtype=self._dtype, device=self.device)
                     + 0.5) * self.dx
@@ -673,16 +675,15 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         Using Heaviside-Lorentz units (mu_0 = 1).
         Resistivity eta must be scaled: eta_code = eta_SI / mu_0_SI.
+
+        When ``self.implicit_resistivity`` is True, uses backward-Euler
+        implicit solve via the batched Thomas algorithm — unconditionally
+        stable regardless of eta magnitude.  Otherwise falls back to
+        explicit sub-cycling (capped at 20 sub-steps).
         """
-        # Constants
-        # In Code Units, mu_0 = 1.0
-        # However, input `eta` is likely in SI (Ohm-m).
-        # We need to scale eta.
-        # eta_code = eta_si / mu_0_si
         eta_eff = eta / mu_0_si
 
-        # Current density J = curl(B) / mu_0 (mu_0=1)
-        # Use _safe_gradient to handle degenerate dimensions (e.g. ny=1)
+        # ── Current density (needed for Ohmic heating in both paths) ──
         dBz_dy = _safe_gradient(B[2], dim=1, spacing=self.dy)
         dBy_dz = _safe_gradient(B[1], dim=2, spacing=self.dz)
         dBx_dz = _safe_gradient(B[0], dim=2, spacing=self.dz)
@@ -690,27 +691,53 @@ class MetalMHDSolver(PlasmaSolverBase):
         dBy_dx = _safe_gradient(B[1], dim=0, spacing=self.dx)
         dBx_dy = _safe_gradient(B[0], dim=1, spacing=self.dy)
 
-        Jx = (dBz_dy - dBy_dz) # / 1.0
-        Jy = (dBx_dz - dBz_dx)
-        Jz = (dBy_dx - dBx_dy)
+        Jx = dBz_dy - dBy_dz
+        Jy = dBx_dz - dBz_dx
+        Jz = dBy_dx - dBx_dy
 
-        # Two-Way Coupling: J_plasma = J_total - J_kin
-        # J_kin is already in Code Units
         if J_kin is not None:
-             Jx = Jx - J_kin[0]
-             Jy = Jy - J_kin[1]
-             Jz = Jz - J_kin[2]
+            Jx = Jx - J_kin[0]
+            Jy = Jy - J_kin[1]
+            Jz = Jz - J_kin[2]
 
         # Ohmic heating: Q = eta_eff * |J|^2
         J_sq = Jx ** 2 + Jy ** 2 + Jz ** 2
         Q_ohm = eta_eff * J_sq
 
-        # Resistive term: dB/dt = -curl(eta_eff * J)
+        # ── Implicit path: batched Thomas algorithm ──────────────────
+        if self.implicit_resistivity:
+            from dpf.metal.metal_transport import implicit_resistive_step
+
+            B_new = B.clone()
+            # Diffuse B_theta (component 1) — primary resistive channel in DPF
+            B_new = implicit_resistive_step(
+                B_new, eta_eff, dt, self.dx,
+                r=self._r,
+                coordinates=self.coordinates,
+                mu_0=1.0,  # already in code units
+                component=1,
+            )
+            # Diffuse B_z (component 2) if 3D
+            if B.shape[2] > 1 or B.shape[3] > 1:
+                B_new = implicit_resistive_step(
+                    B_new, eta_eff, dt, self.dx,
+                    r=self._r,
+                    coordinates=self.coordinates,
+                    mu_0=1.0,
+                    component=2,
+                )
+
+            # Ohmic heating (explicit, unconditionally stable for pressure)
+            p_new = p + dt * (gamma - 1.0) * Q_ohm
+            p_new = torch.clamp(p_new, min=1e-12)
+
+            return B_new, p_new
+
+        # ── Explicit path: sub-cycled forward Euler (legacy) ─────────
         eta_Jx = eta_eff * Jx
         eta_Jy = eta_eff * Jy
         eta_Jz = eta_eff * Jz
 
-        # curl(eta * J)
         d_etaJz_dy = _safe_gradient(eta_Jz, dim=1, spacing=self.dy)
         d_etaJy_dz = _safe_gradient(eta_Jy, dim=2, spacing=self.dz)
         d_etaJx_dz = _safe_gradient(eta_Jx, dim=2, spacing=self.dz)
@@ -723,8 +750,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         dB_dt[1] = -(d_etaJx_dz - d_etaJz_dx)
         dB_dt[2] = -(d_etaJy_dx - d_etaJx_dy)
 
-        # Sub-cycle resistive update for CFL stability:
-        #   dt_res < dx^2 / (2 * eta_eff_max)
+        # Sub-cycle for CFL stability: dt_res < dx^2 / (2 * eta_eff_max)
         dx_min = min(self.dx, self.dz)
         eta_eff_max = float(eta_eff.max().item()) if eta_eff.numel() > 0 else 0.0
         if eta_eff_max > 0:
@@ -740,7 +766,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         for _ in range(n_sub):
             B_new = B_new + dt_sub * dB_dt
             p_new = p_new + dt_sub * (gamma - 1.0) * Q_ohm
-        p_new = torch.clamp(p_new, min=1e-12)  # P_FLOOR
+        p_new = torch.clamp(p_new, min=1e-12)
 
         return B_new, p_new
 

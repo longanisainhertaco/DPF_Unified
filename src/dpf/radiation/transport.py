@@ -137,6 +137,28 @@ def compute_rosseland_opacity(
     return kappa
 
 
+def _build_r_faces(r_coords: np.ndarray, ndim: int) -> np.ndarray:
+    """Build cell-face radial coordinates from cell-centered r_coords.
+
+    Face i sits halfway between cell i-1 and cell i.
+    Face 0 = r[0] - dr/2 (clamped >= 0 for grids starting at axis).
+    Face nr = r[-1] + dr/2.
+
+    Returns 1-D array of length len(r_coords) + 1.
+    """
+    nr = len(r_coords)
+    r_face = np.empty(nr + 1)
+    if nr >= 2:
+        dr = r_coords[1] - r_coords[0]
+    else:
+        dr = r_coords[0] * 2.0
+    r_face[0] = max(r_coords[0] - 0.5 * dr, 0.0)
+    for i in range(1, nr):
+        r_face[i] = 0.5 * (r_coords[i - 1] + r_coords[i])
+    r_face[nr] = r_coords[-1] + 0.5 * dr
+    return r_face
+
+
 def fld_step(
     E_rad: np.ndarray,
     Te: np.ndarray,
@@ -146,6 +168,8 @@ def fld_step(
     Z: float = 1.0,
     gaunt_factor: float = 1.2,
     brem_power: np.ndarray | None = None,
+    geometry: str = "cartesian",
+    r_coords: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Advance radiation energy density by one FLD timestep.
 
@@ -155,8 +179,15 @@ def fld_step(
     with explicit forward Euler and sub-cycling for stability.
     The diffusion coefficient is: D = c * lambda(R) / kappa
 
+    In cylindrical geometry (r, z), axis 0 is radial and the diffusion
+    operator uses the correct cylindrical form:
+        div(D grad E) = (1/r) d/dr(r D dE/dr) + d/dz(D dE/dz)
+
+    At r=0 the 1/r singularity is resolved via L'Hopital's rule:
+        (1/r) d/dr(r D dE/dr) -> 2 D d^2E/dr^2
+
     Args:
-        E_rad: Radiation energy density [J/m^3], shape (nx, ny, nz).
+        E_rad: Radiation energy density [J/m^3], shape (nr, nz) or (nx, ny, nz).
         Te: Electron temperature [K].
         ne: Electron number density [m^-3].
         dx: Grid spacing [m].
@@ -165,6 +196,10 @@ def fld_step(
         gaunt_factor: Bremsstrahlung gaunt factor.
         brem_power: Pre-computed bremsstrahlung power [W/m^3] (optional).
                     If None, computed from ne, Te.
+        geometry: Coordinate system — "cartesian" or "cylindrical".
+        r_coords: Cell-centered radial coordinates [m], shape (nr,).
+                  Required when geometry="cylindrical". axis 0 of E_rad
+                  must correspond to the radial direction.
 
     Returns:
         Tuple of (E_rad_new, Q_absorbed) where:
@@ -172,6 +207,16 @@ def fld_step(
             Q_absorbed: Net radiation energy absorbed by matter [W/m^3]
                         (negative = net emission / cooling).
     """
+    is_cylindrical = geometry == "cylindrical"
+    if is_cylindrical and r_coords is None:
+        raise ValueError("r_coords required for cylindrical geometry")
+
+    # Precompute cylindrical geometry arrays (broadcastable over all axes)
+    ndim = E_rad.ndim
+
+    if is_cylindrical:
+        r_face = _build_r_faces(r_coords, ndim)
+
     # Compute opacity
     kappa = compute_rosseland_opacity(ne, Te, Z)
 
@@ -179,9 +224,6 @@ def fld_step(
     if brem_power is None:
         from dpf.radiation.bremsstrahlung import bremsstrahlung_power
         brem_power = bremsstrahlung_power(ne, Te, Z, gaunt_factor)
-
-    # Compute gradient of E_rad for flux limiter
-    ndim = E_rad.ndim
     grad_E_mag = np.zeros_like(E_rad)
     for axis in range(ndim):
         if E_rad.shape[axis] < 3:
@@ -223,34 +265,72 @@ def fld_step(
 
     for _ in range(n_sub):
         # Diffusion: div(D * grad(E))
+        # Cartesian:    sum_axis d/dx(D dE/dx)
+        # Cylindrical:  (1/r) d/dr(r D dE/dr) + d/dz(D dE/dz)
         div_flux = np.zeros_like(E_new)
         for axis in range(ndim):
-            # Skip degenerate axes (e.g., theta=1 in cylindrical)
             n = E_new.shape[axis]
             if n < 3:
                 continue
-            # Face-centered D (average of neighbors)
-            # For axis=0: D_{i+1/2} = 0.5*(D_i + D_{i+1})
 
-            # Build slices for i and i+1
-            sl_c = [slice(None)] * ndim  # center slice
-            sl_p = [slice(None)] * ndim  # plus-1 slice
-            sl_m = [slice(None)] * ndim  # minus-1 slice
+            sl_c = [slice(None)] * ndim
+            sl_p = [slice(None)] * ndim
+            sl_m = [slice(None)] * ndim
 
             sl_c[axis] = slice(1, n - 1)
             sl_p[axis] = slice(2, n)
             sl_m[axis] = slice(0, n - 2)
 
-            # D at faces
             D_plus = 0.5 * (D[tuple(sl_c)] + D[tuple(sl_p)])
             D_minus = 0.5 * (D[tuple(sl_c)] + D[tuple(sl_m)])
 
-            # Flux: F_{i+1/2} = D_{i+1/2} * (E_{i+1} - E_i) / dx
             flux_plus = D_plus * (E_new[tuple(sl_p)] - E_new[tuple(sl_c)]) / dx
             flux_minus = D_minus * (E_new[tuple(sl_c)] - E_new[tuple(sl_m)]) / dx
 
-            # div(flux) = (F_{i+1/2} - F_{i-1/2}) / dx
-            div_flux[tuple(sl_c)] += (flux_plus - flux_minus) / dx
+            if is_cylindrical and axis == 0:
+                # Cylindrical radial diffusion: (1/r) d/dr(r * F)
+                # where F = D * dE/dr.
+                # Use face-centered r for conservative finite volume:
+                #   div = (r_{i+1/2} * F_{i+1/2} - r_{i-1/2} * F_{i-1/2})
+                #         / (r_i * dr)
+                # r_face indices: face i+1/2 for cell i is r_face[i+1].
+                # Interior cells are indexed 1..n-2 in the E array, so
+                # the plus-face of interior cell i is r_face[i+1], and
+                # the minus-face is r_face[i].
+                rf_plus = r_face[2:n]    # faces i+1 for i=1..n-2
+                rf_minus = r_face[1:n-1] # faces i   for i=1..n-2
+                # Broadcast to match non-radial dimensions
+                shape = [1] * ndim
+                shape[0] = n - 2
+                rf_plus = rf_plus.reshape(shape)
+                rf_minus = rf_minus.reshape(shape)
+
+                r_cell = r_coords[1:n-1]
+                r_cell_bc = r_cell.reshape(shape)
+
+                # L'Hopital at r=0: (1/r) d(r F)/dr -> 2 D d^2E/dr^2
+                # This happens when r_cell ~ 0 (first interior cell at
+                # index 1 with cell-centered r = 1.5*dr).  For typical
+                # DPF grids the first cell center is at 0.5*dr > 0 so
+                # this guard is rarely triggered, but we handle it for
+                # grids that start exactly at the axis.
+                on_axis = r_cell_bc < 1e-30
+                # Normal cylindrical formula
+                div_cyl = np.where(
+                    on_axis,
+                    # L'Hopital: 2 * D_center * d^2E/dr^2
+                    2.0 * D[tuple(sl_c)] * (
+                        E_new[tuple(sl_p)] - 2.0 * E_new[tuple(sl_c)]
+                        + E_new[tuple(sl_m)]
+                    ) / (dx * dx),
+                    # Standard: (r+ F+ - r- F-) / (r * dr)
+                    (rf_plus * flux_plus - rf_minus * flux_minus)
+                    / (r_cell_bc * dx),
+                )
+                div_flux[tuple(sl_c)] += div_cyl
+            else:
+                # Cartesian (or axial direction in cylindrical)
+                div_flux[tuple(sl_c)] += (flux_plus - flux_minus) / dx
 
         # Absorption: -kappa * c * E
         absorption = kappa * c_light * E_new
@@ -281,6 +361,8 @@ def apply_radiation_transport(
     Z: float = 1.0,
     gaunt_factor: float = 1.2,
     Te_floor: float = 1.0,
+    geometry: str = "cartesian",
+    r_coords: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """Apply full radiation step: bremsstrahlung + FLD transport.
 
@@ -298,6 +380,9 @@ def apply_radiation_transport(
         Z: Ion charge state.
         gaunt_factor: Bremsstrahlung gaunt factor.
         Te_floor: Minimum electron temperature [K].
+        geometry: Coordinate system — "cartesian" or "cylindrical".
+        r_coords: Cell-centered radial coordinates [m], shape (nr,).
+                  Required when geometry="cylindrical".
 
     Returns:
         Updated state dict with modified 'Te' and 'E_rad'.
@@ -340,6 +425,8 @@ def apply_radiation_transport(
         Z=Z,
         gaunt_factor=gaunt_factor,
         brem_power=P_brem,
+        geometry=geometry,
+        r_coords=r_coords,
     )
 
     # Update electron temperature from radiation-matter coupling.

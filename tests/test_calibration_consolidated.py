@@ -5465,13 +5465,16 @@ class TestPresets:
         assert p["circuit"]["crowbar_enabled"] is False
 
     def test_mjolnir_preset_updated(self):
-        """MJOLNIR preset should have corrected L0 ~ 80 nH."""
+        """MJOLNIR preset: Offermann et al. 2021, 1 MJ configuration."""
         from dpf.presets import get_preset
 
         p = get_preset("mjolnir")
-        assert p["circuit"]["C"] == pytest.approx(408e-6, rel=0.01)
+        assert p["circuit"]["C"] == pytest.approx(204e-6, rel=0.01)
         assert p["circuit"]["V0"] == pytest.approx(60e3, rel=0.01)
-        assert p["circuit"]["L0"] == pytest.approx(80e-9, rel=0.05)
+        assert p["circuit"]["L0"] == pytest.approx(67.4e-9, rel=0.05)
+        assert p["circuit"]["R0"] == pytest.approx(0.0125, rel=0.01)
+        assert p["circuit"]["anode_radius"] == pytest.approx(0.076, rel=0.01)
+        assert p["circuit"]["cathode_radius"] == pytest.approx(0.119, rel=0.01)
         assert p["circuit"]["crowbar_enabled"] is True
 
     def test_faeton_preset_energy(self):
@@ -5483,12 +5486,12 @@ class TestPresets:
         assert pytest.approx(125e3, rel=0.01) == E
 
     def test_mjolnir_preset_energy(self):
-        """MJOLNIR stored energy at 60 kV: ~734 kJ."""
+        """MJOLNIR stored energy at 60 kV, 1 MJ config: ~367 kJ."""
         from dpf.presets import get_preset
 
         p = get_preset("mjolnir")
         E = 0.5 * p["circuit"]["C"] * p["circuit"]["V0"] ** 2
-        assert pytest.approx(734.4e3, rel=0.01) == E
+        assert pytest.approx(367.2e3, rel=0.01) == E
 
 
 # =====================================================================

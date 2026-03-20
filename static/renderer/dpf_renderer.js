@@ -2,7 +2,44 @@
  * DPF-Unified Plasma Renderer — Babylon.js 8.x
  *
  * Conference-quality 3D physics visualization.
- * Sheath/pinch/particles driven by Lee 0D scalars. MHD field heatmap from actual 2D data when available.
+ *
+ * DATA SOURCE HONESTY NOTE:
+ * -------------------------
+ * The 3D scene elements are driven by TWO different data sources:
+ *
+ * LEE MODEL SCALARS (0D ODE output — always used for these elements):
+ *   - Current sheath position (z_mm) and radius (r_mm)
+ *   - Sheath scaling, compression ratio, and alpha
+ *   - Pinch column radius and m=0 instability ripple amplitude
+ *   - Particle system emitter position, radius, and rate
+ *   - B-field ring brightness (proportional to I/I_peak)
+ *   - Trail tube length and scaling
+ *   - All phase-dependent visual effects (colors, glow, DOF, chromatic aberration)
+ *
+ * MHD FIELD DATA (2D arrays from Metal/Python solvers — when available):
+ *   - Midplane heatmaps: density, temperature, |B| (toggled via layer panel)
+ *   - Poloidal field lines (static, traced from final-state Br/Bz arrays)
+ *   - HUD peak values (rho_peak, Te_peak, |B|_peak)
+ *
+ * WHAT WOULD NEED TO CHANGE TO WIRE REAL MHD DATA INTO THE 3D SCENE:
+ *   1. Sheath mesh: Replace Lee z_mm/r_mm with isosurface extraction from
+ *      the MHD density field (e.g., rho > 5*rho_fill contour in r-z plane,
+ *      revolved to 3D). Requires per-frame 2D density snapshots.
+ *   2. Pinch column: Extract pinch geometry from density/pressure peak region
+ *      in MHD data rather than scaling by Lee's cr ratio. m=0 instability
+ *      ripple should come from actual density perturbation spectrum.
+ *   3. Particle system: Use MHD velocity field to set particle emitter
+ *      direction and power, density field for emitter radius/rate.
+ *   4. B-field rings: Replace I/I_peak brightness with actual B_theta(r,z)
+ *      from MHD snapshots; animate ring radii from field profile.
+ *   5. updateHeatmap() already works for midplane slices. To go further:
+ *      volumetric rendering or marching cubes isosurfaces from full 2D
+ *      field arrays (density, temperature, |B|) at each snapshot time.
+ *   6. Data pipeline: Metal solver -> mhd_snapshots[] (already encoded as
+ *      base64 Float32 per frame) -> snapCache (pre-decoded RGBA) ->
+ *      RawTexture per frame. The infrastructure exists; what's missing is
+ *      extracting geometric primitives (sheath contour, pinch shape) from
+ *      the field data instead of using Lee scalars.
  *
  * Production techniques:
  *   - createDefaultEnvironment() for HDR IBL + skybox
@@ -344,7 +381,13 @@ async function createDPFScene(canvas, data) {
   halo.material = haloMat;
 
   // ============================================================
-  // FIELD DATA — midplane heatmap from MHD field arrays
+  // FIELD DATA — midplane heatmap from REAL MHD field arrays
+  // This is the ONE section that uses actual MHD solver output (when available).
+  // The heatmap renders normalized 2D density/temperature/B-field data as a
+  // textured plane in the electrode gap. Data arrives as base64-encoded Float32
+  // arrays with shape [nr, nz], decoded into RGBA textures via colormap lookup.
+  // Snapshot animation: multiple frames at different times are pre-decoded into
+  // snapCache and swapped during playback based on nearest timestamp.
   // ============================================================
   var activeOverlay = "none";
   var heatPlane = null;
@@ -750,9 +793,13 @@ async function createDPFScene(canvas, data) {
     applyFrame: function(i) {
       if (i < 0 || i >= S.frames.length) return;
       var f = S.frames[i];
+      // f.z, f.r, f.I, f.phase are Lee model 0D scalars from the circuit ODE.
+      // ALL 3D geometry below (sheath, pinch, particles, B-field rings) is
+      // derived from these scalars — NOT from MHD field arrays. Only the
+      // optional midplane heatmap uses real MHD data when available.
 
       // Update heatmap texture to the nearest MHD snapshot for this frame time.
-      // Only runs when a field overlay is active and snapshot frames exist.
+      // This IS real MHD field data (when available from metal_cylindrical or python backends).
       if (activeOverlay !== "none" && snapCache[activeOverlay]) {
         var newIdx = _nearestSnapIdx(activeOverlay, f.t);
         if (newIdx !== lastSnapIdx[activeOverlay]) {
@@ -767,7 +814,7 @@ async function createDPFScene(canvas, data) {
       if (f.phase === "post_pinch") pI *= 0.3;
       if (f.phase === "reflected") pI *= 0.5;
 
-      // Sheath position + scaling — smooth transition at phase boundary
+      // LEE MODEL SCHEMATIC: Sheath position from Lee 0D scalar f.z (not MHD density field)
       sheath.position.x = isP ? G.anode_length : f.z;
       sheathMat.emissiveColor.set(col[0], col[1], col[2]);
       if (isP) {
@@ -807,7 +854,7 @@ async function createDPFScene(canvas, data) {
       var instAmp = L.instability ? L.instability.amplitude : 0;
       var rippleAmp = isP ? instAmp * Math.min(1, (1 - cr) * 2) : 0;
 
-      // Pinch radius: dense core is much smaller than the sheath radius
+      // LEE MODEL SCHEMATIC: Pinch radius from Lee 0D compression ratio (not MHD density peak)
       // Bennett equilibrium: a_B ~ r_sheath * sqrt(kT / (I^2 * mu0/(8*pi*N*k)))
       // Approximate: pinch core ~ 20-30% of minimum sheath radius
       var pinchR = Math.max(G.anode_radius * 0.05, cr * G.cathode_radius * 0.25);
@@ -861,7 +908,7 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // Ion particles
+      // LEE MODEL SCHEMATIC: Particle system driven by Lee 0D scalars (not MHD velocity field)
       ps.emitter.x = isP ? G.anode_length : f.z;
       if (f.phase === "rundown") {
         psEmitter.radius = G.cathode_radius * 0.85;
@@ -893,7 +940,7 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // B-field lines: brightness ~ |I|/I_peak, compression during radial
+      // LEE MODEL SCHEMATIC: B-field ring brightness from Lee 0D current I/I_peak (not MHD B_theta)
       var Ifrac = Math.abs(f.I) / Math.max(S.I_peak, 0.001);
       for (var fli = 0; fli < fieldLines.length; fli++) {
         if (!fieldLines[fli].isVisible) continue;

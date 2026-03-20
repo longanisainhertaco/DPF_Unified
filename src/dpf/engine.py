@@ -171,7 +171,7 @@ class SimulationEngine:
                 ),
                 ion_mass=self.ion_mass,
                 coordinates=self.geometry_type,
-                r_inner=config.geometry.anode_radius if self.geometry_type == "cylindrical" else None,
+                r_inner=config.circuit.anode_radius if self.geometry_type == "cylindrical" else None,
                 convert_b_si_to_hl=self.geometry_type == "cylindrical",
             )
             # Attach cylindrical geometry provider for diagnostics
@@ -1917,12 +1917,19 @@ class SimulationEngine:
         if self.rad_cfg.bremsstrahlung_enabled:
             ne_rad = rho / self.ion_mass
             if self.rad_cfg.fld_enabled:
+                _r_coords = None
+                if self.geometry_type == "cylindrical" and hasattr(self, "fluid"):
+                    _geom = getattr(self.fluid, "geom", None)
+                    if _geom is not None:
+                        _r_coords = _geom.r
                 self.state = apply_radiation_transport(
                     self.state,
                     dx=self.config.dx,
                     dt=dt_sub,
                     Z=Z_for_rad,
                     gaunt_factor=self.rad_cfg.gaunt_factor,
+                    geometry=self.geometry_type,
+                    r_coords=_r_coords,
                 )
             else:
                 Te_rad, P_rad = apply_bremsstrahlung_losses(

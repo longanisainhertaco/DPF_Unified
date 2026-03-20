@@ -1976,9 +1976,10 @@ class TestSuiteTimingTolerance:
         pf1000 = DEVICE_REGISTRY["PF-1000"]
         assert pf1000.tolerances["peak_current_time"] == pytest.approx(0.10)
 
-    def test_nx2_timing_tolerance_10_percent(self) -> None:
+    def test_nx2_timing_tolerance(self) -> None:
+        """NX2 timing tolerance widened to 50% — reference data is RADPF model output, not measurement."""
         nx2 = DEVICE_REGISTRY["NX2"]
-        assert nx2.tolerances["peak_current_time"] == pytest.approx(0.10)
+        assert nx2.tolerances["peak_current_time"] == pytest.approx(0.50)
 
     def test_llnl_timing_tolerance_15_percent(self) -> None:
         llnl = DEVICE_REGISTRY["LLNL-DPF"]

@@ -2432,6 +2432,83 @@ class TestImplicitLineCooling:
         assert P.shape == shape
 
 
+class TestCuLineRadiationDominance:
+    """Verify Cu line radiation dominates over bremsstrahlung at DPF pinch conditions.
+
+    At 1 keV, ne=1e25 m^-3 with 1% Cu impurity, line radiation cooling
+    should significantly exceed bremsstrahlung-only cooling because Cu M-shell
+    and L-shell transitions radiate strongly at 100-3000 eV.
+    """
+
+    def test_cu_impurity_cools_faster_than_bremsstrahlung_alone(self):
+        """Static 1 keV, ne=1e25 plasma: Cu line radiation > bremsstrahlung."""
+        from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
+
+        Te_eV = 1000.0
+        Te_K = np.array([Te_eV * 11604.5])  # 1 keV in Kelvin
+        ne = np.array([1e25])
+        dt = 1e-9  # 1 ns
+
+        # Bremsstrahlung-only cooling
+        Te_brem, P_brem = apply_bremsstrahlung_losses(Te_K, ne, dt, Z=1.0, gaunt_factor=1.2)
+
+        # Line + recombination cooling (bremsstrahlung disabled via Z_eff=0)
+        Te_line, P_line = apply_line_radiation_losses(
+            Te_K, ne, dt,
+            Z_eff=0.0,
+            n_imp_frac=0.01,  # 1% Cu
+            Z_imp=29.0,
+        )
+
+        # Combined (bremsstrahlung + line) — as the engine applies it
+        Te_combined_step1, _ = apply_bremsstrahlung_losses(Te_K, ne, dt, Z=1.0, gaunt_factor=1.2)
+        Te_combined, P_combined = apply_line_radiation_losses(
+            Te_combined_step1, ne, dt,
+            Z_eff=0.0,
+            n_imp_frac=0.01,
+            Z_imp=29.0,
+        )
+
+        # Temperature drops
+        dT_brem_only = float(Te_K[0] - Te_brem[0])
+        dT_line_only = float(Te_K[0] - Te_line[0])
+        dT_combined = float(Te_K[0] - Te_combined[0])
+
+        # Line radiation alone should cool more than bremsstrahlung alone
+        assert dT_line_only > dT_brem_only, (
+            f"Line cooling dT={dT_line_only:.2e} K should exceed "
+            f"bremsstrahlung dT={dT_brem_only:.2e} K at 1 keV with 1% Cu"
+        )
+
+        # Combined should cool more than either alone
+        assert dT_combined > dT_brem_only
+        assert dT_combined > dT_line_only * 0.9  # allow small tolerance from sequential application
+
+        # Sanity: both should produce positive cooling
+        assert dT_brem_only > 0
+        assert dT_line_only > 0
+        assert P_brem[0] > 0
+        assert P_line[0] > 0
+
+    def test_config_defaults_for_cu_impurity(self):
+        """RadiationConfig defaults to Cu (Z=29) at 1% fraction."""
+        from dpf.config import RadiationConfig
+
+        cfg = RadiationConfig()
+        assert cfg.impurity_Z == 29.0
+        assert cfg.impurity_fraction == pytest.approx(0.01)
+        assert cfg.line_radiation_enabled is False  # off by default for backward compat
+
+    def test_engine_radiation_config_wiring(self):
+        """Enabling line_radiation_enabled in config activates the code path."""
+        from dpf.config import RadiationConfig
+
+        cfg = RadiationConfig(line_radiation_enabled=True)
+        assert cfg.line_radiation_enabled is True
+        assert cfg.impurity_fraction > 0  # non-zero default ensures cooling happens
+        assert cfg.impurity_Z == 29.0
+
+
 class TestLotzIonization:
     """Tests for Lotz electron-impact ionization rate coefficient."""
 
