@@ -10,6 +10,7 @@ import time as wall_time
 from typing import Any
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from app_engine import GAS_SPECIES, kB
 
@@ -948,6 +949,9 @@ def _run_hybrid_lee_mhd(
     except ImportError:
         pass
 
+    # tqdm progress bar — Gradio's track_tqdm=True captures this for real-time UI updates
+    _pbar = tqdm(desc="Phase 2/2 — MHD compression", unit="step", leave=False)
+
     while t < t_end:
         dt_mhd = solver.compute_dt(state)
         dt = min(dt_mhd, t_end - t)
@@ -1082,6 +1086,8 @@ def _run_hybrid_lee_mhd(
                 max(_mhd_frac, 0.001),
                 desc=f"Phase 2/2 — MHD compression: step {mhd_step} | t={t*1e6:.2f} us | dt={dt*1e9:.1f} ns",
             )
+
+    _pbar.close()
 
     t_arr = np.array(times)
     I_arr = np.array(currents)
