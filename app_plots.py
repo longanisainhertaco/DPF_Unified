@@ -239,12 +239,16 @@ def create_waveform_fig(
     t_arr_s = np.array(t) * 1e-6  # noqa: N806
     I_arr_A = np.array(I_arr) * 1e6  # noqa: N806
     dIdt = np.gradient(I_arr_A, t_arr_s) / 1e12  # in TA/s = 1e12 A/s
+    # Clip dI/dt display range to +-3x the post-peak RMS to avoid rundown spike squashing detail
+    post_peak_idx = max(1, int(len(dIdt) * 0.15))
+    dIdt_rms = float(np.sqrt(np.mean(dIdt[post_peak_idx:]**2))) if len(dIdt) > post_peak_idx else 1.0
+    dIdt_clip = float(max(3 * dIdt_rms, 0.5))  # At least +-0.5 TA/s range
     fig.add_trace(go.Scatter(
-        x=t, y=dIdt, mode="lines",
+        x=t, y=np.clip(dIdt, -dIdt_clip * 3, dIdt_clip * 3), mode="lines",
         line=dict(color="#26C6DA", width=2), name="dI/dt",
     ), row=2, col=1)
     fig.add_hline(y=0, line_dash="dash", line_color="#555", row=2, col=1)
-    fig.update_yaxes(title_text="dI/dt [TA/s]", row=2, col=1)
+    fig.update_yaxes(title_text="dI/dt [TA/s]", range=[-dIdt_clip, dIdt_clip], row=2, col=1)
 
     # -- Row 3: Capacitor Voltage --
     fig.add_trace(go.Scatter(
@@ -255,10 +259,10 @@ def create_waveform_fig(
     # Phase-colored background bands (on rows 1, 2, 3)
     if d.get("has_snowplow"):
         phase_bg = {
-            "rundown": "rgba(33,150,243,0.08)",
-            "radial": "rgba(255,87,34,0.12)",
-            "reflected": "rgba(255,152,0,0.08)",
-            "pinch": "rgba(156,39,176,0.12)",
+            "rundown": "rgba(33,150,243,0.15)",
+            "radial": "rgba(255,87,34,0.20)",
+            "reflected": "rgba(255,152,0,0.15)",
+            "pinch": "rgba(156,39,176,0.20)",
         }
         prev_phase = phases[0]
         seg_start_t = t[0]
@@ -294,8 +298,10 @@ def create_waveform_fig(
     ), row=1, col=1)
     fig.add_annotation(
         x=d["t_peak"], y=d["I_peak"],
-        text=f"I_peak = {d['I_peak']:.2f} MA",
-        showarrow=True, arrowhead=2, ax=40, ay=-30, font=dict(size=11),
+        text=f"<b>I_peak = {d['I_peak']:.2f} MA</b><br>t = {d['t_peak']:.1f} us",
+        showarrow=True, arrowhead=2, ax=60, ay=-45,
+        font=dict(size=11, color="white"),
+        bgcolor="rgba(0,0,0,0.7)", bordercolor="#FFEB3B", borderwidth=1, borderpad=4,
         row=1, col=1,
     )
 
@@ -308,10 +314,11 @@ def create_waveform_fig(
         ), row=1, col=1)
         fig.add_annotation(
             x=d["t_dip"], y=d["I_dip"],
-            text=f"Dip: {d['dip_pct']:.0f}%",
+            text=f"<b>Dip: {d['dip_pct']:.0f}%</b>",
             showarrow=True, arrowhead=2, arrowcolor="#FF5722",
-            ax=-40, ay=-40,
-            font=dict(size=12, color="#FF5722", family="Arial Black"),
+            ax=-60, ay=40,
+            font=dict(size=11, color="white"),
+            bgcolor="rgba(255,87,34,0.8)", borderpad=3,
             row=1, col=1,
         )
     elif d["has_snowplow"] and d["dip_pct"] > 1:
@@ -361,9 +368,13 @@ def create_waveform_fig(
     fig.update_yaxes(title_text="Voltage [kV]", row=3, col=1)
     fig.update_xaxes(title_text="Time [us]", row=n_rows, col=1)
     fig.update_layout(
-        height=800 if has_exp else 650, template="plotly_dark",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
-        margin=dict(l=60, r=20, t=40, b=40),
+        height=800 if has_exp else 700, template="plotly_dark",
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.04, xanchor="center", x=0.5,
+            font=dict(size=10), itemwidth=30,
+            bgcolor="rgba(0,0,0,0.5)", bordercolor="#444", borderwidth=1,
+        ),
+        margin=dict(l=60, r=20, t=60, b=40),
     )
     return fig
 
@@ -438,10 +449,10 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
     # Phase-colored background bands on panels 2 and 3
     if d.get("has_snowplow"):
         phase_bg = {
-            "rundown": "rgba(33,150,243,0.08)",
-            "radial": "rgba(255,87,34,0.12)",
-            "reflected": "rgba(255,152,0,0.08)",
-            "pinch": "rgba(156,39,176,0.12)",
+            "rundown": "rgba(33,150,243,0.15)",
+            "radial": "rgba(255,87,34,0.20)",
+            "reflected": "rgba(255,152,0,0.15)",
+            "pinch": "rgba(156,39,176,0.20)",
         }
         prev_phase = phases[0]
         seg_start_t = t[0]
