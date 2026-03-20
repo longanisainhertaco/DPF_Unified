@@ -86,11 +86,11 @@ RUNTIME_PER_US = {
 }
 
 FIDELITY = {
-    "lee": "0D circuit model (validated against 7+ devices)",
-    "python": "2D MHD (Godunov flux, cross-platform)",
-    "metal_plm": "2D MHD (GPU-accelerated, 2nd-order)",
-    "metal_weno5": "2D MHD (5th-order, float64, highest fidelity)",
-    "hybrid": "0D + 2D MHD (validated waveforms + spatial detail)",
+    "lee": "Level 1 — Circuit model (validated, no spatial resolution)",
+    "hybrid": "Level 2 — Circuit + MHD (validated waveforms + spatial detail)",
+    "python": "Level 3 — Full 2D MHD (shock-capturing, cross-platform)",
+    "metal_plm": "Level 4 — Full 2D MHD (GPU-accelerated)",
+    "metal_weno5": "Level 5 — Research grade (5th-order, float64)",
 }
 
 # Status: whether the backend is fully operational
@@ -103,39 +103,35 @@ BACKEND_STATUS = {
 }
 
 BACKEND_HELP = {
-    "lee": "SPEED: < 1 second | VALIDATED against 7+ published devices\n\n"
+    "lee": "*SPEED: < 1 second | VALIDATED against 7+ published devices\n\n"
            "Solves the circuit equations as ordinary differential equations -- no spatial grid. "
            "Computes current I(t), voltage V(t), sheath trajectory, pinch radius, and neutron yield. "
-           "Two fitted parameters (fc = current fraction, fm = mass fraction) calibrate it to match "
-           "experimental data. Best for parameter sweeps, fitting to experiments, and device exploration. "
-           "Does NOT show internal plasma structure, magnetic field maps, or instabilities.",
+           "Two fitted parameters (fc, fm) calibrate it to match experimental data.\n\n"
+           "**Best for:** Quick parameter sweeps, fitting to experiments, device exploration.\n"
+           "**Does NOT show:** Internal plasma structure, magnetic field maps, or instabilities.*",
 
-    "python": "SPEED: 10-30 seconds | WORKS EVERYWHERE (no GPU needed)\n\n"
-              "Full 2D MHD simulation using a Godunov shock-capturing scheme (PLM reconstruction + "
-              "HLL Riemann solver). Runs on any machine with NumPy -- no Apple Silicon or GPU required. "
-              "Resolves magnetic fields, density, pressure, and temperature on a cylindrical grid. "
-              "Good balance of portability and physics fidelity. Use this on Linux, Windows, or "
-              "older Macs where GPU acceleration is not available.",
+    "hybrid": "*SPEED: 3-30 seconds | RECOMMENDED for most users\n\n"
+              "Best of both worlds: the validated circuit model handles the axial rundown phase, "
+              "then hands off to a 2D MHD solver for the radial implosion where spatial resolution "
+              "matters. You get accurate current waveforms AND spatially resolved pinch compression.\n\n"
+              "**Best for:** Most users. Combines validated accuracy with spatial physics.*",
 
-    "metal_plm": "SPEED: 5-15 seconds | REQUIRES Apple Silicon Mac with Metal GPU\n\n"
-                 "Same physics as MHD Standard but accelerated on Apple's Metal GPU. Uses 2nd-order "
-                 "PLM reconstruction with an HLL Riemann solver in float32. Typically 2-3x faster "
-                 "than the CPU-only standard backend. Best for iterating quickly on spatial structure "
-                 "when you have a Mac with M1/M2/M3/M4 chip.",
+    "python": "*SPEED: 10-30 seconds | WORKS EVERYWHERE (no GPU needed)\n\n"
+              "Full 2D MHD simulation with shock-capturing (PLM + HLL Riemann solver). "
+              "Runs on any machine -- no Apple Silicon or GPU required. Resolves magnetic fields, "
+              "density, pressure, and temperature on a cylindrical grid.\n\n"
+              "**Best for:** Linux/Windows users, or when GPU is unavailable.*",
 
-    "metal_weno5": "SPEED: 30-120 seconds | HIGHEST ACCURACY (publication quality)\n\n"
-                   "5th-order WENO-Z reconstruction with a 4-wave HLLD Riemann solver that resolves "
-                   "contact and Alfven discontinuities. Runs on CPU in float64 (double precision) for "
-                   "maximum numerical accuracy. Produces the sharpest current sheaths and most accurate "
-                   "shock fronts. Use this for publication figures, validation studies, and resolving "
-                   "features thinner than a few grid cells.",
+    "metal_plm": "*SPEED: 5-15 seconds | REQUIRES Apple Silicon Mac\n\n"
+                 "Same physics as Level 3 but accelerated on Apple's Metal GPU. "
+                 "Typically 2-3x faster than CPU. Float32 precision.\n\n"
+                 "**Best for:** Rapid iteration on spatial structure with a Mac.*",
 
-    "hybrid": "SPEED: 3-30 seconds | RECOMMENDED for most users\n\n"
-              "Best of both worlds: the validated Lee model handles the axial rundown phase (where "
-              "it matches experiments), then hands off to a 2D MHD solver for the radial implosion "
-              "where spatial resolution matters. You get accurate current waveforms AND spatially "
-              "resolved pinch compression. The handoff happens automatically when the sheath reaches "
-              "the anode tip (~5-10 microseconds for most devices).",
+    "metal_weno5": "*SPEED: 30-120 seconds | HIGHEST ACCURACY\n\n"
+                   "5th-order WENO-Z reconstruction with 4-wave HLLD Riemann solver. "
+                   "Float64 double precision. Produces the sharpest current sheaths "
+                   "and most accurate shock fronts.\n\n"
+                   "**Best for:** Publication figures, validation studies, resolving fine structure.*",
 }
 
 

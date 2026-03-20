@@ -16,11 +16,11 @@ from app_engine import GAS_SPECIES, kB
 logger = logging.getLogger(__name__)
 
 BACKENDS = {
-    "lee": "Lee Model (< 1 sec) -- validated circuit model for parameter sweeps",
-    "python": "MHD Standard (10-30 sec) -- cross-platform 2D MHD, no GPU required",
-    "metal_plm": "MHD GPU (5-15 sec) -- Apple Silicon GPU-accelerated 2D MHD",
-    "metal_weno5": "MHD High Fidelity (30-120 sec) -- WENO5-Z + HLLD, publication quality",
-    "hybrid": "Hybrid (3-30 sec) -- Lee model + MHD handoff [RECOMMENDED]",
+    "lee": "Level 1 — Circuit Model (< 1 sec)",
+    "hybrid": "Level 2 — Circuit + MHD (3-30 sec) [RECOMMENDED]",
+    "python": "Level 3 — Full MHD (10-30 sec)",
+    "metal_plm": "Level 4 — Full MHD, GPU (5-15 sec)",
+    "metal_weno5": "Level 5 — Research Grade (30-120 sec)",
 }
 
 BACKEND_CONFIGS = {
