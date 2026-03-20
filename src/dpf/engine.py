@@ -203,6 +203,7 @@ class SimulationEngine:
                 ion_mass=self.ion_mass,
                 riemann_solver=fc.riemann_solver,
                 conservative_energy=fc.conservative_energy,
+                use_godunov_flux=fc.use_godunov_flux,
             )
             # Cylindrical cell volumes from geometry: pi*(r_out^2-r_in^2)*dz
             # Expand (nr, nz) → (nr, 1, nz) for broadcast with 3D state arrays

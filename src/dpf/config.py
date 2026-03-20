@@ -164,8 +164,12 @@ class FluidConfig(BaseModel):
     enable_powell: bool = Field(False, description="Enable Powell 8-wave div(B) source terms")
     dedner_cr: float = Field(0.0, ge=0, description="Dedner damping rate (0 = auto)")
     conservative_energy: bool = Field(
-        False,
-        description="Use conservative total energy (dE/dt) instead of pressure (dp/dt) in cylindrical solver",
+        True,
+        description="Use conservative total energy (dE/dt) instead of pressure (dp/dt). Required for stability at pinch compression.",
+    )
+    use_godunov_flux: bool = Field(
+        True,
+        description="Use Godunov (PLM+HLL) flux for Python cylindrical solver instead of central differences. Required for shock stability.",
     )
     enable_anisotropic_conduction: bool = Field(
         False, description="Enable field-aligned Braginskii thermal conduction"

@@ -96,6 +96,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         enable_ct: bool = False,
         time_integrator: str = "ssp_rk3",
         conservative_energy: bool = True,
+        use_godunov_flux: bool = False,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -111,6 +112,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.riemann_solver = riemann_solver if riemann_solver in ("hll", "hlld") else "hll"
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.conservative_energy = conservative_energy
+        self.use_godunov_flux = use_godunov_flux
         self._last_eta_max = 0.0  # For resistive diffusion CFL
         self._last_div_B: float = 0.0
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
@@ -139,10 +141,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
             "gamma=%.3f, Hall=%s, Resistive=%s, EnergyEq=%s, WENO5=%s, "
-            "Riemann=%s, TimeInt=%s, ion_mass=%.3e kg",
+            "Riemann=%s, TimeInt=%s, Godunov=%s, ion_mass=%.3e kg",
             nr, nz, dr, dz, gamma, enable_hall,
             self.enable_resistive, self.enable_energy_equation,
-            self.use_weno5, self.riemann_solver, self.time_integrator, self.ion_mass,
+            self.use_weno5, self.riemann_solver, self.time_integrator,
+            self.use_godunov_flux, self.ion_mass,
         )
 
     def _squeeze(self, arr: np.ndarray) -> np.ndarray:
@@ -250,6 +253,444 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "n_interfaces": n_iface,
         }
 
+    # ================================================================
+    # Godunov (HLL) flux-based spatial update — shock-safe alternative
+    # to np.gradient central differences.  Selected by use_godunov_flux=True.
+    # ================================================================
+
+    @staticmethod
+    def _minmod(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Minmod slope limiter: returns zero where signs differ."""
+        return np.where(
+            a * b > 0,
+            np.where(np.abs(a) < np.abs(b), a, b),
+            0.0,
+        )
+
+    def _plm_reconstruct(
+        self, q: np.ndarray, axis: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """PLM reconstruction with minmod limiter along *axis*.
+
+        Given cell averages q, compute left and right states at each
+        cell interface i+1/2.  Interface i+1/2 sits between cells i and i+1.
+
+        For N cells there are N-1 interior interfaces (indices 0 .. N-2).
+        Return arrays have the interface dimension = N-1.
+
+        Args:
+            q: Field array, shape (nr, nz) for scalars or (nr, nz) slice.
+            axis: 0 = radial, 1 = axial.
+
+        Returns:
+            (q_L, q_R) each of shape with interface dim = N-1 along *axis*.
+            q_L[i] = value on the left side of interface i+1/2.
+            q_R[i] = value on the right side of interface i+1/2.
+        """
+        # Slopes: delta[i] = minmod(q[i+1]-q[i], q[i]-q[i-1])
+        # For interior cells 1..N-2 only; boundary cells get zero slope.
+        if axis == 0:
+            dq_fwd = q[1:, :] - q[:-1, :]  # shape (N-1, nz)
+            slope = np.zeros_like(q)
+            slope[1:-1, :] = self._minmod(dq_fwd[1:, :], dq_fwd[:-1, :])
+            # L state at interface i+1/2 = q[i] + 0.5*slope[i]
+            q_L = q[:-1, :] + 0.5 * slope[:-1, :]
+            # R state at interface i+1/2 = q[i+1] - 0.5*slope[i+1]
+            q_R = q[1:, :] - 0.5 * slope[1:, :]
+        else:
+            dq_fwd = q[:, 1:] - q[:, :-1]
+            slope = np.zeros_like(q)
+            slope[:, 1:-1] = self._minmod(dq_fwd[:, 1:], dq_fwd[:, :-1])
+            q_L = q[:, :-1] + 0.5 * slope[:, :-1]
+            q_R = q[:, 1:] - 0.5 * slope[:, 1:]
+        return q_L, q_R
+
+    def _hll_flux_8(
+        self,
+        rho_L: np.ndarray,
+        rho_R: np.ndarray,
+        vn_L: np.ndarray,
+        vn_R: np.ndarray,
+        vt1_L: np.ndarray,
+        vt1_R: np.ndarray,
+        vt2_L: np.ndarray,
+        vt2_R: np.ndarray,
+        Bn_L: np.ndarray,
+        Bn_R: np.ndarray,
+        Bt1_L: np.ndarray,
+        Bt1_R: np.ndarray,
+        Bt2_L: np.ndarray,
+        Bt2_R: np.ndarray,
+        p_L: np.ndarray,
+        p_R: np.ndarray,
+    ) -> dict[str, np.ndarray]:
+        """8-component HLL Riemann flux for ideal MHD.
+
+        Conservative state U = [rho, rho*vn, rho*vt1, rho*vt2,
+                                 E_total, Bn, Bt1, Bt2]
+
+        Subscripts: n = normal to interface, t1/t2 = tangential.
+
+        Returns dict with flux arrays for each conserved variable.
+        """
+        gamma = self.gamma
+        gm1 = gamma - 1.0
+
+        rho_L = np.maximum(rho_L, 1e-30)
+        rho_R = np.maximum(rho_R, 1e-30)
+        p_L = np.maximum(p_L, 1e-20)
+        p_R = np.maximum(p_R, 1e-20)
+
+        # Magnetic field squared
+        B_sq_L = Bn_L**2 + Bt1_L**2 + Bt2_L**2
+        B_sq_R = Bn_R**2 + Bt1_R**2 + Bt2_R**2
+
+        # Fast magnetosonic speed
+        a2_L = gamma * p_L / rho_L
+        a2_R = gamma * p_R / rho_R
+        va2_L = B_sq_L / (mu_0 * rho_L)
+        va2_R = B_sq_R / (mu_0 * rho_R)
+        # van^2 for full fast speed formula
+        van2_L = Bn_L**2 / (mu_0 * rho_L)
+        van2_R = Bn_R**2 / (mu_0 * rho_R)
+        disc_L = np.maximum((a2_L + va2_L)**2 - 4.0 * a2_L * van2_L, 0.0)
+        disc_R = np.maximum((a2_R + va2_R)**2 - 4.0 * a2_R * van2_R, 0.0)
+        cf_L = np.sqrt(0.5 * (a2_L + va2_L + np.sqrt(disc_L)))
+        cf_R = np.sqrt(0.5 * (a2_R + va2_R + np.sqrt(disc_R)))
+
+        # Davis wave speed estimates
+        S_L = np.minimum(vn_L - cf_L, vn_R - cf_R)
+        S_R = np.maximum(vn_L + cf_L, vn_R + cf_R)
+
+        # Conserved states
+        v_sq_L = vn_L**2 + vt1_L**2 + vt2_L**2
+        v_sq_R = vn_R**2 + vt1_R**2 + vt2_R**2
+        E_L = p_L / gm1 + 0.5 * rho_L * v_sq_L + 0.5 * B_sq_L / mu_0
+        E_R = p_R / gm1 + 0.5 * rho_R * v_sq_R + 0.5 * B_sq_R / mu_0
+
+        p_tot_L = p_L + 0.5 * B_sq_L / mu_0
+        p_tot_R = p_R + 0.5 * B_sq_R / mu_0
+
+        vdotB_L = vn_L * Bn_L + vt1_L * Bt1_L + vt2_L * Bt2_L
+        vdotB_R = vn_R * Bn_R + vt1_R * Bt1_R + vt2_R * Bt2_R
+
+        # Left fluxes
+        FL_rho = rho_L * vn_L
+        FL_mn = rho_L * vn_L**2 + p_tot_L - Bn_L**2 / mu_0
+        FL_mt1 = rho_L * vn_L * vt1_L - Bn_L * Bt1_L / mu_0
+        FL_mt2 = rho_L * vn_L * vt2_L - Bn_L * Bt2_L / mu_0
+        FL_E = (E_L + p_tot_L) * vn_L - Bn_L * vdotB_L / mu_0
+        FL_Bn = np.zeros_like(rho_L)
+        FL_Bt1 = vn_L * Bt1_L - vt1_L * Bn_L
+        FL_Bt2 = vn_L * Bt2_L - vt2_L * Bn_L
+
+        # Right fluxes
+        FR_rho = rho_R * vn_R
+        FR_mn = rho_R * vn_R**2 + p_tot_R - Bn_R**2 / mu_0
+        FR_mt1 = rho_R * vn_R * vt1_R - Bn_R * Bt1_R / mu_0
+        FR_mt2 = rho_R * vn_R * vt2_R - Bn_R * Bt2_R / mu_0
+        FR_E = (E_R + p_tot_R) * vn_R - Bn_R * vdotB_R / mu_0
+        FR_Bn = np.zeros_like(rho_R)
+        FR_Bt1 = vn_R * Bt1_R - vt1_R * Bn_R
+        FR_Bt2 = vn_R * Bt2_R - vt2_R * Bn_R
+
+        # Conserved U arrays
+        U_L_rho = rho_L
+        U_R_rho = rho_R
+        U_L_mn = rho_L * vn_L
+        U_R_mn = rho_R * vn_R
+        U_L_mt1 = rho_L * vt1_L
+        U_R_mt1 = rho_R * vt1_R
+        U_L_mt2 = rho_L * vt2_L
+        U_R_mt2 = rho_R * vt2_R
+        U_L_Bn = Bn_L
+        U_R_Bn = Bn_R
+        U_L_Bt1 = Bt1_L
+        U_R_Bt1 = Bt1_R
+        U_L_Bt2 = Bt2_L
+        U_R_Bt2 = Bt2_R
+
+        # HLL formula: F = (S_R*F_L - S_L*F_R + S_L*S_R*(U_R-U_L)) / (S_R-S_L)
+        denom = np.maximum(S_R - S_L, 1e-30)
+
+        def _hll(FL: np.ndarray, FR: np.ndarray, UL: np.ndarray, UR: np.ndarray) -> np.ndarray:
+            return (S_R * FL - S_L * FR + S_L * S_R * (UR - UL)) / denom
+
+        return {
+            "F_rho": _hll(FL_rho, FR_rho, U_L_rho, U_R_rho),
+            "F_mn": _hll(FL_mn, FR_mn, U_L_mn, U_R_mn),
+            "F_mt1": _hll(FL_mt1, FR_mt1, U_L_mt1, U_R_mt1),
+            "F_mt2": _hll(FL_mt2, FR_mt2, U_L_mt2, U_R_mt2),
+            "F_E": _hll(FL_E, FR_E, E_L, E_R),
+            "F_Bn": _hll(FL_Bn, FR_Bn, U_L_Bn, U_R_Bn),
+            "F_Bt1": _hll(FL_Bt1, FR_Bt1, U_L_Bt1, U_R_Bt1),
+            "F_Bt2": _hll(FL_Bt2, FR_Bt2, U_L_Bt2, U_R_Bt2),
+        }
+
+    def _compute_godunov_rhs(
+        self,
+        rho: np.ndarray,
+        vel: np.ndarray,
+        p: np.ndarray,
+        B: np.ndarray,
+        psi: np.ndarray,
+        eta_field: np.ndarray | None = None,
+        source_terms: dict | None = None,
+    ) -> dict[str, np.ndarray]:
+        """Godunov (PLM+HLL) RHS for cylindrical MHD.
+
+        Replaces np.gradient central differences for hyperbolic terms with
+        PLM reconstruction + HLL Riemann fluxes.  Resistant to Gibbs
+        oscillations at sheath discontinuities.
+
+        The flux divergence uses a proper finite-volume form:
+            dU/dt = -(1/V) * [A_{i+1/2}*F_{i+1/2} - A_{i-1/2}*F_{i-1/2}]
+        where V = cell volume and A = face area.
+
+        Source terms (geometric, resistive, Hall, Dedner) are unchanged.
+        """
+        geom = self.geom
+        nr, nz = self.nr, self.nz
+
+        # Precompute cell volumes and face areas (could be cached)
+        cell_vol = geom.cell_volumes()       # (nr, nz)
+        A_r = geom.face_areas_radial()       # (nr+1, nz)
+        A_z = geom.face_areas_axial()        # (nr, nz+1)
+
+        # Protect against zero volume at axis
+        cell_vol = np.maximum(cell_vol, 1e-30)
+
+        # ---- Radial flux sweep (axis=0) ----
+        # Normal = r, tangential1 = theta, tangential2 = z
+        rho_L_r, rho_R_r = self._plm_reconstruct(rho, axis=0)
+        vr_L, vr_R = self._plm_reconstruct(vel[0], axis=0)
+        vt_L, vt_R = self._plm_reconstruct(vel[1], axis=0)
+        vz_L, vz_R = self._plm_reconstruct(vel[2], axis=0)
+        Br_L, Br_R = self._plm_reconstruct(B[0], axis=0)
+        Bt_L, Bt_R = self._plm_reconstruct(B[1], axis=0)
+        Bz_L, Bz_R = self._plm_reconstruct(B[2], axis=0)
+        p_L_r, p_R_r = self._plm_reconstruct(p, axis=0)
+
+        # Positivity floors on reconstructed states
+        rho_L_r = np.maximum(rho_L_r, 1e-20)
+        rho_R_r = np.maximum(rho_R_r, 1e-20)
+        p_L_r = np.maximum(p_L_r, 1e-20)
+        p_R_r = np.maximum(p_R_r, 1e-20)
+
+        flux_r = self._hll_flux_8(
+            rho_L_r, rho_R_r,
+            vr_L, vr_R,       # normal
+            vt_L, vt_R,       # tangential 1 (theta)
+            vz_L, vz_R,       # tangential 2 (z)
+            Br_L, Br_R,       # Bn
+            Bt_L, Bt_R,       # Bt1
+            Bz_L, Bz_R,       # Bt2
+            p_L_r, p_R_r,
+        )
+        # flux_r arrays have shape (nr-1, nz) — one per interior interface
+
+        # ---- Axial flux sweep (axis=1) ----
+        # Normal = z, tangential1 = r, tangential2 = theta
+        rho_L_z, rho_R_z = self._plm_reconstruct(rho, axis=1)
+        vz_L_z, vz_R_z = self._plm_reconstruct(vel[2], axis=1)
+        vr_L_z, vr_R_z = self._plm_reconstruct(vel[0], axis=1)
+        vt_L_z, vt_R_z = self._plm_reconstruct(vel[1], axis=1)
+        Bz_L_z, Bz_R_z = self._plm_reconstruct(B[2], axis=1)
+        Br_L_z, Br_R_z = self._plm_reconstruct(B[0], axis=1)
+        Bt_L_z, Bt_R_z = self._plm_reconstruct(B[1], axis=1)
+        p_L_z, p_R_z = self._plm_reconstruct(p, axis=1)
+
+        rho_L_z = np.maximum(rho_L_z, 1e-20)
+        rho_R_z = np.maximum(rho_R_z, 1e-20)
+        p_L_z = np.maximum(p_L_z, 1e-20)
+        p_R_z = np.maximum(p_R_z, 1e-20)
+
+        flux_z = self._hll_flux_8(
+            rho_L_z, rho_R_z,
+            vz_L_z, vz_R_z,   # normal (z)
+            vr_L_z, vr_R_z,   # tangential 1 (r)
+            vt_L_z, vt_R_z,   # tangential 2 (theta)
+            Bz_L_z, Bz_R_z,   # Bn
+            Br_L_z, Br_R_z,   # Bt1
+            Bt_L_z, Bt_R_z,   # Bt2
+            p_L_z, p_R_z,
+        )
+        # flux_z arrays have shape (nr, nz-1)
+
+        # ---- Flux divergence in finite-volume form ----
+        # Radial: dU/dt -= (1/V) * [A_{i+1/2}*F_{i+1/2} - A_{i-1/2}*F_{i-1/2}]
+        # Interior interfaces 0..nr-2 correspond to faces 1..nr-1
+        # (face 0 = axis, face nr = outer boundary)
+        drho_dt = np.zeros((nr, nz))
+        dmom_r_dt = np.zeros((nr, nz))
+        dmom_t_dt = np.zeros((nr, nz))
+        dmom_z_dt = np.zeros((nr, nz))
+        dE_dt = np.zeros((nr, nz))
+        dBr_dt = np.zeros((nr, nz))
+        dBt_dt = np.zeros((nr, nz))
+        dBz_dt = np.zeros((nr, nz))
+
+        # Radial contribution: interfaces 0..nr-2 map to faces 1..nr-1
+        # Cell i receives flux from face i (left) and face i+1 (right).
+        # Interface index j corresponds to face j+1.
+        def _apply_radial_flux(F_key: str) -> np.ndarray:
+            """Compute -div(F_r) contribution for one conserved variable.
+
+            Uses area-weighted fluxes on all nr+1 faces.  Face 0 (axis) has
+            A=0 so contributes nothing.  Face nr (outer boundary) uses
+            zero-gradient extrapolation from the last interior interface.
+            """
+            # Raw fluxes at interior interfaces (nr-1 values, faces 1..nr-1)
+            F_int = flux_r[F_key]  # (nr-1, nz)
+            # Build full face flux array (nr+1 faces: 0..nr)
+            F_full = np.zeros((nr + 1, nz))
+            F_full[1:nr, :] = F_int  # interior faces
+            # Face 0 (axis): zero flux (A_r[0]=0 anyway)
+            # Face nr (outer boundary): zero-gradient extrapolation
+            F_full[nr, :] = F_int[-1, :]
+            # Area-weighted flux at each face
+            AF = F_full * A_r  # (nr+1, nz)
+            # Flux divergence: -(AF_{i+1} - AF_i) / V_i
+            result = -(AF[1:, :] - AF[:-1, :]) / cell_vol
+            return result
+
+        drho_dt += _apply_radial_flux("F_rho")
+        dmom_r_dt += _apply_radial_flux("F_mn")
+        dmom_t_dt += _apply_radial_flux("F_mt1")
+        dmom_z_dt += _apply_radial_flux("F_mt2")
+        dE_dt += _apply_radial_flux("F_E")
+        dBr_dt += _apply_radial_flux("F_Bn")
+        dBt_dt += _apply_radial_flux("F_Bt1")
+        dBz_dt += _apply_radial_flux("F_Bt2")
+
+        def _apply_axial_flux(F_key: str) -> np.ndarray:
+            """Compute -div(F_z) contribution with zero-gradient BCs."""
+            F_int = flux_z[F_key]  # (nr, nz-1)
+            F_full = np.zeros((nr, nz + 1))
+            F_full[:, 1:nz] = F_int
+            # Face 0 (z=0): zero-gradient
+            F_full[:, 0] = F_int[:, 0]
+            # Face nz (z=L): zero-gradient
+            F_full[:, nz] = F_int[:, -1]
+            AF = F_full * A_z
+            result = -(AF[:, 1:] - AF[:, :-1]) / cell_vol
+            return result
+
+        drho_dt += _apply_axial_flux("F_rho")
+        # Axial sweep: n=z, t1=r, t2=theta
+        dmom_z_dt += _apply_axial_flux("F_mn")    # normal momentum → z
+        dmom_r_dt += _apply_axial_flux("F_mt1")   # tangential1 → r
+        dmom_t_dt += _apply_axial_flux("F_mt2")   # tangential2 → theta
+        dE_dt += _apply_axial_flux("F_E")
+        dBz_dt += _apply_axial_flux("F_Bn")
+        dBr_dt += _apply_axial_flux("F_Bt1")
+        dBt_dt += _apply_axial_flux("F_Bt2")
+
+        # Assemble momentum and B-field derivatives
+        dmom_dt = np.zeros((3, nr, nz))
+        dmom_dt[0] = dmom_r_dt
+        dmom_dt[1] = dmom_t_dt
+        dmom_dt[2] = dmom_z_dt
+
+        dB_dt = np.zeros((3, nr, nz))
+        dB_dt[0] = dBr_dt
+        dB_dt[1] = dBt_dt
+        dB_dt[2] = dBz_dt
+
+        # ---- Source terms (same as central-difference path) ----
+
+        # Geometric source terms (hoop stress, centrifugal)
+        S_geom = geom.geometric_source_momentum(rho, vel, p, B)
+        dmom_dt += S_geom
+
+        # Current density for resistive/Hall terms: J = curl(B) / mu_0
+        curl_B = geom.curl(B)
+        J = curl_B / mu_0
+
+        # Kinetic current coupling
+        J_total = J
+        src = source_terms or {}
+        if "J_kin" in src:
+            J_kin = src["J_kin"]
+            if J_kin.ndim == 4:
+                J_kin = J_kin[:, :, 0, :]
+            J_total = J - J_kin
+
+        # Resistive + Hall electric field for induction correction
+        E_field = np.zeros((3, nr, nz))
+        ohmic_heating = np.zeros((nr, nz))
+        if self.enable_resistive and eta_field is not None:
+            for d in range(3):
+                E_field[d] = eta_field * J_total[d]
+            J_sq = np.sum(J_total**2, axis=0)
+            ohmic_heating = eta_field * J_sq
+
+        if self.enable_hall:
+            ne = rho / self.ion_mass
+            ne_safe = np.maximum(ne, 1e-20)
+            E_Hall = np.zeros((3, nr, nz))
+            E_Hall[0] = (J_total[1] * B[2] - J_total[2] * B[1]) / (ne_safe * e_charge)
+            E_Hall[1] = (J_total[2] * B[0] - J_total[0] * B[2]) / (ne_safe * e_charge)
+            E_Hall[2] = (J_total[0] * B[1] - J_total[1] * B[0]) / (ne_safe * e_charge)
+            E_field = E_field + E_Hall
+
+        # Resistive/Hall correction to induction (added on top of HLL ideal fluxes)
+        if self.enable_resistive or self.enable_hall:
+            dB_dt -= geom.curl(E_field)
+
+        # External source terms
+        ext_drho = src.get("S_rho_snowplow")
+        ext_dmom = src.get("S_mom_snowplow")
+        ext_dE = src.get("S_energy_snowplow")
+        Q_ohmic_corr = src.get("Q_ohmic_correction")
+
+        if ext_drho is not None:
+            ext_drho_2d = self._squeeze(ext_drho) if ext_drho.ndim == 3 else ext_drho
+            drho_dt = drho_dt + ext_drho_2d
+        if ext_dmom is not None:
+            ext_dmom_2d = self._squeeze(ext_dmom) if ext_dmom.ndim == 4 else ext_dmom
+            dmom_dt = dmom_dt + ext_dmom_2d
+
+        total_heating = ohmic_heating
+        if Q_ohmic_corr is not None:
+            Q_corr_2d = self._squeeze(Q_ohmic_corr) if Q_ohmic_corr.ndim == 3 else Q_ohmic_corr
+            total_heating = total_heating + Q_corr_2d
+
+        dE_dt += total_heating
+        if ext_dE is not None:
+            ext_dE_2d = self._squeeze(ext_dE) if ext_dE.ndim == 3 else ext_dE
+            dE_dt = dE_dt + ext_dE_2d
+
+        # Dedner divergence cleaning
+        dpsi_dt = np.zeros_like(psi)
+        if not self.enable_ct:
+            if self.dedner_ch_init > 0:
+                ch = self.dedner_ch_init
+            else:
+                B_sq_ded = np.sum(B**2, axis=0)
+                cs2_ded = self.gamma * p / np.maximum(rho, 1e-30)
+                va2_ded = B_sq_ded / (mu_0 * np.maximum(rho, 1e-30))
+                cf_ded = np.sqrt(cs2_ded + va2_ded)
+                v_abs = np.sqrt(np.sum(vel**2, axis=0))
+                ch = max(float(np.max(v_abs + cf_ded)), 1.0)
+            cp = ch
+            div_B = geom.div_B_cylindrical(B)
+            self._last_div_B = float(np.max(np.abs(div_B)))
+            dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
+            grad_psi = geom.gradient(psi)
+            dB_dt = dB_dt - grad_psi
+
+        # Godunov path always returns conservative energy
+        return {
+            "drho_dt": drho_dt,
+            "dmom_dt": dmom_dt,
+            "dB_dt": dB_dt,
+            "dpsi_dt": dpsi_dt,
+            "dE_dt": dE_dt,
+            "ohmic_heating": ohmic_heating,
+            "E_field": E_field,
+        }
+
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
         """Compute CFL-limited timestep for cylindrical geometry."""
         rho = self._squeeze(state["rho"])
@@ -312,6 +753,12 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         Returns time derivatives for all state variables.
         """
+        # Delegate to Godunov (PLM+HLL) path if enabled
+        if self.use_godunov_flux:
+            return self._compute_godunov_rhs(
+                rho, vel, p, B, psi, eta_field, source_terms,
+            )
+
         geom = self.geom
 
         # --- Current density: J = curl(B) / mu_0 ---
@@ -598,8 +1045,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             E_total_new = np.maximum(E_n + dt * rhs["dE_dt"], 1e-20)
             # Recover pressure from updated conserved variables
             vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
-            v_sq_new = np.sum(vel_new**2, axis=0)
+            # Inter-stage velocity clamping: prevent kinetic energy from exceeding total energy
             B_sq_new = np.sum(B_new**2, axis=0)
+            E_internal_min = 0.01 * E_total_new  # Reserve at least 1% for internal energy
+            KE_max = np.maximum(E_total_new - B_sq_new / (2.0 * mu_0) - E_internal_min, 0.0)
+            v_sq_new = np.sum(vel_new**2, axis=0)
+            KE_actual = 0.5 * rho_new * v_sq_new
+            v_scale = np.where(KE_actual > KE_max, np.sqrt(KE_max / np.maximum(KE_actual, 1e-30)), 1.0)
+            vel_new = vel_new * v_scale[np.newaxis, :, :]
+            mom_new = rho_new[np.newaxis, :, :] * vel_new
+            v_sq_new = np.sum(vel_new**2, axis=0)
             p_new = np.maximum(
                 gm1 * (E_total_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
                 1e-20,
