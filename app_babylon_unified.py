@@ -1,4 +1,26 @@
-"""Unified Babylon.js WebGPU physics visualization — showcase quality.
+"""Unified Babylon.js WebGPU physics visualization -- showcase quality.
+
+DATA PIPELINE (Python -> JSON -> Babylon.js):
+
+1. Simulation runs in Python (Lee model + optional MHD backend).
+2. app_engine.run_simulation_core() returns a result dict with:
+   - Circuit scalars: t_us[], z_mm[], r_mm[], I_MA[], phases[]
+   - MHD final_state: {rho, Te, B, velocity, pressure} as NumPy arrays
+   - MHD snapshots: [{t_us, rho_mid, B_mid, P_mid}, ...] for animation
+   - Derived: beam_tracker, instability, pinch metrics
+3. app_visualization.extract_all_layers() transforms this into 10 layers:
+   L1 geometry, L2 sheath timeline, L3 density, L4 temperature, L5 bfield,
+   L6 pinch, L7 beam, L8 instability, L9 radiation, L10 yield_map.
+   MHD 2D arrays are base64-encoded Float32 with [nr, nz] shape.
+   MHD snapshots are globally normalized per-field for consistent coloring.
+4. This module (app_babylon_unified.py) serializes layers to JSON, embeds
+   them as `const DATA = {...}` inside an HTML page alongside dpf_renderer.js.
+5. dpf_renderer.js (createDPFScene) builds the Babylon.js scene:
+   - Decodes base64 arrays into Float32Arrays
+   - Pre-builds RGBA snap caches for animated heatmap textures
+   - Creates 3D meshes (electrodes, sheath torus, pinch tube, particles)
+   - applyFrame(i) drives animation from Lee scalars + snap textures
+6. The HTML page is served via Gradio gr.HTML as a sandboxed iframe.
 
 Loads dpf_renderer.js as a standalone module. Python provides data,
 JS handles all rendering at Babylon.js's maximum fidelity.
@@ -58,6 +80,16 @@ _HTML_HEAD = (
     "  #layers input[type=checkbox]{width:18px;height:18px;accent-color:#48f;cursor:pointer}\n"
     "  #layers .hdr{color:#8af;font-weight:bold;font-size:13px;margin-top:6px;"
     "margin-bottom:2px;letter-spacing:0.5px}\n"
+    # Physics info panel — dynamic explanation of what the user is seeing
+    "  #info-panel{position:absolute;bottom:70px;right:10px;z-index:12;"
+    "width:260px;background:rgba(5,8,20,0.88);border:1px solid rgba(80,120,200,0.2);"
+    "border-radius:8px;padding:12px 14px;font:13px/1.6 'Helvetica Neue',Arial,sans-serif;"
+    "color:#cdf;max-height:40vh;overflow-y:auto}\n"
+    "  #info-panel .info-title{color:#8cf;font-weight:bold;font-size:14px;"
+    "margin-bottom:6px;letter-spacing:0.5px}\n"
+    "  #info-panel .info-body{color:#bcd;font-size:12px;line-height:1.5;margin-bottom:8px}\n"
+    "  #info-panel .info-phase{color:#fa8;font-size:11px;line-height:1.4;"
+    "border-top:1px solid rgba(255,180,80,0.2);padding-top:6px;margin-top:4px}\n"
     # Transport bar
     "  #bar{position:absolute;bottom:0;left:0;right:0;z-index:10;"
     "display:flex;gap:10px;align-items:center;justify-content:center;"
@@ -90,6 +122,7 @@ _HTML_HEAD = (
     '<div id="vis-mode"></div>\n'
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
+    '<div id="info-panel"></div>\n'
     '<div id="bar">\n'
     '  <button id="pb">&#9654; Play</button>\n'
     '  <button id="sb">&#10074;&#10074; Pause</button>\n'
@@ -174,6 +207,75 @@ window.addEventListener("load", async function(){
     visModeEl.innerHTML = "Visualization: Lee model schematic (not MHD field data)";
   }
 
+  // ---- Physics explanation panel — updates dynamically with heatmap mode and phase ----
+  var infoEl = document.getElementById("info-panel");
+  var activeHeatmapMode = "none";
+
+  var HEATMAP_INFO = {
+    none: {
+      title: "3D DPF Device Overview",
+      body: "The <b>gold cylinder</b> is the anode (inner electrode). " +
+            "<b>Gray rods</b> are the cathode (outer electrode cage). " +
+            "The <b>blue torus</b> is the current sheath -- a magnetic-piston of ionized gas. " +
+            "The <b>orange column</b> at the anode tip is the pinch -- where plasma reaches " +
+            "millions of degrees.<br><br>" +
+            "<b>Enable a heatmap</b> in the Layers panel to overlay MHD field data."
+    },
+    density: {
+      title: "Density Heatmap (MHD)",
+      body: "Color shows <b>plasma mass density</b> rho(r,z) on the midplane. " +
+            "<b>Blue = low density</b> (background fill gas). " +
+            "<b>Yellow/red = high density</b> (compressed plasma). " +
+            "Compression ratio reaches 10-100x during radial implosion. " +
+            "The density profile reveals sheath thickness and pinch column structure."
+    },
+    temperature: {
+      title: "Temperature Heatmap (MHD)",
+      body: "Color shows <b>electron temperature</b> Te(r,z) on the midplane. " +
+            "<b>Blue = cold plasma</b> (~1 eV). " +
+            "<b>Yellow/red = hot plasma</b> (100 eV - 2 keV at pinch). " +
+            "Temperature peaks at the pinch axis from adiabatic compression " +
+            "and Ohmic heating. Fusion-relevant temperatures (>1 keV) occur in the pinch core."
+    },
+    bfield: {
+      title: "Magnetic Field |B| (MHD)",
+      body: "Color shows <b>magnetic field magnitude</b> |B|(r,z) on the midplane. " +
+            "<b>Blue = weak field</b>. <b>Yellow/red = strong field</b> (up to several Tesla). " +
+            "The toroidal B_theta is generated by the axial current: B ~ mu_0*I/(2*pi*r). " +
+            "Strongest near the anode surface, it provides the J x B force driving the implosion."
+    },
+    radiation: {
+      title: "Radiation Power (MHD)",
+      body: "Color shows <b>radiation power density</b> P_rad(r,z) in W/m3. " +
+            "<b>Blue = low emission</b>. <b>Yellow/red = intense radiation</b>. " +
+            "Scales as ne^2 * sqrt(Te) (bremsstrahlung). Strongest in the dense hot pinch, " +
+            "it acts as an energy loss mechanism limiting peak temperature."
+    }
+  };
+
+  var PHASE_INFO = {
+    rundown: "AXIAL RUNDOWN: Current sheath sweeps neutral gas from insulator to anode tip. " +
+             "Duration ~1-3 us. Sheath accelerates under J x B force.",
+    radial: "RADIAL IMPLOSION: Sheath compresses inward as a magnetic piston. " +
+            "Compression ratio 10-50:1. Duration ~100-300 ns.",
+    mhd_radial: "MHD RADIAL IMPLOSION: Full MHD simulation of radial compression.",
+    reflected: "REFLECTED SHOCK: After pinch, shock bounces outward from axis, reheating the plasma.",
+    pinch: "PEAK COMPRESSION: Maximum density and temperature at the axis. " +
+           "Fusion reactions occur here. Ion temperature can exceed 1 keV.",
+    post_pinch: "POST-PINCH: m=0 sausage instability breaks up the plasma column. " +
+                "Pinch neck-off accelerates beam ions to MeV energies."
+  };
+
+  function updateInfoPanel(hmMode, phase) {
+    if (!infoEl) return;
+    var info = HEATMAP_INFO[hmMode] || HEATMAP_INFO.none;
+    var phaseNote = PHASE_INFO[phase] || "";
+    infoEl.innerHTML = "<div class='info-title'>" + info.title + "</div>" +
+      "<div class='info-body'>" + info.body + "</div>" +
+      (phaseNote ? "<div class='info-phase'>" + phaseNote + "</div>" : "");
+  }
+  updateInfoPanel("none", "rundown");
+
   var fi = 0, playing = false, lastAdv = 0;
   var speedIdx = 4;
   spdSlider.value = speedIdx;
@@ -198,6 +300,7 @@ window.addEventListener("load", async function(){
       phaseDesc.textContent = PHASE_DESCRIPTIONS[f.phase] || "";
       phaseName.style.color = PHASE_BAR_COLORS[f.phase] ? "#fff" : "#888";
       lastPhase = f.phase;
+      updateInfoPanel(activeHeatmapMode, f.phase);
     }
 
     // Timeline progress bar
@@ -301,32 +404,36 @@ window.addEventListener("load", async function(){
     scene.fieldLines.forEach(function(l) { l.isVisible = v; });
   });
 
+  // Heatmap toggles — mutually exclusive (radio-like). Only one heatmap
+  // overlay can be active at a time since they share a single midplane texture.
+  var heatmapCheckboxes = [];
+  function setHeatmapMode(key, sourceCb) {
+    // Uncheck all other heatmap checkboxes
+    heatmapCheckboxes.forEach(function(entry) {
+      if (entry.cb !== sourceCb) entry.cb.checked = false;
+    });
+    var mode = sourceCb.checked ? key : "none";
+    scene.setOverlay(mode);
+    scene.updateHeatmap(mode);
+    activeHeatmapMode = mode;
+    updateInfoPanel(mode, lastPhase);
+  }
+  function addHeatTog(label, key) {
+    var lb = document.createElement("label");
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = false;
+    cb.onchange = function() { setHeatmapMode(key, cb); };
+    lb.appendChild(cb);
+    lb.appendChild(document.createTextNode(label));
+    lp.appendChild(lb);
+    heatmapCheckboxes.push({ cb: cb, key: key });
+  }
   if (scene.L.density || scene.L.temperature || scene.L.bfield) {
     addHdr("MHD FIELD DATA");
-    if (scene.L.density) {
-      addTog("Density Heatmap", false, function(v) {
-        scene.setOverlay(v ? "density" : "none");
-        scene.updateHeatmap(v ? "density" : "none");
-      });
-    }
-    if (scene.L.temperature) {
-      addTog("Temperature Heatmap", false, function(v) {
-        scene.setOverlay(v ? "temperature" : "none");
-        scene.updateHeatmap(v ? "temperature" : "none");
-      });
-    }
-    if (scene.L.bfield) {
-      addTog("|B| Heatmap", false, function(v) {
-        scene.setOverlay(v ? "bfield" : "none");
-        scene.updateHeatmap(v ? "bfield" : "none");
-      });
-    }
-    if (scene.L.radiation) {
-      addTog("Radiation Heatmap", false, function(v) {
-        scene.setOverlay(v ? "radiation" : "none");
-        scene.updateHeatmap(v ? "radiation" : "none");
-      });
-    }
+    if (scene.L.density)    addHeatTog("Density Heatmap", "density");
+    if (scene.L.temperature) addHeatTog("Temperature Heatmap", "temperature");
+    if (scene.L.bfield)     addHeatTog("|B| Heatmap", "bfield");
+    if (scene.L.radiation)  addHeatTog("Radiation Heatmap", "radiation");
   }
 
   addHdr("RENDERING");
@@ -371,21 +478,35 @@ window.addEventListener("load", async function(){
 
 
 def create_unified_renderer(d: dict[str, Any]) -> str:
+    """Build a self-contained HTML page with the Babylon.js DPF renderer.
+
+    Pipeline step 4: Python dict -> JSON -> embedded <script> constant.
+    The JSON payload contains all 10 physics layers from extract_all_layers().
+    MHD field arrays are base64-encoded Float32, decoded client-side into
+    RGBA textures via colormap lookup. Snapshot frames are pre-decoded at
+    scene creation time into snapCache for zero-allocation playback.
+    """
+    # Pipeline step 3->4: extract layers, serialize to JSON
     layers = extract_all_layers(d)
     data_json = json.dumps(layers)
 
+    # Pipeline step 4->5: inject JSON into JS host code, combine with renderer
     host_code = _HTML_HOST.replace("%%DATA_JSON%%", data_json)
     return (
         _HTML_HEAD
         + "<script>\n"
-        + "// ---- Renderer module ----\n"
+        + "// ---- Renderer module (dpf_renderer.js) ----\n"
+        + "// Creates Babylon.js scene, decodes base64 field data, builds\n"
+        + "// snap caches, and exposes applyFrame(i) + updateHeatmap(mode).\n"
         + _RENDERER_JS + "\n\n"
+        + "// ---- Host code (frame loop, layer toggles, HUD) ----\n"
         + host_code + "\n"
         + "</script>\n</body></html>"
     )
 
 
 def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
+    """Pipeline step 6: wrap the renderer HTML in a sandboxed iframe for Gradio."""
     html = create_unified_renderer(d)
     escaped = html.replace("&", "&amp;").replace('"', "&quot;")
     return (
