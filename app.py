@@ -474,7 +474,40 @@ def run_simulation(
                 enable_cr=enable_cr,
             )
     except Exception as exc:
-        raise gr.Error(f"Simulation failed ({backend}): {exc}") from exc
+        msg = str(exc).lower()
+        if "nan" in msg or "diverge" in msg or "inf" in msg:
+            raise gr.Error(
+                f"Simulation diverged (NaN/Inf detected). "
+                f"Try reducing simulation time, lowering pressure, or switching to "
+                f"Hybrid (Level 2) which is more numerically stable. [{backend}]"
+            ) from exc
+        if "metal" in msg or "mps" in msg or "gpu" in msg:
+            raise gr.Error(
+                f"GPU backend unavailable ({backend}). "
+                f"Switch to Lee (Level 1) or MHD Standard (Level 3) which run on CPU. "
+                f"Detail: {exc}"
+            ) from exc
+        if "memory" in msg or "oom" in msg or "alloc" in msg:
+            raise gr.Error(
+                f"Out of memory. Reduce grid resolution (try Coarse) or use Lee model. "
+                f"[{backend}]: {exc}"
+            ) from exc
+        raise gr.Error(
+            f"Simulation failed ({backend}): {exc}. "
+            f"If this persists, try the Lee model or Hybrid backend."
+        ) from exc
+
+    if data.get("has_mhd") and grid_preset == "coarse":
+        gr.Warning(
+            "Coarse grid (16 cells) cannot resolve the current sheath (~1mm). "
+            "Use Medium or Fine grid for meaningful spatial results."
+        )
+    if data.get("nan_detected"):
+        gr.Warning(
+            f"Simulation diverged at step {data.get('nan_step', '?')}. "
+            "Results beyond that point are unreliable. "
+            "Try reducing simulation time or switching to Hybrid backend."
+        )
 
     exp_data: dict | None = None
     if experimental_csv is not None:
@@ -631,6 +664,27 @@ CSS = """
 }
 .skip-link:focus {
     top: 0;
+}
+
+/* P2-C: Responsive breakpoints — stack columns on narrow viewports */
+@media (max-width: 1024px) {
+    .gradio-container .row.unequal-height {
+        flex-direction: column !important;
+    }
+    .gradio-container .row.unequal-height > .column {
+        min-width: 100% !important;
+        flex-grow: 1 !important;
+    }
+}
+
+/* P2-C: Compact parameter panel on tablets */
+@media (max-width: 768px) {
+    .gradio-container .row.unequal-height > .column:first-child {
+        min-width: 100% !important;
+    }
+    .gradio-container button {
+        width: 100%;
+    }
 }
 """
 
