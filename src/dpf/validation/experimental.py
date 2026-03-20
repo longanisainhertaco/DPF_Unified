@@ -565,23 +565,26 @@ POSEIDON_60KV_DATA = ExperimentalDevice(
 
 # PF-1000 at 20 kV — from PF-1000 voltage scan
 # Same device, different operating conditions: V0=20 kV, 2.0 Torr D2
-# Peak current estimated from Akel et al. (2021) trend and Lee model.
+# Peak current estimated from Akel et al. (2021) trend and linear voltage scaling:
+# I_peak(20kV) ~ I_peak(27kV) * 20/27 = 1.87 * 0.741 = 1.385 MA ≈ 1.4 MA
 PF1000_20KV_DATA = ExperimentalDevice(
     name="PF-1000-20kV",
     institution="IPPLM Warsaw",
     capacitance=1.332e-3,          # Same bank
     voltage=20e3,                  # 20 kV
     inductance=33.5e-9,            # Same circuit
-    resistance=2.3e-3,             # Same circuit
+    resistance=2.3e-3,             # Same circuit (Scholz 2006 baseline, no Akel offset)
     anode_radius=0.115,            # Same geometry
     cathode_radius=0.16,           # Same geometry
     anode_length=0.60,             # Same geometry
-    fill_pressure_torr=2.0,        # 2.0 Torr D2 (interpolated)
+    fill_pressure_torr=2.0,        # 2.0 Torr D2 (lower V0 → lower optimal pressure)
     fill_gas="deuterium",
-    peak_current=1.4e6,            # 1.4 MA (estimated from voltage scaling)
+    peak_current=1.4e6,            # 1.4 MA (voltage-scaled from 27 kV Scholz data)
     neutron_yield=5e9,             # estimated
-    current_rise_time=6.3e-6,      # ~6.3 us (estimated)
+    current_rise_time=6.3e-6,      # ~6.3 us (estimated, slightly longer than 27 kV)
     reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (voltage trend)",
+    lee_fc=0.7, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.7,
+    lee_reference="Lee & Saw (2014): same device geometry, same fc/fm as 27 kV",
     crowbar_resistance=1.5e-3,
     peak_current_uncertainty=0.12,     # 12% (interpolated, higher uncertainty)
     rise_time_uncertainty=0.15,
@@ -589,8 +592,17 @@ PF1000_20KV_DATA = ExperimentalDevice(
     waveform_provenance="",  # No waveform data
     measurement_notes=(
         "PF-1000 at 20 kV / 2.0 Torr D2 — interpolated from voltage scan trend. "
-        "Peak current 1.4 MA estimated from Akel et al. (2021) multi-voltage data. "
-        "Not a direct measurement — higher uncertainty than 27 kV reference."
+        "Peak current 1.4 MA estimated from Akel et al. (2021) multi-voltage data "
+        "and linear voltage scaling from 27 kV reference (1.87 * 20/27 = 1.385 MA). "
+        "Not a direct measurement — higher uncertainty than 27 kV reference. "
+        "Lee model params (fc=0.7, fm=0.08) from 27 kV fits — same device geometry."
+    ),
+    reliability="estimated",
+    reliability_note=(
+        "Peak current is voltage-scaled from Scholz (2006) 27 kV measurement, not "
+        "a direct measurement at 20 kV. Fill pressure of 2.0 Torr is interpolated. "
+        "Lee model params adopted from 27 kV operating point — may need adjustment "
+        "at lower voltage if sheath dynamics differ significantly."
     ),
 )
 

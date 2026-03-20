@@ -1108,7 +1108,7 @@ class TestValidationSuite:
         from dpf.validation.suite import ValidationSuite
 
         suite = ValidationSuite()
-        assert len(suite.devices) == 3
+        assert len(suite.devices) == 4
 
     def test_init_specific_devices(self):
         """Can initialize with specific devices."""
@@ -1180,8 +1180,9 @@ class TestValidationSuite:
         }
 
         results = suite.validate_all(sim_summary)
-        assert len(results) == 3
+        assert len(results) == 4
         assert "PF-1000" in results
+        assert "PF-1000-20kV" in results
         assert "NX2" in results
         assert "LLNL-DPF" in results
 
@@ -4430,8 +4431,8 @@ def _make_metal_pf1000_config():
     from dpf.presets import get_preset
 
     preset = get_preset("pf1000")
-    preset["grid_shape"] = [32, 1, 64]
-    preset["dx"] = 5e-3
+    preset["grid_shape"] = [16, 1, 32]
+    preset["dx"] = 1e-2
     preset["sim_time"] = 12e-6
     preset["diagnostics_path"] = ":memory:"
     preset["fluid"] = {
@@ -4459,7 +4460,7 @@ def _run_metal_pf1000():
 
     times = []
     currents = []
-    for _ in range(5000):
+    for _ in range(25000):
         result = engine.step()
         times.append(engine.time)
         currents.append(abs(engine.circuit.current))

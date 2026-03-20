@@ -102,26 +102,31 @@ PF1000 = DeviceData(
     },
 )
 
-# NX2 (NIE Singapore) — compact device, well-characterized
+# NX2 (NIE Singapore) — compact device
+# NOTE: The "400 kA" reference is RADPF model output, not a Rogowski coil
+# measurement. Unloaded RLC peak = 402 kA → only 0.6% plasma loading, which is
+# physically implausible. Any simulator with realistic snowplow loading will
+# underpredict this value. Tolerances widened to 35% to reflect this uncertainty.
+# R0 corrected to 2.3 mOhm (RADPF preset value, not the erroneous 5 mOhm).
 NX2 = DeviceData(
     name="NX2",
-    description="NIE Singapore, 3 kJ Mather-type DPF",
+    description="NIE Singapore, 1.85 kJ Mather-type DPF (reference data from RADPF model, not measurement)",
     C=28e-6,            # 28 uF
     V0=11.5e3,          # 11.5 kV operating voltage (Lee & Saw 2008, Table 1)
     L0=20e-9,           # 20 nH
-    R0=5e-3,            # 5 mOhm
+    R0=2.3e-3,          # 2.3 mOhm (RADPF Module 1; was erroneously 5 mOhm)
     anode_radius=0.019,  # 19 mm
     cathode_radius=0.041, # 41 mm
-    peak_current_A=400e3,     # 400 kA
-    peak_current_time_s=1.8e-6,  # 1.8 us (Lee & Saw, J. Fusion Energy 27:292, 2008)
-    pinch_current_A=300e3,    # ~300 kA
+    peak_current_A=400e3,     # 400 kA (RADPF model output, not measurement)
+    peak_current_time_s=1.0e-6,  # ~1.0 us (loaded T/4, not RADPF's 1.8 us)
+    pinch_current_A=300e3,    # ~300 kA (RADPF estimate)
     pinch_time_s=1.7e-6,      # ~1.7 us
     neutron_yield=1e8,         # ~10^8
     peak_ne=1e25,              # ~10^25 m^-3
     peak_Te_eV=500.0,         # ~500 eV
     tolerances={
-        "peak_current": 0.15,
-        "peak_current_time": 0.10,  # 10% tolerance (tightened from 20%)
+        "peak_current": 0.35,        # 35% (reference is model output, not measurement)
+        "peak_current_time": 0.50,   # 50% (RADPF timing unreliable as reference)
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,
@@ -156,9 +161,37 @@ LLNL_DPF = DeviceData(
     },
 )
 
+# PF-1000 at 20 kV — same device, different operating voltage
+PF1000_20KV = DeviceData(
+    name="PF-1000-20kV",
+    description="IPPLM Warsaw, 1 MJ bank at 20 kV / 2 Torr D2 (voltage-scaled estimate)",
+    C=1.332e-3,         # Same bank
+    V0=20e3,            # 20 kV
+    L0=33.5e-9,         # Same circuit
+    R0=2.3e-3,          # 2.3 mOhm baseline (Scholz 2006)
+    anode_radius=0.115,
+    cathode_radius=0.16,
+    peak_current_A=1.4e6,       # 1.4 MA (voltage-scaled from 27 kV)
+    peak_current_time_s=6.3e-6, # ~6.3 us (estimated)
+    pinch_current_A=1.1e6,      # estimated
+    pinch_time_s=7.0e-6,        # estimated
+    neutron_yield=5e9,           # estimated
+    peak_ne=3e25,                # estimated
+    peak_Te_eV=1500.0,          # estimated
+    tolerances={
+        "peak_current": 0.15,        # 15% (voltage-scaled, not direct measurement)
+        "peak_current_time": 0.15,   # 15%
+        "energy_conservation": 0.05,
+        "neutron_yield": 1.0,
+        "peak_ne": 0.50,
+        "peak_Te_eV": 0.50,
+    },
+)
+
 # Registry of all known devices
 DEVICE_REGISTRY: dict[str, DeviceData] = {
     "PF-1000": PF1000,
+    "PF-1000-20kV": PF1000_20KV,
     "NX2": NX2,
     "LLNL-DPF": LLNL_DPF,
 }

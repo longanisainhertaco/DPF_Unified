@@ -38,6 +38,15 @@ _HTML_HEAD = (
     "  #badge{position:absolute;top:70px;left:12px;z-index:10;pointer-events:none;"
     "background:rgba(20,30,60,0.8);border:1px solid rgba(100,160,255,0.3);"
     "border-radius:6px;padding:6px 12px;font:12px/1.5 monospace;color:#8af}\n"
+    # Visualization mode banner — persistent label for data source honesty
+    "  #vis-mode{position:absolute;top:70px;left:50%;transform:translateX(-50%);"
+    "z-index:11;pointer-events:none;text-align:center;"
+    "padding:5px 16px;border-radius:6px;font:bold 11px/1.5 'Helvetica Neue',Arial,sans-serif;"
+    "letter-spacing:0.5px;text-transform:uppercase}\n"
+    "  #vis-mode.lee{background:rgba(180,120,30,0.85);color:#fff;"
+    "border:1px solid rgba(255,180,50,0.5)}\n"
+    "  #vis-mode.mhd{background:rgba(30,120,80,0.85);color:#fff;"
+    "border:1px solid rgba(50,200,120,0.5)}\n"
     # Layer toggles panel (HTML, not Babylon.GUI — scales on Retina)
     "  #layers{position:absolute;bottom:70px;left:10px;z-index:12;"
     "background:rgba(5,8,20,0.85);border:1px solid rgba(80,120,200,0.2);"
@@ -78,6 +87,7 @@ _HTML_HEAD = (
     '<div id="phase-desc"></div></div>\n'
     '<div id="hud"></div>\n'
     '<div id="badge"></div>\n'
+    '<div id="vis-mode"></div>\n'
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
     '<div id="bar">\n'
@@ -146,6 +156,23 @@ window.addEventListener("load", async function(){
     "Backend: " + (scene.L.backend || "lee") + " | " + scene.gpuBackend +
     (scene.useGPU ? " (GPU)" : "") + "<br>" +
     "Physics: " + (layers.length > 0 ? layers.join(", ") : "circuit only");
+
+  // Visualization mode banner — honest labeling of data source.
+  // The 3D scene geometry (sheath, pinch, particles, B-field rings) is ALWAYS
+  // driven by Lee model 0D scalars (z_mm, r_mm, I_MA, phase). MHD field data
+  // only appears in the optional midplane heatmaps and HUD peak values.
+  // This banner makes that distinction visible to the user.
+  var visModeEl = document.getElementById("vis-mode");
+  var backend = (scene.L.backend || "lee").toLowerCase();
+  var hasMHD = !!scene.L.has_mhd;
+  var hasMHDFields = !!(scene.L.density || scene.L.temperature || scene.L.bfield);
+  if (hasMHD && hasMHDFields) {
+    visModeEl.className = "mhd";
+    visModeEl.innerHTML = "3D geometry: Lee model schematic &bull; Heatmaps: MHD field data (" + backend + ")";
+  } else {
+    visModeEl.className = "lee";
+    visModeEl.innerHTML = "Visualization: Lee model schematic (not MHD field data)";
+  }
 
   var fi = 0, playing = false, lastAdv = 0;
   var speedIdx = 4;

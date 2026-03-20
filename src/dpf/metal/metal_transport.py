@@ -702,3 +702,191 @@ def apply_nernst_advection_mps(
     # Sanitize
     B_new = torch.where(torch.isfinite(B_new), B_new, B)
     return B_new
+
+
+# ── Batched Thomas Algorithm (Tridiagonal Solver) ─────────────
+
+def batched_thomas_solve(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    d: torch.Tensor,
+) -> torch.Tensor:
+    """Solve batched tridiagonal systems via the Thomas algorithm.
+
+    Solves ``A x = d`` where ``A`` is tridiagonal with sub-diagonal *a*,
+    main diagonal *b*, and super-diagonal *c*.  Each system is independent.
+
+    Parameters
+    ----------
+    a : torch.Tensor
+        Sub-diagonal coefficients, shape ``(batch, n)``.
+        ``a[:, 0]`` is unused (set to 0 by convention).
+    b : torch.Tensor
+        Main diagonal coefficients, shape ``(batch, n)``.
+    c : torch.Tensor
+        Super-diagonal coefficients, shape ``(batch, n)``.
+        ``c[:, -1]`` is unused (set to 0 by convention).
+    d : torch.Tensor
+        Right-hand side, shape ``(batch, n)``.
+
+    Returns
+    -------
+    torch.Tensor
+        Solution ``x``, shape ``(batch, n)``.
+
+    Notes
+    -----
+    Uses float64 internally for numerical stability, regardless of
+    input dtype.  The output dtype matches the input dtype.
+    """
+    orig_dtype = d.dtype
+    a = a.to(torch.float64)
+    b = b.to(torch.float64)
+    c = c.to(torch.float64)
+    d = d.to(torch.float64)
+
+    n = d.shape[1]
+
+    c_star = c.clone()
+    d_star = d.clone()
+
+    c_star[:, 0] = c[:, 0] / b[:, 0]
+    d_star[:, 0] = d[:, 0] / b[:, 0]
+
+    for i in range(1, n):
+        denom = b[:, i] - a[:, i] * c_star[:, i - 1]
+        c_star[:, i] = c[:, i] / denom
+        d_star[:, i] = (d[:, i] - a[:, i] * d_star[:, i - 1]) / denom
+
+    x = torch.zeros_like(d)
+    x[:, -1] = d_star[:, -1]
+
+    for i in range(n - 2, -1, -1):
+        x[:, i] = d_star[:, i] - c_star[:, i] * x[:, i + 1]
+
+    return x.to(orig_dtype)
+
+
+# ── Implicit Resistive Diffusion ──────────────────────────────
+
+def implicit_resistive_step(
+    B: torch.Tensor,
+    eta: torch.Tensor,
+    dt: float,
+    dx: float,
+    r: torch.Tensor | None = None,
+    coordinates: str = "cartesian",
+    mu_0: float = 1.0,
+    component: int = 1,
+) -> torch.Tensor:
+    """Implicit backward-Euler resistive diffusion for a B-field component.
+
+    Solves ``(I - dt * D) B_new = B_old`` where D is the resistive
+    diffusion operator, using the batched Thomas algorithm along the
+    radial (dim-0) direction.
+
+    In cylindrical coordinates for B_theta (component=1)::
+
+        D(B_theta) = (1/r) d/dr [r * (eta/mu_0) * d(B_theta)/dr]
+
+    In Cartesian::
+
+        D(B) = d/dr [(eta/mu_0) * dB/dr]
+
+    Boundary conditions: Neumann (zero-gradient) at both ends.
+
+    Parameters
+    ----------
+    B : torch.Tensor
+        Magnetic field, shape ``(3, nx, ny, nz)``.
+    eta : torch.Tensor
+        Resistivity field, shape ``(nx, ny, nz)`` in code units
+        (eta_SI / mu_0_SI for Heaviside-Lorentz).
+    dt : float
+        Timestep [code units].
+    dx : float
+        Radial grid spacing.
+    r : torch.Tensor | None
+        Cell-center radii, shape ``(nr, 1, 1)``.  Required for cylindrical.
+    coordinates : str
+        ``"cylindrical"`` or ``"cartesian"``.
+    mu_0 : float
+        Vacuum permeability in code units (1.0 for Heaviside-Lorentz).
+    component : int
+        B-field component to diffuse (default 1 = B_theta).
+
+    Returns
+    -------
+    torch.Tensor
+        Updated B with diffused component, same shape as input.
+    """
+    B_out = B.clone()
+    B_comp = B[component]  # (nx, ny, nz)
+    nx, ny, nz = B_comp.shape
+
+    if nx < 3:
+        return B_out
+
+    D = eta / mu_0  # diffusivity at cell centers
+
+    # Face-centered diffusivities: D_{i+1/2} = 0.5 * (D_i + D_{i+1})
+    D_face = 0.5 * (D[:-1] + D[1:])  # (nx-1, ny, nz)
+
+    is_cyl = coordinates == "cylindrical" and r is not None
+
+    # Reshape B_comp to (batch, nx) where batch = ny * nz
+    B_flat = B_comp.permute(1, 2, 0).reshape(-1, nx).to(torch.float64)
+    D_face_flat = D_face.permute(1, 2, 0).reshape(-1, nx - 1).to(torch.float64)
+
+    a_diag = torch.zeros_like(B_flat)
+    b_diag = torch.ones_like(B_flat)
+    c_diag = torch.zeros_like(B_flat)
+
+    coeff = dt / (dx * dx)
+
+    if is_cyl:
+        r_1d = r.reshape(-1).to(torch.float64)
+        inv_r = 1.0 / torch.clamp(r_1d, min=1e-30)
+        r_face = 0.5 * (r_1d[:-1] + r_1d[1:])  # (nx-1,)
+
+        # Interior points i=1..nx-2
+        for i in range(1, nx - 1):
+            alpha_right = coeff * inv_r[i] * r_face[i] * D_face_flat[:, i]
+            alpha_left = coeff * inv_r[i] * r_face[i - 1] * D_face_flat[:, i - 1]
+            a_diag[:, i] = -alpha_left
+            b_diag[:, i] = 1.0 + alpha_left + alpha_right
+            c_diag[:, i] = -alpha_right
+
+        # Neumann BC at i=0 (left): dB/dr=0 → ghost B_{-1} = B_0
+        alpha_r0 = coeff * inv_r[0] * r_face[0] * D_face_flat[:, 0]
+        b_diag[:, 0] = 1.0 + alpha_r0
+        c_diag[:, 0] = -alpha_r0
+
+        # Neumann BC at i=nx-1 (right): dB/dr=0 → ghost B_{nx} = B_{nx-1}
+        alpha_ln = coeff * inv_r[-1] * r_face[-1] * D_face_flat[:, -1]
+        b_diag[:, -1] = 1.0 + alpha_ln
+        a_diag[:, -1] = -alpha_ln
+    else:
+        for i in range(1, nx - 1):
+            alpha_right = coeff * D_face_flat[:, i]
+            alpha_left = coeff * D_face_flat[:, i - 1]
+            a_diag[:, i] = -alpha_left
+            b_diag[:, i] = 1.0 + alpha_left + alpha_right
+            c_diag[:, i] = -alpha_right
+
+        # Neumann BCs
+        alpha_r0 = coeff * D_face_flat[:, 0]
+        b_diag[:, 0] = 1.0 + alpha_r0
+        c_diag[:, 0] = -alpha_r0
+
+        alpha_ln = coeff * D_face_flat[:, -1]
+        b_diag[:, -1] = 1.0 + alpha_ln
+        a_diag[:, -1] = -alpha_ln
+
+    B_solved = batched_thomas_solve(a_diag, b_diag, c_diag, B_flat)
+
+    B_new_comp = B_solved.reshape(ny, nz, nx).permute(2, 0, 1).to(B.dtype)
+    B_out[component] = B_new_comp
+
+    return B_out

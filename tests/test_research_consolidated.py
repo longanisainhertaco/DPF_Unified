@@ -74,20 +74,20 @@ class TestMJOLNIRPreset:
         assert preset is not None
 
     def test_stored_energy(self):
-        """Stored energy E = 0.5 * C * V^2 should be ~0.72 MJ at 60 kV."""
+        """Stored energy E = 0.5 * C * V^2 should be ~367 kJ at 60 kV (1 MJ config, Offermann 2021)."""
         from dpf.presets import get_preset
         p = get_preset("mjolnir")
         C = p["circuit"]["C"]
         V0 = p["circuit"]["V0"]
         E = 0.5 * C * V0**2
-        assert 0.5e6 < E < 2.5e6, f"Stored energy {E:.0f} J outside 0.5-2.5 MJ range"
+        assert 0.2e6 < E < 1.5e6, f"Stored energy {E:.0f} J outside 0.2-1.5 MJ range"
 
     def test_anode_radius(self):
-        """Anode diameter = 228.6 mm → radius = 114.3 mm."""
+        """Anode radius = 76 mm (Offermann 2021, 1 MJ config)."""
         from dpf.presets import get_preset
         p = get_preset("mjolnir")
         a = p["circuit"]["anode_radius"]
-        assert pytest.approx(a, rel=0.01) == 0.1143
+        assert pytest.approx(a, rel=0.01) == 0.076
 
     def test_crowbar_enabled(self):
         from dpf.presets import get_preset

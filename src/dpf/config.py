@@ -78,8 +78,8 @@ class RadiationConfig(BaseModel):
         description="Atomic number of dominant impurity (default 29 = copper)",
     )
     impurity_fraction: float = Field(
-        0.0, ge=0, le=1.0,
-        description="Impurity number density as fraction of ne (e.g. 0.01 = 1%)",
+        0.01, ge=0, le=1.0,
+        description="Impurity number density as fraction of ne (default 0.01 = 1% Cu for typical DPF)",
     )
 
 

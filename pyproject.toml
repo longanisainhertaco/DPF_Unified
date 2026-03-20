@@ -64,6 +64,11 @@ metal = [
     "torch>=2.4",
     "mlx>=0.20",
 ]
+jax = [
+    "jax>=0.4",
+    "jaxlib>=0.4",
+    "optax>=0.2",
+]
 docs = [
     "mkdocs-material>=9.0",
     "mkdocstrings[python]>=0.24",

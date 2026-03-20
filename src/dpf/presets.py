@@ -161,6 +161,51 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "pinch_column_fraction": 0.14,
         },
     },
+    "pf1000_20kv": {
+        "_meta": {
+            "description": "PF-1000 (IPPLM Warsaw) — 20 kV, 2 Torr D2 operating point",
+            "device": "PF-1000",
+            "geometry": "cylindrical",
+            "topology": "mather",
+            "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (voltage trend)",
+        },
+        "grid_shape": [240, 1, 800],
+        "dx": 7.5e-4,
+        "sim_time": 14e-6,  # 14 us: covers peak (~6.3 us) + post-peak
+        "dt_init": 1e-10,
+        "rho0": 4.30e-4,  # 2.0 Torr D2 at 300K: P/(kB*T) * m_D2
+        "T0": 300.0,
+        "anomalous_alpha": 0.05,
+        "anomalous_threshold_model": "lhdi",
+        # Circuit: Same PF-1000 bank, different operating voltage
+        # R0 = 2.3 mOhm baseline (no Akel correction — this is not a per-shot comparison)
+        "circuit": {
+            "C": 1.332e-3,     # 1.332 mF (same bank)
+            "V0": 20e3,        # 20 kV charging voltage
+            "L0": 33.5e-9,     # 33.5 nH (same circuit)
+            "R0": 2.3e-3,      # 2.3 mOhm baseline (Scholz 2006)
+            "anode_radius": 0.115,   # Same geometry
+            "cathode_radius": 0.16,  # Same geometry
+            "crowbar_enabled": True,
+            "crowbar_mode": "fixed_time",
+            "crowbar_time": 10.5e-6,  # Same crowbar timing
+            "crowbar_resistance": 1.5e-3,  # Same spark gap
+            "crowbar_inductance": 20e-9,  # Same ignitron
+        },
+        "geometry": {"type": "cylindrical"},
+        "boundary": {"electrode_bc": True},
+        "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
+        "sheath": {"enabled": True, "boundary": "z_high"},
+        "snowplow": {
+            "anode_length": 0.6,  # Same geometry
+            # At 20 kV (lower stored energy), lower fill pressure (2 Torr vs 3.5 Torr)
+            # means lighter mass loading, similar fc but potentially lower fm
+            "current_fraction": 0.7,   # Same as 27 kV (Lee & Saw 2014)
+            "mass_fraction": 0.08,     # Same fm as 27 kV (same device geometry)
+            "radial_mass_fraction": 0.16,  # Same as 27 kV
+            "pinch_column_fraction": 0.14,
+        },
+    },
     "nx2": {
         "_meta": {
             "description": "NX2 (NIE Singapore) — 1.85 kJ fast miniature DPF",
@@ -168,22 +213,29 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Lee & Saw, J. Fusion Energy 27:292 (2008); RADPF Module 1",
+            "validation_note": (
+                "Published 'experimental' 400 kA is RADPF model output, not Rogowski "
+                "measurement (unloaded circuit peak = 402 kA, implying <1% plasma "
+                "loading). No digitized waveform exists. Validation uses RADPF-derived "
+                "values with reference_only reliability."
+            ),
         },
         "grid_shape": [192, 1, 384],
         "dx": 2.5e-4,
-        "sim_time": 4e-6,  # 4 us: covers peak (1.8us), radial, pinch
+        "sim_time": 4e-6,  # 4 us: covers peak (~1.0 us), radial, pinch
         "dt_init": 1e-11,
         "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
         # Circuit: Lee & Saw (2008), RADPF Module 1 (plasmafocus.net)
-        # r0 = 2.3 mOhm from RADPF preset (RESF=0.1, L0=20 nH, C0=28 uF)
+        # V0 = 11.5 kV (Lee & Saw 2008 Table 1, not 11 kV)
+        # r0 = 2.3 mOhm from RADPF preset (RESF=0.086)
         "circuit": {
             "C": 28e-6,
-            "V0": 11e3,           # 11 kV operating voltage (Lee & Saw 2008)
-            "L0": 20e-9,          # 20 nH (RADPF Module 1)
-            "R0": 2.3e-3,         # 2.3 mOhm (RADPF; actual RESF=0.086)
+            "V0": 11.5e3,          # 11.5 kV (Lee & Saw 2008 Table 1)
+            "L0": 20e-9,           # 20 nH (RADPF Module 1)
+            "R0": 2.3e-3,          # 2.3 mOhm (RADPF; actual RESF=0.086)
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
             "crowbar_enabled": True,
@@ -196,7 +248,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.05,
             "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
-            "mass_fraction": 0.1,  # Lee et al., J. Appl. Phys. 106 (2009)
+            "mass_fraction": 0.10,  # Lee et al., J. Appl. Phys. 106 (2009)
             "radial_mass_fraction": 0.12,  # Lee et al. (2009): fmr=0.12
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
         },
@@ -276,11 +328,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "mjolnir": {
         "_meta": {
-            "description": "MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF at 60 kV",
+            "description": "MJOLNIR (LLNL) — 1 MJ configuration, MA-class deuterium DPF at 60 kV",
             "device": "MJOLNIR",
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": (
+                "Offermann et al. 2021 (1 MJ configuration); "
                 "Schmidt et al., IEEE TPS (2021); "
                 "Goyon et al., Phys. Plasmas 32:033105 (2025)"
             ),
@@ -293,20 +346,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: ATLAS-heritage Marx, 24 modules, 2 x 34 uF each
-        # C_erected = 24 x 17 uF = 408 uF. Design V=100 kV (2 MJ).
-        # Typical operation: 60 kV (734 kJ), peak current 2.8 MA.
-        # L0 = 140 nH: 80 nH loading-factor estimate revised upward to match
-        # I_peak=2.0 MA (Schmidt 2021). 84 flexible TL cables from Marx pit
-        # add significant inductance beyond the loading-factor heuristic.
-        # R0 = 6.25 mOhm: 2MJ/6-tower config — 12.5 mOhm / 2 towers in parallel (Offermann 2021).
+        # Circuit: Offermann et al. 2021, 1 MJ configuration
+        # C = 204 uF, L0 = 67.4 nH, R0 = 12.5 mOhm
+        # Anode radius = 7.6 cm, cathode radius ~11.9 cm
         "circuit": {
-            "C": 408e-6,           # 408 uF (24 modules x 17 uF erected)
+            "C": 204e-6,           # 204 uF — Offermann et al. 2021, 1 MJ configuration
             "V0": 60e3,            # 60 kV typical operation
-            "L0": 80e-9,           # 80 nH (IPFS Lee model; loading factor I_peak/I_sc ~ 0.65)
-            "R0": 6.25e-3,         # 6.25 mOhm (2MJ/6-tower: 12.5 mOhm / 2 towers in parallel; Offermann 2021)
-            "anode_radius": 0.1143,  # 114.3 mm (Goyon et al., Phys. Plasmas 32:033105, 2025)
-            "cathode_radius": 0.157,  # ~157 mm (A-K gap + anode)
+            "L0": 67.4e-9,         # 67.4 nH — Offermann et al. 2021, 1 MJ configuration
+            "R0": 0.0125,          # 12.5 mOhm — Offermann et al. 2021, 1 MJ configuration
+            "anode_radius": 0.076,   # 7.6 cm — Offermann et al. 2021, 1 MJ configuration
+            "cathode_radius": 0.119,  # ~11.9 cm — Offermann et al. 2021, 1 MJ configuration
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
             "crowbar_resistance": 1.5e-3,  # estimated spark gap
