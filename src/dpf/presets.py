@@ -232,10 +232,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # V0 = 11.5 kV (Lee & Saw 2008 Table 1, not 11 kV)
         # r0 = 2.3 mOhm from RADPF preset (RESF=0.086)
         "circuit": {
-            "C": 28e-6,
-            "V0": 11.5e3,          # 11.5 kV (Lee & Saw 2008 Table 1)
-            "L0": 20e-9,           # 20 nH (RADPF Module 1)
-            "R0": 2.3e-3,          # 2.3 mOhm (RADPF; actual RESF=0.086)
+            "C": 28.8e-6,          # 28.8 uF — Arwinder thesis Table 3.34
+            "V0": 11e3,            # 11 kV (C1 config: z0=5cm, SXR in neon)
+            "L0": 15e-9,           # 15 nH — Arwinder thesis Table 3.34
+            "R0": 2.2e-3,          # 2.2 mOhm — Arwinder thesis Table 3.34
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
             "crowbar_enabled": True,
@@ -248,8 +248,9 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.05,
             "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
-            "mass_fraction": 0.10,  # Lee et al., J. Appl. Phys. 106 (2009)
-            "radial_mass_fraction": 0.12,  # Lee et al. (2009): fmr=0.12
+            "mass_fraction": 0.098,  # Arwinder thesis Table 3.34 (C1 config)
+            "radial_mass_fraction": 0.14,  # Arwinder thesis Table 3.34 (C1: fmr=0.14)
+            "radial_current_fraction": 0.69,  # Arwinder thesis Table 3.34 (C1: fcr=0.69)
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
         },
     },
@@ -367,8 +368,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Anode effective length 18.3-22.1 cm (Petrov 2022)
         "snowplow": {
             "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
-            "current_fraction": 0.70,  # Recalibrated with L0=140nH: I_peak match vs Schmidt (2021)
-            "mass_fraction": 0.50,    # Recalibrated: heavy mass loading for MA-class (ATLAS-heritage)
+            "current_fraction": 0.70,  # Standard fc for Mather-type
+            "mass_fraction": 0.20,    # Reduced from 0.50 (2MJ config) for 1MJ geometry (Offermann 2021)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
@@ -565,22 +566,24 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
         "circuit": {
-            "C": 850e-9,        # 850 nF (0.85 uF)
-            "V0": 26e3,         # 26 kV (maximum charging)
-            "L0": 39e-9,        # 39 nH external inductance
-            "R0": 42e-3,        # 42 mOhm external resistance
-            "anode_radius": 0.006,    # 6 mm (12 mm diameter tube)
-            "cathode_radius": 0.0155, # 15.5 mm (31 mm rod circle)
+            "C": 0.95e-6,       # 0.95 uF — Arwinder thesis Table 3.15
+            "V0": 28e3,         # 28 kV — Silva et al. APL 2003
+            "L0": 40e-9,        # 40 nH — Arwinder thesis Table 3.15
+            "R0": 10e-3,        # 10 mOhm — Arwinder thesis Table 3.15
+            "anode_radius": 0.006,    # 6 mm — Silva et al. 2003
+            "cathode_radius": 0.0155, # 15.5 mm — Silva et al. 2003
             "crowbar_enabled": False,
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {
-            "anode_length": 0.013,       # 13 mm effective anode length
-            "fill_pressure_Pa": 900,     # 9 mbar = 900 Pa
-            "current_fraction": 0.7,
-            "mass_fraction": 0.15,       # EMPIRICAL: small DPF
+            "anode_length": 0.017,       # 17 mm effective — Arwinder thesis
+            "fill_pressure_Pa": 900,     # 9 mbar = 900 Pa (optimal per Silva 2003)
+            "current_fraction": 0.7,     # Arwinder thesis Table 3.15
+            "mass_fraction": 0.08,       # Arwinder thesis Table 3.15
+            "radial_mass_fraction": 0.11,  # Arwinder thesis Table 3.15
+            "radial_current_fraction": 0.71,  # Arwinder thesis Table 3.15
             "pinch_column_fraction": 1.0,
         },
         "breakdown": {
