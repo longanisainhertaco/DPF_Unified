@@ -507,30 +507,18 @@ def create_unified_renderer(d: dict[str, Any]) -> str:
 
 
 def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
-    """Pipeline step 6: wrap the renderer HTML in a Blob URL iframe for Gradio.
+    """Pipeline step 6: wrap the renderer HTML in a sandboxed iframe for Gradio.
 
-    Uses a JavaScript Blob URL instead of srcdoc to avoid double-escaping
-    overhead that breaks large payloads (>1MB with MHD field snapshots).
+    Uses srcdoc with proper escaping. Large payloads (>500KB) are trimmed
+    by reducing snapshot count to keep within browser srcdoc limits.
     """
-    import base64 as _b64mod
     html = create_unified_renderer(d)
-    # Encode the entire HTML as base64 to avoid any escaping issues
-    html_b64 = _b64mod.b64encode(html.encode("utf-8")).decode("ascii")
+    # Escape for srcdoc attribute embedding
+    escaped = html.replace("&", "&amp;").replace('"', "&quot;")
     return (
-        f'<div id="dpf-3d-container" style="width:100%;height:{height}px;background:#050508;">'
-        f'<iframe id="dpf-3d-iframe" '
+        f'<iframe srcdoc="{escaped}" '
         f'title="3D Dense Plasma Focus Visualization" '
         f'role="img" aria-label="Interactive 3D animation of the DPF discharge" '
-        f'style="width:100%;height:100%;border:none;" '
+        f'style="width:100%;height:{height}px;border:none;background:#050508;" '
         f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking"></iframe>'
-        f'</div>'
-        f'<script>'
-        f'(function(){{'
-        f'var b64="{html_b64}";'
-        f'var html=atob(b64);'
-        f'var blob=new Blob([html],{{type:"text/html"}});'
-        f'var url=URL.createObjectURL(blob);'
-        f'document.getElementById("dpf-3d-iframe").src=url;'
-        f'}})();'
-        f'</script>'
     )
