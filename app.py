@@ -551,18 +551,95 @@ def run_simulation(
 
 # ---- Build UI ----
 CSS = """
+/* === DPF-Unified Design System (aligned with Apple HIG / Material 3 / Fluent 2) === */
+
+/* Metrics banner */
 .metrics-banner {
     background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
     border-radius: 8px; padding: 12px 16px; margin-bottom: 8px;
     color: #fff; font-size: 14px;
 }
 .metrics-banner strong { color: #90caf9; }
+
+/* P0: Focus-visible for keyboard navigation (WCAG 2.2, all three platforms) */
+*:focus-visible {
+    outline: 2px solid #42a5f5 !important;
+    outline-offset: 2px !important;
+    border-radius: 4px;
+}
+
+/* P0: Reduced motion support (Apple HIG, Material 3, Fluent 2) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* P0: Color contrast fixes — minimum #94a3b8 for body text on dark (WCAG AA 4.5:1) */
+.gradio-container .prose p,
+.gradio-container .prose li,
+.gradio-container .block-info,
+.gradio-container label span {
+    color: #b0bec5 !important;  /* slate-300 equivalent, 6.3:1 on #1a1a2e */
+}
+
+/* P1: Touch targets — minimum 44px for all interactive elements */
+.gradio-container button,
+.gradio-container input,
+.gradio-container select,
+.gradio-container textarea,
+.gradio-container .wrap-inner {
+    min-height: 44px;
+}
+
+/* P1: Scrollbar cross-browser (Fluent 2 thin scrollbar) */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+}
+
+/* P2: Parameter help text styling — readable secondary text */
+.gradio-container .info-text,
+.gradio-container .svelte-9hc4ua .prose {
+    color: #94a3b8 !important;  /* WCAG AA compliant on dark */
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Tab active indicator — clear selected state (Material 3 pattern) */
+.gradio-container button[role="tab"].selected {
+    border-bottom: 3px solid #42a5f5 !important;
+    font-weight: 600;
+}
+
+/* Skip link for keyboard users (hidden until focused) */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #42a5f5;
+    color: #fff;
+    padding: 8px 16px;
+    z-index: 10000;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 8px 0;
+    transition: top 0.2s;
+}
+.skip-link:focus {
+    top: 0;
+}
 """
 
-with gr.Blocks(title="DPF-Unified Simulator") as app:
+with gr.Blocks(title="DPF-Unified Simulator", analytics_enabled=False) as app:
     sim_state = gr.State(None)
     comparison_state = gr.State([])
 
+    # Skip link for keyboard navigation (hidden until Tab key pressed)
+    gr.HTML('<a href="#sim-results" class="skip-link">Skip to simulation results</a>')
     gr.Markdown("# DPF-Unified Simulator")
 
     with gr.Accordion("Quick Start & Help", open=False):
@@ -690,9 +767,9 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
             export_file = gr.File(label="Export Data (CSV)", visible=False)
 
-        with gr.Column(scale=3):
+        with gr.Column(scale=3, elem_id="sim-results"):
             metrics_md = gr.Markdown(
-                value="<div class='metrics-banner'>Run a simulation to see results.</div>",
+                value="<div class='metrics-banner' role='status' aria-live='polite'>Run a simulation to see results.</div>",
                 elem_classes=["metrics-banner"],
             )
             with gr.Tab("Physics Narrative"):
