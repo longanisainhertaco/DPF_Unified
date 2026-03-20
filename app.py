@@ -440,7 +440,7 @@ def run_simulation(
     enable_fld, enable_sheath, enable_ablation, enable_nernst, enable_cr,
     comparison_runs,
     experimental_csv=None,
-    progress=gr.Progress(),  # noqa: B008
+    progress=gr.Progress(track_tqdm=True),  # noqa: B008
 ):
     err = _validate_inputs(anode_r, cathode_r, V0_kV, C_uF, L0_nH, sim_time_us)
     if err:
