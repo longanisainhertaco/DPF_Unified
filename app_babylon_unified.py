@@ -511,6 +511,8 @@ def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
     escaped = html.replace("&", "&amp;").replace('"', "&quot;")
     return (
         f'<iframe srcdoc="{escaped}" '
+        f'title="3D Dense Plasma Focus Visualization" '
+        f'role="img" aria-label="Interactive 3D animation of the DPF discharge" '
         f'style="width:100%;height:{height}px;border:none;background:#050508;" '
         f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking"></iframe>'
     )
