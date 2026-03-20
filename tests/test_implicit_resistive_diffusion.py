@@ -13,9 +13,10 @@ from __future__ import annotations
 import math
 
 import pytest
-import torch
 
-from dpf.metal.metal_transport import (
+torch = pytest.importorskip("torch", reason="torch required for Metal solver tests")
+
+from dpf.metal.metal_transport import (  # noqa: E402
     batched_thomas_solve,
     implicit_resistive_step,
 )
