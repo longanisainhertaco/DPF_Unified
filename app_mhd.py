@@ -816,10 +816,10 @@ def _run_hybrid_lee_mhd(
         shock_rs.append(sp["r_shock"] * 1e3)
         phases_list.append(sp["phase"])
 
-        if progress_fn and lee_steps % 200 == 0:
+        if progress_fn and lee_steps % 50 == 0:
             progress_fn(
                 min(t / t_end, 0.3),
-                desc=f"Lee rundown: t={t*1e6:.1f}us, z={sp['z_sheath']*1e3:.0f}mm",
+                desc=f"Phase 1/2 — Axial rundown: t={t*1e6:.1f} us | sheath at z={sp['z_sheath']*1e3:.0f} mm | I={circuit.current/1e6:.2f} MA",
             )
 
         # Handoff when Lee model enters radial phase
@@ -1076,11 +1076,11 @@ def _run_hybrid_lee_mhd(
                 _snap["Te_mid"] = state["Te"][:, ny // 2, :].copy()
             mhd_snapshots.append(_snap)
 
-        if progress_fn and mhd_step % 20 == 0:
+        if progress_fn and mhd_step % 5 == 0:
             _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
             progress_fn(
                 max(_mhd_frac, 0.001),
-                desc=f"MHD radial step {mhd_step}: t={t*1e6:.2f}us, dt={dt:.2e}s",
+                desc=f"Phase 2/2 — MHD compression: step {mhd_step} | t={t*1e6:.2f} us | dt={dt*1e9:.1f} ns",
             )
 
     t_arr = np.array(times)
@@ -1289,10 +1289,10 @@ def _run_metal(
             T_max_arr.append(300.0)
             B_max_arr.append(0.0)
 
-            if progress_fn and lee_steps % 200 == 0:
+            if progress_fn and lee_steps % 50 == 0:
                 progress_fn(
                     min(t / t_end, 0.3),
-                    desc=f"Lee rundown: t={t*1e6:.1f}us, z={sp['z_sheath']*1e3:.0f}mm",
+                    desc=f"Phase 1/2 — Axial rundown: t={t*1e6:.1f} us | z={sp['z_sheath']*1e3:.0f} mm",
                 )
 
             if sp["phase"] == "radial":
@@ -1574,11 +1574,11 @@ def _run_metal(
                 _snap["Te_mid"] = state["Te"][:, ny // 2, :].copy()
             mhd_snapshots.append(_snap)
 
-        if progress_fn and mhd_step % 20 == 0:
+        if progress_fn and mhd_step % 5 == 0:
             _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
             progress_fn(
                 max(_mhd_frac, 0.001),
-                desc=f"MHD radial step {mhd_step}: t={t*1e6:.2f}us, dt={dt:.2e}s",
+                desc=f"Phase 2/2 — MHD compression: step {mhd_step} | t={t*1e6:.2f} us | dt={dt*1e9:.1f} ns",
             )
 
     t_arr = np.array(times)
@@ -2012,19 +2012,12 @@ def _run_metal_cylindrical(
                 _snap["Te_mid"] = state_gpu["Te"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy()
             mhd_snapshots.append(_snap)
 
-        if progress_fn and mhd_step % 20 == 0:
+        if progress_fn and mhd_step % 5 == 0:
             t_frac = min((t - t_start) / max(t_end - t_start, 1e-30), 1.0)
-            # Show step count when time fraction is too small to be visible
-            if t_frac < 0.01:
-                progress_fn(
-                    max(t_frac, 0.001),  # keep bar visible
-                    desc=f"Cylindrical MHD step {mhd_step}: t={t*1e6:.3f}us / {t_end*1e6:.1f}us, dt={dt:.2e}s, phase={phase}",
-                )
-            else:
-                progress_fn(
-                    t_frac,
-                    desc=f"Cylindrical MHD: t={t*1e6:.2f}us / {t_end*1e6:.1f}us ({t_frac*100:.1f}%), step={mhd_step}, phase={phase}",
-                )
+            progress_fn(
+                max(t_frac, 0.001),
+                desc=f"MHD: step {mhd_step} | t={t*1e6:.2f}/{t_end*1e6:.0f} us ({t_frac*100:.0f}%) | dt={dt*1e9:.1f} ns | {phase}",
+            )
 
     _wall_elapsed = wall_time.time() - _wall_start
     _incomplete = (mhd_step >= _MAX_STEPS) or (_wall_elapsed > _MAX_WALL_SECONDS)
@@ -2395,8 +2388,8 @@ def _run_python_mhd(
                 _snap["Te_mid"] = state["Te"][:, 0, :].copy()
             mhd_snapshots.append(_snap)
 
-        if progress_fn and step % 50 == 0:
-            progress_fn(min(t / t_end, 1.0), desc=f"Python MHD t={t*1e6:.1f}us")
+        if progress_fn and step % 10 == 0:
+            progress_fn(min(t / t_end, 1.0), desc=f"Level 3 MHD: step {step} | t={t*1e6:.1f}/{t_end*1e6:.0f} us ({min(t/t_end,1)*100:.0f}%)")
 
     t_arr = np.array(times)
     I_arr = np.array(currents)
