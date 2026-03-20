@@ -268,35 +268,11 @@ def run_mhd_simulation(
                 cc, sc, t_end, a, b, L_anode, progress_fn,
             )
     else:
-        # Python MHD (np.gradient) is numerically unstable for DPF-scale
-        # currents. Fall back to Metal PLM which uses proper shock-capturing.
-        try:
-            import torch
-            has_metal = True
-        except ImportError:
-            has_metal = False
-
-        if has_metal:
-            try:
-                import gradio as gr
-                gr.Info(
-                    "Python MHD redirected to Metal PLM — the Python solver "
-                    "(np.gradient) is unstable at MA currents. Metal uses "
-                    "shock-capturing (PLM+HLL) for stable results."
-                )
-            except ImportError:
-                pass
-            logger.info("Python backend redirected to metal_plm (stability)")
-            result = _run_metal(
-                "metal_plm", grid_shape, dr, dz, gas, rho0, p_pa,
-                cc, sc, t_end, a, b, L_anode, progress_fn,
-                **adv_physics,
-            )
-            result["backend"] = "metal_plm (redirected from python)"
-        else:
-            result = _run_python_mhd(
-                grid_shape, dr, dz, gas, rho0, p_pa,
-                cc, t_end, a, b, L_anode, progress_fn,
+        # Python MHD now uses Godunov (PLM+HLL) flux with conservative energy
+        # and inter-stage velocity clamping. Stable at all resolutions (e787a13).
+        result = _run_python_mhd(
+            grid_shape, dr, dz, gas, rho0, p_pa,
+            cc, t_end, a, b, L_anode, progress_fn,
             )
 
     elapsed = wall_time.perf_counter() - t0_wall
@@ -2284,10 +2260,9 @@ def _run_python_mhd(
 ) -> dict[str, Any]:
     """Run Python NumPy MHD solver (CylindricalMHDSolver).
 
-    The Python solver uses np.gradient for spatial derivatives, which cannot
-    handle the strong B-field electrode BC (overflow at MA currents). Instead,
-    it evolves the circuit + a gentle B_theta seed scaled to the current,
-    providing circuit waveforms with approximate MHD coupling.
+    Uses Godunov (PLM+HLL) flux with conservative total energy for shock
+    stability. Cross-platform — no PyTorch/Metal required. Stable at all
+    grid resolutions including MA-class DPF discharges.
     """
     from dpf.circuit.rlc_solver import RLCSolver
     from dpf.core.bases import CouplingState
@@ -2302,6 +2277,8 @@ def _run_python_mhd(
         enable_hall=False,
         enable_resistive=True,
         ion_mass=gas["m_mol"],
+        use_godunov_flux=True,
+        conservative_energy=True,
     )
 
     circuit = RLCSolver(
