@@ -16,14 +16,11 @@ from app_engine import GAS_SPECIES, kB
 logger = logging.getLogger(__name__)
 
 BACKENDS = {
-    "lee": "Quick (< 1 sec) -- current waveform + neutron yield",
-    "hybrid": "Standard (3-30 sec) -- waveform + plasma compression [RECOMMENDED]",
-    "metal_plm": "Detailed (10-60 sec) -- full 2D plasma structure",
-    "metal_weno5": "High Accuracy (30-120 sec) -- publication-quality 2D fields",
-    "metal_3d": "3D (2-10 min) -- 3D instabilities and filamentation",
-    "metal_cylindrical": "Cylindrical (8-300 sec) -- full-discharge MHD from t=0 [use coarse grid]",
-    "athena": "Reference (10-60 sec) -- independent C++ verification",
-    "python": "Legacy (auto-redirects to Detailed)",
+    "lee": "Lee Model (< 1 sec) -- validated circuit model for parameter sweeps",
+    "python": "MHD Standard (10-30 sec) -- cross-platform 2D MHD, no GPU required",
+    "metal_plm": "MHD GPU (5-15 sec) -- Apple Silicon GPU-accelerated 2D MHD",
+    "metal_weno5": "MHD High Fidelity (30-120 sec) -- WENO5-Z + HLLD, publication quality",
+    "hybrid": "Hybrid (3-30 sec) -- Lee model + MHD handoff [RECOMMENDED]",
 }
 
 BACKEND_CONFIGS = {
@@ -35,14 +32,6 @@ BACKEND_CONFIGS = {
         "reconstruction": "weno5", "riemann_solver": "hlld",
         "time_integrator": "ssp_rk3", "precision": "float64",
         "enable_hall": True,
-    },
-    "metal_3d": {
-        "reconstruction": "plm", "riemann_solver": "hll",
-        "time_integrator": "ssp_rk2", "precision": "float32",
-    },
-    "metal_cylindrical": {
-        "reconstruction": "plm", "riemann_solver": "hll",
-        "time_integrator": "ssp_rk2", "precision": "float32",
     },
 }
 
@@ -1075,12 +1064,17 @@ def _run_hybrid_lee_mhd(
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if mhd_step % snap_interval == 0:
-            mhd_snapshots.append({
+            _snap = {
                 "t_us": t * 1e6,
                 "rho_mid": state["rho"][:, ny // 2, :].copy(),
                 "B_mid": state["B"][:, :, ny // 2, :].copy(),
                 "P_mid": state["pressure"][:, ny // 2, :].copy(),
-            })
+            }
+            if "velocity" in state:
+                _snap["vel_mid"] = state["velocity"][:, :, ny // 2, :].copy()
+            if "Te" in state:
+                _snap["Te_mid"] = state["Te"][:, ny // 2, :].copy()
+            mhd_snapshots.append(_snap)
 
         if progress_fn and mhd_step % 20 == 0:
             _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
@@ -1568,12 +1562,17 @@ def _run_metal(
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if mhd_step % snap_interval == 0:
-            mhd_snapshots.append({
+            _snap = {
                 "t_us": t * 1e6,
                 "rho_mid": state["rho"][:, ny // 2, :].copy(),
                 "B_mid": state["B"][:, :, ny // 2, :].copy(),
                 "P_mid": state["pressure"][:, ny // 2, :].copy(),
-            })
+            }
+            if "velocity" in state:
+                _snap["vel_mid"] = state["velocity"][:, :, ny // 2, :].copy()
+            if "Te" in state:
+                _snap["Te_mid"] = state["Te"][:, ny // 2, :].copy()
+            mhd_snapshots.append(_snap)
 
         if progress_fn and mhd_step % 20 == 0:
             _mhd_frac = min(0.3 + 0.7 * (t - t_mhd_start) / max(t_end - t_mhd_start, 1e-30), 1.0)
@@ -1732,7 +1731,7 @@ def _run_metal_cylindrical(
     from dpf.metal.metal_solver import MetalMHDSolver
 
     mu_0 = 4.0 * np.pi * 1e-7
-    cfg = BACKEND_CONFIGS["metal_cylindrical"]
+    cfg = BACKEND_CONFIGS.get("metal_cylindrical", BACKEND_CONFIGS["metal_plm"])
 
     use_mps = torch.backends.mps.is_available()
     device = "mps" if use_mps else "cpu"
@@ -2001,12 +2000,17 @@ def _run_metal_cylindrical(
         B_max_arr.append(float(B_sq.sqrt().max().item()))
 
         if mhd_step % snap_interval == 0:
-            mhd_snapshots.append({
+            _snap = {
                 "t_us": t * 1e6,
                 "rho_mid": state_gpu["rho"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
                 "B_mid": state_gpu["B"][:, :, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
                 "P_mid": state_gpu["pressure"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy(),
-            })
+            }
+            if "velocity" in state_gpu:
+                _snap["vel_mid"] = state_gpu["velocity"][:, :, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy()
+            if "Te" in state_gpu:
+                _snap["Te_mid"] = state_gpu["Te"][:, ny // 2, :].detach().cpu().to(torch.float64).numpy().copy()
+            mhd_snapshots.append(_snap)
 
         if progress_fn and mhd_step % 20 == 0:
             t_frac = min((t - t_start) / max(t_end - t_start, 1e-30), 1.0)
@@ -2211,11 +2215,18 @@ def _run_athena(
         B_max_arr.append(float(np.max(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 80 == 0:
-            mhd_snapshots.append({
+            _snap = {
                 "t_us": t * 1e6,
                 "rho_mid": state["rho"][:, 0, :].copy(),
                 "P_mid": state["pressure"][:, 0, :].copy(),
-            })
+            }
+            if "B" in state:
+                _snap["B_mid"] = state["B"][:, :, 0, :].copy()
+            if "velocity" in state:
+                _snap["vel_mid"] = state["velocity"][:, :, 0, :].copy()
+            if "Te" in state:
+                _snap["Te_mid"] = state["Te"][:, 0, :].copy()
+            mhd_snapshots.append(_snap)
 
         if progress_fn and step % 20 == 0:
             progress_fn(min(t / t_end, 1.0), desc=f"Athena++ t={t*1e6:.1f}us, step={step}")
@@ -2371,11 +2382,18 @@ def _run_python_mhd(
         B_max_arr.append(float(np.nanmax(np.sqrt(np.sum(state["B"] ** 2, axis=0)))))
 
         if step % 100 == 0:
-            mhd_snapshots.append({
+            _snap = {
                 "t_us": t * 1e6,
                 "rho_mid": state["rho"][:, 0, :].copy(),
                 "P_mid": state["pressure"][:, 0, :].copy(),
-            })
+            }
+            if "B" in state:
+                _snap["B_mid"] = state["B"][:, :, 0, :].copy()
+            if "velocity" in state:
+                _snap["vel_mid"] = state["velocity"][:, :, 0, :].copy()
+            if "Te" in state:
+                _snap["Te_mid"] = state["Te"][:, 0, :].copy()
+            mhd_snapshots.append(_snap)
 
         if progress_fn and step % 50 == 0:
             progress_fn(min(t / t_end, 1.0), desc=f"Python MHD t={t*1e6:.1f}us")
@@ -2413,9 +2431,16 @@ def _run_python_mhd(
 
 
 def create_mhd_fields_fig(d: dict[str, Any]) -> Any:
-    """Create 2D field plots from MHD snapshots with physical coordinates."""
+    """Create 2D field plots from MHD snapshots with physical coordinates.
+
+    Shows density + pressure (always), plus B-field magnitude, velocity magnitude,
+    current density J, and temperature when available in the snapshot data.
+    Uses Plotly dropdown buttons to toggle between field views (max 3x2 grid).
+    """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+
+    mu_0 = 4.0 * np.pi * 1e-7
 
     snapshots = d.get("mhd_snapshots", [])
     if not snapshots:
@@ -2429,7 +2454,7 @@ def create_mhd_fields_fig(d: dict[str, Any]) -> Any:
 
     snap = snapshots[-1]
     rho = snap["rho_mid"]
-    P = snap["P_mid"]
+    P = snap.get("P_mid")
 
     cc = d.get("circuit", {})
     sc = d.get("snowplow_cfg", {})
@@ -2440,28 +2465,84 @@ def create_mhd_fields_fig(d: dict[str, Any]) -> Any:
 
     r_mm = np.linspace(a_m * 1e3, b_m * 1e3, nr)
     z_mm = np.linspace(0, L_m * 1e3, nz)
+    dr = (b_m - a_m) / max(nr - 1, 1)
+    dz = L_m / max(nz - 1, 1)
 
+    # Build field catalog: (label, data_2d, unit, colorscale)
+    fields: list[tuple[str, np.ndarray, str, str]] = [
+        ("Density", rho, "kg/m^3", "Viridis"),
+    ]
+    if P is not None:
+        fields.append(("Pressure", P, "Pa", "Inferno"))
+
+    B_mid = snap.get("B_mid")
+    if B_mid is not None:
+        B_mag = np.sqrt(np.sum(B_mid**2, axis=0))
+        fields.append(("|B| (magnetic field)", B_mag, "T", "Magma"))
+
+        # Current density J = curl(B)/mu_0
+        # In 2D midplane (r,z): J_theta ~ (dBr/dz - dBz/dr) / mu_0
+        if B_mid.shape[0] >= 3:
+            dBr_dz = np.gradient(B_mid[0], dz, axis=1)
+            dBz_dr = np.gradient(B_mid[2], dr, axis=0)
+            J_theta = (dBr_dz - dBz_dr) / mu_0
+            fields.append(("J_theta (current density)", np.abs(J_theta), "A/m^2", "Hot"))
+
+    vel_mid = snap.get("vel_mid")
+    if vel_mid is not None:
+        v_mag = np.sqrt(np.sum(vel_mid**2, axis=0))
+        fields.append(("|v| (velocity)", v_mag / 1e3, "km/s", "Cividis"))
+
+    Te_mid = snap.get("Te_mid")
+    if Te_mid is not None:
+        Te_eV = Te_mid * 1.380649e-23 / 1.602e-19
+        fields.append(("Te (electron temperature)", Te_eV, "eV", "Plasma"))
+    elif P is not None:
+        # Estimate T from ideal gas: T = P * m_ion / (2 * rho * kB)
+        gas = d.get("gas", {})
+        m_ion = gas.get("m_mol", 3.34e-27)
+        rho_safe = np.where(rho > 0, rho, 1.0)
+        T_est = P * m_ion / (2.0 * rho_safe * 1.380649e-23)
+        T_eV = T_est * 1.380649e-23 / 1.602e-19
+        fields.append(("T (estimated)", T_eV, "eV [Estimated]", "Plasma"))
+
+    n_fields = len(fields)
+    n_cols = min(n_fields, 2)
+    n_rows = (n_fields + n_cols - 1) // n_cols
+
+    t_label = f"t={snap['t_us']:.1f} us"
+    subplot_titles = [f"{f[0]} ({t_label})" for f in fields]
     fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=[
-            f"Density (t={snap['t_us']:.1f} us)",
-            f"Pressure (t={snap['t_us']:.1f} us)",
-        ],
+        rows=n_rows, cols=n_cols,
+        subplot_titles=subplot_titles,
         horizontal_spacing=0.15,
+        vertical_spacing=0.12,
     )
 
-    fig.add_trace(go.Heatmap(
-        z=rho, x=z_mm, y=r_mm, colorscale="Viridis", name="rho",
-        colorbar=dict(title="kg/m<sup>3</sup>", x=0.42, len=0.9),
-    ), row=1, col=1)
+    for idx, (label, data_2d, unit, cscale) in enumerate(fields):
+        row = idx // n_cols + 1
+        col = idx % n_cols + 1
+        cb_x = 0.42 if col == 1 else 1.0
+        fig.add_trace(go.Heatmap(
+            z=data_2d, x=z_mm, y=r_mm, colorscale=cscale, name=label,
+            colorbar=dict(title=unit, x=cb_x, len=0.9 / n_rows),
+        ), row=row, col=col)
 
-    fig.add_trace(go.Heatmap(
-        z=P, x=z_mm, y=r_mm, colorscale="Inferno", name="P",
-        colorbar=dict(title="Pa", x=1.0, len=0.9),
-    ), row=1, col=2)
+    # Data source label
+    backend = d.get("backend", "unknown")
+    _src = "MHD Solver (2D)"
+    if "lee" in str(backend).lower():
+        _src = "Lee Model (0D)"
+    elif "hybrid" in str(backend).lower():
+        _src = "Hybrid: Lee (0D) + MHD (2D)"
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text=f"Data: {_src} | Backend: {backend}", showarrow=False,
+        font=dict(size=9, color="#888"), xanchor="left", yanchor="bottom",
+    )
 
     fig.update_layout(
-        height=400, template="plotly_dark",
+        height=350 * n_rows, template="plotly_dark",
         margin=dict(l=60, r=20, t=40, b=40),
     )
     fig.update_xaxes(title_text="z [mm]")

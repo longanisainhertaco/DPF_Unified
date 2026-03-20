@@ -165,16 +165,16 @@ def create_waveform_fig(
     phases = d["phases"]
 
     has_exp = experimental_data is not None
-    n_rows = 3 if has_exp else 2
-    titles = ["Circuit Current I(t)", "Capacitor Voltage V(t)"]
+    n_rows = 4 if has_exp else 3
+    titles = ["Circuit Current I(t)", "dI/dt (phase transition diagnostic)", "Capacitor Voltage V(t)"]
     if has_exp:
         titles.append("Residual: Simulation - Experiment")
 
     fig = make_subplots(
         rows=n_rows, cols=1, shared_xaxes=True,
         subplot_titles=titles,
-        vertical_spacing=0.08,
-        row_heights=[0.4, 0.3, 0.3] if has_exp else [0.5, 0.5],
+        vertical_spacing=0.07,
+        row_heights=[0.35, 0.25, 0.25, 0.15] if has_exp else [0.4, 0.3, 0.3],
     )
 
     if d.get("has_snowplow"):
@@ -215,30 +215,44 @@ def create_waveform_fig(
         I_sim_interp = np.interp(t_exp, t, I_arr)  # noqa: N806
         residual = I_sim_interp - I_exp
 
+        residual_row = n_rows
         fig.add_trace(go.Scatter(
             x=t_exp, y=residual, mode="lines",
             line=dict(color="#FF9800", width=1.5),
             name="Residual (sim - exp)",
             fill="tozeroy", fillcolor="rgba(255,152,0,0.2)",
-        ), row=3, col=1)
-        fig.add_hline(y=0, line_dash="dash", line_color="#666", row=3, col=1)
-        fig.update_yaxes(title_text="Residual [MA]", row=3, col=1)
-        fig.update_xaxes(title_text="Time [us]", row=3, col=1)
+        ), row=residual_row, col=1)
+        fig.add_hline(y=0, line_dash="dash", line_color="#666", row=residual_row, col=1)
+        fig.update_yaxes(title_text="Residual [MA]", row=residual_row, col=1)
+        fig.update_xaxes(title_text="Time [us]", row=residual_row, col=1)
 
         rmse = float(np.sqrt(np.mean(residual**2)))
         fig.add_annotation(
-            x=0.98, y=0.95, xref="x3 domain", yref="y3 domain",
+            x=0.98, y=0.95,
+            xref=f"x{residual_row} domain", yref=f"y{residual_row} domain",
             text=f"RMSE = {rmse:.4f} MA",
             showarrow=False, font=dict(size=12, color="#FF9800"),
             bgcolor="rgba(0,0,0,0.5)",
         )
 
+    # -- Row 2: dI/dt (current derivative — most sensitive phase diagnostic) --
+    t_arr_s = np.array(t) * 1e-6  # noqa: N806
+    I_arr_A = np.array(I_arr) * 1e6  # noqa: N806
+    dIdt = np.gradient(I_arr_A, t_arr_s) / 1e12  # in TA/s = 1e12 A/s
+    fig.add_trace(go.Scatter(
+        x=t, y=dIdt, mode="lines",
+        line=dict(color="#26C6DA", width=2), name="dI/dt",
+    ), row=2, col=1)
+    fig.add_hline(y=0, line_dash="dash", line_color="#555", row=2, col=1)
+    fig.update_yaxes(title_text="dI/dt [TA/s]", row=2, col=1)
+
+    # -- Row 3: Capacitor Voltage --
     fig.add_trace(go.Scatter(
         x=t, y=V, mode="lines",
         line=dict(color="#4CAF50", width=2), name="V_cap(t)",
-    ), row=2, col=1)
+    ), row=3, col=1)
 
-    # Phase-colored background bands
+    # Phase-colored background bands (on rows 1, 2, 3)
     if d.get("has_snowplow"):
         phase_bg = {
             "rundown": "rgba(33,150,243,0.08)",
@@ -253,16 +267,12 @@ def create_waveform_fig(
                 end_t = t[i] if i < len(phases) - 1 else t[-1]
                 bg = phase_bg.get(prev_phase)
                 if bg:
-                    fig.add_vrect(
-                        x0=seg_start_t, x1=end_t,
-                        fillcolor=bg, layer="below", line_width=0,
-                        row=1, col=1,
-                    )
-                    fig.add_vrect(
-                        x0=seg_start_t, x1=end_t,
-                        fillcolor=bg, layer="below", line_width=0,
-                        row=2, col=1,
-                    )
+                    for band_row in (1, 2, 3):
+                        fig.add_vrect(
+                            x0=seg_start_t, x1=end_t,
+                            fillcolor=bg, layer="below", line_width=0,
+                            row=band_row, col=1,
+                        )
                 seg_start_t = t[i]
                 prev_phase = phases[i]
 
@@ -319,9 +329,9 @@ def create_waveform_fig(
         fig.add_vline(x=d["crowbar_t"], line=dict(color="red", dash="dash", width=1),
                        annotation_text="Crowbar fires",
                        annotation_font=dict(size=10, color="red"),
-                       row=2, col=1)
+                       row=3, col=1)
 
-    # Phase boundary: rundown -> radial transition
+    # Phase boundary: rundown -> radial transition (on all 3 main rows)
     for i in range(1, len(phases)):
         if phases[i - 1] == "rundown" and phases[i] == "radial":
             fig.add_vline(
@@ -331,13 +341,27 @@ def create_waveform_fig(
                 annotation_position="top right",
                 row=1, col=1,
             )
+            fig.add_vline(
+                x=t[i], line=dict(color="#FF9800", dash="dot", width=1.5),
+                row=2, col=1,
+            )
             break
 
+    # Data source label
+    _src = "Lee Model (0D)" if d.get("has_snowplow") and not d.get("has_mhd") else "MHD Solver (2D)"
+    if d.get("has_snowplow") and d.get("has_mhd"):
+        _src = "Hybrid: Lee (0D) + MHD (2D)"
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text=f"Data: {_src}", showarrow=False,
+        font=dict(size=9, color="#888"), xanchor="left", yanchor="bottom",
+    )
+
     fig.update_yaxes(title_text="Current [MA]", row=1, col=1)
-    fig.update_yaxes(title_text="Voltage [kV]", row=2, col=1)
-    fig.update_xaxes(title_text="Time [us]", row=2, col=1)
+    fig.update_yaxes(title_text="Voltage [kV]", row=3, col=1)
+    fig.update_xaxes(title_text="Time [us]", row=n_rows, col=1)
     fig.update_layout(
-        height=650 if has_exp else 500, template="plotly_dark",
+        height=800 if has_exp else 650, template="plotly_dark",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
         margin=dict(l=60, r=20, t=40, b=40),
     )
@@ -469,6 +493,33 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
 
     fig.update_xaxes(title_text="Time [us]", row=3, col=1)
 
+    # Panel explanations (right-aligned, small text)
+    fig.add_annotation(
+        x=0.98, y=0.02, xref="x domain", yref="y domain",
+        text="Stacked: capacitor depletes as magnetic + resistive grow",
+        showarrow=False, font=dict(size=9, color="#777"), xanchor="right",
+    )
+    fig.add_annotation(
+        x=0.98, y=0.02, xref="x2 domain", yref="y2 domain",
+        text="z = axial sheath front; r = radial shock compression",
+        showarrow=False, font=dict(size=9, color="#777"), xanchor="right",
+    )
+    fig.add_annotation(
+        x=0.98, y=0.02, xref="x3 domain", yref="y3 domain",
+        text="V_pinch = I * dL/dt; peaks at maximum compression rate",
+        showarrow=False, font=dict(size=9, color="#777"), xanchor="right",
+    )
+
+    # Data source label
+    _src = "Lee Model (0D)" if d.get("has_snowplow") and not d.get("has_mhd") else "MHD Solver (2D)"
+    if d.get("has_snowplow") and d.get("has_mhd"):
+        _src = "Hybrid: Lee (0D) + MHD (2D)"
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text=f"Data: {_src}", showarrow=False,
+        font=dict(size=9, color="#888"), xanchor="left", yanchor="bottom",
+    )
+
     fig.update_layout(
         height=800, template="plotly_dark", showlegend=True,
         legend=dict(
@@ -480,7 +531,9 @@ def create_physics_fig(d: dict[str, Any]) -> go.Figure:
     )
 
     for annotation in fig.layout.annotations:
-        annotation.font = dict(size=12, color="#ccc")
+        ann_size = annotation.font.size if annotation.font and annotation.font.size else 16
+        if ann_size > 10:
+            annotation.font = dict(size=12, color="#ccc")
 
     return fig
 
@@ -730,10 +783,94 @@ def create_phase_portrait(d: dict[str, Any]) -> go.Figure:
         fig.update_xaxes(title_text="Shock Radius r [mm]", autorange="reversed", row=3, col=1)
         fig.update_yaxes(title_text="dr/dt [mm/us]", row=3, col=1)
 
+    # Data source label
+    _src = "Lee Model (0D)" if d.get("has_snowplow") and not d.get("has_mhd") else "MHD Solver (2D)"
+    if d.get("has_snowplow") and d.get("has_mhd"):
+        _src = "Hybrid: Lee (0D) + MHD (2D)"
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text=f"Data: {_src}", showarrow=False,
+        font=dict(size=9, color="#888"), xanchor="left", yanchor="bottom",
+    )
+
     fig.update_layout(
         height=750, template="plotly_dark",
         margin=dict(l=60, r=20, t=40, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    )
+    return fig
+
+
+def create_energy_balance_fig(d: dict[str, Any]) -> go.Figure:
+    """Time-series energy balance: capacitor, magnetic, resistive, and kinetic/thermal if available."""
+    t = d["t_us"]
+
+    fig = go.Figure()
+
+    # Core energy channels (always available from circuit model)
+    E_cap = np.array(d.get("E_cap_kJ", []))
+    E_ind = np.array(d.get("E_ind_kJ", []))
+    E_res = np.array(d.get("E_res_kJ", []))
+
+    if len(E_cap) == 0:
+        fig.add_annotation(
+            text="No energy data available -- run a simulation first",
+            x=0.5, y=0.5, xref="paper", yref="paper",
+            showarrow=False, font=dict(size=14, color="#aaa"),
+        )
+        fig.update_layout(height=400, template="plotly_dark")
+        return fig
+
+    fig.add_trace(go.Scatter(
+        x=t, y=E_cap, mode="lines", fill="tozeroy",
+        line=dict(color="#66BB6A", width=1), fillcolor="rgba(102,187,106,0.5)",
+        name="Capacitor E_cap [kJ]", stackgroup="energy",
+    ))
+    fig.add_trace(go.Scatter(
+        x=t, y=E_ind, mode="lines", fill="tonexty",
+        line=dict(color="#42A5F5", width=1), fillcolor="rgba(66,165,245,0.5)",
+        name="Magnetic E_ind [kJ]", stackgroup="energy",
+    ))
+    fig.add_trace(go.Scatter(
+        x=t, y=E_res, mode="lines", fill="tonexty",
+        line=dict(color="#EF5350", width=1), fillcolor="rgba(239,83,80,0.5)",
+        name="Resistive E_res [kJ]", stackgroup="energy",
+    ))
+
+    # Total energy line (should be constant = E_bank)
+    E_total = E_cap + E_ind + E_res
+    fig.add_trace(go.Scatter(
+        x=t, y=E_total, mode="lines",
+        line=dict(color="#FFFFFF", width=1.5, dash="dash"),
+        name="Total (conservation check)",
+    ))
+
+    # E_bank reference
+    E_bank = d.get("E_bank_kJ")
+    if E_bank is not None:
+        fig.add_hline(
+            y=E_bank, line_dash="dot", line_color="#888",
+            annotation_text=f"E_bank = {E_bank:.1f} kJ",
+            annotation_font=dict(size=10, color="#888"),
+        )
+
+    # Data source label
+    _src = "Lee Model (0D)" if d.get("has_snowplow") and not d.get("has_mhd") else "MHD Solver (2D)"
+    if d.get("has_snowplow") and d.get("has_mhd"):
+        _src = "Hybrid: Lee (0D) + MHD (2D)"
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text=f"Data: {_src}", showarrow=False,
+        font=dict(size=9, color="#888"), xanchor="left", yanchor="bottom",
+    )
+
+    fig.update_layout(
+        height=400, template="plotly_dark",
+        title="Energy Balance: Where does the bank energy go?",
+        xaxis_title="Time [us]",
+        yaxis_title="Energy [kJ]",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        margin=dict(l=60, r=20, t=60, b=40),
     )
     return fig
 

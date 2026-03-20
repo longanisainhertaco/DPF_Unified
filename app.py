@@ -58,6 +58,7 @@ from app_plasma_renderer import create_babylon_iframe, create_cross_section_ifra
 from app_plots import (
     create_3d_plasma_fig,
     create_comparison_fig,
+    create_energy_balance_fig,
     create_phase_portrait,
     create_physics_fig,
     create_schematic_fig,
@@ -78,90 +79,63 @@ from dpf.presets import _PRESETS, get_preset, list_presets
 
 RUNTIME_PER_US = {
     ("lee", "coarse"): 0.02, ("lee", "medium"): 0.02, ("lee", "fine"): 0.02,
-    ("hybrid", "coarse"): 1.0, ("hybrid", "medium"): 5.0, ("hybrid", "fine"): 30.0,
+    ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
     ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
     ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
-    ("metal_3d", "coarse"): 2.0, ("metal_3d", "medium"): 30.0, ("metal_3d", "fine"): 300.0,
-    ("metal_cylindrical", "coarse"): 1.5, ("metal_cylindrical", "medium"): 10.0, ("metal_cylindrical", "fine"): 120.0,
-    ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
-    ("athena", "coarse"): 0.5, ("athena", "medium"): 3.0, ("athena", "fine"): 18.0,
+    ("hybrid", "coarse"): 1.0, ("hybrid", "medium"): 5.0, ("hybrid", "fine"): 30.0,
 }
 
 FIDELITY = {
-    "lee": "0D (validated, fitted)", "hybrid": "0D + 2D MHD (best accuracy)",
-    "metal_plm": "2D MHD (fast, moderate detail)",
-    "metal_weno5": "2D MHD (slow, high detail)", "metal_3d": "3D MHD (slow, 3D effects)",
-    "metal_cylindrical": "2D MHD (experimental, unvalidated)",
-    "athena": "2D MHD (C++ reference)", "python": "redirects to 2D MHD Fast",
+    "lee": "0D circuit model (validated against 7+ devices)",
+    "python": "2D MHD (Godunov flux, cross-platform)",
+    "metal_plm": "2D MHD (GPU-accelerated, 2nd-order)",
+    "metal_weno5": "2D MHD (5th-order, float64, highest fidelity)",
+    "hybrid": "0D + 2D MHD (validated waveforms + spatial detail)",
 }
 
 # Status: whether the backend is fully operational
 BACKEND_STATUS = {
     "lee": "WORKING",
-    "hybrid": "WORKING",
+    "python": "WORKING",
     "metal_plm": "WORKING",
     "metal_weno5": "WORKING",
-    "metal_3d": "EXPERIMENTAL",
-    "metal_cylindrical": "EXPERIMENTAL",
-    "athena": "REQUIRES COMPILATION",
-    "python": "REDIRECTS",
+    "hybrid": "WORKING",
 }
 
 BACKEND_HELP = {
-    "lee": "STATUS: Working | SPEED: < 1 second | ACCURACY: Validated against 7+ published devices\n\n"
-           "The Lee model computes current waveforms and pinch dynamics WITHOUT spatial resolution. "
-           "It uses two fitted parameters (fc, fm) to match experimental data. Best for: "
-           "quick parameter scans, fitting to experiments, initial device exploration. "
-           "Does NOT show internal plasma structure, instabilities, or field distributions.",
+    "lee": "SPEED: < 1 second | VALIDATED against 7+ published devices\n\n"
+           "Solves the circuit equations as ordinary differential equations -- no spatial grid. "
+           "Computes current I(t), voltage V(t), sheath trajectory, pinch radius, and neutron yield. "
+           "Two fitted parameters (fc = current fraction, fm = mass fraction) calibrate it to match "
+           "experimental data. Best for parameter sweeps, fitting to experiments, and device exploration. "
+           "Does NOT show internal plasma structure, magnetic field maps, or instabilities.",
 
-    "hybrid": "STATUS: Working | SPEED: 3-30 seconds | ACCURACY: Lee-validated waveforms + MHD compression\n\n"
-              "RECOMMENDED for most users. Combines the validated Lee model (axial rundown phase) "
-              "with a 2D MHD solver (radial implosion phase). You get accurate current waveforms "
-              "AND spatially resolved pinch compression. The handoff happens when the sheath "
-              "reaches the anode tip (~5-10 us for most devices).",
+    "python": "SPEED: 10-30 seconds | WORKS EVERYWHERE (no GPU needed)\n\n"
+              "Full 2D MHD simulation using a Godunov shock-capturing scheme (PLM reconstruction + "
+              "HLL Riemann solver). Runs on any machine with NumPy -- no Apple Silicon or GPU required. "
+              "Resolves magnetic fields, density, pressure, and temperature on a cylindrical grid. "
+              "Good balance of portability and physics fidelity. Use this on Linux, Windows, or "
+              "older Macs where GPU acceleration is not available.",
 
-    "metal_plm": "STATUS: Working (Apple GPU) | SPEED: 10-60 seconds | ACCURACY: 2nd-order spatial\n\n"
-                 "Full 2D MHD simulation on GPU. Resolves magnetic fields, density, pressure, "
-                 "and temperature everywhere in the electrode gap. Uses a 2nd-order shock-capturing "
-                 "scheme (robust but somewhat diffusive). Best for: seeing spatial structure, "
-                 "comparing with interferometry, studying compression profiles.\n"
-                 "REQUIRES: Apple Silicon Mac (M1/M2/M3) or any machine with PyTorch.",
+    "metal_plm": "SPEED: 5-15 seconds | REQUIRES Apple Silicon Mac with Metal GPU\n\n"
+                 "Same physics as MHD Standard but accelerated on Apple's Metal GPU. Uses 2nd-order "
+                 "PLM reconstruction with an HLL Riemann solver in float32. Typically 2-3x faster "
+                 "than the CPU-only standard backend. Best for iterating quickly on spatial structure "
+                 "when you have a Mac with M1/M2/M3/M4 chip.",
 
-    "metal_weno5": "STATUS: Working (CPU float64) | SPEED: 30-120 seconds | ACCURACY: 5th-order spatial\n\n"
-                   "Highest-accuracy 2D MHD solver. Uses 5th-order WENO-Z reconstruction with "
-                   "a 4-wave Riemann solver (resolves contact + Alfven discontinuities). Runs on "
-                   "CPU in double precision for maximum accuracy. Best for: publication-quality "
-                   "results, validation studies, resolving thin current sheaths.\n"
-                   "REQUIRES: Any modern CPU. Slower than GPU but more accurate.",
+    "metal_weno5": "SPEED: 30-120 seconds | HIGHEST ACCURACY (publication quality)\n\n"
+                   "5th-order WENO-Z reconstruction with a 4-wave HLLD Riemann solver that resolves "
+                   "contact and Alfven discontinuities. Runs on CPU in float64 (double precision) for "
+                   "maximum numerical accuracy. Produces the sharpest current sheaths and most accurate "
+                   "shock fronts. Use this for publication figures, validation studies, and resolving "
+                   "features thinner than a few grid cells.",
 
-    "metal_3d": "STATUS: Experimental (Apple GPU) | SPEED: 2-10 minutes | ACCURACY: 2nd-order, Cartesian 3D\n\n"
-                "EXPERIMENTAL: 3D MHD on GPU in Cartesian coordinates. Can capture m=1 kink, filamentation, "
-                "azimuthal asymmetries. Starts from uniform IC with perturbation — no Lee model, no validated "
-                "waveform. Currently runs very few steps at coarse grid. Needs long sim_time and fine grid "
-                "to develop meaningful instabilities.\n"
-                "REQUIRES: Apple Silicon Mac with 16+ GB unified memory.",
-
-    "metal_cylindrical": "STATUS: Experimental (Apple GPU) | SPEED: 8s coarse, 2-5min medium, 10+ min fine\n\n"
-                         "EXPERIMENTAL: Full-discharge cylindrical MHD from t=0 — no Lee model. "
-                         "Resolves axial sheath formation, current sheet structure, and field evolution "
-                         "in (r,z) geometry. NOT validated against experimental waveforms (no fc/fm calibration). "
-                         "Use COARSE grid and SHORT sim_time (5-10 us) for initial exploration. "
-                         "DISABLE advanced physics modules (FLD, ablation, etc.) — they add ~1s/step overhead. "
-                         "For validated results, use Hybrid or Lee backend instead.\n"
-                         "REQUIRES: Apple Silicon Mac or PyTorch CPU. Coarse grid recommended.",
-
-    "athena": "STATUS: Requires Compilation | SPEED: 10-60 seconds (if compiled) | ACCURACY: 3rd-order\n\n"
-              "Princeton's Athena++ MHD solver — reference quality but REQUIRES a compiled C++ binary "
-              "that is NOT included. If the binary is not found, this backend returns incomplete/incorrect "
-              "results silently. Build with: cd external/athena && python configure.py --prob=dpf_zpinch "
-              "--coord=cylindrical -b --flux=hlld && make -j8.\n"
-              "For most users: use Hybrid or metal_plm instead.",
-
-    "python": "STATUS: Auto-redirects to 2D MHD Fast | NOT RECOMMENDED\n\n"
-              "The pure Python MHD solver uses basic numerical methods (central differences) "
-              "that are unstable at the high currents (mega-amps) typical of DPF devices. "
-              "It automatically redirects to the 2D MHD Fast backend, which uses proper "
-              "shock-capturing methods. Kept for development/testing only.",
+    "hybrid": "SPEED: 3-30 seconds | RECOMMENDED for most users\n\n"
+              "Best of both worlds: the validated Lee model handles the axial rundown phase (where "
+              "it matches experiments), then hands off to a 2D MHD solver for the radial implosion "
+              "where spatial resolution matters. You get accurate current waveforms AND spatially "
+              "resolved pinch compression. The handoff happens automatically when the sheath reaches "
+              "the anode tip (~5-10 microseconds for most devices).",
 }
 
 
@@ -274,9 +248,7 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
     help_text = BACKEND_HELP.get(backend, "")
     status = BACKEND_STATUS.get(backend, "UNKNOWN")
 
-    status_emoji = {"WORKING": "Ready", "NEEDS COMPILATION": "Needs setup",
-                    "REDIRECTS": "Auto-redirects", "EXPERIMENTAL": "Experimental",
-                    "REQUIRES COMPILATION": "Needs Athena++ build"}.get(status, status)
+    status_emoji = {"WORKING": "Ready"}.get(status, status)
 
     if is_lee or backend == "hybrid":
         info = f"**{est}** | {status_emoji} | {fid}\n\n{help_text}"
@@ -288,12 +260,6 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
             f"Grid: {grid[0]}x{grid[1]}x{grid[2]} = {total_cells:,} cells "
             f"(~{mem_mb:.0f} MB)\n\n{help_text}"
         )
-        if backend == "metal_cylindrical" and grid_preset == "fine":
-            info += (
-                "\n\n**WARNING: Fine grid + cylindrical full-discharge will take 10+ minutes. "
-                "Use COARSE grid for exploration. Disable advanced physics modules to avoid "
-                "~1s/step overhead. For validated waveforms, use Hybrid backend instead.**"
-            )
     is_mhd = not is_lee
     return [
         gr.update(visible=is_lee),
@@ -571,6 +537,8 @@ def run_simulation(
     except (ImportError, Exception):
         pass
 
+    fig_energy = create_energy_balance_fig(data)
+
     runs = add_to_comparison(comparison_runs or [], data, backend)
     fig_compare = create_comparison_fig(runs)
     compare_md = comparison_summary(runs)
@@ -579,6 +547,7 @@ def run_simulation(
         metrics, narrative,
         fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d,
         babylon_html,
+        fig_energy,
         fig_compare, compare_md,
         csv_path, data, runs,
     )
@@ -775,12 +744,21 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                     "of the pinch -- a tighter spiral means stronger compression."
                 )
                 fig_portrait = gr.Plot(label="Radial Implosion Dynamics")
+            with gr.Tab("Energy Balance"):
+                gr.Markdown(
+                    "**What you're seeing:** Time evolution of the energy partition. "
+                    "The capacitor energy (green) converts into magnetic field energy (blue) "
+                    "and resistive losses (red). The dashed white line is the total -- it "
+                    "should remain constant (energy conservation check). Any deficit indicates "
+                    "energy going into plasma heating/radiation not tracked by the circuit model."
+                )
+                fig_energy_plot = gr.Plot(label="Energy Balance")
             with gr.Tab("2D Fields"):
                 gr.Markdown(
                     "**What you're seeing:** For Lee model: a schematic of the coaxial electrode "
-                    "geometry showing where the plasma forms. For MHD backends: actual 2D field maps "
-                    "showing density and pressure at the final simulation time. Bright regions = high "
-                    "density/pressure = where the plasma is compressed."
+                    "geometry showing where the plasma forms. For MHD backends: 2D field maps "
+                    "showing density, pressure, |B|, velocity, current density J, and temperature "
+                    "at the final simulation time. Available fields depend on the backend used."
                 )
                 fig_geometry = gr.Plot(label="Cross-Section / Fields")
             with gr.Tab("3D Plasma"):
@@ -795,10 +773,17 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
                 fig_3d_plot = gr.Plot(label="3D Visualization")
             with gr.Tab("3D Physics (Babylon.js)"):
                 gr.Markdown(
-                    "**All-in-one physics visualization** — Babylon.js WebGPU. "
-                    "Toggle layers at left: electrodes, sheath, plasma ions, pinch glow, "
-                    "density/temperature/B-field heatmaps, god rays, ambient occlusion, bloom. "
-                    "Drag to orbit, scroll to zoom. Press Play to animate."
+                    "**All-in-one physics visualization** -- Babylon.js WebGPU renderer with "
+                    "10 physics layers. Toggle layers at bottom-left: electrodes, sheath, "
+                    "plasma ions, pinch column, B-field lines, and MHD field heatmaps "
+                    "(density, temperature, |B|, radiation). Physics explanation panel at "
+                    "bottom-right updates dynamically with the selected view and phase.\n\n"
+                    "**Data sources:** 3D geometry (sheath, pinch, particles) uses Lee model "
+                    "0D scalars. Heatmap overlays use real MHD field data when available "
+                    "(Metal or Python backend). The data honesty banner at top-center "
+                    "indicates which data source is active.\n\n"
+                    "**Controls:** Drag to orbit. Scroll to zoom. Play/Pause/Step/Reset "
+                    "at bottom. Speed slider adjusts playback rate."
                 )
                 fig_babylon = gr.HTML(
                     value="<div style='color:#999;padding:40px;text-align:center;'>"
@@ -860,39 +845,34 @@ with gr.Blocks(title="DPF-Unified Simulator") as app:
 
 | I want to... | Choose | Time |
 |--------------|--------|------|
-| Explore parameters, fit to experiments | **Quick** | < 1 sec |
-| See plasma compression + accurate waveforms | **Standard** [RECOMMENDED] | 3-30 sec |
+| Explore parameters, fit to experiments | **Lee Model** | < 1 sec |
+| See plasma compression + accurate waveforms | **Hybrid** [RECOMMENDED] | 3-30 sec |
 
-**Advanced users** who need spatial detail or 3D physics:
+**Advanced users** who need spatial detail:
 
 | I want to... | Choose | Time |
 |--------------|--------|------|
-| See full 2D plasma structure (density, B-field, temperature) | **Detailed** | 10-60 sec |
-| Maximum accuracy for publications | **High Accuracy** | 30-120 sec |
-| 3D instabilities (kink, filamentation) | **3D** | 2-10 min |
-| Independent verification with Princeton's Athena++ | **Reference** | 10-60 sec |
+| See full 2D plasma structure, no GPU available | **MHD Standard** | 10-30 sec |
+| Same as above but faster on Apple Silicon | **MHD GPU** | 5-15 sec |
+| Maximum accuracy for publications | **MHD High Fidelity** | 30-120 sec |
 
 **Why are there multiple options?** They're like zoom levels on a camera:
-- **Quick** = wide shot (fast, sees the big picture)
-- **Standard** = portrait (balanced, captures the important detail)
-- **Detailed/High Accuracy** = macro lens (slow, sees fine structure)
-- **3D** = full 3D scan (slowest, sees everything including asymmetries)
+- **Lee Model** = wide shot (fast, sees the big picture)
+- **Hybrid** = portrait (balanced, captures the important detail)
+- **MHD Standard / GPU** = macro lens (sees fine spatial structure)
+- **MHD High Fidelity** = electron microscope (sharpest features, publication quality)
 
-Under the hood, there are only **2 physics engines**: the Lee model (solves circuit equations) and the MHD solver (solves fluid equations on a grid). The different options configure the MHD solver at different accuracy/speed tradeoffs — like choosing JPEG quality.
-4. **Python MHD** — NumPy-based MHD (auto-redirects to Metal because it's numerically unstable at DPF currents)
-
-The different "backends" are configurations of the same underlying solvers with different accuracy/speed tradeoffs. This is similar to how a single car engine can run in "eco", "normal", and "sport" modes.
+Under the hood, there are only **2 physics engines**: the Lee model (solves circuit equations) and the MHD solver (solves fluid equations on a grid). The different MHD options configure the solver at different accuracy/speed tradeoffs.
 
 ## Hardware Requirements
 
 | Backend | Minimum Hardware | Recommended | Memory (Fine grid) |
 |---------|-----------------|-------------|-------------------|
 | Lee Model | Any computer | Any | < 1 MB |
+| MHD Standard | Any with NumPy | Any modern CPU | ~64 MB |
+| MHD GPU | Apple Silicon Mac (M1+) | M2/M3 Pro, 16 GB RAM | ~64 MB |
+| MHD High Fidelity | Any modern CPU | 4+ cores, 8 GB RAM | ~128 MB (float64) |
 | Hybrid | Any with PyTorch | Apple Silicon Mac | ~64 MB |
-| 2D MHD Fast | Apple Silicon or CUDA GPU | M1+ Mac, 8 GB RAM | ~64 MB |
-| 2D MHD Precise | Any modern CPU | 4+ cores, 8 GB RAM | ~128 MB (float64) |
-| 3D MHD | Apple Silicon, 16+ GB | M2/M3 Pro, 36 GB RAM | ~2 GB (200^3) |
-| Athena++ C++ | Unix/Mac with C++ compiler | Mac with Homebrew | ~64 MB |
 
 ## Backend Details
 
@@ -900,53 +880,40 @@ The different "backends" are configurations of the same underlying solvers with 
 **What it computes:** Current waveform I(t), voltage V(t), sheath position, pinch radius, neutron yield.
 **What it does NOT compute:** Spatial structure, magnetic field maps, density profiles, instabilities.
 
-The Lee model treats the plasma as a thin piston (current sheath) that sweeps gas along the anode and then compresses it radially. It's a 0D model — no spatial grid, just ordinary differential equations. Two fitted parameters (**fc** = current fraction, **fm** = mass fraction) calibrate it to match experimental data.
+The Lee model treats the plasma as a thin piston (current sheath) that sweeps gas along the anode and then compresses it radially. It's a 0D model -- no spatial grid, just ordinary differential equations. Two fitted parameters (**fc** = current fraction, **fm** = mass fraction) calibrate it to match experimental data.
 
 **Validated against:** PF-1000, NX2, UNU-ICTP, POSEIDON, MJOLNIR, FAETON-I, and dozens more published devices.
 
+### MHD Standard (10-30 sec) -- Cross-Platform
+**What it computes:** Full spatial fields (density, velocity, magnetic field, pressure, temperature) on a 2D cylindrical grid.
+**How:** Godunov scheme with PLM reconstruction and HLL Riemann solver, all in pure Python/NumPy.
+
+Runs on any machine -- no Apple Silicon, no GPU, no special hardware. The current sheath and compression emerge from first principles. Stable at all DPF current levels thanks to proper shock-capturing numerics.
+
+**When to use:** You're on Linux or Windows, or you want a portable simulation that works anywhere.
+
+### MHD GPU (5-15 sec) -- Apple Silicon Accelerated
+**What it computes:** Same physics as MHD Standard, accelerated on Apple's Metal GPU.
+**How:** PLM + HLL in float32 on Metal. Typically 2-3x faster than CPU.
+
+**Requires:** Apple Silicon Mac (M1/M2/M3/M4). Falls back to CPU if Metal is unavailable.
+
+### MHD High Fidelity (30-120 sec) -- Publication Quality
+**What it computes:** Same physics as other MHD backends, but with 5th-order spatial accuracy and double precision.
+**How:** WENO5-Z reconstruction (less numerical diffusion) + 4-wave HLLD Riemann solver (resolves contact and Alfven discontinuities) + 3rd-order SSP-RK3 time integration.
+
+Runs on **CPU** in float64 because Apple Metal doesn't support double precision. Slower but produces the sharpest current sheaths and most accurate shock fronts.
+
+**When to use:** Publication figures, validation studies, resolving features thinner than a few grid cells.
+
 ### Hybrid Lee+MHD (3-30 sec) -- RECOMMENDED
-**What it computes:** Everything the Lee model does, PLUS spatially resolved compression, magnetic fields, density maps during the pinch phase.
+**What it computes:** Everything the Lee model does, PLUS spatially resolved compression, magnetic fields, and density maps during the pinch phase.
 
 The best of both worlds: the Lee model handles the well-understood axial rundown phase (validated 0D), then hands off to a 2D MHD solver for the radial implosion where spatial resolution matters. The handoff happens when the sheath reaches the anode tip.
 
 **Accuracy:** Lee-validated current waveforms + MHD-resolved compression (97x demonstrated on PF-1000).
 
-### 2D MHD Fast (10-60 sec)
-**What it computes:** Full spatial fields (density, velocity, magnetic field, pressure, temperature) on a 2D cylindrical grid.
-**How:** Solves the MHD conservation laws using a 2nd-order shock-capturing method on GPU.
-
-Unlike the Lee model, the current sheath and compression emerge from first principles — no fitted parameters for the dynamics. The electrode boundary condition injects the magnetic field from the circuit current.
-
-**Accuracy:** 2nd-order spatial. Good for seeing structure; use "2D MHD Precise" for publication.
-
-**Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved — the MHD shows only 1-2x compression instead of the 50-100x seen in experiments. Use Medium or Fine grid for meaningful spatial results. On Coarse grid, the circuit waveform is still valid but the field maps are under-resolved. **For best results, use the Hybrid backend** which gets validated waveforms from the Lee model and spatial detail from MHD.
-
-### 2D MHD Precise (30-120 sec)
-**What it computes:** Same physics as 2D MHD Fast, but with 5th-order spatial accuracy and double precision arithmetic.
-**How:** WENO5-Z reconstruction (less numerical diffusion) + 4-wave Riemann solver (resolves more wave types) + 3rd-order time integration.
-
-Runs on **CPU** (not GPU) because Apple Metal doesn't support float64. Slower but significantly sharper resolution of thin features like current sheaths and shock fronts.
-
-**Accuracy:** 5th-order spatial, float64 precision. Publication quality.
-
-**Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved — the MHD shows only 1-2x compression instead of the 50-100x seen in experiments. Use Medium or Fine grid for meaningful spatial results. On Coarse grid, the circuit waveform is still valid but the field maps are under-resolved. **For best results, use the Hybrid backend** which gets validated waveforms from the Lee model and spatial detail from MHD.
-
-### 3D MHD (2-10 min)
-**What it computes:** Full 3D spatial fields on a Cartesian grid.
-**Why 3D matters:** The 2D backends assume the plasma is perfectly symmetric around the axis. Real DPF plasmas are NOT symmetric — they develop:
-- **m=1 kink** — the pinch column bends like a snake
-- **Filamentation** — the current splits into multiple threads
-- **Azimuthal instabilities** — the pinch breaks up non-uniformly
-
-Only the 3D backend can capture these effects. It uses the same solver as 2D MHD Fast but in all three dimensions.
-
-**Memory warning:** 64^3 = ~64 MB, 200^3 = ~2 GB, 400^3 = ~17 GB.
-
-### Athena++ C++ (10-60 sec)
-Princeton's [Athena++](https://www.athena-astro.app/) astrophysical MHD code, used in hundreds of published papers. Provides independent verification of our Metal solver results. Currently **not compiled** on this machine — it falls back to 2D MHD Fast automatically.
-
-### Python MHD (auto-redirects)
-Auto-redirects to 2D MHD Fast. The Python solver (NumPy central differences) lacks shock-capturing and is numerically unstable at mega-amp DPF currents. Kept for development only.
+**Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved. Use Medium or Fine grid for meaningful spatial results.
 
 ## Grid Resolution
 
@@ -1012,6 +979,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
             fig_waveform, fig_physics, fig_portrait,
             fig_geometry, fig_3d_plot,
             fig_babylon,
+            fig_energy_plot,
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],
