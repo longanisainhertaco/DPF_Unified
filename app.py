@@ -442,6 +442,10 @@ def run_simulation(
     experimental_csv=None,
     progress=gr.Progress(track_tqdm=True),  # noqa: B008
 ):
+    # Safety: ensure numeric types from Gradio sliders/inputs
+    sim_time_us = float(sim_time_us) if sim_time_us is not None else 40.0
+    grid_preset = grid_preset if grid_preset else "medium"
+
     err = _validate_inputs(anode_r, cathode_r, V0_kV, C_uF, L0_nH, sim_time_us)
     if err:
         raise gr.Error(err)
