@@ -743,8 +743,10 @@ with gr.Blocks(title="DPF-Unified Simulator", analytics_enabled=False) as app:
                 value=f"**< 2 seconds** | Lee model (0D)\n\n*{BACKEND_HELP['lee']}*",
             )
             with gr.Accordion("Advanced Physics Modules", open=False, visible=False) as adv_physics_acc:
-                gr.Markdown("Enable dormant physics modules (operator-split into MHD loop). "
-                            "Each adds realism but increases runtime.")
+                gr.Markdown("Additional physics modules applied during MHD simulation. "
+                            "Each adds realism but increases runtime.\n\n"
+                            "**Note:** These require Level 3+ with medium or fine grid "
+                            "to produce visible effects. At coarse grid, changes are below resolving power.")
                 chk_fld = gr.Checkbox(label="FLD Radiation Transport (Levermore-Pomraning)",
                                       value=False, info="Flux-limited diffusion for radiation energy transport")
                 chk_sheath = gr.Checkbox(label="Sheath BC (Bohm criterion)",
