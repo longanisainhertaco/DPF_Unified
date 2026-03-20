@@ -38,6 +38,15 @@ class CircuitConfig(BaseModel):
     crowbar_inductance: float = Field(
         0.0, ge=0, description="Additional crowbar arc channel inductance [H]"
     )
+    coupling_mode: Literal["auto", "lee_only", "density_weighted"] = Field(
+        "auto",
+        description=(
+            "Circuit-MHD coupling mode: "
+            "'lee_only' uses Lee model snowplow Lp (no MHD field feedback), "
+            "'density_weighted' computes Lp from MHD density field (r_eff method), "
+            "'auto' uses density_weighted when MHD fields exist, else lee_only"
+        ),
+    )
 
     @model_validator(mode="after")
     def check_radii(self) -> CircuitConfig:

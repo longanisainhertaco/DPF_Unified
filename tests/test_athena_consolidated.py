@@ -1335,6 +1335,9 @@ def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
     engine.boundary_cfg = config.boundary
     engine.geometry_type = getattr(config.geometry, "coord_system", "cartesian")
     engine.snowplow = None
+    engine.coupling_mode = "lee_only"
+    engine.coupler = None
+    engine._last_feedback = None
     engine.circuit.total_energy.return_value = 1.0
     engine.circuit.current = 100e3
     engine.circuit.voltage = 10e3

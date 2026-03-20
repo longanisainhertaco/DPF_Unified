@@ -26,6 +26,7 @@ from typing import Any
 import numpy as np
 
 from dpf.atomic.ionization import saha_ionization_fraction_array
+from dpf.circuit.coupler import CircuitCoupler, FeedbackResult
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
@@ -355,6 +356,26 @@ class SimulationEngine:
         )
         if self.geometry_type == "cylindrical":
             self.field_manager.dz = config.geometry.dz if config.geometry.dz else dx
+
+        # Circuit-MHD coupler: density-weighted Lp extraction from MHD fields
+        self.coupling_mode = config.circuit.coupling_mode
+        dz_coupler = config.geometry.dz if config.geometry.dz else dx
+        if self.geometry_type == "cylindrical":
+            self.coupler = CircuitCoupler(
+                anode_radius=cc.anode_radius,
+                cathode_radius=cc.cathode_radius,
+                dr=dx,
+                dz=dz_coupler,
+                r_inner=cc.anode_radius,
+            )
+        else:
+            self.coupler = CircuitCoupler(
+                anode_radius=cc.anode_radius,
+                cathode_radius=cc.cathode_radius,
+                dr=dx,
+                dz=dz_coupler,
+            )
+        self._last_feedback: FeedbackResult | None = None
 
         logger.info(
             "SimulationEngine initialized: grid=(%d,%d,%d), geometry=%s, backend=%s, "
@@ -904,6 +925,18 @@ class SimulationEngine:
         else:
             back_emf = self._compute_back_emf(dt)
 
+        # Resolve effective coupling mode for this step
+        use_coupler = self._should_use_coupler()
+
+        # Pre-compute density-weighted feedback once per MHD step (not per sub-step,
+        # since MHD state is frozen during circuit sub-cycling).
+        feedback: FeedbackResult | None = None
+        if use_coupler and self.state.get("rho") is not None:
+            feedback = self.coupler.compute_feedback(
+                self.state, self._coupling.current, dt,
+            )
+            self._last_feedback = feedback
+
         for _isub in range(n_sub):
             # Snowplow dynamics: sheath-derived L_plasma overrides field-based
             # L_plasma when the snowplow model is active (Lee model Phases 2-5).
@@ -918,21 +951,33 @@ class SimulationEngine:
                 self._last_sp_dL_dt = sp_result["dL_dt"]
 
             elif self.snowplow is not None and not self.snowplow.is_active:
-                # Snowplow reached final pinch — freeze L_plasma at its pinch
-                # value and set dL/dt=0.  The snowplow.plasma_inductance property
-                # returns L_axial_frozen + L_radial(r_pinch_min), which is the
-                # correct inductance for a stagnated Z-pinch column.
-                #
-                # Without this branch, the code falls through to the MHD field-
-                # based L_plasma, which is ~0 on coarse grids because the B-field
-                # hasn't been properly evolved by the Metal solver at ~16 MHD
-                # steps.  The resulting L_total → L_ext = 33.5 nH produces a
-                # catastrophic current spike (10^7 MA).
-                coupling.Lp = self.snowplow.plasma_inductance
-                coupling.dL_dt = 0.0
+                # Snowplow reached final pinch.  Use density-weighted Lp only
+                # when EXPLICITLY requested (coupling_mode="density_weighted").
+                # In "auto" mode, keep the snowplow frozen-Lp behavior because
+                # coarse-grid MHD fields produce unreliable Lp post-pinch.
+                if (
+                    self.coupling_mode == "density_weighted"
+                    and feedback is not None
+                    and feedback.Lp > 0
+                ):
+                    coupling.Lp = feedback.Lp
+                    coupling.dL_dt = feedback.dLp_dt
+                    back_emf = feedback.back_emf
+                else:
+                    coupling.Lp = self.snowplow.plasma_inductance
+                    coupling.dL_dt = 0.0
+
+            elif use_coupler and feedback is not None and feedback.Lp > 0:
+                # Density-weighted Lp from MHD fields (CircuitCoupler).
+                # Replaces the old B-energy volume integral which suffered from
+                # electrode BC artifacts on coarse grids.
+                coupling.Lp = feedback.Lp
+                coupling.dL_dt = feedback.dLp_dt
+                back_emf = feedback.back_emf
+                self._prev_L_plasma = feedback.Lp
 
             elif L_plasma > 0:
-                # Fallback: use volume-integral L_plasma from MHD fields
+                # Fallback: volume-integral L_plasma from B-field energy
                 coupling.Lp = L_plasma
                 if self._prev_L_plasma > 0 and dt_sub > 0:
                     coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt_sub
@@ -1269,6 +1314,14 @@ class SimulationEngine:
                     "r_shock": self.snowplow.r_shock if self.snowplow else 0.0,
                     "phase": self.snowplow.phase if self.snowplow else "none",
                 },
+                "coupler": {
+                    "coupling_mode": self.coupling_mode,
+                    "Lp": self._last_feedback.Lp if self._last_feedback else 0.0,
+                    "dLp_dt": self._last_feedback.dLp_dt if self._last_feedback else 0.0,
+                    "back_emf": self._last_feedback.back_emf if self._last_feedback else 0.0,
+                    "r_eff": self._last_feedback.r_eff if self._last_feedback else 0.0,
+                    "z_sheath": self._last_feedback.z_sheath if self._last_feedback else 0.0,
+                },
                 "pease_braginskii": {
                     "I_PB_MA": self._last_pb_result["I_PB_MA"],
                     "ratio": self._last_pb_result["ratio"],
@@ -1517,6 +1570,22 @@ class SimulationEngine:
 
         return source_terms
 
+    def _should_use_coupler(self) -> bool:
+        """Determine whether to use the CircuitCoupler for Lp extraction.
+
+        Returns True when the coupling_mode config indicates density-weighted
+        feedback should be used and the simulation has MHD fields available.
+        """
+        if self.coupling_mode == "lee_only":
+            return False
+        if self.coupling_mode == "density_weighted":
+            return True
+        # "auto": use coupler when MHD fields exist (non-trivial rho)
+        rho = self.state.get("rho")
+        if rho is None:
+            return False
+        return float(np.max(rho)) > 0
+
     def _compute_back_emf(self, dt: float) -> float:
         """Compute motional back-EMF from MHD field advection.
 
@@ -1744,14 +1813,35 @@ class SimulationEngine:
         coupling = self.fluid.coupling_interface()
         coupling.Z_bar = 1.0
 
-        # Track dL/dt for inductive coupling
-        L_plasma = coupling.Lp
-        if L_plasma > 0:
-            if self._prev_L_plasma > 0 and dt > 0:
-                coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
-            self._prev_L_plasma = L_plasma
+        # CircuitCoupler: density-weighted Lp from MHD fields when enabled
+        use_coupler = self._should_use_coupler()
+        if use_coupler and self.state.get("rho") is not None:
+            feedback = self.coupler.compute_feedback(
+                self.state, self._coupling.current, dt,
+            )
+            self._last_feedback = feedback
+            if feedback.Lp > 0:
+                coupling.Lp = feedback.Lp
+                coupling.dL_dt = feedback.dLp_dt
+                back_emf = feedback.back_emf
+                self._prev_L_plasma = feedback.Lp
+            else:
+                # Coupler returned zero Lp — fall back to Athena++ volume integral
+                L_plasma = coupling.Lp
+                if L_plasma > 0:
+                    if self._prev_L_plasma > 0 and dt > 0:
+                        coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
+                    self._prev_L_plasma = L_plasma
+                back_emf = 0.0
+        else:
+            # Lee-only mode or no MHD fields: use Athena++ volume-integral Lp
+            L_plasma = coupling.Lp
+            if L_plasma > 0:
+                if self._prev_L_plasma > 0 and dt > 0:
+                    coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
+                self._prev_L_plasma = L_plasma
+            back_emf = 0.0  # dL/dt already in R_star inside rlc_solver.py
 
-        back_emf = 0.0  # dL/dt already in R_star inside rlc_solver.py
         new_coupling = self.circuit.step(coupling, back_emf, dt)
         self._coupling = new_coupling
 
