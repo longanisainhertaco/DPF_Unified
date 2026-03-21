@@ -28,6 +28,7 @@ JS handles all rendering at Babylon.js's maximum fidelity.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -507,16 +508,27 @@ def create_unified_renderer(d: dict[str, Any]) -> str:
 
 
 def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
-    """Pipeline step 6: wrap the renderer HTML in a sandboxed iframe for Gradio.
+    """Pipeline step 6: write renderer HTML to temp file, load via src= URL.
 
-    Uses srcdoc with proper escaping. Large payloads (>500KB) are trimmed
-    by reducing snapshot count to keep within browser srcdoc limits.
+    Uses a file-based approach instead of srcdoc to avoid payload size limits.
+    srcdoc double-escapes the HTML (& -> &amp;, " -> &quot;), inflating
+    large MHD payloads beyond browser limits. Writing to a file served by
+    Gradio's built-in static file server eliminates this entirely.
     """
+    import tempfile
     html = create_unified_renderer(d)
-    # Escape for srcdoc attribute embedding
-    escaped = html.replace("&", "&amp;").replace('"', "&quot;")
+    # Write to a temp file in the app's directory so Gradio can serve it
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".html", prefix="dpf3d_",
+        dir=os.path.join(os.path.dirname(__file__), "static"),
+        delete=False,
+    )
+    tmp.write(html)
+    tmp.close()
+    # URL relative to the app root — Gradio serves /file= paths
+    filename = os.path.basename(tmp.name)
     return (
-        f'<iframe srcdoc="{escaped}" '
+        f'<iframe src="/file=static/{filename}" '
         f'title="3D Dense Plasma Focus Visualization" '
         f'role="img" aria-label="Interactive 3D animation of the DPF discharge" '
         f'style="width:100%;height:{height}px;border:none;background:#050508;" '
