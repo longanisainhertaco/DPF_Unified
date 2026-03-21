@@ -1,12 +1,14 @@
 /**
- * DPF Renderer v8 FINAL -- Definitive Dense Plasma Focus Visualization
+ * DPF Renderer v9 — Educational Dense Plasma Focus Visualization
  *
- * Combines ALL research findings: film VFX (practical plasma refs), museum exhibits
- * (grounded hardware), game industry (particle blend modes), Babylon.js forums
- * (Fresnel, glow isolation, depth pre-pass), and data viz (Tufte/Moreland colormaps).
+ * Design goal: a new student can identify every component and understand
+ * every phase of the discharge without external help.
  *
- * The Formula: device -> discharge -> invisible made visible -> pinch money shot -> data overlay.
- * StandardMaterial only. Under 950 lines.
+ * Architecture: build*() create meshes, applyFrame() delegates to 4 updaters:
+ *   updatePlasma()    — sheath, trail, pinch, halo, reflected shock, beam
+ *   updateFields()    — B-field rings, current flow arrows
+ *   updateParticles() — phase-matched particle emission
+ *   updatePostFX()    — bloom, glow, camera, lighting, post-processing
  */
 
 // ============================================================
@@ -531,11 +533,7 @@ function buildHalo(scene, G) {
 }
 
 // ============================================================
-// BEAM CONE -- post-pinch particle beam indicator
-// ============================================================
-
-// ============================================================
-// REFLECTED SHOCK — outward-expanding ring after axis convergence
+// REFLECTED SHOCK + BEAM CONE
 // ============================================================
 
 function buildReflectedShock(scene, G) {
@@ -606,6 +604,76 @@ function buildBField(scene, G) {
     bRings.push(ring);
   }
   return { bRings, mat, zFracs };
+}
+
+// ============================================================
+// CURRENT FLOW ARROWS -- axial (anode), radial (sheath), return (cathode)
+// ============================================================
+
+function buildCurrentArrows(scene, G) {
+  const mat = new BABYLON.StandardMaterial("currentArrowMat", scene);
+  mat.emissiveColor = new BABYLON.Color3(0.4, 1.2, 2.0);  // HDR cyan — catches bloom
+  mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+  mat.disableLighting = true;
+  mat.alpha = 0;
+  mat.backFaceCulling = false;
+  // Fresnel glow on arrow edges
+  mat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
+  mat.emissiveFresnelParameters.bias = 0.3;
+  mat.emissiveFresnelParameters.power = 2;
+  mat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(0.5, 1.5, 2.5);
+  mat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(0.1, 0.3, 0.5);
+
+  const arrowH = G.anode_radius * 0.45;   // 3x taller
+  const arrowD = G.anode_radius * 0.22;   // 3x wider
+  const axialArrows = [];
+  const radialArrows = [];
+  const returnArrows = [];
+
+  // Axial arrows: up the anode in +x direction (3 arrows at 25%, 50%, 75%)
+  for (let i = 0; i < 3; i++) {
+    const cone = BABYLON.MeshBuilder.CreateCylinder("axialArrow" + i, {
+      diameterTop: 0, diameterBottom: arrowD, height: arrowH, tessellation: 8,
+    }, scene);
+    cone.rotation.z = -Math.PI / 2;
+    cone.position.set(G.anode_length * (0.25 + i * 0.25), G.anode_radius * 1.3, 0);
+    cone.material = mat;
+    cone.renderingGroupId = 1;
+    cone.isVisible = false;
+    axialArrows.push(cone);
+  }
+
+  // Radial arrows: across the plasma at sheath, 4 at 90-degree intervals
+  for (let i = 0; i < 4; i++) {
+    const angle = i * Math.PI / 2;
+    const cone = BABYLON.MeshBuilder.CreateCylinder("radialArrow" + i, {
+      diameterTop: 0, diameterBottom: arrowD, height: arrowH, tessellation: 8,
+    }, scene);
+    const midR = (G.anode_radius + G.cathode_radius) / 2;
+    cone.position.set(G.anode_length, midR * Math.sin(angle), midR * Math.cos(angle));
+    cone.lookAt(new BABYLON.Vector3(G.anode_length,
+      G.cathode_radius * 1.5 * Math.sin(angle),
+      G.cathode_radius * 1.5 * Math.cos(angle)));
+    cone.material = mat;
+    cone.renderingGroupId = 1;
+    cone.isVisible = false;
+    radialArrows.push(cone);
+  }
+
+  // Return arrows: down the cathode rod in -x direction (3 arrows)
+  for (let i = 0; i < 3; i++) {
+    const cone = BABYLON.MeshBuilder.CreateCylinder("returnArrow" + i, {
+      diameterTop: 0, diameterBottom: arrowD, height: arrowH, tessellation: 8,
+    }, scene);
+    cone.rotation.z = Math.PI / 2;
+    cone.position.set(G.anode_length * (0.75 - i * 0.25), G.cathode_radius, 0);
+    cone.material = mat;
+    cone.renderingGroupId = 1;
+    cone.isVisible = false;
+    returnArrows.push(cone);
+  }
+
+  return { axialArrows, radialArrows, returnArrows, mat };
 }
 
 // ============================================================
@@ -800,10 +868,9 @@ function buildHeatmap(scene, G) {
 }
 
 // ============================================================
-// SNAP CACHE -- decode base64 Float32 -> radially-averaged z-profile
+// SNAP CACHE — decode base64 Float32, field-specific colormaps
 // ============================================================
 
-// Field-specific colormaps: viridis for density/bfield, inferno for temperature
 var FIELD_CMAPS = { density: VIRIDIS, temperature: INFERNO, bfield: VIRIDIS };
 
 function buildSnapCache(fieldKey, layer, cache) {
@@ -848,10 +915,10 @@ function nearestSnapIdx(cache, key, t) {
 }
 
 // ============================================================
-// POST-PROCESSING -- GlowLayer (plasma only), bloom, SSAO, FXAA
+// POST-PROCESSING — GlowLayer, bloom, SSAO, FXAA, heat distortion, halation
 // ============================================================
 
-// Heat distortion post-process — mirage effect near pinch zone
+// Heat distortion — mirage effect near pinch zone
 function buildHeatDistortion(scene, cam) {
   try {
     BABYLON.Effect.ShadersStore["heatDistortionFragmentShader"] = [
@@ -1103,6 +1170,7 @@ async function createDPFScene(canvas, data) {
   const beam = buildBeam(scene, G);
   const reflShock = buildReflectedShock(scene, G);
   const bField = buildBField(scene, G);
+  const currentArrows = buildCurrentArrows(scene, G);
   buildGrid(scene, G);
   buildAmbientDust(scene, G);
   const heat = buildHeatmap(scene, G);
@@ -1183,62 +1251,64 @@ async function createDPFScene(canvas, data) {
 
   let tAccum = 0;
 
+  // Pre-allocate reusable objects (zero GC pressure per frame)
+  const _partColor1 = new BABYLON.Color4(0, 0, 0, 0);
+  const _partColor2 = new BABYLON.Color4(0, 0, 0, 0);
+  const _partColorDead = new BABYLON.Color4(0, 0, 0, 0);
+  const _gravVec = new BABYLON.Vector3(0, 0, 0);
+  const _focusTarget = new BABYLON.Vector3(0, 0, 0);
+
   // ============================================================
-  // applyFrame(i) -- the animation engine
+  // Frame state — computed once per frame, shared by all updaters
   // ============================================================
 
-  function applyFrame(i) {
-    if (i < 0 || i >= S.frames.length) return;
-    const f = S.frames[i];
-    const isP = isRadial(f.phase);
-    const cr = Math.max(0.02, f.r / G.cathode_radius);
-    const Ifrac = clamp01(Math.abs(f.I / Math.max(S.I_peak, 0.001)));
-    let pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
+  var _fs = { f: null, isP: false, cr: 0, Ifrac: 0, pI: 0, col: null, pulse: 0, flicker: 0, rippleAmp: 0 };
+
+  function computeFrameState(i) {
+    var f = S.frames[i];
+    var isP = isRadial(f.phase);
+    var cr = Math.max(0.02, f.r / G.cathode_radius);
+    var Ifrac = clamp01(Math.abs(f.I / Math.max(S.I_peak, 0.001)));
+    var pI = isP ? Math.min(1, Math.pow(1 - cr, 2) * 3) : 0;
     if (f.phase === "post_pinch") pI *= 0.4;
     if (f.phase === "reflected") pI *= 0.5;
-    const col = PHASE_COLORS[f.phase] || [0.15, 0.45, 1.0];
-    let rippleAmp = 0;
     tAccum = f.t || tAccum;
+    var pulse = 1.0 + 0.03 * Math.sin(tAccum * 12) * Ifrac;
+    var flicker = 1.0 + 0.15 * Math.sin(tAccum * 37) * Math.cos(tAccum * 23) * Ifrac;
+    _fs.f = f; _fs.isP = isP; _fs.cr = cr; _fs.Ifrac = Ifrac; _fs.pI = pI;
+    _fs.col = PHASE_COLORS[f.phase] || [0.15, 0.45, 1.0];
+    _fs.pulse = pulse; _fs.flicker = flicker; _fs.rippleAmp = 0;
+    return _fs;
+  }
 
-    // Heatmap snap sync
-    if (activeOverlay !== "none" && snapCache[activeOverlay]) {
-      const ni = nearestSnapIdx(snapCache, activeOverlay, f.t);
-      if (ni !== lastSnapIdx[activeOverlay]) {
-        lastSnapIdx[activeOverlay] = ni;
-        applySnapTex(activeOverlay);
-      }
-    }
+  // ============================================================
+  // updatePlasma — sheath, trail, pinch column, halo, reflected shock, beam
+  // ============================================================
 
-    // Gentle pulse: alpha += sin(time * 12) * 0.03 for "alive" feel
-    const pulse = 1.0 + 0.03 * Math.sin(tAccum * 12) * Ifrac;
+  function updatePlasma(s) {
+    var f = s.f, isP = s.isP, cr = s.cr, Ifrac = s.Ifrac, pI = s.pI, col = s.col, pulse = s.pulse;
 
-    // === SHEATH — thin curved shell (Gratton-Vargas parabolic profile) ===
+    // Sheath — thin curved shell (Gratton-Vargas parabolic profile)
     if (Ifrac > 0.01) {
       sheath.torus.isVisible = true;
       var curZ = isP ? G.anode_length : f.z;
-      // During radial: sheath contracts, use actual r from data
-      // During rundown: full cathode radius
       var compR = isP ? Math.max(G.anode_radius * 1.1, f.r) : G.cathode_radius * 0.95;
-      var paths = sheath.buildSheathPaths(curZ, compR);
-      // Note: during radial, the GV curvature becomes the umbrella transition
-      // z_lag increases as the sheath wraps over the anode face
-      BABYLON.MeshBuilder.CreateRibbon("sheathDisk", { pathArray: paths, instance: sheath.torus });
+      BABYLON.MeshBuilder.CreateRibbon("sheathDisk", {
+        pathArray: sheath.buildSheathPaths(curZ, compR), instance: sheath.torus });
 
       // Motion afterimage ghost
       sheath.ghost.isVisible = true;
-      var ghostPaths = sheath.buildSheathPaths(sheath.getPrevZ(), compR);
-      BABYLON.MeshBuilder.CreateRibbon("sheathGhost", { pathArray: ghostPaths, instance: sheath.ghost });
+      BABYLON.MeshBuilder.CreateRibbon("sheathGhost", {
+        pathArray: sheath.buildSheathPaths(sheath.getPrevZ(), compR), instance: sheath.ghost });
       sheath.ghostMat.alpha = clamp01(Ifrac * 0.12);
       sheath.setPrevZ(lerp(sheath.getPrevZ(), curZ, 0.25));
 
       if (sheath.isShaderMat) {
-        // Custom plasma noise shader — scrolling turbulent glow
         sheath.mat.setFloat("time", tAccum);
-        sheath.mat.setFloat("alpha", clamp01(Ifrac * 0.70 * pulse));  // brighter shell, less bloom dependence
+        sheath.mat.setFloat("alpha", clamp01(Ifrac * 0.70 * pulse));
         sheath.mat.setVector3("camPos", cam.position);
-        // Phase color progression via shader uniforms
+        var warmT = isP ? smoothstep(0.3, 0.8, pI) : 0;
         if (isP) {
-          const warmT = smoothstep(0.3, 0.8, pI);
           sheath.mat.setVector3("colA", new BABYLON.Vector3(
             lerp(0.02, 0.30, warmT), lerp(0.05, 0.08, warmT), lerp(0.30, 0.02, warmT)));
           sheath.mat.setVector3("colB", new BABYLON.Vector3(
@@ -1248,12 +1318,11 @@ async function createDPFScene(canvas, data) {
           sheath.mat.setVector3("colB", new BABYLON.Vector3(col[0], col[1], col[2]));
         }
       } else {
-        // Fallback StandardMaterial path
-        sheath.mat.alpha = clamp01(Ifrac * 0.65 * pulse);  // brighter shell
+        sheath.mat.alpha = clamp01(Ifrac * 0.65 * pulse);
         if (isP) {
-          const warmT = smoothstep(0.3, 0.8, pI);
+          var warmT2 = smoothstep(0.3, 0.8, pI);
           sheath.mat.emissiveColor.set(
-            lerp(col[0], 1.0, warmT), lerp(col[1], 0.65, warmT), lerp(col[2], 0.15, warmT));
+            lerp(col[0], 1.0, warmT2), lerp(col[1], 0.65, warmT2), lerp(col[2], 0.15, warmT2));
         } else {
           sheath.mat.emissiveColor.set(col[0], col[1], col[2]);
         }
@@ -1267,227 +1336,229 @@ async function createDPFScene(canvas, data) {
       sheath.ghost.isVisible = false;
     }
 
-    // === PLASMA TRAIL ===
+    // Plasma trail — dim tube behind sheath
     if (Ifrac > 0.02 && f.z > G.anode_length * 0.05) {
       trail.trail.isVisible = true;
-      const extent = isP ? G.anode_length : f.z;
+      var extent = isP ? G.anode_length : f.z;
       trail.trail.scaling.x = extent / G.anode_length;
       trail.trail.position.x = extent / 2;
       trail.mat.alpha = clamp01(Ifrac * 0.08 * pulse);
-      const wCol = isP
-        ? [lerp(0.06, 0.30, pI), lerp(0.12, 0.15, pI), lerp(0.35, 0.06, pI)]
-        : [0.06, 0.12, 0.35];
-      trail.mat.emissiveColor.set(wCol[0], wCol[1], wCol[2]);
+      var wR = isP ? lerp(0.06, 0.30, pI) : 0.06;
+      var wG = isP ? lerp(0.12, 0.15, pI) : 0.12;
+      var wB = isP ? lerp(0.35, 0.06, pI) : 0.35;
+      trail.mat.emissiveColor.set(wR, wG, wB);
     } else {
       trail.trail.isVisible = false;
     }
 
-    // === PINCH COLUMN -- Bennett profile + m=0 sausage ===
-    const showPinch = (f.phase === "pinch" || f.phase === "post_pinch" ||
-                       f.phase === "reflected") || (isP && cr < 0.35);
+    // Pinch column — Bennett profile + m=0 sausage instability
+    var showPinch = (f.phase === "pinch" || f.phase === "post_pinch" ||
+                     f.phase === "reflected") || (isP && cr < 0.35);
     if (showPinch && pI > 0.03) {
       pinch.core.isVisible = true;
       pinch.mantle.isVisible = true;
-      // Lee & Serban: r_min ~ 0.12 * anode_radius at peak compression
-      // During compression, pinch radius = f.r * (0.12*a / cathode_r) scaled by compression
-      const pinchR = Math.max(G.anode_radius * 0.01, cr * G.anode_radius * 0.12);
-      rippleAmp = f.phase === "post_pinch" ? 0.40 : (f.phase === "pinch" ? 0.08 : 0);
-      const nModes = Math.min(5, Math.max(1, Math.round(
+      var pinchR = Math.max(G.anode_radius * 0.01, cr * G.anode_radius * 0.12);
+      s.rippleAmp = f.phase === "post_pinch" ? 0.40 : (f.phase === "pinch" ? 0.08 : 0);
+      var nModes = Math.min(5, Math.max(1, Math.round(
         0.25 * G.anode_length / (6.28 * Math.max(pinchR, 0.001)))));
 
-      for (let k = 0; k <= pinch.N; k++) {
-        const zf = k / pinch.N;
-        // Bennett radial profile: peaked center, tapered ends
-        // Axial taper: peaked at center, falls off at ends
-        // (Radial Bennett n(r)=n0/(1+r²/a²)² is handled by core vs mantle radius ratio)
-        const bennett = 1.0 / (1.0 + Math.pow((zf - 0.5) / 0.30, 4));
-        const lr = pinchR * (0.15 + 0.85 * bennett);
-        // m=0 sausage instability ripple, amplitude grows during post_pinch
-        const ripple = rippleAmp * lr * Math.cos(2 * Math.PI * nModes * zf + tAccum * 4);
+      for (var k = 0; k <= pinch.N; k++) {
+        var zf = k / pinch.N;
+        var bennett = 1.0 / (1.0 + Math.pow((zf - 0.5) / 0.30, 4));
+        var lr = pinchR * (0.15 + 0.85 * bennett);
+        var ripple = s.rippleAmp * lr * Math.cos(2 * Math.PI * nModes * zf + tAccum * 4);
         pinch.radii[k] = Math.max(0.0002, lr + ripple);
       }
-
       BABYLON.MeshBuilder.CreateTube("pinchCore", {
-        path: pinch.path,
-        radiusFunction: function(j) { return pinch.radii[j] * 0.35; },
-        tessellation: 12, cap: BABYLON.Mesh.CAP_ALL, instance: pinch.core,
-      });
+        path: pinch.path, radiusFunction: function(j) { return pinch.radii[j] * 0.35; },
+        tessellation: 12, cap: BABYLON.Mesh.CAP_ALL, instance: pinch.core });
       BABYLON.MeshBuilder.CreateTube("pinchMantle", {
-        path: pinch.path,
-        radiusFunction: function(j) { return pinch.radii[j]; },
+        path: pinch.path, radiusFunction: function(j) { return pinch.radii[j]; },
         tessellation: 16, cap: BABYLON.Mesh.NO_CAP,
-        sideOrientation: BABYLON.Mesh.DOUBLESIDE, instance: pinch.mantle,
-      });
+        sideOrientation: BABYLON.Mesh.DOUBLESIDE, instance: pinch.mantle });
 
-      // HDR emissive on core (values > 1.0 for bloom to catch)
       pinch.coreMat.alpha = clamp01(pI * 0.85 * pulse);
       pinch.mantleMat.alpha = clamp01(pI * 0.30 * pulse);
-
       if (pI > 0.6) {
-        pinch.coreMat.emissiveColor.set(3.0, 2.8, 2.5);  // much brighter HDR to stand out from sheath
+        pinch.coreMat.emissiveColor.set(3.0, 2.8, 2.5);
       } else {
-        pinch.coreMat.emissiveColor.set(
-          lerp(0.4, 2.0, pI), lerp(0.6, 1.9, pI), lerp(1.0, 1.7, pI));
+        pinch.coreMat.emissiveColor.set(lerp(0.4, 2.0, pI), lerp(0.6, 1.9, pI), lerp(1.0, 1.7, pI));
       }
-      pinch.mantleMat.emissiveColor.set(
-        lerp(0.5, 1.4, pI), lerp(0.3, 0.55, pI), lerp(0.8, 0.08, pI));
+      pinch.mantleMat.emissiveColor.set(lerp(0.5, 1.4, pI), lerp(0.3, 0.55, pI), lerp(0.8, 0.08, pI));
     } else {
       pinch.core.isVisible = false;
       pinch.mantle.isVisible = false;
     }
 
-    // === HALO -- dim orange-red around pinch ===
+    // Halo — dim orange-red glow around pinch
     if (showPinch && pI > 0.1) {
       haloObj.halo.isVisible = true;
-      const haloScale = 1.0 + pI * 1.5;
-      haloObj.halo.scaling.set(1, haloScale, haloScale);
+      haloObj.halo.scaling.set(1, 1.0 + pI * 1.5, 1.0 + pI * 1.5);
       haloObj.mat.alpha = clamp01(pI * 0.12 * pulse);
-      haloObj.mat.emissiveColor.set(
-        lerp(0.6, 1.2, pI), lerp(0.25, 0.5, pI), lerp(0.06, 0.12, pI));
+      haloObj.mat.emissiveColor.set(lerp(0.6, 1.2, pI), lerp(0.25, 0.5, pI), lerp(0.06, 0.12, pI));
     } else {
       haloObj.halo.isVisible = false;
     }
 
-    // === REFLECTED SHOCK — outward-expanding ring after axis convergence ===
+    // Reflected shock — outward-expanding ring
     if (f.phase === "reflected") {
       reflShock.refRing.isVisible = true;
-      // Expand outward from axis to piston position
-      var refScale = lerp(0.05, cr, 0.5);  // expanding outward
+      var refScale = lerp(0.05, cr, 0.5);
       reflShock.refRing.scaling.set(1, refScale * 8, refScale * 8);
       reflShock.refMat.alpha = clamp01(0.3 * (1 - cr));
     } else {
       reflShock.refRing.isVisible = false;
     }
 
-    // === BEAM CONE -- post_pinch only ===
+    // Beam cone — post-pinch particle beam indicator
     beam.cone.isVisible = f.phase === "post_pinch" && pI > 0.08;
     beam.mat.alpha = beam.cone.isVisible ? clamp01(pI * 0.35) : 0;
 
-    // === B-FIELD RINGS -- only visible behind sheath (z < sheath.z) ===
-    const sheathZ = isP ? G.anode_length : f.z;
-    const showB = Ifrac > 0.10;
-    for (let bi = 0; bi < bField.bRings.length; bi++) {
-      const ringZ = G.anode_length * bField.zFracs[bi];
-      bField.bRings[bi].isVisible = showB && ringZ < sheathZ;
+    // Device thermal response
+    if (pI > 0.3) {
+      dev.anode.material.emissiveColor.set(lerp(0.22, 0.6, pI), lerp(0.15, 0.25, pI), lerp(0.06, 0.08, pI));
+    } else {
+      dev.anode.material.emissiveColor.set(0.22, 0.15, 0.06);
+    }
+    if (Ifrac > 0.01 && !isP && f.z < G.anode_length * 0.15) {
+      dev.insulator.material.emissiveColor.set(0.5, 0.4, 0.6);
+      dev.insulator.material.alpha = 0.5;
+    } else {
+      dev.insulator.material.emissiveColor.set(0.35, 0.30, 0.20);
+      dev.insulator.material.alpha = 0.40;
+    }
+  }
+
+  // ============================================================
+  // updateFields — B-field rings, current flow arrows
+  // ============================================================
+
+  function updateFields(s) {
+    var f = s.f, isP = s.isP, cr = s.cr, Ifrac = s.Ifrac, pulse = s.pulse;
+    var sheathZ = isP ? G.anode_length : f.z;
+
+    // B-field rings — only visible behind sheath
+    var showB = Ifrac > 0.10;
+    for (var bi = 0; bi < bField.bRings.length; bi++) {
+      bField.bRings[bi].isVisible = showB && G.anode_length * bField.zFracs[bi] < sheathZ;
     }
     if (showB) {
-      // B_theta ∝ I/r — rings closer to anode are brighter
       bField.mat.alpha = clamp01(Ifrac * 0.30 * pulse);
-      bField.mat.emissiveColor.set(
-        lerp(0.1, 0.3, Ifrac), lerp(0.3, 0.6, Ifrac), lerp(0.8, 1.0, Ifrac));
-      for (let bi = 0; bi < bField.bRings.length; bi++) {
-        if (!bField.bRings[bi].isVisible) continue;
-        // Slow rotation to show field circulation (toroidal B_theta)
-        bField.bRings[bi].rotation.x += 0.008 * Ifrac * (1 + bi * 0.15);
-        // Compress during radial phase
+      bField.mat.emissiveColor.set(lerp(0.1, 0.3, Ifrac), lerp(0.3, 0.6, Ifrac), lerp(0.8, 1.0, Ifrac));
+      for (var bi2 = 0; bi2 < bField.bRings.length; bi2++) {
+        if (!bField.bRings[bi2].isVisible) continue;
+        bField.bRings[bi2].rotation.x += 0.008 * Ifrac * (1 + bi2 * 0.15);
         if (isP) {
-          const bScale = Math.max(0.15, cr);
-          bField.bRings[bi].scaling.set(1, bScale, bScale);
+          var bScale = Math.max(0.15, cr);
+          bField.bRings[bi2].scaling.set(1, bScale, bScale);
         } else {
-          bField.bRings[bi].scaling.set(1, 1, 1);
+          bField.bRings[bi2].scaling.set(1, 1, 1);
         }
       }
     }
 
-    // === PARTICLES — physically accurate per phase ===
-    // Rundown: few particles AT the sheath front only (the sheath IS the event)
-    // Radial: converging inward (bulk fluid, not spiral)
-    // Pinch: quiet initially, then filamentary breakup
-    // Post-pinch: beam ions along axis + column fragments
-    if (Ifrac > 0.05) {
-      if (f.phase === "rundown") {
-        // Rundown: sparse emission at sheath front, swept forward
-        parts.emitter.position.x = f.z;
-        parts.ps.createSphereEmitter(G.cathode_radius * 0.8);
-        parts.ps.emitRate = Math.round(Ifrac * 150);  // sparse — sheath is the visual
-        parts.ps.gravity = new BABYLON.Vector3(G.cathode_radius * 1.5, 0, 0);
-        parts.ps.minEmitPower = G.cathode_radius * 0.1;
-        parts.ps.maxEmitPower = G.cathode_radius * 0.4;
-      } else if (f.phase === "radial" || f.phase === "mhd_radial") {
-        // Radial: bulk inward convergence (not spiral — Rm >> 1, frozen flux)
-        parts.emitter.position.x = G.anode_length;
-        parts.ps.createSphereEmitter(Math.max(0.001, f.r * 0.8));
-        parts.ps.emitRate = Math.round(lerp(200, 800, pI));
-        // Radially inward gravity — straight inward, not spiral
-        parts.ps.gravity = new BABYLON.Vector3(0, 0, 0);
-        parts.ps.minEmitPower = -f.r * 0.3;  // inward
-        parts.ps.maxEmitPower = -f.r * 0.1;
-      } else if (f.phase === "pinch") {
-        // Pinch: initially quiet (smooth column), increasing as instabilities grow
-        parts.emitter.position.x = G.anode_length;
-        parts.ps.createSphereEmitter(Math.max(0.001, cr * G.anode_radius * 0.24));
-        parts.ps.emitRate = Math.round(lerp(100, 1500, pI));
-        parts.ps.gravity = new BABYLON.Vector3(G.cathode_radius * 0.5, 0, 0);
-        parts.ps.minEmitPower = G.cathode_radius * 0.1;
-        parts.ps.maxEmitPower = G.cathode_radius * 0.8;
-      } else if (f.phase === "post_pinch") {
-        // Post-pinch: filamentary breakup + beam ions along axis
-        parts.emitter.position.x = G.anode_length;
-        parts.ps.createSphereEmitter(Math.max(0.001, cr * G.anode_radius * 0.36));
-        parts.ps.emitRate = Math.round(lerp(800, 2500, pI));
-        // Beam direction: along axis (+x)
-        parts.ps.gravity = new BABYLON.Vector3(G.cathode_radius * 3, 0, 0);
-        parts.ps.minEmitPower = G.cathode_radius * 0.3;
-        parts.ps.maxEmitPower = G.cathode_radius * 2.0;
-      } else {
-        parts.ps.emitRate = Math.round(Ifrac * 100);
-        parts.emitter.position.x = isP ? G.anode_length : f.z;
-      }
+    // Current flow arrows
+    var showArrows = Ifrac > 0.05;
+    currentArrows.axialArrows.forEach(function(a) {
+      a.isVisible = showArrows && (a._userVisible !== false);
+    });
+    currentArrows.radialArrows.forEach(function(a) {
+      a.position.x = sheathZ;
+      a.isVisible = showArrows && (a._userVisible !== false);
+    });
+    currentArrows.returnArrows.forEach(function(a) {
+      a.isVisible = showArrows && (a._userVisible !== false);
+    });
+    currentArrows.mat.alpha = showArrows ? clamp01(Ifrac * 0.8) : 0;
+  }
 
-      // Pinch burst: intense from column tip
-      if (f.phase === "pinch" || f.phase === "post_pinch") {
-        parts.ps.emitRate = Math.round(lerp(1500, 3000, pI));
-        parts.ps.minEmitPower = G.cathode_radius * 0.5;
-        parts.ps.maxEmitPower = G.cathode_radius * 2.0;
-      }
+  // ============================================================
+  // updateParticles — phase-matched particle emission
+  // ============================================================
 
-      // Color gradient: phase-matched
-      const pc = PHASE_COLORS[f.phase] || [0.15, 0.45, 1.0];
-      if (!parts._c1) parts._c1 = new BABYLON.Color4(0,0,0,0);
-      parts._c1.set(pc[0], pc[1], pc[2], 0.85);
-      parts.ps.color1 = parts._c1;
-      parts.ps.color2 = new BABYLON.Color4(
-        pc[0] * 0.7 + 0.3, pc[1] * 0.7 + 0.3, pc[2] * 0.7 + 0.3, 0.5);
-      if (!parts._c2) parts._c2 = new BABYLON.Color4(0,0,0,0);
-      parts._c2.set(pc[0] * 0.7 + 0.3, pc[1] * 0.7 + 0.3, pc[2] * 0.7 + 0.3, 0.5);
-      parts.ps.color2 = parts._c2;
-      if (!parts._cd) parts._cd = new BABYLON.Color4(0,0,0,0);
-      parts._cd.set(pc[0] * 0.3, pc[1] * 0.3, pc[2] * 0.3, 0);
-      parts.ps.colorDead = parts._cd;
+  function updateParticles(s) {
+    var f = s.f, isP = s.isP, cr = s.cr, Ifrac = s.Ifrac, pI = s.pI;
+    if (Ifrac < 0.05) { parts.ps.emitRate = 0; return; }
+
+    if (f.phase === "rundown") {
+      parts.emitter.position.x = f.z;
+      parts.ps.createSphereEmitter(G.cathode_radius * 0.8);
+      parts.ps.emitRate = Math.round(Ifrac * 150);
+      _gravVec.set(G.cathode_radius * 1.5, 0, 0); parts.ps.gravity = _gravVec;
+      parts.ps.minEmitPower = G.cathode_radius * 0.1;
+      parts.ps.maxEmitPower = G.cathode_radius * 0.4;
+    } else if (f.phase === "radial" || f.phase === "mhd_radial") {
+      parts.emitter.position.x = G.anode_length;
+      parts.ps.createSphereEmitter(Math.max(0.001, f.r * 0.8));
+      parts.ps.emitRate = Math.round(lerp(200, 800, pI));
+      _gravVec.set(0, 0, 0); parts.ps.gravity = _gravVec;
+      parts.ps.minEmitPower = -f.r * 0.3;
+      parts.ps.maxEmitPower = -f.r * 0.1;
+    } else if (f.phase === "pinch") {
+      parts.emitter.position.x = G.anode_length;
+      parts.ps.createSphereEmitter(Math.max(0.001, cr * G.anode_radius * 0.24));
+      parts.ps.emitRate = Math.round(lerp(100, 1500, pI));
+      _gravVec.set(G.cathode_radius * 0.5, 0, 0); parts.ps.gravity = _gravVec;
+      parts.ps.minEmitPower = G.cathode_radius * 0.1;
+      parts.ps.maxEmitPower = G.cathode_radius * 0.8;
+    } else if (f.phase === "post_pinch") {
+      parts.emitter.position.x = G.anode_length;
+      parts.ps.createSphereEmitter(Math.max(0.001, cr * G.anode_radius * 0.36));
+      parts.ps.emitRate = Math.round(lerp(800, 2500, pI));
+      _gravVec.set(G.cathode_radius * 3, 0, 0); parts.ps.gravity = _gravVec;
+      parts.ps.minEmitPower = G.cathode_radius * 0.3;
+      parts.ps.maxEmitPower = G.cathode_radius * 2.0;
     } else {
-      parts.ps.emitRate = 0;
+      parts.ps.emitRate = Math.round(Ifrac * 100);
+      parts.emitter.position.x = isP ? G.anode_length : f.z;
     }
 
-    // === POST-PROCESSING -- bloom ramps with pinch intensity ===
-    // Stacked glow+bloom: glow defines edges, bloom provides radiance
-    glowLayer.intensity = lerp(0.25, 0.35, Ifrac);  // REDUCED — let geometry read through
-    // Bloom gate: prevent double-additive saturation at peak pinch
-    // At pI=1, bloom weight drops 30% to preserve color definition on HDR emissives
+    // Pinch/post-pinch override: burst from column tip
+    if (f.phase === "pinch" || f.phase === "post_pinch") {
+      parts.ps.emitRate = Math.round(lerp(1500, 3000, pI));
+      parts.ps.minEmitPower = G.cathode_radius * 0.5;
+      parts.ps.maxEmitPower = G.cathode_radius * 2.0;
+    }
+
+    // Phase-matched colors (reuse pre-allocated Color4 objects)
+    var pc = s.col;
+    _partColor1.set(pc[0], pc[1], pc[2], 0.85);
+    _partColor2.set(pc[0] * 0.7 + 0.3, pc[1] * 0.7 + 0.3, pc[2] * 0.7 + 0.3, 0.5);
+    _partColorDead.set(pc[0] * 0.3, pc[1] * 0.3, pc[2] * 0.3, 0);
+    parts.ps.color1 = _partColor1;
+    parts.ps.color2 = _partColor2;
+    parts.ps.colorDead = _partColorDead;
+  }
+
+  // ============================================================
+  // updatePostFX — bloom, glow, camera, lighting, post-processing
+  // ============================================================
+
+  function updatePostFX(s) {
+    var isP = s.isP, Ifrac = s.Ifrac, pI = s.pI, pulse = s.pulse, flicker = s.flicker;
+
+    // Bloom ramps with pinch intensity (gate prevents over-saturation)
+    glowLayer.intensity = lerp(0.25, 0.35, Ifrac);
     var bloomGate = 1.0 - Math.pow(pI, 1.5) * 0.40;
-    pipeline.bloomWeight = lerp(0.10, 0.35, pI) * bloomGate;  // REDUCED — geometry > glow
-    pipeline.bloomThreshold = lerp(0.85, 0.55, pI);  // higher threshold = only pinch core blooms
+    pipeline.bloomWeight = lerp(0.10, 0.35, pI) * bloomGate;
+    pipeline.bloomThreshold = lerp(0.85, 0.55, pI);
     pipeline.bloomScale = lerp(0.5, 0.7, pI);
+    pipeline.imageProcessing.exposure = 1.05 + pI * 0.15 * flicker;
+    pipeline.chromaticAberration.aberrationAmount = 15 + pI * 25;
 
-    // Subtle exposure pulse during peak pinch — "impact flash" (VFX technique)
-    // Exposure uses flicker (defined below in plasma light section)
-    var flickerVal = 1.0 + 0.15 * Math.sin(tAccum * 37) * Math.cos(tAccum * 23) * Ifrac;
-    pipeline.imageProcessing.exposure = 1.05 + pI * 0.15 * flickerVal;
-
-    // === HEAT DISTORTION -- mirage near pinch zone ===
+    // Heat distortion — mirage near pinch
     if (heatPP) {
       heatPP._heatTime = tAccum;
       heatPP._heatIntensity = pI > 0.2 ? (pI - 0.2) * 1.25 : 0;
     }
 
-    // === GOD RAYS -- volumetric light scattering from pinch core ===
+    // God rays — volumetric light from pinch core
     if (godRays) {
       godRays.weight = pI > 0.3 ? lerp(0, 0.6, (pI - 0.3) / 0.7) : 0;
     }
 
-    // === DYNAMIC PLASMA LIGHT — color-matched point light at sheath ===
-    plasmaLight.position.x = isP ? G.anode_length : f.z;
-    // Hot-spot flicker: real arcs have migrating intensity variations
-    var flicker = 1.0 + 0.15 * Math.sin(tAccum * 37) * Math.cos(tAccum * 23) * Ifrac;
+    // Dynamic plasma light — color-matched point light at sheath
+    plasmaLight.position.x = isP ? G.anode_length : s.f.z;
     plasmaLight.intensity = Ifrac * 0.6 * pulse * flicker;
     if (isP) {
       var warmT = smoothstep(0.3, 0.8, pI);
@@ -1496,59 +1567,57 @@ async function createDPFScene(canvas, data) {
       plasmaLight.diffuse.set(0.3, 0.6, 1.0);
     }
 
-    // === HALATION — warm red halo on highlights (film artifact) ===
+    // Halation — warm red halo on highlights
     if (halPP) {
       halPP._halIntensity = Ifrac > 0.3 ? lerp(0, 0.8, (Ifrac - 0.3) / 0.7) * pulse : 0;
     }
 
-    // === CINEMATIC CAMERA — zoom toward tip during pinch (money shot) ===
+    // Cinematic camera — zoom toward tip during pinch
     if (autoOrbit && !interacting) {
-      var targetRadius = isP && pI > 0.2
-        ? G.cathode_radius * lerp(10, 5, pI)   // zoom in during pinch
-        : G.cathode_radius * 10;                 // default distance
-      cam.radius += (targetRadius - cam.radius) * 0.015;  // smooth interpolation
-      // Shift target toward anode tip during pinch
+      var targetR = isP && pI > 0.2 ? G.cathode_radius * lerp(10, 5, pI) : G.cathode_radius * 10;
+      cam.radius += (targetR - cam.radius) * 0.015;
       var targetX = isP ? lerp(G.anode_length * 0.45, G.anode_length * 0.75, pI) : G.anode_length * 0.45;
       cam.target.x += (targetX - cam.target.x) * 0.01;
     }
 
-    // === LENS BREATHING — subtle FOV pulse tied to plasma energy ===
-    if (cam.fov) {
-      cam.fov = 0.8 + Math.sin(tAccum * 2) * 0.005 * Ifrac;
-    }
+    // Lens breathing — subtle FOV pulse
+    if (cam.fov) cam.fov = 0.8 + Math.sin(tAccum * 2) * 0.005 * Ifrac;
 
-    // === DEPTH OF FIELD — subtle during peak pinch only (cinematic focus) ===
+    // Depth of field — peak pinch only
     if (pI > 0.5) {
       pipeline.depthOfFieldEnabled = true;
       pipeline.depthOfField.focalLength = 80;
       pipeline.depthOfField.fStop = 3.0 - pI * 1.5;
-      pipeline.depthOfField.focusDistance = BABYLON.Vector3.Distance(
-        cam.position, new BABYLON.Vector3(G.anode_length, 0, 0)) * 1000;
+      _focusTarget.set(G.anode_length, 0, 0);
+      pipeline.depthOfField.focusDistance = BABYLON.Vector3.Distance(cam.position, _focusTarget) * 1000;
     } else {
       pipeline.depthOfFieldEnabled = false;
     }
+  }
 
-    // === CHROMATIC ABERRATION — ramp with pinch ===
-    pipeline.chromaticAberration.aberrationAmount = 15 + pI * 25;
+  // ============================================================
+  // applyFrame(i) — orchestrator: compute state, delegate to updaters
+  // ============================================================
 
-    // === ANODE TIP THERMAL GLOW — heats during compression ===
-    if (pI > 0.3) {
-      dev.anode.material.emissiveColor.set(
-        lerp(0.22, 0.6, pI), lerp(0.15, 0.25, pI), lerp(0.06, 0.08, pI));
-    } else {
-      dev.anode.material.emissiveColor.set(0.22, 0.15, 0.06);
+  function applyFrame(i) {
+    if (i < 0 || i >= S.frames.length) return;
+    var s = computeFrameState(i);
+
+    // Sync heatmap snapshot to current time
+    if (activeOverlay !== "none" && snapCache[activeOverlay]) {
+      var ni = nearestSnapIdx(snapCache, activeOverlay, s.f.t);
+      if (ni !== lastSnapIdx[activeOverlay]) {
+        lastSnapIdx[activeOverlay] = ni;
+        applySnapTex(activeOverlay);
+      }
     }
 
-    // === INSULATOR BREAKDOWN GLOW — flashes during early rundown ===
-    if (Ifrac > 0.01 && !isP && f.z < G.anode_length * 0.15) {
-      dev.insulator.material.emissiveColor.set(0.5, 0.4, 0.6);
-      dev.insulator.material.alpha = 0.5;
-    } else {
-      dev.insulator.material.emissiveColor.set(0.35, 0.30, 0.20);
-      dev.insulator.material.alpha = 0.40;
-    }
+    updatePlasma(s);
+    updateFields(s);
+    updateParticles(s);
+    updatePostFX(s);
 
-    return { f, isP, cr, pI, rippleAmp };
+    return { f: s.f, isP: s.isP, cr: s.cr, pI: s.pI, rippleAmp: s.rippleAmp };
   }
 
   // ============================================================
@@ -1573,6 +1642,7 @@ async function createDPFScene(canvas, data) {
     sheathDisk: sheath.torus, pinchCore: pinch.core, pinchMantle: pinch.mantle,
     beamCone: beam.cone, gasGlow: trail.trail,
     bRings: bField.bRings, fieldLines: [],
+    currentArrows,
     ps: { start: function() { parts.ps.start(); }, stop: function() { parts.ps.stop(); } },
     pipeline, ssao, glowLayer,
     applyFrame,
