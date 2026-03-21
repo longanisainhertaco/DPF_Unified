@@ -228,8 +228,9 @@ async function createDPFScene(canvas, data) {
   copperMat.metallic = 0.95;
   copperMat.roughness = 0.2;
   copperMat.albedoColor = new BABYLON.Color3(0.97, 0.75, 0.5);
-  copperMat.emissiveColor = new BABYLON.Color3(0.04, 0.02, 0.01);
+  copperMat.emissiveColor = new BABYLON.Color3(0.25, 0.15, 0.05);
   copperMat.environmentIntensity = 1.5;
+  copperMat.directIntensity = 2.0;
 
   var anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
     diameter: G.anode_radius * 2, height: G.anode_length,
@@ -244,8 +245,9 @@ async function createDPFScene(canvas, data) {
   steelMat.metallic = 0.9;
   steelMat.roughness = 0.3;
   steelMat.albedoColor = new BABYLON.Color3(0.78, 0.78, 0.82);
-  steelMat.emissiveColor = new BABYLON.Color3(0.03, 0.03, 0.04);
+  steelMat.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.15);
   steelMat.environmentIntensity = 1.2;
+  steelMat.directIntensity = 2.0;
 
   var cathodeRods = [];
   for (var i = 0; i < 8; i++) {
@@ -393,20 +395,33 @@ async function createDPFScene(canvas, data) {
   var heatPlane = null;
   var heatTex = null;
 
-  // Create midplane plane: spans r=[anode, cathode], z=[0, anode_length]
-  // Oriented in x-z plane (x=axial, z & y = radial cross-section)
-  // Plane width = anode_length, height = cathode_radius - anode_radius
+  // Create midplane heatmap as a cylindrical half-pipe (not a flat plane).
+  // The plasma lives in the annular gap between anode and cathode radii.
+  // A half-cylinder (pi radians arc) shows the r-z cross-section on a
+  // curved surface that follows the electrode geometry.
   var planeW = G.anode_length;
   var planeH = G.cathode_radius - G.anode_radius;
-  heatPlane = BABYLON.MeshBuilder.CreatePlane("heatPlane", {
-    width: planeW, height: planeH, sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+  // Build a custom ribbon mesh: rows at different radii, columns along z-axis
+  var _heatPaths = [];
+  var _heatNr = 16;  // radial resolution for the curved surface
+  var _heatNz = 32;  // axial resolution
+  for (var _ir = 0; _ir <= _heatNr; _ir++) {
+    var r = G.anode_radius + (G.cathode_radius - G.anode_radius) * _ir / _heatNr;
+    var path = [];
+    for (var _iz = 0; _iz <= _heatNz; _iz++) {
+      var z = G.anode_length * _iz / _heatNz;
+      // Map to 3D: x = z (axial), y = r * sin(angle), z_3d = r * cos(angle)
+      // Use a ~240 degree arc so user can see inside from one side
+      var angle = Math.PI * 0.33;  // offset to position the opening toward camera
+      path.push(new BABYLON.Vector3(z, r * Math.sin(angle), r * Math.cos(angle)));
+    }
+    _heatPaths.push(path);
+  }
+  heatPlane = BABYLON.MeshBuilder.CreateRibbon("heatPlane", {
+    pathArray: _heatPaths,
+    sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+    updatable: false,
   }, scene);
-  // Position: centered in the electrode gap, in the y=0 midplane
-  heatPlane.position.x = planeW / 2;
-  heatPlane.position.y = (G.anode_radius + G.cathode_radius) / 2;
-  heatPlane.position.z = 0;
-  heatPlane.rotation.z = -Math.PI / 2;
-  heatPlane.rotation.y = -Math.PI / 2;
   heatPlane.isVisible = false;
   heatPlane.isPickable = false;
 
