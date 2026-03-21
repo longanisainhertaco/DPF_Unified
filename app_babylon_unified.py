@@ -95,6 +95,18 @@ _HTML_HEAD = (
     "  #info-panel .info-body{color:#bcd;font-size:12px;line-height:1.5;margin-bottom:8px}\n"
     "  #info-panel .info-phase{color:#fa8;font-size:11px;line-height:1.4;"
     "border-top:1px solid rgba(255,180,80,0.2);padding-top:6px;margin-top:4px}\n"
+    # Colorbar — vertical scale indicator for heatmap overlays
+    "  #colorbar{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:12;"
+    "pointer-events:none;display:none;width:28px;height:200px;border-radius:4px;"
+    "border:1px solid rgba(100,160,255,0.3);overflow:hidden}\n"
+    "  #cb-gradient{width:100%;height:100%}\n"
+    "  #cb-max{position:absolute;top:-18px;right:0;color:#cdf;font:bold 11px monospace;"
+    "text-shadow:0 0 4px #000;white-space:nowrap}\n"
+    "  #cb-min{position:absolute;bottom:-18px;right:0;color:#cdf;font:bold 11px monospace;"
+    "text-shadow:0 0 4px #000;white-space:nowrap}\n"
+    "  #cb-label{position:absolute;top:50%;right:34px;transform:translateY(-50%) rotate(-90deg);"
+    "color:#8af;font:bold 11px monospace;text-shadow:0 0 4px #000;white-space:nowrap;"
+    "transform-origin:center center}\n"
     # Transport bar
     "  #bar{position:absolute;bottom:0;left:0;right:0;z-index:10;"
     "display:flex;gap:10px;align-items:center;justify-content:center;"
@@ -111,7 +123,7 @@ _HTML_HEAD = (
     "  #sl{width:220px}\n"
     "  #spd{width:70px;accent-color:#fa8}\n"
     # Timeline phases bar
-    "  #timeline{position:absolute;bottom:62px;left:20px;right:20px;height:4px;"
+    "  #timeline{position:absolute;bottom:62px;left:20px;right:20px;height:6px;"
     "z-index:11;border-radius:2px;overflow:hidden;pointer-events:none;"
     "background:rgba(255,255,255,0.08)}\n"
     "  #tl-progress{height:100%;border-radius:2px;transition:width 0.1s}\n"
@@ -129,6 +141,12 @@ _HTML_HEAD = (
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
     '<div id="info-panel"></div>\n'
+    '<div id="colorbar">\n'
+    '  <canvas id="cb-gradient" width="28" height="200"></canvas>\n'
+    '  <span id="cb-max"></span>\n'
+    '  <span id="cb-min"></span>\n'
+    '  <span id="cb-label"></span>\n'
+    '</div>\n'
     '<div id="bar">\n'
     '  <button id="pb">&#9654; Play</button>\n'
     '  <button id="sb">&#10074;&#10074; Pause</button>\n'
@@ -214,6 +232,24 @@ window.addEventListener("load", async function(){
     visModeEl.innerHTML = "Visualization: Lee model schematic (not MHD field data)";
   }
 
+  // ---- Phase timeline colored bands ----
+  var tlEl = document.getElementById("timeline");
+  var prevPhase = "", segStart = 0;
+  for (var fi2 = 0; fi2 <= scene.S.n_frames; fi2++) {
+    var curPhase = fi2 < scene.S.n_frames ? scene.S.frames[fi2].phase : "__end__";
+    if (curPhase !== prevPhase && fi2 > 0) {
+      var pct0 = (segStart / scene.S.n_frames) * 100;
+      var pctW = ((fi2 - segStart) / scene.S.n_frames) * 100;
+      var seg = document.createElement("div");
+      seg.style.cssText = "position:absolute;top:0;height:100%;opacity:0.6;left:" +
+        pct0 + "%;width:" + pctW + "%;background:" + (PHASE_BAR_COLORS[prevPhase] || "#334");
+      seg.title = (PHASE_LABELS[prevPhase] || prevPhase);
+      tlEl.appendChild(seg);
+      segStart = fi2;
+    }
+    prevPhase = curPhase;
+  }
+
   // ---- Physics explanation panel — updates dynamically with heatmap mode and phase ----
   var infoEl = document.getElementById("info-panel");
   var activeHeatmapMode = "none";
@@ -282,6 +318,55 @@ window.addEventListener("load", async function(){
       (phaseNote ? "<div class='info-phase'>" + phaseNote + "</div>" : "");
   }
   updateInfoPanel("none", "rundown");
+
+  // ---- Colorbar rendering ----
+  var cbEl = document.getElementById("colorbar");
+  var cbCanvas = document.getElementById("cb-gradient");
+  var cbMax = document.getElementById("cb-max");
+  var cbMin = document.getElementById("cb-min");
+  var cbLabel = document.getElementById("cb-label");
+
+  var COLORBAR_CONFIG = {
+    density: { label: "Density [kg/m\u00b3]", min: scene.L.density ? scene.L.density.min_val : 0,
+               max: scene.L.density ? scene.L.density.max_val : 1, cmap: "viridis" },
+    temperature: { label: "Temperature [eV]", min: scene.L.temperature ? scene.L.temperature.min_eV : 0,
+                   max: scene.L.temperature ? scene.L.temperature.max_eV : 1, cmap: "inferno" },
+    bfield: { label: "|B| [Tesla]", min: 0, max: scene.L.bfield ? scene.L.bfield.max_T : 1, cmap: "viridis" },
+    radiation: { label: "P_rad [W/m\u00b3]", min: 0, max: scene.L.radiation ? scene.L.radiation.max_W_m3 : 1, cmap: "inferno" }
+  };
+
+  var CMAP_STOPS = {
+    viridis: [[0,"#440154"],[0.25,"#3b528b"],[0.5,"#21918c"],[0.75,"#5ec962"],[1.0,"#fde725"]],
+    inferno: [[0,"#000004"],[0.25,"#420a68"],[0.5,"#932667"],[0.75,"#dd513a"],[1.0,"#fcffa4"]]
+  };
+
+  function updateColorbar(mode) {
+    if (mode === "none" || !COLORBAR_CONFIG[mode]) {
+      cbEl.style.display = "none";
+      return;
+    }
+    cbEl.style.display = "block";
+    var cfg = COLORBAR_CONFIG[mode];
+    var cmapKey = cfg.cmap || "viridis";
+    var stops = CMAP_STOPS[cmapKey] || CMAP_STOPS.viridis;
+
+    var ctx = cbCanvas.getContext("2d");
+    var grad = ctx.createLinearGradient(0, 0, 0, 200);
+    for (var s = 0; s < stops.length; s++) {
+      grad.addColorStop(1 - stops[s][0], stops[s][1]);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 28, 200);
+
+    function fmtVal(v) {
+      if (Math.abs(v) < 0.01 || Math.abs(v) > 1e5) return v.toExponential(1);
+      if (Math.abs(v) < 10) return v.toFixed(2);
+      return v.toFixed(0);
+    }
+    cbMax.textContent = fmtVal(cfg.max);
+    cbMin.textContent = fmtVal(cfg.min);
+    cbLabel.textContent = cfg.label;
+  }
 
   var fi = 0, playing = false, lastAdv = 0;
   var speedIdx = 4;
@@ -415,6 +500,13 @@ window.addEventListener("load", async function(){
   addTog("Beam Indicator", true, function(v) {
     scene.beamCone.isVisible = v;
   });
+  addTog("Current Flow", false, function(v) {
+    if (scene.currentArrows) {
+      scene.currentArrows.axialArrows.forEach(function(a) { a._userVisible = v; });
+      scene.currentArrows.radialArrows.forEach(function(a) { a._userVisible = v; });
+      scene.currentArrows.returnArrows.forEach(function(a) { a._userVisible = v; });
+    }
+  });
 
   // Heatmap toggles — mutually exclusive (radio-like). Only one heatmap
   // overlay can be active at a time since they share a single midplane texture.
@@ -429,6 +521,7 @@ window.addEventListener("load", async function(){
     scene.updateHeatmap(mode);
     activeHeatmapMode = mode;
     updateInfoPanel(mode, lastPhase);
+    updateColorbar(mode);
   }
   function addHeatTog(label, key) {
     var lb = document.createElement("label");
@@ -508,6 +601,7 @@ window.addEventListener("load", async function(){
   renderFrame(0);
   phaseName.textContent = "READY";
   phaseDesc.textContent = "Drag to orbit \u2022 Scroll to zoom \u2022 Press Play to animate";
+  lastPhase = "";  // Reset so next renderFrame triggers phase banner update
 });
 """
 
