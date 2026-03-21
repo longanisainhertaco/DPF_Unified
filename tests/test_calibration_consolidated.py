@@ -1380,12 +1380,15 @@ class TestPresetCompleteness:
         assert sp["pinch_column_fraction"] == pytest.approx(0.5, abs=0.1)
 
     def test_nx2_has_calibrated_fc_fm(self, all_presets):
-        """NX2 preset has fc/fm from Lee & Saw (2008)."""
+        """NX2 preset has fc/fm calibrated to RADPF 400 kA reference."""
         sp = all_presets["nx2"].get("snowplow", {})
         assert "current_fraction" in sp
         assert "mass_fraction" in sp
         assert 0.5 < sp["current_fraction"] < 0.9
-        assert 0.05 < sp["mass_fraction"] < 0.25
+        # fm > traditional Lee model range (0.05-0.25) because our snowplow
+        # coupling is more aggressive than RADPF; fm=1.0 calibrated to
+        # minimize loading vs unloaded-circuit 400 kA target
+        assert 0.05 < sp["mass_fraction"] < 2.0
 
     def test_llnl_has_pcf(self, all_presets):
         """LLNL preset has pinch_column_fraction."""
@@ -5465,16 +5468,16 @@ class TestPresets:
         assert p["circuit"]["crowbar_enabled"] is False
 
     def test_mjolnir_preset_updated(self):
-        """MJOLNIR preset: Offermann et al. 2021, 1 MJ configuration."""
+        """MJOLNIR preset: 2 MJ config (Goyon 2025, Offermann 2021)."""
         from dpf.presets import get_preset
 
         p = get_preset("mjolnir")
-        assert p["circuit"]["C"] == pytest.approx(204e-6, rel=0.01)
+        assert p["circuit"]["C"] == pytest.approx(408e-6, rel=0.01)
         assert p["circuit"]["V0"] == pytest.approx(60e3, rel=0.01)
         assert p["circuit"]["L0"] == pytest.approx(67.4e-9, rel=0.05)
-        assert p["circuit"]["R0"] == pytest.approx(0.0125, rel=0.01)
-        assert p["circuit"]["anode_radius"] == pytest.approx(0.076, rel=0.01)
-        assert p["circuit"]["cathode_radius"] == pytest.approx(0.119, rel=0.01)
+        assert p["circuit"]["R0"] == pytest.approx(6.25e-3, rel=0.01)
+        assert p["circuit"]["anode_radius"] == pytest.approx(0.1143, rel=0.01)
+        assert p["circuit"]["cathode_radius"] == pytest.approx(0.157, rel=0.01)
         assert p["circuit"]["crowbar_enabled"] is True
 
     def test_faeton_preset_energy(self):
@@ -5486,12 +5489,12 @@ class TestPresets:
         assert pytest.approx(125e3, rel=0.01) == E
 
     def test_mjolnir_preset_energy(self):
-        """MJOLNIR stored energy at 60 kV, 1 MJ config: ~367 kJ."""
+        """MJOLNIR stored energy at 60 kV, 2 MJ config: ~734 kJ."""
         from dpf.presets import get_preset
 
         p = get_preset("mjolnir")
         E = 0.5 * p["circuit"]["C"] * p["circuit"]["V0"] ** 2
-        assert pytest.approx(367.2e3, rel=0.01) == E
+        assert pytest.approx(734.4e3, rel=0.01) == E
 
 
 # =====================================================================

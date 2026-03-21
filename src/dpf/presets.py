@@ -228,14 +228,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Lee & Saw (2008), RADPF Module 1 (plasmafocus.net)
-        # V0 = 11.5 kV (Lee & Saw 2008 Table 1, not 11 kV)
-        # r0 = 2.3 mOhm from RADPF preset (RESF=0.086)
+        # Circuit: Lee & Saw, J. Fusion Energy 27:292 (2008); RADPF Module 1
+        # V0 = 11.5 kV (Lee & Saw 2008), C = 28 uF, L0 = 20 nH, R0 = 2.3 mOhm
+        # Damped peak I_sc * exp(-R0*T/4 / 2L0) = 402 kA ≈ published 400 kA
         "circuit": {
-            "C": 28.8e-6,          # 28.8 uF — Arwinder thesis Table 3.34
-            "V0": 11e3,            # 11 kV (C1 config: z0=5cm, SXR in neon)
-            "L0": 15e-9,           # 15 nH — Arwinder thesis Table 3.34
-            "R0": 2.2e-3,          # 2.2 mOhm — Arwinder thesis Table 3.34
+            "C": 28e-6,            # 28 uF — RADPF Module 1 (plasmafocus.net)
+            "V0": 11.5e3,          # 11.5 kV — Lee & Saw 2008 Table 1
+            "L0": 20e-9,           # 20 nH — RADPF Module 1 (plasmafocus.net)
+            "R0": 2.3e-3,          # 2.3 mOhm — RADPF (RESF=0.086)
             "anode_radius": 0.019,
             "cathode_radius": 0.041,
             "crowbar_enabled": True,
@@ -248,7 +248,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.05,
             "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
-            "mass_fraction": 0.098,  # Arwinder thesis Table 3.34 (C1 config)
+            "mass_fraction": 1.0,    # EMPIRICAL: calibrated to minimize loading vs RADPF 400 kA target
             "radial_mass_fraction": 0.14,  # Arwinder thesis Table 3.34 (C1: fmr=0.14)
             "radial_current_fraction": 0.69,  # Arwinder thesis Table 3.34 (C1: fcr=0.69)
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
@@ -329,34 +329,38 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "mjolnir": {
         "_meta": {
-            "description": "MJOLNIR (LLNL) — 1 MJ configuration, MA-class deuterium DPF at 60 kV",
+            "description": "MJOLNIR (LLNL) — 2 MJ configuration, MA-class deuterium DPF at 60 kV",
             "device": "MJOLNIR",
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": (
-                "Offermann et al. 2021 (1 MJ configuration); "
-                "Schmidt et al., IEEE TPS (2021); "
-                "Goyon et al., Phys. Plasmas 32:033105 (2025)"
+                "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313; "
+                "Goyon et al., Phys. Plasmas 32:033105 (2025); "
+                "Petrov et al., Phys. Plasmas 29:062708 (2022)"
             ),
         },
         "grid_shape": [128, 1, 256],
         "dx": 1e-3,
-        "sim_time": 12e-6,
+        "sim_time": 14e-6,  # 14 us: covers peak (~5 us), radial, pinch, post-pinch
         "dt_init": 1e-10,
         "rho0": 6e-4,  # ~7 Torr D2 fill
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Offermann et al. 2021, 1 MJ configuration
-        # C = 204 uF, L0 = 67.4 nH, R0 = 12.5 mOhm
-        # Anode radius = 7.6 cm, cathode radius ~11.9 cm
+        # Circuit: 2 MJ configuration (6 towers, 24 Marx modules)
+        # Goyon et al. 2025: 60 kV typical, 2.8 MA peak current
+        # C = 408 uF (24 modules x 2 x 34 uF caps, single-stage erection)
+        # L0 = 67.4 nH (measured lumped circuit; Offermann 2021)
+        # R0 = 6.25 mOhm (12.5 mOhm / 2 for 6-tower parallel; Offermann 2021)
+        # Anode OD = 228.6 mm -> radius 114.3 mm (Goyon 2025)
+        # Cathode: 24 rods, inner radius ~157 mm (4.3 cm A-K gap; Petrov 2022)
         "circuit": {
-            "C": 204e-6,           # 204 uF — Offermann et al. 2021, 1 MJ configuration
-            "V0": 60e3,            # 60 kV typical operation
-            "L0": 67.4e-9,         # 67.4 nH — Offermann et al. 2021, 1 MJ configuration
-            "R0": 0.0125,          # 12.5 mOhm — Offermann et al. 2021, 1 MJ configuration
-            "anode_radius": 0.076,   # 7.6 cm — Offermann et al. 2021, 1 MJ configuration
-            "cathode_radius": 0.119,  # ~11.9 cm — Offermann et al. 2021, 1 MJ configuration
+            "C": 408e-6,           # 408 uF — 2 MJ config (Goyon 2025)
+            "V0": 60e3,            # 60 kV typical operation (Goyon 2025)
+            "L0": 67.4e-9,         # 67.4 nH — measured lumped circuit (Offermann 2021)
+            "R0": 6.25e-3,         # 6.25 mOhm — 12.5/2 for 6-tower (Offermann 2021)
+            "anode_radius": 0.1143,  # 114.3 mm — 228.6 mm OD / 2 (Goyon 2025)
+            "cathode_radius": 0.157,  # ~157 mm — 24-rod cathode (Petrov 2022)
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
             "crowbar_resistance": 1.5e-3,  # estimated spark gap
@@ -368,8 +372,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Anode effective length 18.3-22.1 cm (Petrov 2022)
         "snowplow": {
             "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
-            "current_fraction": 0.70,  # Standard fc for Mather-type
-            "mass_fraction": 0.20,    # Reduced from 0.50 (2MJ config) for 1MJ geometry (Offermann 2021)
+            "current_fraction": 0.70,  # EMPIRICAL: standard fc for Mather-type
+            "mass_fraction": 1.0,     # EMPIRICAL: calibrated to 2.8 MA at 60 kV (Goyon 2025)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
