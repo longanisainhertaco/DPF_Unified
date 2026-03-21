@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DPF Renderer Test Harness</title>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1c1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e8eaec;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 16px;
+      background: #23262a;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    #toolbar h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8b9ab0;
+      white-space: nowrap;
+    }
+
+    #toolbar label {
+      font-size: 12px;
+      color: #8b9ab0;
+    }
+
+    #deviceSelect {
+      background: #2e3136;
+      color: #e8eaec;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    #deviceSelect:focus {
+      border-color: #5b8cff;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #renderCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    #info-panel {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(20, 22, 26, 0.85);
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px 16px;
+      min-width: 200px;
+      backdrop-filter: blur(4px);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    #info-panel h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #a0b8d8;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+
+    #info-panel .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #info-panel .label {
+      color: #6a7a8a;
+    }
+
+    #info-panel .value {
+      color: #d0dce8;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(20, 22, 26, 0.85);
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 11px;
+      line-height: 1.9;
+      backdrop-filter: blur(4px);
+    }
+
+    #legend .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    #hint {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      color: #4a5a6a;
+      font-size: 11px;
+      text-align: right;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>DPF Renderer — Electrode Test</h1>
+  <label for="deviceSelect">Device:</label>
+  <select id="deviceSelect">
+    <option value="PF-1000">PF-1000</option>
+    <option value="PF-400J">PF-400J</option>
+    <option value="MJOLNIR">MJOLNIR</option>
+  </select>
+</div>
+
+<div id="canvas-container">
+  <canvas id="renderCanvas"></canvas>
+
+  <div id="info-panel">
+    <h2 id="panel-title">PF-1000</h2>
+    <div class="row"><span class="label">Anode radius</span><span class="value" id="p-ar">—</span></div>
+    <div class="row"><span class="label">Cathode radius</span><span class="value" id="p-cr">—</span></div>
+    <div class="row"><span class="label">Anode length</span><span class="value" id="p-al">—</span></div>
+    <div class="row"><span class="label">Cathode rods</span><span class="value" id="p-nr">—</span></div>
+  </div>
+
+  <div id="legend">
+    <div><span class="swatch" style="background:#f5c07f;"></span>Anode (copper PBR)</div>
+    <div><span class="swatch" style="background:#b8b8cc;"></span>Cathode rods (steel PBR)</div>
+    <div><span class="swatch" style="background:#f0ead8;"></span>Insulator (ceramic PBR)</div>
+    <div><span class="swatch" style="background:#3a4a5a;"></span>Ground grid</div>
+  </div>
+
+  <div id="hint">
+    Left drag: orbit &nbsp;|&nbsp; Right drag: pan &nbsp;|&nbsp; Scroll: zoom
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Device presets
+// ---------------------------------------------------------------------------
+const DEVICES = {
+  "PF-1000": {
+    anode_radius:   0.1155,
+    cathode_radius: 0.16,
+    anode_length:   0.6,
+    n_rods:         12,
+    insulator_height: 0.12,
+  },
+  "PF-400J": {
+    anode_radius:   0.006,
+    cathode_radius: 0.0155,
+    anode_length:   0.017,
+    n_rods:         6,
+    insulator_height: 0.005,
+  },
+  "MJOLNIR": {
+    anode_radius:   0.076,
+    cathode_radius: 0.119,
+    anode_length:   0.20,
+    n_rods:         8,
+    insulator_height: 0.04,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Engine + scene bootstrap
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
+
+let scene = null;
+let camera = null;
+let deviceMeshGroup = [];   // meshes to dispose on device switch
+
+function createScene() {
+  if (scene) { scene.dispose(); }
+  scene = new BABYLON.Scene(engine);
+
+  scene.clearColor = new BABYLON.Color4(0.88, 0.90, 0.92, 1);
+
+  // --- Camera ---------------------------------------------------------------
+  camera = new BABYLON.ArcRotateCamera("cam", -Math.PI / 2.5, Math.PI / 3.5, 1.2, BABYLON.Vector3.Zero(), scene);
+  camera.lowerRadiusLimit = 0.05;
+  camera.upperRadiusLimit = 20;
+  camera.wheelPrecision = 60;
+  camera.minZ = 0.001;
+  camera.maxZ = 100;
+  camera.attachControl(canvas, true);
+
+  // --- Lights ---------------------------------------------------------------
+  const keyLight = new BABYLON.DirectionalLight("key", new BABYLON.Vector3(-1, -2, 1), scene);
+  keyLight.intensity = 1.5;
+
+  const fillLight = new BABYLON.HemisphericLight("fill", new BABYLON.Vector3(0, 1, 0), scene);
+  fillLight.intensity = 0.6;
+
+  return scene;
+}
+
+// ---------------------------------------------------------------------------
+// Materials (created once per scene, never recreated per device)
+// ---------------------------------------------------------------------------
+function buildMaterials(scene) {
+  // Anode — PBR copper, FULLY OPAQUE
+  const copperMat = new BABYLON.PBRMaterial("copper", scene);
+  copperMat.metallic  = 0.95;
+  copperMat.roughness = 0.2;
+  copperMat.albedoColor = new BABYLON.Color3(0.97, 0.75, 0.5);
+  copperMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
+
+  // Cathode — PBR steel, FULLY OPAQUE
+  const steelMat = new BABYLON.PBRMaterial("steel", scene);
+  steelMat.metallic  = 0.85;
+  steelMat.roughness = 0.25;
+  steelMat.albedoColor = new BABYLON.Color3(0.75, 0.75, 0.80);
+  steelMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
+
+  // Insulator — PBR ceramic, OPAQUE
+  const ceramicMat = new BABYLON.PBRMaterial("ceramic", scene);
+  ceramicMat.metallic  = 0;
+  ceramicMat.roughness = 0.5;
+  ceramicMat.albedoColor = new BABYLON.Color3(0.95, 0.92, 0.85);
+  ceramicMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
+
+  // Scale bar — flat matte white
+  const scaleMat = new BABYLON.StandardMaterial("scalebar", scene);
+  scaleMat.diffuseColor  = new BABYLON.Color3(0.9, 0.9, 0.9);
+  scaleMat.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+  scaleMat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+  // Tick mark — slightly different shade
+  const tickMat = new BABYLON.StandardMaterial("tick", scene);
+  tickMat.diffuseColor  = new BABYLON.Color3(0.6, 0.6, 0.6);
+  tickMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+  tickMat.specularColor = new BABYLON.Color3(0, 0, 0);
+
+  return { copperMat, steelMat, ceramicMat, scaleMat, tickMat };
+}
+
+// ---------------------------------------------------------------------------
+// Ground grid via DynamicTexture
+// ---------------------------------------------------------------------------
+function buildGrid(scene, G) {
+  const gridSize = Math.max(G.anode_length, G.cathode_radius) * 6;
+  const texRes   = 1024;
+  const cells    = 20;
+
+  const gridTex = new BABYLON.DynamicTexture("gridTex", { width: texRes, height: texRes }, scene, false);
+  const ctx     = gridTex.getContext();
+
+  ctx.fillStyle = "#3d4a57";
+  ctx.fillRect(0, 0, texRes, texRes);
+
+  const step = texRes / cells;
+  ctx.strokeStyle = "#5a6a7a";
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= cells; i++) {
+    const x = Math.round(i * step) + 0.5;
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, texRes);
+    ctx.moveTo(0, x);
+    ctx.lineTo(texRes, x);
+  }
+  ctx.stroke();
+
+  // Brighter center cross
+  ctx.strokeStyle = "#7a8a9a";
+  ctx.lineWidth   = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(texRes / 2, 0); ctx.lineTo(texRes / 2, texRes);
+  ctx.moveTo(0, texRes / 2); ctx.lineTo(texRes, texRes / 2);
+  ctx.stroke();
+
+  gridTex.update();
+
+  const gridMat = new BABYLON.StandardMaterial("gridMat", scene);
+  gridMat.diffuseTexture  = gridTex;
+  gridMat.specularColor   = new BABYLON.Color3(0, 0, 0);
+  gridMat.emissiveColor   = new BABYLON.Color3(0.08, 0.1, 0.12);
+
+  const ground = BABYLON.MeshBuilder.CreateGround("grid", { width: gridSize, height: gridSize }, scene);
+  ground.position.y = -G.cathode_radius * 1.2;
+  ground.material   = gridMat;
+  ground.renderingGroupId = 0;
+
+  return ground;
+}
+
+// ---------------------------------------------------------------------------
+// Scale bar along +Y (anode axis)
+// ---------------------------------------------------------------------------
+function buildScaleBar(scene, G, mats) {
+  const barLen  = G.anode_length;
+  const barThk  = G.cathode_radius * 0.025;
+  const offsetX = G.cathode_radius * 1.35;
+  const meshes  = [];
+
+  // Main bar
+  const bar = BABYLON.MeshBuilder.CreateBox("scalebar", {
+    width: barThk, height: barLen, depth: barThk,
+  }, scene);
+  bar.position.set(offsetX, barLen / 2, 0);
+  bar.material = mats.scaleMat;
+  bar.renderingGroupId = 0;
+  meshes.push(bar);
+
+  // Tick marks at 0%, 25%, 50%, 75%, 100% of anode length
+  const tickW  = barThk * 4;
+  const tickH  = barThk * 0.8;
+  const ticks  = [0, 0.25, 0.5, 0.75, 1.0];
+  for (const t of ticks) {
+    const tk = BABYLON.MeshBuilder.CreateBox(`tick_${t}`, {
+      width: tickW, height: tickH, depth: barThk,
+    }, scene);
+    tk.position.set(offsetX, t * barLen, 0);
+    tk.material = mats.tickMat;
+    tk.renderingGroupId = 0;
+    meshes.push(tk);
+  }
+
+  return meshes;
+}
+
+// ---------------------------------------------------------------------------
+// Device geometry builder
+// ---------------------------------------------------------------------------
+function buildDevice(scene, G, mats) {
+  const meshes = [];
+
+  // --- Anode (inner cylinder) -----------------------------------------------
+  const anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
+    diameter:       G.anode_radius * 2,
+    height:         G.anode_length,
+    tessellation:   64,
+    cap:            BABYLON.Mesh.CAP_ALL,
+  }, scene);
+  anode.position.y  = G.anode_length / 2;
+  anode.material    = mats.copperMat;
+  anode.renderingGroupId = 0;
+  meshes.push(anode);
+
+  // --- Cathode rods ---------------------------------------------------------
+  const rodRadius = (G.cathode_radius - G.anode_radius) * 0.15;
+  const rodLen    = G.anode_length * 1.05;
+
+  for (let i = 0; i < G.n_rods; i++) {
+    const angle = (2 * Math.PI * i) / G.n_rods;
+    const rx    = G.cathode_radius * Math.cos(angle);
+    const rz    = G.cathode_radius * Math.sin(angle);
+
+    const rod = BABYLON.MeshBuilder.CreateCylinder(`rod_${i}`, {
+      diameter:     rodRadius * 2,
+      height:       rodLen,
+      tessellation: 16,
+      cap:          BABYLON.Mesh.CAP_ALL,
+    }, scene);
+    rod.position.set(rx, rodLen / 2, rz);
+    rod.material = mats.steelMat;
+    rod.renderingGroupId = 0;
+    meshes.push(rod);
+  }
+
+  // Cathode base ring (flat disc connecting rod bottoms)
+  const baseRing = BABYLON.MeshBuilder.CreateTorus("cathodeBase", {
+    diameter:      G.cathode_radius * 2,
+    thickness:     (G.cathode_radius - G.anode_radius) * 0.25,
+    tessellation:  64,
+  }, scene);
+  baseRing.position.y = -rodLen * 0.02;
+  baseRing.material   = mats.steelMat;
+  baseRing.renderingGroupId = 0;
+  meshes.push(baseRing);
+
+  // Cathode top ring (connecting rod tops)
+  const topRing = baseRing.clone("cathodeTop");
+  topRing.position.y = rodLen * 1.01;
+  meshes.push(topRing);
+
+  // --- Insulator disc (at base of anode, between anode and cathode) ---------
+  const insulatorOuter = G.cathode_radius * 0.92;
+  const insulatorInner = G.anode_radius * 1.02;
+  const insulatorH     = G.insulator_height;
+
+  // Build as a hollow cylinder (tube) using a lathe profile
+  const profile = [];
+  const segments = 2;
+  profile.push(new BABYLON.Vector3(insulatorInner, 0, 0));
+  profile.push(new BABYLON.Vector3(insulatorOuter, 0, 0));
+  profile.push(new BABYLON.Vector3(insulatorOuter, insulatorH, 0));
+  profile.push(new BABYLON.Vector3(insulatorInner, insulatorH, 0));
+  profile.push(new BABYLON.Vector3(insulatorInner, 0, 0));  // close
+
+  const insulator = BABYLON.MeshBuilder.CreateLathe("insulator", {
+    shape:       profile,
+    radius:      1,
+    tessellation: 64,
+    cap:         BABYLON.Mesh.CAP_ALL,
+    sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+  }, scene);
+  insulator.position.y  = -insulatorH * 0.5;
+  insulator.material    = mats.ceramicMat;
+  insulator.renderingGroupId = 0;
+  meshes.push(insulator);
+
+  return meshes;
+}
+
+// ---------------------------------------------------------------------------
+// Camera framing for device
+// ---------------------------------------------------------------------------
+function frameCamera(camera, G) {
+  const halfLen = G.anode_length / 2;
+  camera.target = new BABYLON.Vector3(0, halfLen, 0);
+  camera.radius = Math.max(G.anode_length, G.cathode_radius) * 3.2;
+  camera.alpha  = -Math.PI / 2.5;
+  camera.beta   =  Math.PI / 3.5;
+}
+
+// ---------------------------------------------------------------------------
+// Info panel update
+// ---------------------------------------------------------------------------
+function updatePanel(name, G) {
+  document.getElementById("panel-title").textContent = name;
+  document.getElementById("p-ar").textContent = (G.anode_radius   * 1000).toFixed(1) + " mm";
+  document.getElementById("p-cr").textContent = (G.cathode_radius * 1000).toFixed(1) + " mm";
+  document.getElementById("p-al").textContent = (G.anode_length   * 1000).toFixed(1) + " mm";
+  document.getElementById("p-nr").textContent = G.n_rods;
+}
+
+// ---------------------------------------------------------------------------
+// Main load / switch routine
+// ---------------------------------------------------------------------------
+function loadDevice(name) {
+  const G = DEVICES[name];
+  if (!G) return;
+
+  // Dispose previous device meshes
+  for (const m of deviceMeshGroup) { m.dispose(); }
+  deviceMeshGroup = [];
+
+  const mats   = buildMaterials(scene);
+  const device = buildDevice(scene, G, mats);
+  const grid   = buildGrid(scene, G);
+  const scale  = buildScaleBar(scene, G, mats);
+
+  deviceMeshGroup = [...device, grid, ...scale];
+
+  frameCamera(camera, G);
+  updatePanel(name, G);
+}
+
+// ---------------------------------------------------------------------------
+// Bootstrap
+// ---------------------------------------------------------------------------
+createScene();
+loadDevice("PF-1000");
+
+document.getElementById("deviceSelect").addEventListener("change", (e) => {
+  loadDevice(e.target.value);
+});
+
+engine.runRenderLoop(() => { if (scene) scene.render(); });
+window.addEventListener("resize", () => engine.resize());
+</script>
+</body>
+</html>
