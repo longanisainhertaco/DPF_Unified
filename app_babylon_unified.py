@@ -36,14 +36,17 @@ from app_visualization import extract_all_layers
 
 BABYLON_CDN = "https://cdn.babylonjs.com/babylon.js"
 BABYLON_MAT = "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"
-BABYLON_GUI = "https://cdn.babylonjs.com/gui/babylon.gui.min.js"
+BABYLON_LOADERS = "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"
+# GUI library removed — overlays are HTML/CSS, not Babylon.GUI
 
 _RENDERER_JS_PATH = Path(__file__).parent / "static" / "renderer" / "dpf_renderer.js"
 _RENDERER_JS = _RENDERER_JS_PATH.read_text() if _RENDERER_JS_PATH.exists() else ""
+_VOLUMETRIC_JS_PATH = Path(__file__).parent / "static" / "renderer" / "dpf_volumetric.js"
+_VOLUMETRIC_JS = _VOLUMETRIC_JS_PATH.read_text() if _VOLUMETRIC_JS_PATH.exists() else ""
 
 _HTML_HEAD = (
     '<!DOCTYPE html>\n<html><head>\n<meta charset="utf-8">\n<style>\n'
-    "  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#e0e4e8}\n"
+    "  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#1e2025}\n"
     "  #c{width:100%;height:100%;touch-action:none;display:block}\n"
     # Phase banner — large centered text at top
     "  #phase-banner{position:absolute;top:0;left:0;right:0;z-index:12;"
@@ -115,7 +118,7 @@ _HTML_HEAD = (
     "</style>\n"
     f'<script src="{BABYLON_CDN}"></script>\n'
     f'<script src="{BABYLON_MAT}"></script>\n'
-    f'<script src="{BABYLON_GUI}"></script>\n'
+    f'<script src="{BABYLON_LOADERS}"></script>\n'
     "</head>\n<body>\n"
     '<canvas id="c" tabindex="0"></canvas>\n'
     '<div id="phase-banner"><div id="phase-name">Initializing...</div>'
@@ -218,28 +221,28 @@ window.addEventListener("load", async function(){
   var HEATMAP_INFO = {
     none: {
       title: "3D DPF Device Overview",
-      body: "The <b>gold cylinder</b> is the anode (inner electrode). " +
-            "<b>Gray rods</b> are the cathode (outer electrode cage). " +
-            "The <b>blue torus</b> is the current sheath -- a magnetic-piston of ionized gas. " +
-            "The <b>orange column</b> at the anode tip is the pinch -- where plasma reaches " +
-            "millions of degrees.<br><br>" +
-            "<b>Enable a heatmap</b> in the Layers panel to overlay MHD field data."
+      body: "The <b>wireframe cylinder</b> is the anode (inner electrode, copper). " +
+            "<b>Wireframe rods</b> are the cathode (outer electrode cage, steel). " +
+            "During discharge, a <b>glowing torus</b> sweeps along the device (current sheath) " +
+            "then compresses at the tip. The <b>bright column</b> at the anode tip is the pinch " +
+            "-- fusion-relevant conditions.<br><br>" +
+            "Color progression: <b>red-orange</b> (rundown, D-alpha emission) to <b>amber</b> (compression) to <b>white-hot</b> (pinch).<br>" +
+            "<b>Enable a heatmap</b> to wrap MHD field data around the device."
     },
     density: {
       title: "Density Heatmap (MHD)",
-      body: "Color shows <b>plasma mass density</b> rho(r,z) on the midplane. " +
-            "<b>Blue = low density</b> (background fill gas). " +
-            "<b>Yellow/red = high density</b> (compressed plasma). " +
-            "Compression ratio reaches 10-100x during radial implosion. " +
-            "The density profile reveals sheath thickness and pinch column structure."
+      body: "Color shows <b>plasma mass density</b> rho(r,z) wrapped around the device. " +
+            "<b>Blue/purple = low density</b> (background fill gas). " +
+            "<b>Green/yellow = high density</b> (compressed plasma). " +
+            "The viridis colormap wraps 360 degrees around the midplane cylinder. " +
+            "Density structure reveals sheath thickness and compression zones."
     },
     temperature: {
       title: "Temperature Heatmap (MHD)",
-      body: "Color shows <b>electron temperature</b> Te(r,z) on the midplane. " +
-            "<b>Blue = cold plasma</b> (~1 eV). " +
-            "<b>Yellow/red = hot plasma</b> (100 eV - 2 keV at pinch). " +
-            "Temperature peaks at the pinch axis from adiabatic compression " +
-            "and Ohmic heating. Fusion-relevant temperatures (>1 keV) occur in the pinch core."
+      body: "Color shows <b>electron temperature</b> Te(r,z) wrapped around the device. " +
+            "Uses <b>inferno colormap</b> (black to purple to orange to yellow). " +
+            "<b>Dark = cold plasma</b> (~1 eV). <b>Bright yellow = hot plasma</b>. " +
+            "Temperature peaks at the pinch axis from adiabatic compression and Ohmic heating."
     },
     bfield: {
       title: "Magnetic Field |B| (MHD)",
@@ -396,16 +399,21 @@ window.addEventListener("load", async function(){
     scene.insulator.isVisible = v;
   });
   addTog("Current Sheath", true, function(v) {
-    scene.sheath.isVisible = v; scene.trail.isVisible = v;
+    scene.sheathDisk.isVisible = v;
+    if (scene.gasGlow) scene.gasGlow.isVisible = v;
   });
   addTog("Plasma Ions", true, function(v) {
     if (v) scene.ps.start(); else scene.ps.stop();
   });
   addTog("Pinch Column", true, function(v) {
-    scene.pinch.isVisible = v; scene.halo.isVisible = v;
+    scene.pinchCore.isVisible = v;
+    scene.pinchMantle.isVisible = v;
   });
-  addTog("B-Field Lines", !!scene.L.bfield, function(v) {
-    scene.fieldLines.forEach(function(l) { l.isVisible = v; });
+  addTog("B-Field Rings", true, function(v) {
+    scene.bRings.forEach(function(r) { r.isVisible = v; });
+  });
+  addTog("Beam Indicator", true, function(v) {
+    scene.beamCone.isVisible = v;
   });
 
   // Heatmap toggles — mutually exclusive (radio-like). Only one heatmap
@@ -438,6 +446,25 @@ window.addEventListener("load", async function(){
     if (scene.L.temperature) addHeatTog("Temperature Heatmap", "temperature");
     if (scene.L.bfield)     addHeatTog("|B| Heatmap", "bfield");
     if (scene.L.radiation)  addHeatTog("Radiation Heatmap", "radiation");
+    // Overlay rendering mode selector (surface cylinder vs volumetric vs cross-section)
+    if (scene.volField) {
+      var modeDiv = document.createElement("div");
+      modeDiv.style.cssText = "margin:6px 0 2px;font-size:11px;color:#aaa;";
+      modeDiv.textContent = "Render Mode:";
+      lp.appendChild(modeDiv);
+      var modes = [["Surface", "surface"], ["Volume", "volume"], ["Cross-section", "xsec"], ["Vol+Xsec", "both"]];
+      modes.forEach(function(m) {
+        var lb = document.createElement("label");
+        lb.style.cssText = "display:inline-block;margin-right:8px;font-size:11px;";
+        var rb = document.createElement("input");
+        rb.type = "radio"; rb.name = "ovMode"; rb.value = m[1];
+        if (m[1] === "surface") rb.checked = true;
+        rb.onchange = function() { scene.setOverlayMode(m[1]); };
+        lb.appendChild(rb);
+        lb.appendChild(document.createTextNode(m[0]));
+        lp.appendChild(lb);
+      });
+    }
   }
 
   addHdr("RENDERING");
@@ -450,12 +477,16 @@ window.addEventListener("load", async function(){
 
   // ---- Render loop (smooth interpolated playback) ----
   var smoothFi = 0;
+  var lastTime = performance.now();
   scene.engine.runRenderLoop(function() {
     try {
+      var now = performance.now();
+      var dt = Math.min(0.05, (now - lastTime) * 0.001);
+      lastTime = now;
       if (playing) {
         var speed = SPEEDS[speedIdx] || 1;
-        // Advance by fractional frames for smooth motion
-        smoothFi += speed * 0.016 * 60 / Math.max(scene.S.n_frames, 1) * 2;
+        // Frame-rate-independent smooth advancement
+        smoothFi += speed * dt * 60 / Math.max(scene.S.n_frames, 1) * 2;
         if (smoothFi >= scene.S.n_frames) smoothFi = 0;
         var newFi = Math.floor(smoothFi);
         if (newFi !== fi) {
@@ -499,6 +530,9 @@ def create_unified_renderer(d: dict[str, Any]) -> str:
     return (
         _HTML_HEAD
         + "<script>\n"
+        + "// ---- Volumetric field module (dpf_volumetric.js) ----\n"
+        + "// Ray-march + cross-section for 2D axisymmetric field data.\n"
+        + _VOLUMETRIC_JS + "\n\n"
         + "// ---- Renderer module (dpf_renderer.js) ----\n"
         + "// Creates Babylon.js scene, decodes base64 field data, builds\n"
         + "// snap caches, and exposes applyFrame(i) + updateHeatmap(mode).\n"
