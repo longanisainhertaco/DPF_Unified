@@ -35,6 +35,7 @@ from typing import Any
 from app_visualization import extract_all_layers
 
 BABYLON_CDN = "https://cdn.babylonjs.com/babylon.js"
+BABYLON_MAT = "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"
 BABYLON_GUI = "https://cdn.babylonjs.com/gui/babylon.gui.min.js"
 
 _RENDERER_JS_PATH = Path(__file__).parent / "static" / "renderer" / "dpf_renderer.js"
@@ -42,12 +43,12 @@ _RENDERER_JS = _RENDERER_JS_PATH.read_text() if _RENDERER_JS_PATH.exists() else 
 
 _HTML_HEAD = (
     '<!DOCTYPE html>\n<html><head>\n<meta charset="utf-8">\n<style>\n'
-    "  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050508}\n"
+    "  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#e0e4e8}\n"
     "  #c{width:100%;height:100%;touch-action:none;display:block}\n"
     # Phase banner — large centered text at top
     "  #phase-banner{position:absolute;top:0;left:0;right:0;z-index:12;"
     "text-align:center;pointer-events:none;padding:14px 0 10px;"
-    "background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0) 100%)}\n"
+    "background:linear-gradient(180deg,rgba(0,0,0,0.6) 0%,rgba(0,0,0,0) 100%)}\n"
     "  #phase-name{color:#fff;font:bold 22px/1 'Helvetica Neue',Arial,sans-serif;"
     "text-shadow:0 0 12px rgba(100,180,255,0.5);letter-spacing:1px}\n"
     "  #phase-desc{color:#8cf;font:14px/1.4 'Helvetica Neue',Arial,sans-serif;"
@@ -113,6 +114,7 @@ _HTML_HEAD = (
     "  #tl-progress{height:100%;border-radius:2px;transition:width 0.1s}\n"
     "</style>\n"
     f'<script src="{BABYLON_CDN}"></script>\n'
+    f'<script src="{BABYLON_MAT}"></script>\n'
     f'<script src="{BABYLON_GUI}"></script>\n'
     "</head>\n<body>\n"
     '<canvas id="c" tabindex="0"></canvas>\n'
@@ -522,6 +524,6 @@ def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
         f'<iframe src="data:text/html;base64,{html_b64}" '
         f'title="3D Dense Plasma Focus Visualization" '
         f'role="img" aria-label="Interactive 3D animation of the DPF discharge" '
-        f'style="width:100%;height:{height}px;border:none;background:#050508;" '
+        f'style="width:100%;height:{height}px;border:none;background:#e0e4e8;" '
         f'allow="accelerometer; camera; gyroscope; xr-spatial-tracking"></iframe>'
     )

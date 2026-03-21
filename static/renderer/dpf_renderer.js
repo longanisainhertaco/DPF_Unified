@@ -153,21 +153,47 @@ async function createDPFScene(canvas, data) {
   engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
   const scene = new BABYLON.Scene(engine);
-  scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.05, 1);
+  scene.clearColor = new BABYLON.Color4(0.88, 0.90, 0.92, 1);  // light neutral gray
 
-  // ---- Environment (HDR IBL + skybox — the single biggest quality booster) ----
+  // ---- Environment: light studio HDR for realistic PBR reflections ----
   var env = null;
   try {
     env = scene.createDefaultEnvironment({
-      createGround: false,
+      createGround: true,
+      groundSize: 20,
+      groundColor: new BABYLON.Color3(0.85, 0.87, 0.90),
+      groundOpacity: 0.4,
       createSkybox: true,
       skyboxSize: 5000,
-      skyboxColor: new BABYLON.Color3(0.01, 0.01, 0.03),
+      skyboxColor: new BABYLON.Color3(0.85, 0.87, 0.90),
       environmentTexture: BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene),
     });
   } catch (_) {
     scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene);
   }
+
+  // ---- Ground grid for spatial reference (engineering viewport style) ----
+  var gridGround = BABYLON.MeshBuilder.CreateGround("grid", { width: 5, height: 5, subdivisions: 1 }, scene);
+  gridGround.position.y = -G.cathode_radius * 1.3;
+  var gridMat = new BABYLON.GridMaterial("gridMat", scene);
+  gridMat.majorUnitFrequency = 5;
+  gridMat.minorUnitVisibility = 0.3;
+  gridMat.gridRatio = 0.1;  // grid line every 100mm
+  gridMat.backFaceCulling = false;
+  gridMat.mainColor = new BABYLON.Color3(0.85, 0.87, 0.90);
+  gridMat.lineColor = new BABYLON.Color3(0.5, 0.52, 0.55);
+  gridMat.opacity = 0.6;
+  gridGround.material = gridMat;
+
+  // ---- Key light: directional light for solid-looking electrodes ----
+  var keyLight = new BABYLON.DirectionalLight("key", new BABYLON.Vector3(-1, -2, 1), scene);
+  keyLight.intensity = 1.5;
+  keyLight.diffuse = new BABYLON.Color3(1, 0.98, 0.95);
+  // Fill light from opposite side (softer)
+  var fillLight = new BABYLON.HemisphericLight("fill", new BABYLON.Vector3(0, 1, 0), scene);
+  fillLight.intensity = 0.6;
+  fillLight.diffuse = new BABYLON.Color3(0.9, 0.92, 1.0);
+  fillLight.groundColor = new BABYLON.Color3(0.3, 0.3, 0.35);
 
   // ---- Camera ----
   const cam = new BABYLON.ArcRotateCamera("cam",
@@ -228,9 +254,8 @@ async function createDPFScene(canvas, data) {
   copperMat.metallic = 0.95;
   copperMat.roughness = 0.2;
   copperMat.albedoColor = new BABYLON.Color3(0.97, 0.75, 0.5);
-  copperMat.emissiveColor = new BABYLON.Color3(0.25, 0.15, 0.05);
+  copperMat.emissiveColor = new BABYLON.Color3(0.05, 0.03, 0.01);
   copperMat.environmentIntensity = 1.5;
-  copperMat.directIntensity = 2.0;
 
   var anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
     diameter: G.anode_radius * 2, height: G.anode_length,
@@ -245,9 +270,8 @@ async function createDPFScene(canvas, data) {
   steelMat.metallic = 0.9;
   steelMat.roughness = 0.3;
   steelMat.albedoColor = new BABYLON.Color3(0.78, 0.78, 0.82);
-  steelMat.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.15);
+  steelMat.emissiveColor = new BABYLON.Color3(0.03, 0.03, 0.04);
   steelMat.environmentIntensity = 1.2;
-  steelMat.directIntensity = 2.0;
 
   var cathodeRods = [];
   for (var i = 0; i < 8; i++) {
