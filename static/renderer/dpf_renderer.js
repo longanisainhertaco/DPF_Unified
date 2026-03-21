@@ -174,19 +174,38 @@ async function initEngine(canvas) {
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color4(0.88, 0.90, 0.92, 1);
 
+  // Environment texture for PBR reflections.
+  // In data: URI iframes, cross-origin CDN requests may be blocked (CORS).
+  // Fallback: create a basic environment so PBR materials still render solid.
+  let envLoaded = false;
   try {
+    const envTex = BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene);
+    envTex.onError = function() {
+      // CDN blocked — create basic environment
+      scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+        "https://assets.babylonjs.com/environments/environmentSpecular.env", scene
+      );
+    };
     scene.createDefaultEnvironment({
-      createGround: true,
-      groundSize: 20,
-      groundColor: new BABYLON.Color3(0.85, 0.87, 0.90),
-      groundOpacity: 0.4,
+      createGround: false,
       createSkybox: true,
       skyboxSize: 5000,
       skyboxColor: new BABYLON.Color3(0.85, 0.87, 0.90),
-      environmentTexture: BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene),
+      environmentTexture: envTex,
     });
+    envLoaded = true;
   } catch (_) {
-    scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(HDR_ENV, scene);
+    // Both CDN attempts failed — use Babylon's built-in environment helper
+    try {
+      scene.createDefaultEnvironment({
+        createGround: false,
+        createSkybox: true,
+        skyboxSize: 5000,
+        skyboxColor: new BABYLON.Color3(0.85, 0.87, 0.90),
+      });
+    } catch (_2) {
+      // Absolute fallback — no environment, rely on direct lighting only
+    }
   }
 
   return { engine, scene, gpuBackend };
