@@ -171,7 +171,8 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
     # Encode mhd_snapshots as per-field time-series frames.
     # Each snapshot is {t_us, rho_mid, B_mid, P_mid, vel_mid} from the solver.
     # Normalisation is per-field-across-all-snaps so colours stay consistent.
-    # Limit to 30 snapshots max to keep Babylon iframe payload under ~500KB.
+    # Cap at 30 frames for animation smoothness (more than 30 doesn't improve visual quality).
+    # No payload size limit — renderer HTML is served as a file, not srcdoc.
     vel_layer: dict[str, Any] | None = None
     if mhd_snapshots and len(mhd_snapshots) > 30:
         step = max(1, len(mhd_snapshots) // 30)
@@ -213,7 +214,7 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
             ]
             temperature["frames_shape"] = snap_shape
 
-        # --- bfield frames (magnitude + Br/Bz components for field line tracing) ---
+        # --- bfield frames (magnitude + Br/Bz/Bt components for field line tracing) ---
         if bfield is not None and "B_mid" in mhd_snapshots[0]:
             B_arrays = [np.asarray(s["B_mid"], dtype=np.float32) for s in mhd_snapshots]
             B_global_lo = float(min(a.min() for a in B_arrays))

@@ -1257,4 +1257,5 @@ if __name__ == "__main__":
         css=CSS,
         auth=auth,
         show_error=True,
+        allowed_paths=["static"],
     )
