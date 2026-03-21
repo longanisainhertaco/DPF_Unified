@@ -440,7 +440,7 @@ def run_simulation(
     enable_fld, enable_sheath, enable_ablation, enable_nernst, enable_cr,
     comparison_runs,
     experimental_csv=None,
-    progress=gr.Progress(track_tqdm=True),  # noqa: B008
+    progress=gr.Progress(),  # noqa: B008
 ):
     # Safety: ensure numeric types from Gradio sliders/inputs
     sim_time_us = float(sim_time_us) if sim_time_us is not None else 40.0
@@ -478,6 +478,11 @@ def run_simulation(
                 enable_cr=enable_cr,
             )
     except Exception as exc:
+        import traceback as _tb
+        _err_text = _tb.format_exc()
+        # Write to file so we can always find it
+        with open("/tmp/dpf-last-error.txt", "w") as _ef:
+            _ef.write(_err_text)
         msg = str(exc).lower()
         if "nan" in msg or "diverge" in msg or "inf" in msg:
             raise gr.Error(
