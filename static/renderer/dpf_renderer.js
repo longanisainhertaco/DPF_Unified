@@ -397,6 +397,7 @@ function createPlasma(scene, G, L) {
     tessellation: 48,
   }, scene);
   sheath.rotation.z = Math.PI / 2;
+  sheath.isVisible = false;  // hidden until animation starts
   sheath.material = sheathMat;
   sheath.renderingGroupId = 1;
 
@@ -415,6 +416,7 @@ function createPlasma(scene, G, L) {
   }, scene);
   trail.material = trailMat;
   trail.renderingGroupId = 1;
+  trail.isVisible = false;  // hidden until animation starts
 
   // Pinch column -- additive, updatable tube
   const pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
@@ -440,6 +442,7 @@ function createPlasma(scene, G, L) {
   }, scene);
   pinch.material = pinchMat;
   pinch.renderingGroupId = 1;
+  pinch.isVisible = false;  // hidden until pinch phase
 
   // Halo glow around pinch -- additive, backside
   const haloMat = new BABYLON.StandardMaterial("haloMat", scene);
@@ -457,6 +460,7 @@ function createPlasma(scene, G, L) {
   }, scene);
   halo.material = haloMat;
   halo.renderingGroupId = 1;
+  halo.isVisible = false;  // hidden until pinch phase
 
   return {
     sheath, sheathMat, trail, trailMat,
@@ -834,6 +838,8 @@ function updateSheath(ctx, f, col, isP, cr) {
 
 function updateTrail(ctx, f, col, isP, cr) {
   const { trail, trailMat, G } = ctx;
+  // Trail visible only when current is flowing
+  trail.isVisible = Math.abs(f.I) > 0.01;
   const tLen = Math.max(isP ? G.anode_length : f.z, 0.2);
   trail.scaling.x = tLen;
   trail.position.x = tLen / 2;
