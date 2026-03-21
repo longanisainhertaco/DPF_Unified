@@ -508,27 +508,18 @@ def create_unified_renderer(d: dict[str, Any]) -> str:
 
 
 def create_unified_iframe(d: dict[str, Any], height: int = 620) -> str:
-    """Pipeline step 6: write renderer HTML to temp file, load via src= URL.
+    """Pipeline step 6: write renderer HTML to temp file, load via data: URI.
 
-    Uses a file-based approach instead of srcdoc to avoid payload size limits.
-    srcdoc double-escapes the HTML (& -> &amp;, " -> &quot;), inflating
-    large MHD payloads beyond browser limits. Writing to a file served by
-    Gradio's built-in static file server eliminates this entirely.
+    Uses a file-based approach: writes HTML to static/ directory, then
+    constructs a data: URI from the file content. This avoids both srcdoc
+    escaping overhead AND Gradio file routing issues.
     """
-    import tempfile
+    import base64 as _b64mod
     html = create_unified_renderer(d)
-    # Write to a temp file in the app's directory so Gradio can serve it
-    tmp = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".html", prefix="dpf3d_",
-        dir=os.path.join(os.path.dirname(__file__), "static"),
-        delete=False,
-    )
-    tmp.write(html)
-    tmp.close()
-    # URL relative to the app root — Gradio serves /file= paths
-    filename = os.path.basename(tmp.name)
+    # Encode as data: URI — no escaping, no file routing, no size limit
+    html_b64 = _b64mod.b64encode(html.encode("utf-8")).decode("ascii")
     return (
-        f'<iframe src="/file=static/{filename}" '
+        f'<iframe src="data:text/html;base64,{html_b64}" '
         f'title="3D Dense Plasma Focus Visualization" '
         f'role="img" aria-label="Interactive 3D animation of the DPF discharge" '
         f'style="width:100%;height:{height}px;border:none;background:#050508;" '
