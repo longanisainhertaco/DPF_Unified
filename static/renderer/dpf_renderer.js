@@ -273,7 +273,7 @@ async function createDPFScene(canvas, data) {
   fillLight.diffuse = new BABYLON.Color3(0.75, 0.85, 1.0);
 
   // ============================================================
-  // ELECTRODES — PBR with environment reflections
+  // ELECTRODES — Fully opaque PBR, rendering group 0 (drawn first)
   // ============================================================
   var copperMat = new BABYLON.PBRMaterial("copper", scene);
   copperMat.metallic = 0.95;
@@ -281,28 +281,33 @@ async function createDPFScene(canvas, data) {
   copperMat.albedoColor = new BABYLON.Color3(0.97, 0.75, 0.5);
   copperMat.emissiveColor = new BABYLON.Color3(0.05, 0.03, 0.01);
   copperMat.environmentIntensity = 1.5;
+  copperMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
 
   var anode = BABYLON.MeshBuilder.CreateCylinder("anode", {
     diameter: G.anode_radius * 2, height: G.anode_length,
-    tessellation: 128, cap: BABYLON.Mesh.CAP_ALL,
+    tessellation: 64, cap: BABYLON.Mesh.CAP_ALL,
   }, scene);
   anode.rotation.z = Math.PI / 2;
   anode.position.x = G.anode_length / 2;
   anode.material = copperMat;
-  anode.forceSharedVertices();
+  anode.renderingGroupId = 0;
 
   var steelMat = new BABYLON.PBRMaterial("steel", scene);
-  steelMat.metallic = 0.9;
-  steelMat.roughness = 0.3;
-  steelMat.albedoColor = new BABYLON.Color3(0.78, 0.78, 0.82);
-  steelMat.emissiveColor = new BABYLON.Color3(0.03, 0.03, 0.04);
+  steelMat.metallic = 0.85;
+  steelMat.roughness = 0.25;
+  steelMat.albedoColor = new BABYLON.Color3(0.75, 0.75, 0.80);
+  steelMat.emissiveColor = new BABYLON.Color3(0.02, 0.02, 0.03);
   steelMat.environmentIntensity = 1.2;
+  steelMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
 
+  // 12 cathode rods (real devices have 8-24), thicker for visibility
   var cathodeRods = [];
-  for (var i = 0; i < 8; i++) {
-    var angle = (i / 8) * Math.PI * 2;
+  var N_RODS = 12;
+  for (var i = 0; i < N_RODS; i++) {
+    var angle = (i / N_RODS) * Math.PI * 2;
     var rod = BABYLON.MeshBuilder.CreateCylinder("rod" + i, {
-      diameter: G.cathode_radius * 0.1, height: G.anode_length, tessellation: 48,
+      diameter: G.cathode_radius * 0.08, height: G.anode_length * 1.05,
+      tessellation: 16,
     }, scene);
     rod.rotation.z = Math.PI / 2;
     rod.position.set(
@@ -311,91 +316,84 @@ async function createDPFScene(canvas, data) {
       G.cathode_radius * Math.cos(angle)
     );
     rod.material = steelMat;
-    rod.forceSharedVertices();
+    rod.renderingGroupId = 0;
     cathodeRods.push(rod);
   }
 
-  // Insulator — translucent ceramic
+  // Insulator — opaque ceramic
   var ceramicMat = new BABYLON.PBRMaterial("ceramic", scene);
   ceramicMat.metallic = 0;
-  ceramicMat.roughness = 0.45;
-  ceramicMat.albedoColor = new BABYLON.Color3(0.92, 0.88, 0.75);
-  ceramicMat.emissiveColor = new BABYLON.Color3(0.03, 0.025, 0.015);
+  ceramicMat.roughness = 0.5;
+  ceramicMat.albedoColor = new BABYLON.Color3(0.95, 0.92, 0.85);
+  ceramicMat.emissiveColor = new BABYLON.Color3(0.04, 0.03, 0.02);
   ceramicMat.transparencyMode = BABYLON.Material.MATERIAL_OPAQUE;
 
   var insulator = BABYLON.MeshBuilder.CreateTorus("insulator", {
     diameter: G.cathode_radius * 2,
-    thickness: G.anode_radius * 0.3,
-    tessellation: 128,
+    thickness: G.anode_radius * 0.35,
+    tessellation: 64,
   }, scene);
   insulator.rotation.z = Math.PI / 2;
   insulator.position.x = -G.anode_radius * 0.15;
   insulator.material = ceramicMat;
-  insulator.forceSharedVertices();
+  insulator.renderingGroupId = 0;
 
   // ============================================================
-  // CURRENT SHEATH — Fresnel edge glow with depth pre-pass
+  // PLASMA EFFECTS — Additive blending, rendering group 1 (drawn AFTER opaques)
+  // Additive blend (MATERIAL_ALPHABLEND + alphaMode=ADD) eliminates
+  // z-fighting and transparency sorting issues entirely. Plasma light
+  // adds on top of whatever is behind it — no depth conflicts.
   // ============================================================
+
+  // Current sheath
   var sheathMat = new BABYLON.StandardMaterial("sheathMat", scene);
   sheathMat.emissiveColor = new BABYLON.Color3(0.3, 0.6, 1.0);
-  sheathMat.alpha = 0.6;
-  sheathMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  sheathMat.needDepthPrePass = true;
   sheathMat.disableLighting = true;
   sheathMat.backFaceCulling = false;
+  sheathMat.alpha = 0.5;
+  sheathMat.alphaMode = BABYLON.Engine.ALPHA_ADD;  // additive: no z-fighting
 
   sheathMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-  sheathMat.emissiveFresnelParameters.bias = 0.4;
+  sheathMat.emissiveFresnelParameters.bias = 0.3;
   sheathMat.emissiveFresnelParameters.power = 2;
-  sheathMat.emissiveFresnelParameters.leftColor = BABYLON.Color3.White();
-  sheathMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(0.2, 0.4, 0.9);
-
-  sheathMat.opacityFresnelParameters = new BABYLON.FresnelParameters();
-  sheathMat.opacityFresnelParameters.bias = 0.5;
-  sheathMat.opacityFresnelParameters.power = 1.5;
+  sheathMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(0.7, 0.85, 1.0);
+  sheathMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(0.15, 0.3, 0.8);
 
   var sheathMidR = (G.anode_radius + G.cathode_radius) / 2;
   var sheathTubeR = (G.cathode_radius - G.anode_radius) / 2;
   var sheath = BABYLON.MeshBuilder.CreateTorus("sheath", {
     diameter: sheathMidR * 2,
     thickness: sheathTubeR * 2,
-    tessellation: 64,
+    tessellation: 48,
   }, scene);
   sheath.rotation.z = Math.PI / 2;
   sheath.material = sheathMat;
-  sheath.forceSharedVertices();
+  sheath.renderingGroupId = 1;
 
-  // Plasma trail
+  // Plasma trail — additive, very transparent
   var trailMat = new BABYLON.StandardMaterial("trailMat", scene);
-  trailMat.emissiveColor = new BABYLON.Color3(0.1, 0.15, 0.4);
-  trailMat.alpha = 0.15;
-  trailMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  trailMat.needDepthPrePass = true;
+  trailMat.emissiveColor = new BABYLON.Color3(0.08, 0.12, 0.3);
   trailMat.disableLighting = true;
   trailMat.backFaceCulling = false;
+  trailMat.alpha = 0.1;
+  trailMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
   var trail = BABYLON.MeshBuilder.CreateTube("trail", {
     path: [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 0, 0)],
     radius: (G.anode_radius + G.cathode_radius) / 2,
-    tessellation: 32, cap: BABYLON.Mesh.NO_CAP, updatable: true,
+    tessellation: 24, cap: BABYLON.Mesh.NO_CAP, updatable: true,
   }, scene);
   trail.material = trailMat;
+  trail.renderingGroupId = 1;
 
   // ============================================================
-  // PINCH COLUMN — tube with m=0 instability ripple
+  // PINCH COLUMN — additive, rendering group 1
   // ============================================================
   var pinchMat = new BABYLON.StandardMaterial("pinchMat", scene);
-  pinchMat.emissiveColor = new BABYLON.Color3(1, 0.35, 0.08);
+  pinchMat.emissiveColor = new BABYLON.Color3(1, 0.4, 0.1);
   pinchMat.disableLighting = true;
   pinchMat.backFaceCulling = false;
   pinchMat.alpha = 0;
-  pinchMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  pinchMat.needDepthPrePass = true;
-
-  pinchMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-  pinchMat.emissiveFresnelParameters.bias = 0.2;
-  pinchMat.emissiveFresnelParameters.power = 3;
-  pinchMat.emissiveFresnelParameters.leftColor = new BABYLON.Color3(1, 1, 0.9);
-  pinchMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(1, 0.2, 0.05);
+  pinchMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
 
   // Pinch column at anode tip: spans last 15% of anode length
   // This is where the reflected shock creates the dense plasma core
@@ -414,14 +412,14 @@ async function createDPFScene(canvas, data) {
     tessellation: 48, cap: BABYLON.Mesh.CAP_ALL, updatable: true,
   }, scene);
   pinch.material = pinchMat;
+  pinch.renderingGroupId = 1;
 
-  // Halo glow around pinch
+  // Halo glow around pinch — additive
   var haloMat = new BABYLON.StandardMaterial("haloMat", scene);
   haloMat.emissiveColor = new BABYLON.Color3(0.7, 0.1, 0.03);
   haloMat.disableLighting = true;
   haloMat.alpha = 0;
-  haloMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  haloMat.needDepthPrePass = true;
+  haloMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
   haloMat.backFaceCulling = false;
   var haloRadii = new Array(N_PINCH + 1).fill(G.anode_radius * 0.6);
   var halo = BABYLON.MeshBuilder.CreateTube("halo", {
@@ -430,6 +428,7 @@ async function createDPFScene(canvas, data) {
     sideOrientation: BABYLON.Mesh.BACKSIDE, updatable: true,
   }, scene);
   halo.material = haloMat;
+  halo.renderingGroupId = 1;
 
   // ============================================================
   // FIELD DATA — midplane heatmap from REAL MHD field arrays
