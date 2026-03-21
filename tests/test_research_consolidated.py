@@ -83,11 +83,11 @@ class TestMJOLNIRPreset:
         assert 0.2e6 < E < 1.5e6, f"Stored energy {E:.0f} J outside 0.2-1.5 MJ range"
 
     def test_anode_radius(self):
-        """Anode radius = 76 mm (Offermann 2021, 1 MJ config)."""
+        """Anode radius = 114.3 mm (Goyon 2025, 2 MJ config, 228.6 mm OD)."""
         from dpf.presets import get_preset
         p = get_preset("mjolnir")
         a = p["circuit"]["anode_radius"]
-        assert pytest.approx(a, rel=0.01) == 0.076
+        assert pytest.approx(a, rel=0.01) == 0.1143
 
     def test_crowbar_enabled(self):
         from dpf.presets import get_preset

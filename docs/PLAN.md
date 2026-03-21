@@ -15,6 +15,7 @@ We are building a modern dense plasma focus (DPF) simulator with:
 - ✅ **Phase D**: Physics improvements — Full Braginskii, Powell div-B, anisotropic conduction, Dedner GLM
 - ✅ **Phase E**: Apple Silicon optimization — Numba prange, benchmarks
 - ✅ **Phase F**: Athena++ integration — Submodule, pybind11, dual-engine, verification, CLI/server
+
   - F.0: Athena++ submodule setup and M3 Pro build (magnoh, resist, shock_tube)
   - F.1: pybind11 wrapper layer (linked-mode via `_athena_core.so`)
   - F.2: Dual-engine architecture (backend="python"/"athena"/"auto" in config)
@@ -44,8 +45,16 @@ We are building a modern dense plasma focus (DPF) simulator with:
   - O.5: Float64 precision mode (CPU float64 for production V&V)
   - O.6: Convergence order verification (5.47-5.79 interior, ~1.86 overall solver)
 
-**1452 total tests** (1331 non-slow, 121 slow), 0 failures.
-**Current fidelity: 8.7/10** — WENO5-Z + HLLD + SSP-RK3 + float64 = production-grade.
+- ✅ **Phase S**: DPF-specific physics — Full snowplow dynamics (Lee model Phases 2-4), crowbar model, BDF2 dL/dt, ablation wiring, LHDI resistivity, Braginskii kappa(Z)
+
+- ✅ **Phase T**: Snowplow fixes + statistical validation — L_coeff fix, f_c current fraction, 24-shot Akel PF-1000 dataset validation (1.27% mean NRMSE), PF-1000 I_peak 4.67% single-shot error
+
+- ✅ **Phase P**: Engine accuracy — WENO-Z + SSP-RK3 + HLLD defaults on all backends; Metal resistive MHD sub-cycling; Python hybrid WENO5 stability fixes + velocity clamping; Babylon.js renderer v9 (current flow arrows, colorbar with physical units, phase timeline bands, 4 decomposed updaters); 16 device presets; SPARK33 educational AI assistant (port 8033/8034); HuggingFace Spaces deployment (tjlonganisa/dpf-unified); research database expanded to 731 papers
+
+**2614+ total tests** (CI green), 0 failures.
+**Numerical fidelity: 8.9/10** — WENO5-Z + HLLD + SSP-RK3 + float64 + resistive MHD.
+**DPF physics fidelity: 3-4/10** — circuit-MHD coupling only in Python + Athena++ backends; Metal engine Cartesian-only.
+**Validation: PF-1000 I_peak 4.67% single-shot | 1.27% mean NRMSE (24-shot Akel statistical).**
 
 ---
 
@@ -471,13 +480,18 @@ WALRUS predictions need uncertainty bounds:
 | ~~M~~ | ~~Metal GPU optimization~~ | — | ~~MetalMHDSolver, MPS stencils, MLX surrogate, 35 tests, 8 benchmarks~~ | ✅ Done |
 | ~~N~~ | ~~Hardening & cross-backend V&V~~ | 7/10 | ~~Metal parity test, AthenaK parity, energy conservation, coverage gate~~ | ✅ Done |
 | ~~O~~ | ~~Physics accuracy~~ | 8.7/10 | ~~WENO5-Z, HLLD, SSP-RK3, float64, 45 accuracy tests~~ | ✅ Done |
-| **J.2** (next) | WALRUS live integration | — | Real IsotropicModel inference in surrogate.py, fix Well exporter, fix API mismatches | 🔜 |
-| **J.3** | Unity frontend | — | Teaching/Engineering mode (greenfield, same repo) | 🔜 |
+| ~~S~~ | ~~DPF-specific physics~~ | — | ~~Snowplow dynamics, crowbar model, BDF2 dL/dt, ablation wiring, LHDI~~ | ✅ Done |
+| ~~T~~ | ~~Snowplow + statistical validation~~ | — | ~~24-shot Akel PF-1000 (1.27% mean NRMSE); I_peak 4.67% single-shot~~ | ✅ Done |
+| ~~P~~ | ~~Engine accuracy~~ | **8.9/10 numerical** | ~~WENO-Z + SSP-RK3 + HLLD all backends; Metal resistive MHD; Babylon.js renderer v9; 16 presets; 2614+ tests; SPARK33; HuggingFace Spaces~~ | ✅ Done |
+| **Q** (next) | Validation accuracy | 5-6/10 DPF | Cylindrical geometry for Metal engine; ablation V&V; circuit-MHD coupling in remaining backends | 🔜 |
+| **R** | Physics fidelity | 7/10 DPF | Full 2D MHD + snowplow mass-sweep source terms; AMR; multi-species | 🔜 |
+| **J.2** | WALRUS live fine-tuning | — | Fine-tune on validated DPF trajectories; reduce surrogate error below 5% | 🔜 |
+| **J.3** | Unity/Babylon.js frontend | — | Engineering Mode: parameter sweeps, inverse design UI | 🔜 |
 | **J.4** | HPC scaling | 9/10 | MPI via AthenaK, cloud GPU (CUDA Kokkos) | 🔜 |
-| **J.5** | Advanced AthenaK physics | — | Custom DPF z-pinch pgen, circuit coupling, resistive MHD | 🔜 |
 
-**Phases A-O complete**: 1452 tests (1331 non-slow + 121 slow), tri-engine + Metal GPU (WENO5-Z + HLLD + SSP-RK3 + float64) + full AI/ML integration. Fidelity: 8.7/10.
-**Next**: Phase J.2 implements real WALRUS model loading and inference.
+**Phases A–P complete**: 2614+ tests (CI green), 9 backends, Metal GPU (WENO5-Z + HLLD + SSP-RK3 + float64), full AI/ML integration, Babylon.js renderer v9, 16 device presets, SPARK33, HuggingFace Spaces deployment.
+**Numerical fidelity: 8.9/10 | DPF physics fidelity: 3-4/10 | Validation: 1.27% mean NRMSE (24-shot Akel).**
+**Next (Phase Q)**: Extend circuit-MHD coupling to Metal + AthenaK backends; cylindrical geometry for Metal engine.
 
 ---
 

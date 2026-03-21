@@ -1621,6 +1621,54 @@ async function createDPFScene(canvas, data) {
   }
 
   // ============================================================
+  // COMPONENT IDENTIFICATION — tooltip on hover/click
+  // ============================================================
+
+  var COMPONENT_INFO = {
+    anode:        "Anode — central copper electrode, carries discharge current to the plasma",
+    insulator:    "Insulator — ceramic sleeve at the breech, initiates surface flashover breakdown",
+    chamber:      "Vacuum chamber — sealed enclosure filled with low-pressure deuterium gas",
+    cathodeBase:  "Cathode end ring — connects cathode rods at the breech",
+    cathodeTop:   "Cathode end ring — connects cathode rods at the muzzle",
+    sheathDisk:   "Current sheath — thin current sheet swept by J\u00d7B magnetic force",
+    pinchCore:    "Pinch core — hottest region at peak compression, fusion conditions",
+    pinchMantle:  "Pinch mantle — outer plasma layer surrounding the hot core",
+  };
+
+  function getComponentInfo(name) {
+    if (!name) return null;
+    if (COMPONENT_INFO[name]) return COMPONENT_INFO[name];
+    if (name.indexOf("rod") === 0)         return "Cathode rod — outer electrode, return current path";
+    if (name.indexOf("bRing") === 0)       return "B-field ring — toroidal magnetic field from axial current (B \u221d I/r)";
+    if (name.indexOf("axialArrow") === 0)  return "Current flow — discharge current travels up the anode (+z direction)";
+    if (name.indexOf("radialArrow") === 0) return "Current flow — current crosses through the plasma (radially outward)";
+    if (name.indexOf("returnArrow") === 0) return "Current flow — return current travels down the cathode rods (\u2212z direction)";
+    return null;
+  }
+
+  var tooltip = document.createElement("div");
+  tooltip.style.cssText = "position:absolute;z-index:20;pointer-events:none;display:none;" +
+    "background:rgba(5,10,25,0.92);border:1px solid rgba(100,160,255,0.4);" +
+    "border-radius:6px;padding:8px 12px;color:#cdf;font:13px/1.4 'Helvetica Neue',Arial,sans-serif;" +
+    "max-width:280px;text-shadow:0 0 4px #000;box-shadow:0 2px 12px rgba(0,0,0,0.5)";
+  canvas.parentElement.appendChild(tooltip);
+
+  scene.onPointerMove = function(evt) {
+    var pick = scene.pick(evt.offsetX, evt.offsetY);
+    if (pick.hit && pick.pickedMesh) {
+      var info = getComponentInfo(pick.pickedMesh.name);
+      if (info) {
+        tooltip.textContent = info;
+        tooltip.style.display = "block";
+        tooltip.style.left = (evt.offsetX + 15) + "px";
+        tooltip.style.top  = (evt.offsetY - 10) + "px";
+        return;
+      }
+    }
+    tooltip.style.display = "none";
+  };
+
+  // ============================================================
   // RETURN API
   // ============================================================
 
