@@ -3,26 +3,43 @@
  *
  * Conference-quality 3D physics visualization.
  *
- * DATA SOURCE ARCHITECTURE:
+ * DATA SOURCE HONESTY NOTE:
  * -------------------------
- * The 3D scene elements are driven by TWO data sources with graceful fallback:
+ * The 3D scene elements are driven by TWO different data sources:
  *
- * MHD FIELD DATA (2D arrays from Metal/Python solvers — preferred when available):
- *   - Density isosurface: revolved contour from rho(r,z) via CreateLathe
- *   - RK4 poloidal field lines: traced per-frame from Br/Bz, rendered as tubes colored by |B|
- *   - Velocity-driven particles: emitter direction from MHD v_r/v_z at sheath front
- *   - Dynamic B-field rings: brightness and radius from actual B_theta(r,z)
- *   - Temperature-colored isosurface: hot colormap (blue->cyan->yellow->white)
- *   - Current density J_theta tube: computed from curl(B), brightness ~ |J|
- *   - Midplane heatmaps: density, temperature, |B|, velocity (toggled via layer panel)
- *
- * LEE MODEL SCALARS (0D ODE fallback — always used when MHD data unavailable):
+ * LEE MODEL SCALARS (0D ODE output — always used for these elements):
  *   - Current sheath position (z_mm) and radius (r_mm)
+ *   - Sheath scaling, compression ratio, and alpha
  *   - Pinch column radius and m=0 instability ripple amplitude
  *   - Particle system emitter position, radius, and rate
  *   - B-field ring brightness (proportional to I/I_peak)
  *   - Trail tube length and scaling
  *   - All phase-dependent visual effects (colors, glow, DOF, chromatic aberration)
+ *
+ * MHD FIELD DATA (2D arrays from Metal/Python solvers — when available):
+ *   - Midplane heatmaps: density, temperature, |B| (toggled via layer panel)
+ *   - Poloidal field lines (static, traced from final-state Br/Bz arrays)
+ *   - HUD peak values (rho_peak, Te_peak, |B|_peak)
+ *
+ * WHAT WOULD NEED TO CHANGE TO WIRE REAL MHD DATA INTO THE 3D SCENE:
+ *   1. Sheath mesh: Replace Lee z_mm/r_mm with isosurface extraction from
+ *      the MHD density field (e.g., rho > 5*rho_fill contour in r-z plane,
+ *      revolved to 3D). Requires per-frame 2D density snapshots.
+ *   2. Pinch column: Extract pinch geometry from density/pressure peak region
+ *      in MHD data rather than scaling by Lee's cr ratio. m=0 instability
+ *      ripple should come from actual density perturbation spectrum.
+ *   3. Particle system: Use MHD velocity field to set particle emitter
+ *      direction and power, density field for emitter radius/rate.
+ *   4. B-field rings: Replace I/I_peak brightness with actual B_theta(r,z)
+ *      from MHD snapshots; animate ring radii from field profile.
+ *   5. updateHeatmap() already works for midplane slices. To go further:
+ *      volumetric rendering or marching cubes isosurfaces from full 2D
+ *      field arrays (density, temperature, |B|) at each snapshot time.
+ *   6. Data pipeline: Metal solver -> mhd_snapshots[] (already encoded as
+ *      base64 Float32 per frame) -> snapCache (pre-decoded RGBA) ->
+ *      RawTexture per frame. The infrastructure exists; what's missing is
+ *      extracting geometric primitives (sheath contour, pinch shape) from
+ *      the field data instead of using Lee scalars.
  *
  * Production techniques:
  *   - createDefaultEnvironment() for HDR IBL + skybox
@@ -106,79 +123,6 @@ function bilinearSample(arr, nx, nz, fx, fz) {
     dx * (1 - dz) * arr[(ix + 1) * nz + iz] +
     (1 - dx) * dz * arr[ix * nz + iz + 1] +
     dx * dz * arr[(ix + 1) * nz + iz + 1];
-}
-
-// Hot colormap for temperature: blue -> cyan -> yellow -> white
-const HOT_CMAP = [
-  [0.0, 0.0, 0.5], [0.0, 0.3, 0.8], [0.0, 0.7, 0.9],
-  [0.2, 0.9, 0.7], [0.6, 0.95, 0.3], [1.0, 0.9, 0.1],
-  [1.0, 0.7, 0.0], [1.0, 0.95, 0.6], [1.0, 1.0, 1.0],
-];
-
-// B-magnitude colormap: blue (weak) -> white (strong)
-const B_MAG_CMAP = [
-  [0.1, 0.2, 0.6], [0.2, 0.4, 0.9], [0.4, 0.6, 1.0],
-  [0.6, 0.8, 1.0], [0.8, 0.9, 1.0], [1.0, 1.0, 1.0],
-];
-
-function cmapLookup(t, table) {
-  var v = Math.max(0, Math.min(1, t));
-  var n = table.length - 1;
-  var idx = v * n;
-  var lo = Math.floor(idx), hi = Math.min(lo + 1, n);
-  var f = idx - lo;
-  return [
-    table[lo][0] * (1 - f) + table[hi][0] * f,
-    table[lo][1] * (1 - f) + table[hi][1] * f,
-    table[lo][2] * (1 - f) + table[hi][2] * f,
-  ];
-}
-
-function extractContourFromDensity(rhoFlat, nr, nz, dr, dz, threshold) {
-  var contour = [];
-  for (var iz = 0; iz < nz; iz++) {
-    var rMax = 0;
-    for (var ir = nr - 1; ir >= 0; ir--) {
-      if (rhoFlat[ir * nz + iz] > threshold) { rMax = (ir + 0.5) * dr; break; }
-    }
-    contour.push(new BABYLON.Vector3(rMax, 0, iz * dz));
-  }
-  return contour;
-}
-
-function traceRK4(fieldR, fieldZ, nr, nz, dr, dz, r0, z0, ds, maxSteps) {
-  var pts = [{r: r0, z: z0}];
-  var r = r0, z = z0;
-  for (var s = 0; s < maxSteps; s++) {
-    var k1r = bilinearSample(fieldR, nr, nz, r / dr, z / dz);
-    var k1z = bilinearSample(fieldZ, nr, nz, r / dr, z / dz);
-    var mag1 = Math.sqrt(k1r * k1r + k1z * k1z) || 1e-20;
-    k1r /= mag1; k1z /= mag1;
-
-    var r2 = r + 0.5 * ds * k1r, z2 = z + 0.5 * ds * k1z;
-    var k2r = bilinearSample(fieldR, nr, nz, r2 / dr, z2 / dz);
-    var k2z = bilinearSample(fieldZ, nr, nz, r2 / dr, z2 / dz);
-    var mag2 = Math.sqrt(k2r * k2r + k2z * k2z) || 1e-20;
-    k2r /= mag2; k2z /= mag2;
-
-    var r3 = r + 0.5 * ds * k2r, z3 = z + 0.5 * ds * k2z;
-    var k3r = bilinearSample(fieldR, nr, nz, r3 / dr, z3 / dz);
-    var k3z = bilinearSample(fieldZ, nr, nz, r3 / dr, z3 / dz);
-    var mag3 = Math.sqrt(k3r * k3r + k3z * k3z) || 1e-20;
-    k3r /= mag3; k3z /= mag3;
-
-    var r4 = r + ds * k3r, z4 = z + ds * k3z;
-    var k4r = bilinearSample(fieldR, nr, nz, r4 / dr, z4 / dz);
-    var k4z = bilinearSample(fieldZ, nr, nz, r4 / dr, z4 / dz);
-    var mag4 = Math.sqrt(k4r * k4r + k4z * k4z) || 1e-20;
-    k4r /= mag4; k4z /= mag4;
-
-    r += ds * (k1r + 2 * k2r + 2 * k3r + k4r) / 6;
-    z += ds * (k1z + 2 * k2z + 2 * k3z + k4z) / 6;
-    if (r < 0 || r > nr * dr || z < 0 || z > nz * dz) break;
-    pts.push({r: r, z: z});
-  }
-  return pts;
 }
 
 async function createDPFScene(canvas, data) {
@@ -531,50 +475,6 @@ async function createDPFScene(canvas, data) {
   _buildSnapCache("temperature", L.temperature);
   _buildSnapCache("bfield", L.bfield);
 
-  // Raw field snap cache: pre-decoded Float32Arrays for geometry extraction
-  // (density contours, field line tracing, velocity sampling, temperature coloring)
-  var rawSnapCache = {};
-
-  function _buildRawSnapCache(fieldKey, layer) {
-    if (!layer || !layer.frames || layer.frames.length === 0) return;
-    var shape = layer.frames_shape || layer.shape;
-    if (!shape) return;
-    var nr = shape[0], nz = shape[1];
-    var n = layer.frames.length;
-    var times = new Float64Array(n);
-    var rawFrames = [];
-    for (var fi = 0; fi < n; fi++) {
-      var frame = layer.frames[fi];
-      times[fi] = frame.t_us;
-      var entry = { data: _b64ToFloat32(frame.data) };
-      if (frame.Br) entry.Br = _b64ToFloat32(frame.Br);
-      if (frame.Bz) entry.Bz = _b64ToFloat32(frame.Bz);
-      if (frame.Bt) entry.Bt = _b64ToFloat32(frame.Bt);
-      if (frame.vr) entry.vr = _b64ToFloat32(frame.vr);
-      if (frame.vz) entry.vz = _b64ToFloat32(frame.vz);
-      if (frame.vmag) entry.vmag = _b64ToFloat32(frame.vmag);
-      rawFrames.push(entry);
-    }
-    rawSnapCache[fieldKey] = { times: times, frames: rawFrames, nr: nr, nz: nz };
-  }
-
-  _buildRawSnapCache("density", L.density);
-  _buildRawSnapCache("bfield", L.bfield);
-  _buildRawSnapCache("temperature", L.temperature);
-  if (L.velocity) _buildRawSnapCache("velocity", L.velocity);
-
-  function _nearestRawSnapIdx(fieldKey, t_us) {
-    var cache = rawSnapCache[fieldKey];
-    if (!cache) return -1;
-    var times = cache.times;
-    var best = 0, bestDist = Math.abs(times[0] - t_us);
-    for (var si = 1; si < times.length; si++) {
-      var d = Math.abs(times[si] - t_us);
-      if (d < bestDist) { bestDist = d; best = si; }
-    }
-    return best;
-  }
-
   function _nearestSnapIdx(fieldKey, t_us) {
     var cache = snapCache[fieldKey];
     if (!cache) return -1;
@@ -704,174 +604,35 @@ async function createDPFScene(canvas, data) {
     }
   }
 
-  // Poloidal field lines from MHD data — RK4 traced, rendered as tubes colored by |B|
-  var poloidalTubes = [];
-  var poloidalTubeMats = [];
-  function _buildPoloidalFieldLineTubes(brData, bzData, bnx, bnz) {
-    // Dispose old tubes
-    for (var oi = 0; oi < poloidalTubes.length; oi++) {
-      poloidalTubes[oi].dispose();
-      poloidalTubeMats[oi].dispose();
-    }
-    poloidalTubes = [];
-    poloidalTubeMats = [];
-
-    var dr = G.anode_length / Math.max(bnx - 1, 1);
-    var dz = (G.cathode_radius * 2) / Math.max(bnz - 1, 1);
-    var dsStep = G.anode_length / 60 * 0.6;
-
-    for (var s = 0; s < 8; s++) {
-      var r0 = G.anode_length * (0.1 + 0.8 * s / 8);
-      var z0 = G.cathode_radius;
-      var traced = traceRK4(brData, bzData, bnx, bnz, dr, dz, r0, z0, dsStep, 80);
-      if (traced.length < 4) continue;
-
-      var tubePts = [];
-      var bMags = [];
-      for (var ti = 0; ti < traced.length; ti++) {
-        var tp = traced[ti];
-        tubePts.push(new BABYLON.Vector3(tp.r, 0, tp.z - G.cathode_radius));
-        var br = bilinearSample(brData, bnx, bnz, tp.r / dr, tp.z / dz);
-        var bz = bilinearSample(bzData, bnx, bnz, tp.r / dr, tp.z / dz);
-        bMags.push(Math.sqrt(br * br + bz * bz));
-      }
-      var bMax = Math.max.apply(null, bMags) || 1;
-
-      // Mid-point color from |B| magnitude
-      var midIdx = Math.floor(bMags.length / 2);
-      var bNorm = Math.min(1, bMags[midIdx] / bMax);
-      var col = cmapLookup(bNorm, B_MAG_CMAP);
-
-      var tubeMat = new BABYLON.StandardMaterial("flt" + s, scene);
-      tubeMat.emissiveColor = new BABYLON.Color3(col[0], col[1], col[2]);
-      tubeMat.disableLighting = true;
-      tubeMat.alpha = 0.6;
-      tubeMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-      tubeMat.needDepthPrePass = true;
-      tubeMat.backFaceCulling = false;
-
-      var tubeR = G.cathode_radius * 0.012 * (0.5 + bNorm * 0.5);
-      var tube = BABYLON.MeshBuilder.CreateTube("flt" + s, {
-        path: tubePts, radius: tubeR, tessellation: 12,
-        cap: BABYLON.Mesh.CAP_ALL, updatable: false,
-      }, scene);
-      tube.material = tubeMat;
-      tube.isVisible = false;
-      poloidalTubes.push(tube);
-      poloidalTubeMats.push(tubeMat);
-      fieldLines.push(tube);
-    }
-  }
-
+  // Poloidal field lines from MHD data
   if (L.bfield) {
     try {
       var fdBr = decodeBase64Float32(L.bfield.Br, L.bfield.shape);
       var fdBz = decodeBase64Float32(L.bfield.Bz, L.bfield.shape);
-      _buildPoloidalFieldLineTubes(fdBr.data, fdBz.data, fdBr.shape[0], fdBr.shape[1]);
+      var bnx = fdBr.shape[0], bnz = fdBr.shape[1];
+      for (var s = 0; s < 8; s++) {
+        var x = G.anode_length * (0.1 + 0.8 * s / 8), z = 0;
+        var pts = [];
+        var ds = G.anode_length / 60 * 0.6;
+        for (var step = 0; step < 60; step++) {
+          pts.push(new BABYLON.Vector3(x, 0, z));
+          var fx = (x / G.anode_length) * (bnx - 1);
+          var fz = ((z + G.cathode_radius) / (G.cathode_radius * 2)) * (bnz - 1);
+          var br = bilinearSample(fdBr.data, bnx, bnz, fx, fz);
+          var bz = bilinearSample(fdBz.data, bnx, bnz, fx, fz);
+          var mag = Math.sqrt(br * br + bz * bz) + 1e-10;
+          x += ds * br / mag; z += ds * bz / mag;
+          if (x < 0 || x > G.anode_length || Math.abs(z) > G.cathode_radius) break;
+        }
+        if (pts.length > 4) {
+          var line = BABYLON.MeshBuilder.CreateLines("flp" + s, { points: pts }, scene);
+          line.color = new BABYLON.Color3(0.3, 0.7, 1.0);
+          line.alpha = 0.5;
+          line.isVisible = false;
+          fieldLines.push(line);
+        }
+      }
     } catch(_) {}
-  }
-
-  // ============================================================
-  // DENSITY ISOSURFACE — revolved contour from MHD density via CreateLathe
-  // Falls back to Lee torus sheath when MHD density data unavailable
-  // ============================================================
-  var isoMesh = null;
-  var isoMat = new BABYLON.StandardMaterial("isoMat", scene);
-  isoMat.emissiveColor = new BABYLON.Color3(0.2, 0.5, 1.0);
-  isoMat.alpha = 0.5;
-  isoMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  isoMat.needDepthPrePass = true;
-  isoMat.disableLighting = true;
-  isoMat.backFaceCulling = false;
-
-  isoMat.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-  isoMat.emissiveFresnelParameters.bias = 0.3;
-  isoMat.emissiveFresnelParameters.power = 2;
-  isoMat.emissiveFresnelParameters.leftColor = BABYLON.Color3.White();
-  isoMat.emissiveFresnelParameters.rightColor = new BABYLON.Color3(0.15, 0.35, 0.9);
-
-  var lastIsoSnapIdx = -1;
-
-  function _updateIsosurface(rhoFlat, nr, nz) {
-    var dr = (G.cathode_radius - G.anode_radius) / Math.max(nr - 1, 1);
-    var dz = G.anode_length / Math.max(nz - 1, 1);
-    // Threshold at 20% of normalized range (data is 0-1 normalized)
-    var contour = extractContourFromDensity(rhoFlat, nr, nz, dr, dz, 0.2);
-    if (contour.length < 3) return;
-
-    // Transform contour: x-axis is axial, radial in y-z plane
-    var lathePath = [];
-    for (var ci = 0; ci < contour.length; ci++) {
-      lathePath.push(new BABYLON.Vector3(
-        contour[ci].z + G.anode_radius,
-        contour[ci].x,
-        0
-      ));
-    }
-
-    if (isoMesh) isoMesh.dispose();
-    try {
-      isoMesh = BABYLON.MeshBuilder.CreateLathe("isoSurf", {
-        shape: lathePath, tessellation: 48, closed: true, updatable: false,
-        sideOrientation: BABYLON.Mesh.DOUBLESIDE,
-      }, scene);
-      isoMesh.rotation.z = Math.PI / 2;
-      isoMesh.position.x = G.anode_length / 2;
-      isoMesh.material = isoMat;
-      GLOW_MESHES.add("isoSurf");
-    } catch(_) { isoMesh = null; }
-  }
-
-  // ============================================================
-  // CURRENT DENSITY J_theta TUBE — computed from dBz/dr - dBr/dz
-  // ============================================================
-  var jTube = null;
-  var jTubeMat = new BABYLON.StandardMaterial("jMat", scene);
-  jTubeMat.emissiveColor = new BABYLON.Color3(1.0, 0.5, 0.1);
-  jTubeMat.disableLighting = true;
-  jTubeMat.alpha = 0;
-  jTubeMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-  jTubeMat.needDepthPrePass = true;
-  jTubeMat.backFaceCulling = false;
-  var lastJSnapIdx = -1;
-
-  function _updateJTube(brData, bzData, nr, nz, sheathRfrac) {
-    var dr = (G.cathode_radius - G.anode_radius) / Math.max(nr - 1, 1);
-    var dz = G.anode_length / Math.max(nz - 1, 1);
-    // Sample J_theta along z at sheath radius
-    var irSheath = Math.min(nr - 2, Math.max(1, Math.floor(sheathRfrac * (nr - 1))));
-    var jVals = [];
-    var jPath = [];
-    for (var iz = 1; iz < nz - 1; iz++) {
-      // J_theta ~ dBz/dr - dBr/dz (central differences)
-      var dBzdr = (bzData[(irSheath + 1) * nz + iz] - bzData[(irSheath - 1) * nz + iz]) / (2 * dr);
-      var dBrdz = (brData[irSheath * nz + iz + 1] - brData[irSheath * nz + iz - 1]) / (2 * dz);
-      var jTheta = Math.abs(dBzdr - dBrdz);
-      jVals.push(jTheta);
-      jPath.push(new BABYLON.Vector3(iz * dz, 0, 0));
-    }
-    if (jPath.length < 3) return;
-
-    var jMax = Math.max.apply(null, jVals) || 1;
-    var midJ = jVals[Math.floor(jVals.length / 2)] / jMax;
-    var jCol = cmapLookup(midJ, HOT_CMAP);
-
-    if (jTube) jTube.dispose();
-    var jRadii = [];
-    for (var ji = 0; ji < jVals.length; ji++) {
-      jRadii.push(G.anode_radius * 0.05 * (0.2 + 0.8 * jVals[ji] / jMax));
-    }
-    try {
-      jTube = BABYLON.MeshBuilder.CreateTube("jTube", {
-        path: jPath,
-        radiusFunction: function(idx) { return jRadii[Math.min(idx, jRadii.length - 1)]; },
-        tessellation: 16, cap: BABYLON.Mesh.CAP_ALL, updatable: false,
-      }, scene);
-      jTube.position.y = (irSheath * dr + G.anode_radius);
-      jTubeMat.emissiveColor.set(jCol[0], jCol[1], jCol[2]);
-      jTubeMat.alpha = 0.5;
-      jTube.material = jTubeMat;
-    } catch(_) { jTube = null; }
   }
 
   // ============================================================
@@ -1009,7 +770,6 @@ async function createDPFScene(canvas, data) {
     pipeline: pipeline, ssao: ssao, glowLayer: glowLayer,
     updateHeatmap: updateHeatmap,
     fieldLines: fieldLines, fieldLineData: fieldLineData,
-    poloidalTubes: poloidalTubes, isoMesh: isoMesh, jTube: jTube,
     activeOverlay: activeOverlay,
     G: G, S: S, L: L,
 
@@ -1033,8 +793,13 @@ async function createDPFScene(canvas, data) {
     applyFrame: function(i) {
       if (i < 0 || i >= S.frames.length) return;
       var f = S.frames[i];
+      // f.z, f.r, f.I, f.phase are Lee model 0D scalars from the circuit ODE.
+      // ALL 3D geometry below (sheath, pinch, particles, B-field rings) is
+      // derived from these scalars — NOT from MHD field arrays. Only the
+      // optional midplane heatmap uses real MHD data when available.
 
       // Update heatmap texture to the nearest MHD snapshot for this frame time.
+      // This IS real MHD field data (when available from metal_cylindrical or python backends).
       if (activeOverlay !== "none" && snapCache[activeOverlay]) {
         var newIdx = _nearestSnapIdx(activeOverlay, f.t);
         if (newIdx !== lastSnapIdx[activeOverlay]) {
@@ -1042,7 +807,6 @@ async function createDPFScene(canvas, data) {
           _applySnapTexture(activeOverlay);
         }
       }
-
       var col = PHASE_COLORS[f.phase] || [0.3, 0.3, 0.4];
       var isP = ["radial", "mhd_radial", "pinch", "reflected", "post_pinch"].indexOf(f.phase) >= 0;
       var cr = Math.max(0.02, f.r / G.cathode_radius);
@@ -1050,58 +814,28 @@ async function createDPFScene(canvas, data) {
       if (f.phase === "post_pinch") pI *= 0.3;
       if (f.phase === "reflected") pI *= 0.5;
 
-      // Resolve nearest raw density/bfield/velocity/temperature snap indices
-      var densIdx = _nearestRawSnapIdx("density", f.t);
-      var bfIdx = _nearestRawSnapIdx("bfield", f.t);
-      var velIdx = _nearestRawSnapIdx("velocity", f.t);
-      var tempIdx = _nearestRawSnapIdx("temperature", f.t);
-      var hasMHDDensity = rawSnapCache["density"] && densIdx >= 0;
-      var hasMHDBfield = rawSnapCache["bfield"] && bfIdx >= 0;
-      var hasMHDVelocity = rawSnapCache["velocity"] && velIdx >= 0;
-      var hasMHDTemperature = rawSnapCache["temperature"] && tempIdx >= 0;
-
-      // =============================================================
-      // UPGRADE 1: Density isosurface via CreateLathe (MHD-driven sheath)
-      // Falls back to Lee torus when MHD density unavailable
-      // =============================================================
-      var useMHDSheath = false;
-      if (hasMHDDensity && densIdx !== lastIsoSnapIdx) {
-        lastIsoSnapIdx = densIdx;
-        var rdc = rawSnapCache["density"];
-        try {
-          _updateIsosurface(rdc.frames[densIdx].data, rdc.nr, rdc.nz);
-          useMHDSheath = true;
-        } catch(_) {}
-      }
-      if (hasMHDDensity && isoMesh) {
-        useMHDSheath = true;
-        isoMesh.isVisible = true;
-        isoMat.alpha = Math.min(0.6, 0.15 + Math.abs(f.I / S.I_peak) * 0.45);
-        isoMat.emissiveColor.set(col[0], col[1], col[2]);
-      }
-
-      // Lee torus sheath (fallback when no MHD data, or always visible as ghost overlay)
+      // LEE MODEL SCHEMATIC: Sheath position from Lee 0D scalar f.z (not MHD density field)
       sheath.position.x = isP ? G.anode_length : f.z;
       sheathMat.emissiveColor.set(col[0], col[1], col[2]);
       if (isP) {
+        // Smooth compression: lerp from 1.0 toward cr over first few radial frames
         var compScale = Math.max(0.03, cr);
         sheath.scaling.set(1, compScale, compScale);
       } else {
+        // During rundown, smoothly narrow as sheath approaches anode tip
         var zFrac = Math.min(1, f.z / G.anode_length);
         var rundownScale = 1.0 - zFrac * (1.0 - Math.max(0.03, cr)) * 0.3;
         sheath.scaling.set(1, rundownScale, rundownScale);
       }
       var sheathAlpha = Math.min(0.7, 0.1 + Math.abs(f.I / S.I_peak) * 0.6);
-      if (useMHDSheath) sheathAlpha *= 0.3;
       sheathMat.alpha = sheathAlpha;
       if ((f.phase === "post_pinch" || f.phase === "reflected") && Math.abs(f.I / S.I_peak) < 0.1) {
         sheath.isVisible = false;
-        if (isoMesh) isoMesh.isVisible = false;
       } else {
         sheath.isVisible = true;
       }
 
-      // Trail
+      // Trail — compress radially during pinch, fade during post-pinch
       var tLen = Math.max(isP ? G.anode_length : f.z, 0.2);
       trail.scaling.x = tLen;
       trail.position.x = tLen / 2;
@@ -1116,26 +850,27 @@ async function createDPFScene(canvas, data) {
       trailMat.emissiveColor.set(col[0] * 0.25, col[1] * 0.25, col[2] * 0.3);
       trailMat.alpha = Math.min(0.12, 0.05 + Math.abs(f.I) * 0.04);
 
-      // =============================================================
-      // UPGRADE 8: Instability perturbation from MHD frame data
-      // =============================================================
+      // Pinch with m=0 instability
       var instAmp = L.instability ? L.instability.amplitude : 0;
-      // If frame carries instability data, override with it
-      if (f.tau_m0 !== undefined && f.n_efolds !== undefined) {
-        instAmp = Math.min(1.0, Math.expm1(Math.min(f.n_efolds, 50)));
-      }
       var rippleAmp = isP ? instAmp * Math.min(1, (1 - cr) * 2) : 0;
 
+      // LEE MODEL SCHEMATIC: Pinch radius from Lee 0D compression ratio (not MHD density peak)
+      // Bennett equilibrium: a_B ~ r_sheath * sqrt(kT / (I^2 * mu0/(8*pi*N*k)))
+      // Approximate: pinch core ~ 20-30% of minimum sheath radius
       var pinchR = Math.max(G.anode_radius * 0.05, cr * G.cathode_radius * 0.25);
+
+      // m=0 sausage: most unstable wavelength ~ 2*pi*a (circumference)
+      // Mode number adapts to aspect ratio
       var pinchLen = pinchEnd - pinchStart;
       var nModes = Math.max(1, Math.round(pinchLen / (2 * Math.PI * Math.max(pinchR, 0.001))));
       nModes = Math.min(nModes, 6);
 
       for (var pk = 0; pk <= N_PINCH; pk++) {
-        var zFrac2 = pk / N_PINCH;
-        var taper = Math.sin(Math.PI * zFrac2);
+        var zFrac = pk / N_PINCH;
+        // Tapered ends (pinch is thicker at center, tapers at edges)
+        var taper = Math.sin(Math.PI * zFrac);
         var localR = pinchR * (0.5 + 0.5 * taper);
-        var ripple = rippleAmp * localR * Math.cos(2 * Math.PI * nModes * zFrac2);
+        var ripple = rippleAmp * localR * Math.cos(2 * Math.PI * nModes * zFrac);
         pinchRadii[pk] = Math.max(0.001, localR + ripple);
         haloRadii[pk] = Math.min(G.cathode_radius * 0.5, Math.max(0.002, (localR + ripple) * 2.5));
       }
@@ -1150,6 +885,8 @@ async function createDPFScene(canvas, data) {
         sideOrientation: BABYLON.Mesh.BACKSIDE, instance: halo,
       });
 
+      // Pinch column appears after significant compression (cr < 0.3)
+      // or during pinch/post_pinch/reflected phases
       var pinchPhase = f.phase === "pinch" || f.phase === "post_pinch" || f.phase === "reflected";
       var pinchVisible = pinchPhase || (isP && cr < 0.3);
       pinch.isVisible = pinchVisible;
@@ -1159,18 +896,6 @@ async function createDPFScene(canvas, data) {
       if (pinchMat.emissiveColor) pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
       haloMat.emissiveColor.set(0.8, 0.08 + pI * 0.15, 0.03);
       glowLayer.intensity = 0.35 + pI * 1.2;
-
-      // =============================================================
-      // UPGRADE 5: Temperature color on isosurface
-      // =============================================================
-      if (useMHDSheath && isoMesh && hasMHDTemperature) {
-        var trc = rawSnapCache["temperature"];
-        var tData = trc.frames[tempIdx].data;
-        // Sample temperature at density peak location (approximate center)
-        var tMid = tData[Math.floor(tData.length / 2)] || 0.5;
-        var tCol = cmapLookup(Math.min(1, tMid), HOT_CMAP);
-        isoMat.emissiveColor.set(tCol[0], tCol[1], tCol[2]);
-      }
 
       // Fire preset during pinch
       if (fireSet) {
@@ -1183,10 +908,7 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // =============================================================
-      // UPGRADE 4: Velocity-driven particles (MHD velocity field)
-      // Falls back to Lee 0D scalars when velocity data unavailable
-      // =============================================================
+      // LEE MODEL SCHEMATIC: Particle system driven by Lee 0D scalars (not MHD velocity field)
       ps.emitter.x = isP ? G.anode_length : f.z;
       if (f.phase === "rundown") {
         psEmitter.radius = G.cathode_radius * 0.85;
@@ -1201,12 +923,14 @@ async function createDPFScene(canvas, data) {
         ps.minSize = 0.3 + pI * 0.5;
         ps.maxSize = 1.0 + pI * 1.5;
         if (f.phase === "post_pinch" || f.phase === "reflected") {
+          // Post-pinch: plasma dispersing but contained within device
           ps.gravity = new BABYLON.Vector3(0.5, 0, 0);
           ps.minEmitPower = 0.5; ps.maxEmitPower = 2;
           ps.emitRate = useGPU ? 2000 : 150;
           ps.minLifeTime = 0.05; ps.maxLifeTime = 0.15;
           psEmitter.radius = compR * 2;
         } else if (pI > 0.5) {
+          // Peak pinch: intense axial jets (beam ions) — short-lived
           ps.gravity = new BABYLON.Vector3(4, 0, 0);
           ps.minEmitPower = 3; ps.maxEmitPower = 8;
           ps.minLifeTime = 0.05; ps.maxLifeTime = 0.12;
@@ -1216,72 +940,18 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // MHD velocity override: set particle direction from v_r, v_z at sheath front
-      if (hasMHDVelocity && isP) {
-        var vc = rawSnapCache["velocity"];
-        var vf = vc.frames[velIdx];
-        if (vf.vr && vf.vz) {
-          var sheathR_frac = cr * (vc.nr - 1);
-          var sheathZ_frac = (f.z / G.anode_length) * (vc.nz - 1);
-          var vr = bilinearSample(vf.vr, vc.nr, vc.nz, sheathR_frac, sheathZ_frac);
-          var vz = bilinearSample(vf.vz, vc.nr, vc.nz, sheathR_frac, sheathZ_frac);
-          var vMag = Math.sqrt(vr * vr + vz * vz) || 1e-10;
-          // Map (vz -> x-axis axial, vr -> radial y)
-          ps.direction1 = new BABYLON.Vector3(vz / vMag, vr / vMag, 0);
-          ps.direction2 = new BABYLON.Vector3(vz / vMag, -vr / vMag, 0);
-          ps.emitRate = Math.min(useGPU ? 50000 : 4000, Math.abs(vr + vz) * 100 + 500);
-        }
-      }
-
-      // =============================================================
-      // UPGRADE 2 & 3: RK4 animated field lines as tubes colored by |B|
-      // Update poloidal field line tubes from per-frame Br/Bz snap data
-      // =============================================================
-      if (hasMHDBfield && bfIdx !== lastJSnapIdx) {
-        var bfc = rawSnapCache["bfield"];
-        var bfFrame = bfc.frames[bfIdx];
-        if (bfFrame.Br && bfFrame.Bz) {
-          _buildPoloidalFieldLineTubes(bfFrame.Br, bfFrame.Bz, bfc.nr, bfc.nz);
-          // UPGRADE 6: Update J_theta tube from curl(B)
-          _updateJTube(bfFrame.Br, bfFrame.Bz, bfc.nr, bfc.nz, cr);
-          lastJSnapIdx = bfIdx;
-        }
-      }
-
-      // =============================================================
-      // UPGRADE 7: Dynamic B-field ring scaling from MHD B_theta
-      // Falls back to Lee I/I_peak brightness when B_theta unavailable
-      // =============================================================
+      // LEE MODEL SCHEMATIC: B-field ring brightness from Lee 0D current I/I_peak (not MHD B_theta)
       var Ifrac = Math.abs(f.I) / Math.max(S.I_peak, 0.001);
-      var useMHDBRings = hasMHDBfield && rawSnapCache["bfield"].frames[bfIdx] &&
-                         rawSnapCache["bfield"].frames[bfIdx].Bt;
       for (var fli = 0; fli < fieldLines.length; fli++) {
         if (!fieldLines[fli].isVisible) continue;
         var fld = fieldLineData[fli];
         if (!fld) continue;
         var bStr = 1 - fld.ri / N_RADII;
 
-        // Ring brightness and radius: prefer MHD B_theta, fallback to Lee I/I_peak
-        var ringBrightness = Ifrac;
-        var ringScale = 1.0;
-        if (useMHDBRings) {
-          var btCache = rawSnapCache["bfield"];
-          var btData = btCache.frames[bfIdx].Bt;
-          var rFrac = (fld.baseR / G.cathode_radius) * (btCache.nr - 1);
-          var zFrac3 = (fld.zPos / G.anode_length) * (btCache.nz - 1);
-          var btVal = Math.abs(bilinearSample(btData, btCache.nr, btCache.nz, rFrac, zFrac3));
-          var btMax = 1.0;
-          for (var bsi = 0; bsi < btData.length; bsi++) {
-            if (Math.abs(btData[bsi]) > btMax) btMax = Math.abs(btData[bsi]);
-          }
-          ringBrightness = Math.min(1, btVal / btMax);
-          ringScale = 0.5 + 0.5 * ringBrightness;
-        }
-
         if (fieldLines[fli].material) {
-          fieldLines[fli].material.alpha = Math.min(0.85, (0.1 + bStr * 0.3) * ringBrightness * 2);
+          fieldLines[fli].material.alpha = Math.min(0.85, (0.1 + bStr * 0.3) * Ifrac * 2);
           if (fieldLines[fli].material.emissiveColor) {
-            var glow = Math.min(1, ringBrightness * 1.5);
+            var glow = Math.min(1, Ifrac * 1.5);
             fieldLines[fli].material.emissiveColor.set(
               0.1 + bStr * 0.3 * glow, 0.3 + bStr * 0.5 * glow, 0.7 + bStr * 0.3 * glow
             );
@@ -1290,12 +960,11 @@ async function createDPFScene(canvas, data) {
 
         if (isP) {
           var scaleFactor = cr + (1 - cr) * (fld.ri / N_RADII);
-          if (useMHDBRings) scaleFactor *= ringScale;
           fieldLines[fli].scaling.y = Math.max(0.05, scaleFactor);
           fieldLines[fli].scaling.z = Math.max(0.05, scaleFactor);
         } else {
-          fieldLines[fli].scaling.y = useMHDBRings ? ringScale : 1;
-          fieldLines[fli].scaling.z = useMHDBRings ? ringScale : 1;
+          fieldLines[fli].scaling.y = 1;
+          fieldLines[fli].scaling.z = 1;
         }
 
         if (f.phase === "rundown" && fld.zi >= 2) {
@@ -1305,12 +974,9 @@ async function createDPFScene(canvas, data) {
         }
       }
 
-      // J tube visibility tied to B-field rings
-      if (jTube) {
-        jTube.isVisible = hasMHDBfield && fieldLines.length > 0 && fieldLines[0].isVisible;
-      }
-
       // ---- Cinematic effects ----
+
+      // DOF focus on pinch during compression
       if (isP && pI > 0.3) {
         pipeline.depthOfFieldEnabled = true;
         pipeline.depthOfField.focalLength = 60;
@@ -1321,6 +987,7 @@ async function createDPFScene(canvas, data) {
         pipeline.depthOfFieldEnabled = false;
       }
 
+      // Chromatic aberration during peak pinch (lens stress effect)
       if (pI > 0.5) {
         pipeline.chromaticAberrationEnabled = true;
         pipeline.chromaticAberration.aberrationAmount = pI * 30;
@@ -1328,6 +995,7 @@ async function createDPFScene(canvas, data) {
         pipeline.chromaticAberrationEnabled = false;
       }
 
+      // Camera auto-zoom: pull in during radial, snap back after
       if (isP && pI > 0.2 && autoOrbit) {
         var targetRadius = G.cathode_radius * (3 + (1 - pI) * 4);
         cam.radius += (targetRadius - cam.radius) * 0.02;
@@ -1336,6 +1004,7 @@ async function createDPFScene(canvas, data) {
         cam.radius += (defaultRadius - cam.radius) * 0.01;
       }
 
+      // Exposure flash during pinch onset
       if (pI > 0.8) {
         pipeline.imageProcessing.exposure = 1.4 + (pI - 0.8) * 3;
       } else {
