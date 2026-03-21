@@ -756,16 +756,34 @@ async function createDPFScene(canvas, data) {
   glowLayer.intensity = 0.5;
   glowLayer.customEmissiveColorSelector = function(mesh, _sub, _mat, result) {
     if (GLOW_MESHES.has(mesh.name) && mesh.material && mesh.material.emissiveColor) {
-      result.set(
-        mesh.material.emissiveColor.r,
-        mesh.material.emissiveColor.g,
-        mesh.material.emissiveColor.b,
-        mesh.material.alpha || 0
-      );
+      var ec = mesh.material.emissiveColor;
+      // HDR: glow intensity follows emissive magnitude (values >1.0 = bloom blowout)
+      var mag = Math.max(ec.r, ec.g, ec.b);
+      var boost = mag > 1.0 ? mag : 1.0;
+      result.set(ec.r * boost, ec.g * boost, ec.b * boost, mesh.material.alpha || 0);
     } else {
       result.set(0, 0, 0, 0);
     }
   };
+
+  // ---- DefaultRenderingPipeline: bloom, tone mapping, FXAA ----
+  // This enables HDR bloom blowout during pinch — emissive values >1.0
+  // create camera-saturating overexposure matching real DPF photographs.
+  var pipeline = new BABYLON.DefaultRenderingPipeline("dpfPipeline", true, scene, [cam]);
+  pipeline.bloomEnabled = true;
+  pipeline.bloomWeight = 0.3;        // baseline bloom
+  pipeline.bloomThreshold = 0.6;     // only bright things bloom
+  pipeline.bloomKernel = 64;         // wide bloom spread
+  pipeline.bloomScale = 0.5;
+  pipeline.fxaaEnabled = true;
+  pipeline.imageProcessingEnabled = true;
+  pipeline.imageProcessing.toneMappingEnabled = true;
+  pipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+  pipeline.imageProcessing.exposure = 1.2;
+  pipeline.imageProcessing.contrast = 1.1;
+
+  // Store pipeline reference for phase-adaptive updates in applyFrame
+  var _pipeline = pipeline;
 
   // ============================================================
   // SCENE CONTROLLER
@@ -908,9 +926,40 @@ async function createDPFScene(canvas, data) {
       halo.isVisible = pinchVisible;
       pinchMat.alpha = pinchVisible ? pI * 0.85 : 0;
       haloMat.alpha = pinchVisible ? pI * 0.25 : 0;
-      if (pinchMat.emissiveColor) pinchMat.emissiveColor.set(1, 0.15 + pI * 0.5, pI * 0.3);
-      haloMat.emissiveColor.set(0.8, 0.08 + pI * 0.15, 0.03);
-      glowLayer.intensity = 0.35 + pI * 1.2;
+
+      // HDR pinch bloom: emissive values >1.0 create camera-saturating overexposure
+      // matching real DPF photographs where the pinch is blindingly bright white.
+      // During peak compression (pI > 0.7), the pinch core goes HDR white (3.0, 2.5, 2.0)
+      // and the bloom pipeline spreads it across the image like a real camera overexposure.
+      if (pI > 0.7) {
+        // Peak pinch: HDR white-hot core (emissive > 1.0 drives bloom blowout)
+        var hdrScale = 1.0 + (pI - 0.7) * 6.7;  // ramps from 1.0 to 3.0 at pI=1.0
+        pinchMat.emissiveColor.set(hdrScale, hdrScale * 0.85, hdrScale * 0.7);
+        haloMat.emissiveColor.set(hdrScale * 0.5, hdrScale * 0.2, hdrScale * 0.08);
+      } else if (pI > 0.3) {
+        // Compression phase: warming orange-white
+        pinchMat.emissiveColor.set(1.0, 0.3 + pI, pI * 0.5);
+        haloMat.emissiveColor.set(0.8, 0.1 + pI * 0.2, 0.05);
+      } else {
+        pinchMat.emissiveColor.set(pI * 2, pI * 0.5, pI * 0.2);
+        haloMat.emissiveColor.set(pI, pI * 0.15, 0.03);
+      }
+
+      // Phase-adaptive post-processing: bloom ramps up during pinch
+      glowLayer.intensity = 0.35 + pI * 1.5;
+      if (_pipeline) {
+        _pipeline.bloomWeight = 0.3 + pI * 0.5;        // stronger bloom during pinch
+        _pipeline.bloomThreshold = 0.6 - pI * 0.3;     // lower threshold = more bloom
+        _pipeline.imageProcessing.exposure = 1.2 - pI * 0.3; // slight underexposure (mimics camera)
+      }
+
+      // Anode tip thermal glow: real anodes heat up during discharge
+      // At peak pinch, the tip glows orange-red from ohmic heating
+      if (pI > 0.3) {
+        copperMat.emissiveColor.set(0.25 + pI * 0.8, 0.15 + pI * 0.15, 0.05);
+      } else {
+        copperMat.emissiveColor.set(0.25, 0.15, 0.05);
+      }
 
       // Fire preset during pinch
       if (fireSet) {
