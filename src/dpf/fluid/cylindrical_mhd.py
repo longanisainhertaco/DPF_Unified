@@ -957,6 +957,15 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             grad_psi = geom.gradient(psi)
             dB_dt = dB_dt - grad_psi
 
+        # Electron energy advection: dee/dt = -div(ee * v)
+        if e_electron is not None:
+            ee_flux = np.zeros((3, self.nr, self.nz))
+            for d in range(3):
+                ee_flux[d] = e_electron * vel[d]
+            dee_dt = -geom.divergence(ee_flux)
+        else:
+            dee_dt = None
+
         result = {
             "drho_dt": drho_dt,
             "dmom_dt": dmom_dt,
@@ -969,6 +978,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             result["dE_dt"] = dE_dt
         else:
             result["dp_dt"] = dp_dt
+        if dee_dt is not None:
+            result["dee_dt"] = dee_dt
         return result
 
     def apply_electrode_bfield_bc(

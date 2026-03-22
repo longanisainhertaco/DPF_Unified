@@ -156,7 +156,7 @@ def beam_target_yield_rate(
     V_pinch: float,
     n_target: float,
     L_target: float,
-    f_beam: float = 0.2,
+    f_beam: float = 0.14,
 ) -> float:
     """Beam-target DD neutron production rate [1/s].
 

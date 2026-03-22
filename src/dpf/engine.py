@@ -1186,12 +1186,15 @@ class SimulationEngine:
             _cell_vol_yield = self.config.dx**3
         _sp_dL_dt = getattr(self, "_last_sp_dL_dt", 0.0)
         _V_pinch = abs(self._coupling.current * _sp_dL_dt)
+        # L_pinch from device geometry: anode_length * pinch_column_fraction
+        _L_pinch = self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
         self._yield_tracker.accumulate(
             state=self.state,
             dt=dt,
             I_current=self._coupling.current,
             V_pinch=_V_pinch,
             cell_volume=_cell_vol_yield,
+            L_pinch=_L_pinch,
         )
         _yield_result = self._yield_tracker.get_result()
         _dY_thermo = _yield_result.dY_thermo[-1] if _yield_result.dY_thermo else 0.0
