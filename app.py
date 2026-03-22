@@ -85,6 +85,8 @@ RUNTIME_PER_US = {
     ("hybrid", "coarse"): 1.0, ("hybrid", "medium"): 5.0, ("hybrid", "fine"): 30.0,
     ("engine_python", "coarse"): 2.0, ("engine_python", "medium"): 10.0, ("engine_python", "fine"): 60.0,
     ("engine_metal", "coarse"): 1.0, ("engine_metal", "medium"): 5.0, ("engine_metal", "fine"): 30.0,
+    ("engine_athena", "coarse"): 0.5, ("engine_athena", "medium"): 2.0, ("engine_athena", "fine"): 10.0,
+    ("engine_athenak", "coarse"): 0.2, ("engine_athenak", "medium"): 0.8, ("engine_athenak", "fine"): 4.0,
 }
 
 FIDELITY = {
@@ -95,6 +97,8 @@ FIDELITY = {
     "metal_weno5": "Level 5 — Research grade (5th-order, float64)",
     "engine_python": "Level 3E — SimulationEngine + Python MHD (full CircuitCoupler feedback)",
     "engine_metal": "Level 4E — SimulationEngine + Metal MHD (full CircuitCoupler feedback)",
+    "engine_athena": "Level 9 — Athena++ C++ pybind11 backend (research grade, 9.0/10 fidelity)",
+    "engine_athenak": "Level 9 — AthenaK Kokkos backend (GPU-portable, research grade, 9.0/10 fidelity)",
 }
 
 # Status: whether the backend is fully operational
@@ -106,6 +110,8 @@ BACKEND_STATUS = {
     "hybrid": "WORKING",
     "engine_python": "WORKING",
     "engine_metal": "WORKING",
+    "engine_athena": "Requires compiled Athena++ binary",
+    "engine_athenak": "Requires compiled AthenaK binary",
 }
 
 BACKEND_HELP = {
@@ -152,6 +158,22 @@ BACKEND_HELP = {
                     "Requires Apple Silicon Mac. Gives circuit-MHD back-EMF coupling "
                     "with GPU-accelerated spatial physics.\n\n"
                     "**Best for:** Mac users wanting full engine orchestration with GPU speed.*",
+
+    "engine_athena": "*SPEED: 2-10 seconds | ATHENA++ C++ PYBIND11 BACKEND\n\n"
+                     "Routes through SimulationEngine with Athena++ as the MHD solver. "
+                     "Athena++ is a production-grade C++ MHD code (Princeton) with PPM "
+                     "reconstruction, characteristic wave decomposition, and constrained "
+                     "transport. Requires a compiled Athena++ binary (see scripts/build_athena.sh).\n\n"
+                     "**Fidelity:** 9.0/10 — publication-grade accuracy.\n"
+                     "**Best for:** Production runs and validation studies requiring Athena++ physics.*",
+
+    "engine_athenak": "*SPEED: 0.8-4 seconds | ATHENAK KOKKOS BACKEND\n\n"
+                      "Routes through SimulationEngine with AthenaK as the MHD solver. "
+                      "AthenaK uses Kokkos for GPU-portable performance (CUDA, HIP, OpenMP, Serial). "
+                      "On M3 Pro, runs OpenMP multi-threaded. Requires a compiled AthenaK binary "
+                      "(see scripts/build_athenak.sh).\n\n"
+                      "**Fidelity:** 9.0/10 — publication-grade accuracy.\n"
+                      "**Best for:** Fast production runs; GPU-enabled HPC nodes.*",
 }
 
 

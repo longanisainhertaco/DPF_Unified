@@ -24,6 +24,8 @@ BACKENDS = {
     "metal_weno5": "Level 5 — Research Grade (30-120 sec)",
     "engine_python": "Level 3E — Engine + Python MHD (full CircuitCoupler)",
     "engine_metal": "Level 4E — Engine + Metal MHD (full CircuitCoupler, GPU)",
+    "engine_athena": "Level 9 — Engine + Athena++ C++ pybind11 (9.0/10, ~0.5 us/sec)",
+    "engine_athenak": "Level 9 — Engine + AthenaK Kokkos (9.0/10, ~0.2 us/sec, GPU-portable)",
 }
 
 BACKEND_CONFIGS = {
