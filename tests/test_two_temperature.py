@@ -71,18 +71,22 @@ class TestConversions:
         rho_e_e = electron_energy_from_temperature(Te, n_e)
         Te_recovered = temperature_from_electron_energy(rho_e_e, n_e)
         np.testing.assert_allclose(Te_recovered, Te, rtol=1e-14)
+        assert np.all(np.isfinite(rho_e_e)), "Intermediate energy density must be finite"
 
     def test_energy_density_positive(self) -> None:
         Te = np.array([1.0, 1e4, 1e8])
         n_e = np.array([1e20, 1e24, 1e26])
         rho_e_e = electron_energy_from_temperature(Te, n_e)
         assert np.all(rho_e_e > 0)
+        # Energy scales as n_e * Te: highest-T, highest-n case should dominate
+        assert rho_e_e[2] > rho_e_e[0], "Higher Te*n_e should give higher energy density"
 
     def test_temperature_floor(self) -> None:
         rho_e_e = np.array([0.0, -1.0, 1e-30])
         n_e = np.array([1e25, 1e25, 1e25])
         Te = temperature_from_electron_energy(rho_e_e, n_e, Te_floor=100.0)
         assert np.all(Te >= 100.0)
+        assert np.all(np.isfinite(Te)), "Temperature floor must produce finite values"
 
     def test_ion_temperature_from_total(self) -> None:
         Te = 1e7
@@ -96,6 +100,7 @@ class TestConversions:
         n_i_arr = np.full(GRID_SHAPE, n_i)
         Ti_recovered = ion_temperature_from_total(e_total, rho_e_e, n_i_arr)
         np.testing.assert_allclose(Ti_recovered, Ti, rtol=1e-12)
+        assert np.all(Ti_recovered > 0), "Recovered Ti must be positive"
 
 
 # --- Uniform state preservation ---
@@ -119,6 +124,8 @@ class TestUniformPreservation:
             Te_new, s["Te"], rtol=1e-10,
             err_msg="Te changed with no source terms",
         )
+        assert np.all(np.isfinite(rho_e_e_new)), "rho_e_e must remain finite"
+        assert np.all(Te_new > 0), "Te must stay positive with no source terms"
 
     def test_uniform_velocity_no_change(self) -> None:
         """Uniform velocity has div(v)=0 -> no compressional work."""
@@ -133,6 +140,7 @@ class TestUniformPreservation:
             Z=Z, gaunt_factor=0.0,
         )
         np.testing.assert_allclose(Te_new, s["Te"], rtol=1e-10)
+        assert np.all(np.isfinite(rho_e_e_new)), "rho_e_e must be finite after uniform-velocity step"
 
 
 # --- Equilibration tests ---
@@ -176,6 +184,7 @@ class TestEquilibration:
             T_weighted_after, T_weighted_before, rtol=1e-6,
             err_msg="Weighted temperature Z*Te + Ti not conserved",
         )
+        assert np.all(Te_new > 0) and np.all(Ti_new > 0), "Both temperatures must remain positive"
 
     def test_long_equilibration_converges(self) -> None:
         """Many small steps should converge Te -> Ti -> T_eq."""
@@ -242,6 +251,7 @@ class TestOhmicHeating:
         Q = compute_ohmic_heating(eta, J_sq)
         expected = 1e-5 * 1e14  # = 1e9 W/m^3
         np.testing.assert_allclose(Q, expected, rtol=1e-14)
+        assert np.all(Q > 0), "Ohmic heating must be positive for J > 0"
 
 
 # --- Radiation cooling tests ---
@@ -261,6 +271,7 @@ class TestRadiationCooling:
             Z=Z, gaunt_factor=1.2,
         )
         assert np.all(Te_new < s["Te"]), "Radiation should cool electrons"
+        assert np.all(Te_new > 0), "Te must remain positive after radiation cooling"
 
     def test_radiation_loss_positive(self) -> None:
         """Radiation loss rate should always be non-negative."""
@@ -268,6 +279,8 @@ class TestRadiationCooling:
         n_e = np.array([1e23, 1e25, 1e27])
         Q_rad = compute_radiation_loss(Te, n_e)
         assert np.all(Q_rad >= 0)
+        # Radiation scales as n_e^2 * Te^{1/2}: highest-density, highest-T case dominates
+        assert np.all(np.isfinite(Q_rad)), "Radiation loss must be finite across all temperatures"
 
 
 # --- Energy conservation tests ---
@@ -298,6 +311,7 @@ class TestEnergyConservation:
             e_total_after, e_total_before, rtol=1e-6,
             err_msg="Total internal energy not conserved during equilibration",
         )
+        assert np.all(rho_e_e_new > 0), "Electron energy density must remain positive"
 
     def test_ion_energy_derived_correctly(self) -> None:
         """Ion energy = total - electron energy."""
@@ -315,6 +329,11 @@ class TestEnergyConservation:
 
         Ti_recovered = ion_temperature_from_total(e_total_arr, rho_e_e_arr, n_i_arr)
         np.testing.assert_allclose(Ti_recovered, Ti, rtol=1e-12)
+        # Ti should be strictly less than total thermal temperature (electrons take some share)
+        T_total_mean = e_total / (1.5 * (n_e + n_i) * k_B)
+        assert float(np.mean(Ti_recovered)) < T_total_mean * 1.001, (
+            "Ion temperature should not exceed mean total temperature"
+        )
 
 
 # --- Equilibration source term tests ---
@@ -327,6 +346,7 @@ class TestEquilibrationSource:
         n_e = np.array([1e25])
         Q = compute_equilibration_source(Te, Ti, n_e, Z)
         assert Q[0] > 0, "Q_ei should be positive when Ti > Te"
+        assert np.isfinite(Q[0]), "Q_ei must be finite"
 
     def test_negative_when_Te_gt_Ti(self) -> None:
         """Q_ei < 0 when Te > Ti (energy flows from electrons)."""
@@ -335,6 +355,7 @@ class TestEquilibrationSource:
         n_e = np.array([1e25])
         Q = compute_equilibration_source(Te, Ti, n_e, Z)
         assert Q[0] < 0, "Q_ei should be negative when Te > Ti"
+        assert np.isfinite(Q[0]), "Q_ei must be finite when Te > Ti"
 
     def test_zero_at_equilibrium(self) -> None:
         """Q_ei = 0 when Te = Ti."""
@@ -343,6 +364,7 @@ class TestEquilibrationSource:
         n_e = np.array([1e25])
         Q = compute_equilibration_source(Te, Ti, n_e, Z)
         np.testing.assert_allclose(Q, 0.0, atol=1e-10)
+        assert np.isfinite(Q[0]), "Q_ei at equilibrium must be finite (not NaN)"
 
 
 # --- Initialize from existing state ---
@@ -360,6 +382,7 @@ class TestInitialization:
         rho_e_e = initialize_electron_energy(Te, Ti, p, rho, ION_MASS, Z)
         expected = 1.5 * n_e * k_B * 1e7
         np.testing.assert_allclose(rho_e_e, expected, rtol=1e-12)
+        assert np.all(rho_e_e > 0), "Initialized electron energy must be positive"
 
     def test_initialize_roundtrip(self) -> None:
         """Initialize -> recover Te -> should match."""
@@ -373,6 +396,7 @@ class TestInitialization:
         n_e = Z * rho / ION_MASS
         Te_back = temperature_from_electron_energy(rho_e_e, n_e)
         np.testing.assert_allclose(Te_back, Te_orig, rtol=1e-12)
+        assert rho_e_e.shape == GRID_SHAPE, "Initialized e_e must have grid shape"
 
 
 # --- RHS function tests ---
@@ -391,6 +415,7 @@ class TestElectronEnergyRHS:
             n_e=s["n_e"], n_i=s["n_i"], dx=DX, Z=Z, gaunt_factor=0.0,
         )
         np.testing.assert_allclose(rhs, 0.0, atol=1e-10)
+        assert rhs.shape == GRID_SHAPE, "RHS must have same shape as grid"
 
     def test_rhs_positive_with_ohmic_heating(self) -> None:
         """Ohmic heating should produce positive RHS."""
@@ -405,6 +430,12 @@ class TestElectronEnergyRHS:
             n_e=s["n_e"], n_i=s["n_i"], dx=DX, Z=Z, gaunt_factor=0.0,
         )
         assert np.all(rhs > 0), "Ohmic heating should give positive RHS"
+        # RHS should equal Q_ohm = eta * J^2 = 1e-5 * 1e14 = 1e9 W/m^3 for uniform case
+        expected_Q_ohm = 1e-5 * 1e14  # 1e9 W/m^3
+        np.testing.assert_allclose(
+            np.mean(rhs), expected_Q_ohm, rtol=0.01,
+            err_msg="RHS magnitude should match Q_ohm = eta*J^2 when Te=Ti (no equilibration)",
+        )
 
 
 # --- Engine integration tests ---
@@ -448,6 +479,10 @@ class TestEngineIntegration:
         engine = SimulationEngine(config)
 
         assert "e_electron" not in engine.state
+        # Mandatory state fields must still be present
+        assert "rho" in engine.state and "pressure" in engine.state, (
+            "Core state fields must exist even without 2T"
+        )
 
     def test_e_electron_survives_step(self) -> None:
         """e_electron persists through engine step."""
@@ -547,6 +582,9 @@ class TestElectronEnergyAdvection:
         assert np.all(state["e_electron"] >= 0.0), (
             f"e_electron went negative: min={np.min(state['e_electron']):.3e}"
         )
+        assert np.all(np.isfinite(state["e_electron"])), (
+            "e_electron must be finite (no NaN/Inf after advection)"
+        )
 
     def test_step_function_advects_in_z(self) -> None:
         """A step-function profile in z should move with the flow."""
@@ -570,17 +608,18 @@ class TestElectronEnergyAdvection:
             dt = solver._compute_dt(state)
 
         ee_final = state["e_electron"][:, 0, :]
+        assert np.all(np.isfinite(ee_final)), "e_electron must be finite after advection steps"
         # The centroid of the ee distribution should have shifted right
         z_coords = np.arange(nz) * dz
         ee_profile = np.mean(ee_final, axis=0)  # average over r
         total_ee = np.sum(ee_profile)
-        if total_ee > 0:
-            centroid = np.sum(ee_profile * z_coords) / total_ee
-            initial_centroid = np.sum(z_coords[:midz]) / midz
-            assert centroid > initial_centroid, (
-                f"ee centroid did not move right: initial={initial_centroid:.4f}, "
-                f"final={centroid:.4f}"
-            )
+        assert total_ee > 0, "Total e_electron must remain positive after advection"
+        centroid = np.sum(ee_profile * z_coords) / total_ee
+        initial_centroid = np.sum(z_coords[:midz]) / midz
+        assert centroid > initial_centroid, (
+            f"ee centroid did not move right: initial={initial_centroid:.4f}, "
+            f"final={centroid:.4f}"
+        )
 
     def test_total_ee_conserved(self) -> None:
         """Total electron energy should be approximately conserved during advection."""
@@ -616,6 +655,7 @@ class TestElectronEnergyAdvection:
         assert rel_change < 0.20, (
             f"Total e_electron changed by {rel_change*100:.1f}% (should be <20%)"
         )
+        assert total_after > 0, "Total e_electron must remain positive after advection"
 
 
 # --- Production 2T validation (PF-1000 pinch conditions) ---
@@ -661,6 +701,7 @@ class TestProduction2T:
             f"Te/Ti = {ratio:.4f}, expected > 1.1. "
             f"Te = {Te_mean*k_B/eV:.1f} eV, Ti = {Ti_mean*k_B/eV:.1f} eV"
         )
+        assert np.all(Te > 0) and np.all(Ti > 0), "Temperatures must remain positive during pinch heating"
 
     def test_strong_ohmic_produces_te_gt_2x_ti(self) -> None:
         """Under very strong Ohmic heating at low density, Te >> Ti.
@@ -742,4 +783,7 @@ class TestProduction2T:
 
         assert np.mean(Te_rad) < np.mean(Te_norad), (
             "Radiation should limit Te compared to no-radiation case"
+        )
+        assert np.all(Te_rad > 0) and np.all(Ti_rad > 0), (
+            "Temperatures must remain positive even with radiation enabled"
         )
