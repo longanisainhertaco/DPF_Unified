@@ -1,0 +1,66 @@
+# HF Space — DPF-Unified (1 GB limit, core footprint ~14 MB)
+
+# Large ML/training data
+src/dpf/ai/
+models/
+training_data/
+walrus/
+
+# C++ backends (require compiled binaries)
+src/dpf/athena_wrapper/
+src/dpf/athenak_wrapper/
+external/
+
+# Optional physics (not in main UI path)
+src/dpf/collision/
+src/dpf/radiation/
+src/dpf/turbulence/
+src/dpf/atomic/
+src/dpf/experimental/
+src/dpf/kinetic/
+src/dpf/jax/
+src/dpf/verification/
+src/dpf/benchmarks/
+
+# Development artifacts
+tests/
+docs/
+mkdocs-docs/
+scripts/
+gui/
+examples/
+site/
+dist/
+build/
+.github/
+.git/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.egg-info
+
+# Research/output data
+organized-papers/
+research_reference/
+references/
+results/
+screenshots/
+spark33/
+*.h5
+*.hdf5
+*.bp
+*.bp5
+*.pt
+*.safetensors
+
+# Static archives (not needed for runtime)
+static/renderer/archive/
+static/renderer/candidates/
+static/renderer/assets/
+static/test_*.html
+static/dpf3d_*
+
+# Office temp files
+~$*
+*.docx

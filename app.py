@@ -56,6 +56,8 @@ from app_mhd import BACKENDS, MHD_GRID_PRESETS, create_mhd_fields_fig, run_mhd_s
 from app_narrative import generate_narrative
 from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe  # noqa: F401
 from app_plots import (
+    create_2t_ratio_fig,
+    create_2t_temperature_fig,
     create_3d_plasma_fig,
     create_comparison_fig,
     create_energy_balance_fig,
@@ -631,6 +633,8 @@ def run_simulation(
         pass
 
     fig_energy = create_energy_balance_fig(data)
+    fig_2t_t = create_2t_temperature_fig(data)
+    fig_2t_r = create_2t_ratio_fig(data)
 
     runs = add_to_comparison(comparison_runs or [], data, backend)
     fig_compare = create_comparison_fig(runs)
@@ -641,6 +645,7 @@ def run_simulation(
         fig_wave, fig_phys, fig_portrait, fig_schem, fig_3d,
         babylon_html,
         fig_energy,
+        fig_2t_t, fig_2t_r,
         fig_compare, compare_md,
         csv_path, data, runs,
     )
@@ -946,6 +951,16 @@ with gr.Blocks(title="DPF-Unified Simulator", analytics_enabled=False) as app:
                     "energy going into plasma heating/radiation not tracked by the circuit model."
                 )
                 fig_energy_plot = gr.Plot(label="Energy Balance")
+            with gr.Tab("Electron Heating (2T)"):
+                gr.Markdown(
+                    "**What you're seeing:** Electron and ion temperatures evolve separately "
+                    "in a two-temperature (2T) plasma model. Ohmic heating preferentially heats "
+                    "electrons; collisional equilibration transfers energy to ions. Te/Ti > 1 "
+                    "means electrons are hotter (typical during Ohmic heating); Te/Ti < 1 means "
+                    "ions dominate (post-compression adiabatic heating). Requires MHD backend."
+                )
+                fig_2t_temp = gr.Plot(label="Te & Ti Evolution")
+                fig_2t_ratio = gr.Plot(label="Te/Ti Ratio")
             with gr.Tab("2D Fields"):
                 gr.Markdown(
                     "**What you're seeing:** For Lee model: a schematic of the coaxial electrode "
@@ -1173,6 +1188,7 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
             fig_geometry, fig_3d_plot,
             fig_babylon,
             fig_energy_plot,
+            fig_2t_temp, fig_2t_ratio,
             fig_compare, compare_md,
             export_file, sim_state, comparison_state,
         ],

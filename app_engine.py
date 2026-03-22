@@ -660,6 +660,7 @@ def run_mhd_simulation_core(
             "t": [], "I": [], "V": [], "Lp": [],
             "z": [], "r": [], "phase": [],
             "E_cap": [], "E_ind": [], "E_res": [],
+            "Te_max": [], "Ti_max": [], "Te_avg": [], "Ti_avg": [],
         }
         _orig_record = engine.diagnostics.record
 
@@ -677,6 +678,16 @@ def run_mhd_simulation_core(
             _ts["E_cap"].append(circ.get("energy_cap", 0.0) / 1e3)
             _ts["E_ind"].append(circ.get("energy_ind", 0.0) / 1e3)
             _ts["E_res"].append(circ.get("energy_res", 0.0) / 1e3)
+            Te = state.get("Te")
+            Ti = state.get("Ti")
+            if Te is not None and Ti is not None:
+                _ts["Te_max"].append(float(np.max(Te)))
+                _ts["Ti_max"].append(float(np.max(Ti)))
+                _ts["Te_avg"].append(float(np.mean(Te)))
+                _ts["Ti_avg"].append(float(np.mean(Ti)))
+            else:
+                for k in ("Te_max", "Ti_max", "Te_avg", "Ti_avg"):
+                    _ts[k].append(float("nan"))
             _orig_record(state, t)
 
         engine.diagnostics.record = _capturing_record
@@ -788,6 +799,11 @@ def run_mhd_simulation_core(
             "backend": backend,
             "energy_conservation": summary.get("energy_conservation", 1.0),
             "total_neutron_yield": summary.get("total_neutron_yield", 0.0),
+            "Te_max_K": np.array(_ts["Te_max"]),
+            "Ti_max_K": np.array(_ts["Ti_max"]),
+            "Te_avg_K": np.array(_ts["Te_avg"]),
+            "Ti_avg_K": np.array(_ts["Ti_avg"]),
+            "has_2t": any(not np.isnan(v) for v in _ts["Te_max"]),
             "reproducibility": {
                 "version": "v1.2",
                 "git_hash": _git_hash,
