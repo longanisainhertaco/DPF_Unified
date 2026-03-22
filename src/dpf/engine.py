@@ -147,6 +147,11 @@ class SimulationEngine:
             from dpf.athena_wrapper import AthenaPPSolver
             self.fluid = AthenaPPSolver(config)
             self._cell_volume = None
+            # TODO: dpf_zpinch.cpp needs C++ source function to inject circuit
+            # B-field. Python-side electrode_bc segfaults because pybind11 arrays
+            # are read-only views. Fix requires: AllocateRealUserMeshDataField(6),
+            # EnrollUserExplicitSourceFunction, DPFCircuitSourceFunc applying
+            # B_theta = mu0*I/(2*pi*r). See observations 2026-03-22.
             logger.info("Using Athena++ backend (mode: %s)", self.fluid.mode)
         elif self.backend == "metal":
             from dpf.metal.metal_solver import MetalMHDSolver
