@@ -44,7 +44,6 @@ from dpf.fluid.constrained_transport import (
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.mhd_solver import (
     _hll_flux_1d_core,
-    _hlld_flux_1d_core,
     _weno5_reconstruct_1d,
 )
 from dpf.geometry.cylindrical import CylindricalGeometry
@@ -155,86 +154,10 @@ def _weno5_sweep_hll_parallel(
     return F_rho, F_mom, F_ene
 
 
-@njit(cache=True, parallel=True)
-def _weno5_sweep_hlld_parallel(
-    rho: np.ndarray,
-    vel_n: np.ndarray,
-    pressure: np.ndarray,
-    Bn: np.ndarray,
-    gamma: float,
-    axis: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Parallel WENO5+HLLD flux sweep along *axis* of a 2D (nr, nz) grid.
-
-    Identical structure to _weno5_sweep_hll_parallel but uses HLLD Riemann
-    solver. Each line is independent — prange distributes across all cores.
-    """
-    nr = rho.shape[0]
-    nz = rho.shape[1]
-
-    if axis == 0:
-        n_ax = nr
-        n_other = nz
-    else:
-        n_ax = nz
-        n_other = nr
-
-    n_iface = n_ax - 4
-
-    if axis == 0:
-        F_rho = np.zeros((n_iface, n_other))
-        F_mom = np.zeros((n_iface, n_other))
-        F_ene = np.zeros((n_iface, n_other))
-        for idx in prange(n_other):
-            rho_1d = rho[:, idx]
-            u_1d = vel_n[:, idx]
-            p_1d = pressure[:, idx]
-            Bn_1d = Bn[:, idx]
-            rL, rR = _weno5_reconstruct_1d(rho_1d)
-            uL, uR = _weno5_reconstruct_1d(u_1d)
-            pL, pR = _weno5_reconstruct_1d(p_1d)
-            BnL, BnR = _weno5_reconstruct_1d(Bn_1d)
-            for k in range(len(rL)):
-                if rL[k] < 1e-20:
-                    rL[k] = 1e-20
-                if rR[k] < 1e-20:
-                    rR[k] = 1e-20
-                if pL[k] < 1e-20:
-                    pL[k] = 1e-20
-                if pR[k] < 1e-20:
-                    pR[k] = 1e-20
-            f_rho, f_mom, f_ene = _hlld_flux_1d_core(rL, rR, uL, uR, pL, pR, BnL, BnR, gamma)
-            F_rho[:, idx] = f_rho
-            F_mom[:, idx] = f_mom
-            F_ene[:, idx] = f_ene
-    else:
-        F_rho = np.zeros((n_other, n_iface))
-        F_mom = np.zeros((n_other, n_iface))
-        F_ene = np.zeros((n_other, n_iface))
-        for idx in prange(n_other):
-            rho_1d = rho[idx, :]
-            u_1d = vel_n[idx, :]
-            p_1d = pressure[idx, :]
-            Bn_1d = Bn[idx, :]
-            rL, rR = _weno5_reconstruct_1d(rho_1d)
-            uL, uR = _weno5_reconstruct_1d(u_1d)
-            pL, pR = _weno5_reconstruct_1d(p_1d)
-            BnL, BnR = _weno5_reconstruct_1d(Bn_1d)
-            for k in range(len(rL)):
-                if rL[k] < 1e-20:
-                    rL[k] = 1e-20
-                if rR[k] < 1e-20:
-                    rR[k] = 1e-20
-                if pL[k] < 1e-20:
-                    pL[k] = 1e-20
-                if pR[k] < 1e-20:
-                    pR[k] = 1e-20
-            f_rho, f_mom, f_ene = _hlld_flux_1d_core(rL, rR, uL, uR, pL, pR, BnL, BnR, gamma)
-            F_rho[idx, :] = f_rho
-            F_mom[idx, :] = f_mom
-            F_ene[idx, :] = f_ene
-
-    return F_rho, F_mom, F_ene
+# NOTE: HLLD parallel kernel removed — _hlld_flux_1d_core is not @njit
+# decorated, so it can't be called from parallel=True context. The WENO5
+# density sweep always uses HLL (which is JIT-compiled). The full 8-component
+# HLLD Riemann solver is used separately in _hll_riemann_flux (class method).
 
 
 class CylindricalMHDSolver(PlasmaSolverBase):
@@ -383,14 +306,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         n_iface = n_ax - 4
 
-        if self.riemann_solver == "hlld":
-            F_rho, F_mom, F_ene = _weno5_sweep_hlld_parallel(
-                rho, vel_n, pressure, Bn, self.gamma, axis,
-            )
-        else:
-            F_rho, F_mom, F_ene = _weno5_sweep_hll_parallel(
-                rho, vel_n, pressure, Bn, self.gamma, axis,
-            )
+        # Always use HLL parallel kernel for WENO5 density sweep.
+        # HLLD is used in the full 8-component _hll_riemann_flux method.
+        F_rho, F_mom, F_ene = _weno5_sweep_hll_parallel(
+            rho, vel_n, pressure, Bn, self.gamma, axis,
+        )
 
         return {
             "mass_flux": F_rho,
