@@ -307,7 +307,11 @@ function buildSheath(scene, G) {
   const N_R = 12, N_THETA = 48;
   const rInner = G.anode_radius * 1.05;
   const rOuter = G.cathode_radius * 0.95;
-  const sheathThickness = (G.cathode_radius - G.anode_radius) * 0.08; // ~4mm on PF-1000
+  // Sheath thickness scales with device size and fill pressure
+  // Higher pressure = thinner sheath (delta ~ 1/sqrt(P))
+  var P_fill = G.fill_pressure_Pa || 400;
+  var P_ref = 400; // 3 Torr reference
+  const sheathThickness = (G.cathode_radius - G.anode_radius) * 0.08 * Math.sqrt(P_ref / Math.max(P_fill, 50));
 
   function buildSheathPaths(zCenter, compR) {
     var paths = [];

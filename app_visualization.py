@@ -51,10 +51,12 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
     L = d.get("snowplow_cfg", {}).get("anode_length", 0.16)
 
     # Layer 1: Geometry (always present)
+    fill_p = d.get("snowplow_cfg", {}).get("fill_pressure_Pa", 400.0)
     geometry = {
         "anode_radius": a * 1e3,
         "cathode_radius": b * 1e3,
         "anode_length": L * 1e3,
+        "fill_pressure_Pa": fill_p,
     }
 
     # Layer 2: Sheath timeline
