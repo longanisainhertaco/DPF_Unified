@@ -22,6 +22,8 @@ BACKENDS = {
     "python": "Level 3 — Full MHD (10-30 sec)",
     "metal_plm": "Level 4 — Full MHD, GPU (5-15 sec)",
     "metal_weno5": "Level 5 — Research Grade (30-120 sec)",
+    "engine_python": "Level 3E — Engine + Python MHD (full CircuitCoupler)",
+    "engine_metal": "Level 4E — Engine + Metal MHD (full CircuitCoupler, GPU)",
 }
 
 BACKEND_CONFIGS = {

@@ -51,7 +51,7 @@ from app_compare import (
     remove_from_comparison,
     save_config,
 )
-from app_engine import GAS_SPECIES, run_simulation_core
+from app_engine import GAS_SPECIES, run_mhd_simulation_core, run_simulation_core
 from app_mhd import BACKENDS, MHD_GRID_PRESETS, create_mhd_fields_fig, run_mhd_simulation
 from app_narrative import generate_narrative
 from app_plasma_renderer import create_babylon_iframe, create_cross_section_iframe  # noqa: F401
@@ -83,6 +83,8 @@ RUNTIME_PER_US = {
     ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
     ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
     ("hybrid", "coarse"): 1.0, ("hybrid", "medium"): 5.0, ("hybrid", "fine"): 30.0,
+    ("engine_python", "coarse"): 2.0, ("engine_python", "medium"): 10.0, ("engine_python", "fine"): 60.0,
+    ("engine_metal", "coarse"): 1.0, ("engine_metal", "medium"): 5.0, ("engine_metal", "fine"): 30.0,
 }
 
 FIDELITY = {
@@ -91,6 +93,8 @@ FIDELITY = {
     "python": "Level 3 — Full 2D MHD (shock-capturing, cross-platform)",
     "metal_plm": "Level 4 — Full 2D MHD (GPU-accelerated)",
     "metal_weno5": "Level 5 — Research grade (5th-order, float64)",
+    "engine_python": "Level 3E — SimulationEngine + Python MHD (full CircuitCoupler feedback)",
+    "engine_metal": "Level 4E — SimulationEngine + Metal MHD (full CircuitCoupler feedback)",
 }
 
 # Status: whether the backend is fully operational
@@ -100,6 +104,8 @@ BACKEND_STATUS = {
     "metal_plm": "WORKING",
     "metal_weno5": "WORKING",
     "hybrid": "WORKING",
+    "engine_python": "WORKING",
+    "engine_metal": "WORKING",
 }
 
 BACKEND_HELP = {
@@ -132,6 +138,20 @@ BACKEND_HELP = {
                    "Float64 double precision. Produces the sharpest current sheaths "
                    "and most accurate shock fronts.\n\n"
                    "**Best for:** Publication figures, validation studies, resolving fine structure.*",
+
+    "engine_python": "*SPEED: 10-60 seconds | FULL CIRCUIT-MHD FEEDBACK (CPU)\n\n"
+                     "Routes through SimulationEngine — the full orchestration layer with "
+                     "CircuitCoupler, density-weighted Lp feedback, line radiation, Braginskii "
+                     "transport, and instability diagnostics. Uses the Python cylindrical MHD solver "
+                     "under the hood.\n\n"
+                     "**Best for:** Developers verifying the engine pipeline; users who need "
+                     "full circuit-MHD back-EMF coupling. Falls back to Lee on failure.*",
+
+    "engine_metal": "*SPEED: 5-30 seconds | FULL CIRCUIT-MHD FEEDBACK (GPU)\n\n"
+                    "Same as Engine + Python but with the Metal GPU MHD solver. "
+                    "Requires Apple Silicon Mac. Gives circuit-MHD back-EMF coupling "
+                    "with GPU-accelerated spatial physics.\n\n"
+                    "**Best for:** Mac users wanting full engine orchestration with GPU speed.*",
 }
 
 
@@ -464,6 +484,19 @@ def run_simulation(
                 anode_r_mm=anode_r, cathode_r_mm=cathode_r, anode_len_mm=anode_len,
                 fc=fc, fm=fm, crowbar_on=crowbar_on, crowbar_R_mOhm=crowbar_R,
                 pressure_torr=pressure, progress_fn=progress,
+            )
+        elif backend.startswith("engine_"):
+            # Route through SimulationEngine (CircuitCoupler + MHD feedback)
+            _engine_backend = backend.removeprefix("engine_")
+            _grid_map = {"coarse": 16, "medium": 32, "fine": 64}
+            _nx = _grid_map.get(grid_preset, 32)
+            data = run_mhd_simulation_core(
+                preset_name=preset_name, sim_time_us=sim_time_us, gas_key=gas_key,
+                V0_kV=V0_kV, pressure_torr=pressure,
+                C_uF=C_uF, L0_nH=L0_nH, R0_mOhm=R0_mOhm,
+                anode_r_mm=anode_r, cathode_r_mm=cathode_r, anode_len_mm=anode_len,
+                fc=fc, fm=fm, crowbar_on=crowbar_on, crowbar_R_mOhm=crowbar_R,
+                backend=_engine_backend, grid_nx=_nx, progress_fn=progress,
             )
         else:
             data = run_mhd_simulation(
