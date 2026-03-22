@@ -1248,6 +1248,30 @@ class MetalMHDSolver(PlasmaSolverBase):
             import math
             result["B"] = result["B"] * math.sqrt(mu_0_si)
 
+        # Two-temperature operator-split: apply source terms on CPU
+        e_electron_in = state.get("e_electron")
+        if e_electron_in is not None:
+            from dpf.fluid.two_temperature import step_electron_energy
+            rho = result["rho"]
+            n_i = rho / self.ion_mass
+            n_i_safe = np.maximum(n_i, 1e-30)
+            eta_np = eta_field if eta_field is not None else np.zeros_like(rho)
+            # Reconstruct J^2 from Ohmic heating: Q_ohm = eta * J^2
+            ohmic = self._last_ohmic if hasattr(self, "_last_ohmic") else np.zeros_like(rho)
+            J_sq = ohmic / np.maximum(eta_np, 1e-30) if np.any(eta_np > 0) else np.zeros_like(rho)
+            e_e_new, Te_new, Ti_new = step_electron_energy(
+                rho_e_e=e_electron_in, rho=rho,
+                velocity=result["velocity"], eta=eta_np,
+                J_sq=J_sq, Te=result["Te"], Ti=result["Ti"],
+                n_e=n_i_safe, n_i=n_i_safe,
+                dx=self.dx, dt=dt,
+                Z=1.0, gaunt_factor=1.2,
+                gamma=self.gamma,
+            )
+            result["Te"] = np.maximum(Te_new, 1.0)
+            result["Ti"] = np.maximum(Ti_new, 1.0)
+            result["e_electron"] = e_e_new
+
         return result
 
     @staticmethod

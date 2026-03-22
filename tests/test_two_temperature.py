@@ -405,3 +405,72 @@ class TestElectronEnergyRHS:
             n_e=s["n_e"], n_i=s["n_i"], dx=DX, Z=Z, gaunt_factor=0.0,
         )
         assert np.all(rhs > 0), "Ohmic heating should give positive RHS"
+
+
+# --- Engine integration tests ---
+
+class TestEngineIntegration:
+    """Verify 2T flows through the full SimulationEngine."""
+
+    def test_engine_init_creates_e_electron(self) -> None:
+        """Engine with two_temperature=True creates e_electron in state."""
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        preset = get_preset("pf1000")
+        preset["grid_shape"] = [8, 1, 16]
+        preset["dx"] = 0.02
+        preset["sim_time"] = 1e-7
+        preset["diagnostics_path"] = ":memory:"
+        preset["fluid"] = {"two_temperature": True}
+
+        config = SimulationConfig(**preset)
+        engine = SimulationEngine(config)
+
+        assert "e_electron" in engine.state
+        assert engine.state["e_electron"].shape == (8, 1, 16)
+        assert np.all(engine.state["e_electron"] > 0)
+
+    def test_engine_init_without_2t_no_e_electron(self) -> None:
+        """Engine without two_temperature has no e_electron."""
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        preset = get_preset("pf1000")
+        preset["grid_shape"] = [8, 1, 16]
+        preset["dx"] = 0.02
+        preset["sim_time"] = 1e-7
+        preset["diagnostics_path"] = ":memory:"
+
+        config = SimulationConfig(**preset)
+        engine = SimulationEngine(config)
+
+        assert "e_electron" not in engine.state
+
+    def test_e_electron_survives_step(self) -> None:
+        """e_electron persists through engine step."""
+        from dpf.config import SimulationConfig
+        from dpf.engine import SimulationEngine
+        from dpf.presets import get_preset
+
+        preset = get_preset("pf1000")
+        preset["grid_shape"] = [8, 1, 16]
+        preset["dx"] = 0.02
+        preset["sim_time"] = 1e-7
+        preset["diagnostics_path"] = ":memory:"
+        preset["fluid"] = {"two_temperature": True}
+
+        config = SimulationConfig(**preset)
+        engine = SimulationEngine(config)
+        ee_before = engine.state["e_electron"].copy()
+
+        engine.step()
+
+        assert "e_electron" in engine.state
+        # At T=300K with no current, e_electron should barely change
+        np.testing.assert_allclose(
+            engine.state["e_electron"], ee_before, rtol=0.1,
+            err_msg="e_electron changed dramatically in one low-current step",
+        )
