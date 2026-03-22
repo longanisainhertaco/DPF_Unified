@@ -507,6 +507,12 @@ window.addEventListener("load", async function(){
       scene.currentArrows.returnArrows.forEach(function(a) { a._userVisible = v; });
     }
   });
+  addTog("Dimensions", false, function(v) {
+    if (scene.dims) scene.dims.show(v);
+  });
+  addTog("J\u00d7B Forces", false, function(v) {
+    if (scene.forceArrows) scene.forceArrows.show(v);
+  });
 
   // Heatmap toggles — mutually exclusive (radio-like). Only one heatmap
   // overlay can be active at a time since they share a single midplane texture.
