@@ -1259,23 +1259,38 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             # Store div(B) for diagnostics
             self._last_div_B = float(np.max(np.abs(compute_div_B(staggered_new))))
 
-        # --- Two-temperature update (preserve Te ≠ Ti) ---
+        # --- Two-temperature update ---
         n_i = rho_new / self.ion_mass
         n_i_safe = np.maximum(n_i, 1e-30)
 
-        # Preserve Te/(Te+Ti) fraction through pressure-based temperature split
-        Te_old = Te
-        Ti_old = Ti
-        T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
-        f_e = Te_old / T_sum_old  # Electron fraction of total temperature
-
-        # Total temperature from new pressure: T_total = p_new / (n_i * k_B)
-        T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
-        Te_new = f_e * T_total_new
-        Ti_new = (1.0 - f_e) * T_total_new
-        # Ohmic heating preferentially heats electrons
-        dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
-        Te_new = Te_new + dTe_ohmic
+        e_electron_in = state.get("e_electron")
+        if e_electron_in is not None:
+            # True 2T: evolve electron energy with source terms
+            from dpf.fluid.two_temperature import step_electron_energy
+            e_e_2d = self._squeeze(e_electron_in)
+            eta_eff = eta_2d if eta_2d is not None else np.zeros_like(rho_new)
+            J_sq = ohmic_avg / np.maximum(eta_eff, 1e-30) if np.any(eta_eff > 0) else np.zeros_like(rho_new)
+            e_e_new, Te_new, Ti_new = step_electron_energy(
+                rho_e_e=e_e_2d, rho=rho_new,
+                velocity=vel_new, eta=eta_eff,
+                J_sq=J_sq, Te=Te, Ti=Ti,
+                n_e=n_i_safe, n_i=n_i_safe,
+                dx=self.geom.dr, dt=dt,
+                Z=1.0, gaunt_factor=1.2,
+                gamma=self.gamma,
+            )
+        else:
+            # Fraction-preserving hack (legacy fallback)
+            e_e_new = None
+            Te_old = Te
+            Ti_old = Ti
+            T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
+            f_e = Te_old / T_sum_old
+            T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
+            Te_new = f_e * T_total_new
+            Ti_new = (1.0 - f_e) * T_total_new
+            dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
+            Te_new = Te_new + dTe_ohmic
 
         Te_new = np.maximum(Te_new, 1.0)
         Ti_new = np.maximum(Ti_new, 1.0)
@@ -1310,7 +1325,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         )
 
         # Unsqueeze back to 3D (nr, 1, nz)
-        return {
+        result = {
             "rho": self._unsqueeze(rho_new),
             "velocity": self._unsqueeze(vel_new),
             "pressure": self._unsqueeze(p_new),
@@ -1319,6 +1334,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "Ti": self._unsqueeze(Ti_new),
             "psi": self._unsqueeze(psi_new),
         }
+        if e_e_new is not None:
+            result["e_electron"] = self._unsqueeze(e_e_new)
+        return result
 
     def coupling_interface(self) -> CouplingState:
         return self._coupling

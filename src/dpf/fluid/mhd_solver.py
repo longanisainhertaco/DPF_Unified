@@ -2329,48 +2329,35 @@ class MHDSolver(PlasmaSolverBase):
                 B_new, current, anode_radius, cathode_radius,
             )
 
-        # --- Two-temperature update (preserve Te ≠ Ti) ---
-        # Compute total pressure change ratio to scale temperatures
+        # --- Two-temperature update ---
         n_i = rho_new / self.ion_mass
         n_i_safe = np.maximum(n_i, 1e-30)
+        ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs_last["ohmic_heating"])
 
         if e_electron is not None:
-            # We have a separate electron energy — use it to get Te
-            # Advect electron energy: de_e/dt = -div(e_e * v) - p_e * div(v) + Q_ohm_e
-            div_v = (
-                np.gradient(vel_new[0], self.dx, axis=0)
-                + np.gradient(vel_new[1], self.dx, axis=1)
-                + np.gradient(vel_new[2], self.dx, axis=2)
+            # True 2T: evolve electron energy with full source terms
+            from dpf.fluid.two_temperature import step_electron_energy
+            eta_eff = eta_field if eta_field is not None else np.zeros_like(rho_new)
+            J_sq = ohmic_avg / np.maximum(eta_eff, 1e-30) if np.any(eta_eff > 0) else np.zeros_like(rho_new)
+            e_electron_new, Te_new, Ti_new = step_electron_energy(
+                rho_e_e=e_electron, rho=rho_new,
+                velocity=vel_new, eta=eta_eff,
+                J_sq=J_sq, Te=Te, Ti=Ti,
+                n_e=n_i_safe, n_i=n_i_safe,
+                dx=self.dx, dt=dt,
+                Z=1.0, gaunt_factor=1.2,
+                gamma=self.gamma,
             )
-            p_e_old = n_i_safe * k_B * Te
-            # Simple advection + compression
-            de_e_dt = -p_e_old * div_v
-            # Ohmic heating goes primarily to electrons
-            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs_last["ohmic_heating"])
-            de_e_dt += ohmic_avg
-            e_electron_new = e_electron + dt * de_e_dt
-            e_electron_new = np.maximum(e_electron_new, n_i_safe * k_B * 1.0)  # Floor 1 K
-            Te_new = (2.0 / 3.0) * e_electron_new / (n_i_safe * k_B)
-            # Ion temperature from total pressure minus electron pressure
-            p_e_new = n_i_safe * k_B * Te_new
-            p_i_new = np.maximum(p_new - p_e_new, 1e-20)
-            Ti_new = p_i_new / (n_i_safe * k_B)
         else:
-            # No separate electron energy tracked — recover Te, Ti from
-            # total pressure split.  T_total = p/(n_i*k_B) = Te + Ti.
-            # Preserve the Te/(Te+Ti) fraction from the previous step.
+            # Fraction-preserving hack (legacy fallback)
+            e_electron_new = None
             Te_old = Te
             Ti_old = Ti
             T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
-            f_e = Te_old / T_sum_old  # Electron fraction of total temperature
-
-            # Total temperature from new pressure: T_total = p_new / (n_i * k_B)
+            f_e = Te_old / T_sum_old
             T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
             Te_new = f_e * T_total_new
             Ti_new = (1.0 - f_e) * T_total_new
-
-            # Add Ohmic heating preferentially to electrons
-            ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs_last["ohmic_heating"])
             dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
             Te_new = Te_new + dTe_ohmic
 
