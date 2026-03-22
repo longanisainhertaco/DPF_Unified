@@ -1052,3 +1052,74 @@ def create_3d_plasma_fig(d: dict[str, Any]) -> go.Figure:
         legend=dict(x=0.02, y=0.98, font=dict(size=10)),
     )
     return fig
+
+
+# ---------------------------------------------------------------------------
+# Two-Temperature (2T) Physics plots
+# ---------------------------------------------------------------------------
+
+def create_2t_temperature_fig(d: dict[str, Any]) -> go.Figure:
+    """Te(t) and Ti(t) evolution plot."""
+    if not d.get("has_2t"):
+        fig = go.Figure()
+        fig.add_annotation(text="Run with MHD backend to see 2T data", showarrow=False,
+                           font=dict(size=16, color="gray"), xref="paper", yref="paper", x=0.5, y=0.5)
+        fig.update_layout(height=380, template="plotly_dark")
+        return fig
+
+    t = d["t_us"]
+    Te = d["Te_avg_K"]
+    Ti = d["Ti_avg_K"]
+    Te_max = d["Te_max_K"]
+    Ti_max = d["Ti_max_K"]
+
+    eV_K = 11604.52
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
+                        subplot_titles=("Average Temperature", "Peak Temperature"))
+
+    fig.add_trace(go.Scatter(x=t, y=Te / eV_K, mode="lines",
+                             name="Te avg", line=dict(color="#2196F3", width=2.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=t, y=Ti / eV_K, mode="lines",
+                             name="Ti avg", line=dict(color="#F44336", width=2.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=t, y=Te_max / eV_K, mode="lines",
+                             name="Te peak", line=dict(color="#64B5F6", width=1.5, dash="dot")), row=2, col=1)
+    fig.add_trace(go.Scatter(x=t, y=Ti_max / eV_K, mode="lines",
+                             name="Ti peak", line=dict(color="#EF9A9A", width=1.5, dash="dot")), row=2, col=1)
+
+    fig.update_yaxes(title_text="Temperature [eV]", row=1, col=1)
+    fig.update_yaxes(title_text="Temperature [eV]", row=2, col=1)
+    fig.update_xaxes(title_text="Time [us]", row=2, col=1)
+    fig.update_layout(height=480, template="plotly_dark", hovermode="x unified",
+                      title="Electron & Ion Temperature Evolution")
+    return fig
+
+
+def create_2t_ratio_fig(d: dict[str, Any]) -> go.Figure:
+    """Te/Ti ratio and equilibration indicator."""
+    if not d.get("has_2t"):
+        fig = go.Figure()
+        fig.add_annotation(text="No 2T data", showarrow=False,
+                           font=dict(size=16, color="gray"), xref="paper", yref="paper", x=0.5, y=0.5)
+        fig.update_layout(height=350, template="plotly_dark")
+        return fig
+
+    t = d["t_us"]
+    Te = d["Te_avg_K"]
+    Ti = d["Ti_avg_K"]
+    ratio = Te / np.maximum(Ti, 1.0)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t, y=ratio, mode="lines",
+                             name="Te/Ti ratio", line=dict(color="#4CAF50", width=2.5)))
+    fig.add_hrect(y0=0.8, y1=1.2, fillcolor="rgba(255,255,255,0.05)", line_width=0,
+                  annotation_text="Equilibrium", annotation_position="top left")
+    fig.add_hline(y=1.0, line_dash="dash", line_color="rgba(255,255,255,0.3)")
+
+    fig.update_layout(
+        height=350, template="plotly_dark", hovermode="x unified",
+        title="Electron-Ion Temperature Ratio",
+        xaxis_title="Time [us]", yaxis_title="Te / Ti",
+        yaxis=dict(type="log") if np.nanmax(ratio) > 10 else {},
+    )
+    return fig
