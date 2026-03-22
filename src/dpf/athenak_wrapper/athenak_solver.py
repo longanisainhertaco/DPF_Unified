@@ -171,20 +171,21 @@ class AthenaKSolver(PlasmaSolverBase):
             tmpdir_path = Path(tmpdir)
 
             # Generate input file with time limit = dt
-            # Override sim_time temporarily
+            # Override sim_time temporarily; use try/finally so config is
+            # always restored even if generate_athenak_input raises.
             original_sim_time = self.config.sim_time
-            self.config.sim_time = dt  # type: ignore[misc]
-
-            athinput = generate_athenak_input(
-                self.config,
-                problem_id="dpf_step",
-                pgen_name=self._pgen_name,
-                n_steps=self._batch_steps,
-                output_vtk=True,
-                vtk_dt=dt,  # Single VTK output at end
-            )
-
-            self.config.sim_time = original_sim_time  # type: ignore[misc]
+            try:
+                self.config.sim_time = dt  # type: ignore[misc]
+                athinput = generate_athenak_input(
+                    self.config,
+                    problem_id="dpf_step",
+                    pgen_name=self._pgen_name,
+                    n_steps=self._batch_steps,
+                    output_vtk=True,
+                    vtk_dt=dt,  # Single VTK output at end
+                )
+            finally:
+                self.config.sim_time = original_sim_time  # type: ignore[misc]
 
             # Write input file
             input_path = tmpdir_path / "athinput"

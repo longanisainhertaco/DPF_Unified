@@ -566,9 +566,8 @@ def run_simulation(
             ) from exc
         if "metal" in msg or "mps" in msg or "gpu" in msg:
             raise gr.Error(
-                f"GPU backend unavailable ({backend}). "
-                f"Switch to Lee (Level 1) or MHD Standard (Level 3) which run on CPU. "
-                f"Detail: {exc}"
+                "GPU backend unavailable. "
+                "Switch to Lee (Level 1) or MHD Standard (Level 3)."
             ) from exc
         if "memory" in msg or "oom" in msg or "alloc" in msg:
             raise gr.Error(

@@ -1450,9 +1450,9 @@ class TestBackwardCompatibility:
         assert isinstance(eta, float)
 
     def test_total_resistivity_scalar_unchanged(self):
-        from dpf.turbulence.anomalous import total_resistivity_scalar
+        from dpf.turbulence.anomalous import total_resistivity
 
-        assert total_resistivity_scalar(1e-6, 1e-5) == pytest.approx(1.1e-5, rel=1e-10)
+        assert total_resistivity(1e-6, 1e-5) == pytest.approx(1.1e-5, rel=1e-10)
 
 
 class TestBraginskiiKappaZDependent:
@@ -3948,9 +3948,9 @@ class TestTotalResistivity:
         np.testing.assert_allclose(eta_total[0], 2e-6 + 3e-5, rtol=1e-10)
 
     def test_total_scalar(self):
-        from dpf.turbulence.anomalous import total_resistivity_scalar
+        from dpf.turbulence.anomalous import total_resistivity
 
-        eta = total_resistivity_scalar(1e-6, 5e-5)
+        eta = total_resistivity(1e-6, 5e-5)
         np.testing.assert_allclose(eta, 1e-6 + 5e-5, rtol=1e-10)
 
 
@@ -3960,7 +3960,7 @@ class TestEngineAnomalous:
     def test_engine_imports_turbulence(self):
         from dpf.turbulence.anomalous import (  # noqa: F401
             anomalous_resistivity_scalar,
-            total_resistivity_scalar,
+            total_resistivity,
         )
 
     def test_engine_runs_with_anomalous(self):

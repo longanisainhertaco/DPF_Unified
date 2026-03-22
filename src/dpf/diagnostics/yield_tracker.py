@@ -159,8 +159,10 @@ class YieldTracker:
                     f_beam=f_beam,
                 )
                 dY_bt = bt_rate * dt
-            except (ImportError, Exception):
+            except ImportError:
                 pass
+            except Exception as exc:
+                logger.warning("beam_target_yield_rate failed: %s", exc)
 
         self._Y_thermo += dY_thermo
         self._Y_bt += dY_bt

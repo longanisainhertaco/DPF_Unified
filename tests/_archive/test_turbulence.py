@@ -342,9 +342,9 @@ class TestTotalResistivity:
 
     def test_total_scalar(self):
         """Scalar total resistivity works correctly."""
-        from dpf.turbulence.anomalous import total_resistivity_scalar
+        from dpf.turbulence.anomalous import total_resistivity
 
-        eta = total_resistivity_scalar(1e-6, 5e-5)
+        eta = total_resistivity(1e-6, 5e-5)
         np.testing.assert_allclose(eta, 1e-6 + 5e-5, rtol=1e-10)
 
 
@@ -359,7 +359,7 @@ class TestEngineAnomalous:
         """Engine should import turbulence module without error."""
         from dpf.turbulence.anomalous import (  # noqa: F401
             anomalous_resistivity_scalar,
-            total_resistivity_scalar,
+            total_resistivity,
         )
 
     def test_engine_runs_with_anomalous(self):

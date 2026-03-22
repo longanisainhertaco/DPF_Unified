@@ -291,7 +291,6 @@ def _compute_eta_anom(
     return alpha * m_e * omega_pe / np.maximum(ne * e**2, 1e-300)
 
 
-@njit(cache=True)
 def anomalous_resistivity(
     J: np.ndarray,
     ne: np.ndarray,
@@ -494,23 +493,6 @@ def anomalous_resistivity_field(
 
     eta_anom = _compute_eta_anom(ne, alpha)
     return np.where(mask, eta_anom, 0.0)
-
-
-@njit(cache=True)
-def total_resistivity_scalar(
-    eta_spitzer: float,
-    eta_anomalous: float,
-) -> float:
-    """Scalar version of total resistivity.
-
-    Args:
-        eta_spitzer: Spitzer resistivity [Ohm*m].
-        eta_anomalous: Anomalous resistivity [Ohm*m].
-
-    Returns:
-        Total resistivity [Ohm*m].
-    """
-    return eta_spitzer + eta_anomalous
 
 
 def lhdi_factor(mi: float = m_p) -> float:

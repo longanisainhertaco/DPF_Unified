@@ -10,7 +10,6 @@ from dpf.turbulence.anomalous import (
     lhdi_factor,
     lhdi_threshold,
     total_resistivity,
-    total_resistivity_scalar,
 )
 
 __all__ = [
@@ -23,5 +22,4 @@ __all__ = [
     "lhdi_factor",
     "lhdi_threshold",
     "total_resistivity",
-    "total_resistivity_scalar",
 ]
