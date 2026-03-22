@@ -395,6 +395,8 @@ def _run_dpf_convergence(N: int, wave_fn, n_steps: int = 20):
         dt = solver._compute_dt(state)
         state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
     rho_final = state["rho"]
+    if not isinstance(rho_final, torch.Tensor):
+        rho_final = torch.tensor(rho_final, dtype=rho_init.dtype)
     mid_y, mid_z = 2, 2
     err = float(torch.mean(torch.abs(rho_final[:, mid_y, mid_z] - rho_init[:, mid_y, mid_z])).item())
     return err
@@ -529,16 +531,18 @@ def _run_briowu_dpf(N: int, n_steps: int = 300):
 
 
 def _l1_error_sod(rho_num, rho_exact):
-    return float(torch.mean(torch.abs(rho_num - torch.tensor(rho_exact, dtype=torch.float64))).item())
+    rho_num = np.asarray(rho_num, dtype=np.float64)
+    rho_exact = np.asarray(rho_exact, dtype=np.float64)
+    return float(np.mean(np.abs(rho_num - rho_exact)))
 
 
 def _self_convergence_l1(state_fine, state_coarse, N_fine):
     mid_y, mid_z = 2, 2
-    rho_fine = state_fine["rho"][:, mid_y, mid_z]
+    rho_fine = np.asarray(state_fine["rho"][:, mid_y, mid_z])
     rho_coarse_up = rho_fine[::2]
-    rho_coarse_ref = state_coarse["rho"][:, mid_y, mid_z]
+    rho_coarse_ref = np.asarray(state_coarse["rho"][:, mid_y, mid_z])
     n = min(len(rho_coarse_up), len(rho_coarse_ref))
-    return float(torch.mean(torch.abs(rho_coarse_up[:n] - rho_coarse_ref[:n])).item())
+    return float(np.mean(np.abs(rho_coarse_up[:n] - rho_coarse_ref[:n])))
 
 
 # ---------------------------------------------------------------------------
@@ -979,7 +983,14 @@ class TestSpitzerResistivity:
     """Spitzer resistivity against NRL Plasma Formulary."""
 
     def test_spitzer_resistivity_vs_nrl_10eV(self):
-        """Verify against NRL at Te=10 eV."""
+        """Verify against NRL at Te=10 eV.
+
+        NRL Plasma Formulary (2019), p. 34: eta_|| = 5.2e-5 Z lnL Te_eV^{-3/2} Ohm*m.
+        The 5.2e-5 coefficient incorporates the Braginskii alpha correction for Z=1.
+        Equivalently: eta = 1.03e-4 * alpha(Z) * Z * lnL / Te^{1.5}, where alpha(Z=1) = 0.5064.
+        Note: the formula divides by alpha, NOT multiplies — alpha < 1 means Braginskii
+        INCREASES resistivity above the Lorentz-gas classical value.
+        """
         Te_eV = 10.0
         Te_K = Te_eV * e / k_B
         ne = np.array([1e20])
@@ -987,7 +998,8 @@ class TestSpitzerResistivity:
         Z = 1.0
         lnL_val = float(coulomb_log(ne, Te)[0])
         alpha_Z = float(spitzer_alpha(Z))
-        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV**1.5) / alpha_Z
+        # Correct NRL formula: 5.2e-5 = 1.03e-4 * alpha(Z=1) where alpha = 0.5064
+        eta_NRL = 1.03e-4 * alpha_Z * Z * lnL_val / (Te_eV**1.5)
         eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
         assert eta == pytest.approx(eta_NRL, rel=0.30)
 
@@ -1000,7 +1012,7 @@ class TestSpitzerResistivity:
         Z = 1.0
         lnL_val = float(coulomb_log(ne, Te)[0])
         alpha_Z = float(spitzer_alpha(Z))
-        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV**1.5) / alpha_Z
+        eta_NRL = 1.03e-4 * alpha_Z * Z * lnL_val / (Te_eV**1.5)
         eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
         assert eta == pytest.approx(eta_NRL, rel=0.30)
 
@@ -1013,7 +1025,7 @@ class TestSpitzerResistivity:
         Z = 1.0
         lnL_val = float(coulomb_log(ne, Te)[0])
         alpha_Z = float(spitzer_alpha(Z))
-        eta_NRL = 1.03e-4 * Z * lnL_val / (Te_eV**1.5) / alpha_Z
+        eta_NRL = 1.03e-4 * alpha_Z * Z * lnL_val / (Te_eV**1.5)
         eta = spitzer_resistivity(ne, Te, lnL_val, Z)[0]
         assert 1e-9 < eta < 5e-6
         assert eta == pytest.approx(eta_NRL, rel=0.30)
@@ -1026,14 +1038,19 @@ class TestSpitzerResistivity:
         assert eta_10 / eta_100 == pytest.approx(10.0**1.5, rel=0.05)
 
     def test_spitzer_Z_scaling(self):
-        """Resistivity scales as Z/alpha(Z) with Braginskii correction."""
+        """Resistivity scales as Z * alpha(Z) with Braginskii correction.
+
+        The implementation: eta = alpha(Z) * m_e * nu_ei / (ne * e^2)
+        where nu_ei ∝ Z (more ions = more collisions).
+        So eta(Z2)/eta(Z1) = Z2 * alpha(Z2) / (Z1 * alpha(Z1)).
+        """
         ne = np.array([1e20])
         Te = np.array([1e6])
         eta_Z1 = spitzer_resistivity(ne, Te, 10.0, 1.0)[0]
         eta_Z2 = spitzer_resistivity(ne, Te, 10.0, 2.0)[0]
         alpha_1 = float(spitzer_alpha(1.0))
         alpha_2 = float(spitzer_alpha(2.0))
-        expected_ratio = 2.0 * alpha_1 / alpha_2
+        expected_ratio = 2.0 * alpha_2 / alpha_1
         assert eta_Z2 / eta_Z1 == pytest.approx(expected_ratio, rel=0.05)
 
     def test_resistivity_independent_of_density(self):
@@ -2224,8 +2241,10 @@ class TestHigherOrderConvergence:
             dt = solver_weno5._compute_dt(state_weno)
             state_weno = solver_weno5.step(state_weno, dt=dt, current=0.0, voltage=0.0)
 
-        err_plm = float(torch.mean(torch.abs(state_plm["rho"][:, 2, 2] - rho_init[:, 2, 2])).item())
-        err_weno = float(torch.mean(torch.abs(state_weno["rho"][:, 2, 2] - rho_init[:, 2, 2])).item())
+        rho_plm = torch.as_tensor(state_plm["rho"])
+        rho_weno = torch.as_tensor(state_weno["rho"])
+        err_plm = float(torch.mean(torch.abs(rho_plm[:, 2, 2] - rho_init[:, 2, 2])).item())
+        err_weno = float(torch.mean(torch.abs(rho_weno[:, 2, 2] - rho_init[:, 2, 2])).item())
         assert err_weno <= err_plm * 1.5
 
 
@@ -2257,8 +2276,10 @@ class TestFloat32vsFloat64:
             dt64 = solver64._compute_dt(state64)
             state64 = solver64.step(state64, dt=float(dt64), current=0.0, voltage=0.0)
 
-        err32 = float(torch.mean(torch.abs(state32["rho"][:, 2, 2].float() - rho_init[:, 2, 2].float())).item())
-        err64 = float(torch.mean(torch.abs(state64["rho"][:, 2, 2] - rho_init[:, 2, 2])).item())
+        rho32 = torch.as_tensor(state32["rho"]).float()
+        rho64 = torch.as_tensor(state64["rho"])
+        err32 = float(torch.mean(torch.abs(rho32[:, 2, 2] - rho_init[:, 2, 2].float())).item())
+        err64 = float(torch.mean(torch.abs(rho64[:, 2, 2] - rho_init[:, 2, 2])).item())
         assert err64 <= err32 * 2.0
 
 
@@ -2301,9 +2322,10 @@ class TestSodDPFStability:
     @pytest.mark.slow
     def test_sod_stable_N64(self):
         state, t = _run_sod_dpf(64)
-        assert not torch.any(torch.isnan(state["rho"]))
-        assert not torch.any(torch.isinf(state["rho"]))
-        assert torch.all(state["rho"] > 0)
+        rho = np.asarray(state["rho"])
+        assert not np.any(np.isnan(rho))
+        assert not np.any(np.isinf(rho))
+        assert np.all(rho > 0)
 
     @pytest.mark.slow
     def test_sod_density_contrast(self):
@@ -2335,8 +2357,9 @@ class TestBrioWuDPFStability:
     @pytest.mark.slow
     def test_briowu_stable_N64(self):
         state, t = _run_briowu_dpf(64)
-        assert not torch.any(torch.isnan(state["rho"]))
-        assert torch.all(state["rho"] > 0)
+        rho = np.asarray(state["rho"])
+        assert not np.any(np.isnan(rho))
+        assert np.all(rho > 0)
 
     @pytest.mark.slow
     def test_briowu_by_sign_change(self):

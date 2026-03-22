@@ -123,14 +123,17 @@ def hall_electric_field_mps(
 ) -> torch.Tensor:
     """Compute the Hall electric field E_Hall = (J x B) / (n_e * e).
 
+    All inputs must be in SI units for dimensional consistency.
+
     Parameters
     ----------
     J : torch.Tensor
-        Current density, shape (3, nx, ny, nz).
+        Current density [A/m^2], shape (3, nx, ny, nz).
+        Must be computed as J = curl(B)/mu_0 in SI.
     B : torch.Tensor
-        Magnetic field, shape (3, nx, ny, nz).
+        Magnetic field [T], shape (3, nx, ny, nz).
     rho : torch.Tensor
-        Mass density, shape (nx, ny, nz).
+        Mass density [kg/m^3], shape (nx, ny, nz).
     ion_mass : float
         Ion mass [kg].
     e_charge : float
@@ -159,14 +162,24 @@ def apply_hall_mhd_mps(
     """Operator-split Hall MHD update: dB/dt = -curl(E_Hall).
 
     The Hall term modifies the induction equation only (not momentum/energy).
-    E_Hall = (J x B) / (n_e * e), where J = curl(B) / mu_0.
+    E_Hall = (J x B) / (n_e * e), where J = curl(B) / mu_0 in SI units.
+
+    The solver stores B in Heaviside-Lorentz code units (B_HL = B_SI / sqrt(mu_0)).
+    This function converts to SI internally so that J, E_Hall, and the induction
+    update are all dimensionally consistent with the SI constants (e, m_i) used
+    in the Hall formula.  The result is converted back to HL before returning.
+
+    Governing equations (SI):
+        J = curl(B_SI) / mu_0                   [A/m^2]
+        E_Hall = (J x B_SI) / (n_e * e)         [V/m]
+        dB_SI/dt = -curl(E_Hall)                 [T/s]
 
     Parameters
     ----------
     B : torch.Tensor
-        Magnetic field, shape (3, nx, ny, nz).
+        Magnetic field in HL code units, shape (3, nx, ny, nz).
     rho : torch.Tensor
-        Mass density, shape (nx, ny, nz).
+        Mass density [kg/m^3], shape (nx, ny, nz).
     dt : float
         Timestep [s].
     dx, dy, dz : float
@@ -177,12 +190,26 @@ def apply_hall_mhd_mps(
     Returns
     -------
     torch.Tensor
-        Updated magnetic field B_new.
+        Updated magnetic field B_new in HL code units.
     """
-    J = curl_B_mps(B, dx, dy, dz)
-    E_Hall = hall_electric_field_mps(J, B, rho, ion_mass)
+    sqrt_mu0 = math.sqrt(MU_0)
+
+    # Convert B from HL code units to SI [Tesla]
+    B_si = B * sqrt_mu0
+
+    # SI units: J = curl(B) / mu0  [A/m^2]
+    J = curl_B_mps(B_si, dx, dy, dz, mu_0=MU_0)
+
+    # E_Hall = (J x B) / (n_e * e)  [V/m] — all quantities in SI
+    E_Hall = hall_electric_field_mps(J, B_si, rho, ion_mass)
+
+    # dB_SI/dt = -curl(E_Hall)
     curl_E = _curl_field(E_Hall, dx, dy, dz)
-    B_new = B - dt * curl_E
+    dB_si = -dt * curl_E
+
+    # Convert dB back to HL code units: dB_HL = dB_SI / sqrt(mu_0)
+    B_new = B + dB_si / sqrt_mu0
+
     # Sanitize
     B_new = torch.where(torch.isfinite(B_new), B_new, B)
     return B_new
