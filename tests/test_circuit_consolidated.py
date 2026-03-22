@@ -92,7 +92,11 @@ class TestSpitzerResistivity:
     """Tests for Spitzer resistivity function."""
 
     def test_analytic_formula(self):
-        """eta = m_e * nu_ei / (ne * e^2 * alpha(Z)) — with Braginskii correction."""
+        """eta = alpha(Z) * m_e * nu_ei / (ne * e^2) — Braginskii parallel resistivity.
+
+        alpha(Z) MULTIPLIES the classical resistivity (Braginskii 1965 Table 1 conductivity
+        coefficient). This reduces resistivity below classical, matching NRL Formulary.
+        """
         from dpf.collision.spitzer import nu_ei, spitzer_alpha, spitzer_resistivity
 
         ne = np.array([1e20])
@@ -103,7 +107,7 @@ class TestSpitzerResistivity:
         eta = spitzer_resistivity(ne, Te, lnL, Z=Z)
         freq = nu_ei(ne, Te, lnL, Z=Z)
         alpha_Z = spitzer_alpha(Z)
-        eta_expected = m_e * freq / (ne * e**2) / alpha_Z
+        eta_expected = m_e * freq * alpha_Z / (ne * e**2)  # alpha MULTIPLIES (not divides)
 
         np.testing.assert_allclose(eta, eta_expected, rtol=1e-10)
 
