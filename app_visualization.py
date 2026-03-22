@@ -289,6 +289,14 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
             "amplitude": min(1.0, float(np.expm1(min(n_efolds, 50)))),
         }
 
+    # Energy partition arrays (for energy bar visualization)
+    e_cap_raw = d.get("E_cap_kJ", [])
+    e_ind_raw = d.get("E_ind_kJ", [])
+    e_res_raw = d.get("E_res_kJ", [])
+    E_cap_kJ = [float(v) for v in np.asarray(e_cap_raw)[::step]] if len(e_cap_raw) else []
+    E_ind_kJ = [float(v) for v in np.asarray(e_ind_raw)[::step]] if len(e_ind_raw) else []
+    E_res_kJ = [float(v) for v in np.asarray(e_res_raw)[::step]] if len(e_res_raw) else []
+
     return {
         "geometry": geometry,
         "sheath": sheath,
@@ -301,6 +309,9 @@ def extract_all_layers(d: dict[str, Any]) -> dict[str, Any]:
         "instability": instability,
         "radiation": radiation_layer,
         "yield_map": yield_layer,
+        "E_cap_kJ": E_cap_kJ,
+        "E_ind_kJ": E_ind_kJ,
+        "E_res_kJ": E_res_kJ,
         "device": d.get("device", "DPF"),
         "backend": d.get("backend", "lee"),
         "has_mhd": d.get("has_mhd", False),
