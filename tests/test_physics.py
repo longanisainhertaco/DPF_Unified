@@ -1022,7 +1022,9 @@ class TestSpitzerAlphaZ:
         freq = _nu_ei(ne, Te, lnL, Z)
         eta_uncorrected = m_e * freq / (ne * e**2)
         correction_factor = eta[0] / eta_uncorrected[0]
-        expected_factor = 1.0 / 0.5064
+        # alpha(Z=1) = 0.5064 MULTIPLIES (not divides) the classical resistivity.
+        # eta_|| = alpha_0 * eta_classical (Braginskii 1965 Table 1, parallel conductivity).
+        expected_factor = 0.5064
         assert correction_factor == pytest.approx(expected_factor, rel=1e-3)
 
     def test_spitzer_resistivity_z_dependence(self):
@@ -1032,7 +1034,9 @@ class TestSpitzerAlphaZ:
         eta_z1 = spitzer_resistivity(ne, Te, lnL, Z=1.0)
         eta_z4 = spitzer_resistivity(ne, Te, lnL, Z=4.0)
         ratio = eta_z4[0] / eta_z1[0]
-        expected_ratio = 4.0 / (0.3752 / 0.5064)
+        # eta = alpha(Z) * m_e * nu_ei / (ne * e^2), nu_ei ~ Z
+        # ratio = (Z4/Z1) * (alpha_Z4/alpha_Z1) = 4 * (0.3752/0.5064)
+        expected_ratio = 4.0 * (0.3752 / 0.5064)
         assert ratio == pytest.approx(expected_ratio, rel=1e-3)
 
 

@@ -110,11 +110,14 @@ def spitzer_alpha(Z: np.ndarray | float) -> np.ndarray | float:
     """Braginskii Z-dependent correction factor for Spitzer resistivity.
 
     Returns alpha(Z) from Braginskii Table 1 (1965) using piecewise linear
-    interpolation. The Spitzer perpendicular resistivity is:
+    interpolation. The parallel Spitzer resistivity is:
 
-        eta_perp = eta_classical / alpha(Z)
+        eta_|| = alpha(Z) * eta_classical
 
-    where eta_classical = m_e * nu_ei / (ne * e^2).
+    where eta_classical = m_e * nu_ei / (ne * e^2). alpha(Z) is the
+    parallel conductivity coefficient: sigma_|| = alpha(Z) / eta_classical.
+    Since alpha(Z) < 1, the corrected resistivity is lower than classical,
+    matching the NRL Plasma Formulary result.
 
     Reference values:
         alpha(1) = 0.5064   (hydrogen)
@@ -177,14 +180,22 @@ def spitzer_resistivity(
 ) -> np.ndarray:
     """Spitzer resistivity [Ohm*m] with Braginskii alpha(Z) correction.
 
-    eta = m_e * nu_ei / (ne * e^2 * alpha(Z))
+    eta = alpha(Z) * m_e * nu_ei / (ne * e^2)
 
-    The alpha(Z) correction accounts for ion screening effects and ranges
-    from 0.5064 (Z=1, hydrogen) to 0.2949 (Z→∞, Lorentz gas). For Z=1,
-    this increases resistivity by a factor of ~2 compared to the
-    uncorrected formula.
+    The alpha(Z) correction is the Braginskii (1965) parallel conductivity
+    coefficient: sigma_|| = alpha(Z) * ne*e^2 / (m_e * nu_ei). Therefore
+    eta_|| = m_e * nu_ei / (ne * e^2) * alpha(Z), i.e. alpha(Z) MULTIPLIES
+    the classical resistivity. Since alpha(Z) < 1, the corrected resistivity
+    is LOWER than the uncorrected (classical) value. This matches the NRL
+    Plasma Formulary result: eta ~ 5.2e-5 Z lnL Te_eV^{-3/2} Ohm*m (0.5x
+    the classical value at Z=1).
 
-    For a hydrogen plasma at 1 keV, eta ~ 2×10^-7 Ohm*m.
+    Alpha values (Braginskii Table 1):
+        alpha(1) = 0.5064 (hydrogen)  -> eta ~ 0.5 * eta_classical
+        alpha(2) = 0.4408
+        alpha(inf) = 0.2949 (Lorentz gas)
+
+    For a hydrogen plasma at Te=10 eV, lnL=10: eta ~ 1.65e-5 Ohm*m.
 
     Args:
         ne: Electron number density [m^-3].
@@ -196,12 +207,13 @@ def spitzer_resistivity(
         Spitzer resistivity [Ohm*m].
 
     References:
-        NRL Plasma Formulary, Spitzer (1962).
-        Braginskii, S. I., Reviews of Plasma Physics Vol. 1 (1965).
+        NRL Plasma Formulary (2019), p. 34: eta_|| = 5.2e-5 Z lnL Te_eV^{-3/2} Ohm*m.
+        Braginskii, S. I., Reviews of Plasma Physics Vol. 1 (1965), Table 1.
+        Spitzer, L., Physics of Fully Ionized Gases (1962).
     """
     freq = nu_ei(ne, Te, lnL, Z)
     alpha_Z = spitzer_alpha(Z)
-    return m_e * freq / (ne * e**2 + 1e-300) / alpha_Z
+    return m_e * freq * alpha_Z / (ne * e**2 + 1e-300)
 
 
 @njit(cache=True)
