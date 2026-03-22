@@ -64,7 +64,7 @@ from dpf.sheath.bohm import apply_sheath_bc, floating_potential
 from dpf.turbulence.anomalous import (
     anomalous_resistivity_field,
     anomalous_resistivity_scalar,
-    total_resistivity_scalar,
+    total_resistivity,
 )
 
 logger = logging.getLogger(__name__)
@@ -874,7 +874,7 @@ class SimulationEngine:
                 threshold_model=self.config.anomalous_threshold_model,
                 Te_val=Te_avg_scalar,
             )
-            eta_total_avg = total_resistivity_scalar(eta_spitzer_avg, eta_anom)
+            eta_total_avg = total_resistivity(eta_spitzer_avg, eta_anom)
 
             # Sanitize: cap extreme values and NaN
             eta_field = np.where(np.isfinite(eta_field), eta_field, eta_total_avg)
@@ -1503,8 +1503,6 @@ class SimulationEngine:
         gamma = self.config.fluid.gamma
         rho0 = self.config.rho0
         m_ion = self.ion_mass
-        k_B = 1.381e-23
-
         source_terms = {}
         grid_shape = self.state["rho"].shape  # (nx, ny, nz)
 
@@ -2388,7 +2386,10 @@ class SimulationEngine:
         # Simplified estimate: kappa ~ 20 * (kB * Te)^{5/2} / (m_e^{1/2} * e^4 * lnL)
         # For now, use a simplified isotropic Spitzer kappa
         from dpf.constants import m_e
-        tau_e = 3.44e5 * Te_safe**1.5 / (ne_safe * lnL)  # Approximate electron collision time
+        # NRL Formulary eq. 2-5: tau_e [s] = 3.44e5 * Te_eV^1.5 / (ne [cm^-3] * lnL)
+        # Te_safe is in Kelvin; convert to eV before applying the NRL coefficient.
+        Te_eV = Te_safe * k_B / eV
+        tau_e = 3.44e5 * Te_eV**1.5 / (ne_safe * lnL)
         kappa = 3.2 * ne_safe * k_B**2 * Te_safe * tau_e / m_e
 
         if self.geometry_type == "cylindrical":

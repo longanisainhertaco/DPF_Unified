@@ -173,8 +173,9 @@ class AthenaPPSolver(PlasmaSolverBase):
             with contextlib.suppress(Exception):
                 self._core.finalize(self._mesh_handle)
             self._initialized = False
+            handle = self._mesh_handle
             self._mesh_handle = None
-            if _active_linked_handle is self._mesh_handle:
+            if _active_linked_handle is handle:
                 _active_linked_handle = None
 
     def __del__(self) -> None:

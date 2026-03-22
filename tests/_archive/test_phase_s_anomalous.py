@@ -272,8 +272,8 @@ class TestBackwardCompatibility:
         assert isinstance(eta, float)
 
     def test_total_resistivity_scalar_unchanged(self):
-        from dpf.turbulence.anomalous import total_resistivity_scalar
-        assert total_resistivity_scalar(1e-6, 1e-5) == pytest.approx(1.1e-5, rel=1e-10)
+        from dpf.turbulence.anomalous import total_resistivity
+        assert total_resistivity(1e-6, 1e-5) == pytest.approx(1.1e-5, rel=1e-10)
 
 
 class TestBraginskiiKappaZDependent:
