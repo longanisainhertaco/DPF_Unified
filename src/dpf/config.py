@@ -200,6 +200,15 @@ class FluidConfig(BaseModel):
         True,
         description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
+    two_temperature: bool = Field(
+        False,
+        description=(
+            "Enable true two-temperature model: evolve electron energy as a "
+            "separate conserved variable with Ohmic heating, Braginskii "
+            "equilibration, and radiation losses. Replaces the fraction-"
+            "preserving Te/Ti hack with physics-based electron energy equation."
+        ),
+    )
     enable_poloidal: bool = Field(
         False,
         description=(

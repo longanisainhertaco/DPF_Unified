@@ -332,6 +332,7 @@ def run_simulation_core(
         crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
         crowbar_time=cc.get("crowbar_time", 0.0),
         crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+        crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
     snowplow = None

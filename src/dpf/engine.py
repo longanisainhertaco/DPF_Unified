@@ -538,7 +538,7 @@ class SimulationEngine:
         n_i = rho0 / self.ion_mass
         p0 = 2.0 * n_i * k_B * T0
 
-        return {
+        state = {
             "rho": np.full((nx, ny, nz), rho0),
             "velocity": np.zeros((3, nx, ny, nz)),
             "pressure": np.full((nx, ny, nz), p0),
@@ -547,6 +547,13 @@ class SimulationEngine:
             "Ti": np.full((nx, ny, nz), T0),
             "psi": np.zeros((nx, ny, nz)),  # Dedner cleaning scalar
         }
+        if self.config.fluid.two_temperature:
+            from dpf.fluid.two_temperature import initialize_electron_energy
+            state["e_electron"] = initialize_electron_energy(
+                state["Te"], state["Ti"], state["pressure"],
+                state["rho"], self.ion_mass,
+            )
+        return state
 
     def _compute_dt(self) -> float:
         """Compute global timestep from CFL and circuit constraints."""
@@ -1980,10 +1987,14 @@ class SimulationEngine:
                 instead of scalar Z_bar for improved physics fidelity.
         """
         # --- Collision physics (electron-ion temperature relaxation) ---
+        # In 2T mode, step_electron_energy already handles equilibration
+        # and radiation — skip here to avoid double-counting.
         Te = self.state["Te"]
         Ti = self.state["Ti"]
         rho = self.state["rho"]
         ne = rho / self.ion_mass
+
+        _two_t = self.config.fluid.two_temperature and "e_electron" in self.state
 
         col_cfg = self.config.collision
         if col_cfg.dynamic_coulomb_log:
@@ -1994,9 +2005,12 @@ class SimulationEngine:
         # Use spatially-varying Z for collision rate if available
         Z_for_collisions = Z_bar_field if Z_bar_field is not None else Z_bar
         freq_ei = nu_ei(ne, Te, lnL, Z=Z_for_collisions)
-        Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
-        self.state["Te"] = Te_new
-        self.state["Ti"] = Ti_new
+        if not _two_t:
+            Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
+            self.state["Te"] = Te_new
+            self.state["Ti"] = Ti_new
+        else:
+            Te_new, Ti_new = Te, Ti
 
         # Update pressure from new temperatures
         self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
@@ -2010,7 +2024,7 @@ class SimulationEngine:
         # --- Radiation losses ---
         # Use spatially-varying Z for bremsstrahlung (P ~ Z^2) if available
         Z_for_rad = Z_bar_field if Z_bar_field is not None else Z_bar
-        if self.rad_cfg.bremsstrahlung_enabled:
+        if self.rad_cfg.bremsstrahlung_enabled and not _two_t:
             ne_rad = rho / self.ion_mass
             if self.rad_cfg.fld_enabled:
                 _r_coords = None
@@ -2054,7 +2068,7 @@ class SimulationEngine:
             self._sanitize_state("after radiation step")
 
         # --- Line radiation (impurity cooling) ---
-        if self.rad_cfg.line_radiation_enabled and self.rad_cfg.impurity_fraction > 0:
+        if self.rad_cfg.line_radiation_enabled and self.rad_cfg.impurity_fraction > 0 and not _two_t:
             ne_line = self.state["rho"] / self.ion_mass
             # Compute Z_eff: coronal equilibrium or fixed
             if self.rad_cfg.ionization_model == "coronal":
