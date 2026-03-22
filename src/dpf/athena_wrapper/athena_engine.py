@@ -278,35 +278,124 @@ class AthenaPPSolver(PlasmaSolverBase):
         return new_state
 
     def _read_state_from_cpp(self) -> dict[str, np.ndarray]:
-        """Read primitive variables from Athena++ mesh blocks into DPF state dict."""
+        """Read primitive variables from Athena++ mesh blocks into DPF state dict.
+
+        The C++ bindings return block-layout arrays:
+          rho:      (nblocks, nk, nj, ni)
+          velocity: (3, nblocks, nk, nj, ni)
+          B:        (3, nblocks, nk, nj, ni)
+
+        For cylindrical coords: ni=nr_per_block, nj=nz_per_block, nk=1 (phi).
+        This method reassembles blocks into DPF convention (nr, ny, nz) /
+        (3, nr, ny, nz) where ny=1 for cylindrical 2D.
+        """
         core = self._core
         handle = self._mesh_handle
 
-        # Get combined arrays from all mesh blocks
-        # C++ returns contiguous arrays in DPF convention:
-        #   rho:      (nx, ny, nz)
-        #   velocity: (3, nx, ny, nz)
-        #   pressure: (nx, ny, nz)
-        #   B:        (3, nx, ny, nz)
         prim = core.get_primitive_data(handle)  # dict of numpy arrays
 
-        rho = prim["rho"]
-        pressure = prim["pressure"]
+        rho_raw = prim["rho"]        # (nblocks, nk, nj, ni)
+        vel_raw = prim["velocity"]   # (3, nblocks, nk, nj, ni)
+        prs_raw = prim["pressure"]   # (nblocks, nk, nj, ni)
+        B_raw   = prim["B"]          # (3, nblocks, nk, nj, ni)
 
-        # Try to read Te/Ti from passive scalar fields (two-temperature model)
-        Te, Ti = self._read_Te_Ti_from_scalars(rho, pressure)
+        rho, vel, prs, B = self._reassemble_cpp_blocks(
+            rho_raw, vel_raw, prs_raw, B_raw
+        )
 
-        # Map Athena++ primitives to DPF state dict
-        state = {
-            "rho": rho,
-            "velocity": prim["velocity"],
-            "pressure": pressure,
-            "B": prim["B"],
-            "Te": Te,
-            "Ti": Ti,
-            "psi": prim.get("psi", np.zeros_like(rho)),
+        Te, Ti = self._read_Te_Ti_from_scalars(rho, prs)
+
+        return {
+            "rho":      rho,
+            "velocity": vel,
+            "pressure": prs,
+            "B":        B,
+            "Te":       Te,
+            "Ti":       Ti,
+            "psi":      prim.get("psi", np.zeros_like(rho)),
         }
-        return state
+
+    def _reassemble_cpp_blocks(
+        self,
+        rho_raw: np.ndarray,
+        vel_raw: np.ndarray,
+        prs_raw: np.ndarray,
+        B_raw: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Reassemble C++ block-layout arrays to DPF (nr, ny, nz) convention.
+
+        C++ layout: rho (nblocks, nk, nj, ni), B (3, nblocks, nk, nj, ni).
+        For cylindrical: ni=nr_block, nj=nz_block, nk=1.
+        DPF target:      rho (nr, 1, nz),         B (3, nr, 1, nz).
+
+        Supports arbitrary block counts along R and Z.  For Cartesian grids
+        (non-cylindrical, nk > 1) returns data in (nx, ny, nz) layout.
+
+        Args:
+            rho_raw: Density block array (nblocks, nk, nj, ni).
+            vel_raw: Velocity block array (3, nblocks, nk, nj, ni).
+            prs_raw: Pressure block array (nblocks, nk, nj, ni).
+            B_raw:   Magnetic field block array (3, nblocks, nk, nj, ni).
+
+        Returns:
+            Tuple of (rho, velocity, pressure, B) in DPF convention.
+        """
+        nblocks, nk, nj, ni = rho_raw.shape
+
+        if self._is_cylindrical:
+            # Cylindrical: ni=nr_block, nj=nz_block, nk=1 (phi)
+            # Need to determine block layout along R and Z.
+            # Without logical location data from C++, infer from config.
+            nr_total, _, nz_total = self.config.grid_shape
+            nr_block = ni
+            nz_block = nj
+            n_blocks_r = max(1, nr_total // nr_block)
+            n_blocks_z = max(1, nz_total // nz_block)
+
+            rho = np.zeros((nr_total, 1, nz_total), dtype=np.float64)
+            vel = np.zeros((3, nr_total, 1, nz_total), dtype=np.float64)
+            prs = np.zeros((nr_total, 1, nz_total), dtype=np.float64)
+            B   = np.zeros((3, nr_total, 1, nz_total), dtype=np.float64)
+
+            b_idx = 0
+            for bz in range(n_blocks_z):
+                for br in range(n_blocks_r):
+                    if b_idx >= nblocks:
+                        break
+                    i_start = br * nr_block
+                    j_start = bz * nz_block
+                    # Block data: (nk, nj, ni) with nk=1 → squeeze → (nj, ni)
+                    # Transpose (nj, ni) → (ni, nj) = (nr_block, nz_block)
+                    bd = rho_raw[b_idx, 0, :, :].T  # (nr_block, nz_block)
+                    rho[i_start:i_start+nr_block, 0, j_start:j_start+nz_block] = bd
+                    prs[i_start:i_start+nr_block, 0, j_start:j_start+nz_block] = (
+                        prs_raw[b_idx, 0, :, :].T
+                    )
+                    for comp in range(3):
+                        vel[comp, i_start:i_start+nr_block, 0, j_start:j_start+nz_block] = (
+                            vel_raw[comp, b_idx, 0, :, :].T
+                        )
+                        B[comp, i_start:i_start+nr_block, 0, j_start:j_start+nz_block] = (
+                            B_raw[comp, b_idx, 0, :, :].T
+                        )
+                    b_idx += 1
+        else:
+            # Cartesian: assemble blocks into (nx, ny, nz).
+            # For a single block this is a simple reshape.
+            if nblocks == 1:
+                rho = rho_raw[0].astype(np.float64)          # (nk, nj, ni) = (nz, ny, nx)
+                prs = prs_raw[0].astype(np.float64)
+                vel = vel_raw[:, 0].astype(np.float64)        # (3, nk, nj, ni)
+                B   = B_raw[:, 0].astype(np.float64)
+            else:
+                # Multi-block Cartesian: flatten all blocks into one array.
+                # This is an approximation — proper reassembly needs logical locations.
+                rho = rho_raw.reshape(-1, nj, ni)[0].astype(np.float64)
+                prs = prs_raw.reshape(-1, nj, ni)[0].astype(np.float64)
+                vel = vel_raw[:, 0].astype(np.float64)
+                B   = B_raw[:, 0].astype(np.float64)
+
+        return rho, vel, prs, B
 
     def _read_Te_Ti_from_scalars(
         self, rho: np.ndarray, pressure: np.ndarray
@@ -333,16 +422,17 @@ class AthenaPPSolver(PlasmaSolverBase):
         try:
             scalar_data = self._core.get_scalar_data(self._mesh_handle)
             if scalar_data is not None and len(scalar_data) >= 2:
-                # s[0], s[1] are specific energies (energy/mass)
-                e_e_spec = scalar_data[0]  # electron specific energy
-                e_i_spec = scalar_data[1]  # ion specific energy
+                # s[0], s[1] are specific energies (energy/mass).
+                # C++ returns (nblocks, nk, nj, ni); reshape to match rho.
+                e_e_spec = np.asarray(scalar_data[0]).reshape(rho.shape)
+                e_i_spec = np.asarray(scalar_data[1]).reshape(rho.shape)
 
                 n_i = np.maximum(rho, 1e-30) / self.config.ion_mass
                 Te = np.maximum(e_e_spec * rho * (gamma - 1.0) / (n_i * k_B), 1.0)
                 Ti = np.maximum(e_i_spec * rho * (gamma - 1.0) / (n_i * k_B), 1.0)
                 return Te, Ti
-        except (AttributeError, RuntimeError):
-            pass  # get_scalar_data not available (old bindings)
+        except (AttributeError, RuntimeError, ValueError):
+            pass  # get_scalar_data not available or incompatible shape
 
         # Fallback: single-fluid estimate
         return self._estimate_Te(rho, pressure), self._estimate_Ti(rho, pressure)

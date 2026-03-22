@@ -1,3 +1,6 @@
 [submodule "external/athena"]
 	path = external/athena
 	url = https://github.com/PrincetonUniversity/athena.git
+[submodule "external/athenak"]
+	path = external/athenak
+	url = https://github.com/IAS-Astrophysics/athenak.git

@@ -68,8 +68,11 @@ BUILD_DIR="build_serial"
 if [ "$USE_OPENMP" = true ]; then
     CMAKE_OPTS="$CMAKE_OPTS -D CMAKE_CXX_COMPILER=$BREW_LLVM"
     CMAKE_OPTS="$CMAKE_OPTS -D Kokkos_ENABLE_OPENMP=On"
+    # Use CMAKE_OSX_SYSROOT so CMake passes -isysroot (not -I usr/include).
+    # Homebrew LLVM 19+ fails when the system C headers appear before its own libc++ headers.
+    # CMAKE_OSX_SYSROOT avoids the Kokkos INTERFACE_INCLUDE_DIRECTORIES usr/include injection.
     if [ -n "$SYSROOT" ]; then
-        CMAKE_OPTS="$CMAKE_OPTS -D CMAKE_CXX_FLAGS=--sysroot=$SYSROOT"
+        CMAKE_OPTS="$CMAKE_OPTS -D CMAKE_OSX_SYSROOT=$SYSROOT"
     fi
     BUILD_DIR="build_omp"
 fi

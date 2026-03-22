@@ -536,10 +536,14 @@ Root attributes: dataset_name, grid_type ("cartesian"), n_spatial_dims,
 ### Dormant Modules (No Tests)
 | Module | LOC | Status |
 |--------|-----|--------|
-| AMR (`src/dpf/experimental/amr/`) | 756 | Code complete, needs solver refactoring for non-uniform grids |
-| PIC (`src/dpf/experimental/pic/`) | 979 | Boris pusher + CIC deposition complete, never instantiated |
-| Multi-species (`src/dpf/experimental/species.py`) | 410 | SpeciesMixture class complete, not integrated |
-| GPU stub (`src/dpf/experimental/gpu_backend.py`) | 119 | CuPy detection only, no actual kernels |
+| AMR (`src/dpf/experimental/amr/`) | — | NOT IMPLEMENTED — directory does not exist. Design required (~60-80h). |
+| Multi-species | — | NOT IMPLEMENTED — no SpeciesMixture class exists. `src/dpf/experimental/species.py` does not exist. Design required (~40-60h). |
+| GPU stub | — | NOT IMPLEMENTED — `src/dpf/experimental/gpu_backend.py` does not exist. |
+
+### Active Experimental Modules
+| Module | LOC | Status |
+|--------|-----|--------|
+| PIC (`src/dpf/experimental/pic/hybrid.py`) | 1142 | Wired into engine.py via KineticManager (lines 59, 329-331). Active, not dormant. |
 
 ### Unused pyproject.toml Dependency Groups
 - `[ml]` — placeholder for MLX / Apple Metal ML
