@@ -103,6 +103,18 @@ FIDELITY = {
     "engine_athenak": "Level 9 — AthenaK Kokkos backend (GPU-portable, research grade, 9.0/10 fidelity)",
 }
 
+# Dynamic availability checks for compiled backends
+try:
+    from dpf.athena_wrapper import is_available as _athena_check
+    _athena_ok = _athena_check()
+except Exception:
+    _athena_ok = False
+try:
+    from dpf.athenak_wrapper import is_available as _athenak_check
+    _athenak_ok = _athenak_check()
+except Exception:
+    _athenak_ok = False
+
 # Status: whether the backend is fully operational
 BACKEND_STATUS = {
     "lee": "WORKING",
@@ -112,8 +124,8 @@ BACKEND_STATUS = {
     "hybrid": "WORKING",
     "engine_python": "WORKING",
     "engine_metal": "WORKING",
-    "engine_athena": "Requires compiled Athena++ binary",
-    "engine_athenak": "Requires compiled AthenaK binary",
+    "engine_athena": "WORKING" if _athena_ok else "Requires compiled Athena++ binary",
+    "engine_athenak": "WORKING" if _athenak_ok else "Requires compiled AthenaK binary",
 }
 
 BACKEND_HELP = {
@@ -190,7 +202,12 @@ def get_gas_choices() -> list[tuple[str, str]]:
 
 
 def get_backend_choices() -> list[tuple[str, str]]:
-    return [(desc, key) for key, desc in BACKENDS.items()]
+    # Hide AthenaK — Cartesian-only, cannot run cylindrical DPF geometry.
+    # Hide Athena++ if binary not compiled.
+    hidden = {"engine_athenak"}
+    if not _athena_ok:
+        hidden.add("engine_athena")
+    return [(desc, key) for key, desc in BACKENDS.items() if key not in hidden]
 
 
 def get_grid_choices() -> list[tuple[str, str]]:
