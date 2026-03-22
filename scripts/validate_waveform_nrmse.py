@@ -74,10 +74,10 @@ def run_device(name: str, dev: ExperimentalDevice) -> dict:
     if dev.lee_fcr > 0:
         kwargs["fcr"] = dev.lee_fcr
 
-    # PF-1000 variants need R0 correction (from validate_24shot.py)
-    if name in ("PF-1000", "PF-1000-Gribkov"):
-        kwargs["R0_mOhm"] = dev.resistance * 1e3 + 6.43
-    elif name == "PF-1000-16kV":
+    # R0 correction from Akel 24-shot calibration (16 kV, 1.05-1.2 Torr)
+    # Only applies to PF-1000-16kV which matches those conditions.
+    # Scholz (27 kV, 3.5 Torr) and Gribkov use the published R0=2.3 mOhm.
+    if name == "PF-1000-16kV":
         kwargs["R0_mOhm"] = dev.resistance * 1e3 + 6.43
 
     return run_simulation_core(**kwargs)

@@ -966,6 +966,10 @@ class SimulationEngine:
                     coupling.dL_dt = feedback.dLp_dt
                     back_emf = feedback.back_emf
                 else:
+                    # Post-pinch: hold inductance constant. The column expansion
+                    # model's dL/dt is uncalibrated and produces excessive current
+                    # dips (90% vs experimental 60%). Use dL_dt=0 until the
+                    # post-pinch model is validated against experimental dip data.
                     coupling.Lp = self.snowplow.plasma_inductance
                     coupling.dL_dt = 0.0
 
