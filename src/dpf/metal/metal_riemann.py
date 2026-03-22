@@ -58,6 +58,7 @@ IEN: int = 4   # total energy
 IB1: int = 5   # Bx
 IB2: int = 6   # By
 IB3: int = 7   # Bz
+IEE: int = 8   # electron energy density (optional 9th variable)
 
 # Density and pressure floors
 RHO_FLOOR: float = 1e-12
@@ -101,6 +102,7 @@ def _prim_to_cons_mps(
     p: torch.Tensor,
     B: torch.Tensor,
     gamma: float,
+    e_electron: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Convert primitive variables to conservative state vector.
 
@@ -110,9 +112,11 @@ def _prim_to_cons_mps(
         p: Thermal pressure, shape (...).
         B: Magnetic field, shape (3, ...).
         gamma: Adiabatic index.
+        e_electron: Electron energy density, shape (...).  Optional;
+            when provided the returned tensor has shape (9, ...).
 
     Returns:
-        Conservative state U, shape (8, ...).
+        Conservative state U, shape (8, ...) or (9, ...) if e_electron given.
     """
     rho_safe = torch.clamp(rho, min=RHO_FLOOR)
     p_safe = torch.clamp(p, min=P_FLOOR)
@@ -126,7 +130,7 @@ def _prim_to_cons_mps(
     # Total energy: internal + kinetic + magnetic
     E_total = p_safe / (gamma - 1.0) + KE + ME
 
-    U = torch.stack([
+    components = [
         rho_safe,
         rho_safe * vel[0],
         rho_safe * vel[1],
@@ -135,8 +139,12 @@ def _prim_to_cons_mps(
         B[0],
         B[1],
         B[2],
-    ], dim=0)  # (8, ...)
+    ]
 
+    if e_electron is not None:
+        components.append(torch.clamp(e_electron, min=0.0))
+
+    U = torch.stack(components, dim=0)  # (8, ...) or (9, ...)
     return U
 
 
@@ -147,7 +155,7 @@ def _cons_to_prim_mps(
     """Convert conservative state vector to primitive variables.
 
     Args:
-        U: Conservative state, shape (8, ...).
+        U: Conservative state, shape (8, ...) or (9, ...).
         gamma: Adiabatic index.
 
     Returns:
@@ -156,6 +164,10 @@ def _cons_to_prim_mps(
             vel: shape (3, ...).
             p:   shape (...), clamped above P_FLOOR.
             B:   shape (3, ...).
+
+    Note: e_electron (index 8) is not returned here -- it passes
+    through the Riemann solver as a passive scalar and is extracted
+    separately from the conservative vector after the RHS computation.
     """
     rho = torch.clamp(U[IDN], min=RHO_FLOOR)
     inv_rho = 1.0 / rho
@@ -246,7 +258,14 @@ def _physical_flux_mps(
     F_B2 = B[1] * vn - vel[1] * Bn
     F_B3 = B[2] * vn - vel[2] * Bn
 
-    flux = torch.stack([F_rho, F_m1, F_m2, F_m3, F_E, F_B1, F_B2, F_B3], dim=0)
+    components = [F_rho, F_m1, F_m2, F_m3, F_E, F_B1, F_B2, F_B3]
+
+    # Passive scalar flux for e_electron (index 8): F_ee = e_electron * v_n
+    if U.shape[0] > NVAR:
+        F_ee = U[IEE] * vn
+        components.append(F_ee)
+
+    flux = torch.stack(components, dim=0)
     return flux
 
 
@@ -727,6 +746,10 @@ def hll_flux_mps(
     UR_clean[IDN] = torch.clamp(UR[IDN], min=RHO_FLOOR)
     UL_clean[IEN] = torch.clamp(UL[IEN], min=P_FLOOR)
     UR_clean[IEN] = torch.clamp(UR[IEN], min=P_FLOOR)
+    # Floor e_electron if present (9th component)
+    if UL.shape[0] > NVAR:
+        UL_clean[IEE] = torch.clamp(UL[IEE], min=0.0)
+        UR_clean[IEE] = torch.clamp(UR[IEE], min=0.0)
 
     # Extract primitives
     rho_L, vel_L, p_L, B_L = _cons_to_prim_mps(UL_clean, gamma)
@@ -765,7 +788,7 @@ def hll_flux_mps(
     denom = torch.clamp(denom, min=1e-20)
 
     # HLL flux: (SR*FL - SL*FR + SL*SR*(UR - UL)) / (SR - SL)
-    # Broadcast SL, SR from shape (...) to (8, ...) for the 8 components
+    # Broadcast SL, SR from shape (...) to (N, ...) for all components
     SL_8 = SL.unsqueeze(0)     # (1, ...)
     SR_8 = SR.unsqueeze(0)     # (1, ...)
     denom_8 = denom.unsqueeze(0)
@@ -948,7 +971,7 @@ def hlld_flux_mps(
     vB_R = vn_R * Bn_R + vel_R[(dim + 1) % 3] * B_R[(dim + 1) % 3] + vel_R[(dim + 2) % 3] * B_R[(dim + 2) % 3]
     e_sR = ((SR - vn_R) * UR[IEN] - pt_R * vn_R + pt_star * SM + Bn * (vB_R - vB_sR)) / denom_R
 
-    # ---- Build star conservative states (8 components) ----
+    # ---- Build star conservative states ----
     U_sL = torch.zeros_like(UL)
     U_sL[IDN] = rho_sL
     U_sL[im_n] = rho_sL * SM
@@ -968,6 +991,20 @@ def hlld_flux_mps(
     U_sR[ib_n] = Bn
     U_sR[ib_t1] = Bt1_sR
     U_sR[ib_t2] = Bt2_sR
+
+    # Passive scalar (e_electron) star states: advects with contact wave SM.
+    # ee*_L = ee_L * (SL - vn_L) / (SL - SM)
+    # ee*_R = ee_R * (SR - vn_R) / (SR - SM)
+    has_ee = UL.shape[0] > NVAR
+    if has_ee:
+        denom_ee_L = torch.where(
+            torch.abs(SL - SM) < 1e-20, torch.full_like(SM, 1e-20), SL - SM,
+        )
+        denom_ee_R = torch.where(
+            torch.abs(SR - SM) < 1e-20, torch.full_like(SM, 1e-20), SR - SM,
+        )
+        U_sL[IEE] = torch.clamp(UL[IEE] * (SL - vn_L) / denom_ee_L, min=0.0)
+        U_sR[IEE] = torch.clamp(UR[IEE] * (SR - vn_R) / denom_ee_R, min=0.0)
 
     # ---- Physical fluxes (used in Rankine-Hugoniot formula) ----
     FL = _physical_flux_mps(UL, gamma, dim)
@@ -1022,7 +1059,7 @@ def hlld_flux_mps(
     vB_dsR = SM * Bn + vt1_dsR * Bt1_ds_R + vt2_dsR * Bt2_ds_R
     e_dsR = e_sR + sqrt_rho_sR * (vB_sR - vB_dsR) * sign_Bn
 
-    # ---- Build double-star conservative states (8 components) ----
+    # ---- Build double-star conservative states ----
     U_dsL = torch.zeros_like(UL)
     U_dsL[IDN] = rho_sL             # density continuous across Alfven wave
     U_dsL[im_n] = rho_sL * SM
@@ -1042,6 +1079,11 @@ def hlld_flux_mps(
     U_dsR[ib_n] = Bn
     U_dsR[ib_t1] = Bt1_ds_R
     U_dsR[ib_t2] = Bt2_ds_R
+
+    # Passive scalar continuous across Alfven waves: ee** = ee*
+    if has_ee:
+        U_dsL[IEE] = U_sL[IEE]
+        U_dsR[IEE] = U_sR[IEE]
 
     # ---- Double-star fluxes via Rankine-Hugoniot ----
     # F**_L = F*_L + SL* * (U**_L - U*_L)
@@ -1303,6 +1345,7 @@ def mhd_rhs_mps(
     vel = state["velocity"]
     p = state["pressure"]
     B = state["B"]
+    e_electron = state.get("e_electron")
 
     _ensure_mps(rho, "rho")
     _ensure_mps(vel, "velocity")
@@ -1311,8 +1354,8 @@ def mhd_rhs_mps(
 
     nx, ny, nz = rho.shape
 
-    # Convert to conservative variables: (8, nx, ny, nz)
-    U = _prim_to_cons_mps(rho, vel, p, B, gamma)
+    # Convert to conservative variables: (8, nx, ny, nz) or (9, ...) with e_electron
+    U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
 
     # Accumulate conservative RHS: dU/dt = -div(F)
     dU_dt = torch.zeros_like(U)
@@ -1327,7 +1370,7 @@ def mhd_rhs_mps(
             # Cannot compute fluxes with fewer than 2 cells
             continue
 
-        axis = dim_idx + 1  # tensor axis (0 is the 8-component axis)
+        axis = dim_idx + 1  # tensor axis (0 is the N-component axis)
         dim_bc = bc[dim_idx] if dim_idx < len(bc) else "outflow"
 
         if dim_bc == "periodic":
@@ -1418,12 +1461,18 @@ def mhd_rhs_mps(
         dU_dt[IEN] - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB
     )
 
-    return {
+    result: dict[str, torch.Tensor] = {
         "rho": drho_dt,
         "velocity": dvel_dt,
         "pressure": dp_dt,
         "B": dB_dt,
     }
+
+    # e_electron advection RHS: d(e_electron)/dt is directly from conservative
+    if e_electron is not None:
+        result["e_electron"] = dU_dt[IEE]
+
+    return result
 
 
 # ============================================================
@@ -1497,6 +1546,7 @@ def mhd_rhs_cylindrical_mps(
     vel = state["velocity"]
     p = state["pressure"]
     B = state["B"]
+    e_electron = state.get("e_electron")
 
     _ensure_mps(rho, "rho")
     _ensure_mps(vel, "velocity")
@@ -1507,7 +1557,7 @@ def mhd_rhs_cylindrical_mps(
 
     nx, ny, nz = rho.shape
 
-    U = _prim_to_cons_mps(rho, vel, p, B, gamma)
+    U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
     dU_dt = torch.zeros_like(U)
 
     # ---- Radial dimension (dim=0): r-weighted flux differencing ----
@@ -1538,8 +1588,9 @@ def mhd_rhs_cylindrical_mps(
             # The right boundary uses replicate (outflow) padding.
             #
             # Ghost layer construction: prepend one reflected cell on the left.
-            # sign_mask: shape (8, 1, 1, 1)
-            sign_mask = torch.ones(8, 1, 1, 1, dtype=U.dtype, device=U.device)
+            # sign_mask: shape (nvar, 1, 1, 1)
+            nvar = U.shape[0]
+            sign_mask = torch.ones(nvar, 1, 1, 1, dtype=U.dtype, device=U.device)
             sign_mask[IM1] = -1.0  # v_r: odd
             sign_mask[IM2] = -1.0  # v_theta: odd
             sign_mask[IB1] = -1.0  # B_r: odd
@@ -1652,9 +1703,15 @@ def mhd_rhs_cylindrical_mps(
 
     dvel_dt = torch.stack([dvx_dt, dvy_dt, dvz_dt], dim=0)
 
-    return {
+    result: dict[str, torch.Tensor] = {
         "rho": drho_dt,
         "velocity": dvel_dt,
         "pressure": dp_dt,
         "B": dB_dt,
     }
+
+    # e_electron advection RHS: d(e_electron)/dt is directly from conservative
+    if e_electron is not None:
+        result["e_electron"] = dU_dt[IEE]
+
+    return result
