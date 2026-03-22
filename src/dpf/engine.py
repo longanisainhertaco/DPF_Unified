@@ -1659,19 +1659,23 @@ class SimulationEngine:
             dr = self.config.dx
             nr = self.config.grid_shape[0]
             B = self.state["B"]
+            # Normalise to 4D (3, nr, ny, nz) regardless of how the backend
+            # returned the field.  5D block-layout arrays (3, nblocks, nk, nj, ni)
+            # from the Athena++ linked-mode bindings must have been reassembled
+            # upstream; if they somehow reach here, squeeze extra dims so we
+            # never index out-of-bounds.
+            if B.ndim != 4:
+                # Reshape any non-4D array into (3, nr, ny, nz).
+                nr_cfg, ny_cfg, nz_cfg = self.config.grid_shape
+                B = B.reshape(3, nr_cfg, ny_cfg, nz_cfg)
+                self.state["B"] = B
             for ir in range(nr):
                 r = (ir + 0.5) * dr
                 if cc.anode_radius <= r <= cc.cathode_radius and r > 0:
                     val = _mu_0 * current / (2.0 * pi * r)
-                    if B.ndim == 4:
-                        B[1, ir, :, :] = val
-                    else:
-                        B[1, ir, :] = val
+                    B[1, ir, :, :] = val
                 elif r < cc.anode_radius:
-                    if B.ndim == 4:
-                        B[1, ir, :, :] = 0.0
-                    else:
-                        B[1, ir, :] = 0.0
+                    B[1, ir, :, :] = 0.0
             self.state["B"] = B
 
         # Snowplow zipper BC: applies to ALL backends with cylindrical geometry
@@ -1682,12 +1686,13 @@ class SimulationEngine:
 
             nx, ny, nz = self.config.grid_shape
             B = self.state["B"]
+            # Ensure 4D (3, nr, ny, nz) — normalised upstream for cylindrical
+            # backends; guard Cartesian/Python paths that may still be 3D.
+            if B.ndim != 4:
+                B = B.reshape(3, nx, ny, nz)
+                self.state["B"] = B
             if 0 <= iz_sheath < nz:
-                # Zero B_theta for z > z_sheath (ahead of axial sheath)
-                if B.ndim == 4:
-                    B[1, :, :, iz_sheath + 1:] = 0.0
-                else:  # 3D (3, nr, nz) — squeezed cylindrical
-                    B[1, :, iz_sheath + 1:] = 0.0
+                B[1, :, :, iz_sheath + 1:] = 0.0
 
             # Radial zipper: zero B_theta outside radial shock front
             if self.snowplow.phase in ("radial", "reflected"):
@@ -1695,10 +1700,7 @@ class SimulationEngine:
                 dr = self.config.dx
                 ir_shock = round(r_shock / dr)
                 if 0 <= ir_shock < nx:
-                    if B.ndim == 4:
-                        B[1, ir_shock + 1:, :, :] = 0.0
-                    else:  # 3D
-                        B[1, ir_shock + 1:, :] = 0.0
+                    B[1, ir_shock + 1:, :, :] = 0.0
 
     def _initialize_radial_bfield(self) -> None:
         """One-shot B_theta initialization when snowplow enters radial phase.
