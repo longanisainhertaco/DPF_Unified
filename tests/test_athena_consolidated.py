@@ -4,8 +4,12 @@ Source files merged:
 - tests/test_athena_wrapper.py          (Sprint F.1 — Athena++ wrapper layer)
 - tests/test_phase_j_athenak.py         (Phase J.1 — AthenaK backend integration)
 - tests/test_phase_r_athena_primary.py  (Phase R — Athena++ as primary backend)
-"""
 
+NOTE: Athena++ pybind11 extension uses global state that cannot be
+re-initialized in the same process (lesson #9). These tests MUST run
+in a separate pytest invocation from other MHD solver tests. The
+pytestmark below ensures `pytest -m "not athena"` excludes this file.
+"""
 from __future__ import annotations
 
 import os
@@ -18,6 +22,8 @@ import pytest
 
 from dpf.config import FluidConfig, SimulationConfig
 from dpf.core.bases import CouplingState, PlasmaSolverBase
+
+pytestmark = pytest.mark.athena  # noqa: E402
 
 # --- Section: test_athena_wrapper.py ---
 

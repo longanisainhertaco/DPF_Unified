@@ -2647,6 +2647,7 @@ class TestRKL2SuperTimeStepping:
 
 
 @pytest.mark.slow
+@pytest.mark.athena
 @pytest.mark.skipif(not _athena_available(), reason="Athena++ not compiled")
 class TestCrossBackend:
     """Cross-backend: Python MHD vs Athena++ code-to-code verification."""
