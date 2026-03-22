@@ -90,6 +90,13 @@ class RadiationConfig(BaseModel):
         0.01, ge=0, le=1.0,
         description="Impurity number density as fraction of ne (default 0.01 = 1% Cu for typical DPF)",
     )
+    ionization_model: str = Field(
+        "fixed",
+        description=(
+            "Ionization state model: 'fixed' uses impurity_Z as Z_eff directly, "
+            "'coronal' computes Z_eff(Te) from coronal equilibrium (Post 1977)"
+        ),
+    )
 
 
 class SheathConfig(BaseModel):
