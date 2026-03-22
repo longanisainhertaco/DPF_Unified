@@ -103,6 +103,7 @@ class YieldTracker:
         V_pinch: float = 0.0,
         cell_volume: float = 1e-9,
         f_beam: float = 0.14,
+        L_pinch: float = 0.0,
     ) -> None:
         """Accumulate yield from one MHD timestep.
 
@@ -113,6 +114,7 @@ class YieldTracker:
             V_pinch: Pinch voltage [V] for beam-target.
             cell_volume: Cell volume [m^3].
             f_beam: Beam fraction for beam-target yield.
+            L_pinch: Beam-target interaction length [m]. If 0, uses 1 cm default.
         """
         rho = state["rho"]
         n_i = rho / self.ion_mass
@@ -122,31 +124,27 @@ class YieldTracker:
         if "Ti" in state:
             Ti = state["Ti"]
         else:
-            # Derive from pressure: p = n_i * kB * Ti (single fluid)
             Ti = state["pressure"] * self.ion_mass / (2.0 * np.maximum(rho, 1e-30) * k_B)
         Ti_safe = np.maximum(Ti, 1.0)
 
         # Peak values
         Ti_keV = float(np.max(Ti_safe)) * k_B / (1000.0 * 1.602e-19)
         n_peak = float(np.max(n_i_safe))
-        # Physical cap: DPF peak densities are ~1e24-1e26 m^-3. Values above 1e28
-        # indicate unphysical MHD compression artifacts; clamp to prevent overflow.
-        _N_PEAK_MAX = 1.0e28  # m^-3
+        _N_PEAK_MAX = 1.0e28
         n_peak_safe = min(n_peak, _N_PEAK_MAX)
         if n_peak > _N_PEAK_MAX:
             logger.debug("YieldTracker: n_peak %.2e exceeds physical cap, clamped to %.2e", n_peak, _N_PEAK_MAX)
-        # Thermonuclear yield: dY = 0.25 * n_D^2 * <sigma*v> * V * dt
+
+        # Thermonuclear yield: dY = 0.25 * integral(n_D^2) * <sigma*v> * V_cell * dt
+        # Correct volume integral: sum n_i^2 over all cells, not n_peak^2 * V_total
         dY_thermo = 0.0
-        if Ti_keV > 0.1:  # Below 0.1 keV, reactivity is negligible
+        if Ti_keV > 0.1:
             try:
                 from dpf.diagnostics.neutron_yield import dd_reactivity
                 sigma_v = dd_reactivity(Ti_keV)
-                # Volume-integrated: sum over all cells
-                n_D_peak = np.float64(n_peak_safe)
-                V_total = np.float64(cell_volume * rho.size)  # Total grid volume
-                # Use peak conditions (pessimistic for volume average)
-                dY_step = np.float64(0.25) * n_D_peak**2 * np.float64(sigma_v) * V_total * np.float64(dt)
-                dY_thermo = float(min(dY_step, 1.0e50))  # hard cap against float overflow
+                n_sq_sum = float(np.sum(np.minimum(n_i_safe, _N_PEAK_MAX) ** 2))
+                dY_step = 0.25 * n_sq_sum * float(cell_volume) * sigma_v * dt
+                dY_thermo = float(min(dY_step, 1.0e50))
             except ImportError:
                 pass
 
@@ -155,9 +153,9 @@ class YieldTracker:
         if abs(V_pinch) > 1e3 and abs(I_current) > 1e3:
             try:
                 from dpf.diagnostics.beam_target import beam_target_yield_rate
-                L_pinch = 0.01  # EMPIRICAL: 1 cm interaction length
+                _L = L_pinch if L_pinch > 0 else 0.01  # fallback 1 cm
                 bt_rate = beam_target_yield_rate(
-                    abs(I_current), abs(V_pinch), n_peak_safe, L_pinch,
+                    abs(I_current), abs(V_pinch), n_peak_safe, _L,
                     f_beam=f_beam,
                 )
                 dY_bt = bt_rate * dt
