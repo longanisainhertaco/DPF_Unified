@@ -290,7 +290,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             Same keys, values on ``self.device`` in float32.
         """
         gpu_state: dict[str, torch.Tensor] = {}
-        for key in ("rho", "velocity", "pressure", "B", "Te", "Ti", "psi"):
+        for key in ("rho", "velocity", "pressure", "B", "Te", "Ti", "psi", "e_electron"):
             arr = state.get(key)
             if arr is not None:
                 gpu_state[key] = torch.as_tensor(
@@ -354,6 +354,10 @@ class MetalMHDSolver(PlasmaSolverBase):
         """
         state_gpu["rho"] = torch.clamp(state_gpu["rho"], min=RHO_FLOOR)
         state_gpu["pressure"] = torch.clamp(state_gpu["pressure"], min=P_FLOOR)
+        if "e_electron" in state_gpu:
+            state_gpu["e_electron"] = torch.clamp(
+                state_gpu["e_electron"], min=0.0,
+            )
 
     # ------------------------------------------------------------------ #
     #  CFL timestep
@@ -482,11 +486,17 @@ class MetalMHDSolver(PlasmaSolverBase):
         vel: torch.Tensor,
         p: torch.Tensor,
         B: torch.Tensor,
+        e_electron: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
         """Compute MHD RHS for a given primitive state."""
+        state_dict: dict[str, torch.Tensor] = {
+            "rho": rho, "velocity": vel, "pressure": p, "B": B,
+        }
+        if e_electron is not None:
+            state_dict["e_electron"] = e_electron
         if self.coordinates == "cylindrical":
             return mhd_rhs_cylindrical_mps(
-                {"rho": rho, "velocity": vel, "pressure": p, "B": B},
+                state_dict,
                 self.gamma,
                 self.dx, self.dy, self.dz,
                 r_cell=self._r,
@@ -497,7 +507,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 bc=self.bc,
             )
         return mhd_rhs_mps(
-            {"rho": rho, "velocity": vel, "pressure": p, "B": B},
+            state_dict,
             self.gamma,
             self.dx, self.dy, self.dz,
             self.limiter,
@@ -947,14 +957,17 @@ class MetalMHDSolver(PlasmaSolverBase):
         vel_n = state_gpu["velocity"].clone()
         p_n = state_gpu["pressure"].clone()
         B_n = state_gpu["B"].clone()
+        ee_n = state_gpu.get("e_electron")
+        if ee_n is not None:
+            ee_n = ee_n.clone()
 
         if self.time_integrator == "ssp_rk3":
-            rho_new, vel_new, p_new, B_new = self._step_ssp_rk3(
-                rho_n, vel_n, p_n, B_n, dt,
+            rho_new, vel_new, p_new, B_new, ee_new = self._step_ssp_rk3(
+                rho_n, vel_n, p_n, B_n, dt, e_electron=ee_n,
             )
         else:
-            rho_new, vel_new, p_new, B_new = self._step_ssp_rk2(
-                rho_n, vel_n, p_n, B_n, dt,
+            rho_new, vel_new, p_new, B_new, ee_new = self._step_ssp_rk2(
+                rho_n, vel_n, p_n, B_n, dt, e_electron=ee_n,
             )
 
         # -------------------------------------------------------------- #
@@ -1158,7 +1171,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # -------------------------------------------------------------- #
         self._update_coupling(B_new, current, voltage, dt)
 
-        return {
+        result = {
             "rho": rho_new,
             "velocity": vel_new,
             "pressure": p_new,
@@ -1167,6 +1180,9 @@ class MetalMHDSolver(PlasmaSolverBase):
             "Ti": Ti_pass,
             "psi": psi_pass,
         }
+        if ee_new is not None:
+            result["e_electron"] = ee_new
+        return result
 
     def step(
         self,
@@ -1248,8 +1264,10 @@ class MetalMHDSolver(PlasmaSolverBase):
             import math
             result["B"] = result["B"] * math.sqrt(mu_0_si)
 
-        # Two-temperature operator-split: apply source terms on CPU
-        e_electron_in = state.get("e_electron")
+        # Two-temperature operator-split: apply source terms on CPU.
+        # Use the advected e_electron from the GPU step (result) if available,
+        # otherwise fall back to the input state.
+        e_electron_in = result.get("e_electron", state.get("e_electron"))
         if e_electron_in is not None:
             from dpf.fluid.two_temperature import step_electron_energy
             rho = result["rho"]
@@ -1383,22 +1401,32 @@ class MetalMHDSolver(PlasmaSolverBase):
         p_n: torch.Tensor,
         B_n: torch.Tensor,
         dt: float,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        e_electron: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """SSP-RK2 (Shu-Osher): 2 stages, 2nd-order."""
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n)
+        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
+        ee_1 = None
+        if e_electron is not None:
+            ee_1 = torch.clamp(e_electron + dt * rhs1["e_electron"], min=0.0)
         if self.use_ct:
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1)
+        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
         rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
         vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
         p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["pressure"])
         B_new = 0.5 * B_n + 0.5 * (B_1 + dt * rhs2["B"])
+        ee_new = None
+        if e_electron is not None:
+            ee_new = torch.clamp(
+                0.5 * e_electron + 0.5 * (ee_1 + dt * rhs2["e_electron"]),
+                min=0.0,
+            )
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
         p_new = torch.clamp(p_new, min=P_FLOOR)
@@ -1406,7 +1434,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
 
-        return rho_new, vel_new, p_new, B_new
+        return rho_new, vel_new, p_new, B_new, ee_new
 
     def _step_ssp_rk3(
         self,
@@ -1415,7 +1443,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         p_n: torch.Tensor,
         B_n: torch.Tensor,
         dt: float,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        e_electron: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """SSP-RK3 (Shu-Osher): 3 stages, 3rd-order.
 
         References:
@@ -1423,19 +1452,28 @@ class MetalMHDSolver(PlasmaSolverBase):
             Gottlieb S. et al., SIAM Rev. 43, 89-112 (2001).
         """
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n)
+        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
+        ee_1 = None
+        if e_electron is not None:
+            ee_1 = torch.clamp(e_electron + dt * rhs1["e_electron"], min=0.0)
         if self.use_ct:
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1)
+        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
         rho_2 = 0.75 * rho_n + 0.25 * (rho_1 + dt * rhs2["rho"])
         vel_2 = 0.75 * vel_n + 0.25 * (vel_1 + dt * rhs2["velocity"])
         p_2 = 0.75 * p_n + 0.25 * (p_1 + dt * rhs2["pressure"])
         B_2 = 0.75 * B_n + 0.25 * (B_1 + dt * rhs2["B"])
+        ee_2 = None
+        if e_electron is not None:
+            ee_2 = torch.clamp(
+                0.75 * e_electron + 0.25 * (ee_1 + dt * rhs2["e_electron"]),
+                min=0.0,
+            )
 
         rho_2 = torch.clamp(rho_2, min=RHO_FLOOR)
         p_2 = torch.clamp(p_2, min=P_FLOOR)
@@ -1444,11 +1482,17 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_2 = self._apply_ct_correction(B_2, B_n, dt)
 
         # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
-        rhs3 = self._compute_rhs(rho_2, vel_2, p_2, B_2)
+        rhs3 = self._compute_rhs(rho_2, vel_2, p_2, B_2, e_electron=ee_2)
         rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * (rho_2 + dt * rhs3["rho"])
         vel_new = (1.0 / 3.0) * vel_n + (2.0 / 3.0) * (vel_2 + dt * rhs3["velocity"])
         p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * (p_2 + dt * rhs3["pressure"])
         B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * (B_2 + dt * rhs3["B"])
+        ee_new = None
+        if e_electron is not None:
+            ee_new = torch.clamp(
+                (1.0 / 3.0) * e_electron + (2.0 / 3.0) * (ee_2 + dt * rhs3["e_electron"]),
+                min=0.0,
+            )
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
         p_new = torch.clamp(p_new, min=P_FLOOR)
@@ -1456,7 +1500,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
 
-        return rho_new, vel_new, p_new, B_new
+        return rho_new, vel_new, p_new, B_new, ee_new
 
     # ------------------------------------------------------------------ #
     #  Constrained transport correction

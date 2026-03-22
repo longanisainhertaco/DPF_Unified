@@ -2021,6 +2021,32 @@ class SimulationEngine:
             self._apply_viscosity(dt_sub)
             self._sanitize_state("after viscosity step")
 
+        # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
+        # Skip if: Metal backend (handled internally), or 2T mode (2T module owns conduction).
+        if self.config.fluid.enable_anisotropic_conduction and self.backend != "metal" and not _two_t:
+            from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
+            _dx = self.config.dx
+            if self.geometry_type == "cylindrical":
+                _dz = self.config.geometry.dz if self.config.geometry.dz is not None else _dx
+                _dy = _dx
+            else:
+                _dy = _dx
+                _dz = _dx
+            ne = rho / self.ion_mass
+            Z_eff_aniso = max(float(Z_bar), 0.01)
+            Te_aniso = anisotropic_thermal_conduction(
+                self.state["Te"],
+                self.state["B"],
+                np.maximum(ne, 1e10),
+                dt_sub,
+                _dx,
+                _dy,
+                _dz,
+                Z_eff=Z_eff_aniso,
+            )
+            self.state["Te"] = np.maximum(Te_aniso, 1.0)
+            self._sanitize_state("after anisotropic conduction step")
+
         # --- Radiation losses ---
         # Use spatially-varying Z for bremsstrahlung (P ~ Z^2) if available
         Z_for_rad = Z_bar_field if Z_bar_field is not None else Z_bar

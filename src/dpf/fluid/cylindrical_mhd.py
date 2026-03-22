@@ -436,6 +436,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         psi: np.ndarray,
         eta_field: np.ndarray | None = None,
         source_terms: dict | None = None,
+        e_electron: np.ndarray | None = None,
     ) -> dict[str, np.ndarray]:
         """Godunov (PLM+HLL) RHS for cylindrical MHD.
 
@@ -517,6 +518,27 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         )
         # flux_z arrays have shape (nr, nz-1)
 
+        # ---- Passive scalar flux for e_electron (upwind) ----
+        if e_electron is not None:
+            ee_L_r, ee_R_r = self._plm_reconstruct(e_electron, axis=0)
+            ee_L_r = np.maximum(ee_L_r, 0.0)
+            ee_R_r = np.maximum(ee_R_r, 0.0)
+            # Upwind based on mass flux sign
+            mass_flux_r = flux_r["F_rho"]
+            flux_r["F_ee"] = np.where(
+                mass_flux_r >= 0,
+                ee_L_r * vr_L / np.maximum(rho_L_r, 1e-30) * rho_L_r,
+                ee_R_r * vr_R / np.maximum(rho_R_r, 1e-30) * rho_R_r,
+            )
+            # Simplify: F_ee = ee * v_n at the upwind side
+            flux_r["F_ee"] = np.where(mass_flux_r >= 0, ee_L_r * vr_L, ee_R_r * vr_R)
+
+            ee_L_z, ee_R_z = self._plm_reconstruct(e_electron, axis=1)
+            ee_L_z = np.maximum(ee_L_z, 0.0)
+            ee_R_z = np.maximum(ee_R_z, 0.0)
+            mass_flux_z = flux_z["F_rho"]
+            flux_z["F_ee"] = np.where(mass_flux_z >= 0, ee_L_z * vz_L_z, ee_R_z * vz_R_z)
+
         # ---- Flux divergence in finite-volume form ----
         # Radial: dU/dt -= (1/V) * [A_{i+1/2}*F_{i+1/2} - A_{i-1/2}*F_{i-1/2}]
         # Interior interfaces 0..nr-2 correspond to faces 1..nr-1
@@ -585,6 +607,12 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         dBz_dt += _apply_axial_flux("F_Bn")
         dBr_dt += _apply_axial_flux("F_Bt1")
         dBt_dt += _apply_axial_flux("F_Bt2")
+
+        # Electron energy advection
+        dee_dt = np.zeros((nr, nz))
+        if e_electron is not None:
+            dee_dt += _apply_radial_flux("F_ee")
+            dee_dt += _apply_axial_flux("F_ee")
 
         # Assemble momentum and B-field derivatives
         dmom_dt = np.zeros((3, nr, nz))
@@ -681,7 +709,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             dB_dt = dB_dt - grad_psi
 
         # Godunov path always returns conservative energy
-        return {
+        result = {
             "drho_dt": drho_dt,
             "dmom_dt": dmom_dt,
             "dB_dt": dB_dt,
@@ -690,6 +718,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "ohmic_heating": ohmic_heating,
             "E_field": E_field,
         }
+        if e_electron is not None:
+            result["dee_dt"] = dee_dt
+        return result
 
     def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
         """Compute CFL-limited timestep for cylindrical geometry."""
@@ -741,6 +772,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         psi: np.ndarray,
         eta_field: np.ndarray | None = None,
         source_terms: dict | None = None,
+        e_electron: np.ndarray | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute RHS of the MHD equations in cylindrical coordinates.
 
@@ -750,13 +782,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             rho, vel, p, B, psi: State variables.
             eta_field: Spatially-resolved resistivity [Ohm*m], shape (nr, nz).
             source_terms: Optional dict with external source terms.
+            e_electron: Electron energy density [J/m³], shape (nr, nz). Optional.
 
         Returns time derivatives for all state variables.
         """
         # Delegate to Godunov (PLM+HLL) path if enabled
         if self.use_godunov_flux:
             return self._compute_godunov_rhs(
-                rho, vel, p, B, psi, eta_field, source_terms,
+                rho, vel, p, B, psi, eta_field, source_terms, e_electron,
             )
 
         geom = self.geom
@@ -1022,14 +1055,15 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         dt: float,
         eta_2d: np.ndarray | None,
         source_terms: dict | None = None,
+        e_electron: np.ndarray | None = None,
     ) -> tuple:
         """Compute one forward-Euler stage: U^(1) = U^n + dt * L(U^n).
 
         Returns:
-            (rho, mom, p, B, psi, rhs, E_total_or_None)
+            (rho, mom, p, B, psi, rhs, E_total_or_None, e_electron_or_None)
         """
         vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)
-        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d, source_terms)
+        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d, source_terms, e_electron)
         rho_new = np.maximum(rho + dt * rhs["drho_dt"], 1e-10)
         mom_new = mom + dt * rhs["dmom_dt"]
         B_new = B + dt * rhs["dB_dt"]
@@ -1066,7 +1100,12 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         mom_new[0, 0, :] = 0.0
         B_new[0, 0, :] = 0.0
 
-        return rho_new, mom_new, p_new, B_new, psi_new, rhs, E_total_new
+        # Electron energy advection update
+        ee_new = None
+        if e_electron is not None and "dee_dt" in rhs:
+            ee_new = np.maximum(e_electron + dt * rhs["dee_dt"], 0.0)
+
+        return rho_new, mom_new, p_new, B_new, psi_new, rhs, E_total_new, ee_new
 
     def step(
         self,
@@ -1131,22 +1170,31 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B_sq_n = np.sum(B_n**2, axis=0)
             E_n = p_n / gm1 + 0.5 * rho_n * v_sq_n + B_sq_n / (2.0 * mu_0)
 
+        # Squeeze e_electron if present
+        e_electron_in = state.get("e_electron")
+        ee_2d = None
+        ee_n = None
+        if e_electron_in is not None:
+            ee_2d = self._squeeze(e_electron_in) if e_electron_in.ndim == 3 else e_electron_in
+            ee_n = ee_2d.copy()
+
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
-        rho_1, mom_1, p_1, B_1, psi_1, rhs1, E_1 = self._euler_stage(
-            rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d, source_terms,
+        rho_1, mom_1, p_1, B_1, psi_1, rhs1, E_1, ee_1 = self._euler_stage(
+            rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d, source_terms, ee_n,
         )
         if apply_electrode_bc and cathode_radius > 0:
             B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
 
         if self.time_integrator == "ssp_rk3":
             # === Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1))) ===
-            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e = self._euler_stage(
-                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms,
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
             )
             rho_2 = np.maximum(0.75 * rho_n + 0.25 * rho_2e, 1e-10)
             mom_2 = 0.75 * mom_n + 0.25 * mom_2e
             B_2 = 0.75 * B_n + 0.25 * B_2e
             psi_2 = 0.75 * psi_n + 0.25 * psi_2e
+            ee_2 = np.maximum(0.75 * ee_n + 0.25 * ee_2e, 0.0) if ee_n is not None else None
 
             if use_E and E_2e is not None:
                 # SSP combine on conserved E_total, then recover p
@@ -1163,13 +1211,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
 
             # === Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2))) ===
-            rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e = self._euler_stage(
-                rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d, source_terms,
+            rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e, ee_3e = self._euler_stage(
+                rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d, source_terms, ee_2,
             )
             rho_new = np.maximum((1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e, 1e-10)
             mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
             B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
             psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
+            ee_new_adv = np.maximum((1.0 / 3.0) * ee_n + (2.0 / 3.0) * ee_3e, 0.0) if ee_n is not None else None
 
             if use_E and E_3e is not None:
                 E_new = np.maximum((1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e, 1e-20)
@@ -1184,13 +1233,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             ohmic_avg = (1.0 / 3.0) * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"] + rhs3["ohmic_heating"])
         else:
             # === SSP-RK2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
-            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e = self._euler_stage(
-                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms,
+            rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
+                rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
             )
             rho_new = np.maximum(0.5 * rho_n + 0.5 * rho_2e, 1e-10)
             mom_new = 0.5 * mom_n + 0.5 * mom_2e
             B_new = 0.5 * B_n + 0.5 * B_2e
             psi_new = 0.5 * psi_n + 0.5 * psi_2e
+            ee_new_adv = np.maximum(0.5 * ee_n + 0.5 * ee_2e, 0.0) if ee_n is not None else None
 
             if use_E and E_2e is not None:
                 E_new = np.maximum(0.5 * E_n + 0.5 * E_2e, 1e-20)
@@ -1263,11 +1313,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         n_i = rho_new / self.ion_mass
         n_i_safe = np.maximum(n_i, 1e-30)
 
-        e_electron_in = state.get("e_electron")
-        if e_electron_in is not None:
-            # True 2T: evolve electron energy with source terms
+        if ee_new_adv is not None:
+            # True 2T: apply source terms to ADVECTED electron energy
             from dpf.fluid.two_temperature import step_electron_energy
-            e_e_2d = self._squeeze(e_electron_in)
+            e_e_2d = ee_new_adv  # Use advected value, not original state
             eta_eff = eta_2d if eta_2d is not None else np.zeros_like(rho_new)
             J_sq = ohmic_avg / np.maximum(eta_eff, 1e-30) if np.any(eta_eff > 0) else np.zeros_like(rho_new)
             e_e_new, Te_new, Ti_new = step_electron_energy(
