@@ -1184,8 +1184,15 @@ class SimulationEngine:
             _cell_vol_yield = float(np.mean(self.fluid.geom.cell_volumes()))
         else:
             _cell_vol_yield = self.config.dx**3
-        _sp_dL_dt = getattr(self, "_last_sp_dL_dt", 0.0)
-        _V_pinch = abs(self._coupling.current * _sp_dL_dt)
+        # V_pinch for beam-target yield: use MHD coupler dLp_dt when available
+        # (tracks instantaneous compression), fall back to snowplow dL/dt.
+        # Without this, V_pinch = 0 during the entire MHD-resolved pinch phase.
+        _fb = self._last_feedback
+        if _fb is not None and _fb.dLp_dt != 0.0:
+            _dL_dt_yield = _fb.dLp_dt
+        else:
+            _dL_dt_yield = getattr(self, "_last_sp_dL_dt", 0.0)
+        _V_pinch = abs(self._coupling.current * _dL_dt_yield)
         # L_pinch from device geometry: anode_length * pinch_column_fraction
         _L_pinch = self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
         self._yield_tracker.accumulate(
