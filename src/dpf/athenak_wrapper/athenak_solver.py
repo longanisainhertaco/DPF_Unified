@@ -110,6 +110,32 @@ class AthenaKSolver(PlasmaSolverBase):
             "  bash scripts/build_athenak.sh"
         )
 
+    def _compute_dt(self, state: dict[str, np.ndarray]) -> float:
+        """Return a conservative dt estimate for the engine's timestep logic.
+
+        AthenaK computes its own CFL-limited dt internally. This method
+        returns a batch time interval based on the grid CFL estimate so
+        the engine's circuit coupling timestep can coordinate properly.
+        """
+        dx = self.config.dx
+        # Estimate fast magnetosonic speed from state
+        rho = state.get("rho")
+        p = state.get("pressure")
+        B = state.get("B")
+        if rho is not None and p is not None:
+            gamma = 5.0 / 3.0
+            cs = float(np.sqrt(gamma * np.max(p) / max(np.max(rho), 1e-30)))
+            va = 0.0
+            if B is not None:
+                mu0 = 4e-7 * np.pi
+                B_max = float(np.max(np.abs(B)))
+                va = B_max / np.sqrt(mu0 * max(np.max(rho), 1e-30))
+            cf = np.sqrt(cs**2 + va**2)
+            return 0.4 * dx / max(cf, 1e-10)
+        return 1e-10  # safe fallback
+
+    compute_dt = _compute_dt  # alias for base class compatibility
+
     def step(
         self,
         state: dict[str, np.ndarray],
@@ -212,12 +238,19 @@ class AthenaKSolver(PlasmaSolverBase):
 
         logger.debug("Running AthenaK: %s", " ".join(cmd))
 
+        # Kokkos OpenMP requires OMP_PROC_BIND and OMP_PLACES to avoid warnings
+        # that some builds treat as fatal errors.
+        env = os.environ.copy()
+        env.setdefault("OMP_PROC_BIND", "spread")
+        env.setdefault("OMP_PLACES", "threads")
+
         return subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=self._timeout,
             cwd=output_dir,
+            env=env,
         )
 
     def coupling_interface(self) -> CouplingState:

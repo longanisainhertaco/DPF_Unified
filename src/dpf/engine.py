@@ -728,7 +728,7 @@ class SimulationEngine:
         # operators (Spitzer, Nernst, viscosity, radiation) will be moved
         # to Athena++ source terms in Phase G.  For now, only circuit
         # coupling is active.
-        if self.backend in ("athena", "hybrid"):
+        if self.backend in ("athena", "athenak", "hybrid"):
             return self._step_athena(dt, sim_time, _max_steps)
 
         # Deprecation warning for Python Cartesian backend on production workloads.
