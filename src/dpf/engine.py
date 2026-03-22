@@ -30,7 +30,7 @@ from dpf.circuit.coupler import CircuitCoupler, FeedbackResult
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
-from dpf.constants import k_B, pi
+from dpf.constants import eV, k_B, pi
 from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
 
@@ -44,6 +44,7 @@ from dpf.diagnostics.yield_tracker import YieldTracker
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
+from dpf.fluid.ionization import coronal_z_eff
 from dpf.fluid.mhd_solver import MHDSolver
 from dpf.fluid.nernst import apply_nernst_advection
 from dpf.fluid.snowplow import SnowplowModel
@@ -2051,11 +2052,19 @@ class SimulationEngine:
         # --- Line radiation (impurity cooling) ---
         if self.rad_cfg.line_radiation_enabled and self.rad_cfg.impurity_fraction > 0:
             ne_line = self.state["rho"] / self.ion_mass
+            # Compute Z_eff: coronal equilibrium or fixed
+            if self.rad_cfg.ionization_model == "coronal":
+                Te_eV_arr = self.state["Te"] * (k_B / eV)  # K -> eV
+                Z_eff_line = np.mean(
+                    coronal_z_eff(Te_eV_arr, Z_nucleus=int(self.rad_cfg.impurity_Z))
+                )
+            else:
+                Z_eff_line = 0.0  # bremsstrahlung already applied above
             Te_line, P_line = apply_line_radiation_losses(
                 self.state["Te"],
                 ne_line,
                 dt_sub,
-                Z_eff=0.0,  # bremsstrahlung already applied above; only line + recomb here
+                Z_eff=Z_eff_line,
                 n_imp_frac=self.rad_cfg.impurity_fraction,
                 Z_imp=self.rad_cfg.impurity_Z,
                 Te_floor=1.0,
