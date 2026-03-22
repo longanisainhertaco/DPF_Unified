@@ -107,6 +107,16 @@ _HTML_HEAD = (
     "  #cb-label{position:absolute;top:50%;right:34px;transform:translateY(-50%) rotate(-90deg);"
     "color:#8af;font:bold 11px monospace;text-shadow:0 0 4px #000;white-space:nowrap;"
     "transform-origin:center center}\n"
+    # Energy partition bar — stacked horizontal bar (cap | mag | resistive)
+    "  #energy-bar{position:absolute;bottom:75px;left:50%;transform:translateX(-50%);z-index:11;"
+    "width:300px;height:14px;border-radius:3px;overflow:hidden;pointer-events:none;"
+    "background:rgba(0,0,0,0.4);border:1px solid rgba(100,160,255,0.15);display:flex}\n"
+    "  #energy-bar div{height:100%;transition:width 0.15s}\n"
+    "  #eb-cap{background:rgba(40,100,255,0.8)}\n"
+    "  #eb-ind{background:rgba(40,200,200,0.8)}\n"
+    "  #eb-res{background:rgba(255,80,40,0.8)}\n"
+    "  #energy-label{position:absolute;bottom:92px;left:50%;transform:translateX(-50%);z-index:11;"
+    "pointer-events:none;color:#8af;font:10px monospace;text-shadow:0 0 4px #000}\n"
     # Transport bar
     "  #bar{position:absolute;bottom:0;left:0;right:0;z-index:10;"
     "display:flex;gap:10px;align-items:center;justify-content:center;"
@@ -149,6 +159,8 @@ _HTML_HEAD = (
     '<div id="hud"></div>\n'
     '<div id="badge"></div>\n'
     '<div id="vis-mode"></div>\n'
+    '<div id="energy-label">Cap | Mag | Resistive</div>\n'
+    '<div id="energy-bar"><div id="eb-cap"></div><div id="eb-ind"></div><div id="eb-res"></div></div>\n'
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
     '<div id="info-panel"></div>\n'
@@ -449,6 +461,17 @@ window.addEventListener("load", async function(){
     if (scene.L.pinch && isP)
       lines.push("Pinch r = " + scene.L.pinch.radius_mm.toFixed(2) + " mm");
     hudEl.textContent = lines.join("\n");
+
+    // Energy bar
+    if (scene.L.E_cap_kJ && i < scene.L.E_cap_kJ.length) {
+      var eCap = Math.max(0, scene.L.E_cap_kJ[i]);
+      var eInd = Math.max(0, scene.L.E_ind_kJ[i]);
+      var eRes = Math.max(0, scene.L.E_res_kJ[i]);
+      var eTotal = Math.max(eCap + eInd + eRes, 0.001);
+      document.getElementById("eb-cap").style.width = (eCap / eTotal * 100) + "%";
+      document.getElementById("eb-ind").style.width = (eInd / eTotal * 100) + "%";
+      document.getElementById("eb-res").style.width = (eRes / eTotal * 100) + "%";
+    }
   }
 
   document.getElementById("pb").onclick = function() { playing = true; };
@@ -577,6 +600,27 @@ window.addEventListener("load", async function(){
         lp.appendChild(lb);
       });
     }
+    // Colormap selector
+    var cmapDiv = document.createElement("div");
+    cmapDiv.style.cssText = "margin:6px 0 2px;";
+    var cmapLabel = document.createElement("span");
+    cmapLabel.style.cssText = "color:#aaa;font-size:12px;margin-right:6px;";
+    cmapLabel.textContent = "Colormap:";
+    cmapDiv.appendChild(cmapLabel);
+    var cmapSel = document.createElement("select");
+    cmapSel.style.cssText = "background:rgba(20,30,60,0.9);color:#cdf;border:1px solid rgba(100,160,255,0.3);border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer";
+    [["Viridis","viridis"],["Inferno","inferno"],["Cividis","cividis"]].forEach(function(opt) {
+      var o = document.createElement("option");
+      o.value = opt[1]; o.textContent = opt[0];
+      cmapSel.appendChild(o);
+    });
+    cmapSel.onchange = function() {
+      var key = cmapSel.value;
+      scene.setCmap(key === "cividis");
+      if (typeof updateColorbar === "function") updateColorbar(activeHeatmapMode);
+    };
+    cmapDiv.appendChild(cmapSel);
+    lp.appendChild(cmapDiv);
   }
 
   addHdr("RENDERING");
