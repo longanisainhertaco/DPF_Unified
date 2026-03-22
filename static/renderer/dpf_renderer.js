@@ -677,6 +677,137 @@ function buildCurrentArrows(scene, G) {
 }
 
 // ============================================================
+// DIMENSION CALLOUTS -- floating HTML labels with electrode dims
+// ============================================================
+
+function buildDimensions(scene, G) {
+  var container = document.createElement("div");
+  container.id = "dim-labels";
+  container.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15;display:none";
+
+  function makeLabel(text) {
+    var d = document.createElement("div");
+    d.style.cssText = "position:absolute;color:#8cf;font:bold 11px monospace;text-shadow:0 0 4px #000;white-space:nowrap;padding:2px 6px;background:rgba(5,10,25,0.7);border:1px solid rgba(100,160,255,0.3);border-radius:3px";
+    d.textContent = text;
+    container.appendChild(d);
+    return d;
+  }
+
+  var anodeLen = makeLabel("L = " + (G.anode_length * 1000).toFixed(0) + " mm");
+  var anodeR = makeLabel("a = " + (G.anode_radius * 1000).toFixed(1) + " mm");
+  var cathodeR = makeLabel("b = " + (G.cathode_radius * 1000).toFixed(1) + " mm");
+
+  function updatePositions(cam, engine) {
+    if (container.style.display === "none") return;
+    var vw = engine.getRenderWidth(), vh = engine.getRenderHeight();
+    function project(x, y, z) {
+      var v = BABYLON.Vector3.Project(
+        new BABYLON.Vector3(x, y, z),
+        BABYLON.Matrix.Identity(),
+        scene.getTransformMatrix(),
+        { x: 0, y: 0, width: vw, height: vh });
+      return { x: v.x, y: v.y };
+    }
+    var p1 = project(G.anode_length / 2, G.anode_radius * 1.8, 0);
+    anodeLen.style.left = p1.x + "px"; anodeLen.style.top = p1.y + "px";
+    var p2 = project(-G.anode_radius * 0.5, G.anode_radius * 0.8, 0);
+    anodeR.style.left = p2.x + "px"; anodeR.style.top = p2.y + "px";
+    var p3 = project(-G.cathode_radius * 0.3, G.cathode_radius * 1.2, 0);
+    cathodeR.style.left = p3.x + "px"; cathodeR.style.top = p3.y + "px";
+  }
+
+  return {
+    container: container,
+    updatePositions: updatePositions,
+    show: function(v) { container.style.display = v ? "block" : "none"; }
+  };
+}
+
+// ============================================================
+// J×B FORCE DIAGRAM -- educational arrows showing J, B, F=J×B
+// ============================================================
+
+function buildForceArrows(scene, G) {
+  var shaftD = G.anode_radius * 0.03;
+  var shaftL = G.cathode_radius * 0.6;
+  var coneD  = G.anode_radius * 0.12;
+  var coneH  = G.anode_radius * 0.2;
+
+  function makeMat(hexColor) {
+    var m = new BABYLON.StandardMaterial("forceMat_" + hexColor, scene);
+    var r = parseInt(hexColor.slice(1, 3), 16) / 255;
+    var g = parseInt(hexColor.slice(3, 5), 16) / 255;
+    var b = parseInt(hexColor.slice(5, 7), 16) / 255;
+    m.emissiveColor = new BABYLON.Color3(r, g, b);
+    m.diffuseColor  = new BABYLON.Color3(0, 0, 0);
+    m.disableLighting = true;
+    m.backFaceCulling = false;
+    m.alpha = 0;
+    return m;
+  }
+
+  function makeArrowGroup(name, hexColor) {
+    var grp = new BABYLON.AbstractMesh(name + "Group", scene);
+    var shaft = BABYLON.MeshBuilder.CreateCylinder(name + "Shaft", {
+      diameter: shaftD, height: shaftL, tessellation: 8
+    }, scene);
+    shaft.position.y = shaftL / 2;
+    shaft.parent = grp;
+    var head = BABYLON.MeshBuilder.CreateCylinder(name + "Head", {
+      diameterTop: 0, diameterBottom: coneD, height: coneH, tessellation: 8
+    }, scene);
+    head.position.y = shaftL + coneH / 2;
+    head.parent = grp;
+    var mat = makeMat(hexColor);
+    shaft.material = mat;
+    head.material = mat;
+    shaft.renderingGroupId = 1;
+    head.renderingGroupId = 1;
+    grp.isVisible = false;
+    shaft.isVisible = false;
+    head.isVisible = false;
+    return { grp: grp, shaft: shaft, head: head, mat: mat };
+  }
+
+  var jA = makeArrowGroup("jArrow", "#FFD700");
+  var bA = makeArrowGroup("bArrow", "#4488FF");
+  var fA = makeArrowGroup("fArrow", "#FF4444");
+
+  // HTML labels for each arrow
+  var labelContainer = document.createElement("div");
+  labelContainer.id = "force-labels";
+  labelContainer.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:16;display:none";
+
+  function makeForceLabel(text, color) {
+    var d = document.createElement("div");
+    d.style.cssText = "position:absolute;font:bold 12px monospace;text-shadow:0 0 4px #000;white-space:nowrap;padding:2px 6px;background:rgba(5,10,25,0.75);border-radius:3px;color:" + color;
+    d.textContent = text;
+    labelContainer.appendChild(d);
+    return d;
+  }
+
+  var jLabel = makeForceLabel("J", "#FFD700");
+  var bLabel = makeForceLabel("B", "#4488FF");
+  var fLabel = makeForceLabel("F=J\u00d7B", "#FF4444");
+
+  return {
+    jGroup: jA.grp, jShaft: jA.shaft, jHead: jA.head, jMat: jA.mat,
+    bGroup: bA.grp, bShaft: bA.shaft, bHead: bA.head, bMat: bA.mat,
+    fGroup: fA.grp, fShaft: fA.shaft, fHead: fA.head, fMat: fA.mat,
+    labelContainer: labelContainer,
+    jLabel: jLabel, bLabel: bLabel, fLabel: fLabel,
+    _visible: false,
+    show: function(v) {
+      this._visible = v;
+      this.jGroup.isVisible = v; this.jShaft.isVisible = v; this.jHead.isVisible = v;
+      this.bGroup.isVisible = v; this.bShaft.isVisible = v; this.bHead.isVisible = v;
+      this.fGroup.isVisible = v; this.fShaft.isVisible = v; this.fHead.isVisible = v;
+      this.labelContainer.style.display = v ? "block" : "none";
+    }
+  };
+}
+
+// ============================================================
 // PARTICLES -- 3000 cap, BLENDMODE_ONEONE, soft radial gradient
 // ============================================================
 
@@ -1171,6 +1302,11 @@ async function createDPFScene(canvas, data) {
   const reflShock = buildReflectedShock(scene, G);
   const bField = buildBField(scene, G);
   const currentArrows = buildCurrentArrows(scene, G);
+  const dims = buildDimensions(scene, G);
+  canvas.parentElement.appendChild(dims.container);
+  scene.registerAfterRender(function() { dims.updatePositions(cam, engine); });
+  const forceArrows = buildForceArrows(scene, G);
+  canvas.parentElement.appendChild(forceArrows.labelContainer);
   buildGrid(scene, G);
   buildAmbientDust(scene, G);
   const heat = buildHeatmap(scene, G);
@@ -1470,6 +1606,56 @@ async function createDPFScene(canvas, data) {
       a.isVisible = showArrows && (a._userVisible !== false);
     });
     currentArrows.mat.alpha = showArrows ? clamp01(Ifrac * 0.8) : 0;
+
+    // J×B force arrows — only when user has toggled them on
+    if (forceArrows._visible) {
+      var sheathX = isP ? G.anode_length : f.z;
+      var midR = (G.anode_radius + G.cathode_radius) / 2;
+
+      // J arrow: axial during rundown (current sweeps toward muzzle), radial during radial phase
+      forceArrows.jGroup.position.set(sheathX, midR * 0.7, 0);
+      if (!isP) {
+        forceArrows.jGroup.rotation.set(0, 0, -Math.PI / 2); // axial (+x)
+      } else {
+        forceArrows.jGroup.rotation.set(0, 0, 0); // radial (up/+y)
+      }
+
+      // B arrow: always azimuthal (toroidal B_theta)
+      forceArrows.bGroup.position.set(sheathX, midR * 0.3, midR * 0.5);
+      forceArrows.bGroup.rotation.set(Math.PI / 2, 0, 0);
+
+      // F=J×B arrow: axial during rundown, radial inward during radial
+      forceArrows.fGroup.position.set(sheathX + G.anode_radius * 0.3, midR * 0.5, 0);
+      if (!isP) {
+        forceArrows.fGroup.rotation.set(Math.PI, 0, 0); // radial inward (-y)
+      } else {
+        forceArrows.fGroup.rotation.set(0, 0, -Math.PI / 2); // axial (+x)
+      }
+
+      var a = clamp01(Ifrac * 0.7);
+      forceArrows.jMat.alpha = a;
+      forceArrows.bMat.alpha = a;
+      forceArrows.fMat.alpha = a;
+
+      // Update label positions by projecting 3D anchor points to screen
+      var vw = engine.getRenderWidth(), vh = engine.getRenderHeight();
+      function projectFA(x, y, z) {
+        var v = BABYLON.Vector3.Project(
+          new BABYLON.Vector3(x, y, z),
+          BABYLON.Matrix.Identity(),
+          scene.getTransformMatrix(),
+          { x: 0, y: 0, width: vw, height: vh });
+        return { x: v.x, y: v.y };
+      }
+      var shaftL = G.cathode_radius * 0.6;
+      var coneH  = G.anode_radius * 0.2;
+      var pJ = projectFA(sheathX, midR * 0.7 + shaftL + coneH + G.anode_radius * 0.08, 0);
+      forceArrows.jLabel.style.left = pJ.x + "px"; forceArrows.jLabel.style.top = pJ.y + "px";
+      var pB = projectFA(sheathX, midR * 0.3, midR * 0.5 + shaftL + coneH + G.anode_radius * 0.08);
+      forceArrows.bLabel.style.left = pB.x + "px"; forceArrows.bLabel.style.top = pB.y + "px";
+      var pF = projectFA(sheathX + G.anode_radius * 0.3 + G.anode_radius * 0.08, midR * 0.5 + shaftL + coneH, 0);
+      forceArrows.fLabel.style.left = pF.x + "px"; forceArrows.fLabel.style.top = pF.y + "px";
+    }
   }
 
   // ============================================================
@@ -1691,6 +1877,8 @@ async function createDPFScene(canvas, data) {
     beamCone: beam.cone, gasGlow: trail.trail,
     bRings: bField.bRings, fieldLines: [],
     currentArrows,
+    dims,
+    forceArrows,
     ps: { start: function() { parts.ps.start(); }, stop: function() { parts.ps.stop(); } },
     pipeline, ssao, glowLayer,
     applyFrame,

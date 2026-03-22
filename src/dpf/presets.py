@@ -94,13 +94,22 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
-        "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
+        "radiation": {
+            "bremsstrahlung_enabled": True,
+            "line_radiation_enabled": True,  # Cu impurity line radiation (Six Sigma: activate before calibration)
+            "impurity_Z": 29,       # Copper from electrode sputtering
+            "impurity_fraction": 0.01,  # EMPIRICAL: 1% Cu impurity
+            "fld_enabled": True,
+        },
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.6,  # Scholz (2006) Table 1: 600 mm
+            "fill_pressure_Pa": 466.0,  # 3.5 Torr D2 (Scholz 2006) — was defaulting to 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2014): fc=0.7 (published Lee model fit)
             "mass_fraction": 0.08,  # Lee & Saw (2014): fm=0.08 (published Lee model fit)
             "radial_mass_fraction": 0.16,  # Lee & Saw (2014): fmr=0.16 (published fit)
+            "radial_current_fraction_2": 0.45,  # EMPIRICAL: two-step radial (Damideh 2025 method)
+            "radial_transition_time": 5.5e-6,  # EMPIRICAL: re-strike onset during radial phase
             "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
     },
