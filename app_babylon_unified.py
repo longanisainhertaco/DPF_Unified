@@ -127,6 +127,17 @@ _HTML_HEAD = (
     "z-index:11;border-radius:2px;overflow:hidden;pointer-events:none;"
     "background:rgba(255,255,255,0.08)}\n"
     "  #tl-progress{height:100%;border-radius:2px;transition:width 0.1s}\n"
+    # "What am I seeing?" button and overlay labels
+    "  #what-btn{position:absolute;top:12px;right:280px;z-index:20;"
+    "background:rgba(20,30,60,0.9);color:#8cf;border:1px solid rgba(100,160,255,0.4);"
+    "padding:8px 14px;border-radius:6px;cursor:pointer;font:bold 14px 'Helvetica Neue',Arial,sans-serif;"
+    "transition:all 0.15s}\n"
+    "  #what-btn:hover{background:rgba(40,60,120,0.9);border-color:rgba(100,180,255,0.6)}\n"
+    "  #what-btn.active{background:rgba(60,100,200,0.9);color:#fff}\n"
+    "  #what-labels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:18;display:none}\n"
+    "  #what-labels .wl{position:absolute;color:#fff;font:bold 11px 'Helvetica Neue',Arial,sans-serif;"
+    "text-shadow:0 0 6px #000,0 0 2px #000;padding:3px 8px;background:rgba(10,20,40,0.85);"
+    "border:1px solid rgba(100,160,255,0.4);border-radius:4px;white-space:nowrap}\n"
     "</style>\n"
     f'<script src="{BABYLON_CDN}"></script>\n'
     f'<script src="{BABYLON_MAT}"></script>\n'
@@ -141,6 +152,8 @@ _HTML_HEAD = (
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
     '<div id="info-panel"></div>\n'
+    '<button id="what-btn">? What am I seeing?</button>\n'
+    '<div id="what-labels"></div>\n'
     '<div id="colorbar">\n'
     '  <canvas id="cb-gradient" width="28" height="200"></canvas>\n'
     '  <span id="cb-max"></span>\n'
@@ -573,6 +586,59 @@ window.addEventListener("load", async function(){
       scene.ssao.totalStrength = v ? 0.8 : 0;
     });
   }
+
+  // ---- "What am I seeing?" overlay ----
+  var whatBtn = document.getElementById("what-btn");
+  var whatContainer = document.getElementById("what-labels");
+  var whatActive = false;
+
+  var WHAT_ITEMS = [
+    { mesh: "anode", label: "ANODE (copper)", desc: "Central electrode" },
+    { mesh: "insulator", label: "INSULATOR", desc: "Ceramic sleeve" },
+    { mesh: "chamber", label: "VACUUM CHAMBER", desc: "Gas enclosure" },
+    { mesh: "sheathDisk", label: "CURRENT SHEATH", desc: "J\u00d7B driven" },
+    { mesh: "pinchCore", label: "PINCH CORE", desc: "Fusion zone" },
+    { mesh: "beamCone", label: "ION BEAM", desc: "Post-pinch" },
+    { mesh: "rod0", label: "CATHODE ROD", desc: "Return current" },
+  ];
+
+  function projectToScreen(meshName) {
+    var mesh = scene.scene.getMeshByName(meshName);
+    if (!mesh || !mesh.isVisible) return null;
+    var pos = mesh.getBoundingInfo().boundingBox.centerWorld;
+    var vw = scene.engine.getRenderWidth(), vh = scene.engine.getRenderHeight();
+    var p = BABYLON.Vector3.Project(pos, BABYLON.Matrix.Identity(),
+      scene.scene.getTransformMatrix(), { x: 0, y: 0, width: vw, height: vh });
+    if (p.z < 0 || p.z > 1) return null;
+    return { x: p.x, y: p.y };
+  }
+
+  function updateWhatLabels() {
+    if (!whatActive) return;
+    var now = Date.now();
+    if (now - (updateWhatLabels._last || 0) < 200) return;
+    updateWhatLabels._last = now;
+    whatContainer.innerHTML = "";
+    WHAT_ITEMS.forEach(function(item) {
+      var pos = projectToScreen(item.mesh);
+      if (!pos) return;
+      var el = document.createElement("div");
+      el.className = "wl";
+      el.innerHTML = "<b>" + item.label + "</b><br><span style='color:#8cf;font-size:10px'>" + item.desc + "</span>";
+      el.style.left = (pos.x + 10) + "px";
+      el.style.top = (pos.y - 15) + "px";
+      whatContainer.appendChild(el);
+    });
+  }
+
+  whatBtn.onclick = function() {
+    whatActive = !whatActive;
+    whatBtn.className = whatActive ? "active" : "";
+    whatContainer.style.display = whatActive ? "block" : "none";
+    if (!whatActive) whatContainer.innerHTML = "";
+  };
+
+  scene.scene.registerAfterRender(updateWhatLabels);
 
   // ---- Render loop (smooth interpolated playback) ----
   var smoothFi = 0;
