@@ -4150,16 +4150,15 @@ class TestConservativeFlag:
         s = CylindricalMHDSolver(nr=8, nz=8, dr=0.01, dz=0.01, conservative_energy=True)
         assert s.conservative_energy is True
 
-    def test_rhs_dE_dt_when_conservative(self, cons_solver):
-        """_compute_rhs returns dE_dt (not dp_dt) when conservative_energy=True."""
+    def test_rhs_dp_dt_when_conservative(self, cons_solver):
+        """Conservative _compute_rhs converts dE_dt to dp_dt via pressure recovery."""
         rho = np.ones((16, 16))
         vel = np.zeros((3, 16, 16))
         p = np.full((16, 16), 1e5)
         B = np.zeros((3, 16, 16))
         psi = np.zeros((16, 16))
         rhs = cons_solver._compute_rhs(rho, vel, p, B, psi)
-        assert "dE_dt" in rhs
-        assert "dp_dt" not in rhs
+        assert "dp_dt" in rhs
 
     def test_rhs_dp_dt_when_nonconservative(self, noncons_solver):
         """_compute_rhs returns dp_dt (not dE_dt) when conservative_energy=False."""
