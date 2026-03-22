@@ -1184,15 +1184,15 @@ class SimulationEngine:
             _cell_vol_yield = float(np.mean(self.fluid.geom.cell_volumes()))
         else:
             _cell_vol_yield = self.config.dx**3
-        # V_pinch for beam-target yield: use MHD coupler dLp_dt when available
-        # (tracks instantaneous compression), fall back to snowplow dL/dt.
-        # Without this, V_pinch = 0 during the entire MHD-resolved pinch phase.
+        # V_pinch for beam-target yield: take the stronger of MHD coupler dLp_dt
+        # and snowplow dL/dt.  During Lee-model phases the snowplow value dominates;
+        # during MHD-resolved pinch the coupler value dominates.  Taking max(abs)
+        # prevents near-zero coupler values from shadowing a valid snowplow signal.
         _fb = self._last_feedback
-        if _fb is not None and _fb.dLp_dt != 0.0:
-            _dL_dt_yield = _fb.dLp_dt
-        else:
-            _dL_dt_yield = getattr(self, "_last_sp_dL_dt", 0.0)
-        _V_pinch = abs(self._coupling.current * _dL_dt_yield)
+        _dL_mhd = abs(_fb.dLp_dt) if _fb is not None else 0.0
+        _dL_sp = abs(getattr(self, "_last_sp_dL_dt", 0.0))
+        _dL_dt_yield = max(_dL_mhd, _dL_sp)
+        _V_pinch = abs(self._coupling.current) * _dL_dt_yield
         # L_pinch from device geometry: anode_length * pinch_column_fraction
         _L_pinch = self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
         self._yield_tracker.accumulate(

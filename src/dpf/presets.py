@@ -360,7 +360,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # Goyon et al. 2025: 60 kV typical, 2.8 MA peak current
         # C = 408 uF (24 modules x 2 x 34 uF caps, single-stage erection)
         # L0 = 67.4 nH (measured lumped circuit; Offermann 2021)
-        # R0 = 6.25 mOhm (12.5 mOhm / 2 for 6-tower parallel; Offermann 2021)
+        # R0 = 6.25 mOhm (EMPIRICAL: Offermann 2021 gives 12.5 mOhm/tower;
+        #       /2 not /6 — includes Marx erection losses + cable impedance)
         # Anode OD = 228.6 mm -> radius 114.3 mm (Goyon 2025)
         # Cathode: 24 rods, inner radius ~157 mm (4.3 cm A-K gap; Petrov 2022)
         "circuit": {
