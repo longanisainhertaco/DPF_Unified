@@ -1,3 +1,15 @@
+---
+title: DPF Unified
+emoji: ⚡
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 6.9.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # DPF Unified
 
 [![CI](https://github.com/longanisainhertaco/DPF_Unified/actions/workflows/ci.yml/badge.svg)](https://github.com/longanisainhertaco/DPF_Unified/actions/workflows/ci.yml)
