@@ -113,7 +113,7 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 norecursedirs = ["tests/_archive"]
 python_files = ["test_*.py"]
-addopts = "-x --tb=short"
+addopts = "-x --tb=short -m 'not athena'"
 markers = [
     "slow: marks tests as slow (> 1 second)",
     "ai: marks tests requiring AI/torch dependencies",
