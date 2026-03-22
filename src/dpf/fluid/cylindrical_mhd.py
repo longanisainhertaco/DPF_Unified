@@ -160,6 +160,162 @@ def _weno5_sweep_hll_parallel(
 # HLLD Riemann solver is used separately in _hll_riemann_flux (class method).
 
 
+# ============================================================
+# Parallel PLM geometry kernels (Numba)
+# These replace the pure-NumPy CylindricalGeometry methods on the PLM
+# (non-WENO5) code path.  Each operates on a full 2D field and parallelises
+# over rows or columns with prange.
+#
+# np.gradient uses:
+#   interior: (f[i+1] - f[i-1]) / (2*h)   — 2nd-order centred
+#   boundary: one-sided 1st-order forward/backward
+# We replicate that stencil exactly so the PLM path stays bit-compatible
+# with the previous np.gradient implementation while gaining parallelism.
+# ============================================================
+
+
+@njit(cache=True, parallel=True)
+def _plm_grad1d_r(field: np.ndarray, dr: float) -> np.ndarray:
+    """d(field)/dr via 2nd-order centred differences, parallelised over z."""
+    nr = field.shape[0]
+    nz = field.shape[1]
+    out = np.empty((nr, nz))
+    for j in prange(nz):
+        out[0, j] = (field[1, j] - field[0, j]) / dr
+        for i in range(1, nr - 1):
+            out[i, j] = (field[i + 1, j] - field[i - 1, j]) / (2.0 * dr)
+        out[nr - 1, j] = (field[nr - 1, j] - field[nr - 2, j]) / dr
+    return out
+
+
+@njit(cache=True, parallel=True)
+def _plm_grad1d_z(field: np.ndarray, dz: float) -> np.ndarray:
+    """d(field)/dz via 2nd-order centred differences, parallelised over r."""
+    nr = field.shape[0]
+    nz = field.shape[1]
+    out = np.empty((nr, nz))
+    for i in prange(nr):
+        out[i, 0] = (field[i, 1] - field[i, 0]) / dz
+        for j in range(1, nz - 1):
+            out[i, j] = (field[i, j + 1] - field[i, j - 1]) / (2.0 * dz)
+        out[i, nz - 1] = (field[i, nz - 1] - field[i, nz - 2]) / dz
+    return out
+
+
+@njit(cache=True, parallel=True)
+def _plm_divergence_parallel(
+    F_r: np.ndarray,
+    F_z: np.ndarray,
+    r: np.ndarray,
+    inv_r: np.ndarray,
+    dr: float,
+    dz: float,
+) -> np.ndarray:
+    """Cylindrical divergence: (1/r)*d(r*Fr)/dr + dFz/dz.
+
+    Parallelised over z-columns for the radial term and over r-rows for
+    the axial term; combined result is correct per-cell.
+    """
+    nr = F_r.shape[0]
+    nz = F_r.shape[1]
+
+    # d(r * F_r)/dr  — parallelise over z
+    rFr = np.empty((nr, nz))
+    for i in prange(nr):
+        for j in range(nz):
+            rFr[i, j] = r[i] * F_r[i, j]
+
+    div_r = _plm_grad1d_r(rFr, dr)
+    # (1/r) weighting
+    for i in prange(nr):
+        for j in range(nz):
+            div_r[i, j] = div_r[i, j] * inv_r[i]
+
+    dFz_dz = _plm_grad1d_z(F_z, dz)
+
+    out = np.empty((nr, nz))
+    for i in prange(nr):
+        for j in range(nz):
+            out[i, j] = div_r[i, j] + dFz_dz[i, j]
+    return out
+
+
+@njit(cache=True, parallel=True)
+def _plm_gradient_parallel(
+    p: np.ndarray,
+    dr: float,
+    dz: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Cylindrical gradient: (dp/dr, 0, dp/dz).
+
+    Returns three (nr, nz) arrays for r, theta, z components.
+    """
+    grad_r = _plm_grad1d_r(p, dr)
+    grad_z = _plm_grad1d_z(p, dz)
+    nr = p.shape[0]
+    nz = p.shape[1]
+    grad_theta = np.zeros((nr, nz))
+    return grad_r, grad_theta, grad_z
+
+
+@njit(cache=True, parallel=True)
+def _plm_curl_parallel(
+    B_r: np.ndarray,
+    B_theta: np.ndarray,
+    B_z: np.ndarray,
+    r: np.ndarray,
+    inv_r: np.ndarray,
+    dr: float,
+    dz: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Axisymmetric cylindrical curl of B.
+
+    (curl B)_r     = -dB_theta/dz
+    (curl B)_theta = dB_r/dz - dB_z/dr
+    (curl B)_z     = (1/r) * d(r * B_theta)/dr
+    """
+    nr = B_r.shape[0]
+    nz = B_r.shape[1]
+
+    curl_r = np.empty((nr, nz))
+    dBt_dz = _plm_grad1d_z(B_theta, dz)
+    for i in prange(nr):
+        for j in range(nz):
+            curl_r[i, j] = -dBt_dz[i, j]
+
+    dBr_dz = _plm_grad1d_z(B_r, dz)
+    dBz_dr = _plm_grad1d_r(B_z, dr)
+    curl_theta = np.empty((nr, nz))
+    for i in prange(nr):
+        for j in range(nz):
+            curl_theta[i, j] = dBr_dz[i, j] - dBz_dr[i, j]
+
+    rBtheta = np.empty((nr, nz))
+    for i in prange(nr):
+        for j in range(nz):
+            rBtheta[i, j] = r[i] * B_theta[i, j]
+    d_rBt_dr = _plm_grad1d_r(rBtheta, dr)
+    curl_z = np.empty((nr, nz))
+    for i in prange(nr):
+        for j in range(nz):
+            curl_z[i, j] = inv_r[i] * d_rBt_dr[i, j]
+
+    return curl_r, curl_theta, curl_z
+
+
+@njit(cache=True, parallel=True)
+def _plm_div_B_parallel(
+    B_r: np.ndarray,
+    B_z: np.ndarray,
+    r: np.ndarray,
+    inv_r: np.ndarray,
+    dr: float,
+    dz: float,
+) -> np.ndarray:
+    """div(B) in cylindrical coords: (1/r)*d(r*Br)/dr + dBz/dz."""
+    return _plm_divergence_parallel(B_r, B_z, r, inv_r, dr, dz)
+
+
 class CylindricalMHDSolver(PlasmaSolverBase):
     """2D axisymmetric Hall MHD solver in (r, z) cylindrical coordinates.
 
@@ -859,9 +1015,17 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             )
 
         geom = self.geom
+        _r = geom.r          # shape (nr,)
+        _inv_r = geom.inv_r  # shape (nr,)
 
         # --- Current density: J = curl(B) / mu_0 ---
-        curl_B = geom.curl(B)
+        cBr, cBt, cBz = _plm_curl_parallel(
+            B[0], B[1], B[2], _r, _inv_r, self.dr, self.dz,
+        )
+        curl_B = np.empty((3, self.nr, self.nz))
+        curl_B[0] = cBr
+        curl_B[1] = cBt
+        curl_B[2] = cBz
         J = curl_B / mu_0
 
         # --- Density: d(rho)/dt = -div(rho*v) ---
@@ -883,14 +1047,17 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 dF = fl_z["mass_flux"][:, 1:n_upd + 1] - fl_z["mass_flux"][:, :n_upd]
                 drho_dt[:, 2:2 + n_upd] -= dF / self.dz
         else:
-            rho_v = np.zeros((3, self.nr, self.nz))
-            for d in range(3):
-                rho_v[d] = rho * vel[d]
-            drho_dt = -geom.divergence(rho_v)
+            drho_dt = -_plm_divergence_parallel(
+                rho * vel[0], rho * vel[2], _r, _inv_r, self.dr, self.dz,
+            )
 
         # --- Momentum: d(rho*v)/dt = -div(rho*v*v) - grad(p) + J×B + S_geom ---
         # Pressure gradient
-        grad_p = geom.gradient(p)
+        gpr, gpt, gpz = _plm_gradient_parallel(p, self.dr, self.dz)
+        grad_p = np.empty((3, self.nr, self.nz))
+        grad_p[0] = gpr
+        grad_p[1] = gpt
+        grad_p[2] = gpz
 
         # J × B force
         JxB = np.zeros((3, self.nr, self.nz))
@@ -901,10 +1068,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # Momentum advection: -div(rho * v_d * v) for each component d
         dmom_dt = np.zeros((3, self.nr, self.nz))
         for d in range(3):
-            mom_flux = np.zeros((3, self.nr, self.nz))
-            for axis in range(3):
-                mom_flux[axis] = rho * vel[d] * vel[axis]
-            dmom_dt[d] = -geom.divergence(mom_flux)
+            dmom_dt[d] = -_plm_divergence_parallel(
+                rho * vel[d] * vel[0], rho * vel[d] * vel[2],
+                _r, _inv_r, self.dr, self.dz,
+            )
 
         # Add forces
         for d in range(3):
@@ -951,7 +1118,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             E_Hall[2] = (J_total[0] * B[1] - J_total[1] * B[0]) / (ne_safe * e_charge)
             E_field = E_field + E_Hall
 
-        dB_dt = -geom.curl(E_field)
+        eBr, eBt, eBz = _plm_curl_parallel(
+            E_field[0], E_field[1], E_field[2], _r, _inv_r, self.dr, self.dz,
+        )
+        dB_dt = np.empty((3, self.nr, self.nz))
+        dB_dt[0] = -eBr
+        dB_dt[1] = -eBt
+        dB_dt[2] = -eBz
 
         # --- Energy equation ---
         # External source terms (snowplow, ohmic correction, etc.)
@@ -988,15 +1161,23 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 F_E[d] = (E_total + p_total) * vel[d] - B[d] * v_dot_B
 
             # dE/dt = -div(F_E) + Q_ohm + Q_ext
-            dE_dt = -geom.divergence(F_E) + total_heating
+            dE_dt = -_plm_divergence_parallel(
+                F_E[0], F_E[2], _r, _inv_r, self.dr, self.dz,
+            ) + total_heating
             if ext_dE is not None:
                 ext_dE_2d = self._squeeze(ext_dE) if ext_dE.ndim == 3 else ext_dE
                 dE_dt = dE_dt + ext_dE_2d
 
-            # dp_dt not used when conservative — set to None sentinel
-            dp_dt = None
+            # Convert dE/dt to dp/dt using Metal solver's pressure recovery formula
+            # (matches metal_riemann.py lines 1677-1682)
+            v_dot_dmom = np.sum(vel * dmom_dt, axis=0)
+            B_dot_dB = np.sum(B * dB_dt, axis=0)
+            dp_dt = (self.gamma - 1.0) * (dE_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB)
+            dE_dt = None
         else:
-            div_v = geom.divergence(vel)
+            div_v = _plm_divergence_parallel(
+                vel[0], vel[2], _r, _inv_r, self.dr, self.dz,
+            )
             if self.enable_energy_equation:
                 dp_dt = -self.gamma * p * div_v + (self.gamma - 1.0) * total_heating
             else:
@@ -1017,18 +1198,19 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 v_abs = np.sqrt(np.sum(vel**2, axis=0))
                 ch = max(float(np.max(v_abs + cf_ded)), 1.0)
             cp = ch
-            div_B = geom.div_B_cylindrical(B)
+            div_B = _plm_div_B_parallel(B[0], B[2], _r, _inv_r, self.dr, self.dz)
             self._last_div_B = float(np.max(np.abs(div_B)))
             dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
-            grad_psi = geom.gradient(psi)
-            dB_dt = dB_dt - grad_psi
+            gpsi_r, gpsi_t, gpsi_z = _plm_gradient_parallel(psi, self.dr, self.dz)
+            dB_dt[0] -= gpsi_r
+            dB_dt[1] -= gpsi_t
+            dB_dt[2] -= gpsi_z
 
         # Electron energy advection: dee/dt = -div(ee * v)
         if e_electron is not None:
-            ee_flux = np.zeros((3, self.nr, self.nz))
-            for d in range(3):
-                ee_flux[d] = e_electron * vel[d]
-            dee_dt = -geom.divergence(ee_flux)
+            dee_dt = -_plm_divergence_parallel(
+                e_electron * vel[0], e_electron * vel[2], _r, _inv_r, self.dr, self.dz,
+            )
         else:
             dee_dt = None
 

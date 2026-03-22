@@ -3969,8 +3969,8 @@ class TestConservativeEnergy:
         for key in ["rho", "velocity", "pressure", "B", "Te", "Ti", "psi"]:
             assert key in new_state, f"Missing key: {key}"
 
-    def test_rhs_returns_dE_dt(self, solver_conservative):
-        """Conservative RHS should return dE_dt, not dp_dt."""
+    def test_rhs_returns_dp_dt_from_conservative(self, solver_conservative):
+        """Conservative RHS converts dE_dt to dp_dt via pressure recovery."""
         state = _uniform_state(16, 32)
         rho_2d = state["rho"][:, 0, :]
         vel_2d = state["velocity"][:, :, 0, :]
@@ -3978,8 +3978,8 @@ class TestConservativeEnergy:
         B_2d = state["B"][:, :, 0, :]
         psi_2d = np.zeros((16, 32))
         rhs = solver_conservative._compute_rhs(rho_2d, vel_2d, p_2d, B_2d, psi_2d)
-        assert "dE_dt" in rhs
-        assert "dp_dt" not in rhs
+        # Conservative mode now converts dE_dt -> dp_dt internally
+        assert "dp_dt" in rhs
 
     def test_rhs_nonconservative_returns_dp_dt(self, solver_nonconservative):
         """Non-conservative RHS should return dp_dt, not dE_dt."""
