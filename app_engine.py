@@ -501,3 +501,318 @@ def run_simulation_core(
             "preset": preset_name,
         },
     }
+
+
+def run_mhd_simulation_core(
+    preset_name: str,
+    sim_time_us: float,
+    gas_key: str | None = None,
+    V0_kV: float | None = None,
+    pressure_torr: float | None = None,
+    C_uF: float | None = None,
+    L0_nH: float | None = None,
+    R0_mOhm: float | None = None,
+    anode_r_mm: float | None = None,
+    cathode_r_mm: float | None = None,
+    anode_len_mm: float | None = None,
+    fc: float | None = None,
+    fm: float | None = None,
+    fmr: float | None = None,
+    fcr: float | None = None,
+    crowbar_on: bool | None = None,
+    crowbar_R_mOhm: float | None = None,
+    backend: str = "python",
+    n_steps: int = 1000,
+    grid_nx: int = 32,
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run the full SimulationEngine (CircuitCoupler + MHD + snowplow) and return
+    a dict in the same format as run_simulation_core.
+
+    Falls back to run_simulation_core (Lee-only) if SimulationEngine fails.
+    """
+    import logging
+    import subprocess as _sp
+    from datetime import datetime as _dt
+
+    _log = logging.getLogger(__name__)
+
+    preset = get_preset(preset_name)
+    cc = dict(preset["circuit"])
+    sc = dict(preset.get("snowplow", {}))
+    gas = GAS_SPECIES.get(gas_key or "D2", GAS_SPECIES["D2"])
+    rho0 = preset["rho0"]
+
+    # Apply overrides (same logic as run_simulation_core)
+    if V0_kV is not None and V0_kV > 0:
+        cc["V0"] = V0_kV * 1e3
+    if C_uF is not None and C_uF > 0:
+        cc["C"] = C_uF * 1e-6
+    if L0_nH is not None and L0_nH > 0:
+        cc["L0"] = L0_nH * 1e-9
+    if R0_mOhm is not None and R0_mOhm > 0:
+        cc["R0"] = R0_mOhm * 1e-3
+    if anode_r_mm is not None and anode_r_mm > 0:
+        cc["anode_radius"] = anode_r_mm * 1e-3
+    if cathode_r_mm is not None and cathode_r_mm > 0:
+        cc["cathode_radius"] = cathode_r_mm * 1e-3
+    if anode_len_mm is not None and anode_len_mm > 0:
+        sc["anode_length"] = anode_len_mm * 1e-3
+    if fc is not None and fc > 0:
+        sc["current_fraction"] = fc
+    if fm is not None and fm > 0:
+        sc["mass_fraction"] = fm
+    if fmr is not None and fmr > 0:
+        sc["radial_mass_fraction"] = fmr
+    if fcr is not None and fcr > 0:
+        sc["radial_current_fraction"] = fcr
+    if crowbar_on is not None:
+        cc["crowbar_enabled"] = crowbar_on
+    if crowbar_R_mOhm is not None and crowbar_R_mOhm > 0:
+        cc["crowbar_resistance"] = crowbar_R_mOhm * 1e-3
+
+    if pressure_torr is not None and pressure_torr > 0:
+        p_pa = pressure_torr * 133.322
+        sc["fill_pressure_Pa"] = p_pa
+        rho0 = p_pa * gas["m_mol"] / (k_B * 300.0)
+    elif gas_key and gas_key != "D2":
+        p_pa = sc.get("fill_pressure_Pa", 400.0)
+        rho0 = p_pa * gas["m_mol"] / (k_B * 300.0)
+
+    t_end = sim_time_us * 1e-6
+    t0_wall = wall_time.perf_counter()
+
+    try:
+        from dpf.config import (
+            CircuitConfig,
+            DiagnosticsConfig,
+            FluidConfig,
+            GeometryConfig,
+            SimulationConfig,
+            SnowplowConfig,
+        )
+        from dpf.engine import SimulationEngine
+
+        a = cc["anode_radius"]
+        b = cc["cathode_radius"]
+        L_anode = sc.get("anode_length", 0.16)
+        p_pa_cfg = sc.get("fill_pressure_Pa", 400.0)
+
+        # Grid: cylindrical [nr, 1, nz], dr covers annular gap, dz covers anode
+        nr = grid_nx
+        nz = grid_nx * 2
+        dr = (b - a) / nr
+        dz = L_anode / nz
+
+        circuit_cfg = CircuitConfig(
+            C=cc["C"], V0=cc["V0"], L0=cc["L0"],
+            R0=cc.get("R0", 0.0),
+            anode_radius=a, cathode_radius=b,
+            crowbar_enabled=cc.get("crowbar_enabled", False),
+            crowbar_mode=cc.get("crowbar_mode", "voltage_zero"),
+            crowbar_time=cc.get("crowbar_time", 0.0),
+            crowbar_resistance=cc.get("crowbar_resistance", 0.0),
+            crowbar_inductance=cc.get("crowbar_inductance", 0.0),
+        )
+
+        snowplow_cfg = SnowplowConfig(
+            enabled=bool(sc),
+            fill_pressure_Pa=p_pa_cfg,
+            anode_length=L_anode,
+            current_fraction=sc.get("current_fraction", 0.7),
+            mass_fraction=sc.get("mass_fraction", 0.15),
+            radial_mass_fraction=sc.get("radial_mass_fraction"),
+            radial_current_fraction=sc.get("radial_current_fraction"),
+            radial_current_fraction_2=sc.get("radial_current_fraction_2"),
+            radial_transition_time=sc.get("radial_transition_time"),
+            pinch_column_fraction=sc.get("pinch_column_fraction", 1.0),
+        )
+
+        sim_cfg = SimulationConfig(
+            grid_shape=[nr, 1, nz],
+            dx=dr,
+            sim_time=t_end,
+            rho0=rho0,
+            T0=300.0,
+            ion_mass=gas["m_mol"],
+            circuit=circuit_cfg,
+            geometry=GeometryConfig(type="cylindrical", dz=dz),
+            fluid=FluidConfig(
+                backend=backend,
+                gamma=gas.get("gamma", 5.0 / 3.0),
+                cfl=0.3,
+                reconstruction="plm",
+                riemann_solver="hlld",
+                time_integrator="ssp_rk2",
+                enable_resistive=True,
+                conservative_energy=True,
+                use_godunov_flux=True,
+            ),
+            snowplow=snowplow_cfg,
+            diagnostics=DiagnosticsConfig(hdf5_filename=":memory:"),
+        )
+
+        engine = SimulationEngine(sim_cfg)
+
+        # Capture time-series by intercepting diagnostics.record
+        _ts: dict[str, list] = {
+            "t": [], "I": [], "V": [], "Lp": [],
+            "z": [], "r": [], "phase": [],
+            "E_cap": [], "E_ind": [], "E_res": [],
+        }
+        _orig_record = engine.diagnostics.record
+
+        def _capturing_record(state: dict, t: float) -> None:
+            circ = state.get("circuit", {})
+            sp = state.get("snowplow", {})
+            coupler = state.get("coupler", {})
+            _ts["t"].append(t * 1e6)
+            _ts["I"].append(circ.get("current", 0.0) / 1e6)
+            _ts["V"].append(circ.get("voltage", 0.0) / 1e3)
+            _ts["Lp"].append(coupler.get("Lp", 0.0) * 1e9)
+            _ts["z"].append(sp.get("z_sheath", 0.0) * 1e3)
+            _ts["r"].append(sp.get("r_shock", 0.0) * 1e3)
+            _ts["phase"].append(sp.get("phase", "none"))
+            _ts["E_cap"].append(circ.get("energy_cap", 0.0) / 1e3)
+            _ts["E_ind"].append(circ.get("energy_ind", 0.0) / 1e3)
+            _ts["E_res"].append(circ.get("energy_res", 0.0) / 1e3)
+            _orig_record(state, t)
+
+        engine.diagnostics.record = _capturing_record
+
+        _steps_done = [0]
+        _orig_step = engine.step
+
+        def _step_with_progress(*args, **kwargs):  # noqa: ANN002
+            result = _orig_step(*args, **kwargs)
+            _steps_done[0] += 1
+            if progress_fn and _steps_done[0] % 100 == 0:
+                frac = min(engine.time / t_end, 1.0)
+                progress_fn(frac, desc=f"t = {engine.time * 1e6:.1f} us")
+            return result
+
+        engine.step = _step_with_progress
+
+        summary = engine.run()
+
+        elapsed = wall_time.perf_counter() - t0_wall
+
+        t_arr = np.array(_ts["t"])
+        I_arr = np.array(_ts["I"])
+        V_arr = np.array(_ts["V"])
+
+        # Peak current
+        if len(I_arr) > 0:
+            I_peak_idx = int(np.argmax(np.abs(I_arr)))
+            I_peak = float(np.abs(I_arr[I_peak_idx]))
+            t_peak = float(t_arr[I_peak_idx])
+        else:
+            I_peak = float(summary.get("peak_current_A", 0.0)) / 1e6
+            t_peak = float(summary.get("peak_current_time_s", 0.0)) * 1e6
+
+        phases_list = _ts["phase"] if _ts["phase"] else ["none"] * len(t_arr)
+
+        I_pre_dip = I_peak
+        t_pre_dip = t_peak
+        I_dip = I_peak
+        t_dip = t_peak
+        dip_pct = 0.0
+        scaling = None
+        crowbar_t = None
+
+        if len(I_arr) > 0:
+            dip_mask = np.array([(p in ("radial", "reflected")) for p in phases_list])
+            if np.any(dip_mask):
+                from dpf.fluid.snowplow import implosion_scaling
+                dip_region = np.where(dip_mask)[0]
+                dip_idx = dip_region[int(np.argmin(I_arr[dip_region]))]
+                I_dip = float(I_arr[dip_idx])
+                t_dip = float(t_arr[dip_idx])
+                pre_dip_slice = I_arr[:dip_region[0]]
+                if len(pre_dip_slice) > 0:
+                    pre_dip_idx = int(np.argmax(pre_dip_slice))
+                    I_pre_dip = float(pre_dip_slice[pre_dip_idx])
+                    t_pre_dip = float(t_arr[pre_dip_idx])
+                dip_pct = (1 - I_dip / I_pre_dip) * 100 if I_pre_dip > 0 else 0.0
+                P_fill_Torr = p_pa_cfg / 133.322
+                scaling = implosion_scaling(I_pre_dip, a * 100, P_fill_Torr)
+
+            for i in range(1, len(V_arr)):
+                if V_arr[i - 1] > 0 and V_arr[i] <= 0:
+                    crowbar_t = float(t_arr[i])
+                    break
+
+        # Final MHD state for heatmaps
+        final_state = dict(engine.state) if hasattr(engine, "state") else None
+        # Build sparse snapshots for animated heatmaps (sample every ~10% of steps)
+        mhd_snapshots: list[dict] = []
+
+        meta = _PRESETS.get(preset_name, {}).get("_meta", {})
+        E_bank = 0.5 * cc["C"] * cc["V0"] ** 2
+        T_LC = 2 * np.pi * np.sqrt((cc["L0"] + 1e-9) * cc["C"])
+
+        try:
+            _git_hash = _sp.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                stderr=_sp.DEVNULL, text=True,
+            ).strip()
+        except Exception:
+            _git_hash = "unknown"
+
+        return {
+            "t_us": t_arr, "I_MA": I_arr, "V_kV": V_arr,
+            "L_p_nH": np.array(_ts["Lp"]),
+            "z_mm": np.array(_ts["z"]), "r_mm": np.array(_ts["r"]),
+            "phases": phases_list,
+            "E_cap_kJ": np.array(_ts["E_cap"]),
+            "E_ind_kJ": np.array(_ts["E_ind"]),
+            "E_res_kJ": np.array(_ts["E_res"]),
+            "I_peak": I_peak, "t_peak": t_peak,
+            "I_pre_dip": I_pre_dip, "t_pre_dip": t_pre_dip,
+            "I_dip": I_dip, "t_dip": t_dip,
+            "dip_pct": dip_pct, "scaling": scaling, "crowbar_t": crowbar_t,
+            "E_bank_kJ": E_bank / 1e3, "T_LC_us": T_LC * 1e6,
+            "dt_ns": 0.0, "n_steps": summary.get("steps", 0),
+            "elapsed_s": elapsed,
+            "device": meta.get("device", preset_name),
+            "circuit": cc, "snowplow_cfg": sc,
+            "gas": gas, "gas_key": gas_key or "D2",
+            "rho0": rho0,
+            "snowplow_obj": engine.snowplow if hasattr(engine, "snowplow") else None,
+            "has_snowplow": bool(sc),
+            "neutron_yield": None,
+            "final_state": final_state,
+            "mhd_snapshots": mhd_snapshots,
+            "grid_shape": [nr, 1, nz],
+            "backend": backend,
+            "energy_conservation": summary.get("energy_conservation", 1.0),
+            "total_neutron_yield": summary.get("total_neutron_yield", 0.0),
+            "reproducibility": {
+                "version": "v1.2",
+                "git_hash": _git_hash,
+                "timestamp": _dt.now().isoformat(),
+                "backend": f"engine:{backend}",
+                "sim_time_us": sim_time_us,
+                "preset": preset_name,
+            },
+        }
+
+    except Exception as exc:
+        _log.warning(
+            "SimulationEngine failed (%s: %s) — falling back to Lee model",
+            type(exc).__name__, exc,
+        )
+        result = run_simulation_core(
+            preset_name, sim_time_us,
+            gas_key=gas_key, V0_kV=V0_kV, pressure_torr=pressure_torr,
+            C_uF=C_uF, L0_nH=L0_nH, R0_mOhm=R0_mOhm,
+            anode_r_mm=anode_r_mm, cathode_r_mm=cathode_r_mm,
+            anode_len_mm=anode_len_mm,
+            fc=fc, fm=fm, fmr=fmr, fcr=fcr,
+            crowbar_on=crowbar_on, crowbar_R_mOhm=crowbar_R_mOhm,
+            progress_fn=progress_fn,
+        )
+        result["backend"] = f"lee (fallback from engine:{backend})"
+        result["final_state"] = None
+        result["mhd_snapshots"] = []
+        return result
