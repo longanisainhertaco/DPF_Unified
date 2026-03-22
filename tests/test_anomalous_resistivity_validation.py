@@ -11,12 +11,11 @@ References:
 import numpy as np
 import pytest
 
-from dpf.collision.spitzer import coulomb_log, nu_ei, spitzer_alpha, spitzer_resistivity
+from dpf.collision.spitzer import coulomb_log, spitzer_alpha, spitzer_resistivity
 from dpf.constants import e, epsilon_0, k_B, m_e, m_p
 from dpf.turbulence.anomalous import (
     _compute_eta_anom,
     anomalous_resistivity_field,
-    buneman_classic_threshold,
     electron_drift_velocity,
     ion_acoustic_threshold,
     ion_sound_speed,
@@ -130,7 +129,6 @@ class TestLHDIThreshold:
 
     def test_lhdi_threshold_below_ion_acoustic(self):
         """LHDI activates at lower drift velocity than ion-acoustic threshold (Te >> Ti)."""
-        ne = np.array([1e23])
         Ti_K = np.array([50.0 * 11604.52])  # 50 eV
         Te_K = np.array([500.0 * 11604.52])  # 500 eV (Te >> Ti)
         mi = _m_d
@@ -176,7 +174,6 @@ class TestLHDIThreshold:
 
     def test_buneman_classic_highest_threshold(self):
         """True Buneman threshold (v_d > v_te) is much higher than LHDI and ion-acoustic."""
-        ne = np.array([1e23])
         Ti_K = np.array([100.0 * 11604.52])
         Te_K = np.array([100.0 * 11604.52])
         mi = _m_d
@@ -314,7 +311,6 @@ class TestIonAcousticThreshold:
 
     def test_threshold_uses_electron_temperature(self):
         """Ion-acoustic threshold velocity c_s uses Te (electron pressure provides restoring force)."""
-        ne = np.array([1e23])
         mi = _m_d
 
         Te_cold = np.array([10.0 * 11604.52])
