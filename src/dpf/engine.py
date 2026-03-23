@@ -286,6 +286,7 @@ class SimulationEngine:
         # Lp handoff blending state
         self._lp_blend_alpha: float = 0.0  # 0 = snowplow, 1 = MHD
         self._lp_blend_active: bool = False
+        self._skip_next_fluid_step: bool = False  # skip MHD on handoff step (CFL violation)
         self._initial_grid_mass: float = self._compute_grid_mass()
 
         # Diagnostics tracking
@@ -1125,6 +1126,10 @@ class SimulationEngine:
             handoff = self.config.snowplow.handoff_mode
             if handoff in ("radial_mhd", "full_mhd"):
                 self._initialize_radial_state()
+                # Force dt recomputation: the radial init dramatically changes
+                # wave speeds (B=286T → v_A=4.7e6 m/s). The pre-handoff dt
+                # violates CFL by ~500×. Set flag to skip THIS step's MHD advance.
+                self._skip_next_fluid_step = True
             else:
                 self._initialize_radial_bfield()
 
@@ -1161,6 +1166,14 @@ class SimulationEngine:
         new_coupling: CouplingState,
     ) -> None:
         """Steps 3, 3.1, 3.5: MHD fluid advance, ablation, Powell div(B) sources."""
+        # Skip MHD on the handoff step — the radial init dramatically changes
+        # wave speeds and the pre-handoff dt violates CFL by ~500×.
+        # The next step will recompute dt from the new state.
+        if self._skip_next_fluid_step:
+            self._skip_next_fluid_step = False
+            logger.info("Skipping fluid advance on handoff step (CFL recomputation needed)")
+            return
+
         # Ohmic correction: measure gap before fluid step, inject in same step
         if (
             self.config.fluid.enable_ohmic_correction
