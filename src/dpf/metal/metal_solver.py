@@ -443,15 +443,27 @@ class MetalMHDSolver(PlasmaSolverBase):
     # ------------------------------------------------------------------ #
 
     @staticmethod
+    @staticmethod
     def _apply_floors(state_gpu: dict[str, torch.Tensor]) -> None:
         """Enforce positivity floors on density and pressure (in-place).
+
+        For magnetized regions, the density floor is raised to prevent
+        Alfven speed divergence: rho_min = B²/v_A_max² where v_A_max = 10⁶ m/s.
+        This is standard practice in MHD codes simulating Z-pinches where
+        the electrode gap evacuates under magnetic pressure.
 
         Parameters
         ----------
         state_gpu : dict[str, torch.Tensor]
             Mutable state dict on GPU.  Modified in-place.
         """
-        state_gpu["rho"] = torch.clamp(state_gpu["rho"], min=RHO_FLOOR)
+        # Magnetized density floor: prevents v_A > 10^6 m/s
+        V_A_MAX_SQ = 1e12  # (10^6 m/s)^2
+        B = state_gpu["B"]
+        B_sq = torch.sum(B ** 2, dim=0)  # (nx, ny, nz)
+        rho_mag_floor = B_sq / V_A_MAX_SQ  # B²/v_A_max² (HL units: mu0=1)
+        rho_floor = torch.clamp(rho_mag_floor, min=RHO_FLOOR)
+        state_gpu["rho"] = torch.max(state_gpu["rho"], rho_floor)
         state_gpu["pressure"] = torch.clamp(state_gpu["pressure"], min=P_FLOOR)
         if "e_electron" in state_gpu:
             state_gpu["e_electron"] = torch.clamp(
@@ -1062,6 +1074,45 @@ class MetalMHDSolver(PlasmaSolverBase):
         if ee_n is not None:
             ee_n = ee_n.clone()
 
+        # Pre-step electrode BC: set boundary B_theta from circuit current
+        # BEFORE the RK stages so the flux computation sees the boundary
+        # through F.pad("replicate") padding. This is the ghost-cell approach
+        # — the Riemann solver handles the discontinuity naturally, preserving
+        # energy conservation. Much better than post-step overwrite which
+        # injects energy without bookkeeping.
+        anode_r = kwargs.get("anode_radius", 0.0)
+        cathode_r = kwargs.get("cathode_radius", 0.0)
+        apply_bc = kwargs.get("apply_electrode_bc", False)
+        if (
+            apply_bc and cathode_r > 0 and abs(current) > 1e-10
+            and self.coordinates == "cylindrical"
+        ):
+            import math
+            mu0 = 4.0 * math.pi * 1e-7
+            pi_val = math.pi
+            _sqrt_mu0 = math.sqrt(mu0) if self._convert_b_si_to_hl else 1.0
+            r_arr = self._r.squeeze()
+            r_safe = torch.clamp(r_arr, min=1e-10)
+            B_theta_target = mu0 * current / (2.0 * pi_val * r_safe) / _sqrt_mu0
+            idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
+            idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
+            nx = B_n.shape[1]
+            # Pin boundary cells (these become ghost values via padding)
+            B_n[1, idx_cath, :, :] = B_theta_target[idx_cath]
+            if idx_cath < nx - 1:
+                B_n[1, -1, :, :] = B_theta_target[-1]
+            if idx_anode > 0:
+                B_n[1, idx_anode, :, :] = B_theta_target[idx_anode]
+            # Insulator face (z=0)
+            for ir in range(idx_anode, min(idx_cath + 1, nx)):
+                B_n[1, ir, :, 0] = B_theta_target[ir]
+            # Conducting walls
+            B_n[0, :idx_anode + 1, :, :] = 0.0
+            vel_n[0, :idx_anode + 1, :, :] = 0.0
+            B_n[0, idx_cath:, :, :] = 0.0
+            vel_n[0, idx_cath:, :, :] = 0.0
+            B_n[0, 0, :, :] = 0.0
+
         if self.time_integrator == "ssp_rk3":
             rho_new, vel_new, p_new, B_new, ee_new = self._step_ssp_rk3(
                 rho_n, vel_n, p_n, B_n, dt, e_electron=ee_n,
@@ -1070,6 +1121,14 @@ class MetalMHDSolver(PlasmaSolverBase):
             rho_new, vel_new, p_new, B_new, ee_new = self._step_ssp_rk2(
                 rho_n, vel_n, p_n, B_n, dt, e_electron=ee_n,
             )
+
+        # -------------------------------------------------------------- #
+        #  Magnetized density floor (prevents Alfven speed divergence)
+        # -------------------------------------------------------------- #
+        V_A_MAX_SQ = 1e12  # (10^6 m/s)^2 — cap Alfven speed at 0.3% of c
+        B_sq_floor = torch.sum(B_new ** 2, dim=0)
+        rho_mag_floor = B_sq_floor / V_A_MAX_SQ
+        rho_new = torch.max(rho_new, torch.clamp(rho_mag_floor, min=RHO_FLOOR))
 
         # -------------------------------------------------------------- #
         #  Cylindrical geometric source terms
@@ -1226,51 +1285,12 @@ class MetalMHDSolver(PlasmaSolverBase):
                     for comp in range(3):
                         B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
             else:
-                # Cylindrical: axis 0 = r, axis 1 = theta/y, axis 2 = z
-                r_arr = self._r.squeeze()  # shape (nx,)
+                # Cylindrical: B_theta BC was applied PRE-step. Post-step only
+                # enforces conducting wall conditions (v_r=0, B_r=0).
+                r_arr = self._r.squeeze()
                 idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
                 idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
-                r_safe = torch.clamp(r_arr, min=1e-10)
-                B_theta_profile = mu0 * current / (2.0 * pi * r_safe) / _sqrt_mu0
 
-                # Energy-correcting electrode BC with relaxation.
-                # Instead of hard-pinning B_theta (which creates a stationary
-                # shock at the boundary that accumulates energy), relax toward
-                # the target over a few timesteps. This mimics ghost-cell BCs
-                # where the Riemann solver handles the transition naturally.
-                B_sq_before = B_new[1].clone() ** 2
-
-                # Relaxation rate: blend 10% per step toward target
-                alpha_bc = 0.1
-
-                # Cathode boundary
-                B_target_cath = B_theta_profile[idx_cath]
-                B_new[1, idx_cath, :, :] = (
-                    (1.0 - alpha_bc) * B_new[1, idx_cath, :, :] + alpha_bc * B_target_cath
-                )
-                if idx_cath < nx - 1:
-                    B_new[1, -1, :, :] = (
-                        (1.0 - alpha_bc) * B_new[1, -1, :, :] + alpha_bc * B_theta_profile[-1]
-                    )
-                # Anode boundary
-                if idx_anode > 0:
-                    B_target_anode = B_theta_profile[idx_anode]
-                    B_new[1, idx_anode, :, :] = (
-                        (1.0 - alpha_bc) * B_new[1, idx_anode, :, :] + alpha_bc * B_target_anode
-                    )
-                # Insulator face (z=0): relax at all radii in gap
-                for ir in range(idx_anode, min(idx_cath + 1, nx)):
-                    B_new[1, ir, :, 0] = (
-                        (1.0 - alpha_bc) * B_new[1, ir, :, 0] + alpha_bc * B_theta_profile[ir]
-                    )
-
-                # Energy correction
-                B_sq_after = B_new[1] ** 2
-                _mu0_bc = mu0 / (_sqrt_mu0 ** 2)
-                delta_ME = (B_sq_after - B_sq_before) / (2.0 * _mu0_bc)
-                p_new = torch.clamp(p_new + delta_ME * (self.gamma - 1.0), min=P_FLOOR)
-
-                # Conducting wall BCs
                 B_new[0, :idx_anode + 1, :, :] = 0.0
                 vel_new[0, :idx_anode + 1, :, :] = 0.0
                 B_new[0, idx_cath:, :, :] = 0.0
