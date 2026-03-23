@@ -30,7 +30,7 @@ from dpf.circuit.coupler import CircuitCoupler, FeedbackResult
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures, spitzer_resistivity
 from dpf.config import SimulationConfig
-from dpf.constants import eV, k_B, pi
+from dpf.constants import eV, k_B, m_e, pi
 from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
 
@@ -40,12 +40,15 @@ from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint
 from dpf.diagnostics.energy_balance import EnergyTracker
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.interferometry import abel_transform, fringe_shift
+from dpf.diagnostics.pease_braginskii import check_pease_braginskii
+from dpf.diagnostics.plasma_regime import regime_validity
 from dpf.diagnostics.yield_tracker import YieldTracker
+from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.implicit_diffusion import implicit_resistive_diffusion, implicit_thermal_diffusion
 from dpf.fluid.ionization import coronal_z_eff
-from dpf.fluid.mhd_solver import MHDSolver
+from dpf.fluid.mhd_solver import MHDSolver, powell_source_terms, powell_source_terms_cylindrical
 from dpf.fluid.nernst import apply_nernst_advection
 from dpf.fluid.snowplow import SnowplowModel
 from dpf.fluid.super_time_step import rkl2_diffusion_3d, rkl2_thermal_step
@@ -333,6 +336,16 @@ class SimulationEngine:
         # Performance: NaN check stride (run every N steps; step 0 always runs)
         self._nan_check_stride: int = getattr(config, "nan_check_stride", 10)
 
+        # Performance: coupling integral subcycling (R_plasma, L_plasma, Z_bar)
+        # Alfven timescale ~100-500 ns >> dt_mhd ~1-5 ns → safe to cache for N steps
+        self._coupling_cache_stride: int = 10
+        self._cached_R_plasma: float = 0.0
+        self._cached_L_plasma: float = 0.0
+        self._cached_Z_bar: float = 1.0
+        self._cached_Z_bar_field: np.ndarray | None = None
+        self._cached_eta_field: np.ndarray | None = None
+        self._cached_eta_anom: float = 0.0
+
         # Kinetic (PIC) Manager
         self.kinetic: KineticManager | None = None
         if config.kinetic.enabled:
@@ -386,6 +399,12 @@ class SimulationEngine:
                 dz=dz_coupler,
             )
         self._last_feedback: FeedbackResult | None = None
+
+        # Perf: cache _should_use_coupler result, recompute every 10 steps
+        self._coupler_decision_cache: bool | None = None
+
+        # Suppress repeated MHD regime validity warnings
+        self._mhd_regime_warned: bool = False
 
         logger.info(
             "SimulationEngine initialized: grid=(%d,%d,%d), geometry=%s, backend=%s, "
@@ -797,7 +816,7 @@ class SimulationEngine:
 
     def _step_init_fields(self) -> None:
         """Phase 5 pre-step: sync field manager and apply electrode BC."""
-        self.field_manager.B = self.state["B"].copy()
+        self.field_manager.B = self.state["B"]
         L_p = self.field_manager.compute_plasma_inductance(self.circuit.current)
         self._prev_L_plasma = L_p
         if self.boundary_cfg.electrode_bc:
@@ -816,15 +835,36 @@ class SimulationEngine:
     ]:
         """Step 1: Ionization state, Spitzer+anomalous resistivity, R/L_plasma.
 
+        Coupling integrals (R_plasma, L_plasma, Z_bar, eta_field) are subcycled:
+        recomputed every _coupling_cache_stride steps (default 10) since the
+        Alfven timescale (~100-500 ns) >> dt_mhd (~1-5 ns). J_field is only
+        returned on recompute steps; cache-hit steps return J_field=None.
+
         Returns:
             Z_bar: volume-averaged ionization fraction
             Z_bar_field: spatially-resolved ionization field
             eta_field: spatially-resolved resistivity (None if Te/ne too low)
-            J_field: current density (3, nx, ny, nz); None if not computed
+            J_field: current density (3, nx, ny, nz); None on cache-hit steps
             R_plasma: volume-integral plasma resistance [Ohm]
             L_plasma: volume-integral plasma inductance [H]
             eta_anom: scalar anomalous resistivity for diagnostics
         """
+        stride = self._coupling_cache_stride
+        cache_miss = (self.step_count == 0) or (self.step_count % stride == 0)
+
+        if not cache_miss:
+            # Return cached values; J_field not needed (PIC handles None)
+            return (
+                self._cached_Z_bar,
+                self._cached_Z_bar_field if self._cached_Z_bar_field is not None
+                    else np.full_like(self.state["Te"], self._cached_Z_bar),
+                self._cached_eta_field,
+                None,
+                self._cached_R_plasma,
+                self._cached_L_plasma,
+                self._cached_eta_anom,
+            )
+
         Te = self.state["Te"]
         rho = self.state["rho"]
         ne = rho / self.ion_mass
@@ -932,6 +972,14 @@ class SimulationEngine:
                 L_plasma = float(np.sum(B_sq_2d / _mu_0 * cell_vol)) / I_sq
             else:
                 L_plasma = float(np.sum(B_sq / _mu_0 * dV)) / I_sq
+
+        # Update cache
+        self._cached_Z_bar = Z_bar
+        self._cached_Z_bar_field = Z_bar_field
+        self._cached_eta_field = eta_field
+        self._cached_eta_anom = eta_anom
+        self._cached_R_plasma = R_plasma
+        self._cached_L_plasma = L_plasma
 
         return Z_bar, Z_bar_field, eta_field, J_field, R_plasma, L_plasma, eta_anom
 
@@ -1252,7 +1300,6 @@ class SimulationEngine:
             )
 
         # Step 5b4: Pease-Braginskii radiative collapse check
-        from dpf.diagnostics.pease_braginskii import check_pease_braginskii
         self._last_pb_result = check_pease_braginskii(
             I_current=abs(self._coupling.current),
             Z=Z_bar,
@@ -1275,7 +1322,6 @@ class SimulationEngine:
 
         # Step 5d: Plasma regime validity check (every 100 steps)
         if self.step_count % 100 == 0:
-            from dpf.diagnostics.plasma_regime import regime_validity
             ne_rv = self.state["rho"] / self.ion_mass
             Te_rv = self.state["Te"]
             Ti_rv = self.state["Ti"]
@@ -1283,12 +1329,13 @@ class SimulationEngine:
             rv = regime_validity(ne_rv, Te_rv, Ti_rv, v_mag, dx=self.config.dx)
             self._last_regime_result = rv
             frac = rv["fraction_valid"]
-            if frac < 0.5:
+            if frac < 0.5 and not self._mhd_regime_warned:
                 logger.warning(
                     "MHD regime validity: %.0f%% of cells outside MHD-valid regime "
                     "(ND>1 or dx<10*lambda_De). Consider kinetic model.",
                     (1.0 - frac) * 100,
                 )
+                self._mhd_regime_warned = True
 
         return neutron_rate
 
@@ -1632,16 +1679,21 @@ class SimulationEngine:
 
         Returns True when the coupling_mode config indicates density-weighted
         feedback should be used and the simulation has MHD fields available.
+        Result is cached and recomputed every 10 steps to avoid np.max(rho) overhead.
         """
         if self.coupling_mode == "lee_only":
             return False
         if self.coupling_mode == "density_weighted":
             return True
         # "auto": use coupler when MHD fields exist (non-trivial rho)
-        rho = self.state.get("rho")
-        if rho is None:
-            return False
-        return float(np.max(rho)) > 0
+        # Cache result; recompute every 10 steps or on first call.
+        if self._coupler_decision_cache is None or self.step_count % 10 == 0:
+            rho = self.state.get("rho")
+            if rho is None:
+                self._coupler_decision_cache = False
+            else:
+                self._coupler_decision_cache = float(np.max(rho)) > 0
+        return self._coupler_decision_cache
 
     def _compute_back_emf(self, dt: float) -> float:
         """Compute motional back-EMF from MHD field advection.
@@ -1928,7 +1980,6 @@ class SimulationEngine:
         self._last_Z_bar = 1.0
         self._last_eta_anom = 0.0
 
-        from dpf.diagnostics.pease_braginskii import check_pease_braginskii
         self._last_pb_result = check_pease_braginskii(
             I_current=abs(self._coupling.current),
             Z=1.0,
@@ -2072,7 +2123,6 @@ class SimulationEngine:
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
         # Skip if: Metal backend (handled internally), or 2T mode (2T module owns conduction).
         if self.config.fluid.enable_anisotropic_conduction and self.backend != "metal" and not _two_t:
-            from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
             _dx = self.config.dx
             if self.geometry_type == "cylindrical":
                 _dz = self.config.geometry.dz if self.config.geometry.dz is not None else _dx
@@ -2248,8 +2298,6 @@ class SimulationEngine:
 
         Reference: Powell et al., J. Comp. Phys. 154, 284 (1999).
         """
-        from dpf.fluid.mhd_solver import powell_source_terms, powell_source_terms_cylindrical
-
         rho = self.state["rho"]
         gamma = self.config.fluid.gamma
 
@@ -2415,14 +2463,12 @@ class SimulationEngine:
         Z_for_diff = Z_bar_field if Z_bar_field is not None else Z_bar
         Te_safe = np.maximum(Te, 1000.0)
         ne_safe = np.maximum(ne, 1e10)
-        from dpf.collision.spitzer import spitzer_resistivity as _spitz_eta
         lnL = coulomb_log(ne_safe, Te_safe)
-        eta = _spitz_eta(ne_safe, Te_safe, lnL, Z=Z_for_diff)
+        eta = spitzer_resistivity(ne_safe, Te_safe, lnL, Z=Z_for_diff)
 
         # Compute Spitzer thermal conductivity: kappa_e ~ 3.2 * ne * kB^2 * Te * tau_e / m_e
         # Simplified estimate: kappa ~ 20 * (kB * Te)^{5/2} / (m_e^{1/2} * e^4 * lnL)
         # For now, use a simplified isotropic Spitzer kappa
-        from dpf.constants import m_e
         # NRL Formulary eq. 2-5: tau_e [s] = 3.44e5 * Te_eV^1.5 / (ne [cm^-3] * lnL)
         # Te_safe is in Kelvin; convert to eV before applying the NRL coefficient.
         Te_eV = Te_safe * k_B / eV
@@ -2461,7 +2507,6 @@ class SimulationEngine:
 
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
         if fc.enable_anisotropic_conduction and self.backend != "metal":
-            from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
             B_ac = self.state["B"]
             Te_ac = self.state["Te"]
             ne_ac = np.maximum(self.state["rho"] / self.ion_mass, 1e10)
