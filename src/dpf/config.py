@@ -469,10 +469,20 @@ class SnowplowConfig(BaseModel):
         ),
     )
     enable_mhd_coupling: bool = Field(
-        False,
+        True,
         description=(
             "Inject snowplow sheath mass/momentum/energy into the MHD grid as source terms. "
-            "When False (default), snowplow only couples via L_plasma/dL_dt to the circuit."
+            "When True (default), sheath dynamics modify the MHD density/velocity/energy fields. "
+            "When False, snowplow only couples via L_plasma/dL_dt to the circuit."
+        ),
+    )
+    handoff_mode: str = Field(
+        "lee_only",
+        description=(
+            "Circuit-MHD coupling mode for the radial phase. "
+            "'lee_only': snowplow Lp drives circuit throughout (validated, default). "
+            "'radial_mhd': transition to density-weighted Lp at radial phase onset. "
+            "'full_mhd': density-weighted Lp from t=0 (experimental)."
         ),
     )
 

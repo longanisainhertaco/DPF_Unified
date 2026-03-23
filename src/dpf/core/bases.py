@@ -52,6 +52,7 @@ class StepResult:
     total_radiated_energy: float = 0.0
     neutron_rate: float = 0.0
     total_neutron_yield: float = 0.0
+    mass_conservation: float = 1.0  # M_grid / M_initial
     finished: bool = False
 
 
