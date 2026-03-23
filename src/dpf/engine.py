@@ -2481,11 +2481,10 @@ class SimulationEngine:
         # the ne unit convention in tau_e doesn't affect kappa — ne cancels.
         # Using NRL coefficient 3.44e5 with ne in m^-3 gives wrong tau_e but correct kappa.
         Te_eV = Te_safe * k_B / eV
-        lnL_safe = max(lnL, 1.0)  # Coulomb log floor to prevent div-by-zero
+        lnL_safe = np.maximum(lnL, 1.0)  # Coulomb log floor to prevent div-by-zero
         tau_e = 3.44e5 * Te_eV**1.5 / (ne_safe * lnL_safe)
         kappa = 3.2 * ne_safe * k_B**2 * Te_safe * tau_e / m_e
-        if not np.isfinite(kappa):
-            kappa = 0.0
+        kappa = np.where(np.isfinite(kappa), kappa, 0.0)
 
         if self.geometry_type == "cylindrical":
             dz = self.config.geometry.dz if self.config.geometry.dz is not None else dx
