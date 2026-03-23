@@ -1722,10 +1722,26 @@ class MetalMHDSolver(PlasmaSolverBase):
             return rho_new, vel_new, p_new, B_new, None
 
         # ── Eager path ────────────────────────────────────────────────────
-        # Uses _compute_rhs_ghosted which pads with electrode ghost cells
-        # when self._use_ghost_bc is True.
+        # Ghost-cell electrode BCs: pad ONCE before the RK stages so the
+        # electrode discontinuity is resolved by the Riemann solver in
+        # stage 1 only — not re-injected every stage.
+        _ghost_active = getattr(self, "_use_ghost_bc", False)
+        r_cell_g: torch.Tensor | None = None
+        r_face_g: torch.Tensor | None = None
+        if _ghost_active:
+            ng = self._GHOST_NG
+            rho_n, vel_n, p_n, B_n, e_electron, r_cell_g, r_face_g = (
+                self._pad_electrode_ghost(
+                    rho_n, vel_n, p_n, B_n, self._ghost_bc_current,
+                    e_electron=e_electron,
+                )
+            )
+
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs_ghosted(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
+        rhs1 = self._compute_rhs(
+            rho_n, vel_n, p_n, B_n, e_electron=e_electron,
+            r_cell=r_cell_g, r_face=r_face_g,
+        )
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
@@ -1736,7 +1752,10 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs_ghosted(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
+        rhs2 = self._compute_rhs(
+            rho_1, vel_1, p_1, B_1, e_electron=ee_1,
+            r_cell=r_cell_g, r_face=r_face_g,
+        )
         rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
         vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
         p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["pressure"])
@@ -1753,6 +1772,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
+
+        # Strip ghost cells — return interior only
+        if _ghost_active:
+            rho_new, vel_new, p_new, B_new, ee_new = self._strip_ghost(
+                rho_new, vel_new, p_new, B_new, ee_new, ng=ng,
+            )
 
         return rho_new, vel_new, p_new, B_new, ee_new
 
@@ -1813,10 +1838,26 @@ class MetalMHDSolver(PlasmaSolverBase):
             return rho_new, vel_new, p_new, B_new, None
 
         # ── Eager path ────────────────────────────────────────────────────
-        # Uses _compute_rhs_ghosted which pads with electrode ghost cells
-        # when self._use_ghost_bc is True.
+        # Ghost-cell electrode BCs: pad ONCE before the RK stages so the
+        # electrode discontinuity is resolved by the Riemann solver in
+        # stage 1 only — not re-injected every stage.
+        _ghost_active = getattr(self, "_use_ghost_bc", False)
+        r_cell_g: torch.Tensor | None = None
+        r_face_g: torch.Tensor | None = None
+        if _ghost_active:
+            ng = self._GHOST_NG
+            rho_n, vel_n, p_n, B_n, e_electron, r_cell_g, r_face_g = (
+                self._pad_electrode_ghost(
+                    rho_n, vel_n, p_n, B_n, self._ghost_bc_current,
+                    e_electron=e_electron,
+                )
+            )
+
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs_ghosted(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
+        rhs1 = self._compute_rhs(
+            rho_n, vel_n, p_n, B_n, e_electron=e_electron,
+            r_cell=r_cell_g, r_face=r_face_g,
+        )
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
@@ -1827,7 +1868,10 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs_ghosted(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
+        rhs2 = self._compute_rhs(
+            rho_1, vel_1, p_1, B_1, e_electron=ee_1,
+            r_cell=r_cell_g, r_face=r_face_g,
+        )
         rho_2 = 0.75 * rho_n + 0.25 * (rho_1 + dt * rhs2["rho"])
         vel_2 = 0.75 * vel_n + 0.25 * (vel_1 + dt * rhs2["velocity"])
         p_2 = 0.75 * p_n + 0.25 * (p_1 + dt * rhs2["pressure"])
@@ -1846,7 +1890,10 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_2 = self._apply_ct_correction(B_2, B_n, dt)
 
         # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
-        rhs3 = self._compute_rhs_ghosted(rho_2, vel_2, p_2, B_2, e_electron=ee_2)
+        rhs3 = self._compute_rhs(
+            rho_2, vel_2, p_2, B_2, e_electron=ee_2,
+            r_cell=r_cell_g, r_face=r_face_g,
+        )
         rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * (rho_2 + dt * rhs3["rho"])
         vel_new = (1.0 / 3.0) * vel_n + (2.0 / 3.0) * (vel_2 + dt * rhs3["velocity"])
         p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * (p_2 + dt * rhs3["pressure"])
@@ -1863,6 +1910,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
+
+        # Strip ghost cells — return interior only
+        if _ghost_active:
+            rho_new, vel_new, p_new, B_new, ee_new = self._strip_ghost(
+                rho_new, vel_new, p_new, B_new, ee_new, ng=ng,
+            )
 
         return rho_new, vel_new, p_new, B_new, ee_new
 
