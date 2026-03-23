@@ -282,6 +282,10 @@ class MetalMHDSolver(PlasmaSolverBase):
         self._coupling: CouplingState = CouplingState()
         self._prev_Lp: float | None = None
 
+        # Ghost-cell BC state (set per-step by step_gpu) -------------------
+        self._use_ghost_bc: bool = False
+        self._ghost_bc_current: float = 0.0
+
         # Pre-allocate a zero tensor for quick allocation in _to_device ----
         nx, ny, nz = self.grid_shape
         self._zero_scalar: torch.Tensor = torch.zeros(
@@ -586,20 +590,31 @@ class MetalMHDSolver(PlasmaSolverBase):
         p: torch.Tensor,
         B: torch.Tensor,
         e_electron: torch.Tensor | None = None,
+        r_cell: torch.Tensor | None = None,
+        r_face: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
-        """Compute MHD RHS for a given primitive state."""
+        """Compute MHD RHS for a given primitive state.
+
+        Parameters
+        ----------
+        r_cell, r_face : torch.Tensor | None
+            Override radial coordinate arrays (used when the state has been
+            padded with ghost cells so the r arrays must match).
+        """
         state_dict: dict[str, torch.Tensor] = {
             "rho": rho, "velocity": vel, "pressure": p, "B": B,
         }
         if e_electron is not None:
             state_dict["e_electron"] = e_electron
         if self.coordinates == "cylindrical":
+            _r = r_cell if r_cell is not None else self._r
+            _rf = r_face if r_face is not None else self._r_face
             return mhd_rhs_cylindrical_mps(
                 state_dict,
                 self.gamma,
                 self.dx, self.dy, self.dz,
-                r_cell=self._r,
-                r_face=self._r_face,
+                r_cell=_r,
+                r_face=_rf,
                 limiter=self.limiter,
                 riemann_solver=self.riemann_solver,
                 reconstruction=self.reconstruction,
@@ -650,6 +665,178 @@ class MetalMHDSolver(PlasmaSolverBase):
         vel_new = torch.clamp(vel_new, min=-v_max, max=v_max)
 
         return rho_new, vel_new, p_new, B_new
+
+    # ------------------------------------------------------------------ #
+    #  Ghost-cell electrode boundary conditions (cylindrical)
+    # ------------------------------------------------------------------ #
+
+    _GHOST_NG: int = 2  # number of ghost cells per side
+
+    def _pad_electrode_ghost(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+        current: float,
+        e_electron: torch.Tensor | None = None,
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor | None,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        """Pad state arrays with ghost cells encoding electrode BCs.
+
+        Adds ``_GHOST_NG`` ghost cells on each side of the radial dimension
+        (dim 0 for scalars, dim 1 for vectors/B).  Ghost cells are filled
+        with:
+
+        - **density, pressure**: zero-gradient (copy from adjacent interior)
+        - **velocity**: zero-gradient, but v_r = 0 (conducting wall)
+        - **B_theta**: mu_0 * I / (2 pi r) (electrode current sheet)
+        - **B_r**: 0 (conducting wall)
+        - **B_z**: zero-gradient
+
+        Returns padded (rho, vel, p, B, e_electron, r_cell_g, r_face_g).
+        """
+        import math
+
+        ng = self._GHOST_NG
+        mu0 = 4.0 * math.pi * 1e-7
+        _sqrt_mu0 = math.sqrt(mu0) if self._convert_b_si_to_hl else 1.0
+
+        # --- Build ghost-zone radial coordinates ---
+        # Interior r covers [r_inner + 0.5*dx, r_inner + (nx-0.5)*dx].
+        # Ghost cells extend the grid by ng cells on each side.
+        nx = rho.shape[0]
+        nx_g = nx + 2 * ng
+        r_1d_g = self._r_inner - (ng - 0.5) * self.dx + (
+            torch.arange(nx_g, dtype=self._dtype, device=self.device) * self.dx
+        )
+        r_cell_g = r_1d_g.reshape(nx_g, 1, 1)
+
+        r_face_1d_g = self._r_inner - ng * self.dx + (
+            torch.arange(nx_g + 1, dtype=self._dtype, device=self.device) * self.dx
+        )
+        r_face_g = r_face_1d_g.reshape(nx_g + 1, 1, 1)
+
+        # --- Pad scalars (dim 0) with zero-gradient ---
+        # F.pad requires 5D input for 3D padding. Unsqueeze to 5D, pad, squeeze.
+        rho_5d = rho.unsqueeze(0).unsqueeze(0)  # (1, 1, nx, ny, nz)
+        p_5d = p.unsqueeze(0).unsqueeze(0)
+        pad_3d = [0, 0, 0, 0, ng, ng]  # pad dim -3 (nx)
+        rho_g = torch.nn.functional.pad(rho_5d, pad_3d, mode="replicate").squeeze(0).squeeze(0)
+        p_g = torch.nn.functional.pad(p_5d, pad_3d, mode="replicate").squeeze(0).squeeze(0)
+
+        # --- Pad velocity (3, nx, ny, nz) → pad dim 1 (nx) ---
+        # Unsqueeze to 5D: (1, 3, nx, ny, nz). Pad last 3 dims: nz, ny, nx.
+        vel_5d = vel.unsqueeze(0)  # (1, 3, nx, ny, nz)
+        pad_vec_3d = [0, 0, 0, 0, ng, ng]  # pad dim -3 (nx), leave ny, nz
+        vel_g = torch.nn.functional.pad(vel_5d, pad_vec_3d, mode="replicate").squeeze(0)
+        # Conducting wall: v_r = 0 in ghost cells
+        vel_g[0, :ng, :, :] = 0.0
+        vel_g[0, ng + nx:, :, :] = 0.0
+
+        # --- Pad B (3, nx, ny, nz) → pad dim 1 (nx) ---
+        B_5d = B.unsqueeze(0)
+        B_g = torch.nn.functional.pad(B_5d, pad_vec_3d, mode="replicate").squeeze(0)
+        # Conducting wall: B_r = 0 in ghost cells
+        B_g[0, :ng, :, :] = 0.0
+        B_g[0, ng + nx:, :, :] = 0.0
+
+        # Set B_theta = mu0*I / (2*pi*r) in ghost cells
+        if abs(current) > 1e-10:
+            r_safe_g = torch.clamp(torch.abs(r_cell_g.squeeze()), min=1e-10)
+            B_theta_target = (
+                mu0 * current / (2.0 * math.pi * r_safe_g)
+            ) / _sqrt_mu0
+
+            # Inner ghost cells (anode side)
+            for ig in range(ng):
+                B_g[1, ig, :, :] = B_theta_target[ig]
+            # Outer ghost cells (cathode side)
+            for ig in range(ng):
+                B_g[1, ng + nx + ig, :, :] = B_theta_target[ng + nx + ig]
+
+        # --- Pad e_electron if present ---
+        ee_g = None
+        if e_electron is not None:
+            ee_5d = e_electron.unsqueeze(0).unsqueeze(0)
+            ee_g = torch.nn.functional.pad(ee_5d, pad_3d, mode="replicate").squeeze(0).squeeze(0)
+
+        return rho_g, vel_g, p_g, B_g, ee_g, r_cell_g, r_face_g
+
+    @staticmethod
+    def _strip_ghost(
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+        e_electron: torch.Tensor | None,
+        ng: int = 2,
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor | None,
+    ]:
+        """Strip ghost cells from padded arrays, returning interior only."""
+        rho_i = rho[ng:-ng, :, :]
+        vel_i = vel[:, ng:-ng, :, :]
+        p_i = p[ng:-ng, :, :]
+        B_i = B[:, ng:-ng, :, :]
+        ee_i = None
+        if e_electron is not None:
+            ee_i = e_electron[ng:-ng, :, :]
+        return rho_i, vel_i, p_i, B_i, ee_i
+
+    def _compute_rhs_ghosted(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        p: torch.Tensor,
+        B: torch.Tensor,
+        e_electron: torch.Tensor | None = None,
+    ) -> dict[str, torch.Tensor]:
+        """Compute MHD RHS using ghost-cell electrode BCs when active.
+
+        When ``self._use_ghost_bc`` is True, pads the state with electrode
+        ghost cells, computes the RHS on the padded domain, then strips the
+        ghost cells from the result so the returned RHS matches the interior
+        grid shape.  When ghost BCs are inactive, falls through to the
+        standard ``_compute_rhs``.
+        """
+        if not getattr(self, "_use_ghost_bc", False):
+            return self._compute_rhs(rho, vel, p, B, e_electron=e_electron)
+
+        ng = self._GHOST_NG
+        rho_g, vel_g, p_g, B_g, ee_g, r_cell_g, r_face_g = (
+            self._pad_electrode_ghost(
+                rho, vel, p, B, self._ghost_bc_current,
+                e_electron=e_electron,
+            )
+        )
+        rhs_g = self._compute_rhs(
+            rho_g, vel_g, p_g, B_g,
+            e_electron=ee_g,
+            r_cell=r_cell_g,
+            r_face=r_face_g,
+        )
+
+        # Strip ghost cells from the RHS arrays
+        rhs: dict[str, torch.Tensor] = {}
+        rhs["rho"] = rhs_g["rho"][ng:-ng, :, :]
+        rhs["velocity"] = rhs_g["velocity"][:, ng:-ng, :, :]
+        rhs["pressure"] = rhs_g["pressure"][ng:-ng, :, :]
+        rhs["B"] = rhs_g["B"][:, ng:-ng, :, :]
+        if "e_electron" in rhs_g:
+            rhs["e_electron"] = rhs_g["e_electron"][ng:-ng, :, :]
+        return rhs
 
     # ------------------------------------------------------------------ #
     #  Cylindrical geometric source terms
@@ -1062,44 +1249,22 @@ class MetalMHDSolver(PlasmaSolverBase):
         if ee_n is not None:
             ee_n = ee_n.clone()
 
-        # Pre-step electrode BC: set boundary B_theta from circuit current
-        # BEFORE the RK stages so the flux computation sees the boundary
-        # through F.pad("replicate") padding. This is the ghost-cell approach
-        # — the Riemann solver handles the discontinuity naturally, preserving
-        # energy conservation. Much better than post-step overwrite which
-        # injects energy without bookkeeping.
-        anode_r = kwargs.get("anode_radius", 0.0)
-        cathode_r = kwargs.get("cathode_radius", 0.0)
+        # Determine whether ghost-cell electrode BCs apply this step.
+        # When active, the RK stages pad the state with ghost cells encoding
+        # B_theta = mu0*I/(2*pi*r) at the electrode boundaries.  The Riemann
+        # solver then handles the discontinuity naturally, preserving energy
+        # conservation (no post-step overwrite of active cells).
         apply_bc = kwargs.get("apply_electrode_bc", False)
-        if (
-            apply_bc and cathode_r > 0 and abs(current) > 1e-10
+        cathode_r = kwargs.get("cathode_radius", 0.0)
+        use_ghost_bc = (
+            apply_bc
+            and cathode_r > 0
+            and abs(current) > 1e-10
             and self.coordinates == "cylindrical"
-        ):
-            import math
-            mu0 = 4.0 * math.pi * 1e-7
-            pi_val = math.pi
-            _sqrt_mu0 = math.sqrt(mu0) if self._convert_b_si_to_hl else 1.0
-            r_arr = self._r.squeeze()
-            r_safe = torch.clamp(r_arr, min=1e-10)
-            B_theta_target = mu0 * current / (2.0 * pi_val * r_safe) / _sqrt_mu0
-            idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
-            idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
-            nx = B_n.shape[1]
-            # Pin boundary cells (these become ghost values via padding)
-            B_n[1, idx_cath, :, :] = B_theta_target[idx_cath]
-            if idx_cath < nx - 1:
-                B_n[1, -1, :, :] = B_theta_target[-1]
-            if idx_anode > 0:
-                B_n[1, idx_anode, :, :] = B_theta_target[idx_anode]
-            # Insulator face (z=0)
-            for ir in range(idx_anode, min(idx_cath + 1, nx)):
-                B_n[1, ir, :, 0] = B_theta_target[ir]
-            # Conducting walls
-            B_n[0, :idx_anode + 1, :, :] = 0.0
-            vel_n[0, :idx_anode + 1, :, :] = 0.0
-            B_n[0, idx_cath:, :, :] = 0.0
-            vel_n[0, idx_cath:, :, :] = 0.0
-            B_n[0, 0, :, :] = 0.0
+        )
+        # Stash current for the RK stages to use in _pad_electrode_ghost
+        self._ghost_bc_current: float = current if use_ghost_bc else 0.0
+        self._use_ghost_bc: bool = use_ghost_bc
 
         if self.time_integrator == "ssp_rk3":
             rho_new, vel_new, p_new, B_new, ee_new = self._step_ssp_rk3(
@@ -1556,9 +1721,11 @@ class MetalMHDSolver(PlasmaSolverBase):
                 B_new = self._apply_ct_correction(B_new, B_n, dt)
             return rho_new, vel_new, p_new, B_new, None
 
-        # ── Eager path (original, unchanged) ───────────────────────────────
+        # ── Eager path ────────────────────────────────────────────────────
+        # Uses _compute_rhs_ghosted which pads with electrode ghost cells
+        # when self._use_ghost_bc is True.
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
+        rhs1 = self._compute_rhs_ghosted(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
@@ -1569,7 +1736,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
+        rhs2 = self._compute_rhs_ghosted(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
         rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
         vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
         p_new = 0.5 * p_n + 0.5 * (p_1 + dt * rhs2["pressure"])
@@ -1645,9 +1812,11 @@ class MetalMHDSolver(PlasmaSolverBase):
 
             return rho_new, vel_new, p_new, B_new, None
 
-        # ── Eager path (original, unchanged) ───────────────────────────────
+        # ── Eager path ────────────────────────────────────────────────────
+        # Uses _compute_rhs_ghosted which pads with electrode ghost cells
+        # when self._use_ghost_bc is True.
         # Stage 1: U^(1) = U^n + dt * L(U^n)
-        rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
+        rhs1 = self._compute_rhs_ghosted(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
         )
@@ -1658,7 +1827,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
         # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
-        rhs2 = self._compute_rhs(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
+        rhs2 = self._compute_rhs_ghosted(rho_1, vel_1, p_1, B_1, e_electron=ee_1)
         rho_2 = 0.75 * rho_n + 0.25 * (rho_1 + dt * rhs2["rho"])
         vel_2 = 0.75 * vel_n + 0.25 * (vel_1 + dt * rhs2["velocity"])
         p_2 = 0.75 * p_n + 0.25 * (p_1 + dt * rhs2["pressure"])
@@ -1677,7 +1846,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             B_2 = self._apply_ct_correction(B_2, B_n, dt)
 
         # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
-        rhs3 = self._compute_rhs(rho_2, vel_2, p_2, B_2, e_electron=ee_2)
+        rhs3 = self._compute_rhs_ghosted(rho_2, vel_2, p_2, B_2, e_electron=ee_2)
         rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * (rho_2 + dt * rhs3["rho"])
         vel_new = (1.0 / 3.0) * vel_n + (2.0 / 3.0) * (vel_2 + dt * rhs3["velocity"])
         p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * (p_2 + dt * rhs3["pressure"])
