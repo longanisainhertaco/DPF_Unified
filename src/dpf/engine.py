@@ -283,6 +283,9 @@ class SimulationEngine:
         # Snowplow-MHD mass tracking
         self._prev_swept_mass: float = 0.0
         self._prev_radial_swept_mass: float = 0.0
+        # Lp handoff blending state
+        self._lp_blend_alpha: float = 0.0  # 0 = snowplow, 1 = MHD
+        self._lp_blend_active: bool = False
         self._initial_grid_mass: float = self._compute_grid_mass()
 
         # Diagnostics tracking
@@ -1037,11 +1040,48 @@ class SimulationEngine:
                     dt_sub, self._coupling.current,
                     pressure=sheath_pressure,
                 )
-                coupling.Lp = sp_result["L_plasma"]
-                coupling.dL_dt = sp_result["dL_dt"]
-                self._prev_L_plasma = sp_result["L_plasma"]
-                self._last_sp_dL_dt = sp_result["dL_dt"]
+                Lp_sp = sp_result["L_plasma"]
+                dLdt_sp = sp_result["dL_dt"]
+                self._last_sp_dL_dt = dLdt_sp
                 self._last_sp_R_plasma = sp_result.get("R_plasma", 0.0)
+
+                # Lp handoff: blend snowplow → density-weighted during radial phase
+                handoff = self.config.snowplow.handoff_mode
+                if (
+                    handoff in ("radial_mhd", "full_mhd")
+                    and self.snowplow.phase in ("radial", "reflected")
+                    and feedback is not None
+                    and feedback.Lp > 0
+                ):
+                    # Activate blending on first radial sub-step
+                    if not self._lp_blend_active:
+                        self._lp_blend_active = True
+                        self._lp_blend_alpha = 0.0
+                    # Exponential ramp: α → 1 with τ = 5 sub-steps
+                    tau_blend = 5.0 * dt_sub
+                    self._lp_blend_alpha = min(
+                        1.0 - (1.0 - self._lp_blend_alpha) * np.exp(-dt_sub / max(tau_blend, 1e-30)),
+                        1.0,
+                    )
+                    alpha = self._lp_blend_alpha
+                    Lp_mhd = feedback.Lp
+                    dLdt_mhd = feedback.dLp_dt
+                    # Clamp: no >20% Lp jump per sub-step
+                    Lp_blend = alpha * Lp_mhd + (1.0 - alpha) * Lp_sp
+                    if self._prev_L_plasma > 0:
+                        ratio = Lp_blend / self._prev_L_plasma
+                        if ratio > 1.2:
+                            Lp_blend = 1.2 * self._prev_L_plasma
+                        elif ratio < 0.8:
+                            Lp_blend = 0.8 * self._prev_L_plasma
+                    coupling.Lp = Lp_blend
+                    coupling.dL_dt = alpha * dLdt_mhd + (1.0 - alpha) * dLdt_sp
+                    if alpha > 0.9:
+                        back_emf = feedback.back_emf  # fully transitioned
+                else:
+                    coupling.Lp = Lp_sp
+                    coupling.dL_dt = dLdt_sp
+                self._prev_L_plasma = coupling.Lp
 
             elif self.snowplow is not None and not self.snowplow.is_active:
                 # Post-pinch: hold inductance constant unless density_weighted mode.
@@ -1076,13 +1116,17 @@ class SimulationEngine:
             self._coupling = new_coupling
             coupling.R_plasma = R_plasma
 
-        # One-shot B-field initialization at axial->radial phase transition
+        # One-shot state initialization at axial->radial phase transition
         if (
             self.snowplow is not None
             and self.snowplow.phase in ("radial", "reflected", "pinch")
             and not self._radial_bfield_initialized
         ):
-            self._initialize_radial_bfield()
+            handoff = self.config.snowplow.handoff_mode
+            if handoff in ("radial_mhd", "full_mhd"):
+                self._initialize_radial_state()
+            else:
+                self._initialize_radial_bfield()
 
         return new_coupling
 
@@ -1630,6 +1674,10 @@ class SimulationEngine:
                     cell_vol = dx * dx * dz
                     upstream_vol = cell_vol * n_upstream * grid_shape[0] * grid_shape[1]
                 depletion_rate = dm_dt / max(upstream_vol, 1e-30)  # [kg/m³/s]
+                # Cap depletion to 50% of local density per step (prevents over-depletion on small grids)
+                rho_upstream = self.state["rho"]
+                max_depletion = 0.5 * np.mean(rho_upstream[:, :, upstream_mask]) / max(dt, 1e-30)
+                depletion_rate = min(depletion_rate, max(max_depletion, 0.0))
                 if self.geometry_type == "cylindrical":
                     S_rho_deplete[:, :, upstream_mask] = -depletion_rate
                 else:
@@ -1709,6 +1757,9 @@ class SimulationEngine:
                     cell_vol = dx**3
                     upstream_vol = cell_vol * n_upstream_r * grid_shape[1] * grid_shape[2]
                 depletion_rate = dm_dt / max(upstream_vol, 1e-30)
+                rho_upstream_r = self.state["rho"]
+                max_depletion_r = 0.5 * np.mean(rho_upstream_r[upstream_mask_r, :, :]) / max(dt, 1e-30)
+                depletion_rate = min(depletion_rate, max(max_depletion_r, 0.0))
                 if self.geometry_type == "cylindrical":
                     S_rho_deplete[upstream_mask_r, :, :] = -depletion_rate
                 else:
@@ -1945,6 +1996,83 @@ class SimulationEngine:
             "ir_shock=%d/%d, B_theta_max=%.2f T",
             I_current, r_shock, ir_shock, len(r_grid),
             float(np.max(np.abs(B[1]))),
+        )
+
+    def _initialize_radial_state(self) -> None:
+        """Full MHD state initialization at axial→radial transition.
+
+        Extends _initialize_radial_bfield with density, velocity, and pressure
+        profiles from the snowplow's Rankine-Hugoniot solution. Called when
+        handoff_mode is "radial_mhd" or "full_mhd".
+
+        Physics: At transition, the MHD grid receives:
+            - rho(r): compressed slug (4×ρ0) inside shock, fill gas outside
+            - v_r(r): inward v_post = (3/4)v_s inside shock, zero outside
+            - p(r): Rankine-Hugoniot post-shock pressure inside, fill outside
+            - B_theta(r): μ0·I/(2πr) inside shock, zero outside
+        """
+        if self.snowplow is None or self.geometry_type != "cylindrical":
+            self._initialize_radial_bfield()
+            return
+
+        I_current = abs(self._coupling.current)
+        dr = self.config.dx
+        gamma = self.config.fluid.gamma
+
+        # Build radial grid
+        if hasattr(self.fluid, "geom") and hasattr(self.fluid.geom, "r"):
+            r_grid = self.fluid.geom.r
+        else:
+            nr = self.config.grid_shape[0]
+            r_grid = np.array([(ir + 0.5) * dr for ir in range(nr)])
+
+        # Export Rankine-Hugoniot profiles from snowplow
+        profiles = self.snowplow.export_radial_profiles(r_grid, I_current, gamma)
+
+        # Write profiles to MHD state (cylindrical: shape is (nr, 1, nz))
+        rho = self.state["rho"]
+        vel = self.state["velocity"]
+        pres = self.state["pressure"]
+        B = self.state["B"]
+
+        nr = len(r_grid)
+        for ir in range(min(nr, rho.shape[0])):
+            rho[ir, :, :] = profiles["rho"][ir]
+            vel[0, ir, :, :] = profiles["vr"][ir]
+            pres[ir, :, :] = profiles["pressure"][ir]
+            B[1, ir, :, :] = profiles["B_theta"][ir]
+
+        # Zero other velocity/B components at initialization
+        vel[1, :, :, :] = 0.0  # v_theta = 0
+        vel[2, :, :, :] = 0.0  # v_z = 0 (axial motion done)
+        B[0, :, :, :] = 0.0    # B_r = 0
+        B[2, :, :, :] = 0.0    # B_z = 0
+
+        self.state["rho"] = rho
+        self.state["velocity"] = vel
+        self.state["pressure"] = pres
+        self.state["B"] = B
+
+        # Update Te/Ti from pressure
+        T = np.maximum(pres * self.ion_mass / (np.maximum(rho, 1e-30) * k_B), 1.0)
+        self.state["Te"] = T
+        self.state["Ti"] = T
+
+        # Recalculate initial grid mass after reinitialization
+        self._initial_grid_mass = self._compute_grid_mass()
+
+        self._radial_bfield_initialized = True
+
+        rho_max = float(np.max(rho))
+        rho_fill = self.config.rho0
+        logger.info(
+            "Radial MHD state initialized (handoff_mode=%s): I=%.2e A, "
+            "r_shock=%.3e m, rho_max/rho0=%.1f, B_theta_max=%.2f T, "
+            "T_ion_max=%.0f eV",
+            self.config.snowplow.handoff_mode, I_current,
+            self.snowplow.r_shock, rho_max / max(rho_fill, 1e-30),
+            float(np.max(np.abs(B[1]))),
+            float(np.max(T)) * k_B / eV,
         )
 
     def _dynamic_sheath_pressure(self) -> float:

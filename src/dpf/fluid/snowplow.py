@@ -280,6 +280,72 @@ class SnowplowModel:
         """
         return self.f_mr * self.rho0 * pi * (self.b**2 - self.r_shock**2) * self.z_f
 
+    def export_radial_profiles(
+        self, r_grid: np.ndarray, current: float, gamma: float = 5.0 / 3.0,
+    ) -> dict[str, np.ndarray]:
+        """Export Rankine-Hugoniot profiles for MHD grid initialization.
+
+        Called at the axial→radial transition to populate the MHD state with
+        physically correct density/velocity/temperature/B profiles.
+
+        Physics (strong shock, γ=5/3):
+            ρ_slug = (γ+1)/(γ-1) × ρ0 = 4 × ρ0  inside compressed slug
+            v_r = 2*v_s/(γ+1) = (3/4)*v_s  (lab-frame post-shock velocity, inward)
+            T_ion = (3/16) × m_i × v_s² / k_B  (ion-only, NRL Formulary)
+            B_theta = μ0 × I / (2πr)  inside sheath, 0 outside
+
+        Args:
+            r_grid: Cell-centre radial positions [m], shape (nr,).
+            current: Circuit current [A] at transition.
+            gamma: Adiabatic index.
+
+        Returns:
+            Dictionary with profiles, each shape (nr,):
+                rho: Mass density [kg/m³].
+                vr: Radial velocity [m/s] (negative = inward).
+                pressure: Total pressure [Pa].
+                B_theta: Azimuthal magnetic field [T].
+        """
+        nr = len(r_grid)
+        rho_fill = self.rho0
+        r_s = max(self.r_shock, self.r_pinch_min)
+        v_s = abs(self.vr)  # shock speed (positive)
+
+        # Strong shock compression ratio
+        compression = (gamma + 1.0) / (gamma - 1.0)  # 4 for γ=5/3
+        rho_slug = compression * rho_fill
+
+        # Post-shock velocity (lab frame, inward)
+        v_post = 2.0 * v_s / (gamma + 1.0)  # (3/4)*v_s for γ=5/3
+
+        # Ion temperature from RH (NRL Formulary)
+        T_ion = (3.0 / 16.0) * m_d * v_s**2 / k_B if v_s > 0 else 300.0
+
+        # Profiles
+        rho_prof = np.full(nr, rho_fill)
+        vr_prof = np.zeros(nr)
+        p_prof = np.full(nr, rho_fill * k_B * 300.0 / m_d)  # fill gas at room T
+        B_theta_prof = np.zeros(nr)
+
+        for i in range(nr):
+            r = r_grid[i]
+            if r < r_s:
+                # Inside shock: compressed slug
+                rho_prof[i] = rho_slug
+                vr_prof[i] = -v_post  # inward (negative)
+                p_prof[i] = rho_slug * k_B * T_ion / m_d
+                # B_theta from current
+                if r > 0:
+                    B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
+            # Outside shock: fill gas (already set by defaults)
+
+        return {
+            "rho": rho_prof,
+            "vr": vr_prof,
+            "pressure": p_prof,
+            "B_theta": B_theta_prof,
+        }
+
     @property
     def plasma_inductance(self) -> float:
         """Total plasma inductance [H].
