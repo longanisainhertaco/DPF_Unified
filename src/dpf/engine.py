@@ -330,6 +330,9 @@ class SimulationEngine:
         self.checkpoint_interval: int = 0  # 0 = disabled
         self.checkpoint_filename: str = "checkpoint.h5"
 
+        # Performance: NaN check stride (run every N steps; step 0 always runs)
+        self._nan_check_stride: int = getattr(config, "nan_check_stride", 10)
+
         # Kinetic (PIC) Manager
         self.kinetic: KineticManager | None = None
         if config.kinetic.enabled:
@@ -757,53 +760,89 @@ class SimulationEngine:
                         stacklevel=2,
                     )
 
-        # === Phase 5: Pulse Power Circuit Step ===
-        # 1. Update fields for inductance calculation (copy to avoid aliasing —
-        # the fluid step may later modify state["B"] in-place, and we need the
-        # pre-step B for inductance computation).
-        self.field_manager.B = self.state["B"].copy()
+        self._step_init_fields()
 
-        # 2. Track field-based inductance for _prev_L_plasma history.
-        # The actual dL/dt used by the circuit is computed from snowplow or
-        # volume-integral L_plasma in the circuit step below (Step 2).
+        # === Step 1: Ionization state, resistivity, R_plasma, L_plasma ===
+        Z_bar, Z_bar_field, eta_field, J_field, R_plasma, L_plasma, eta_anom = (
+            self._step_ionization_and_resistivity()
+        )
+
+        # === Step 1b: Collision+Radiation (first half-step of Strang) ===
+        self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
+
+        # === Step 2: Circuit sub-cycle (snowplow + inductance coupling) ===
+        new_coupling = self._step_circuit_subcycle(dt, R_plasma, L_plasma, Z_bar)
+
+        # === Step 2.5: Kinetic / PIC step ===
+        self._step_pic(dt, eta_field, J_field)
+
+        # === Step 3 + 3.1 + 3.5: Fluid/MHD advance, ablation, Powell ===
+        self._step_fluid_advance(dt, eta_field, new_coupling)
+
+        # === Steps 3a–4+5: Nernst, poloidal B, sheath BC, second Strang half ===
+        self._step_post_fluid_corrections(dt, Z_bar, new_coupling)
+
+        # === Steps 5a2–5d: Energy balance, yield, instability, diagnostics ===
+        neutron_rate = self._step_diagnostics_and_yield(dt, Z_bar)
+
+        # === Step 6: Advance time, record diagnostics, checkpoint ===
+        return self._step_record_and_checkpoint(
+            dt, sim_time, _max_steps,
+            Z_bar, R_plasma, eta_anom, new_coupling, neutron_rate,
+        )
+
+    # ------------------------------------------------------------------
+    # step() sub-methods — pure refactoring, no physics changes
+    # ------------------------------------------------------------------
+
+    def _step_init_fields(self) -> None:
+        """Phase 5 pre-step: sync field manager and apply electrode BC."""
+        self.field_manager.B = self.state["B"].copy()
         L_p = self.field_manager.compute_plasma_inductance(self.circuit.current)
         self._prev_L_plasma = L_p
-
-        # 3. Apply magnetic boundary conditions using current from previous step.
-        # The circuit is advanced ONCE per step, after computing R_plasma and L_plasma
-        # from the full MHD state (see Step 2 below).  Using previous-step current here
-        # is standard explicit coupling — the electrode B_theta BC is set before the
-        # MHD advance, which is then used to compute the updated plasma state.
         if self.boundary_cfg.electrode_bc:
             self._apply_electrode_bc(self._coupling.current)
 
-        # === Step 1: Compute ionization state and plasma resistance ===
+    def _step_ionization_and_resistivity(
+        self,
+    ) -> tuple[
+        float,
+        np.ndarray,
+        np.ndarray | None,
+        np.ndarray | None,
+        float,
+        float,
+        float,
+    ]:
+        """Step 1: Ionization state, Spitzer+anomalous resistivity, R/L_plasma.
+
+        Returns:
+            Z_bar: volume-averaged ionization fraction
+            Z_bar_field: spatially-resolved ionization field
+            eta_field: spatially-resolved resistivity (None if Te/ne too low)
+            J_field: current density (3, nx, ny, nz); None if not computed
+            R_plasma: volume-integral plasma resistance [Ohm]
+            L_plasma: volume-integral plasma inductance [H]
+            eta_anom: scalar anomalous resistivity for diagnostics
+        """
         Te = self.state["Te"]
         rho = self.state["rho"]
-        ne = rho / self.ion_mass  # Number density (assume fully ionized for ne)
+        ne = rho / self.ion_mass
 
-        # Volume-averaged quantities for scalar coupling
         Te_avg = float(np.mean(Te))
         ne_avg = float(np.mean(ne))
 
-        # Spatially-varying ionization state from Saha equation
-        Te_flat = Te.ravel()
-        ne_flat = ne.ravel()
-        Z_bar_field = saha_ionization_fraction_array(Te_flat, ne_flat).reshape(Te.shape)
-        Z_bar_field = np.maximum(Z_bar_field, 0.01)  # Floor to avoid division by zero
-        # Scalar Z_bar for circuit coupling and scalar operators
+        Z_bar_field = saha_ionization_fraction_array(Te.ravel(), ne.ravel()).reshape(Te.shape)
+        Z_bar_field = np.maximum(Z_bar_field, 0.01)
         Z_bar = max(float(np.mean(Z_bar_field)), 0.01)
 
-        # Compute spatially-resolved resistivity field for MHD solver
         eta_field = None
-        J_field = None  # (3, nx, ny, nz) current density; cached for PIC E-field
+        J_field = None
         eta_anom = 0.0
         R_plasma = 0.0
         L_plasma = 0.0
 
         if Te_avg > 1000.0 and ne_avg > 1e10:
-            # Cell-by-cell Spitzer resistivity with temperature floor
-            # and spatially-varying Z_bar for accurate transport
             Te_floored = np.maximum(Te, 1000.0)
             ne_floored = np.maximum(ne, 1e10)
             lnL_field = coulomb_log(ne_floored, Te_floored)
@@ -811,31 +850,31 @@ class SimulationEngine:
                 ne_floored, Te_floored, lnL_field, Z=Z_bar_field,
             )
 
-            # Volume-averaged for fallback and scalar coupling
-            lnL_avg = coulomb_log(
-                np.array([ne_avg]), np.array([Te_avg])
-            )[0]
+            lnL_avg = coulomb_log(np.array([ne_avg]), np.array([Te_avg]))[0]
             eta_spitzer_avg = float(spitzer_resistivity(
                 np.array([ne_avg]), np.array([Te_avg]), lnL_avg, Z=Z_bar
             )[0])
 
-            # Spatially-resolved anomalous resistivity from Buneman instability
-            # Compute J field from curl(B)/mu_0 for threshold check
             I_current = self._coupling.current
             A_column = pi * self.anode_radius**2
             B_field = self.state["B"]
             Ti_field = self.state["Ti"]
 
             if self.geometry_type == "cylindrical":
-                # Cylindrical: curl(B)/mu_0 for J magnitude
                 B_2d = np.squeeze(B_field, axis=2) if B_field.ndim == 4 else B_field
                 curl_B = self.fluid.geom.curl(B_2d)
-                J_field_2d = curl_B / _mu_0  # (3, nr, nz)
-                J_field = J_field_2d[:, :, np.newaxis, :]  # (3, nr, 1, nz)
-                J_mag = np.sqrt(np.sum(J_field_2d**2, axis=0))  # (nr, nz)
+                J_field_2d = curl_B / _mu_0
+                J_field = J_field_2d[:, :, np.newaxis, :]
+                J_mag = np.sqrt(np.sum(J_field_2d**2, axis=0))
                 ne_2d = np.squeeze(ne, axis=1) if ne.ndim == 3 else ne
-                Ti_2d = np.squeeze(Ti_field, axis=1) if Ti_field.ndim == 3 else Ti_field
-                Te_2d = np.squeeze(self.state["Te"], axis=1) if self.state["Te"].ndim == 3 else self.state["Te"]
+                Ti_2d = (
+                    np.squeeze(Ti_field, axis=1) if Ti_field.ndim == 3 else Ti_field
+                )
+                Te_2d = (
+                    np.squeeze(self.state["Te"], axis=1)
+                    if self.state["Te"].ndim == 3
+                    else self.state["Te"]
+                )
                 eta_anom_field = anomalous_resistivity_field(
                     J_mag, np.maximum(ne_2d, 1e10), np.maximum(Ti_2d, 1.0),
                     alpha=self.config.anomalous_alpha,
@@ -843,11 +882,8 @@ class SimulationEngine:
                     threshold_model=self.config.anomalous_threshold_model,
                     Te=np.maximum(Te_2d, 1.0),
                 )
-                # Unsqueeze to (nr, 1, nz)
-                eta_anom_field_3d = eta_anom_field[:, np.newaxis, :]
-                eta_field = eta_spitzer_field + eta_anom_field_3d
+                eta_field = eta_spitzer_field + eta_anom_field[:, np.newaxis, :]
             else:
-                # Cartesian: compute J from curl(B)
                 dx = self.config.dx
                 J_field = np.array([
                     np.gradient(B_field[2], dx, axis=1) - np.gradient(B_field[1], dx, axis=2),
@@ -864,7 +900,6 @@ class SimulationEngine:
                 )
                 eta_field = eta_spitzer_field + eta_anom_field
 
-            # Scalar anomalous for diagnostics
             J_avg = abs(I_current) / max(A_column, 1e-30)
             Ti_avg = float(np.mean(self.state["Ti"]))
             Te_avg_scalar = float(np.mean(self.state["Te"]))
@@ -876,26 +911,21 @@ class SimulationEngine:
             )
             eta_total_avg = total_resistivity(eta_spitzer_avg, eta_anom)
 
-            # Sanitize: cap extreme values and NaN
             eta_field = np.where(np.isfinite(eta_field), eta_field, eta_total_avg)
             eta_field = np.minimum(eta_field, 1.0)
 
-            # --- Volume-integral R_plasma: R = integral(eta*|J|^2 dV) / I^2 ---
+            # Volume-integral R_plasma: R = integral(eta*|J|^2 dV) / I^2
             I_sq = max(I_current**2, 1e-30)
             if self.geometry_type == "cylindrical":
-                cell_vol = self.fluid.geom.cell_volumes()  # (nr, nz)
+                cell_vol = self.fluid.geom.cell_volumes()
                 eta_2d = np.squeeze(eta_field, axis=1) if eta_field.ndim == 3 else eta_field
-                J_sq = J_mag**2
-                R_plasma = float(np.sum(eta_2d * J_sq * cell_vol)) / I_sq
+                R_plasma = float(np.sum(eta_2d * J_mag**2 * cell_vol)) / I_sq
             else:
                 dV = self.config.dx**3
-                J_sq = np.sum(J_field**2, axis=0)
-                R_plasma = float(np.sum(eta_field * J_sq * dV)) / I_sq
-
-            # Cap R_plasma to physical range (DPF: ~10 mOhm normal, ~1-10 Ohm at pinch disruption)
+                R_plasma = float(np.sum(eta_field * np.sum(J_field**2, axis=0) * dV)) / I_sq
             R_plasma = min(R_plasma, 10.0)
 
-            # --- Volume-integral L_plasma: L = 2 * integral(B^2/(2*mu_0) dV) / I^2 ---
+            # Volume-integral L_plasma: L = 2 * integral(B^2/(2*mu_0) dV) / I^2
             B_sq = np.sum(B_field**2, axis=0)
             if self.geometry_type == "cylindrical":
                 B_sq_2d = np.squeeze(B_sq, axis=1) if B_sq.ndim == 3 else B_sq
@@ -903,20 +933,23 @@ class SimulationEngine:
             else:
                 L_plasma = float(np.sum(B_sq / _mu_0 * dV)) / I_sq
 
-        # === Step 1b: Collision+Radiation (first half-step of Strang) ===
-        self._apply_collision_radiation(dt / 2.0, Z_bar, Z_bar_field=Z_bar_field)
+        return Z_bar, Z_bar_field, eta_field, J_field, R_plasma, L_plasma, eta_anom
 
-        # === Step 2: Circuit advance (with plasma resistance + inductance) ===
-        # Sub-cycle the circuit + snowplow to resolve their dynamics properly.
-        # The MHD CFL timestep can be ~1 µs for cold gas, but the circuit LC
-        # period is ~40 µs and the snowplow needs ~10 ns steps for accurate
-        # sheath trajectory.  Without sub-cycling, the snowplow blows through
-        # the entire anode in a single oversized step.
+    def _step_circuit_subcycle(
+        self,
+        dt: float,
+        R_plasma: float,
+        L_plasma: float,
+        Z_bar: float,
+    ) -> CouplingState:
+        """Step 2: Sub-cycle circuit + snowplow to resolve LC dynamics.
+
+        Returns the final CouplingState after all sub-steps.
+        """
         coupling = self.fluid.coupling_interface()
         coupling.R_plasma = R_plasma
         coupling.Z_bar = Z_bar
 
-        # Compute sub-step size: resolve the circuit LC timescale
         L_total = self.circuit.L_ext + self._coupling.Lp
         dt_lc = np.sqrt(max(L_total, 1e-12) * self.circuit.C)
         # Target ~500 sub-steps per quarter period for accurate snowplow trajectory
@@ -926,24 +959,15 @@ class SimulationEngine:
 
         sheath_pressure = self._dynamic_sheath_pressure()
 
-        # back-EMF treatment: when the snowplow model is active, the motional
-        # EMF (integral of v x B . dl) is already captured by I * dL/dt inside
-        # the circuit solver's R_star = R_eff + dLp/dt.  Computing a separate
-        # MHD-field-based back_emf AND including dL/dt in R_star would double-
-        # count the inductive coupling.  Only use MHD back-EMF when there is
-        # no snowplow model providing dL/dt.
-        # (Debate #20 finding: Python engine was double-counting ~100-300 kV
-        # at pinch compression while Athena++ correctly set back_emf=0.)
+        # back-EMF: snowplow already captures motional EMF via I*dL/dt.
+        # Computing a separate MHD back_emf would double-count. (Debate #20)
         if self.snowplow is not None:
             back_emf = 0.0
         else:
             back_emf = self._compute_back_emf(dt)
 
-        # Resolve effective coupling mode for this step
         use_coupler = self._should_use_coupler()
 
-        # Pre-compute density-weighted feedback once per MHD step (not per sub-step,
-        # since MHD state is frozen during circuit sub-cycling).
         feedback: FeedbackResult | None = None
         if use_coupler and self.state.get("rho") is not None:
             feedback = self.coupler.compute_feedback(
@@ -952,8 +976,6 @@ class SimulationEngine:
             self._last_feedback = feedback
 
         for _isub in range(n_sub):
-            # Snowplow dynamics: sheath-derived L_plasma overrides field-based
-            # L_plasma when the snowplow model is active (Lee model Phases 2-5).
             if self.snowplow is not None and self.snowplow.is_active:
                 sp_result = self.snowplow.step(
                     dt_sub, self._coupling.current,
@@ -965,10 +987,9 @@ class SimulationEngine:
                 self._last_sp_dL_dt = sp_result["dL_dt"]
 
             elif self.snowplow is not None and not self.snowplow.is_active:
-                # Snowplow reached final pinch.  Use density-weighted Lp only
-                # when EXPLICITLY requested (coupling_mode="density_weighted").
-                # In "auto" mode, keep the snowplow frozen-Lp behavior because
-                # coarse-grid MHD fields produce unreliable Lp post-pinch.
+                # Post-pinch: hold inductance constant unless density_weighted mode.
+                # Column expansion dL/dt is uncalibrated — causes excessive current
+                # dips (90% vs experimental 60%). Use dL_dt=0 until validated.
                 if (
                     self.coupling_mode == "density_weighted"
                     and feedback is not None
@@ -978,37 +999,27 @@ class SimulationEngine:
                     coupling.dL_dt = feedback.dLp_dt
                     back_emf = feedback.back_emf
                 else:
-                    # Post-pinch: hold inductance constant. The column expansion
-                    # model's dL/dt is uncalibrated and produces excessive current
-                    # dips (90% vs experimental 60%). Use dL_dt=0 until the
-                    # post-pinch model is validated against experimental dip data.
                     coupling.Lp = self.snowplow.plasma_inductance
                     coupling.dL_dt = 0.0
 
             elif use_coupler and feedback is not None and feedback.Lp > 0:
                 # Density-weighted Lp from MHD fields (CircuitCoupler).
-                # Replaces the old B-energy volume integral which suffered from
-                # electrode BC artifacts on coarse grids.
                 coupling.Lp = feedback.Lp
                 coupling.dL_dt = feedback.dLp_dt
                 back_emf = feedback.back_emf
                 self._prev_L_plasma = feedback.Lp
 
             elif L_plasma > 0:
-                # Fallback: volume-integral L_plasma from B-field energy
                 coupling.Lp = L_plasma
                 if self._prev_L_plasma > 0 and dt_sub > 0:
                     coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt_sub
                 self._prev_L_plasma = L_plasma
 
-            # Advance circuit one sub-step
             new_coupling = self.circuit.step(coupling, back_emf, dt_sub)
             self._coupling = new_coupling
-            # Update coupling R_plasma for next sub-step (R_plasma is constant
-            # during sub-cycling since MHD state is frozen)
             coupling.R_plasma = R_plasma
 
-        # One-shot B-field initialization at axial→radial phase transition
+        # One-shot B-field initialization at axial->radial phase transition
         if (
             self.snowplow is not None
             and self.snowplow.phase in ("radial", "reflected", "pinch")
@@ -1016,41 +1027,40 @@ class SimulationEngine:
         ):
             self._initialize_radial_bfield()
 
-        # === Step 2.5: Kinetic / PIC Step ===
-        # Run kinetic step *before* fluid to provide J_kin source terms for this step
+        return new_coupling
+
+    def _step_pic(
+        self,
+        dt: float,
+        eta_field: np.ndarray | None,
+        J_field: np.ndarray | None,
+    ) -> None:
+        """Step 2.5: Kinetic/PIC step — provides J_kin source terms for MHD."""
         if self.kinetic and self.kinetic.kc.enabled:
-            # Sync MHD background state for Coulomb collisions (local density/temperature)
             self.kinetic.update_mhd_state(self.state)
 
-            # Convert E, B to (nx, ny, nz, 3) for HybridPIC
-            # Engine state["B"] is (3, nx, ny, nz)
             B_fld = np.moveaxis(self.state["B"], 0, -1)
-
-            # E field reconstruction: E = -v x B + eta*J
-            # eta*J term accounts for resistive diffusion experienced by beam ions.
-            # Omitted in snowplow-only runs where J_field/eta_field are not computed.
             v = np.moveaxis(self.state["velocity"], 0, -1)
             E_fld = -np.cross(v, B_fld)
             if J_field is not None and eta_field is not None:
-                # J_field: (3, nx, ny, nz) → (nx, ny, nz, 3)
                 J_fld = np.moveaxis(J_field, 0, -1)
-                # eta_field: (nx, ny, nz) → (nx, ny, nz, 1) for broadcast
                 E_fld = E_fld + eta_field[..., np.newaxis] * J_fld
 
             self.kinetic.step(dt, self.time, E_fld, B_fld)
 
-            # Get current density deposition for feedback to MHD
             Jx, Jy, Jz = self.kinetic.get_current_density()
-            # Pack into source_terms (3, nx, ny, nz)
-            # KineticManager returns (nx, ny, nz) arrays, Engine expects (3, nx, ny, nz)
-            J_kin = np.stack([Jx, Jy, Jz], axis=0)
-            self._current_source_terms = {"J_kin": J_kin}
+            self._current_source_terms = {"J_kin": np.stack([Jx, Jy, Jz], axis=0)}
         else:
             self._current_source_terms = None
 
-        # === Step 3: Fluid/MHD advance (with resistivity + electrode BCs + Kinetics) ===
-        # Measure ohmic gap using CURRENT state and inject correction in THIS step
-        # (eliminates one-step lag from previous approach)
+    def _step_fluid_advance(
+        self,
+        dt: float,
+        eta_field: np.ndarray | None,
+        new_coupling: CouplingState,
+    ) -> None:
+        """Steps 3, 3.1, 3.5: MHD fluid advance, ablation, Powell div(B) sources."""
+        # Ohmic correction: measure gap before fluid step, inject in same step
         if (
             self.config.fluid.enable_ohmic_correction
             and eta_field is not None
@@ -1064,7 +1074,6 @@ class SimulationEngine:
                 )
                 self._current_source_terms = src
 
-        # Inject snowplow source terms into MHD grid
         if self.config.snowplow.enable_mhd_coupling and self.snowplow is not None:
             sp_src = self._compute_snowplow_source_terms(dt)
             if sp_src:
@@ -1084,19 +1093,17 @@ class SimulationEngine:
             cathode_radius=cc.cathode_radius,
             apply_electrode_bc=self.boundary_cfg.electrode_bc,
         )
-        self._sanitize_state("after fluid step")
+        if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+            self._sanitize_state("after fluid step")
         self._last_div_B = getattr(self.fluid, "_last_div_B", 0.0)
 
-        # (ohmic gap measurement moved to before fluid step — no longer lagged)
-
-        # === Step 3.1: Ablation operator-split step ===
+        # Step 3.1: Ablation operator-split
         if self.config.ablation.enabled:
             from dpf.atomic.ablation import ablation_source_array
             I_abl = abs(new_coupling.current)
             A_col = pi * self.anode_radius**2
             J_bdy = I_abl / max(A_col, 1e-30)
             J_arr = np.full_like(self.state["rho"], J_bdy)
-            # Boundary mask: anode face (inner radial boundary)
             mask = np.zeros(self.state["rho"].shape, dtype=np.int64)
             mask[0, :, :] = 1
             eta_abl = eta_field if eta_field is not None else np.full_like(
@@ -1106,25 +1113,33 @@ class SimulationEngine:
                 J_arr, eta_abl, self.config.ablation.efficiency, mask,
             )
             self.state["rho"] = self.state["rho"] + S_rho * dt
-            self._sanitize_state("after ablation step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after ablation step")
 
-        # === Step 3.5: Powell 8-wave div(B) source terms ===
+        # Step 3.5: Powell 8-wave div(B) source terms
         if self.config.fluid.enable_powell:
             self._apply_powell_sources(dt)
-            self._sanitize_state("after Powell step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after Powell step")
 
-        # === Step 3a: Nernst B-field advection ===
+    def _step_post_fluid_corrections(
+        self,
+        dt: float,
+        Z_bar: float,
+        new_coupling: CouplingState,
+    ) -> None:
+        """Steps 3a-4+5: Nernst, poloidal B, sheath BC, second Strang half-step."""
         fc = self.config.fluid
+
+        # Step 3a: Nernst B-field advection
         if fc.enable_nernst and self.backend != "metal":
             self._apply_nernst(dt, Z_bar)
-            self._sanitize_state("after Nernst step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after Nernst step")
 
-        # === Step 3a2: Auluck poloidal B-field (EXPERIMENTAL) ===
-        # Adds dynamo-generated B_z from GV surface mechanism.
-        # Ref: Auluck 2024, Phys. Plasmas 31, 010704.
+        # Step 3a2: Auluck poloidal B-field (EXPERIMENTAL)
         if fc.enable_poloidal:
             from dpf.experimental.poloidal_bfield import add_poloidal_field
-
             cc = self.config.circuit
             dx = self.config.dx
             dz_cfg = self.config.geometry.dz
@@ -1135,7 +1150,7 @@ class SimulationEngine:
                 self.config.rho0, dx, dz,
             )
 
-        # === Step 3b: Sheath boundary conditions ===
+        # Step 3b: Sheath boundary conditions
         if self.sheath_cfg.enabled:
             Te_bc = self.state["Te"]
             ne_bc = self.state["rho"] / self.ion_mass
@@ -1153,10 +1168,7 @@ class SimulationEngine:
                     boundary=self.sheath_cfg.boundary,
                 )
 
-        # === Step 4+5: Collision+Radiation (second half-step of Strang) ===
-        # Recompute Z_bar from post-MHD Te to avoid stale ionization state.
-        # The MHD step may have significantly changed Te (e.g. shock heating),
-        # so using pre-step Z_bar introduces O(dt) splitting error.
+        # Steps 4+5: second Strang half-step — recompute Z_bar from post-MHD Te
         Te_post = self.state["Te"]
         ne_post = self.state["rho"] / self.ion_mass
         Z_bar_field_post = saha_ionization_fraction_array(
@@ -1166,40 +1178,54 @@ class SimulationEngine:
         Z_bar_post = max(float(np.mean(Z_bar_field_post)), 0.01)
         self._apply_collision_radiation(dt / 2.0, Z_bar_post, Z_bar_field=Z_bar_field_post)
 
-        # === Step 5a2: Energy balance tracking ===
+    def _step_diagnostics_and_yield(self, dt: float, Z_bar: float) -> float:
+        """Steps 5a2-5d: energy balance, neutron yield, instability, interferometry.
+
+        Returns neutron_rate [s^-1] for inclusion in StepResult.
+        """
+        # Step 5a2: Energy balance tracking
         _circ_state = self.circuit.state
         _L_total_energy = self.circuit.L_ext + self._coupling.Lp
-        self._energy_tracker.record(
-            state=self.state,
-            t=self.time,
-            dt=dt,
-            cell_volume=float(np.mean(self._cell_volume)) if hasattr(self._cell_volume, "__len__") else self._cell_volume,
-            radiated_power=self.total_radiated_energy / max(self.time, 1e-30) if self.time > 0 else 0.0,
-            C=self.circuit.C,
-            V_cap=_circ_state.voltage,
-            L_total=_L_total_energy,
-            I_current=_circ_state.current,
-        )
+        if self.step_count % max(self.diag_interval, 10) == 0:
+            self._energy_tracker.record(
+                state=self.state,
+                t=self.time,
+                dt=dt,
+                cell_volume=(
+                    float(np.mean(self._cell_volume))
+                    if hasattr(self._cell_volume, "__len__")
+                    else self._cell_volume
+                ),
+                radiated_power=(
+                    self.total_radiated_energy / max(self.time, 1e-30)
+                    if self.time > 0
+                    else 0.0
+                ),
+                C=self.circuit.C,
+                V_cap=_circ_state.voltage,
+                L_total=_L_total_energy,
+                I_current=_circ_state.current,
+            )
         _energy_report = self._energy_tracker.get_report()
-        self._last_conservation_error = _energy_report.conservation_error[-1] if _energy_report.conservation_error else 0.0
+        self._last_conservation_error = (
+            _energy_report.conservation_error[-1]
+            if _energy_report.conservation_error
+            else 0.0
+        )
 
-        # === Step 5b: Neutron yield — via YieldTracker ===
+        # Step 5b: Neutron yield via YieldTracker
         rho_yield = self.state["rho"]
         if self.geometry_type == "cylindrical":
             _cell_vol_yield = float(np.mean(self.fluid.geom.cell_volumes()))
         else:
             _cell_vol_yield = self.config.dx**3
-        # V_pinch for beam-target yield: take the stronger of MHD coupler dLp_dt
-        # and snowplow dL/dt.  During Lee-model phases the snowplow value dominates;
-        # during MHD-resolved pinch the coupler value dominates.  Taking max(abs)
-        # prevents near-zero coupler values from shadowing a valid snowplow signal.
         _fb = self._last_feedback
         _dL_mhd = abs(_fb.dLp_dt) if _fb is not None else 0.0
         _dL_sp = abs(getattr(self, "_last_sp_dL_dt", 0.0))
-        _dL_dt_yield = max(_dL_mhd, _dL_sp)
-        _V_pinch = abs(self._coupling.current) * _dL_dt_yield
-        # L_pinch from device geometry: anode_length * pinch_column_fraction
-        _L_pinch = self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
+        _V_pinch = abs(self._coupling.current) * max(_dL_mhd, _dL_sp)
+        _L_pinch = (
+            self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
+        )
         self._yield_tracker.accumulate(
             state=self.state,
             dt=dt,
@@ -1217,7 +1243,7 @@ class SimulationEngine:
         self._last_beam_target_rate = _dY_bt / max(dt, 1e-30)
         self._last_bt_fraction = _yield_result.bt_fraction
 
-        # === Step 5b3: m=0 sausage instability growth rate ===
+        # Step 5b3: m=0 sausage instability growth rate
         self._last_m0_result = None
         if self.snowplow and self.snowplow.phase in ("radial", "reflected", "pinch"):
             from dpf.diagnostics.instability import m0_growth_rate_from_state
@@ -1225,7 +1251,7 @@ class SimulationEngine:
                 self.state, self.snowplow, self.config,
             )
 
-        # === Step 5b4: Pease-Braginskii radiative collapse check ===
+        # Step 5b4: Pease-Braginskii radiative collapse check
         from dpf.diagnostics.pease_braginskii import check_pease_braginskii
         self._last_pb_result = check_pease_braginskii(
             I_current=abs(self._coupling.current),
@@ -1234,26 +1260,20 @@ class SimulationEngine:
             ln_Lambda=self.config.collision.coulomb_log,
         )
 
-        # === Step 5c: Well Exporter ===
+        # Step 5c: Well Exporter
         if self.well_interval > 0 and self.step_count % self.well_interval == 0:
             self.well_exporter.append_state(self.state, time=self.time)
 
-
-
-
-        # === Step 5c: Synthetic interferometry (cylindrical only) ===
+        # Step 5c: Synthetic interferometry (cylindrical only)
         if self.geometry_type == "cylindrical":
             ne_interf = rho_yield / self.ion_mass
-            # Take midplane slice (z = nz//2)
             nz_mid = ne_interf.shape[2] // 2
-            ne_midplane = ne_interf[:, 0, nz_mid]  # shape (nr,)
-            r_grid = self.fluid.geom.r  # Radial coordinate array
+            ne_midplane = ne_interf[:, 0, nz_mid]
+            r_grid = self.fluid.geom.r
             N_L = abel_transform(ne_midplane, r_grid)
             self._last_fringe_shifts = fringe_shift(N_L)
 
-        # === Step 5d: Plasma regime validity check (Phase AE) ===
-        # Periodic check (every 100 steps) of MHD validity criteria:
-        # ND (collisionality), Rm (frozen-in flux), Debye length, ion skin depth.
+        # Step 5d: Plasma regime validity check (every 100 steps)
         if self.step_count % 100 == 0:
             from dpf.diagnostics.plasma_regime import regime_validity
             ne_rv = self.state["rho"] / self.ion_mass
@@ -1270,11 +1290,23 @@ class SimulationEngine:
                     (1.0 - frac) * 100,
                 )
 
-        # === Step 6: Advance time and record diagnostics ===
+        return neutron_rate
+
+    def _step_record_and_checkpoint(
+        self,
+        dt: float,
+        sim_time: float,
+        _max_steps: int | None,
+        Z_bar: float,
+        R_plasma: float,
+        eta_anom: float,
+        new_coupling: CouplingState,
+        neutron_rate: float,
+    ) -> StepResult:
+        """Step 6: Advance time, record diagnostics, auto-checkpoint."""
         self.time += dt
         self.step_count += 1
 
-        # Store latest step-level scalars for StepResult
         self._last_R_plasma = R_plasma
         self._last_Z_bar = Z_bar
         self._last_eta_anom = eta_anom
@@ -1385,19 +1417,18 @@ class SimulationEngine:
                 E_total / max(self.initial_energy, 1e-30),
             )
 
-        # Auto-checkpoint
         if (
             self.checkpoint_interval > 0
             and self.step_count % self.checkpoint_interval == 0
         ):
             self.save_checkpoint()
 
-        # Check if finished after this step
         finished = self.time >= sim_time
         if _max_steps is not None and self.step_count >= _max_steps:
             finished = True
 
         return self._make_step_result(dt=dt, finished=finished)
+
 
     def _compute_J_from_B(self, B: np.ndarray) -> np.ndarray:
         """Compute current density J = curl(B) / mu_0.
@@ -2029,12 +2060,14 @@ class SimulationEngine:
 
         # Update pressure from new temperatures
         self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
-        self._sanitize_state("after collision step")
+        if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+            self._sanitize_state("after collision step")
 
         # --- Braginskii ion viscosity ---
         if self.config.fluid.enable_viscosity and self.backend != "metal":
             self._apply_viscosity(dt_sub)
-            self._sanitize_state("after viscosity step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after viscosity step")
 
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
         # Skip if: Metal backend (handled internally), or 2T mode (2T module owns conduction).
@@ -2060,7 +2093,8 @@ class SimulationEngine:
                 Z_eff=Z_eff_aniso,
             )
             self.state["Te"] = np.maximum(Te_aniso, 1.0)
-            self._sanitize_state("after anisotropic conduction step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after anisotropic conduction step")
 
         # --- Radiation losses ---
         # Use spatially-varying Z for bremsstrahlung (P ~ Z^2) if available
@@ -2106,7 +2140,8 @@ class SimulationEngine:
             self.state["pressure"] = self.eos.total_pressure(
                 self.state["rho"], self.state["Ti"], self.state["Te"]
             )
-            self._sanitize_state("after radiation step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after radiation step")
 
         # --- Line radiation (impurity cooling) ---
         if self.rad_cfg.line_radiation_enabled and self.rad_cfg.impurity_fraction > 0 and not _two_t:
@@ -2143,13 +2178,15 @@ class SimulationEngine:
             self.state["pressure"] = self.eos.total_pressure(
                 self.state["rho"], self.state["Ti"], self.state["Te"]
             )
-            self._sanitize_state("after line radiation step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after line radiation step")
 
         # --- Implicit / STS magnetic and thermal diffusion ---
         fc = self.config.fluid
         if fc.diffusion_method != "explicit" and fc.enable_resistive:
             self._apply_diffusion(dt_sub, Z_bar, Z_bar_field=Z_bar_field)
-            self._sanitize_state("after diffusion step")
+            if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
+                self._sanitize_state("after diffusion step")
 
     # ------------------------------------------------------------------
     # Nernst B-field advection sub-step

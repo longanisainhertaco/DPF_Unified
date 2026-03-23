@@ -26,9 +26,38 @@ from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
+from numba import njit
 
 from dpf.constants import mu_0, pi
 from dpf.core.bases import CircuitSolverBase, CouplingState
+
+
+@njit(cache=True)
+def _rlc_step_kernel(
+    I_n: float,
+    V_n: float,
+    L_total: float,
+    R_eff: float,
+    C: float,
+    dLp_dt: float,
+    back_emf: float,
+    dt: float,
+) -> tuple[float, float]:
+    """Implicit midpoint RLC arithmetic kernel (JIT-compiled).
+
+    Normal (pre-crowbar) operation only. Returns (I_new, V_new).
+    """
+    alpha = dt / (2.0 * max(L_total, 1e-15))
+    beta = alpha * dt / (2.0 * C)
+    R_star = R_eff + dLp_dt
+    denom = 1.0 + alpha * R_star + beta
+    I_new = (
+        I_n * (1.0 - alpha * R_star - beta)
+        + 2.0 * alpha * (V_n - back_emf)
+    ) / max(denom, 1e-30)
+    I_mid = 0.5 * (I_n + I_new)
+    V_new = V_n - (dt / C) * I_mid
+    return I_new, V_new
 
 logger = logging.getLogger(__name__)
 
@@ -274,20 +303,10 @@ class RLCSolver(CircuitSolverBase):
             V_new = V_n  # Capacitor voltage frozen
 
         else:
-            # Normal RLC operation: implicit midpoint method
-            alpha = dt / (2.0 * max(L_total, 1e-15))
-            beta = alpha * dt / (2.0 * self.C)
-            R_star = R_eff + dLp_dt
-
-            denom = 1.0 + alpha * R_star + beta
-            I_new = (
-                I_n * (1.0 - alpha * R_star - beta)
-                + 2.0 * alpha * (V_n - back_emf)
-            ) / max(denom, 1e-30)
-
-            # Update voltage
-            I_mid = 0.5 * (I_n + I_new)
-            V_new = V_n - (dt / self.C) * I_mid
+            # Normal RLC operation: implicit midpoint method (arithmetic via @njit kernel)
+            I_new, V_new = _rlc_step_kernel(
+                I_n, V_n, L_total, R_eff, self.C, dLp_dt, back_emf, dt,
+            )
 
             # Check if crowbar should trigger
             if self._check_crowbar(V_n, V_new):
