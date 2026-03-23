@@ -1313,6 +1313,7 @@ class HybridPIC:
         dz: float,
         dt: float,
         use_esirkepov: bool = True,
+        use_binary_collisions: bool = True,
     ) -> None:
         self.grid_shape = grid_shape
         self.dx = dx
@@ -1320,6 +1321,7 @@ class HybridPIC:
         self.dz = dz
         self.dt = dt
         self.use_esirkepov = use_esirkepov
+        self.use_binary_collisions = use_binary_collisions
         self.species: list[ParticleSpecies] = []
 
         # Domain extents (particle positions live in [0, L])
@@ -1453,13 +1455,34 @@ class HybridPIC:
             # Reflecting boundary conditions at domain edges
             new_pos, new_vel = self._apply_reflecting_bc(new_pos, new_vel)
 
-            # Coulomb collision operator (Takizuka-Abe 1977 binary scattering)
+            # Collision operator
             if self._collision_enabled and sp.n_particles() > 1:
-                new_vel = _coulomb_scatter(
-                    new_vel, sp.charge, sp.mass,
-                    self._n_background, self._T_background_eV,
-                    dt,
-                )
+                if self.use_binary_collisions:
+                    # Nanbu-Perez (2012) relativistic binary collisions
+                    # Self-collisions: pair species with itself
+                    n_sp = self._n_background
+                    ln_lam = max(
+                        5.0,
+                        23.0
+                        - 0.5 * np.log(n_sp / 1e20)
+                        + 1.5 * np.log(self._T_background_eV),
+                    )
+                    cell_vol = self.dx * self.dy * self.dz
+                    _nanbu_scatter_kernel(
+                        new_vel, new_vel,
+                        sp.weights, sp.weights,
+                        sp.mass, sp.mass,
+                        sp.charge, sp.charge,
+                        n_sp, n_sp,
+                        ln_lam, dt, cell_vol,
+                    )
+                else:
+                    # Takizuka-Abe (1977) fallback
+                    new_vel = _coulomb_scatter(
+                        new_vel, sp.charge, sp.mass,
+                        self._n_background, self._T_background_eV,
+                        dt,
+                    )
 
             sp.positions = new_pos
             sp.velocities = new_vel

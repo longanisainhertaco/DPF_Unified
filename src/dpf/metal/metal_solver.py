@@ -219,6 +219,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         enable_betatron: bool = False,
         implicit_resistivity: bool = False,
         compile_mode: bool = False,
+        reconstruction_precision: str = "float32",
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -230,6 +231,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         self.use_ct: bool = use_ct
         self.riemann_solver: str = riemann_solver
         self.precision: str = precision
+        self.reconstruction_precision: str = reconstruction_precision
         self.reconstruction: str = reconstruction
         self.time_integrator: str = time_integrator
         self.enable_hall: bool = enable_hall
@@ -307,12 +309,13 @@ class MetalMHDSolver(PlasmaSolverBase):
         logger.info(
             "MetalMHDSolver initialized: grid=%s  dx=%.3e  dy=%.3e  dz=%.3e  "
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
-            "riemann=%s  recon=%s  time=%s  precision=%s  coords=%s  "
+            "riemann=%s  recon=%s  recon_prec=%s  time=%s  precision=%s  coords=%s  "
             "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s  "
             "bremsstrahlung=%s  betatron=%s  compile_mode=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
-            self.riemann_solver, self.reconstruction, self.time_integrator,
+            self.riemann_solver, self.reconstruction, self.reconstruction_precision,
+            self.time_integrator,
             self.precision, self.coordinates,
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
@@ -596,6 +599,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 riemann_solver=self.riemann_solver,
                 reconstruction=self.reconstruction,
                 bc=self.bc,
+                reconstruction_precision=self.reconstruction_precision,
             )
         return mhd_rhs_mps(
             state_dict,
@@ -605,6 +609,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             self.riemann_solver,
             self.reconstruction,
             bc=self.bc,
+            reconstruction_precision=self.reconstruction_precision,
         )
 
     def _euler_update(
