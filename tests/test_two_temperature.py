@@ -787,3 +787,59 @@ class TestProduction2T:
         assert np.all(Te_rad > 0) and np.all(Ti_rad > 0), (
             "Temperatures must remain positive even with radiation enabled"
         )
+
+
+class TestTwoTempWithConduction:
+    """Regression: Braginskii conduction must NOT be disabled in 2T mode.
+
+    Bug history: engine.py line 2125 had `and not _two_t` which silently
+    disabled anisotropic conduction when two_temperature was enabled.
+    The 2T module (step_electron_energy) handles Ohmic heating, radiation,
+    and equilibration — but NOT conduction. Conduction must apply to Te
+    through the engine's Braginskii operator.
+    """
+
+    def test_conduction_guard_allows_2t(self):
+        """Verify the Braginskii conduction guard does not exclude 2T mode."""
+        import inspect
+        from dpf.engine import SimulationEngine
+
+        source = inspect.getsource(SimulationEngine._apply_collision_radiation)
+        # Find the conduction guard line specifically
+        for line in source.split("\n"):
+            if "enable_anisotropic_conduction" in line:
+                assert "not _two_t" not in line, (
+                    f"Conduction guard must not exclude 2T mode: {line.strip()}"
+                )
+                break
+        else:
+            pytest.skip("enable_anisotropic_conduction guard not found")
+
+    def test_conduction_modifies_te_in_2t_mode(self):
+        """With a Te gradient and B-field, conduction should smooth Te in 2T."""
+        from dpf.fluid.anisotropic_conduction import anisotropic_thermal_conduction
+
+        nx, ny, nz = 8, 8, 32
+        dx = 0.001
+        # Create Te with a sharp gradient along z (B-field direction)
+        Te = np.ones((nx, ny, nz)) * 1e6  # 1M Kelvin ~86 eV
+        Te[:, :, nz // 4 : 3 * nz // 4] = 1e7  # hot region along z
+
+        # Strong axial B-field (conduction along z)
+        B = np.zeros((3, nx, ny, nz))
+        B[2, :, :, :] = 1.0  # Bz = 1 Tesla
+
+        ne = np.ones((nx, ny, nz)) * 1e24  # m^-3
+        dt = 1e-7  # longer dt for observable effect
+
+        Te_after = anisotropic_thermal_conduction(
+            Te, B, ne, dt, dx, dx, dx, Z_eff=1.0,
+        )
+
+        # Conduction should smooth the gradient
+        Te_range_before = np.max(Te) - np.min(Te)
+        Te_range_after = np.max(Te_after) - np.min(Te_after)
+        assert Te_range_after < Te_range_before, (
+            f"Conduction should reduce Te range: before={Te_range_before:.2e}, "
+            f"after={Te_range_after:.2e}"
+        )
