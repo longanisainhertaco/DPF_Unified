@@ -1204,17 +1204,27 @@ class SimulationEngine:
                     self._current_source_terms = src
 
         cc = self.config.circuit
-        self.state = self.fluid.step(
-            self.state,
-            dt,
-            current=new_coupling.current,
-            voltage=new_coupling.voltage,
-            eta_field=eta_field,
-            source_terms=self._current_source_terms,
-            anode_radius=cc.anode_radius,
-            cathode_radius=cc.cathode_radius,
-            apply_electrode_bc=self.boundary_cfg.electrode_bc,
-        )
+        # MHD sub-stepping: if the fluid CFL dt is much smaller than the engine
+        # dt (after radial handoff, CFL can be ~ps vs engine dt ~μs), sub-step.
+        # Cap at 100 sub-steps to keep wall time reasonable.
+        dt_fluid_cfl = self.fluid._compute_dt(self.state)
+        if dt_fluid_cfl > 0 and dt_fluid_cfl < dt:
+            n_mhd_sub = max(1, min(int(np.ceil(dt / dt_fluid_cfl)), 100))
+        else:
+            n_mhd_sub = 1
+        dt_mhd = dt / n_mhd_sub
+        for _mhd_sub in range(n_mhd_sub):
+            self.state = self.fluid.step(
+                self.state,
+                dt_mhd,
+                current=new_coupling.current,
+                voltage=new_coupling.voltage,
+                eta_field=eta_field,
+                source_terms=self._current_source_terms if _mhd_sub == 0 else None,
+                anode_radius=cc.anode_radius,
+                cathode_radius=cc.cathode_radius,
+                apply_electrode_bc=self.boundary_cfg.electrode_bc,
+            )
         if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
             self._sanitize_state("after fluid step")
         self._last_div_B = getattr(self.fluid, "_last_div_B", 0.0)
