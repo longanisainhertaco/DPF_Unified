@@ -1036,6 +1036,7 @@ class SimulationEngine:
                 coupling.dL_dt = sp_result["dL_dt"]
                 self._prev_L_plasma = sp_result["L_plasma"]
                 self._last_sp_dL_dt = sp_result["dL_dt"]
+                self._last_sp_R_plasma = sp_result.get("R_plasma", 0.0)
 
             elif self.snowplow is not None and not self.snowplow.is_active:
                 # Post-pinch: hold inductance constant unless density_weighted mode.
@@ -1273,7 +1274,10 @@ class SimulationEngine:
         _fb = self._last_feedback
         _dL_mhd = abs(_fb.dLp_dt) if _fb is not None else 0.0
         _dL_sp = abs(getattr(self, "_last_sp_dL_dt", 0.0))
-        _V_pinch = abs(self._coupling.current) * max(_dL_mhd, _dL_sp)
+        # V_pinch = inductive (I*dL/dt) + snowplow anomalous resistance (R_anom)
+        # R_anom is nonzero only during radial/disruption phases (snowplow handles this)
+        _sp_R = getattr(self, "_last_sp_R_plasma", 0.0)
+        _V_pinch = abs(self._coupling.current) * (max(_dL_mhd, _dL_sp) + _sp_R)
         _L_pinch = (
             self.config.snowplow.anode_length * self.config.snowplow.pinch_column_fraction
         )
