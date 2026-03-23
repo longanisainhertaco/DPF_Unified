@@ -55,6 +55,77 @@ from dpf.metal.metal_transport import _safe_gradient
 
 logger = logging.getLogger(__name__)
 
+# ──────────────────────────────────────────────────────────────────────────── #
+#  torch.compile-compatible euler stage (module-level, no dicts / .item())
+# ──────────────────────────────────────────────────────────────────────────── #
+
+def _euler_stage_compilable(
+    rho: torch.Tensor,
+    vel: torch.Tensor,
+    p: torch.Tensor,
+    B: torch.Tensor,
+    dt: float,
+    gamma: float,
+    dx: float,
+    dy: float,
+    dz: float,
+    limiter: str,
+    riemann_solver: str,
+    reconstruction: str,
+    bc_x: str,
+    bc_y: str,
+    bc_z: str,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Pure-tensor Euler stage for torch.compile acceleration (Cartesian only).
+
+    Computes MHD RHS via ``mhd_rhs_mps`` then applies a forward Euler update
+    with floor enforcement.  Returns only tensors — no dicts, no ``.item()``
+    calls — so ``torch.compile`` can trace the full computation graph.
+
+    Parameters
+    ----------
+    rho, vel, p, B : torch.Tensor
+        Primitive state tensors.
+    dt : float
+        Timestep [s].
+    gamma : float
+        Adiabatic index.
+    dx, dy, dz : float
+        Grid spacings [m].
+    limiter, riemann_solver, reconstruction : str
+        Solver configuration strings.
+    bc_x, bc_y, bc_z : str
+        Boundary condition strings per axis.
+
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+        (rho_new, vel_new, p_new, B_new) after one Euler step.
+    """
+    state_dict: dict[str, torch.Tensor] = {
+        "rho": rho, "velocity": vel, "pressure": p, "B": B,
+    }
+    rhs = mhd_rhs_mps(
+        state_dict, gamma, dx, dy, dz,
+        limiter, riemann_solver, reconstruction,
+        bc=(bc_x, bc_y, bc_z),
+    )
+
+    rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR)
+    vel_new = vel + dt * rhs["velocity"]
+    p_new = torch.clamp(p + dt * rhs["pressure"], min=P_FLOOR)
+    B_new = B + dt * rhs["B"]
+
+    # Velocity clamping to 10x local fast magnetosonic speed
+    cf = _fast_magnetosonic_mps(rho_new, p_new, B_new, gamma, dim=0)
+    for d in range(1, 3):
+        cf = torch.maximum(cf, _fast_magnetosonic_mps(rho_new, p_new, B_new, gamma, dim=d))
+    v_max = torch.clamp(10.0 * cf, min=1e3, max=1e7)
+    vel_new = torch.clamp(vel_new, min=-v_max, max=v_max)
+
+    return rho_new, vel_new, p_new, B_new
+
+
 # Physical constants for temperature derivation (SI)
 _K_B: float = 1.380649e-23   # Boltzmann constant [J/K]
 _M_D: float = 3.34358377e-27  # Deuterium mass [kg]
@@ -147,6 +218,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         convert_b_si_to_hl: bool = False,
         enable_betatron: bool = False,
         implicit_resistivity: bool = False,
+        compile_mode: bool = False,
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -217,6 +289,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # Cylindrical coordinate support -----------------------------------
         # r_inner offsets the radial grid so domain covers [r_inner, r_inner + nx*dx].
         # For DPF inter-electrode gap: r_inner = anode_radius.
+        self.compile_mode: bool = compile_mode
         self._r_inner: float = float(r_inner if r_inner is not None else 0.0)
         if self.coordinates == "cylindrical":
             r_1d = self._r_inner + (torch.arange(nx, dtype=self._dtype, device=self.device)
@@ -236,7 +309,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
             "riemann=%s  recon=%s  time=%s  precision=%s  coords=%s  "
             "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s  "
-            "bremsstrahlung=%s  betatron=%s",
+            "bremsstrahlung=%s  betatron=%s  compile_mode=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.time_integrator,
@@ -244,8 +317,26 @@ class MetalMHDSolver(PlasmaSolverBase):
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
             self.enable_bremsstrahlung, self.enable_betatron,
+            self.compile_mode,
         )
 
+        # Compile the hot euler stage if requested.
+        # Only enabled for Cartesian coordinates (cylindrical uses a separate
+        # RHS path with extra tensor arguments that torch.compile handles less
+        # efficiently on first-call tracing).
+        self._compiled_euler_stage: object | None = None
+        if self.compile_mode and self.coordinates == "cartesian":
+            try:
+                self._compiled_euler_stage = torch.compile(
+                    _euler_stage_compilable,
+                    fullgraph=False,
+                )
+                logger.info("torch.compile applied to _euler_stage_compilable")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "torch.compile unavailable (%s); falling back to eager mode", exc
+                )
+                self._compiled_euler_stage = None
 
     # ------------------------------------------------------------------ #
     #  Device availability check
@@ -1404,6 +1495,36 @@ class MetalMHDSolver(PlasmaSolverBase):
         e_electron: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
         """SSP-RK2 (Shu-Osher): 2 stages, 2nd-order."""
+        # ── Compiled fast path (Cartesian, no e_electron) ──────────────────
+        if self._compiled_euler_stage is not None and e_electron is None:
+            # Stage 1: U^(1) = U^n + dt * L(U^n)
+            rho_1, vel_1, p_1, B_1 = self._compiled_euler_stage(
+                rho_n, vel_n, p_n, B_n, dt,
+                self.gamma, self.dx, self.dy, self.dz,
+                self.limiter, self.riemann_solver, self.reconstruction,
+                self.bc[0], self.bc[1], self.bc[2],
+            )
+            if self.use_ct:
+                B_1 = self._apply_ct_correction(B_1, B_n, dt)
+            # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
+            rho_1b, vel_1b, p_1b, B_1b = self._compiled_euler_stage(
+                rho_1, vel_1, p_1, B_1, dt,
+                self.gamma, self.dx, self.dy, self.dz,
+                self.limiter, self.riemann_solver, self.reconstruction,
+                self.bc[0], self.bc[1], self.bc[2],
+            )
+            rho_new = torch.clamp(0.5 * rho_n + 0.5 * rho_1b, min=RHO_FLOOR)
+            p_new = torch.clamp(0.5 * p_n + 0.5 * p_1b, min=P_FLOOR)
+            vel_new = self._clamp_velocity(
+                0.5 * vel_n + 0.5 * vel_1b, rho_new, p_new,
+                0.5 * B_n + 0.5 * B_1b,
+            )
+            B_new = 0.5 * B_n + 0.5 * B_1b
+            if self.use_ct:
+                B_new = self._apply_ct_correction(B_new, B_n, dt)
+            return rho_new, vel_new, p_new, B_new, None
+
+        # ── Eager path (original, unchanged) ───────────────────────────────
         # Stage 1: U^(1) = U^n + dt * L(U^n)
         rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
@@ -1451,6 +1572,48 @@ class MetalMHDSolver(PlasmaSolverBase):
             Shu C.-W. & Osher S., J. Comput. Phys. 77, 439 (1988).
             Gottlieb S. et al., SIAM Rev. 43, 89-112 (2001).
         """
+        # ── Compiled fast path (Cartesian, no e_electron) ──────────────────
+        if self._compiled_euler_stage is not None and e_electron is None:
+            _ce = self._compiled_euler_stage
+            _bc = (self.bc[0], self.bc[1], self.bc[2])
+            _args = (self.gamma, self.dx, self.dy, self.dz,
+                     self.limiter, self.riemann_solver, self.reconstruction,
+                     *_bc)
+
+            # Stage 1: U^(1) = U^n + dt * L(U^n)
+            rho_1, vel_1, p_1, B_1 = _ce(rho_n, vel_n, p_n, B_n, dt, *_args)
+            if self.use_ct:
+                B_1 = self._apply_ct_correction(B_1, B_n, dt)
+
+            # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
+            rho_1b, vel_1b, p_1b, B_1b = _ce(rho_1, vel_1, p_1, B_1, dt, *_args)
+            rho_2 = torch.clamp(0.75 * rho_n + 0.25 * rho_1b, min=RHO_FLOOR)
+            p_2 = torch.clamp(0.75 * p_n + 0.25 * p_1b, min=P_FLOOR)
+            B_2 = 0.75 * B_n + 0.25 * B_1b
+            vel_2 = self._clamp_velocity(
+                0.75 * vel_n + 0.25 * vel_1b, rho_2, p_2, B_2,
+            )
+            if self.use_ct:
+                B_2 = self._apply_ct_correction(B_2, B_n, dt)
+
+            # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
+            rho_2b, vel_2b, p_2b, B_2b = _ce(rho_2, vel_2, p_2, B_2, dt, *_args)
+            rho_new = torch.clamp(
+                (1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_2b, min=RHO_FLOOR,
+            )
+            p_new = torch.clamp(
+                (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_2b, min=P_FLOOR,
+            )
+            B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_2b
+            vel_new = self._clamp_velocity(
+                (1.0 / 3.0) * vel_n + (2.0 / 3.0) * vel_2b, rho_new, p_new, B_new,
+            )
+            if self.use_ct:
+                B_new = self._apply_ct_correction(B_new, B_n, dt)
+
+            return rho_new, vel_new, p_new, B_new, None
+
+        # ── Eager path (original, unchanged) ───────────────────────────────
         # Stage 1: U^(1) = U^n + dt * L(U^n)
         rhs1 = self._compute_rhs(rho_n, vel_n, p_n, B_n, e_electron=e_electron)
         rho_1, vel_1, p_1, B_1 = self._euler_update(
