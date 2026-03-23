@@ -998,6 +998,9 @@ class SimulationEngine:
         coupling.R_plasma = R_plasma
         coupling.Z_bar = Z_bar
 
+        if not np.isfinite(dt) or dt <= 0:
+            raise RuntimeError(f"Non-finite dt={dt} in circuit subcycle — MHD state likely diverged")
+
         L_total = self.circuit.L_ext + self._coupling.Lp
         dt_lc = np.sqrt(max(L_total, 1e-12) * self.circuit.C)
         # Target ~500 sub-steps per quarter period for accurate snowplow trajectory
@@ -2121,8 +2124,8 @@ class SimulationEngine:
                 self._sanitize_state("after viscosity step")
 
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
-        # Skip if: Metal backend (handled internally), or 2T mode (2T module owns conduction).
-        if self.config.fluid.enable_anisotropic_conduction and self.backend != "metal" and not _two_t:
+        # Skip if: Metal backend (handled internally). In 2T mode this applies to Te (electron conduction).
+        if self.config.fluid.enable_anisotropic_conduction and self.backend != "metal":
             _dx = self.config.dx
             if self.geometry_type == "cylindrical":
                 _dz = self.config.geometry.dz if self.config.geometry.dz is not None else _dx

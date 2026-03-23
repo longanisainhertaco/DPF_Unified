@@ -1094,9 +1094,10 @@ class TestBackendPhysicsWarnings:
 
 
 class TestRPlasmaCapIncrease:
-    """Test that R_plasma cap was increased from 10 to 1000 Ohm."""
+    """Test that R_plasma cap is set to a physically reasonable value."""
 
-    def test_r_plasma_cap_is_1000(self):
-        """The R_plasma cap in engine.py should allow up to 1000 Ohm."""
-        source = inspect.getsource(SimulationEngine.step)
-        assert "1000.0" in source or "1000" in source
+    def test_r_plasma_cap_is_reasonable(self):
+        """The R_plasma cap in engine.py should be 10 Ohm (prevents runaway)."""
+        import dpf.engine as engine_mod
+        source = inspect.getsource(engine_mod)
+        assert "min(R_plasma, 10.0)" in source

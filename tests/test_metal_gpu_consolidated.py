@@ -5343,11 +5343,12 @@ class TestBackendPhysicsWarnings:
 
 
 class TestRPlasmaCapIncrease:
-    """Test that R_plasma cap was increased from 10 to 1000 Ohm."""
+    """Test that R_plasma cap is set to a physically reasonable value."""
 
-    def test_r_plasma_cap_is_1000(self):
-        source = inspect.getsource(SimulationEngine.step)
-        assert "1000.0" in source or "1000" in source
+    def test_r_plasma_cap_is_reasonable(self):
+        import dpf.engine as engine_mod
+        source = inspect.getsource(engine_mod)
+        assert "min(R_plasma, 10.0)" in source
 
 
 # ---------------------------------------------------------------------------
@@ -6115,6 +6116,7 @@ class TestRepairFractionDiagnostic:
         solver = MetalMHDSolver(
             grid_shape=(nx, 4, 4), dx=dx, gamma=_GAMMA, cfl=0.4,
             device="cpu", precision="float32", use_ct=False,
+            safety_level="strict",
         )
 
         dt = solver.compute_dt(state)
@@ -6152,6 +6154,7 @@ class TestRepairFractionDiagnostic:
         solver = MetalMHDSolver(
             grid_shape=(nx, 4, 4), dx=dx, gamma=_GAMMA, cfl=0.4,
             device="cpu", precision="float32", use_ct=False,
+            safety_level="strict",
         )
 
         for _ in range(5):
