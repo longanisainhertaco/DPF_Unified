@@ -1214,6 +1214,10 @@ class SimulationEngine:
             n_mhd_sub = 1
         dt_mhd = dt / n_mhd_sub
         for _mhd_sub in range(n_mhd_sub):
+            # Ghost-cell BC only on first sub-step — subsequent sub-steps
+            # evolve the domain freely. Repeated ghost-cell application
+            # across sub-steps creates cumulative energy injection.
+            apply_bc_this_sub = self.boundary_cfg.electrode_bc and _mhd_sub == 0
             self.state = self.fluid.step(
                 self.state,
                 dt_mhd,
@@ -1223,7 +1227,7 @@ class SimulationEngine:
                 source_terms=self._current_source_terms if _mhd_sub == 0 else None,
                 anode_radius=cc.anode_radius,
                 cathode_radius=cc.cathode_radius,
-                apply_electrode_bc=self.boundary_cfg.electrode_bc,
+                apply_electrode_bc=apply_bc_this_sub,
             )
         if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
             self._sanitize_state("after fluid step")
