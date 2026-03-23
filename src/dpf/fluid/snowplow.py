@@ -330,13 +330,16 @@ class SnowplowModel:
         for i in range(nr):
             r = r_grid[i]
             if r < r_s:
-                # Inside shock: compressed slug
-                rho_prof[i] = rho_slug
-                vr_prof[i] = -v_post  # inward (negative)
-                p_prof[i] = rho_slug * k_B * T_ion / m_d
-                # B_theta from current
+                # B_theta from current everywhere inside the sheath
                 if r > 0:
                     B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
+                # Only apply RH compression if the shock is actually moving
+                # (v_s > 0). At the start of radial phase, v_s ≈ 0 and no
+                # compression has occurred yet — density stays at fill.
+                if v_s > 1e3:  # >1 km/s = meaningful shock
+                    rho_prof[i] = rho_slug
+                    vr_prof[i] = -v_post
+                    p_prof[i] = rho_slug * k_B * T_ion / m_d
             # Outside shock: fill gas (already set by defaults)
 
         return {
