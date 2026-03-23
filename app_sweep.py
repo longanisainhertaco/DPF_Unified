@@ -16,6 +16,7 @@ import os
 import tempfile
 from typing import Any
 
+import jax.numpy as jnp
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -23,6 +24,144 @@ from plotly.subplots import make_subplots
 from app_engine import run_simulation_core
 
 _TEMP_DIR = os.environ.get("DPF_TEMP_DIR", tempfile.gettempdir())
+
+# Preset field -> JAX Lee model param key mapping
+_PRESET_TO_JAX: dict[str, str] = {
+    "fm": "fm",
+    "fc": "fc",
+    "V0_kV": "V0",   # converted: kV -> V in _preset_to_jax_params
+    "pressure": "fill_pressure_torr",
+}
+
+
+def _preset_to_jax_params(
+    preset_name: str,
+    override_fm: float | None = None,
+    override_fc: float | None = None,
+    override_V0_kV: float | None = None,
+    override_pressure_torr: float | None = None,
+) -> dict[str, jnp.ndarray]:
+    """Build JAX Lee model param dict from a preset with optional overrides.
+
+    Args:
+        preset_name: Device preset name.
+        override_fm: Mass fraction override.
+        override_fc: Current fraction override.
+        override_V0_kV: Charging voltage override [kV].
+        override_pressure_torr: Fill pressure override [Torr].
+
+    Returns:
+        JAX float64 parameter dictionary compatible with ``simulate``.
+    """
+    from dpf.jax.lee_model import default_pf1000_params
+    from dpf.presets import _PRESETS
+
+    preset = _PRESETS.get(preset_name, {})
+    circuit = preset.get("circuit", {})
+    snowplow = preset.get("snowplow", {})
+
+    fill_pressure_pa = preset.get("rho0") or snowplow.get("fill_pressure_Pa", 466.0)
+    fill_pressure_torr = fill_pressure_pa / 133.322
+
+    base = default_pf1000_params()
+    params = {
+        "V0": jnp.float64(circuit.get("V0", float(base["V0"]))),
+        "C0": jnp.float64(circuit.get("C", float(base["C0"]))),
+        "L0": jnp.float64(circuit.get("L0", float(base["L0"]))),
+        "R0": jnp.float64(circuit.get("R0", float(base["R0"]))),
+        "a": jnp.float64(circuit.get("anode_radius", float(base["a"]))),
+        "b": jnp.float64(circuit.get("cathode_radius", float(base["b"]))),
+        "z_max": jnp.float64(snowplow.get("anode_length", float(base["z_max"]))),
+        "fill_pressure_torr": jnp.float64(fill_pressure_torr),
+        "fc": jnp.float64(snowplow.get("current_fraction", float(base["fc"]))),
+        "fm": jnp.float64(snowplow.get("mass_fraction", float(base["fm"]))),
+        "fmr": jnp.float64(snowplow.get("radial_mass_fraction", float(base["fmr"]))),
+        "fcr": jnp.float64(snowplow.get("radial_current_fraction_2", float(base["fcr"]))),
+    }
+
+    if override_fm is not None:
+        params["fm"] = jnp.float64(override_fm)
+    if override_fc is not None:
+        params["fc"] = jnp.float64(override_fc)
+    if override_V0_kV is not None:
+        params["V0"] = jnp.float64(override_V0_kV * 1e3)
+    if override_pressure_torr is not None:
+        params["fill_pressure_torr"] = jnp.float64(override_pressure_torr)
+
+    return params
+
+
+def run_jax_sweep(
+    preset_name: str,
+    param_name: str,
+    param_values: list[float],
+    sim_time_us: float,
+    fixed_fm: float | None = None,
+    fixed_fc: float | None = None,
+) -> list[dict[str, Any]]:
+    """Run N Lee model simulations in parallel via JAX vmap.
+
+    All simulations share the same preset base params; only ``param_name``
+    varies across the batch. Supports the same four parameter names as
+    ``run_parameter_sweep``: "fm", "fc", "V0_kV", "pressure".
+
+    Args:
+        preset_name: Device preset name.
+        param_name: Parameter to sweep ("fm", "fc", "V0_kV", "pressure").
+        param_values: Values to sweep over.
+        sim_time_us: Simulation time per run [µs].
+        fixed_fm: Fixed mass fraction (overrides preset for all runs).
+        fixed_fc: Fixed current fraction (overrides preset for all runs).
+
+    Returns:
+        List of result dicts, one per simulation, with keys:
+        ``I_peak``, ``t_peak``.  neutron_yield / dip are not available
+        from the JAX Lee model (scalar-only outputs).
+    """
+    from dpf.jax.lee_model import vmap_simulate
+
+    if param_name not in _PRESET_TO_JAX:
+        raise ValueError(
+            f"JAX sweep does not support param '{param_name}'. "
+            f"Supported: {list(_PRESET_TO_JAX)}"
+        )
+
+    sim_time_s = sim_time_us * 1e-6
+
+    base = _preset_to_jax_params(
+        preset_name,
+        override_fm=fixed_fm,
+        override_fc=fixed_fc,
+    )
+
+    vals_arr = jnp.array(param_values, dtype=jnp.float64)
+    n = len(param_values)
+
+    # Build batched param dict: replicate base params, override the sweep axis
+    jax_key = _PRESET_TO_JAX[param_name]
+    batched: dict[str, jnp.ndarray] = {}
+    for k, v in base.items():
+        if k == jax_key:
+            if param_name == "V0_kV":
+                batched[k] = vals_arr * 1e3
+            else:
+                batched[k] = vals_arr
+        else:
+            batched[k] = jnp.broadcast_to(v, (n,))
+
+    result = vmap_simulate(batched, sim_time=sim_time_s)
+
+    return [
+        {
+            "I_peak": float(result["I_peak"][i]) / 1e6,  # A -> MA
+            "t_peak": float(result["t_peak"][i]) * 1e6,  # s -> µs
+            "dip_pct": 0.0,
+            "Y_neutron": 0.0,
+            "V_pinch_kV": 0.0,
+            "T_bennett_keV": 0.0,
+        }
+        for i in range(n)
+    ]
 
 
 def _get_published_params(preset_name: str) -> dict[str, float | None]:
@@ -45,6 +184,7 @@ def run_parameter_sweep(
     fixed_fm: float | None = None,
     fixed_fc: float | None = None,
     progress_fn=None,
+    use_jax: bool = False,
 ) -> dict[str, Any]:
     """Sweep a single parameter and record key metrics.
 
@@ -57,12 +197,41 @@ def run_parameter_sweep(
         fixed_fm: Fixed mass fraction (overrides preset).
         fixed_fc: Fixed current fraction (overrides preset).
         progress_fn: Gradio progress callback.
+        use_jax: When True, route through JAX vmap (all N sims in parallel).
+            Faster for large sweeps; returns I_peak and t_peak only
+            (neutron_yield, dip_pct are not available from the JAX Lee model).
 
     Returns:
         Dictionary with parameter values and metric arrays.
     """
     values = np.linspace(param_range[0], param_range[1], n_points)
-    results: dict[str, list[float]] = {
+
+    if use_jax and param_name in _PRESET_TO_JAX:
+        jax_results = run_jax_sweep(
+            preset_name=preset_name,
+            param_name=param_name,
+            param_values=list(values),
+            sim_time_us=sim_time_us,
+            fixed_fm=fixed_fm,
+            fixed_fc=fixed_fc,
+        )
+        results: dict[str, list[float]] = {
+            "param_values": list(values),
+            "I_peak": [r["I_peak"] for r in jax_results],
+            "t_peak": [r["t_peak"] for r in jax_results],
+            "dip_pct": [r["dip_pct"] for r in jax_results],
+            "Y_neutron": [r["Y_neutron"] for r in jax_results],
+            "V_pinch_kV": [r["V_pinch_kV"] for r in jax_results],
+            "T_bennett_keV": [r["T_bennett_keV"] for r in jax_results],
+        }
+        return {
+            "param_name": param_name,
+            "preset": preset_name,
+            "n_points": len(results["param_values"]),
+            **{k: np.array(v) for k, v in results.items()},
+        }
+
+    results_serial: dict[str, list[float]] = {
         "param_values": [], "I_peak": [], "t_peak": [],
         "dip_pct": [], "Y_neutron": [], "V_pinch_kV": [],
         "T_bennett_keV": [],
@@ -94,26 +263,26 @@ def run_parameter_sweep(
         except Exception:
             continue
 
-        results["param_values"].append(float(val))
-        results["I_peak"].append(data.get("I_pre_dip", data["I_peak"]))
-        results["t_peak"].append(data.get("t_pre_dip", data["t_peak"]))
-        results["dip_pct"].append(data.get("dip_pct", 0))
+        results_serial["param_values"].append(float(val))
+        results_serial["I_peak"].append(data.get("I_pre_dip", data["I_peak"]))
+        results_serial["t_peak"].append(data.get("t_pre_dip", data["t_peak"]))
+        results_serial["dip_pct"].append(data.get("dip_pct", 0))
 
         ny = data.get("neutron_yield")
         if ny:
-            results["Y_neutron"].append(ny["Y_neutron"])
-            results["V_pinch_kV"].append(ny.get("V_pinch_kV", 0))
-            results["T_bennett_keV"].append(ny.get("T_bennett_keV", 0))
+            results_serial["Y_neutron"].append(ny["Y_neutron"])
+            results_serial["V_pinch_kV"].append(ny.get("V_pinch_kV", 0))
+            results_serial["T_bennett_keV"].append(ny.get("T_bennett_keV", 0))
         else:
-            results["Y_neutron"].append(0)
-            results["V_pinch_kV"].append(0)
-            results["T_bennett_keV"].append(0)
+            results_serial["Y_neutron"].append(0)
+            results_serial["V_pinch_kV"].append(0)
+            results_serial["T_bennett_keV"].append(0)
 
     return {
         "param_name": param_name,
         "preset": preset_name,
-        "n_points": len(results["param_values"]),
-        **{k: np.array(v) for k, v in results.items()},
+        "n_points": len(results_serial["param_values"]),
+        **{k: np.array(v) for k, v in results_serial.items()},
     }
 
 
