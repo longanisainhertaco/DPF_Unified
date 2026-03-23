@@ -4664,3 +4664,145 @@ class TestPowellReducesDivB:
         state["velocity"] = np.zeros((3, nr, nz))
         result = powell_source_terms_cylindrical(state, geom)
         np.testing.assert_allclose(result["dB_powell"], 0.0, atol=1e-20)
+
+
+# ===========================================================================
+# Six Sigma Control Gate: Regression tests for night-ops 2026-03-22 fixes
+# ===========================================================================
+
+
+class TestHLLDiscriminantStability:
+    """Regression: HLL discriminant must use numerically stable form.
+
+    Bug: (a2+va2)^2 overflows float64 at DPF compression ratios.
+    Fix: (a2-va2)^2 + 4*a2*(va2-van2) — algebraically identical, no overflow.
+    """
+
+    def test_cylindrical_hll_uses_stable_discriminant(self):
+        """Verify cylindrical solver uses (a2-va2)^2 form, not (a2+va2)^2."""
+        import inspect
+
+        from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
+
+        source = inspect.getsource(CylindricalMHDSolver)
+        assert "(a2_L - va2_L)**2" in source, (
+            "Cylindrical HLL must use stable (a2-va2)^2 discriminant"
+        )
+        assert "(a2_L + va2_L)**2" not in source, (
+            "Cylindrical HLL must NOT use overflow-prone (a2+va2)^2"
+        )
+
+    def test_cartesian_hll_uses_stable_discriminant(self):
+        """Verify Cartesian solver uses (a2-va2)^2 form."""
+        import inspect
+
+        import dpf.fluid.mhd_solver as mhd_mod
+
+        source = inspect.getsource(mhd_mod)
+        assert "(a2L - va2L) * (a2L - va2L)" in source, (
+            "Cartesian HLL must use stable (a2-va2)^2 discriminant"
+        )
+
+    def test_discriminant_algebraic_identity(self):
+        """Both discriminant forms produce identical results on normal inputs."""
+        a2 = np.array([1e6, 1e10, 1e14])
+        va2 = np.array([1e5, 1e9, 1e13])
+        van2 = np.array([1e4, 1e8, 1e12])
+        unstable = (a2 + va2)**2 - 4.0 * a2 * van2
+        stable = (a2 - va2)**2 + 4.0 * a2 * (va2 - van2)
+        np.testing.assert_allclose(stable, unstable, rtol=1e-10)
+
+    def test_stable_form_no_overflow_at_dpf_compression(self):
+        """Stable discriminant stays finite at extreme DPF compression values."""
+        mu0 = 1.2566e-6
+        gamma = 5.0 / 3.0
+        rho = 100.0
+        p = 1e12
+        B_sq = 1000.0**2
+        Bn_sq = 500.0**2
+        a2 = gamma * p / rho
+        va2 = B_sq / (mu0 * rho)
+        van2 = Bn_sq / (mu0 * rho)
+        disc = (a2 - va2)**2 + 4.0 * a2 * (va2 - van2)
+        assert np.isfinite(disc), f"Discriminant overflowed: {disc}"
+        assert disc >= 0, f"Discriminant negative: {disc}"
+
+
+class TestCoulombLogFloor:
+    """Regression: Coulomb log must be floored before division in tau_e."""
+
+    def test_coulomb_log_floor_in_diffusion(self):
+        """engine.py Spitzer path must floor lnL with np.maximum, not max."""
+        import inspect
+
+        import dpf.engine as engine_mod
+
+        source = inspect.getsource(engine_mod)
+        assert "np.maximum(lnL, 1.0)" in source, (
+            "Coulomb log must use np.maximum (array-safe), not scalar max"
+        )
+
+    def test_kappa_nan_guard_array_safe(self):
+        """kappa NaN guard must use np.where, not scalar if/not."""
+        import inspect
+
+        import dpf.engine as engine_mod
+
+        source = inspect.getsource(engine_mod)
+        assert "np.where(np.isfinite(kappa)" in source, (
+            "kappa guard must use np.where (array-safe)"
+        )
+
+
+class TestNeVacuumFloor:
+    """Regression: ne must be floored before 1/ne operations."""
+
+    def test_ne_floored_in_nernst(self):
+        """Nernst path must floor ne to prevent 1/ne divergence."""
+        import inspect
+
+        from dpf.engine import SimulationEngine
+
+        source = inspect.getsource(SimulationEngine._apply_nernst)
+        assert "np.maximum(rho / self.ion_mass, 1e10)" in source, (
+            "Nernst ne must be floored at 1e10"
+        )
+
+    def test_ne_floored_in_collision(self):
+        """Collision path must floor ne for coulomb_log safety."""
+        import inspect
+
+        from dpf.engine import SimulationEngine
+
+        source = inspect.getsource(SimulationEngine._apply_collision_radiation)
+        assert "np.maximum(rho / self.ion_mass, 1e10)" in source, (
+            "Collision ne must be floored at 1e10"
+        )
+
+
+class TestVPinchAnomalousResistance:
+    """Regression: V_pinch for Yn must include snowplow anomalous R_plasma."""
+
+    def test_vpinch_includes_sp_r_plasma(self):
+        """Yield tracker V_pinch computation must reference _last_sp_R_plasma."""
+        import inspect
+
+        import dpf.engine as engine_mod
+
+        source = inspect.getsource(engine_mod)
+        assert "_last_sp_R_plasma" in source, (
+            "V_pinch must include snowplow R_plasma for beam-target yield"
+        )
+
+    def test_snowplow_result_contains_r_plasma(self):
+        """Snowplow result dict must include R_plasma key."""
+        from dpf.fluid.snowplow import SnowplowModel
+
+        sp = SnowplowModel(
+            anode_radius=0.0095, cathode_radius=0.032,
+            fill_density=6.46e-4, anode_length=0.16,
+        )
+        result = sp.step(1e-9, 1000.0)
+        assert "R_plasma" in result, (
+            "Snowplow result must contain R_plasma for V_pinch computation"
+        )
