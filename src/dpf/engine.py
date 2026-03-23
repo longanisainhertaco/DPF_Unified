@@ -1176,11 +1176,19 @@ class SimulationEngine:
                 self._current_source_terms = src
 
         if self.config.snowplow.enable_mhd_coupling and self.snowplow is not None:
-            sp_src = self._compute_snowplow_source_terms(dt)
-            if sp_src:
-                src = self._current_source_terms or {}
-                src.update(sp_src)
-                self._current_source_terms = src
+            # In radial_mhd mode, only inject source terms during radial+ phases
+            # (snowplow handles rundown perfectly — MHD source terms during rundown
+            # cause numerical instability on the non-conservative Python solver)
+            handoff = self.config.snowplow.handoff_mode
+            inject_ok = True
+            if handoff in ("radial_mhd", "full_mhd"):
+                inject_ok = self.snowplow.phase in ("radial", "reflected", "post_pinch")
+            if inject_ok:
+                sp_src = self._compute_snowplow_source_terms(dt)
+                if sp_src:
+                    src = self._current_source_terms or {}
+                    src.update(sp_src)
+                    self._current_source_terms = src
 
         cc = self.config.circuit
         self.state = self.fluid.step(
