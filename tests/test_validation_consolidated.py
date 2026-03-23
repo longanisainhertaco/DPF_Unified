@@ -3403,6 +3403,7 @@ class TestEnginePF1000Comparison:
             # Peak region should be better than full waveform
             assert peak_nrmse < 0.40, f"Peak region NRMSE {peak_nrmse:.3f} > 0.40"
 
+    @pytest.mark.slow
     def test_engine_pf1000_peak_current_order_of_magnitude(self):
         """Engine PF-1000 produces peak current within order of magnitude of 1.87 MA.
 
@@ -4486,6 +4487,7 @@ def _get_metal_result():
 # =====================================================================
 
 
+@pytest.mark.slow
 class TestMetalEnginePF1000Completion:
     """Verify Metal engine runs PF-1000 to completion."""
 
