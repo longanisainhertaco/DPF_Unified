@@ -1888,23 +1888,20 @@ class SimulationEngine:
                     self.state["B"], current, cc.anode_radius, cc.cathode_radius
                 )
         elif self.geometry_type == "cylindrical":
-            # Generic electrode BC for Metal, Athena++, AthenaK, and future
-            # backends.  Operates directly on self.state["B"] (always NumPy).
-            # Sets B_theta = mu_0 * I / (2*pi*r) between electrodes, zero inside anode.
+            # Generic electrode BC for Metal, Athena++, AthenaK.
+            # Sets B_theta = mu_0 * I / (2*pi*r) between electrodes.
+            # Energy correction: inject delta(B²/2μ₀) into pressure to preserve
+            # conservation — without this, the BC injects ~10⁸ J/m³ of magnetic
+            # energy per step without bookkeeping, driving pressure negative.
             cc = self.config.circuit
             dr = self.config.dx
             nr = self.config.grid_shape[0]
             B = self.state["B"]
-            # Normalise to 4D (3, nr, ny, nz) regardless of how the backend
-            # returned the field.  5D block-layout arrays (3, nblocks, nk, nj, ni)
-            # from the Athena++ linked-mode bindings must have been reassembled
-            # upstream; if they somehow reach here, squeeze extra dims so we
-            # never index out-of-bounds.
             if B.ndim != 4:
-                # Reshape any non-4D array into (3, nr, ny, nz).
                 nr_cfg, ny_cfg, nz_cfg = self.config.grid_shape
                 B = B.reshape(3, nr_cfg, ny_cfg, nz_cfg)
                 self.state["B"] = B
+            B_sq_before = B[1]**2  # B_theta² before BC
             for ir in range(nr):
                 r = (ir + 0.5) * dr
                 if cc.anode_radius <= r <= cc.cathode_radius and r > 0:
@@ -1913,6 +1910,13 @@ class SimulationEngine:
                 elif r < cc.anode_radius:
                     B[1, ir, :, :] = 0.0
             self.state["B"] = B
+            # Energy correction: inject magnetic energy change into pressure
+            B_sq_after = B[1]**2
+            delta_ME = (B_sq_after - B_sq_before) / (2.0 * _mu_0)
+            gamma = self.config.fluid.gamma
+            self.state["pressure"] = np.maximum(
+                self.state["pressure"] + delta_ME * (gamma - 1.0), 1e-20,
+            )
 
         # Snowplow zipper BC: applies to ALL backends with cylindrical geometry
         if self.geometry_type == "cylindrical" and self.snowplow and self.snowplow.is_active:
