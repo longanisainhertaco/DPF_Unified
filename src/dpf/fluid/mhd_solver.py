@@ -364,8 +364,9 @@ def _hlld_flux_1d_8comp(
         bn2_over_mu0_rL = bn2 / (mu_0 * rL)
         bn2_over_mu0_rR = bn2 / (mu_0 * rR)
 
-        disc_L = (a2L + va2L) * (a2L + va2L) - 4.0 * a2L * bn2_over_mu0_rL
-        disc_R = (a2R + va2R) * (a2R + va2R) - 4.0 * a2R * bn2_over_mu0_rR
+        # Stable discriminant: (a2-va2)^2 + 4*a2*(va2-van2), avoids (a2+va2)^2 overflow
+        disc_L = (a2L - va2L) * (a2L - va2L) + 4.0 * a2L * (va2L - bn2_over_mu0_rL)
+        disc_R = (a2R - va2R) * (a2R - va2R) + 4.0 * a2R * (va2R - bn2_over_mu0_rR)
         cf2L = 0.5 * (a2L + va2L + max(disc_L, 0.0) ** 0.5)
         cf2R = 0.5 * (a2R + va2R + max(disc_R, 0.0) ** 0.5)
         cfL = max(cf2L, 0.0) ** 0.5
