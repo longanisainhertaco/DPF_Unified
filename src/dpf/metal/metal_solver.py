@@ -1227,37 +1227,54 @@ class MetalMHDSolver(PlasmaSolverBase):
                         B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
             else:
                 # Cylindrical: axis 0 = r, axis 1 = theta/y, axis 2 = z
-                # Grid cell centres already include r_inner offset
                 r_arr = self._r.squeeze()  # shape (nx,)
                 idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
                 idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
                 r_safe = torch.clamp(r_arr, min=1e-10)
-                # B_theta in HL code units (solver operates in HL internally)
                 B_theta_profile = mu0 * current / (2.0 * pi * r_safe) / _sqrt_mu0
 
-                # Enforce B_theta = mu0*I/(2*pi*r) from circuit current
-                # at both electrode boundaries and the insulator face (z=0).
-                B_new[1, idx_cath, :, :] = B_theta_profile[idx_cath]
-                if idx_cath < nx - 1:
-                    B_new[1, -1, :, :] = B_theta_profile[-1]
-                if idx_anode > 0:
-                    B_new[1, idx_anode, :, :] = B_theta_profile[idx_anode]
-                # Insulator face (z=0): B_theta from current at all radii in gap
-                for ir in range(idx_anode, min(idx_cath + 1, nx)):
-                    B_new[1, ir, :, 0] = B_theta_profile[ir]
+                # Energy-correcting electrode BC with relaxation.
+                # Instead of hard-pinning B_theta (which creates a stationary
+                # shock at the boundary that accumulates energy), relax toward
+                # the target over a few timesteps. This mimics ghost-cell BCs
+                # where the Riemann solver handles the transition naturally.
+                B_sq_before = B_new[1].clone() ** 2
 
-                # Conducting wall BCs: no normal flow and no normal B at electrodes.
-                # Anode wall (inner conductor, left boundary, index 0..idx_anode):
-                #   v_r = 0, B_r = 0  (reflecting wall for normal velocity/field)
+                # Relaxation rate: blend 10% per step toward target
+                alpha_bc = 0.1
+
+                # Cathode boundary
+                B_target_cath = B_theta_profile[idx_cath]
+                B_new[1, idx_cath, :, :] = (
+                    (1.0 - alpha_bc) * B_new[1, idx_cath, :, :] + alpha_bc * B_target_cath
+                )
+                if idx_cath < nx - 1:
+                    B_new[1, -1, :, :] = (
+                        (1.0 - alpha_bc) * B_new[1, -1, :, :] + alpha_bc * B_theta_profile[-1]
+                    )
+                # Anode boundary
+                if idx_anode > 0:
+                    B_target_anode = B_theta_profile[idx_anode]
+                    B_new[1, idx_anode, :, :] = (
+                        (1.0 - alpha_bc) * B_new[1, idx_anode, :, :] + alpha_bc * B_target_anode
+                    )
+                # Insulator face (z=0): relax at all radii in gap
+                for ir in range(idx_anode, min(idx_cath + 1, nx)):
+                    B_new[1, ir, :, 0] = (
+                        (1.0 - alpha_bc) * B_new[1, ir, :, 0] + alpha_bc * B_theta_profile[ir]
+                    )
+
+                # Energy correction
+                B_sq_after = B_new[1] ** 2
+                _mu0_bc = mu0 / (_sqrt_mu0 ** 2)
+                delta_ME = (B_sq_after - B_sq_before) / (2.0 * _mu0_bc)
+                p_new = torch.clamp(p_new + delta_ME * (self.gamma - 1.0), min=P_FLOOR)
+
+                # Conducting wall BCs
                 B_new[0, :idx_anode + 1, :, :] = 0.0
                 vel_new[0, :idx_anode + 1, :, :] = 0.0
-
-                # Cathode wall (outer conductor, right boundary, index idx_cath..nx-1):
-                #   v_r = 0, B_r = 0
                 B_new[0, idx_cath:, :, :] = 0.0
                 vel_new[0, idx_cath:, :, :] = 0.0
-
-                # Axis symmetry guard: B_r = 0 at r=0 (no normal B through axis)
                 B_new[0, 0, :, :] = 0.0
 
         # -------------------------------------------------------------- #
