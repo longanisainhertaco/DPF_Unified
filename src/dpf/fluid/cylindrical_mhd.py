@@ -674,6 +674,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         """
         geom = self.geom
         nr, nz = self.nr, self.nz
+        _r = geom.r          # (nr,) — cell-center radii
+        _inv_r = geom.inv_r  # (nr,) — 1/r
 
         # Precompute cell volumes and face areas (could be cached)
         cell_vol = geom.cell_volumes()       # (nr, nz)
@@ -854,7 +856,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         dmom_dt += S_geom
 
         # Current density for resistive/Hall terms: J = curl(B) / mu_0
-        curl_B = geom.curl(B)
+        cBr, cBt, cBz = _plm_curl_parallel(B[0], B[1], B[2], _r, _inv_r, self.dr, self.dz)
+        curl_B = np.empty((3, nr, nz))
+        curl_B[0] = cBr
+        curl_B[1] = cBt
+        curl_B[2] = cBz
         J = curl_B / mu_0
 
         # Kinetic current coupling
@@ -886,7 +892,12 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         # Resistive/Hall correction to induction (added on top of HLL ideal fluxes)
         if self.enable_resistive or self.enable_hall:
-            dB_dt -= geom.curl(E_field)
+            eEr, eEt, eEz = _plm_curl_parallel(
+                E_field[0], E_field[1], E_field[2], _r, _inv_r, self.dr, self.dz,
+            )
+            dB_dt[0] -= eEr
+            dB_dt[1] -= eEt
+            dB_dt[2] -= eEz
 
         # External source terms
         ext_drho = src.get("S_rho_snowplow")
@@ -924,11 +935,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 v_abs = np.sqrt(np.sum(vel**2, axis=0))
                 ch = max(float(np.max(v_abs + cf_ded)), 1.0)
             cp = ch
-            div_B = geom.div_B_cylindrical(B)
+            div_B = _plm_div_B_parallel(B[0], B[2], _r, _inv_r, self.dr, self.dz)
             self._last_div_B = float(np.max(np.abs(div_B)))
             dpsi_dt = -ch**2 * div_B - (ch**2 / (cp**2 + 1e-30)) * psi
-            grad_psi = geom.gradient(psi)
-            dB_dt = dB_dt - grad_psi
+            gpsi_r, gpsi_t, gpsi_z = _plm_gradient_parallel(psi, self.dr, self.dz)
+            dB_dt[0] -= gpsi_r
+            dB_dt[1] -= gpsi_t
+            dB_dt[2] -= gpsi_z
 
         # Godunov path always returns conservative energy
         result = {
