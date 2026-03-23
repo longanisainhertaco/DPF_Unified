@@ -327,16 +327,21 @@ class SnowplowModel:
         p_prof = np.full(nr, rho_fill * k_B * 300.0 / m_d)  # fill gas at room T
         B_theta_prof = np.zeros(nr)
 
+        # Sheath thickness: the compressed gas is in a thin shell behind the shock.
+        # At the start of radial phase, the shock has only just begun — only
+        # gas within a few cell widths of the shock front is compressed.
+        # Use the distance the shock has traveled from cathode as the shell thickness.
+        delta_r = abs(self.b - r_s)  # distance shock traveled inward
+        r_inner_shell = max(r_s - delta_r, 0.0)  # inner edge of compressed shell
+
         for i in range(nr):
             r = r_grid[i]
             if r < r_s:
                 # B_theta from current everywhere inside the sheath
                 if r > 0:
                     B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
-                # Only apply RH compression if the shock is actually moving
-                # (v_s > 0). At the start of radial phase, v_s ≈ 0 and no
-                # compression has occurred yet — density stays at fill.
-                if v_s > 1e3:  # >1 km/s = meaningful shock
+                # Only compress the thin shell where the shock has actually swept
+                if v_s > 1e3 and r > r_inner_shell:
                     rho_prof[i] = rho_slug
                     vr_prof[i] = -v_post
                     p_prof[i] = rho_slug * k_B * T_ion / m_d
