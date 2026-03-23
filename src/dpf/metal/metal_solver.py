@@ -755,10 +755,10 @@ class MetalMHDSolver(PlasmaSolverBase):
                 mu0 * current / (2.0 * math.pi * r_safe_g)
             ) / _sqrt_mu0
 
-            # Inner ghost cells (anode side)
-            for ig in range(ng):
-                B_g[1, ig, :, :] = B_theta_target[ig]
-            # Outer ghost cells (cathode side)
+            # Inner ghost cells (axis side): B_theta = 0 (axis symmetry)
+            # The inner boundary is the axis (r=0), NOT an electrode.
+            B_g[1, :ng, :, :] = 0.0
+            # Outer ghost cells (cathode side): B_theta from circuit current
             for ig in range(ng):
                 B_g[1, ng + nx + ig, :, :] = B_theta_target[ng + nx + ig]
 
