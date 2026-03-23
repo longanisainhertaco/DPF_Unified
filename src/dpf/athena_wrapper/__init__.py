@@ -1,5 +1,13 @@
 """Athena++ MHD solver wrapper for DPF Unified.
 
+# Set OpenMP environment before any C extension loads libomp
+import os as _os
+_os.environ.setdefault("OMP_NUM_THREADS", "12")
+_os.environ.setdefault("OMP_PROC_BIND", "spread")
+_os.environ.setdefault("OMP_PLACES", "threads")
+_os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+del _os
+
 Provides a Python interface to the Princeton Athena++ C++ MHD code
 via pybind11 bindings. The :class:`AthenaPPSolver` class implements
 :class:`~dpf.core.bases.PlasmaSolverBase` so it can be used as a
