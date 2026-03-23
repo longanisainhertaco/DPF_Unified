@@ -802,10 +802,12 @@ class TestTwoTempWithConduction:
     def test_conduction_guard_allows_2t(self):
         """Verify the Braginskii conduction guard does not exclude 2T mode."""
         import inspect
+
+        import pytest
+
         from dpf.engine import SimulationEngine
 
         source = inspect.getsource(SimulationEngine._apply_collision_radiation)
-        # Find the conduction guard line specifically
         for line in source.split("\n"):
             if "enable_anisotropic_conduction" in line:
                 assert "not _two_t" not in line, (
