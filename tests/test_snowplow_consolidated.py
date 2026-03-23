@@ -2861,8 +2861,10 @@ class TestRadialZipperBC:
 class TestElectrodeBCAllBackends:
     """Electrode BC applies B_theta = mu_0*I/(2*pi*r) for all backends (C2 fix)."""
 
-    @pytest.mark.parametrize("backend_name", ["metal", "athena", "athenak"])
+    @pytest.mark.parametrize("backend_name", ["athena", "athenak"])
     def test_electrode_bc_sets_btheta_for_backend(self, backend_name):
+        # Note: Metal excluded — it handles electrode BC internally via step_gpu()
+        # with energy correction. The engine generic BC is skipped for Metal.
         """Non-Python backends get electrode B_theta via generic branch."""
         from math import pi
 

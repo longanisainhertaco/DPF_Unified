@@ -1900,8 +1900,9 @@ class SimulationEngine:
                 self.state["B"] = self.fluid.apply_electrode_bfield_bc(
                     self.state["B"], current, cc.anode_radius, cc.cathode_radius
                 )
-        elif self.geometry_type == "cylindrical":
-            # Generic electrode BC for Metal, Athena++, AthenaK.
+        elif self.geometry_type == "cylindrical" and self.backend not in ("metal",):
+            # Generic electrode BC for Athena++, AthenaK (NOT Metal — Metal handles
+            # its own electrode BC inside step_gpu with energy correction).
             # Sets B_theta = mu_0 * I / (2*pi*r) between electrodes.
             # Energy correction: inject delta(B²/2μ₀) into pressure to preserve
             # conservation — without this, the BC injects ~10⁸ J/m³ of magnetic
