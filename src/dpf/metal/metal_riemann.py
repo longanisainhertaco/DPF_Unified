@@ -92,6 +92,57 @@ def reset_repair_stats() -> None:
 
 
 # ============================================================
+# NaN-check safety level (controls CPU-GPU sync frequency)
+# ============================================================
+
+_nan_safety: dict[str, object] = {
+    "level": "normal",   # "strict" | "normal" | "fast"
+    "stride": 10,        # check every N steps in "normal" mode
+    "step_count": 0,     # incremented by MetalMHDSolver after each step
+}
+
+_NAN_CHECK_STRIDES: dict[str, int] = {
+    "strict": 1,    # every step
+    "normal": 10,   # every 10th step
+    "fast": 0,      # never (0 = disabled)
+}
+
+
+def set_nan_safety_level(level: str) -> None:
+    """Set the NaN-checking frequency for the Metal Riemann solver.
+
+    Controls how often CPU-GPU synchronisation barriers are inserted for
+    NaN detection.  Lower frequency = higher throughput, less safety.
+
+    Parameters
+    ----------
+    level : str
+        ``"strict"``  — check every step (original behaviour).
+        ``"normal"``  — check every 10th step (default; recommended).
+        ``"fast"``    — never check (maximum throughput, no NaN recovery).
+    """
+    if level not in _NAN_CHECK_STRIDES:
+        raise ValueError(f"safety_level must be 'strict', 'normal', or 'fast'; got {level!r}")
+    _nan_safety["level"] = level
+    _nan_safety["stride"] = _NAN_CHECK_STRIDES[level]
+
+
+def advance_nan_step_count() -> None:
+    """Increment the global step counter used for periodic NaN checks."""
+    _nan_safety["step_count"] = int(_nan_safety["step_count"]) + 1  # type: ignore[arg-type]
+
+
+def _should_check_nan() -> bool:
+    """Return True if a NaN check (CPU-GPU sync) should run this step."""
+    stride = int(_nan_safety["stride"])  # type: ignore[arg-type]
+    if stride == 0:
+        return False
+    if stride == 1:
+        return True
+    return int(_nan_safety["step_count"]) % stride == 0  # type: ignore[arg-type]
+
+
+# ============================================================
 # Primitive <-> Conservative conversion
 # ============================================================
 
@@ -824,12 +875,14 @@ def hll_flux_mps(
 
     # Final NaN guard: replace any remaining NaN with Lax-Friedrichs flux
     # F_LF = 0.5*(FL + FR) is dissipative but always well-defined.
-    has_nan = torch.isnan(F_HLL)
-    if has_nan.any():
-        F_LF = 0.5 * (FL + FR)
-        F_HLL = torch.where(has_nan, F_LF, F_HLL)
-        logger.warning("HLL flux dim=%d: %d NaN values replaced with LF flux",
-                        dim, int(has_nan.sum().item()))
+    # Gated by safety_level to avoid CPU-GPU sync on every step.
+    if _should_check_nan():
+        has_nan = torch.isnan(F_HLL)
+        if has_nan.any():
+            F_LF = 0.5 * (FL + FR)
+            F_HLL = torch.where(has_nan, F_LF, F_HLL)
+            logger.warning("HLL flux dim=%d: %d NaN values replaced with LF flux",
+                            dim, int(has_nan.sum().item()))
 
     return F_HLL
 
@@ -1142,15 +1195,17 @@ def hlld_flux_mps(
     F_HLLD = torch.where(mask_L, FL, F_HLLD)
 
     # ---- Final NaN guard ----
-    has_nan = torch.isnan(F_HLLD)
-    if has_nan.any():
-        # Fall back to HLL (more robust) where HLLD produced NaN
-        denom_hll = torch.clamp(SR - SL, min=1e-20).unsqueeze(0)
-        F_HLL_fallback = (SR_8 * FL - SL_8 * FR + SL_8 * SR_8 * (UR - UL)) / denom_hll
-        F_HLL_fallback = torch.where(torch.isnan(F_HLL_fallback), 0.5 * (FL + FR), F_HLL_fallback)
-        F_HLLD = torch.where(has_nan, F_HLL_fallback, F_HLLD)
-        logger.warning("HLLD flux dim=%d: %d NaN values replaced with HLL fallback",
-                        dim, int(has_nan.sum().item()))
+    # Gated by safety_level to avoid CPU-GPU sync on every step.
+    if _should_check_nan():
+        has_nan = torch.isnan(F_HLLD)
+        if has_nan.any():
+            # Fall back to HLL (more robust) where HLLD produced NaN
+            denom_hll = torch.clamp(SR - SL, min=1e-20).unsqueeze(0)
+            F_HLL_fallback = (SR_8 * FL - SL_8 * FR + SL_8 * SR_8 * (UR - UL)) / denom_hll
+            F_HLL_fallback = torch.where(torch.isnan(F_HLL_fallback), 0.5 * (FL + FR), F_HLL_fallback)
+            F_HLLD = torch.where(has_nan, F_HLL_fallback, F_HLLD)
+            logger.warning("HLLD flux dim=%d: %d NaN values replaced with HLL fallback",
+                            dim, int(has_nan.sum().item()))
 
     return F_HLLD
 
@@ -1226,6 +1281,10 @@ def _positivity_fallback(
     # NaN in any quantity
     bad = bad | torch.isnan(p_L) | torch.isnan(p_R)
     bad = bad | torch.isnan(UL[IDN]) | torch.isnan(UR[IDN])
+
+    # --- Skip all CPU-GPU sync when NaN checks are disabled or not due ---
+    if not _should_check_nan():
+        return UL, UR
 
     # --- Update repair diagnostics ---
     _repair_stats["calls"] += 1

@@ -42,8 +42,10 @@ from dpf.metal.metal_riemann import (
     _cons_to_prim_mps,
     _fast_magnetosonic_mps,
     _prim_to_cons_mps,
+    advance_nan_step_count,
     mhd_rhs_cylindrical_mps,
     mhd_rhs_mps,
+    set_nan_safety_level,
 )
 from dpf.metal.metal_stencil import (
     ct_update_cylindrical_mps,
@@ -220,6 +222,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         implicit_resistivity: bool = False,
         compile_mode: bool = False,
         reconstruction_precision: str = "float32",
+        safety_level: str = "normal",
     ) -> None:
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
@@ -292,6 +295,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         # r_inner offsets the radial grid so domain covers [r_inner, r_inner + nx*dx].
         # For DPF inter-electrode gap: r_inner = anode_radius.
         self.compile_mode: bool = compile_mode
+        self.safety_level: str = safety_level
+        set_nan_safety_level(safety_level)
         self._r_inner: float = float(r_inner if r_inner is not None else 0.0)
         if self.coordinates == "cylindrical":
             r_1d = self._r_inner + (torch.arange(nx, dtype=self._dtype, device=self.device)
@@ -311,7 +316,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             "gamma=%.4f  cfl=%.2f  device=%s  limiter=%s  use_ct=%s  "
             "riemann=%s  recon=%s  recon_prec=%s  time=%s  precision=%s  coords=%s  "
             "hall=%s  braginskii_cond=%s  braginskii_visc=%s  nernst=%s  "
-            "bremsstrahlung=%s  betatron=%s  compile_mode=%s",
+            "bremsstrahlung=%s  betatron=%s  compile_mode=%s  safety_level=%s",
             self.grid_shape, self.dx, self.dy, self.dz,
             self.gamma, self.cfl, self.device, self.limiter, self.use_ct,
             self.riemann_solver, self.reconstruction, self.reconstruction_precision,
@@ -320,7 +325,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             self.enable_hall, self.enable_braginskii_conduction,
             self.enable_braginskii_viscosity, self.enable_nernst,
             self.enable_bremsstrahlung, self.enable_betatron,
-            self.compile_mode,
+            self.compile_mode, self.safety_level,
         )
 
         # Compile the hot euler stage if requested.
@@ -1354,6 +1359,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         )
 
         result = self._to_numpy(out_gpu)
+
+        advance_nan_step_count()
 
         # HL → SI conversion for B (cylindrical only)
         if self._convert_b_si_to_hl:
