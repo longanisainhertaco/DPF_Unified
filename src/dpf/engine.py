@@ -2096,7 +2096,7 @@ class SimulationEngine:
         Te = self.state["Te"]
         Ti = self.state["Ti"]
         rho = self.state["rho"]
-        ne = rho / self.ion_mass
+        ne = np.maximum(rho / self.ion_mass, 1e10)  # floor for coulomb_log safety
 
         _two_t = self.config.fluid.two_temperature and "e_electron" in self.state
 
@@ -2263,7 +2263,7 @@ class SimulationEngine:
         B = self.state["B"]
         Te = self.state["Te"]
         rho = self.state["rho"]
-        ne = rho / self.ion_mass
+        ne = np.maximum(rho / self.ion_mass, 1e10)  # floor prevents 1/ne divergence in Nernst
 
         dx = self.config.dx
         if self.geometry_type == "cylindrical":
