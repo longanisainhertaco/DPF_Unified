@@ -1141,6 +1141,7 @@ def hlld_flux_mps(
 # ============================================================
 
 
+@torch.compiler.disable
 def _positivity_fallback(
     UL: torch.Tensor,
     UR: torch.Tensor,
