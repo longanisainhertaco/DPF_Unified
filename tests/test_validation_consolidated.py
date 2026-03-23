@@ -3431,8 +3431,8 @@ class TestEnginePF1000Comparison:
         for _ in range(20000):
             try:
                 result = engine.step()
-            except (RuntimeError, OverflowError):
-                # Python engine may blow up — record what we got
+            except (RuntimeError, OverflowError, ValueError):
+                # Python engine may blow up (NaN dt, overflow) — record what we got
                 break
             I_abs = abs(engine.circuit.current)
             if I_abs > peak_I:

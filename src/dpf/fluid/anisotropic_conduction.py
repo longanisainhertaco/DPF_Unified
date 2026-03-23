@@ -191,8 +191,8 @@ def anisotropic_thermal_conduction(
     if kappa_perp is None:
         kappa_perp = braginskii_kappa_perp(ne, Te, B_mag, Z_eff)
 
-    # Cap conductivities for stability
-    kappa_cap = 1e30
+    # Cap conductivities for stability (prevents CFL blowup at keV temperatures)
+    kappa_cap = 1e4  # EMPIRICAL: ~10^4 W/m/K max; Braginskii ~ Te^2.5 diverges at keV
     kappa_parallel = np.minimum(kappa_parallel, kappa_cap)
     kappa_perp = np.minimum(kappa_perp, kappa_cap)
 
