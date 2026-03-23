@@ -445,25 +445,8 @@ class MetalMHDSolver(PlasmaSolverBase):
     @staticmethod
     @staticmethod
     def _apply_floors(state_gpu: dict[str, torch.Tensor]) -> None:
-        """Enforce positivity floors on density and pressure (in-place).
-
-        For magnetized regions, the density floor is raised to prevent
-        Alfven speed divergence: rho_min = B²/v_A_max² where v_A_max = 10⁶ m/s.
-        This is standard practice in MHD codes simulating Z-pinches where
-        the electrode gap evacuates under magnetic pressure.
-
-        Parameters
-        ----------
-        state_gpu : dict[str, torch.Tensor]
-            Mutable state dict on GPU.  Modified in-place.
-        """
-        # Magnetized density floor: prevents v_A > 10^6 m/s
-        V_A_MAX_SQ = 1e12  # (10^6 m/s)^2
-        B = state_gpu["B"]
-        B_sq = torch.sum(B ** 2, dim=0)  # (nx, ny, nz)
-        rho_mag_floor = B_sq / V_A_MAX_SQ  # B²/v_A_max² (HL units: mu0=1)
-        rho_floor = torch.clamp(rho_mag_floor, min=RHO_FLOOR)
-        state_gpu["rho"] = torch.max(state_gpu["rho"], rho_floor)
+        """Enforce positivity floors on density and pressure (in-place)."""
+        state_gpu["rho"] = torch.clamp(state_gpu["rho"], min=RHO_FLOOR)
         state_gpu["pressure"] = torch.clamp(state_gpu["pressure"], min=P_FLOOR)
         if "e_electron" in state_gpu:
             state_gpu["e_electron"] = torch.clamp(
@@ -500,10 +483,15 @@ class MetalMHDSolver(PlasmaSolverBase):
         max_signal: float = 0.0
         dh = [self.dx, self.dy, self.dz]
 
+        # Cap fast magnetosonic speed at 10^6 m/s for CFL to prevent dt → 0
+        # in evacuated regions. This does NOT change the physics (the actual
+        # fluxes still use the uncapped speed). It only prevents the CFL from
+        # becoming impractically small.
+        V_SIGNAL_MAX = 1e6  # m/s
         for dim in range(3):
             cf = _fast_magnetosonic_mps(rho, p, B, self.gamma, dim)
             vn_abs = torch.abs(vel[dim])
-            signal = vn_abs + cf
+            signal = torch.clamp(vn_abs + cf, max=V_SIGNAL_MAX)
             local_max = float(torch.max(signal).item())
             # Scale by inverse grid spacing for this direction
             if dh[dim] > 0.0:
@@ -1122,13 +1110,8 @@ class MetalMHDSolver(PlasmaSolverBase):
                 rho_n, vel_n, p_n, B_n, dt, e_electron=ee_n,
             )
 
-        # -------------------------------------------------------------- #
-        #  Magnetized density floor (prevents Alfven speed divergence)
-        # -------------------------------------------------------------- #
-        V_A_MAX_SQ = 1e12  # (10^6 m/s)^2 — cap Alfven speed at 0.3% of c
-        B_sq_floor = torch.sum(B_new ** 2, dim=0)
-        rho_mag_floor = B_sq_floor / V_A_MAX_SQ
-        rho_new = torch.max(rho_new, torch.clamp(rho_mag_floor, min=RHO_FLOOR))
+        # No magnetized density floor — it creates mass. Instead, the Alfven
+        # speed is capped in the CFL computation to prevent dt → 0.
 
         # -------------------------------------------------------------- #
         #  Cylindrical geometric source terms
