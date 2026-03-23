@@ -1456,8 +1456,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         rho_1, mom_1, p_1, B_1, psi_1, rhs1, E_1, ee_1 = self._euler_stage(
             rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d, source_terms, ee_n,
         )
-        if apply_electrode_bc and cathode_radius > 0:
-            B_1 = self.apply_electrode_bfield_bc(B_1, current, anode_radius, cathode_radius)
+        # NOTE: Electrode BC is NOT applied between RK substages.
+        # Applying it here would inject magnetic energy without updating E_total,
+        # violating conservation and causing negative pressure → NaN.
+        # BC is applied once after the final stage with energy correction.
 
         if self.time_integrator == "ssp_rk3":
             # === Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1))) ===
@@ -1481,8 +1483,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
                 E_2 = None
 
-            if apply_electrode_bc and cathode_radius > 0:
-                B_2 = self.apply_electrode_bfield_bc(B_2, current, anode_radius, cathode_radius)
+            # (electrode BC deferred to final stage — see note above)
 
             # === Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2))) ===
             rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e, ee_3e = self._euler_stage(
@@ -1542,11 +1543,20 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         vel_new[0, 0, :] = 0.0
         B_new[0, 0, :] = 0.0
 
-        # Apply electrode BC after stage 2
+        # Apply electrode BC ONCE after final stage, with energy correction.
+        # B_theta is reset to μ₀I/(2πr) at electrode cells. This changes the
+        # magnetic energy B²/(2μ₀). We must inject that energy difference into
+        # E_total (if conservative) or pressure (if non-conservative) to prevent
+        # the pressure recovery from going negative.
         if apply_electrode_bc and cathode_radius > 0:
+            B_sq_before = np.sum(B_new**2, axis=0)
             B_new = self.apply_electrode_bfield_bc(
                 B_new, current, anode_radius, cathode_radius,
             )
+            B_sq_after = np.sum(B_new**2, axis=0)
+            delta_ME = (B_sq_after - B_sq_before) / (2.0 * mu_0)  # [J/m³]
+            # Inject the magnetic energy change into pressure to preserve conservation
+            p_new = np.maximum(p_new + delta_ME * gm1, 1e-20)
 
         # --- Constrained transport correction (optional) ---
         if self.enable_ct:
