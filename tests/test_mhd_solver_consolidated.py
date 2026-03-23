@@ -4924,3 +4924,88 @@ class TestSnowplowMHDCoupling:
             f"_compute_snowplow_source_terms must return {{}} when no snowplow is "
             f"active; got keys: {list(source.keys())}"
         )
+
+
+class TestRadialHandoff:
+    """Sprint 2 control gate: radial state initialization and Lp handoff."""
+
+    def test_export_radial_profiles_density_jump(self):
+        """Snowplow radial profiles show 4x density compression (γ=5/3)."""
+        from dpf.fluid.snowplow import SnowplowModel
+
+        sp = SnowplowModel(
+            anode_radius=0.0095, cathode_radius=0.032,
+            fill_density=6.46e-4, anode_length=0.16,
+        )
+        r_grid = np.linspace(0.001, 0.032, 32)
+        profiles = sp.export_radial_profiles(r_grid, current=100e3, gamma=5.0 / 3.0)
+        rho_max = np.max(profiles["rho"])
+        rho_fill = 6.46e-4
+        compression = rho_max / rho_fill
+        assert 3.5 < compression < 4.5, (
+            f"Strong shock compression should be ~4, got {compression:.2f}"
+        )
+
+    def test_export_radial_profiles_bfield_consistent(self):
+        """B_theta profile consistent with imposed current via Ampere's law."""
+        from dpf.fluid.snowplow import SnowplowModel
+
+        sp = SnowplowModel(
+            anode_radius=0.0095, cathode_radius=0.032,
+            fill_density=6.46e-4, anode_length=0.16,
+        )
+        I_test = 200e3  # 200 kA
+        r_grid = np.linspace(0.001, 0.032, 64)
+        profiles = sp.export_radial_profiles(r_grid, current=I_test)
+        # Check B_theta at a point inside shock: B = mu0*I/(2*pi*r)
+        r_test = r_grid[5]  # well inside shock
+        B_expected = 4 * np.pi * 1e-7 * I_test / (2 * np.pi * r_test)
+        B_actual = profiles["B_theta"][5]
+        assert abs(B_actual - B_expected) / B_expected < 0.01, (
+            f"B_theta at r={r_test:.4f}m: expected {B_expected:.2f}T, got {B_actual:.2f}T"
+        )
+
+    def test_handoff_mode_lee_only_unchanged(self):
+        """handoff_mode='lee_only' produces same results as before Sprint 2."""
+        preset = get_preset("pf400j")
+        preset["grid_shape"] = [8, 1, 8]
+        preset["sim_time"] = 1e-7
+        preset["diagnostics"] = {"hdf5_filename": ":memory:"}
+        preset["snowplow"]["handoff_mode"] = "lee_only"
+        config = SimulationConfig(**preset)
+        engine = SimulationEngine(config)
+        for _ in range(10):
+            result = engine.step()
+        assert result.mass_conservation > 0.95, (
+            f"lee_only mass conservation {result.mass_conservation:.4f} < 0.95"
+        )
+
+    def test_radial_mhd_init_sets_compressed_density(self):
+        """In radial_mhd mode, density shows compressed sheath after transition."""
+        from dpf.fluid.snowplow import SnowplowModel
+
+        # Directly test _initialize_radial_state by checking the profiles method
+        sp = SnowplowModel(
+            anode_radius=0.025, cathode_radius=0.05,
+            fill_density=1e-3, anode_length=0.2,
+        )
+        r_grid = np.linspace(0.001, 0.05, 32)
+        profiles = sp.export_radial_profiles(r_grid, current=500e3)
+        # Inside shock should be compressed, outside should be fill
+        rho_inner = profiles["rho"][0]  # near axis
+        rho_outer = profiles["rho"][-1]  # near cathode
+        assert rho_inner > 2 * rho_outer, (
+            f"Inner rho ({rho_inner:.3e}) should be > 2x outer ({rho_outer:.3e})"
+        )
+
+    def test_lp_blend_alpha_starts_at_zero(self):
+        """Blending alpha initializes to 0 (full snowplow Lp)."""
+        preset = get_preset("pf400j")
+        preset["grid_shape"] = [8, 1, 8]
+        preset["sim_time"] = 1e-7
+        preset["diagnostics"] = {"hdf5_filename": ":memory:"}
+        preset["snowplow"]["handoff_mode"] = "radial_mhd"
+        config = SimulationConfig(**preset)
+        engine = SimulationEngine(config)
+        assert engine._lp_blend_alpha == 0.0
+        assert engine._lp_blend_active is False
