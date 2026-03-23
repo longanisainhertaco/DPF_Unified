@@ -575,8 +575,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # van^2 for full fast speed formula
         van2_L = Bn_L**2 / (mu_0 * rho_L)
         van2_R = Bn_R**2 / (mu_0 * rho_R)
-        disc_L = np.maximum((a2_L + va2_L)**2 - 4.0 * a2_L * van2_L, 0.0)
-        disc_R = np.maximum((a2_R + va2_R)**2 - 4.0 * a2_R * van2_R, 0.0)
+        # Numerically stable discriminant: (a2-va2)^2 + 4*a2*(va2-van2)
+        # Avoids overflow from (a2+va2)^2 at high compression
+        disc_L = np.maximum((a2_L - va2_L)**2 + 4.0 * a2_L * (va2_L - van2_L), 0.0)
+        disc_R = np.maximum((a2_R - va2_R)**2 + 4.0 * a2_R * (va2_R - van2_R), 0.0)
         cf_L = np.sqrt(0.5 * (a2_L + va2_L + np.sqrt(disc_L)))
         cf_R = np.sqrt(0.5 * (a2_R + va2_R + np.sqrt(disc_R)))
 
