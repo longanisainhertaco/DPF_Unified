@@ -280,6 +280,11 @@ class SimulationEngine:
         self._coupling = CouplingState()
         self._prev_L_plasma: float = 0.0
 
+        # Snowplow-MHD mass tracking
+        self._prev_swept_mass: float = 0.0
+        self._prev_radial_swept_mass: float = 0.0
+        self._initial_grid_mass: float = self._compute_grid_mass()
+
         # Diagnostics tracking
         self._last_R_plasma: float = 0.0
         self._last_Z_bar: float = 0.0
@@ -1567,29 +1572,28 @@ class SimulationEngine:
         return (self._last_ohmic_gap / total_J_sq_dV) * J_sq
 
     def _compute_snowplow_source_terms(self, dt: float) -> dict:
-        """Compute density, momentum, and energy source terms from snowplow sheath.
+        """Mass-conserving snowplow source terms for MHD grid.
 
-        Injects swept mass, momentum, and post-shock energy into the MHD grid
-        using Gaussian-smeared windows centered at the sheath position. This
-        couples the 0D snowplow model to the 2D/3D MHD fluid.
+        Physics: The snowplow sweeps fill gas as it propagates. Each timestep:
+        1. Compute dm = swept_mass(t) - swept_mass(t-dt) [kg] of newly swept gas
+        2. Remove dm uniformly from upstream cells (ahead of sheath)
+        3. Deposit dm at sheath location (Gaussian-smeared, width = 2*dx)
+        4. Momentum = dm/dt × v_sheath in propagation direction
+        5. Energy = Rankine-Hugoniot post-shock: T_post = (3/16) × m_i × v² / k_B
 
-        Returns dict with keys: S_rho_snowplow, S_mom_snowplow, S_energy_snowplow.
-        Empty dict if coupling is disabled or snowplow inactive.
+        Conservation: total grid mass is preserved (depletion balances deposition).
         """
         if not self.config.snowplow.enable_mhd_coupling:
             return {}
         if self.snowplow is None or not self.snowplow.is_active:
             return {}
 
-        nx, ny, nz = self.config.grid_shape
         dx = self.config.dx
         dz_cfg = self.config.geometry.dz
         dz = dz_cfg if dz_cfg else dx
         gamma = self.config.fluid.gamma
-        rho0 = self.config.rho0
         m_ion = self.ion_mass
-        source_terms = {}
-        grid_shape = self.state["rho"].shape  # (nx, ny, nz)
+        grid_shape = self.state["rho"].shape
 
         if self.snowplow.phase == "rundown":
             z_sheath = self.snowplow.sheath_position
@@ -1598,43 +1602,81 @@ class SimulationEngine:
             if abs(v_sheath) < 1e-6:
                 return {}
 
+            # dm swept this step [kg]
+            m_swept_now = self.snowplow.swept_mass
+            dm = max(m_swept_now - self._prev_swept_mass, 0.0)
+            self._prev_swept_mass = m_swept_now
+            if dm < 1e-30:
+                return {}
+
+            # Source rate [kg/s] for continuous source term formulation
+            dm_dt = dm / max(dt, 1e-30)
+
             # Axial coordinate array
+            nz = grid_shape[-1]
             z_arr = np.array([(k + 0.5) * dz for k in range(nz)])
 
-            # Gaussian window: sigma = 2*dz, normalized
+            # --- Depletion: remove mass from upstream (z > z_sheath) ---
+            # Uniform depletion from cells ahead of sheath
+            upstream_mask = z_arr > z_sheath
+            n_upstream = int(np.sum(upstream_mask))
+            S_rho_deplete = np.zeros(grid_shape)
+            if n_upstream > 0:
+                # Deplete uniformly from upstream cells [kg/m³/s]
+                if self.geometry_type == "cylindrical":
+                    cell_vols = self.fluid.geom.cell_volumes()  # (nr, nz)
+                    upstream_vol = float(np.sum(cell_vols[:, upstream_mask]))
+                else:
+                    cell_vol = dx * dx * dz
+                    upstream_vol = cell_vol * n_upstream * grid_shape[0] * grid_shape[1]
+                depletion_rate = dm_dt / max(upstream_vol, 1e-30)  # [kg/m³/s]
+                if self.geometry_type == "cylindrical":
+                    S_rho_deplete[:, :, upstream_mask] = -depletion_rate
+                else:
+                    S_rho_deplete[:, :, upstream_mask] = -depletion_rate
+
+            # --- Deposition: inject at sheath location (Gaussian) ---
             sigma_z = 2.0 * dz
             W_z = np.exp(-0.5 * ((z_arr - z_sheath) / sigma_z) ** 2)
-            W_z /= np.sum(W_z) * dz + 1e-30  # Normalize
+            W_sum = np.sum(W_z) + 1e-30
+            W_z_norm = W_z / W_sum  # Normalized to sum=1
 
-            # Mass injection rate [kg/s]
-            f_m = self.snowplow.f_m
-            A_ann = self.snowplow.A_annular
-            dm_dt = rho0 * A_ann * abs(v_sheath) * f_m
-
-            # Broadcast to grid shape
-            S_rho = np.zeros(grid_shape)
+            S_rho_deposit = np.zeros(grid_shape)
             if self.geometry_type == "cylindrical":
-                # (nr, 1, nz) — inject along z at all radii
-                S_rho[:, :, :] = dm_dt * W_z[np.newaxis, np.newaxis, :]
+                cell_vols = self.fluid.geom.cell_volumes()
+                # Distribute dm_dt into cells weighted by W_z, per unit volume
+                for k in range(nz):
+                    vol_slice = float(np.sum(cell_vols[:, k]))
+                    if vol_slice > 0:
+                        S_rho_deposit[:, :, k] = dm_dt * W_z_norm[k] / max(vol_slice, 1e-30)
             else:
-                S_rho[:, :, :] = dm_dt * W_z[np.newaxis, np.newaxis, :]
+                cell_vol = dx * dx * dz
+                nr, ny_g = grid_shape[0], grid_shape[1]
+                total_cells_per_slice = nr * ny_g
+                for k in range(nz):
+                    S_rho_deposit[:, :, k] = dm_dt * W_z_norm[k] / max(cell_vol * total_cells_per_slice, 1e-30)
 
-            # Momentum: injected gas enters at sheath velocity (z-direction)
+            S_rho = S_rho_deplete + S_rho_deposit
+
+            # Momentum: deposited gas enters at sheath velocity (z-direction)
             S_mom = np.zeros((3, *grid_shape))
-            S_mom[2] = S_rho * v_sheath  # z-momentum
+            S_mom[2] = np.maximum(S_rho_deposit, 0.0) * v_sheath  # only deposited mass carries momentum
 
-            # Energy: Rankine-Hugoniot post-shock
-            rho_post = ((gamma + 1) / (gamma - 1)) * rho0
+            # Energy: Rankine-Hugoniot post-shock (strong shock, γ=5/3)
+            # T_ion = (3/16) × m_ion × v²_s / k_B  (NRL Formulary, ion-only)
+            # v_post = 2v_s/(γ+1) = (3/4)v_s  (lab-frame post-shock velocity)
             T_post = (3.0 / 16.0) * m_ion * v_sheath**2 / k_B
-            p_post = rho_post * k_B * T_post / m_ion
-            e_kin = 0.5 * rho_post * v_sheath**2
-            E_post = p_post / (gamma - 1.0) + e_kin
-            S_energy = np.zeros(grid_shape)
-            S_energy[:, :, :] = E_post * abs(v_sheath) * W_z[np.newaxis, np.newaxis, :]
+            v_post = 2.0 * v_sheath / (gamma + 1.0)  # lab-frame post-shock velocity
+            p_post_per_mass = k_B * max(T_post, 1.0) / m_ion
+            e_thermal = p_post_per_mass / (gamma - 1.0)
+            e_kinetic = 0.5 * v_post**2
+            S_energy = np.maximum(S_rho_deposit, 0.0) * (e_thermal + e_kinetic)
 
-            source_terms["S_rho_snowplow"] = S_rho
-            source_terms["S_mom_snowplow"] = S_mom
-            source_terms["S_energy_snowplow"] = S_energy
+            return {
+                "S_rho_snowplow": S_rho,
+                "S_mom_snowplow": S_mom,
+                "S_energy_snowplow": S_energy,
+            }
 
         elif self.snowplow.phase == "radial":
             r_shock = self.snowplow.shock_radius
@@ -1643,43 +1685,74 @@ class SimulationEngine:
             if abs(vr_shock) < 1e-6:
                 return {}
 
-            # Radial coordinate array
+            # dm swept this step [kg]
+            m_radial_now = self.snowplow.radial_swept_mass
+            dm = max(m_radial_now - self._prev_radial_swept_mass, 0.0)
+            self._prev_radial_swept_mass = m_radial_now
+            if dm < 1e-30:
+                return {}
+
+            dm_dt = dm / max(dt, 1e-30)
+
+            nx = grid_shape[0]
             r_arr = np.array([(i + 0.5) * dx for i in range(nx)])
 
-            # Gaussian window in r
+            # --- Depletion: remove mass from outside shock (r > r_shock) ---
+            upstream_mask_r = r_arr > r_shock
+            n_upstream_r = int(np.sum(upstream_mask_r))
+            S_rho_deplete = np.zeros(grid_shape)
+            if n_upstream_r > 0:
+                if self.geometry_type == "cylindrical":
+                    cell_vols = self.fluid.geom.cell_volumes()
+                    upstream_vol = float(np.sum(cell_vols[upstream_mask_r, :]))
+                else:
+                    cell_vol = dx**3
+                    upstream_vol = cell_vol * n_upstream_r * grid_shape[1] * grid_shape[2]
+                depletion_rate = dm_dt / max(upstream_vol, 1e-30)
+                if self.geometry_type == "cylindrical":
+                    S_rho_deplete[upstream_mask_r, :, :] = -depletion_rate
+                else:
+                    S_rho_deplete[upstream_mask_r, :, :] = -depletion_rate
+
+            # --- Deposition: inject at shock front (Gaussian in r) ---
             sigma_r = 2.0 * dx
             W_r = np.exp(-0.5 * ((r_arr - r_shock) / sigma_r) ** 2)
-            W_r /= np.sum(W_r) * dx + 1e-30
+            W_r_norm = W_r / (np.sum(W_r) + 1e-30)
 
-            # Radial mass injection rate [kg/s]
-            f_mr = self.snowplow.f_mr
-            z_f = self.snowplow.z_f
-            dm_dt = rho0 * 2.0 * np.pi * r_shock * abs(vr_shock) * z_f * f_mr
-
-            S_rho = np.zeros(grid_shape)
+            S_rho_deposit = np.zeros(grid_shape)
             if self.geometry_type == "cylindrical":
-                S_rho[:, :, :] = dm_dt * W_r[:, np.newaxis, np.newaxis]
+                cell_vols = self.fluid.geom.cell_volumes()
+                for i in range(nx):
+                    vol_slice = float(np.sum(cell_vols[i, :]))
+                    if vol_slice > 0:
+                        S_rho_deposit[i, :, :] = dm_dt * W_r_norm[i] / max(vol_slice, 1e-30)
             else:
-                S_rho[:, :, :] = dm_dt * W_r[:, np.newaxis, np.newaxis]
+                cell_vol = dx**3
+                ny_g, nz_g = grid_shape[1], grid_shape[2]
+                for i in range(nx):
+                    S_rho_deposit[i, :, :] = dm_dt * W_r_norm[i] / max(cell_vol * ny_g * nz_g, 1e-30)
 
-            # Momentum: radial inward
+            S_rho = S_rho_deplete + S_rho_deposit
+
+            # Momentum: radial inward (vr < 0)
             S_mom = np.zeros((3, *grid_shape))
-            S_mom[0] = S_rho * vr_shock  # r-momentum (negative = inward)
+            S_mom[0] = np.maximum(S_rho_deposit, 0.0) * vr_shock
 
-            # Energy: Rankine-Hugoniot post-shock (radial)
-            rho_post = ((gamma + 1) / (gamma - 1)) * rho0
+            # Energy: Rankine-Hugoniot post-shock (radial, strong shock, γ=5/3)
             T_post = (3.0 / 16.0) * m_ion * vr_shock**2 / k_B
-            p_post = rho_post * k_B * T_post / m_ion
-            e_kin = 0.5 * rho_post * vr_shock**2
-            E_post = p_post / (gamma - 1.0) + e_kin
-            S_energy = np.zeros(grid_shape)
-            S_energy[:, :, :] = E_post * abs(vr_shock) * W_r[:, np.newaxis, np.newaxis]
+            vr_post = 2.0 * vr_shock / (gamma + 1.0)  # lab-frame post-shock radial velocity
+            p_post_per_mass = k_B * max(T_post, 1.0) / m_ion
+            e_thermal = p_post_per_mass / (gamma - 1.0)
+            e_kinetic = 0.5 * vr_post**2
+            S_energy = np.maximum(S_rho_deposit, 0.0) * (e_thermal + e_kinetic)
 
-            source_terms["S_rho_snowplow"] = S_rho
-            source_terms["S_mom_snowplow"] = S_mom
-            source_terms["S_energy_snowplow"] = S_energy
+            return {
+                "S_rho_snowplow": S_rho,
+                "S_mom_snowplow": S_mom,
+                "S_energy_snowplow": S_energy,
+            }
 
-        return source_terms
+        return {}
 
     def _should_use_coupler(self) -> bool:
         """Determine whether to use the CircuitCoupler for Lp extraction.
@@ -1701,6 +1774,17 @@ class SimulationEngine:
             else:
                 self._coupler_decision_cache = float(np.max(rho)) > 0
         return self._coupler_decision_cache
+
+    def _compute_grid_mass(self) -> float:
+        """Total mass on the MHD grid [kg]."""
+        rho = self.state.get("rho")
+        if rho is None:
+            return 0.0
+        if self.geometry_type == "cylindrical":
+            cell_vols = self.fluid.geom.cell_volumes()
+            rho_2d = np.squeeze(rho, axis=1) if rho.ndim == 3 else rho
+            return float(np.sum(rho_2d * cell_vols))
+        return float(np.sum(rho)) * self.config.dx**3
 
     def _compute_back_emf(self, dt: float) -> float:
         """Compute motional back-EMF from MHD field advection.
@@ -2063,6 +2147,7 @@ class SimulationEngine:
             total_radiated_energy=self.total_radiated_energy,
             neutron_rate=getattr(self, "_last_neutron_rate", 0.0),
             total_neutron_yield=self.total_neutron_yield,
+            mass_conservation=self._compute_grid_mass() / max(self._initial_grid_mass, 1e-30),
             finished=finished,
         )
 
