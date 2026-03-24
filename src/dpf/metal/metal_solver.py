@@ -493,22 +493,22 @@ class MetalMHDSolver(PlasmaSolverBase):
         max_signal: float = 0.0
         dh = [self.dx, self.dy, self.dz]
 
-        # Cap fast magnetosonic speed at 10^6 m/s for CFL to prevent dt → 0
-        # in evacuated regions. This does NOT change the physics (the actual
-        # fluxes still use the uncapped speed). It only prevents the CFL from
-        # becoming impractically small.
-        V_SIGNAL_MAX = 1e6  # m/s
+        # cf is already capped at c=3e8 m/s inside _fast_magnetosonic_mps
+        # (via _CF_SQ_MAX = 9e16). No additional cap here — capping at a
+        # lower value (e.g., 1e6) violates CFL at pinch conditions where
+        # the true fast magnetosonic speed is ~1e7 m/s.
         for dim in range(3):
             cf = _fast_magnetosonic_mps(rho, p, B, self.gamma, dim)
             vn_abs = torch.abs(vel[dim])
-            signal = torch.clamp(vn_abs + cf, max=V_SIGNAL_MAX)
+            signal = vn_abs + cf
+            # Filter NaN cells (e.g., electrode boundary artifacts) so
+            # torch.max doesn't poison the entire CFL computation.
+            signal = torch.where(torch.isfinite(signal), signal, torch.zeros_like(signal))
             local_max = float(torch.max(signal).item())
-            # Scale by inverse grid spacing for this direction
             if dh[dim] > 0.0:
                 max_signal = max(max_signal, local_max / dh[dim])
 
         if max_signal <= 0.0:
-            # Degenerate case: return a safe small dt
             return self.cfl * min(self.dx, self.dy, self.dz) * 1e-6
 
         dt_cfl = self.cfl / max_signal
