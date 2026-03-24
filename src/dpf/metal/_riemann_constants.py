@@ -19,6 +19,7 @@ IB1: int = 5   # Bx
 IB2: int = 6   # By
 IB3: int = 7   # Bz
 IEE: int = 8   # electron energy density (optional 9th variable)
+ISR: int = 9   # entropy tracer S*rho (optional 10th variable)
 
 # Density and pressure floors
 RHO_FLOOR: float = 1e-12
