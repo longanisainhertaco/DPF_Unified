@@ -249,6 +249,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         self._convert_b_si_to_hl: bool = convert_b_si_to_hl
         self.enable_betatron: bool = enable_betatron
         self.implicit_resistivity: bool = implicit_resistivity
+
+        # Dual-energy entropy tracer
+        self._use_dual_energy: bool = False
+        self._s_rho: torch.Tensor | None = None
+        self._s_rho_stage: torch.Tensor | None = None
+
         # Boundary conditions: "outflow" (zero-gradient) or "periodic"
         # Can be a single string (applied to all dims) or a 3-tuple per dim.
         if isinstance(bc, str):
@@ -590,6 +596,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         p: torch.Tensor,
         B: torch.Tensor,
         e_electron: torch.Tensor | None = None,
+        s_rho: torch.Tensor | None = None,
         r_cell: torch.Tensor | None = None,
         r_face: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
@@ -600,12 +607,16 @@ class MetalMHDSolver(PlasmaSolverBase):
         r_cell, r_face : torch.Tensor | None
             Override radial coordinate arrays (used when the state has been
             padded with ghost cells so the r arrays must match).
+        s_rho : torch.Tensor | None
+            Entropy tracer Srho = rho * p / rho^gamma (dual-energy).
         """
         state_dict: dict[str, torch.Tensor] = {
             "rho": rho, "velocity": vel, "pressure": p, "B": B,
         }
         if e_electron is not None:
             state_dict["e_electron"] = e_electron
+        if s_rho is not None:
+            state_dict["s_rho"] = s_rho
         if self.coordinates == "cylindrical":
             _r = r_cell if r_cell is not None else self._r
             _rf = r_face if r_face is not None else self._r_face
@@ -1249,6 +1260,17 @@ class MetalMHDSolver(PlasmaSolverBase):
         if ee_n is not None:
             ee_n = ee_n.clone()
 
+        # Initialize dual-energy entropy tracer on first step
+        if self._use_dual_energy and self._s_rho is None:
+            self.enable_dual_energy(rho_n, p_n)
+        # Enable dual-energy automatically for cylindrical electrode problems
+        if (
+            not self._use_dual_energy
+            and self.coordinates == "cylindrical"
+            and kwargs.get("apply_electrode_bc", False)
+        ):
+            self.enable_dual_energy(rho_n, p_n)
+
         # Determine whether ghost-cell electrode BCs apply this step.
         # When active, the RK stages pad the state with ghost cells encoding
         # B_theta = mu0*I/(2*pi*r) at the electrode boundaries.  The Riemann
@@ -1662,6 +1684,41 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         return rho, vel, p, B
 
+    # ------------------------------------------------------------------ #
+    #  Dual-energy pressure recovery
+    # ------------------------------------------------------------------ #
+
+    def enable_dual_energy(self, rho: torch.Tensor, p: torch.Tensor) -> None:
+        """Enable dual-energy and initialize entropy tracer from current state."""
+        from dpf.metal._dual_energy import initialize_entropy_tracer
+        self._use_dual_energy = True
+        self._s_rho = initialize_entropy_tracer(rho, p, gamma=self.gamma)
+
+    def _recover_pressure_de(
+        self,
+        rho: torch.Tensor,
+        vel: torch.Tensor,
+        B: torch.Tensor,
+        p_fallback: torch.Tensor,
+        s_rho: torch.Tensor,
+    ) -> torch.Tensor:
+        """Recover pressure using entropy-based dual-energy switching.
+
+        Computes total energy E from the primitive-variable pressure
+        (which may be corrupted) and passes it alongside the entropy
+        tracer to the switching function. The returned pressure uses
+        the entropy path in magnetically dominated cells.
+        """
+        from dpf.metal._dual_energy import recover_pressure_dual_energy
+        gm1 = self.gamma - 1.0
+        KE = 0.5 * rho * torch.sum(vel * vel, dim=0)
+        ME = 0.5 * torch.sum(B * B, dim=0)
+        E = torch.clamp(p_fallback, min=P_FLOOR) / gm1 + KE + ME
+        p_de, _w = recover_pressure_dual_energy(
+            rho, vel, B, E=E, Srho=s_rho, gamma=self.gamma,
+        )
+        return p_de
+
     def _clamp_velocity(
         self,
         vel: torch.Tensor,
@@ -1747,6 +1804,9 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
+        # Track entropy tracer through stages (pressure recovery deferred to post-ghost-strip)
+        self._s_rho_stage = None
+
         # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
         rhs2 = self._compute_rhs(
             rho_1, vel_1, p_1, B_1, e_electron=ee_1,
@@ -1764,7 +1824,9 @@ class MetalMHDSolver(PlasmaSolverBase):
             )
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR, max=1e3)
+
         p_new = torch.clamp(p_new, min=P_FLOOR)
+
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
@@ -1774,6 +1836,18 @@ class MetalMHDSolver(PlasmaSolverBase):
             rho_new, vel_new, p_new, B_new, ee_new = self._strip_ghost(
                 rho_new, vel_new, p_new, B_new, ee_new, ng=ng,
             )
+
+        # Dual-energy pressure recovery (post-ghost-strip, interior grid only)
+        if self._use_dual_energy and self._s_rho is not None:
+            # Evolve Srho through the RK2 combination using the RHS from both stages
+            # For now, use a simple forward-Euler on the entropy tracer
+            # (the tracer is passively advected, so this is stable)
+            sr_rhs = rhs2.get("s_rho")
+            if sr_rhs is not None:
+                if _ghost_active:
+                    sr_rhs = sr_rhs[ng:-ng, :, :]
+                self._s_rho = torch.clamp(self._s_rho + dt * sr_rhs, min=1e-30)
+            p_new = self._recover_pressure_de(rho_new, vel_new, B_new, p_new, self._s_rho)
 
         return rho_new, vel_new, p_new, B_new, ee_new
 
