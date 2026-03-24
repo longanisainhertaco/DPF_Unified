@@ -1192,10 +1192,10 @@ class SimulationEngine:
             # In radial_mhd mode, only inject source terms during radial+ phases
             # (snowplow handles rundown perfectly — MHD source terms during rundown
             # cause numerical instability on the non-conservative Python solver)
-            handoff = self.config.snowplow.handoff_mode
             inject_ok = True
-            if handoff in ("radial_mhd", "full_mhd"):
-                inject_ok = self.snowplow.phase in ("radial", "reflected", "post_pinch")
+            # Source terms inject during ALL phases to create the current sheath
+            # structure that confines the ghost-cell B_theta. Without the sheath,
+            # the ghost BC drives uniform compression of the entire domain.
             if inject_ok:
                 sp_src = self._compute_snowplow_source_terms(dt)
                 if sp_src:
