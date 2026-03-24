@@ -13,3 +13,8 @@ Modules:
 """
 
 from __future__ import annotations
+
+from dpf.metal.mlx_device import HAS_MLX
+
+if HAS_MLX:
+    from dpf.metal.mlx_solver import MLXMHDSolver  # noqa: F401
