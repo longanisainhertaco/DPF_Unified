@@ -327,25 +327,26 @@ class SnowplowModel:
         p_prof = np.full(nr, rho_fill * k_B * 300.0 / m_d)  # fill gas at room T
         B_theta_prof = np.zeros(nr)
 
-        # Sheath thickness: the compressed gas is in a thin shell behind the shock.
-        # At the start of radial phase, the shock has only just begun — only
-        # gas within a few cell widths of the shock front is compressed.
-        # Use the distance the shock has traveled from cathode as the shell thickness.
-        delta_r = abs(self.b - r_s)  # distance shock traveled inward
-        r_inner_shell = max(r_s - delta_r, 0.0)  # inner edge of compressed shell
+        # Compressed slug occupies a thin annular shell between shock front
+        # (r_s) and piston (r_piston). From mass conservation in cylindrical
+        # geometry: rho_0 * (b^2 - r_s^2) = rho_slug * (r_piston^2 - r_s^2),
+        # giving r_piston = sqrt(r_s^2 + (b^2 - r_s^2) / compression).
+        swept_area = self.b**2 - r_s**2
+        if swept_area > 0 and v_s > 1e3:
+            r_piston = np.sqrt(r_s**2 + swept_area / compression)
+        else:
+            r_piston = r_s  # no compression yet
 
         for i in range(nr):
             r = r_grid[i]
-            if r < r_s:
-                # B_theta from current everywhere inside the sheath
-                if r > 0:
-                    B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
-                # Only compress the thin shell where the shock has actually swept
-                if v_s > 1e3 and r > r_inner_shell:
-                    rho_prof[i] = rho_slug
-                    vr_prof[i] = -v_post
-                    p_prof[i] = rho_slug * k_B * T_ion / m_d
-            # Outside shock: fill gas (already set by defaults)
+            if 0 < r < r_s:
+                B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
+            # Compressed slug between shock front and piston
+            if v_s > 1e3 and r_s <= r <= r_piston:
+                rho_prof[i] = rho_slug
+                vr_prof[i] = -v_post
+                p_prof[i] = rho_slug * k_B * T_ion / m_d
+            # Outside piston: fill gas (already set by defaults)
 
         return {
             "rho": rho_prof,
