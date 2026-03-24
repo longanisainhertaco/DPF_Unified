@@ -256,12 +256,20 @@ def _fast_magnetosonic_mps(
     Bt_sq = torch.clamp(B_sq - Bn_sq, min=0.0)
     va_sq = B_sq * inv_rho
 
+    # Clamp squared speeds to prevent float32 overflow in discriminant.
+    # |diff|^2 overflows float32 (~3.4e38) when va_sq > ~1e19, which occurs
+    # at electrode boundaries (B_HL ~ 2e4, rho ~ 1e-12).  Cap at c^2.
+    _CF_SQ_MAX = torch.tensor(9.0e16, dtype=rho.dtype, device=rho.device)
+    a_sq = torch.clamp(a_sq, max=_CF_SQ_MAX)
+    va_sq = torch.clamp(va_sq, max=_CF_SQ_MAX)
+
     diff = a_sq - va_sq
-    discriminant = diff * diff + 4.0 * a_sq * Bt_sq * inv_rho
+    vat_sq = torch.clamp(Bt_sq * inv_rho, max=_CF_SQ_MAX)
+    discriminant = diff * diff + 4.0 * a_sq * vat_sq
     discriminant = torch.clamp(discriminant, min=0.0)
 
     sum_sq = a_sq + va_sq
     cf_sq = 0.5 * (sum_sq + torch.sqrt(discriminant))
-    cf_sq = torch.clamp(cf_sq, min=0.0)
+    cf_sq = torch.clamp(cf_sq, min=0.0, max=_CF_SQ_MAX)
 
     return torch.sqrt(cf_sq)
