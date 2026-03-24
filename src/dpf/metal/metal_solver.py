@@ -450,7 +450,7 @@ class MetalMHDSolver(PlasmaSolverBase):
     @staticmethod
     def _apply_floors(state_gpu: dict[str, torch.Tensor]) -> None:
         """Enforce positivity floors on density and pressure (in-place)."""
-        state_gpu["rho"] = torch.clamp(state_gpu["rho"], min=RHO_FLOOR)
+        state_gpu["rho"] = torch.clamp(state_gpu["rho"], min=RHO_FLOOR, max=1e3)
         state_gpu["pressure"] = torch.clamp(state_gpu["pressure"], min=P_FLOOR)
         if "e_electron" in state_gpu:
             state_gpu["e_electron"] = torch.clamp(
@@ -943,7 +943,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
         # Convert conservative momentum sources to primitive velocity updates
         # dv = (S_mom - v * S_rho) / rho
-        rho_safe = torch.clamp(rho, min=RHO_FLOOR)
+        rho_safe = torch.clamp(rho, min=RHO_FLOOR, max=1e3)
         inv_rho = 1.0 / rho_safe
 
         vel_new = vel.clone()
@@ -1433,17 +1433,13 @@ class MetalMHDSolver(PlasmaSolverBase):
                     for comp in range(3):
                         B_new[comp] = torch.where(mask_3d, torch.zeros_like(B_new[comp]), B_new[comp])
             else:
-                # Cylindrical: B_theta BC was applied PRE-step. Post-step only
-                # enforces conducting wall conditions (v_r=0, B_r=0).
-                r_arr = self._r.squeeze()
-                idx_cath = int(torch.argmin(torch.abs(r_arr - cathode_r)).item())
-                idx_anode = int(torch.argmin(torch.abs(r_arr - anode_r)).item())
-
-                B_new[0, :idx_anode + 1, :, :] = 0.0
-                vel_new[0, :idx_anode + 1, :, :] = 0.0
-                B_new[0, idx_cath:, :, :] = 0.0
-                vel_new[0, idx_cath:, :, :] = 0.0
-                B_new[0, 0, :, :] = 0.0
+                # Cylindrical: ghost-cell BC handles electrode B_theta.
+                # NO post-step overwrite of active cells — this destroys the
+                # Riemann solver's energy conservation by injecting/removing
+                # energy without bookkeeping. Conducting wall conditions
+                # (B_r=0, v_r=0) are enforced in the ghost cells via
+                # _pad_electrode_ghost, which the Riemann solver respects.
+                pass
 
         # -------------------------------------------------------------- #
         #  Neighbor-averaging NaN/Inf repair (before returning to engine)
@@ -1640,7 +1636,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         # (so NaN doesn't poison the averaging kernel)
         rho_clean = torch.where(bad_rho, torch.full_like(rho, RHO_FLOOR), rho)
         rho_avg = self._neighbor_average_3d(rho_clean)
-        rho = torch.where(bad_rho, torch.clamp(rho_avg, min=RHO_FLOOR), rho)
+        rho = torch.where(bad_rho, torch.clamp(rho_avg, min=RHO_FLOOR, max=1e3), rho)
 
         p_clean = torch.where(bad_p, torch.full_like(p, P_FLOOR), p)
         p_avg = self._neighbor_average_3d(p_clean)
@@ -1811,7 +1807,7 @@ class MetalMHDSolver(PlasmaSolverBase):
 
             # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
             rho_1b, vel_1b, p_1b, B_1b = _ce(rho_1, vel_1, p_1, B_1, dt, *_args)
-            rho_2 = torch.clamp(0.75 * rho_n + 0.25 * rho_1b, min=RHO_FLOOR)
+            rho_2 = torch.clamp(0.75 * rho_n + 0.25 * rho_1b, min=RHO_FLOOR, max=1e3)
             p_2 = torch.clamp(0.75 * p_n + 0.25 * p_1b, min=P_FLOOR)
             B_2 = 0.75 * B_n + 0.25 * B_1b
             vel_2 = self._clamp_velocity(
@@ -1883,7 +1879,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 min=0.0,
             )
 
-        rho_2 = torch.clamp(rho_2, min=RHO_FLOOR)
+        rho_2 = torch.clamp(rho_2, min=RHO_FLOOR, max=1e3)
         p_2 = torch.clamp(p_2, min=P_FLOOR)
         vel_2 = self._clamp_velocity(vel_2, rho_2, p_2, B_2)
         if self.use_ct:
