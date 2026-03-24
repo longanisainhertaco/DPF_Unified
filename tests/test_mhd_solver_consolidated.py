@@ -4937,6 +4937,10 @@ class TestRadialHandoff:
             anode_radius=0.0095, cathode_radius=0.032,
             fill_density=6.46e-4, anode_length=0.16,
         )
+        # Simulate a shock that has imploded partway (midway to axis)
+        sp.r_shock = 0.020  # shock at r=20mm (cathode=32mm, anode=9.5mm)
+        sp.vr = -1e5  # 100 km/s inward (typical DPF radial velocity)
+        sp.phase = "radial"
         r_grid = np.linspace(0.001, 0.032, 32)
         profiles = sp.export_radial_profiles(r_grid, current=100e3, gamma=5.0 / 3.0)
         rho_max = np.max(profiles["rho"])
@@ -4989,13 +4993,23 @@ class TestRadialHandoff:
             anode_radius=0.025, cathode_radius=0.05,
             fill_density=1e-3, anode_length=0.2,
         )
+        # Set shock state: imploded to r=35mm (cathode=50mm, anode=25mm)
+        sp.r_shock = 0.035
+        sp.vr = -8e4  # 80 km/s inward
+        sp.phase = "radial"
         r_grid = np.linspace(0.001, 0.05, 32)
         profiles = sp.export_radial_profiles(r_grid, current=500e3)
-        # Inside shock should be compressed, outside should be fill
-        rho_inner = profiles["rho"][0]  # near axis
-        rho_outer = profiles["rho"][-1]  # near cathode
-        assert rho_inner > 2 * rho_outer, (
-            f"Inner rho ({rho_inner:.3e}) should be > 2x outer ({rho_outer:.3e})"
+        # The compressed sheath is a thin annular shell behind the shock front.
+        # Gas near the axis (ahead of shock) is still at fill density.
+        # Check that the shell region has higher density than the fill.
+        rho_max = np.max(profiles["rho"])
+        rho_fill = 1e-3
+        rho_outer = profiles["rho"][-1]  # near cathode (outside shock)
+        assert rho_max > 2 * rho_fill, (
+            f"Shell rho ({rho_max:.3e}) should be > 2x fill ({rho_fill:.3e})"
+        )
+        assert rho_outer == pytest.approx(rho_fill, rel=0.01), (
+            f"Outer rho ({rho_outer:.3e}) should be fill density ({rho_fill:.3e})"
         )
 
     def test_lp_blend_alpha_starts_at_zero(self):
