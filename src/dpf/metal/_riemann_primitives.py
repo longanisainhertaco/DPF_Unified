@@ -21,6 +21,7 @@ from dpf.metal._riemann_constants import (
     IM1,
     IM2,
     IM3,
+    ISR,
     NVAR,
     P_FLOOR,
     RHO_FLOOR,
@@ -187,6 +188,10 @@ def _physical_flux_mps(
     if U.shape[0] > NVAR:
         F_ee = U[IEE] * vn
         components.append(F_ee)
+
+    if U.shape[0] > IEE + 1:
+        F_sr = U[ISR] * vn
+        components.append(F_sr)
 
     return torch.stack(components, dim=0)
 

@@ -701,7 +701,10 @@ class TestDualEnergyModule:
         """Module blend_weight returns w < 0.01 at electrode conditions."""
         mod = dual_energy_module
         rho = np.array([1e-3], dtype=np.float64)
-        p_S = np.array([160.0], dtype=np.float64)
+        # True low-beta electrode: thermal pressure negligible vs magnetic energy
+        # B_theta ~ 24 T (HL units) → ME = 0.5 * 24^2 = 288
+        # p ~ 2e-4 Pa → beta = p / ME ~ 7e-7
+        p_S = np.array([2e-4], dtype=np.float64)
         E = np.array([p_S[0] / (GAMMA - 1) + 0.5 * 24.0 ** 2], dtype=np.float64)
 
         w = np.asarray(mod.blend_weight(rho, p_S, E, eta_1=ETA_1, eta_2=ETA_2))
