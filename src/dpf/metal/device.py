@@ -317,6 +317,22 @@ class DeviceManager:
         return "\n".join(lines)
 
 
+def has_mlx() -> bool:
+    """Check whether MLX is importable on this system.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``mlx.core`` can be imported, ``False`` otherwise.
+    """
+    try:
+        import mlx.core  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 def get_device_manager() -> DeviceManager:
     """Get singleton DeviceManager instance.
 
