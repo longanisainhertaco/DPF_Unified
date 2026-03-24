@@ -2162,12 +2162,13 @@ class SimulationEngine:
     def _step_athena(
         self, dt: float, sim_time: float, _max_steps: int | None
     ) -> StepResult:
-        """Simplified timestep using the Athena++ MHD backend.
+        """Timestep using the Athena++/AthenaK MHD backend.
 
-        Circuit coupling is active (Python RLC solver), but the detailed
-        Python physics operators (Spitzer resistivity, Nernst, viscosity,
-        radiation) are bypassed.  These will be added as Athena++ source
-        terms in Phase G.
+        Uses the full circuit sub-cycling loop (snowplow dynamics, Lp
+        blending, back-EMF) via ``_step_circuit_subcycle``, then delegates
+        the MHD advance to the C++ backend.  Athena++ handles its own
+        resistivity, radiation, and viscosity via source terms enrolled
+        in dpf_zpinch.cpp.
 
         Args:
             dt: Timestep size [s].
@@ -2177,43 +2178,14 @@ class SimulationEngine:
         Returns:
             StepResult with scalar diagnostics.
         """
-        # --- Circuit advance ---
-        # Use coupling data from Athena++ C++ (R_plasma, L_plasma computed by
-        # dpf_zpinch.cpp UserWorkInLoop via volume integrals)
+        # --- Circuit advance with full sub-cycling + snowplow ---
+        # Get R_plasma and L_plasma from Athena++ coupling data (dpf_zpinch.cpp
+        # UserWorkInLoop computes these via volume integrals of eta*J^2 and B^2).
         coupling = self.fluid.coupling_interface()
-        coupling.Z_bar = 1.0
+        R_plasma = coupling.R_plasma
+        L_plasma = coupling.Lp
 
-        # CircuitCoupler: density-weighted Lp from MHD fields when enabled
-        use_coupler = self._should_use_coupler()
-        if use_coupler and self.state.get("rho") is not None:
-            feedback = self.coupler.compute_feedback(
-                self.state, self._coupling.current, dt,
-            )
-            self._last_feedback = feedback
-            if feedback.Lp > 0:
-                coupling.Lp = feedback.Lp
-                coupling.dL_dt = feedback.dLp_dt
-                back_emf = feedback.back_emf
-                self._prev_L_plasma = feedback.Lp
-            else:
-                # Coupler returned zero Lp — fall back to Athena++ volume integral
-                L_plasma = coupling.Lp
-                if L_plasma > 0:
-                    if self._prev_L_plasma > 0 and dt > 0:
-                        coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
-                    self._prev_L_plasma = L_plasma
-                back_emf = 0.0
-        else:
-            # Lee-only mode or no MHD fields: use Athena++ volume-integral Lp
-            L_plasma = coupling.Lp
-            if L_plasma > 0:
-                if self._prev_L_plasma > 0 and dt > 0:
-                    coupling.dL_dt = (L_plasma - self._prev_L_plasma) / dt
-                self._prev_L_plasma = L_plasma
-            back_emf = 0.0  # dL/dt already in R_star inside rlc_solver.py
-
-        new_coupling = self.circuit.step(coupling, back_emf, dt)
-        self._coupling = new_coupling
+        new_coupling = self._step_circuit_subcycle(dt, R_plasma, L_plasma, Z_bar=1.0)
 
         # --- MHD advance via Athena++ ---
         self.state = self.fluid.step(
