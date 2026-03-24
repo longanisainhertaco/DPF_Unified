@@ -1699,21 +1699,25 @@ class MetalMHDSolver(PlasmaSolverBase):
         rho: torch.Tensor,
         vel: torch.Tensor,
         B: torch.Tensor,
-        p_fallback: torch.Tensor,
+        E: torch.Tensor,
         s_rho: torch.Tensor,
     ) -> torch.Tensor:
-        """Recover pressure using entropy-based dual-energy switching.
+        """Recover pressure from conservatively-evolved total energy + entropy tracer.
 
-        Computes total energy E from the primitive-variable pressure
-        (which may be corrupted) and passes it alongside the entropy
-        tracer to the switching function. The returned pressure uses
-        the entropy path in magnetically dominated cells.
+        Uses the dual-energy switching function: in cells where the
+        total-energy subtraction (E - KE - ME) is reliable (high thermal
+        fraction), pressure comes from total energy.  In magnetically
+        dominated cells where subtraction suffers catastrophic
+        cancellation, pressure is recovered from the entropy tracer.
+
+        Parameters
+        ----------
+        E : torch.Tensor
+            Total energy density, evolved conservatively (no chain rule).
+        s_rho : torch.Tensor
+            Entropy tracer Srho = p * rho^(1-gamma).
         """
         from dpf.metal._dual_energy import recover_pressure_dual_energy
-        gm1 = self.gamma - 1.0
-        KE = 0.5 * rho * torch.sum(vel * vel, dim=0)
-        ME = 0.5 * torch.sum(B * B, dim=0)
-        E = torch.clamp(p_fallback, min=P_FLOOR) / gm1 + KE + ME
         p_de, _w = recover_pressure_dual_energy(
             rho, vel, B, E=E, Srho=s_rho, gamma=self.gamma,
         )
@@ -1790,10 +1794,26 @@ class MetalMHDSolver(PlasmaSolverBase):
                 )
             )
 
+        # Dual-energy: compute initial total energy and prepare s_rho
+        _de_active = self._use_dual_energy and self._s_rho is not None
+        E_n: torch.Tensor | None = None
+        sr_n: torch.Tensor | None = None
+        if _de_active:
+            gm1 = self.gamma - 1.0
+            KE_n = 0.5 * rho_n * torch.sum(vel_n * vel_n, dim=0)
+            ME_n = 0.5 * torch.sum(B_n * B_n, dim=0)
+            E_n = p_n / gm1 + KE_n + ME_n
+            sr_n = self._s_rho
+            if _ghost_active:
+                # Zero-gradient ghost padding for s_rho
+                sr_n = torch.nn.functional.pad(
+                    sr_n.unsqueeze(0), [0, 0, 0, 0, ng, ng], mode="replicate",
+                ).squeeze(0)
+
         # Stage 1: U^(1) = U^n + dt * L(U^n)
         rhs1 = self._compute_rhs(
             rho_n, vel_n, p_n, B_n, e_electron=e_electron,
-            r_cell=r_cell_g, r_face=r_face_g,
+            s_rho=sr_n, r_cell=r_cell_g, r_face=r_face_g,
         )
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
@@ -1804,13 +1824,20 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
-        # Track entropy tracer through stages (pressure recovery deferred to post-ghost-strip)
-        self._s_rho_stage = None
+        # Evolve E and s_rho through stage 1, recover p_1 from conservative E
+        E_1: torch.Tensor | None = None
+        sr_1: torch.Tensor | None = None
+        if _de_active:
+            E_1 = E_n + dt * rhs1["dE_dt"]
+            sr_rhs1 = rhs1.get("s_rho")
+            sr_1 = torch.clamp(sr_n + dt * sr_rhs1, min=1e-30) if sr_rhs1 is not None else sr_n
+            # Replace chain-rule p_1 with dual-energy recovered pressure
+            p_1 = self._recover_pressure_de(rho_1, vel_1, B_1, E_1, sr_1)
 
         # Stage 2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1)))
         rhs2 = self._compute_rhs(
             rho_1, vel_1, p_1, B_1, e_electron=ee_1,
-            r_cell=r_cell_g, r_face=r_face_g,
+            s_rho=sr_1, r_cell=r_cell_g, r_face=r_face_g,
         )
         rho_new = 0.5 * rho_n + 0.5 * (rho_1 + dt * rhs2["rho"])
         vel_new = 0.5 * vel_n + 0.5 * (vel_1 + dt * rhs2["velocity"])
@@ -1824,9 +1851,7 @@ class MetalMHDSolver(PlasmaSolverBase):
             )
 
         rho_new = torch.clamp(rho_new, min=RHO_FLOOR, max=1e3)
-
         p_new = torch.clamp(p_new, min=P_FLOOR)
-
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
             B_new = self._apply_ct_correction(B_new, B_n, dt)
@@ -1837,17 +1862,21 @@ class MetalMHDSolver(PlasmaSolverBase):
                 rho_new, vel_new, p_new, B_new, ee_new, ng=ng,
             )
 
-        # Dual-energy pressure recovery (post-ghost-strip, interior grid only)
-        if self._use_dual_energy and self._s_rho is not None:
-            # Evolve Srho through the RK2 combination using the RHS from both stages
-            # For now, use a simple forward-Euler on the entropy tracer
-            # (the tracer is passively advected, so this is stable)
-            sr_rhs = rhs2.get("s_rho")
-            if sr_rhs is not None:
-                if _ghost_active:
-                    sr_rhs = sr_rhs[ng:-ng, :, :]
-                self._s_rho = torch.clamp(self._s_rho + dt * sr_rhs, min=1e-30)
-            p_new = self._recover_pressure_de(rho_new, vel_new, B_new, p_new, self._s_rho)
+        # Dual-energy: recover pressure from conservatively-evolved E
+        if _de_active:
+            # SSP-RK2 combination for total energy and entropy tracer
+            sr_rhs2 = rhs2.get("s_rho")
+            E_new = 0.5 * E_n + 0.5 * (E_1 + dt * rhs2["dE_dt"])
+            sr_new = sr_n
+            if sr_rhs2 is not None:
+                sr_new = 0.5 * sr_n + 0.5 * (sr_1 + dt * sr_rhs2)
+            sr_new = torch.clamp(sr_new, min=1e-30)
+            # Strip ghost cells from E and s_rho
+            if _ghost_active:
+                E_new = E_new[ng:-ng, :, :]
+                sr_new = sr_new[ng:-ng, :, :]
+            p_new = self._recover_pressure_de(rho_new, vel_new, B_new, E_new, sr_new)
+            self._s_rho = sr_new
 
         return rho_new, vel_new, p_new, B_new, ee_new
 
@@ -1923,10 +1952,25 @@ class MetalMHDSolver(PlasmaSolverBase):
                 )
             )
 
+        # Dual-energy: compute initial total energy and prepare s_rho
+        _de_active = self._use_dual_energy and self._s_rho is not None
+        E_n: torch.Tensor | None = None
+        sr_n: torch.Tensor | None = None
+        if _de_active:
+            gm1 = self.gamma - 1.0
+            KE_n = 0.5 * rho_n * torch.sum(vel_n * vel_n, dim=0)
+            ME_n = 0.5 * torch.sum(B_n * B_n, dim=0)
+            E_n = p_n / gm1 + KE_n + ME_n
+            sr_n = self._s_rho
+            if _ghost_active:
+                sr_n = torch.nn.functional.pad(
+                    sr_n.unsqueeze(0), [0, 0, 0, 0, ng, ng], mode="replicate",
+                ).squeeze(0)
+
         # Stage 1: U^(1) = U^n + dt * L(U^n)
         rhs1 = self._compute_rhs(
             rho_n, vel_n, p_n, B_n, e_electron=e_electron,
-            r_cell=r_cell_g, r_face=r_face_g,
+            s_rho=sr_n, r_cell=r_cell_g, r_face=r_face_g,
         )
         rho_1, vel_1, p_1, B_1 = self._euler_update(
             rho_n, vel_n, p_n, B_n, rhs1, dt,
@@ -1937,10 +1981,19 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_1 = self._apply_ct_correction(B_1, B_n, dt)
 
+        # Evolve E and s_rho through stage 1, recover p_1
+        E_1: torch.Tensor | None = None
+        sr_1: torch.Tensor | None = None
+        if _de_active:
+            E_1 = E_n + dt * rhs1["dE_dt"]
+            sr_rhs1 = rhs1.get("s_rho")
+            sr_1 = torch.clamp(sr_n + dt * sr_rhs1, min=1e-30) if sr_rhs1 is not None else sr_n
+            p_1 = self._recover_pressure_de(rho_1, vel_1, B_1, E_1, sr_1)
+
         # Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt*L(U^(1)))
         rhs2 = self._compute_rhs(
             rho_1, vel_1, p_1, B_1, e_electron=ee_1,
-            r_cell=r_cell_g, r_face=r_face_g,
+            s_rho=sr_1, r_cell=r_cell_g, r_face=r_face_g,
         )
         rho_2 = 0.75 * rho_n + 0.25 * (rho_1 + dt * rhs2["rho"])
         vel_2 = 0.75 * vel_n + 0.25 * (vel_1 + dt * rhs2["velocity"])
@@ -1959,10 +2012,23 @@ class MetalMHDSolver(PlasmaSolverBase):
         if self.use_ct:
             B_2 = self._apply_ct_correction(B_2, B_n, dt)
 
+        # Evolve E and s_rho through stage 2, recover p_2
+        E_2: torch.Tensor | None = None
+        sr_2: torch.Tensor | None = None
+        if _de_active:
+            E_2 = 0.75 * E_n + 0.25 * (E_1 + dt * rhs2["dE_dt"])
+            sr_rhs2 = rhs2.get("s_rho")
+            if sr_rhs2 is not None:
+                sr_2 = 0.75 * sr_n + 0.25 * (sr_1 + dt * sr_rhs2)
+            else:
+                sr_2 = sr_1
+            sr_2 = torch.clamp(sr_2, min=1e-30)
+            p_2 = self._recover_pressure_de(rho_2, vel_2, B_2, E_2, sr_2)
+
         # Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt*L(U^(2)))
         rhs3 = self._compute_rhs(
             rho_2, vel_2, p_2, B_2, e_electron=ee_2,
-            r_cell=r_cell_g, r_face=r_face_g,
+            s_rho=sr_2, r_cell=r_cell_g, r_face=r_face_g,
         )
         rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * (rho_2 + dt * rhs3["rho"])
         vel_new = (1.0 / 3.0) * vel_n + (2.0 / 3.0) * (vel_2 + dt * rhs3["velocity"])
@@ -1986,6 +2052,21 @@ class MetalMHDSolver(PlasmaSolverBase):
             rho_new, vel_new, p_new, B_new, ee_new = self._strip_ghost(
                 rho_new, vel_new, p_new, B_new, ee_new, ng=ng,
             )
+
+        # Dual-energy: recover pressure from conservatively-evolved E
+        if _de_active:
+            sr_rhs3 = rhs3.get("s_rho")
+            E_new = (1.0 / 3.0) * E_n + (2.0 / 3.0) * (E_2 + dt * rhs3["dE_dt"])
+            if sr_rhs3 is not None:
+                sr_new = (1.0 / 3.0) * sr_n + (2.0 / 3.0) * (sr_2 + dt * sr_rhs3)
+            else:
+                sr_new = sr_2
+            sr_new = torch.clamp(sr_new, min=1e-30)
+            if _ghost_active:
+                E_new = E_new[ng:-ng, :, :]
+                sr_new = sr_new[ng:-ng, :, :]
+            p_new = self._recover_pressure_de(rho_new, vel_new, B_new, E_new, sr_new)
+            self._s_rho = sr_new
 
         return rho_new, vel_new, p_new, B_new, ee_new
 

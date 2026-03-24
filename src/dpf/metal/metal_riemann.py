@@ -201,6 +201,13 @@ def mhd_rhs_mps(
     _ensure_mps(p, "pressure")
     _ensure_mps(B, "B")
 
+    # s_rho must be at ISR=9, which requires e_electron at IEE=8.
+    # Insert a zero placeholder if e_electron is absent.
+    _ee_placeholder = False
+    if s_rho is not None and e_electron is None:
+        e_electron = torch.zeros_like(rho)
+        _ee_placeholder = True
+
     U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
 
     if s_rho is not None:
@@ -284,9 +291,10 @@ def mhd_rhs_mps(
         "velocity": dvel_dt,
         "pressure": dp_dt,
         "B": dB_dt,
+        "dE_dt": dU_dt[IEN],
     }
 
-    if e_electron is not None:
+    if e_electron is not None and not _ee_placeholder:
         result["e_electron"] = dU_dt[IEE]
 
     if s_rho is not None:
@@ -376,6 +384,12 @@ def mhd_rhs_cylindrical_mps(
     _ensure_mps(r_face, "r_face")
 
     nx, ny, nz = rho.shape
+
+    # s_rho must be at ISR=9, which requires e_electron at IEE=8.
+    _ee_placeholder = False
+    if s_rho is not None and e_electron is None:
+        e_electron = torch.zeros_like(rho)
+        _ee_placeholder = True
 
     U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
 
@@ -513,9 +527,10 @@ def mhd_rhs_cylindrical_mps(
         "velocity": dvel_dt,
         "pressure": dp_dt,
         "B": dB_dt,
+        "dE_dt": dU_dt[IEN],
     }
 
-    if e_electron is not None:
+    if e_electron is not None and not _ee_placeholder:
         result["e_electron"] = dU_dt[IEE]
 
     if s_rho is not None:
