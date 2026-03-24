@@ -1,0 +1,91 @@
+<comment>
+problem = PF-1000 Dense Plasma Focus (27kV, 1.332mF)
+configure = --prob=dpf_zpinch --coord=cylindrical -b --flux=hlld --nghost=3 -sts
+
+<job>
+problem_id  = dpf_pf1000
+
+<output1>
+file_type   = hst
+dt          = 1.000000e-08
+
+<output2>
+file_type   = vtk
+variable    = prim
+dt          = 1.000000e-07
+
+<time>
+cfl_number  = 0.3
+nlim        = 100000
+tlim        = 1.200000e-05
+integrator  = rk3
+xorder      = 3
+ncycle_out  = 100
+dt          = 1.000000e-12
+
+<mesh>
+nx1        = 64
+x1min      = 1.000000e-04
+x1max      = 1.600000e-01
+ix1_bc     = reflecting
+ox1_bc     = user
+
+nx2        = 240
+x2min      = 0.000000e+00
+x2max      = 6.000000e-01
+ix2_bc     = reflecting
+ox2_bc     = outflow
+
+nx3        = 1
+x3min      = 0.0
+x3max      = 6.283185307
+ix3_bc     = periodic
+ox3_bc     = periodic
+
+<meshblock>
+nx1        = 64
+nx2        = 240
+nx3        = 1
+
+<hydro>
+gamma      = 1.6667
+dfloor     = 1.0e-12
+pfloor     = 1.0e-12
+
+<diffusion>
+field_diffusion  = resistive
+viscosity        = isotropic
+
+<problem>
+# PF-1000 fill gas
+d          = 7.530000e-04
+T0         = 300.0
+ion_mass   = 3.343584e-27
+B_seed     = 1.000000e-06
+# magnoh.cpp compatibility
+alpha      = 0.0
+beta       = 0.0
+pcoeff     = 1.000000e-06
+vr         = 0.0
+bphi       = 0.0
+bz         = 0.0
+perturb    = 0.0
+mphi       = 0.0
+# PF-1000 circuit parameters (Scholz 2006)
+V0         = 27000.0
+C          = 1.332000e-03
+L0         = 3.350000e-08
+R0         = 2.300000e-03
+anode_r    = 1.150000e-01
+cathode_r  = 1.600000e-01
+# Physics
+enable_resistive  = 1
+enable_radiation  = 1
+enable_braginskii = 1
+# Diffusion (triggers STS sub-cycling)
+eta_ohm           = 1.0e-07
+nu_iso            = 1.0e-04
+Z_eff             = 1.0
+eta_max           = 1.0
+anomalous_alpha   = 0.06
+gaunt_factor      = 1.2

@@ -1866,7 +1866,7 @@ class SimulationEngine:
         rho = self.state.get("rho")
         if rho is None:
             return 0.0
-        if self.geometry_type == "cylindrical":
+        if self.geometry_type == "cylindrical" and hasattr(self.fluid, "geom"):
             cell_vols = self.fluid.geom.cell_volumes()
             rho_2d = np.squeeze(rho, axis=1) if rho.ndim == 3 else rho
             return float(np.sum(rho_2d * cell_vols))
