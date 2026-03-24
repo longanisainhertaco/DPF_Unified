@@ -488,7 +488,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         if eta_raw is not None:
             eta_arg: float | Any
             if isinstance(eta_raw, np.ndarray):
-                eta_arg = mx.array(eta_raw.astype(np.float32))
+                # Squeeze ny=1 dimension if present (engine passes 3D arrays)
+                eta_squeezed = np.squeeze(eta_raw)
+                if eta_squeezed.ndim == 1:
+                    eta_squeezed = eta_squeezed.reshape(self._nr, self._nz)
+                eta_arg = mx.array(eta_squeezed.astype(np.float32))
             else:
                 eta_arg = float(eta_raw)
             U = self._do_resistive_diffusion(U, dt, eta_arg)

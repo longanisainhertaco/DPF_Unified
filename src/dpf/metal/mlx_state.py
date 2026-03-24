@@ -229,7 +229,9 @@ class MLXState:
         p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
 
         # -- Temperatures --
-        T_ion = p * self.ion_mass / (rho * _K_B)
+        # Fully ionized: p = (n_e + n_i) * kB * T = 2 * n_i * kB * T (Z=1)
+        # So T = p * m_i / (2 * rho * kB)
+        T_ion = p * self.ion_mass / (2.0 * rho * _K_B)
         Ti = mx.maximum(T_ion, 0.0)
         Te = Ti  # single-fluid default; IEE overrides if non-zero
 
