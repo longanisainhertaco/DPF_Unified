@@ -155,6 +155,7 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         # dual-energy is always active for cylindrical coordinates
         self._use_dual_energy: bool = use_dual_energy or (coordinates == "cylindrical")
+        self._use_ct: bool = bool(use_ct)
 
         # Normalise reconstruction: "weno5" is an alias for "weno5z"
         if reconstruction in ("weno5", "weno5z"):
@@ -477,6 +478,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         mx.eval(U)
 
+        # ── 4.5. Constrained transport div(B) correction ─────────────────
+        if self._use_ct and self.coordinates == "cylindrical":
+            U = self._apply_ct_correction(U, dt)
+            mx.eval(U)
+
         # ── 5. Resistive diffusion ───────────────────────────────────────
         eta_raw = kwargs.get("eta_field")
         if eta_raw is not None:
@@ -503,6 +509,74 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 8. Coupling ──────────────────────────────────────────────────
         self._coupling = CouplingState(current=current, voltage=voltage)
         return result
+
+    # ------------------------------------------------------------------
+    # Constrained transport div(B)=0 correction
+    # ------------------------------------------------------------------
+
+    def _apply_ct_correction(self, U: Any, dt: float) -> Any:
+        """Apply constrained transport correction to maintain div(B) = 0.
+
+        Approximates the staggered CT update for a cell-centred solver:
+        1. Reconstruct face-centred Br/Bz by averaging adjacent cell values.
+        2. Compute corner EMF from cell-centred velocities and face B.
+        3. Apply CT update to face fields (Gardiner & Stone 2005 §2.3).
+        4. Average updated face fields back to cell centres.
+
+        Parameters
+        ----------
+        U : mx.array
+            Conserved state (NVAR, nr, nz), float32.
+        dt : float
+            Timestep [s].
+
+        Returns
+        -------
+        mx.array
+            U with Br (IBR) and Bz (IBZ) updated to reduce div(B) errors.
+        """
+        mx = require_mlx()
+        from dpf.metal.mlx_ct import apply_ct, compute_emf
+        from dpf.metal.mlx_kernels import IBR, IBZ, IDN, IMR, IMZ
+        from dpf.metal.mlx_primitives import RHO_FLOOR
+
+        rho = mx.maximum(U[IDN], RHO_FLOOR)
+        inv_rho = 1.0 / rho
+        vr = U[IMR] * inv_rho   # (nr, nz)
+        vz = U[IMZ] * inv_rho   # (nr, nz)
+        Br_cc = U[IBR]          # (nr, nz)
+        Bz_cc = U[IBZ]          # (nr, nz)
+
+        dr = self._grid.dr
+        dz = self._grid.dz
+        r_cell = self._grid.r_cell      # (nr,)
+        r_face = self._grid.r_face      # (nr+1,)
+
+        # --- Cell-centred → face-centred via averaging ---
+        # Br on r-faces: shape (nr+1, nz) — replicate boundary rows
+        Br_pad = mx.concatenate([Br_cc[:1, :], Br_cc, Br_cc[-1:, :]], axis=0)  # (nr+2, nz)
+        Br_face = 0.5 * (Br_pad[:-1, :] + Br_pad[1:, :])                       # (nr+1, nz)
+
+        # Bz on z-faces: shape (nr, nz+1) — replicate boundary cols
+        Bz_pad = mx.concatenate([Bz_cc[:, :1], Bz_cc, Bz_cc[:, -1:]], axis=1)  # (nr, nz+2)
+        Bz_face = 0.5 * (Bz_pad[:, :-1] + Bz_pad[:, 1:])                       # (nr, nz+1)
+
+        # --- CT update ---
+        emf = compute_emf(vr, vz, Br_face, Bz_face, dr, dz)
+        Br_face_new, Bz_face_new = apply_ct(
+            Br_face, Bz_face, emf, dt, dr, dz, r_cell, r_face,
+        )
+
+        # --- Face-centred → cell-centred by averaging adjacent faces ---
+        # Br_cc[i] = 0.5 * (Br_face[i] + Br_face[i+1])
+        Br_cc_new = 0.5 * (Br_face_new[:-1, :] + Br_face_new[1:, :])  # (nr, nz)
+        # Bz_cc[k] = 0.5 * (Bz_face[k] + Bz_face[k+1])
+        Bz_cc_new = 0.5 * (Bz_face_new[:, :-1] + Bz_face_new[:, 1:])  # (nr, nz)
+
+        rows = list(mx.split(U, U.shape[0], axis=0))
+        rows[IBR] = Br_cc_new[None]
+        rows[IBZ] = Bz_cc_new[None]
+        return mx.stack([r[0] for r in rows], axis=0).astype(mx.float32)
 
     # ------------------------------------------------------------------
     # PlasmaSolverBase — coupling_interface
