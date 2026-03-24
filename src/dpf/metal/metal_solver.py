@@ -113,7 +113,7 @@ def _euler_stage_compilable(
         bc=(bc_x, bc_y, bc_z),
     )
 
-    rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR)
+    rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR, max=1e3)
     vel_new = vel + dt * rhs["velocity"]
     p_new = torch.clamp(p + dt * rhs["pressure"], min=P_FLOOR)
     B_new = B + dt * rhs["B"]
@@ -649,7 +649,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         cells where reconstruction overshoots produced extreme RHS
         values.
         """
-        rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR)
+        rho_new = torch.clamp(rho + dt * rhs["rho"], min=RHO_FLOOR, max=1e3)
         vel_new = vel + dt * rhs["velocity"]
         p_new = torch.clamp(p + dt * rhs["pressure"], min=P_FLOOR)
         B_new = B + dt * rhs["B"]
@@ -939,7 +939,7 @@ class MetalMHDSolver(PlasmaSolverBase):
         S_Bz = -(v_r * B_z - v_z * B_r) * inv_r
 
         # --- Apply forward Euler update ---
-        rho_new = torch.clamp(rho + dt * S_rho, min=RHO_FLOOR)
+        rho_new = torch.clamp(rho + dt * S_rho, min=RHO_FLOOR, max=1e3)
 
         # Convert conservative momentum sources to primitive velocity updates
         # dv = (S_mom - v * S_rho) / rho
@@ -1710,7 +1710,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 self.limiter, self.riemann_solver, self.reconstruction,
                 self.bc[0], self.bc[1], self.bc[2],
             )
-            rho_new = torch.clamp(0.5 * rho_n + 0.5 * rho_1b, min=RHO_FLOOR)
+            rho_new = torch.clamp(0.5 * rho_n + 0.5 * rho_1b, min=RHO_FLOOR, max=1e3)
             p_new = torch.clamp(0.5 * p_n + 0.5 * p_1b, min=P_FLOOR)
             vel_new = self._clamp_velocity(
                 0.5 * vel_n + 0.5 * vel_1b, rho_new, p_new,
@@ -1767,7 +1767,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 min=0.0,
             )
 
-        rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
+        rho_new = torch.clamp(rho_new, min=RHO_FLOOR, max=1e3)
         p_new = torch.clamp(p_new, min=P_FLOOR)
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
@@ -1905,7 +1905,7 @@ class MetalMHDSolver(PlasmaSolverBase):
                 min=0.0,
             )
 
-        rho_new = torch.clamp(rho_new, min=RHO_FLOOR)
+        rho_new = torch.clamp(rho_new, min=RHO_FLOOR, max=1e3)
         p_new = torch.clamp(p_new, min=P_FLOOR)
         vel_new = self._clamp_velocity(vel_new, rho_new, p_new, B_new)
         if self.use_ct:
