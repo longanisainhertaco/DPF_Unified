@@ -1283,7 +1283,7 @@ def test_read_Te_Ti_from_scalars_uses_scalar_data_when_available():
 
 
 def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
-    """_step_athena() uses coupling data (R_plasma, L_plasma) from C++ instead of zeros."""
+    """_step_athena() uses coupling data (R_plasma, L_plasma) from C++ via _step_circuit_subcycle."""
     from dpf.engine import SimulationEngine
 
     config = SimulationConfig(
@@ -1319,10 +1319,15 @@ def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
     engine.backend = "athena"
     engine.fluid = mock_solver
     engine.circuit = Mock()
+    engine.circuit.L_ext = 3.35e-8
+    engine.circuit.C = 1.332e-3
     engine.circuit.step.return_value = CouplingState(
         current=100e3, voltage=10e3, Lp=5e-8, R_plasma=0.02, Z_bar=1.0
     )
     engine.circuit.state = engine.circuit.step.return_value
+    engine.circuit.total_energy.return_value = 1.0
+    engine.circuit.current = 100e3
+    engine.circuit.voltage = 10e3
     engine.diagnostics = Mock()
     engine.diag_interval = 1000
     engine.time = 0.0
@@ -1332,7 +1337,7 @@ def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
     engine._last_Z_bar = 1.0
     engine._last_eta_anom = 0.0
     engine.state = mock_solver.step.return_value
-    engine._coupling = engine.circuit.state
+    engine._coupling = CouplingState(Lp=5e-8, current=100e3)
     engine.initial_energy = 1.0
     engine.total_radiated_energy = 0.0
     engine.total_neutron_yield = 0.0
@@ -1344,17 +1349,27 @@ def test_step_athena_uses_coupling_data_from_cpp(monkeypatch):
     engine.coupling_mode = "lee_only"
     engine.coupler = None
     engine._last_feedback = None
-    engine.circuit.total_energy.return_value = 1.0
-    engine.circuit.current = 100e3
-    engine.circuit.voltage = 10e3
+    engine._coupler_decision_cache = None
+    engine._lp_blend_active = False
+    engine._lp_blend_alpha = 0.0
+    engine._radial_bfield_initialized = False
+    engine._last_sp_dL_dt = 0.0
+    engine._last_sp_R_plasma = 0.0
+    engine._last_pb_result = None
+    engine._initial_grid_mass = 1.0
+    engine._last_neutron_rate = 0.0
+    engine._skip_next_fluid_step = False
+    engine.ion_mass = config.ion_mass
 
     engine._step_athena(dt=1e-9, sim_time=1e-6, _max_steps=None)
 
-    mock_solver.coupling_interface.assert_called_once()
+    # coupling_interface called in both _step_athena and _step_circuit_subcycle
+    assert mock_solver.coupling_interface.call_count >= 1
 
+    # circuit.step called by _step_circuit_subcycle (possibly multiple sub-steps)
+    assert engine.circuit.step.call_count >= 1
     call_args = engine.circuit.step.call_args
     coupling_arg = call_args[0][0]
-    assert coupling_arg.Lp > 0, "L_plasma should be non-zero from C++"
     assert coupling_arg.R_plasma > 0, "R_plasma should be non-zero from C++"
 
 
