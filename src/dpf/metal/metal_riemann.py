@@ -52,6 +52,7 @@ from dpf.metal._riemann_constants import (  # noqa: F401
     IM1,
     IM2,
     IM3,
+    ISR,
     NVAR,
     P_FLOOR,
     RHO_FLOOR,
@@ -193,6 +194,7 @@ def mhd_rhs_mps(
     p = state["pressure"]
     B = state["B"]
     e_electron = state.get("e_electron")
+    s_rho = state.get("s_rho")
 
     _ensure_mps(rho, "rho")
     _ensure_mps(vel, "velocity")
@@ -200,6 +202,11 @@ def mhd_rhs_mps(
     _ensure_mps(B, "B")
 
     U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
+
+    if s_rho is not None:
+        _ensure_mps(s_rho, "s_rho")
+        s_rho_row = s_rho.unsqueeze(0)
+        U = torch.cat([U, s_rho_row], dim=0)
 
     dU_dt = torch.zeros_like(U)
 
@@ -282,6 +289,9 @@ def mhd_rhs_mps(
     if e_electron is not None:
         result["e_electron"] = dU_dt[IEE]
 
+    if s_rho is not None:
+        result["s_rho"] = dU_dt[ISR]
+
     return result
 
 
@@ -356,6 +366,7 @@ def mhd_rhs_cylindrical_mps(
     p = state["pressure"]
     B = state["B"]
     e_electron = state.get("e_electron")
+    s_rho = state.get("s_rho")
 
     _ensure_mps(rho, "rho")
     _ensure_mps(vel, "velocity")
@@ -367,6 +378,12 @@ def mhd_rhs_cylindrical_mps(
     nx, ny, nz = rho.shape
 
     U = _prim_to_cons_mps(rho, vel, p, B, gamma, e_electron=e_electron)
+
+    if s_rho is not None:
+        _ensure_mps(s_rho, "s_rho")
+        s_rho_row = s_rho.unsqueeze(0)
+        U = torch.cat([U, s_rho_row], dim=0)
+
     dU_dt = torch.zeros_like(U)
 
     # ---- Radial dimension (dim=0): r-weighted flux differencing ----
@@ -500,5 +517,8 @@ def mhd_rhs_cylindrical_mps(
 
     if e_electron is not None:
         result["e_electron"] = dU_dt[IEE]
+
+    if s_rho is not None:
+        result["s_rho"] = dU_dt[ISR]
 
     return result

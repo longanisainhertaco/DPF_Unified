@@ -17,6 +17,7 @@ from dpf.metal._riemann_constants import (
     IEE,
     IEN,
     IM1,
+    ISR,
     NVAR,
     P_FLOOR,
     RHO_FLOOR,
@@ -81,6 +82,9 @@ def hll_flux_mps(
     if UL.shape[0] > NVAR:
         UL_clean[IEE] = torch.clamp(UL[IEE], min=0.0)
         UR_clean[IEE] = torch.clamp(UR[IEE], min=0.0)
+    if UL.shape[0] > IEE:
+        UL_clean[ISR] = torch.clamp(UL[ISR], min=0.0)
+        UR_clean[ISR] = torch.clamp(UR[ISR], min=0.0)
 
     rho_L, vel_L, p_L, B_L = _cons_to_prim_mps(UL_clean, gamma)
     rho_R, vel_R, p_R, B_R = _cons_to_prim_mps(UR_clean, gamma)
@@ -283,6 +287,7 @@ def hlld_flux_mps(
     U_sR[ib_t2] = Bt2_sR
 
     has_ee = UL.shape[0] > NVAR
+    has_sr = UL.shape[0] > IEE
     if has_ee:
         denom_ee_L = torch.where(
             torch.abs(SL - SM) < 1e-20, torch.full_like(SM, 1e-20), SL - SM,
@@ -292,6 +297,15 @@ def hlld_flux_mps(
         )
         U_sL[IEE] = torch.clamp(UL[IEE] * (SL - vn_L) / denom_ee_L, min=0.0)
         U_sR[IEE] = torch.clamp(UR[IEE] * (SR - vn_R) / denom_ee_R, min=0.0)
+    if has_sr:
+        denom_sr_L = torch.where(
+            torch.abs(SL - SM) < 1e-20, torch.full_like(SM, 1e-20), SL - SM,
+        )
+        denom_sr_R = torch.where(
+            torch.abs(SR - SM) < 1e-20, torch.full_like(SM, 1e-20), SR - SM,
+        )
+        U_sL[ISR] = torch.clamp(UL[ISR] * (SL - vn_L) / denom_sr_L, min=0.0)
+        U_sR[ISR] = torch.clamp(UR[ISR] * (SR - vn_R) / denom_sr_R, min=0.0)
 
     FL = _physical_flux_mps(UL, gamma, dim)
     FR = _physical_flux_mps(UR, gamma, dim)
@@ -359,6 +373,9 @@ def hlld_flux_mps(
     if has_ee:
         U_dsL[IEE] = U_sL[IEE]
         U_dsR[IEE] = U_sR[IEE]
+    if has_sr:
+        U_dsL[ISR] = U_sL[ISR]
+        U_dsR[ISR] = U_sR[ISR]
 
     SL_star_8 = SL_star.unsqueeze(0)
     SR_star_8 = SR_star.unsqueeze(0)
