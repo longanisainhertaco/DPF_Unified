@@ -19,6 +19,8 @@ References:
 
 from __future__ import annotations
 
+import numpy as np
+
 from dpf.metal.mlx_grid import CylindricalGrid
 from dpf.metal.mlx_kernels import (
     IBR,
@@ -82,13 +84,119 @@ def _clamp_reconstructed(UL: mx.array, UR: mx.array) -> tuple[mx.array, mx.array
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+def _hll_flux(
+    QL: object,
+    QR: object,
+    gamma: float,
+    dim: int,
+) -> object:
+    """HLL two-wave Riemann flux via NumPy bridge (float64 for numerical safety).
+
+    Args:
+        QL: Left state at interfaces, shape (NVAR, n_ifaces, n_transverse).
+        QR: Right state at interfaces, shape (NVAR, n_ifaces, n_transverse).
+        gamma: Adiabatic index.
+        dim: Normal direction (0=radial, 1=axial).
+
+    Returns:
+        Numerical flux, same shape as QL/QR.
+    """
+    TINY = 1e-20
+    QL_np = np.asarray(QL).astype(np.float64)
+    QR_np = np.asarray(QR).astype(np.float64)
+
+    if dim == 0:
+        im_n, im_t1, im_t2 = IMR, IMZ, IMT
+        ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
+    else:
+        im_n, im_t1, im_t2 = IMZ, IMR, IMT
+        ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
+
+    rho_L = np.maximum(QL_np[IDN], RHO_FLOOR)
+    rho_R = np.maximum(QR_np[IDN], RHO_FLOOR)
+    inv_rL = 1.0 / rho_L
+    inv_rR = 1.0 / rho_R
+
+    vn_L = QL_np[im_n] * inv_rL
+    vn_R = QR_np[im_n] * inv_rR
+    Bn_L = QL_np[ib_n]
+    Bn_R = QR_np[ib_n]
+    Bt1_L = QL_np[ib_t1]
+    Bt1_R = QR_np[ib_t1]
+    Bt2_L = QL_np[ib_t2]
+    Bt2_R = QR_np[ib_t2]
+
+    gm1 = gamma - 1.0
+    KE_L = 0.5 * rho_L * ((QL_np[IMR]*inv_rL)**2 + (QL_np[IMZ]*inv_rL)**2 + (QL_np[IMT]*inv_rL)**2)
+    KE_R = 0.5 * rho_R * ((QR_np[IMR]*inv_rR)**2 + (QR_np[IMZ]*inv_rR)**2 + (QR_np[IMT]*inv_rR)**2)
+    B2_L = QL_np[IBR]**2 + QL_np[IBZ]**2 + QL_np[IBT]**2
+    B2_R = QR_np[IBR]**2 + QR_np[IBZ]**2 + QR_np[IBT]**2
+    p_L = np.maximum(gm1 * (QL_np[IEN] - KE_L - 0.5*B2_L), P_FLOOR)
+    p_R = np.maximum(gm1 * (QR_np[IEN] - KE_R - 0.5*B2_R), P_FLOOR)
+
+    Bt_sq_L = np.maximum(B2_L - Bn_L**2, 0.0)
+    Bt_sq_R = np.maximum(B2_R - Bn_R**2, 0.0)
+    a_sq_L = np.minimum(gamma*p_L/rho_L, (3e8)**2)
+    a_sq_R = np.minimum(gamma*p_R/rho_R, (3e8)**2)
+    va_sq_L = np.minimum(B2_L/rho_L, (3e8)**2)
+    va_sq_R = np.minimum(B2_R/rho_R, (3e8)**2)
+    vat_sq_L = np.minimum(Bt_sq_L/rho_L, (3e8)**2)
+    vat_sq_R = np.minimum(Bt_sq_R/rho_R, (3e8)**2)
+
+    cf_L = np.sqrt(np.maximum(0.5*(a_sq_L + va_sq_L + np.sqrt(np.maximum((a_sq_L-va_sq_L)**2 + 4*a_sq_L*vat_sq_L, 0.0))), 0.0))
+    cf_R = np.sqrt(np.maximum(0.5*(a_sq_R + va_sq_R + np.sqrt(np.maximum((a_sq_R-va_sq_R)**2 + 4*a_sq_R*vat_sq_R, 0.0))), 0.0))
+    SL = np.minimum(vn_L - cf_L, vn_R - cf_R)
+    SR = np.maximum(vn_L + cf_L, vn_R + cf_R)
+    SR = np.maximum(SR, SL + TINY)
+
+    def _pflux(U_arr, rho, inv_r, vn, vt1, vt2, p, Bn, Bt1, Bt2):
+        B2 = Bn**2 + Bt1**2 + Bt2**2
+        pt = p + 0.5 * B2
+        E = U_arr[IEN]
+        vB = vn*Bn + vt1*Bt1 + vt2*Bt2
+        F = np.zeros_like(U_arr)
+        F[IDN]  = rho * vn
+        F[im_n] = rho * vn * vn + pt - Bn * Bn
+        F[im_t1]= rho * vn * vt1 - Bn * Bt1
+        F[im_t2]= rho * vn * vt2 - Bn * Bt2
+        F[IEN]  = (E + pt) * vn - Bn * vB
+        F[ISR]  = U_arr[ISR] * vn
+        F[ib_n] = 0.0
+        F[ib_t1]= vn * Bt1 - vt1 * Bn
+        F[ib_t2]= vn * Bt2 - vt2 * Bn
+        if U_arr.shape[0] > IEE:
+            F[IEE] = U_arr[IEE] * vn
+        return F
+
+    vt1_L = QL_np[im_t1] * inv_rL
+    vt2_L = QL_np[im_t2] * inv_rL
+    vt1_R = QR_np[im_t1] * inv_rR
+    vt2_R = QR_np[im_t2] * inv_rR
+
+    FL = _pflux(QL_np, rho_L, inv_rL, vn_L, vt1_L, vt2_L, p_L, Bn_L, Bt1_L, Bt2_L)
+    FR = _pflux(QR_np, rho_R, inv_rR, vn_R, vt1_R, vt2_R, p_R, Bn_R, Bt1_R, Bt2_R)
+
+    inv_dS = 1.0 / np.maximum(SR - SL, TINY)
+    F_hll = (SR*FL - SL*FR + SL*SR*(QR_np - QL_np)) * inv_dS
+    F_out = np.where(SL >= 0.0, FL, np.where(SR <= 0.0, FR, F_hll))
+    F_out[ib_n] = 0.0
+
+    nans = np.isnan(F_out) | np.isinf(F_out)
+    if np.any(nans):
+        S_max = np.maximum(np.abs(SL), np.abs(SR))
+        F_LF = 0.5*(FL + FR) - 0.5*S_max*(QR_np - QL_np)
+        F_out = np.where(nans, F_LF, F_out)
+
+    return mx.array(F_out.astype(np.float32))
+
+
 def compute_fluxes(
-    U: mx.array,
+    U: object,
     gamma: float,
     dim: int,
     method: str = "weno5z",
     riemann: str = "hlld",
-) -> mx.array:
+) -> object:
     """Reconstruct + Riemann solve for one dimension.
 
     Args:
@@ -96,18 +204,27 @@ def compute_fluxes(
         gamma: Adiabatic index.
         dim: 0=radial, 1=axial.
         method: "weno5z" or "plm".
-        riemann: "hlld" (only option currently).
+        riemann: "hlld" or "hll".
 
     Returns:
         Numerical flux at interfaces.
-        Shape (10, nr-5, nz) for dim=0 with WENO5-Z on a 10+cell domain,
-        or (10, nr-1, nz) for dim=0 with PLM.
+        Shape (10, n_ifaces, nz) for dim=0, (10, nr, n_ifaces) for dim=1.
     """
-    if riemann != "hlld":
-        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Only 'hlld' supported.")
+    if riemann not in ("hlld", "hll"):
+        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld' or 'hll'.")
 
     QL, QR = reconstruct(U, dim=dim, method=method)
     QL, QR = _clamp_reconstructed(QL, QR)
+
+    if riemann == "hll":
+        # HLL operates on (NVAR, n_ifaces, n_transverse) — same layout as HLLD.
+        # For dim=1: reconstruct returns (NVAR, nr, n_ifaces_z); transpose for uniformity.
+        if dim == 1:
+            QL_t = mx.transpose(QL, axes=[0, 2, 1])
+            QR_t = mx.transpose(QR, axes=[0, 2, 1])
+            F_t = _hll_flux(QL_t, QR_t, gamma=gamma, dim=1)
+            return mx.transpose(F_t, axes=[0, 2, 1])
+        return _hll_flux(QL, QR, gamma=gamma, dim=dim)
 
     # HLLD expects (NVAR, n_ifaces, n_transverse)
     # For dim=0: QL shape (10, nr-5, nz) — already correct

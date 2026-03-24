@@ -36,7 +36,6 @@ from dpf.metal.mlx_kernels import (
     IMZ,
     ISR,
     NVAR,
-    hlld_flux_mlx,
 )
 from dpf.metal.mlx_primitives import (
     P_FLOOR,
@@ -45,7 +44,7 @@ from dpf.metal.mlx_primitives import (
     fast_magnetosonic,
     recover_pressure_dual_energy,
 )
-from dpf.metal.mlx_reconstruction import reconstruct
+from dpf.metal.mlx_riemann import mhd_rhs as _riemann_mhd_rhs
 
 # Velocity clamping: cap at V_CLAMP_FACTOR * fast magnetosonic speed
 _V_CLAMP_FACTOR: float = 10.0
@@ -67,11 +66,10 @@ def mhd_rhs(
 ) -> mx.array:
     """Compute the MHD right-hand side dU/dt = L(U).
 
-    Implements conservative cylindrical finite-volume differencing:
-
-        dU/dt = -(1/(r*dr)) * d(r*F_r)/dr - dF_z/dz + S_geom
-
-    where S_geom is the cylindrical geometric source (centrifugal + hoop stress).
+    Delegates to mlx_riemann.mhd_rhs which applies _clamp_reconstructed
+    guards after WENO5-Z reconstruction (prevents negative-energy states from
+    reaching the Riemann solver) and correctly handles dim=1 axis transposition
+    for the HLLD Metal kernel.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz), float32.
@@ -85,230 +83,15 @@ def mhd_rhs(
     Returns:
         dU/dt array, shape (NVAR, nr, nz), float32.
     """
-    if dr is None:
-        dr = grid.dr
-    if dz is None:
-        dz = grid.dz
-
-    nr, nz = grid.nr, grid.nz
-    dU = mx.zeros_like(U)
-
-    # --- Radial flux divergence ---
-    if nr >= 2:
-        QL_r, QR_r = reconstruct(U, dim=0, method=method)
-        F_r = _riemann_flux(QL_r, QR_r, gamma=gamma, dim=0, riemann=riemann)
-        # F_r shape: (NVAR, n_iface_r, nz)
-        # PLM gives n_iface_r = nr-1; WENO5 gives n_iface_r = nr-5 (interior only).
-        # Pad to exactly nr-1 interface fluxes so boundary cells get zero flux.
-        n_iface_r = F_r.shape[1]
-        n_pad_l = (nr - 1 - n_iface_r + 1) // 2   # left zero pads
-        n_pad_r = (nr - 1) - n_iface_r - n_pad_l   # right zero pads
-
-        pads: list = []
-        if n_pad_l > 0:
-            pads.append(mx.zeros((NVAR, n_pad_l, nz), dtype=U.dtype))
-        pads.append(F_r)
-        if n_pad_r > 0:
-            pads.append(mx.zeros((NVAR, n_pad_r, nz), dtype=U.dtype))
-        F_r_full = mx.concatenate(pads, axis=1) if len(pads) > 1 else F_r
-        # F_r_full: (NVAR, nr-1, nz) -- fluxes at faces 0..nr-2
-
-        # r-weighted divergence using inner face radii r_face[1:-1], shape (nr-1,)
-        r_face_inner = grid.r_face[1:-1]  # faces 1..nr-1, shape (nr-1,)
-        r_cell = grid.r_cell              # shape (nr,)
-        inv_r_dr = (1.0 / (mx.maximum(r_cell, 1e-30) * dr))  # shape (nr,)
-
-        # rF at each interior face: (NVAR, nr-1, nz)
-        rF = r_face_inner[None, :, None] * F_r_full
-
-        # Conservative FV divergence: dU[:, i, :] = -(rF[i] - rF[i-1]) / (r_i * dr)
-        # rF[i]   = flux at right face of cell i   (face i+1)
-        # rF[i-1] = flux at left  face of cell i   (face i)
-        # Pad rF with zeros at face 0 (axis boundary) and face nr (outer boundary)
-        zero_rF_l = mx.zeros((NVAR, 1, nz), dtype=U.dtype)
-        zero_rF_r = mx.zeros((NVAR, 1, nz), dtype=U.dtype)
-        rF_padded = mx.concatenate([zero_rF_l, rF, zero_rF_r], axis=1)  # (NVAR, nr+1, nz)
-        div_r = (rF_padded[:, 1:, :] - rF_padded[:, :-1, :]) * inv_r_dr[None, :, None]
-        dU = dU - div_r
-
-    # --- Axial flux divergence ---
-    if nz >= 2:
-        QL_z, QR_z = reconstruct(U, dim=1, method=method)
-        F_z = _riemann_flux(QL_z, QR_z, gamma=gamma, dim=1, riemann=riemann)
-        # F_z shape: (NVAR, nr, n_iface_z); pad to nz-1 entries
-        n_iface_z = F_z.shape[2]
-        n_padz_l = (nz - 1 - n_iface_z + 1) // 2
-        n_padz_r = (nz - 1) - n_iface_z - n_padz_l
-
-        zpads: list = []
-        if n_padz_l > 0:
-            zpads.append(mx.zeros((NVAR, nr, n_padz_l), dtype=U.dtype))
-        zpads.append(F_z)
-        if n_padz_r > 0:
-            zpads.append(mx.zeros((NVAR, nr, n_padz_r), dtype=U.dtype))
-        F_z_full = mx.concatenate(zpads, axis=2) if len(zpads) > 1 else F_z
-        # F_z_full: (NVAR, nr, nz-1)
-
-        zero_pad_z_l = mx.zeros((NVAR, nr, 1), dtype=U.dtype)
-        zero_pad_z_r = mx.zeros((NVAR, nr, 1), dtype=U.dtype)
-        F_z_padded = mx.concatenate([zero_pad_z_l, F_z_full, zero_pad_z_r], axis=2)  # (NVAR, nr, nz+1)
-        div_z = (F_z_padded[:, :, 1:] - F_z_padded[:, :, :-1]) / dz
-        dU = dU - div_z
-
-    # --- Cylindrical geometric sources ---
-    dU = dU + _geometric_sources(U, grid, gamma)
-
-    mx.eval(dU)
-    return dU
-
-
-def _riemann_flux(
-    QL: mx.array,
-    QR: mx.array,
-    gamma: float,
-    dim: int,
-    riemann: str,
-) -> mx.array:
-    """Dispatch to HLLD or HLL Riemann solver.
-
-    Args:
-        QL: Left state at interfaces, shape (NVAR, n_ifaces, nz).
-        QR: Right state at interfaces, shape (NVAR, n_ifaces, nz).
-        gamma: Adiabatic index.
-        dim: Normal direction (0=radial, 1=axial).
-        riemann: "hlld" or "hll".
-
-    Returns:
-        Numerical flux, shape (NVAR, n_ifaces, nz).
-    """
-    if riemann == "hlld":
-        return hlld_flux_mlx(QL, QR, gamma=gamma, dim=dim)
-    # HLL fallback
-    return _hll_flux(QL, QR, gamma=gamma, dim=dim)
-
-
-def _hll_flux(
-    QL: mx.array,
-    QR: mx.array,
-    gamma: float,
-    dim: int,
-) -> mx.array:
-    """HLL two-wave Riemann flux via NumPy bridge (float64 for safety).
-
-    Args:
-        QL: Left state, shape (NVAR, n_ifaces, nz).
-        QR: Right state, shape (NVAR, n_ifaces, nz).
-        gamma: Adiabatic index.
-        dim: Normal direction.
-
-    Returns:
-        Numerical flux, shape (NVAR, n_ifaces, nz).
-    """
-    # Use float64 to avoid overflow at high-velocity cells
-    QL_np = np.asarray(QL).astype(np.float64)
-    QR_np = np.asarray(QR).astype(np.float64)
-    TINY = 1e-20
-
-    rho_L = np.maximum(QL_np[IDN], RHO_FLOOR)
-    rho_R = np.maximum(QR_np[IDN], RHO_FLOOR)
-
-    # Select normal / tangential indices
-    if dim == 0:
-        im_n, im_t1, im_t2 = IMR, IMZ, IMT
-        ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
-    else:
-        im_n, im_t1, im_t2 = IMZ, IMR, IMT
-        ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
-
-    inv_rL = 1.0 / rho_L
-    inv_rR = 1.0 / rho_R
-
-    vn_L = QL_np[im_n] * inv_rL
-    vn_R = QR_np[im_n] * inv_rR
-    Bn_L = QL_np[ib_n]
-    Bn_R = QR_np[ib_n]
-    Bt1_L = QL_np[ib_t1]
-    Bt1_R = QR_np[ib_t1]
-    Bt2_L = QL_np[ib_t2]
-    Bt2_R = QR_np[ib_t2]
-
-    gm1 = gamma - 1.0
-    KE_L = 0.5 * rho_L * (
-        (QL_np[IMR] * inv_rL) ** 2 +
-        (QL_np[IMZ] * inv_rL) ** 2 +
-        (QL_np[IMT] * inv_rL) ** 2
+    return _riemann_mhd_rhs(
+        U,
+        grid,
+        gamma=gamma,
+        dr=grid.dr if dr is None else dr,
+        dz=grid.dz if dz is None else dz,
+        method=method,
+        riemann=riemann,
     )
-    KE_R = 0.5 * rho_R * (
-        (QR_np[IMR] * inv_rR) ** 2 +
-        (QR_np[IMZ] * inv_rR) ** 2 +
-        (QR_np[IMT] * inv_rR) ** 2
-    )
-    B2_L = QL_np[IBR] ** 2 + QL_np[IBZ] ** 2 + QL_np[IBT] ** 2
-    B2_R = QR_np[IBR] ** 2 + QR_np[IBZ] ** 2 + QR_np[IBT] ** 2
-    ME_L = 0.5 * B2_L
-    ME_R = 0.5 * B2_R
-    p_L = np.maximum(gm1 * (QL_np[IEN] - KE_L - ME_L), P_FLOOR)
-    p_R = np.maximum(gm1 * (QR_np[IEN] - KE_R - ME_R), P_FLOOR)
-
-    # Fast magnetosonic speeds
-    Bt_sq_L = np.maximum(B2_L - Bn_L ** 2, 0.0)
-    Bt_sq_R = np.maximum(B2_R - Bn_R ** 2, 0.0)
-    a_sq_L = np.minimum(gamma * p_L / rho_L, (3e8) ** 2)
-    a_sq_R = np.minimum(gamma * p_R / rho_R, (3e8) ** 2)
-    va_sq_L = np.minimum(B2_L / rho_L, (3e8) ** 2)
-    va_sq_R = np.minimum(B2_R / rho_R, (3e8) ** 2)
-    vat_sq_L = np.minimum(Bt_sq_L / rho_L, (3e8) ** 2)
-    vat_sq_R = np.minimum(Bt_sq_R / rho_R, (3e8) ** 2)
-
-    diff_L = a_sq_L - va_sq_L
-    disc_L = np.maximum(diff_L ** 2 + 4.0 * a_sq_L * vat_sq_L, 0.0)
-    cf_L = np.sqrt(np.maximum(0.5 * (a_sq_L + va_sq_L + np.sqrt(disc_L)), 0.0))
-
-    diff_R = a_sq_R - va_sq_R
-    disc_R = np.maximum(diff_R ** 2 + 4.0 * a_sq_R * vat_sq_R, 0.0)
-    cf_R = np.sqrt(np.maximum(0.5 * (a_sq_R + va_sq_R + np.sqrt(disc_R)), 0.0))
-
-    SL = np.minimum(vn_L - cf_L, vn_R - cf_R)
-    SR = np.maximum(vn_L + cf_L, vn_R + cf_R)
-    SR = np.maximum(SR, SL + TINY)
-
-    def _phys_flux(rho, inv_r, prim_vn, prim_vt1, prim_vt2, p, Bn, Bt1, Bt2, E, U_arr):
-        B2 = Bn ** 2 + Bt1 ** 2 + Bt2 ** 2
-        pt = p + 0.5 * B2
-        F = np.zeros_like(U_arr)
-        vB = prim_vn * Bn + prim_vt1 * Bt1 + prim_vt2 * Bt2
-        F[IDN] = rho * prim_vn
-        F[im_n] = rho * prim_vn * prim_vn + pt - Bn * Bn
-        F[im_t1] = rho * prim_vn * prim_vt1 - Bn * Bt1
-        F[im_t2] = rho * prim_vn * prim_vt2 - Bn * Bt2
-        F[IEN] = (E + pt) * prim_vn - Bn * vB
-        F[ISR] = U_arr[ISR] * prim_vn
-        F[ib_n] = 0.0
-        F[ib_t1] = prim_vn * Bt1 - prim_vt1 * Bn
-        F[ib_t2] = prim_vn * Bt2 - prim_vt2 * Bn
-        return F
-
-    vt1_L = QL_np[im_t1] * inv_rL
-    vt2_L = QL_np[im_t2] * inv_rL
-    vt1_R = QR_np[im_t1] * inv_rR
-    vt2_R = QR_np[im_t2] * inv_rR
-
-    FL = _phys_flux(rho_L, inv_rL, vn_L, vt1_L, vt2_L, p_L, Bn_L, Bt1_L, Bt2_L, QL_np[IEN], QL_np)
-    FR = _phys_flux(rho_R, inv_rR, vn_R, vt1_R, vt2_R, p_R, Bn_R, Bt1_R, Bt2_R, QR_np[IEN], QR_np)
-
-    inv_dS = 1.0 / np.maximum(SR - SL, TINY)
-    F_hll = (SR[np.newaxis] * FL - SL[np.newaxis] * FR + SL[np.newaxis] * SR[np.newaxis] * (QR_np - QL_np)) * inv_dS[np.newaxis]
-
-    F_out = np.where(SL[np.newaxis] >= 0.0, FL, np.where(SR[np.newaxis] <= 0.0, FR, F_hll))
-    F_out[ib_n] = 0.0
-
-    has_nan = np.isnan(F_out) | np.isinf(F_out)
-    if np.any(has_nan):
-        S_max = np.maximum(np.abs(SL), np.abs(SR))
-        F_LF = 0.5 * (FL + FR) - 0.5 * S_max[np.newaxis] * (QR_np - QL_np)
-        F_out = np.where(has_nan, F_LF, F_out)
-
-    return mx.array(F_out.astype(np.float32))
 
 
 def _geometric_sources(

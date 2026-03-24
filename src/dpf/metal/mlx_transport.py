@@ -283,12 +283,14 @@ def apply_resistive_diffusion(
                 field_new[ir, :] = thomas_solve(a, b, c, d)
 
     # ── Diffuse along r (cylindrical) for each z-index ──────────
+    # Feed the z-diffused output (Br_new, Bz_new, Bt_new) into the r-pass so
+    # both sweeps are chained (operator-split dimensional factorisation).
     if nr > 1:
         for iz in range(nz):
             alpha_row = alpha_np[:, iz]
-            for field, field_new in [(Br_np, Br_new), (Bz_np, Bz_new), (Bt_np, Bt_new)]:
+            for field_new in [Br_new, Bz_new, Bt_new]:
                 a, b, c, d = _build_cylindrical_diffusion_system(
-                    field[:, iz], alpha_row, r_np, dt, dr
+                    field_new[:, iz], alpha_row, r_np, dt, dr
                 )
                 field_new[:, iz] = thomas_solve(a, b, c, d)
 

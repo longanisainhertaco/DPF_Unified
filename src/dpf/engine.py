@@ -214,7 +214,14 @@ class SimulationEngine:
                 ion_mass=self.ion_mass,
                 enable_bremsstrahlung=getattr(config.radiation, "bremsstrahlung_enabled", False),
             )
-            self._cell_volume = dx * dx * dz
+            if self.geometry_type == "cylindrical":
+                from dpf.geometry.cylindrical import CylindricalGeometry
+                self.fluid.geom = CylindricalGeometry(
+                    nr=nx, nz=nz, dr=dx, dz=dz,
+                )
+                self._cell_volume = self.fluid.geom.cell_volumes()[:, np.newaxis, :]
+            else:
+                self._cell_volume = dx * dx * dz
             logger.info("Using MLX Metal backend (Apple Silicon GPU)")
         elif self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx

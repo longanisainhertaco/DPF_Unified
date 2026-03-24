@@ -256,10 +256,6 @@ def apply_ohmic_heating(
         Updated conserved state, shape (NVAR, nr, nz), float32.
     """
     rho = mx.maximum(U[IDN], _RHO_FLOOR)
-    inv_rho = 1.0 / rho
-    v2 = (U[IMR] ** 2 + U[IMZ] ** 2 + U[IMT] ** 2) * inv_rho * inv_rho
-    B2 = U[IBR] ** 2 + U[IBZ] ** 2 + U[IBT] ** 2
-    p = (gamma - 1.0) * mx.maximum(U[IEN] - 0.5 * rho * v2 - 0.5 * B2, _P_FLOOR)
 
     if not isinstance(eta, mx.array):
         eta = mx.array(float(eta), dtype=mx.float32)
@@ -267,9 +263,10 @@ def apply_ohmic_heating(
     Q_ohm = eta * J_sq          # (nr, nz)
     dE = Q_ohm * dt             # total energy increment
 
-    # Entropy tracer: dSrho = Q_ohm * dt * (gamma-1) / p  (dimensionless tracer)
-    inv_p = 1.0 / mx.maximum(p, _P_FLOOR)
-    dSrho = Q_ohm * dt * (gamma - 1.0) * inv_p * rho
+    # Entropy tracer: dSrho = (gamma-1) * Q_ohm * dt / rho^(gamma-1)
+    # Derived from S = p/rho^gamma -> dS = (gamma-1)*dq/rho^(gamma-1) where dq = Q*dt/rho
+    rho_gm1 = mx.maximum(rho ** (gamma - 1.0), _RHO_FLOOR)
+    dSrho = Q_ohm * dt * (gamma - 1.0) / rho_gm1
 
     updated_vars = [
         U[IDN],
@@ -340,13 +337,19 @@ def apply_bremsstrahlung(
     dE = mx.minimum(dE, e_available)
     dE = mx.maximum(dE, 0.0)
 
+    # Entropy tracer: radiation removes heat, so entropy decreases.
+    # dSrho = -(gamma-1) * Q_rad * dt / rho^(gamma-1)
+    rho_gm1 = mx.maximum(rho ** (gamma - 1.0), _RHO_FLOOR)
+    dSrho = (gamma - 1.0) * dE / rho_gm1
+    Srho_new = mx.maximum(U[ISR] - dSrho, 0.0)
+
     updated_vars = [
         U[IDN],
         U[IMR],
         U[IMZ],
         U[IMT],
         U[IEN] - dE,
-        U[ISR],
+        Srho_new,
         U[IBR],
         U[IBZ],
         U[IBT],
