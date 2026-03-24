@@ -97,47 +97,61 @@ def mhd_rhs(
     if nr >= 2:
         QL_r, QR_r = reconstruct(U, dim=0, method=method)
         F_r = _riemann_flux(QL_r, QR_r, gamma=gamma, dim=0, riemann=riemann)
-        # r-weighted divergence: (1/(r_cell*dr)) * (r_face[i+1]*F[i+1/2] - r_face[i]*F[i-1/2])
-        # F_r shape: (NVAR, nr-1, nz) -- fluxes at interfaces i+1/2 for i=0..nr-2
-        r_face = grid.r_face  # shape (nr+1,)
-        r_cell = grid.r_cell      # shape (nr,)
+        # F_r shape: (NVAR, n_iface_r, nz)
+        # PLM gives n_iface_r = nr-1; WENO5 gives n_iface_r = nr-5 (interior only).
+        # Pad to exactly nr-1 interface fluxes so boundary cells get zero flux.
+        n_iface_r = F_r.shape[1]
+        n_pad_l = (nr - 1 - n_iface_r + 1) // 2   # left zero pads
+        n_pad_r = (nr - 1) - n_iface_r - n_pad_l   # right zero pads
 
-        # Interior cells i=1..nr-2 get contributions from both faces
-        # Cell i gets: rF_r[i-1] - rF_l[i-1] ... but F_r[k] is flux at i=k+1/2
-        # So cell i: div = (r_{i+1/2}*F_{i+1/2} - r_{i-1/2}*F_{i-1/2}) / (r_i * dr)
-        # F_r[k] = flux between cells k and k+1
-        # Cell 0: has right flux F_r[0] only (no left flux from interior)
-        # Cell i (1..nr-2): right=F_r[i], left=F_r[i-1]
-        # Cell nr-1: has left flux F_r[nr-2] only
+        pads: list = []
+        if n_pad_l > 0:
+            pads.append(mx.zeros((NVAR, n_pad_l, nz), dtype=U.dtype))
+        pads.append(F_r)
+        if n_pad_r > 0:
+            pads.append(mx.zeros((NVAR, n_pad_r, nz), dtype=U.dtype))
+        F_r_full = mx.concatenate(pads, axis=1) if len(pads) > 1 else F_r
+        # F_r_full: (NVAR, nr-1, nz) -- fluxes at faces 0..nr-2
 
+        # r-weighted divergence using inner face radii r_face[1:-1], shape (nr-1,)
+        r_face_inner = grid.r_face[1:-1]  # faces 1..nr-1, shape (nr-1,)
+        r_cell = grid.r_cell              # shape (nr,)
         inv_r_dr = (1.0 / (mx.maximum(r_cell, 1e-30) * dr))  # shape (nr,)
-        inv_r_dr_bc = inv_r_dr[None, :, None]  # (1, nr, 1)
 
-        # Build (r*F) at each interface; F_r[k] lives at face k+1/2
-        # r*F right face for cell i: r_face[i+1] * F_r[i]
-        # r*F left  face for cell i: r_face[i]   * F_r[i-1]
-        r_face_full = r_face[None, :, None]  # (1, nr+1, 1)
+        # rF at each interior face: (NVAR, nr-1, nz)
+        rF = r_face_inner[None, :, None] * F_r_full
 
-        # Flux divergence via scatter:
-        # dU[:, i, :] -= (r_face[i+1]*F_r[i] - r_face[i]*F_r[i-1]) / (r_i * dr)
-        # Use zero-padded approach: pad F_r with zeros at both ends
-        zero_pad = mx.zeros((NVAR, 1, nz), dtype=U.dtype)
-        F_r_padded = mx.concatenate([zero_pad, F_r, zero_pad], axis=1)  # (NVAR, nr+1, nz)
-
-        # r * F at each face k (k=0..nr): r_face[k] * F_r_padded[k]
-        rF_all = r_face_full * F_r_padded  # (NVAR, nr+1, nz)
-
-        # Divergence: rF_all[:, 1:nr+1, :] - rF_all[:, 0:nr, :]
-        div_r = (rF_all[:, 1:, :] - rF_all[:, :-1, :]) * inv_r_dr_bc
+        # Conservative FV divergence: dU[:, i, :] = -(rF[i] - rF[i-1]) / (r_i * dr)
+        # rF[i]   = flux at right face of cell i   (face i+1)
+        # rF[i-1] = flux at left  face of cell i   (face i)
+        # Pad rF with zeros at face 0 (axis boundary) and face nr (outer boundary)
+        zero_rF_l = mx.zeros((NVAR, 1, nz), dtype=U.dtype)
+        zero_rF_r = mx.zeros((NVAR, 1, nz), dtype=U.dtype)
+        rF_padded = mx.concatenate([zero_rF_l, rF, zero_rF_r], axis=1)  # (NVAR, nr+1, nz)
+        div_r = (rF_padded[:, 1:, :] - rF_padded[:, :-1, :]) * inv_r_dr[None, :, None]
         dU = dU - div_r
 
     # --- Axial flux divergence ---
     if nz >= 2:
         QL_z, QR_z = reconstruct(U, dim=1, method=method)
         F_z = _riemann_flux(QL_z, QR_z, gamma=gamma, dim=1, riemann=riemann)
-        # Standard Cartesian divergence along z
-        zero_pad_z = mx.zeros((NVAR, nr, 1), dtype=U.dtype)
-        F_z_padded = mx.concatenate([zero_pad_z, F_z, zero_pad_z], axis=2)  # (NVAR, nr, nz+1)
+        # F_z shape: (NVAR, nr, n_iface_z); pad to nz-1 entries
+        n_iface_z = F_z.shape[2]
+        n_padz_l = (nz - 1 - n_iface_z + 1) // 2
+        n_padz_r = (nz - 1) - n_iface_z - n_padz_l
+
+        zpads: list = []
+        if n_padz_l > 0:
+            zpads.append(mx.zeros((NVAR, nr, n_padz_l), dtype=U.dtype))
+        zpads.append(F_z)
+        if n_padz_r > 0:
+            zpads.append(mx.zeros((NVAR, nr, n_padz_r), dtype=U.dtype))
+        F_z_full = mx.concatenate(zpads, axis=2) if len(zpads) > 1 else F_z
+        # F_z_full: (NVAR, nr, nz-1)
+
+        zero_pad_z_l = mx.zeros((NVAR, nr, 1), dtype=U.dtype)
+        zero_pad_z_r = mx.zeros((NVAR, nr, 1), dtype=U.dtype)
+        F_z_padded = mx.concatenate([zero_pad_z_l, F_z_full, zero_pad_z_r], axis=2)  # (NVAR, nr, nz+1)
         div_z = (F_z_padded[:, :, 1:] - F_z_padded[:, :, :-1]) / dz
         dU = dU - div_z
 

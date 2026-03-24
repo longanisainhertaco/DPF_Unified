@@ -146,8 +146,8 @@ class FluidConfig(BaseModel):
         "python",
         description=(
             "MHD solver backend: 'python' (NumPy/Numba), 'athena' (Athena++ C++), "
-            "'metal' (PyTorch MPS on Apple GPU), 'hybrid' (Athena++ + WALRUS surrogate), "
-            "or 'auto' (Athena++ > Metal > Python)"
+            "'metal' (PyTorch MPS on Apple GPU), 'mlx' (MLX Metal v2 on Apple Silicon), "
+            "'hybrid' (Athena++ + WALRUS surrogate), or 'auto' (Athena++ > Metal > Python)"
         ),
     )
     reconstruction: str = Field("weno5", description="Reconstruction scheme")
@@ -242,7 +242,7 @@ class FluidConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_backend(self) -> FluidConfig:
-        valid = ("python", "athena", "athenak", "metal", "hybrid", "auto")
+        valid = ("python", "athena", "athenak", "metal", "mlx", "hybrid", "auto")
         if self.backend not in valid:
             raise ValueError(
                 f"backend must be one of {valid}, got '{self.backend}'"

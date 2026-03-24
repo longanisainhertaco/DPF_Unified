@@ -196,6 +196,26 @@ class SimulationEngine:
                 self.geometry_type, fc.reconstruction,
                 fc.riemann_solver, fc.time_integrator,
             )
+        elif self.backend == "mlx":
+            from dpf.metal.mlx_solver import MLXMHDSolver
+            dz = config.geometry.dz if config.geometry.dz is not None else dx
+            self.fluid = MLXMHDSolver(
+                grid_shape=(nx, ny, nz),
+                dx=dx,
+                dz=dz,
+                gamma=fc.gamma,
+                cfl=fc.cfl,
+                riemann_solver=fc.riemann_solver,
+                reconstruction=fc.reconstruction,
+                time_integrator=fc.time_integrator,
+                coordinates=self.geometry_type,
+                r_inner=config.circuit.anode_radius if self.geometry_type == "cylindrical" else 0.0,
+                convert_b_si_to_hl=self.geometry_type == "cylindrical",
+                ion_mass=self.ion_mass,
+                enable_bremsstrahlung=getattr(config.radiation, "bremsstrahlung_enabled", False),
+            )
+            self._cell_volume = dx * dx * dz
+            logger.info("Using MLX Metal backend (Apple Silicon GPU)")
         elif self.geometry_type == "cylindrical":
             dz = config.geometry.dz if config.geometry.dz is not None else dx
             self.fluid = CylindricalMHDSolver(
@@ -454,10 +474,10 @@ class SimulationEngine:
                     "or backend='python' (all physics, but non-conservative).",
                     self.backend, ", ".join(skipped),
                 )
-        elif self.backend == "metal":
-            # Metal shares the engine operator-split loop (radiation, sheath,
-            # collision) AND has its own transport physics (Hall, Braginskii,
-            # Nernst, resistive MHD, bremsstrahlung).
+        elif self.backend in ("metal", "mlx"):
+            # Metal/MLX share the engine operator-split loop (radiation, sheath,
+            # collision) AND have their own transport physics (HLLD, WENO5-Z,
+            # SSP-RK3, dual-energy, bremsstrahlung).
             metal_only = []
             if fc.diffusion_method == "sts":
                 metal_only.append("RKL2 super time-stepping (using explicit instead)")
@@ -465,7 +485,7 @@ class SimulationEngine:
                 metal_only.append("implicit diffusion (using explicit instead)")
             if metal_only:
                 logger.info(
-                    "Metal backend note: %s", ", ".join(metal_only),
+                    "%s backend note: %s", self.backend, ", ".join(metal_only),
                 )
 
     @property
@@ -476,7 +496,7 @@ class SimulationEngine:
             ``"production"`` for conservative backends (Athena++, Metal),
             ``"teaching"`` for the Python backend (non-conservative dp/dt).
         """
-        if self.backend in ("athena", "metal", "hybrid"):
+        if self.backend in ("athena", "metal", "mlx", "hybrid"):
             return "production"
         return "teaching"
 
@@ -511,6 +531,18 @@ class SimulationEngine:
                     "Or use backend='python' or backend='auto'."
                 )
             return "metal"
+
+        if requested == "mlx":
+            from dpf.metal.mlx_solver import MLXMHDSolver
+            if not MLXMHDSolver.is_available():
+                raise RuntimeError(
+                    "MLX Metal backend requested but MLX is not available or "
+                    "the default device is not a Metal GPU.\n"
+                    "Install MLX:  pip install mlx\n"
+                    "Requires macOS 13.3+ on Apple Silicon.\n"
+                    "Or use backend='python' or backend='auto'."
+                )
+            return "mlx"
 
         if requested == "athenak":
             from dpf.athenak_wrapper import is_available as athenak_available
