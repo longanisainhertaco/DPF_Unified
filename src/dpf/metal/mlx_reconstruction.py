@@ -38,12 +38,12 @@ def _compile_if_available(fn: object) -> object:
 def _take(arr: mx.array, axis: int, start: int, length: int) -> mx.array:
     """Extract `length` elements along `axis` starting at `start`.
 
-    Uses mx.take with a pre-built index array — compatible with
-    mx.compile() graph tracing.
+    Uses direct slice notation (zero-copy) rather than mx.take with an
+    index array, eliminating per-call mx.array allocations.
 
     Args:
         arr: Source array.
-        axis: Axis to slice along.
+        axis: Axis to slice along (0, 1, or 2).
         start: First index (inclusive).
         length: Number of elements to extract.
 
@@ -51,8 +51,12 @@ def _take(arr: mx.array, axis: int, start: int, length: int) -> mx.array:
         Sliced array; shape is identical to `arr` except the selected
         axis has size `length`.
     """
-    idx = mx.array(list(range(start, start + length)), dtype=mx.int32)
-    return mx.take(arr, idx, axis=axis)
+    end = start + length
+    if axis == 0:
+        return arr[start:end]
+    if axis == 1:
+        return arr[:, start:end, :]
+    return arr[:, :, start:end]
 
 
 # ============================================================
