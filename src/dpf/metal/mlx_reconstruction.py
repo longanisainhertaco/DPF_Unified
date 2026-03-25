@@ -15,6 +15,21 @@ from __future__ import annotations
 
 import mlx.core as mx
 
+# ---------------------------------------------------------------------------
+# Compile cache — populated lazily on first call.
+# ---------------------------------------------------------------------------
+
+_COMPILED: dict[str, object] = {}
+
+
+def _compile_if_available(fn: object) -> object:
+    """Wrap *fn* with mx.compile if MLX supports it, else return it unchanged."""
+    try:
+        return mx.compile(fn)  # type: ignore[attr-defined]
+    except Exception:
+        return fn
+
+
 # ============================================================
 # Internal helpers
 # ============================================================
@@ -279,7 +294,11 @@ def weno5z_reconstruct(
     qp1 = _take(Q, axis, 3, n_iface)
     qp2 = _take(Q, axis, 4, n_iface)
 
-    QL = _weno5z_left_biased(qm2, qm1, q0, qp1, qp2, eps=eps)
+    if "weno5z_left_biased" not in _COMPILED:
+        _COMPILED["weno5z_left_biased"] = _compile_if_available(_weno5z_left_biased)
+    _kernel = _COMPILED["weno5z_left_biased"]
+
+    QL = _kernel(qm2, qm1, q0, qp1, qp2, eps)  # type: ignore[operator]
 
     # Right-biased: same interface j, reconstructed from the right cell j+3.
     # Mirrored stencil: {j+5, j+4, j+3, j+2, j+1}
@@ -289,7 +308,7 @@ def weno5z_reconstruct(
     rp1 = _take(Q, axis, 2, n_iface)
     rp2 = _take(Q, axis, 1, n_iface)
 
-    QR = _weno5z_left_biased(rm2, rm1, r0, rp1, rp2, eps=eps)
+    QR = _kernel(rm2, rm1, r0, rp1, rp2, eps)  # type: ignore[operator]
 
     return QL, QR
 

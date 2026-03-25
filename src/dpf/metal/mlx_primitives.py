@@ -46,6 +46,74 @@ P_FLOOR: float = 1e-12
 _C_LIGHT: float = 3e8
 _CF_SQ_MAX: float = _C_LIGHT * _C_LIGHT
 
+# ---------------------------------------------------------------------------
+# Compile cache — populated lazily on first call.
+# ---------------------------------------------------------------------------
+
+_COMPILED: dict[str, object] = {}
+
+
+def _compile_if_available(fn: object) -> object:
+    """Wrap *fn* with mx.compile if MLX supports it, else return it unchanged."""
+    try:
+        return mx.compile(fn)  # type: ignore[attr-defined]
+    except Exception:
+        return fn
+
+
+# ---------------------------------------------------------------------------
+# Pure elementwise implementations (no Python control flow — compile-safe).
+# ---------------------------------------------------------------------------
+
+
+def _cons_to_prim_impl(
+    U: mx.array,
+    gamma: float,
+) -> tuple[mx.array, mx.array, mx.array, mx.array, mx.array, mx.array, mx.array, mx.array]:
+    gm1 = gamma - 1.0
+    rho = mx.maximum(U[IDN], RHO_FLOOR)
+    inv_rho = mx.reciprocal(rho)
+    vr = U[IMR] * inv_rho
+    vz = U[IMZ] * inv_rho
+    vt = U[IMT] * inv_rho
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
+    ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
+    p = mx.maximum(gm1 * (U[IEN] - KE - ME), P_FLOOR)
+    return rho, vr, vz, vt, p, Br, Bz, Bt
+
+
+def _recover_pressure_impl(
+    U: mx.array,
+    gamma: float,
+    eta1: float,
+    eta2: float,
+) -> tuple[mx.array, mx.array]:
+    gm1 = gamma - 1.0
+    rho = mx.maximum(U[IDN], RHO_FLOOR)
+    inv_rho = mx.reciprocal(rho)
+    vr = U[IMR] * inv_rho
+    vz = U[IMZ] * inv_rho
+    vt = U[IMT] * inv_rho
+    E = U[IEN]
+    Srho = U[ISR]
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
+    ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
+    p_E = gm1 * (E - KE - ME)
+    p_S = Srho * mx.power(rho, gm1)
+    E_abs = mx.maximum(mx.abs(E), 1e-30)
+    eta = mx.abs(p_S) / E_abs
+    denom = max(eta2 - eta1, 1e-30)
+    t = mx.clip((eta - eta1) / denom, 0.0, 1.0)
+    w = t * t * (3.0 - 2.0 * t)
+    p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
+    return p, w
+
 
 def cons_to_prim(
     U: mx.array,
@@ -64,25 +132,9 @@ def cons_to_prim(
         Tuple (rho, vr, vz, vt, p, Br, Bz, Bt), each shape (nr, nz).
         rho clamped above RHO_FLOOR, p clamped above P_FLOOR.
     """
-    gm1 = gamma - 1.0
-
-    rho = mx.maximum(U[IDN], RHO_FLOOR)
-    inv_rho = mx.reciprocal(rho)
-
-    vr = U[IMR] * inv_rho
-    vz = U[IMZ] * inv_rho
-    vt = U[IMT] * inv_rho
-
-    Br = U[IBR]
-    Bz = U[IBZ]
-    Bt = U[IBT]
-
-    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-    ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
-
-    p = mx.maximum(gm1 * (U[IEN] - KE - ME), P_FLOOR)
-
-    return rho, vr, vz, vt, p, Br, Bz, Bt
+    if "cons_to_prim" not in _COMPILED:
+        _COMPILED["cons_to_prim"] = _compile_if_available(_cons_to_prim_impl)
+    return _COMPILED["cons_to_prim"](U, gamma)  # type: ignore[operator]
 
 
 def prim_to_cons(
@@ -167,36 +219,9 @@ def recover_pressure_dual_energy(
         pressure clamped above P_FLOOR.
         blend_weight in [0, 1]: 0 = pure entropy, 1 = pure total-energy.
     """
-    gm1 = gamma - 1.0
-
-    rho = mx.maximum(U[IDN], RHO_FLOOR)
-    inv_rho = mx.reciprocal(rho)
-
-    vr = U[IMR] * inv_rho
-    vz = U[IMZ] * inv_rho
-    vt = U[IMT] * inv_rho
-    E = U[IEN]
-    Srho = U[ISR]
-    Br = U[IBR]
-    Bz = U[IBZ]
-    Bt = U[IBT]
-
-    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-    ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
-
-    p_E = gm1 * (E - KE - ME)
-    p_S = Srho * mx.power(rho, gm1)
-
-    E_abs = mx.maximum(mx.abs(E), 1e-30)
-    eta = mx.abs(p_S) / E_abs
-
-    denom = max(eta2 - eta1, 1e-30)
-    t = mx.clip((eta - eta1) / denom, 0.0, 1.0)
-    w = t * t * (3.0 - 2.0 * t)
-
-    p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
-
-    return p, w
+    if "recover_pressure" not in _COMPILED:
+        _COMPILED["recover_pressure"] = _compile_if_available(_recover_pressure_impl)
+    return _COMPILED["recover_pressure"](U, gamma, eta1, eta2)  # type: ignore[operator]
 
 
 def fast_magnetosonic(

@@ -2357,20 +2357,25 @@ class SimulationEngine:
         # --- Collision physics (electron-ion temperature relaxation) ---
         # In 2T mode, step_electron_energy already handles equilibration
         # and radiation — skip here to avoid double-counting.
+        # For MLX/Metal backends, the solver handles its own pressure recovery
+        # (dual-energy entropy tracer). Skip EOS pressure overwrite to avoid
+        # clobbering the solver's carefully computed pressure.
         Te = self.state["Te"]
         Ti = self.state["Ti"]
         rho = self.state["rho"]
-        ne = np.maximum(rho / self.ion_mass, 1e10)  # floor for coulomb_log safety
 
         _two_t = self.config.fluid.two_temperature and "e_electron" in self.state
-
         col_cfg = self.config.collision
+
+        # Temperature relaxation and EOS pressure update.
+        # MLX/Metal backends recover pressure from conservative total energy
+        # (dual-energy entropy tracer). Skip the EOS overwrite to avoid
+        # clobbering the solver's pressure with temperature-derived pressure.
+        ne = np.maximum(rho / self.ion_mass, 1e10)
         if col_cfg.dynamic_coulomb_log:
             lnL = coulomb_log(ne, Te)
         else:
             lnL = col_cfg.coulomb_log
-
-        # Use spatially-varying Z for collision rate if available
         Z_for_collisions = Z_bar_field if Z_bar_field is not None else Z_bar
         freq_ei = nu_ei(ne, Te, lnL, Z=Z_for_collisions)
         if not _two_t:
@@ -2379,9 +2384,8 @@ class SimulationEngine:
             self.state["Ti"] = Ti_new
         else:
             Te_new, Ti_new = Te, Ti
-
-        # Update pressure from new temperatures
-        self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
+        if self.backend not in ("metal", "mlx"):
+            self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
         if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
             self._sanitize_state("after collision step")
 
