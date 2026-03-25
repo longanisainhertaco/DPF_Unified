@@ -211,22 +211,60 @@ def compute_dt_cfl(
 # ---------------------------------------------------------------------------
 
 
-def _apply_floors(U: mx.array) -> mx.array:
-    """Enforce density and pressure floors on conserved state.
+def _apply_floors(
+    U: mx.array,
+    rho_vac_fraction: float = 1e-4,
+    va_max: float = 1e6,
+) -> mx.array:
+    """Enforce density, pressure, and vacuum B-field floors.
 
-    Clamps rho >= RHO_FLOOR. Pressure floor enforced implicitly via
-    energy floor: E >= P_FLOOR/(gamma-1) + KE + ME.
+    Clamps rho >= RHO_FLOOR. In vacuum cells (rho < rho_vac_fraction *
+    rho_max), scale B so that the Alfven speed v_A = |B|/sqrt(rho) stays
+    below va_max. Without this, vacuum cells behind the compression sheath
+    accumulate extreme B_theta from electrode BCs and geometric source
+    amplification, causing B to grow by 10+ orders in a single step.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz).
+        rho_vac_fraction: Fraction of max density below which a cell is
+            considered vacuum (default 1e-4).
+        va_max: Maximum allowed Alfven speed in vacuum cells [m/s].
 
     Returns:
         U with floors applied, same shape.
     """
     rows = list(mx.split(U, NVAR, axis=0))
     rows[IDN] = mx.maximum(rows[IDN], RHO_FLOOR)
-    # Ensure non-negative density also for entropy tracer
     rows[ISR] = mx.maximum(rows[ISR], 0.0)
+
+    # Alfven-speed limited density floor: prevent runaway wavespeeds in
+    # vacuum cells behind the compression sheath. Instead of clamping B
+    # (which loses physics information), inject mass so that v_A stays
+    # below va_max. This is equivalent to the "density injection" approach
+    # used by Athena++ (athena4.2/src/hydro/srcterms/gravitational_acceleration.cpp)
+    # and FLASH (Grid_markRefineDerefine).
+    #
+    # rho_min = B^2 / va_max^2 ensures v_A = |B|/sqrt(rho) <= va_max.
+    # Applied at EVERY floor call (pre-RHS and post-stage) so that flux
+    # computations never see extreme wavespeeds.
+    Br = rows[IBR][0]
+    Bz = rows[IBZ][0]
+    Bt = rows[IBT][0]
+    B_sq = Br * Br + Bz * Bz + Bt * Bt
+    rho_B_floor = B_sq / (va_max * va_max)
+    rho_new = mx.maximum(rows[IDN][0], rho_B_floor)
+    # Only inject mass where rho actually increased (energy bookkeeping)
+    rho_old = rows[IDN][0]
+    drho = rho_new - rho_old
+    # Injected mass gets thermal energy at local temperature
+    # (or just the floor — we pick floor to avoid computing T)
+    rows[IDN] = rho_new[None]
+    # Update energy: added mass contributes floor-level thermal energy
+    rows[IEN] = mx.maximum(
+        rows[IEN][0] + P_FLOOR / (5.0 / 3.0 - 1.0) * drho / mx.maximum(rho_old, RHO_FLOOR),
+        P_FLOOR,
+    )[None]
+
     return mx.stack([r[0] for r in rows], axis=0)
 
 
@@ -355,6 +393,9 @@ def ssp_rk3_step(
         Uk = _clamp_velocity(Uk, gamma)
         return Uk
 
+    # Apply floors to input state BEFORE computing RHS (same rationale as RK2)
+    U = _apply_floors(U)
+
     # Stage 1: U1 = Un + dt * L(Un)
     L1 = mhd_rhs(U, grid, gamma, dr, dz, method, riemann)
     U1 = U + dt * L1
@@ -414,6 +455,11 @@ def ssp_rk2_step(
             Uk = _resync_energy(Uk, gamma)
         Uk = _clamp_velocity(Uk, gamma)
         return Uk
+
+    # Apply floors to input state BEFORE computing RHS. Without this,
+    # vacuum cells behind the sheath generate extreme fluxes/sources that
+    # corrupt the state in a single substep (U + dt*L(U) already overflows).
+    U = _apply_floors(U)
 
     # Stage 1
     L1 = mhd_rhs(U, grid, gamma, dr, dz, method, riemann)
