@@ -79,15 +79,15 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD)
-Planned: J.2+ (backlog)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD), Q (MLX solver: 15 modules, 3 Metal kernels, dual-energy, electrode BC, vacuum stability, GPU optimization — Sprint 4 blocker RESOLVED)
+Planned: Q.2 (MLX Lp coupling + 2T sources + calibration), J.2+ (backlog)
 
 ### Test Patterns
 - Phase tests: test_phase_{letter}_{topic}.py
 - Module tests: test_{module}.py
 - Use conftest.py fixtures (8x8x8 grid, default_circuit_params)
 - @pytest.mark.slow for anything > 1 second
-- CI gate: >= 745 tests (currently 1475 total, 1353 non-slow, 122 slow, 45 Phase O + 23 Phase P)
+- CI gate: >= 4000 tests (currently 4861 total, ~4263 non-slow, ~600 slow, 405 MLX + 277 Metal + 45 Phase O + 23 Phase P)
 
 ## Key File Paths
 
@@ -141,6 +141,10 @@ Planned: J.2+ (backlog)
 | Phase N cross-backend tests | tests/test_phase_n_cross_backend.py (17 tests) |
 | Phase O physics accuracy tests | tests/test_phase_o_physics_accuracy.py (45 tests) |
 | Phase P engine accuracy tests | tests/test_phase_p_accuracy.py (22 non-slow + 1 slow) |
+| Phase Q MLX solver modules | src/dpf/metal/mlx_*.py (15 modules, ~2,620 LOC) |
+| Phase Q MLX tests | tests/test_mlx_*.py (17 files, 405 tests) |
+| Phase Q MLX benchmarks | src/dpf/benchmarks/mlx_benchmark.py |
+| Phase Q sprint research | docs/SPRINT{5,6,7}_RESEARCH.md |
 | Slash commands | .claude/commands/ (18 commands) |
 | Research document index | docs/RESEARCH_INDEX.md |
 
