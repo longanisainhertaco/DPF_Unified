@@ -190,10 +190,7 @@ class SimulationEngine:
                 self.fluid.geom = CylindricalGeometry(
                     nr=nx, nz=nz, dr=dx, dz=dz,
                 )
-            if self.geometry_type == "cylindrical" and hasattr(self.fluid, 'geom'):
-                self._cell_volume = self.fluid.geom.cell_volumes()[:, np.newaxis, :]
-            else:
-                self._cell_volume = dx * dx * dz
+            self._cell_volume = dx * dx * dz
             logger.info(
                 "Using Metal GPU backend (PyTorch MPS, %s, %s+%s+%s)",
                 self.geometry_type, fc.reconstruction,
