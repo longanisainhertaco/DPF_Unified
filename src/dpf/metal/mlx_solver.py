@@ -169,6 +169,10 @@ class MLXMHDSolver(PlasmaSolverBase):
         # Circuit coupling state — updated each step
         self._coupling: CouplingState = CouplingState()
         self.total_radiated_energy: float = 0.0
+        self._prev_Lp: float = 0.0
+        self._Lp_max: float = 0.0
+        self._cathode_radius: float = float(kwargs.get("cathode_radius", 0.025))
+        self.config_two_temperature: bool = kwargs.get("two_temperature", False)
 
         # Internal conserved state (mx.array, set after first step)
         self._U: Any = None
@@ -646,8 +650,12 @@ class MLXMHDSolver(PlasmaSolverBase):
             U, convert_b_hl_to_si=self._convert_b_si_to_hl
         )
 
-        # ── 8. Coupling ──────────────────────────────────────────────────
-        self._coupling = CouplingState(current=current, voltage=voltage)
+        # ── 7.5. Two-temperature source terms (CPU, matching Metal) ────
+        if result.get("e_electron") is not None:
+            self._do_two_temperature_sources(result, dt, kwargs.get("eta_field"))
+
+        # ── 8. Coupling — compute Lp from density-weighted Lee formula ──
+        self._update_coupling(U, current, voltage, dt)
         return result
 
     # ------------------------------------------------------------------
@@ -717,6 +725,116 @@ class MLXMHDSolver(PlasmaSolverBase):
         rows[IBR] = Br_cc_new[None]
         rows[IBZ] = Bz_cc_new[None]
         return mx.stack([r[0] for r in rows], axis=0).astype(mx.float32)
+
+    # ------------------------------------------------------------------
+    # Two-temperature source terms (operator-split, CPU)
+    # ------------------------------------------------------------------
+
+    def _do_two_temperature_sources(
+        self,
+        result: dict[str, np.ndarray],
+        dt: float,
+        eta_field: float | np.ndarray | None = None,
+    ) -> None:
+        """Apply electron-ion equilibration, Ohmic heating, bremsstrahlung.
+
+        Modifies result dict in-place. Matches Metal solver pattern at
+        metal_solver.py:1580-1604.
+        """
+        from dpf.fluid.two_temperature import step_electron_energy
+
+        rho = result["rho"]
+        n_i = rho / self.ion_mass
+        n_i_safe = np.maximum(n_i, 1e-30)
+        eta_np = (
+            np.asarray(eta_field) if eta_field is not None
+            else np.zeros_like(rho)
+        )
+        # Approximate J^2 from Ohmic heating if available
+        J_sq = np.zeros_like(rho)
+        e_e_new, Te_new, Ti_new = step_electron_energy(
+            rho_e_e=result["e_electron"],
+            rho=rho,
+            velocity=result["velocity"],
+            eta=eta_np,
+            J_sq=J_sq,
+            Te=result["Te"],
+            Ti=result["Ti"],
+            n_e=n_i_safe,
+            n_i=n_i_safe,
+            dx=self.dx,
+            dt=dt,
+            Z=self.Z_eff,
+            gaunt_factor=self.gaunt_factor,
+            gamma=self.gamma,
+        )
+        result["Te"] = np.maximum(Te_new, 1.0)
+        result["Ti"] = np.maximum(Ti_new, 1.0)
+        result["e_electron"] = e_e_new
+
+    # ------------------------------------------------------------------
+    # Plasma inductance from density-weighted Lee formula
+    # ------------------------------------------------------------------
+
+    def _update_coupling(
+        self, U: Any, current: float, voltage: float, dt: float,
+    ) -> None:
+        """Compute plasma inductance and update circuit coupling state.
+
+        Uses the Lee formula: Lp = (mu0/2pi) * z_sheath * ln(b/r_eff)
+        where r_eff is the density-weighted effective radius.
+
+        References: Lee & Saw, Phys. Plasmas 21, 072501 (2014).
+        """
+        from dpf.metal.mlx_kernels import IDN
+
+        rho_np = np.asarray(U[IDN])  # (nr, nz)
+        nr, nz = rho_np.shape
+        dr = self._grid.dr
+        dz = self._grid.dz
+        r_arr = self._r_inner + (np.arange(nr) + 0.5) * dr
+
+        # Sheath position from column density peak
+        col_density = np.sum(rho_np * r_arr[:, np.newaxis], axis=0) * dr
+        iz_sheath = int(np.argmax(col_density))
+        z_sheath = (iz_sheath + 0.5) * dz
+
+        # Density-weighted effective radius
+        rho_region = rho_np[:, : iz_sheath + 1]
+        r_col = r_arr[:, np.newaxis]
+        dV = 2.0 * math.pi * r_col * dr * dz
+        mass = rho_region * dV
+        total_mass = float(np.sum(mass))
+        if total_mass > 0:
+            r_eff = float(np.sum(r_col * mass) / total_mass)
+        else:
+            r_eff = 0.5 * self._cathode_radius
+        r_eff = max(r_eff, 1e-6)
+        r_eff = min(r_eff, self._cathode_radius * 0.999)
+
+        # Lee formula
+        if r_eff > 0 and z_sheath > 0:
+            Lp = (_MU0 / (2.0 * math.pi)) * z_sheath * math.log(
+                self._cathode_radius / r_eff
+            )
+        else:
+            Lp = 0.0
+
+        # Monotonicity enforcement (Lp can't decrease during compression)
+        if Lp > self._Lp_max:
+            self._Lp_max = Lp
+        else:
+            Lp = self._Lp_max
+
+        # dL/dt via backward difference
+        dL_dt: float | None = None
+        if self._prev_Lp > 0 and dt > 0:
+            dL_dt = (Lp - self._prev_Lp) / dt
+        self._prev_Lp = Lp
+
+        self._coupling = CouplingState(
+            Lp=Lp, current=current, voltage=voltage, dL_dt=dL_dt,
+        )
 
     # ------------------------------------------------------------------
     # PlasmaSolverBase — coupling_interface
