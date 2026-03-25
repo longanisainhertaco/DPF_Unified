@@ -249,6 +249,125 @@ class TestCartesianSodShock:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Brio-Wu MHD shock tube
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestCartesianBrioWu:
+    @pytest.mark.slow
+    def test_brio_wu_no_nan(self):
+        """Brio-Wu MHD shock tube — compound wave structure, no NaN."""
+        nx, ny, nz = 128, 4, 4
+        gamma = 2.0
+        s = MLXMHDSolver(
+            grid_shape=(nx, ny, nz),
+            dx=1.0 / nx,
+            coordinates="cartesian",
+            gamma=gamma,
+            riemann_solver="hll",
+            reconstruction="plm",
+            use_dual_energy=False,
+        )
+        rho = np.ones((nx, ny, nz)) * 0.125
+        p = np.ones((nx, ny, nz)) * 0.1
+        By = np.ones((nx, ny, nz)) * (-1.0)
+        rho[:nx // 2] = 1.0
+        p[:nx // 2] = 1.0
+        By[:nx // 2] = 1.0
+        state = {
+            "rho": rho,
+            "velocity": np.zeros((3, nx, ny, nz)),
+            "pressure": p,
+            "B": np.stack([
+                np.full((nx, ny, nz), 0.75),
+                By,
+                np.zeros((nx, ny, nz)),
+            ], axis=0),
+            "Te": np.full((nx, ny, nz), 300.0),
+            "Ti": np.full((nx, ny, nz), 300.0),
+            "psi": np.zeros((nx, ny, nz)),
+        }
+        t = 0.0
+        for _ in range(200):
+            dt = s.compute_dt(state)
+            dt = min(dt, 0.1 - t)
+            if dt <= 0:
+                break
+            state = s.step(state, dt=dt, current=0.0, voltage=0.0)
+            t += dt
+
+        rho_x = state["rho"][:, ny // 2, nz // 2]
+        assert not np.any(np.isnan(rho_x))
+        assert not np.any(np.isnan(state["B"][1]))
+        # Compound wave structure should create multiple density levels
+        assert len(np.unique(np.round(rho_x, 2))) > 3
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Orszag-Tang MHD vortex
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestCartesianOrszagTang:
+    @pytest.mark.slow
+    def test_orszag_tang_no_nan(self):
+        """Orszag-Tang vortex — 2D MHD turbulence, energy bounded."""
+        nx, ny, nz = 64, 64, 4
+        dx = 1.0 / nx
+        gamma = 5.0 / 3.0
+        x = np.linspace(dx / 2, 1.0 - dx / 2, nx)
+        y = np.linspace(dx / 2, 1.0 - dx / 2, ny)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+
+        rho = np.full((nx, ny, nz), gamma**2)
+        p = np.full((nx, ny, nz), gamma)
+        vel = np.zeros((3, nx, ny, nz))
+        vel[0] = (-np.sin(2 * np.pi * Y))[:, :, None]
+        vel[1] = (np.sin(2 * np.pi * X))[:, :, None]
+        B = np.zeros((3, nx, ny, nz))
+        B[0] = (-np.sin(2 * np.pi * Y))[:, :, None]
+        B[1] = (np.sin(4 * np.pi * X))[:, :, None]
+
+        s = MLXMHDSolver(
+            grid_shape=(nx, ny, nz),
+            dx=dx, dy=dx, dz=dx,
+            coordinates="cartesian",
+            gamma=gamma,
+            riemann_solver="hll",
+            reconstruction="plm",
+            use_dual_energy=False,
+            enable_dedner=True,
+        )
+        state = {
+            "rho": rho, "velocity": vel, "pressure": p, "B": B,
+            "Te": np.full((nx, ny, nz), 300.0),
+            "Ti": np.full((nx, ny, nz), 300.0),
+            "psi": np.zeros((nx, ny, nz)),
+        }
+        t = 0.0
+        for _ in range(100):
+            dt = s.compute_dt(state)
+            dt = min(dt, 0.1 - t)
+            if dt <= 0:
+                break
+            state = s.step(state, dt=dt, current=0.0, voltage=0.0)
+            t += dt
+
+        rho_out = state["rho"][:, :, nz // 2]
+        assert not np.any(np.isnan(rho_out))
+        # Vortex should create density structure
+        assert rho_out.std() > 0.05
+        # Energy should not blow up (< 50% drift for HLL at 64^2)
+        E1 = np.sum(
+            state["pressure"] / (gamma - 1)
+            + 0.5 * state["rho"] * np.sum(state["velocity"]**2, axis=0)
+            + 0.5 * np.sum(state["B"]**2, axis=0)
+        )
+        E0 = np.sum(p / (gamma - 1) + 0.5 * rho * np.sum(vel**2, axis=0) + 0.5 * np.sum(B**2, axis=0))
+        assert abs(E1 - E0) / E0 < 0.5
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Conservation
 # ──────────────────────────────────────────────────────────────────────────────
 
