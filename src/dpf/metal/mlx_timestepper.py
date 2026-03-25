@@ -147,18 +147,26 @@ def compute_dt_cfl(
     grid: CylindricalGrid,
     gamma: float = 5.0 / 3.0,
     cfl: float = 0.3,
+    rho_cfl_fraction: float = 1e-4,
 ) -> float:
-    """Compute CFL-limited timestep.
+    """Compute CFL-limited timestep, ignoring vacuum cells.
 
     dt = cfl * min(dr, dz) / max(|v| + cf)
     where cf is the fast magnetosonic speed (capped at c=3e8).
-    NaN cells filtered before computing max.
+
+    Cells with rho < rho_cfl_fraction * rho_max are excluded from the max
+    signal speed calculation.  Without this, vacuum cells at RHO_FLOOR
+    (1e-12) produce cf -> 3e8 m/s, yielding dt ~ 7.5e-13 s on typical DPF
+    grids.  This is the dominant cause of simulation stalling during the
+    compression phase when vacuum regions form behind the sheath.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz).
         grid: CylindricalGrid with dr, dz.
         gamma: Adiabatic index (default 5/3).
         cfl: Courant number (default 0.3).
+        rho_cfl_fraction: Fraction of max density below which cells are
+            excluded from the CFL computation (default 1e-4).
 
     Returns:
         dt [s], float.
@@ -171,8 +179,19 @@ def compute_dt_cfl(
     speed_r = mx.abs(vr) + cf_r
     speed_z = mx.abs(vz) + cf_z
 
+    # Mask out vacuum cells: signal speeds at rho << rho_max are unphysical
+    # artifacts of floor values and should not constrain the global timestep.
+    rho_np = np.asarray(rho)
+    rho_max = float(np.nanmax(rho_np))
+    rho_threshold = max(rho_cfl_fraction * rho_max, 10.0 * RHO_FLOOR)
+    active = rho_np >= rho_threshold
+
     speed_r_np = np.asarray(speed_r)
     speed_z_np = np.asarray(speed_z)
+
+    # Apply mask: set vacuum cell speeds to 0 so they don't dominate
+    speed_r_np = np.where(active, speed_r_np, 0.0)
+    speed_z_np = np.where(active, speed_z_np, 0.0)
 
     max_r = float(np.nanmax(speed_r_np))
     max_z = float(np.nanmax(speed_z_np))
