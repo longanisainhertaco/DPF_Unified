@@ -23,7 +23,7 @@ import math
 
 import mlx.core as mx
 
-from dpf.metal.mlx_grid import CylindricalGrid
+from dpf.metal.mlx_grid import CartesianGrid, CylindricalGrid
 from dpf.metal.mlx_kernels import (
     IBR,
     IBT,
@@ -186,17 +186,35 @@ def compute_dt_cfl(
     speed_r = mx.where(active, speed_r, 0.0)
     speed_z = mx.where(active, speed_z, 0.0)
 
-    # Single GPU→CPU transfer: just the two max values
+    # y-direction speed for Cartesian 3D
+    is_cartesian_3d = isinstance(grid, CartesianGrid) and U.ndim == 4
+    if is_cartesian_3d:
+        cf_y = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=1)
+        speed_y = mx.abs(U[IMT] / mx.maximum(rho, RHO_FLOOR)) + cf_y
+        speed_y = mx.where(active, speed_y, 0.0)
+    else:
+        speed_y = mx.array(0.0)
+
+    # Single GPU→CPU transfer
     max_r = float(mx.max(speed_r))
     max_z = float(mx.max(speed_z))
+    max_y = float(mx.max(speed_y)) if is_cartesian_3d else 0.0
 
     if not math.isfinite(max_r) or max_r == 0.0:
         max_r = 1.0
     if not math.isfinite(max_z) or max_z == 0.0:
         max_z = 1.0
+    if is_cartesian_3d and (not math.isfinite(max_y) or max_y == 0.0):
+        max_y = 1.0
 
-    dx_min = min(grid.dr, grid.dz)
-    dt = cfl * dx_min / max(max_r, max_z)
+    if is_cartesian_3d:
+        dx_min = min(grid.dx, grid.dy, grid.dz)
+        max_speed = max(max_r, max_z, max_y)
+    else:
+        dx_min = min(grid.dr, grid.dz)
+        max_speed = max(max_r, max_z)
+
+    dt = cfl * dx_min / max_speed
     return float(dt)
 
 

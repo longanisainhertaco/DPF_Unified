@@ -1,13 +1,18 @@
-"""Cylindrical grid geometry for the MLX MHD solver.
+"""Grid geometry for the MLX MHD solver.
 
-Pre-computes cell-center radii, face radii, cell volumes, and face areas
-as cached mx.array tensors. All geometry is axisymmetric (r, z) with
-ny=1 implicitly.
+Provides both cylindrical (r, z) and Cartesian (x, y, z) grid classes.
+Pre-computes cell-center positions, face positions, cell volumes, and
+face areas as cached mx.array tensors.
 
-Grid layout:
+Grid layout (cylindrical):
   - r: nr cells from r_inner + dr/2 to r_inner + (nr-0.5)*dr
   - z: nz cells from dz/2 to (nz-0.5)*dz
   - Faces at cell boundaries: r_face[i] = r_inner + i*dr (nr+1 values)
+
+Grid layout (Cartesian):
+  - x: nx cells, dx spacing
+  - y: ny cells, dy spacing
+  - z: nz cells, dz spacing
 """
 from __future__ import annotations
 
@@ -130,3 +135,61 @@ class CylindricalGrid:
     def total_volume(self) -> float:
         """Total grid volume [m^3]."""
         return float(mx.sum(self.cell_volume).item()) * self.nz
+
+
+class CartesianGrid:
+    """Uniform Cartesian 3D grid geometry with cached MLX arrays.
+
+    Parameters
+    ----------
+    nx, ny, nz : int
+        Number of cells in each direction.
+    dx : float
+        Cell spacing in x [m].
+    dy : float | None
+        Cell spacing in y [m]. Defaults to dx.
+    dz : float | None
+        Cell spacing in z [m]. Defaults to dx.
+
+    Attributes
+    ----------
+    cell_volume : float
+        Uniform cell volume dx*dy*dz.
+    r_cell : None
+        Not applicable (Cartesian). Used as a sentinel by mhd_rhs.
+    """
+
+    def __init__(
+        self,
+        nx: int,
+        ny: int,
+        nz: int,
+        dx: float,
+        dy: float | None = None,
+        dz: float | None = None,
+    ) -> None:
+        if nx < 1 or ny < 1 or nz < 1:
+            raise ValueError(f"Grid dims must be >= 1, got ({nx}, {ny}, {nz})")
+        if dx <= 0.0:
+            raise ValueError(f"dx must be > 0, got {dx}")
+
+        self.nx = nx
+        self.ny = ny
+        self.nz = nz
+        self.dx = float(dx)
+        self.dy = float(dy) if dy is not None else self.dx
+        self.dz = float(dz) if dz is not None else self.dx
+
+        self.cell_volume: float = self.dx * self.dy * self.dz
+
+        # Cylindrical geometry sentinels — None signals Cartesian to mhd_rhs
+        self.r_cell = None
+        self.r_face = None
+        self.inv_r = None
+
+        # For CFL and spacing queries that expect dr/dz attributes
+        self.dr = self.dx
+
+    def total_volume(self) -> float:
+        """Total grid volume [m^3]."""
+        return self.cell_volume * self.nx * self.ny * self.nz
