@@ -188,6 +188,10 @@ def _hll_flux(
         F_LF = 0.5*(FL + FR) - 0.5*S_max*(QR_np - QL_np)
         F_out = np.where(nans, F_LF, F_out)
 
+    # Clamp to float32 range before cast to prevent overflow warnings
+    F32_MAX = np.float64(np.finfo(np.float32).max)
+    F_out = np.clip(F_out, -F32_MAX, F32_MAX)
+
     return mx.array(F_out.astype(np.float32))
 
 

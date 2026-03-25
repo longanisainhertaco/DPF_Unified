@@ -113,7 +113,7 @@ def pf1000_result():
         velocity = np.asarray(state["velocity"], dtype=np.float64)
         B = np.asarray(state["B"], dtype=np.float64)
 
-        masses.append(float(np.sum(rho) * cell_vol))
+        masses.append(float(np.sum(rho * np.asarray(cell_vol))))
         min_pressures.append(float(np.min(pressure)))
 
         # Total energy density: kinetic + magnetic + thermal
@@ -121,7 +121,7 @@ def pf1000_result():
         me = 0.5 * np.sum(B**2, axis=0)
         gamma = 5.0 / 3.0
         te = pressure / (gamma - 1.0)
-        energies.append(float(np.sum(ke + me + te) * cell_vol))
+        energies.append(float(np.sum((ke + me + te) * np.asarray(cell_vol))))
 
         if result.finished:
             break
