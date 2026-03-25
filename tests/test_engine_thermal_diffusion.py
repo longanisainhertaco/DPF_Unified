@@ -212,7 +212,7 @@ class TestNoShadowedConstants:
 
     def test_no_shadowed_k_B(self) -> None:
         """Fail if any assignment target named 'k_B' exists in engine.py."""
-        with open("src/dpf/engine.py") as _f:
+        with open("src/dpf/engine/core.py") as _f:
             source = _f.read()
         tree = ast.parse(source)
 
@@ -232,7 +232,7 @@ class TestNoShadowedConstants:
 
     def test_engine_imports_k_B_from_constants(self) -> None:
         """engine.py must import k_B from dpf.constants (not define it locally)."""
-        with open("src/dpf/engine.py") as _f:
+        with open("src/dpf/engine/core.py") as _f:
             source = _f.read()
         tree = ast.parse(source)
 
@@ -251,7 +251,7 @@ class TestNoShadowedConstants:
 
     def test_no_shadowed_eV(self) -> None:
         """Fail if any local assignment to 'eV' exists in engine.py."""
-        with open("src/dpf/engine.py") as _f:
+        with open("src/dpf/engine/core.py") as _f:
             source = _f.read()
         tree = ast.parse(source)
 
