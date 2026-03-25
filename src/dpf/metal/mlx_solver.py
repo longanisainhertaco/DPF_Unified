@@ -217,16 +217,22 @@ class MLXMHDSolver(PlasmaSolverBase):
             self._build_internals()
 
     # ------------------------------------------------------------------
-    # Electrode ghost-cell boundary condition
+    # Electrode ghost-cell boundary condition (pad / strip)
     # ------------------------------------------------------------------
 
-    def _apply_electrode_bc(self, U: Any, current: float) -> Any:
-        """Encode B_theta = mu_0 * I / (2*pi*r) at the outer radial boundary.
+    # WENO5-Z needs 3 ghost cells; PLM needs 2.
+    _GHOST_NG: int = 3
 
-        The outermost radial cell row in IBT is overwritten with the
-        current-sheet value so the Riemann solver sees the correct jump
-        condition at the cathode face.  Inner boundary (axis) retains
-        B_theta = 0 by symmetry.
+    def _pad_electrode_ghost(self, U: Any, current: float) -> tuple[Any, Any]:
+        """Pad state with ghost cells encoding electrode BCs.
+
+        Extends the radial domain by ``_GHOST_NG`` ghost cells on each side.
+        Inner ghosts (axis): reflecting with sign-flip on B_theta, B_r, mom_r, mom_t.
+        Outer ghosts (cathode): zero-gradient base + B_theta = mu0*I/(2*pi*r).
+
+        This is the same strategy used by MetalMHDSolver._pad_electrode_ghost --
+        the Riemann solver sees the electrode discontinuity through the ghost cells
+        without overwriting any interior cell.
 
         Parameters
         ----------
@@ -237,28 +243,131 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         Returns
         -------
-        mx.array
-            Updated U with electrode BC applied to the outer IBT row.
+        tuple[mx.array, object]
+            Padded state (NVAR, nr + 2*ng, nz) and padded grid object.
         """
         mx = require_mlx()
-        from dpf.metal.mlx_kernels import IBT, NVAR
+        from dpf.metal.mlx_kernels import ghost_pad_mlx
 
-        r_outer = float(self._grid.r_cell[-1])
-        if r_outer <= 0.0:
-            return U
+        ng = self._GHOST_NG
+        nr_g = self.nr + 2 * ng
+        dr = self._grid.dr
+        dz = self._grid.dz
 
-        Bt_electrode = (_MU0 * current) / (2.0 * math.pi * r_outer)
-        if self._convert_b_si_to_hl:
-            Bt_electrode /= _SQRT_MU0
+        # Ghost-zone radial coordinates: extend below r_inner for inner ghosts.
+        # Negative r values are geometrically necessary for reflecting BCs at axis.
+        # Matches PyTorch MetalMHDSolver._pad_electrode_ghost coordinate layout.
+        r_inner_g = self._r_inner - ng * dr
 
-        Bt_slice = U[IBT]  # (nr, nz)
-        inner = Bt_slice[: self.nr - 1, :]  # (nr-1, nz)
-        outer_bc = mx.full((1, self.nz), float(Bt_electrode), dtype=mx.float32)
-        Bt_new = mx.concatenate([inner, outer_bc], axis=0)
+        # Cell centres of the padded grid (may include negative r for inner ghosts)
+        r_cell_list = [r_inner_g + (i + 0.5) * dr for i in range(nr_g)]
+        r_cell_np = np.array(r_cell_list, dtype=np.float32)
 
-        rows = [U[i] for i in range(NVAR)]
-        rows[IBT] = Bt_new
-        return mx.stack(rows, axis=0)
+        # ghost_pad_mlx expects r_face param as cell-centre radii for B_theta calc
+        U_padded = ghost_pad_mlx(
+            U, ng, "electrode",
+            current=current,
+            r_face=r_cell_np,
+            mu0=_MU0,
+        )
+
+        # ghost_pad_mlx writes B_theta in SI in ghost cells. Two corrections:
+        # 1. Convert to HL if needed.
+        # 2. Set B_theta = mu0*I/(2*pi*r) in the outermost ng interior cells
+        #    as well, so the transition from interior to ghost is smooth (1/r
+        #    profile). Without this, WENO5-Z sees a 0→1000 HL jump and
+        #    produces NaN in float32.
+        from dpf.metal.mlx_kernels import IBT
+        _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
+        U_np = np.asarray(U_padded)
+
+        # Outer ghost cells: fix SI→HL if needed (ghost_pad wrote SI)
+        for ig in range(ng):
+            out_idx = ng + self.nr + ig
+            r_pos = max(r_cell_list[out_idx], 1e-10)
+            Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+            U_np[IBT, out_idx, :] = Bt_val
+
+        # Outermost ng interior cells: set B_theta to electrode 1/r profile.
+        # This ensures the WENO5-Z stencil sees a smooth B_theta transition
+        # rather than a step discontinuity at the ghost boundary.
+        for ig in range(ng):
+            int_idx = ng + self.nr - 1 - ig  # last interior, second-to-last, etc.
+            r_pos = max(r_cell_list[int_idx], 1e-10)
+            Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+            # Blend: use max(existing, electrode) so we don't reduce B_theta
+            # that might already be set from the interior physics
+            existing = U_np[IBT, int_idx, :]
+            U_np[IBT, int_idx, :] = np.where(
+                np.abs(existing) > np.abs(Bt_val), existing, Bt_val
+            )
+
+        U_padded = mx.array(U_np)
+
+        # Build a lightweight padded grid. CylindricalGrid rejects negative
+        # r_inner, so we build geometry arrays directly on the ghost-extended
+        # coordinate system, matching what PyTorch MetalMHDSolver does.
+        r_cell_mx = mx.array(r_cell_np)
+        r_face_list = [r_inner_g + i * dr for i in range(nr_g + 1)]
+        r_face_mx = mx.array(np.array(r_face_list, dtype=np.float32))
+
+        # 1/r with L'Hopital at axis (|r| < dr/2 → use 2/dr)
+        inv_r_list = [
+            2.0 / dr if abs(rc) < 0.5 * dr else 1.0 / max(abs(rc), 1e-30)
+            for rc in r_cell_list
+        ]
+        inv_r_mx = mx.array(np.array(inv_r_list, dtype=np.float32))
+
+        # Cell volumes and face areas
+        r_out = r_face_mx[1:]
+        r_in = r_face_mx[:-1]
+        pi_f32 = mx.array(math.pi, dtype=mx.float32)
+        cell_volume = pi_f32 * mx.abs(r_out * r_out - r_in * r_in) * dz
+        face_area_r = mx.array(2.0 * math.pi * dz, dtype=mx.float32) * mx.abs(r_face_mx)
+        face_area_z = pi_f32 * mx.abs(r_out * r_out - r_in * r_in)
+
+        # z geometry unchanged
+        z_cell_mx = self._grid.z_cell
+
+        # Assemble a simple namespace object matching CylindricalGrid API
+        class _PaddedGrid:
+            pass
+
+        grid_g = _PaddedGrid()
+        grid_g.nr = nr_g
+        grid_g.nz = self.nz
+        grid_g.dr = dr
+        grid_g.dz = dz
+        grid_g.r_inner = r_inner_g
+        grid_g.r_cell = r_cell_mx
+        grid_g.r_face = r_face_mx
+        grid_g.z_cell = z_cell_mx
+        grid_g.inv_r = inv_r_mx
+        grid_g.cell_volume = cell_volume
+        grid_g.face_area_r = face_area_r
+        grid_g.face_area_z = face_area_z
+
+        mx.eval(r_cell_mx, r_face_mx, inv_r_mx, cell_volume, face_area_r, face_area_z)
+
+        return U_padded, grid_g
+
+    @staticmethod
+    def _strip_ghost(U: Any, ng: int) -> Any:
+        """Strip ghost cells from padded state, returning interior only.
+
+        Parameters
+        ----------
+        U : mx.array
+            Padded state, shape (NVAR, nr + 2*ng, nz).
+        ng : int
+            Number of ghost cells on each side.
+
+        Returns
+        -------
+        mx.array
+            Interior state, shape (NVAR, nr, nz).
+        """
+        return U[:, ng:-ng, :]
 
     # ------------------------------------------------------------------
     # Operator-split: resistive diffusion
@@ -457,26 +566,33 @@ class MLXMHDSolver(PlasmaSolverBase):
         # so no additional work is needed.  Track that we have run at least once.
         self._entropy_initialized = True
 
-        # ── 3. Electrode BC ──────────────────────────────────────────────
+        # ── 3. Electrode BC (ghost-cell padding) ────────────────────────
         apply_bc = kwargs.get("apply_electrode_bc", False)
-        if (
+        _ghost_active = (
             apply_bc
             and self.coordinates == "cylindrical"
             and abs(current) > 1e-10
-        ):
-            U = self._apply_electrode_bc(U, current)
+        )
+        grid_for_rk = self._grid
+        if _ghost_active:
+            U, grid_for_rk = self._pad_electrode_ghost(U, current)
             mx.eval(U)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
         step_fn = ssp_rk3_step if self._integrator != "ssp_rk2" else ssp_rk2_step
         U = step_fn(
-            U, self._grid, dt,
+            U, grid_for_rk, dt,
             gamma=self.gamma,
             method=self._method,
             riemann=self._riemann,
             use_dual_energy=self._use_dual_energy,
         )
         mx.eval(U)
+
+        # ── 4.1. Strip ghost cells ───────────────────────────────────────
+        if _ghost_active:
+            U = self._strip_ghost(U, self._GHOST_NG)
+            mx.eval(U)
 
         # ── 4.5. Constrained transport div(B) correction ─────────────────
         if self._use_ct and self.coordinates == "cylindrical":

@@ -867,7 +867,7 @@ class SimulationEngine:
         self.field_manager.B = self.state["B"]
         L_p = self.field_manager.compute_plasma_inductance(self.circuit.current)
         self._prev_L_plasma = L_p
-        if self.boundary_cfg.electrode_bc:
+        if self.boundary_cfg.electrode_bc and self.backend not in ("mlx",):
             self._apply_electrode_bc(self._coupling.current)
 
     def _step_ionization_and_resistivity(
@@ -1049,10 +1049,13 @@ class SimulationEngine:
         if not np.isfinite(dt) or dt <= 0:
             raise RuntimeError(f"Non-finite dt={dt} in circuit subcycle — MHD state likely diverged")
 
-        L_total = self.circuit.L_ext + self._coupling.Lp
+        Lp_safe = self._coupling.Lp if np.isfinite(self._coupling.Lp) else 0.0
+        L_total = self.circuit.L_ext + Lp_safe
         dt_lc = np.sqrt(max(L_total, 1e-12) * self.circuit.C)
         # Target ~500 sub-steps per quarter period for accurate snowplow trajectory
         dt_sub_target = max(dt_lc / 500.0, 1e-12)
+        if not np.isfinite(dt_sub_target):
+            dt_sub_target = 1e-12
         n_sub = max(1, int(np.ceil(dt / dt_sub_target)))
         dt_sub = dt / n_sub
 
@@ -1989,7 +1992,9 @@ class SimulationEngine:
         if self.geometry_type == "cylindrical" and self.snowplow and self.snowplow.is_active:
             z_sheath = self.snowplow.z
             dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
-            iz_sheath = round(z_sheath / dz)
+            if not np.isfinite(z_sheath) or dz <= 0:
+                return  # snowplow diverged — skip zipper BC this step
+            iz_sheath = int(round(z_sheath / dz)) if np.isfinite(z_sheath) else 0
 
             nx, ny, nz = self.config.grid_shape
             B = self.state["B"]
@@ -2005,7 +2010,7 @@ class SimulationEngine:
             if self.snowplow.phase in ("radial", "reflected"):
                 r_shock = self.snowplow.r_shock
                 dr = self.config.dx
-                ir_shock = round(r_shock / dr)
+                ir_shock = int(round(r_shock / dr)) if np.isfinite(r_shock) else 0
                 if 0 <= ir_shock < nx:
                     B[1, ir_shock + 1:, :, :] = 0.0
 
@@ -2049,7 +2054,7 @@ class SimulationEngine:
             nr = self.config.grid_shape[0]
             r_grid = np.array([(ir + 0.5) * dr for ir in range(nr)])
 
-        ir_shock = round(r_shock / dr) if dr > 0 else len(r_grid)
+        ir_shock = int(round(r_shock / dr)) if (dr > 0 and np.isfinite(r_shock)) else len(r_grid)
         ir_shock = min(ir_shock, len(r_grid))
 
         B = self.state["B"]  # shape (3, nr, 1, nz)
@@ -2177,7 +2182,7 @@ class SimulationEngine:
 
         if self.snowplow.phase == "rundown":
             # Axial: average pressure ahead of sheath (z > z_sheath)
-            iz = round(self.snowplow.z / dz) if dz > 0 else 0
+            iz = int(round(self.snowplow.z / dz)) if (dz > 0 and np.isfinite(self.snowplow.z)) else 0
             nz = p.shape[-1]
             if 0 <= iz < nz - 1:
                 p_ahead = p[..., iz + 1:]
@@ -2185,7 +2190,7 @@ class SimulationEngine:
                     return max(float(np.mean(p_ahead)), fallback)
         elif self.snowplow.phase in ("radial", "reflected"):
             # Radial: average pressure inside shock front (r < r_shock)
-            ir = round(self.snowplow.r_shock / dr) if dr > 0 else 0
+            ir = int(round(self.snowplow.r_shock / dr)) if (dr > 0 and np.isfinite(self.snowplow.r_shock)) else 0
             nx = p.shape[0]
             if 0 < ir <= nx:
                 p_inside = p[:ir]
@@ -2355,49 +2360,40 @@ class SimulationEngine:
                 instead of scalar Z_bar for improved physics fidelity.
         """
         # --- Collision physics (electron-ion temperature relaxation) ---
-        # In 2T mode, step_electron_energy already handles equilibration
-        # and radiation — skip here to avoid double-counting.
-        # For MLX/Metal backends, the solver handles its own pressure recovery
-        # (dual-energy entropy tracer). Skip EOS pressure overwrite to avoid
-        # clobbering the solver's carefully computed pressure.
+        # Metal/MLX backends handle transport internally (operator-split in
+        # the solver). Skip collision + EOS pressure overwrite for these backends.
         Te = self.state["Te"]
         Ti = self.state["Ti"]
         rho = self.state["rho"]
-
         _two_t = self.config.fluid.two_temperature and "e_electron" in self.state
-        col_cfg = self.config.collision
-
-        # Temperature relaxation and EOS pressure update.
-        # MLX/Metal backends recover pressure from conservative total energy
-        # (dual-energy entropy tracer). Skip the EOS overwrite to avoid
-        # clobbering the solver's pressure with temperature-derived pressure.
-        ne = np.maximum(rho / self.ion_mass, 1e10)
-        if col_cfg.dynamic_coulomb_log:
-            lnL = coulomb_log(ne, Te)
-        else:
-            lnL = col_cfg.coulomb_log
-        Z_for_collisions = Z_bar_field if Z_bar_field is not None else Z_bar
-        freq_ei = nu_ei(ne, Te, lnL, Z=Z_for_collisions)
-        if not _two_t:
-            Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
-            self.state["Te"] = Te_new
-            self.state["Ti"] = Ti_new
-        else:
-            Te_new, Ti_new = Te, Ti
         if self.backend not in ("metal", "mlx"):
+            col_cfg = self.config.collision
+            ne = np.maximum(rho / self.ion_mass, 1e10)
+            if col_cfg.dynamic_coulomb_log:
+                lnL = coulomb_log(ne, Te)
+            else:
+                lnL = col_cfg.coulomb_log
+            Z_for_collisions = Z_bar_field if Z_bar_field is not None else Z_bar
+            freq_ei = nu_ei(ne, Te, lnL, Z=Z_for_collisions)
+            if not _two_t:
+                Te_new, Ti_new = relax_temperatures(Te, Ti, freq_ei, dt_sub)
+                self.state["Te"] = Te_new
+                self.state["Ti"] = Ti_new
+            else:
+                Te_new, Ti_new = Te, Ti
             self.state["pressure"] = self.eos.total_pressure(rho, Ti_new, Te_new)
         if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
             self._sanitize_state("after collision step")
 
         # --- Braginskii ion viscosity ---
-        if self.config.fluid.enable_viscosity and self.backend != "metal":
+        if self.config.fluid.enable_viscosity and self.backend not in ("metal", "mlx"):
             self._apply_viscosity(dt_sub)
             if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
                 self._sanitize_state("after viscosity step")
 
         # --- Anisotropic thermal conduction (field-aligned Braginskii) ---
         # Skip if: Metal backend (handled internally). In 2T mode this applies to Te (electron conduction).
-        if self.config.fluid.enable_anisotropic_conduction and self.backend != "metal":
+        if self.config.fluid.enable_anisotropic_conduction and self.backend not in ("metal", "mlx"):
             _dx = self.config.dx
             if self.geometry_type == "cylindrical":
                 _dz = self.config.geometry.dz if self.config.geometry.dz is not None else _dx
@@ -2422,9 +2418,9 @@ class SimulationEngine:
                 self._sanitize_state("after anisotropic conduction step")
 
         # --- Radiation losses ---
-        # Use spatially-varying Z for bremsstrahlung (P ~ Z^2) if available
+        # MLX/Metal handle bremsstrahlung internally in the solver step.
         Z_for_rad = Z_bar_field if Z_bar_field is not None else Z_bar
-        if self.rad_cfg.bremsstrahlung_enabled and not _two_t:
+        if self.rad_cfg.bremsstrahlung_enabled and not _two_t and self.backend not in ("metal", "mlx"):
             ne_rad = rho / self.ion_mass
             if self.rad_cfg.fld_enabled:
                 _r_coords = None
