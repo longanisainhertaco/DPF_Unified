@@ -101,6 +101,7 @@ ignore = [
     "N816",   # Variable in global scope mixedCase — physics constants (k_B, eV)
     "SIM108", # Use ternary operator — readability preference
     "B027",   # Empty method in ABC without abstract decorator — intentional default
+    "E741",   # Ambiguous variable name — I (current), l (length) are standard physics symbols
 ]
 
 [tool.mypy]
@@ -121,4 +122,5 @@ markers = [
     "walrus: marks tests that require WALRUS model",
     "athenak: marks tests that require AthenaK binary",
     "athena: marks tests that require Athena++ binary",
+    "validation: marks validation tests against experimental data",
 ]
