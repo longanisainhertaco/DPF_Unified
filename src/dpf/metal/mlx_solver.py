@@ -159,6 +159,13 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._use_dual_energy: bool = use_dual_energy or (coordinates == "cylindrical")
         self._use_ct: bool = bool(use_ct)
 
+        # Dedner GLM div(B) cleaning: auto-enable for Cartesian when CT is off
+        self._enable_dedner: bool = bool(kwargs.get(
+            "enable_dedner",
+            coordinates == "cartesian" or not use_ct,
+        ))
+        self._enable_powell: bool = bool(kwargs.get("enable_powell", False))
+
         # Normalise reconstruction: "weno5" is an alias for "weno5z"
         if reconstruction in ("weno5", "weno5z"):
             self._method: str = "weno5z"
@@ -179,6 +186,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         # Internal conserved state (mx.array, set after first step)
         self._U: Any = None
         self._entropy_initialized: bool = False
+        self._psi: Any = None  # Dedner cleaning scalar (sidecar, not in U)
 
         # Grid and state manager — built eagerly if MLX is present
         self._grid: Any = None
@@ -645,9 +653,13 @@ class MLXMHDSolver(PlasmaSolverBase):
         if _ghost_active:
             U = self._strip_ghost(U, self._GHOST_NG)
 
-        # ── 4.5. Constrained transport div(B) correction ─────────────────
+        # ── 4.5. div(B) control ───────────────────────────────────────────
         if self._use_ct and self.coordinates == "cylindrical":
             U = self._apply_ct_correction(U, dt)
+
+        if self._enable_dedner or self._enable_powell:
+            U = self._apply_divb_cleaning(U, dt)
+            mx.eval(U)
 
         # ── 5. Resistive diffusion ───────────────────────────────────────
         eta_raw = kwargs.get("eta_field")
@@ -756,6 +768,59 @@ class MLXMHDSolver(PlasmaSolverBase):
         rows[IBR] = Br_cc_new[None]
         rows[IBZ] = Bz_cc_new[None]
         return mx.stack([r[0] for r in rows], axis=0).astype(mx.float32)
+
+    # ------------------------------------------------------------------
+    # Dedner GLM + Powell div(B) cleaning
+    # ------------------------------------------------------------------
+
+    def _apply_divb_cleaning(self, U: Any, dt: float) -> Any:
+        """Operator-split Dedner GLM and/or Powell div(B) correction.
+
+        Dedner evolves a sidecar psi scalar that propagates and damps
+        divergence errors. Powell adds source terms proportional to div(B).
+        """
+        mx = require_mlx()
+        from dpf.metal.mlx_divb import dedner_source, powell_source
+        from dpf.metal.mlx_primitives import fast_magnetosonic
+
+        # Initialize psi on first call
+        spatial_shape = U.shape[1:]
+        if self._psi is None:
+            self._psi = mx.zeros(spatial_shape, dtype=mx.float32)
+
+        if self._enable_dedner:
+            # Compute cleaning speed ch from max fast magnetosonic speed
+            rho, vr, vz, vt, p, Br, Bz, Bt = (
+                mx.maximum(U[0], 1e-12), U[1] / mx.maximum(U[0], 1e-12),
+                U[2] / mx.maximum(U[0], 1e-12), U[3] / mx.maximum(U[0], 1e-12),
+                mx.maximum((self.gamma - 1) * (U[4] - 0.5 * U[0] * (
+                    (U[1] / mx.maximum(U[0], 1e-12))**2 +
+                    (U[2] / mx.maximum(U[0], 1e-12))**2 +
+                    (U[3] / mx.maximum(U[0], 1e-12))**2
+                ) - 0.5 * (U[6]**2 + U[7]**2 + U[8]**2)), 1e-12),
+                U[6], U[7], U[8],
+            )
+            cf = fast_magnetosonic(rho, p, Br, Bz, Bt, self.gamma, dim=0)
+            v_mag = mx.sqrt(vr * vr + vz * vz + vt * vt)
+            ch = float(mx.max(v_mag + cf))
+            if ch < 1e-10:
+                ch = 1.0
+            dx_min = min(self.dx, self.dz)
+            if self.coordinates == "cartesian":
+                dx_min = min(dx_min, self.dy)
+            cr = ch / dx_min
+
+            dpsi_dt, dU_dedner = dedner_source(
+                self._psi, U, ch, cr, self._grid, self.coordinates,
+            )
+            U = U + dt * dU_dedner
+            self._psi = self._psi + dt * dpsi_dt
+
+        if self._enable_powell:
+            dU_powell = powell_source(U, self.gamma, self._grid, self.coordinates)
+            U = U + dt * dU_powell
+
+        return U
 
     # ------------------------------------------------------------------
     # Two-temperature source terms (operator-split, CPU)
