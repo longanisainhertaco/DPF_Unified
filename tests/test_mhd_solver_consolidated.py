@@ -4735,9 +4735,9 @@ class TestCoulombLogFloor:
         """engine.py Spitzer path must floor lnL with np.maximum, not max."""
         import inspect
 
-        import dpf.engine as engine_mod
+        from dpf.engine import core as engine_core
 
-        source = inspect.getsource(engine_mod)
+        source = inspect.getsource(engine_core)
         assert "np.maximum(lnL, 1.0)" in source, (
             "Coulomb log must use np.maximum (array-safe), not scalar max"
         )
@@ -4746,9 +4746,9 @@ class TestCoulombLogFloor:
         """kappa NaN guard must use np.where, not scalar if/not."""
         import inspect
 
-        import dpf.engine as engine_mod
+        from dpf.engine import core as engine_core
 
-        source = inspect.getsource(engine_mod)
+        source = inspect.getsource(engine_core)
         assert "np.where(np.isfinite(kappa)" in source, (
             "kappa guard must use np.where (array-safe)"
         )
@@ -4787,9 +4787,9 @@ class TestVPinchAnomalousResistance:
         """Yield tracker V_pinch computation must reference _last_sp_R_plasma."""
         import inspect
 
-        import dpf.engine as engine_mod
+        from dpf.engine import core as engine_core
 
-        source = inspect.getsource(engine_mod)
+        source = inspect.getsource(engine_core)
         assert "_last_sp_R_plasma" in source, (
             "V_pinch must include snowplow R_plasma for beam-target yield"
         )

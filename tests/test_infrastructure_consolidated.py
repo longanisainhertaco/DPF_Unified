@@ -1098,6 +1098,6 @@ class TestRPlasmaCapIncrease:
 
     def test_r_plasma_cap_is_reasonable(self):
         """The R_plasma cap in engine.py should be 10 Ohm (prevents runaway)."""
-        import dpf.engine as engine_mod
-        source = inspect.getsource(engine_mod)
+        from dpf.engine import core as engine_core
+        source = inspect.getsource(engine_core)
         assert "min(R_plasma, 10.0)" in source

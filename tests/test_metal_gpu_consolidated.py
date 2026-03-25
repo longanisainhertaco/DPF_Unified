@@ -5346,8 +5346,8 @@ class TestRPlasmaCapIncrease:
     """Test that R_plasma cap is set to a physically reasonable value."""
 
     def test_r_plasma_cap_is_reasonable(self):
-        import dpf.engine as engine_mod
-        source = inspect.getsource(engine_mod)
+        from dpf.engine import core as engine_core
+        source = inspect.getsource(engine_core)
         assert "min(R_plasma, 10.0)" in source
 
 
