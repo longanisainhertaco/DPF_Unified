@@ -1,5 +1,7 @@
 # DPF Unified — Forward Development Plan (v3)
 
+> **Archive Notice (2026-03-25):** References to `src/dpf/engine.py` in this document are historical. The engine was decomposed into `src/dpf/engine/` package (core.py, circuit_coupling.py, physics_operators.py, state_management.py, athena_step.py, backend_dispatch.py). See commit `a877795`.
+
 ## Context & What's Done
 
 We are building a modern dense plasma focus (DPF) simulator with:
