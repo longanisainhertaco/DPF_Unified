@@ -53,10 +53,11 @@ We are building a modern dense plasma focus (DPF) simulator with:
 
 - ✅ **Phase P**: Engine accuracy — WENO-Z + SSP-RK3 + HLLD defaults on all backends; Metal resistive MHD sub-cycling; Python hybrid WENO5 stability fixes + velocity clamping; Babylon.js renderer v9 (current flow arrows, colorbar with physical units, phase timeline bands, 4 decomposed updaters); 16 device presets; SPARK33 educational AI assistant (port 8033/8034); HuggingFace Spaces deployment (tjlonganisa/dpf-unified); research database expanded to 731 papers
 
-**2614+ total tests** (CI green), 0 failures.
+**4,800+ total tests** (CI green), 0 failures.
 **Numerical fidelity: 8.9/10** — WENO5-Z + HLLD + SSP-RK3 + float64 + resistive MHD.
-**DPF physics fidelity: 3-4/10** — circuit-MHD coupling only in Python + Athena++ backends; Metal engine Cartesian-only.
-**Validation: PF-1000 I_peak 4.67% single-shot | 1.27% mean NRMSE (24-shot Akel statistical).**
+**DPF physics fidelity: 5-6/10** — circuit-MHD coupling in Python, Athena++, MLX backends; MLX cylindrical full discharge.
+**Validation: PF-1000 I_peak 3.4% (MLX MHD) | 1.27% mean NRMSE (24-shot Akel Lee model) | t_peak 0-3% vs Gribkov.**
+**MLX solver: 16 modules, 471 tests, 3 Metal kernels. First-ever MLX PDE solver. 2.68x faster than PyTorch MPS.**
 
 ---
 
@@ -485,15 +486,16 @@ WALRUS predictions need uncertainty bounds:
 | ~~S~~ | ~~DPF-specific physics~~ | — | ~~Snowplow dynamics, crowbar model, BDF2 dL/dt, ablation wiring, LHDI~~ | ✅ Done |
 | ~~T~~ | ~~Snowplow + statistical validation~~ | — | ~~24-shot Akel PF-1000 (1.27% mean NRMSE); I_peak 4.67% single-shot~~ | ✅ Done |
 | ~~P~~ | ~~Engine accuracy~~ | **8.9/10 numerical** | ~~WENO-Z + SSP-RK3 + HLLD all backends; Metal resistive MHD; Babylon.js renderer v9; 16 presets; 2614+ tests; SPARK33; HuggingFace Spaces~~ | ✅ Done |
-| **Q** (next) | Validation accuracy | 5-6/10 DPF | Cylindrical geometry for Metal engine; ablation V&V; circuit-MHD coupling in remaining backends | 🔜 |
-| **R** | Physics fidelity | 7/10 DPF | Full 2D MHD + snowplow mass-sweep source terms; AMR; multi-species | 🔜 |
-| **J.2** | WALRUS live fine-tuning | — | Fine-tune on validated DPF trajectories; reduce surrogate error below 5% | 🔜 |
+| ~~Q~~ | ~~MLX Apple Silicon solver~~ | **8.9/10** | ~~16 MLX modules, 3 Metal kernels, Cartesian 3D, Dedner GLM, Braginskii viscosity, Lp coupling, 2T sources, 471 tests. fc/fm calibration (Optuna TPE, 69 evals). Six Sigma RCA: timing error within experimental uncertainty (Gribkov flat-top).~~ | ✅ Done |
+| **R** (next) | Validation hardening | — | Wire 31 validation modules into CI; multi-device smoke tests; Gribkov waveform reference; convergence study | 🔜 |
+| **R.2** | Physics improvements | 7/10 DPF | Density-weighted Lp (~50 LOC); HLLD float64 star-states; full 2D axial rundown (research) | 🔜 |
+| **J.2** | WALRUS fine-tuning | — | Fine-tune on validated DPF trajectories; reduce surrogate error below 5% | 🔜 |
 | **J.3** | Unity/Babylon.js frontend | — | Engineering Mode: parameter sweeps, inverse design UI | 🔜 |
 | **J.4** | HPC scaling | 9/10 | MPI via AthenaK, cloud GPU (CUDA Kokkos) | 🔜 |
 
-**Phases A–P complete**: 2614+ tests (CI green), 9 backends, Metal GPU (WENO5-Z + HLLD + SSP-RK3 + float64), full AI/ML integration, Babylon.js renderer v9, 16 device presets, SPARK33, HuggingFace Spaces deployment.
-**Numerical fidelity: 8.9/10 | DPF physics fidelity: 3-4/10 | Validation: 1.27% mean NRMSE (24-shot Akel).**
-**Next (Phase Q)**: Extend circuit-MHD coupling to Metal + AthenaK backends; cylindrical geometry for Metal engine.
+**Phases A–Q complete**: 4,800+ tests (CI green), 4 backends (Python, Athena++, AthenaK, MLX), Metal GPU (WENO5-Z + HLLD + SSP-RK3 + float64), full AI/ML integration, Babylon.js renderer v9, 16 device presets, SPARK33, HuggingFace Spaces deployment.
+**Numerical fidelity: 8.9/10 | DPF physics fidelity: 5-6/10 | Validation: 1.27% mean NRMSE (24-shot Akel Lee) | 3.4% I_peak error (MLX MHD).**
+**Next (Phase R)**: Validation hardening — CI gates, multi-device verification, density-weighted Lp.
 
 ---
 

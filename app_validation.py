@@ -11,6 +11,7 @@ import numpy as np
 
 PRESET_TO_DEVICE: dict[str, str] = {
     "pf1000": "PF-1000",
+    "pf1000_akel": "PF-1000-16kV",
     "pf1000_20kv": "PF-1000-20kV",
     "nx2": "NX2",
     "unu_ictp": "UNU-ICTP",
