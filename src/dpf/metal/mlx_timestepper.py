@@ -227,9 +227,9 @@ def _apply_floors(
     Returns:
         U with floors applied, same shape.
     """
-    rows = list(mx.split(U, NVAR, axis=0))
-    rows[IDN] = mx.maximum(rows[IDN], RHO_FLOOR)
-    rows[ISR] = mx.maximum(rows[ISR], 0.0)
+    # Enforce scalar floors on density and entropy tracer.
+    rho_floored = mx.maximum(U[IDN : IDN + 1], RHO_FLOOR)
+    isr_floored = mx.maximum(U[ISR : ISR + 1], 0.0)
 
     # Alfven-speed limited density floor: prevent runaway wavespeeds in
     # vacuum cells behind the compression sheath. Instead of clamping B
@@ -241,25 +241,35 @@ def _apply_floors(
     # rho_min = B^2 / va_max^2 ensures v_A = |B|/sqrt(rho) <= va_max.
     # Applied at EVERY floor call (pre-RHS and post-stage) so that flux
     # computations never see extreme wavespeeds.
-    Br = rows[IBR][0]
-    Bz = rows[IBZ][0]
-    Bt = rows[IBT][0]
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
     B_sq = Br * Br + Bz * Bz + Bt * Bt
     rho_B_floor = B_sq / (va_max * va_max)
-    rho_new = mx.maximum(rows[IDN][0], rho_B_floor)
+    rho_old = rho_floored[0]
+    rho_new = mx.maximum(rho_old, rho_B_floor)
     # Only inject mass where rho actually increased (energy bookkeeping)
-    rho_old = rows[IDN][0]
     drho = rho_new - rho_old
     # Injected mass gets thermal energy at local temperature
     # (or just the floor — we pick floor to avoid computing T)
-    rows[IDN] = rho_new[None]
-    # Update energy: added mass contributes floor-level thermal energy
-    rows[IEN] = mx.maximum(
-        rows[IEN][0] + P_FLOOR / (5.0 / 3.0 - 1.0) * drho / mx.maximum(rho_old, RHO_FLOOR),
+    E_new = mx.maximum(
+        U[IEN] + P_FLOOR / (5.0 / 3.0 - 1.0) * drho / mx.maximum(rho_old, RHO_FLOOR),
         P_FLOOR,
-    )[None]
+    )
 
-    return mx.stack([r[0] for r in rows], axis=0)
+    # Rebuild conserved state. Modified slots: IDN=0, IEN=4, ISR=5.
+    # Actual slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
+    # Use contiguous slices for unchanged ranges to preserve all NVAR slots.
+    return mx.concatenate(
+        [
+            rho_new[None],  # IDN=0 — density with both floors applied
+            U[IMR:IEN],     # IMR=1, IMZ=2, IMT=3 — unchanged
+            E_new[None],    # IEN=4 — updated for mass injection
+            isr_floored,    # ISR=5 — entropy tracer floor
+            U[IBR:],        # IBR=6, IBZ=7, IBT=8, IEE=9 — unchanged
+        ],
+        axis=0,
+    )
 
 
 def _clamp_velocity(U: mx.array, gamma: float) -> mx.array:
@@ -303,12 +313,19 @@ def _clamp_velocity(U: mx.array, gamma: float) -> mx.array:
     KE_c = 0.5 * rho * (vr_c * vr_c + vz_c * vz_c + vt_c * vt_c)
     E_c = p / gm1 + KE_c + ME
 
-    rows = list(mx.split(U, NVAR, axis=0))
-    rows[IMR] = (rho * vr_c)[None]
-    rows[IMZ] = (rho * vz_c)[None]
-    rows[IMT] = (rho * vt_c)[None]
-    rows[IEN] = E_c[None]
-    return mx.stack([r[0] for r in rows], axis=0)
+    # Rebuild: modified slots IMR=1, IMZ=2, IMT=3, IEN=4; rest unchanged.
+    # Actual slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
+    return mx.concatenate(
+        [
+            U[IDN : IMR],       # IDN=0 — unchanged
+            (rho * vr_c)[None], # IMR=1 — clamped radial momentum
+            (rho * vz_c)[None], # IMZ=2 — clamped axial momentum
+            (rho * vt_c)[None], # IMT=3 — clamped toroidal momentum
+            E_c[None],          # IEN=4 — energy consistent with clamped KE
+            U[ISR:],            # ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9 — unchanged
+        ],
+        axis=0,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -338,9 +355,16 @@ def _resync_energy(U: mx.array, gamma: float) -> mx.array:
     ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
     E_new = p / gm1 + KE + ME
 
-    rows = list(mx.split(U, NVAR, axis=0))
-    rows[IEN] = E_new[None]
-    return mx.stack([r[0] for r in rows], axis=0)
+    # Only IEN=4 changes — concatenate prefix/suffix slices to preserve all NVAR slots.
+    # Actual slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
+    return mx.concatenate(
+        [
+            U[:IEN],        # IDN, IMR, IMZ, IMT — unchanged
+            E_new[None],    # IEN — recovered from dual-energy
+            U[IEN + 1 :],   # IBR, IBZ, IBT, ISR — unchanged
+        ],
+        axis=0,
+    )
 
 
 # ---------------------------------------------------------------------------
