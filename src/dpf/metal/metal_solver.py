@@ -493,17 +493,24 @@ class MetalMHDSolver(PlasmaSolverBase):
         max_signal: float = 0.0
         dh = [self.dx, self.dy, self.dz]
 
-        # cf is already capped at c=3e8 m/s inside _fast_magnetosonic_mps
-        # (via _CF_SQ_MAX = 9e16). No additional cap here — capping at a
-        # lower value (e.g., 1e6) violates CFL at pinch conditions where
-        # the true fast magnetosonic speed is ~1e7 m/s.
+        # Mask out vacuum cells: signal speeds at rho << rho_max are artifacts
+        # of floor values (RHO_FLOOR=1e-12) and should not constrain the
+        # global timestep.  Without this, cf->3e8 at vacuum cells yields
+        # dt ~ 7.5e-13 s, stalling the simulation.
+        rho_max = float(torch.max(rho).item())
+        rho_threshold = max(1e-4 * rho_max, 10.0 * RHO_FLOOR)
+        active = rho >= rho_threshold
+
         for dim in range(3):
             cf = _fast_magnetosonic_mps(rho, p, B, self.gamma, dim)
             vn_abs = torch.abs(vel[dim])
             signal = vn_abs + cf
-            # Filter NaN cells (e.g., electrode boundary artifacts) so
-            # torch.max doesn't poison the entire CFL computation.
-            signal = torch.where(torch.isfinite(signal), signal, torch.zeros_like(signal))
+            # Filter NaN and vacuum cells
+            signal = torch.where(
+                torch.isfinite(signal) & active,
+                signal,
+                torch.zeros_like(signal),
+            )
             local_max = float(torch.max(signal).item())
             if dh[dim] > 0.0:
                 max_signal = max(max_signal, local_max / dh[dim])
