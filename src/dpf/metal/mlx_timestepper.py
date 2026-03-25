@@ -49,6 +49,93 @@ from dpf.metal.mlx_riemann import mhd_rhs as _riemann_mhd_rhs
 # Velocity clamping: cap at V_CLAMP_FACTOR * fast magnetosonic speed
 _V_CLAMP_FACTOR: float = 10.0
 
+# ---------------------------------------------------------------------------
+# Compiled stage post-processing (fuses floors + dual-energy + velocity clamp)
+# ---------------------------------------------------------------------------
+
+def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
+    """Fused post-stage processing: floors + dual-energy resync + velocity clamp.
+
+    Combines _apply_floors, _resync_energy, and _clamp_velocity into a single
+    compiled function. This eliminates 3 redundant cons_to_prim decompositions
+    per RK stage (9 per SSP-RK3 step) by sharing the primitive variables.
+    """
+    gm1 = gamma - 1.0
+
+    # --- Floor enforcement (from _apply_floors) ---
+    rho_raw = mx.maximum(U[IDN], RHO_FLOOR)
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+    B_sq = Br * Br + Bz * Bz + Bt * Bt
+    va_max = 1e6
+    rho = mx.maximum(rho_raw, B_sq / (va_max * va_max))
+    drho = rho - rho_raw
+    isr = mx.maximum(U[ISR], 0.0)
+
+    inv_rho = 1.0 / rho
+    vr = U[IMR] * inv_rho
+    vz = U[IMZ] * inv_rho
+    vt = U[IMT] * inv_rho
+
+    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
+    ME = 0.5 * B_sq
+
+    # Energy with mass injection correction
+    E_floored = mx.maximum(
+        U[IEN] + P_FLOOR / gm1 * drho / mx.maximum(rho_raw, RHO_FLOOR),
+        P_FLOOR,
+    )
+
+    # --- Dual-energy pressure recovery (from _resync_energy) ---
+    # Entropy-based pressure: p_S = rho^gamma * exp(S/rho)
+    S = mx.maximum(isr, 0.0)
+    p_S = S * mx.power(rho, gm1)
+    # Conservative pressure
+    p_E = mx.maximum(gm1 * (E_floored - KE - ME), P_FLOOR)
+    # Switching criterion: use entropy when E is contaminated
+    E_ratio = p_S / mx.maximum(E_floored, P_FLOOR)
+    use_entropy = E_ratio < 1e-3
+    p = mx.where(use_entropy, p_S, p_E)
+    p = mx.maximum(p, P_FLOOR)
+
+    # --- Velocity clamping (from _clamp_velocity) ---
+    # Fast magnetosonic speed for radial direction
+    a_sq = gamma * p * inv_rho
+    va_sq = B_sq * inv_rho
+    cf = mx.sqrt(a_sq + va_sq)
+
+    v_max = _V_CLAMP_FACTOR * cf
+    v_mag = mx.sqrt(mx.maximum(vr * vr + vz * vz + vt * vt, 0.0))
+    scale = mx.where(v_mag > v_max, v_max / mx.maximum(v_mag, 1e-30), mx.ones_like(v_mag))
+
+    vr_c = vr * scale
+    vz_c = vz * scale
+    vt_c = vt * scale
+
+    KE_c = 0.5 * rho * (vr_c * vr_c + vz_c * vz_c + vt_c * vt_c)
+    E_new = p / gm1 + KE_c + ME
+
+    # Rebuild full state
+    return mx.stack([
+        rho,              # IDN=0
+        rho * vr_c,       # IMR=1
+        rho * vz_c,       # IMZ=2
+        rho * vt_c,       # IMT=3
+        E_new,            # IEN=4
+        isr,              # ISR=5
+        Br,               # IBR=6
+        Bz,               # IBZ=7
+        Bt,               # IBT=8
+        U[9] if U.shape[0] > 9 else mx.zeros_like(rho),  # IEE=9
+    ], axis=0)
+
+
+try:
+    _compiled_stage_post = mx.compile(_stage_post_impl)
+except Exception:
+    _compiled_stage_post = _stage_post_impl
+
 
 # ---------------------------------------------------------------------------
 # Spatial operator L(U)
@@ -453,14 +540,18 @@ def ssp_rk3_step(
     """
     dr, dz = grid.dr, grid.dz
 
-    def _stage_post(Uk: mx.array) -> mx.array:
-        Uk = _apply_floors(Uk)
-        if use_dual_energy:
-            Uk = _resync_energy(Uk, gamma)
-        Uk = _clamp_velocity(Uk, gamma)
-        return Uk
+    # Use compiled fused post-processing when dual-energy is enabled (default).
+    # Falls back to sequential calls when dual-energy is off (test/debug).
+    if use_dual_energy:
+        def _stage_post(Uk: mx.array) -> mx.array:
+            return _compiled_stage_post(Uk, gamma)
+    else:
+        def _stage_post(Uk: mx.array) -> mx.array:
+            Uk = _apply_floors(Uk)
+            Uk = _clamp_velocity(Uk, gamma)
+            return Uk
 
-    # Apply floors to input state BEFORE computing RHS (same rationale as RK2)
+    # Apply floors to input state BEFORE computing RHS
     U = _apply_floors(U)
 
     # Stage 1: U1 = Un + dt * L(Un)
@@ -520,16 +611,15 @@ def ssp_rk2_step(
     """
     dr, dz = grid.dr, grid.dz
 
-    def _stage_post(Uk: mx.array) -> mx.array:
-        Uk = _apply_floors(Uk)
-        if use_dual_energy:
-            Uk = _resync_energy(Uk, gamma)
-        Uk = _clamp_velocity(Uk, gamma)
-        return Uk
+    if use_dual_energy:
+        def _stage_post(Uk: mx.array) -> mx.array:
+            return _compiled_stage_post(Uk, gamma)
+    else:
+        def _stage_post(Uk: mx.array) -> mx.array:
+            Uk = _apply_floors(Uk)
+            Uk = _clamp_velocity(Uk, gamma)
+            return Uk
 
-    # Apply floors to input state BEFORE computing RHS. Without this,
-    # vacuum cells behind the sheath generate extreme fluxes/sources that
-    # corrupt the state in a single substep (U + dt*L(U) already overflows).
     U = _apply_floors(U)
 
     # Stage 1

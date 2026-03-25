@@ -82,11 +82,19 @@ def _step_circuit_subcycle(
             self._last_sp_dL_dt = dLdt_sp
             self._last_sp_R_plasma = sp_result.get("R_plasma", 0.0)
 
-            # Lp handoff: blend snowplow → density-weighted during radial phase
+            # Lp handoff: blend snowplow → density-weighted Lp from MHD fields.
+            # radial_mhd: activate at radial phase onset (validated).
+            # full_mhd: activate from axial rundown onward (uses compute_feedback
+            #   density-weighted Lp during axial phase, improving timing accuracy).
             handoff = self.config.snowplow.handoff_mode
+            handoff_phases = (
+                ("rundown", "radial", "reflected")
+                if handoff == "full_mhd"
+                else ("radial", "reflected")
+            )
             if (
                 handoff in ("radial_mhd", "full_mhd")
-                and self.snowplow.phase in ("radial", "reflected")
+                and self.snowplow.phase in handoff_phases
                 and feedback is not None
                 and feedback.Lp > 0
             ):

@@ -479,10 +479,12 @@ class SnowplowConfig(BaseModel):
     handoff_mode: str = Field(
         "lee_only",
         description=(
-            "Circuit-MHD coupling mode for the radial phase. "
+            "Circuit-MHD coupling mode. "
             "'lee_only': snowplow Lp drives circuit throughout (validated, default). "
             "'radial_mhd': transition to density-weighted Lp at radial phase onset. "
-            "'full_mhd': density-weighted Lp from t=0 (experimental)."
+            "'full_mhd': density-weighted Lp from axial rundown onward (experimental). "
+            "full_mhd uses CircuitCoupler.compute_feedback() during axial phase "
+            "for improved timing accuracy via density-weighted sheath tracking."
         ),
     )
 

@@ -5,17 +5,19 @@ Dense Plasma Focus (DPF) multi-physics MHD simulator with tri-engine architectur
 - **Python engine**: NumPy/Numba MHD solver (src/dpf/fluid/, 11 modules, ~5,300 LOC) — fallback
 - **Athena++ engine**: Princeton C++ MHD code (external/athena/ git submodule, pybind11) — primary
 - **AthenaK engine**: Kokkos C++ MHD code (external/athenak/ submodule, subprocess) — GPU-ready
-- **Orchestration**: Python (engine.py, config.py, server, diagnostics, AI/ML)
+- **Orchestration**: Python (engine/ package, config.py, server, diagnostics, AI/ML)
 - **Hardware**: M3 Pro MacBook Pro, 36GB unified memory, Python 3.11
 
 ## Architecture
 
-engine.py selects backend via config.fluid.backend:
+engine/core.py selects backend via config.fluid.backend:
   backend="python"  → MHDSolver / CylindricalMHDSolver (src/dpf/fluid/)
   backend="athena"  → AthenaPPSolver (src/dpf/athena_wrapper/)
                         → pybind11 → Athena++ C++ (external/athena/)
   backend="athenak" → AthenaKSolver (src/dpf/athenak_wrapper/)
                         → subprocess → AthenaK binary (external/athenak/)
+  backend="mlx"     → MLXMHDSolver (src/dpf/metal/mlx_solver.py)
+                        → MLX Metal kernels (Apple Silicon native)
 
 All three backends implement PlasmaSolverBase (src/dpf/core/bases.py).
 Auto-resolution priority: athenak > athena > python.
@@ -79,8 +81,8 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 - Register functions in Mesh::InitUserMeshData()
 
 ### Phase Numbering
-Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD), Q (MLX solver: 15 modules, 3 Metal kernels, dual-energy, electrode BC, vacuum stability, GPU optimization — Sprint 4 blocker RESOLVED)
-Planned: Q.2 (MLX Lp coupling + 2T sources + calibration), J.2+ (backlog)
+Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD), Q (MLX solver: 16 modules, 471 tests, Cartesian 3D, Dedner div-B, fc/fm calibration via Optuna TPE, Six Sigma RCA on timing error)
+Planned: R (validation hardening), R.2 (density-weighted Lp, HLLD float64), J.2 (WALRUS fine-tuning), J.3+ (backlog)
 
 ### Test Patterns
 - Phase tests: test_phase_{letter}_{topic}.py
@@ -93,7 +95,7 @@ Planned: Q.2 (MLX Lp coupling + 2T sources + calibration), J.2+ (backlog)
 
 | Purpose | Path |
 |---------|------|
-| Engine orchestration | src/dpf/engine.py |
+| Engine orchestration | src/dpf/engine/core.py (+ 5 sub-modules) |
 | Configuration (Pydantic) | src/dpf/config.py |
 | Solver base class | src/dpf/core/bases.py |
 | Python MHD solver | src/dpf/fluid/mhd_solver.py |
@@ -141,8 +143,8 @@ Planned: Q.2 (MLX Lp coupling + 2T sources + calibration), J.2+ (backlog)
 | Phase N cross-backend tests | tests/test_phase_n_cross_backend.py (17 tests) |
 | Phase O physics accuracy tests | tests/test_phase_o_physics_accuracy.py (45 tests) |
 | Phase P engine accuracy tests | tests/test_phase_p_accuracy.py (22 non-slow + 1 slow) |
-| Phase Q MLX solver modules | src/dpf/metal/mlx_*.py (15 modules, ~2,620 LOC) |
-| Phase Q MLX tests | tests/test_mlx_*.py (17 files, 405 tests) |
+| Phase Q MLX solver modules | src/dpf/metal/mlx_*.py (16 modules incl mlx_divb.py, ~3,200 LOC) |
+| Phase Q MLX tests | tests/test_mlx_*.py (19 files, ~430 tests) |
 | Phase Q MLX benchmarks | src/dpf/benchmarks/mlx_benchmark.py |
 | Phase Q sprint research | docs/SPRINT{5,6,7}_RESEARCH.md |
 | Slash commands | .claude/commands/ (18 commands) |

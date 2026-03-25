@@ -638,6 +638,23 @@ class MLXMHDSolver(PlasmaSolverBase):
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
             mx.eval(U)
 
+        # ── 3.5. Prepare resistivity for Strang splitting ──────────────
+        eta_raw = kwargs.get("eta_field")
+        _eta_arg: float | Any | None = None
+        if eta_raw is not None:
+            if isinstance(eta_raw, np.ndarray):
+                eta_squeezed = np.squeeze(eta_raw)
+                if eta_squeezed.ndim == 1:
+                    eta_squeezed = eta_squeezed.reshape(self._nr, self._nz)
+                _eta_arg = mx.array(eta_squeezed.astype(np.float32))
+            else:
+                _eta_arg = float(eta_raw)
+
+        # ── 3.6. Strang split: first half-step resistive diffusion ─────
+        if _eta_arg is not None:
+            U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
+            mx.eval(U)
+
         # ── 4. Hyperbolic step ───────────────────────────────────────────
         step_fn = ssp_rk3_step if self._integrator != "ssp_rk2" else ssp_rk2_step
         U = step_fn(
@@ -662,19 +679,9 @@ class MLXMHDSolver(PlasmaSolverBase):
             U = self._apply_divb_cleaning(U, dt)
             mx.eval(U)
 
-        # ── 5. Resistive diffusion ───────────────────────────────────────
-        eta_raw = kwargs.get("eta_field")
-        if eta_raw is not None:
-            eta_arg: float | Any
-            if isinstance(eta_raw, np.ndarray):
-                # Squeeze ny=1 dimension if present (engine passes 3D arrays)
-                eta_squeezed = np.squeeze(eta_raw)
-                if eta_squeezed.ndim == 1:
-                    eta_squeezed = eta_squeezed.reshape(self._nr, self._nz)
-                eta_arg = mx.array(eta_squeezed.astype(np.float32))
-            else:
-                eta_arg = float(eta_raw)
-            U = self._do_resistive_diffusion(U, dt, eta_arg)
+        # ── 5. Strang split: second half-step resistive diffusion ──────
+        if _eta_arg is not None:
+            U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
             mx.eval(U)
 
         # ── 6. Braginskii conduction ─────────────────────────────────────
