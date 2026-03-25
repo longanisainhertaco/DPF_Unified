@@ -453,6 +453,15 @@ class MLXMHDSolver(PlasmaSolverBase):
     # Operator-split: Braginskii thermal conduction
     # ------------------------------------------------------------------
 
+    def _do_braginskii_viscosity(self, U: Any, dt: float) -> Any:
+        """Operator-split Braginskii parallel viscosity."""
+        from dpf.metal.mlx_viscosity import apply_braginskii_viscosity
+
+        return apply_braginskii_viscosity(
+            U, dt, self._grid, self.gamma, self.ion_mass,
+            coordinates=self.coordinates,
+        )
+
     def _do_thermal_conduction(self, U: Any, dt: float, kappa: float | Any) -> Any:
         """Implicit Braginskii parallel conduction along z.
 
@@ -642,6 +651,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         if self.enable_braginskii_conduction:
             kappa = float(kwargs.get("kappa_parallel", 1e3))
             U = self._do_thermal_conduction(U, dt, kappa)
+            mx.eval(U)
+
+        # ── 6.5. Braginskii viscosity ──────────────────────────────────
+        if self.enable_braginskii_viscosity:
+            U = self._do_braginskii_viscosity(U, dt)
             mx.eval(U)
 
         # ── 7. Unpack ────────────────────────────────────────────────────
