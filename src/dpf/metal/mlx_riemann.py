@@ -35,6 +35,7 @@ from dpf.metal.mlx_kernels import (
     ISR,
     NVAR,
     cylindrical_source_mlx,
+    cylindrical_source_numpy,
     hlld_flux_mlx,
 )
 from dpf.metal.mlx_primitives import P_FLOOR, RHO_FLOOR, cons_to_prim
@@ -380,7 +381,16 @@ def mhd_rhs(
     s_specific = U[ISR] / mx.maximum(rho, RHO_FLOOR)
     Q_prim = mx.stack([rho, vr, vz, vt, p, s_specific, Br, Bz, Bt, U[IEE]], axis=0)
 
-    src = cylindrical_source_mlx(Q_prim, grid.r_cell, grid.inv_r, gamma)
+    # Use NumPy reference for geometric source when grid has negative r_cell
+    # values (ghost-padded grids). The Metal kernel produces incorrect results
+    # with negative r because it doesn't use abs(r) consistently.
+    r_cell_np = np.asarray(grid.r_cell)
+    if np.any(r_cell_np < 0):
+        inv_r_np = np.asarray(grid.inv_r) if grid.inv_r is not None else None
+        src_np = cylindrical_source_numpy(np.asarray(Q_prim), r_cell_np, inv_r_np, gamma)
+        src = mx.array(src_np)
+    else:
+        src = cylindrical_source_mlx(Q_prim, grid.r_cell, grid.inv_r, gamma)
 
     # src layout matches primitive (vr/vz/vt accelerations at indices 1,2,3; Bt at IBT).
     # Convert velocity-space sources to conserved (momentum) sources.
