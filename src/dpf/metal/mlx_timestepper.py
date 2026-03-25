@@ -22,6 +22,7 @@ from __future__ import annotations
 import math
 
 import mlx.core as mx
+import numpy as np
 
 from dpf.metal.mlx_grid import CartesianGrid, CylindricalGrid
 from dpf.metal.mlx_kernels import (
@@ -390,6 +391,33 @@ def _resync_energy(U: mx.array, gamma: float) -> mx.array:
 # ---------------------------------------------------------------------------
 
 
+def _mask_ghost_rhs(L: mx.array, ng: int) -> mx.array:
+    """Zero RHS in ghost cell regions so ghosts retain BC values.
+
+    Without this, ghost cells injected by electrode BCs are evolved by
+    the RK integrator, destroying the 1/r B_theta profile and creating
+    unbounded pressure jumps that cause HLLD NaN in float32.
+
+    The mask is applied to the radial (axis 1) boundaries — ng cells
+    on each side. This matches the PyTorch Metal solver's approach of
+    stripping ghosts from the RHS before applying updates.
+
+    Args:
+        L: RHS array, shape (NVAR, nr_padded, nz).
+        ng: Number of ghost cells on each side.
+
+    Returns:
+        L with ghost regions zeroed.
+    """
+    if ng <= 0:
+        return L
+    nr = L.shape[1]
+    mask_np = np.ones((1, nr, 1), dtype=np.float32)
+    mask_np[:, :ng, :] = 0.0
+    mask_np[:, -ng:, :] = 0.0
+    return L * mx.array(mask_np)
+
+
 def ssp_rk3_step(
     U: mx.array,
     grid: CylindricalGrid,
@@ -398,24 +426,27 @@ def ssp_rk3_step(
     method: str = "weno5z",
     riemann: str = "hlld",
     use_dual_energy: bool = True,
+    ghost_ng: int = 0,
 ) -> mx.array:
     """Advance U by one SSP-RK3 timestep.
 
     At each intermediate stage:
     1. Compute L(U) via mhd_rhs
-    2. SSP combination
-    3. Enforce density/pressure floors
-    4. If use_dual_energy: recover pressure from conservative E + entropy tracer
-    5. Clamp velocity to _V_CLAMP_FACTOR * fast magnetosonic speed
+    2. Zero RHS in ghost cell regions (if ghost_ng > 0)
+    3. SSP combination
+    4. Enforce density/pressure floors
+    5. If use_dual_energy: recover pressure from conservative E + entropy tracer
+    6. Clamp velocity to _V_CLAMP_FACTOR * fast magnetosonic speed
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz), float32.
-        grid: CylindricalGrid instance.
+        grid: CylindricalGrid or CartesianGrid instance.
         dt: Timestep [s].
         gamma: Adiabatic index (default 5/3).
         method: Reconstruction method: "weno5z" or "plm".
         riemann: Riemann solver: "hlld" or "hll".
         use_dual_energy: Apply dual-energy pressure recovery at each stage.
+        ghost_ng: Number of ghost cells per side to hold fixed (0 = none).
 
     Returns:
         U_new, shape (NVAR, nr, nz), float32.
@@ -434,16 +465,19 @@ def ssp_rk3_step(
 
     # Stage 1: U1 = Un + dt * L(Un)
     L1 = mhd_rhs(U, grid, gamma, dr, dz, method, riemann)
+    L1 = _mask_ghost_rhs(L1, ghost_ng)
     U1 = U + dt * L1
     U1 = _stage_post(U1)
 
     # Stage 2: U2 = 3/4 * Un + 1/4 * (U1 + dt * L(U1))
     L2 = mhd_rhs(U1, grid, gamma, dr, dz, method, riemann)
+    L2 = _mask_ghost_rhs(L2, ghost_ng)
     U2 = 0.75 * U + 0.25 * (U1 + dt * L2)
     U2 = _stage_post(U2)
 
     # Stage 3: Un+1 = 1/3 * Un + 2/3 * (U2 + dt * L(U2))
     L3 = mhd_rhs(U2, grid, gamma, dr, dz, method, riemann)
+    L3 = _mask_ghost_rhs(L3, ghost_ng)
     U_new = (1.0 / 3.0) * U + (2.0 / 3.0) * (U2 + dt * L3)
     U_new = _stage_post(U_new)
 
@@ -464,6 +498,7 @@ def ssp_rk2_step(
     method: str = "plm",
     riemann: str = "hlld",
     use_dual_energy: bool = True,
+    ghost_ng: int = 0,
 ) -> mx.array:
     """Advance U by one SSP-RK2 timestep (simpler, for testing).
 
@@ -499,11 +534,13 @@ def ssp_rk2_step(
 
     # Stage 1
     L1 = mhd_rhs(U, grid, gamma, dr, dz, method, riemann)
+    L1 = _mask_ghost_rhs(L1, ghost_ng)
     U1 = U + dt * L1
     U1 = _stage_post(U1)
 
     # Stage 2
     L2 = mhd_rhs(U1, grid, gamma, dr, dz, method, riemann)
+    L2 = _mask_ghost_rhs(L2, ghost_ng)
     U_new = 0.5 * U + 0.5 * (U1 + dt * L2)
     U_new = _stage_post(U_new)
 

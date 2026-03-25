@@ -646,6 +646,7 @@ class MLXMHDSolver(PlasmaSolverBase):
             method=self._method,
             riemann=self._riemann,
             use_dual_energy=self._use_dual_energy,
+            ghost_ng=self._GHOST_NG if _ghost_active else 0,
         )
         mx.eval(U)
 
