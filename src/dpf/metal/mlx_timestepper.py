@@ -22,7 +22,6 @@ from __future__ import annotations
 import math
 
 import mlx.core as mx
-import numpy as np
 
 from dpf.metal.mlx_grid import CylindricalGrid
 from dpf.metal.mlx_kernels import (
@@ -179,22 +178,17 @@ def compute_dt_cfl(
     speed_r = mx.abs(vr) + cf_r
     speed_z = mx.abs(vz) + cf_z
 
-    # Mask out vacuum cells: signal speeds at rho << rho_max are unphysical
-    # artifacts of floor values and should not constrain the global timestep.
-    rho_np = np.asarray(rho)
-    rho_max = float(np.nanmax(rho_np))
-    rho_threshold = max(rho_cfl_fraction * rho_max, 10.0 * RHO_FLOOR)
-    active = rho_np >= rho_threshold
+    # Mask out vacuum cells — stays on GPU
+    rho_max = mx.max(rho)
+    rho_threshold = mx.maximum(rho_cfl_fraction * rho_max, 10.0 * RHO_FLOOR)
+    active = rho >= rho_threshold
 
-    speed_r_np = np.asarray(speed_r)
-    speed_z_np = np.asarray(speed_z)
+    speed_r = mx.where(active, speed_r, 0.0)
+    speed_z = mx.where(active, speed_z, 0.0)
 
-    # Apply mask: set vacuum cell speeds to 0 so they don't dominate
-    speed_r_np = np.where(active, speed_r_np, 0.0)
-    speed_z_np = np.where(active, speed_z_np, 0.0)
-
-    max_r = float(np.nanmax(speed_r_np))
-    max_z = float(np.nanmax(speed_z_np))
+    # Single GPU→CPU transfer: just the two max values
+    max_r = float(mx.max(speed_r))
+    max_z = float(mx.max(speed_z))
 
     if not math.isfinite(max_r) or max_r == 0.0:
         max_r = 1.0

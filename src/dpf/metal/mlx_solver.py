@@ -582,7 +582,6 @@ class MLXMHDSolver(PlasmaSolverBase):
         U = self._state_mgr.from_state_dict(
             state, convert_b_si_to_hl=self._convert_b_si_to_hl
         )
-        mx.eval(U)
 
         # ── 2. Entropy initialised flag ───────────────────────────────────
         # from_state_dict already computes the entropy tracer from p and rho,
@@ -615,12 +614,10 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 4.1. Strip ghost cells ───────────────────────────────────────
         if _ghost_active:
             U = self._strip_ghost(U, self._GHOST_NG)
-            mx.eval(U)
 
         # ── 4.5. Constrained transport div(B) correction ─────────────────
         if self._use_ct and self.coordinates == "cylindrical":
             U = self._apply_ct_correction(U, dt)
-            mx.eval(U)
 
         # ── 5. Resistive diffusion ───────────────────────────────────────
         eta_raw = kwargs.get("eta_field")
