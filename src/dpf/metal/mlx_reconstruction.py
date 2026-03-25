@@ -55,8 +55,10 @@ def _take(arr: mx.array, axis: int, start: int, length: int) -> mx.array:
     if axis == 0:
         return arr[start:end]
     if axis == 1:
-        return arr[:, start:end, :]
-    return arr[:, :, start:end]
+        return arr[:, start:end]
+    if axis == 2:
+        return arr[:, :, start:end]
+    return arr[:, :, :, start:end]
 
 
 # ============================================================

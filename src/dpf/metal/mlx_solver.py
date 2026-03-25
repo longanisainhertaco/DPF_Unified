@@ -129,15 +129,17 @@ class MLXMHDSolver(PlasmaSolverBase):
         **kwargs: Any,
     ) -> None:
         nr, ny, nz = grid_shape
-        if ny != 1:
+        if coordinates == "cylindrical" and ny != 1:
             raise ValueError(
-                f"MLXMHDSolver is axisymmetric (ny=1 required), got ny={ny}."
+                f"MLXMHDSolver cylindrical mode requires ny=1, got ny={ny}."
             )
 
         self.grid_shape: tuple[int, int, int] = (nr, ny, nz)
         self.nr: int = nr
+        self.ny: int = ny
         self.nz: int = nz
         self.dx: float = float(dx)
+        self.dy: float = float(kwargs.get("dy", dx))
         self.dz: float = float(dz) if dz is not None else float(dx)
         self.gamma: float = float(gamma)
         self.cfl: float = float(cfl)
@@ -197,22 +199,37 @@ class MLXMHDSolver(PlasmaSolverBase):
     # ------------------------------------------------------------------
 
     def _build_internals(self) -> None:
-        """Instantiate CylindricalGrid and MLXState (MLX must be available)."""
-        from dpf.metal.mlx_grid import CylindricalGrid
+        """Instantiate grid and MLXState (MLX must be available)."""
         from dpf.metal.mlx_state import MLXState
 
-        self._grid = CylindricalGrid(
-            nr=self.nr,
-            nz=self.nz,
-            dr=self.dx,
-            dz=self.dz,
-            r_inner=self._r_inner,
-        )
+        if self.coordinates == "cartesian":
+            from dpf.metal.mlx_grid import CartesianGrid
+
+            self._grid = CartesianGrid(
+                nx=self.nr,
+                ny=self.ny,
+                nz=self.nz,
+                dx=self.dx,
+                dy=self.dy,
+                dz=self.dz,
+            )
+        else:
+            from dpf.metal.mlx_grid import CylindricalGrid
+
+            self._grid = CylindricalGrid(
+                nr=self.nr,
+                nz=self.nz,
+                dr=self.dx,
+                dz=self.dz,
+                r_inner=self._r_inner,
+            )
         self._state_mgr = MLXState(
             nr=self.nr,
+            ny=self.ny,
             nz=self.nz,
             gamma=self.gamma,
             ion_mass=self.ion_mass,
+            coordinates=self.coordinates,
         )
 
     def _ensure_internals(self) -> None:
@@ -801,6 +818,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         References: Lee & Saw, Phys. Plasmas 21, 072501 (2014).
         """
         from dpf.metal.mlx_kernels import IDN
+
+        # Plasma inductance only meaningful for cylindrical DPF geometry
+        if self.coordinates == "cartesian":
+            self._coupling = CouplingState(current=current, voltage=voltage)
+            return
 
         rho_np = np.asarray(U[IDN])  # (nr, nz)
         nr, nz = rho_np.shape

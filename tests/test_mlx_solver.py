@@ -399,6 +399,6 @@ def test_coupling_interface_returns_coupling_state():
 
 
 def test_non_axisymmetric_raises():
-    """ny != 1 must raise ValueError."""
-    with pytest.raises(ValueError, match="ny=1 required"):
-        MLXMHDSolver(grid_shape=(_NR, 4, _NZ), dx=_DX)
+    """ny != 1 must raise ValueError for cylindrical mode."""
+    with pytest.raises(ValueError, match="ny=1"):
+        MLXMHDSolver(grid_shape=(_NR, 4, _NZ), dx=_DX, coordinates="cylindrical")

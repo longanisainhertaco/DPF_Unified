@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from dpf.metal.mlx_grid import CylindricalGrid
 from dpf.metal.mlx_kernels import (
     IBR,
     IBT,
@@ -108,9 +107,12 @@ def _hll_flux(
     if dim == 0:
         im_n, im_t1, im_t2 = IMR, IMZ, IMT
         ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
-    else:
+    elif dim == 1:
         im_n, im_t1, im_t2 = IMZ, IMR, IMT
         ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
+    else:  # dim == 2 (y-direction in Cartesian)
+        im_n, im_t1, im_t2 = IMT, IMR, IMZ
+        ib_n, ib_t1, ib_t2 = IBT, IBR, IBZ
 
     rho_L = np.maximum(QL_np[IDN], RHO_FLOOR)
     rho_R = np.maximum(QR_np[IDN], RHO_FLOOR)
@@ -204,15 +206,14 @@ def compute_fluxes(
     """Reconstruct + Riemann solve for one dimension.
 
     Args:
-        U: Conserved state (10, nr, nz).
+        U: Conserved state. 3D: (10, nr, nz). 4D: (10, nx, ny, nz).
         gamma: Adiabatic index.
-        dim: 0=radial, 1=axial.
+        dim: 0=x/r, 1=z (cyl) or y (cart), 2=z (cart only).
         method: "weno5z" or "plm".
         riemann: "hlld" or "hll".
 
     Returns:
-        Numerical flux at interfaces.
-        Shape (10, n_ifaces, nz) for dim=0, (10, nr, n_ifaces) for dim=1.
+        Numerical flux at interfaces, matching U's dimensionality.
     """
     if riemann not in ("hlld", "hll"):
         raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld' or 'hll'.")
@@ -220,9 +221,12 @@ def compute_fluxes(
     QL, QR = reconstruct(U, dim=dim, method=method)
     QL, QR = _clamp_reconstructed(QL, QR)
 
+    is_4d = U.ndim == 4
+
+    if is_4d:
+        return _compute_fluxes_4d(QL, QR, gamma, dim, riemann)
+
     if riemann == "hll":
-        # HLL operates on (NVAR, n_ifaces, n_transverse) — same layout as HLLD.
-        # For dim=1: reconstruct returns (NVAR, nr, n_ifaces_z); transpose for uniformity.
         if dim == 1:
             QL_t = mx.transpose(QL, axes=[0, 2, 1])
             QR_t = mx.transpose(QR, axes=[0, 2, 1])
@@ -231,16 +235,68 @@ def compute_fluxes(
         return _hll_flux(QL, QR, gamma=gamma, dim=dim)
 
     # HLLD expects (NVAR, n_ifaces, n_transverse)
-    # For dim=0: QL shape (10, nr-5, nz) — already correct
-    # For dim=1: QL shape (10, nr, nz-5) — need to reorder axes so iface is axis-1
     if dim == 1:
-        # Transpose to (10, nz-5, nr) for the HLLD call, then transpose back
         QL_t = mx.transpose(QL, axes=[0, 2, 1])
         QR_t = mx.transpose(QR, axes=[0, 2, 1])
         F_t = hlld_flux_mlx(QL_t, QR_t, gamma=gamma, dim=1)
         return mx.transpose(F_t, axes=[0, 2, 1])
 
     return hlld_flux_mlx(QL, QR, gamma=gamma, dim=dim)
+
+
+def _compute_fluxes_4d(
+    QL: mx.array,
+    QR: mx.array,
+    gamma: float,
+    dim: int,
+    riemann: str,
+) -> mx.array:
+    """Riemann solve for 4D Cartesian states (NVAR, nx, ny, nz).
+
+    Flattens transverse dimensions into a single axis for the 3D-only
+    HLLD/HLL kernels, then reshapes back to 4D.
+    """
+    # After reconstruction, QL/QR have one axis shrunk by interfaces.
+    # dim=0: (NVAR, n_ifaces, ny, nz) → flatten to (NVAR, n_ifaces, ny*nz)
+    # dim=1: (NVAR, nx, n_ifaces, nz) → transpose to (NVAR, n_ifaces, nx*nz)
+    # dim=2: (NVAR, nx, ny, n_ifaces) → transpose to (NVAR, n_ifaces, nx*ny)
+    shape = QL.shape  # (NVAR, d1, d2, d3)
+
+    if dim == 0:
+        n_iface = shape[1]
+        n_trans = shape[2] * shape[3]
+        QL_3d = mx.reshape(QL, (NVAR, n_iface, n_trans))
+        QR_3d = mx.reshape(QR, (NVAR, n_iface, n_trans))
+        out_shape_4d = (NVAR, n_iface, shape[2], shape[3])
+    elif dim == 1:
+        n_iface = shape[2]
+        n_trans = shape[1] * shape[3]
+        QL_3d = mx.reshape(mx.transpose(QL, axes=[0, 2, 1, 3]), (NVAR, n_iface, n_trans))
+        QR_3d = mx.reshape(mx.transpose(QR, axes=[0, 2, 1, 3]), (NVAR, n_iface, n_trans))
+        out_shape_4d = None  # handled below
+    else:  # dim == 2
+        n_iface = shape[3]
+        n_trans = shape[1] * shape[2]
+        QL_3d = mx.reshape(mx.transpose(QL, axes=[0, 3, 1, 2]), (NVAR, n_iface, n_trans))
+        QR_3d = mx.reshape(mx.transpose(QR, axes=[0, 3, 1, 2]), (NVAR, n_iface, n_trans))
+        out_shape_4d = None
+
+    if riemann == "hll":
+        F_3d = _hll_flux(QL_3d, QR_3d, gamma=gamma, dim=dim)
+    else:
+        F_3d = hlld_flux_mlx(QL_3d, QR_3d, gamma=gamma, dim=dim)
+
+    # Reshape back to 4D
+    if dim == 0:
+        return mx.reshape(F_3d, out_shape_4d)
+    elif dim == 1:
+        # F_3d is (NVAR, n_iface, nx*nz) → (NVAR, n_iface, nx, nz) → transpose to (NVAR, nx, n_iface, nz)
+        F_4d = mx.reshape(F_3d, (NVAR, n_iface, shape[1], shape[3]))
+        return mx.transpose(F_4d, axes=[0, 2, 1, 3])
+    else:
+        # F_3d is (NVAR, n_iface, nx*ny) → (NVAR, n_iface, nx, ny) → transpose to (NVAR, nx, ny, n_iface)
+        F_4d = mx.reshape(F_3d, (NVAR, n_iface, shape[1], shape[2]))
+        return mx.transpose(F_4d, axes=[0, 2, 3, 1])
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -250,42 +306,131 @@ def compute_fluxes(
 
 def mhd_rhs(
     U: mx.array,
-    grid: CylindricalGrid,
+    grid: object,
     gamma: float = 5.0 / 3.0,
     dr: float = 1.0,
     dz: float = 1.0,
     method: str = "weno5z",
     riemann: str = "hlld",
 ) -> mx.array:
-    """Full MHD right-hand side: dU/dt = -div(F) + S_geom.
+    """Full MHD right-hand side: dU/dt = -div(F) [+ S_geom for cylindrical].
 
-    Dimension-split flux divergence in cylindrical coordinates::
-
-        dU/dt = -(1/(r*dr)) * (r_{i+1/2}*F_r_{i+1/2} - r_{i-1/2}*F_r_{i-1/2})
-              - (F_z_{k+1/2} - F_z_{k-1/2}) / dz
-              + S_geom
-
-    The interior update domain is determined by the ghost-cell consumption of
-    the chosen reconstruction scheme:
-      - WENO5-Z: 2 cells consumed per side → interior is [2:nr-2, 2:nz-2]
-      - PLM: 1 cell consumed per side → interior is [1:nr-1, 1:nz-1]
+    Supports both cylindrical (3D state, r-weighted flux) and Cartesian
+    (3D or 4D state, standard flux divergence in up to 3 dimensions).
 
     Args:
-        U: Conserved state (10, nr, nz).
-        grid: CylindricalGrid with r_cell, r_face, inv_r.
+        U: Conserved state. Cylindrical: (10, nr, nz). Cartesian: (10, nx, ny, nz).
+        grid: CylindricalGrid or CartesianGrid.
         gamma: Adiabatic index.
-        dr: Radial cell spacing [m]. If 1.0, grid.dr is used when available.
-        dz: Axial cell spacing [m]. If 1.0, grid.dz is used when available.
+        dr: Cell spacing [m]. If 1.0, grid.dr is used when available.
+        dz: Cell spacing [m]. If 1.0, grid.dz is used when available.
         method: Reconstruction method ("weno5z" or "plm").
-        riemann: Riemann solver ("hlld").
+        riemann: Riemann solver ("hlld" or "hll").
 
     Returns:
-        dU_dt: Time derivative (10, nr, nz). Boundary cells are zero.
+        dU_dt: Time derivative, same shape as U. Boundary cells are zero.
     """
+    is_cartesian = grid.r_cell is None
+
+    if is_cartesian:
+        return _mhd_rhs_cartesian(U, grid, gamma, method, riemann)
+    return _mhd_rhs_cylindrical(U, grid, gamma, dr, dz, method, riemann)
+
+
+def _mhd_rhs_cartesian(
+    U: mx.array,
+    grid: object,
+    gamma: float,
+    method: str,
+    riemann: str,
+) -> mx.array:
+    """Cartesian MHD RHS: dU/dt = -div(F) in up to 3 dimensions.
+
+    No geometric source terms. Standard flux divergence -(F_R - F_L)/dx.
+    """
+    ng = _GHOST.get(method, 2)
+    dU_dt = mx.zeros_like(U)
+
+    is_4d = U.ndim == 4
+    # For 4D: shape is (NVAR, nx, ny, nz)
+    # For 3D: shape is (NVAR, nx, nz) — degenerate 2D Cartesian
+
+    dims_to_sweep: list[tuple[int, float]] = [(0, grid.dx)]
+    if is_4d:
+        dims_to_sweep.append((1, grid.dy))
+        dims_to_sweep.append((2, grid.dz))
+    else:
+        dims_to_sweep.append((1, grid.dz))
+
+    for dim, ds in dims_to_sweep:
+        axis = dim + 1
+        n_along = U.shape[axis]
+        if n_along < 2 * ng + 1:
+            continue
+
+        F = compute_fluxes(U, gamma=gamma, dim=dim, method=method, riemann=riemann)
+        n_ifaces = F.shape[axis]
+        n_updated = n_ifaces - 1
+        if n_updated <= 0:
+            continue
+
+        # Standard flux divergence: -(F_R - F_L) / ds
+        F_L = _slice_axis(F, axis, 0, n_updated)
+        F_R = _slice_axis(F, axis, 1, n_updated)
+        div_F = -(F_R - F_L) / ds
+
+        # Pad to full domain size
+        dU_dt = dU_dt + _pad_to_full(div_F, U.shape, axis, ng)
+
+    return dU_dt
+
+
+def _slice_axis(arr: mx.array, axis: int, start: int, length: int) -> mx.array:
+    """Slice `length` elements starting at `start` along `axis`."""
+    end = start + length
+    if axis == 1:
+        return arr[:, start:end]
+    if axis == 2:
+        return arr[:, :, start:end]
+    if axis == 3:
+        return arr[:, :, :, start:end]
+    return arr[start:end]
+
+
+def _pad_to_full(
+    interior: mx.array,
+    full_shape: tuple,
+    axis: int,
+    ng: int,
+) -> mx.array:
+    """Zero-pad interior array to match full_shape along axis."""
+    n_full = full_shape[axis]
+    n_interior = interior.shape[axis]
+    n_right = n_full - ng - n_interior
+
+    pad_l_shape = list(full_shape)
+    pad_l_shape[axis] = ng
+    pad_r_shape = list(full_shape)
+    pad_r_shape[axis] = n_right
+
+    pad_l = mx.zeros(pad_l_shape, dtype=interior.dtype)
+    pad_r = mx.zeros(pad_r_shape, dtype=interior.dtype)
+    return mx.concatenate([pad_l, interior, pad_r], axis=axis)
+
+
+def _mhd_rhs_cylindrical(
+    U: mx.array,
+    grid: object,
+    gamma: float,
+    dr: float,
+    dz: float,
+    method: str,
+    riemann: str,
+) -> mx.array:
+    """Cylindrical MHD RHS with r-weighted flux divergence + geometric sources."""
     nr = U.shape[1]
     nz = U.shape[2]
 
-    # Prefer grid spacing attributes over defaults
     dr_eff = float(grid.dr) if hasattr(grid, "dr") and dr == 1.0 else dr
     dz_eff = float(grid.dz) if hasattr(grid, "dz") and dz == 1.0 else dz
 
@@ -293,67 +438,29 @@ def mhd_rhs(
 
     dU_dt = mx.zeros_like(U)
 
-    # ── Radial flux divergence ────────────────────────────────────────────────
-    # compute_fluxes returns shape (10, n_ifaces_r, nz)
-    # n_ifaces_r = nr - 2*ng for WENO5-Z, nr - 2*(ng-0) for plm actually nr-1
-    # For WENO5-Z: n_ifaces = nr - 5, interfaces at positions [ng, ng+1, ..., nr-ng-1]
-    # The interface i+1/2 separates cell i and i+1.
-    # Interfaces produced cover: i = ng-1 .. nr-ng-1 (i.e. ng interfaces on left side)
-    # Interior cells updated: i = ng .. nr-ng-1
-
+    # ── Radial flux divergence (r-weighted) ───────────────────────────────────
     F_r = compute_fluxes(U, gamma=gamma, dim=0, method=method, riemann=riemann)
-    n_ifaces_r = F_r.shape[1]  # nr-5 for weno5z, nr-1 for plm
-
-    # For WENO5-Z: the ng interfaces on each side are missing.
-    # First interface is between cells ng-1 and ng, so:
-    #   F_r[:, 0] = flux at r_{ng-1/2}   (left face of first updated cell ng)
-    #   F_r[:, j] = flux at r_{ng+j-1/2}
-    #   F_r[:, n_ifaces_r-1] = flux at r_{nr-ng-1/2}  (right face of last updated cell)
-    # Updated cells: ir = ng .. nr-ng-1  (count = n_ifaces_r - 1)
-    # Number of updated cells = n_ifaces_r - 1
-
-    # r_face has shape (nr+1,): r_face[i] = radius of left face of cell i
-    # Face at left boundary of updated cell ng: r_face[ng]
-    # Face at right boundary of last updated cell: r_face[nr-ng]
-    # We need r_face[ng] .. r_face[nr-ng], total = n_ifaces_r + 1 values (= nr - 2*ng + 1)
-    # But for WENO5-Z ng=2: nr-4+1 = nr-3, and n_ifaces_r+1 = nr-5+1 = nr-4 — need ng+1 on each side.
-    # Actually for WENO5-Z n_ifaces_r = nr-5, so updated cells count = nr-5-1 = nr-6?
-    # No: flux divergence uses consecutive flux differences: dU/dt[j] = -(r[j+1]*F[j+1] - r[j]*F[j]) / (r_c[j]*dr)
-    # F has n_ifaces_r faces, covering cells ng-1 to nr-ng in the stencil.
-    # F[0] is between cells ng-1 and ng. F[n_ifaces_r-1] is between cells nr-ng-1 and nr-ng.
-    # For cell ir (interior), we need F[ir-ng] (left face) and F[ir-ng+1] (right face).
-    # Updated cells: ir = ng to nr-ng-1 (inclusive), count = nr - 2*ng.
-    # Face indices needed: r_face[ng] to r_face[nr-ng], count = nr-2*ng+1.
-
-    n_updated_r = n_ifaces_r - 1  # number of cells with both left and right flux
+    n_ifaces_r = F_r.shape[1]
+    n_updated_r = n_ifaces_r - 1
 
     if n_updated_r > 0:
-        # Left face radii for each updated cell: r_face[ng], r_face[ng+1], ..., r_face[ng + n_updated_r - 1]
-        # Right face radii: r_face[ng+1], ..., r_face[ng + n_updated_r]
-        # Use mx.take with integer indices
         left_idx = mx.array(list(range(ng, ng + n_updated_r)), dtype=mx.int32)
         right_idx = mx.array(list(range(ng + 1, ng + n_updated_r + 1)), dtype=mx.int32)
-        r_left = mx.take(grid.r_face, left_idx, axis=0)   # shape (n_updated_r,)
+        r_left = mx.take(grid.r_face, left_idx, axis=0)
         r_right = mx.take(grid.r_face, right_idx, axis=0)
 
-        # r-weighted flux differencing: -(r_R*F_R - r_L*F_L) / (r_c * dr)
-        F_L = F_r[:, :n_updated_r, :]   # shape (10, n_updated_r, nz)
-        F_R = F_r[:, 1:, :]             # shape (10, n_updated_r, nz)
+        F_L = F_r[:, :n_updated_r, :]
+        F_R = F_r[:, 1:, :]
 
-        # Broadcast r to (1, n_updated_r, 1) for multiply
-        r_left_bc = r_left[None, :, None]    # (1, n_updated_r, 1)
+        r_left_bc = r_left[None, :, None]
         r_right_bc = r_right[None, :, None]
 
-        # Cell-centre radii for updated cells
         r_cell_idx = mx.array(list(range(ng, ng + n_updated_r)), dtype=mx.int32)
-        r_cell_upd = mx.take(grid.r_cell, r_cell_idx, axis=0)  # (n_updated_r,)
-        r_cell_bc = r_cell_upd[None, :, None]                   # (1, n_updated_r, 1)
+        r_cell_upd = mx.take(grid.r_cell, r_cell_idx, axis=0)
+        r_cell_bc = r_cell_upd[None, :, None]
 
         div_Fr = -(r_right_bc * F_R - r_left_bc * F_L) / (r_cell_bc * dr_eff)
 
-        # Write into the interior region of dU_dt
-        # Updated cell slice: ir = ng : ng + n_updated_r
-        # Build update by scatter (concatenate zero pads)
         pad_shape_l = (NVAR, ng, nz)
         pad_shape_r = (NVAR, nr - ng - n_updated_r, nz)
         pad_l = mx.zeros(pad_shape_l, dtype=U.dtype)
@@ -367,8 +474,8 @@ def mhd_rhs(
     n_updated_z = n_ifaces_z - 1
 
     if n_updated_z > 0:
-        F_L_z = F_z[:, :, :n_updated_z]   # (10, nr, n_updated_z)
-        F_R_z = F_z[:, :, 1:]             # (10, nr, n_updated_z)
+        F_L_z = F_z[:, :, :n_updated_z]
+        F_R_z = F_z[:, :, 1:]
 
         div_Fz = -(F_R_z - F_L_z) / dz_eff
 
@@ -378,8 +485,6 @@ def mhd_rhs(
         dU_dt = dU_dt + dU_z
 
     # ── Geometric source terms ────────────────────────────────────────────────
-    # cylindrical_source_mlx expects primitive state, not conserved.
-    # Convert U -> Q (primitive) for the source kernel.
     rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, gamma=gamma)
     s_specific = U[ISR] / mx.maximum(rho, RHO_FLOOR)
     Q_prim = mx.stack([rho, vr, vz, vt, p, s_specific, Br, Bz, Bt, U[IEE]], axis=0)
@@ -388,8 +493,6 @@ def mhd_rhs(
     inv_r_for_src = grid.inv_r
     r_cell_np = np.asarray(grid.r_cell)
     if np.any(r_cell_np < 0):
-        # Ghost-padded grid has negative r at axis. The Metal geometric source
-        # kernel uses 1/max(|r|, TINY_R), so passing abs(r) is correct.
         r_cell_for_src = mx.abs(grid.r_cell)
         inv_r_for_src = mx.where(
             mx.abs(grid.r_cell) < 0.5 * grid.dr,
@@ -398,17 +501,11 @@ def mhd_rhs(
         )
     src = cylindrical_source_mlx(Q_prim, r_cell_for_src, inv_r_for_src, gamma)
 
-    # src layout matches primitive (vr/vz/vt accelerations at indices 1,2,3; Bt at IBT).
-    # Convert velocity-space sources to conserved (momentum) sources.
-    dmr = rho * src[IMR]   # src[IMR] = S_vr (acceleration)
+    dmr = rho * src[IMR]
     dmt = rho * src[IMT]
     dBt = src[IBT]
-
-    # Energy source from geometric work: v . F_geom
     dE = vr * dmr + vt * dmt
 
-    src_cons = mx.zeros_like(U)
-    # Scatter individual components
     src_list = [
         mx.zeros_like(rho) if i == IDN else
         dmr if i == IMR else
