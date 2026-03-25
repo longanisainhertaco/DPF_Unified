@@ -114,6 +114,61 @@ def get_published_params(preset_name: str) -> tuple[float | None, float | None]:
     return device.lee_fc, device.lee_fm
 
 
+def auto_calibrate_mlx(
+    preset_name: str = "pf1000",
+    grid_shape: tuple[int, int, int] | None = None,
+    n_trials: int = 40,
+    phases: int = 4,
+) -> dict[str, Any]:
+    """Auto-calibrate fc/fm using the MLX MHD solver backend.
+
+    Uses Optuna TPE with multi-fidelity grid refinement.
+
+    Args:
+        preset_name: Device preset (e.g. "pf1000").
+        grid_shape: Override coarse grid shape. Default: (32, 1, 64).
+        n_trials: Optuna TPE trials for Phase 2.
+        phases: Number of phases to run (1-4).
+
+    Returns:
+        Dict with calibration results.
+    """
+    from dpf.validation.mlx_calibration import run_calibration_pipeline
+
+    result = run_calibration_pipeline(
+        preset_name=preset_name,
+        n_optuna_trials=n_trials,
+        skip_phase3=phases < 3,
+        skip_phase4=phases < 4,
+    )
+
+    out: dict[str, Any] = {
+        "backend": "mlx",
+        "best_fc": result.best.best_fc,
+        "best_fm": result.best.best_fm,
+        "I_peak_error": result.best.peak_current_error,
+        "t_peak_error": result.best.timing_error,
+        "objective": result.best.objective_value,
+        "n_evals": result.best.n_evals,
+        "converged": result.best.converged,
+        "device_name": result.best.device_name,
+        "preset": preset_name,
+        "phases_completed": result.phases_completed,
+        "wall_time_s": result.total_wall_time_s,
+        "n_trials_total": len(result.trials),
+    }
+
+    # Best trial NRMSE
+    successful = [t for t in result.trials if t.success]
+    if successful:
+        best_trial = min(successful, key=lambda t: t.objective)
+        out["best_nrmse"] = best_trial.nrmse
+        out["best_I_peak_MA"] = best_trial.I_peak_A / 1e6
+        out["best_t_peak_us"] = best_trial.t_peak_s * 1e6
+
+    return out
+
+
 def calibrate_all_presets(
     sim_time_us: float = 20.0,
 ) -> list[dict[str, Any]]:
