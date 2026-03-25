@@ -117,20 +117,12 @@ def test_sod_radial_flux_structure() -> None:
     assert not np.any(np.isinf(F_np)), "Inf in radial Sod fluxes"
 
 
-def test_sod_radial_flux_jump_at_interface() -> None:
-    """Mass flux (rho*v) has a discontinuity at the density interface."""
+def test_sod_radial_flux_finite() -> None:
+    """Mass flux across Sod discontinuity is finite and non-NaN."""
     U = _sod_state(NR, NZ, dim=0)
     F = compute_fluxes(U, gamma=GAMMA, dim=0, method="plm")
-
-    # PLM produces NR-1 interfaces. Interface near mid = NR//2 - 1 should
-    # see a flux jump relative to the far-left region.
     F_np = np.asarray(F)
-    mid_iface = NR // 2 - 1  # interface just left of the discontinuity
-    # Mass flux left of jump vs right of jump
-    F_mass_left = float(F_np[IDN, mid_iface - 2, NZ // 2])
-    F_mass_right = float(F_np[IDN, mid_iface + 2, NZ // 2])
-    # At least some difference in mass flux across the discontinuity
-    assert abs(F_mass_left - F_mass_right) > 0.0 or True  # structural check only
+    assert np.all(np.isfinite(F_np)), "Non-finite values in Sod radial flux"
 
 
 # ──────────────────────────────────────────────────────────────────────────────

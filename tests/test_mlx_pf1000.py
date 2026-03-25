@@ -487,7 +487,12 @@ class TestMLXPF1000Config:
         config = SimulationConfig(**preset)
 
         try:
-            solver = MLXMHDSolver(config)
+            solver = MLXMHDSolver(
+                grid_shape=config.grid_shape,
+                dx=config.dx,
+                gamma=5.0 / 3.0,
+                coordinates="cylindrical",
+            )
             assert solver is not None
         except RuntimeError as exc:
             if "Metal GPU" in str(exc) or "MLX" in str(exc):
