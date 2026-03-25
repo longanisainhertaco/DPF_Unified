@@ -1,5 +1,7 @@
 # Engine.py Decomposition Plan
 
+> **Archive Notice (2026-03-25):** This document is historical. The engine decomposition was executed on 2026-03-25. References to `src/dpf/engine.py` are outdated; see the new package structure at `src/dpf/engine/` (core.py, circuit_coupling.py, physics_operators.py, state_management.py, athena_step.py, backend_dispatch.py). See commit `a877795`.
+
 **Document**: ENGINE_DECOMPOSITION_PLAN.md
 **Date**: 2026-03-24
 **Methodology**: Six Sigma DMAIC

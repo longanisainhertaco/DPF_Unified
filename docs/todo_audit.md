@@ -1,5 +1,7 @@
 # DPF-Unified TODO / Placeholder Audit
 
+> **Archive Notice (2026-03-25):** References to `src/dpf/engine.py` in this document are historical. The engine was decomposed into `src/dpf/engine/` package (core.py, circuit_coupling.py, physics_operators.py, state_management.py, athena_step.py, backend_dispatch.py). See commit `a877795`.
+
 Generated: 2026-02-25
 Scope: `src/dpf/**/*.py`, `tests/**/*.py`
 

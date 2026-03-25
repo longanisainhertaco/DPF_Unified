@@ -1,5 +1,7 @@
 # DPF Unified — Developer Workflow Guide
 
+> **Archive Notice (2026-03-25):** References to `src/dpf/engine.py` in this document are historical. The engine was decomposed into `src/dpf/engine/` package (core.py, circuit_coupling.py, physics_operators.py, state_management.py, athena_step.py, backend_dispatch.py). See commit `a877795`.
+
 A practical, actionable guide for developing, testing, and deploying the DPF-Unified dense plasma focus simulator.
 
 ---
