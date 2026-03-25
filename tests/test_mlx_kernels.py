@@ -215,6 +215,75 @@ def test_ghost_pad_mlx_electrode_matches_numpy(nr: int, nz: int) -> None:
     assert err < 1e-3, f"Ghost electrode MLX vs NumPy max error = {err:.2e} for ({nr},{nz})"
 
 
+@pytest.mark.parametrize("nr,nz", GRID_SIZES)
+def test_ghost_pad_electrode_energy_consistency(nr: int, nz: int) -> None:
+    """Electrode ghost cells must have positive pressure after B_theta injection.
+
+    Root cause of the HLLD NaN blocker: ghost_pad copies conserved energy E
+    from the last interior cell but injects electrode B_theta without updating
+    E.  This makes p = (gamma-1)(E - KE - 0.5*B^2) go negative.  The fix
+    adds the magnetic energy difference to E and enforces a minimum beta.
+    """
+    Q = np.zeros((NVAR, nr, nz), dtype=np.float32)
+    rho_fill = 2e-5  # deuterium fill gas
+    p_fill = 3.0
+    Q[IDN, :, :] = rho_fill
+    Q[IEN, :, :] = p_fill / (GAMMA - 1.0)
+
+    ng = 3
+    dr = 0.001
+    r_face = _cell_radii(nr + 2 * ng, dr=dr)
+
+    for current in [200e3, 500e3, 1e6]:
+        padded = ghost_pad_numpy(Q, ng=ng, bc_type="electrode",
+                                 current=current, r_face=r_face)
+        for ig in range(ng):
+            idx = ng + nr + ig
+            rho = padded[IDN, idx, 0]
+            E = padded[IEN, idx, 0]
+            B2 = (padded[IBR, idx, 0] ** 2
+                  + padded[IBZ, idx, 0] ** 2
+                  + padded[IBT, idx, 0] ** 2)
+            p = (GAMMA - 1.0) * (E - 0.5 * B2)
+            assert rho > 0, f"Ghost rho <= 0 at I={current:.0e}A, ig={ig}"
+            assert p > 0, (
+                f"Ghost pressure <= 0 at I={current:.0e}A, ig={ig}: "
+                f"E={E:.4e}, B^2/2={0.5*B2:.4e}, p={p:.4e}"
+            )
+            assert not np.isnan(p), f"Ghost pressure NaN at I={current:.0e}A"
+
+
+@pytest.mark.skipif(not HAS_MLX_KERNELS, reason="MLX Metal kernels unavailable")
+@pytest.mark.parametrize("nr,nz", GRID_SIZES)
+def test_ghost_pad_mlx_electrode_energy_consistency(nr: int, nz: int) -> None:
+    """MLX Metal kernel: electrode ghost cells must also have positive pressure."""
+    Q = np.zeros((NVAR, nr, nz), dtype=np.float32)
+    rho_fill = 2e-5
+    p_fill = 3.0
+    Q[IDN, :, :] = rho_fill
+    Q[IEN, :, :] = p_fill / (GAMMA - 1.0)
+
+    ng = 3
+    dr = 0.001
+    r_face = _cell_radii(nr + 2 * ng, dr=dr)
+    current = 500e3
+
+    padded = np.asarray(ghost_pad_mlx(mx.array(Q), ng=ng, bc_type="electrode",
+                                       current=current, r_face=r_face))
+    for ig in range(ng):
+        idx = ng + nr + ig
+        E = padded[IEN, idx, 0]
+        B2 = (padded[IBR, idx, 0] ** 2
+              + padded[IBZ, idx, 0] ** 2
+              + padded[IBT, idx, 0] ** 2)
+        p = (GAMMA - 1.0) * (E - 0.5 * B2)
+        assert padded[IDN, idx, 0] > 0, f"MLX ghost rho <= 0 at ig={ig}"
+        assert p > 0, (
+            f"MLX ghost pressure <= 0 at ig={ig}: "
+            f"E={E:.4e}, B^2/2={0.5*B2:.4e}, p={p:.4e}"
+        )
+
+
 @pytest.mark.skipif(not HAS_MLX_KERNELS, reason="MLX Metal kernels unavailable")
 @pytest.mark.parametrize("nr,nz", GRID_SIZES)
 def test_ghost_pad_mlx_inner_bc_sign_flip(nr: int, nz: int) -> None:

@@ -271,36 +271,59 @@ class MLXMHDSolver(PlasmaSolverBase):
             mu0=_MU0,
         )
 
-        # ghost_pad_mlx writes B_theta in SI in ghost cells. Two corrections:
+        # ghost_pad_mlx writes B_theta in SI in ghost cells. Three corrections:
         # 1. Convert to HL if needed.
         # 2. Set B_theta = mu0*I/(2*pi*r) in the outermost ng interior cells
         #    as well, so the transition from interior to ghost is smooth (1/r
         #    profile). Without this, WENO5-Z sees a 0→1000 HL jump and
         #    produces NaN in float32.
-        from dpf.metal.mlx_kernels import IBT
+        # 3. Update total energy E to account for changed B_theta (energy
+        #    consistency). Without this, p = (gamma-1)(E - KE - B^2/2) goes
+        #    negative when B_theta >> B_theta_old, causing HLLD NaN.
+        from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
         _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
         U_np = np.asarray(U_padded)
+
+        def _update_bt_with_energy(idx: int, Bt_new: float) -> None:
+            """Set B_theta at index idx and fix total energy for consistency."""
+            B2_old = (U_np[IBR, idx, :] ** 2
+                      + U_np[IBZ, idx, :] ** 2
+                      + U_np[IBT, idx, :] ** 2)
+            U_np[IBT, idx, :] = Bt_new
+            B2_new = (U_np[IBR, idx, :] ** 2
+                      + U_np[IBZ, idx, :] ** 2
+                      + U_np[IBT, idx, :] ** 2)
+            # Add magnetic energy difference to total energy
+            U_np[IEN, idx, :] += 0.5 * (B2_new - B2_old)
+            # Enforce minimum plasma beta
+            p_mag = 0.5 * B2_new
+            beta_floor = 1e-4
+            p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
+            E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
+            U_np[IEN, idx, :] = np.maximum(U_np[IEN, idx, :], E_floor)
 
         # Outer ghost cells: fix SI→HL if needed (ghost_pad wrote SI)
         for ig in range(ng):
             out_idx = ng + self.nr + ig
             r_pos = max(r_cell_list[out_idx], 1e-10)
             Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-            U_np[IBT, out_idx, :] = Bt_val
+            _update_bt_with_energy(out_idx, Bt_val)
+            # Density floor in ghost cells
+            U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
 
         # Outermost ng interior cells: set B_theta to electrode 1/r profile.
         # This ensures the WENO5-Z stencil sees a smooth B_theta transition
         # rather than a step discontinuity at the ghost boundary.
         for ig in range(ng):
-            int_idx = ng + self.nr - 1 - ig  # last interior, second-to-last, etc.
+            int_idx = ng + self.nr - 1 - ig
             r_pos = max(r_cell_list[int_idx], 1e-10)
             Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
             # Blend: use max(existing, electrode) so we don't reduce B_theta
-            # that might already be set from the interior physics
             existing = U_np[IBT, int_idx, :]
-            U_np[IBT, int_idx, :] = np.where(
+            new_Bt = np.where(
                 np.abs(existing) > np.abs(Bt_val), existing, Bt_val
             )
+            _update_bt_with_energy(int_idx, new_Bt)
 
         U_padded = mx.array(U_np)
 

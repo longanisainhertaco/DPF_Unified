@@ -65,12 +65,19 @@ _GHOST_HEADER = """
 using namespace metal;
 
 constant float MU0 = 1.2566370614359173e-6f;
+constant float GAMMA_GHOST = 5.0f / 3.0f;
+constant float P_FLOOR_GHOST = 1.0e-12f;
+constant float BETA_FLOOR = 1.0e-4f;
+constant float RHO_FLOOR_GHOST = 1.0e-4f;
 constant int NG_MAX = 8;
 constant int NVAR = 10;
+constant int IDN = 0;
 constant int IMR = 1;
 constant int IMZ = 2;
 constant int IMT = 3;
+constant int IEN = 4;
 constant int IBR = 6;
+constant int IBZ = 7;
 constant int IBT = 8;
 """
 
@@ -90,6 +97,7 @@ _GHOST_SOURCE = """
 
     int r_interior = (int)r_out - ng;
 
+    // First pass: copy all variables with standard BCs
     for (int v = 0; v < NVAR; v++) {
         float val = 0.0f;
 
@@ -117,6 +125,45 @@ _GHOST_SOURCE = """
         }
 
         padded[v * out_stride_var + r_out * nz + z_out] = val;
+    }
+
+    // Second pass: fix energy consistency in outer electrode ghost cells.
+    // The first pass copied E from the last interior cell but injected a
+    // new B_theta.  Without updating E, pressure = (gamma-1)(E - KE - B^2/2)
+    // goes negative, causing NaN in the HLLD Riemann solver.
+    if (r_interior >= (int)nr) {
+        float current = params[0];
+        if (metal::abs(current) > 1.0e-10f) {
+            uint oidx = r_out * nz + z_out;
+            float Br  = padded[IBR * out_stride_var + oidx];
+            float Bz  = padded[IBZ * out_stride_var + oidx];
+            float Bt  = padded[IBT * out_stride_var + oidx];
+            float B2_new = Br*Br + Bz*Bz + Bt*Bt;
+
+            // B^2 from the source cell (last interior) before electrode injection
+            int src = (int)nr - 1;
+            uint sidx = (uint)src * nz + z_out;
+            float Br_old = 0.0f;  // was zeroed
+            float Bz_old = state[IBZ * in_stride_var + sidx];
+            float Bt_old = state[IBT * in_stride_var + sidx];
+            float B2_old = Br_old*Br_old + Bz_old*Bz_old + Bt_old*Bt_old;
+
+            // Update total energy: add magnetic energy difference
+            float E_val = padded[IEN * out_stride_var + oidx];
+            E_val += 0.5f * (B2_new - B2_old);
+
+            // Enforce minimum plasma beta
+            float p_mag = 0.5f * B2_new;
+            float p_min = BETA_FLOOR * metal::max(p_mag, P_FLOOR_GHOST);
+            float E_floor = p_min / (GAMMA_GHOST - 1.0f) + 0.5f * B2_new;
+            E_val = metal::max(E_val, E_floor);
+            padded[IEN * out_stride_var + oidx] = E_val;
+
+            // Density floor: prevent extreme Alfven speed
+            float rho_val = padded[IDN * out_stride_var + oidx];
+            rho_val = metal::max(rho_val, RHO_FLOOR_GHOST);
+            padded[IDN * out_stride_var + oidx] = rho_val;
+        }
     }
 """
 
@@ -190,10 +237,36 @@ def ghost_pad_numpy(
                 if r_face is not None:
                     r_pos = float(r_face[out_idx])
                 else:
-                    # fallback: reconstruct from index
                     r_pos = max(out_idx * 1e-3, 1e-10)
                 r_pos = max(r_pos, 1e-10)
+                # Old B^2 before electrode injection
+                B2_old = (padded[IBR, out_idx, :] ** 2
+                          + padded[IBZ, out_idx, :] ** 2
+                          + padded[IBT, out_idx, :] ** 2)
+                # Inject electrode B_theta
                 padded[IBT, out_idx, :] = mu0 * current / (2.0 * math.pi * r_pos)
+                # New B^2 after electrode injection
+                B2_new = (padded[IBR, out_idx, :] ** 2
+                          + padded[IBZ, out_idx, :] ** 2
+                          + padded[IBT, out_idx, :] ** 2)
+                # Update total energy to account for magnetic energy change.
+                # Without this, p = (gamma-1)(E - KE - 0.5*B^2) goes negative
+                # because E was copied from fill gas but B^2 is now dominated
+                # by the electrode field.
+                padded[IEN, out_idx, :] += 0.5 * (B2_new - B2_old)
+                # Enforce minimum plasma beta to prevent extreme wavespeeds
+                p_mag = 0.5 * B2_new
+                beta_floor = 1e-4
+                p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
+                E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
+                padded[IEN, out_idx, :] = np.maximum(
+                    padded[IEN, out_idx, :], E_floor
+                )
+                # Density floor: prevent extreme Alfven speed in ghost cells
+                rho_floor = np.maximum(Q[IDN, nr - 1, :], 1e-4)
+                padded[IDN, out_idx, :] = np.maximum(
+                    padded[IDN, out_idx, :], rho_floor
+                )
 
     return padded
 
