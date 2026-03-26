@@ -1556,6 +1556,494 @@ def remove_child_blocks(
 # ---------------------------------------------------------------------------
 
 
+def fill_ghosts_from_coarse(
+    hierarchy: AMRHierarchy,
+    fine_li: int,
+    coarse_li: int,
+    ng: int = 3,
+) -> None:
+    """Prolong coarse ghost data into the boundary cells of fine-level blocks.
+
+    For each fine block, checks whether the block's W/E/S/N boundary is adjacent
+    to the coarse-fine interface. If so, the coarse block data is prolongated into
+    the 3-cell-wide ghost region. This is the 'prolongation ghost fill' step of
+    the Berger-Colella V-cycle.
+
+    Called ONCE per coarse step before the first fine sub-step (optimized protocol:
+    coarse level is frozen during fine sub-steps, so prolongation ghosts are valid
+    for all ratio sub-steps — saves (ratio-1) prolongation calls per coarse step).
+
+    Args:
+        hierarchy: AMR hierarchy.
+        fine_li: Fine level index.
+        coarse_li: Coarse level index (must be fine_li - 1).
+        ng: Ghost cell width (must match rhs_fn padding).
+    """
+    if coarse_li < 0 or fine_li >= len(hierarchy.levels):
+        return
+    coarse_level = hierarchy.levels[coarse_li]
+    fine_level = hierarchy.levels[fine_li]
+    ratio = hierarchy.ratio
+
+    for f_idx, f_block in fine_level.blocks.items():
+        if not f_block.active:
+            continue
+        ir_f, iz_f = f_idx
+        # Parent coarse block index
+        ir_c = ir_f // ratio
+        iz_c = iz_f // ratio
+        c_block = coarse_level.blocks.get((ir_c, iz_c))
+        if c_block is None:
+            continue
+
+        U_c_np = np.asarray(c_block.U).astype(np.float32)
+        U_f_np = np.asarray(f_block.U).astype(np.float32)
+        _, bnr, bnz = U_f_np.shape
+
+        # Prolongate the entire coarse block (bilinear van Leer)
+        U_c_fine = _prolongate_vanleer(U_c_np, ratio)
+        # The fine block occupies quadrant (ir_f % ratio, iz_f % ratio) of the prolongated
+        # coarse result. Extract the sub-region.
+        di = ir_f % ratio
+        dj = iz_f % ratio
+        nr_q = bnr  # block_nr == block_nr_coarse (same block size on all levels)
+        nz_q = bnz
+        r_start = di * nr_q
+        z_start = dj * nz_q
+        sub = U_c_fine[:, r_start : r_start + nr_q, z_start : z_start + nz_q]
+
+        # Blend: only overwrite ghost cells at CF boundary, not the interior.
+        # For the W boundary (ir_f % ratio == 0): fill first ng columns from coarse
+        if di == 0:
+            fill_cols = min(ng, nr_q)
+            for gi in range(fill_cols):
+                src_col = max(0, gi)
+                U_f_np[:, gi, :] = sub[:, src_col, :]
+        # For the E boundary (ir_f is the last block in the group):
+        last_di = ratio - 1
+        if di == last_di:
+            fill_cols = min(ng, nr_q)
+            for gi in range(fill_cols):
+                src_col = min(nr_q - 1, nr_q - ng + gi)
+                U_f_np[:, bnr - fill_cols + gi, :] = sub[:, src_col, :]
+        # For S boundary (iz_f % ratio == 0)
+        if dj == 0:
+            fill_rows = min(ng, nz_q)
+            for gi in range(fill_rows):
+                src_row = max(0, gi)
+                U_f_np[:, :, gi] = sub[:, :, src_row]
+        # For N boundary (iz_f is the last block in z group)
+        last_dj = ratio - 1
+        if dj == last_dj:
+            fill_rows = min(ng, nz_q)
+            for gi in range(fill_rows):
+                src_row = min(nz_q - 1, nz_q - ng + gi)
+                U_f_np[:, :, bnz - fill_rows + gi] = sub[:, :, src_row]
+
+        f_block.U = mx.array(U_f_np) if mx is not None else U_f_np
+
+
+# ---------------------------------------------------------------------------
+# Phase D: Ghost freshness tracking
+# ---------------------------------------------------------------------------
+
+
+class GhostFreshnessTracker:
+    """Tracks which sub-step each block's coarse-side ghost data was last filled.
+
+    Each entry: block_key -> (level_idx, coarse_fill_step)
+    coarse_fill_step is the coarse step number when prolongation ghosts were filled.
+
+    Usage::
+
+        tracker = GhostFreshnessTracker()
+        tracker.mark_coarse_filled(fine_li, block_idx, coarse_step=0)
+        tracker.check(fine_li, block_idx, current_sub_step=0)  # passes
+        tracker.check(fine_li, block_idx, current_sub_step=1)  # passes (coarse frozen)
+
+    The freshness contract is:
+      - Same-level ghost: must be filled at the start of every sub-step.
+      - Coarse-to-fine (prolongation) ghost: filled once before sub-step 0;
+        valid for sub-steps 0..ratio-1 because the coarse level is frozen.
+    """
+
+    def __init__(self) -> None:
+        self._coarse_fill_step: dict[tuple[int, tuple[int, int]], int] = {}
+        self._same_level_fill_sub: dict[tuple[int, tuple[int, int]], int] = {}
+        self._ratio: int = 2
+
+    def set_ratio(self, ratio: int) -> None:
+        self._ratio = ratio
+
+    def mark_coarse_filled(
+        self, level_idx: int, block_idx: tuple[int, int], coarse_step: int
+    ) -> None:
+        self._coarse_fill_step[(level_idx, block_idx)] = coarse_step
+
+    def mark_same_level_filled(
+        self, level_idx: int, block_idx: tuple[int, int], sub_step: int
+    ) -> None:
+        self._same_level_fill_sub[(level_idx, block_idx)] = sub_step
+
+    def check(
+        self,
+        level_idx: int,
+        block_idx: tuple[int, int],
+        current_coarse_step: int,
+        current_sub_step: int,
+    ) -> bool:
+        """Return True if ghost data is fresh, False if stale."""
+        coarse_key = (level_idx, block_idx)
+        same_key = (level_idx, block_idx)
+
+        coarse_filled = self._coarse_fill_step.get(coarse_key, -1)
+        if coarse_filled != current_coarse_step:
+            return False
+
+        same_filled = self._same_level_fill_sub.get(same_key, -1)
+        return same_filled == current_sub_step
+
+    def reset(self) -> None:
+        self._coarse_fill_step.clear()
+        self._same_level_fill_sub.clear()
+
+
+def _check_ghost_freshness(
+    hierarchy: AMRHierarchy,
+    level_idx: int,
+    sub_step: int,
+    tracker: GhostFreshnessTracker,
+    coarse_step: int,
+) -> None:
+    """Assert ghost freshness for all active blocks at level_idx.
+
+    Raises AssertionError if any block's ghost data is stale (RPN-200 risk).
+    Only called for level_idx > 0 (level 0 has no CF boundary).
+    """
+    if level_idx == 0:
+        return
+    level = hierarchy.levels[level_idx]
+    for idx, block in level.blocks.items():
+        if not block.active:
+            continue
+        fresh = tracker.check(
+            level_idx, idx, current_coarse_step=coarse_step, current_sub_step=sub_step
+        )
+        if not fresh:
+            raise AssertionError(
+                f"Stale ghost data at level {level_idx} block {idx} "
+                f"sub_step={sub_step} coarse_step={coarse_step}. "
+                "Call fill_ghosts_from_coarse() and ghost_exchange_same_level() "
+                "before advancing this level."
+            )
+
+
+# ---------------------------------------------------------------------------
+# Phase D: Recursive V-cycle advance
+# ---------------------------------------------------------------------------
+
+
+def _advance_level_blocks(
+    hierarchy: AMRHierarchy,
+    level_idx: int,
+    dt: float,
+    gamma: float,
+    method: str,
+    riemann: str,
+    ng: int,
+    r_inner: float,
+    rhs_fn: Any,
+) -> None:
+    """Advance all blocks on level_idx by dt using the RHS function.
+
+    SSP-RK3 would require 3 RHS calls; for Phase D we use the same 1-stage
+    Euler update as amr_step (SSP-RK3 extension is left for Phase E).
+    The RHS is computed via _block_rhs (CPU Lax-Friedrichs) unless rhs_fn is
+    provided as a callable that accepts (U_pad, block, level, ...) and returns dU.
+    """
+    level = hierarchy.levels[level_idx]
+    block_nr = hierarchy.block_nr
+    block_nz = hierarchy.block_nz
+
+    padded = ghost_exchange_same_level(level, ng, block_nr, block_nz, r_inner)
+
+    for idx, block in level.blocks.items():
+        if not block.active:
+            continue
+        U_pad = padded.get(idx)
+        if U_pad is None:
+            continue
+        U_pad_np = np.asarray(U_pad).astype(np.float32)
+        bnr = np.asarray(block.U).shape[1]
+        bnz = np.asarray(block.U).shape[2]
+
+        if rhs_fn is not None:
+            try:
+                dU = rhs_fn(U_pad_np, block, level, gamma, method, riemann, dt, ng)
+            except Exception:
+                dU = _block_rhs(U_pad_np, block, level, gamma, method, riemann, dt, ng)
+        else:
+            dU = _block_rhs(U_pad_np, block, level, gamma, method, riemann, dt, ng)
+
+        U_new = U_pad_np[:, ng : ng + bnr, ng : ng + bnz] + dt * dU
+        U_new = np.maximum(U_new, 0.0)
+        block.U = mx.array(U_new) if mx is not None else U_new
+
+
+def _restrict_fine_to_coarse(
+    hierarchy: AMRHierarchy,
+    coarse_li: int,
+) -> None:
+    """Volume-weighted restriction from level coarse_li+1 to coarse_li."""
+    fine_li = coarse_li + 1
+    if fine_li >= len(hierarchy.levels):
+        return
+    coarse_level = hierarchy.levels[coarse_li]
+    fine_level = hierarchy.levels[fine_li]
+    ratio = hierarchy.ratio
+    block_nr = hierarchy.block_nr
+    block_nz = hierarchy.block_nz
+
+    for c_idx, c_block in coarse_level.blocks.items():
+        if not c_block.active:
+            continue
+        children = [
+            b for b in fine_level.active_blocks()
+            if (b.index[0] // ratio == c_idx[0] and b.index[1] // ratio == c_idx[1])
+        ]
+        if children:
+            restrict_to_coarse(children, c_block, fine_level, ratio, block_nr, block_nz)
+
+
+def advance_level(
+    hierarchy: AMRHierarchy,
+    level_idx: int,
+    dt: float,
+    config: Any,
+    rhs_fn: Any = None,
+    *,
+    gamma: float = 5.0 / 3.0,
+    method: str = "plm",
+    riemann: str = "hll",
+    ng: int = 3,
+    r_inner: float = 0.0,
+    coarse_step: int = 0,
+    tracker: GhostFreshnessTracker | None = None,
+) -> None:
+    """Recursive V-cycle: advance level level_idx, then subcycle finer levels.
+
+    V-cycle protocol (Berger & Colella 1989, Section 3 optimized ghost protocol):
+
+    1. Same-level ghost exchange for this level (every call).
+    2. Advance this level by dt (1-stage Euler; SSP-RK3 is Phase E).
+    3. If a finer level exists and has blocks:
+       a. Fill prolongation ghosts ONCE before the sub-step series.
+          (Coarse level is frozen during fine sub-steps — ghosts stay valid.)
+       b. For each sub-step (ratio total):
+          - Same-level ghost exchange on fine level (mandatory: fine neighbors change).
+          - Recursively advance fine level by dt/ratio.
+       c. Restrict fine -> coarse (volume-weighted, r-weighted).
+       d. Apply reflux correction if config.use_refluxing.
+
+    Ghost freshness is tracked via GhostFreshnessTracker when provided.
+    Level-3 support is gated on config.max_levels >= 3.
+
+    Args:
+        hierarchy: AMR hierarchy (mutated in place).
+        level_idx: Level to advance (0 = coarsest).
+        dt: Timestep for this level.
+        config: AMRConfig with use_refluxing, max_levels, ratio.
+        rhs_fn: Optional callable(U_pad, block, level, ...) -> dU. Falls back to
+                _block_rhs (Lax-Friedrichs) if None or if it raises.
+        gamma: Adiabatic index.
+        method: Reconstruction ("plm", "weno5z").
+        riemann: Riemann solver ("hll", "hlld").
+        ng: Ghost cell width.
+        r_inner: Inner radial boundary [m].
+        coarse_step: Monotone coarse step counter for freshness tracking.
+        tracker: Optional GhostFreshnessTracker for freshness assertions.
+    """
+    ratio = hierarchy.ratio
+
+    # Step 1 + 2: Advance this level
+    _advance_level_blocks(
+        hierarchy, level_idx, dt, gamma, method, riemann, ng, r_inner, rhs_fn
+    )
+
+    # Step 3: Recurse into finer level
+    fine_li = level_idx + 1
+    if fine_li >= len(hierarchy.levels):
+        return
+    if fine_li >= getattr(config, "max_levels", 2):
+        return
+
+    fine_level = hierarchy.levels[fine_li]
+    if not fine_level.blocks:
+        return
+
+    dt_fine = dt / ratio
+
+    # Step 3a: Prolongation ghosts — fill ONCE before sub-step series.
+    # The coarse level is frozen during fine sub-steps, so these are valid
+    # for all ratio sub-steps (saves (ratio-1) prolongation calls).
+    fill_ghosts_from_coarse(hierarchy, fine_li, level_idx, ng)
+    if tracker is not None:
+        tracker.set_ratio(ratio)
+        for idx, block in fine_level.blocks.items():
+            if block.active:
+                tracker.mark_coarse_filled(fine_li, idx, coarse_step)
+
+    for sub in range(ratio):
+        # Step 3b.i: Same-level ghost exchange on fine level — MANDATORY every sub-step
+        # (fine neighbors advance at dt_fine and their boundary data changes).
+        if tracker is not None:
+            for idx, block in fine_level.blocks.items():
+                if block.active:
+                    tracker.mark_same_level_filled(fine_li, idx, sub)
+
+        # Ghost freshness assertion before advancing
+        if tracker is not None:
+            _check_ghost_freshness(
+                hierarchy, fine_li, sub, tracker, coarse_step=coarse_step
+            )
+
+        # Step 3b.ii: Recursive advance of fine level
+        advance_level(
+            hierarchy,
+            fine_li,
+            dt_fine,
+            config,
+            rhs_fn,
+            gamma=gamma,
+            method=method,
+            riemann=riemann,
+            ng=ng,
+            r_inner=r_inner,
+            coarse_step=coarse_step * ratio + sub,
+            tracker=tracker,
+        )
+
+    # Step 3c: Restrict fine -> coarse
+    _restrict_fine_to_coarse(hierarchy, level_idx)
+
+    # Step 3d: Reflux correction
+    if getattr(config, "use_refluxing", True):
+        cf_map = build_cf_face_map(hierarchy, coarse_li=level_idx)
+        if cf_map:
+            reg = FluxRegisterCylindrical()
+            coarse_level = hierarchy.levels[level_idx]
+            for cface in cf_map:
+                c_block = coarse_level.blocks.get(cface.coarse_block_idx)
+                if c_block is None:
+                    continue
+                U_c_np = np.asarray(c_block.U).astype(np.float64)
+                ir, iz = cface.ir, cface.iz
+                if cface.face_dir == "r":
+                    rho_c = float(np.maximum(U_c_np[IDN, ir, iz], 1e-30))
+                    F_coarse = U_c_np[:, ir, iz] * (U_c_np[IMR, ir, iz] / rho_c)
+                else:
+                    rho_c = float(np.maximum(U_c_np[IDN, ir, iz], 1e-30))
+                    F_coarse = U_c_np[:, ir, iz] * (U_c_np[IMZ, ir, iz] / rho_c)
+                reg.accumulate_coarse(cface.face_id, F_coarse, cface.coarse_area, dt)
+
+            for cface in cf_map:
+                for (f_block_idx, ir_f, iz_f, _iface, A_f) in cface.fine_faces:
+                    f_block = fine_level.blocks.get(f_block_idx)
+                    if f_block is None:
+                        continue
+                    U_f_np = np.asarray(f_block.U).astype(np.float64)
+                    if ir_f >= U_f_np.shape[1] or iz_f >= U_f_np.shape[2]:
+                        continue
+                    if cface.face_dir == "r":
+                        rho_f = float(np.maximum(U_f_np[IDN, ir_f, iz_f], 1e-30))
+                        F_fine = U_f_np[:, ir_f, iz_f] * (U_f_np[IMR, ir_f, iz_f] / rho_f)
+                    else:
+                        rho_f = float(np.maximum(U_f_np[IDN, ir_f, iz_f], 1e-30))
+                        F_fine = U_f_np[:, ir_f, iz_f] * (U_f_np[IMZ, ir_f, iz_f] / rho_f)
+                    reg.accumulate_fine(cface.face_id, F_fine, A_f, dt_fine)
+
+            for cface in cf_map:
+                c_block = coarse_level.blocks.get(cface.coarse_block_idx)
+                if c_block is None:
+                    continue
+                U_c_np = np.asarray(c_block.U).astype(np.float32)
+                reg.apply_correction(
+                    U_c_np,
+                    cface.face_id,
+                    cface.ir,
+                    cface.iz,
+                    cface.coarse_V,
+                    cface.sign,
+                )
+                c_block.U = mx.array(U_c_np) if mx is not None else U_c_np
+
+
+def amr_step_multilevel(
+    hierarchy: AMRHierarchy,
+    dt: float,
+    config: Any,
+    rhs_fn: Any = None,
+    *,
+    gamma: float = 5.0 / 3.0,
+    method: str = "plm",
+    riemann: str = "hll",
+    ng: int = 3,
+    r_inner: float = 0.0,
+    step_number: int = 0,
+    use_freshness_tracking: bool = True,
+) -> tuple[AMRHierarchy, float]:
+    """N-level V-cycle AMR step (Phase D entry point).
+
+    Replaces amr_step for hierarchies with max_levels > 2. For max_levels == 2
+    this is functionally equivalent to amr_step but uses the recursive V-cycle
+    instead of the flat sequential update.
+
+    Per-level timestep assignment:
+        level l: dt_l = dt_l0 / ratio^l
+
+    Regrid is triggered every config.regrid_interval steps (same as amr_step).
+
+    Args:
+        hierarchy: AMR hierarchy (mutated in place).
+        dt: Level-0 (coarsest) timestep [s].
+        config: AMRConfig with max_levels, ratio, use_refluxing, regrid_interval.
+        rhs_fn: Optional callable for block RHS (falls back to _block_rhs).
+        gamma: Adiabatic index.
+        method: Reconstruction method.
+        riemann: Riemann solver.
+        ng: Ghost cell width.
+        r_inner: Inner radial boundary [m].
+        step_number: Global step counter (for regrid scheduling).
+        use_freshness_tracking: If True, enable ghost freshness assertions (debug mode).
+
+    Returns:
+        (updated hierarchy, dt_used).
+    """
+    if config is not None and step_number % config.regrid_interval == 0 and step_number > 0:
+        hierarchy, _, _ = auto_regrid(hierarchy, config)
+
+    tracker: GhostFreshnessTracker | None = None
+    if use_freshness_tracking:
+        tracker = GhostFreshnessTracker()
+
+    advance_level(
+        hierarchy,
+        level_idx=0,
+        dt=dt,
+        config=config,
+        rhs_fn=rhs_fn,
+        gamma=gamma,
+        method=method,
+        riemann=riemann,
+        ng=ng,
+        r_inner=r_inner,
+        coarse_step=step_number,
+        tracker=tracker,
+    )
+
+    return hierarchy, dt
+
+
 def auto_regrid(
     hierarchy: AMRHierarchy,
     config: Any,

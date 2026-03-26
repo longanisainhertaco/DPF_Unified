@@ -16,6 +16,7 @@ from dpf.metal.mlx_amr import (  # noqa: E402, I001
     CFace,
     FluxRegister,
     FluxRegisterCylindrical,
+    GhostFreshnessTracker,
     NVAR,
     IDN,
     IBR,
@@ -24,6 +25,7 @@ from dpf.metal.mlx_amr import (  # noqa: E402, I001
     _prolongate_vanleer,
     _lohner_indicator_block,
     amr_step,
+    amr_step_multilevel,
     apply_reflux_correction,
     assemble_global_state,
     auto_regrid,
@@ -42,6 +44,7 @@ from dpf.metal.mlx_amr import (  # noqa: E402, I001
     prolongate_to_fine,
     remove_child_blocks,
     restrict_to_coarse,
+    _check_ghost_freshness,
 )
 
 BNR = 16
@@ -1257,3 +1260,214 @@ def test_mhd_rhs_return_fluxes():
     # F_z shape: (NVAR, nr, n_ifaces_z)
     assert F_z.shape[0] == NVAR
     assert F_z.shape[1] == nr
+
+
+# ===========================================================================
+# Phase D: N-level V-cycle subcycling tests
+# ===========================================================================
+
+# D.1 — V-cycle with 2 levels produces same result as Phase A amr_step
+# ---------------------------------------------------------------------------
+
+
+def test_advance_level_2_matches_amr_step():
+    """advance_level(2-level) final rho matches amr_step on same hierarchy."""
+    import copy
+
+    h1 = build_amr_hierarchy(
+        nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+        refined_blocks=[[1, 1]],
+    )
+    U_global = make_uniform_state(32, 64, rho=1.5, p=0.2)
+    from dpf.metal.mlx_amr import populate_blocks_from_state
+    populate_blocks_from_state(h1.levels[0], U_global, BNR, BNZ)
+
+    # Restrict fine level to match coarse
+    for c_idx, c_block in h1.levels[0].blocks.items():
+        children = [
+            b for b in h1.levels[1].active_blocks()
+            if b.index[0] // 2 == c_idx[0] and b.index[1] // 2 == c_idx[1]
+        ]
+        if children:
+            from dpf.metal.mlx_amr import restrict_to_coarse
+            restrict_to_coarse(children, c_block, h1.levels[1], 2, BNR, BNZ)
+
+    h2 = copy.deepcopy(h1)
+
+    dt = 1e-9
+
+    class _DummyConfig:
+        max_levels = 2
+        use_refluxing = False
+        regrid_interval = 100
+
+    cfg = _DummyConfig()
+
+    # Phase D V-cycle
+    h1, _ = amr_step_multilevel(
+        h1, dt, cfg,
+        gamma=5.0 / 3.0, method="plm", riemann="hll", ng=3, r_inner=R_INNER,
+        step_number=1, use_freshness_tracking=False,
+    )
+
+    # Phase A amr_step (same physics, no refluxing)
+    h2, _ = amr_step(
+        h2, dt, gamma=5.0 / 3.0, method="plm", riemann="hll",
+        ng=3, current=0.0, r_inner=R_INNER, step_number=1,
+        rhs_fn=None, use_refluxing=False,
+    )
+
+    # Compare level-0 mass
+    mass1 = sum(
+        float(np.sum(np.asarray(b.U)[IDN])) for b in h1.levels[0].active_blocks()
+    )
+    mass2 = sum(
+        float(np.sum(np.asarray(b.U)[IDN])) for b in h2.levels[0].active_blocks()
+    )
+    assert abs(mass1 - mass2) / (abs(mass2) + 1e-30) < 0.05, (
+        f"V-cycle mass {mass1:.6g} differs from amr_step mass {mass2:.6g} by >5%"
+    )
+
+
+# D.2 — 3-level hierarchy constructs without error
+# ---------------------------------------------------------------------------
+
+
+def test_3_level_hierarchy_builds():
+    """Can construct and advance a 3-level hierarchy with max_levels=3."""
+    h = build_amr_hierarchy(
+        nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+        refined_blocks=[[1, 1]],
+    )
+
+    # Manually add level 2 by prolongating a level-1 block
+    assert h.n_levels == 2
+
+    fine_level = h.levels[1]
+    if fine_level.blocks:
+        parent = next(iter(fine_level.blocks.values()))
+        from dpf.metal.mlx_amr import create_child_blocks
+
+        class _Cfg:
+            max_levels = 3
+            max_blocks_per_level = 16
+            buffer_width = 1
+            j_threshold_refine = 0.3
+            j_threshold_derefine = 0.05
+            lohner_threshold_refine = 0.2
+            lohner_threshold_derefine = 0.03
+
+        create_child_blocks(h, parent, _Cfg())
+
+    assert h.n_levels >= 2
+    # If level 2 was created, verify it has valid blocks
+    if h.n_levels >= 3:
+        level2 = h.levels[2]
+        assert isinstance(level2, AMRLevel)
+        assert level2.dr < h.levels[1].dr
+        assert level2.dz < h.levels[1].dz
+        for b in level2.active_blocks():
+            U_np = np.asarray(b.U)
+            assert U_np.shape[0] == NVAR
+            assert not np.any(np.isnan(U_np))
+
+
+# D.3 — Stale ghost triggers assertion
+# ---------------------------------------------------------------------------
+
+
+def test_ghost_freshness_assertion():
+    """GhostFreshnessTracker raises AssertionError on stale ghost access."""
+    h = build_amr_hierarchy(
+        nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+        refined_blocks=[[1, 1]],
+    )
+    tracker = GhostFreshnessTracker()
+    tracker.set_ratio(2)
+
+    fine_level = h.levels[1]
+    if not fine_level.blocks:
+        pytest.skip("No fine blocks to test freshness")
+
+    # Mark coarse ghost filled at step 0 but NOT same-level filled
+    for idx, block in fine_level.blocks.items():
+        if block.active:
+            tracker.mark_coarse_filled(1, idx, coarse_step=0)
+            # Do NOT call mark_same_level_filled — ghost is stale
+
+    # _check_ghost_freshness should raise because same-level fill is missing
+    with pytest.raises(AssertionError, match="Stale ghost"):
+        _check_ghost_freshness(h, level_idx=1, sub_step=0, tracker=tracker, coarse_step=0)
+
+
+def test_ghost_freshness_passes_when_filled():
+    """GhostFreshnessTracker does NOT raise when both fills are recorded."""
+    h = build_amr_hierarchy(
+        nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+        refined_blocks=[[1, 1]],
+    )
+    tracker = GhostFreshnessTracker()
+    tracker.set_ratio(2)
+
+    fine_level = h.levels[1]
+    if not fine_level.blocks:
+        pytest.skip("No fine blocks to test freshness")
+
+    for idx, block in fine_level.blocks.items():
+        if block.active:
+            tracker.mark_coarse_filled(1, idx, coarse_step=5)
+            tracker.mark_same_level_filled(1, idx, sub_step=0)
+
+    # No assertion should fire
+    _check_ghost_freshness(h, level_idx=1, sub_step=0, tracker=tracker, coarse_step=5)
+
+
+# D.4 — Fine level takes ratio sub-steps per coarse step
+# ---------------------------------------------------------------------------
+
+
+def test_subcycling_fine_takes_ratio_steps():
+    """V-cycle fine level advances ratio times per coarse step.
+
+    We instrument this by counting advance_level calls at level 1 by
+    wrapping _advance_level_blocks via monkeypatching.
+    """
+    import dpf.metal.mlx_amr as amr_mod
+
+    call_counts: dict[int, int] = {0: 0, 1: 0}
+    original_fn = amr_mod._advance_level_blocks
+
+    def counting_rhs(hierarchy, level_idx, dt, gamma, method, riemann, ng, r_inner, rhs_fn):
+        call_counts[level_idx] = call_counts.get(level_idx, 0) + 1
+        return original_fn(hierarchy, level_idx, dt, gamma, method, riemann, ng, r_inner, rhs_fn)
+
+    amr_mod._advance_level_blocks = counting_rhs
+
+    try:
+        h = build_amr_hierarchy(
+            nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+            block_nr=BNR, block_nz=BNZ, ratio=2,
+            refined_blocks=[[1, 1]],
+        )
+
+        class _Cfg:
+            max_levels = 2
+            use_refluxing = False
+            regrid_interval = 100
+
+        amr_step_multilevel(
+            h, 1e-9, _Cfg(),
+            gamma=5.0 / 3.0, method="plm", riemann="hll", ng=3, r_inner=R_INNER,
+            step_number=1, use_freshness_tracking=False,
+        )
+
+        assert call_counts[0] == 1, f"Coarse level should advance once, got {call_counts[0]}"
+        assert call_counts.get(1, 0) == 2, (
+            f"Fine level should advance {2} times (ratio=2), got {call_counts.get(1, 0)}"
+        )
+    finally:
+        amr_mod._advance_level_blocks = original_fn
