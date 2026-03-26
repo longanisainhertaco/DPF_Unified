@@ -82,7 +82,8 @@ Use parallel agents (Task tool) when work can be split into independent units. K
 
 ### Phase Numbering
 Completed: A (docs), B (wire physics), C (V&V), D (Braginskii), E (Apple Silicon), F (Athena++ integration), G (Athena++ DPF physics), H (WALRUS pipeline), I (AI features), J.1 (AthenaK integration), M (Metal GPU optimization), N (hardening & cross-backend V&V), O (physics accuracy), P (engine accuracy: WENO-Z, SSP-RK3, HLLD defaults, Metal resistive MHD), Q (MLX solver: 16 modules, 471 tests, Cartesian 3D, Dedner div-B, fc/fm calibration via Optuna TPE, Six Sigma RCA on timing error)
-Planned: R (validation hardening), R.2 (density-weighted Lp, HLLD float64), J.2 (WALRUS fine-tuning), J.3+ (backlog)
+R (validation hardening + Full MHD sprint: 32 commits, 75 CI tests, HLLD float64, anisotropic conduction+viscosity, Hall MHD, PPM, Dedner cylindrical, RKL2 STS, post-pinch expansion (51.8% dip), CIV+drift-velocity resistivity, Ettingshausen, Bell-Plesset, optical escape, FD gradient calibration, crowbar closure, synthetic diagnostics, runaway electrons, WALRUS wrapper, parallel Optuna, pytest-xdist)
+Planned: S (multi-species impurity tracking + synthetic diagnostics hardening), J.2 (WALRUS fine-tuning), J.3+ (backlog)
 
 ### Test Patterns
 - Phase tests: test_phase_{letter}_{topic}.py
