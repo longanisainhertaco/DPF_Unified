@@ -402,7 +402,7 @@ def apply_bremsstrahlung(
     U: mx.array,
     dt: float,
     gamma: float = 5.0 / 3.0,
-    Z_eff: float = 1.0,
+    Z_eff: float | np.ndarray = 1.0,
     gaunt_factor: float = 1.2,
     ion_mass: float = 3.34358377e-27,
 ) -> mx.array:
@@ -419,7 +419,8 @@ def apply_bremsstrahlung(
         U: Conserved state, shape (NVAR, nr, nz), float32.
         dt: Time step [s].
         gamma: Adiabatic index.
-        Z_eff: Effective ion charge (default 1.0 for deuterium).
+        Z_eff: Effective ion charge. Scalar (default 1.0) or spatially
+            varying array (nr, nz) from species-aware compute_zeff_field().
         gaunt_factor: Free-free Gaunt factor (default 1.2).
         ion_mass: Ion mass [kg] (default: deuterium 3.34e-27).
 
