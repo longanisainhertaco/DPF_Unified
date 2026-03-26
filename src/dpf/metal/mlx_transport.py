@@ -330,32 +330,49 @@ def apply_thermal_conduction(
     kappa_parallel: float | mx.array,
     dt: float,
     dz: float,
+    dr: float | None = None,
+    Br: mx.array | None = None,
+    Bz: mx.array | None = None,
+    Bt: mx.array | None = None,
+    anisotropic: bool = True,
 ) -> tuple[mx.array, mx.array]:
-    """Apply Braginskii parallel thermal conduction along B.
+    """Apply Braginskii anisotropic thermal conduction.
 
-    For axisymmetric DPF, B_theta dominates, making field lines primarily
-    in the theta direction.  The B_z component drives parallel conduction
-    along z.  We solve the z-direction implicitly per r-column.
+    Computes the effective conduction along the r-z plane accounting for
+    the magnetic field direction. In axisymmetric DPF, B_theta dominates,
+    so the parallel (along-B) direction is primarily toroidal. Conduction
+    in the r-z plane comes from:
+      - kappa_parallel * (b_r^2 or b_z^2) components (small when B_theta >> B_r,B_z)
+      - kappa_perp * (1 - b_r^2 or 1 - b_z^2) components (tiny: ~10^-7 * kappa_par)
 
-    Energy equation: d(nkT)/dt = d/dz (kappa_par * dT/dz)
-    Re-written per temperature: dT/dt = kappa / (n*k_B) * d^2T/dz^2
+    When anisotropic=True, the effective diffusivity in each direction is:
+      chi_r = kappa_par * b_r^2 + kappa_perp * (1 - b_r^2)
+      chi_z = kappa_par * b_z^2 + kappa_perp * (1 - b_z^2)
+
+    This correctly suppresses cross-field conduction by orders of magnitude
+    compared to the isotropic approximation.
 
     Parameters
     ----------
-    Te : mx.array
-        Electron temperature [K], shape (nr, nz).
-    Ti : mx.array
-        Ion temperature [K], shape (nr, nz).
-    rho : mx.array
-        Mass density [kg/m^3], shape (nr, nz).
+    Te, Ti : mx.array, shape (nr, nz)
+        Electron and ion temperatures [K].
+    rho : mx.array, shape (nr, nz)
+        Mass density [kg/m^3].
     B : mx.array
-        Not used directly; reserved for anisotropy weighting. Shape (nr, nz).
+        Scalar B magnitude or unused (for backward compatibility).
     kappa_parallel : float or mx.array
-        Parallel thermal conductivity [W/(m*K)]. Scalar or shape (nr, nz).
+        Parallel thermal conductivity [W/(m*K)].
     dt : float
         Timestep [s].
     dz : float
         Axial cell spacing [m].
+    dr : float or None
+        Radial cell spacing [m]. Required for r-direction conduction.
+    Br, Bz, Bt : mx.array or None
+        B-field components, shape (nr, nz). If None, falls back to isotropic.
+    anisotropic : bool
+        If True (default), compute direction-weighted conduction.
+        If False, use isotropic kappa_parallel in z only (legacy behavior).
 
     Returns
     -------
@@ -375,28 +392,51 @@ def apply_thermal_conduction(
     else:
         kappa_np = np.asarray(kappa_parallel, dtype=np.float64)
 
-    # Number density: n = rho / m_D
     n_np = np.maximum(rho_np / M_D, 1e-10)
 
-    # Thermal diffusivity: chi = kappa / (n * k_B)  [m^2/s]
-    chi_e = kappa_np / (n_np * K_B)
-    chi_i = kappa_np / (n_np * K_B)
+    # Compute anisotropy weighting from B-field direction
+    if anisotropic and Br is not None and Bz is not None and Bt is not None:
+        Br_np = np.asarray(Br, dtype=np.float64)
+        Bz_np = np.asarray(Bz, dtype=np.float64)
+        Bt_np = np.asarray(Bt, dtype=np.float64)
+        B_mag = np.sqrt(Br_np**2 + Bz_np**2 + Bt_np**2 + 1e-30)
+        br = Br_np / B_mag
+        bz = Bz_np / B_mag
+
+        # Perpendicular suppression: kappa_perp/kappa_par ~ (omega_ce * tau_e)^{-2}
+        # For DPF at pinch: ratio ~ 10^{-7}. Use a floor of 1e-6 for stability.
+        kappa_perp_ratio = 1e-6
+
+        # Effective kappa in each direction
+        kappa_z = kappa_np * (bz**2 + kappa_perp_ratio * (1.0 - bz**2))
+        kappa_r = kappa_np * (br**2 + kappa_perp_ratio * (1.0 - br**2))
+    else:
+        # Isotropic fallback
+        kappa_z = kappa_np
+        kappa_r = kappa_np if dr is not None else None
+
+    chi_z = kappa_z / (n_np * K_B)
 
     Te_new = Te_np.copy()
     Ti_new = Ti_np.copy()
 
-    if nz <= 1:
-        return mx.array(Te_new), mx.array(Ti_new)
+    # z-direction conduction (implicit Thomas per r-column)
+    if nz > 1:
+        for ir in range(nr):
+            a, b, c, d = _build_diffusion_system(Te_np[ir, :], chi_z[ir, :], dt, dz)
+            Te_new[ir, :] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
-    for ir in range(nr):
-        # Electron conduction along z
-        chi_col = chi_e[ir, :]
-        a, b, c, d = _build_diffusion_system(Te_np[ir, :], chi_col, dt, dz)
-        Te_new[ir, :] = np.maximum(thomas_solve(a, b, c, d), 1.0)
+            a, b, c, d = _build_diffusion_system(Ti_np[ir, :], chi_z[ir, :], dt, dz)
+            Ti_new[ir, :] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
-        # Ion conduction along z
-        chi_col_i = chi_i[ir, :]
-        a, b, c, d = _build_diffusion_system(Ti_np[ir, :], chi_col_i, dt, dz)
-        Ti_new[ir, :] = np.maximum(thomas_solve(a, b, c, d), 1.0)
+    # r-direction conduction (implicit Thomas per z-column)
+    if dr is not None and kappa_r is not None and nr > 1:
+        chi_r = kappa_r / (n_np * K_B)
+        for iz in range(nz):
+            a, b, c, d = _build_diffusion_system(Te_new[:, iz], chi_r[:, iz], dt, dr)
+            Te_new[:, iz] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
-    return mx.array(Te_new), mx.array(Ti_new)
+            a, b, c, d = _build_diffusion_system(Ti_new[:, iz], chi_r[:, iz], dt, dr)
+            Ti_new[:, iz] = np.maximum(thomas_solve(a, b, c, d), 1.0)
+
+    return mx.array(Te_new.astype(np.float32)), mx.array(Ti_new.astype(np.float32))

@@ -518,6 +518,9 @@ class MLXMHDSolver(PlasmaSolverBase):
             Te=T, Ti=T, rho=rho, B=Bz,
             kappa_parallel=kappa,
             dt=dt, dz=self._grid.dz,
+            dr=self._grid.dr,
+            Br=Br, Bz=Bz, Bt=Bt,
+            anisotropic=True,
         )
 
         T_avg = 0.5 * (Te_new + Ti_new)
