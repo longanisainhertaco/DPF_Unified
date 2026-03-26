@@ -147,3 +147,70 @@ class TestGhostPad:
         np.testing.assert_allclose(np.array(padded[0, 0]), np.array(Y[0, 0]))
         # Outer ghost = last cell
         np.testing.assert_allclose(np.array(padded[0, -1]), np.array(Y[0, -1]))
+
+
+class TestZeffVacuumMask:
+    """Z_eff vacuum masking prevents catastrophic radiation from trace Cu."""
+
+    def test_vacuum_cells_return_zeff_1(self):
+        """Vacuum cells (Y_total < 1e-4) get Z_eff = 1.0."""
+        from dpf.metal.mlx_species import compute_zeff_field
+
+        # 2 species: D (Z=1,A=2) and Cu (Z=29,A=63)
+        species_Z = mx.array([1.0, 29.0])
+        species_A = mx.array([2.0, 63.0])
+
+        nr, nz = 8, 4
+        Y = mx.zeros((2, nr, nz))
+        # Vacuum: negligible mass fractions (density floor artifacts)
+        Y_np = np.zeros((2, nr, nz), dtype=np.float32)
+        Y_np[0, :, :] = 1e-10  # trace D
+        Y_np[1, :, :] = 1e-12  # trace Cu
+        Y = mx.array(Y_np)
+
+        zeff = compute_zeff_field(Y, species_Z, species_A)
+        zeff_np = np.asarray(zeff)
+        assert np.all(zeff_np == 1.0), (
+            f"Vacuum Z_eff should be 1.0, got max={np.max(zeff_np):.1f}"
+        )
+
+    def test_plasma_cells_compute_correct_zeff(self):
+        """Non-vacuum cells compute correct Z_eff from composition."""
+        from dpf.metal.mlx_species import compute_zeff_field
+
+        species_Z = mx.array([1.0, 29.0])
+        species_A = mx.array([2.0, 63.0])
+
+        nr, nz = 4, 4
+        Y_np = np.zeros((2, nr, nz), dtype=np.float32)
+        Y_np[0, :, :] = 0.99  # mostly deuterium
+        Y_np[1, :, :] = 0.01  # 1% Cu
+        Y = mx.array(Y_np)
+
+        zeff = compute_zeff_field(Y, species_Z, species_A)
+        zeff_np = np.asarray(zeff)
+        # Z_eff should be > 1 (Cu contribution) but << 29
+        assert np.all(zeff_np > 1.0), "Z_eff should exceed 1 with Cu impurity"
+        assert np.all(zeff_np < 10.0), f"Z_eff too high: {np.max(zeff_np):.1f}"
+
+    def test_mixed_vacuum_and_plasma(self):
+        """Z_eff is masked in vacuum cells but computed in plasma cells."""
+        from dpf.metal.mlx_species import compute_zeff_field
+
+        species_Z = mx.array([1.0, 29.0])
+        species_A = mx.array([2.0, 63.0])
+
+        nr, nz = 8, 4
+        Y_np = np.zeros((2, nr, nz), dtype=np.float32)
+        # Left half: plasma
+        Y_np[0, :4, :] = 0.95
+        Y_np[1, :4, :] = 0.05
+        # Right half: vacuum
+        Y_np[0, 4:, :] = 1e-10
+        Y_np[1, 4:, :] = 1e-12
+        Y = mx.array(Y_np)
+
+        zeff = compute_zeff_field(Y, species_Z, species_A)
+        zeff_np = np.asarray(zeff)
+        assert np.all(zeff_np[:4] > 1.0), "Plasma cells should have Z_eff > 1"
+        assert np.all(zeff_np[4:] == 1.0), "Vacuum cells should have Z_eff = 1"

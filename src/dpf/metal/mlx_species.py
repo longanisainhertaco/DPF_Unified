@@ -226,7 +226,13 @@ def compute_zeff_field(
     Z = species_Z[:, None, None]
     num = mx.sum(n_weight * Z * Z, axis=0)
     den = mx.sum(n_weight * Z, axis=0)
-    return num / mx.maximum(den, 1e-30)
+    zeff = num / mx.maximum(den, 1e-30)
+
+    # Mask vacuum cells: where total mass fraction is negligible,
+    # Z_eff from trace Cu impurities climbs to 24+ → catastrophic radiation.
+    # Return Z_eff=1 (pure hydrogen) in vacuum regions.
+    Y_total = mx.sum(Y_full, axis=0)
+    return mx.where(Y_total < 1e-4, 1.0, zeff)
 
 
 def pad_species_ghost(Y: mx.array, ng: int) -> mx.array:
