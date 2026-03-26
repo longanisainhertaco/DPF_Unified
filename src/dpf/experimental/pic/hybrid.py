@@ -1232,6 +1232,12 @@ def interpolate_field_to_particles(
     pos = np.ascontiguousarray(positions, dtype=np.float64)
     fld = np.ascontiguousarray(field, dtype=np.float64)
 
+    # NaN guard: ghost cells from MHD solver can contain NaN during pinch phase.
+    # Replacing with 0.0 is equivalent to "no force at boundary" and prevents
+    # the kill chain: ghost NaN -> interpolation NaN -> Boris NaN -> total death.
+    if np.any(np.isnan(fld)):
+        fld = np.where(np.isnan(fld), 0.0, fld)
+
     if fld.ndim == 3:
         return _interpolate_scalar_kernel(fld, pos, float(dx), float(dy), float(dz))
     elif fld.ndim == 4 and fld.shape[3] == 3:
@@ -1320,6 +1326,7 @@ class HybridPIC:
         self.dy = dy
         self.dz = dz
         self.dt = dt
+        self._last_push_dt = dt  # tracks actual push dt for Esirkepov consistency
         self.use_esirkepov = use_esirkepov
         self.use_binary_collisions = use_binary_collisions
         self.species: list[ParticleSpecies] = []
@@ -1430,6 +1437,7 @@ class HybridPIC:
         """
         if dt is None:
             dt = self.dt
+        self._last_push_dt = dt
 
         for sp in self.species:
             if sp.n_particles() == 0:
@@ -1558,7 +1566,7 @@ class HybridPIC:
             if _esirkepov_usable:
                 jx, jy, jz = deposit_current_esirkepov(
                     sp.positions_old, sp.positions, sp.weights, sp.charge,
-                    self.grid_shape, self.dx, self.dy, self.dz, self.dt,
+                    self.grid_shape, self.dx, self.dy, self.dz, self._last_push_dt,
                 )
             else:
                 jx, jy, jz = deposit_current(

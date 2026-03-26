@@ -12,6 +12,7 @@ import pytest
 # Boris pusher and deposition are Numba JIT — import may trigger compilation
 try:
     from dpf.experimental.pic.hybrid import (
+        HybridPIC,
         boris_push,
         deposit_density,
         interpolate_field_to_particles,
@@ -191,3 +192,82 @@ class TestParticleInit:
         assert result["positions"].shape == (1000, 3)
         assert result["velocities"].shape == (1000, 3)
         assert result["weights"].shape == (1000,)
+
+
+class TestGhostNaNGuard:
+    """Test Fix 1: interpolation survives NaN in ghost cells."""
+
+    def test_interpolation_survives_nan_field(self):
+        """Field with NaN in ghost cells returns finite values at particle positions."""
+        field = np.full((8, 8, 8, 3), 1.0)
+        # Poison ghost cells (x=0 face) with NaN — as MHD solver produces at pinch
+        field[0, :, :, :] = np.nan
+        field[7, :, :, :] = np.nan
+
+        # Particle near the ghost boundary
+        pos = np.array([[0.005, 0.04, 0.04]])  # 0.005 / 0.01 = 0.5 cells in
+        result = interpolate_field_to_particles(field, pos, 0.01, 0.01, 0.01)
+
+        assert result.shape == (1, 3)
+        assert np.all(np.isfinite(result)), (
+            f"Expected finite interpolated values, got {result}"
+        )
+
+    def test_interior_field_unaffected_by_nan_guard(self):
+        """NaN guard does not corrupt values when field is clean."""
+        field = np.zeros((8, 8, 8, 3))
+        field[:, :, :, 2] = 5.0  # Bz = 5 T everywhere
+
+        pos = np.array([[0.04, 0.04, 0.04]])
+        result = interpolate_field_to_particles(field, pos, 0.01, 0.01, 0.01)
+
+        np.testing.assert_allclose(result[0], [0.0, 0.0, 5.0], atol=1e-12)
+
+
+class TestEsirkepovDtConsistency:
+    """Test Fix 2: Esirkepov deposit uses the same dt as the push."""
+
+    def test_esirkepov_dt_consistency(self):
+        """Pushing with dt=0.5*default_dt then depositing uses the correct J scaling.
+
+        The Esirkepov J prefactor is q*(x_new-x_old)/(cell_vol*dt).
+        If deposit uses self.dt instead of the push dt, J is off by a factor
+        of push_dt / self.dt.  After fix, J should scale linearly with dt.
+        """
+        grid_shape = (8, 8, 8)
+        dx = dy = dz = 0.01
+        default_dt = 1e-9
+
+        # Build two identical PIC instances with different effective push dts
+        def _make_pic_with_push(push_dt: float) -> tuple[np.ndarray, ...]:
+            pic = HybridPIC(grid_shape, dx, dy, dz, default_dt)
+            pos0 = np.array([[0.04, 0.04, 0.04]])
+            vel = np.array([[1e4, 0.0, 0.0]])
+            weights = np.array([1e15])
+            pic.add_species("d", 3.34e-27, 1.602e-19, pos0, vel, weights)
+            E = np.zeros((8, 8, 8, 3))
+            B = np.zeros((8, 8, 8, 3))
+            pic.push_particles(E, B, dt=push_dt)
+            _, Jx, _, _ = pic.deposit()
+            return Jx
+
+        Jx_full = _make_pic_with_push(default_dt)
+        Jx_half = _make_pic_with_push(default_dt / 2)
+
+        # With correct dt tracking: J is proportional to displacement / dt.
+        # Displacement scales with dt (Boris push), so J ~ (v*dt)/dt = v.
+        # Both runs should give the same J magnitude (velocity is identical).
+        # Without the fix: Jx_half would use self.dt (=1e-9), giving
+        # J proportional to (v * dt/2) / 1e-9 = half the correct value.
+        jx_sum_full = float(np.sum(np.abs(Jx_full)))
+        jx_sum_half = float(np.sum(np.abs(Jx_half)))
+
+        assert jx_sum_full > 0, "No current deposited at full dt"
+        assert jx_sum_half > 0, "No current deposited at half dt"
+
+        # After fix: J ~ v (same for both). Before fix: ratio would be 2.
+        ratio = jx_sum_full / jx_sum_half
+        assert ratio == pytest.approx(1.0, rel=0.05), (
+            f"J ratio full_dt/half_dt = {ratio:.3f}, expected ~1.0. "
+            f"Esirkepov is using wrong dt (expected fix: _last_push_dt)."
+        )
