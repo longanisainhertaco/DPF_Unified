@@ -1,0 +1,66 @@
+=== unu_ictp ===
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 66% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+/Users/anthonyzamora/dpf-unified/src/dpf/diagnostics/plasma_regime.py:94: RuntimeWarning: divide by zero encountered in divide
+  4.0 * np.sqrt(2.0 * pi) * ne * e**4 * lnL
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+  BEST: fc=0.574 fm=0.176 J=0.0477
+=== faeton ===
+WARNING:dpf.engine.state_management:MHD regime validity: 91% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 66% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 97% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 84% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 100% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 62% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 84% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 97% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 88% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 66% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 94% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 69% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 56% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 59% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 69% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+  BEST: fc=0.503 fm=0.240 J=0.0502
+=== poseidon_60kv ===
+WARNING:dpf.engine.state_management:MHD regime validity: 62% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 84% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 66% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 60% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+/Users/anthonyzamora/dpf-unified/src/dpf/metal/mlx_riemann.py:182: RuntimeWarning: invalid value encountered in subtract
+  F_hll = (SR*FL - SL*FR + SL*SR*(QR_np - QL_np)) * inv_dS
+/Users/anthonyzamora/dpf-unified/src/dpf/metal/mlx_riemann.py:189: RuntimeWarning: invalid value encountered in subtract
+  F_LF = 0.5*(FL + FR) - 0.5*S_max*(QR_np - QL_np)
+WARNING:dpf.engine.state_management:MHD regime validity: 53% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 84% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 57% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+/Users/anthonyzamora/dpf-unified/src/dpf/metal/mlx_riemann.py:165: RuntimeWarning: invalid value encountered in multiply
+  F[ISR]  = U_arr[ISR] * vn
+WARNING:dpf.engine.state_management:MHD regime validity: 60% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+/Users/anthonyzamora/dpf-unified/src/dpf/metal/mlx_transport.py:78: RuntimeWarning: invalid value encountered in scalar subtract
+  d_prime[i] = (d[i] - a[i - 1] * d_prime[i - 1]) / denom
+WARNING:dpf.engine.state_management:MHD regime validity: 62% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
+WARNING:dpf.engine.state_management:MHD regime validity: 75% of cells outside MHD-valid regime (ND>1 or dx<10*lambda_De). Consider kinetic model.
