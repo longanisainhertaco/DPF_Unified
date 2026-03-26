@@ -626,19 +626,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         # so no additional work is needed.  Track that we have run at least once.
         self._entropy_initialized = True
 
-        # ── 3. Electrode BC (ghost-cell padding) ────────────────────────
-        apply_bc = kwargs.get("apply_electrode_bc", False)
-        _ghost_active = (
-            apply_bc
-            and self.coordinates == "cylindrical"
-            and abs(current) > 1e-10
-        )
-        grid_for_rk = self._grid
-        if _ghost_active:
-            U, grid_for_rk = self._pad_electrode_ghost(U, current)
-            mx.eval(U)
-
-        # ── 3.5. Prepare resistivity for Strang splitting ──────────────
+        # ── 3. Prepare resistivity for Strang splitting ──────────────
         eta_raw = kwargs.get("eta_field")
         _eta_arg: float | Any | None = None
         if eta_raw is not None:
@@ -650,9 +638,22 @@ class MLXMHDSolver(PlasmaSolverBase):
             else:
                 _eta_arg = float(eta_raw)
 
-        # ── 3.6. Strang split: first half-step resistive diffusion ─────
+        # ── 3.1. Strang split: first half-step resistive diffusion ─────
+        # Must run BEFORE ghost padding (eta field is sized for un-padded grid)
         if _eta_arg is not None:
             U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
+            mx.eval(U)
+
+        # ── 3.2. Electrode BC (ghost-cell padding) ────────────────────
+        apply_bc = kwargs.get("apply_electrode_bc", False)
+        _ghost_active = (
+            apply_bc
+            and self.coordinates == "cylindrical"
+            and abs(current) > 1e-10
+        )
+        grid_for_rk = self._grid
+        if _ghost_active:
+            U, grid_for_rk = self._pad_electrode_ghost(U, current)
             mx.eval(U)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────

@@ -92,13 +92,21 @@ def _step_circuit_subcycle(
                 if handoff == "full_mhd"
                 else ("radial", "reflected")
             )
+            # Gate: only trust MHD Lp when it's comparable to snowplow Lp.
+            # During early axial rundown, MHD fields are uninitialized —
+            # compute_feedback returns near-zero Lp, which would let current
+            # rise unrestricted (+59% I_peak observed without this gate).
+            _mhd_lp_trustworthy = (
+                feedback is not None
+                and feedback.Lp > 0
+                and (Lp_sp <= 0 or feedback.Lp >= 0.5 * Lp_sp)
+            )
             if (
                 handoff in ("radial_mhd", "full_mhd")
                 and self.snowplow.phase in handoff_phases
-                and feedback is not None
-                and feedback.Lp > 0
+                and _mhd_lp_trustworthy
             ):
-                # Activate blending on first radial sub-step
+                # Activate blending when MHD Lp is resolved
                 if not self._lp_blend_active:
                     self._lp_blend_active = True
                     self._lp_blend_alpha = 0.0
