@@ -515,6 +515,27 @@ class AblationConfig(BaseModel):
         return self
 
 
+class AMRConfig(BaseModel):
+    """Block-structured AMR configuration."""
+
+    enabled: bool = Field(False, description="Enable 2-level block AMR")
+    max_levels: int = Field(2, ge=2, le=4)
+    refinement_ratio: int = Field(2, ge=2, le=4)
+    block_nr: int = Field(16, ge=8, le=64, description="Radial cells per block")
+    block_nz: int = Field(32, ge=8, le=128, description="Axial cells per block")
+    max_blocks_per_level: int = Field(16, ge=4, le=64)
+    regrid_interval: int = Field(20, ge=1, le=200)
+    j_threshold_refine: float = Field(0.3, gt=0, le=1.0)
+    j_threshold_derefine: float = Field(0.05, ge=0, le=1.0)
+    lohner_threshold_refine: float = Field(0.2, gt=0, le=1.0)
+    lohner_threshold_derefine: float = Field(0.03, ge=0, le=1.0)
+    buffer_width: int = Field(1, ge=0, le=3)
+    use_refluxing: bool = Field(True, description="Berger-Colella flux correction at CF boundaries")
+    refined_blocks: list[list[int]] | None = Field(
+        None, description="Manual [[ir,iz],...] or None=auto"
+    )
+
+
 class KineticConfig(BaseModel):
     """Kinetic (PIC) module parameters."""
 
@@ -600,6 +621,7 @@ class SimulationConfig(BaseModel):
     snowplow: SnowplowConfig = Field(default_factory=SnowplowConfig)
     breakdown: BreakdownConfig = Field(default_factory=BreakdownConfig)
     ablation: AblationConfig = Field(default_factory=AblationConfig)
+    amr: AMRConfig = Field(default_factory=AMRConfig)
     ai: AIConfig | None = Field(None, description="AI/ML surrogate configuration (optional)")
 
     @model_validator(mode="after")

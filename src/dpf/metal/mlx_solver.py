@@ -127,6 +127,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         enable_nernst: bool = False,
         compile_mode: bool = False,
         species_config: dict | None = None,
+        amr_config: Any = None,
         **kwargs: Any,
     ) -> None:
         nr, ny, nz = grid_shape
@@ -198,6 +199,11 @@ class MLXMHDSolver(PlasmaSolverBase):
             from dpf.metal.mlx_species import SpeciesManager
             self._species_mgr = SpeciesManager(**species_config)
             self._Y = self._species_mgr.init_mass_fractions(nr, nz)
+
+        # AMR configuration and hierarchy
+        self._amr_config: Any = amr_config
+        self._amr_hierarchy: Any = None
+        self._step_count: int = 0
 
         # Grid and state manager — built eagerly if MLX is present
         self._grid: Any = None
@@ -626,6 +632,12 @@ class MLXMHDSolver(PlasmaSolverBase):
         dict[str, np.ndarray]
             Updated DPF state dict.
         """
+        self._step_count += 1
+
+        # ── AMR dispatch ─────────────────────────────────────────────────
+        if self._amr_config is not None and getattr(self._amr_config, "enabled", False):
+            return self._step_amr(state, dt, current, voltage, **kwargs)
+
         self._ensure_internals()
         mx = require_mlx()
 
@@ -786,6 +798,74 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         # ── 8. Coupling — compute Lp from density-weighted Lee formula ──
         self._update_coupling(U, current, voltage, dt)
+        return result
+
+    # ------------------------------------------------------------------
+    # AMR step
+    # ------------------------------------------------------------------
+
+    def _step_amr(
+        self,
+        state: dict[str, np.ndarray],
+        dt: float,
+        current: float,
+        voltage: float,
+        **kwargs: Any,
+    ) -> dict[str, np.ndarray]:
+        """AMR-mode timestep: decompose -> advance blocks -> reassemble."""
+        from dpf.metal.mlx_amr import (
+            amr_step,
+            assemble_global_state,
+            build_amr_hierarchy,
+            populate_blocks_from_state,
+        )
+
+        self._ensure_internals()
+        cfg = self._amr_config
+
+        # Build hierarchy on first call
+        if self._amr_hierarchy is None:
+            U_init = self._state_mgr.from_state_dict(
+                state, convert_b_si_to_hl=self._convert_b_si_to_hl
+            )
+            self._amr_hierarchy = build_amr_hierarchy(
+                nr=self.nr,
+                nz=self.nz,
+                dr=self.dx,
+                dz=self.dz,
+                r_inner=self._r_inner,
+                block_nr=cfg.block_nr,
+                block_nz=cfg.block_nz,
+                ratio=cfg.refinement_ratio,
+                refined_blocks=cfg.refined_blocks,
+            )
+            populate_blocks_from_state(
+                self._amr_hierarchy.levels[0], U_init, cfg.block_nr, cfg.block_nz
+            )
+
+        # Advance AMR hierarchy
+        self._amr_hierarchy, dt_used = amr_step(
+            hierarchy=self._amr_hierarchy,
+            dt=dt,
+            gamma=self.gamma,
+            method=self._method,
+            riemann=self._riemann,
+            ng=self._GHOST_NG,
+            current=current,
+            r_inner=self._r_inner,
+            step_number=self._step_count,
+            rhs_fn=None,
+            use_refluxing=getattr(cfg, "use_refluxing", True),
+        )
+
+        # Reassemble global state from level 0
+        U_global = assemble_global_state(
+            self._amr_hierarchy.levels[0], self.nr, self.nz, cfg.block_nr, cfg.block_nz
+        )
+        result = self._state_mgr.to_state_dict(
+            U_global, convert_b_hl_to_si=self._convert_b_si_to_hl
+        )
+        self._update_coupling(U_global, current, voltage, dt)
         return result
 
     # ------------------------------------------------------------------

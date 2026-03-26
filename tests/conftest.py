@@ -139,6 +139,14 @@ def dx():
 
 
 @pytest.fixture
+def cylindrical_grid():
+    """Small CylindricalGrid for AMR unit tests."""
+    mlx = pytest.importorskip("mlx.core")  # noqa: F841
+    from dpf.metal.mlx_grid import CylindricalGrid
+    return CylindricalGrid(nr=32, nz=64, dr=1e-3, dz=1e-3, r_inner=0.01)
+
+
+@pytest.fixture
 def default_circuit_params():
     """Standard DPF circuit parameters."""
     return {
