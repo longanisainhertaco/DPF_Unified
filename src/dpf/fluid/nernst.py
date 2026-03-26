@@ -373,3 +373,58 @@ def apply_nernst_advection(
     Bz_new = np.where(np.isfinite(Bz_new), Bz_new, Bz)
 
     return Bx_new, By_new, Bz_new
+
+
+# ============================================================
+# Ettingshausen heat flux (reciprocal of Nernst)
+# ============================================================
+
+
+def ettingshausen_heat_flux(
+    ne: np.ndarray,
+    Te: np.ndarray,
+    J_field: np.ndarray,
+    B_field: np.ndarray,
+    Z_eff: float = 1.0,
+) -> np.ndarray:
+    r"""Ettingshausen heat flux: q_E = beta_wedge * (k_B*Te/e) * (J × b).
+
+    The Ettingshausen effect is the reciprocal of Nernst: current flowing
+    in a magnetized plasma drives a transverse heat flux. Uses the same
+    beta_wedge (Epperlein-Haines) coefficient as the Nernst velocity.
+
+    At DPF pinch conditions (J ~ 10^12 A/m^2, B ~ 50 T, Te ~ 300 eV):
+        q_E ~ 0.5 * (1.38e-23 * 3.5e6 / 1.6e-19) * 10^12 * 1 ~ 1.5e14 W/m^2
+
+    This can rival classical Braginskii parallel conduction at high J.
+
+    References:
+        Braginskii S.I., Reviews of Plasma Physics Vol. 1, 205 (1965).
+        Epperlein & Haines, Phys. Fluids 29:1029 (1986).
+
+    Args:
+        ne: Electron density [m^-3], shape (nx, ny, nz).
+        Te: Electron temperature [K], shape (nx, ny, nz).
+        J_field: Current density [A/m^2], shape (3, nx, ny, nz).
+        B_field: Magnetic field [T], shape (3, nx, ny, nz).
+        Z_eff: Effective ion charge state.
+
+    Returns:
+        Heat flux [W/m^2], shape (3, nx, ny, nz).
+    """
+    B_mag = np.sqrt(np.sum(B_field**2, axis=0, keepdims=True))
+    B_mag = np.maximum(B_mag, 1e-30)
+    b_hat = B_field / B_mag
+
+    beta = nernst_coefficient(ne, Te, B_mag[0], Z_eff)
+
+    # J × b (cross product)
+    JxB = np.array([
+        J_field[1] * b_hat[2] - J_field[2] * b_hat[1],
+        J_field[2] * b_hat[0] - J_field[0] * b_hat[2],
+        J_field[0] * b_hat[1] - J_field[1] * b_hat[0],
+    ])
+
+    # q_E = beta_wedge * (k_B * Te / e) * (J × b)
+    coeff = beta * (k_B * np.maximum(Te, 1.0) / e_charge)
+    return coeff[np.newaxis] * JxB
