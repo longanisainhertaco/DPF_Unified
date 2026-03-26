@@ -669,7 +669,6 @@ class MLXMHDSolver(PlasmaSolverBase):
         # Must run BEFORE ghost padding (eta field is sized for un-padded grid)
         if _eta_arg is not None:
             U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
-            mx.eval(U)
 
         # ── 3.2. Electrode BC (ghost-cell padding) ────────────────────
         apply_bc = kwargs.get("apply_electrode_bc", False)
@@ -681,7 +680,6 @@ class MLXMHDSolver(PlasmaSolverBase):
         grid_for_rk = self._grid
         if _ghost_active:
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
-            mx.eval(U)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
         step_fn = ssp_rk3_step if self._integrator != "ssp_rk2" else ssp_rk2_step
@@ -705,23 +703,19 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         if self._enable_dedner or self._enable_powell:
             U = self._apply_divb_cleaning(U, dt)
-            mx.eval(U)
 
         # ── 5. Strang split: second half-step resistive diffusion ──────
         if _eta_arg is not None:
             U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
-            mx.eval(U)
 
         # ── 6. Braginskii conduction ─────────────────────────────────────
         if self.enable_braginskii_conduction:
             kappa = float(kwargs.get("kappa_parallel", 1e3))
             U = self._do_thermal_conduction(U, dt, kappa)
-            mx.eval(U)
 
         # ── 6.5. Braginskii viscosity ──────────────────────────────────
         if self.enable_braginskii_viscosity:
             U = self._do_braginskii_viscosity(U, dt)
-            mx.eval(U)
 
         # ── 6.6. Hall MHD ─────────────────────────────────────────────
         if self.enable_hall and self.coordinates == "cylindrical":
@@ -733,7 +727,9 @@ class MLXMHDSolver(PlasmaSolverBase):
                 r_cell=self._grid.r_cell,
                 ion_mass=self.ion_mass,
             )
-            mx.eval(U)
+
+        # Single eval after the entire operator-split physics block
+        mx.eval(U)
 
         # ── 6.65. PIC kinetic current feedback ─────────────────────────
         # PIC deposits J_kin on the grid. The resistive E-field from PIC current
