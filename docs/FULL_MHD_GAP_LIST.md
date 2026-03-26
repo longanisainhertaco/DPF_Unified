@@ -212,8 +212,12 @@ move through: IDENTIFIED → RESEARCHED → SPEC'D → IMPLEMENTED → VALIDATED
 ### 26. Finite Larmor Radius Corrections (P2, ~300 LOC)
 - Gyroviscous stress from Braginskii. Stabilizes m=0 at pinch.
 
-### 27. Implicit MHD for Low-beta Regions (P3, ~800 LOC)
-- IMEX for vacuum Alfven speed bottleneck.
+### 27. Implicit MHD for Low-beta Regions (P3→Phase S-3, ~800 LOC)
+- **Status**: DEFERRED (CFL profiling: 0.1% vacuum-limited steps at 32x64)
+- Current va_max=1e6 density floor works as Boris correction equivalent.
+- Becomes necessary when: AMR creates more vacuum cells, species tracking
+  needs clean vacuum (no fake mass corrupting Y_k), radiation-MHD coupling.
+- Semi-implicit θ-method for induction, explicit advection. ~800 LOC.
 
 ### 28. Ettingshausen Effect (P3, ~150 LOC)
 - **Status**: IMPLEMENTED (2026-03-25, ettingshausen_heat_flux in nernst.py)
