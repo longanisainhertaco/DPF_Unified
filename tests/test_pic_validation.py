@@ -531,3 +531,137 @@ class TestPICOnStaticMHD:
             f"KE changed by {change_frac * 100:.1f}% (>50%). "
             f"KE_initial={KE_initial:.3e} J·macro, KE_final={KE_final:.3e} J·macro"
         )
+
+
+# =====================================================================
+# Phase V4: First full DPF discharge attempt with PIC active
+# =====================================================================
+
+
+@pytest.mark.slow
+@pytest.mark.xfail(
+    reason=(
+        "PIC V4 exploratory — first full discharge attempt with KineticManager active. "
+        "Known failure modes: ghost-cell NaN chain (pic_compound_bugs.md §5.4), "
+        "non-relativistic Boris runaway at DPF E-fields (§5.2), "
+        "KineticManager init may fail if grid_shape incompatible with PIC driver. "
+        "This test documents what breaks, not what works."
+    ),
+    strict=False,  # xpass is also acceptable — if it survives, record that too
+)
+def test_pic_v4_short_discharge() -> None:
+    """Attempt 100 engine steps with PIC active on PF-1000 8x1x16 grid.
+
+    Setup:
+    - pf1000 preset scaled to a small 8x1x16 grid
+    - KineticConfig.enabled = True, start_time set to near-zero so PIC
+      activates on step 1 (default 1e-6 s would never trigger in ~100 ns run)
+    - 100 engine steps (not full discharge)
+
+    Records: did it NaN? At which step? What was the failure mode?
+    The test body always passes — failure information is captured in
+    pytest's xfail output, not as an assertion error.
+    """
+    import warnings
+
+    try:
+        from dpf.engine.core import SimulationEngine
+        from dpf.presets import get_preset
+    except ImportError as exc:
+        pytest.skip(f"Engine not importable: {exc}")
+
+    # Build a minimal PF-1000-like config with a small grid.
+    # Use the pf1000 preset as a base and override the heavy parts.
+    base = get_preset("pf1000")
+
+    # Small grid: 8 radial x 1 azimuthal x 16 axial
+    base["grid_shape"] = [8, 1, 16]
+    base["dx"] = 7.5e-4          # same cell size as pf1000
+
+    # Short run: ~100 ns total (gives ~100 steps at dt ~ 1 ns)
+    base["sim_time"] = 1e-7
+
+    # Enable PIC with start_time much smaller than sim_time so it activates
+    # on step 1.  KineticConfig gt=0, so use a very small positive value.
+    base["kinetic"] = {
+        "enabled": True,
+        "start_time": 1e-15,    # activates immediately
+        "inject_beam": True,
+        "n_particles": 50,      # small — minimise overhead for this diagnostic
+        "beam_energy": 100e3,
+        "beam_position_ratio": [0.5, 0.5, 0.1],
+        "beam_direction": [0.0, 0.0, 1.0],
+        "beam_weight_total": 1e16,
+    }
+
+    # Force Python backend (metal/mlx may have different init paths)
+    if "fluid" not in base:
+        base["fluid"] = {}
+    base["fluid"]["backend"] = "python"  # type: ignore[index]
+
+    try:
+        from dpf.config import SimulationConfig
+        cfg = SimulationConfig(**base)
+    except Exception as exc:
+        pytest.xfail(f"Config construction failed: {exc}")
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            engine = SimulationEngine(cfg)
+    except Exception as exc:
+        pytest.xfail(f"Engine __init__ failed (step 0): {exc}")
+
+    # Run up to 100 steps, catching any error and recording failure chain
+    nan_step: int | None = None
+    failure_exc: Exception | None = None
+    failure_mode: str = "unknown"
+
+    for i in range(100):
+        try:
+            result = engine.step()
+        except Exception as exc:
+            failure_exc = exc
+            failure_mode = type(exc).__name__
+            nan_step = i
+            break
+
+        # Check for NaN in critical state fields
+        state = engine.state
+        nan_fields = [
+            k for k, v in state.items()
+            if isinstance(v, np.ndarray) and not np.all(np.isfinite(v))
+        ]
+        if nan_fields:
+            nan_step = i
+            failure_mode = f"NaN in {nan_fields}"
+            break
+
+        if result.finished:
+            break
+
+    # Build a summary that appears in pytest -v output regardless of xfail status
+    kinetic_alive = (
+        engine.kinetic is not None
+        and engine.kinetic.kc.enabled
+    )
+    n_particles = (
+        engine.kinetic.ion_species.n_particles()
+        if kinetic_alive and engine.kinetic is not None
+        else 0
+    )
+
+    summary_lines = [
+        f"steps_completed={nan_step if nan_step is not None else i + 1}",
+        f"kinetic_active={kinetic_alive}",
+        f"n_particles={n_particles}",
+        f"failure_mode={failure_mode}",
+        f"failure_exc={failure_exc!r}",
+    ]
+    summary = " | ".join(summary_lines)
+
+    if nan_step is not None or failure_exc is not None:
+        pytest.xfail(f"PIC V4 NaN/error at step {nan_step}: {summary}")
+
+    # If we reach here, 100 steps completed without NaN — record the win
+    assert True, f"PIC V4 survived 100 steps: {summary}"
