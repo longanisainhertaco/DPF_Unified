@@ -216,7 +216,8 @@ move through: IDENTIFIED → RESEARCHED → SPEC'D → IMPLEMENTED → VALIDATED
 - IMEX for vacuum Alfven speed bottleneck.
 
 ### 28. Ettingshausen Effect (P3, ~150 LOC)
-- Heat flux from J×B. Add to existing Nernst module.
+- **Status**: IMPLEMENTED (2026-03-25, ettingshausen_heat_flux in nernst.py)
+- Heat flux from J×B. Uses same beta_wedge as Nernst.
 
 ### 29. Runaway Electron Generation (P3, ~400 LOC)
 - Dreicer threshold + hard X-ray emission estimate.
@@ -225,11 +226,12 @@ move through: IDENTIFIED → RESEARCHED → SPEC'D → IMPLEMENTED → VALIDATED
 - Major architectural change. AMR is better investment for Eulerian.
 
 ### 31. Crowbar Switch Model (P2, ~150 LOC)
-- Time-dependent crowbar impedance with closure time.
+- **Status**: IMPLEMENTED (2026-03-25, crowbar_closure_time ramp in rlc_solver.py)
+- Time-dependent crowbar impedance with linear closure ramp.
 
 ---
 
 *Last updated: 2026-03-25 22:25 by Cortana (overnight sprint)*
-*Session: 22 commits, ALL scaffold tiers + 8 research passes complete*
-*Gap list: 31 items total, 9 implemented/resolved, 8 researched, 14 identified*
+*Session: 27 commits, ALL scaffold tiers + 8 research passes complete*
+*Gap list: 31 items, 13 implemented/resolved, 8 researched, 10 identified*
 *Next research refresh: before each implementation sprint*
