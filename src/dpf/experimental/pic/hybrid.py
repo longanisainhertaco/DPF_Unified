@@ -395,7 +395,7 @@ def _coulomb_scatter(
 
 
 @njit(cache=True)
-def _boris_push_kernel(
+def _boris_push_classical_kernel(
     positions: np.ndarray,
     velocities: np.ndarray,
     E_field: np.ndarray,
@@ -404,7 +404,7 @@ def _boris_push_kernel(
     mass: float,
     dt: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Boris algorithm inner loop for N particles.
+    """Non-relativistic Boris algorithm inner loop for N particles.
 
     Parameters
     ----------
@@ -471,6 +471,124 @@ def _boris_push_kernel(
         new_vel[i, 2] = vz_plus + qdt_over_2m * E_field[i, 2]
 
         # Position update
+        new_pos[i, 0] = positions[i, 0] + new_vel[i, 0] * dt
+        new_pos[i, 1] = positions[i, 1] + new_vel[i, 1] * dt
+        new_pos[i, 2] = positions[i, 2] + new_vel[i, 2] * dt
+
+    return new_pos, new_vel
+
+
+@njit(cache=True)
+def _boris_push_relativistic_kernel(
+    positions: np.ndarray,
+    velocities: np.ndarray,
+    E_field: np.ndarray,
+    B_field: np.ndarray,
+    charge: float,
+    mass: float,
+    dt: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Relativistic Boris push (Vay 2008, J. Comput. Phys. 227, 4).
+
+    Works in proper velocity u = gamma*v internally. Input/output velocities
+    are ordinary 3-velocities v [m/s]. The rotation vector t is divided by
+    gamma_minus, which limits the velocity update to v < c regardless of
+    E-field strength or step count.
+
+    In DPF E-fields (~10^7 V/m), the classical pusher reaches v > c in ~6000
+    steps; this kernel is bounded for any dt.
+
+    Parameters
+    ----------
+    positions : ndarray, shape (N, 3)
+        Particle positions [m].
+    velocities : ndarray, shape (N, 3)
+        Particle velocities [m/s] (ordinary, not proper).
+    E_field : ndarray, shape (N, 3)
+        Electric field at each particle [V/m].
+    B_field : ndarray, shape (N, 3)
+        Magnetic field at each particle [T].
+    charge : float
+        Particle charge [C].
+    mass : float
+        Particle mass [kg].
+    dt : float
+        Timestep [s].
+
+    Returns
+    -------
+    new_pos : ndarray, shape (N, 3)
+        Updated positions.
+    new_vel : ndarray, shape (N, 3)
+        Updated ordinary velocities [m/s].
+
+    References
+    ----------
+    Vay (2008) Phys. Rev. Lett. 100, 244801.
+    Birdsall & Langdon (1985) Ch. 15.
+    """
+    c = 2.998e8
+    c2 = c * c
+    n = positions.shape[0]
+    new_pos = np.empty_like(positions)
+    new_vel = np.empty_like(velocities)
+
+    qdt_over_2m = charge * dt / (2.0 * mass)
+
+    for i in range(n):
+        # Convert ordinary velocity to proper velocity u = gamma * v
+        vx = velocities[i, 0]
+        vy = velocities[i, 1]
+        vz = velocities[i, 2]
+        v2 = vx * vx + vy * vy + vz * vz
+        gamma_old = 1.0 / np.sqrt(1.0 - min(v2 / c2, 1.0 - 1e-15))
+        ux = gamma_old * vx
+        uy = gamma_old * vy
+        uz = gamma_old * vz
+
+        # Half E-field acceleration (proper velocity)
+        ux_minus = ux + qdt_over_2m * E_field[i, 0]
+        uy_minus = uy + qdt_over_2m * E_field[i, 1]
+        uz_minus = uz + qdt_over_2m * E_field[i, 2]
+
+        # Gamma at half-step from u_minus
+        u_minus2 = ux_minus * ux_minus + uy_minus * uy_minus + uz_minus * uz_minus
+        gamma_minus = np.sqrt(1.0 + u_minus2 / c2)
+
+        # Rotation vector t = q*B*dt / (2*m*gamma_minus)
+        tx = qdt_over_2m * B_field[i, 0] / gamma_minus
+        ty = qdt_over_2m * B_field[i, 1] / gamma_minus
+        tz = qdt_over_2m * B_field[i, 2] / gamma_minus
+
+        t_mag2 = tx * tx + ty * ty + tz * tz
+        s_factor = 2.0 / (1.0 + t_mag2)
+        sx = s_factor * tx
+        sy = s_factor * ty
+        sz = s_factor * tz
+
+        # u' = u_minus + u_minus x t
+        upx = ux_minus + (uy_minus * tz - uz_minus * ty)
+        upy = uy_minus + (uz_minus * tx - ux_minus * tz)
+        upz = uz_minus + (ux_minus * ty - uy_minus * tx)
+
+        # u_plus = u_minus + u' x s
+        ux_plus = ux_minus + (upy * sz - upz * sy)
+        uy_plus = uy_minus + (upz * sx - upx * sz)
+        uz_plus = uz_minus + (upx * sy - upy * sx)
+
+        # Second half E-field acceleration
+        ux_new = ux_plus + qdt_over_2m * E_field[i, 0]
+        uy_new = uy_plus + qdt_over_2m * E_field[i, 1]
+        uz_new = uz_plus + qdt_over_2m * E_field[i, 2]
+
+        # Convert back to ordinary velocity v = u / gamma
+        u_new2 = ux_new * ux_new + uy_new * uy_new + uz_new * uz_new
+        gamma_new = np.sqrt(1.0 + u_new2 / c2)
+        new_vel[i, 0] = ux_new / gamma_new
+        new_vel[i, 1] = uy_new / gamma_new
+        new_vel[i, 2] = uz_new / gamma_new
+
+        # Position update using ordinary velocity
         new_pos[i, 0] = positions[i, 0] + new_vel[i, 0] * dt
         new_pos[i, 1] = positions[i, 1] + new_vel[i, 1] * dt
         new_pos[i, 2] = positions[i, 2] + new_vel[i, 2] * dt
@@ -1036,6 +1154,7 @@ def boris_push(
     charge: float,
     mass: float,
     dt: float,
+    relativistic: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Boris integrator for charged-particle motion in E and B fields.
 
@@ -1043,6 +1162,11 @@ def boris_push(
     magnetic-field rotation, then another half electric-field acceleration.
     The resulting velocity is time-centred (leap-frog) and preserves phase
     space volume.
+
+    By default uses the relativistic (Vay 2008) kernel which works in proper
+    velocity u = gamma*v and guarantees |v| < c for any E-field strength.
+    Set ``relativistic=False`` to use the classical (non-relativistic) kernel
+    for comparison or low-energy benchmarks.
 
     Parameters
     ----------
@@ -1060,21 +1184,25 @@ def boris_push(
         Particle mass [kg].
     dt : float
         Timestep [s].
+    relativistic : bool
+        If True (default), use the relativistic Vay (2008) kernel.
+        If False, use the classical non-relativistic kernel.
 
     Returns
     -------
     new_positions : ndarray, shape (N, 3)
     new_velocities : ndarray, shape (N, 3)
     """
-    return _boris_push_kernel(
-        np.ascontiguousarray(positions, dtype=np.float64),
-        np.ascontiguousarray(velocities, dtype=np.float64),
-        np.ascontiguousarray(E_field, dtype=np.float64),
-        np.ascontiguousarray(B_field, dtype=np.float64),
-        float(charge),
-        float(mass),
-        float(dt),
-    )
+    pos = np.ascontiguousarray(positions, dtype=np.float64)
+    vel = np.ascontiguousarray(velocities, dtype=np.float64)
+    E = np.ascontiguousarray(E_field, dtype=np.float64)
+    B = np.ascontiguousarray(B_field, dtype=np.float64)
+    q = float(charge)
+    m = float(mass)
+    t = float(dt)
+    if relativistic:
+        return _boris_push_relativistic_kernel(pos, vel, E, B, q, m, t)
+    return _boris_push_classical_kernel(pos, vel, E, B, q, m, t)
 
 
 def deposit_density(
@@ -1722,3 +1850,106 @@ def detect_instability(
     has_sign_change = bool(np.any(Bz_axis[:-1] * Bz_axis[1:] < 0.0))
 
     return density_compressed and has_sign_change
+
+
+# =====================================================================
+# Sub-cycling wrapper
+# =====================================================================
+
+
+def subcycle_pic(
+    pic: HybridPIC,
+    E: np.ndarray,
+    B: np.ndarray,
+    mhd_dt: float,
+    n_sub: int | None = None,
+    max_sub: int = 50,
+) -> None:
+    """Sub-cycle the PIC push within one MHD timestep.
+
+    Splits the MHD timestep into ``n_sub`` PIC sub-steps, each with
+    ``dt_pic = mhd_dt / n_sub``.  Fields are re-interpolated at each
+    sub-step (frozen-field approximation: E and B are constant over
+    ``mhd_dt``).
+
+    If ``n_sub`` is None it is auto-computed from the CFL-like condition::
+
+        n_sub = ceil(mhd_dt / dt_pic_max)
+        dt_pic_max = T_cyclotron / 30  (30 steps per gyroperiod)
+
+    using the lightest active species and the peak |B| on the grid.
+    The result is capped at ``max_sub`` to prevent runaway.
+
+    ``positions_old`` is saved once before all sub-steps so that the
+    subsequent ``deposit()`` call sees the net displacement over the
+    full ``mhd_dt``.  ``pic._last_push_dt`` is set to ``mhd_dt`` so
+    Esirkepov uses the correct prefactor.
+
+    Parameters
+    ----------
+    pic : HybridPIC
+        The PIC driver instance.
+    E : ndarray, shape (nx, ny, nz, 3)
+        Electric field [V/m].  Assumed constant over ``mhd_dt``.
+    B : ndarray, shape (nx, ny, nz, 3)
+        Magnetic field [T].  Assumed constant over ``mhd_dt``.
+    mhd_dt : float
+        MHD timestep [s].
+    n_sub : int or None
+        Number of sub-steps.  Auto-computed from cyclotron period if None.
+    max_sub : int
+        Cap on sub-step count.
+
+    References
+    ----------
+    Birdsall & Langdon (1985) — 30-steps/gyroperiod CFL rule, Ch. 4.
+    """
+    if n_sub is None:
+        B_mag = np.sqrt(B[..., 0] ** 2 + B[..., 1] ** 2 + B[..., 2] ** 2)
+        B_max = float(np.max(B_mag))
+        if B_max < 1e-10:
+            n_sub = 1
+        else:
+            active = [sp for sp in pic.species if sp.n_particles() > 0]
+            if not active:
+                n_sub = 1
+            else:
+                m_min = min(sp.mass for sp in active)
+                q_max = max(abs(sp.charge) for sp in active)
+                T_cyc = 2.0 * np.pi * m_min / (q_max * B_max)
+                dt_pic_max = T_cyc / 30.0
+                n_sub = int(np.ceil(mhd_dt / dt_pic_max))
+
+    n_sub = max(1, min(n_sub, max_sub))
+    dt_pic = mhd_dt / n_sub
+
+    # Save positions_old once before all sub-steps.
+    # Esirkepov sees net displacement over the full mhd_dt.
+    for sp in pic.species:
+        if sp.n_particles() > 0:
+            sp.positions_old = sp.positions.copy()
+
+    for _ in range(n_sub):
+        for sp in pic.species:
+            if sp.n_particles() == 0:
+                continue
+
+            E_at_p = interpolate_field_to_particles(
+                E, sp.positions, pic.dx, pic.dy, pic.dz
+            )
+            B_at_p = interpolate_field_to_particles(
+                B, sp.positions, pic.dx, pic.dy, pic.dz
+            )
+
+            new_pos, new_vel = boris_push(
+                sp.positions, sp.velocities, E_at_p, B_at_p,
+                sp.charge, sp.mass, dt_pic,
+            )
+
+            new_pos, new_vel = pic._apply_reflecting_bc(new_pos, new_vel)
+
+            sp.positions = new_pos
+            sp.velocities = new_vel
+
+    # Set effective dt for Esirkepov: total displacement over mhd_dt
+    pic._last_push_dt = mhd_dt

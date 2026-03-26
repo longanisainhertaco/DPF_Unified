@@ -16,6 +16,7 @@ try:
         boris_push,
         deposit_density,
         interpolate_field_to_particles,
+        subcycle_pic,  # noqa: F401
     )
 
     HAS_PIC = True
@@ -222,6 +223,109 @@ class TestGhostNaNGuard:
         result = interpolate_field_to_particles(field, pos, 0.01, 0.01, 0.01)
 
         np.testing.assert_allclose(result[0], [0.0, 0.0, 5.0], atol=1e-12)
+
+
+class TestRelativisticBoris:
+    """Tests for the relativistic Boris push (Vay 2008)."""
+
+    def test_boris_relativistic_speed_bounded(self):
+        """Relativistic Boris never exceeds c in strong DPF E-fields.
+
+        Classical pusher reaches v > c in ~6000 steps at 1e7 V/m.
+        10000 steps in this field must all satisfy |v| < c with the
+        relativistic kernel.
+        """
+        c = 2.998e8
+        E_strong = 1e7  # V/m — typical DPF accelerating gradient
+        dt = 1e-10
+        n_steps = 10000
+
+        pos = np.array([[0.05, 0.05, 0.05]])
+        vel = np.zeros((1, 3))
+        E_p = np.array([[E_strong, 0.0, 0.0]])
+        B_p = np.zeros((1, 3))
+
+        for step in range(n_steps):
+            pos, vel = boris_push(pos, vel, E_p, B_p, _Q_E, _M_D, dt, relativistic=True)
+            speed = float(np.sqrt(np.sum(vel ** 2)))
+            assert speed < c, (
+                f"Speed exceeded c at step {step}: |v|={speed:.4e} m/s, c={c:.4e} m/s"
+            )
+
+    def test_boris_relativistic_reduces_to_classical(self):
+        """At v << c, relativistic and classical Boris agree to rtol=1e-3.
+
+        Deuteron in 1 T field with v_perp = 1e4 m/s (beta ~ 3e-5).
+        One gyroperiod with 100 steps.
+        """
+        B0 = 1.0
+        v_perp = 1e4  # << c
+        dt = 1e-10
+        n_steps = 100
+
+        pos_r = np.array([[0.0, 0.0, 0.0]])
+        vel_r = np.array([[v_perp, 0.0, 0.0]])
+        pos_c = pos_r.copy()
+        vel_c = vel_r.copy()
+        E_p = np.zeros((1, 3))
+        B_p = np.array([[0.0, 0.0, B0]])
+
+        for _ in range(n_steps):
+            pos_r, vel_r = boris_push(pos_r, vel_r, E_p, B_p, _Q_E, _M_D, dt, relativistic=True)
+            pos_c, vel_c = boris_push(pos_c, vel_c, E_p, B_p, _Q_E, _M_D, dt, relativistic=False)
+
+        np.testing.assert_allclose(
+            vel_r, vel_c, rtol=1e-3,
+            err_msg="Relativistic and classical velocities diverge at v << c"
+        )
+        np.testing.assert_allclose(
+            pos_r, pos_c, rtol=1e-3,
+            err_msg="Relativistic and classical positions diverge at v << c"
+        )
+
+    def test_subcycle_improves_gyration(self):
+        """Sub-cycled push tracks analytical Larmor orbit more closely.
+
+        Deuteron in 10 T field. MHD dt ~ 0.77 gyroperiods (under-resolved).
+        10 sub-steps resolve the gyration at ~0.077 gyroperiods each.
+        Sub-cycled position should be closer to the analytical arc endpoint.
+        """
+        B0 = 10.0
+        v_perp = 1e6
+        charge = _Q_E
+        mass = _M_D
+        omega_c = charge * B0 / mass
+        T_cyc = 2.0 * np.pi / omega_c
+        mhd_dt = 0.77 * T_cyc  # single step spans 0.77 gyroperiods
+
+        pos0 = np.array([[0.0, 0.0, 0.0]])
+        vel0 = np.array([[v_perp, 0.0, 0.0]])
+        E_p = np.zeros((1, 3))
+        B_p = np.array([[0.0, 0.0, B0]])
+
+        # Analytical arc endpoint: gyration in x-y plane
+        theta = omega_c * mhd_dt
+        r_L = mass * v_perp / (charge * B0)
+        x_exact = r_L * np.sin(theta) + pos0[0, 0]
+        y_exact = r_L * (1.0 - np.cos(theta)) + pos0[0, 1]
+
+        # Single-step push
+        pos_1, _ = boris_push(pos0.copy(), vel0.copy(), E_p, B_p, charge, mass, mhd_dt)
+        err_single = np.sqrt((pos_1[0, 0] - x_exact) ** 2 + (pos_1[0, 1] - y_exact) ** 2)
+
+        # Sub-cycled push (10 sub-steps)
+        n_sub = 10
+        dt_sub = mhd_dt / n_sub
+        pos_n = pos0.copy()
+        vel_n = vel0.copy()
+        for _ in range(n_sub):
+            pos_n, vel_n = boris_push(pos_n, vel_n, E_p, B_p, charge, mass, dt_sub)
+        err_sub = np.sqrt((pos_n[0, 0] - x_exact) ** 2 + (pos_n[0, 1] - y_exact) ** 2)
+
+        assert err_sub < err_single, (
+            f"Sub-cycling not more accurate: "
+            f"single={err_single:.3e} m, sub={err_sub:.3e} m (r_L={r_L:.3e} m)"
+        )
 
 
 class TestEsirkepovDtConsistency:
