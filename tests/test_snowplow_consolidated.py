@@ -2746,7 +2746,11 @@ class TestRadialZipperBC:
     """Radial zipper BC: B_theta zeroed outside radial shock during radial phase."""
 
     def test_radial_zipper_activates_during_radial_phase(self):
-        """With snowplow.phase='radial', B_theta outside r_shock is zeroed."""
+        """With snowplow.phase='radial', B_theta inside r_shock is zeroed.
+
+        Thin-sheath model: current at r_shock means field-free interior.
+        The radial zipper enforces B_theta = 0 for r < r_shock.
+        """
         engine = _make_cylindrical_engine(nr=10, nz=20, dx=0.01)
 
         engine.snowplow.phase = "radial"
@@ -2759,8 +2763,8 @@ class TestRadialZipperBC:
         engine._apply_electrode_bc(current=100e3)
 
         B_theta = engine.state["B"][1]
-        assert np.all(B_theta[6:, :, :] == 0.0), (
-            "B_theta beyond ir_shock+1 must be zeroed by radial zipper"
+        assert np.all(B_theta[:5, :, :] == 0.0), (
+            "B_theta inside r_shock must be zeroed by radial zipper"
         )
 
     def test_radial_zipper_no_effect_during_rundown(self):
@@ -2796,13 +2800,13 @@ class TestRadialZipperBC:
 
         ir_shock = int(r_shock / dx)
         B_theta = engine.state["B"][1]
-        assert np.all(B_theta[ir_shock + 1:, :, :] == 0.0), (
-            f"Expected B_theta zero for r_idx > {ir_shock}"
+        assert np.all(B_theta[:ir_shock, :, :] == 0.0), (
+            f"Expected B_theta zero for r_idx < {ir_shock} (field-free interior)"
         )
         assert B_theta.shape[0] > ir_shock, "ir_shock must be within grid bounds"
 
-    def test_radial_zipper_btheta_zero_outside_shock(self):
-        """B[1, ir_shock+1:, :, :] == 0 after radial zipper is applied."""
+    def test_radial_zipper_btheta_zero_inside_shock(self):
+        """B[1, :ir_shock, :, :] == 0 after radial zipper (field-free interior)."""
         nr, dx = 10, 0.01
         engine = _make_cylindrical_engine(nr=nr, nz=20, dx=dx)
 
@@ -2817,12 +2821,12 @@ class TestRadialZipperBC:
         engine._apply_electrode_bc(current=1e5)
 
         ir_shock = int(r_shock / dx)
-        assert np.all(engine.state["B"][1, ir_shock + 1:, :, :] == 0.0), (
-            "B_theta must be zero outside (beyond) the radial shock"
+        assert np.all(engine.state["B"][1, :ir_shock, :, :] == 0.0), (
+            "B_theta must be zero inside shock (field-free interior)"
         )
 
-    def test_radial_zipper_preserves_btheta_inside_shock(self):
-        """B_theta for r-indices <= ir_shock should NOT be zeroed by radial zipper."""
+    def test_radial_zipper_preserves_btheta_outside_shock(self):
+        """B_theta for r > r_shock should NOT be zeroed by radial zipper."""
         nr, dx = 10, 0.01
         engine = _make_cylindrical_engine(nr=nr, nz=20, dx=dx)
 
@@ -2832,14 +2836,14 @@ class TestRadialZipperBC:
         engine.snowplow.z = engine.snowplow.L_anode
         engine.snowplow._rundown_complete = True
 
-        engine.state["B"][1, :7, :, :] = 99.0
+        engine.state["B"][1, 7:, :, :] = 99.0
 
         engine._apply_electrode_bc(current=1e5)
 
         ir_shock = int(r_shock / dx)
-        B_inside = engine.state["B"][1, :ir_shock + 1, :, :]
-        assert np.any(B_inside != 0.0), (
-            "B_theta inside radial shock should not all be zeroed by radial zipper"
+        B_outside = engine.state["B"][1, ir_shock:, :, :]
+        assert np.any(B_outside != 0.0), (
+            "B_theta outside shock should not be zeroed by radial zipper"
         )
 
     def test_radial_zipper_edge_case_r_shock_at_boundary(self):
@@ -4175,26 +4179,36 @@ def _apply_bfield_init(
     r_grid: np.ndarray,
     r_shock: float,
     dr: float,
+    r_cathode: float = 0.041,
 ) -> dict:
-    """Apply B_theta initialization logic (mirrors engine._initialize_radial_bfield)."""
+    """Apply B_theta initialization logic (mirrors engine._initialize_radial_bfield).
+
+    Thin-sheath topology: B_theta = mu_0*I/(2*pi*r) between r_shock and r_cathode,
+    zero inside r_shock (field-free interior) and outside r_cathode.
+    """
     from dpf.constants import mu_0
     from dpf.constants import pi as _pi
 
     ir_shock = round(r_shock / dr) if dr > 0 else len(r_grid)
     ir_shock = min(ir_shock, len(r_grid))
+    ir_cathode = round(r_cathode / dr) if dr > 0 else len(r_grid)
+    ir_cathode = min(ir_cathode, len(r_grid))
 
     B = state["B"]
     I_abs = abs(current)
 
-    for ir in range(ir_shock):
+    # Field-free interior
+    B[1, :ir_shock, :, :] = 0.0
+
+    # B_theta between shock and cathode
+    for ir in range(ir_shock, ir_cathode):
         r_val = r_grid[ir]
         if r_val > 0:
             B[1, ir, :, :] = mu_0 * I_abs / (2.0 * _pi * r_val)
-        else:
-            B[1, ir, :, :] = 0.0
 
-    if ir_shock < B.shape[1]:
-        B[1, ir_shock:, :, :] = 0.0
+    # Zero outside cathode
+    if ir_cathode < B.shape[1]:
+        B[1, ir_cathode:, :, :] = 0.0
 
     state["B"] = B
     return state
@@ -4203,18 +4217,19 @@ def _apply_bfield_init(
 class TestBfieldProfile:
     """B_theta profile matches analytical at initialization."""
 
-    def test_btheta_inside_shock_analytical(self):
-        """B_theta(r) = mu_0 * I / (2*pi*r) for r < r_shock."""
+    def test_btheta_outside_shock_analytical(self):
+        """B_theta(r) = mu_0*I/(2*pi*r) between r_shock and r_cathode."""
         from dpf.constants import mu_0
         from dpf.constants import pi as _pi
 
         state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
-            nr=32, current=1.0e6, r_shock_frac=0.7,
+            nr=32, current=1.0e6, r_shock_frac=0.5,
         )
         state = _apply_bfield_init(state, coup.current, r_grid, r_shock, dr)
 
         ir_shock = round(r_shock / dr)
-        for ir in range(1, ir_shock):
+        ir_cathode = round(0.041 / dr)
+        for ir in range(ir_shock, min(ir_cathode, len(r_grid))):
             r = r_grid[ir]
             expected = mu_0 * 1.0e6 / (2.0 * _pi * r)
             actual = state["B"][1, ir, 0, 0]
@@ -4223,16 +4238,28 @@ class TestBfieldProfile:
                 f"got {actual:.6e}, expected {expected:.6e}"
             )
 
-    def test_btheta_outside_shock_zero(self):
-        """B_theta = 0 for r > r_shock."""
+    def test_btheta_zero_inside_shock(self):
+        """B_theta = 0 for r < r_shock (field-free interior)."""
         state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
             nr=32, current=1.0e6, r_shock_frac=0.5,
         )
         state = _apply_bfield_init(state, coup.current, r_grid, r_shock, dr)
 
         ir_shock = round(r_shock / dr)
-        assert ir_shock < 32
-        np.testing.assert_array_equal(state["B"][1, ir_shock:, :, :], 0.0)
+        bt_inside = state["B"][1, :ir_shock, 0, 0]
+        assert np.all(bt_inside == 0.0), "B_theta should be zero inside shock"
+
+    def test_btheta_outside_cathode_zero(self):
+        """B_theta = 0 for r > r_cathode."""
+        state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
+            nr=32, current=1.0e6, r_shock_frac=0.5,
+        )
+        r_cathode = 0.041
+        state = _apply_bfield_init(state, coup.current, r_grid, r_shock, dr, r_cathode)
+
+        ir_cathode = round(r_cathode / dr)
+        if ir_cathode < 32:
+            np.testing.assert_array_equal(state["B"][1, ir_cathode:, :, :], 0.0)
 
     def test_btheta_on_axis_zero(self):
         """B_theta(r=0) = 0 by symmetry."""
@@ -4244,16 +4271,18 @@ class TestBfieldProfile:
         state = _apply_bfield_init(state, coup.current, r_grid_tiny, r_shock, dr)
         assert state["B"][1, 0, 0, 0] == 0.0
 
-    def test_btheta_monotonically_decreasing_inside(self):
-        """B_theta = mu_0*I/(2*pi*r) decreases with r inside shock."""
+    def test_btheta_monotonically_decreasing_outside_shock(self):
+        """B_theta = mu_0*I/(2*pi*r) decreases with r between shock and cathode."""
         state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
-            nr=32, current=1.0e6, r_shock_frac=0.8,
+            nr=32, current=1.0e6, r_shock_frac=0.5,
         )
         state = _apply_bfield_init(state, coup.current, r_grid, r_shock, dr)
 
         ir_shock = round(r_shock / dr)
-        bt_inside = state["B"][1, 1:ir_shock, 0, 0]
-        assert np.all(np.diff(bt_inside) < 0), "B_theta should decrease as 1/r"
+        ir_cathode = round(0.041 / dr)
+        bt_outside = state["B"][1, ir_shock:ir_cathode, 0, 0]
+        assert len(bt_outside) > 1, "Need at least 2 cells between shock and cathode"
+        assert np.all(np.diff(bt_outside) < 0), "B_theta should decrease as 1/r"
 
     def test_br_bz_unchanged(self):
         """B_r and B_z remain zero after initialization."""
@@ -4279,18 +4308,18 @@ class TestCurrentContinuity:
     """Integral of J_z * 2*pi*r*dr should equal I."""
 
     def test_current_integral_from_btheta(self):
-        """Ampere's law: I_enclosed = 2*pi*r*B_theta/mu_0 at r_shock."""
+        """Ampere's law: I_enclosed = 2*pi*r*B_theta/mu_0 just outside shock."""
         from dpf.constants import mu_0
         from dpf.constants import pi as _pi
 
         I_total = 1.5e6
         state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
-            nr=64, current=I_total, r_shock_frac=0.7,
+            nr=64, current=I_total, r_shock_frac=0.5,
         )
         state = _apply_bfield_init(state, I_total, r_grid, r_shock, dr)
 
         ir_shock = round(r_shock / dr)
-        ir_test = max(ir_shock - 1, 1)
+        ir_test = ir_shock  # just outside shock — B_theta exists here
         r_test = r_grid[ir_test]
         Bt_test = state["B"][1, ir_test, 0, 0]
 
@@ -4299,28 +4328,33 @@ class TestCurrentContinuity:
             f"Enclosed current {I_enclosed:.4e} != {I_total:.4e}"
         )
 
-    def test_current_integral_numerical(self):
-        """Numerical integral of J_z from curl(B) reproduces I."""
+    def test_ampere_law_at_multiple_radii(self):
+        """Ampere's law: I_enc = 2*pi*r*B_theta/mu_0 at any r > r_shock.
+
+        For thin-sheath topology, B_theta = mu_0*I/(2*pi*r) between shock
+        and cathode.  Ampere integral at any radius in this region recovers I.
+        """
         from dpf.constants import mu_0
         from dpf.constants import pi as _pi
 
         I_total = 1.0e6
         nr = 128
         state, sp, fluid, coup, dr, r_grid, r_shock = _make_engine_with_snowplow(
-            nr=nr, current=I_total, r_shock_frac=0.8,
+            nr=nr, current=I_total, r_shock_frac=0.5,
         )
         state = _apply_bfield_init(state, I_total, r_grid, r_shock, dr)
 
-        Bt = state["B"][1, :, 0, 0]
-        rBt = r_grid * Bt
-        d_rBt_dr = np.gradient(rBt, dr)
-        Jz = d_rBt_dr / (mu_0 * r_grid)
-        Jz[0] = 0.0
+        ir_shock = round(r_shock / dr)
+        ir_cathode = round(0.041 / dr)
 
-        I_integrated = np.sum(Jz * 2.0 * _pi * r_grid * dr)
-        assert abs(I_integrated) == pytest.approx(I_total, rel=0.05), (
-            f"Numerical |I|={abs(I_integrated):.4e} vs {I_total:.4e}"
-        )
+        # Check Ampere's law at 5 radii between shock and cathode
+        for ir in range(ir_shock, min(ir_cathode, nr), max(1, (ir_cathode - ir_shock) // 5)):
+            r = r_grid[ir]
+            Bt = state["B"][1, ir, 0, 0]
+            I_enc = 2.0 * _pi * r * Bt / mu_0
+            assert I_enc == pytest.approx(I_total, rel=1e-3), (
+                f"Ampere I_enc={I_enc:.4e} at r={r:.4e}, expected {I_total:.4e}"
+            )
 
 
 class TestOneShot:
@@ -4417,6 +4451,8 @@ class TestGuards:
         eng.config = MagicMock()
         eng.config.dx = dr
         eng.config.grid_shape = [nr, 1, nz]
+        eng.config.circuit.cathode_radius = 0.041
+        eng.config.fluid.gamma = 5.0 / 3.0
         eng.state = state
         eng._radial_bfield_initialized = False
 
@@ -4429,16 +4465,22 @@ class TestGuards:
         return eng, dr, r_grid
 
     def test_works_for_athena_backend(self):
-        """B_theta initialized for Athena++ cylindrical backend."""
+        """B_theta initialized for Athena++ cylindrical backend.
+
+        Thin-sheath topology: B_theta = 0 inside shock, nonzero outside.
+        """
         eng, dr, r_grid = self._make_engine_obj(backend="athena")
         eng._initialize_radial_bfield()
         assert eng._radial_bfield_initialized is True
         ir_shock = round(eng.snowplow.r_shock / dr)
-        bt_inside = eng.state["B"][1, 1:ir_shock, 0, 0]
-        assert np.all(bt_inside > 0), "B_theta should be positive inside shock"
+        bt_inside = eng.state["B"][1, :ir_shock, 0, 0]
+        assert np.all(bt_inside == 0), "B_theta should be zero inside shock (field-free)"
 
     def test_works_for_metal_backend_with_geom(self):
-        """B_theta initialized for Metal cylindrical backend (geom.r path)."""
+        """B_theta initialized for Metal cylindrical backend (geom.r path).
+
+        Thin-sheath: B_theta = mu_0*I/(2*pi*r) between r_shock and r_cathode.
+        """
         from dpf.constants import mu_0
         from dpf.constants import pi as _pi
 
@@ -4446,7 +4488,9 @@ class TestGuards:
         eng._initialize_radial_bfield()
         assert eng._radial_bfield_initialized is True
         ir_shock = round(eng.snowplow.r_shock / dr)
-        for ir in range(1, min(ir_shock, 5)):
+        nr = len(r_grid)
+        # Check B_theta between shock and cathode
+        for ir in range(ir_shock, min(nr, ir_shock + 5)):
             r = r_grid[ir]
             expected = mu_0 * abs(eng._coupling.current) / (2.0 * _pi * r)
             actual = eng.state["B"][1, ir, 0, 0]
@@ -4466,7 +4510,8 @@ class TestGuards:
         eng._initialize_radial_bfield()
         assert eng._radial_bfield_initialized is True
         ir_shock = round(eng.snowplow.r_shock / dr)
-        for ir in range(1, min(ir_shock, 5)):
+        # Check B_theta outside shock (between shock and cathode)
+        for ir in range(ir_shock, min(nr, ir_shock + 5)):
             r_expected = (ir + 0.5) * dr
             bt_expected = mu_0 * abs(eng._coupling.current) / (2.0 * _pi * r_expected)
             bt_actual = eng.state["B"][1, ir, 0, 0]
@@ -4482,8 +4527,8 @@ class TestGuards:
         eng._initialize_radial_bfield()
         assert eng._radial_bfield_initialized is True
         ir_shock = round(eng.snowplow.r_shock / dr)
-        bt_inside = eng.state["B"][1, 1:ir_shock, 0, 0]
-        assert np.all(bt_inside > 0)
+        bt_inside = eng.state["B"][1, :ir_shock, 0, 0]
+        assert np.all(bt_inside == 0), "B_theta should be zero inside shock (field-free)"
 
     def test_skipped_for_cartesian_geometry(self):
         """No-op for Cartesian geometry (all backends)."""
@@ -4538,9 +4583,11 @@ class TestStability:
             )
             state = _apply_bfield_init(state, I_val, r_grid, r_shock, dr)
             assert np.all(np.isfinite(state["B"])), f"NaN at I={I_val}"
-            ir_mid = 4
-            expected = mu_0 * I_val / (2.0 * _pi * r_grid[ir_mid])
-            actual = state["B"][1, ir_mid, 0, 0]
+            # Check a point between shock and cathode
+            ir_shock = round(r_shock / dr)
+            ir_check = min(ir_shock + 2, len(r_grid) - 1)
+            expected = mu_0 * I_val / (2.0 * _pi * r_grid[ir_check])
+            actual = state["B"][1, ir_check, 0, 0]
             assert actual == pytest.approx(expected, rel=1e-14)
 
     def test_negative_current_handled(self):
@@ -4550,8 +4597,9 @@ class TestStability:
         )
         state = _apply_bfield_init(state, coup.current, r_grid, r_shock, dr)
         ir_shock = round(r_shock / dr)
-        bt_inside = state["B"][1, 1:ir_shock, 0, 0]
-        assert np.all(bt_inside > 0), "B_theta should be positive for abs(I)"
+        ir_cathode = round(0.041 / dr)
+        bt_outside = state["B"][1, ir_shock:ir_cathode, 0, 0]
+        assert np.all(bt_outside > 0), "B_theta should be positive for abs(I)"
 
 
 # --- Section: FMR Convergence AD ---

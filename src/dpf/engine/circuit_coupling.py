@@ -599,13 +599,14 @@ def _apply_electrode_bc(self, current: float) -> None:
         if 0 <= iz_sheath < nz:
             B[1, :, :, iz_sheath + 1:] = 0.0
 
-        # Radial zipper: zero B_theta outside radial shock front
+        # Radial zipper: zero B_theta inside radial shock front
+        # (field-free interior ahead of converging sheath)
         if self.snowplow.phase in ("radial", "reflected"):
             r_shock = self.snowplow.r_shock
             dr = self.config.dx
             ir_shock = int(round(r_shock / dr)) if np.isfinite(r_shock) else 0
             if 0 <= ir_shock < nx:
-                B[1, ir_shock + 1:, :, :] = 0.0
+                B[1, :ir_shock, :, :] = 0.0
 
 
 def _initialize_radial_bfield(self) -> None:
@@ -652,19 +653,32 @@ def _initialize_radial_bfield(self) -> None:
     ir_shock = min(ir_shock, len(r_grid))
 
     B = self.state["B"]  # shape (3, nr, 1, nz)
+    cc = self.config.circuit
+    r_cathode = cc.cathode_radius
+    ir_cathode = int(round(r_cathode / dr)) if (dr > 0) else len(r_grid)
+    ir_cathode = min(ir_cathode, len(r_grid))
 
-    # Inside shock: B_theta = mu_0 * I / (2*pi*r)
-    for ir in range(ir_shock):
+    # Thin-sheath topology: current flows at r = r_shock.
+    # By Ampere's law:
+    #   r < r_shock  → no enclosed current → B_theta = 0  (field-free interior)
+    #   r_shock < r < r_cathode → full I enclosed → B_theta = mu_0*I/(2*pi*r)
+    #   r > r_cathode → net current = 0 (return current cancels) → B_theta = 0
+    #
+    # Previous code had this inverted (B_theta inside shock, zero outside),
+    # which injected ~238% of capacitor energy via 1/r divergence near axis.
+
+    # Field-free interior (ahead of converging sheath)
+    B[1, :ir_shock, :, :] = 0.0
+
+    # Magnetic field between sheath and cathode
+    for ir in range(ir_shock, ir_cathode):
         r_val = r_grid[ir]
         if r_val > 0:
             B[1, ir, :, :] = _mu_0 * I_current / (2.0 * pi * r_val)
-        else:
-            # On-axis: B_theta → 0 by symmetry
-            B[1, ir, :, :] = 0.0
 
-    # Outside shock: B_theta = 0 (thin-sheath assumption)
-    if ir_shock < B.shape[1]:
-        B[1, ir_shock:, :, :] = 0.0
+    # Zero outside cathode
+    if ir_cathode < B.shape[1]:
+        B[1, ir_cathode:, :, :] = 0.0
 
     self.state["B"] = B
     self._radial_bfield_initialized = True
@@ -709,6 +723,8 @@ def _initialize_radial_state(self) -> None:
     profiles = self.snowplow.export_radial_profiles(r_grid, I_current, gamma)
 
     # Write profiles to MHD state (cylindrical: shape is (nr, 1, nz))
+    # B_theta profile from snowplow already uses correct thin-sheath topology
+    # (nonzero between r_shock and r_cathode, zero inside r_shock).
     rho = self.state["rho"]
     vel = self.state["velocity"]
     pres = self.state["pressure"]

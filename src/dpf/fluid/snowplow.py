@@ -337,9 +337,12 @@ class SnowplowModel:
         else:
             r_piston = r_s  # no compression yet
 
+        r_cathode = self.b  # outer electrode radius
         for i in range(nr):
             r = r_grid[i]
-            if 0 < r < r_s:
+            # Thin-sheath topology: B_theta exists between sheath and cathode,
+            # zero inside shock (field-free interior)
+            if r_s < r < r_cathode and r > 0:
                 B_theta_prof[i] = mu_0 * abs(current) / (2.0 * pi * r)
             # Compressed slug between shock front and piston
             if v_s > 1e3 and r_s <= r <= r_piston:
