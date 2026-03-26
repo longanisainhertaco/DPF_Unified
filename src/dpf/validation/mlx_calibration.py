@@ -320,6 +320,112 @@ def optuna_optimize(
     return cal_result, trials
 
 
+def _worker_eval(args: tuple) -> MLXTrialResult:
+    """Worker function for parallel Optuna — runs in a separate process."""
+    fc, fm, preset_name, grid_shape = args
+    return run_mlx_forward_model(
+        fc=fc, fm=fm,
+        preset_name=preset_name,
+        grid_shape=grid_shape,
+    )
+
+
+def parallel_optuna_optimize(
+    fc_bounds: tuple[float, float] = (0.50, 0.85),
+    fm_bounds: tuple[float, float] = (0.03, 0.30),
+    n_trials: int = 40,
+    n_workers: int = 3,
+    preset_name: str = "pf1000",
+    grid_shape: tuple[int, int, int] = (32, 1, 64),
+    seed: int = 42,
+) -> tuple[CalibrationResult, list[MLXTrialResult]]:
+    """Phase 2 parallel: Optuna TPE with ask/tell and multiprocessing.
+
+    Each worker runs in a separate process with its own MLX context
+    (MLX is single-dispatch per process). Uses constant_liar sampler
+    to encourage exploration across parallel trials.
+
+    Args:
+        fc_bounds: Search bounds for fc.
+        fm_bounds: Search bounds for fm.
+        n_trials: Total number of evaluations.
+        n_workers: Number of parallel worker processes.
+        preset_name: Device preset.
+        grid_shape: Grid resolution for trials.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Tuple of (CalibrationResult, list of all trial results).
+    """
+    from concurrent.futures import ProcessPoolExecutor
+
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    sampler = optuna.samplers.TPESampler(
+        seed=seed,
+        constant_liar=True,  # prevents duplicate suggestions for parallel trials
+    )
+    study = optuna.create_study(direction="minimize", sampler=sampler)
+    trials: list[MLXTrialResult] = []
+    completed = 0
+
+    with ProcessPoolExecutor(max_workers=n_workers) as pool:
+        while completed < n_trials:
+            # Ask for a batch of trials
+            batch_size = min(n_workers, n_trials - completed)
+            optuna_trials = [study.ask() for _ in range(batch_size)]
+
+            # Build worker args
+            worker_args = []
+            for ot in optuna_trials:
+                fc = ot.suggest_float("fc", fc_bounds[0], fc_bounds[1])
+                fm = ot.suggest_float("fm", fm_bounds[0], fm_bounds[1])
+                worker_args.append((fc, fm, preset_name, grid_shape))
+
+            # Run batch in parallel
+            futures = list(pool.map(_worker_eval, worker_args))
+
+            # Report results back to Optuna
+            for ot, result in zip(optuna_trials, futures, strict=True):
+                trials.append(result)
+                value = result.objective if result.success else 10.0
+                study.tell(ot, value)
+                completed += 1
+
+                logger.info(
+                    "Parallel Optuna [%d/%d]: fc=%.3f fm=%.3f -> J=%.4f "
+                    "(I_peak=%.3f MA, %.1fs)",
+                    completed, n_trials,
+                    result.fc, result.fm, result.objective,
+                    result.I_peak_A / 1e6, result.wall_time_s,
+                )
+
+    best = study.best_trial
+    best_fc = best.params["fc"]
+    best_fm = best.params["fm"]
+
+    best_trial = min(
+        [t for t in trials if t.success],
+        key=lambda t: t.objective,
+        default=None,
+    )
+
+    cal_result = CalibrationResult(
+        best_fc=best_fc,
+        best_fm=best_fm,
+        peak_current_error=best_trial.peak_error if best_trial else 1.0,
+        timing_error=best_trial.timing_error if best_trial else 1.0,
+        objective_value=best.value,
+        n_evals=len(trials),
+        converged=best.value < 0.5,
+        device_name=preset_name,
+    )
+
+    return cal_result, trials
+
+
 def run_calibration_pipeline(
     preset_name: str = "pf1000",
     n_optuna_trials: int = 40,

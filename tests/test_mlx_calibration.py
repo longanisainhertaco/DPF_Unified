@@ -853,3 +853,44 @@ class TestRunMLXForwardModelIntegration:
         else:
             # Failure is acceptable on tiny grid — just verify sentinel values
             assert trial.objective == pytest.approx(10.0, abs=1e-9)
+
+
+class TestParallelOptuna:
+    """Tests for parallel_optuna_optimize structure and API."""
+
+    def test_worker_eval_is_picklable(self):
+        """_worker_eval must be module-level for ProcessPoolExecutor."""
+        import pickle
+
+        from dpf.validation.mlx_calibration import _worker_eval
+
+        # Module-level functions are picklable
+        pickled = pickle.dumps(_worker_eval)
+        restored = pickle.loads(pickled)
+        assert callable(restored)
+
+    def test_parallel_optuna_function_exists(self):
+        """parallel_optuna_optimize is importable and has correct signature."""
+        import inspect
+
+        from dpf.validation.mlx_calibration import parallel_optuna_optimize
+
+        sig = inspect.signature(parallel_optuna_optimize)
+        assert "n_workers" in sig.parameters
+        assert "n_trials" in sig.parameters
+        assert "fc_bounds" in sig.parameters
+        assert "fm_bounds" in sig.parameters
+        assert sig.parameters["n_workers"].default == 3
+
+    def test_constant_liar_sampler(self):
+        """Optuna TPESampler accepts constant_liar parameter."""
+        import optuna
+
+        sampler = optuna.samplers.TPESampler(seed=42, constant_liar=True)
+        study = optuna.create_study(direction="minimize", sampler=sampler)
+        # ask/tell API works
+        trial = study.ask()
+        fc = trial.suggest_float("fc", 0.5, 0.85)
+        fm = trial.suggest_float("fm", 0.03, 0.30)
+        study.tell(trial, abs(fc - 0.7) + abs(fm - 0.08))
+        assert len(study.trials) == 1
