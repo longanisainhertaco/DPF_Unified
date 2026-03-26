@@ -97,7 +97,7 @@ def run_mlx_forward_model(
     # Force MLX backend with stable settings
     preset["fluid"] = preset.get("fluid", {})
     preset["fluid"]["backend"] = "mlx"
-    preset["fluid"]["riemann_solver"] = "hll"
+    preset["fluid"]["riemann_solver"] = "hlls"  # GPU-native, zero CPU round-trips
     preset["fluid"]["reconstruction"] = "plm"
     preset["fluid"]["time_integrator"] = "ssp_rk2"
 
