@@ -748,8 +748,9 @@ def _initialize_radial_state(self) -> None:
     self.state["pressure"] = pres
     self.state["B"] = B
 
-    # Update Te/Ti from pressure
-    T = np.maximum(pres * self.ion_mass / (np.maximum(rho, 1e-30) * k_B), 1.0)
+    # Update Te/Ti from Rankine-Hugoniot pressure.
+    # T = p*m_i/(2*rho*kB) for fully ionized Z=1 (n_e + n_i = 2*n_i).
+    T = np.maximum(pres * self.ion_mass / (2.0 * np.maximum(rho, 1e-30) * k_B), 1.0)
     self.state["Te"] = T
     self.state["Ti"] = T
 
