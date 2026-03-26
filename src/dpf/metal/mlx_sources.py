@@ -230,6 +230,121 @@ def compute_current_density(
     return J_sq.astype(mx.float32)
 
 
+def compute_current_density_components(
+    U: mx.array,
+    dr: float,
+    dz: float,
+    r_cell: mx.array,
+) -> tuple[mx.array, mx.array, mx.array]:
+    """Compute J = curl(B)/mu_0 components in cylindrical coordinates.
+
+    Returns (Jr, Jz, Jt) as separate arrays. Uses the same finite-difference
+    stencil as compute_current_density but returns components for vector use
+    (e.g., Hall MHD E_Hall = (J x B) / (n_e * e)).
+
+    Note: these are curl(B) / mu_0, NOT curl(B). The mu_0 factor must be
+    accounted for when computing the Hall electric field.
+
+    Args:
+        U: Conserved state, shape (NVAR, nr, nz).
+        dr, dz: Cell spacings [m].
+        r_cell: Cell-center radii, shape (nr,).
+
+    Returns:
+        (Jr, Jz, Jt): Current density components, shape (nr, nz) each.
+    """
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+    r = r_cell[:, None]
+    inv_r = 1.0 / mx.maximum(r, 1e-30)
+
+    # Jr = -dBt/dz / mu_0
+    dBt_dz = (mx.roll(Bt, -1, axis=1) - mx.roll(Bt, 1, axis=1)) / (2.0 * dz)
+    Jr = -dBt_dz
+
+    # Jz = (1/r) d(rBt)/dr / mu_0
+    rBt = r * Bt
+    drBt_dr = (mx.roll(rBt, -1, axis=0) - mx.roll(rBt, 1, axis=0)) / (2.0 * dr)
+    Jz = inv_r * drBt_dr
+
+    # Jt = (dBr/dz - dBz/dr) / mu_0
+    dBr_dz = (mx.roll(Br, -1, axis=1) - mx.roll(Br, 1, axis=1)) / (2.0 * dz)
+    dBz_dr = (mx.roll(Bz, -1, axis=0) - mx.roll(Bz, 1, axis=0)) / (2.0 * dr)
+    Jt = dBr_dz - dBz_dr
+
+    _MU0 = 4.0 * 3.141592653589793 * 1e-7
+    return Jr / _MU0, Jz / _MU0, Jt / _MU0
+
+
+def apply_hall_mhd(
+    U: mx.array,
+    dt: float,
+    dr: float,
+    dz: float,
+    r_cell: mx.array,
+    ion_mass: float = 3.3435e-27,
+) -> mx.array:
+    """Apply Hall MHD term as operator-split update to B-field.
+
+    The Hall electric field: E_H = (J x B) / (n_e * e)
+    Faraday's law: dB/dt = -curl(E_H)
+
+    For axisymmetric cylindrical:
+        dBr/dt = -dE_H_theta/dz
+        dBz/dt = (1/r) d(r E_H_theta)/dr
+        dBt/dt = dE_H_r/dz - dE_H_z/dr
+
+    Args:
+        U: Conserved state (NVAR, nr, nz).
+        dt: Timestep [s].
+        dr, dz: Cell spacings [m].
+        r_cell: Cell-center radii, shape (nr,).
+        ion_mass: Ion mass [kg]. Default: deuterium.
+
+    Returns:
+        Updated U with Hall-modified B-field.
+    """
+    _E_CHARGE = 1.602176634e-19
+
+    rho = mx.maximum(U[IDN], 1e-12)
+    ne = rho / ion_mass  # assume Z=1
+
+    Jr, Jz, Jt = compute_current_density_components(U, dr, dz, r_cell)
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+
+    # E_Hall = (J x B) / (n_e * e)
+    inv_ne_e = 1.0 / (ne * _E_CHARGE)
+    E_r = (Jz * Bt - Jt * Bz) * inv_ne_e
+    E_z = (Jt * Br - Jr * Bt) * inv_ne_e
+    E_t = (Jr * Bz - Jz * Br) * inv_ne_e
+
+    # Faraday's law: dB/dt = -curl(E_Hall)
+    r = r_cell[:, None]
+    inv_r = 1.0 / mx.maximum(r, 1e-30)
+
+    dEt_dz = (mx.roll(E_t, -1, axis=1) - mx.roll(E_t, 1, axis=1)) / (2.0 * dz)
+    rEt = r * E_t
+    drEt_dr = (mx.roll(rEt, -1, axis=0) - mx.roll(rEt, 1, axis=0)) / (2.0 * dr)
+    dEr_dz = (mx.roll(E_r, -1, axis=1) - mx.roll(E_r, 1, axis=1)) / (2.0 * dz)
+    dEz_dr = (mx.roll(E_z, -1, axis=0) - mx.roll(E_z, 1, axis=0)) / (2.0 * dr)
+
+    dBr = -dEt_dz * dt
+    dBz = inv_r * drEt_dr * dt
+    dBt = (dEr_dz - dEz_dr) * dt
+
+    # Update B-field in conserved state
+    return mx.concatenate([
+        U[:IBR],
+        (U[IBR] + dBr)[None],
+        (U[IBZ] + dBz)[None],
+        (U[IBT] + dBt)[None],
+        U[IBT + 1:],
+    ], axis=0)
+
+
 def apply_ohmic_heating(
     U: mx.array,
     eta: mx.array | float,
