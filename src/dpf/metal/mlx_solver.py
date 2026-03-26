@@ -266,6 +266,93 @@ class MLXMHDSolver(PlasmaSolverBase):
     # Electrode ghost-cell boundary condition (pad / strip)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _electrode_bt_fixup_mlx(
+        U_padded: Any,
+        r_cell: Any,
+        current: float,
+        ng: int,
+        nr_phys: int,
+        convert_si_to_hl: bool = True,
+    ) -> Any:
+        """Apply electrode B_theta BC in pure MLX (no np.asarray sync).
+
+        Replaces the NumPy loop in _pad_electrode_ghost. Kept as a static
+        method so it can be unit-tested independently.
+
+        Sets B_theta = mu0*I/(2*pi*r) [/ sqrt(mu0) if HL] at:
+          - Outer ghost cells: indices [ng+nr_phys, ng+nr_phys+ng)
+          - Outermost ng interior cells: blend with max(existing, electrode)
+        Updates total energy for magnetic energy consistency throughout.
+
+        Falls back to None if MLX is unavailable (caller uses NumPy path).
+        """
+        mx = require_mlx()
+        from dpf.metal.mlx_kernels import (  # noqa: I001
+            IDN, IBR, IBT, IBZ, IEE, IEN, IMR, IMT, IMZ, ISR, P_FLOOR,
+        )
+
+        _GAMMA_LOCAL = 5.0 / 3.0
+        divisor = _SQRT_MU0 if convert_si_to_hl else 1.0
+        nr_g = U_padded.shape[1]
+
+        r_safe = mx.maximum(mx.abs(r_cell), 1e-10)
+        Bt_electrode = mx.array(
+            _MU0 * current / (2.0 * math.pi) / divisor, dtype=mx.float32
+        ) / r_safe
+        Bt_electrode_2d = Bt_electrode[:, None] * mx.ones((1, U_padded.shape[2]), dtype=mx.float32)
+
+        idx = mx.arange(nr_g)
+        outer_ghost_mask = (idx >= ng + nr_phys) & (idx < ng + nr_phys + ng)
+        outer_ghost_mask_2d = outer_ghost_mask[:, None]
+
+        B2_old = U_padded[IBR] ** 2 + U_padded[IBZ] ** 2 + U_padded[IBT] ** 2
+        Bt_new_outer = mx.where(outer_ghost_mask_2d, Bt_electrode_2d, U_padded[IBT])
+        B2_new_outer = U_padded[IBR] ** 2 + U_padded[IBZ] ** 2 + Bt_new_outer ** 2
+        dE_outer = 0.5 * (B2_new_outer - B2_old)
+
+        E_updated = U_padded[IEN] + mx.where(outer_ghost_mask_2d, dE_outer, 0.0)
+
+        p_mag_outer = 0.5 * B2_new_outer
+        beta_floor = 1e-4
+        p_min = beta_floor * mx.maximum(p_mag_outer, mx.array(P_FLOOR, dtype=mx.float32))
+        E_floor = p_min / (_GAMMA_LOCAL - 1.0) + 0.5 * B2_new_outer
+        E_updated = mx.where(outer_ghost_mask_2d, mx.maximum(E_updated, E_floor), E_updated)
+
+        rho_updated = mx.where(outer_ghost_mask_2d, mx.maximum(U_padded[IDN], 1e-4), U_padded[IDN])
+
+        interior_blend_mask = (idx >= ng + nr_phys - ng) & (idx < ng + nr_phys)
+        interior_blend_mask_2d = interior_blend_mask[:, None]
+
+        Bt_blended = mx.where(
+            mx.abs(Bt_new_outer) > mx.abs(Bt_electrode_2d),
+            Bt_new_outer,
+            Bt_electrode_2d,
+        )
+        Bt_final = mx.where(interior_blend_mask_2d, Bt_blended, Bt_new_outer)
+
+        B2_blend = U_padded[IBR] ** 2 + U_padded[IBZ] ** 2 + Bt_final ** 2
+        dE_blend = 0.5 * (B2_blend - B2_old)
+        E_final = E_updated + mx.where(interior_blend_mask_2d, dE_blend, 0.0)
+
+        p_mag_blend = 0.5 * B2_blend
+        p_min_b = beta_floor * mx.maximum(p_mag_blend, mx.array(P_FLOOR, dtype=mx.float32))
+        E_floor_b = p_min_b / (_GAMMA_LOCAL - 1.0) + 0.5 * B2_blend
+        E_final = mx.where(interior_blend_mask_2d, mx.maximum(E_final, E_floor_b), E_final)
+
+        return mx.stack([
+            rho_updated,
+            U_padded[IMR],
+            U_padded[IMZ],
+            U_padded[IMT],
+            E_final,
+            U_padded[ISR],
+            U_padded[IBR],
+            U_padded[IBZ],
+            Bt_final,
+            U_padded[IEE],
+        ], axis=0).astype(mx.float32)
+
     # WENO5-Z needs 3 ghost cells; PLM needs 2.
     _GHOST_NG: int = 3
 
@@ -326,52 +413,55 @@ class MLXMHDSolver(PlasmaSolverBase):
         # 3. Update total energy E to account for changed B_theta (energy
         #    consistency). Without this, p = (gamma-1)(E - KE - B^2/2) goes
         #    negative when B_theta >> B_theta_old, causing HLLD NaN.
-        from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
-        _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
-        U_np = np.asarray(U_padded)
-
-        def _update_bt_with_energy(idx: int, Bt_new: float) -> None:
-            """Set B_theta at index idx and fix total energy for consistency."""
-            B2_old = (U_np[IBR, idx, :] ** 2
-                      + U_np[IBZ, idx, :] ** 2
-                      + U_np[IBT, idx, :] ** 2)
-            U_np[IBT, idx, :] = Bt_new
-            B2_new = (U_np[IBR, idx, :] ** 2
-                      + U_np[IBZ, idx, :] ** 2
-                      + U_np[IBT, idx, :] ** 2)
-            # Add magnetic energy difference to total energy
-            U_np[IEN, idx, :] += 0.5 * (B2_new - B2_old)
-            # Enforce minimum plasma beta
-            p_mag = 0.5 * B2_new
-            beta_floor = 1e-4
-            p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
-            E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
-            U_np[IEN, idx, :] = np.maximum(U_np[IEN, idx, :], E_floor)
-
-        # Outer ghost cells: fix SI→HL if needed (ghost_pad wrote SI)
-        for ig in range(ng):
-            out_idx = ng + self.nr + ig
-            r_pos = max(r_cell_list[out_idx], 1e-10)
-            Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-            _update_bt_with_energy(out_idx, Bt_val)
-            # Density floor in ghost cells
-            U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
-
-        # Outermost ng interior cells: set B_theta to electrode 1/r profile.
-        # This ensures the WENO5-Z stencil sees a smooth B_theta transition
-        # rather than a step discontinuity at the ghost boundary.
-        for ig in range(ng):
-            int_idx = ng + self.nr - 1 - ig
-            r_pos = max(r_cell_list[int_idx], 1e-10)
-            Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-            # Blend: use max(existing, electrode) so we don't reduce B_theta
-            existing = U_np[IBT, int_idx, :]
-            new_Bt = np.where(
-                np.abs(existing) > np.abs(Bt_val), existing, Bt_val
+        # Apply electrode B_theta BC: pure MLX path (no np.asarray sync).
+        # NumPy fallback used only if MLX is unavailable.
+        r_cell_mx_g = mx.array(r_cell_np)
+        try:
+            U_padded = self._electrode_bt_fixup_mlx(
+                U_padded,
+                r_cell_mx_g,
+                current,
+                ng,
+                self.nr,
+                convert_si_to_hl=self._convert_b_si_to_hl,
             )
-            _update_bt_with_energy(int_idx, new_Bt)
+        except Exception:
+            # NumPy fallback: preserves exact original behaviour
+            from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
+            _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
+            U_np = np.asarray(U_padded)
 
-        U_padded = mx.array(U_np)
+            def _update_bt_with_energy(cell_idx: int, Bt_new: float) -> None:
+                B2_old = (U_np[IBR, cell_idx, :] ** 2
+                          + U_np[IBZ, cell_idx, :] ** 2
+                          + U_np[IBT, cell_idx, :] ** 2)
+                U_np[IBT, cell_idx, :] = Bt_new
+                B2_new = (U_np[IBR, cell_idx, :] ** 2
+                          + U_np[IBZ, cell_idx, :] ** 2
+                          + U_np[IBT, cell_idx, :] ** 2)
+                U_np[IEN, cell_idx, :] += 0.5 * (B2_new - B2_old)
+                p_mag = 0.5 * B2_new
+                beta_floor = 1e-4
+                p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
+                E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
+                U_np[IEN, cell_idx, :] = np.maximum(U_np[IEN, cell_idx, :], E_floor)
+
+            for ig in range(ng):
+                out_idx = ng + self.nr + ig
+                r_pos = max(r_cell_list[out_idx], 1e-10)
+                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                _update_bt_with_energy(out_idx, Bt_val)
+                U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
+
+            for ig in range(ng):
+                int_idx = ng + self.nr - 1 - ig
+                r_pos = max(r_cell_list[int_idx], 1e-10)
+                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                existing = U_np[IBT, int_idx, :]
+                new_Bt = np.where(np.abs(existing) > np.abs(Bt_val), existing, Bt_val)
+                _update_bt_with_energy(int_idx, new_Bt)
+
+            U_padded = mx.array(U_np)
 
         # Build a lightweight padded grid. CylindricalGrid rejects negative
         # r_inner, so we build geometry arrays directly on the ghost-extended
@@ -725,6 +815,22 @@ class MLXMHDSolver(PlasmaSolverBase):
                 U, dt,
                 dr=self._grid.dr, dz=self._grid.dz,
                 r_cell=self._grid.r_cell,
+                ion_mass=self.ion_mass,
+            )
+
+        # ── 6.65b. Line radiation (multi-species) ──────────────────────
+        if (
+            self._species_mgr is not None
+            and self._Y is not None
+            and self.enable_bremsstrahlung
+        ):
+            from dpf.metal.mlx_line_radiation import apply_line_radiation_mlx
+
+            U = apply_line_radiation_mlx(
+                U, dt,
+                species_Z=self._species_mgr.Z,
+                species_Y=self._Y,
+                gamma=self.gamma,
                 ion_mass=self.ion_mass,
             )
 
