@@ -126,6 +126,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         limiter: str = "mc",
         enable_nernst: bool = False,
         compile_mode: bool = False,
+        species_config: dict | None = None,
         **kwargs: Any,
     ) -> None:
         nr, ny, nz = grid_shape
@@ -189,6 +190,14 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._U: Any = None
         self._entropy_initialized: bool = False
         self._psi: Any = None  # Dedner cleaning scalar (sidecar, not in U)
+
+        # Multi-species impurity tracking (sidecar, not in U)
+        self._species_mgr: Any = None
+        self._Y: Any = None  # evolved species fractions (N_evolved, nr, nz)
+        if species_config is not None:
+            from dpf.metal.mlx_species import SpeciesManager
+            self._species_mgr = SpeciesManager(**species_config)
+            self._Y = self._species_mgr.init_mass_fractions(nr, nz)
 
         # Grid and state manager — built eagerly if MLX is present
         self._grid: Any = None
@@ -713,6 +722,30 @@ class MLXMHDSolver(PlasmaSolverBase):
             )
             mx.eval(U)
 
+        # ── 6.7. Species advection + ablation sources ─────────────────
+        if self._species_mgr is not None and self._Y is not None:
+            from dpf.metal.mlx_species import (
+                apply_ablation_sources,
+                species_advection_step,
+            )
+
+            self._Y = species_advection_step(
+                self._Y, U,
+                dr=self._grid.dr, dz=self._grid.dz, dt=dt,
+                gamma=self.gamma,
+                r_cell=getattr(self._grid, "r_cell", None),
+                r_face=getattr(self._grid, "r_face", None),
+            )
+
+            ablation_rate = kwargs.get("ablation_rate")
+            if ablation_rate is not None:
+                self._Y = apply_ablation_sources(
+                    self._Y, dt,
+                    mx.array(np.asarray(ablation_rate, dtype=np.float32)),
+                    cu_idx=0,
+                )
+            mx.eval(self._Y)
+
         # ── 7. Unpack ────────────────────────────────────────────────────
         self._U = U
         result = self._state_mgr.to_state_dict(
@@ -722,6 +755,14 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 7.5. Two-temperature source terms (CPU, matching Metal) ────
         if result.get("e_electron") is not None:
             self._do_two_temperature_sources(result, dt, kwargs.get("eta_field"))
+
+        # ── 7.6. Species state in result ──────────────────────────────
+        if self._species_mgr is not None and self._Y is not None:
+            Y_full = self._species_mgr.recover_background(self._Y)
+            result["species"] = {
+                name: np.asarray(Y_full[i])
+                for i, name in enumerate(self._species_mgr.species)
+            }
 
         # ── 8. Coupling — compute Lp from density-weighted Lee formula ──
         self._update_coupling(U, current, voltage, dt)
