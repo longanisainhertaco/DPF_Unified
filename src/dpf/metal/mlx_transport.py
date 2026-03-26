@@ -430,13 +430,19 @@ def apply_thermal_conduction(
             Ti_new[ir, :] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
     # r-direction conduction (implicit Thomas per z-column)
+    # Use cylindrical diffusion operator (1/r)d/dr(r*chi*dT/dr) for correct geometry
     if dr is not None and kappa_r is not None and nr > 1:
         chi_r = kappa_r / (n_np * K_B)
+        r_cell = np.array([(ir + 0.5) * dr for ir in range(nr)])
         for iz in range(nz):
-            a, b, c, d = _build_diffusion_system(Te_new[:, iz], chi_r[:, iz], dt, dr)
+            a, b, c, d = _build_cylindrical_diffusion_system(
+                Te_new[:, iz], chi_r[:, iz], r_cell, dt, dr,
+            )
             Te_new[:, iz] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
-            a, b, c, d = _build_diffusion_system(Ti_new[:, iz], chi_r[:, iz], dt, dr)
+            a, b, c, d = _build_cylindrical_diffusion_system(
+                Ti_new[:, iz], chi_r[:, iz], r_cell, dt, dr,
+            )
             Ti_new[:, iz] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
     return mx.array(Te_new.astype(np.float32)), mx.array(Ti_new.astype(np.float32))

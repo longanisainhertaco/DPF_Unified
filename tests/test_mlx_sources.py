@@ -320,7 +320,8 @@ class TestBremsstrahlung:
         rho = 1.0
         Te_target = 1e7
         ne = rho / _ION_MASS
-        p = ne * _KBOLTZ * Te_target
+        # p = 2 * rho * kB * T / m_i for fully ionized Z=1 (n_e + n_i)
+        p = 2.0 * ne * _KBOLTZ * Te_target
         U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
         U_np[IDN] = rho
         U_np[IEN] = float(p / (_GAMMA - 1.0))

@@ -522,7 +522,8 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
 
-        T = p * self.ion_mass / (mx.maximum(rho, 1e-30) * _K_B)
+        # T = p*m_i/(2*rho*kB) for fully ionized plasma (n_e + n_i = 2*n_i)
+        T = p * self.ion_mass / (2.0 * mx.maximum(rho, 1e-30) * _K_B)
 
         Te_new, Ti_new = apply_thermal_conduction(
             Te=T, Ti=T, rho=rho, B=Bz,
@@ -534,7 +535,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
 
         T_avg = 0.5 * (Te_new + Ti_new)
-        p_new = mx.maximum(rho * _K_B * T_avg / self.ion_mass, P_FLOOR)
+        p_new = mx.maximum(2.0 * rho * _K_B * T_avg / self.ion_mass, P_FLOOR)
 
         gm1 = self.gamma - 1.0
         KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)

@@ -438,7 +438,8 @@ def apply_bremsstrahlung(
     rho_np = np.asarray(rho).astype(np.float64)
     p_np = np.asarray(p).astype(np.float64)
     ne_np = rho_np / ion_mass
-    Te_np = np.maximum(p_np * ion_mass / (rho_np * _KBOLTZ), 1.0)
+    # T = p*m_i/(2*rho*kB) for fully ionized Z=1 plasma (n_e + n_i = 2*n_i)
+    Te_np = np.maximum(p_np * ion_mass / (2.0 * rho_np * _KBOLTZ), 1.0)
     Q_rad_np = (_BREM_COEFF * gaunt_factor * Z_eff * ne_np * ne_np * np.sqrt(Te_np)).astype(
         np.float32
     )
