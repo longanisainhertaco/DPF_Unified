@@ -37,6 +37,61 @@ _RHO_FLOOR = 1.0e-12
 _P_FLOOR = 1.0e-12
 
 
+def _bremsstrahlung_logspace(
+    rho: mx.array,
+    p: mx.array,
+    gamma: float,
+    Z_eff: float | mx.array = 1.0,
+    gaunt_factor: float = 1.2,
+    ion_mass: float = 3.34358377e-27,
+) -> mx.array:
+    """Compute bremsstrahlung power Q_rad in pure MLX via log-space arithmetic.
+
+    Q_rad = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)
+
+    _BREM_COEFF = 1.42e-40 is subnormal in float32 (flushes to zero).
+    In log-space, log(1.42e-40) = -91.76, well within float32 range (+/-126).
+
+    Args:
+        rho: Mass density (nr, nz), float32, already floored.
+        p: Pressure (nr, nz), float32, already floored.
+        gamma: Adiabatic index.
+        Z_eff: Effective ion charge (scalar or spatial mx.array).
+        gaunt_factor: Free-free Gaunt factor.
+        ion_mass: Ion mass [kg].
+
+    Returns:
+        Q_rad: Volumetric radiation power [W/m^3], shape matching rho, float32.
+    """
+    _LOG_BREM = float(np.log(_BREM_COEFF))      # -91.76
+    _LOG_GFF = float(np.log(gaunt_factor))
+    _LOG_MI = float(np.log(ion_mass))            # log(3.34e-27) ~ -61.07
+    _LOG_2KB = float(np.log(2.0 * _KBOLTZ))     # log(2*kB) ~ -52.17
+
+    # log(ne) = log(rho) - log(ion_mass)
+    log_rho = mx.log(mx.maximum(rho, 1e-30))
+    log_ne = log_rho - _LOG_MI
+
+    # log(Te) = log(p) + log(m_i) - log(2*kB) - log(rho)
+    # Te = p * ion_mass / (2 * rho * kB)  [factor 2: n_e + n_i at Z=1]
+    log_p = mx.log(mx.maximum(p, 1e-30))
+    log_Te = log_p + _LOG_MI - _LOG_2KB - log_rho
+    log_Te = mx.maximum(log_Te, 0.0)  # floor Te at 1 K in log-space
+
+    # log(Z_eff): scalar or spatial array
+    if isinstance(Z_eff, mx.array):
+        log_Z = mx.log(mx.maximum(Z_eff, 1e-30))
+    else:
+        log_Z = float(np.log(max(float(Z_eff), 1e-30)))
+
+    # log(Q_rad) = log(BREM) + log(g_ff) + log(Z) + 2*log(ne) + 0.5*log(Te)
+    log_Q = _LOG_BREM + _LOG_GFF + log_Z + 2.0 * log_ne + 0.5 * log_Te
+
+    # Clamp to prevent exp overflow (exp(88) ~ 3.4e38)
+    log_Q = mx.minimum(log_Q, 80.0)
+    return mx.exp(log_Q)
+
+
 def _conserved_to_primitive(U: mx.array, gamma: float) -> mx.array:
     """Convert conserved state U to primitive state Q for cylindrical source call.
 
@@ -442,17 +497,16 @@ def apply_bremsstrahlung(
     B2 = U[IBR] ** 2 + U[IBZ] ** 2 + U[IBT] ** 2
     p = (gamma - 1.0) * mx.maximum(U[IEN] - 0.5 * rho * v2 - 0.5 * B2, _P_FLOOR)
 
-    # Compute Q_rad in float64 via NumPy: 1.42e-40 is subnormal in float32 and
-    # would flush to zero if left in the MLX float32 graph.
-    rho_np = np.asarray(rho).astype(np.float64)
-    p_np = np.asarray(p).astype(np.float64)
-    ne_np = rho_np / ion_mass
-    # T = p*m_i/(2*rho*kB) for fully ionized Z=1 plasma (n_e + n_i = 2*n_i)
-    Te_np = np.maximum(p_np * ion_mass / (2.0 * rho_np * _KBOLTZ), 1.0)
-    Q_rad_np = (_BREM_COEFF * gaunt_factor * Z_eff * ne_np * ne_np * np.sqrt(Te_np)).astype(
-        np.float32
+    # Compute Q_rad via log-space arithmetic: BREM_COEFF=1.42e-40 is subnormal
+    # in float32 but log(1.42e-40)=-91.76 is well within float32 range.
+    Q_rad = _bremsstrahlung_logspace(
+        rho,
+        p,
+        gamma,
+        Z_eff=Z_eff if isinstance(Z_eff, mx.array) else float(Z_eff),
+        gaunt_factor=gaunt_factor,
+        ion_mass=ion_mass,
     )
-    Q_rad = mx.array(Q_rad_np)
     dE = Q_rad * dt
 
     # Clamp: cannot remove more energy than available above the kinetic+magnetic floor

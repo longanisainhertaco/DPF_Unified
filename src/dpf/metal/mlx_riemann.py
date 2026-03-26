@@ -229,6 +229,160 @@ def _get_hlls_compiled(dim: int) -> object:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# HLL GPU: Pure-MLX two-wave Riemann solver — zero CPU round-trips
+# Wavespeeds from entropy (no E-KE-ME cancellation), flux from conserved E
+# (conservative formulation). More accurate energy conservation than HLLS.
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _hll_flux_gpu(
+    QL: object,
+    QR: object,
+    gamma: float,
+    dim: int,
+) -> object:
+    """HLL two-wave Riemann flux -- pure MLX, zero CPU round-trips.
+
+    Wavespeeds use entropy-derived pressure (ISR slot) to avoid float32
+    catastrophic cancellation in E-KE-ME. Energy flux uses conserved E
+    directly (conservative formulation).
+
+    Args:
+        QL: Left state at interfaces, shape (NVAR, n_ifaces, n_transverse).
+        QR: Right state at interfaces, shape (NVAR, n_ifaces, n_transverse).
+        gamma: Adiabatic index (scalar float).
+        dim: Normal direction (0=radial, 1=axial, 2=y-Cartesian).
+
+    Returns:
+        Numerical flux, shape (NVAR, n_ifaces, n_transverse), mx.array float32.
+    """
+    TINY = 1e-20
+    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+
+    if dim == 0:
+        im_n, im_t1, im_t2 = IMR, IMZ, IMT
+        ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
+    elif dim == 1:
+        im_n, im_t1, im_t2 = IMZ, IMR, IMT
+        ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
+    else:
+        im_n, im_t1, im_t2 = IMT, IMR, IMZ
+        ib_n, ib_t1, ib_t2 = IBT, IBR, IBZ
+
+    rho_L = mx.maximum(QL[IDN], RHO_FLOOR)
+    rho_R = mx.maximum(QR[IDN], RHO_FLOOR)
+    inv_rL = 1.0 / rho_L
+    inv_rR = 1.0 / rho_R
+
+    vn_L = QL[im_n] * inv_rL
+    vn_R = QR[im_n] * inv_rR
+    vt1_L = QL[im_t1] * inv_rL
+    vt2_L = QL[im_t2] * inv_rL
+    vt1_R = QR[im_t1] * inv_rR
+    vt2_R = QR[im_t2] * inv_rR
+
+    Bn_L, Bn_R = QL[ib_n], QR[ib_n]
+    Bt1_L, Bt1_R = QL[ib_t1], QR[ib_t1]
+    Bt2_L, Bt2_R = QL[ib_t2], QR[ib_t2]
+
+    # Pressure from entropy tracer for wavespeeds — avoids E-KE-ME cancellation
+    gm1 = gamma - 1.0
+    Srho_L = mx.maximum(QL[ISR], P_FLOOR)
+    Srho_R = mx.maximum(QR[ISR], P_FLOOR)
+    p_L = mx.maximum(Srho_L * mx.power(rho_L, gm1), P_FLOOR)
+    p_R = mx.maximum(Srho_R * mx.power(rho_R, gm1), P_FLOOR)
+
+    B2_L = QL[IBR] ** 2 + QL[IBZ] ** 2 + QL[IBT] ** 2
+    B2_R = QR[IBR] ** 2 + QR[IBZ] ** 2 + QR[IBT] ** 2
+    Bt_sq_L = mx.maximum(B2_L - Bn_L ** 2, 0.0)
+    Bt_sq_R = mx.maximum(B2_R - Bn_R ** 2, 0.0)
+
+    # Boris-corrected fast magnetosonic wavespeeds
+    a_sq_L = mx.minimum(gamma * p_L * inv_rL, _C_BORIS_SQ)
+    a_sq_R = mx.minimum(gamma * p_R * inv_rR, _C_BORIS_SQ)
+    va_sq_L = B2_L * inv_rL
+    va_sq_R = B2_R * inv_rR
+    va_sq_L = va_sq_L * _C_BORIS_SQ / (va_sq_L + _C_BORIS_SQ)
+    va_sq_R = va_sq_R * _C_BORIS_SQ / (va_sq_R + _C_BORIS_SQ)
+    vat_sq_L = Bt_sq_L * inv_rL
+    vat_sq_R = Bt_sq_R * inv_rR
+    vat_sq_L = vat_sq_L * _C_BORIS_SQ / (vat_sq_L + _C_BORIS_SQ)
+    vat_sq_R = vat_sq_R * _C_BORIS_SQ / (vat_sq_R + _C_BORIS_SQ)
+
+    disc_L = mx.maximum((a_sq_L - va_sq_L) ** 2 + 4.0 * a_sq_L * vat_sq_L, 0.0)
+    disc_R = mx.maximum((a_sq_R - va_sq_R) ** 2 + 4.0 * a_sq_R * vat_sq_R, 0.0)
+    cf_L = mx.sqrt(mx.maximum(0.5 * (a_sq_L + va_sq_L + mx.sqrt(disc_L)), 0.0))
+    cf_R = mx.sqrt(mx.maximum(0.5 * (a_sq_R + va_sq_R + mx.sqrt(disc_R)), 0.0))
+
+    SL = mx.minimum(vn_L - cf_L, vn_R - cf_R)
+    SR = mx.maximum(vn_L + cf_L, vn_R + cf_R)
+    SR = mx.maximum(SR, SL + TINY)
+
+    # Physical flux F(U) using conserved E directly (conservative)
+    def _pflux(U, rho, inv_r, vn, vt1, vt2, p, Bn, Bt1, Bt2):
+        B2 = Bn ** 2 + Bt1 ** 2 + Bt2 ** 2
+        pt = p + 0.5 * B2
+        vB = vn * Bn + vt1 * Bt1 + vt2 * Bt2
+        E = U[IEN]  # conserved total energy — NOT reconstructed from entropy
+
+        F_dn = rho * vn
+        F_sr = U[ISR] * vn
+        F_en = (E + pt) * vn - Bn * vB
+        F_ee = U[IEE] * vn if U.shape[0] > IEE else mx.zeros_like(F_dn)
+
+        slots = [None] * NVAR
+        slots[IDN] = F_dn
+        slots[IMR] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMR else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMR else (rho * vn * vt2 - Bn * Bt2)
+        slots[IMZ] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMZ else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMZ else (rho * vn * vt2 - Bn * Bt2)
+        slots[IMT] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMT else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMT else (rho * vn * vt2 - Bn * Bt2)
+        slots[IEN] = F_en
+        slots[ISR] = F_sr
+        slots[IBR] = mx.zeros_like(F_dn) if ib_n == IBR else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBR else (vn * Bt2 - vt2 * Bn)
+        slots[IBZ] = mx.zeros_like(F_dn) if ib_n == IBZ else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBZ else (vn * Bt2 - vt2 * Bn)
+        slots[IBT] = mx.zeros_like(F_dn) if ib_n == IBT else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBT else (vn * Bt2 - vt2 * Bn)
+        slots[IEE] = F_ee
+        return mx.stack(slots, axis=0)
+
+    FL = _pflux(QL, rho_L, inv_rL, vn_L, vt1_L, vt2_L, p_L, Bn_L, Bt1_L, Bt2_L)
+    FR = _pflux(QR, rho_R, inv_rR, vn_R, vt1_R, vt2_R, p_R, Bn_R, Bt1_R, Bt2_R)
+
+    # HLL combination
+    inv_dS = 1.0 / mx.maximum(SR - SL, TINY)
+    F_hll = (SR * FL - SL * FR + SL * SR * (QR - QL)) * inv_dS
+
+    F_out = mx.where(SL >= 0.0, FL, mx.where(SR <= 0.0, FR, F_hll))
+
+    # Zero normal B flux (divergence-free constraint)
+    F_zero = mx.zeros_like(F_out[0:1])
+    parts = [F_out[i : i + 1] if i != ib_n else F_zero for i in range(NVAR)]
+    F_out = mx.concatenate(parts, axis=0)
+
+    # Branchless NaN fallback: Lax-Friedrichs (no GPU->CPU sync)
+    S_max = mx.maximum(mx.abs(SL), mx.abs(SR))
+    F_LF = 0.5 * (FL + FR) - 0.5 * S_max * (QR - QL)
+    is_bad = mx.isnan(F_out) | mx.isinf(F_out)
+    F_out = mx.where(is_bad, F_LF, F_out)
+
+    return F_out
+
+
+# Per-dim compiled closures for _hll_flux_gpu (same pattern as HLLS)
+_HLL_COMPILED: dict[int, object] = {}
+
+
+def _get_hll_compiled(dim: int) -> object:
+    """Return the mx.compile'd HLL GPU function for the given dimension.
+
+    Created lazily on first call per dim. Cached for zero re-tracing overhead.
+    """
+    if dim not in _HLL_COMPILED:
+        def _fn(QL: object, QR: object, gamma: float) -> object:
+            return _hll_flux_gpu(QL, QR, gamma, dim=dim)
+        _HLL_COMPILED[dim] = mx.compile(_fn) if _HAS_MLX else _fn
+    return _HLL_COMPILED[dim]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # HLLS CPU: Reference implementation (float64, for validation)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -370,7 +524,7 @@ def _hlls_flux(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _hll_flux(
+def _hll_flux_cpu64(
     QL: object,
     QR: object,
     gamma: float,
@@ -546,7 +700,10 @@ def compute_fluxes(
         Numerical flux at interfaces, matching U's dimensionality.
     """
     if riemann not in ("hlld", "hll", "hlls", "hlls_cpu", "hll_cpu"):
-        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld', 'hll', 'hlls', 'hlls_cpu', or 'hll_cpu'.")
+        raise ValueError(
+            f"Unknown Riemann solver: {riemann!r}. "
+            "Use 'hlld', 'hll', 'hlls', 'hlls_cpu', or 'hll_cpu'."
+        )
 
     QL, QR = reconstruct(U, dim=dim, method=method)
     QL, QR = _clamp_reconstructed(QL, QR)
@@ -572,13 +729,21 @@ def compute_fluxes(
             return mx.transpose(F_t, axes=[0, 2, 1])
         return _hlls_flux(QL, QR, gamma=gamma, dim=dim)
 
-    if riemann in ("hll", "hll_cpu"):
+    if riemann == "hll":
         if dim == 1:
             QL_t = mx.transpose(QL, axes=[0, 2, 1])
             QR_t = mx.transpose(QR, axes=[0, 2, 1])
-            F_t = _hll_flux(QL_t, QR_t, gamma=gamma, dim=1)
+            F_t = _get_hll_compiled(1)(QL_t, QR_t, gamma=gamma)
             return mx.transpose(F_t, axes=[0, 2, 1])
-        return _hll_flux(QL, QR, gamma=gamma, dim=dim)
+        return _get_hll_compiled(dim)(QL, QR, gamma=gamma)
+
+    if riemann == "hll_cpu":
+        if dim == 1:
+            QL_t = mx.transpose(QL, axes=[0, 2, 1])
+            QR_t = mx.transpose(QR, axes=[0, 2, 1])
+            F_t = _hll_flux_cpu64(QL_t, QR_t, gamma=gamma, dim=1)
+            return mx.transpose(F_t, axes=[0, 2, 1])
+        return _hll_flux_cpu64(QL, QR, gamma=gamma, dim=dim)
 
     # HLLD solver — float64 option uses CPU NumPy for numerical stability
     if precision == "float64":
@@ -632,7 +797,9 @@ def _compute_fluxes_4d(
         out_shape_4d = None
 
     if riemann == "hll":
-        F_3d = _hll_flux(QL_3d, QR_3d, gamma=gamma, dim=dim)
+        F_3d = _hll_flux_gpu(QL_3d, QR_3d, gamma=gamma, dim=dim)
+    elif riemann == "hll_cpu":
+        F_3d = _hll_flux_cpu64(QL_3d, QR_3d, gamma=gamma, dim=dim)
     else:
         F_3d = hlld_flux_mlx(QL_3d, QR_3d, gamma=gamma, dim=dim)
 
