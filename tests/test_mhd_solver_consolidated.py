@@ -4951,7 +4951,11 @@ class TestRadialHandoff:
         )
 
     def test_export_radial_profiles_bfield_consistent(self):
-        """B_theta profile consistent with imposed current via Ampere's law."""
+        """B_theta profile consistent with Ampere's law outside shock.
+
+        Thin-sheath topology: B_theta = mu_0*I/(2*pi*r) between r_shock
+        and r_cathode, zero inside r_shock (field-free interior).
+        """
         from dpf.fluid.snowplow import SnowplowModel
 
         sp = SnowplowModel(
@@ -4961,13 +4965,24 @@ class TestRadialHandoff:
         I_test = 200e3  # 200 kA
         r_grid = np.linspace(0.001, 0.032, 64)
         profiles = sp.export_radial_profiles(r_grid, current=I_test)
-        # Check B_theta at a point inside shock: B = mu0*I/(2*pi*r)
-        r_test = r_grid[5]  # well inside shock
-        B_expected = 4 * np.pi * 1e-7 * I_test / (2 * np.pi * r_test)
-        B_actual = profiles["B_theta"][5]
-        assert abs(B_actual - B_expected) / B_expected < 0.01, (
-            f"B_theta at r={r_test:.4f}m: expected {B_expected:.2f}T, got {B_actual:.2f}T"
+
+        # B_theta inside shock should be zero
+        r_shock = sp.r_shock
+        inside_mask = r_grid < r_shock
+        assert np.all(profiles["B_theta"][inside_mask] == 0.0), (
+            "B_theta should be zero inside shock (field-free interior)"
         )
+
+        # Check B_theta at a point outside shock: B = mu0*I/(2*pi*r)
+        outside_mask = (r_grid > r_shock) & (r_grid < 0.032)
+        if np.any(outside_mask):
+            idx = np.where(outside_mask)[0][0]
+            r_test = r_grid[idx]
+            B_expected = 4 * np.pi * 1e-7 * I_test / (2 * np.pi * r_test)
+            B_actual = profiles["B_theta"][idx]
+            assert abs(B_actual - B_expected) / B_expected < 0.01, (
+                f"B_theta at r={r_test:.4f}m: expected {B_expected:.2f}T, got {B_actual:.2f}T"
+            )
 
     def test_handoff_mode_lee_only_unchanged(self):
         """handoff_mode='lee_only' produces same results as before Sprint 2."""
