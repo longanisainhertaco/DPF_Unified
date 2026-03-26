@@ -206,6 +206,29 @@ def _hlls_flux_gpu(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Per-dim compiled closures for _hlls_flux_gpu
+# mx.compile traces Python control flow at compile time, so dim must be fixed
+# via a closure to avoid re-tracing on each call. Three permanently cached
+# compiled functions (dim=0,1,2) are created lazily on first use.
+# ──────────────────────────────────────────────────────────────────────────────
+
+_HLLS_COMPILED: dict[int, object] = {}
+
+
+def _get_hlls_compiled(dim: int) -> object:
+    """Return the mx.compile'd HLLS function for the given dimension.
+
+    Created lazily on first call per dim. Subsequent calls return the cached
+    compiled function with no re-tracing overhead.
+    """
+    if dim not in _HLLS_COMPILED:
+        def _fn(QL: object, QR: object, gamma: float) -> object:
+            return _hlls_flux_gpu(QL, QR, gamma, dim=dim)
+        _HLLS_COMPILED[dim] = mx.compile(_fn) if _HAS_MLX else _fn
+    return _HLLS_COMPILED[dim]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # HLLS CPU: Reference implementation (float64, for validation)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -537,9 +560,9 @@ def compute_fluxes(
         if dim == 1:
             QL_t = mx.transpose(QL, axes=[0, 2, 1])
             QR_t = mx.transpose(QR, axes=[0, 2, 1])
-            F_t = _hlls_flux_gpu(QL_t, QR_t, gamma=gamma, dim=1)
+            F_t = _get_hlls_compiled(1)(QL_t, QR_t, gamma=gamma)
             return mx.transpose(F_t, axes=[0, 2, 1])
-        return _hlls_flux_gpu(QL, QR, gamma=gamma, dim=dim)
+        return _get_hlls_compiled(dim)(QL, QR, gamma=gamma)
 
     if riemann == "hlls_cpu":  # validation fallback
         if dim == 1:
