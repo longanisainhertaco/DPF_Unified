@@ -700,6 +700,18 @@ class MLXMHDSolver(PlasmaSolverBase):
             U = self._do_braginskii_viscosity(U, dt)
             mx.eval(U)
 
+        # ── 6.6. Hall MHD ─────────────────────────────────────────────
+        if self.enable_hall and self.coordinates == "cylindrical":
+            from dpf.metal.mlx_sources import apply_hall_mhd
+
+            U = apply_hall_mhd(
+                U, dt,
+                dr=self._grid.dr, dz=self._grid.dz,
+                r_cell=self._grid.r_cell,
+                ion_mass=self.ion_mass,
+            )
+            mx.eval(U)
+
         # ── 7. Unpack ────────────────────────────────────────────────────
         self._U = U
         result = self._state_mgr.to_state_dict(
