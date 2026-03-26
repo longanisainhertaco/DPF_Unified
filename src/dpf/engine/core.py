@@ -758,6 +758,25 @@ class SimulationEngine:
                     Te=np.maximum(Te_2d, 1.0),
                 )
                 eta_field = eta_spitzer_field + eta_anom_field[:, np.newaxis, :]
+
+                # CIV anomalous resistivity (velocity-driven, active during axial rundown)
+                if getattr(self.config, "anomalous_civ_enabled", False):
+                    from dpf.turbulence.anomalous import CIV_VCRIT, civ_anomalous_resistivity
+                    vel = self.state.get("velocity")
+                    if vel is not None:
+                        v2d = np.squeeze(vel, axis=2) if vel.ndim == 4 else vel
+                        v_bulk = np.sqrt(np.sum(v2d**2, axis=0))
+                        B2d = np.squeeze(B_field, axis=2) if B_field.ndim == 4 else B_field
+                        B_mag = np.sqrt(np.sum(B2d**2, axis=0))
+                        gas = getattr(self.config, "fill_gas", "deuterium")
+                        v_crit = CIV_VCRIT.get(gas, 38500.0)
+                        eta_civ = civ_anomalous_resistivity(
+                            v_bulk, np.maximum(ne_2d, 1e10), B_mag,
+                            mi=self.ion_mass,
+                            alpha_civ=getattr(self.config, "anomalous_civ_alpha", 0.05),
+                            v_crit=v_crit,
+                        )
+                        eta_field = eta_field + eta_civ[:, np.newaxis, :]
             else:
                 dx = self.config.dx
                 J_field = np.array([

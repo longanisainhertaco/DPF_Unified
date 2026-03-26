@@ -566,7 +566,22 @@ class SimulationConfig(BaseModel):
     )
     anomalous_threshold_model: str = Field(
         "ion_acoustic",
-        description="Anomalous resistivity threshold: 'ion_acoustic', 'lhdi', 'buneman_classic'",
+        description=(
+            "Anomalous resistivity threshold: 'ion_acoustic', 'lhdi', "
+            "'buneman_classic', 'drift_velocity'."
+        ),
+    )
+    anomalous_civ_enabled: bool = Field(
+        False,
+        description="Enable CIV (Critical Ionization Velocity) anomalous resistivity at sheath front.",
+    )
+    anomalous_civ_alpha: float = Field(
+        0.05, ge=0, le=1.0,
+        description="CIV turbulence alpha parameter (EMPIRICAL: Brenning 1992, range 0.01-0.1).",
+    )
+    fill_gas: str = Field(
+        "deuterium",
+        description="Fill gas species for CIV threshold lookup.",
     )
     ion_mass: float = Field(
         3.34358377e-27, gt=0,
