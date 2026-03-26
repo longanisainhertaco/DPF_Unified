@@ -46,6 +46,12 @@ P_FLOOR: float = 1e-12
 _C_LIGHT: float = 3e8
 _CF_SQ_MAX: float = _C_LIGHT * _C_LIGHT
 
+# Boris correction: reduced speed of light for wave speed limiting.
+# v_A' = v_A * c_boris / sqrt(v_A^2 + c_boris^2) bounds Alfven speed
+# at c_boris without injecting fake mass. Set to ~5-10x max flow velocity.
+# Gombosi et al. 2002, JCP 177:176; Minoshima et al. 2019, ApJ 874:37.
+_C_BORIS_DEFAULT: float = 5e5  # 500 km/s — bounds dt at ~dx/5e5
+
 # ---------------------------------------------------------------------------
 # Compile cache — populated lazily on first call.
 # ---------------------------------------------------------------------------
@@ -280,6 +286,70 @@ def fast_magnetosonic(
     discriminant = mx.maximum(diff * diff + 4.0 * a_sq * vat_sq, 0.0)
 
     cf_sq = mx.minimum(0.5 * (a_sq + va_sq + mx.sqrt(discriminant)), cf_sq_max)
+    cf_sq = mx.maximum(cf_sq, 0.0)
+
+    return mx.sqrt(cf_sq)
+
+
+def fast_magnetosonic_boris(
+    rho: mx.array,
+    p: mx.array,
+    Br: mx.array,
+    Bz: mx.array,
+    Bt: mx.array,
+    gamma: float,
+    dim: int,
+    c_boris: float = _C_BORIS_DEFAULT,
+) -> mx.array:
+    """Boris-corrected fast magnetosonic speed (Gombosi 2002, Minoshima 2019).
+
+    The Boris correction reduces the effective Alfven speed in low-density
+    regions without injecting artificial mass:
+
+        v_A_boris^2 = v_A^2 * c_boris^2 / (v_A^2 + c_boris^2)
+
+    This bounds all wave speeds at c_boris, eliminating the need for
+    va_max density floors that corrupt species mass fractions.
+
+    In the limit v_A << c_boris (physical cells): v_A_boris ≈ v_A (unchanged).
+    In the limit v_A >> c_boris (vacuum cells): v_A_boris ≈ c_boris (bounded).
+
+    Args:
+        rho, p, Br, Bz, Bt, gamma, dim: Same as fast_magnetosonic.
+        c_boris: Reduced speed of light [m/s]. Default 5e5 (500 km/s).
+
+    Returns:
+        Boris-corrected fast magnetosonic speed cf', shape (nr, nz).
+    """
+    rho_safe = mx.maximum(rho, RHO_FLOOR)
+    p_safe = mx.maximum(p, P_FLOOR)
+    inv_rho = mx.reciprocal(rho_safe)
+
+    a_sq = gamma * p_safe * inv_rho
+    B_sq = Br * Br + Bz * Bz + Bt * Bt
+
+    if dim == 0:
+        Bn = Br
+    else:
+        Bn = Bz
+
+    Bn_sq = Bn * Bn
+    Bt_sq = mx.maximum(B_sq - Bn_sq, 0.0)
+
+    va_sq = B_sq * inv_rho
+    vat_sq = Bt_sq * inv_rho
+
+    # Boris correction: v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2)
+    c_sq = c_boris * c_boris
+    va_sq_boris = va_sq * c_sq / (va_sq + c_sq)
+    vat_sq_boris = vat_sq * c_sq / (vat_sq + c_sq)
+    # Sound speed is physical — no Boris correction needed
+    a_sq_safe = mx.minimum(a_sq, c_sq)
+
+    diff = a_sq_safe - va_sq_boris
+    discriminant = mx.maximum(diff * diff + 4.0 * a_sq_safe * vat_sq_boris, 0.0)
+
+    cf_sq = mx.minimum(0.5 * (a_sq_safe + va_sq_boris + mx.sqrt(discriminant)), c_sq)
     cf_sq = mx.maximum(cf_sq, 0.0)
 
     return mx.sqrt(cf_sq)
