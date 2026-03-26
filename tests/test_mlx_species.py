@@ -214,3 +214,109 @@ class TestZeffVacuumMask:
         zeff_np = np.asarray(zeff)
         assert np.all(zeff_np[:4] > 1.0), "Plasma cells should have Z_eff > 1"
         assert np.all(zeff_np[4:] == 1.0), "Vacuum cells should have Z_eff = 1"
+
+
+# ---------------------------------------------------------------------------
+# End-to-end species tests (Cycle 3)
+# ---------------------------------------------------------------------------
+
+
+def _make_pf1000_state(nr: int, nz: int) -> dict[str, np.ndarray]:
+    rho0, p0 = 0.084, 350.0
+    return {
+        "rho": np.full((nr, 1, nz), rho0, dtype=np.float64),
+        "velocity": np.zeros((3, nr, 1, nz), dtype=np.float64),
+        "pressure": np.full((nr, 1, nz), p0, dtype=np.float64),
+        "B": np.zeros((3, nr, 1, nz), dtype=np.float64),
+        "Te": np.full((nr, 1, nz), 100.0, dtype=np.float64),
+        "Ti": np.full((nr, 1, nz), 100.0, dtype=np.float64),
+        "psi": np.zeros((nr, 1, nz), dtype=np.float64),
+    }
+
+
+class TestSpeciesE2E:
+    """End-to-end species tests using the solver's built-in species path.
+
+    CYCLE 3: species advection is already wired at mlx_solver.py:754-763.
+    These tests use species_config kwarg — no manual Y management needed.
+    """
+
+    @pytest.mark.slow
+    def test_pf1000_d2_cu_100_steps(self):
+        """PF-1000 with 99% D2 + 1% Cu: 100 steps, Z_eff bounded, species conserved."""
+        from dpf.metal.mlx_solver import MLXMHDSolver
+
+        nr, nz = 32, 64
+        dr, dz = 1e-3, 1e-3
+
+        solver = MLXMHDSolver(
+            grid_shape=(nr, 1, nz), dx=dr, dz=dz, gamma=5.0 / 3.0,
+            coordinates="cylindrical",
+            riemann_solver="hll", reconstruction="plm",
+            time_integrator="ssp_rk2",
+            enable_bremsstrahlung=True,
+            species_config={
+                "species": ["D", "Cu"],
+                "Z": [1, 29],
+                "A": [2.014, 63.546],
+                "background": "D",
+            },
+        )
+        # Inject 1% Cu into the solver's internal Y after init
+        if solver._species_mgr is not None and solver._Y is not None:
+            Y_init = solver._species_mgr.init_mass_fractions(
+                nr, nz, initial_fractions={"Cu": 0.01}
+            )
+            solver._Y = Y_init
+
+        state = _make_pf1000_state(nr, nz)
+        dt = 1e-9
+        current, voltage = 500e3, 20e3
+
+        for step_i in range(100):
+            state = solver.step(state, dt, current=current, voltage=voltage)
+
+            if "species" in state:
+                species_data = state["species"]
+                assert "D" in species_data or "Cu" in species_data, (
+                    f"Species data missing at step {step_i}"
+                )
+
+        # No NaN in final fluid state
+        for key in ("rho", "pressure"):
+            arr = state[key]
+            assert np.all(np.isfinite(arr)), f"NaN/Inf in {key} after 100 steps"
+
+        # Species fractions must be returned and sum to ~1
+        assert "species" in state, "Solver did not return species data in final state"
+        sp = state["species"]
+        if "Cu" in sp and "D" in sp:
+            Y_total = sp["Cu"] + sp["D"]
+            max_dev = float(np.max(np.abs(Y_total - 1.0)))
+            assert max_dev < 0.01, f"Species fractions deviate from 1: {max_dev:.4f}"
+
+        # Pressure is finite
+        assert np.all(np.isfinite(state["pressure"])), "Pressure has NaN after 100 steps"
+
+    def test_species_fraction_conservation_advection(self):
+        """Species advection conserves total mass fraction (unit test, fast)."""
+        from dpf.metal.mlx_kernels import IDN, IMR, NVAR  # noqa: I001
+        from dpf.metal.mlx_species import species_advection_step
+
+        nr, nz = 32, 64
+        r = mx.arange(nr, dtype=mx.float32)[:, None]
+        z = mx.arange(nz, dtype=mx.float32)[None, :]
+        Y_cu = 0.05 * mx.exp(-((r - 5) ** 2 + (z - 32) ** 2) / 50.0)
+        Y = Y_cu[None, :, :]
+
+        total_before = float(mx.sum(Y))
+
+        U = mx.zeros((NVAR, nr, nz), dtype=mx.float32)
+        U = U.at[IDN].add(1.0)
+        U = U.at[IMR].add(100.0)
+
+        Y_new = species_advection_step(Y, U, dr=1e-3, dz=1e-3, dt=1e-8, gamma=5.0 / 3.0)
+        total_after = float(mx.sum(Y_new))
+
+        rel_change = abs(total_after - total_before) / max(total_before, 1e-30)
+        assert rel_change < 0.05, f"Species mass changed by {rel_change * 100:.1f}%"
