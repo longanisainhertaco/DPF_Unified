@@ -850,7 +850,7 @@ class MLXMHDSolver(PlasmaSolverBase):
             current=current,
             r_inner=self._r_inner,
             step_number=self._step_count,
-            rhs_fn=None,
+            rhs_fn=self._amr_rhs_wrapper,
             use_refluxing=getattr(cfg, "use_refluxing", True),
         )
 
@@ -863,6 +863,19 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         self._update_coupling(U_global, current, voltage, dt)
         return result
+
+    @property
+    def _amr_rhs_wrapper(self):
+        """RHS function wrapper for AMR blocks — includes full operator-split physics."""
+        from dpf.metal.mlx_riemann import mhd_rhs
+
+        def _rhs(U, grid, dt=None):
+            return mhd_rhs(
+                U, grid, gamma=self.gamma,
+                method=self._method, riemann=self._riemann,
+                precision=self._precision,
+            )
+        return _rhs
 
     # ------------------------------------------------------------------
     # Constrained transport div(B)=0 correction
