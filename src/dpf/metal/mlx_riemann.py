@@ -663,7 +663,8 @@ def mhd_rhs(
     method: str = "weno5z",
     riemann: str = "hlld",
     precision: str = "float32",
-) -> mx.array:
+    return_fluxes: bool = False,
+) -> mx.array | tuple[mx.array, mx.array, mx.array]:
     """Full MHD right-hand side: dU/dt = -div(F) [+ S_geom for cylindrical].
 
     Supports both cylindrical (3D state, r-weighted flux) and Cartesian
@@ -678,15 +679,19 @@ def mhd_rhs(
         method: Reconstruction method ("weno5z" or "plm").
         riemann: Riemann solver ("hlld", "hll", or "hlls").
         precision: "float32" or "float64" for Riemann solver.
+        return_fluxes: If True, return (dU_dt, F_r, F_z) tuple instead of dU_dt only.
+            F_r shape: (NVAR, nr+1, nz). F_z shape: (NVAR, nr, nz+1).
+            Only supported for cylindrical grids. Cartesian ignores this flag.
 
     Returns:
-        dU_dt: Time derivative, same shape as U. Boundary cells are zero.
+        dU_dt if return_fluxes is False (default).
+        (dU_dt, F_r, F_z) if return_fluxes is True (cylindrical only).
     """
     is_cartesian = grid.r_cell is None
 
     if is_cartesian:
         return _mhd_rhs_cartesian(U, grid, gamma, method, riemann, precision)
-    return _mhd_rhs_cylindrical(U, grid, gamma, dr, dz, method, riemann, precision)
+    return _mhd_rhs_cylindrical(U, grid, gamma, dr, dz, method, riemann, precision, return_fluxes)
 
 
 def _mhd_rhs_cartesian(
@@ -780,7 +785,8 @@ def _mhd_rhs_cylindrical(
     method: str,
     riemann: str,
     precision: str = "float32",
-) -> mx.array:
+    return_fluxes: bool = False,
+) -> mx.array | tuple[mx.array, mx.array, mx.array]:
     """Cylindrical MHD RHS with r-weighted flux divergence + geometric sources."""
     nr = U.shape[1]
     nz = U.shape[2]
@@ -877,4 +883,6 @@ def _mhd_rhs_cylindrical(
 
     dU_dt = dU_dt + src_cons
 
+    if return_fluxes:
+        return dU_dt, F_r, F_z
     return dU_dt
