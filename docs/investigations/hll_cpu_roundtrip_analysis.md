@@ -110,11 +110,11 @@ The actual bottleneck is NOT the bandwidth but the **synchronization overhead**:
 
 Measured synchronization overhead: **~194 ms** for a 1000x1000 array (from our test above). For the ~8K interface points in a 64x128 grid, the sync cost dominates over the ~0.003 ms data transfer time.
 
-**Per-step sync cost**: 6 calls x 2 syncs each (QL + QR) = 12 synchronization points. At ~100-200us per sync for this grid size, that is **1.2-2.4 ms of pure sync overhead per step** -- which for a ~4 ms step is 30-60% of the total.
+**Per-step sync cost**: 6 calls x 2 syncs each (QL + QR) = 12 synchronization points, plus 3 r_cell syncs = 15 input syncs. At ~100-200us per sync for this grid size, that is **1.5-3.0 ms of pure sync overhead per step** -- which for a ~4 ms step is 37-75% of the total.
 
 The `mx.array()` return also syncs (CPU must finish before GPU can use the result), adding another 6 sync points per step = **0.6-1.2 ms** more.
 
-**Total sync overhead: ~1.8-3.6 ms per step out of ~4-5 ms = 36-72% of step time.**
+**Total sync overhead: ~2.1-4.2 ms per step out of ~4-5 ms = 42-84% of step time.**
 
 This is consistent with the optimization plan's estimate of 45-55%.
 
