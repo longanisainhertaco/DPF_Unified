@@ -20,14 +20,21 @@ from dpf.metal.mlx_amr import (  # noqa: E402, I001
     IBT,
     IEN,
     _prolongate_vanleer,
+    _lohner_indicator_block,
     amr_step,
     apply_reflux_correction,
     assemble_global_state,
+    auto_regrid,
     build_amr_hierarchy,
+    create_child_blocks,
     decompose_domain,
+    evaluate_refinement_sensors,
+    flag_blocks_for_refinement,
+    enforce_proper_nesting,
     ghost_exchange_same_level,
     populate_blocks_from_state,
     prolongate_to_fine,
+    remove_child_blocks,
     restrict_to_coarse,
 )
 
@@ -527,3 +534,375 @@ def test_existing_solver_unaffected():
     assert not np.any(np.isnan(result["rho"])), "Non-AMR step produced NaN"
     # AMR hierarchy should still be None (never set)
     assert solver._amr_hierarchy is None
+
+
+# ===========================================================================
+# Phase B Tests (B1-B10)
+# ===========================================================================
+
+
+def _make_amr_config(
+    max_levels: int = 2,
+    j_threshold_refine: float = 0.30,
+    j_threshold_derefine: float = 0.05,
+    lohner_threshold_refine: float = 0.20,
+    lohner_threshold_derefine: float = 0.03,
+    buffer_width: int = 1,
+    max_blocks_per_level: int = 16,
+    regrid_interval: int = 20,
+) -> object:
+    """Return a minimal AMRConfig-like object with Phase B fields."""
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        max_levels=max_levels,
+        j_threshold_refine=j_threshold_refine,
+        j_threshold_derefine=j_threshold_derefine,
+        lohner_threshold_refine=lohner_threshold_refine,
+        lohner_threshold_derefine=lohner_threshold_derefine,
+        buffer_width=buffer_width,
+        max_blocks_per_level=max_blocks_per_level,
+        regrid_interval=regrid_interval,
+    )
+
+
+# ---------------------------------------------------------------------------
+# B1: test_sensor_fires_on_sheath
+# ---------------------------------------------------------------------------
+
+
+def test_sensor_fires_on_sheath():
+    """Lohner sensor should be high on the block with a sharp density gradient."""
+    h = make_hierarchy_2x2()
+    level0 = h.levels[0]
+
+    # Block (0,0): sharp density jump (factor-10 in the middle row)
+    U_sharp = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+    U_sharp[IDN] = 1.0
+    U_sharp[IDN, BNR // 2 :, :] = 10.0
+    level0.blocks[(0, 0)].U = U_sharp
+
+    # Block (1,0): uniform density
+    U_uniform = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+    U_uniform[IDN] = 1.0
+    level0.blocks[(1, 0)].U = U_uniform
+
+    sensors = evaluate_refinement_sensors(h)
+
+    key_sharp = (0, 0, 0)
+    key_uniform = (0, 1, 0)
+    assert key_sharp in sensors, "Sharp block should have sensor value"
+    assert key_uniform in sensors, "Uniform block should have sensor value"
+
+    j_sharp, l_sharp = sensors[key_sharp]
+    _, l_uniform = sensors[key_uniform]
+
+    assert l_sharp > 0.5, f"Lohner on sharp gradient block should be > 0.5, got {l_sharp:.3f}"
+    assert l_uniform < 0.2, f"Lohner on uniform block should be < 0.2, got {l_uniform:.3f}"
+
+
+# ---------------------------------------------------------------------------
+# B2: test_flag_hysteresis
+# ---------------------------------------------------------------------------
+
+
+def test_flag_hysteresis():
+    """Flag +1 only above refine threshold; -1 only below derefine threshold."""
+    config = _make_amr_config(
+        j_threshold_refine=0.30,
+        j_threshold_derefine=0.05,
+        lohner_threshold_refine=0.20,
+        lohner_threshold_derefine=0.03,
+    )
+
+    # Test J sensor sweep: only j_val varies, l_val = 0.0
+    j_values = np.arange(0.0, 1.01, 0.01)
+    prev_flag = None
+    oscillation_detected = False
+
+    for j in j_values:
+        # level 1 (fine) block at (1, 2, 0) — ir=2 above axis guard, li=1 enables -1
+        sensor_values = {(1, 2, 0): (float(j), 0.0)}
+        flags = flag_blocks_for_refinement(sensor_values, config)
+        flag = flags[(1, 2, 0)]
+
+        if j < config.j_threshold_derefine:
+            assert flag == -1, f"j={j:.2f}: expected -1 (derefine), got {flag}"
+        elif j > config.j_threshold_refine:
+            # li=1 == max_levels-1 so no further refinement; flag stays 0
+            assert flag == 0, f"j={j:.2f}: li=1 at max level, expected 0, got {flag}"
+        else:
+            assert flag == 0, f"j={j:.2f}: expected 0 (hysteresis zone), got {flag}"
+
+        if prev_flag is not None and abs(flag - prev_flag) > 1:
+            oscillation_detected = True
+        prev_flag = flag
+
+    assert not oscillation_detected, "Flag oscillated by >1 in a single sensor step"
+
+    # Verify refine fires correctly for a level-0 block (li=0 < max_levels-1=1)
+    flags_l0 = flag_blocks_for_refinement({(0, 2, 0): (0.99, 0.0)}, config)
+    assert flags_l0[(0, 2, 0)] == 1, "Level-0 block above refine threshold should get +1"
+
+    flags_l0_low = flag_blocks_for_refinement({(0, 2, 0): (0.01, 0.0)}, config)
+    # Level-0 blocks cannot be derefined (li > 0 check)
+    assert flags_l0_low[(0, 2, 0)] == 0, "Level-0 block cannot be derefined, should get 0"
+
+
+# ---------------------------------------------------------------------------
+# B3: test_proper_nesting_rejects_orphan
+# ---------------------------------------------------------------------------
+
+
+def test_proper_nesting_rejects_orphan():
+    """Level-1 block without a level-0 parent gets downgraded from +1 to 0."""
+    # Build hierarchy with NO existing fine blocks
+    h = build_amr_hierarchy(
+        nr=32, nz=64, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+    )
+    config = _make_amr_config()
+
+    # Flag a level-1 block index that has no parent in level-0
+    # Level-0 only has blocks (0,0), (0,1), (1,0), (1,1)
+    # Fine block (0, 10, 10) would need parent (0, 5, 5) which doesn't exist
+    flags = {(1, 10, 10): 1}
+    result = enforce_proper_nesting(flags, h, config)
+
+    assert result[(1, 10, 10)] == 0, (
+        f"Orphan fine block should be downgraded to 0, got {result[(1, 10, 10)]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# B4: test_auto_regrid_creates_fine_blocks
+# ---------------------------------------------------------------------------
+
+
+def test_auto_regrid_creates_fine_blocks():
+    """auto_regrid on a block with a 10:1 density jump should create fine children."""
+    # Block (2, 0) doesn't exist in 2x2 grid — use block (1, 1) for the jump
+    # but first inject the gradient into a block with ir > 1 (axis guard)
+    U_shock = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+    U_shock[IDN] = 1.0
+    U_shock[IDN, BNR // 2 :, :] = 10.0
+    # Use block (1, 1) which has ir=1 — this hits the axis guard (ir<=1 -> flag 0)
+    # Use a 4x4 grid instead so we have ir=2 blocks available
+    h4 = build_amr_hierarchy(
+        nr=64, nz=128, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+    )
+    # Block (2, 0) exists in a 4x4 grid (ir=2, iz=0)
+    U_shock2 = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+    U_shock2[IDN, BNR // 2 :, :] = 10.0
+    h4.levels[0].blocks[(2, 0)].U = U_shock2
+
+    # All other blocks: uniform (low sensor)
+    for idx, block in h4.levels[0].blocks.items():
+        if idx != (2, 0):
+            U_uni = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+            U_uni[IDN] = 1.0
+            block.U = U_uni
+
+    config = _make_amr_config(
+        lohner_threshold_refine=0.20,
+        lohner_threshold_derefine=0.03,
+        j_threshold_refine=0.30,
+        j_threshold_derefine=0.05,
+        max_blocks_per_level=16,
+    )
+
+    h_out, n_refined, n_derefined = auto_regrid(h4, config)
+
+    assert n_refined > 0, f"Expected at least 1 fine block created, got {n_refined}"
+    assert n_derefined == 0
+    assert len(h_out.levels[1].blocks) > 0, "Fine level should have blocks after regrid"
+
+
+# ---------------------------------------------------------------------------
+# B5: test_auto_regrid_uniform_no_change (B7 in spec)
+# ---------------------------------------------------------------------------
+
+
+def test_auto_regrid_uniform_no_change():
+    """Uniform state should produce n_refined=0, n_derefined=0."""
+    h = make_hierarchy_2x2()
+    # Fill all blocks with uniform state
+    for block in h.levels[0].blocks.values():
+        block.U = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+
+    config = _make_amr_config()
+    _, n_refined, n_derefined = auto_regrid(h, config)
+
+    assert n_refined == 0, f"Uniform state should not trigger refinement, got n_refined={n_refined}"
+    assert n_derefined == 0, f"Uniform state should not trigger derefinement, got n_derefined={n_derefined}"
+
+
+# ---------------------------------------------------------------------------
+# B6: test_create_children_count_and_position (B4 in spec)
+# ---------------------------------------------------------------------------
+
+
+def test_create_children_count_and_position():
+    """Parent at (0, 1, 2) with ratio=2 should create 4 children at correct indices."""
+    h = build_amr_hierarchy(
+        nr=64, nz=128, dr=DR, dz=DZ, r_inner=R_INNER,
+        block_nr=BNR, block_nz=BNZ, ratio=2,
+    )
+    parent = h.levels[0].blocks.get((1, 2))
+    if parent is None:
+        pytest.skip("Block (1,2) not available in this grid decomposition")
+
+    config = _make_amr_config()
+    children = create_child_blocks(h, parent, config)
+
+    assert len(children) == 4, f"Expected 4 children, got {len(children)}"
+
+    child_indices = {c.index for c in children}
+    # Parent (1, 2) with ratio=2 -> children (2, 4), (2, 5), (3, 4), (3, 5)
+    expected = {(2, 4), (2, 5), (3, 4), (3, 5)}
+    assert child_indices == expected, f"Child indices {child_indices} != expected {expected}"
+
+    # Check r_min of first child (di=0, dj=0)
+    child_00 = h.levels[1].blocks.get((2, 4))
+    assert child_00 is not None
+    fine_dr = DR / 2
+    expected_r_min = parent.r_min + 0 * BNR * fine_dr
+    assert abs(child_00.r_min - expected_r_min) < 1e-12, (
+        f"Child r_min {child_00.r_min:.6e} != expected {expected_r_min:.6e}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# B7: test_create_children_mass_conservation (B5 in spec)
+# ---------------------------------------------------------------------------
+
+
+def test_create_children_mass_conservation():
+    """Prolongation to fine children must conserve volume-weighted mass."""
+    h = make_hierarchy_2x2()
+    parent = h.levels[0].blocks[(0, 0)]
+
+    # Linear rho profile
+    U_np = np.zeros((NVAR, BNR, BNZ), dtype=np.float32)
+    for i in range(BNR):
+        U_np[IDN, i, :] = 1.0 + float(i) / BNR
+    U_np[IEN] = 0.1 / (5.0 / 3.0 - 1.0)
+    parent.U = U_np
+
+    def cylindrical_mass(blocks: list, dr: float, dz: float) -> float:
+        total = 0.0
+        for b in blocks:
+            U_b = np.asarray(b.U)
+            for i in range(U_b.shape[1]):
+                r_lo = b.r_min + i * dr
+                r_hi = r_lo + dr
+                vol = 0.5 * (r_hi**2 - r_lo**2) * dz
+                total += float(np.sum(U_b[IDN, i, :])) * vol
+        return total
+
+    coarse_mass = cylindrical_mass([parent], DR, DZ)
+
+    config = _make_amr_config()
+    children = create_child_blocks(h, parent, config)
+
+    fine_dr = DR / 2
+    fine_dz = DZ / 2
+    fine_mass = cylindrical_mass(children, fine_dr, fine_dz)
+
+    rel_err = abs(fine_mass - coarse_mass) / (coarse_mass + 1e-30)
+    # PLM van Leer prolongation is O(dr^2) conservative, not exact. Allow 2e-4.
+    assert rel_err < 2e-4, f"Mass not conserved after create_child_blocks: rel_err={rel_err:.2e}"
+
+
+# ---------------------------------------------------------------------------
+# B8: test_remove_child_restricts_to_parent (B6 in spec)
+# ---------------------------------------------------------------------------
+
+
+def test_remove_child_restricts_to_parent():
+    """remove_child_blocks should restrict fine data to parent and remove the child."""
+    h = make_hierarchy_2x2()
+    parent = h.levels[0].blocks[(0, 0)]
+
+    config = _make_amr_config()
+    children = create_child_blocks(h, parent, config)
+    assert len(children) == 4
+
+    # Modify one child's density
+    child = children[0]
+    U_mod = np.asarray(child.U).copy()
+    U_mod[IDN] = 5.0
+    child.U = U_mod
+    h.levels[1].blocks[child.index].U = U_mod
+
+    U_parent_before = np.asarray(parent.U).copy()
+    remove_child_blocks(h, child, config)
+
+    assert child.index not in h.levels[1].blocks, (
+        "Child block should be removed from hierarchy"
+    )
+    U_parent_after = np.asarray(parent.U)
+    # The parent should have been updated (restricted from the modified child)
+    assert not np.allclose(U_parent_after[IDN], U_parent_before[IDN]), (
+        "Parent density should be updated after restriction"
+    )
+
+
+# ---------------------------------------------------------------------------
+# B9: test_auto_regrid_called_at_interval (B9 in spec)
+# ---------------------------------------------------------------------------
+
+
+def test_auto_regrid_called_at_interval():
+    """auto_regrid should fire at step_number == regrid_interval (not at step 0)."""
+    call_count = [0]
+
+    import dpf.metal.mlx_amr as amr_module
+
+    original = amr_module.auto_regrid
+
+    def counting_auto_regrid(hierarchy, config):
+        call_count[0] += 1
+        return original(hierarchy, config)
+
+    amr_module.auto_regrid = counting_auto_regrid
+
+    try:
+        h = make_hierarchy_2x2()
+        for block in h.levels[0].blocks.values():
+            block.U = np.ones((NVAR, BNR, BNZ), dtype=np.float32)
+
+        config = _make_amr_config(regrid_interval=5)
+        config_ns = config
+
+        for step in range(11):
+            h, _ = amr_step(
+                hierarchy=h, dt=1e-12, gamma=5.0 / 3.0, method="plm", riemann="hll",
+                ng=3, current=0.0, r_inner=R_INNER, step_number=step,
+                rhs_fn=None, use_refluxing=False, config=config_ns,
+            )
+    finally:
+        amr_module.auto_regrid = original
+
+    # Steps 5 and 10 should trigger regrid (step > 0 and step % 5 == 0)
+    assert call_count[0] == 2, f"Expected 2 regrid calls (steps 5,10), got {call_count[0]}"
+
+
+# ---------------------------------------------------------------------------
+# B10: test_lohner_block_detects_gradient
+# ---------------------------------------------------------------------------
+
+
+def test_lohner_block_detects_gradient():
+    """_lohner_indicator_block returns high value for a sharp step discontinuity."""
+    nr, nz = 16, 32
+    rho_step = np.ones((nr, nz), dtype=np.float32)
+    rho_step[nr // 2 :, :] = 10.0
+
+    rho_uniform = np.ones((nr, nz), dtype=np.float32)
+
+    lohner_step = _lohner_indicator_block(rho_step, DR, DZ)
+    lohner_uniform = _lohner_indicator_block(rho_uniform, DR, DZ)
+
+    assert lohner_step > 0.5, f"Step discontinuity should give Lohner > 0.5, got {lohner_step:.3f}"
+    assert lohner_uniform < 1e-6, f"Uniform field should give Lohner ~ 0, got {lohner_uniform:.3e}"

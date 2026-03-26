@@ -96,6 +96,29 @@ class AMRHierarchy:
                 total += U.shape[1] * U.shape[2]
         return total
 
+    def add_level(self, dr: float, dz: float) -> AMRLevel:
+        """Append a new empty AMRLevel and return it."""
+        li = len(self.levels)
+        new_level = AMRLevel(level=li, blocks={}, dr=dr, dz=dz)
+        self.levels.append(new_level)
+        return new_level
+
+    def fill_all_ghosts(self, ng: int = 3, r_inner: float = 0.0) -> None:
+        """Rebuild ghost-cell padded arrays for all levels (side-effect free).
+
+        This is called after regrid to ensure newly created blocks have valid
+        ghost data before the next RHS evaluation. Because ghost_exchange_same_level
+        returns a dict of padded arrays (not modifying blocks in-place), this
+        method is a no-op in terms of block.U — the actual ghost exchange happens
+        inside amr_step. This call exists to trigger any lazy MLX evaluations and
+        to serve as a logical fence in the regrid pipeline.
+        """
+        for level in self.levels:
+            if level.blocks:
+                ghost_exchange_same_level(
+                    level, ng, self.block_nr, self.block_nz, r_inner
+                )
+
     def block_topology(self, level_idx: int) -> dict[tuple[int, int], dict[str, Any]]:
         """Build neighbor map for all blocks at level_idx.
 
@@ -661,6 +684,7 @@ def amr_step(
     step_number: int,
     rhs_fn: Any,
     use_refluxing: bool = True,
+    config: Any = None,
 ) -> tuple[AMRHierarchy, float]:
     """One AMR timestep (global dt, sequential block processing).
 
@@ -686,6 +710,9 @@ def amr_step(
     Returns:
         (updated hierarchy, dt_used).
     """
+    if config is not None and step_number % config.regrid_interval == 0 and step_number > 0:
+        hierarchy, _, _ = auto_regrid(hierarchy, config)
+
     block_nr = hierarchy.block_nr
     block_nz = hierarchy.block_nz
 
@@ -871,3 +898,389 @@ def _block_rhs(
     dU -= (G_top - G_bottom) / dz
 
     return dU
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Automatic refinement — sensor helpers
+# ---------------------------------------------------------------------------
+
+
+def _lohner_indicator_block(rho: np.ndarray, dr: float, dz: float) -> float:
+    """2D Lohner (1987) normalized second-derivative indicator on a (nr, nz) array.
+
+    E = |d2rho/dr2| / (|drho/dr|/dr + eps*|rho|/dr^2)  (summed over r and z dirs)
+
+    Returns the scalar max over the block in [0, 1].
+    """
+    nr, nz = rho.shape
+    eps = 1e-6 * float(np.mean(np.abs(rho)) + 1e-30)
+    indicator = np.zeros_like(rho)
+
+    if nr > 2:
+        d2r = np.zeros_like(rho)
+        d1r = np.zeros_like(rho)
+        d2r[1:-1, :] = rho[2:, :] - 2.0 * rho[1:-1, :] + rho[:-2, :]
+        d1r[1:-1, :] = np.abs(rho[2:, :] - rho[:-2, :])
+        den = d1r + eps * np.abs(rho) / dr
+        indicator += np.abs(d2r) / (den + 1e-30)
+
+    if nz > 2:
+        d2z = np.zeros_like(rho)
+        d1z = np.zeros_like(rho)
+        d2z[:, 1:-1] = rho[:, 2:] - 2.0 * rho[:, 1:-1] + rho[:, :-2]
+        d1z[:, 1:-1] = np.abs(rho[:, 2:] - rho[:, :-2])
+        den = d1z + eps * np.abs(rho) / dz
+        indicator += np.abs(d2z) / (den + 1e-30)
+
+    max_val = float(np.max(indicator))
+    if max_val > 0:
+        indicator /= max_val
+    return float(np.max(indicator))
+
+
+def _current_density_sensor_block(B: np.ndarray, dr: float, dz: float) -> float:
+    """Normalized |J| = |curl B| sensor on B (3, nr, nz) array.
+
+    J_theta ~ dBr/dz - dBz/dr (dominant cylindrical component).
+    Returns scalar max in [0, 1].
+    """
+    Br = B[0]
+    Bz = B[1] if B.shape[0] > 1 else np.zeros_like(Br)
+    nr, nz = Br.shape
+
+    J_theta = np.zeros_like(Br)
+    if nz > 2:
+        J_theta[:, 1:-1] += (Br[:, 2:] - Br[:, :-2]) / (2.0 * dz)
+    if nr > 2:
+        J_theta[1:-1, :] -= (Bz[2:, :] - Bz[:-2, :]) / (2.0 * dr)
+
+    B_mag = np.sqrt(np.sum(B**2, axis=0))
+    B_max = float(np.max(B_mag))
+    sensor = np.abs(J_theta) * dr / (B_mag + 0.01 * max(B_max, 1e-10))
+
+    s_max = float(np.max(sensor))
+    if s_max > 0:
+        sensor /= s_max
+    return float(np.max(sensor))
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 1 — evaluate_refinement_sensors
+# ---------------------------------------------------------------------------
+
+
+def evaluate_refinement_sensors(
+    hierarchy: AMRHierarchy,
+) -> dict[tuple[int, int, int], tuple[float, float]]:
+    """Run Lohner (density) and current-density sensors on every active leaf block.
+
+    Returns {(level_idx, ir, iz): (j_val, lohner_val)}.
+
+    Leaf blocks are active blocks on the finest level that has any blocks.
+    For a 2-level hierarchy with fine blocks present, level-0 blocks that are
+    covered by fine children are not leaf blocks — only level-1 blocks are.
+    """
+    result: dict[tuple[int, int, int], tuple[float, float]] = {}
+    ratio = hierarchy.ratio
+
+    for li, level in enumerate(hierarchy.levels):
+        fine_level = hierarchy.levels[li + 1] if li + 1 < len(hierarchy.levels) else None
+
+        for (ir, iz), block in level.blocks.items():
+            if not block.active:
+                continue
+
+            if fine_level is not None and fine_level.blocks:
+                has_fine_child = any(
+                    (ir * ratio + di, iz * ratio + dj) in fine_level.blocks
+                    for di in range(ratio)
+                    for dj in range(ratio)
+                )
+                if has_fine_child:
+                    continue
+
+            U_np = np.asarray(block.U)
+            rho = U_np[IDN]
+            B = np.stack([U_np[IBR], U_np[IBZ], U_np[IBT]])
+
+            l_val = _lohner_indicator_block(rho, level.dr, level.dz)
+            j_val = _current_density_sensor_block(B, level.dr, level.dz)
+
+            result[(li, ir, iz)] = (j_val, l_val)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 2 — flag_blocks_for_refinement
+# ---------------------------------------------------------------------------
+
+
+def flag_blocks_for_refinement(
+    sensor_values: dict[tuple[int, int, int], tuple[float, float]],
+    config: Any,
+) -> dict[tuple[int, int, int], int]:
+    """Convert sensor scalars to flags: +1 (refine), -1 (derefine), 0 (keep).
+
+    Hysteresis: refine_threshold / derefine_threshold = 6:1 ratio prevents
+    oscillation when sensor value straddles the threshold due to numerical noise.
+
+    Axis guard: blocks with ir <= 1 are never refined (1/r singularity amplifies J).
+    """
+    flags: dict[tuple[int, int, int], int] = {}
+    for key, (j_val, l_val) in sensor_values.items():
+        li, ir, iz = key
+        # Never refine the first 2 radial blocks (axis singularity, R1 from spec)
+        if ir <= 1:
+            flags[key] = 0
+            continue
+
+        if li < config.max_levels - 1 and (
+            j_val > config.j_threshold_refine or l_val > config.lohner_threshold_refine
+        ):
+            flags[key] = 1
+        elif li > 0 and (
+            j_val < config.j_threshold_derefine and l_val < config.lohner_threshold_derefine
+        ):
+            flags[key] = -1
+        else:
+            flags[key] = 0
+
+    return flags
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 3 — enforce_proper_nesting
+# ---------------------------------------------------------------------------
+
+
+def enforce_proper_nesting(
+    flags: dict[tuple[int, int, int], int],
+    hierarchy: AMRHierarchy,
+    config: Any,
+) -> dict[tuple[int, int, int], int]:
+    """Enforce buffer zones and proper nesting constraints on refinement flags.
+
+    Pass 1: buffer zone expansion — any block neighboring a +1 block within
+            config.buffer_width is promoted from -1/0 to +1.
+    Pass 2: proper nesting — orphan fine blocks (no coarse parent) get flag 0.
+    Pass 3: capacity cap — if total fine blocks would exceed max_blocks_per_level,
+            keep only the top-N by sensor value.
+    """
+    result = dict(flags)
+
+    # Pass 1: buffer zone expansion
+    refine_keys = [k for k, v in result.items() if v == 1]
+    for key in refine_keys:
+        li, ir, iz = key
+        bw = config.buffer_width
+        for dri in range(-bw, bw + 1):
+            for dzi in range(-bw, bw + 1):
+                if dri == 0 and dzi == 0:
+                    continue
+                neighbor = (li, ir + dri, iz + dzi)
+                if neighbor in result and result[neighbor] < 1:
+                    result[neighbor] = 1
+
+    # Pass 2: proper nesting — remove orphan fine blocks
+    ratio = hierarchy.ratio
+    to_zero: list[tuple[int, int, int]] = []
+    for key, flag in result.items():
+        if flag != 1:
+            continue
+        li, ir, iz = key
+        if li > 0:
+            pidx = (ir // ratio, iz // ratio)
+            parent_level = hierarchy.levels[li - 1]
+            if pidx not in parent_level.blocks:
+                to_zero.append(key)
+    for key in to_zero:
+        result[key] = 0
+
+    # Pass 3: capacity cap — keep only top-N candidates by sensor max
+    refine_candidates = [(k, v) for k, v in result.items() if v == 1]
+    n_existing = sum(
+        len(lv.blocks) for li, lv in enumerate(hierarchy.levels) if li > 0
+    )
+    headroom = config.max_blocks_per_level - n_existing
+    if headroom < 0:
+        headroom = 0
+    if len(refine_candidates) > headroom:
+        refine_candidates.sort(key=lambda x: x[0], reverse=True)
+        keep = {k for k, _ in refine_candidates[:headroom]}
+        for key, flag in list(result.items()):
+            if flag == 1 and key not in keep:
+                result[key] = 0
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 4 — create_child_blocks
+# ---------------------------------------------------------------------------
+
+
+def create_child_blocks(
+    hierarchy: AMRHierarchy,
+    parent_block: AMRBlock,
+    config: Any,
+) -> list[AMRBlock]:
+    """Prolongate a coarse block to ratio^2 fine children.
+
+    Ensures a fine level exists in the hierarchy. Uses _prolongate_vanleer
+    to initialize each child block. Skips children that already exist.
+
+    Returns list of newly created AMRBlock objects (already stored in
+    hierarchy.levels[parent_block.level + 1].blocks).
+    """
+    ratio = hierarchy.ratio
+    block_nr = hierarchy.block_nr
+    block_nz = hierarchy.block_nz
+    fi = parent_block.level + 1
+
+    # Ensure the fine level exists
+    while len(hierarchy.levels) <= fi:
+        prev_level = hierarchy.levels[-1]
+        hierarchy.add_level(dr=prev_level.dr / ratio, dz=prev_level.dz / ratio)
+
+    fine_level = hierarchy.levels[fi]
+    fine_dr = fine_level.dr
+    fine_dz = fine_level.dz
+
+    U_np = np.asarray(parent_block.U).astype(np.float32)
+    nr_q = block_nr // ratio
+    nz_q = block_nz // ratio
+
+    new_children: list[AMRBlock] = []
+
+    for di in range(ratio):
+        for dj in range(ratio):
+            ir_f = parent_block.index[0] * ratio + di
+            iz_f = parent_block.index[1] * ratio + dj
+            cidx = (ir_f, iz_f)
+
+            if cidx in fine_level.blocks:
+                continue
+
+            quad = U_np[:, di * nr_q : (di + 1) * nr_q, dj * nz_q : (dj + 1) * nz_q]
+            U_fine_np = _prolongate_vanleer(quad, ratio)
+
+            r_min_f = parent_block.r_min + di * block_nr * fine_dr
+            z_min_f = parent_block.z_min + dj * block_nz * fine_dz
+
+            child = AMRBlock(
+                level=fi,
+                index=cidx,
+                U=mx.array(U_fine_np) if mx is not None else U_fine_np,
+                r_min=r_min_f,
+                z_min=z_min_f,
+                active=True,
+            )
+            fine_level.blocks[cidx] = child
+            new_children.append(child)
+
+    return new_children
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 5 — remove_child_blocks
+# ---------------------------------------------------------------------------
+
+
+def remove_child_blocks(
+    hierarchy: AMRHierarchy,
+    child_block: AMRBlock,
+    config: Any,
+) -> None:
+    """Restrict a fine block back to its coarse parent, then remove it.
+
+    The parent block is updated in-place via restrict_to_coarse before
+    the child is deleted. The level container is preserved (empty level
+    is valid for subsequent regrids).
+    """
+    li = child_block.level
+    assert li > 0, "Cannot remove a level-0 block"
+    ratio = hierarchy.ratio
+    block_nr = hierarchy.block_nr
+    block_nz = hierarchy.block_nz
+
+    pidx = (child_block.index[0] // ratio, child_block.index[1] // ratio)
+    parent = hierarchy.levels[li - 1].blocks.get(pidx)
+    fine_level = hierarchy.levels[li]
+
+    if parent is not None:
+        restrict_to_coarse(
+            [child_block], parent, fine_level, ratio, block_nr, block_nz
+        )
+
+    del fine_level.blocks[child_block.index]
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Function 6 — auto_regrid
+# ---------------------------------------------------------------------------
+
+
+def auto_regrid(
+    hierarchy: AMRHierarchy,
+    config: Any,
+) -> tuple[AMRHierarchy, int, int]:
+    """Full regrid orchestrator: evaluate -> flag -> nest -> create/remove.
+
+    Returns (updated_hierarchy, n_refined, n_derefined).
+
+    n_refined counts newly created child blocks; n_derefined counts removed
+    child blocks. Calls hierarchy.fill_all_ghosts() after any topology change.
+    """
+    sensor_values = evaluate_refinement_sensors(hierarchy)
+    flags = flag_blocks_for_refinement(sensor_values, config)
+    flags = enforce_proper_nesting(flags, hierarchy, config)
+
+    n_refined = 0
+    n_derefined = 0
+    ratio = hierarchy.ratio
+
+    # Refine pass
+    for (li, ir, iz), flag in flags.items():
+        if flag != 1:
+            continue
+        parent = hierarchy.levels[li].blocks.get((ir, iz))
+        if parent is None:
+            continue
+        children = create_child_blocks(hierarchy, parent, config)
+        n_refined += len(children)
+
+    # Derefine pass — only derefine a complete sibling set
+    deref_keys = [(li, ir, iz) for (li, ir, iz), flag in flags.items() if flag == -1]
+    processed: set[tuple[int, int, int]] = set()
+
+    for li, ir, iz in deref_keys:
+        if (li, ir, iz) in processed:
+            continue
+
+        # Check all ratio^2 siblings have flag -1
+        pir = ir // ratio
+        piz = iz // ratio
+        sibling_keys = [
+            (li, pir * ratio + di, piz * ratio + dj)
+            for di in range(ratio)
+            for dj in range(ratio)
+        ]
+        all_deref = all(
+            flags.get(k, 0) == -1 for k in sibling_keys
+        )
+        if not all_deref:
+            continue
+
+        for skey in sibling_keys:
+            sli, sir, siz = skey
+            block = hierarchy.levels[sli].blocks.get((sir, siz))
+            if block is not None:
+                remove_child_blocks(hierarchy, block, config)
+                n_derefined += 1
+            processed.add(skey)
+
+    if n_refined > 0 or n_derefined > 0:
+        hierarchy.fill_all_ghosts()
+
+    return hierarchy, n_refined, n_derefined
