@@ -138,12 +138,23 @@ def _hll_flux(
 
     Bt_sq_L = np.maximum(B2_L - Bn_L**2, 0.0)
     Bt_sq_R = np.maximum(B2_R - Bn_R**2, 0.0)
-    a_sq_L = np.minimum(gamma*p_L/rho_L, (3e8)**2)
-    a_sq_R = np.minimum(gamma*p_R/rho_R, (3e8)**2)
-    va_sq_L = np.minimum(B2_L/rho_L, (3e8)**2)
-    va_sq_R = np.minimum(B2_R/rho_R, (3e8)**2)
-    vat_sq_L = np.minimum(Bt_sq_L/rho_L, (3e8)**2)
-    vat_sq_R = np.minimum(Bt_sq_R/rho_R, (3e8)**2)
+
+    # Boris correction: cap Alfven speed at c_boris instead of c_light.
+    # v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2) bounds vacuum wavespeeds
+    # without the E-KE-ME cancellation that causes NaN in float32.
+    # Gombosi 2002, validated for z-pinch by PERSEUS (Gourdain 2025).
+    _C_BORIS_SQ = 5e5**2  # (500 km/s)^2
+    a_sq_L = np.minimum(gamma*p_L/rho_L, _C_BORIS_SQ)
+    a_sq_R = np.minimum(gamma*p_R/rho_R, _C_BORIS_SQ)
+    va_sq_L = B2_L/rho_L
+    va_sq_R = B2_R/rho_R
+    # Boris: v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2)
+    va_sq_L = va_sq_L * _C_BORIS_SQ / (va_sq_L + _C_BORIS_SQ)
+    va_sq_R = va_sq_R * _C_BORIS_SQ / (va_sq_R + _C_BORIS_SQ)
+    vat_sq_L = Bt_sq_L/rho_L
+    vat_sq_R = Bt_sq_R/rho_R
+    vat_sq_L = vat_sq_L * _C_BORIS_SQ / (vat_sq_L + _C_BORIS_SQ)
+    vat_sq_R = vat_sq_R * _C_BORIS_SQ / (vat_sq_R + _C_BORIS_SQ)
 
     cf_L = np.sqrt(np.maximum(0.5*(a_sq_L + va_sq_L + np.sqrt(np.maximum((a_sq_L-va_sq_L)**2 + 4*a_sq_L*vat_sq_L, 0.0))), 0.0))
     cf_R = np.sqrt(np.maximum(0.5*(a_sq_R + va_sq_R + np.sqrt(np.maximum((a_sq_R-va_sq_R)**2 + 4*a_sq_R*vat_sq_R, 0.0))), 0.0))
