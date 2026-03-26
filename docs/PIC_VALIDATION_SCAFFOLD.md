@@ -505,3 +505,536 @@ Existing test files:
   test_pic_validation.py  — 12 tests (Boris, CIC, interpolation, DD xsec, yield, init)
   test_beam_tracker.py    — 5 tests  (BeamTracker separate diagnostic, not HybridPIC)
 ```
+
+---
+
+## Six Sigma Refinement -- Bug Fix Specifications
+
+**Date**: 2026-03-26
+**Purpose**: Raise PIC readiness from 5/10 to 7/10 via DMAIC on all 8 known bugs.
+**Review source**: `SCAFFOLD_REVIEW_SIX_SIGMA.md` Section 3 (PIC)
+
+---
+
+### D -- Define: Bug Fix Specifications
+
+#### Bug 1: Nanbu Self-Collision In-Place Mutation Bias
+
+- **Location**: `hybrid.py:1471-1478`
+- **Root cause**: `_nanbu_scatter_kernel(new_vel, new_vel, ...)` passes the same array as both `vel_a` and `vel_b`. The kernel writes back at lines 280-285 (`vel_a[ia] = ...`, `vel_b[ib] = ...`). When `ia == ib` (self-collision) or when the loop processes pair (i, i+1) and later (i+1, i+2), species-b reads already-scattered species-a velocities. This introduces ordering-dependent directional bias.
+- **Impact**: Scattering isotropization rate off by ~10-30%. Beam slowing-down time systematically wrong. Non-blocking for V1/V2 but corrupts V3/V4 collision physics.
+- **Fix**: Copy `new_vel` before passing as the second argument:
+  ```python
+  vel_b_copy = new_vel.copy()
+  _nanbu_scatter_kernel(
+      new_vel, vel_b_copy,
+      sp.weights, sp.weights,
+      ...
+  )
+  # Average result: new_vel already modified as species a;
+  # no need to write back vel_b_copy (self-collision symmetry).
+  ```
+- **LOC**: 3 (add copy, adjust call)
+- **Regression risk**: LOW -- only changes collision behavior, no effect on collisionless tests
+- **Test**: `test_nanbu_self_collision_no_ordering_bias` -- run 2000 particles with identical initial conditions, compare RMS scattering angle against the same test using separate arrays. Must agree within 5%.
+
+#### Bug 2: Esirkepov dt Mismatch
+
+- **Location**: `hybrid.py:1561` -- `self.dt` used instead of the dt passed to `push_particles()`
+- **Root cause**: `deposit()` method at line 1561 hardcodes `self.dt` in the Esirkepov call. But `push_particles()` at line 1431 accepts `dt` parameter and may be called with a different timestep (sub-cycling, adaptive dt). The positions move by `dt_push * v` but the charge-conservation formula divides by `self.dt`, breaking `div(J)*dt + delta_rho = 0`.
+- **Impact**: When `dt_push != self.dt`, the Esirkepov continuity equation is violated. Charge conservation broken. BLOCKING for any sub-cycling implementation (Bug 8 depends on this fix).
+- **Fix**: Store the actual push dt and use it in deposit:
+  ```python
+  # In push_particles(), after dt resolution:
+  self._last_push_dt = dt
+
+  # In deposit(), line 1561:
+  # BEFORE: self.grid_shape, self.dx, self.dy, self.dz, self.dt,
+  # AFTER:  self.grid_shape, self.dx, self.dy, self.dz, self._last_push_dt,
+  ```
+- **LOC**: 5 (add attribute init, store dt, change reference)
+- **Regression risk**: LOW -- when `dt == self.dt` (current behavior), output is identical
+- **Dependency**: Must be fixed BEFORE Bug 8 (sub-cycling)
+- **Test**: `test_esirkepov_dt_consistency` -- push with `dt=0.5*self.dt`, deposit, verify `div(J)*dt_push + delta_rho == 0` to 1e-10.
+
+#### Bug 3: E-Field Missing Hall Term
+
+- **Location**: `engine/core.py:871` -- `E_fld = -np.cross(v, B_fld)`
+- **Root cause**: The MHD Ohm's law gives `E = -v x B + eta*J + J x B/(n_e*e) - grad(P_e)/(n_e*e)`. Lines 871-874 only include the convective term and resistive term. The Hall term `J x B/(n_e*e)` and electron pressure gradient are omitted.
+- **Impact**: At pinch conditions (n_e ~ 10^25, B ~ 10T, J ~ 10^12 A/m^2), `E_Hall ~ J*B/(n_e*e) ~ 10^12 * 10 / (10^25 * 1.6e-19) ~ 6 kV/m`. Convective `E_conv ~ v*B ~ 10^5 * 10 ~ 10^6 V/m`. So Hall is ~0.6% of convective -- smaller than feared in the Six Sigma review. However, during early pinch when v is small and J/n_e is large, Hall can dominate. This is a physics accuracy issue, not a correctness bug.
+- **Fix**: Add Hall term when available:
+  ```python
+  # After line 874:
+  if J_field is not None:
+      rho = self.state["rho"]
+      m_i = 3.34e-27  # deuterium
+      n_e = rho / m_i  # quasi-neutrality
+      n_e = np.maximum(n_e, 1e18)  # vacuum floor
+      ne_3d = n_e[..., np.newaxis]  # broadcast for cross product
+      J_fld = np.moveaxis(J_field, 0, -1)
+      E_hall = np.cross(J_fld, B_fld) / (ne_3d * 1.602e-19)
+      E_fld = E_fld + E_hall
+  ```
+- **LOC**: 10
+- **Regression risk**: MEDIUM -- changes particle trajectories. Must validate that I(t) is not perturbed.
+- **Dependency**: Independent. Can be deferred to V3 phase. Requires Hall MHD scaffold (H1) for full correctness, but this simplified version works standalone.
+- **Test**: `test_E_field_hall_term_magnitude` -- compute E_hall / E_conv ratio at pinch conditions. Verify it is O(0.01-0.1). `test_E_field_hall_included` -- verify E_fld differs from pure `E = -v x B` when J is non-zero.
+
+#### Bug 4: No Particle Removal
+
+- **Location**: `push_particles()` method, lines 1402-1488 -- no removal logic
+- **Root cause**: Particles that thermalize (energy < thermal background) are never removed. They continue to be pushed, interpolated, and deposited every step.
+- **Impact**: Performance degradation only. After 10^4 steps with continuous injection, particle count grows linearly. At 100 particles/step, that is 10^6 particles = 430 MB. Non-blocking but wastes compute.
+- **Fix**: Add energy-based culling at the end of `push_particles()`:
+  ```python
+  # After sp.velocities = new_vel (line 1488):
+  if self._collision_enabled:
+      v_sq = np.sum(sp.velocities**2, axis=1)
+      E_kin_eV = 0.5 * sp.mass * v_sq / 1.602e-19
+      keep = E_kin_eV > self._T_background_eV  # above thermal
+      if not np.all(keep):
+          sp.positions = sp.positions[keep]
+          sp.velocities = sp.velocities[keep]
+          sp.weights = sp.weights[keep]
+          sp.positions_old = sp.positions_old[keep]
+  ```
+- **LOC**: 12
+- **Regression risk**: LOW -- only removes particles that contribute nothing to beam-target yield
+- **Dependency**: None
+- **Test**: `test_particle_removal_culls_thermalized` -- inject 100 particles at 1 eV into 100 eV background. After push, verify they are removed. `test_particle_removal_preserves_energetic` -- inject 100 at 100 keV. Verify all survive.
+
+#### Bug 5: Reflecting BC Unphysical for DPF
+
+- **Location**: `_apply_reflecting_bc()`, lines 1490-1519
+- **Root cause**: Real DPF has conducting electrodes (absorbing) at anode (r=0) and cathode (r=R_outer), and open boundaries along the axis. Reflecting BC traps beam ions, overestimating confinement time by 2-5x.
+- **Impact**: Yn overestimated. Direct impact on V4 validation against Gribkov (2007). HIGH priority for V4.
+- **Fix**: Add BC mode selection:
+  ```python
+  def __init__(self, ..., bc_mode: str = "reflecting"):
+      self.bc_mode = bc_mode
+
+  def _apply_bc(self, positions, velocities):
+      if self.bc_mode == "absorbing":
+          return self._apply_absorbing_bc(positions, velocities)
+      return self._apply_reflecting_bc(positions, velocities)
+
+  def _apply_absorbing_bc(self, positions, velocities):
+      """Remove particles that exit the domain."""
+      inside = np.ones(len(positions), dtype=bool)
+      limits = [self._Lx, self._Ly, self._Lz]
+      for d in range(3):
+          inside &= (positions[:, d] >= 0.0) & (positions[:, d] <= limits[d])
+      return positions[inside], velocities[inside]
+      # NOTE: caller must also filter weights and positions_old
+  ```
+- **LOC**: 25 (new method + wiring + weight/positions_old filtering)
+- **Regression risk**: MEDIUM -- changes particle count dynamically. Must update deposit() to handle shrinking arrays.
+- **Dependency**: None, but the weight/positions_old filtering requires touching `push_particles()` loop structure.
+- **Test**: `test_absorbing_bc_removes_escaped` -- place particle outside domain, verify removed. `test_absorbing_bc_preserves_interior` -- verify interior particles unchanged. `test_reflecting_vs_absorbing_yn` -- compare yield with both BCs (absorbing should give lower Yn).
+
+#### Bug 6: Binary Collision Self-Pairing Unphysical
+
+- **Location**: `hybrid.py:1462-1478`
+- **Root cause**: Lines 1471-1478 call `_nanbu_scatter_kernel(new_vel, new_vel, sp.weights, sp.weights, sp.mass, sp.mass, ...)`. Nanbu-Perez (2012) is designed for inter-species collisions where species a and b have different distribution functions. For self-collisions (a == b), Nanbu (1997) Section IV specifies random pairing with weight correction: randomly shuffle indices, pair (0,1), (2,3), etc. The current implementation pairs particle i with particle i (via array index), which is not random pairing.
+- **Impact**: Coupled with Bug 1 (in-place mutation). Self-collision thermalization rate is systematically biased. The Nanbu self-collision variant gives correct relaxation rate; the current code does not.
+- **Fix**: Use random pairing for self-collisions:
+  ```python
+  if self.use_binary_collisions:
+      n_sp = self._n_background
+      ln_lam = ...  # existing code
+      cell_vol = self.dx * self.dy * self.dz
+      # Random pairing for self-collisions
+      idx = np.random.permutation(len(new_vel))
+      vel_shuffled = new_vel[idx].copy()
+      wt_shuffled = sp.weights[idx].copy()
+      _nanbu_scatter_kernel(
+          new_vel, vel_shuffled,
+          sp.weights, wt_shuffled,
+          sp.mass, sp.mass,
+          sp.charge, sp.charge,
+          n_sp, n_sp,
+          ln_lam, dt, cell_vol,
+      )
+  ```
+- **LOC**: 8 (add permutation + copy)
+- **Regression risk**: LOW -- changes scattering details but not the overall framework
+- **Dependency**: Supersedes Bug 1 fix (if Bug 6 is fixed with random pairing + copy, Bug 1 is automatically resolved)
+- **Test**: `test_self_collision_random_pairing_thermalization` -- mono-energetic beam should thermalize to Maxwellian. Chi-squared test on velocity distribution after 5*tau_slow. Compare rate against analytical Spitzer thermalization time.
+
+#### Bug 7: Default `weight_total` Device-Independent
+
+- **Location**: `inject_beam()` line 1586 -- `weight_total: float = 1e16`
+- **Root cause**: Default 1e16 is hardcoded regardless of device. PF-1000 at 27 kV has I_pinch ~ 500 kA for ~100 ns, giving ~3e17 ions via `N = I * t / q`. Default underestimates by 30x.
+- **Impact**: Deposited J_kin is 30x too small. MHD feedback negligible even if coupling is correct. Non-blocking for V1/V2 (unit tests use explicit weights) but makes V4 validation meaningless.
+- **Fix**: Compute default from device parameters:
+  ```python
+  def inject_beam(self, ..., weight_total: float | None = None):
+      if weight_total is None:
+          # Estimate from pinch current and duration
+          # I_pinch ~ 500 kA, tau_pinch ~ 100 ns for PF-1000
+          # N_ions = I * tau / q
+          weight_total = 1e16  # fallback
+      ...
+  ```
+  Better: pass from KineticManager which has access to circuit state (I_pinch, pinch duration).
+- **LOC**: 5 (change default to None, add fallback)
+- **Regression risk**: ZERO if default fallback equals current value
+- **Dependency**: Full fix depends on KineticManager wiring (not in scope for V1)
+- **Test**: `test_beam_weight_matches_pinch_current` -- given I=500kA, tau=100ns, verify weight_total ~ 3e17.
+
+#### Bug 8: No PIC Sub-Cycling
+
+- **Location**: `push_particles()` method, lines 1402-1488 -- single Boris push per call
+- **Root cause**: MHD dt ~ 1e-9 s, but for 100 keV deuterons in 10 T, cyclotron period T_c ~ 6.5e-9 s. Need ~30 steps per gyroperiod, so dt_pic ~ 2e-10 s. Sub-cycle ratio N = ceil(dt_mhd / dt_pic) ~ 5. Without sub-cycling, Boris push takes one giant step that under-resolves gyration, introducing artificial energy drift and incorrect trajectories.
+- **Impact**: BLOCKING. V3/V4 produce garbage without this. Boris integrator is only symplectic when dt << T_c. At dt = T_c (no sub-cycling), energy error per step is O((omega_c * dt)^2) ~ O(1), i.e., total energy conservation breaks.
+- **Fix**: Add sub-cycling loop inside `push_particles()`:
+  ```python
+  def push_particles(self, E, B, dt=None):
+      if dt is None:
+          dt = self.dt
+
+      # Compute PIC sub-cycling
+      for sp in self.species:
+          if sp.n_particles() == 0:
+              continue
+
+          # Sub-cycle computation
+          omega_c = abs(sp.charge) * np.max(np.linalg.norm(B_at_p, axis=-1)) / sp.mass
+          if omega_c > 0:
+              dt_pic = min(dt, 2.0 * np.pi / (omega_c * 30.0))  # 30 steps/gyro
+              n_sub = max(1, min(int(np.ceil(dt / dt_pic)), 50))  # cap at 50
+          else:
+              n_sub = 1
+              dt_pic = dt
+
+          # ... interpolation ...
+
+          for _ in range(n_sub):
+              E_at_p = interpolate_field_to_particles(E, sp.positions, ...)
+              B_at_p = interpolate_field_to_particles(B, sp.positions, ...)
+              sp.positions_old = sp.positions.copy()
+              new_pos, new_vel = boris_push(
+                  sp.positions, sp.velocities, E_at_p, B_at_p,
+                  sp.charge, sp.mass, dt_pic,
+              )
+              new_pos, new_vel = self._apply_reflecting_bc(new_pos, new_vel)
+              sp.positions = new_pos
+              sp.velocities = new_vel
+
+          # Store actual sub-step dt for Esirkepov
+          self._last_push_dt = dt_pic
+
+          # Collisions use full dt (collision is operator-split)
+          # ... collision code here with dt, not dt_pic ...
+  ```
+- **LOC**: 25 (loop structure + omega_c computation + dt_pic + cap)
+- **Regression risk**: MEDIUM -- changes the push loop structure. Must verify that n_sub=1 (weak B) reproduces current behavior exactly.
+- **Dependency**: Requires Bug 2 fix first (Esirkepov dt mismatch)
+- **Test**: `test_subcycling_energy_conservation` -- 100 keV deuteron in 10 T for 100 gyroperiods. With sub-cycling: energy drift < 1e-8. Without: energy drift > 0.1. `test_subcycling_n_sub_computation` -- verify n_sub=5 for dt=1ns, B=10T, m=m_D. `test_subcycling_cap_at_50` -- verify n_sub capped at 50 even if omega_c is extreme.
+
+---
+
+### M -- Measure: Fix Effort and Dependency Matrix
+
+#### LOC and Risk Summary
+
+| Bug # | Description | LOC | Risk | Priority | Blocks |
+|-------|-------------|-----|------|----------|--------|
+| 1 | Nanbu self-collision in-place mutation | 3 | LOW | HIGH | V3 collision accuracy |
+| 2 | Esirkepov dt mismatch | 5 | LOW | **CRITICAL** | Bug 8 (sub-cycling) |
+| 3 | E-field missing Hall term | 10 | MEDIUM | MEDIUM | V3 trajectory accuracy |
+| 4 | No particle removal | 12 | LOW | LOW | Performance only |
+| 5 | Reflecting BC unphysical | 25 | MEDIUM | HIGH (for V4) | V4 Yn validation |
+| 6 | Self-collision random pairing | 8 | LOW | HIGH | V3 collision accuracy |
+| 7 | weight_total device-independent | 5 | ZERO | LOW (for V1) | V4 J_kin magnitude |
+| 8 | No PIC sub-cycling | 25 | MEDIUM | **CRITICAL** | V3, V4 entirely |
+| **Total** | | **93** | | | |
+
+#### Fix Dependency Graph
+
+```
+Bug 2 (Esirkepov dt) ──────────────> Bug 8 (sub-cycling)
+                                         |
+                                         v
+Bug 6 (random pairing) ──supersedes──> Bug 1 (in-place mutation)
+                                         |
+                                         v
+                                    V3 collision tests
+                                         |
+Bug 5 (absorbing BC) ──────────────> V4 Yn validation
+Bug 7 (weight scaling) ────────────> V4 J_kin magnitude
+Bug 3 (Hall E-field)  ────────────> V3 trajectory accuracy
+Bug 4 (particle removal) ─────────> Performance (independent)
+
+Dependency chains:
+  Chain A: Bug 2 -> Bug 8 -> V3/V4 (CRITICAL PATH, 30 LOC)
+  Chain B: Bug 6 -> (Bug 1 resolved) -> V3 collisions (8 LOC)
+  Chain C: Bug 5 -> V4 Yn (25 LOC)
+  Independent: Bug 3, Bug 4, Bug 7
+```
+
+---
+
+### A -- Analyze: Compounding Bugs and Minimum Viable Fix Set
+
+#### Compounding Bug Interactions
+
+1. **Bug 2 + Bug 8 (dt mismatch + no sub-cycling)**: These compound multiplicatively. Without sub-cycling, Boris push uses dt_mhd ~ 1ns which under-resolves gyration by 5x. If sub-cycling is added but Bug 2 is unfixed, Esirkepov uses self.dt (1ns) while positions moved by dt_pic (0.2ns) -- the charge conservation factor `q/dt` is 5x wrong, and deposited J is 5x too large. Net effect: doubly wrong trajectories AND charge non-conservation. **Must fix Bug 2 first, then Bug 8.**
+
+2. **Bug 1 + Bug 6 (in-place mutation + no random pairing)**: These compound. In-place mutation means early particles see pre-scatter velocities and late particles see post-scatter. Without random pairing, particles are always paired by index (0 with 0, which is self). Combined: every particle scatters off its own already-modified velocity, which is physically nonsensical. **Bug 6 fix (random pairing with copy) resolves both simultaneously.**
+
+3. **Bug 5 + Bug 7 (reflecting BC + wrong weight)**: Reflecting BC overestimates confinement (2-5x too many particles in domain). Low weight_total underestimates each particle's contribution (30x too low). These partially compensate: 5x too many particles * 30x too little weight per particle = still 6x too low total current. **Both must be fixed for V4.**
+
+4. **Bug 3 + Bug 8 (wrong E + wrong dt)**: Wrong E-field directs particles along wrong trajectories. Wrong dt means each step's error is amplified. These don't cancel -- they compound as uncorrelated errors adding in quadrature. At pinch: ~5% trajectory error from E-field + ~50% energy error from no sub-cycling = sub-cycling dominates.
+
+#### Minimum Viable Fix Set for V1 (Unit Tests Passing)
+
+V1 tests are standalone kernel tests. No coupling, no MHD, no sub-cycling needed. **Zero bug fixes required for V1.** All 28 unit tests can be written and pass against the current code because:
+- Unit tests test kernels in isolation with controlled inputs
+- Esirkepov dt test will EXPOSE Bug 2 (test written to verify the bug, then fix applied)
+- Self-collision tests will EXPOSE Bugs 1+6
+
+**Recommended approach**: Write V1 tests first, use them to expose bugs, then fix.
+
+#### Minimum Viable Fix Set for V2 (Integration Tests Passing)
+
+V2 tests (gyration, two-stream, thermalization) need:
+- Bug 8 (sub-cycling) for the 1000-gyroperiod test at strong B
+- Bug 6 (random pairing) for thermalization test correctness
+
+**V2 minimum fixes**: Bug 2 + Bug 8 + Bug 6 = 38 LOC
+
+#### Minimum Viable Fix Set for V3 (MHD-Coupled Tests)
+
+All V2 fixes plus:
+- Bug 3 (Hall E-field) for trajectory accuracy at pinch
+
+**V3 minimum fixes**: V2 fixes + Bug 3 = 48 LOC
+
+#### Minimum Viable Fix Set for V4 (End-to-End)
+
+All V3 fixes plus:
+- Bug 5 (absorbing BC) for realistic confinement
+- Bug 7 (weight scaling) for correct J_kin magnitude
+
+**V4 minimum fixes**: V3 fixes + Bug 5 + Bug 7 = 78 LOC
+
+---
+
+### I -- Improve: Updated Implementation Plan
+
+#### Revised Critical Path
+
+```
+V1 Unit Tests (write tests, expose bugs)
+  |  [1-2 days, 500 LOC tests]
+  v
+Bug Fix Sprint A: Bug 2 (5 LOC) + Bug 6 (8 LOC) + Bug 8 (25 LOC)
+  |  [1 day, 38 LOC production + 40 LOC tests for fixes]
+  v
+V2 Integration Tests
+  |  [2-3 days, 350 LOC tests]
+  v
+Bug Fix Sprint B: Bug 3 (10 LOC) + Bug 5 (25 LOC) + Bug 7 (5 LOC)
+  |  [1 day, 40 LOC production + 30 LOC tests]
+  v
+V3 MHD-Coupled Tests
+  |  [2-3 days, 300 LOC tests]
+  v
+Bug Fix Sprint C: Bug 4 (12 LOC) -- performance only, lowest priority
+  |  [0.5 days]
+  v
+V4 End-to-End Tests
+  |  [2-3 days, 250 LOC tests]
+  v
+DONE
+```
+
+#### Revised Time Estimate
+
+| Phase | Original | Revised | Confidence Interval |
+|-------|----------|---------|---------------------|
+| V1 (unit tests) | 1-2 days | 1-2 days | HIGH (no code changes needed) |
+| Bug Sprint A | (not in original) | 1 day | HIGH (38 LOC, clear specs) |
+| V2 (integration) | 2-3 days | 2-3 days | MEDIUM (Poisson solver needed) |
+| Bug Sprint B | (not in original) | 1 day | MEDIUM (Hall term needs validation) |
+| V3 (MHD-coupled) | 2-3 days | 3-4 days | LOW (MHD coupling is complex) |
+| Bug Sprint C | (not in original) | 0.5 days | HIGH (simple filter) |
+| V4 (end-to-end) | 1-2 days | 2-3 days | LOW (first-ever run, unknowns) |
+| **Total** | **7-11 days** | **12-16 days** | P50=14, P90=18 |
+
+The Six Sigma review's estimate of 12-18 days is confirmed. The original 7-11 days excluded bug fix time and underestimated V3/V4 integration complexity.
+
+#### Simpler Boris Validation: Uniform E-field Drift
+
+Landau damping requires a Poisson solver (~80 LOC). A simpler Boris validation that requires zero infrastructure:
+
+**E x B Drift Test** (~15 LOC):
+```python
+def test_ExB_drift():
+    """Single particle in crossed E and B drifts at v_D = E x B / B^2."""
+    E = np.array([[0.0, 1e4, 0.0]])   # Ey = 10 kV/m
+    B = np.array([[0.0, 0.0, 1.0]])    # Bz = 1 T
+    v_drift_expected = 1e4 / 1.0       # v_Dx = Ey/Bz = 10 km/s
+
+    pos = np.array([[0.0, 0.0, 0.0]])
+    vel = np.array([[0.0, 0.0, 0.0]])  # start at rest
+    dt = 1e-9
+    for _ in range(1000):
+        pos, vel = boris_push(pos, vel, E, B, Q_E, M_D, dt)
+
+    # After transient gyration, net drift in x-direction
+    v_drift_measured = pos[0, 0] / (1000 * dt)
+    assert v_drift_measured == pytest.approx(v_drift_expected, rel=0.05)
+```
+
+This validates Boris push correctness (E x B drift is exact for Boris at any dt/omega_c) without requiring any solver infrastructure. It complements the existing gyration tests by testing the electric field response.
+
+**Magnetic mirror test** (~20 LOC):
+```python
+def test_magnetic_mirror():
+    """Particle in converging B reflects at mirror point."""
+    # Uniform Bz with gradient: B = B0 * (1 + z/L)
+    # Particle with pitch angle > mirror angle is reflected
+    # mu = m*v_perp^2 / (2*B) conserved
+    # This is too complex for a unit test; skip for V1.
+```
+
+Recommendation: Use E x B drift as the "10-line Boris validation" for V1. Defer magnetic mirror to V2.
+
+#### Sub-Cycling Wrapper (5-Line Version)
+
+The minimal sub-cycling can indeed be a wrapper:
+
+```python
+def push_particles_subcycled(self, E, B, dt_mhd):
+    """Wrapper: sub-cycle Boris push within MHD timestep."""
+    for sp in self.species:
+        if sp.n_particles() == 0:
+            continue
+        B_max = np.max(np.linalg.norm(
+            interpolate_field_to_particles(B, sp.positions, self.dx, self.dy, self.dz),
+            axis=1,
+        ))
+        omega_c = abs(sp.charge) * B_max / sp.mass if B_max > 0 else 0
+        n_sub = max(1, min(int(np.ceil(omega_c * dt_mhd / (2 * np.pi / 30))), 50))
+        dt_pic = dt_mhd / n_sub
+        for _ in range(n_sub):
+            self.push_particles(E, B, dt=dt_pic)
+```
+
+This is 10 lines, not 5, because the omega_c computation requires field interpolation. But it can be simplified to 5 lines if we pre-compute omega_c from MHD state (B_max on grid):
+
+```python
+def push_subcycled(self, E, B, dt_mhd, B_max):
+    omega_c = self.species[0].charge * B_max / self.species[0].mass
+    n_sub = max(1, min(int(omega_c * dt_mhd * 30 / (2 * np.pi)), 50))
+    dt_pic = dt_mhd / n_sub
+    for _ in range(n_sub):
+        self.push_particles(E, B, dt=dt_pic)
+```
+
+5 lines. Uses B_max from the MHD grid (already available). Assumes single species (DPF beam ions). Cap at 50 sub-cycles.
+
+---
+
+### C -- Control: Regression Gates
+
+#### CI Test Gates Per Fix
+
+| Bug Fix | Gate Test | Pass Criterion | Run After |
+|---------|-----------|----------------|-----------|
+| Bug 2 (Esirkepov dt) | `test_esirkepov_continuity_equation` | `div(J)*dt + delta_rho < 1e-10` for any dt | Every commit to hybrid.py |
+| Bug 6 (random pairing) | `test_nanbu_self_collision_no_ordering_bias` | RMS angle agrees with reference within 5% | Every commit to hybrid.py |
+| Bug 8 (sub-cycling) | `test_subcycling_energy_conservation` | Energy drift < 1e-8 over 100 gyroperiods | Every commit to hybrid.py |
+| Bug 3 (Hall E) | `test_E_field_hall_included` | E_fld != -v x B when J != 0 | Every commit to engine/core.py |
+| Bug 5 (absorbing BC) | `test_absorbing_bc_removes_escaped` | Escaped particles removed | Every commit to hybrid.py |
+| Bug 7 (weight) | `test_beam_weight_matches_pinch_current` | weight_total = I*tau/q within 10% | Every commit to hybrid.py |
+| Bug 4 (removal) | `test_particle_removal_culls_thermalized` | Particles below thermal energy removed | Every commit to hybrid.py |
+
+#### Existing Test Regression Gate
+
+All 24 existing PIC tests must remain green:
+- `test_pic_hybrid.py` (7 tests)
+- `test_pic_validation.py` (12 tests)
+- `test_beam_tracker.py` (5 tests)
+
+Command: `pytest tests/test_pic_hybrid.py tests/test_pic_validation.py tests/test_beam_tracker.py -v`
+
+#### Phase-Level Quality Gates
+
+| Phase | Gate | Command |
+|-------|------|---------|
+| V1 complete | 28 new unit tests pass + 24 existing green | `pytest tests/test_pic_*.py -v` |
+| Bug Sprint A | Esirkepov continuity + sub-cycling energy + collision pairing | `pytest tests/test_pic_*.py -k "esirkepov or subcycl or collision" -v` |
+| V2 complete | 6 integration tests pass, gyration energy < 1e-8 | `pytest tests/test_pic_integ_*.py -v` |
+| Bug Sprint B | Hall E-field test + absorbing BC + weight scaling | `pytest tests/test_pic_*.py -k "hall or absorbing or weight" -v` |
+| V3 complete | 6 MHD-coupled tests, total energy < 5% | `pytest tests/test_pic_mhd_*.py -v` |
+| V4 complete | 3 E2E tests, Yn in [1e10, 1e12], completes without crash | `pytest tests/test_pic_e2e_*.py -v -m slow` |
+
+---
+
+### Research Findings
+
+#### Published PIC-DPF Results for Benchmarking
+
+Search of `docs/research-reference/` and the research database found limited PIC-DPF references:
+
+1. **Schmidt et al., PRL 109:205003 (2012)**: Fully kinetic LSP simulation of 1 MJ DPF. Key result: Yn ~ 3e11, beam-target dominates over thermonuclear by 10-100x. This is our primary benchmark for V4.
+
+2. **Pasternak et al. (2024)**: PF-1000 PIC simulation. Referenced in scaffold Section 5.1 but no specific data extracted. Need to digitize beam energy spectra for comparison.
+
+3. **Damideh (2025)**: FAETON-I PIC-MHD hybrid geometry. Referenced in `ANALYSIS_REPORT.md` as a gap: "No kinetic effects in any MHD backend." Our PIC module addresses this gap.
+
+4. **Auluck (2023)**: Explains Yn ~ I^2.96 scaling (not I^4) because beam-target saturates at high current. Our validation should reproduce this sub-quartic scaling.
+
+5. No Python-based PIC-DPF code exists in the open-source ecosystem. The closest references are Chicago/LSP (commercial, Fortran/C++) and EPOCH (open-source PIC, but not DPF-specific). Our implementation is novel.
+
+#### Simpler PIC Tests Than Landau Damping
+
+In addition to E x B drift (described above), three other zero-infrastructure tests:
+
+1. **Uniform B gyration** (already implemented in test_pic_validation.py) -- validates Boris push core.
+
+2. **E x B drift** (15 LOC, described above) -- validates E-field response. Exact for Boris at any dt.
+
+3. **Gradient-B drift** (25 LOC) -- particle in non-uniform B drifts perpendicular to both B and grad(B). Validates field interpolation accuracy. Requires a field with known gradient.
+
+4. **Particle-in-uniform-field energy conservation** (10 LOC) -- purely magnetic field, verify |v| is constant to machine precision after 10^4 steps. This is the simplest possible Boris validation.
+
+Recommendation: Add tests 2 and 4 to V1 (25 LOC total). These provide stronger Boris validation than the existing gyration tests with zero infrastructure overhead.
+
+#### Sub-Cycling Pattern from Existing Codebase
+
+The resistive diffusion sub-cycling pattern in `mlx_sources.py` uses:
+```python
+N = ceil(dt_mhd / dt_res)
+N = min(N, 20)  # cap
+dt_sub = dt_mhd / N
+for _ in range(N):
+    U = apply_diffusion(U, dt_sub)
+```
+
+The PIC sub-cycling is structurally identical. The 5-line wrapper described above follows this pattern exactly, with the cap raised to 50 (PIC sub-cycles are cheaper than diffusion because they operate on particles, not the full grid).
+
+---
+
+### Summary: Path from 5/10 to 7/10
+
+| Action | Readiness Gain | Rationale |
+|--------|---------------|-----------|
+| Write V1 unit tests (28 tests) | +0.5 | Establishes test baseline, exposes bugs |
+| Fix Bug 2 + Bug 8 (Esirkepov dt + sub-cycling) | +0.5 | Unblocks V2/V3/V4 entirely |
+| Fix Bug 6 (random pairing, supersedes Bug 1) | +0.25 | Collision physics correctness |
+| Write V2 integration tests (6 tests) | +0.25 | Classical PIC benchmarks pass |
+| Fix Bug 5 (absorbing BC) | +0.25 | Realistic confinement for V4 |
+| Revised time estimate (12-16 days) | +0.25 | Honest scheduling = higher confidence |
+| **Total** | **+2.0** | **5/10 -> 7/10** |
+
+Remaining items for 7/10 -> 9/10 (future):
+- Fix Bug 3 (Hall E-field) -- requires Hall MHD scaffold
+- Fix Bug 7 (weight scaling) -- requires KineticManager wiring
+- Fix Bug 4 (particle removal) -- performance only
+- V3 + V4 tests passing
+- Particle count convergence study (10K -> 100K -> 1M)
+- Comparison against Schmidt (2012) Yn values
