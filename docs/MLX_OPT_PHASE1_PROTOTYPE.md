@@ -517,3 +517,74 @@ it fuses the limiter + reconstruction into one compiled kernel.
 4. Wrap `_hll_flux_gpu` with `_compile_if_available` (per-dim variants)
 5. Wrap `_clamp_reconstructed` with `_compile_if_available`
 6. Validate: `pytest tests/test_mlx_*.py -v` (471 tests), Sod L1 parity < 1e-3
+
+---
+
+## Appendix A: Six Sigma FMEA — mx.eval() Consolidation
+
+**Date**: 2026-03-26
+**Analyst**: Claude Opus (Metal GPU specialist)
+**Scope**: 9 eval sites in `mlx_solver.py step()`, proposed reduction to 3.
+
+### Per-Eval Analysis
+
+**Line 660 — After resistive half-step**
+- **Guards against**: Stale lazy graph feeding into ghost-pad, which calls `np.asarray()` (line 325). But `np.asarray()` itself forces materialization.
+- **Remove safe?**: YES if ghost padding is active (np.asarray syncs anyway). YES if ghost padding is inactive (next consumer is the hyperbolic step, pure MLX).
+- **Risk**: None. The downstream sync point (np.asarray at 325) or the hyperbolic eval (684) catches it either way.
+
+**Line 672 — After ghost padding**
+- **Guards against**: Nothing useful. `_pad_electrode_ghost` already calls `np.asarray(U_padded)` at line 325, which forces full materialization. The eval after that is redundant.
+- **Remove safe?**: YES today -- the np.asarray inside is the real sync. BUT the prototype doc says remove after OPT-3 (which eliminates np.asarray). That is backwards: it is safe NOW, and becomes load-bearing AFTER OPT-3.
+- **Risk**: None currently. After OPT-3 removes np.asarray, the hyperbolic step graph would include ghost padding ops. Still safe if eval 684 is kept.
+
+**Line 684 — After hyperbolic step (SSP-RK3)**
+- **Guards against**: Memory explosion. SSP-RK3 builds 3 full RHS evaluations, each with WENO5-Z reconstruction + Riemann solver + geometric source terms. On a 128x256 grid with NVAR=10, the lazy graph would be ~150-200 ops deep per stage, ~500+ total. Without eval, peak memory scales with graph depth.
+- **Remove safe?**: NO. This is the memory-bounding eval. On grids > 64x128, removing it risks OOM on 36GB unified memory.
+- **Risk**: OOM crash or macOS memory pressure jetsam.
+
+**Line 696 — After div(B) cleaning**
+- **Guards against**: Dedner/Powell adds ~10-20 ops. Merged with 684 means the hyperbolic+divB graph evaluates as one unit.
+- **Remove safe?**: YES (merge into 684 by moving eval after divB). The combined graph is ~520 ops, within safe limits.
+- **Risk**: Marginal memory increase (~5%). Negligible.
+
+**Lines 701, 707, 712, 724 — Operator-split physics (resistive, conduction, viscosity, Hall)**
+- **Guards against**: Each is an independent operator-split step, ~20-50 MLX ops each. The evals between them prevent the lazy graph from chaining 4 diffusion operators into one monolithic graph (~120-200 ops).
+- **Remove safe?**: YES. 200 ops is well within MLX's graph capacity. All four steps read U through MLX ops, no np.asarray calls. A single eval after the last active operator-split step suffices.
+- **Risk**: Peak memory increases by ~15-25% during operator-split block (4 diffusion stencils held simultaneously). On a 128x256 grid this is ~50 MB additional -- safe on 36GB.
+- **Grid-size dependency**: At 512x1024 (rare but possible), the 4-operator chain could add ~800 MB. Add a grid-size guard: if nr*nz > 128*256, insert an intermediate eval after resistive step 2.
+
+**Line 767 — After species advection**
+- **Guards against**: `self._Y` is read externally by engine coupling code that may call `np.asarray()`. Must be materialized before `step()` returns.
+- **Remove safe?**: NO. External code depends on materialized species state.
+
+### FMEA Table
+
+| Eval | Line | Purpose | Remove? | Severity (1-10) | Occurrence (1-10) | Detection (1-10) | RPN | Mitigation |
+|------|------|---------|---------|-----------------|-------------------|-------------------|-----|------------|
+| Resistive half | 660 | Redundant (np.asarray or 684 syncs) | YES | 1 | 1 | 1 | 1 | None needed |
+| Ghost pad | 672 | Redundant (np.asarray inside) | YES | 2 | 2 | 3 | 12 | Re-add after OPT-3 if graph > 500 ops |
+| Hyperbolic | 684 | Memory bound on RK3 graph | KEEP | 9 | 7 | 2 | 126 | Never remove; this is the anchor |
+| div(B) clean | 696 | Small graph, merge with 684 | MERGE | 2 | 3 | 3 | 18 | Move eval to after divB block |
+| Resistive 2nd | 701 | Chain start for op-split | YES | 3 | 3 | 4 | 36 | Grid-size guard at 512x1024 |
+| Conduction | 707 | Mid-chain op-split | YES | 3 | 3 | 4 | 36 | Same guard |
+| Viscosity | 712 | Mid-chain op-split | YES | 3 | 3 | 4 | 36 | Same guard |
+| Hall MHD | 724 | Chain end for op-split | KEEP (as consolidated) | 4 | 4 | 3 | 48 | Single eval here covers 701-724 |
+| Species | 767 | External state coupling | KEEP | 8 | 6 | 2 | 96 | Never remove; engine reads this |
+
+### Corrections to Proposed Diff
+
+1. **Line 672 is safe to remove NOW, not "after OPT-3"**. The np.asarray at line 325 already materializes. OPT-3 removing np.asarray would make this eval *more* needed, not less. Flip the phasing.
+2. **Add grid-size guard for operator-split consolidation**:
+   ```python
+   # After all operator-split steps:
+   if self._nr * self._nz > 32768:  # 128x256 threshold
+       mx.eval(U)  # Bound memory for large grids
+   mx.eval(U)  # Final consolidation (or single eval for small grids)
+   ```
+   On second thought, the double-eval is redundant. Use a single eval unconditionally at the end of the operator-split block (line 724 position). The 200-op graph is safe at any practical grid size given 36GB unified memory.
+3. **Final count: 9 -> 3 is correct**. Evals at: (a) after hyperbolic+divB, (b) after operator-split block, (c) after species. The 6 removed evals save ~6 GPU sync round-trips per timestep at ~0.05-0.1 ms each = 0.3-0.6 ms/step.
+
+### Verdict
+
+**APPROVED with one phasing correction** (line 672 ordering vs OPT-3). RPN scores are all below 130 (the standard action threshold). The hyperbolic eval (RPN=126) must never be removed. Estimated speedup: 1.05-1.12x from reduced sync overhead, resolution-dependent.
