@@ -320,6 +320,109 @@ def weno5z_reconstruct(
 
 
 # ============================================================
+# PPM (Piecewise Parabolic Method) — 3rd-order reconstruction
+# ============================================================
+
+
+def ppm_reconstruct(
+    Q: mx.array,
+    dim: int,
+) -> tuple[mx.array, mx.array]:
+    """PPM reconstruction with monotonicity constraints (Colella & Woodward 1984).
+
+    Fits a parabola to each cell using a 5-cell stencil, then applies
+    monotonicity constraints (median limiter) to prevent new extrema.
+    Produces 3rd-order accurate face values at smooth regions with
+    sharp shock capturing.
+
+    Stencil width: 5 cells (2 ghost cells per side, same as PLM+1).
+    Output: n-4 interfaces (loses 2 cells per side vs n cells).
+
+    The interpolation formula (eq. 1.9 in Colella & Woodward 1984):
+        a_{i+1/2} = (7/12)(q_i + q_{i+1}) - (1/12)(q_{i-1} + q_{i+2})
+
+    Monotonicity constraint (prevent new extrema):
+        a_{i+1/2} = median(q_i, a_{i+1/2}, q_{i+1})
+
+    Args:
+        Q: Conserved state, shape (NVAR, nr, nz) or (NVAR, nr, ny, nz).
+        dim: Reconstruction dimension. 0=radial (axis 1), 1=axial (axis 2).
+
+    Returns:
+        (QL, QR) at interfaces.
+        For dim=0: shape (NVAR, nr-4, nz).
+        For dim=1: shape (NVAR, nr, nz-4).
+    """
+    axis = dim + 1
+    n = Q.shape[axis]
+
+    if n < 5:
+        raise ValueError(
+            f"PPM requires at least 5 cells along dim={dim}, got {n}"
+        )
+
+    # 5-point interpolation to face i+1/2 (between cell i and i+1)
+    # a_{i+1/2} = (7/12)(q_i + q_{i+1}) - (1/12)(q_{i-1} + q_{i+2})
+    # Valid for i = 1..n-3, producing n-3 face values
+    n_faces = n - 3
+    qm1 = _take(Q, axis, 0, n_faces)   # q_{i-1}  cells 0..n-4
+    q0 = _take(Q, axis, 1, n_faces)    # q_i      cells 1..n-3
+    qp1 = _take(Q, axis, 2, n_faces)   # q_{i+1}  cells 2..n-2
+    qp2 = _take(Q, axis, 3, n_faces)   # q_{i+2}  cells 3..n-1
+
+    # Raw parabolic interpolation
+    a_face = (7.0 / 12.0) * (q0 + qp1) - (1.0 / 12.0) * (qm1 + qp2)
+
+    # Monotonicity: median limiter — clamp a_face between q0 and qp1
+    a_face = mx.maximum(mx.minimum(q0, qp1), mx.minimum(a_face, mx.maximum(q0, qp1)))
+
+    # Left state at face i+1/2 = a_{i+1/2} (viewed from left cell i)
+    # Right state at face i+1/2 = a_{i+1/2} (viewed from right cell i+1)
+    # But PPM defines left/right states differently from PLM:
+    # QL_{i+1/2} = a_{i+1/2} (the right edge of cell i)
+    # QR_{i+1/2} = a_{i+1/2 - 1} (the left edge of cell i+1 = right edge of cell i)
+    # Actually, the face value IS both QL and QR (they converge to a_face at the interface)
+    # For a Riemann solver: QL = right edge of left cell, QR = left edge of right cell
+
+    # PPM modifies the edge values within each cell to ensure monotonicity
+    # of the parabolic profile. The key step:
+    # aL_i = a_{i-1/2},  aR_i = a_{i+1/2}
+    # If (aR_i - q_i)(q_i - aL_i) <= 0: parabola not monotone, flatten
+    # If |aR_i - aL_i| < 6 * |aR_i - aL_i| * (q_i - 0.5*(aL_i + aR_i)): adjust
+
+    # For n-4 interfaces: faces 0..n-5 of the a_face array
+    n_face = a_face.shape[axis]
+    if n_face < 2:
+        return a_face, a_face
+
+    # QL at face i = right edge of cell i (= a_face[i])
+    # QR at face i = left edge of cell i+1 (= a_face[i] as well from this formula)
+    # In practice, PPM's left/right states are the face values themselves
+    # after monotonicity limiting. For a Godunov scheme:
+    QL = _take(a_face, axis, 0, n_face - 1)  # faces 0..n_face-2
+    QR = _take(a_face, axis, 1, n_face)       # faces 1..n_face-1
+
+    # Additional PPM monotonicity: ensure the parabola in each cell is monotone
+    # Check: if QL > QR (for any variable), the profile has a local extremum
+    # In that case, apply additional flattening
+    q_center = _take(Q, axis, 2, n - 2)  # cell centers for the interior
+
+    # Trim center to match QL/QR shape
+    n_out = QL.shape[axis]
+    q_c = _take(q_center, axis, 0, n_out)
+
+    # Flattening: where the parabola overshoots, pull QL/QR back toward q_center
+    delta = QR - QL
+    delta_q = q_c - 0.5 * (QL + QR)
+    condition = mx.abs(delta) < 6.0 * mx.abs(delta_q)
+    # Adjust: if condition is met, shift to prevent overshoot
+    QL_adj = mx.where(condition, q_c - 0.5 * delta, QL)
+    QR_adj = mx.where(condition, q_c + 0.5 * delta, QR)
+
+    return QL_adj, QR_adj
+
+
+# ============================================================
 # Dispatch
 # ============================================================
 
@@ -347,4 +450,6 @@ def reconstruct(
         return weno5z_reconstruct(Q, dim=dim, **kwargs)
     if method == "plm":
         return plm_reconstruct(Q, dim=dim, **kwargs)
-    raise ValueError(f"Unknown reconstruction method: {method!r}. Choose 'weno5z' or 'plm'.")
+    if method == "ppm":
+        return ppm_reconstruct(Q, dim=dim, **kwargs)
+    raise ValueError(f"Unknown reconstruction method: {method!r}. Choose 'weno5z', 'plm', or 'ppm'.")

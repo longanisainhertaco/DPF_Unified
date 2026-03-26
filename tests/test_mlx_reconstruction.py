@@ -113,7 +113,12 @@ class TestOutputShapes:
     def test_dispatch_unknown_raises(self) -> None:
         Q = _make_uniform(10, 10)
         with pytest.raises(ValueError, match="Unknown reconstruction"):
-            reconstruct(Q, dim=0, method="ppm")
+            reconstruct(Q, dim=0, method="nonexistent")
+
+    def test_ppm_dispatch(self) -> None:
+        Q = _make_uniform(10, 10)
+        QL, QR = reconstruct(Q, dim=0, method="ppm")
+        assert QL.shape[1] > 0  # PPM produces valid output
 
 
 # ============================================================
