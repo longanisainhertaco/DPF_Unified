@@ -332,6 +332,68 @@ def anomalous_resistivity(
     return result
 
 
+# ---------------------------------------------------------------------------
+# CIV (Critical Ionization Velocity) anomalous resistivity
+# ---------------------------------------------------------------------------
+
+# Alfven CIV threshold velocities [m/s] for common fill gases.
+# v_crit = sqrt(2 * E_ionization / m_atom)
+# References: Alfven 1954, Brenning 1992 (Space Sci. Rev. 59).
+CIV_VCRIT: dict[str, float] = {
+    "deuterium": 38500.0,  # E_ion = 15.47 eV
+    "hydrogen": 37000.0,   # E_ion = 15.43 eV
+    "helium": 34000.0,     # E_ion = 24.59 eV
+    "neon": 14800.0,       # E_ion = 21.56 eV
+    "argon": 8800.0,       # E_ion = 15.76 eV
+    "krypton": 5400.0,     # E_ion = 14.00 eV
+    "xenon": 4200.0,       # E_ion = 12.13 eV
+    "nitrogen": 12600.0,   # E_ion = 14.53 eV (N2)
+}
+
+
+def civ_anomalous_resistivity(
+    v_bulk: float | np.ndarray,
+    ne: float | np.ndarray,
+    B_mag: float | np.ndarray,
+    mi: float = m_p,
+    alpha_civ: float = 0.05,  # EMPIRICAL: Brenning 1992 fit range 0.01-0.1
+    v_crit: float = 38500.0,  # D2 default
+) -> float | np.ndarray:
+    """CIV anomalous resistivity from sheath bulk velocity exceeding v_crit.
+
+    Active during axial rundown when v_sheath > v_crit(fill_gas).
+    Unlike LHDI/Buneman (current-driven), CIV is velocity-driven —
+    the only anomalous mechanism covering the axial phase.
+
+    eta_CIV = alpha * m_i * omega_ci / (n_e * e^2) when v_bulk > v_crit
+    where omega_ci = e * |B| / m_i (ion cyclotron frequency).
+
+    References:
+        Alfven, On the Origin of the Solar System (1954).
+        Brenning, Space Sci. Rev. 59:209 (1992).
+
+    Args:
+        v_bulk: Plasma bulk velocity [m/s].
+        ne: Electron number density [m^-3].
+        B_mag: Magnetic field magnitude [T].
+        mi: Ion mass [kg].
+        alpha_civ: Turbulence parameter (EMPIRICAL).
+        v_crit: CIV threshold velocity [m/s].
+
+    Returns:
+        CIV anomalous resistivity [Ohm*m]. Zero below threshold.
+    """
+    v = np.asarray(v_bulk)
+    ne_arr = np.maximum(np.asarray(ne), 1e10)
+    B_arr = np.maximum(np.asarray(B_mag), 1e-30)
+
+    omega_ci = e * B_arr / mi
+    eta_civ = alpha_civ * mi * omega_ci / np.maximum(ne_arr * e**2, 1e-300)
+
+    mask = v > v_crit
+    return np.where(mask, eta_civ, 0.0)
+
+
 @njit(cache=True)
 def _anomalous_resistivity_scalar_core(
     J_mag: float,
@@ -412,8 +474,8 @@ def anomalous_resistivity_scalar(
         return alpha * m_e * omega_pi / max(ne_val * e**2, 1e-300) * ratio**2
     else:
         raise ValueError(
-            f"Unknown threshold_model '{threshold_model}'. "
-            "Options: 'ion_acoustic', 'lhdi', 'buneman_classic', 'drift_velocity'."
+            f"Unknown threshold_model '{threshold_model}'. Options: "
+            "'ion_acoustic', 'lhdi', 'buneman_classic', 'drift_velocity'."
         )
 
     return _anomalous_resistivity_scalar_core(J_mag, ne_val, v_threshold, alpha)
