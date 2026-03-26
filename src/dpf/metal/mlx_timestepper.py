@@ -235,17 +235,18 @@ def compute_dt_cfl(
     gamma: float = 5.0 / 3.0,
     cfl: float = 0.3,
     rho_cfl_fraction: float = 1e-4,
+    use_boris: bool = False,
+    c_boris: float = 5e5,
 ) -> float:
     """Compute CFL-limited timestep, ignoring vacuum cells.
 
     dt = cfl * min(dr, dz) / max(|v| + cf)
-    where cf is the fast magnetosonic speed (capped at c=3e8).
+    where cf is the fast magnetosonic speed.
 
-    Cells with rho < rho_cfl_fraction * rho_max are excluded from the max
-    signal speed calculation.  Without this, vacuum cells at RHO_FLOOR
-    (1e-12) produce cf -> 3e8 m/s, yielding dt ~ 7.5e-13 s on typical DPF
-    grids.  This is the dominant cause of simulation stalling during the
-    compression phase when vacuum regions form behind the sheath.
+    When use_boris=True, uses Boris-corrected wave speeds (Gombosi 2002)
+    that bound vacuum Alfven speed at c_boris without density injection.
+    This eliminates the need for vacuum cell masking, but the mask is
+    kept as a safety net.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz).
@@ -254,14 +255,21 @@ def compute_dt_cfl(
         cfl: Courant number (default 0.3).
         rho_cfl_fraction: Fraction of max density below which cells are
             excluded from the CFL computation (default 1e-4).
+        use_boris: Use Boris-corrected wave speeds (default False).
+        c_boris: Boris reduced speed of light [m/s] (default 5e5).
 
     Returns:
         dt [s], float.
     """
     rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, gamma)
 
-    cf_r = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=0)
-    cf_z = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=1)
+    if use_boris:
+        from dpf.metal.mlx_primitives import fast_magnetosonic_boris
+        cf_r = fast_magnetosonic_boris(rho, p, Br, Bz, Bt, gamma, dim=0, c_boris=c_boris)
+        cf_z = fast_magnetosonic_boris(rho, p, Br, Bz, Bt, gamma, dim=1, c_boris=c_boris)
+    else:
+        cf_r = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=0)
+        cf_z = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=1)
 
     speed_r = mx.abs(vr) + cf_r
     speed_z = mx.abs(vz) + cf_z
