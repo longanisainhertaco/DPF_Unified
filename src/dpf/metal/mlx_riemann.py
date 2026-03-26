@@ -79,6 +79,143 @@ def _clamp_reconstructed(UL: mx.array, UR: mx.array) -> tuple[mx.array, mx.array
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# HLLS: Entropy-based Riemann solver (Popovas 2025, A&A 694)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _hlls_flux(
+    QL: object,
+    QR: object,
+    gamma: float | np.ndarray,
+    dim: int,
+) -> object:
+    """HLLS entropy-based Riemann flux (Popovas 2025).
+
+    Uses HLL wavespeeds but recovers pressure from entropy instead of
+    E - KE - ME subtraction.  Eliminates catastrophic cancellation in
+    float32 at low plasma beta (beta << 0.01) near electrode boundaries.
+
+    The entropy scalar S_hat lives in the ISR slot.  Pressure is recovered as:
+        p = rho^gamma * exp((gamma-1) * S_hat)
+
+    Args:
+        QL: Left state (NVAR, n_ifaces, n_transverse).
+        QR: Right state (NVAR, n_ifaces, n_transverse).
+        gamma: Adiabatic index — scalar or spatial array broadcastable to state.
+        dim: Normal direction (0=radial, 1=axial, 2=y-Cartesian).
+
+    Returns:
+        Numerical flux, same shape as QL/QR.
+
+    References:
+        Popovas (2025), A&A 694, "DISPATCH methods: An approximate,
+        entropy-based Riemann solver for ideal MHD", arXiv:2211.02438
+    """
+    TINY = 1e-20
+    QL_np = np.asarray(QL).astype(np.float64)
+    QR_np = np.asarray(QR).astype(np.float64)
+    gam = np.asarray(gamma, dtype=np.float64)
+
+    if dim == 0:
+        im_n, im_t1, im_t2 = IMR, IMZ, IMT
+        ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
+    elif dim == 1:
+        im_n, im_t1, im_t2 = IMZ, IMR, IMT
+        ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
+    else:
+        im_n, im_t1, im_t2 = IMT, IMR, IMZ
+        ib_n, ib_t1, ib_t2 = IBT, IBR, IBZ
+
+    rho_L = np.maximum(QL_np[IDN], RHO_FLOOR)
+    rho_R = np.maximum(QR_np[IDN], RHO_FLOOR)
+    inv_rL = 1.0 / rho_L
+    inv_rR = 1.0 / rho_R
+
+    vn_L = QL_np[im_n] * inv_rL
+    vn_R = QR_np[im_n] * inv_rR
+    Bn_L, Bn_R = QL_np[ib_n], QR_np[ib_n]
+
+    # Recover pressure from entropy tracer.
+    # ISR stores Srho = p * rho^(1-gamma), so p = Srho * rho^(gamma-1).
+    # This is a multiplicative recovery — no catastrophic cancellation.
+    gm1 = gam - 1.0
+    Srho_L = np.maximum(QL_np[ISR], P_FLOOR)
+    Srho_R = np.maximum(QR_np[ISR], P_FLOOR)
+    p_L = np.maximum(Srho_L * rho_L**(gam - 1.0), P_FLOOR)
+    p_R = np.maximum(Srho_R * rho_R**(gam - 1.0), P_FLOOR)
+
+    B2_L = QL_np[IBR]**2 + QL_np[IBZ]**2 + QL_np[IBT]**2
+    B2_R = QR_np[IBR]**2 + QR_np[IBZ]**2 + QR_np[IBT]**2
+    Bt_sq_L = np.maximum(B2_L - Bn_L**2, 0.0)
+    Bt_sq_R = np.maximum(B2_R - Bn_R**2, 0.0)
+
+    # Boris-capped wavespeeds (same as HLL)
+    _C_BORIS_SQ = 5e5**2
+    a_sq_L = np.minimum(gam * p_L / rho_L, _C_BORIS_SQ)
+    a_sq_R = np.minimum(gam * p_R / rho_R, _C_BORIS_SQ)
+    va_sq_L = B2_L / rho_L
+    va_sq_R = B2_R / rho_R
+    va_sq_L = va_sq_L * _C_BORIS_SQ / (va_sq_L + _C_BORIS_SQ)
+    va_sq_R = va_sq_R * _C_BORIS_SQ / (va_sq_R + _C_BORIS_SQ)
+    vat_sq_L = Bt_sq_L / rho_L
+    vat_sq_R = Bt_sq_R / rho_R
+    vat_sq_L = vat_sq_L * _C_BORIS_SQ / (vat_sq_L + _C_BORIS_SQ)
+    vat_sq_R = vat_sq_R * _C_BORIS_SQ / (vat_sq_R + _C_BORIS_SQ)
+
+    cf_L = np.sqrt(np.maximum(0.5 * (a_sq_L + va_sq_L + np.sqrt(
+        np.maximum((a_sq_L - va_sq_L)**2 + 4 * a_sq_L * vat_sq_L, 0.0))), 0.0))
+    cf_R = np.sqrt(np.maximum(0.5 * (a_sq_R + va_sq_R + np.sqrt(
+        np.maximum((a_sq_R - va_sq_R)**2 + 4 * a_sq_R * vat_sq_R, 0.0))), 0.0))
+    SL = np.minimum(vn_L - cf_L, vn_R - cf_R)
+    SR = np.maximum(vn_L + cf_L, vn_R + cf_R)
+    SR = np.maximum(SR, SL + TINY)
+
+    def _pflux(U_arr, rho, inv_r, vn, p, Bn):
+        Bt1 = U_arr[ib_t1]
+        Bt2 = U_arr[ib_t2]
+        vt1 = U_arr[im_t1] * inv_r
+        vt2 = U_arr[im_t2] * inv_r
+        B2 = Bn**2 + Bt1**2 + Bt2**2
+        pt = p + 0.5 * B2
+        vB = vn * Bn + vt1 * Bt1 + vt2 * Bt2
+        F = np.zeros_like(U_arr)
+        F[IDN] = rho * vn
+        F[im_n] = rho * vn * vn + pt - Bn * Bn
+        F[im_t1] = rho * vn * vt1 - Bn * Bt1
+        F[im_t2] = rho * vn * vt2 - Bn * Bt2
+        # Entropy flux: passive advection of rho*S_hat
+        F[ISR] = U_arr[ISR] * vn
+        # Total energy flux (reconstructed from entropy-derived pressure)
+        E_tot = p / np.maximum(gm1, 1e-30) + 0.5 * rho * (vn**2 + vt1**2 + vt2**2) + 0.5 * B2
+        F[IEN] = (E_tot + pt) * vn - Bn * vB
+        F[ib_n] = 0.0
+        F[ib_t1] = vn * Bt1 - vt1 * Bn
+        F[ib_t2] = vn * Bt2 - vt2 * Bn
+        if U_arr.shape[0] > IEE:
+            F[IEE] = U_arr[IEE] * vn
+        return F
+
+    FL = _pflux(QL_np, rho_L, inv_rL, vn_L, p_L, Bn_L)
+    FR = _pflux(QR_np, rho_R, inv_rR, vn_R, p_R, Bn_R)
+
+    inv_dS = 1.0 / np.maximum(SR - SL, TINY)
+    F_hlls = (SR * FL - SL * FR + SL * SR * (QR_np - QL_np)) * inv_dS
+    F_out = np.where(SL >= 0.0, FL, np.where(SR <= 0.0, FR, F_hlls))
+    F_out[ib_n] = 0.0
+
+    # NaN fallback: Lax-Friedrichs
+    nans = np.isnan(F_out) | np.isinf(F_out)
+    if np.any(nans):
+        S_max = np.maximum(np.abs(SL), np.abs(SR))
+        F_LF = 0.5 * (FL + FR) - 0.5 * S_max * (QR_np - QL_np)
+        F_out = np.where(nans, F_LF, F_out)
+
+    F32_MAX = np.float64(np.finfo(np.float32).max)
+    F_out = np.clip(F_out, -F32_MAX, F32_MAX)
+    return mx.array(F_out.astype(np.float32))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Public: per-dimension flux computation
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -258,8 +395,8 @@ def compute_fluxes(
     Returns:
         Numerical flux at interfaces, matching U's dimensionality.
     """
-    if riemann not in ("hlld", "hll"):
-        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld' or 'hll'.")
+    if riemann not in ("hlld", "hll", "hlls"):
+        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld', 'hll', or 'hlls'.")
 
     QL, QR = reconstruct(U, dim=dim, method=method)
     QL, QR = _clamp_reconstructed(QL, QR)
@@ -268,6 +405,14 @@ def compute_fluxes(
 
     if is_4d:
         return _compute_fluxes_4d(QL, QR, gamma, dim, riemann)
+
+    if riemann == "hlls":
+        if dim == 1:
+            QL_t = mx.transpose(QL, axes=[0, 2, 1])
+            QR_t = mx.transpose(QR, axes=[0, 2, 1])
+            F_t = _hlls_flux(QL_t, QR_t, gamma=gamma, dim=1)
+            return mx.transpose(F_t, axes=[0, 2, 1])
+        return _hlls_flux(QL, QR, gamma=gamma, dim=dim)
 
     if riemann == "hll":
         if dim == 1:
@@ -373,7 +518,7 @@ def mhd_rhs(
         dr: Cell spacing [m]. If 1.0, grid.dr is used when available.
         dz: Cell spacing [m]. If 1.0, grid.dz is used when available.
         method: Reconstruction method ("weno5z" or "plm").
-        riemann: Riemann solver ("hlld" or "hll").
+        riemann: Riemann solver ("hlld", "hll", or "hlls").
         precision: "float32" or "float64" for Riemann solver.
 
     Returns:

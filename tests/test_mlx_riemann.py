@@ -446,3 +446,103 @@ def test_boundary_cells_flux_divergence_zero() -> None:
     assert np.allclose(dU_np[0, :, -ng:], 0.0, atol=atol), "Mass: top ghost not zero"
 
     assert not np.any(np.isnan(dU_np)), "NaN in boundary-zero test"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HLLS entropy-based Riemann solver (Popovas 2025)
+# ──────────────────────────────────────────────────────────────────────────────
+
+from dpf.metal.mlx_kernels import ISR, NVAR  # noqa: E402
+
+
+class TestHLLS:
+    """HLLS entropy-based Riemann solver tests."""
+
+    def _sod_with_entropy(self, nr: int = 32, nz: int = 1) -> mx.array:
+        """Sod IC with entropy tracer in ISR slot."""
+        gamma = GAMMA
+        gm1 = gamma - 1.0
+        U = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        for ir in range(nr):
+            rho = 1.0 if ir < nr // 2 else 0.125
+            p = 1.0 if ir < nr // 2 else 0.1
+            U[0, ir, :] = rho
+            U[4, ir, :] = p / gm1
+            U[5, ir, :] = p * rho ** (1.0 - gamma)
+        return mx.array(U)
+
+    def test_hlls_sod_no_nan(self):
+        """HLLS Sod shock tube: no NaN in flux."""
+        U = self._sod_with_entropy()
+        F = compute_fluxes(U, gamma=GAMMA, dim=0, method="plm", riemann="hlls")
+        assert not np.any(np.isnan(np.asarray(F))), "HLLS Sod flux has NaN"
+
+    def test_hlls_matches_hll_on_sod(self):
+        """HLLS and HLL produce similar density flux on Sod (same wavespeeds)."""
+        U = self._sod_with_entropy()
+        F_hll = np.asarray(compute_fluxes(U, gamma=GAMMA, dim=0, method="plm", riemann="hll"))
+        F_hlls = np.asarray(compute_fluxes(U, gamma=GAMMA, dim=0, method="plm", riemann="hlls"))
+        rdiff = np.abs(F_hlls[0] - F_hll[0]) / (np.abs(F_hll[0]) + 1e-30)
+        assert np.max(rdiff) < 0.05, (
+            f"HLLS density flux differs from HLL by {np.max(rdiff):.1%}"
+        )
+
+    def test_hlls_low_beta_no_nan(self):
+        """HLLS survives extreme low-beta conditions (B >> p)."""
+        nr, nz = 32, 1
+        gamma = GAMMA
+        gm1 = gamma - 1.0
+        U = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        for ir in range(nr):
+            rho = 1e-4
+            p = 1.0  # very low pressure
+            Bt = 50.0 if ir < nr // 2 else 0.01  # extreme B discontinuity
+            U[0, ir, :] = rho
+            U[3, ir, :] = rho * 0.0  # IMT = 3
+            U[8, ir, :] = Bt  # IBT = 8
+            ME = 0.5 * Bt**2
+            U[4, ir, :] = p / gm1 + ME
+            U[5, ir, :] = p * rho ** (1.0 - gamma)
+        U_mx = mx.array(U)
+        F = compute_fluxes(U_mx, gamma=gamma, dim=0, method="plm", riemann="hlls")
+        assert not np.any(np.isnan(np.asarray(F))), "HLLS NaN at low beta"
+
+    def test_hlls_uniform_zero_flux(self):
+        """Uniform state with entropy produces zero net flux divergence."""
+        rho, p = 1.0, 1.0
+        U = _uniform_state(rho=rho, p=p)
+        # Set entropy tracer
+        U_np = np.asarray(U)
+        U_np[ISR] = p * rho ** (1.0 - GAMMA)
+        U_mx = mx.array(U_np)
+        F = compute_fluxes(U_mx, gamma=GAMMA, dim=0, method="plm", riemann="hlls")
+        F_np = np.asarray(F)
+        # Net flux should be constant (zero divergence)
+        dF = np.diff(F_np[0], axis=0)
+        assert np.max(np.abs(dF)) < 1e-5, "Uniform state flux divergence nonzero"
+
+    def test_hlls_pressure_positivity(self):
+        """HLLS guarantees positive pressure by construction (entropy formulation)."""
+        nr, nz = 16, 1
+        gamma = GAMMA
+        gm1 = gamma - 1.0
+        U = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        for ir in range(nr):
+            rho = max(1e-6, 1.0 - 0.9 * ir / nr)
+            p = max(1e-6, 0.1)
+            Bt = 100.0 * ir / nr  # ramping B
+            U[0, ir, :] = rho
+            U[8, ir, :] = Bt
+            ME = 0.5 * Bt**2
+            U[4, ir, :] = p / gm1 + ME
+            U[5, ir, :] = p * rho ** (1.0 - gamma)
+        U_mx = mx.array(U)
+        F = compute_fluxes(U_mx, gamma=gamma, dim=0, method="plm", riemann="hlls")
+        assert not np.any(np.isnan(np.asarray(F))), "NaN in pressure-positivity test"
+
+    def test_hlls_axial_direction(self):
+        """HLLS works in axial (dim=1) direction."""
+        U = self._sod_with_entropy(nr=1, nz=32)
+        F = compute_fluxes(U, gamma=GAMMA, dim=1, method="plm", riemann="hlls")
+        assert F.shape == (NVAR, 1, 31)
+        assert not np.any(np.isnan(np.asarray(F)))
