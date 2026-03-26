@@ -175,6 +175,14 @@ def _apply_collision_radiation(
             )
         else:
             Z_eff_line = 0.0  # bremsstrahlung already applied above
+        # Compute optical escape factor for line radiation trapping
+        from dpf.radiation.line_radiation import optical_escape_factor
+        ne_avg = float(np.mean(ne_line))
+        f_esc = optical_escape_factor(
+            ne_avg,
+            Z_imp=self.rad_cfg.impurity_Z,
+            n_imp_frac=self.rad_cfg.impurity_fraction,
+        )
         Te_line, P_line = apply_line_radiation_losses(
             self.state["Te"],
             ne_line,
@@ -183,6 +191,7 @@ def _apply_collision_radiation(
             n_imp_frac=self.rad_cfg.impurity_fraction,
             Z_imp=self.rad_cfg.impurity_Z,
             Te_floor=1.0,
+            escape_factor=f_esc,
         )
         self.state["Te"] = Te_line
         # Track radiated energy from line radiation
