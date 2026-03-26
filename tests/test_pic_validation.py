@@ -375,3 +375,159 @@ class TestEsirkepovDtConsistency:
             f"J ratio full_dt/half_dt = {ratio:.3f}, expected ~1.0. "
             f"Esirkepov is using wrong dt (expected fix: _last_push_dt)."
         )
+
+
+# =====================================================================
+# Phase V3: MHD-coupled integration on a static pinch snapshot
+# =====================================================================
+
+# PF-1000 pinch conditions (frozen MHD state — no MHD evolution)
+_RHO_PINCH = 1e-4       # kg/m^3
+_B_THETA_PINCH = 10.0   # T
+_P_PINCH = 1e6          # Pa
+
+# Beam parameters
+_N_BEAM = 100
+_E_BEAM_EV = 100e3      # 100 keV
+_WEIGHT_TOTAL = 1e16
+
+# Grid geometry: small but representative of pinch region
+_GS = (16, 16, 16)
+_DX = 5e-4              # 0.5 mm cells -> 8 mm domain
+
+# MHD timestep (frozen field)
+_MHD_DT = 1e-10         # s, << gyroperiod for 10 T (T_c ~ 2.2 ns)
+
+
+def _build_static_mhd_state() -> tuple[np.ndarray, np.ndarray]:
+    """Return (E, B) arrays for a static PF-1000 pinch snapshot.
+
+    E = 0 (no inductive field in frozen snapshot).
+    B = B_theta in the y-component (proxy for toroidal/azimuthal field).
+    """
+    nx, ny, nz = _GS
+    E = np.zeros((nx, ny, nz, 3), dtype=np.float64)
+
+    B = np.zeros((nx, ny, nz, 3), dtype=np.float64)
+    B[:, :, :, 1] = _B_THETA_PINCH   # By = B_theta
+
+    return E, B
+
+
+def _build_pic_with_beam() -> HybridPIC:
+    """Create a HybridPIC instance with 100 deuterium beam particles at 100 keV."""
+    pic = HybridPIC(
+        grid_shape=_GS,
+        dx=_DX,
+        dy=_DX,
+        dz=_DX,
+        dt=_MHD_DT,
+        use_esirkepov=True,
+        use_binary_collisions=False,  # no collisions in V3 — isolate push-deposit cycle
+    )
+    pic.add_species(
+        name="deuterium_beam",
+        mass=_M_D,
+        charge=_Q_E,
+        positions=np.zeros((0, 3)),
+        velocities=np.zeros((0, 3)),
+        weights=np.zeros((0,)),
+    )
+
+    # Inject beam at domain centre directed along z-axis
+    centre = np.array([
+        _GS[0] * _DX * 0.5,
+        _GS[1] * _DX * 0.5,
+        _GS[2] * _DX * 0.1,  # near the lower z boundary (injection point)
+    ])
+    pic.inject_beam(
+        species_idx=0,
+        n_beam=_N_BEAM,
+        energy_eV=_E_BEAM_EV,
+        direction=[0.0, 0.0, 1.0],
+        position=centre,
+        spread=0.05,
+        weight_total=_WEIGHT_TOTAL,
+    )
+    return pic
+
+
+class TestPICOnStaticMHD:
+    """Phase V3: push-deposit-feedback cycle on a frozen MHD pinch state.
+
+    100 deuterium beam particles at 100 keV are pushed for 100 MHD steps
+    (each step uses subcycle_pic with static E=0, B=10 T).  The MHD state
+    never evolves — this isolates the PIC subsystem.
+    """
+
+    _N_STEPS = 100
+    _C = 2.998e8  # speed of light [m/s]
+
+    @pytest.fixture(scope="class")
+    def evolved_pic(self) -> HybridPIC:
+        """Run 100 steps and return the final PIC state."""
+        pic = _build_pic_with_beam()
+        E, B = _build_static_mhd_state()
+        for _ in range(self._N_STEPS):
+            subcycle_pic(pic, E, B, mhd_dt=_MHD_DT, n_sub=4)
+        return pic
+
+    def test_pic_on_static_mhd_no_nan(self, evolved_pic: HybridPIC) -> None:
+        """No NaN in positions or velocities after 100 steps."""
+        sp = evolved_pic.species[0]
+        assert sp.n_particles() == _N_BEAM, (
+            f"Particle count changed: expected {_N_BEAM}, got {sp.n_particles()}"
+        )
+        assert np.all(np.isfinite(sp.positions)), (
+            f"NaN/Inf in positions: {sp.positions[~np.isfinite(sp.positions).all(axis=1)]}"
+        )
+        assert np.all(np.isfinite(sp.velocities)), (
+            f"NaN/Inf in velocities: {sp.velocities[~np.isfinite(sp.velocities).all(axis=1)]}"
+        )
+
+    def test_pic_on_static_mhd_speed_bounded(self, evolved_pic: HybridPIC) -> None:
+        """All |v| < c after 100 steps (relativistic Boris guarantee)."""
+        sp = evolved_pic.species[0]
+        speeds = np.sqrt(np.sum(sp.velocities ** 2, axis=1))
+        max_speed = float(np.max(speeds))
+        assert max_speed < self._C, (
+            f"Speed exceeded c: |v|_max = {max_speed:.4e} m/s, c = {self._C:.4e} m/s"
+        )
+
+    def test_pic_on_static_mhd_jkin_nonzero(self, evolved_pic: HybridPIC) -> None:
+        """Deposited J_kin has at least one nonzero cell after pushing."""
+        _, Jx, Jy, Jz = evolved_pic.deposit()
+
+        J_total = np.abs(Jx) + np.abs(Jy) + np.abs(Jz)
+        nonzero_cells = int(np.sum(J_total > 0.0))
+        J_max = float(np.max(J_total))
+
+        assert nonzero_cells > 0, "All J_kin cells are zero — deposition did not run"
+        assert np.isfinite(J_max), f"J_kin contains NaN/Inf: max={J_max}"
+
+    def test_pic_on_static_mhd_energy_approximate(self) -> None:
+        """Total kinetic energy changes less than 50% over 100 steps.
+
+        With no collisions and a static (non-accelerating) B-only field,
+        the Boris push conserves kinetic energy.  The 50% bound is generous
+        to accommodate float64 round-off and sub-cycling phase errors.
+        """
+        pic = _build_pic_with_beam()
+        E, B = _build_static_mhd_state()
+
+        sp = pic.species[0]
+        KE_initial = float(np.sum(0.5 * _M_D * np.sum(sp.velocities ** 2, axis=1) * sp.weights))
+
+        for _ in range(self._N_STEPS):
+            subcycle_pic(pic, E, B, mhd_dt=_MHD_DT, n_sub=4)
+
+        KE_final = float(np.sum(0.5 * _M_D * np.sum(sp.velocities ** 2, axis=1) * sp.weights))
+
+        assert KE_initial > 0.0, "Initial kinetic energy is zero — beam injection failed"
+        assert KE_final > 0.0, "Final kinetic energy is zero — particles lost all energy"
+
+        change_frac = abs(KE_final - KE_initial) / KE_initial
+        assert change_frac < 0.50, (
+            f"KE changed by {change_frac * 100:.1f}% (>50%). "
+            f"KE_initial={KE_initial:.3e} J·macro, KE_final={KE_final:.3e} J·macro"
+        )
