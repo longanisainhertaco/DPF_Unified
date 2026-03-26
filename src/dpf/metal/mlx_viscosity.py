@@ -52,21 +52,21 @@ def braginskii_viscosity_coefficients(
     Ti: mx.array,
     B_mag: mx.array,
     ion_mass: float = _M_D,
-) -> mx.array:
-    """Compute Braginskii parallel viscosity coefficient eta_0.
+) -> tuple[mx.array, mx.array]:
+    """Compute Braginskii parallel and perpendicular viscosity coefficients.
 
     NRL Formulary: tau_i = 2.09e7 * Ti_eV^1.5 * sqrt(A) / (ni_cm3 * lnL)
-    eta_0 = 0.96 * ni * kB * Ti * tau_i
+    eta_0 = 0.96 * ni * kB * Ti * tau_i  (parallel)
+    eta_1 = eta_0 / (1 + (omega_ci * tau_i)^2)  (perpendicular, strongly suppressed)
 
     Args:
         rho: Mass density [kg/m^3], shape (...).
         Ti: Ion temperature [K], shape (...).
-        B_mag: Magnetic field magnitude [T], shape (...). Reserved for
-            future gyroviscosity; not used for eta_0.
+        B_mag: Magnetic field magnitude [T], shape (...).
         ion_mass: Ion mass [kg]. Default: deuterium.
 
     Returns:
-        eta_0: Parallel viscosity [Pa.s], same shape as rho.
+        (eta_0, eta_1): Parallel and perpendicular viscosity [Pa.s].
     """
     Ti_safe = mx.maximum(Ti, 1.0)
     ni_safe = mx.maximum(rho / ion_mass, 1.0e10)
@@ -84,7 +84,17 @@ def braginskii_viscosity_coefficients(
     tau_i = _TAU_COEFF * (Ti_eV ** 1.5) * math.sqrt(A) / (ni_cm3 * lnL)
 
     eta_0 = 0.96 * ni_safe * _KB * Ti_safe * tau_i
-    return eta_0
+
+    # Ion cyclotron frequency: omega_ci = e * B / m_i
+    e_charge = 1.602176634e-19
+    omega_ci = e_charge * mx.maximum(B_mag, 1e-30) / ion_mass
+    x_i = omega_ci * tau_i  # magnetization parameter
+
+    # Perpendicular viscosity: eta_1 = eta_0 / (1 + x_i^2)
+    # For strongly magnetized plasma (x_i >> 1): eta_1 << eta_0
+    eta_1 = eta_0 / (1.0 + x_i * x_i)
+
+    return eta_0, eta_1
 
 
 # ---------------------------------------------------------------------------
@@ -182,18 +192,48 @@ def _viscous_substep(
     Ti = p * ion_mass / (2.0 * rho * _KB)
 
     B_mag = mx.sqrt(mx.maximum(B2, 0.0))
-    eta_0 = braginskii_viscosity_coefficients(rho, Ti, B_mag, ion_mass)
+    eta_0, eta_1 = braginskii_viscosity_coefficients(rho, Ti, B_mag, ion_mass)
 
     S = compute_strain_rate_cylindrical(vr, vz, vt, dr, dz, inv_r)
     S_trace_3 = S["S_trace"] / 3.0
 
-    # Traceless stress tensor: sigma_ij = eta_0 * (S_ij - delta_ij * S_trace/3)
-    sig_rr = eta_0 * (S["S_rr"] - S_trace_3)
-    sig_zz = eta_0 * (S["S_zz"] - S_trace_3)
-    sig_tt = eta_0 * (S["S_tt"] - S_trace_3)
-    sig_rz = eta_0 * S["S_rz"]
-    sig_rt = eta_0 * S["S_rt"]
-    sig_tz = eta_0 * S["S_tz"]
+    # Anisotropic Braginskii stress tensor.
+    # For weakly magnetized plasma (x_i << 1): eta_0 ~ eta_1, isotropic.
+    # For strongly magnetized (x_i >> 1): eta_1 ~ 0, only parallel stress.
+    #
+    # Parallel rate of strain: S_par = b_i*b_j*S_ij - S_trace/3
+    # Stress: sigma_ij = -eta_0 * (3*b_i*b_j - delta_ij) * S_par
+    #         + eta_1 * (S_ij - delta_ij*S_trace/3 - (3*b_i*b_j-delta_ij)*S_par)
+    Br_ = U[IBR]
+    Bz_ = U[IBZ]
+    Bt_ = U[IBT]
+    B_inv = 1.0 / mx.maximum(B_mag, 1e-30)
+    br = Br_ * B_inv
+    bz = Bz_ * B_inv
+    bt = Bt_ * B_inv
+
+    # Parallel strain: b.S.b = br^2*S_rr + bz^2*S_zz + bt^2*S_tt + 2*br*bz*S_rz
+    S_par = (br * br * S["S_rr"] + bz * bz * S["S_zz"] + bt * bt * S["S_tt"]
+             + 2.0 * br * bz * S["S_rz"]) - S_trace_3
+
+    # Parallel contribution (eta_0): sigma^(0) = -eta_0 * (3*bi*bj - delta_ij) * S_par
+    sig_rr = -eta_0 * (3.0 * br * br - 1.0) * S_par
+    sig_zz = -eta_0 * (3.0 * bz * bz - 1.0) * S_par
+    sig_tt = -eta_0 * (3.0 * bt * bt - 1.0) * S_par
+    sig_rz = -eta_0 * 3.0 * br * bz * S_par
+    sig_rt = -eta_0 * 3.0 * br * bt * S_par
+    sig_tz = -eta_0 * 3.0 * bz * bt * S_par
+
+    # Perpendicular contribution (eta_1): add the isotropic remainder
+    # sigma^(1) = eta_1 * (S_ij - delta_ij*S/3 - W^(0)_ij)
+    # For strongly magnetized plasma, eta_1 ~ 0, so this is negligible.
+    # Include for correctness at intermediate magnetization.
+    sig_rr = sig_rr + eta_1 * (S["S_rr"] - S_trace_3 + (3.0 * br * br - 1.0) * S_par)
+    sig_zz = sig_zz + eta_1 * (S["S_zz"] - S_trace_3 + (3.0 * bz * bz - 1.0) * S_par)
+    sig_tt = sig_tt + eta_1 * (S["S_tt"] - S_trace_3 + (3.0 * bt * bt - 1.0) * S_par)
+    sig_rz = sig_rz + eta_1 * (S["S_rz"] + 3.0 * br * bz * S_par)
+    sig_rt = sig_rt + eta_1 * (S["S_rt"] + 3.0 * br * bt * S_par)
+    sig_tz = sig_tz + eta_1 * (S["S_tz"] + 3.0 * bz * bt * S_par)
 
     # Divergence of stress tensor in cylindrical coordinates
     # (div sigma)_r = d(sig_rr)/dr + d(sig_rz)/dz + (sig_rr - sig_tt)/r
@@ -297,6 +337,7 @@ def apply_braginskii_viscosity(
     A = ion_mass / 1.6605e-27
     tau_i_np = _TAU_COEFF * (Ti_eV_np ** 1.5) * math.sqrt(A) / (ni_np * 1.0e-6 * 10.0)
     eta0_np = 0.96 * ni_np * _KB * np.maximum(Ti_np, 1.0) * tau_i_np
+    # Use max eta_0 for CFL (eta_1 is always <= eta_0)
     eta0_max = float(eta0_np.max())
 
     dx_min = min(dr, dz)
