@@ -722,6 +722,25 @@ class MLXMHDSolver(PlasmaSolverBase):
             )
             mx.eval(U)
 
+        # ── 6.65. PIC kinetic current feedback ─────────────────────────
+        # PIC deposits J_kin on the grid. The resistive E-field from PIC current
+        # modifies B via Faraday's law: dB/dt = -curl(eta * J_kin).
+        # For the MLX solver, this adds to the Ohmic heating without modifying
+        # the induction equation directly (operator-split simplification).
+        source_terms = kwargs.get("source_terms")
+        if source_terms is not None and "J_kin" in source_terms:
+            from dpf.metal.mlx_kernels import IEN
+            J_kin_np = source_terms["J_kin"]  # (3, nr, nz) or (3, nr, 1, nz)
+            if J_kin_np.ndim == 4:
+                J_kin_np = J_kin_np[:, :, 0, :]
+            J_sq_pic = np.sum(J_kin_np**2, axis=0)
+            eta_pic = float(kwargs.get("eta_field", 1e-6)) if not isinstance(
+                kwargs.get("eta_field"), np.ndarray
+            ) else 1e-6
+            # Ohmic heating from PIC current: Q = eta * J_pic^2
+            Q_pic = eta_pic * J_sq_pic * dt
+            U = U.at[IEN].add(mx.array(Q_pic.astype(np.float32)))
+
         # ── 6.7. Species advection + ablation sources ─────────────────
         if self._species_mgr is not None and self._Y is not None:
             from dpf.metal.mlx_species import (
