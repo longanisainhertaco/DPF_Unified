@@ -62,6 +62,7 @@ def run_mlx_forward_model(
     peak_weight: float = 0.4,
     timing_weight: float = 0.3,
     waveform_weight: float = 0.3,
+    handoff_mode: str = "lee_only",
 ) -> MLXTrialResult:
     """Run MLX solver with given (fc, fm) and return waveform metrics.
 
@@ -74,6 +75,7 @@ def run_mlx_forward_model(
         peak_weight: Weight for peak current error.
         timing_weight: Weight for timing error.
         waveform_weight: Weight for waveform NRMSE.
+        handoff_mode: Snowplow Lp handoff mode ("lee_only" or "full_mhd").
 
     Returns:
         MLXTrialResult with metrics and diagnostics.
@@ -90,6 +92,7 @@ def run_mlx_forward_model(
     preset = get_preset(preset_name)
     preset["snowplow"]["current_fraction"] = fc
     preset["snowplow"]["mass_fraction"] = fm
+    preset["snowplow"]["handoff_mode"] = handoff_mode
 
     # Force MLX backend with stable settings
     preset["fluid"] = preset.get("fluid", {})
@@ -322,11 +325,12 @@ def optuna_optimize(
 
 def _worker_eval(args: tuple) -> MLXTrialResult:
     """Worker function for parallel Optuna — runs in a separate process."""
-    fc, fm, preset_name, grid_shape = args
+    fc, fm, preset_name, grid_shape, handoff_mode = args
     return run_mlx_forward_model(
         fc=fc, fm=fm,
         preset_name=preset_name,
         grid_shape=grid_shape,
+        handoff_mode=handoff_mode,
     )
 
 
@@ -338,6 +342,7 @@ def parallel_optuna_optimize(
     preset_name: str = "pf1000",
     grid_shape: tuple[int, int, int] = (32, 1, 64),
     seed: int = 42,
+    handoff_mode: str = "lee_only",
 ) -> tuple[CalibrationResult, list[MLXTrialResult]]:
     """Phase 2 parallel: Optuna TPE with ask/tell and multiprocessing.
 
@@ -382,7 +387,7 @@ def parallel_optuna_optimize(
             for ot in optuna_trials:
                 fc = ot.suggest_float("fc", fc_bounds[0], fc_bounds[1])
                 fm = ot.suggest_float("fm", fm_bounds[0], fm_bounds[1])
-                worker_args.append((fc, fm, preset_name, grid_shape))
+                worker_args.append((fc, fm, preset_name, grid_shape, handoff_mode))
 
             # Run batch in parallel
             futures = list(pool.map(_worker_eval, worker_args))
