@@ -273,8 +273,10 @@ def compute_current_density_components(
     dBz_dr = (mx.roll(Bz, -1, axis=0) - mx.roll(Bz, 1, axis=0)) / (2.0 * dr)
     Jt = dBr_dz - dBz_dr
 
-    _MU0 = 4.0 * 3.141592653589793 * 1e-7
-    return Jr / _MU0, Jz / _MU0, Jt / _MU0
+    # In Heaviside-Lorentz units (mu_0=1), J = curl(B) directly.
+    # The previous division by MU_0 was wrong — B is already in HL units
+    # where the SI factor is absorbed. See HALL_MHD_MLX_DESIGN.md Section 2.
+    return Jr, Jz, Jt
 
 
 def apply_hall_mhd(
@@ -334,6 +336,13 @@ def apply_hall_mhd(
     dBr = -dEt_dz * dt
     dBz = inv_r * drEt_dr * dt
     dBt = (dEr_dz - dEz_dr) * dt
+
+    # NaN guard: zero out Hall update in vacuum cells where ne is near-floor
+    # (inv_ne_e diverges, producing Inf/NaN in E_Hall)
+    finite_mask = mx.isfinite(dBr) & mx.isfinite(dBz) & mx.isfinite(dBt)
+    dBr = mx.where(finite_mask, dBr, 0.0)
+    dBz = mx.where(finite_mask, dBz, 0.0)
+    dBt = mx.where(finite_mask, dBt, 0.0)
 
     # Update B-field in conserved state
     return mx.concatenate([

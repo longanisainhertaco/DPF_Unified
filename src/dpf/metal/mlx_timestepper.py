@@ -311,6 +311,25 @@ def compute_dt_cfl(
         max_speed = max(max_r, max_z)
 
     dt = cfl * dx_min / max_speed
+
+    # Hall whistler CFL: dt_hall = dx^2 * e * min(ne) / (B^2 / (mu_0 * m_i))
+    # Whistler dispersion: omega = k^2 * B / (mu_0 * n_e * e), so
+    # v_whistler = k * B / (mu_0 * n_e * e) grows with k → CFL ~ dx^2.
+    # Only applied when Hall MHD is active (checked by caller).
+    _E_CHARGE = 1.602176634e-19
+    _MU0 = 4.0 * 3.141592653589793 * 1e-7
+    B2 = Br**2 + Bz**2 + Bt**2
+    B2_active = mx.where(active, B2, 0.0)
+    max_B2 = float(mx.max(B2_active))
+    min_ne = float(mx.min(mx.where(active, rho, 1e30)))
+    if max_B2 > 0 and min_ne < 1e29:
+        # In HL units: B_SI = B_HL * sqrt(mu_0)
+        B2_si = max_B2 * _MU0
+        ion_mass = 3.3435e-27  # deuterium
+        ne_min = min_ne / ion_mass
+        dt_hall = 0.5 * dx_min**2 * _E_CHARGE * _MU0 * ne_min / max(B2_si, 1e-30)
+        dt = min(dt, cfl * dt_hall)
+
     return float(dt)
 
 
