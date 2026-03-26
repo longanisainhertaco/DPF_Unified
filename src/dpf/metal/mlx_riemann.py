@@ -79,7 +79,134 @@ def _clamp_reconstructed(UL: mx.array, UR: mx.array) -> tuple[mx.array, mx.array
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# HLLS: Entropy-based Riemann solver (Popovas 2025, A&A 694)
+# HLLS GPU: Pure-MLX entropy-based Riemann solver — zero CPU round-trips
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _hlls_flux_gpu(
+    QL: object,
+    QR: object,
+    gamma: float,
+    dim: int,
+) -> object:
+    """HLLS on GPU via pure MLX ops. No np.asarray, no CPU sync.
+
+    Identical physics to _hlls_flux but runs entirely on Metal GPU.
+    Pressure recovered from entropy tracer (ISR) — no float32 risk.
+    """
+    TINY = 1e-20
+
+    if dim == 0:
+        im_n, im_t1, im_t2 = IMR, IMZ, IMT
+        ib_n, ib_t1, ib_t2 = IBR, IBZ, IBT
+    elif dim == 1:
+        im_n, im_t1, im_t2 = IMZ, IMR, IMT
+        ib_n, ib_t1, ib_t2 = IBZ, IBR, IBT
+    else:
+        im_n, im_t1, im_t2 = IMT, IMR, IMZ
+        ib_n, ib_t1, ib_t2 = IBT, IBR, IBZ
+
+    rho_L = mx.maximum(QL[IDN], RHO_FLOOR)
+    rho_R = mx.maximum(QR[IDN], RHO_FLOOR)
+    inv_rL = 1.0 / rho_L
+    inv_rR = 1.0 / rho_R
+
+    vn_L = QL[im_n] * inv_rL
+    vn_R = QR[im_n] * inv_rR
+
+    # Entropy pressure recovery: p = Srho * rho^(gamma-1). Pure multiplication.
+    gm1 = gamma - 1.0
+    Srho_L = mx.maximum(QL[ISR], P_FLOOR)
+    Srho_R = mx.maximum(QR[ISR], P_FLOOR)
+    p_L = mx.maximum(Srho_L * mx.power(rho_L, gm1), P_FLOOR)
+    p_R = mx.maximum(Srho_R * mx.power(rho_R, gm1), P_FLOOR)
+
+    B2_L = QL[IBR]**2 + QL[IBZ]**2 + QL[IBT]**2
+    B2_R = QR[IBR]**2 + QR[IBZ]**2 + QR[IBT]**2
+    Bn_L = QL[ib_n]
+    Bn_R = QR[ib_n]
+    Bt_sq_L = mx.maximum(B2_L - Bn_L**2, 0.0)
+    Bt_sq_R = mx.maximum(B2_R - Bn_R**2, 0.0)
+
+    # Boris-capped fast magnetosonic wavespeeds
+    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    a_sq_L = mx.minimum(gamma * p_L / rho_L, _C_BORIS_SQ)
+    a_sq_R = mx.minimum(gamma * p_R / rho_R, _C_BORIS_SQ)
+    va_sq_L = B2_L / rho_L
+    va_sq_R = B2_R / rho_R
+    va_sq_L = va_sq_L * _C_BORIS_SQ / (va_sq_L + _C_BORIS_SQ)
+    va_sq_R = va_sq_R * _C_BORIS_SQ / (va_sq_R + _C_BORIS_SQ)
+    vat_sq_L = Bt_sq_L / rho_L
+    vat_sq_R = Bt_sq_R / rho_R
+    vat_sq_L = vat_sq_L * _C_BORIS_SQ / (vat_sq_L + _C_BORIS_SQ)
+    vat_sq_R = vat_sq_R * _C_BORIS_SQ / (vat_sq_R + _C_BORIS_SQ)
+
+    disc_L = mx.maximum((a_sq_L - va_sq_L)**2 + 4.0 * a_sq_L * vat_sq_L, 0.0)
+    disc_R = mx.maximum((a_sq_R - va_sq_R)**2 + 4.0 * a_sq_R * vat_sq_R, 0.0)
+    cf_L = mx.sqrt(mx.maximum(0.5 * (a_sq_L + va_sq_L + mx.sqrt(disc_L)), 0.0))
+    cf_R = mx.sqrt(mx.maximum(0.5 * (a_sq_R + va_sq_R + mx.sqrt(disc_R)), 0.0))
+
+    SL = mx.minimum(vn_L - cf_L, vn_R - cf_R)
+    SR = mx.maximum(vn_L + cf_L, vn_R + cf_R)
+    SR = mx.maximum(SR, SL + TINY)
+
+    # Physical flux F(U) — built via list + concatenate (MLX immutable arrays)
+    def _pflux_mlx(U, rho, inv_r, vn, p):
+        Bt1 = U[ib_t1]
+        Bt2 = U[ib_t2]
+        vt1 = U[im_t1] * inv_r
+        vt2 = U[im_t2] * inv_r
+        Bn = U[ib_n]
+        B2 = Bn**2 + Bt1**2 + Bt2**2
+        pt = p + 0.5 * B2
+        vB = vn * Bn + vt1 * Bt1 + vt2 * Bt2
+        E_tot = p / mx.maximum(gm1, 1e-30) + 0.5 * rho * (vn**2 + vt1**2 + vt2**2) + 0.5 * B2
+
+        # Build flux vector component-by-component
+        F_dn = rho * vn
+        F_sr = U[ISR] * vn
+        F_en = (E_tot + pt) * vn - Bn * vB
+        F_ee = U[IEE] * vn if U.shape[0] > IEE else mx.zeros_like(F_dn)
+
+        slots = [None] * NVAR
+        slots[IDN] = F_dn
+        slots[IMR] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMR else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMR else (rho * vn * vt2 - Bn * Bt2)
+        slots[IMZ] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMZ else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMZ else (rho * vn * vt2 - Bn * Bt2)
+        slots[IMT] = (rho * vn * vn + pt - Bn * Bn) if im_n == IMT else (rho * vn * vt1 - Bn * Bt1) if im_t1 == IMT else (rho * vn * vt2 - Bn * Bt2)
+        slots[IEN] = F_en
+        slots[ISR] = F_sr
+        slots[IBR] = mx.zeros_like(F_dn) if ib_n == IBR else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBR else (vn * Bt2 - vt2 * Bn)
+        slots[IBZ] = mx.zeros_like(F_dn) if ib_n == IBZ else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBZ else (vn * Bt2 - vt2 * Bn)
+        slots[IBT] = mx.zeros_like(F_dn) if ib_n == IBT else (vn * Bt1 - vt1 * Bn) if ib_t1 == IBT else (vn * Bt2 - vt2 * Bn)
+        slots[IEE] = F_ee
+        return mx.stack(slots, axis=0)
+
+    FL = _pflux_mlx(QL, rho_L, inv_rL, vn_L, p_L)
+    FR = _pflux_mlx(QR, rho_R, inv_rR, vn_R, p_R)
+
+    # HLL averaging — no cancellation, safe in float32
+    inv_dS = 1.0 / mx.maximum(SR - SL, TINY)
+    F_hlls = (SR * FL - SL * FR + SL * SR * (QR - QL)) * inv_dS
+
+    # Supersonic selection
+    F_out = mx.where(SL >= 0.0, FL, mx.where(SR <= 0.0, FR, F_hlls))
+
+    # Zero normal B flux
+    F_zero = mx.zeros_like(F_out[0:1])
+    parts = [F_out[i:i+1] if i != ib_n else F_zero for i in range(NVAR)]
+    F_out = mx.concatenate(parts, axis=0)
+
+    # Branchless NaN fallback: always compute LF, select via where
+    S_max = mx.maximum(mx.abs(SL), mx.abs(SR))
+    F_LF = 0.5 * (FL + FR) - 0.5 * S_max * (QR - QL)
+    is_bad = mx.isnan(F_out) | mx.isinf(F_out)
+    F_out = mx.where(is_bad, F_LF, F_out)
+
+    return F_out
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HLLS CPU: Reference implementation (float64, for validation)
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -395,8 +522,8 @@ def compute_fluxes(
     Returns:
         Numerical flux at interfaces, matching U's dimensionality.
     """
-    if riemann not in ("hlld", "hll", "hlls"):
-        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld', 'hll', or 'hlls'.")
+    if riemann not in ("hlld", "hll", "hlls", "hlls_cpu", "hll_cpu"):
+        raise ValueError(f"Unknown Riemann solver: {riemann!r}. Use 'hlld', 'hll', 'hlls', 'hlls_cpu', or 'hll_cpu'.")
 
     QL, QR = reconstruct(U, dim=dim, method=method)
     QL, QR = _clamp_reconstructed(QL, QR)
@@ -410,11 +537,19 @@ def compute_fluxes(
         if dim == 1:
             QL_t = mx.transpose(QL, axes=[0, 2, 1])
             QR_t = mx.transpose(QR, axes=[0, 2, 1])
+            F_t = _hlls_flux_gpu(QL_t, QR_t, gamma=gamma, dim=1)
+            return mx.transpose(F_t, axes=[0, 2, 1])
+        return _hlls_flux_gpu(QL, QR, gamma=gamma, dim=dim)
+
+    if riemann == "hlls_cpu":  # validation fallback
+        if dim == 1:
+            QL_t = mx.transpose(QL, axes=[0, 2, 1])
+            QR_t = mx.transpose(QR, axes=[0, 2, 1])
             F_t = _hlls_flux(QL_t, QR_t, gamma=gamma, dim=1)
             return mx.transpose(F_t, axes=[0, 2, 1])
         return _hlls_flux(QL, QR, gamma=gamma, dim=dim)
 
-    if riemann == "hll":
+    if riemann in ("hll", "hll_cpu"):
         if dim == 1:
             QL_t = mx.transpose(QL, axes=[0, 2, 1])
             QR_t = mx.transpose(QR, axes=[0, 2, 1])
