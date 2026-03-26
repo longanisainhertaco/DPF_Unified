@@ -123,4 +123,5 @@ markers = [
     "athenak: marks tests that require AthenaK binary",
     "athena: marks tests that require Athena++ binary",
     "validation: marks validation tests against experimental data",
+    "xdist_group: pytest-xdist worker group (e.g., gpu for Metal/MLX serialization)",
 ]

@@ -7,6 +7,38 @@ from pathlib import Path
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# Auto-apply xdist_group("gpu") to MLX/Metal test files.
+# When running with `pytest -n auto --dist loadgroup`, all GPU tests
+# serialize on one worker while CPU tests fan out across cores.
+# ---------------------------------------------------------------------------
+
+_GPU_FILE_PREFIXES = ("test_mlx_", "test_metal_")
+# Files that use SimulationEngine — serialize to avoid Numba JIT/global state races
+_ENGINE_FILES = {
+    "test_infrastructure_consolidated.py",
+    "test_snowplow_consolidated.py",
+    "test_mhd_solver_consolidated.py",
+    "test_physics.py",
+    "test_two_temperature.py",
+    "test_preset_smoke.py",
+    "test_verification_consolidated.py",
+    "test_calibration_consolidated.py",
+    "test_circuit_coupler.py",
+}
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Mark MLX/Metal test files for single-worker GPU grouping."""
+    gpu_marker = pytest.mark.xdist_group("gpu")
+    engine_marker = pytest.mark.xdist_group("engine")
+    for item in items:
+        filename = Path(item.fspath).name
+        if filename.startswith(_GPU_FILE_PREFIXES):
+            item.add_marker(gpu_marker)
+        elif filename in _ENGINE_FILES:
+            item.add_marker(engine_marker)
+
 # Ensure project root is on sys.path so tests can import root-level
 # app modules (app_mhd.py, app_engine.py) that aren't part of the dpf package.
 _root = str(Path(__file__).resolve().parent.parent)
