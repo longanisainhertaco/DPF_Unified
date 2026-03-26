@@ -113,6 +113,7 @@ class RLCSolver(CircuitSolverBase):
         crowbar_time: float = 0.0,
         crowbar_resistance: float = 0.0,
         crowbar_inductance: float = 0.0,
+        crowbar_closure_time: float = 0.0,
     ) -> None:
         self.C = C
         self.L0 = L0
@@ -127,6 +128,7 @@ class RLCSolver(CircuitSolverBase):
         self.crowbar_time = crowbar_time
         self.crowbar_resistance = crowbar_resistance
         self.crowbar_inductance = crowbar_inductance
+        self.crowbar_closure_time = crowbar_closure_time  # ramp time [s], 0 = instant
 
         # dL/dt history for 2nd-order central difference
         # Stores (time, L_plasma) tuples; max 3 entries needed
@@ -283,10 +285,18 @@ class RLCSolver(CircuitSolverBase):
         L_total = self.L_ext + Lp
         R_eff = self.R_total + coupling.R_plasma
 
-        # Add crowbar resistance and inductance if already fired
+        # Add crowbar resistance and inductance with realistic closure ramp.
+        # Crowbar impedance ramps from 0 to full value over closure_time.
         if self.state.crowbar_fired:
-            R_eff += self.crowbar_resistance
-            L_total += self.crowbar_inductance
+            t_since_fire = max(self.state.time - self.state.crowbar_fire_time, 0.0)
+            closure_time = getattr(self, "crowbar_closure_time", 0.0)
+            if closure_time > 0 and t_since_fire < closure_time:
+                # Linear ramp during closure (realistic spark gap model)
+                ramp = t_since_fire / closure_time
+            else:
+                ramp = 1.0
+            R_eff += self.crowbar_resistance * ramp
+            L_total += self.crowbar_inductance * ramp
 
         if self.state.crowbar_fired:
             # Post-crowbar: capacitor frozen, L-R decay
