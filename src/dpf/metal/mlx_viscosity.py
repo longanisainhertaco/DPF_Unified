@@ -94,7 +94,12 @@ def braginskii_viscosity_coefficients(
     # For strongly magnetized plasma (x_i >> 1): eta_1 << eta_0
     eta_1 = eta_0 / (1.0 + x_i * x_i)
 
-    return eta_0, eta_1
+    # Gyroviscosity: eta_3 = n_i * k_B * T_i / (2 * omega_ci)
+    # Non-dissipative FLR effect — stabilizes m=0 sausage instability.
+    # At DPF pinch (n_i~1e25, T_i~1keV, B~50T): eta_3 ~ 0.1 Pa*s
+    eta_3 = ni_safe * _KB * Ti_safe / (2.0 * mx.maximum(omega_ci, 1e-30))
+
+    return eta_0, eta_1, eta_3
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +197,10 @@ def _viscous_substep(
     Ti = p * ion_mass / (2.0 * rho * _KB)
 
     B_mag = mx.sqrt(mx.maximum(B2, 0.0))
-    eta_0, eta_1 = braginskii_viscosity_coefficients(rho, Ti, B_mag, ion_mass)
+    eta_0, eta_1, _eta_3 = braginskii_viscosity_coefficients(rho, Ti, B_mag, ion_mass)
+    # eta_3 (gyroviscosity) computed but not yet applied to stress tensor.
+    # Full gyroviscous stress requires antisymmetric W^(3) decomposition
+    # which is a dedicated implementation task (Gap 26).
 
     S = compute_strain_rate_cylindrical(vr, vz, vt, dr, dz, inv_r)
     S_trace_3 = S["S_trace"] / 3.0
