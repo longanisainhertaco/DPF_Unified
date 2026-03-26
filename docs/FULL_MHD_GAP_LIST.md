@@ -170,19 +170,66 @@ move through: IDENTIFIED → RESEARCHED → SPEC'D → IMPLEMENTED → VALIDATED
 - 13 equations in our extracted data (dpf-papers/)
 - Would require fundamental solver changes (B_poloidal as evolved field)
 
-### 16. Velocity Shear / CIV Breakdown
-- Cross-discipline finding: critical ionization velocity breakdown at sheath
-- Not implemented in any DPF code we know of
-- Could explain anomalous resistivity at sheath front
+### 16. CIV Anomalous Resistivity
+- **Status**: IMPLEMENTED (2026-03-25, civ_anomalous_resistivity + CIV_VCRIT dict)
+- CIV active throughout PF-1000 axial rundown (v=100 km/s > v_crit=38.5 km/s)
+- Only anomalous mechanism during axial phase. eta_CIV ~ 10x Spitzer.
+- Not yet wired into engine step. References: Alfven 1954, Brenning 1992.
 
 ### 17. Differentiable MHD for Gradient Calibration
-- JAX autodiff through MHD solver: 10x fewer calibration evals
-- astronomix (2025) demonstrates this for stellar wind MHD
-- MLX has mx.grad but not tested through our solver chain
-- Would replace Optuna entirely for fc/fm calibration
+- **Status**: RESEARCHED (agent running 2026-03-25)
+- Research pending on MLX mx.grad feasibility, finite-difference alternative
 
 ---
 
-*Last updated: 2026-03-25 21:15 by Cortana (overnight sprint)*
-*Session: 15 commits, Tier 1+2 complete, 3 research agents running for Tier 3-4*
+## Gaps 18-31: Identified by Production Code Audit (2026-03-25)
+
+### 18. Tabulated / SESAME EOS (P2, ~300 LOC)
+- Multi-material EOS for solid-density electrode + gas-to-plasma transition
+
+### 19. Multi-species / Impurity Tracking (P1, ~800 LOC)
+- Advected mass fractions for D, Cu, insulator. Essential for ablation chain.
+
+### 20. Plasma-vacuum Interface Tracking (P2, ~600 LOC)
+- Face-flux or level-set to replace floor-density vacuum hack.
+
+### 21. Gas Breakdown / Inverse Pinch Phase (P3, ~400 LOC)
+- Townsend avalanche model for 100-1000 ns breakdown phase.
+
+### 22. Radiation Momentum Coupling (P2, ~200 LOC)
+- P_rad = aT^4/3 in momentum equation. Matters for >1 MA devices.
+
+### 23. Multi-group Opacity (P2, ~500 LOC)
+- 4-8 group FLD for spectral radiation. Reabsorption reduces net cooling 2-10x.
+
+### 24. Synthetic Diagnostics Suite (P1, ~600 LOC)
+- X-ray pinhole imaging, neutron ToF spectrum, Schlieren, B-dot probes.
+
+### 25. Hybrid PIC-MHD for Beam Physics (P0, ~1200 LOC)
+- CRITICAL: fluid MHD predicts zero neutrons (Schmidt PRL 2012).
+- experimental/pic/hybrid.py (1142 LOC) exists but unvalidated.
+
+### 26. Finite Larmor Radius Corrections (P2, ~300 LOC)
+- Gyroviscous stress from Braginskii. Stabilizes m=0 at pinch.
+
+### 27. Implicit MHD for Low-beta Regions (P3, ~800 LOC)
+- IMEX for vacuum Alfven speed bottleneck.
+
+### 28. Ettingshausen Effect (P3, ~150 LOC)
+- Heat flux from J×B. Add to existing Nernst module.
+
+### 29. Runaway Electron Generation (P3, ~400 LOC)
+- Dreicer threshold + hard X-ray emission estimate.
+
+### 30. ALE Mesh Motion (P3, ~2000 LOC)
+- Major architectural change. AMR is better investment for Eulerian.
+
+### 31. Crowbar Switch Model (P2, ~150 LOC)
+- Time-dependent crowbar impedance with closure time.
+
+---
+
+*Last updated: 2026-03-25 22:25 by Cortana (overnight sprint)*
+*Session: 22 commits, ALL scaffold tiers + 8 research passes complete*
+*Gap list: 31 items total, 9 implemented/resolved, 8 researched, 14 identified*
 *Next research refresh: before each implementation sprint*
