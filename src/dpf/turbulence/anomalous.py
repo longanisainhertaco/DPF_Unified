@@ -400,10 +400,20 @@ def anomalous_resistivity_scalar(
         v_threshold = factor * v_ti
     elif threshold_model == "buneman_classic":
         v_threshold = (k_B * max(Te_val, 0.0) / m_e) ** 0.5
+    elif threshold_model == "drift_velocity":
+        # Bychenkov et al. 1988: eta_dv = C * m_e * omega_pi / (ne*e^2) * (v_d/v_ti)^2
+        # with saturation at v_d = 0.5 * v_ti. Quadratic scaling, not step function.
+        if ne_val <= 0:
+            return 0.0
+        v_d = abs(J_mag) / max(ne_val * e, 1e-300)
+        v_ti_safe = max(v_ti, 1.0)
+        ratio = min(v_d / v_ti_safe, 0.5)  # saturation cap
+        omega_pi = (ne_val * e**2 / (epsilon_0 * mi)) ** 0.5
+        return alpha * m_e * omega_pi / max(ne_val * e**2, 1e-300) * ratio**2
     else:
         raise ValueError(
             f"Unknown threshold_model '{threshold_model}'. "
-            "Options: 'ion_acoustic', 'lhdi', 'buneman_classic'."
+            "Options: 'ion_acoustic', 'lhdi', 'buneman_classic', 'drift_velocity'."
         )
 
     return _anomalous_resistivity_scalar_core(J_mag, ne_val, v_threshold, alpha)

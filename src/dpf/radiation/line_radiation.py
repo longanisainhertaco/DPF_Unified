@@ -672,6 +672,36 @@ def _apply_line_radiation_kernel(
     return Te_new, P_rad
 
 
+def optical_escape_factor(
+    ne: float,
+    Z_imp: float = 29.0,
+    L_m: float = 1e-3,
+    n_imp_frac: float = 0.01,
+) -> float:
+    """Holstein escape factor for line radiation optical thickness.
+
+    At typical DPF pinch (n_e~1e24, Cu, r~1mm): tau~0.01, f_esc~1.0.
+
+    References:
+        Holstein, Phys. Rev. 72:1212 (1947).
+        Mihalas, Stellar Atmospheres (1978), Ch. 11.
+
+    Args:
+        ne: Electron density [m^-3].
+        Z_imp: Impurity atomic number.
+        L_m: Characteristic path length [m].
+        n_imp_frac: Impurity fraction.
+
+    Returns:
+        Escape factor in [0, 1].
+    """
+    sigma_eff = 1e-22 * (Z_imp / 29.0) ** 1.5
+    tau = n_imp_frac * ne * sigma_eff * L_m
+    if tau < 0.01:
+        return 1.0
+    return 1.0 / (1.0 + 0.84 * tau**0.5)
+
+
 def apply_line_radiation_losses(
     Te: np.ndarray,
     ne: np.ndarray,
@@ -680,6 +710,7 @@ def apply_line_radiation_losses(
     n_imp_frac: float = 0.0,
     Z_imp: float = 29.0,
     Te_floor: float = 1.0,
+    escape_factor: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Apply line + recombination radiation cooling (implicit).
 

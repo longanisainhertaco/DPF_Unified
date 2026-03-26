@@ -371,6 +371,78 @@ def mrti_saturated_growth_rate(
     return 2 * A * g / (V_A * (np.sqrt(a1) + np.sqrt(a2)))
 
 
+def bell_plesset_amplification(
+    R0: float,
+    R: float,
+    alpha: float = 0.7,
+) -> float:
+    """Bell-Plesset convergence amplification factor.
+
+    For a cylindrical shell converging from R0 to R, perturbation
+    amplitudes grow as (R0/R)^alpha due to geometric focusing.
+
+    alpha ~ 0.5 for high mode numbers (planar limit).
+    alpha ~ 1.0 for mode n=1 (full geometric amplification).
+    alpha ~ 0.7 is the intermediate value for multi-mode DPF turbulence.
+
+    References:
+        Bell, Los Alamos Report LA-1321 (1951).
+        Plesset, J. Appl. Phys. 25:96 (1954).
+        Mikaelian, Phys. Rev. A 42:3400 (1990).
+
+    Args:
+        R0: Initial shell radius [m].
+        R: Current shell radius [m].
+        alpha: BP exponent (0.5 = planar limit, 1.0 = geometric).
+
+    Returns:
+        Amplification factor CR^alpha.
+    """
+    CR = R0 / max(R, 1e-10)
+    return max(CR, 1.0) ** alpha
+
+
+def bell_plesset_growth_rate(
+    g: float,
+    k: float,
+    A: float,
+    R0: float,
+    R: float,
+    R_dot: float = 0.0,
+    B: float = 0.0,
+    theta: float = 0.0,
+    rho_h: float = 1.0,
+    rho_l: float = 0.0,
+    alpha: float = 0.7,
+) -> float:
+    """Bell-Plesset corrected MRT growth rate for cylindrical implosion.
+
+    Combines the planar MRT growth rate with the convergence amplification
+    factor and a velocity correction from Mikaelian (1990).
+
+    gamma_BP = gamma_planar * (R0/R)^alpha
+
+    Args:
+        g: Deceleration [m/s^2], positive inward.
+        k: Axial wavenumber [1/m].
+        A: Atwood number.
+        R0: Initial radius [m].
+        R: Current radius [m].
+        R_dot: Radial velocity [m/s], negative for implosion.
+        B: Magnetic field [T].
+        theta: Angle between k and B [rad].
+        rho_h: Heavy fluid density [kg/m^3].
+        rho_l: Light fluid density [kg/m^3].
+        alpha: BP exponent.
+
+    Returns:
+        Bell-Plesset corrected growth rate [1/s].
+    """
+    gamma_planar = mrti_growth_rate(g, k, A, B, theta, rho_h, rho_l)
+    bp_factor = bell_plesset_amplification(R0, R, alpha)
+    return gamma_planar * bp_factor
+
+
 @dataclass
 class MRTIDiagnostics:
     """Magneto-RT diagnostics for a DPF pinch configuration.
