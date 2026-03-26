@@ -123,5 +123,8 @@ markers = [
     "athenak: marks tests that require AthenaK binary",
     "athena: marks tests that require Athena++ binary",
     "validation: marks validation tests against experimental data",
+    "tolerance_unit: machine-precision tests (rtol=1e-10)",
+    "tolerance_integration: solver-level fidelity tests (rtol=0.01)",
+    "tolerance_acceptance: experimental validation tests (device-dependent)",
     "xdist_group: pytest-xdist worker group (e.g., gpu for Metal/MLX serialization)",
 ]

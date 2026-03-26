@@ -47,6 +47,85 @@ if _root not in sys.path:
 
 from dpf.config import SimulationConfig  # noqa: E402
 
+# ---------------------------------------------------------------------------
+# Tolerance Tiers — formalized accuracy expectations by test category
+# ---------------------------------------------------------------------------
+# Tier 1 (UNIT): Machine-precision correctness — analytical solutions,
+#   round-trip conversions, identity operations. No solver involved.
+# Tier 2 (INTEGRATION): Solver-level fidelity — shock tests, conservation
+#   laws, cross-backend parity. Depends on reconstruction + Riemann solver.
+# Tier 3 (ACCEPTANCE): Experimental validation — I_peak, t_peak, NRMSE
+#   against published device data. Depends on full physics chain.
+# ---------------------------------------------------------------------------
+
+TOLERANCE_TIERS = {
+    "unit": {"rtol": 1e-10, "atol": 1e-15},
+    "unit_f32": {"rtol": 1e-5, "atol": 1e-7},
+    "integration": {"rtol": 0.01, "atol": 1e-8},
+    "integration_loose": {"rtol": 0.05, "atol": 1e-6},
+    "acceptance": {"rtol": 0.15, "atol": 0.0},
+    "acceptance_loose": {"rtol": 0.50, "atol": 0.0},
+}
+
+DEVICE_TOLERANCES = {
+    "PF-1000": {"I_peak": 0.05, "t_peak": 0.10, "nrmse": 0.20, "energy": 0.05, "Yn": 1.0},
+    "PF-1000-Gribkov": {"I_peak": 0.05, "t_peak": 0.03, "nrmse": 0.30, "energy": 0.05, "Yn": 1.0},
+    "PF-1000-16kV": {"I_peak": 0.10, "t_peak": 0.10, "nrmse": 0.20, "energy": 0.05, "Yn": 1.0},
+    "PF-1000-20kV": {"I_peak": 0.15, "t_peak": 0.15, "nrmse": 0.25, "energy": 0.05, "Yn": 1.0},
+    "NX2": {"I_peak": 0.35, "t_peak": 0.50, "nrmse": 0.40, "energy": 0.05, "Yn": 1.0},
+    "UNU-ICTP": {"I_peak": 0.10, "t_peak": 0.10, "nrmse": 0.15, "energy": 0.05, "Yn": 1.0},
+    "POSEIDON": {"I_peak": 0.10, "t_peak": 0.40, "nrmse": 0.30, "energy": 0.05, "Yn": 1.0},
+    "POSEIDON-60kV": {"I_peak": 0.05, "t_peak": 0.05, "nrmse": 0.15, "energy": 0.05, "Yn": 1.0},
+    "MJOLNIR": {"I_peak": 0.10, "t_peak": 0.10, "nrmse": 0.30, "energy": 0.05, "Yn": 1.0},
+    "FAETON-I": {"I_peak": 0.10, "t_peak": 0.10, "nrmse": 0.10, "energy": 0.05, "Yn": 1.0},
+}
+
+# CI gate thresholds (used by test_validation_ci.py and CI workflow)
+CI_THRESHOLDS = {
+    "nrmse_warn": 0.20,
+    "nrmse_fail": 0.30,
+    "ipeak_fail": 0.15,
+    "min_test_count": 4000,
+}
+
+
+@pytest.fixture(params=["unit", "unit_f32", "integration", "integration_loose",
+                         "acceptance", "acceptance_loose"])
+def tolerance_tier(request):
+    """Parametrized fixture returning tolerance dict for the requested tier."""
+    return TOLERANCE_TIERS[request.param]
+
+
+@pytest.fixture
+def unit_tol():
+    """Machine-precision tolerances (float64)."""
+    return TOLERANCE_TIERS["unit"]
+
+
+@pytest.fixture
+def unit_tol_f32():
+    """Machine-precision tolerances (float32)."""
+    return TOLERANCE_TIERS["unit_f32"]
+
+
+@pytest.fixture
+def integration_tol():
+    """Solver-level tolerances (shock tests, conservation)."""
+    return TOLERANCE_TIERS["integration"]
+
+
+@pytest.fixture
+def acceptance_tol():
+    """Experimental validation tolerances (device-dependent)."""
+    return TOLERANCE_TIERS["acceptance"]
+
+
+def device_tol(device_name: str) -> dict:
+    """Get device-specific tolerances. Falls back to acceptance tier."""
+    return DEVICE_TOLERANCES.get(device_name, {
+        "I_peak": 0.15, "t_peak": 0.15, "nrmse": 0.30, "energy": 0.05, "Yn": 1.0,
+    })
+
 
 @pytest.fixture
 def grid_shape():

@@ -15,6 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from conftest import CI_THRESHOLDS, device_tol
 from dpf.validation.engine_validation import (
     compare_engine_vs_experiment,
     run_rlc_snowplow_pf1000,
@@ -23,12 +24,11 @@ from dpf.validation.experimental_comparison import nrmse_peak
 from dpf.validation.experimental_devices import DEVICES
 
 # ---------------------------------------------------------------------------
-# Thresholds
+# Thresholds (centralized in conftest.py)
 # ---------------------------------------------------------------------------
-# Circuit-only (RLC+snowplow) thresholds — structural NRMSE floor is ~0.13
-NRMSE_WARN = 0.20   # yellow flag
-NRMSE_FAIL = 0.30   # hard fail
-IPEAK_ERR_FAIL = 0.15  # 15% relative error on peak current
+NRMSE_WARN = CI_THRESHOLDS["nrmse_warn"]
+NRMSE_FAIL = CI_THRESHOLDS["nrmse_fail"]
+IPEAK_ERR_FAIL = CI_THRESHOLDS["ipeak_fail"]
 
 # Devices with digitized waveforms (name -> expected approx I_peak for sanity)
 WAVEFORM_DEVICES = {
@@ -107,32 +107,35 @@ class TestPF1000Validation:
     """PF-1000 circuit validation against Scholz et al. 2006."""
 
     def test_pf1000_peak_current(self):
-        """Peak current within 5% of 1.87 MA."""
+        """Peak current within device tolerance of 1.87 MA."""
+        tol = device_tol("PF-1000")
         t, I, summary = run_rlc_snowplow_pf1000()
         I_peak = np.max(np.abs(I))
         error = abs(I_peak - 1.87e6) / 1.87e6
-        assert error < 0.05, f"I_peak={I_peak/1e6:.3f} MA, error={error:.1%}"
+        assert error < tol["I_peak"], f"I_peak={I_peak/1e6:.3f} MA, error={error:.1%}"
 
     def test_pf1000_waveform_nrmse(self):
-        """Waveform NRMSE < 0.20 against Scholz 26-point data."""
+        """Waveform NRMSE below device threshold against Scholz 26-point data."""
+        tol = device_tol("PF-1000")
         result = compare_engine_vs_experiment(*run_rlc_snowplow_pf1000()[:2])
-        assert result.waveform_nrmse < NRMSE_WARN, (
-            f"NRMSE={result.waveform_nrmse:.3f} exceeds warn threshold {NRMSE_WARN}"
+        assert result.waveform_nrmse < tol["nrmse"], (
+            f"NRMSE={result.waveform_nrmse:.3f} exceeds device threshold {tol['nrmse']}"
         )
 
     def test_pf1000_gribkov_nrmse(self):
-        """Waveform NRMSE < 0.30 against Gribkov 94-point data.
+        """Waveform NRMSE below Gribkov device threshold (94-point data).
 
         Higher threshold than Scholz because Gribkov has 94 points covering
         the full discharge including post-peak where the snowplow model
         diverges. Scholz (26 pts) stops earlier, hiding the post-peak gap.
         """
+        tol = device_tol("PF-1000-Gribkov")
         result = compare_engine_vs_experiment(
             *run_rlc_snowplow_pf1000()[:2],
             device_name="PF-1000-Gribkov",
         )
-        assert result.waveform_nrmse < NRMSE_FAIL, (
-            f"NRMSE={result.waveform_nrmse:.3f} vs Gribkov exceeds {NRMSE_FAIL}"
+        assert result.waveform_nrmse < tol["nrmse"], (
+            f"NRMSE={result.waveform_nrmse:.3f} vs Gribkov exceeds {tol['nrmse']}"
         )
 
     def test_pf1000_energy_conservation(self):

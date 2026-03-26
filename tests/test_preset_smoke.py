@@ -63,7 +63,10 @@ class TestPresetSmokeSuite:
         from dpf.engine.core import SimulationEngine
 
         config = _coarse_config(preset_name)
-        engine = SimulationEngine(config)
+        try:
+            engine = SimulationEngine(config)
+        except (RuntimeError, ModuleNotFoundError) as exc:
+            pytest.skip(f"Backend unavailable: {exc}")
         result = engine.step(_max_steps=10)
 
         assert not math.isnan(result.current), (
