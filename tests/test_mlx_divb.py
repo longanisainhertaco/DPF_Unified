@@ -140,11 +140,13 @@ class TestDednerSolverIntegration:
         )
         assert s._enable_dedner is True
 
-    def test_dedner_disabled_by_default_cylindrical_ct(self):
+    def test_dedner_enabled_for_cylindrical_with_ct(self):
+        """Dedner auto-enabled for cylindrical even with CT — cell-centered
+        CT is approximate, Dedner provides additional div(B) damping."""
         s = MLXMHDSolver(
             grid_shape=(8, 1, 8), dx=0.1, coordinates="cylindrical", use_ct=True,
         )
-        assert s._enable_dedner is False
+        assert s._enable_dedner is True
 
     def test_uniform_preserved_with_dedner(self):
         s = MLXMHDSolver(

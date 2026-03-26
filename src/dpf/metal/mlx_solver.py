@@ -159,10 +159,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._use_dual_energy: bool = use_dual_energy or (coordinates == "cylindrical")
         self._use_ct: bool = bool(use_ct)
 
-        # Dedner GLM div(B) cleaning: auto-enable for Cartesian when CT is off
+        # Dedner GLM div(B) cleaning: auto-enable when CT is off, or always
+        # for cylindrical (cell-centered CT is approximate, not truly div-free)
         self._enable_dedner: bool = bool(kwargs.get(
             "enable_dedner",
-            coordinates == "cartesian" or not use_ct,
+            coordinates == "cartesian" or coordinates == "cylindrical" or not use_ct,
         ))
         self._enable_powell: bool = bool(kwargs.get("enable_powell", False))
 
