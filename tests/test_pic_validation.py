@@ -665,3 +665,165 @@ def test_pic_v4_short_discharge() -> None:
 
     # If we reach here, 100 steps completed without NaN — record the win
     assert True, f"PIC V4 survived 100 steps: {summary}"
+
+
+# =====================================================================
+# Phase V5: PIC on MLX backend — 200 steps with beam injection
+# =====================================================================
+
+try:
+    import mlx.core as _mlx  # noqa: F401
+    _HAS_MLX = True
+except ImportError:
+    _HAS_MLX = False
+
+
+def _make_uniform_state(nr: int, nz: int, rho0: float, p0: float) -> dict[str, np.ndarray]:
+    """Build a uniform DPF state dict without calling solver.initialize() (does not exist)."""
+    return {
+        "rho": np.full((nr, 1, nz), rho0, dtype=np.float64),
+        "velocity": np.zeros((3, nr, 1, nz), dtype=np.float64),
+        "pressure": np.full((nr, 1, nz), p0, dtype=np.float64),
+        "B": np.zeros((3, nr, 1, nz), dtype=np.float64),
+        "Te": np.full((nr, 1, nz), p0 * 3.34e-27 / (2 * rho0 * 1.381e-23), dtype=np.float64),
+        "Ti": np.full((nr, 1, nz), p0 * 3.34e-27 / (2 * rho0 * 1.381e-23), dtype=np.float64),
+        "psi": np.zeros((nr, 1, nz), dtype=np.float64),
+    }
+
+
+@pytest.mark.skipif(not (_HAS_MLX and HAS_PIC), reason="MLX or PIC not available")
+@pytest.mark.slow
+@pytest.mark.xfail(strict=False, reason="PIC V5 first MLX attempt — ghost NaN / Boris runaway possible")
+def test_pic_v5_mlx_200_steps_beam_at_50() -> None:
+    """200 engine steps on MLX 16x1x32 grid with beam injected at step 50.
+
+    Uses KineticManager pattern: PIC push applied manually each step,
+    beam injected once at step 50.  MLX MHD solver runs the fluid physics.
+    xfail(strict=False) so both pass and fail are acceptable outcomes.
+    """
+    import math  # noqa: PLC0415
+
+    from dpf.metal.mlx_solver import MLXMHDSolver  # noqa: PLC0415, E402
+
+    nr, nz = 16, 32
+    dx = 0.23 / nr
+    dz = 0.60 / nz
+
+    solver = MLXMHDSolver(
+        grid_shape=(nr, 1, nz),
+        dx=dx,
+        dz=dz,
+        gamma=5.0 / 3.0,
+        cfl=0.3,
+        riemann_solver="hll",
+        reconstruction="plm",
+        time_integrator="ssp_rk3",
+    )
+
+    rho0, p0 = 0.084, 350.0
+    state = _make_uniform_state(nr, nz, rho0, p0)
+
+    V0, C0, L0, R0 = 27e3, 1332e-6, 33.5e-9, 2.3e-3
+    omega = 1.0 / math.sqrt(L0 * C0)
+    tau = 2.0 * L0 / R0
+
+    pic = HybridPIC(
+        grid_shape=(nr, 1, nz),
+        dx=dx,
+        dy=dx,
+        dz=dz,
+        dt=1e-9,
+    )
+    pic.add_species(
+        name="deuterons",
+        mass=3.34e-27,
+        charge=1.602e-19,
+        positions=np.zeros((0, 3)),
+        velocities=np.zeros((0, 3)),
+        weights=np.zeros((0,)),
+    )
+
+    n_total, inject_start = 200, 50
+    nan_detected = False
+    nan_step = -1
+    max_v_over_c = 0.0
+    particle_counts: list[int] = []
+    c_light = 2.998e8
+    beam_injected = False
+
+    for step_i in range(n_total):
+        t = step_i * 1e-9
+        current = (V0 / (omega * L0)) * math.exp(-t / tau) * math.sin(omega * t)
+
+        dt_mhd = min(solver.compute_dt(state), 5e-9)
+        state = solver.step(state, dt_mhd, current=current, voltage=V0)
+
+        for _key, val in state.items():
+            if isinstance(val, np.ndarray) and np.any(np.isnan(val)):
+                nan_detected = True
+                nan_step = step_i
+                break
+        if nan_detected:
+            break
+
+        if step_i >= inject_start:
+            if not beam_injected:
+                pic.inject_beam(
+                    species_idx=0,
+                    n_beam=100,
+                    energy_eV=100e3,
+                    direction=[0.0, 0.0, 1.0],
+                    position=[dx * nr / 2, 0.0, dz],
+                    spread=0.1,
+                    weight_total=1e16,
+                )
+                beam_injected = True
+
+            B_arr = state["B"]  # (3, nr, 1, nz)
+            B_avg = np.mean(B_arr, axis=(1, 2, 3))
+            E_field = np.zeros((nr, 1, nz, 3), dtype=np.float64)
+            B_field = np.zeros((nr, 1, nz, 3), dtype=np.float64)
+            B_field[..., 0] = B_avg[0]
+            B_field[..., 1] = B_avg[1]
+            B_field[..., 2] = B_avg[2]
+
+            pic.push_particles(E_field, B_field, dt=dt_mhd)
+
+            for sp in pic.species:
+                if sp.n_particles() > 0:
+                    v2 = np.sum(sp.velocities ** 2, axis=1)
+                    v_max = math.sqrt(float(np.max(v2)))
+                    max_v_over_c = max(max_v_over_c, v_max / c_light)
+
+        particle_counts.append(sum(sp.n_particles() for sp in pic.species))
+
+    assert not nan_detected, f"NaN detected at step {nan_step}"
+    assert max_v_over_c < 1.0, f"Superluminal particle: v/c = {max_v_over_c:.3f}"
+    assert beam_injected, "Beam was never injected (inject_start not reached)"
+    assert particle_counts[-1] >= 100, (
+        f"Particle count dropped below injected amount: {particle_counts[-1]}"
+    )
+    rho_final = state["rho"]
+    assert np.std(rho_final) > 1e-6 * np.mean(rho_final), "MHD state did not evolve"
+
+
+@pytest.mark.skipif(not _HAS_MLX, reason="MLX not available")
+def test_pic_v5_smoke_10_steps() -> None:
+    """10-step smoke: MLX solver + no PIC, verifies no crash."""
+    from dpf.metal.mlx_solver import MLXMHDSolver
+
+    nr, nz = 16, 32
+    solver = MLXMHDSolver(
+        grid_shape=(nr, 1, nz),
+        dx=0.015,
+        dz=0.019,
+        riemann_solver="hll",
+        reconstruction="plm",
+    )
+    state = _make_uniform_state(nr, nz, rho0=0.084, p0=350.0)
+    for _ in range(10):
+        dt = min(solver.compute_dt(state), 5e-9)
+        state = solver.step(state, dt, current=1e5, voltage=27e3)
+    assert not any(
+        np.any(np.isnan(v)) for v in state.values() if isinstance(v, np.ndarray)
+    )

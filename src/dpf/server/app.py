@@ -26,6 +26,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from dpf.config import SimulationConfig
 from dpf.presets import get_preset, list_presets
@@ -211,6 +212,77 @@ async def validate_config(config: dict[str, Any]) -> ConfigValidationResponse:
 @app.get("/api/presets", response_model=list[PresetInfo])
 async def get_presets() -> list[PresetInfo]:
     return [PresetInfo(**p) for p in list_presets()]
+
+
+# ── Thomson Scattering Diagnostic ────────────────────────────────
+
+
+class ThomsonRequest(BaseModel):
+    rho: list[float]
+    Te_eV: list[float]
+    Ti_eV: list[float] | None = None
+    v_bulk: list[float] | None = None
+    laser_wavelength: float = 1064e-9
+    scattering_angle: float = 1.5707963267948966  # pi/2
+    chord_positions: list[float] | None = None
+    n_wavelength_points: int = 256
+
+
+class ThomsonResponse(BaseModel):
+    wavelength_nm: list[float]
+    spectra: list[list[float]]  # shape (N_chords, N_wavelength)
+    chord_positions_m: list[float]
+    laser_wavelength_nm: float
+    scattering_angle_rad: float
+
+
+@app.post("/api/thomson", response_model=ThomsonResponse)
+async def thomson_diagnostic(req: ThomsonRequest) -> ThomsonResponse:
+    """Compute synthetic Thomson scattering spectra from simulation state.
+
+    Accepts plasma parameters along a 1-D chord and returns the scattered
+    power spectrum at each chord position using the full Salpeter form factor.
+    """
+    try:
+        import numpy as np  # noqa: I001, PLC0415
+        from dpf.diagnostics.thomson_scattering import thomson_spectrum  # noqa: I001, PLC0415
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail=f"Thomson module unavailable: {exc}") from exc
+
+    ne_arr = np.array(req.rho, dtype=np.float64)
+    Te_arr = np.array(req.Te_eV, dtype=np.float64)
+    Ti_arr = np.array(req.Ti_eV, dtype=np.float64) if req.Ti_eV else Te_arr.copy()
+    v_arr = np.array(req.v_bulk, dtype=np.float64) if req.v_bulk else np.zeros_like(ne_arr)
+
+    if not (len(ne_arr) == len(Te_arr) == len(Ti_arr) == len(v_arr)):
+        raise HTTPException(
+            status_code=422,
+            detail="rho, Te_eV, Ti_eV, and v_bulk must all have the same length",
+        )
+
+    lambda0 = req.laser_wavelength
+    delta_max = 50e-9  # +/- 50 nm window around laser wavelength
+    wl_grid = np.linspace(lambda0 - delta_max, lambda0 + delta_max, req.n_wavelength_points)
+
+    spectra = thomson_spectrum(
+        ne=ne_arr,
+        Te_eV=Te_arr,
+        v_bulk=v_arr,
+        wavelength_grid=wl_grid,
+        Ti_eV=Ti_arr,
+        scattering_angle=req.scattering_angle,
+        laser_wavelength=lambda0,
+    )
+
+    chord_positions = req.chord_positions if req.chord_positions else list(range(len(ne_arr)))
+
+    return ThomsonResponse(
+        wavelength_nm=(wl_grid * 1e9).tolist(),
+        spectra=spectra.tolist(),
+        chord_positions_m=chord_positions,
+        laser_wavelength_nm=lambda0 * 1e9,
+        scattering_angle_rad=req.scattering_angle,
+    )
 
 
 # ── WebSocket ────────────────────────────────────────────────────
