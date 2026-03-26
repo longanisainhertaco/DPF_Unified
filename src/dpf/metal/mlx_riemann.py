@@ -196,12 +196,41 @@ def _hll_flux(
     return mx.array(F_out.astype(np.float32))
 
 
+def _hlld_flux_cpu64(
+    QL: mx.array,
+    QR: mx.array,
+    gamma: float,
+    dim: int,
+) -> mx.array:
+    """HLLD Riemann flux in float64 on CPU via NumPy reference.
+
+    Avoids float32 cancellation in HLLD star-state D_L/D_R denominators
+    and pressure recovery at extreme electrode B_theta. ~2.5x slower
+    than Metal GPU but numerically exact.
+    """
+    from dpf.metal.mlx_kernels import hlld_flux_numpy
+
+    QL_np = np.asarray(QL)
+    QR_np = np.asarray(QR)
+
+    if dim == 1:
+        QL_np = np.transpose(QL_np, axes=[0, 2, 1])
+        QR_np = np.transpose(QR_np, axes=[0, 2, 1])
+        F_np = hlld_flux_numpy(QL_np, QR_np, gamma, dim=1)
+        F_np = np.transpose(F_np, axes=[0, 2, 1])
+    else:
+        F_np = hlld_flux_numpy(QL_np, QR_np, gamma, dim=dim)
+
+    return mx.array(np.clip(F_np, -3.4e38, 3.4e38).astype(np.float32))
+
+
 def compute_fluxes(
     U: object,
     gamma: float,
     dim: int,
     method: str = "weno5z",
     riemann: str = "hlld",
+    precision: str = "float32",
 ) -> object:
     """Reconstruct + Riemann solve for one dimension.
 
@@ -211,6 +240,9 @@ def compute_fluxes(
         dim: 0=x/r, 1=z (cyl) or y (cart), 2=z (cart only).
         method: "weno5z" or "plm".
         riemann: "hlld" or "hll".
+        precision: "float32" (GPU Metal) or "float64" (CPU NumPy).
+            float64 avoids cancellation in HLLD star-states at extreme
+            electrode B_theta. ~2.5x slower but numerically exact.
 
     Returns:
         Numerical flux at interfaces, matching U's dimensionality.
@@ -234,7 +266,11 @@ def compute_fluxes(
             return mx.transpose(F_t, axes=[0, 2, 1])
         return _hll_flux(QL, QR, gamma=gamma, dim=dim)
 
-    # HLLD expects (NVAR, n_ifaces, n_transverse)
+    # HLLD solver — float64 option uses CPU NumPy for numerical stability
+    if precision == "float64":
+        return _hlld_flux_cpu64(QL, QR, gamma, dim)
+
+    # HLLD float32 on Metal GPU
     if dim == 1:
         QL_t = mx.transpose(QL, axes=[0, 2, 1])
         QR_t = mx.transpose(QR, axes=[0, 2, 1])
@@ -312,6 +348,7 @@ def mhd_rhs(
     dz: float = 1.0,
     method: str = "weno5z",
     riemann: str = "hlld",
+    precision: str = "float32",
 ) -> mx.array:
     """Full MHD right-hand side: dU/dt = -div(F) [+ S_geom for cylindrical].
 
@@ -326,6 +363,7 @@ def mhd_rhs(
         dz: Cell spacing [m]. If 1.0, grid.dz is used when available.
         method: Reconstruction method ("weno5z" or "plm").
         riemann: Riemann solver ("hlld" or "hll").
+        precision: "float32" or "float64" for Riemann solver.
 
     Returns:
         dU_dt: Time derivative, same shape as U. Boundary cells are zero.
@@ -333,8 +371,8 @@ def mhd_rhs(
     is_cartesian = grid.r_cell is None
 
     if is_cartesian:
-        return _mhd_rhs_cartesian(U, grid, gamma, method, riemann)
-    return _mhd_rhs_cylindrical(U, grid, gamma, dr, dz, method, riemann)
+        return _mhd_rhs_cartesian(U, grid, gamma, method, riemann, precision)
+    return _mhd_rhs_cylindrical(U, grid, gamma, dr, dz, method, riemann, precision)
 
 
 def _mhd_rhs_cartesian(
@@ -343,6 +381,7 @@ def _mhd_rhs_cartesian(
     gamma: float,
     method: str,
     riemann: str,
+    precision: str = "float32",
 ) -> mx.array:
     """Cartesian MHD RHS: dU/dt = -div(F) in up to 3 dimensions.
 
@@ -368,7 +407,7 @@ def _mhd_rhs_cartesian(
         if n_along < 2 * ng + 1:
             continue
 
-        F = compute_fluxes(U, gamma=gamma, dim=dim, method=method, riemann=riemann)
+        F = compute_fluxes(U, gamma=gamma, dim=dim, method=method, riemann=riemann, precision=precision)
         n_ifaces = F.shape[axis]
         n_updated = n_ifaces - 1
         if n_updated <= 0:
@@ -426,6 +465,7 @@ def _mhd_rhs_cylindrical(
     dz: float,
     method: str,
     riemann: str,
+    precision: str = "float32",
 ) -> mx.array:
     """Cylindrical MHD RHS with r-weighted flux divergence + geometric sources."""
     nr = U.shape[1]
@@ -439,7 +479,7 @@ def _mhd_rhs_cylindrical(
     dU_dt = mx.zeros_like(U)
 
     # ── Radial flux divergence (r-weighted) ───────────────────────────────────
-    F_r = compute_fluxes(U, gamma=gamma, dim=0, method=method, riemann=riemann)
+    F_r = compute_fluxes(U, gamma=gamma, dim=0, method=method, riemann=riemann, precision=precision)
     n_ifaces_r = F_r.shape[1]
     n_updated_r = n_ifaces_r - 1
 
@@ -469,7 +509,7 @@ def _mhd_rhs_cylindrical(
         dU_dt = dU_dt + dU_r
 
     # ── Axial flux divergence ─────────────────────────────────────────────────
-    F_z = compute_fluxes(U, gamma=gamma, dim=1, method=method, riemann=riemann)
+    F_z = compute_fluxes(U, gamma=gamma, dim=1, method=method, riemann=riemann, precision=precision)
     n_ifaces_z = F_z.shape[2]
     n_updated_z = n_ifaces_z - 1
 
