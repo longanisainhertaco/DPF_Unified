@@ -137,9 +137,16 @@ def _step_circuit_subcycle(
             self._prev_L_plasma = coupling.Lp
 
         elif self.snowplow is not None and not self.snowplow.is_active:
-            # Post-pinch: hold inductance constant unless density_weighted mode.
-            # Column expansion dL/dt is uncalibrated — causes excessive current
-            # dips (90% vs experimental 60%). Use dL_dt=0 until validated.
+            # Post-pinch: use snowplow's column expansion dL/dt from _frozen_result().
+            # The expansion model (Goyon 2025) tracks r(t) = r_pinch + v_expand * dt
+            # and computes dL/dt = -(mu_0/2pi) * z_f * v_expand / r(t).
+            # Previously dL_dt=0 (frozen L), which produced no current dip.
+            sp_post = self.snowplow.step(dt_sub, self._coupling.current)
+            sp_Lp = sp_post.get("L_plasma", self.snowplow.plasma_inductance)
+            sp_dLdt = sp_post.get("dL_dt", 0.0)
+            sp_R = sp_post.get("R_plasma", 0.0)
+            coupling.R_plasma = max(coupling.R_plasma, sp_R)
+
             if (
                 self.coupling_mode == "density_weighted"
                 and feedback is not None
@@ -149,8 +156,8 @@ def _step_circuit_subcycle(
                 coupling.dL_dt = feedback.dLp_dt
                 back_emf = feedback.back_emf
             else:
-                coupling.Lp = self.snowplow.plasma_inductance
-                coupling.dL_dt = 0.0
+                coupling.Lp = sp_Lp
+                coupling.dL_dt = sp_dLdt
 
         elif use_coupler and feedback is not None and feedback.Lp > 0:
             # Density-weighted Lp from MHD fields (CircuitCoupler).
