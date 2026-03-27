@@ -319,15 +319,21 @@ class SimState(rx.State):
             grid_map = {"coarse": (16, 1, 32), "medium": (32, 1, 64), "fine": (64, 1, 128)}
             grid = grid_map.get(self.grid_resolution, (32, 1, 64))
 
-            # Build config — backend level maps to actual solver settings
+            # Build config — each backend level has DISTINCT solver settings.
+            # No two levels may be identical (Marcus Chen audit finding).
             backend_configs = {
-                1: {"backend": "python", "riemann_solver": "hll", "reconstruction": "plm", "time_integrator": "ssp_rk2"},
+                1: None,  # Lee model only — no MHD solver needed
                 2: {"backend": "python", "riemann_solver": "hll", "reconstruction": "plm", "time_integrator": "ssp_rk2"},
                 3: {"backend": "mlx", "riemann_solver": "hll", "reconstruction": "plm", "time_integrator": "ssp_rk2"},
                 4: {"backend": "mlx", "riemann_solver": "hll", "reconstruction": "weno5z", "time_integrator": "ssp_rk3"},
-                5: {"backend": "mlx", "riemann_solver": "hll", "reconstruction": "weno5z", "time_integrator": "ssp_rk3"},
+                5: {"backend": "mlx", "riemann_solver": "hll", "reconstruction": "weno5z", "time_integrator": "ssp_rk3",
+                    "anomalous_resistivity": "drift_velocity", "resistivity_model": "lee_more"},
             }
             fluid_config = backend_configs.get(self.backend_level, backend_configs[3])
+
+            # Level 5 uses fine grid override
+            if self.backend_level == 5:
+                grid = (64, 1, 128)
 
             preset = get_preset(self.preset)
             preset["grid_shape"] = list(grid)

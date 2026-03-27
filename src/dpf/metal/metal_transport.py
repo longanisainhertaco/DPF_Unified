@@ -27,10 +27,7 @@ if TYPE_CHECKING:
 E_CHARGE = 1.602176634e-19       # Elementary charge [C]
 M_E = 9.1093837015e-31           # Electron mass [kg]
 M_D = 3.34358377e-27             # Deuterium mass [kg]
-K_B = 1.380649e-23               # Boltzmann constant [J/K]
-EPSILON_0 = 8.8541878128e-12     # Vacuum permittivity [F/m]
-MU_0 = 4.0e-7 * math.pi         # Vacuum permeability [H/m]
-P_FLOOR = 1e-12                  # Minimum pressure floor (matches metal_riemann.py)
+from dpf.metal.constants import EPS_0 as EPSILON_0, K_B, MU_0, P_FLOOR  # noqa: E402
 
 
 # ── Shared Utilities ────────────────────────────────────────────

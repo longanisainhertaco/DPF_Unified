@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 _MU0: float = 4.0 * math.pi * 1e-7
 _SQRT_MU0: float = math.sqrt(_MU0)
-_K_B: float = 1.380649e-23
+from dpf.metal.constants import K_B as _K_B  # noqa: E402
 _M_DEUTERIUM: float = 3.34358377e-27
 
 
@@ -105,7 +105,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         gamma: float = 5.0 / 3.0,
         cfl: float = 0.3,
         dz: float | None = None,
-        riemann_solver: str = "hlld",
+        riemann_solver: str = "hll",  # HLL-GPU: conservative energy flux (V&V RIE-01)
         reconstruction: str = "weno5z",
         time_integrator: str = "ssp_rk3",
         coordinates: str = "cylindrical",

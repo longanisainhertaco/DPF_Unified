@@ -16,16 +16,16 @@ import math
 
 import numpy as np
 
-# --- Constants ---
-GAMMA = 5.0 / 3.0
-NVAR = 10
-IDN, IMR, IMZ, IMT, IEN, ISR, IBR, IBZ, IBT, IEE = range(10)
-
-# HLLD numerical floors
-RHO_FLOOR = 1.0e-12
-P_FLOOR = 1.0e-12
-V_MAX = 1.0e6
-MU0 = 4.0 * math.pi * 1e-7
+# --- Constants (from single source of truth) ---
+from dpf.metal.constants import (  # noqa: E402
+    GAMMA,
+    MU_0 as MU0,
+    NVAR,
+    P_FLOOR,
+    RHO_FLOOR,
+    V_MAX,
+)
+from dpf.metal.constants import IDN, IMR, IMZ, IMT, IEN, ISR, IBR, IBZ, IBT, IEE  # noqa: E402
 
 # ──────────────────────────────────────────────────────────────
 # MLX availability guard

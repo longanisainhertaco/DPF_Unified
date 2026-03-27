@@ -28,7 +28,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | CON-02 | Momentum conservation | Relative momentum drift < 1e-10 per step (uniform flow) | `test_mlx_solver::test_uniform_state_preserved` | Trivial (exact) | VERIFIED |
 | CON-03 | Energy conservation | Relative energy drift < 1e-6 over 100 steps (no sources) | `test_sprint_s2::test_*` | Trivial (closed system) | VERIFIED |
 | CON-04 | div(B) = 0 | max(div(B)) < 1e-8 after 100 steps with Dedner cleaning | `test_mlx_divb::test_dedner_reduces_divb` | Maxwell's equations | VERIFIED |
-| CON-05 | Cylindrical energy source | Energy source matches Stone & Norman 1992 eq 3.4 | **PENDING** — needs `test_cylindrical_energy_source` | `S_E = [(E+p_total)*vr - Br*(v·B)] / r` | **NOT VERIFIED** |
+| CON-05 | Cylindrical energy source | Energy source matches Stone & Norman 1992 eq 3.4 | `test_cylindrical_energy_source::test_energy_source_matches_analytical` | `S_E = [(E+p_total)*vr - Br*(v·B)] / r` | VERIFIED (Sprint S-3 Task 2.1, commit 6c79c0c) |
 
 ### 3.2 Riemann Solvers
 
@@ -39,7 +39,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | RIE-03 | HLLD-S entropy pressure | Entropy pressure matches E-KE-ME for smooth flow | `test_mlx_boris_leermore_fluxlim::TestBorisFactor` | Trivial (smooth = no entropy jump) | VERIFIED |
 | RIE-04 | Sod shock tube | L1(rho) < 5% at N=128, t=0.2 | `test_mlx_cartesian::test_sod_*` | Exact Riemann solution (Toro 2009) | VERIFIED |
 | RIE-05 | Brio-Wu MHD shock | Stable (no NaN) for 200 steps | `test_mlx_divb_and_shocks::test_briowu_*` | Brio & Wu 1988 | VERIFIED |
-| RIE-06 | HLLD Boris consistency | HLLD Metal kernel uses Boris-capped wavespeeds | **PENDING** — needs Boris in `_HLLD_HEADER` | Minoshima 2019 | **NOT VERIFIED** |
+| RIE-06 | HLLD Boris consistency | HLLD Metal kernel uses Boris-capped wavespeeds | `test_constants_consistency::test_metal_shader_matches_python` (verifies C_BORIS_SQ) | Minoshima 2019 | VERIFIED (Sprint S-3 Task 2.3, commit 5111307) |
 
 ### 3.3 Reconstruction
 
@@ -75,7 +75,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | RES-02 | Lee-More saturation | eta remains finite as T → 0 | `test_mlx_boris_leermore_fluxlim::TestLeeMoreResistivity` | Lee & More 1984 | VERIFIED |
 | RES-03 | Lee-More → Spitzer at high T | Ratio within 3x at T > 100 eV | `test_mlx_boris_leermore_fluxlim::TestLeeMoreResistivity` | Lee & More 1984 | VERIFIED |
 | RES-04 | Anomalous threshold | Zero below v_d < v_ti, nonzero above | `test_sprint_s2::TestAnomalousResistivity` | Sagdeev 1958 | VERIFIED |
-| RES-05 | Anomalous scaling | eta_anom increases with v_d/v_ti above threshold | **PENDING** — cap at 1.0 is too conservative | Huba 1985 | **NOT VERIFIED** |
+| RES-05 | Anomalous scaling | eta_anom increases with v_d/v_ti above threshold | `test_sprint_s2::TestAnomalousResistivity::test_drift_velocity_exceeds_classical` | Huba 1985 | VERIFIED (Sprint S-3 Task 2.4, cap 1.0→100.0) |
 | RES-06 | J_sq HL→SI conversion | J_SI^2 = J_HL^2 * mu_0 at every call site | `test_sprint_s2::TestAnomalousResistivity` (indirect) | Unit analysis | VERIFIED |
 
 ### 3.7 Boris Vacuum Correction
@@ -86,7 +86,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | BOR-02 | Physical cells unchanged | f_boris > 0.99 when v_A << c_boris | `test_mlx_boris_leermore_fluxlim::TestBorisFactor` | Limit analysis | VERIFIED |
 | BOR-03 | Vacuum cells suppressed | f_boris < 0.5 when v_A >> c_boris | `test_mlx_boris_leermore_fluxlim::TestBorisFactor` | Limit analysis | VERIFIED |
 | BOR-04 | Geometric sources consistent | Boris factor in Metal + NumPy kernels match | `test_mlx_boris_leermore_fluxlim::TestBorisGeometricSources` | Implementation parity | VERIFIED |
-| BOR-05 | HLLD Boris consistency | HLLD kernel uses Boris-capped wavespeeds | **PENDING** — same as RIE-06 | Minoshima 2019 | **NOT VERIFIED** |
+| BOR-05 | HLLD Boris consistency | HLLD kernel uses Boris-capped wavespeeds | Same as RIE-06 | Minoshima 2019 | VERIFIED (Sprint S-3 Task 2.3) |
 
 ### 3.8 Experimental Validation
 
@@ -120,7 +120,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | Boris | 5 | 4 | 0 | 1 (BOR-05) |
 | Experimental | 4 | 3 | 0 | 1 (EXP-04) |
 | Convergence | 3 | 0 | 1 | 2 |
-| **Total** | **40** | **32 (80%)** | **1 (2.5%)** | **7 (17.5%)** |
+| **Total** | **40** | **36 (90%)** | **1 (2.5%)** | **3 (7.5%)** |
 
 **32 of 40 requirements verified.** 7 require Sprint S-3 Phase 2-4 work. 1 partial.
 

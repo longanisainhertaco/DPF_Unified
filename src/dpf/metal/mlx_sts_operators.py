@@ -20,9 +20,7 @@ import math
 
 import mlx.core as mx
 
-MU_0: float = 4.0 * math.pi * 1e-7
-K_B: float = 1.380649e-23
-M_D: float = 3.34358377e-27
+from dpf.metal.constants import K_B, M_DEUTERIUM as M_D, MU_0  # noqa: E402
 
 
 def resistive_diffusion_rhs(

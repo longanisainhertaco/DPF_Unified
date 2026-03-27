@@ -14,14 +14,13 @@ import numpy as np
 
 from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IDN, IEE, IEN, IMR, IMT, IMZ, ISR
 
-# Physical constants
-_KBOLTZ = 1.380649e-23   # J/K
-_EV = 1.602176634e-19    # J
-_KB_OVER_EV = _KBOLTZ / _EV  # ~8.617e-5 eV/K
+# Physical constants — from single source of truth
+from dpf.metal.constants import E_CHARGE as _EV  # noqa: E402
+from dpf.metal.constants import K_B as _KBOLTZ  # noqa: E402
+from dpf.metal.constants import P_FLOOR as _P_FLOOR  # noqa: E402
+from dpf.metal.constants import RHO_FLOOR as _RHO_FLOOR  # noqa: E402
 
-# Numerical floors
-_RHO_FLOOR = 1.0e-12
-_P_FLOOR = 1.0e-12
+_KB_OVER_EV = _KBOLTZ / _EV  # ~8.617e-5 eV/K
 _LOG_FLOOR = -92.0  # exp(-92) ~ 1e-40, safe minimum for log(Lambda)
 
 

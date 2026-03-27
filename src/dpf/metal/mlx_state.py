@@ -23,12 +23,11 @@ from dpf.metal.mlx_device import require_mlx
 
 # -- Physical constants --
 MU0: float = 4.0 * math.pi * 1e-7
-_K_B: float = 1.380649e-23
+from dpf.metal.constants import K_B as _K_B  # noqa: E402
 _M_DEUTERIUM: float = 3.34358377e-27
 
-# -- Numerical floors --
-RHO_FLOOR: float = 1e-12
-P_FLOOR: float = 1e-12
+# -- Numerical floors (from single source of truth) --
+from dpf.metal.constants import P_FLOOR, RHO_FLOOR  # noqa: E402
 
 # -- Dual-energy switching thresholds --
 _ETA1: float = 1e-5
