@@ -171,8 +171,41 @@ def apply_geometric_sources(
     dmz = rho * src[2] * dt
     dmt = rho * src[3] * dt
 
-    # Work done by geometric forces contributes to total energy
-    dE = vr * dmr + vz * dmz + vt * dmt
+    # Full cylindrical energy geometric source (Stone & Norman 1992, eq 3.4):
+    #   S_E = [(E + p_total) * vr - Br * (v . B)] / r
+    #
+    # Previous code used v.dot(S_mom) which misses the enthalpy flux correction.
+    # The full S_E includes E*vr/r and the Poynting flux terms.
+    Br = U[IBR]
+    Bz = U[IBZ]
+    Bt = U[IBT]
+    B_sq = Br * Br + Bz * Bz + Bt * Bt
+    E_total = U[IEN]
+
+    # Boris factor for magnetic pressure (consistent with geometric source kernel)
+    from dpf.metal.constants import C_BORIS_SQ
+    rho_safe = mx.maximum(rho, _RHO_FLOOR)
+    va_sq = B_sq / rho_safe
+    f_boris = C_BORIS_SQ / (va_sq + C_BORIS_SQ)
+
+    # Pressure from dual-energy or E-KE-ME
+    KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
+    ME = 0.5 * B_sq
+    p = mx.maximum((gamma - 1.0) * (E_total - KE - ME), _P_FLOOR)
+    p_total = p + 0.5 * B_sq * f_boris
+
+    # v . B (Poynting flux contribution)
+    vdotB = vr * Br + vz * Bz + vt * Bt
+
+    # Full energy source: S_E = [(E + p_total)*vr - Br*(v.B)] / r
+    inv_r_2d = inv_r[:, None]  # broadcast (nr,) -> (nr, nz)
+    S_E = ((E_total + p_total) * vr - Br * vdotB) * inv_r_2d
+
+    # L'Hopital at axis (ir=0): S_E -> 0 as r -> 0 for smooth fields
+    if U.shape[1] > 1:
+        S_E = mx.concatenate([mx.zeros_like(S_E[:1, :]), S_E[1:, :]], axis=0)
+
+    dE = S_E * dt
 
     updated_vars = [
         U[IDN],
