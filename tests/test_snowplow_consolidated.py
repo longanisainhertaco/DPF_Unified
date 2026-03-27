@@ -2746,15 +2746,17 @@ class TestRadialZipperBC:
     """Radial zipper BC: B_theta zeroed outside radial shock during radial phase."""
 
     def test_radial_zipper_activates_during_radial_phase(self):
-        """With snowplow.phase='radial', B_theta inside r_shock is zeroed.
+        """With snowplow.phase='radial', B_theta inside r_shock is suppressed.
 
         Thin-sheath model: current at r_shock means field-free interior.
-        The radial zipper enforces B_theta = 0 for r < r_shock.
+        The radial zipper suppresses B_theta for r < r_shock via a smooth
+        tanh ramp (3-cell width) to prevent CFL collapse on coarse grids.
+        Deep interior cells are near-zero; transition cells have partial values.
         """
         engine = _make_cylindrical_engine(nr=10, nz=20, dx=0.01)
 
         engine.snowplow.phase = "radial"
-        engine.snowplow.r_shock = 0.05  # ir_shock = int(0.05/0.01) = 5
+        engine.snowplow.r_shock = 0.05  # ir_shock ~ 5
         engine.snowplow.z = engine.snowplow.L_anode
         engine.snowplow._rundown_complete = True
 
@@ -2763,8 +2765,14 @@ class TestRadialZipperBC:
         engine._apply_electrode_bc(current=100e3)
 
         B_theta = engine.state["B"][1]
-        assert np.all(B_theta[:5, :, :] == 0.0), (
-            "B_theta inside r_shock must be zeroed by radial zipper"
+        # Deep interior (ir=0,1) should be strongly suppressed (< 0.1)
+        assert np.all(B_theta[:2, :, :] < 0.1), (
+            f"B_theta deep inside r_shock not suppressed: max={B_theta[:2].max():.3f}"
+        )
+        # Just outside r_shock (ir=6,7) should be partially to mostly preserved
+        # (electrode BC may modify outermost cells, so check mid-range only)
+        assert np.mean(B_theta[6:8, :, :]) > 0.3, (
+            f"B_theta just outside r_shock too suppressed: mean={np.mean(B_theta[6:8]):.3f}"
         )
 
     def test_radial_zipper_no_effect_during_rundown(self):
@@ -2800,9 +2808,12 @@ class TestRadialZipperBC:
 
         ir_shock = int(r_shock / dx)
         B_theta = engine.state["B"][1]
-        assert np.all(B_theta[:ir_shock, :, :] == 0.0), (
-            f"Expected B_theta zero for r_idx < {ir_shock} (field-free interior)"
-        )
+        # Smooth tanh ramp: deep interior (ir < ir_shock - 3) near zero
+        ir_deep = max(ir_shock - 3, 0)
+        if ir_deep > 0:
+            assert np.all(B_theta[:ir_deep, :, :] < 0.1), (
+                f"B_theta deep inside r_shock not suppressed: max={B_theta[:ir_deep].max():.3f}"
+            )
         assert B_theta.shape[0] > ir_shock, "ir_shock must be within grid bounds"
 
     def test_radial_zipper_btheta_zero_inside_shock(self):
@@ -2821,9 +2832,12 @@ class TestRadialZipperBC:
         engine._apply_electrode_bc(current=1e5)
 
         ir_shock = int(r_shock / dx)
-        assert np.all(engine.state["B"][1, :ir_shock, :, :] == 0.0), (
-            "B_theta must be zero inside shock (field-free interior)"
-        )
+        # Smooth tanh ramp: deep interior suppressed, not exact zero
+        ir_deep = max(ir_shock - 3, 0)
+        if ir_deep > 0:
+            assert np.all(engine.state["B"][1, :ir_deep, :, :] < 0.1), (
+                "B_theta deep inside shock not suppressed"
+            )
 
     def test_radial_zipper_preserves_btheta_outside_shock(self):
         """B_theta for r > r_shock should NOT be zeroed by radial zipper."""

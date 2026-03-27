@@ -539,6 +539,14 @@ class SimulationEngine:
         # Cap at reasonable fraction of sim_time
         dt = min(dt, self.config.sim_time / 10.0)
 
+        # Floor: prevent CFL collapse from freezing the simulation.
+        # Only applies to Metal/MLX backends where sharp BCs can drive
+        # dt -> 0 via extreme wavespeeds in 1-2 vacuum cells.
+        # Python backend has its own stability requirements; don't override.
+        backend = getattr(getattr(self.config, "fluid", None), "backend", "python")
+        if backend in ("metal", "mlx") and dt < 1e-12:
+            dt = 1e-12
+
         return dt
     # ------------------------------------------------------------------
     # State management — extracted to state_management.py

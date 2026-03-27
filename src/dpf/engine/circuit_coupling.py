@@ -605,14 +605,24 @@ def _apply_electrode_bc(self, current: float) -> None:
         if 0 <= iz_sheath < nz:
             B[1, :, :, iz_sheath + 1:] = 0.0
 
-        # Radial zipper: zero B_theta inside radial shock front
-        # (field-free interior ahead of converging sheath)
+        # Radial zipper: suppress B_theta inside radial shock front
+        # (field-free interior ahead of converging sheath).
+        # Use a smooth tanh ramp over 3 cells instead of a sharp cutoff
+        # to prevent CFL catastrophic collapse on coarse grids. The sharp
+        # B_theta=0 step function creates a 1-2 cell discontinuity that
+        # amplifies |B| by 10^6 in ~10 steps (RCA: current_dip_rca.md).
         if self.snowplow.phase in ("radial", "reflected"):
             r_shock = self.snowplow.r_shock
             dr = self.config.dx
-            ir_shock = int(round(r_shock / dr)) if np.isfinite(r_shock) else 0
-            if 0 <= ir_shock < nx:
-                B[1, :ir_shock, :, :] = 0.0
+            if np.isfinite(r_shock) and dr > 0:
+                r_cells = np.arange(nx) * dr + 0.5 * dr
+                # Smooth transition: 0 deep inside shock, 1 outside
+                # Width = 3*dr for smooth transition over 3 cells
+                width = max(3.0 * dr, 1e-6)
+                ramp = 0.5 * (1.0 + np.tanh((r_cells - r_shock) / (0.5 * width)))
+                # Apply ramp to B_theta: inside shock → suppressed, outside → preserved
+                ramp_4d = ramp[:, np.newaxis, np.newaxis]  # (nr, 1, 1)
+                B[1] = B[1] * ramp_4d
 
 
 def _initialize_radial_bfield(self) -> None:
