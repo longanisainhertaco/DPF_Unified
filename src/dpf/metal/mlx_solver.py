@@ -718,6 +718,56 @@ class MLXMHDSolver(PlasmaSolverBase):
         rows[ISR] = Srho_new
         return mx.stack(rows, axis=0)
 
+    def _do_thermal_conduction_rkl2(self, U: Any, dt: float, kappa: float | Any) -> Any:
+        """RKL2 super-timestepped thermal conduction — fully on GPU."""
+        mx = require_mlx()
+        from dpf.metal.mlx_kernels import IEN, ISR, NVAR
+        from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
+        from dpf.metal.mlx_sts import compute_sts_stages, rkl2_step_mlx
+        from dpf.metal.mlx_sts_operators import compute_parabolic_dt, thermal_conduction_rhs
+        from dpf.metal.mlx_transport import flux_limit_kappa
+
+        rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
+        T = p * self.ion_mass / (2.0 * mx.maximum(rho, 1e-30) * _K_B)
+
+        # Build kappa field with flux limiting
+        kappa_np = np.asarray(kappa, dtype=np.float64) if not isinstance(
+            kappa, (int, float)
+        ) else np.full((self.nr, self.nz), float(kappa), dtype=np.float64)
+        kappa_limited = flux_limit_kappa(
+            kappa_np, np.asarray(T, dtype=np.float64),
+            np.asarray(rho, dtype=np.float64), self._grid.dz,
+            f_limit=0.1, ion_mass=self.ion_mass,
+        )
+        kappa_mx = mx.array(kappa_limited.astype(np.float32))
+
+        # Compute diffusivity for stage count
+        n_e = mx.maximum(rho / self.ion_mass, 1e-10)
+        chi = kappa_mx / (n_e * _K_B)
+        dt_para = compute_parabolic_dt(chi, self._grid.dr, self._grid.dz)
+        s = compute_sts_stages(dt, dt_para)
+        is_cyl = self.coordinates == "cylindrical"
+
+        def _rhs_T(T_field):
+            return thermal_conduction_rhs(
+                T_field, kappa_mx, rho, self._grid.dr, self._grid.dz,
+                self._grid.r_cell, ion_mass=self.ion_mass, cylindrical=is_cyl,
+            )
+
+        T_new = mx.maximum(rkl2_step_mlx(T, _rhs_T, dt, s_stages=s), 1.0)
+
+        p_new = mx.maximum(2.0 * rho * _K_B * T_new / self.ion_mass, P_FLOOR)
+        gm1 = self.gamma - 1.0
+        KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
+        ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
+        E_new = p_new / gm1 + KE + ME
+        Srho_new = p_new * mx.power(mx.maximum(rho, 1e-30), 1.0 - self.gamma)
+
+        rows = [U[i] for i in range(NVAR)]
+        rows[IEN] = E_new
+        rows[ISR] = Srho_new
+        return mx.stack(rows, axis=0)
+
     # ------------------------------------------------------------------
     # PlasmaSolverBase — compute_dt
     # ------------------------------------------------------------------
@@ -897,7 +947,10 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 6. Braginskii conduction ─────────────────────────────────────
         if self.enable_braginskii_conduction:
             kappa = float(kwargs.get("kappa_parallel", 1e3))
-            U = self._do_thermal_conduction(U, dt, kappa)
+            if self._use_rkl2_transport:
+                U = self._do_thermal_conduction_rkl2(U, dt, kappa)
+            else:
+                U = self._do_thermal_conduction(U, dt, kappa)
 
         # ── 6.5. Braginskii viscosity ──────────────────────────────────
         if self.enable_braginskii_viscosity:
