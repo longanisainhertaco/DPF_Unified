@@ -79,8 +79,9 @@ def resistive_diffusion_rhs(
             r_face_p = r_safe + 0.5 * dr
             r_face_m = mx.maximum(r_safe - 0.5 * dr, 0.0)
 
-            flux_rp = r_face_p * alpha_rp * (B_rp - B_component) * inv_dr2
-            flux_rm = r_face_m * alpha_rm * (B_component - B_rm) * inv_dr2
+            inv_dr = 1.0 / dr
+            flux_rp = r_face_p * alpha_rp * (B_rp - B_component) * inv_dr
+            flux_rm = r_face_m * alpha_rm * (B_component - B_rm) * inv_dr
             Lr = (flux_rp - flux_rm) / (r_safe * dr)
 
             # L'Hopital at axis (ir=0): use one-sided difference
