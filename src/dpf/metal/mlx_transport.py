@@ -328,8 +328,14 @@ def compute_resistivity(
     ion_mass: float = M_D,
     eta_floor: float = 1e-10,
     eta_cap: float = 1e-2,
+    J_sq: np.ndarray | None = None,
+    p: np.ndarray | None = None,
+    anomalous_model: str | None = None,
 ) -> np.ndarray:
     """Compute spatially-varying resistivity from plasma conditions.
+
+    Optionally adds anomalous resistivity (drift-velocity, sagdeev, or lhdi)
+    when J_sq and p are provided. Total eta = eta_classical + eta_anomalous.
 
     Parameters
     ----------
@@ -338,20 +344,18 @@ def compute_resistivity(
     rho : np.ndarray
         Mass density [kg/m^3], shape (nr, nz).
     model : str
-        "lee_more" (default), "spitzer", or "constant".
-    Z_eff : float
-        Effective charge number.
-    ion_mass : float
-        Ion mass [kg].
-    eta_floor : float
-        Minimum resistivity [Ohm*m].
-    eta_cap : float
-        Maximum resistivity [Ohm*m].
+        Classical model: "lee_more" (default), "spitzer", or "constant".
+    J_sq : np.ndarray or None
+        |J|^2 [A^2/m^4] for anomalous contribution. None = no anomalous.
+    p : np.ndarray or None
+        Gas pressure [Pa] for anomalous contribution.
+    anomalous_model : str or None
+        "drift_velocity", "sagdeev", "lhdi", or None (no anomalous).
 
     Returns
     -------
     eta : np.ndarray
-        Resistivity [Ohm*m], shape (nr, nz).
+        Total resistivity [Ohm*m], shape (nr, nz).
     """
     if model == "lee_more":
         eta = lee_more_resistivity(Te, rho, Z_eff=Z_eff, ion_mass=ion_mass)
@@ -361,7 +365,77 @@ def compute_resistivity(
         eta = np.full_like(Te, eta_floor)
     else:
         raise ValueError(f"Unknown resistivity model: {model!r}")
+
+    # Add anomalous contribution (additive — independent scattering mechanisms)
+    if anomalous_model is not None and J_sq is not None and p is not None:
+        eta_anom = anomalous_resistivity(
+            J_sq, rho, p, Z_eff=Z_eff, ion_mass=ion_mass, model=anomalous_model,
+        )
+        eta = eta + eta_anom
+
     return np.clip(eta, eta_floor, eta_cap)
+
+
+# ── Anomalous Resistivity ──────────────────────────────────────
+
+
+def anomalous_resistivity(
+    J_sq: np.ndarray,
+    rho: np.ndarray,
+    p: np.ndarray,
+    gamma: float = 5.0 / 3.0,
+    Z_eff: float = 1.0,
+    ion_mass: float = M_D,
+    model: str = "drift_velocity",
+    alpha: float = 0.05,
+) -> np.ndarray:
+    """Compute anomalous resistivity from current-driven micro-instabilities.
+
+    At DPF pinch, drift velocity v_d = J/(n_e*e) exceeds ion thermal speed,
+    triggering micro-instabilities that scatter electrons far more effectively
+    than Coulomb collisions. Dominates Spitzer/Lee-More by 3-30x at pinch.
+
+    Parameters
+    ----------
+    J_sq : np.ndarray
+        |J|^2 from curl(B), [A^2/m^4], shape (nr, nz).
+    rho, p : np.ndarray
+        Density [kg/m^3] and pressure [Pa], shape (nr, nz).
+    model : str
+        "drift_velocity" (Faerder 2024), "sagdeev", or "lhdi".
+
+    Returns
+    -------
+    eta_anom : np.ndarray
+        Anomalous resistivity [Ohm*m], shape (nr, nz). Zero below threshold.
+    """
+    rho_safe = np.maximum(rho, 1e-20)
+    p_safe = np.maximum(p, 1e-12)
+    n_i = rho_safe / ion_mass
+    n_e = Z_eff * n_i
+    J_mag = np.sqrt(np.maximum(J_sq, 0.0))
+    v_d = J_mag / np.maximum(n_e * E_CHARGE, 1e-30)
+    T_i = p_safe * ion_mass / (2.0 * rho_safe * K_B)
+    v_ti = np.sqrt(K_B * np.maximum(T_i, 1.0) / ion_mass)
+
+    if model == "drift_velocity":
+        omega_pi = np.sqrt(n_i * E_CHARGE**2 / (EPS_0 * ion_mass))
+        ratio_sq = np.minimum((v_d / np.maximum(v_ti, 1.0))**2, 1.0)
+        eta_anom = M_E * omega_pi * ratio_sq / np.maximum(n_e * E_CHARGE**2, 1e-60)
+        eta_anom = np.where(v_d > v_ti, eta_anom, 0.0)
+    elif model == "sagdeev":
+        c_s = np.sqrt(K_B * np.maximum(T_i, 1.0) / ion_mass)
+        omega_pe = np.sqrt(n_e * E_CHARGE**2 / (EPS_0 * M_E))
+        eta_anom = alpha * M_E * omega_pe / np.maximum(n_e * E_CHARGE**2, 1e-60)
+        eta_anom = np.where(v_d > c_s, eta_anom, 0.0)
+    elif model == "lhdi":
+        v_crit = (M_E / ion_mass) ** 0.25 * v_ti
+        omega_pe = np.sqrt(n_e * E_CHARGE**2 / (EPS_0 * M_E))
+        eta_anom = alpha * M_E * omega_pe / np.maximum(n_e * E_CHARGE**2, 1e-60)
+        eta_anom = np.where(v_d > v_crit, eta_anom, 0.0)
+    else:
+        raise ValueError(f"Unknown anomalous resistivity model: {model!r}")
+    return np.clip(eta_anom, 0.0, 1e-2)
 
 
 # ── Resistive Diffusion ─────────────────────────────────────────

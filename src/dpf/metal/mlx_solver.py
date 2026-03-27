@@ -187,6 +187,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._cathode_radius: float = float(kwargs.get("cathode_radius", 0.025))
         self.config_two_temperature: bool = kwargs.get("two_temperature", False)
         self._resistivity_model: str = str(kwargs.get("resistivity_model", "constant"))
+        self._anomalous_resistivity_model: str | None = kwargs.get("anomalous_resistivity")
         self._use_rkl2_transport: bool = bool(kwargs.get("use_rkl2_transport", True))
 
         # Internal conserved state (mx.array, set after first step)
@@ -889,9 +890,22 @@ class MLXMHDSolver(PlasmaSolverBase):
                 / 11604.5  # K -> eV
             )
             rho_np = np.asarray(rho_tmp, dtype=np.float64)
+            # Compute J^2 for anomalous resistivity if enabled
+            J_sq_np = None
+            p_np = None
+            if self._anomalous_resistivity_model is not None:
+                from dpf.metal.mlx_sources import compute_current_density
+                J_sq_mx = compute_current_density(
+                    U, self._grid.dr, self._grid.dz, self._grid.r_cell,
+                )
+                J_sq_np = np.asarray(J_sq_mx, dtype=np.float64)
+                p_np = np.asarray(p_tmp, dtype=np.float64)
+
             eta_computed = compute_resistivity(
                 Te_eV, rho_np, model=self._resistivity_model,
                 Z_eff=self.Z_eff, ion_mass=self.ion_mass,
+                J_sq=J_sq_np, p=p_np,
+                anomalous_model=self._anomalous_resistivity_model,
             )
             _eta_arg = mx.array(eta_computed.astype(np.float32))
 
