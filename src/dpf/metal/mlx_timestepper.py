@@ -106,7 +106,8 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     a_sq = gamma * p * inv_rho
     va_sq = B_sq * inv_rho
     # Boris correction: v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2)
-    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    from dpf.metal.mlx_primitives import _C_BORIS_DEFAULT
+    _C_BORIS_SQ = _C_BORIS_DEFAULT * _C_BORIS_DEFAULT
     va_sq_boris = va_sq * _C_BORIS_SQ / (va_sq + _C_BORIS_SQ)
     cf = mx.sqrt(a_sq + va_sq_boris)
 

@@ -59,9 +59,9 @@ def _loss_fn(
         preset_name=preset_name,
         grid_shape=grid_shape,
         sim_time=sim_time,
-        peak_weight=0.5,
+        peak_weight=0.4,
         timing_weight=0.3,
-        waveform_weight=0.2,
+        waveform_weight=0.3,
     )
     return result.objective, result.peak_error, result.timing_error
 
