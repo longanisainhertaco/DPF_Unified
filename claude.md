@@ -228,8 +228,15 @@ MetalMHDSolver(
 10. WALRUS inference: load checkpoint → instantiate IsotropicModel → RevIN normalize → forward → denormalize delta → add residual
 11. Well format export: always use `grid_type="cartesian"`, axis order `[x, y, z]`, float32
 12. Follow the iterative accuracy workflow: Create → Test → Rate → Research → Improve → Repeat
-13. Memory system: MEMORY.md (auto-loaded) contains Session Protocol with automatic behaviors. Follow it every session — read `memory/session.md` on start, load relevant topic files based on task, save checkpoint before ending.
-14. Memory commands: `/session-save`, `/session-resume`, `/recall <query>`, `/remember <fact>`, `/memory-status`
+13. **Prototype-in-MD workflow** for features >50 LOC: Research → Scaffold doc → Prototype code in .md → Six Sigma review → Implement from prototype. Never implement directly from a scaffold without prototype code and review.
+14. **Multi-perspective investigation** for decisions affecting >1000 LOC or performance-critical paths: deploy 3+ specialist agents (physicist, engineer, architect, validator) and synthesize findings before implementing. Single-agent analysis misses ~30% of issues.
+15. **Post-fix calibration smoke**: After any physics code change, run single-eval forward model (fc=0.7, fm=0.08, 32x64 grid) and verify I_peak within 20% of reference. Catches compensating errors immediately.
+16. **Verify against code before claiming.** Before asserting a bug exists, a function is missing, or an API works a certain way: grep/read the actual source. Design docs, scaffolds, and agent reports are hypotheses. The code is the truth. This applies to Cortana's own prior analysis — treat previous-session observations as claims to verify, not facts to trust. Three agents claimed Hall mu_0 was wrong; the code was correct. Three agents claimed line 1561 hardcoded; the bug was elsewhere. Verify first.
+17. **Verification-first for agent outputs.** Before building dependency graphs, fix orders, or implementation plans on an agent's claim: have a verification agent grep the actual code and confirm the exact location, exact API, exact behavior. Agent reports are hypotheses, not evidence.
+18. **Protect serendipity.** The differentiable MHD breakthrough came from following an investigation chain (slow calibration → HLL bottleneck → cargo cult float64 → pure MLX port → mx.grad works). Don't over-plan to the point where accidental discoveries can't happen. When an investigation reveals something unexpected, follow it.
+19. **Three-cycle research is mandatory for scaffolds.** Cycle 1 (produce prototypes) → Cycle 2 (single agent reviews ALL docs, cross-references actual code) → Cycle 3 (corrected prototypes). Never implement from Cycle 1 output. Session 2026-03-26: Cycle 2 caught 5 errors including a false alarm that would have introduced a 10^6x regression.
+20. Memory system: MEMORY.md (auto-loaded) contains Session Protocol with automatic behaviors. Follow it every session — read `memory/session.md` on start, load relevant topic files based on task, save checkpoint before ending.
+21. Memory commands: `/session-save`, `/session-resume`, `/recall <query>`, `/remember <fact>`, `/memory-status`
 
 ## Lessons Learned (Phases A-I)
 
