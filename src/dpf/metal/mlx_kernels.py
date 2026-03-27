@@ -355,14 +355,18 @@ _HLLD_HEADER = r"""
 #include <metal_stdlib>
 using namespace metal;
 
-constant float RHO_FLOOR = 1.0e-12f;
-constant float P_FLOOR   = 1.0e-12f;
-constant float V_MAX     = 1.0e6f;
-constant float TINY      = 1.0e-20f;
-constant float TINY_BN   = 1.0e-10f;
+constant float RHO_FLOOR   = 1.0e-12f;
+constant float P_FLOOR     = 1.0e-12f;
+constant float V_MAX       = 1.0e6f;
+constant float TINY        = 1.0e-20f;
+constant float TINY_BN     = 1.0e-10f;
+constant float C_BORIS_SQ  = 2.5e11f;  // (500 km/s)^2 — MUST MATCH constants.py
 constant int NVAR = 10;
 
 inline float fast_magnetosonic(float rho, float p, float Bn, float Bt1, float Bt2, float gamma) {
+    // Boris-corrected fast magnetosonic speed (Gombosi 2002, Minoshima 2019).
+    // Bounds Alfven speed at c_boris in vacuum without density floor hack.
+    // MUST MATCH C_BORIS_SQ in constants.py (verified by test_constants_consistency).
     rho = max(rho, RHO_FLOOR);
     p   = max(p,   P_FLOOR);
     float inv_rho  = 1.0f / rho;
@@ -370,10 +374,16 @@ inline float fast_magnetosonic(float rho, float p, float Bn, float Bt1, float Bt
     float B2       = Bn*Bn + Bt1*Bt1 + Bt2*Bt2;
     float va2      = B2 * inv_rho;
     float Bt2_sum  = Bt1*Bt1 + Bt2*Bt2;
-    float diff     = a2 - va2;
-    float disc     = diff*diff + 4.0f * a2 * Bt2_sum * inv_rho;
-    disc = max(disc, 0.0f);
-    float cf2 = 0.5f * (a2 + va2 + sqrt(disc));
+    float vat2     = Bt2_sum * inv_rho;
+
+    // Boris correction: va'^2 = va^2 * c^2 / (va^2 + c^2)
+    va2  = va2  * C_BORIS_SQ / (va2  + C_BORIS_SQ);
+    vat2 = vat2 * C_BORIS_SQ / (vat2 + C_BORIS_SQ);
+    a2   = min(a2, C_BORIS_SQ);
+
+    float diff = a2 - va2;
+    float disc = max(diff*diff + 4.0f * a2 * vat2, 0.0f);
+    float cf2  = min(0.5f * (a2 + va2 + sqrt(disc)), C_BORIS_SQ);
     return sqrt(max(cf2, 0.0f));
 }
 
@@ -615,7 +625,7 @@ def _get_hlld_kernel() -> object:
     global _hlld_kernel_cache
     if _hlld_kernel_cache is None:
         _hlld_kernel_cache = mx.fast.metal_kernel(
-            name="dpf_hlld_entropy",
+            name="dpf_hlld_entropy_boris",
             input_names=["UL", "UR", "gamma_param", "dim_param"],
             output_names=["flux"],
             source=_HLLD_SOURCE,
