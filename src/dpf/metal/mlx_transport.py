@@ -425,7 +425,10 @@ def anomalous_resistivity(
 
     if model == "drift_velocity":
         omega_pi = np.sqrt(n_i * E_CHARGE**2 / (EPS_0 * ion_mass))
-        ratio_sq = np.minimum((v_d / np.maximum(v_ti, 1.0))**2, 1.0)
+        # Saturation at 100x (not 1x) — instability grows with v_d/v_ti above threshold.
+        # Global Bohm cap (1e-2 Ohm*m) at line 441 still provides upper bound.
+        # Previous cap at 1.0 was too conservative (Huba 1985, GORGON uses uncapped).
+        ratio_sq = np.minimum((v_d / np.maximum(v_ti, 1.0))**2, 100.0)
         eta_anom = M_E * omega_pi * ratio_sq / np.maximum(n_e * E_CHARGE**2, 1e-60)
         eta_anom = np.where(v_d > v_ti, eta_anom, 0.0)
     elif model == "sagdeev":

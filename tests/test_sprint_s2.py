@@ -185,7 +185,7 @@ class TestAnomalousResistivity:
         J_sq = np.full((4, 8), (2.5e11) ** 2)  # PF-1000 pinch
         eta = anomalous_resistivity(J_sq, rho, p, model="drift_velocity")
         assert np.all(eta > 0)
-        assert np.all(eta < 1e-2)  # below Bohm cap
+        assert np.all(eta <= 1e-2)  # at or below Bohm cap
 
     def test_drift_velocity_exceeds_classical(self):
         """Anomalous >> classical at pinch conditions."""
