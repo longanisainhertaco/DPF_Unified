@@ -84,10 +84,16 @@ def resistive_diffusion_rhs(
             flux_rm = r_face_m * alpha_rm * (B_component - B_rm) * inv_dr
             Lr = (flux_rp - flux_rm) / (r_safe * dr)
 
-            # L'Hopital at axis (ir=0): use one-sided difference
+            # L'Hopital at axis (ir=0):
             # lim_{r->0} (1/r) d/dr(r*alpha*dB/dr) = 2*alpha*d2B/dr2
-            if nr > 1:
-                axis_Lr = 2.0 * alpha[:1, :] * (B_component[1:2, :] - B_component[:1, :]) * inv_dr2
+            # d2B/dr2 ≈ (B[2] - 2*B[1] + B[0]) / dr^2 (one-sided 2nd derivative)
+            if nr > 2:
+                d2B = (B_component[2:3, :] - 2.0 * B_component[1:2, :] + B_component[:1, :])
+                axis_Lr = 2.0 * alpha[:1, :] * d2B * inv_dr2
+                Lr = mx.concatenate([axis_Lr, Lr[1:, :]], axis=0)
+            elif nr > 1:
+                # Only 2 cells: use forward difference as approximation
+                axis_Lr = 2.0 * alpha[:1, :] * (B_component[1:2, :] - B_component[:1, :]) / (dr * dr)
                 Lr = mx.concatenate([axis_Lr, Lr[1:, :]], axis=0)
         else:
             # Cartesian: d/dx(alpha * dB/dx)
