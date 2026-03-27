@@ -392,10 +392,12 @@ inline void cons_to_prim(
     Bn  = U[ib_n  * stride + idx];
     Bt1 = U[ib_t1 * stride + idx];
     Bt2 = U[ib_t2 * stride + idx];
-    float E  = max(U[4 * stride + idx], P_FLOOR);
-    float ke = 0.5f * rho * (vn*vn + vt1*vt1 + vt2*vt2);
-    float mag = 0.5f * (Bn*Bn + Bt1*Bt1 + Bt2*Bt2);
-    p = max((gamma - 1.0f) * (E - ke - mag), P_FLOOR);
+    // HLLD-S: recover pressure from entropy tracer (ISR slot 5) instead of
+    // E - KE - ME subtraction. Eliminates catastrophic cancellation at beta << 1.
+    // p = Srho * rho^(gamma-1), where Srho = p * rho^(1-gamma) is stored in ISR.
+    // Popovas (2025), arXiv:2211.02438 — entropy-based MHD Riemann solvers.
+    float Srho = max(U[5 * stride + idx], P_FLOOR);
+    p = max(Srho * pow(rho, gamma - 1.0f), P_FLOOR);
 }
 
 inline void physical_flux(
@@ -613,7 +615,7 @@ def _get_hlld_kernel() -> object:
     global _hlld_kernel_cache
     if _hlld_kernel_cache is None:
         _hlld_kernel_cache = mx.fast.metal_kernel(
-            name="dpf_hlld",
+            name="dpf_hlld_entropy",
             input_names=["UL", "UR", "gamma_param", "dim_param"],
             output_names=["flux"],
             source=_HLLD_SOURCE,
@@ -641,10 +643,9 @@ def _cons_to_prim_np(
     Bn = U[ib_n]
     Bt1 = U[ib_t1]
     Bt2 = U[ib_t2]
-    E = np.maximum(U[4], P_FLOOR)
-    ke = 0.5 * rho * (vn**2 + vt1**2 + vt2**2)
-    mag = 0.5 * (Bn**2 + Bt1**2 + Bt2**2)
-    p = np.maximum((gamma - 1.0) * (E - ke - mag), P_FLOOR)
+    # HLLD-S: entropy-derived pressure (no E-KE-ME cancellation)
+    Srho = np.maximum(U[5], P_FLOOR)  # ISR slot
+    p = np.maximum(Srho * rho**(gamma - 1.0), P_FLOOR)
     return rho, vn, vt1, vt2, p, Bn, Bt1, Bt2, im_n, im_t1, im_t2, ib_n, ib_t1, ib_t2
 
 
