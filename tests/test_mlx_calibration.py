@@ -224,7 +224,7 @@ class TestRunMLXForwardModel:
         monkeypatch.setitem(
             sys.modules,
             "dpf.validation.experimental",
-            MagicMock(DEVICES={"pf1000": mock_device}),
+            MagicMock(DEVICES={"PF-1000": mock_device}),
         )
         monkeypatch.setitem(
             sys.modules,
