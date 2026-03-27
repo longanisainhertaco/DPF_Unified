@@ -4432,7 +4432,10 @@ def _make_metal_pf1000_config():
     from dpf.presets import get_preset
 
     preset = get_preset("pf1000")
-    preset["grid_shape"] = [16, 1, 32]
+    # Grid must cover full PF-1000 anode (z_f=600mm). With dx=1cm, need
+    # nz >= 64 (64cm > 60cm). Previous nz=32 (32cm) was too short for
+    # snowplow rundown to complete, causing 0% current dip.
+    preset["grid_shape"] = [16, 1, 64]
     preset["dx"] = 1e-2
     preset["sim_time"] = 12e-6
     preset["diagnostics_path"] = ":memory:"
