@@ -160,8 +160,14 @@ def run_mlx_forward_model(
     t_peak_sim = float(t_sim[np.argmax(I_sim)])
 
     # Get experimental device
-    from app_validation import PRESET_TO_DEVICE
-    device_name = PRESET_TO_DEVICE.get(preset_name, preset_name)
+    _PRESET_TO_DEVICE = {
+        "pf1000": "PF-1000", "pf1000_akel": "PF-1000-16kV",
+        "pf1000_20kv": "PF-1000-20kV", "nx2": "NX2",
+        "unu_ictp": "UNU-ICTP", "poseidon": "POSEIDON",
+        "poseidon_60kv": "POSEIDON-60kV", "mjolnir": "MJOLNIR",
+        "faeton": "FAETON-I",
+    }
+    device_name = _PRESET_TO_DEVICE.get(preset_name, preset_name)
     dev = DEVICES.get(device_name)
     if dev is None:
         raise ValueError(f"No experimental data for {device_name}")
