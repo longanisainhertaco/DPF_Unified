@@ -73,7 +73,6 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     Bt = U[IBT]
     B_sq = Br * Br + Bz * Bz + Bt * Bt
     rho = rho_raw
-    drho = mx.zeros_like(rho)
     isr = mx.maximum(U[ISR], 0.0)
 
     inv_rho = 1.0 / rho
@@ -84,11 +83,7 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
     ME = 0.5 * B_sq
 
-    # Energy with mass injection correction
-    E_floored = mx.maximum(
-        U[IEN] + P_FLOOR / gm1 * drho / mx.maximum(rho_raw, RHO_FLOOR),
-        P_FLOOR,
-    )
+    E_floored = mx.maximum(U[IEN], P_FLOOR)
 
     # --- Dual-energy pressure recovery (from _resync_energy) ---
     # Entropy-based pressure: p_S = rho^gamma * exp(S/rho)

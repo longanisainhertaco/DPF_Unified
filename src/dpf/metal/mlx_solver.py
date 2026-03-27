@@ -432,8 +432,10 @@ class MLXMHDSolver(PlasmaSolverBase):
                 self.nr,
                 convert_si_to_hl=self._convert_b_si_to_hl,
             )
-        except Exception:
-            # NumPy fallback: preserves exact original behaviour
+        except (RuntimeError, IndexError, ValueError, TypeError) as exc:
+            # NumPy fallback: preserves exact original behaviour.
+            # Only catch MLX compilation/device errors — not logic bugs.
+            logger.warning("MLX electrode BC failed (%s), using NumPy fallback", exc)
             from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
             _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
             U_np = np.asarray(U_padded)
