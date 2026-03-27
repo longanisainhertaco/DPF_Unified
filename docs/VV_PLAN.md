@@ -102,7 +102,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | REQ-ID | Requirement | Acceptance Criterion | Test | Method | Status |
 |--------|-------------|---------------------|------|--------|--------|
 | CVG-01 | Cartesian Sod convergence | Measured order >= 1.5 (PLM+HLL) | `test_mlx_cartesian::test_sod_convergence` (if exists) | Richardson extrapolation | PARTIAL |
-| CVG-02 | Cylindrical MHD convergence | Measured order >= 1.5 on resistive z-pinch | **PENDING** — no cylindrical convergence test | Richardson extrapolation | **NOT VERIFIED** |
+| CVG-02 | Cylindrical MHD convergence | Measured order >= 1.5 on cylindrical sound wave | `scripts/convergence_study_cylindrical.py` (MHD mode) | Richardson extrapolation: 1.81, 1.94, 1.98 | VERIFIED |
 | CVG-03 | Grid independence | I_peak varies < 2% between medium and fine grids | **PENDING** — needs grid study | Direct comparison | **NOT VERIFIED** |
 
 ---
@@ -119,10 +119,10 @@ This document defines quantitative acceptance criteria for every physics capabil
 | Resistivity | 6 | 6 | 0 | 0 |
 | Boris | 5 | 5 | 0 | 0 |
 | Experimental | 4 | 3 | 0 | 1 (EXP-04) |
-| Convergence | 3 | 0 | 1 (CVG-01) | 2 (CVG-02, CVG-03) |
-| **Total** | **40** | **36 (90%)** | **1 (2.5%)** | **3 (7.5%)** |
+| Convergence | 3 | 1 | 1 (CVG-01) | 1 (CVG-03) |
+| **Total** | **40** | **37 (92.5%)** | **1 (2.5%)** | **2 (5%)** |
 
-**36 of 40 requirements verified.** Remaining: EXP-04 (multi-device validation), CVG-02 (cylindrical MHD convergence), CVG-03 (grid independence).
+**37 of 40 requirements verified.** Remaining: EXP-04 (multi-device validation), CVG-03 (grid independence).
 
 ---
 
