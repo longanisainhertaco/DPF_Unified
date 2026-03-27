@@ -626,7 +626,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         # Prevents unphysical conduction when mfp > gradient scale at pinch
         kappa_np = np.asarray(kappa, dtype=np.float64) if not isinstance(
             kappa, (int, float)
-        ) else np.full((self._nr, self._nz), float(kappa), dtype=np.float64)
+        ) else np.full((self.nr, self.nz), float(kappa), dtype=np.float64)
         Te_np = np.asarray(T, dtype=np.float64)
         rho_np = np.asarray(rho, dtype=np.float64)
         kappa_limited = flux_limit_kappa(
@@ -763,7 +763,7 @@ class MLXMHDSolver(PlasmaSolverBase):
             if isinstance(eta_raw, np.ndarray):
                 eta_squeezed = np.squeeze(eta_raw)
                 if eta_squeezed.ndim == 1:
-                    eta_squeezed = eta_squeezed.reshape(self._nr, self._nz)
+                    eta_squeezed = eta_squeezed.reshape(self.nr, self.nz)
                 _eta_arg = mx.array(eta_squeezed.astype(np.float32))
             else:
                 _eta_arg = float(eta_raw)
