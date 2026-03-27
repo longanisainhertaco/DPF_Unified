@@ -175,7 +175,11 @@ class MLXMHDSolver(PlasmaSolverBase):
         else:
             self._method = "plm"
 
-        self._riemann: str = riemann_solver if riemann_solver in ("hlld", "hll", "hlls") else "hlld"
+        # HLL-GPU is default: uses entropy wavespeeds (no float32 cancellation)
+        # with conservative energy flux (U[IEN], not entropy-derived E_tot).
+        # HLLS trades conservation for robustness — use explicitly when needed.
+        # HLLD adds contact/Alfven resolution but needs Boris (Task 2.3).
+        self._riemann: str = riemann_solver if riemann_solver in ("hlld", "hll", "hlls") else "hll"
         self._precision: str = precision if precision in ("float32", "float64") else "float32"
         self._integrator: str = time_integrator
 
