@@ -898,7 +898,9 @@ class MLXMHDSolver(PlasmaSolverBase):
                 J_sq_mx = compute_current_density(
                     U, self._grid.dr, self._grid.dz, self._grid.r_cell,
                 )
-                J_sq_np = np.asarray(J_sq_mx, dtype=np.float64)
+                # B is in HL units (mu_0=1), so J = curl(B_HL) is in HL units.
+                # Convert to SI: J_SI^2 = J_HL^2 * mu_0
+                J_sq_np = np.asarray(J_sq_mx, dtype=np.float64) * _MU0
                 p_np = np.asarray(p_tmp, dtype=np.float64)
 
             eta_computed = compute_resistivity(
