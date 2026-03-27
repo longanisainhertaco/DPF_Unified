@@ -1352,10 +1352,21 @@ class MLXMHDSolver(PlasmaSolverBase):
         else:
             Lp = 0.0
 
-        # Monotonicity enforcement (Lp can't decrease during compression)
+        # Phase-aware monotonicity: Lp increases during compression (sheath
+        # imploding → r_eff decreasing → log(b/r) increasing → Lp increasing).
+        # Post-pinch, the column expands → r_eff increases → Lp decreases.
+        # The old unconditional clamp (Lp = Lp_max) killed dLp/dt post-pinch,
+        # producing zero current dip. Now we track whether we've passed Lp peak
+        # and allow Lp to decrease in the expansion phase.
         if Lp > self._Lp_max:
             self._Lp_max = Lp
+        elif Lp < self._Lp_max * 0.98:
+            # Lp dropped >2% below peak → post-pinch expansion phase.
+            # Allow Lp to follow the MHD solution (no clamp).
+            pass
         else:
+            # Within 2% of peak → still near pinch, enforce monotonicity
+            # to prevent noise-driven oscillations.
             Lp = self._Lp_max
 
         # dL/dt via backward difference

@@ -151,11 +151,17 @@ def _step_circuit_subcycle(
                 self.coupling_mode == "density_weighted"
                 and feedback is not None
                 and feedback.Lp > 0
+                and feedback.dLp_dt is not None
+                and abs(feedback.dLp_dt) > abs(sp_dLdt) * 0.1
             ):
+                # MHD feedback has meaningful dLp/dt post-pinch — use it.
                 coupling.Lp = feedback.Lp
                 coupling.dL_dt = feedback.dLp_dt
                 back_emf = feedback.back_emf
             else:
+                # Snowplow post-pinch expansion model provides dL/dt.
+                # This is the fallback when MHD feedback's Lp is clamped
+                # or when snowplow's expansion model is more physical.
                 coupling.Lp = sp_Lp
                 coupling.dL_dt = sp_dLdt
 
