@@ -111,18 +111,18 @@ This document defines quantitative acceptance criteria for every physics capabil
 
 | Category | Total Requirements | Verified | Pending | Not Verified |
 |----------|-------------------|----------|---------|-------------|
-| Conservation | 5 | 4 | 0 | 1 (CON-05) |
-| Riemann Solvers | 6 | 5 | 0 | 1 (RIE-06) |
+| Conservation | 5 | 5 | 0 | 0 |
+| Riemann Solvers | 6 | 6 | 0 | 0 |
 | Reconstruction | 3 | 3 | 0 | 0 |
 | Time Integration | 3 | 3 | 0 | 0 |
 | Transport | 5 | 5 | 0 | 0 |
-| Resistivity | 6 | 5 | 0 | 1 (RES-05) |
-| Boris | 5 | 4 | 0 | 1 (BOR-05) |
+| Resistivity | 6 | 6 | 0 | 0 |
+| Boris | 5 | 5 | 0 | 0 |
 | Experimental | 4 | 3 | 0 | 1 (EXP-04) |
-| Convergence | 3 | 0 | 1 | 2 |
+| Convergence | 3 | 0 | 1 (CVG-01) | 2 (CVG-02, CVG-03) |
 | **Total** | **40** | **36 (90%)** | **1 (2.5%)** | **3 (7.5%)** |
 
-**32 of 40 requirements verified.** 7 require Sprint S-3 Phase 2-4 work. 1 partial.
+**36 of 40 requirements verified.** Remaining: EXP-04 (multi-device validation), CVG-02 (cylindrical MHD convergence), CVG-03 (grid independence).
 
 ---
 
@@ -130,10 +130,10 @@ This document defines quantitative acceptance criteria for every physics capabil
 
 Before any DPF-Unified result is cited in a publication:
 
-1. **CON-05**: Fix cylindrical energy source term (Sprint S-3 Task 2.1)
-2. **RIE-06 / BOR-05**: Add Boris to HLLD kernel (Sprint S-3 Task 2.3)
-3. **CVG-02**: Cylindrical convergence study (Sprint S-3 Task 4.1)
-4. **EXP-04**: Multi-device validation sweep (Sprint S-3 post-Phase 4)
-5. **RES-05**: Fix anomalous resistivity saturation (Sprint S-3 Task 2.4)
+1. ~~**CON-05**: Fix cylindrical energy source term~~ — DONE (commit 6c79c0c)
+2. ~~**RIE-06 / BOR-05**: Add Boris to HLLD kernel~~ — DONE (commit 5111307)
+3. **CVG-02**: Cylindrical MHD convergence study (needs resistive z-pinch, not diffusion)
+4. **EXP-04**: Multi-device validation sweep (4+ devices passing tolerances)
+5. ~~**RES-05**: Fix anomalous resistivity saturation~~ — DONE (cap 1.0→100.0)
 
-All 5 are in the Sprint S-3 execution plan with specific acceptance criteria.
+3 of 5 blockers resolved. 2 remaining: CVG-02 and EXP-04.
