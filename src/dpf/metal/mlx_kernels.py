@@ -896,6 +896,7 @@ _CYL_HEADER = r"""
 using namespace metal;
 
 constant float TINY_R = 1.0e-30f;
+constant float C_BORIS_SQ = 2.5e11f;  // (500 km/s)^2 — Boris reduced speed of light
 constant int NVAR = 10;
 constant int IDN = 0;
 constant int IVR = 1;
@@ -932,21 +933,34 @@ _CYL_SOURCE = r"""
     float dr = grid_params[0];
 
     float B2    = Br*Br + Bz*Bz + Btheta*Btheta;
-    float p_tot = p + 0.5f * B2;
+
+    // Boris correction: reduce magnetic pressure in vacuum cells
+    // f_boris = c_boris^2 / (v_A^2 + c_boris^2)
+    // In physical cells (v_A << c_boris): f_boris ~ 1 (no change)
+    // In vacuum cells (v_A >> c_boris): f_boris ~ c_boris^2/v_A^2 (bounded)
+    // Gombosi et al. 2002, JCP 177:176; Minoshima et al. 2019, ApJ 874:37
+    float rho_safe = max(rho, TINY_R);
+    float va_sq = B2 / rho_safe;
+    float f_boris = C_BORIS_SQ / (va_sq + C_BORIS_SQ);
+
+    float p_tot = p + 0.5f * B2 * f_boris;
     float inv_r = 1.0f / max(r, TINY_R);
 
-    float S_mr = (p_tot - Btheta * Btheta) * inv_r + rho * vtheta * vtheta * inv_r;
-    float S_mt = -(rho * vr * vtheta - Br * Btheta) * inv_r;
+    float S_mr = (p_tot - Btheta * Btheta * f_boris) * inv_r + rho * vtheta * vtheta * inv_r;
+    float S_mt = -(rho * vr * vtheta - Br * Btheta * f_boris) * inv_r;
     float S_Bt = -(vr * Btheta - Br * vtheta) * inv_r;
 
     if (ir == 0 && nr > 1) {
         uint idx1 = 1 * nz + iz;
+        float rho_next = max(prim[IDN * stride + idx1], TINY_R);
         float p_next  = prim[IPR * stride + idx1];
         float Br_next = prim[IBR * stride + idx1];
         float Bz_next = prim[IBZ * stride + idx1];
         float Bt_next = prim[IBT * stride + idx1];
         float B2_next = Br_next*Br_next + Bz_next*Bz_next + Bt_next*Bt_next;
-        float pt_next = p_next + 0.5f * B2_next;
+        float va_sq_next = B2_next / rho_next;
+        float f_boris_next = C_BORIS_SQ / (va_sq_next + C_BORIS_SQ);
+        float pt_next = p_next + 0.5f * B2_next * f_boris_next;
         S_mr = (pt_next - p_tot) / dr;
         S_mt = 0.0f;
         S_Bt = 0.0f;
@@ -971,7 +985,7 @@ def _get_cyl_kernel() -> object:
     global _cyl_kernel_cache
     if _cyl_kernel_cache is None:
         _cyl_kernel_cache = mx.fast.metal_kernel(
-            name="dpf_cyl_source",
+            name="dpf_cyl_source_boris",
             input_names=["prim", "r_cell", "grid_params"],
             output_names=["src"],
             source=_CYL_SOURCE,
@@ -1013,7 +1027,16 @@ def cylindrical_source_numpy(
     Btheta = Q[IBT]
 
     B2 = Br**2 + Bz**2 + Btheta**2
-    p_tot = p + 0.5 * B2
+
+    # Boris correction: reduce magnetic forces in vacuum cells
+    # f_boris = c_boris^2 / (v_A^2 + c_boris^2)
+    # Gombosi et al. 2002, JCP 177:176
+    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    rho_safe = np.maximum(rho, 1e-30)
+    va_sq = B2 / rho_safe
+    f_boris = _C_BORIS_SQ / (va_sq + _C_BORIS_SQ)
+
+    p_tot = p + 0.5 * B2 * f_boris
 
     r = r_cell[:, np.newaxis]
     if inv_r is not None:
@@ -1021,8 +1044,8 @@ def cylindrical_source_numpy(
     else:
         _inv_r = 1.0 / np.maximum(r, 1e-30)
 
-    S_mr = (p_tot - Btheta**2) * _inv_r + rho * vtheta**2 * _inv_r
-    S_mt = -(rho * vr * vtheta - Br * Btheta) * _inv_r
+    S_mr = (p_tot - Btheta**2 * f_boris) * _inv_r + rho * vtheta**2 * _inv_r
+    S_mt = -(rho * vr * vtheta - Br * Btheta * f_boris) * _inv_r
     S_Bt = -(vr * Btheta - Br * vtheta) * _inv_r
 
     # L'Hopital at ir=0: replace p_tot/r with dp_tot/dr

@@ -186,6 +186,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._Lp_max: float = 0.0
         self._cathode_radius: float = float(kwargs.get("cathode_radius", 0.025))
         self.config_two_temperature: bool = kwargs.get("two_temperature", False)
+        self._resistivity_model: str = str(kwargs.get("resistivity_model", "constant"))
 
         # Internal conserved state (mx.array, set after first step)
         self._U: Any = None
@@ -614,16 +615,28 @@ class MLXMHDSolver(PlasmaSolverBase):
         mx = require_mlx()
         from dpf.metal.mlx_kernels import IEN, ISR, NVAR
         from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
-        from dpf.metal.mlx_transport import apply_thermal_conduction
+        from dpf.metal.mlx_transport import apply_thermal_conduction, flux_limit_kappa
 
         rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
 
         # T = p*m_i/(2*rho*kB) for fully ionized plasma (n_e + n_i = 2*n_i)
         T = p * self.ion_mass / (2.0 * mx.maximum(rho, 1e-30) * _K_B)
 
+        # Apply free-streaming flux limiter (Malone et al. 1975)
+        # Prevents unphysical conduction when mfp > gradient scale at pinch
+        kappa_np = np.asarray(kappa, dtype=np.float64) if not isinstance(
+            kappa, (int, float)
+        ) else np.full((self._nr, self._nz), float(kappa), dtype=np.float64)
+        Te_np = np.asarray(T, dtype=np.float64)
+        rho_np = np.asarray(rho, dtype=np.float64)
+        kappa_limited = flux_limit_kappa(
+            kappa_np, Te_np, rho_np, self._grid.dz,
+            f_limit=0.1, ion_mass=self.ion_mass,
+        )
+
         Te_new, Ti_new = apply_thermal_conduction(
             Te=T, Ti=T, rho=rho, B=Bz,
-            kappa_parallel=kappa,
+            kappa_parallel=mx.array(kappa_limited.astype(np.float32)),
             dt=dt, dz=self._grid.dz,
             dr=self._grid.dr,
             Br=Br, Bz=Bz, Bt=Bt,
@@ -754,6 +767,22 @@ class MLXMHDSolver(PlasmaSolverBase):
                 _eta_arg = mx.array(eta_squeezed.astype(np.float32))
             else:
                 _eta_arg = float(eta_raw)
+        elif self._resistivity_model != "constant":
+            # Compute spatially-varying resistivity from plasma conditions
+            from dpf.metal.mlx_primitives import cons_to_prim
+            from dpf.metal.mlx_transport import compute_resistivity
+            rho_tmp, _, _, _, p_tmp, _, _, _ = cons_to_prim(U, self.gamma)
+            Te_eV = (
+                np.asarray(p_tmp, dtype=np.float64) * self.ion_mass
+                / (2.0 * np.maximum(np.asarray(rho_tmp, dtype=np.float64), 1e-30) * _K_B)
+                / 11604.5  # K -> eV
+            )
+            rho_np = np.asarray(rho_tmp, dtype=np.float64)
+            eta_computed = compute_resistivity(
+                Te_eV, rho_np, model=self._resistivity_model,
+                Z_eff=self.Z_eff, ion_mass=self.ion_mass,
+            )
+            _eta_arg = mx.array(eta_computed.astype(np.float32))
 
         # ── 3.1. Strang split: first half-step resistive diffusion ─────
         # Must run BEFORE ghost padding (eta field is sized for un-padded grid)

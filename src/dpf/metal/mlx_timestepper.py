@@ -62,15 +62,18 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     """
     gm1 = gamma - 1.0
 
-    # --- Floor enforcement (from _apply_floors) ---
+    # --- Floor enforcement (Boris-aware, no fake mass injection) ---
+    # Previous approach injected fake mass (rho = max(rho, B²/va_max²)) which
+    # corrupted species mass fractions. Boris correction in Riemann solver
+    # wavespeeds + geometric source terms bounds all forces without fake mass.
+    # Only enforce minimal RHO_FLOOR for numerical stability.
     rho_raw = mx.maximum(U[IDN], RHO_FLOOR)
     Br = U[IBR]
     Bz = U[IBZ]
     Bt = U[IBT]
     B_sq = Br * Br + Bz * Bz + Bt * Bt
-    va_max = 1e6
-    rho = mx.maximum(rho_raw, B_sq / (va_max * va_max))
-    drho = rho - rho_raw
+    rho = rho_raw
+    drho = mx.zeros_like(rho)
     isr = mx.maximum(U[ISR], 0.0)
 
     inv_rho = 1.0 / rho
@@ -99,11 +102,13 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     p = mx.where(use_entropy, p_S, p_E)
     p = mx.maximum(p, P_FLOOR)
 
-    # --- Velocity clamping (from _clamp_velocity) ---
-    # Fast magnetosonic speed for radial direction
+    # --- Velocity clamping (Boris-corrected fast magnetosonic) ---
     a_sq = gamma * p * inv_rho
     va_sq = B_sq * inv_rho
-    cf = mx.sqrt(a_sq + va_sq)
+    # Boris correction: v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2)
+    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    va_sq_boris = va_sq * _C_BORIS_SQ / (va_sq + _C_BORIS_SQ)
+    cf = mx.sqrt(a_sq + va_sq_boris)
 
     v_max = _V_CLAMP_FACTOR * cf
     v_mag = mx.sqrt(mx.maximum(vr * vr + vz * vz + vt * vt, 0.0))

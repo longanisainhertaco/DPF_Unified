@@ -355,6 +355,39 @@ def fast_magnetosonic_boris(
     return mx.sqrt(cf_sq)
 
 
+def boris_factor(
+    rho: mx.array,
+    B_sq: mx.array,
+    c_boris: float = _C_BORIS_DEFAULT,
+) -> mx.array:
+    """Compute Boris reduction factor for magnetic forces.
+
+    f_boris = c_boris^2 / (v_A^2 + c_boris^2)
+
+    In physical cells (v_A << c_boris): f_boris ~ 1 (no change).
+    In vacuum cells (v_A >> c_boris): f_boris ~ c_boris^2 / v_A^2 (bounded).
+
+    This factor multiplies magnetic pressure and tension in the MHD equations
+    to bound forces without injecting artificial mass (density floor hack).
+
+    Args:
+        rho: Density, shape (nr, nz).
+        B_sq: Total B^2 = Br^2 + Bz^2 + Bt^2, shape (nr, nz).
+        c_boris: Reduced speed of light [m/s]. Default 5e5 (500 km/s).
+
+    Returns:
+        Boris factor, shape (nr, nz), in [0, 1].
+
+    References:
+        Gombosi et al. (2002), JCP 177:176 — semi-relativistic MHD.
+        Minoshima et al. (2019), ApJ 874:37 — Boris correction for HLLD.
+    """
+    c_sq = c_boris * c_boris
+    rho_safe = mx.maximum(rho, RHO_FLOOR)
+    va_sq = B_sq / rho_safe
+    return c_sq / (va_sq + c_sq)
+
+
 def entropy_resync(
     U: mx.array,
     p: mx.array,

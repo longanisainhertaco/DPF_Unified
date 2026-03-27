@@ -25,7 +25,11 @@ except ImportError:
 MU_0: float = 4.0 * math.pi * 1e-7
 K_B: float = 1.380649e-23
 M_D: float = 3.34358377e-27
+M_E: float = 9.10938e-31
+E_CHARGE: float = 1.602176634e-19
+EPS_0: float = 8.854187817e-12
 P_FLOOR: float = 1e-12
+COULOMB_LOG_DEFAULT: float = 10.0
 
 
 # ── Thomas Tridiagonal Solver ───────────────────────────────────
@@ -195,6 +199,169 @@ def _build_cylindrical_diffusion_system(
 
     d = field_col.copy()
     return a, b, c, d
+
+
+# ── Resistivity Models ─────────────────────────────────────────
+
+
+def spitzer_resistivity(
+    Te: np.ndarray,
+    Z_eff: float = 1.0,
+    coulomb_log: float = COULOMB_LOG_DEFAULT,
+) -> np.ndarray:
+    """Spitzer resistivity: eta = 0.51 * m_e * nu_ei / (n_e * e^2).
+
+    Simplified Spitzer formula (NRL Formulary):
+        eta = 1.03e-4 * Z * ln(Lambda) / Te^{3/2}  [Ohm*m]
+
+    Valid for T_e > ~10 eV where Coulomb collisions dominate.
+    Diverges as T_e -> 0 (partially ionized gas).
+
+    Parameters
+    ----------
+    Te : np.ndarray
+        Electron temperature [eV], any shape.
+    Z_eff : float
+        Effective charge number.
+    coulomb_log : float
+        Coulomb logarithm (default 10).
+
+    Returns
+    -------
+    eta : np.ndarray
+        Resistivity [Ohm*m], same shape as Te.
+    """
+    Te_safe = np.maximum(Te, 0.1)  # floor at 0.1 eV to avoid divergence
+    return 1.03e-4 * Z_eff * coulomb_log / Te_safe**1.5
+
+
+def lee_more_resistivity(
+    Te: np.ndarray,
+    rho: np.ndarray,
+    Z_eff: float = 1.0,
+    ion_mass: float = M_D,
+) -> np.ndarray:
+    """Lee-More resistivity model for warm dense plasma.
+
+    Bridges the gap between Spitzer (hot, fully ionized) and cold plasma.
+    At T_e >> T_Fermi: recovers Spitzer scaling eta ~ T^{-3/2}.
+    At T_e << T_Fermi: saturates at a finite value (no divergence).
+
+    Based on Lee & More (1984), Phys. Fluids 27:1273.
+    Simplified implementation following Epperlein (1991) and HYDRA.
+
+    The key insight: electron-ion collision frequency is bounded by the
+    inverse of the electron transit time across one ion sphere:
+        nu_ei = max(nu_spitzer, v_th / r_ion)
+
+    Parameters
+    ----------
+    Te : np.ndarray
+        Electron temperature [eV], shape (nr, nz).
+    rho : np.ndarray
+        Mass density [kg/m^3], shape (nr, nz).
+    Z_eff : float
+        Effective charge number.
+    ion_mass : float
+        Ion mass [kg].
+
+    Returns
+    -------
+    eta : np.ndarray
+        Resistivity [Ohm*m], shape (nr, nz).
+    """
+    Te_safe = np.maximum(Te, 0.01)  # floor at 0.01 eV
+    rho_safe = np.maximum(rho, 1e-20)
+
+    # Number density
+    n_i = rho_safe / ion_mass
+    n_e = Z_eff * n_i
+
+    # Coulomb logarithm (NRL, capped)
+    # ln(Lambda) = 23.5 - ln(n_e^{1/2} * Te^{-5/4}) - sqrt(1e-5 + (ln(Te)-2)^2/16)
+    # Simplified: clamp to [2, 20]
+    ln_ne = np.log(np.maximum(n_e, 1.0))
+    ln_Te = np.log(np.maximum(Te_safe, 0.01))
+    coulomb_log = np.clip(23.5 - 0.5 * ln_ne / np.log(10) + 1.25 * ln_Te, 2.0, 20.0)
+
+    # Spitzer collision frequency: nu_ei_spitzer
+    # nu_ei = 4 * sqrt(2*pi) * n_e * Z^2 * e^4 * ln(Lambda) /
+    #         (3 * (4*pi*eps_0)^2 * m_e^{1/2} * (k_B * Te)^{3/2})
+    Te_J = Te_safe * E_CHARGE  # eV -> Joules
+    prefactor = 4.0 * math.sqrt(2.0 * math.pi) / 3.0
+    denom_const = (4.0 * math.pi * EPS_0) ** 2 * math.sqrt(M_E)
+    nu_spitzer = (
+        prefactor * n_e * Z_eff**2 * E_CHARGE**4 * coulomb_log
+        / (denom_const * (K_B * Te_safe * E_CHARGE / E_CHARGE) ** 1.5)
+    )
+    # Simplify: Te is in eV, so k_B * Te_K = Te_eV * e_charge
+    nu_spitzer = (
+        prefactor * n_e * Z_eff**2 * E_CHARGE**4 * coulomb_log
+        / (denom_const * Te_J**1.5)
+    )
+
+    # Lee-More saturation: electron-ion collision frequency bounded by
+    # transit time across Wigner-Seitz ion sphere radius
+    # r_WS = (3 / (4*pi*n_i))^{1/3}
+    r_ws = (3.0 / (4.0 * math.pi * np.maximum(n_i, 1.0))) ** (1.0 / 3.0)
+    # Thermal velocity: v_th = sqrt(k_B * Te / m_e)
+    v_th = np.sqrt(Te_J / M_E)
+    # Maximum collision frequency: nu_max = v_th / r_ws
+    nu_max = v_th / np.maximum(r_ws, 1e-30)
+
+    # Effective collision frequency: harmonic mean blending
+    # 1/nu_eff = 1/nu_spitzer + 1/nu_max (smooth transition)
+    nu_eff = nu_spitzer * nu_max / (nu_spitzer + nu_max + 1e-30)
+
+    # Resistivity: eta = m_e * nu_eff / (n_e * e^2)
+    eta = M_E * nu_eff / (np.maximum(n_e, 1.0) * E_CHARGE**2)
+
+    # Clamp to physical range [1e-10, 1e-2] Ohm*m
+    return np.clip(eta, 1e-10, 1e-2)
+
+
+def compute_resistivity(
+    Te: np.ndarray,
+    rho: np.ndarray,
+    model: str = "lee_more",
+    Z_eff: float = 1.0,
+    ion_mass: float = M_D,
+    eta_floor: float = 1e-10,
+    eta_cap: float = 1e-2,
+) -> np.ndarray:
+    """Compute spatially-varying resistivity from plasma conditions.
+
+    Parameters
+    ----------
+    Te : np.ndarray
+        Electron temperature [eV], shape (nr, nz).
+    rho : np.ndarray
+        Mass density [kg/m^3], shape (nr, nz).
+    model : str
+        "lee_more" (default), "spitzer", or "constant".
+    Z_eff : float
+        Effective charge number.
+    ion_mass : float
+        Ion mass [kg].
+    eta_floor : float
+        Minimum resistivity [Ohm*m].
+    eta_cap : float
+        Maximum resistivity [Ohm*m].
+
+    Returns
+    -------
+    eta : np.ndarray
+        Resistivity [Ohm*m], shape (nr, nz).
+    """
+    if model == "lee_more":
+        eta = lee_more_resistivity(Te, rho, Z_eff=Z_eff, ion_mass=ion_mass)
+    elif model == "spitzer":
+        eta = spitzer_resistivity(Te, Z_eff=Z_eff)
+    elif model == "constant":
+        eta = np.full_like(Te, eta_floor)
+    else:
+        raise ValueError(f"Unknown resistivity model: {model!r}")
+    return np.clip(eta, eta_floor, eta_cap)
 
 
 # ── Resistive Diffusion ─────────────────────────────────────────
@@ -446,3 +613,82 @@ def apply_thermal_conduction(
             Ti_new[:, iz] = np.maximum(thomas_solve(a, b, c, d), 1.0)
 
     return mx.array(Te_new.astype(np.float32)), mx.array(Ti_new.astype(np.float32))
+
+
+# ── Flux-Limited Thermal Conduction ────────────────────────────
+
+
+def flux_limit_kappa(
+    kappa: np.ndarray,
+    Te: np.ndarray,
+    rho: np.ndarray,
+    dz: float,
+    f_limit: float = 0.1,
+    ion_mass: float = M_D,
+    Z_eff: float = 1.0,
+) -> np.ndarray:
+    """Apply free-streaming flux limiter to thermal conductivity.
+
+    When the electron mean free path exceeds the temperature gradient scale
+    length, Braginskii conduction overestimates heat flux. The flux limiter
+    caps the heat flux at a fraction of the free-streaming value:
+
+        q_limited = min(q_braginskii, f * n_e * k_B * T_e * v_th_e)
+
+    Implemented as an effective kappa reduction:
+        kappa_eff = kappa * q_fs / (q_braginskii + q_fs)
+
+    where q_fs = f * n_e * k_B * Te * v_th and q_braginskii ~ kappa * dT/dx.
+
+    Parameters
+    ----------
+    kappa : np.ndarray
+        Unrestricted thermal conductivity [W/(m*K)], shape (nr, nz).
+    Te : np.ndarray
+        Electron temperature [K], shape (nr, nz).
+    rho : np.ndarray
+        Mass density [kg/m^3], shape (nr, nz).
+    dz : float
+        Grid spacing [m] (used to estimate |grad T|).
+    f_limit : float
+        Flux limiter fraction (default 0.1). Typical range 0.03-0.15.
+        0.1 is standard for laser-plasma (Malone et al. 1975).
+        0.06 often used for z-pinch (Giuliani & Commisso 2015).
+    ion_mass : float
+        Ion mass [kg].
+    Z_eff : float
+        Effective charge number.
+
+    Returns
+    -------
+    kappa_limited : np.ndarray
+        Flux-limited conductivity [W/(m*K)], shape (nr, nz).
+
+    References
+    ----------
+    Malone, McCrory & Morse (1975), PRL 34:721 — original flux limiter.
+    Giuliani & Commisso (2015), PoP 22:032116 — z-pinch flux limiting.
+    """
+    Te_safe = np.maximum(Te, 1.0)  # floor at 1 K
+    rho_safe = np.maximum(rho, 1e-20)
+
+    # Electron number density
+    n_e = Z_eff * rho_safe / ion_mass
+
+    # Electron thermal velocity: v_th = sqrt(k_B * Te / m_e)
+    v_th = np.sqrt(K_B * Te_safe / M_E)
+
+    # Free-streaming heat flux: q_fs = f * n_e * k_B * Te * v_th
+    q_fs = f_limit * n_e * K_B * Te_safe * v_th
+
+    # Estimate Braginskii flux: q_brag ~ kappa * |grad T| ~ kappa * Te / L
+    # Use dz as characteristic scale length (conservative estimate)
+    grad_T_est = Te_safe / np.maximum(dz, 1e-10)
+    q_brag = np.abs(kappa) * grad_T_est
+
+    # Harmonic mean limiting: kappa_eff = kappa * q_fs / (q_brag + q_fs)
+    # When q_brag << q_fs: kappa_eff ~ kappa (no limiting)
+    # When q_brag >> q_fs: kappa_eff ~ kappa * q_fs / q_brag (flux-limited)
+    kappa_limited = kappa * q_fs / (q_brag + q_fs + 1e-30)
+
+    return np.maximum(kappa_limited, 0.0)
