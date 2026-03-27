@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from dpf.metal.constants import C_BORIS_SQ, P_FLOOR, RHO_FLOOR
 from dpf.metal.mlx_kernels import (
     IBR,
     IBT,
@@ -36,7 +37,7 @@ from dpf.metal.mlx_kernels import (
     cylindrical_source_mlx,
     hlld_flux_mlx,
 )
-from dpf.metal.mlx_primitives import P_FLOOR, RHO_FLOOR, cons_to_prim
+from dpf.metal.mlx_primitives import cons_to_prim
 from dpf.metal.mlx_reconstruction import reconstruct
 
 try:
@@ -129,7 +130,7 @@ def _hlls_flux_gpu(
     Bt_sq_R = mx.maximum(B2_R - Bn_R**2, 0.0)
 
     # Boris-capped fast magnetosonic wavespeeds
-    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    _C_BORIS_SQ = C_BORIS_SQ
     a_sq_L = mx.minimum(gamma * p_L / rho_L, _C_BORIS_SQ)
     a_sq_R = mx.minimum(gamma * p_R / rho_R, _C_BORIS_SQ)
     va_sq_L = B2_L / rho_L
@@ -257,7 +258,7 @@ def _hll_flux_gpu(
         Numerical flux, shape (NVAR, n_ifaces, n_transverse), mx.array float32.
     """
     TINY = 1e-20
-    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    _C_BORIS_SQ = C_BORIS_SQ
 
     if dim == 0:
         im_n, im_t1, im_t2 = IMR, IMZ, IMT
@@ -454,7 +455,7 @@ def _hlls_flux(
     Bt_sq_R = np.maximum(B2_R - Bn_R**2, 0.0)
 
     # Boris-capped wavespeeds (same as HLL)
-    _C_BORIS_SQ = 5e5**2
+    _C_BORIS_SQ = C_BORIS_SQ
     a_sq_L = np.minimum(gam * p_L / rho_L, _C_BORIS_SQ)
     a_sq_R = np.minimum(gam * p_R / rho_R, _C_BORIS_SQ)
     va_sq_L = B2_L / rho_L
@@ -584,7 +585,7 @@ def _hll_flux_cpu64(
     # v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2) bounds vacuum wavespeeds
     # without the E-KE-ME cancellation that causes NaN in float32.
     # Gombosi 2002, validated for z-pinch by PERSEUS (Gourdain 2025).
-    _C_BORIS_SQ = 5e5**2  # (500 km/s)^2
+    _C_BORIS_SQ = C_BORIS_SQ  # (500 km/s)^2
     a_sq_L = np.minimum(gamma*p_L/rho_L, _C_BORIS_SQ)
     a_sq_R = np.minimum(gamma*p_R/rho_R, _C_BORIS_SQ)
     va_sq_L = B2_L/rho_L

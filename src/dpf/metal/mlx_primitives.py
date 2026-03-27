@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 
+from dpf.metal.constants import P_FLOOR, RHO_FLOOR  # Single source of truth
 from dpf.metal.mlx_kernels import (  # noqa: F401
     IBR,
     IBT,
@@ -39,18 +40,12 @@ from dpf.metal.mlx_kernels import (  # noqa: F401
     NVAR,
 )
 
-RHO_FLOOR: float = 1e-12
-P_FLOOR: float = 1e-12
-
 # Speed of light for cf clamping in fast_magnetosonic
 _C_LIGHT: float = 3e8
 _CF_SQ_MAX: float = _C_LIGHT * _C_LIGHT
 
-# Boris correction: reduced speed of light for wave speed limiting.
-# v_A' = v_A * c_boris / sqrt(v_A^2 + c_boris^2) bounds Alfven speed
-# at c_boris without injecting fake mass. Set to ~5-10x max flow velocity.
-# Gombosi et al. 2002, JCP 177:176; Minoshima et al. 2019, ApJ 874:37.
-_C_BORIS_DEFAULT: float = 5e5  # 500 km/s — bounds dt at ~dx/5e5
+# Boris correction — canonical value from constants.py
+from dpf.metal.constants import C_BORIS as _C_BORIS_DEFAULT  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Compile cache — populated lazily on first call.

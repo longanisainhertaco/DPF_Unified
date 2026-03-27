@@ -20,17 +20,22 @@ try:
 except ImportError:
     _MLX_AVAILABLE = False
 
-# ── Physical Constants ──────────────────────────────────────────
+# ── Physical Constants (from single source of truth) ──────────────
 
-MU_0: float = 4.0 * math.pi * 1e-7
-K_B: float = 1.380649e-23
-M_D: float = 3.34358377e-27
-M_E: float = 9.10938e-31
-E_CHARGE: float = 1.602176634e-19
-EPS_0: float = 8.854187817e-12
-P_FLOOR: float = 1e-12
-COULOMB_LOG_DEFAULT: float = 10.0
-
+from dpf.metal.constants import (  # noqa: E402
+    COULOMB_LOG_DEFAULT,
+    E_CHARGE,
+    EPS_0,
+    K_B,
+    MU_0,
+    P_FLOOR,
+)
+from dpf.metal.constants import (
+    M_DEUTERIUM as M_D,
+)
+from dpf.metal.constants import (
+    M_ELECTRON as M_E,
+)
 
 # ── Thomas Tridiagonal Solver ───────────────────────────────────
 

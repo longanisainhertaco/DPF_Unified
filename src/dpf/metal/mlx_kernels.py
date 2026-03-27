@@ -1032,7 +1032,7 @@ def cylindrical_source_numpy(
     # Boris correction: reduce magnetic forces in vacuum cells
     # f_boris = c_boris^2 / (v_A^2 + c_boris^2)
     # Gombosi et al. 2002, JCP 177:176
-    _C_BORIS_SQ = 2.5e11  # (500 km/s)^2
+    from dpf.metal.constants import C_BORIS_SQ as _C_BORIS_SQ
     rho_safe = np.maximum(rho, 1e-30)
     va_sq = B2 / rho_safe
     f_boris = _C_BORIS_SQ / (va_sq + _C_BORIS_SQ)

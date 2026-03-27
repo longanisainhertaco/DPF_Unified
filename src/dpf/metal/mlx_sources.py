@@ -12,6 +12,10 @@ from __future__ import annotations
 import mlx.core as mx
 import numpy as np
 
+# Physical constants — imported from single source of truth
+from dpf.metal.constants import K_B as _KBOLTZ
+from dpf.metal.constants import P_FLOOR as _P_FLOOR
+from dpf.metal.constants import RHO_FLOOR as _RHO_FLOOR
 from dpf.metal.mlx_kernels import (
     IBR,
     IBT,
@@ -27,14 +31,7 @@ from dpf.metal.mlx_kernels import (
     cylindrical_source_numpy,
 )
 
-# Physical constants
-_MU0 = 4.0 * 3.141592653589793 * 1e-7  # permeability of free space [H/m]
-_KBOLTZ = 1.380649e-23                  # Boltzmann constant [J/K]
 _BREM_COEFF = 1.42e-40                  # bremsstrahlung prefactor [W m^3 / sqrt(K)]
-
-# Numerical floors
-_RHO_FLOOR = 1.0e-12
-_P_FLOOR = 1.0e-12
 
 
 def _bremsstrahlung_logspace(
