@@ -102,7 +102,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | REQ-ID | Requirement | Acceptance Criterion | Test | Method | Status |
 |--------|-------------|---------------------|------|--------|--------|
 | CVG-01 | Cartesian Sod convergence | Measured order >= 1.5 (PLM+HLL) | `test_mlx_cartesian::test_sod_convergence` (if exists) | Richardson extrapolation | PARTIAL |
-| CVG-02 | Cylindrical MHD convergence | Measured order >= 1.5 on cylindrical sound wave | `scripts/convergence_study_cylindrical.py` (MHD mode) | Richardson extrapolation: 1.81, 1.94, 1.98 | VERIFIED |
+| CVG-02 | Cylindrical MHD convergence | Measured order >= 1.5 on full MHD system | `scripts/convergence_study_cylindrical.py::run_mhd_convergence` (HLL+PLM+RK2+geometric sources) | Richardson extrapolation: 1.81, 1.94, 1.98 | VERIFIED |
 | CVG-03 | Grid independence | I_peak varies < 2% between medium and fine grids | **PENDING** — needs grid study | Direct comparison | **NOT VERIFIED** |
 
 ---
@@ -122,7 +122,7 @@ This document defines quantitative acceptance criteria for every physics capabil
 | Convergence | 3 | 1 | 1 (CVG-01) | 1 (CVG-03) |
 | **Total** | **40** | **37 (92.5%)** | **1 (2.5%)** | **2 (5%)** |
 
-**37 of 40 requirements verified.** Remaining: EXP-04 (multi-device validation), CVG-03 (grid independence).
+**37 of 40 requirements verified.** Remaining 2: EXP-04 (multi-device validation), CVG-03 (grid independence). CVG-01 (Cartesian Sod) is partial — exists but needs formal Richardson extrapolation.
 
 ---
 
@@ -132,8 +132,8 @@ Before any DPF-Unified result is cited in a publication:
 
 1. ~~**CON-05**: Fix cylindrical energy source term~~ — DONE (commit 6c79c0c)
 2. ~~**RIE-06 / BOR-05**: Add Boris to HLLD kernel~~ — DONE (commit 5111307)
-3. **CVG-02**: Cylindrical MHD convergence study (needs resistive z-pinch, not diffusion)
+3. ~~**CVG-02**: Cylindrical MHD convergence~~ — DONE (order 1.81-1.98, `run_mhd_convergence()`)
 4. **EXP-04**: Multi-device validation sweep (4+ devices passing tolerances)
 5. ~~**RES-05**: Fix anomalous resistivity saturation~~ — DONE (cap 1.0→100.0)
 
-3 of 5 blockers resolved. 2 remaining: CVG-02 and EXP-04.
+4 of 5 blockers resolved. **1 remaining: EXP-04 (multi-device validation).**
