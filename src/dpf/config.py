@@ -200,6 +200,22 @@ class FluidConfig(BaseModel):
         True,
         description="Enable Hall term in induction equation (J × B)/(n_e * e)",
     )
+    resistivity_model: str = Field(
+        "constant",
+        description=(
+            "Resistivity model: 'constant' (fixed eta from eta_field), "
+            "'lee_more' (temperature-dependent, Lee & More 1984), "
+            "'spitzer' (T^{-3/2} scaling, valid T > 10 eV)"
+        ),
+    )
+    anomalous_resistivity: str | None = Field(
+        None,
+        description=(
+            "Anomalous resistivity model: None (disabled), "
+            "'drift_velocity' (Faerder 2024, self-regulating), "
+            "'sagdeev' (threshold + alpha), 'lhdi' (lower threshold)"
+        ),
+    )
     two_temperature: bool = Field(
         False,
         description=(

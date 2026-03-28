@@ -196,6 +196,8 @@ class SimulationEngine:
                 convert_b_si_to_hl=self.geometry_type == "cylindrical",
                 ion_mass=self.ion_mass,
                 enable_bremsstrahlung=getattr(config.radiation, "bremsstrahlung_enabled", False),
+                resistivity_model=fc.resistivity_model,
+                anomalous_resistivity=fc.anomalous_resistivity,
             )
             if self.geometry_type == "cylindrical":
                 from dpf.geometry.cylindrical import CylindricalGeometry
