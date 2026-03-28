@@ -17,21 +17,25 @@ import math
 import numpy as np
 
 # --- Constants (from single source of truth) ---
-from dpf.metal.constants import (  # noqa: E402  # noqa: E402
+from dpf.metal.constants import (  # noqa: F401
     GAMMA,
     IBR,
     IBT,
     IBZ,
     IDN,
+    IEE,
     IEN,
     IMR,
     IMT,
+    IMZ,
+    ISR,
+    NVAR,
     P_FLOOR,
     RHO_FLOOR,
     V_MAX,
 )
 from dpf.metal.constants import (
-    MU_0 as MU0,
+    MU_0 as MU0,  # noqa: F401
 )
 
 # ──────────────────────────────────────────────────────────────
