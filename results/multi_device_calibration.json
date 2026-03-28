@@ -1,0 +1,58 @@
+[
+  {
+    "preset": "pf1000",
+    "fc": 0.7,
+    "fm": 0.08,
+    "I_peak_A": 1806574.211449729,
+    "t_peak_s": 6.587145884178281e-06,
+    "I_peak_error": 0.03391753398410211,
+    "t_peak_error": 0.13571480761694493,
+    "nrmse": 0.1509193641453952,
+    "success": true,
+    "passes_tolerance": false,
+    "steps": 2073,
+    "wall_time_s": 18.856697375013027
+  },
+  {
+    "preset": "unu_ictp",
+    "fc": 0.7,
+    "fm": 0.08,
+    "I_peak_A": 158603.45312575475,
+    "t_peak_s": 2.3858319443433066e-06,
+    "I_peak_error": 0.061518028841687875,
+    "t_peak_error": 0.08446906561059386,
+    "nrmse": 0.04253518565981997,
+    "success": true,
+    "passes_tolerance": true,
+    "steps": 6263,
+    "wall_time_s": 75.28267033403972
+  },
+  {
+    "preset": "poseidon_60kv",
+    "fc": 0.6,
+    "fm": 0.275,
+    "I_peak_A": 2721392.72993289,
+    "t_peak_s": 1.8870430589242498e-06,
+    "I_peak_error": 0.14689883074204083,
+    "t_peak_error": 0.046947950038257746,
+    "nrmse": 0.15785664274158254,
+    "success": true,
+    "passes_tolerance": false,
+    "steps": 91508,
+    "wall_time_s": 1098.357138708001
+  },
+  {
+    "preset": "faeton",
+    "fc": 0.7,
+    "fm": 0.7,
+    "I_peak_A": 964344.681480224,
+    "t_peak_s": 3.534829911357224e-06,
+    "I_peak_error": 0.03565531851977599,
+    "t_peak_error": 0.018102802400771046,
+    "nrmse": 0.025202470758772584,
+    "success": true,
+    "passes_tolerance": true,
+    "steps": 370,
+    "wall_time_s": 4.4948210419970565
+  }
+]

@@ -894,3 +894,110 @@ class TestParallelOptuna:
         fm = trial.suggest_float("fm", 0.03, 0.30)
         study.tell(trial, abs(fc - 0.7) + abs(fm - 0.08))
         assert len(study.trials) == 1
+
+
+# ---------------------------------------------------------------------------
+# 8. CVG-03: Grid independence study
+# ---------------------------------------------------------------------------
+
+@pytest.mark.slow
+class TestGridIndependenceCVG03:
+    """V&V CVG-03: Grid independence of PF-1000 I_peak.
+
+    Run forward model at 3 resolutions (16x32, 32x64, 64x128).
+    Acceptance: |I_peak(fine) - I_peak(medium)| / I_peak(medium) < 2%.
+    """
+
+    def test_grid_independence(self):
+        mlx = pytest.importorskip("mlx.core")  # noqa: F841
+
+        from dpf.validation.mlx_calibration import run_mlx_forward_model
+
+        resolutions = [
+            (16, 1, 32),
+            (32, 1, 64),
+            (64, 1, 128),
+        ]
+        results = {}
+        for grid in resolutions:
+            trial = run_mlx_forward_model(
+                fc=0.70, fm=0.08,
+                preset_name="pf1000",
+                grid_shape=grid,
+            )
+            assert trial.success, f"Forward model failed at grid {grid}"
+            results[grid] = trial.I_peak_A
+
+        I_medium = results[(32, 1, 64)]
+        I_fine = results[(64, 1, 128)]
+
+        relative_diff = abs(I_fine - I_medium) / I_medium
+        assert relative_diff < 0.02, (
+            f"Grid independence failed: I_peak(32x64)={I_medium:.0f} A, "
+            f"I_peak(64x128)={I_fine:.0f} A, rel_diff={relative_diff:.4f} (>2%)"
+        )
+
+    def test_convergence_monotonic(self):
+        """I_peak should converge monotonically with resolution."""
+        mlx = pytest.importorskip("mlx.core")  # noqa: F841
+
+        from dpf.validation.mlx_calibration import run_mlx_forward_model
+
+        resolutions = [
+            (16, 1, 32),
+            (32, 1, 64),
+            (64, 1, 128),
+        ]
+        peaks = []
+        for grid in resolutions:
+            trial = run_mlx_forward_model(
+                fc=0.70, fm=0.08,
+                preset_name="pf1000",
+                grid_shape=grid,
+            )
+            if trial.success:
+                peaks.append(trial.I_peak_A)
+
+        assert len(peaks) >= 2, "Need at least 2 successful runs for convergence check"
+        # Differences between successive resolutions should decrease
+        if len(peaks) == 3:
+            diff_coarse = abs(peaks[1] - peaks[0])
+            diff_fine = abs(peaks[2] - peaks[1])
+            assert diff_fine < diff_coarse, (
+                f"Not converging: |I(med)-I(coarse)|={diff_coarse:.0f}, "
+                f"|I(fine)-I(med)|={diff_fine:.0f}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 9. EXP-04: Multi-device validation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.slow
+class TestMultiDeviceEXP04:
+    """V&V EXP-04: Multi-device calibration consistency.
+
+    Run calibration on 4 devices (pf1000, unu_ictp, poseidon_60kv, faeton).
+    Acceptance: >= 3 of 4 pass their device-specific tolerance criteria.
+    """
+
+    def test_multi_device_passes(self):
+        mlx = pytest.importorskip("mlx.core")  # noqa: F841
+
+        import json
+        from pathlib import Path
+
+        results_path = Path("results/multi_device_calibration.json")
+        assert results_path.exists(), (
+            "Multi-device calibration results not found. "
+            "Run: python3 scripts/calibrate_multi_device.py"
+        )
+
+        results = json.loads(results_path.read_text())
+        assert len(results) >= 4, f"Expected 4 devices, got {len(results)}"
+
+        n_pass = sum(1 for r in results if r["passes_tolerance"])
+        assert n_pass >= 3, (
+            f"EXP-04 failed: only {n_pass}/4 devices pass tolerance. "
+            f"Details: {[(r['preset'], r['I_peak_error'], r['passes_tolerance']) for r in results]}"
+        )
