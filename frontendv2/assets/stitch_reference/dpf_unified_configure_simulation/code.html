@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPF-Unified | Dense Plasma Focus Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f131f;
+            color: #dfe2f3;
+        }
+        .mono { font-family: 'IBM Plex Mono', monospace; }
+        .headline { font-family: 'Space Grotesk', sans-serif; }
+        
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(27, 31, 44, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(66, 71, 84, 0.1);
+        }
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #262a37;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 2px;
+            background: #adc6ff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "surface": "#0f131f",
+                "primary": "#adc6ff",
+                "primary-container": "#4d8eff",
+                "surface-container-low": "#171b28",
+                "surface-container": "#1b1f2c",
+                "surface-container-high": "#262a37",
+                "surface-container-highest": "#313442",
+                "outline-variant": "#424754",
+                "on-surface": "#dfe2f3",
+                "on-surface-variant": "#c2c6d6",
+              },
+              fontFamily: {
+                "headline": ["Space Grotesk"],
+                "body": ["Inter"],
+                "mono": ["IBM Plex Mono"]
+              },
+              borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+            },
+          },
+        }
+    </script>
+</head>
+<body class="min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#0f131f] border-b border-[#424754]/20 font-['Space_Grotesk'] tracking-tight tabular-nums">
+<div class="flex items-center gap-8">
+<div class="text-xl font-bold tracking-tighter text-[#dfe2f3]">DPF-Unified</div>
+<nav class="hidden md:flex gap-6">
+<a class="text-blue-400 font-bold border-b-2 border-blue-400 pb-1" href="#">Configuration</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">Documentation</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">GitHub</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">About</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low p-1 rounded-sm border border-outline-variant/20">
+<span class="px-3 py-1 text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Student</span>
+<button class="w-10 h-5 bg-surface-container-highest rounded-full relative transition-all">
+<div class="absolute left-1 top-1 w-3 h-3 bg-primary rounded-full"></div>
+</button>
+<span class="px-3 py-1 text-[10px] uppercase font-bold tracking-widest text-primary">Expert</span>
+</div>
+<button class="p-2 text-[#dfe2f3]/60 hover:bg-[#262a37] transition-colors rounded-sm">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 text-sm font-bold rounded-sm scale-95 active:scale-90 transition-transform">
+                New Run
+            </button>
+</div>
+</header>
+<!-- SideNavBar (Hidden on desktop as per Shell Visibility & Relevance for a Config page) -->
+<main class="pt-24 pb-12 px-6 max-w-7xl mx-auto">
+<!-- Welcome Banner -->
+<div class="mb-8 flex items-center justify-between p-4 bg-surface-container-low border-l-2 border-primary-container relative group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary-container" data-icon="info">info</span>
+<p class="text-sm font-medium">
+                    Simulate a Dense Plasma Focus in 3 steps: 
+                    <span class="text-primary ml-1">1. Pick a device, 2. Click Run, 3. Watch the physics</span>
+</p>
+</div>
+<button class="opacity-40 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm" data-icon="close">close</span>
+</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Left Panel: CONFIGURATION (30%) -->
+<aside class="lg:col-span-4 flex flex-col gap-6">
+<div class="space-y-1">
+<span class="text-[0.6875rem] uppercase tracking-[0.05em] text-on-surface-variant font-medium">Hardware Configuration</span>
+<h2 class="headline text-xl font-bold">Simulation Deck</h2>
+</div>
+<div class="glass-panel p-6 space-y-8 rounded-lg">
+<!-- Device Preset -->
+<div class="space-y-3">
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant flex justify-between">
+                            Device Preset
+                            <span class="material-symbols-outlined text-xs" data-icon="help">help</span>
+</label>
+<div class="relative group">
+<select class="w-full bg-surface-container-highest border-none text-sm py-3 px-4 appearance-none focus:ring-1 focus:ring-primary rounded-sm transition-all">
+<option>PF-1000 (1 MJ)</option>
+<option>UNU-ICTP (3 kJ)</option>
+<option>POSEIDON (60 kV)</option>
+<option>Custom Configuration...</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<!-- Backend Level -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant">Backend Precision</label>
+<span class="mono text-xs text-primary">Level 07</span>
+</div>
+<input class="w-full" max="9" min="1" type="range" value="7"/>
+<div class="flex justify-between text-[9px] uppercase tracking-tighter text-on-surface-variant/60 font-mono">
+<span>1=Fast</span>
+<span>9=Best</span>
+</div>
+</div>
+<!-- Grid Resolution -->
+<div class="space-y-3">
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant">Mesh Grid Resolution</label>
+<div class="grid grid-cols-3 gap-1 bg-surface-container-lowest p-1 rounded-sm">
+<button class="py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container-high transition-colors">Coarse</button>
+<button class="py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container-high transition-colors">Med</button>
+<button class="py-2 text-[10px] font-bold uppercase tracking-widest bg-primary-container text-on-primary-container shadow-inner">Fine</button>
+</div>
+</div>
+<!-- Accordion: Advanced -->
+<div class="border-t border-outline-variant/10 pt-4">
+<button class="flex items-center justify-between w-full group">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant group-hover:text-on-surface transition-colors">Advanced Parameters</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="add">add</span>
+</button>
+<!-- Collapsed state content (visual indicator) -->
+<div class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 opacity-40 pointer-events-none">
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant">FC COEFF</span>
+<span class="mono text-xs">0.70</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant">FM COEFF</span>
+<span class="mono text-xs">0.08</span>
+</div>
+</div>
+</div>
+<!-- Physics Toggles -->
+<div class="space-y-4 pt-4 border-t border-outline-variant/10">
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant block mb-4">Physics Sub-models</label>
+<div class="flex items-center justify-between group cursor-help">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded-sm bg-surface-container-highest border-none text-primary focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Radiation Loss</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/40" data-icon="help">help</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded-sm bg-surface-container-highest border-none text-primary focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Heat Conduction</span>
+</div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 rounded-sm bg-surface-container-highest border-none text-primary focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Anomalous Resistivity</span>
+</div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 rounded-sm bg-surface-container-highest border-none text-primary focus:ring-0" type="checkbox"/>
+<span class="text-xs font-medium">Hall MHD Effects</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Right Panel: DEVICE PREVIEW (70%) -->
+<section class="lg:col-span-8 flex flex-col gap-8">
+<!-- Main Device Display -->
+<div class="relative rounded-lg overflow-hidden bg-surface-container-lowest border border-outline-variant/10 min-h-[400px] flex flex-col">
+<div class="absolute top-6 left-6 z-10 space-y-1">
+<span class="text-[10px] uppercase tracking-[0.2em] text-primary/80 font-bold">Selected Instrument</span>
+<h1 class="headline text-4xl font-extrabold tracking-tighter">PF-1000 (1 MJ)</h1>
+</div>
+<div class="flex-grow flex items-center justify-center p-12 bg-gradient-to-br from-surface-container-lowest to-[#0f131f]">
+<img alt="Technical schematic of a dense plasma focus reactor" class="max-w-full h-auto object-contain mix-blend-screen opacity-80 filter grayscale brightness-125" data-alt="Technical cross-section schematic of a massive dense plasma focus reactor with complex electrodes, cooling systems, and high-voltage capacitors in a dark research facility" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBx6zeq5O8ji8Iwxe17xiBlloGaJipgcaFpy6wAURsUhdtXA9aYV7cLRyeIQ15Ymi20H8wYpGJjjBfW7jHSeQJGDYQvi_oxXETn9FMIbquj2_atqXZrjHCu5VQ99k2di6wfn8Ms6HnxBfdHc5gag1WYxBqt78O5g4xQMVw240C6G-gBJviVJ1m1cmwGUOAg14qUGsxnPsMlyM90pa3MN18_V8CIJZgL8GDL98bUhblMhbldabQkfNt-cFuhmNQcMcH3nGgzG2eQDXs"/>
+</div>
+<div class="p-8 border-t border-outline-variant/10 bg-surface-container/30 backdrop-blur-md">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+<div class="space-y-1">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Capacitance</p>
+<p class="mono text-lg text-primary">1.332 <span class="text-xs text-on-surface-variant">mF</span></p>
+</div>
+<div class="space-y-1">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Voltage</p>
+<p class="mono text-lg text-primary">27 <span class="text-xs text-on-surface-variant">kV</span></p>
+</div>
+<div class="space-y-1">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Stored Energy</p>
+<p class="mono text-lg text-primary">486 <span class="text-xs text-on-surface-variant">kJ</span></p>
+</div>
+<div class="space-y-1">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Anode Length</p>
+<p class="mono text-lg text-primary">600 <span class="text-xs text-on-surface-variant">mm</span></p>
+</div>
+<div class="space-y-1">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Fill Gas</p>
+<p class="mono text-lg text-primary">D₂ <span class="text-xs text-on-surface-variant">3.5 Torr</span></p>
+</div>
+</div>
+</div>
+</div>
+<!-- Description & Actions -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
+<div class="md:col-span-2 space-y-4">
+<h3 class="text-[10px] uppercase tracking-widest text-primary font-bold">Scientific Context</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            This device at IPPLM Warsaw is one of the largest plasma focus machines in the world. Designed for intense neutron emission and soft X-ray research, the PF-1000 uses a massive capacitor bank to drive a plasma sheath through a coaxial electrode geometry, culminating in a high-density "pinch" phase where nuclear fusion occurs at high temperatures.
+                        </p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="text-right space-y-1 mb-2">
+<p class="text-[10px] text-on-surface-variant mono">ESTIMATED TIME: ~15 SECONDS</p>
+<p class="text-[9px] text-primary/60 mono uppercase">BACKEND: METAL GPU (APPLE SILICON)</p>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-5 rounded-sm font-bold headline tracking-widest hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-4">
+                            &gt;&gt;&gt; RUN SIMULATION &gt;&gt;&gt;
+                        </button>
+</div>
+</div>
+<!-- Secondary Metric Bento -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="glass-panel p-4 rounded-sm flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="bolt">bolt</span>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Peak Current</p>
+<p class="mono text-xl">2.1 <span class="text-xs">MA</span></p>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-sm flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="blur_on">blur_on</span>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Pinch Radius</p>
+<p class="mono text-xl">1.2 <span class="text-xs">mm</span></p>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-sm flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="waves">waves</span>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Axial Speed</p>
+<p class="mono text-xl">10.4 <span class="text-xs">cm/μs</span></p>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-sm flex flex-col gap-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="device_thermostat">device_thermostat</span>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Ion Temp</p>
+<p class="mono text-xl">1.4 <span class="text-xs">keV</span></p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer Meta-data -->
+<footer class="mt-auto py-8 border-t border-outline-variant/10 px-6">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-6">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant/40">Simulation Engine v2.4</span>
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant/40">© 2024 Plasma Research Lab</span>
+</div>
+<div class="flex gap-6">
+<a class="text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>

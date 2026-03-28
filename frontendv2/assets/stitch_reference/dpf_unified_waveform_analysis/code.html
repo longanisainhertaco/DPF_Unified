@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPF-Unified | Waveform Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ddb7ff",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#f0dbff",
+                        "on-tertiary": "#490080",
+                        "surface": "#0f131f",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2a1700",
+                        "on-surface": "#dfe2f3",
+                        "secondary-fixed": "#ffddb8",
+                        "on-primary-container": "#00285d",
+                        "background": "#0f131f",
+                        "surface-container-high": "#262a37",
+                        "on-secondary": "#472a00",
+                        "primary-container": "#4d8eff",
+                        "secondary-container": "#ee9800",
+                        "on-secondary-container": "#5b3800",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "on-error": "#690005",
+                        "inverse-surface": "#dfe2f3",
+                        "surface-container-highest": "#313442",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-tertiary-container": "#400071",
+                        "outline-variant": "#424754",
+                        "surface-bright": "#353946",
+                        "surface-variant": "#313442",
+                        "inverse-primary": "#005ac2",
+                        "surface-container": "#1b1f2c",
+                        "surface-container-low": "#171b28",
+                        "inverse-on-surface": "#2c303d",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline": "#8c909f",
+                        "surface-dim": "#0f131f",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary": "#002e6a",
+                        "secondary": "#ffb95f",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-background": "#dfe2f3",
+                        "tertiary-container": "#b76dff",
+                        "tertiary": "#ddb7ff",
+                        "on-primary-fixed": "#001a42",
+                        "on-tertiary-fixed-variant": "#6900b3",
+                        "on-tertiary-fixed": "#2c0051",
+                        "surface-container-lowest": "#0a0e1a"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["IBM Plex Mono"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(27, 31, 44, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .chart-grid {
+            background-image: radial-gradient(circle, #424754 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#0f131f] dark:bg-[#0f131f] border-b border-[#424754]/20 font-['Space_Grotesk'] tracking-tight tabular-nums">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dfe2f3]">DPF-Unified</span>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">Documentation</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">GitHub</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">About</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-blue-400 font-bold border-b-2 border-blue-400 pb-1">Student Mode</span>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 text-sm font-medium hover:bg-[#262a37] transition-colors duration-200 scale-95 active:scale-90 transition-transform">New Run</button>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-[#dfe2f3]/60 cursor-pointer hover:text-[#dfe2f3]">settings</span>
+<span class="material-symbols-outlined text-[#dfe2f3]/60 cursor-pointer hover:text-[#dfe2f3]">export_notes</span>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col z-40 bg-[#171b28] dark:bg-[#171b28] w-64 border-r border-[#424754]/10 transition-all duration-150 ease-in-out">
+<div class="p-6">
+<h2 class="text-lg font-black text-[#dfe2f3]">DPF-Unified</h2>
+<p class="font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] text-[#dfe2f3]/50">Simulation Engine v2.4</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] bg-blue-500/10 text-blue-400 border-r-2 border-blue-400" href="#">
+<span class="material-symbols-outlined text-lg">show_chart</span> Waveforms
+            </a>
+<a class="flex items-center gap-3 px-3 py-3 font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] transition-all" href="#">
+<span class="material-symbols-outlined text-lg">bolt</span> Energy &amp; Physics
+            </a>
+<a class="flex items-center gap-3 px-3 py-3 font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] transition-all" href="#">
+<span class="material-symbols-outlined text-lg">blur_on</span> Fields &amp; Phase
+            </a>
+<a class="flex items-center gap-3 px-3 py-3 font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] transition-all" href="#">
+<span class="material-symbols-outlined text-lg">compare_arrows</span> Compare
+            </a>
+</nav>
+<div class="p-4 mt-auto space-y-4">
+<button class="w-full bg-primary-container text-on-primary-container py-2 text-sm font-bold uppercase tracking-widest hover:bg-[#262a37] transition-all">Run Simulation</button>
+<div class="flex justify-between text-[#dfe2f3]/50 px-2">
+<span class="material-symbols-outlined cursor-pointer hover:text-blue-400">settings</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-blue-400">help</span>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 pt-20 p-8 min-h-screen">
+<!-- Breadcrumb & Title -->
+<div class="mb-8 flex flex-col gap-2">
+<a class="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest hover:text-primary-container transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">arrow_back</span> Back to 3D View
+            </a>
+<h1 class="font-headline text-3xl font-bold tracking-tight text-on-surface">Waveform Analysis: <span class="text-primary">Current I(t)</span></h1>
+</div>
+<!-- Primary Chart Container (50vh) -->
+<section class="relative h-[512px] surface-container border border-outline-variant/10 overflow-hidden mb-6 flex flex-col">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/10 bg-surface-container-low">
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-0.5 bg-primary"></span>
+<span class="text-xs font-mono uppercase tracking-tighter opacity-70">Simulation</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-0.5 border-t border-dashed border-on-surface-variant"></span>
+<span class="text-xs font-mono uppercase tracking-tighter opacity-70">Experimental</span>
+</div>
+</div>
+<span class="font-mono text-[10px] uppercase text-outline">Units: MegaAmperes (MA) / Microseconds (us)</span>
+</div>
+<div class="flex-1 relative chart-grid overflow-hidden">
+<!-- Color-Coded Phase Bands -->
+<div class="absolute inset-y-0 left-0 w-[40%] bg-blue-500/5 border-r border-blue-500/20 flex items-end p-2">
+<span class="font-mono text-[10px] uppercase text-blue-400/50">Rundown Phase</span>
+</div>
+<div class="absolute inset-y-0 left-[40%] w-[15%] bg-secondary-container/5 border-r border-secondary-container/20 flex items-end p-2">
+<span class="font-mono text-[10px] uppercase text-secondary/50">Radial Phase</span>
+</div>
+<div class="absolute inset-y-0 left-[55%] w-[10%] bg-error/5 border-r border-error/20 flex items-end p-2">
+<span class="font-mono text-[10px] uppercase text-error/50">Pinch</span>
+</div>
+<!-- SVG Waveform -->
+<svg class="absolute inset-0 w-full h-full p-10 overflow-visible" preserveaspectratio="none" viewbox="0 0 1000 400">
+<!-- Axes -->
+<line stroke="#424754" stroke-width="1" x1="0" x2="1000" y1="400" y2="400"></line>
+<line stroke="#424754" stroke-width="1" x1="0" x2="0" y1="0" y2="400"></line>
+<!-- Sim Line -->
+<path d="M 0 400 Q 200 350 400 150 T 520 80 L 580 140 L 700 200 L 1000 300" fill="none" stroke="#adc6ff" stroke-width="2"></path>
+<!-- Exp Line -->
+<path d="M 0 400 Q 210 360 410 160 T 515 85 L 575 135 L 710 210 L 1000 310" fill="none" stroke="#c2c6d6" stroke-dasharray="4" stroke-width="2"></path>
+<!-- Markers -->
+<!-- I_peak Star -->
+<g transform="translate(520, 80)">
+<circle fill="#adc6ff" r="4"></circle>
+<text fill="#adc6ff" font-family="IBM Plex Mono" font-size="12" font-weight="bold" x="8" y="-12">I_peak: 1.862 MA @ 5.2us</text>
+</g>
+<!-- Pinch Dip -->
+<g transform="translate(580, 140)">
+<path d="M-6,0 L6,0 M0,-6 L0,6" stroke="#ffb4ab" stroke-width="2" transform="rotate(45)"></path>
+<text fill="#ffb4ab" font-family="IBM Plex Mono" font-size="12" font-weight="bold" x="12" y="4">Pinch Dip: 5.8us</text>
+</g>
+</svg>
+<!-- Y-Axis Labels -->
+<div class="absolute left-2 top-0 bottom-0 flex flex-col justify-between py-10 font-mono text-[10px] text-outline pointer-events-none">
+<span>2.0 MA</span>
+<span>1.5 MA</span>
+<span>1.0 MA</span>
+<span>0.5 MA</span>
+<span>0.0 MA</span>
+</div>
+<!-- X-Axis Labels -->
+<div class="absolute bottom-2 left-0 right-0 flex justify-between px-10 font-mono text-[10px] text-outline pointer-events-none">
+<span>0 us</span>
+<span>3 us</span>
+<span>6 us</span>
+<span>9 us</span>
+<span>12 us</span>
+</div>
+</div>
+</section>
+<!-- Narrative Panel -->
+<section class="glass-panel p-6 border-l-4 border-primary mb-12">
+<h3 class="font-headline text-lg font-bold mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                Physical Insight: Plasma Convergence
+            </h3>
+<div class="grid md:grid-cols-2 gap-8 items-start">
+<div class="space-y-4">
+<p class="text-on-surface-variant leading-relaxed">
+                        The current rises to <span class="text-primary font-mono font-bold">1.862 MA</span> at <span class="text-primary font-mono font-bold">5.2 us</span> — within <span class="font-mono text-tertiary">0.4%</span> of the experimental value recorded at the Z-Machine facility. This high-fidelity match validates the magnetic flux compression model used in DPF-Unified.
+                    </p>
+<p class="text-on-surface-variant leading-relaxed">
+                        The significant <span class="text-error font-mono font-bold">dip</span> observed at <span class="text-error font-mono font-bold">5.8 us</span> indicates the rapid plasma compression phase, commonly referred to as the <span class="italic text-on-surface font-semibold">"pinch."</span>
+</p>
+</div>
+<div class="bg-surface-container-highest/30 p-4 rounded border border-outline-variant/10">
+<h4 class="font-headline text-sm font-bold uppercase tracking-widest text-outline-variant mb-2">What does the dip mean?</h4>
+<p class="text-sm text-on-surface-variant">
+                        As the plasma sheath collapses onto the axis, the inductance <span class="font-mono text-xs italic">L</span> of the system increases dramatically. According to <span class="font-mono text-xs italic">V = d(LI)/dt</span>, this surge in back-EMF forces a momentary drop in the current. A deeper dip correlates directly with higher plasma density and neutron yield.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Secondary Charts (2x2 Grid) -->
+<div class="grid md:grid-cols-2 gap-6 mb-12">
+<!-- dI/dt Derivative -->
+<div class="surface-container border border-outline-variant/10 h-64 flex flex-col">
+<div class="p-3 bg-surface-container-low border-b border-outline-variant/10 flex justify-between items-center">
+<span class="font-headline text-xs font-bold uppercase tracking-widest">dI/dt Derivative</span>
+<span class="font-mono text-[10px] text-error font-bold tracking-tighter">PINCH SPIKE DETECTED</span>
+</div>
+<div class="flex-1 chart-grid relative p-4 flex items-center">
+<svg class="w-full h-full overflow-visible" viewbox="0 0 500 150">
+<path d="M 0 75 L 100 70 L 200 65 L 250 140 L 260 10 L 270 140 L 350 80 L 500 75" fill="none" stroke="#adc6ff" stroke-width="1.5"></path>
+<circle cx="260" cy="10" fill="#ffb4ab" r="3"></circle>
+</svg>
+<div class="absolute bottom-2 right-2 font-mono text-[9px] text-outline">dA/dt (A/s)</div>
+</div>
+</div>
+<!-- Voltage V(t) -->
+<div class="surface-container border border-outline-variant/10 h-64 flex flex-col">
+<div class="p-3 bg-surface-container-low border-b border-outline-variant/10 flex justify-between items-center">
+<span class="font-headline text-xs font-bold uppercase tracking-widest">Voltage V(t)</span>
+<span class="font-mono text-[10px] text-secondary font-bold tracking-tighter">CROWBAR ACTIVE</span>
+</div>
+<div class="flex-1 chart-grid relative p-4 flex items-center">
+<svg class="w-full h-full overflow-visible" viewbox="0 0 500 150">
+<path d="M 0 10 L 200 20 L 250 130 L 280 80 L 320 80 L 500 80" fill="none" stroke="#ffb95f" stroke-width="1.5"></path>
+<line stroke="#424754" stroke-dasharray="2" x1="320" x2="320" y1="0" y2="150"></line>
+</svg>
+<div class="absolute bottom-2 right-2 font-mono text-[9px] text-outline">Kilovolts (kV)</div>
+</div>
+</div>
+<!-- Energy Balance -->
+<div class="surface-container border border-outline-variant/10 h-64 flex flex-col">
+<div class="p-3 bg-surface-container-low border-b border-outline-variant/10">
+<span class="font-headline text-xs font-bold uppercase tracking-widest">Energy Balance (Stacked)</span>
+</div>
+<div class="flex-1 chart-grid relative p-4">
+<svg class="w-full h-full opacity-60" preserveaspectratio="none" viewbox="0 0 500 150">
+<path d="M 0 150 Q 150 140 300 120 L 500 100 L 500 150 Z" fill="#adc6ff"></path> <!-- ME -->
+<path d="M 0 140 Q 150 120 300 100 L 500 70 L 500 100 Z" fill="#ddb7ff"></path> <!-- IE -->
+<path d="M 0 130 Q 150 100 300 70 L 500 30 L 500 70 Z" fill="#ee9800"></path> <!-- KE -->
+</svg>
+<div class="absolute top-4 right-4 flex flex-col gap-1">
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-secondary"></span><span class="font-mono text-[8px] uppercase">Kinetic (KE)</span></div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-tertiary"></span><span class="font-mono text-[8px] uppercase">Internal (IE)</span></div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-primary"></span><span class="font-mono text-[8px] uppercase">Magnetic (ME)</span></div>
+</div>
+</div>
+</div>
+<!-- Residual Error -->
+<div class="surface-container border border-outline-variant/10 h-64 flex flex-col">
+<div class="p-3 bg-surface-container-low border-b border-outline-variant/10">
+<span class="font-headline text-xs font-bold uppercase tracking-widest">Residual Error (Sim - Exp)</span>
+</div>
+<div class="flex-1 chart-grid relative p-4 flex items-center">
+<svg class="w-full h-full overflow-visible" viewbox="0 0 500 150">
+<line stroke="#424754" stroke-width="1" x1="0" x2="500" y1="75" y2="75"></line>
+<path d="M 0 75 T 50 80 T 100 70 T 150 78 T 200 72 T 250 85 T 300 65 T 350 75 T 400 80 T 500 75" fill="none" stroke="#adc6ff" stroke-width="1"></path>
+</svg>
+<div class="absolute top-2 left-2 font-mono text-[9px] text-outline">+0.05%</div>
+<div class="absolute bottom-2 left-2 font-mono text-[9px] text-outline">-0.05%</div>
+</div>
+</div>
+</div>
+<!-- Bottom Actions -->
+<footer class="flex justify-between items-center py-8 border-t border-outline-variant/20">
+<div class="flex gap-4">
+<button class="flex items-center gap-2 bg-surface-container-high px-6 py-2 border border-outline-variant/20 hover:bg-surface-bright transition-colors text-sm font-headline font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-sm">download</span>
+                    Export All Charts as SVG
+                </button>
+<button class="flex items-center gap-2 bg-surface-container-high px-6 py-2 border border-outline-variant/20 hover:bg-surface-bright transition-colors text-sm font-headline font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-sm">table_rows</span>
+                    Export Data as CSV
+                </button>
+</div>
+<div class="text-right">
+<p class="font-mono text-[10px] text-outline uppercase">Last Computation: 2023-11-24 14:02:11 UTC</p>
+<p class="font-mono text-[10px] text-outline uppercase">Kernel: PlasmaNet-v4.2 (Adaptive Mesh)</p>
+</div>
+</footer>
+</main>
+<!-- Background Decoration Image -->
+<div class="fixed inset-0 pointer-events-none z-[-1] opacity-5">
+<img alt="Deep space scientific background" class="w-full h-full object-cover grayscale" data-alt="Abstract deep blue and purple nebula with soft particles and glowing scientific grid overlays representing dark matter or plasma simulations" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7GILp7T0uOltZdMEp13nr0anJPBSsqqdKajtzW-5gM5Z1D9zMA9n00eHSMXaAZnB2-vce6NPujocxw2z39cqTgnW-SF4yQ124fdTZZbQR3Gn50MOLT_GLlzDwe16HTSHqVm5cMg0xXMKiXyYPB8thqMVFLblljLXBwIx5NTtYW1G5MRBDSBTMCkAX1A4t3rxltrz-DFjNgPpp_kNxNP-MrhaDGmCEzimaPFHynsJpLVI55NOqHeberCckn6Ux3oCfOZQJ0FJ3E9Y"/>
+</div>
+</body></html>

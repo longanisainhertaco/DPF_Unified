@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPF-Unified | Export Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(27, 31, 44, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .ghost-shimmer {
+            border: 1px solid rgba(66, 71, 84, 0.2);
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error-container": "#ffdad6",
+              "tertiary-fixed-dim": "#ddb7ff",
+              "error-container": "#93000a",
+              "tertiary-fixed": "#f0dbff",
+              "on-tertiary": "#490080",
+              "surface": "#0f131f",
+              "primary": "#adc6ff",
+              "surface-tint": "#adc6ff",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#2a1700",
+              "on-surface": "#dfe2f3",
+              "secondary-fixed": "#ffddb8",
+              "on-primary-container": "#00285d",
+              "background": "#0f131f",
+              "surface-container-high": "#262a37",
+              "on-secondary": "#472a00",
+              "primary-container": "#4d8eff",
+              "secondary-container": "#ee9800",
+              "on-secondary-container": "#5b3800",
+              "secondary-fixed-dim": "#ffb95f",
+              "on-error": "#690005",
+              "inverse-surface": "#dfe2f3",
+              "surface-container-highest": "#313442",
+              "on-primary-fixed-variant": "#004395",
+              "on-tertiary-container": "#400071",
+              "outline-variant": "#424754",
+              "surface-bright": "#353946",
+              "surface-variant": "#313442",
+              "inverse-primary": "#005ac2",
+              "surface-container": "#1b1f2c",
+              "surface-container-low": "#171b28",
+              "inverse-on-surface": "#2c303d",
+              "on-secondary-fixed-variant": "#653e00",
+              "primary-fixed-dim": "#adc6ff",
+              "outline": "#8c909f",
+              "surface-dim": "#0f131f",
+              "primary-fixed": "#d8e2ff",
+              "on-primary": "#002e6a",
+              "secondary": "#ffb95f",
+              "on-surface-variant": "#c2c6d6",
+              "on-background": "#dfe2f3",
+              "tertiary-container": "#b76dff",
+              "tertiary": "#ddb7ff",
+              "on-primary-fixed": "#001a42",
+              "on-tertiary-fixed-variant": "#6900b3",
+              "on-tertiary-fixed": "#2c0051",
+              "surface-container-lowest": "#0a0e1a"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "mono": ["IBM Plex Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30">
+<!-- Top Navigation Bar (Shared Component Strategy) -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#0f131f] dark:bg-[#0f131f] border-b border-[#424754]/20 font-['Space_Grotesk'] tracking-tight tabular-nums">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dfe2f3]">DPF-Unified</span>
+<nav class="hidden md:flex gap-6 items-center h-full">
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">Documentation</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">GitHub</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">About</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface/70 hover:bg-[#262a37] px-3 py-1.5 rounded transition-colors text-sm font-medium">Student Mode</button>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 rounded font-bold transition-transform scale-95 active:scale-90">New Run</button>
+<div class="flex gap-2 ml-4">
+<span class="material-symbols-outlined text-[#dfe2f3]/60 cursor-pointer hover:text-white">settings</span>
+<span class="material-symbols-outlined text-blue-400 cursor-pointer" style="font-variation-settings: 'FILL' 1;">export_notes</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-12 px-6 lg:px-12 max-w-7xl mx-auto flex flex-col gap-12">
+<!-- Header & Action Row -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-2">
+<button class="flex items-center gap-2 text-primary hover:text-primary-container transition-colors group">
+<span class="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
+<span class="font-label text-[0.6875rem] uppercase tracking-[0.05em]">Back to Results</span>
+</button>
+<h1 class="font-headline text-4xl font-bold text-on-surface tracking-tight">Export Center</h1>
+<p class="text-on-surface-variant max-w-xl">Finalize simulation assets for publication, archival, or collaborative review. All data is generated in high-fidelity formats.</p>
+</div>
+<div class="bg-surface-container-high p-1 rounded-lg flex gap-1">
+<button class="bg-surface-bright px-4 py-2 rounded text-sm font-medium">Single Exports</button>
+<button class="text-on-surface/50 px-4 py-2 rounded text-sm font-medium hover:text-on-surface transition-colors">Batch History</button>
+</div>
+</div>
+<!-- Featured High-Priority Action (Tonal Layering: Highest) -->
+<section class="bg-primary-container/10 border border-primary/20 rounded-xl p-8 relative overflow-hidden">
+<div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+<div class="space-y-2 text-center md:text-left">
+<div class="flex items-center justify-center md:justify-start gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">inventory_2</span>
+<h2 class="font-headline text-2xl font-bold tracking-tight text-primary">DOWNLOAD ALL</h2>
+</div>
+<p class="text-on-surface-variant">Get everything as a ZIP file (CSV + SVG + PDF + JSON + Screenshot). Recommended for archival storage.</p>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-8 py-4 rounded-lg font-bold shadow-xl shadow-primary/10 flex items-center gap-3 hover:brightness-110 active:scale-95 transition-all">
+<span>Generate Master Archive</span>
+<span class="material-symbols-outlined">folder_zip</span>
+</button>
+</div>
+<!-- Aesthetic Decoration -->
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+</section>
+<!-- Layout Split: Export Grid & Preview -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Export Options (2x3 Card Grid) -->
+<div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1: Simulation Data -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 0;">csv</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">4.2 MB</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">Simulation Data</h3>
+<p class="text-sm text-on-surface-variant mt-1">Full waveform I, V, Te, Lp, Yn in raw tabular format.</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-primary group-hover:text-on-primary transition-all">Download CSV</button>
+</div>
+<!-- Card 2: Charts & Figures -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-tertiary text-4xl">imagesmode</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">VECTOR</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">Charts &amp; Figures</h3>
+<p class="text-sm text-on-surface-variant mt-1">Publication-ready vector graphics (editable paths).</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-tertiary group-hover:text-on-tertiary transition-all">Download SVGs</button>
+</div>
+<!-- Card 3: 3D Visualization -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-secondary text-4xl">videocam</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">1080P</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">3D Visualization</h3>
+<p class="text-sm text-on-surface-variant mt-1">Screenshot or animated GIF of plasma pinch dynamics.</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-secondary group-hover:text-on-secondary transition-all">Capture Now</button>
+</div>
+<!-- Card 4: Physics Report -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-error text-4xl">picture_as_pdf</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">8 PAGES</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">Physics Report</h3>
+<p class="text-sm text-on-surface-variant mt-1">Full narrative with equations, methodology, and results.</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-error group-hover:text-on-error transition-all">Download PDF</button>
+</div>
+<!-- Card 5: Configuration -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-outline text-4xl">javascript</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">CONFIG</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">Configuration</h3>
+<p class="text-sm text-on-surface-variant mt-1">Reproducible simulation config for re-runs.</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-white group-hover:text-background transition-all">Download JSON</button>
+</div>
+<!-- Card 6: Share Link -->
+<div class="bg-surface-container-low ghost-shimmer p-6 rounded-lg flex flex-col justify-between hover:bg-surface-container transition-colors group">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<span class="material-symbols-outlined text-primary text-4xl">link</span>
+<span class="font-mono text-[0.6rem] text-outline px-2 py-1 bg-surface-container-highest rounded">SECURE</span>
+</div>
+<div>
+<h3 class="font-headline font-semibold text-lg">Share Link</h3>
+<p class="text-sm text-on-surface-variant mt-1">Anyone with this link sees your setup and interactive results.</p>
+</div>
+</div>
+<button class="mt-6 border border-outline-variant/30 text-on-surface text-sm font-medium py-2 rounded group-hover:bg-primary group-hover:text-on-primary transition-all">Copy Link</button>
+</div>
+</div>
+<!-- Preview Section (Glassmorphism Sidebar) -->
+<aside class="lg:col-span-4 flex flex-col gap-4">
+<div class="glass-panel ghost-shimmer rounded-xl p-6 flex-grow flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<h4 class="font-label text-[0.6875rem] uppercase tracking-[0.05em] text-on-surface/50">Preview of selected export</h4>
+<span class="material-symbols-outlined text-primary text-sm">fullscreen</span>
+</div>
+<div class="flex-grow flex flex-col items-center justify-center border border-dashed border-outline-variant/20 rounded-lg p-4 bg-surface-container-lowest/50 text-center space-y-4">
+<div class="w-full h-48 rounded bg-surface-container-high overflow-hidden relative">
+<img alt="Data Visualization Preview" class="w-full h-full object-cover mix-blend-luminosity opacity-40" data-alt="Technical data visualization chart with fluorescent blue lines on a dark background showing plasma wave fluctuations" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHh2ri5BIzm2eZfmZELZgJ8BdwuJNTcZvqqVS1Su9HXL0RWtwYTOvUvtoiOOpGalJHIcMD6PYqD7BFWF2fwWvg9hURmxlJ9xJCtUmyoVodaUDL6PW0aYT6TA9ky_shbsv4LuoeRR4t9uBnaG9kEw7Jwioq02CVO7GIs_rgpVoxXMzPuaPF4V6Vp6yEmFda_FnpQ_9oeDJ7-Uap2qKfqxndk9RL2FJAQEC5iz75vU6hyMk6Y_pzT5GYYxYwNdkgUvu-XNY8BXvWBxU"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-primary/30">visibility</span>
+</div>
+</div>
+<div class="space-y-1">
+<p class="font-mono text-xs text-on-surface-variant">PREVIEW_WAVEFORM_R102.SVG</p>
+<p class="text-[0.7rem] text-outline italic">Resolution: 2400 x 1800 px</p>
+</div>
+</div>
+<div class="mt-6 space-y-4">
+<div class="p-3 bg-surface-container-highest/30 rounded border-l-2 border-primary">
+<p class="text-xs leading-relaxed text-on-surface-variant">
+<strong class="text-on-surface">Pro-tip:</strong> PDF reports include a unique hash for data verification against the blockchain registry.
+                            </p>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-[0.6875rem] uppercase tracking-wider text-outline">
+<span>Compression</span>
+<span>Fast (LZ4)</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-3/4 h-full bg-primary"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary Info Card -->
+<div class="bg-surface-container-low p-4 rounded-lg flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary">cloud_done</span>
+</div>
+<div>
+<p class="text-sm font-medium">Auto-Sync Enabled</p>
+<p class="text-[0.7rem] text-on-surface-variant">Stored on Lab Cluster Nodes</p>
+</div>
+</div>
+</aside>
+</div>
+<!-- System Status Footer -->
+<footer class="mt-auto border-t border-outline-variant/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-outline">
+<div class="flex gap-8 items-center">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label text-[0.6rem] uppercase tracking-widest">Engine v2.4 Online</span>
+</div>
+<div class="font-mono text-[0.6rem]">NODE_04: 192.168.1.105</div>
+</div>
+<div class="flex gap-6">
+<a class="text-[0.6875rem] hover:text-on-surface transition-colors" href="#">Safety Protocols</a>
+<a class="text-[0.6875rem] hover:text-on-surface transition-colors" href="#">Privacy Policy</a>
+<a class="text-[0.6875rem] hover:text-on-surface transition-colors" href="#">System Logs</a>
+</div>
+</footer>
+</main>
+</body></html>

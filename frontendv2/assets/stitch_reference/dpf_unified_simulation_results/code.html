@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPF-Unified | Simulation Results</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* Custom scrollbar for technical density */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0f131f; }
+        ::-webkit-scrollbar-thumb { background: #424754; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #adc6ff; }
+        
+        .glass-panel {
+            background: rgba(27, 31, 44, 0.6);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ddb7ff",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#f0dbff",
+                        "on-tertiary": "#490080",
+                        "surface": "#0f131f",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2a1700",
+                        "on-surface": "#dfe2f3",
+                        "secondary-fixed": "#ffddb8",
+                        "on-primary-container": "#00285d",
+                        "background": "#0f131f",
+                        "surface-container-high": "#262a37",
+                        "on-secondary": "#472a00",
+                        "primary-container": "#4d8eff",
+                        "secondary-container": "#ee9800",
+                        "on-secondary-container": "#5b3800",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "on-error": "#690005",
+                        "inverse-surface": "#dfe2f3",
+                        "surface-container-highest": "#313442",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-tertiary-container": "#400071",
+                        "outline-variant": "#424754",
+                        "surface-bright": "#353946",
+                        "surface-variant": "#313442",
+                        "inverse-primary": "#005ac2",
+                        "surface-container": "#1b1f2c",
+                        "surface-container-low": "#171b28",
+                        "inverse-on-surface": "#2c303d",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline": "#8c909f",
+                        "surface-dim": "#0f131f",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary": "#002e6a",
+                        "secondary": "#ffb95f",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-background": "#dfe2f3",
+                        "tertiary-container": "#b76dff",
+                        "tertiary": "#ddb7ff",
+                        "on-primary-fixed": "#001a42",
+                        "on-tertiary-fixed-variant": "#6900b3",
+                        "on-tertiary-fixed": "#2c0051",
+                        "surface-container-lowest": "#0a0e1a"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["IBM Plex Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30 antialiased overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#0f131f] border-b border-[#424754]/20 font-['Space_Grotesk'] tracking-tight tabular-nums">
+<div class="flex items-center gap-8">
+<div class="text-xl font-bold tracking-tighter text-[#dfe2f3]">DPF-Unified</div>
+<nav class="hidden md:flex items-center gap-6">
+<span class="text-sm font-medium text-blue-400 font-bold border-b-2 border-blue-400 pb-1 cursor-default">PF-1000 Results</span>
+<a class="text-sm font-medium text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">Documentation</a>
+<a class="text-sm font-medium text-[#dfe2f3]/60 hover:text-[#dfe2f3] transition-colors duration-200" href="#">GitHub</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Mode Toggle -->
+<div class="flex bg-surface-container rounded p-0.5 border border-outline-variant/20">
+<button class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-primary">Student Mode</button>
+<button class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface">Expert Mode</button>
+</div>
+<div class="h-6 w-[1px] bg-outline-variant/20"></div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-on-surface bg-surface-container border border-outline-variant/20 hover:bg-[#262a37] transition-all">
+<span>Export</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="px-4 py-1.5 text-xs font-bold bg-primary text-on-primary hover:brightness-110 active:scale-95 transition-all">
+                    New Run
+                </button>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col z-40 bg-[#171b28] border-r border-[#424754]/10 w-64 hidden xl:flex">
+<div class="p-6 border-b border-[#424754]/10">
+<div class="text-lg font-black text-[#dfe2f3] leading-none">PF-1000</div>
+<div class="text-[0.6875rem] uppercase tracking-[0.05em] text-[#dfe2f3]/50 mt-1">Simulation Engine v2.4</div>
+</div>
+<nav class="flex-1 py-4 overflow-y-auto">
+<div class="px-4 mb-2 text-[0.6rem] font-bold uppercase tracking-[0.15em] text-outline">Primary Modules</div>
+<a class="flex items-center gap-3 px-6 py-3 bg-blue-500/10 text-blue-400 border-r-2 border-blue-400 font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem]" href="#">
+<span class="material-symbols-outlined" data-icon="show_chart">show_chart</span>
+                Waveforms
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+                Energy &amp; Physics
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="blur_on">blur_on</span>
+                Fields &amp; Phase
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#dfe2f3]/50 hover:bg-[#262a37] hover:text-[#dfe2f3] font-['Space_Grotesk'] uppercase tracking-[0.05em] text-[0.6875rem] transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="compare_arrows">compare_arrows</span>
+                Compare
+            </a>
+</nav>
+<div class="p-4 border-t border-[#424754]/10">
+<a class="flex items-center gap-3 px-4 py-2 text-[#dfe2f3]/50 hover:text-on-surface text-[0.6875rem] uppercase tracking-widest transition-colors mb-2" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-4 py-2 text-[#dfe2f3]/50 hover:text-on-surface text-[0.6875rem] uppercase tracking-widest transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="pt-20 pb-24 xl:pl-72 px-6 min-h-screen">
+<!-- Metrics Row -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<!-- Peak Current -->
+<div class="surface-container-low p-5 border-l-2 border-primary group relative overflow-hidden">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[0.6875rem] uppercase tracking-[0.1em] text-on-surface-variant">Peak Current (I_peak)</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-help" title="Maximum discharge current observed during the simulation.">info</span>
+</div>
+<div class="text-[2.75rem] font-headline font-bold tabular-nums leading-none tracking-tight">1.862 <span class="text-xl font-medium text-outline">MA</span></div>
+<div class="mt-4 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>EXP: 1.87 MA</span>
+<span class="text-primary">ERROR: 0.4%</span>
+</div>
+<div class="mt-2 h-1 w-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary" style="width: 99.6%"></div>
+</div>
+</div>
+<!-- Peak Time -->
+<div class="surface-container-low p-5 border-l-2 border-primary group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[0.6875rem] uppercase tracking-[0.1em] text-on-surface-variant">Peak Time (t_peak)</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors cursor-help" title="Time elapsed from breakdown to maximum current.">info</span>
+</div>
+<div class="text-[2.75rem] font-headline font-bold tabular-nums leading-none tracking-tight">5.2 <span class="text-xl font-medium text-outline">us</span></div>
+<div class="mt-4 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>EXP: 5.0 us</span>
+<span class="text-primary">ERROR: 4.0%</span>
+</div>
+<div class="mt-2 h-1 w-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary" style="width: 96%"></div>
+</div>
+</div>
+<!-- Current Dip -->
+<div class="surface-container-low p-5 border-l-2 border-secondary group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[0.6875rem] uppercase tracking-[0.1em] text-on-surface-variant">Current Dip (I_dip/I_peak)</span>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors cursor-help" title="The ratio of current drop during the pinch phase, indicating pinch intensity.">info</span>
+</div>
+<div class="text-[2.75rem] font-headline font-bold tabular-nums leading-none tracking-tight">48<span class="text-xl font-medium text-outline">%</span></div>
+<div class="mt-4 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>EXP: 60%</span>
+<span class="text-secondary">ERROR: 20%</span>
+</div>
+<div class="mt-2 h-1 w-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary" style="width: 80%"></div>
+</div>
+</div>
+<!-- Neutron Yield -->
+<div class="surface-container-low p-5 border-l-2 border-secondary group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[0.6875rem] uppercase tracking-[0.1em] text-on-surface-variant">Neutron Yield (Y_n)</span>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors cursor-help" title="Total neutrons produced during the D-D fusion reaction phase.">info</span>
+</div>
+<div class="text-[2.75rem] font-headline font-bold tabular-nums leading-none tracking-tight">1.3 <span class="text-xl font-medium text-outline">x 10¹¹</span></div>
+<div class="mt-4 flex items-center justify-between text-[10px] font-mono text-outline">
+<span>EXP: ~10¹¹</span>
+<span class="text-secondary">ERROR: 30%</span>
+</div>
+<div class="mt-2 h-1 w-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary" style="width: 70%"></div>
+</div>
+</div>
+</div>
+<!-- 3D Visualization Canvas -->
+<section class="relative mb-8 h-[563px] surface-container rounded-lg overflow-hidden border border-outline-variant/10 shadow-2xl">
+<!-- Simulated 3D Render Interface -->
+<div class="absolute inset-0 bg-surface-container-lowest">
+<div class="w-full h-full opacity-60 bg-cover bg-center mix-blend-screen" data-alt="Futuristic plasma physics simulation with glowing blue energy filaments and magnetic field lines around a central anode." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCbJdBNe8GtnSJ8XlWDMlI1KrGwsbp1LKBbMFDMjMRXOOYWCzAepJvdFh_LWn_zAmpNA5vmoSr6ZL5gQrD5WWCmLzIEZtLu1ByL8PdOlDVSM3IpnpHEZnipqUhjoHlQebYKRZPOg0NFwD7bq-idZuTiq_TasbPiNlXB-xtTLJuUSNreP-OG_B4jo2uhIE4SUiBPcE4VzbF5H8ckj7G81W6neG7R0KKGRPFKS4UxcxOsaJbqcc-K2mKsEqaW0HKjDoOM336xnQhsUoI')"></div>
+<!-- UI Overlays -->
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<div class="px-3 py-1 bg-surface-container-highest/80 backdrop-blur text-[10px] font-mono text-primary flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        LIVE RENDER: BABYLON.JS ENGINE
+                    </div>
+<div class="px-3 py-1 bg-surface-container-highest/80 backdrop-blur text-[10px] font-mono text-on-surface-variant">
+                        CAMERA: X: 142.2 Y: -84.1 Z: 0.0
+                    </div>
+</div>
+</div>
+<!-- 3D Overlay Elements -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20">
+<defs>
+<pattern height="40" id="grid" patternunits="userSpaceOnUse" width="40">
+<path d="M 40 0 L 0 0 0 40" fill="none" stroke="#424754" stroke-width="0.5"></path>
+</pattern>
+</defs>
+<rect fill="url(#grid)" height="100%" width="100%"></rect>
+</svg>
+<!-- Bottom Controls -->
+<div class="absolute bottom-0 left-0 w-full p-4 flex justify-between items-center glass-panel border-t border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<button class="p-2 hover:bg-surface-bright rounded text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">fast_rewind</span>
+</button>
+<button class="p-3 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+<button class="p-2 hover:bg-surface-bright rounded text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">fast_forward</span>
+</button>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-2">
+<button class="px-2 py-1 text-[10px] font-bold border border-outline-variant/40 rounded hover:bg-surface-bright">1X</button>
+<button class="px-2 py-1 text-[10px] font-bold border border-primary/40 text-primary bg-primary/10 rounded">2X</button>
+<button class="px-2 py-1 text-[10px] font-bold border border-outline-variant/40 rounded hover:bg-surface-bright">4X</button>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">screenshot</span>
+                        Screenshot
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">fullscreen</span>
+                        Fullscreen
+                    </button>
+</div>
+</div>
+</section>
+<!-- Narrative Section -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 surface-container-low p-8 rounded-lg">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-xl font-headline font-bold text-on-surface">What Just Happened</h2>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-outline cursor-help" title="AI-generated narrative summary of the physical phenomena.">psychology</span>
+</div>
+</div>
+<!-- Phase Navigation -->
+<nav class="flex flex-wrap gap-2 mb-8">
+<button class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary text-on-primary shadow-lg shadow-primary/20">Rundown</button>
+<button class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant hover:text-on-surface">Radial</button>
+<button class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant hover:text-on-surface">Pinch</button>
+<button class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant hover:text-on-surface">Post-pinch</button>
+<button class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant hover:text-on-surface">Summary</button>
+</nav>
+<!-- Detailed Text -->
+<div class="space-y-6">
+<div>
+<h3 class="text-sm font-bold text-primary mb-3">1. Rundown Phase (0 - 4.1 us)</h3>
+<p class="text-on-surface-variant leading-relaxed text-sm">
+                            The 486 kJ capacitor bank discharged through deuterium gas, creating a current sheath that swept down the anode at 141 km/s — about 400x the speed of sound in air.
+                        </p>
+</div>
+<div class="p-6 bg-surface-container-lowest border-l-4 border-primary/20 rounded-r-lg">
+<div class="font-mono text-primary text-lg mb-2">F = J x B = (μ₀ * I²) / (4 * π * r)</div>
+<div class="text-xs text-outline italic">Lorentz force density equation for the plasma sheath</div>
+</div>
+<p class="text-on-surface-variant leading-relaxed text-sm italic">
+                        "With <span class="text-primary font-medium">I = 1.78 MA</span> and <span class="text-primary font-medium">r = 80 mm</span>, this force was <span class="text-primary font-medium">6.3 x 10⁶ N/m</span> — enough to accelerate the gas molecules into a uniform ionized sheet."
+                    </p>
+</div>
+</div>
+<!-- Sidebar Info / Tooltips -->
+<div class="space-y-6">
+<div class="surface-container p-6 rounded-lg border border-outline-variant/10">
+<h3 class="text-[0.6875rem] uppercase tracking-[0.15em] text-outline font-bold mb-4">Physics Insights</h3>
+<div class="space-y-4">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-secondary shrink-0">warning</span>
+<div>
+<div class="text-xs font-bold text-on-surface mb-1">Current Divergence</div>
+<div class="text-[11px] text-on-surface-variant leading-normal">
+                                    Simulated dip (48%) is lower than experimental target (60%). This suggests the plasma temperature at pinch may be underestimated.
+                                </div>
+</div>
+</div>
+<div class="h-[1px] bg-outline-variant/10"></div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary shrink-0">speed</span>
+<div>
+<div class="text-xs font-bold text-on-surface mb-1">Axial Velocity</div>
+<div class="text-[11px] text-on-surface-variant leading-normal">
+                                    Velocity remains stable within ±2% margin. Magnetic pressure is perfectly balancing the gas dynamic drag.
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<div class="surface-container-highest p-6 rounded-lg relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-7xl">architecture</span>
+</div>
+<div class="text-xs font-bold mb-2">Machine Specs</div>
+<div class="text-[10px] text-on-surface-variant font-mono space-y-1">
+<div>Anode Length: 600mm</div>
+<div>Cathode Radius: 160mm</div>
+<div>Base Pressure: 3.5 Torr</div>
+<div>Gas Type: Deuterium (D₂)</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile & Tablet) / Status Bar (Desktop) -->
+<footer class="fixed bottom-0 left-0 w-full glass-panel z-50 px-6 py-3 border-t border-outline-variant/10 md:hidden">
+<div class="flex justify-around items-center">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" data-icon="show_chart">show_chart</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Waveforms</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Energy</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="blur_on">blur_on</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Fields</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="compare_arrows">compare_arrows</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Compare</span>
+</button>
+</div>
+</footer>
+<!-- Desktop Global Status -->
+<div class="fixed bottom-0 left-64 right-0 h-8 bg-surface-container-lowest border-t border-outline-variant/10 z-40 hidden xl:flex items-center px-6 justify-between text-[10px] font-mono text-outline">
+<div class="flex items-center gap-6">
+<span class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                SYSTEM READY
+            </span>
+<span>NODE: OMEGA-04</span>
+<span>UPTIME: 14h 22m</span>
+</div>
+<div class="flex items-center gap-4">
+<span>MEM: 12.4GB / 32GB</span>
+<span>GPU: 42% @ 58°C</span>
+</div>
+</div>
+</body></html>

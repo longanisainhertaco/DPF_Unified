@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPF-Unified | Simulation Engine</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(27, 31, 44, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .technical-border {
+            border: 1px solid rgba(66, 71, 84, 0.2);
+        }
+        .phase-pulse {
+            animation: pulse-opacity 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-opacity {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ddb7ff",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#f0dbff",
+                        "on-tertiary": "#490080",
+                        "surface": "#0f131f",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2a1700",
+                        "on-surface": "#dfe2f3",
+                        "secondary-fixed": "#ffddb8",
+                        "on-primary-container": "#00285d",
+                        "background": "#0f131f",
+                        "surface-container-high": "#262a37",
+                        "on-secondary": "#472a00",
+                        "primary-container": "#4d8eff",
+                        "secondary-container": "#ee9800",
+                        "on-secondary-container": "#5b3800",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "on-error": "#690005",
+                        "inverse-surface": "#dfe2f3",
+                        "surface-container-highest": "#313442",
+                        "on-primary-fixed-variant": "#004395",
+                        "on-tertiary-container": "#400071",
+                        "outline-variant": "#424754",
+                        "surface-bright": "#353946",
+                        "surface-variant": "#313442",
+                        "inverse-primary": "#005ac2",
+                        "surface-container": "#1b1f2c",
+                        "surface-container-low": "#171b28",
+                        "inverse-on-surface": "#2c303d",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline": "#8c909f",
+                        "surface-dim": "#0f131f",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary": "#002e6a",
+                        "secondary": "#ffb95f",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-background": "#dfe2f3",
+                        "tertiary-container": "#b76dff",
+                        "tertiary": "#ddb7ff",
+                        "on-primary-fixed": "#001a42",
+                        "on-tertiary-fixed-variant": "#6900b3",
+                        "on-tertiary-fixed": "#2c0051",
+                        "surface-container-lowest": "#0a0e1a"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["IBM Plex Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#0f131f] border-b border-[#424754]/20 font-['Space_Grotesk'] tracking-tight tabular-nums">
+<div class="flex items-center gap-6">
+<span class="text-xl font-bold tracking-tighter text-[#dfe2f3]">DPF-Unified</span>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary phase-pulse"></span>
+<span class="text-sm font-mono tracking-wider text-on-surface-variant">PF-1000 @ 27 kV <span class="text-secondary ml-2">[ACTIVE RUN]</span></span>
+</div>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] text-sm uppercase tracking-widest font-medium transition-colors" href="#">Documentation</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] text-sm uppercase tracking-widest font-medium transition-colors" href="#">GitHub</a>
+<a class="text-[#dfe2f3]/60 hover:text-[#dfe2f3] text-sm uppercase tracking-widest font-medium transition-colors" href="#">About</a>
+</nav>
+<div class="flex items-center gap-3">
+<button class="px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-error border border-error/30 hover:bg-error/10 transition-all active:scale-95">Cancel</button>
+<button class="p-2 text-[#dfe2f3]/60 hover:bg-[#262a37] transition-colors duration-200 rounded">
+<span class="material-symbols-outlined text-xl" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar (Suppressed for focused Simulation view, but logic dictates shell awareness) -->
+<main class="pt-16 min-h-screen flex flex-col bg-surface-container-lowest">
+<!-- Hero: PhaseProgressBar -->
+<section class="w-full px-8 pt-8 pb-4">
+<div class="flex justify-between items-end mb-3">
+<div class="flex flex-col">
+<span class="text-[0.6875rem] uppercase tracking-[0.05em] font-headline text-on-surface-variant">Temporal Sequence Status</span>
+<h2 class="text-2xl font-bold font-headline tracking-tight">Phase: RADIAL COMPRESSION</h2>
+</div>
+<div class="text-right font-mono text-secondary">
+<span class="text-xs uppercase block text-on-surface-variant mb-1">Elapsed Time</span>
+<span class="text-xl tabular-nums">t = 4.70 µs</span>
+</div>
+</div>
+<!-- The Bar -->
+<div class="relative h-4 w-full bg-surface-container-highest overflow-hidden flex gap-0.5 rounded-sm">
+<!-- Blue: Rundown -->
+<div class="h-full w-[35%] bg-blue-500/40 relative group transition-all">
+<div class="absolute inset-0 bg-blue-400/20"></div>
+</div>
+<!-- Orange: Radial (Current Active) -->
+<div class="h-full w-[25%] bg-secondary-container relative">
+<div class="absolute inset-0 bg-secondary/30 phase-pulse"></div>
+<!-- Indicator Arrow -->
+<div class="absolute -top-1 left-1/2 -translate-x-1/2 flex flex-col items-center">
+<div class="w-0.5 h-6 bg-secondary shadow-[0_0_10px_rgba(255,185,95,0.8)]"></div>
+<span class="mt-4 text-[0.6rem] font-black tracking-tighter text-secondary bg-surface-container-highest px-1.5 py-0.5 whitespace-nowrap border border-secondary/50">YOU ARE HERE</span>
+</div>
+</div>
+<!-- Red: Pinch -->
+<div class="h-full w-[15%] bg-error/20 border-x border-error/10"></div>
+<!-- Purple: Post-pinch -->
+<div class="h-full w-[25%] bg-tertiary/10"></div>
+</div>
+<!-- Phase Labels -->
+<div class="grid grid-cols-4 mt-2 text-[0.6rem] font-headline uppercase tracking-[0.1em] text-on-surface-variant">
+<div class="text-blue-400/80">01. Axial Rundown</div>
+<div class="text-secondary font-bold">02. Radial Compression</div>
+<div class="text-error/60">03. Plasma Pinch</div>
+<div class="text-tertiary/60">04. Post-Pinch Expansion</div>
+</div>
+</section>
+<!-- Live Metrics Row -->
+<section class="px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="surface-container p-4 technical-border flex flex-col gap-1">
+<span class="text-[0.625rem] font-bold uppercase tracking-widest text-outline">Sheath velocity</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-mono tabular-nums text-primary font-medium">141</span>
+<span class="text-xs text-on-surface-variant">km/s inward</span>
+</div>
+</div>
+<div class="surface-container p-4 technical-border flex flex-col gap-1">
+<span class="text-[0.625rem] font-bold uppercase tracking-widest text-outline">Anode Current</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-mono tabular-nums text-secondary font-medium">1.78</span>
+<span class="text-xs text-on-secondary-container">MA <span class="opacity-60">(Peak)</span></span>
+</div>
+</div>
+<div class="surface-container p-4 technical-border flex flex-col gap-1">
+<span class="text-[0.625rem] font-bold uppercase tracking-widest text-outline">Electron Density</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-mono tabular-nums text-tertiary font-medium">8.42</span>
+<span class="text-xs text-on-surface-variant">n<sub>e</sub> · 10<sup>19</sup> cm⁻³</span>
+</div>
+</div>
+<div class="surface-container p-4 technical-border flex flex-col gap-1">
+<span class="text-[0.625rem] font-bold uppercase tracking-widest text-outline">Plasma Temp</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-mono tabular-nums text-on-surface font-medium">1.24</span>
+<span class="text-xs text-on-surface-variant">keV</span>
+</div>
+</div>
+</section>
+<!-- Centerpiece: 3D Visualization -->
+<section class="flex-1 px-8 pb-8 relative group">
+<div class="w-full h-[512px] bg-[#0a0e1a] relative overflow-hidden technical-border shadow-2xl">
+<!-- Mock 3D Canvas -->
+<div class="absolute inset-0 opacity-40 mix-blend-screen pointer-events-none">
+<div class="absolute inset-0 bg-gradient-to-t from-secondary/10 to-transparent"></div>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-[120px]"></div>
+</div>
+<img alt="Plasma Physics Simulation" class="w-full h-full object-cover mix-blend-lighten opacity-60 grayscale" data-alt="Abstract 3D scientific visualization of high-energy plasma sheath collapsing toward a central axis with glowing electric blue and orange magnetic field lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaunnrjOMyf7OAZw7ilbzrAmypClgQ8jvo6MTeYAfzWdMSVCFcsZeBtEdog99toZzgaumv2XZIJXUnqwqILYytHM0u0c_ohueujaRvfSoV5XgvH2phjlD5iFdfQGIs67Thvs-rwBLMj4ppKsCsZd5vnsn1wv57uk63-Dcu6F6bzXbCxDgzREY7n7krX_XOcqHSy1XInZrwWE19kkeBSd3Xx2C1UbM__7PQ3ivhLlgzR1DnDBJl_FsqgxIiLMmhBWcazPSVDpGKhrM"/>
+<!-- 3D Overlays -->
+<div class="absolute top-6 left-6 flex flex-col gap-2">
+<div class="glass-panel px-3 py-1.5 border-l-2 border-secondary">
+<span class="text-[0.65rem] font-mono uppercase text-secondary font-bold">Live Visual Feed</span>
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono text-on-surface">POV: Radial Cross-Section [Z=12mm]</span>
+</div>
+</div>
+</div>
+<!-- Descriptive Narrative Overlay -->
+<div class="absolute bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-3xl glass-panel p-6 technical-border text-center">
+<h3 class="text-xs uppercase tracking-[0.2em] font-headline text-secondary mb-2">Simulation Narrative</h3>
+<p class="text-lg font-light italic text-[#dfe2f3] leading-relaxed">
+                        "The magnetic field is squeezing the plasma inward like a hydraulic press made of magnetism."
+                    </p>
+<div class="mt-4 flex justify-center gap-8 font-mono text-[0.65rem] uppercase tracking-widest text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+                            B-Field Vectors
+                        </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 bg-secondary rounded-full phase-pulse"></span>
+                            Plasma Flux
+                        </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 border border-outline-variant rounded-full"></span>
+                            Anode Boundary
+                        </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Area: Waveform & Footer Metrics -->
+<footer class="mt-auto bg-surface-container border-t border-outline-variant/10 px-8 py-6 grid grid-cols-12 gap-8 items-center">
+<!-- Sparkline/Waveform -->
+<div class="col-span-12 lg:col-span-8 flex items-center gap-6">
+<div class="flex flex-col min-w-[120px]">
+<span class="text-[0.6rem] font-mono text-on-surface-variant uppercase">Current I(t)</span>
+<span class="text-2xl font-mono text-secondary tabular-nums">1.78 MA</span>
+</div>
+<div class="flex-1 h-12 relative flex items-end gap-1">
+<!-- Fake Sparkline SVG -->
+<svg class="w-full h-full drop-shadow-[0_0_8px_rgba(255,185,95,0.3)]" viewbox="0 0 400 60">
+<path class="text-secondary opacity-80" d="M0,55 L40,53 L80,50 L120,42 L160,30 L200,22 L240,15 L280,10 L320,12 L360,35" fill="none" stroke="currentColor" stroke-width="2"></path>
+<circle class="fill-secondary phase-pulse" cx="360" cy="35" r="3"></circle>
+</svg>
+</div>
+</div>
+<!-- Progress Summary -->
+<div class="col-span-12 lg:col-span-4 flex flex-col items-end gap-1">
+<div class="flex items-center gap-3">
+<span class="text-xs font-headline uppercase tracking-widest text-on-surface-variant">Estimated time remaining:</span>
+<span class="font-mono text-lg text-primary tabular-nums">~8 seconds</span>
+</div>
+<div class="w-full max-w-[240px] h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 72%"></div>
+</div>
+</div>
+</footer>
+</main>
+<!-- Floating System Status (Bottom Left) -->
+<div class="fixed bottom-24 left-8 pointer-events-none">
+<div class="glass-panel p-3 border-l-4 border-primary-container flex flex-col gap-1">
+<span class="text-[0.6rem] font-black uppercase text-on-surface-variant">Compute Load</span>
+<div class="flex items-center gap-2">
+<div class="flex gap-0.5">
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary/20"></div>
+</div>
+<span class="text-[0.65rem] font-mono">82% GPU Utilization</span>
+</div>
+</div>
+</div>
+</body></html>
