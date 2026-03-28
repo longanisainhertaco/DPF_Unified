@@ -16,11 +16,10 @@ References:
 
 from __future__ import annotations
 
-import math
-
 import mlx.core as mx
 
-from dpf.metal.constants import K_B, M_DEUTERIUM as M_D, MU_0  # noqa: E402
+from dpf.metal.constants import K_B  # noqa: E402
+from dpf.metal.constants import M_DEUTERIUM as M_D
 
 
 def resistive_diffusion_rhs(

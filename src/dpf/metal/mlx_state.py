@@ -24,6 +24,7 @@ from dpf.metal.mlx_device import require_mlx
 # -- Physical constants --
 MU0: float = 4.0 * math.pi * 1e-7
 from dpf.metal.constants import K_B as _K_B  # noqa: E402
+
 _M_DEUTERIUM: float = 3.34358377e-27
 
 # -- Numerical floors (from single source of truth) --

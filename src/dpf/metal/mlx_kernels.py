@@ -17,15 +17,22 @@ import math
 import numpy as np
 
 # --- Constants (from single source of truth) ---
-from dpf.metal.constants import (  # noqa: E402
+from dpf.metal.constants import (  # noqa: E402  # noqa: E402
     GAMMA,
-    MU_0 as MU0,
-    NVAR,
+    IBR,
+    IBT,
+    IBZ,
+    IDN,
+    IEN,
+    IMR,
+    IMT,
     P_FLOOR,
     RHO_FLOOR,
     V_MAX,
 )
-from dpf.metal.constants import IDN, IMR, IMZ, IMT, IEN, ISR, IBR, IBZ, IBT, IEE  # noqa: E402
+from dpf.metal.constants import (
+    MU_0 as MU0,
+)
 
 # ──────────────────────────────────────────────────────────────
 # MLX availability guard

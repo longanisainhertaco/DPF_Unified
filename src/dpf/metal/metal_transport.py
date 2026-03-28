@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from dpf.metal.constants import K_B, MU_0, P_FLOOR
+
 if TYPE_CHECKING:
     pass
 
@@ -27,8 +29,6 @@ if TYPE_CHECKING:
 E_CHARGE = 1.602176634e-19       # Elementary charge [C]
 M_E = 9.1093837015e-31           # Electron mass [kg]
 M_D = 3.34358377e-27             # Deuterium mass [kg]
-from dpf.metal.constants import EPS_0 as EPSILON_0, K_B, MU_0, P_FLOOR  # noqa: E402
-
 
 # ── Shared Utilities ────────────────────────────────────────────
 

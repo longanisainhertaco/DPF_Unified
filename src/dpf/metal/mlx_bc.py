@@ -9,15 +9,12 @@ Handles ghost cell padding for electrode B_theta BCs:
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
-import numpy as np
-
 from dpf.metal.constants import MU_0, P_FLOOR, SQRT_MU0
 from dpf.metal.mlx_device import require_mlx
-
-import logging
 
 logger = logging.getLogger(__name__)
 

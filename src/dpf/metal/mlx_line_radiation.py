@@ -12,13 +12,12 @@ from __future__ import annotations
 import mlx.core as mx
 import numpy as np
 
-from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IDN, IEE, IEN, IMR, IMT, IMZ, ISR
-
 # Physical constants — from single source of truth
 from dpf.metal.constants import E_CHARGE as _EV  # noqa: E402
 from dpf.metal.constants import K_B as _KBOLTZ  # noqa: E402
 from dpf.metal.constants import P_FLOOR as _P_FLOOR  # noqa: E402
 from dpf.metal.constants import RHO_FLOOR as _RHO_FLOOR  # noqa: E402
+from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IDN, IEE, IEN, IMR, IMT, IMZ, ISR
 
 _KB_OVER_EV = _KBOLTZ / _EV  # ~8.617e-5 eV/K
 _LOG_FLOOR = -92.0  # exp(-92) ~ 1e-40, safe minimum for log(Lambda)

@@ -130,6 +130,7 @@ def _euler_stage_compilable(
 
 # Physical constants for temperature derivation (SI)
 from dpf.metal.constants import K_B as _K_B  # noqa: E402
+
 _M_D: float = 3.34358377e-27  # Deuterium mass [kg]
 
 

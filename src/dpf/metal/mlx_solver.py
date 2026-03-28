@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 _MU0: float = 4.0 * math.pi * 1e-7
 _SQRT_MU0: float = math.sqrt(_MU0)
 from dpf.metal.constants import K_B as _K_B  # noqa: E402
+
 _M_DEUTERIUM: float = 3.34358377e-27
 
 
