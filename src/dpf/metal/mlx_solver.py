@@ -456,113 +456,16 @@ class MLXMHDSolver(PlasmaSolverBase):
     # ------------------------------------------------------------------
 
     def _do_resistive_diffusion(self, U: Any, dt: float, eta: Any) -> Any:
-        """Implicit resistive diffusion of the B-field with Ohmic heating.
-
-        Parameters
-        ----------
-        U : mx.array
-            Conserved state (NVAR, nr, nz).
-        dt : float
-            Timestep [s].
-        eta : float or mx.array
-            Resistivity [Ohm·m].
-
-        Returns
-        -------
-        mx.array
-            Updated U with diffused B and Ohmic pressure increment.
-        """
-        mx = require_mlx()
-        from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IEN, ISR, NVAR
-        from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
-        from dpf.metal.mlx_transport import apply_resistive_diffusion
-
-        rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
-
-        Br_new, Bz_new, Bt_new, p_new = apply_resistive_diffusion(
-            Br=Br, Bz=Bz, Bt=Bt,
-            rho=rho, p=p,
-            eta=eta, dt=dt,
-            dr=self._grid.dr, dz=self._grid.dz,
-            r_cell=self._grid.r_cell,
-            gamma=self.gamma,
-        )
-
-        gm1 = self.gamma - 1.0
-        KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-        ME_new = 0.5 * (Br_new * Br_new + Bz_new * Bz_new + Bt_new * Bt_new)
-        E_new = mx.maximum(p_new, P_FLOOR) / gm1 + KE + ME_new
-        Srho_new = mx.maximum(p_new, P_FLOOR) * mx.power(
-            mx.maximum(rho, 1e-30), 1.0 - self.gamma
-        )
-
-        rows = [U[i] for i in range(NVAR)]
-        rows[IBR] = Br_new
-        rows[IBZ] = Bz_new
-        rows[IBT] = Bt_new
-        rows[IEN] = E_new
-        rows[ISR] = Srho_new
-        return mx.stack(rows, axis=0)
+        """Implicit resistive diffusion of the B-field with Ohmic heating."""
+        from dpf.metal.mlx_operator_split import do_resistive_diffusion
+        return do_resistive_diffusion(U, dt, eta, self._grid, self.gamma)
 
     def _do_resistive_diffusion_rkl2(self, U: Any, dt: float, eta: Any) -> Any:
-        """RKL2 super-timestepped resistive diffusion — fully on GPU.
-
-        Replaces the Thomas CPU solver with explicit RKL2 stages on Metal.
-        ~7x faster on 32x64 grids, ~15x faster on 64x128.
-        """
-        mx = require_mlx()
-        from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IEN, ISR, NVAR
-        from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
-        from dpf.metal.mlx_sts import compute_sts_stages, rkl2_step_mlx
-        from dpf.metal.mlx_sts_operators import (
-            compute_parabolic_dt,
-            resistive_diffusion_rhs,
+        """RKL2 super-timestepped resistive diffusion -- fully on GPU."""
+        from dpf.metal.mlx_operator_split import do_resistive_diffusion_rkl2
+        return do_resistive_diffusion_rkl2(
+            U, dt, eta, self._grid, self.gamma, self.coordinates,
         )
-
-        rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
-
-        # Build diffusivity field
-        if isinstance(eta, (int, float)):
-            alpha = mx.full(Br.shape, float(eta) / _MU0, dtype=Br.dtype)
-        else:
-            alpha = eta / _MU0
-
-        # Compute RKL2 stage count
-        dt_para = compute_parabolic_dt(alpha, self._grid.dr, self._grid.dz)
-        s = compute_sts_stages(dt, dt_para)
-        is_cyl = self.coordinates == "cylindrical"
-
-        def _rhs_B(B_comp):
-            return resistive_diffusion_rhs(
-                B_comp, alpha, self._grid.dr, self._grid.dz,
-                self._grid.r_cell, cylindrical=is_cyl,
-            )
-
-        Br_new = rkl2_step_mlx(Br, _rhs_B, dt, s_stages=s)
-        Bz_new = rkl2_step_mlx(Bz, _rhs_B, dt, s_stages=s)
-        Bt_new = rkl2_step_mlx(Bt, _rhs_B, dt, s_stages=s)
-
-        # Ohmic heating: energy removed from B goes to thermal
-        B2_old = Br * Br + Bz * Bz + Bt * Bt
-        B2_new = Br_new * Br_new + Bz_new * Bz_new + Bt_new * Bt_new
-        Q_ohmic = mx.maximum(0.5 * (B2_old - B2_new), 0.0)
-        p_new = mx.maximum(p + (self.gamma - 1.0) * Q_ohmic, P_FLOOR)
-
-        gm1 = self.gamma - 1.0
-        KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-        ME_new = 0.5 * B2_new
-        E_new = mx.maximum(p_new, P_FLOOR) / gm1 + KE + ME_new
-        Srho_new = mx.maximum(p_new, P_FLOOR) * mx.power(
-            mx.maximum(rho, 1e-30), 1.0 - self.gamma
-        )
-
-        rows = [U[i] for i in range(NVAR)]
-        rows[IBR] = Br_new
-        rows[IBZ] = Bz_new
-        rows[IBT] = Bt_new
-        rows[IEN] = E_new
-        rows[ISR] = Srho_new
-        return mx.stack(rows, axis=0)
 
     # ------------------------------------------------------------------
     # Operator-split: Braginskii thermal conduction
@@ -570,124 +473,26 @@ class MLXMHDSolver(PlasmaSolverBase):
 
     def _do_braginskii_viscosity(self, U: Any, dt: float) -> Any:
         """Operator-split Braginskii parallel viscosity."""
-        from dpf.metal.mlx_viscosity import apply_braginskii_viscosity
-
-        return apply_braginskii_viscosity(
-            U, dt, self._grid, self.gamma, self.ion_mass,
-            coordinates=self.coordinates,
+        from dpf.metal.mlx_operator_split import do_braginskii_viscosity
+        return do_braginskii_viscosity(
+            U, dt, self._grid, self.gamma, self.ion_mass, self.coordinates,
         )
 
     def _do_thermal_conduction(self, U: Any, dt: float, kappa: float | Any) -> Any:
-        """Implicit Braginskii parallel conduction along z.
-
-        Parameters
-        ----------
-        U : mx.array
-            Conserved state (NVAR, nr, nz).
-        dt : float
-            Timestep [s].
-        kappa : float or mx.array
-            Parallel conductivity [W/(m·K)].
-
-        Returns
-        -------
-        mx.array
-            Updated U with thermally diffused pressure and energy.
-        """
-        mx = require_mlx()
-        from dpf.metal.mlx_kernels import IEN, ISR, NVAR
-        from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
-        from dpf.metal.mlx_transport import apply_thermal_conduction, flux_limit_kappa
-
-        rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
-
-        # T = p*m_i/(2*rho*kB) for fully ionized plasma (n_e + n_i = 2*n_i)
-        T = p * self.ion_mass / (2.0 * mx.maximum(rho, 1e-30) * _K_B)
-
-        # Apply free-streaming flux limiter (Malone et al. 1975)
-        # Prevents unphysical conduction when mfp > gradient scale at pinch
-        kappa_np = np.asarray(kappa, dtype=np.float64) if not isinstance(
-            kappa, (int, float)
-        ) else np.full((self.nr, self.nz), float(kappa), dtype=np.float64)
-        Te_np = np.asarray(T, dtype=np.float64)
-        rho_np = np.asarray(rho, dtype=np.float64)
-        kappa_limited = flux_limit_kappa(
-            kappa_np, Te_np, rho_np, self._grid.dz,
-            f_limit=0.1, ion_mass=self.ion_mass,
+        """Implicit Braginskii parallel conduction along z."""
+        from dpf.metal.mlx_operator_split import do_thermal_conduction
+        return do_thermal_conduction(
+            U, dt, kappa, self._grid, self.gamma, self.ion_mass,
+            self.coordinates,
         )
-
-        Te_new, Ti_new = apply_thermal_conduction(
-            Te=T, Ti=T, rho=rho, B=Bz,
-            kappa_parallel=mx.array(kappa_limited.astype(np.float32)),
-            dt=dt, dz=self._grid.dz,
-            dr=self._grid.dr,
-            Br=Br, Bz=Bz, Bt=Bt,
-            anisotropic=True,
-        )
-
-        T_avg = 0.5 * (Te_new + Ti_new)
-        p_new = mx.maximum(2.0 * rho * _K_B * T_avg / self.ion_mass, P_FLOOR)
-
-        gm1 = self.gamma - 1.0
-        KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-        ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
-        E_new = p_new / gm1 + KE + ME
-        Srho_new = p_new * mx.power(mx.maximum(rho, 1e-30), 1.0 - self.gamma)
-
-        rows = [U[i] for i in range(NVAR)]
-        rows[IEN] = E_new
-        rows[ISR] = Srho_new
-        return mx.stack(rows, axis=0)
 
     def _do_thermal_conduction_rkl2(self, U: Any, dt: float, kappa: float | Any) -> Any:
-        """RKL2 super-timestepped thermal conduction — fully on GPU."""
-        mx = require_mlx()
-        from dpf.metal.mlx_kernels import IEN, ISR, NVAR
-        from dpf.metal.mlx_primitives import P_FLOOR, cons_to_prim
-        from dpf.metal.mlx_sts import compute_sts_stages, rkl2_step_mlx
-        from dpf.metal.mlx_sts_operators import compute_parabolic_dt, thermal_conduction_rhs
-        from dpf.metal.mlx_transport import flux_limit_kappa
-
-        rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, self.gamma)
-        T = p * self.ion_mass / (2.0 * mx.maximum(rho, 1e-30) * _K_B)
-
-        # Build kappa field with flux limiting
-        kappa_np = np.asarray(kappa, dtype=np.float64) if not isinstance(
-            kappa, (int, float)
-        ) else np.full((self.nr, self.nz), float(kappa), dtype=np.float64)
-        kappa_limited = flux_limit_kappa(
-            kappa_np, np.asarray(T, dtype=np.float64),
-            np.asarray(rho, dtype=np.float64), self._grid.dz,
-            f_limit=0.1, ion_mass=self.ion_mass,
+        """RKL2 super-timestepped thermal conduction -- fully on GPU."""
+        from dpf.metal.mlx_operator_split import do_thermal_conduction_rkl2
+        return do_thermal_conduction_rkl2(
+            U, dt, kappa, self._grid, self.gamma, self.ion_mass,
+            self.coordinates,
         )
-        kappa_mx = mx.array(kappa_limited.astype(np.float32))
-
-        # Compute diffusivity for stage count
-        n_e = mx.maximum(rho / self.ion_mass, 1e-10)
-        chi = kappa_mx / (n_e * _K_B)
-        dt_para = compute_parabolic_dt(chi, self._grid.dr, self._grid.dz)
-        s = compute_sts_stages(dt, dt_para)
-        is_cyl = self.coordinates == "cylindrical"
-
-        def _rhs_T(T_field):
-            return thermal_conduction_rhs(
-                T_field, kappa_mx, rho, self._grid.dr, self._grid.dz,
-                self._grid.r_cell, ion_mass=self.ion_mass, cylindrical=is_cyl,
-            )
-
-        T_new = mx.maximum(rkl2_step_mlx(T, _rhs_T, dt, s_stages=s), 1.0)
-
-        p_new = mx.maximum(2.0 * rho * _K_B * T_new / self.ion_mass, P_FLOOR)
-        gm1 = self.gamma - 1.0
-        KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
-        ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
-        E_new = p_new / gm1 + KE + ME
-        Srho_new = p_new * mx.power(mx.maximum(rho, 1e-30), 1.0 - self.gamma)
-
-        rows = [U[i] for i in range(NVAR)]
-        rows[IEN] = E_new
-        rows[ISR] = Srho_new
-        return mx.stack(rows, axis=0)
 
     # ------------------------------------------------------------------
     # PlasmaSolverBase — compute_dt
@@ -1199,41 +1004,12 @@ class MLXMHDSolver(PlasmaSolverBase):
         dt: float,
         eta_field: float | np.ndarray | None = None,
     ) -> None:
-        """Apply electron-ion equilibration, Ohmic heating, bremsstrahlung.
-
-        Modifies result dict in-place. Matches Metal solver pattern at
-        metal_solver.py:1580-1604.
-        """
-        from dpf.fluid.two_temperature import step_electron_energy
-
-        rho = result["rho"]
-        n_i = rho / self.ion_mass
-        n_i_safe = np.maximum(n_i, 1e-30)
-        eta_np = (
-            np.asarray(eta_field) if eta_field is not None
-            else np.zeros_like(rho)
+        """Apply electron-ion equilibration, Ohmic heating, bremsstrahlung."""
+        from dpf.metal.mlx_coupling import do_two_temperature_sources
+        do_two_temperature_sources(
+            result, dt, eta_field, self.ion_mass, self.dx,
+            self.Z_eff, self.gaunt_factor, self.gamma,
         )
-        # Approximate J^2 from Ohmic heating if available
-        J_sq = np.zeros_like(rho)
-        e_e_new, Te_new, Ti_new = step_electron_energy(
-            rho_e_e=result["e_electron"],
-            rho=rho,
-            velocity=result["velocity"],
-            eta=eta_np,
-            J_sq=J_sq,
-            Te=result["Te"],
-            Ti=result["Ti"],
-            n_e=n_i_safe,
-            n_i=n_i_safe,
-            dx=self.dx,
-            dt=dt,
-            Z=self.Z_eff,
-            gaunt_factor=self.gaunt_factor,
-            gamma=self.gamma,
-        )
-        result["Te"] = np.maximum(Te_new, 1.0)
-        result["Ti"] = np.maximum(Ti_new, 1.0)
-        result["e_electron"] = e_e_new
 
     # ------------------------------------------------------------------
     # Plasma inductance from density-weighted Lee formula
@@ -1242,77 +1018,11 @@ class MLXMHDSolver(PlasmaSolverBase):
     def _update_coupling(
         self, U: Any, current: float, voltage: float, dt: float,
     ) -> None:
-        """Compute plasma inductance and update circuit coupling state.
-
-        Uses the Lee formula: Lp = (mu0/2pi) * z_sheath * ln(b/r_eff)
-        where r_eff is the density-weighted effective radius.
-
-        References: Lee & Saw, Phys. Plasmas 21, 072501 (2014).
-        """
-        from dpf.metal.mlx_kernels import IDN
-
-        # Plasma inductance only meaningful for cylindrical DPF geometry
-        if self.coordinates == "cartesian":
-            self._coupling = CouplingState(current=current, voltage=voltage)
-            return
-
-        rho_np = np.asarray(U[IDN])  # (nr, nz)
-        nr, nz = rho_np.shape
-        dr = self._grid.dr
-        dz = self._grid.dz
-        r_arr = self._r_inner + (np.arange(nr) + 0.5) * dr
-
-        # Sheath position from column density peak
-        col_density = np.sum(rho_np * r_arr[:, np.newaxis], axis=0) * dr
-        iz_sheath = int(np.argmax(col_density))
-        z_sheath = (iz_sheath + 0.5) * dz
-
-        # Density-weighted effective radius
-        rho_region = rho_np[:, : iz_sheath + 1]
-        r_col = r_arr[:, np.newaxis]
-        dV = 2.0 * math.pi * r_col * dr * dz
-        mass = rho_region * dV
-        total_mass = float(np.sum(mass))
-        if total_mass > 0:
-            r_eff = float(np.sum(r_col * mass) / total_mass)
-        else:
-            r_eff = 0.5 * self._cathode_radius
-        r_eff = max(r_eff, 1e-6)
-        r_eff = min(r_eff, self._cathode_radius * 0.999)
-
-        # Lee formula
-        if r_eff > 0 and z_sheath > 0:
-            Lp = (_MU0 / (2.0 * math.pi)) * z_sheath * math.log(
-                self._cathode_radius / r_eff
-            )
-        else:
-            Lp = 0.0
-
-        # Phase-aware monotonicity: Lp increases during compression (sheath
-        # imploding → r_eff decreasing → log(b/r) increasing → Lp increasing).
-        # Post-pinch, the column expands → r_eff increases → Lp decreases.
-        # The old unconditional clamp (Lp = Lp_max) killed dLp/dt post-pinch,
-        # producing zero current dip. Now we track whether we've passed Lp peak
-        # and allow Lp to decrease in the expansion phase.
-        if Lp > self._Lp_max:
-            self._Lp_max = Lp
-        elif Lp < self._Lp_max * 0.98:
-            # Lp dropped >2% below peak → post-pinch expansion phase.
-            # Allow Lp to follow the MHD solution (no clamp).
-            pass
-        else:
-            # Within 2% of peak → still near pinch, enforce monotonicity
-            # to prevent noise-driven oscillations.
-            Lp = self._Lp_max
-
-        # dL/dt via backward difference
-        dL_dt: float | None = None
-        if self._prev_Lp > 0 and dt > 0:
-            dL_dt = (Lp - self._prev_Lp) / dt
-        self._prev_Lp = Lp
-
-        self._coupling = CouplingState(
-            Lp=Lp, current=current, voltage=voltage, dL_dt=dL_dt,
+        """Compute plasma inductance and update circuit coupling state."""
+        from dpf.metal.mlx_coupling import update_coupling
+        self._coupling, self._prev_Lp, self._Lp_max = update_coupling(
+            U, current, voltage, dt, self._grid, self._cathode_radius,
+            self._r_inner, self._prev_Lp, self._Lp_max, self.coordinates,
         )
 
     # ------------------------------------------------------------------
