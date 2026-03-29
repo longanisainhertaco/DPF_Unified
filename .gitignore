@@ -84,6 +84,8 @@ reference-images/
 .exp04-results.json
 .last-waveform-nrmse-result
 docs/calibration_results/
+static/test_*.html
+static/dpf3d_*.html
 docs/DPF_CRITICAL_REVIEW.md
 docs/DPF_PHASE_U_PROPOSAL.md
 docs/dpf-unified-system.mmd
