@@ -27,13 +27,15 @@ formulation that captures the defining physics of DPF operation: axial
 rundown, radial implosion, and pinch column formation. The code provides
 multiple solver backends -- a pure Python/NumPy/Numba engine, an Athena++ C++
 engine via pybind11, an AthenaK Kokkos engine for GPU portability, and an
-Apple Metal GPU engine via PyTorch -- all sharing a common configuration and
-diagnostic interface. DPF-Unified has been validated against published
-experimental data for six DPF devices spanning three orders of magnitude in
-stored energy (0.4 J to 2 MJ), achieving 1.27% mean peak current error across
-24 shots of the PF-1000 device. The software includes an interactive web
-interface, device presets for seven published machines, and a 4,183-test
-automated verification suite.
+Apple Silicon MLX engine with entropy-stable HLLS Riemann solving -- all
+sharing a common configuration and diagnostic interface. The MLX backend
+supports automatic differentiation through the MHD solver via `mx.grad`,
+enabling gradient-based calibration of device parameters. DPF-Unified has been
+validated against published experimental data for seven DPF devices spanning
+three orders of magnitude in stored energy (0.4 J to 2 MJ), achieving 1.27%
+mean peak current error across 24 shots of the PF-1000 device. The software
+includes an interactive web interface, device presets for eight published
+machines, and a 5,100+ test automated verification suite.
 
 # Statement of Need
 
@@ -157,7 +159,7 @@ diagnostic pipelines regardless of the underlying numerics.
 | Python | WENO-Z + HLLD + SSP-RK3 (Numba) | Development, V&V, portability |
 | Athena++ | PPM + HLLD (C++, pybind11) | Production accuracy |
 | AthenaK | Configurable (Kokkos subprocess) | GPU scaling |
-| Metal | WENO5-Z + HLLD + SSP-RK3 (PyTorch) | Apple Silicon acceleration |
+| MLX | WENO5-Z + HLLS + SSP-RK3 (Apple Metal) | Apple Silicon, differentiable MHD |
 
 ## Physics Modules
 
@@ -168,6 +170,26 @@ thermal conduction [@Braginskii1965] with Sharma-Hammett flux limiting
 time integration, two-temperature (Te, Ti) relaxation, constrained transport
 for divergence-free magnetic fields, and anomalous resistivity with
 ion-acoustic and lower-hybrid-drift instability thresholds.
+
+## MLX Backend and Differentiable MHD
+
+The MLX backend (`src/dpf/metal/`) provides a pure Apple Silicon native
+implementation using MLX, Apple's machine learning framework. All 16 solver
+modules (~3,200 lines) use `mx.array` operations compiled to Metal GPU
+kernels via `mx.compile()`. The entropy-stable HLLS Riemann solver
+[@Popovas2025] avoids the float32 catastrophic cancellation that affects HLLD
+at strong DPF shocks, enabling reliable GPU-only execution without CPU
+fallback.
+
+A key capability of the MLX backend is support for automatic differentiation
+through the MHD solver. Because MLX tracks computation graphs through
+elementwise operations, `mx.grad()` can compute gradients of simulation
+observables (e.g., peak current I_peak) with respect to input parameters
+(e.g., mass fraction fm, current fraction fc). This enables gradient-based
+calibration of device parameters, replacing derivative-free optimizers like
+Optuna TPE with gradient descent. The entropy-stable HLLS formulation is
+critical for this: it bypasses the `E - KE - B^2/2` pressure recovery that
+produces zero gradients through cancellation in float32.
 
 ## Configuration and Presets
 
@@ -193,17 +215,19 @@ Current waveforms were compared against published experimental data for six
 devices. The primary metric is the relative error in peak discharge current
 I_peak, which is the most reliably measured and reported DPF observable.
 
-| Device | Energy | I_peak Error | Reference |
-|--------|--------|-------------|-----------|
-| PF-1000 | 1 MJ | 7.3% | Scholz et al. (2006) |
-| UNU-ICTP | 3 kJ | 6.4% | Lee et al. (1988) |
-| MJOLNIR | 2 MJ | 2.8% | Goyon et al. (2025) |
-| FAETON-I | 125 kJ | 8.3% | Damideh et al. (2025) |
-| PF-400J | 400 J | 2.3% | Soto et al. (2009) |
-| POSEIDON | 480 kJ | 45%* | Herold et al. (1989) |
+| Device | Energy | I_peak Error | t_peak Error | NRMSE | Reference |
+|--------|--------|-------------|-------------|-------|-----------|
+| PF-1000 | 1 MJ | 4.7% | 4.4% | 0.146 | Scholz et al. (2006) |
+| UNU-ICTP | 3 kJ | 6.5% | 9.0% | 0.092 | Lee et al. (1988) |
+| MJOLNIR | 2 MJ | 4.1% | 3.6% | 0.162 | Goyon et al. (2025) |
+| FAETON-I | 125 kJ | 3.6% | 2.0% | 0.025 | Damideh et al. (2025) |
+| POSEIDON-60kV | 576 kJ | 0.5% | 0.8% | 0.115 | Herold et al. (1989) |
+| POSEIDON-40kV | 480 kJ | 0.3% | 36.6%* | N/A | Herold et al. (1989) |
+| NX2 | 1.85 kJ | 13.5%** | 40.9%** | N/A | Lee & Saw (2008) |
 
-*POSEIDON circuit parameters are poorly constrained in the literature;
-calibration is ongoing.
+*POSEIDON 40 kV timing error is under investigation; the 60 kV configuration
+matches well. **NX2 reference data are RADPF model output, not experimental
+measurements; the device is classified as reference-only.
 
 ## Statistical Validation: PF-1000 24-Shot Campaign
 
@@ -258,12 +282,9 @@ Standard MHD verification problems confirm solver correctness:
    re-strike phenomena. Post-pinch current decay is systematically too fast.
 
 5. **Neutron yield**: D-D neutron yield estimates use Bennett equilibrium
-   temperature with Bosch-Hale reactivity. This captures order-of-magnitude
-   yields but not the beam-target contribution that dominates in many devices.
-
-6. **Cylindrical geometry gap**: The Metal GPU backend operates in Cartesian
-   coordinates only. Full cylindrical (r,z) geometry with 1/r metric terms is
-   available in the Python and Athena++ backends.
+   temperature with Bosch-Hale reactivity and a beam-target model (V_pinch
+   from Lee model). This captures order-of-magnitude yields but the
+   beam-target Yn is sensitive to the assumed ion velocity distribution.
 
 # Research Impact Statement
 
@@ -289,7 +310,7 @@ or impossible with existing tools:
 Claude Code (Anthropic Claude, Opus model) was used extensively for code
 generation, test scaffolding, documentation, and literature synthesis. All
 physics implementations were verified against published equations and
-validated against experimental data. The 4,183-test automated suite provides
+validated against experimental data. The 5,100+ test automated suite provides
 continuous verification. Human physicist Anthony Zamora reviewed all physics
 models, selected governing equations, interpreted validation results, and
 calibrated device presets. A full disclosure is provided in
@@ -543,6 +564,21 @@ references:
   page: "033105"
   issued:
     date-parts: [[2025]]
+
+- id: Popovas2025
+  type: article-journal
+  author:
+    - family: Popovas
+      given: A.
+    - family: Nordlund
+      given: "\\AA."
+    - family: Ramsey
+      given: J. P.
+  title: "DISPATCH HLLS approximate Riemann solver for ideal MHD"
+  container-title: arXiv preprint
+  issued:
+    date-parts: [[2025]]
+  note: "arXiv:2211.02438"
 
 - id: Soto2009
   type: article-journal

@@ -9,11 +9,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && \
 COPY pyproject.toml README.md ./
 COPY src/ src/
 COPY app*.py ./
+COPY static/ static/
 
 # Install CPU-only torch explicitly before the package install to avoid pulling GPU wheels
 RUN pip install --no-cache-dir \
     torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir -e "."
+    pip install --no-cache-dir -e ".[viz]"
 
 EXPOSE 7860
 

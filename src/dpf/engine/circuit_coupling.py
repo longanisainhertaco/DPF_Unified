@@ -55,8 +55,10 @@ def _step_circuit_subcycle(
 
     sheath_pressure = self._dynamic_sheath_pressure()
 
-    # back-EMF: snowplow already captures motional EMF via I*dL/dt.
-    # Computing a separate MHD back_emf would double-count. (Debate #20)
+    # back-EMF: snowplow captures motional EMF via I*dL/dt.
+    # For pure-snowplow runs, set zero (dL/dt handled by circuit sub-step).
+    # For hybrid snowplow+MHD runs, back_emf will be set during Lp blending
+    # below (lines ~133/160/172) once MHD fields are trustworthy.
     if self.snowplow is not None:
         back_emf = 0.0
     else:
@@ -129,8 +131,8 @@ def _step_circuit_subcycle(
                         Lp_blend = 0.8 * self._prev_L_plasma
                 coupling.Lp = Lp_blend
                 coupling.dL_dt = alpha * dLdt_mhd + (1.0 - alpha) * dLdt_sp
-                if alpha > 0.9:
-                    back_emf = feedback.back_emf  # fully transitioned
+                # Ramp back-EMF with alpha (was stuck at 0 for 0 < alpha < 0.9)
+                back_emf = alpha * feedback.back_emf
             else:
                 coupling.Lp = Lp_sp
                 coupling.dL_dt = dLdt_sp

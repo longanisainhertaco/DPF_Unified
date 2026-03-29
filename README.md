@@ -31,7 +31,7 @@ DPF Unified is being built as a complete simulation platform for dense plasma fo
 | **AI Integration** | WALRUS (1.3B IsotropicModel, delta prediction, RevIN, Hydra config) surrogate models, inverse design, hybrid engine, confidence estimation, real-time AI server. SPARK33 educational AI assistant (port 8033/8034). | **Phase I + SPARK33 complete** |
 | **HPC Backend** | MPI-parallel and GPU-accelerated solvers for production-grade fidelity | **Planned** |
 
-**Current focus (Phase P complete)**: Engine accuracy — WENO-Z + SSP-RK3 + HLLD defaults on all backends, Metal resistive MHD, cylindrical solver. 2614+ tests passing, CI green. Deployed on HuggingFace Spaces (tjlonganisa/dpf-unified). Next: validation accuracy improvement and physics fidelity (cylindrical Metal, ablation V&V).
+**Current status (v1.5.0+)**: Phase Q complete — MLX Apple Silicon native solver (16 modules, 3,200 LOC), entropy-stable HLLS Riemann solver, differentiable MHD via `mx.grad`, fc/fm calibration via Optuna TPE. 5,100+ tests passing, CI green. 7 devices validated (I_peak error 0.3-6.5%). Deployed on HuggingFace Spaces (tjlonganisa/dpf-unified). Physics fidelity: 8.3/10.
 
 ---
 

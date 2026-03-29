@@ -201,12 +201,25 @@ def get_gas_choices() -> list[tuple[str, str]]:
     return [(v["name"], k) for k, v in GAS_SPECIES.items()]
 
 
+def _check_metal_available() -> bool:
+    try:
+        import torch
+        return torch.backends.mps.is_available()
+    except Exception:
+        return False
+
+_metal_ok = _check_metal_available()
+
+
 def get_backend_choices() -> list[tuple[str, str]]:
     # Hide AthenaK — Cartesian-only, cannot run cylindrical DPF geometry.
     # Hide Athena++ if binary not compiled.
+    # Hide Metal/MLX backends on non-Apple hardware (they silently fall back to CPU).
     hidden = {"engine_athenak"}
     if not _athena_ok:
         hidden.add("engine_athena")
+    if not _metal_ok:
+        hidden.update({"metal_plm", "metal_weno5", "engine_metal"})
     return [(desc, key) for key, desc in BACKENDS.items() if key not in hidden]
 
 
@@ -330,12 +343,23 @@ def _validate_inputs(
     anode_r: float, cathode_r: float, V0_kV: float, C_uF: float,
     L0_nH: float, sim_time_us: float,
 ) -> str | None:
+    for name, val in [("anode_r", anode_r), ("cathode_r", cathode_r),
+                      ("V0_kV", V0_kV), ("C_uF", C_uF), ("L0_nH", L0_nH),
+                      ("sim_time_us", sim_time_us)]:
+        if val is None or np.isnan(val) or np.isinf(val):
+            return f"Invalid value for {name}: must be a finite number."
     if anode_r >= cathode_r:
         return f"Anode radius ({anode_r} mm) must be < cathode radius ({cathode_r} mm)."
     if V0_kV <= 0 or C_uF <= 0 or L0_nH <= 0:
         return "Charging voltage, capacitance, and inductance must all be positive."
     if sim_time_us <= 0:
         return "Simulation time must be positive."
+    if V0_kV > 200:
+        return f"Charging voltage ({V0_kV} kV) is unrealistically high. Max 200 kV."
+    if C_uF > 50000:
+        return f"Capacitance ({C_uF} uF) is unrealistically high. Max 50,000 uF."
+    if sim_time_us > 500:
+        return f"Simulation time ({sim_time_us} us) too long. Max 500 us."
     return None
 
 
@@ -1332,7 +1356,16 @@ The Lee model in this simulator is designed for **Mather-type** geometry — the
     )
 
 
+def _warmup():
+    """Prime Numba JIT cache so first user request is fast."""
+    try:
+        run_simulation_core(preset_name="tutorial", sim_time_us=1.0)
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
+    _warmup()
     server_port = int(os.environ.get("DPF_UI_PORT", "7860"))
     app.queue(max_size=5)
     auth_user = os.environ.get("DPF_AUTH_USER")
