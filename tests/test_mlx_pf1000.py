@@ -172,18 +172,12 @@ class TestMLXPF1000MustHave:
 
     @pytest.mark.slow
     @pytest.mark.xfail(
-        reason="M2 requires fc/fm calibration for the MLX solver; "
-               "passes after calibration sprint",
+        reason="M2: MLX MHD solver produces different plasma resistance than Lee model; "
+               "fc/fm calibrated for Lee path (fc=0.797/fm=0.084) may not transfer",
         strict=False,
     )
     def test_m2_peak_current_accuracy(self, pf1000_result: tuple) -> None:
-        """M2: I_peak within 10% of 1.2 MA (Akel 2021 24-shot mean at 16 kV).
-
-        The MLX solver uses the same snowplow model as the PyTorch Metal
-        engine but with a different MHD-computed plasma resistance, so the
-        calibrated fc/fm values from Phase AC may not transfer directly.
-        This test is ``xfail`` until a dedicated calibration sprint is run.
-        """
+        """M2: I_peak within 10% of 1.2 MA (Akel 2021 24-shot mean at 16 kV)."""
         _, currents, _, _, _, _ = pf1000_result
         assert len(currents) > 0, "No current data recorded"
         peak_I_ma = float(np.max(currents)) / 1e6

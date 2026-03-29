@@ -376,7 +376,7 @@ class TestPF1000Waveform:
     """
 
     @pytest.mark.xfail(
-        reason="S1: blocked by M2/M6 bugs and missing mlx_circuit.py", strict=False
+        reason="S1: requires mlx_circuit.py (MLX-native circuit solver for full discharge)", strict=False
     )
     def test_s1_waveform_nrmse(self) -> None:
         """S1: I(t) NRMSE < 0.25 vs Akel 2021 PF-1000 waveform."""
@@ -391,7 +391,7 @@ class TestPF1000Waveform:
         assert nrmse < 0.25, f"S1: NRMSE = {nrmse:.4f}, expected < 0.25"
 
     @pytest.mark.xfail(
-        reason="S2: blocked by M2/M6 bugs and missing mlx_circuit.py", strict=False
+        reason="S2: requires mlx_circuit.py (MLX-native circuit solver for full discharge)", strict=False
     )
     def test_s2_current_dip_at_pinch(self) -> None:
         """S2: Current dip at pinch is 30-70% of I_peak."""
@@ -408,7 +408,7 @@ class TestPF1000Waveform:
         )
 
     @pytest.mark.xfail(
-        reason="S3: blocked by M2/M6 bugs and missing mlx_circuit.py", strict=False
+        reason="S3: requires mlx_circuit.py (MLX-native circuit solver for full discharge)", strict=False
     )
     def test_s3_pinch_voltage_spike(self) -> None:
         """S3: Pinch voltage spike > 20 kV at peak compression."""

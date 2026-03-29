@@ -1489,7 +1489,6 @@ def test_energy_conservation_in_isolated_mhd():
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(strict=False)
 def test_sound_wave_error_decreases_with_resolution():
     """L1 density error decreases as N increases (sound wave convergence)."""
     resolutions = [32, 64, 128]
@@ -1499,7 +1498,6 @@ def test_sound_wave_error_decreases_with_resolution():
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(strict=False)
 def test_sound_wave_convergence_order():
     """Sound wave convergence order >= 1.0 (measured via log-log fit)."""
     order = _measure_convergence_rate(_run_solver, [32, 64, 128])
@@ -1887,7 +1885,6 @@ class TestDiffusionConvergence:
     """Resistive diffusion convergence: error should decrease with N."""
 
     @pytest.mark.slow
-    @pytest.mark.xfail(strict=False)
     def test_diffusion_convergence_explicit(self):
         from dpf.fluid.mhd_solver import MHDSolver as _LocalMHD
 
@@ -1921,7 +1918,6 @@ class TestOrszagTang:
     """Orszag-Tang vortex runs without NaN."""
 
     @pytest.mark.slow
-    @pytest.mark.xfail(strict=False)
     def test_orszag_tang_runs(self):
         from dpf.fluid.mhd_solver import MHDSolver as _LocalMHD
 
@@ -1955,7 +1951,7 @@ class TestSedovCylindrical:
     """Sedov-Taylor cylindrical blast runs without NaN."""
 
     @pytest.mark.slow
-    @pytest.mark.xfail(strict=False)
+    @pytest.mark.xfail(strict=False, reason="numpy squeeze axis mismatch in cylindrical Sedov IC setup")
     def test_sedov_cylindrical_runs(self):
         from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 
