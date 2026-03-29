@@ -64,8 +64,26 @@ models/
 
 # Research PDFs and training data
 research_reference/
+organized-papers/
 training_data/
+training/
 *.npz
+
+# Secrets and credentials
+.env
+.env.*
+*.key
+credentials.json
+
+# Word temp files
+~$*
+
+# Dev artifacts
+screenshots/
+reference-images/
+.exp04-results.json
+.last-waveform-nrmse-result
+docs/calibration_results/
 docs/DPF_CRITICAL_REVIEW.md
 docs/DPF_PHASE_U_PROPOSAL.md
 docs/dpf-unified-system.mmd
