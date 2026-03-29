@@ -462,7 +462,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "cathode_radius": 0.135,
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
-            "crowbar_inductance": 30e-9,  # 30 nH ignitron arc channel inductance
+            "crowbar_resistance": 1.5e-3,  # spark gap (removed 30nH inductance, uncited)
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
@@ -470,8 +470,8 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.47,
-            "current_fraction": 0.65,  # Adjusted toward Lee model range for large Mather-type
-            "mass_fraction": 0.15,     # EMPIRICAL: increased from 0.05 (unrealistically low)
+            "current_fraction": 0.65,
+            "mass_fraction": 0.15,
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },

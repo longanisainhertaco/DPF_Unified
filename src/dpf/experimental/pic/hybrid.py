@@ -1711,6 +1711,40 @@ class HybridPIC:
     # Beam injection
     # -----------------------------------------------------------------
 
+    @staticmethod
+    def sample_kappa_speeds(
+        n: int,
+        v_th: float,
+        kappa: float = 3.0,
+        rng: np.random.Generator | None = None,
+    ) -> np.ndarray:
+        """Sample speeds from a kappa (Lorentzian) distribution.
+
+        The kappa distribution has a power-law tail: f(v) ~ (1 + v^2/(kappa*v_th^2))^(-(kappa+1)).
+        At kappa -> inf it reduces to Maxwellian. For DPF beam ions, kappa=2-5 is physical
+        (non-thermal acceleration in the pinch).
+
+        Args:
+            n: Number of samples.
+            v_th: Thermal speed [m/s] = sqrt(2*kT/m).
+            kappa: Shape parameter. Must be > 1.5 for finite energy.
+            rng: Random generator.
+
+        Returns:
+            Array of shape (n,) with sampled speeds [m/s].
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+        kappa = max(kappa, 1.51)
+        # kappa distribution in 3D: speed CDF is equivalent to scaled Student-t
+        # v/v_th ~ sqrt(kappa) * |t| where t is Student-t with df=2*kappa-1
+        df = 2.0 * kappa - 1.0
+        # Sample 3 components from Student-t, take magnitude
+        t_samples = rng.standard_t(df, size=(n, 3))
+        scale = v_th / np.sqrt(kappa)
+        speeds = np.linalg.norm(t_samples * scale, axis=1)
+        return speeds
+
     def inject_beam(
         self,
         species_idx: int,
@@ -1720,6 +1754,8 @@ class HybridPIC:
         position: np.ndarray | list[float] | tuple[float, float, float],
         spread: float = 0.0,
         weight_total: float = 1e16,
+        distribution: str = "mono",
+        kappa: float = 3.0,
     ) -> None:
         """Inject a beam of particles into an existing species.
 
@@ -1744,6 +1780,11 @@ class HybridPIC:
             Total number of physical ions represented by all macro-particles.
             Macro-particle weight = weight_total / n_beam.
             Default 1e16 ~ 1 mC at 100 keV over 10 ns.
+        distribution : str
+            "mono" for monoenergetic beam (default), "kappa" for kappa distribution.
+        kappa : float
+            Shape parameter for kappa distribution (only used if distribution="kappa").
+            kappa=2-5 is physical for DPF beam ions.
         """
         sp = self.species[species_idx]
         dir_vec = np.asarray(direction, dtype=np.float64)
@@ -1757,7 +1798,29 @@ class HybridPIC:
         # Generate beam velocities
         beam_vel = np.zeros((n_beam, 3), dtype=np.float64)
 
-        if spread > 0.0:
+        if distribution == "kappa":
+            # Kappa-distributed speeds with beam direction + spread
+            rng = np.random.default_rng()
+            speeds = self.sample_kappa_speeds(n_beam, speed, kappa=kappa, rng=rng)
+            for i in range(n_beam):
+                if spread > 0.0:
+                    theta = spread * np.sqrt(rng.random())
+                    phi = 2.0 * np.pi * rng.random()
+                    if abs(dir_vec[0]) < 0.9:
+                        perp1 = np.cross(dir_vec, np.array([1.0, 0.0, 0.0]))
+                    else:
+                        perp1 = np.cross(dir_vec, np.array([0.0, 1.0, 0.0]))
+                    perp1 = perp1 / np.maximum(np.linalg.norm(perp1), 1e-300)
+                    perp2 = np.cross(dir_vec, perp1)
+                    v_dir = (
+                        dir_vec * np.cos(theta)
+                        + perp1 * np.sin(theta) * np.cos(phi)
+                        + perp2 * np.sin(theta) * np.sin(phi)
+                    )
+                else:
+                    v_dir = dir_vec
+                beam_vel[i] = speeds[i] * v_dir
+        elif spread > 0.0:
             # Random perturbations within a cone of half-angle `spread`
             rng = np.random.default_rng()
             for i in range(n_beam):
