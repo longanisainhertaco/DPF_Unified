@@ -447,7 +447,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         },
         "grid_shape": [140, 1, 480],
         "dx": 1e-3,
-        "sim_time": 8e-6,
+        "sim_time": 12e-6,  # 12 us: covers peak (~5 us) + radial + post-pinch
         "dt_init": 1e-10,
         "rho0": 7.53e-4,  # 3.5 Torr D2 at 300K
         "T0": 300.0,
@@ -456,7 +456,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "circuit": {
             "C": 450e-6,           # 450 uF
             "V0": 40e3,            # 40 kV typical
-            "L0": 20e-9,           # 20 nH (MA-class low-inductance)
+            "L0": 35e-9,           # 35 nH — fitted (was 20nH estimate; Herold 1989 doesn't state L0)
             "R0": 2e-3,            # ~2 mOhm
             "anode_radius": 0.104,
             "cathode_radius": 0.135,
@@ -471,7 +471,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "snowplow": {
             "anode_length": 0.47,
             "current_fraction": 0.65,
-            "mass_fraction": 0.15,
+            "mass_fraction": 0.30,     # calibrated (was 0.15, fitted with L0=35nH)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
         },
