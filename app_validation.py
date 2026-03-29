@@ -81,6 +81,20 @@ def validate_against_published(
         except Exception:
             pass
 
+    # Current dip depth comparison (CTQ-3)
+    if dev.waveform_t is not None and dev.waveform_I is not None:
+        exp_I = np.abs(dev.waveform_I) / 1e6  # MA
+        exp_peak_idx = int(np.argmax(exp_I))
+        exp_post = exp_I[exp_peak_idx:]
+        if len(exp_post) > 2:
+            exp_dip_idx = exp_peak_idx + int(np.argmin(exp_post[:max(len(exp_post) // 2, 2)]))
+            exp_dip_pct = (exp_I[exp_peak_idx] - exp_I[exp_dip_idx]) / max(exp_I[exp_peak_idx], 1e-30) * 100
+
+            sim_dip_pct = data.get("dip_pct", 0.0)
+            result["dip_sim_pct"] = sim_dip_pct
+            result["dip_exp_pct"] = float(exp_dip_pct)
+            result["dip_error_pct"] = abs(sim_dip_pct - exp_dip_pct)
+
     # Neutron yield comparison
     ny = data.get("neutron_yield")
     if ny and dev.neutron_yield > 0:

@@ -429,11 +429,19 @@ class SnowplowModel:
             return self._frozen_result()
 
         if self.phase == "rundown":
-            return self._step_axial(dt, current, pressure)
+            result = self._step_axial(dt, current, pressure)
         elif self.phase == "reflected":
-            return self._step_reflected(dt, current)
+            result = self._step_reflected(dt, current)
         else:
-            return self._step_radial(dt, current, pressure)
+            result = self._step_radial(dt, current, pressure)
+
+        # Divergence guard: terminate if values become unphysical
+        if abs(self.vr) > 1e8 or abs(result.get("L_plasma", 0)) > 1.0:
+            self._pinch_complete = True
+            self.phase = "pinch"
+            return self._frozen_result()
+
+        return result
 
     def _anomalous_resistance(self, current: float) -> float:
         """Anomalous plasma resistance during radial/pinch phase.

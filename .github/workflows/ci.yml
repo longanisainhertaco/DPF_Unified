@@ -33,28 +33,20 @@ jobs:
       - name: Run package tests (no torch/Metal/Athena dependencies)
         run: >-
           pytest tests/ -v --tb=short --cov=dpf --cov-report=term-missing
-          --ignore=tests/test_advanced_physics.py
-          --ignore=tests/test_mhd_physics_integration.py
-          --ignore=tests/test_web_ui_consolidated.py
-          --ignore=tests/test_athena_consolidated.py
           --ignore=tests/test_metal_gpu_consolidated.py
           --ignore=tests/test_3d_electrode_bc.py
-          --ignore=tests/test_infrastructure_consolidated.py
-          --ignore=tests/test_mhd_solver_consolidated.py
-          --ignore=tests/test_verification_consolidated.py
           --ignore=tests/test_walrus_consolidated.py
-          --ignore=tests/test_validation_consolidated.py
-          --ignore=tests/test_circuit_consolidated.py
+          --ignore=tests/test_athena_consolidated.py
           --ignore=tests/_archive
-          -k "not metal and not Metal"
+          -k "not metal and not Metal and not athena and not mlx"
           -m "not slow"
           -n auto
       - name: Verify test count
         run: |
           count=$(pytest tests/ --co -q -m "not slow" 2>&1 | tail -1 | grep -oE '[0-9]+' | head -1)
           echo "Found ${count:-0} non-slow tests"
-          if [ -z "$count" ] || [ "$count" -lt 200 ]; then
-            echo "ERROR: Expected at least 200 non-slow tests, found ${count:-0}"
+          if [ -z "$count" ] || [ "$count" -lt 4000 ]; then
+            echo "ERROR: Expected at least 4000 non-slow tests, found ${count:-0}"
             exit 1
           fi
 

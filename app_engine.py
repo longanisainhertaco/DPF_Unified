@@ -355,6 +355,8 @@ def run_simulation_core(
     T_LC = 2 * np.pi * np.sqrt(L_total * cc["C"])
     dt = T_LC / 5000
     n_steps = int(t_end / dt)
+    _I_sc = cc["V0"] / max(np.sqrt(cc["L0"] / cc["C"]), 1e-30)
+    _I_diverge = 10.0 * _I_sc  # current above this is unphysical
 
     times, currents, voltages, L_plasmas = [], [], [], []
     sheath_zs, shock_rs, phases_list = [], [], []
@@ -380,6 +382,7 @@ def run_simulation_core(
 
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
+
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
         voltages.append(circuit.voltage / 1e3)
@@ -387,6 +390,11 @@ def run_simulation_core(
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
+
+        # Divergence guard: if current exceeds 10x short-circuit, terminate early
+        if abs(circuit.current) > _I_diverge:
+            currents[-1] = currents[-2] if len(currents) > 1 else 0.0
+            break
 
         if progress_fn and step % 500 == 0:
             progress_fn((step + 1) / (n_steps + 1), desc=f"t = {t*1e6:.1f} us")
@@ -414,14 +422,14 @@ def run_simulation_core(
         dip_mask = np.array([(p in ("radial", "reflected")) for p in phases_list])
         if np.any(dip_mask):
             dip_region = np.where(dip_mask)[0]
-            dip_idx = dip_region[int(np.argmin(I_arr[dip_region]))]
-            I_dip = float(I_arr[dip_idx])
+            dip_idx = dip_region[int(np.argmin(np.abs(I_arr[dip_region])))]
+            I_dip = float(np.abs(I_arr[dip_idx]))
             t_dip = float(t_arr[dip_idx])
-            pre_dip_slice = I_arr[:dip_region[0]]
+            pre_dip_slice = np.abs(I_arr[:dip_region[0]])
             pre_dip_idx = int(np.argmax(pre_dip_slice))
             I_pre_dip = float(pre_dip_slice[pre_dip_idx])
             t_pre_dip = float(t_arr[pre_dip_idx])
-            dip_pct = (1 - I_dip / I_pre_dip) * 100 if I_pre_dip > 0 else 0
+            dip_pct = min((1 - I_dip / I_pre_dip) * 100, 100.0) if I_pre_dip > 0 else 0
 
             P_fill_Torr = sc.get("fill_pressure_Pa", 400) / 133.322
             scaling = implosion_scaling(
