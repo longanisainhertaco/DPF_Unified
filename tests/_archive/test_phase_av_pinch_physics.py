@@ -756,7 +756,6 @@ class TestFreeExponentI4Fit:
         """Subset of similar-size devices should fit better than full set."""
         # Use only ~1 MJ class devices with similar geometry
         similar = {
-            "Verus": _MA_CLASS_DEVICES["Verus"],
             "PF-1000": _MA_CLASS_DEVICES["PF-1000"],
             "MJOLNIR": _MA_CLASS_DEVICES["MJOLNIR"],
         }

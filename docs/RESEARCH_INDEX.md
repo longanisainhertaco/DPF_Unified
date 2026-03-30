@@ -19,7 +19,7 @@ Core DPF physics: snowplow dynamics, pinch formation, neutron yield, circuit cou
 | PFZ-200 Czech DPF (Novotny 2026) | `memory/research_papers.md` §HIGHEST | 3 kJ, 200+ kA, Y_n~1e8, need Ref. [25] for circuit params |
 | Poloidal B_z Dynamo (Auluck 2024) | `memory/research_papers.md` §MED-HIGH #4 | f_c < 1 encodes azimuthal current loss to B_z generation |
 | Collisional/Collisionless Shock (Kindi 2026) | `memory/research_papers.md` §MED-HIGH #5 | ND parameter for MHD validity, Daligault MFP formula |
-| MA-Class Device Comparison | `memory/research_papers.md` §table | LANL DPF-6, Poseidon, Verus, PF-1000, Gemini, MJOLNIR |
+| MA-Class Device Comparison | `memory/research_papers.md` §table | LANL DPF-6, Poseidon, PF-1000, MJOLNIR, FAETON-I |
 | Phase Z Physics (memory) | `memory/phase_z_physics.md` | Z.1-Z.3 implementation details, calibration anomaly (fc=0.5, fm=0.95) |
 | Bug Tracker | `memory/bugs.md` | Active/fixed DPF physics bugs (D1 double circuit step, frozen L_plasma, etc.) |
 

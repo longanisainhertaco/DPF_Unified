@@ -577,9 +577,8 @@ class NeutronYieldComparison:
 _MA_CLASS_DEVICES: dict[str, dict[str, float]] = {
     "LANL-DPF6": {"I_peak_MA": 2.3, "Y_n": 1.5e12, "E_MJ": 0.42},
     "POSEIDON": {"I_peak_MA": 4.6, "Y_n": 4.6e11, "E_MJ": 0.50},
-    "Verus": {"I_peak_MA": 2.0, "Y_n": 4.6e11, "E_MJ": 0.75},
     "PF-1000": {"I_peak_MA": 2.0, "Y_n": 2e11, "E_MJ": 1.0},
-    "Gemini": {"I_peak_MA": 6.0, "Y_n": 1.5e12, "E_MJ": 2.0},
+    "FAETON-I": {"I_peak_MA": 1.0, "Y_n": 2.5e10, "E_MJ": 0.125},
     "MJOLNIR": {"I_peak_MA": 2.8, "Y_n": 8e11, "E_MJ": 2.0},
 }
 

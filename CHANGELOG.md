@@ -90,7 +90,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - 24-shot PF-1000 validation: mean error 1.27% (down from 24.7%)
-- Major UI/UX overhaul from UAT feedback (Verus Research panel)
+- Major UI/UX overhaul from UAT feedback (external engineer review)
 - PhD panel corrections applied (B+ → A- essay); all 8 panel issues closed
 - POSEIDON published I_peak corrected to 4.6 MA; PF-400J uses damped peak (104 kA)
 - Backend names simplified: Quick / Standard / Detailed / High Accuracy / 3D / Reference

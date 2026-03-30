@@ -3,7 +3,7 @@
 ## Context
 The current app.py (1381 LOC, 12 tabs) tries to serve students, engineers, and researchers
 in one flat tab bar. This creates cognitive overload for all three users. An engineer
-(Tiffany B., EE integration lead) validated that the operational workflow needs:
+a DPF device operator validated that the operational workflow needs:
 CSV upload → pass/fail → anomaly diagnosis → shot log → PDF report — in one page,
 not spread across tabs.
 
