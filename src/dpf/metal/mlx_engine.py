@@ -25,12 +25,15 @@ def run_mlx_discharge(
     fm: float | None = None,
     V0_kV: float | None = None,
     pressure_torr: float | None = None,
+    mode: str = "lee",
+    grid_shape: tuple[int, int, int] = (32, 1, 64),
 ) -> dict[str, Any]:
     """Run a full DPF discharge through pure-MLX pipeline.
 
-    No numpy in the hot loop. Circuit + snowplow are scalar Python math;
-    MHD solver is MLX GPU. The only CPU work is the ODE arithmetic
-    (microseconds per step vs milliseconds for MHD).
+    Args:
+        mode: "lee" for circuit+snowplow only (1ms/shot), or
+              "mhd" for circuit+snowplow+MLX MHD solver (7min/shot).
+        grid_shape: MHD grid resolution (only used in "mhd" mode).
 
     Returns dict with I_peak_MA, t_peak_us, n_steps, elapsed_s, and
     time-series arrays (I_MA, t_us, Lp_nH, phases).
@@ -73,6 +76,30 @@ def run_mlx_discharge(
         pinch_column_fraction=sp_cfg.get("pinch_column_fraction", 1.0),
     )
 
+    # MHD solver (optional)
+    mhd_solver = None
+    mhd_state = None
+    if mode == "mhd":
+        import numpy as _np  # only for MHD state I/O, not in gradient path
+
+        from dpf.metal.mlx_solver import MLXMHDSolver
+        mhd_solver = MLXMHDSolver(
+            grid_shape=grid_shape, dx=preset.get("dx", 1e-3),
+            riemann_solver="hlls", reconstruction="plm",
+            time_integrator="ssp_rk2", coordinates="cylindrical",
+            r_inner=cc["anode_radius"],
+            ion_mass=_m_D2 / 2.0,  # deuterium atom mass
+        )
+        nr, ny, nz = grid_shape
+        mhd_state = {
+            "rho": _np.full((nr, ny, nz), rho0, dtype=_np.float32),
+            "velocity": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
+            "pressure": _np.full((nr, ny, nz), _p_Pa, dtype=_np.float32),
+            "B": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
+            "Te": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
+            "Ti": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
+        }
+
     # Timestep from LC period
     import math
     L_total = cc["L0"] + 1e-9
@@ -102,6 +129,15 @@ def run_mlx_discharge(
         Lp = sp_result["L_plasma"]
         dLp_dt = sp_result["dL_dt"]
         R_plasma = sp_result.get("R_plasma", 0.0)
+
+        # MHD step (if enabled)
+        if mhd_solver is not None and mhd_state is not None:
+            mhd_dt = mhd_solver._compute_dt(mhd_state)
+            mhd_dt = min(mhd_dt, dt)
+            mhd_state = mhd_solver.step(
+                mhd_state, mhd_dt,
+                current=circuit.current, voltage=circuit.voltage,
+            )
 
         # Circuit step
         circuit.step(Lp=Lp, dLp_dt=dLp_dt, R_plasma=R_plasma, back_emf=0.0, dt=dt)
