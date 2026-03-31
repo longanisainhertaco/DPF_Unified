@@ -560,7 +560,7 @@ class SnowplowModel:
 
         ln_Lambda = 10.0
         T_eff_eV = max(T_eV, 1.0)
-        eta_spitzer = 1.03e-4 * ln_Lambda / T_eff_eV**1.5
+        eta_spitzer = 5.2e-5 * ln_Lambda / T_eff_eV**1.5  # Braginskii-corrected (NRL Formulary)
         R_spitzer = eta_spitzer * self.z_f / (pi * r_p**2)
 
         # Anomalous resistance from m=0 disruption

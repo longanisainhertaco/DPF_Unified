@@ -165,8 +165,10 @@ def _radiation_corrected_temperature(T_bennett_keV: float, n_pinch: float,
     if T_bennett_keV < 0.5:
         return T_bennett_keV
 
-    # Bremsstrahlung power density: P_brem = 1.69e-32 * ne^2 * Z^2 * sqrt(T_keV)
-    P_brem_density = 1.69e-32 * n_pinch**2 * Z**2 * np.sqrt(T_bennett_keV)
+    # Bremsstrahlung power density [W/m^3], SI units (n in m^-3, T in keV)
+    # NRL Formulary: 5.34e-37 * ne * ni * Z^2 * Te_eV^0.5 [W/m^3]
+    # With ne=ni=n and T_keV: P = 1.69e-35 * n^2 * Z^2 * sqrt(T_keV)
+    P_brem_density = 1.69e-35 * n_pinch**2 * Z**2 * np.sqrt(T_bennett_keV)
 
     # Thermal energy density: e_th = 3*n*k_B*T (ions + electrons, 2 species)
     e_th_J = 3.0 * n_pinch * T_bennett_keV * 1.602e-16  # [J/m^3]
