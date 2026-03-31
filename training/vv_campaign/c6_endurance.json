@@ -1,0 +1,79 @@
+{
+  "campaign": 6,
+  "name": "endurance",
+  "status": "PASS",
+  "elapsed_s": 10001.3,
+  "n_shots": 1467,
+  "n_fail": 0,
+  "wall_mean": 6.817,
+  "wall_std": 0.289,
+  "drift_pct": -2.12,
+  "I_mean": 1.710216,
+  "I_std": 0.0,
+  "thermal_bins": [
+    {
+      "bin": 0,
+      "shots": "0-145",
+      "wall_mean": 6.901,
+      "wall_std": 0.16
+    },
+    {
+      "bin": 1,
+      "shots": "146-291",
+      "wall_mean": 6.841,
+      "wall_std": 0.339
+    },
+    {
+      "bin": 2,
+      "shots": "292-437",
+      "wall_mean": 6.566,
+      "wall_std": 0.266
+    },
+    {
+      "bin": 3,
+      "shots": "438-583",
+      "wall_mean": 6.673,
+      "wall_std": 0.2
+    },
+    {
+      "bin": 4,
+      "shots": "584-729",
+      "wall_mean": 6.752,
+      "wall_std": 0.103
+    },
+    {
+      "bin": 5,
+      "shots": "730-875",
+      "wall_mean": 6.823,
+      "wall_std": 0.168
+    },
+    {
+      "bin": 6,
+      "shots": "876-1021",
+      "wall_mean": 6.86,
+      "wall_std": 0.178
+    },
+    {
+      "bin": 7,
+      "shots": "1022-1167",
+      "wall_mean": 7.233,
+      "wall_std": 0.329
+    },
+    {
+      "bin": 8,
+      "shots": "1168-1313",
+      "wall_mean": 6.792,
+      "wall_std": 0.24
+    },
+    {
+      "bin": 9,
+      "shots": "1314-1459",
+      "wall_mean": 6.733,
+      "wall_std": 0.27
+    }
+  ],
+  "pass_criteria": {
+    "zero_failures": true,
+    "drift_lt_20": true
+  }
+}
