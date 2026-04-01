@@ -135,7 +135,7 @@ def dedner_source(
         psi: Cleaning scalar, shape matching spatial dims of U.
         U: Conserved state array.
         ch: Hyperbolic cleaning speed [m/s].
-        cr: Damping rate [1/s]. M&T2010 optimal: ch / dx.
+        cr: Damping rate [1/s]. M&T2010 optimal: ch / (0.18 * dx).
         grid: Grid object (CartesianGrid or CylindricalGrid).
         coordinates: "cartesian" or "cylindrical".
 

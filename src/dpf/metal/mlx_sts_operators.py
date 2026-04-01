@@ -127,8 +127,9 @@ def thermal_conduction_rhs(
     Returns:
         dT/dt from conduction, shape (nr, nz).
     """
+    # Thermal diffusivity: e_th = (3/2)*n*kB*T, so dT/dt = kappa/(1.5*n*kB) * lap(T)
     n = mx.maximum(rho / ion_mass, 1e-10)
-    chi = kappa / (n * K_B)
+    chi = kappa / (1.5 * n * K_B)
     return resistive_diffusion_rhs(T, chi, dr, dz, r_cell, cylindrical=cylindrical)
 
 

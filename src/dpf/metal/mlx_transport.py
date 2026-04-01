@@ -282,12 +282,16 @@ def lee_more_resistivity(
     n_i = rho_safe / ion_mass
     n_e = Z_eff * n_i
 
-    # Coulomb logarithm (NRL, capped)
-    # ln(Lambda) = 23.5 - ln(n_e^{1/2} * Te^{-5/4}) - sqrt(1e-5 + (ln(Te)-2)^2/16)
-    # Simplified: clamp to [2, 20]
+    # Coulomb logarithm (NRL Plasma Formulary 2019, p. 34, T_e > 10 eV):
+    #   ln(Lambda) = 23 - 0.5*ln(n_e_cgs) + 1.5*ln(T_eV)
+    # where n_e_cgs is in cm^-3 (NRL convention). With SI n_e (m^-3):
+    #   n_e_cgs = n_e_SI * 1e-6, so 0.5*ln(1e-6) = -6.908
+    #   ln(Lambda) = 23 + 6.908 - 0.5*ln(n_e_SI) + 1.5*ln(T_eV)
+    #             = 29.9 - 0.5*ln(n_e_SI) + 1.5*ln(T_eV)
+    # Clamped to [2, 20].
     ln_ne = np.log(np.maximum(n_e, 1.0))
     ln_Te = np.log(np.maximum(Te_safe, 0.01))
-    coulomb_log = np.clip(23.5 - 0.5 * ln_ne / np.log(10) + 1.25 * ln_Te, 2.0, 20.0)
+    coulomb_log = np.clip(29.9 - 0.5 * ln_ne + 1.5 * ln_Te, 2.0, 20.0)
 
     # Spitzer collision frequency: nu_ei_spitzer
     # nu_ei = 4 * sqrt(2*pi) * n_e * Z^2 * e^4 * ln(Lambda) /
@@ -420,19 +424,24 @@ def anomalous_resistivity(
     n_e = Z_eff * n_i
     J_mag = np.sqrt(np.maximum(J_sq, 0.0))
     v_d = J_mag / np.maximum(n_e * E_CHARGE, 1e-30)
-    T_i = p_safe * ion_mass / (2.0 * rho_safe * K_B)
-    v_ti = np.sqrt(K_B * np.maximum(T_i, 1.0) / ion_mass)
+    # Temperature from total pressure: T = p*m_i / ((1+Z)*rho*kB)
+    # For Z=1: T = p*m_i / (2*rho*kB)
+    T_total = p_safe * ion_mass / ((1.0 + Z_eff) * rho_safe * K_B)
+    # Ion sound speed: c_s = sqrt(kB*T_e/m_i) ~ sqrt(kB*T/m_i) for T_e ~ T
+    # Used as onset threshold for current-driven instabilities (Sagdeev 1966)
+    c_s = np.sqrt(K_B * np.maximum(T_total, 1.0) / ion_mass)
+    v_ti = np.sqrt(K_B * np.maximum(T_total, 1.0) / ion_mass)
 
     if model == "drift_velocity":
         omega_pi = np.sqrt(n_i * E_CHARGE**2 / (EPS_0 * ion_mass))
-        # Saturation at 100x (not 1x) — instability grows with v_d/v_ti above threshold.
-        # Global Bohm cap (1e-2 Ohm*m) at line 441 still provides upper bound.
-        # Previous cap at 1.0 was too conservative (Huba 1985, GORGON uses uncapped).
-        ratio_sq = np.minimum((v_d / np.maximum(v_ti, 1.0))**2, 100.0)
+        # Onset at v_d > c_s (ion sound speed), not v_ti
+        # Sagdeev (1966), Galeev & Sagdeev (1984)
+        ratio_sq = np.minimum((v_d / np.maximum(c_s, 1.0))**2, 100.0)
         eta_anom = M_E * omega_pi * ratio_sq / np.maximum(n_e * E_CHARGE**2, 1e-60)
-        eta_anom = np.where(v_d > v_ti, eta_anom, 0.0)
+        eta_anom = np.where(v_d > c_s, eta_anom, 0.0)
     elif model == "sagdeev":
-        c_s = np.sqrt(K_B * np.maximum(T_i, 1.0) / ion_mass)
+        # Ion-acoustic instability: onset when v_drift > c_s
+        # c_s uses total temperature (T_e + T_i approximated by T_total)
         omega_pe = np.sqrt(n_e * E_CHARGE**2 / (EPS_0 * M_E))
         eta_anom = alpha * M_E * omega_pe / np.maximum(n_e * E_CHARGE**2, 1e-60)
         eta_anom = np.where(v_d > c_s, eta_anom, 0.0)
@@ -543,20 +552,23 @@ def apply_resistive_diffusion(
                 )
                 field_new[:, iz] = thomas_solve(a, b, c, d)
 
-    # ── Ohmic heating: Q = eta * J^2  ───────────────────────────
-    # Approximate J^2 from field change: Q ≈ (delta_B)^2 / (mu_0^2 * eta * dt)
-    # More precisely: Q = sigma * E^2 = E^2 / eta, and dB/dt = -curl E => E ~ dB*dx/dt
-    # Use energy conservation: delta(B^2/2mu_0) is removed from B, add to thermal.
-    # B is in HL units (B_HL = B_SI / sqrt(mu_0)), so B^2_HL = B^2_SI / mu_0.
-    # Energy in B field (per volume) = 0.5 * B_HL^2  (in HL units where mu_0=1).
-    # Ohmic heating = loss in magnetic energy density.
-    dB_sq = (
-        (Br_new - Br_np) ** 2
-        + (Bz_new - Bz_np) ** 2
-        + (Bt_new - Bt_np) ** 2
-    )
-    # Convert to SI pressure units: 0.5 * dB_HL^2 * mu_0  [J/m^3]
-    Q_ohmic = 0.5 * dB_sq * MU_0
+        # Vector Laplacian correction for Br in cylindrical coords:
+        # The curl-curl form gives an extra -Br/r^2 sink term.
+        # Applied explicitly after the implicit radial diffusion sweep.
+        r_safe = np.maximum(r_np, 0.5 * dr)
+        for iz in range(nz):
+            Br_new[:, iz] -= dt * alpha_np[:, iz] * Br_new[:, iz] / (r_safe**2)
+
+    # ── Ohmic heating from magnetic energy conservation ─────────
+    # Energy removed from B-field goes to thermal energy.
+    # In HL units (mu_0=1): magnetic energy density = 0.5 * B^2.
+    # Change in magnetic energy: dE_mag = 0.5*(B_old^2 - B_new^2).
+    B2_old = Br_np**2 + Bz_np**2 + Bt_np**2
+    B2_new = Br_new**2 + Bz_new**2 + Bt_new**2
+    dE_mag = 0.5 * (B2_old - B2_new)  # positive when B decreases (energy released)
+    dE_mag = np.maximum(dE_mag, 0.0)  # only heating, no cooling from B growth
+    # Convert HL energy density to SI: E_SI = E_HL * mu_0
+    Q_ohmic = dE_mag * MU_0
     # Ohmic heating raises pressure: dp = (gamma-1) * Q
     p_new = np.maximum(p_new + (gamma - 1.0) * Q_ohmic, P_FLOOR)
 
@@ -584,6 +596,7 @@ def apply_thermal_conduction(
     Bz: mx.array | None = None,
     Bt: mx.array | None = None,
     anisotropic: bool = True,
+    gamma: float = 5.0 / 3.0,
 ) -> tuple[mx.array, mx.array]:
     """Apply Braginskii anisotropic thermal conduction.
 
@@ -664,7 +677,11 @@ def apply_thermal_conduction(
         kappa_z = kappa_np
         kappa_r = kappa_np if dr is not None else None
 
-    chi_z = kappa_z / (n_np * K_B)
+    # Thermal diffusivity: chi = kappa * (gamma-1) / (n * kB)
+    # From energy conservation: e = p/(gamma-1) = n*kB*T/(gamma-1)
+    # => dT/dt = (gamma-1)/(n*kB) * div(kappa * grad(T))
+    gm1 = gamma - 1.0 if gamma is not None else 2.0 / 3.0
+    chi_z = kappa_z * gm1 / (n_np * K_B)
 
     Te_new = Te_np.copy()
     Ti_new = Ti_np.copy()
@@ -681,7 +698,7 @@ def apply_thermal_conduction(
     # r-direction conduction (implicit Thomas per z-column)
     # Use cylindrical diffusion operator (1/r)d/dr(r*chi*dT/dr) for correct geometry
     if dr is not None and kappa_r is not None and nr > 1:
-        chi_r = kappa_r / (n_np * K_B)
+        chi_r = kappa_r * gm1 / (n_np * K_B)
         r_cell = np.array([(ir + 0.5) * dr for ir in range(nr)])
         for iz in range(nz):
             a, b, c, d = _build_cylindrical_diffusion_system(

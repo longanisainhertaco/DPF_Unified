@@ -981,6 +981,8 @@ class MLXMHDSolver(PlasmaSolverBase):
             dx_min = min(self.dx, self.dz)
             if self.coordinates == "cartesian":
                 dx_min = min(dx_min, self.dy)
+            # Mignone & Tzeferacos (2010) optimal: cr = ch/(0.18*dx).
+            # Using alpha_p=1.0 (weaker damping) for DPF cylindrical stability.
             cr = ch / dx_min
 
             dpsi_dt, dU_dedner = dedner_source(

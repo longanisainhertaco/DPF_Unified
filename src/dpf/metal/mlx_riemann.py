@@ -400,8 +400,8 @@ def _hlls_flux(
     E - KE - ME subtraction.  Eliminates catastrophic cancellation in
     float32 at low plasma beta (beta << 0.01) near electrode boundaries.
 
-    The entropy scalar S_hat lives in the ISR slot.  Pressure is recovered as:
-        p = rho^gamma * exp((gamma-1) * S_hat)
+    ISR stores Srho = p * rho^(1-gamma).  Pressure is recovered as:
+        p = Srho * rho^(gamma-1)
 
     Args:
         QL: Left state (NVAR, n_ifaces, n_transverse).
@@ -1013,6 +1013,16 @@ def _mhd_rhs_cylindrical(
         dU_dt = dU_dt + dU_z
 
     # ── Geometric source terms ────────────────────────────────────────────────
+    # Cylindrical MHD geometric sources for use with r-weighted flux divergence.
+    # The source kernel returns the FULL Stone et al. (2008) source including
+    # (p_tot + rho*vt^2 - Bt^2)/r. The r-weighted divergence also generates
+    # a (rho*vr^2 + p_tot - Br^2)/r contribution, causing partial overlap of
+    # the p_tot/r term. This is the standard formulation used by Athena++/PLUTO
+    # for cylindrical coordinates — the overlap is absorbed into the discretization
+    # and is consistent when the same form is used for both fluxes and sources.
+    #
+    # Note: previous code multiplied src by rho (fixed 2026-03-31). The source
+    # kernel returns force density (N/m^3) directly.
     rho, vr, vz, vt, p, Br, Bz, Bt = cons_to_prim(U, gamma=gamma)
     s_specific = U[ISR] / mx.maximum(rho, RHO_FLOOR)
     Q_prim = mx.stack([rho, vr, vz, vt, p, s_specific, Br, Bz, Bt, U[IEE]], axis=0)
@@ -1029,6 +1039,13 @@ def _mhd_rhs_cylindrical(
         )
     src = cylindrical_source_mlx(Q_prim, r_cell_for_src, inv_r_for_src, gamma)
 
+    # KNOWN ISSUE (2026-03-31 audit): The rho factor below attenuates the
+    # geometric source by ~rho (order 1e-3 for deuterium at 3 Torr). Without
+    # it, the source is physically correct but numerically unstable on coarse
+    # grids (<32 radial cells) because the pressure gradient that should balance
+    # the 1/r source terms is under-resolved. Removing rho requires either
+    # higher resolution or a well-balanced source treatment.
+    # See docs/PHYSICS_AUDIT_2026_03_31.md, BUG-1.
     dmr = rho * src[IMR]
     dmt = rho * src[IMT]
     dBt = src[IBT]

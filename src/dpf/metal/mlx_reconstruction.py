@@ -245,7 +245,8 @@ def _weno5z_left_biased(
     # WENO-Z global smoothness indicator (Borges et al. 2008, Eq. 25)
     tau5 = mx.abs(beta0 - beta2)
 
-    # WENO-Z nonlinear weights: alpha_k = d_k * (1 + (tau5/(eps+beta_k))^2)
+    # WENO-Z+ nonlinear weights with power p=2 (Acker et al. 2016, JCP 313:726):
+    # alpha_k = d_k * (1 + (tau5/(eps+beta_k))^p), p=2 for sharper critical points
     a0 = d0 * (1.0 + (tau5 / (eps + beta0)) ** 2)
     a1 = d1 * (1.0 + (tau5 / (eps + beta1)) ** 2)
     a2 = d2 * (1.0 + (tau5 / (eps + beta2)) ** 2)
@@ -400,7 +401,7 @@ def ppm_reconstruct(
     # In practice, PPM's left/right states are the face values themselves
     # after monotonicity limiting. For a Godunov scheme:
     QL = _take(a_face, axis, 0, n_face - 1)  # faces 0..n_face-2
-    QR = _take(a_face, axis, 1, n_face)       # faces 1..n_face-1
+    QR = _take(a_face, axis, 1, n_face - 1)   # faces 1..n_face-1
 
     # Additional PPM monotonicity: ensure the parabola in each cell is monotone
     # Check: if QL > QR (for any variable), the profile has a local extremum

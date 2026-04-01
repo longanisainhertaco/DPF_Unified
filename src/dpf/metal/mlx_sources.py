@@ -65,12 +65,11 @@ def _bremsstrahlung_logspace(
     _LOG_MI = float(np.log(ion_mass))            # log(3.34e-27) ~ -61.07
     _LOG_2KB = float(np.log(2.0 * _KBOLTZ))     # log(2*kB) ~ -52.17
 
-    # log(ne) = log(rho) - log(ion_mass)
+    # n_e ~ rho / m_i for Z=1 (quasi-neutral: n_e = n_i for hydrogen/deuterium)
     log_rho = mx.log(mx.maximum(rho, 1e-30))
     log_ne = log_rho - _LOG_MI
 
-    # log(Te) = log(p) + log(m_i) - log(2*kB) - log(rho)
-    # Te = p * ion_mass / (2 * rho * kB)  [factor 2: n_e + n_i at Z=1]
+    # Te = p * m_i / (2 * rho * kB)  [factor 2: n_total = n_e + n_i at Z=1]
     log_p = mx.log(mx.maximum(p, 1e-30))
     log_Te = log_p + _LOG_MI - _LOG_2KB - log_rho
     log_Te = mx.maximum(log_Te, 0.0)  # floor Te at 1 K in log-space
@@ -81,7 +80,13 @@ def _bremsstrahlung_logspace(
     else:
         log_Z = float(np.log(max(float(Z_eff), 1e-30)))
 
-    # log(Q_rad) = log(BREM) + log(g_ff) + log(Z) + 2*log(ne) + 0.5*log(Te)
+    # Rybicki & Lightman (1979) eq. 5.14a, SI quasi-neutral form:
+    #   P_ff = 1.42e-40 * g_ff * Z_eff * n_e^2 * sqrt(T_K)  [W/m^3]
+    # n_e in m^-3, T in Kelvin, Z_eff = Z for single species.
+    # The Z^1 (not Z^2) is correct because n_e already includes the
+    # charge-state dependence: the fundamental formula P ~ Z^2 * n_e * n_i
+    # becomes Z * n_e^2 when n_i = n_e/Z (quasi-neutrality).
+    # Confirmed by Chen (2016) and NRL Plasma Formulary p.58.
     log_Q = _LOG_BREM + _LOG_GFF + log_Z + 2.0 * log_ne + 0.5 * log_Te
 
     # Clamp to prevent exp overflow (exp(88) ~ 3.4e38)

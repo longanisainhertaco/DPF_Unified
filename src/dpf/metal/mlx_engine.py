@@ -1,8 +1,11 @@
 """Pure-MLX DPF engine: circuit + snowplow + MHD with zero CPU sync.
 
 Chains MLXCircuitSolver + MLXSnowplow + MLXMHDSolver into a single
-discharge simulation with no numpy calls in the hot loop. Compatible
-with mx.grad for differentiable calibration.
+discharge simulation. In MHD mode, the MHD solver's density-weighted
+plasma inductance feeds back into the circuit ODE, replacing the
+snowplow's analytic Lp once the MHD fields are resolved.
+
+Compatible with mx.grad for differentiable calibration.
 
 Usage:
     from dpf.metal.mlx_engine import run_mlx_discharge
@@ -10,12 +13,55 @@ Usage:
 """
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 
 from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_snowplow import MLXSnowplow
 from dpf.presets import get_preset
+
+
+def _blend_lp(
+    Lp_sp: float,
+    dLp_dt_sp: float,
+    Lp_mhd: float,
+    dLp_dt_mhd: float | None,
+    alpha: float,
+    prev_Lp: float,
+) -> tuple[float, float]:
+    """Blend snowplow and MHD inductance with jump clamping.
+
+    Parameters
+    ----------
+    Lp_sp, dLp_dt_sp : float
+        Snowplow inductance [H] and its time derivative [H/s].
+    Lp_mhd : float
+        MHD density-weighted inductance [H].
+    dLp_dt_mhd : float or None
+        MHD dL/dt [H/s]. None if not yet computed.
+    alpha : float
+        Blend weight in [0, 1]. 0 = pure snowplow, 1 = pure MHD.
+    prev_Lp : float
+        Previous timestep blended Lp [H], for jump clamping.
+
+    Returns
+    -------
+    tuple[float, float]
+        (blended Lp, blended dLp_dt)
+    """
+    dLp_dt_m = dLp_dt_mhd if dLp_dt_mhd is not None else dLp_dt_sp
+    Lp = alpha * Lp_mhd + (1.0 - alpha) * Lp_sp
+    dLp_dt = alpha * dLp_dt_m + (1.0 - alpha) * dLp_dt_sp
+
+    # Clamp: no >20% Lp jump per step (matches SimulationEngine)
+    if prev_Lp > 0:
+        ratio = Lp / prev_Lp
+        if ratio > 1.2:
+            Lp = 1.2 * prev_Lp
+        elif ratio < 0.8:
+            Lp = 0.8 * prev_Lp
+    return Lp, dLp_dt
 
 
 def run_mlx_discharge(
@@ -33,10 +79,12 @@ def run_mlx_discharge(
     Args:
         mode: "lee" for circuit+snowplow only (1ms/shot), or
               "mhd" for circuit+snowplow+MLX MHD solver (7min/shot).
+              In MHD mode, the solver's density-weighted Lp feeds back
+              into the circuit once the fields are resolved.
         grid_shape: MHD grid resolution (only used in "mhd" mode).
 
     Returns dict with I_peak_MA, t_peak_us, n_steps, elapsed_s, and
-    time-series arrays (I_MA, t_us, Lp_nH, phases).
+    time-series arrays (I_MA, t_us, Lp_nH, Lp_mhd_nH, phases).
     """
     preset = get_preset(preset_name)
     cc = preset["circuit"]
@@ -80,17 +128,26 @@ def run_mlx_discharge(
     mhd_solver = None
     mhd_state = None
     if mode == "mhd":
-        import numpy as _np  # only for MHD state I/O, not in gradient path
+        import numpy as _np
 
         from dpf.metal.mlx_solver import MLXMHDSolver
+
+        r_anode = cc["anode_radius"]
+        r_cathode = cc["cathode_radius"]
+        anode_length = sp_cfg.get("anode_length", 0.16)
+        nr, ny, nz = grid_shape
+        # Grid spans inter-electrode gap (radial) and anode length (axial)
+        dr_mhd = (r_cathode - r_anode) / nr
+        dz_mhd = anode_length / nz
+
         mhd_solver = MLXMHDSolver(
-            grid_shape=grid_shape, dx=preset.get("dx", 1e-3),
+            grid_shape=grid_shape, dx=dr_mhd, dz=dz_mhd,
             riemann_solver="hlls", reconstruction="plm",
             time_integrator="ssp_rk2", coordinates="cylindrical",
-            r_inner=cc["anode_radius"],
-            ion_mass=_m_D2 / 2.0,  # deuterium atom mass
+            r_inner=r_anode,
+            cathode_radius=r_cathode,
+            ion_mass=_m_D2 / 2.0,
         )
-        nr, ny, nz = grid_shape
         mhd_state = {
             "rho": _np.full((nr, ny, nz), rho0, dtype=_np.float32),
             "velocity": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
@@ -101,7 +158,6 @@ def run_mlx_discharge(
         }
 
     # Timestep from LC period
-    import math
     L_total = cc["L0"] + 1e-9
     T_LC = 2.0 * math.pi * math.sqrt(L_total * cc["C"])
     dt = T_LC / 5000.0
@@ -111,11 +167,12 @@ def run_mlx_discharge(
     I_sc = _V0 / max(math.sqrt(cc["L0"] / cc["C"]), 1e-30)
     I_diverge = 10.0 * I_sc
 
-    # Time series storage (Python lists — no numpy)
+    # Time series storage
     times: list[float] = []
     currents: list[float] = []
     voltages: list[float] = []
     Lp_list: list[float] = []
+    Lp_mhd_list: list[float] = []
     phases: list[str] = []
 
     t = 0.0
@@ -123,23 +180,74 @@ def run_mlx_discharge(
     I_peak = 0.0
     t_peak = 0.0
 
-    for _step in range(n_steps_max):
-        # Snowplow step
-        sp_result = snowplow.step(dt, circuit.current)
-        Lp = sp_result["L_plasma"]
-        dLp_dt = sp_result["dL_dt"]
-        R_plasma = sp_result.get("R_plasma", 0.0)
+    # MHD-circuit coupling state
+    blend_alpha = 0.0
+    blend_active = False
+    prev_Lp_blend = 0.0
+    # Radial/pinch phases where MHD Lp can be trusted
+    _MHD_TRUST_PHASES = {"radial", "radial_reflected", "pinch", "column"}
 
-        # MHD step (if enabled)
+    for _step in range(n_steps_max):
+        # Snowplow step (always runs — provides phase detection)
+        sp_result = snowplow.step(
+            dt, circuit.current,
+            voltage=circuit.voltage, R0=cc["R0"], L0=cc["L0"],
+        )
+        Lp_sp = sp_result["L_plasma"]
+        dLp_dt_sp = sp_result["dL_dt"]
+        R_plasma = sp_result.get("R_plasma", 0.0)
+        phase = sp_result["phase"]
+
+        # MHD step + coupling feedback
+        Lp_mhd_val = 0.0
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
+                apply_electrode_bc=True,
             )
 
-        # Circuit step
+            # Read MHD-computed inductance from density-weighted Lee formula
+            coupling = mhd_solver.coupling_interface()
+            Lp_mhd_val = coupling.Lp
+            dLp_dt_mhd = coupling.dL_dt
+
+            # Trust gate: MHD Lp must be >0 and within 50% of snowplow Lp.
+            # During early axial rundown, MHD fields are uninitialized and
+            # produce near-zero Lp — using that would let current rise
+            # unrestricted (observed +59% I_peak without this gate).
+            mhd_trustworthy = (
+                Lp_mhd_val > 0
+                and phase in _MHD_TRUST_PHASES
+                and (Lp_sp <= 0 or Lp_mhd_val >= 0.5 * Lp_sp)
+            )
+
+            if mhd_trustworthy:
+                if not blend_active:
+                    blend_active = True
+                    blend_alpha = 0.0
+                # Exponential ramp: alpha -> 1 with tau = 5 steps
+                tau_blend = 5.0 * dt
+                blend_alpha = min(
+                    1.0 - (1.0 - blend_alpha) * math.exp(-dt / max(tau_blend, 1e-30)),
+                    1.0,
+                )
+                Lp, dLp_dt = _blend_lp(
+                    Lp_sp, dLp_dt_sp, Lp_mhd_val, dLp_dt_mhd,
+                    blend_alpha, prev_Lp_blend,
+                )
+            else:
+                Lp = Lp_sp
+                dLp_dt = dLp_dt_sp
+        else:
+            Lp = Lp_sp
+            dLp_dt = dLp_dt_sp
+
+        prev_Lp_blend = Lp
+
+        # Circuit step — now driven by MHD Lp when blending is active
         circuit.step(Lp=Lp, dLp_dt=dLp_dt, R_plasma=R_plasma, back_emf=0.0, dt=dt)
         t += dt
 
@@ -149,7 +257,8 @@ def run_mlx_discharge(
         currents.append(I_MA)
         voltages.append(circuit.voltage / 1e3)
         Lp_list.append(Lp * 1e9)
-        phases.append(sp_result["phase"])
+        Lp_mhd_list.append(Lp_mhd_val * 1e9)
+        phases.append(phase)
 
         if abs(I_MA) > abs(I_peak):
             I_peak = I_MA
@@ -175,5 +284,7 @@ def run_mlx_discharge(
         "I_MA": currents,
         "V_kV": voltages,
         "Lp_nH": Lp_list,
+        "Lp_mhd_nH": Lp_mhd_list,
         "phases": phases,
+        "blend_alpha": blend_alpha,
     }

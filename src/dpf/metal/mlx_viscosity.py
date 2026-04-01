@@ -90,9 +90,12 @@ def braginskii_viscosity_coefficients(
     omega_ci = e_charge * mx.maximum(B_mag, 1e-30) / ion_mass
     x_i = omega_ci * tau_i  # magnetization parameter
 
-    # Perpendicular viscosity: eta_1 = eta_0 / (1 + x_i^2)
-    # For strongly magnetized plasma (x_i >> 1): eta_1 << eta_0
-    eta_1 = eta_0 / (1.0 + x_i * x_i)
+    # Perpendicular viscosity: Braginskii (1965)
+    # Strongly magnetized limit: eta_1 = 3*n*kB*Ti / (10*omega_ci^2*tau_i)
+    #                                   = (3/10) * n*kB*Ti*tau_i / x_i^2
+    # Interpolation: eta_1 = 0.3 * n*kB*Ti*tau_i / (0.3 + x_i^2)
+    # This gives 0.3*n*kB*Ti*tau_i for x_i=0 and (0.3/x_i^2)*n*kB*Ti*tau_i for x_i>>1.
+    eta_1 = 0.3 * ni_safe * _KB * Ti_safe * tau_i / (0.3 + x_i * x_i)
 
     # Gyroviscosity: eta_3 = n_i * k_B * T_i / (2 * omega_ci)
     # Non-dissipative FLR effect — stabilizes m=0 sausage instability.

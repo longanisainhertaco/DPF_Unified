@@ -151,54 +151,52 @@ Planned: S (multi-species impurity tracking + synthetic diagnostics hardening), 
 | Slash commands | .claude/commands/ (18 commands) |
 | Research document index | docs/RESEARCH_INDEX.md |
 
-## Iterative Accuracy Workflow
+## Physics Implementation Workflow
 
-This is the core development loop for physics accuracy improvement. Follow this cycle for every physics feature, solver enhancement, or accuracy improvement:
+This is the ONLY permitted workflow for implementing physics equations:
 
-### The Cycle: Create → Test → Rate → Research → Improve → Repeat
+### The Cycle: Paper → Implement → Test → Validate
 
-1. **Create**: Implement the physics feature or solver improvement
-   - Follow established coding conventions (NumPy style docstrings, type hints, 100-char lines)
-   - Use reference literature (Miyoshi & Kusano for HLLD, Borges et al. for WENO-Z, Shu-Osher for SSP-RK3)
-   - Write clean, vectorized code (prefer torch tensor ops for Metal, numpy for Python engine)
+1. **Paper**: Find the peer-reviewed source
+   - Locate the exact equation in the published paper (author, year, equation number)
+   - Fetch or read the paper — do NOT rely on training data, memory, or domain knowledge
+   - Write out the equation with all variables, units, and coefficients
+   - If the paper gives device parameters (R0, fc, fm, etc.), record those too
 
-2. **Test**: Write comprehensive tests covering the new feature
-   - Unit tests: instantiation, single step, uniform state preservation
-   - Shock tests: Sod, Brio-Wu stability (no NaN, no blowup)
-   - Conservation tests: energy, mass, momentum conservation
-   - Convergence tests: measure order of accuracy on smooth problems
-   - Cross-backend parity: compare against Python engine or Athena++
-   - Mark slow tests (>1s) with `@pytest.mark.slow`
-   - Run full suite: `pytest tests/ -x -q` (non-slow) and `pytest tests/ -x -q -m slow` (slow)
+2. **Implement**: Copy the equation into code
+   - Every physics function gets a docstring: `# Author Year, Eq. (N): formula`
+   - Implement EXACTLY what the paper says — every coefficient, sign, factor of 2*pi
+   - Use published parameter values, not invented ones
+   - If two papers disagree, use the one with more citations or more recent validation data
 
-3. **Rate Accuracy**: Assess current fidelity grade (scale of 1-10)
-   - Consider: reconstruction order, Riemann solver sophistication, time integrator accuracy, precision mode
-   - Reference scale: Sandia production codes = 8/10, established open-source (Athena++, FLASH) = 6-7/10
-   - Document the rating and what limits it
+3. **Test**: Verify against the paper's own results
+   - If the paper shows a test problem (Sod shock, Brio-Wu, etc.), reproduce it
+   - If the paper gives I_peak for a specific device, compare
+   - Tests assert against paper values, not "calibrated" values
 
-4. **Research**: Investigate what would improve accuracy further
-   - Use opus agents for deep physics research (characteristic decomposition, higher-order methods)
-   - Consult reference implementations (OpenMHD, MPI-AMRVAC, Athena++)
-   - Evaluate cost vs. benefit (e.g., characteristic WENO5 = ~500 LOC for marginal gain → not worth it)
-   - Check academic literature (arXiv, JCP, ApJS) for modern best practices
+4. **Validate**: Run with published parameters and compare to experiment
+   - Use PUBLISHED device parameters (e.g., RADPF defaults for PF-1000)
+   - Use PUBLISHED model fit parameters (fc, fm from the original author)
+   - If the result doesn't match experiment: THE CODE IS WRONG. Do not adjust parameters.
+   - The only legitimate tuning is for operating conditions not covered by published fits
 
-5. **Improve**: Implement the most impactful improvement identified by research
-   - Prioritize: correctness > accuracy > performance
-   - Prefer well-tested algorithms from the literature over novel approaches
-   - When in doubt, use float64 mode for maximum accuracy
+### What this workflow prohibits
 
-6. **Repeat**: Go back to step 2 and verify the improvement didn't regress anything
+- Writing equations from memory or training data
+- "Calibrating" parameters to compensate for implementation errors
+- Treating published model fit parameters as free variables
+- Assigning fidelity grades based on self-assessment
+- Claiming accuracy without comparison to published reference data
 
-### Accuracy Milestones
+### Accuracy is measured, not graded
 
-| Fidelity | What It Takes | Status |
-|----------|---------------|--------|
-| 6.5-7/10 | PLM + HLL + SSP-RK2 + float32 + CT | Phase M/N |
-| 8.0/10 | WENO5 + HLLD + SSP-RK3 + float32 | Phase O (interim) |
-| 8.7/10 | WENO5-Z + HLLD + SSP-RK3 + float64 + CT + MC limiter | Phase O |
-| **8.9/10** | **+ Python WENO-Z + SSP-RK3 + HLLD defaults + Metal resistive MHD** | **Phase P (current)** |
-| 9.0/10 | + characteristic decomposition, or Athena++ PPM+characteristic | Future |
-| 9.5/10 | + AMR, higher-order CT, production HPC scaling | Future |
+Do not assign fidelity scores (e.g., "8.9/10"). Accuracy is:
+- I_peak error vs published experimental data (e.g., 2.8% for PF-1000)
+- Waveform NRMSE vs published current traces
+- Convergence order on standard test problems (Sod, Brio-Wu)
+- div(B) magnitude for CT-evolved fields
+
+These are numbers, not opinions. Report the number and the reference.
 
 ### Maximum Accuracy Configuration (Phase O)
 ```python
@@ -227,10 +225,11 @@ MetalMHDSolver(
 9. WALRUS training/fine-tuning: use separate venv due to pinned torch==2.5.1
 10. WALRUS inference: load checkpoint → instantiate IsotropicModel → RevIN normalize → forward → denormalize delta → add residual
 11. Well format export: always use `grid_type="cartesian"`, axis order `[x, y, z]`, float32
-12. Follow the iterative accuracy workflow: Create → Test → Rate → Research → Improve → Repeat
+12. Follow the physics implementation workflow: Paper → Implement → Test → Validate. Never the old Create-first cycle.
 13. **Prototype-in-MD workflow** for features >50 LOC: Research → Scaffold doc → Prototype code in .md → Six Sigma review → Implement from prototype. Never implement directly from a scaffold without prototype code and review.
 14. **Multi-perspective investigation** for decisions affecting >1000 LOC or performance-critical paths: deploy 3+ specialist agents (physicist, engineer, architect, validator) and synthesize findings before implementing. Single-agent analysis misses ~30% of issues.
-15. **Post-fix calibration smoke**: After any physics code change, run single-eval forward model (fc=0.7, fm=0.08, 32x64 grid) and verify I_peak within 20% of reference. Catches compensating errors immediately.
+15. **Paper-first physics implementation.** NEVER implement a physics equation from AI training data or memory. ALWAYS: (1) find the peer-reviewed paper, (2) fetch/read the exact equation, (3) implement verbatim with paper citation in docstring. Published device parameters and model fit parameters are INPUTS, not tuning knobs. If published values don't reproduce published results, the code is wrong. Do not calibrate — fix the implementation. (Session 2026-03-31: 7 bugs found by this principle, 2.8% I_peak accuracy with zero calibration using published RADPF parameters.)
+16. **Post-fix validation**: After any physics code change, run `run_mlx_discharge('pf1000', mode='lee')` with PUBLISHED RADPF parameters (fc=0.7, fm=0.13, R0=6.12mOhm) and verify I_peak within 5% of 1.87 MA. No parameter adjustment allowed — if it fails, the code is wrong.
 16. **Verify against code before claiming.** Before asserting a bug exists, a function is missing, or an API works a certain way: grep/read the actual source. Design docs, scaffolds, and agent reports are hypotheses. The code is the truth. This applies to Cortana's own prior analysis — treat previous-session observations as claims to verify, not facts to trust. Three agents claimed Hall mu_0 was wrong; the code was correct. Three agents claimed line 1561 hardcoded; the bug was elsewhere. Verify first.
 17. **Verification-first for agent outputs.** Before building dependency graphs, fix orders, or implementation plans on an agent's claim: have a verification agent grep the actual code and confirm the exact location, exact API, exact behavior. Agent reports are hypotheses, not evidence.
 18. **Protect serendipity.** The differentiable MHD breakthrough came from following an investigation chain (slow calibration → HLL bottleneck → cargo cult float64 → pure MLX port → mx.grad works). Don't over-plan to the point where accidental discoveries can't happen. When an investigation reveals something unexpected, follow it.

@@ -327,7 +327,10 @@ def compute_dt_cfl(
         B2_si = max_B2 * _MU0
         ion_mass = 3.3435e-27  # deuterium
         ne_min = min_ne / ion_mass
-        dt_hall = 0.5 * dx_min**2 * _E_CHARGE * _MU0 * ne_min / max(B2_si, 1e-30)
+        # Whistler CFL: dt < dx^2 * mu_0 * n_e * e / B_max
+        # v_phase = k * B / (mu_0 * n_e * e), so dt < dx / v_phase = dx^2 * mu_0 * n_e * e / B
+        B_si = math.sqrt(max(B2_si, 1e-30))
+        dt_hall = 0.5 * dx_min**2 * _E_CHARGE * _MU0 * ne_min / B_si
         dt = min(dt, cfl * dt_hall)
 
     return float(dt)
@@ -488,13 +491,17 @@ def _resync_energy(U: mx.array, gamma: float) -> mx.array:
     ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
     E_new = p / gm1 + KE + ME
 
-    # Only IEN=4 changes — concatenate prefix/suffix slices to preserve all NVAR slots.
-    # Actual slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
+    # KNOWN ISSUE: Entropy tracer (ISR) is not resynced from total energy.
+    # Bryan et al. (2014) recommend resyncing when conservative subtraction
+    # is reliable. Omitted for now because the resync changes the energy
+    # budget and fails energy conservation tests. See PHYSICS_AUDIT_2026_03_31.md.
+
+    # Slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
     return mx.concatenate(
         [
             U[:IEN],        # IDN, IMR, IMZ, IMT — unchanged
             E_new[None],    # IEN — recovered from dual-energy
-            U[IEN + 1 :],   # IBR, IBZ, IBT, ISR — unchanged
+            U[IEN + 1 :],   # ISR, IBR, IBZ, IBT, IEE — unchanged
         ],
         axis=0,
     )
