@@ -375,7 +375,7 @@ constant float C_BORIS_SQ  = 2.5e11f;  // (500 km/s)^2 — MUST MATCH constants.
 constant int NVAR = 10;
 
 inline float fast_magnetosonic(float rho, float p, float Bn, float Bt1, float Bt2, float gamma) {
-    // Boris-corrected fast magnetosonic speed (Gombosi 2002, Minoshima 2019).
+    // Boris-corrected fast magnetosonic speed (Gombosi 2002, Matsumoto et al. 2019).
     // Bounds Alfven speed at c_boris in vacuum without density floor hack.
     // MUST MATCH C_BORIS_SQ in constants.py (verified by test_constants_consistency).
     rho = max(rho, RHO_FLOOR);
@@ -960,7 +960,7 @@ _CYL_SOURCE = r"""
     // f_boris = c_boris^2 / (v_A^2 + c_boris^2)
     // In physical cells (v_A << c_boris): f_boris ~ 1 (no change)
     // In vacuum cells (v_A >> c_boris): f_boris ~ c_boris^2/v_A^2 (bounded)
-    // Gombosi et al. 2002, JCP 177:176; Minoshima et al. 2019, ApJ 874:37
+    // Gombosi et al. 2002, JCP 177:176; Matsumoto, Miyoshi & Takasao 2019, ApJ 874:37
     float rho_safe = max(rho, TINY_R);
     float va_sq = B2 / rho_safe;
     float f_boris = C_BORIS_SQ / (va_sq + C_BORIS_SQ);

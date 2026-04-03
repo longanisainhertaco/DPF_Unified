@@ -346,7 +346,7 @@ class TestSnowplowConfigIntegration:
 PF1000_C = 1.332e-3
 PF1000_V0 = 27e3
 PF1000_L0 = 33.5e-9
-PF1000_R0 = 2.3e-3
+PF1000_R0 = 6.12e-3
 
 T_QUARTER = (np.pi / 2) * np.sqrt(PF1000_L0 * PF1000_C)
 
@@ -1788,7 +1788,7 @@ class TestLeeModelRadialPhysicsFixes:
 
     def _get_default_params(self):
         return {
-            "C": 1.332e-3, "V0": 27e3, "L0": 33.5e-9, "R0": 2.3e-3,
+            "C": 1.332e-3, "V0": 27e3, "L0": 33.5e-9, "R0": 6.12e-3,
             "anode_radius": 0.0575, "cathode_radius": 0.08,
             "anode_length": 0.16, "fill_pressure_torr": 3.5,
             "peak_current_exp": 1.87e6, "current_rise_time_exp": 5.8e-6,

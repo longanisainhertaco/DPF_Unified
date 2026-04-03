@@ -567,7 +567,7 @@ class TestBoschHaleBranch2:
 _AR_PF1000_C = 1.332e-3
 _AR_PF1000_V0 = 27e3
 _AR_PF1000_L0 = 33.5e-9
-_AR_PF1000_R0 = 2.3e-3
+_AR_PF1000_R0 = 6.12e-3
 
 
 def _ar_make_solver(**overrides) -> RLCSolver:
@@ -601,7 +601,7 @@ class TestCrowbarResistanceInfrastructure:
             C=1e-3,
             V0=27e3,
             L0=33.5e-9,
-            R0=2.3e-3,
+            R0 = 6.12e-3,
             anode_radius=0.0575,
             cathode_radius=0.08,
             crowbar_enabled=True,
@@ -915,7 +915,7 @@ class TestBackendPhysicsWarnings:
 PF1000_C = 1.332e-3
 PF1000_V0 = 27e3
 PF1000_L0 = 33.5e-9
-PF1000_R0 = 2.3e-3
+PF1000_R0 = 6.12e-3
 
 
 def _make_solver(**overrides) -> RLCSolver:

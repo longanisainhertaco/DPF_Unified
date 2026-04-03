@@ -5,7 +5,17 @@ dpf/radiation/line_radiation.py into pure MLX mx.where chains.
 All coefficients are in log-space to avoid float32 subnormal issues
 (same approach as bremsstrahlung in mlx_sources.py).
 
-Placement: src/dpf/metal/mlx_line_radiation.py
+The parent module's 21-point cooling curves are fitted to CHIANTI/ADAS data
+and Post et al. (1977) tables. The 6-segment piecewise approximations here
+capture the dominant features (M-shell peak, trough, L-shell bump) within
+factor-of-2 accuracy. The specific piecewise coefficients are an internal
+simplification — NOT direct from any single published table.
+
+References:
+    Post et al., Atomic Data and Nuclear Data Tables 20, 397 (1977) —
+        cooling curves for Z=2 to Z=92.
+    Summers, ADAS User Manual (2004) — atomic data.
+    NRL Plasma Formulary (2019) — basic radiation formulas.
 """
 from __future__ import annotations
 

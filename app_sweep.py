@@ -16,7 +16,6 @@ import os
 import tempfile
 from typing import Any
 
-import jax.numpy as jnp
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -40,7 +39,7 @@ def _preset_to_jax_params(
     override_fc: float | None = None,
     override_V0_kV: float | None = None,
     override_pressure_torr: float | None = None,
-) -> dict[str, jnp.ndarray]:
+) -> dict:
     """Build JAX Lee model param dict from a preset with optional overrides.
 
     Args:
@@ -53,6 +52,7 @@ def _preset_to_jax_params(
     Returns:
         JAX float64 parameter dictionary compatible with ``simulate``.
     """
+    import jax.numpy as jnp  # noqa: E402, I001
     from dpf.jax.lee_model import default_pf1000_params
     from dpf.presets import _PRESETS
 
@@ -118,6 +118,7 @@ def run_jax_sweep(
         ``I_peak``, ``t_peak``.  neutron_yield / dip are not available
         from the JAX Lee model (scalar-only outputs).
     """
+    import jax.numpy as jnp  # noqa: E402, I001
     from dpf.jax.lee_model import vmap_simulate
 
     if param_name not in _PRESET_TO_JAX:

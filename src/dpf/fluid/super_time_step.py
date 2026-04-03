@@ -21,7 +21,8 @@ of Chebyshev polynomials of the first kind:
 where L(u) is the parabolic (diffusion) operator.
 
 References:
-    Meyer, Balsara & Aslam, JCP 231:2963 (2012) -- RKL1 and RKL2 methods
+    Meyer, Balsara & Aslam (2014), JCP 257:594 -- RKL2 detailed method
+    Meyer, Balsara & Aslam (2012), MNRAS 422:2102 -- RKL2 concept
     Alexiades, Amiez & Gremaud, CNME 12:31 (1996) -- STS overview
     Vaidya et al., MNRAS 472:3147 (2017) -- PLUTO implementation
 """
@@ -50,7 +51,7 @@ def rkl2_coefficients(
     to the ansatz G(z) = a_s + b_s * T_s(w0 + w1*z), where a_s and b_s
     are chosen for second-order accuracy: G(0) = 1, G'(0) = 1, G''(0) = 1.
 
-    Reference: Meyer, Balsara & Aslam, JCP 231:2963 (2012).
+    Reference: Meyer, Balsara & Aslam (2014), JCP 257:594.
 
     Args:
         s: Number of RKL stages.  Must be >= 2.  Typical values 4--16.

@@ -137,11 +137,9 @@ def coronal_radiation_power(
     """
     Te = np.maximum(Te_eV, 0.1)
 
-    # Bremsstrahlung: P_ff = 1.69e-32 * ne^2 * Z_eff^2 * sqrt(Te_eV)  [W/m^3]
-    # This is the standard CGS formula (Post 1977 eq. 1, NRL Formulary p. 58)
-    # with ne in cm^-3 and Te in eV. Note: the caller (line_radiation.py)
-    # uses SI with a 1.42e-40 coefficient. This function is standalone and
-    # uses CGS-Gaussian convention matching Post 1977 directly.
+    # Bremsstrahlung: P_ff = 1.69e-32 * ne_cgs^2 * Z_eff^2 * sqrt(Te_eV)  [erg/cm^3/s]
+    # NRL Formulary 2019 p.58, Eq.30 (CGS, ne in cm^-3, Te in eV, includes g_bar~1.2).
+    # Converts to SI via: 1 erg/cm^3/s = 0.1 W/m^3.
     # EMPIRICAL: gaunt factor g_ff = 1.2 folded into coefficient
     ne_cgs = ne * 1.0e-6  # m^-3 -> cm^-3
     P_brems_cgs = 1.69e-32 * ne_cgs**2 * Z_eff**2 * np.sqrt(Te)  # erg/cm^3/s

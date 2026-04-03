@@ -361,7 +361,7 @@ def run_simulation_core(
     _I_diverge = 10.0 * _I_sc  # current above this is unphysical
 
     times, currents, voltages, L_plasmas = [], [], [], []
-    sheath_zs, shock_rs, phases_list = [], [], []
+    sheath_zs, shock_rs, piston_rs, phases_list = [], [], [], []
     E_cap, E_ind, E_res = [], [], []
 
     t = 0.0
@@ -376,10 +376,12 @@ def run_simulation_core(
             coupling.R_plasma = sp.get("R_plasma", 0.0)
             sheath_zs.append(sp["z_sheath"] * 1e3)
             shock_rs.append(sp["r_shock"] * 1e3)
+            piston_rs.append(sp.get("r_piston", sp["r_shock"]) * 1e3)
             phases_list.append(sp["phase"])
         else:
             sheath_zs.append(0.0)
             shock_rs.append(0.0)
+            piston_rs.append(0.0)
             phases_list.append("none")
 
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
@@ -487,6 +489,7 @@ def run_simulation_core(
         "t_us": t_arr, "I_MA": I_arr, "V_kV": V_arr,
         "L_p_nH": np.array(L_plasmas),
         "z_mm": np.array(sheath_zs), "r_mm": np.array(shock_rs),
+        "r_p_mm": np.array(piston_rs),  # magnetic piston radius (Lee 2014 Fig.4-5: r_p distinct from r_s)
         "phases": phases_list,
         "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
         "E_res_kJ": np.array(E_res),

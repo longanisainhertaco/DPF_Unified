@@ -129,8 +129,11 @@ def spitzer_eta_mlx(
 ) -> mx.array:
     """Compute Spitzer resistivity [Ohm·m] from density and pressure.
 
+    Uses PARALLEL Spitzer resistivity (5.2e-5), see NRL Formulary 2019 p.37.
+    Note: mlx_transport.py uses PERPENDICULAR (1.03e-4). These differ by 1.96x.
+
     T_eV = p * m_i / (2 * rho * eV)  (ionised plasma, Z=1)
-    ln_Lambda = max(2, 23.5 - ln(sqrt(n_e) / T_eV^1.5))  [Gericke-Murillo-Schlanges]
+    ln_Lambda from NRL Formulary 2019, p.34.
     eta = 5.2e-5 * Z_eff * ln_Lambda / T_eV^1.5
 
     Args:
@@ -149,11 +152,19 @@ def spitzer_eta_mlx(
         mx.array(0.1, dtype=rho.dtype),
     )
 
+    # NRL Formulary 2019, p.34, electron-ion Coulomb logarithm:
+    #   T_e < 10*Z^2 eV: lnL = 23 - 0.5*ln(n_e_cgs) - ln(Z) + 1.5*ln(T_eV)
+    #   T_e > 10*Z^2 eV: lnL = 24 - 0.5*ln(n_e_cgs) + 1.0*ln(T_eV)
+    # SI conversion (n_e in m^-3): constant += 0.5*ln(1e6) ≈ 6.9 → 29.9 / 30.9
+    # Low-T regime includes -ln(Z); high-T does not.
     n_e = rho_safe / float(ion_mass)
-    ln_lambda = mx.maximum(
-        23.5 - (0.5 * mx.log(n_e) - 1.5 * mx.log(T_eV)),
-        mx.array(2.0, dtype=rho.dtype),
-    )
+    ln_Z = mx.log(mx.array(max(Z_eff, 1.0), dtype=rho.dtype))
+    lnL_low = 29.9 - 0.5 * mx.log(n_e) - ln_Z + 1.5 * mx.log(T_eV)
+    lnL_high = 30.9 - 0.5 * mx.log(n_e) + 1.0 * mx.log(T_eV)
+    threshold = 10.0 * Z_eff * Z_eff
+    ln_lambda = mx.where(T_eV > threshold, lnL_high, lnL_low)
+    ln_lambda = mx.maximum(ln_lambda, mx.array(2.0, dtype=rho.dtype))
+    ln_lambda = mx.minimum(ln_lambda, mx.array(20.0, dtype=rho.dtype))
 
     return 5.2e-5 * float(Z_eff) * ln_lambda / (T_eV ** 1.5)
 

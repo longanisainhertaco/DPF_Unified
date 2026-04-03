@@ -15,10 +15,15 @@ Variable layout (10-component cylindrical conserved state):
     U[IEE] = e_electron    (electron energy density)
 
 References:
-    Bryan et al. (2014), ApJS 211:19 -- dual-energy formalism
-    Ryu et al. (1993), ApJ 414:1 -- entropy switching
+    Ryu et al. (1993), ApJ 414:1 -- entropy tracer Srho = p*rho^(1-gamma)
+        (Bryan et al. 2014 p.16 explicitly attributes entropy approach to Ryu 1993)
+    Bryan et al. (2014), ApJS 211:19, p.16, Eqs. 44-45 -- dual-energy concept
+        (Bryan uses internal energy e, NOT entropy; switching criterion eta1=1e-3)
+    Switching criterion |p_S|/|E| is original to this code (avoids Bryan's
+        circular dependency where E-KE IS the corrupted subtraction)
     Stone et al. (2020), ApJS 249:4 -- fast magnetosonic speed
     Miyoshi & Kusano (2005), JCP 208:315 -- HLLD wave speeds
+    Gombosi et al. (2002), JCP 177:176 -- Boris semi-relativistic correction
 """
 
 from __future__ import annotations
@@ -296,7 +301,7 @@ def fast_magnetosonic_boris(
     dim: int,
     c_boris: float = _C_BORIS_DEFAULT,
 ) -> mx.array:
-    """Boris-corrected fast magnetosonic speed (Gombosi 2002, Minoshima 2019).
+    """Boris-corrected fast magnetosonic speed (Gombosi 2002, Matsumoto et al. 2019).
 
     The Boris correction reduces the effective Alfven speed in low-density
     regions without injecting artificial mass:
@@ -375,7 +380,7 @@ def boris_factor(
 
     References:
         Gombosi et al. (2002), JCP 177:176 — semi-relativistic MHD.
-        Minoshima et al. (2019), ApJ 874:37 — Boris correction for HLLD.
+        Matsumoto, Miyoshi & Takasao (2019), ApJ 874:37, arXiv:1902.02810 — Boris correction for HLLD.
     """
     c_sq = c_boris * c_boris
     rho_safe = mx.maximum(rho, RHO_FLOOR)

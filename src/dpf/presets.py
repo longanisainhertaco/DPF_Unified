@@ -86,6 +86,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 6.12e-3,     # RESF=1.22 * sqrt(L0/C0) = 6.12 mOhm (RADPF default)
             "anode_radius": 0.115,   # 115 mm (Scholz 2006)
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
+            "n_cathode_rods": 12,  # UNVERIFIED: cited as 12 (Gribkov 2007) but PDF not read in session
             "crowbar_enabled": True,
             "crowbar_mode": "fixed_time",
             "crowbar_time": 10.5e-6,  # Quarter period of loaded circuit (Scholz 2006: ~10 us)
@@ -371,6 +372,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 6.25e-3,         # 6.25 mOhm — 12.5/2 for 6-tower (Offermann 2021)
             "anode_radius": 0.1143,  # 114.3 mm — 228.6 mm OD / 2 (Goyon 2025)
             "cathode_radius": 0.157,  # ~157 mm — 24-rod cathode (Petrov 2022)
+            "n_cathode_rods": 24,  # Goyon 2025 p.2: "a set of 24 cathode rods"
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
             "crowbar_resistance": 1.5e-3,  # estimated spark gap
@@ -415,7 +417,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "L0": 220e-9,          # 220 nH static inductance (Damideh 2025)
             "R0": 7.6e-3,          # 7.6 mOhm (estimated from damping, Damideh 2025)
             "anode_radius": 0.05,  # 50 mm (Damideh 2025)
-            "cathode_radius": 0.10,  # ~100 mm (estimated, 5 cm A-K gap)
+            "cathode_radius": 0.106,  # 106 mm (Damideh 2025 Table 1: 10.6 cm)
             "crowbar_enabled": False,
         },
         "geometry": {"type": "cylindrical"},

@@ -37,7 +37,7 @@ P_FLOOR: float = 1e-12                     # Minimum pressure [Pa]
 GAMMA: float = 5.0 / 3.0                   # Monatomic ideal gas
 
 # ── Boris Correction ──────────────────────────────────────────────
-# Gombosi et al. 2002, JCP 177:176; Minoshima et al. 2019, ApJ 874:37.
+# Gombosi et al. 2002, JCP 177:176; Matsumoto, Miyoshi & Takasao 2019, ApJ 874:37.
 # c_boris should be 3-10x the maximum physical flow speed.
 # For DPF: max sheath velocity ~200 km/s, so c_boris = 500 km/s gives 2.5x margin.
 

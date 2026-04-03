@@ -471,7 +471,7 @@ def _make_pf1000_result(peak_current: float = 1.87e6) -> LeeModelResult:
             "C": 1.332e-3,
             "V0": 27e3,
             "L0": 33e-9,
-            "R0": 2.3e-3,
+            "R0": 6.12e-3,
             "fill_pressure_torr": 3.5,
         },
     )

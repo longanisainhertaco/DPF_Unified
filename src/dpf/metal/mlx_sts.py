@@ -10,7 +10,9 @@ The coefficient computation is delegated to the Python-engine module
 Chebyshev polynomial recursion. The step loop runs on MLX arrays.
 
 References:
-    Meyer, Balsara & Aslam, JCP 231:2963 (2012) — RKL2 method.
+    Meyer, Balsara & Aslam (2012), MNRAS 422:2102 — RKL2 concept.
+    Meyer, Balsara & Aslam (2014), JCP 257:594 — RKL2 detailed method.
+    (Note: previous citation "JCP 231:2963" was fabricated; no such paper exists.)
     Vaidya et al., MNRAS 472:3147 (2017) — PLUTO implementation.
 """
 

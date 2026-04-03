@@ -599,8 +599,8 @@ Try: coarser grid, lower sim_time, or published fc/fm defaults.
                     "cathode_radius": d.get("cathode_radius_mm", 160.0) / 1000,
                 },
                 "snowplow_cfg": {
-                    "anode_length": d["anode_length"] / 1000,
-                    "fill_pressure_Pa": d["fill_pressure"] * 133.322,
+                    "anode_length": d.get("anode_length_mm", 600.0) / 1000,
+                    "fill_pressure_Pa": d.get("fill_pressure_torr", 3.5) * 133.322,
                 },
                 "t_us": t_us_arr,
                 "z_mm": z_mm_arr,

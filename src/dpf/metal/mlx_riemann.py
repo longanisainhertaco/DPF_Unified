@@ -12,9 +12,12 @@ The interior update region is sized to match — for WENO5-Z the domain shrinks
 by 2 on each side; for PLM it shrinks by 1.
 
 References:
-    Miyoshi & Kusano (2005), JCP 208:315 — HLLD solver
-    Borges et al. (2008), JCP 227:3191 — WENO-Z weights
-    Stone et al. (2008), ApJS 178:137 — cylindrical MHD finite volume
+    Miyoshi & Kusano (2005), JCP 208:315 — HLLD 4-wave Riemann solver
+    Harten, Lax & van Leer (1983), SIAM Rev. 25:35 — HLL 2-wave flux
+    Ryu et al. (1993), ApJ 414:1 — entropy tracer for pressure recovery
+    Gombosi et al. (2002), JCP 177:176 — Boris semi-relativistic wave speed cap
+    Skinner & Ostriker (2010), ApJS 188:290, Eq. 11a — cylindrical source terms
+    Borges et al. (2008), JCP 227:3191 — WENO-Z weights (via reconstruction.py)
 """
 
 from __future__ import annotations

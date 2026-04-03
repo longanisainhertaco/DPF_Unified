@@ -10,7 +10,8 @@ Cylindrical diffusion operator:
 where alpha = eta/mu_0 (resistive) or kappa/(n*k_B) (conduction).
 
 References:
-    Meyer, Balsara & Aslam, JCP 231:2963 (2012) -- RKL2 method.
+    Meyer, Balsara & Aslam (2014), JCP 257:594 -- RKL2 method.
+    Meyer, Balsara & Aslam (2012), MNRAS 422:2102 -- RKL2 concept.
     Stone & Norman, ApJS 80:753 (1992) -- operator-split diffusion.
 """
 
@@ -113,7 +114,8 @@ def thermal_conduction_rhs(
 ) -> mx.array:
     """Explicit RHS for thermal conduction: dT/dt = div(chi * grad(T)).
 
-    chi = kappa / (n * k_B) is the thermal diffusivity.
+    chi = kappa / (1.5 * n * k_B) is the thermal diffusivity.
+    The 1.5 comes from e_thermal = (3/2)*n*k_B*T, so dT/dt = kappa/(1.5*n*kB) * lap(T).
 
     Args:
         T: Temperature [K], shape (nr, nz).

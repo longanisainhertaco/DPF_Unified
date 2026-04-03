@@ -3,8 +3,11 @@
 2-level, global timestep, ghost exchange, prolongation/restriction, minimal refluxing.
 
 Refs:
-    Berger & Colella, JCP 82:64 (1989) -- AMR for hyperbolic PDEs.
+    Berger & Colella, JCP 82:64 (1989) -- AMR for hyperbolic PDEs. NOT ON DISK.
     Stone et al., ApJS 249:4 (2020) -- Athena++ SMR/AMR.
+        PDF on disk: references/papers/mhd-numerics/stone_2020_athena_plus_plus.pdf
+    van Leer, JCP 23:276 (1977) -- slope limiter for prolongation.
+        Verified from Zhang & Shu (2016) chapter on disk.
 """
 from __future__ import annotations
 

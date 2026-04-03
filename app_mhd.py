@@ -398,6 +398,7 @@ def _apply_post_processing(
                 # Beam-target from circuit (if current available)
                 I_arr = result.get("I_MA", np.array([]))
                 Y_bt = 0.0
+                V_pinch = 0.0
                 if len(I_arr) > 0:
                     try:
                         from dpf.diagnostics.beam_target import beam_target_yield_rate
@@ -409,8 +410,6 @@ def _apply_post_processing(
                         if len(L_arr) > 1 and len(t_arr) > 1:
                             dLdt = np.gradient(L_arr * 1e-9, t_arr * 1e-6)
                             V_pinch = float(np.max(np.abs(I_arr * 1e6 * dLdt)))
-                        else:
-                            V_pinch = 0.0
                         if V_pinch > 1e3:
                             bt_rate = beam_target_yield_rate(
                                 I_peak_A, V_pinch, n_target, L_pinch, f_beam=0.14,
@@ -426,7 +425,7 @@ def _apply_post_processing(
                         "Y_beam_target": float(Y_bt),
                         "Y_neutron": float(Y_total),
                         "bt_fraction": float(Y_bt / Y_total) if Y_total > 0 else 0.0,
-                        "V_pinch_kV": float(V_pinch / 1e3) if "V_pinch" in dir() else 0.0,
+                        "V_pinch_kV": float(V_pinch / 1e3),
                         "tau_ns": float(tau_pinch * 1e9),
                     }
             except (ImportError, Exception) as exc:
@@ -944,6 +943,7 @@ def _run_hybrid_lee_mhd(
     _target_snaps = 30
     snap_interval = 3
     _cr_fracs = None  # CR ionization charge-state fractions
+    _L_axial_frozen = coupling.Lp  # cache axial inductance at Lee→MHD handoff
 
     # Time-resolved yield tracker (hybrid mode)
     yield_tracker = None
@@ -1022,9 +1022,8 @@ def _run_hybrid_lee_mhd(
         else:
             r_eff = b  # no compression yet
         r_eff = max(r_eff, a * 0.01)  # floor to prevent log(0)
-        # Lee-model inductance: axial (frozen) + radial compression
-        L_axial_frozen = coupling.Lp if mhd_step == 0 else (mu_0_local / (2.0 * np.pi)) * np.log(b / a) * sc.get("anode_length", L_anode)
-        Lp_mhd = L_axial_frozen + (mu_0_local / (2.0 * np.pi)) * z_f * np.log(b / r_eff)
+        # Lee-model inductance: axial (frozen at handoff) + radial compression
+        Lp_mhd = _L_axial_frozen + (mu_0_local / (2.0 * np.pi)) * z_f * np.log(b / r_eff)
         I_current = circuit.current
 
         # Back-EMF from changing plasma inductance: V_back = (dL/dt) * I
@@ -1059,7 +1058,7 @@ def _run_hybrid_lee_mhd(
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
         E_res.append(circuit.state.energy_res / 1e3)
-        sheath_zs.append(sp["z_sheath"] * 1e3)
+        sheath_zs.append(L_anode * 1e3)  # sheath at anode tip during MHD phase
         rho_mid = state["rho"][:, ny // 2, nz // 2]
         r_grid = np.linspace(a, b, nr)
         rho_sum = np.sum(rho_mid)
@@ -2183,25 +2182,26 @@ def _run_athena(
     coupling = CouplingState()
 
     step = 0
-    while t < t_end:
+    _pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+      while t < t_end:
         dt = solver._compute_dt(state)
         dt = min(dt, t_end - t)
         if dt <= 0:
             break
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _pool:
-            _fut = _pool.submit(
-                solver.step, state, dt,
-                current=circuit.current, voltage=circuit.voltage,
+        _fut = _pool.submit(
+            solver.step, state, dt,
+            current=circuit.current, voltage=circuit.voltage,
+        )
+        try:
+            state = _fut.result(timeout=_ATHENA_STEP_TIMEOUT_S)
+        except concurrent.futures.TimeoutError:
+            logger.error(
+                "Athena++ step timed out after %ds at t=%.3e s — aborting",
+                _ATHENA_STEP_TIMEOUT_S, t,
             )
-            try:
-                state = _fut.result(timeout=_ATHENA_STEP_TIMEOUT_S)
-            except concurrent.futures.TimeoutError:
-                logger.error(
-                    "Athena++ step timed out after %ds at t=%.3e s — aborting",
-                    _ATHENA_STEP_TIMEOUT_S, t,
-                )
-                break
+            break
         coupling = circuit.step(coupling, back_emf=0.0, dt=dt)
         t += dt
         step += 1
@@ -2233,6 +2233,8 @@ def _run_athena(
 
         if progress_fn and step % 20 == 0:
             progress_fn(min(t / t_end, 1.0), desc=f"Athena++ t={t*1e6:.1f}us, step={step}")
+    finally:
+      _pool.shutdown(wait=False)
 
     t_arr = np.array(times)
     I_arr = np.array(currents)

@@ -282,16 +282,23 @@ def lee_more_resistivity(
     n_i = rho_safe / ion_mass
     n_e = Z_eff * n_i
 
-    # Coulomb logarithm (NRL Plasma Formulary 2019, p. 34, T_e > 10 eV):
-    #   ln(Lambda) = 23 - 0.5*ln(n_e_cgs) + 1.5*ln(T_eV)
-    # where n_e_cgs is in cm^-3 (NRL convention). With SI n_e (m^-3):
-    #   n_e_cgs = n_e_SI * 1e-6, so 0.5*ln(1e-6) = -6.908
-    #   ln(Lambda) = 23 + 6.908 - 0.5*ln(n_e_SI) + 1.5*ln(T_eV)
-    #             = 29.9 - 0.5*ln(n_e_SI) + 1.5*ln(T_eV)
+    # Coulomb logarithm (NRL Plasma Formulary 2019, p. 34, electron-ion):
+    # NRL (CGS, n_e in cm^-3):
+    #   T_e < 10*Z^2 eV: lnL = 23 - ln(n_e^{1/2} * Z * T_e^{-3/2})
+    #                        = 23 - 0.5*ln(n_e) - ln(Z) + 1.5*ln(T_eV)
+    #   T_e > 10*Z^2 eV: lnL = 24 - ln(n_e^{1/2} * T_e^{-1})
+    #                        = 24 - 0.5*ln(n_e) + 1.0*ln(T_eV)
+    # Converting cm^-3 → m^-3: constant += 0.5*ln(1e6) = 6.908 → 29.9 / 30.9
+    # Low-T regime includes -ln(Z); high-T does not.
     # Clamped to [2, 20].
     ln_ne = np.log(np.maximum(n_e, 1.0))
     ln_Te = np.log(np.maximum(Te_safe, 0.01))
-    coulomb_log = np.clip(29.9 - 0.5 * ln_ne + 1.5 * ln_Te, 2.0, 20.0)
+    ln_Z = np.log(np.maximum(Z_eff, 1.0))
+    lnL_low = 29.9 - 0.5 * ln_ne - ln_Z + 1.5 * ln_Te   # T_e < 10*Z^2 eV
+    lnL_high = 30.9 - 0.5 * ln_ne + 1.0 * ln_Te   # T_e > 10*Z^2 eV
+    threshold = 10.0 * Z_eff**2  # 10*Z^2 eV
+    coulomb_log = np.where(Te_safe > threshold, lnL_high, lnL_low)
+    coulomb_log = np.clip(coulomb_log, 2.0, 20.0)
 
     # Spitzer collision frequency: nu_ei_spitzer
     # nu_ei = 4 * sqrt(2*pi) * n_e * Z^2 * e^4 * ln(Lambda) /

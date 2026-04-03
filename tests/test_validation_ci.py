@@ -61,7 +61,7 @@ def _run_circuit_for_device(device_name: str):
     )
 
     fc = dev.lee_fc or 0.7
-    fm = dev.lee_fm or 0.08
+    fm = dev.lee_fm or 0.13
     fmr = dev.lee_fmr or 0.1
 
     snowplow = SnowplowModel(

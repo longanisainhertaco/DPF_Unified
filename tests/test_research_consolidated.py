@@ -687,7 +687,7 @@ class TestBlindPrediction16kV:
     def test_blind_better_than_bare_rlc(self):
         model = _make_model()
         result = model.run("PF-1000-16kV")
-        C, V0, L0, R0 = 1.332e-3, 16e3, 33.5e-9, 2.3e-3
+        C, V0, L0, R0 = 6.12e-3
         Z0 = math.sqrt(L0 / C)
         zeta = R0 / (2 * Z0)
         I_rlc = V0 / Z0 * math.exp(-math.pi * zeta / 2)
@@ -699,7 +699,7 @@ class TestBlindPrediction16kV:
     def test_physics_loading_significant(self):
         model = _make_model()
         result = model.run("PF-1000-16kV")
-        C, V0, L0, R0 = 1.332e-3, 16e3, 33.5e-9, 2.3e-3
+        C, V0, L0, R0 = 6.12e-3
         Z0 = math.sqrt(L0 / C)
         zeta = R0 / (2 * Z0)
         I_rlc = V0 / Z0 * math.exp(-math.pi * zeta / 2)
@@ -709,7 +709,7 @@ class TestBlindPrediction16kV:
     def test_pressure_sensitivity(self):
         model = _make_model()
         params_35 = {
-            "C": 1.332e-3, "V0": 16e3, "L0": 33.5e-9, "R0": 2.3e-3,
+            "C": 1.332e-3, "V0": 16e3, "L0": 33.5e-9, "R0": 6.12e-3,
             "anode_radius": 0.115, "cathode_radius": 0.16,
             "anode_length": 0.6, "fill_pressure_torr": 3.5,
         }
@@ -764,7 +764,7 @@ class TestPostPinchDiagnostic:
         model = _make_model()
         comp27 = model.compare_with_experiment("PF-1000")
         r16 = model.run("PF-1000-16kV")
-        C, _V0_27, V0_16, L0, R0 = 1.332e-3, 27e3, 16e3, 33.5e-9, 2.3e-3
+        C, _V0_27, V0_16, L0, R0 = 6.12e-3
         Z0 = math.sqrt(L0 / C)
         zeta = R0 / (2 * Z0)
         I_rlc_16 = V0_16 / Z0 * math.exp(-math.pi * zeta / 2)

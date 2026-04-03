@@ -30,6 +30,8 @@ def electrode_bt_fixup_mlx(
     """Apply electrode B_theta BC in pure MLX (no np.asarray sync).
 
     Sets B_theta = mu0*I/(2*pi*r) [/ sqrt(mu0) if HL] at:
+    From Ampere's law: Chen (2016), Intro to Plasma Physics, 3rd ed., p.189, Eq. (6.2).
+    PDF on disk: references/papers/textbooks/chen-intro-plasma-physics-controlled-fusion-3ed.pdf
       - Outer ghost cells: indices [ng+nr_phys, ng+nr_phys+ng)
       - Outermost ng interior cells: blend with max(existing, electrode)
     Updates total energy for magnetic energy consistency throughout.

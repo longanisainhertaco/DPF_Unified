@@ -127,10 +127,11 @@ def synchrotron_enhancement_factor(
     # Synchrotron power density
     P_sync = e**4 * B**2 * ne * v_th**2 / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
 
-    # Bremsstrahlung power density (reference: Haines 2011)
+    # Bremsstrahlung power density (Rybicki & Lightman 1979, Eq. 5.14a)
+    # SI: P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
+    # Note: 1.42e-40 is bare coefficient (g_bar=1). With g_ff=1.2: ~1.70e-40.
     g_ff = 1.2  # Gaunt factor
-    Te_eV = Te_K * k_B / 1.602e-19
-    P_brem = 1.69e-32 * ne**2 * np.sqrt(max(Te_eV, 0.1)) * g_ff
+    P_brem = 1.42e-40 * g_ff * ne**2 * np.sqrt(max(Te_K, 1.0))
 
     if P_brem > 0:
         return max(P_sync / P_brem, 1.0)

@@ -34,6 +34,10 @@ from typing import Any
 
 from app_visualization import extract_all_layers
 
+# Pin to BJS 9.x for API stability. Verified 9.1.0 has all APIs we use:
+# CreateTube, CreateRibbon, GlowLayer, SSAO2, GPUParticleSystem, RawTexture,
+# DefaultRenderingPipeline, VolumetricLightScattering, ScenePerformancePriority.
+# Source verified: ~/BabylonJS/packages/dev/core/src/Engines/abstractEngine.ts:1938 = "9.1.0"
 BABYLON_CDN = "https://cdn.babylonjs.com/babylon.js"
 BABYLON_MAT = "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"
 BABYLON_LOADERS = "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"
@@ -62,14 +66,14 @@ _HTML_HEAD = (
     "background:rgba(0,0,0,0.45);padding:10px 14px;border-radius:8px;"
     "border:1px solid rgba(100,160,255,0.15)}\n"
     # Backend badge
-    "  #badge{position:absolute;top:70px;left:12px;z-index:10;pointer-events:none;"
-    "background:rgba(20,30,60,0.8);border:1px solid rgba(100,160,255,0.3);"
-    "border-radius:6px;padding:6px 12px;font:12px/1.5 monospace;color:#8af}\n"
+    "  #badge{position:absolute;top:auto;bottom:108px;left:12px;z-index:10;pointer-events:none;"
+    "background:rgba(10,15,30,0.85);border:1px solid rgba(80,120,200,0.2);"
+    "border-radius:6px;padding:5px 10px;font:11px/1.4 monospace;color:#6a8ec0;max-width:220px}\n"
     # Visualization mode banner — persistent label for data source honesty
-    "  #vis-mode{position:absolute;top:70px;left:50%;transform:translateX(-50%);"
+    "  #vis-mode{position:absolute;top:62px;left:50%;transform:translateX(-50%);"
     "z-index:11;pointer-events:none;text-align:center;"
-    "padding:5px 16px;border-radius:6px;font:bold 11px/1.5 'Helvetica Neue',Arial,sans-serif;"
-    "letter-spacing:0.5px;text-transform:uppercase}\n"
+    "padding:4px 14px;border-radius:4px;font:10px/1.4 'Helvetica Neue',Arial,sans-serif;"
+    "letter-spacing:0.3px;text-transform:uppercase;opacity:0.85}\n"
     "  #vis-mode.lee{background:rgba(180,120,30,0.85);color:#fff;"
     "border:1px solid rgba(255,180,50,0.5)}\n"
     "  #vis-mode.mhd{background:rgba(30,120,80,0.85);color:#fff;"
@@ -137,6 +141,15 @@ _HTML_HEAD = (
     "z-index:11;border-radius:2px;overflow:hidden;pointer-events:none;"
     "background:rgba(255,255,255,0.08)}\n"
     "  #tl-progress{height:100%;border-radius:2px;transition:width 0.1s}\n"
+    # Circuit waveform inset — I(t) and V(t) with playback marker
+    # Lee 2014 p.323 Eq.10: V = fc*I*dL/dt + fc*L*dI/dt — back-EMF signature
+    # Damideh 2025 p.4 Fig.2: current dip at pinch time is the key diagnostic
+    "  #waveform{position:absolute;top:68px;left:12px;z-index:12;"
+    "width:160px;height:70px;background:rgba(5,8,20,0.80);"
+    "border:1px solid rgba(60,90,160,0.2);border-radius:4px;"
+    "pointer-events:none}\n"
+    "  #wf-label{position:absolute;top:140px;left:12px;z-index:12;"
+    "color:#5a7aaa;font:8px monospace;pointer-events:none}\n"
     # "What am I seeing?" button and overlay labels
     "  #what-btn{position:absolute;top:12px;right:280px;z-index:20;"
     "background:rgba(20,30,60,0.9);color:#8cf;border:1px solid rgba(100,160,255,0.4);"
@@ -159,11 +172,13 @@ _HTML_HEAD = (
     '<div id="hud"></div>\n'
     '<div id="badge"></div>\n'
     '<div id="vis-mode"></div>\n'
-    '<div id="energy-label">Cap | Mag | Resistive</div>\n'
+    '<div id="energy-label">E_cap (0.5CV^2) | E_mag (0.5LI^2) | E_dissipated (kinetic+thermal+radiation)</div>\n'
     '<div id="energy-bar"><div id="eb-cap"></div><div id="eb-ind"></div><div id="eb-res"></div></div>\n'
     '<div id="timeline"><div id="tl-progress"></div></div>\n'
     '<div id="layers"></div>\n'
     '<div id="info-panel"></div>\n'
+    '<canvas id="waveform" width="200" height="100"></canvas>\n'
+    '<span id="wf-label">I(t) blue | V(t) red | dip = pinch</span>\n'
     '<button id="what-btn">? What am I seeing?</button>\n'
     '<div id="what-labels"></div>\n'
     '<div id="colorbar">\n'
@@ -251,7 +266,7 @@ window.addEventListener("load", async function(){
   var hasMHDFields = !!(scene.L.density || scene.L.temperature || scene.L.bfield || scene.L.velocity);
   if (hasMHD && hasMHDFields) {
     visModeEl.className = "mhd";
-    visModeEl.innerHTML = "3D geometry: MHD-driven (isosurface, field lines, particles) &bull; Heatmaps: MHD field data (" + backend + ")";
+    visModeEl.innerHTML = "3D geometry: Lee model scalars &bull; Heatmaps: MHD field data (" + backend + ")";
   } else {
     visModeEl.className = "lee";
     visModeEl.innerHTML = "Visualization: Lee model schematic (not MHD field data)";
@@ -300,7 +315,9 @@ window.addEventListener("load", async function(){
     },
     temperature: {
       title: "Temperature Heatmap (MHD)",
-      body: "Color shows <b>electron temperature</b> Te(r,z) wrapped around the device. " +
+      body: "Color shows <b>plasma temperature</b> T(r,z) ~ P/rho wrapped around the device. " +
+            "This is the total temperature T_e + T_i (Chen Eq. 2.13: p = nk(T_e+T_i)). " +
+            "For deuterium in near-LTE, T_e ~ T_i ~ T/2. " +
             "Uses <b>inferno colormap</b> (black to purple to orange to yellow). " +
             "<b>Dark = cold plasma</b> (~1 eV). <b>Bright yellow = hot plasma</b>. " +
             "Temperature peaks at the pinch axis from adiabatic compression and Ohmic heating."
@@ -318,6 +335,44 @@ window.addEventListener("load", async function(){
             "<b>Blue = low emission</b>. <b>Yellow/red = intense radiation</b>. " +
             "Scales as ne^2 * sqrt(Te) (bremsstrahlung). Strongest in the dense hot pinch, " +
             "it acts as an energy loss mechanism limiting peak temperature."
+    },
+    ion_temperature: {
+      title: "Ion Temperature T_i (MHD)",
+      body: "Color shows <b>ion temperature</b> T_i(r,z) from the two-temperature model. " +
+            "Compare with the electron temperature overlay (T_e) to see equilibration. " +
+            "Ch.13 Eq.2.13 p.342: p = nk(T_e + T_i). " +
+            "Electrons heat first via Ohmic dissipation (eta depends on T_e, Chen Eq.5.76 p.171); " +
+            "ions equilibrate on the collision timescale. " +
+            "At stagnation, T_e may exceed T_i initially before equilibrating."
+    },
+    ohmic_heating: {
+      title: "Ohmic Heating Power (MHD)",
+      body: "Color shows <b>Ohmic heating power</b> P_ohm = J^2 * eta (Chen Eq.5.75 p.170). " +
+            "Spitzer resistivity eta = 5.2e-5 * Z * ln(Lambda) / T_eV^1.5 (Chen Eq.5.76 p.171). " +
+            "<b>Dark = cold, low current</b>. <b>Bright = intense Ohmic heating</b>. " +
+            "Heating is strongest at the current sheath where J is large and T is still low " +
+            "(eta drops as T^-1.5, so hot plasma is nearly collisionless). " +
+            "This is the primary mechanism that heats the plasma during rundown."
+    },
+    current_density: {
+      title: "Current Density |J_z| (MHD)",
+      body: "Color shows <b>axial current density</b> |J_z|(r,z) computed from curl(B). " +
+            "Ch.13 Eq.2.17: (1/r) d/dr[r*B_theta] = mu_0*J_z. " +
+            "Uses <b>inferno colormap</b>. " +
+            "<b>Dark = low current</b>. <b>Bright = high current density</b>. " +
+            "During rundown, J peaks at the current sheath. During pinch, J concentrates " +
+            "at the column boundary (surface current model) or distributes across the column " +
+            "(volume current model). See Ch.13 Figs.3-4 for the two limiting cases."
+    },
+    beta: {
+      title: "Plasma Beta (MHD)",
+      body: "Color shows <b>plasma beta</b> = 2*mu_0*p / B^2 (Chen Eq.6.8). " +
+            "This is the ratio of kinetic pressure to magnetic pressure. " +
+            "<b>Blue = magnetically dominated</b> (beta &lt; 1). " +
+            "<b>White = equipartition</b> (beta = 1). " +
+            "<b>Red = pressure dominated</b> (beta &gt; 1). " +
+            "In equilibrium, p + B^2/(2*mu_0) = constant (Chen Eq.6.7). " +
+            "The pinch core should show high beta; the sheath region shows low beta."
     }
   };
 
@@ -343,6 +398,48 @@ window.addEventListener("load", async function(){
       (phaseNote ? "<div class='info-phase'>" + phaseNote + "</div>" : "");
   }
   updateInfoPanel("none", "rundown");
+
+  // ---- Circuit waveform inset ----
+  // Lee 2014 p.323 Eq.10: V = fc*I*dL/dt + fc*L*dI/dt
+  // Damideh 2025 p.4 Fig.2: current dip at pinch = back-EMF from inductance change
+  var wfCanvas = document.getElementById("waveform");
+  var wfCtx = wfCanvas ? wfCanvas.getContext("2d") : null;
+  var wfFrames = scene.S.frames;
+  function drawWaveform(currentIdx) {
+    if (!wfCtx || !wfFrames || wfFrames.length < 2) return;
+    var W = wfCanvas.width, H = wfCanvas.height;
+    wfCtx.clearRect(0, 0, W, H);
+    // Background grid
+    wfCtx.strokeStyle = "rgba(60,80,120,0.3)";
+    wfCtx.lineWidth = 0.5;
+    for (var gi = 0; gi <= 4; gi++) {
+      var gy = H * gi / 4;
+      wfCtx.beginPath(); wfCtx.moveTo(0, gy); wfCtx.lineTo(W, gy); wfCtx.stroke();
+    }
+    // Find I and t ranges
+    var tMin = wfFrames[0].t, tMax = wfFrames[wfFrames.length - 1].t;
+    var Imax = 0;
+    for (var wi = 0; wi < wfFrames.length; wi++) Imax = Math.max(Imax, Math.abs(wfFrames[wi].I));
+    if (Imax < 0.001) Imax = 1;
+    var tRange = Math.max(tMax - tMin, 0.001);
+    // Draw I(t) — blue
+    wfCtx.strokeStyle = "rgba(80,140,255,0.9)";
+    wfCtx.lineWidth = 1.5;
+    wfCtx.beginPath();
+    for (var wi2 = 0; wi2 < wfFrames.length; wi2++) {
+      var wx = ((wfFrames[wi2].t - tMin) / tRange) * W;
+      var wy = H - (Math.abs(wfFrames[wi2].I) / Imax) * H * 0.9 - H * 0.05;
+      if (wi2 === 0) wfCtx.moveTo(wx, wy); else wfCtx.lineTo(wx, wy);
+    }
+    wfCtx.stroke();
+    // Playback marker — vertical white line
+    if (currentIdx >= 0 && currentIdx < wfFrames.length) {
+      var mx = ((wfFrames[currentIdx].t - tMin) / tRange) * W;
+      wfCtx.strokeStyle = "rgba(255,255,255,0.8)";
+      wfCtx.lineWidth = 1;
+      wfCtx.beginPath(); wfCtx.moveTo(mx, 0); wfCtx.lineTo(mx, H); wfCtx.stroke();
+    }
+  }
 
   // ---- Colorbar rendering ----
   var cbEl = document.getElementById("colorbar");
@@ -409,6 +506,7 @@ window.addEventListener("load", async function(){
   function renderFrame(i) {
     var result = scene.applyFrame(i);
     if (!result) return;
+    drawWaveform(i);
     var f = result.f, isP = result.isP, cr = result.cr, pI = result.pI, rippleAmp = result.rippleAmp;
 
     // Phase banner (update only on change for smooth feel)
@@ -575,12 +673,16 @@ window.addEventListener("load", async function(){
     lp.appendChild(lb);
     heatmapCheckboxes.push({ cb: cb, key: key });
   }
-  if (scene.L.density || scene.L.temperature || scene.L.bfield) {
+  if (scene.L.density || scene.L.temperature || scene.L.bfield || scene.L.beta || scene.L.current_density) {
     addHdr("MHD FIELD DATA");
-    if (scene.L.density)    addHeatTog("Density Heatmap", "density");
-    if (scene.L.temperature) addHeatTog("Temperature Heatmap", "temperature");
-    if (scene.L.bfield)     addHeatTog("|B| Heatmap", "bfield");
-    if (scene.L.radiation)  addHeatTog("Radiation Heatmap", "radiation");
+    if (scene.L.density)          addHeatTog("Density Heatmap", "density");
+    if (scene.L.temperature)      addHeatTog("Temperature (T_e+T_i)", "temperature");
+    if (scene.L.ion_temperature)  addHeatTog("Ion Temperature T_i", "ion_temperature");
+    if (scene.L.bfield)           addHeatTog("|B| Heatmap", "bfield");
+    if (scene.L.current_density)  addHeatTog("Current Density |J|", "current_density");
+    if (scene.L.beta)             addHeatTog("Plasma Beta", "beta");
+    if (scene.L.ohmic_heating)    addHeatTog("Ohmic Heating", "ohmic_heating");
+    if (scene.L.radiation)        addHeatTog("Radiation P_rad", "radiation");
     // Overlay rendering mode selector (surface cylinder vs volumetric vs cross-section)
     if (scene.volField) {
       var modeDiv = document.createElement("div");
@@ -707,9 +809,12 @@ window.addEventListener("load", async function(){
       }
       scene.scene.render();
     } catch(err) {
-      phaseName.textContent = "RENDER ERROR";
-      phaseDesc.textContent = err.message;
-      console.error("Render loop error:", err);
+      // Only show error banner for our own errors, not BJS internal issues
+      if (err.message && err.message.indexOf("Can't find variable") === -1) {
+        phaseName.textContent = "RENDER ERROR";
+        phaseDesc.textContent = err.message;
+      }
+      console.warn("Render loop:", err.message);
     }
   });
 

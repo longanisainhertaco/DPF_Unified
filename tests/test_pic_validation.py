@@ -723,7 +723,7 @@ def test_pic_v5_mlx_200_steps_beam_at_50() -> None:
     rho0, p0 = 0.084, 350.0
     state = _make_uniform_state(nr, nz, rho0, p0)
 
-    V0, C0, L0, R0 = 27e3, 1332e-6, 33.5e-9, 2.3e-3
+    V0, C0, L0, R0 = 6.12e-3
     omega = 1.0 / math.sqrt(L0 * C0)
     tau = 2.0 * L0 / R0
 

@@ -8,7 +8,12 @@ The background species (deuterium) is derived from the constraint
 sum(Y_k) = 1, not evolved. Only impurity species are advected.
 
 References:
-    Poinsot & Veynante, Theoretical and Numerical Combustion (2005).
+    Stone et al. (2008), ApJS 178:137, p.3 Eq.(1) — conservation law framework.
+        Passive scalar advection d(rho*Y)/dt + div(rho*Y*v) = 0 is a direct
+        consequence of the conservation form with flux F = rho*Y*v.
+        PDF on disk: references/papers/mhd-numerics/stone_2008_athena.pdf
+    Poinsot & Veynante, Theoretical and Numerical Combustion (2005) —
+        multi-species transport framework. NOT ON DISK.
 """
 
 from __future__ import annotations
