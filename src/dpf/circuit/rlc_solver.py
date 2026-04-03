@@ -114,6 +114,7 @@ class RLCSolver(CircuitSolverBase):
         crowbar_resistance: float = 0.0,
         crowbar_inductance: float = 0.0,
         crowbar_closure_time: float = 0.0,
+        **kwargs: object,  # absorb extra preset keys (e.g. n_cathode_rods)
     ) -> None:
         self.C = C
         self.L0 = L0
