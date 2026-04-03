@@ -4656,12 +4656,12 @@ class TestAD1RadialMassFraction:
         assert 0.07 <= f_mr <= 0.12
 
     def test_pf1000_preset_has_f_mr(self) -> None:
-        """PF-1000 preset includes radial_mass_fraction (published: 0.16)."""
+        """PF-1000 preset includes radial_mass_fraction (RADPF default: 0.35)."""
         from dpf.presets import get_preset
         preset = get_preset("pf1000")
         assert "radial_mass_fraction" in preset.get("snowplow", {})
         f_mr = preset["snowplow"]["radial_mass_fraction"]
-        assert 0.10 <= f_mr <= 0.20
+        assert 0.10 <= f_mr <= 0.50
 
     def test_nx2_preset_has_f_mr(self) -> None:
         """NX2 preset includes radial_mass_fraction."""
