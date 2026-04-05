@@ -189,6 +189,8 @@ class MLXMHDSolver(PlasmaSolverBase):
         self.total_radiated_energy: float = 0.0
         self._prev_Lp: float = 0.0
         self._Lp_max: float = 0.0
+        self._Lp_history: list[tuple[float, float]] = []
+        self._sim_time: float = 0.0
         self._cathode_radius: float = float(kwargs.get("cathode_radius", 0.025))
         self.config_two_temperature: bool = kwargs.get("two_temperature", False)
         self._resistivity_model: str = str(kwargs.get("resistivity_model", "constant"))
@@ -1026,9 +1028,11 @@ class MLXMHDSolver(PlasmaSolverBase):
     ) -> None:
         """Compute plasma inductance and update circuit coupling state."""
         from dpf.metal.mlx_coupling import update_coupling
+        self._sim_time += dt
         self._coupling, self._prev_Lp, self._Lp_max = update_coupling(
             U, current, voltage, dt, self._grid, self._cathode_radius,
             self._r_inner, self._prev_Lp, self._Lp_max, self.coordinates,
+            Lp_history=self._Lp_history, sim_time=self._sim_time,
         )
 
     # ------------------------------------------------------------------

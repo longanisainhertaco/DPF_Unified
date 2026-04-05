@@ -16,6 +16,37 @@ from dpf.core.bases import CouplingState
 from dpf.metal.constants import MU_0
 
 
+def _bdf2_dLp_dt(history: list[tuple[float, float]], Lp: float, t: float) -> float:
+    """Compute dLp/dt using BDF2 (3-point) when history is available.
+
+    Falls back to backward difference with 2 points, returns 0.0 with < 2.
+
+    BDF2: dLp/dt = (3*Lp_n - 4*Lp_{n-1} + Lp_{n-2}) / (2*dt)
+    Non-uniform dt variant used when timestep varies.
+
+    References
+    ----------
+    Hairer & Wanner, "Solving ODEs II", Springer 1996, Sec. III.1.
+    Matches CircuitCoupler._compute_dLp_dt in circuit/coupler.py.
+    """
+    if len(history) >= 2:
+        t1, Lp1 = history[-1]
+        t0, Lp0 = history[-2]
+        dt1 = t - t1
+        dt0 = t1 - t0
+        if dt1 > 0 and dt0 > 0:
+            # Non-uniform BDF2: weighted finite difference
+            r = dt1 / dt0
+            denom = dt1 * (1.0 + r)
+            return ((1.0 + 2.0 * r) * Lp - (1.0 + r) ** 2 * Lp1 + r**2 * Lp0) / denom
+    if len(history) >= 1:
+        t1, Lp1 = history[-1]
+        dt1 = t - t1
+        if dt1 > 0:
+            return (Lp - Lp1) / dt1
+    return 0.0
+
+
 def update_coupling(
     U: Any,
     current: float,
@@ -27,6 +58,8 @@ def update_coupling(
     prev_Lp: float,
     Lp_max: float,
     coordinates: str,
+    Lp_history: list[tuple[float, float]] | None = None,
+    sim_time: float = 0.0,
 ) -> tuple[CouplingState, float, float]:
     """Compute plasma inductance and return circuit coupling state.
 
@@ -53,6 +86,11 @@ def update_coupling(
         Peak inductance seen so far [H].
     coordinates : str
         "cylindrical" or "cartesian".
+    Lp_history : list of (time, Lp) tuples, optional
+        History for BDF2 dLp/dt. Mutated in-place (appended to).
+        Kept to max 3 entries.
+    sim_time : float
+        Current simulation time [s] (for BDF2 time stamps).
 
     Returns
     -------
@@ -108,10 +146,15 @@ def update_coupling(
     else:
         Lp = Lp_max
 
-    # dL/dt via backward difference
-    dL_dt: float | None = None
-    if prev_Lp > 0 and dt > 0:
-        dL_dt = (Lp - prev_Lp) / dt
+    # dL/dt via BDF2 (3-point) or backward difference (2-point)
+    if Lp_history is not None:
+        dL_dt = _bdf2_dLp_dt(Lp_history, Lp, sim_time)
+        Lp_history.append((sim_time, Lp))
+        # Keep only last 3 entries
+        while len(Lp_history) > 3:
+            Lp_history.pop(0)
+    else:
+        dL_dt = (Lp - prev_Lp) / dt if prev_Lp > 0 and dt > 0 else None
     prev_Lp = Lp
 
     coupling = CouplingState(

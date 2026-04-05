@@ -17,6 +17,8 @@ import math
 import time
 from typing import Any
 
+import numpy as np
+
 from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_snowplow import MLXSnowplow
 from dpf.presets import get_preset
@@ -128,8 +130,6 @@ def run_mlx_discharge(
     mhd_solver = None
     mhd_state = None
     if mode == "mhd":
-        import numpy as _np
-
         from dpf.metal.mlx_solver import MLXMHDSolver
 
         r_anode = cc["anode_radius"]
@@ -149,12 +149,12 @@ def run_mlx_discharge(
             ion_mass=_m_D2 / 2.0,
         )
         mhd_state = {
-            "rho": _np.full((nr, ny, nz), rho0, dtype=_np.float32),
-            "velocity": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
-            "pressure": _np.full((nr, ny, nz), _p_Pa, dtype=_np.float32),
-            "B": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
-            "Te": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
-            "Ti": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
+            "rho": np.full((nr, ny, nz), rho0, dtype=np.float32),
+            "velocity": np.zeros((3, nr, ny, nz), dtype=np.float32),
+            "pressure": np.full((nr, ny, nz), _p_Pa, dtype=np.float32),
+            "B": np.zeros((3, nr, ny, nz), dtype=np.float32),
+            "Te": np.full((nr, ny, nz), 300.0, dtype=np.float32),
+            "Ti": np.full((nr, ny, nz), 300.0, dtype=np.float32),
         }
 
     # Timestep from LC period
@@ -184,8 +184,8 @@ def run_mlx_discharge(
     blend_alpha = 0.0
     blend_active = False
     prev_Lp_blend = 0.0
-    # Radial/pinch phases where MHD Lp can be trusted
-    _MHD_TRUST_PHASES = {"radial", "radial_reflected", "pinch", "column"}
+    # Phases where MHD Lp can be trusted (includes rundown with density gate)
+    _MHD_TRUST_PHASES = {"rundown", "radial", "radial_reflected", "pinch", "column"}
 
     for _step in range(n_steps_max):
         # Snowplow step (always runs — provides phase detection)
@@ -214,13 +214,25 @@ def run_mlx_discharge(
             Lp_mhd_val = coupling.Lp
             dLp_dt_mhd = coupling.dL_dt
 
-            # Trust gate: MHD Lp must be >0 and within 50% of snowplow Lp.
-            # During early axial rundown, MHD fields are uninitialized and
-            # produce near-zero Lp — using that would let current rise
-            # unrestricted (observed +59% I_peak without this gate).
+            # Trust gate: MHD Lp must be >0, in a trusted phase, within 50%
+            # of snowplow Lp, AND the MHD density must show a formed sheath.
+            # During early rundown, density is uniform (contrast ~1.0) and
+            # MHD Lp is meaningless.
+            # EMPIRICAL: density contrast threshold 1.5 — no paper citation.
+            # Physically: uniform gas = 1.0, any compression > 1.0. The 1.5
+            # threshold requires 50% density enhancement, which is conservative.
+            # Should be replaced with a physics-derived criterion (e.g.,
+            # magnetic pressure > ram pressure at sheath front) once validated.
+            _SHEATH_CONTRAST_THRESHOLD = 1.5  # EMPIRICAL
+            rho_arr = np.asarray(mhd_state["rho"]).ravel()
+            rho_mean = float(np.mean(rho_arr))
+            density_contrast = float(np.max(rho_arr)) / max(rho_mean, 1e-30)
+            sheath_formed = density_contrast > _SHEATH_CONTRAST_THRESHOLD
+
             mhd_trustworthy = (
                 Lp_mhd_val > 0
                 and phase in _MHD_TRUST_PHASES
+                and sheath_formed
                 and (Lp_sp <= 0 or Lp_mhd_val >= 0.5 * Lp_sp)
             )
 
