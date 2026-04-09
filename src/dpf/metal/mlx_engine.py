@@ -136,15 +136,25 @@ def run_mlx_discharge(
         r_cathode = cc["cathode_radius"]
         anode_length = sp_cfg.get("anode_length", 0.16)
         nr, ny, nz = grid_shape
-        # Grid spans inter-electrode gap (radial) and anode length (axial)
-        dr_mhd = (r_cathode - r_anode) / nr
+        # Grid spans FULL radial extent: axis (r=0) to cathode (r=r_cathode).
+        # During axial rundown, plasma is between anode and cathode (r_a < r < r_c).
+        # During radial phase, the sheath moves inward from r_anode toward r=0.
+        # The pinch forms at r ~ 0. The old grid (r_anode to r_cathode) could
+        # not resolve the radial implosion or pinch — the entire region where
+        # L_p changes was outside the computational domain.
+        #
+        # Sun et al. (2025), Acta Phys. Sin. 74:115201, Fig. 2:
+        #   Full domain 0 to r_cathode, anode as internal boundary.
+        # Ou Haibin et al. (2024), Fig. 1:
+        #   Full domain including axis, anode excluded as solid body.
+        dr_mhd = r_cathode / nr  # full radial extent
         dz_mhd = anode_length / nz
 
         mhd_solver = MLXMHDSolver(
             grid_shape=grid_shape, dx=dr_mhd, dz=dz_mhd,
             riemann_solver="hlls", reconstruction="plm",
             time_integrator="ssp_rk2", coordinates="cylindrical",
-            r_inner=r_anode,
+            r_inner=0.0,  # domain starts at axis, not at anode surface
             cathode_radius=r_cathode,
             ion_mass=_m_D2 / 2.0,
             # Electrode BC computes B_theta = mu0*I/(2*pi*r) in SI Tesla.
@@ -159,10 +169,20 @@ def run_mlx_discharge(
             # Ou Haibin et al. (2024): "vacuum region (high resistivity)"
             resistivity_model="spitzer_vacuum",
         )
+        # Initial state: fill gas between electrodes (r_anode < r < r_cathode).
+        # Inside the anode (r < r_anode): vacuum/low density (solid body).
+        # Outside this range: fill gas at fill pressure and temperature.
+        r_cells = (np.arange(nr) + 0.5) * dr_mhd  # cell centers from 0 to r_cathode
+        in_gap = (r_cells >= r_anode) & (r_cells <= r_cathode)
+        rho_init = np.full((nr, ny, nz), rho0 * 1e-4, dtype=np.float32)  # vacuum inside anode
+        rho_init[in_gap, :, :] = rho0  # fill gas in electrode gap
+        p_init = np.full((nr, ny, nz), _p_Pa * 1e-4, dtype=np.float32)
+        p_init[in_gap, :, :] = _p_Pa
+
         mhd_state = {
-            "rho": np.full((nr, ny, nz), rho0, dtype=np.float32),
+            "rho": rho_init,
             "velocity": np.zeros((3, nr, ny, nz), dtype=np.float32),
-            "pressure": np.full((nr, ny, nz), _p_Pa, dtype=np.float32),
+            "pressure": p_init,
             "B": np.zeros((3, nr, ny, nz), dtype=np.float32),
             "Te": np.full((nr, ny, nz), 300.0, dtype=np.float32),
             "Ti": np.full((nr, ny, nz), 300.0, dtype=np.float32),
