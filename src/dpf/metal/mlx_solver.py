@@ -316,10 +316,18 @@ class MLXMHDSolver(PlasmaSolverBase):
         ng: int,
         nr_phys: int,
         convert_si_to_hl: bool = True,
+        z_sheath_frac: float = 1.0,
     ) -> Any:
-        """Apply electrode B_theta BC in pure MLX. Delegated to mlx_bc.py."""
+        """Apply electrode B_theta BC with z-dependent sheath masking.
+
+        Ou Haibin et al. (2024): B_theta only behind sheath (low resistivity region).
+        Sun et al. (2025): B at inlet boundary, conducting wall on electrodes.
+        """
         from dpf.metal.mlx_bc import electrode_bt_fixup_mlx
-        return electrode_bt_fixup_mlx(U_padded, r_cell, current, ng, nr_phys, convert_si_to_hl)
+        return electrode_bt_fixup_mlx(
+            U_padded, r_cell, current, ng, nr_phys, convert_si_to_hl,
+            z_sheath_frac=z_sheath_frac,
+        )
 
     # WENO5-Z needs 3 ghost cells; PLM needs 2.
     _GHOST_NG: int = 3
@@ -364,10 +372,16 @@ class MLXMHDSolver(PlasmaSolverBase):
         r_cell_list = [r_inner_g + (i + 0.5) * dr for i in range(nr_g)]
         r_cell_np = np.array(r_cell_list, dtype=np.float32)
 
-        # ghost_pad_mlx expects r_face param as cell-centre radii for B_theta calc
+        # Ghost cell padding.
+        # When inlet BC is active (Sun 2025), use "outflow" (zero-gradient) at
+        # cathode instead of "electrode" (Dirichlet B_theta). The cathode is a
+        # conducting wall: dB/dn = 0. B_theta injection is at z=0 inlet only.
+        # Sun et al. (2025) Eq. 18: dB/dn = 0 on electrode surfaces.
+        _use_inlet_bc = getattr(self, "_inlet_bc_active", False)
+        _bc_type = "outflow" if _use_inlet_bc else "electrode"
         U_padded = ghost_pad_mlx(
-            U, ng, "electrode",
-            current=current,
+            U, ng, _bc_type,
+            current=current if not _use_inlet_bc else 0.0,
             r_face=r_cell_np,
             mu0=_MU0,
         )
@@ -381,57 +395,60 @@ class MLXMHDSolver(PlasmaSolverBase):
         # 3. Update total energy E to account for changed B_theta (energy
         #    consistency). Without this, p = (gamma-1)(E - KE - B^2/2) goes
         #    negative when B_theta >> B_theta_old, causing HLLD NaN.
-        # Apply electrode B_theta BC: pure MLX path (no np.asarray sync).
-        # NumPy fallback used only if MLX is unavailable.
+        # Apply electrode B_theta fixup ONLY when using cathode Dirichlet BC
+        # (legacy mode). When inlet BC is active, cathode is conducting wall
+        # (zero-gradient from ghost_pad), no fixup needed.
         r_cell_mx_g = mx.array(r_cell_np)
-        try:
-            U_padded = self._electrode_bt_fixup_mlx(
-                U_padded,
-                r_cell_mx_g,
-                current,
-                ng,
-                self.nr,
-                convert_si_to_hl=self._convert_b_si_to_hl,
-            )
-        except (RuntimeError, IndexError, ValueError, TypeError) as exc:
-            # NumPy fallback: preserves exact original behaviour.
-            # Only catch MLX compilation/device errors — not logic bugs.
-            logger.warning("MLX electrode BC failed (%s), using NumPy fallback", exc)
-            from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
-            _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
-            U_np = np.asarray(U_padded)
+        if _use_inlet_bc:
+            pass  # conducting wall — ghost cells already set by ghost_pad_mlx("outflow")
+        else:
+            try:
+                U_padded = self._electrode_bt_fixup_mlx(
+                    U_padded,
+                    r_cell_mx_g,
+                    current,
+                    ng,
+                    self.nr,
+                    convert_si_to_hl=self._convert_b_si_to_hl,
+                    z_sheath_frac=getattr(self, "_z_sheath_frac", 1.0),
+                )
+            except (RuntimeError, IndexError, ValueError, TypeError) as exc:
+                logger.warning("MLX electrode BC failed (%s), using NumPy fallback", exc)
+                from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
+                _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
+                U_np = np.asarray(U_padded)
 
-            def _update_bt_with_energy(cell_idx: int, Bt_new: float) -> None:
-                B2_old = (U_np[IBR, cell_idx, :] ** 2
-                          + U_np[IBZ, cell_idx, :] ** 2
-                          + U_np[IBT, cell_idx, :] ** 2)
-                U_np[IBT, cell_idx, :] = Bt_new
-                B2_new = (U_np[IBR, cell_idx, :] ** 2
-                          + U_np[IBZ, cell_idx, :] ** 2
-                          + U_np[IBT, cell_idx, :] ** 2)
-                U_np[IEN, cell_idx, :] += 0.5 * (B2_new - B2_old)
-                p_mag = 0.5 * B2_new
-                beta_floor = 1e-4
-                p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
-                E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
-                U_np[IEN, cell_idx, :] = np.maximum(U_np[IEN, cell_idx, :], E_floor)
+                def _update_bt_with_energy(cell_idx: int, Bt_new: float) -> None:
+                    B2_old = (U_np[IBR, cell_idx, :] ** 2
+                              + U_np[IBZ, cell_idx, :] ** 2
+                              + U_np[IBT, cell_idx, :] ** 2)
+                    U_np[IBT, cell_idx, :] = Bt_new
+                    B2_new = (U_np[IBR, cell_idx, :] ** 2
+                              + U_np[IBZ, cell_idx, :] ** 2
+                              + U_np[IBT, cell_idx, :] ** 2)
+                    U_np[IEN, cell_idx, :] += 0.5 * (B2_new - B2_old)
+                    p_mag = 0.5 * B2_new
+                    beta_floor = 1e-4
+                    p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
+                    E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
+                    U_np[IEN, cell_idx, :] = np.maximum(U_np[IEN, cell_idx, :], E_floor)
 
-            for ig in range(ng):
-                out_idx = ng + self.nr + ig
-                r_pos = max(r_cell_list[out_idx], 1e-10)
-                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-                _update_bt_with_energy(out_idx, Bt_val)
-                U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
+                for ig in range(ng):
+                    out_idx = ng + self.nr + ig
+                    r_pos = max(r_cell_list[out_idx], 1e-10)
+                    Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                    _update_bt_with_energy(out_idx, Bt_val)
+                    U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
 
-            for ig in range(ng):
-                int_idx = ng + self.nr - 1 - ig
-                r_pos = max(r_cell_list[int_idx], 1e-10)
-                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-                existing = U_np[IBT, int_idx, :]
-                new_Bt = np.where(np.abs(existing) > np.abs(Bt_val), existing, Bt_val)
-                _update_bt_with_energy(int_idx, new_Bt)
+                for ig in range(ng):
+                    int_idx = ng + self.nr - 1 - ig
+                    r_pos = max(r_cell_list[int_idx], 1e-10)
+                    Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                    existing = U_np[IBT, int_idx, :]
+                    new_Bt = np.where(np.abs(existing) > np.abs(Bt_val), existing, Bt_val)
+                    _update_bt_with_energy(int_idx, new_Bt)
 
-            U_padded = mx.array(U_np)
+                U_padded = mx.array(U_np)
 
         # Build a lightweight padded grid. CylindricalGrid rejects negative
         # r_inner, so we build geometry arrays directly on the ghost-extended
@@ -676,7 +693,7 @@ class MLXMHDSolver(PlasmaSolverBase):
             else:
                 U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
 
-        # ── 3.2. Electrode BC (ghost-cell padding) ────────────────────
+        # ── 3.2. Electrode BC ────────────────────────────────────────
         apply_bc = kwargs.get("apply_electrode_bc", False)
         _ghost_active = (
             apply_bc
@@ -685,6 +702,20 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         grid_for_rk = self._grid
         if _ghost_active:
+            # Inlet BC (Sun 2025): B_theta = mu0*I/(2*pi*r) at z=0 only.
+            # Cathode: conducting wall dB/dn=0 (Sun 2025 Eq. 18).
+            # The MHD dynamics propagate B axially via Alfven waves.
+            from dpf.metal.mlx_bc import inlet_bt_bc_mlx
+            U = inlet_bt_bc_mlx(
+                U, self._grid.r_cell, current,
+                ng_z=4,
+                convert_si_to_hl=self._convert_b_si_to_hl,
+            )
+            # Cathode: Dirichlet B_theta in ghost cells (Ampere's law — cathode
+            # carries current). Interior cells evolve freely via MHD.
+            # The electrode_bt_fixup no longer overwrites interior cells
+            # (interior blend removed from mlx_bc.py).
+            self._inlet_bc_active = False  # keep cathode Dirichlet in ghost cells
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────

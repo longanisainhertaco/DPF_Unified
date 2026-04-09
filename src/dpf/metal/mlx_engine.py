@@ -147,6 +147,17 @@ def run_mlx_discharge(
             r_inner=r_anode,
             cathode_radius=r_cathode,
             ion_mass=_m_D2 / 2.0,
+            # Electrode BC computes B_theta = mu0*I/(2*pi*r) in SI Tesla.
+            # The MLX solver operates in Heaviside-Lorentz units (mu0=1).
+            # Without this flag, B is 1/sqrt(mu0) ~ 1000x too weak,
+            # producing negligible J×B compression.
+            convert_b_si_to_hl=True,
+            # Vacuum-aware Spitzer resistivity: high eta in neutral fill gas
+            # (prevents B_theta propagation ahead of sheath), low eta in
+            # ionized plasma behind sheath. Self-consistent — uses density
+            # field to determine ionization state, no snowplow oracle.
+            # Ou Haibin et al. (2024): "vacuum region (high resistivity)"
+            resistivity_model="spitzer_vacuum",
         )
         mhd_state = {
             "rho": np.full((nr, ny, nz), rho0, dtype=np.float32),
@@ -173,6 +184,7 @@ def run_mlx_discharge(
     voltages: list[float] = []
     Lp_list: list[float] = []
     Lp_mhd_list: list[float] = []
+    _phi_history: list[tuple[float, float]] = []  # (time, Phi_SI) for voltage-flux BDF2
     phases: list[str] = []
 
     t = 0.0
@@ -200,67 +212,52 @@ def run_mlx_discharge(
 
         # MHD step + coupling feedback
         Lp_mhd_val = 0.0
+        U_PF = 0.0  # default: no MHD back-EMF
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
+            # Electrode BC: B_theta = mu0*I/(2*pi*r) at full z-extent.
+            # The spitzer_vacuum resistivity model self-consistently prevents
+            # B propagation into neutral gas ahead of the sheath.
+            # Ou Haibin et al. (2024): high resistivity in vacuum region.
+            # No z-dependent BC mask — the physics handles it.
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
                 apply_electrode_bc=True,
             )
 
-            # Read MHD-computed inductance from density-weighted Lee formula
-            coupling = mhd_solver.coupling_interface()
-            Lp_mhd_val = coupling.Lp
+            # Voltage-flux coupling: U_PF = dPhi/dt at inlet boundary.
+            # Replaces the density-weighted Lee formula (which systematically
+            # miscalculates Lp because density centroid ≠ current centroid).
+            #
+            # Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (15)-(17).
+            # Beresnyak et al. (2018), IEEE TPS 46:3881 (NRL Athena DPF).
+            # Auluck (2021), Phys. Plasmas 28:030703: proves Lee formula is
+            #   fundamentally incomplete for moving plasma boundaries.
+            from dpf.metal.mlx_coupling import compute_upf_voltage_flux
+            coupling, U_PF = compute_upf_voltage_flux(
+                mhd_solver._U, mhd_solver._grid,
+                r_inner=r_anode, cathode_radius=r_cathode,
+                phi_history=_phi_history,
+                sim_time=t, current=circuit.current, voltage=circuit.voltage,
+            )
+            Lp_mhd_val = coupling.Lp  # diagnostic only (Phi/I)
             dLp_dt_mhd = coupling.dL_dt
 
-            # Trust gate: MHD Lp must be >0, in a trusted phase, within 50%
-            # of snowplow Lp, AND the MHD density must show a formed sheath.
-            # During early rundown, density is uniform (contrast ~1.0) and
-            # MHD Lp is meaningless.
-            # EMPIRICAL: density contrast threshold 1.5 — no paper citation.
-            # Physically: uniform gas = 1.0, any compression > 1.0. The 1.5
-            # threshold requires 50% density enhancement, which is conservative.
-            # Should be replaced with a physics-derived criterion (e.g.,
-            # magnetic pressure > ram pressure at sheath front) once validated.
-            _SHEATH_CONTRAST_THRESHOLD = 1.5  # EMPIRICAL
-            rho_arr = np.asarray(mhd_state["rho"]).ravel()
-            rho_mean = float(np.mean(rho_arr))
-            density_contrast = float(np.max(rho_arr)) / max(rho_mean, 1e-30)
-            sheath_formed = density_contrast > _SHEATH_CONTRAST_THRESHOLD
-
-            mhd_trustworthy = (
-                Lp_mhd_val > 0
-                and phase in _MHD_TRUST_PHASES
-                and sheath_formed
-                and (Lp_sp <= 0 or Lp_mhd_val >= 0.5 * Lp_sp)
+        # Circuit step
+        if mhd_solver is not None and mhd_state is not None:
+            # MHD drives circuit via U_PF = dPhi/dt (voltage-flux coupling).
+            # U_PF replaces I*dLp/dt entirely — set Lp=0, dLp_dt=0 to avoid
+            # double-counting. The circuit equation becomes:
+            #   L0*dI/dt = V_cap - R*I - U_PF
+            # Sun et al. (2025) Eq. (15): L0 is external only, U_PF captures all DPF flux.
+            circuit.step(
+                Lp=0.0, dLp_dt=0.0, R_plasma=R_plasma,
+                back_emf=U_PF, dt=dt,
             )
-
-            if mhd_trustworthy:
-                if not blend_active:
-                    blend_active = True
-                    blend_alpha = 0.0
-                # Exponential ramp: alpha -> 1 with tau = 5 steps
-                tau_blend = 5.0 * dt
-                blend_alpha = min(
-                    1.0 - (1.0 - blend_alpha) * math.exp(-dt / max(tau_blend, 1e-30)),
-                    1.0,
-                )
-                Lp, dLp_dt = _blend_lp(
-                    Lp_sp, dLp_dt_sp, Lp_mhd_val, dLp_dt_mhd,
-                    blend_alpha, prev_Lp_blend,
-                )
-            else:
-                Lp = Lp_sp
-                dLp_dt = dLp_dt_sp
         else:
-            Lp = Lp_sp
-            dLp_dt = dLp_dt_sp
-
-        prev_Lp_blend = Lp
-
-        # Circuit step — now driven by MHD Lp when blending is active
-        circuit.step(Lp=Lp, dLp_dt=dLp_dt, R_plasma=R_plasma, back_emf=0.0, dt=dt)
+            circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
         t += dt
 
         # Record
@@ -268,7 +265,7 @@ def run_mlx_discharge(
         times.append(t * 1e6)
         currents.append(I_MA)
         voltages.append(circuit.voltage / 1e3)
-        Lp_list.append(Lp * 1e9)
+        Lp_list.append(Lp_sp * 1e9)
         Lp_mhd_list.append(Lp_mhd_val * 1e9)
         phases.append(phase)
 

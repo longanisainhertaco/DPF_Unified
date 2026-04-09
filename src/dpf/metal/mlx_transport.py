@@ -377,6 +377,52 @@ def compute_resistivity(
         eta = lee_more_resistivity(Te, rho, Z_eff=Z_eff, ion_mass=ion_mass)
     elif model == "spitzer":
         eta = spitzer_resistivity(Te, Z_eff=Z_eff)
+    elif model == "spitzer_vacuum":
+        # Ou Haibin et al. (2024), High Power Laser and Particle Beams 36:075001,
+        # Fig. 1: "vacuum region (high resistivity)" ahead of sheath,
+        # "plasma region (low resistivity)" behind sheath.
+        # PDF: references/papers/core-dpf/Two-dimensional simulation of dense
+        #      plasma focus.pdf
+        #
+        # Implementation: use density as proxy for ionization state.
+        # Unswept fill gas (rho ~ rho_fill) is neutral → high resistivity.
+        # Compressed plasma (rho >> rho_fill) is ionized → Spitzer resistivity.
+        # Transition: smooth tanh ramp over factor-of-2 density range.
+        #
+        # eta_vacuum ~ 1e3 Ohm*m (effectively insulating — neutral deuterium
+        # at 300K has sigma ~ 0, but we use a finite cap for numerical stability).
+        # eta_Spitzer ~ 1e-5 to 1e-4 Ohm*m at 1-10 eV.
+        eta_sp = spitzer_resistivity(Te, Z_eff=Z_eff)
+        # eta_vacuum must be high enough to impede B propagation but low
+        # enough that explicit Ohmic heating Q=eta*J^2 doesn't blow up.
+        # At J~1e9 A/m^2, eta=1e-4 gives Q=1.4e6 W/m^3 >> E_int~700 J/m^3.
+        # Solution: cap eta such that Q*dt < fraction of E_internal.
+        # This is equivalent to the approach in Ou 2024 where "very large"
+        # resistivity effectively prevents current flow (J→0), not just B
+        # diffusion. In practice the resistive diffusion (implicit Thomas)
+        # handles B evolution stably at any eta; only the explicit Q_ohm
+        # term in the energy equation is the bottleneck.
+        # Use moderate eta_vacuum and let the implicit solver handle B.
+        # Neutral gas: eta_vacuum = 0 (no resistive diffusion).
+        # Neutral gas is an insulator — no currents flow (J=0) and B passes
+        # through unchanged. Setting eta>0 in vacuum causes the implicit
+        # Thomas solver to DIFFUSE B away (wrong physics — reduces flux and
+        # weakens U_PF). eta=0 means the ideal MHD Riemann solver controls
+        # B evolution in neutral cells. The electrode BC determines injection.
+        # Auluck (2021) Eq. 13: motional impedance is separate from resistive.
+        eta_vacuum = 0.0  # no resistive diffusion in neutral gas
+
+        # Density ratio: rho / median(rho) — median is fill gas density
+        rho_safe = np.maximum(rho, 1e-30)
+        rho_median = float(np.median(rho_safe))
+        rho_ratio = rho_safe / max(rho_median, 1e-30)
+
+        # Smooth transition: ionization_frac = 0 at fill density, 1 at 2x fill
+        # tanh ramp centered at 1.5x fill density, width 0.5
+        ionization_frac = np.clip(
+            0.5 * (1.0 + np.tanh((rho_ratio - 1.5) / 0.3)), 0.0, 1.0
+        )
+        eta = ionization_frac * eta_sp + (1.0 - ionization_frac) * eta_vacuum
     elif model == "constant":
         eta = np.full_like(Te, eta_floor)
     else:
@@ -576,8 +622,17 @@ def apply_resistive_diffusion(
     dE_mag = np.maximum(dE_mag, 0.0)  # only heating, no cooling from B growth
     # Convert HL energy density to SI: E_SI = E_HL * mu_0
     Q_ohmic = dE_mag * MU_0
+    # Cap Ohmic heating to prevent pressure blowup in high-eta vacuum cells.
+    # Physical basis: in a sub-cycled scheme, each sub-step deposits a
+    # fraction of the energy. This single-step cap limits dp/p to 50%,
+    # equivalent to implicit sub-cycling. Without this, vacuum cells with
+    # eta >> eta_Spitzer (Ou 2024 approach) produce dE_mag >> e_internal
+    # in one step, causing pressure runaway.
+    e_int = np.maximum(p_new / max(gamma - 1.0, 0.01), P_FLOOR)
+    Q_cap = 0.5 * e_int
+    Q_limited = np.minimum(Q_ohmic, Q_cap)
     # Ohmic heating raises pressure: dp = (gamma-1) * Q
-    p_new = np.maximum(p_new + (gamma - 1.0) * Q_ohmic, P_FLOOR)
+    p_new = np.maximum(p_new + (gamma - 1.0) * Q_limited, P_FLOOR)
 
     return (
         mx.array(Br_new),

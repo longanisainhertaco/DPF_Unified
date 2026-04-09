@@ -47,6 +47,129 @@ def _bdf2_dLp_dt(history: list[tuple[float, float]], Lp: float, t: float) -> flo
     return 0.0
 
 
+def compute_upf_voltage_flux(
+    U: Any,
+    grid: Any,
+    r_inner: float,
+    cathode_radius: float,
+    phi_history: list[tuple[float, float]],
+    sim_time: float,
+    current: float,
+    voltage: float,
+) -> tuple[CouplingState, float]:
+    """Compute DPF terminal voltage U_PF from magnetic flux at inlet boundary.
+
+    This is the CORRECT method for MHD-circuit coupling. Instead of computing
+    Lp and dLp/dt (which requires sheath detection and density-weighted radius),
+    compute the magnetic flux Phi at the inlet boundary and derive U_PF = dPhi/dt.
+    The circuit equation becomes:
+
+        L0 * dI/dt = V_cap - R*I - U_PF
+
+    No inductance calculation needed. The B-field at the inlet naturally captures
+    the correct circuit loading through Faraday's law.
+
+    References
+    ----------
+    Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (15)-(17):
+        U_PF = d(Phi)/dt, Phi = integral(B * dS)
+        PDF: references/papers/core-dpf/2025_Theoretical_and_numerical_studies_
+        on_motion_process_of_dense_plasma_focus.pdf
+
+    Beresnyak et al. (2018), IEEE TPS 46:3881 (NRL HAWK DPF):
+        V_DPF = integral(E . dl) across device terminals.
+        Extracted in memory/dpf-papers/dpf-high-impedance-sims.md.
+
+    Auluck (2021), Phys. Plasmas 28:030703, Eq. (10)-(13):
+        Shows density-weighted Lee formula is fundamentally incomplete.
+        PDF: references/papers/core-dpf/auluck-2021-dpf-circuit-element.pdf
+
+    Parameters
+    ----------
+    U : mx.array
+        Conserved state (NVAR, nr, nz).
+    grid : object
+        Grid with .dr attribute.
+    r_inner : float
+        Anode radius [m].
+    cathode_radius : float
+        Cathode radius [m].
+    phi_history : list of (time, Phi) tuples
+        History for BDF2 dPhi/dt. Mutated in-place.
+    sim_time : float
+        Current simulation time [s].
+    current : float
+        Circuit current [A].
+    voltage : float
+        Capacitor voltage [V].
+
+    Returns
+    -------
+    tuple[CouplingState, float]
+        (coupling_state, U_PF_voltage)
+    """
+    from dpf.metal.mlx_kernels import IBT
+
+    Bt_np = np.asarray(U[IBT])  # (nr, nz)
+    nr, nz = Bt_np.shape
+    dr = grid.dr
+    dz = grid.dz
+    r_arr = r_inner + (np.arange(nr) + 0.5) * dr
+
+    # Magnetic flux linkage for a coaxial DPF device.
+    #
+    # Sun et al. (2025) Eq. (17): Phi = integral(B . dS)
+    # For the axisymmetric geometry, the flux per unit axial length is:
+    #     Phi_per_length = integral_a^b B_theta(r) dr
+    # The total flux linkage is the integral over the axial extent where
+    # B_theta exists (i.e., where current flows between the electrodes):
+    #     Phi_total = integral_0^z_max [ integral_a^b B_theta(r,z) dr ] dz
+    #
+    # This naturally captures the axial extent of the current sheath —
+    # where B_theta is zero (ahead of sheath), that z-column contributes
+    # zero flux. No sheath detection algorithm needed.
+    #
+    # In HL units (mu0=1 in solver): B_HL = B_SI / sqrt(mu0)
+    # Phi_SI = sqrt(mu0) * integral(B_HL * dr * dz)
+    #
+    # Verification: for vacuum coaxial B_theta = mu0*I/(2*pi*r):
+    #   Phi_per_length = integral_a^b (mu0*I)/(2*pi*r) dr = (mu0*I)/(2*pi) * ln(b/a)
+    #   Phi_total = Phi_per_length * z_domain
+    #   L = Phi/I = (mu0/(2*pi)) * ln(b/a) * z = Lee formula
+    # So this flux integral IS the Lee formula when B is the vacuum field,
+    # and automatically includes plasma compression effects when B differs.
+    sqrt_mu0 = math.sqrt(MU_0)
+
+    # Integrate B_theta over full (r,z) domain
+    # Phi_HL = sum over all (r,z) cells of B_theta * dr * dz
+    Phi_HL = float(np.sum(Bt_np * dr * dz))
+    Phi_SI = Phi_HL * sqrt_mu0
+
+    # dPhi/dt via BDF2 (reuse existing BDF2 function)
+    dPhi_dt = _bdf2_dLp_dt(phi_history, Phi_SI, sim_time)
+    phi_history.append((sim_time, Phi_SI))
+    while len(phi_history) > 3:
+        phi_history.pop(0)
+
+    # U_PF = dPhi/dt [Volts]
+    U_PF = dPhi_dt
+
+    # Back-compute Lp for diagnostic comparison with snowplow
+    I_sq = current * current
+    Lp_diagnostic = Phi_SI / max(abs(current), 1.0)  # Phi = L * I => L = Phi / I
+
+    coupling = CouplingState(
+        Lp=Lp_diagnostic,
+        current=current,
+        voltage=voltage,
+        dL_dt=U_PF / max(abs(current), 1.0) if abs(current) > 1.0 else 0.0,
+    )
+    coupling._diag_Phi_SI = Phi_SI
+    coupling._diag_U_PF = U_PF
+
+    return coupling, U_PF
+
+
 def update_coupling(
     U: Any,
     current: float,
@@ -119,40 +242,35 @@ def update_coupling(
     dz = grid.dz
     r_arr = r_inner + (np.arange(nr) + 0.5) * dr
 
-    # Sheath position from on-axis density profile.
+    # Sheath position from ANNULAR density peak.
     #
-    # The previous method (column density = sum(rho*r*dr) along r for each z)
-    # failed because the cylindrical volume element 2*pi*r*dr grows with r,
-    # making uniform fill gas at large r produce higher column density than
-    # the compressed pinch core.  This caused argmax(col_density) to detect
-    # the fill-gas/vacuum boundary instead of the sheath front, shifting
-    # iz_sheath by 1+ cells and contaminating the r_eff integral with
-    # uniform-density fill gas.  On a synthetic Bennett pinch (a=5mm,
-    # cathode=160mm), one wrong z-slice shifted r_eff from 7 to 19 mm
-    # and L_p error from 4.5% to 27%.
+    # During axial rundown, the sheath is an annular sheet between the
+    # electrodes — it has NOT reached the axis. On-axis density is just
+    # undisturbed fill gas, so on-axis detection reports z_sheath = full
+    # anode length, making L_p ~2x too high (Gemini 3.1 Pro, 2026-04-09).
     #
-    # Fix: use on-axis density (r=0 cell) which peaks at the actual sheath
-    # front regardless of fill-gas column density.  The sheath extent is
-    # defined as the last z-index where on-axis density exceeds 10% of peak.
+    # Fix: average density across the full radial extent for each z-column.
+    # The annular sheath produces a density peak at its z-position in
+    # this average, regardless of whether it has reached the axis.
     #
     # Lee & Saw, J. Fusion Energy 33:319 (2014): L_p = (mu0/2pi)*z*ln(b/r_p)
-    # where z is the sheath axial extent and r_p is the pinch radius.
-    # Malir et al., Phys. Plasmas 31:042513 (2024): density profiles from
-    # interferometry show the sheath as a sharp density peak in the radial
-    # profile, consistent with on-axis detection.
-    rho_axis = rho_np[0, :]  # innermost radial cell (closest to axis)
-    rho_axis_max = float(np.max(rho_axis))
-    if rho_axis_max > 0:
-        above = rho_axis >= 0.1 * rho_axis_max
-        iz_sheath = int(np.max(np.where(above)[0])) if np.any(above) else nz // 2
+    # Malir et al., Phys. Plasmas 31:042513 (2024): sheath is annular
+    #   during rundown, confirmed by interferometric imaging (Figs. 4-5).
+    rho_annular_avg = np.mean(rho_np, axis=0)  # average over r for each z
+    rho_fill = float(np.median(rho_annular_avg))  # background fill density
+
+    # Sheath front: first z where density exceeds 1.5x fill (compression)
+    # Search from z=nz-1 (anode end) backward toward z=0 (insulator end)
+    threshold = 1.5 * max(rho_fill, 1e-30)
+    compressed = rho_annular_avg > threshold
+    if np.any(compressed):
+        iz_sheath = int(np.max(np.where(compressed)[0]))
     else:
-        # Fallback: column density peak (original method, for edge cases
-        # where on-axis density is zero, e.g. hollow initial profiles)
-        col_density = np.sum(rho_np * r_arr[:, np.newaxis], axis=0) * dr
-        iz_sheath = int(np.argmax(col_density))
+        # No compression detected — use full domain as fallback
+        iz_sheath = nz - 1
     z_sheath = (iz_sheath + 0.5) * dz
 
-    # Density-weighted effective radius
+    # Density-weighted effective radius in the compressed region
     rho_region = rho_np[:, : iz_sheath + 1]
     r_col = r_arr[:, np.newaxis]
     dV = 2.0 * math.pi * r_col * dr * dz
@@ -165,7 +283,7 @@ def update_coupling(
     r_eff = max(r_eff, 1e-6)
     r_eff = min(r_eff, cathode_radius * 0.999)
 
-    # Lee formula
+    # Lee formula: L_p = (mu0/2pi) * z_sheath * ln(b/r_eff)
     if r_eff > 0 and z_sheath > 0:
         Lp = (MU_0 / (2.0 * math.pi)) * z_sheath * math.log(
             cathode_radius / r_eff
@@ -195,6 +313,10 @@ def update_coupling(
     coupling = CouplingState(
         Lp=Lp, current=current, voltage=voltage, dL_dt=dL_dt,
     )
+    # Diagnostic attributes for PIRT analysis (not part of CouplingState contract)
+    coupling._diag_z_sheath = z_sheath
+    coupling._diag_r_eff = r_eff
+    coupling._diag_iz_sheath = iz_sheath
     return coupling, prev_Lp, Lp_max
 
 
