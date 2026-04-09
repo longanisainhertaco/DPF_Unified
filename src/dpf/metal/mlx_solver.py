@@ -197,6 +197,37 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._anomalous_resistivity_model: str | None = kwargs.get("anomalous_resistivity")
         self._use_rkl2_transport: bool = bool(kwargs.get("use_rkl2_transport", True))
 
+        # Saha EOS: variable Z_bar(T) instead of hardcoded Z=1
+        self._enable_saha_eos: bool = bool(kwargs.get("enable_saha_eos", False))
+        self._saha_eos = None
+        if self._enable_saha_eos:
+            from dpf.metal.mlx_eos import SahaEOS
+            n_e_ref = float(kwargs.get("saha_n_e_ref", 1e22))
+            self._saha_eos = SahaEOS(n_e_ref=n_e_ref, ion_mass=self.ion_mass)
+            logger.info("Saha EOS enabled (n_e_ref=%.2e)", n_e_ref)
+
+        # AMR: block-structured adaptive mesh refinement
+        self._enable_amr: bool = bool(kwargs.get("enable_amr", False))
+        self._amr_hierarchy: Any = None
+        self._amr_rhs_fn: Any = None
+        self._amr_block_nr: int = int(kwargs.get("amr_block_nr", max(nr // 2, 8)))
+        self._amr_block_nz: int = int(kwargs.get("amr_block_nz", max(nz // 2, 8)))
+        self._amr_ratio: int = int(kwargs.get("amr_ratio", 2))
+        self._amr_refined_blocks: list | None = kwargs.get("amr_refined_blocks")
+        if self._enable_amr:
+            from dpf.metal.mlx_amr import build_amr_hierarchy, make_mlx_block_rhs
+            self._amr_hierarchy = build_amr_hierarchy(
+                nr, nz, self.dx, self.dz, self._r_inner,
+                self._amr_block_nr, self._amr_block_nz, self._amr_ratio,
+                refined_blocks=self._amr_refined_blocks,
+            )
+            self._amr_rhs_fn = make_mlx_block_rhs(coordinates=self.coordinates)
+            logger.info(
+                "AMR enabled: %d blocks (L0), ratio=%d, block=%dx%d",
+                len(self._amr_hierarchy.levels[0].blocks),
+                self._amr_ratio, self._amr_block_nr, self._amr_block_nz,
+            )
+
         # Internal conserved state (mx.array, set after first step)
         self._U: Any = None
         self._entropy_initialized: bool = False
@@ -210,9 +241,10 @@ class MLXMHDSolver(PlasmaSolverBase):
             self._species_mgr = SpeciesManager(**species_config)
             self._Y = self._species_mgr.init_mass_fractions(nr, nz)
 
-        # AMR configuration and hierarchy
+        # Legacy AMR config (Phase A) — does NOT overwrite new enable_amr path
         self._amr_config: Any = amr_config
-        self._amr_hierarchy: Any = None
+        if not self._enable_amr:
+            self._amr_hierarchy = None  # only reset if not already built above
         self._step_count: int = 0
 
         # Grid and state manager — built eagerly if MLX is present
@@ -612,12 +644,9 @@ class MLXMHDSolver(PlasmaSolverBase):
             from dpf.metal.mlx_primitives import cons_to_prim
             from dpf.metal.mlx_transport import compute_resistivity
             rho_tmp, _, _, _, p_tmp, _, _, _ = cons_to_prim(U, self.gamma)
-            Te_eV = (
-                np.asarray(p_tmp, dtype=np.float64) * self.ion_mass
-                / (2.0 * np.maximum(np.asarray(rho_tmp, dtype=np.float64), 1e-30) * _K_B)
-                / 11604.5  # K -> eV
-            )
             rho_np = np.asarray(rho_tmp, dtype=np.float64)
+            p_np_tmp = np.asarray(p_tmp, dtype=np.float64)
+            Te_eV = self._temperature_eV(rho_np, p_np_tmp)
             # Compute J^2 for anomalous resistivity if enabled
             J_sq_np = None
             p_np = None
@@ -1001,6 +1030,124 @@ class MLXMHDSolver(PlasmaSolverBase):
             U = U + dt * dU_powell
 
         return U
+
+    # ------------------------------------------------------------------
+    # AMR stepping
+    # ------------------------------------------------------------------
+
+    def amr_step(
+        self,
+        state: dict[str, np.ndarray],
+        dt: float,
+        current: float = 0.0,
+        step_number: int = 0,
+        **kwargs: Any,
+    ) -> dict[str, np.ndarray]:
+        """Advance one AMR timestep using production MLX RHS.
+
+        Decomposes the global state into AMR blocks, advances each block
+        with the production flux pipeline (WENO5-Z/PLM + HLL/HLLD),
+        then reassembles the global state.
+
+        Args:
+            state: Global state dict with 'rho', 'velocity', 'pressure', 'B', etc.
+            dt: Timestep [s].
+            current: Circuit current [A] for electrode BCs.
+            step_number: Step counter for regrid interval.
+
+        Returns:
+            Updated global state dict.
+        """
+        from dpf.metal.mlx_amr import amr_step as _amr_step
+
+        if self._amr_hierarchy is None:
+            raise RuntimeError("AMR not initialized. Set enable_amr=True.")
+
+        import mlx.core as mx
+
+        # Pack state dict -> conserved (NVAR, nr, nz) via prim_to_cons
+        from dpf.metal.mlx_primitives import cons_to_prim, prim_to_cons
+        rho = mx.array(state["rho"].squeeze().astype(np.float32))
+        vel = state["velocity"]
+        vr = mx.array(vel[0].squeeze().astype(np.float32))
+        vz = mx.array(vel[1].squeeze().astype(np.float32))
+        vt = mx.array(vel[2].squeeze().astype(np.float32)) if vel.shape[0] > 2 else mx.zeros_like(rho)
+        p = mx.array(state["pressure"].squeeze().astype(np.float32))
+        B = state["B"]
+        Br = mx.array(B[0].squeeze().astype(np.float32))
+        Bz = mx.array(B[1].squeeze().astype(np.float32))
+        Bt = mx.array(B[2].squeeze().astype(np.float32)) if B.shape[0] > 2 else mx.zeros_like(rho)
+        U_global = prim_to_cons(rho, vr, vz, vt, p, Br, Bz, Bt, self.gamma)
+        U_np = np.asarray(U_global)
+        h = self._amr_hierarchy
+        bnr = h.block_nr
+        bnz = h.block_nz
+        for idx, block in h.levels[0].blocks.items():
+            ir, iz = idx
+            r_s, z_s = ir * bnr, iz * bnz
+            r_e = min(r_s + bnr, U_np.shape[1])
+            z_e = min(z_s + bnz, U_np.shape[2])
+            block.U = U_np[:, r_s:r_e, z_s:z_e].copy()
+
+        # AMR step with production RHS
+        h, _ = _amr_step(
+            h, dt=dt, gamma=self.gamma,
+            method=self._method, riemann=self._riemann,
+            ng=3, current=current, r_inner=self._r_inner,
+            step_number=step_number, rhs_fn=self._amr_rhs_fn,
+        )
+        self._amr_hierarchy = h
+
+        # Gather blocks back into global state
+        U_out = np.zeros_like(U_np)
+        for idx, block in h.levels[0].blocks.items():
+            ir, iz = idx
+            r_s, z_s = ir * bnr, iz * bnz
+            bU = np.asarray(block.U)
+            r_e = r_s + bU.shape[1]
+            z_e = z_s + bU.shape[2]
+            U_out[:, r_s:r_e, z_s:z_e] = bU
+
+        # TODO: overlay fine-level data for 2-level AMR
+
+        # Unpack conserved -> state dict
+        U_mx = mx.array(U_out)
+        rho_o, vr_o, vz_o, vt_o, p_o, Br_o, Bz_o, Bt_o = cons_to_prim(U_mx, self.gamma)
+        result = dict(state)
+        result["rho"] = np.asarray(rho_o)
+        result["velocity"] = np.stack([np.asarray(vr_o), np.asarray(vz_o), np.asarray(vt_o)])
+        result["pressure"] = np.asarray(p_o)
+        result["B"] = np.stack([np.asarray(Br_o), np.asarray(Bz_o), np.asarray(Bt_o)])
+        return result
+
+    # ------------------------------------------------------------------
+    # Saha EOS: temperature with variable Z_bar
+    # ------------------------------------------------------------------
+
+    def _temperature_eV(
+        self, rho: np.ndarray, p: np.ndarray,
+    ) -> np.ndarray:
+        """Compute electron temperature [eV] from (rho, p) with optional Saha Z_bar.
+
+        Without Saha: T = p * m_i / (2 * rho * kB) (assumes Z=1).
+        With Saha: T = p * m_i / ((1 + Z_bar(T)) * rho * kB) (one iteration).
+
+        Args:
+            rho: Mass density [kg/m^3], NumPy float64.
+            p: Pressure [Pa], NumPy float64.
+
+        Returns:
+            Electron temperature [eV], NumPy float64.
+        """
+        rho_safe = np.maximum(rho, 1e-30)
+        # Initial: assume Z=1
+        Te_K = p * self.ion_mass / (2.0 * rho_safe * _K_B)
+
+        if self._saha_eos is not None:
+            Z_bar = self._saha_eos.zbar_numpy(Te_K)
+            Te_K = p * self.ion_mass / ((1.0 + Z_bar) * rho_safe * _K_B)
+
+        return Te_K / 11604.5  # K -> eV
 
     # ------------------------------------------------------------------
     # Two-temperature source terms (operator-split, CPU)

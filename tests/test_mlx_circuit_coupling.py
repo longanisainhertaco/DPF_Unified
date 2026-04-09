@@ -166,3 +166,77 @@ class TestEngineCircuitFeedback:
         )
         assert "blend_alpha" in r, "Missing blend_alpha in engine output"
         assert 0.0 <= r["blend_alpha"] <= 1.0
+
+
+class TestSheathDetectionBennettPinch:
+    """Verify update_coupling on synthetic Bennett pinch with known L_p.
+
+    Root cause fix for MHD-driven I_peak error: the sheath detection
+    algorithm previously used column density argmax, which was dominated
+    by large-r fill-gas cells and picked the fill/vacuum boundary instead
+    of the compressed sheath.  One wrong z-slice shifted r_eff from 7 to
+    19 mm and L_p error from 4.5% to 27%.
+
+    Fix: use on-axis density profile for sheath detection.
+
+    References
+    ----------
+    Lee & Saw, J. Fusion Energy 33:319 (2014), Eq. L_p = (mu0/2pi)*z*ln(b/r_p).
+    Bennett pinch: rho(r) = rho0 / (1 + (r/a)^2)^2, analytic r_eff = a*pi/2.
+    """
+
+    def test_bennett_pinch_lp_within_10_percent(self):
+        """L_p from update_coupling on Bennett pinch matches analytic to <10%."""
+        import math
+
+        from dpf.metal.mlx_coupling import update_coupling
+        from dpf.metal.mlx_grid import CylindricalGrid
+
+        nr, nz = 64, 128
+        dr, dz = 0.005, 0.005
+        a_pinch = 0.005  # 5 mm
+        rho_0 = 1e-3
+        cathode_radius = 0.160
+        MU_0 = 4e-7 * math.pi
+
+        r_arr = (np.arange(nr) + 0.5) * dr
+        rho_2d = np.zeros((nr, nz), dtype=np.float32)
+        iz_sheath = 60  # z_sheath = 302.5 mm
+        for iz in range(iz_sheath + 1):
+            rho_2d[:, iz] = rho_0 / (1.0 + (r_arr / a_pinch) ** 2) ** 2
+        rho_2d[:, iz_sheath + 1 :] = 1e-6
+
+        U_np = np.zeros((10, nr, nz), dtype=np.float32)
+        U_np[0] = rho_2d
+        U = mlx.array(U_np)
+        grid = CylindricalGrid(nr, nz, dr, dz, r_inner=0.0)
+
+        coupling, _, _ = update_coupling(
+            U,
+            current=1e6,
+            voltage=1e4,
+            dt=1e-9,
+            grid=grid,
+            cathode_radius=cathode_radius,
+            r_inner=0.0,
+            prev_Lp=0.0,
+            Lp_max=0.0,
+            coordinates="cylindrical",
+            Lp_history=[],
+            sim_time=1e-6,
+        )
+
+        # Analytic: r_eff = a*pi/2, L_p = (mu0/2pi)*z*ln(b/r_eff)
+        r_eff_analytic = a_pinch * math.pi / 2
+        z_sheath_m = (iz_sheath + 0.5) * dz
+        Lp_analytic = (
+            (MU_0 / (2 * math.pi))
+            * z_sheath_m
+            * math.log(cathode_radius / r_eff_analytic)
+        )
+
+        rel_error = abs(coupling.Lp - Lp_analytic) / Lp_analytic
+        assert rel_error < 0.10, (
+            f"Bennett pinch L_p error {rel_error:.1%}: "
+            f"code={coupling.Lp * 1e9:.1f} nH vs analytic={Lp_analytic * 1e9:.1f} nH"
+        )

@@ -1,0 +1,91 @@
+{
+  "mode": "lee",
+  "preset": "pf1000",
+  "parameters": {
+    "fc": 0.7,
+    "fm": 0.13,
+    "V0_V": 27000.0,
+    "C_F": 0.001332,
+    "L0_H": 3.35e-08,
+    "R0_Ohm": 0.00612,
+    "sim_time_s": 8e-06,
+    "cfl": 0.4
+  },
+  "runs": [
+    {
+      "grid_shape": [
+        16,
+        1,
+        32
+      ],
+      "dr_mm": 2.8125,
+      "dz_mm": 18.75,
+      "I_peak_MA": 1.817990718372796,
+      "t_peak_us": 6.3208492001094365,
+      "rho_max": null,
+      "B_max": null,
+      "T_max": null,
+      "density_profile_z": null,
+      "elapsed_s": 0.002
+    },
+    {
+      "grid_shape": [
+        32,
+        1,
+        64
+      ],
+      "dr_mm": 1.40625,
+      "dz_mm": 9.375,
+      "I_peak_MA": 1.817990718372796,
+      "t_peak_us": 6.3208492001094365,
+      "rho_max": null,
+      "B_max": null,
+      "T_max": null,
+      "density_profile_z": null,
+      "elapsed_s": 0.002
+    },
+    {
+      "grid_shape": [
+        64,
+        1,
+        128
+      ],
+      "dr_mm": 0.703125,
+      "dz_mm": 4.6875,
+      "I_peak_MA": 1.817990718372796,
+      "t_peak_us": 6.3208492001094365,
+      "rho_max": null,
+      "B_max": null,
+      "T_max": null,
+      "density_profile_z": null,
+      "elapsed_s": 0.002
+    },
+    {
+      "grid_shape": [
+        128,
+        1,
+        256
+      ],
+      "dr_mm": 0.3515625,
+      "dz_mm": 2.34375,
+      "I_peak_MA": 1.817990718372796,
+      "t_peak_us": 6.3208492001094365,
+      "rho_max": null,
+      "B_max": null,
+      "T_max": null,
+      "density_profile_z": null,
+      "elapsed_s": 0.002
+    }
+  ],
+  "spatial_L2_errors": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "convergence_order": 0.0,
+  "richardson_I_peak_MA": 1.817990718372796,
+  "gci_fine_fraction": 1.0,
+  "gci_fine_percent": 100.0,
+  "is_converged": false
+}
