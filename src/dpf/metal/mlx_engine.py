@@ -173,7 +173,10 @@ def run_mlx_discharge(
             # use_rkl2_transport=False.
             # Spitzer: eta = 5.2e-5 * Z * ln(Lambda) / Te_eV^1.5 [Ohm*m]
             # Johnson et al. (2024): Spitzer confirmed valid for DPF conditions.
-            resistivity_model="spitzer",
+            # spitzer_vacuum: Spitzer in dense plasma, FLASH-style high eta in vacuum.
+            # Hansen et al. (2024) Sec IV: eta_vac=10^11-10^12 cm^2/s, insensitive.
+            # Enables B to diffuse through neutral fill gas to correct 1/r profile.
+            resistivity_model="spitzer_vacuum",
             use_rkl2_transport=False,  # Thomas solver, not STS (avoids NaN)
             rho_floor=rho0 * 1e-4,  # Beresnyak rho_min: prevents v_A→∞ in vacuum
             rho_fill=rho0,  # fill gas density for vacuum/dense classification

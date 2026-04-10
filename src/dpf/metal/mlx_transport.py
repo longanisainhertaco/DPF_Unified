@@ -393,24 +393,29 @@ def compute_resistivity(
         # at 300K has sigma ~ 0, but we use a finite cap for numerical stability).
         # eta_Spitzer ~ 1e-5 to 1e-4 Ohm*m at 1-10 eV.
         eta_sp = spitzer_resistivity(Te, Z_eff=Z_eff)
-        # eta_vacuum must be high enough to impede B propagation but low
-        # enough that explicit Ohmic heating Q=eta*J^2 doesn't blow up.
-        # At J~1e9 A/m^2, eta=1e-4 gives Q=1.4e6 W/m^3 >> E_int~700 J/m^3.
-        # Solution: cap eta such that Q*dt < fraction of E_internal.
-        # This is equivalent to the approach in Ou 2024 where "very large"
-        # resistivity effectively prevents current flow (J→0), not just B
-        # diffusion. In practice the resistive diffusion (implicit Thomas)
-        # handles B evolution stably at any eta; only the explicit Q_ohm
-        # term in the energy equation is the bottleneck.
-        # Use moderate eta_vacuum and let the implicit solver handle B.
-        # Neutral gas: eta_vacuum = 0 (no resistive diffusion).
-        # Neutral gas is an insulator — no currents flow (J=0) and B passes
-        # through unchanged. Setting eta>0 in vacuum causes the implicit
-        # Thomas solver to DIFFUSE B away (wrong physics — reduces flux and
-        # weakens U_PF). eta=0 means the ideal MHD Riemann solver controls
-        # B evolution in neutral cells. The electrode BC determines injection.
-        # Auluck (2021) Eq. 13: motional impedance is separate from resistive.
-        eta_vacuum = 0.0  # no resistive diffusion in neutral gas
+        # FLASH-style vacuum resistivity: artificially high eta in low-density
+        # cells so B diffuses freely through the vacuum/neutral gas.
+        #
+        # Hansen et al. (2024), staged-zpinch-2024-flash-mach2-pop.pdf, Sec IV:
+        #   "magnetic diffusivity of 10^11-10^12 cm^2/s" in vacuum cells.
+        #   Results verified INSENSITIVE to exact value (Fig. 4).
+        #
+        # ALEGRA (Haill 2005, Sec 6.3.10-12): void conductivity 1e-6 S/m
+        #   with ecdf density ramp.
+        #
+        # Physics: neutral fill gas is an insulator (sigma=0). In reality,
+        # B permeates vacuum/insulators instantly (Maxwell: div(B)=0 + BCs
+        # determine B everywhere, no wave propagation needed). High eta
+        # mimics this: the implicit Thomas solver relaxes B toward the
+        # boundary-determined solution in ~1 diffusion timestep.
+        #
+        # The Ohmic heating Q=eta*J^2 is handled by the implicit solver
+        # (Thomas algorithm is unconditionally stable). The Q_ohm cap in
+        # the energy equation (50% dp/p per step) prevents thermal blowup.
+        #
+        # eta_vacuum = mu0 * D_mag. For D_mag = 10^7 m^2/s (FLASH lower bound):
+        # eta = 4*pi*1e-7 * 1e7 = 12.6 Ohm*m. Using 10 Ohm*m.
+        eta_vacuum = 10.0  # Ohm*m — FLASH-style vacuum magnetic diffusivity
 
         # Density ratio: rho / median(rho) — median is fill gas density
         rho_safe = np.maximum(rho, 1e-30)
