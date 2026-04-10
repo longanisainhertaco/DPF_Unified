@@ -176,6 +176,7 @@ def run_mlx_discharge(
             resistivity_model="spitzer",
             use_rkl2_transport=False,  # Thomas solver, not STS (avoids NaN)
             rho_floor=rho0 * 1e-4,  # Beresnyak rho_min: prevents v_A→∞ in vacuum
+            rho_fill=rho0,  # fill gas density for vacuum/dense classification
         )
         # Initial state: fill gas between electrodes (r_anode < r < r_cathode).
         # Inside the anode (r < r_anode): vacuum/low density (solid body).
@@ -279,21 +280,19 @@ def run_mlx_discharge(
                 curr_rate=_curr_rate,
             )
 
-            # Auluck (2021), Phys. Plasmas 28:030703, Eq. (1):
-            # V = -(1/I) * integral(J . E d^3r)
-            # The correct first-principles coupling requires MHD-evolved B
-            # with physical gradients (sheath compression, current sheet).
-            # Currently: vacuum B prescription makes curl(B)=0 → J=0 → V=0.
-            # Without prescription: B too weak → wrong-sign J·E → V < 0.
-            # TODO: prescribe B only BEHIND sheath, preserve gradients near it.
-            # For now: snowplow Lp provides circuit loading.
+            # Auluck (2021) Poynting coupling: V = -(1/I)*integral(J·E d³r)
+            # Implemented in compute_voltage_poynting() but NOT wired to circuit.
+            # The MHD B-field in the buffer zone is weaker than vacuum (ghost cell
+            # propagation too slow), creating wrong-sign J·E (energy INTO plasma).
+            # Self-consistent Poynting requires either:
+            #   (a) faster B propagation (lower density floor, or resistive diffusion)
+            #   (b) initializing B correctly at t=0 when I>0 (Beresnyak's approach)
+            # For now: snowplow Lp provides correct circuit loading.
             Lp_mhd_val = Lp_sp
             dLp_dt_mhd = dLp_dt_sp
             U_PF = 0.0
 
-        # Circuit step — snowplow Lp for circuit loading.
-        # Auluck Poynting coupling (compute_voltage_poynting) is implemented
-        # and ready but requires MHD B-field with physical structure.
+        # Circuit step
         circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
         t += dt
 

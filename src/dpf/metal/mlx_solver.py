@@ -154,6 +154,8 @@ class MLXMHDSolver(PlasmaSolverBase):
         # Density floor: prevents vacuum Alfven speed → ∞.
         # Set to ~1e-4 * fill density from engine, or 1e-6 absolute minimum.
         self._rho_floor: float = max(float(kwargs.get("rho_floor", 1e-6)), 1e-6)
+        # Fill gas density for vacuum/dense cell classification.
+        self._rho_fill: float = float(kwargs.get("rho_fill", self._rho_floor * 1e4))
 
         self.enable_hall: bool = enable_hall
         self.enable_braginskii_conduction: bool = enable_braginskii_conduction
@@ -889,13 +891,15 @@ class MLXMHDSolver(PlasmaSolverBase):
                 )
             mx.eval(self._Y)
 
-        # ── 6.9. Vacuum B_theta prescription ─────────────────────────────
-        # Prescribe B_theta = mu0*I/(2*pi*r) in vacuum cells (Beresnyak 2022).
-        # This ensures correct B magnitude for J×B forces and diagnostics.
-        # Note: makes curl(B)=0 in vacuum, so Auluck Poynting coupling
-        # (V = -(1/I)*integral(J·E d³r)) returns zero. Self-consistent
-        # Poynting coupling requires prescribing B only behind the sheath
-        # and letting MHD evolve B near the sheath front (TODO).
+        # ── 6.9. Z-dependent vacuum B_theta prescription ──────────────
+        # Prescribe B_theta = mu0*I/(2*pi*r) only in vacuum cells that are:
+        #   (a) BEHIND the sheath (z < z_sheath) — ahead, B should be zero
+        #   (b) FAR from dense cells (buffer zone) — near sheath, MHD evolves B
+        # This preserves B-field gradients near the sheath boundary, giving
+        # nonzero J = curl(B) for Auluck (2021) Poynting coupling.
+        #
+        # Beresnyak (2022) verif_r.cpp:135: B in vacuum behind shell.
+        # Auluck (2021) Eq. (1): V = -(1/I)*integral(J·E d³r) requires J≠0.
         if (
             abs(current) > 1e-10
             and self.coordinates == "cylindrical"
@@ -906,27 +910,62 @@ class MLXMHDSolver(PlasmaSolverBase):
             _SQRT_MU0_LOCAL = math.sqrt(_MU0_LOCAL)
             U_np = np.asarray(U)
             rho = U_np[IDN]
-            _rho_fill = getattr(self, "_rho_floor", 1e-6) * 1e4
+            nr_local, nz_local = rho.shape
+            _rho_fill = self._rho_fill
+            r_cells = self._r_inner + (np.arange(nr_local) + 0.5) * self._grid.dr
+            r_safe = np.maximum(r_cells, 1e-10)
+
+            # --- Z-sheath detection from B_theta radial integral ---
+            # Behind sheath: Phi_radial ~ Phi_vacuum. Ahead: Phi_radial ~ 0.
+            _div = _SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0
+            Bt_si = U_np[IBT] * (_SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0)
+            Phi_radial = np.sum(Bt_si * self._grid.dr, axis=0)  # (nz,)
+            Phi_vacuum = (_MU0_LOCAL * current / (2.0 * math.pi)) * math.log(
+                max(r_safe[-1] / max(r_safe[0], 1e-10), 1.01)
+            )
+            above = np.abs(Phi_radial) > 0.3 * abs(Phi_vacuum)
+            iz_sheath = int(np.max(np.where(above)[0])) + 1 if np.any(above) else nz_local
+
+            # --- Buffer zone: exclude N cells around dense regions ---
+            dense = rho > 3.0 * _rho_fill
+            _N_BUFFER = 3
+            if np.any(dense):
+                try:
+                    from scipy.ndimage import binary_dilation
+                    near_dense = binary_dilation(dense, iterations=_N_BUFFER)
+                except ImportError:
+                    # Fallback: simple dilation via max-filter
+                    from numpy.lib.stride_tricks import as_strided
+                    near_dense = dense.copy()
+                    for _ in range(_N_BUFFER):
+                        padded = np.pad(near_dense, 1, mode='constant', constant_values=False)
+                        near_dense = (
+                            padded[:-2, 1:-1] | padded[2:, 1:-1] |
+                            padded[1:-1, :-2] | padded[1:-1, 2:] | near_dense
+                        )
+            else:
+                near_dense = np.zeros_like(dense)
+
+            # --- Prescription mask: vacuum AND behind sheath AND far from dense ---
             vacuum = rho < 3.0 * _rho_fill
-            if np.any(vacuum):
-                nr_local = rho.shape[0]
-                r_cells = self._r_inner + (np.arange(nr_local) + 0.5) * self._grid.dr
-                r_safe = np.maximum(r_cells, 1e-10)
-                _div = _SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0
+            prescribe = vacuum & (~near_dense)
+            prescribe[:, iz_sheath:] = False  # don't prescribe ahead of sheath
+
+            if np.any(prescribe):
                 Bt_ampere = (_MU0_LOCAL * current / (2.0 * math.pi)) / _div
                 Bt_ampere_2d = Bt_ampere / r_safe[:, None] * np.ones_like(rho)
                 B2_old = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
-                Bt_new = np.where(vacuum, Bt_ampere_2d, U_np[IBT])
+                Bt_new = np.where(prescribe, Bt_ampere_2d, U_np[IBT])
                 B2_new = U_np[IBR]**2 + U_np[IBZ]**2 + Bt_new**2
-                U_np[IEN] += np.where(vacuum, 0.5 * (B2_new - B2_old), 0.0)
+                U_np[IEN] += np.where(prescribe, 0.5 * (B2_new - B2_old), 0.0)
                 U_np[IBT] = Bt_new
                 KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / np.maximum(U_np[IDN], 1e-30)
                 e_int = U_np[IEN] - KE - 0.5 * B2_new
                 bad_p = e_int < 1e-8
-                if np.any(bad_p & vacuum):
+                if np.any(bad_p & prescribe):
                     p_min_vac = 1e-4 * 0.5 * B2_new
                     E_floor_vac = p_min_vac / (self.gamma - 1.0) + KE + 0.5 * B2_new
-                    U_np[IEN] = np.where(bad_p & vacuum, np.maximum(U_np[IEN], E_floor_vac), U_np[IEN])
+                    U_np[IEN] = np.where(bad_p & prescribe, np.maximum(U_np[IEN], E_floor_vac), U_np[IEN])
                 U = mx.array(U_np.astype(np.float32))
 
         # ── 7. Unpack ────────────────────────────────────────────────────
