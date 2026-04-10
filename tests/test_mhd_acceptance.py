@@ -41,7 +41,7 @@ def mhd_result():
         "pf1000",
         mode="mhd",
         max_steps=5000,
-        grid_shape=(32, 1, 64),
+        grid_shape=(64, 1, 64),
     )
     return result
 

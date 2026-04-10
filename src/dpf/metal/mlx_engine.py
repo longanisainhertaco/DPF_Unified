@@ -102,7 +102,11 @@ def run_mlx_discharge(
     _m_D2 = 6.69e-27  # D2 molecular mass
     rho0 = _p_Pa * _m_D2 / (_kB * 300.0)
 
+    # MHD t_peak is ~30% later than snowplow due to numerical diffusion.
+    # 15 us gives enough margin for the current to peak and decay.
     sim_time = preset.get("sim_time", 10e-6)
+    if mode == "mhd":
+        sim_time = max(sim_time, 12e-6)  # MHD t_peak is later than snowplow
 
     # Build circuit
     circuit = MLXCircuitSolver(
@@ -162,12 +166,15 @@ def run_mlx_discharge(
             # Without this flag, B is 1/sqrt(mu0) ~ 1000x too weak,
             # producing negligible J×B compression.
             convert_b_si_to_hl=True,
-            # Vacuum-aware Spitzer resistivity: high eta in neutral fill gas
-            # (prevents B_theta propagation ahead of sheath), low eta in
-            # ionized plasma behind sheath. Self-consistent — uses density
-            # field to determine ionization state, no snowplow oracle.
-            # Ou Haibin et al. (2024): "vacuum region (high resistivity)"
-            resistivity_model="spitzer_vacuum",
+            # Spitzer resistivity with implicit Thomas solver.
+            # Stone & Norman, ApJS 80:753 (1992): operator-split implicit diffusion.
+            # The Thomas tridiagonal solver is unconditionally stable at any eta.
+            # The RKL2 STS path causes NaN in vacuum cells — disabled via
+            # use_rkl2_transport=False.
+            # Spitzer: eta = 5.2e-5 * Z * ln(Lambda) / Te_eV^1.5 [Ohm*m]
+            # Johnson et al. (2024): Spitzer confirmed valid for DPF conditions.
+            resistivity_model="spitzer",
+            use_rkl2_transport=False,  # Thomas solver, not STS (avoids NaN)
         )
         # Initial state: fill gas between electrodes (r_anode < r < r_cathode).
         # Inside the anode (r < r_anode): vacuum/low density (solid body).
@@ -236,15 +243,25 @@ def run_mlx_discharge(
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
-            # Electrode BC: B_theta = mu0*I/(2*pi*r) at full z-extent.
-            # The spitzer_vacuum resistivity model self-consistently prevents
-            # B propagation into neutral gas ahead of the sheath.
-            # Ou Haibin et al. (2024): high resistivity in vacuum region.
-            # No z-dependent BC mask — the physics handles it.
+            # Z-dependent electrode BC from MHD density field.
+            # B_theta only injected where the sheath has compressed the gas
+            # (rho > 1.5 * rho_fill). Ahead of the sheath, neutral gas
+            # cannot carry current. Ou Haibin et al. (2024), Fig. 1.
+            # This produces the progressive L_p growth that the snowplow
+            # captures analytically — without it, B fills the entire domain
+            # instantly and L_p is constant (no dL/dt, no back-EMF timing).
+            rho_mhd = np.asarray(mhd_state["rho"]).squeeze()
+            rho_col_max = np.max(rho_mhd, axis=0)  # max density along r, per z
+            compressed_z = rho_col_max > 1.5 * rho0
+            if np.any(compressed_z):
+                _z_frac_mhd = float(np.max(np.where(compressed_z)[0]) + 1) / rho_mhd.shape[1]
+            else:
+                _z_frac_mhd = max(2.0 / rho_mhd.shape[1], 0.03)
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
                 apply_electrode_bc=True,
+                z_sheath_frac=_z_frac_mhd,
             )
 
             # Voltage-flux coupling: U_PF = dPhi/dt at inlet boundary.

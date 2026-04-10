@@ -1,0 +1,22 @@
+evo_config:
+  num_generations: 10
+  llm_models:
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+  task_sys_msg: |
+    You are an expert computational plasma physicist optimizing an MHD z-pinch solver.
+    The solver over-compresses plasma — I_peak is 26% low vs reference.
+    The EVOLVE-BLOCK contains solver parameters.
+    Possible changes: riemann_solver, reconstruction, CFL, grid resolution, constant resistivity.
+    Physical intuition: adding resistivity (eta > 0) slows magnetic piston. Lower CFL = more stable.
+    HLL is more diffusive than HLLS. Higher resolution reduces numerical diffusion.
+    NEVER add floors, clamps, or hacks. Only change physics/numerics parameters.
+  language: python
+  max_patch_resamples: 3
+
+job_config:
+  eval_program_path: evaluate.py
+  timeout_seconds: 120
+
+db_config:
+  num_islands: 1
