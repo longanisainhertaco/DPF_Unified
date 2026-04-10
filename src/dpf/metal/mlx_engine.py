@@ -175,6 +175,7 @@ def run_mlx_discharge(
             # Johnson et al. (2024): Spitzer confirmed valid for DPF conditions.
             resistivity_model="spitzer",
             use_rkl2_transport=False,  # Thomas solver, not STS (avoids NaN)
+            rho_floor=rho0 * 1e-4,  # Beresnyak rho_min: prevents v_A→∞ in vacuum
         )
         # Initial state: fill gas between electrodes (r_anode < r < r_cathode).
         # Inside the anode (r < r_anode): vacuum/low density (solid body).
@@ -257,80 +258,43 @@ def run_mlx_discharge(
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
-            # Beresnyak et al. (2022), Phys. Plasmas 29:052712, Eq. (6):
-            # Vacuum velocity prescription for ideal MHD pulsed-power coupling.
-            # In vacuum cells (rho < rho_fill), set radial velocity such that
-            # the frozen-in induction equation dB/dt = curl(v×B) evolves B
-            # correctly as the circuit current changes.
-            # dv/dr = -(1/I)(dI/dt) in cylindrical geometry.
-            # This makes B_theta evolve proportionally to I(t) in the vacuum,
-            # producing progressive L_p growth WITHOUT resistive diffusion.
-            # PDF: references/papers/mhd-numerics/beresnyak_2022_pulsed_power_ideal_mhd.pdf
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712:
+            # Ghost zone velocity with dI/dt correction (verif_r.cpp line 242).
+            # Interior vacuum B_theta prescribed via Ampere's law (solver step 6.9).
+            # Circuit coupling uses snowplow Lp (not dPhi/dt) to avoid instability.
             I_cur = circuit.current
-            if abs(I_cur) > 1.0 and _step > 0:
-                # dI/dt from circuit (backward difference)
-                I_prev = currents[-1] * 1e6 if currents else I_cur  # MA -> A
-                dI_dt = (I_cur - I_prev) / max(dt, 1e-30)
-                # Prescribe radial velocity in vacuum: v_r = (1/I)(dI/dt)(r_cathode - r)
-                # This satisfies d(r*B_theta)/dt = d/dr(r*v_r*B_theta) in cylindrical
-                # For DPF axial rundown: the unswept gas ahead of the sheath
-                # is analogous to Beresnyak's vacuum. Apply v_z prescription
-                # at z-positions where the gas hasn't been compressed yet.
-                # v_z = (1/I)(dI/dt)(z_max - z) makes B evolve with dI/dt.
-                rho_mhd = np.asarray(mhd_state["rho"]).squeeze()
-                vel = mhd_state["velocity"].copy()
-                vel_z = vel[1].squeeze()  # (nr, nz) — axial velocity
-                z_cells = (np.arange(nz) + 0.5) * dz_mhd
-                # Unswept region: gas at fill density (not yet compressed by sheath)
-                rho_col_max = np.max(rho_mhd, axis=0)  # max density along r per z
-                unswept = rho_col_max < 1.5 * rho0  # (nz,) mask
-                v_z_beresnyak = (1.0 / I_cur) * dI_dt * (anode_length - z_cells)
-                # Apply only in unswept z-columns, in the electrode gap (r_a < r < r_c)
-                r_cells_loc = (np.arange(nr) + 0.5) * dr_mhd
-                in_gap_loc = (r_cells_loc >= r_anode) & (r_cells_loc <= r_cathode)
-                for iz in range(nz):
-                    if unswept[iz]:
-                        vel_z[in_gap_loc, iz] = v_z_beresnyak[iz]
-                vel[1] = vel_z[:, np.newaxis, :]
-                mhd_state["velocity"] = vel
-
+            # dI/dt from the previous two stored currents (not I_cur, which
+            # equals currents[-1] since the circuit step hasn't run yet).
+            if len(currents) >= 2:
+                dI_dt = (currents[-1] - currents[-2]) * 1e6 / max(dt, 1e-30)  # MA->A
+            else:
+                # First step: estimate from circuit equation dI/dt ≈ V/L
+                dI_dt = circuit.voltage / max(cc["L0"], 1e-15) if _step > 0 else 0.0
+            # verif_r.cpp line 101: curr_rate=0 when I < 1 kA (avoids 1/I singularity)
+            _curr_rate = dI_dt / I_cur if abs(I_cur) > 1e3 else 0.0
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
                 apply_electrode_bc=True,
+                curr_rate=_curr_rate,
             )
 
-            # Voltage-flux coupling: U_PF = dPhi/dt at inlet boundary.
-            # Replaces the density-weighted Lee formula (which systematically
-            # miscalculates Lp because density centroid ≠ current centroid).
-            #
-            # Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (15)-(17).
-            # Beresnyak et al. (2018), IEEE TPS 46:3881 (NRL Athena DPF).
-            # Auluck (2021), Phys. Plasmas 28:030703: proves Lee formula is
-            #   fundamentally incomplete for moving plasma boundaries.
-            from dpf.metal.mlx_coupling import compute_upf_voltage_flux
-            coupling, U_PF = compute_upf_voltage_flux(
-                mhd_solver._U, mhd_solver._grid,
-                r_inner=r_anode, cathode_radius=r_cathode,
-                phi_history=_phi_history,
-                sim_time=t, current=circuit.current, voltage=circuit.voltage,
-            )
-            Lp_mhd_val = coupling.Lp  # diagnostic only (Phi/I)
-            dLp_dt_mhd = coupling.dL_dt
+            # Auluck (2021), Phys. Plasmas 28:030703, Eq. (1):
+            # V = -(1/I) * integral(J . E d^3r)
+            # The correct first-principles coupling requires MHD-evolved B
+            # with physical gradients (sheath compression, current sheet).
+            # Currently: vacuum B prescription makes curl(B)=0 → J=0 → V=0.
+            # Without prescription: B too weak → wrong-sign J·E → V < 0.
+            # TODO: prescribe B only BEHIND sheath, preserve gradients near it.
+            # For now: snowplow Lp provides circuit loading.
+            Lp_mhd_val = Lp_sp
+            dLp_dt_mhd = dLp_dt_sp
+            U_PF = 0.0
 
-        # Circuit step
-        if mhd_solver is not None and mhd_state is not None:
-            # MHD drives circuit via U_PF = dPhi/dt (voltage-flux coupling).
-            # U_PF replaces I*dLp/dt entirely — set Lp=0, dLp_dt=0 to avoid
-            # double-counting. The circuit equation becomes:
-            #   L0*dI/dt = V_cap - R*I - U_PF
-            # Sun et al. (2025) Eq. (15): L0 is external only, U_PF captures all DPF flux.
-            circuit.step(
-                Lp=0.0, dLp_dt=0.0, R_plasma=R_plasma,
-                back_emf=U_PF, dt=dt,
-            )
-        else:
-            circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
+        # Circuit step — snowplow Lp for circuit loading.
+        # Auluck Poynting coupling (compute_voltage_poynting) is implemented
+        # and ready but requires MHD B-field with physical structure.
+        circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
         t += dt
 
         # Record

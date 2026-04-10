@@ -170,6 +170,121 @@ def compute_upf_voltage_flux(
     return coupling, U_PF
 
 
+def compute_voltage_poynting(
+    U: Any,
+    grid: Any,
+    current: float,
+    eta: Any | None = None,
+    convert_hl_to_si: bool = True,
+) -> float:
+    """Compute device voltage from Poynting theorem (Auluck 2021 Eq. 1).
+
+    V_12(t) = -(1/I(t)) * integral_Omega(J . E d^3r)
+
+    This is the CORRECT first-principles method for MHD-circuit coupling.
+    No inductance formula. No sheath detection. No flux integral.
+
+    Key property: J = curl(B)/mu0 = 0 in vacuum where B = mu0*I/(2*pi*r),
+    so prescribed vacuum B contributes ZERO to the integral. Only plasma
+    regions (sheath, pinch) where B deviates from vacuum contribute.
+    This naturally avoids the circular dependency that plagues dPhi/dt.
+
+    References
+    ----------
+    Auluck (2021), Phys. Plasmas 28:030703, Eq. (1), (6).
+        PDF: references/papers/core-dpf/auluck-2021-dpf-circuit-element.pdf
+        Proves that Lp-based coupling and dPhi/dt are fundamentally incomplete.
+        The motional impedance (1/2 I^2 dL/dt) != magnetic energy flux through
+        the plasma boundary (Eq. 13). The difference is the "anomalous impedance."
+
+    Parameters
+    ----------
+    U : array
+        Conserved state (NVAR, nr, nz) in HL units.
+    grid : object
+        Grid with .dr, .dz, .r_cell attributes.
+    current : float
+        Circuit current [A].
+    eta : float or array or None
+        Resistivity [Ohm*m]. None = ideal MHD (eta=0).
+    convert_hl_to_si : bool
+        If True, B in U is HL and will be converted to SI.
+
+    Returns
+    -------
+    float
+        Device voltage U_PF [V]. Positive = back-EMF opposing current.
+    """
+    from dpf.metal.constants import IBR, IBT, IBZ, IDN, IMR, IMZ
+
+    U_np = np.asarray(U)
+    nr, nz = U_np.shape[1], U_np.shape[2]
+    dr = grid.dr
+    dz = grid.dz
+    r = np.asarray(grid.r_cell)  # (nr,)
+    r_safe = np.maximum(r, 1e-10)
+
+    # Extract fields
+    rho = np.maximum(U_np[IDN], 1e-30)
+    vr = U_np[IMR] / rho
+    vz = U_np[IMZ] / rho
+    Bt = U_np[IBT]  # B_theta
+    Br = U_np[IBR]
+    Bz = U_np[IBZ]
+
+    # Convert B to SI if stored in HL
+    sqrt_mu0 = math.sqrt(MU_0)
+    if convert_hl_to_si:
+        Bt_si = Bt * sqrt_mu0
+        Br_si = Br * sqrt_mu0
+        Bz_si = Bz * sqrt_mu0
+    else:
+        Bt_si, Br_si, Bz_si = Bt, Br, Bz
+
+    # Current density: J = curl(B)/mu0 in cylindrical (r, theta, z)
+    # J_r = -(1/mu0) * dBt/dz
+    # J_z = (1/(mu0*r)) * d(r*Bt)/dr
+    # J_t = (1/mu0) * (dBr/dz - dBz/dr)
+    dBt_dz = np.gradient(Bt_si, dz, axis=1)
+    rBt = r_safe[:, None] * Bt_si
+    d_rBt_dr = np.gradient(rBt, dr, axis=0)
+    dBr_dz = np.gradient(Br_si, dz, axis=1)
+    dBz_dr = np.gradient(Bz_si, dr, axis=0)
+
+    inv_mu0 = 1.0 / MU_0
+    Jr = -dBt_dz * inv_mu0
+    Jz = d_rBt_dr / (r_safe[:, None]) * inv_mu0
+    Jt = (dBr_dz - dBz_dr) * inv_mu0
+
+    # Electric field: E = -v x B + eta*J  (Generalized Ohm's law)
+    # Auluck (2021) Eq. (4): E = -v x B + eta*J
+    # In cylindrical with v=(vr, 0, vz), B=(Br, Bt, Bz):
+    #   (v x B)_r = vt*Bz - vz*Bt = -vz*Bt  (vt=0)
+    #   (v x B)_z = vr*Bt - vt*Br = vr*Bt    (vt=0)
+    #   (v x B)_t = vz*Br - vr*Bz
+    eta_val = eta if eta is not None else 0.0
+    if isinstance(eta_val, (int, float)):
+        eta_arr = eta_val
+    else:
+        eta_arr = np.asarray(eta_val)
+
+    Er = vz * Bt_si + eta_arr * Jr
+    Ez = -vr * Bt_si + eta_arr * Jz
+    Et = vz * Br_si - vr * Bz_si + eta_arr * Jt
+
+    # J . E (power density, W/m^3)
+    JdotE = Jr * Er + Jz * Ez + Jt * Et
+
+    # Volume integral: P = 2*pi * sum(J.E * r * dr * dz)
+    # The 2*pi comes from integrating over azimuthal angle (axisymmetry)
+    P_total = 2.0 * math.pi * float(np.sum(JdotE * r_safe[:, None] * dr * dz))
+
+    # V = -P / I  (Auluck 2021 Eq. 1)
+    if abs(current) < 1.0:
+        return 0.0
+    return -P_total / current
+
+
 def update_coupling(
     U: Any,
     current: float,

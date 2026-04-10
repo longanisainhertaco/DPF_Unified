@@ -151,6 +151,10 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._convert_b_si_to_hl: bool = convert_b_si_to_hl
         self.ion_mass: float = float(ion_mass)
 
+        # Density floor: prevents vacuum Alfven speed → ∞.
+        # Set to ~1e-4 * fill density from engine, or 1e-6 absolute minimum.
+        self._rho_floor: float = max(float(kwargs.get("rho_floor", 1e-6)), 1e-6)
+
         self.enable_hall: bool = enable_hall
         self.enable_braginskii_conduction: bool = enable_braginskii_conduction
         self.enable_braginskii_viscosity: bool = enable_braginskii_viscosity
@@ -450,6 +454,32 @@ class MLXMHDSolver(PlasmaSolverBase):
 
                 U_padded = mx.array(U_np)
 
+        # Beresnyak velocity prescription in outer ghost cells.
+        # verif_r.cpp line 242: v_ghost = v_interior + (v_interior/r - curr_rate) * delta_r
+        # This ensures E = -v×B is consistent with dB/dt, preventing NaN.
+        curr_rate = getattr(self, "_beresnyak_curr_rate", 0.0)
+        if abs(curr_rate) > 0 and not _use_inlet_bc:
+            U_np = np.asarray(U_padded)
+            from dpf.metal.constants import IMR, IDN
+            for ig in range(ng):
+                out_idx = ng + self.nr + ig
+                int_idx = ng + self.nr - 1  # last interior cell
+                r_int = max(r_cell_list[int_idx], 1e-10)
+                r_out = max(r_cell_list[out_idx], 1e-10)
+                delta_r = r_out - r_int
+                # Interior velocity (radial momentum / density)
+                rho_int = np.maximum(U_np[IDN, int_idx, :], 1e-30)
+                vr_int = U_np[IMR, int_idx, :] / rho_int
+                # Beresnyak extrapolation with dI/dt correction
+                vr_ghost = vr_int + (vr_int / r_int - curr_rate) * delta_r
+                # Set ghost cell momentum = rho_ghost * vr_ghost
+                rho_ghost = U_np[IDN, out_idx, :]
+                U_np[IMR, out_idx, :] = rho_ghost * vr_ghost
+                # Update energy for kinetic energy change
+                KE_old = 0.5 * U_np[IMR, out_idx, :] ** 2 / np.maximum(rho_ghost, 1e-30)
+                # (energy already includes B from electrode fixup)
+            U_padded = mx.array(U_np)
+
         # Build a lightweight padded grid. CylindricalGrid rejects negative
         # r_inner, so we build geometry arrays directly on the ghost-extended
         # coordinate system, matching what PyTorch MetalMHDSolver does.
@@ -702,13 +732,19 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         grid_for_rk = self._grid
         if _ghost_active:
-            # Beresnyak et al. (2022), Phys. Plasmas 29:052712:
-            # NO explicit B_theta injection at cathode or inlet.
-            # B evolves from zero via the vacuum velocity prescription
-            # (applied in the engine before this step). Conducting wall
-            # cathode (dB/dn=0) lets B grow naturally as I(t) rises.
-            # No B discontinuity → no NaN.
-            self._inlet_bc_active = True  # conducting wall cathode (dB/dn=0)
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712, verif_r.cpp:
+            # Ghost zone BC with BOTH B_theta AND velocity prescribed.
+            # B_theta = mu0*I/(2*pi*r) in ghost cells (Ampere's law).
+            # Velocity = extrapolated from interior + dI/dt gradient correction:
+            #   v_ghost = v_interior + (v_interior/r - curr_rate) * delta_r
+            # where curr_rate = (1/I)(dI/dt).
+            # This ensures E = -v×B is consistent with dB/dt from circuit,
+            # preventing the NaN from E-field mismatch at the boundary.
+            # The velocity prescription is the KEY — without it, v=0 in ghost
+            # cells next to B=1500 creates massive E-field discontinuity.
+            self._inlet_bc_active = False  # Dirichlet B + velocity in ghosts
+            # Store curr_rate for the ghost BC
+            self._beresnyak_curr_rate = kwargs.get("curr_rate", 0.0)
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
@@ -726,6 +762,33 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 4.1. Strip ghost cells ───────────────────────────────────────
         if _ghost_active:
             U = self._strip_ghost(U, self._GHOST_NG)
+
+        # ── 4.2. Density and pressure floor ─────────────────────────────
+        # Every production MHD code (Athena++, FLASH, Pluto) enforces
+        # conservative floors after the hyperbolic update. Without this,
+        # vacuum cells reach rho~1e-12, producing v_Alfven→∞ and CFL
+        # collapse. Beresnyak (2022) uses rho_min as an explicit parameter.
+        # Our floor: 1e-4 * fill density, or 1e-6 kg/m^3 absolute minimum.
+        from dpf.metal.constants import IDN, IEN, IBR, IBT, IBZ, IMR, IMZ, IMT
+        _rho_floor = max(getattr(self, "_rho_floor", 1e-6), 1e-6)
+        U_np = np.asarray(U)
+        rho = U_np[IDN]
+        needs_floor = rho < _rho_floor
+        if np.any(needs_floor):
+            # Rescale momentum to preserve velocity when flooring density
+            rho_safe = np.maximum(rho, 1e-30)
+            scale = np.where(needs_floor, _rho_floor / rho_safe, 1.0)
+            U_np[IDN] = np.maximum(rho, _rho_floor)
+            U_np[IMR] *= scale
+            U_np[IMZ] *= scale
+            U_np[IMT] *= scale
+            # Floor total energy: E >= p_floor/(gamma-1) + KE + B^2/2
+            KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / U_np[IDN]
+            B2 = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
+            _p_floor = 1e-8  # Pa — cold but not singular
+            E_floor = _p_floor / (self.gamma - 1.0) + KE + 0.5 * B2
+            U_np[IEN] = np.where(needs_floor, np.maximum(U_np[IEN], E_floor), U_np[IEN])
+            U = mx.array(U_np.astype(np.float32))
 
         # ── 4.5. div(B) control ───────────────────────────────────────────
         if self._use_ct and self.coordinates == "cylindrical":
@@ -825,6 +888,46 @@ class MLXMHDSolver(PlasmaSolverBase):
                     cu_idx=0,
                 )
             mx.eval(self._Y)
+
+        # ── 6.9. Vacuum B_theta prescription ─────────────────────────────
+        # Prescribe B_theta = mu0*I/(2*pi*r) in vacuum cells (Beresnyak 2022).
+        # This ensures correct B magnitude for J×B forces and diagnostics.
+        # Note: makes curl(B)=0 in vacuum, so Auluck Poynting coupling
+        # (V = -(1/I)*integral(J·E d³r)) returns zero. Self-consistent
+        # Poynting coupling requires prescribing B only behind the sheath
+        # and letting MHD evolve B near the sheath front (TODO).
+        if (
+            abs(current) > 1e-10
+            and self.coordinates == "cylindrical"
+            and _ghost_active
+        ):
+            import math
+            _MU0_LOCAL = 4.0 * math.pi * 1e-7
+            _SQRT_MU0_LOCAL = math.sqrt(_MU0_LOCAL)
+            U_np = np.asarray(U)
+            rho = U_np[IDN]
+            _rho_fill = getattr(self, "_rho_floor", 1e-6) * 1e4
+            vacuum = rho < 3.0 * _rho_fill
+            if np.any(vacuum):
+                nr_local = rho.shape[0]
+                r_cells = self._r_inner + (np.arange(nr_local) + 0.5) * self._grid.dr
+                r_safe = np.maximum(r_cells, 1e-10)
+                _div = _SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0
+                Bt_ampere = (_MU0_LOCAL * current / (2.0 * math.pi)) / _div
+                Bt_ampere_2d = Bt_ampere / r_safe[:, None] * np.ones_like(rho)
+                B2_old = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
+                Bt_new = np.where(vacuum, Bt_ampere_2d, U_np[IBT])
+                B2_new = U_np[IBR]**2 + U_np[IBZ]**2 + Bt_new**2
+                U_np[IEN] += np.where(vacuum, 0.5 * (B2_new - B2_old), 0.0)
+                U_np[IBT] = Bt_new
+                KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / np.maximum(U_np[IDN], 1e-30)
+                e_int = U_np[IEN] - KE - 0.5 * B2_new
+                bad_p = e_int < 1e-8
+                if np.any(bad_p & vacuum):
+                    p_min_vac = 1e-4 * 0.5 * B2_new
+                    E_floor_vac = p_min_vac / (self.gamma - 1.0) + KE + 0.5 * B2_new
+                    U_np[IEN] = np.where(bad_p & vacuum, np.maximum(U_np[IEN], E_floor_vac), U_np[IEN])
+                U = mx.array(U_np.astype(np.float32))
 
         # ── 7. Unpack ────────────────────────────────────────────────────
         self._U = U
