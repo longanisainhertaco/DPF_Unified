@@ -257,25 +257,47 @@ def run_mlx_discharge(
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
-            # Z-dependent electrode BC from MHD density field.
-            # B_theta only injected where the sheath has compressed the gas
-            # (rho > 1.5 * rho_fill). Ahead of the sheath, neutral gas
-            # cannot carry current. Ou Haibin et al. (2024), Fig. 1.
-            # This produces the progressive L_p growth that the snowplow
-            # captures analytically — without it, B fills the entire domain
-            # instantly and L_p is constant (no dL/dt, no back-EMF timing).
-            rho_mhd = np.asarray(mhd_state["rho"]).squeeze()
-            rho_col_max = np.max(rho_mhd, axis=0)  # max density along r, per z
-            compressed_z = rho_col_max > 1.5 * rho0
-            if np.any(compressed_z):
-                _z_frac_mhd = float(np.max(np.where(compressed_z)[0]) + 1) / rho_mhd.shape[1]
-            else:
-                _z_frac_mhd = max(2.0 / rho_mhd.shape[1], 0.03)
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712, Eq. (6):
+            # Vacuum velocity prescription for ideal MHD pulsed-power coupling.
+            # In vacuum cells (rho < rho_fill), set radial velocity such that
+            # the frozen-in induction equation dB/dt = curl(v×B) evolves B
+            # correctly as the circuit current changes.
+            # dv/dr = -(1/I)(dI/dt) in cylindrical geometry.
+            # This makes B_theta evolve proportionally to I(t) in the vacuum,
+            # producing progressive L_p growth WITHOUT resistive diffusion.
+            # PDF: references/papers/mhd-numerics/beresnyak_2022_pulsed_power_ideal_mhd.pdf
+            I_cur = circuit.current
+            if abs(I_cur) > 1.0 and _step > 0:
+                # dI/dt from circuit (backward difference)
+                I_prev = currents[-1] * 1e6 if currents else I_cur  # MA -> A
+                dI_dt = (I_cur - I_prev) / max(dt, 1e-30)
+                # Prescribe radial velocity in vacuum: v_r = (1/I)(dI/dt)(r_cathode - r)
+                # This satisfies d(r*B_theta)/dt = d/dr(r*v_r*B_theta) in cylindrical
+                # For DPF axial rundown: the unswept gas ahead of the sheath
+                # is analogous to Beresnyak's vacuum. Apply v_z prescription
+                # at z-positions where the gas hasn't been compressed yet.
+                # v_z = (1/I)(dI/dt)(z_max - z) makes B evolve with dI/dt.
+                rho_mhd = np.asarray(mhd_state["rho"]).squeeze()
+                vel = mhd_state["velocity"].copy()
+                vel_z = vel[1].squeeze()  # (nr, nz) — axial velocity
+                z_cells = (np.arange(nz) + 0.5) * dz_mhd
+                # Unswept region: gas at fill density (not yet compressed by sheath)
+                rho_col_max = np.max(rho_mhd, axis=0)  # max density along r per z
+                unswept = rho_col_max < 1.5 * rho0  # (nz,) mask
+                v_z_beresnyak = (1.0 / I_cur) * dI_dt * (anode_length - z_cells)
+                # Apply only in unswept z-columns, in the electrode gap (r_a < r < r_c)
+                r_cells_loc = (np.arange(nr) + 0.5) * dr_mhd
+                in_gap_loc = (r_cells_loc >= r_anode) & (r_cells_loc <= r_cathode)
+                for iz in range(nz):
+                    if unswept[iz]:
+                        vel_z[in_gap_loc, iz] = v_z_beresnyak[iz]
+                vel[1] = vel_z[:, np.newaxis, :]
+                mhd_state["velocity"] = vel
+
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
                 apply_electrode_bc=True,
-                z_sheath_frac=_z_frac_mhd,
             )
 
             # Voltage-flux coupling: U_PF = dPhi/dt at inlet boundary.

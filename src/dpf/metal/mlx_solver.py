@@ -702,21 +702,13 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         grid_for_rk = self._grid
         if _ghost_active:
-            # Inlet BC (Sun 2025): B_theta = mu0*I/(2*pi*r) at z=0 only.
-            # Cathode: conducting wall dB/dn=0 (Sun 2025 Eq. 18).
-            # The MHD dynamics propagate B axially via Alfven waves.
-            from dpf.metal.mlx_bc import inlet_bt_bc_mlx
-            U = inlet_bt_bc_mlx(
-                U, self._grid.r_cell, current,
-                ng_z=8,  # wider ramp to avoid float32 NaN at B discontinuity
-                convert_si_to_hl=self._convert_b_si_to_hl,
-            )
-            # Cathode: Dirichlet for now (inlet-only + conducting wall produces NaN
-            # from B discontinuity at sheath seed boundary in float32 HLLS).
-            # Sun 2025 uses Lax-Wendroff relaxation scheme which handles the
-            # discontinuity differently. Implementing their full scheme is
-            # needed to capture progressive L_p growth.
-            self._inlet_bc_active = False  # Dirichlet cathode (stable)
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712:
+            # NO explicit B_theta injection at cathode or inlet.
+            # B evolves from zero via the vacuum velocity prescription
+            # (applied in the engine before this step). Conducting wall
+            # cathode (dB/dn=0) lets B grow naturally as I(t) rises.
+            # No B discontinuity → no NaN.
+            self._inlet_bc_active = True  # conducting wall cathode (dB/dn=0)
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
