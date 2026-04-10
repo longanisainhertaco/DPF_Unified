@@ -186,6 +186,20 @@ def run_mlx_discharge(
         p_init = np.full((nr, ny, nz), _p_Pa * 1e-4, dtype=np.float32)
         p_init[in_gap, :, :] = _p_Pa
 
+        # Sheath seed at inlet (z=0): thin dense layer per Sun et al. (2025)
+        # Section 3.2: "at the inlet, a plasma thin layer with average density
+        # ~4*n0 and temperature ~2 eV is initialized."
+        # This pre-formed sheath carries the initial current and B_theta.
+        # J×B accelerates it axially — B propagates WITH the dense layer.
+        # Without this seed, B sits at the inlet and doesn't propagate.
+        _n_sheath_cells = max(2, nz // 16)  # ~4-8 cells at z=0
+        _kB = 1.380649e-23
+        _Te_sheath = 2.0 * 1.602e-19 / _kB  # 2 eV in Kelvin = ~23,200 K
+        rho_init[in_gap, :, :_n_sheath_cells] = 4.0 * rho0  # 4x fill density
+        p_init[in_gap, :, :_n_sheath_cells] = (
+            4.0 * rho0 / (_m_D2 / 2.0) * _kB * _Te_sheath * 2.0  # (1+Z)*n*kB*T
+        )
+
         mhd_state = {
             "rho": rho_init,
             "velocity": np.zeros((3, nr, ny, nz), dtype=np.float32),

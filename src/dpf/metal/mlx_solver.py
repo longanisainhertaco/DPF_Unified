@@ -708,14 +708,15 @@ class MLXMHDSolver(PlasmaSolverBase):
             from dpf.metal.mlx_bc import inlet_bt_bc_mlx
             U = inlet_bt_bc_mlx(
                 U, self._grid.r_cell, current,
-                ng_z=4,
+                ng_z=8,  # wider ramp to avoid float32 NaN at B discontinuity
                 convert_si_to_hl=self._convert_b_si_to_hl,
             )
-            # Cathode: Dirichlet B_theta in ghost cells (Ampere's law — cathode
-            # carries current). Interior cells evolve freely via MHD.
-            # The electrode_bt_fixup no longer overwrites interior cells
-            # (interior blend removed from mlx_bc.py).
-            self._inlet_bc_active = False  # keep cathode Dirichlet in ghost cells
+            # Cathode: Dirichlet for now (inlet-only + conducting wall produces NaN
+            # from B discontinuity at sheath seed boundary in float32 HLLS).
+            # Sun 2025 uses Lax-Wendroff relaxation scheme which handles the
+            # discontinuity differently. Implementing their full scheme is
+            # needed to capture progressive L_p growth.
+            self._inlet_bc_active = False  # Dirichlet cathode (stable)
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
