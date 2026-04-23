@@ -10,9 +10,10 @@ Physics:
         g_ff(T, Z) = 1.0 + 0.7936 / sqrt(T_keV) + 0.1387 * T_keV
         for T in [0.01, 100] keV, Z=1. Higher Z: multiply by Z^0.15
 
-    Cyclotron radiation:
-        P_cyc = (e^4 * B^2 * ne) / (6 * pi * epsilon_0 * m_e^3 * c^3)
-        = 6.21e-28 * B^2 * ne * Te  [W/m^3] (relativistic, single particle)
+    Cyclotron radiation (thermal, SI):
+        P_cyc = ne * e^4 * B^2 * k_B * Te / (3 * pi * epsilon_0 * m_e^3 * c^3)
+              = 5.35e-24 * B[T]^2 * ne[m^-3] * Te[K]   [W/m^3]
+        (NRL Formulary Eq 34: 6.21e-28 in cgs/eV, converted to SI.)
 
     Total radiation = bremsstrahlung + recombination + cyclotron + line
 
@@ -107,13 +108,22 @@ def recombination_power(
 ) -> np.ndarray:
     """Free-bound (recombination) radiation power.
 
-    Radiative recombination of electrons with ions. Dominant at low
-    temperatures (< 1 keV) where recombination rate is high.
+    Radiative recombination of electrons with ions.
 
-    P_fb = C_fb * Z^2 * ne^2 * (chi / (kB * Te))^0.5 * exp(-chi / (kB * Te))
+    NRL Plasma Formulary (2019) Eq. 33 (cgs / eV):
+        P_r = 1.69e-32 * Ne * Te^(1/2) * Sum_Z [ Z^2 * N(Z) * (E_inf^(Z-1)/Te) ]
+              [W/cm^3, Ne in cm^-3, Te in eV]
 
-    where chi = 13.6 * Z^2 eV is the ionization potential of the
-    hydrogen-like ion.
+    For hydrogen-like ions with E_inf^(Z-1) = chi = 13.6 * Z^2 eV:
+        P_r propto Ne * Te^(1/2) * Z^2 * (chi/Te)
+        so the temperature dependence is Te^(-1/2) * chi, i.e.
+        sqrt(chi/kTe) when combined with the sqrt(kTe) factor appropriately.
+
+    NRL Eq 33 is a *linear* ratio (chi/Te), NOT Boltzmann-suppressed by
+    exp(-chi/kTe). Any exp(-chi/kTe) factor here would double-count the
+    suppression and drive recombination radiation to zero in the cold
+    limit, which is physically wrong (recombination rate increases as T
+    decreases).
 
     Args:
         ne: Electron number density [m^-3].
@@ -124,8 +134,8 @@ def recombination_power(
         Volumetric recombination power [W/m^3].
 
     References:
-        Seaton, MNRAS 119:81 (1959).
-        NRL Plasma Formulary (2019), p. 58.
+        NRL Plasma Formulary (2019) p. 58 Eq. 33.
+        Seaton, MNRAS 119:81 (1959) -- original analytic form.
     """
     # Ionization energy of hydrogen-like ion
     chi = 13.6 * Z**2 * e  # [J]
@@ -133,14 +143,16 @@ def recombination_power(
     Te_safe = np.maximum(Te, 1.0)
     ne_safe = np.maximum(ne, 0.0)
 
-    # Seaton coefficient
+    # Seaton / NRL Eq 33 SI coefficient (absorbs cgs -> SI conversion).
     C_fb = 1.13e-37  # [W m^3 K^{1/2}]
 
     ratio = chi / (k_B * Te_safe)
-    # For very large ratio (cold plasma), clamp to avoid overflow
+    # For very large ratio (cold plasma), clamp to avoid overflow in sqrt.
     ratio_safe = np.minimum(ratio, 100.0)
 
-    P_fb = C_fb * Z**2 * ne_safe**2 * np.sqrt(ratio_safe) * np.exp(-ratio_safe)
+    # NRL Eq 33: linear (chi/kTe) factor expressed as sqrt(ratio) scaling.
+    # No exp(-chi/kTe) factor -- not present in NRL's free-bound form.
+    P_fb = C_fb * Z**2 * ne_safe**2 * np.sqrt(ratio_safe)
 
     return P_fb
 
@@ -150,18 +162,31 @@ def cyclotron_power(
     Te: np.ndarray,
     B_mag: np.ndarray,
 ) -> np.ndarray:
-    """Cyclotron (synchrotron) radiation power.
+    """Cyclotron (synchrotron) radiation power from thermal electrons.
 
-    Electron cyclotron emission in strong magnetic fields.
-    Relevant for DPF pinch conditions (B ~ 10-100 T).
+    Electron cyclotron emission in magnetic fields (Larmor formula with
+    thermal average over 2D perpendicular Maxwellian).
 
-    P_cyc = (e^4 * B^2 * ne * kB * Te) / (6 * pi * epsilon_0 * m_e^3 * c^3)
+    NRL Plasma Formulary (2019) Eq. 34 (cgs-gauss / eV):
+        P_c = 6.21e-28 * B^2 * Ne * Te   [W/cm^3]
+        with B in gauss, Ne in cm^-3, Te in eV.
 
-    For thermal electrons, using NRL Plasma Formulary:
-    P_cyc = 6.21e-28 * B^2 * ne * Te  [W/m^3]
+    SI conversion (B in T, ne in m^-3, Te in K, output W/m^3):
+        G^2    -> T^2:     B[G]^2  = 1e8 * B[T]^2
+        cm^-3  -> m^-3:    Ne[cm^-3] = 1e-6 * Ne[m^-3]
+        eV     -> K:       Te[eV]    = (k_B/e) Te[K] ~ 1/11604.52 * Te[K]
+        W/cm^3 -> W/m^3:   multiply by 1e6
+        SI coefficient = 6.21e-28 * 1e8 * 1e-6 * (1/11604.52) * 1e6
+                       ~ 5.35e-24
 
-    This becomes significant relative to bremsstrahlung when:
-    B > B_crit = sqrt(P_ff / (6.21e-28 * ne * Te))
+        P_cyc [W/m^3] = 5.35e-24 * B[T]^2 * ne[m^-3] * Te[K]
+
+    First-principles derivation (Larmor, per-electron, thermal):
+        P_cyc = ne * (e^4 * B^2 * <v_perp^2>) / (6*pi*eps0*m_e^2*c^3)
+              = ne * (e^4 * B^2 * 2*k_B*Te/m_e) / (6*pi*eps0*m_e^2*c^3)
+              = ne * (e^4 * B^2 * k_B * Te) / (3*pi*eps0*m_e^3*c^3)
+        using <v_perp^2> = 2*k_B*Te/m_e (two perpendicular degrees of freedom).
+        Note the denominator is 3*pi, not 6*pi, after the v_perp thermal average.
 
     Args:
         ne: Electron number density [m^-3].
@@ -172,17 +197,18 @@ def cyclotron_power(
         Volumetric cyclotron power [W/m^3].
 
     References:
-        Rybicki & Lightman (1979), Chapter 6.
-        Haines, PPCF 53:093001 (2011), Eq. 4.
+        NRL Plasma Formulary (2019) p. 58 Eq. 34.
+        Rybicki & Lightman (1979), Chapter 6 (Larmor single-particle).
     """
-    # Cyclotron coefficient [W / (T^2 m^{-3} K)]
-    CYCL_COEFF = 6.21e-28
+    # SI cyclotron coefficient [W * m^3 / (T^2 * K)]
+    # Derived from NRL Eq 34 (cgs/eV) by dimensional conversion; see docstring.
+    CYCL_COEFF_SI = 5.35e-24
 
     ne_safe = np.maximum(ne, 0.0)
     Te_safe = np.maximum(Te, 0.0)
     B_safe = np.maximum(B_mag, 0.0)
 
-    return CYCL_COEFF * B_safe**2 * ne_safe * Te_safe
+    return CYCL_COEFF_SI * B_safe**2 * ne_safe * Te_safe
 
 
 def total_radiation_power(
@@ -345,9 +371,9 @@ def radiation_regime_diagnostic(
     else:
         brem_frac = rec_frac = cyc_frac = 0.0
 
-    # Critical B-field where cyclotron matches bremsstrahlung
-    # P_cyc = P_brem → 6.21e-28 * B^2 * ne * Te = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)
-    # B_crit = sqrt(1.42e-40 * g_ff * Z * ne * sqrt(Te) / 6.21e-28 / Te)
+    # Critical B-field where cyclotron matches bremsstrahlung (SI):
+    # P_cyc = P_brem  ->  5.35e-24 * B^2 * ne * Te = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)
+    # B_crit = sqrt(BREM_COEFF * g_ff * Z * ne * sqrt(Te) / (5.35e-24 * Te))
     ne_peak = float(np.max(ne))
     Te_peak = max(float(np.max(Te)), 1.0)
     g_ff_mean = float(np.mean(rad["gaunt_factor"]))
@@ -355,7 +381,7 @@ def radiation_regime_diagnostic(
     if Te_peak > 0 and ne_peak > 0:
         B_crit = np.sqrt(
             BREM_COEFF * g_ff_mean * Z * ne_peak * np.sqrt(Te_peak)
-            / (6.21e-28 * Te_peak)
+            / (5.35e-24 * Te_peak)
         )
     else:
         B_crit = 0.0
