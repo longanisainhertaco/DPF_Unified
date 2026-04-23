@@ -158,6 +158,6 @@ _SHOT_TO_SHOT_DATA: dict[str, dict[str, Any]] = {
         "u_rogowski": 0.05,      # 5% — same Rogowski coil
         "u_amplitude": 0.03,  # 3% (digitized from IPFS archive, 94 points)
         "n_shots_typical": 5,    # Gribkov et al. (2007) — similar campaign
-        "reference": "Gribkov et al., J. Phys. D 40:3592, 2007",
+        "reference": "Gribkov et al., J. Phys. D 40:1977-1989 (Part I), 2007, doi:10.1088/0022-3727/40/7/021",
     },
 }
