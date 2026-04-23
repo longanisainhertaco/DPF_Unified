@@ -25,10 +25,14 @@ References
   Academic Press.
 """
 
+import logging
+
 import numpy as np
 from scipy import integrate as sci_int
 from scipy import optimize as sci_opt
 from scipy.interpolate import interp1d
+
+logger = logging.getLogger(__name__)
 
 
 class SedovExact:
@@ -411,8 +415,21 @@ class SedovExact:
                     vwant = sci_opt.fminbound(
                         objective, v_lo, v_hi, xtol=1e-30, maxfun=2000
                     )
-                except Exception:
-                    vwant = 0.5 * (v_lo + v_hi)
+                except Exception as exc:
+                    # DO NOT fabricate a self-similar variable from the bracket
+                    # midpoint — that silently inserts a non-solution into the
+                    # Sedov profile.  Mark the point as NaN and log a warning
+                    # so downstream consumers can detect and skip it.
+                    logger.warning(
+                        "sedov_exact: fminbound failed at r=%.6e, lam=%.6e "
+                        "(solution_type=%s, bracket=[%.6e, %.6e]): %s",
+                        rwant, lam_want, self.solution_type, v_lo, v_hi, exc,
+                    )
+                    density[i] = np.nan
+                    velocity[i] = np.nan
+                    pressure[i] = np.nan
+                    last_v = None
+                    continue
 
                 if last_v is not None and abs(vwant - last_v) < vtol:
                     vconverged = True
