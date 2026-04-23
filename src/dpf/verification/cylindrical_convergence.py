@@ -53,6 +53,7 @@ from typing import Any
 import numpy as np
 
 from dpf.constants import k_B, mu_0
+from dpf.metal.floor_telemetry import apply_floor
 from dpf.verification.utils import estimate_convergence_order as _estimate_convergence_order
 
 logger = logging.getLogger(__name__)
@@ -140,13 +141,24 @@ def setup_zpinch_equilibrium(
     )
 
     # ── Pressure profile ──
+    # p_edge can slip below a Pa-scale floor for large column radii; we
+    # route BOTH the scalar p_edge tail and the assembled profile through
+    # apply_floor so activations are telemetered (CLAUDE.md: no bare
+    # np.maximum on state arrays).
     p_edge = p_axis - mu_0 * J0**2 * a**2 / 4.0
+    p_edge_floor = float(
+        apply_floor(
+            np.asarray(p_edge, dtype=float),
+            1e-10,
+            "cylindrical_convergence/p_edge",
+        )
+    )
     pressure = np.where(
         r <= a,
         p_axis - mu_0 * J0**2 * r**2 / 4.0,
-        np.maximum(p_edge, 1e-10),
+        p_edge_floor,
     )
-    pressure = np.maximum(pressure, 1e-10)
+    pressure = apply_floor(pressure, 1e-10, "cylindrical_convergence/pressure")
 
     # ── Build 3-D state arrays (nr, 1, nz) ──
     rho = np.full((nr, 1, nz), rho0)
@@ -161,9 +173,18 @@ def setup_zpinch_equilibrium(
     psi = np.zeros((nr, 1, nz))
 
     # ── Temperatures from p = 2 * n_i * k_B * T  (quasi-neutral: ne = ni) ──
+    # 2 * n_i * k_B is a positive scalar (rho0, ion_mass, k_B > 0); its floor
+    # is a pure divide-by-zero guard, not a state-array floor.  The temperature
+    # floor at 1 K IS a state-array floor and is telemetered.
     n_i = rho0 / ion_mass
-    T = pressure_3d / np.maximum(2.0 * n_i * k_B, 1e-30)
-    T = np.maximum(T, 1.0)  # Temperature floor [K]
+    denom = 2.0 * n_i * k_B
+    if denom <= 0.0:
+        raise ValueError(
+            f"cylindrical_convergence: 2 * n_i * k_B must be positive, got "
+            f"{denom:.3e} (rho0={rho0:.3e}, ion_mass={ion_mass:.3e})"
+        )
+    T = pressure_3d / denom
+    T = apply_floor(T, 1.0, "cylindrical_convergence/T [K]")
 
     Te = T.copy()
     Ti = T.copy()
