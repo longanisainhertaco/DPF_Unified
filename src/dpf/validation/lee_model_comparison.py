@@ -9,19 +9,38 @@ This implementation covers phases 1, 2, and 4 (reflected shock):
 
 1. **Axial rundown phase**: The current sheet is launched at the insulator
    and accelerates axially along the anode.  The equation of motion is a
-   snowplow model:
+   snowplow model (Lee 2014 JFE 33:319, page 322, Eq. 1 and the preceding
+   "Magnetic force on current sheath" expression).  The magnetic force on
+   the current sheath is
 
-       d^2z/dt^2 = (mu_0 / (4*pi)) * ln(b/a) * (f_m*I)^2 / M_swept
+       F_mag = (mu_0 * f_c^2 / (4*pi)) * ln(c) * I^2
 
-   where M_swept = m0 + rho0 * pi * (b^2 - a^2) * z is the accumulated
-   mass.  The circuit equation is simultaneously integrated.
+   where c = b/a is the cathode-to-anode radius ratio, f_c is the current
+   fraction (fraction of total I flowing in the piston), and f_m is the
+   axial mass swept-up factor.  Equating this with d(M_swept * v_z)/dt
+   (with M_swept = rho_0 * pi * (b^2 - a^2) * f_m * z) yields the axial
+   EOM (Lee 2014 Eq. 1):
+
+       d^2z/dt^2 = [ (f_c^2 / f_m) * mu_0 * ln(c) / (4*pi * rho_0 * (c^2 - 1))
+                     * (I / a)^2  -  (dz/dt)^2 ] / z
+
+   The circuit equation is simultaneously integrated.
 
 2. **Radial inward shock phase**: Once the current sheet reaches the end
-   of the anode, the radial implosion begins.  The slug model gives:
+   of the anode, the radial implosion begins.  The Lee slug model (Lee 2014
+   page 324, Eq. 13a and Eq. 14) uses the current factor f_c (NOT f_m) in
+   the driving magnetic pressure and the radial mass factor f_mr (generally
+   distinct from f_m) for the swept slug density.  The shock-front speed is
 
-       d^2r_s/dt^2 = -(mu_0 / (4*pi)) * I^2 / (rho * r_s * L_pinch)
+       dr_s/dt = -[mu_0 * (gamma + 1) / rho_0]^(1/2)
+                  * (f_c / sqrt(f_mr)) * I / (4 * pi * r_p)
 
-   where r_s is the shock radius and L_pinch is the pinch column length.
+   and the implicit EOM for the shock radius scales as
+
+       d^2r_s/dt^2 ~ -(mu_0 / (4*pi)) * (f_c * I)^2 / (rho_0 * f_mr * r_s * z_f)
+
+   where r_s is the shock radius, r_p is the piston (current-sheath)
+   radius, and z_f is the pinch column length.
 
 The ODE system is integrated with ``scipy.integrate.solve_ivp``.
 
@@ -192,9 +211,11 @@ class LeeModel:
         fill_gas_mass: Mass of fill gas ion [kg].
             Default: deuterium (3.34e-27 kg).
         current_fraction: Fraction of total current in the current sheet
-            (Lee's fc factor, typically 0.7-0.9).
+            (Lee's fc factor).  Paper-attested: fc=0.7 for PF1000 (Malek
+            et al. 2025) and KSU PF (Lee 2014 Fig. 7).
         mass_fraction: Fraction of swept mass retained by the sheet
-            (Lee's fm factor, typically 0.5-0.7).
+            (Lee's fm factor).  Paper-attested: fm=0.13 for PF1000 (Malek
+            et al. 2025), fm=0.10 for KSU PF (Lee 2014 Fig. 7).
         radial_mass_fraction: Fraction of gas swept radially (Lee's f_mr).
             Defaults to mass_fraction if None.  Lee & Saw (2014):
             f_mr ~ 0.07-0.12 for PF-1000, typically < f_m.
@@ -209,14 +230,22 @@ class LeeModel:
             inductance (frozen plasma column).  Default: False.
     """
 
+    # EMPIRICAL: Lee-model fit parameters.  Paper-attested values:
+    #   - Lee 2014 JFE 33:319 Fig. 7 (KSU PF shot 2244): fm=0.1, fc=0.7
+    #   - Malek et al. 2025 PPT 12(1):1 (PF1000, 3.5 Torr D2): fm=0.13, fc=0.7
+    # Defaults below are the PF1000 published fit (Malek 2025), which is the
+    # MJ-class device we validate against.  The previous _DEFAULT_FM=0.7 was
+    # outside the paper-attested range (fm ~0.10-0.13 for Type-1 PF devices)
+    # and over-predicted swept mass by ~5x.  Callers should still pass
+    # device-specific calibrated values via device_params["lee_fm"].
     _DEFAULT_FC = 0.7
-    _DEFAULT_FM = 0.7
+    _DEFAULT_FM = 0.13
 
     def __init__(
         self,
         fill_gas_mass: float = 6.687e-27,  # D2 molecular mass (2 * m_d)
         current_fraction: float = 0.7,
-        mass_fraction: float = 0.7,
+        mass_fraction: float = 0.13,
         radial_mass_fraction: float | None = None,
         pinch_column_fraction: float = 1.0,
         liftoff_delay: float = 0.0,
@@ -315,7 +344,10 @@ class LeeModel:
         # dI/dt = (V_cap - R0*I - I*dL_p/dt) / L_total
         # dV/dt = -I / C
         # dz/dt = vz
-        # dvz/dt = (mu_0/(4*pi)) * ln(b/a) * (fm*I)^2 / M_swept(z)
+        # dvz/dt = (mu_0/(4*pi)) * ln(b/a) * (fc*I)^2 / M_swept
+        # (Lee 2014 JFE 33:319 p. 322 magnetic-force expression + Eq. 1:
+        # the current in the piston is f_c*I; the mass swept-up factor
+        # f_m enters only through M_swept = rho_0 * pi * (b^2-a^2) * f_m * z.)(z)
 
         def axial_rhs(t: float, y: np.ndarray) -> np.ndarray:
             self._rhs_evals += 1
