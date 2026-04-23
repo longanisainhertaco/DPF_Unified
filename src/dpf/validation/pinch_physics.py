@@ -243,15 +243,32 @@ def mrti_growth_rate(
 ) -> float:
     """Compute magneto-Rayleigh-Taylor instability growth rate.
 
-    From Bian et al. (2026) Eq. 3, the linear MRT growth rate
-    including magnetic field stabilization for a sharp interface.
+    From Bian et al. (2026) Eq. 3 (paper on disk at
+    references/papers/plasma-physics/external-bfield-rayleigh-taylor.pdf,
+    *Phys. Plasmas* **33**, 012303).  The paper writes the dispersion
+    relation in Gaussian units:
+
+        gamma_Gauss = sqrt(g*k*A - 2*B_G^2 * k^2 * cos^2(theta)/(rho_h + rho_l))
+
+    where the Alfven speed is V_A = B_G / sqrt(rho_0) (paper Eq. 2
+    and surrounding text, no mu_0 factor).
+
+    This implementation uses SI units, in which the magnetic pressure is
+    B_SI^2/(2*mu_0) and the Alfven speed is V_A = B_SI/sqrt(mu_0*rho_0).
+    The SI-equivalent of Bian Eq. 3 is therefore:
+
+        gamma_SI = sqrt(g*k*A - 2*B_SI^2 * k^2 * cos^2(theta)/(mu_0*(rho_h + rho_l)))
+
+    which is what the code below evaluates.  (A previous revision had a
+    Gaussian-form docstring paired with SI code; this revision aligns
+    the docstring to SI to match the implementation.)
 
     Args:
         g: Effective gravity (deceleration) [m/s^2].
         k: Wavenumber of perturbation [1/m].
         A: Atwood number = (rho_h - rho_l) / (rho_h + rho_l).
             Must be in [0, 1].
-        B: Magnetic field strength [T]. Stabilizes if parallel to k.
+        B: Magnetic field strength [T] in SI.  Stabilizes if parallel to k.
         theta: Angle between B and k [rad].
             theta=0: B parallel to k (maximum stabilization).
             theta=pi/2: B perpendicular to k (no stabilization).
@@ -268,7 +285,8 @@ def mrti_growth_rate(
         (no stabilization). Axial B_z provides stabilization.
 
         Classical RT (B=0): gamma = sqrt(g * k * A)
-        Magnetic RT: gamma = sqrt(g*k*A - 2*B^2*k^2*cos^2(theta)/(rho_h+rho_l))
+        Magnetic RT (SI):
+            gamma = sqrt(g*k*A - 2*B^2*k^2*cos^2(theta)/(mu_0*(rho_h+rho_l)))
     """
     if A < 0 or A > 1:
         raise ValueError(f"Atwood number must be in [0, 1], got {A}")
