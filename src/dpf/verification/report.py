@@ -64,13 +64,27 @@ class VerificationReport:
     ) -> VerificationResult:
         """Record a verification measurement.
 
-        Returns the result (also stored internally).
+        A positive, finite ``tolerance`` is required.  A non-positive
+        tolerance previously caused the test to auto-PASS regardless of
+        the computed/expected disagreement, which silently masked real
+        failures in the verification report.
+
+        Raises:
+            ValueError: if ``tolerance`` is non-positive or non-finite.
+
+        Returns the recorded result (also stored internally).
         """
-        if tolerance > 0:
-            rel_err = abs(computed - expected) / max(abs(expected), 1e-300)
-            passed = rel_err <= tolerance
-        else:
-            passed = True
+        import math
+
+        if not math.isfinite(tolerance) or tolerance <= 0:
+            raise ValueError(
+                f"tolerance must be a finite positive number, got "
+                f"{tolerance!r} for module={module!r} test={test_name!r}. "
+                "Non-positive tolerance previously caused silent auto-PASS."
+            )
+
+        rel_err = abs(computed - expected) / max(abs(expected), 1e-300)
+        passed = rel_err <= tolerance
 
         status = "PASS" if passed else "FAIL"
         result = VerificationResult(
