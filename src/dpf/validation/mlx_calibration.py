@@ -214,16 +214,23 @@ def coarse_grid_scan(
     """Phase 1: Coarse grid scan to map the objective landscape.
 
     Args:
-        fc_values: fc grid points. Default: 5 points in [0.50, 0.80].
+        fc_values: fc grid points. Default: 5 points in [0.60, 0.80].
         fm_values: fm grid points. Default: 5 points in [0.03, 0.30].
         preset_name: Device preset.
         grid_shape: Coarse grid for fast evaluation.
 
     Returns:
         List of MLXTrialResult for all (fc, fm) combinations.
+
+    Notes:
+        fc lower bound aligned to 0.60 to match the paper-consistent
+        range used by ``_calibration_advanced.py`` (``fc_bounds=(0.6, 0.8)``).
+        Paper-attested fc values: fc=0.70 for PF1000 (Malek et al. 2025,
+        PPT 12(1):1, Section 2) and KSU PF (Lee 2014, JFE 33:319, Fig. 7).
+        The previous lower bound 0.50 was unattested in the Lee literature.
     """
     if fc_values is None:
-        fc_values = [0.50, 0.575, 0.65, 0.725, 0.80]
+        fc_values = [0.60, 0.65, 0.70, 0.75, 0.80]
     if fm_values is None:
         fm_values = [0.03, 0.10, 0.17, 0.24, 0.30]
 
