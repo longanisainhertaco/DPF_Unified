@@ -12,7 +12,11 @@ Key physics:
 - Suppression factor: S = f(E_c / E_th) with S → 0 at E_c >> E_th
 
 For p-11B fusion: temperatures ~200 keV required, so
-B_QMF ~ 2.3e8 T (230 MG) — only achievable in extreme DPF conditions.
+B_QMF ~ 1.73e9 T (17.3 GG) -- only achievable in extreme DPF conditions.
+(Computed from B_QMF = m_e * k_B * T / (e * hbar) at k_B T = 200 keV:
+ numerator = 3.204e-14 J * 9.109e-31 kg = 2.918e-44
+ denominator = 1.602e-19 C * 1.055e-34 J s = 1.690e-53
+ B_QMF = 1.727e9 T.)
 
 Competing effect: synchrotron radiation INCREASES with B^2, partially
 offsetting bremsstrahlung suppression. Net benefit requires detailed
@@ -103,11 +107,19 @@ def synchrotron_enhancement_factor(
     B: float,
     Te_K: float,
     ne: float,
+    Z: float = 1.0,
 ) -> float:
     """Compute synchrotron radiation enhancement factor.
 
-    Synchrotron power: P_sync = (e^4 * B^2 * n_e * v_th^2) / (6*pi*eps0*m_e^2*c^3)
+    Synchrotron power (Larmor formula averaged over 2D perpendicular Maxwellian):
+        P_sync = (e^4 * B^2 * n_e * <v_perp^2>) / (6*pi*eps0*m_e^2*c^3)
+               = (e^4 * B^2 * n_e * k_B * T_e) / (3*pi*eps0*m_e^3*c^3)
+    where <v_perp^2> = 2 * k_B * T / m_e (two perpendicular degrees of freedom).
     Scales as B^2 * T.
+
+    Previous version used v_th^2 = k_B * T / m_e (1D thermal speed), which
+    under-predicts by a factor of 2 compared to the correct perpendicular
+    thermal average used in cyclotron/synchrotron emission.
 
     Normalized to bremsstrahlung at reference conditions.
 
@@ -115,6 +127,7 @@ def synchrotron_enhancement_factor(
         B: Magnetic field [T].
         Te_K: Electron temperature [K].
         ne: Electron density [m^-3].
+        Z: Ion charge state (default 1).
 
     Returns:
         Factor > 1 means synchrotron exceeds bremsstrahlung at this B.
@@ -122,16 +135,20 @@ def synchrotron_enhancement_factor(
     from dpf.constants import c as c_light
     from dpf.constants import epsilon_0
 
-    v_th = np.sqrt(k_B * max(Te_K, 1.0) / m_e)
+    # Perpendicular thermal speed squared: <v_perp^2> = 2 k_B T_e / m_e
+    # (two perpendicular DoF for cyclotron motion, not 1D v_th^2).
+    v_perp_sq = 2.0 * k_B * max(Te_K, 1.0) / m_e
 
-    # Synchrotron power density
-    P_sync = e**4 * B**2 * ne * v_th**2 / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
+    # Synchrotron power density:
+    #   P_sync = e^4 * B^2 * n_e * <v_perp^2> / (6 pi eps0 m_e^2 c^3)
+    #          = e^4 * B^2 * n_e * k_B T / (3 pi eps0 m_e^3 c^3)
+    P_sync = e**4 * B**2 * ne * v_perp_sq / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
 
-    # Bremsstrahlung power density (Rybicki & Lightman 1979, Eq. 5.14a)
-    # SI: P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
-    # Note: 1.42e-40 is bare coefficient (g_bar=1). With g_ff=1.2: ~1.70e-40.
+    # Bremsstrahlung power density (quasi-neutral ni = ne/Z):
+    #   P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
+    # Must include Z factor (free-free from ion Coulomb field).
     g_ff = 1.2  # Gaunt factor
-    P_brem = 1.42e-40 * g_ff * ne**2 * np.sqrt(max(Te_K, 1.0))
+    P_brem = 1.42e-40 * g_ff * Z * ne**2 * np.sqrt(max(Te_K, 1.0))
 
     if P_brem > 0:
         return max(P_sync / P_brem, 1.0)
