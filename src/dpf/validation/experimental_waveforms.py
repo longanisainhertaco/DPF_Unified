@@ -50,7 +50,8 @@ _UNU_ICTP_WAVEFORM_I_KA = np.array([
 ])
 
 # =====================================================================
-# SYNTHETIC — PF-1000 at 16 kV reconstructed waveform
+# SYNTHETIC -- DO NOT TREAT AS MEASUREMENT
+# PF-1000 at 16 kV -- not digitized from a published figure.
 # Source paper: Akel et al., Radiat. Phys. Chem. 188:109633, 2021
 # Same device (IPPLM Warsaw), different operating conditions:
 #   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
@@ -58,15 +59,18 @@ _UNU_ICTP_WAVEFORM_I_KA = np.array([
 # Akel's published peak I_peak = 1.165 MA (shot 12581, Table 1: Ipeak = 1165 kA).
 # Previous version used I_peak = 1.20 MA (3% too high, no paper match).
 # Array rescaled by 1.165/1.20 = 0.9708333 to match Akel Table 1 verbatim.
-# NOTE: Replace with actual digitized data from Akel (2021) Fig. 3 when available.
+# Replace with actual digitized data from Akel (2021) Fig. 3 if/when
+# available; until then, do not use this array as a validation target
+# for the *shape* of the waveform -- only as an order-of-magnitude
+# constraint on the peak.
 # =====================================================================
 
-_PF1000_16KV_WAVEFORM_T_US = np.array([
+_SYNTHETIC_PF1000_16KV_WAVEFORM_T_US = np.array([
     0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5,
     5.0, 5.3, 5.5, 5.7, 5.8, 6.0, 6.3, 6.5, 7.0, 7.5,
     8.0, 8.5, 9.0, 9.5, 10.0,
 ])
-_PF1000_16KV_WAVEFORM_I_MA = np.array([
+_SYNTHETIC_PF1000_16KV_WAVEFORM_I_MA = np.array([
     0.0000, 0.0971, 0.2233, 0.3689, 0.5243, 0.6699, 0.7961, 0.9029, 0.9902, 1.0679,
     1.1262, 1.1553, 1.1650, 1.1456, 1.0873, 0.9708, 0.8738, 0.8252, 0.7573, 0.6990,
     0.6408, 0.5825, 0.5243, 0.4757, 0.4272,
@@ -142,40 +146,49 @@ _POSEIDON60KV_WAVEFORM_I_KA = np.array([
 ])
 
 # =====================================================================
-# SYNTHETIC — FAETON-I (Fuse Energy) reconstructed waveform
+# SYNTHETIC -- DO NOT TREAT AS MEASUREMENT
+# FAETON-I (Fuse Energy) -- 100 kV, 125 kJ, ~1 MA dense plasma focus.
 # Source paper: Damideh et al., Sci. Rep. 15:23048, 2025
-# 100 kV, 125 kJ, ~1 MA dense plasma focus
-# WAVEFORM: Reconstructed from damped RLC (C=25uF, L=220nH, R=7.6mOhm).
+# Not digitized from a published figure. Reconstructed from damped RLC
+# (C=25 uF, L=220 nH, R=7.6 mOhm).
 # Time axis shifted +0.3 us (peak: 3.4 us -> 3.7 us) to match Damideh 2025
 # §III: "generates ~1 MA of electrical current with a rise time of ~3.7 us"
 # (pp.3,4) and transition time 3.745 us (p.9, radial-phase trajectory).
 # Replace with digitized data from Damideh (2025) Fig. 3 when available.
+# Until then, do not use this array as a validation target for waveform
+# *shape* -- only as a placeholder for circuit-level checks.
 # =====================================================================
 
-_FAETON_WAVEFORM_T_US = np.array([
+_SYNTHETIC_FAETON_WAVEFORM_T_US = np.array([
     0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0,
     3.3, 3.5, 3.7, 3.9, 4.0, 4.1, 4.3, 4.5, 4.8, 5.3,
     5.8, 6.3, 6.8, 7.3, 7.7,
 ])
-_FAETON_WAVEFORM_I_KA = np.array([
+_SYNTHETIC_FAETON_WAVEFORM_I_KA = np.array([
     0.0, 135.3, 267.0, 393.0, 511.3, 620.1, 717.6, 802.5, 873.5, 929.6,
     969.9, 987.9, 998.5, 991.4, 983.7, 973.1, 949.1, 932.3, 913.7, 829.1,
     694.8, 531.4, 346.8, 149.9, -10.5,
 ])
 
 # =====================================================================
-# MJOLNIR (LLNL) — 2 MJ MA-class deuterium DPF at 60 kV typical operation
-# WAVEFORM: Reconstructed from known peak current (2.8 MA), rise time (~5 us),
-# and estimated circuit parameters.
-# Replace with digitized data from Schmidt (2021) or Goyon (2025) when available.
+# SYNTHETIC -- DO NOT TREAT AS MEASUREMENT
+# MJOLNIR (LLNL) -- 2 MJ MA-class deuterium DPF at 60 kV typical
+# operation. Not digitized from a published figure. Reconstructed from
+# a known peak current (2.8 MA), rise time (~5 us), and estimated
+# circuit parameters; the dip/recovery section is illustrative, not
+# measured.
+# Replace with digitized data from Schmidt (2021) or Goyon (2025) when
+# available. Until then, do not use this array as a validation target
+# for waveform *shape* -- only as a placeholder for circuit-level
+# checks.
 # =====================================================================
 
-_MJOLNIR_WAVEFORM_T_US = np.array([
+_SYNTHETIC_MJOLNIR_WAVEFORM_T_US = np.array([
     0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.3,
     4.5, 4.7, 5.0, 5.2, 5.5, 5.8, 6.0, 6.5, 7.0, 7.5,
     8.0, 8.5, 9.0, 9.5, 10.0,
 ])
-_MJOLNIR_WAVEFORM_I_KA = np.array([
+_SYNTHETIC_MJOLNIR_WAVEFORM_I_KA = np.array([
     0, 438, 865, 1271, 1646, 1980, 2265, 2495, 2663, 2733,
     2766, 2788, 2800, 2554, 2184, 2318, 2408, 2329, 2253, 2179,
     2107, 2038, 1972, 1907, 1844,
