@@ -37,6 +37,14 @@ SSP-RK3, which is 3rd-order and therefore not rate-limiting at this
 resolution range).  The accumulated error over a fixed step count
 therefore decreases as O(dr^2), demonstrating second-order convergence.
 
+The reported ``convergence_order`` is the negative of the log-log slope
+of error vs. resolution -- the same quantity reported in a Grid
+Convergence Index (GCI) study, due to Roache, P.J. (1994), "Perspective:
+A Method for Uniform Reporting of Grid Refinement Studies",
+J. Fluids Eng. 116:405-413. [UNVERIFIED-CITATION: Roache 1994 PDF not on
+disk; the log-log slope formula used by ``estimate_convergence_order``
+is the standard textbook reduction of GCI to two refinements.]
+
 Usage::
 
     from dpf.verification.cylindrical_convergence import run_convergence_test
