@@ -7,9 +7,13 @@ Two BC modes:
    z-positions where current has flowed — the MHD dynamics determine how
    far B propagates axially. Cathode: conducting wall (dB/dn = 0).
 
+   UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper not on
+   disk as of 2026-04-24. Implementation behavior kept but citation cannot be
+   verified.
    Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (19), Fig. 2.
-   PDF: references/papers/core-dpf/2025_Theoretical_and_numerical_studies_
-   on_motion_process_of_dense_plasma_focus.pdf
+   [UNVERIFIED — referenced PDF path
+   references/papers/core-dpf/2025_Theoretical_and_numerical_studies_
+   on_motion_process_of_dense_plasma_focus.pdf does not exist on disk.]
 
 2. **Cathode BC (legacy)**: B_theta = mu0*I/(2*pi*r) at outer-r ghost cells.
    Injects B at the cathode for all z simultaneously. Only valid when
@@ -39,6 +43,10 @@ def inlet_bt_bc_mlx(
 ) -> Any:
     """Apply B_theta BC at inlet boundary (z=0) — Sun 2025 method.
 
+    UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper not on
+    disk as of 2026-04-24. Implementation behavior kept but citation cannot be
+    verified.
+
     Sets B_theta = mu0*I/(2*pi*r) [/ sqrt(mu0) if HL] at the first ng_z
     z-cells (ghost zone at z=0, the insulator/inlet end).
 
@@ -54,6 +62,8 @@ def inlet_bt_bc_mlx(
     ----------
     Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (19):
         B = mu0*I/(2*pi*r) at inlet boundary AB.
+        [UNVERIFIED — paper not on disk as of 2026-04-24. Implementation
+        behavior kept but citation cannot be verified.]
     Auluck (2021), Phys. Plasmas 28:030703, Eq. (13):
         dPhi/dt coupling is exact for 2D axisymmetric (B purely azimuthal).
 
@@ -137,7 +147,8 @@ def electrode_bt_fixup_mlx(
 ) -> Any:
     """Legacy cathode BC: B_theta at outer-r ghost cells (kept for testing).
 
-    See inlet_bt_bc_mlx for the physically correct Sun 2025 method.
+    See inlet_bt_bc_mlx for the (UNVERIFIED) Sun 2025 method — paper not on
+    disk as of 2026-04-24.
     """
     mx = require_mlx()
     from dpf.metal.constants import IBR, IBT, IBZ, IDN, IEE, IEN, IMR, IMT, IMZ, ISR

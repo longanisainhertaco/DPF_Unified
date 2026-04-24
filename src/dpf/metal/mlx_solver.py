@@ -328,6 +328,9 @@ class MLXMHDSolver(PlasmaSolverBase):
 
         Ou Haibin et al. (2024): B_theta only behind sheath (low resistivity region).
         Sun et al. (2025): B at inlet boundary, conducting wall on electrodes.
+        [UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper
+        not on disk as of 2026-04-24. Implementation behavior kept but citation
+        cannot be verified.]
         """
         from dpf.metal.mlx_bc import electrode_bt_fixup_mlx
         return electrode_bt_fixup_mlx(
@@ -382,6 +385,9 @@ class MLXMHDSolver(PlasmaSolverBase):
         # When inlet BC is active (Sun 2025), use "outflow" (zero-gradient) at
         # cathode instead of "electrode" (Dirichlet B_theta). The cathode is a
         # conducting wall: dB/dn = 0. B_theta injection is at z=0 inlet only.
+        # UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper
+        # not on disk as of 2026-04-24. Implementation behavior kept but
+        # citation cannot be verified.
         # Sun et al. (2025) Eq. 18: dB/dn = 0 on electrode surfaces.
         _use_inlet_bc = getattr(self, "_inlet_bc_active", False)
         _bc_type = "outflow" if _use_inlet_bc else "electrode"
