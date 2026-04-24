@@ -28,9 +28,14 @@ References
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
+
+from dpf.metal.floor_telemetry import apply_floor
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -160,15 +165,23 @@ class ExactRiemannSolver:
             return (1.0 / (state.rho * a)) * (p / state.p) ** (-(self.gamma + 1.0) / (2.0 * self.gamma))
 
     def _solve_pressure(self) -> float:
-        """Find star-state pressure p* via Newton-Raphson iteration."""
+        """Find star-state pressure p* via Newton-Raphson iteration.
+
+        Follows Toro (2009) ch. 4 Eq. 4.5 (Newton-Raphson on the
+        pressure-equation residual). Floors and convergence guards are
+        routed through :func:`apply_floor` so silent fallbacks become
+        observable.
+        """
         # Two-rarefaction initial guess (Toro eq. 4.46)
         ppv = 0.5 * (self.L.p + self.R.p) - 0.125 * (
             self.R.u - self.L.u
         ) * (self.L.rho + self.R.rho) * (self.aL + self.aR)
-        p0 = max(ppv, 1e-10)
+        p0 = apply_floor(
+            ppv, 1e-10, "riemann_exact._solve_pressure/p0_initial_guess",
+        )
 
         # Newton iteration
-        for _ in range(self.max_iter):
+        for it in range(self.max_iter):
             fL = self._pressure_function(p0, self.L, self.aL)
             fR = self._pressure_function(p0, self.R, self.aR)
             f = fL + fR + (self.R.u - self.L.u)
@@ -178,18 +191,38 @@ class ExactRiemannSolver:
             df = dfL + dfR
 
             if abs(df) < 1e-30:
+                # Zero-derivative break: log so callers see the stall
+                # rather than receive a silently-stalled iterate.
+                logger.warning(
+                    "riemann_exact._solve_pressure: |df|<1e-30 at iter %d, "
+                    "p0=%.6e; returning current iterate",
+                    it, p0,
+                )
                 break
 
             dp = -f / df
             p_new = p0 + dp
 
             if p_new < 0:
+                # Negative-pressure guard: telemetered fallback to a
+                # small positive value (Toro suggests p_new = tol * p0).
+                apply_floor(
+                    p_new, 0.0,
+                    "riemann_exact._solve_pressure/p_new_negativity_clamp",
+                )
                 p_new = self.tol * p0
 
             if abs(dp) < self.tol * (0.5 * (p0 + p_new)):
                 return p_new
             p0 = p_new
 
+        # Non-convergence within max_iter: warn rather than silently
+        # returning the last iterate as if it had converged.
+        logger.warning(
+            "riemann_exact._solve_pressure: did not converge in %d iters; "
+            "returning last p0=%.6e",
+            self.max_iter, p0,
+        )
         return p0
 
     def _compute_velocity(self) -> float:
