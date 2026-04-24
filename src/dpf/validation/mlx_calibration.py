@@ -9,6 +9,18 @@ Supports:
 - Optuna TPE optimization (Phase 2) for efficient search
 - Multi-fidelity verification (Phase 3-4) at higher resolution
 
+Algorithm references (cited but not verified against PDF on disk):
+- TPE (Tree-structured Parzen Estimator): Bergstra, J., Bardenet, R.,
+  Bengio, Y., & Kegl, B. (2011), "Algorithms for Hyper-Parameter
+  Optimization", NeurIPS 24. [UNVERIFIED-CITATION: PDF not on disk;
+  Optuna's documentation cites this paper as the TPE source.]
+- constant_liar parallel-evaluation strategy: Ginsbourger, D.,
+  Le Riche, R., & Carraro, L. (2008), "A Multi-points Criterion for
+  Deterministic Parallel Global Optimization based on Gaussian
+  Processes", LMI Tech. Report. [UNVERIFIED-CITATION: PDF not on disk;
+  Optuna's parallel-pruner docs reference this for the constant_liar
+  trick when batching trials.]
+
 Reference: FC_FM_CALIBRATION_DMAIC.md
 """
 
