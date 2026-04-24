@@ -118,13 +118,16 @@ def sedov_shock_radius_cylindrical(
 
         R_s(t) = alpha(gamma) * (E_lin / rho0)^(1/4) * t^(1/2)
 
-    Units check: E_lin has units [J/m] = [kg/s^2], rho0 [kg/m^3], so
-    (E_lin/rho0)^(1/4) has units m^(1/2) and * t^(1/2) has units m^1.
-    Passing a total energy E [J] instead of a line density [J/m] yields
-    units m^(5/4), which is dimensionally inconsistent — this was the
-    bug fixed in this revision.  The caller MUST pass linear energy
-    density E_lin = E_total / L_z, where L_z is the axial length over
-    which the energy was deposited.
+    Units check: E_lin has units [J/m] = [(kg*m^2/s^2)/m] = [kg*m/s^2],
+    rho0 has units [kg/m^3], so [E_lin/rho0] = [m^4/s^2], and therefore
+    [(E_lin/rho0)^(1/4)] = [m/s^(1/2)].  Multiplying by [t^(1/2)] = [s^(1/2)]
+    yields [m], the correct shock radius.  Passing a total energy E [J]
+    instead of a line density [J/m] would give [(E/rho0)^(1/4)] =
+    [m^(5/4)/s^(1/2)] and [... * t^(1/2)] = [m^(5/4)], which is
+    dimensionally inconsistent — that was the bug fixed in this
+    revision.  The caller MUST pass linear energy density
+    E_lin = E_total / L_z, where L_z is the axial length over which
+    the energy was deposited.
 
     .. warning::
        The constant alpha(gamma) is gamma- and geometry-dependent.
