@@ -3025,7 +3025,9 @@ class TestDPFSurrogateParameterSweep:
 
         surrogate = DPFSurrogate(mock_torch, history_length=2)
 
-        configs = [{"rho0": 1e-6, "Te0": 5.0}]
+        # Te0 and Ti0 must satisfy WALRUS Te~Ti gate (P0.6.3): the surrogate
+        # rejects |Te-Ti|/Te > 0.1 because Te and Ti share embedding index 46.
+        configs = [{"rho0": 1e-6, "Te0": 5.0, "Ti0": 5.0}]
         results = surrogate.parameter_sweep(configs, n_steps=3)
 
         assert len(results) == 1

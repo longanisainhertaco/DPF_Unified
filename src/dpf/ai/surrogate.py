@@ -219,6 +219,11 @@ class DPFSurrogate(WalrusInferenceMixin):
         # Use last history_length states
         recent_history = history[-self.history_length :]
 
+        # P0.6.3: Te and Ti both map to embedding index 46 in the WALRUS
+        # schema. Reject inputs in regimes where they diverge to prevent
+        # silent loss of ion-temperature information.
+        self._check_two_temperature_regime(recent_history)
+
         if self._is_walrus_model:
             return self._walrus_predict(recent_history)
 

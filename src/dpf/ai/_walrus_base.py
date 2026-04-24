@@ -26,11 +26,22 @@ WALRUS_SCALAR_KEYS: tuple[str, ...] = ("rho", "Te", "Ti", "pressure", "psi")
 WALRUS_VECTOR_KEYS: tuple[str, ...] = ("B", "velocity")
 WALRUS_N_CHANNELS: int = len(WALRUS_SCALAR_KEYS) + len(WALRUS_VECTOR_KEYS) * 3  # 11
 
-# DPF field name → (WALRUS embedding name, embedding index)
+# DPF field name -> (WALRUS embedding name, embedding index)
+#
+# IMPORTANT (P0.6.3 Te/Ti collision):
+# Te and Ti both share embedding index 46 ("temperature"). The upstream WALRUS
+# checkpoint was trained on single-temperature plasma datasets and exposes only
+# one "temperature" channel; there is no separate index for the ion temperature
+# in the public WALRUS embedding table. As a result, this surrogate cannot
+# faithfully represent two-temperature plasmas (Te != Ti). The
+# ``WalrusInferenceMixin._check_two_temperature_regime`` guard, invoked from
+# ``DPFSurrogate.predict_next_step``, raises ``RuntimeError`` whenever
+# ``|Te - Ti| / Te > 0.1`` so callers cannot silently get physically wrong
+# predictions in two-temperature regimes.
 DPF_TO_WALRUS_FIELD: dict[str, tuple[str, int]] = {
     "rho": ("density", 28),
     "Te": ("temperature", 46),
-    "Ti": ("temperature", 46),
+    "Ti": ("temperature", 46),  # SHARED with Te — see Te/Ti note above.
     "pressure": ("pressure", 3),
     "psi": ("A", 42),
     "Bx": ("magnetic_field_x", 39),
@@ -40,6 +51,13 @@ DPF_TO_WALRUS_FIELD: dict[str, tuple[str, int]] = {
     "vy": ("velocity_y", 5),
     "vz": ("velocity_z", 6),
 }
+
+# Maximum tolerated fractional Te/Ti split before the WALRUS surrogate is
+# considered out-of-domain. 10% chosen because the Te=Ti embedding collision
+# means Ti information is dropped on the floor; a 10% cap keeps inference
+# inside the regime where the single-temperature approximation introduces
+# negligible error (well below typical Te uncertainty in DPF measurements).
+WALRUS_TE_TI_RELATIVE_TOLERANCE: float = 0.1
 
 # Ordered WALRUS embedding names matching the 11-channel DPF layout
 DPF_WALRUS_FIELD_NAMES: list[str] = [
@@ -82,6 +100,60 @@ class WalrusInferenceMixin:
         if dev is not None:
             return dev
         return getattr(self, "device", "cpu")
+
+    # ------------------------------------------------------------------
+    # Two-temperature regime guard (P0.6.3)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_two_temperature_regime(
+        states: list[dict[str, np.ndarray]],
+        relative_tolerance: float = WALRUS_TE_TI_RELATIVE_TOLERANCE,
+    ) -> None:
+        """Raise ``RuntimeError`` if Te and Ti diverge beyond tolerance.
+
+        WALRUS embedding indices map both ``Te`` and ``Ti`` to the same
+        "temperature" channel (index 46 — see DPF_TO_WALRUS_FIELD note),
+        so the surrogate cannot represent two-temperature plasmas.
+        Any caller in a regime with ``|Te - Ti| / Te > relative_tolerance``
+        would silently get a single-temperature prediction with Ti information
+        discarded; this guard turns that silent failure into a hard error.
+
+        Parameters
+        ----------
+        states : list[dict[str, np.ndarray]]
+            DPF state history. Each state may contain ``Te`` and/or ``Ti``.
+        relative_tolerance : float
+            Fractional split allowed (default 0.1 == 10%).
+
+        Raises
+        ------
+        RuntimeError
+            If any state has ``|Te - Ti| / max(Te, eps) > relative_tolerance``.
+        """
+        for idx, state in enumerate(states):
+            Te = state.get("Te")
+            Ti = state.get("Ti")
+            if Te is None or Ti is None:
+                continue
+            Te_arr = np.asarray(Te, dtype=np.float64)
+            Ti_arr = np.asarray(Ti, dtype=np.float64)
+            if Te_arr.shape != Ti_arr.shape:
+                continue  # shape mismatch handled elsewhere
+            # Reference temperature with epsilon to avoid div-by-zero in vacuum
+            ref = np.maximum(np.abs(Te_arr), 1.0)  # 1 K floor — vacuum only
+            rel = np.abs(Te_arr - Ti_arr) / ref
+            max_rel = float(rel.max())
+            if max_rel > relative_tolerance:
+                raise RuntimeError(
+                    "WALRUS surrogate restricted to Te ~ Ti regimes; "
+                    f"state {idx} has max |Te - Ti| / Te = {max_rel:.3f} "
+                    f"(tolerance {relative_tolerance:.3f}). "
+                    "Te and Ti share embedding index 46 in the WALRUS schema, "
+                    "so two-temperature predictions would silently drop Ti. "
+                    "Use the physics solver in this regime, or retrain "
+                    "WALRUS with a distinct ion-temperature channel."
+                )
 
     # ------------------------------------------------------------------
     # Checkpoint resolution
