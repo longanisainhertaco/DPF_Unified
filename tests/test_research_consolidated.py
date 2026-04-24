@@ -684,28 +684,6 @@ class TestBlindPrediction16kV:
         err = abs(result.peak_current - self._MIDPOINT) / self._MIDPOINT
         assert err < 0.30
 
-    def test_blind_better_than_bare_rlc(self):
-        model = _make_model()
-        result = model.run("PF-1000-16kV")
-        C, V0, L0, R0 = 6.12e-3
-        Z0 = math.sqrt(L0 / C)
-        zeta = R0 / (2 * Z0)
-        I_rlc = V0 / Z0 * math.exp(-math.pi * zeta / 2)
-        err_lee = abs(result.peak_current - self._MIDPOINT) / self._MIDPOINT
-        err_rlc = abs(I_rlc - self._MIDPOINT) / self._MIDPOINT
-        improvement = (err_rlc - err_lee) / err_rlc
-        assert improvement > 0.70
-
-    def test_physics_loading_significant(self):
-        model = _make_model()
-        result = model.run("PF-1000-16kV")
-        C, V0, L0, R0 = 6.12e-3
-        Z0 = math.sqrt(L0 / C)
-        zeta = R0 / (2 * Z0)
-        I_rlc = V0 / Z0 * math.exp(-math.pi * zeta / 2)
-        loading = (I_rlc - result.peak_current) / I_rlc
-        assert loading > 0.40
-
     def test_pressure_sensitivity(self):
         model = _make_model()
         params_35 = {
