@@ -487,11 +487,46 @@ def test_check_nan_inf_detects_inf_vector(tmp_path: Path):
 
 
 def test_check_energy_conservation_no_field(valid_well_file: Path):
-    """check_energy_conservation returns 0.0 when no energy_conservation field."""
+    """check_energy_conservation returns NaN when field absent (P0.6.7).
+
+    Previously returned 0.0 (silently equivalent to "perfect conservation");
+    new contract returns NaN so callers cannot mistake "field absent" for
+    "energy conserved". Must also emit a warning identifying the missing
+    field so the skip is auditable.
+    """
+    import math
+
     validator = DatasetValidator()
     drift = validator.check_energy_conservation(valid_well_file)
 
-    assert drift == 0.0
+    assert math.isnan(drift)
+
+
+def test_check_energy_conservation_no_h5py_returns_nan(monkeypatch, tmp_path):
+    """check_energy_conservation returns NaN when h5py unavailable (P0.6.7).
+
+    Distinguishes "h5py missing" skip case from "field absent" and
+    "read error" -- all three must be NaN, never 0.0.
+    """
+    import math
+
+    from dpf.ai import dataset_validator as dv
+
+    monkeypatch.setattr(dv, "HAS_H5PY", False)
+    drift = dv.DatasetValidator().check_energy_conservation(tmp_path / "fake.h5")
+    assert math.isnan(drift)
+
+
+def test_validate_file_marks_skipped_energy_check(valid_well_file: Path):
+    """validate_file emits 'check skipped' warning when energy field absent (P0.6.7).
+
+    The threshold-comparison branch must NOT silently pass when drift is NaN.
+    """
+    validator = DatasetValidator()
+    result = validator.validate_file(valid_well_file)
+    assert any(
+        "Energy-conservation check skipped" in w for w in result.warnings
+    ), f"Expected skip warning, got warnings={result.warnings}"
 
 
 def test_check_energy_conservation_returns_drift(tmp_path: Path):
