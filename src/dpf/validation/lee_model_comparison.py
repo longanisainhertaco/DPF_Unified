@@ -238,6 +238,8 @@ class LeeModel:
     # outside the paper-attested range (fm ~0.10-0.13 for Type-1 PF devices)
     # and over-predicted swept mass by ~5x.  Callers should still pass
     # device-specific calibrated values via device_params["lee_fm"].
+    # fc range fc in [0.6, 0.8] for Type-1 PFs (Lee & Saw 2014); per-device
+    # fits live in the device registry.
     _DEFAULT_FC = 0.7
     _DEFAULT_FM = 0.13
 
@@ -562,11 +564,12 @@ class LeeModel:
                 )
                 M_slug_pinch = max(M_slug_pinch, 1e-20)
 
-                # Post-shock density: reflected shock encounters gas already
-                # compressed to 4*rho0 by the inward shock (R-H strong limit,
-                # gamma=5/3).  Reflected shock re-compresses by ~2x (Mach ~2
-                # in pre-heated gas), giving ~8*rho0 total.  Strong limit
-                # would give 16*rho0.  (PhD Debate #21 double-shock estimate.)
+                # EMPIRICAL: rho_post = 8 * rho0 is a double-shock
+                # estimate (4x for the inward strong shock at gamma=5/3,
+                # times ~2x for the reflected shock in pre-heated gas).
+                # The strong-shock limit would be 16x; PhD Debate #21
+                # picked 8 as the engineering compromise. Not a paper-
+                # attested DPF measurement.
                 rho_post = 8.0 * rho0
 
                 def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:

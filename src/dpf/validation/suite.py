@@ -92,13 +92,21 @@ PF1000 = DeviceData(
     neutron_yield=1e11,        # ~10^11 neutrons/shot
     peak_ne=5e25,              # ~5e25 m^-3
     peak_Te_eV=2000.0,        # ~2 keV
+    # EMPIRICAL: PF-1000 tolerances are engineering acceptance bands,
+    # not paper-attested. 15% on peak current is roughly the Scholz
+    # 2006 shot-to-shot spread; 10% on rise time is tighter than the
+    # original 20% to flag drift; 5% on energy conservation is a
+    # numerical-method requirement; 1.0 on neutron yield = 1 order of
+    # magnitude (Y_n is shot-to-shot noisy, see Akel 2021 +/- 40%);
+    # 50% on n_e and T_e reflects the lack of well-resolved diagnostic
+    # measurements. Operator should tune per validation campaign.
     tolerances={
-        "peak_current": 0.15,     # 15% tolerance
-        "peak_current_time": 0.10, # 10% tolerance (tightened from 20%)
-        "energy_conservation": 0.05, # 5% tolerance
-        "neutron_yield": 1.0,     # 1 order of magnitude
-        "peak_ne": 0.50,          # 50% tolerance
-        "peak_Te_eV": 0.50,       # 50% tolerance
+        "peak_current": 0.15,
+        "peak_current_time": 0.10,
+        "energy_conservation": 0.05,
+        "neutron_yield": 1.0,
+        "peak_ne": 0.50,
+        "peak_Te_eV": 0.50,
     },
 )
 
@@ -124,9 +132,14 @@ NX2 = DeviceData(
     neutron_yield=1e8,         # ~10^8
     peak_ne=1e25,              # ~10^25 m^-3
     peak_Te_eV=500.0,         # ~500 eV
+    # EMPIRICAL: NX2 tolerances are widened (35% on peak, 50% on
+    # timing) because the reference values are RADPF model output,
+    # not Rogowski coil measurements (see top-of-file note about
+    # implausible 0.6% plasma loading). Operator-chosen acceptance
+    # band, not a paper-calibrated metric.
     tolerances={
-        "peak_current": 0.35,        # 35% (reference is model output, not measurement)
-        "peak_current_time": 0.50,   # 50% (RADPF timing unreliable as reference)
+        "peak_current": 0.35,
+        "peak_current_time": 0.50,
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,
@@ -151,9 +164,13 @@ LLNL_DPF = DeviceData(
     neutron_yield=5e7,         # ~5e7
     peak_ne=5e24,              # ~5e24 m^-3
     peak_Te_eV=300.0,         # ~300 eV
+    # EMPIRICAL: LLNL-DPF tolerances are engineering acceptance bands.
+    # 20% on peak current and 15% on rise time (tightened from 25%) are
+    # operator-chosen; the small device has less published shot-to-shot
+    # statistics than PF-1000.
     tolerances={
         "peak_current": 0.20,
-        "peak_current_time": 0.15,  # 15% tolerance (tightened from 25%)
+        "peak_current_time": 0.15,
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,
@@ -178,9 +195,14 @@ PF1000_20KV = DeviceData(
     neutron_yield=5e9,           # estimated
     peak_ne=3e25,                # estimated
     peak_Te_eV=1500.0,          # estimated
+    # EMPIRICAL: PF-1000-20kV tolerances are 15%/15% because the
+    # reference values are voltage-scaled estimates from the 27 kV
+    # Scholz dataset, not direct 20 kV measurements (P1.6 in the
+    # checklist flags this as a self-consistency loop, not a true
+    # validation target). Operator-chosen acceptance band.
     tolerances={
-        "peak_current": 0.15,        # 15% (voltage-scaled, not direct measurement)
-        "peak_current_time": 0.15,   # 15%
+        "peak_current": 0.15,
+        "peak_current_time": 0.15,
         "energy_conservation": 0.05,
         "neutron_yield": 1.0,
         "peak_ne": 0.50,

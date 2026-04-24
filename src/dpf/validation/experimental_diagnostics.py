@@ -232,6 +232,11 @@ def compute_speed_factor(
     S = I_kA / (a_cm * np.sqrt(p_torr))
     S_ratio = S / _S_TYPICAL_PF1000
 
+    # EMPIRICAL: regime band [0.8, 1.2] is an engineering choice (a
+    # 20% window around S/S_opt = 1) for classifying drive condition.
+    # Lee & Saw 2008 calls S=89 the "typical" PF-1000 reference value
+    # but does NOT publish a regime classification cut; this band is
+    # internal to PhD Debate #36 and not paper-attested.
     if 0.8 <= S_ratio <= 1.2:
         regime = "PF1000-class"
     elif S_ratio < 0.8:
