@@ -18,9 +18,26 @@ dimensionless constant of order unity that depends on gamma.
    E0 [J] directly into the cylindrical similarity formula.  That is
    dimensionally inconsistent: the formula requires [J/m], not [J].
    The implementation now converts E0 -> E_lin by dividing by the
-   axial length over which the deposit lives.  The alpha(gamma)
-   tabulation requires a reference (Kamm & Timmes 2007 or Sedov 1959)
-   that is not yet on disk; alpha=1.0 is a documented placeholder.
+   axial length over which the deposit lives.
+
+.. note::
+   Kamm & Timmes 2007 (LA-UR-07-2849) IS on disk at
+   references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+   Eq. 12 (page 4) defines the shock radius via
+       r2 = (E_blast * t^2 / (alpha * rho0))^(1/(j+2-omega))
+   which for j=2 (cylindrical), omega=0 reduces to
+       r2 = (E_blast / (alpha_KT * rho0))^(1/4) * t^(1/2).
+   Our module's alpha_code multiplies the outer (E/rho0)^(1/4) * t^(1/2),
+   so alpha_code = (1/alpha_KT)^(1/4).
+   The paper tabulates alpha_KT = 0.984041 for gamma=1.4 cylindrical
+   omega=0 (Table 4, page 41 / line 2420 in pdftotext).
+   The paper does NOT directly tabulate a numerical alpha_KT for
+   gamma=5/3 cylindrical omega=0; that value must be obtained from
+   equation 54 via numerical quadrature of the energy integrals (the
+   paper's Appendix B Fortran code does this).  Until that quadrature
+   is run and cross-checked, alpha=1.0 remains a documented placeholder.
+   Flagged ESCALATED_NEEDS_QUADRATURE (paper on disk, scalar not yet
+   extracted) in Agent THETA_FIX fix log.
 
 For our (r, z) simulation we deposit a total energy E0 into a small
 central region (n_deposit_r radial cells x n_deposit_z axial cells)
@@ -43,10 +60,18 @@ References
   -- primary source; NOT on disk in this repository.
 - Taylor, *Proc. Roy. Soc. A* **201**, 159 (1950) -- primary blast
   wave paper; NOT on disk.
-- Kamm & Timmes, LA-UR-07-2849 (2007) -- Table I tabulates alpha
-  for nu=2 (cylindrical) vs gamma; NOT on disk.
+- Kamm & Timmes, LA-UR-07-2849 (2007) -- ON DISK at
+  references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+  Eq. 12 (p. 4) gives r2 = (E*t^2/(alpha*rho0))^(1/(j+2-omega)).
+  Table 4 (p. 41) tabulates alpha for gamma=1.4 uniform density in
+  planar/cylindrical/spherical geometries (alpha_KT=0.984041 for
+  cylindrical j=2 omega=0).  The paper does NOT directly tabulate
+  gamma=5/3 cylindrical omega=0; that value requires numerical
+  quadrature of Eq. 54-57 via the Fortran code in Appendix B.
 
-Required-paper status: alpha value ESCALATED_NEEDS_PAPER.
+Required-paper status: alpha value ESCALATED_NEEDS_QUADRATURE (paper
+is on disk; gamma=5/3 cylindrical scalar not yet extracted via
+numerical integration).
 """
 
 from __future__ import annotations
@@ -131,14 +156,23 @@ def sedov_shock_radius_cylindrical(
 
     .. warning::
        The constant alpha(gamma) is gamma- and geometry-dependent.
-       Published tabulations (Kamm & Timmes 2007 LA-UR-07-2849 Table I;
-       Sedov 1959) are NOT available on disk in this repository.
-       The default ``alpha=1.0`` is a placeholder of order unity and
-       is NOT the tabulated value for gamma=5/3 cylindrical.  The
-       caller should supply the correct alpha once a reference PDF is
-       obtained (see checklist "Papers to obtain"); this function
-       should not be used to make quantitative accuracy claims until
-       then.  Flagged ESCALATED_NEEDS_PAPER in Agent GAMMA fix log.
+       Kamm & Timmes 2007 (LA-UR-07-2849) IS on disk at
+       references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+       Paper's Table 4 tabulates alpha_KT = 0.984041 for gamma=1.4
+       cylindrical omega=0, with Eq. 12:
+           r2 = (E*t^2/(alpha_KT*rho0))^(1/4)
+       which is equivalent to this module's
+           r2 = alpha_code * (E/rho0)^(1/4) * t^(1/2)
+       with alpha_code = (1/alpha_KT)^(1/4).  For gamma=5/3 cylindrical
+       omega=0, the paper does NOT directly tabulate alpha_KT; it must
+       be computed by numerical quadrature of Eq. 54-57 (the paper's
+       Appendix B Fortran code does this).  Until that quadrature is
+       run and independently cross-checked, ``alpha=1.0`` remains a
+       documented placeholder of order unity and is NOT the correct
+       tabulated value for gamma=5/3 cylindrical.  This function
+       should not be used to make quantitative accuracy claims at the
+       current alpha default.  Flagged ESCALATED_NEEDS_QUADRATURE in
+       Agent THETA_FIX fix log.
 
     Args:
         E_lin: Deposited energy per unit axial length [J/m].
@@ -152,9 +186,12 @@ def sedov_shock_radius_cylindrical(
     Returns:
         Shock radius [m].
     """
-    # UNVERIFIED ALPHA: Kamm & Timmes 2007 and Sedov 1959 are not on
-    # disk; we expose alpha as an argument and default to 1.0 rather
-    # than hardcoding an unverified tabulated value.
+    # Kamm & Timmes 2007 IS on disk; Table 4 gives alpha_KT=0.984041 for
+    # gamma=1.4 cylindrical omega=0 via Eq. 12.  For gamma=5/3 cylindrical
+    # omega=0 the paper does NOT tabulate a scalar; it must be computed
+    # by numerical quadrature (paper Appendix B Fortran).  Until that is
+    # done independently, alpha=1.0 is a documented placeholder of order
+    # unity -- see module and function docstrings for the full note.
     return alpha * (E_lin / rho0) ** 0.25 * t ** 0.5
 
 
@@ -410,6 +447,11 @@ def run_sedov_cylindrical(
             "L_z_deposit": L_z_deposit,
             "E_lin": E_lin,
             "alpha_placeholder": 1.0,
-            "alpha_note": "ESCALATED_NEEDS_PAPER (Kamm-Timmes 2007 off disk)",
+            "alpha_note": (
+                "ESCALATED_NEEDS_QUADRATURE (Kamm-Timmes 2007 on disk at "
+                "references/papers/mhd-numerics/"
+                "kamm-timmes-2007-sedov-blast-wave.pdf; Eq.54-57 quadrature "
+                "for gamma=5/3 cylindrical omega=0 not yet run)"
+            ),
         },
     )
