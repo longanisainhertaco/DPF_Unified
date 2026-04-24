@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -169,11 +170,23 @@ class EnsemblePredictor:
             training_stats: Per-field statistics (keys: mean, std)
 
         Returns:
-            OOD score (0 = in-distribution, higher = more OOD)
+            OOD score (0 = in-distribution, higher = more OOD).
+            Returns ``float('nan')`` (with a UserWarning) when no check could
+            be performed -- either ``training_stats`` was not supplied or no
+            field overlapped between ``state`` and ``training_stats``. Callers
+            MUST distinguish NaN ("OOD check skipped") from 0.0 ("genuinely
+            in-distribution"); see P0.6.6.
         """
         if training_stats is None:
-            logger.debug("No training stats provided, OOD score = 0.0")
-            return 0.0
+            warnings.warn(
+                "OOD detection skipped: training_stats not supplied. "
+                "Returning NaN to signal 'check not performed' (NOT 'in-dist'). "
+                "Provide per-field training statistics to enable OOD scoring.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.warning("No training stats provided; OOD score = NaN (skipped)")
+            return float("nan")
 
         distances = []
 
@@ -193,8 +206,16 @@ class EnsemblePredictor:
             distances.append(distance)
 
         if not distances:
-            logger.warning("No common fields for OOD detection")
-            return 0.0
+            warnings.warn(
+                "OOD detection skipped: no overlapping fields between state "
+                f"and training_stats (state keys={sorted(state.keys())}, "
+                f"training keys={sorted(training_stats.keys())}). "
+                "Returning NaN; callers must not interpret as 'in-distribution'.",
+                UserWarning,
+                stacklevel=2,
+            )
+            logger.warning("No common fields for OOD detection; OOD score = NaN")
+            return float("nan")
 
         ood_score = float(np.mean(distances))
 

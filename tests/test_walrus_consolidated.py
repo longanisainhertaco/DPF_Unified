@@ -1951,11 +1951,23 @@ def test_is_confident_returns_true_at_exact_threshold(ensemble):
     assert ensemble.is_confident(pred) is True
 
 
-def test_ood_detection_returns_zero_without_training_stats(ensemble):
-    """ood_detection returns 0.0 when no training_stats provided."""
+def test_ood_detection_returns_nan_without_training_stats(ensemble):
+    """ood_detection returns NaN + UserWarning when training_stats absent (P0.6.6).
+
+    Previously returned 0.0 (silently equivalent to "in-distribution"); the
+    new contract distinguishes "check skipped" (NaN) from "definitely
+    in-distribution" (0.0).
+    """
+    import math
+    import warnings as _warnings
+
     state = _make_state_confidence()
-    ood_score = ensemble.ood_detection(state, training_stats=None)
-    assert ood_score == pytest.approx(0.0)
+    with _warnings.catch_warnings(record=True) as caught:
+        _warnings.simplefilter("always")
+        ood_score = ensemble.ood_detection(state, training_stats=None)
+
+    assert math.isnan(ood_score)
+    assert any("not supplied" in str(w.message) for w in caught)
 
 
 def test_ood_detection_returns_float_score_with_training_stats(ensemble):
