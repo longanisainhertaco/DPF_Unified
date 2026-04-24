@@ -1742,7 +1742,6 @@ class TestHybridValidation:
             self.surrogate,
             handoff_fraction=0.1,
             validation_interval=1,
-            max_l2_divergence=1e-2,
         )
 
     def test_surrogate_phase_runs(self):
@@ -2132,14 +2131,13 @@ def test_init_stores_parameters_correctly():
         surrogate,
         handoff_fraction=0.3,
         validation_interval=25,
-        max_l2_divergence=0.05,
     )
 
     assert engine.config is config
     assert engine.surrogate is surrogate
     assert engine.handoff_fraction == 0.3
     assert engine.validation_interval == 25
-    assert engine.max_l2_divergence == 0.05
+    assert not hasattr(engine, "max_l2_divergence")  # P0.6.5: removed dead param
     assert engine._trajectory == []
 
 
@@ -2298,7 +2296,7 @@ def test_surrogate_fallback_when_divergence_exceeds_threshold():
 
     surrogate = DivergentSurrogate()
     engine = HybridEngine(
-        config, surrogate, handoff_fraction=0.2, validation_interval=2, max_l2_divergence=0.1
+        config, surrogate, handoff_fraction=0.2, validation_interval=2
     )
 
     with patch("dpf.engine.SimulationEngine", MockEngineHybrid):
@@ -2880,53 +2878,30 @@ class TestDPFSurrogatePrediction:
         with pytest.raises(ValueError, match="Insufficient history"):
             surrogate.predict_next_step(history)
 
-    def test_predict_next_step_returns_state_dict_with_same_keys(self, mock_torch):
-        """predict_next_step returns state dict with same keys as input."""
+    def test_predict_next_step_raises_in_placeholder_mode(self, mock_torch):
+        """predict_next_step raises RuntimeError when WALRUS not loaded (P0.6.4).
+
+        Previously returned an identity copy of the last state in placeholder
+        mode. The silent fallback fed garbage to HybridEngine /
+        InstabilityDetector / InverseDesigner. Now it refuses.
+        """
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=4)
 
         history = [_make_state_surrogate() for _ in range(4)]
-        predicted = surrogate.predict_next_step(history)
+        with pytest.raises(RuntimeError, match="placeholder mode"):
+            surrogate.predict_next_step(history)
 
-        assert set(predicted.keys()) == set(history[0].keys())
-
-    def test_predict_next_step_returns_correct_shapes_for_scalar_fields(self, mock_torch):
-        """predict_next_step returns correct shapes for scalar fields."""
+    def test_predict_next_step_history_too_short_takes_precedence(self, mock_torch):
+        """ValueError on short history raises before the placeholder check."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=4)
 
-        history = [_make_state_surrogate(shape=(8, 8, 8)) for _ in range(4)]
-        predicted = surrogate.predict_next_step(history)
-
-        for fkey in ["rho", "pressure", "Te", "Ti", "psi"]:
-            assert predicted[fkey].shape == (8, 8, 8)
-
-    def test_predict_next_step_returns_correct_shapes_for_vector_fields(self, mock_torch):
-        """predict_next_step returns correct shapes for vector fields."""
-        from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
-
-        surrogate = DPFSurrogate(mock_torch, history_length=4)
-
-        history = [_make_state_surrogate(shape=(8, 8, 8)) for _ in range(4)]
-        predicted = surrogate.predict_next_step(history)
-
-        for fkey in ["velocity", "B"]:
-            assert predicted[fkey].shape == (3, 8, 8, 8)
-
-    def test_predict_next_step_uses_last_history_length_states(self, mock_torch):
-        """predict_next_step uses only last history_length states."""
-        from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
-
-        surrogate = DPFSurrogate(mock_torch, history_length=3)
-
-        history = [_make_state_surrogate() for _ in range(5)]
-        history[0]["rho"][:] = 999.0
-
-        predicted = surrogate.predict_next_step(history)
-
-        assert predicted is not None
+        history = [_make_state_surrogate() for _ in range(2)]
+        with pytest.raises(ValueError, match="Insufficient history"):
+            surrogate.predict_next_step(history)
 
 
 class TestDPFSurrogateRollout:
@@ -2943,22 +2918,32 @@ class TestDPFSurrogateRollout:
         with pytest.raises(ValueError, match="Need at least"):
             surrogate.rollout(initial_states, n_steps=10)
 
-    def test_rollout_returns_list_of_n_steps_states(self, mock_torch):
-        """rollout returns list of n_steps states."""
+    def test_rollout_returns_list_of_n_steps_states(self, mock_torch, monkeypatch):
+        """rollout returns list of n_steps states (predict_next_step stubbed)."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=4)
+        # Stub predict_next_step: surrogate is in placeholder mode after
+        # P0.6.4 and would otherwise raise. Test the rollout loop, not WALRUS.
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
 
         initial_states = [_make_state_surrogate() for _ in range(4)]
         predictions = surrogate.rollout(initial_states, n_steps=5)
 
         assert len(predictions) == 5
 
-    def test_rollout_each_state_has_correct_structure(self, mock_torch):
-        """rollout each state has correct structure."""
+    def test_rollout_each_state_has_correct_structure(self, mock_torch, monkeypatch):
+        """rollout each state has correct structure (predict_next_step stubbed)."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=4)
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
 
         initial_states = [_make_state_surrogate() for _ in range(4)]
         predictions = surrogate.rollout(initial_states, n_steps=3)
@@ -2968,11 +2953,15 @@ class TestDPFSurrogateRollout:
                 "rho", "velocity", "pressure", "B", "Te", "Ti", "psi",
             }
 
-    def test_rollout_autoregressive_states_accumulate(self, mock_torch):
+    def test_rollout_autoregressive_states_accumulate(self, mock_torch, monkeypatch):
         """rollout autoregressive (states accumulate in trajectory)."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=2)
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
 
         initial_states = [_make_state_surrogate() for _ in range(2)]
         predictions = surrogate.rollout(initial_states, n_steps=3)
@@ -2985,11 +2974,15 @@ class TestDPFSurrogateRollout:
 class TestDPFSurrogateParameterSweep:
     """Test parameter sweep functionality."""
 
-    def test_parameter_sweep_returns_list_of_result_dicts(self, mock_torch):
-        """parameter_sweep returns list of result dicts."""
+    def test_parameter_sweep_returns_list_of_result_dicts(self, mock_torch, monkeypatch):
+        """parameter_sweep returns list of result dicts (predict stubbed)."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=2)
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
 
         configs = [{"rho0": 1e-6, "pressure0": 100.0}, {"rho0": 2e-6, "pressure0": 200.0}]
 
@@ -3019,11 +3012,15 @@ class TestDPFSurrogateParameterSweep:
         assert len(results) == 1
         assert "error" in results[0]
 
-    def test_parameter_sweep_includes_summary_metrics(self, mock_torch):
-        """parameter_sweep includes expected summary metrics."""
+    def test_parameter_sweep_includes_summary_metrics(self, mock_torch, monkeypatch):
+        """parameter_sweep includes expected summary metrics (predict stubbed)."""
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
         surrogate = DPFSurrogate(mock_torch, history_length=2)
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
 
         configs = [{"rho0": 1e-6, "Te0": 5.0}]
         results = surrogate.parameter_sweep(configs, n_steps=3)
@@ -4329,15 +4326,19 @@ class TestPlaceholderFallback:
         """_is_walrus_model is False in placeholder mode."""
         assert placeholder_surrogate._is_walrus_model is False
 
-    def test_placeholder_predict_returns_copy_of_last_state(self, placeholder_surrogate):
-        """predict_next_step returns copy of last state in placeholder mode."""
+    def test_placeholder_predict_raises_runtime_error(self, placeholder_surrogate):
+        """predict_next_step raises RuntimeError in placeholder mode (P0.6.4).
+
+        Previously returned an identity copy of the last state with a
+        UserWarning, which downstream consumers (HybridEngine,
+        InstabilityDetector, InverseDesigner) could not distinguish from
+        a real prediction.
+        """
         history = [_make_state_j2() for _ in range(2)]
         history[-1]["rho"][:] = 42.0
 
-        result = placeholder_surrogate.predict_next_step(history)
-
-        np.testing.assert_allclose(result["rho"], 42.0)
-        assert result["rho"] is not history[-1]["rho"]
+        with pytest.raises(RuntimeError, match="placeholder mode"):
+            placeholder_surrogate.predict_next_step(history)
 
 
 class TestModuleConstants:
@@ -4410,7 +4411,15 @@ class TestValidateAgainstPhysics:
 
         from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
 
-        return DPFSurrogate(ckpt, history_length=2)
+        surrogate = DPFSurrogate(ckpt, history_length=2)
+        # P0.6.4: predict_next_step now raises in placeholder mode.
+        # Stub it with the previous identity-copy behavior so we can
+        # exercise validate_against_physics end-to-end.
+        monkeypatch.setattr(
+            surrogate, "predict_next_step",
+            lambda hist: {k: v.copy() for k, v in hist[-1].items()},
+        )
+        return surrogate
 
     def test_validate_returns_report_dict(self, placeholder_surrogate):
         """validate_against_physics returns a dict with required keys."""
@@ -4861,12 +4870,11 @@ def test_hybrid_engine_init_valid_handoff(minimal_config, walrus_mock_surrogate)
         surrogate=walrus_mock_surrogate,
         handoff_fraction=0.2,
         validation_interval=50,
-        max_l2_divergence=0.1,
     )
 
     assert engine.handoff_fraction == pytest.approx(0.2)
     assert engine.validation_interval == 50
-    assert engine.max_l2_divergence == pytest.approx(0.1)
+    assert not hasattr(engine, "max_l2_divergence")  # P0.6.5: removed dead param
     assert len(engine._trajectory) == 0
 
 
