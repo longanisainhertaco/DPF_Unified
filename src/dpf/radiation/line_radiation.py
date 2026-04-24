@@ -20,10 +20,23 @@ copper (Z=29), and tungsten (Z=74).  For other elements a general
 interpolation in Z is used.
 
 References:
-    - Post et al., At. Data Nucl. Data Tables 20, 397 (1977)
     - Summers, ADAS User Manual (2004)
     - NRL Plasma Formulary (2019)
     - Seaton, MNRAS 119, 81 (1959)
+
+Provenance note (2026-04-23, P1.9.4):
+    The piecewise power-law fits in this module were previously labeled
+    as drawn from "Post, Jensen, Tarter, Grasberger & Lokke,
+    At. Data Nucl. Data Tables 20, 397 (1977)". Post 1977 is NOT on
+    disk; what Post actually publishes are log-polynomial fits, not the
+    power-law forms implemented here. The actual provenance of these
+    fits is unknown without the Post paper or an alternative published
+    source. They are now flagged as # EMPIRICAL with the calibration
+    target (peak Lambda magnitudes, shell structure) explicitly listed,
+    so a reviewer can audit them against ADAS/CHIANTI without an
+    unsupported attribution. Restoration of the Post citation requires
+    the actual paper on disk and a re-derivation matching the published
+    log-polynomial form.
 """
 
 from __future__ import annotations
@@ -59,18 +72,21 @@ def _cooling_hydrogen(Te_eV: float) -> float:
     Very weak line radiation above full ionisation (~13.6 eV).
     Below ~13.6 eV excitation of Lyman-alpha dominates.
 
-    Fit calibrated to Post et al. (1977) Fig. 1 hydrogen cooling curve.
-    Peak Lambda ~ 3e-32 W m^3 at ~ 4 eV.  Uses double-exponential form
-    A * exp(-E_exc/T - T/T_ion) where E_exc = 10.2 eV (Ly-alpha excitation)
-    and T_ion = 1.57 eV (ionisation depletion scale).  Accuracy: within
-    factor of 2 of Post et al. over 2--13 eV range.
+    EMPIRICAL: double-exponential form A * exp(-E_exc/T - T/T_ion)
+    with E_exc = 10.2 eV (Ly-alpha excitation) and T_ion = 1.57 eV
+    (ionisation depletion scale). Calibrated to give peak
+    Lambda ~ 3e-32 W m^3 near 4 eV. Source paper for the functional
+    form is unverified -- previous "from Post et al. (1977)"
+    attribution removed because Post 1977 is not on disk and Post's
+    published fits are log-polynomial, not double-exponential
+    (P1.9.4).
     """
     if Te_eV < 1.0:
         # Below 1 eV: negligible excitation
         return 1.0e-40
     elif Te_eV < 13.6:
         # Lyman-alpha excitation peak with ionisation depletion cutoff
-        # Peak ~ 3e-32 near 4 eV, matching Post et al. (1977) Fig. 1
+        # Peak ~ 3e-32 near 4 eV (Post 1977 Fig. 1 attribution removed; P1.9.4)
         return 4.93e-30 * np.exp(-10.2 / Te_eV - Te_eV / 1.57)
     elif Te_eV < 100.0:
         # Fully ionised H: only residual recombination-cascade lines
@@ -85,9 +101,13 @@ def _cooling_neon(Te_eV: float) -> float:
     """Neon (Z=10) cooling function [W m^3].
 
     Moderate-Z impurity with strong line radiation in 10-200 eV range.
-    Piecewise power-law fit to Post et al. (1977) Table II and Summers
-    ADAS data.  Peak Lambda ~ 2e-32 near 30-50 eV.
-    Accuracy: within factor of 2-3 of ADAS coronal rates over 5-500 eV.
+
+    EMPIRICAL piecewise power-law fit calibrated to give peak
+    Lambda ~ 2e-32 near 30-50 eV. Targets ADAS coronal rates within
+    factor of 2-3 over 5-500 eV. Previous "Post et al. (1977) Table II"
+    citation removed (P1.9.4) -- Post 1977 not on disk, and Post's
+    published fits are log-polynomial, not power-law. Provenance of
+    the actual coefficients is unknown.
     """
     if Te_eV < 1.0:
         return 1.0e-40
@@ -112,9 +132,13 @@ def _cooling_argon(Te_eV: float) -> float:
     """Argon (Z=18) cooling function [W m^3].
 
     Strong M-shell and L-shell line radiation in 10-1000 eV range.
-    Piecewise power-law fit to Post et al. (1977) Table II.
-    Peak Lambda ~ 3e-33 near 30-100 eV.
-    Accuracy: within factor of 3 of Post et al. and ADAS over 10-1000 eV.
+
+    EMPIRICAL piecewise power-law fit calibrated to give peak
+    Lambda ~ 3e-33 near 30-100 eV. Targets ADAS within factor of 3
+    over 10-1000 eV. Previous "Post et al. (1977) Table II" citation
+    removed (P1.9.4) -- Post 1977 not on disk, and Post's published
+    fits are log-polynomial, not power-law. Provenance of the actual
+    coefficients is unknown.
     """
     if Te_eV < 2.0:
         return 1.0e-39
@@ -138,11 +162,15 @@ def _cooling_argon(Te_eV: float) -> float:
 def _cooling_copper(Te_eV: float) -> float:
     """Copper (Z=29) cooling function [W m^3].
 
-    Tabulated coronal equilibrium cooling from Post, Jensen, Tarter,
-    Grasberger & Lokke, At. Data Nucl. Data Tables 20, 397 (1977),
-    with shell-structure cross-referenced against NIST ionization data
-    (Sugar & Musgrove, JPCRD 19:527, 1990) and Z-scaling validated
-    against Pütterich et al., Nucl. Fusion 59:056013 (2019).
+    EMPIRICAL tabulated coronal equilibrium cooling. The 21-point
+    log-log table is consistent with shell-structure expected from
+    NIST ionization data (Sugar & Musgrove, JPCRD 19:527, 1990) and
+    the Z-scaling reported in Putterich et al., Nucl. Fusion 59:056013
+    (2019), but the original numerical source is unverified. The
+    earlier "from Post, Jensen, Tarter, Grasberger & Lokke, At. Data
+    Nucl. Data Tables 20, 397 (1977)" citation was removed (P1.9.4):
+    Post 1977 is not on disk, and Post's published cooling functions
+    are log-polynomial, not log-log piecewise interpolation.
 
     Physical shell structure of Cu (Z=29):
         N-shell (n=4):  IP   7.7–20.3 eV  (Cu0+ to Cu1+)
@@ -268,9 +296,10 @@ def _cooling_tungsten(Te_eV: float) -> float:
     Dominant radiator in tokamak divertors and DPF with W electrodes.
     Peak Lambda ~ 1e-31 near 50 eV.
 
-    Piecewise power-law fit to Pütterich et al., Nucl. Fusion 59,
-    056020 (2019) and Post et al. (1977).
-    Accuracy: within factor of 2-3 of Pütterich over 10-10000 eV.
+    EMPIRICAL piecewise power-law fit calibrated against
+    Putterich et al., Nucl. Fusion 59, 056020 (2019) within factor of
+    2-3 over 10-10000 eV. Previous Post et al. (1977) co-citation
+    removed (P1.9.4) -- Post 1977 not on disk.
     """
     if Te_eV < 2.0:
         return 1.0e-38
