@@ -114,7 +114,7 @@ def compute_upf_voltage_flux(
     nr, nz = Bt_np.shape
     dr = grid.dr
     dz = grid.dz
-    r_arr = r_inner + (np.arange(nr) + 0.5) * dr
+    r_inner + (np.arange(nr) + 0.5) * dr
 
     # Magnetic flux linkage for a coaxial DPF device.
     #
@@ -155,7 +155,7 @@ def compute_upf_voltage_flux(
     U_PF = dPhi_dt
 
     # Back-compute Lp for diagnostic comparison with snowplow
-    I_sq = current * current
+    current * current
     Lp_diagnostic = Phi_SI / max(abs(current), 1.0)  # Phi = L * I => L = Phi / I
 
     coupling = CouplingState(
@@ -218,7 +218,7 @@ def compute_voltage_poynting(
     from dpf.metal.constants import IBR, IBT, IBZ, IDN, IMR, IMZ
 
     U_np = np.asarray(U)
-    nr, nz = U_np.shape[1], U_np.shape[2]
+    _nr, _nz = U_np.shape[1], U_np.shape[2]
     dr = grid.dr
     dz = grid.dz
     r = np.asarray(grid.r_cell)  # (nr,)

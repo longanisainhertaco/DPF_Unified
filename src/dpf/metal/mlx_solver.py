@@ -462,7 +462,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         curr_rate = getattr(self, "_beresnyak_curr_rate", 0.0)
         if abs(curr_rate) > 0 and not _use_inlet_bc:
             U_np = np.asarray(U_padded)
-            from dpf.metal.constants import IMR, IDN
+            from dpf.metal.constants import IDN, IMR
             for ig in range(ng):
                 out_idx = ng + self.nr + ig
                 int_idx = ng + self.nr - 1  # last interior cell
@@ -478,7 +478,7 @@ class MLXMHDSolver(PlasmaSolverBase):
                 rho_ghost = U_np[IDN, out_idx, :]
                 U_np[IMR, out_idx, :] = rho_ghost * vr_ghost
                 # Update energy for kinetic energy change
-                KE_old = 0.5 * U_np[IMR, out_idx, :] ** 2 / np.maximum(rho_ghost, 1e-30)
+                0.5 * U_np[IMR, out_idx, :] ** 2 / np.maximum(rho_ghost, 1e-30)
                 # (energy already includes B from electrode fixup)
             U_padded = mx.array(U_np)
 
@@ -771,7 +771,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         # vacuum cells reach rho~1e-12, producing v_Alfven→∞ and CFL
         # collapse. Beresnyak (2022) uses rho_min as an explicit parameter.
         # Our floor: 1e-4 * fill density, or 1e-6 kg/m^3 absolute minimum.
-        from dpf.metal.constants import IDN, IEN, IBR, IBT, IBZ, IMR, IMZ, IMT
+        from dpf.metal.constants import IBR, IBT, IBZ, IDN, IEN, IMR, IMT, IMZ
         _rho_floor = max(getattr(self, "_rho_floor", 1e-6), 1e-6)
         U_np = np.asarray(U)
         rho = U_np[IDN]
@@ -935,7 +935,6 @@ class MLXMHDSolver(PlasmaSolverBase):
                     near_dense = binary_dilation(dense, iterations=_N_BUFFER)
                 except ImportError:
                     # Fallback: simple dilation via max-filter
-                    from numpy.lib.stride_tricks import as_strided
                     near_dense = dense.copy()
                     for _ in range(_N_BUFFER):
                         padded = np.pad(near_dense, 1, mode='constant', constant_values=False)

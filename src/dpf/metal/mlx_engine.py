@@ -240,8 +240,6 @@ def run_mlx_discharge(
 
     # MHD-circuit coupling state
     blend_alpha = 0.0
-    blend_active = False
-    prev_Lp_blend = 0.0
     # Phases where MHD Lp can be trusted (includes rundown with density gate)
     _MHD_TRUST_PHASES = {"rundown", "radial", "radial_reflected", "pinch", "column"}
 
@@ -258,7 +256,6 @@ def run_mlx_discharge(
 
         # MHD step + coupling feedback
         Lp_mhd_val = 0.0
-        U_PF = 0.0  # default: no MHD back-EMF
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
@@ -292,8 +289,6 @@ def run_mlx_discharge(
             #   (b) initializing B correctly at t=0 when I>0 (Beresnyak's approach)
             # For now: snowplow Lp provides correct circuit loading.
             Lp_mhd_val = Lp_sp
-            dLp_dt_mhd = dLp_dt_sp
-            U_PF = 0.0
 
         # Circuit step
         circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)

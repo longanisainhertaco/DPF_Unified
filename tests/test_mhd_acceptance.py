@@ -34,7 +34,7 @@ def radpf_ref() -> dict:
 @pytest.fixture(scope="module")
 def mhd_result():
     """Run full MHD discharge and return result dict."""
-    mlx = pytest.importorskip("mlx.core", reason="MLX not available")
+    pytest.importorskip("mlx.core", reason="MLX not available")
     from dpf.metal.mlx_engine import run_mlx_discharge
 
     result = run_mlx_discharge(

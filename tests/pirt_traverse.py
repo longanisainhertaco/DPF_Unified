@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
 
 def diagnose(scalars: dict, radpf: dict | None = None) -> list[str]:
@@ -24,8 +23,8 @@ def diagnose(scalars: dict, radpf: dict | None = None) -> list[str]:
     dt_min = scalars.get("dt_min_s", 1.0)
     if dt_min < 1e-12:
         findings.append(
-            "CRITICAL: dt_min = {:.2e} s — CFL collapsed. Vacuum v_Alfven spike. "
-            "FIX: Mask vacuum cells (rho < 1e-4 * rho_max) from CFL.".format(dt_min)
+            f"CRITICAL: dt_min = {dt_min:.2e} s — CFL collapsed. Vacuum v_Alfven spike. "
+            "FIX: Mask vacuum cells (rho < 1e-4 * rho_max) from CFL."
         )
         return findings  # stop here — nothing downstream is meaningful
     elif dt_min < 1e-10:

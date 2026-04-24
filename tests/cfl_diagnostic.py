@@ -25,7 +25,6 @@ if not HAS_MLX:
     print("ERROR: MLX not available", file=sys.stderr)
     sys.exit(1)
 
-import mlx.core as mx
 from dpf.metal.mlx_engine import run_mlx_discharge
 
 

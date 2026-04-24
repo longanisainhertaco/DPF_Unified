@@ -80,7 +80,7 @@ def inlet_bt_bc_mlx(
 
     _GAMMA = 5.0 / 3.0
     divisor = SQRT_MU0 if convert_si_to_hl else 1.0
-    nr = U.shape[1]
+    U.shape[1]
 
     r_safe = mx.maximum(mx.abs(r_cell), 1e-10)
     # B_theta = mu0 * I / (2*pi*r), converted to HL if needed
