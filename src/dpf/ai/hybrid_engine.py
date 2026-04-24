@@ -18,14 +18,24 @@ class HybridEngine:
 
     Runs full physics for an initial phase, then hands off to WALRUS surrogate
     for acceleration. Validates surrogate predictions periodically and falls back
-    to physics if divergence exceeds threshold.
+    to physics on either of two triggers:
+
+    1. NaN/Inf in any predicted field (immediate, see ``_run_surrogate_phase``).
+    2. Three consecutive validation samples with prediction-vs-previous
+       relative variance growing by more than 2x sample-over-sample
+       (exponential blowup detector).
+
+    No L2 check against a parallel physics trajectory is performed —
+    running a parallel physics engine alongside the surrogate would defeat
+    the purpose of the surrogate, and the previous fresh-engine attempts
+    produced incorrect comparisons because the parallel engine did not
+    inherit the right state.
 
     Args:
         config: Simulation configuration
         surrogate: Trained WALRUS surrogate model
         handoff_fraction: Fraction of total steps to run physics before handoff
         validation_interval: Steps between validation checks
-        max_l2_divergence: Maximum allowed L2 divergence before fallback
 
     Raises:
         ValueError: If handoff_fraction not in [0, 1]
@@ -37,7 +47,6 @@ class HybridEngine:
         surrogate: DPFSurrogate,
         handoff_fraction: float = 0.2,
         validation_interval: int = 50,
-        max_l2_divergence: float = 0.1,
     ) -> None:
         if not 0.0 <= handoff_fraction <= 1.0:
             raise ValueError(f"handoff_fraction must be in [0, 1], got {handoff_fraction}")
@@ -46,12 +55,11 @@ class HybridEngine:
         self.surrogate = surrogate
         self.handoff_fraction = handoff_fraction
         self.validation_interval = validation_interval
-        self.max_l2_divergence = max_l2_divergence
         self._trajectory: list[dict[str, np.ndarray]] = []
 
         logger.info(
             f"HybridEngine initialized: handoff={handoff_fraction:.2%}, "
-            f"validation_interval={validation_interval}, max_divergence={max_l2_divergence}"
+            f"validation_interval={validation_interval}"
         )
 
     def run(self, max_steps: int | None = None) -> dict[str, Any]:
