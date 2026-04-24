@@ -139,9 +139,27 @@ def synchrotron_enhancement_factor(
     # (two perpendicular DoF for cyclotron motion, not 1D v_th^2).
     v_perp_sq = 2.0 * k_B * max(Te_K, 1.0) / m_e
 
-    # Synchrotron power density:
-    #   P_sync = e^4 * B^2 * n_e * <v_perp^2> / (6 pi eps0 m_e^2 c^3)
-    #          = e^4 * B^2 * n_e * k_B T / (3 pi eps0 m_e^3 c^3)
+    # Synchrotron power density (re-derived from Larmor 2026-04-23 to
+    # answer ZETA_REV P2 query about "eps0 m_e^2 vs eps0^2 m_e^3" denominator):
+    #
+    #   Single-electron Larmor:  P_1 = e^2 a^2 / (6 pi eps0 c^3)
+    #   Circular-motion accel:   a = v_perp * omega_c = v_perp * (eB / m_e)
+    #   So a^2 = e^2 B^2 v_perp^2 / m_e^2
+    #   P_1 = e^4 B^2 v_perp^2 / (6 pi eps0 m_e^2 c^3)
+    #   P_volumetric = n_e * P_1 with thermal average <v_perp^2> = 2 k_B T / m_e
+    #
+    # Denominator IS eps0 * m_e^2 in this form; the extra 1/m_e that
+    # turns it into the equivalent (eps0 m_e^3) form lives in <v_perp^2>.
+    # ZETA_REV's "eps0^2 m_e^3" reading would add a stray eps0 and break
+    # dimensions ([W/m^3] requires exactly one eps0; verified by the unit
+    # check below).
+    #
+    # Dimensional check (SI):
+    #   Num = e^4 B^2 n_e v_perp^2  -> C^4 * T^2 * m^-3 * m^2/s^2
+    #       = C^2 kg^2 m^-1 s^-4   (using T^2 = kg^2/(C^2 s^2))
+    #   Den = eps0 m_e^2 c^3        -> C^2 s^2 kg^-1 m^-3 * kg^2 * m^3/s^3
+    #       = C^2 kg s^-1
+    #   Ratio = kg m^-1 s^-3 = J m^-3 s^-1 = W/m^3   OK
     P_sync = e**4 * B**2 * ne * v_perp_sq / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
 
     # Bremsstrahlung power density (quasi-neutral ni = ne/Z):
