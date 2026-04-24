@@ -32,6 +32,8 @@ from scipy import integrate as sci_int
 from scipy import optimize as sci_opt
 from scipy.interpolate import interp1d
 
+from dpf.metal.floor_telemetry import apply_floor
+
 logger = logging.getLogger(__name__)
 
 
@@ -99,13 +101,27 @@ class SedovExact:
         else:
             self.solution_type = "vacuum"
 
-        # Handle special singularities in denom2, denom3
+        # Handle special singularities in denom2, denom3.
+        # The 1e-8 displacement keeps the Kamm-Timmes exponents finite
+        # at the omega2/omega3 self-similar singularities. Routed
+        # through apply_floor so the activation is counted; the
+        # numerical replacement is identical to the legacy behaviour.
         self.special = "none"
         if abs(self.denom2) <= osmall:
             self.special = "omega2"
+            # Telemeter the singularity-handling path; the magnitude
+            # of the replacement is 1e-8 by construction (Kamm-Timmes).
+            apply_floor(
+                abs(self.denom2), 1.0e-8,
+                "sedov_exact/denom2_omega2_singularity",
+            )
             self.denom2 = 1.0e-8
         elif abs(self.denom3) <= osmall:
             self.special = "omega3"
+            apply_floor(
+                abs(self.denom3), 1.0e-8,
+                "sedov_exact/denom3_omega3_singularity",
+            )
             self.denom3 = 1.0e-8
 
         # Exponents (Kamm eqs. 42-47)
@@ -384,8 +400,12 @@ class SedovExact:
             rwant = r_eval[i]
 
             if rwant > r2:
-                # Outside shock: ambient
-                density[i] = self.rho0 * max(rwant, 1e-30) ** (-self.omega)
+                # Outside shock: ambient.  rwant=0 only if the caller
+                # asked for the origin -- floor it so the negative-omega
+                # power doesn't blow up.
+                density[i] = self.rho0 * apply_floor(
+                    rwant, 1e-30, "sedov_exact.evaluate/rwant_outside_shock",
+                ) ** (-self.omega)
                 velocity[i] = 0.0
                 pressure[i] = 0.0
                 continue
@@ -452,7 +472,9 @@ class SedovExact:
         velocity[-1] = 0.0
 
         # Clean up: density should not be exactly zero for interpolation
-        density = np.maximum(density, 1e-30)
+        density = apply_floor(
+            density, 1e-30, "sedov_exact.evaluate/density_pre_interp",
+        )
 
         # Interpolate onto requested r_pts
         r_eval_clean = r_eval[:i + 2] if vconverged else r_eval
@@ -478,9 +500,15 @@ class SedovExact:
         f_vel = interp1d(r_sorted, vel_sorted, kind="linear", fill_value="extrapolate")
         f_pre = interp1d(r_sorted, pre_sorted, kind="linear", fill_value="extrapolate")
 
-        rho_out = np.maximum(f_den(r_pts), 1e-30)
+        rho_out = apply_floor(
+            f_den(r_pts), 1e-30, "sedov_exact.evaluate/rho_out_post_interp",
+        )
         vel_out = f_vel(r_pts)
-        pre_out = np.maximum(f_pre(r_pts), 0.0)
+        # Pressure floor at 0 -- physical positivity, not telemetered as
+        # a "below-floor" event because negative pressures from interp
+        # are interpolation noise on a positive-definite analytical
+        # profile.
+        pre_out = np.maximum(f_pre(r_pts), 0.0)  # no-floor-check
 
         # Outside shock
         outside = r_pts > r2

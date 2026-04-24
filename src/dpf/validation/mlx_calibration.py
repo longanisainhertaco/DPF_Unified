@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from dpf.metal.floor_telemetry import apply_floor
 from dpf.validation._calibration_data import CalibrationResult
 
 logger = logging.getLogger(__name__)
@@ -181,8 +182,12 @@ def run_mlx_forward_model(
     I_peak_exp = dev.peak_current
     t_peak_exp = dev.current_rise_time
 
-    peak_error = abs(I_peak_sim - I_peak_exp) / max(I_peak_exp, 1e-10)
-    timing_error = abs(t_peak_sim - t_peak_exp) / max(t_peak_exp, 1e-10)
+    peak_error = abs(I_peak_sim - I_peak_exp) / apply_floor(
+        I_peak_exp, 1e-10, "mlx_calibration.objective/I_peak_exp_div_guard",
+    )
+    timing_error = abs(t_peak_sim - t_peak_exp) / apply_floor(
+        t_peak_exp, 1e-10, "mlx_calibration.objective/t_peak_exp_div_guard",
+    )
 
     # Waveform NRMSE
     nrmse = 10.0
