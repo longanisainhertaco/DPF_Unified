@@ -105,8 +105,9 @@ def run_rlc_snowplow_pf1000(
         fm: Mass fraction (Lee's f_m). Default from Phase AC calibration.
         f_mr: Radial mass fraction (Lee's f_mr). Default 0.1 per Lee & Saw (2014).
         pinch_column_fraction: Fraction of anode length for radial phase.
-            For PF-1000: 0.12 (effective pinch column ~72 mm of 600 mm anode).
-            This controls the current dip depth via radial inductance.
+            For PF-1000: 0.14 (effective pinch column ~67 mm of 480 mm
+            anode per Akel 2021). This controls the current dip depth
+            via radial inductance.
         liftoff_delay: Insulator flashover delay [s]. Default 0.7 us.
         crowbar_enabled: Enable crowbar at V_cap zero crossing. Default True.
 
@@ -117,15 +118,27 @@ def run_rlc_snowplow_pf1000(
     from dpf.core.bases import CouplingState
     from dpf.fluid.snowplow import SnowplowModel
 
-    # PF-1000 parameters (Scholz et al. 2006, Lee & Saw 2014)
-    C = 1.332e-3        # F
-    V0 = 27e3           # V
-    L0 = 33.5e-9        # H
-    R0 = 2.3e-3         # Ohm
-    a = 0.115            # anode radius [m]
-    b = 0.16             # cathode radius [m]
-    z_max = 0.60         # anode length [m]
-    p_torr = 3.5         # Torr D2
+    # PF-1000 device parameters.
+    # Sources (paper-on-disk):
+    #   Akel et al. 2021, "Estimating the Neutron Yield in PF-1000 ...,"
+    #     references/papers/core-dpf/akel-2021-pf1000-neutron-yield.pdf
+    #     - p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"
+    #     - p.2: "Bank: L0 = 25 nH, C0 = 1332 mu F, r0 = 6.1 m Ohm"
+    #     - Table 1 (23 shots): L0 = 25.0 nH consistently.
+    #   Scholz et al. 2006, Nukleonika 51(1):79-84,
+    #     references/papers/core-dpf/scholz-2006-pf1000-mega-joule.pdf
+    #     gives the operating point: V0 = 27 kV at p0 = 3.5 Torr D2.
+    # Previous values L0 = 33.5 nH and z_max = 0.60 m did not match the
+    # device geometry reported by either source (P1.3 source-of-truth
+    # unification; aligns with EPSILON FIX-E1 in experimental_devices.py).
+    C = 1.332e-3        # F  (Akel 2021 Bank, "C0 = 1332 mu F")
+    V0 = 27e3           # V  (Scholz 2006 operating point)
+    L0 = 25e-9          # H  (Akel 2021 Bank, "L0 = 25 nH"; was 33.5e-9)
+    R0 = 6.1e-3         # Ohm (Akel 2021 Bank, "r0 = 6.1 m Ohm"; was 2.3e-3)
+    a = 0.115           # anode radius [m]  (Akel 2021 anode dia 231 mm -> r=115.5 mm)
+    b = 0.16            # cathode radius [m]
+    z_max = 0.48        # anode length [m]  (Akel 2021 "480 mm"; was 0.60)
+    p_torr = 3.5        # Torr D2 (Scholz 2006 operating point)
 
     # Fill density from ideal gas law
     p_Pa = p_torr * 133.322
