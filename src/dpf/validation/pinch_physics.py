@@ -394,6 +394,12 @@ def mrti_saturated_growth_rate(
 def bell_plesset_amplification(
     R0: float,
     R: float,
+    # EMPIRICAL: alpha=0.7 is an intermediate value for multi-mode DPF
+    # turbulence between alpha~0.5 (high-mode planar limit) and alpha~1.0
+    # (single-mode, n=1, full geometric amplification). Bell 1951 LA-1321,
+    # Plesset 1954 J. Appl. Phys. 25:96, and Mikaelian 1990 Phys. Rev. A
+    # 42:3400 give the limiting cases; the multi-mode value 0.7 is an
+    # engineering interpolation, not a paper-attested DPF measurement.
     alpha: float = 0.7,
 ) -> float:
     """Bell-Plesset convergence amplification factor.
@@ -913,6 +919,11 @@ def collisionality_diagnostics(
         mfp_m=mfp,
         knudsen=kn,
         regime=regime,
+        # EMPIRICAL: kn < 0.01 (collisional fluid limit) and nd > 10
+        # (many particles per Debye sphere -> plasma not a swarm of
+        # individual charges) are textbook engineering thresholds for
+        # MHD validity. NRL Plasma Formulary uses similar order-of-
+        # magnitude cuts; not a calibrated DPF-specific number.
         mhd_valid=(kn < 0.01 and nd > 10),
     )
 
@@ -991,6 +1002,11 @@ def dpf_pinch_diagnostics(
     I_peak_MA: float,
     anode_radius_cm: float,
     fill_pressure_Torr: float,
+    # EMPIRICAL: CR=10 is an order-of-magnitude default for the radial
+    # compression ratio of MA-class DPFs. Lee & Saw 2008 Table 1 gives
+    # k_min in [0.14, 0.21] for PF-1000 / NX2 (i.e. CR = 1/k_min in
+    # [4.8, 7.1]), so 10 is a slight over-estimate used here only as a
+    # placeholder when the caller supplies no measured value.
     CR: float = 10.0,
     n_e_pinch: float | None = None,
     T_e_pinch_eV: float | None = None,
@@ -1041,9 +1057,16 @@ def dpf_pinch_diagnostics(
 
     # mRT diagnostics (use pinch radius as wavelength scale)
     pinch_radius_m = anode_radius_cm * 1e-2 / CR
-    wavelength = 2 * pinch_radius_m  # Dominant mode ~ diameter
+    # EMPIRICAL: dominant mRT mode taken as wavelength = 2 * r_pinch
+    # (one wavelength fits across the diameter). Engineering default --
+    # no DPF paper measures a single dominant mRT wavelength.
+    wavelength = 2 * pinch_radius_m
     rho_h = n_e_pinch * M_DEUTERON  # Pinch density
     rho_l = (fill_pressure_Torr * 133.322) / (K_B * 300) * M_DEUTERON * 2  # Ambient
+    # EMPIRICAL: sheath thickness dr ~ 0.1 * r_pinch is a conventional
+    # thin-sheet approximation for snowplow models; not a measured DPF
+    # quantity. Used here only to convert magnetic pressure to an
+    # effective gravity for the linear mRT growth-rate estimate.
     g_eff = dpf_deceleration(I_peak_MA, pinch_radius_m, rho_h, pinch_radius_m * 0.1)
 
     mrti = mrti_diagnostics(
@@ -1052,7 +1075,11 @@ def dpf_pinch_diagnostics(
         rho_l=rho_l,
         wavelength=wavelength,
         B=B_theta,
-        theta=np.pi / 2,  # B_theta perp to z-axis perturbations
+        # EMPIRICAL: theta = pi/2 fixes the mode geometry to k perp B
+        # (azimuthal B vs axial perturbation). This is the standard
+        # worst-case mRT orientation for a z-pinch but is a chosen
+        # geometry, not a measurement.
+        theta=np.pi / 2,
         pinch_lifetime_ns=pinch_lifetime_ns,
     )
 
