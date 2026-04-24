@@ -33,11 +33,11 @@ PF1000_DATA = ExperimentalDevice(
     institution="IPPLM Warsaw",
     capacitance=1.332e-3,          # 1.332 mF
     voltage=27e3,                  # 27 kV
-    inductance=33.5e-9,            # 33.5 nH (short-circuit calibration, Scholz 2006)
+    inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1 - 24 shots; text: "Bank: L0 = 25 nH")
     resistance=2.3e-3,             # 2.3 mOhm (short-circuit discharge, Scholz 2006 Table 1)
     anode_radius=0.115,            # 115 mm outer radius (IPPLM: anode OD 230mm)
     cathode_radius=0.16,           # 160 mm effective (Lee & Saw 2014; rods at 200mm)
-    anode_length=0.60,             # 600 mm (IPPLM: anode length 60 cm)
+    anode_length=0.48,             # 480 mm (Akel et al. 2021 p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"; Table 1: z0 = 48 cm)
     fill_pressure_torr=3.5,
     fill_gas="deuterium",
     peak_current=1.87e6,           # 1.87 MA
@@ -165,14 +165,14 @@ PF1000_16KV_DATA = ExperimentalDevice(
     institution="IPPLM Warsaw",
     capacitance=1.332e-3,          # Same bank
     voltage=16e3,                  # 16 kV (reduced from 27 kV)
-    inductance=33.5e-9,            # Same circuit
+    inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1 - these are literally Akel shots 12590-12606 at 1.05 Torr)
     resistance=2.3e-3,             # Same circuit
     anode_radius=0.115,            # Same geometry
     cathode_radius=0.16,           # Same geometry
-    anode_length=0.60,             # Same geometry
+    anode_length=0.48,             # 480 mm (Akel et al. 2021 p.1: "480 mm long coaxial electrodes"; Table 1: z0 = 48 cm)
     fill_pressure_torr=1.05,       # 1.05 Torr D2 (Akel 2021)
     fill_gas="deuterium",
-    peak_current=1.2e6,            # 1.2 MA (midpoint of 1.1-1.3 MA range)
+    peak_current=1.165e6,          # 1.165 MA (Akel et al. 2021 Table 1, shot 12581: Ipeak = 1165 kA)
     neutron_yield=2.33e9,          # 2.33e9 n/shot at 1.05 Torr (average of 16 shots)
     current_rise_time=6.0e-6,      # ~6 us (estimated from Lee model fit in paper)
     reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
@@ -191,9 +191,10 @@ PF1000_16KV_DATA = ExperimentalDevice(
     lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (24-shot avg at 16 kV)",
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
-        "Peak current 1.1-1.3 MA across 16 shots (Akel et al. 2021 Table 1). "
+        "Peak current 1.131-1.328 MA across the 16 shots at 1.05 Torr (Akel et al. 2021 Table 1). "
+        "I_peak reference = 1.165 MA from shot 12581 (Table 1: Ipeak = 1165 kA). "
         "WAVEFORM NOTE: Reconstructed from physics scaling of 27 kV Scholz (2006) "
-        "waveform, constrained by published I_peak=1.2 MA. Same bank (C0, L0, R0), "
+        "waveform, rescaled by 1.165/1.20 = 0.9708 to match Akel shot 12581 peak. Same bank (C0, L0, R0), "
         "so T/4=10.49 us is identical. Current dip shifted earlier (~5.5 us vs ~7.0 us) "
         "due to lower fill pressure (1.05 Torr vs 3.5 Torr → faster sheath). "
         "Waveform_digitization_uncertainty set to 5% (higher than 3% for 27 kV) to "
@@ -219,7 +220,7 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     peak_current=1.846e6,           # 1.846 MA (Gribkov 2007, different shot from Scholz)
     neutron_yield=1e11,
     current_rise_time=6.39e-6,      # 6.39 us (peak timing from data)
-    reference="Gribkov et al., J. Phys. D: Appl. Phys. 40:3592, 2007",
+    reference="Gribkov et al., J. Phys. D: Appl. Phys. 40:1977-1989 (Part I), 2007, doi:10.1088/0022-3727/40/7/021",
     crowbar_resistance=1.5e-3,
     peak_current_uncertainty=0.05,
     rise_time_uncertainty=0.10,
@@ -233,14 +234,18 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     lee_fc=0.70, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.70,
     lee_reference="Lee & Saw 2014, IPFS PF1000data.xls (same device/voltage as PF-1000 standard)",
     measurement_notes=(
-        "94-point digitized waveform from plasmafocus.net RADPF archive (PF1000 05.15.xls). "
-        "Original source: Gribkov et al., J. Phys. D: Appl. Phys. 40:3592-3607, 2007. "
+        "94-point digitized waveform from plasmafocus.net/IPFS PF1000 05.15.xls Sheet2 "
+        "(NOT digitized from the paper itself — the Gribkov 2007 Part I paper does not "
+        "publish a tabulated I(t) curve; the xls file is the authoritative digital archive "
+        "from the Lee RADPF model package). "
+        "Source paper: Gribkov et al., J. Phys. D: Appl. Phys. 40:1977-1989 (Part I), 2007, "
+        "doi:10.1088/0022-3727/40/7/021. "
+        "(The old citation \"40:3592\" referred to Scholz 2007 Part II, not Gribkov Part I.) "
         "Same device and conditions as Scholz (2006) PF-1000 at 27 kV, 3.5 Torr D2, "
         "but DIFFERENT shot and DIFFERENT digitization. Peak 1.846 MA at 6.39 us "
-        "(vs Scholz: 1.87 MA at 5.8 us — shot-to-shot variability). "
+        "(vs Scholz: 1.87 MA at 5.8 us - shot-to-shot variability). "
         "Lower digitization uncertainty (2%) because this is from digital oscilloscope data "
-        "archived in the Lee model RADPF package, not hand-digitized from a paper figure. "
-        "DOI: 10.1088/0022-3727/40/12/008"
+        "archived in the Lee model RADPF package, not hand-digitized from a paper figure."
     ),
 )
 
@@ -371,14 +376,14 @@ FAETON_DATA = ExperimentalDevice(
     voltage=100e3,                 # 100 kV direct-charge
     inductance=220e-9,             # 220 nH static inductance (Damideh 2025)
     resistance=7.6e-3,             # 7.6 mOhm (estimated from I_peak damping)
-    anode_radius=0.05,             # 50 mm (Damideh 2025)
-    cathode_radius=0.10,           # ~100 mm (estimated from 5 cm A-K gap)
-    anode_length=0.17,             # 170 mm (Damideh 2025)
+    anode_radius=0.05,             # 50 mm (Damideh et al. 2025 Table 1: "Anode radius 5 cm")
+    cathode_radius=0.106,          # 106 mm (Damideh et al. 2025 Table 1: "Cathode radius 10.6 cm"; §Apparatus: "encircle the anode with a radius of 10.6 cm")
+    anode_length=0.17,             # 170 mm (Damideh et al. 2025 Table 1: "Effective anode length 17 cm")
     fill_pressure_torr=12.0,       # 12 Torr D2 (optimal for neutron yield)
     fill_gas="deuterium",
     peak_current=1.0e6,            # ~1 MA (Damideh 2025)
     neutron_yield=2.5e10,          # 2.5e10 D-D n/shot typical (8e10 peak)
-    current_rise_time=3.6e-6,      # 3.6 us (T/4 from RLC parameters)
+    current_rise_time=3.7e-6,      # 3.7 us (Damideh et al. 2025 §III: "rise time of ~3.7 us"; transition time 3.745 us)
     reference=(
         "Damideh et al., Scientific Reports 15:23048, 2025; "
         "DOI: 10.1038/s41598-025-07939-x"
@@ -400,7 +405,7 @@ FAETON_DATA = ExperimentalDevice(
         "Highest direct-charged voltage PF device. 5 x 5 uF Marx bank = 25 uF total. "
         "Static inductance L0 = 220 nH (Damideh 2025). R0 = 7.6 mOhm estimated from "
         "measured I_peak/I_sc ratio (I_peak ~ 1 MA vs I_sc_undamped = 1.066 MA, RESF = 0.081). "
-        "Cathode radius ~10 cm estimated from stated 5 cm A-K gap. "
+        "Cathode radius 10.6 cm from Damideh et al. (2025) Table 1 (directly stated). "
         "WAVEFORM: RECONSTRUCTED from damped RLC parameters, NOT digitized from paper. "
         "L_p/L0 = 0.107 — extremely circuit-dominated; plasma loading is minimal. "
         "The reconstructed waveform is essentially a bare damped sinusoid with 4% pinch dip. "
