@@ -256,7 +256,13 @@ class WalrusInferenceMixin:
         # Instantiate model via Hydra
         model = instantiate(config.model, n_states=n_states)
 
-        # Align weights if possible
+        # Align weights — failure must be loud. The previous broad-except
+        # fell back to a raw load_state_dict() with mismatched field
+        # indices, producing plausible-looking but physically wrong
+        # predictions (Te/Ti channels swapped, B-components misaligned, etc.).
+        # Set ``self._checkpoint_strict = False`` on the subclass before
+        # construction to opt into the unaligned load. (P0.6.2)
+        strict = bool(getattr(self, "_checkpoint_strict", True))
         try:
             from walrus.utils.experiment_utils import (
                 align_checkpoint_with_field_to_index_map,
@@ -268,7 +274,23 @@ class WalrusInferenceMixin:
                 model_field_to_index_map=dict(self._field_to_index_map),  # type: ignore[attr-defined]
             )
             model.load_state_dict(aligned)
-        except Exception:
+        except Exception as e_align:
+            if strict:
+                raise RuntimeError(
+                    "WALRUS checkpoint field-index alignment failed "
+                    f"({e_align!r}). Loading the raw state_dict would "
+                    "silently map weights to the wrong field channels "
+                    "(Te/Ti swap, B-component misalignment, etc.). "
+                    "If you understand the consequences, set "
+                    "``self._checkpoint_strict = False`` before "
+                    "constructing the surrogate."
+                ) from e_align
+            logger.warning(
+                "Checkpoint alignment failed (%r); loading raw state_dict "
+                "because _checkpoint_strict=False. Predictions may be "
+                "silently wrong if field indices differ.",
+                e_align,
+            )
             model.load_state_dict(state_dict)
 
         model.eval()
@@ -286,24 +308,31 @@ class WalrusInferenceMixin:
             dtype=torch.long,
         )
 
-        # RevIN normalization
+        # RevIN normalization — REQUIRED for trained model.
+        # WALRUS is trained with RevIN; running inference without it
+        # produces systematically biased (un-normalized) predictions
+        # that don't error but are silently wrong. Refuse to load
+        # rather than ship a degraded model. (P0.6.1)
         try:
             self._revin = instantiate(config.trainer.revin)()  # type: ignore[attr-defined]
-        except Exception:
+        except Exception as e_hydra:
             logger.warning(
-                "Failed to instantiate RevIN from config; "
-                "trying SamplewiseRevNormalization directly"
+                "Failed to instantiate RevIN from Hydra config (%s); "
+                "trying SamplewiseRevNormalization directly",
+                e_hydra,
             )
             try:
                 from walrus.trainer.normalization_strat import (
                     SamplewiseRevNormalization,
                 )
                 self._revin = SamplewiseRevNormalization()  # type: ignore[attr-defined]
-            except Exception:
-                logger.warning(
-                    "RevIN unavailable; inference may be degraded"
-                )
-                self._revin = None  # type: ignore[attr-defined]
+            except Exception as e_direct:
+                raise RuntimeError(
+                    "RevIN normalization could not be initialized "
+                    f"(Hydra: {e_hydra!r}; direct: {e_direct!r}). "
+                    "WALRUS was trained with RevIN; inference without it "
+                    "is silently biased. Refusing to load."
+                ) from e_direct
 
         # Formatter
         self._formatter = ChannelsFirstWithTimeFormatter()  # type: ignore[attr-defined]

@@ -30,8 +30,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-# Physical constants
-MU_0 = 4.0 * np.pi * 1e-7  # vacuum permeability [H/m]
+# Physical constants — single source of truth (CODATA-2018 via scipy.constants)
+from dpf.constants import mu_0 as MU_0
 
 
 def compute_scaling_params(

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -227,16 +226,18 @@ class DPFSurrogate(WalrusInferenceMixin):
         if self._is_walrus_model:
             return self._walrus_predict(recent_history)
 
-        # Placeholder: return copy of last state (no real prediction)
-        warnings.warn(
-            "WALRUS model not loaded — returning placeholder prediction. "
-            "Downstream results (confidence, inverse design) are meaningless.",
-            UserWarning,
-            stacklevel=2,
+        # Placeholder branch removed (P0.6.4): the previous behavior
+        # returned an identity copy of the last state with a UserWarning.
+        # HybridEngine, InstabilityDetector, and InverseDesigner had no
+        # way to distinguish a real prediction from a frozen-trajectory
+        # lie, and warnings get filtered. Refuse to predict.
+        raise RuntimeError(
+            "DPFSurrogate is in placeholder mode (WALRUS model not loaded). "
+            "predict_next_step would otherwise return an identity copy of "
+            "the last state, producing meaningless downstream results. "
+            "Install the ``walrus`` package and supply a valid checkpoint, "
+            "or check _load_model() logs to diagnose the load failure."
         )
-        logger.warning("Placeholder prediction: returning last state unchanged")
-        predicted_state = {k: v.copy() for k, v in recent_history[-1].items()}
-        return predicted_state
 
     def _walrus_predict(
         self, recent_history: list[dict[str, np.ndarray]]

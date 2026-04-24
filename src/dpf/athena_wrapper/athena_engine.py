@@ -38,15 +38,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from dpf.constants import mu_0 as _MU_0  # CODATA-2018 single source of truth
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 
 if TYPE_CHECKING:
     from dpf.config import SimulationConfig
 
 logger = logging.getLogger(__name__)
-
-# Constants
-_MU_0 = 4.0e-7 * np.pi  # Vacuum permeability [H/m]
 
 # Module-level reference to the current active linked-mode handle.
 # Athena++ uses global state (signal handlers, etc.) that doesn't support
