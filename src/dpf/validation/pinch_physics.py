@@ -19,7 +19,9 @@ References
 - Bian et al., Phys. Plasmas 33, 012303 (2026). DOI: 10.1063/5.0305344
 - Kindi et al., Phys. Plasmas (2026). DOI: 10.1063/5.0294460
 - Lee & Saw, J. Fusion Energy 27, 292-295 (2008).
-- Angus et al., Phys. Plasmas 28, 012705 (2021).
+- Angus et al., Phys. Plasmas 28, 010701 (2021), DOI: 10.1063/5.0028988
+  (preprint LLNL-JRNL-813738 on disk at
+  references/papers/core-dpf/angus-2021-dpf-kinetic-pinch.pdf).
 - Auluck, Phys. Plasmas 31, 010704 (2024). DOI: 10.1063/5.0189593
 """
 
