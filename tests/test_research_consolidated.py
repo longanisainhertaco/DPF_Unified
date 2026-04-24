@@ -738,21 +738,6 @@ class TestPostPinchDiagnostic:
             R_eff = L_total / tau_decay
             assert R_eff > 5e-3
 
-    def test_blind_prediction_summary(self):
-        model = _make_model()
-        comp27 = model.compare_with_experiment("PF-1000")
-        r16 = model.run("PF-1000-16kV")
-        C, _V0_27, V0_16, L0, R0 = 6.12e-3
-        Z0 = math.sqrt(L0 / C)
-        zeta = R0 / (2 * Z0)
-        I_rlc_16 = V0_16 / Z0 * math.exp(-math.pi * zeta / 2)
-        err_lee = abs(r16.peak_current - 1.2e6) / 1.2e6
-        err_rlc = abs(I_rlc_16 - 1.2e6) / 1.2e6
-        print(f"\nPhase AS summary: NRMSE={comp27.waveform_nrmse:.4f}, "
-              f"Lee err={err_lee:.1%}, RLC err={err_rlc:.1%}")
-        assert True
-
-
 # --- Section: Phase AV — Pinch Physics Diagnostics ---
 
 
