@@ -538,26 +538,38 @@ def mrti_diagnostics(
 
 def neutron_yield_I4(
     I_peak_MA: float,
-    coefficient: float = 9e10,
+    coefficient: float = 9e10,  # EMPIRICAL: NOT from Lee & Saw 2008; see docstring
 ) -> float:
-    """Estimate DD neutron yield from I^4 scaling law.
+    """Estimate DD neutron yield from an empirical I^4 scaling.
 
-    From Lee & Saw (2008), the DD neutron yield scales as Y_n ~ C * I^4
-    where I is in MA. The coefficient C depends on the device class
-    and operating conditions.
+    WARNING: The default `coefficient=9e10` with exponent 4 is an EMPIRICAL
+    COMPROMISE, NOT the Lee & Saw (2008) formula. The prior docstring
+    attribution "From Lee & Saw (2008)" was incorrect.
+
+    Lee & Saw (2008) actually give (abstract, verbatim):
+        "Yn = 2x10^11 * Ipinch^4.7  and  Yn = 9x10^9 * Ipeak^3.9"
+
+    The code's (9e10, 4) pair is roughly a geometric mean of the two
+    published scalings over the 0.5-3 MA range, but is not faithful to
+    either. Herold 1989 is sometimes cited for Y ~ 10^11 * I^4 at MA-class
+    devices, but the Herold paper is NOT on disk in this repository so we
+    cannot verify that attribution.
+
+    For faithful reproduction of the Lee & Saw 2008 scalings, use:
+        Y_peak  = 9e9  * I_peak_MA**3.9   # Eq. (abstract)
+        Y_pinch = 2e11 * I_pinch_MA**4.7  # Eq. (abstract)
 
     Args:
         I_peak_MA: Peak current [MA].
-        coefficient: Scaling coefficient. Default 9e10 from
-            Lee & Saw (2008) for conventional DPF devices.
-            Herold (1989): ~1e11 for MA-class devices.
+        coefficient: Scaling coefficient. Default 9e10 is an EMPIRICAL
+            compromise (see warning above), NOT Lee & Saw 2008.
 
     Returns:
         Estimated DD neutron yield [neutrons/shot].
 
     Notes:
-        The I^4 law holds over ~5 orders of magnitude (10 kA to 5 MA).
-        Deviations occur for:
+        The I^4 law holds empirically over ~5 orders of magnitude
+        (10 kA to 5 MA). Deviations occur for:
         - Very high I (> 3 MA): radiative collapse, beam-target dominates
         - Very low I (< 50 kA): threshold effects
         - Non-optimal fill pressure
@@ -568,6 +580,13 @@ def neutron_yield_I4(
         POSEIDON    4.6           4.6e11
         MJOLNIR     2.8           8e11
         Gemini      6.0           1-2e12
+
+    References:
+        Lee S. & Saw S.H. (2008), "Neutron Scaling Laws from Numerical
+        Experiments", J. Fusion Energy 27:292. On disk at
+        references/papers/nuclear-radiation/
+        PP2 with Erratum JoFE NeutronScalingLawsFromNumericalExperiments.pdf
+        Abstract (verbatim): "Yn=2x10^11*Ipinch^4.7 and Yn=9x10^9*Ipeak^3.9".
     """
     return coefficient * I_peak_MA**4
 
