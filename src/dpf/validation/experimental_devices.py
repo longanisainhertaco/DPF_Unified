@@ -34,7 +34,7 @@ PF1000_DATA = ExperimentalDevice(
     capacitance=1.332e-3,          # 1.332 mF
     voltage=27e3,                  # 27 kV
     inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1 - 24 shots; text: "Bank: L0 = 25 nH")
-    resistance=2.3e-3,             # 2.3 mOhm (short-circuit discharge, Scholz 2006 Table 1)
+    resistance=6.1e-3,             # 6.1 mOhm (Akel et al. 2021 p.3: "Bank: L0=25 nH, C0=1332 uF, r0=6.1 mOhm"). Restored 2026-04-25 — bundle merge of audit branches lost the 5a7c9f8 R0 fix; Akel is same source as L0/z0 so they must be self-consistent.
     anode_radius=0.115,            # 115 mm outer radius (IPPLM: anode OD 230mm)
     cathode_radius=0.16,           # 160 mm effective (Lee & Saw 2014; rods at 200mm)
     anode_length=0.48,             # 480 mm (Akel et al. 2021 p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"; Table 1: z0 = 48 cm)
