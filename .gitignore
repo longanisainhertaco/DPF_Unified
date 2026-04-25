@@ -78,6 +78,19 @@ credentials.json
 # Word temp files
 ~$*
 
+# Simulation output (shinka runs, sweeps, evolution artifacts)
+output/
+
+# AthenaK submodule build/checkout artifacts
+external/athenak/
+
+# Claude Code project memory (local, not shared)
+.claude/memory/
+
+# Temporary metrics/results
+correct.json
+metrics.json
+
 # Dev artifacts
 screenshots/
 reference-images/

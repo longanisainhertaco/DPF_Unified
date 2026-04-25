@@ -594,14 +594,69 @@ def bootstrap_calibration(
     )
 
 
+_ATOMS_PER_MOLECULE = {
+    # Lee 2014 JFE 33:319 Eq. 32 "DN = dissociation number, e.g. for
+    # Deuterium DN = 2, whereas for argon DN = 1".
+    "deuterium": 2,
+    "d2": 2,
+    "hydrogen": 2,
+    "h2": 2,
+    "tritium": 2,
+    "t2": 2,
+    "dt": 2,
+    "nitrogen": 2,
+    "n2": 2,
+    "oxygen": 2,
+    "o2": 2,
+    "argon": 1,
+    "ar": 1,
+    "neon": 1,
+    "ne": 1,
+    "helium": 1,
+    "he": 1,
+    "xenon": 1,
+    "xe": 1,
+    "krypton": 1,
+    "kr": 1,
+}
+
+
+def _atoms_per_molecule(fill_gas: str) -> int:
+    """Return number of atoms per fill-gas molecule (Lee 2014 Eq. 32 DN)."""
+    key = fill_gas.strip().lower()
+    if key in _ATOMS_PER_MOLECULE:
+        return _ATOMS_PER_MOLECULE[key]
+    # Unknown gas: fall back to monatomic (conservative for noble gases).
+    # Caller can override by passing atoms_per_molecule explicitly.
+    import warnings
+    warnings.warn(
+        f"Unknown fill_gas={fill_gas!r}; defaulting to atoms_per_molecule=1. "
+        "Pass atoms_per_molecule explicitly for H2/D2/T2/DT/N2/O2.",
+        stacklevel=3,
+    )
+    return 1
+
+
+# EMPIRICAL: _DEFAULT_COMPRESSION_RATIO = 10 is a round-number estimate
+# matching the r_min = 0.1 * a clamp used in lee_model_comparison.py::pinch_event
+# (terminal event at r_shock = 0.1 * anode_radius).  Lee & Saw 2008 (JoFE 27:292,
+# Table 1) reports empirical k_min = r_p/a in [0.14, 0.21] across PF400, UNU,
+# NX2, PF1000 and Poseidon -- i.e. actual simulated compression ratios of
+# 4.8-7.1 rather than 10.  Callers who need a device-specific value should
+# pass compression_ratio explicitly; the default 10 is held for back-
+# compatibility with existing Bennett-equilibrium checks.
+_DEFAULT_COMPRESSION_RATIO = 10.0
+
+
 def bennett_equilibrium_check(
     device_name: str = "PF-1000",
     fc: float = 0.800,
     fm: float = 0.094,
     pinch_column_fraction: float = 0.14,
-    compression_ratio: float = 10.0,
+    compression_ratio: float = _DEFAULT_COMPRESSION_RATIO,
     T_assumed_eV: float | None = None,
     tolerance: float = 0.5,
+    atoms_per_molecule: int | None = None,
 ) -> BennettEquilibriumResult:
     """Check Bennett equilibrium self-consistency at pinch.
 
@@ -616,12 +671,19 @@ def bennett_equilibrium_check(
         fc: Current fraction.
         fm: Mass fraction.
         pinch_column_fraction: Pinch column fraction.
-        compression_ratio: Ratio of cathode radius to pinch radius.
-            Default 10 (r_pinch = a/10).
+        compression_ratio: Ratio of anode radius to pinch radius (a / r_p).
+            Default 10 (r_pinch = a/10), matching the r_min clamp in
+            ``lee_model_comparison.py``.  See module-level EMPIRICAL note:
+            Lee & Saw 2008 Table 1 observes k_min = r_p/a in [0.14, 0.21]
+            across PF400 -> Poseidon, i.e. actual CR of 4.8-7.1.
         T_assumed_eV: If given, use this temperature [eV] instead of
             estimating from kinetics.
         tolerance: Fractional tolerance for consistency check.
             Default 0.5 (I_ratio within 0.5-1.5).
+        atoms_per_molecule: Number of atoms per fill-gas molecule (Lee
+            2014 JFE 33:319 Eq. 32 "DN").  If None (default), looked up
+            from ``device.fill_gas``.  DN=2 for H2/D2/T2/N2/O2; DN=1
+            for monatomic gases (He/Ne/Ar/Kr/Xe).
 
     Returns:
         :class:`BennettEquilibriumResult`.
@@ -645,12 +707,16 @@ def bennett_equilibrium_check(
     fill_pressure_Pa = device.fill_pressure_torr * 133.322
     n_fill = fill_pressure_Pa / (K_B * 300.0)  # room temperature fill
 
-    # Swept mass and pinch density
-    # Mass fraction fm of the annular gas mass is swept into the pinch column
+    # Resolve atoms-per-molecule (Lee 2014 Eq. 32 dissociation number DN)
+    if atoms_per_molecule is None:
+        atoms_per_molecule = _atoms_per_molecule(getattr(device, "fill_gas", "deuterium"))
+
+    # Swept mass and pinch density.
+    # n_fill is the molecular density.  A diatomic fill (e.g. D2) contributes
+    # two ions per molecule upon full dissociation; a noble gas (Ar/Ne/He)
+    # contributes one.  See Lee 2014 p. 327 Eq. 32.
     V_annular = np.pi * (b**2 - a**2) * z_pinch
-    # For D2 gas: n_fill is molecular density, each molecule has 2 deuterons
-    # So particle count = 2 * n_fill * V_annular * fm
-    n_particles = 2 * n_fill * V_annular * fm
+    n_particles = atoms_per_molecule * n_fill * V_annular * fm
     V_pinch = np.pi * r_pinch**2 * z_pinch
     n_pinch = n_particles / V_pinch  # ions/m^3
 

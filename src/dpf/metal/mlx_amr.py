@@ -1019,8 +1019,9 @@ def amr_step(
         U_pad_np = np.asarray(U_pad).astype(np.float32)
         bnr = np.asarray(block.U).shape[1]
         bnz = np.asarray(block.U).shape[2]
+        _rhs = rhs_fn if rhs_fn is not None else _block_rhs
         try:
-            dU = _block_rhs(U_pad_np, block, level0, gamma, method, riemann, dt, ng)
+            dU = _rhs(U_pad_np, block, level0, gamma, method, riemann, dt, ng)
         except Exception as exc:
             logger.warning("AMR block (%d,%d) RHS failed: %s", idx[0], idx[1], exc)
             continue
@@ -1041,8 +1042,9 @@ def amr_step(
                 U_pad_np = np.asarray(U_pad).astype(np.float32)
                 bnr = np.asarray(block.U).shape[1]
                 bnz = np.asarray(block.U).shape[2]
+                _rhs = rhs_fn if rhs_fn is not None else _block_rhs
                 try:
-                    dU = _block_rhs(U_pad_np, block, level1, gamma, method, riemann, dt, ng)
+                    dU = _rhs(U_pad_np, block, level1, gamma, method, riemann, dt, ng)
                 except Exception as exc:
                     logger.warning(
                         "AMR fine block (%d,%d) RHS failed: %s", idx[0], idx[1], exc
@@ -2110,3 +2112,73 @@ def auto_regrid(
         hierarchy.fill_all_ghosts()
 
     return hierarchy, n_refined, n_derefined
+
+
+# ---------------------------------------------------------------------------
+# Production MLX RHS for AMR blocks
+# ---------------------------------------------------------------------------
+
+
+def make_mlx_block_rhs(
+    coordinates: str = "cylindrical",
+) -> Any:
+    """Create a block-local RHS function using the production MLX flux pipeline.
+
+    Returns a callable with the same signature as ``_block_rhs`` that uses
+    ``mlx_timestepper.mhd_rhs`` (WENO5-Z/PLM + HLL/HLLD + geometric sources)
+    instead of the simplified Lax-Friedrichs.
+
+    Args:
+        coordinates: Coordinate system ("cylindrical" or "cartesian").
+
+    Returns:
+        rhs_fn(U_pad_np, block, level, gamma, method, riemann, dt, ng) -> dU_np
+    """
+    from dpf.metal.mlx_grid import CylindricalGrid
+    from dpf.metal.mlx_timestepper import mhd_rhs
+
+    _grid_cache: dict[tuple, CylindricalGrid] = {}
+
+    def _mlx_block_rhs(
+        U_pad_np: np.ndarray,
+        block: AMRBlock,
+        level: AMRLevel,
+        gamma: float,
+        method: str,
+        riemann: str,
+        dt: float,
+        ng: int,
+    ) -> np.ndarray:
+        """Production MLX RHS for one AMR block.
+
+        Creates (or caches) a CylindricalGrid matching the block geometry,
+        converts the padded state to mx.array, calls mhd_rhs, and returns
+        the interior dU/dt as a NumPy array.
+        """
+        _, nr_pad, nz_pad = U_pad_np.shape
+        bnr = nr_pad - 2 * ng
+        bnz = nz_pad - 2 * ng
+        dr = level.dr
+        dz = level.dz
+
+        # Cache grids keyed on (nr_pad, nz_pad, dr, dz, r_min) to avoid
+        # rebuilding geometry arrays every step
+        r_inner = block.r_min
+        cache_key = (nr_pad, nz_pad, dr, dz, r_inner)
+        grid = _grid_cache.get(cache_key)
+        if grid is None:
+            grid = CylindricalGrid(nr_pad, nz_pad, dr, dz, r_inner=r_inner)
+            _grid_cache[cache_key] = grid
+
+        # Convert padded state to MLX
+        U_mx = mx.array(U_pad_np)
+
+        # Compute RHS using production flux pipeline
+        dU_mx = mhd_rhs(U_mx, grid, gamma=gamma, dr=dr, dz=dz,
+                         method=method, riemann=riemann)
+
+        # Extract interior (strip ghost cells) and return as NumPy
+        dU_np = np.asarray(dU_mx)[:, ng: ng + bnr, ng: ng + bnz]
+        return dU_np
+
+    return _mlx_block_rhs

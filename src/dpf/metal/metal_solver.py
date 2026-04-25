@@ -32,28 +32,53 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-import torch
+
+try:
+    import torch
+    _HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore[assignment]
+    _HAS_TORCH = False
 
 from dpf.constants import mu_0 as mu_0_si  # noqa: N812
 from dpf.core.bases import CouplingState, PlasmaSolverBase
-from dpf.metal.metal_riemann import (
-    P_FLOOR,
-    RHO_FLOOR,
-    _cons_to_prim_mps,
-    _fast_magnetosonic_mps,
-    _prim_to_cons_mps,
-    advance_nan_step_count,
-    mhd_rhs_cylindrical_mps,
-    mhd_rhs_mps,
-    set_nan_safety_level,
+
+# Downstream metal modules also unconditionally import torch. Guard the
+# whole sibling-import block so this module is import-safe on no-torch CI.
+if _HAS_TORCH:
+    from dpf.metal.metal_riemann import (
+        P_FLOOR,
+        RHO_FLOOR,
+        _cons_to_prim_mps,
+        _fast_magnetosonic_mps,
+        _prim_to_cons_mps,
+        advance_nan_step_count,
+        mhd_rhs_cylindrical_mps,
+        mhd_rhs_mps,
+        set_nan_safety_level,
+    )
+    from dpf.metal.metal_stencil import (
+        ct_update_cylindrical_mps,
+        ct_update_mps,
+        div_B_mps,
+        emf_from_fluxes_mps,
+    )
+    from dpf.metal.metal_transport import _safe_gradient
+else:
+    # Sentinels so class-body references don't NameError at import time.
+    # All of these are only reached after __init__, which raises before use.
+    P_FLOOR = RHO_FLOOR = None  # type: ignore[assignment]
+    _cons_to_prim_mps = _fast_magnetosonic_mps = _prim_to_cons_mps = None  # type: ignore[assignment]
+    advance_nan_step_count = mhd_rhs_cylindrical_mps = mhd_rhs_mps = None  # type: ignore[assignment]
+    set_nan_safety_level = None  # type: ignore[assignment]
+    ct_update_cylindrical_mps = ct_update_mps = div_B_mps = emf_from_fluxes_mps = None  # type: ignore[assignment]
+    _safe_gradient = None  # type: ignore[assignment]
+
+
+_TORCH_MISSING_MSG = (
+    "metal backend requires torch. Install with 'pip install torch' or use "
+    "backend='mlx' (MLX) / backend='python' (teaching)."
 )
-from dpf.metal.metal_stencil import (
-    ct_update_cylindrical_mps,
-    ct_update_mps,
-    div_B_mps,
-    emf_from_fluxes_mps,
-)
-from dpf.metal.metal_transport import _safe_gradient
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +250,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         reconstruction_precision: str = "float32",
         safety_level: str = "normal",
     ) -> None:
+        if not _HAS_TORCH:
+            raise ImportError(_TORCH_MISSING_MSG)
         self.grid_shape: tuple[int, int, int] = grid_shape
         self.dx: float = float(dx)
         self.dy: float = float(dy) if dy is not None else self.dx
@@ -370,6 +397,8 @@ class MetalMHDSolver(PlasmaSolverBase):
         bool
             ``True`` if PyTorch MPS is built and a Metal GPU is present.
         """
+        if not _HAS_TORCH:
+            return False
         try:
             return (
                 torch.backends.mps.is_available()

@@ -85,9 +85,19 @@ All locations are file paths within `src/dpf/`.
 
 **Not implemented**: Hall MHD in MLX, tabulated EOS, radiation transport, MPI parallelism.
 
-## Validation
+## Validation status
 
-### PF-1000 validation
+**Circuit-level (Lee snowplow model)**: Validated against experimental current
+waveforms from 6 devices with zero parameter calibration. See details below.
+
+**MHD-level (spatially-resolved solver)**: Verified against standard test problems
+(Sod, Brio-Wu). Not yet validated against spatially-resolved experimental data
+(density profiles, temperature maps). See [docs/SCOPE.md](docs/SCOPE.md) for full
+regime-of-validity analysis, [docs/BACKEND_PARITY.md](docs/BACKEND_PARITY.md)
+for which physics runs on which backend, and
+[docs/V_AND_V_SUMMARY.md](docs/V_AND_V_SUMMARY.md) for the complete V&V summary.
+
+### PF-1000 validation (circuit-level)
 
 Lee model equations I-VI from Lee (2014), J. Fusion Energy 33:319.
 Published RADPF device parameters. No parameter fitting.

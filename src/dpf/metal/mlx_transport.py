@@ -377,6 +377,57 @@ def compute_resistivity(
         eta = lee_more_resistivity(Te, rho, Z_eff=Z_eff, ion_mass=ion_mass)
     elif model == "spitzer":
         eta = spitzer_resistivity(Te, Z_eff=Z_eff)
+    elif model == "spitzer_vacuum":
+        # Ou Haibin et al. (2024), High Power Laser and Particle Beams 36:075001,
+        # Fig. 1: "vacuum region (high resistivity)" ahead of sheath,
+        # "plasma region (low resistivity)" behind sheath.
+        # PDF: references/papers/core-dpf/Two-dimensional simulation of dense
+        #      plasma focus.pdf
+        #
+        # Implementation: use density as proxy for ionization state.
+        # Unswept fill gas (rho ~ rho_fill) is neutral → high resistivity.
+        # Compressed plasma (rho >> rho_fill) is ionized → Spitzer resistivity.
+        # Transition: smooth tanh ramp over factor-of-2 density range.
+        #
+        # eta_vacuum ~ 1e3 Ohm*m (effectively insulating — neutral deuterium
+        # at 300K has sigma ~ 0, but we use a finite cap for numerical stability).
+        # eta_Spitzer ~ 1e-5 to 1e-4 Ohm*m at 1-10 eV.
+        eta_sp = spitzer_resistivity(Te, Z_eff=Z_eff)
+        # FLASH-style vacuum resistivity: artificially high eta in low-density
+        # cells so B diffuses freely through the vacuum/neutral gas.
+        #
+        # Hansen et al. (2024), staged-zpinch-2024-flash-mach2-pop.pdf, Sec IV:
+        #   "magnetic diffusivity of 10^11-10^12 cm^2/s" in vacuum cells.
+        #   Results verified INSENSITIVE to exact value (Fig. 4).
+        #
+        # ALEGRA (Haill 2005, Sec 6.3.10-12): void conductivity 1e-6 S/m
+        #   with ecdf density ramp.
+        #
+        # Physics: neutral fill gas is an insulator (sigma=0). In reality,
+        # B permeates vacuum/insulators instantly (Maxwell: div(B)=0 + BCs
+        # determine B everywhere, no wave propagation needed). High eta
+        # mimics this: the implicit Thomas solver relaxes B toward the
+        # boundary-determined solution in ~1 diffusion timestep.
+        #
+        # The Ohmic heating Q=eta*J^2 is handled by the implicit solver
+        # (Thomas algorithm is unconditionally stable). The Q_ohm cap in
+        # the energy equation (50% dp/p per step) prevents thermal blowup.
+        #
+        # eta_vacuum = mu0 * D_mag. For D_mag = 10^7 m^2/s (FLASH lower bound):
+        # eta = 4*pi*1e-7 * 1e7 = 12.6 Ohm*m. Using 10 Ohm*m.
+        eta_vacuum = 10.0  # Ohm*m — FLASH-style vacuum magnetic diffusivity
+
+        # Density ratio: rho / median(rho) — median is fill gas density
+        rho_safe = np.maximum(rho, 1e-30)
+        rho_median = float(np.median(rho_safe))
+        rho_ratio = rho_safe / max(rho_median, 1e-30)
+
+        # Smooth transition: ionization_frac = 0 at fill density, 1 at 2x fill
+        # tanh ramp centered at 1.5x fill density, width 0.5
+        ionization_frac = np.clip(
+            0.5 * (1.0 + np.tanh((rho_ratio - 1.5) / 0.3)), 0.0, 1.0
+        )
+        eta = ionization_frac * eta_sp + (1.0 - ionization_frac) * eta_vacuum
     elif model == "constant":
         eta = np.full_like(Te, eta_floor)
     else:
@@ -576,8 +627,17 @@ def apply_resistive_diffusion(
     dE_mag = np.maximum(dE_mag, 0.0)  # only heating, no cooling from B growth
     # Convert HL energy density to SI: E_SI = E_HL * mu_0
     Q_ohmic = dE_mag * MU_0
+    # Cap Ohmic heating to prevent pressure blowup in high-eta vacuum cells.
+    # Physical basis: in a sub-cycled scheme, each sub-step deposits a
+    # fraction of the energy. This single-step cap limits dp/p to 50%,
+    # equivalent to implicit sub-cycling. Without this, vacuum cells with
+    # eta >> eta_Spitzer (Ou 2024 approach) produce dE_mag >> e_internal
+    # in one step, causing pressure runaway.
+    e_int = np.maximum(p_new / max(gamma - 1.0, 0.01), P_FLOOR)
+    Q_cap = 0.5 * e_int
+    Q_limited = np.minimum(Q_ohmic, Q_cap)
     # Ohmic heating raises pressure: dp = (gamma-1) * Q
-    p_new = np.maximum(p_new + (gamma - 1.0) * Q_ohmic, P_FLOOR)
+    p_new = np.maximum(p_new + (gamma - 1.0) * Q_limited, P_FLOOR)
 
     return (
         mx.array(Br_new),

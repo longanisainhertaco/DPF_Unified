@@ -84,9 +84,9 @@ def run_rlc_snowplow_pf1000(
     *,
     sim_time: float = 10e-6,
     dt: float = 1e-9,
-    fc: float = 0.816,
-    fm: float = 0.142,
-    f_mr: float = 0.1,
+    fc: float = 0.70,
+    fm: float = 0.13,
+    f_mr: float = 0.35,
     pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
     crowbar_enabled: bool = True,
@@ -101,9 +101,16 @@ def run_rlc_snowplow_pf1000(
     Args:
         sim_time: Total simulation time [s]. Default 10 us.
         dt: Timestep [s]. Default 1 ns (fine enough for ~24 kHz dynamics).
-        fc: Current fraction (Lee's f_c). Default from Phase AC calibration.
-        fm: Mass fraction (Lee's f_m). Default from Phase AC calibration.
-        f_mr: Radial mass fraction (Lee's f_mr). Default 0.1 per Lee & Saw (2014).
+        fc: Current fraction (Lee's f_c).  Default 0.70 from Malek et al.
+            2025 (Plasma Phys. Technol. 12(1):1) PF1000 published fit at
+            3.5 Torr D2; matches Lee 2014 (JFE 33:319) Fig. 7 KSU fit.
+            The previous default 0.816 came from in-codebase "Phase AC
+            calibration" and was outside the paper-attested range.
+        fm: Mass fraction (Lee's f_m).  Default 0.13 from Malek et al. 2025
+            PF1000 fit; Lee 2014 Fig. 7 KSU PF gives fm=0.10.
+        f_mr: Radial mass fraction (Lee's f_mr).  Default 0.35 from
+            Malek et al. 2025 PF1000 fit (previous default 0.1 came from
+            the generic "Lee & Saw 2014" reference without in-paper citation).
         pinch_column_fraction: Fraction of anode length for radial phase.
             For PF-1000: 0.12 (effective pinch column ~72 mm of 600 mm anode).
             This controls the current dip depth via radial inductance.
@@ -213,8 +220,8 @@ def compare_engine_vs_experiment(
     t: np.ndarray,
     I: np.ndarray,  # noqa: E741
     device_name: str = "PF-1000",
-    fc: float = 0.816,
-    fm: float = 0.142,
+    fc: float = 0.70,
+    fm: float = 0.13,
     truncate_at_dip: bool = False,
 ) -> EngineValidationResult:
     """Compare engine I(t) against experimental data.
@@ -269,9 +276,9 @@ def compare_engine_vs_experiment(
 
 def compare_rlc_vs_lee(
     *,
-    fc: float = 0.816,
-    fm: float = 0.142,
-    f_mr: float = 0.1,
+    fc: float = 0.70,
+    fm: float = 0.13,
+    f_mr: float = 0.35,
     pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
 ) -> dict[str, Any]:

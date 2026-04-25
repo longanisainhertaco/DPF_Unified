@@ -43,10 +43,17 @@ jobs:
           -n auto
       - name: Verify test count
         run: |
+          # Threshold sized for the no-torch/Metal/Athena CI subset.
+          # 4000 was set when those backends were installed in CI; the current
+          # workflow excludes them by design (test step `--ignore` flags + `-k`
+          # filter above). After removing 3 fabricated tests (2026-04-24 audit)
+          # and the no-backend collection limits, baseline in CI is ~2600.
+          # Floor at 2500 catches regressions where collection silently drops
+          # more than ~100 tests.
           count=$(pytest tests/ --co -q -m "not slow" 2>&1 | tail -1 | grep -oE '[0-9]+' | head -1)
           echo "Found ${count:-0} non-slow tests"
-          if [ -z "$count" ] || [ "$count" -lt 4000 ]; then
-            echo "ERROR: Expected at least 4000 non-slow tests, found ${count:-0}"
+          if [ -z "$count" ] || [ "$count" -lt 2500 ]; then
+            echo "ERROR: Expected at least 2500 non-slow tests, found ${count:-0}"
             exit 1
           fi
 

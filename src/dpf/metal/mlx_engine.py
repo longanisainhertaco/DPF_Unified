@@ -17,6 +17,8 @@ import math
 import time
 from typing import Any
 
+import numpy as np
+
 from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_snowplow import MLXSnowplow
 from dpf.presets import get_preset
@@ -100,7 +102,11 @@ def run_mlx_discharge(
     _m_D2 = 6.69e-27  # D2 molecular mass
     rho0 = _p_Pa * _m_D2 / (_kB * 300.0)
 
+    # MHD t_peak is ~30% later than snowplow due to numerical diffusion.
+    # 15 us gives enough margin for the current to peak and decay.
     sim_time = preset.get("sim_time", 10e-6)
+    if mode == "mhd":
+        sim_time = max(sim_time, 12e-6)  # MHD t_peak is later than snowplow
 
     # Build circuit
     circuit = MLXCircuitSolver(
@@ -128,33 +134,84 @@ def run_mlx_discharge(
     mhd_solver = None
     mhd_state = None
     if mode == "mhd":
-        import numpy as _np
-
         from dpf.metal.mlx_solver import MLXMHDSolver
 
         r_anode = cc["anode_radius"]
         r_cathode = cc["cathode_radius"]
         anode_length = sp_cfg.get("anode_length", 0.16)
         nr, ny, nz = grid_shape
-        # Grid spans inter-electrode gap (radial) and anode length (axial)
-        dr_mhd = (r_cathode - r_anode) / nr
+        # Grid spans FULL radial extent: axis (r=0) to cathode (r=r_cathode).
+        # During axial rundown, plasma is between anode and cathode (r_a < r < r_c).
+        # During radial phase, the sheath moves inward from r_anode toward r=0.
+        # The pinch forms at r ~ 0. The old grid (r_anode to r_cathode) could
+        # not resolve the radial implosion or pinch — the entire region where
+        # L_p changes was outside the computational domain.
+        #
+        # Sun et al. (2025), Acta Phys. Sin. 74:115201, Fig. 2:
+        #   Full domain 0 to r_cathode, anode as internal boundary.
+        # Ou Haibin et al. (2024), Fig. 1:
+        #   Full domain including axis, anode excluded as solid body.
+        dr_mhd = r_cathode / nr  # full radial extent
         dz_mhd = anode_length / nz
 
         mhd_solver = MLXMHDSolver(
             grid_shape=grid_shape, dx=dr_mhd, dz=dz_mhd,
             riemann_solver="hlls", reconstruction="plm",
             time_integrator="ssp_rk2", coordinates="cylindrical",
-            r_inner=r_anode,
+            r_inner=0.0,  # domain starts at axis, not at anode surface
             cathode_radius=r_cathode,
             ion_mass=_m_D2 / 2.0,
+            # Electrode BC computes B_theta = mu0*I/(2*pi*r) in SI Tesla.
+            # The MLX solver operates in Heaviside-Lorentz units (mu0=1).
+            # Without this flag, B is 1/sqrt(mu0) ~ 1000x too weak,
+            # producing negligible J×B compression.
+            convert_b_si_to_hl=True,
+            # Spitzer resistivity with implicit Thomas solver.
+            # Stone & Norman, ApJS 80:753 (1992): operator-split implicit diffusion.
+            # The Thomas tridiagonal solver is unconditionally stable at any eta.
+            # The RKL2 STS path causes NaN in vacuum cells — disabled via
+            # use_rkl2_transport=False.
+            # Spitzer: eta = 5.2e-5 * Z * ln(Lambda) / Te_eV^1.5 [Ohm*m]
+            # Johnson et al. (2024): Spitzer confirmed valid for DPF conditions.
+            # spitzer_vacuum: Spitzer in dense plasma, FLASH-style high eta in vacuum.
+            # Hansen et al. (2024) Sec IV: eta_vac=10^11-10^12 cm^2/s, insensitive.
+            # Enables B to diffuse through neutral fill gas to correct 1/r profile.
+            resistivity_model="spitzer_vacuum",
+            use_rkl2_transport=False,  # Thomas solver, not STS (avoids NaN)
+            rho_floor=rho0 * 1e-4,  # Beresnyak rho_min: prevents v_A→∞ in vacuum
+            rho_fill=rho0,  # fill gas density for vacuum/dense classification
         )
+        # Initial state: fill gas between electrodes (r_anode < r < r_cathode).
+        # Inside the anode (r < r_anode): vacuum/low density (solid body).
+        # Outside this range: fill gas at fill pressure and temperature.
+        r_cells = (np.arange(nr) + 0.5) * dr_mhd  # cell centers from 0 to r_cathode
+        in_gap = (r_cells >= r_anode) & (r_cells <= r_cathode)
+        rho_init = np.full((nr, ny, nz), rho0 * 1e-4, dtype=np.float32)  # vacuum inside anode
+        rho_init[in_gap, :, :] = rho0  # fill gas in electrode gap
+        p_init = np.full((nr, ny, nz), _p_Pa * 1e-4, dtype=np.float32)
+        p_init[in_gap, :, :] = _p_Pa
+
+        # Sheath seed at inlet (z=0): thin dense layer per Sun et al. (2025)
+        # Section 3.2: "at the inlet, a plasma thin layer with average density
+        # ~4*n0 and temperature ~2 eV is initialized."
+        # This pre-formed sheath carries the initial current and B_theta.
+        # J×B accelerates it axially — B propagates WITH the dense layer.
+        # Without this seed, B sits at the inlet and doesn't propagate.
+        _n_sheath_cells = max(2, nz // 16)  # ~4-8 cells at z=0
+        _kB = 1.380649e-23
+        _Te_sheath = 2.0 * 1.602e-19 / _kB  # 2 eV in Kelvin = ~23,200 K
+        rho_init[in_gap, :, :_n_sheath_cells] = 4.0 * rho0  # 4x fill density
+        p_init[in_gap, :, :_n_sheath_cells] = (
+            4.0 * rho0 / (_m_D2 / 2.0) * _kB * _Te_sheath * 2.0  # (1+Z)*n*kB*T
+        )
+
         mhd_state = {
-            "rho": _np.full((nr, ny, nz), rho0, dtype=_np.float32),
-            "velocity": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
-            "pressure": _np.full((nr, ny, nz), _p_Pa, dtype=_np.float32),
-            "B": _np.zeros((3, nr, ny, nz), dtype=_np.float32),
-            "Te": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
-            "Ti": _np.full((nr, ny, nz), 300.0, dtype=_np.float32),
+            "rho": rho_init,
+            "velocity": np.zeros((3, nr, ny, nz), dtype=np.float32),
+            "pressure": p_init,
+            "B": np.zeros((3, nr, ny, nz), dtype=np.float32),
+            "Te": np.full((nr, ny, nz), 300.0, dtype=np.float32),
+            "Ti": np.full((nr, ny, nz), 300.0, dtype=np.float32),
         }
 
     # Timestep from LC period
@@ -173,6 +230,7 @@ def run_mlx_discharge(
     voltages: list[float] = []
     Lp_list: list[float] = []
     Lp_mhd_list: list[float] = []
+    _phi_history: list[tuple[float, float]] = []  # (time, Phi_SI) for voltage-flux BDF2
     phases: list[str] = []
 
     t = 0.0
@@ -182,10 +240,8 @@ def run_mlx_discharge(
 
     # MHD-circuit coupling state
     blend_alpha = 0.0
-    blend_active = False
-    prev_Lp_blend = 0.0
-    # Radial/pinch phases where MHD Lp can be trusted
-    _MHD_TRUST_PHASES = {"radial", "radial_reflected", "pinch", "column"}
+    # Phases where MHD Lp can be trusted (includes rundown with density gate)
+    _MHD_TRUST_PHASES = {"rundown", "radial", "radial_reflected", "pinch", "column"}
 
     for _step in range(n_steps_max):
         # Snowplow step (always runs — provides phase detection)
@@ -203,52 +259,39 @@ def run_mlx_discharge(
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712:
+            # Ghost zone velocity with dI/dt correction (verif_r.cpp line 242).
+            # Interior vacuum B_theta prescribed via Ampere's law (solver step 6.9).
+            # Circuit coupling uses snowplow Lp (not dPhi/dt) to avoid instability.
+            I_cur = circuit.current
+            # dI/dt from the previous two stored currents (not I_cur, which
+            # equals currents[-1] since the circuit step hasn't run yet).
+            if len(currents) >= 2:
+                dI_dt = (currents[-1] - currents[-2]) * 1e6 / max(dt, 1e-30)  # MA->A
+            else:
+                # First step: estimate from circuit equation dI/dt ≈ V/L
+                dI_dt = circuit.voltage / max(cc["L0"], 1e-15) if _step > 0 else 0.0
+            # verif_r.cpp line 101: curr_rate=0 when I < 1 kA (avoids 1/I singularity)
+            _curr_rate = dI_dt / I_cur if abs(I_cur) > 1e3 else 0.0
             mhd_state = mhd_solver.step(
                 mhd_state, mhd_dt,
                 current=circuit.current, voltage=circuit.voltage,
                 apply_electrode_bc=True,
+                curr_rate=_curr_rate,
             )
 
-            # Read MHD-computed inductance from density-weighted Lee formula
-            coupling = mhd_solver.coupling_interface()
-            Lp_mhd_val = coupling.Lp
-            dLp_dt_mhd = coupling.dL_dt
+            # Auluck (2021) Poynting coupling: V = -(1/I)*integral(J·E d³r)
+            # Implemented in compute_voltage_poynting() but NOT wired to circuit.
+            # The MHD B-field in the buffer zone is weaker than vacuum (ghost cell
+            # propagation too slow), creating wrong-sign J·E (energy INTO plasma).
+            # Self-consistent Poynting requires either:
+            #   (a) faster B propagation (lower density floor, or resistive diffusion)
+            #   (b) initializing B correctly at t=0 when I>0 (Beresnyak's approach)
+            # For now: snowplow Lp provides correct circuit loading.
+            Lp_mhd_val = Lp_sp
 
-            # Trust gate: MHD Lp must be >0 and within 50% of snowplow Lp.
-            # During early axial rundown, MHD fields are uninitialized and
-            # produce near-zero Lp — using that would let current rise
-            # unrestricted (observed +59% I_peak without this gate).
-            mhd_trustworthy = (
-                Lp_mhd_val > 0
-                and phase in _MHD_TRUST_PHASES
-                and (Lp_sp <= 0 or Lp_mhd_val >= 0.5 * Lp_sp)
-            )
-
-            if mhd_trustworthy:
-                if not blend_active:
-                    blend_active = True
-                    blend_alpha = 0.0
-                # Exponential ramp: alpha -> 1 with tau = 5 steps
-                tau_blend = 5.0 * dt
-                blend_alpha = min(
-                    1.0 - (1.0 - blend_alpha) * math.exp(-dt / max(tau_blend, 1e-30)),
-                    1.0,
-                )
-                Lp, dLp_dt = _blend_lp(
-                    Lp_sp, dLp_dt_sp, Lp_mhd_val, dLp_dt_mhd,
-                    blend_alpha, prev_Lp_blend,
-                )
-            else:
-                Lp = Lp_sp
-                dLp_dt = dLp_dt_sp
-        else:
-            Lp = Lp_sp
-            dLp_dt = dLp_dt_sp
-
-        prev_Lp_blend = Lp
-
-        # Circuit step — now driven by MHD Lp when blending is active
-        circuit.step(Lp=Lp, dLp_dt=dLp_dt, R_plasma=R_plasma, back_emf=0.0, dt=dt)
+        # Circuit step
+        circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
         t += dt
 
         # Record
@@ -256,7 +299,7 @@ def run_mlx_discharge(
         times.append(t * 1e6)
         currents.append(I_MA)
         voltages.append(circuit.voltage / 1e3)
-        Lp_list.append(Lp * 1e9)
+        Lp_list.append(Lp_sp * 1e9)
         Lp_mhd_list.append(Lp_mhd_val * 1e9)
         phases.append(phase)
 

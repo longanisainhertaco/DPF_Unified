@@ -151,6 +151,12 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._convert_b_si_to_hl: bool = convert_b_si_to_hl
         self.ion_mass: float = float(ion_mass)
 
+        # Density floor: prevents vacuum Alfven speed → ∞.
+        # Set to ~1e-4 * fill density from engine, or 1e-6 absolute minimum.
+        self._rho_floor: float = max(float(kwargs.get("rho_floor", 1e-6)), 1e-6)
+        # Fill gas density for vacuum/dense cell classification.
+        self._rho_fill: float = float(kwargs.get("rho_fill", self._rho_floor * 1e4))
+
         self.enable_hall: bool = enable_hall
         self.enable_braginskii_conduction: bool = enable_braginskii_conduction
         self.enable_braginskii_viscosity: bool = enable_braginskii_viscosity
@@ -189,11 +195,44 @@ class MLXMHDSolver(PlasmaSolverBase):
         self.total_radiated_energy: float = 0.0
         self._prev_Lp: float = 0.0
         self._Lp_max: float = 0.0
+        self._Lp_history: list[tuple[float, float]] = []
+        self._sim_time: float = 0.0
         self._cathode_radius: float = float(kwargs.get("cathode_radius", 0.025))
         self.config_two_temperature: bool = kwargs.get("two_temperature", False)
         self._resistivity_model: str = str(kwargs.get("resistivity_model", "constant"))
         self._anomalous_resistivity_model: str | None = kwargs.get("anomalous_resistivity")
         self._use_rkl2_transport: bool = bool(kwargs.get("use_rkl2_transport", True))
+
+        # Saha EOS: variable Z_bar(T) instead of hardcoded Z=1
+        self._enable_saha_eos: bool = bool(kwargs.get("enable_saha_eos", False))
+        self._saha_eos = None
+        if self._enable_saha_eos:
+            from dpf.metal.mlx_eos import SahaEOS
+            n_e_ref = float(kwargs.get("saha_n_e_ref", 1e22))
+            self._saha_eos = SahaEOS(n_e_ref=n_e_ref, ion_mass=self.ion_mass)
+            logger.info("Saha EOS enabled (n_e_ref=%.2e)", n_e_ref)
+
+        # AMR: block-structured adaptive mesh refinement
+        self._enable_amr: bool = bool(kwargs.get("enable_amr", False))
+        self._amr_hierarchy: Any = None
+        self._amr_rhs_fn: Any = None
+        self._amr_block_nr: int = int(kwargs.get("amr_block_nr", max(nr // 2, 8)))
+        self._amr_block_nz: int = int(kwargs.get("amr_block_nz", max(nz // 2, 8)))
+        self._amr_ratio: int = int(kwargs.get("amr_ratio", 2))
+        self._amr_refined_blocks: list | None = kwargs.get("amr_refined_blocks")
+        if self._enable_amr:
+            from dpf.metal.mlx_amr import build_amr_hierarchy, make_mlx_block_rhs
+            self._amr_hierarchy = build_amr_hierarchy(
+                nr, nz, self.dx, self.dz, self._r_inner,
+                self._amr_block_nr, self._amr_block_nz, self._amr_ratio,
+                refined_blocks=self._amr_refined_blocks,
+            )
+            self._amr_rhs_fn = make_mlx_block_rhs(coordinates=self.coordinates)
+            logger.info(
+                "AMR enabled: %d blocks (L0), ratio=%d, block=%dx%d",
+                len(self._amr_hierarchy.levels[0].blocks),
+                self._amr_ratio, self._amr_block_nr, self._amr_block_nz,
+            )
 
         # Internal conserved state (mx.array, set after first step)
         self._U: Any = None
@@ -208,9 +247,10 @@ class MLXMHDSolver(PlasmaSolverBase):
             self._species_mgr = SpeciesManager(**species_config)
             self._Y = self._species_mgr.init_mass_fractions(nr, nz)
 
-        # AMR configuration and hierarchy
+        # Legacy AMR config (Phase A) — does NOT overwrite new enable_amr path
         self._amr_config: Any = amr_config
-        self._amr_hierarchy: Any = None
+        if not self._enable_amr:
+            self._amr_hierarchy = None  # only reset if not already built above
         self._step_count: int = 0
 
         # Grid and state manager — built eagerly if MLX is present
@@ -282,10 +322,18 @@ class MLXMHDSolver(PlasmaSolverBase):
         ng: int,
         nr_phys: int,
         convert_si_to_hl: bool = True,
+        z_sheath_frac: float = 1.0,
     ) -> Any:
-        """Apply electrode B_theta BC in pure MLX. Delegated to mlx_bc.py."""
+        """Apply electrode B_theta BC with z-dependent sheath masking.
+
+        Ou Haibin et al. (2024): B_theta only behind sheath (low resistivity region).
+        Sun et al. (2025): B at inlet boundary, conducting wall on electrodes.
+        """
         from dpf.metal.mlx_bc import electrode_bt_fixup_mlx
-        return electrode_bt_fixup_mlx(U_padded, r_cell, current, ng, nr_phys, convert_si_to_hl)
+        return electrode_bt_fixup_mlx(
+            U_padded, r_cell, current, ng, nr_phys, convert_si_to_hl,
+            z_sheath_frac=z_sheath_frac,
+        )
 
     # WENO5-Z needs 3 ghost cells; PLM needs 2.
     _GHOST_NG: int = 3
@@ -330,10 +378,16 @@ class MLXMHDSolver(PlasmaSolverBase):
         r_cell_list = [r_inner_g + (i + 0.5) * dr for i in range(nr_g)]
         r_cell_np = np.array(r_cell_list, dtype=np.float32)
 
-        # ghost_pad_mlx expects r_face param as cell-centre radii for B_theta calc
+        # Ghost cell padding.
+        # When inlet BC is active (Sun 2025), use "outflow" (zero-gradient) at
+        # cathode instead of "electrode" (Dirichlet B_theta). The cathode is a
+        # conducting wall: dB/dn = 0. B_theta injection is at z=0 inlet only.
+        # Sun et al. (2025) Eq. 18: dB/dn = 0 on electrode surfaces.
+        _use_inlet_bc = getattr(self, "_inlet_bc_active", False)
+        _bc_type = "outflow" if _use_inlet_bc else "electrode"
         U_padded = ghost_pad_mlx(
-            U, ng, "electrode",
-            current=current,
+            U, ng, _bc_type,
+            current=current if not _use_inlet_bc else 0.0,
             r_face=r_cell_np,
             mu0=_MU0,
         )
@@ -347,56 +401,85 @@ class MLXMHDSolver(PlasmaSolverBase):
         # 3. Update total energy E to account for changed B_theta (energy
         #    consistency). Without this, p = (gamma-1)(E - KE - B^2/2) goes
         #    negative when B_theta >> B_theta_old, causing HLLD NaN.
-        # Apply electrode B_theta BC: pure MLX path (no np.asarray sync).
-        # NumPy fallback used only if MLX is unavailable.
+        # Apply electrode B_theta fixup ONLY when using cathode Dirichlet BC
+        # (legacy mode). When inlet BC is active, cathode is conducting wall
+        # (zero-gradient from ghost_pad), no fixup needed.
         r_cell_mx_g = mx.array(r_cell_np)
-        try:
-            U_padded = self._electrode_bt_fixup_mlx(
-                U_padded,
-                r_cell_mx_g,
-                current,
-                ng,
-                self.nr,
-                convert_si_to_hl=self._convert_b_si_to_hl,
-            )
-        except (RuntimeError, IndexError, ValueError, TypeError) as exc:
-            # NumPy fallback: preserves exact original behaviour.
-            # Only catch MLX compilation/device errors — not logic bugs.
-            logger.warning("MLX electrode BC failed (%s), using NumPy fallback", exc)
-            from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
-            _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
+        if _use_inlet_bc:
+            pass  # conducting wall — ghost cells already set by ghost_pad_mlx("outflow")
+        else:
+            try:
+                U_padded = self._electrode_bt_fixup_mlx(
+                    U_padded,
+                    r_cell_mx_g,
+                    current,
+                    ng,
+                    self.nr,
+                    convert_si_to_hl=self._convert_b_si_to_hl,
+                    z_sheath_frac=getattr(self, "_z_sheath_frac", 1.0),
+                )
+            except (RuntimeError, IndexError, ValueError, TypeError) as exc:
+                logger.warning("MLX electrode BC failed (%s), using NumPy fallback", exc)
+                from dpf.metal.mlx_kernels import GAMMA, IBR, IBT, IBZ, IDN, IEN, P_FLOOR
+                _sqrt = _SQRT_MU0 if self._convert_b_si_to_hl else 1.0
+                U_np = np.asarray(U_padded)
+
+                def _update_bt_with_energy(cell_idx: int, Bt_new: float) -> None:
+                    B2_old = (U_np[IBR, cell_idx, :] ** 2
+                              + U_np[IBZ, cell_idx, :] ** 2
+                              + U_np[IBT, cell_idx, :] ** 2)
+                    U_np[IBT, cell_idx, :] = Bt_new
+                    B2_new = (U_np[IBR, cell_idx, :] ** 2
+                              + U_np[IBZ, cell_idx, :] ** 2
+                              + U_np[IBT, cell_idx, :] ** 2)
+                    U_np[IEN, cell_idx, :] += 0.5 * (B2_new - B2_old)
+                    p_mag = 0.5 * B2_new
+                    beta_floor = 1e-4
+                    p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
+                    E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
+                    U_np[IEN, cell_idx, :] = np.maximum(U_np[IEN, cell_idx, :], E_floor)
+
+                for ig in range(ng):
+                    out_idx = ng + self.nr + ig
+                    r_pos = max(r_cell_list[out_idx], 1e-10)
+                    Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                    _update_bt_with_energy(out_idx, Bt_val)
+                    U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
+
+                for ig in range(ng):
+                    int_idx = ng + self.nr - 1 - ig
+                    r_pos = max(r_cell_list[int_idx], 1e-10)
+                    Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
+                    existing = U_np[IBT, int_idx, :]
+                    new_Bt = np.where(np.abs(existing) > np.abs(Bt_val), existing, Bt_val)
+                    _update_bt_with_energy(int_idx, new_Bt)
+
+                U_padded = mx.array(U_np)
+
+        # Beresnyak velocity prescription in outer ghost cells.
+        # verif_r.cpp line 242: v_ghost = v_interior + (v_interior/r - curr_rate) * delta_r
+        # This ensures E = -v×B is consistent with dB/dt, preventing NaN.
+        curr_rate = getattr(self, "_beresnyak_curr_rate", 0.0)
+        if abs(curr_rate) > 0 and not _use_inlet_bc:
             U_np = np.asarray(U_padded)
-
-            def _update_bt_with_energy(cell_idx: int, Bt_new: float) -> None:
-                B2_old = (U_np[IBR, cell_idx, :] ** 2
-                          + U_np[IBZ, cell_idx, :] ** 2
-                          + U_np[IBT, cell_idx, :] ** 2)
-                U_np[IBT, cell_idx, :] = Bt_new
-                B2_new = (U_np[IBR, cell_idx, :] ** 2
-                          + U_np[IBZ, cell_idx, :] ** 2
-                          + U_np[IBT, cell_idx, :] ** 2)
-                U_np[IEN, cell_idx, :] += 0.5 * (B2_new - B2_old)
-                p_mag = 0.5 * B2_new
-                beta_floor = 1e-4
-                p_min = beta_floor * np.maximum(p_mag, P_FLOOR)
-                E_floor = p_min / (GAMMA - 1.0) + 0.5 * B2_new
-                U_np[IEN, cell_idx, :] = np.maximum(U_np[IEN, cell_idx, :], E_floor)
-
+            from dpf.metal.constants import IDN, IMR
             for ig in range(ng):
                 out_idx = ng + self.nr + ig
-                r_pos = max(r_cell_list[out_idx], 1e-10)
-                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-                _update_bt_with_energy(out_idx, Bt_val)
-                U_np[IDN, out_idx, :] = np.maximum(U_np[IDN, out_idx, :], 1e-4)
-
-            for ig in range(ng):
-                int_idx = ng + self.nr - 1 - ig
-                r_pos = max(r_cell_list[int_idx], 1e-10)
-                Bt_val = _MU0 * current / (2.0 * math.pi * r_pos) / _sqrt
-                existing = U_np[IBT, int_idx, :]
-                new_Bt = np.where(np.abs(existing) > np.abs(Bt_val), existing, Bt_val)
-                _update_bt_with_energy(int_idx, new_Bt)
-
+                int_idx = ng + self.nr - 1  # last interior cell
+                r_int = max(r_cell_list[int_idx], 1e-10)
+                r_out = max(r_cell_list[out_idx], 1e-10)
+                delta_r = r_out - r_int
+                # Interior velocity (radial momentum / density)
+                rho_int = np.maximum(U_np[IDN, int_idx, :], 1e-30)
+                vr_int = U_np[IMR, int_idx, :] / rho_int
+                # Beresnyak extrapolation with dI/dt correction
+                vr_ghost = vr_int + (vr_int / r_int - curr_rate) * delta_r
+                # Set ghost cell momentum = rho_ghost * vr_ghost
+                rho_ghost = U_np[IDN, out_idx, :]
+                U_np[IMR, out_idx, :] = rho_ghost * vr_ghost
+                # Update energy for kinetic energy change
+                0.5 * U_np[IMR, out_idx, :] ** 2 / np.maximum(rho_ghost, 1e-30)
+                # (energy already includes B from electrode fixup)
             U_padded = mx.array(U_np)
 
         # Build a lightweight padded grid. CylindricalGrid rejects negative
@@ -610,12 +693,9 @@ class MLXMHDSolver(PlasmaSolverBase):
             from dpf.metal.mlx_primitives import cons_to_prim
             from dpf.metal.mlx_transport import compute_resistivity
             rho_tmp, _, _, _, p_tmp, _, _, _ = cons_to_prim(U, self.gamma)
-            Te_eV = (
-                np.asarray(p_tmp, dtype=np.float64) * self.ion_mass
-                / (2.0 * np.maximum(np.asarray(rho_tmp, dtype=np.float64), 1e-30) * _K_B)
-                / 11604.5  # K -> eV
-            )
             rho_np = np.asarray(rho_tmp, dtype=np.float64)
+            p_np_tmp = np.asarray(p_tmp, dtype=np.float64)
+            Te_eV = self._temperature_eV(rho_np, p_np_tmp)
             # Compute J^2 for anomalous resistivity if enabled
             J_sq_np = None
             p_np = None
@@ -645,7 +725,7 @@ class MLXMHDSolver(PlasmaSolverBase):
             else:
                 U = self._do_resistive_diffusion(U, dt * 0.5, _eta_arg)
 
-        # ── 3.2. Electrode BC (ghost-cell padding) ────────────────────
+        # ── 3.2. Electrode BC ────────────────────────────────────────
         apply_bc = kwargs.get("apply_electrode_bc", False)
         _ghost_active = (
             apply_bc
@@ -654,6 +734,19 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         grid_for_rk = self._grid
         if _ghost_active:
+            # Beresnyak et al. (2022), Phys. Plasmas 29:052712, verif_r.cpp:
+            # Ghost zone BC with BOTH B_theta AND velocity prescribed.
+            # B_theta = mu0*I/(2*pi*r) in ghost cells (Ampere's law).
+            # Velocity = extrapolated from interior + dI/dt gradient correction:
+            #   v_ghost = v_interior + (v_interior/r - curr_rate) * delta_r
+            # where curr_rate = (1/I)(dI/dt).
+            # This ensures E = -v×B is consistent with dB/dt from circuit,
+            # preventing the NaN from E-field mismatch at the boundary.
+            # The velocity prescription is the KEY — without it, v=0 in ghost
+            # cells next to B=1500 creates massive E-field discontinuity.
+            self._inlet_bc_active = False  # Dirichlet B + velocity in ghosts
+            # Store curr_rate for the ghost BC
+            self._beresnyak_curr_rate = kwargs.get("curr_rate", 0.0)
             U, grid_for_rk = self._pad_electrode_ghost(U, current)
 
         # ── 4. Hyperbolic step ───────────────────────────────────────────
@@ -671,6 +764,33 @@ class MLXMHDSolver(PlasmaSolverBase):
         # ── 4.1. Strip ghost cells ───────────────────────────────────────
         if _ghost_active:
             U = self._strip_ghost(U, self._GHOST_NG)
+
+        # ── 4.2. Density and pressure floor ─────────────────────────────
+        # Every production MHD code (Athena++, FLASH, Pluto) enforces
+        # conservative floors after the hyperbolic update. Without this,
+        # vacuum cells reach rho~1e-12, producing v_Alfven→∞ and CFL
+        # collapse. Beresnyak (2022) uses rho_min as an explicit parameter.
+        # Our floor: 1e-4 * fill density, or 1e-6 kg/m^3 absolute minimum.
+        from dpf.metal.constants import IBR, IBT, IBZ, IDN, IEN, IMR, IMT, IMZ
+        _rho_floor = max(getattr(self, "_rho_floor", 1e-6), 1e-6)
+        U_np = np.asarray(U)
+        rho = U_np[IDN]
+        needs_floor = rho < _rho_floor
+        if np.any(needs_floor):
+            # Rescale momentum to preserve velocity when flooring density
+            rho_safe = np.maximum(rho, 1e-30)
+            scale = np.where(needs_floor, _rho_floor / rho_safe, 1.0)
+            U_np[IDN] = np.maximum(rho, _rho_floor)
+            U_np[IMR] *= scale
+            U_np[IMZ] *= scale
+            U_np[IMT] *= scale
+            # Floor total energy: E >= p_floor/(gamma-1) + KE + B^2/2
+            KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / U_np[IDN]
+            B2 = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
+            _p_floor = 1e-8  # Pa — cold but not singular
+            E_floor = _p_floor / (self.gamma - 1.0) + KE + 0.5 * B2
+            U_np[IEN] = np.where(needs_floor, np.maximum(U_np[IEN], E_floor), U_np[IEN])
+            U = mx.array(U_np.astype(np.float32))
 
         # ── 4.5. div(B) control ───────────────────────────────────────────
         if self._use_ct and self.coordinates == "cylindrical":
@@ -770,6 +890,82 @@ class MLXMHDSolver(PlasmaSolverBase):
                     cu_idx=0,
                 )
             mx.eval(self._Y)
+
+        # ── 6.9. Z-dependent vacuum B_theta prescription ──────────────
+        # Prescribe B_theta = mu0*I/(2*pi*r) only in vacuum cells that are:
+        #   (a) BEHIND the sheath (z < z_sheath) — ahead, B should be zero
+        #   (b) FAR from dense cells (buffer zone) — near sheath, MHD evolves B
+        # This preserves B-field gradients near the sheath boundary, giving
+        # nonzero J = curl(B) for Auluck (2021) Poynting coupling.
+        #
+        # Beresnyak (2022) verif_r.cpp:135: B in vacuum behind shell.
+        # Auluck (2021) Eq. (1): V = -(1/I)*integral(J·E d³r) requires J≠0.
+        if (
+            abs(current) > 1e-10
+            and self.coordinates == "cylindrical"
+            and _ghost_active
+        ):
+            import math
+            _MU0_LOCAL = 4.0 * math.pi * 1e-7
+            _SQRT_MU0_LOCAL = math.sqrt(_MU0_LOCAL)
+            U_np = np.asarray(U)
+            rho = U_np[IDN]
+            nr_local, nz_local = rho.shape
+            _rho_fill = self._rho_fill
+            r_cells = self._r_inner + (np.arange(nr_local) + 0.5) * self._grid.dr
+            r_safe = np.maximum(r_cells, 1e-10)
+
+            # --- Z-sheath detection from B_theta radial integral ---
+            # Behind sheath: Phi_radial ~ Phi_vacuum. Ahead: Phi_radial ~ 0.
+            _div = _SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0
+            Bt_si = U_np[IBT] * (_SQRT_MU0_LOCAL if self._convert_b_si_to_hl else 1.0)
+            Phi_radial = np.sum(Bt_si * self._grid.dr, axis=0)  # (nz,)
+            Phi_vacuum = (_MU0_LOCAL * current / (2.0 * math.pi)) * math.log(
+                max(r_safe[-1] / max(r_safe[0], 1e-10), 1.01)
+            )
+            above = np.abs(Phi_radial) > 0.3 * abs(Phi_vacuum)
+            iz_sheath = int(np.max(np.where(above)[0])) + 1 if np.any(above) else nz_local
+
+            # --- Buffer zone: exclude N cells around dense regions ---
+            dense = rho > 3.0 * _rho_fill
+            _N_BUFFER = 3
+            if np.any(dense):
+                try:
+                    from scipy.ndimage import binary_dilation
+                    near_dense = binary_dilation(dense, iterations=_N_BUFFER)
+                except ImportError:
+                    # Fallback: simple dilation via max-filter
+                    near_dense = dense.copy()
+                    for _ in range(_N_BUFFER):
+                        padded = np.pad(near_dense, 1, mode='constant', constant_values=False)
+                        near_dense = (
+                            padded[:-2, 1:-1] | padded[2:, 1:-1] |
+                            padded[1:-1, :-2] | padded[1:-1, 2:] | near_dense
+                        )
+            else:
+                near_dense = np.zeros_like(dense)
+
+            # --- Prescription mask: vacuum AND behind sheath AND far from dense ---
+            vacuum = rho < 3.0 * _rho_fill
+            prescribe = vacuum & (~near_dense)
+            prescribe[:, iz_sheath:] = False  # don't prescribe ahead of sheath
+
+            if np.any(prescribe):
+                Bt_ampere = (_MU0_LOCAL * current / (2.0 * math.pi)) / _div
+                Bt_ampere_2d = Bt_ampere / r_safe[:, None] * np.ones_like(rho)
+                B2_old = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
+                Bt_new = np.where(prescribe, Bt_ampere_2d, U_np[IBT])
+                B2_new = U_np[IBR]**2 + U_np[IBZ]**2 + Bt_new**2
+                U_np[IEN] += np.where(prescribe, 0.5 * (B2_new - B2_old), 0.0)
+                U_np[IBT] = Bt_new
+                KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / np.maximum(U_np[IDN], 1e-30)
+                e_int = U_np[IEN] - KE - 0.5 * B2_new
+                bad_p = e_int < 1e-8
+                if np.any(bad_p & prescribe):
+                    p_min_vac = 1e-4 * 0.5 * B2_new
+                    E_floor_vac = p_min_vac / (self.gamma - 1.0) + KE + 0.5 * B2_new
+                    U_np[IEN] = np.where(bad_p & prescribe, np.maximum(U_np[IEN], E_floor_vac), U_np[IEN])
+                U = mx.array(U_np.astype(np.float32))
 
         # ── 7. Unpack ────────────────────────────────────────────────────
         self._U = U
@@ -1001,6 +1197,124 @@ class MLXMHDSolver(PlasmaSolverBase):
         return U
 
     # ------------------------------------------------------------------
+    # AMR stepping
+    # ------------------------------------------------------------------
+
+    def amr_step(
+        self,
+        state: dict[str, np.ndarray],
+        dt: float,
+        current: float = 0.0,
+        step_number: int = 0,
+        **kwargs: Any,
+    ) -> dict[str, np.ndarray]:
+        """Advance one AMR timestep using production MLX RHS.
+
+        Decomposes the global state into AMR blocks, advances each block
+        with the production flux pipeline (WENO5-Z/PLM + HLL/HLLD),
+        then reassembles the global state.
+
+        Args:
+            state: Global state dict with 'rho', 'velocity', 'pressure', 'B', etc.
+            dt: Timestep [s].
+            current: Circuit current [A] for electrode BCs.
+            step_number: Step counter for regrid interval.
+
+        Returns:
+            Updated global state dict.
+        """
+        from dpf.metal.mlx_amr import amr_step as _amr_step
+
+        if self._amr_hierarchy is None:
+            raise RuntimeError("AMR not initialized. Set enable_amr=True.")
+
+        import mlx.core as mx
+
+        # Pack state dict -> conserved (NVAR, nr, nz) via prim_to_cons
+        from dpf.metal.mlx_primitives import cons_to_prim, prim_to_cons
+        rho = mx.array(state["rho"].squeeze().astype(np.float32))
+        vel = state["velocity"]
+        vr = mx.array(vel[0].squeeze().astype(np.float32))
+        vz = mx.array(vel[1].squeeze().astype(np.float32))
+        vt = mx.array(vel[2].squeeze().astype(np.float32)) if vel.shape[0] > 2 else mx.zeros_like(rho)
+        p = mx.array(state["pressure"].squeeze().astype(np.float32))
+        B = state["B"]
+        Br = mx.array(B[0].squeeze().astype(np.float32))
+        Bz = mx.array(B[1].squeeze().astype(np.float32))
+        Bt = mx.array(B[2].squeeze().astype(np.float32)) if B.shape[0] > 2 else mx.zeros_like(rho)
+        U_global = prim_to_cons(rho, vr, vz, vt, p, Br, Bz, Bt, self.gamma)
+        U_np = np.asarray(U_global)
+        h = self._amr_hierarchy
+        bnr = h.block_nr
+        bnz = h.block_nz
+        for idx, block in h.levels[0].blocks.items():
+            ir, iz = idx
+            r_s, z_s = ir * bnr, iz * bnz
+            r_e = min(r_s + bnr, U_np.shape[1])
+            z_e = min(z_s + bnz, U_np.shape[2])
+            block.U = U_np[:, r_s:r_e, z_s:z_e].copy()
+
+        # AMR step with production RHS
+        h, _ = _amr_step(
+            h, dt=dt, gamma=self.gamma,
+            method=self._method, riemann=self._riemann,
+            ng=3, current=current, r_inner=self._r_inner,
+            step_number=step_number, rhs_fn=self._amr_rhs_fn,
+        )
+        self._amr_hierarchy = h
+
+        # Gather blocks back into global state
+        U_out = np.zeros_like(U_np)
+        for idx, block in h.levels[0].blocks.items():
+            ir, iz = idx
+            r_s, z_s = ir * bnr, iz * bnz
+            bU = np.asarray(block.U)
+            r_e = r_s + bU.shape[1]
+            z_e = z_s + bU.shape[2]
+            U_out[:, r_s:r_e, z_s:z_e] = bU
+
+        # TODO: overlay fine-level data for 2-level AMR
+
+        # Unpack conserved -> state dict
+        U_mx = mx.array(U_out)
+        rho_o, vr_o, vz_o, vt_o, p_o, Br_o, Bz_o, Bt_o = cons_to_prim(U_mx, self.gamma)
+        result = dict(state)
+        result["rho"] = np.asarray(rho_o)
+        result["velocity"] = np.stack([np.asarray(vr_o), np.asarray(vz_o), np.asarray(vt_o)])
+        result["pressure"] = np.asarray(p_o)
+        result["B"] = np.stack([np.asarray(Br_o), np.asarray(Bz_o), np.asarray(Bt_o)])
+        return result
+
+    # ------------------------------------------------------------------
+    # Saha EOS: temperature with variable Z_bar
+    # ------------------------------------------------------------------
+
+    def _temperature_eV(
+        self, rho: np.ndarray, p: np.ndarray,
+    ) -> np.ndarray:
+        """Compute electron temperature [eV] from (rho, p) with optional Saha Z_bar.
+
+        Without Saha: T = p * m_i / (2 * rho * kB) (assumes Z=1).
+        With Saha: T = p * m_i / ((1 + Z_bar(T)) * rho * kB) (one iteration).
+
+        Args:
+            rho: Mass density [kg/m^3], NumPy float64.
+            p: Pressure [Pa], NumPy float64.
+
+        Returns:
+            Electron temperature [eV], NumPy float64.
+        """
+        rho_safe = np.maximum(rho, 1e-30)
+        # Initial: assume Z=1
+        Te_K = p * self.ion_mass / (2.0 * rho_safe * _K_B)
+
+        if self._saha_eos is not None:
+            Z_bar = self._saha_eos.zbar_numpy(Te_K)
+            Te_K = p * self.ion_mass / ((1.0 + Z_bar) * rho_safe * _K_B)
+
+        return Te_K / 11604.5  # K -> eV
+
+    # ------------------------------------------------------------------
     # Two-temperature source terms (operator-split, CPU)
     # ------------------------------------------------------------------
 
@@ -1026,9 +1340,11 @@ class MLXMHDSolver(PlasmaSolverBase):
     ) -> None:
         """Compute plasma inductance and update circuit coupling state."""
         from dpf.metal.mlx_coupling import update_coupling
+        self._sim_time += dt
         self._coupling, self._prev_Lp, self._Lp_max = update_coupling(
             U, current, voltage, dt, self._grid, self._cathode_radius,
             self._r_inner, self._prev_Lp, self._Lp_max, self.coordinates,
+            Lp_history=self._Lp_history, sim_time=self._sim_time,
         )
 
     # ------------------------------------------------------------------
