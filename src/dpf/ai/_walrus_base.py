@@ -26,11 +26,22 @@ WALRUS_SCALAR_KEYS: tuple[str, ...] = ("rho", "Te", "Ti", "pressure", "psi")
 WALRUS_VECTOR_KEYS: tuple[str, ...] = ("B", "velocity")
 WALRUS_N_CHANNELS: int = len(WALRUS_SCALAR_KEYS) + len(WALRUS_VECTOR_KEYS) * 3  # 11
 
-# DPF field name → (WALRUS embedding name, embedding index)
+# DPF field name -> (WALRUS embedding name, embedding index)
+#
+# IMPORTANT (P0.6.3 Te/Ti collision):
+# Te and Ti both share embedding index 46 ("temperature"). The upstream WALRUS
+# checkpoint was trained on single-temperature plasma datasets and exposes only
+# one "temperature" channel; there is no separate index for the ion temperature
+# in the public WALRUS embedding table. As a result, this surrogate cannot
+# faithfully represent two-temperature plasmas (Te != Ti). The
+# ``WalrusInferenceMixin._check_two_temperature_regime`` guard, invoked from
+# ``DPFSurrogate.predict_next_step``, raises ``RuntimeError`` whenever
+# ``|Te - Ti| / Te > 0.1`` so callers cannot silently get physically wrong
+# predictions in two-temperature regimes.
 DPF_TO_WALRUS_FIELD: dict[str, tuple[str, int]] = {
     "rho": ("density", 28),
     "Te": ("temperature", 46),
-    "Ti": ("temperature", 46),
+    "Ti": ("temperature", 46),  # SHARED with Te — see Te/Ti note above.
     "pressure": ("pressure", 3),
     "psi": ("A", 42),
     "Bx": ("magnetic_field_x", 39),
@@ -40,6 +51,13 @@ DPF_TO_WALRUS_FIELD: dict[str, tuple[str, int]] = {
     "vy": ("velocity_y", 5),
     "vz": ("velocity_z", 6),
 }
+
+# Maximum tolerated fractional Te/Ti split before the WALRUS surrogate is
+# considered out-of-domain. 10% chosen because the Te=Ti embedding collision
+# means Ti information is dropped on the floor; a 10% cap keeps inference
+# inside the regime where the single-temperature approximation introduces
+# negligible error (well below typical Te uncertainty in DPF measurements).
+WALRUS_TE_TI_RELATIVE_TOLERANCE: float = 0.1
 
 # Ordered WALRUS embedding names matching the 11-channel DPF layout
 DPF_WALRUS_FIELD_NAMES: list[str] = [
@@ -82,6 +100,60 @@ class WalrusInferenceMixin:
         if dev is not None:
             return dev
         return getattr(self, "device", "cpu")
+
+    # ------------------------------------------------------------------
+    # Two-temperature regime guard (P0.6.3)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_two_temperature_regime(
+        states: list[dict[str, np.ndarray]],
+        relative_tolerance: float = WALRUS_TE_TI_RELATIVE_TOLERANCE,
+    ) -> None:
+        """Raise ``RuntimeError`` if Te and Ti diverge beyond tolerance.
+
+        WALRUS embedding indices map both ``Te`` and ``Ti`` to the same
+        "temperature" channel (index 46 — see DPF_TO_WALRUS_FIELD note),
+        so the surrogate cannot represent two-temperature plasmas.
+        Any caller in a regime with ``|Te - Ti| / Te > relative_tolerance``
+        would silently get a single-temperature prediction with Ti information
+        discarded; this guard turns that silent failure into a hard error.
+
+        Parameters
+        ----------
+        states : list[dict[str, np.ndarray]]
+            DPF state history. Each state may contain ``Te`` and/or ``Ti``.
+        relative_tolerance : float
+            Fractional split allowed (default 0.1 == 10%).
+
+        Raises
+        ------
+        RuntimeError
+            If any state has ``|Te - Ti| / max(Te, eps) > relative_tolerance``.
+        """
+        for idx, state in enumerate(states):
+            Te = state.get("Te")
+            Ti = state.get("Ti")
+            if Te is None or Ti is None:
+                continue
+            Te_arr = np.asarray(Te, dtype=np.float64)
+            Ti_arr = np.asarray(Ti, dtype=np.float64)
+            if Te_arr.shape != Ti_arr.shape:
+                continue  # shape mismatch handled elsewhere
+            # Reference temperature with epsilon to avoid div-by-zero in vacuum
+            ref = np.maximum(np.abs(Te_arr), 1.0)  # 1 K floor — vacuum only
+            rel = np.abs(Te_arr - Ti_arr) / ref
+            max_rel = float(rel.max())
+            if max_rel > relative_tolerance:
+                raise RuntimeError(
+                    "WALRUS surrogate restricted to Te ~ Ti regimes; "
+                    f"state {idx} has max |Te - Ti| / Te = {max_rel:.3f} "
+                    f"(tolerance {relative_tolerance:.3f}). "
+                    "Te and Ti share embedding index 46 in the WALRUS schema, "
+                    "so two-temperature predictions would silently drop Ti. "
+                    "Use the physics solver in this regime, or retrain "
+                    "WALRUS with a distinct ion-temperature channel."
+                )
 
     # ------------------------------------------------------------------
     # Checkpoint resolution
@@ -184,7 +256,13 @@ class WalrusInferenceMixin:
         # Instantiate model via Hydra
         model = instantiate(config.model, n_states=n_states)
 
-        # Align weights if possible
+        # Align weights — failure must be loud. The previous broad-except
+        # fell back to a raw load_state_dict() with mismatched field
+        # indices, producing plausible-looking but physically wrong
+        # predictions (Te/Ti channels swapped, B-components misaligned, etc.).
+        # Set ``self._checkpoint_strict = False`` on the subclass before
+        # construction to opt into the unaligned load. (P0.6.2)
+        strict = bool(getattr(self, "_checkpoint_strict", True))
         try:
             from walrus.utils.experiment_utils import (
                 align_checkpoint_with_field_to_index_map,
@@ -196,7 +274,23 @@ class WalrusInferenceMixin:
                 model_field_to_index_map=dict(self._field_to_index_map),  # type: ignore[attr-defined]
             )
             model.load_state_dict(aligned)
-        except Exception:
+        except Exception as e_align:
+            if strict:
+                raise RuntimeError(
+                    "WALRUS checkpoint field-index alignment failed "
+                    f"({e_align!r}). Loading the raw state_dict would "
+                    "silently map weights to the wrong field channels "
+                    "(Te/Ti swap, B-component misalignment, etc.). "
+                    "If you understand the consequences, set "
+                    "``self._checkpoint_strict = False`` before "
+                    "constructing the surrogate."
+                ) from e_align
+            logger.warning(
+                "Checkpoint alignment failed (%r); loading raw state_dict "
+                "because _checkpoint_strict=False. Predictions may be "
+                "silently wrong if field indices differ.",
+                e_align,
+            )
             model.load_state_dict(state_dict)
 
         model.eval()
@@ -214,24 +308,31 @@ class WalrusInferenceMixin:
             dtype=torch.long,
         )
 
-        # RevIN normalization
+        # RevIN normalization — REQUIRED for trained model.
+        # WALRUS is trained with RevIN; running inference without it
+        # produces systematically biased (un-normalized) predictions
+        # that don't error but are silently wrong. Refuse to load
+        # rather than ship a degraded model. (P0.6.1)
         try:
             self._revin = instantiate(config.trainer.revin)()  # type: ignore[attr-defined]
-        except Exception:
+        except Exception as e_hydra:
             logger.warning(
-                "Failed to instantiate RevIN from config; "
-                "trying SamplewiseRevNormalization directly"
+                "Failed to instantiate RevIN from Hydra config (%s); "
+                "trying SamplewiseRevNormalization directly",
+                e_hydra,
             )
             try:
                 from walrus.trainer.normalization_strat import (
                     SamplewiseRevNormalization,
                 )
                 self._revin = SamplewiseRevNormalization()  # type: ignore[attr-defined]
-            except Exception:
-                logger.warning(
-                    "RevIN unavailable; inference may be degraded"
-                )
-                self._revin = None  # type: ignore[attr-defined]
+            except Exception as e_direct:
+                raise RuntimeError(
+                    "RevIN normalization could not be initialized "
+                    f"(Hydra: {e_hydra!r}; direct: {e_direct!r}). "
+                    "WALRUS was trained with RevIN; inference without it "
+                    "is silently biased. Refusing to load."
+                ) from e_direct
 
         # Formatter
         self._formatter = ChannelsFirstWithTimeFormatter()  # type: ignore[attr-defined]
