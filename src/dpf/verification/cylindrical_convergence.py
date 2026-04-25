@@ -31,10 +31,11 @@ convergence to first order.
 
 Each resolution is advanced for the same number of CFL-limited timesteps.
 Because dt ~ dr at each resolution, finer grids advance a shorter physical
-time, but the per-step truncation error decreases as O(dr^2) (SSP-RK2 +
-second-order spatial operators).  The accumulated error over a fixed step
-count therefore also decreases as O(dr^2), demonstrating second-order
-convergence.
+time, but the per-step truncation error is dominated by the second-order
+spatial operators (the time integrator is the CylindricalMHDSolver default,
+SSP-RK3, which is 3rd-order and therefore not rate-limiting at this
+resolution range).  The accumulated error over a fixed step count
+therefore decreases as O(dr^2), demonstrating second-order convergence.
 
 Usage::
 
@@ -262,9 +263,10 @@ def run_convergence_test(
     Bennett equilibrium and advanced for *n_steps* CFL-limited timesteps.
     Because the CFL timestep scales linearly with the grid spacing, each
     resolution reaches a different physical time -- but the *per-step*
-    truncation error of the SSP-RK2 time integrator combined with the
-    second-order spatial discretisation decreases as O(dr^2), so the
-    total error after a fixed number of steps also decreases as O(dr^2).
+    truncation error is set by the second-order spatial discretisation
+    (the default time integrator, SSP-RK3, is 3rd-order and not
+    rate-limiting here), so the total error after a fixed number of
+    steps decreases as O(dr^2).
 
     If *t_end* is given instead, all resolutions are advanced to the same
     physical time (the finest grid will take proportionally more steps).

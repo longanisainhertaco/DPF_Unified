@@ -32,7 +32,11 @@ MALIR_SIM_PARAMS = {
     "n_cells": 1600,
     "dr_um": 75.0,
     "gamma": 1.5,
-    "eta_spitzer_prefactor": 1.03e-4,  # Ohm·m, with T_e in eV
+    # Spitzer resistivity, classical formula used by PERSEUS in Malir
+    # 2024 §IV (p. 7):  eta_s = 1.03e-4 * Z * lnLambda * T_e^{-3/2}  [Ohm*m]
+    # with T_e in eV and lnLambda = coulomb_log below.
+    # Paper on disk: core-dpf/malir-2024-interferometry-dpf.pdf.
+    "eta_spitzer_prefactor": 1.03e-4,  # Ohm*m; multiplies Z*lnLambda*T_e(eV)^{-3/2}
     "coulomb_log": 10.0,
     "n_floor_cm3": 1e14,
     "T_floor_meV": 26.0,
