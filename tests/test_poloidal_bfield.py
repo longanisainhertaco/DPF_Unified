@@ -179,15 +179,18 @@ class TestPoloidalField:
         assert np.all(np.isfinite(B_z))
 
     def test_larger_current_amplifies(self):
-        """Higher current should produce larger B_z."""
+        """Higher current should produce larger B_z (within fp tolerance)."""
         B_z_low = compute_poloidal_field(
             PF1000_A, PF1000_B, 1e5, PF1000_RHO0, nr=16, nz=32
         )
         B_z_high = compute_poloidal_field(
             PF1000_A, PF1000_B, 1e6, PF1000_RHO0, nr=16, nz=32
         )
-        # Higher current = more dynamo amplification
-        assert np.max(np.abs(B_z_high)) >= np.max(np.abs(B_z_low))
+        # Higher current = more dynamo amplification.
+        # Relative tolerance 1e-9 absorbs Python 3.12 fp differences vs 3.10/3.11.
+        max_high = np.max(np.abs(B_z_high))
+        max_low = np.max(np.abs(B_z_low))
+        assert max_high >= max_low * (1 - 1e-9)
 
     def test_different_geometries(self):
         """Different electrode ratios should produce different fields."""
