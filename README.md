@@ -114,9 +114,17 @@ Published RADPF device parameters. No parameter fitting.
 
 | Metric | Value |
 |--------|-------|
-| I_peak (sim) | 1.818 MA |
+| I_peak (sim) | 1.655 MA |
 | I_peak (exp) | ~1.87 MA |
-| Error | 2.8% |
+| Error | 11.5% |
+| t_peak (sim) | 6.02 us |
+| t_peak (exp) | 5.80 us |
+| Error | 3.8% |
+
+Last validated: 2026-04-20 (source: `~/.claude/dpf-validation/latest.json`).
+This is a regression from the 2.8% I_peak error baseline recorded 2026-04-10;
+bisect pending on `fix/beta-lee-calibration` commits (see CRITICAL_BLOCKER.md).
+CI has been red since 2026-03-30 (torch import gate, see `fix/ci-torch-gate`).
 
 No calibration was performed. The equations are from the published paper.
 The parameters are from the published RADPF documentation.
