@@ -31,7 +31,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 # Physical constants — single source of truth (CODATA-2018 via scipy.constants)
-from dpf.constants import mu_0 as MU_0
+from dpf.constants import mu_0 as MU_0  # noqa: N812 — uppercase constant convention
 
 
 def compute_scaling_params(
