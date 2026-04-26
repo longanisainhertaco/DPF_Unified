@@ -38,7 +38,9 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from dpf.constants import mu_0 as _MU_0  # noqa: N812 — uppercase constant convention; CODATA-2018 single source of truth
+from dpf.constants import (
+    mu_0 as _MU_0,  # noqa: N812 — uppercase constant convention; CODATA-2018 single source of truth
+)
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 
 if TYPE_CHECKING:
