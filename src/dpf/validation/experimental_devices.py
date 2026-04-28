@@ -120,6 +120,13 @@ NX2_DATA = ExperimentalDevice(
     ),
 )
 
+# UNVERIFIED — no KR source.
+# Cited references (Lee et al. Am. J. Phys. 56, 1988; IPFS plasmafocus.net "UNU ICTPPFF
+# D2 05.15.xls"; Lee & Saw 2014 fit parameters) are NOT present under
+# /Users/anthonyzamora/dpf-unified/KnowledgeReference/. Values inherited from prior
+# code revisions and cannot be re-tagged with a [KR: ...] citation.
+# Per ground rule (2026-04-27), all device parameters require a KR-canonical source.
+# Treat I_peak/timing/Lee-fit values here as "reference_only" until a KR source is added.
 UNU_ICTP_DATA = ExperimentalDevice(
     name="UNU-ICTP",
     institution="UNU-ICTP PFF",
@@ -259,6 +266,13 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
 )
 
 
+# UNVERIFIED — no KR source.
+# Cited references (Herold et al. Nucl. Fusion 29:33, 1989; Lee & Saw J. Fusion Energy
+# 33:319, 2014) are NOT present under
+# /Users/anthonyzamora/dpf-unified/KnowledgeReference/. L0=20 nH and R0=2 mOhm are
+# explicitly noted as RADPF default estimates, not measured values from Herold (1989).
+# Per ground rule (2026-04-27), treat parameters as reference-only until a KR source
+# is added.
 POSEIDON_DATA = ExperimentalDevice(
     name="POSEIDON",
     institution="IPF Stuttgart",
@@ -296,6 +310,14 @@ POSEIDON_DATA = ExperimentalDevice(
 )
 
 
+# UNVERIFIED — no KR source.
+# Cited references (IPFS plasmafocus.net Excel file; Herold et al. Nucl. Fusion 29:33,
+# 1989; Lee & Saw 2014) are NOT present under
+# /Users/anthonyzamora/dpf-unified/KnowledgeReference/. Lee-fit values (fc=0.595,
+# fm=0.275, fmr=0.45, fcr=0.44) and circuit parameters (L0=17.7 nH, R0=1.7 mOhm,
+# zo=300 mm) come from an IPFS Lee-model fit, not a peer-reviewed paper on disk.
+# Per ground rule (2026-04-27), treat parameters as reference-only until a KR source
+# is added.
 POSEIDON_60KV_DATA = ExperimentalDevice(
     name="POSEIDON-60kV",
     institution="IPF Stuttgart",
@@ -493,6 +515,12 @@ MJOLNIR_DATA = ExperimentalDevice(
 )
 
 
+# UNVERIFIED — no KR source.
+# Cited references (Lee & Saw AAAPT device survey; Lee, J. Fusion Energy 33:319, 2014)
+# are NOT present under /Users/anthonyzamora/dpf-unified/KnowledgeReference/.
+# I_peak ~90 kA and Lee-fit values (fc=0.7, fm=0.15, fmr=0, fcr=0) are taken from
+# AAAPT publications not on disk. Per ground rule (2026-04-27), treat parameters as
+# reference-only until a KR source is added.
 AECS_PF2_DATA = ExperimentalDevice(
     name="AECS-PF2",
     institution="Atomic Energy Commission of Syria",
