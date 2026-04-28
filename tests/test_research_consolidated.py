@@ -722,6 +722,18 @@ class TestPostPinchDiagnostic:
         result = model.run("PF-1000")
         assert result.t[-1] > 10e-6
 
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Diagnostic test asserting post-pinch (7-10us) NRMSE > pre-pinch "
+            "(0-7us) NRMSE — the failure mode this class was named to "
+            "document. Post zipper-BC fix (commit 5b54f0a, 2026-04-27), "
+            "Python backend behaves correctly and the post-pinch noise drops "
+            "below pre-pinch, breaking the diagnostic ordering. The fix is "
+            "the desired outcome; the test no longer reproduces the bug it "
+            "was named after."
+        ),
+    )
     def test_post_pinch_nrmse_identified(self):
         from dpf.validation.experimental import PF1000_DATA
         model = _make_model()

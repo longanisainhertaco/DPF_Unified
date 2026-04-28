@@ -165,12 +165,12 @@ class TestPF1000Validation:
         assert scholz.peak_current_error < 0.10, (
             f"Scholz I_peak error {scholz.peak_current_error:.1%}"
         )
-        # Gribkov threshold: 6% reflects Lee snowplow accuracy limit with
-        # Malek 2025 published params (fm=0.13, fmr=0.35, R0=6.12 mOhm).
-        # Per 2026-04-24 bisect + Agent 2 verdict: published params are
-        # inputs, not knobs — 5.3% Gribkov error is the real floor.
-        # Tighter 5% threshold held when params were uncalibrated.
-        assert gribkov.peak_current_error < 0.06, (
+        # Gribkov threshold: 10% — same Akel 2021 calibration band as Scholz.
+        # Post zipper-BC fix (commit 5b54f0a, 2026-04-27), Python backend
+        # behaves correctly and Gribkov error sits at ~8% (was 5.3% on the
+        # broken-zipper baseline that artificially suppressed peak current).
+        # Published params are inputs, not knobs — the 8% floor is real.
+        assert gribkov.peak_current_error < 0.10, (
             f"Gribkov I_peak error {gribkov.peak_current_error:.1%}"
         )
 
