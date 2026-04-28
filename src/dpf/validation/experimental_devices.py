@@ -216,7 +216,11 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     capacitance=1.332e-3,
     voltage=27e3,
     inductance=33.5e-9,
-    resistance=2.3e-3,
+    # 6.1 mOhm: same physical PF-1000 capacitor bank as standard PF-1000 device.
+    # [KR: plasma-physics-and-technology-1211-9-2025.md §Table 1 lines 256-261]
+    # Malek 2025 lists Bank parameters: L0=33.5 nH, C0=1332 uF, r0=6.1 mOhm.
+    # Previous value (2.3 mOhm) was inconsistent — Gribkov shot uses the same bank.
+    resistance=6.1e-3,
     anode_radius=0.115,
     cathode_radius=0.16,
     anode_length=0.60,
