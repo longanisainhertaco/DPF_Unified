@@ -180,8 +180,10 @@ class SnowplowModel:
         self.vr = 0.0             # Radial shock velocity [m/s] (negative = inward)
         self._L_axial_frozen = 0.0  # Axial L_plasma at end of rundown [H]
 
-        # Minimum pinch radius: 10% of anode radius (Lee standard)
-        self.r_pinch_min = 0.1 * self.a
+        # Minimum pinch radius: r_min/a = 0.17 for PF-1000.
+        # [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.11 Table — PF-1000 r_min/a = 0.17]
+        # KR also notes "rmin/a (almost constant at 0.14-0.17)" across devices (p.7 L665).
+        self.r_pinch_min = 0.17 * self.a
 
         # Anomalous resistance model: R = alpha_anom * (mu_0 * v_a) / (4*pi*r)
         # where v_a = B / sqrt(mu_0 * rho) is the Alfven speed.
