@@ -1796,26 +1796,78 @@ class TestASMEIndependence:
 
 
 class TestMJOLNIRGeometry:
-    """Verify MJOLNIR anode_radius fix is in place."""
+    """Verify MJOLNIR geometry matches Schmidt 2021 §III.A KR-canonical values.
+
+    Schmidt et al., IEEE Trans. Plasma Sci. (2021) DOI:10.1109/TPS.2021.3106313
+    [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-
+    megajoule-neutron-imaging.md §III.A lines 145-159]:
+      "fielded anodes... 15.2 cm (6 inches) in diameter" (a = 0.076 m)
+      "anode-cathode gap is fixed at 4.3 cm" (cathode_r = 0.076 + 0.043 = 0.119 m)
+    Updated 2026-04-27 from earlier Goyon 2025 2-MJ-config values
+    (a=0.114 m, cathode=0.157 m) to Schmidt 2021 1-MJ KR-canonical values.
+    """
 
     def test_anode_radius_corrected(self):
-        assert DEVICES["MJOLNIR"].anode_radius == pytest.approx(0.114, abs=0.002)
+        # 0.076 m = 15.2 cm dia / 2 (Schmidt 2021 §III.A line 156)
+        assert DEVICES["MJOLNIR"].anode_radius == pytest.approx(0.076, abs=0.002)
 
     def test_cathode_radius(self):
-        assert DEVICES["MJOLNIR"].cathode_radius == pytest.approx(0.157, abs=0.002)
+        # 0.119 m = 0.076 m anode + 0.043 m A-K gap (Schmidt 2021 §III.A line 159)
+        assert DEVICES["MJOLNIR"].cathode_radius == pytest.approx(0.119, abs=0.002)
 
     def test_ak_gap(self):
+        # 0.043 m A-K gap (Schmidt 2021 §III.A line 159: "4.3 cm")
         dev = DEVICES["MJOLNIR"]
         gap = dev.cathode_radius - dev.anode_radius
         assert gap == pytest.approx(0.043, abs=0.003)
 
-    def test_speed_factor_near_optimal(self):
+    def test_speed_factor_super_driven(self):
+        """MJOLNIR sits in the super-driven regime per Lee & Saw 2008 classification.
+
+        Inputs (KR-canonical):
+          [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-
+          the-megajoule-neutron-imaging.md §III.A line 156]: a = 0.076 m
+          (15.2 cm dia)
+          [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-
+          the-megajoule-neutron-imaging.md §IV] I_peak ~ 2.5 MA at 1 MJ;
+          DEVICES["MJOLNIR"].peak_current = 2.8 MA from Goyon 2025.
+          [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-
+          the-megajoule-neutron-imaging.md §III.A] fill = 7 Torr D2 estimate
+          (paper does not state pressure verbatim; pressure scans were performed).
+
+        Classification source:
+          [KR: nuclear-radiation/PP2 with Erratum JoFE NeutronScalingLawsFrom
+          NumericalExperiments.pdf, Lee & Saw 2008, J. Fusion Energy 27:292]:
+          S/S_typical > 1.2 ⇒ super-driven; < 0.8 ⇒ sub-driven; otherwise
+          PF1000-class. _S_TYPICAL_PF1000 = 89 kA/(cm·sqrt(Torr)).
+
+        With KR-canonical inputs, MJOLNIR computes S/S_typical ≈ 1.56,
+        unambiguously inside Lee & Saw's super-driven band. The earlier
+        'near optimal' assertion (S < 1.5) was a consequence of the
+        pre-correction a = 0.114 m (Goyon 2025 2-MJ dimensions) and is
+        physically incorrect under Schmidt 2021's 1-MJ KR-canonical geometry.
+
+        Threshold: regime classification only — Lee & Saw 2008 publishes
+        the 1.2 boundary; the upper bound is not paper-published.
+        [KR: UNVERIFIED — no published upper bound on super-driven regime].
+        Test acts as a regression guard that the regime classifier returns
+        super-driven, not as a paper-validated acceptance gate.
+        """
         from dpf.validation.experimental import compute_speed_factor
         dev = DEVICES["MJOLNIR"]
         result = compute_speed_factor(
             dev.peak_current, dev.anode_radius, dev.fill_pressure_torr,
         )
-        assert result["S_over_S_opt"] < 1.5
+        # Lee & Saw 2008 classification boundary: S/S_typical > 1.2 ⇒ super-driven
+        assert result["regime"] == "super-driven", (
+            f"MJOLNIR regime={result['regime']!r}, S/S_typical="
+            f"{result['S_over_S_typical']:.3f}; expected 'super-driven' per "
+            "Lee & Saw 2008 with Schmidt 2021 §III.A KR-canonical geometry"
+        )
+        assert result["S_over_S_typical"] > 1.2, (
+            f"MJOLNIR S/S_typical={result['S_over_S_typical']:.3f} below "
+            "Lee & Saw 2008 super-driven boundary of 1.2"
+        )
 
 
 class TestLOOMaxiter10Results:
