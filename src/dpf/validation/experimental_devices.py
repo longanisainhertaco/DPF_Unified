@@ -430,22 +430,28 @@ FAETON_DATA = ExperimentalDevice(
 MJOLNIR_DATA = ExperimentalDevice(
     name="MJOLNIR",
     institution="Lawrence Livermore National Laboratory",
-    capacitance=408e-6,            # 408 uF (24 Marx modules, 2 x 34 uF each, erected)
-    voltage=60e3,                  # 60 kV typical operation (734 kJ stored)
-    inductance=80e-9,              # 80 nH (estimated from I_peak/I_sc ~ 0.65)
-    resistance=6.25e-3,            # 6.25 mOhm (2MJ/6-tower: 12.5 mOhm / 2 towers in parallel; Offermann 2021)
-    anode_radius=0.114,            # 114 mm physical anode radius (cathode 157mm - 43mm A-K gap)
-    cathode_radius=0.157,          # ~157 mm (estimated from 4.3 cm A-K gap + 114 mm anode)
-    anode_length=0.20,             # 200 mm (midpoint of 183-221 mm range, Petrov 2022)
+    # All circuit + geometry values from Schmidt et al. 2021 §III.A
+    # [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging.md §III.A lines 145-159]
+    # Verbatim: "lumped circuit capacitance of 204 µF, inductance of 67.4 nH and resistance of 12.5 mOhm"
+    # Verbatim: "fielded anodes... 15.2 cm (6 inches) in diameter" (a = 0.076 m)
+    # Verbatim: "anode-cathode gap is fixed at 4.3 cm" (cathode_r = a + gap = 0.076 + 0.043 = 0.119 m)
+    # Verbatim: "exposed lengths varying from 18.3 to 22.1 cm" (midpoint 0.20 m used)
+    capacitance=204e-6,            # 204 uF (Schmidt 2021 §III.A line 149, lumped)
+    voltage=60e3,                  # 60 kV typical operation
+    inductance=67.4e-9,            # 67.4 nH (Schmidt 2021 §III.A line 149, lumped)
+    resistance=12.5e-3,            # 12.5 mOhm (Schmidt 2021 §III.A line 150, lumped — already includes parallel-tower combination)
+    anode_radius=0.076,            # 76 mm = 15.2 cm dia / 2 (Schmidt 2021 §III.A line 156)
+    cathode_radius=0.119,          # 119 mm = 76 mm + 43 mm A-K gap (Schmidt 2021 §III.A line 159)
+    anode_length=0.20,             # 200 mm midpoint of 18.3-22.1 cm range (Schmidt 2021 §III.A line 157)
     fill_pressure_torr=7.0,        # 7 Torr D2 (estimated, pressure scans performed)
     fill_gas="deuterium",
     peak_current=2.8e6,            # 2.8 MA at 60 kV (Goyon 2025)
     neutron_yield=3.8e11,          # 3.8e11 D-D at 1 MJ / 2.5 MA (Schmidt 2021)
     current_rise_time=5.0e-6,      # ~5 us (Schmidt 2024)
     reference=(
-        "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313; "
-        "Goyon et al., Phys. Plasmas 32:033105, 2025; "
-        "Petrov et al., Phys. Plasmas 29:062708, 2022"
+        "Schmidt et al., IEEE Trans. Plasma Sci. (2021) "
+        "DOI: 10.1109/TPS.2021.3106313 [KR: ieee-trans-plas-sci-paper-first-"
+        "experiments-and-radiographs-on-the-megajoule-neutron-imaging.md §III.A]"
     ),
     crowbar_resistance=1.5e-3,     # estimated spark gap resistance
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + integration)
@@ -455,25 +461,30 @@ MJOLNIR_DATA = ExperimentalDevice(
     waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
     waveform_amplitude_uncertainty=0.10,  # 10% reconstruction model uncertainty
     waveform_time_uncertainty=0.03,       # 3% temporal (reconstructed)
-    waveform_uncertainty_type="reconstruction",  # Reconstructed from peak current + circuit params
+    waveform_uncertainty_type="reconstruction",
     waveform_provenance="reconstructed",
     lee_fc=0.70, lee_fm=0.50, lee_fmr=0.10, lee_fcr=0.14,
     lee_reference="Gemini research synthesis (2026-03-13); Lee model conventions",
     measurement_notes=(
         "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
-        "ATLAS-heritage pulsed power: 24 Marx modules, 2 x 34 uF caps each, single-stage "
-        "erection. C_erected = 24 x 17 uF = 408 uF. Charged to +/- 50 kV (100 kV erected). "
-        "Typical operation at 60 kV (E = 734 kJ). Design: 100 kV / 2.04 MJ / 4.5 MA. "
-        "Electrode: oxygen-free copper. 228.6 mm OD anode, 24-rod cathode, 6.5 cm MACOR insulator. "
-        "Implosion radius 7.6 cm (Schmidt 2021). A-K gap 4.3 cm (Petrov 2022). "
-        "Anode effective lengths: 18.3-22.1 cm (multiple anodes fielded). "
-        "L0 = 80 nH ESTIMATED from loading factor I_peak/I_sc ~ 0.65 (NOT measured directly). "
-        "84 flexible transmission line cables from Marx towers to disk collector add stray inductance. "
+        "ATLAS-heritage pulsed power: 1-MJ configuration uses three Marx towers "
+        "with twelve single-stage Marx modules, each containing two 34 uF capacitors "
+        "and one railgap switch (Schmidt 2021 §III.A lines 135-140). Charged to +/- 50 kV "
+        "(100 kV erected). Reaches 2.5 MA into shorted load (Schmidt 2021 line 144). "
+        "LUMPED CIRCUIT (Schmidt 2021 §III.A lines 148-150, verbatim): "
+        "C0 = 204 uF, L0 = 67.4 nH, R0 = 12.5 mOhm. "
+        "These are the bank+cable+plate values from the shorted-load calibration shot; "
+        "they are ALREADY the parallel-combined lumped values. "
+        "Previous code values (C=408 uF, L=80 nH, R=6.25 mOhm) double-counted a "
+        "tower-parallelism halving that was already baked into Schmidt's quoted values. "
+        "ELECTRODE GEOMETRY (Schmidt 2021 §III.A lines 155-159, verbatim): "
+        "Oxygen-free copper. Anode diameter 15.2 cm (6 inches) -> a = 0.076 m. "
+        "Anode-cathode gap fixed at 4.3 cm -> cathode_r = a + 0.043 = 0.119 m. "
+        "Anode exposed lengths 18.3-22.1 cm (multiple anodes fielded; midpoint 0.20 m used). "
+        "MACOR insulator exposed length 4.6 cm. Pre-drilled hollow radius 0.9 or 3.8 cm. "
         "WAVEFORM: RECONSTRUCTED (phenomenological), NOT digitized from paper. "
-        "Rise: sinusoidal to 2.8 MA at 5 us. Dip: 22% at pinch (5.5 us). "
-        "Post-dip: crowbar L-R decay with ~15 us effective time constant. "
-        "Uncertainties are higher than digitized sources (10% amplitude, 3% temporal). "
-        "Replace with digitized data from Schmidt (2021) Fig. 4-5 or Goyon (2025) when available. "
+        "Lee fc/fm/fmr/fcr from Gemini synthesis — needs replacement once a paper-fit "
+        "Lee parameter set is published. "
         "Performance records: 2.5 MA / 3.8e11 DD neutrons at 1 MJ (Schmidt 2021); "
         "3.7-3.8 MA / >1e12 DD neutrons with rebuilt 24-module bank (Schmidt 2024); "
         "1.84e12 DT neutrons at 2 MA (Schmidt 2024). "
