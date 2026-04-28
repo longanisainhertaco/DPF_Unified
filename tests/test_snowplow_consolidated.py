@@ -1501,7 +1501,8 @@ class TestRadialCompression:
                 break
         assert pinched
         assert sp.phase == "pinch"
-        assert sp.shock_radius <= 0.1 * sp.a + 1e-10
+        # r_min/a = 0.17 per KR Lee Course p.11 Table (PF-1000); 0.14-0.17 across devices
+        assert sp.shock_radius <= 0.17 * sp.a + 1e-10
 
     def test_frozen_state_after_pinch(self) -> None:
         sp = _t_validation_make_radial_snowplow(r_shock=0.02, vr=-5e4)
@@ -1698,7 +1699,8 @@ class TestSnowplowConstruction:
 
     def test_pinch_min_radius(self) -> None:
         sp = _pf1000_snowplow()
-        assert sp.r_pinch_min == pytest.approx(0.1 * sp.a, rel=1e-15)
+        # r_min/a = 0.17 per KR Lee Course p.11 Table (PF-1000)
+        assert sp.r_pinch_min == pytest.approx(0.17 * sp.a, rel=1e-15)
 
     def test_radial_mass_fraction_default(self) -> None:
         sp = _pf1000_snowplow(mass_fraction=0.3, radial_mass_fraction=None)

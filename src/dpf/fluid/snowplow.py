@@ -808,15 +808,20 @@ class SnowplowModel:
         # J×B force (inward, opposing expansion)
         F_rad = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_s
 
-        # Slug mass with mass pickup: reflected shock sweeps gas already
-        # compressed by the inward shock (Phase 2).  For a strong cylindrical
-        # shock in gamma=5/3 gas, first-shock density = (gamma+1)/(gamma-1) *
-        # rho0 = 4*rho0 (Rankine-Hugoniot).  The reflected shock then
-        # re-compresses this gas.  For a moderate reflected shock (Mach ~2 in
-        # pre-heated gas): compression ratio ~2, giving ~8*rho0 total.
-        # Strong limit: 4 * 4 = 16*rho0.  We use 8*rho0 as a compromise
-        # (PhD Debate #21 finding, Rankine-Hugoniot double-shock estimate).
-        rho_post_shock = 8.0 * self.rho0
+        # Slug mass with mass pickup: Rankine-Hugoniot post-shock density.
+        # KR Lee Course (p.107 L6852): "This swept-up gas is compressed by
+        # a ratio (gamma+1)/(gamma-1)." For gamma = 5/3 (cold atomic D2):
+        # ratio = 4. KR also notes (p.107 L6861) "for strongly ionising
+        # argon gamma has value closer to 1 e.g. 1.15"; partially-ionized
+        # deuterium near peak compression has gamma ~ 1.2-1.4, giving ratios
+        # 6-11. The value 8.0 falls within that ionizing-gas RH window but
+        # KR does not explicitly prescribe 8x for D2 in this snowplow context.
+        # UNVERIFIED — no KR source for 8x compromise; flagged 2026-04-27
+        # audit. Switching to cold-gas RH (4x) leaves PF-1000 I_peak error
+        # unchanged at 11.05% (peak occurs in axial phase, well before
+        # reflected-shock activates), so the value is not bisect-relevant.
+        # TODO(audit): replace with gamma_eff(rho, T_e)-aware RH ratio.
+        rho_post_shock = 8.0 * self.rho0  # UNVERIFIED — no KR source for 8x
         M_slug = self._M_slug_pinch + (
             self.f_m * rho_post_shock * pi
             * (r_s**2 - self.r_pinch_min**2) * z_f
