@@ -44,8 +44,13 @@ PF1000_DATA = ExperimentalDevice(
     neutron_yield=1e11,
     current_rise_time=5.8e-6,      # 5.8 us
     reference="Scholz et al., Nukleonika 51(1), 2006",
-    lee_fc=0.7, lee_fm=0.08, lee_fmr=0.16, lee_fcr=0.7,
-    lee_reference="Lee & Saw, J. Fusion Energy 33:319 (2014); IPFS PF1000data.xls",
+    lee_fc=0.7, lee_fm=0.13, lee_fmr=0.35, lee_fcr=0.65,
+    lee_reference=(
+        "Malek et al., Plasma Physics and Technology 12(1):9 (2025) "
+        "[KR: plasma-physics-and-technology-1211-9-2025.md §3 lines 177-180]: "
+        "fm=0.13, fc=0.7, fmr=0.35, fcr=0.65 obtained by fitting computed and "
+        "measured current waveforms at 27 kV / 3.5 Torr D2 in PF-1000."
+    ),
     crowbar_resistance=1.5e-3,     # 1.5 mOhm (spark gap arc, PhD Debate #30)
     peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
     rise_time_uncertainty=0.10,        # 10% (quarter-period timing)
