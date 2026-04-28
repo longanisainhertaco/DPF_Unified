@@ -567,10 +567,12 @@ class SnowplowModel:
 
         # Anomalous resistance from m=0 disruption
         # Must exceed |dL/dt| for current to decay net of inductance release.
-        # EMPIRICAL: factor 2 ensures R_anom > |dL/dt| (dissipation dominates)
+        # UNVERIFIED — no KR source for 2x post-pinch dynamic-resistance
+        # amplifier; flagged 2026-04-27 audit. TODO(audit): locate KR
+        # justification for the 2x factor or replace with KR-derived value.
         if self._tau_m0 > 0 and self._v_expand > 0:
             dL_dt_peak = (mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / self._r_pinch_at_stagnation
-            R_anom_peak = 2.0 * dL_dt_peak  # EMPIRICAL: 2x for net dissipation
+            R_anom_peak = 2.0 * dL_dt_peak  # UNVERIFIED — no KR source for 2x factor
             tau_decay = 3.0 * self._tau_m0
             R_anom = R_anom_peak * np.exp(-dt_since_pinch / tau_decay)
         else:
