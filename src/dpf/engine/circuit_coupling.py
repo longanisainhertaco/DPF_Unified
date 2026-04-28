@@ -595,17 +595,26 @@ def _apply_electrode_bc(self, current: float) -> None:
         dz = self.config.geometry.dz if self.config.geometry.dz else self.config.dx
         if not np.isfinite(z_sheath) or dz <= 0:
             return  # snowplow diverged — skip zipper BC this step
-        iz_sheath = int(round(z_sheath / dz)) if np.isfinite(z_sheath) else 0
+        iz_sheath = int(round(z_sheath / dz))
 
-        nx, ny, nz = self.config.grid_shape
-        B = self.state["B"]
-        # Ensure 4D (3, nr, ny, nz) — normalised upstream for cylindrical
-        # backends; guard Cartesian/Python paths that may still be 3D.
-        if B.ndim != 4:
-            B = B.reshape(3, nx, ny, nz)
-            self.state["B"] = B
-        if 0 <= iz_sheath < nz:
-            B[1, :, :, iz_sheath + 1:] = 0.0
+        # Skip until the sheath has crossed the first z-cell. When iz_sheath=0
+        # the BC zeroes B_theta beyond z=0 every step, while the electrode BC
+        # re-imposes B_theta = mu0*I/(2*pi*r) at z=0 — producing a 1-cell-wide
+        # B-spike that WENO reconstructs into spurious ~30 T flux. Python
+        # backend (which calls _apply_electrode_bc) diverged with I_peak ~6 kA
+        # vs MLX 333 kA on PF-1000 27 kV (3x backend parity gap, NRMSE=0.99).
+        # MLX skipped this code path entirely (engine/core.py:667 exclusion),
+        # which masked the bug. Gating fixes the backend-parity regression.
+        if iz_sheath >= 1:
+            nx, ny, nz = self.config.grid_shape
+            B = self.state["B"]
+            # Ensure 4D (3, nr, ny, nz) — normalised upstream for cylindrical
+            # backends; guard Cartesian/Python paths that may still be 3D.
+            if B.ndim != 4:
+                B = B.reshape(3, nx, ny, nz)
+                self.state["B"] = B
+            if iz_sheath < nz:
+                B[1, :, :, iz_sheath + 1:] = 0.0
 
         # Radial zipper: suppress B_theta inside radial shock front
         # (field-free interior ahead of converging sheath).
