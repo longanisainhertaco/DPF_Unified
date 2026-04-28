@@ -372,12 +372,13 @@ class TestBeamTargetYieldRate:
         assert rate == 0.0
 
     def test_yield_scales_with_current(self) -> None:
-        """Yield rate scales linearly with current."""
+        """Yield rate scales as I_pinch^2 (Lee/Saw KR eq. 1)."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
         rate1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01, 0.2)
         rate2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2)
-        assert rate2 == pytest.approx(2.0 * rate1, rel=1e-10)
+        # KR L5125-5128: Yb-t ~ I_pinch^2, so 2x current -> 4x yield
+        assert rate2 == pytest.approx(4.0 * rate1, rel=1e-10)
 
     def test_yield_scales_with_density(self) -> None:
         """Yield rate scales linearly with target density."""
