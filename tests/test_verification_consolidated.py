@@ -529,7 +529,18 @@ def _run_sod_dpf(N: int, n_steps: int | None = None):
     return state, t
 
 
-def _run_briowu_dpf(N: int, n_steps: int = 300):
+def _run_briowu_dpf(N: int, n_steps: int | None = None):
+    """Run Brio-Wu fixture until t_end, NOT for a fixed step count.
+
+    Previous version used `for _ in range(300)` which only reached t~9e-5
+    (out of 0.1) and gave a false-positive convergence test. Match the
+    Sod fixture pattern: while-loop bounded only by t_end.
+
+    n_steps argument retained for API compatibility but ignored.
+    Brio & Wu 1988 J. Comput. Phys. 75:400 -- PDF NOT on disk; canonical
+    self-similar reference solution unavailable in repo.
+    """
+    del n_steps  # unused, kept for backward compat
     dx = 1.0 / N
     solver = MetalMHDSolver(
         grid_shape=(N, 4, 4), dx=dx, gamma=2.0, cfl=0.2,
@@ -539,15 +550,13 @@ def _run_briowu_dpf(N: int, n_steps: int = 300):
     state = _make_briowu_dpf(N)
     t = 0.0
     t_end = 0.1
-    for _ in range(n_steps):
+    while t < t_end:
         dt = float(solver._compute_dt(state))
         dt = min(dt, t_end - t)
         if dt < 1e-15:
             break
         state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
         t += dt
-        if t >= t_end:
-            break
     return state, t
 
 
