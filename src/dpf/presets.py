@@ -83,7 +83,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "C": 1.332e-3,     # 1.332 mF (Scholz 2006)
             "V0": 27e3,        # 27 kV charging voltage
             "L0": 33.5e-9,     # 33.5 nH external inductance (RADPF default)
-            "R0": 6.12e-3,     # RESF=1.22 * sqrt(L0/C0) = 6.12 mOhm (RADPF default)
+            "R0": 2.3e-3,      # 2.3 mOhm bare-bank short-circuit (Scholz 2006 Table 1) — plasma R enters via sheath, not bank
             "anode_radius": 0.115,   # 115 mm (Scholz 2006)
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
             "n_cathode_rods": 12,  # UNVERIFIED: cited as 12 (Gribkov 2007) but PDF not read in session
@@ -117,42 +117,36 @@ _PRESETS: dict[str, dict[str, Any]] = {
     "pf1000_akel": {
         "_meta": {
             "description": (
-                "PF-1000 (IPPLM Warsaw) — Akel 2021 24-shot calibration variant. "
-                "Adds 6.43 mOhm baseline resistance to Akel's per-shot r0 values to "
-                "correct for the systematic +24.7% I_peak overestimate seen when using "
-                "the standard pf1000 preset. The offset originates from a mismatch "
-                "between Akel's reported r0 (spark gap resistance only) and the total "
-                "circuit resistance seen by the ODE during discharge, which includes "
-                "~6.4 mOhm from bus bars, capacitor ESR, and transmission-line parasitics. "
-                "Calibrated to <1.3% mean absolute error across shots 12581-12606."
+                "PF-1000 (IPPLM Warsaw) — Akel 2021 24-shot validation variant at 16 kV. "
+                "All circuit and geometry parameters taken verbatim from Akel et al., "
+                "Radiat. Phys. Chem. 188:109633, 2021, Table 1. "
+                "L0=25 nH, r0=4-6.5 mOhm (per-shot), V0=16 kV, anode=48 cm. "
+                "R0 = 2.3 mOhm per Akel Table 1 (nominal; per-shot r0 overrides in "
+                "validation scripts). No empirical correction applied."
             ),
             "device": "PF-1000",
             "geometry": "cylindrical",
             "topology": "mather",
-            "reference": "Akel et al., Acta Phys. Pol. A 140(1):26 (2021)",
+            "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
         "sim_time": 16e-6,  # 16 us: matches Akel 2021 validation window
         "dt_init": 1e-10,
-        "rho0": 7.53e-4,  # default 3.5 Torr D2; overridden per-shot
+        "rho0": 2.15e-4,  # 1.05 Torr D2 at 300K (Akel 2021 Table 1); overridden per-shot
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Akel (2021) Table 1 — V0=27 kV, C=1332 uF, L0=33.5 nH.
-        # R0=8.73 mOhm = 2.3 mOhm (Scholz baseline) + 6.43 mOhm (Akel calibration offset).
-        # When running 24-shot validation, per-shot r0 from Akel Table 1 REPLACES R0 entirely;
-        # the 6.43 mOhm correction must be added explicitly in the validation script.
-        # This preset's R0 represents a single-shot average (r0_avg ~5.3 + 6.43 = 11.73 mOhm
-        # is too device-specific; use R0=8.73 as a convenient reference).
-        # EMPIRICAL: R0_correction = 6.43 mOhm, calibrated 2026-03-15 on 24 Akel shots.
+        # Circuit: Akel 2021 Table 1 — V0=16 kV, C=1332 uF, L0=25 nH, r0=2.3 mOhm nominal.
+        # [KR: radiation-physics-and-chemistry-188-2021-109633.md §Table1 p.4]
+        # Per-shot r0 ranges 4.0-6.5 mOhm; validation scripts override R0 per shot.
         "circuit": {
-            "C": 1.332e-3,     # 1.332 mF (Akel 2021)
-            "V0": 27e3,        # 27 kV (Akel 2021 Table 1)
-            "L0": 33.5e-9,     # 33.5 nH (Scholz 2006)
-            "R0": 8.73e-3,     # 2.3 mOhm baseline + 6.43 mOhm Akel correction  # EMPIRICAL
-            "anode_radius": 0.115,   # 115 mm (Scholz 2006)
-            "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
+            "C": 1.332e-3,     # 1.332 mF (Akel 2021 Table 1)
+            "V0": 16e3,        # 16 kV (Akel 2021 Table 1)
+            "L0": 25e-9,       # 25 nH (Akel 2021 Table 1)
+            "R0": 2.3e-3,      # 2.3 mOhm nominal (Akel 2021 Table 1)
+            "anode_radius": 0.1155,  # 115.5 mm = a=11.55 cm (Akel 2021 Table 1)
+            "cathode_radius": 0.16,  # 160 mm (Akel 2021 / Scholz 2006)
             "crowbar_enabled": True,
             "crowbar_mode": "fixed_time",
             "crowbar_time": 10.5e-6,
@@ -164,10 +158,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
-            "anode_length": 0.6,
-            "current_fraction": 0.7,   # fixed for all Akel 2021 shots
-            "mass_fraction": 0.19,     # representative Akel average; overridden per-shot
-            "radial_mass_fraction": 0.16,
+            "anode_length": 0.48,       # 48 cm = z0 (Akel 2021 Table 1)
+            "current_fraction": 0.7,    # fc fixed for all Akel 2021 shots (Table 1)
+            "mass_fraction": 0.20,      # fm = 0.20 average (Akel 2021 Table 1)
+            "radial_mass_fraction": 0.35,  # fmr: Malek 2025 / engine_validation canonical
             "pinch_column_fraction": 0.14,
         },
     },

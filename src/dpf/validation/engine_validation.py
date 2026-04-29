@@ -141,7 +141,7 @@ def run_rlc_snowplow_pf1000(
     C = 1.332e-3        # F  (Akel 2021 Bank, "C0 = 1332 mu F")
     V0 = 27e3           # V  (Scholz 2006 operating point)
     L0 = 25e-9          # H  (Akel 2021 Bank, "L0 = 25 nH"; was 33.5e-9)
-    R0 = 6.1e-3         # Ohm (Akel 2021 Bank, "r0 = 6.1 m Ohm"; was 2.3e-3)
+    R0 = 2.3e-3         # Ohm — 2.3 mOhm bare-bank (Scholz 2006 short-circuit). Wave-10 RCA: 6.1 mOhm conflates plasma + bank R; plasma enters via sheath model.
     a = 0.115           # anode radius [m]  (Akel 2021 anode dia 231 mm -> r=115.5 mm)
     b = 0.16            # cathode radius [m]
     z_max = 0.48        # anode length [m]  (Akel 2021 "480 mm"; was 0.60)
@@ -187,7 +187,10 @@ def run_rlc_snowplow_pf1000(
         # Post-pinch disruption model provides anomalous + Spitzer R_plasma
         coupling.R_plasma = sp_result.get("R_plasma", 0.0)
 
-        # Circuit advance (production RLCSolver, implicit midpoint)
+        # Circuit advance (production RLCSolver, implicit midpoint).
+        # NOTE: I*dLp/dt is internally handled by RLCSolver via coupling.dL_dt;
+        # the back_emf parameter is for OTHER EMF sources (e.g., plasma streaming,
+        # sheath instability). Pass 0.0 unless those are explicitly modeled.
         coupling = circuit.step(coupling, 0.0, dt)
 
         t += dt
