@@ -20,8 +20,9 @@ References
   The closed (insulator) face at z=0 imposes B_theta = mu_0*I/(2*pi*r)
   via Dirichlet; the open end at z=L_anode uses zero-gradient extrapolation.
   Matches `apply_electrode_bfield_bc` in cylindrical_mhd.py:1311-1316.
-- Skinner & Ostriker 2010 (ApJS 188:290) §2 Eq. 11a: cylindrical metric
-  source for radial momentum is
+- Skinner & Ostriker 2010 (ApJS 188:290) §2.2 "Momentum Equation" Eq. 11a:
+  [KR: skinner_ostriker_2010_cylindrical.md §2.2 p.5]
+  cylindrical metric source for radial momentum is
       S_r = (rho v_theta^2 + p + B_theta^2/(2 mu_0))/r - B_r B_theta/(mu_0 r)
   Matches `geometric_source_momentum` in geometry/cylindrical.py:209-267.
 - NRL Plasma Formulary p.58 (Bremsstrahlung): power density for hot D plasma
@@ -30,11 +31,15 @@ References
   This harness does not enable bremsstrahlung directly (it is a black-box
   RHS source via `source_terms`) — but the energy-residual check budgets
   for the bremsstrahlung power density in the pinch column.
-- Scholz et al. 2006 Nukleonika 51(1):79-84, Table 1: PF-1000 published
-  I_peak = 1.870 MA at t_peak ~= 6.32 us for 27 kV, 3.5 Torr D2.
-  We use this as a soft sanity bound (not RADPF reference truth — that
-  data lives in tests/reference_data/radpf_pf1000_27kv.json and is checked
-  by the calibration harness, not here).
+- Scholz et al. 2006 Nukleonika 51(1):79-84: PF-1000 facility paper.
+  [KR: scholz-2006-pf1000-mega-joule.md §"Status of research on radial collapse
+   and pinch phase" p.4 Fig.5 caption]
+  Reports operating point p0 = 4 hPa, U0 = 33 kV, Imax = 1.7 MA for the
+  radial-collapse / pinch frame sequence. The historical 1.870 MA at
+  t_peak ~= 6.32 us cited below comes from a different PF-1000 shot family
+  (27 kV / 3.5 Torr D2) that lives in tests/reference_data/radpf_pf1000_27kv.json
+  and is checked by the calibration harness, not here. The Scholz cite stands
+  as a soft sanity bound only.
 
 Acceptance gates
 ----------------
