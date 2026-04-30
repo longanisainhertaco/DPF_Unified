@@ -3,7 +3,7 @@
 Wraps the Metal geometric source kernel and adds:
 1. Cylindrical geometric sources (centrifugal, hoop stress, Coriolis)
 2. Ohmic heating: Q_ohm = eta * J^2 (adds to energy and entropy)
-3. Bremsstrahlung radiation: Q_rad = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)
+3. Bremsstrahlung radiation: Q_rad = 1.569e-40 * g_ff * Z * ne^2 * sqrt(Te)
 4. Entropy tracer source: dSrho/dt from irreversible heating
 """
 
@@ -32,7 +32,7 @@ from dpf.metal.mlx_kernels import (
     cylindrical_source_numpy,
 )
 
-_BREM_COEFF = 1.42e-40                  # bremsstrahlung prefactor [W m^3 / sqrt(K)]
+_BREM_COEFF = 1.569e-40                  # bremsstrahlung prefactor [W m^3 / sqrt(K)]
 
 
 def _bremsstrahlung_logspace(
@@ -47,8 +47,8 @@ def _bremsstrahlung_logspace(
 
     Q_rad = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)
 
-    _BREM_COEFF = 1.42e-40 is subnormal in float32 (flushes to zero).
-    In log-space, log(1.42e-40) = -91.76, well within float32 range (+/-126).
+    _BREM_COEFF = 1.569e-40 is subnormal in float32 (flushes to zero).
+    In log-space, log(1.569e-40) = -91.76, well within float32 range (+/-126).
 
     Args:
         rho: Mass density (nr, nz), float32, already floored.
@@ -82,7 +82,7 @@ def _bremsstrahlung_logspace(
         log_Z = float(np.log(max(float(Z_eff), 1e-30)))
 
     # Rybicki & Lightman (1979) eq. 5.14a, SI quasi-neutral form:
-    #   P_ff = 1.42e-40 * g_ff * Z_eff * n_e^2 * sqrt(T_K)  [W/m^3]
+    #   P_ff = 1.569e-40 * g_ff * Z_eff * n_e^2 * sqrt(T_K)  [W/m^3]
     # n_e in m^-3, T in Kelvin, Z_eff = Z for single species.
     # The Z^1 (not Z^2) is correct because n_e already includes the
     # charge-state dependence: the fundamental formula P ~ Z^2 * n_e * n_i
@@ -565,7 +565,7 @@ def apply_bremsstrahlung(
 ) -> mx.array:
     """Remove bremsstrahlung radiation from total energy.
 
-    Q_rad = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te) [W/m^3]
+    Q_rad = 1.569e-40 * g_ff * Z * ne^2 * sqrt(Te) [W/m^3]
 
     Assumes fully ionized hydrogen-like plasma: ne = rho / ion_mass.
     Te derived from electron pressure component via p = ne * kB * Te.
@@ -590,8 +590,8 @@ def apply_bremsstrahlung(
     B2 = U[IBR] ** 2 + U[IBZ] ** 2 + U[IBT] ** 2
     p = (gamma - 1.0) * mx.maximum(U[IEN] - 0.5 * rho * v2 - 0.5 * B2, _P_FLOOR)
 
-    # Compute Q_rad via log-space arithmetic: BREM_COEFF=1.42e-40 is subnormal
-    # in float32 but log(1.42e-40)=-91.76 is well within float32 range.
+    # Compute Q_rad via log-space arithmetic: BREM_COEFF=1.569e-40 is subnormal
+    # in float32 but log(1.569e-40)=-91.76 is well within float32 range.
     Q_rad = _bremsstrahlung_logspace(
         rho,
         p,

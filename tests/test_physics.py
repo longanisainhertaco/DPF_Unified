@@ -3128,7 +3128,7 @@ class TestBremsstrahlung:
     """Tests for bremsstrahlung power density."""
 
     def test_power_matches_analytic(self):
-        """P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te) [SI]."""
+        """P_ff = 1.569e-40 * g_ff * Z * ne^2 * sqrt(Te) [SI]."""
         from dpf.radiation.bremsstrahlung import BREM_COEFF, bremsstrahlung_power
 
         ne = np.array([1e20, 1e22, 1e24])

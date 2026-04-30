@@ -550,9 +550,9 @@ def _total_rad_power_scalar(
     if ne <= 0.0 or Te_K <= 0.0:
         return 0.0
 
-    # Bremsstrahlung: P_ff = 1.42e-40 * g_ff * Z_eff * ne^2 * sqrt(Te)  (SI, quasi-neutral ni=ne/Z)
+    # Bremsstrahlung: P_ff = 1.569e-40 * g_ff * Z_eff * ne^2 * sqrt(Te)  (SI, quasi-neutral ni=ne/Z)
     g_ff = 1.2
-    P_brem = 1.42e-40 * g_ff * Z_eff * ne * ne * np.sqrt(Te_K)
+    P_brem = 1.569e-40 * g_ff * Z_eff * ne * ne * np.sqrt(Te_K)
 
     # Impurity line radiation
     P_line = 0.0

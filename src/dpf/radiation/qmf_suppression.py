@@ -188,7 +188,7 @@ def synchrotron_enhancement_factor(
     #   P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
     # Must include Z factor (free-free from ion Coulomb field).
     g_ff = 1.2  # Gaunt factor
-    P_brem = 1.42e-40 * g_ff * Z * ne**2 * np.sqrt(max(Te_K, 1.0))
+    P_brem = 1.569e-40 * g_ff * Z * ne**2 * np.sqrt(max(Te_K, 1.0))
 
     if P_brem > 0:
         return max(P_sync / P_brem, 1.0)

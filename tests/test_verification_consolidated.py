@@ -888,11 +888,13 @@ class TestShockInfo:
 
 
 def test_brem_power_formula_direct():
-    """Bremsstrahlung power against SI reference value (NRL p.58)."""
+    """Bremsstrahlung power against SI reference value (NRL p.58 eq.30)."""
     ne = np.array([1e24])
     Te = np.array([1e7])
     P = bremsstrahlung_power(ne, Te, 1.0, 1.2)
-    P_ref = 1.42e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
+    # NRL eq.(30) SI K-form: BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te_K)
+    # [KR: plasma-formulary.md L5101 eq.(30)] -> 1.569e-40
+    P_ref = 1.569e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
     assert P[0] == pytest.approx(P_ref, rel=1e-2)
 
 
@@ -961,8 +963,8 @@ def test_brem_implicit_solver_positive_Te():
 
 
 def test_brem_coefficient_matches_nrl():
-    """BREM_COEFF should be 1.42e-40 in SI."""
-    assert BREM_COEFF == 1.42e-40
+    """BREM_COEFF should be 1.569e-40 (NRL eq.30 SI K-form, [KR: plasma-formulary.md L5101])."""
+    assert BREM_COEFF == 1.569e-40
 
 
 def test_brem_coefficient_cpp_has_valid_constant():
@@ -971,9 +973,9 @@ def test_brem_coefficient_cpp_has_valid_constant():
     if not cpp_path.exists():
         pytest.skip("dpf_zpinch.cpp not found")
     content = cpp_path.read_text()
-    # C++ uses C_brem = 1.69e-32 [W*m^3/sqrt(K)] (NRL convention with Z^2*ne^2)
-    # Python uses BREM_COEFF = 1.42e-40 [W*m^3/sqrt(K)] (convention with Z*ne^2)
-    # Both are valid formulations with different Z dependence
+    # C++ uses C_brem = 1.69e-32 [W*m^3/sqrt(K)] (NRL eq.30 CGS direct form)
+    # Python uses BREM_COEFF = 1.569e-40 [W*m^3/sqrt(K)] (NRL eq.30 SI K-form)
+    # SI conversion: 1.69e-32 * 1e6/1e12/sqrt(11604.5) = 1.569e-40 — equivalent.
     assert "C_brem" in content, "C++ must define bremsstrahlung coefficient"
     assert "1.69e-32" in content, "C++ C_brem should be 1.69e-32 (NRL Formulary)"
 
@@ -2570,7 +2572,7 @@ class TestBremsstrahlungRadiation:
         ne_val = np.array([1e24])
         Te_val = np.array([1e7])
         P = bremsstrahlung_power(ne_val, Te_val, 1.0, 1.2)
-        P_nrl = 1.42e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
+        P_nrl = 1.569e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
         assert abs(P[0] - P_nrl) / P_nrl < 0.01
 
 

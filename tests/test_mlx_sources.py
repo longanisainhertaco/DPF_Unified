@@ -319,7 +319,7 @@ class TestBremsstrahlung:
         assert np.all(dE <= 0.0), "bremsstrahlung added energy (should remove)"
 
     def test_bremsstrahlung_magnitude_matches_analytic(self):
-        """Q_rad magnitude matches 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)."""
+        """Q_rad magnitude matches 1.569e-40 * g_ff * Z * ne^2 * sqrt(Te)."""
         nr, nz = 4, 4
         rho = 1.0
         Te_target = 1e7
@@ -338,7 +338,7 @@ class TestBremsstrahlung:
         mx.eval(U_out)
 
         dE = np.asarray(U[IEN]) - np.asarray(U_out[IEN])
-        Q_expected = 1.42e-40 * g_ff * Z_eff * ne**2 * math.sqrt(Te_target)
+        Q_expected = 1.569e-40 * g_ff * Z_eff * ne**2 * math.sqrt(Te_target)
         expected_dE = Q_expected * dt
         np.testing.assert_allclose(dE, expected_dE, rtol=0.05)
 
