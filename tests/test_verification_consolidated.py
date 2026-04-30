@@ -486,7 +486,17 @@ def _make_briowu_dpf(N: int):
     return state
 
 
-def _run_sod_dpf(N: int, n_steps: int = 200):
+def _run_sod_dpf(N: int, n_steps: int | None = None):
+    # t_end = 0.2 sound-crossing times across a unit domain (canonical Sod
+    # convergence target). Previously this was a bare 0.2 which was
+    # interpreted as 0.2 SECONDS — at PF-1000 conditions cs~8.3e4 m/s, so a
+    # sound crossing is ~1.2e-5 s and 0.2 s let the solution evolve for
+    # ~16,000 sound crossings before the step cap silently exited the loop,
+    # masking convergence and yielding a flat L1 plateau (sod-engine-rca,
+    # 2026-04-27). Banks et al. 2008 ("A high-resolution Godunov method for
+    # compressible multi-material flow on overlapping grids") show TVD-PLM
+    # on a discontinuity gives order ~0.8 once the solution is actually
+    # evolved to the canonical t/L*cs = 0.2 self-similar profile.
     dx = 1.0 / N
     solver = MetalMHDSolver(
         grid_shape=(N, 4, 4), dx=dx, gamma=_GAMMA, cfl=0.3,
@@ -495,7 +505,11 @@ def _run_sod_dpf(N: int, n_steps: int = 200):
     )
     state = _make_sod_dpf(N)
     t = 0.0
-    t_end = 0.2
+    t_end = 0.2 / _CS  # 0.2 sound-crossing times, NOT 0.2 seconds
+    if n_steps is None:
+        # Scale step cap with resolution: dt ~ CFL*dx/cs, so steps ~ N/CFL.
+        # 2500*N/64 gives ~3x headroom over the dt-limited count.
+        n_steps = max(int(2500 * N / 64), 200)
     for _ in range(n_steps):
         dt = float(solver._compute_dt(state))
         dt = min(dt, t_end - t)
@@ -505,6 +519,13 @@ def _run_sod_dpf(N: int, n_steps: int = 200):
         t += dt
         if t >= t_end:
             break
+    # Guard: a step-cap exit silently masks unevolved states and produces
+    # false plateaus in convergence studies. Require we hit >=95% of t_end.
+    assert t >= 0.95 * t_end, (
+        f"_run_sod_dpf(N={N}) exited at t={t:.3e} (target {t_end:.3e}); "
+        f"step-cap exit silently masking unevolved states. "
+        f"Raise n_steps or check dt collapse."
+    )
     return state, t
 
 
@@ -2334,20 +2355,49 @@ class TestSodDPFStability:
 
 
 class TestSodDPFConvergence:
-    """Sod L1 error decreases with resolution."""
+    """Sod L1 error decreases with resolution.
+
+    TVD-PLM applied to a discontinuity yields convergence order ~0.8
+    (Banks 2008). Anything below 0.7 indicates the solver is plateauing
+    — typically because the step cap fires before t_end is reached or a
+    floor/limiter is dominating. The post-loop assertion in _run_sod_dpf
+    catches the step-cap mode; this test catches the rest.
+    """
 
     @pytest.mark.slow
     def test_l1_decreases_with_resolution(self):
+        resolutions = [64, 128, 256]
         errors = []
-        for N in [32, 64, 128]:
+        for N in resolutions:
             state, t = _run_sod_dpf(N)
             dx = 1.0 / N
             x = np.linspace(-0.5 + dx / 2, 0.5 - dx / 2, N)
             rho_exact = _exact_sod_dpf(x, t)
             rho_num = state["rho"][:, 2, 2]
             errors.append(_l1_error_sod(rho_num, rho_exact))
+
+        # Each resolution doubling must reduce error monotonically.
         for i in range(1, len(errors)):
-            assert errors[i] <= errors[i - 1] * 1.2
+            assert errors[i] <= errors[i - 1] * 1.2, (
+                f"L1 not monotonically decreasing: "
+                f"N={resolutions[i-1]} L1={errors[i-1]:.3e} -> "
+                f"N={resolutions[i]} L1={errors[i]:.3e}"
+            )
+
+        # Convergence rate r = log2(L1_coarse / L1_fine) per resolution
+        # doubling. Banks 2008 gives ~0.8 for TVD-PLM on a discontinuity.
+        # We require >=0.7 across every doubling — a softer pass band that
+        # catches the plateau failure mode without false positives from
+        # numerical noise.
+        rates = [
+            float(np.log2(errors[i - 1] / errors[i]))
+            for i in range(1, len(errors))
+        ]
+        assert all(r >= 0.7 for r in rates), (
+            f"Sod convergence order < 0.7 across [64,128,256]: "
+            f"rates={rates}, errors={errors}. "
+            f"Expected ~0.8 (Banks 2008, TVD-PLM on discontinuity)."
+        )
 
 
 class TestBrioWuDPFStability:

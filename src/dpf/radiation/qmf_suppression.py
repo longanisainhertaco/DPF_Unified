@@ -23,10 +23,21 @@ offsetting bremsstrahlung suppression. Net benefit requires detailed
 balance.
 
 References:
-    Bezchastnov & Potekhin, J. Phys. B 27:3349 (1994) — QMF brem rates
     Potekhin & Chabrier, ApJ 585:955 (2003) — magnetized thermal conductivity
     Rider, Phys. Plasmas 4:1039 (1997) — p-B11 radiation constraints
     Putvinski et al., Nucl. Fusion 38:1275 (1998) — QMF in fusion
+
+UNVERIFIED CITATION (removed 2026-04-27):
+    Bezchastnov & Potekhin, J. Phys. B 27:3349 (1994), DOI 10.1088/0953-4075/27/15/013,
+    bibcode 1994JPhB...27.3349B, was previously cited here as "QMF brem rates".
+    Verified via NASA ADS: that paper is titled "Transitions between shifted Landau
+    states and photoionization of the hydrogen atom moving in a strong magnetic field"
+    and treats BOUND-STATE photoionization (bound-free), NOT free-free electron-ion
+    bremsstrahlung. The interpolation formula in `bremsstrahlung_suppression_factor`
+    below is therefore unsourced/heuristic, not derived from this paper. Treat
+    QMF suppression as UNVERIFIED until a primary free-free reference is on disk
+    under references/papers/ (candidate: Pavlov & Panov 1976 Sov.Phys.JETP 44:300,
+    or Lauer et al. 1983 ApJ 272:122). Default behavior: qmf_unverified=True.
 """
 
 from __future__ import annotations
@@ -74,13 +85,24 @@ def bremsstrahlung_suppression_factor(
     B: float,
     Te_K: float,
 ) -> float:
-    """Compute bremsstrahlung suppression factor in strong B.
+    """Compute bremsstrahlung suppression factor in strong B. [UNVERIFIED]
 
-    Uses the Bezchastnov & Potekhin (1994) approximation:
-    When E_c/E_th >> 1, electrons occupy only the ground Landau level,
-    and bremsstrahlung is suppressed by ~exp(-E_c/E_th).
+    HEURISTIC INTERPOLATION — not from a published derivation. The previous
+    docstring attributed this to Bezchastnov & Potekhin J.Phys.B 27:3349 (1994);
+    that paper (DOI 10.1088/0953-4075/27/15/013) is on hydrogen-atom photoionization
+    with shifted Landau states, not free-free bremsstrahlung. Citation removed
+    2026-04-27. PDF not on disk under references/papers/.
 
-    For practical DPF fields (B < 100 T), suppression is negligible.
+    Functional form (placeholder, no paper backing):
+        S(r) = exp(-r) + (1 - exp(-r)) * exp(-sqrt(r)),  r = E_c/E_th
+        E_c = hbar * e * B / m_e,  E_th = k_B * Te
+    Limits: r << 1 -> S = 1 (no suppression). r >> 1 -> S -> 0, floored at 0.01.
+
+    Physical reasoning sketch: when r >> 1 only the n=0 Landau level is thermally
+    populated, restricting allowed transitions; quantitative magnitude is not
+    derived here. For practical DPF fields (B < 100 T at T ~ 1 keV), r << 1 and
+    this returns 1.0 regardless of formula details, so the heuristic is harmless
+    in the DPF regime but should NOT be trusted for B > 1 GG / r >~ 1.
 
     Args:
         B: Magnetic field magnitude [T].
