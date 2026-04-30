@@ -73,7 +73,7 @@ for fully ionized deuterium plasma at T > 50 eV but neglects:
   rapid compression (sub-microsecond timescales)
 
 A standalone tabulated EOS prototype previously existed at
-`src/dpf/fluid/tabulated_eos.py` [Deleted 2026-04-24, dead code — never wired into
+`src/dpf/fluid/tabulated_eos.py` [Deleted 2026-04-30, dead code — never wired into
 the MHD solver]. Tabular EOS support is not implemented in the production code path;
 see `docs/icf-hed-prototypes/tabular_eos.md` for the research design that would need
 to be re-implemented if this physics ever becomes required.

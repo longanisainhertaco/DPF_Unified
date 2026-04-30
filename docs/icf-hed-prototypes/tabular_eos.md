@@ -1016,8 +1016,8 @@ This doubles the EOS evaluation cost but is architecturally straightforward.
 
 | Component | LOC | Notes |
 |-----------|-----|-------|
-| Table data structure (EOSTable, load_table) | 50 | New (was in `tabulated_eos.py`, [Deleted 2026-04-24] as unused dead code) |
-| Bilinear interpolation (Numba) | 80 | New (was in `tabulated_eos.py`, [Deleted 2026-04-24]) |
+| Table data structure (EOSTable, load_table) | 50 | New (was in `tabulated_eos.py`, [Deleted 2026-04-30] as unused dead code) |
+| Bilinear interpolation (Numba) | 80 | New (was in `tabulated_eos.py`, [Deleted 2026-04-30]) |
 | Newton-Raphson T(ρ, e) inversion | 40 | New |
 | Monotonicity enforcement | 30 | New |
 | Sound speed from finite differences | 20 | New |
@@ -1029,7 +1029,7 @@ This doubles the EOS evaluation cost but is architecturally straightforward.
 | Tests | 200 | New |
 | **Total** | **~740 LOC** | |
 
-A previous `tabulated_eos.py` prototype (~130 LOC: EOSTable, bilinear interpolation, table loading, ideal gas generation) was deleted on 2026-04-24 as never-wired-up dead code. If tabular EOS is ever re-attempted, the full ~740 LOC must be implemented from scratch — including the QEOS generator, Newton-Raphson inversion, sound speed, and integration hooks.
+A previous `tabulated_eos.py` prototype (~130 LOC: EOSTable, bilinear interpolation, table loading, ideal gas generation) was deleted on 2026-04-30 as never-wired-up dead code. If tabular EOS is ever re-attempted, the full ~740 LOC must be implemented from scratch — including the QEOS generator, Newton-Raphson inversion, sound speed, and integration hooks.
 
 ### 8.3 Complexity Assessment
 
@@ -1069,7 +1069,7 @@ Given the above assessment, the recommended approach for DPF-Unified if tabular 
 
 4. **Phase 4** (300 LOC): Add SESAME loader via eospac (requires DOE collaboration) and validate against QEOS for deuterium.
 
-**Do not start at Phase 4.** Phase 1 leverages the existing `eos.py` infrastructure and `dpf.atomic.ionization` Saha module; Phase 2 must be re-built from scratch since the `tabulated_eos.py` prototype was deleted on 2026-04-24 (dead code, never wired into the solver).
+**Do not start at Phase 4.** Phase 1 leverages the existing `eos.py` infrastructure and `dpf.atomic.ionization` Saha module; Phase 2 must be re-built from scratch since the `tabulated_eos.py` prototype was deleted on 2026-04-30 (dead code, never wired into the solver).
 
 ---
 

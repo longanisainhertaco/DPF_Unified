@@ -480,7 +480,7 @@
 - **Justification**: Theoretically incorrect but practically unreachable with physical inputs.
 
 ### [L3] ⚪ OBSOLETE — `tabulated_eos.py` hardcodes `ion_mass=3.34e-27` (magic number)
-- **File**: `tabulated_eos.py:393` [Deleted 2026-04-24, file removed as dead code]
+- **File**: `tabulated_eos.py:393` [Deleted 2026-04-30, file removed as dead code]
 - **Found by**: py-fluid (L3)
 - **Cross-review verdict**: **CONFIRMED** (no longer applicable)
 - **Resolution**: File deleted; module was never wired into the production solver.
