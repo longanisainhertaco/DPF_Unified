@@ -34,7 +34,7 @@ IPEAK_ERR_FAIL = CI_THRESHOLDS["ipeak_fail"]
 WAVEFORM_DEVICES = {
     "PF-1000": 1.87e6,
     "PF-1000-Gribkov": 1.846e6,
-    "UNU-ICTP": 169e3,
+    "UNU-ICTP": 182e3,  # Updated: 182 kA per KR p.152 [Lee & Saw 2014] (was 169 kA from IPFS 13.5 kV file)
     "PF-1000-16kV": 1.2e6,
     "POSEIDON-60kV": 3.19e6,
     "FAETON-I": 1.0e6,

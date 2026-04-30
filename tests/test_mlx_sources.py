@@ -14,7 +14,8 @@ from dpf.metal.mlx_sources import (  # noqa: E402
     apply_bremsstrahlung,
     apply_geometric_sources,
     apply_ohmic_heating,
-    compute_current_density,
+    compute_curl_B_squared_HL,
+    compute_current_density_si,
 )
 
 # ---------------------------------------------------------------------------
@@ -153,22 +154,25 @@ class TestGeometricSources:
 
 
 # ---------------------------------------------------------------------------
-# Current density tests
+# curl(B) operator tests (HL units, no mu_0)
 # ---------------------------------------------------------------------------
+# These tests cover the curl operator on B (Athena HL convention), NOT the
+# SI current density. The HL <-> SI conversion is verified separately via
+# compute_current_density_si call sites and resistivity-pipeline tests.
 
 
-class TestCurrentDensity:
-    def test_zero_B_gives_zero_J_sq(self):
-        """Zero magnetic field → J = 0."""
+class TestCurlBSquaredHL:
+    def test_zero_B_gives_zero_curlB_sq(self):
+        """Zero magnetic field → curl(B) = 0."""
         nr, nz = 8, 8
         U = _make_uniform_state(nr, nz)  # B=0
         r_cell, _ = _make_grid(nr, nz)
-        J_sq = compute_current_density(U, dr=0.01, dz=0.01, r_cell=r_cell)
-        mx.eval(J_sq)
-        np.testing.assert_allclose(np.asarray(J_sq), 0.0, atol=1e-10)
+        curlB_sq = compute_curl_B_squared_HL(U, dr=0.01, dz=0.01, r_cell=r_cell)
+        mx.eval(curlB_sq)
+        np.testing.assert_allclose(np.asarray(curlB_sq), 0.0, atol=1e-10)
 
-    def test_uniform_Bz_gives_zero_J(self):
-        """Uniform Bz only → J = curl(Bz hat) = 0 analytically."""
+    def test_uniform_Bz_gives_zero_curlB(self):
+        """Uniform Bz only → curl(Bz hat) = 0 analytically."""
         nr, nz = 8, 8
         U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
         U_np[IDN] = 1.0
@@ -176,12 +180,12 @@ class TestCurrentDensity:
         U_np[IEN] = 1.0
         U = mx.array(U_np)
         r_cell, _ = _make_grid(nr, nz)
-        J_sq = compute_current_density(U, dr=0.01, dz=0.01, r_cell=r_cell)
-        mx.eval(J_sq)
-        np.testing.assert_allclose(np.asarray(J_sq), 0.0, atol=1e-8)
+        curlB_sq = compute_curl_B_squared_HL(U, dr=0.01, dz=0.01, r_cell=r_cell)
+        mx.eval(curlB_sq)
+        np.testing.assert_allclose(np.asarray(curlB_sq), 0.0, atol=1e-8)
 
-    def test_azimuthal_current_from_Btheta_gradient(self):
-        """Bt = B0 * r / r_max → Jz = (1/r) d(r*Bt)/dr = 2*B0/r_max analytically."""
+    def test_azimuthal_curlB_from_Btheta_gradient(self):
+        """Bt = B0 * r / r_max → (curl B)_z = (1/r) d(r*Bt)/dr = 2*B0/r_max."""
         nr, nz = 16, 4
         dr = 0.01
         r_max = nr * dr
@@ -196,29 +200,29 @@ class TestCurrentDensity:
             U_np[IBT, ir, :] = B0 * rc / r_max
         U = mx.array(U_np)
 
-        J_sq = compute_current_density(U, dr=dr, dz=0.01, r_cell=r_cell)
-        mx.eval(J_sq)
+        curlB_sq = compute_curl_B_squared_HL(U, dr=dr, dz=0.01, r_cell=r_cell)
+        mx.eval(curlB_sq)
 
-        # Jz_analytic = 2*B0/r_max everywhere (uniform current density)
-        Jz_expected = 2.0 * B0 / r_max
-        J_sq_expected = Jz_expected**2
-        # Interior cells only (boundary stencils are one-sided)
-        J_sq_np = np.asarray(J_sq)
+        # (curl B)_z analytic = 2*B0/r_max everywhere (uniform in r).
+        curlBz_expected = 2.0 * B0 / r_max
+        curlB_sq_expected = curlBz_expected**2
+        # Interior cells only (boundary stencils are one-sided).
+        curlB_sq_np = np.asarray(curlB_sq)
         np.testing.assert_allclose(
-            J_sq_np[2:-2, 1:-1], J_sq_expected, rtol=0.05
+            curlB_sq_np[2:-2, 1:-1], curlB_sq_expected, rtol=0.05
         )
 
-    def test_J_sq_nonnegative(self):
-        """J^2 must always be non-negative."""
+    def test_curlB_sq_nonnegative(self):
+        """|curl(B)|^2 must always be non-negative."""
         nr, nz = 8, 8
         rng = np.random.default_rng(42)
         U_np = rng.standard_normal((NVAR, nr, nz)).astype(np.float32)
         U_np[IDN] = np.abs(U_np[IDN]) + 0.1
         U = mx.array(U_np)
         r_cell, _ = _make_grid(nr, nz)
-        J_sq = compute_current_density(U, dr=0.01, dz=0.01, r_cell=r_cell)
-        mx.eval(J_sq)
-        assert np.all(np.asarray(J_sq) >= 0.0), "J^2 has negative values"
+        curlB_sq = compute_curl_B_squared_HL(U, dr=0.01, dz=0.01, r_cell=r_cell)
+        mx.eval(curlB_sq)
+        assert np.all(np.asarray(curlB_sq) >= 0.0), "|curl(B)|^2 has negative values"
 
 
 # ---------------------------------------------------------------------------
@@ -553,3 +557,126 @@ class TestHallValidation:
             f"<= high_ne dB={results['high_ne']:.2e}"
         )
         assert results["high_ne"] > 0.0, "Hall had zero effect at high density"
+
+
+# ---------------------------------------------------------------------------
+# SI current density conversion tests
+# ---------------------------------------------------------------------------
+
+
+class TestCurrentDensitySI:
+    """Regression tests for compute_current_density_si.
+
+    Covers both packing modes and verifies the mu_0 conversion is applied
+    correctly — guarding against the historical mu_0 vs mu_0^2 confusion.
+    """
+
+    def test_si_equals_curl_squared_over_mu0_when_hl_packed(self):
+        """HL-packed: J_SI^2 == curlB_HL^2 / mu_0 to float32 tolerance."""
+        nr, nz = 8, 8
+        dr = dz = 0.01
+        r_cell, _ = _make_grid(nr, nz, dr=dr)
+
+        # Non-trivial Bt field so curl is nonzero
+        U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        U_np[IDN] = 1.0
+        U_np[IEN] = 1.0
+        for ir in range(nr):
+            rc = (ir + 0.5) * dr
+            U_np[IBT, ir, :] = float(rc)
+        U = mx.array(U_np)
+
+        curl_sq = compute_curl_B_squared_HL(U, dr=dr, dz=dz, r_cell=r_cell)
+        j_sq_si = compute_current_density_si(U, dr=dr, dz=dz, r_cell=r_cell, b_packed_as_hl=True)
+        mx.eval(curl_sq, j_sq_si)
+
+        expected = np.asarray(curl_sq) / _MU0
+        np.testing.assert_allclose(
+            np.asarray(j_sq_si), expected, rtol=1e-5,
+            err_msg="HL-packed SI J^2 != curlB_HL^2 / mu_0"
+        )
+
+    def test_si_equals_curl_squared_over_mu0_squared_when_si_packed(self):
+        """SI-packed: J_SI^2 == curlB^2 / mu_0^2 to float32 tolerance."""
+        nr, nz = 8, 8
+        dr = dz = 0.01
+        r_cell, _ = _make_grid(nr, nz, dr=dr)
+
+        U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        U_np[IDN] = 1.0
+        U_np[IEN] = 1.0
+        for ir in range(nr):
+            rc = (ir + 0.5) * dr
+            U_np[IBT, ir, :] = float(rc)
+        U = mx.array(U_np)
+
+        curl_sq = compute_curl_B_squared_HL(U, dr=dr, dz=dz, r_cell=r_cell)
+        j_sq_si = compute_current_density_si(U, dr=dr, dz=dz, r_cell=r_cell, b_packed_as_hl=False)
+        mx.eval(curl_sq, j_sq_si)
+
+        expected = np.asarray(curl_sq) / (_MU0 ** 2)
+        np.testing.assert_allclose(
+            np.asarray(j_sq_si), expected, rtol=1e-5,
+            err_msg="SI-packed J^2 != curlB^2 / mu_0^2"
+        )
+
+    def test_si_units_dimensional(self):
+        """Analytic check: uniform Bt = B0*r/r_max -> (curl B)_z = 2*B0/r_max.
+
+        In HL packing: B_HL = B_SI / sqrt(mu_0).
+        J_SI = curl(B_SI) / mu_0 = curl(B_HL)*sqrt(mu_0) / mu_0 = curl(B_HL) / sqrt(mu_0).
+        |J_SI|^2 = curl_HL^2 / mu_0.
+
+        Analytic (curl B)_z_HL = 2*B0_HL/r_max everywhere in interior.
+        Expected: |J_SI|^2 = (2*B0_HL/r_max)^2 / mu_0.
+        """
+        nr, nz = 16, 4
+        dr = 0.01
+        r_max = nr * dr
+        r_cell, _ = _make_grid(nr, nz, dr=dr)
+
+        B0_HL = 1.0
+        U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        U_np[IDN] = 1.0
+        U_np[IEN] = 1.0
+        for ir in range(nr):
+            rc = (ir + 0.5) * dr
+            U_np[IBT, ir, :] = float(B0_HL * rc / r_max)
+        U = mx.array(U_np)
+
+        j_sq_si = compute_current_density_si(U, dr=dr, dz=0.01, r_cell=r_cell, b_packed_as_hl=True)
+        mx.eval(j_sq_si)
+
+        curlBz_HL = 2.0 * B0_HL / r_max
+        j_sq_expected = (curlBz_HL ** 2) / _MU0
+
+        # Interior only — boundary stencils are first-order
+        interior = np.asarray(j_sq_si)[2:-2, 1:-1]
+        np.testing.assert_allclose(
+            interior, j_sq_expected, rtol=0.05,
+            err_msg=f"Dimensional check failed: got {interior.mean():.4e}, expected {j_sq_expected:.4e}"
+        )
+
+    def test_hl_vs_si_packed_differ_by_mu0(self):
+        """The two packing modes must differ by exactly mu_0 (not mu_0^2 or 1)."""
+        nr, nz = 8, 8
+        dr = dz = 0.01
+        r_cell, _ = _make_grid(nr, nz, dr=dr)
+
+        U_np = np.zeros((NVAR, nr, nz), dtype=np.float32)
+        U_np[IDN] = 1.0
+        U_np[IEN] = 1.0
+        U_np[IBT] = 2.0
+        U_np[IBR] = 0.5
+        U = mx.array(U_np)
+
+        j_hl = compute_current_density_si(U, dr=dr, dz=dz, r_cell=r_cell, b_packed_as_hl=True)
+        j_si = compute_current_density_si(U, dr=dr, dz=dz, r_cell=r_cell, b_packed_as_hl=False)
+        mx.eval(j_hl, j_si)
+
+        ratio = np.asarray(j_hl) / np.maximum(np.asarray(j_si), 1e-30)
+        # j_hl = curl^2/mu_0,  j_si = curl^2/mu_0^2  =>  ratio = mu_0
+        np.testing.assert_allclose(
+            ratio[np.asarray(j_si) > 1e-20], _MU0, rtol=1e-5,
+            err_msg=f"HL/SI ratio != mu_0={_MU0:.6e}"
+        )

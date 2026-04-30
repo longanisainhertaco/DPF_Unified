@@ -21,6 +21,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from dpf.radiation.bremsstrahlung import BREM_COEFF
+
+_EV_TO_K = 11604.518
+
 
 def bremsstrahlung_emissivity(
     ne: np.ndarray,
@@ -29,8 +33,11 @@ def bremsstrahlung_emissivity(
 ) -> np.ndarray:
     """Bremsstrahlung volumetric emissivity [W/m^3/sr].
 
-    epsilon_ff = 1.42e-40 * Z_eff * ne^2 * sqrt(Te_eV)  [W/m^3]
-    Per steradian: divide by 4*pi (isotropic).
+    NRL eq.(30) SI K-form:
+        P_total = BREM_COEFF * Z * ne^2 * sqrt(Te_K)   [W/m^3]
+    Per steradian (assume isotropic): divide by 4*pi.
+
+    [KR: plasma-formulary.md L5101 eq.(30)]
 
     Args:
         ne: Electron density [m^-3].
@@ -40,7 +47,8 @@ def bremsstrahlung_emissivity(
     Returns:
         Emissivity [W/m^3/sr].
     """
-    return 1.42e-40 * Z_eff * ne**2 * np.sqrt(np.maximum(Te_eV, 0.01)) / (4.0 * np.pi)
+    Te_K = np.maximum(Te_eV * _EV_TO_K, 1.0)
+    return BREM_COEFF * Z_eff * ne**2 * np.sqrt(Te_K) / (4.0 * np.pi)
 
 
 def filtered_emissivity(

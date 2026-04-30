@@ -101,3 +101,8 @@ class ExperimentalDevice:
     # "reference_only" (model output or unreliable source — exclude from validation claims)
     reliability: str = "measured"
     reliability_note: str = ""
+    # KnowledgeReference verification status.
+    # "verified"      — all parameters sourced from a file under KnowledgeReference/
+    # "reference_only"— parameters cannot be sourced from KR (wrong variant, missing paper)
+    # "unverified"    — KR source exists but parameters not yet cross-checked line-by-line
+    kr_status: str = "unverified"

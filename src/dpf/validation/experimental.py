@@ -12,7 +12,7 @@ Devices included:
     - **PF-1000** (IPPLM Warsaw, Poland) -- the largest DPF in Europe.
     - **NX2** (NIE Singapore) -- compact Mather-type DPF.
     - **UNU-ICTP PFF** -- the widely-replicated training device.
-    - **AECS-PF2** (Atomic Energy Commission of Syria) -- 2.8 kJ high-impedance DPF.
+    - **AECS-PF2** (Atomic Energy Commission of Syria) -- moved to _REFERENCE_ONLY (Type 2 unfittable).
 
 Usage::
 
@@ -64,6 +64,7 @@ from dpf.validation.experimental_devices import (  # noqa: F401
     POSEIDON_60KV_DATA,
     POSEIDON_DATA,
     UNU_ICTP_DATA,
+    _REFERENCE_ONLY,
     get_devices_by_provenance,
 )
 from dpf.validation.experimental_diagnostics import (  # noqa: F401

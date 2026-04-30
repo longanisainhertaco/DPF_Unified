@@ -82,6 +82,13 @@ DEVICE_TOLERANCES = {
     # model output (~9.2%) + ~3% headroom for fit variation across operating
     # conditions; treat as a CI fence to detect regressions, not a claim
     # that 12% is a paper-published acceptance criterion.
+    #
+    # DUAL-FENCE ARCHITECTURE: this 0.12 is DISTINCT from the 0.10 in
+    # tests/reference_data/radpf_pf1000_27kv.json acceptance_criteria.I_peak_tolerance.
+    # That 0.10 is the VALIDATION gate consumed exclusively by test_mhd_acceptance.py
+    # (test_angle1_ipeak, line 56) and reflects Anthony-generated RADPF truth data.
+    # This 0.12 is the REGRESSION gate consumed by conftest fixtures (line 144) for
+    # non-acceptance tests. Do NOT collapse them: 0.10 != 0.12 intentionally.
     "PF-1000": {"I_peak": 0.12, "t_peak": 0.10, "nrmse": 0.22, "energy": 0.05, "Yn": 1.0},
     "PF-1000-Gribkov": {"I_peak": 0.06, "t_peak": 0.03, "nrmse": 0.30, "energy": 0.05, "Yn": 1.0},
     "PF-1000-16kV": {"I_peak": 0.10, "t_peak": 0.10, "nrmse": 0.20, "energy": 0.05, "Yn": 1.0},

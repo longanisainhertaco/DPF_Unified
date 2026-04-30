@@ -14,6 +14,7 @@ import numpy as np
 
 # Physical constants — imported from single source of truth
 from dpf.metal.constants import K_B as _KBOLTZ
+from dpf.metal.constants import MU_0 as _MU0
 from dpf.metal.constants import P_FLOOR as _P_FLOOR
 from dpf.metal.constants import RHO_FLOOR as _RHO_FLOOR
 from dpf.metal.mlx_kernels import (
@@ -60,7 +61,7 @@ def _bremsstrahlung_logspace(
     Returns:
         Q_rad: Volumetric radiation power [W/m^3], shape matching rho, float32.
     """
-    _LOG_BREM = float(np.log(_BREM_COEFF))      # -91.76
+    _LOG_BREM = float(np.log(_BREM_COEFF))      # log(1.569e-40) ~ -91.66
     _LOG_GFF = float(np.log(gaunt_factor))
     _LOG_MI = float(np.log(ion_mass))            # log(3.34e-27) ~ -61.07
     _LOG_2KB = float(np.log(2.0 * _KBOLTZ))     # log(2*kB) ~ -52.17
@@ -227,20 +228,29 @@ def apply_geometric_sources(
     return mx.stack(updated_vars, axis=0).astype(mx.float32)
 
 
-def compute_current_density(
+def compute_curl_B_squared_HL(
     U: mx.array,
     dr: float,
     dz: float,
     r_cell: mx.array,
 ) -> mx.array:
-    """Compute J = curl(B) in cylindrical coordinates and return |J|^2.
+    """Return |curl(B)|^2 in Heaviside-Lorentz (HL) units, NOT SI current density.
 
-    Uses central finite differences on interior cells; forward/backward
-    differences at boundaries.
+    Truth-in-naming: the stencil computes the curl of the B-field as packed
+    in U (HL convention, mu_0 = 1) and returns its squared magnitude. There
+    is no division by mu_0; callers that need J^2 in SI units must apply the
+    HL <-> SI conversion explicitly via `compute_current_density_si`.
 
-    J_r = -dBt/dz
-    J_z = (1/r) * d(r*Bt)/dr
-    J_theta = dBr/dz - dBz/dr
+    Stencil: central finite differences on interior cells; forward/backward
+    differences at boundaries (first-order at the two boundary planes).
+
+        (curl B)_r     = -dBt/dz
+        (curl B)_z     = (1/r) d(r Bt)/dr
+        (curl B)_theta = dBr/dz - dBz/dr
+
+    Units: if B is packed in HL units (Athena convention), the returned
+    value has units of [B_HL/length]^2. Multiply/divide by mu_0 to convert
+    to SI [A/m^2]^2 — see `compute_current_density_si`.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz), float32.
@@ -249,7 +259,8 @@ def compute_current_density(
         r_cell: Cell-center radii, shape (nr,), float32.
 
     Returns:
-        J_sq = Jr^2 + Jz^2 + Jt^2, shape (nr, nz), float32.
+        curlB_sq = (curl B)_r^2 + (curl B)_z^2 + (curl B)_theta^2 in HL,
+        shape (nr, nz), float32.
     """
     Br = U[IBR]   # (nr, nz)
     Bz = U[IBZ]   # (nr, nz)
@@ -316,8 +327,55 @@ def compute_current_density(
 
     Jt = dBr_dz - dBz_dr
 
-    J_sq = Jr * Jr + Jz * Jz + Jt * Jt
-    return J_sq.astype(mx.float32)
+    # Jr, Jz, Jt here are components of curl(B) in HL units (no mu_0).
+    curlB_sq = Jr * Jr + Jz * Jz + Jt * Jt
+    return curlB_sq.astype(mx.float32)
+
+
+def compute_current_density_si(
+    U: mx.array,
+    dr: float,
+    dz: float,
+    r_cell: mx.array,
+    b_packed_as_hl: bool = True,
+) -> mx.array:
+    """Return |J|^2 in SI units [A^2/m^4], applying the HL<->SI conversion.
+
+    Thin wrapper over `compute_curl_B_squared_HL` that bakes the mu_0
+    conversion explicitly so call sites do not have to inline arithmetic.
+
+    Conversion (single source of truth — keep in sync with the resistivity
+    pipeline if Cycle 3 audits update the convention):
+
+        Heaviside-Lorentz: B_HL = B_SI / sqrt(mu_0)
+        Curl operator:     curl(B_HL) = curl(B_SI) / sqrt(mu_0)
+        SI Ampere's law:   J_SI = curl(B_SI) / mu_0
+        =>  J_SI = curl(B_HL) / sqrt(mu_0)
+        =>  |J_SI|^2 = |curl(B_HL)|^2 / mu_0
+
+    Note: this matches the SI-typed `compute_resistivity` API but contradicts
+    the historical comment chain that used `* mu_0`. The fix-anom-mu0-retry
+    agent owns the final sign in this expression; this helper is the single
+    site where it lives so the correction lands in one place.
+
+    Args:
+        U: Conserved state, shape (NVAR, nr, nz).
+        dr, dz: Cell spacings [m].
+        r_cell: Cell-center radii, shape (nr,).
+        b_packed_as_hl: If True (default), B in U is in HL units (Athena
+            convention). If False, B is already SI and no conversion is
+            applied (the curl is then |J_SI * mu_0|^2, divided by mu_0^2).
+
+    Returns:
+        J_sq_SI: |J|^2 in SI units [A^2/m^4], shape (nr, nz), float32.
+    """
+    curlB_sq_HL = compute_curl_B_squared_HL(U, dr, dz, r_cell)
+    if b_packed_as_hl:
+        # B in HL units: |J_SI|^2 = |curl(B_HL)|^2 / mu_0.
+        # See conversion derivation in this docstring.
+        return (curlB_sq_HL / _MU0).astype(mx.float32)
+    # B already in SI: curl returns curl(B_SI), so |J_SI|^2 = |curl(B_SI)|^2 / mu_0^2.
+    return (curlB_sq_HL / (_MU0 * _MU0)).astype(mx.float32)
 
 
 def compute_current_density_components(
@@ -329,8 +387,8 @@ def compute_current_density_components(
     """Compute J = curl(B)/mu_0 components in cylindrical coordinates.
 
     Returns (Jr, Jz, Jt) as separate arrays. Uses the same finite-difference
-    stencil as compute_current_density but returns components for vector use
-    (e.g., Hall MHD E_Hall = (J x B) / (n_e * e)).
+    stencil as compute_curl_B_squared_HL but returns components for vector
+    use (e.g., Hall MHD E_Hall = (J x B) / (n_e * e)).
 
     Note: these are curl(B) / mu_0, NOT curl(B). The mu_0 factor must be
     accounted for when computing the Hall electric field.

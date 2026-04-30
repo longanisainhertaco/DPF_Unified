@@ -4,20 +4,33 @@ Provides volumetric power density for electron-ion bremsstrahlung,
 the dominant radiation loss mechanism in DPF plasma at ~1-10 keV.
 
 Physics:
-    P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
+    P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
 
-    Derived from Rybicki & Lightman (1979) Eq. 5.14a:
-        P_ff = 1.426e-40 * g_ff * ne * ni * Z^2 * sqrt(Te)
-    with quasi-neutrality ni = ne / Z:
-        P_ff = 1.426e-40 * g_ff * Z * ne^2 * sqrt(Te)
+    Source: NRL Plasma Formulary (2019) eq.(30), p. 58
+        [KR: plasma-formulary.md L5101 eq.(30)]
+        P_Br = 1.69e-32 * Ne * Te^(1/2) * sum_Z[Z^2 N(Z)]   [W/cm^3]
+        with Ne in cm^-3, Te in eV.
+
+    For hydrogen-like quasi-neutral plasma (ni = ne/Z):
+        sum_Z[Z^2 N(Z)] = Z * ne   ->   P_Br = 1.69e-32 * Z * ne^2 * sqrt(Te_eV)
+
+    SI conversion (Ne in m^-3, Te in K):
+        1.69e-32 * 1e6 (W/cm^3 -> W/m^3)
+                * 1e-12 (cm^-6 -> m^-6 on ne^2)
+                / sqrt(11604.518) (eV^(1/2) -> K^(1/2))
+        = 1.5689e-40 W m^3 K^(-1/2)
+
+    NRL eq.(30) implicitly bakes in the temperature-averaged Gaunt factor
+    (~1.1). Set gaunt_factor=1.0 to reproduce NRL exactly. Pass a higher
+    g_ff(T) only as a multiplicative correction.
 
     where:
-        g_ff  = Gaunt factor (dimensionless, ~1.0-1.5 for DPF conditions)
+        g_ff  = Gaunt factor correction (dimensionless, 1.0 reproduces NRL)
         Z     = Ion charge state
         ne    = Electron number density [m^-3]
         Te    = Electron temperature [K]
 
-Reference: Rybicki & Lightman (1979) Eq. 5.14a; NRL Plasma Formulary (2019), p. 58
+Reference: NRL Plasma Formulary (2019) eq.(30), p. 58.
 """
 
 from __future__ import annotations
@@ -27,8 +40,9 @@ from numba import njit
 
 # Bremsstrahlung coefficient in SI (W m^3 K^{-1/2})
 # P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)    [quasi-neutral: ni = ne/Z]
-# SI coefficient (ne in m^-3, T in K) — NOT the CGS coefficient 1.69e-32
-BREM_COEFF = 1.42e-40
+# SI coefficient (ne in m^-3, T in K), derived from NRL eq.(30) CGS 1.69e-32
+# [KR: plasma-formulary.md L5101 eq.(30)]
+BREM_COEFF = 1.569e-40
 
 
 @njit(cache=True)
