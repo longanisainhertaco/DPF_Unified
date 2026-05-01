@@ -100,6 +100,30 @@ def count_tables(doc: fitz.Document) -> int:
     return total
 
 
+def build_pages(doc: fitz.Document) -> list:
+    """Per-page text + tables flat view (matches KR schema `pages[]` field).
+
+    Each entry: {page:int (1-indexed), text:str, tables:list[{index:int, rows:list[list[str]]}]}
+    """
+    pages = []
+    for i, page in enumerate(doc, start=1):
+        text = page.get_text("text").strip()
+        tables = []
+        try:
+            found = page.find_tables().tables
+            for t_idx, t in enumerate(found):
+                try:
+                    rows = t.extract()
+                    rows = [[str(c) if c is not None else "" for c in row] for row in rows]
+                    tables.append({"index": t_idx, "rows": rows})
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        pages.append({"page": i, "text": text, "tables": tables})
+    return pages
+
+
 def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Path]:
     """Extract one PDF into <stem>.md and <stem>.json under out_dir."""
     doc = fitz.open(pdf_path)
@@ -109,6 +133,7 @@ def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Pa
 
     toc = doc.get_toc(simple=True) or []
     sections = build_sections(toc, doc)
+    pages = build_pages(doc)
     table_count = count_tables(doc)
 
     payload = {
@@ -129,6 +154,7 @@ def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Pa
             {k: v for k, v in s.items() if k != "text"}
             for s in sections
         ],
+        "pages": pages,
     }
     # Re-attach text in sections for completeness (matches KR full schema)
     for out_sec, in_sec in zip(payload["sections"], sections):
