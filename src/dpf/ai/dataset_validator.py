@@ -102,9 +102,17 @@ class DatasetValidator:
         # Compute field statistics
         result.field_stats = self.compute_field_statistics(path)
 
-        # Check energy conservation
+        # Check energy conservation. NaN means the check was skipped
+        # (h5py missing, field absent, or read error -- see
+        # check_energy_conservation docstring); record a distinct warning
+        # so reports surface "not measured" rather than silently passing.
         result.energy_drift = self.check_energy_conservation(path)
-        if result.energy_drift > self.energy_drift_threshold:
+        if np.isnan(result.energy_drift):
+            result.warnings.append(
+                "Energy-conservation check skipped (no field or read error); "
+                "drift unknown -- do not interpret missing value as zero."
+            )
+        elif result.energy_drift > self.energy_drift_threshold:
             result.warnings.append(
                 f"Energy drift {result.energy_drift:.2%} exceeds threshold "
                 f"{self.energy_drift_threshold:.2%}"
@@ -238,11 +246,28 @@ class DatasetValidator:
             path: Path to HDF5 file.
 
         Returns:
-            Maximum absolute deviation from unity in energy_conservation field,
-            or 0.0 if field does not exist.
+            Maximum absolute deviation from unity in ``energy_conservation``.
+
+            Returns ``float('nan')`` (not 0.0) in any case where the check
+            could not be performed, distinguishing three skip cases (each
+            paired with a logged warning or error so the caller can audit):
+
+            - ``h5py`` not installed -> NaN + warning ``"h5py unavailable"``
+            - ``scalars/energy_conservation`` field absent -> NaN + warning
+              ``"field absent"``
+            - HDF5 read failure -> NaN + ``logger.error`` describing the
+              exception
+
+            Callers MUST treat NaN as "check skipped" (NOT
+            "perfectly conserved"); ``validate_file`` does this by suppressing
+            the threshold warning when the drift is NaN. See P0.6.7.
         """
         if not HAS_H5PY:
-            return 0.0
+            logger.warning(
+                "Energy-conservation check skipped: h5py unavailable. "
+                f"Returning NaN for {path} (NOT 0.0 -- 'skipped', not 'OK')."
+            )
+            return float("nan")
 
         try:
             with h5py.File(path, "r") as f:
@@ -251,10 +276,21 @@ class DatasetValidator:
                     # energy_conservation should be ~1.0
                     drift = np.max(np.abs(1.0 - energy_cons))
                     return float(drift)
+                # Field absent -> distinct skip case
+                logger.warning(
+                    f"Energy-conservation check skipped: field "
+                    f"'scalars/energy_conservation' absent in {path}. "
+                    "Returning NaN -- dataset does not track energy "
+                    "conservation; do NOT interpret as 'conserves energy'."
+                )
+                return float("nan")
         except Exception as e:
-            logger.warning(f"Failed to check energy conservation in {path}: {e}")
-
-        return 0.0
+            # Read error -> distinct skip case
+            logger.error(
+                f"Energy-conservation check failed: HDF5 read error in {path}: {e}. "
+                "Returning NaN -- callers must not treat as 'conserves energy'."
+            )
+            return float("nan")
 
     def compute_field_statistics(self, path: str | Path) -> dict[str, dict[str, float]]:
         """Compute mean, std, min, max, n_nan, n_inf for all fields.

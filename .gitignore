@@ -111,3 +111,10 @@ docs/research-reference/adjacent-fields/
 spark33/
 :memory:
 site/
+
+# 97MB derived corpus regenerated from references/papers/ — not tracked
+KnowledgeReference/
+
+# Local operational notes — point-in-time, go stale, not for tracking
+/MERGE_PLAN.md
+/WORKTREE_INDEX.md

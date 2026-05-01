@@ -2,24 +2,48 @@
 
 The Sedov-Taylor self-similar blast wave is one of the most important
 verification problems in computational hydrodynamics.  A point-like
-energy deposit into a uniform medium drives a strong spherical shock
-whose position evolves as a power law in time.
+energy deposit into a uniform medium drives a strong shock whose
+position evolves as a power law in time.
 
 In cylindrical (r, z) geometry with axisymmetry, the blast wave from
-a line source (or, equivalently, a point source in the (r, z) plane)
-propagates as a cylindrical shock whose radius follows:
+a line source propagates as a cylindrical shock whose radius follows:
 
-    R_s(t) = alpha * (E_lin / rho0)^(1/4) * t^(1/2)
+    R_s(t) = alpha(gamma) * (E_lin / rho0)^(1/4) * t^(1/2)
 
-where E_lin is the energy per unit length [J/m] and alpha is a
-geometry-dependent constant of order unity.  For the strong-shock
-Sedov-Taylor solution in cylindrical geometry, alpha ~= 1.0 (the
-exact value depends on gamma and the dimensionality).
+where E_lin is the energy per unit axial length [J/m] and alpha is a
+dimensionless constant of order unity that depends on gamma.
+
+.. note::
+   Prior revisions of this module passed the total deposited energy
+   E0 [J] directly into the cylindrical similarity formula.  That is
+   dimensionally inconsistent: the formula requires [J/m], not [J].
+   The implementation now converts E0 -> E_lin by dividing by the
+   axial length over which the deposit lives.
+
+.. note::
+   Kamm & Timmes 2007 (LA-UR-07-2849) IS on disk at
+   references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+   Eq. 12 (page 4) defines the shock radius via
+       r2 = (E_blast * t^2 / (alpha * rho0))^(1/(j+2-omega))
+   which for j=2 (cylindrical), omega=0 reduces to
+       r2 = (E_blast / (alpha_KT * rho0))^(1/4) * t^(1/2).
+   Our module's alpha_code multiplies the outer (E/rho0)^(1/4) * t^(1/2),
+   so alpha_code = (1/alpha_KT)^(1/4).
+   The paper tabulates alpha_KT = 0.984041 for gamma=1.4 cylindrical
+   omega=0 (Table 4, page 41 / line 2420 in pdftotext).
+   The paper does NOT directly tabulate a numerical alpha_KT for
+   gamma=5/3 cylindrical omega=0; that value must be obtained from
+   equation 54 via numerical quadrature of the energy integrals (the
+   paper's Appendix B Fortran code does this).  Until that quadrature
+   is run and cross-checked, alpha=1.0 remains a documented placeholder.
+   Flagged ESCALATED_NEEDS_QUADRATURE (paper on disk, scalar not yet
+   extracted) in Agent THETA_FIX fix log.
 
 For our (r, z) simulation we deposit a total energy E0 into a small
-central region and compare the measured shock position to the
-similarity solution.  We run pure hydrodynamics (B = 0) to isolate
-the Euler solver from MHD complications.
+central region (n_deposit_r radial cells x n_deposit_z axial cells)
+and compare the measured shock position to the similarity solution.
+We run pure hydrodynamics (B = 0) to isolate the Euler solver from
+MHD complications.
 
 Usage::
 
@@ -32,9 +56,22 @@ Usage::
 
 References
 ----------
-- Sedov, *Similarity and Dimensional Methods in Mechanics* (1959).
-- Taylor, *Proc. Roy. Soc. A* **201**, 159 (1950).
-- Kamm & Timmes, LA-UR-07-2849 (2007) -- exact solutions for Sedov.
+- Sedov, *Similarity and Dimensional Methods in Mechanics* (1959)
+  -- primary source; NOT on disk in this repository.
+- Taylor, *Proc. Roy. Soc. A* **201**, 159 (1950) -- primary blast
+  wave paper; NOT on disk.
+- Kamm & Timmes, LA-UR-07-2849 (2007) -- ON DISK at
+  references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+  Eq. 12 (p. 4) gives r2 = (E*t^2/(alpha*rho0))^(1/(j+2-omega)).
+  Table 4 (p. 41) tabulates alpha for gamma=1.4 uniform density in
+  planar/cylindrical/spherical geometries (alpha_KT=0.984041 for
+  cylindrical j=2 omega=0).  The paper does NOT directly tabulate
+  gamma=5/3 cylindrical omega=0; that value requires numerical
+  quadrature of Eq. 54-57 via the Fortran code in Appendix B.
+
+Required-paper status: alpha value ESCALATED_NEEDS_QUADRATURE (paper
+is on disk; gamma=5/3 cylindrical scalar not yet extracted via
+numerical integration).
 """
 
 from __future__ import annotations
@@ -93,63 +130,69 @@ class SedovCylindricalResult:
 # ============================================================
 
 def sedov_shock_radius_cylindrical(
-    E0: float,
+    E_lin: float,
     rho0: float,
     t: float,
     gamma: float = 5.0 / 3.0,
+    alpha: float = 1.0,
 ) -> float:
     """Compute the analytical Sedov-Taylor shock radius for cylindrical geometry.
 
-    For a 2D cylindrical blast (line source), the similarity solution gives:
+    For a 2D cylindrical blast (line source), the Sedov-Taylor similarity
+    solution gives:
 
-        R_s(t) = alpha * (E_lin / rho0)^(1/4) * t^(1/2)
+        R_s(t) = alpha(gamma) * (E_lin / rho0)^(1/4) * t^(1/2)
 
-    For a point source in the (r, z) plane with total energy E0, we use
-    the spherical Sedov solution as an approximation:
+    Units check: E_lin has units [J/m] = [(kg*m^2/s^2)/m] = [kg*m/s^2],
+    rho0 has units [kg/m^3], so [E_lin/rho0] = [m^4/s^2], and therefore
+    [(E_lin/rho0)^(1/4)] = [m/s^(1/2)].  Multiplying by [t^(1/2)] = [s^(1/2)]
+    yields [m], the correct shock radius.  Passing a total energy E [J]
+    instead of a line density [J/m] would give [(E/rho0)^(1/4)] =
+    [m^(5/4)/s^(1/2)] and [... * t^(1/2)] = [m^(5/4)], which is
+    dimensionally inconsistent — that was the bug fixed in this
+    revision.  The caller MUST pass linear energy density
+    E_lin = E_total / L_z, where L_z is the axial length over which
+    the energy was deposited.
 
-        R_s(t) = (xi0 * E0 / rho0)^(1/5) * t^(2/5)
-
-    where xi0 depends on gamma.  For gamma = 5/3, xi0 ~ 1.15.
-
-    We use the standard 2D Sedov-Taylor solution with the energy integral
-    constant derived from the gamma-dependent self-similar solution.
+    .. warning::
+       The constant alpha(gamma) is gamma- and geometry-dependent.
+       Kamm & Timmes 2007 (LA-UR-07-2849) IS on disk at
+       references/papers/mhd-numerics/kamm-timmes-2007-sedov-blast-wave.pdf.
+       Paper's Table 4 tabulates alpha_KT = 0.984041 for gamma=1.4
+       cylindrical omega=0, with Eq. 12:
+           r2 = (E*t^2/(alpha_KT*rho0))^(1/4)
+       which is equivalent to this module's
+           r2 = alpha_code * (E/rho0)^(1/4) * t^(1/2)
+       with alpha_code = (1/alpha_KT)^(1/4).  For gamma=5/3 cylindrical
+       omega=0, the paper does NOT directly tabulate alpha_KT; it must
+       be computed by numerical quadrature of Eq. 54-57 (the paper's
+       Appendix B Fortran code does this).  Until that quadrature is
+       run and independently cross-checked, ``alpha=1.0`` remains a
+       documented placeholder of order unity and is NOT the correct
+       tabulated value for gamma=5/3 cylindrical.  This function
+       should not be used to make quantitative accuracy claims at the
+       current alpha default.  Flagged ESCALATED_NEEDS_QUADRATURE in
+       Agent THETA_FIX fix log.
 
     Args:
-        E0: Total deposited energy [J].
+        E_lin: Deposited energy per unit axial length [J/m].
         rho0: Background mass density [kg/m^3].
         t: Time [s].
-        gamma: Adiabatic index.
+        gamma: Adiabatic index (retained for API compatibility; the
+            gamma-dependence is carried by *alpha*).
+        alpha: Gamma-dependent self-similar constant.  Dimensionless.
+            Order unity for gamma=5/3.  See warning above.
 
     Returns:
         Shock radius [m].
     """
-    # For 2D cylindrical (nu=2 in Sedov notation, but we use the
-    # 3D spherical exponent as an approximation for the (r,z) plane):
-    # R_s = (E0 * t^2 / (alpha_cyl * rho0))^(1/4)
-    # alpha_cyl depends on gamma; for gamma=5/3, alpha_cyl ~ 3.45
-    # This gives the cylindrical (2D) scaling R ~ t^(1/2)
-    #
-    # However, since our simulation is 2D in (r,z) with r-geometry,
-    # the energy goes into a cylindrical volume ~ pi * R^2 * dz.
-    # For a point deposit in (r,z), we use the 2D planar Sedov:
-    #   R_s = (alpha * E_2d / rho0)^(1/4) * t^(1/2)
-    # where E_2d = E0 / (2*pi*dz) is the energy per unit length.
-    #
-    # For simplicity, we use an approximate formula:
-    #   R_s ~ (E0 * t^2 / rho0)^(1/(2+2))  [for 2D]
-    #       = (E0 / rho0)^(1/4) * t^(1/2)
-    #
-    # With a geometry-dependent constant alpha ~ 1.0 for gamma=5/3.
-
-    # Standard 2D Sedov constant from Kamm & Timmes LA-UR-07-2849 (2007), Table I.
-    # For nu=2 (cylindrical), gamma=5/3: alpha ~ 1.152.  Using the lower bound
-    # (1.0) underestimates the reference shock position by ~15%.
-    alpha = 1.152
-
-    # 2D scaling: R ~ (E0/rho0)^(1/4) * t^(1/2)
-    R_s = alpha * (E0 / rho0) ** 0.25 * t ** 0.5
-
-    return R_s
+    # Kamm & Timmes 2007 IS on disk; Table 4 gives alpha_KT=0.984041 for
+    # gamma=1.4 cylindrical omega=0 via Eq. 12.  For gamma=5/3 cylindrical
+    # omega=0 the paper does NOT tabulate a scalar; it must be computed
+    # by numerical quadrature (paper Appendix B Fortran).  Until that is
+    # done independently, alpha=1.0 is a documented placeholder of order
+    # unity -- see module and function docstrings for the full note.
+    return alpha * (E_lin / rho0) ** 0.25 * t ** 0.5
 
 
 def _detect_shock_position(
@@ -357,9 +400,15 @@ def run_sedov_cylindrical(
     # Detect shock position in the radial direction
     shock_r_num = _detect_shock_position(rho_r, r, rho0)
 
-    # Analytical shock radius — use E0_actual (energy after pressure cap)
-    # so the reference is consistent with what was actually deposited.
-    shock_r_ana = sedov_shock_radius_cylindrical(E0_actual, rho0, t, gamma)
+    # Analytical shock radius — cylindrical Sedov takes linear energy
+    # density [J/m], not total energy [J].  The deposit spans
+    # n_deposit_z axial cells of width dz, so L_z = n_deposit_z * dz.
+    # Dimensional check: [J/m] / [kg/m^3] = m^4/s^2, ^(1/4) = m/s^(1/2),
+    # * t^(1/2) [s^(1/2)] = m.  alpha=1.0 is a placeholder (see
+    # sedov_shock_radius_cylindrical docstring warning).
+    L_z_deposit = n_deposit_z * dz
+    E_lin = E0_actual / L_z_deposit
+    shock_r_ana = sedov_shock_radius_cylindrical(E_lin, rho0, t, gamma, alpha=1.0)
 
     # Relative error
     if shock_r_ana > 0:
@@ -395,5 +444,14 @@ def run_sedov_cylindrical(
             "p_bg": p_bg,
             "E0_requested": E0,
             "E0_actual": E0_actual,
+            "L_z_deposit": L_z_deposit,
+            "E_lin": E_lin,
+            "alpha_placeholder": 1.0,
+            "alpha_note": (
+                "ESCALATED_NEEDS_QUADRATURE (Kamm-Timmes 2007 on disk at "
+                "references/papers/mhd-numerics/"
+                "kamm-timmes-2007-sedov-blast-wave.pdf; Eq.54-57 quadrature "
+                "for gamma=5/3 cylindrical omega=0 not yet run)"
+            ),
         },
     )

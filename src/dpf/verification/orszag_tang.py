@@ -1,31 +1,34 @@
 """Orszag-Tang vortex benchmark for the MHD solver.
 
-The Orszag-Tang vortex (Orszag & Tang, 1979) is the canonical 2D MHD
-benchmark problem.  It features the development of supersonic MHD
-turbulence from smooth initial conditions and is widely used to verify
-MHD codes against each other.
+The Orszag-Tang vortex is a canonical 2D MHD turbulence benchmark.
+The original Orszag & Tang (1979) setup uses a particular stream-function
+form; modern codes predominantly use the Picone & Dahlburg (1991)
+/ Stone-Athena (2008) variant shown below.
 
-Setup
------
-- Domain: [0, 2*pi] x [0, 2*pi], periodic BCs
-- gamma = 5/3
-- rho  = 25 / (36 * pi)
-- p    = 5 / (12 * pi)
-- vx   = -sin(y)
-- vy   =  sin(x)
-- Bx   = -sin(y)
-- By   =  sin(2*x)
-- vz = Bz = 0
+Two IC conventions coexist in the literature; both are implemented here:
+
+1. **Python backend (this module, _run_orszag_tang_python)** — Picone &
+   Dahlburg (1991) form on [0, 2*pi]^2 with Neumann BCs:
+
+       rho = 25 / (36*pi)
+       p   = 5 / (12*pi)
+       vx  = -sin(y), vy =  sin(x)
+       Bx_HL = -sin(y), By_HL = sin(2*x)            (HL amplitude O(1))
+
+   The MHDSolver works in SI, so the stored B is rescaled to SI using
+   B_SI = B_HL * sqrt(mu_0).  This keeps magnetic pressure B_SI^2/(2*mu_0)
+   equal to the HL magnetic pressure B_HL^2/2 and avoids a factor ~1/mu_0
+   blow-up of magnetic energy over thermal energy.
+
+2. **Metal backend (_run_orszag_tang_metal)** — Stone et al. (2008)
+   Athena convention on [0,1]^2 with periodic BCs and HL units
+   (mu_0 = 1), B0_HL = 1/sqrt(4*pi).  Recommended for production.
 
 The solution develops thin current sheets, shocks, and vortical
-structures.  At t = pi the density field shows a characteristic
-pattern with thin shock fronts and a central high-density region.
-
-Since the MHD solver uses zero-gradient (Neumann) boundary conditions
-by default (not periodic), this benchmark applies the initial condition
-and runs with Neumann BCs.  This limits accuracy at the domain
-boundaries after waves reach them, but the interior solution remains
-valid for comparison.  A note is included in the result metadata.
+structures; at t = 0.5 (code time) the density field shows the
+characteristic pattern reproduced in Stone 2008 Figure 22 and in
+many follow-on code papers.  Energy conservation in the Python
+backend is limited by Neumann BC leakage at late times.
 
 Usage::
 
@@ -37,8 +40,13 @@ Usage::
 
 References
 ----------
-- Orszag & Tang, *J. Fluid Mech.* **90**, 129 (1979).
-- Picone & Dahlburg, *Phys. Fluids B* **3**, 29 (1991).
+- Orszag & Tang, *J. Fluid Mech.* **90**, 129 (1979) -- original paper
+  (stream-function form; not the variant implemented here).
+- Picone & Dahlburg, *Phys. Fluids B* **3**, 29 (1991) -- the velocity
+  and magnetic IC used by this module's Python backend.
+- Stone et al., *ApJS* **178**, 137 (2008), Section 8.4 and Figure 22
+  -- standard [0,1]^2 Heaviside-Lorentz form used by the Metal backend
+  (paper on disk: references/papers/mhd-numerics/stone_2008_athena.pdf).
 - Londrillo & Del Zanna, *ApJ* **530**, 508 (2000).
 """
 
@@ -282,11 +290,19 @@ def _run_orszag_tang_python(
     velocity = np.zeros((3,) + grid_shape)
     B = np.zeros((3,) + grid_shape)
 
+    # B is stored in SI so that the SI magnetic pressure B_SI^2/(2*mu_0)
+    # equals the Picone-Dahlburg / Orszag-Tang HL magnetic pressure
+    # B_HL^2/2.  Mapping: B_SI = B_HL * sqrt(mu_0).
+    # With B_HL in {-sin(y), sin(2x)} (amplitude 1), this puts the
+    # magnetic energy density on the same O(0.1-1) scale as the thermal
+    # and kinetic energy densities, matching Stone 2008 Fig. 22.
+    B_scale = np.sqrt(mu_0)
+
     for k in range(nz):
         velocity[0, :, :, k] = -np.sin(Y)
         velocity[1, :, :, k] = np.sin(X)
-        B[0, :, :, k] = -np.sin(Y)
-        B[1, :, :, k] = np.sin(2.0 * X)
+        B[0, :, :, k] = -B_scale * np.sin(Y)
+        B[1, :, :, k] = B_scale * np.sin(2.0 * X)
 
     ion_mass = 1.67e-27
     rho_safe = np.maximum(rho, 1e-30)
@@ -300,7 +316,9 @@ def _run_orszag_tang_python(
     E0 = _total_energy(rho, velocity, pressure, B, gamma)
 
     cs = np.sqrt(gamma * p0 / rho0)
-    va = np.sqrt((1.0**2 + 1.0**2) / (mu_0 * rho0))
+    # Alfven speed with SI-rescaled B (amplitude B_scale each component,
+    # |B|^2 peak = 2*B_scale^2 = 2*mu_0): v_a = sqrt(|B|^2/(mu_0*rho))
+    va = np.sqrt(2.0 * B_scale**2 / (mu_0 * rho0))
     ch_dedner = 2.0 * max(cs, va)
 
     solver = MHDSolver(

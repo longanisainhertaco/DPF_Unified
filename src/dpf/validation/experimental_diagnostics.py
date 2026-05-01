@@ -145,9 +145,24 @@ def compute_bare_rlc_timing(
 # Speed factor diagnostic (Debate #36)
 # =====================================================================
 
-# Optimal speed factor from Lee & Saw (2008, 2014):
-# S_opt ~ 89 kA/(cm * sqrt(Torr)) for deuterium Mather-type DPF.
-_S_OPTIMAL_KA_CM_TORR = 89.0
+# Typical speed factor for most deuterium Mather-type DPFs (incl. PF-1000):
+# S ~ 89 kA/(cm * sqrt(Torr)).  This is the TYPICAL value reported by
+# Lee & Saw (2008) for the catalogued machines (PF400, UNU/ICTP, NX2,
+# DPF78, PF1000) -- it is NOT an "optimum" in the sense of maximising
+# neutron yield.  Lee & Saw 2008, §"Results" (around Table 1), states
+# explicitly: "All devices except Poseidon have typical S values.
+# Poseidon is the exceptional high speed device in this respect."  The
+# paper does not claim 89 is optimal; it is simply the population mean
+# for well-characterised Mather-geometry DPFs.
+# Kept as a reference point for the speed-factor diagnostic regime
+# classification, with the ratio S/S_typical interpreted as
+# "how close is this device to the standard PF-1000-class regime?"
+_S_TYPICAL_PF1000 = 89.0
+
+# Deprecated alias (retained for backward compatibility with external
+# callers); new code should use _S_TYPICAL_PF1000.  The name
+# _S_OPTIMAL_KA_CM_TORR was misleading -- see comment above.
+_S_OPTIMAL_KA_CM_TORR = _S_TYPICAL_PF1000
 
 
 def compute_speed_factor(
@@ -159,18 +174,22 @@ def compute_speed_factor(
 
     The speed factor is a dimensionless scaling parameter that
     characterizes the drive condition of a DPF device.  Lee & Saw
-    (2008) showed that neutron yield peaks at an optimal speed
-    factor S_opt ~ 89 kA/(cm * sqrt(Torr)) for deuterium fill.
+    (2008) report that most catalogued Mather-geometry deuterium DPFs
+    (PF400, UNU/ICTP, NX2, DPF78, PF1000) cluster around a typical
+    value S_typical ~ 89 kA/(cm * sqrt(Torr)); Poseidon is called out
+    as the one device significantly above this value.  The 89
+    reference is a TYPICAL population value, NOT a tabulated neutron-
+    yield optimum.
 
     Classification (PhD Debate #36):
 
-    - S/S_opt ~ 0.8-1.2: **Optimal** — thin-sheath snowplow valid,
-      Lee model fc/fm are most transferable.
-    - S/S_opt < 0.8: **Sub-driven** — slow sheath, thick and diffuse,
-      under-compressed pinch.
-    - S/S_opt > 1.2: **Super-driven** — sheath outruns fill gas,
+    - S/S_typical ~ 0.8-1.2: **PF1000-class** — thin-sheath snowplow
+      valid, Lee model fc/fm most transferable.
+    - S/S_typical < 0.8: **Sub-driven** — slow sheath, thick and
+      diffuse, under-compressed pinch.
+    - S/S_typical > 1.2: **Super-driven** — sheath outruns fill gas,
       snowplow approximation breaks down, fc/fm become strongly
-      device-dependent.
+      device-dependent (e.g. Poseidon).
 
     Parameters
     ----------
@@ -186,14 +205,23 @@ def compute_speed_factor(
     dict
         ``S`` : float
             Speed factor [kA / (cm * sqrt(Torr))].
+        ``S_over_S_typical`` : float
+            Ratio S / S_typical (dimensionless).  Primary key.
         ``S_over_S_opt`` : float
-            Ratio S / S_opt (dimensionless).
+            Legacy alias identical to ``S_over_S_typical``, retained
+            for backward compatibility; prefer ``S_over_S_typical`` in
+            new code.
         ``regime`` : str
-            "optimal", "sub-driven", or "super-driven".
+            "PF1000-class", "sub-driven", or "super-driven".
+            The legacy string "optimal" is mapped to "PF1000-class".
 
     References
     ----------
     S. Lee & S. H. Saw, J. Fusion Energy 27:292-295 (2008).
+      Paper on disk:
+      references/papers/nuclear-radiation/
+      PP2 with Erratum JoFE NeutronScalingLawsFromNumericalExperiments.pdf
+      Table 1 and surrounding discussion.
     S. Lee, J. Fusion Energy 33:319-335 (2014).
     """
     # Convert to kA/(cm * sqrt(Torr))
@@ -202,10 +230,10 @@ def compute_speed_factor(
     p_torr = max(fill_pressure_torr, 1e-10)
 
     S = I_kA / (a_cm * np.sqrt(p_torr))
-    S_ratio = S / _S_OPTIMAL_KA_CM_TORR
+    S_ratio = S / _S_TYPICAL_PF1000
 
     if 0.8 <= S_ratio <= 1.2:
-        regime = "optimal"
+        regime = "PF1000-class"
     elif S_ratio < 0.8:
         regime = "sub-driven"
     else:
@@ -213,6 +241,7 @@ def compute_speed_factor(
 
     return {
         "S": S,
-        "S_over_S_opt": S_ratio,
+        "S_over_S_typical": S_ratio,
+        "S_over_S_opt": S_ratio,  # deprecated alias, retained for compatibility
         "regime": regime,
     }

@@ -1157,11 +1157,12 @@ class MetalMHDSolver(PlasmaSolverBase):
         Rybicki & Lightman (1979), Eq. 5.14a.
         NRL Plasma Formulary (2019), p. 58.
         """
-        # BREM_COEFF = 1.42e-40 [W m^3 K^{-1/2}] (Rybicki & Lightman 1979)
+        # BREM_COEFF = 1.569e-40 [W m^3 K^{-1/2}] (NRL Plasma Formulary eq.30)
+        # [KR: plasma-formulary.md L5101 eq.(30)]
         # Pre-combine small constants to avoid float32 underflow:
-        # alpha_coeff = BREM_COEFF / (1.5 * k_B) = 1.42e-40 / 2.07e-23 = 6.86e-18
+        # alpha_coeff = BREM_COEFF / (1.5 * k_B) = 1.569e-40 / 2.07e-23 ~ 7.58e-18
         # Then alpha = alpha_coeff * gaunt * Z * ne * dt (all float32-safe)
-        _ALPHA_COEFF = 1.42e-40 / (1.5 * _K_B)  # ~6.86e-18  [m^3 K^{-3/2} s]
+        _ALPHA_COEFF = 1.569e-40 / (1.5 * _K_B)  # ~7.58e-18  [m^3 K^{-3/2} s]
         Te_floor = 1.0
 
         ne = torch.clamp(rho, min=0.0) / self.ion_mass

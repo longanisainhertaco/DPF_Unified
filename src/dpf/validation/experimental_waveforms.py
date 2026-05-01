@@ -50,11 +50,14 @@ _UNU_ICTP_WAVEFORM_I_KA = np.array([
 ])
 
 # =====================================================================
-# PF-1000 at 16 kV — Akel et al., Radiat. Phys. Chem. 188:109633, 2021
+# SYNTHETIC — PF-1000 at 16 kV reconstructed waveform
+# Source paper: Akel et al., Radiat. Phys. Chem. 188:109633, 2021
 # Same device (IPPLM Warsaw), different operating conditions:
 #   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
-# Waveform reconstructed from physics scaling of 27 kV Scholz waveform,
-# constrained by published I_peak = 1.2 MA.
+# Reconstructed from physics scaling of 27 kV Scholz waveform, rescaled to
+# Akel's published peak I_peak = 1.165 MA (shot 12581, Table 1: Ipeak = 1165 kA).
+# Previous version used I_peak = 1.20 MA (3% too high, no paper match).
+# Array rescaled by 1.165/1.20 = 0.9708333 to match Akel Table 1 verbatim.
 # NOTE: Replace with actual digitized data from Akel (2021) Fig. 3 when available.
 # =====================================================================
 
@@ -64,14 +67,19 @@ _PF1000_16KV_WAVEFORM_T_US = np.array([
     8.0, 8.5, 9.0, 9.5, 10.0,
 ])
 _PF1000_16KV_WAVEFORM_I_MA = np.array([
-    0.00, 0.10, 0.23, 0.38, 0.54, 0.69, 0.82, 0.93, 1.02, 1.10,
-    1.16, 1.19, 1.20, 1.18, 1.12, 1.00, 0.90, 0.85, 0.78, 0.72,
-    0.66, 0.60, 0.54, 0.49, 0.44,
+    0.0000, 0.0971, 0.2233, 0.3689, 0.5243, 0.6699, 0.7961, 0.9029, 0.9902, 1.0679,
+    1.1262, 1.1553, 1.1650, 1.1456, 1.0873, 0.9708, 0.8738, 0.8252, 0.7573, 0.6990,
+    0.6408, 0.5825, 0.5243, 0.4757, 0.4272,
 ])
 
 # =====================================================================
-# PF-1000 at 27 kV — Gribkov et al., J. Phys. D: Appl. Phys. 40:3592, 2007
-# INDEPENDENTLY DIGITIZED waveform from plasmafocus.net RADPF archive.
+# PF-1000 at 27 kV — Gribkov et al., J. Phys. D: Appl. Phys. 40:1977-1989 (Part I), 2007
+# doi:10.1088/0022-3727/40/7/021
+# (The old citation "40:3592" was Scholz et al., Part II, not Gribkov Part I.)
+# WAVEFORM PROVENANCE: Data read from plasmafocus.net/IPFS/PF1000 05.15.xls Sheet2,
+# NOT from the Gribkov paper directly. The paper itself (Gribkov 2007 Part I)
+# does not publish a tabulated I(t) trace; the xls file is the authoritative
+# digital archive distributed by the Lee RADPF model developers.
 # Same device and operating conditions as Scholz (2006), but DIFFERENT shot
 # and DIFFERENT digitization source. Peak 1.846 MA at 6.39 us.
 # 94 data points (vs 26 for Scholz), covering -1.68 to 14.73 us.
@@ -134,16 +142,20 @@ _POSEIDON60KV_WAVEFORM_I_KA = np.array([
 ])
 
 # =====================================================================
-# FAETON-I (Fuse Energy) — 100 kV, 125 kJ, ~1 MA dense plasma focus
-# WAVEFORM: Reconstructed from damped RLC (C=25uF, L=220nH, R=7.6mOhm)
-# with 4% current dip at pinch (~4.1 us).
+# SYNTHETIC — FAETON-I (Fuse Energy) reconstructed waveform
+# Source paper: Damideh et al., Sci. Rep. 15:23048, 2025
+# 100 kV, 125 kJ, ~1 MA dense plasma focus
+# WAVEFORM: Reconstructed from damped RLC (C=25uF, L=220nH, R=7.6mOhm).
+# Time axis shifted +0.3 us (peak: 3.4 us -> 3.7 us) to match Damideh 2025
+# §III: "generates ~1 MA of electrical current with a rise time of ~3.7 us"
+# (pp.3,4) and transition time 3.745 us (p.9, radial-phase trajectory).
 # Replace with digitized data from Damideh (2025) Fig. 3 when available.
 # =====================================================================
 
 _FAETON_WAVEFORM_T_US = np.array([
-    0.0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7,
-    3.0, 3.2, 3.4, 3.6, 3.7, 3.8, 4.0, 4.2, 4.5, 5.0,
-    5.5, 6.0, 6.5, 7.0, 7.4,
+    0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0,
+    3.3, 3.5, 3.7, 3.9, 4.0, 4.1, 4.3, 4.5, 4.8, 5.3,
+    5.8, 6.3, 6.8, 7.3, 7.7,
 ])
 _FAETON_WAVEFORM_I_KA = np.array([
     0.0, 135.3, 267.0, 393.0, 511.3, 620.1, 717.6, 802.5, 873.5, 929.6,

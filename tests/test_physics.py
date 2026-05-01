@@ -2725,11 +2725,13 @@ class TestBeamTargetYield:
         assert beam_target_yield_rate(200e3, 0, 1e25, 0.01) == 0.0
 
     def test_yield_scales_with_current(self):
+        # Lee/Saw KR eq. 1: Yb-t ~ I_pinch^2 (KR L5125-5128)
         y1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01)
         y2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01)
-        np.testing.assert_allclose(y2, 2 * y1, rtol=1e-10)
+        np.testing.assert_allclose(y2, 4 * y1, rtol=1e-10)
 
     def test_yield_scales_with_f_beam(self):
+        # Lee/Saw wrapper scales linearly in f_beam around 0.14 baseline
         y1 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=0.1)
         y2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=0.3)
         np.testing.assert_allclose(y2 / y1, 3.0, rtol=1e-10)
@@ -3126,7 +3128,7 @@ class TestBremsstrahlung:
     """Tests for bremsstrahlung power density."""
 
     def test_power_matches_analytic(self):
-        """P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te) [SI]."""
+        """P_ff = 1.569e-40 * g_ff * Z * ne^2 * sqrt(Te) [SI]."""
         from dpf.radiation.bremsstrahlung import BREM_COEFF, bremsstrahlung_power
 
         ne = np.array([1e20, 1e22, 1e24])

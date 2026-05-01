@@ -479,11 +479,13 @@
 - **Proposed fix**: Replace `== 0.0` with `< 1e-300` and return input unchanged as safe fallback.
 - **Justification**: Theoretically incorrect but practically unreachable with physical inputs.
 
-### [L3] `tabulated_eos.py` hardcodes `ion_mass=3.34e-27` (magic number)
-- **File**: `tabulated_eos.py:393`
+### [L3] ⚪ OBSOLETE — `tabulated_eos.py` hardcodes `ion_mass=3.34e-27` (magic number)
+- **File**: `tabulated_eos.py:393` [Deleted 2026-04-30, file removed as dead code]
 - **Found by**: py-fluid (L3)
-- **Cross-review verdict**: **CONFIRMED**
-- **Proposed fix**: Use `ion_mass: float = m_d` (already imported).
+- **Cross-review verdict**: **CONFIRMED** (no longer applicable)
+- **Resolution**: File deleted; module was never wired into the production solver.
+  If tabular EOS is ever re-implemented (see `docs/icf-hed-prototypes/tabular_eos.md`),
+  use `ion_mass: float = m_d` from `dpf.constants` rather than a hardcoded literal.
 
 ### [L4] Dedner cp=ch is non-optimal in cylindrical solver
 - **File**: `cylindrical_mhd.py:402`

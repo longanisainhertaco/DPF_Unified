@@ -486,7 +486,17 @@ def _make_briowu_dpf(N: int):
     return state
 
 
-def _run_sod_dpf(N: int, n_steps: int = 200):
+def _run_sod_dpf(N: int, n_steps: int | None = None):
+    # t_end = 0.2 sound-crossing times across a unit domain (canonical Sod
+    # convergence target). Previously this was a bare 0.2 which was
+    # interpreted as 0.2 SECONDS — at PF-1000 conditions cs~8.3e4 m/s, so a
+    # sound crossing is ~1.2e-5 s and 0.2 s let the solution evolve for
+    # ~16,000 sound crossings before the step cap silently exited the loop,
+    # masking convergence and yielding a flat L1 plateau (sod-engine-rca,
+    # 2026-04-27). Banks et al. 2008 ("A high-resolution Godunov method for
+    # compressible multi-material flow on overlapping grids") show TVD-PLM
+    # on a discontinuity gives order ~0.8 once the solution is actually
+    # evolved to the canonical t/L*cs = 0.2 self-similar profile.
     dx = 1.0 / N
     solver = MetalMHDSolver(
         grid_shape=(N, 4, 4), dx=dx, gamma=_GAMMA, cfl=0.3,
@@ -495,7 +505,11 @@ def _run_sod_dpf(N: int, n_steps: int = 200):
     )
     state = _make_sod_dpf(N)
     t = 0.0
-    t_end = 0.2
+    t_end = 0.2 / _CS  # 0.2 sound-crossing times, NOT 0.2 seconds
+    if n_steps is None:
+        # Scale step cap with resolution: dt ~ CFL*dx/cs, so steps ~ N/CFL.
+        # 2500*N/64 gives ~3x headroom over the dt-limited count.
+        n_steps = max(int(2500 * N / 64), 200)
     for _ in range(n_steps):
         dt = float(solver._compute_dt(state))
         dt = min(dt, t_end - t)
@@ -505,10 +519,28 @@ def _run_sod_dpf(N: int, n_steps: int = 200):
         t += dt
         if t >= t_end:
             break
+    # Guard: a step-cap exit silently masks unevolved states and produces
+    # false plateaus in convergence studies. Require we hit >=95% of t_end.
+    assert t >= 0.95 * t_end, (
+        f"_run_sod_dpf(N={N}) exited at t={t:.3e} (target {t_end:.3e}); "
+        f"step-cap exit silently masking unevolved states. "
+        f"Raise n_steps or check dt collapse."
+    )
     return state, t
 
 
-def _run_briowu_dpf(N: int, n_steps: int = 300):
+def _run_briowu_dpf(N: int, n_steps: int | None = None):
+    """Run Brio-Wu fixture until t_end, NOT for a fixed step count.
+
+    Previous version used `for _ in range(300)` which only reached t~9e-5
+    (out of 0.1) and gave a false-positive convergence test. Match the
+    Sod fixture pattern: while-loop bounded only by t_end.
+
+    n_steps argument retained for API compatibility but ignored.
+    Brio & Wu 1988 J. Comput. Phys. 75:400 -- PDF NOT on disk; canonical
+    self-similar reference solution unavailable in repo.
+    """
+    del n_steps  # unused, kept for backward compat
     dx = 1.0 / N
     solver = MetalMHDSolver(
         grid_shape=(N, 4, 4), dx=dx, gamma=2.0, cfl=0.2,
@@ -518,15 +550,13 @@ def _run_briowu_dpf(N: int, n_steps: int = 300):
     state = _make_briowu_dpf(N)
     t = 0.0
     t_end = 0.1
-    for _ in range(n_steps):
+    while t < t_end:
         dt = float(solver._compute_dt(state))
         dt = min(dt, t_end - t)
         if dt < 1e-15:
             break
         state = solver.step(state, dt=dt, current=0.0, voltage=0.0)
         t += dt
-        if t >= t_end:
-            break
     return state, t
 
 
@@ -867,11 +897,13 @@ class TestShockInfo:
 
 
 def test_brem_power_formula_direct():
-    """Bremsstrahlung power against SI reference value (NRL p.58)."""
+    """Bremsstrahlung power against SI reference value (NRL p.58 eq.30)."""
     ne = np.array([1e24])
     Te = np.array([1e7])
     P = bremsstrahlung_power(ne, Te, 1.0, 1.2)
-    P_ref = 1.42e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
+    # NRL eq.(30) SI K-form: BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te_K)
+    # [KR: plasma-formulary.md L5101 eq.(30)] -> 1.569e-40
+    P_ref = 1.569e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
     assert P[0] == pytest.approx(P_ref, rel=1e-2)
 
 
@@ -940,8 +972,8 @@ def test_brem_implicit_solver_positive_Te():
 
 
 def test_brem_coefficient_matches_nrl():
-    """BREM_COEFF should be 1.42e-40 in SI."""
-    assert BREM_COEFF == 1.42e-40
+    """BREM_COEFF should be 1.569e-40 (NRL eq.30 SI K-form, [KR: plasma-formulary.md L5101])."""
+    assert BREM_COEFF == 1.569e-40
 
 
 def test_brem_coefficient_cpp_has_valid_constant():
@@ -950,9 +982,9 @@ def test_brem_coefficient_cpp_has_valid_constant():
     if not cpp_path.exists():
         pytest.skip("dpf_zpinch.cpp not found")
     content = cpp_path.read_text()
-    # C++ uses C_brem = 1.69e-32 [W*m^3/sqrt(K)] (NRL convention with Z^2*ne^2)
-    # Python uses BREM_COEFF = 1.42e-40 [W*m^3/sqrt(K)] (convention with Z*ne^2)
-    # Both are valid formulations with different Z dependence
+    # C++ uses C_brem = 1.69e-32 [W*m^3/sqrt(K)] (NRL eq.30 CGS direct form)
+    # Python uses BREM_COEFF = 1.569e-40 [W*m^3/sqrt(K)] (NRL eq.30 SI K-form)
+    # SI conversion: 1.69e-32 * 1e6/1e12/sqrt(11604.5) = 1.569e-40 — equivalent.
     assert "C_brem" in content, "C++ must define bremsstrahlung coefficient"
     assert "1.69e-32" in content, "C++ C_brem should be 1.69e-32 (NRL Formulary)"
 
@@ -2334,20 +2366,49 @@ class TestSodDPFStability:
 
 
 class TestSodDPFConvergence:
-    """Sod L1 error decreases with resolution."""
+    """Sod L1 error decreases with resolution.
+
+    TVD-PLM applied to a discontinuity yields convergence order ~0.8
+    (Banks 2008). Anything below 0.7 indicates the solver is plateauing
+    — typically because the step cap fires before t_end is reached or a
+    floor/limiter is dominating. The post-loop assertion in _run_sod_dpf
+    catches the step-cap mode; this test catches the rest.
+    """
 
     @pytest.mark.slow
     def test_l1_decreases_with_resolution(self):
+        resolutions = [64, 128, 256]
         errors = []
-        for N in [32, 64, 128]:
+        for N in resolutions:
             state, t = _run_sod_dpf(N)
             dx = 1.0 / N
             x = np.linspace(-0.5 + dx / 2, 0.5 - dx / 2, N)
             rho_exact = _exact_sod_dpf(x, t)
             rho_num = state["rho"][:, 2, 2]
             errors.append(_l1_error_sod(rho_num, rho_exact))
+
+        # Each resolution doubling must reduce error monotonically.
         for i in range(1, len(errors)):
-            assert errors[i] <= errors[i - 1] * 1.2
+            assert errors[i] <= errors[i - 1] * 1.2, (
+                f"L1 not monotonically decreasing: "
+                f"N={resolutions[i-1]} L1={errors[i-1]:.3e} -> "
+                f"N={resolutions[i]} L1={errors[i]:.3e}"
+            )
+
+        # Convergence rate r = log2(L1_coarse / L1_fine) per resolution
+        # doubling. Banks 2008 gives ~0.8 for TVD-PLM on a discontinuity.
+        # We require >=0.7 across every doubling — a softer pass band that
+        # catches the plateau failure mode without false positives from
+        # numerical noise.
+        rates = [
+            float(np.log2(errors[i - 1] / errors[i]))
+            for i in range(1, len(errors))
+        ]
+        assert all(r >= 0.7 for r in rates), (
+            f"Sod convergence order < 0.7 across [64,128,256]: "
+            f"rates={rates}, errors={errors}. "
+            f"Expected ~0.8 (Banks 2008, TVD-PLM on discontinuity)."
+        )
 
 
 class TestBrioWuDPFStability:
@@ -2520,7 +2581,7 @@ class TestBremsstrahlungRadiation:
         ne_val = np.array([1e24])
         Te_val = np.array([1e7])
         P = bremsstrahlung_power(ne_val, Te_val, 1.0, 1.2)
-        P_nrl = 1.42e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
+        P_nrl = 1.569e-40 * 1.2 * 1.0 * (1e24) ** 2 * np.sqrt(1e7)
         assert abs(P[0] - P_nrl) / P_nrl < 0.01
 
 

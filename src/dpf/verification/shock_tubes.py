@@ -36,19 +36,19 @@ import numpy as np
 
 from dpf.constants import k_B
 from dpf.fluid.mhd_solver import MHDSolver
+from dpf.metal.floor_telemetry import apply_floor
 
 logger = logging.getLogger(__name__)
 
 # Transverse grid padding for 1-D shock tube tests.  The MHD solver
-# requires >= 5 cells in every direction to enable WENO5 reconstruction,
-# and at least 2 cells for np.gradient on the remaining operators (curl,
-# divergence, Dedner cleaning).  We pad the y and z dimensions to 5
-# cells with uniform data; transverse gradients are therefore identically
-# zero and the problem remains strictly one-dimensional.
-# Use 4 cells (< 5) to disable WENO5 on the Python engine, which has
-# architectural limitations with its hybrid WENO5/np.gradient scheme at
-# shock discontinuities.  The non-WENO5 path uses Lax-Friedrichs
-# numerical diffusion for stability at shocks.
+# requires >= 5 cells in every direction to enable WENO5 reconstruction
+# (see ``_weno5_flux_1d`` in ``dpf.fluid.mhd_solver``: grids with
+# ``n_ax < 5`` fall back to a zero-flux path), and at least 2 cells for
+# ``np.gradient`` on the remaining operators (curl, divergence, Dedner
+# cleaning).  We pad the y and z dimensions to exactly 5 cells with
+# uniform data: WENO5 is therefore enabled on every axis, transverse
+# gradients are identically zero, and the problem remains strictly
+# one-dimensional.
 _NY_PAD: int = 5
 _NZ_PAD: int = 5
 
@@ -138,8 +138,13 @@ def _sod_find_pstar(
 
     # Initial guess: linearised (PVRS) estimate
     p_star = 0.5 * (p_L + p_R) - 0.125 * (u_R - u_L) * (rho_L + rho_R) * (a_L + a_R)
-    p_star = max(p_star, 1e-30)
+    # Guard against PVRS producing a non-positive pressure for strong
+    # rarefactions (Toro 4.8.1): fall back to a small fraction of min(p_L, p_R)
+    # rather than silently clamping to 1e-30 and contaminating the Newton iterate.
+    if p_star <= 0.0:
+        p_star = 1e-6 * min(p_L, p_R)
 
+    converged = False
     for _ in range(max_iter):
         fL = _f(p_star, rho_L, p_L, a_L)
         fR = _f(p_star, rho_R, p_R, a_R)
@@ -149,18 +154,37 @@ def _sod_find_pstar(
         dfR = _fprime(p_star, rho_R, p_R, a_R)
         df_val = dfL + dfR
 
-        if abs(df_val) < 1e-30:
-            break
+        if not np.isfinite(df_val) or abs(df_val) < 1e-30:
+            # Zero derivative with non-zero residual = genuine divergence;
+            # caller must not receive a silently stalled iterate.
+            raise RuntimeError(
+                f"_sod_find_pstar: Newton derivative vanished "
+                f"(df_val={df_val:.3e}) at p_star={p_star:.6e}, "
+                f"f_val={f_val:.3e}; Riemann problem likely unphysical "
+                f"(rho_L={rho_L:.3e}, p_L={p_L:.3e}, u_L={u_L:.3e}, "
+                f"rho_R={rho_R:.3e}, p_R={p_R:.3e}, u_R={u_R:.3e})."
+            )
 
         dp = -f_val / df_val
         p_star_new = p_star + dp
-        if p_star_new < 1e-30:
-            p_star_new = 1e-30
+        if p_star_new <= 0.0:
+            # Two-rarefaction case can push Newton below zero; Toro 4.8.1
+            # recommends halving toward zero rather than clamping to a
+            # machine-epsilon-scale sentinel.
+            p_star_new = 0.5 * p_star
 
         if abs(dp) < tol * 0.5 * (p_star + p_star_new):
             p_star = p_star_new
+            converged = True
             break
         p_star = p_star_new
+
+    if not converged:
+        logger.warning(
+            "_sod_find_pstar: Newton did not converge in %d iterations "
+            "(p_star=%.6e); continuing with last iterate",
+            max_iter, p_star,
+        )
 
     # Star velocity
     fL = _f(p_star, rho_L, p_L, a_L)
@@ -416,7 +440,8 @@ def _build_state(
 
     # Temperature: p = n_i * k_B * Ti + n_e * k_B * Te = 2 * n * k_B * T
     # for Z = 1 and Te = Ti.  So T = p * ion_mass / (2 * rho * k_B).
-    rho_safe = np.maximum(rho_3d, 1e-30)
+    # Use tracked floor (CLAUDE.md: no bare np.maximum on state arrays).
+    rho_safe = apply_floor(rho_3d, 1e-30, "shock_tubes._build_state/rho_safe")
     T = p_3d * ion_mass / (2.0 * rho_safe * k_B)
 
     psi = np.zeros(shape)

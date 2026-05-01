@@ -53,9 +53,29 @@ LAX_RIGHT = RiemannState(rho=0.5, u=0.0, p=0.571)
 DOUBLE_RAREFACTION_LEFT = RiemannState(rho=1.0, u=-2.0, p=0.4)
 DOUBLE_RAREFACTION_RIGHT = RiemannState(rho=1.0, u=2.0, p=0.4)
 
-# Strong blast wave (Woodward & Colella 1984)
-BLAST_LEFT = RiemannState(rho=1.0, u=0.0, p=1000.0)
-BLAST_RIGHT = RiemannState(rho=1.0, u=0.0, p=0.01)
+# Strong-pressure-ratio Riemann problem (gamma=1.4):
+#   rho_L = rho_R = 1, u_L = u_R = 0, p_L = 1000, p_R = 0.01
+#
+# Previous attribution "Woodward & Colella 1984" was wrong:
+# Woodward-Colella's blast-wave test is a *3-region* problem with
+# reflecting walls (p_L=1000, p_M=0.01, p_R=100) and is NOT a single
+# Riemann problem -- see LeVeque 2002, "Finite Volume Methods for
+# Hyperbolic Problems," Eq 15.65 p.331 (on disk at
+# references/papers/textbooks/leveque-2002-finite-volume-hyperbolic.pdf).
+#
+# This 2-region IC is widely referred to as "Toro Test 3" or
+# "left-blast Sod variant" in the Riemann-solver community, but the
+# on-disk Toro 2009 excerpt
+# (references/papers/textbooks/toro-2009-riemann-solvers-excerpt.pdf)
+# only covers Ch.2 (background); the chapter cataloguing the standard
+# 5 test problems (typically Ch.4 or Ch.6) is NOT on disk, so the
+# specific test number cannot be verified from the source. Marked
+# UNVERIFIED pending acquisition of the full Toro textbook.
+STRONG_BLAST_LEFT = RiemannState(rho=1.0, u=0.0, p=1000.0)
+STRONG_BLAST_RIGHT = RiemannState(rho=1.0, u=0.0, p=0.01)
+# Backward-compatible aliases (deprecated names; do not rely on them).
+BLAST_LEFT = STRONG_BLAST_LEFT
+BLAST_RIGHT = STRONG_BLAST_RIGHT
 
 
 class ExactRiemannSolver:

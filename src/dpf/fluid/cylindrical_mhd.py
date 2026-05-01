@@ -1183,11 +1183,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 ext_dE_2d = self._squeeze(ext_dE) if ext_dE.ndim == 3 else ext_dE
                 dE_dt = dE_dt + ext_dE_2d
 
-            # Convert dE/dt to dp/dt using Metal solver's pressure recovery formula
-            # (matches metal_riemann.py lines 1677-1682)
+            # Convert dE/dt to dp/dt using SI conservative-form identity:
+            #   E = p/(gamma-1) + 0.5*rho*v^2 + B^2/(2*mu_0)
+            #   => dp/dt = (gamma-1) * (dE/dt - v.dmom/dt + 0.5*v^2*drho/dt - (B.dB/dt)/mu_0)
+            # [KR: a-constrained-transport-embedded-boundary-method...md §2.2 eq.(9), SI translation]
+            # Matches Cartesian companion at mhd_solver.py:1865.
             v_dot_dmom = np.sum(vel * dmom_dt, axis=0)
             B_dot_dB = np.sum(B * dB_dt, axis=0)
-            dp_dt = (self.gamma - 1.0) * (dE_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB)
+            dp_dt = (self.gamma - 1.0) * (dE_dt - v_dot_dmom + 0.5 * v_sq * drho_dt - B_dot_dB / mu_0)
             dE_dt = None
         else:
             div_v = _plm_divergence_parallel(

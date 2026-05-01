@@ -1,0 +1,281 @@
+"""Minimal PyMuPDF-based extractor for KnowledgeReference paired .md + .json output.
+
+Usage:
+    python3 extract_papers.py path/to/file.pdf
+    python3 extract_papers.py path/to/folder
+    python3 extract_papers.py path/to/folder --recursive
+    python3 extract_papers.py path/to/folder --rename
+    python3 extract_papers.py path/to/file.pdf --out KnowledgeReference/
+
+Schema (matches existing KR pairs as of 2026-04-30):
+    JSON: source_pdf, page_count, file_size_bytes, pdf_version, citation,
+          toc[level/title/start_page], sections[level/title/start_page/end_page/text],
+          table_count, figures[id/page/label/bbox]
+    MD:   H1 title, citation block, full text per section as H2 with page markers
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    sys.exit("ERROR: PyMuPDF not installed. Run: pip install pymupdf")
+
+
+def slugify(text: str) -> str:
+    """Lowercase, replace non-alphanumerics with hyphens, collapse runs."""
+    text = re.sub(r"[^A-Za-z0-9]+", "-", text.strip().lower())
+    return re.sub(r"-+", "-", text).strip("-")[:80]
+
+
+def detect_title(doc: fitz.Document) -> str:
+    """Try metadata title; fall back to first non-empty line on page 1."""
+    meta_title = (doc.metadata or {}).get("title", "").strip()
+    if meta_title and len(meta_title) > 5:
+        return meta_title
+    if doc.page_count == 0:
+        return ""
+    page1 = doc[0].get_text("text").strip().splitlines()
+    for line in page1:
+        line = line.strip()
+        if len(line) > 10 and not line.lower().startswith(("doi", "abstract")):
+            return line
+    return ""
+
+
+def build_sections(toc: list, doc: fitz.Document) -> list:
+    """From TOC, build sections with start/end pages and extracted text.
+
+    Falls back to a single 'Full Text' section if TOC is empty.
+    """
+    if not toc:
+        full_text = "\n\n".join(doc[i].get_text("text") for i in range(doc.page_count))
+        return [
+            {
+                "level": 1,
+                "title": "Full Text",
+                "start_page": 1,
+                "end_page": doc.page_count,
+                "text": full_text.strip(),
+            }
+        ]
+
+    sections = []
+    for idx, entry in enumerate(toc):
+        level, title, start_page = entry[0], entry[1].strip(), entry[2]
+        # End page = next TOC entry start - 1, or last page
+        if idx + 1 < len(toc):
+            end_page = max(start_page, toc[idx + 1][2] - 1)
+        else:
+            end_page = doc.page_count
+        # Extract text from pages spanning this section (1-indexed -> 0-indexed)
+        s_idx = max(0, start_page - 1)
+        e_idx = min(doc.page_count, end_page)
+        text = "\n\n".join(doc[i].get_text("text") for i in range(s_idx, e_idx))
+        sections.append(
+            {
+                "level": level,
+                "title": title,
+                "start_page": start_page,
+                "end_page": end_page,
+                "text": text.strip(),
+            }
+        )
+    return sections
+
+
+# Matches "Fig. 3", "FIG. 3", "Figure 3", "FIGURE 3" at the start of a text block line.
+# Does NOT match bare "3. Section" headings.
+_FIGURE_CAPTION_RE = re.compile(
+    r"^\s*(?P<label>Fig(?:ure)?\.?\s*\d+[a-z]?(?:\([a-z]\))?\.?)[\.\s—–:-]",
+    re.IGNORECASE,
+)
+
+
+def build_figures(doc: fitz.Document) -> list:
+    """Best-effort figure caption extraction via PyMuPDF text blocks.
+
+    Scans every page for text blocks whose first line matches the pattern
+    'Fig.', 'Fig', 'Figure', 'FIG.' followed by a number.  Collects the
+    full block text as the caption label, trims to 300 chars.
+
+    Returns list of {id, page, label, bbox} dicts, matching the schema of
+    handcrafted KR figures entries (id/page/label) with an added bbox field.
+    """
+    figures: list[dict] = []
+    seen: set[str] = set()  # deduplicate identical captions on same page
+    for page_num, page in enumerate(doc, start=1):
+        blocks = page.get_text("blocks")
+        for b in blocks:
+            # b = (x0, y0, x1, y1, text, block_no, block_type)
+            # block_type 0 = text, 1 = image
+            if len(b) < 7 or b[6] != 0:
+                continue
+            raw_text = b[4].strip()
+            if not raw_text:
+                continue
+            first_line = raw_text.splitlines()[0].strip()
+            m = _FIGURE_CAPTION_RE.match(first_line)
+            if not m:
+                continue
+            # Collapse whitespace; join continuation lines
+            caption = " ".join(raw_text.split())[:300]
+            key = f"{page_num}:{caption[:60]}"
+            if key in seen:
+                continue
+            seen.add(key)
+            fig_id = f"fig{len(figures) + 1}"
+            bbox = [round(b[0], 1), round(b[1], 1), round(b[2], 1), round(b[3], 1)]
+            figures.append({"id": fig_id, "page": page_num, "label": caption, "bbox": bbox})
+    return figures
+
+
+def count_tables(doc: fitz.Document) -> int:
+    """Best-effort table count via PyMuPDF's table finder."""
+    total = 0
+    for page in doc:
+        try:
+            total += len(page.find_tables().tables)
+        except Exception:
+            continue
+    return total
+
+
+def build_pages(doc: fitz.Document) -> list:
+    """Per-page text + tables flat view (matches KR schema `pages[]` field).
+
+    Each entry: {page:int (1-indexed), text:str, tables:list[{index:int, rows:list[list[str]]}]}
+    """
+    pages = []
+    for i, page in enumerate(doc, start=1):
+        text = page.get_text("text").strip()
+        tables = []
+        try:
+            found = page.find_tables().tables
+            for t_idx, t in enumerate(found):
+                try:
+                    rows = t.extract()
+                    rows = [[str(c) if c is not None else "" for c in row] for row in rows]
+                    tables.append({"index": t_idx, "rows": rows})
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        pages.append({"page": i, "text": text, "tables": tables})
+    return pages
+
+
+def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Path]:
+    """Extract one PDF into <stem>.md and <stem>.json under out_dir."""
+    doc = fitz.open(pdf_path)
+    title = detect_title(doc)
+    stem = slugify(title) if (rename and title) else pdf_path.stem
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    toc = doc.get_toc(simple=True) or []
+    sections = build_sections(toc, doc)
+    pages = build_pages(doc)
+    table_count = count_tables(doc)
+    figures = build_figures(doc)
+
+    payload = {
+        "source_pdf": pdf_path.name,
+        "page_count": doc.page_count,
+        "file_size_bytes": pdf_path.stat().st_size,
+        "pdf_version": (doc.metadata or {}).get("format", "").replace("PDF ", "") or None,
+        "citation": {
+            "title": title or pdf_path.stem,
+            "metadata": {k: v for k, v in (doc.metadata or {}).items() if v},
+        },
+        "table_count": table_count,
+        "figures": figures,
+        "toc": [
+            {"level": lvl, "title": t.strip(), "start_page": p}
+            for (lvl, t, p) in toc
+        ],
+        "sections": [
+            {k: v for k, v in s.items() if k != "text"}
+            for s in sections
+        ],
+        "pages": pages,
+    }
+    # Re-attach text in sections for completeness (matches KR full schema)
+    for out_sec, in_sec in zip(payload["sections"], sections):
+        out_sec["text"] = in_sec["text"]
+
+    json_path = out_dir / f"{stem}.json"
+    md_path = out_dir / f"{stem}.md"
+
+    json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+
+    md_lines = [
+        f"# {title or pdf_path.stem}",
+        "",
+        f"**Source PDF:** `{pdf_path.name}`  ",
+        f"**Pages:** {doc.page_count}  ",
+        f"**Tables (auto-detected):** {table_count}  ",
+        f"**Figures (auto-detected):** {len(figures)}  ",
+        "",
+    ]
+    meta = doc.metadata or {}
+    if meta.get("author"):
+        md_lines.append(f"**Author(s):** {meta['author']}  ")
+    if meta.get("subject"):
+        md_lines.append(f"**Subject:** {meta['subject']}  ")
+    if meta.get("creationDate"):
+        md_lines.append(f"**Created:** {meta['creationDate']}  ")
+    md_lines.append("")
+    md_lines.append("---")
+    md_lines.append("")
+    for sec in sections:
+        md_lines.append(f"## {sec['title']}")
+        md_lines.append("")
+        md_lines.append(f"_pp. {sec['start_page']}–{sec['end_page']}_")
+        md_lines.append("")
+        md_lines.append(sec["text"])
+        md_lines.append("")
+    md_path.write_text("\n".join(md_lines))
+    doc.close()
+    return md_path, json_path
+
+
+def gather_pdfs(target: Path, recursive: bool) -> list[Path]:
+    if target.is_file() and target.suffix.lower() == ".pdf":
+        return [target]
+    if target.is_dir():
+        pattern = "**/*.pdf" if recursive else "*.pdf"
+        return sorted(target.glob(pattern))
+    return []
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Extract PDF -> .md + .json (KR schema).")
+    ap.add_argument("path", help="PDF file or directory")
+    ap.add_argument("--recursive", action="store_true", help="Recurse into subdirs")
+    ap.add_argument("--rename", action="store_true", help="Rename output to slugified title")
+    ap.add_argument("--out", help="Output directory (default: same dir as PDF)")
+    args = ap.parse_args(argv)
+
+    target = Path(args.path).expanduser().resolve()
+    pdfs = gather_pdfs(target, args.recursive)
+    if not pdfs:
+        print(f"No PDFs found at {target}", file=sys.stderr)
+        return 1
+
+    for pdf in pdfs:
+        out_dir = Path(args.out).expanduser().resolve() if args.out else pdf.parent
+        try:
+            md_path, json_path = extract_paper(pdf, out_dir, args.rename)
+            print(f"OK  {pdf.name} -> {md_path.name} + {json_path.name}")
+        except Exception as exc:
+            print(f"FAIL {pdf.name}: {exc}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

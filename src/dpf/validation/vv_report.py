@@ -14,28 +14,67 @@ Usage:
 
 from __future__ import annotations
 
+import logging
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
+# Pytest short-mode summary tokens that count toward "total tests executed".
+# ``skipped``/``xfailed``/``xpassed`` are deliberately NOT counted as failures
+# but ARE counted toward the total, so "X/Y passing" reflects real coverage.
+_PYTEST_SUMMARY_TOKENS = (
+    "passed", "failed", "error", "errors",
+    "skipped", "xfailed", "xpassed", "deselected",
+)
+
 
 def _count_tests() -> tuple[int, int]:
-    """Count passing and total tests."""
+    """Count passing and total tests executed.
+
+    Parses the pytest short-mode summary line (e.g. ``"1 failed, 2 passed in 0.07s"``
+    or ``"3 passed in 0.07s"``) and returns ``(passed, total)``.
+
+    Note: the previous implementation ran with ``-x`` (stop on first failure)
+    and returned ``(passed, passed)``, silently reporting 100% coverage even
+    when tests were failing.  ``-x`` has been removed so that the total is
+    representative of the full suite.
+
+    Returns ``(0, 0)`` on timeout / unexpected parse failure and logs a warning.
+    """
     try:
         result = subprocess.run(
-            ["python3", "-m", "pytest", "tests/", "-q", "--tb=no", "-x"],
-            capture_output=True, text=True, timeout=120,
+            ["python3", "-m", "pytest", "tests/", "-q", "--tb=no"],
+            capture_output=True, text=True, timeout=300,
             cwd=str(Path(__file__).resolve().parent.parent.parent.parent),
+            check=False,
         )
         output = result.stdout
-        for line in output.split("\n"):
-            if "passed" in line:
-                parts = line.split()
-                for i, p in enumerate(parts):
-                    if p == "passed":
-                        return int(parts[i - 1]), int(parts[i - 1])
+        counts: dict[str, int] = {}
+        # Match tokens like "12 passed", "3 failed", "1 error", etc.
+        for token in _PYTEST_SUMMARY_TOKENS:
+            for match in re.finditer(rf"(\d+)\s+{token}\b", output):
+                counts[token] = counts.get(token, 0) + int(match.group(1))
+
+        if not counts:
+            logger.warning("vv_report._count_tests: no pytest summary tokens found")
+            return 0, 0
+
+        passed = counts.get("passed", 0)
+        total = sum(counts.values())
+        # "errors" is an alias of "error" in some pytest versions; guard against
+        # double-counting if both appear on the same line (pytest does not emit
+        # both simultaneously in practice, but be defensive).
+        if "error" in counts and "errors" in counts:
+            total -= min(counts["error"], counts["errors"])
+        return passed, total
+    except subprocess.TimeoutExpired:
+        logger.warning("vv_report._count_tests: pytest timed out at 300s")
         return 0, 0
-    except (subprocess.TimeoutExpired, Exception):
+    except Exception as exc:  # noqa: BLE001 — report-only helper must not raise
+        logger.warning("vv_report._count_tests: unexpected failure: %s", exc)
         return 0, 0
 
 

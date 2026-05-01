@@ -180,8 +180,10 @@ class SnowplowModel:
         self.vr = 0.0             # Radial shock velocity [m/s] (negative = inward)
         self._L_axial_frozen = 0.0  # Axial L_plasma at end of rundown [H]
 
-        # Minimum pinch radius: 10% of anode radius (Lee standard)
-        self.r_pinch_min = 0.1 * self.a
+        # Minimum pinch radius: r_min/a = 0.17 for PF-1000.
+        # [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.11 Table — PF-1000 r_min/a = 0.17]
+        # KR also notes "rmin/a (almost constant at 0.14-0.17)" across devices (p.7 L665).
+        self.r_pinch_min = 0.17 * self.a
 
         # Anomalous resistance model: R = alpha_anom * (mu_0 * v_a) / (4*pi*r)
         # where v_a = B / sqrt(mu_0 * rho) is the Alfven speed.
@@ -565,10 +567,12 @@ class SnowplowModel:
 
         # Anomalous resistance from m=0 disruption
         # Must exceed |dL/dt| for current to decay net of inductance release.
-        # EMPIRICAL: factor 2 ensures R_anom > |dL/dt| (dissipation dominates)
+        # UNVERIFIED — no KR source for 2x post-pinch dynamic-resistance
+        # amplifier; flagged 2026-04-27 audit. TODO(audit): locate KR
+        # justification for the 2x factor or replace with KR-derived value.
         if self._tau_m0 > 0 and self._v_expand > 0:
             dL_dt_peak = (mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / self._r_pinch_at_stagnation
-            R_anom_peak = 2.0 * dL_dt_peak  # EMPIRICAL: 2x for net dissipation
+            R_anom_peak = 2.0 * dL_dt_peak  # UNVERIFIED — no KR source for 2x factor
             tau_decay = 3.0 * self._tau_m0
             R_anom = R_anom_peak * np.exp(-dt_since_pinch / tau_decay)
         else:
@@ -804,15 +808,20 @@ class SnowplowModel:
         # J×B force (inward, opposing expansion)
         F_rad = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_s
 
-        # Slug mass with mass pickup: reflected shock sweeps gas already
-        # compressed by the inward shock (Phase 2).  For a strong cylindrical
-        # shock in gamma=5/3 gas, first-shock density = (gamma+1)/(gamma-1) *
-        # rho0 = 4*rho0 (Rankine-Hugoniot).  The reflected shock then
-        # re-compresses this gas.  For a moderate reflected shock (Mach ~2 in
-        # pre-heated gas): compression ratio ~2, giving ~8*rho0 total.
-        # Strong limit: 4 * 4 = 16*rho0.  We use 8*rho0 as a compromise
-        # (PhD Debate #21 finding, Rankine-Hugoniot double-shock estimate).
-        rho_post_shock = 8.0 * self.rho0
+        # Slug mass with mass pickup: Rankine-Hugoniot post-shock density.
+        # KR Lee Course (p.107 L6852): "This swept-up gas is compressed by
+        # a ratio (gamma+1)/(gamma-1)." For gamma = 5/3 (cold atomic D2):
+        # ratio = 4. KR also notes (p.107 L6861) "for strongly ionising
+        # argon gamma has value closer to 1 e.g. 1.15"; partially-ionized
+        # deuterium near peak compression has gamma ~ 1.2-1.4, giving ratios
+        # 6-11. The value 8.0 falls within that ionizing-gas RH window but
+        # KR does not explicitly prescribe 8x for D2 in this snowplow context.
+        # UNVERIFIED — no KR source for 8x compromise; flagged 2026-04-27
+        # audit. Switching to cold-gas RH (4x) leaves PF-1000 I_peak error
+        # unchanged at 11.05% (peak occurs in axial phase, well before
+        # reflected-shock activates), so the value is not bisect-relevant.
+        # TODO(audit): replace with gamma_eff(rho, T_e)-aware RH ratio.
+        rho_post_shock = 8.0 * self.rho0  # UNVERIFIED — no KR source for 8x
         M_slug = self._M_slug_pinch + (
             self.f_m * rho_post_shock * pi
             * (r_s**2 - self.r_pinch_min**2) * z_f

@@ -19,7 +19,9 @@ References
 - Bian et al., Phys. Plasmas 33, 012303 (2026). DOI: 10.1063/5.0305344
 - Kindi et al., Phys. Plasmas (2026). DOI: 10.1063/5.0294460
 - Lee & Saw, J. Fusion Energy 27, 292-295 (2008).
-- Angus et al., Phys. Plasmas 28, 012705 (2021).
+- Angus et al., Phys. Plasmas 28, 010701 (2021), DOI: 10.1063/5.0028988
+  (preprint LLNL-JRNL-813738 on disk at
+  references/papers/core-dpf/angus-2021-dpf-kinetic-pinch.pdf).
 - Auluck, Phys. Plasmas 31, 010704 (2024). DOI: 10.1063/5.0189593
 """
 
@@ -243,15 +245,32 @@ def mrti_growth_rate(
 ) -> float:
     """Compute magneto-Rayleigh-Taylor instability growth rate.
 
-    From Bian et al. (2026) Eq. 3, the linear MRT growth rate
-    including magnetic field stabilization for a sharp interface.
+    From Bian et al. (2026) Eq. 3 (paper on disk at
+    references/papers/plasma-physics/external-bfield-rayleigh-taylor.pdf,
+    *Phys. Plasmas* **33**, 012303).  The paper writes the dispersion
+    relation in Gaussian units:
+
+        gamma_Gauss = sqrt(g*k*A - 2*B_G^2 * k^2 * cos^2(theta)/(rho_h + rho_l))
+
+    where the Alfven speed is V_A = B_G / sqrt(rho_0) (paper Eq. 2
+    and surrounding text, no mu_0 factor).
+
+    This implementation uses SI units, in which the magnetic pressure is
+    B_SI^2/(2*mu_0) and the Alfven speed is V_A = B_SI/sqrt(mu_0*rho_0).
+    The SI-equivalent of Bian Eq. 3 is therefore:
+
+        gamma_SI = sqrt(g*k*A - 2*B_SI^2 * k^2 * cos^2(theta)/(mu_0*(rho_h + rho_l)))
+
+    which is what the code below evaluates.  (A previous revision had a
+    Gaussian-form docstring paired with SI code; this revision aligns
+    the docstring to SI to match the implementation.)
 
     Args:
         g: Effective gravity (deceleration) [m/s^2].
         k: Wavenumber of perturbation [1/m].
         A: Atwood number = (rho_h - rho_l) / (rho_h + rho_l).
             Must be in [0, 1].
-        B: Magnetic field strength [T]. Stabilizes if parallel to k.
+        B: Magnetic field strength [T] in SI.  Stabilizes if parallel to k.
         theta: Angle between B and k [rad].
             theta=0: B parallel to k (maximum stabilization).
             theta=pi/2: B perpendicular to k (no stabilization).
@@ -268,7 +287,8 @@ def mrti_growth_rate(
         (no stabilization). Axial B_z provides stabilization.
 
         Classical RT (B=0): gamma = sqrt(g * k * A)
-        Magnetic RT: gamma = sqrt(g*k*A - 2*B^2*k^2*cos^2(theta)/(rho_h+rho_l))
+        Magnetic RT (SI):
+            gamma = sqrt(g*k*A - 2*B^2*k^2*cos^2(theta)/(mu_0*(rho_h+rho_l)))
     """
     if A < 0 or A > 1:
         raise ValueError(f"Atwood number must be in [0, 1], got {A}")
@@ -520,26 +540,38 @@ def mrti_diagnostics(
 
 def neutron_yield_I4(
     I_peak_MA: float,
-    coefficient: float = 9e10,
+    coefficient: float = 9e10,  # EMPIRICAL: NOT from Lee & Saw 2008; see docstring
 ) -> float:
-    """Estimate DD neutron yield from I^4 scaling law.
+    """Estimate DD neutron yield from an empirical I^4 scaling.
 
-    From Lee & Saw (2008), the DD neutron yield scales as Y_n ~ C * I^4
-    where I is in MA. The coefficient C depends on the device class
-    and operating conditions.
+    WARNING: The default `coefficient=9e10` with exponent 4 is an EMPIRICAL
+    COMPROMISE, NOT the Lee & Saw (2008) formula. The prior docstring
+    attribution "From Lee & Saw (2008)" was incorrect.
+
+    Lee & Saw (2008) actually give (abstract, verbatim):
+        "Yn = 2x10^11 * Ipinch^4.7  and  Yn = 9x10^9 * Ipeak^3.9"
+
+    The code's (9e10, 4) pair is roughly a geometric mean of the two
+    published scalings over the 0.5-3 MA range, but is not faithful to
+    either. Herold 1989 is sometimes cited for Y ~ 10^11 * I^4 at MA-class
+    devices, but the Herold paper is NOT on disk in this repository so we
+    cannot verify that attribution.
+
+    For faithful reproduction of the Lee & Saw 2008 scalings, use:
+        Y_peak  = 9e9  * I_peak_MA**3.9   # Eq. (abstract)
+        Y_pinch = 2e11 * I_pinch_MA**4.7  # Eq. (abstract)
 
     Args:
         I_peak_MA: Peak current [MA].
-        coefficient: Scaling coefficient. Default 9e10 from
-            Lee & Saw (2008) for conventional DPF devices.
-            Herold (1989): ~1e11 for MA-class devices.
+        coefficient: Scaling coefficient. Default 9e10 is an EMPIRICAL
+            compromise (see warning above), NOT Lee & Saw 2008.
 
     Returns:
         Estimated DD neutron yield [neutrons/shot].
 
     Notes:
-        The I^4 law holds over ~5 orders of magnitude (10 kA to 5 MA).
-        Deviations occur for:
+        The I^4 law holds empirically over ~5 orders of magnitude
+        (10 kA to 5 MA). Deviations occur for:
         - Very high I (> 3 MA): radiative collapse, beam-target dominates
         - Very low I (< 50 kA): threshold effects
         - Non-optimal fill pressure
@@ -550,6 +582,13 @@ def neutron_yield_I4(
         POSEIDON    4.6           4.6e11
         MJOLNIR     2.8           8e11
         Gemini      6.0           1-2e12
+
+    References:
+        Lee S. & Saw S.H. (2008), "Neutron Scaling Laws from Numerical
+        Experiments", J. Fusion Energy 27:292. On disk at
+        references/papers/nuclear-radiation/
+        PP2 with Erratum JoFE NeutronScalingLawsFromNumericalExperiments.pdf
+        Abstract (verbatim): "Yn=2x10^11*Ipinch^4.7 and Yn=9x10^9*Ipeak^3.9".
     """
     return coefficient * I_peak_MA**4
 
@@ -573,13 +612,59 @@ class NeutronYieldComparison:
     device_name: str = ""
 
 
-# Published MA-class device data from Goyon et al. (2025) Table I
+# Published MA-class device data from Goyon et al. (2025) §I (verbatim
+# values from the on-disk paper at
+# references/papers/core-dpf/goyon-2025-ma-class-dpf-neutron.pdf):
+#   "0.42 MJ 2.3 MA LANL DPF-6" / "0.5 MJ 4.6 MA Poseidon DPF" /
+#   "1 MJ 2 MA PF-1000" / "2 MJ 6 MA Gemini" / MJOLNIR delivers
+#   "2.8 MA peak current and  2.1 MA at the time" of pinch (line 288).
+#
+# IMPORTANT (P1.9.6 I_peak vs I_pinch semantics):
+#   The "I_peak_MA" field is what Goyon reports -- the *peak* (axial-phase
+#   maximum) current. neutron_yield_I4(I_peak_MA) below uses
+#   `coefficient * I_peak^4` with the EMPIRICAL 9e10 default; that
+#   compromise coefficient absorbs the I_peak vs I_pinch difference
+#   relative to Lee & Saw 2008's published `Yn = 9e9 * I_peak^3.9`.
+#
+#   To use the more rigorous Lee & Saw 2008 pinch-current scaling
+#   `Yn = 2e11 * I_pinch^4.7`, callers need I_pinch. We add an explicit
+#   `I_pinch_MA` field so the I_peak vs I_pinch distinction is not
+#   silently collapsed:
+#     - When a device has measured I_pinch (e.g. PF-1000 from Akel
+#       2021 Table 1: mean I_pinch = 389 kA over 23 shots, mean
+#       I_peak = 1236 kA -> I_pinch / I_peak = 0.315), use it.
+#     - When only an estimate is available, Lee & Saw 2008 Table 1
+#       shows I_pinch / I_peak = 0.52-0.68 across devices (PF400 0.65,
+#       UNU 0.68, NX2 T-2 0.59, PF-1000 0.52). The Lee-convention
+#       default is 0.6.
+#     - For MJOLNIR, Goyon 2025 line 288 directly reports 2.1 MA at
+#       pinch time vs 2.8 MA peak (ratio 0.75).
+#   Sources for each I_pinch_MA below are tagged in the comment trailing
+#   the entry so reviewers can re-verify against the cited PDF.
 _MA_CLASS_DEVICES: dict[str, dict[str, float]] = {
-    "LANL-DPF6": {"I_peak_MA": 2.3, "Y_n": 1.5e12, "E_MJ": 0.42},
-    "POSEIDON": {"I_peak_MA": 4.6, "Y_n": 4.6e11, "E_MJ": 0.50},
-    "PF-1000": {"I_peak_MA": 2.0, "Y_n": 2e11, "E_MJ": 1.0},
-    "FAETON-I": {"I_peak_MA": 1.0, "Y_n": 2.5e10, "E_MJ": 0.125},
-    "MJOLNIR": {"I_peak_MA": 2.8, "Y_n": 8e11, "E_MJ": 2.0},
+    # Lee-convention I_pinch = 0.6 * I_peak (no per-shot measurement on disk).
+    "LANL-DPF6": {
+        "I_peak_MA": 2.3, "I_pinch_MA": 1.38,  # 0.6 * 2.3 (Lee 2008 default)
+        "Y_n": 1.5e12, "E_MJ": 0.42,
+    },
+    "POSEIDON": {
+        "I_peak_MA": 4.6, "I_pinch_MA": 2.76,  # 0.6 * 4.6 (Lee 2008 default)
+        "Y_n": 4.6e11, "E_MJ": 0.50,
+    },
+    # PF-1000 I_pinch from Akel 2021 Table 1 (23-shot mean, on disk).
+    "PF-1000": {
+        "I_peak_MA": 2.0, "I_pinch_MA": 0.63,  # Akel 2021: I_pinch_avg=389 kA scaled to 2 MA peak (ratio 0.315)
+        "Y_n": 2e11, "E_MJ": 1.0,
+    },
+    "FAETON-I": {
+        "I_peak_MA": 1.0, "I_pinch_MA": 0.6,  # 0.6 * 1.0 (Lee 2008 default)
+        "Y_n": 2.5e10, "E_MJ": 0.125,
+    },
+    # MJOLNIR I_pinch from Goyon 2025 §III "2.8 MA peak ... 2.1 MA at the time".
+    "MJOLNIR": {
+        "I_peak_MA": 2.8, "I_pinch_MA": 2.1,  # Goyon 2025 line 288
+        "Y_n": 8e11, "E_MJ": 2.0,
+    },
 }
 
 

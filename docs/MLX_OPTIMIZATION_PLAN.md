@@ -59,17 +59,17 @@ used for `riemann="hlld"` in float32 mode.
 
 | # | Optimization | File | Lines to Change | Expected Speedup | Effort |
 |---|-------------|------|-----------------|------------------|--------|
-| 1 | **Port HLL flux to MLX GPU** | mlx_riemann.py:223-344 | ~120 rewrite | 1.8-2.5x | Medium |
-| 2 | **Port HLLS flux to MLX GPU** | mlx_riemann.py:86-215 | ~130 rewrite | 1.5-2.0x | Medium |
+| 1 | [Implemented in f2d079e] **Port HLL flux to MLX GPU** | mlx_riemann.py:223-344 | ~120 rewrite | 1.8-2.5x | Medium |
+| 2 | [Implemented in fb5bbe8, c095f80] **Port HLLS flux to MLX GPU** | mlx_riemann.py:86-215 | ~130 rewrite | 1.5-2.0x | Medium |
 | 3 | **Eliminate NumPy fixups in ghost padding** | mlx_solver.py:325-367 | ~40 | 1.1-1.2x | Low |
-| 4 | **Fuse PLM+HLL into single Metal kernel** | mlx_fused_flux.py | ~150 new MSL | 1.2-1.4x | High |
+| 4 | **Fuse PLM+HLL into single Metal kernel** | new module (TBD) | ~150 new MSL | 1.2-1.4x | High |
 
 ### Tier 2: Medium Impact (expected 1.3-1.8x additional)
 
 | # | Optimization | File | Lines | Expected Speedup | Effort |
 |---|-------------|------|-------|------------------|--------|
 | 5 | Port Thomas solver to MLX parallel scan | mlx_transport.py:34-85 | ~80 | 1.1-1.3x | High |
-| 6 | Bremsstrahlung in float32 with compensated sum | mlx_sources.py:446-455 | ~15 | 1.05x | Low |
+| 6 | [Implemented in f2d079e] Bremsstrahlung in float32 with compensated sum | mlx_sources.py:446-455 | ~15 | 1.05x | Low |
 | 7 | Batch mx.eval() calls (reduce sync points) | mlx_solver.py:660-724 | ~20 | 1.1-1.2x | Low |
 | 8 | Pre-allocate dU_dt in mhd_rhs | mlx_riemann.py:527 | ~10 | 1.05x | Low |
 | 9 | Fuse geometric source + flux divergence | mlx_timestepper.py + mlx_riemann.py | ~80 | 1.1x | Medium |
@@ -144,9 +144,13 @@ for ig in range(ng):
 
 ### OPT-4: Fused PLM+HLL Metal Kernel
 
-**Current**: `mlx_fused_flux.py` documents the plan but currently delegates to separate
-PLM reconstruction + HLL flux. The intermediate UL/UR arrays (10 x nr x nz each, ~2.6 MB
-at 128x256) are materialized and then immediately consumed.
+**Current**: A planning stub `mlx_fused_flux.py` previously documented this optimization
+but only delegated to the separate PLM reconstruction + HLL flux path
+[Deleted 2026-04-24, 48 LOC dead code — the fused kernel was never implemented].
+The current pipeline still materializes intermediate UL/UR arrays
+(10 x nr x nz each, ~2.6 MB at 128x256) and then immediately consumes them.
+A new fused kernel would need to be implemented from scratch in `mlx_kernels.py`
+or a fresh module.
 
 **Fix**: Single Metal kernel that reads Q, applies PLM reconstruction per-cell, and immediately
 computes HLL flux without materializing UL/UR. Saves ~5 MB memory bandwidth per RK stage.

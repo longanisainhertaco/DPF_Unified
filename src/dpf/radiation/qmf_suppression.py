@@ -12,17 +12,32 @@ Key physics:
 - Suppression factor: S = f(E_c / E_th) with S → 0 at E_c >> E_th
 
 For p-11B fusion: temperatures ~200 keV required, so
-B_QMF ~ 2.3e8 T (230 MG) — only achievable in extreme DPF conditions.
+B_QMF ~ 1.73e9 T (17.3 GG) -- only achievable in extreme DPF conditions.
+(Computed from B_QMF = m_e * k_B * T / (e * hbar) at k_B T = 200 keV:
+ numerator = 3.204e-14 J * 9.109e-31 kg = 2.918e-44
+ denominator = 1.602e-19 C * 1.055e-34 J s = 1.690e-53
+ B_QMF = 1.727e9 T.)
 
 Competing effect: synchrotron radiation INCREASES with B^2, partially
 offsetting bremsstrahlung suppression. Net benefit requires detailed
 balance.
 
 References:
-    Bezchastnov & Potekhin, J. Phys. B 27:3349 (1994) — QMF brem rates
     Potekhin & Chabrier, ApJ 585:955 (2003) — magnetized thermal conductivity
     Rider, Phys. Plasmas 4:1039 (1997) — p-B11 radiation constraints
     Putvinski et al., Nucl. Fusion 38:1275 (1998) — QMF in fusion
+
+UNVERIFIED CITATION (removed 2026-04-27):
+    Bezchastnov & Potekhin, J. Phys. B 27:3349 (1994), DOI 10.1088/0953-4075/27/15/013,
+    bibcode 1994JPhB...27.3349B, was previously cited here as "QMF brem rates".
+    Verified via NASA ADS: that paper is titled "Transitions between shifted Landau
+    states and photoionization of the hydrogen atom moving in a strong magnetic field"
+    and treats BOUND-STATE photoionization (bound-free), NOT free-free electron-ion
+    bremsstrahlung. The interpolation formula in `bremsstrahlung_suppression_factor`
+    below is therefore unsourced/heuristic, not derived from this paper. Treat
+    QMF suppression as UNVERIFIED until a primary free-free reference is on disk
+    under references/papers/ (candidate: Pavlov & Panov 1976 Sov.Phys.JETP 44:300,
+    or Lauer et al. 1983 ApJ 272:122). Default behavior: qmf_unverified=True.
 """
 
 from __future__ import annotations
@@ -70,13 +85,24 @@ def bremsstrahlung_suppression_factor(
     B: float,
     Te_K: float,
 ) -> float:
-    """Compute bremsstrahlung suppression factor in strong B.
+    """Compute bremsstrahlung suppression factor in strong B. [UNVERIFIED]
 
-    Uses the Bezchastnov & Potekhin (1994) approximation:
-    When E_c/E_th >> 1, electrons occupy only the ground Landau level,
-    and bremsstrahlung is suppressed by ~exp(-E_c/E_th).
+    HEURISTIC INTERPOLATION — not from a published derivation. The previous
+    docstring attributed this to Bezchastnov & Potekhin J.Phys.B 27:3349 (1994);
+    that paper (DOI 10.1088/0953-4075/27/15/013) is on hydrogen-atom photoionization
+    with shifted Landau states, not free-free bremsstrahlung. Citation removed
+    2026-04-27. PDF not on disk under references/papers/.
 
-    For practical DPF fields (B < 100 T), suppression is negligible.
+    Functional form (placeholder, no paper backing):
+        S(r) = exp(-r) + (1 - exp(-r)) * exp(-sqrt(r)),  r = E_c/E_th
+        E_c = hbar * e * B / m_e,  E_th = k_B * Te
+    Limits: r << 1 -> S = 1 (no suppression). r >> 1 -> S -> 0, floored at 0.01.
+
+    Physical reasoning sketch: when r >> 1 only the n=0 Landau level is thermally
+    populated, restricting allowed transitions; quantitative magnitude is not
+    derived here. For practical DPF fields (B < 100 T at T ~ 1 keV), r << 1 and
+    this returns 1.0 regardless of formula details, so the heuristic is harmless
+    in the DPF regime but should NOT be trusted for B > 1 GG / r >~ 1.
 
     Args:
         B: Magnetic field magnitude [T].
@@ -103,11 +129,19 @@ def synchrotron_enhancement_factor(
     B: float,
     Te_K: float,
     ne: float,
+    Z: float = 1.0,
 ) -> float:
     """Compute synchrotron radiation enhancement factor.
 
-    Synchrotron power: P_sync = (e^4 * B^2 * n_e * v_th^2) / (6*pi*eps0*m_e^2*c^3)
+    Synchrotron power (Larmor formula averaged over 2D perpendicular Maxwellian):
+        P_sync = (e^4 * B^2 * n_e * <v_perp^2>) / (6*pi*eps0*m_e^2*c^3)
+               = (e^4 * B^2 * n_e * k_B * T_e) / (3*pi*eps0*m_e^3*c^3)
+    where <v_perp^2> = 2 * k_B * T / m_e (two perpendicular degrees of freedom).
     Scales as B^2 * T.
+
+    Previous version used v_th^2 = k_B * T / m_e (1D thermal speed), which
+    under-predicts by a factor of 2 compared to the correct perpendicular
+    thermal average used in cyclotron/synchrotron emission.
 
     Normalized to bremsstrahlung at reference conditions.
 
@@ -115,6 +149,7 @@ def synchrotron_enhancement_factor(
         B: Magnetic field [T].
         Te_K: Electron temperature [K].
         ne: Electron density [m^-3].
+        Z: Ion charge state (default 1).
 
     Returns:
         Factor > 1 means synchrotron exceeds bremsstrahlung at this B.
@@ -122,16 +157,38 @@ def synchrotron_enhancement_factor(
     from dpf.constants import c as c_light
     from dpf.constants import epsilon_0
 
-    v_th = np.sqrt(k_B * max(Te_K, 1.0) / m_e)
+    # Perpendicular thermal speed squared: <v_perp^2> = 2 k_B T_e / m_e
+    # (two perpendicular DoF for cyclotron motion, not 1D v_th^2).
+    v_perp_sq = 2.0 * k_B * max(Te_K, 1.0) / m_e
 
-    # Synchrotron power density
-    P_sync = e**4 * B**2 * ne * v_th**2 / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
+    # Synchrotron power density (re-derived from Larmor 2026-04-23 to
+    # answer ZETA_REV P2 query about "eps0 m_e^2 vs eps0^2 m_e^3" denominator):
+    #
+    #   Single-electron Larmor:  P_1 = e^2 a^2 / (6 pi eps0 c^3)
+    #   Circular-motion accel:   a = v_perp * omega_c = v_perp * (eB / m_e)
+    #   So a^2 = e^2 B^2 v_perp^2 / m_e^2
+    #   P_1 = e^4 B^2 v_perp^2 / (6 pi eps0 m_e^2 c^3)
+    #   P_volumetric = n_e * P_1 with thermal average <v_perp^2> = 2 k_B T / m_e
+    #
+    # Denominator IS eps0 * m_e^2 in this form; the extra 1/m_e that
+    # turns it into the equivalent (eps0 m_e^3) form lives in <v_perp^2>.
+    # ZETA_REV's "eps0^2 m_e^3" reading would add a stray eps0 and break
+    # dimensions ([W/m^3] requires exactly one eps0; verified by the unit
+    # check below).
+    #
+    # Dimensional check (SI):
+    #   Num = e^4 B^2 n_e v_perp^2  -> C^4 * T^2 * m^-3 * m^2/s^2
+    #       = C^2 kg^2 m^-1 s^-4   (using T^2 = kg^2/(C^2 s^2))
+    #   Den = eps0 m_e^2 c^3        -> C^2 s^2 kg^-1 m^-3 * kg^2 * m^3/s^3
+    #       = C^2 kg s^-1
+    #   Ratio = kg m^-1 s^-3 = J m^-3 s^-1 = W/m^3   OK
+    P_sync = e**4 * B**2 * ne * v_perp_sq / (6 * np.pi * epsilon_0 * m_e**2 * c_light**3)
 
-    # Bremsstrahlung power density (Rybicki & Lightman 1979, Eq. 5.14a)
-    # SI: P_ff = 1.42e-40 * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
-    # Note: 1.42e-40 is bare coefficient (g_bar=1). With g_ff=1.2: ~1.70e-40.
+    # Bremsstrahlung power density (quasi-neutral ni = ne/Z):
+    #   P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te_K)  [W/m^3]
+    # Must include Z factor (free-free from ion Coulomb field).
     g_ff = 1.2  # Gaunt factor
-    P_brem = 1.42e-40 * g_ff * ne**2 * np.sqrt(max(Te_K, 1.0))
+    P_brem = 1.569e-40 * g_ff * Z * ne**2 * np.sqrt(max(Te_K, 1.0))
 
     if P_brem > 0:
         return max(P_sync / P_brem, 1.0)

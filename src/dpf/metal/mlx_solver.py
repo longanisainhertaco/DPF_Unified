@@ -483,9 +483,7 @@ class MLXMHDSolver(PlasmaSolverBase):
                 # Set ghost cell momentum = rho_ghost * vr_ghost
                 rho_ghost = U_np[IDN, out_idx, :]
                 U_np[IMR, out_idx, :] = rho_ghost * vr_ghost
-                # Update energy for kinetic energy change
-                0.5 * U_np[IMR, out_idx, :] ** 2 / np.maximum(rho_ghost, 1e-30)
-                # (energy already includes B from electrode fixup)
+                # Energy: B-field contribution already applied by electrode fixup above.
             U_padded = mx.array(U_np)
 
         # Build a lightweight padded grid. CylindricalGrid rejects negative
@@ -706,13 +704,19 @@ class MLXMHDSolver(PlasmaSolverBase):
             J_sq_np = None
             p_np = None
             if self._anomalous_resistivity_model is not None:
-                from dpf.metal.mlx_sources import compute_current_density
-                J_sq_mx = compute_current_density(
+                from dpf.metal.mlx_sources import compute_current_density_si
+                # KR Sun 2025 §2.2 Eq. 10: Ohm's law E = ηJ; SI Ampere
+                # j_SI = curl(B_SI)/mu_0 (KR plasma-formulary p.18).
+                # Athena HL convention (Stone 2008 §2): B_HL = B_SI/sqrt(mu_0)
+                #   -> |J_SI|^2 = |curl(B_HL)|^2 / mu_0
+                # Single-source-of-truth conversion lives in
+                # compute_current_density_si (fix-anom-mu0-retry owns the sign).
+                # b_packed_as_hl follows _convert_b_si_to_hl.
+                J_sq_mx = compute_current_density_si(
                     U, self._grid.dr, self._grid.dz, self._grid.r_cell,
+                    b_packed_as_hl=self._convert_b_si_to_hl,
                 )
-                # B is in HL units (mu_0=1), so J = curl(B_HL) is in HL units.
-                # Convert to SI: J_SI^2 = J_HL^2 * mu_0
-                J_sq_np = np.asarray(J_sq_mx, dtype=np.float64) * _MU0
+                J_sq_np = np.asarray(J_sq_mx, dtype=np.float64)
                 p_np = np.asarray(p_tmp, dtype=np.float64)
 
             eta_computed = compute_resistivity(

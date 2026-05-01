@@ -146,7 +146,7 @@ class TestLineRadiationH:
         """H line radiation is comparable to bremsstrahlung at 10 eV.
 
         At 10 eV, hydrogen Lyman-alpha cooling Lambda_H ~ 3e-33 W m^3.
-        Bremsstrahlung Lambda_ff ~ 1.42e-40 * sqrt(Te) / n_e [W m^3 per n_e^2].
+        Bremsstrahlung Lambda_ff ~ 1.569e-40 * sqrt(Te) / n_e [W m^3 per n_e^2].
         At 10 eV (T ~ 1.16e5 K), bremsstrahlung is weaker than line radiation.
         So line cooling should dominate or be comparable.
         """

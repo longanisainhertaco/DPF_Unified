@@ -156,7 +156,11 @@ def _run_implicit(
     coeff = np.full(nx, D)
 
     # Time integration: enough steps to resolve temporal discretization.
-    # Crank-Nicolson is 2nd order in time, so we need dt ~ O(dx^2).
+    # Crank-Nicolson is 2nd order in time and unconditionally stable, so
+    # no stability-driven dt constraint applies.  n_steps ~ 2*nx gives
+    # dt ~ dx (linear in grid spacing), which is sufficient for the
+    # 2nd-order-in-space convergence study.  (An earlier comment claimed
+    # dt ~ O(dx^2), but the code has always scaled linearly in nx.)
     n_steps = max(50, nx * 2)
     dt = t_end / n_steps
 
