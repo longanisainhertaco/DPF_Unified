@@ -71,10 +71,14 @@ def compute_upf_voltage_flux(
 
     References
     ----------
+    # UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper not on
+    # disk as of 2026-04-24. Implementation behavior kept but citation cannot be
+    # verified.
     Sun et al. (2025), Acta Physica Sinica 74:115201, Eq. (15)-(17):
         U_PF = d(Phi)/dt, Phi = integral(B * dS)
-        PDF: references/papers/core-dpf/2025_Theoretical_and_numerical_studies_
-        on_motion_process_of_dense_plasma_focus.pdf
+        [UNVERIFIED — referenced PDF path
+        references/papers/core-dpf/2025_Theoretical_and_numerical_studies_
+        on_motion_process_of_dense_plasma_focus.pdf does not exist on disk.]
 
     Beresnyak et al. (2018), IEEE TPS 46:3881 (NRL HAWK DPF):
         V_DPF = integral(E . dl) across device terminals.
@@ -118,6 +122,9 @@ def compute_upf_voltage_flux(
 
     # Magnetic flux linkage for a coaxial DPF device.
     #
+    # UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper not on
+    # disk as of 2026-04-24. Implementation behavior kept but citation cannot be
+    # verified.
     # Sun et al. (2025) Eq. (17): Phi = integral(B . dS)
     # For the axisymmetric geometry, the flux per unit axial length is:
     #     Phi_per_length = integral_a^b B_theta(r) dr

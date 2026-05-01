@@ -147,6 +147,9 @@ def run_mlx_discharge(
         # not resolve the radial implosion or pinch — the entire region where
         # L_p changes was outside the computational domain.
         #
+        # UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper
+        # not on disk as of 2026-04-24. Implementation behavior kept but
+        # citation cannot be verified.
         # Sun et al. (2025), Acta Phys. Sin. 74:115201, Fig. 2:
         #   Full domain 0 to r_cathode, anode as internal boundary.
         # Ou Haibin et al. (2024), Fig. 1:
@@ -192,6 +195,9 @@ def run_mlx_discharge(
         p_init[in_gap, :, :] = _p_Pa
 
         # Sheath seed at inlet (z=0): thin dense layer per Sun et al. (2025)
+        # UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper
+        # not on disk as of 2026-04-24. Implementation behavior kept but
+        # citation cannot be verified.
         # Section 3.2: "at the inlet, a plasma thin layer with average density
         # ~4*n0 and temperature ~2 eV is initialized."
         # This pre-formed sheath carries the initial current and B_theta.

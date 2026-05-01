@@ -1,4 +1,4 @@
-# CRITICAL BLOCKER: MHD t_peak — Partially Resolved
+# CRITICAL BLOCKER: MHD t_peak — RE-ANCHORED TO KR-CANONICAL INPUTS
 
 ## Status: IMPROVED (66% → ~13% error) — RE-ANCHORED TO KR-CANONICAL INPUTS
 
@@ -6,10 +6,17 @@
 > (R0=2.3 mΩ with EMPIRICAL R0_CORRECTION=6.43 mΩ knob; stale Lee fits).
 > That result was a calibration artifact, not a model accuracy number.
 > The KR-canonical re-anchor (Apr-23+) is the new truth.**
+>
+> The Apr-20 "regression to 11.5%" reported in the prior version of this
+> document was the SYMPTOM of the EMPIRICAL knob being correctly removed;
+> the reported error widened because the old number was self-fitted, not
+> because the model got worse. See `feedback/akel-1pct-claim-was-self-fit.md`
+> and `feedback/papers-are-truth.md`.
 
 ## Current Results (PF-1000, 27 kV — HEAD `5746c81`, KR-canonical inputs)
 - I_peak = 2.013 MA (+7.6% vs Scholz 2006 1.87 MA) — PASSES (< 15% criterion)
 - t_peak: +11.5% vs RADPF 5.6 µs — PASSES (within 15% criterion)
+- waveform_nrmse = 0.235 (Wave-2/3 BREM_COEFF + /mu_0 effect)
 - Basis: Malek 2025 PPT 12(1):9 Lee fits (fc=0.7, fm=0.13, fmr=0.35, fcr=0.65)
          + Akel 2021 device geometry (L0=25 nH, R0=2.3 mΩ bare-bank, z0=480 mm)
 - The 7.6% I_peak deficit is the agreed accuracy budget for paper-fidelity.
@@ -25,7 +32,7 @@
 
 ## Re-anchored to KR-canonical Inputs (2026-04-23+)
 
-Four commits rewrote the PF-1000 parameter chain to verbatim published values:
+Five commits rewrote the PF-1000 parameter chain to verbatim published values:
 
 | SHA | Change |
 |-----|--------|
@@ -39,7 +46,7 @@ Key rationale from `5746c81` body: *"Akel 1.27% claim was a self-fit (R0_CORRECT
 
 ---
 
-## What Fixed It (2026-04-10)
+## What Was Believed to Fix It (2026-04-10, PRE-KR-CANONICAL)
 
 ### 1. Density floor (prevents vacuum v_A → infinity)
 - `mlx_solver.py:766`: Enforce rho >= rho_fill * 1e-4 after each hyperbolic step
@@ -49,11 +56,18 @@ Key rationale from `5746c81` body: *"Akel 1.27% claim was a self-fit (R0_CORRECT
 ### 2. Vacuum B_theta prescription (Ampere's law in uncompressed gas)
 - `mlx_solver.py:892`: After all physics, set B_theta = mu0*I/(2*pi*r) in HL
   in cells where rho < 3*rho_fill (vacuum/fill gas, not sheath)
-- The MHD solver cannot propagate B from ghost cells fast enough (Alfven
-  speed limited by density floor). Direct prescription is physically correct:
-  the vacuum coaxial field IS B_theta = mu0*I/(2*pi*r).
-- Beresnyak initializes vacuum B at t=0 (verif_r.cpp:135). For DPF with I(t)
-  starting from zero, we re-apply at each step.
+- **EMPIRICAL departure from Beresnyak 2022.** Beresnyak Sec. VII lists three
+  remedies for vacuum-region mismatch:
+    (a) set velocity of fluid in vacuum region so E-field matches the true
+        vacuum solution,
+    (b) minimize initial volume of vacuum so fictitious waves dissipate quickly
+        (Laplace solve at IC), or
+    (c) set vacuum density low enough that the Alfvénic timescale is much
+        shorter than the plasma evolution time.
+  Per-step interior B re-prescription is **NOT** in that list. Our approach is
+  empirically motivated by density-floor-limited vacuum Alfvén speed preventing
+  ghost-to-interior propagation within a step. Marked `# EMPIRICAL` pending
+  validation or replacement with a Beresnyak-compliant approach.
 
 ### 3. Snowplow Lp for circuit coupling (avoids dPhi/dt instability)
 - Volume-flux coupling (Sun 2025 Eq. 15) creates instability when B is
@@ -82,14 +96,21 @@ Key rationale from `5746c81` body: *"Akel 1.27% claim was a self-fit (R0_CORRECT
   better sheath physics, NOT parameter adjustment
 
 ## References
-- Beresnyak et al. (2022), Phys. Plasmas 29:052712 — vacuum velocity method
+- Beresnyak et al. (2022), Phys. Plasmas 29:052712 — vacuum velocity method;
+  Sec. VI & VII enumerate the three legitimate remedies above.
 - Sun et al. (2025), Acta Physica Sinica 74:115201 — voltage-flux coupling
+  [KR: 2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md §2.4]
+- Malek et al. (2025), Plasma Phys. Tech. 12(1):9 — Lee fits fc=0.7, fm=0.13,
+  fmr=0.35, fcr=0.65 [KR: plasma-physics-and-technology-1211-9-2025.md §3 ll.177-180]
+- Akel et al. (2021), Radiat. Phys. Chem. 188:109633 — PF-1000 device parameters
+  [KR: radiation-physics-and-chemistry-188-2021-109633.md]
 - github.com/beresnyak/verif_coupling — reference implementation (verif_r.cpp)
 
 ## Task DAG
 ```
 Task 1: CFL diagnostic [DONE]
-Task 2: RADPF reference data [DONE]
+Task 2: RADPF reference data [DONE; pending Anthony's Malek 2025 fcr=0.65 regen
+        per docs/RADPF_REGENERATION_PLAYBOOK.md]
 Task 3: 5-angle acceptance test [DONE - 2/5 pass at 32x64]
 Task 4: Grid search via ShinkaEvolve [DONE - 419 evals]
 Task 5: Spitzer resistivity [DONE]
@@ -98,8 +119,8 @@ Task 6: Fix t_peak [RE-ANCHORED - 66%→~13% error; KR-canonical inputs; PASSES 
         HEAD 5746c81: +7.6% I_peak / +11.5% t_peak against KR-canonical Akel/Malek inputs.
         Paper-fidelity deficit is INTENTIONAL; closing it requires sheath physics, not tuning.
   6a: Density floor [DONE]
-  6b: Vacuum B prescription [DONE]
+  6b: Vacuum B prescription [DONE, but EMPIRICAL — see Section 2 above]
   6c: Snowplow circuit coupling [DONE]
-  6d: Self-consistent MHD Lp [TODO]
-Task 7: Higher resolution convergence study [UNBLOCKED]
+  6d: Self-consistent MHD Lp [TODO — post PR-B follow-up]
+Task 7: Higher resolution convergence study [UNBLOCKED — sheath physics improvements]
 ```
