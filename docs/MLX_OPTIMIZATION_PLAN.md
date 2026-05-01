@@ -59,8 +59,8 @@ used for `riemann="hlld"` in float32 mode.
 
 | # | Optimization | File | Lines to Change | Expected Speedup | Effort |
 |---|-------------|------|-----------------|------------------|--------|
-| 1 | **Port HLL flux to MLX GPU** | mlx_riemann.py:223-344 | ~120 rewrite | 1.8-2.5x | Medium |
-| 2 | **Port HLLS flux to MLX GPU** | mlx_riemann.py:86-215 | ~130 rewrite | 1.5-2.0x | Medium |
+| 1 | [Implemented in f2d079e] **Port HLL flux to MLX GPU** | mlx_riemann.py:223-344 | ~120 rewrite | 1.8-2.5x | Medium |
+| 2 | [Implemented in fb5bbe8, c095f80] **Port HLLS flux to MLX GPU** | mlx_riemann.py:86-215 | ~130 rewrite | 1.5-2.0x | Medium |
 | 3 | **Eliminate NumPy fixups in ghost padding** | mlx_solver.py:325-367 | ~40 | 1.1-1.2x | Low |
 | 4 | **Fuse PLM+HLL into single Metal kernel** | new module (TBD) | ~150 new MSL | 1.2-1.4x | High |
 
@@ -69,7 +69,7 @@ used for `riemann="hlld"` in float32 mode.
 | # | Optimization | File | Lines | Expected Speedup | Effort |
 |---|-------------|------|-------|------------------|--------|
 | 5 | Port Thomas solver to MLX parallel scan | mlx_transport.py:34-85 | ~80 | 1.1-1.3x | High |
-| 6 | Bremsstrahlung in float32 with compensated sum | mlx_sources.py:446-455 | ~15 | 1.05x | Low |
+| 6 | [Implemented in f2d079e] Bremsstrahlung in float32 with compensated sum | mlx_sources.py:446-455 | ~15 | 1.05x | Low |
 | 7 | Batch mx.eval() calls (reduce sync points) | mlx_solver.py:660-724 | ~20 | 1.1-1.2x | Low |
 | 8 | Pre-allocate dU_dt in mhd_rhs | mlx_riemann.py:527 | ~10 | 1.05x | Low |
 | 9 | Fuse geometric source + flux divergence | mlx_timestepper.py + mlx_riemann.py | ~80 | 1.1x | Medium |

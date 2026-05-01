@@ -113,8 +113,10 @@ to self-consistently predict disruption timing and post-pinch dynamics.
 | Numerical scheme diffusion | ~7-20% of total | HLL vs HLLD shows ~2% I_peak shift |
 | Grid resolution | ~5-15% of total | 32x64 vs 64x128 shows <1% I_peak change |
 
-**Total I_peak error**: 2.8% (sim 1.818 MA vs exp ~1.87 MA)
-**Total t_peak error**: 10-14% (structural; see docs/TIMING_ERROR_RCA.md)
+**Total I_peak error**: +7.6% (sim 2.013 MA vs Scholz 2006 1.87 MA; KR-canonical Akel/Malek inputs; commit 5746c81)
+**Total t_peak error**: +11.5% (structural; see docs/TIMING_ERROR_RCA.md)
+
+> Note: The prior 2.8% figure (sim 1.818 MA) was against an uncalibrated parameter set with an EMPIRICAL R0_CORRECTION=6.43 mΩ knob — a papers-are-truth violation. The +7.6% figure is the agreed accuracy budget for paper-fidelity. See CRITICAL_BLOCKER.md for full re-anchor narrative.
 
 The I_peak error is dominated by the circuit LC period and plasma loading, which
 the Lee model captures well. The t_peak error is structural — the sheath propagates

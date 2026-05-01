@@ -188,6 +188,7 @@ def thomson_line_integrated(
     laser_wavelength: float = 1064e-9,
     m_i: float = M_DEUTERIUM,
     Z_ion: int = 1,
+    z_cell: np.ndarray | None = None,
 ) -> np.ndarray:
     """Line-integrated Thomson spectrum along radial chords.
 
@@ -218,12 +219,23 @@ def thomson_line_integrated(
         Ion mass [kg].
     Z_ion : int
         Ion charge state.
+    z_cell : np.ndarray or None
+        Axial cell centers [m], shape (nz,). When provided, the chord's
+        z-index is found by nearest-neighbor lookup against this grid
+        (correct units handling). When None, falls back to a legacy
+        index mapping (chord_positions_z[ic] interpreted as a fractional
+        position in [0, 1)) and emits RuntimeWarning. New callers SHOULD
+        pass z_cell. [INFERRED — units bug fix per audit-diagnostics
+        2026-04-27; original code path was a units mismatch versus the
+        docstring "[m]"].
 
     Returns
     -------
     np.ndarray
         Line-integrated spectral power [W/m^2/sr/m], shape (Nc, M).
     """
+    import warnings
+
     from dpf.diagnostics.interferometry import abel_transform
 
     if Ti_2d is None:
@@ -233,12 +245,28 @@ def thomson_line_integrated(
     Nc = len(chord_positions_z)
     M = len(wavelength_grid)
 
+    if z_cell is None and nz > 1:
+        warnings.warn(
+            "thomson_line_integrated called without z_cell; "
+            "chord_positions_z is being interpreted as a fractional "
+            "index in [0, 1), NOT in metres as the docstring states. "
+            "Pass z_cell to use the metric interpretation.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
     result = np.zeros((Nc, M))
     for ic in range(Nc):
-        # Find nearest z-index for this chord
         z_target = chord_positions_z[ic]
-        # If caller provides z_cell externally, use it; otherwise use column index
-        iz = min(int(z_target * nz), nz - 1) if nz > 1 else 0
+        if z_cell is not None and nz > 1:
+            # Correct: nearest neighbor in metres.
+            iz = int(np.argmin(np.abs(z_cell - z_target)))
+            iz = max(0, min(iz, nz - 1))
+        elif nz > 1:
+            # Legacy fallback: treat z_target as a fraction in [0, 1).
+            iz = min(int(z_target * nz), nz - 1)
+        else:
+            iz = 0
 
         # Extract radial profiles at this z
         ne_r = ne_2d[:, iz]
