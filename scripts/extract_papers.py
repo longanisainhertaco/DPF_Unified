@@ -10,7 +10,7 @@ Usage:
 Schema (matches existing KR pairs as of 2026-04-30):
     JSON: source_pdf, page_count, file_size_bytes, pdf_version, citation,
           toc[level/title/start_page], sections[level/title/start_page/end_page/text],
-          table_count
+          table_count, figures[id/page/label/bbox]
     MD:   H1 title, citation block, full text per section as H2 with page markers
 """
 from __future__ import annotations
@@ -89,6 +89,52 @@ def build_sections(toc: list, doc: fitz.Document) -> list:
     return sections
 
 
+# Matches "Fig. 3", "FIG. 3", "Figure 3", "FIGURE 3" at the start of a text block line.
+# Does NOT match bare "3. Section" headings.
+_FIGURE_CAPTION_RE = re.compile(
+    r"^\s*(?P<label>Fig(?:ure)?\.?\s*\d+[a-z]?(?:\([a-z]\))?\.?)[\.\s—–:-]",
+    re.IGNORECASE,
+)
+
+
+def build_figures(doc: fitz.Document) -> list:
+    """Best-effort figure caption extraction via PyMuPDF text blocks.
+
+    Scans every page for text blocks whose first line matches the pattern
+    'Fig.', 'Fig', 'Figure', 'FIG.' followed by a number.  Collects the
+    full block text as the caption label, trims to 300 chars.
+
+    Returns list of {id, page, label, bbox} dicts, matching the schema of
+    handcrafted KR figures entries (id/page/label) with an added bbox field.
+    """
+    figures: list[dict] = []
+    seen: set[str] = set()  # deduplicate identical captions on same page
+    for page_num, page in enumerate(doc, start=1):
+        blocks = page.get_text("blocks")
+        for b in blocks:
+            # b = (x0, y0, x1, y1, text, block_no, block_type)
+            # block_type 0 = text, 1 = image
+            if len(b) < 7 or b[6] != 0:
+                continue
+            raw_text = b[4].strip()
+            if not raw_text:
+                continue
+            first_line = raw_text.splitlines()[0].strip()
+            m = _FIGURE_CAPTION_RE.match(first_line)
+            if not m:
+                continue
+            # Collapse whitespace; join continuation lines
+            caption = " ".join(raw_text.split())[:300]
+            key = f"{page_num}:{caption[:60]}"
+            if key in seen:
+                continue
+            seen.add(key)
+            fig_id = f"fig{len(figures) + 1}"
+            bbox = [round(b[0], 1), round(b[1], 1), round(b[2], 1), round(b[3], 1)]
+            figures.append({"id": fig_id, "page": page_num, "label": caption, "bbox": bbox})
+    return figures
+
+
 def count_tables(doc: fitz.Document) -> int:
     """Best-effort table count via PyMuPDF's table finder."""
     total = 0
@@ -135,6 +181,7 @@ def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Pa
     sections = build_sections(toc, doc)
     pages = build_pages(doc)
     table_count = count_tables(doc)
+    figures = build_figures(doc)
 
     payload = {
         "source_pdf": pdf_path.name,
@@ -146,6 +193,7 @@ def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Pa
             "metadata": {k: v for k, v in (doc.metadata or {}).items() if v},
         },
         "table_count": table_count,
+        "figures": figures,
         "toc": [
             {"level": lvl, "title": t.strip(), "start_page": p}
             for (lvl, t, p) in toc
@@ -171,6 +219,7 @@ def extract_paper(pdf_path: Path, out_dir: Path, rename: bool) -> tuple[Path, Pa
         f"**Source PDF:** `{pdf_path.name}`  ",
         f"**Pages:** {doc.page_count}  ",
         f"**Tables (auto-detected):** {table_count}  ",
+        f"**Figures (auto-detected):** {len(figures)}  ",
         "",
     ]
     meta = doc.metadata or {}
