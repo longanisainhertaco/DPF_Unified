@@ -18,9 +18,9 @@ does **not** authorize work. Treat it as a queue ordered by ROI, not by listing 
 PF-1000 device parameters are independently defined in three places, with overlapping
 but non-identical fields:
 
-- `src/dpf/presets.py:65` — `pf1000` preset (also `pf1000_akel:117`, `pf1000_20kv:174`)
+- `src/dpf/presets.py:65` — `pf1000` preset (also `pf1000_akel:117`, `pf1000_20kv:168`) [POST-PR-B: line 174→168]
 - `src/dpf/validation/experimental_devices.py:31` — `PF1000_DATA` (also
-  `PF1000_16KV_DATA:175`, `PF1000_GRIBKOV_DATA:220`, `PF1000_20KV_DATA:363`)
+  `PF1000_16KV_DATA:182`, `PF1000_GRIBKOV_DATA:227`, `PF1000_20KV_DATA:371`) [POST-PR-B: 175→182, 220→227, 363→371]
 - `src/dpf/validation/engine_validation.py:83` — `run_rlc_snowplow_pf1000()` with
   inline circuit parameters
 
@@ -71,14 +71,14 @@ asserting bit-for-bit identical outputs on the PF-1000 paths.
 
 The docstring at line 356 explicitly flags the ambiguity: *"this matches the SI-typed
 `compute_resistivity` API but contradicts the historical comment chain that used
-`* mu_0`."* Line 706 of `mlx_solver.py` carries a TODO: *"will eventually be replaced by
-`compute_current_density_si`"*. This means the codebase currently has two implementations
+`* mu_0`."* Line 707 of `mlx_solver.py` now uses `compute_current_density_si` directly
+(the HL→SI TODO was partially resolved; no bare replacement target comment remains). [POST-PR-B: 706→707, TODO resolved] This means the codebase currently has two implementations
 of "current density" with different unit conventions, and a third name
 (`compute_current_density`) that matches neither but appears in caller docstrings and
 test names.
 
 Callers (verified):
-- `src/dpf/metal/mlx_solver.py:706` (uses HL form, comments admit it should be SI)
+- `src/dpf/metal/mlx_solver.py:707` (uses HL form, comments admit it should be SI) [POST-PR-B: 706→707]
 - `src/dpf/metal/mlx_sources.py:463` (uses `_components` form)
 - `tests/test_mlx_sources.py:160`
 - `mlx_solver.py:706` references the eventual replacement target
@@ -112,7 +112,7 @@ the unit test is added first.
 ## D3. `mlx_engine.py:294` Hardcoded `back_emf=0.0`
 
 ### Description
-`src/dpf/metal/mlx_engine.py:294` calls
+`src/dpf/metal/mlx_engine.py:300` calls
 `circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)`.
 
 The lines immediately above (283-291) document why: the Auluck (2021) Poynting coupling
@@ -125,8 +125,7 @@ initializing B correctly at t=0 when I>0 (Beresnyak's approach).
 
 The mission brief flags this as a **Known Bug #3 unblock dependency**.
 
-(Note: mission said line 300; the call is actually on line 294 in the current HEAD.
-The hardcoded zero is the same defect.)
+[POST-PR-B: line confirmed at 300 (original note "294" was stale; 300 is current HEAD)]
 
 ### Impact
 - **High but contained.** As long as `back_emf=0.0`, the circuit sees only the
@@ -170,7 +169,7 @@ denominator rather than substituting from the next cell.
 
 The mission brief lists six consumers; verified consumers in non-worktree code:
 - `src/dpf/geometry/cylindrical.py:101` (calls `_safe_inv_r`)
-- `src/dpf/metal/mlx_sources.py:299` (open-coded, different formula)
+- `src/dpf/metal/mlx_sources.py:299` (open-coded, different formula); also `:408` [POST-PR-B: second open-coded site added at 408]
 - Five additional sites flagged in `app_mhd.py`, `app_plots.py`,
   `tests/test_neutron_yield.py`, `src/dpf/athenak_wrapper/athenak_io.py`,
   `src/dpf/validation/sedov_exact.py`, `src/dpf/validation/dynamic_zpinch.py` — each
@@ -326,11 +325,11 @@ the AAAPT device survey, or a different publication entirely.
 Verified remaining citations to "Lee 2014" in the active source tree (excluding
 `docs/`, `archive_reference_OLD/`, and worktree mirrors):
 
-- `src/dpf/presets.py:273, 283, 531` — three sites
+- `src/dpf/presets.py:267, 277, 525` — three sites [POST-PR-B: 273→267, 283→277, 531→525]
 - `src/dpf/metal/mlx_snowplow.py:92, 113, 118, 122, 134, 170, 191, 230, 240` — nine
-  sites
-- `src/dpf/fluid/snowplow.py:192, 453, 491` — three sites
-- `src/dpf/validation/experimental_devices.py:541, 551` — two sites
+  sites (line numbers confirmed unchanged)
+- `src/dpf/fluid/snowplow.py:192, 453, 491` — three sites (confirmed post-PR-B)
+- `src/dpf/validation/experimental_devices.py:548, 552` — two sites [POST-PR-B: 541→548, 551→552]
 
 That's 17 remaining occurrences in `src/`, plus another ~14 across `app_*.py` and
 `docs/*.md`. Without paper-on-disk verification (per CLAUDE.md "Physics Integrity
