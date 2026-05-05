@@ -5895,7 +5895,13 @@ def make_history(
 def surrogate():
     """Module-scoped DPFSurrogate backed by the real WALRUS checkpoint."""
     torch = pytest.importorskip("torch")  # noqa: F841
-    pytest.importorskip("walrus")
+    # NOTE: ``importorskip("walrus")`` is insufficient. The repo ships the
+    # WALRUS source at ``walrus/walrus/walrus/`` (sibling directory). The outer
+    # ``walrus/`` dir has no ``__init__.py``, so Python's namespace package
+    # mechanism makes ``import walrus`` succeed with an empty namespace --
+    # ``walrus.models.IsotropicModel`` is then unimportable. Skip on
+    # ``walrus.models`` to detect a real install.
+    pytest.importorskip("walrus.models")
     _skip_if_no_checkpoint_verif()
 
     from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001
