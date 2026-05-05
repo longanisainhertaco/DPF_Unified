@@ -440,7 +440,9 @@ class TestRadialPhaseMHD:
         I_now_0 = circuit.current
         E_ind_ext_0 = 0.5 * circuit.L_ext * I_now_0 ** 2
         E_res_0 = circuit.state.energy_res
-        E_total_0 = E_field_0 + E_cap_0 + E_ind_ext_0 + E_res_0
+        # Components (E_field_0, E_cap_0, E_ind_ext_0, E_res_0) are consumed
+        # individually in the circuit-energy conservation block below; the
+        # docstring's "E_total_0" sum is computed locally there as needed.
 
         # Simulation horizon: a few hundred ns is enough to traverse the
         # collapse ( ~1 cm at v_a ~ 5e5 m/s -> 20 ns transit, but the full
