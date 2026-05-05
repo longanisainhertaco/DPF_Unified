@@ -41,11 +41,24 @@ if os.path.isdir(_WORKTREE):
     if _wt_src not in sys.path:
         sys.path.insert(0, _wt_src)
 
+import inspect  # noqa: E402
 import math  # noqa: E402
 
 import numpy as np  # noqa: E402
+import pytest  # noqa: E402
 
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver  # noqa: E402
+
+# Toh ψ(n_i) limiter (PR #9) lands `use_toh_limiter` kwarg on
+# CylindricalMHDSolver. If this branch is testing pre-#9 main, skip the
+# whole module — the test exercises a feature that doesn't exist yet.
+_HAS_TOH_KWARG = "use_toh_limiter" in inspect.signature(
+    CylindricalMHDSolver.__init__
+).parameters
+pytestmark = pytest.mark.skipif(
+    not _HAS_TOH_KWARG,
+    reason="CylindricalMHDSolver lacks use_toh_limiter kwarg (PR #9 not landed)",
+)
 
 # ---------------------------------------------------------------------------
 # Helper — build a minimal solver with the right grid
