@@ -278,7 +278,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # RESF = r0/sqrt(L0/C0) = 12e-3/sqrt(110e-9/30e-6) = 0.198
         "circuit": {
             "C": 30e-6,           # 30 uF
-            "V0": 14e3,           # 14 kV
+            "V0": 15e3,           # 15 kV [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152 L12725]
             "L0": 110e-9,         # 110 nH
             "R0": 12e-3,          # 12 mOhm (RESF~0.2)
             "anode_radius": 0.0095,
