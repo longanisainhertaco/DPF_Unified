@@ -25,7 +25,6 @@ from dpf.metal.mlx_reconstruction import (
     reconstruct,
 )
 
-
 # ------------------------------------------------------------------
 # Eq. (31) sigmoid shape & limit cases
 # ------------------------------------------------------------------
