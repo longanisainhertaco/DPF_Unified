@@ -427,8 +427,21 @@ FAETON_DATA = ExperimentalDevice(
         "Damideh et al., Scientific Reports 15:23048, 2025; "
         "DOI: 10.1038/s41598-025-07939-x"
     ),
-    lee_fc=0.70, lee_fm=0.70, lee_fmr=0.10, lee_fcr=0.14,
-    lee_reference="Damideh et al., Sci. Rep. 15:23048 (2025); Lee co-author",
+    # Lee model parameters — KR audit (FAETON mass-fraction fix):
+    #   lee_fm (axial mass factor): UNVERIFIED — Damideh 2025 publishes ONLY radial fmr/fcr/fcr2
+    #     (see Table 3, §Simulation p.4-5). The prior value 0.70 was a misattribution of fcr (the
+    #     radial CURRENT factor reported in Table 3), not fm. Lowered to 0.13 — Lee-model published-fit
+    #     range for medium-large MA-class DPFs (PF-1000 fm=0.142 per Altarabulsi 2024 Table 1) until
+    #     per-shot axial fm is published by the Damideh authors.
+    #     [KR: experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense.md §Simulation p.4-5; Table 3 p.9]
+    #     [KR: original-deuteron-beam-fluence-emitted-from-dense-plasma-focus.md §3 Table 1 p.3 (PF-1000 fm=0.142)]
+    #   lee_fc, lee_fmr, lee_fcr: out of scope for this PR; pre-existing values retained.
+    lee_fc=0.70, lee_fm=0.13, lee_fmr=0.10, lee_fcr=0.14,
+    lee_reference=(
+        "Damideh et al., Sci. Rep. 15:23048 (2025); "
+        "axial fm UNVERIFIED — paper publishes only radial fmr/fcr/fcr2 (Table 3 p.9). "
+        "[KR: experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense.md §Simulation p.4-5]"
+    ),
     crowbar_resistance=0.0,        # No crowbar switch
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + Marx jitter)
     rise_time_uncertainty=0.10,    # 10% (not precisely stated)
