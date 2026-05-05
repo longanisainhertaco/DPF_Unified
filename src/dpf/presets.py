@@ -508,9 +508,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.30,
-            "current_fraction": 0.450,   # Calibrated: I_peak 3.175 MA (-0.47% vs 3.19 MA exp)
-            "mass_fraction": 0.450,      # Calibrated: Yn 7.24e10 (0.14 dec vs 1e11 exp)
-            "radial_mass_fraction": 0.45,  # IPFS Lee model fit (fmr)
+            # Lee model fits from KR Lee & Saw 2014 Table p.152 (POSEIDON @ 60 kV).
+            # [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152 line 12736]
+            # Prior values (fc=0.45, fm=0.45) were "Calibrated" knobs against
+            # I_peak / Yn — papers-are-truth + published-parameters-as-inputs-
+            # not-knobs violation. KR-canonical Lee fit values:
+            "current_fraction": 0.60,    # fc (Lee & Saw 2014 p.152) — was 0.450 calibrated
+            "mass_fraction": 0.275,      # fm (Lee & Saw 2014 p.152) — was 0.450 calibrated
+            "radial_mass_fraction": 0.45,  # fmr (Lee & Saw 2014 p.152)
+            "radial_current_fraction": 0.44,  # fcr (Lee & Saw 2014 p.152) — newly added
             "pinch_column_fraction": 0.14,
         },
     },
