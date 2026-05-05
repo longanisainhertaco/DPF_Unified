@@ -1,0 +1,105 @@
+# PR-B Post-Merge 72h Watch Report
+
+**HEAD:** `92a6316` — fix(physics+validation): KR-canonical re-anchor of devices and gates (#5)
+**Tag:** `pr-b-physics-recalibration-apr23`
+**Snapshot time:** T+72h (2026-04-30 → report captured 2026-04-30)
+**Previous snapshot:** 24h report not filed (Wave-6 O1 did not produce POST_MERGE_24H_REPORT.md)
+**Delta basis:** This is the first formal snapshot; no 24h baseline to diff against.
+
+---
+
+## 7-Metric Watch Table
+
+| # | Metric | 72h Value | Pass Gate | Status |
+|---|--------|-----------|-----------|--------|
+| 1 | Mean I_peak error (all devices) | 1/7 devices pass (PF-1000 only) | ≤ pre-PR-B baseline | FAIL |
+| 2 | PF-1000 27 kV I_peak error | +5.0% | ≤ 12% | PASS |
+| 3 | MJOLNIR pass/fail | FAIL — Yn_log_ratio +1.62 (gate <1 decade) | PASS | FAIL |
+| 4 | UNU-ICTP I_peak shift | +12.8% | Document delta; flag if >15% | PASS (documented, <15%) |
+| 5 | Energy conservation (cyl tests) | 183 passed, 0 failed | No regression | PASS |
+| 6 | Python vs MLX parity (parity suite) | 15 passed, 1 xfailed | NRMSE ≤ 1% | PASS |
+| 7 | CI test count | 3991 selected (4109 collected) | ≥ 3990 | PASS |
+
+**Summary: 4/7 PASS, 3/7 FAIL**
+
+---
+
+## Device Detail (cortana-dpf-validate all-device run)
+
+| Device | I_peak_dev% | t_peak_dev% | Yn_log_ratio | NRMSE | Status |
+|--------|------------|------------|-------------|-------|--------|
+| PF-1000 | +5.0% | +28.5% | +0.58 | 0.223 | PASS |
+| NX2 | +27.0% | +40.9% | +0.39 | N/A | FAIL |
+| UNU-ICTP | +12.8% | +29.7% | +1.00 | 0.067 | FAIL (Yn at gate limit) |
+| POSEIDON-60kV | +15.4% | +0.8% | +0.40 | 0.115 | FAIL |
+| MJOLNIR | +7.5% | +10.4% | +1.62 | 0.160 | FAIL |
+| FAETON-I | +60.4% | +4.8% | +1.76 | 0.077 | FAIL |
+| POSEIDON | ERROR | — | — | — | no validation data |
+
+---
+
+## Delta vs 24h Snapshot
+
+No POST_MERGE_24H_REPORT.md was produced by Wave-6 O1. No 48h delta computable.
+This report serves as the T+72h baseline for future comparisons.
+
+---
+
+## CI Main Status
+
+**FAILING** — run 25223563800 (2026-05-01 16:52, push of 92a6316)
+
+Failure mode: **lint only** (ruff, 21s job). Two violations:
+1. `I001` — unsorted import block in `src/dpf/validation/experimental.py:41`
+2. `F841` — unused local variable `E_total_0` in `tests/test_radial_phase_mhd.py:443`
+
+No test failures in CI. Prior two pushes (cross-backend PR #4 and degradation-cleanup PR #3) were green.
+
+**CI is lint-red on 92a6316. Not a rollback trigger. Requires a lint-fix commit.**
+
+---
+
+## Metric-by-Metric Notes
+
+**#1 Mean I_peak (FAIL)** — 1/7 passing is below any reasonable baseline. NX2 (+27%) and FAETON-I (+60.4%) are the outliers. These are likely known pre-existing issues, not PR-B regressions, but cannot be confirmed without the 24h baseline.
+
+**#2 PF-1000 (PASS)** — +5.0% is well within the 12% gate. The R0_mOhm 6.43→2.3 change from PR-B is holding. t_peak deviation (+28.5%) is high but not a gated metric.
+
+**#3 MJOLNIR (FAIL)** — I_peak at +7.5% passes the 15% gate, but Yn_log_ratio at +1.62 decades exceeds the <1 decade threshold. Per PR_B_WATCH_METRICS.md §3 notes: verify V0=100kV (Schmidt 2021 §III.A) is applied. If parameters are confirmed correct, this is not a rollback trigger (rollback requires FAIL + confirmed correct parameters).
+
+**#4 UNU-ICTP (documented)** — +12.8% I_peak is below the 15% flag threshold. Yn_log_ratio at +1.00 is exactly at gate; marked FAIL by the validator but borderline. Per watch spec, this is a known residual — log to ARCHITECTURAL_DEBT, do not gate.
+
+**#5 Cylindrical energy conservation (PASS)** — 183 cyl tests pass. The /mu_0 pressure fix (3c6d3cf) is not causing energy drift. Numba parallel warning on `_plm_div_B_parallel` is cosmetic.
+
+**#6 MLX parity (PASS)** — 15 parity tests pass, 1 xfailed (expected). Heat flux overflow `RuntimeWarning` in `mhd_solver.py:1275,1278` during parity tests: float32 brem floor known issue, does not affect NRMSE gate. Not a rollback trigger per spec.
+
+**#7 Test count (PASS)** — 3991 ≥ 3990 gate. Margin is 1. Any further test deletion will breach.
+
+---
+
+## Rollback Assessment
+
+None of the four rollback triggers are met:
+- PF-1000 I_peak error is +5.0% (gate: >12% AND no root cause in 2h)
+- No energy conservation failure on cyl 256²
+- CI test count 3991 ≥ 3950 floor
+- MJOLNIR fail requires confirmed-correct Schmidt 2021 parameters first
+
+**No rollback warranted.**
+
+---
+
+## Action Items
+
+| Priority | Item | Owner |
+|----------|------|-------|
+| P1 | Fix ruff lint (I001 + F841) — CI is red on main | dpf-engine-architect |
+| P1 | Confirm MJOLNIR V0=100kV applied per Schmidt 2021 §III.A | dpf-mhd-physicist |
+| P2 | Investigate FAETON-I +60.4% I_peak — likely pre-existing | dpf-validation-engineer |
+| P2 | NX2 +27% I_peak — cross-check C=28µF fix from known preset error | dpf-validation-engineer |
+| P3 | UNU-ICTP Yn_log_ratio 1.00 — log to ARCHITECTURAL_DEBT | dpf-validation-engineer |
+| P3 | Test count margin is 1 — audit for fragile test | any |
+
+---
+
+*Report generated by dpf-validation-engineer at T+72h post-merge of 92a6316.*
