@@ -412,7 +412,7 @@ FAETON_DATA = ExperimentalDevice(
 
 
 MJOLNIR_DATA = ExperimentalDevice(
-    name="MJOLNIR",
+    name="MJOLNIR-1MJ",
     institution="Lawrence Livermore National Laboratory",
     # All circuit + geometry values from Schmidt et al. 2021 §III.A
     # [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging.md §III.A lines 145-159]
@@ -448,7 +448,15 @@ MJOLNIR_DATA = ExperimentalDevice(
     waveform_uncertainty_type="reconstruction",
     waveform_provenance="reconstructed",
     lee_fc=0.70, lee_fm=0.50, lee_fmr=0.10, lee_fcr=0.14,
-    lee_reference="Gemini research synthesis (2026-03-13); Lee model conventions",
+    lee_reference=(
+        "UNVERIFIED: no published Lee model fit on disk for MJOLNIR 1-MJ "
+        "configuration. Prior 'Gemini research synthesis (2026-03-13)' tag was a "
+        "papers-are-truth violation -- LLM-generated, not paper-anchored. Schmidt "
+        "2021 §III.A characterizes the bank/geometry but does not publish "
+        "fc/fm/fmr/fcr. LLNL uses Chicago PIC code, not Lee model. To resolve: "
+        "retrieve a paper publishing Lee fits for the 3-tower / 12-module 1-MJ "
+        "configuration, or accept that this device cannot be Lee-validated."
+    ),
     measurement_notes=(
         "MJOLNIR (MegaJOuLe Neutron Imaging Radiography): MA-class DPF at LLNL. "
         "ATLAS-heritage pulsed power: 1-MJ configuration uses three Marx towers "
@@ -473,6 +481,76 @@ MJOLNIR_DATA = ExperimentalDevice(
         "3.7-3.8 MA / >1e12 DD neutrons with rebuilt 24-module bank (Schmidt 2024); "
         "1.84e12 DT neutrons at 2 MA (Schmidt 2024). "
         "LLNL uses Chicago PIC code for simulation, not Lee model."
+    ),
+)
+
+
+# MJOLNIR 2-MJ Goyon configuration — companion to MJOLNIR_DATA (Schmidt 1-MJ).
+# These are different physical configurations of the same machine: the 1-MJ
+# version (3 Marx towers, 12 modules) was characterized by Schmidt 2021 §III.A;
+# the 2-MJ upgrade (6 towers, 24 modules) is characterized by Goyon 2025 + Petrov 2022.
+# Validation against a single "MJOLNIR" entry conflated the two configurations
+# and produced apples-to-oranges error metrics. Splitting per Wave-7 S18 drift
+# table HIGH-severity recommendation; preset "mjolnir" remains the 2-MJ Goyon
+# configuration and now correctly pairs with MJOLNIR_2MJ_DATA.
+#
+# [KR: petrov-2022-mjolnir-high-low-discharges.md §II.A L228-232]
+#   "Estimated lumped circuit parameters for the bank, including protective
+#    resistors is 408 µF capacitance, with 46.7 nH inductance and 6.3 mOhm
+#    resistance."
+# [KR: neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md §II.A]
+#   "228.6 mm diameter copper anode" -> a = 0.1143 m
+#   "60 kV / 735 kJ stored / 2.8 MA peak / 2.1 MA at stagnation"
+#   "24 cathode rods around anode"; "anode-cathode gap is fixed at 4.3 cm"
+MJOLNIR_2MJ_DATA = ExperimentalDevice(
+    name="MJOLNIR-2MJ",
+    institution="Lawrence Livermore National Laboratory",
+    capacitance=408e-6,            # 408 uF (Petrov 2022 §II.A L230, lumped)
+    voltage=60e3,                  # 60 kV typical (Goyon 2025 §IV)
+    inductance=46.7e-9,            # 46.7 nH (Petrov 2022 §II.A L230, lumped)
+    resistance=6.3e-3,             # 6.3 mOhm (Petrov 2022 §II.A L230, lumped)
+    anode_radius=0.1143,           # 114.3 mm = 228.6 mm OD / 2 (Goyon 2025 §II.A)
+    cathode_radius=0.157,          # 157 mm (Goyon 2025: 24-rod cage; 4.3 cm gap)
+    anode_length=0.20,             # 200 mm (Schmidt 2021 §III.A range; 2-MJ inherits)
+    fill_pressure_torr=6.0,        # 6 Torr D2 (Goyon 2025 §IV operating point)
+    fill_gas="deuterium",
+    peak_current=2.8e6,            # 2.8 MA peak (Goyon 2025 §IV at 60 kV)
+    neutron_yield=8e11,            # 8e11 D-D peak demonstrated (Goyon 2025 line 64)
+    current_rise_time=8.7e-6,      # T/4 = pi/2 * sqrt(L*C) = pi/2 * sqrt(46.7e-9 * 408e-6) = 6.9 us; rounded up for damping
+    reference=(
+        "Goyon et al., Phys. Plasmas 32:033105 (2025); "
+        "Petrov et al., LLNL-JRNL-831591 (2022) "
+        "[KR: petrov-2022-mjolnir-high-low-discharges.md §II.A L228-232; "
+        "KR: neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md §II.A]"
+    ),
+    crowbar_resistance=1.5e-3,     # estimated spark gap
+    peak_current_uncertainty=0.08,
+    rise_time_uncertainty=0.15,
+    neutron_yield_uncertainty=0.50,
+    waveform_t=_MJOLNIR_WAVEFORM_T_US * 1e-6,
+    waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,
+    waveform_amplitude_uncertainty=0.10,
+    waveform_time_uncertainty=0.03,
+    waveform_uncertainty_type="reconstruction",
+    waveform_provenance="reconstructed",
+    lee_fc=0.70, lee_fm=1.0, lee_fmr=0.10, lee_fcr=0.14,
+    lee_reference=(
+        "UNVERIFIED: no published Lee model fit on disk for the 2-MJ configuration. "
+        "Values carried from preset 'mjolnir' calibration (papers-are-truth violation; "
+        "fm=1.0 was RADPF-target-fitted to 2.8 MA at 60 kV). To resolve: retrieve a "
+        "paper publishing fc/fm/fmr/fcr for the 6-tower / 24-module Goyon 2025 config "
+        "(Schmidt 2024 follow-up promised in Schmidt 2021 line 626 'future work')."
+    ),
+    measurement_notes=(
+        "MJOLNIR 2-MJ upgrade configuration (6 Marx towers, 24 single-stage modules; "
+        "Goyon 2025 §II.A L107-114). 2 MJ stored energy at maximum voltage; 60 kV "
+        "operating point used for §IV data with 735 kJ stored and 2.8 MA peak / 2.1 MA "
+        "at stagnation (Goyon 2025 L429-431). Anode 228.6 mm OD copper, 24 cathode rods, "
+        "4.3 cm A-K gap (Goyon 2025 L122). Lumped C/L/R from Petrov 2022 §II.A L228-232 "
+        "(snowplow-fit estimate; no shorted-load measurement available for 2-MJ). "
+        "Schmidt 2024 reports rebuilt 24-module bank delivering 3.7-3.8 MA / >1e12 DD "
+        "neutrons; that paper is NOT on disk so the 2.8 MA / 8e11 figures from Goyon "
+        "2025 are the canonical anchors here."
     ),
 )
 
@@ -537,7 +615,11 @@ DEVICES: dict[str, ExperimentalDevice] = {
     "UNU-ICTP": UNU_ICTP_DATA,       # kr_status="verified" — Lee & Saw 2014 Table p.152
     "POSEIDON-60kV": POSEIDON_60KV_DATA,  # kr_status="verified" — Lee & Saw 2014 Table p.152
     "FAETON-I": FAETON_DATA,
-    "MJOLNIR": MJOLNIR_DATA,
+    "MJOLNIR-1MJ": MJOLNIR_DATA,        # Schmidt 2021 §III.A 1-MJ baseline (3 towers)
+    "MJOLNIR-2MJ": MJOLNIR_2MJ_DATA,    # Goyon 2025 + Petrov 2022 2-MJ upgrade (6 towers)
+    "MJOLNIR": MJOLNIR_2MJ_DATA,        # alias: preset "mjolnir" runs 2-MJ Goyon config
+                                         # so default validation pairs with that.
+                                         # Use "MJOLNIR-1MJ" for Schmidt baseline validation.
 }
 
 # Devices excluded from DEVICES because their parameters cannot be sourced from
