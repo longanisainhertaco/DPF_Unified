@@ -48,7 +48,13 @@ def validate_against_published(
         return None
 
     sim_I_peak = data.get("I_pre_dip") or data.get("I_peak", 0.0)
-    sim_t_peak = data.get("t_pre_dip") or data.get("t_peak", 0.0)
+    # t_peak_dev_pct must use the global current maximum time, not t_pre_dip.
+    # t_pre_dip is the local peak inside the 0.5 us radial-entry window used for
+    # dip-depth baseline (FAETON fix, Wave-5 O3). For non-FAETON devices that reach
+    # global I_peak before radial onset (e.g. POSEIDON-60kV), t_pre_dip is a sub-peak
+    # well before t_peak, causing a spurious +70.5% t_peak error (Wave-6 S13 regression).
+    # t_peak is always the global argmax and is correct for all devices.
+    sim_t_peak = data.get("t_peak", 0.0)
 
     ref_I = dev.peak_current / 1e6
     ref_t = dev.current_rise_time * 1e6
