@@ -39,6 +39,8 @@ import numpy as np
 
 from dpf.constants import k_B, m_D2
 from dpf.validation.experimental import _find_first_peak
+from dpf.validation.experimental_device import ExperimentalDevice
+from dpf.validation.experimental_devices import PF1000_DATA
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +83,13 @@ class EngineValidationResult:
 
 
 def run_rlc_snowplow_pf1000(
+    device: ExperimentalDevice = PF1000_DATA,
     *,
     sim_time: float = 10e-6,
     dt: float = 1e-9,
-    fc: float = 0.70,
-    fm: float = 0.13,
-    f_mr: float = 0.35,
+    fc: float | None = None,
+    fm: float | None = None,
+    f_mr: float | None = None,
     pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
     crowbar_enabled: bool = True,
@@ -98,19 +101,28 @@ def run_rlc_snowplow_pf1000(
     Both the RLCSolver (implicit midpoint) and the SnowplowModel are
     the same code paths used by SimulationEngine.
 
+    SSoT (D1-A): Device parameters (C, V0, L0, R0, a, b, z_max, p_torr)
+    and Lee fit parameters (fc, fm, f_mr) default to the published values
+    on the ``device`` argument (default: ``PF1000_DATA`` from
+    ``dpf.validation.experimental_devices``). Calling with no arguments
+    reproduces the prior hardcoded behavior bit-for-bit. Explicit ``fc``,
+    ``fm``, ``f_mr`` overrides are honored when not None; otherwise they
+    fall back to ``device.lee_fc``, ``device.lee_fm``, ``device.lee_fmr``.
+
     Args:
+        device: Published experimental device. Default ``PF1000_DATA``
+            (PF-1000 at 27 kV / 3.5 Torr D2 per Akel 2021 + Scholz 2006).
         sim_time: Total simulation time [s]. Default 10 us.
         dt: Timestep [s]. Default 1 ns (fine enough for ~24 kHz dynamics).
-        fc: Current fraction (Lee's f_c).  Default 0.70 from Malek et al.
-            2025 (Plasma Phys. Technol. 12(1):1) PF1000 published fit at
-            3.5 Torr D2; matches Lee 2014 (JFE 33:319) Fig. 7 KSU fit.
-            The previous default 0.816 came from in-codebase "Phase AC
-            calibration" and was outside the paper-attested range.
-        fm: Mass fraction (Lee's f_m).  Default 0.13 from Malek et al. 2025
-            PF1000 fit; Lee 2014 Fig. 7 KSU PF gives fm=0.10.
-        f_mr: Radial mass fraction (Lee's f_mr).  Default 0.35 from
-            Malek et al. 2025 PF1000 fit (previous default 0.1 came from
-            the generic "Lee & Saw 2014" reference without in-paper citation).
+        fc: Current fraction (Lee's f_c). When ``None``, falls back to
+            ``device.lee_fc`` (PF1000_DATA: 0.70 from Malek et al. 2025
+            Plasma Phys. Technol. 12(1):9 §3 lines 177-180; matches
+            Lee 2014 JFE 33:319 Fig. 7 KSU fit).
+        fm: Mass fraction (Lee's f_m). When ``None``, falls back to
+            ``device.lee_fm`` (PF1000_DATA: 0.13 from Malek et al. 2025).
+        f_mr: Radial mass fraction (Lee's f_mr). When ``None``, falls
+            back to ``device.lee_fmr`` (PF1000_DATA: 0.35 from
+            Malek et al. 2025).
         pinch_column_fraction: Fraction of anode length for radial phase.
             For PF-1000: 0.14 (effective pinch column ~67 mm of 480 mm
             anode per Akel 2021). This controls the current dip depth
@@ -125,27 +137,33 @@ def run_rlc_snowplow_pf1000(
     from dpf.core.bases import CouplingState
     from dpf.fluid.snowplow import SnowplowModel
 
-    # PF-1000 device parameters.
-    # Sources (paper-on-disk):
-    #   Akel et al. 2021, "Estimating the Neutron Yield in PF-1000 ...,"
-    #     references/papers/core-dpf/akel-2021-pf1000-neutron-yield.pdf
-    #     - p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"
-    #     - p.2: "Bank: L0 = 25 nH, C0 = 1332 mu F, r0 = 6.1 m Ohm"
-    #     - Table 1 (23 shots): L0 = 25.0 nH consistently.
-    #   Scholz et al. 2006, Nukleonika 51(1):79-84,
-    #     references/papers/core-dpf/scholz-2006-pf1000-mega-joule.pdf
-    #     gives the operating point: V0 = 27 kV at p0 = 3.5 Torr D2.
-    # Previous values L0 = 33.5 nH and z_max = 0.60 m did not match the
-    # device geometry reported by either source (P1.3 source-of-truth
-    # unification; aligns with EPSILON FIX-E1 in experimental_devices.py).
-    C = 1.332e-3        # F  (Akel 2021 Bank, "C0 = 1332 mu F")
-    V0 = 27e3           # V  (Scholz 2006 operating point)
-    L0 = 25e-9          # H  (Akel 2021 Bank, "L0 = 25 nH"; was 33.5e-9)
-    R0 = 2.3e-3         # Ohm — 2.3 mOhm bare-bank (Scholz 2006 short-circuit). Wave-10 RCA: 6.1 mOhm conflates plasma + bank R; plasma enters via sheath model.
-    a = 0.115           # anode radius [m]  (Akel 2021 anode dia 231 mm -> r=115.5 mm)
-    b = 0.16            # cathode radius [m]
-    z_max = 0.48        # anode length [m]  (Akel 2021 "480 mm"; was 0.60)
-    p_torr = 3.5        # Torr D2 (Scholz 2006 operating point)
+    # Device parameters sourced from the ExperimentalDevice SSoT
+    # (D1-A unification — see experimental_devices.py for paper citations).
+    # PF1000_DATA (default) values:
+    #   C = 1.332 mF, V0 = 27 kV (Akel 2021 Bank; Scholz 2006 operating point)
+    #   L0 = 25 nH (Akel 2021 Table 1 — 23 shots)
+    #   R0 = 2.3 mOhm (Scholz 2006 bare-bank short-circuit; Wave-10 RCA:
+    #     6.1 mOhm conflates plasma + bank R; plasma enters via sheath model)
+    #   a = 0.115 m (Akel 2021 anode dia 231 mm)
+    #   b = 0.160 m (cathode radius)
+    #   z_max = 0.48 m (Akel 2021 "480 mm long coaxial electrodes")
+    #   p_torr = 3.5 (Scholz 2006 operating point)
+    C = device.capacitance
+    V0 = device.voltage
+    L0 = device.inductance
+    R0 = device.resistance
+    a = device.anode_radius
+    b = device.cathode_radius
+    z_max = device.anode_length
+    p_torr = device.fill_pressure_torr
+
+    # Lee model fit parameters: explicit overrides win, else use device defaults.
+    if fc is None:
+        fc = device.lee_fc
+    if fm is None:
+        fm = device.lee_fm
+    if f_mr is None:
+        f_mr = device.lee_fmr
 
     # Fill density from ideal gas law
     p_Pa = p_torr * 133.322
