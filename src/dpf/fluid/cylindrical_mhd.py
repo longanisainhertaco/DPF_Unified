@@ -359,6 +359,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         time_integrator: str = "ssp_rk3",
         conservative_energy: bool = True,
         use_godunov_flux: bool = False,
+        enable_sun2025_wall_bcs: bool = False,
+        inlet_low_v_low_rho: bool = False,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -375,6 +377,13 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.conservative_energy = conservative_energy
         self.use_godunov_flux = use_godunov_flux
+        # Sun 2025 §2.4 Eq.18 wall BCs on AF/EF/BC electrode bodies.
+        # Verbatim Eq.18: ∂B/∂n=0, ∂Ti/∂n=0, ∂Te/∂n=0, u_n=0.
+        # AB inlet (closed face z=0) is low-v low-ρ inflow; only zero
+        # u_n at the closed face when no inlet inflow is being driven there.
+        # KR: 2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md §2.4 lines 516-537
+        self.enable_sun2025_wall_bcs = enable_sun2025_wall_bcs
+        self.inlet_low_v_low_rho = inlet_low_v_low_rho
         self._last_eta_max = 0.0  # For resistive diffusion CFL
         self._last_div_B: float = 0.0
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
@@ -1322,6 +1331,90 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B = self._unsqueeze(B)
         return B
 
+    def apply_sun2025_wall_bcs(
+        self,
+        vel: np.ndarray,
+        Te: np.ndarray,
+        Ti: np.ndarray,
+        e_electron: np.ndarray | None,
+        anode_radius: float,
+        cathode_radius: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
+        """Apply Sun 2025 §2.4 Eq.18 electrode wall BCs.
+
+        Verbatim Sun 2025 Eq.18 (electrode surfaces AF, EF, BC):
+
+            ∂B/∂n  = 0
+            ∂Ti/∂n = 0
+            ∂Te/∂n = 0
+            u_n    = 0
+
+        Plus AB closed-face condition: low-v low-ρ inflow when
+        ``inlet_low_v_low_rho`` is True, else the closed face is treated
+        as a wall (u_n = 0 at z=0).
+
+        - AF / EF: anode column at r = anode_radius (radial walls; n = r̂,
+          so set v_r = 0 and zero-gradient T across radial neighbour).
+        - BC: cathode column at r = cathode_radius (radial walls; n = r̂,
+          so set v_r = 0 and zero-gradient T across radial neighbour).
+        - AB inlet (z=0): if inlet not active, set v_z = 0 and zero-gradient T.
+
+        ∂B/∂n = 0 is already enforced for B_θ by ``apply_electrode_bfield_bc``
+        (which sets B_θ = μ₀I/(2πr) on electrode columns). This routine
+        handles the velocity and temperature pieces of Eq.18.
+
+        Args:
+            vel: Velocity field (3, nr, nz).
+            Te: Electron temperature (nr, nz) [K].
+            Ti: Ion temperature (nr, nz) [K].
+            e_electron: Electron internal energy density (nr, nz) [J/m³] or None.
+            anode_radius: Anode radius [m].
+            cathode_radius: Cathode radius [m].
+
+        Returns:
+            (vel, Te, Ti, e_electron) with Eq.18 BCs applied.
+        """
+        r = self.geom.r  # (nr,)
+        idx_anode = int(np.argmin(np.abs(r - anode_radius)))
+        idx_cath = int(np.argmin(np.abs(r - cathode_radius)))
+
+        # AF/EF anode body (radial wall, n = r̂): u_n = v_r = 0, ∂T/∂n = 0
+        if anode_radius > 0 and idx_anode > 0:
+            vel[0, idx_anode, :] = 0.0
+            # Zero-gradient ghost: copy from radial interior neighbour (cell idx_anode + 1)
+            if idx_anode + 1 < self.nr:
+                Te[idx_anode, :] = Te[idx_anode + 1, :]
+                Ti[idx_anode, :] = Ti[idx_anode + 1, :]
+                if e_electron is not None:
+                    e_electron[idx_anode, :] = e_electron[idx_anode + 1, :]
+
+        # BC cathode body (radial wall, n = r̂): u_n = v_r = 0, ∂T/∂n = 0
+        if cathode_radius > 0:
+            vel[0, idx_cath, :] = 0.0
+            # Zero-gradient ghost: copy from radial interior neighbour (cell idx_cath - 1)
+            if idx_cath - 1 >= 0:
+                Te[idx_cath, :] = Te[idx_cath - 1, :]
+                Ti[idx_cath, :] = Ti[idx_cath - 1, :]
+                if e_electron is not None:
+                    e_electron[idx_cath, :] = e_electron[idx_cath - 1, :]
+
+        # AB closed face (z=0). When the AB inlet is not actively driving
+        # low-v low-ρ inflow (inlet_low_v_low_rho=False), Eq.18 treats it
+        # as a wall: u_n = v_z = 0 and ∂T/∂n = 0.
+        if not self.inlet_low_v_low_rho:
+            # Restrict the wall to the inter-electrode annulus (between anode
+            # and cathode columns) — the geometric closed face at z=0.
+            ir_lo = max(idx_anode, 0)
+            ir_hi = min(idx_cath + 1, self.nr)
+            vel[2, ir_lo:ir_hi, 0] = 0.0
+            if self.nz > 1:
+                Te[ir_lo:ir_hi, 0] = Te[ir_lo:ir_hi, 1]
+                Ti[ir_lo:ir_hi, 0] = Ti[ir_lo:ir_hi, 1]
+                if e_electron is not None:
+                    e_electron[ir_lo:ir_hi, 0] = e_electron[ir_lo:ir_hi, 1]
+
+        return vel, Te, Ti, e_electron
+
     def _euler_stage(
         self,
         rho: np.ndarray,
@@ -1635,6 +1728,18 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         T_max = 1.16e9  # 100 keV in Kelvin
         Te_new = np.minimum(Te_new, T_max)
         Ti_new = np.minimum(Ti_new, T_max)
+
+        # Sun 2025 §2.4 Eq.18 wall BCs: u_n=0, ∂Te/∂n=0, ∂Ti/∂n=0 on AF/EF/BC.
+        # Opt-in via constructor flag — does not change default behavior.
+        # KR: 2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md §2.4 lines 516-537
+        if self.enable_sun2025_wall_bcs and (anode_radius > 0 or cathode_radius > 0):
+            vel_new, Te_new, Ti_new, e_e_new = self.apply_sun2025_wall_bcs(
+                vel_new, Te_new, Ti_new, e_e_new,
+                anode_radius=anode_radius,
+                cathode_radius=cathode_radius,
+            )
+            # Re-sync momentum after velocity zeroing on walls.
+            mom_new = rho_new[np.newaxis, :, :] * vel_new
 
         # --- Update coupling ---
         # Lp from magnetic energy: Lp = 2*W_mag/I² = ∫B²/µ₀ dV / I²
