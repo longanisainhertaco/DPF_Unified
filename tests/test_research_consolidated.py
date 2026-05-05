@@ -1588,7 +1588,7 @@ class TestAmplitudeUncertainty:
         assert dev.waveform_uncertainty_type == "reconstruction"
 
     def test_mjolnir_reconstruction_10pct(self):
-        dev = DEVICES["MJOLNIR"]
+        dev = DEVICES["MJOLNIR-1MJ"]
         assert dev.waveform_amplitude_uncertainty == pytest.approx(0.10, abs=0.01)
         assert dev.waveform_uncertainty_type == "reconstruction"
 
@@ -1904,15 +1904,15 @@ class TestMJOLNIRGeometry:
 
     def test_anode_radius_corrected(self):
         # 0.076 m = 15.2 cm dia / 2 (Schmidt 2021 §III.A line 156)
-        assert DEVICES["MJOLNIR"].anode_radius == pytest.approx(0.076, abs=0.002)
+        assert DEVICES["MJOLNIR-1MJ"].anode_radius == pytest.approx(0.076, abs=0.002)
 
     def test_cathode_radius(self):
         # 0.119 m = 0.076 m anode + 0.043 m A-K gap (Schmidt 2021 §III.A line 159)
-        assert DEVICES["MJOLNIR"].cathode_radius == pytest.approx(0.119, abs=0.002)
+        assert DEVICES["MJOLNIR-1MJ"].cathode_radius == pytest.approx(0.119, abs=0.002)
 
     def test_ak_gap(self):
         # 0.043 m A-K gap (Schmidt 2021 §III.A line 159: "4.3 cm")
-        dev = DEVICES["MJOLNIR"]
+        dev = DEVICES["MJOLNIR-1MJ"]
         gap = dev.cathode_radius - dev.anode_radius
         assert gap == pytest.approx(0.043, abs=0.003)
 
@@ -1925,7 +1925,7 @@ class TestMJOLNIRGeometry:
           (15.2 cm dia)
           [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-
           the-megajoule-neutron-imaging.md §IV] I_peak ~ 2.5 MA at 1 MJ;
-          DEVICES["MJOLNIR"].peak_current = 2.8 MA from Goyon 2025.
+          DEVICES["MJOLNIR-1MJ"].peak_current = 2.8 MA from Goyon 2025.
           [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-
           the-megajoule-neutron-imaging.md §III.A] fill = 7 Torr D2 estimate
           (paper does not state pressure verbatim; pressure scans were performed).
@@ -1949,7 +1949,7 @@ class TestMJOLNIRGeometry:
         super-driven, not as a paper-validated acceptance gate.
         """
         from dpf.validation.experimental import compute_speed_factor
-        dev = DEVICES["MJOLNIR"]
+        dev = DEVICES["MJOLNIR-1MJ"]
         result = compute_speed_factor(
             dev.peak_current, dev.anode_radius, dev.fill_pressure_torr,
         )
