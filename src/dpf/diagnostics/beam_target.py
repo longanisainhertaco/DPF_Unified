@@ -251,25 +251,45 @@ def beam_target_yield_rate(
     n_target: float,
     L_target: float,
     f_beam: float = 0.14,
+    tau_dwell: float = 0.0,
 ) -> float:
     """Beam-target DD neutron production rate [1/s].
 
     Lee/Saw KR-canonical form (default since 2026-04-27). See
     `beam_target_yield_lee_saw` for the unwrapped per-shot yield form.
 
-    Wraps KR eq. 1 [KR L5125-5128] into the legacy 4+1-arg call signature:
-        n_i      <- n_target
-        I_pinch  <- I_pinch (unchanged)
-        z_p      <- L_target
-        V_max    <- V_pinch
-        ln(b/r_p) defaults to canonical PF-1000 value 2.633
+    KR eq. 1 [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-
+    s-h-saw-part-1-basic-course.md §"beam-target yield" L4080-4087 p.18]
+    is verbatim:
 
-    The Lee/Saw form returns total yield per shot. To preserve the legacy
-    rate-returning contract, the result is divided by the beam-pinch
-    interaction time tau ~ r_p / v_beam ~ z_p / v_beam (using L_target as
-    the transit length proxy and v_beam from E_beam=3*V_max). f_beam acts
-    as a multiplicative scaling around the calibrated baseline of 0.14
-    (so f_beam=0.14 reproduces the unscaled Lee/Saw form).
+        Yb-t = Cn * n_i * I_pinch^2 * z_p^2 * ln(b/r_p) * sigma / V_max^(1/2)   (1)
+
+    This is a PER-SHOT total yield [neutrons], NOT a rate. The published
+    calibration (Yn = 7e9 at I_pinch = 0.5 MA, KR L4103-4104) is a
+    single-shot scalar. The derivation at KR L4064-4078 (p.18) carries
+    the beam-target interaction time tau through the proportionality
+    Yb-t ~ nb*ni*(rp^2*zp)*(sigma*vb)*tau, and the substitutions
+    nb ~ Lp*I^2/vb^2, tau ~ rp ~ zp, vb ~ U^(1/2) collapse tau into the
+    geometric and voltage factors of eq. (1). The tau is already absorbed.
+
+    BUG HISTORY (fixed 2026-05-04, MJOLNIR-2MJ Yn 41x over-prediction):
+    The previous wrapper divided Yn_total by a beam transit time
+    tau_transit = L_target/v_beam ~ 1 ns, then callers integrated
+    dY_dt * dt over a ~30-50 ns pinch dwell, double-counting tau and
+    over-predicting by 30-50x. Exact match to the 41x MJOLNIR anomaly.
+
+    CORRECT NORMALIZATION: divide the per-shot Yn by the pinch dwell
+    time tau_dwell (the duration over which the beam-target reaction
+    occurs). When the caller integrates dY_dt * dt over a window of
+    length tau_dwell, the time-integral recovers Yn_total exactly.
+    Per KR L4068-4069 (p.18): "tau is the beam-target interaction time
+    assumed proportional to the confinement time of the plasma column."
+
+    The caller MUST pass tau_dwell explicitly (the pinch dwell time
+    over which it intends to integrate). If tau_dwell <= 0 the function
+    returns 0.0 and emits no yield; callers that cannot supply a dwell
+    time should use `beam_target_yield_lee_saw` directly and gate the
+    per-shot yield to a single MHD timestep at peak compression.
 
     Args:
         I_pinch: Pinch current [A].
@@ -277,12 +297,22 @@ def beam_target_yield_rate(
         n_target: Target deuterium number density [m^-3] (KR n_i).
         L_target: Pinch column length [m] (KR z_p).
         f_beam: Multiplicative scaling around 0.14 baseline. Range [0,1].
+        tau_dwell: Pinch dwell time [s] over which the caller integrates
+            dY/dt to recover the per-shot total. MUST be > 0; if 0 or
+            negative, returns 0.0 (the caller should switch to a one-shot
+            yield gate via `beam_target_yield_lee_saw`).
 
     Returns:
-        Beam-target neutron production rate dY/dt [1/s]. Zero if any
-        input is non-positive.
+        Beam-target neutron production rate dY/dt [1/s]. The time-integral
+        of dY/dt over tau_dwell equals f_beam_scale * Yn_total per KR eq. 1.
+        Zero if any input is non-positive or tau_dwell is non-positive.
     """
     if I_pinch <= 0.0 or V_pinch <= 0.0 or n_target <= 0.0 or L_target <= 0.0:
+        return 0.0
+    if tau_dwell <= 0.0:
+        # Refuse to emit a rate without an explicit dwell time. This
+        # prevents the historical bug where tau_transit ~ 1 ns was used
+        # implicitly while callers integrated over ~30-50 ns pinch dwells.
         return 0.0
 
     # Clamp f_beam to physical range and scale around 0.14 baseline so
@@ -312,15 +342,11 @@ def beam_target_yield_rate(
         / np.sqrt(V_pinch)
     )
 
-    # Convert to rate: divide by beam-pinch interaction time
-    # tau ~ L_target / v_beam, where v_beam from E_lab = (1/2) m_d v_beam^2
-    # m_d ~ 3.344e-27 kg, E_lab in J = E_lab_keV * 1.602e-16
-    E_lab_J = E_lab_keV * 1.602e-16
-    m_d = 3.34358377e-27
-    v_beam = np.sqrt(2.0 * E_lab_J / m_d)
-    tau = L_target / max(v_beam, 1.0)
-
-    dY_dt = fb_scale * Yn_total / max(tau, 1.0e-15)
+    # Spread the per-shot total uniformly over the explicit dwell time so
+    # that the caller's time-integral of dY_dt * dt over [t_pinch_start,
+    # t_pinch_start + tau_dwell] recovers Yn_total. Any integration
+    # window mismatch is the caller's responsibility, not the wrapper's.
+    dY_dt = fb_scale * Yn_total / tau_dwell
 
     return max(dY_dt, 0.0)
 
