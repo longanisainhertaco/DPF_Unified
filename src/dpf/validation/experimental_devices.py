@@ -92,7 +92,7 @@ NX2_DATA = ExperimentalDevice(
     peak_current=400e3,            # 400 kA (Lee & Saw 2008)
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
-    reference="Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1",
+    reference="Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1 [KR: the-code-uses-a-phenomenological-mechanism-for-beam-target-production-of-fusion-.md Table 1]",
     lee_fc=0.7, lee_fm=0.10, lee_fmr=0.12, lee_fcr=0.7,
     lee_reference="Lee & Saw, J. Fusion Energy 27:292 (2008)",
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
