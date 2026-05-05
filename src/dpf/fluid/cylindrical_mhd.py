@@ -47,8 +47,24 @@ from dpf.fluid.mhd_solver import (
     _weno5_reconstruct_1d,
 )
 from dpf.geometry.cylindrical import CylindricalGeometry
+from dpf.metal.floor_telemetry import apply_floor
 
 logger = logging.getLogger(__name__)
+
+# Local floor magnitudes used by the cylindrical MHD path. These preserve the
+# pre-migration values exactly. A follow-up commit may consolidate these onto
+# the centralized constants in dpf.metal.constants (RHO_FLOOR/P_FLOOR=1e-12)
+# once we verify the looser values are not load-bearing for stability.
+_CYL_RHO_FLOOR_RECON: float = 1e-20   # Reconstructed-state density floor
+_CYL_RHO_FLOOR_HLL: float = 1e-30     # HLL Riemann-input density floor
+_CYL_P_FLOOR_RECON: float = 1e-20     # Reconstructed-state pressure floor
+_CYL_P_FLOOR_HLL: float = 1e-20       # HLL Riemann-input pressure floor
+_CYL_RHO_FLOOR_STATE: float = 1e-10   # End-of-stage density state floor
+_CYL_P_FLOOR_STATE: float = 1e-20     # End-of-stage pressure state floor
+_CYL_E_FLOOR_STATE: float = 1e-20     # End-of-stage total-energy state floor
+_CYL_EE_FLOOR: float = 0.0            # Electron internal-energy positivity floor
+_CYL_NE_FLOOR: float = 1e-20          # Electron number density Hall-term floor
+_CYL_T_FLOOR: float = 1.0             # Temperature floor [K]
 
 # Default ion mass: deuterium
 _DEFAULT_ION_MASS = m_d
@@ -558,10 +574,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         gamma = self.gamma
         gm1 = gamma - 1.0
 
-        rho_L = np.maximum(rho_L, 1e-30)
-        rho_R = np.maximum(rho_R, 1e-30)
-        p_L = np.maximum(p_L, 1e-20)
-        p_R = np.maximum(p_R, 1e-20)
+        rho_L = apply_floor(rho_L, _CYL_RHO_FLOOR_HLL, "cyl_mhd/hll_rho_L")
+        rho_R = apply_floor(rho_R, _CYL_RHO_FLOOR_HLL, "cyl_mhd/hll_rho_R")
+        p_L = apply_floor(p_L, _CYL_P_FLOOR_HLL, "cyl_mhd/hll_p_L")
+        p_R = apply_floor(p_R, _CYL_P_FLOOR_HLL, "cyl_mhd/hll_p_R")
 
         # Magnetic field squared
         B_sq_L = Bn_L**2 + Bt1_L**2 + Bt2_L**2
@@ -699,10 +715,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         p_L_r, p_R_r = self._plm_reconstruct(p, axis=0)
 
         # Positivity floors on reconstructed states
-        rho_L_r = np.maximum(rho_L_r, 1e-20)
-        rho_R_r = np.maximum(rho_R_r, 1e-20)
-        p_L_r = np.maximum(p_L_r, 1e-20)
-        p_R_r = np.maximum(p_R_r, 1e-20)
+        rho_L_r = apply_floor(rho_L_r, _CYL_RHO_FLOOR_RECON, "cyl_mhd/recon_rho_L_r")
+        rho_R_r = apply_floor(rho_R_r, _CYL_RHO_FLOOR_RECON, "cyl_mhd/recon_rho_R_r")
+        p_L_r = apply_floor(p_L_r, _CYL_P_FLOOR_RECON, "cyl_mhd/recon_p_L_r")
+        p_R_r = apply_floor(p_R_r, _CYL_P_FLOOR_RECON, "cyl_mhd/recon_p_R_r")
 
         flux_r = self._hll_flux_8(
             rho_L_r, rho_R_r,
@@ -727,10 +743,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Bt_L_z, Bt_R_z = self._plm_reconstruct(B[1], axis=1)
         p_L_z, p_R_z = self._plm_reconstruct(p, axis=1)
 
-        rho_L_z = np.maximum(rho_L_z, 1e-20)
-        rho_R_z = np.maximum(rho_R_z, 1e-20)
-        p_L_z = np.maximum(p_L_z, 1e-20)
-        p_R_z = np.maximum(p_R_z, 1e-20)
+        rho_L_z = apply_floor(rho_L_z, _CYL_RHO_FLOOR_RECON, "cyl_mhd/recon_rho_L_z")
+        rho_R_z = apply_floor(rho_R_z, _CYL_RHO_FLOOR_RECON, "cyl_mhd/recon_rho_R_z")
+        p_L_z = apply_floor(p_L_z, _CYL_P_FLOOR_RECON, "cyl_mhd/recon_p_L_z")
+        p_R_z = apply_floor(p_R_z, _CYL_P_FLOOR_RECON, "cyl_mhd/recon_p_R_z")
 
         flux_z = self._hll_flux_8(
             rho_L_z, rho_R_z,
@@ -747,8 +763,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # ---- Passive scalar flux for e_electron (upwind) ----
         if e_electron is not None:
             ee_L_r, ee_R_r = self._plm_reconstruct(e_electron, axis=0)
-            ee_L_r = np.maximum(ee_L_r, 0.0)
-            ee_R_r = np.maximum(ee_R_r, 0.0)
+            ee_L_r = apply_floor(ee_L_r, _CYL_EE_FLOOR, "cyl_mhd/recon_ee_L_r")
+            ee_R_r = apply_floor(ee_R_r, _CYL_EE_FLOOR, "cyl_mhd/recon_ee_R_r")
             # Upwind based on mass flux sign
             mass_flux_r = flux_r["F_rho"]
             flux_r["F_ee"] = np.where(
@@ -760,8 +776,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             flux_r["F_ee"] = np.where(mass_flux_r >= 0, ee_L_r * vr_L, ee_R_r * vr_R)
 
             ee_L_z, ee_R_z = self._plm_reconstruct(e_electron, axis=1)
-            ee_L_z = np.maximum(ee_L_z, 0.0)
-            ee_R_z = np.maximum(ee_R_z, 0.0)
+            ee_L_z = apply_floor(ee_L_z, _CYL_EE_FLOOR, "cyl_mhd/recon_ee_L_z")
+            ee_R_z = apply_floor(ee_R_z, _CYL_EE_FLOOR, "cyl_mhd/recon_ee_R_z")
             mass_flux_z = flux_z["F_rho"]
             flux_z["F_ee"] = np.where(mass_flux_z >= 0, ee_L_z * vz_L_z, ee_R_z * vz_R_z)
 
@@ -885,7 +901,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         if self.enable_hall:
             ne = rho / self.ion_mass
-            ne_safe = np.maximum(ne, 1e-20)
+            ne_safe = apply_floor(ne, _CYL_NE_FLOOR, "cyl_mhd/godunov_ne_hall")
             E_Hall = np.zeros((3, nr, nz))
             E_Hall[0] = (J_total[1] * B[2] - J_total[2] * B[1]) / (ne_safe * e_charge)
             E_Hall[1] = (J_total[2] * B[0] - J_total[0] * B[2]) / (ne_safe * e_charge)
@@ -1126,7 +1142,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # Hall term: E_Hall = (J_total × B) / (ne * e)
         if self.enable_hall:
             ne = rho / self.ion_mass
-            ne_safe = np.maximum(ne, 1e-20)
+            ne_safe = apply_floor(ne, _CYL_NE_FLOOR, "cyl_mhd/central_ne_hall")
             E_Hall = np.zeros((3, self.nr, self.nz))
             E_Hall[0] = (J_total[1] * B[2] - J_total[2] * B[1]) / (ne_safe * e_charge)
             E_Hall[1] = (J_total[2] * B[0] - J_total[0] * B[2]) / (ne_safe * e_charge)
@@ -1339,9 +1355,9 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Returns:
             (rho, mom, p, B, psi, rhs, E_total_or_None, e_electron_or_None)
         """
-        vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)
+        vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
         rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d, source_terms, e_electron)
-        rho_new = np.maximum(rho + dt * rhs["drho_dt"], 1e-10)
+        rho_new = apply_floor(rho + dt * rhs["drho_dt"], _CYL_RHO_FLOOR_STATE, "cyl_mhd/euler_rho_new")
         mom_new = mom + dt * rhs["dmom_dt"]
         B_new = B + dt * rhs["dB_dt"]
         psi_new = psi + dt * rhs["dpsi_dt"]
@@ -1353,25 +1369,26 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             v_sq = np.sum(vel**2, axis=0)
             B_sq = np.sum(B**2, axis=0)
             E_n = p / gm1 + 0.5 * rho * v_sq + B_sq / (2.0 * mu_0)
-            E_total_new = np.maximum(E_n + dt * rhs["dE_dt"], 1e-20)
+            E_total_new = apply_floor(E_n + dt * rhs["dE_dt"], _CYL_E_FLOOR_STATE, "cyl_mhd/euler_E_total_new")
             # Recover pressure from updated conserved variables
-            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
             # Inter-stage velocity clamping: prevent kinetic energy from exceeding total energy
             B_sq_new = np.sum(B_new**2, axis=0)
             E_internal_min = 0.01 * E_total_new  # Reserve at least 1% for internal energy
-            KE_max = np.maximum(E_total_new - B_sq_new / (2.0 * mu_0) - E_internal_min, 0.0)
+            KE_max = np.maximum(E_total_new - B_sq_new / (2.0 * mu_0) - E_internal_min, 0.0)  # no-floor-check: math clamp at 0
             v_sq_new = np.sum(vel_new**2, axis=0)
             KE_actual = 0.5 * rho_new * v_sq_new
-            v_scale = np.where(KE_actual > KE_max, np.sqrt(KE_max / np.maximum(KE_actual, 1e-30)), 1.0)
+            v_scale = np.where(KE_actual > KE_max, np.sqrt(KE_max / np.maximum(KE_actual, 1e-30)), 1.0)  # no-floor-check: denom guard
             vel_new = vel_new * v_scale[np.newaxis, :, :]
             mom_new = rho_new[np.newaxis, :, :] * vel_new
             v_sq_new = np.sum(vel_new**2, axis=0)
-            p_new = np.maximum(
+            p_new = apply_floor(
                 gm1 * (E_total_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
-                1e-20,
+                _CYL_P_FLOOR_STATE,
+                "cyl_mhd/euler_p_new_from_E",
             )
         else:
-            p_new = np.maximum(p + dt * rhs["dp_dt"], 1e-20)
+            p_new = apply_floor(p + dt * rhs["dp_dt"], _CYL_P_FLOOR_STATE, "cyl_mhd/euler_p_new")
 
         # Axis boundary conditions: v_r=0, B_r=0 at r=0
         mom_new[0, 0, :] = 0.0
@@ -1380,7 +1397,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # Electron energy advection update
         ee_new = None
         if e_electron is not None and "dee_dt" in rhs:
-            ee_new = np.maximum(e_electron + dt * rhs["dee_dt"], 0.0)
+            ee_new = apply_floor(e_electron + dt * rhs["dee_dt"], _CYL_EE_FLOOR, "cyl_mhd/euler_ee_new")
 
         return rho_new, mom_new, p_new, B_new, psi_new, rhs, E_total_new, ee_new
 
@@ -1469,21 +1486,28 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
                 rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
             )
-            rho_2 = np.maximum(0.75 * rho_n + 0.25 * rho_2e, 1e-10)
+            rho_2 = apply_floor(0.75 * rho_n + 0.25 * rho_2e, _CYL_RHO_FLOOR_STATE, "cyl_mhd/rk3_stage2_rho")
             mom_2 = 0.75 * mom_n + 0.25 * mom_2e
             B_2 = 0.75 * B_n + 0.25 * B_2e
             psi_2 = 0.75 * psi_n + 0.25 * psi_2e
-            ee_2 = np.maximum(0.75 * ee_n + 0.25 * ee_2e, 0.0) if ee_n is not None else None
+            ee_2 = (
+                apply_floor(0.75 * ee_n + 0.25 * ee_2e, _CYL_EE_FLOOR, "cyl_mhd/rk3_stage2_ee")
+                if ee_n is not None else None
+            )
 
             if use_E and E_2e is not None:
                 # SSP combine on conserved E_total, then recover p
-                E_2 = np.maximum(0.75 * E_n + 0.25 * E_2e, 1e-20)
-                vel_2 = mom_2 / np.maximum(rho_2[np.newaxis, :, :], 1e-30)
+                E_2 = apply_floor(0.75 * E_n + 0.25 * E_2e, _CYL_E_FLOOR_STATE, "cyl_mhd/rk3_stage2_E")
+                vel_2 = mom_2 / np.maximum(rho_2[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
                 v_sq_2 = np.sum(vel_2**2, axis=0)
                 B_sq_2 = np.sum(B_2**2, axis=0)
-                p_2 = np.maximum(gm1 * (E_2 - 0.5 * rho_2 * v_sq_2 - B_sq_2 / (2.0 * mu_0)), 1e-20)
+                p_2 = apply_floor(
+                    gm1 * (E_2 - 0.5 * rho_2 * v_sq_2 - B_sq_2 / (2.0 * mu_0)),
+                    _CYL_P_FLOOR_STATE,
+                    "cyl_mhd/rk3_stage2_p_from_E",
+                )
             else:
-                p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
+                p_2 = apply_floor(0.75 * p_n + 0.25 * p_2e, _CYL_P_FLOOR_STATE, "cyl_mhd/rk3_stage2_p")
                 E_2 = None
 
             # (electrode BC deferred to final stage — see note above)
@@ -1492,44 +1516,74 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e, ee_3e = self._euler_stage(
                 rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d, source_terms, ee_2,
             )
-            rho_new = np.maximum((1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e, 1e-10)
+            rho_new = apply_floor(
+                (1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e,
+                _CYL_RHO_FLOOR_STATE,
+                "cyl_mhd/rk3_stage3_rho",
+            )
             mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
             B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
             psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
-            ee_new_adv = np.maximum((1.0 / 3.0) * ee_n + (2.0 / 3.0) * ee_3e, 0.0) if ee_n is not None else None
+            ee_new_adv = (
+                apply_floor(
+                    (1.0 / 3.0) * ee_n + (2.0 / 3.0) * ee_3e,
+                    _CYL_EE_FLOOR,
+                    "cyl_mhd/rk3_stage3_ee",
+                )
+                if ee_n is not None else None
+            )
 
             if use_E and E_3e is not None:
-                E_new = np.maximum((1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e, 1e-20)
-                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+                E_new = apply_floor(
+                    (1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e,
+                    _CYL_E_FLOOR_STATE,
+                    "cyl_mhd/rk3_stage3_E",
+                )
+                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
                 v_sq_new = np.sum(vel_new**2, axis=0)
                 B_sq_new = np.sum(B_new**2, axis=0)
-                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+                p_new = apply_floor(
+                    gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
+                    _CYL_P_FLOOR_STATE,
+                    "cyl_mhd/rk3_stage3_p_from_E",
+                )
             else:
-                p_new = np.maximum((1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e, 1e-20)
+                p_new = apply_floor(
+                    (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e,
+                    _CYL_P_FLOOR_STATE,
+                    "cyl_mhd/rk3_stage3_p",
+                )
 
-            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
             ohmic_avg = (1.0 / 3.0) * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"] + rhs3["ohmic_heating"])
         else:
             # === SSP-RK2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
             rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
                 rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
             )
-            rho_new = np.maximum(0.5 * rho_n + 0.5 * rho_2e, 1e-10)
+            rho_new = apply_floor(0.5 * rho_n + 0.5 * rho_2e, _CYL_RHO_FLOOR_STATE, "cyl_mhd/rk2_rho")
             mom_new = 0.5 * mom_n + 0.5 * mom_2e
             B_new = 0.5 * B_n + 0.5 * B_2e
             psi_new = 0.5 * psi_n + 0.5 * psi_2e
-            ee_new_adv = np.maximum(0.5 * ee_n + 0.5 * ee_2e, 0.0) if ee_n is not None else None
+            ee_new_adv = (
+                apply_floor(0.5 * ee_n + 0.5 * ee_2e, _CYL_EE_FLOOR, "cyl_mhd/rk2_ee")
+                if ee_n is not None else None
+            )
 
             if use_E and E_2e is not None:
-                E_new = np.maximum(0.5 * E_n + 0.5 * E_2e, 1e-20)
-                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+                E_new = apply_floor(0.5 * E_n + 0.5 * E_2e, _CYL_E_FLOOR_STATE, "cyl_mhd/rk2_E")
+                vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
                 v_sq_new = np.sum(vel_new**2, axis=0)
                 B_sq_new = np.sum(B_new**2, axis=0)
-                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+                p_new = apply_floor(
+                    gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
+                    _CYL_P_FLOOR_STATE,
+                    "cyl_mhd/rk2_p_from_E",
+                )
             else:
-                p_new = np.maximum(0.5 * p_n + 0.5 * p_2e, 1e-20)
+                p_new = apply_floor(0.5 * p_n + 0.5 * p_2e, _CYL_P_FLOOR_STATE, "cyl_mhd/rk2_p")
 
-            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
+            vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)  # no-floor-check: denom guard
             ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
 
         # Cap velocity at 10x the fast magnetosonic speed to prevent runaway
@@ -1559,7 +1613,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B_sq_after = np.sum(B_new**2, axis=0)
             delta_ME = (B_sq_after - B_sq_before) / (2.0 * mu_0)  # [J/m³]
             # Inject the magnetic energy change into pressure to preserve conservation
-            p_new = np.maximum(p_new + delta_ME * gm1, 1e-20)
+            p_new = apply_floor(p_new + delta_ME * gm1, _CYL_P_FLOOR_STATE, "cyl_mhd/electrode_bc_p")
 
         # --- Constrained transport correction (optional) ---
         if self.enable_ct:
@@ -1628,8 +1682,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
             Te_new = Te_new + dTe_ohmic
 
-        Te_new = np.maximum(Te_new, 1.0)
-        Ti_new = np.maximum(Ti_new, 1.0)
+        Te_new = apply_floor(Te_new, _CYL_T_FLOOR, "cyl_mhd/Te_new")
+        Ti_new = apply_floor(Ti_new, _CYL_T_FLOOR, "cyl_mhd/Ti_new")
 
         # Cap temperatures at physically reasonable maximum (100 keV ~ 1.16e9 K)
         T_max = 1.16e9  # 100 keV in Kelvin
