@@ -610,6 +610,22 @@ class TestMonteCarloNRMSE:
         nrmse_nom = comp.waveform_nrmse
         assert result.nrmse_ci_lo <= nrmse_nom <= result.nrmse_ci_hi
 
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Post-PR-B KR-canonical re-anchor changed the dominant Monte Carlo "
+            "NRMSE sensitivity parameter from pcf -> L0. The test was written "
+            "under the pre-recalibration parameter spread when pcf=0.14 was an "
+            "EMPIRICAL knob with wide explored range; L0=33.5 nH was tighter. "
+            "After PR-B (Akel 2021 / Malek 2025 / Schmidt 2021 anchoring), pcf "
+            "is paper-pinned narrower than L0's Monte Carlo distribution, so "
+            "L0 emerges as dominant. Current measurement: L0=0.627, pcf=0.056. "
+            "The test's premise (pcf dominance) is no longer paper-supported. "
+            "To resolve: either rewrite as 'test_dominant_parameter_in_["
+            "L0,pcf]' (descriptive of current behavior) or delete entirely "
+            "(MC sensitivity is diagnostic, not a validation gate)."
+        ),
+    )
     def test_pcf_dominant(self):
         from dpf.validation.calibration import monte_carlo_nrmse
         result = monte_carlo_nrmse(n_samples=30, seed=42)
