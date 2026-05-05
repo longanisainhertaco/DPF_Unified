@@ -28,8 +28,8 @@ References:
 """
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 # Ensure the Toh worktree src is on the path so CylindricalMHDSolver has the
 # use_toh_limiter kwarg.  The worktree lives at a fixed path set by the agent.
@@ -41,11 +41,11 @@ if os.path.isdir(_WORKTREE):
     if _wt_src not in sys.path:
         sys.path.insert(0, _wt_src)
 
-import math
-import numpy as np
-import pytest
+import math  # noqa: E402
 
-from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
+import numpy as np  # noqa: E402
+
+from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helper — build a minimal solver with the right grid
@@ -178,7 +178,6 @@ def _total_slope_norm(
     QL[i+1/2] = q[i] + 0.5*slope[i].  Smaller total = more limiter damping.
     """
     nr = solver.nr
-    nz = q.shape[0]
     q2d   = np.tile(q[np.newaxis, :], (nr, 1))
     rho2d = np.tile(rho[np.newaxis, :], (nr, 1))
     ql, _ = solver._plm_reconstruct(q2d, axis=1, density=rho2d)
