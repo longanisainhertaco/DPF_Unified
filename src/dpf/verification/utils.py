@@ -18,6 +18,14 @@ def estimate_convergence_order(
     Uses a least-squares fit in log-log space:
     ``log(error) ~ -order * log(N) + const``.
 
+    This is a least-squares analogue of the classical Grid Convergence
+    Index (GCI) ratio ``log(e1/e2) / log(r)`` for two refinements; the
+    GCI itself is defined in Roache, P.J. (1994) "Perspective: A Method
+    for Uniform Reporting of Grid Refinement Studies", J. Fluids Eng.
+    116:405-413. [UNVERIFIED-CITATION: Roache 1994 PDF not on disk; the
+    formula here is the textbook log-log slope, which is the form most
+    code-V&V references quote.]
+
     Returns ``NaN`` (with a logged warning) when the order cannot be
     estimated — i.e. fewer than two usable ``(finite, positive err,
     positive N)`` points remain after filtering.  A previous version

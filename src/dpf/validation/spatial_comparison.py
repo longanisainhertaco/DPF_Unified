@@ -21,6 +21,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from dpf.diagnostics.interferometry import abel_transform
+from dpf.metal.floor_telemetry import apply_floor
 
 
 @dataclass
@@ -179,7 +180,10 @@ def spatial_nrmse_multi(
     nrmses = [r.nrmse for r in results]
     peak_ratios = [r.peak_ratio for r in results]
     fwhm_ratios = [
-        r.fwhm_sim / max(r.fwhm_exp, 1e-10) for r in results
+        r.fwhm_sim / apply_floor(
+            r.fwhm_exp, 1e-10, "spatial_comparison/fwhm_exp_div_guard",
+        )
+        for r in results
     ]
     return {
         "mean_nrmse": float(np.mean(nrmses)),
