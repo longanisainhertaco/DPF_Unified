@@ -421,11 +421,24 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {
-            "anode_length": 0.17,      # 170 mm (Damideh 2025)
-            "fill_pressure_Pa": 1600.0,  # 12 Torr D2 = 1600 Pa
-            "current_fraction": 0.7,   # Lee model fit (Damideh 2025, Lee co-author)
-            "mass_fraction": 0.70,     # Lee model fit: fm=0.70 (Damideh 2025)
-            "radial_mass_fraction": 0.1,
+            "anode_length": 0.17,      # 170 mm — Damideh 2025 Table 1 ("Effective anode length 17 cm")
+            #   [KR: experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense.md §Apparatus p.3 Table 1]
+            "fill_pressure_Pa": 1600.0,  # 12 Torr D2 = 1600 Pa (Damideh 2025 §Results "12 Torr selected as the operational pressure")
+            #   [KR: experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense.md §Results p.5]
+            "current_fraction": 0.7,   # f_c=0.7 — typical Lee axial current factor (NOT FAETON-specific in paper)
+            #   Damideh 2025 §Simulation does NOT publish an axial f_c for F-I; only fcr/fcr2 (radial) are tabulated (Table 3).
+            #   Value 0.7 is the Lee-model published default for axial phase across multiple devices (Altarabulsi 2024 Table 1).
+            #   [KR: original-deuteron-beam-fluence-emitted-from-dense-plasma-focus.md §3 p.3 Table 1]
+            # UNVERIFIED: axial mass fraction f_m. Damideh et al. (2025) Sci. Rep. 15:23048 publishes
+            #   only RADIAL Lee parameters (fmr, fcr, fcr2) — see §Simulation pp.4-5 and Table 3 p.9.
+            #   The previous value (fm=0.70) was a misattribution — that is fcr (radial CURRENT factor), not fm.
+            #   No axial fm is reported anywhere in the FAETON-I KR record. Set to 0.13 (Lee published-fit
+            #   range for medium-large MA-class DPFs, e.g. PF-1000 fm=0.13-0.142; Altarabulsi 2024 Table 1
+            #   reports fm=0.142 for PF-1000 at 36 kV) until Damideh authors release a per-shot axial fm.
+            #   [KR: experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense.md §Simulation p.4-5; Table 3 p.9]
+            #   [KR: original-deuteron-beam-fluence-emitted-from-dense-plasma-focus.md §3 Table 1 p.3 (PF-1000 fm=0.142 reference)]
+            "mass_fraction": 0.13,     # UNVERIFIED — see comment block above; was 0.70 (misattributed fcr)
+            "radial_mass_fraction": 0.1,    # f_mr — UNVERIFIED in FAETON KR (Damideh 2025 Table 3 lists fcr/fcr2 only, not fmr)
             "pinch_column_fraction": 0.14,
             # Two-step radial model (Damideh et al. 2025, FFV5-2 Lee code)
             # Re-strikes occur during radial compression, after rundown (~6.2 us).
