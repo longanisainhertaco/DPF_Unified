@@ -56,6 +56,7 @@ from dpf.constants import e as e_charge
 from dpf.constants import k_B, m_d, mu_0
 from dpf.core.bases import CouplingState, PlasmaSolverBase
 from dpf.fluid.eos import IdealEOS
+from dpf.metal.floor_telemetry import apply_floor
 
 logger = logging.getLogger(__name__)
 
@@ -822,10 +823,10 @@ def _compute_flux_1d_sweep(
             Bn_L, Bn_R = _weno5_reconstruct_1d(Bn_1d)
 
             # Ensure positivity
-            rho_L = np.maximum(rho_L, 1e-20)
-            rho_R = np.maximum(rho_R, 1e-20)
-            p_L = np.maximum(p_L, 1e-20)
-            p_R = np.maximum(p_R, 1e-20)
+            rho_L = apply_floor(rho_L, 1e-20, name="rho_L_weno5")
+            rho_R = apply_floor(rho_R, 1e-20, name="rho_R_weno5")
+            p_L = apply_floor(p_L, 1e-20, name="p_L_weno5")
+            p_R = apply_floor(p_R, 1e-20, name="p_R_weno5")
 
             # Riemann solve (HLL or HLLD)
             if use_hlld:
@@ -2019,10 +2020,10 @@ class MHDSolver(PlasmaSolverBase):
         rhs = self._compute_rhs_euler(state_in, current, voltage, eta_field)
 
         rho_out = rho + dt * rhs["drho_dt"]
-        rho_out = np.maximum(rho_out, 1e-20)
+        rho_out = apply_floor(rho_out, 1e-20, name="rho_euler_stage")
         mom_out = mom + dt * rhs["dmom_dt"]
         p_out = p + dt * rhs["dp_dt"]
-        p_out = np.maximum(p_out, 1e-20)
+        p_out = apply_floor(p_out, 1e-20, name="p_euler_stage")
         B_out = B + dt * rhs["dB_dt"]
         psi_out = psi + dt * rhs["dpsi_dt"]
 
@@ -2166,11 +2167,11 @@ class MHDSolver(PlasmaSolverBase):
         )
 
         rho_new = 0.5 * rho_n + 0.5 * rho_2
-        rho_new = np.maximum(rho_new, 1e-20)
+        rho_new = apply_floor(rho_new, 1e-20, name="rho_rk2_final")
         mom_new = 0.5 * mom_n + 0.5 * mom_2
         vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
         p_new = 0.5 * p_n + 0.5 * p_2
-        p_new = np.maximum(p_new, 1e-20)
+        p_new = apply_floor(p_new, 1e-20, name="p_rk2_final")
         B_new = 0.5 * B_n + 0.5 * B_2
         if self.use_ct:
             B_new = self._apply_ct_correction_numpy(B_new, B_n, dt)
@@ -2220,10 +2221,10 @@ class MHDSolver(PlasmaSolverBase):
             rho_1, mom_1, p_1, B_1, psi_1, Te, Ti, dt, current, voltage, eta_field,
         )
         rho_2 = 0.75 * rho_n + 0.25 * rho_2e
-        rho_2 = np.maximum(rho_2, 1e-20)
+        rho_2 = apply_floor(rho_2, 1e-20, name="rho_rk3_stage2")
         mom_2 = 0.75 * mom_n + 0.25 * mom_2e
         p_2 = 0.75 * p_n + 0.25 * p_2e
-        p_2 = np.maximum(p_2, 1e-20)
+        p_2 = apply_floor(p_2, 1e-20, name="p_rk3_stage2")
         B_2 = 0.75 * B_n + 0.25 * B_2e
         if self.use_ct:
             B_2 = self._apply_ct_correction_numpy(B_2, B_n, dt)
@@ -2236,11 +2237,11 @@ class MHDSolver(PlasmaSolverBase):
             rho_2, mom_2, p_2, B_2, psi_2, Te, Ti, dt, current, voltage, eta_field,
         )
         rho_new = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e
-        rho_new = np.maximum(rho_new, 1e-20)
+        rho_new = apply_floor(rho_new, 1e-20, name="rho_rk3_final")
         mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
         vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :, :], 1e-30)
         p_new = (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e
-        p_new = np.maximum(p_new, 1e-20)
+        p_new = apply_floor(p_new, 1e-20, name="p_rk3_final")
         B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
         if self.use_ct:
             B_new = self._apply_ct_correction_numpy(B_new, B_n, dt)
