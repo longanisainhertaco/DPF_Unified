@@ -206,8 +206,11 @@ PF1000_16KV_DATA = ExperimentalDevice(
     waveform_uncertainty_type="reconstruction",  # Physics-scaled from 27kV Scholz waveform
     peak_current_from_shot_spread=True,  # 10% derives from 1.1-1.3 MA shot range
     waveform_provenance="reconstructed",
-    lee_fc=0.70, lee_fm=0.20, lee_fmr=0.12, lee_fcr=0.47,
-    lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (24-shot avg at 16 kV)",
+    lee_fc=0.70, lee_fm=0.20, lee_fmr=0.12, lee_fcr=0.48,
+    # [KR: radiation-physics-and-chemistry-188-2021-109633.md §p.5 — "average
+    # values as follow: 0.2, 0.7, 0.12 and 0.48" (order: fm, fc, fmr, fcr)]
+    # Prior 0.47 was a 1-digit transcription error vs the verbatim KR text.
+    lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (24-shot avg at 16 kV) [KR: radiation-physics-and-chemistry-188-2021-109633.md §p.5]",
     measurement_notes=(
         "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
         "Peak current 1.131-1.328 MA across the 16 shots at 1.05 Torr (Akel et al. 2021 Table 1). "

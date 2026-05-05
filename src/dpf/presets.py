@@ -159,9 +159,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.48,       # 48 cm = z0 (Akel 2021 Table 1)
-            "current_fraction": 0.7,    # fc fixed for all Akel 2021 shots (Table 1)
-            "mass_fraction": 0.20,      # fm = 0.20 average (Akel 2021 Table 1)
-            "radial_mass_fraction": 0.35,  # fmr: Malek 2025 / engine_validation canonical
+            # Lee model fit values from Akel 2021 24-shot dataset at 16 kV.
+            # [KR: radiation-physics-and-chemistry-188-2021-109633.md §p.5
+            #  "average values as follow: 0.2, 0.7, 0.12 and 0.48"]
+            # Order in the paper: fm, fc, fmr, fcr.
+            # Was previously fmr=0.35 (Malek 2025 27kV value) — wrong device
+            # and wrong voltage. fcr was missing entirely. Both now KR-anchored.
+            "current_fraction": 0.7,    # fc = 0.7 (Akel 2021 24-shot avg)
+            "mass_fraction": 0.20,      # fm = 0.20 (Akel 2021 24-shot avg)
+            "radial_mass_fraction": 0.12,    # fmr = 0.12 (Akel 2021 24-shot avg) — was 0.35 Malek 27kV
+            "radial_current_fraction": 0.48, # fcr = 0.48 (Akel 2021 24-shot avg) — newly added
             "pinch_column_fraction": 0.14,
         },
     },
