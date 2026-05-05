@@ -438,40 +438,56 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "poseidon": {
         "_meta": {
-            "description": "POSEIDON (IPF Stuttgart) — 480 kJ MA-class deuterium DPF",
+            "description": (
+                "POSEIDON (IPF Stuttgart) — 480 kJ MA-class deuterium DPF. "
+                "UNVERIFIED preset: cited Herold 1989 Nucl. Fusion 29:33 PDF "
+                "is NOT on disk in KnowledgeReference. POSEIDON 40 kV is "
+                "demoted to _REFERENCE_ONLY in DEVICES (Wave-2 #13). This "
+                "preset can be run for sim experiments but its values are "
+                "not paper-anchored to a verifiable source. The 60 kV variant "
+                "(preset 'poseidon_60kv', DEVICES['POSEIDON-60kV']) IS KR-"
+                "anchored to Lee & Saw 2014 p.152 — prefer that for validation."
+            ),
             "device": "POSEIDON",
             "geometry": "cylindrical",
             "topology": "mather",
-            "reference": "Herold et al., Nucl. Fusion 29:33 (1989); Lee & Saw (2014)",
+            "reference": (
+                "UNVERIFIED: Herold et al., Nucl. Fusion 29:33 (1989) PDF not "
+                "on disk; values below are estimates / Lee model fits without "
+                "a paper-on-disk anchor."
+            ),
         },
         "grid_shape": [140, 1, 480],
         "dx": 1e-3,
-        "sim_time": 12e-6,  # 12 us: covers peak (~5 us) + radial + post-pinch
+        "sim_time": 12e-6,
         "dt_init": 1e-10,
-        "rho0": 7.53e-4,  # 3.5 Torr D2 at 300K
+        "rho0": 7.53e-4,           # 3.5 Torr D2 at 300K # UNVERIFIED
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
         "circuit": {
-            "C": 450e-6,           # 450 uF
-            "V0": 40e3,            # 40 kV typical
-            "L0": 35e-9,           # 35 nH — fitted (was 20nH estimate; Herold 1989 doesn't state L0)
-            "R0": 2e-3,            # ~2 mOhm
-            "anode_radius": 0.104,
-            "cathode_radius": 0.135,
+            "C": 450e-6,           # 450 uF # UNVERIFIED
+            "V0": 40e3,            # 40 kV # UNVERIFIED
+            "L0": 35e-9,           # 35 nH # UNVERIFIED: was previously a fitted-knob value
+            "R0": 2e-3,            # 2 mOhm # UNVERIFIED
+            "anode_radius": 0.104,    # # UNVERIFIED
+            "cathode_radius": 0.135,  # # UNVERIFIED
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
-            "crowbar_resistance": 1.5e-3,  # spark gap (removed 30nH inductance, uncited)
+            "crowbar_resistance": 1.5e-3,
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
-            "anode_length": 0.47,
-            "current_fraction": 0.65,
-            "mass_fraction": 0.30,     # calibrated (was 0.15, fitted with L0=35nH)
-            "radial_mass_fraction": 0.1,
+            "anode_length": 0.47,    # # UNVERIFIED
+            # Lee fits below were "calibrated" knobs (against I_peak / Yn);
+            # papers-are-truth violation. No published Lee fit on disk for
+            # POSEIDON 40 kV. Values retained UNVERIFIED for sim experiments.
+            "current_fraction": 0.65,    # # UNVERIFIED: calibration knob
+            "mass_fraction": 0.30,       # # UNVERIFIED: calibration knob
+            "radial_mass_fraction": 0.1, # # UNVERIFIED
             "pinch_column_fraction": 0.14,
         },
     },
