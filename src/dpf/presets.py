@@ -86,7 +86,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "R0": 2.3e-3,      # 2.3 mOhm bare-bank short-circuit (Scholz 2006 Table 1) — plasma R enters via sheath, not bank
             "anode_radius": 0.115,   # 115 mm (Scholz 2006)
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
-            "n_cathode_rods": 12,  # UNVERIFIED: cited as 12 (Gribkov 2007) but PDF not read in session
+            "n_cathode_rods": 12,  # 12 stainless-steel rods, 40 mm dia, 800 mm long, 400 mm dia circumference [KR: gribkov-2007-pf1000-jphysd-part2.md §p.2 "squirrel cage cathode"]
             "crowbar_enabled": True,
             "crowbar_mode": "fixed_time",
             "crowbar_time": 10.5e-6,  # Quarter period of loaded circuit (Scholz 2006: ~10 us)
