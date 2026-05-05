@@ -104,6 +104,7 @@ class YieldTracker:
         cell_volume: float = 1e-9,
         f_beam: float = 0.14,
         L_pinch: float = 0.0,
+        tau_dwell: float = 0.0,
     ) -> None:
         """Accumulate yield from one MHD timestep.
 
@@ -115,6 +116,12 @@ class YieldTracker:
             cell_volume: Cell volume [m^3].
             f_beam: Beam fraction for beam-target yield.
             L_pinch: Beam-target interaction length [m]. If 0, uses 1 cm default.
+            tau_dwell: Pinch dwell time [s] for beam-target rate normalization.
+                The Lee/Saw KR eq. 1 yield is per-shot; the wrapper divides
+                by tau_dwell so that integrating dY_bt over the dwell window
+                recovers the per-shot total. If 0, beam-target is suppressed
+                (caller must supply a physical dwell time, typically 30-50 ns
+                for PF-1000 / MJOLNIR-class devices).
         """
         rho = state["rho"]
         n_i = rho / self.ion_mass
@@ -148,15 +155,21 @@ class YieldTracker:
             except ImportError:
                 pass
 
-        # Beam-target yield
+        # Beam-target yield. Lee/Saw KR eq. 1 [KR L4080-4087 p.18] is a
+        # per-shot total, not a rate. The wrapper divides Yn_total by
+        # tau_dwell so that integrating dY_bt over the dwell window
+        # recovers Yn_total exactly. Without an explicit tau_dwell the
+        # rate is zero (was: tau_transit ~ 1ns gave 30-50x overcount when
+        # integrated over the ~30-50 ns pinch — MJOLNIR-2MJ 41x bug).
         dY_bt = 0.0
-        if abs(V_pinch) > 1e3 and abs(I_current) > 1e3:
+        if abs(V_pinch) > 1e3 and abs(I_current) > 1e3 and tau_dwell > 0.0:
             try:
                 from dpf.diagnostics.beam_target import beam_target_yield_rate
                 _L = L_pinch if L_pinch > 0 else 0.01  # fallback 1 cm
                 bt_rate = beam_target_yield_rate(
                     abs(I_current), abs(V_pinch), n_peak_safe, _L,
                     f_beam=f_beam,
+                    tau_dwell=tau_dwell,
                 )
                 dY_bt = bt_rate * dt
             except ImportError:

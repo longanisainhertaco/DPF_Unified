@@ -967,7 +967,8 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
     5. Compute Alfven transit time (dwell time) and integrate yield::
 
            tau_dwell = r_pinch_min / v_Alfven
-           dY_dt = beam_target_yield_rate(I_pinch, V_pinch_V, n_target, z_f)
+           dY_dt = beam_target_yield_rate(I_pinch, V_pinch_V, n_target, z_f,
+                                          tau_dwell=tau_dwell)
            Y_total = dY_dt * tau_dwell
 
     Accuracy: This 0D model gives order-of-magnitude estimates (factor
@@ -1041,12 +1042,15 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
     # Alfven transit time = dwell time of pinch
     tau_dwell = r_pinch_min / v_Alfven
 
-    # Beam-target yield rate [neutrons/s]
+    # Beam-target yield rate [neutrons/s]. KR eq. 1 [KR L4080-4087 p.18]
+    # is per-shot; the wrapper divides by tau_dwell so dY_dt * tau_dwell
+    # recovers Yn_total exactly.
     dY_dt = beam_target_yield_rate(
         I_pinch=I_pinch,
         V_pinch=V_pinch_V,
         n_target=n_target,
         L_target=z_f,
+        tau_dwell=tau_dwell,
     )
 
     return float(dY_dt * tau_dwell)

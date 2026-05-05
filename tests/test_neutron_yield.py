@@ -342,7 +342,14 @@ class TestRoundFix:
 
 
 class TestBeamTargetYieldRate:
-    """Test beam_target_yield_rate function directly."""
+    """Test beam_target_yield_rate function directly.
+
+    All tests pass an explicit tau_dwell (PF-1000 typical pinch dwell of
+    50 ns) since the wrapper now requires it per the MJOLNIR-2MJ fix
+    (2026-05-04). Without tau_dwell the function returns 0.0 by design.
+    """
+
+    _TAU = 50e-9  # 50 ns canonical pinch dwell
 
     def test_positive_yield(self) -> None:
         """Non-zero inputs produce positive yield rate."""
@@ -354,6 +361,7 @@ class TestBeamTargetYieldRate:
             n_target=1e25,
             L_target=0.01,
             f_beam=0.2,
+            tau_dwell=self._TAU,
         )
         assert rate > 0
 
@@ -361,22 +369,22 @@ class TestBeamTargetYieldRate:
         """Zero current gives zero yield."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate = beam_target_yield_rate(0.0, 50e3, 1e25, 0.01, 0.2)
+        rate = beam_target_yield_rate(0.0, 50e3, 1e25, 0.01, 0.2, self._TAU)
         assert rate == 0.0
 
     def test_zero_voltage_zero_yield(self) -> None:
         """Zero voltage gives zero yield (no beam energy)."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate = beam_target_yield_rate(200e3, 0.0, 1e25, 0.01, 0.2)
+        rate = beam_target_yield_rate(200e3, 0.0, 1e25, 0.01, 0.2, self._TAU)
         assert rate == 0.0
 
     def test_yield_scales_with_current(self) -> None:
         """Yield rate scales as I_pinch^2 (Lee/Saw KR eq. 1)."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01, 0.2)
-        rate2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2)
+        rate1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01, 0.2, self._TAU)
+        rate2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2, self._TAU)
         # KR L5125-5128: Yb-t ~ I_pinch^2, so 2x current -> 4x yield
         assert rate2 == pytest.approx(4.0 * rate1, rel=1e-10)
 
@@ -384,31 +392,41 @@ class TestBeamTargetYieldRate:
         """Yield rate scales linearly with target density."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate1 = beam_target_yield_rate(200e3, 50e3, 1e24, 0.01, 0.2)
-        rate2 = beam_target_yield_rate(200e3, 50e3, 2e24, 0.01, 0.2)
+        rate1 = beam_target_yield_rate(200e3, 50e3, 1e24, 0.01, 0.2, self._TAU)
+        rate2 = beam_target_yield_rate(200e3, 50e3, 2e24, 0.01, 0.2, self._TAU)
         assert rate2 == pytest.approx(2.0 * rate1, rel=1e-10)
 
     def test_yield_scales_with_length(self) -> None:
         """Yield rate scales linearly with target length."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate1 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2)
-        rate2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.02, 0.2)
-        assert rate2 == pytest.approx(2.0 * rate1, rel=1e-10)
+        # KR eq. 1: Yb-t ~ z_p^2, so 2x length -> 4x yield (NOT 2x)
+        rate1 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2, self._TAU)
+        rate2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.02, 0.2, self._TAU)
+        assert rate2 == pytest.approx(4.0 * rate1, rel=1e-10)
 
     def test_zero_density_zero_yield(self) -> None:
         """Zero target density gives zero yield."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate = beam_target_yield_rate(200e3, 50e3, 0.0, 0.01, 0.2)
+        rate = beam_target_yield_rate(200e3, 50e3, 0.0, 0.01, 0.2, self._TAU)
         assert rate == 0.0
 
     def test_zero_length_zero_yield(self) -> None:
         """Zero target length gives zero yield."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate = beam_target_yield_rate(200e3, 50e3, 1e25, 0.0, 0.2)
+        rate = beam_target_yield_rate(200e3, 50e3, 1e25, 0.0, 0.2, self._TAU)
         assert rate == 0.0
+
+    def test_zero_dwell_returns_zero(self) -> None:
+        """tau_dwell <= 0 must refuse to emit a rate (MJOLNIR-2MJ guard)."""
+        from dpf.diagnostics.beam_target import beam_target_yield_rate
+
+        rate = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2, 0.0)
+        assert rate == 0.0
+        rate_neg = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, 0.2, -1e-9)
+        assert rate_neg == 0.0
 
     def test_typical_dpf_magnitude(self) -> None:
         """Yield rate for typical PF-1000 parameters is in physically expected range."""
@@ -420,18 +438,23 @@ class TestBeamTargetYieldRate:
             n_target=1e25,
             L_target=0.01,
             f_beam=0.2,
+            tau_dwell=self._TAU,
         )
         assert np.isfinite(rate)
         assert rate > 0.0
         assert rate > 1e8
-        assert rate < 1e18
+        assert rate < 1e22
 
     def test_f_beam_clamped_above_one(self) -> None:
         """f_beam > 1 is clamped to 1; result must still be positive and finite."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate_clamped = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=2.0)
-        rate_one = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=1.0)
+        rate_clamped = beam_target_yield_rate(
+            200e3, 50e3, 1e25, 0.01, f_beam=2.0, tau_dwell=self._TAU,
+        )
+        rate_one = beam_target_yield_rate(
+            200e3, 50e3, 1e25, 0.01, f_beam=1.0, tau_dwell=self._TAU,
+        )
         assert np.isfinite(rate_clamped)
         assert rate_clamped == pytest.approx(rate_one, rel=1e-10)
 
@@ -439,7 +462,9 @@ class TestBeamTargetYieldRate:
         """f_beam=0 gives zero yield (no beam ions)."""
         from dpf.diagnostics.beam_target import beam_target_yield_rate
 
-        rate = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=0.0)
+        rate = beam_target_yield_rate(
+            200e3, 50e3, 1e25, 0.01, f_beam=0.0, tau_dwell=self._TAU,
+        )
         assert rate == 0.0
 
 

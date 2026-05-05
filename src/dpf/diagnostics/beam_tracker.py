@@ -213,10 +213,14 @@ class BeamTracker:
                 from dpf.diagnostics.beam_target import beam_target_yield_rate
                 V_pinch = mean_E * 1e3 * 1.602e-19  # Convert to Joules
                 I_equiv = 1e6  # Placeholder
+                # 1e-7 s rough confinement is the dwell time; pass it as
+                # tau_dwell so Yn_total/tau_dwell * tau_dwell = Yn_total.
+                _tau_dwell = 1e-7
                 bt_rate = beam_target_yield_rate(
                     I_equiv, V_pinch, n_target, L_pinch, f_beam=0.14,
+                    tau_dwell=_tau_dwell,
                 )
-                Y_bt = bt_rate * 1e-7  # rough confinement time
+                Y_bt = bt_rate * _tau_dwell
             except (ImportError, Exception):
                 pass
 

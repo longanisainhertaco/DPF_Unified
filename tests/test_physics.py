@@ -2714,30 +2714,44 @@ class TestDDCrossSection:
 class TestBeamTargetYield:
     """Tests for beam-target neutron production rate."""
 
+    # Canonical 50 ns pinch dwell for PF-1000 / MJOLNIR-class devices.
+    # Required since the MJOLNIR-2MJ rate-form fix (2026-05-04).
+    _TAU = 50e-9
+
     def test_yield_positive(self):
-        dY = beam_target_yield_rate(I_pinch=200e3, V_pinch=50e3, n_target=1e25, L_target=0.01)
+        dY = beam_target_yield_rate(
+            I_pinch=200e3, V_pinch=50e3, n_target=1e25, L_target=0.01,
+            tau_dwell=self._TAU,
+        )
         assert dY > 0.0
 
     def test_yield_zero_no_current(self):
-        assert beam_target_yield_rate(0, 50e3, 1e25, 0.01) == 0.0
+        assert beam_target_yield_rate(0, 50e3, 1e25, 0.01, tau_dwell=self._TAU) == 0.0
 
     def test_yield_zero_no_voltage(self):
-        assert beam_target_yield_rate(200e3, 0, 1e25, 0.01) == 0.0
+        assert beam_target_yield_rate(200e3, 0, 1e25, 0.01, tau_dwell=self._TAU) == 0.0
 
     def test_yield_scales_with_current(self):
         # Lee/Saw KR eq. 1: Yb-t ~ I_pinch^2 (KR L5125-5128)
-        y1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01)
-        y2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01)
+        y1 = beam_target_yield_rate(100e3, 50e3, 1e25, 0.01, tau_dwell=self._TAU)
+        y2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, tau_dwell=self._TAU)
         np.testing.assert_allclose(y2, 4 * y1, rtol=1e-10)
 
     def test_yield_scales_with_f_beam(self):
         # Lee/Saw wrapper scales linearly in f_beam around 0.14 baseline
-        y1 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=0.1)
-        y2 = beam_target_yield_rate(200e3, 50e3, 1e25, 0.01, f_beam=0.3)
+        y1 = beam_target_yield_rate(
+            200e3, 50e3, 1e25, 0.01, f_beam=0.1, tau_dwell=self._TAU,
+        )
+        y2 = beam_target_yield_rate(
+            200e3, 50e3, 1e25, 0.01, f_beam=0.3, tau_dwell=self._TAU,
+        )
         np.testing.assert_allclose(y2 / y1, 3.0, rtol=1e-10)
 
     def test_typical_dpf_yield_order(self):
-        dY = beam_target_yield_rate(I_pinch=500e3, V_pinch=100e3, n_target=1e25, L_target=0.02, f_beam=0.2)
+        dY = beam_target_yield_rate(
+            I_pinch=500e3, V_pinch=100e3, n_target=1e25, L_target=0.02,
+            f_beam=0.2, tau_dwell=self._TAU,
+        )
         assert dY > 1e10
 
 
