@@ -202,11 +202,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.6,  # Same geometry
-            # At 20 kV (lower stored energy), lower fill pressure (2 Torr vs 3.5 Torr)
-            # means lighter mass loading, similar fc but potentially lower fm
-            "current_fraction": 0.7,   # Same as 27 kV (Lee & Saw 2014)
-            "mass_fraction": 0.08,     # Same fm as 27 kV (same device geometry)
-            "radial_mass_fraction": 0.16,  # Same as 27 kV
+            # No published Lee fit for PF-1000 at 20 kV. Reusing the 27 kV
+            # Malek 2025 fits per the preset's "same as 27 kV" intent;
+            # voltage-dependence of Lee fits is plausibly small for the same
+            # device but is not paper-anchored at 20 kV operating point.
+            # [KR: plasma-physics-and-technology-1211-9-2025.md §3 ll.177-180]
+            # — Malek 2025 fits at 27 kV; UNVERIFIED for 20 kV substitution.
+            "current_fraction": 0.7,    # fc (Malek 2025 27kV; UNVERIFIED at 20kV)
+            "mass_fraction": 0.13,      # fm (Malek 2025 27kV) — was 0.08 stale Lee&Saw 2008 reused
+            "radial_mass_fraction": 0.35,  # fmr (Malek 2025 27kV) — was 0.16 stale
+            "radial_current_fraction": 0.65,  # fcr (Malek 2025 27kV; UNVERIFIED at 20kV) — newly added
             "pinch_column_fraction": 0.14,
         },
     },
