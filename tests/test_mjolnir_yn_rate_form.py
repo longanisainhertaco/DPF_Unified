@@ -53,14 +53,12 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pytest
 
 from dpf.diagnostics.beam_target import (
     beam_target_yield_lee_saw,
     beam_target_yield_rate,
 )
-
 
 # ---------------------------------------------------------------------------
 # MJOLNIR-2MJ device parameters (KR: petrov-2022 + goyon-2022)
