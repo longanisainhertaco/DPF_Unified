@@ -17,6 +17,8 @@ from typing import Any
 
 import numpy as np
 
+from dpf.metal.floor_telemetry import apply_floor
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -1180,7 +1182,7 @@ def _block_rhs(
     # F, G = 0.5*(F_L + F_R) - 0.5*alpha*(U_R - U_L)
     # Use maximum wave speed alpha = max(|v| + cf) over the block
 
-    rho = np.maximum(U_int[IDN], 1e-10)
+    rho = apply_floor(U_int[IDN], 1e-10, name="amr_block_rhs/rho")
     vr = U_int[IMR] / rho
     vz = U_int[IMZ] / rho
 
@@ -1203,14 +1205,14 @@ def _block_rhs(
     UL_r_right = U_pad[:, ng : ng + bnr, ng : ng + bnz]
     UR_r_right = U_pad[:, ng + 1 : ng + bnr + 1, ng : ng + bnz]
 
-    rho_L = np.maximum(UL_r[IDN], 1e-10)
-    rho_R = np.maximum(UR_r[IDN], 1e-10)
+    rho_L = apply_floor(UL_r[IDN], 1e-10, name="amr_block_rhs/rho_L_r")
+    rho_R = apply_floor(UR_r[IDN], 1e-10, name="amr_block_rhs/rho_R_r")
     vr_L = UL_r[IMR] / rho_L
     vr_R = UR_r[IMR] / rho_R
     F_left = 0.5 * (vr_L * UL_r + vr_R * UR_r) - 0.5 * alpha * (UR_r - UL_r)
 
-    rho_L2 = np.maximum(UL_r_right[IDN], 1e-10)
-    rho_R2 = np.maximum(UR_r_right[IDN], 1e-10)
+    rho_L2 = apply_floor(UL_r_right[IDN], 1e-10, name="amr_block_rhs/rho_L2_r")
+    rho_R2 = apply_floor(UR_r_right[IDN], 1e-10, name="amr_block_rhs/rho_R2_r")
     vr_L2 = UL_r_right[IMR] / rho_L2
     vr_R2 = UR_r_right[IMR] / rho_R2
     F_right = 0.5 * (vr_L2 * UL_r_right + vr_R2 * UR_r_right) - 0.5 * alpha * (UR_r_right - UL_r_right)
@@ -1223,14 +1225,14 @@ def _block_rhs(
     UL_z_top = U_pad[:, ng : ng + bnr, ng : ng + bnz]
     UR_z_top = U_pad[:, ng : ng + bnr, ng + 1 : ng + bnz + 1]
 
-    rho_Lz = np.maximum(UL_z[IDN], 1e-10)
-    rho_Rz = np.maximum(UR_z[IDN], 1e-10)
+    rho_Lz = apply_floor(UL_z[IDN], 1e-10, name="amr_block_rhs/rho_L_z")
+    rho_Rz = apply_floor(UR_z[IDN], 1e-10, name="amr_block_rhs/rho_R_z")
     vz_Lz = UL_z[IMZ] / rho_Lz
     vz_Rz = UR_z[IMZ] / rho_Rz
     G_bottom = 0.5 * (vz_Lz * UL_z + vz_Rz * UR_z) - 0.5 * alpha * (UR_z - UL_z)
 
-    rho_Lzt = np.maximum(UL_z_top[IDN], 1e-10)
-    rho_Rzt = np.maximum(UR_z_top[IDN], 1e-10)
+    rho_Lzt = apply_floor(UL_z_top[IDN], 1e-10, name="amr_block_rhs/rho_L_z_top")
+    rho_Rzt = apply_floor(UR_z_top[IDN], 1e-10, name="amr_block_rhs/rho_R_z_top")
     vz_Lzt = UL_z_top[IMZ] / rho_Lzt
     vz_Rzt = UR_z_top[IMZ] / rho_Rzt
     G_top = 0.5 * (vz_Lzt * UL_z_top + vz_Rzt * UR_z_top) - 0.5 * alpha * (UR_z_top - UL_z_top)
