@@ -105,29 +105,32 @@ Published RADPF device parameters. No parameter fitting.
 | Parameter | Value | Source |
 |-----------|-------|--------|
 | C | 1.332 mF | Scholz 2006 |
-| L0 | 33.5 nH | RADPF default |
-| R0 | 6.12 mOhm | RADPF default (RESF=1.22) |
+| L0 | 25 nH | Akel 2021 (bare-bank) |
+| R0 | 2.3 mOhm | Akel 2021 (bare-bank; plasma R via sheath) |
 | V0 | 27 kV | IFPiLM operating condition |
-| fc | 0.7 | RADPF default |
-| fm | 0.13 | RADPF default |
-| fmr | 0.35 | RADPF default |
+| fc | 0.7 | Malek 2025 PPT 12(1):9 |
+| fm | 0.13 | Malek 2025 PPT 12(1):9 |
+| fmr | 0.35 | Malek 2025 PPT 12(1):9 |
+| fcr | 0.65 | Malek 2025 PPT 12(1):9 |
 
 | Metric | Value |
 |--------|-------|
-| I_peak (sim) | 1.655 MA |
-| I_peak (exp) | ~1.87 MA |
-| Error | 11.5% |
-| t_peak (sim) | 6.02 us |
-| t_peak (exp) | 5.80 us |
-| Error | 3.8% |
+| I_peak (sim) | 2.013 MA |
+| I_peak (exp) | ~1.87 MA (Scholz 2006) |
+| Error | +7.6% |
+| t_peak (sim) | ~6.24 us |
+| t_peak (exp) | 5.60 us (RADPF) |
+| Error | +11.5% |
 
-Last validated: 2026-04-20 (source: `~/.claude/dpf-validation/latest.json`).
-This is a regression from the 2.8% I_peak error baseline recorded 2026-04-10;
-bisect pending on `fix/beta-lee-calibration` commits (see CRITICAL_BLOCKER.md).
+Last validated: HEAD `5746c81`, 2026-04-23+ (KR-canonical inputs).
+Both metrics pass the 15% acceptance criterion.
+Prior numbers (1.818 MA / 2.8% error, Apr-10) used an EMPIRICAL `R0_CORRECTION=6.43 mOhm`
+knob that constituted calibration-as-bug; those numbers are superseded.
+See CRITICAL_BLOCKER.md for full re-anchor narrative.
 CI has been red since 2026-03-30 (torch import gate, see `fix/ci-torch-gate`).
 
 No calibration was performed. The equations are from the published paper.
-The parameters are from the published RADPF documentation.
+The parameters are from Akel 2021 and Malek 2025 (KR-canonical).
 
 ### V&V campaign (2,026 shots)
 

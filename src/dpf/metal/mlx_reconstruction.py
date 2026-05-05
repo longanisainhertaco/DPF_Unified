@@ -108,6 +108,149 @@ def _mc_limit(a: mx.array, b: mx.array) -> mx.array:
 
 
 # ============================================================
+# Toh 2025 density-dependent slope limiter ψ(n_i)
+# ============================================================
+#
+# Source: Toh Y.H., Dolence J., Duraisamy K. — "Asymptotic-preserving
+# semi-implicit finite volume scheme for extended magnetohydrodynamics"
+# [KR: asymptotic-preserving-semi-implicit-finite-volume-scheme-for-
+# extended-magnetohydrodynamics-yi-han.md §3.1 lines 638-684]
+#
+# Eq. (30) — primitive reconstruction at cell interface (verbatim):
+#     U^L_{i+1/2} = U_i   + (1/2) * psi(n_i)   * phi(r_i)   * Delta U_i
+#     U^R_{i+1/2} = U_{i+1} - (1/2) * psi(n_i) * phi(r_i)   * Delta U_{i+1}
+# where phi(r_i) is a TVD slope limiter (e.g., monotonized central) and
+# psi(n_i) is an additional density-dependent slope limiter.
+#
+# Eq. (31) — sigmoid form (verbatim):
+#                                                            -1
+#     psi(n_i) = ( 1 + exp( (lambda_0 / Delta x)^3 - n_i / L_0 ) )
+#
+# Paper notes (verbatim, lines 672-684):
+#   - "(lambda_0 / Delta x)^3 is a free parameter and from the shock tube
+#      problem, 0.005 is a suitable value."
+#   - "as the flow density decreases and approaches the molecular limit,
+#      the above limiter approaches zero, giving rise to a 1st-order
+#      diffusive flux to stabilize the solution by damping out small
+#      amplitude but high frequency oscillations."
+#   - "this density-dependent slope limiter is only applicable to problems
+#      that contain both high- and low-density regions."
+
+
+def _toh_psi_ni_limiter(
+    n_i: mx.array,
+    lambda0_over_dx_cubed: float = 0.005,
+    L0: float = 1.0,
+) -> mx.array:
+    """Toh 2025 §3.1 Eq. (31) density-dependent sigmoid slope limiter.
+
+    Computes psi(n_i) = (1 + exp((lambda_0/Delta x)^3 - n_i/L_0))^{-1}.
+
+    Limit cases (Toh §3.1):
+        n_i / L_0 >> (lambda_0/dx)^3  ->  psi -> 1   (continuum limit)
+        n_i / L_0 << (lambda_0/dx)^3  ->  psi -> 0   (kinetic limit, 1st-order)
+        n_i / L_0 == (lambda_0/dx)^3  ->  psi == 0.5 (transition midpoint)
+
+    Args:
+        n_i: Cell-centered ion number density (any positive array shape).
+        lambda0_over_dx_cubed: Free parameter (lambda_0/Delta x)^3 from
+            Eq. (31). Toh shock-tube value is 0.005 (paper-specified, not
+            empirical). Default 0.005.
+        L0: Reference (low) density used to normalize n_i (Toh §3.1
+            line 682: "all densities lie within the low-density regime
+            ... the limiter reduces to 1 after normalization by the
+            reference low density n0"). Default 1.0 (assumes pre-normalized
+            n_i).
+
+    Returns:
+        psi(n_i) in (0, 1), same shape as n_i.
+
+    Reference:
+        [KR: asymptotic-preserving-semi-implicit-finite-volume-scheme-for-
+         extended-magnetohydrodynamics-yi-han.md §3.1 Eq. (31) lines 662-671]
+    """
+    arg = lambda0_over_dx_cubed - n_i / L0
+    return 1.0 / (1.0 + mx.exp(arg))
+
+
+def plm_reconstruct_toh(
+    Q: mx.array,
+    dim: int,
+    density_index: int = 0,
+    limiter: str = "mc",
+    lambda0_over_dx_cubed: float = 0.005,
+    L0: float = 1.0,
+) -> tuple[mx.array, mx.array]:
+    """PLM with Toh 2025 ψ(n_i)·ϕ(r_i) density-modulated slope (Eq. 30).
+
+    Implements the cell-interface primitive reconstruction from Toh §3.1
+    Eq. (30) verbatim:
+
+        U^L_{i+1/2} = U_i     + (1/2) * psi(n_i)     * phi(r_i)     * dU_i
+        U^R_{i+1/2} = U_{i+1} - (1/2) * psi(n_i+1)   * phi(r_i+1)   * dU_{i+1}
+
+    where phi(r_i) is the TVD slope limiter (MC or minmod) on the upstream/
+    downstream slope ratio, and psi(n_i) is the sigmoid in Eq. (31).
+
+    Per Toh §3.1: the additional ψ(n_i) factor damps small high-frequency
+    oscillations (e.g., Hall-induced Whistler waves) by increasing flux
+    diffusivity in low-density regions, while leaving the continuum-limit
+    reconstruction unchanged.
+
+    Args:
+        Q: Conserved state, shape (NVAR, nr, nz).
+        dim: Reconstruction dimension. 0=radial (axis 1), 1=axial (axis 2).
+        density_index: Index of the density variable along axis 0 (default 0).
+        limiter: TVD limiter ϕ — "mc" or "minmod".
+        lambda0_over_dx_cubed: Toh Eq. (31) free parameter (shock-tube 0.005).
+        L0: Reference low density for normalization.
+
+    Returns:
+        (QL, QR) at interfaces.
+
+    Reference:
+        [KR: asymptotic-preserving-semi-implicit-finite-volume-scheme-for-
+         extended-magnetohydrodynamics-yi-han.md §3.1 Eqs. (30)-(31)
+         lines 638-684]
+    """
+    axis = dim + 1
+    n = Q.shape[axis]
+
+    if n < 2:
+        raise ValueError(
+            f"PLM-Toh requires at least 2 cells along dim={dim}, got {n}"
+        )
+
+    limit_fn = _mc_limit if limiter == "mc" else _minmod
+
+    q_lo = _take(Q, axis, 0, n - 1)
+    q_hi = _take(Q, axis, 1, n - 1)
+    fwd = q_hi - q_lo
+
+    if n >= 3:
+        fwd_l = _take(fwd, axis, 0, n - 2)
+        fwd_r = _take(fwd, axis, 1, n - 2)
+        slope_interior = limit_fn(fwd_l, fwd_r)
+
+        pad_shape = list(Q.shape)
+        pad_shape[axis] = 1
+        zero_pad = mx.zeros(pad_shape, dtype=Q.dtype)
+        slope = mx.concatenate([zero_pad, slope_interior, zero_pad], axis=axis)
+    else:
+        slope = mx.zeros_like(Q)
+
+    n_density = Q[density_index]
+    psi = _toh_psi_ni_limiter(n_density, lambda0_over_dx_cubed, L0)
+    psi_b = mx.expand_dims(psi, axis=0)
+    psi_slope = psi_b * slope
+
+    QL = _take(Q, axis, 0, n - 1) + 0.5 * _take(psi_slope, axis, 0, n - 1)
+    QR = _take(Q, axis, 1, n - 1) - 0.5 * _take(psi_slope, axis, 1, n - 1)
+
+    return QL, QR
+
+
+# ============================================================
 # PLM reconstruction
 # ============================================================
 
@@ -453,4 +596,12 @@ def reconstruct(
         return plm_reconstruct(Q, dim=dim, **kwargs)
     if method == "ppm":
         return ppm_reconstruct(Q, dim=dim, **kwargs)
-    raise ValueError(f"Unknown reconstruction method: {method!r}. Choose 'weno5z', 'plm', or 'ppm'.")
+    if method == "toh_psi_ni":
+        # Opt-in Toh 2025 §3.1 Eq. (30)-(31) density-dependent ψ(n_i) limiter.
+        # [KR: asymptotic-preserving-semi-implicit-finite-volume-scheme-for-
+        #  extended-magnetohydrodynamics-yi-han.md §3.1 lines 638-684]
+        return plm_reconstruct_toh(Q, dim=dim, **kwargs)
+    raise ValueError(
+        f"Unknown reconstruction method: {method!r}. "
+        "Choose 'weno5z', 'plm', 'ppm', or 'toh_psi_ni'."
+    )
