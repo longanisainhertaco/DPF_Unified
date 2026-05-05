@@ -252,7 +252,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.05,
             "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
-            "mass_fraction": 1.0,    # EMPIRICAL: calibrated to minimize loading vs RADPF 400 kA target
+            # UNVERIFIED: Lee & Saw 2008 J.Fusion.Energy 27:292 Table 1
+            # [KR: the-code-uses-a-phenomenological-mechanism...md Table 1] has
+            # NX2 D2 geometry/Yn but does NOT publish fc/fm/fmr/fcr for D2.
+            # The fm=0.10 in DEVICES.NX2_DATA.lee_fm is the Neon SXR fit
+            # (Lee & Saw 2008 Table 1, Neon row) reused for D2. Adopting
+            # fm=0.10 here aligns preset with DEVICES (drift collapse) but
+            # is NOT paper-anchored to a D2 fit. Prior 1.0 was RADPF-target-
+            # calibrated (papers-are-truth violation). t_peak may worsen
+            # (lower fm -> faster axial). See feedback/papers-are-truth.md.
+            "mass_fraction": 0.10,
             "radial_mass_fraction": 0.14,  # Arwinder thesis Table 3.34 (C1: fmr=0.14)
             "radial_current_fraction": 0.69,  # Arwinder thesis Table 3.34 (C1: fcr=0.69)
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
