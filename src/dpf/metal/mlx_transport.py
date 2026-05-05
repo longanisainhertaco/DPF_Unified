@@ -36,6 +36,7 @@ from dpf.metal.constants import (
 from dpf.metal.constants import (
     M_ELECTRON as M_E,
 )
+from dpf.metal.floor_telemetry import apply_floor
 
 # ── Thomas Tridiagonal Solver ───────────────────────────────────
 
@@ -276,7 +277,7 @@ def lee_more_resistivity(
         Resistivity [Ohm*m], shape (nr, nz).
     """
     Te_safe = np.maximum(Te, 0.01)  # floor at 0.01 eV
-    rho_safe = np.maximum(rho, 1e-20)
+    rho_safe = apply_floor(rho, 1e-20, name="lee_more_resistivity/rho_safe")
 
     # Number density
     n_i = rho_safe / ion_mass
@@ -418,7 +419,7 @@ def compute_resistivity(
         eta_vacuum = 10.0  # Ohm*m — FLASH-style vacuum magnetic diffusivity
 
         # Density ratio: rho / median(rho) — median is fill gas density
-        rho_safe = np.maximum(rho, 1e-30)
+        rho_safe = apply_floor(rho, 1e-30, name="compute_resistivity/spitzer_vacuum/rho_safe")
         rho_median = float(np.median(rho_safe))
         rho_ratio = rho_safe / max(rho_median, 1e-30)
 
@@ -476,8 +477,8 @@ def anomalous_resistivity(
     eta_anom : np.ndarray
         Anomalous resistivity [Ohm*m], shape (nr, nz). Zero below threshold.
     """
-    rho_safe = np.maximum(rho, 1e-20)
-    p_safe = np.maximum(p, 1e-12)
+    rho_safe = apply_floor(rho, 1e-20, name="anomalous_resistivity/rho_safe")
+    p_safe = apply_floor(p, 1e-12, name="anomalous_resistivity/p_safe")
     n_i = rho_safe / ion_mass
     n_e = Z_eff * n_i
     J_mag = np.sqrt(np.maximum(J_sq, 0.0))
@@ -721,7 +722,7 @@ def apply_thermal_conduction(
     else:
         kappa_np = np.asarray(kappa_parallel, dtype=np.float64)
 
-    n_np = np.maximum(rho_np / M_D, 1e-10)
+    n_np = apply_floor(rho_np / M_D, 1e-10, name="apply_thermal_conduction/n_np")
 
     # Compute anisotropy weighting from B-field direction
     if anisotropic and Br is not None and Bz is not None and Bt is not None:
@@ -836,7 +837,7 @@ def flux_limit_kappa(
     Giuliani & Commisso (2015), PoP 22:032116 — z-pinch flux limiting.
     """
     Te_safe = np.maximum(Te, 1.0)  # floor at 1 K
-    rho_safe = np.maximum(rho, 1e-20)
+    rho_safe = apply_floor(rho, 1e-20, name="apply_flux_limiter/rho_safe")
 
     # Electron number density
     n_e = Z_eff * rho_safe / ion_mass
