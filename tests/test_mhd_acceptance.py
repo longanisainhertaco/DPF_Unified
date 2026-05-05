@@ -79,24 +79,62 @@ class TestMHDAcceptance:
         )
 
     def test_angle3_waveform_l2(self, mhd_result, radpf_ref):
-        """Angle 3: I(t) waveform L2 norm within 20% of RADPF."""
+        """Angle 3: NRMSE of I(t) residual on common time grid, windowed
+        to the axial rundown phase [0, 0.9*t_pinch_ref].
+
+        Was previously comparing scalar RMS values of two unaligned
+        waveforms, which silently passed any pair of curves with the
+        same energy. Replaced per phd-reviewer audit (2026-05-05).
+
+        References for the windowing decision:
+            Auluck 2018, Phys. Plasmas 25:032708, doi:10.1063/1.5018191
+                — snowplow regime-of-validity boundary at radial collapse
+            Lee & Saw 2014, J. Fusion Energy 33:319, doi:10.1007/s10894-013-9647-4
+                — RADPF is a 0D lumped-circuit + snowplow model; not
+                comparable to MHD in pinch/post-pinch phases
+        """
         I_mhd = np.asarray(mhd_result.get("I_MA", []))
+        t_mhd = np.asarray(mhd_result.get("t_us", []))
         I_ref = np.asarray(radpf_ref["time_series"]["I_kA"]) * 1e-3  # kA -> MA
+        t_ref = np.asarray(radpf_ref["time_series"]["t_us"])
         tol = radpf_ref["acceptance_criteria"]["waveform_L2_tolerance"]
 
-        if len(I_mhd) == 0:
+        if len(I_mhd) == 0 or len(t_mhd) == 0:
             pytest.skip("No I(t) waveform in MHD result")
+        if len(I_mhd) != len(t_mhd):
+            pytest.skip("MHD waveform t/I length mismatch")
 
-        l2_mhd = float(np.sqrt(np.mean(I_mhd**2)))
-        l2_ref = float(np.sqrt(np.mean(I_ref**2)))
-        err = abs(l2_mhd - l2_ref) / max(l2_ref, 1e-30)
-        assert err < tol, (
-            f"Waveform L2: MHD={l2_mhd:.4f} vs RADPF={l2_ref:.4f} "
-            f"(error={err:.1%}, tolerance={tol:.0%})"
+        # Window: [0, 0.9 * t_peak_ref]. Past pinch start, RADPF is not
+        # truth (Lee model breaks down; experiment is the reference).
+        t_peak_ref = float(radpf_ref["scalars"]["t_peak_us"])
+        t_max = 0.9 * t_peak_ref
+        t_min = max(float(t_mhd.min()), float(t_ref.min()))
+        t_max = min(t_max, float(t_mhd.max()), float(t_ref.max()))
+        if t_max <= t_min:
+            pytest.skip("No overlap between MHD and RADPF time windows")
+
+        # Common dense time grid; interpolate both to it.
+        n_grid = 256
+        t_common = np.linspace(t_min, t_max, n_grid)
+        I_mhd_interp = np.interp(t_common, t_mhd, I_mhd)
+        I_ref_interp = np.interp(t_common, t_ref, I_ref)
+
+        # NRMSE = ||residual||_2 / ||I_ref||_2
+        residual = I_mhd_interp - I_ref_interp
+        nrmse = float(
+            np.linalg.norm(residual) / max(np.linalg.norm(I_ref_interp), 1e-30)
+        )
+        assert nrmse < tol, (
+            f"NRMSE on [0, 0.9*t_pinch] window: {nrmse:.1%} "
+            f"(tolerance={tol:.0%}, n_grid={n_grid})"
         )
 
     def test_angle4_didt_rise(self, mhd_result, radpf_ref):
-        """Angle 4: dI/dt at current rise within 25% of RADPF."""
+        """Angle 4: dI/dt at half-peak rise within 25% of RADPF.
+
+        Uses np.argmin(|abs - target|) instead of np.searchsorted,
+        which assumed monotonic |I| and could mis-index on noisy MHD.
+        """
         I_mhd = np.asarray(mhd_result.get("I_MA", []))
         t_mhd = np.asarray(mhd_result.get("t_us", []))
         tol = radpf_ref["acceptance_criteria"]["dI_dt_rise_tolerance"]
@@ -104,10 +142,11 @@ class TestMHDAcceptance:
         if len(I_mhd) < 10:
             pytest.skip("Not enough MHD waveform points")
 
-        # dI/dt at 50% of peak (current rise phase)
-        idx_peak = np.argmax(np.abs(I_mhd))
+        idx_peak = int(np.argmax(np.abs(I_mhd)))
+        if idx_peak < 2:
+            pytest.skip("MHD peak too early for dI/dt at half-rise")
         I_half = 0.5 * abs(I_mhd[idx_peak])
-        idx_half = np.searchsorted(np.abs(I_mhd[:idx_peak]), I_half)
+        idx_half = int(np.argmin(np.abs(np.abs(I_mhd[:idx_peak]) - I_half)))
 
         if idx_half < 1 or idx_half >= len(t_mhd) - 1:
             pytest.skip("Cannot compute dI/dt rise from MHD waveform")
@@ -116,12 +155,15 @@ class TestMHDAcceptance:
         dI = (abs(I_mhd[idx_half]) - abs(I_mhd[idx_half - 1])) * 1e6  # MA -> A
         dI_dt_mhd = dI / max(dt, 1e-30)
 
-        # Same computation on RADPF reference
-        I_ref = np.asarray(radpf_ref["time_series"]["I_kA"]) * 1e-3  # kA -> MA
+        I_ref = np.asarray(radpf_ref["time_series"]["I_kA"]) * 1e-3
         t_ref = np.asarray(radpf_ref["time_series"]["t_us"])
-        idx_peak_ref = np.argmax(np.abs(I_ref))
+        idx_peak_ref = int(np.argmax(np.abs(I_ref)))
+        if idx_peak_ref < 2:
+            pytest.skip("RADPF peak too early for dI/dt at half-rise")
         I_half_ref = 0.5 * abs(I_ref[idx_peak_ref])
-        idx_half_ref = np.searchsorted(np.abs(I_ref[:idx_peak_ref]), I_half_ref)
+        idx_half_ref = int(
+            np.argmin(np.abs(np.abs(I_ref[:idx_peak_ref]) - I_half_ref))
+        )
 
         if idx_half_ref < 1:
             pytest.skip("Cannot compute dI/dt rise from RADPF reference")
