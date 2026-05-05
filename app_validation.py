@@ -15,7 +15,7 @@ PRESET_TO_DEVICE: dict[str, str] = {
     "pf1000_20kv": "PF-1000-20kV",
     "nx2": "NX2",
     "unu_ictp": "UNU-ICTP",
-    "poseidon": "POSEIDON",
+    # "poseidon" (40 kV) is _REFERENCE_ONLY — Herold 1989 not in KnowledgeReference/. Excluded.
     "poseidon_60kv": "POSEIDON-60kV",
     "mjolnir": "MJOLNIR",
     "faeton": "FAETON-I",

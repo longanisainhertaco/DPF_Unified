@@ -270,27 +270,30 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "dx": 3e-4,
         "sim_time": 5e-6,
         "dt_init": 1e-11,
-        "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
+        "rho0": 8.61e-4,  # 4 Torr D2 at 300K: P/(kB*T) * m_D2 (KR p.152: P0=4 Torr)
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Lee et al. (1988), Lee (2014) Review
+        # Circuit: Lee & Saw 2014, J. Fusion Energy 33:319 Table p.152
+        # [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152 L12725]
+        # Verbatim: V0=15 kV, P0=4 Torr D2, L0=110 nH, C0=30 uF, a=0.95 cm,
+        # b=3.2 cm, Z0=16 cm, I_peak=182 kA, I_pinch=123 kA, S=96, Yn=1.2e7
         # RESF = r0/sqrt(L0/C0) = 12e-3/sqrt(110e-9/30e-6) = 0.198
         "circuit": {
             "C": 30e-6,           # 30 uF
-            "V0": 14e3,           # 14 kV
+            "V0": 15e3,           # 15 kV [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152 L12725]
             "L0": 110e-9,         # 110 nH
             "R0": 12e-3,          # 12 mOhm (RESF~0.2)
-            "anode_radius": 0.0095,
-            "cathode_radius": 0.032,
+            "anode_radius": 0.0095,   # 0.95 cm (Lee & Saw 2014 p.152)
+            "cathode_radius": 0.032,  # 3.2 cm (Lee & Saw 2014 p.152)
             "crowbar_enabled": False,  # No crowbar in UNU-ICTP PFF (simple capacitor bank)
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {
-            "anode_length": 0.16,        # 160 mm
-            "fill_pressure_Pa": 400.0,   # 3 Torr D2 = 400 Pa
+            "anode_length": 0.16,        # 160 mm (Lee & Saw 2014 p.152: Z0=16 cm)
+            "fill_pressure_Pa": 533.0,   # 4 Torr D2 = 533 Pa (Lee & Saw 2014 p.152) — was 3 Torr pre-fix
             "current_fraction": 0.7,     # Lee & Saw (2009, 2014): fc=0.7
             "mass_fraction": 0.08,       # Lee & Saw (2014): fm=0.08 (published Lee model fit)
             "radial_mass_fraction": 0.16,  # Lee & Saw (2014): fmr=0.16
@@ -338,9 +341,9 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": (
-                "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313; "
+                "Petrov et al., Phys. Plasmas 29:062708 (2022) §II.A L228-232; "
                 "Goyon et al., Phys. Plasmas 32:033105 (2025); "
-                "Petrov et al., Phys. Plasmas 29:062708 (2022)"
+                "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313"
             ),
         },
         "grid_shape": [128, 1, 256],
@@ -352,18 +355,18 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
         # Circuit: 2 MJ configuration (6 towers, 24 Marx modules)
-        # Goyon et al. 2025: 60 kV typical, 2.8 MA peak current
-        # C = 408 uF (24 modules x 2 x 34 uF caps, single-stage erection)
-        # L0 = 67.4 nH (measured lumped circuit; Offermann 2021)
-        # R0 = 6.25 mOhm (EMPIRICAL: Offermann 2021 gives 12.5 mOhm/tower;
-        #       /2 not /6 — includes Marx erection losses + cable impedance)
+        # Petrov 2022 §II.A L228-232 (verbatim): 2-MJ lumped parameters are
+        #   C = 408 uF, L0 = 46.7 nH, R0 = 6.3 mOhm
+        # [KR: petrov-2022-mjolnir-high-low-discharges.md §II.A L228-232]
+        # NOTE: 67.4 nH / 12.5 mOhm in Petrov L220-223 are the 1-MJ values
+        # (Schmidt 2021); previous preset incorrectly applied 1-MJ L0 to 2-MJ.
         # Anode OD = 228.6 mm -> radius 114.3 mm (Goyon 2025)
         # Cathode: 24 rods, inner radius ~157 mm (4.3 cm A-K gap; Petrov 2022)
         "circuit": {
-            "C": 408e-6,           # 408 uF — 2 MJ config (Goyon 2025)
+            "C": 408e-6,           # 408 uF — Petrov 2022 §II.A L230 (2-MJ lumped)
             "V0": 60e3,            # 60 kV typical operation (Goyon 2025)
-            "L0": 67.4e-9,         # 67.4 nH — measured lumped circuit (Offermann 2021)
-            "R0": 6.25e-3,         # 6.25 mOhm — 12.5/2 for 6-tower (Offermann 2021)
+            "L0": 46.7e-9,         # 46.7 nH — Petrov 2022 §II.A L231 (2-MJ lumped)
+            "R0": 6.3e-3,          # 6.3 mOhm — Petrov 2022 §II.A L231-232 (2-MJ lumped)
             "anode_radius": 0.1143,  # 114.3 mm — 228.6 mm OD / 2 (Goyon 2025)
             "cathode_radius": 0.157,  # ~157 mm — 24-rod cathode (Petrov 2022)
             "n_cathode_rods": 24,  # Goyon 2025 p.2: "a set of 24 cathode rods"
