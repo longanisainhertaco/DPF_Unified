@@ -368,6 +368,74 @@ file a follow-up debt item rather than skipping the verification.
 
 ---
 
+## D-PRESSURE-RECOVERY. Non-Conservative Pressure Evolution at Shocks
+
+### Description
+`metal_solver.py:1882` (and the symmetric stage-1 update earlier in the SSP-RK2
+integrator) advances pressure as a **primitive variable** via the chain-rule form
+
+```
+dp/dt = -v . grad(p) - gamma * p * div(v) + heating - cooling
+```
+
+This is mathematically equivalent to total-energy conservation only for **smooth
+flows**. Across a shock the chain rule fails: `p` is discontinuous, `div(v)` carries
+a delta function, and the product `gamma * p * div(v)` is undefined in the weak
+sense. The Rankine-Hugoniot post-shock state is therefore **not recovered**, and a
+TVD-PLM reconstruction on `p` cannot achieve its formal first-order-on-shocks
+convergence rate (Banks 2008's ~0.7 figure assumes a conservative Godunov scheme
+that updates total energy `E` and recovers `p` from `E - KE - ME` after each step).
+
+The conservative replacement already exists in the same file:
+
+- `metal_solver.py:1735` — `_recover_pressure_de(rho, vel, B, E, s_rho)` recovers
+  pressure from a conservatively-evolved total energy with a dual-energy switching
+  function (entropy tracer fallback in magnetically dominated cells).
+- The flag `use_conservative_energy=True` is documented as the entry point but is
+  **not** wired into the cartesian Sod test path used by
+  `tests/test_verification_consolidated.py::TestSodDPFConvergence::test_l1_decreases_with_resolution`.
+
+### Impact
+- **High for verification, low for current science output.** The Sod convergence
+  test cannot achieve the Banks 2008 ~0.7 rate while pressure is evolved as a
+  primitive across shocks. Other shock-bearing tests (Brio-Wu, magnetized Noh)
+  may be in the same boat — they pass the stability gate but no one has confirmed
+  they hit the published convergence orders.
+- Until conservative energy evolution is wired, the convergence claim in the
+  test docstring ("Banks 2008 gives ~0.8 for TVD-PLM on a discontinuity") is a
+  **target the engine cannot meet** — the test was failing because of the
+  engine, not because of test drift. Marked `xfail(strict=False)` on
+  2026-04-30 per Wave-6 S17 RCA.
+- DPF pinch dynamics are not pure shocks (most of the action is compressive,
+  not discontinuous), so the production runs are likely less affected than the
+  Sod tube. But the snowplow shock front does carry a discontinuity, and any
+  diagnostic that depends on post-shock pressure (yield, neutron rate, x-ray
+  power) inherits the same Rankine-Hugoniot violation at the shock interface.
+
+### Recommended Refactor
+1. Wire `use_conservative_energy=True` through the cartesian Sod test path so
+   `_recover_pressure_de` is exercised. This means routing total energy `E` and
+   the entropy tracer `s_rho` through `_run_sod_dpf` end-to-end.
+2. Add a finer-grained convergence test that drives a **smooth** acoustic pulse
+   (no shock) so the TVD-PLM reconstruction can be exercised at its formal
+   second-order rate. This test will reveal whether the limiter is the issue
+   independent of the conservative-vs-primitive question.
+3. Once conservative energy is wired, remove the `xfail` on
+   `test_l1_decreases_with_resolution` and confirm the rate floor of 0.7 is
+   recovered. If it is, the debt is closed.
+4. Audit Brio-Wu and magnetized-Noh paths for the same primitive-pressure
+   pattern. Both should also use `_recover_pressure_de` after conservative
+   energy evolution.
+
+### Effort Estimate
+**M (2-3 days).** The dual-energy infrastructure exists; the work is plumbing
+total energy and the entropy tracer through the cartesian solver path and
+verifying the existing tests still pass with the new conservative variable.
+Risk is in finding implicit consumers of the primitive-`p` evolution that
+silently break when `p` is recovered post-hoc rather than evolved directly.
+
+---
+
 ## Priority Ordering (Recommended)
 
 This is the order I would tackle these if forced to rank — not authorization to
