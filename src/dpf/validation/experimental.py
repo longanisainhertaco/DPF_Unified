@@ -62,6 +62,7 @@ from dpf.validation.experimental_comparison import (  # noqa: F401
 )
 from dpf.validation.experimental_device import ExperimentalDevice  # noqa: F401
 from dpf.validation.experimental_devices import (  # noqa: F401
+    _REFERENCE_ONLY,
     AECS_PF2_DATA,
     DEVICES,
     FAETON_DATA,
@@ -74,7 +75,6 @@ from dpf.validation.experimental_devices import (  # noqa: F401
     POSEIDON_60KV_DATA,
     POSEIDON_DATA,
     UNU_ICTP_DATA,
-    _REFERENCE_ONLY,
     get_devices_by_provenance,
 )
 from dpf.validation.experimental_diagnostics import (  # noqa: F401

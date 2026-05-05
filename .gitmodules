@@ -1,6 +1,10 @@
 [submodule "external/athena"]
 	path = external/athena
-	url = https://github.com/PrincetonUniversity/athena.git
+	url = https://github.com/longanisainhertaco/athena.git
+	# Fork of PrincetonUniversity/athena carrying DPF problem-generator
+	# fixes (dpf-fixes branch). Upstream Princeton is read-only; the fork
+	# bridge holds Spitzer/Braginskii transport + bremsstrahlung SI K-form
+	# (NRL eq.30) on top of upstream HEAD. See commit body for derivation.
 [submodule "external/athenak"]
 	path = external/athenak
 	url = https://github.com/IAS-Astrophysics/athenak.git
