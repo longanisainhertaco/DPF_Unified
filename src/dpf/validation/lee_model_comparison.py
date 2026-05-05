@@ -69,6 +69,7 @@ from typing import Any
 import numpy as np
 
 from dpf.constants import k_B, m_d, mu_0, pi
+from dpf.metal.floor_telemetry import apply_floor
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,8 @@ class LeeModel:
     # outside the paper-attested range (fm ~0.10-0.13 for Type-1 PF devices)
     # and over-predicted swept mass by ~5x.  Callers should still pass
     # device-specific calibrated values via device_params["lee_fm"].
+    # fc range fc in [0.6, 0.8] for Type-1 PFs (Lee & Saw 2014); per-device
+    # fits live in the device registry.
     _DEFAULT_FC = 0.7
     _DEFAULT_FM = 0.13
 
@@ -360,17 +363,24 @@ class LeeModel:
             vz = max(vz, 0.0)
 
             # Swept mass
-            M_swept = self.fm * rho0 * annulus_area * max(z_pos, 1e-6)
+            z_pos_safe = apply_floor(
+                z_pos, 1e-6, "lee_model.axial_rhs/z_pos_swept_mass",
+            )
+            M_swept = self.fm * rho0 * annulus_area * z_pos_safe
 
             # Plasma inductance: L_p = L_per_length * z
-            L_p = L_per_length * max(z_pos, 1e-6)
+            L_p = L_per_length * apply_floor(
+                z_pos, 1e-6, "lee_model.axial_rhs/z_pos_inductance",
+            )
             L_total = L0 + L_p
 
             # dL_p/dt = L_per_length * vz
             dLp_dt = L_per_length * vz
 
             # Circuit equation
-            dI_dt = (Vcap - R0 * I - I * dLp_dt) / max(L_total, 1e-15)
+            dI_dt = (Vcap - R0 * I - I * dLp_dt) / apply_floor(
+                L_total, 1e-15, "lee_model.axial_rhs/L_total_div_guard",
+            )
 
             # Capacitor voltage
             dV_dt = -I / C
@@ -475,16 +485,22 @@ class LeeModel:
                 L_total = L0 + L_p_total
 
                 # dL_p/dt for radial phase
-                dLp_dt_rad = -(mu_0 / (2.0 * pi)) * L_pinch * vr / max(r_s, 1e-10)
+                dLp_dt_rad = -(mu_0 / (2.0 * pi)) * L_pinch * vr / apply_floor(
+                    r_s, 1e-10, "lee_model.radial_rhs/r_s_dLp_dt",
+                )
 
                 # Circuit
-                dI_dt = (Vcap_r - R0 * I_r - I_r * dLp_dt_rad) / max(L_total, 1e-15)
+                dI_dt = (Vcap_r - R0 * I_r - I_r * dLp_dt_rad) / apply_floor(
+                    L_total, 1e-15, "lee_model.radial_rhs/L_total_div_guard",
+                )
                 dV_dt = -I_r / C
 
                 # Dynamic radial slug mass: f_mr * rho0 * pi * (b^2 - r_s^2) * z_f
                 # Increases as shock sweeps inward (r_s decreases)
                 M_slug = self.f_mr * rho0 * pi * (b**2 - r_s**2) * L_pinch
-                M_slug = max(M_slug, 1e-20)
+                M_slug = apply_floor(
+                    M_slug, 1e-20, "lee_model.radial_rhs/M_slug",
+                )
 
                 # Mass pickup rate: dM/dt = f_mr * rho0 * 2*pi * r_s * |vr| * z_f
                 dm_dt = self.f_mr * rho0 * 2.0 * pi * r_s * abs(vr) * L_pinch
@@ -492,7 +508,7 @@ class LeeModel:
                 # Radial J×B force: (mu_0/(4*pi)) * (fc*I)^2 * z_f / r_s
                 F_rad = (
                     (mu_0 / (4.0 * pi)) * (self.fc * I_r)**2 * L_pinch
-                    / max(r_s, 1e-10)
+                    / apply_floor(r_s, 1e-10, "lee_model.radial_rhs/r_s_F_rad")
                 )
 
                 # Adiabatic back-pressure: p_fill * (b/r_s)^(2*gamma)
@@ -560,13 +576,16 @@ class LeeModel:
                 M_slug_pinch = (
                     self.f_mr * rho0 * pi * (b**2 - r_pinch_start**2) * L_pinch
                 )
-                M_slug_pinch = max(M_slug_pinch, 1e-20)
+                M_slug_pinch = apply_floor(
+                    M_slug_pinch, 1e-20, "lee_model.reflected_init/M_slug_pinch",
+                )
 
-                # Post-shock density: reflected shock encounters gas already
-                # compressed to 4*rho0 by the inward shock (R-H strong limit,
-                # gamma=5/3).  Reflected shock re-compresses by ~2x (Mach ~2
-                # in pre-heated gas), giving ~8*rho0 total.  Strong limit
-                # would give 16*rho0.  (PhD Debate #21 double-shock estimate.)
+                # EMPIRICAL: rho_post = 8 * rho0 is a double-shock
+                # estimate (4x for the inward strong shock at gamma=5/3,
+                # times ~2x for the reflected shock in pre-heated gas).
+                # The strong-shock limit would be 16x; PhD Debate #21
+                # picked 8 as the engineering compromise. Not a paper-
+                # attested DPF measurement.
                 rho_post = 8.0 * rho0
 
                 def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:
@@ -588,13 +607,18 @@ class LeeModel:
                     # dL_p/dt: vr4 > 0 (outward) → dL/dt < 0
                     dLp_dt_r4 = (
                         -(mu_0 / (2.0 * pi)) * L_pinch * vr4
-                        / max(r_s, 1e-10)
+                        / apply_floor(
+                            r_s, 1e-10, "lee_model.reflected_rhs/r_s_dLp_dt",
+                        )
                     )
 
                     # Circuit equation
                     dI_dt = (
                         (Vcap_r4 - R0 * I_r4 - I_r4 * dLp_dt_r4)
-                        / max(L_total, 1e-15)
+                        / apply_floor(
+                            L_total, 1e-15,
+                            "lee_model.reflected_rhs/L_total_div_guard",
+                        )
                     )
                     dV_dt = -I_r4 / C
 
@@ -603,7 +627,9 @@ class LeeModel:
                         self.f_mr * rho_post * pi
                         * max(r_s**2 - r_pinch_start**2, 0.0) * L_pinch
                     )
-                    M_slug = max(M_slug, 1e-20)
+                    M_slug = apply_floor(
+                        M_slug, 1e-20, "lee_model.reflected_rhs/M_slug",
+                    )
 
                     # Mass pickup rate from compressed gas
                     dm_dt = (
@@ -619,7 +645,9 @@ class LeeModel:
                     # J×B force opposes outward motion
                     F_rad = (
                         (mu_0 / (4.0 * pi)) * (self.fc * I_r4)**2 * L_pinch
-                        / max(r_s, 1e-10)
+                        / apply_floor(
+                            r_s, 1e-10, "lee_model.reflected_rhs/r_s_F_rad",
+                        )
                     )
 
                     # EOM: F_pressure - F_rad - drag
@@ -776,7 +804,9 @@ class LeeModel:
                 # Post-crowbar resistance = R0 + crowbar spark gap arc resistance
                 R_post_cb = R0 + R_crowbar
                 # Extend to 3 e-folding times or until 10x the crowbar time
-                tau_LR = L_total_cb / max(R_post_cb, 1e-10)
+                tau_LR = L_total_cb / apply_floor(
+                    R_post_cb, 1e-10, "lee_model.crowbar/R_post_cb_div_guard",
+                )
                 t_end_cb = t_cb + min(5.0 * tau_LR, 3.0 * T_quarter)
                 n_cb_pts = 500
                 t_cb_arr = np.linspace(t_cb, t_end_cb, n_cb_pts)
@@ -1015,7 +1045,9 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
 
     # Swept mass in radial phase (cylindrical slug from b to r_pinch_min)
     M_slug = fm * rho0 * pi * (b**2 - r_pinch_min**2) * z_f
-    M_slug = max(M_slug, 1.0e-30)
+    M_slug = apply_floor(
+        M_slug, 1.0e-30, "lee_model.pinch_voltage_estimate/M_slug",
+    )
 
     # Pinch volume
     V_pinch_vol = pi * r_pinch_min**2 * z_f
@@ -1031,8 +1063,16 @@ def estimate_neutron_yield_from_lee_result(result: LeeModelResult) -> float:
     rho_slug = M_slug / V_pinch_vol
 
     # Alfven speed in compressed slug
-    v_Alfven = B_theta / max(np.sqrt(mu_0 * rho_slug), 1.0e-30)
-    v_Alfven = max(v_Alfven, 1.0)  # floor at 1 m/s to avoid division by zero
+    v_Alfven = B_theta / apply_floor(
+        np.sqrt(mu_0 * rho_slug), 1.0e-30,
+        "lee_model.pinch_voltage_estimate/v_Alfven_denom",
+    )
+    # Telemetered floor at 1 m/s -- v_Alfven is later used as a divisor
+    # for the Alfven transit time; below 1 m/s the result is unphysical
+    # and saturating helps callers stay in the validity envelope.
+    v_Alfven = apply_floor(
+        v_Alfven, 1.0, "lee_model.pinch_voltage_estimate/v_Alfven_min",
+    )
 
     # Pinch voltage from inductive back-EMF during radial compression
     # V = (mu_0 / 2pi) * z_f * v_Alfven * I / r_pinch_min

@@ -8,16 +8,16 @@ from __future__ import annotations
 
 from dpf.validation.experimental_device import ExperimentalDevice
 from dpf.validation.experimental_waveforms import (
-    _FAETON_WAVEFORM_I_KA,
-    _FAETON_WAVEFORM_T_US,
-    _MJOLNIR_WAVEFORM_I_KA,
-    _MJOLNIR_WAVEFORM_T_US,
-    _PF1000_16KV_WAVEFORM_I_MA,
-    _PF1000_16KV_WAVEFORM_T_US,
     _PF1000_WAVEFORM_I_MA,
     _PF1000_WAVEFORM_T_US,
     _POSEIDON60KV_WAVEFORM_I_KA,
     _POSEIDON60KV_WAVEFORM_T_US,
+    _SYNTHETIC_FAETON_WAVEFORM_I_KA,
+    _SYNTHETIC_FAETON_WAVEFORM_T_US,
+    _SYNTHETIC_MJOLNIR_WAVEFORM_I_KA,
+    _SYNTHETIC_MJOLNIR_WAVEFORM_T_US,
+    _SYNTHETIC_PF1000_16KV_WAVEFORM_I_MA,
+    _SYNTHETIC_PF1000_16KV_WAVEFORM_T_US,
     _UNU_ICTP_WAVEFORM_I_KA,
     _UNU_ICTP_WAVEFORM_T_US,
     PF1000_GRIBKOV_I_TRIMMED,
@@ -199,8 +199,8 @@ PF1000_16KV_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.10,     # 10% (range 1.1-1.3 MA = ±8.3%)
     rise_time_uncertainty=0.15,        # 15% (no explicit timing stated)
     neutron_yield_uncertainty=0.40,    # 40% (shot-to-shot, Akel Table 1)
-    waveform_t=_PF1000_16KV_WAVEFORM_T_US * 1e-6,      # Convert us -> s
-    waveform_I=_PF1000_16KV_WAVEFORM_I_MA * 1e6,        # Convert MA -> A
+    waveform_t=_SYNTHETIC_PF1000_16KV_WAVEFORM_T_US * 1e-6,  # SYNTHETIC; Convert us -> s
+    waveform_I=_SYNTHETIC_PF1000_16KV_WAVEFORM_I_MA * 1e6,    # SYNTHETIC; Convert MA -> A
     waveform_amplitude_uncertainty=0.05,  # 5% reconstruction model uncertainty
     waveform_time_uncertainty=0.01,       # 1% temporal (pinch timing estimated)
     waveform_uncertainty_type="reconstruction",  # Physics-scaled from 27kV Scholz waveform
@@ -433,8 +433,8 @@ FAETON_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + Marx jitter)
     rise_time_uncertainty=0.10,    # 10% (not precisely stated)
     neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot + re-strikes)
-    waveform_t=_FAETON_WAVEFORM_T_US * 1e-6,      # Convert us -> s
-    waveform_I=_FAETON_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
+    waveform_t=_SYNTHETIC_FAETON_WAVEFORM_T_US * 1e-6,  # SYNTHETIC; Convert us -> s
+    waveform_I=_SYNTHETIC_FAETON_WAVEFORM_I_KA * 1e3,    # SYNTHETIC; Convert kA -> A
     waveform_amplitude_uncertainty=0.08,  # 8% reconstruction model uncertainty
     waveform_time_uncertainty=0.02,       # 2% temporal (reconstructed)
     waveform_uncertainty_type="reconstruction",  # Reconstructed from damped RLC parameters
@@ -487,8 +487,8 @@ MJOLNIR_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + integration)
     rise_time_uncertainty=0.15,    # 15% (analytic estimate, not paper-pinned)
     neutron_yield_uncertainty=0.50,  # 50% (shot-to-shot)
-    waveform_t=_MJOLNIR_WAVEFORM_T_US * 1e-6,      # Convert us -> s
-    waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,        # Convert kA -> A
+    waveform_t=_SYNTHETIC_MJOLNIR_WAVEFORM_T_US * 1e-6,  # SYNTHETIC; Convert us -> s
+    waveform_I=_SYNTHETIC_MJOLNIR_WAVEFORM_I_KA * 1e3,    # SYNTHETIC; Convert kA -> A
     waveform_amplitude_uncertainty=0.10,  # 10% reconstruction model uncertainty
     waveform_time_uncertainty=0.03,       # 3% temporal (reconstructed)
     waveform_uncertainty_type="reconstruction",
@@ -573,8 +573,8 @@ MJOLNIR_2MJ_DATA = ExperimentalDevice(
     peak_current_uncertainty=0.08,
     rise_time_uncertainty=0.15,
     neutron_yield_uncertainty=0.50,
-    waveform_t=_MJOLNIR_WAVEFORM_T_US * 1e-6,
-    waveform_I=_MJOLNIR_WAVEFORM_I_KA * 1e3,
+    waveform_t=_SYNTHETIC_MJOLNIR_WAVEFORM_T_US * 1e-6,
+    waveform_I=_SYNTHETIC_MJOLNIR_WAVEFORM_I_KA * 1e3,
     waveform_amplitude_uncertainty=0.10,
     waveform_time_uncertainty=0.03,
     waveform_uncertainty_type="reconstruction",

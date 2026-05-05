@@ -27,30 +27,44 @@ _total_corrections: dict[str, float] = defaultdict(float)
 
 
 def apply_floor(
-    arr: np.ndarray,
+    arr,
     floor_val: float,
     name: str,
     step: int = -1,
-) -> np.ndarray:
+):
     """Apply numerical floor with telemetry tracking.
 
+    Accepts both ``np.ndarray`` (per-element below-floor count) and
+    Python / numpy scalars (counted as 0 or 1).  Scalar input returns
+    a Python float so caller arithmetic stays scalar.
+
     Args:
-        arr: Array to floor.
+        arr: Array or scalar to floor.
         floor_val: Minimum allowed value.
         name: Human-readable name for logging.
         step: Current timestep (for logging).
 
     Returns:
-        Floored array (same shape).
+        Floored value -- ``np.ndarray`` if input was array-like,
+        ``float`` if input was scalar.
     """
-    below = arr < floor_val
+    arr_np = np.asarray(arr)
+    is_scalar = arr_np.ndim == 0
+    below = arr_np < floor_val
+    if is_scalar:
+        if bool(below):
+            _counts[name] += 1
+            shortfall = float(floor_val) - float(arr_np)
+            _max_corrections[name] = max(_max_corrections[name], shortfall)
+            _total_corrections[name] += shortfall
+        return float(max(float(arr_np), float(floor_val)))
     n_below = int(np.sum(below))
     if n_below > 0:
         _counts[name] += n_below
-        correction = float(np.max(floor_val - arr[below]))
+        correction = float(np.max(floor_val - arr_np[below]))
         _max_corrections[name] = max(_max_corrections[name], correction)
-        _total_corrections[name] += float(np.sum(floor_val - arr[below]))
-    return np.maximum(arr, floor_val)  # no-floor-check
+        _total_corrections[name] += float(np.sum(floor_val - arr_np[below]))
+    return np.maximum(arr_np, floor_val)  # no-floor-check
 
 
 def report() -> dict[str, dict]:

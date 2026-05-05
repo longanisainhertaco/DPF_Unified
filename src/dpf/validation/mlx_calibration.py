@@ -9,6 +9,18 @@ Supports:
 - Optuna TPE optimization (Phase 2) for efficient search
 - Multi-fidelity verification (Phase 3-4) at higher resolution
 
+Algorithm references (cited but not verified against PDF on disk):
+- TPE (Tree-structured Parzen Estimator): Bergstra, J., Bardenet, R.,
+  Bengio, Y., & Kegl, B. (2011), "Algorithms for Hyper-Parameter
+  Optimization", NeurIPS 24. [UNVERIFIED-CITATION: PDF not on disk;
+  Optuna's documentation cites this paper as the TPE source.]
+- constant_liar parallel-evaluation strategy: Ginsbourger, D.,
+  Le Riche, R., & Carraro, L. (2008), "A Multi-points Criterion for
+  Deterministic Parallel Global Optimization based on Gaussian
+  Processes", LMI Tech. Report. [UNVERIFIED-CITATION: PDF not on disk;
+  Optuna's parallel-pruner docs reference this for the constant_liar
+  trick when batching trials.]
+
 Reference: FC_FM_CALIBRATION_DMAIC.md
 """
 
@@ -20,6 +32,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from dpf.metal.floor_telemetry import apply_floor
 from dpf.validation._calibration_data import CalibrationResult
 
 logger = logging.getLogger(__name__)
@@ -59,6 +72,12 @@ def run_mlx_forward_model(
     preset_name: str = "pf1000",
     grid_shape: tuple[int, int, int] | None = None,
     sim_time: float | None = None,
+    # EMPIRICAL: objective weights (peak 0.4, timing 0.3, waveform 0.3)
+    # are an engineering choice that puts the strongest pull on peak
+    # current error (the most-cited DPF benchmark), with equal weight on
+    # rise-time and full-waveform NRMSE. Sums to 1.0 by convention. No
+    # paper publishes a calibrated weight scheme; tune per-campaign if
+    # one metric matters more.
     peak_weight: float = 0.4,
     timing_weight: float = 0.3,
     waveform_weight: float = 0.3,
@@ -175,8 +194,12 @@ def run_mlx_forward_model(
     I_peak_exp = dev.peak_current
     t_peak_exp = dev.current_rise_time
 
-    peak_error = abs(I_peak_sim - I_peak_exp) / max(I_peak_exp, 1e-10)
-    timing_error = abs(t_peak_sim - t_peak_exp) / max(t_peak_exp, 1e-10)
+    peak_error = abs(I_peak_sim - I_peak_exp) / apply_floor(
+        I_peak_exp, 1e-10, "mlx_calibration.objective/I_peak_exp_div_guard",
+    )
+    timing_error = abs(t_peak_sim - t_peak_exp) / apply_floor(
+        t_peak_exp, 1e-10, "mlx_calibration.objective/t_peak_exp_div_guard",
+    )
 
     # Waveform NRMSE
     nrmse = 10.0
@@ -447,6 +470,13 @@ def parallel_optuna_optimize(
 def fd_gradient_calibrate(
     preset_name: str = "pf1000",
     grid_shape: tuple[int, int, int] = (32, 1, 64),
+    # EMPIRICAL: warm-start (fc=0.682, fm=0.061) is the best-of-trial
+    # output from a prior Optuna TPE sweep on PF-1000; it is NOT a
+    # paper-attested fit. fm=0.061 sits at the low edge of Lee & Saw
+    # 2014's fm in [0.05, 0.30] for Type-1 PFs (P0.2 in
+    # dpf-fixes-checklist.md flagged this as symptomatic of the
+    # _DEFAULT_FM=0.7 bug). Re-run a fresh coarse scan if the device
+    # or grid changes.
     x0: tuple[float, float] = (0.682, 0.061),
     eps: float = 0.01,
     maxfun: int = 15,
