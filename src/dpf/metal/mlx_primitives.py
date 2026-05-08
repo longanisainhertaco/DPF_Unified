@@ -112,12 +112,19 @@ def _recover_pressure_impl(
     ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
     p_E = gm1 * (E - KE - ME)
     p_S = Srho * mx.power(rho, gm1)
+    p_E_ok = mx.isfinite(p_E)
+    p_S_ok = mx.isfinite(p_S)
     E_abs = mx.maximum(mx.abs(E), 1e-30)
-    eta = mx.abs(p_S) / E_abs
+    eta = mx.abs(mx.where(p_S_ok, p_S, 0.0)) / E_abs
     denom = max(eta2 - eta1, 1e-30)
     t = mx.clip((eta - eta1) / denom, 0.0, 1.0)
     w = t * t * (3.0 - 2.0 * t)
-    p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
+    w = mx.where((~p_E_ok) & p_S_ok, 0.0, w)
+    w = mx.where((~p_S_ok) & p_E_ok, 1.0, w)
+    p_E_blend = mx.where(p_E_ok, p_E, P_FLOOR)
+    p_S_blend = mx.where(p_S_ok, p_S, P_FLOOR)
+    p_blend = w * p_E_blend + (1.0 - w) * p_S_blend
+    p = mx.maximum(mx.where(mx.isfinite(p_blend), p_blend, P_FLOOR), P_FLOOR)
     return p, w
 
 

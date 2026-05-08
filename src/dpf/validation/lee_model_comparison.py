@@ -72,6 +72,9 @@ from dpf.constants import k_B, m_d, mu_0, pi
 
 logger = logging.getLogger(__name__)
 
+_D2_GAMMA = 5.0 / 3.0
+_D2_STRONG_SHOCK_COMPRESSION = (_D2_GAMMA + 1.0) / (_D2_GAMMA - 1.0)
+
 
 # ============================================================
 # Result dataclass
@@ -562,12 +565,11 @@ class LeeModel:
                 )
                 M_slug_pinch = max(M_slug_pinch, 1e-20)
 
-                # Post-shock density: reflected shock encounters gas already
-                # compressed to 4*rho0 by the inward shock (R-H strong limit,
-                # gamma=5/3).  Reflected shock re-compresses by ~2x (Mach ~2
-                # in pre-heated gas), giving ~8*rho0 total.  Strong limit
-                # would give 16*rho0.  (PhD Debate #21 double-shock estimate.)
-                rho_post = 8.0 * rho0
+                # Post-shock density: use the same KR Lee/RADPF gross
+                # Rankine-Hugoniot compression ratio as the production
+                # snowplow model.  Extra reflected-shock recompression is not
+                # promoted without a KR-backed closure.
+                rho_post = _D2_STRONG_SHOCK_COMPRESSION * rho0
 
                 def reflected_rhs(t: float, y: np.ndarray) -> np.ndarray:
                     self._rhs_evals += 1

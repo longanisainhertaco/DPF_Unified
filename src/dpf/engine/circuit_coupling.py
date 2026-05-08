@@ -54,6 +54,7 @@ def _step_circuit_subcycle(
     dt_sub = dt / n_sub
 
     sheath_pressure = self._dynamic_sheath_pressure()
+    self._last_sheath_pressure = sheath_pressure
 
     # back-EMF: snowplow captures motional EMF via I*dL/dt.
     # For pure-snowplow runs, set zero (dL/dt handled by circuit sub-step).
@@ -802,7 +803,7 @@ def _initialize_radial_state(self) -> None:
 def _dynamic_sheath_pressure(self) -> float:
     """Compute volume-averaged MHD pressure near the sheath/shock front.
 
-    During axial phase: averages pressure for z > z_sheath cells.
+    During axial phase: uses the configured cold fill pressure.
     During radial/reflected phase: averages pressure for r < r_shock cells.
     Falls back to config fill_pressure_Pa if snowplow inactive or no valid cells.
 
@@ -821,13 +822,10 @@ def _dynamic_sheath_pressure(self) -> float:
     dz = self.config.geometry.dz if self.config.geometry.dz else dr
 
     if self.snowplow.phase == "rundown":
-        # Axial: average pressure ahead of sheath (z > z_sheath)
-        iz = int(round(self.snowplow.z / dz)) if (dz > 0 and np.isfinite(self.snowplow.z)) else 0
-        nz = p.shape[-1]
-        if 0 <= iz < nz - 1:
-            p_ahead = p[..., iz + 1:]
-            if p_ahead.size > 0:
-                return max(float(np.mean(p_ahead)), fallback)
+        # The Lee/RADPF axial equation uses cold molecular fill pressure p0.
+        # The MHD state stores total ion+electron plasma pressure, which is a
+        # different thermodynamic quantity and over-pressurizes neutral fill.
+        return fallback
     elif self.snowplow.phase in ("radial", "reflected"):
         # Radial: average pressure inside shock front (r < r_shock)
         ir = int(round(self.snowplow.r_shock / dr)) if (dr > 0 and np.isfinite(self.snowplow.r_shock)) else 0

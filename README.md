@@ -1,6 +1,8 @@
 # DPF-Unified
 
-Dense plasma focus MHD simulator. Solves the resistive magnetohydrodynamic equations in cylindrical (r,z) geometry with circuit coupling, validated against experimental current waveforms from four devices.
+Dense plasma focus simulation workbench. The project contains Lee/snowplow,
+resistive-MHD, circuit-coupling, diagnostics, and source-gated validation
+infrastructure, but it is not yet an end-to-end predictive DPF simulator.
 
 MIT License. Python 3.10+. Runs on Apple Silicon (MLX Metal) or CPU.
 
@@ -87,49 +89,46 @@ All locations are file paths within `src/dpf/`.
 
 ## Validation status
 
-**Circuit-level (Lee snowplow model)**: Validated against experimental current
-waveforms from 6 devices with zero parameter calibration. See details below.
+Scientific validation evidence is source-gated against the local
+`KnowledgeReference/` corpus. Runtime tests, reconstructed traces, external
+waveform archives, and engineering campaigns are not promoted to validation
+evidence unless they pass the explicit source-authority gates in
+`dpf.validation.quality_assessment`.
+
+**Predictive-readiness gate**: blocked by default until five evidence tiers pass:
+KR-verified circuit waveform, KR-backed snowplow phase/timing, MHD analytic
+verification, same-scope spatial DPF density/B-field/temperature validation, and
+neutron timing/spectrum/anisotropy validation.
+
+**Circuit-level (Lee snowplow model)**: source-gated waveform comparison exists.
+Under the current KR-only rule, only the standard PF-1000 Scholz waveform record
+is validation-ready. POSEIDON-60kV and UNU-ICTP have KR-supported parameter
+tables, but their current waveform arrays come from IPFS/external archive traces
+and are blocked by default.
 
 **MHD-level (spatially-resolved solver)**: Verified against standard test problems
 (Sod, Brio-Wu). Not yet validated against spatially-resolved experimental data
 (density profiles, temperature maps). See [docs/SCOPE.md](docs/SCOPE.md) for full
 regime-of-validity analysis, [docs/BACKEND_PARITY.md](docs/BACKEND_PARITY.md)
-for which physics runs on which backend, and
-[docs/V_AND_V_SUMMARY.md](docs/V_AND_V_SUMMARY.md) for the complete V&V summary.
+for which physics runs on which backend. See `CodexFindings.md` for the current
+KR-only review and ratchet log.
 
-### PF-1000 validation (circuit-level)
+### PF-1000 circuit source record
 
-Lee model equations I-VI from Lee (2014), J. Fusion Energy 33:319.
-Published RADPF device parameters. No parameter fitting.
+The PF-1000 record is the current tier-1 source-authority anchor. It is not, by
+itself, evidence for predictive readiness of pinch structure or neutron yield.
 
 | Parameter | Value | Source |
 |-----------|-------|--------|
 | C | 1.332 mF | Scholz 2006 |
-| L0 | 33.5 nH | RADPF default |
-| R0 | 6.12 mOhm | RADPF default (RESF=1.22) |
+| L0 | 25 nH | Akel et al. 2021 table record in `KnowledgeReference/` |
+| R0 | 2.3 mOhm | Scholz 2006 bare-bank short-circuit record |
 | V0 | 27 kV | IFPiLM operating condition |
-| fc | 0.7 | RADPF default |
-| fm | 0.13 | RADPF default |
-| fmr | 0.35 | RADPF default |
+| fill pressure | 3.5 Torr D2 | Scholz 2006 |
+| waveform source status | KR-verified measured trace | `PF1000_DATA.waveform_kr_status` |
+| validation helper | `circuit_validation_evidence_from_waveform()` | strict tier-1 evidence producer |
 
-| Metric | Value |
-|--------|-------|
-| I_peak (sim) | 1.655 MA |
-| I_peak (exp) | ~1.87 MA |
-| Error | 11.5% |
-| t_peak (sim) | 6.02 us |
-| t_peak (exp) | 5.80 us |
-| Error | 3.8% |
-
-Last validated: 2026-04-20 (source: `~/.claude/dpf-validation/latest.json`).
-This is a regression from the 2.8% I_peak error baseline recorded 2026-04-10;
-bisect pending on `fix/beta-lee-calibration` commits (see CRITICAL_BLOCKER.md).
-CI has been red since 2026-03-30 (torch import gate, see `fix/ci-torch-gate`).
-
-No calibration was performed. The equations are from the published paper.
-The parameters are from the published RADPF documentation.
-
-### V&V campaign (2,026 shots)
+### Engineering test campaign
 
 | Test | Shots | Result |
 |------|-------|--------|
@@ -139,6 +138,10 @@ The parameters are from the published RADPF documentation.
 | Cross-device (4 presets) | 6 | 2/4 pass tolerance |
 | Endurance (1,467 consecutive) | 1,467 | 0 failures, 6.8s +/- 0.3s per shot |
 
+These are engineering and regression tests. They are not scientific validation
+evidence unless converted into KR-sourced evidence objects and accepted by the
+predictive-readiness gate.
+
 ### Known limitations
 
 1. **Grid convergence test is misleading.** The convergence study shows identical I_peak across all grids because the circuit + snowplow ODE drives the current, not the MHD solver. MHD grid convergence for density/B-field profiles has not been validated.
@@ -147,9 +150,14 @@ The parameters are from the published RADPF documentation.
 
 3. **MHD-circuit coupling is recent.** The MHD solver's density-weighted L_p now feeds back into the circuit ODE (as of v1.5.0+), but the blend only activates when the MHD sheath structure is resolved. During axial rundown, the snowplow ODE drives the circuit. Full MHD-driven current prediction requires initialized sheath structure, which is in progress.
 
-4. **t_peak error.** PF-1000 t_peak is 13.6% late versus Scholz reference data (26 points). Against Gribkov data (94 points, independent shot), the current has a flat-top from 5.2-6.6 us with <1.5% variation, making t_peak ambiguous by ~10%. See `docs/TIMING_ERROR_RCA.md`.
+4. **PF-1000 is only tier-1 evidence.** A passing PF-1000 waveform comparison can
+support circuit-level evidence only. It does not validate spatial MHD fields,
+late pinch disruption, or neutron production.
 
-5. **POSEIDON error.** 14.7% I_peak error on POSEIDON-60kV. This device has different electrode geometry (larger gap) that the snowplow model handles less accurately at high energy.
+5. **External waveform traces are blocked by default.** POSEIDON-60kV,
+UNU-ICTP, PF-1000-Gribkov, reconstructed, and reference-only traces cannot
+support circuit-validation claims unless their waveform source is ingested into
+`KnowledgeReference/` and marked verified.
 
 ## MHD solver verification
 
@@ -247,7 +255,7 @@ external/           Athena++ and AthenaK git submodules
 ## References
 
 - Lee, S. & Saw, S.H. (2014). Phys. Plasmas 21, 072501. (Lee model)
-- Akel, M. et al. (2021). J. Fusion Energy 40, 7. (PF-1000 24-shot validation data)
+- Akel, M. et al. (2021). J. Fusion Energy 40, 7. (PF-1000 operating data)
 - Miyoshi, T. & Kusano, K. (2005). JCP 208, 315. (HLLD Riemann solver)
 - Borges, R. et al. (2008). JCP 227, 3191. (WENO-Z weights)
 - Shu, C.-W. & Osher, S. (1988). JCP 77, 439. (SSP-RK time integration)

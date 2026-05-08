@@ -31,6 +31,30 @@ class TestYieldResult:
         r.dY_bt = [0, 50, 500, 5]
         assert r.peak_yield_time == 2e-6
 
+    def test_summary_dict_exposes_model_sources(self):
+        r = YieldResult()
+        summary = r.to_summary_dict()
+        assert summary["Y_thermonuclear"] == 0.0
+        assert summary["Y_beam_target"] == 0.0
+        assert summary["Y_neutron"] == 0.0
+        assert "Bosch-Hale" in summary["model_components"]["thermonuclear"]
+        assert "Lee/Saw" in summary["model_components"]["beam_target"]
+        assert "pure MHD" in summary["validity_notes"]["mhd_limit"]
+
+    def test_summary_dict_preserves_accumulated_components(self):
+        r = YieldResult()
+        r.Y_thermo_cumulative = [1.0e5]
+        r.Y_bt_cumulative = [3.0e5]
+        r.dY_thermo = [1.0e5]
+        r.dY_bt = [3.0e5]
+        r.times = [2.0e-7]
+        summary = r.to_summary_dict()
+        assert summary["Y_thermonuclear"] == 1.0e5
+        assert summary["Y_beam_target"] == 3.0e5
+        assert summary["Y_neutron"] == 4.0e5
+        assert summary["bt_fraction"] == 0.75
+        assert summary["peak_yield_time_s"] == 2.0e-7
+
 
 class TestYieldTracker:
     def _make_state(self, rho: float = 1e-3, T_K: float = 1e7) -> dict:
@@ -82,6 +106,18 @@ class TestYieldTracker:
         s = tracker.summary()
         assert "Y_total" in s
         assert "thermo" in s
+
+    def test_tracker_result_carries_source_metadata_after_accumulation(self):
+        tracker = YieldTracker()
+        state = self._make_state(rho=1e-2, T_K=1.16e7)
+        tracker.accumulate(state, dt=1e-9, cell_volume=1e-9)
+        summary = tracker.get_result().to_summary_dict()
+        assert summary["Y_thermonuclear"] >= 0.0
+        assert summary["Y_beam_target"] >= 0.0
+        assert summary["model_components"]["total"] == (
+            "sum of thermonuclear and beam-target estimates"
+        )
+        assert "phenomenological" in summary["validity_notes"]["beam_target"]
 
     def test_with_ti_field(self):
         """State with explicit Ti should work."""

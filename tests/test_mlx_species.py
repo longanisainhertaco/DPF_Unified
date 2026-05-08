@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 import numpy as np
-
-try:
-    import mlx.core as mx
-
-    HAS_MLX = True
-except ImportError:
-    HAS_MLX = False
-
 import pytest
+
+from dpf.metal.mlx_device import HAS_MLX, require_mlx
+
+mx = require_mlx() if HAS_MLX else None
 
 pytestmark = pytest.mark.skipif(not HAS_MLX, reason="MLX not available")
 

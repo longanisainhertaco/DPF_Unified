@@ -333,6 +333,9 @@ class SimulationEngine:
             rho0=float(config.fluid.rho0) if hasattr(config.fluid, "rho0") else 1e-4,
         )
         self._last_bt_fraction: float = 0.0
+        self._last_yield_summary: dict[str, object] = (
+            self._yield_tracker.get_result().to_summary_dict()
+        )
 
         # Interferometry (cylindrical only)
         self._last_fringe_shifts: np.ndarray | None = None
@@ -540,14 +543,6 @@ class SimulationEngine:
 
         # Cap at reasonable fraction of sim_time
         dt = min(dt, self.config.sim_time / 10.0)
-
-        # Floor: prevent CFL collapse from freezing the simulation.
-        # Only applies to Metal/MLX backends where sharp BCs can drive
-        # dt -> 0 via extreme wavespeeds in 1-2 vacuum cells.
-        # Python backend has its own stability requirements; don't override.
-        backend = getattr(getattr(self.config, "fluid", None), "backend", "python")
-        if backend in ("metal", "mlx") and dt < 1e-12:
-            dt = 1e-12
 
         return dt
     # ------------------------------------------------------------------
@@ -1147,6 +1142,7 @@ class SimulationEngine:
         t_wall = wall_time.monotonic() - t_wall_start
         E_final = self.circuit.total_energy()
         conservation = E_final / max(self.initial_energy, 1e-30)
+        yield_summary = self._yield_tracker.get_result().to_summary_dict()
 
         summary = {
             "steps": self.step_count,
@@ -1157,6 +1153,7 @@ class SimulationEngine:
             "final_voltage_V": self.circuit.voltage,
             "total_radiated_energy_J": self.total_radiated_energy,
             "total_neutron_yield": self.total_neutron_yield,
+            "neutron_yield_details": yield_summary,
             "peak_current_A": self._peak_current_A,
             "peak_current_time_s": self._peak_current_time_s,
         }

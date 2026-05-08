@@ -117,12 +117,10 @@ _PRESETS: dict[str, dict[str, Any]] = {
     "pf1000_akel": {
         "_meta": {
             "description": (
-                "PF-1000 (IPPLM Warsaw) — Akel 2021 24-shot validation variant at 16 kV. "
-                "All circuit and geometry parameters taken verbatim from Akel et al., "
-                "Radiat. Phys. Chem. 188:109633, 2021, Table 1. "
-                "L0=25 nH, r0=4-6.5 mOhm (per-shot), V0=16 kV, anode=48 cm. "
-                "R0 = 2.3 mOhm per Akel Table 1 (nominal; per-shot r0 overrides in "
-                "validation scripts). No empirical correction applied."
+                "PF-1000 (IPPLM Warsaw) — Akel 2021 shot 12581 at 16 kV / "
+                "1.2 Torr D2. Circuit, geometry, and Lee factors follow Akel "
+                "et al., Radiat. Phys. Chem. 188:109633, 2021, Table 1. "
+                "L0=25 nH, r0=6.1 mOhm, V0=16 kV, anode=48 cm."
             ),
             "device": "PF-1000",
             "geometry": "cylindrical",
@@ -133,25 +131,23 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "dx": 7.5e-4,
         "sim_time": 16e-6,  # 16 us: matches Akel 2021 validation window
         "dt_init": 1e-10,
-        "rho0": 2.15e-4,  # 1.05 Torr D2 at 300K (Akel 2021 Table 1); overridden per-shot
+        "rho0": 2.583e-4,  # 1.2 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Akel 2021 Table 1 — V0=16 kV, C=1332 uF, L0=25 nH, r0=2.3 mOhm nominal.
-        # [KR: radiation-physics-and-chemistry-188-2021-109633.md §Table1 p.4]
-        # Per-shot r0 ranges 4.0-6.5 mOhm; validation scripts override R0 per shot.
+        # Circuit: Akel 2021 shot 12581 — V0=16 kV, C=1332 uF, L0=25 nH, r0=6.1 mOhm.
+        # [KR: radiation-physics-and-chemistry-188-2021-109633.md lines 262-265, 344-353]
         "circuit": {
             "C": 1.332e-3,     # 1.332 mF (Akel 2021 Table 1)
             "V0": 16e3,        # 16 kV (Akel 2021 Table 1)
             "L0": 25e-9,       # 25 nH (Akel 2021 Table 1)
-            "R0": 2.3e-3,      # 2.3 mOhm nominal (Akel 2021 Table 1)
+            "R0": 6.1e-3,      # 6.1 mOhm for shot 12581 (Akel 2021 Table 1)
             "anode_radius": 0.1155,  # 115.5 mm = a=11.55 cm (Akel 2021 Table 1)
             "cathode_radius": 0.16,  # 160 mm (Akel 2021 / Scholz 2006)
-            "crowbar_enabled": True,
-            "crowbar_mode": "fixed_time",
-            "crowbar_time": 10.5e-6,
-            "crowbar_resistance": 1.5e-3,
-            "crowbar_inductance": 20e-9,
+            # No Akel shot-12581 crowbar timing is currently encoded in the
+            # typed KR target. Keep this source-scoped preset uncrowbarred;
+            # engineering crowbar studies should use an explicit override.
+            "crowbar_enabled": False,
         },
         "geometry": {"type": "cylindrical"},
         "boundary": {"electrode_bc": True},
@@ -159,9 +155,11 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.48,       # 48 cm = z0 (Akel 2021 Table 1)
-            "current_fraction": 0.7,    # fc fixed for all Akel 2021 shots (Table 1)
-            "mass_fraction": 0.20,      # fm = 0.20 average (Akel 2021 Table 1)
-            "radial_mass_fraction": 0.35,  # fmr: Malek 2025 / engine_validation canonical
+            "fill_pressure_Pa": 160.0,  # 1.2 Torr D2
+            "current_fraction": 0.70,   # fc for shot 12581 (Akel 2021 Table 1)
+            "mass_fraction": 0.17,      # fm for shot 12581 (Akel 2021 Table 1)
+            "radial_mass_fraction": 0.26,  # fmr for shot 12581 (Akel 2021 Table 1)
+            "radial_current_fraction": 0.75,  # fcr for shot 12581 (Akel 2021 Table 1)
             "pinch_column_fraction": 0.14,
         },
     },

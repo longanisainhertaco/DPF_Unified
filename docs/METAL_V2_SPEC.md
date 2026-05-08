@@ -3,8 +3,33 @@
 **Project**: DPF-Unified Custom MHD Solver on Apple Metal
 **Version**: 2.0-REVIEW (post-4-agent verification)
 **Date**: 2026-03-24
-**Status**: DRAFT — requires validation before implementation
+**Status**: DRAFT — requires validation before implementation; source-audit addendum below
 **Process**: Six Sigma DMAIC + Swarm Methodology
+
+## 2026-05-06 Source-Of-Truth Audit Addendum
+
+This architecture document is an engineering design spec. Under the current
+project rule, scientific validation gates must name the local
+`KnowledgeReference/` target scope they use. Do not mix PF-1000 operating
+scopes:
+
+- Akel 2021 16 kV scope: use `pf1000_akel`, local source
+  `KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md`,
+  and shot-12581 `Ipeak = 1.165 MA` when the gate claims shot-12581 scope.
+- Scholz/Gribkov full-energy PF-1000 scope: keep as a separate 27 kV/full-energy
+  target packet with its own waveform, timing, neutron, and spatial evidence.
+- A PF-1000 current-waveform NRMSE gate is not source-closed until an accepted
+  same-scope digitized current trace and uncertainty packet exists.
+- The standalone MLX probe now reaches the Akel `6 us` target and has survived
+  to `12 us` through radial-to-pinch transition and post-pinch expansion after
+  correcting the shot-12581 preset, removing the unsourced inherited fixed-time
+  crowbar from `pf1000_akel`, using axial cold-fill pressure coupling, and
+  applying Lee current-factor scaling to circuit-facing snowplow `Lp/dLdt`.
+  The current source-scoped no-crowbar `pf1000_akel` run reached
+  `t = 12.000000 us` in `159912` steps with `peak_I = 1.150507 MA` at
+  `t = 5.250198 us` and final `V = 8.228613 kV`. This closes the standalone
+  current-run M2 peak-current check against the strict shot-12581 band
+  `1.0485-1.2815 MA`, but it is not a full current-waveform acceptance.
 
 ---
 
@@ -65,7 +90,9 @@ corrupted p → wrong Te → wrong Spitzer η → wrong R_plasma → shifted I(t
 - Increase ghost cells 2→3
 - Add 3 CRITICAL V&V tests
 - **~400 LOC, 1 week, zero framework risk**
-- **Exit criterion**: PF-1000 I_peak < 10%, no negative pressure at electrodes, all 262 tests pass
+- **Exit criterion**: same-scope PF-1000 I_peak error < 10%, no negative
+  pressure at electrodes, and the relevant targeted test slice passes. For the
+  Akel 16 kV shot-12581 gate, the peak-current target is `1.165 MA +/- 10%`.
 
 ### Phase B: Clean-Room MLX Solver (Week 3-12)
 **Purpose**: Purpose-built solver for production DPF grids (128×512+) where GPU wins.
@@ -273,7 +300,7 @@ Axial face areas: A_z = π(r²_{i+½} - r²_{i-½})
 | Sod shock tube | L1(ρ) < 0.02 at N=256, dual-energy doesn't degrade | HIGH |
 | Brio-Wu shock tube | All 7 MHD waves resolved, no switching artifacts | HIGH |
 | Existing 262 Metal tests | All pass, zero tolerance relaxation | HIGH |
-| PF-1000 I_peak | < 10% error vs 1.87 MA | HIGH |
+| PF-1000 I_peak | Same-scope target required. Akel 16 kV shot-12581 gate: < 10% error vs 1.165 MA. Full-energy Scholz/Gribkov gates must be separate. | HIGH |
 
 ### 8.2 Phase B Gates (MLX solver — Week 3-12)
 
@@ -285,7 +312,7 @@ Axial face areas: A_z = π(r²_{i+½} - r²_{i-½})
 | 4. Linear waves (W7) | Fast/slow/Alfvén wave convergence at 64, 128, 256 | PLM ~2nd, WENO5 ~4th order |
 | 5. Z-pinch (W8-9) | Cylindrical plasma column, prescribed I(t), no circuit | Stable Bennett equilibrium |
 | 6. Cross-backend (W9) | Phase A PyTorch vs Phase B MLX on all standard problems | L1 parity < 5% |
-| 7. PF-1000 (W10-11) | Full circuit-coupled discharge | I_peak < 10%, NRMSE < 0.25, V_pinch > 50 kV |
+| 7. PF-1000 (W10-11) | Full circuit-coupled discharge | Same-scope I_peak < 10%, NRMSE < 0.25 only after accepted digitized waveform evidence, V_pinch target tied to the same KR scope |
 | 8. Multi-device (W12) | UNU-ICTP, NX2, POSEIDON-60kV | No device regresses > 2× |
 
 ### 8.3 Diagnostics Chain Test

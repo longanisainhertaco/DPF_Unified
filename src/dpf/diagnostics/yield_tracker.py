@@ -27,6 +27,38 @@ from dpf.constants import k_B
 logger = logging.getLogger(__name__)
 
 
+def _default_model_components() -> dict[str, str]:
+    return {
+        "thermonuclear": (
+            "Bosch-Hale D-D Maxwellian reactivity integrated over MHD cells"
+        ),
+        "beam_target": (
+            "Lee/Saw RADPF beam-target estimator using pinch current, voltage, "
+            "density, length, and calibrated beam fraction"
+        ),
+        "total": "sum of thermonuclear and beam-target estimates",
+    }
+
+
+def _default_validity_notes() -> dict[str, str]:
+    return {
+        "thermonuclear": (
+            "Bosch-Hale D-D fit is used over its 0.2-100 keV range; this "
+            "tracker uses the domain peak ion temperature for reactivity and "
+            "a cell-wise density-squared integral."
+        ),
+        "beam_target": (
+            "Beam-target term is a Lee/Saw phenomenological estimate, not a "
+            "self-consistent kinetic ion-beam calculation from the MHD state."
+        ),
+        "mhd_limit": (
+            "KnowledgeReference notes that DPF neutron production can be "
+            "largely non-thermonuclear and that pure MHD cannot capture "
+            "kinetic beam-target production without an added model."
+        ),
+    }
+
+
 @dataclass
 class YieldTimepoint:
     """Neutron yield at a single timestep."""
@@ -52,6 +84,8 @@ class YieldResult:
     Y_bt_cumulative: list[float] = field(default_factory=list)
     T_peak_keV: list[float] = field(default_factory=list)
     n_peak: list[float] = field(default_factory=list)
+    model_components: dict[str, str] = field(default_factory=_default_model_components)
+    validity_notes: dict[str, str] = field(default_factory=_default_validity_notes)
 
     @property
     def Y_total(self) -> float:
@@ -74,6 +108,20 @@ class YieldResult:
         total_rate = [a + b for a, b in zip(self.dY_thermo, self.dY_bt, strict=False)]
         idx = int(np.argmax(total_rate))
         return self.times[idx]
+
+    def to_summary_dict(self) -> dict[str, object]:
+        """Return a source-explicit yield summary for diagnostics/export."""
+        Y_thermo = self.Y_thermo_cumulative[-1] if self.Y_thermo_cumulative else 0.0
+        Y_bt = self.Y_bt_cumulative[-1] if self.Y_bt_cumulative else 0.0
+        return {
+            "Y_thermonuclear": Y_thermo,
+            "Y_beam_target": Y_bt,
+            "Y_neutron": self.Y_total,
+            "bt_fraction": self.bt_fraction,
+            "peak_yield_time_s": self.peak_yield_time,
+            "model_components": dict(self.model_components),
+            "validity_notes": dict(self.validity_notes),
+        }
 
 
 class YieldTracker:

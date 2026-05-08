@@ -2,12 +2,49 @@
 
 **Date**: 2026-03-24
 **Author**: dpf-mhd-physicist (Cortana)
-**Status**: Evaluation rubric for Metal v2 implementation
+**Status**: Evaluation rubric for Metal v2 implementation; source-audit addendum below
 **Scope**: Physics requirements, solver design, acceptance criteria
 
-This document is derived entirely from DPF discharge physics, experimental data,
-and verified Metal v1 failure modes. It defines what any correct DPF MHD solver
-must satisfy, independent of implementation framework.
+This document is derived from DPF discharge physics, experimental data,
+numerical-method references, and verified Metal v1 failure modes. Under the
+current project source rule, scientific validation targets must be backed by
+local `KnowledgeReference/` records or the typed KR target manifest.
+Numerical-method requirements may remain engineering requirements, but they do
+not by themselves close KR scientific validation.
+
+## 2026-05-06 Source-Of-Truth Audit Addendum
+
+- KR-backed PF-1000 16 kV scope: Akel 2021 is present locally as
+  `KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md`.
+  The same-scope MLX acceptance target must use the `pf1000_akel` preset and
+  the Akel shot/table scope, not the full-energy Scholz/Gribkov PF-1000 scope.
+- M2 source target: for shot 12581, Akel Table 1 gives `Ipeak = 1165 kA`.
+  The current full-discharge gate therefore uses `1.165 MA +/- 10%`
+  (`1.0485-1.2815 MA`) when it claims shot-12581 scope. A separate 24-shot
+  table-range or 27 kV full-energy target must be named separately.
+- M6 source status: the `12 us` endurance gate is a conservative engineering
+  full-discharge target derived from the Akel timing context; it is not a
+  direct measured value in the source. Akel reports the derivative dip about
+  `7 us` after breakdown, pinch duration about `212 ns`, and current-waveform
+  fit validity through the end of the current dip.
+- S1/S2 source status: Akel establishes measured current waveforms and current
+  derivative/dip context, but the coded KR target still lacks accepted
+  digitized current trace points and per-point uncertainty. NRMSE and dip-depth
+  gates must remain blocked until those digitized traces are accepted.
+- Current MLX probe status: the standalone MLX path now reaches the Akel
+  `6 us` target, survived the radial-to-pinch transition to `8 us`, and has
+  reached the conservative `12 us` engineering endurance target after
+  correcting the shot-12581 preset, removing the unsourced inherited fixed-time
+  crowbar from `pf1000_akel`, using axial cold-fill pressure coupling, and
+  applying Lee current-factor scaling to circuit-facing snowplow `Lp/dLdt`.
+  The current source-scoped no-crowbar `pf1000_akel` target run reached
+  `t = 12.000000 us` in `159912` steps with `peak_I = 1.150507 MA` at
+  `t = 5.250198 us`; the final printed state was `phase = pinch`,
+  `I = 0.811876 MA`, `V = 8.228613 kV`, `crowbar = 0`,
+  `r = 15.200000 cm`, and `Lp = 22.417737 nH`. This closes the standalone
+  current-run M2 peak-current check against the strict shot-12581 band
+  `1.0485-1.2815 MA` and re-confirms the conservative M6 endurance target.
+  S1/S2 remain blocked until digitized same-scope current traces are accepted.
 
 ---
 
@@ -99,7 +136,7 @@ pressure in float32 with standard energy formulation. The pinch edge (beta ~ 0.0
 has only 5 reliable digits -- marginal for shocks where the Rankine-Hugoniot conditions
 demand accurate pressure jumps.
 
-### 1.6 Validated PF-1000 Parameters (Akel 2021, 24-shot dataset)
+### 1.6 KR-Backed PF-1000 Parameters (Akel 2021, 24-shot Lee-Fit Dataset)
 
 **Circuit**:
 - C0 = 1332 uF, V0 = 16 kV, L0 = 25 nH, r0 = 4.0-6.5 mOhm (shot-dependent)
@@ -114,10 +151,13 @@ demand accurate pressure jumps.
 - fmr = 0.03-0.35 (high variability), fcr = 0.30-0.85
 
 **Validation targets**:
-- I_peak range: 1131-1335 kA (mean ~1240 kA at 16 kV)
+- I_peak text range: 1100-1300 kA; table rows span 1131-1335 kA;
+  shot 12581 target: 1165 kA
 - I_pinch range: 262-598 kA
 - Computed Yn: 1.7e8 to 1.11e10 n/shot
-- Computed vs measured Yn: < 2% average error (1.2 Torr: 1.78e9 vs 1.75e9; 1.05 Torr: 2.33e9 vs 2.29e9)
+- Computed vs measured Yn: < 2% average error for the Lee-code current-fitted
+  study (1.2 Torr: 1.78e9 vs 1.75e9; 1.05 Torr: 2.33e9 vs 2.29e9). This is a
+  Lee-model fit result, not standalone MHD predictive validation.
 
 **Higher energy operation** (Kubes 2019):
 - V0 = 16-20 kV, E_stored = 250-350 kJ
@@ -328,8 +368,8 @@ At the open end (z = z_max):
 | ID | Criterion | Test | Threshold | Rationale |
 |----|-----------|------|-----------|-----------|
 | M1 | No negative pressure | `test_v2_no_negative_pressure` | `p > 0` everywhere, all timesteps | Negative pressure is unphysical. Entropy formulation guarantees this. |
-| M2 | PF-1000 I_peak accuracy | `test_v2_pf1000_ipeak` | Within 10% of 1.2 MA (Akel 2021 mean at 16 kV) | If I(t) is wrong, all downstream physics is wrong. |
-| M3 | Mass conservation | `test_v2_mass_conservation` | `|M(t) - M(0)| / M(0) < 0.05` over full discharge | Mass should be exactly conserved; 5% allows for outflow BCs. |
+| M2 | PF-1000 I_peak accuracy | `test_v2_pf1000_ipeak` | Same-scope target required. For Akel shot 12581: `1.165 MA +/- 10%` (`1.0485-1.2815 MA`). | If I(t) is wrong, all downstream physics is wrong. |
+| M3 | Mass accounting | `test_v2_mass_conservation` | Closed-domain tests: `<5%` drift. Open-discharge PF-1000 runs: finite positive mass plus explicit outflow/floor accounting. | Open boundaries and density floors make strict global conservation an engineering diagnostic, not a standalone scientific pass. |
 | M4 | Energy conservation | `test_v2_energy_conservation` | `|dE_total/dt - P_circuit + P_rad| / P_circuit < 0.10` | Energy budget must close to 10% accounting for circuit input and radiation. |
 | M5 | No NaN propagation | `test_v2_no_nan` | Zero NaN in any field at any timestep | NaN = solver crash = useless. |
 | M6 | Completes 5 phases | `test_v2_full_discharge` | Simulation reaches t > 2 * t_peak (~12 us for PF-1000) without crash | Must survive rundown, compression, pinch, AND post-pinch. |
@@ -340,8 +380,8 @@ At the open end (z = z_max):
 
 | ID | Criterion | Test | Threshold | Rationale |
 |----|-----------|------|-----------|-----------|
-| S1 | I(t) waveform shape | `test_v2_pf1000_nrmse` | NRMSE < 0.25 vs Akel/Kubes waveform | Shape matters, not just peak. |
-| S2 | Current dip at pinch | `test_v2_current_dip` | Dip magnitude 30-70% of I_peak | The current dip is the signature of radial compression -- no dip = no compression. |
+| S1 | I(t) waveform shape | `test_v2_pf1000_nrmse` | NRMSE < 0.25 vs accepted same-scope digitized waveform. Akel captions/table are not enough by themselves. | Shape matters, not just peak. |
+| S2 | Current dip at pinch | `test_v2_current_dip` | Current derivative/dip timing must match same-scope KR evidence; any 30-70% dip-depth gate requires digitized source support. | The current dip is the signature of radial compression, but dip depth must be sourced. |
 | S3 | Pinch voltage spike | `test_v2_pinch_voltage` | V_pinch > 20 kV at peak compression | Voltage spike = back-EMF from inductance change. Verifies circuit coupling. |
 | S4 | Multi-device validation | `test_v2_multidevice` | 3+ devices (PF-1000, UNU-ICTP, NX2) all complete without crash | Solver must not be tuned to one device. |
 | S5 | Cross-backend parity | `test_v2_cross_backend_sod` | L1(rho) < 15% vs Python WENO5+HLLD on Sod shock tube | Ensures Metal v2 matches the reference Python engine. |
@@ -577,12 +617,12 @@ def test_v2_pf1000_full_discharge():
     # Assert: M1-M8 all satisfied (no negative p, I_peak within 10%,
     #         mass conservation < 5%, energy conservation < 10%,
     #         no NaN, completes all phases, float32, div(B) < 1e-6)
-    # Assert: S2 (current dip 30-70%)
+    # Assert: S2 current dip/timing only after same-scope digitized waveform support
 
 @pytest.mark.slow
 def test_v2_pf1000_ipeak():
-    """PF-1000 peak current within 10% of 1.2 MA."""
-    # Assert: 1.08 MA < I_peak < 1.32 MA
+    """PF-1000 Akel shot-12581 peak current within 10% of 1.165 MA."""
+    # Assert: 1.0485 MA < I_peak < 1.2815 MA
 
 @pytest.mark.slow
 def test_v2_multidevice():

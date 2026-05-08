@@ -61,12 +61,12 @@ under human supervision.
   recognizing that NX2 "experimental" data in the literature is likely RADPF
   model output rather than measurement.
 
-- **Device preset calibration**: Calibrating Lee model parameters (fc, fm,
-  fmr) for each device required understanding the coupled nature of circuit
-  and plasma parameters. The 24-shot PF-1000 statistical validation against
-  Akel et al. (2021) required identifying a 6.43 mOhm parasitic resistance
-  offset -- a subtle experimental detail that AI could not infer from the
-  published data alone.
+- **Device preset calibration and source gating**: Calibrating Lee model
+  parameters (fc, fm, fmr) for each device required understanding the coupled
+  nature of circuit and plasma parameters. Current validation claims are now
+  source-gated against local `KnowledgeReference/` records; reconstructed,
+  reference-only, and external waveform archive traces are not promoted to
+  validation evidence by default.
 
 - **Numerical method selection**: Choosing WENO5-Z over WENO-JS, HLLD over
   HLL, and SSP-RK3 over lower-order integrators involved trade-off analysis
@@ -99,11 +99,12 @@ verified through multiple independent checks:
    resistive diffusion convergence, and Orszag-Tang vortex results were
    compared against published solutions.
 
-3. **Experimental validation**: Current waveforms were compared against
-   published data for 6 devices (PF-1000, UNU-ICTP, MJOLNIR, FAETON-I,
-   PF-400J, POSEIDON). The PF-1000 was validated statistically across 24
-   shots (Akel et al. 2021) with 1.27% mean I_peak error and Pearson
-   r = 0.9899.
+3. **Source-gated validation review**: Numerical waveform comparisons are
+   separated from validation claims. Under the current KnowledgeReference-only
+   gate, the standard PF-1000 Scholz waveform is the only registered
+   validation-ready circuit waveform record. Spatial MHD validation and
+   neutron scalar-yield/mechanism/timing/spectrum/anisotropy validation
+   remain open.
 
 4. **Automated test suite**: 4,183 tests (pytest) covering unit physics,
    shock tubes, convergence studies, cross-backend parity, energy

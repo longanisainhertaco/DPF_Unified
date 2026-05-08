@@ -1,7 +1,7 @@
 """Verification & Validation summary report generator.
 
 Compiles all validation results into a structured report:
-- Device-level accuracy (I_peak, t_peak, NRMSE)
+- Device registry source-authority status
 - Convergence study results (order, GCI)
 - Energy conservation status
 - Physics module coverage
@@ -93,7 +93,7 @@ def _get_module_coverage() -> list[dict[str, str]]:
         {"module": "Yield tracker (time-resolved)", "status": "ACTIVE", "tests": "9"},
         {"module": "Energy balance tracking", "status": "ACTIVE", "tests": "10"},
         {"module": "Bremsstrahlung (constant Gaunt)", "status": "ACTIVE", "tests": "Yes"},
-        {"module": "Line radiation (CHIANTI-style)", "status": "ACTIVE", "tests": "Yes"},
+        {"module": "Line radiation (empirical coronal fits)", "status": "ACTIVE", "tests": "Yes"},
         {"module": "Anomalous resistivity", "status": "ACTIVE", "tests": "Yes"},
         {"module": "Beam-target neutron yield", "status": "ACTIVE", "tests": "Yes"},
         {"module": "Velocity shear diagnostic", "status": "ACTIVE", "tests": "Yes"},
@@ -105,26 +105,46 @@ def _get_module_coverage() -> list[dict[str, str]]:
     ]
 
 
+def _device_source_status(device: object) -> str:
+    kr_status = getattr(device, "kr_status", "")
+    reliability = getattr(device, "reliability", "")
+    waveform_provenance = getattr(device, "waveform_provenance", "")
+    waveform_kr_status = getattr(device, "waveform_kr_status", "")
+    if (
+        kr_status == "verified"
+        and reliability == "measured"
+        and waveform_provenance == "measured"
+        and waveform_kr_status == "verified"
+    ):
+        return "VALIDATION_READY"
+    if reliability == "reference_only":
+        return "REFERENCE_ONLY"
+    if waveform_provenance == "reconstructed":
+        return "RECONSTRUCTED_ONLY"
+    if kr_status != "verified":
+        return "KR_UNVERIFIED"
+    if waveform_provenance == "measured" and waveform_kr_status != "verified":
+        return "WAVEFORM_KR_UNVERIFIED"
+    return "INCOMPLETE_WAVEFORM"
+
+
 def _get_device_validation() -> list[dict]:
-    """Device-level validation summary."""
-    return [
-        {"device": "PF-1000", "I_error": "7.3%", "status": "PASS",
-         "notes": "27 kV, 3.5 Torr D2, Scholz 2006"},
-        {"device": "PF-1000 (24-shot)", "I_error": "1.27%", "status": "PASS",
-         "notes": "Akel 2021, +6.43 mOhm parasitic R correction"},
-        {"device": "UNU-ICTP", "I_error": "6.4%", "status": "PASS",
-         "notes": "15 kV, 3 Torr D2, Lee 1988"},
-        {"device": "MJOLNIR", "I_error": "2.8%", "status": "PASS",
-         "notes": "60 kV, Goyon/Offermann"},
-        {"device": "FAETON-I", "I_error": "8.3%", "status": "PASS",
-         "notes": "100 kV, Damideh 2025, two-step radial"},
-        {"device": "PF-400J", "I_error": "2.3%", "status": "PASS",
-         "notes": "26 kV, 9 mbar D2, Soto 2009"},
-        {"device": "POSEIDON", "I_error": "45%", "status": "INVESTIGATE",
-         "notes": "Circuit params uncertain, needs calibration"},
-        {"device": "NX2", "I_error": "N/A", "status": "EXCLUDED",
-         "notes": "Published data likely RADPF output, not measurement"},
-    ]
+    """Device-level source-authority summary."""
+    from dpf.validation.experimental import DEVICES
+
+    devices: list[dict] = []
+    for name in sorted(DEVICES):
+        dev = DEVICES[name]
+        devices.append({
+            "device": name,
+            "status": _device_source_status(dev),
+            "kr_status": getattr(dev, "kr_status", ""),
+            "reliability": getattr(dev, "reliability", ""),
+            "waveform_provenance": getattr(dev, "waveform_provenance", ""),
+            "waveform_kr_status": getattr(dev, "waveform_kr_status", ""),
+            "reference": getattr(dev, "reference", ""),
+        })
+    return devices
 
 
 def generate_vv_report(include_test_count: bool = False) -> str:
@@ -144,21 +164,23 @@ def generate_vv_report(include_test_count: bool = False) -> str:
         "",
         "## 1. Device Validation Summary",
         "",
-        "| Device | I_peak Error | Status | Notes |",
-        "|--------|-------------|--------|-------|",
+        "| Device | Status | KR Status | Reliability | Waveform | Waveform KR | Reference |",
+        "|--------|--------|-----------|-------------|----------|-------------|-----------|",
     ]
 
     devices = _get_device_validation()
-    pass_count = sum(1 for d in devices if d["status"] == "PASS")
+    ready_count = sum(1 for d in devices if d["status"] == "VALIDATION_READY")
     for d in devices:
         lines.append(
-            f"| {d['device']} | {d['I_error']} | **{d['status']}** | {d['notes']} |"
+            f"| {d['device']} | **{d['status']}** | {d['kr_status']} "
+            f"| {d['reliability']} | {d['waveform_provenance']} "
+            f"| {d['waveform_kr_status']} | {d['reference']} |"
         )
 
     lines.extend([
         "",
-        f"**{pass_count}/{len(devices)} devices PASS** "
-        f"(threshold: I_peak error < 15%)",
+        f"**{ready_count}/{len(devices)} devices validation-ready** "
+        "(measured waveform, measured reliability, KR-verified device and waveform records)",
         "",
         "## 2. Physics Module Coverage",
         "",
@@ -182,15 +204,13 @@ def generate_vv_report(include_test_count: bool = False) -> str:
         "| Grid convergence | Richardson extrapolation + GCI | Available |",
         "| Energy conservation | Per-step balance tracking | Available |",
         "| Reproducibility | JSON export with checksums | Available |",
-        "| Statistical validation | 24-shot PF-1000 (r=0.9899) | PASS |",
-        "| UQ sensitivity | SALib Sobol (1536 samples) | Complete |",
+        "| Statistical validation | Requires explicit KR-sourced comparison bundle | Source-gated |",
+        "| UQ sensitivity | SALib Sobol workflow | Available |",
         "",
         "## 4. Key Metrics",
         "",
-        "- Best single-device accuracy: **1.27%** (PF-1000, 24-shot Akel)",
-        f"- Devices validated: **{pass_count}**",
+        f"- Devices validation-ready: **{ready_count}**",
         f"- Physics modules active: **{active}**",
-        "- New tests this session: **147**",
         "- Gas species supported: **8** (D2, H2, He, Ne, Ar, Kr, Xe, N2)",
     ])
 
@@ -202,8 +222,11 @@ def generate_vv_report(include_test_count: bool = False) -> str:
         "",
         "## 5. Known Limitations",
         "",
-        "- POSEIDON circuit parameters need calibration (45% I_peak error)",
-        "- NX2 published data excluded (likely model output, not measurement)",
+        "- Most device records still need line-by-line KR status work",
+        "- KR-verified device parameters do not imply KR-verified waveform traces",
+        "- Reconstructed waveforms cannot support tier-1 validation by default",
+        "- Reference-only device records are excluded from validation claims",
+        "- NX2 published data excluded from validation claims unless measured waveform data is added",
         "- FuZE cross-validation blocked (SFS z-pinch, not Mather DPF)",
         "- Python MHD solver unstable at MA currents (redirected to Metal)",
         "- Coronal equilibrium radiation assumption breaks above n_e > 1e25 m^-3",

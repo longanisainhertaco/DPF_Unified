@@ -602,12 +602,21 @@ class MLXMHDSolver(PlasmaSolverBase):
         self._ensure_internals()
         mx = require_mlx()
         from dpf.metal.mlx_timestepper import compute_dt_cfl
+        from dpf.metal.constants import C_BORIS
 
         U = self._state_mgr.from_state_dict(
             state, convert_b_si_to_hl=self._convert_b_si_to_hl
         )
         mx.eval(U)
-        return compute_dt_cfl(U, self._grid, gamma=self.gamma, cfl=self.cfl)
+        return compute_dt_cfl(
+            U,
+            self._grid,
+            gamma=self.gamma,
+            cfl=self.cfl,
+            use_boris=True,
+            c_boris=C_BORIS,
+            enable_hall=self.enable_hall,
+        )
 
     # Engine calls _compute_dt in some code paths
     _compute_dt = compute_dt
@@ -781,26 +790,62 @@ class MLXMHDSolver(PlasmaSolverBase):
         # vacuum cells reach rho~1e-12, producing v_Alfven→∞ and CFL
         # collapse. Beresnyak (2022) uses rho_min as an explicit parameter.
         # Our floor: 1e-4 * fill density, or 1e-6 kg/m^3 absolute minimum.
-        from dpf.metal.constants import IBR, IBT, IBZ, IDN, IEN, IMR, IMT, IMZ
+        from dpf.metal.constants import (
+            IBR,
+            IBT,
+            IBZ,
+            IDN,
+            IEN,
+            IMR,
+            IMT,
+            IMZ,
+            ISR,
+            P_FLOOR,
+        )
         _rho_floor = max(getattr(self, "_rho_floor", 1e-6), 1e-6)
-        U_np = np.asarray(U)
-        rho = U_np[IDN]
-        needs_floor = rho < _rho_floor
-        if np.any(needs_floor):
-            # Rescale momentum to preserve velocity when flooring density
-            rho_safe = np.maximum(rho, 1e-30)
-            scale = np.where(needs_floor, _rho_floor / rho_safe, 1.0)
-            U_np[IDN] = np.maximum(rho, _rho_floor)
-            U_np[IMR] *= scale
-            U_np[IMZ] *= scale
-            U_np[IMT] *= scale
-            # Floor total energy: E >= p_floor/(gamma-1) + KE + B^2/2
-            KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / U_np[IDN]
-            B2 = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
-            _p_floor = 1e-8  # Pa — cold but not singular
-            E_floor = _p_floor / (self.gamma - 1.0) + KE + 0.5 * B2
-            U_np[IEN] = np.where(needs_floor, np.maximum(U_np[IEN], E_floor), U_np[IEN])
-            U = mx.array(U_np.astype(np.float32))
+        _f32_limit = np.finfo(np.float32).max / 16.0
+        _velocity_overflow_limit = 5.0e7
+        U_np = np.asarray(U).astype(np.float64, copy=True)
+        rho_raw = U_np[IDN]
+        rho_valid = np.isfinite(rho_raw) & (rho_raw > 0.0)
+        rho_old = np.where(rho_valid, rho_raw, _rho_floor)
+        rho_new = np.maximum(rho_old, _rho_floor)
+        needs_floor = (~rho_valid) | (rho_raw < _rho_floor)
+
+        # Recover velocity from the old state, clamp it, then rebuild momentum
+        # from the floored density.  Multiplying momentum by rho_floor/rho can
+        # overflow when a vacuum cell reaches tiny or invalid density.
+        rho_for_velocity = np.maximum(rho_old, _rho_floor)
+        for idx in (IMR, IMZ, IMT):
+            momentum = np.nan_to_num(U_np[idx], nan=0.0, posinf=0.0, neginf=0.0)
+            velocity = momentum / rho_for_velocity
+            velocity = np.nan_to_num(velocity, nan=0.0, posinf=0.0, neginf=0.0)
+            velocity = np.clip(velocity, -_velocity_overflow_limit, _velocity_overflow_limit)
+            U_np[idx] = rho_new * velocity
+
+        U_np[IDN] = rho_new
+        U_np[ISR] = np.maximum(
+            np.nan_to_num(U_np[ISR], nan=0.0, posinf=_f32_limit, neginf=0.0),
+            0.0,
+        )
+        for idx in (IBR, IBZ, IBT):
+            U_np[idx] = np.nan_to_num(U_np[idx], nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Floor total energy: E >= p_floor/(gamma-1) + KE + B^2/2
+        KE = 0.5 * (U_np[IMR] ** 2 + U_np[IMZ] ** 2 + U_np[IMT] ** 2) / U_np[IDN]
+        B2 = U_np[IBR] ** 2 + U_np[IBZ] ** 2 + U_np[IBT] ** 2
+        _p_floor = max(P_FLOOR, 1e-8)  # Pa — cold but not singular
+        E_floor = _p_floor / (self.gamma - 1.0) + KE + 0.5 * B2
+        E_current = np.nan_to_num(
+            U_np[IEN],
+            nan=0.0,
+            posinf=_f32_limit,
+            neginf=0.0,
+        )
+        bad_energy = (~np.isfinite(U_np[IEN])) | (E_current < E_floor)
+        U_np[IEN] = np.where(needs_floor | bad_energy, np.maximum(E_current, E_floor), E_current)
+        U_np = np.clip(U_np, -_f32_limit, _f32_limit)
+        U = mx.array(U_np.astype(np.float32))
 
         # ── 4.5. div(B) control ───────────────────────────────────────────
         if self._use_ct and self.coordinates == "cylindrical":
@@ -918,7 +963,14 @@ class MLXMHDSolver(PlasmaSolverBase):
             import math
             _MU0_LOCAL = 4.0 * math.pi * 1e-7
             _SQRT_MU0_LOCAL = math.sqrt(_MU0_LOCAL)
-            U_np = np.asarray(U)
+            U_np = np.asarray(U).astype(np.float64, copy=True)
+            U_np[IDN] = np.maximum(
+                np.nan_to_num(U_np[IDN], nan=_rho_floor, posinf=_rho_floor, neginf=_rho_floor),
+                _rho_floor,
+            )
+            for idx in (IMR, IMZ, IMT, IBR, IBZ, IBT):
+                U_np[idx] = np.nan_to_num(U_np[idx], nan=0.0, posinf=0.0, neginf=0.0)
+            U_np[IEN] = np.nan_to_num(U_np[IEN], nan=0.0, posinf=_f32_limit, neginf=0.0)
             rho = U_np[IDN]
             nr_local, nz_local = rho.shape
             _rho_fill = self._rho_fill
@@ -963,18 +1015,22 @@ class MLXMHDSolver(PlasmaSolverBase):
             if np.any(prescribe):
                 Bt_ampere = (_MU0_LOCAL * current / (2.0 * math.pi)) / _div
                 Bt_ampere_2d = Bt_ampere / r_safe[:, None] * np.ones_like(rho)
-                B2_old = U_np[IBR]**2 + U_np[IBZ]**2 + U_np[IBT]**2
+                B2_old = U_np[IBR] ** 2 + U_np[IBZ] ** 2 + U_np[IBT] ** 2
                 Bt_new = np.where(prescribe, Bt_ampere_2d, U_np[IBT])
-                B2_new = U_np[IBR]**2 + U_np[IBZ]**2 + Bt_new**2
-                U_np[IEN] += np.where(prescribe, 0.5 * (B2_new - B2_old), 0.0)
+                B2_new = U_np[IBR] ** 2 + U_np[IBZ] ** 2 + Bt_new ** 2
+                delta_B2 = np.nan_to_num(B2_new - B2_old, nan=0.0, posinf=0.0, neginf=0.0)
+                U_np[IEN] += np.where(prescribe, 0.5 * delta_B2, 0.0)
                 U_np[IBT] = Bt_new
-                KE = 0.5 * (U_np[IMR]**2 + U_np[IMZ]**2 + U_np[IMT]**2) / np.maximum(U_np[IDN], 1e-30)
+                KE = 0.5 * (
+                    U_np[IMR] ** 2 + U_np[IMZ] ** 2 + U_np[IMT] ** 2
+                ) / np.maximum(U_np[IDN], _rho_floor)
                 e_int = U_np[IEN] - KE - 0.5 * B2_new
                 bad_p = e_int < 1e-8
                 if np.any(bad_p & prescribe):
                     p_min_vac = 1e-4 * 0.5 * B2_new
                     E_floor_vac = p_min_vac / (self.gamma - 1.0) + KE + 0.5 * B2_new
                     U_np[IEN] = np.where(bad_p & prescribe, np.maximum(U_np[IEN], E_floor_vac), U_np[IEN])
+                U_np = np.clip(U_np, -_f32_limit, _f32_limit)
                 U = mx.array(U_np.astype(np.float32))
 
         # ── 7. Unpack ────────────────────────────────────────────────────

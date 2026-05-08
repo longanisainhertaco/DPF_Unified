@@ -11,6 +11,7 @@ Validates:
 import numpy as np
 import pytest
 
+from dpf.metal.mlx_device import HAS_MLX, require_mlx
 from dpf.metal.mlx_eos import SahaEOS, _saha_zbar_numpy
 
 
@@ -74,12 +75,9 @@ class TestSahaEOS:
         assert Z_cold[0] < 0.01
         assert Z_hot[0] > 0.99
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("mlx.core", reason="MLX not available"),
-        reason="MLX required",
-    )
+    @pytest.mark.skipif(not HAS_MLX, reason="MLX required")
     def test_mlx_lookup_matches_numpy(self, eos):
-        import mlx.core as mx
+        mx = require_mlx()
         T_np = np.logspace(3, 6, 50).astype(np.float32)
         T_mx = mx.array(T_np)
         Z_np = eos.zbar_numpy(T_np)
@@ -88,8 +86,9 @@ class TestSahaEOS:
 
     def test_temperature_from_pressure_z1_limit(self, eos):
         """At high T (Z~1), Saha temperature should match Z=1 formula."""
-        pytest.importorskip("mlx.core")
-        import mlx.core as mx
+        if not HAS_MLX:
+            pytest.skip("MLX required")
+        mx = require_mlx()
         rho = mx.array([[1e-3]], dtype=mx.float32)
         # p chosen to give T ~ 100 eV = 1.16e6 K (fully ionized)
         m_d = 3.34358377e-27
@@ -110,7 +109,8 @@ class TestSolverIntegration:
 
     def test_solver_constructs_with_saha(self):
         """MLXMHDSolver should accept enable_saha_eos=True without error."""
-        pytest.importorskip("mlx.core")
+        if not HAS_MLX:
+            pytest.skip("MLX required")
         from dpf.metal.mlx_solver import MLXMHDSolver
         solver = MLXMHDSolver(
             grid_shape=(16, 1, 32),
@@ -122,7 +122,8 @@ class TestSolverIntegration:
 
     def test_solver_default_no_saha(self):
         """Default solver should not have Saha EOS (backward compatible)."""
-        pytest.importorskip("mlx.core")
+        if not HAS_MLX:
+            pytest.skip("MLX required")
         from dpf.metal.mlx_solver import MLXMHDSolver
         solver = MLXMHDSolver(
             grid_shape=(16, 1, 32),

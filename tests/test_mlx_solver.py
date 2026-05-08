@@ -153,6 +153,22 @@ def test_compute_dt_positive():
     assert math.isfinite(dt)
 
 
+def test_compute_dt_applies_hall_cfl_only_when_hall_enabled():
+    """Hall-disabled production runs must not inherit the Hall whistler CFL."""
+    state = _uniform_state(rho0=1e-8, p0=1e-8, Bz0=2.0e4)
+    no_hall = _make_solver(dx=0.005, dz=0.005, enable_hall=False)
+    hall = _make_solver(dx=0.005, dz=0.005, enable_hall=True)
+
+    dt_no_hall = no_hall.compute_dt(state)
+    dt_hall = hall.compute_dt(state)
+
+    assert dt_no_hall > 0.0
+    assert dt_hall > 0.0
+    assert math.isfinite(dt_no_hall)
+    assert math.isfinite(dt_hall)
+    assert dt_no_hall > 100.0 * dt_hall
+
+
 # ── Test 3: Single step ───────────────────────────────────────────────────────
 
 

@@ -671,11 +671,7 @@ def test_pic_v4_short_discharge() -> None:
 # Phase V5: PIC on MLX backend — 200 steps with beam injection
 # =====================================================================
 
-try:
-    import mlx.core as _mlx  # noqa: F401
-    _HAS_MLX = True
-except ImportError:
-    _HAS_MLX = False
+from dpf.metal.mlx_device import HAS_MLX as _HAS_MLX
 
 
 def _make_uniform_state(nr: int, nz: int, rho0: float, p0: float) -> dict[str, np.ndarray]:

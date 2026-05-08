@@ -1,6 +1,6 @@
 # Verification and Validation Summary
 
-Executive summary for reviewers. Updated 2026-04-08.
+Executive summary for reviewers. Updated 2026-05-05.
 
 ## Verification (Does the code solve the equations correctly?)
 
@@ -19,38 +19,45 @@ Executive summary for reviewers. Updated 2026-04-08.
 | Spitzer resistivity | NRL Formulary | PASS | Braginskii 1965 |
 | Bremsstrahlung coefficient | NRL Formulary p.58 | 1.42e-40 W m^3 | Rybicki & Lightman 1979 |
 
-**39/40 V&V requirements verified.** See `docs/VV_PLAN.md` for full traceability matrix.
+**39/40 verification requirements verified.** See `docs/VV_PLAN.md` for the historical traceability matrix.
 
 ## Validation (Does the code match experiment?)
 
-### Circuit-Level (Lee Snowplow Model) — VALIDATED
+### Circuit-Level (Lee Snowplow Model) — SOURCE-GATED, PARTIAL
 
-| Device | I_peak Error | t_peak Error | NRMSE | Reference |
-|--------|-------------|-------------|-------|-----------|
-| PF-1000 (27 kV) | **2.8%** | 13.6% | 0.182 | Scholz 2006, Gribkov 2007 |
-| PF-1000 (24 shots) | **1.27% MAE** | — | 0.015 | Akel et al. 2021 |
-| POSEIDON (60 kV) | 0.5% | 0.8% | 0.114 | IPFS archive |
-| FAETON-I (100 kV) | 3.6% | 4.6% | 0.026 | Damideh et al. 2025 |
-| MJOLNIR (60 kV) | 10.5% | 11.6% | 0.162 | Offermann et al. 2021 |
-| UNU-ICTP (13.5 kV) | 6.5% | 9.0% | 0.089 | IPFS archive |
-| NX2 | **EXCLUDED** | — | — | Not experimental data |
+Under the current KnowledgeReference-only rule, a device can support tier-1
+circuit evidence only when the device parameters and waveform trace are both
+KR-verified, the waveform is measured, and the record reliability is measured.
 
-**6/7 devices PASS.** Zero calibration — published RADPF parameters only.
+| Device | Source Status | Reason |
+|--------|---------------|--------|
+| PF-1000 | validation-ready | KR-verified measured waveform from Scholz record |
+| POSEIDON-60kV | waveform KR-unverified | parameters are KR-supported, waveform is an external archive trace |
+| UNU-ICTP | waveform KR-unverified | parameters are KR-supported, waveform is an external archive trace |
+| PF-1000-Gribkov | KR-unverified | measured waveform from external archive, source not yet in KR |
+| PF-1000-16kV | reconstructed-only | waveform reconstructed from 27 kV trace |
+| FAETON-I | reconstructed-only | waveform reconstructed from circuit parameters |
+| MJOLNIR | reconstructed-only | waveform reconstructed phenomenologically |
+| NX2 | reference-only | no measured waveform available |
+
+Current source status: **1/9 registered devices validation-ready**. A passing
+PF-1000 waveform comparison is tier-1 circuit evidence only; it is not spatial
+MHD validation and does not validate neutron production.
 
 ### MHD-Level (Spatially-Resolved Solver) — VERIFIED, NOT YET VALIDATED
 
 The MHD solver passes numerical verification tests (Sod, Brio-Wu, convergence)
 but has **not yet been compared to spatially-resolved experimental measurements**.
 
-Target: Malir et al. (2024, Phys. Plasmas) density profiles from laser
-interferometry. Comparison infrastructure built (`src/dpf/validation/spatial_comparison.py`).
+Target comparison paths exist for source-backed spatial components, but a
+same-scope density/B-field/temperature validation bundle has not been produced.
 
 See [SCOPE.md](SCOPE.md) for regime of validity and known limitations.
 
 ## Known Limitations
 
-1. **t_peak structural error**: 10-14% (snowplow propagation speed). See `TIMING_ERROR_RCA.md`.
-2. **POSEIDON geometry**: 14.7% error at 40 kV (electrode gap effect).
+1. **Tier-1 is narrow**: PF-1000 waveform comparison can support circuit evidence only.
+2. **Most device waveforms are blocked**: reconstructed, reference-only, and external archive traces cannot support validation claims by default.
 3. **Ideal EOS**: gamma = 5/3. Saha EOS available (`enable_saha_eos=True`) but not default.
 4. **No impurity radiation**: See `IMPURITY_LIMITATIONS.md` for bounding estimate.
 5. **2D axisymmetric**: No m=1 kink instabilities. See `SCOPE.md`.

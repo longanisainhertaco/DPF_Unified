@@ -37,34 +37,37 @@ from dpf.metal.constants import (  # noqa: F401
 from dpf.metal.constants import (
     MU_0 as MU0,  # noqa: F401
 )
+from dpf.metal.mlx_device import HAS_MLX, require_mlx
 
 # ──────────────────────────────────────────────────────────────
 # MLX availability guard
 # ──────────────────────────────────────────────────────────────
 HAS_MLX_KERNELS = False
-try:
-    import mlx.core as mx  # noqa: E402
+mx = None
+if HAS_MLX:
+    try:
+        mx = require_mlx()
 
-    # Probe that Metal kernel compilation works by building a trivial kernel.
-    _probe = mx.fast.metal_kernel(
-        name="_dpf_probe",
-        input_names=["x"],
-        output_names=["y"],
-        source="uint i=thread_position_in_grid.x; y[i]=x[i];",
-        header="#include <metal_stdlib>\nusing namespace metal;",
-        ensure_row_contiguous=True,
-    )
-    _probe(
-        inputs=[mx.array([1.0], dtype=mx.float32)],
-        template=[],
-        grid=(1, 1, 1),
-        threadgroup=(1, 1, 1),
-        output_shapes=[(1,)],
-        output_dtypes=[mx.float32],
-    )
-    HAS_MLX_KERNELS = True
-except Exception:
-    HAS_MLX_KERNELS = False
+        # Probe that Metal kernel compilation works by building a trivial kernel.
+        _probe = mx.fast.metal_kernel(
+            name="_dpf_probe",
+            input_names=["x"],
+            output_names=["y"],
+            source="uint i=thread_position_in_grid.x; y[i]=x[i];",
+            header="#include <metal_stdlib>\nusing namespace metal;",
+            ensure_row_contiguous=True,
+        )
+        _probe(
+            inputs=[mx.array([1.0], dtype=mx.float32)],
+            template=[],
+            grid=(1, 1, 1),
+            threadgroup=(1, 1, 1),
+            output_shapes=[(1,)],
+            output_dtypes=[mx.float32],
+        )
+        HAS_MLX_KERNELS = True
+    except Exception:
+        HAS_MLX_KERNELS = False
 
 
 # ══════════════════════════════════════════════════════════════

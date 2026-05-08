@@ -34,6 +34,22 @@ logger = logging.getLogger(__name__)
 BACK_EMF_CLAMP_V = 50_000.0  # +/- 50 kV clamp
 
 
+def _clamp_dlpdt_to_back_emf(current: float, dLp_dt: float) -> tuple[float, float]:
+    """Clamp dLp/dt and back-EMF consistently.
+
+    The circuit equation uses both dLp/dt and back_emf. Returning a clamped
+    back_emf with an unclamped dLp/dt gives the RLC solver contradictory
+    coupling data.
+    """
+    if not np.isfinite(dLp_dt):
+        dLp_dt = 0.0
+    current_scale = max(abs(current), 1.0)
+    dlpdt_limit = BACK_EMF_CLAMP_V / current_scale
+    dLp_dt = float(np.clip(dLp_dt, -dlpdt_limit, dlpdt_limit))
+    back_emf = float(current * dLp_dt)
+    return dLp_dt, back_emf
+
+
 @dataclass
 class FeedbackResult:
     """Result of a single coupling computation."""
@@ -191,8 +207,7 @@ class CircuitCoupler:
         self._history.append((self._time, Lp))
 
         # --- Step 6: Back-EMF = I * dLp/dt, clamped ---
-        back_emf = current * dLp_dt
-        back_emf = float(np.clip(back_emf, -BACK_EMF_CLAMP_V, BACK_EMF_CLAMP_V))
+        dLp_dt, back_emf = _clamp_dlpdt_to_back_emf(current, dLp_dt)
 
         return FeedbackResult(
             Lp=Lp,
@@ -267,7 +282,6 @@ class CircuitCoupler:
         dLp_dt = self._compute_dLp_dt(Lp)
         self._history.append((self._time, Lp))
 
-        back_emf = current * dLp_dt
-        back_emf = float(np.clip(back_emf, -BACK_EMF_CLAMP_V, BACK_EMF_CLAMP_V))
+        dLp_dt, back_emf = _clamp_dlpdt_to_back_emf(current, dLp_dt)
 
         return FeedbackResult(Lp=Lp, dLp_dt=dLp_dt, back_emf=back_emf)

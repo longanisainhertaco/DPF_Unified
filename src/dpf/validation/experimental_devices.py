@@ -65,6 +65,8 @@ PF1000_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.005,      # 0.5% of full scale (~0.05 us)
     waveform_uncertainty_type="digitization",  # Type B: hand-digitized from published figure
     waveform_provenance="measured",
+    waveform_kr_status="verified",
+    kr_status="verified",
     measurement_notes=(
         "26 points hand-digitized from Scholz et al., Nukleonika 51(1), 2006, Fig. 2. "
         "Rogowski coil uncertainty ~5% (Type B, estimated — not stated in source). "
@@ -161,6 +163,7 @@ UNU_ICTP_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.002,       # 0.2% (~1 ns digitization on ~5 us trace)
     waveform_uncertainty_type="digitization",  # Type B: quantization from digital oscilloscope
     waveform_provenance="measured",
+    waveform_kr_status="unverified",
     kr_status="verified",
     measurement_notes=(
         "45 points from IPFS 'UNU ICTPPFF D2 05.15.xls' (plasmafocus.net). "
@@ -347,6 +350,7 @@ POSEIDON_60KV_DATA = ExperimentalDevice(
     waveform_time_uncertainty=0.005,      # 0.5% temporal
     waveform_uncertainty_type="digitization",  # Type B: IPFS digital archive
     waveform_provenance="measured",
+    waveform_kr_status="unverified",
     kr_status="verified",
     lee_fc=0.60, lee_fm=0.275, lee_fmr=0.45, lee_fcr=0.44,
     lee_reference=(
@@ -613,4 +617,17 @@ def get_devices_by_provenance(
         name: dev for name, dev in DEVICES.items()
         if dev.waveform_provenance == provenance
         and dev.waveform_t is not None
+    }
+
+
+def get_validation_ready_devices() -> dict[str, ExperimentalDevice]:
+    """Return devices whose records can support tier-1 circuit evidence."""
+    return {
+        name: dev for name, dev in DEVICES.items()
+        if dev.kr_status == "verified"
+        and dev.reliability == "measured"
+        and dev.waveform_provenance == "measured"
+        and dev.waveform_kr_status == "verified"
+        and dev.waveform_t is not None
+        and dev.waveform_I is not None
     }

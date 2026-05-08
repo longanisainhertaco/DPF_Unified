@@ -39,6 +39,29 @@ class TestXrayImaging:
         assert "Br" in result and "Bz" in result and "Bt" in result
         assert abs(result["Bz"] - 1.0) < 0.1
 
+    def test_radiating_pinch_geometry_from_image(self):
+        from dpf.diagnostics.xray_imaging import radiating_pinch_geometry_from_image
+        y = np.linspace(0.0, 0.006, 13)
+        z = np.linspace(0.0, 0.10, 101)
+        image = np.zeros((len(y), len(z)))
+        image[np.ix_(y <= 0.0025, (z >= 0.02) & (z <= 0.07))] = 10.0
+
+        geometry = radiating_pinch_geometry_from_image(image, y, z)
+
+        assert geometry["has_radiating_region"] is True
+        assert abs(geometry["diameter_mm"] - 5.0) < 0.2
+        assert abs(geometry["length_cm"] - 5.0) < 0.2
+        assert geometry["diagnostic_role"] == (
+            "density_proxy_bremsstrahlung_spatial_geometry"
+        )
+
+    def test_radiating_pinch_geometry_empty_image(self):
+        from dpf.diagnostics.xray_imaging import radiating_pinch_geometry_from_image
+        y = np.linspace(0.0, 0.006, 13)
+        z = np.linspace(0.0, 0.10, 101)
+        geometry = radiating_pinch_geometry_from_image(np.zeros((13, 101)), y, z)
+        assert geometry["has_radiating_region"] is False
+
 
 class TestNeutronToF:
     """Tests for neutron_tof.py."""

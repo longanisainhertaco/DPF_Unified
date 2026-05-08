@@ -19,10 +19,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-try:
-    import mlx.core as mx
-except ImportError:
-    mx = None  # type: ignore[assignment]
+from dpf.metal.mlx_device import HAS_MLX, require_mlx
+
+mx = require_mlx() if HAS_MLX else None  # type: ignore[assignment]
 
 IDN, IMR, IMZ, IMT, IEN, ISR, IBR, IBZ, IBT, IEE = range(10)
 NVAR = 10

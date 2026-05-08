@@ -34,6 +34,28 @@ from dpf.metal.constants import P_FLOOR, RHO_FLOOR  # noqa: E402
 _ETA1: float = 1e-5
 _ETA2: float = 1e-2
 
+
+def _recover_finite_dual_pressure(
+    mx: object,
+    p_E: object,
+    p_S: object,
+    E: object,
+) -> object:
+    """Blend dual-energy pressure candidates without letting 0*inf form NaN."""
+    p_E_ok = mx.isfinite(p_E)
+    p_S_ok = mx.isfinite(p_S)
+    E_abs = mx.maximum(mx.abs(E), 1e-30)
+    eta = mx.abs(mx.where(p_S_ok, p_S, 0.0)) / E_abs
+    t = mx.clip((eta - _ETA1) / max(_ETA2 - _ETA1, 1e-30), 0.0, 1.0)
+    w = t * t * (3.0 - 2.0 * t)
+    w = mx.where((~p_E_ok) & p_S_ok, 0.0, w)
+    w = mx.where((~p_S_ok) & p_E_ok, 1.0, w)
+    p_E_blend = mx.where(p_E_ok, p_E, P_FLOOR)
+    p_S_blend = mx.where(p_S_ok, p_S, P_FLOOR)
+    p_blend = w * p_E_blend + (1.0 - w) * p_S_blend
+    return mx.maximum(mx.where(mx.isfinite(p_blend), p_blend, P_FLOOR), P_FLOOR)
+
+
 # -- Variable index constants (conserved state vector) --
 NVAR: int = 10
 IDN: int = 0   # density                rho
@@ -267,11 +289,7 @@ class MLXState:
 
         Srho = U[ISR]
         p_S = Srho * mx.power(mx.maximum(rho, RHO_FLOOR), gm1)
-        E_abs = mx.maximum(mx.abs(U[IEN]), 1e-30)
-        eta = mx.abs(p_S) / E_abs
-        t = mx.clip((eta - _ETA1) / max(_ETA2 - _ETA1, 1e-30), 0.0, 1.0)
-        w = t * t * (3.0 - 2.0 * t)
-        p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
+        p = _recover_finite_dual_pressure(mx, p_E, p_S, U[IEN])
 
         T_ion = p * self.ion_mass / (2.0 * rho * _K_B)
         Ti = mx.maximum(T_ion, 0.0)
@@ -350,15 +368,7 @@ class MLXState:
 
         p_E = gm1 * (E - KE - ME)
         p_S = Srho * mx.power(mx.maximum(rho, RHO_FLOOR), gm1)
-
-        E_abs = mx.maximum(mx.abs(E), 1e-30)
-        eta   = mx.abs(p_S) / E_abs
-
-        # Smoothstep blend weight (0 = entropy, 1 = total-energy)
-        t = mx.clip((eta - _ETA1) / max(_ETA2 - _ETA1, 1e-30), 0.0, 1.0)
-        w = t * t * (3.0 - 2.0 * t)
-
-        p = mx.maximum(w * p_E + (1.0 - w) * p_S, P_FLOOR)
+        p = _recover_finite_dual_pressure(mx, p_E, p_S, E)
 
         # -- Temperatures --
         # Fully ionized: p = (n_e + n_i) * kB * T = 2 * n_i * kB * T (Z=1)

@@ -23,6 +23,12 @@ References:
     Rider, Fusion Technology 32:222 (1997) — simplified parameterization review
     Becker et al., Z. Phys. A 327:341 (1987) — S-factor polynomial below 50 keV
     Nevins, W.M., J. Fusion Energy 17:25 (1998) — pB11 ignition analysis
+
+KnowledgeReference note:
+    The local KnowledgeReference supports the p+B11 reaction and Q-value, but
+    the Nevins/Swain/Rider/Becker source tables cited above are not part of
+    the current verified local corpus. Treat this module as a reactivity-table
+    estimate, not a validated DPF p-B11 feasibility model.
 """
 
 from __future__ import annotations
@@ -31,6 +37,46 @@ import numpy as np
 from numba import njit
 
 from dpf.constants import eV, k_B
+
+PB11_MODEL_ROLE = "reactivity_table_estimate"
+PB11_VALIDATION_ROLE = "not_dpf_feasibility_validation"
+
+
+def pb11_model_metadata() -> dict[str, object]:
+    """Return source/validity metadata for p-B11 yield diagnostics."""
+    return {
+        "model_role": PB11_MODEL_ROLE,
+        "validation_role": PB11_VALIDATION_ROLE,
+        "predictive_dpf_pb11": False,
+        "components": {
+            "reaction_q": (
+                "p+B11 -> 3 alpha + 8.7 MeV is supported by the local "
+                "plasma-formulary KnowledgeReference."
+            ),
+            "reactivity": (
+                "Nevins/Swain-style tabulated Maxwellian reactivity is used, "
+                "but the source table is not verified in the local "
+                "KnowledgeReference corpus."
+            ),
+            "yield_rate": (
+                "Thermonuclear n_p*n_B*<sigma*v> volume integral; it does "
+                "not model non-Maxwellian beams, alpha transport, fuel mixing, "
+                "or radiation losses."
+            ),
+        },
+        "validity_notes": {
+            "temperature_range": "Table interpolation is intended for about 10-2000 keV.",
+            "dpf_limit": (
+                "KnowledgeReference flags p-B11 DPF as requiring high ion "
+                "energies and strong high-Z radiation management; this module "
+                "does not validate those machine conditions."
+            ),
+            "source_gap": (
+                "Add the cited reactivity tables/papers to KnowledgeReference "
+                "before using this module for source-backed design claims."
+            ),
+        },
+    }
 
 # ---------------------------------------------------------------------------
 # Tabulated Nevins & Swain (2000) reactivity data — Table I

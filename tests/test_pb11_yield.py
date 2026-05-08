@@ -14,6 +14,7 @@ import pytest
 from dpf.constants import eV, k_B
 from dpf.diagnostics.pb11_yield import (
     pb11_alpha_power_density,
+    pb11_model_metadata,
     pb11_reactivity,
     pb11_reactivity_array,
     pb11_yield_rate,
@@ -22,6 +23,24 @@ from dpf.diagnostics.pb11_yield import (
 # ---------------------------------------------------------------------------
 # pb11_reactivity — scalar interface
 # ---------------------------------------------------------------------------
+
+
+class TestPb11ModelMetadata:
+    """Tests for p-B11 provenance and validity metadata."""
+
+    def test_metadata_marks_reactivity_table_as_not_dpf_validation(self):
+        metadata = pb11_model_metadata()
+        assert metadata["model_role"] == "reactivity_table_estimate"
+        assert metadata["validation_role"] == "not_dpf_feasibility_validation"
+        assert metadata["predictive_dpf_pb11"] is False
+        assert "KnowledgeReference" in metadata["components"]["reactivity"]
+        assert "10-2000 keV" in metadata["validity_notes"]["temperature_range"]
+
+    def test_metadata_separates_reaction_q_from_machine_feasibility(self):
+        metadata = pb11_model_metadata()
+        assert "8.7 MeV" in metadata["components"]["reaction_q"]
+        assert "high ion energies" in metadata["validity_notes"]["dpf_limit"]
+        assert "source-backed design claims" in metadata["validity_notes"]["source_gap"]
 
 
 class TestPb11ReactivityBoundary:

@@ -40,6 +40,47 @@ BACKEND_CONFIGS = {
     },
 }
 
+
+def _mhd_numerical_method_metadata(
+    backend: str,
+    grid_shape: tuple[int, int, int],
+    dr: float,
+    dz: float,
+) -> dict[str, object]:
+    """Return run-level MHD method metadata for validation audits."""
+    backend_key = str(backend).lower().split()[0]
+    cfg = BACKEND_CONFIGS.get(backend_key, {})
+    if backend_key in {"python", "hybrid"}:
+        cfg = {
+            "reconstruction": "plm",
+            "riemann_solver": "hll",
+            "time_integrator": "cfl_limited_explicit",
+            "precision": "float64",
+        }
+    if backend_key.startswith("metal_cylindrical"):
+        cfg = BACKEND_CONFIGS.get("metal_plm", {})
+    coordinates = "cartesian" if "3d" in backend_key else "cylindrical"
+    return {
+        "backend": backend,
+        "finite_volume": True,
+        "coordinates": coordinates,
+        "grid_shape": tuple(int(value) for value in grid_shape),
+        "dr_m": float(dr),
+        "dz_m": float(dz),
+        "reconstruction": cfg.get("reconstruction", "unknown"),
+        "riemann_solver": cfg.get("riemann_solver", "unknown"),
+        "time_integrator": cfg.get("time_integrator", "unknown"),
+        "precision": cfg.get("precision", "unknown"),
+        "source": "app_mhd backend configuration",
+        "validity_notes": {
+            "metadata_scope": (
+                "Run-level method metadata supports numerical audits but is not "
+                "a substitute for analytic verification or convergence evidence."
+            ),
+        },
+    }
+
+
 MHD_GRID_PRESETS = {
     "coarse": (16, 16, 32),
     "medium": (32, 32, 64),
@@ -296,6 +337,12 @@ def run_mhd_simulation(
         "rho0": rho0,
         "backend": effective_backend,
         "grid_shape": grid_shape,
+        "mhd_numerical_method": _mhd_numerical_method_metadata(
+            effective_backend,
+            grid_shape,
+            dr,
+            dz,
+        ),
         "advanced_physics": active_modules,
     })
 
@@ -304,6 +351,30 @@ def run_mhd_simulation(
                            grid_shape, sim_time_us)
 
     return result
+
+
+def _phase_stagnation_time_s(result: dict) -> float | None:
+    """Return the first phase-labeled pinch time, if available."""
+    phases = result.get("phases")
+    times_us = result.get("t_us")
+    if phases is None or times_us is None:
+        return None
+
+    n = min(len(phases), len(times_us))
+    for idx in range(n):
+        phase = str(phases[idx]).strip().lower()
+        if phase in {"pinch", "reflected", "post_pinch"}:
+            return float(times_us[idx]) * 1.0e-6
+    return None
+
+
+def _record_validation_error(result: dict, stage: str, exc: Exception) -> None:
+    """Record validation post-processing failures without aborting the run."""
+    result.setdefault("validation_errors", []).append({
+        "stage": stage,
+        "error_type": type(exc).__name__,
+        "message": str(exc),
+    })
 
 
 def _apply_post_processing(
@@ -709,17 +780,511 @@ def _apply_post_processing(
                 a_mm=cc_s.get("anode_radius", 0.01) * 1e3,
                 b_mm=cc_s.get("cathode_radius", 0.03) * 1e3,
             )
-            result["scaling_laws"] = {
-                "Yn_I4": scaling.Yn_lee_I4,
-                "Yn_I33": scaling.Yn_cross_I33,
-                "Yn_E2": scaling.Yn_energy_E2,
-                "T_bennett_keV": scaling.T_bennett_keV,
-                "r_pinch_mm": scaling.r_pinch_mm,
-                "device_class": scaling.device_class,
-                "saturation": scaling.saturation_flag,
-            }
+            result["scaling_laws"] = scaling.to_summary_dict()
     except (ImportError, Exception):
         pass
+
+    # Circuit waveform validation against registered experimental traces.
+    try:
+        from dpf.validation.experimental import DEVICES
+        from dpf.validation.quality_assessment import (
+            circuit_validation_evidence_from_waveform,
+        )
+
+        device_name = str(result.get("device", ""))
+        t_us_cv = result.get("t_us", np.array([]))
+        I_MA_cv = result.get("I_MA", np.array([]))
+        if (
+            device_name in DEVICES
+            and "circuit_validation" not in result
+            and len(t_us_cv) > 1
+            and len(I_MA_cv) > 1
+        ):
+            result["circuit_validation"] = circuit_validation_evidence_from_waveform(
+                np.asarray(t_us_cv, dtype=float) * 1.0e-6,
+                np.asarray(I_MA_cv, dtype=float) * 1.0e6,
+                device_name,
+            )
+    except Exception as exc:
+        _record_validation_error(result, "circuit_waveform_validation", exc)
+
+    # Snowplow phase validation. Phase labels alone stay as candidate evidence;
+    # only caller-supplied reference targets are promoted to tier-2 validation.
+    try:
+        from dpf.validation.quality_assessment import (
+            snowplow_phase_observation_from_history,
+            snowplow_validation_evidence_from_phase_history,
+        )
+        from dpf.validation.kr_targets import (
+            pf1000_16kv_derived_output_candidate_evidence,
+            pf1000_16kv_phase_candidate_evidence_from_history,
+        )
+
+        phases_sp = result.get("phases")
+        t_us_sp = result.get("t_us", np.array([]))
+        if phases_sp is not None and len(t_us_sp) > 1 and len(phases_sp) > 1:
+            phase_targets_s = (
+                result.get("snowplow_phase_targets_s")
+                or result.get("phase_timing_targets_s")
+            )
+            if phase_targets_s and "snowplow_validation" not in result:
+                phase_target_metadata = result.get("snowplow_phase_target_metadata", {})
+                result["snowplow_validation"] = (
+                    snowplow_validation_evidence_from_phase_history(
+                        np.asarray(t_us_sp, dtype=float) * 1.0e-6,
+                        phases_sp,
+                        phase_targets_s,
+                        reference_source=str(
+                            phase_target_metadata.get("source", "")
+                            if isinstance(phase_target_metadata, dict) else ""
+                        ),
+                        reference_kr_status=str(
+                            phase_target_metadata.get("kr_status", "")
+                            if isinstance(phase_target_metadata, dict) else ""
+                        ),
+                    )
+                )
+            elif "snowplow_validation_candidate" not in result:
+                times_s = np.asarray(t_us_sp, dtype=float) * 1.0e-6
+                device_phase = str(
+                    result.get("device", preset_name)
+                ).lower().replace("_", "-")
+                v0_phase = float(cc.get("V0", 0.0))
+                is_pf1000_16kv_phase = (
+                    ("pf-1000" in device_phase or "pf1000" in device_phase)
+                    and 0.95 * 16.0e3 <= v0_phase <= 1.05 * 16.0e3
+                )
+                if is_pf1000_16kv_phase:
+                    result["snowplow_validation_candidate"] = (
+                        pf1000_16kv_phase_candidate_evidence_from_history(
+                            times_s,
+                            phases_sp,
+                        )
+                    )
+                else:
+                    result["snowplow_validation_candidate"] = (
+                        snowplow_phase_observation_from_history(
+                            times_s,
+                            phases_sp,
+                        )
+                    )
+
+                if (
+                    is_pf1000_16kv_phase
+                    and "snowplow_dynamics_validation_candidate" not in result
+                ):
+                    observables = dict(
+                        result.get("pf1000_16kv_derived_outputs", {})
+                        if isinstance(result.get("pf1000_16kv_derived_outputs"), dict)
+                        else {}
+                    )
+                    if result.get("I_peak") is not None:
+                        observables.setdefault(
+                            "peak_current_kA",
+                            float(result["I_peak"]) * 1.0e3,
+                        )
+                    I_MA_sp = result.get("I_MA")
+                    if I_MA_sp is not None:
+                        n_phase_current = min(len(phases_sp), len(I_MA_sp))
+                        for idx in range(n_phase_current):
+                            phase = str(phases_sp[idx]).strip().lower()
+                            if phase in {"pinch", "reflected", "post_pinch"}:
+                                observables.setdefault(
+                                    "pinch_current_kA",
+                                    abs(float(I_MA_sp[idx])) * 1.0e3,
+                                )
+                                break
+                    if observables:
+                        result["snowplow_dynamics_validation_candidate"] = (
+                            pf1000_16kv_derived_output_candidate_evidence(
+                                observables,
+                            )
+                        )
+    except Exception as exc:
+        _record_validation_error(result, "snowplow_phase_validation", exc)
+
+    # Spatial validation components: candidates are exposed, but only complete
+    # same-scope evidence is promoted to `spatial_validation`.
+    try:
+        from dpf.diagnostics.xray_imaging import radiating_pinch_geometry_from_image
+        from dpf.validation.kr_targets import (
+            dpf_pinch_temperature_evidence,
+            llnl_12kj_em_fluctuation_evidence_from_signal,
+            pf1000_interferometry_density_evidence_from_profile,
+            pf1000_spatial_pinch_evidence_from_geometry,
+        )
+        from dpf.validation.quality_assessment import (
+            combine_spatial_validation_evidence,
+            spatial_validation_scope_closure_report,
+        )
+
+        xray_image = result.get("xray_image")
+        if xray_image is None:
+            xray_image = result.get("synthetic_xray_image")
+        y_cell_sp = result.get("xray_y_cell_m")
+        z_cell_sp = result.get("xray_z_cell_m")
+        device_sp = str(result.get("device", preset_name)).lower().replace("_", "-")
+        is_pf1000 = "pf-1000" in device_sp or "pf1000" in device_sp
+        if (
+            is_pf1000
+            and xray_image is not None
+            and y_cell_sp is not None
+            and z_cell_sp is not None
+        ):
+            geometry = radiating_pinch_geometry_from_image(
+                np.asarray(xray_image, dtype=float),
+                np.asarray(y_cell_sp, dtype=float),
+                np.asarray(z_cell_sp, dtype=float),
+            )
+            result["pf1000_radiating_pinch_geometry"] = geometry
+            result.setdefault("spatial_validation_components", []).append(
+                pf1000_spatial_pinch_evidence_from_geometry(geometry)
+            )
+
+        density_radius_cm = result.get("pf1000_interferometry_radius_cm")
+        if density_radius_cm is None:
+            density_radius_cm = result.get("density_profile_radius_cm")
+        if density_radius_cm is None and result.get("density_profile_radius_m") is not None:
+            density_radius_cm = (
+                np.asarray(result["density_profile_radius_m"], dtype=float) * 100.0
+            )
+
+        density_profile_cm3 = result.get("pf1000_interferometry_density_cm3")
+        if density_profile_cm3 is None:
+            density_profile_cm3 = result.get("electron_density_profile_cm3")
+        if (
+            density_profile_cm3 is None
+            and result.get("electron_density_profile_m3") is not None
+        ):
+            density_profile_cm3 = (
+                np.asarray(result["electron_density_profile_m3"], dtype=float) * 1.0e-6
+            )
+
+        if (
+            is_pf1000
+            and density_radius_cm is not None
+            and density_profile_cm3 is not None
+        ):
+            result.setdefault("spatial_validation_components", []).append(
+                pf1000_interferometry_density_evidence_from_profile(
+                    np.asarray(density_radius_cm, dtype=float),
+                    np.asarray(density_profile_cm3, dtype=float),
+                    shot=str(result.get("shot", "13328")),
+                )
+            )
+
+        em_times_s = result.get("em_probe_times_s")
+        em_signal = result.get("em_probe_signal")
+        device_is_llnl = "llnl" in device_sp and "1.2" in device_sp
+        if device_is_llnl and em_times_s is not None and em_signal is not None:
+            result.setdefault("spatial_validation_components", []).append(
+                llnl_12kj_em_fluctuation_evidence_from_signal(
+                    np.asarray(em_times_s, dtype=float),
+                    np.asarray(em_signal, dtype=float),
+                )
+            )
+
+        T_arr_sp = result.get("T_max", np.array([]))
+        if len(T_arr_sp) > 0:
+            T_peak_K = float(np.nanmax(T_arr_sp))
+            T_peak_keV = T_peak_K * kB / (1000.0 * 1.602e-19)
+            temp_evidence = dpf_pinch_temperature_evidence(
+                electron_temperature_keV=T_peak_keV,
+            )
+            result.setdefault("spatial_validation_components", []).append(temp_evidence)
+
+        components = result.get("spatial_validation_components", [])
+        if components and "spatial_validation" not in result:
+            result["spatial_validation_scope_closure"] = (
+                spatial_validation_scope_closure_report(components)
+            )
+            combined_spatial = combine_spatial_validation_evidence(components)
+            if combined_spatial["passed"]:
+                result["spatial_validation"] = combined_spatial
+            else:
+                result["spatial_validation_candidate"] = combined_spatial
+    except Exception as exc:
+        _record_validation_error(result, "spatial_validation", exc)
+
+    # PF-1000 16 kV Akel scalar-yield validation. This requires callers to
+    # supply a full 24-shot prediction table; a single run yield is not enough.
+    try:
+        from dpf.validation.kr_targets import (
+            pf1000_16kv_akel_table_candidate_evidence,
+        )
+
+        prediction_rows = (
+            result.get("pf1000_16kv_akel_table_predictions")
+            or result.get("akel_2021_table_predictions")
+            or result.get("neutron_yield_validation_rows")
+        )
+        device_yield = str(result.get("device", preset_name)).lower().replace("_", "-")
+        is_pf1000_yield = "pf-1000" in device_yield or "pf1000" in device_yield
+        v0_yield = float(cc.get("V0", 0.0))
+        if (
+            prediction_rows is not None
+            and is_pf1000_yield
+            and 0.95 * 16.0e3 <= v0_yield <= 1.05 * 16.0e3
+        ):
+            yield_evidence = pf1000_16kv_akel_table_candidate_evidence(
+                prediction_rows,
+            )
+            if yield_evidence["passed"]:
+                result["neutron_yield_validation"] = yield_evidence
+            else:
+                result["neutron_yield_validation_candidate"] = yield_evidence
+    except Exception as exc:
+        _record_validation_error(result, "pf1000_16kv_akel_yield_validation", exc)
+
+    # KnowledgeReference-backed MJOLNIR neutron timing comparison.
+    # Only phase-timed comparisons are fed to the predictive-readiness gate.
+    if (
+        gas.get("A") == 2
+        and gas.get("Z") == 1
+        and result.get("yield_time_resolved")
+        and str(result.get("device", preset_name)).lower() == "mjolnir"
+    ):
+        try:
+            from dpf.validation.kr_targets import (
+                mjolnir_neutron_anisotropy_evidence,
+                mjolnir_neutron_detector_response_evidence,
+                mjolnir_neutron_spectrum_evidence,
+                mjolnir_neutron_timing_evidence_from_history,
+            )
+
+            stagnation_time_s = _phase_stagnation_time_s(result)
+            neutron_timing = mjolnir_neutron_timing_evidence_from_history(
+                result["yield_time_resolved"],
+                stagnation_time_s=stagnation_time_s,
+                require_measurement_correlation=True,
+            )
+            inferred = neutron_timing.get("details", {}).get(
+                "stagnation_time_inferred_from_thermonuclear_peak", False
+            )
+            if inferred:
+                result["neutron_timing_validation_candidate"] = neutron_timing
+            else:
+                result["neutron_mechanism_timing_validation"] = neutron_timing
+
+            spectrum_samples = result.get("neutron_spectrum_samples_MeV")
+            if isinstance(spectrum_samples, dict):
+                thermo_spectrum = spectrum_samples.get("thermonuclear")
+                beam_spectrum = spectrum_samples.get("beam_target")
+                if thermo_spectrum is not None and beam_spectrum is not None:
+                    result["neutron_spectrum_validation"] = (
+                        mjolnir_neutron_spectrum_evidence(
+                            thermo_spectrum,
+                            beam_spectrum,
+                        )
+                    )
+
+            anisotropy = result.get("neutron_anisotropy")
+            if isinstance(anisotropy, dict):
+                on_axis = anisotropy.get("on_axis_yield")
+                off_axis = anisotropy.get("off_axis_yield")
+                if on_axis is not None and off_axis is not None:
+                    result["neutron_anisotropy_validation"] = (
+                        mjolnir_neutron_anisotropy_evidence(
+                            on_axis,
+                            off_axis,
+                            yield_regime=str(anisotropy.get("yield_regime", "high_yield")),
+                        )
+                    )
+
+            detector_response = result.get("neutron_detector_response")
+            if detector_response is None:
+                detector_response = result.get("detector_response")
+            if isinstance(detector_response, dict):
+                response_evidence = mjolnir_neutron_detector_response_evidence(
+                    detector_response,
+                )
+                if response_evidence["passed"]:
+                    result["neutron_detector_response_validation"] = response_evidence
+                else:
+                    result["neutron_detector_response_validation_candidate"] = (
+                        response_evidence
+                    )
+        except Exception as exc:
+            _record_validation_error(result, "mjolnir_neutron_validation", exc)
+
+    # Tier-5 neutron closure: yield, timing, spectrum, and anisotropy must share scope.
+    try:
+        if (
+            result.get("neutron_yield_validation")
+            or result.get("neutron_mechanism_timing_validation")
+            or result.get("neutron_spectrum_validation")
+            or result.get("neutron_anisotropy_validation")
+        ):
+            from dpf.validation.quality_assessment import (
+                neutron_validation_scope_closure_report,
+            )
+
+            result["neutron_validation_scope_closure"] = (
+                neutron_validation_scope_closure_report(result)
+            )
+    except Exception as exc:
+        _record_validation_error(result, "neutron_scope_closure", exc)
+
+    # High-fidelity physics audit. This is intentionally conservative and
+    # reports missing/unvalidated physics effects rather than promoting claims.
+    try:
+        from dpf.validation.physics_fidelity import (
+            physics_fidelity_evidence_from_result,
+        )
+
+        result["physics_fidelity_evidence"] = (
+            physics_fidelity_evidence_from_result(
+                result,
+                active_modules=active_modules,
+            )
+        )
+    except Exception as exc:
+        _record_validation_error(result, "physics_fidelity", exc)
+
+    # Circuit/field coupling audit. This records coupling signals and keeps
+    # MHD current-prediction claims blocked until KR-backed validation exists.
+    try:
+        from dpf.validation.circuit_field_coupling import (
+            dynamic_inductance_power_balance_from_waveforms,
+            field_coupling_evidence_from_result,
+        )
+
+        if "dynamic_inductance_power_balance" not in result:
+            inductance_nH = None
+            for key in ("Lp_mhd_nH", "L_p_nH", "Lp_nH"):
+                if key in result:
+                    inductance_nH = result.get(key)
+                    break
+            if (
+                inductance_nH is not None
+                and result.get("t_us") is not None
+                and result.get("I_MA") is not None
+            ):
+                result["dynamic_inductance_power_balance"] = (
+                    dynamic_inductance_power_balance_from_waveforms(
+                        np.asarray(result["t_us"], dtype=float) * 1.0e-6,
+                        np.asarray(result["I_MA"], dtype=float) * 1.0e6,
+                        np.asarray(inductance_nH, dtype=float) * 1.0e-9,
+                    )
+                )
+        result["field_coupling_validation"] = (
+            field_coupling_evidence_from_result(result)
+        )
+    except Exception as exc:
+        _record_validation_error(result, "field_coupling", exc)
+
+    # Uncertainty-budget audit. This exposes missing uncertainty components
+    # without promoting nominal tolerances to high-fidelity UQ.
+    try:
+        from dpf.validation.uncertainty_budget import (
+            uncertainty_evidence_from_result,
+            validation_uncertainty_coverage_from_result,
+        )
+
+        result["validation_uncertainty_coverage"] = (
+            validation_uncertainty_coverage_from_result(result)
+        )
+        result["uncertainty_validation"] = (
+            uncertainty_evidence_from_result(result)
+        )
+    except Exception as exc:
+        _record_validation_error(result, "uncertainty_budget", exc)
+
+    # MHD numerical-fidelity audit. This keeps generic backend verification
+    # separate from DPF-specific cylindrical/circuit/convergence requirements.
+    try:
+        from dpf.validation.mhd_numerical_fidelity import (
+            mhd_numerical_fidelity_evidence_from_result,
+            mhd_scope_limit_evidence_from_phases,
+        )
+
+        if "mhd_scope_limit" not in result and (
+            result.get("has_mhd")
+            or result.get("mhd_numerical_method")
+            or "mhd" in str(result.get("backend", effective_backend)).lower()
+        ):
+            result["mhd_scope_limit"] = mhd_scope_limit_evidence_from_phases(
+                applicable_phases=["formation", "first_collapse"],
+                invalid_phases=["after_first_collapse", "post_disruption"],
+                limit_reasons=[
+                    "Rayleigh-Taylor instability",
+                    "non-ideal electric fields beyond ideal MHD",
+                ],
+            )
+        result["mhd_numerical_fidelity"] = (
+            mhd_numerical_fidelity_evidence_from_result(result)
+        )
+    except Exception as exc:
+        _record_validation_error(result, "mhd_numerical_fidelity", exc)
+
+    # Validation and predictive-readiness gate
+    try:
+        from dataclasses import asdict
+
+        from dpf.validation.digitization import (
+            scientific_closure_digitization_queue,
+            scientific_closure_digitization_status,
+        )
+        from dpf.validation.kr_corpus import kr_corpus_review_status
+        from dpf.validation.kr_targets import (
+            kr_validation_same_scope_target_report,
+            kr_validation_target_coverage_report,
+            kr_validation_target_semantic_audit,
+            kr_validation_target_source_audit,
+        )
+        from dpf.validation.quality_assessment import (
+            high_fidelity_readiness_report,
+            predictive_readiness_report,
+            scientific_accuracy_gap_report,
+            source_authority_evidence_from_result,
+            validation_tier_report,
+        )
+        from dpf.validation.source_acquisition import (
+            scientific_closure_source_acquisition_queue,
+        )
+
+        result["kr_validation_target_source_audit"] = (
+            kr_validation_target_source_audit()
+        )
+        result["kr_validation_target_semantic_audit"] = (
+            kr_validation_target_semantic_audit()
+        )
+        result["kr_validation_target_coverage"] = (
+            kr_validation_target_coverage_report()
+        )
+        result["kr_validation_same_scope_targets"] = (
+            kr_validation_same_scope_target_report()
+        )
+        result["kr_corpus_review_status"] = kr_corpus_review_status()
+        result["scientific_closure_source_acquisition_queue"] = (
+            scientific_closure_source_acquisition_queue()
+        )
+        result["scientific_closure_digitization_queue"] = (
+            scientific_closure_digitization_queue()
+        )
+        digitization_packets = (
+            result.get("scientific_closure_digitization_packets")
+            or result.get("digitization_packets")
+        )
+        result["scientific_closure_digitization_status"] = (
+            scientific_closure_digitization_status(digitization_packets)
+        )
+        if "source_authority_validation" not in result:
+            result["source_authority_validation"] = (
+                source_authority_evidence_from_result(result)
+            )
+        result["validation_tiers"] = [
+            asdict(tier) for tier in validation_tier_report(result)
+        ]
+        result["predictive_readiness"] = asdict(predictive_readiness_report(result))
+        result["scientific_accuracy_gaps"] = [
+            asdict(gap) for gap in scientific_accuracy_gap_report(result)
+        ]
+        result["high_fidelity_readiness"] = asdict(
+            high_fidelity_readiness_report(result)
+        )
+    except Exception as exc:
+        _record_validation_error(result, "predictive_readiness", exc)
 
     result["reproducibility"] = {
         "version": "v1.4.0",
@@ -748,7 +1313,7 @@ def _run_hybrid_lee_mhd(
 ) -> dict[str, Any]:
     """Hybrid Lee+MHD: Lee model runs axial rundown, MHD handles radial implosion.
 
-    Phase 1 (Lee): Snowplow model sweeps gas along anode. Fast (0D), well-validated.
+    Phase 1 (Lee): Snowplow model sweeps gas along anode. Fast reduced-order model.
         Provides: circuit state (I, V), swept mass, sheath velocity at transition.
     Phase 2 (MHD): Metal solver takes over at start of radial phase.
         IC: compressed gas column with B_theta from circuit current.

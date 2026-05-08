@@ -7,6 +7,22 @@ from pathlib import Path
 
 import pytest
 
+_ORIGINAL_IMPORTORSKIP = pytest.importorskip
+
+
+def _safe_importorskip(modname: str, *args, **kwargs):
+    """Make MLX skips robust when a broken native import aborts Python."""
+    if modname == "mlx.core":
+        from dpf.metal.mlx_device import HAS_MLX
+
+        if not HAS_MLX:
+            reason = kwargs.get("reason") or "MLX not available"
+            pytest.skip(reason, allow_module_level=True)
+    return _ORIGINAL_IMPORTORSKIP(modname, *args, **kwargs)
+
+
+pytest.importorskip = _safe_importorskip
+
 # ---------------------------------------------------------------------------
 # Auto-apply xdist_group("gpu") to MLX/Metal test files.
 # When running with `pytest -n auto --dist loadgroup`, all GPU tests

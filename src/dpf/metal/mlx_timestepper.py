@@ -42,6 +42,7 @@ from dpf.metal.mlx_primitives import (
     RHO_FLOOR,
     cons_to_prim,
     fast_magnetosonic,
+    fast_magnetosonic_boris,
     recover_pressure_dual_energy,
 )
 from dpf.metal.mlx_riemann import mhd_rhs as _riemann_mhd_rhs
@@ -67,23 +68,29 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     # corrupted species mass fractions. Boris correction in Riemann solver
     # wavespeeds + geometric source terms bounds all forces without fake mass.
     # Only enforce minimal RHO_FLOOR for numerical stability.
-    rho_raw = mx.maximum(U[IDN], RHO_FLOOR)
-    Br = U[IBR]
-    Bz = U[IBZ]
-    Bt = U[IBT]
+    rho_raw = mx.maximum(
+        mx.where(mx.isfinite(U[IDN]), U[IDN], RHO_FLOOR),
+        RHO_FLOOR,
+    )
+    mr = mx.where(mx.isfinite(U[IMR]), U[IMR], 0.0)
+    mz = mx.where(mx.isfinite(U[IMZ]), U[IMZ], 0.0)
+    mt = mx.where(mx.isfinite(U[IMT]), U[IMT], 0.0)
+    Br = mx.where(mx.isfinite(U[IBR]), U[IBR], 0.0)
+    Bz = mx.where(mx.isfinite(U[IBZ]), U[IBZ], 0.0)
+    Bt = mx.where(mx.isfinite(U[IBT]), U[IBT], 0.0)
     B_sq = Br * Br + Bz * Bz + Bt * Bt
     rho = rho_raw
-    isr = mx.maximum(U[ISR], 0.0)
+    isr = mx.maximum(mx.where(mx.isfinite(U[ISR]), U[ISR], 0.0), 0.0)
 
     inv_rho = 1.0 / rho
-    vr = U[IMR] * inv_rho
-    vz = U[IMZ] * inv_rho
-    vt = U[IMT] * inv_rho
+    vr = mx.where(mx.isfinite(mr * inv_rho), mr * inv_rho, 0.0)
+    vz = mx.where(mx.isfinite(mz * inv_rho), mz * inv_rho, 0.0)
+    vt = mx.where(mx.isfinite(mt * inv_rho), mt * inv_rho, 0.0)
 
     KE = 0.5 * rho * (vr * vr + vz * vz + vt * vt)
     ME = 0.5 * B_sq
 
-    E_floored = mx.maximum(U[IEN], P_FLOOR)
+    E_floored = mx.maximum(mx.where(mx.isfinite(U[IEN]), U[IEN], P_FLOOR), P_FLOOR)
 
     # --- Dual-energy pressure recovery (from _resync_energy) ---
     # Entropy-based pressure: p_S = rho^gamma * exp(S/rho)
@@ -98,16 +105,21 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
     p = mx.maximum(p, P_FLOOR)
 
     # --- Velocity clamping (Boris-corrected fast magnetosonic) ---
-    a_sq = gamma * p * inv_rho
+    from dpf.metal.constants import C_BORIS_SQ as _C_BORIS_SQ
+    a_sq = mx.minimum(gamma * p * inv_rho, _C_BORIS_SQ)
     va_sq = B_sq * inv_rho
     # Boris correction: v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2)
-    from dpf.metal.constants import C_BORIS_SQ as _C_BORIS_SQ
     va_sq_boris = va_sq * _C_BORIS_SQ / (va_sq + _C_BORIS_SQ)
-    cf = mx.sqrt(a_sq + va_sq_boris)
+    cf = mx.sqrt(mx.minimum(mx.maximum(a_sq + va_sq_boris, 0.0), _C_BORIS_SQ))
 
     v_max = _V_CLAMP_FACTOR * cf
     v_mag = mx.sqrt(mx.maximum(vr * vr + vz * vz + vt * vt, 0.0))
-    scale = mx.where(v_mag > v_max, v_max / mx.maximum(v_mag, 1e-30), mx.ones_like(v_mag))
+    scale_raw = v_max / mx.maximum(v_mag, 1e-30)
+    scale = mx.where(
+        (v_mag > v_max) & mx.isfinite(scale_raw),
+        scale_raw,
+        mx.ones_like(v_mag),
+    )
 
     vr_c = vr * scale
     vz_c = vz * scale
@@ -127,7 +139,11 @@ def _stage_post_impl(U: mx.array, gamma: float) -> mx.array:
         Br,               # IBR=6
         Bz,               # IBZ=7
         Bt,               # IBT=8
-        U[9] if U.shape[0] > 9 else mx.zeros_like(rho),  # IEE=9
+        (
+            mx.where(mx.isfinite(U[9]), U[9], 0.0)
+            if U.shape[0] > 9
+            else mx.zeros_like(rho)
+        ),  # IEE=9
     ], axis=0)
 
 
@@ -237,6 +253,7 @@ def compute_dt_cfl(
     rho_cfl_fraction: float = 1e-4,
     use_boris: bool = False,
     c_boris: float = 5e5,
+    enable_hall: bool = False,
 ) -> float:
     """Compute CFL-limited timestep, ignoring vacuum cells.
 
@@ -257,6 +274,7 @@ def compute_dt_cfl(
             excluded from the CFL computation (default 1e-4).
         use_boris: Use Boris-corrected wave speeds (default False).
         c_boris: Boris reduced speed of light [m/s] (default 5e5).
+        enable_hall: Apply Hall whistler CFL constraint when Hall MHD is active.
 
     Returns:
         dt [s], float.
@@ -322,7 +340,7 @@ def compute_dt_cfl(
     B2_active = mx.where(active, B2, 0.0)
     max_B2 = float(mx.max(B2_active))
     min_ne = float(mx.min(mx.where(active, rho, 1e30)))
-    if max_B2 > 0 and min_ne < 1e29:
+    if enable_hall and max_B2 > 0 and min_ne < 1e29:
         # In HL units: B_SI = B_HL * sqrt(mu_0)
         B2_si = max_B2 * _MU0
         ion_mass = 3.3435e-27  # deuterium
@@ -436,7 +454,7 @@ def _clamp_velocity(U: mx.array, gamma: float) -> mx.array:
     ME = 0.5 * (Br * Br + Bz * Bz + Bt * Bt)
     p = mx.maximum(gm1 * (U[IEN] - KE - ME), P_FLOOR)
 
-    cf = fast_magnetosonic(rho, p, Br, Bz, Bt, gamma, dim=0)
+    cf = fast_magnetosonic_boris(rho, p, Br, Bz, Bt, gamma, dim=0)
     v_max = _V_CLAMP_FACTOR * cf  # (nr, nz)
 
     v_mag = mx.sqrt(mx.maximum(vr * vr + vz * vz + vt * vt, 0.0))

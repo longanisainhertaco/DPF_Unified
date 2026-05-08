@@ -212,6 +212,20 @@ class TestDualEnergy:
         assert w_np.min() >= -1e-6
         assert w_np.max() <= 1.0 + 1e-6
 
+    def test_pressure_recovery_ignores_rejected_nonfinite_candidate(self) -> None:
+        """A zero-weighted infinite pressure candidate must not create NaN."""
+        U_np = np.asarray(self._make_high_beta_U()).astype(np.float32)
+        U_np[ISR, 0, 0] = np.inf
+        U = mx.array(U_np)
+
+        p, w = recover_pressure_dual_energy(U)
+        p_np = _np(p)
+        w_np = _np(w)
+
+        assert np.all(np.isfinite(p_np))
+        assert p_np[0, 0] >= P_FLOOR * 0.999
+        assert w_np[0, 0] == pytest.approx(1.0, abs=1e-6)
+
 
 # ---------------------------------------------------------------------------
 # Fast magnetosonic speed

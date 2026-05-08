@@ -214,6 +214,7 @@ def _step_diagnostics_and_yield(self, dt: float, Z_bar: float) -> float:
     self.total_neutron_yield = _yield_result.Y_total
     self._last_beam_target_rate = _dY_bt / max(dt, 1e-30)
     self._last_bt_fraction = _yield_result.bt_fraction
+    self._last_yield_summary = _yield_result.to_summary_dict()
 
     # Step 5b3: m=0 sausage instability growth rate
     self._last_m0_result = None
@@ -285,6 +286,7 @@ def _step_record_and_checkpoint(
 
     if self.step_count % self.diag_interval == 0:
         circ = self.circuit.state
+        yield_summary = getattr(self, "_last_yield_summary", {})
         diag_state = {
             **self.state,
             "circuit": {
@@ -312,6 +314,12 @@ def _step_record_and_checkpoint(
                 "beam_target_rate": getattr(self, "_last_beam_target_rate", 0.0),
                 "total_neutron_yield": self.total_neutron_yield,
                 "bt_fraction": self._last_bt_fraction,
+                "Y_thermonuclear": yield_summary.get("Y_thermonuclear", 0.0),
+                "Y_beam_target": yield_summary.get("Y_beam_target", 0.0),
+                "Y_neutron": yield_summary.get("Y_neutron", self.total_neutron_yield),
+                "peak_yield_time_s": yield_summary.get("peak_yield_time_s", 0.0),
+                "model_components": yield_summary.get("model_components", {}),
+                "validity_notes": yield_summary.get("validity_notes", {}),
             },
             "energy_balance": {
                 "conservation_error": self._last_conservation_error,

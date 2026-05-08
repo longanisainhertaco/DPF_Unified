@@ -2,17 +2,44 @@
 from __future__ import annotations
 
 import importlib
+import os
+import subprocess
+import sys
 from typing import Any
 
-# Module-level availability flag — set at import time, never changes.
-try:
-    import mlx.core as _mx_probe  # noqa: F401
-
-    HAS_MLX: bool = True
-except ImportError:
-    HAS_MLX = False
-
 _VALID_PRECISIONS = ("float32", "float16", "bfloat16")
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def _safe_mlx_available() -> bool:
+    """Return whether ``mlx.core`` can be imported without risking this process."""
+    if os.environ.get("DPF_DISABLE_MLX", "").strip().lower() in _TRUE_VALUES:
+        return False
+    if os.environ.get("DPF_MLX_ASSUME_AVAILABLE", "").strip().lower() in _TRUE_VALUES:
+        return True
+
+    try:
+        timeout = float(os.environ.get("DPF_MLX_PROBE_TIMEOUT", "10"))
+    except ValueError:
+        timeout = 10.0
+
+    try:
+        probe = subprocess.run(
+            [sys.executable, "-c", "import mlx.core"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0
+
+
+# Module-level availability flag — set at import time, never changes.
+# The probe intentionally runs in a child process because some broken MLX
+# installations abort the interpreter instead of raising ImportError.
+HAS_MLX: bool = _safe_mlx_available()
 
 
 def require_mlx():
@@ -28,6 +55,13 @@ def require_mlx():
     ImportError
         When MLX is not installed, with pip install instructions.
     """
+    if not HAS_MLX:
+        raise ImportError(
+            "MLX is required for the Metal v2 solver but is not available.\n"
+            "Install with:  pip install mlx\n"
+            "Requires macOS 13.3+ on Apple Silicon."
+        )
+
     try:
         return importlib.import_module("mlx.core")
     except ImportError as exc:

@@ -66,6 +66,7 @@ from dpf.validation.experimental_devices import (  # noqa: F401
     UNU_ICTP_DATA,
     _REFERENCE_ONLY,
     get_devices_by_provenance,
+    get_validation_ready_devices,
 )
 from dpf.validation.experimental_diagnostics import (  # noqa: F401
     _S_OPTIMAL_KA_CM_TORR,  # deprecated alias, kept for external callers

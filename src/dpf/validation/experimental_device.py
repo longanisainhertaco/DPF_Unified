@@ -95,6 +95,10 @@ class ExperimentalDevice:
     # "reconstructed" (generated from RLC parameters or physics scaling),
     # or "" (unknown/unset)
     waveform_provenance: str = ""
+    # KnowledgeReference verification status for the waveform trace itself.
+    # This is separate from ``kr_status`` because a device parameter table can be
+    # KR-verified while its digitized waveform comes from an external archive.
+    waveform_kr_status: str = "unverified"
     # Measurement provenance note
     measurement_notes: str = ""
     # Data reliability: "measured" (direct Rogowski/probe measurement),

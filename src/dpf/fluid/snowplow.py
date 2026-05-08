@@ -41,6 +41,9 @@ from dpf.constants import eV, k_B, m_d, m_D2, mu_0, pi
 
 logger = logging.getLogger(__name__)
 
+_D2_GAMMA = 5.0 / 3.0
+_COLD_GAS_RH_COMPRESSION = (_D2_GAMMA + 1.0) / (_D2_GAMMA - 1.0)
+
 
 def implosion_scaling(
     I_MA: float,
@@ -191,6 +194,9 @@ class SnowplowModel:
         # additional Ohmic dissipation needed to match experimental current
         # dip depth.  Lee (2014) uses alpha ~ 0.05-0.1.
         self._alpha_anom = 0.06  # anomalous resistivity parameter
+        self._reflected_shock_density_ratio = _COLD_GAS_RH_COMPRESSION
+        self._post_pinch_resistance_multiplier = 2.0  # empirical, retained for continuity
+        self._post_pinch_expansion_velocity_multiplier = 1.0  # KR/Goyon-compatible default
 
         # Track phase completion
         self._rundown_complete = False
@@ -238,6 +244,30 @@ class SnowplowModel:
         # Smooth sigmoid: transitions from f_cr to f_cr2 over ~100ns
         sigmoid = 0.5 * (1.0 + np.tanh(dt / self._tau_transition))
         return self.f_cr + (self.f_cr2 - self.f_cr) * sigmoid
+
+    def _axial_circuit_inductance(self, z: float) -> float:
+        """Circuit-facing axial inductance, including Lee axial current factor."""
+        return self.f_c * self.L_coeff * z
+
+    def _radial_circuit_inductance(self, r_s: float) -> float:
+        """Circuit-facing radial inductance, including effective radial current factor."""
+        r_eff = max(r_s, self.r_pinch_min)
+        return (
+            self._effective_radial_fc()
+            * (mu_0 / (2.0 * pi))
+            * self.z_f
+            * np.log(self.b / r_eff)
+        )
+
+    def _radial_circuit_dL_dt(self, vr: float, r_s: float) -> float:
+        """Circuit-facing radial dL/dt, including effective radial current factor."""
+        return (
+            -self._effective_radial_fc()
+            * (mu_0 / (2.0 * pi))
+            * self.z_f
+            * vr
+            / max(r_s, 1e-10)
+        )
 
     @property
     def sheath_position(self) -> float:
@@ -326,7 +356,9 @@ class SnowplowModel:
         # Profiles
         rho_prof = np.full(nr, rho_fill)
         vr_prof = np.zeros(nr)
-        p_prof = np.full(nr, rho_fill * k_B * 300.0 / m_d)  # fill gas at room T
+        # Cold fill is molecular D2 before shock dissociation/ionization.  The
+        # Lee/RADPF inputs distinguish molecular weight and dissociation number.
+        p_prof = np.full(nr, rho_fill * k_B * 300.0 / m_D2)
         B_theta_prof = np.zeros(nr)
 
         # Compressed slug occupies a thin annular shell between shock front
@@ -364,19 +396,21 @@ class SnowplowModel:
     def plasma_inductance(self) -> float:
         """Total plasma inductance [H].
 
-        Axial: L_plasma = (mu_0 / 2pi) * ln(b/a) * z
-        Radial: L_plasma = L_axial + (mu_0 / 2pi) * z_f * ln(b / r_s)
+        Axial circuit loading follows Lee/RADPF current-factor convention:
+        L_plasma = f_c * (mu_0 / 2pi) * ln(b/a) * z
+
+        Radial circuit loading similarly uses the effective radial current
+        fraction f_cr_eff:
+        L_plasma = L_axial + f_cr_eff * (mu_0 / 2pi) * z_f * ln(b / r_s)
 
         Note: z_f = L_anode * pinch_column_fraction (effective pinch column
         length).  For large DPF devices the curved sheath means only a
         fraction of the anode length participates in radial compression.
         """
         if self.phase == "rundown":
-            return self.L_coeff * self.z
+            return self._axial_circuit_inductance(self.z)
         # Radial or pinch: axial contribution frozen + radial contribution
-        r_eff = max(self.r_shock, self.r_pinch_min)
-        L_radial = (mu_0 / (2.0 * pi)) * self.z_f * np.log(self.b / r_eff)
-        return self._L_axial_frozen + L_radial
+        return self._L_axial_frozen + self._radial_circuit_inductance(self.r_shock)
 
     @property
     def rundown_complete(self) -> bool:
@@ -546,7 +580,7 @@ class SnowplowModel:
 
         # dL/dt from expanding column (L decreasing as r grows toward b)
         if r_p < self.b * 0.94 and self._v_expand > 0:
-            dL_dt = -(mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / r_p
+            dL_dt = self._radial_circuit_dL_dt(self._v_expand, r_p)
         else:
             dL_dt = 0.0
 
@@ -567,12 +601,16 @@ class SnowplowModel:
 
         # Anomalous resistance from m=0 disruption
         # Must exceed |dL/dt| for current to decay net of inductance release.
-        # UNVERIFIED — no KR source for 2x post-pinch dynamic-resistance
-        # amplifier; flagged 2026-04-27 audit. TODO(audit): locate KR
-        # justification for the 2x factor or replace with KR-derived value.
+        # Empirical dynamic-resistance amplifier. KR supports anomalous
+        # resistance qualitatively but does not provide this multiplier.
         if self._tau_m0 > 0 and self._v_expand > 0:
-            dL_dt_peak = (mu_0 / (2.0 * pi)) * self.z_f * self._v_expand / self._r_pinch_at_stagnation
-            R_anom_peak = 2.0 * dL_dt_peak  # UNVERIFIED — no KR source for 2x factor
+            dL_dt_peak = abs(
+                self._radial_circuit_dL_dt(
+                    self._v_expand,
+                    self._r_pinch_at_stagnation,
+                )
+            )
+            R_anom_peak = self._post_pinch_resistance_multiplier * dL_dt_peak
             tau_decay = 3.0 * self._tau_m0
             R_anom = R_anom_peak * np.exp(-dt_since_pinch / tau_decay)
         else:
@@ -582,6 +620,11 @@ class SnowplowModel:
 
         result = self._make_result(dL_dt=dL_dt, F_magnetic=0.0, F_pressure=0.0)
         result["R_plasma"] = R_plasma
+        result["R_spitzer"] = R_spitzer
+        result["R_anom"] = R_anom
+        result["post_pinch_empirical_resistance"] = 1.0
+        result["post_pinch_resistance_multiplier"] = self._post_pinch_resistance_multiplier
+        result["post_pinch_expansion_velocity_multiplier"] = self._post_pinch_expansion_velocity_multiplier
         return result
 
     def _step_axial(
@@ -619,7 +662,7 @@ class SnowplowModel:
             self._rundown_complete = True
             self.z = z_new
             self.v = v_half
-            self._L_axial_frozen = self.L_coeff * self.L_anode
+            self._L_axial_frozen = self._axial_circuit_inductance(self.L_anode)
             self.phase = "radial"
             # Start shock slightly inward from cathode to avoid zero-mass singularity
             # (analogous to axial z=1e-4 offset). The offset of 1% of (b-a) gives
@@ -633,7 +676,7 @@ class SnowplowModel:
                 self._elapsed_time, self.z, self.v,
                 self.plasma_inductance, self.swept_mass,
             )
-            dL_dt = self.L_coeff * self.v
+            dL_dt = self.f_c * self.L_coeff * self.v
             return self._make_result(dL_dt=dL_dt, F_magnetic=F_mag, F_pressure=F_press)
 
         # Recompute acceleration at new position
@@ -650,7 +693,7 @@ class SnowplowModel:
         self.z = z_new
         self.v = v_new
 
-        dL_dt = self.L_coeff * self.v
+        dL_dt = self.f_c * self.L_coeff * self.v
         return self._make_result(dL_dt=dL_dt, F_magnetic=F_mag, F_pressure=F_press)
 
     def _adiabatic_back_pressure(self, r_s: float) -> float:
@@ -746,7 +789,7 @@ class SnowplowModel:
                 self.plasma_inductance, I_current,
             )
             # dL/dt at pinch
-            dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
+            dL_dt = self._radial_circuit_dL_dt(self.vr, self.r_shock)
             return self._make_result(
                 dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
                 current=I_current,
@@ -771,7 +814,7 @@ class SnowplowModel:
         self.vr = vr_new
 
         # dL/dt from radial compression
-        dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
+        dL_dt = self._radial_circuit_dL_dt(self.vr, self.r_shock)
 
         return self._make_result(
             dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
@@ -809,19 +852,9 @@ class SnowplowModel:
         F_rad = (mu_0 / (4.0 * pi)) * (f_cr_eff * I_current)**2 * z_f / r_s
 
         # Slug mass with mass pickup: Rankine-Hugoniot post-shock density.
-        # KR Lee Course (p.107 L6852): "This swept-up gas is compressed by
-        # a ratio (gamma+1)/(gamma-1)." For gamma = 5/3 (cold atomic D2):
-        # ratio = 4. KR also notes (p.107 L6861) "for strongly ionising
-        # argon gamma has value closer to 1 e.g. 1.15"; partially-ionized
-        # deuterium near peak compression has gamma ~ 1.2-1.4, giving ratios
-        # 6-11. The value 8.0 falls within that ionizing-gas RH window but
-        # KR does not explicitly prescribe 8x for D2 in this snowplow context.
-        # UNVERIFIED — no KR source for 8x compromise; flagged 2026-04-27
-        # audit. Switching to cold-gas RH (4x) leaves PF-1000 I_peak error
-        # unchanged at 11.05% (peak occurs in axial phase, well before
-        # reflected-shock activates), so the value is not bisect-relevant.
-        # TODO(audit): replace with gamma_eff(rho, T_e)-aware RH ratio.
-        rho_post_shock = 8.0 * self.rho0  # UNVERIFIED — no KR source for 8x
+        # KR Lee Course gives compression ratio (gamma+1)/(gamma-1). For the
+        # deuterium ideal-gas gamma=5/3 used by this model, that is 4.
+        rho_post_shock = self._reflected_shock_density_ratio * self.rho0
         M_slug = self._M_slug_pinch + (
             self.f_m * rho_post_shock * pi
             * (r_s**2 - self.r_pinch_min**2) * z_f
@@ -872,11 +905,13 @@ class SnowplowModel:
                 self._tau_m0 = 50e-9  # fallback: 50 ns
 
             # Expansion velocity: column disrupts at ~r_pinch/tau_m0.
-            # Factor 3: m=0 disruption creates axial bulges that reduce
-            # effective inductance 3x faster than uniform radial expansion
-            # (Haines 2011, column fragmentation is highly non-uniform).
+            # Keep multiplier explicit and KR-auditable; previous value 3.0
+            # was not supported by the local KnowledgeReference corpus.
             if self._tau_m0 > 0:
-                self._v_expand = 3.0 * self._r_pinch_at_stagnation / self._tau_m0
+                self._v_expand = (
+                    self._post_pinch_expansion_velocity_multiplier
+                    * self._r_pinch_at_stagnation / self._tau_m0
+                )
             else:
                 self._v_expand = 0.0
 
@@ -886,11 +921,13 @@ class SnowplowModel:
                 self._elapsed_time, self.r_shock, self.vr,
                 self._tau_m0 * 1e9, self._v_expand,
             )
-            dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
-            return self._make_result(
+            dL_dt = self._radial_circuit_dL_dt(self.vr, self.r_shock)
+            result = self._make_result(
                 dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
                 current=I_current,
             )
+            result["reflected_density_ratio"] = self._reflected_shock_density_ratio
+            return result
 
         # Recompute acceleration at new position with updated mass
         r_new_eff = max(r_new, self.r_pinch_min)
@@ -912,9 +949,11 @@ class SnowplowModel:
         self.vr = vr_new
 
         # dL/dt during expansion: r increasing → L decreasing → dL/dt < 0
-        dL_dt = -(mu_0 / (2.0 * pi)) * z_f * self.vr / max(self.r_shock, 1e-10)
+        dL_dt = self._radial_circuit_dL_dt(self.vr, self.r_shock)
 
-        return self._make_result(
+        result = self._make_result(
             dL_dt=dL_dt, F_magnetic=F_rad, F_pressure=F_pressure,
             current=I_current,
         )
+        result["reflected_density_ratio"] = self._reflected_shock_density_ratio
+        return result

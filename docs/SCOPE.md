@@ -2,21 +2,24 @@
 
 ## What This Code Is
 
-DPF-Unified is a **Lee-MHD hybrid dense plasma focus simulator**. It couples a
-validated lumped-circuit snowplow model (Lee & Saw 2014) to a spatially-resolved
-conservative MHD solver on a cylindrical (r,z) grid.
+DPF-Unified is a **Lee-MHD hybrid dense plasma focus simulation workbench**. It
+couples Lee/snowplow circuit loading to spatially-resolved conservative MHD
+solvers on cylindrical (r,z) grids, with source-gated validation evidence tracked
+separately from engineering regression tests.
 
-- **Circuit-level physics**: Lee 5-phase snowplow model validated against 6 devices
-  with 24 PF-1000 shots at 1.27% mean absolute I_peak error using published RADPF
-  parameters and zero calibration (Akel et al. 2021).
+- **Circuit-level physics**: Lee/snowplow waveform comparison infrastructure
+  exists. Under the current KnowledgeReference-only rule, only the standard
+  PF-1000 Scholz waveform record is validation-ready; reconstructed, external
+  archive, reference-only, and KR-unverified waveforms are blocked by default.
 - **MHD-level physics**: Conservative resistive MHD (HLLS/HLLD + WENO5-Z + SSP-RK3)
   verified against standard benchmarks (Sod, Brio-Wu). Not yet validated against
   spatially-resolved experimental measurements.
 
-The distinction matters. Circuit validation proves the integrated plasma dynamics
-(sheath mass, inductance, timing) are correct. MHD verification proves the numerical
-methods solve the equations they claim to solve. MHD **validation** against spatial
-data (density profiles, temperature maps, B-field structure) has not been performed.
+The distinction matters. A passing circuit waveform comparison can support tier-1
+evidence only. It does not prove sheath mass, late-pinch dynamics, spatial fields,
+beam formation, or neutron production. MHD verification proves the numerical methods
+solve benchmark equations; MHD **validation** against spatial data (density profiles,
+temperature maps, B-field structure) has not been performed.
 
 ## What This Code Is Not
 
@@ -51,9 +54,9 @@ data (density profiles, temperature maps, B-field structure) has not been perfor
 | Beta (thermal/magnetic) | ~0.1-1 | ~0.01-0.1 | Any |
 | Hall parameter (omega_ci*tau_i) | ~100 | ~1-10 | >>1 for single-fluid |
 
-**MHD is valid for**: sheath formation, axial rundown, radial compression, shock
-convergence, circuit loading (L_p feedback). These phases determine I_peak and the
-current waveform shape.
+**MHD is intended for**: sheath formation, axial rundown, radial compression, shock
+convergence, and circuit-loading studies (L_p feedback). These uses still require
+source-backed comparisons before they become DPF validation evidence.
 
 **MHD breaks down at**: peak pinch compression (Kn > 1), where mean free paths
 exceed the column radius. The code handles this transition by:
@@ -104,7 +107,7 @@ Kink instabilities are a primary mechanism for pinch disruption in real DPF devi
 simulation community (Lee model, MACH2, Auluck 2014) but limits the code's ability
 to self-consistently predict disruption timing and post-pinch dynamics.
 
-## Error Budget (PF-1000 at 27 kV)
+## Historical Error Notes (PF-1000 at 27 kV)
 
 | Error Source | Contribution | Evidence |
 |--------------|-------------|----------|
@@ -113,8 +116,12 @@ to self-consistently predict disruption timing and post-pinch dynamics.
 | Numerical scheme diffusion | ~7-20% of total | HLL vs HLLD shows ~2% I_peak shift |
 | Grid resolution | ~5-15% of total | 32x64 vs 64x128 shows <1% I_peak change |
 
-**Total I_peak error**: +7.6% (sim 2.013 MA vs Scholz 2006 1.87 MA; KR-canonical Akel/Malek inputs; commit 5746c81)
-**Total t_peak error**: +11.5% (structural; see docs/TIMING_ERROR_RCA.md)
+These historical error notes are useful engineering context. They are not, by
+themselves, predictive-readiness evidence. Current validation claims must be
+produced by the source-gated evidence helpers and attached to a run result.
+
+**Historical I_peak note**: +7.6% (sim 2.013 MA vs Scholz 2006 1.87 MA; KR-canonical Akel/Malek inputs; commit 5746c81)
+**Historical t_peak note**: +11.5% (structural; see docs/TIMING_ERROR_RCA.md)
 
 > Note: The prior 2.8% figure (sim 1.818 MA) was against an uncalibrated parameter set with an EMPIRICAL R0_CORRECTION=6.43 mΩ knob — a papers-are-truth violation. The +7.6% figure is the agreed accuracy budget for paper-fidelity. See CRITICAL_BLOCKER.md for full re-anchor narrative.
 
@@ -126,14 +133,14 @@ approximation, not a numerical bug.
 
 ## Validation Summary
 
-### Validated (Experimental Comparison)
+### Source-gated Evidence Currently Eligible
 
 | Claim | Evidence | Metric |
 |-------|----------|--------|
-| PF-1000 I_peak at 27 kV | Scholz 2006 (26 points), Gribkov 2007 (94 points) | 2.8% error |
-| PF-1000 24-shot campaign | Akel et al. 2021 (shots 12581-12606) | 1.27% MAE, r=0.9957 |
-| 6-device cross-validation | Lee & Saw 2014, Damideh 2025, Offermann 2021 | 6/7 PASS (NX2 excluded) |
-| Current waveform shape | NRMSE vs digitized experimental traces | <0.20 for passing devices |
+| PF-1000 circuit waveform source | Scholz 2006 waveform record in `KnowledgeReference/` | eligible for tier-1 circuit evidence |
+| POSEIDON-60kV parameters | Lee & Saw table in `KnowledgeReference/` | waveform blocked: external archive |
+| UNU-ICTP parameters | Lee & Saw table in `KnowledgeReference/` | waveform blocked: external archive |
+| Reconstructed traces | PF-1000-16kV, FAETON-I, MJOLNIR | blocked by default |
 
 ### Verified (Numerical Correctness)
 
@@ -174,7 +181,8 @@ warnings should be added (tracked as a future improvement).
 If citing this code, use the appropriate framing:
 
 - **For circuit-level results** (I_peak, waveform, neutron yield via Lee model):
-  "Validated against published experimental data with zero calibration"
+  "Circuit waveform comparison infrastructure with source-gated PF-1000 tier-1
+  evidence; not an end-to-end DPF validation claim"
 - **For MHD spatial results** (density, temperature, B-field profiles):
   "Verified against standard test problems; experimental validation in progress"
 - **For numerical methods**:

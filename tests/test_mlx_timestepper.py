@@ -13,6 +13,7 @@ import pytest
 mx = pytest.importorskip("mlx.core")  # noqa: E402
 
 from dpf.metal.mlx_grid import CylindricalGrid  # noqa: E402, I001
+from dpf.metal.constants import C_BORIS  # noqa: E402
 from dpf.metal.mlx_kernels import IDN, IEN, IMR, IMZ, IMT, ISR, IBR, IBZ, IBT, NVAR  # noqa: E402
 from dpf.metal.mlx_primitives import (  # noqa: E402
     RHO_FLOOR,
@@ -23,6 +24,7 @@ from dpf.metal.mlx_timestepper import (  # noqa: E402
     _apply_floors,
     _clamp_velocity,
     _resync_energy,
+    _stage_post_impl,
     compute_dt_cfl,
     mhd_rhs,
     ssp_rk2_step,
@@ -186,6 +188,33 @@ def test_cfl_positive():
     dt = compute_dt_cfl(U, grid)
     assert dt > 0.0
     assert math.isfinite(dt)
+
+
+def test_cfl_boris_bounds_vacuum_field_timestep():
+    """Boris CFL should prevent vacuum B_theta from collapsing dt."""
+    grid = _grid(nr=8, nz=8, dr=0.005, dz=0.005)
+    U = _uniform_U(nr=8, nz=8, rho=1e-8, p=1e-8, Bt=2.0e4)
+
+    dt_plain = compute_dt_cfl(U, grid, gamma=GAMMA, cfl=0.3, use_boris=False)
+    dt_boris = compute_dt_cfl(U, grid, gamma=GAMMA, cfl=0.3, use_boris=True)
+
+    assert dt_plain > 0.0
+    assert dt_boris > 0.0
+    assert math.isfinite(dt_boris)
+    assert dt_boris > 100.0 * dt_plain
+
+
+def test_stage_post_caps_pressure_driven_velocity_with_boris_speed():
+    """Post-stage limiter should match the Boris-capped CFL/Riemann speed."""
+    U = _uniform_U(nr=4, nz=4, rho=1e-6, vr=1.0e12, p=1.0e12, Bz=0.0)
+
+    U_out = _stage_post_impl(U, GAMMA)
+    rho = U_out[IDN]
+    vr = U_out[IMR] / rho
+    max_v = float(mx.max(mx.abs(vr)))
+
+    assert np.all(np.isfinite(np.asarray(U_out)))
+    assert max_v <= 10.0 * C_BORIS * (1.0 + 1e-5)
 
 
 # ---------------------------------------------------------------------------

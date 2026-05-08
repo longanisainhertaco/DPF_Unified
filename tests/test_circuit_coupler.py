@@ -193,6 +193,25 @@ class TestBackEMFClamp:
         fb2 = c.compute_feedback(state2, current=1e6, dt=1e-12)
         assert abs(fb2.back_emf) <= BACK_EMF_CLAMP_V
 
+    def test_back_emf_clamps_dLp_dt_consistently(self):
+        """The RLC solver must not receive unclamped dLp/dt with clamped EMF."""
+        c = CircuitCoupler(
+            anode_radius=0.008,
+            cathode_radius=0.032,
+            dr=0.001,
+            dz=0.002,
+            r_inner=0.008,
+        )
+        current = 1e6
+        state1 = _make_cylindrical_state(rho_peak_z=5, rho_peak=0.01)
+        c.compute_feedback(state1, current=current, dt=1e-12)
+
+        state2 = _make_cylindrical_state(rho_peak_z=49, rho_peak=100.0)
+        fb2 = c.compute_feedback(state2, current=current, dt=1e-12)
+
+        assert abs(fb2.dLp_dt * current) <= BACK_EMF_CLAMP_V
+        assert fb2.back_emf == pytest.approx(current * fb2.dLp_dt)
+
 
 class TestCartesianFallback:
     def test_3d_cartesian_uses_b_energy_fallback(self):

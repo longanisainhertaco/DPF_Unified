@@ -254,11 +254,7 @@ class TestPresetSmoke:
 # MLX MHD validation (requires Apple Silicon + MLX)
 # ---------------------------------------------------------------------------
 
-try:
-    import mlx.core  # noqa: F401 — used for availability check
-    HAS_MLX = True
-except ImportError:
-    HAS_MLX = False
+from dpf.metal.mlx_device import HAS_MLX
 
 
 @pytest.mark.validation

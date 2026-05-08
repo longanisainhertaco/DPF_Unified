@@ -1,9 +1,9 @@
-"""Pure-MLX DPF engine: circuit + snowplow + MHD with zero CPU sync.
+"""Pure-MLX DPF engine: circuit + snowplow + MHD.
 
 Chains MLXCircuitSolver + MLXSnowplow + MLXMHDSolver into a single
 discharge simulation. In MHD mode, the MHD solver's density-weighted
-plasma inductance feeds back into the circuit ODE, replacing the
-snowplow's analytic Lp once the MHD fields are resolved.
+plasma inductance is recorded separately and can feed back into the
+circuit ODE through a trust-gated blend once the MHD fields are resolved.
 
 Compatible with mx.grad for differentiable calibration.
 
@@ -81,12 +81,13 @@ def run_mlx_discharge(
     Args:
         mode: "lee" for circuit+snowplow only (1ms/shot), or
               "mhd" for circuit+snowplow+MLX MHD solver (7min/shot).
-              In MHD mode, the solver's density-weighted Lp feeds back
-              into the circuit once the fields are resolved.
+              In MHD mode, the solver's density-weighted Lp is recorded
+              and feeds back through a trust-gated blend once resolved.
         grid_shape: MHD grid resolution (only used in "mhd" mode).
 
     Returns dict with I_peak_MA, t_peak_us, n_steps, elapsed_s, and
-    time-series arrays (I_MA, t_us, Lp_nH, Lp_mhd_nH, phases).
+    time-series arrays (I_MA, t_us, Lp_nH, Lp_snowplow_nH, Lp_mhd_nH,
+    phases, coupling_source).
     """
     preset = get_preset(preset_name)
     cc = preset["circuit"]
@@ -127,6 +128,7 @@ def run_mlx_discharge(
         current_fraction=_fc,
         fill_pressure_Pa=_p_Pa,
         radial_mass_fraction=sp_cfg.get("radial_mass_fraction"),
+        radial_current_fraction=sp_cfg.get("radial_current_fraction"),
         pinch_column_fraction=sp_cfg.get("pinch_column_fraction", 1.0),
     )
 
@@ -235,14 +237,16 @@ def run_mlx_discharge(
     currents: list[float] = []
     voltages: list[float] = []
     Lp_list: list[float] = []
+    Lp_snowplow_list: list[float] = []
     Lp_mhd_list: list[float] = []
-    _phi_history: list[tuple[float, float]] = []  # (time, Phi_SI) for voltage-flux BDF2
+    coupling_sources: list[str] = []
     phases: list[str] = []
 
     t = 0.0
     t0_wall = time.perf_counter()
     I_peak = 0.0
     t_peak = 0.0
+    prev_Lp_circuit = 0.0
 
     # MHD-circuit coupling state
     blend_alpha = 0.0
@@ -262,6 +266,8 @@ def run_mlx_discharge(
 
         # MHD step + coupling feedback
         Lp_mhd_val = 0.0
+        dLp_dt_mhd_val: float | None = None
+        R_mhd_val = 0.0
         if mhd_solver is not None and mhd_state is not None:
             mhd_dt = mhd_solver._compute_dt(mhd_state)
             mhd_dt = min(mhd_dt, dt)
@@ -286,18 +292,59 @@ def run_mlx_discharge(
                 curr_rate=_curr_rate,
             )
 
-            # Auluck (2021) Poynting coupling: V = -(1/I)*integral(J·E d³r)
-            # Implemented in compute_voltage_poynting() but NOT wired to circuit.
-            # The MHD B-field in the buffer zone is weaker than vacuum (ghost cell
-            # propagation too slow), creating wrong-sign J·E (energy INTO plasma).
-            # Self-consistent Poynting requires either:
-            #   (a) faster B propagation (lower density floor, or resistive diffusion)
-            #   (b) initializing B correctly at t=0 when I>0 (Beresnyak's approach)
-            # For now: snowplow Lp provides correct circuit loading.
-            Lp_mhd_val = Lp_sp
+            mhd_coupling = mhd_solver.coupling_interface()
+            Lp_mhd_val = float(mhd_coupling.Lp)
+            if mhd_coupling.dL_dt is not None:
+                dLp_dt_mhd_val = float(mhd_coupling.dL_dt)
+            R_mhd_val = float(mhd_coupling.R_plasma)
+            if dLp_dt_mhd_val is not None and not np.isfinite(dLp_dt_mhd_val):
+                dLp_dt_mhd_val = None
+            if not np.isfinite(R_mhd_val):
+                R_mhd_val = 0.0
+
+        # Trust-gated MHD handoff. KR-backed DPF modeling supports MHD for
+        # rundown/bulk-fluid evolution, while final pinch/yield physics remains
+        # kinetic; keep the circuit snowplow-driven until the resolved MHD Lp is
+        # finite, positive, and comparable to the analytic snowplow load.
+        Lp_circuit = Lp_sp
+        dLp_dt_circuit = dLp_dt_sp
+        coupling_source = "snowplow"
+        if mhd_solver is not None:
+            mhd_lp_ok = (
+                np.isfinite(Lp_mhd_val)
+                and Lp_mhd_val > 0.0
+                and (Lp_sp <= 0.0 or Lp_mhd_val >= 0.5 * Lp_sp)
+            )
+            phase_ok = phase in _MHD_TRUST_PHASES
+            if mhd_lp_ok and phase_ok:
+                tau_blend = 5.0 * dt
+                blend_alpha = min(
+                    1.0,
+                    1.0 - (1.0 - blend_alpha) * math.exp(-dt / max(tau_blend, 1e-30)),
+                )
+                Lp_circuit, dLp_dt_circuit = _blend_lp(
+                    Lp_sp,
+                    dLp_dt_sp,
+                    Lp_mhd_val,
+                    dLp_dt_mhd_val,
+                    blend_alpha,
+                    prev_Lp_circuit,
+                )
+                coupling_source = "mhd_blend" if blend_alpha < 0.999 else "mhd"
+            else:
+                blend_alpha = 0.0
+            if R_mhd_val > R_plasma:
+                R_plasma = R_mhd_val
 
         # Circuit step
-        circuit.step(Lp=Lp_sp, dLp_dt=dLp_dt_sp, R_plasma=R_plasma, back_emf=0.0, dt=dt)
+        circuit.step(
+            Lp=Lp_circuit,
+            dLp_dt=dLp_dt_circuit,
+            R_plasma=R_plasma,
+            back_emf=0.0,
+            dt=dt,
+        )
+        prev_Lp_circuit = Lp_circuit
         t += dt
 
         # Record
@@ -305,8 +352,10 @@ def run_mlx_discharge(
         times.append(t * 1e6)
         currents.append(I_MA)
         voltages.append(circuit.voltage / 1e3)
-        Lp_list.append(Lp_sp * 1e9)
+        Lp_list.append(Lp_circuit * 1e9)
+        Lp_snowplow_list.append(Lp_sp * 1e9)
         Lp_mhd_list.append(Lp_mhd_val * 1e9)
+        coupling_sources.append(coupling_source)
         phases.append(phase)
 
         if abs(I_MA) > abs(I_peak):
@@ -333,7 +382,9 @@ def run_mlx_discharge(
         "I_MA": currents,
         "V_kV": voltages,
         "Lp_nH": Lp_list,
+        "Lp_snowplow_nH": Lp_snowplow_list,
         "Lp_mhd_nH": Lp_mhd_list,
         "phases": phases,
+        "coupling_source": coupling_sources,
         "blend_alpha": blend_alpha,
     }

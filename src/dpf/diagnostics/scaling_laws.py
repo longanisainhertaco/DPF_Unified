@@ -19,12 +19,52 @@ References:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Physical constants
 MU_0 = 4.0 * math.pi * 1e-7
 K_B = 1.380649e-23
 EV = 1.602e-19
+
+
+def _default_source_basis() -> dict[str, str]:
+    return {
+        "lee_I4": (
+            "Lee/Saw numerical-experiment scaling using pinch current; a "
+            "current waveform fit is needed when I_pinch is not measured."
+        ),
+        "cross_device": (
+            "Cross-device empirical scaling; KnowledgeReference includes "
+            "warnings that large installations can break simple neutron "
+            "yield scaling."
+        ),
+        "energy_E2": (
+            "Small-device energy scaling retained as an empirical estimate, "
+            "not as MHD solver validation."
+        ),
+        "bennett": (
+            "Bennett equilibrium temperature diagnostic from current and "
+            "line density, not a validation of simulated pinch state."
+        ),
+    }
+
+
+def _default_validity_notes() -> dict[str, str]:
+    return {
+        "role": (
+            "Scaling-law outputs are diagnostic estimates and regime warnings; "
+            "they are not solver-validation metrics."
+        ),
+        "current_input": (
+            "The neutron-current laws are stated in terms of pinch current; "
+            "using peak bank/circuit current makes the estimate rough."
+        ),
+        "saturation": (
+            "At high current or unfavorable geometry, I^4 scaling can "
+            "overpredict yield because finite pinch size and drive/electrode "
+            "effects matter."
+        ),
+    }
 
 
 @dataclass
@@ -47,6 +87,26 @@ class ScalingResult:
     # Where this device sits
     device_class: str      # "small" (<10 kJ), "medium" (10-100 kJ), "large" (>100 kJ)
     saturation_flag: bool  # True if I > saturation threshold
+    model_role: str = "diagnostic_estimate"
+    validation_role: str = "not_solver_validation"
+    source_basis: dict[str, str] = field(default_factory=_default_source_basis)
+    validity_notes: dict[str, str] = field(default_factory=_default_validity_notes)
+
+    def to_summary_dict(self) -> dict[str, object]:
+        """Return a diagnostics-safe scaling summary."""
+        return {
+            "Yn_I4": self.Yn_lee_I4,
+            "Yn_I33": self.Yn_cross_I33,
+            "Yn_E2": self.Yn_energy_E2,
+            "T_bennett_keV": self.T_bennett_keV,
+            "r_pinch_mm": self.r_pinch_mm,
+            "device_class": self.device_class,
+            "saturation": self.saturation_flag,
+            "model_role": self.model_role,
+            "validation_role": self.validation_role,
+            "source_basis": dict(self.source_basis),
+            "validity_notes": dict(self.validity_notes),
+        }
 
 
 def compute_scaling(
@@ -141,9 +201,10 @@ def compute_scaling(
 def scaling_narrative(result: ScalingResult) -> str:
     """Generate human-readable scaling analysis."""
     lines = [
-        "## Scaling Law Analysis",
+        "## Scaling Law Diagnostic Estimate",
         "",
         f"Device class: **{result.device_class}** ({result.E_bank_kJ:.0f} kJ)",
+        "Model role: diagnostic estimate, not solver validation.",
         "",
         "| Scaling Law | Predicted Yn | Reference |",
         "|-------------|-------------|-----------|",

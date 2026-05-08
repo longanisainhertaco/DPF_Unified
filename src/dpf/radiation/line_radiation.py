@@ -1,8 +1,8 @@
 """Line and recombination radiation for multi-species plasma.
 
-Provides coronal equilibrium line radiation cooling and recombination
-radiation power, the dominant cooling mechanisms for impurity-laden
-DPF plasmas at 10 eV -- 10 keV electron temperatures.
+Provides reduced coronal-equilibrium line radiation cooling and
+recombination radiation power for impurity-laden DPF plasmas at
+10 eV -- 10 keV electron temperatures.
 
 Physics:
     P_line = ne * n_Z * Lambda(Te, Z)               [W/m^3]
@@ -14,10 +14,10 @@ Physics:
         chi            = 13.6 * Z^2 eV  (effective ionisation energy)
         n_Z            = impurity density [m^-3]
 
-The cooling function Lambda(Te, Z) is assembled from piecewise power-law
-fits to CHIANTI / ADAS data for hydrogen (Z=1), neon (Z=10), argon (Z=18),
-copper (Z=29), and tungsten (Z=74).  For other elements a general
-interpolation in Z is used.
+The cooling function Lambda(Te, Z) is assembled from empirical piecewise
+power-law fits for hydrogen (Z=1), neon (Z=10), argon (Z=18), copper
+(Z=29), and tungsten (Z=74). For other elements a general interpolation
+in Z is used.
 
 References:
     - Summers, ADAS User Manual (2004)
@@ -49,6 +49,48 @@ from numba import njit
 from dpf.constants import eV, k_B
 
 logger = logging.getLogger(__name__)
+
+LINE_RADIATION_MODEL_ROLE = "empirical_cooling_estimate"
+LINE_RADIATION_VALIDATION_ROLE = "not_high_z_predictive"
+
+
+def line_radiation_model_metadata() -> dict[str, object]:
+    """Return source/validity metadata for line-radiation diagnostics."""
+    return {
+        "model_role": LINE_RADIATION_MODEL_ROLE,
+        "validation_role": LINE_RADIATION_VALIDATION_ROLE,
+        "predictive_high_z": False,
+        "components": {
+            "bremsstrahlung": (
+                "NRL-backed free-free term when total_radiation_power uses "
+                "the internal bremsstrahlung coefficient."
+            ),
+            "line_radiation": (
+                "Empirical piecewise coronal cooling fits; coefficient "
+                "provenance is not verified by the local KnowledgeReference."
+            ),
+            "recombination": (
+                "Seaton-style hydrogenic recombination approximation; high-Z "
+                "multi-electron ions are approximate."
+            ),
+        },
+        "validity_notes": {
+            "high_z": (
+                "Use high-Z dopant and electrode-impurity line cooling as a "
+                "qualitative/empirical estimate until source tables are added "
+                "to KnowledgeReference and regression-tested."
+            ),
+            "transport": (
+                "This is not multigroup radiation diffusion with tabulated "
+                "EOS, opacities, and charge-state kinetics as required for "
+                "predictive Kr/high-Z DPF modeling in KnowledgeReference."
+            ),
+            "coupling": (
+                "Cooling power can affect thermal balance, but it is not a "
+                "validated prediction of dopant performance or p-B11 viability."
+            ),
+        },
+    }
 
 # ═══════════════════════════════════════════════════════
 # Constants

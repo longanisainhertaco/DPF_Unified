@@ -13,7 +13,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app_mhd import run_mhd_simulation
+from app_mhd import _apply_post_processing, run_mhd_simulation
+from dpf.validation import pf1000_16kv_akel_table_targets
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -105,6 +106,679 @@ def test_mhd_neutron_yield_non_negative_when_present(d2_result):
 def test_mhd_neutron_yield_absent_for_non_deuterium(ne_result):
     """neutron_yield must NOT appear for Ne (Z != 1 / A != 2) fills."""
     assert "neutron_yield" not in ne_result
+
+
+def test_predictive_readiness_exported_and_blocks_unvalidated_claims(d2_result):
+    """Simulation result must expose readiness gate and stay blocked by default."""
+    assert "validation_tiers" in d2_result
+    assert "predictive_readiness" in d2_result
+    assert "scientific_accuracy_gaps" in d2_result
+    assert "high_fidelity_readiness" in d2_result
+    assert "kr_validation_target_source_audit" in d2_result
+    assert "kr_validation_target_semantic_audit" in d2_result
+    assert "kr_validation_target_coverage" in d2_result
+    assert "kr_validation_same_scope_targets" in d2_result
+    assert "kr_corpus_review_status" in d2_result
+    assert "scientific_closure_source_acquisition_queue" in d2_result
+    assert "scientific_closure_digitization_queue" in d2_result
+    assert "scientific_closure_digitization_status" in d2_result
+    assert "mhd_numerical_method" in d2_result
+    assert "physics_fidelity_evidence" in d2_result
+    assert "dynamic_inductance_power_balance" in d2_result
+    assert "field_coupling_validation" in d2_result
+    assert "validation_uncertainty_coverage" in d2_result
+    assert "uncertainty_validation" in d2_result
+    assert "mhd_scope_limit" in d2_result
+    assert "mhd_numerical_fidelity" in d2_result
+    readiness = d2_result["predictive_readiness"]
+    assert readiness["ready"] is False
+    assert readiness["status"] == "not_predictive_ready"
+    high_fidelity = d2_result["high_fidelity_readiness"]
+    assert high_fidelity["ready"] is False
+    assert high_fidelity["status"] == "not_predictive_ready"
+    assert "Spatial DPF experimental validation" in readiness["missing_evidence"]
+    tier_status = {tier["level"]: tier["status"] for tier in d2_result["validation_tiers"]}
+    assert tier_status[4] == "not_validated"
+    gaps = {gap["area"]: gap for gap in d2_result["scientific_accuracy_gaps"]}
+    assert d2_result["kr_validation_target_source_audit"]["passed"] is True
+    assert d2_result["kr_validation_target_semantic_audit"]["passed"] is True
+    assert d2_result["kr_validation_target_coverage"]["passed"] is False
+    assert d2_result["kr_validation_same_scope_targets"]["passed"] is False
+    assert d2_result["kr_corpus_review_status"]["passed"] is False
+    assert d2_result["scientific_closure_source_acquisition_queue"][
+        "model_role"
+    ] == "scientific_closure_source_acquisition_queue"
+    assert any(
+        item["group"] == "neutron_yield"
+        for item in d2_result["scientific_closure_source_acquisition_queue"][
+            "items"
+        ]
+    )
+    assert d2_result["scientific_closure_digitization_queue"]["summary"][
+        "task_count"
+    ] == 6
+    assert d2_result["scientific_closure_digitization_status"]["open_task_count"] == 6
+    assert "phase_timing" in (
+        d2_result["kr_validation_target_coverage"]["missing_or_partial_groups"]
+    )
+    assert gaps["mhd_numerical_fidelity"]["status"] == "partial"
+    assert gaps["kr_source_review"]["status"] == "supported"
+    assert gaps["kr_target_coverage"]["status"] == "partial"
+    assert "closure path" in gaps["kr_target_coverage"]["blocker"]
+    assert gaps["figure_digitization"]["status"] == "blocked"
+    assert "0/6 local scientific-closure figure" in (
+        gaps["figure_digitization"]["blocker"]
+    )
+    assert gaps["spatial_dpf_validation"]["status"] == "blocked"
+    assert gaps["neutron_validation"]["status"] != "supported"
+    assert gaps["missing_physics_fidelity"]["status"] == "blocked"
+    assert gaps["circuit_field_coupling"]["status"] == "partial"
+    assert gaps["uncertainty_quantification"]["status"] == "partial"
+    assert "next_ratcheting_step" in gaps["source_authority_data"]
+    assert d2_result["mhd_numerical_method"]["finite_volume"] is True
+    assert d2_result["mhd_scope_limit"]["passed"] is True
+    assert (
+        d2_result["mhd_numerical_fidelity"]["required_evidence"]["dpf_scope_limit"][
+            "status"
+        ]
+        == "supported"
+    )
+    assert d2_result["physics_fidelity_evidence"]["passed"] is False
+    assert d2_result["dynamic_inductance_power_balance"]["model_role"] == (
+        "lee_dynamic_inductance_power_accounting"
+    )
+    assert d2_result["field_coupling_validation"]["passed"] is False
+    assert d2_result["uncertainty_validation"]["passed"] is False
+    assert d2_result["mhd_numerical_fidelity"]["passed"] is False
+
+
+def _synthetic_mjolnir_result(include_pinch_phase: bool) -> dict:
+    times_us = np.arange(0.090, 0.121, 0.001)
+    times_s = times_us * 1.0e-6
+    thermo = np.exp(-0.5 * ((times_s - 0.100e-6) / 0.0015e-6) ** 2) * 1.0e8
+    beam = (
+        np.exp(-0.5 * ((times_s - 0.105e-6) / 0.001e-6) ** 2) * 5.0e7
+        + np.exp(-0.5 * ((times_s - 0.110e-6) / 0.001e-6) ** 2) * 4.0e7
+    )
+    phases = ["radial"] * len(times_us)
+    if include_pinch_phase:
+        phases[int(np.where(np.isclose(times_us, 0.100))[0][0])] = "pinch"
+    return {
+        "device": "MJOLNIR",
+        "t_us": times_us,
+        "I_MA": np.ones_like(times_us),
+        "L_p_nH": np.ones_like(times_us),
+        "phases": phases,
+        "n_steps": len(times_us),
+        "neutron_yield_details": {
+            "Y_neutron": 1.0e8,
+            "Y_thermonuclear": 6.0e7,
+            "Y_beam_target": 4.0e7,
+        },
+        "yield_time_resolved": {
+            "times_us": times_us,
+            "dY_thermo": thermo,
+            "dY_bt": beam,
+        },
+        "neutron_spectrum_samples_MeV": {
+            "thermonuclear": np.array([2.42, 2.45, 2.48]),
+            "beam_target": np.array([2.6, 3.4, 4.2, 4.9]),
+        },
+        "neutron_anisotropy": {
+            "on_axis_yield": 1.8,
+            "off_axis_yield": 1.0,
+            "yield_regime": "high_yield",
+        },
+    }
+
+
+def _synthetic_mjolnir_detector_response() -> dict:
+    return {
+        "activation_reactions": ["Be", "Y", "Br"],
+        "activation_detector_angles_deg": [10.0, 45.0, 70.0],
+        "be_absolute_calibrated": True,
+        "labr_y_cross_calibrated_to_be": True,
+        "tof_distances_m": [2.2, 6.6],
+        "relative_timing_precision_ns": 1.0,
+        "response_terms": [
+            "propagation_widening",
+            "detector_temporal_response",
+            "xray_peak_cotiming",
+            "beam_target_energy_spread",
+            "room_scatter_or_background_assessment",
+        ],
+    }
+
+
+def test_mjolnir_neutron_timing_evidence_is_exported_when_phase_timed():
+    """MJOLNIR timing comparison can feed readiness only with phase timing."""
+    result = _synthetic_mjolnir_result(include_pinch_phase=True)
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 60e3, "L0": 67.4e-9, "C": 408e-6, "R0": 6.25e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 933.0,
+        0.1143, 0.157, 0.20, 1e-3, 1e-3,
+        [], "mjolnir", "python", (8, 1, 8), 0.121,
+    )
+
+    assert "neutron_mechanism_timing_validation" in result
+    assert "neutron_spectrum_validation" in result
+    assert "neutron_anisotropy_validation" in result
+    assert "neutron_timing_validation_candidate" not in result
+    evidence = result["neutron_mechanism_timing_validation"]
+    assert evidence["passed"] is True
+    assert result["neutron_spectrum_validation"]["passed"] is True
+    assert result["neutron_anisotropy_validation"]["passed"] is True
+    assert result["neutron_validation_scope_closure"]["closed_scopes"] == []
+    assert "yield" in result["neutron_validation_scope_closure"]["scopes"][0][
+        "missing_features"
+    ]
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[5] == "decomposed_estimate"
+
+
+def test_app_exports_mjolnir_detector_response_validation():
+    result = _synthetic_mjolnir_result(include_pinch_phase=True)
+    result["neutron_detector_response"] = _synthetic_mjolnir_detector_response()
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 60e3, "L0": 67.4e-9, "C": 408e-6, "R0": 6.25e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 933.0,
+        0.1143, 0.157, 0.20, 1e-3, 1e-3,
+        [], "mjolnir", "python", (8, 1, 8), 0.121,
+    )
+
+    assert "neutron_detector_response_validation" in result
+    assert "neutron_detector_response_validation_candidate" not in result
+    evidence = result["neutron_detector_response_validation"]
+    assert evidence["passed"] is True
+    assert evidence["validation_scope"] == "mjolnir_neutron_timing_2025_goyon"
+    gaps = {gap["area"]: gap for gap in result["scientific_accuracy_gaps"]}
+    assert gaps["neutron_validation"]["status"] == "partial"
+    assert "scalar yield" in gaps["neutron_validation"]["done_condition"]
+
+
+def test_app_keeps_incomplete_mjolnir_detector_response_candidate_only():
+    result = _synthetic_mjolnir_result(include_pinch_phase=True)
+    response = _synthetic_mjolnir_detector_response()
+    response["response_terms"] = ["propagation_widening", "detector_temporal_response"]
+    result["neutron_detector_response"] = response
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 60e3, "L0": 67.4e-9, "C": 408e-6, "R0": 6.25e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 933.0,
+        0.1143, 0.157, 0.20, 1e-3, 1e-3,
+        [], "mjolnir", "python", (8, 1, 8), 0.121,
+    )
+
+    assert "neutron_detector_response_validation" not in result
+    assert result["neutron_detector_response_validation_candidate"]["passed"] is False
+    gaps = {gap["area"]: gap for gap in result["scientific_accuracy_gaps"]}
+    assert gaps["neutron_validation"]["status"] == "partial"
+
+
+def test_mjolnir_inferred_neutron_timing_remains_candidate_only():
+    """Signal-inferred stagnation is useful metadata, not validation evidence."""
+    result = _synthetic_mjolnir_result(include_pinch_phase=False)
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 60e3, "L0": 67.4e-9, "C": 408e-6, "R0": 6.25e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 933.0,
+        0.1143, 0.157, 0.20, 1e-3, 1e-3,
+        [], "mjolnir", "python", (8, 1, 8), 0.121,
+    )
+
+    assert "neutron_timing_validation_candidate" in result
+    assert "neutron_mechanism_timing_validation" not in result
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[5] == "decomposed_estimate"
+
+
+def test_app_exports_temperature_spatial_component_without_tier4_promotion():
+    result = {
+        "device": "PF-1000",
+        "n_steps": 3,
+        "T_max": np.array([1.2e7]),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 33e3, "L0": 30e-9, "C": 1347e-6, "R0": 5e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 400.0,
+        0.115, 0.20, 0.30, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 0.5,
+    )
+
+    assert "spatial_validation_components" in result
+    assert result["spatial_validation_components"][0]["diagnostics"]["temperature"] is True
+    assert "spatial_validation" not in result
+    assert result["spatial_validation_candidate"]["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[4] == "not_validated"
+
+
+def test_app_promotes_complete_same_scope_spatial_components():
+    scope = "synthetic_same_scope"
+    result = {
+        "device": "PF-1000",
+        "n_steps": 3,
+        "spatial_validation_components": [
+            {
+                "passed": True,
+                "diagnostics": {"density": True},
+                "validation_scope": scope,
+                "validation_tier": 4,
+                "model_role": "simulation_to_kr_target_comparison",
+                "source": "KnowledgeReference/density.md",
+            },
+            {
+                "passed": True,
+                "diagnostics": {"magnetic_field": True},
+                "validation_scope": scope,
+                "validation_tier": 4,
+                "model_role": "simulation_to_kr_target_comparison",
+                "source": "KnowledgeReference/magnetic.md",
+            },
+            {
+                "passed": True,
+                "diagnostics": {"temperature": True},
+                "validation_scope": scope,
+                "validation_tier": 4,
+                "model_role": "simulation_to_kr_target_comparison",
+                "source": "KnowledgeReference/temperature.md",
+            },
+        ],
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 33e3, "L0": 30e-9, "C": 1347e-6, "R0": 5e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 400.0,
+        0.115, 0.20, 0.30, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 0.5,
+    )
+
+    assert result["spatial_validation"]["passed"] is True
+    assert result["spatial_validation"]["validation_scope"] == scope
+    assert result["spatial_validation_scope_closure"]["closed_scopes"] == [scope]
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[4] == "supported"
+
+
+def test_app_exports_pf1000_xray_geometry_as_density_component():
+    y = np.linspace(0.0, 0.006, 13)
+    z = np.linspace(0.0, 0.10, 101)
+    image = np.zeros((len(y), len(z)))
+    image[np.ix_(y <= 0.0025, (z >= 0.02) & (z <= 0.07))] = 10.0
+    result = {
+        "device": "PF-1000",
+        "n_steps": 3,
+        "xray_image": image,
+        "xray_y_cell_m": y,
+        "xray_z_cell_m": z,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 33e3, "L0": 30e-9, "C": 1347e-6, "R0": 5e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 400.0,
+        0.115, 0.20, 0.30, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 0.5,
+    )
+
+    assert result["pf1000_radiating_pinch_geometry"]["has_radiating_region"] is True
+    assert result["spatial_validation_components"][0]["diagnostics"]["density"] is True
+    assert "spatial_validation" not in result
+    assert result["spatial_validation_candidate"]["diagnostics"]["density"] is True
+    assert result["spatial_validation_candidate"]["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[4] == "not_validated"
+
+
+def test_app_exports_pf1000_interferometry_density_profile_component():
+    result = {
+        "device": "PF-1000",
+        "shot": "13328",
+        "n_steps": 3,
+        "density_profile_radius_cm": np.array([0.0, 0.25, 0.5, 0.75, 1.0]),
+        "electron_density_profile_cm3": np.array([
+            0.4e18,
+            1.1e18,
+            2.0e18,
+            1.4e18,
+            0.7e18,
+        ]),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 33e3, "L0": 30e-9, "C": 1347e-6, "R0": 5e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 400.0,
+        0.115, 0.20, 0.30, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 0.5,
+    )
+
+    component = result["spatial_validation_components"][0]
+    assert component["target"] == "pf1000_interferometry_density_profile"
+    assert component["diagnostics"]["density"] is True
+    assert "spatial_validation" not in result
+    closure = result["spatial_validation_scope_closure"]
+    assert closure["passed"] is False
+    assert closure["scopes"][0]["missing_quantities"] == [
+        "magnetic_field",
+        "temperature",
+    ]
+    assert result["spatial_validation_candidate"]["diagnostics"]["density"] is True
+    assert result["spatial_validation_candidate"]["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[4] == "not_validated"
+
+
+def test_app_exports_llnl_em_probe_as_magnetic_component():
+    times_s = np.linspace(0.0, 20.0e-9, 512, endpoint=False)
+    signal = np.sin(2.0 * np.pi * 3.5e9 * times_s)
+    result = {
+        "device": "LLNL 1.2 kJ DPF",
+        "n_steps": 3,
+        "em_probe_times_s": times_s,
+        "em_probe_signal": signal,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 30e3, "L0": 20e-9, "C": 2.7e-6, "R0": 5e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 100.0,
+        0.01, 0.03, 0.08, 1e-3, 1e-3,
+        [], "llnl_12kj", "python", (8, 1, 8), 0.5,
+    )
+
+    component = result["spatial_validation_components"][0]
+    assert component["diagnostics"]["magnetic_field"] is True
+    assert component["details"]["dominant_frequency_GHz"] == pytest.approx(
+        3.5, abs=0.15,
+    )
+    assert result["spatial_validation_candidate"]["diagnostics"]["magnetic_field"] is True
+    assert result["spatial_validation_candidate"]["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[4] == "not_validated"
+
+
+def test_app_exports_circuit_waveform_validation_for_registered_device():
+    from dpf.validation.experimental import PF1000_DATA
+
+    result = {
+        "device": "PF-1000",
+        "t_us": PF1000_DATA.waveform_t * 1.0e6,
+        "I_MA": PF1000_DATA.waveform_I / 1.0e6,
+        "I_peak": float(np.max(PF1000_DATA.waveform_I) / 1.0e6),
+        "n_steps": len(PF1000_DATA.waveform_t),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 27e3, "L0": 25e-9, "C": 1332e-6, "R0": 2.3e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 466.0,
+        0.115, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 10.0,
+    )
+
+    assert result["circuit_validation"]["passed"] is True
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[1] == "supported"
+
+
+def test_app_records_validation_errors_when_evidence_generation_fails(monkeypatch):
+    from dpf.validation import quality_assessment
+    from dpf.validation.experimental import PF1000_DATA
+
+    def _raise_validation_error(*args, **kwargs):
+        raise RuntimeError("forced validation failure")
+
+    monkeypatch.setattr(
+        quality_assessment,
+        "circuit_validation_evidence_from_waveform",
+        _raise_validation_error,
+    )
+    result = {
+        "device": "PF-1000",
+        "t_us": PF1000_DATA.waveform_t * 1.0e6,
+        "I_MA": PF1000_DATA.waveform_I / 1.0e6,
+        "I_peak": float(np.max(PF1000_DATA.waveform_I) / 1.0e6),
+        "n_steps": len(PF1000_DATA.waveform_t),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 27e3, "L0": 25e-9, "C": 1332e-6, "R0": 2.3e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 466.0,
+        0.115, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 10.0,
+    )
+
+    assert "circuit_validation" not in result
+    assert result["validation_errors"][0]["stage"] == "circuit_waveform_validation"
+    assert result["validation_errors"][0]["error_type"] == "RuntimeError"
+    assert "forced validation failure" in result["validation_errors"][0]["message"]
+    assert "predictive_readiness" in result
+
+
+def test_app_blocks_external_archive_waveform_from_tier_one():
+    from dpf.validation.experimental import POSEIDON_60KV_DATA
+
+    result = {
+        "device": "POSEIDON-60kV",
+        "t_us": POSEIDON_60KV_DATA.waveform_t * 1.0e6,
+        "I_MA": POSEIDON_60KV_DATA.waveform_I / 1.0e6,
+        "I_peak": float(np.max(POSEIDON_60KV_DATA.waveform_I) / 1.0e6),
+        "n_steps": len(POSEIDON_60KV_DATA.waveform_t),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 60e3, "L0": 17.7e-9, "C": 156e-6, "R0": 1.7e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 506.0,
+        0.0655, 0.095, 0.30, 1e-3, 1e-3,
+        [], "poseidon_60kv", "python", (8, 1, 8), 4.0,
+    )
+
+    assert result["circuit_validation"]["metrics"]["waveform_shape"] is True
+    authority = result["circuit_validation"]["details"]["source_authority"]
+    assert authority["waveform_kr_status"] == "unverified"
+    assert result["circuit_validation"]["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[1] == "diagnostic_present"
+
+
+def test_app_keeps_targetless_snowplow_phase_history_as_candidate():
+    result = {
+        "device": "PF-1000",
+        "t_us": np.array([0.0, 1.0, 2.0]),
+        "I_MA": np.array([0.0, 1.0, 0.8]),
+        "phases": ["rundown", "radial", "pinch"],
+        "has_snowplow": True,
+        "I_peak": 1.0,
+        "n_steps": 3,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 27e3, "L0": 25e-9, "C": 1332e-6, "R0": 2.3e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 466.0,
+        0.115, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 3.0,
+    )
+
+    assert "snowplow_validation_candidate" in result
+    assert "snowplow_validation" not in result
+    assert result["snowplow_validation_candidate"]["phases"]["pinch"] is True
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[2] == "partial"
+
+
+def test_app_uses_pf1000_16kv_partial_phase_target_as_candidate():
+    result = {
+        "device": "PF-1000",
+        "t_us": np.array([0.0, 7.5, 8.0, 8.106, 8.212, 8.4]),
+        "I_MA": np.array([0.0, 1.0, 0.523, 0.50, 0.48, 0.45]),
+        "phases": ["rundown", "radial", "pinch", "pinch", "pinch", "post"],
+        "pf1000_16kv_derived_outputs": {
+            "peak_current_kA": 1165.0,
+            "axial_speed_cm_per_us": 10.5,
+            "shock_speed_cm_per_us": 22.0,
+            "piston_speed_cm_per_us": 18.0,
+            "final_pinch_radius_cm": 2.3,
+            "pinch_length_cm": 18.2,
+            "vmax_kV": 30.0,
+        },
+        "has_snowplow": True,
+        "I_peak": 1.0,
+        "n_steps": 6,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 16e3, "L0": 25e-9, "C": 1332e-6, "R0": 6.1e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 160.0,
+        0.1155, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 8.5,
+    )
+
+    candidate = result["snowplow_validation_candidate"]
+    assert candidate["target"] == "pf1000_16kv_shot12581_phase"
+    assert candidate["validation_scope"] == "pf1000_16kv_2021_akel"
+    assert candidate["passed"] is False
+    assert candidate["phases"]["pinch"] is True
+    dynamics = result["snowplow_dynamics_validation_candidate"]
+    assert dynamics["target"] == "pf1000_16kv_shot12581_derived_outputs"
+    assert dynamics["validation_scope"] == "pf1000_16kv_2021_akel"
+    assert dynamics["phases"] == {"axial": True, "radial": True, "pinch": True}
+    assert dynamics["passed"] is False
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[2] == "partial"
+
+
+def test_app_exports_pf1000_16kv_akel_scalar_yield_validation():
+    target = pf1000_16kv_akel_table_targets()
+    predictions = [
+        {
+            "shot": row["shot"],
+            "peak_current_kA": row["peak_current_kA"],
+            "pinch_current_kA": row["pinch_current_kA"],
+            "axial_speed_cm_per_us": row["axial_speed_cm_per_us"],
+            "shock_speed_cm_per_us": row["shock_speed_cm_per_us"],
+            "piston_speed_cm_per_us": row["piston_speed_cm_per_us"],
+            "pinch_density_1e23_per_m3": row["pinch_density_1e23_per_m3"],
+            "pinch_radius_cm": row["pinch_radius_cm"],
+            "pinch_length_cm": row["pinch_length_cm"],
+            "neutron_yield_n": row["measured_neutron_yield_n"],
+        }
+        for row in target["shot_rows"]
+    ]
+    result = {
+        "device": "PF-1000",
+        "n_steps": 24,
+        "pf1000_16kv_akel_table_predictions": predictions,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 16e3, "L0": 25e-9, "C": 1332e-6, "R0": 6.1e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 160.0,
+        0.1155, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 8.5,
+    )
+
+    evidence = result["neutron_yield_validation"]
+    assert evidence["passed"] is True
+    assert evidence["validation_scope"] == "pf1000_16kv_2021_akel"
+    assert evidence["validated_features"] == {"yield": True}
+    closure = result["neutron_validation_scope_closure"]
+    assert closure["passed"] is False
+    assert closure["scopes"][0]["covered_features"]["yield"] is True
+    assert set(closure["scopes"][0]["missing_features"]) == {
+        "anisotropy",
+        "spectrum",
+        "timing",
+    }
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[5] == "decomposed_estimate"
+
+
+def test_app_keeps_bad_pf1000_16kv_akel_scalar_yield_candidate_only():
+    target = pf1000_16kv_akel_table_targets()
+    predictions = [
+        {
+            "shot": row["shot"],
+            "peak_current_kA": row["peak_current_kA"],
+            "pinch_current_kA": row["pinch_current_kA"],
+            "axial_speed_cm_per_us": row["axial_speed_cm_per_us"],
+            "shock_speed_cm_per_us": row["shock_speed_cm_per_us"],
+            "piston_speed_cm_per_us": row["piston_speed_cm_per_us"],
+            "pinch_density_1e23_per_m3": row["pinch_density_1e23_per_m3"],
+            "pinch_radius_cm": row["pinch_radius_cm"],
+            "pinch_length_cm": row["pinch_length_cm"],
+            "neutron_yield_n": 1.0e6,
+        }
+        for row in target["shot_rows"]
+    ]
+    result = {
+        "device": "PF-1000",
+        "n_steps": 24,
+        "pf1000_16kv_akel_table_predictions": predictions,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 16e3, "L0": 25e-9, "C": 1332e-6, "R0": 6.1e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 160.0,
+        0.1155, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 8.5,
+    )
+
+    assert "neutron_yield_validation" not in result
+    candidate = result["neutron_yield_validation_candidate"]
+    assert candidate["passed"] is False
+    assert candidate["field_passes"]["neutron_yield_n"] is False
+
+
+def test_app_exports_target_backed_snowplow_validation():
+    result = {
+        "device": "PF-1000",
+        "t_us": np.array([0.0, 1.0, 2.0]),
+        "I_MA": np.array([0.0, 1.0, 0.8]),
+        "phases": ["rundown", "radial", "pinch"],
+        "snowplow_phase_targets_s": {
+            "axial": 1.0e-6,
+            "radial": 1.0e-6,
+            "pinch": 2.0e-6,
+        },
+        "snowplow_phase_target_metadata": {
+            "source": (
+                "KnowledgeReference/a-course-on-plasma-focus-numerical-"
+                "experiments-s-lee-and-s-h-saw-part-1-basic-course.md"
+            ),
+            "kr_status": "verified",
+        },
+        "has_snowplow": True,
+        "I_peak": 1.0,
+        "n_steps": 3,
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 27e3, "L0": 25e-9, "C": 1332e-6, "R0": 2.3e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 466.0,
+        0.115, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000", "python", (8, 1, 8), 3.0,
+    )
+
+    assert result["snowplow_validation"]["passed"] is True
+    tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
+    assert tier_status[2] == "supported"
 
 
 # ── 2. Bennett equilibrium (lines 214-240) ─────────────────────────────────────

@@ -2,8 +2,32 @@
 
 **Date**: 2026-03-24
 **Author**: dpf-validation-engineer (Cortana)
-**Status**: Pre-execution review -- go/no-go assessment
+**Status**: Pre-execution review -- go/no-go assessment; superseded-status addendum below
 **Method**: Cross-reference of GAP_ANALYSIS, FMEA, RISK_ANALYSIS, METAL_V2_DOD, PHASE_B_RESEARCH against current solver state
+
+## 2026-05-06 Superseded-Status Addendum
+
+This review is retained as historical Sprint 4 context. Its March 2026 current
+state and go/no-go table are no longer current source-of-truth status.
+
+- The old `t = 1.37 us` CFL-stall statement is superseded. Standalone MLX
+  probes now pass the former early failure windows, and a current-factor-corrected
+  source-scoped no-crowbar `pf1000_akel` target run reached `t = 12.000000 us`
+  in `159912` steps, including radial-to-pinch transition and post-pinch
+  expansion.
+- Scientific acceptance remains blocked but for narrower reasons. The current
+  Akel 16 kV run peaked at `1.150507 MA` at `5.250198 us`, inside the strict
+  shot-12581 M2 band `1.0485-1.2815 MA`. S1/S2 remain blocked until same-scope
+  digitized waveform and current-dip evidence with uncertainty are accepted.
+- M2 target scope is corrected: for Akel 2021 shot 12581, use
+  `Ipeak = 1.165 MA +/- 10%`, not an unspecified `1.2 MA` mean or the
+  full-energy Scholz/Gribkov PF-1000 scope.
+- M6 target scope is corrected: `12 us` is a conservative Akel 16 kV engineering
+  endurance gate, not a direct source value. The current standalone path has
+  reached the conservative `12 us` endurance target without a crowbar, and M2
+  is now inside the shot-12581 band. Keep the full-discharge class from being
+  treated as a scientific passing gate until S1/S2 waveform and current-dip
+  evidence are source-closed.
 
 ---
 
@@ -62,7 +86,7 @@ FM-3.1 (RPN 392) + FM-3.2 (RPN 252) compound: the active `mhd_rhs` in `mlx_times
 | Risk of failure | LOW. Dual-energy switching + P_FLOOR is defense-in-depth. Electrode conditions (beta=7e-7) produce positive p_S by construction. |
 | Go/No-Go | **GO** |
 
-### M2: PF-1000 I_peak Within 10% of 1.2 MA
+### M2: PF-1000 I_peak (Historical 1.2 MA Target Superseded)
 
 | Aspect | Assessment |
 |--------|-----------|

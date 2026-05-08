@@ -74,15 +74,11 @@ class DeviceManager:
         if "mlx" in self._cache:
             return self._cache["mlx"]
 
-        try:
-            import mlx.core  # noqa: F401
-            self._cache["mlx"] = True
-            logger.debug("MLX detection: True")
-            return True
-        except ImportError as e:
-            logger.debug(f"MLX detection failed: {e}")
-            self._cache["mlx"] = False
-            return False
+        from dpf.metal.mlx_device import HAS_MLX
+
+        self._cache["mlx"] = HAS_MLX
+        logger.debug(f"MLX detection: {HAS_MLX}")
+        return HAS_MLX
 
     def detect_accelerate(self) -> bool:
         """Check if NumPy is using Apple Accelerate BLAS.
@@ -325,12 +321,9 @@ def has_mlx() -> bool:
     bool
         ``True`` if ``mlx.core`` can be imported, ``False`` otherwise.
     """
-    try:
-        import mlx.core  # noqa: F401
+    from dpf.metal.mlx_device import HAS_MLX
 
-        return True
-    except ImportError:
-        return False
+    return HAS_MLX
 
 
 def get_device_manager() -> DeviceManager:

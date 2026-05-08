@@ -79,17 +79,16 @@ class TestBThetaPropagation:
         # B_theta should have propagated from cathode into interior cells
         assert np.max(np.abs(bt)) > 0.01, "B_theta never propagated from electrode BC"
 
-    def test_btheta_decreases_inward(self, pf1000_mhd_state):
-        """B_theta ~ 1/r should be stronger near cathode (outer cells)."""
+    def test_btheta_increases_inward(self, pf1000_mhd_state):
+        """B_theta ~ 1/r should be stronger at smaller radius."""
         _, state, _ = pf1000_mhd_state
         bt = state["B"][2, :, 0, :]
         mid_z = bt.shape[1] // 2
         bt_profile = np.abs(bt[:, mid_z])
-        # Outer cells (near cathode) should have higher B_theta
         outer_avg = np.mean(bt_profile[-8:])
         inner_avg = np.mean(bt_profile[:8])
-        assert outer_avg > inner_avg, (
-            f"B_theta not stronger at cathode: outer={outer_avg:.4f} inner={inner_avg:.4f}"
+        assert inner_avg > outer_avg, (
+            f"B_theta not stronger at smaller radius: inner={inner_avg:.4f} outer={outer_avg:.4f}"
         )
 
 
@@ -150,6 +149,20 @@ class TestEngineCircuitFeedback:
         nonzero = [x for x in mhd_lps if x > 0.001]
         assert len(nonzero) > 0, "MHD Lp never became nonzero"
 
+    def test_mhd_lp_is_not_snowplow_alias(self):
+        """MHD Lp must be computed from MHD state, not copied from snowplow."""
+        from dpf.metal.mlx_engine import run_mlx_discharge
+
+        r = run_mlx_discharge(
+            "pf1000", max_steps=200, mode="mhd", grid_shape=(16, 1, 32),
+        )
+        snowplow_lps = np.asarray(r["Lp_snowplow_nH"])
+        mhd_lps = np.asarray(r["Lp_mhd_nH"])
+        assert len(snowplow_lps) == len(mhd_lps) == r["n_steps"]
+        assert np.any(np.abs(mhd_lps - snowplow_lps) > 1.0e-6), (
+            "MHD Lp series is identical to snowplow Lp; coupling signal is aliased"
+        )
+
     def test_lee_mode_no_mhd_overhead(self):
         """Lee mode should still work and have zero MHD Lp."""
         from dpf.metal.mlx_engine import run_mlx_discharge
@@ -157,6 +170,15 @@ class TestEngineCircuitFeedback:
         r = run_mlx_discharge("pf1000", max_steps=200, mode="lee")
         mhd_lps = r["Lp_mhd_nH"]
         assert all(x == 0.0 for x in mhd_lps), "Lee mode should have zero MHD Lp"
+
+    def test_engine_reports_coupling_source(self):
+        from dpf.metal.mlx_engine import run_mlx_discharge
+
+        r = run_mlx_discharge(
+            "pf1000", max_steps=200, mode="mhd", grid_shape=(16, 1, 32),
+        )
+        assert "coupling_source" in r
+        assert len(r["coupling_source"]) == r["n_steps"]
 
     def test_blend_alpha_in_output(self):
         from dpf.metal.mlx_engine import run_mlx_discharge

@@ -20,22 +20,24 @@ bibliography: paper.bib
 
 # Summary
 
+> Status note (2026-05-05): this is a stale paper draft. It is not a current
+> validation claim. Current scientific validation claims must follow the
+> KnowledgeReference-only source gates in `CodexFindings.md`,
+> `README.md`, `docs/SCOPE.md`, and `docs/V_AND_V_SUMMARY.md`.
+
 DPF-Unified is an open-source Python framework for simulating dense plasma
-focus (DPF) discharges from first principles. It couples a circuit-driven RLC
-model to magnetohydrodynamic (MHD) solvers through a Lee model snowplow
-formulation that captures the defining physics of DPF operation: axial
-rundown, radial implosion, and pinch column formation. The code provides
+focus (DPF) discharges with coupled circuit, Lee/snowplow, diagnostics, and
+magnetohydrodynamic (MHD) components. It should currently be described as a
+simulation workbench, not a validated first-principles end-to-end DPF tool.
+The code provides
 multiple solver backends -- a pure Python/NumPy/Numba engine, an Athena++ C++
 engine via pybind11, an AthenaK Kokkos engine for GPU portability, and an
 Apple Silicon MLX engine with entropy-stable HLLS Riemann solving -- all
-sharing a common configuration and diagnostic interface. The MLX backend
-supports automatic differentiation through the MHD solver via `mx.grad`,
-enabling gradient-based calibration of device parameters. DPF-Unified has been
-validated against published experimental data for seven DPF devices spanning
-three orders of magnitude in stored energy (0.4 J to 2 MJ), achieving 1.27%
-mean peak current error across 24 shots of the PF-1000 device. The software
-includes an interactive web interface, device presets for eight published
-machines, and a 5,100+ test automated verification suite.
+sharing a common configuration and diagnostic interface. The current
+KnowledgeReference-only source gate recognizes the standard PF-1000 Scholz
+waveform as the only validation-ready registered circuit waveform record.
+Spatial DPF validation and neutron mechanism/timing/spectrum/anisotropy
+validation remain open.
 
 # Statement of Need
 
@@ -72,7 +74,7 @@ physics with modern MHD numerics. The target users are:
 2. **Graduate students** learning DPF physics, who benefit from the
    interactive web interface, physics narrative mode, and device presets.
 
-3. **Computational plasma physicists** who want a validated starting point
+3. **Computational plasma physicists** who want a source-gated starting point
    for DPF-specific MHD simulations without building the circuit coupling and
    snowplow infrastructure from scratch.
 
@@ -209,48 +211,19 @@ Device presets provide published circuit and geometry parameters for:
 
 # Validation
 
-## Single-Device Validation
+## Source-Gated Status
 
-Current waveforms were compared against published experimental data for six
-devices. The primary metric is the relative error in peak discharge current
-I_peak, which is the most reliably measured and reported DPF observable.
+This draft previously contained multi-device pass tables and a PF-1000
+24-shot statistical validation claim. Those claims are withdrawn from the
+current draft under the KnowledgeReference-only rule. The current status is:
 
-| Device | Energy | I_peak Error | t_peak Error | NRMSE | Reference |
-|--------|--------|-------------|-------------|-------|-----------|
-| PF-1000 | 1 MJ | 4.7% | 4.4% | 0.146 | Scholz et al. (2006) |
-| UNU-ICTP | 3 kJ | 6.5% | 9.0% | 0.092 | Lee et al. (1988) |
-| MJOLNIR | 2 MJ | 4.1% | 3.6% | 0.162 | Goyon et al. (2025) |
-| FAETON-I | 125 kJ | 3.6% | 2.0% | 0.025 | Damideh et al. (2025) |
-| POSEIDON-60kV | 576 kJ | 0.5% | 0.8% | 0.115 | Herold et al. (1989) |
-| POSEIDON-40kV | 480 kJ | 0.3% | 36.6%* | N/A | Herold et al. (1989) |
-| NX2 | 1.85 kJ | 13.5%** | 40.9%** | N/A | Lee & Saw (2008) |
-
-*POSEIDON 40 kV timing error is under investigation; the 60 kV configuration
-matches well. **NX2 reference data are RADPF model output, not experimental
-measurements; the device is classified as reference-only.
-
-## Statistical Validation: PF-1000 24-Shot Campaign
-
-The most rigorous validation used the 24-shot PF-1000 dataset published by
-Akel et al. (2021), covering shots 12581--12606 with varying fill pressures
-(3--8 Torr D2) and per-shot circuit parameters. Each shot was simulated with
-its published charging voltage, fill pressure, and spark-gap resistance. A
-systematic parasitic resistance offset of 6.43 mOhm was identified and
-applied to correct for bus-bar, capacitor ESR, and transmission-line
-impedances not included in the published spark-gap resistance values.
-
-| Metric | Value |
-|--------|-------|
-| Mean absolute I_peak error | 1.27% |
-| Pearson correlation (I_peak) | r = 0.9899 |
-| Shots within 5% | 22/24 |
-| Maximum single-shot error | 4.8% |
-
-This statistical validation is significant because it tests the model's
-ability to track shot-to-shot variation in operating conditions -- not merely
-to match a single calibrated waveform. The high correlation coefficient
-confirms that the code correctly captures the sensitivity of peak current to
-fill pressure and circuit resistance.
+| Scope | Status |
+|-------|--------|
+| PF-1000 circuit waveform | validation-ready source record; tier-1 only |
+| POSEIDON-60kV and UNU-ICTP circuit parameters | KR-supported parameters, but waveform traces are external archive records |
+| Reconstructed device waveforms | blocked from validation claims by default |
+| Spatial MHD fields | verified on analytic tests, not validated against same-scope DPF measurements |
+| Neutron production | estimates only until scalar yield, timing, spectrum, and anisotropy evidence are KR-backed |
 
 ## Analytical Benchmarks
 
@@ -273,9 +246,9 @@ Standard MHD verification problems confirm solver correctness:
    shift the entire waveform in time. Early-rise current errors of 50--160%
    are typical and expected.
 
-3. **Reconstructed waveforms**: Experimental I(t) data are digitized from
-   published figures, introducing ~2--5% digitization uncertainty. Only
-   PF-1000 (Akel 2021) provides tabulated numerical values.
+3. **Waveform source authority**: reconstructed, reference-only, and external
+   archive waveforms are blocked from validation claims until their source
+   records are ingested into `KnowledgeReference/`.
 
 4. **Post-pinch dynamics**: The current model does not capture post-pinch
    current redistribution, plasma column instabilities (m=0, m=1), or
@@ -308,10 +281,9 @@ or impossible with existing tools:
 # AI Usage Disclosure
 
 Claude Code (Anthropic Claude, Opus model) was used extensively for code
-generation, test scaffolding, documentation, and literature synthesis. All
-physics implementations were verified against published equations and
-validated against experimental data. The 5,100+ test automated suite provides
-continuous verification. Human physicist Anthony Zamora reviewed all physics
+generation, test scaffolding, documentation, and literature synthesis. Physics
+implementations are under ongoing source-gated review against local
+`KnowledgeReference/` documents. Human physicist Anthony Zamora reviewed all physics
 models, selected governing equations, interpreted validation results, and
 calibrated device presets. A full disclosure is provided in
 `docs/AI_DISCLOSURE.md`.
@@ -320,7 +292,7 @@ calibrated device presets. A full disclosure is provided in
 
 The author thanks the developers of Athena++ [@Stone2020] and AthenaK for
 open-source MHD infrastructure, S. Lee for the RADPF Lee model that serves as
-the validation baseline, and the PF-1000 team at IPPLM Warsaw for publishing
+the reduced-order comparison baseline, and the PF-1000 team at IPPLM Warsaw for publishing
 detailed experimental datasets.
 
 # References

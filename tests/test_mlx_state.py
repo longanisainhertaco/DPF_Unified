@@ -290,6 +290,17 @@ class TestFloors:
         out = ms.to_state_dict(U)
         assert np.all(out["pressure"] >= 0.0)
 
+    def test_pressure_unpack_ignores_rejected_nonfinite_candidate(self) -> None:
+        ms = _mlx_state()
+        U = ms.from_state_dict(_make_state(p_val=10.0, Br_val=0.0, Bz_val=0.0, Bt_val=0.0))
+        U_np = np.asarray(U).astype(np.float32)
+        U_np[ISR, 0, 0] = np.inf
+
+        out = ms.to_state_dict(mlx.array(U_np))
+
+        assert np.all(np.isfinite(out["pressure"]))
+        assert out["pressure"][0, 0, 0] >= P_FLOOR * 0.999
+
 
 # ---------------------------------------------------------------------------
 # entropy_from_primitives

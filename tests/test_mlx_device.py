@@ -3,10 +3,6 @@ from __future__ import annotations
 
 import pytest
 
-# Skip the entire module when MLX is not installed.
-# On the M3 Pro build machine this import succeeds; on CI without MLX it skips.
-mx = pytest.importorskip("mlx.core", reason="MLX not installed — skipping Metal v2 device tests")
-
 from dpf.metal.device import has_mlx  # noqa: E402
 from dpf.metal.mlx_device import (  # noqa: E402
     HAS_MLX,
@@ -15,6 +11,12 @@ from dpf.metal.mlx_device import (  # noqa: E402
     mlx_dtype,
     require_mlx,
 )
+
+pytestmark = pytest.mark.skipif(
+    not HAS_MLX,
+    reason="MLX not installed or failed safe import probe",
+)
+mx = require_mlx() if HAS_MLX else None
 
 # ---------------------------------------------------------------------------
 # HAS_MLX module constant

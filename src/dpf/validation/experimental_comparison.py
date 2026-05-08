@@ -254,6 +254,19 @@ def validate_current_waveform(
             truncate_at_dip=truncate_at_dip,
         )
 
+    source_authority = {
+        "kr_status": device.kr_status,
+        "reliability": device.reliability,
+        "waveform_provenance": device.waveform_provenance,
+        "waveform_kr_status": device.waveform_kr_status,
+    }
+    validation_ready = (
+        source_authority["kr_status"] == "verified"
+        and source_authority["reliability"] == "measured"
+        and source_authority["waveform_provenance"] == "measured"
+        and source_authority["waveform_kr_status"] == "verified"
+    )
+
     return {
         "peak_current_error": peak_current_error,
         "peak_current_sim": peak_current_sim,
@@ -273,6 +286,21 @@ def validate_current_waveform(
             "agreement_within_2sigma": bool(agreement_within_2sigma),
         },
         "measurement_notes": device.measurement_notes,
+        "source_authority": {
+            **source_authority,
+            "validation_ready": validation_ready,
+            "validation_role": (
+                "tier1_circuit_evidence_candidate"
+                if validation_ready else "numeric_comparison_only"
+            ),
+        },
+        "validity_notes": {
+            "numeric_metrics": (
+                "Peak, timing, and NRMSE metrics are numeric comparisons. "
+                "They support validation claims only when source_authority."
+                "validation_ready is true and the strict evidence helper passes."
+            ),
+        },
     }
 
 
@@ -317,6 +345,20 @@ def validate_neutron_yield(
         "yield_exp": yield_exp,
         "uncertainty": {
             "neutron_yield_exp_1sigma": u_exp_yield,
+        },
+        "source_authority": {
+            "kr_status": device.kr_status,
+            "reliability": device.reliability,
+            "waveform_kr_status": device.waveform_kr_status,
+            "validation_ready": False,
+            "validation_role": "numeric_yield_comparison_only",
+        },
+        "validity_notes": {
+            "not_neutron_physics_validation": (
+                "Total-yield order checks do not validate neutron mechanism, "
+                "timing, spectrum, anisotropy, detector response, or beam-target "
+                "physics. Tier-5 validation requires separate KR-sourced evidence."
+            ),
         },
     }
 

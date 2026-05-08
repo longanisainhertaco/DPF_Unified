@@ -12,6 +12,7 @@ Validates:
 import numpy as np
 import pytest
 
+from dpf.metal.mlx_device import HAS_MLX
 from dpf.metal.mlx_amr import (
     IDN,
     IEN,
@@ -146,10 +147,7 @@ class TestAMRStep:
             U = np.asarray(block.U)
             assert not np.any(np.isnan(U)), "NaN in AMR output"
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("mlx.core", reason="MLX not available"),
-        reason="MLX required",
-    )
+    @pytest.mark.skipif(not HAS_MLX, reason="MLX required")
     def test_sod_production_rhs_no_crash(self):
         """AMR step with production MLX RHS (WENO5-Z/HLL) completes."""
         from dpf.metal.mlx_amr import make_mlx_block_rhs
@@ -241,10 +239,7 @@ class TestAMRStep:
 class TestSolverAMRIntegration:
     """Test MLXMHDSolver with enable_amr=True."""
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("mlx.core", reason="MLX not available"),
-        reason="MLX required",
-    )
+    @pytest.mark.skipif(not HAS_MLX, reason="MLX required")
     def test_solver_constructs_with_amr(self):
         from dpf.metal.mlx_solver import MLXMHDSolver
         solver = MLXMHDSolver(
@@ -255,10 +250,7 @@ class TestSolverAMRIntegration:
         assert solver._amr_hierarchy is not None
         assert solver._amr_rhs_fn is not None
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("mlx.core", reason="MLX not available"),
-        reason="MLX required",
-    )
+    @pytest.mark.skipif(not HAS_MLX, reason="MLX required")
     def test_amr_step_method_runs(self):
         """MLXMHDSolver.amr_step() should accept a state dict and return one."""
         from dpf.metal.mlx_solver import MLXMHDSolver

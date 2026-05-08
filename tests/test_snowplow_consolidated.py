@@ -124,7 +124,7 @@ class TestSnowplowProperties:
         assert snowplow.swept_mass == pytest.approx(m, rel=1e-10)
 
     def test_plasma_inductance(self, snowplow):
-        L = snowplow.L_coeff * snowplow.z
+        L = snowplow.f_c * snowplow.L_coeff * snowplow.z
         assert snowplow.plasma_inductance == pytest.approx(L, rel=1e-10)
 
     def test_sheath_position_property(self, snowplow):
@@ -163,7 +163,7 @@ class TestSnowplowStep:
         dt = 1e-8
         for _ in range(50):
             result = snowplow.step(dt, current=5e5)
-        expected_L = snowplow.L_coeff * snowplow.z
+        expected_L = snowplow.f_c * snowplow.L_coeff * snowplow.z
         assert result["L_plasma"] == pytest.approx(expected_L, rel=1e-10)
         assert snowplow.plasma_inductance == pytest.approx(expected_L, rel=1e-10)
 
@@ -178,7 +178,7 @@ class TestSnowplowStep:
         dt = 1e-8
         for _ in range(20):
             result = snowplow.step(dt, current=1e6)
-        expected = snowplow.L_coeff * snowplow.v
+        expected = snowplow.f_c * snowplow.L_coeff * snowplow.v
         assert result["dL_dt"] == pytest.approx(expected, rel=1e-10)
 
     def test_magnetic_force_scales_with_I_squared(self, snowplow):
@@ -261,7 +261,7 @@ class TestSnowplowPhysics:
         result = sp.step(1e-10, current)
         assert result["F_magnetic"] == pytest.approx(F_expected, rel=1e-10)
 
-    def test_inductance_formula_coaxial(self):
+    def test_inductance_formula_coaxial_with_current_factor(self):
         a, b = 0.01, 0.02
         sp = SnowplowModel(
             anode_radius=a, cathode_radius=b, fill_density=1e-4,
@@ -269,7 +269,7 @@ class TestSnowplowPhysics:
         )
         z = 0.05
         sp.z = z
-        L_expected = (mu_0 / (2 * pi)) * np.log(b / a) * z
+        L_expected = sp.f_c * (mu_0 / (2 * pi)) * np.log(b / a) * z
         assert sp.plasma_inductance == pytest.approx(L_expected, rel=1e-10)
 
     def test_pf1000_timing_order_of_magnitude(self, snowplow):
@@ -867,11 +867,12 @@ def make_radial_snowplow(**kwargs) -> SnowplowModel:
         fill_pressure_Pa=params["fill_pressure_Pa"],
         current_fraction=params["current_fraction"],
         radial_mass_fraction=params.get("radial_mass_fraction"),
+        radial_current_fraction=params.get("radial_current_fraction"),
     )
     sp.z = sp.L_anode
     sp.v = 1e4
     sp._rundown_complete = True
-    sp._L_axial_frozen = sp.L_coeff * sp.L_anode
+    sp._L_axial_frozen = sp._axial_circuit_inductance(sp.L_anode)
     sp.phase = "radial"
     sp.r_shock = 0.95 * sp.b
     sp.vr = 0.0
@@ -879,7 +880,7 @@ def make_radial_snowplow(**kwargs) -> SnowplowModel:
 
 
 class TestRadialForceFormula:
-    """F_rad = (mu_0 / 4pi) * (f_c * I)^2 * z_f / r_s."""
+    """F_rad = (mu_0 / 4pi) * (f_cr_eff * I)^2 * z_f / r_s."""
 
     def test_radial_force_at_initial_radius(self) -> None:
         sp = make_radial_snowplow()
@@ -888,7 +889,7 @@ class TestRadialForceFormula:
         dt = 1e-10
         result = sp.step(dt, current=I_current)
         z_f = sp.L_anode
-        expected_F = (mu_0 / (4.0 * pi)) * (sp.f_c * I_current) ** 2 * z_f / r_init
+        expected_F = (mu_0 / (4.0 * pi)) * (sp._effective_radial_fc() * I_current) ** 2 * z_f / r_init
         assert result["F_magnetic"] == pytest.approx(expected_F, rel=1e-6)
         assert result["phase"] == "radial"
 
@@ -901,7 +902,7 @@ class TestRadialForceFormula:
         dt = 1e-10
         result = sp.step(dt, current=I_current)
         z_f = sp.L_anode
-        expected_F = (mu_0 / (4.0 * pi)) * (sp.f_c * I_current) ** 2 * z_f / r_mid
+        expected_F = (mu_0 / (4.0 * pi)) * (sp._effective_radial_fc() * I_current) ** 2 * z_f / r_mid
         assert result["F_magnetic"] == pytest.approx(expected_F, rel=1e-4)
 
     def test_radial_force_increases_as_shock_converges(self) -> None:
@@ -923,7 +924,7 @@ class TestRadialForceFormula:
 
 
 class TestRadialInductanceFormula:
-    """L_plasma = L_axial + (mu_0 / 2pi) * z_f * ln(b / r_s)."""
+    """L_plasma = L_axial + f_cr_eff * (mu_0 / 2pi) * z_f * ln(b / r_s)."""
 
     def test_inductance_at_cathode_radius(self) -> None:
         sp = make_radial_snowplow()
@@ -936,7 +937,12 @@ class TestRadialInductanceFormula:
         r_test = 0.04
         sp.r_shock = r_test
         L_axial = sp._L_axial_frozen
-        L_radial_expected = (mu_0 / (2.0 * pi)) * sp.L_anode * np.log(sp.b / r_test)
+        L_radial_expected = (
+            sp._effective_radial_fc()
+            * (mu_0 / (2.0 * pi))
+            * sp.L_anode
+            * np.log(sp.b / r_test)
+        )
         expected_total = L_axial + L_radial_expected
         assert sp.plasma_inductance == pytest.approx(expected_total, rel=1e-10)
 
@@ -955,14 +961,17 @@ class TestRadialInductanceFormula:
         r_tiny = 1e-6
         sp.r_shock = r_tiny
         r_eff = sp.r_pinch_min
-        L_expected = sp._L_axial_frozen + (mu_0 / (2.0 * pi)) * sp.L_anode * np.log(
-            sp.b / r_eff
+        L_expected = sp._L_axial_frozen + (
+            sp._effective_radial_fc()
+            * (mu_0 / (2.0 * pi))
+            * sp.L_anode
+            * np.log(sp.b / r_eff)
         )
         assert sp.plasma_inductance == pytest.approx(L_expected, rel=1e-10)
 
 
 class TestRadialDLDT:
-    """dL/dt = -(mu_0 / 2pi) * z_f * vr / r_s."""
+    """dL/dt = -f_cr_eff * (mu_0 / 2pi) * z_f * vr / r_s."""
 
     def test_dL_dt_at_start(self) -> None:
         sp = make_radial_snowplow()
@@ -977,7 +986,7 @@ class TestRadialDLDT:
         vr_after = sp.vr
         r_after = max(sp.r_shock, sp.r_pinch_min)
         z_f = sp.L_anode
-        expected_dLdt = -(mu_0 / (2.0 * pi)) * z_f * vr_after / r_after
+        expected_dLdt = -sp._effective_radial_fc() * (mu_0 / (2.0 * pi)) * z_f * vr_after / r_after
         assert result["dL_dt"] == pytest.approx(expected_dLdt, rel=1e-4)
 
     def test_dL_dt_positive_for_inward_motion(self) -> None:
@@ -1374,7 +1383,7 @@ def _t_validation_make_radial_snowplow(
     sp.phase = "radial"
     sp._rundown_complete = True
     sp.z = sp.L_anode
-    sp._L_axial_frozen = sp.L_coeff * sp.L_anode
+    sp._L_axial_frozen = sp._axial_circuit_inductance(sp.L_anode)
     sp.r_shock = r_shock
     sp.vr = vr
     return sp
@@ -1410,7 +1419,7 @@ class TestLCoeffFix:
     def test_plasma_inductance_axial(self) -> None:
         sp = _pf1000_snowplow()
         z = sp.z
-        expected_L = sp.L_coeff * z
+        expected_L = sp.f_c * sp.L_coeff * z
         assert sp.plasma_inductance == pytest.approx(expected_L, rel=1e-10)
 
 
@@ -1430,6 +1439,15 @@ class TestCurrentFraction:
         F_mag = result["F_magnetic"]
         expected = sp.F_coeff * (fc * I_test) ** 2
         assert F_mag == pytest.approx(expected, rel=1e-10)
+
+    def test_fc_scales_axial_circuit_inductance(self) -> None:
+        z = 0.08
+        sp_high = _pf1000_snowplow(current_fraction=0.7)
+        sp_low = _pf1000_snowplow(current_fraction=0.5)
+        sp_high.z = z
+        sp_low.z = z
+        ratio = sp_low.plasma_inductance / sp_high.plasma_inductance
+        assert ratio == pytest.approx(0.5 / 0.7, rel=1e-12)
 
     def test_fc_affects_force_magnitude(self) -> None:
         I_test = 500e3
@@ -1536,7 +1554,7 @@ class TestRadialPhysicsFormulas:
         I_test = 500e3
         r_s_pre = sp.shock_radius
         z_f = sp.L_anode
-        expected_F = (mu_0 / (4.0 * pi)) * (sp.f_c * I_test) ** 2 * z_f / r_s_pre
+        expected_F = (mu_0 / (4.0 * pi)) * (sp._effective_radial_fc() * I_test) ** 2 * z_f / r_s_pre
         dt = 1e-10
         result = sp.step(dt, I_test)
         assert result["F_magnetic"] > 0
@@ -1550,7 +1568,7 @@ class TestRadialPhysicsFormulas:
         r_s = max(sp.shock_radius, sp.r_pinch_min)
         z_f = sp.L_anode
         L_axial_expected = sp._L_axial_frozen
-        L_radial_expected = (mu_0 / (2.0 * pi)) * z_f * np.log(sp.b / r_s)
+        L_radial_expected = sp._effective_radial_fc() * (mu_0 / (2.0 * pi)) * z_f * np.log(sp.b / r_s)
         L_total_expected = L_axial_expected + L_radial_expected
         assert sp.plasma_inductance == pytest.approx(L_total_expected, rel=1e-10)
 
@@ -1561,7 +1579,7 @@ class TestRadialPhysicsFormulas:
         r_s = max(sp.shock_radius, 1e-10)
         z_f = sp.L_anode
         vr = sp.vr
-        expected_dL_dt = -(mu_0 / (2.0 * pi)) * z_f * vr / r_s
+        expected_dL_dt = -sp._effective_radial_fc() * (mu_0 / (2.0 * pi)) * z_f * vr / r_s
         assert result["dL_dt"] == pytest.approx(expected_dL_dt, rel=1e-10)
 
     def test_radial_swept_mass_formula(self) -> None:
@@ -3401,7 +3419,7 @@ def _mhd_coupling_make_radial_snowplow(**overrides) -> SnowplowModel:
     sp.z = sp.L_anode
     sp.v = 1e4
     sp._rundown_complete = True
-    sp._L_axial_frozen = sp.L_coeff * sp.L_anode
+    sp._L_axial_frozen = sp._axial_circuit_inductance(sp.L_anode)
     sp.phase = "radial"
     sp.r_shock = 0.95 * sp.b
     sp.vr = 0.0
@@ -3572,8 +3590,8 @@ class TestDynamicPressureFallback:
         result = eng._dynamic_sheath_pressure()
         assert result == pytest.approx(700.0)
 
-    def test_rundown_phase_averages_ahead_of_sheath(self) -> None:
-        """Rundown: uses mean pressure for z > z_sheath cells."""
+    def test_rundown_phase_uses_cold_fill_pressure(self) -> None:
+        """Rundown: uses Lee/RADPF cold fill pressure, not MHD plasma pressure."""
         sp = _mhd_coupling_make_snowplow()
         assert sp.phase == "rundown"
 
@@ -3589,7 +3607,7 @@ class TestDynamicPressureFallback:
             dx=dx, dz=dx,
         )
         result = eng._dynamic_sheath_pressure()
-        assert result == pytest.approx(1000.0, rel=1e-6)
+        assert result == pytest.approx(400.0, rel=1e-6)
 
     def test_rundown_phase_returns_fallback_when_iz_at_end(self) -> None:
         """Rundown: fallback when iz >= nz-1 (sheath past all cells)."""

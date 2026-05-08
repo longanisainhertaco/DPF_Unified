@@ -133,6 +133,78 @@ def synthetic_xray_image(
     return image
 
 
+def radiating_pinch_geometry_from_image(
+    image: np.ndarray,
+    y_cell: np.ndarray,
+    z_cell: np.ndarray,
+    *,
+    threshold_fraction: float = 0.5,
+) -> dict[str, object]:
+    """Estimate radiating pinch geometry from a synthetic image.
+
+    The geometry is a density proxy when the image emissivity is dominated by
+    bremsstrahlung, because the local emission scales with electron density
+    squared. It should be compared with matching gated-image diagnostics, not
+    treated as a direct density measurement.
+    """
+    image = np.asarray(image, dtype=float)
+    y_cell = np.asarray(y_cell, dtype=float)
+    z_cell = np.asarray(z_cell, dtype=float)
+    if image.ndim != 2:
+        raise ValueError("image must be a 2D array")
+    if image.shape != (len(y_cell), len(z_cell)):
+        raise ValueError("image shape must match y_cell and z_cell lengths")
+    if not (0.0 < threshold_fraction <= 1.0):
+        raise ValueError("threshold_fraction must be in (0, 1]")
+
+    finite = np.where(np.isfinite(image), image, 0.0)
+    peak = float(np.max(finite)) if finite.size else 0.0
+    if peak <= 0.0:
+        return {
+            "has_radiating_region": False,
+            "threshold_fraction": threshold_fraction,
+            "peak_intensity": peak,
+            "diagnostic_role": "density_proxy_bremsstrahlung_spatial_geometry",
+        }
+
+    mask = finite >= threshold_fraction * peak
+    if not np.any(mask):
+        return {
+            "has_radiating_region": False,
+            "threshold_fraction": threshold_fraction,
+            "peak_intensity": peak,
+            "diagnostic_role": "density_proxy_bremsstrahlung_spatial_geometry",
+        }
+
+    y_idx, z_idx = np.where(mask)
+    y_extent = float(np.max(np.abs(y_cell[y_idx])))
+    z_min = float(np.min(z_cell[z_idx]))
+    z_max = float(np.max(z_cell[z_idx]))
+    weights = finite[mask]
+    z_centroid = float(np.average(z_cell[z_idx], weights=weights))
+
+    peak_idx = np.unravel_index(int(np.argmax(finite)), finite.shape)
+    return {
+        "has_radiating_region": True,
+        "threshold_fraction": threshold_fraction,
+        "peak_intensity": peak,
+        "diameter_mm": 2.0 * y_extent * 1.0e3,
+        "length_cm": (z_max - z_min) * 100.0,
+        "z_min_cm": z_min * 100.0,
+        "z_max_cm": z_max * 100.0,
+        "z_centroid_cm": z_centroid * 100.0,
+        "peak_y_mm": float(y_cell[peak_idx[0]] * 1.0e3),
+        "peak_z_cm": float(z_cell[peak_idx[1]] * 100.0),
+        "diagnostic_role": "density_proxy_bremsstrahlung_spatial_geometry",
+        "validity_notes": {
+            "density_proxy": (
+                "Bremsstrahlung-dominated image geometry tracks dense plasma "
+                "emission but is not a calibrated electron-density field."
+            ),
+        },
+    }
+
+
 def synthetic_bdot_probe(
     B_field: np.ndarray,
     probe_r: float,
