@@ -30,7 +30,7 @@ import pytest
 
 mx = pytest.importorskip("mlx.core")
 
-from dpf.metal.mlx_grid import CylindricalGrid  # noqa: E402, I001
+from dpf.metal.mlx_grid import CartesianGrid  # noqa: E402, I001
 from dpf.metal.mlx_kernels import IDN  # noqa: E402
 from dpf.metal.mlx_primitives import cons_to_prim, prim_to_cons  # noqa: E402
 from dpf.metal.mlx_timestepper import compute_dt_cfl, ssp_rk3_step  # noqa: E402
@@ -105,7 +105,7 @@ class TestStandardShockTubes:
     def test_s5_sod_cross_backend_parity(self) -> None:
         """S5: MLX Sod right-state rho within 15% of analytical value 0.125."""
         nr, nz, dx = 32, 64, 1.0 / 64
-        grid = CylindricalGrid(nr=nr, nz=nz, dr=dx, dz=dx)
+        grid = CartesianGrid(nx=nr, ny=1, nz=nz, dx=dx, dy=dx, dz=dx)
         U = _step_mlx(_mlx_sod_state(nr, nz), grid, 50)
 
         rho_out = np.asarray(U[IDN])
@@ -131,7 +131,7 @@ class TestStandardShockTubes:
     def test_s6_briowu_compound_waves(self) -> None:
         """S6: Brio-Wu B_theta shows spatial variation (compound wave resolved)."""
         nr, nz, dx = 16, 128, 1.0 / 128
-        grid = CylindricalGrid(nr=nr, nz=nz, dr=dx, dz=dx)
+        grid = CartesianGrid(nx=nr, ny=1, nz=nz, dx=dx, dy=dx, dz=dx)
         U = _step_mlx(_mlx_brio_wu_state(nr, nz), grid, 20)
 
         assert np.all(np.isfinite(np.asarray(U))), "S6: non-finite state"
@@ -154,7 +154,7 @@ class TestStandardShockTubes:
     def test_s7_sod_convergence(self) -> None:
         """S7: Sod plateau L1(rho) < 0.02 at N=256 (left=1.0, right=0.125)."""
         nr, nz, dx = 4, 256, 1.0 / 256
-        grid = CylindricalGrid(nr=nr, nz=nz, dr=dx, dz=dx)
+        grid = CartesianGrid(nx=nr, ny=1, nz=nz, dx=dx, dy=dx, dz=dx)
         U = _step_mlx(_mlx_sod_state(nr, nz), grid, 100)
 
         rho_out = np.asarray(U[IDN])

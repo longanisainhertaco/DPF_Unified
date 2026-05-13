@@ -96,3 +96,17 @@ class TestQMFDiagnostic:
         assert diag.B_qmf_T > 0
         assert diag.B_actual_T > 0
         assert isinstance(diag.note, str)
+
+    def test_qmf_output_is_quarantined_from_validation_claims(self):
+        from dpf.radiation.qmf_suppression import qmf_diagnostic
+
+        B = np.zeros((3, 4, 4, 4))
+        B[0] = 1e8
+        diag = qmf_diagnostic(B, np.full((4, 4, 4), 1e7), np.full((4, 4, 4), 1e24))
+
+        assert diag.model_role == "heuristic_qmf_radiation_diagnostic"
+        assert diag.validation_role == "unverified_not_design_evidence"
+        assert diag.source_status == "free_free_suppression_source_missing"
+        assert diag.validation_status == "not_validation_evidence"
+        assert diag.can_support_validation_claims is False
+        assert diag.can_support_design_claims is False

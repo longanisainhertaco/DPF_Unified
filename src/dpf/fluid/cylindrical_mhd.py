@@ -359,6 +359,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         time_integrator: str = "ssp_rk3",
         conservative_energy: bool = True,
         use_godunov_flux: bool = False,
+        r_min: float = 0.0,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -375,6 +376,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.time_integrator = time_integrator if time_integrator in ("ssp_rk2", "ssp_rk3") else "ssp_rk3"
         self.conservative_energy = conservative_energy
         self.use_godunov_flux = use_godunov_flux
+        self.r_min = r_min
         self._last_eta_max = 0.0  # For resistive diffusion CFL
         self._last_div_B: float = 0.0
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
@@ -391,7 +393,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.use_weno5 = nr >= 5 and nz >= 5
 
         # Geometry operator
-        self.geom = CylindricalGeometry(nr, nz, dr, dz)
+        self.geom = CylindricalGeometry(nr, nz, dr, dz, r_min=r_min)
 
         # Coupling state
         self._coupling = CouplingState()
@@ -1170,10 +1172,10 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             p_total = p + B_sq / (2.0 * mu_0)
             v_dot_B = np.sum(vel * B, axis=0)
 
-            # Energy flux vector: F_E = (E + p_tot)·v - B·(v·B)
+            # SI energy flux vector: F_E = (E + p_tot)·v - B·(v·B)/mu_0
             F_E = np.zeros((3, self.nr, self.nz))
             for d in range(3):
-                F_E[d] = (E_total + p_total) * vel[d] - B[d] * v_dot_B
+                F_E[d] = (E_total + p_total) * vel[d] - B[d] * v_dot_B / mu_0
 
             # dE/dt = -div(F_E) + Q_ohm + Q_ext
             dE_dt = -_plm_divergence_parallel(

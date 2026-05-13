@@ -23,6 +23,7 @@ Coverage (17 source files merged):
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import sys
 import tempfile
@@ -484,6 +485,120 @@ def test_check_nan_inf_detects_inf_vector(tmp_path: Path):
 
     assert len(bad_fields) == 1
     assert "t1_fields/velocity" in bad_fields
+
+
+def test_check_nan_inf_detects_nan_circuit_scalar(tmp_path: Path):
+    """check_nan_inf detects non-finite non-spatial scalar histories."""
+    path = tmp_path / "nan_circuit_scalar.h5"
+
+    with h5py.File(path, "w") as f:
+        f.attrs["dataset_name"] = "test"
+        f.attrs["n_trajectories"] = 1
+        t0_group = f.create_group("t0_fields")
+        t0_group.create_dataset("density", data=np.ones((1, 5, 4, 4, 4)))
+        scalars_group = f.create_group("scalars")
+        scalars_group.create_dataset("current", data=np.array([0.0, np.nan]))
+        f.create_group("dimensions")
+        f.create_group("boundary_conditions")
+
+    validator = DatasetValidator()
+    bad_fields = validator.check_nan_inf(path)
+
+    assert bad_fields == ["scalars/current"]
+
+
+def test_strict_validator_accepts_guarded_well_file(tmp_path: Path):
+    """Strict mode accepts finite, provenance-labeled, nonzero-B files."""
+    path = tmp_path / "strict_valid.h5"
+
+    with h5py.File(path, "w") as f:
+        f.attrs["dataset_name"] = "test"
+        f.attrs["n_trajectories"] = 1
+        f.attrs["grid_type"] = "cartesian"
+        f.attrs["n_spatial_dims"] = 3
+        f.attrs["validation_status"] = "not_validation_evidence"
+        f.attrs["result_label"] = "Preview"
+        f.attrs["source_status"] = "not_source_backed"
+        t0_group = f.create_group("t0_fields")
+        t0_group.create_dataset("density", data=np.ones((1, 3, 4, 4, 4)))
+        t1_group = f.create_group("t1_fields")
+        b_field = np.ones((1, 3, 4, 4, 4, 3)) * 0.01
+        t1_group.create_dataset("magnetic_field", data=b_field)
+        dim_group = f.create_group("dimensions")
+        dim_group.create_dataset("x", data=np.arange(4))
+        dim_group.create_dataset("y", data=np.arange(4))
+        dim_group.create_dataset("z", data=np.arange(4))
+        dim_group.create_dataset("time", data=np.array([0.0, 1.0, 2.0]))
+        f.create_group("boundary_conditions")
+        scalars_group = f.create_group("scalars")
+        scalars_group.create_dataset("energy_conservation", data=np.ones(3))
+        scalars_group.create_dataset("current", data=np.array([0.0, 1.0, 2.0]))
+
+    result = DatasetValidator(strict=True).validate_file(path)
+
+    assert result.valid is True
+    assert result.errors == []
+
+
+def test_strict_validator_rejects_zero_b_and_missing_provenance(tmp_path: Path):
+    """Strict mode rejects files that look usable but lack source guardrails."""
+    path = tmp_path / "strict_zero_b.h5"
+
+    with h5py.File(path, "w") as f:
+        f.attrs["dataset_name"] = "test"
+        f.attrs["n_trajectories"] = 1
+        f.attrs["grid_type"] = "cartesian"
+        t0_group = f.create_group("t0_fields")
+        t0_group.create_dataset("density", data=np.ones((1, 2, 4, 4, 4)))
+        t1_group = f.create_group("t1_fields")
+        t1_group.create_dataset("magnetic_field", data=np.zeros((1, 2, 4, 4, 4, 3)))
+        dim_group = f.create_group("dimensions")
+        dim_group.create_dataset("x", data=np.arange(4))
+        dim_group.create_dataset("y", data=np.arange(4))
+        dim_group.create_dataset("z", data=np.arange(4))
+        dim_group.create_dataset("time", data=np.array([0.0, 1.0]))
+        f.create_group("boundary_conditions")
+
+    result = DatasetValidator(strict=True).validate_file(path)
+
+    assert result.valid is False
+    assert any("energy_conservation" in error for error in result.errors)
+    assert any("validation_status" in error for error in result.errors)
+    assert any("all-zero magnetic field" in error for error in result.errors)
+
+
+def test_strict_validator_rejects_geometry_mismatch_and_nonmonotonic_time(
+    tmp_path: Path,
+):
+    """Strict mode catches root/dimension mismatch and bad time ordering."""
+    path = tmp_path / "strict_geometry_bad_time.h5"
+
+    with h5py.File(path, "w") as f:
+        f.attrs["dataset_name"] = "test"
+        f.attrs["n_trajectories"] = 1
+        f.attrs["grid_type"] = "cylindrical"
+        f.attrs["validation_status"] = "not_validation_evidence"
+        f.attrs["result_label"] = "Preview"
+        f.attrs["source_status"] = "not_source_backed"
+        t0_group = f.create_group("t0_fields")
+        t0_group.create_dataset("density", data=np.ones((1, 3, 4, 1, 4)))
+        t1_group = f.create_group("t1_fields")
+        t1_group.create_dataset("B", data=np.ones((1, 3, 4, 1, 4, 3)))
+        dim_group = f.create_group("dimensions")
+        dim_group.create_dataset("x", data=np.arange(4))
+        dim_group.create_dataset("y", data=np.arange(1))
+        dim_group.create_dataset("z", data=np.arange(4))
+        dim_group.create_dataset("time", data=np.array([0.0, 2.0, 1.0]))
+        f.create_group("boundary_conditions")
+        scalars_group = f.create_group("scalars")
+        scalars_group.create_dataset("energy_conservation", data=np.ones(3))
+
+    result = DatasetValidator(strict=True).validate_file(path)
+
+    assert result.valid is False
+    assert any("strictly increasing time" in error for error in result.errors)
+    assert any("missing dimensions: r" in error for error in result.errors)
+    assert any("cartesian x/y dimensions" in error for error in result.errors)
 
 
 def test_check_energy_conservation_no_field(valid_well_file: Path):
@@ -1034,6 +1149,48 @@ def test_finalize_creates_scalars_group(tmp_path: Path) -> None:
         assert "voltage" in scalars_grp
         assert scalars_grp["current"].shape == (1, 1)
         assert scalars_grp["current"].dtype == np.float32
+
+
+@pytest.mark.skipif(not HAS_H5PY, reason="h5py not available")
+def test_finalize_labels_sanitized_nonfinite_fields(tmp_path: Path) -> None:
+    """Non-finite field sanitation is labeled as non-validation evidence."""
+    output_path = tmp_path / "nonfinite_labeled.h5"
+    state = make_dpf_state()
+    state["rho"][0, 0, 0] = np.nan
+    state["B"][0, 0, 0, 0] = np.inf
+
+    exporter = WellExporter(output_path=output_path, grid_shape=(4, 4, 4), dx=0.001)
+    exporter.add_snapshot(state, 1e-6)
+    exporter.finalize()
+
+    with h5py.File(output_path, "r") as f:
+        assert bool(f.attrs["contains_sanitized_nonfinite"]) is True
+        assert f.attrs["sanitized_nonfinite_count"] == 2
+        density = f["t0_fields/density"]
+        magnetic = f["t1_fields/magnetic_field"]
+        assert bool(density.attrs["nonfinite_sanitized"]) is True
+        assert density.attrs["nonfinite_count"] == 1
+        assert bool(magnetic.attrs["nonfinite_sanitized"]) is True
+        assert magnetic.attrs["nonfinite_count"] == 1
+        assert (
+            density.attrs["sanitization_policy"]
+            == "nan_inf_to_zero_for_ml_stability_not_validation_evidence"
+        )
+
+
+@pytest.mark.skipif(not HAS_H5PY, reason="h5py not available")
+def test_finalize_writes_fail_closed_training_metadata(tmp_path: Path) -> None:
+    """Well exports default to Preview/non-source-backed metadata."""
+    output_path = tmp_path / "metadata.h5"
+    exporter = WellExporter(output_path=output_path, grid_shape=(4, 4, 4), dx=0.001)
+    exporter.add_snapshot(make_dpf_state(), 1e-6)
+    exporter.finalize()
+
+    with h5py.File(output_path, "r") as f:
+        assert f.attrs["validation_status"] == "not_validation_evidence"
+        assert f.attrs["result_label"] == "Preview"
+        assert f.attrs["source_status"] == "not_source_backed"
+        assert f.attrs["artifact_role"] == "training_data_interchange_not_validation"
 
 
 @pytest.mark.skipif(not HAS_H5PY, reason="h5py not available")
@@ -1749,6 +1906,55 @@ class TestRun:
 
         assert output_dir.exists()
         assert output_dir.is_dir()
+
+    def test_run_writes_dataset_manifest_with_classification(self, tmp_path):
+        """BatchRunner writes a fail-closed dataset manifest."""
+        config = SimulationConfig(
+            grid_shape=[4, 4, 4],
+            dx=1e-3,
+            sim_time=1e-9,
+            circuit={
+                "C": 1e-6,
+                "V0": 1e3,
+                "L0": 1e-7,
+                "R0": 0.01,
+                "anode_radius": 0.005,
+                "cathode_radius": 0.01,
+            },
+            diagnostics={
+                "hdf5_filename": ":memory:",
+                "artifact_owner": "dataset-owner",
+                "artifact_classification": "internal",
+                "artifact_distribution": "dataset-only",
+                "artifact_handling_notes": "manifested training candidate",
+            },
+        )
+        runner = BatchRunner(
+            base_config=config,
+            parameter_ranges=[ParameterRange("circuit.V0", 1.0e3, 1.0e3)],
+            n_samples=2,
+            workers=1,
+            output_dir=tmp_path / "dataset_manifest",
+        )
+
+        def fake_run_single(idx, params):
+            output_path = runner.output_dir / f"trajectory_{idx:04d}.h5"
+            output_path.write_bytes(f"trajectory {idx}".encode("utf-8"))
+            return idx, None
+
+        runner.run_single = fake_run_single
+        result = runner.run()
+
+        assert result.dataset_manifest_path is not None
+        payload = json.loads(Path(result.dataset_manifest_path).read_text())
+        assert payload["validation_status"] == "not_validation_evidence"
+        assert payload["result_label"] == "Preview"
+        assert payload["can_support_validation_claims"] is False
+        assert payload["artifact_classification"]["owner"] == "dataset-owner"
+        assert payload["artifact_classification"]["classification"] == "internal"
+        assert payload["n_success"] == 2
+        assert payload["outputs"][0]["sha256"] is not None
+        assert payload["outputs"][0]["status"] == "generated"
 
 
 # ---------------------------------------------------------------------------
@@ -2834,6 +3040,9 @@ class TestDPFSurrogateInitialization:
             warnings.simplefilter("always")
             surrogate = DPFSurrogate(nonexistent)
             assert surrogate is not None
+            assert surrogate.placeholder_loaded is True
+            assert surrogate.real_model_loaded is False
+            assert surrogate.model_load_status["placeholder_reason"] == "checkpoint_missing"
 
     def test_init_with_valid_checkpoint_sets_attributes(self, mock_torch):
         """__init__ with valid checkpoint sets attributes correctly."""
@@ -2884,7 +3093,12 @@ class TestDPFSurrogateLoading:
         surrogate = DPFSurrogate(mock_torch, device="mps")
 
         assert isinstance(surrogate._model, dict)
-        assert surrogate._model.get("placeholder") is True or "data" in surrogate._model
+        assert surrogate._model.get("placeholder") is True
+        assert surrogate.placeholder_loaded is True
+        assert surrogate.real_model_loaded is False
+        assert surrogate.source_backed_model_loaded is False
+        assert surrogate.model_load_status["placeholder_reason"] == "walrus_not_installed"
+        assert surrogate.model_load_status["source_status"] == "source_packet_missing"
 
     def test_load_model_handles_torch_load_failure(self, mock_torch, monkeypatch):
         """_load_model handles torch.load failure gracefully with placeholder fallback."""
@@ -2897,6 +3111,10 @@ class TestDPFSurrogateLoading:
 
         assert surrogate.is_loaded is True
         assert surrogate._is_walrus_model is False
+        assert surrogate.placeholder_loaded is True
+        assert surrogate.real_model_loaded is False
+        assert surrogate.model_load_status["placeholder_reason"] == "load_failed"
+        assert surrogate.model_load_status["validation_status"] == "not_validation_evidence"
 
 
 class TestDPFSurrogatePrediction:
@@ -3866,6 +4084,11 @@ class TestWALRUSModelLoading:
         surrogate = DPFSurrogate(mock_walrus_env["ckpt"])
 
         assert surrogate.is_loaded is True
+        assert surrogate.placeholder_loaded is False
+        assert surrogate.real_model_loaded is True
+        assert surrogate.source_backed_model_loaded is False
+        assert surrogate.model_load_status["validation_status"] == "not_validation_evidence"
+        assert surrogate.model_load_status["source_status"] == "source_packet_missing"
 
     def test_walrus_model_instantiate_called_with_n_states_11(self, mock_walrus_env):
         """instantiate is called with n_states=11 (5 scalars + 6 vector components)."""
@@ -4153,6 +4376,82 @@ class TestBatchRunnerAPI:
         assert captured_args["dx"] == 0.01
         assert "geometry" in captured_args
         assert "sim_params" in captured_args
+
+    def test_batch_runner_forwards_config_artifact_classification(
+        self,
+        monkeypatch,
+        tmp_path: Path,
+    ):
+        """BatchRunner passes config-driven artifact classification to WellExporter."""
+        from dpf.ai.batch_runner import BatchRunner  # noqa: E402, I001
+
+        captured_args: dict = {}
+
+        class FakeWellExporter:
+            def __init__(self, **kwargs):
+                captured_args.update(kwargs)
+                self._snapshots = []
+
+            def add_snapshot(self, **kwargs):
+                self._snapshots.append(kwargs)
+
+            def finalize(self):
+                pass
+
+        class FakeSimulationEngine:
+            def __init__(self, config):
+                self.circuit = MagicMock(current=0.0, voltage=0.0)
+                self.time = 1e-9
+                self.diagnostics = MagicMock()
+
+            def get_field_snapshot(self):
+                return {
+                    "rho": np.ones((4, 4, 4)),
+                    "B": np.ones((3, 4, 4, 4)),
+                }
+
+            def step(self):
+                return MagicMock(finished=True)
+
+        config = SimulationConfig(
+            grid_shape=[4, 4, 4],
+            dx=1e-3,
+            sim_time=1e-9,
+            circuit={
+                "C": 1e-6,
+                "V0": 1e3,
+                "L0": 1e-7,
+                "R0": 0.01,
+                "anode_radius": 0.005,
+                "cathode_radius": 0.01,
+            },
+            diagnostics={
+                "hdf5_filename": ":memory:",
+                "artifact_owner": "batch-owner",
+                "artifact_classification": "internal",
+                "artifact_distribution": "batch-only",
+                "artifact_handling_notes": "batch training artifact",
+            },
+        )
+        runner = BatchRunner(
+            base_config=config,
+            parameter_ranges=[],
+            n_samples=1,
+            output_dir=tmp_path,
+            workers=1,
+            field_interval=1,
+        )
+
+        monkeypatch.setattr("dpf.ai.batch_runner.WellExporter", FakeWellExporter)
+        monkeypatch.setattr("dpf.engine.SimulationEngine", FakeSimulationEngine)
+
+        assert runner.run_single(0, {"circuit.V0": 1.2e3}) == (0, None)
+        assert captured_args["artifact_classification"] == {
+            "owner": "batch-owner",
+            "classification": "internal",
+            "distribution": "batch-only",
+            "handling_notes": "batch training artifact",
+        }
 
     def test_batch_runner_add_snapshot_uses_state_time(self, monkeypatch):
         """BatchRunner calls add_snapshot with state= and time= kwargs."""
@@ -5445,17 +5744,20 @@ def test_engine_hybrid_backend_creates_athena_solver(minimal_config) -> None:
     from dpf.config import SimulationConfig  # noqa: E402, I001
 
     config = SimulationConfig(
-        grid_shape=(8, 8, 8), dx=0.01, sim_time=1e-6,
+        grid_shape=(8, 1, 8), dx=0.001, sim_time=1e-6,
         circuit={"V0": 20e3, "C": 100e-6, "L0": 50e-9, "R0": 0.01,
-                 "anode_radius": 0.005, "cathode_radius": 0.01},
-        fluid={"backend": "hybrid", "handoff_fraction": 0.2},
+                 "anode_radius": 0.005, "cathode_radius": 0.02},
+        geometry={"type": "cylindrical"},
+        fluid={"backend": "hybrid", "handoff_fraction": 0.2, "reconstruction": "plm"},
     )
 
     engine = SimulationEngine(config)
-
-    assert engine.backend == "hybrid"
-    assert isinstance(engine.fluid, AthenaPPSolver)
-    assert engine._hybrid_engine is None
+    try:
+        assert engine.backend == "hybrid"
+        assert isinstance(engine.fluid, AthenaPPSolver)
+        assert engine._hybrid_engine is None
+    finally:
+        engine.fluid.finalize()
 
 
 @pytest.mark.slow
@@ -5470,15 +5772,18 @@ def test_engine_hybrid_backend_respects_handoff_fraction(minimal_config) -> None
     from dpf.config import SimulationConfig  # noqa: E402, I001
 
     config = SimulationConfig(
-        grid_shape=(8, 8, 8), dx=0.01, sim_time=1e-6,
+        grid_shape=(8, 1, 8), dx=0.001, sim_time=1e-6,
         circuit={"V0": 20e3, "C": 100e-6, "L0": 50e-9, "R0": 0.01,
-                 "anode_radius": 0.005, "cathode_radius": 0.01},
-        fluid={"backend": "hybrid", "handoff_fraction": 0.35},
+                 "anode_radius": 0.005, "cathode_radius": 0.02},
+        geometry={"type": "cylindrical"},
+        fluid={"backend": "hybrid", "handoff_fraction": 0.35, "reconstruction": "plm"},
     )
 
     engine = SimulationEngine(config)
-
-    assert engine.config.fluid.handoff_fraction == pytest.approx(0.35)
+    try:
+        assert engine.config.fluid.handoff_fraction == pytest.approx(0.35)
+    finally:
+        engine.fluid.finalize()
 
 
 def test_fluid_config_handoff_fraction_validation() -> None:
@@ -5895,7 +6200,10 @@ def make_history(
 def surrogate():
     """Module-scoped DPFSurrogate backed by the real WALRUS checkpoint."""
     torch = pytest.importorskip("torch")  # noqa: F841
-    pytest.importorskip("walrus")
+    from dpf.ai import HAS_WALRUS  # noqa: E402, I001
+
+    if not HAS_WALRUS:
+        pytest.skip("WALRUS runtime package is not available")
     _skip_if_no_checkpoint_verif()
 
     from dpf.ai.surrogate import DPFSurrogate  # noqa: E402, I001

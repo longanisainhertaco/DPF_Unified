@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from dpf.project.lifecycle import ProjectManifest
+
 
 class SimulationStatus(str, enum.Enum):
     """Lifecycle state of a simulation."""
@@ -30,6 +32,10 @@ class CreateSimulationRequest(BaseModel):
     config: dict[str, Any] = Field(..., description="Full SimulationConfig as JSON dict")
     max_steps: int | None = Field(None, ge=1, description="Optional step limit")
     preset: str | None = Field(None, description="Named preset (overrides config if set)")
+    run_mode: str | None = Field(
+        None,
+        description="Optional run-mode authority label such as first_principles_mhd",
+    )
 
 
 class SimulationInfo(BaseModel):
@@ -46,6 +52,17 @@ class SimulationInfo(BaseModel):
     max_Te: float = 0.0
     max_rho: float = 0.0
     total_radiated_energy: float = 0.0
+    validation_status: str = "not_evaluated"
+    result_classification: dict[str, Any] = Field(default_factory=dict)
+    predictive_readiness: dict[str, Any] = Field(default_factory=dict)
+    high_fidelity_readiness: dict[str, Any] = Field(default_factory=dict)
+    first_principles_mhd_readiness: dict[str, Any] = Field(default_factory=dict)
+    first_principles_energy_accounting: dict[str, Any] = Field(default_factory=dict)
+    first_principles_startup_initialization: dict[str, Any] = Field(default_factory=dict)
+    first_principles_neutron_yield_authority: dict[str, Any] = Field(default_factory=dict)
+    digitization_status: dict[str, Any] = Field(default_factory=dict)
+    readiness_scope: dict[str, Any] = Field(default_factory=dict)
+    source_blockers: list[str] = Field(default_factory=list)
     error_message: str | None = None
 
 
@@ -64,6 +81,56 @@ class PresetInfo(BaseModel):
     device: str
     geometry: str
     grid_shape: list[int]
+    source_scope: str = "not_declared"
+    source_scope_status: str = "not_validation_evidence"
+    source_scope_note: str = ""
+    validation_scope: str = ""
+
+
+class CreateProjectRequest(BaseModel):
+    """Request to create a local DPF project."""
+
+    root: str = Field(..., description="Project path relative to the projects root")
+    name: str
+    config: dict[str, Any] = Field(default_factory=dict)
+    outputs: list[str] = Field(default_factory=list)
+    run_manifests: list[str] = Field(default_factory=list)
+    validation_status: str = "not_evaluated"
+    result_classification: dict[str, Any] = Field(default_factory=dict)
+    artifact_classification: dict[str, Any] = Field(default_factory=dict)
+    logs: list[str] = Field(default_factory=list)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+class LoadProjectRequest(BaseModel):
+    """Request to load a local DPF project."""
+
+    root: str = Field(..., description="Project path relative to the projects root")
+
+
+class DuplicateProjectRequest(BaseModel):
+    """Request to duplicate a local DPF project."""
+
+    source_root: str = Field(..., description="Source path relative to the projects root")
+    destination_root: str = Field(
+        ..., description="Destination path relative to the projects root"
+    )
+    name: str | None = None
+
+
+class ArchiveProjectRequest(BaseModel):
+    """Request to archive a local DPF project."""
+
+    root: str = Field(..., description="Project path relative to the projects root")
+    reason: str = "archived"
+
+
+class ProjectInfo(BaseModel):
+    """Project lifecycle response with manifest and config snapshot."""
+
+    root: str
+    manifest: ProjectManifest
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── WebSocket message models ────────────────────────────────────────

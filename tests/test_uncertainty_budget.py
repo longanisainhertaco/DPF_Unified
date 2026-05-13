@@ -10,6 +10,10 @@ from dpf.validation.uncertainty_budget import (
 )
 
 
+def _source_uncertainty_values(component: str) -> dict[str, float]:
+    return {f"{component}_relative_sigma": 0.05}
+
+
 def test_empty_result_blocks_uncertainty_validation():
     evidence = uncertainty_evidence_from_result({})
 
@@ -90,6 +94,12 @@ def test_validation_uncertainty_coverage_lists_missing_observable_budgets():
     assert records["circuit_validation"]["has_uncertainty"] is True
     assert records["neutron_spectrum_validation"]["has_uncertainty"] is False
     assert "neutron_spectrum_validation" in coverage["missing_uncertainty_observables"]
+    tier_status = coverage["tier_uncertainty_status"]
+    assert tier_status["tier_1"]["status"] == "complete_for_present_observables"
+    assert tier_status["tier_5"]["status"] == "missing_uncertainty"
+    assert tier_status["tier_5"]["missing_uncertainty_observables"] == [
+        "neutron_spectrum_validation"
+    ]
 
 
 def test_validation_uncertainty_coverage_uses_result_level_observable_budget():
@@ -131,12 +141,36 @@ def test_uncertainty_evidence_reports_observable_coverage_without_validating_uq(
     assert evidence["passed"] is False
     assert component["status"] == "observable_coverage_present"
     assert "validation_uncertainty_coverage" in component["evidence_keys"]
+    assert evidence["tier_uncertainty_status"]["tier_5"]["status"] == (
+        "complete_for_present_observables"
+    )
 
 
-def test_uncertainty_component_evidence_supports_one_component():
+def test_uncertainty_component_evidence_requires_source_uncertainty_values():
     component = uncertainty_component_evidence(
         "input_parameter_uncertainty",
         validation_scope="unit_test_scope",
+        notes="source is cited but does not provide uncertainty values",
+    )
+    evidence = uncertainty_evidence_from_result({
+        "uncertainty_component_validation": {
+            "input_parameter_uncertainty": component,
+        },
+    })
+    item = evidence["required_components"]["input_parameter_uncertainty"]
+
+    assert component["passed"] is False
+    assert item["status"] == "absent"
+    assert "input_parameter_uncertainty" in (
+        evidence["missing_or_unvalidated_components"]
+    )
+
+
+def test_uncertainty_component_evidence_supports_one_component_with_source_values():
+    component = uncertainty_component_evidence(
+        "input_parameter_uncertainty",
+        validation_scope="unit_test_scope",
+        source_uncertainty_values={"fill_pressure_relative_sigma": 0.05},
         notes="input covariance is propagated for this scope",
     )
     evidence = uncertainty_evidence_from_result({
@@ -159,6 +193,7 @@ def test_complete_uncertainty_component_packet_can_pass_gap_gate():
         component: uncertainty_component_evidence(
             component,
             validation_scope="synthetic_complete_uq_packet",
+            source_uncertainty_values=_source_uncertainty_values(component),
         )
         for component in (
             "experimental_measurement_uncertainty",
@@ -202,6 +237,7 @@ def test_complete_uncertainty_components_must_share_validation_scope():
         components[component] = uncertainty_component_evidence(
             component,
             validation_scope=f"synthetic_uq_scope_{idx % 2}",
+            source_uncertainty_values=_source_uncertainty_values(component),
         )
 
     evidence = uncertainty_evidence_from_result({
@@ -211,6 +247,44 @@ def test_complete_uncertainty_components_must_share_validation_scope():
     assert evidence["passed"] is False
     assert evidence["same_scope_passed"] is False
     assert "same_scope_uncertainty_packet" in (
+        evidence["missing_or_unvalidated_components"]
+    )
+
+
+def test_kr_uncertainty_targets_do_not_pass_without_source_values():
+    evidence = uncertainty_evidence_from_result({
+        "kr_uncertainty_evidence": {
+            "passed": True,
+            "source": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+            "source_lines": "825-831",
+        },
+    })
+    target = evidence["required_components"]["kr_uncertainty_targets"]
+
+    assert evidence["passed"] is False
+    assert target["present"] is True
+    assert target["validated"] is False
+    assert target["status"] == "validation_absent"
+    assert "kr_uncertainty_targets" in evidence["missing_or_unvalidated_components"]
+
+
+def test_kr_uncertainty_targets_pass_only_with_explicit_source_values():
+    evidence = uncertainty_evidence_from_result({
+        "kr_uncertainty_evidence": {
+            "passed": True,
+            "source": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+            "source_lines": "825-831",
+            "source_uncertainty_values": {
+                "electron_density_relative_uncertainty": 0.30,
+            },
+        },
+    })
+    target = evidence["required_components"]["kr_uncertainty_targets"]
+
+    assert evidence["passed"] is False
+    assert target["validated"] is True
+    assert target["status"] == "supported"
+    assert "kr_uncertainty_targets" not in (
         evidence["missing_or_unvalidated_components"]
     )
 

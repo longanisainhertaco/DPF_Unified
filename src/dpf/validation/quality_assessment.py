@@ -28,6 +28,11 @@ _REQUIRED_NEUTRON_MECHANISMS = {"thermonuclear", "beam_target"}
 _REQUIRED_NEUTRON_YIELD_FEATURES = {"yield"}
 _REQUIRED_NEUTRON_SPECTRAL_FEATURES = {"spectrum"}
 _REQUIRED_NEUTRON_ANISOTROPY_FEATURES = {"anisotropy"}
+_REQUIRED_NEUTRON_DETECTOR_FEATURES = {
+    "activation_response",
+    "detector_response",
+}
+_REQUIRED_NEUTRON_UNCERTAINTY_FEATURES = {"uncertainty"}
 _RADIAL_PHASE_LABELS = {
     "radial",
     "mhd_radial",
@@ -852,6 +857,34 @@ def _neutron_validation_scope(evidence: object, fallback: str) -> str:
     )
 
 
+def _neutron_uncertainty_source_values_present(evidence: object) -> bool:
+    """Return True when neutron UQ evidence carries explicit source values."""
+    if not isinstance(evidence, dict):
+        return False
+    for key in (
+        "source_uncertainty_values",
+        "source_uncertainty",
+        "uncertainty_values",
+        "source_error_bars",
+        "source_standard_deviation",
+    ):
+        if evidence.get(key):
+            return True
+    details = evidence.get("details")
+    if isinstance(details, dict):
+        return any(
+            details.get(key)
+            for key in (
+                "source_uncertainty_values",
+                "source_uncertainty",
+                "uncertainty_values",
+                "source_error_bars",
+                "source_standard_deviation",
+            )
+        )
+    return False
+
+
 def neutron_validation_scope_closure_report(result: dict) -> dict[str, object]:
     """Report same-scope Tier-5 closure for neutron validation evidence."""
     components = {
@@ -875,6 +908,17 @@ def neutron_validation_scope_closure_report(result: dict) -> dict[str, object]:
             _REQUIRED_NEUTRON_ANISOTROPY_FEATURES,
             ("validated_features", "diagnostics"),
         ),
+        "detector_response": (
+            result.get("neutron_detector_response_validation"),
+            _REQUIRED_NEUTRON_DETECTOR_FEATURES,
+            ("validated_features", "diagnostics"),
+        ),
+        "uncertainty": (
+            result.get("neutron_uncertainty_validation")
+            or result.get("same_scope_neutron_uncertainty"),
+            _REQUIRED_NEUTRON_UNCERTAINTY_FEATURES,
+            ("validated_features", "diagnostics"),
+        ),
     }
     scopes: dict[str, dict[str, object]] = {}
 
@@ -891,16 +935,23 @@ def neutron_validation_scope_closure_report(result: dict) -> dict[str, object]:
                     "timing": False,
                     "spectrum": False,
                     "anisotropy": False,
+                    "detector_response": False,
+                    "uncertainty": False,
                 },
                 "components": [],
             },
         )
         source_authority_passed = _has_kr_source_authority(evidence, 5)
         required_covered = _covers_required(evidence, required, *fields)
+        source_uncertainty_values_passed = (
+            feature != "uncertainty"
+            or _neutron_uncertainty_source_values_present(evidence)
+        )
         contributes = (
             _evidence_passed(evidence)
             and source_authority_passed
             and required_covered
+            and source_uncertainty_values_passed
         )
         if contributes:
             covered = record["covered_features"]
@@ -913,12 +964,20 @@ def neutron_validation_scope_closure_report(result: dict) -> dict[str, object]:
             "passed": _evidence_passed(evidence),
             "source_authority_passed": source_authority_passed,
             "required_covered": required_covered,
+            "source_uncertainty_values_passed": source_uncertainty_values_passed,
             "contributes": contributes,
         })
 
     scope_reports = []
     closed_scopes = []
-    required_features = ["anisotropy", "spectrum", "timing", "yield"]
+    required_features = [
+        "anisotropy",
+        "detector_response",
+        "spectrum",
+        "timing",
+        "uncertainty",
+        "yield",
+    ]
     for scope, record in sorted(scopes.items()):
         covered = record["covered_features"]
         covered_features = (
@@ -950,7 +1009,8 @@ def neutron_validation_scope_closure_report(result: dict) -> dict[str, object]:
         "validity_notes": {
             "same_scope_rule": (
                 "Tier-5 neutron validation requires yield, timing/mechanism, "
-                "spectrum, and anisotropy evidence from the same validation scope."
+                "spectrum, anisotropy, detector/activation response, and "
+                "uncertainty evidence from the same validation scope."
             ),
             "audit_role": (
                 "This report prevents independently sourced neutron evidence "
@@ -1087,6 +1147,10 @@ def validation_tier_report(result: dict) -> list[ValidationTier]:
         or result.get("neutron_mechanism_timing_validation")
         or result.get("neutron_spectrum_validation")
         or result.get("neutron_anisotropy_validation")
+        or result.get("neutron_detector_response_validation")
+        or result.get("neutron_detector_response_validation_candidate")
+        or result.get("neutron_uncertainty_validation")
+        or result.get("same_scope_neutron_uncertainty")
     )
     neutron_yield_evidence = result.get("neutron_yield_validation")
     has_neutron_yield_validation = (
@@ -1212,9 +1276,9 @@ def validation_tier_report(result: dict) -> list[ValidationTier]:
             ),
             validation_role="estimate_until_neutron_yield_mechanism_spectrum_anisotropy_validated",
             evidence=(
-                "Same-scope neutron yield, mechanism/timing, spectrum, and anisotropy validation evidence is attached."
+                "Same-scope neutron yield, mechanism/timing, spectrum, anisotropy, detector/activation response, and uncertainty validation evidence is attached."
                 if has_neutron_validation else
-                "Neutron yield, mechanism/timing, spectrum, and anisotropy evidence are present but not same-scope complete."
+                "Neutron yield, mechanism/timing, spectrum, anisotropy, detector/activation response, and uncertainty evidence are present but not same-scope complete."
                 if (
                     has_neutron_yield_validation
                     and has_neutron_timing
@@ -1813,11 +1877,7 @@ def _neutron_same_scope_set(result: Mapping[str, object]) -> set[str]:
         report = neutron_validation_scope_closure_report(dict(result))
     if report.get("passed") is not True:
         return set()
-    neutron_scopes = _scope_set_from_sequence(report.get("closed_scopes", []))
-    detector_scopes = _passed_evidence_scope_set(
-        result.get("neutron_detector_response_validation")
-    )
-    return neutron_scopes & detector_scopes
+    return _scope_set_from_sequence(report.get("closed_scopes", []))
 
 
 def _high_fidelity_scope_alignment_report(
@@ -2324,18 +2384,20 @@ def scientific_accuracy_gap_report(result: dict | None = None) -> list[Scientifi
             area="mhd_numerical_fidelity",
             status=tier3_status,
             blocker=(
-                "Current tier-3 evidence is generic code verification; it does "
-                "not prove DPF cylindrical source terms, resistive diffusion, "
-                "circuit energy coupling, or backend parity."
+                "Current tier-3 evidence must provide finite-volume, "
+                "cylindrical, resistive, circuit-energy, backend-parity, "
+                "restart, convergence, and scope-limit packets for the "
+                "claimed MHD numerical scope."
             ),
             next_ratcheting_step=(
                 "Add cylindrical, resistive, circuit-energy, convergence, "
-                "Orszag-Tang/rotor, and backend-parity verification evidence."
+                "Orszag-Tang/rotor, backend-parity, and restart "
+                "reproducibility verification evidence."
             ),
             done_condition=(
                 "Tier-3 evidence names all required ideal/resistive MHD, "
-                "cylindrical geometry, circuit-coupling, convergence, and "
-                "backend tests with tolerances."
+                "cylindrical geometry, circuit-coupling, convergence, "
+                "backend, restart, and scope-limit tests with tolerances."
             ),
         ),
         ScientificAccuracyGap(
@@ -2358,8 +2420,9 @@ def scientific_accuracy_gap_report(result: dict | None = None) -> list[Scientifi
             area="neutron_validation",
             status=tier5_status,
             blocker=(
-                f"Tier 5 neutron yield/mechanism/timing/spectrum/anisotropy status is "
-                f"{tier_status.get(5, 'not_assessed')}; detector/activation "
+                f"Tier 5 neutron yield/mechanism/timing/spectrum/anisotropy/"
+                f"detector/uncertainty status is {tier_status.get(5, 'not_assessed')}; "
+                f"detector/activation "
                 f"response status is "
                 f"{'supported' if detector_response_supported else 'not_supported'}."
             ),
@@ -2370,8 +2433,8 @@ def scientific_accuracy_gap_report(result: dict | None = None) -> list[Scientifi
             ),
             done_condition=(
                 "Tier-5 support compares scalar yield, timing, spectrum, "
-                "anisotropy, and detector/activation observables against one "
-                "KR-backed neutron validation scope."
+                "anisotropy, detector/activation observables, and uncertainty "
+                "against one KR-backed neutron validation scope."
             ),
         ),
         ScientificAccuracyGap(

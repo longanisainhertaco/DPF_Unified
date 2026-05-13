@@ -124,7 +124,11 @@ def _step_athena(
 
     # === Step 5c: Well Exporter ===
     if self.well_interval > 0 and self.step_count % self.well_interval == 0:
-        self.well_exporter.append_state(self.state, time=self.time)
+        self.well_exporter.append_state(
+            self.state,
+            time=self.time,
+            circuit_scalars=self._current_circuit_scalars(),
+        )
 
     # Check if finished
     finished = self.time >= sim_time

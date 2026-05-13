@@ -37,6 +37,32 @@ def test_reduced_inductance_series_is_only_candidate_evidence():
         "candidate_from_inductance_derivative"
     )
     assert "L_p_nH_from_t_us" in required["dLdt_or_back_emf"]["evidence_keys"]
+    assert evidence["coupling_interval_authority"]["labels"] == ["snowplow_loaded"]
+    assert required["coupling_interval_authority"]["status"] == (
+        "incomplete_interval_authority"
+    )
+
+
+def test_density_weighted_mhd_inductance_is_not_validated_field_coupling():
+    evidence = field_coupling_evidence_from_result({
+        "t_us": [0.0, 0.1, 0.2],
+        "Lp_mhd_nH": [1.0, 1.4, 2.1],
+        "coupling_interval_authority": "density_weighted_mhd",
+    })
+    required = evidence["required_evidence"]
+
+    assert evidence["passed"] is False
+    assert required["field_derived_inductance"]["status"] == (
+        "implemented_not_validated"
+    )
+    assert required["field_derived_inductance"]["validated"] is False
+    assert "density-weighted" in required["field_derived_inductance"]["notes"]
+    assert "validated_field_coupled" not in (
+        evidence["coupling_interval_authority"]["labels"]
+    )
+    assert required["coupling_interval_authority"]["status"] == (
+        "incomplete_interval_authority"
+    )
 
 
 def test_dynamic_inductance_power_balance_is_internal_diagnostic_only():
@@ -159,6 +185,7 @@ def test_complete_field_coupling_component_packet_can_pass():
             "poynting_power_balance",
             "circuit_energy_balance",
             "handoff_transition_metadata",
+            "coupling_interval_authority",
             "kr_experimental_comparison",
         )
     }
@@ -183,6 +210,7 @@ def test_complete_field_coupling_components_must_share_validation_scope():
         "poynting_power_balance",
         "circuit_energy_balance",
         "handoff_transition_metadata",
+        "coupling_interval_authority",
         "kr_experimental_comparison",
     )
     components = {
@@ -208,6 +236,46 @@ def test_complete_field_coupling_components_must_share_validation_scope():
         evidence["missing_or_unvalidated_evidence"]
     )
     assert gaps["circuit_field_coupling"].status == "blocked"
+
+
+def test_interval_authority_distinguishes_staged_coupling_modes():
+    evidence = field_coupling_evidence_from_result({
+        "t_us": [0.0, 0.1, 0.2, 0.3],
+        "Lp_snowplow_nH": [2.0, 2.5, 3.0, 3.2],
+        "Lp_mhd_nH": [1.8, 2.7, 3.4, 3.5],
+        "coupling_alpha": [0.0, 0.25, 0.8, 1.0],
+        "field_coupling_intervals": [
+            {"authority": "snowplow_loaded", "t_start_us": 0.0, "t_end_us": 0.1},
+            {"authority": "blended", "t_start_us": 0.1, "t_end_us": 0.2},
+            {
+                "authority": "field_derived_candidate",
+                "t_start_us": 0.2,
+                "t_end_us": 0.25,
+            },
+            {
+                "authority": "validated_field_coupled",
+                "t_start_us": 0.25,
+                "t_end_us": 0.3,
+            },
+        ],
+    })
+    required = evidence["required_evidence"]
+
+    assert evidence["passed"] is False
+    assert evidence["coupling_interval_authority"]["labels"] == [
+        "blended",
+        "field_derived_candidate",
+        "snowplow_loaded",
+        "validated_field_coupled",
+    ]
+    assert evidence["coupling_interval_authority"]["missing_labels"] == []
+    assert required["coupling_interval_authority"]["status"] == (
+        "staged_not_validated"
+    )
+    assert required["coupling_interval_authority"]["validated"] is False
+    assert "coupling_interval_authority" in (
+        evidence["missing_or_unvalidated_evidence"]
+    )
 
 
 def test_mhd_poynting_and_handoff_channels_remain_unvalidated():

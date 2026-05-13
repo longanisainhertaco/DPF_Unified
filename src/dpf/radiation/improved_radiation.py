@@ -143,8 +143,9 @@ def recombination_power(
     Te_safe = np.maximum(Te, 1.0)
     ne_safe = np.maximum(ne, 0.0)
 
-    # Seaton / NRL Eq 33 SI coefficient (absorbs cgs -> SI conversion).
-    C_fb = 1.13e-37  # [W m^3 K^{1/2}]
+    # NRL Eq. 33 SI coefficient for the sqrt(chi/kT) form used below.
+    # See line_radiation.C_REC for the same derivation.
+    C_fb = 6.23241205313e-38  # [W m^3]
 
     ratio = chi / (k_B * Te_safe)
     # For very large ratio (cold plasma), clamp to avoid overflow in sqrt.
@@ -206,7 +207,7 @@ def cyclotron_power(
 
     ne_safe = np.maximum(ne, 0.0)
     Te_safe = np.maximum(Te, 0.0)
-    B_safe = np.maximum(B_mag, 0.0)
+    B_safe = np.abs(B_mag)
 
     return CYCL_COEFF_SI * B_safe**2 * ne_safe * Te_safe
 

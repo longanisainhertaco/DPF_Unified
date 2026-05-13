@@ -65,6 +65,8 @@ class ExperimentalDevice:
     lee_fm: float = 0.0       # Axial mass fraction (published Lee model fit)
     lee_fmr: float = 0.0      # Radial mass fraction (published Lee model fit)
     lee_fcr: float = 0.0      # Radial current fraction (published Lee model fit)
+    lee_fcr2: float | None = None  # Second-step radial current fraction, when published
+    lee_radial_transition_time: float | None = None  # Transition time for two-step radial fit [s]
     lee_reference: str = ""   # Reference for Lee model fit parameters
     # Experimental uncertainties (1-sigma, relative)
     # Following GUM (JCGM 100:2008) and ASME V&V 20-2009 uncertainty framework.

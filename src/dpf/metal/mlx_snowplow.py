@@ -26,6 +26,7 @@ All math is scalar Python / math module only. No numpy, no mlx.core.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 _MU0 = 4.0 * math.pi * 1e-7
 _TWO_PI = 2.0 * math.pi
@@ -34,6 +35,31 @@ _GAMMA = 5.0 / 3.0
 _D2_RMIN_OVER_A = 0.13
 _D2_ZP_OVER_A = 0.7
 _RADIAL_ZF_SEED_OVER_A = 1.0e-5
+_MLX_RADIUS_CONVENTION: dict[str, Any] = {
+    "model": "reduced_mlx_snowplow",
+    "phase_coverage": ["rundown", "radial", "pinch"],
+    "radial_inductance_radius": "r_p",
+    "radial_inductance_radius_meaning": "piston_radius",
+    "piston_radius_explicit": True,
+    "r_min_over_a": _D2_RMIN_OVER_A,
+    "r_min_scope": "reduced_deuterium_gross_boundary_without_reflected_shock",
+    "cross_backend_equivalent_to_cpu": False,
+    "full_lee_five_phase_coverage": False,
+    "validation_status": "not_validation_evidence",
+    "claim_limit": (
+        "Reduced MLX radial loading uses piston radius and a gross 0.13a "
+        "termination; do not treat it as interchangeable with CPU shock-radius "
+        "PF-1000 0.17a behavior."
+    ),
+}
+
+
+def mlx_snowplow_radius_convention() -> dict[str, Any]:
+    """Return fail-closed metadata for reduced MLX radial-radius semantics."""
+    return {
+        key: (list(value) if isinstance(value, list) else value)
+        for key, value in _MLX_RADIUS_CONVENTION.items()
+    }
 
 
 class MLXSnowplow:
@@ -155,6 +181,11 @@ class MLXSnowplow:
     @property
     def plasma_inductance(self) -> float:
         return self._L_plasma
+
+    @property
+    def radius_convention(self) -> dict[str, Any]:
+        """Metadata describing reduced MLX snowplow radial-radius semantics."""
+        return mlx_snowplow_radius_convention()
 
     # ------------------------------------------------------------------
     # Inductance formulas - Lee 2014, Eqs. (10), (18)

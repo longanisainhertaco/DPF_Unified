@@ -8,15 +8,22 @@ from pathlib import Path
 import pytest
 
 _ORIGINAL_IMPORTORSKIP = pytest.importorskip
+_OPTIONAL_IMPORT_SKIP_ROOTS = {"jax", "jaxlib", "optax"}
 
 
 def _safe_importorskip(modname: str, *args, **kwargs):
-    """Make MLX skips robust when a broken native import aborts Python."""
+    """Make optional dependency skips robust when a broken import aborts collection."""
     if modname == "mlx.core":
         from dpf.metal.mlx_device import HAS_MLX
 
         if not HAS_MLX:
             reason = kwargs.get("reason") or "MLX not available"
+            pytest.skip(reason, allow_module_level=True)
+    if modname.split(".", 1)[0] in _OPTIONAL_IMPORT_SKIP_ROOTS:
+        try:
+            return _ORIGINAL_IMPORTORSKIP(modname, *args, **kwargs)
+        except Exception as exc:
+            reason = kwargs.get("reason") or f"{modname} import failed: {exc}"
             pytest.skip(reason, allow_module_level=True)
     return _ORIGINAL_IMPORTORSKIP(modname, *args, **kwargs)
 
@@ -45,7 +52,7 @@ _ENGINE_FILES = {
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Mark MLX/Metal test files for single-worker GPU grouping."""
+    """Mark MLX/Metal groups and diagnostics evidence lanes."""
     gpu_marker = pytest.mark.xdist_group("gpu")
     engine_marker = pytest.mark.xdist_group("engine")
     for item in items:
@@ -55,6 +62,15 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         elif filename in _ENGINE_FILES:
             item.add_marker(engine_marker)
 
+        diagnostics_lane = diagnostics_test_lane_for_file(filename)
+        if diagnostics_lane is not None:
+            for marker_name in diagnostics_lane.markers:
+                item.add_marker(getattr(pytest.mark, marker_name))
+            item.user_properties.append(("diagnostics_test_lane", diagnostics_lane.lane))
+            item.user_properties.append(
+                ("diagnostics_validation_status", diagnostics_lane.validation_status),
+            )
+
 # Ensure project root is on sys.path so tests can import root-level
 # app modules (app_mhd.py, app_engine.py) that aren't part of the dpf package.
 _root = str(Path(__file__).resolve().parent.parent)
@@ -62,6 +78,7 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from dpf.config import SimulationConfig  # noqa: E402
+from dpf.diagnostics.test_lanes import diagnostics_test_lane_for_file  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Tolerance Tiers — formalized accuracy expectations by test category

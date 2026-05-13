@@ -10,6 +10,7 @@ import pytest
 mx = pytest.importorskip("mlx.core", reason="mlx not installed")
 
 from dpf.metal.mlx_transport import (  # noqa: E402, I001
+    _braginskii_kappa_perp_nrl,
     apply_resistive_diffusion,
     apply_thermal_conduction,
     thomas_solve,
@@ -18,6 +19,8 @@ from dpf.metal.mlx_transport import (  # noqa: E402, I001
 MU_0 = 4.0 * math.pi * 1e-7
 K_B = 1.380649e-23
 M_D = 3.34358377e-27
+M_E = 9.1093837015e-31
+E_CHARGE = 1.602176634e-19
 
 
 # ── Thomas Solver ───────────────────────────────────────────────
@@ -309,6 +312,60 @@ class TestThermalConduction:
         B = mx.array(np.full((nr, nz), 1.0, dtype=np.float32))
         Te_new, Ti_new = apply_thermal_conduction(Te, Ti, rho, B, 0.0, dt=1e-7, dz=0.005)
         np.testing.assert_allclose(np.asarray(Te_new), Te_np, atol=1.0)
+
+    def test_braginskii_kappa_perp_uses_nrl_high_field_coefficient(self) -> None:
+        ne = 1.0e22
+        Te_K = 1.0e6
+        B_T = 50.0
+        Te = np.full((2, 2), Te_K)
+        rho = np.full((2, 2), ne * M_D)
+        B_mag = np.full((2, 2), B_T)
+
+        actual = _braginskii_kappa_perp_nrl(Te, rho, B_mag)
+        Te_eV = Te_K * K_B / E_CHARGE
+        ne_cm3 = ne * 1.0e-6
+        lnL = 24.0 - math.log(math.sqrt(ne_cm3) * Te_eV**-1.0)
+        tau_e = 3.44e5 * Te_eV**1.5 / (ne_cm3 * lnL)
+        omega_ce = E_CHARGE * B_T / M_E
+        expected = 4.7 * ne * K_B**2 * Te_K / (M_E * omega_ce**2 * tau_e)
+
+        np.testing.assert_allclose(actual, expected, rtol=1.0e-6)
+
+    def test_anisotropic_conduction_uses_nrl_perpendicular_path(self) -> None:
+        nr, nz = 8, 1
+        dr = 0.01
+        ne = 1.0e22
+        Te_np = np.linspace(8.0e5, 1.2e6, nr, dtype=np.float32).reshape(nr, 1)
+        Te = mx.array(Te_np)
+        Ti = mx.array(Te_np.copy())
+        rho = mx.array(np.full((nr, nz), ne * M_D, dtype=np.float32))
+        B = mx.array(np.full((nr, nz), 50.0, dtype=np.float32))
+        Br = mx.array(np.zeros((nr, nz), dtype=np.float32))
+        Bz = mx.array(np.zeros((nr, nz), dtype=np.float32))
+        Bt = B
+        kappa_parallel = mx.array(np.full((nr, nz), 1.0e7, dtype=np.float32))
+
+        expected_kperp = _braginskii_kappa_perp_nrl(
+            Te_np.astype(np.float64),
+            np.full((nr, nz), ne * M_D),
+            np.full((nr, nz), 50.0),
+        )
+        fixed_ratio_kperp = np.asarray(kappa_parallel) * 1.0e-6
+        assert not np.allclose(expected_kperp, fixed_ratio_kperp)
+
+        Te_auto, _ = apply_thermal_conduction(
+            Te, Ti, rho, B, kappa_parallel,
+            dt=1.0e-7, dz=0.005, dr=dr, Br=Br, Bz=Bz, Bt=Bt,
+        )
+        Te_explicit, _ = apply_thermal_conduction(
+            Te, Ti, rho, B, kappa_parallel,
+            dt=1.0e-7, dz=0.005, dr=dr, Br=Br, Bz=Bz, Bt=Bt,
+            kappa_perpendicular=mx.array(expected_kperp.astype(np.float32)),
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(Te_auto), np.asarray(Te_explicit), rtol=1.0e-6, atol=1.0e-3
+        )
 
     def test_analytic_conduction_z(self) -> None:
         """T(z,t) = T_mean + dT * exp(-k^2*chi*t) * cos(k*z) should hold."""

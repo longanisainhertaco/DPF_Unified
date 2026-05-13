@@ -36,6 +36,10 @@ class BeamTrackerResult:
     energy_spectrum: np.ndarray  # Energy histogram [keV]
     energy_bins: np.ndarray  # Bin edges [keV]
     trajectory_count: int
+    yield_status: str = "not_requested"
+    yield_model_role: str = "engineering_estimate_not_validation"
+    equivalent_V_pinch: float = 0.0
+    yield_warning: str | None = None
 
 
 class BeamTracker:
@@ -206,19 +210,30 @@ class BeamTracker:
 
         # Beam-target yield estimate (if target density provided)
         Y_bt = 0.0
+        yield_status = "not_requested"
+        equivalent_V_pinch = 0.0
+        yield_warning: str | None = None
         if n_target > 0 and L_pinch > 0:
-            # Simple estimate: Y_bt ~ n_beam * n_target * <sigma*v> * V * tau
-            # Using Bosch-Hale at mean beam energy
+            # Match beam_target_yield_rate's Lee/Saw contract:
+            # E_lab_keV = 3.0 * V_pinch / 1000.0.
+            equivalent_V_pinch = mean_E * 1.0e3 / 3.0
+            yield_status = "engineering_estimate_not_validation"
+            yield_warning = (
+                "BeamTracker yield uses mean kinetic energy converted to "
+                "Lee/Saw V_max equivalent; engineering estimate only."
+            )
             try:
                 from dpf.diagnostics.beam_target import beam_target_yield_rate
-                V_pinch = mean_E * 1e3 * 1.602e-19  # Convert to Joules
+
                 I_equiv = 1e6  # Placeholder
                 bt_rate = beam_target_yield_rate(
-                    I_equiv, V_pinch, n_target, L_pinch, f_beam=0.14,
+                    I_equiv, equivalent_V_pinch, n_target, L_pinch, f_beam=0.14,
                 )
                 Y_bt = bt_rate * 1e-7  # rough confinement time
-            except (ImportError, Exception):
-                pass
+            except Exception as exc:
+                Y_bt = 0.0
+                yield_status = "failed"
+                yield_warning = f"{type(exc).__name__}: {exc}"
 
         return BeamTrackerResult(
             n_particles=n_alive,
@@ -228,4 +243,7 @@ class BeamTracker:
             energy_spectrum=hist.astype(float),
             energy_bins=edges,
             trajectory_count=self.n_particles,
+            yield_status=yield_status,
+            equivalent_V_pinch=equivalent_V_pinch,
+            yield_warning=yield_warning,
         )

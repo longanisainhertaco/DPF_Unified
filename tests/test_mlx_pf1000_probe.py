@@ -1,26 +1,43 @@
-"""Temporary PF-1000 MLX stepping probe.
+"""Opt-in PF-1000 MLX endurance/regression stepping probe.
 
-This file is intentionally narrow and is used only while troubleshooting the
-PF-1000 full-discharge gate. Remove it once the native failure is isolated or
-converted into a permanent regression test.
+This file is intentionally narrow and is used for runtime/endurance evidence,
+not for scientific acceptance. Set ``DPF_MLX_RUN_ENDURANCE=1`` to execute it.
+Scientific PF-1000 gates stay in ``tests/test_mlx_pf1000.py`` as source-blocked
+xfails until S1/S2 same-scope waveform evidence is accepted.
 """
 
 from __future__ import annotations
 
 import os
-from types import MethodType
 
 import numpy as np
 import pytest
 
-mlx = pytest.importorskip("mlx.core", reason="MLX not installed")
+_ENDURANCE_OPT_IN_ENV = "DPF_MLX_RUN_ENDURANCE"
+_ENDURANCE_OPT_IN = os.environ.get(_ENDURANCE_OPT_IN_ENV) == "1"
+_ENDURANCE_POLICY = {
+    "lane": "endurance_regression",
+    "scientific_status": "non_scientific",
+    "source_status": "s1_s2_source_closure_blocked",
+    "opt_in_env": _ENDURANCE_OPT_IN_ENV,
+}
 
-from dpf.config import SimulationConfig
-from dpf.engine import SimulationEngine
-from dpf.metal.mlx_device import HAS_MLX
-from dpf.presets import get_preset
+if not _ENDURANCE_OPT_IN:
+    pytestmark = pytest.mark.skip(
+        reason=f"PF-1000 endurance probe is opt-in; set {_ENDURANCE_OPT_IN_ENV}=1"
+    )
+    mlx = None
+    HAS_MLX = False
+    _METAL_GPU_AVAILABLE = False
+else:
+    mlx = pytest.importorskip("mlx.core", reason="MLX not installed")
 
-_METAL_GPU_AVAILABLE = HAS_MLX and (mlx.default_device().type == mlx.gpu)
+    from dpf.config import SimulationConfig
+    from dpf.engine import SimulationEngine
+    from dpf.metal.mlx_device import HAS_MLX
+    from dpf.presets import get_preset
+
+    _METAL_GPU_AVAILABLE = HAS_MLX and (mlx.default_device().type == mlx.gpu)
 
 
 def _make_pf1000_mlx_engine() -> SimulationEngine:
@@ -38,7 +55,24 @@ def _make_pf1000_mlx_engine() -> SimulationEngine:
     preset["sim_time"] = 12e-6
     preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
     preset["collision"] = {"enabled": False}
+    preset["nan_check_stride"] = 1
+    preset["fail_fast_on_nonfinite"] = True
     return SimulationEngine(SimulationConfig(**preset))
+
+
+def _memory_fields() -> list[str]:
+    if mlx is None:
+        return ["mlx_memory_unavailable=1"]
+    fields: list[str] = []
+    for attr, label in (
+        ("get_active_memory", "mlx_active_MB"),
+        ("get_cache_memory", "mlx_cache_MB"),
+        ("get_peak_memory", "mlx_peak_MB"),
+    ):
+        getter = getattr(mlx, attr, None)
+        if getter is not None:
+            fields.append(f"{label}={float(getter()) / 1e6:.3f}")
+    return fields or ["mlx_memory_unavailable=1"]
 
 
 @pytest.mark.skipif(not _METAL_GPU_AVAILABLE, reason="Metal GPU not available")
@@ -51,29 +85,20 @@ def test_pf1000_mlx_probe_steps() -> None:
     print_start = int(os.environ.get("DPF_MLX_PROBE_PRINT_START", str(target_steps + 1)))
     print_start_interval = int(os.environ.get("DPF_MLX_PROBE_PRINT_START_INTERVAL", "1"))
     clear_cache_interval = int(os.environ.get("DPF_MLX_PROBE_CLEAR_CACHE_INTERVAL", "0"))
-    memory_telemetry = os.environ.get("DPF_MLX_PROBE_MEMORY", "0") == "1"
+    memory_telemetry = True
     if memory_telemetry and hasattr(mlx, "reset_peak_memory"):
         mlx.reset_peak_memory()
     engine = _make_pf1000_mlx_engine()
-    engine._nan_check_stride = 1
-
-    def _fail_on_nonfinite(self: SimulationEngine, label: str) -> int:
-        for key, arr in self.state.items():
-            if not isinstance(arr, np.ndarray):
-                continue
-            bad = ~np.isfinite(arr)
-            count = int(np.sum(bad))
-            if count:
-                first = tuple(int(i) for i in np.argwhere(bad)[0])
-                value = arr[first]
-                raise AssertionError(
-                    f"{label}: {count} non-finite value(s) in {key}; "
-                    f"first={first}, value={value}, step={self.step_count}, "
-                    f"t={self.time * 1e6:.6f} us"
-                )
-        return 0
-
-    engine._sanitize_state = MethodType(_fail_on_nonfinite, engine)
+    print(
+        "policy",
+        *[f"{key}={value}" for key, value in _ENDURANCE_POLICY.items()],
+        f"target_us={(target_s * 1e6) if target_s is not None else -1.0:.6f}",
+        f"cap_steps={target_steps}",
+        "memory_telemetry=1",
+        "nan_check_stride=1",
+        "fail_fast_on_nonfinite=1",
+        flush=True,
+    )
 
     for step in range(target_steps):
         dt_fluid_before = float(engine.fluid._compute_dt(engine.state))
@@ -112,16 +137,6 @@ def test_pf1000_mlx_probe_steps() -> None:
             or (target_s is not None and engine.time >= target_s)
             or result.finished
         ):
-            memory_fields: list[str] = []
-            if memory_telemetry:
-                for attr, label in (
-                    ("get_active_memory", "mlx_active_MB"),
-                    ("get_cache_memory", "mlx_cache_MB"),
-                    ("get_peak_memory", "mlx_peak_MB"),
-                ):
-                    getter = getattr(mlx, attr, None)
-                    if getter is not None:
-                        memory_fields.append(f"{label}={float(getter()) / 1e6:.3f}")
             print(
                 "probe",
                 f"step={step + 1}",
@@ -142,7 +157,7 @@ def test_pf1000_mlx_probe_steps() -> None:
                 f"min_rho={min_rho:.6e}",
                 f"min_p={min_p:.6e}",
                 f"max_B={max_b:.6e}",
-                *memory_fields,
+                *_memory_fields(),
                 flush=True,
             )
         assert np.all(np.isfinite(rho)), (
@@ -163,6 +178,21 @@ def test_pf1000_mlx_probe_steps() -> None:
                 clear_cache()
         if result.finished or (target_s is not None and engine.time >= target_s):
             break
+    cap_exhausted = target_s is not None and engine.time < target_s
+    result_status = "CAP_EXHAUSTED" if cap_exhausted else "PASSED"
+    print(
+        "endurance_result",
+        f"status={result_status}",
+        f"scientific_status={_ENDURANCE_POLICY['scientific_status']}",
+        f"source_status={_ENDURANCE_POLICY['source_status']}",
+        f"target_us={(target_s * 1e6) if target_s is not None else -1.0:.6f}",
+        f"cap_steps={target_steps}",
+        f"steps={engine.step_count}",
+        f"final_t_us={engine.time * 1e6:.6f}",
+        f"cap_exhausted={int(cap_exhausted)}",
+        *_memory_fields(),
+        flush=True,
+    )
     if target_s is not None:
         assert engine.time >= target_s, (
             f"target time {target_s * 1e6:.6f} us not reached within "

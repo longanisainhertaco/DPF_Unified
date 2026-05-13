@@ -1,0 +1,63 @@
+{
+  "date": "2026-05-11",
+  "applied": true,
+  "page_threshold": 120,
+  "chunk_pages": 25,
+  "only_stems": [
+    "toro2009-433cd861"
+  ],
+  "chunked_count": 1,
+  "skipped_count": 0,
+  "failed_count": 0,
+  "chunked": [
+    {
+      "markdown": "KnowledgeReference/toro2009-433cd861.md",
+      "json": "KnowledgeReference/toro2009-433cd861.json",
+      "title": "toro2009",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/toro2009.pdf",
+      "source_pdf_sha256": "433cd86174534f8d28702a173c247f29b0028c8153526b2282951ba9c458405e",
+      "page_count": 738,
+      "chunk_count": 30,
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0001-0025.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0026-0050.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0051-0075.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0076-0100.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0101-0125.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0126-0150.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0151-0175.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0176-0200.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0201-0225.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0226-0250.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0251-0275.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0276-0300.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0301-0325.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0326-0350.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0351-0375.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0376-0400.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0401-0425.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0426-0450.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0451-0475.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0476-0500.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0501-0525.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0526-0550.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0551-0575.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0576-0600.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0601-0625.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0626-0650.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0651-0675.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0676-0700.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0701-0725.md",
+        "KnowledgeReference/chunks/toro2009-433cd861/pages-0726-0738.md"
+      ],
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      }
+    }
+  ],
+  "skipped": [],
+  "failed": [],
+  "notes": "Chunking rewrites book-length top-level markdown as an index and stores full extracted text in page-range markdown chunks. It does not accept figures, tables, plotted curves, numeric targets, or validation claims."
+}

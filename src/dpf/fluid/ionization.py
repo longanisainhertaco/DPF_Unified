@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import numpy as np
 
+_NRL_BREMS_COEFF_SI_EV = 1.69e-38
+
 
 def coronal_z_eff(
     Te_eV: np.ndarray | float,
@@ -124,7 +126,7 @@ def coronal_radiation_power(
 
     P_total = P_brems * f_line(Te)
 
-    where P_brems = C_brems * ne^2 * Z_eff^2 * sqrt(Te) [W/m^3]
+    where P_brems = C_brems * ne^2 * Z_eff * sqrt(Te) [W/m^3]
     and f_line is a line-radiation enhancement factor from Post 1977 Fig. 1.
 
     Args:
@@ -137,13 +139,15 @@ def coronal_radiation_power(
     """
     Te = np.maximum(Te_eV, 0.1)
 
-    # Bremsstrahlung: P_ff = 1.69e-32 * ne_cgs^2 * Z_eff^2 * sqrt(Te_eV)  [erg/cm^3/s]
-    # NRL Formulary 2019 p.58, Eq.30 (CGS, ne in cm^-3, Te in eV, includes g_bar~1.2).
-    # Converts to SI via: 1 erg/cm^3/s = 0.1 W/m^3.
-    # EMPIRICAL: gaunt factor g_ff = 1.2 folded into coefficient
-    ne_cgs = ne * 1.0e-6  # m^-3 -> cm^-3
-    P_brems_cgs = 1.69e-32 * ne_cgs**2 * Z_eff**2 * np.sqrt(Te)  # erg/cm^3/s
-    P_brems = P_brems_cgs * 1.0e-1  # erg/cm^3/s -> W/m^3  (1 erg/cm^3 = 0.1 J/m^3)
+    # NRL Plasma Formulary Eq. 30:
+    #   P_Br = 1.69e-32 * Ne * Te_eV^0.5 * sum_Z[Z^2 N(Z)]  [W/cm^3]
+    # For a quasi-neutral single effective charge state,
+    #   sum_Z[Z^2 N(Z)] = Z_eff * Ne.
+    # SI conversion with ne in m^-3 and Te in eV:
+    #   1.69e-32 * 1e-12 * 1e6 = 1.69e-38.
+    ne_safe = np.maximum(ne, 0.0)
+    Z_eff_safe = np.maximum(Z_eff, 0.0)
+    P_brems = _NRL_BREMS_COEFF_SI_EV * ne_safe**2 * Z_eff_safe * np.sqrt(Te)
 
     # Line radiation enhancement factor over bremsstrahlung
     # From Post 1977 Fig. 1: for Cu, line radiation exceeds bremsstrahlung

@@ -7,10 +7,11 @@ Scholz et al. (2006) experimental data.
 This is the P0 highest-impact action from PhD Debate #11: validating the
 production circuit solver against experiment.  Key findings:
 
-- RLCSolver (implicit midpoint) matches LeeModel (RK45 solve_ivp) to <0.1%
-- NRMSE = 0.1329 vs Scholz at 0.7 us liftoff delay
-- Peak current error = 0.2% (1.867 vs 1.87 MA)
-- fc^2/fm = 2.374 (degeneracy ratio, the only uniquely determined parameter)
+- RLCSolver (implicit midpoint) exercises the production circuit path.
+- Standard PF-1000 27 kV validation must use the Lee/Malek bank and geometry
+  scope; Akel 16 kV shot-series values belong to the separate PF-1000-16kV
+  source scope.
+- fc^2/fm = 3.769 for the Malek 2025 PF-1000 fit.
 
 Usage::
 
@@ -87,6 +88,7 @@ def run_rlc_snowplow_pf1000(
     fc: float = 0.70,
     fm: float = 0.13,
     f_mr: float = 0.35,
+    radial_current_fraction: float = 0.65,
     pinch_column_fraction: float = 0.14,
     liftoff_delay: float = 0.7e-6,
     crowbar_enabled: bool = True,
@@ -111,9 +113,11 @@ def run_rlc_snowplow_pf1000(
         f_mr: Radial mass fraction (Lee's f_mr).  Default 0.35 from
             Malek et al. 2025 PF1000 fit (previous default 0.1 came from
             the generic "Lee & Saw 2014" reference without in-paper citation).
+        radial_current_fraction: Radial current fraction (Lee's f_cr).
+            Default 0.65 from Malek et al. 2025 PF1000 current-waveform fit.
         pinch_column_fraction: Fraction of anode length for radial phase.
-            For PF-1000: 0.14 (effective pinch column ~67 mm of 480 mm
-            anode per Akel 2021). This controls the current dip depth
+            For standard PF-1000: 0.14 (effective pinch column ~84 mm of
+            the 600 mm Lee/Malek anode). This controls the current dip depth
             via radial inductance.
         liftoff_delay: Insulator flashover delay [s]. Default 0.7 us.
         crowbar_enabled: Enable crowbar at V_cap zero crossing. Default True.
@@ -125,26 +129,22 @@ def run_rlc_snowplow_pf1000(
     from dpf.core.bases import CouplingState
     from dpf.fluid.snowplow import SnowplowModel
 
-    # PF-1000 device parameters.
-    # Sources (paper-on-disk):
-    #   Akel et al. 2021, "Estimating the Neutron Yield in PF-1000 ...,"
-    #     references/papers/core-dpf/akel-2021-pf1000-neutron-yield.pdf
-    #     - p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"
-    #     - p.2: "Bank: L0 = 25 nH, C0 = 1332 mu F, r0 = 6.1 m Ohm"
-    #     - Table 1 (23 shots): L0 = 25.0 nH consistently.
-    #   Scholz et al. 2006, Nukleonika 51(1):79-84,
-    #     references/papers/core-dpf/scholz-2006-pf1000-mega-joule.pdf
-    #     gives the operating point: V0 = 27 kV at p0 = 3.5 Torr D2.
-    # Previous values L0 = 33.5 nH and z_max = 0.60 m did not match the
-    # device geometry reported by either source (P1.3 source-of-truth
-    # unification; aligns with EPSILON FIX-E1 in experimental_devices.py).
-    C = 1.332e-3        # F  (Akel 2021 Bank, "C0 = 1332 mu F")
+    # Standard PF-1000 27 kV device parameters.
+    # Sources (KnowledgeReference/):
+    #   plasma-physics-and-technology-1211-9-2025.md lines 171-182, 255-261:
+    #     L0=33.5 nH, C0=1332 uF, r0=6.1 mOhm; fc=0.7, fm=0.13,
+    #     fmr=0.35, fcr=0.65 fitted at 3.5 Torr D2.
+    #   a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-
+    #     part-1-basic-course.md lines 2199-2207 and 14500-14508:
+    #     L0=33-33.5 nH, r0=6-6.3 mOhm, a=11.55 cm, b=16 cm, z0=60 cm.
+    # Akel 16 kV/shot-series parameters remain isolated in PF-1000-16kV.
+    C = 1.332e-3        # F
     V0 = 27e3           # V  (Scholz 2006 operating point)
-    L0 = 25e-9          # H  (Akel 2021 Bank, "L0 = 25 nH"; was 33.5e-9)
-    R0 = 2.3e-3         # Ohm — 2.3 mOhm bare-bank (Scholz 2006 short-circuit). Wave-10 RCA: 6.1 mOhm conflates plasma + bank R; plasma enters via sheath model.
-    a = 0.115           # anode radius [m]  (Akel 2021 anode dia 231 mm -> r=115.5 mm)
+    L0 = 33.5e-9        # H
+    R0 = 6.1e-3         # Ohm
+    a = 0.1155          # anode radius [m]
     b = 0.16            # cathode radius [m]
-    z_max = 0.48        # anode length [m]  (Akel 2021 "480 mm"; was 0.60)
+    z_max = 0.60        # anode length [m]
     p_torr = 3.5        # Torr D2 (Scholz 2006 operating point)
 
     # Fill density from ideal gas law
@@ -167,6 +167,7 @@ def run_rlc_snowplow_pf1000(
         mass_fraction=fm,
         current_fraction=fc,
         radial_mass_fraction=f_mr,
+        radial_current_fraction=radial_current_fraction,
         fill_pressure_Pa=p_Pa,
         pinch_column_fraction=pinch_column_fraction,
     )
@@ -214,6 +215,7 @@ def run_rlc_snowplow_pf1000(
         "energy_conservation": circuit.total_energy() / max(E_stored, 1e-30),
         "fc": fc,
         "fm": fm,
+        "fcr": radial_current_fraction,
         "fc2_over_fm": fc**2 / fm,
         "liftoff_delay": liftoff_delay,
         "crowbar_enabled": crowbar_enabled,

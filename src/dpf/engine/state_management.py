@@ -26,6 +26,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _format_nonfinite_value(value: object) -> str:
+    """Return a stable string for JSON-safe first-failure evidence."""
+    try:
+        return repr(float(value))
+    except (TypeError, ValueError):
+        return repr(value)
+
+
 def save_checkpoint(self, filename: str | None = None) -> None:
     """Save current simulation state to an HDF5 checkpoint file.
 
@@ -117,13 +125,14 @@ def _sanitize_state(self, label: str) -> int:
         RuntimeError: If cumulative repairs exceed 10000, indicating solver
             instability rather than benign boundary artifacts.
     """
-    total_repaired = 0
     floors = {
         "rho": 1e-20,
         "pressure": 1e-20,
         "Te": 1.0,
         "Ti": 1.0,
     }
+    field_events: list[dict[str, object]] = []
+    total_repaired = 0
     for key, arr in self.state.items():
         if not isinstance(arr, np.ndarray):
             continue
@@ -131,19 +140,67 @@ def _sanitize_state(self, label: str) -> int:
         count = int(np.sum(bad))
         if count > 0:
             floor = floors.get(key, 0.0)
-            arr[bad] = floor
             total_repaired += count
+            first_index = tuple(int(i) for i in np.argwhere(bad)[0])
+            field_events.append(
+                {
+                    "field": key,
+                    "count": count,
+                    "first_index": list(first_index),
+                    "first_value": _format_nonfinite_value(arr[first_index]),
+                    "replacement": floor,
+                }
+            )
+
+    if total_repaired <= 0:
+        return 0
+
+    event = {
+        "label": label,
+        "step": int(getattr(self, "step_count", -1)),
+        "time_s": float(getattr(self, "time", 0.0)),
+        "total_repaired": total_repaired,
+        "fields": field_events,
+    }
+    if getattr(self, "_first_nonfinite_event", None) is None:
+        self._first_nonfinite_event = event
+    self._last_nonfinite_event = event
+    history = getattr(self, "_nonfinite_repair_events", None)
+    if history is not None:
+        history.append(event)
+        limit = int(getattr(self, "_nonfinite_event_history_limit", 16))
+        if len(history) > limit:
+            del history[:-limit]
+
+    if getattr(self, "_fail_fast_on_nonfinite", False):
+        first = field_events[0]
+        raise RuntimeError(
+            f"Non-finite state detected before repair: {label}: "
+            f"{total_repaired} value(s); first field={first['field']}, "
+            f"first_index={first['first_index']}, first_value={first['first_value']}, "
+            f"step={event['step']}, t={event['time_s']:.6e} s"
+        )
+
+    for item in field_events:
+        key = str(item["field"])
+        arr = self.state[key]
+        bad = ~np.isfinite(arr)
+        if np.any(bad):
+            floor = float(item["replacement"])
+            arr[bad] = floor
             logger.warning(
                 "%s: %d non-finite values in '%s', replaced with %.1e",
-                label, count, key, floor,
+                label, item["count"], key, floor,
             )
-    if total_repaired > 0:
-        self._cumulative_repairs = getattr(self, "_cumulative_repairs", 0) + total_repaired
-        if self._cumulative_repairs > 10000:
-            raise RuntimeError(
-                f"Solver instability: {self._cumulative_repairs} cumulative NaN/Inf "
-                f"repairs. Latest: {total_repaired} in '{label}'."
-            )
+
+    self._cumulative_repairs = getattr(self, "_cumulative_repairs", 0) + total_repaired
+    repair_limit = int(getattr(self, "_nonfinite_repair_limit", 10000))
+    if self._cumulative_repairs > repair_limit:
+        raise RuntimeError(
+            f"Solver instability: {self._cumulative_repairs} cumulative NaN/Inf "
+            f"repairs exceed limit {repair_limit}. Latest: {total_repaired} "
+            f"in '{label}'. First event: {self._first_nonfinite_event}."
+        )
     return total_repaired
 
 
@@ -234,7 +291,11 @@ def _step_diagnostics_and_yield(self, dt: float, Z_bar: float) -> float:
 
     # Step 5c: Well Exporter
     if self.well_interval > 0 and self.step_count % self.well_interval == 0:
-        self.well_exporter.append_state(self.state, time=self.time)
+        self.well_exporter.append_state(
+            self.state,
+            time=self.time,
+            circuit_scalars=self._current_circuit_scalars(),
+        )
 
     # Step 5c: Synthetic interferometry (cylindrical only)
     if self.geometry_type == "cylindrical":

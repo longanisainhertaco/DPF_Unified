@@ -204,10 +204,8 @@ def _geometric_sources(
 ) -> mx.array:
     """Compute cylindrical geometric source terms.
 
-    S_mr = (rho*vt^2 - Bt^2) / r     [centrifugal + hoop stress]
-    S_mt = -2*(rho*vr*vt - Br*Bt) / r [Coriolis + tension]
-
-    These are velocity-space sources; energy source is v dot S.
+    S_mr = (p_total + rho*vt^2 - Bt^2) / r  [r-weighted FV source]
+    S_mt = -(rho*vr*vt - Br*Bt) / r         [azimuthal-vector source]
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz).
@@ -223,19 +221,22 @@ def _geometric_sources(
     vr = U[IMR] * inv_rho
     vt = U[IMT] * inv_rho
     Br = U[IBR]
+    Bz = U[IBZ]
     Bt = U[IBT]
+    B_sq = Br * Br + Bz * Bz + Bt * Bt
+    v_sq = vr * vr + (U[IMZ] * inv_rho) ** 2 + vt * vt
+    p = mx.maximum((gamma - 1.0) * (U[IEN] - 0.5 * rho * v_sq - 0.5 * B_sq), P_FLOOR)
+    p_total = p + 0.5 * B_sq
 
     inv_r = grid.inv_r[:, None]  # (nr, 1) broadcast over z
 
     # Momentum sources (in momentum units, i.e. rho * a)
-    S_mr = (rho * vt * vt - Bt * Bt) * inv_r
-    S_mt = -2.0 * (rho * vr * vt - Br * Bt) * inv_r
-    S_E = vr * S_mr + vt * S_mt
+    S_mr = (p_total + rho * vt * vt - Bt * Bt) * inv_r
+    S_mt = -(rho * vr * vt - Br * Bt) * inv_r
 
     rows = [mx.zeros_like(rho)] * NVAR
     rows[IMR] = S_mr
     rows[IMT] = S_mt
-    rows[IEN] = S_E
 
     return mx.stack(rows, axis=0)
 
@@ -364,52 +365,29 @@ def _apply_floors(
     rho_vac_fraction: float = 1e-4,
     va_max: float = 1e6,
 ) -> mx.array:
-    """Enforce density, pressure, and vacuum B-field floors.
+    """Enforce minimal density, pressure, and entropy floors.
 
-    Clamps rho >= RHO_FLOOR. In vacuum cells (rho < rho_vac_fraction *
-    rho_max), scale B so that the Alfven speed v_A = |B|/sqrt(rho) stays
-    below va_max. Without this, vacuum cells behind the compression sheath
-    accumulate extreme B_theta from electrode BCs and geometric source
-    amplification, causing B to grow by 10+ orders in a single step.
+    This helper must not inject density in low-density, high-field cells. The
+    MLX timestepper relies on Boris-corrected wave speeds and velocity limiting
+    for vacuum stability; density changes here are limited to the numerical
+    ``RHO_FLOOR``.
 
     Args:
         U: Conserved state, shape (NVAR, nr, nz).
-        rho_vac_fraction: Fraction of max density below which a cell is
-            considered vacuum (default 1e-4).
-        va_max: Maximum allowed Alfven speed in vacuum cells [m/s].
+        rho_vac_fraction: Retained for backward-compatible callers; ignored.
+        va_max: Retained for backward-compatible callers; ignored.
 
     Returns:
         U with floors applied, same shape.
     """
-    # Enforce scalar floors on density and entropy tracer.
-    rho_floored = mx.maximum(U[IDN : IDN + 1], RHO_FLOOR)
-    isr_floored = mx.maximum(U[ISR : ISR + 1], 0.0)
+    _ = rho_vac_fraction, va_max
 
-    # Alfven-speed limited density floor: prevent runaway wavespeeds in
-    # vacuum cells behind the compression sheath. Instead of clamping B
-    # (which loses physics information), inject mass so that v_A stays
-    # below va_max. This is equivalent to the "density injection" approach
-    # used by Athena++ (athena4.2/src/hydro/srcterms/gravitational_acceleration.cpp)
-    # and FLASH (Grid_markRefineDerefine).
-    #
-    # rho_min = B^2 / va_max^2 ensures v_A = |B|/sqrt(rho) <= va_max.
-    # Applied at EVERY floor call (pre-RHS and post-stage) so that flux
-    # computations never see extreme wavespeeds.
-    Br = U[IBR]
-    Bz = U[IBZ]
-    Bt = U[IBT]
-    B_sq = Br * Br + Bz * Bz + Bt * Bt
-    rho_B_floor = B_sq / (va_max * va_max)
-    rho_old = rho_floored[0]
-    rho_new = mx.maximum(rho_old, rho_B_floor)
-    # Only inject mass where rho actually increased (energy bookkeeping)
-    drho = rho_new - rho_old
-    # Injected mass gets thermal energy at local temperature
-    # (or just the floor — we pick floor to avoid computing T)
-    E_new = mx.maximum(
-        U[IEN] + P_FLOOR / (5.0 / 3.0 - 1.0) * drho / mx.maximum(rho_old, RHO_FLOOR),
-        P_FLOOR,
+    rho_new = mx.maximum(
+        mx.where(mx.isfinite(U[IDN]), U[IDN], RHO_FLOOR),
+        RHO_FLOOR,
     )
+    isr_floored = mx.maximum(mx.where(mx.isfinite(U[ISR]), U[ISR], 0.0), 0.0)
+    E_new = mx.maximum(mx.where(mx.isfinite(U[IEN]), U[IEN], P_FLOOR), P_FLOOR)
 
     # Rebuild conserved state. Modified slots: IDN=0, IEN=4, ISR=5.
     # Actual slot order: IDN=0, IMR=1, IMZ=2, IMT=3, IEN=4, ISR=5, IBR=6, IBZ=7, IBT=8, IEE=9
@@ -418,8 +396,8 @@ def _apply_floors(
         [
             rho_new[None],  # IDN=0 — density with both floors applied
             U[IMR:IEN],     # IMR=1, IMZ=2, IMT=3 — unchanged
-            E_new[None],    # IEN=4 — updated for mass injection
-            isr_floored,    # ISR=5 — entropy tracer floor
+            E_new[None],    # IEN=4 — energy floor only
+            isr_floored[None],  # ISR=5 — entropy tracer floor
             U[IBR:],        # IBR=6, IBZ=7, IBT=8, IEE=9 — unchanged
         ],
         axis=0,

@@ -53,12 +53,12 @@ _UNU_ICTP_WAVEFORM_I_KA = np.array([
 # SYNTHETIC — PF-1000 at 16 kV reconstructed waveform
 # Source paper: Akel et al., Radiat. Phys. Chem. 188:109633, 2021
 # Same device (IPPLM Warsaw), different operating conditions:
-#   V0 = 16 kV (vs 27 kV), fill pressure = 1.05 Torr D2 (vs 3.5 Torr)
+#   V0 = 16 kV (vs 27 kV), fill pressure = 1.20 Torr D2 (vs 3.5 Torr)
 # Reconstructed from physics scaling of 27 kV Scholz waveform, rescaled to
 # Akel's published peak I_peak = 1.165 MA (shot 12581, Table 1: Ipeak = 1165 kA).
 # Previous version used I_peak = 1.20 MA (3% too high, no paper match).
 # Array rescaled by 1.165/1.20 = 0.9708333 to match Akel Table 1 verbatim.
-# NOTE: Replace with actual digitized data from Akel (2021) Fig. 3 when available.
+# NOTE: Replace with accepted digitized data from Akel (2021) Fig. 1 when available.
 # =====================================================================
 
 _PF1000_16KV_WAVEFORM_T_US = np.array([

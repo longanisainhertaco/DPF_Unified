@@ -141,8 +141,12 @@ def format_validation_markdown(val: dict[str, Any] | None) -> str:
 
     lines = [
         "---",
-        f"**Validation vs. Published Data**{reliability_badge}",
+        f"**Engineering Comparison vs. Published Data**{reliability_badge}",
         f"*{val['source']}*",
+        "",
+        "> Source authority: these grades are preview comparison metrics. "
+        "Reference validation requires accepted local KnowledgeReference evidence "
+        "and same-scope validation packets.",
         "",
         "| Quantity | Simulation | Published | Deviation |",
         "|----------|-----------|-----------|-----------|",

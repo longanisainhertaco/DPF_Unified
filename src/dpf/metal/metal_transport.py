@@ -258,9 +258,9 @@ def braginskii_kappa_mps(
     kappa_par = 3.16 * ne_safe * K_B**2 * Te_safe * tau_e / M_E
     kappa_par = torch.where(torch.isfinite(kappa_par), kappa_par, torch.zeros_like(kappa_par))
 
-    # kappa_perp = 4.66 * ne * kB^2 * Te / (m_e * omega_ce^2 * tau_e)
+    # NRL high-field limit: kappa_perp = 4.7 * ne * kB^2 * Te / (m_e * omega_ce^2 * tau_e)
     omega_ce = E_CHARGE * B_safe / M_E
-    kappa_perp = 4.66 * ne_safe * K_B**2 * Te_safe / (
+    kappa_perp = 4.7 * ne_safe * K_B**2 * Te_safe / (
         M_E * torch.clamp(omega_ce**2 * tau_e, min=1e-30)
     )
     kappa_perp = torch.minimum(kappa_perp, kappa_par)

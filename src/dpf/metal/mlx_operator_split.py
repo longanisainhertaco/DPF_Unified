@@ -204,6 +204,7 @@ def do_thermal_conduction(
         dr=grid.dr,
         Br=Br, Bz=Bz, Bt=Bt,
         anisotropic=True,
+        ion_mass=ion_mass,
     )
 
     T_avg = 0.5 * (Te_new + Ti_new)

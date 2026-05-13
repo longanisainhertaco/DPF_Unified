@@ -25,7 +25,11 @@ from typing import Any
 import numpy as np
 
 from dpf.atomic.ionization import saha_ionization_fraction_array
-from dpf.circuit.coupler import CircuitCoupler, FeedbackResult
+from dpf.circuit.coupler import (
+    CircuitCoupler,
+    FeedbackResult,
+    circuit_coupler_authority,
+)
 from dpf.circuit.rlc_solver import RLCSolver
 from dpf.collision.spitzer import coulomb_log, spitzer_resistivity
 from dpf.config import SimulationConfig
@@ -34,7 +38,10 @@ from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
 
 # FieldManager (Phase 5)
+from dpf.engine.backend_capabilities import backend_feature_diagnostics
 from dpf.core.field_manager import FieldManager
+from dpf.engine.memory_preflight import run_memory_preflight
+from dpf.engine.runtime_telemetry import RuntimeMemoryTelemetry
 from dpf.diagnostics.energy_balance import EnergyTracker
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.yield_tracker import YieldTracker
@@ -110,6 +117,20 @@ class SimulationEngine:
 
         # Backend selection: "python", "athena", "athenak", "metal", "hybrid", or "auto"
         self.backend = self._resolve_backend(fc.backend)
+        self.memory_preflight = None
+        self.runtime_memory_telemetry: RuntimeMemoryTelemetry | None = None
+        if config.diagnostics.memory_preflight_enabled:
+            self.memory_preflight = run_memory_preflight(config, self.backend)
+            if not self.memory_preflight.passed:
+                raise MemoryError(
+                    "Memory preflight blocked launch: "
+                    f"projected={self.memory_preflight.projected_bytes} bytes, "
+                    f"limit={self.memory_preflight.limit_bytes} bytes "
+                    f"({self.memory_preflight.limit_fraction:.0%} of available). "
+                    "Set diagnostics.allow_memory_overcommit=true to override."
+                )
+            if self.memory_preflight.override:
+                logger.warning("Memory preflight overcommit: %s", self.memory_preflight.reason)
 
         if self.backend == "hybrid":
             # Hybrid: Athena++ for physics phase, WALRUS surrogate for acceleration
@@ -196,6 +217,12 @@ class SimulationEngine:
                 convert_b_si_to_hl=self.geometry_type == "cylindrical",
                 ion_mass=self.ion_mass,
                 enable_bremsstrahlung=getattr(config.radiation, "bremsstrahlung_enabled", False),
+                gaunt_factor=getattr(config.radiation, "gaunt_factor", 1.2),
+                enable_hall=fc.enable_hall,
+                enable_braginskii_conduction=fc.enable_anisotropic_conduction,
+                enable_braginskii_viscosity=fc.enable_viscosity,
+                enable_nernst=fc.enable_nernst,
+                precision=fc.precision,
                 resistivity_model=fc.resistivity_model,
                 anomalous_resistivity=fc.anomalous_resistivity,
             )
@@ -275,13 +302,26 @@ class SimulationEngine:
         from pathlib import Path
 
         from dpf.io.well_exporter import WellExporter
+        from dpf.validation.artifacts import artifact_classification_from_config
 
         # Use same directory as HDF5 output
         out_dir = Path(dc.hdf5_filename).parent
+        artifact_classification = artifact_classification_from_config(config)
         self.well_exporter = WellExporter(
             output_dir=out_dir,
             filename_prefix=dc.well_filename_prefix,
             enable=(dc.well_output_interval > 0),
+            dx=config.dx,
+            dz=config.geometry.dz,
+            geometry=config.geometry.type,
+            sim_params={
+                "backend": config.fluid.backend,
+                "geometry": config.geometry.type,
+                "grid_shape": list(config.grid_shape),
+                "validation_status": "not_validation_evidence",
+                "result_label": "Preview",
+            },
+            artifact_classification=artifact_classification.model_dump(mode="json"),
         )
         self.well_interval = dc.well_output_interval
 
@@ -357,8 +397,21 @@ class SimulationEngine:
         self.checkpoint_interval: int = 0  # 0 = disabled
         self.checkpoint_filename: str = "checkpoint.h5"
 
-        # Performance: NaN check stride (run every N steps; step 0 always runs)
-        self._nan_check_stride: int = getattr(config, "nan_check_stride", 10)
+        # Performance/evidence: NaN check stride (step 0 always runs)
+        self._nan_check_stride: int = int(getattr(config, "nan_check_stride", 10))
+        self._nonfinite_repair_limit: int = int(
+            getattr(config, "nonfinite_repair_limit", 10000)
+        )
+        self._fail_fast_on_nonfinite: bool = bool(
+            getattr(config, "fail_fast_on_nonfinite", False)
+        )
+        self._nonfinite_event_history_limit: int = int(
+            getattr(config, "nonfinite_event_history_limit", 16)
+        )
+        self._cumulative_repairs: int = 0
+        self._first_nonfinite_event: dict[str, object] | None = None
+        self._last_nonfinite_event: dict[str, object] | None = None
+        self._nonfinite_repair_events: list[dict[str, object]] = []
 
         # Performance: coupling integral subcycling (R_plasma, L_plasma, Z_bar)
         # Alfven timescale ~100-500 ns >> dt_mhd ~1-5 ns → safe to cache for N steps
@@ -404,7 +457,8 @@ class SimulationEngine:
         if self.geometry_type == "cylindrical":
             self.field_manager.dz = config.geometry.dz if config.geometry.dz else dx
 
-        # Circuit-MHD coupler: density-weighted Lp extraction from MHD fields
+        # Circuit-MHD coupler: density-weighted Lp extraction from MHD fields.
+        # This is engineering feedback scaffolding, not validation evidence.
         self.coupling_mode = config.circuit.coupling_mode
         dz_coupler = config.geometry.dz if config.geometry.dz else dx
         if self.geometry_type == "cylindrical":
@@ -426,6 +480,12 @@ class SimulationEngine:
 
         # Perf: cache _should_use_coupler result, recompute every 10 steps
         self._coupler_decision_cache: bool | None = None
+        self._coupler_trust_status: dict[str, object] = {
+            "trusted": False,
+            "reason": "not_evaluated",
+            "validation_status": "not_validation_evidence",
+            "can_support_scientific_claims": False,
+        }
 
         # Suppress repeated MHD regime validity warnings
         self._mhd_regime_warned: bool = False
@@ -439,49 +499,33 @@ class SimulationEngine:
             self.sheath_cfg.enabled,
         )
 
-        # Warn about physics modules skipped by non-Python backends.
-        # Note: Metal and Python backends share the engine's operator-split
-        # loop, so radiation/sheath/diffusion physics ARE applied for Metal.
-        # Athena++/AthenaK have their own fast path and skip these modules.
-        if self.backend in ("athenak", "athena", "hybrid"):
-            skipped = []
-            if fc.enable_viscosity:
-                skipped.append("Braginskii viscosity")
-            if fc.enable_nernst:
-                skipped.append("Nernst effect")
-            if fc.enable_anisotropic_conduction:
-                skipped.append("anisotropic thermal conduction")
-            if self.rad_cfg.bremsstrahlung_enabled or self.rad_cfg.line_radiation_enabled:
-                skipped.append("radiation transport (bremsstrahlung/line)")
-            if self.sheath_cfg.enabled:
-                skipped.append("sheath boundary conditions")
-            if fc.diffusion_method == "sts":
-                skipped.append("RKL2 super time-stepping")
-            if fc.diffusion_method == "implicit":
-                skipped.append("implicit diffusion (ADI)")
-
-            if skipped:
-                logger.warning(
-                    "Backend '%s' skips physics modules: %s. "
-                    "These modules are handled by the Python engine's operator-split "
-                    "loop but are NOT applied for Athena++/AthenaK backends. "
-                    "Use backend='metal' (supports all operator-split physics) "
-                    "or backend='python' (all physics, but non-conservative).",
-                    self.backend, ", ".join(skipped),
-                )
-        elif self.backend in ("metal", "mlx"):
-            # Metal/MLX share the engine operator-split loop (radiation, sheath,
-            # collision) AND have their own transport physics (HLLD, WENO5-Z,
-            # SSP-RK3, dual-energy, bremsstrahlung).
-            metal_only = []
-            if fc.diffusion_method == "sts":
-                metal_only.append("RKL2 super time-stepping (using explicit instead)")
-            if fc.diffusion_method == "implicit":
-                metal_only.append("implicit diffusion (using explicit instead)")
-            if metal_only:
-                logger.info(
-                    "%s backend note: %s", self.backend, ", ".join(metal_only),
-                )
+        self.backend_feature_diagnostics = [
+            diagnostic.to_dict()
+            for diagnostic in backend_feature_diagnostics(config, self.backend)
+        ]
+        skipped = [
+            diagnostic["feature"]
+            for diagnostic in self.backend_feature_diagnostics
+            if diagnostic["severity"] == "warning"
+        ]
+        if skipped:
+            logger.warning(
+                "Backend '%s' skips physics modules: %s. "
+                "These modules are handled by the Python engine's operator-split "
+                "loop but are NOT applied for Athena++/AthenaK backends. "
+                "Use backend='metal' or backend='mlx' for GPU paths with "
+                "explicitly wired transport flags, or backend='python' for the "
+                "full operator-split path.",
+                self.backend,
+                ", ".join(skipped),
+            )
+        notes = [
+            diagnostic["message"]
+            for diagnostic in self.backend_feature_diagnostics
+            if diagnostic["severity"] == "info"
+        ]
+        if notes:
+            logger.info("%s backend note: %s", self.backend, "; ".join(notes))
 
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
@@ -492,6 +536,28 @@ class SimulationEngine:
     def engine_tier(self) -> str:
         from dpf.engine.backend_dispatch import engine_tier
         return engine_tier(self.backend)
+
+    @property
+    def backend_authority(self) -> dict[str, str]:
+        from dpf.engine.backend_dispatch import backend_authority_labels
+        return backend_authority_labels(self.backend)
+
+    @property
+    def breakdown_authority(self) -> dict[str, str | bool]:
+        """Report whether breakdown config is applied by this engine path."""
+
+        enabled = bool(getattr(self.config.breakdown, "enabled", False))
+        return {
+            "enabled": enabled,
+            "status": "config_only_not_applied" if enabled else "disabled",
+            "applied_to_initial_state": False,
+            "validation_status": "not_validation_evidence",
+            "note": (
+                "BreakdownConfig is preserved in configuration, but this "
+                "SimulationEngine path initializes from rho0/T0 and does not "
+                "apply a breakdown model to the initial plasma state."
+            ),
+        }
 
     @staticmethod
     def _resolve_backend(requested: str) -> str:
@@ -545,6 +611,25 @@ class SimulationEngine:
         dt = min(dt, self.config.sim_time / 10.0)
 
         return dt
+
+    @property
+    def nonfinite_state_evidence(self) -> dict[str, object]:
+        """Return audit metadata for NaN/Inf state sanitation.
+
+        This is engineering evidence only. It preserves first-failure context
+        for probes without changing scientific validation status.
+        """
+        return {
+            "classification": "engineering_probe",
+            "fail_fast_on_nonfinite": self._fail_fast_on_nonfinite,
+            "nan_check_stride": self._nan_check_stride,
+            "repair_limit": self._nonfinite_repair_limit,
+            "cumulative_repairs": self._cumulative_repairs,
+            "first_event": self._first_nonfinite_event,
+            "last_event": self._last_nonfinite_event,
+            "recent_event_count": len(self._nonfinite_repair_events),
+            "recent_events": list(self._nonfinite_repair_events),
+        }
     # ------------------------------------------------------------------
     # State management — extracted to state_management.py
     # ------------------------------------------------------------------
@@ -855,6 +940,7 @@ class SimulationEngine:
         _initialize_radial_bfield,
         _initialize_radial_state,
         _measure_ohmic_gap,
+        _mhd_coupler_trust_status,
         _should_use_coupler,
         _step_circuit_subcycle,
     )
@@ -994,7 +1080,7 @@ class SimulationEngine:
         fc = self.config.fluid
 
         # Step 3a: Nernst B-field advection
-        if fc.enable_nernst and self.backend != "metal":
+        if fc.enable_nernst and self.backend not in ("metal", "mlx"):
             self._apply_nernst(dt, Z_bar)
             if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
                 self._sanitize_state("after Nernst step")
@@ -1063,8 +1149,24 @@ class SimulationEngine:
 
     def close(self) -> None:
         """Finalize the simulation and flush exporters."""
+        self._close_well_exporter()
+
+    def _close_well_exporter(self) -> None:
+        """Flush buffered Well snapshots, if the exporter is configured."""
         if hasattr(self, "well_exporter"):
             self.well_exporter.close()
+
+    def _current_circuit_scalars(self) -> dict[str, float]:
+        """Return circuit scalars for export surfaces."""
+        circ = self.circuit.state
+        return {
+            "current": circ.current,
+            "voltage": circ.voltage,
+            "energy_cap": circ.energy_cap,
+            "energy_ind": circ.energy_ind,
+            "energy_res": circ.energy_res,
+            "energy_total": self.circuit.total_energy(),
+        }
 
     def get_field_snapshot(self) -> dict[str, np.ndarray]:
         """Return a copy of the current field state arrays.
@@ -1078,6 +1180,93 @@ class SimulationEngine:
     # Batch run (uses step() internally)
     # ------------------------------------------------------------------
 
+    def _attach_run_mode_metadata(self, summary: dict[str, Any]) -> dict[str, Any]:
+        """Attach public run-mode metadata without changing backend execution."""
+
+        run_mode = str(getattr(self.config, "run_mode", "standard") or "standard")
+        summary["run_mode"] = run_mode
+        if run_mode != "first_principles_mhd":
+            return summary
+
+        from dpf.validation.first_principles_mhd import (
+            FIRST_PRINCIPLES_MHD_MODE,
+            annotate_first_principles_mhd_result,
+        )
+
+        return annotate_first_principles_mhd_result(
+            summary,
+            preset_name=str(getattr(self.config, "preset_name", "")),
+            validation_scope=str(getattr(self.config, "validation_scope", "")),
+            source_scope=str(getattr(self.config, "source_scope", "")),
+            source_scope_status=str(getattr(self.config, "source_scope_status", "")),
+            requested_mode=FIRST_PRINCIPLES_MHD_MODE,
+            execution_mode=self.backend,
+        )
+
+    def _attach_run_artifacts(
+        self,
+        summary: dict[str, Any],
+        *,
+        validation_status: str = "not_evaluated",
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """Attach SRS traceability artifacts to a run summary."""
+
+        from dpf.validation.artifacts import (
+            ValidationStatus,
+            artifact_classification_from_config,
+            build_run_manifest,
+            classify_result,
+            embed_hdf5_run_metadata,
+            manifest_path_for_output,
+            write_run_manifest,
+        )
+
+        status = ValidationStatus(validation_status)
+        if hasattr(self, "backend_feature_diagnostics"):
+            summary["backend_feature_diagnostics"] = list(self.backend_feature_diagnostics)
+        if self.memory_preflight is not None:
+            summary["memory_preflight"] = self.memory_preflight.to_dict()
+        if self.runtime_memory_telemetry is not None:
+            summary["runtime_memory_telemetry"] = self.runtime_memory_telemetry.to_dict()
+        hdf5_filename = self.config.diagnostics.hdf5_filename
+        classification = classify_result(
+            backend=self.backend,
+            validation_status=status,
+            reason=reason,
+        )
+        artifact_classification = artifact_classification_from_config(self.config)
+        solver_mode = f"{self.config.geometry.type}_mhd"
+        if hdf5_filename != ":memory:":
+            embed_hdf5_run_metadata(
+                hdf5_filename,
+                backend=self.backend,
+                solver_mode=solver_mode,
+                validation_status=status,
+                result_classification=classification,
+                artifact_classification=artifact_classification,
+                summary=summary,
+            )
+
+        manifest = build_run_manifest(
+            config=self.config,
+            backend=self.backend,
+            summary=summary,
+            validation_status=status,
+            reason=reason,
+            artifact_classification=artifact_classification,
+        )
+        summary["validation_status"] = manifest.validation_status.value
+        summary["result_classification"] = manifest.result_classification.model_dump(mode="json")
+        summary["run_manifest"] = manifest.model_dump(mode="json")
+
+        if hdf5_filename != ":memory:":
+            manifest_path = manifest_path_for_output(hdf5_filename)
+            write_run_manifest(manifest, manifest_path)
+            summary["run_manifest_path"] = str(manifest_path)
+
+        return summary
+
     def run(self, max_steps: int | None = None) -> dict[str, Any]:
         """Execute the simulation loop.
 
@@ -1089,6 +1278,8 @@ class SimulationEngine:
         """
         # Hybrid engine delegation (live integration)
         if self.backend == "hybrid":
+            if self.config.diagnostics.runtime_memory_telemetry_enabled:
+                self.runtime_memory_telemetry = RuntimeMemoryTelemetry.start(self.backend)
             if self._hybrid_engine is None:
                 from dpf.ai.hybrid_engine import HybridEngine
                 from dpf.ai.surrogate import DPFSurrogate
@@ -1111,9 +1302,19 @@ class SimulationEngine:
                     validation_interval=val_interval,
                 )
 
-            return self._hybrid_engine.run(max_steps=max_steps)
+            try:
+                hybrid_summary = self._hybrid_engine.run(max_steps=max_steps)
+            finally:
+                if self.runtime_memory_telemetry is not None:
+                    self.runtime_memory_telemetry.finish()
+            return self._attach_run_artifacts(
+                self._attach_run_mode_metadata(hybrid_summary),
+                reason="hybrid run completed without accepted validation certificate",
+            )
 
         t_wall_start = wall_time.monotonic()
+        if self.config.diagnostics.runtime_memory_telemetry_enabled:
+            self.runtime_memory_telemetry = RuntimeMemoryTelemetry.start(self.backend)
 
         # Store initial energy
         self.initial_energy = self.circuit.total_energy()
@@ -1124,20 +1325,60 @@ class SimulationEngine:
 
         logger.info("Starting simulation: t_end=%.2e s", self.config.sim_time)
 
-        while True:
-            result = self.step(_max_steps=max_steps)
+        try:
+            while True:
+                result = self.step(_max_steps=max_steps)
 
-            # Track peak current
-            I_abs = abs(self.circuit.current)
-            if I_abs > self._peak_current_A:
-                self._peak_current_A = I_abs
-                self._peak_current_time_s = self.time
+                # Track peak current
+                I_abs = abs(self.circuit.current)
+                if I_abs > self._peak_current_A:
+                    self._peak_current_A = I_abs
+                    self._peak_current_time_s = self.time
 
-            if result.finished:
-                break
+                if (
+                    self.runtime_memory_telemetry is not None
+                    and self.step_count
+                    % self.config.diagnostics.memory_telemetry_interval_steps
+                    == 0
+                ):
+                    self.runtime_memory_telemetry.sample()
+
+                if result.finished:
+                    break
+        except Exception as exc:
+            if self.runtime_memory_telemetry is not None:
+                self.runtime_memory_telemetry.finish()
+            try:
+                self.diagnostics.finalize()
+            except Exception:
+                logger.exception("Failed to finalize diagnostics after run error")
+            try:
+                self._close_well_exporter()
+            except Exception:
+                logger.exception("Failed to flush Well exporter after run error")
+
+            failed_summary = {
+                "steps": self.step_count,
+                "sim_time": self.time,
+                "wall_time_s": wall_time.monotonic() - t_wall_start,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
+            try:
+                self._attach_run_artifacts(
+                    self._attach_run_mode_metadata(failed_summary),
+                    validation_status="failed",
+                    reason=f"run failed before completion: {type(exc).__name__}",
+                )
+            except Exception:
+                logger.exception("Failed to emit failed-run manifest")
+            raise
 
         # Finalize
         self.diagnostics.finalize()
+        self._close_well_exporter()
+        if self.runtime_memory_telemetry is not None:
+            self.runtime_memory_telemetry.finish()
 
         t_wall = wall_time.monotonic() - t_wall_start
         E_final = self.circuit.total_energy()
@@ -1148,6 +1389,14 @@ class SimulationEngine:
             "steps": self.step_count,
             "sim_time": self.time,
             "wall_time_s": t_wall,
+            "backend": self.backend,
+            "backend_implementation_tier": self.engine_tier,
+            "backend_validation_status": self.backend_authority["validation_status"],
+            "backend_authority": self.backend_authority,
+            "breakdown_authority": self.breakdown_authority,
+            "nonfinite_state_evidence": self.nonfinite_state_evidence,
+            "circuit_coupler_authority": circuit_coupler_authority(),
+            "circuit_coupler_trust_status": self._coupler_trust_status,
             "energy_conservation": conservation,
             "final_current_A": self.circuit.current,
             "final_voltage_V": self.circuit.voltage,
@@ -1166,4 +1415,7 @@ class SimulationEngine:
             conservation,
         )
 
-        return summary
+        return self._attach_run_artifacts(
+            self._attach_run_mode_metadata(summary),
+            reason="completed run has not been promoted by accepted validation evidence",
+        )

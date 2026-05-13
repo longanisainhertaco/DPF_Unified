@@ -55,6 +55,37 @@ TUNGSTEN_ABLATION_EFFICIENCY = 2.0e-5  # [kg/J]
 TUNGSTEN_MASS = 183.84 * AMU          # Atomic mass [kg]
 TUNGSTEN_MELT_TEMP = 3695.0           # Melting point [K]
 
+ABLATION_MODEL_ROLE = "constant_efficiency_electrode_ablation_scaffold"
+ABLATION_SOURCE_STATUS = "ablation_efficiency_source_packet_missing"
+ABLATION_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def ablation_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for electrode ablation."""
+    return {
+        "model_role": ABLATION_MODEL_ROLE,
+        "source_status": ABLATION_SOURCE_STATUS,
+        "validation_status": ABLATION_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "ohmic_power": "Uses eta*J^2 as an engineering heating source.",
+            "ablation_efficiency": (
+                "Constant Cu/W efficiency values are not source-closed in the "
+                "local KnowledgeReference corpus."
+            ),
+            "shielding_and_fluence": (
+                "Pulse-length, plasma-shielding, droplet, and material-state "
+                "limits still require a local ablation source packet."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use as an impurity-source scaffold only; do not treat as "
+                "predictive electrode erosion or high-Z impurity validation."
+            ),
+        },
+    }
+
 
 # ---------------------------------------------------------------------------
 # Core ablation functions

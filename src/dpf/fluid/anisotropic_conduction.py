@@ -93,7 +93,7 @@ def braginskii_kappa_perp(
 ) -> np.ndarray:
     r"""Braginskii perpendicular electron thermal conductivity.
 
-    kappa_perp = 4.66 * ne * k_B^2 * Te / (m_e * omega_ce^2 * tau_e)
+    kappa_perp = 4.7 * ne * k_B^2 * Te / (m_e * omega_ce^2 * tau_e)
 
     For strongly magnetised electrons this is suppressed by
     (omega_ce * tau_e)^{-2} relative to kappa_parallel.
@@ -126,7 +126,7 @@ def braginskii_kappa_perp(
     omega_ce = e_charge * B_safe / m_e
     omega_ce_sq = omega_ce * omega_ce
 
-    kappa_perp = 4.66 * ne_safe * k_B**2 * Te_safe / (
+    kappa_perp = 4.7 * ne_safe * k_B**2 * Te_safe / (
         m_e * np.maximum(omega_ce_sq * tau_e, 1e-300)
     )
 

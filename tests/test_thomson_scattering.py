@@ -84,7 +84,8 @@ class TestNonCollectiveGaussian:
         # Wide omega range to capture full spectrum
         omega = np.linspace(-5e15, 5e15, 10000)
         S = spectral_density_salpeter(omega, k, ne, Te_eV)
-        integral = np.trapezoid(S, omega)
+        integrate = getattr(np, "trapezoid", np.trapz)
+        integral = integrate(S, omega)
 
         assert abs(integral / (2.0 * np.pi) - 1.0) < 0.01, (
             f"Sum rule: integral/(2*pi) = {integral/(2*np.pi):.4f}, expected 1.0"

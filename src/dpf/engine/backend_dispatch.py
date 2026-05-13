@@ -106,12 +106,30 @@ def resolve_backend(requested: str) -> str:
 
 
 def engine_tier(backend: str) -> str:
-    """Return the engine tier based on backend.
+    """Return the legacy implementation tier based on backend.
 
     Returns:
-        ``"production"`` for conservative backends (Athena++, Metal, MLX),
-        ``"teaching"`` for the Python backend (non-conservative dp/dt).
+        ``"production"`` for implementation-grade conservative backends
+        (Athena++, Metal, MLX) and ``"teaching"`` for the Python backend
+        (non-conservative dp/dt).
+
+    This is an implementation-maturity label, not a scientific validation label.
     """
     if backend in ("athena", "metal", "mlx", "hybrid"):
         return "production"
     return "teaching"
+
+
+def backend_authority_labels(backend: str) -> dict[str, str]:
+    """Return backend labels without conflating maturity and validation."""
+
+    tier = engine_tier(backend)
+    return {
+        "backend": backend,
+        "implementation_tier": tier,
+        "validation_status": "not_validation_evidence",
+        "validation_note": (
+            "Backend implementation tier does not certify scientific readiness; "
+            "use validation/readiness artifacts for evidence claims."
+        ),
+    }

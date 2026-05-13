@@ -59,7 +59,7 @@ def _step_circuit_subcycle(
     # back-EMF: snowplow captures motional EMF via I*dL/dt.
     # For pure-snowplow runs, set zero (dL/dt handled by circuit sub-step).
     # For hybrid snowplow+MHD runs, back_emf will be set during Lp blending
-    # below (lines ~133/160/172) once MHD fields are trustworthy.
+    # below once MHD fields pass engineering eligibility checks.
     if self.snowplow is not None:
         back_emf = 0.0
     else:
@@ -85,21 +85,21 @@ def _step_circuit_subcycle(
             self._last_sp_dL_dt = dLdt_sp
             self._last_sp_R_plasma = sp_result.get("R_plasma", 0.0)
 
-            # Lp handoff: blend snowplow → density-weighted Lp from MHD fields.
-            # radial_mhd: activate at radial phase onset (validated).
+            # Lp handoff: blend snowplow -> density-weighted Lp from MHD fields.
+            # radial_mhd: activate at radial phase onset as an engineering mode.
             # full_mhd: activate from axial rundown onward (uses compute_feedback
-            #   density-weighted Lp during axial phase, improving timing accuracy).
+            #   density-weighted Lp during axial phase as an engineering signal).
             handoff = self.config.snowplow.handoff_mode
             handoff_phases = (
                 ("rundown", "radial", "reflected")
                 if handoff == "full_mhd"
                 else ("radial", "reflected")
             )
-            # Gate: only trust MHD Lp when it's comparable to snowplow Lp.
+            # Gate: only use MHD Lp when it's comparable to snowplow Lp.
             # During early axial rundown, MHD fields are uninitialized —
             # compute_feedback returns near-zero Lp, which would let current
             # rise unrestricted (+59% I_peak observed without this gate).
-            _mhd_lp_trustworthy = (
+            _mhd_lp_eligible = (
                 feedback is not None
                 and feedback.Lp > 0
                 and (Lp_sp <= 0 or feedback.Lp >= 0.5 * Lp_sp)
@@ -107,7 +107,7 @@ def _step_circuit_subcycle(
             if (
                 handoff in ("radial_mhd", "full_mhd")
                 and self.snowplow.phase in handoff_phases
-                and _mhd_lp_trustworthy
+                and _mhd_lp_eligible
             ):
                 # Activate blending when MHD Lp is resolved
                 if not self._lp_blend_active:
@@ -481,25 +481,76 @@ def _compute_snowplow_source_terms(self, dt: float) -> dict:
     return {}
 
 
+def _mhd_coupler_trust_status(self) -> dict[str, object]:
+    """Classify whether current MHD fields are usable for auto circuit loading.
+
+    This is an engineering trust gate, not scientific validation. The auto mode
+    requires more than a positive density array because uniform initial fill gas
+    does not prove that MHD fields have resolved sheath/circuit information.
+    """
+    rho = self.state.get("rho")
+    if not isinstance(rho, np.ndarray):
+        return {"trusted": False, "reason": "missing_density_field"}
+
+    finite_rho = rho[np.isfinite(rho)]
+    if finite_rho.size == 0:
+        return {"trusted": False, "reason": "density_not_finite"}
+
+    rho_max = float(np.max(finite_rho))
+    rho_min = float(np.min(finite_rho))
+    if rho_max <= 0.0:
+        return {"trusted": False, "reason": "density_nonpositive"}
+
+    rho_dynamic = (rho_max - rho_min) > max(1e-12 * rho_max, 1e-30)
+    indicators: dict[str, bool] = {"rho_dynamic": rho_dynamic}
+
+    for key in ("B", "velocity"):
+        arr = self.state.get(key)
+        if isinstance(arr, np.ndarray) and arr.size > 0:
+            finite = arr[np.isfinite(arr)]
+            indicators[f"{key}_nonzero"] = (
+                finite.size > 0 and float(np.max(np.abs(finite))) > 0.0
+            )
+        else:
+            indicators[f"{key}_nonzero"] = False
+
+    trusted = any(indicators.values())
+    return {
+        "trusted": trusted,
+        "reason": "resolved_mhd_signal" if trusted else "uniform_initial_state",
+        "indicators": indicators,
+        "validation_status": "not_validation_evidence",
+        "can_support_scientific_claims": False,
+    }
+
+
 def _should_use_coupler(self) -> bool:
     """Determine whether to use the CircuitCoupler for Lp extraction.
 
-    Returns True when the coupling_mode config indicates density-weighted
-    feedback should be used and the simulation has MHD fields available.
-    Result is cached and recomputed every 10 steps to avoid np.max(rho) overhead.
+    Explicit ``density_weighted`` mode remains caller-controlled. ``auto`` mode
+    requires a resolved MHD signal, not only nonzero initial density.
     """
     if self.coupling_mode == "lee_only":
+        self._coupler_trust_status = {
+            "trusted": False,
+            "reason": "lee_only_mode",
+            "validation_status": "not_validation_evidence",
+            "can_support_scientific_claims": False,
+        }
         return False
     if self.coupling_mode == "density_weighted":
+        self._coupler_trust_status = {
+            "trusted": True,
+            "reason": "explicit_density_weighted_mode",
+            "validation_status": "not_validation_evidence",
+            "can_support_scientific_claims": False,
+        }
         return True
-    # "auto": use coupler when MHD fields exist (non-trivial rho)
     # Cache result; recompute every 10 steps or on first call.
     if self._coupler_decision_cache is None or self.step_count % 10 == 0:
-        rho = self.state.get("rho")
-        if rho is None:
-            self._coupler_decision_cache = False
-        else:
-            self._coupler_decision_cache = float(np.max(rho)) > 0
+        status = self._mhd_coupler_trust_status()
+        self._coupler_trust_status = status
+        self._coupler_decision_cache = bool(status["trusted"])
     return self._coupler_decision_cache
 
 

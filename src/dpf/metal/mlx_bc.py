@@ -41,7 +41,7 @@ def inlet_bt_bc_mlx(
     ng_z: int,
     convert_si_to_hl: bool = True,
 ) -> Any:
-    """Apply B_theta BC at inlet boundary (z=0) — Sun 2025 method.
+    """Apply B_theta BC at inlet boundary (z=0) using an unreviewed method.
 
     UNVERIFIED: Sun et al. 2025 (Acta Physica Sinica 74:115201) — paper not on
     disk as of 2026-04-24. Implementation behavior kept but citation cannot be
@@ -52,8 +52,8 @@ def inlet_bt_bc_mlx(
 
     The current enters through the insulator base. B_theta at the inlet
     represents the total azimuthal field from Ampere's law at that plane.
-    The MHD dynamics (Alfven wave propagation along z) determine how far
-    B_theta extends axially — no sheath detection needed.
+    The MHD dynamics determine how far B_theta extends axially. This remains
+    an engineering boundary-condition scaffold until local review is accepted.
 
     Cathode (outer r): conducting wall, dB/dn = 0 (zero-gradient, handled
     by the existing ghost cell padding).
@@ -65,7 +65,8 @@ def inlet_bt_bc_mlx(
         [UNVERIFIED — paper not on disk as of 2026-04-24. Implementation
         behavior kept but citation cannot be verified.]
     Auluck (2021), Phys. Plasmas 28:030703, Eq. (13):
-        dPhi/dt coupling is exact for 2D axisymmetric (B purely azimuthal).
+        Theoretical context for 2D axisymmetric flux-coupling limits; not
+        accepted local validation evidence by itself.
 
     Parameters
     ----------

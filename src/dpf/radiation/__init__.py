@@ -15,12 +15,14 @@ from dpf.radiation.line_radiation import (
     recombination_power,
     total_radiation_power,
 )
+from dpf.radiation.qmf_suppression import qmf_model_metadata
 from dpf.radiation.transport import (
     apply_radiation_transport,
     compute_radiation_energy,
     compute_rosseland_opacity,
     fld_step,
     levermore_pomraning_limiter,
+    radiation_transport_model_metadata,
 )
 
 __all__ = [
@@ -33,6 +35,8 @@ __all__ = [
     "cooling_function",
     "line_radiation_model_metadata",
     "line_radiation_power",
+    "qmf_model_metadata",
+    "radiation_transport_model_metadata",
     "recombination_power",
     "total_radiation_power",
     "apply_radiation_transport",

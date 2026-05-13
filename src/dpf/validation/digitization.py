@@ -13,6 +13,7 @@ from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from math import isfinite
 from pathlib import Path
+from typing import Any
 
 
 _AKEL_2021_SOURCE_PATH = (
@@ -32,6 +33,35 @@ _AKEL_FIG1_DRAFT_PACKET_PATH = (
     "KnowledgeReference/digitization/"
     "akel-2021-fig1-current-waveform-shot-12581-draft-packet.json"
 )
+_A14_TABLE_DRAFT_PACKETS_PATH = (
+    "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json"
+)
+_A14_AXIS_CALIBRATION_DRAFT_PACKETS_PATH = (
+    "KnowledgeReference/digitization/"
+    "a14-2026-05-11-axis-calibration-draft-packets.json"
+)
+_A14_SPRINGHAM_FIG5_MONOENERGETIC_DRAFT_PACKET_PATH = (
+    "KnowledgeReference/digitization/"
+    "a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json"
+)
+_A14_SPRINGHAM_FIG5_GAUSSIAN_CURVES_DRAFT_PACKET_PATH = (
+    "KnowledgeReference/digitization/"
+    "a14-2026-05-11-springham-fig5-gaussian-curves-draft-packet.json"
+)
+_A14_KLIR_FIG2_TIMING_RESPONSE_DRAFT_PACKET_PATH = (
+    "KnowledgeReference/digitization/"
+    "a14-2026-05-11-klir-fig2-timing-response-draft-packet.json"
+)
+_A14_INDEPENDENT_REVIEW_HANDOFF_PATH = (
+    "docs/A14_INDEPENDENT_REVIEW_HANDOFF_2026_05_11.json"
+)
+_A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_PATH = (
+    "docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.json"
+)
+_A14_REMAINING_EXTRACTION_BACKLOG_PATH = (
+    "docs/A14_REMAINING_EXTRACTION_BACKLOG_2026_05_11.json"
+)
+_A14_CROP_BOUNDARY_REVIEW_PATH = "docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json"
 _AKEL_FIG1_DRAFT_PACKET_SHA256 = (
     "abe4a283ee154f84f6061da8ea508d3871faf3b14dddb2d1cfc8a7a0a5f8e0e7"
 )
@@ -60,6 +90,16 @@ def sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
+def _stable_json_sha256(value: Any) -> str:
+    encoded = json.dumps(
+        value,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return sha256(encoded).hexdigest()
+
+
 def akel_fig1_draft_digitization_packet(
     base_path: str | Path = ".",
 ) -> dict[str, object]:
@@ -73,6 +113,122 @@ def akel_fig1_draft_digitization_packet(
     payload["draft_packet_hash_verified"] = (
         actual_sha256 == _AKEL_FIG1_DRAFT_PACKET_SHA256
     )
+    return payload
+
+
+def a14_table_extraction_draft_packets(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 table-extraction draft packet bundle with hash metadata."""
+    packet_path = Path(base_path) / _A14_TABLE_DRAFT_PACKETS_PATH
+    payload = json.loads(packet_path.read_text())
+    bundle_sha256 = sha256_file(packet_path)
+    payload["draft_packet_path"] = _A14_TABLE_DRAFT_PACKETS_PATH
+    payload["draft_packet_sha256"] = bundle_sha256
+    packets = payload.get("packets", [])
+    if isinstance(packets, list):
+        for index, packet in enumerate(packets):
+            if isinstance(packet, dict):
+                packet["draft_packet_path"] = _A14_TABLE_DRAFT_PACKETS_PATH
+                packet["draft_packet_bundle_sha256"] = bundle_sha256
+                packet["draft_packet_index"] = index
+                packet["draft_packet_item_sha256"] = _stable_json_sha256(packet)
+    return payload
+
+
+def a14_crop_boundary_review_status(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 crop-boundary QA report with hash metadata."""
+    report_path = Path(base_path) / _A14_CROP_BOUNDARY_REVIEW_PATH
+    payload = json.loads(report_path.read_text())
+    payload["crop_boundary_review_path"] = _A14_CROP_BOUNDARY_REVIEW_PATH
+    payload["crop_boundary_review_sha256"] = sha256_file(report_path)
+    return payload
+
+
+def a14_axis_calibration_draft_packets(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 axis-calibration draft packet bundle with hash metadata."""
+    packet_path = Path(base_path) / _A14_AXIS_CALIBRATION_DRAFT_PACKETS_PATH
+    payload = json.loads(packet_path.read_text())
+    payload["draft_packet_path"] = _A14_AXIS_CALIBRATION_DRAFT_PACKETS_PATH
+    payload["draft_packet_sha256"] = sha256_file(packet_path)
+    return payload
+
+
+def a14_springham_fig5_monoenergetic_draft_packet(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 Springham Fig. 5 mono-energetic draft packet."""
+    packet_path = (
+        Path(base_path) / _A14_SPRINGHAM_FIG5_MONOENERGETIC_DRAFT_PACKET_PATH
+    )
+    payload = json.loads(packet_path.read_text())
+    payload["draft_packet_path"] = (
+        _A14_SPRINGHAM_FIG5_MONOENERGETIC_DRAFT_PACKET_PATH
+    )
+    payload["draft_packet_sha256"] = sha256_file(packet_path)
+    return payload
+
+
+def a14_springham_fig5_gaussian_curve_draft_packet(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 Springham Fig. 5 Gaussian-curve draft packet."""
+    packet_path = (
+        Path(base_path) / _A14_SPRINGHAM_FIG5_GAUSSIAN_CURVES_DRAFT_PACKET_PATH
+    )
+    payload = json.loads(packet_path.read_text())
+    payload["draft_packet_path"] = (
+        _A14_SPRINGHAM_FIG5_GAUSSIAN_CURVES_DRAFT_PACKET_PATH
+    )
+    payload["draft_packet_sha256"] = sha256_file(packet_path)
+    return payload
+
+
+def a14_klir_fig2_timing_response_draft_packet(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 Klir Fig. 2 timing-response draft packet."""
+    packet_path = Path(base_path) / _A14_KLIR_FIG2_TIMING_RESPONSE_DRAFT_PACKET_PATH
+    payload = json.loads(packet_path.read_text())
+    payload["draft_packet_path"] = _A14_KLIR_FIG2_TIMING_RESPONSE_DRAFT_PACKET_PATH
+    payload["draft_packet_sha256"] = sha256_file(packet_path)
+    return payload
+
+
+def a14_cikhardtova_fig6_extraction_blocker(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 Cikhardtova Fig. 6 extraction-blocker report."""
+    blocker_path = Path(base_path) / _A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_PATH
+    payload = json.loads(blocker_path.read_text())
+    payload["blocker_path"] = _A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_PATH
+    payload["blocker_sha256"] = sha256_file(blocker_path)
+    return payload
+
+
+def a14_remaining_extraction_backlog(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the current A14 remaining-extraction backlog."""
+    backlog_path = Path(base_path) / _A14_REMAINING_EXTRACTION_BACKLOG_PATH
+    payload = json.loads(backlog_path.read_text())
+    payload["backlog_path"] = _A14_REMAINING_EXTRACTION_BACKLOG_PATH
+    payload["backlog_sha256"] = sha256_file(backlog_path)
+    return payload
+
+
+def a14_independent_review_handoff(
+    base_path: str | Path = ".",
+) -> dict[str, object]:
+    """Load the A14 independent-review handoff manifest with hash metadata."""
+    handoff_path = Path(base_path) / _A14_INDEPENDENT_REVIEW_HANDOFF_PATH
+    payload = json.loads(handoff_path.read_text())
+    payload["handoff_path"] = _A14_INDEPENDENT_REVIEW_HANDOFF_PATH
+    payload["handoff_sha256"] = sha256_file(handoff_path)
     return payload
 
 
@@ -98,6 +254,11 @@ def _numbers(value: object) -> list[float]:
 def _path_is_knowledge_reference(raw_path: str) -> bool:
     parts = Path(raw_path).parts
     return bool(parts) and parts[0] == "KnowledgeReference" and ".." not in parts
+
+
+def _path_is_safe_relative(raw_path: str) -> bool:
+    path = Path(raw_path)
+    return bool(path.parts) and not path.is_absolute() and ".." not in path.parts
 
 
 def _akel_common_digitization_fields() -> dict[str, object]:
@@ -626,6 +787,31 @@ def _check_hash(
     return not failures, failures
 
 
+def _check_local_hash(
+    packet: Mapping[str, object],
+    *,
+    base_path: Path,
+    path_key: str,
+    hash_key: str,
+    required: bool,
+) -> tuple[bool, list[str]]:
+    failures: list[str] = []
+    raw_path = str(packet.get(path_key, ""))
+    expected_hash = str(packet.get(hash_key, ""))
+    if not raw_path:
+        return (not required, [path_key] if required else [])
+    if not _path_is_safe_relative(raw_path):
+        return False, [f"{path_key}_not_safe_relative"]
+    if not expected_hash:
+        return False, [hash_key]
+    path = base_path / raw_path
+    if not path.exists() or not path.is_file():
+        return False, [f"{path_key}_missing"]
+    if sha256_file(path) != expected_hash:
+        failures.append(f"{hash_key}_mismatch")
+    return not failures, failures
+
+
 def _axis_calibration_passed(
     calibration: object,
     axis: str,
@@ -680,6 +866,78 @@ def _series_passed(
     return not failures, failures
 
 
+def _packet_sha256_for_review(packet: Mapping[str, object]) -> str:
+    for key in (
+        "draft_packet_item_sha256",
+        "draft_packet_sha256",
+        "packet_sha256",
+        "sha256",
+    ):
+        value = str(packet.get(key, ""))
+        if value:
+            return value
+    return ""
+
+
+def _review_metadata_failures(
+    packet: Mapping[str, object],
+    verification: Mapping[str, object],
+) -> list[str]:
+    """Return failures for accepted independent review metadata."""
+    failures: list[str] = []
+    review = verification.get("review_metadata")
+    if not isinstance(review, Mapping):
+        return ["independent_review_metadata_missing"]
+
+    packet_sha256 = _packet_sha256_for_review(packet)
+    reviewed_packet_sha256 = str(review.get("reviewed_packet_sha256", ""))
+    if not packet_sha256:
+        failures.append("packet_hash_missing")
+    elif reviewed_packet_sha256 != packet_sha256:
+        failures.append("review_packet_hash_mismatch")
+    if not reviewed_packet_sha256:
+        failures.append("review_packet_hash_missing")
+
+    reviewed_source_sha256 = str(review.get("reviewed_source_sha256", ""))
+    if reviewed_source_sha256 != str(packet.get("source_sha256", "")):
+        failures.append("review_source_hash_mismatch")
+
+    if packet.get("source_pdf_path") and packet.get("source_pdf_sha256"):
+        reviewed_source_pdf_sha256 = str(
+            review.get("reviewed_source_pdf_sha256", "")
+        )
+        if reviewed_source_pdf_sha256 != str(packet.get("source_pdf_sha256", "")):
+            failures.append("review_source_pdf_hash_mismatch")
+
+    if packet.get("extraction_type", "figure") == "figure":
+        reviewed_figure_sha256 = str(review.get("reviewed_figure_image_sha256", ""))
+        if reviewed_figure_sha256 != str(packet.get("figure_image_sha256", "")):
+            failures.append("review_figure_image_hash_mismatch")
+    elif packet.get("extraction_type") == "table":
+        reviewed_crop_sha256 = str(
+            review.get("reviewed_crop_image_sha256")
+            or review.get("reviewed_figure_or_crop_sha256", "")
+        )
+        if reviewed_crop_sha256 != str(packet.get("crop_image_sha256", "")):
+            failures.append("review_crop_image_hash_mismatch")
+
+    if str(review.get("task_id", "")) != str(packet.get("task_id", "")):
+        failures.append("review_task_id_mismatch")
+    if str(review.get("validation_scope", "")) != str(
+        packet.get("validation_scope", "")
+    ):
+        failures.append("review_scope_mismatch")
+    if not str(review.get("reviewer", "")):
+        failures.append("reviewer_missing")
+    if not str(review.get("review_date", "")):
+        failures.append("review_date_missing")
+    if not str(review.get("review_notes", "")):
+        failures.append("review_notes_missing")
+    if str(review.get("decision", "")) != "accepted":
+        failures.append("review_decision_not_accepted")
+    return failures
+
+
 def digitization_verification_evidence(
     packet: Mapping[str, object],
     *,
@@ -703,6 +961,16 @@ def digitization_verification_evidence(
     if not source_ok:
         failures.extend(source_failures)
 
+    source_pdf_ok, source_pdf_failures = _check_local_hash(
+        packet,
+        base_path=base,
+        path_key="source_pdf_path",
+        hash_key="source_pdf_sha256",
+        required=False,
+    )
+    if not source_pdf_ok:
+        failures.extend(source_pdf_failures)
+
     extraction_type = str(packet.get("extraction_type", "figure"))
     if extraction_type == "figure":
         figure_ok, figure_failures = _check_hash(
@@ -714,6 +982,16 @@ def digitization_verification_evidence(
         )
         if not figure_ok:
             failures.extend(figure_failures)
+    elif extraction_type == "table":
+        crop_ok, crop_failures = _check_hash(
+            packet,
+            base_path=base,
+            path_key="crop_image_path",
+            hash_key="crop_image_sha256",
+            required=True,
+        )
+        if not crop_ok:
+            failures.extend(crop_failures)
     elif extraction_type != "table":
         failures.append("extraction_type_unknown")
 
@@ -770,6 +1048,8 @@ def digitization_verification_evidence(
         failures.append("independent_review_missing")
     if verification.get("review_status") != "accepted":
         failures.append("review_status_not_accepted")
+    if independent_review_count >= 1 or verification.get("review_status") == "accepted":
+        failures.extend(_review_metadata_failures(packet, verification))
 
     missing_or_failed = sorted(set(failures))
     return {

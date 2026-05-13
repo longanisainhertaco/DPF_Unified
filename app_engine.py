@@ -65,19 +65,14 @@ GAS_SPECIES: dict[str, dict[str, Any]] = {
 
 
 def _bosch_hale_dd(T_keV: float) -> float:
-    """Bosch-Hale D(d,n)3He reactivity <sigma*v> [m^3/s].
+    """Bosch-Hale DD reactivity <sigma*v> [m^3/s].
 
-    Valid 0.2-100 keV. Bosch & Hale, Nucl. Fusion 32:611 (1992).
+    Delegate to the source-reviewed diagnostics implementation instead of
+    maintaining a second coefficient set in the app runner.
     """
-    T_keV = np.clip(T_keV, 0.2, 100.0)
-    a1, a2, a3, a4, a5 = 6.661, 643.41e-16, 15.136e-3, 75.189e-3, 4.6064e-3
-    a6, a7 = 13.5e-3, -0.10675e-3
-    theta = T_keV / (
-        1 - (T_keV * (a2 + T_keV * (a4 + T_keV * a6)))
-        / (1 + T_keV * (a3 + T_keV * (a5 + T_keV * a7)))
-    )
-    xi = (a1**2 / (4 * theta)) ** (1.0 / 3.0)
-    return 5.43e-21 * theta * np.sqrt(xi / (a1**3 * T_keV)) * np.exp(-3 * xi)
+    from dpf.diagnostics.neutron_yield import dd_reactivity
+
+    return float(dd_reactivity(float(T_keV)))
 
 
 def _beam_target_yield(
@@ -614,14 +609,17 @@ def run_mhd_simulation_core(
     crowbar_on: bool | None = None,
     crowbar_R_mOhm: float | None = None,
     backend: str = "python",
-    n_steps: int = 1000,
+    n_steps: int | None = 1000,
     grid_nx: int = 32,
     progress_fn=None,
+    allow_engine_fallback: bool = False,
 ) -> dict[str, Any]:
     """Run the full SimulationEngine (CircuitCoupler + MHD + snowplow) and return
     a dict in the same format as run_simulation_core.
 
-    Falls back to run_simulation_core (Lee-only) if SimulationEngine fails.
+    By default engine failures are raised so callers cannot mistake a Lee-only
+    fallback for an MHD result. Set ``allow_engine_fallback=True`` only for
+    explicitly exploratory UI paths that want Lee output after an engine failure.
     """
     import logging
     import subprocess as _sp
@@ -673,6 +671,13 @@ def run_mhd_simulation_core(
 
     t_end = sim_time_us * 1e-6
     t0_wall = wall_time.perf_counter()
+    max_steps: int | None
+    if n_steps is None:
+        max_steps = None
+    else:
+        max_steps = int(n_steps)
+        if max_steps <= 0:
+            raise ValueError("n_steps must be positive or None")
 
     try:
         from dpf.config import (
@@ -796,7 +801,7 @@ def run_mhd_simulation_core(
 
         engine.step = _step_with_progress
 
-        summary = engine.run()
+        summary = engine.run(max_steps=max_steps)
 
         elapsed = wall_time.perf_counter() - t0_wall
 
@@ -924,6 +929,12 @@ def run_mhd_simulation_core(
             "dip_pct": dip_pct, "scaling": scaling, "crowbar_t": crowbar_t,
             "E_bank_kJ": E_bank / 1e3, "T_LC_us": T_LC * 1e6,
             "dt_ns": 0.0, "n_steps": summary.get("steps", 0),
+            "requested_max_steps": max_steps,
+            "terminated_by_max_steps": bool(
+                max_steps is not None
+                and summary.get("steps", 0) >= max_steps
+                and getattr(engine, "time", t_end) < t_end
+            ),
             "elapsed_s": elapsed,
             "device": meta.get("device", preset_name),
             "circuit": cc, "snowplow_cfg": sc,
@@ -954,8 +965,14 @@ def run_mhd_simulation_core(
         }
 
     except Exception as exc:
+        if not allow_engine_fallback:
+            raise RuntimeError(
+                "SimulationEngine failed; Lee fallback is disabled so the "
+                "engine failure remains visible"
+            ) from exc
+
         _log.warning(
-            "SimulationEngine failed (%s: %s) — falling back to Lee model",
+            "SimulationEngine failed (%s: %s) — using explicitly requested Lee fallback",
             type(exc).__name__, exc,
         )
         result = run_simulation_core(
@@ -969,6 +986,11 @@ def run_mhd_simulation_core(
             progress_fn=progress_fn,
         )
         result["backend"] = f"lee (fallback from engine:{backend})"
+        result["engine_status"] = "failed"
+        result["engine_fallback"] = "lee"
+        result["engine_fallback_allowed"] = True
+        result["engine_error_type"] = type(exc).__name__
+        result["engine_error"] = str(exc)
         result["final_state"] = None
         result["mhd_snapshots"] = []
         return result

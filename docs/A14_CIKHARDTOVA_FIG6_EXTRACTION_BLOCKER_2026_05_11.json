@@ -1,0 +1,66 @@
+{
+  "accepted_for_validation": false,
+  "axis_context": {
+    "x": {
+      "quantity": "z_axis",
+      "unit": "mm",
+      "visible_range": [
+        10.0,
+        50.0
+      ]
+    },
+    "y": {
+      "quantity": "linear_density",
+      "unit": "per_mm_context_from_source_lines_208_218",
+      "visible_range": [
+        5e+17,
+        5e+18
+      ]
+    }
+  },
+  "blocked_reason": "Five monochrome line styles overlap and nearly merge across the same z-axis intervals. A quick point-pick pass could mislabel series and would not be defensible as a draft numeric packet.",
+  "draft_extraction_status": "blocked_manual_curve_separation_required",
+  "figure_id": "Fig. 6",
+  "figure_image_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-6.png",
+  "figure_image_sha256": "28f54e7976045c2068742fb003a6aa149f22f44d3174937cc1ee2da52664afde",
+  "generated_utc": "2026-05-11T22:58:56.151107+00:00",
+  "model_role": "a14_extraction_blocker_report",
+  "page": 3,
+  "required_next_steps": [
+    "perform manual or vector-assisted curve separation for all five series",
+    "record per-series pixel picks with line-style labels",
+    "measure round-trip residuals for every extracted series",
+    "document uncertainty from overlapping/merged curve regions",
+    "submit the resulting packet for independent review before validation use"
+  ],
+  "source_lines": "200-222",
+  "source_path": "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md",
+  "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/cikhardtova2015.pdf",
+  "source_pdf_sha256": "9dfed6c03000668c5a4926b539b8dc50824fbf8785a069d8a88b319e915fc7f9",
+  "source_sha256": "5246398a5ea85ef24233a19ca925a12dd6c79b37128e0a06178e411e49100ad0",
+  "task_id": "a14_cikhardtova_2015_fig6_linear_density_extraction_blocker",
+  "validation_gate": "digitization_verification_evidence",
+  "validation_scope": "a14_cikhardtova_2015_linear_density_motion",
+  "visible_series": [
+    {
+      "name": "-5 ns",
+      "style": "black dotted"
+    },
+    {
+      "name": "+25 ns",
+      "style": "black dashed"
+    },
+    {
+      "name": "+55 ns",
+      "style": "black solid"
+    },
+    {
+      "name": "+85 ns",
+      "style": "black dash-dot"
+    },
+    {
+      "name": "+95 ns",
+      "style": "black long-dashed"
+    }
+  ]
+}

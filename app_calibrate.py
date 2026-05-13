@@ -39,6 +39,7 @@ def auto_calibrate(
         _DEFAULT_CROWBAR_R,
         _DEFAULT_DEVICE_PCF,
         LeeModelCalibrator,
+        calibration_provenance_metadata,
     )
     from dpf.validation.experimental import DEVICES
 
@@ -68,6 +69,12 @@ def auto_calibrate(
     except Exception as e:
         return {"error": f"Calibration failed: {e}"}
 
+    provenance = calibration_provenance_metadata(
+        device_name=device_name,
+        preset=preset_name,
+        optimizer="LeeModelCalibrator/Nelder-Mead",
+        reference_source=getattr(device, "reference", ""),
+    )
     out: dict[str, Any] = {
         "best_fc": result.best_fc,
         "best_fm": result.best_fm,
@@ -77,6 +84,11 @@ def auto_calibrate(
         "converged": result.converged,
         "device_name": device_name,
         "preset": preset_name,
+        "provenance_class": provenance["provenance_class"],
+        "validation_status": provenance["validation_status"],
+        "result_label": provenance["result_label"],
+        "can_support_validation_claims": provenance["can_support_validation_claims"],
+        "calibration_provenance": provenance,
     }
 
     # Add published Lee params for comparison
@@ -134,6 +146,7 @@ def auto_calibrate_mlx(
         Dict with calibration results.
     """
     from dpf.validation.mlx_calibration import run_calibration_pipeline
+    from dpf.validation.calibration import calibration_provenance_metadata
 
     result = run_calibration_pipeline(
         preset_name=preset_name,
@@ -142,6 +155,12 @@ def auto_calibrate_mlx(
         skip_phase4=phases < 4,
     )
 
+    provenance = calibration_provenance_metadata(
+        device_name=result.best.device_name,
+        preset=preset_name,
+        optimizer="MLX Optuna TPE multi-fidelity calibration",
+        reference_source="dpf.validation.mlx_calibration",
+    )
     out: dict[str, Any] = {
         "backend": "mlx",
         "best_fc": result.best.best_fc,
@@ -156,6 +175,11 @@ def auto_calibrate_mlx(
         "phases_completed": result.phases_completed,
         "wall_time_s": result.total_wall_time_s,
         "n_trials_total": len(result.trials),
+        "provenance_class": provenance["provenance_class"],
+        "validation_status": provenance["validation_status"],
+        "result_label": provenance["result_label"],
+        "can_support_validation_claims": provenance["can_support_validation_claims"],
+        "calibration_provenance": provenance,
     }
 
     # Best trial NRMSE
@@ -196,6 +220,10 @@ def format_calibration_markdown(cal: dict[str, Any]) -> str:
 
     lines = [
         f"**Calibrated Parameters**: fc={fc:.3f}, fm={fm:.3f}",
+        "",
+        "> Source authority: optimized calibration fits are not validation "
+        "evidence. Reference validation requires accepted local "
+        "`KnowledgeReference/` evidence and same-scope validation packets.",
         "",
     ]
 

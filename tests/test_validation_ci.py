@@ -50,6 +50,7 @@ def _run_circuit_for_device(device_name: str):
     from dpf.constants import k_B, m_D2
     from dpf.core.bases import CouplingState
     from dpf.fluid.snowplow import SnowplowModel
+    from dpf.validation._calibration_data import _DEFAULT_DEVICE_PCF
 
     p_Pa = dev.fill_pressure_torr * 133.322
     rho0 = (p_Pa / (k_B * 300.0)) * m_D2
@@ -63,6 +64,8 @@ def _run_circuit_for_device(device_name: str):
     fc = dev.lee_fc or 0.7
     fm = dev.lee_fm or 0.13
     fmr = dev.lee_fmr or 0.1
+    fcr = dev.lee_fcr or fc
+    pinch_column_fraction = _DEFAULT_DEVICE_PCF.get(device_name, 1.0)
 
     snowplow = SnowplowModel(
         anode_radius=dev.anode_radius,
@@ -72,7 +75,11 @@ def _run_circuit_for_device(device_name: str):
         mass_fraction=fm,
         current_fraction=fc,
         radial_mass_fraction=fmr,
+        radial_current_fraction=fcr,
+        radial_current_fraction_2=getattr(dev, "lee_fcr2", None),
+        radial_transition_time=getattr(dev, "lee_radial_transition_time", None),
         fill_pressure_Pa=p_Pa,
+        pinch_column_fraction=pinch_column_fraction,
     )
 
     # Determine sim_time from device rise time (2.5x to capture post-peak)
@@ -158,26 +165,20 @@ class TestPF1000Validation:
         scholz = compare_engine_vs_experiment(t, I, device_name="PF-1000")
         gribkov = compare_engine_vs_experiment(t, I, device_name="PF-1000-Gribkov")
 
-        # Scholz threshold: 10% reflects Akel 2021 device params + Lee snowplow
-        # accuracy on PF-1000 at 27 kV. Scholz hand-digitization noise + finite
-        # mass-loading window keep error in 8-10% band; tighter threshold held
-        # only when params were uncalibrated. Per 2026-04-24 bisect.
+        # The standard 27 kV PF-1000 path uses Lee/Malek bank and geometry
+        # scope. Akel 16 kV shot-series values are intentionally separate.
         assert scholz.peak_current_error < 0.10, (
             f"Scholz I_peak error {scholz.peak_current_error:.1%}"
         )
-        # Gribkov threshold: 10% — same Akel 2021 calibration band as Scholz.
-        # Post zipper-BC fix (commit 5b54f0a, 2026-04-27), Python backend
-        # behaves correctly and Gribkov error sits at ~8% (was 5.3% on the
-        # broken-zipper baseline that artificially suppressed peak current).
-        # Published params are inputs, not knobs — the 8% floor is real.
         assert gribkov.peak_current_error < 0.10, (
             f"Gribkov I_peak error {gribkov.peak_current_error:.1%}"
         )
 
-        # Scholz NRMSE should be lower (fewer post-peak points)
-        assert scholz.waveform_nrmse < gribkov.waveform_nrmse, (
-            f"Expected Scholz NRMSE < Gribkov, got "
-            f"{scholz.waveform_nrmse:.3f} vs {gribkov.waveform_nrmse:.3f}"
+        assert scholz.waveform_nrmse < device_tol("PF-1000")["nrmse"], (
+            f"Scholz NRMSE {scholz.waveform_nrmse:.3f}"
+        )
+        assert gribkov.waveform_nrmse < device_tol("PF-1000-Gribkov")["nrmse"], (
+            f"Gribkov NRMSE {gribkov.waveform_nrmse:.3f}"
         )
 
 
@@ -208,13 +209,6 @@ class TestMultiDeviceValidation:
             f"expected ~{expected:.0f} A, ratio={ratio:.2f}"
         )
 
-    # Devices where NRMSE > 0.30 is expected due to reconstructed waveforms
-    # or extreme operating conditions not well-captured by the snowplow model
-    # Devices where NRMSE > 0.30 is expected: reconstructed waveforms,
-    # 94-point full-discharge data that exposes post-peak model limitations,
-    # or extreme operating conditions
-    XFAIL_NRMSE = {"MJOLNIR", "PF-1000-Gribkov"}
-
     @pytest.mark.parametrize(
         "device_name",
         [d for d in sorted(WAVEFORM_DEVICES.keys())
@@ -225,8 +219,6 @@ class TestMultiDeviceValidation:
         dev = DEVICES[device_name]
         t, I = _run_circuit_for_device(device_name)
         nrmse = nrmse_peak(t, I, dev.waveform_t, dev.waveform_I)
-        if device_name in self.XFAIL_NRMSE:
-            pytest.xfail(f"{device_name}: reconstructed waveform, NRMSE={nrmse:.3f}")
         assert nrmse < NRMSE_FAIL, (
             f"{device_name}: NRMSE={nrmse:.3f} exceeds fail threshold {NRMSE_FAIL}"
         )

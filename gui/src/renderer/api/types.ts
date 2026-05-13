@@ -19,6 +19,7 @@ export interface CreateSimulationRequest {
   config: Record<string, unknown>;
   max_steps?: number | null;
   preset?: string | null;
+  run_mode?: string | null;
 }
 
 export interface SimulationInfo {
@@ -33,6 +34,16 @@ export interface SimulationInfo {
   max_Te: number;
   max_rho: number;
   total_radiated_energy: number;
+  validation_status: string;
+  result_classification: Record<string, unknown>;
+  predictive_readiness: Record<string, unknown>;
+  high_fidelity_readiness: Record<string, unknown>;
+  first_principles_mhd_readiness: Record<string, unknown>;
+  first_principles_energy_accounting: Record<string, unknown>;
+  first_principles_startup_initialization: Record<string, unknown>;
+  digitization_status: Record<string, unknown>;
+  readiness_scope: Record<string, unknown>;
+  source_blockers: string[];
   error_message?: string | null;
 }
 
@@ -47,6 +58,65 @@ export interface PresetInfo {
   device: string;
   geometry: string;
   grid_shape: number[];
+  source_scope: string;
+  source_scope_status: string;
+  source_scope_note: string;
+  validation_scope: string;
+}
+
+export interface CreateProjectRequest {
+  root: string;
+  name: string;
+  config?: Record<string, unknown>;
+  outputs?: string[];
+  run_manifests?: string[];
+  validation_status?: string;
+  result_classification?: Record<string, unknown>;
+  artifact_classification?: Record<string, unknown>;
+  logs?: string[];
+  provenance?: Record<string, unknown>;
+}
+
+export interface LoadProjectRequest {
+  root: string;
+}
+
+export interface DuplicateProjectRequest {
+  source_root: string;
+  destination_root: string;
+  name?: string | null;
+}
+
+export interface ArchiveProjectRequest {
+  root: string;
+  reason?: string;
+}
+
+export interface ProjectManifest {
+  manifest_version: "1.0";
+  project_id: string;
+  name: string;
+  status: "active" | "archived";
+  created_utc: string;
+  updated_utc: string;
+  archived_utc?: string | null;
+  archive_reason?: string | null;
+  source_project_id?: string | null;
+  config_path: string;
+  config_hash: string;
+  outputs: string[];
+  run_manifests: string[];
+  validation_status: string;
+  result_classification: Record<string, unknown>;
+  artifact_classification: Record<string, unknown>;
+  logs: string[];
+  provenance: Record<string, unknown>;
+}
+
+export interface ProjectInfo {
+  root: string;
+  manifest: ProjectManifest;
+  config: Record<string, unknown>;
 }
 
 export interface HealthResponse {
@@ -56,7 +126,16 @@ export interface HealthResponse {
     athena: boolean;
     athenak: boolean;
     metal: boolean;
+    mlx: boolean;
+    hybrid: boolean;
   };
+}
+
+export interface UnitsMetadata {
+  time_base: Record<string, unknown>;
+  scalars: Record<string, { units: string; dimension: string }>;
+  fields: Record<string, { units: string; dimension: string }>;
+  authority: Record<string, { units: string; dimension: string }>;
 }
 
 // ── WebSocket message types ──────────────────────────────────
@@ -188,7 +267,7 @@ export interface BoundaryConfig {
 }
 
 export interface FluidConfig {
-  backend: "python" | "athena" | "athenak" | "metal" | "auto";
+  backend: "python" | "athena" | "athenak" | "metal" | "mlx" | "hybrid" | "auto";
   reconstruction: string;
   riemann_solver: string;
   cfl: number;
@@ -221,6 +300,11 @@ export interface SimulationConfig {
   dx: number;
   sim_time: number;
   dt_init?: number;
+  run_mode?: string;
+  validation_scope?: string;
+  source_scope?: string;
+  source_scope_status?: string;
+  preset_name?: string;
   rho0: number;
   T0: number;
   anomalous_alpha: number;

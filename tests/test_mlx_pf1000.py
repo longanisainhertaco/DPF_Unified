@@ -1,4 +1,4 @@
-"""PF-1000 full-discharge validation for the MLX MHD solver.
+"""PF-1000 full-discharge policy checks for the MLX MHD solver.
 
 Tests M1-M8 DoD criteria from METAL_V2_DOD.md:
   M1: No negative pressure throughout discharge
@@ -10,10 +10,20 @@ Tests M1-M8 DoD criteria from METAL_V2_DOD.md:
   M7: Float32 on Metal GPU (implicit — backend="mlx")
   M8: div(B) controlled (< 1e-6 relative)
 
-All tests are skipped automatically when MLX is not installed or no Metal GPU
-is available.  Within the class ``TestMLXPF1000MustHave`` every method is
-tagged ``@pytest.mark.slow`` because the fixture runs a 12 us discharge.
-The fixture is ``scope="module"`` so the simulation runs only once.
+Policy split:
+
+* The classes below remain scientific acceptance gates, but they are
+  ``xfail(run=False)`` while S1/S2 same-scope Akel waveform and current-dip
+  evidence remain blocked by review/source closure.
+* Long MLX endurance/regression execution belongs in the opt-in probe paths
+  guarded by ``DPF_MLX_RUN_ENDURANCE=1``. Endurance evidence is useful runtime
+  evidence, not a passing scientific validation gate.
+
+All scientific-gate tests are skipped automatically when MLX is not installed
+or no Metal GPU is available. Within ``TestMLXPF1000MustHave`` every method is
+tagged ``@pytest.mark.slow`` because the fixture runs a 12 us discharge. The
+fixture is ``scope="module"`` so the simulation runs only once if the scientific
+gate is deliberately re-enabled after source closure.
 """
 
 from __future__ import annotations
@@ -62,6 +72,13 @@ _FULL_DISCHARGE_TARGET_S = max(
     float(os.environ.get("DPF_MLX_PF1000_TARGET_US", str(_T_MIN_COMPLETE_S * 1e6)))
     * 1e-6,
 )
+_PF1000_LONG_FIXTURE_POLICY = {
+    "scientific_gate_status": "blocked_by_s1_s2_source_closure",
+    "scientific_gate_marker": "xfail_run_false",
+    "endurance_status": "non_scientific_opt_in_regression",
+    "endurance_opt_in_env": "DPF_MLX_RUN_ENDURANCE",
+    "cap_exhaustion": "explicit_failure",
+}
 _PF1000_FULL_DISCHARGE_BLOCKED = pytest.mark.xfail(
     reason=(
         "PF-1000 full-discharge MLX acceptance remains scientifically unclosed "
@@ -154,6 +171,12 @@ def pf1000_result():
         engine.step_count >= _FULL_DISCHARGE_STEP_CAP
         and engine.time < _FULL_DISCHARGE_TARGET_S
     )
+    engine._pf1000_full_discharge_scientific_status = _PF1000_LONG_FIXTURE_POLICY[
+        "scientific_gate_status"
+    ]
+    engine._pf1000_full_discharge_endurance_status = _PF1000_LONG_FIXTURE_POLICY[
+        "endurance_status"
+    ]
 
     return (
         np.array(times),
@@ -497,6 +520,21 @@ class TestMLXPF1000ShouldHave:
 
 class TestMLXPF1000Config:
     """Config-level checks that do not require running the full discharge."""
+
+    def test_long_fixture_policy_keeps_scientific_gate_blocked(self) -> None:
+        """Long PF-1000 gates stay blocked until S1/S2 source closure exists."""
+        marker = _PF1000_FULL_DISCHARGE_BLOCKED.mark
+        assert marker.name == "xfail"
+        assert marker.kwargs["run"] is False
+        assert _PF1000_LONG_FIXTURE_POLICY == {
+            "scientific_gate_status": "blocked_by_s1_s2_source_closure",
+            "scientific_gate_marker": "xfail_run_false",
+            "endurance_status": "non_scientific_opt_in_regression",
+            "endurance_opt_in_env": "DPF_MLX_RUN_ENDURANCE",
+            "cap_exhaustion": "explicit_failure",
+        }
+        assert _FULL_DISCHARGE_TARGET_S >= _T_MIN_COMPLETE_S
+        assert _FULL_DISCHARGE_STEP_CAP > 0
 
     def test_pf1000_preset_accepts_mlx_backend(self) -> None:
         """get_preset('pf1000') + backend='mlx' produces a valid SimulationConfig."""

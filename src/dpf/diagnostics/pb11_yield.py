@@ -40,6 +40,8 @@ from dpf.constants import eV, k_B
 
 PB11_MODEL_ROLE = "reactivity_table_estimate"
 PB11_VALIDATION_ROLE = "not_dpf_feasibility_validation"
+PB11_SOURCE_STATUS = "reactivity_table_source_missing_q_value_local_nrl_supported"
+PB11_VALIDATION_STATUS = "not_validation_evidence"
 
 
 def pb11_model_metadata() -> dict[str, object]:
@@ -47,6 +49,9 @@ def pb11_model_metadata() -> dict[str, object]:
     return {
         "model_role": PB11_MODEL_ROLE,
         "validation_role": PB11_VALIDATION_ROLE,
+        "source_status": PB11_SOURCE_STATUS,
+        "validation_status": PB11_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
         "predictive_dpf_pb11": False,
         "components": {
             "reaction_q": (

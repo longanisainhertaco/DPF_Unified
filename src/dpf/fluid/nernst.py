@@ -33,6 +33,40 @@ from dpf.collision.spitzer import coulomb_log
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_e, pi
 
+NERNST_MODEL_ROLE = "epperlein_haines_nernst_scaffold"
+NERNST_SOURCE_STATUS = "nernst_thermomagnetic_source_packet_missing"
+NERNST_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def nernst_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for Nernst transport."""
+    return {
+        "model_role": NERNST_MODEL_ROLE,
+        "source_status": NERNST_SOURCE_STATUS,
+        "validation_status": NERNST_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "beta_wedge": (
+                "Uses an Epperlein-Haines-style rational fit; that source packet "
+                "is not yet reviewed into the local KnowledgeReference corpus."
+            ),
+            "coulomb_log": (
+                "Uses the shared collision helper; transport-regime assumptions "
+                "must still be checked against local source limits."
+            ),
+            "advection_update": (
+                "The curl update is a numerical scaffold, not DPF validation "
+                "evidence."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use as an engineering thermomagnetic operator only until local "
+                "source closure and same-scope field/temperature validation exist."
+            ),
+        },
+    }
+
 # ============================================================
 # Electron collision time
 # ============================================================

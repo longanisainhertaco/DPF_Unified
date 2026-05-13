@@ -34,6 +34,8 @@ export interface ServerStatus {
     athena: boolean;
     athenak: boolean;
     metal: boolean;
+    mlx: boolean;
+    hybrid: boolean;
   };
   error?: string;
 }
@@ -142,6 +144,8 @@ function pollHealth(
                   athena: false,
                   athenak: false,
                   metal: false,
+                  mlx: false,
+                  hybrid: false,
                 },
               });
             } catch {

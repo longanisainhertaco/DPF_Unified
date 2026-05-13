@@ -11,7 +11,8 @@ where:
     F_mag = (mu_0 / 4pi) * ln(b/a) * (f_c * I)^2  [N]  magnetic driving force
     F_pressure = p * pi * (b^2 - a^2)              [N]  fill gas back-pressure
     m(z) = rho_0 * pi * (b^2 - a^2) * z * f_m      [kg] swept mass
-    L_plasma = (mu_0 / 2pi) * ln(b/a) * z          [H]  plasma inductance
+    L_coeff = (mu_0 / 2pi) * ln(b/a)               [H/m] geometric coefficient
+    L_plasma = f_c * L_coeff * z                   [H]  circuit-facing load
 
 **Phase 3 — Radial Inward Shock** (slug model):
     d/dt[M_slug * vr] = -F_rad
@@ -19,7 +20,7 @@ where:
 where:
     F_rad = (mu_0 / 4pi) * (f_c * I)^2 * z_f / r_s   [N]  radial J×B force
     M_slug = f_mr * rho_0 * pi * (b^2 - r_s^2) * z_f  [kg] radial swept mass
-    L_plasma = L_axial + (mu_0 / 2pi) * z_f * ln(b / r_s)  [H]
+    L_plasma = L_axial + f_cr_eff * (mu_0 / 2pi) * z_f * ln(b / r_s)  [H]
 
 The snowplow provides the time-varying plasma inductance L_plasma(t) that
 couples to the circuit solver via CouplingState, producing the characteristic
@@ -34,6 +35,7 @@ References:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -43,6 +45,52 @@ logger = logging.getLogger(__name__)
 
 _D2_GAMMA = 5.0 / 3.0
 _COLD_GAS_RH_COMPRESSION = (_D2_GAMMA + 1.0) / (_D2_GAMMA - 1.0)
+_CPU_RADIUS_CONVENTION: dict[str, Any] = {
+    "model": "cpu_snowplow",
+    "phase_coverage": ["rundown", "radial", "reflected", "pinch", "post_pinch"],
+    "radial_inductance_radius": "r_s",
+    "radial_inductance_radius_meaning": "shock_front_radius",
+    "piston_radius_explicit": False,
+    "r_min_over_a": 0.17,
+    "r_min_scope": "pf1000_specific_or_0p14_to_0p17_empirical_band",
+    "cross_backend_equivalent_to_mlx": False,
+    "validation_status": "not_validation_evidence",
+    "claim_limit": (
+        "CPU snowplow radial loading uses shock-front radius and PF-1000-style "
+        "minimum-radius scope; do not treat it as interchangeable with the "
+        "reduced MLX piston-radius convention."
+    ),
+}
+_POST_PINCH_RESISTANCE_AUTHORITY: dict[str, Any] = {
+    "model": "cpu_snowplow_post_pinch_resistance",
+    "classification": "empirical_engineering_continuity_model",
+    "source_status": "multiplier_source_missing",
+    "validation_status": "not_validation_evidence",
+    "can_support_scientific_claims": False,
+    "resistance_multiplier": 2.0,
+    "expansion_velocity_multiplier": 1.0,
+    "claim_limit": (
+        "Post-pinch resistance multipliers are retained for engineering "
+        "continuity and current-decay behavior; they cannot support validation "
+        "claims until source/provenance closure exists."
+    ),
+}
+
+
+def cpu_snowplow_radius_convention() -> dict[str, Any]:
+    """Return fail-closed metadata for CPU snowplow radial-radius semantics."""
+    return {
+        key: (list(value) if isinstance(value, list) else value)
+        for key, value in _CPU_RADIUS_CONVENTION.items()
+    }
+
+
+def post_pinch_resistance_authority() -> dict[str, Any]:
+    """Return fail-closed provenance labels for post-pinch resistance multipliers."""
+    return {
+        key: (list(value) if isinstance(value, list) else value)
+        for key, value in _POST_PINCH_RESISTANCE_AUTHORITY.items()
+    }
 
 
 def implosion_scaling(
@@ -168,7 +216,9 @@ class SnowplowModel:
         # Phase R.5 confirmed: mu_0/(4pi), NOT mu_0/2
         self.F_coeff = (mu_0 / (4.0 * pi)) * self.ln_ba
 
-        # Inductance coefficient: (mu_0 / 2pi) * ln(b/a) [H/m]
+        # Geometric inductance coefficient: (mu_0 / 2pi) * ln(b/a) [H/m].
+        # Keep this unscaled; current factors are applied only by
+        # circuit-facing helpers such as _axial_circuit_inductance().
         # From coaxial magnetic energy: L/z = mu_0/(2*pi) * ln(b/a)
         # While F/I^2 = mu_0/(4*pi) * ln(b/a), so L_coeff = 2 * F_coeff
         self.L_coeff = 2.0 * self.F_coeff
@@ -183,7 +233,9 @@ class SnowplowModel:
         self.vr = 0.0             # Radial shock velocity [m/s] (negative = inward)
         self._L_axial_frozen = 0.0  # Axial L_plasma at end of rundown [H]
 
-        # Minimum pinch radius: r_min/a = 0.17 for PF-1000.
+        # Minimum pinch radius: r_min/a = 0.17 for PF-1000-scoped CPU runs.
+        # This is intentionally scope-separated from the reduced MLX gross
+        # deuterium r_min/a = 0.13 convention.
         # [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.11 Table — PF-1000 r_min/a = 0.17]
         # KR also notes "rmin/a (almost constant at 0.14-0.17)" across devices (p.7 L665).
         self.r_pinch_min = 0.17 * self.a
@@ -195,8 +247,10 @@ class SnowplowModel:
         # dip depth.  Lee (2014) uses alpha ~ 0.05-0.1.
         self._alpha_anom = 0.06  # anomalous resistivity parameter
         self._reflected_shock_density_ratio = _COLD_GAS_RH_COMPRESSION
-        self._post_pinch_resistance_multiplier = 2.0  # empirical, retained for continuity
-        self._post_pinch_expansion_velocity_multiplier = 1.0  # KR/Goyon-compatible default
+        # Empirical post-pinch continuity knobs. Their provenance is exposed by
+        # post_pinch_resistance_authority and remains not validation evidence.
+        self._post_pinch_resistance_multiplier = 2.0
+        self._post_pinch_expansion_velocity_multiplier = 1.0
 
         # Track phase completion
         self._rundown_complete = False
@@ -221,6 +275,21 @@ class SnowplowModel:
             f", TWO-STEP: f_cr2={self.f_cr2:.2f} t_trans={self.t_transition*1e6:.2f}us"
             if self.f_cr2 is not None and self.t_transition is not None else "",
         )
+
+    @property
+    def radius_convention(self) -> dict[str, Any]:
+        """Metadata describing CPU snowplow radial-radius semantics."""
+        return cpu_snowplow_radius_convention()
+
+    @property
+    def post_pinch_resistance_authority(self) -> dict[str, Any]:
+        """Metadata describing post-pinch resistance multiplier provenance."""
+        authority = post_pinch_resistance_authority()
+        authority["resistance_multiplier"] = self._post_pinch_resistance_multiplier
+        authority["expansion_velocity_multiplier"] = (
+            self._post_pinch_expansion_velocity_multiplier
+        )
+        return authority
 
     def _effective_radial_fc(self) -> float:
         """Effective current fraction during radial phase.

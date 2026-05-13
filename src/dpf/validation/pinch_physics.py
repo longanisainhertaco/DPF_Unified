@@ -816,9 +816,15 @@ def coulomb_mean_free_path(
         raise ValueError("Temperature and density must be positive")
 
     if ln_lambda is None:
-        # NRL formula for Te > 10 eV
-        ln_lambda = max(23.5 - np.log(np.sqrt(n_e * 1e-6) / T_e_eV**(5/4))
-                        - np.sqrt(1e-5 + (np.log(T_e_eV) - 2)**2 / 16), 2.0)
+        # NRL electron-ion Coulomb logarithm with n_e in cm^-3 and T_e in eV.
+        # The electron-electron expression has a different 23.5 coefficient and
+        # correction term; this helper is explicitly for electron-ion mfp.
+        n_e_cm3 = n_e * 1.0e-6
+        if T_e_eV < 10.0 * Z * Z:
+            ln_lambda = 23.0 - np.log(np.sqrt(n_e_cm3) * Z * T_e_eV ** -1.5)
+        else:
+            ln_lambda = 24.0 - np.log(np.sqrt(n_e_cm3) * T_e_eV ** -1.0)
+        ln_lambda = max(float(ln_lambda), 2.0)
 
     T_e_J = T_e_eV * E_CHARGE
     # lambda_mfp = (4*pi*eps0)^2 * (m_e*v_th^2)^2 / (n_e * Z^2 * e^4 * ln_lambda)

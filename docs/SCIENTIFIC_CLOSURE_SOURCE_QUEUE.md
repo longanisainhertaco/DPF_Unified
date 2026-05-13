@@ -1,12 +1,15 @@
 # Scientific Closure Source Queue
 
-Updated: 2026-05-07
+Updated: 2026-05-12
 
 This queue is not source-of-truth evidence. The source of truth remains local
 files under `KnowledgeReference/`. These candidate links become usable only
 after the user acquires the correct document, the document is added locally
 under `KnowledgeReference/`, Codex reviews it under the KR-only rule, and any
 digitized data passes one-for-one provenance verification.
+
+For a user-facing acquisition checklist with direct DOI/publisher links, see
+`docs/SOURCE_ACQUISITION_NEEDED.md`.
 
 Current widest closure scope from the local KR target report:
 
@@ -29,10 +32,82 @@ Current widest closure scope from the local KR target report:
 Queue entries distinguish `local_sources_available` from
 `candidate_sources_for_acquisition`. Akel 2021, Gribkov 2007 Parts I/II,
 Schmidt 2022, Malir 2024, and Goyon 2025 are already represented by
-parity-verified local `KnowledgeReference` markdown records. Cikhardtova 2015,
-Sadowski/Scholz 2004, Catenacci 2020, Springham 2021, Klir 2011, and Jednorog
-2017 were not found as exact local PDFs in the DPF-Unified tree and remain
-user-acquisition candidates.
+parity-verified local `KnowledgeReference` markdown records. The 2026-05-11
+supplemental intake also promoted Cikhardtova 2015, Szydlowski/Sadowski/Scholz
+2004, Catenacci 2020, Springham 2021, and Klir 2011 into local
+`source_fidelity_reviewed_target_extraction_needed` KR records, and the first
+typed target/crop-candidate pass is now underway. Jednorog 2017 remains the only
+still-missing exact PDF among that earlier six-paper queue.
+
+The 2026-05-12 supplemental user intake staged 35 unique PDFs from 39 supplied
+paths. It promoted 28 new DPF/plasma/numerics/math-method records into
+`KnowledgeReference/`, repaired a false Trunk 1975/Kortanek 2014 generic-title
+match, and left seven non-physics/AI-only support PDFs
+staged but outside physics authority. The promoted/skipped set now has
+source-fidelity annotations across 28 KR records, including figure-caption,
+table-caption, formula-like, numeric-target-context, uncertainty-context, and
+image-block indexes. This creates new source-review material only; no May 12
+record closes a validation tier until typed targets or independently reviewed
+digitization packets are created.
+
+The first May 12 triage backlog is
+`docs/USER_PDF_MAY12_TARGET_TRIAGE_2026_05_12.md` / `.json`. It currently
+marks 5 target-extraction candidates: four P1 source-review candidates
+(`10.1088@1742-6596@370@1@012059.pdf`, `kasperczuk2002.pdf`,
+`kubes2020.pdf`, and `trunk1975.pdf`) and one P2 cleanup-first candidate
+(`lindemuth1982.pdf`). Alexiou 2002 is a spectroscopy/method reference,
+Sadowski 2008 is review/source-map context, and `symons1994.pdf` is stage-only
+after first-page review showed it is an out-of-scope JSTOR social-science
+review. The remaining promoted records are method, context, or materials
+references until a specific source-backed validation need is mapped.
+
+The source-level validation report is
+`docs/USER_PDF_MAY12_SOURCE_VALIDATION_2026_05_12.md` / `.json`. It validates
+28 promoted source records, 7 stage-only records, 5 target-extraction
+candidates, 23 method/context records, and records 0 validation failures. This
+is source-authority validation only; validation tiers remain blocked until typed
+targets or independently reviewed digitization packets exist.
+
+The validated-physics promotion plan is
+`docs/VALIDATED_PHYSICS_PIPELINE_PLAN.md`. It defines the required pipeline from
+source validation through source-line review, typed target extraction,
+figure/table digitization, formula evidence, uncertainty propagation,
+comparator binding, same-scope packet assembly, and certificate gates. This plan
+does not accept any target, curve, table, formula, uncertainty value, or
+validation threshold by itself.
+
+## Machine-Readable Queue State
+
+`scientific_closure_source_acquisition_queue()` now reports both blocker items
+and a same-scope group-status matrix. The current PF-1000 full-energy closure
+summary is:
+
+- `blocker_count`: 10
+- `priority_1_count`: 5
+- `priority_2_count`: 5
+- `local_digitization_or_target_extraction_count`: 10
+- `user_acquisition_required_count`: 1
+- `complete_group_count`: 2
+- `partial_group_count`: 10
+- `missing_group_count`: 0
+
+The same-scope status matrix marks `phase_semantics` and `spatial_density` as
+`complete_in_current_scope`; the other active closure groups remain
+`partial_in_current_scope`. This means the queue is now primarily blocked by
+title cleanup, target extraction, figure/table digitization, uncertainty, and
+detector-response work. User acquisition is still required for Jednorog 2017
+and for adjacent sources not yet covered by the candidate matrix.
+
+Each blocker item now includes a `source_action`:
+
+- `local_digitization_or_target_extraction` when local KR sources already exist
+  but observables, uncertainty, or typed targets still need extraction.
+- `user_acquisition_then_knowledge_reference_ingestion` when at least one needed
+  source still requires user acquisition before KR review.
+
+Each blocker item also names the validation tiers it blocks so Tier 2, Tier 4,
+Tier 5, Akel S1/S2, and high-fidelity readiness cannot be accidentally
+advanced from an incomplete queue.
 
 ## Digitization Verification Gate
 
@@ -115,6 +190,19 @@ For the Akel Fig. 1 current-waveform packet,
 current state as `blocked_by_review`, not `digitization_packet_missing`. It
 still returns `passed=False`; the helper is data-readiness status only and
 does not compare any simulation waveform against the draft trace.
+
+Before an independent review decision is recorded, run:
+
+```bash
+python3 scripts/verify_akel_digitization_source_integrity.py --pretty
+```
+
+This pre-review guardrail checks the local PDF/markdown/JSON text parity, source
+hashes, figure crop hash, archived page-3 SVG hash, draft packet hash, Fig. 1
+caption line window, required series counts, and non-review digitization
+failures. A passing report can still say `accepted_for_validation=false`; that
+is expected while the remaining failures are only `independent_review_missing`
+and `review_status_not_accepted`.
 
 ## Priority 1 Queue
 
@@ -293,23 +381,177 @@ available for ingestion.
 | Malir et al. (2024), DOI `10.1063/5.0193268` | Found at `archive_reference_OLD/references/papers/core-dpf/malir-2024-interferometry-dpf.pdf`; KR markdown exists at `KnowledgeReference/malir-2024-interferometry-dpf.md` | Exact match already in KR markdown. |
 | Goyon et al. (2025), DOI `10.1063/5.0253547` | Found at `archive_reference_OLD/references/papers/core-dpf/goyon-2025-ma-class-dpf-neutron.pdf` and `archive_reference_OLD/references/papers/core-dpf/Neutron_generation_dynamics_inside_a_MA-class_dens.pdf`; both have identical SHA-256; duplicate copies also exist under `archive_reference_OLD/references/papers/archive/` | Exact match. KR markdown exists under long title filenames: `KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch.md` and `KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md`. |
 
-### Not Found As Exact Local PDFs
+### Supplemental Intake Status
 
-These candidates were checked by DOI/title text extraction and filename search.
-No exact local PDF match was found in the DPF-Unified tree:
+The earlier "not found" list is partially superseded by the 2026-05-11
+supplemental intake. These sources now have local KR text records but still
+need title cleanup, target-array completion, figure/table digitization, and
+independent review before validation use. Figure/table, formula, numeric-target,
+and uncertainty-copy fidelity was second-pass checked on 2026-05-11 by
+`scripts/verify_kr_source_fidelity.py --apply`; recovered artifacts are now
+stored in each same-stem KR JSON under `source_fidelity_review` and summarized
+in the same-stem Markdown.
 
-- Cikhardtova et al. (2015), "Temporal distribution of linear densities of the plasma column in a plasma focus discharge", DOI `10.1515/nuka-2015-0065`
-- Sadowski/Scholz/PF-1000 team (2004), "Measurements of fast ions and neutrons emitted from PF-1000 plasma focus device", DOI `10.1016/j.vacuum.2004.07.040`
-- Catenacci et al. (2020), "Tomographic Reconstruction of the Neutron Time-Energy Spectrum from a Dense Plasma Focus", DOI `10.1109/TPS.2020.3012104`
-- Springham et al. (2021), "Plasma focus neutron energy and anisotropy measurements using zirconium-beryllium pair activation detectors", DOI `10.1016/j.nima.2020.164830`
-- Klir et al. (2011), "Fusion neutron detector for time-of-flight measurements in z-pinch and plasma focus experiments", DOI `10.1063/1.3559548`
-- Jednorog et al. (2017), "A new concept of fusion neutron monitoring for PF-1000 device", DOI `10.1515/nuka-2017-0003`
+- Cikhardtova et al. (2015), DOI `10.1515/nuka-2015-0065`
+- Szydlowski/Sadowski/Scholz/PF-1000 team (2004), DOI
+  `10.1016/j.vacuum.2004.07.040`
+- Catenacci et al. (2020), DOI `10.1109/TPS.2020.3012104`
+- Springham et al. (2021), DOI `10.1016/j.nima.2020.164830`
+- Klir et al. (2011), DOI `10.1063/1.3559548`
 
-Several other PDFs contain these DOIs or title fragments only in reference
-lists, including `2025_Numerical_studies_of_plasma_emission_in_a_mega_joule_plasma_focus_using_Lee_code.pdf`,
-`AD1079881_DPF_optimization.pdf`, `2024_Deuteron_beam_fluence_emitted_from_dense_plasma_focus_Comparative_investigation.pdf`,
-and `2 ICTP e-manual 2.pdf`. They are not exact matches for the candidate
-documents.
+Target extraction and digitization start, 2026-05-11:
+
+- New typed target records were started for Cikhardtova 2015,
+  Szydlowski 2004, Klir 2011, Springham 2021, and Catenacci 2020 in
+  `src/dpf/validation/kr_targets.py`.
+- A dated starter report was written to
+  `docs/TARGET_EXTRACTION_DIGITIZATION_2026_05_11.md` / `.json`.
+- The first 23 cited pages were rendered as crop-pending workbench images under
+  `KnowledgeReference/figures/target-extraction/2026-05-11/`.
+- The first 36 unreviewed crop candidates were generated and hash-recorded:
+  six for Cikhardtova 2015 Figs. 1-6, five for Szydlowski 2004 Figs. 1-5,
+  four for Klir 2011 Figs. 1-4, nine for Springham 2021 Figs. 1-7 and
+  Tables 1-2, and twelve for Catenacci 2020 Figs. 1-8 and Tables I-IV.
+- Status boundary: these records are `target_record_started_page_rendered_crop_pending`.
+  None of the rendered pages, crop candidates, or extracted scalar target
+  records is accepted figure digitization evidence until a cropped figure/table
+  packet passes `digitization_verification_evidence()` and independent review.
+
+A14 table extraction draft pass, 2026-05-11:
+
+- A draft table packet bundle was written to
+  `KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json`,
+  with a companion review report at
+  `docs/A14_TABLE_EXTRACTION_DRAFTS_2026_05_11.md`.
+- The bundle contains six source-bound draft table packets: Springham 2021
+  Tables 1-2 and Catenacci 2020 Tables I-IV.
+- Each packet records local KR source hash, local PDF hash, crop-image hash,
+  source line window, table rows, and numeric series. Each packet remains
+  `draft_unreviewed` with `accepted_for_validation=false`.
+- `digitization_verification_evidence()` currently fails every A14 table draft
+  only on `independent_review_missing` and `review_status_not_accepted`.
+  This is intentional; the draft tables cannot support validation until
+  independent review metadata is bound to the current hashes and accepted.
+- Review hardening update: `a14_table_extraction_draft_packets()` now adds a
+  stable per-table item hash for review binding, and
+  `digitization_verification_evidence()` checks table crop-image hashes before
+  any accepted review can pass. The verifier also checks declared local
+  `source_pdf_path`/`source_pdf_sha256` pairs and requires accepted review
+  metadata to match `reviewed_source_pdf_sha256`.
+
+A14 crop-boundary QA pass, 2026-05-11:
+
+- A crop-boundary status report was written to
+  `docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.md` / `.json`.
+- The report covers all 36 A14 crop candidates and keeps
+  `accepted_for_validation_count=0`.
+- Visual QA status is now explicit after crop-rectangle cleanup: 21 figure
+  crops are `boundary_ready_for_draft_extraction`, 9 diagram/image crops are
+  `manual_review_required`, 0 crops are `crop_adjustment_needed`, and the 6
+  table crops are `draft_extracted_review_blocked`.
+- The first recommended axis-calibration targets are Cikhardtova 2015 Fig. 6,
+  Klir 2011 Fig. 2, and Springham 2021 Fig. 5.
+- Status boundary: this QA pass does not accept any figure/table digitization
+  evidence. Boundary-ready means suitable for draft calibration/extraction
+  only; validation use still requires calibrated arrays, residual evidence, and
+  accepted independent review through `digitization_verification_evidence()`.
+
+A14 axis-calibration draft pass, 2026-05-11:
+
+- A draft figure-calibration bundle was written to
+  `KnowledgeReference/digitization/a14-2026-05-11-axis-calibration-draft-packets.json`,
+  with a companion report at
+  `docs/A14_AXIS_CALIBRATION_DRAFTS_2026_05_11.md`.
+- The bundle covers Cikhardtova 2015 Fig. 6, Klir 2011 Fig. 2, and Springham
+  2021 Fig. 5.
+- Each packet records local KR source hash, local PDF hash, crop-image hash,
+  source line window, visible axis/range metadata, visible series labels, and
+  extraction notes.
+- Status boundary: these packets are not digitized data. They contain no
+  curve arrays, no residuals, no independent review, and
+  `accepted_for_validation=false`.
+
+A14 Springham Fig. 5 numeric draft pass, 2026-05-11:
+
+- A draft digitization packet was written to
+  `KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json`,
+  with a companion report at
+  `docs/A14_SPRINGHAM_FIG5_DIGITIZATION_DRAFT_2026_05_11.md`.
+- The packet contains 14 candidate points for the visible blue
+  mono-energetic-neutron curve in Springham 2021 Fig. 5, plus source hash,
+  local PDF hash, crop hash, axis calibration, and pixel-pick metadata.
+- Residual status: the draft round-trip residual check now reports RMS
+  `0.002049609754498783 px` and max `0.0031865149536866814 px` by projecting
+  the candidate values back through the Fig. 5 axis calibration and comparing
+  against the recorded draft pixel picks.
+- Status boundary: this packet is a numeric draft only. It still fails
+  `digitization_verification_evidence()` on `independent_review_missing` and
+  `review_status_not_accepted`, and remains `accepted_for_validation=false`.
+- Review-gate hardening: tests now prove a synthetic accepted Springham Fig. 5
+  packet can pass only when review metadata binds to the current packet,
+  source, local PDF, and figure hashes. This does not accept the real packet.
+- A companion Gaussian-curve draft packet was written to
+  `KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-gaussian-curves-draft-packet.json`,
+  with a report at
+  `docs/A14_SPRINGHAM_FIG5_GAUSSIAN_CURVES_DRAFT_2026_05_11.md`. It contains
+  the visible black 200 keV FWHM and red 400 keV FWHM response curves only;
+  hidden segments under plot annotations were not synthesized.
+
+A14 independent-review handoff pass, 2026-05-11:
+
+- A reviewer-facing handoff manifest was written to
+  `docs/A14_INDEPENDENT_REVIEW_HANDOFF_2026_05_11.json`, with a companion
+  Markdown report at `docs/A14_INDEPENDENT_REVIEW_HANDOFF_2026_05_11.md`.
+- The manifest lists nine reviewable draft packets: six A14 table drafts, the
+  Springham Fig. 5 mono-energetic numeric draft, the Springham Fig. 5
+  Gaussian-curve numeric draft, and the Klir Fig. 2 timing-response draft. It
+  also lists three axis-calibration scaffolds as context-only items.
+- Status boundary: the handoff is review readiness only. It preserves
+  `accepted_for_validation_count=0`; actual validation use still requires
+  independent accepted review metadata bound to current packet/source/local-PDF
+  and figure-or-crop hashes, plus a passing
+  `digitization_verification_evidence()` result.
+
+A14 Klir Fig. 2 timing-response draft pass, 2026-05-11:
+
+- A draft digitization packet was written to
+  `KnowledgeReference/digitization/a14-2026-05-11-klir-fig2-timing-response-draft-packet.json`,
+  with a companion report at
+  `docs/A14_KLIR_FIG2_TIMING_RESPONSE_DRAFT_2026_05_11.md`.
+- The packet contains two visible curve-centerline series from Klir 2011
+  Fig. 2: FWHM and rise time versus PMT voltage.
+- Status boundary: the source caption states error bars indicate +/-2 sigma,
+  but numeric error-bar extents are not extracted in this packet. It remains
+  `accepted_for_validation=false` and review-blocked.
+
+A14 Cikhardtova Fig. 6 extraction blocker, 2026-05-11:
+
+- A blocker report was written to
+  `docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.json`, with a
+  companion Markdown report at
+  `docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.md`.
+- The report records five visible linear-density series from Cikhardtova 2015
+  Fig. 6 but does not create numeric arrays because monochrome line styles
+  overlap and nearly merge.
+- Status boundary: manual or vector-assisted curve separation is required
+  before any Cikhardtova Fig. 6 digitization packet can be submitted for
+  independent review.
+
+A14 remaining-extraction backlog, 2026-05-11:
+
+- A generated backlog was written to
+  `docs/A14_REMAINING_EXTRACTION_BACKLOG_2026_05_11.json`, with a companion
+  Markdown report at `docs/A14_REMAINING_EXTRACTION_BACKLOG_2026_05_11.md`.
+- Current generated counts: 36 crop candidates, 9 reviewable draft packets
+  across 8 distinct crops, 18 ready-not-started crops, 9 manual-review crops,
+  1 blocked crop, and 0 accepted validation items.
+- Status boundary: the backlog is a planning artifact. It does not accept any
+  A14 packet or crop for validation use.
+
+Still not found as an exact local PDF in this queue:
+
+- Jednorog et al. (2017), "A new concept of fusion neutron monitoring for
+  PF-1000 device", DOI `10.1515/nuka-2017-0003`
 
 ### Parity-Verified KR Records
 

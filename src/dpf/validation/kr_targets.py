@@ -535,6 +535,17 @@ def pf1000_16kv_current_waveform_digitization_candidate_evidence(
     required_series = {"measured_current", "computed_current"}
     review_only_failures = {
         "independent_review_missing",
+        "independent_review_metadata_missing",
+        "review_packet_hash_missing",
+        "review_packet_hash_mismatch",
+        "review_source_hash_mismatch",
+        "review_figure_image_hash_mismatch",
+        "review_task_id_mismatch",
+        "review_scope_mismatch",
+        "reviewer_missing",
+        "review_date_missing",
+        "review_notes_missing",
+        "review_decision_not_accepted",
         "review_status_not_accepted",
     }
 
@@ -616,6 +627,7 @@ def pf1000_16kv_current_waveform_digitization_candidate_evidence(
             "digitization_status": status_report,
             "missing_for_full_tier1": [
                 "independent_digitization_review",
+                "packet_tied_review_metadata",
                 "review_status_accepted",
                 "per_point_current_uncertainty",
                 "per_point_timing_uncertainty",
@@ -631,6 +643,256 @@ def pf1000_16kv_current_waveform_digitization_candidate_evidence(
                 "A draft packet with measured overlay residuals remains "
                 "blocked until independent review accepts it."
             ),
+        },
+    }
+
+
+def _digitized_series_by_name(packet: Mapping[str, object], name: str) -> Mapping[str, object] | None:
+    digitized_series = packet.get("digitized_series", [])
+    if not isinstance(digitized_series, Sequence):
+        return None
+    for series in digitized_series:
+        if isinstance(series, Mapping) and series.get("name") == name:
+            return series
+    return None
+
+
+def _unit_scale(unit: str, *, quantity: str) -> float:
+    normalized = unit.strip().lower()
+    if quantity == "time":
+        if normalized in {"us", "microsecond", "microseconds"}:
+            return 1.0
+        if normalized in {"s", "sec", "second", "seconds"}:
+            return 1.0e6
+    if quantity == "current":
+        if normalized in {"ma", "megaamp", "megaamps"}:
+            return 1.0
+        if normalized in {"ka", "kiloamp", "kiloamps"}:
+            return 1.0e-3
+        if normalized in {"a", "amp", "amps"}:
+            return 1.0e-6
+    raise ValueError(f"unsupported {quantity} unit: {unit!r}")
+
+
+def _array_in_units(values: Sequence[object], unit: str, *, quantity: str) -> np.ndarray:
+    scale = _unit_scale(unit, quantity=quantity)
+    array = np.asarray(values, dtype=float) * scale
+    if array.ndim != 1 or array.size < 3 or not np.all(np.isfinite(array)):
+        raise ValueError(f"{quantity} array must contain at least three finite points")
+    return array
+
+
+def _waveform_dip_metrics(time_us: np.ndarray, current_MA: np.ndarray) -> dict[str, object]:
+    peak_index = int(np.argmax(current_MA))
+    peak_current = float(current_MA[peak_index])
+    if peak_index >= current_MA.size - 2 or peak_current <= 0.0:
+        return {"dip_present": False, "reason": "no_post_peak_dip_window"}
+    post_peak = current_MA[peak_index + 1 :]
+    dip_index = int(np.argmin(post_peak)) + peak_index + 1
+    dip_current = float(current_MA[dip_index])
+    dip_depth_fraction = (peak_current - dip_current) / max(abs(peak_current), 1.0e-30)
+    return {
+        "dip_present": dip_depth_fraction > 0.05,
+        "peak_time_us": float(time_us[peak_index]),
+        "peak_current_MA": peak_current,
+        "dip_time_us": float(time_us[dip_index]),
+        "dip_current_MA": dip_current,
+        "dip_depth_fraction": float(dip_depth_fraction),
+    }
+
+
+def pf1000_16kv_current_waveform_comparison_candidate_evidence(
+    simulation_time: Sequence[object],
+    simulation_current: Sequence[object],
+    packet: Mapping[str, object] | None = None,
+    *,
+    target: dict[str, object] | None = None,
+    base_path: str | Path = ".",
+    time_unit: str = "us",
+    current_unit: str = "MA",
+    uncertainty: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Compare a simulated current waveform to accepted Akel Fig. 1 data.
+
+    Draft or review-blocked digitization packets return a blocked status before
+    any waveform metric is computed.
+    """
+    target = target or pf1000_16kv_current_waveform_targets()
+    readiness = pf1000_16kv_current_waveform_digitization_candidate_evidence(
+        packet,
+        target=target,
+        base_path=base_path,
+    )
+    if not readiness.get("passed"):
+        return {
+            "passed": False,
+            "waveform_comparison_status": readiness["waveform_digitization_status"],
+            "metrics_computed": False,
+            "validation_scope": readiness["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": readiness["source"],
+            "source_lines": readiness["source_lines"],
+            "details": {
+                "digitization_readiness": readiness,
+                "missing_for_full_tier1": ["accepted_same_scope_digitized_waveform"],
+            },
+        }
+
+    if packet is None:
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_missing_packet",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {"missing_for_full_tier1": ["digitization_packet_missing"]},
+        }
+
+    if packet.get("validation_scope") != target["validation_scope"]:
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_scope_mismatch",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {
+                "packet_validation_scope": packet.get("validation_scope"),
+                "target_validation_scope": target["validation_scope"],
+            },
+        }
+
+    uncertainty = uncertainty or {}
+    required_uncertainty = {"current_MA", "time_us"}
+    missing_uncertainty = sorted(required_uncertainty - set(uncertainty))
+    if missing_uncertainty:
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_missing_uncertainty",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {
+                "missing_uncertainty": missing_uncertainty,
+                "required_uncertainty": sorted(required_uncertainty),
+            },
+        }
+
+    measured = _digitized_series_by_name(packet, "measured_current")
+    if measured is None:
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_missing_measured_series",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {"missing_series": "measured_current"},
+        }
+
+    try:
+        measured_t_us = _array_in_units(
+            measured.get("x", []), str(measured.get("x_unit", "")), quantity="time"
+        )
+        measured_i_MA = _array_in_units(
+            measured.get("y", []), str(measured.get("y_unit", "")), quantity="current"
+        )
+        sim_t_us = _array_in_units(simulation_time, time_unit, quantity="time")
+        sim_i_MA = _array_in_units(simulation_current, current_unit, quantity="current")
+    except ValueError as exc:
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_malformed_waveform",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {"error": str(exc)},
+        }
+
+    if sim_t_us.min() > measured_t_us.min() or sim_t_us.max() < measured_t_us.max():
+        return {
+            "passed": False,
+            "waveform_comparison_status": "blocked_by_time_range",
+            "metrics_computed": False,
+            "validation_scope": target["validation_scope"],
+            "model_role": "kr_current_waveform_comparison_candidate",
+            "validation_tier": 1,
+            "source": target["source"],
+            "source_lines": target["source_lines"],
+            "details": {
+                "simulation_time_us_range": [float(sim_t_us.min()), float(sim_t_us.max())],
+                "measured_time_us_range": [float(measured_t_us.min()), float(measured_t_us.max())],
+            },
+        }
+
+    sim_interp_MA = np.interp(measured_t_us, sim_t_us, sim_i_MA)
+    rms_error = float(np.sqrt(np.mean((sim_interp_MA - measured_i_MA) ** 2)))
+    normalization = max(float(np.ptp(measured_i_MA)), 1.0e-30)
+    waveform_nrmse = rms_error / normalization
+
+    measured_dip = _waveform_dip_metrics(measured_t_us, measured_i_MA)
+    simulated_dip = _waveform_dip_metrics(measured_t_us, sim_interp_MA)
+    waveform_nrmse_tolerance = float(uncertainty.get("waveform_nrmse_tolerance", 0.25))
+    dip_depth_tolerance = float(uncertainty.get("dip_depth_fraction_tolerance", 0.20))
+    dip_timing_tolerance = float(uncertainty.get("dip_timing_us_tolerance", 0.75))
+
+    metric_failures: list[str] = []
+    if waveform_nrmse > waveform_nrmse_tolerance:
+        metric_failures.append("waveform_nrmse_too_large")
+    if not measured_dip.get("dip_present"):
+        metric_failures.append("measured_current_dip_missing")
+    if not simulated_dip.get("dip_present"):
+        metric_failures.append("simulated_current_dip_missing")
+    if measured_dip.get("dip_present") and simulated_dip.get("dip_present"):
+        dip_depth_error = abs(
+            float(simulated_dip["dip_depth_fraction"])
+            - float(measured_dip["dip_depth_fraction"])
+        )
+        dip_timing_error_us = abs(
+            float(simulated_dip["dip_time_us"]) - float(measured_dip["dip_time_us"])
+        )
+        if dip_depth_error > dip_depth_tolerance:
+            metric_failures.append("current_dip_depth_error_too_large")
+        if dip_timing_error_us > dip_timing_tolerance:
+            metric_failures.append("current_dip_timing_error_too_large")
+    else:
+        dip_depth_error = None
+        dip_timing_error_us = None
+
+    return {
+        "passed": not metric_failures,
+        "waveform_comparison_status": "passed" if not metric_failures else "failed",
+        "metrics_computed": True,
+        "validation_scope": target["validation_scope"],
+        "model_role": "kr_current_waveform_comparison_candidate",
+        "validation_tier": 1,
+        "source": target["source"],
+        "source_lines": target["source_lines"],
+        "details": {
+            "waveform_nrmse": waveform_nrmse,
+            "waveform_nrmse_tolerance": waveform_nrmse_tolerance,
+            "measured_dip": measured_dip,
+            "simulated_dip": simulated_dip,
+            "dip_depth_error": dip_depth_error,
+            "dip_depth_fraction_tolerance": dip_depth_tolerance,
+            "dip_timing_error_us": dip_timing_error_us,
+            "dip_timing_us_tolerance": dip_timing_tolerance,
+            "missing_or_failed_checks": metric_failures,
+            "uncertainty": dict(uncertainty),
         },
     }
 
@@ -1527,6 +1789,492 @@ def pf1000_full_energy_neutron_spatial_targets() -> dict[str, object]:
             "are not digitized here, the pinch current and ion temperature were "
             "not directly measured, and the source explicitly identifies room "
             "scatter as a limit on neutron-pulse interpretation."
+        ),
+    }
+
+
+def pf1000_cikhardtova_linear_density_motion_targets() -> dict[str, object]:
+    """Return PF-1000 shot 9881 linear-density and motion targets."""
+    source = "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md"
+    return {
+        "target_id": "pf1000_linear_density_motion_2015_cikhardtova",
+        "validation_scope": "pf1000_shot9881_linear_density_2015_cikhardtova",
+        "device": "PF-1000",
+        "model_role": "kr_interferometry_linear_density_motion_target",
+        "validation_tier": 4,
+        "source": source,
+        "source_lines": {
+            "diagnostics_and_timing_uncertainty": "90-110",
+            "shot_and_interferogram_context": "112-123",
+            "linear_density_formula": "124-140",
+            "profile_motion_description": "141-158",
+            "linear_density_and_axial_lobule": "200-218",
+            "summary_velocity_targets": "241-254",
+        },
+        "shot_context": {
+            "shot": 9881,
+            "time_zero": "minimum_of_current_derivative",
+            "laser_wavelength_nm": 527.0,
+            "laser_pulse_duration_ns_less_than": 1.0,
+            "interferometer": "Mach-Zehnder",
+            "beam_count": 15,
+            "beam_interval_ns_range": [10.0, 20.0],
+            "probe_window_ns": 210.0,
+            "scintillator_detector_count": 3,
+            "scintillator_detector_distance_m": 7.0,
+            "sxr_energy_keV_range": [0.7, 15.0],
+        },
+        "density_formula_targets": {
+            "delta_x_mm": 0.5,
+            "delta_z_mm": 1.0,
+            "laser_wavelength_nm": 527.0,
+            "linear_density_per_shifted_fringe_coefficient": 2.1e15,
+            "source_formula": "N(x,z) = delta * 2.1e15",
+            "acceptance_boundary": (
+                "The coefficient is copied from the local KR text. Profile "
+                "curves from Figs. 3-6 still require figure digitization and "
+                "independent review before per-point validation use."
+            ),
+        },
+        "phase_timing": {
+            "interferogram_times_ns": [-5.0, 55.0, 95.0],
+            "linear_density_profile_times_ns": [-5.0, 25.0, 55.0, 85.0, 95.0],
+            "timing_uncertainty_ns_range": [2.0, 3.0],
+        },
+        "spatial_density_targets": {
+            "linear_density_at_95ns_z10_to_34_per_mm": 0.8e18,
+            "linear_density_z_range_mm": [10.0, 34.0],
+            "lobule_z_positions_mm_by_time_ns": {
+                "-5": 25.0,
+                "25": 30.0,
+                "55": 35.0,
+            },
+        },
+        "spatial_motion_targets": {
+            "zipper_velocity_m_per_s_range": [5.0e5, 1.5e6],
+            "axial_lobule_velocity_m_per_s": 1.5e5,
+            "axial_lobule_velocity_uncertainty_m_per_s": 0.3e5,
+            "mean_implosion_velocity_m_per_s": 2.2e5,
+            "mean_implosion_velocity_uncertainty_m_per_s": 0.4e5,
+            "expansion_velocity_m_per_s_range": [0.4e5, 1.2e5],
+        },
+        "digitization_requirements": [
+            {
+                "figure_id": "Fig. 2",
+                "required_data": "interferogram_geometry_at_-5_55_95_ns",
+                "status": "page_render_needed",
+            },
+            {
+                "figure_id": "Figs. 3-6",
+                "required_data": "linear_density_profiles_vs_radius_and_z",
+                "status": "page_render_needed",
+            },
+        ],
+        "uncertainty": {
+            "timing_uncertainty_ns_range": [2.0, 3.0],
+            "implosion_velocity_uncertainty_m_per_s": 0.4e5,
+            "axial_lobule_velocity_uncertainty_m_per_s": 0.3e5,
+            "missing_profile_uncertainty": True,
+        },
+        "partial_target_groups": [
+            "phase_timing",
+            "spatial_density",
+            "uncertainty",
+        ],
+        "missing_for_full_tier4": [
+            "digitized_linear_density_profiles_from_figures_3_to_6",
+            "interferogram_geometry_extraction_from_figure_2",
+            "per_profile_linear_density_uncertainty",
+            "independent_reviewed_digitization_packet",
+        ],
+        "validation_note": (
+            "Cikhardtova 2015 supplies PF-1000 shot-9881 interferometry "
+            "motion and line-density targets. This record starts extraction "
+            "but does not promote figure curves until a digitization packet "
+            "passes the local review gate."
+        ),
+    }
+
+
+def pf1000_szydlowski_fast_ion_neutron_targets() -> dict[str, object]:
+    """Return PF-1000 fast-ion and neutron targets from Szydlowski 2004."""
+    source = "KnowledgeReference/doi-10-1016-j-vacuum-2004-07-040-6de67a98.md"
+    return {
+        "target_id": "pf1000_fast_ion_neutron_2004_szydlowski",
+        "validation_scope": "pf1000_full_energy_fast_ion_neutron_2004_szydlowski",
+        "device": "PF-1000",
+        "model_role": "kr_fast_ion_neutron_spectrum_anisotropy_target",
+        "validation_tier": 5,
+        "source": source,
+        "source_lines": {
+            "device_geometry_and_energy": "90-112",
+            "neutron_and_fast_ion_diagnostics": "113-140",
+            "yield_and_anisotropy_summary": "141-161",
+            "neutron_pulse_and_spectrum": "172-204",
+            "cr39_fast_ion_context": "205-227",
+        },
+        "shot_context": {
+            "device": "PF-1000",
+            "energy_level_kJ_range": [266.0, 1064.0],
+            "voltage_kV_range": [20.0, 40.0],
+            "anode_length_mm": 447.0,
+            "anode_diameter_mm": 244.0,
+            "insulator_diameter_mm": 244.0,
+            "insulator_length_mm": 113.0,
+            "cathode_rod_count": 24,
+            "cathode_rod_diameter_mm": 32.0,
+            "cathode_rod_length_mm": 600.0,
+            "cathode_cylinder_diameter_mm": 368.0,
+            "capacitance_source_text": (
+                "1332 mF in the extracted KR text; review source PDF glyph "
+                "before using as a circuit numeric target."
+            ),
+        },
+        "activation_requirements": {
+            "silver_activation_counter_count": 4,
+            "activation_counter_angles": "different angles to electrode axis",
+            "tof_scintillator_distances_m": {
+                "downstream": 6.5,
+                "upstream": [40.0, 85.0],
+            },
+            "cr39_distance_from_electrode_end_mm": 550.0,
+            "cr39_angle_support": "semicircular",
+            "al_filter_thicknesses_present": True,
+        },
+        "neutron_yield_targets": {
+            "regular_neutron_emission_neutrons_per_shot_range": [1.0e10, 1.0e11],
+            "yield_increases_then_decreases_with_voltage": True,
+        },
+        "anisotropy_targets": {
+            "coefficient_definition": "Yn(30deg) / Yn(90deg)",
+            "coefficient_at_133_Pa": 1.4,
+            "coefficient_at_665_Pa_less_than": 1.2,
+            "trend_with_pressure": "decreases_with_increasing_fill_pressure",
+        },
+        "neutron_timing": {
+            "neutron_pulse_count": "two_or_three",
+            "pulse_spacing_source_text": (
+                "about 2 ms apart in the extracted KR text; review the PDF "
+                "before using this as an absolute timing value."
+            ),
+            "neutron_prepulses_start_before_xray": True,
+        },
+        "spectral_targets": {
+            "upstream_spectrum_peak_MeV_range": [2.2, 2.3],
+            "dd_reference_energy_MeV": 2.45,
+            "direction": "upstream",
+        },
+        "fast_ion_targets": {
+            "cr39_shot_fill_pressure_Pa": 252.7,
+            "crater_density_per_mm2_range": [1.0e3, 1.0e5],
+            "al_filter_threshold_source_text": {
+                "uncovered": "energy480keV OCR text; requires PDF glyph review",
+                "1.5_mm_al": "faster than 330 keV",
+                "4_mm_al": "energy4580keV OCR text; requires PDF glyph review",
+            },
+        },
+        "uncertainty": {
+            "ocr_glyph_review_required_for_capacitance_and_ion_thresholds": True,
+            "digitized_spectrum_uncertainty_missing": True,
+            "activation_calibration_uncertainty_missing": True,
+        },
+        "partial_target_groups": [
+            "neutron_yield",
+            "neutron_timing",
+            "neutron_spectrum",
+            "neutron_anisotropy",
+            "neutron_detector_response",
+            "uncertainty",
+        ],
+        "missing_for_full_tier5": [
+            "digitized_neutron_spectrum_from_figure_3",
+            "digitized_anisotropy_or_yield_curves",
+            "activation_counter_calibration_uncertainty",
+            "tof_detector_response_uncertainty",
+            "pdf_review_of_ocr_suspect_units",
+        ],
+        "validation_note": (
+            "Szydlowski 2004 starts a PF-1000 full-energy neutron/fast-ion "
+            "target bundle. OCR-suspect capacitance, pulse-spacing, and ion "
+            "threshold glyphs are deliberately quarantined as source text until "
+            "PDF review and digitization are complete."
+        ),
+    }
+
+
+def klir_2011_tof_detector_response_targets() -> dict[str, object]:
+    """Return ToF detector response targets from Klir et al. 2011."""
+    source = (
+        "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-"
+        "measurements-in-z-pinch-and-plasma-focus-214fbdae.md"
+    )
+    return {
+        "target_id": "tof_detector_response_2011_klir",
+        "validation_scope": "tof_detector_response_2011_klir",
+        "device": "PF-1000 / z-pinch detector calibration",
+        "model_role": "kr_neutron_detector_response_target",
+        "validation_tier": 5,
+        "source": source,
+        "source_lines": {
+            "use_scope_and_sensitivity": "78-102",
+            "scintillator_and_pmt_design": "118-138",
+            "shielding_and_pf1000_stand": "154-170",
+            "temporal_resolution": "171-198",
+            "pmt_delay_calibration": "199-207",
+        },
+        "detector_use_scope": {
+            "neutron_yield_range_per_shot": [1.0e6, 1.0e13],
+            "single_neutron_sensitivity_energy_MeV_range": [1.8, 3.0],
+            "absolute_yield_calibration_energy_MeV": 2.45,
+            "used_at_pf1000": True,
+        },
+        "scintillator_targets": {
+            "material": "Saint Gobain BC-408",
+            "rise_time_ns": 0.9,
+            "fwhm_ns": 2.5,
+            "decay_time_ns": 2.1,
+            "peak_emission_nm": 425.0,
+            "density_g_per_cc": 1.032,
+            "hydrogen_to_carbon_atomic_ratio": 1.104,
+            "front_diameter_mm": 45.0,
+            "thickness_mm": 50.0,
+            "thickness_approximately_2p45MeV_neutron_mean_free_path": True,
+        },
+        "pmt_targets": {
+            "assembly": "Hamamatsu H1949-51",
+            "tube": "R1828-01",
+            "rise_time_ns_at_2p5_kV": 1.3,
+            "peak_cathode_sensitivity_nm": 420.0,
+            "effective_photocathode_diameter_mm": 46.0,
+            "dynamic_range_greater_than": 1.0e6,
+        },
+        "response_timing_targets": {
+            "acquisition_system_response_ns_less_than": 1.0,
+            "neutron_transit_uncertainty_through_50mm_scintillator_ns": 1.0,
+            "typical_voltage_kV": 1.4,
+            "oscilloscope_bandwidth_MHz": 500.0,
+            "single_neutron_signal_fwhm_ns": 5.7,
+            "single_neutron_signal_fwhm_uncertainty_ns_2sigma": 0.6,
+            "rise_time_ns": 2.9,
+            "rise_time_uncertainty_ns": 0.2,
+            "fall_time_ns": 8.0,
+            "fall_time_uncertainty_ns": 1.0,
+            "two_neutron_resolvable_shift_ns": 5.5,
+            "fwhm_ns_at_1p9_kV": 5.3,
+            "nonlinear_anode_current_mA_above": 250.0,
+        },
+        "timing_calibration": {
+            "pmt_delay_uncertainty_ns_less_than": 1.0,
+            "pmt_to_pmt_delay_difference_ns_at_gt_1kV_less_equal": 2.0,
+        },
+        "uncertainty": {
+            "fwhm_uncertainty_is_plus_minus_2sigma": True,
+            "digitized_voltage_response_curve_missing": True,
+            "absolute_sensitivity_curve_extraction_missing": True,
+        },
+        "partial_target_groups": [
+            "neutron_detector_response",
+            "uncertainty",
+        ],
+        "missing_for_full_tier5": [
+            "digitized_fig2_voltage_response_curve",
+            "digitized_fig4_pmt_delay_curve",
+            "single_neutron_sensitivity_curve_or_table",
+            "same_detector_geometry_mapping_to_target_experiment",
+        ],
+        "validation_note": (
+            "Klir 2011 provides detector-response guardrails needed before "
+            "ToF neutron timing or spectrum evidence can be treated as "
+            "predictive validation. It is a detector calibration target, not "
+            "a DPF simulation result by itself."
+        ),
+    }
+
+
+def nx3_springham_zrbe_activation_targets() -> dict[str, object]:
+    """Return NX3 Zr/Be activation neutron-energy and anisotropy targets."""
+    source = (
+        "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-"
+        "2021-164830-bc8edab3.md"
+    )
+    return {
+        "target_id": "nx3_zrbe_activation_2021_springham",
+        "validation_scope": "nx3_zrbe_activation_2021_springham",
+        "device": "NX3",
+        "model_role": "kr_activation_neutron_energy_anisotropy_target",
+        "validation_tier": 5,
+        "source": source,
+        "source_lines": {
+            "abstract_targets": "36-60",
+            "dd_kinematics_and_prior_energy_ranges": "61-106",
+            "activation_ratio_method": "154-316",
+            "device_geometry_and_bank": "379-409",
+            "counting_interval": "410-420",
+        },
+        "shot_context": {
+            "bank_energy_kJ": 7.2,
+            "charge_voltage_kV": 12.0,
+            "peak_discharge_current_kA_approx": 600.0,
+            "fill_pressure_mbar_values": [1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            "anode_radius_mm": 26.0,
+            "anode_length_mm": 126.0,
+            "cathode_rod_count": 6,
+            "cathode_rod_diameter_mm": 12.0,
+            "cathode_radius_mm": 56.0,
+            "bank_capacitance_uF": 100.0,
+            "design_quarter_period_us_at_5mbar": 3.0,
+        },
+        "activation_requirements": {
+            "detector_pair_materials": ["zirconium", "beryllium"],
+            "detector_angles_deg": [0.0, 90.0],
+            "mcnp5_response_relationship_required": True,
+            "be_reaction_threshold_MeV": 0.67,
+            "zr_reaction_threshold_MeV": 2.35,
+            "counting_interval_s": 3.0,
+            "target_midpoint_distances_mm": {
+                "RBe0": 296.0,
+                "RBe90": 318.0,
+                "RZr0": 320.0,
+                "RZr90": 342.0,
+            },
+        },
+        "neutron_yield_targets": {
+            "highest_yield_neutrons_per_shot_approx": 1.0e9,
+            "highest_yield_pressure_mbar": 5.0,
+            "typical_neutron_burst_duration_ns_approx": 100.0,
+        },
+        "spectral_targets": {
+            "effective_energy_MeV_at_0deg_approx": 2.8,
+            "effective_energy_MeV_at_90deg_approx": 2.5,
+            "neutron_energy_range_MeV_approx": [2.1, 3.1],
+            "beam_target_constants_MeV": {
+                "A": 2.451,
+                "B": 1.226,
+            },
+        },
+        "anisotropy_targets": {
+            "fluence_anisotropy_AnBe_range": [2.5, 4.5],
+            "mean_fluence_anisotropy_declines_with_pressure": True,
+            "energy_anisotropy_delta_En_nearly_constant_with_pressure": True,
+            "obstacle_distance_cm": 6.0,
+            "obstacle_reduces_yield_and_fluence_anisotropy": True,
+            "obstacle_slightly_increases_effective_energy": True,
+        },
+        "mechanism_targets": {
+            "beam_target_model_consistent": True,
+            "thermonuclear_contribution_negligible": True,
+            "gyrating_particle_contribution_negligible": True,
+        },
+        "uncertainty": {
+            "thick_target_monte_carlo_response_required": True,
+            "counting_statistics_and_detector_efficiency_needed": True,
+            "cross_section_uncertainty_needed": True,
+        },
+        "partial_target_groups": [
+            "neutron_yield",
+            "neutron_spectrum",
+            "neutron_anisotropy",
+            "neutron_detector_response",
+            "uncertainty",
+        ],
+        "missing_for_full_tier5": [
+            "digitized_pressure_sweep_tables_or_curves",
+            "mcnp_response_curve_packet",
+            "per_shot_count_uncertainties",
+            "activation_cross_section_uncertainty_budget",
+        ],
+        "validation_note": (
+            "Springham 2021 is an activation-detector neutron energy and "
+            "anisotropy target for NX3. It supports mechanism and detector "
+            "guardrails, but it is not same-scope PF-1000 evidence."
+        ),
+    }
+
+
+def nnss_dpf_neutron_time_energy_tomography_targets() -> dict[str, object]:
+    """Return NNSS DPF neutron time-energy tomography targets."""
+    source = (
+        "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-"
+        "energy-spectrum-from-a-dense-plasma-focus-b78f1154.md"
+    )
+    return {
+        "target_id": "nnss_dpf_neutron_time_energy_tomography_2020_catenacci",
+        "validation_scope": "nnss_dpf_neutron_tomography_2020_catenacci",
+        "device": "NNSS DPF",
+        "model_role": "kr_neutron_time_energy_tomography_target",
+        "validation_tier": 5,
+        "source": source,
+        "source_lines": {
+            "abstract_validation_scope": "27-58",
+            "tof_model_formulation": "166-246",
+            "detector_model_and_parameter_count": "327-381",
+            "shadow_bar_subtraction": "388-463",
+            "detector_geometry_and_close_range": "471-526",
+            "reconstruction_results": "527-588",
+            "scatter_bias_and_energy_check": "589-694",
+            "conclusion_and_detector_specs": "710-770",
+        },
+        "tomography_model_targets": {
+            "time_energy_distribution": "f(t,E)",
+            "uses_close_range_creation_time_profile": True,
+            "energy_grid_MeV_range": [1.45, 3.45],
+            "typical_energy_bin_count_range": [25, 30],
+            "typical_time_interval_count": 3,
+            "shadow_bar_system_count": 4,
+            "data_points_vs_unknowns_overdetermined": True,
+        },
+        "detector_geometry": {
+            "shadow_bar_pair_distances_m": [10.0, 14.0, 18.0, 22.0],
+            "shadow_bar_detector_separations_cm": [60.0, 27.0, 31.0, 39.0],
+            "shadow_bar_angles_deg_range_from_axis": [63.0, 76.0],
+            "close_range_detector_distance_cm": 25.0,
+            "close_range_sampling_GS_per_s": 2.5,
+            "close_range_bandwidth_GHz": 1.0,
+            "close_range_impulse_response_ns_less_than": 2.0,
+        },
+        "neutron_timing_targets": {
+            "single_and_double_pinch_reconstruction_supported": True,
+            "double_pinch_separation_ns_less_than": 50.0,
+            "trial3_close_range_pulse_width_ns": 150.0,
+            "trial3_first_detector_10m_pulse_width_ns_greater_than": 500.0,
+        },
+        "spectral_targets": {
+            "peak_energies_near_MeV": 2.45,
+            "trial3_second_pinch_higher_energy_density_MeV_around": 2.7,
+            "energy_resolution_estimated_finer_than_keV": 100.0,
+            "uncorrected_scatter_biases_density_below_MeV": 2.0,
+            "scatter_correction_max_relative_difference_fraction": 0.23,
+        },
+        "response_model_requirements": [
+            "foreground_shadowed_detector_scaling",
+            "shadow_bar_background_subtraction",
+            "detector_efficiency_and_area_terms",
+            "close_range_detector_time_profile_constraint",
+            "gamma_neutron_arrival_energy_cross_check",
+        ],
+        "uncertainty": {
+            "figure_and_table_numeric_extraction_needed": True,
+            "scatter_background_correction_required": True,
+            "detector_impulse_response_needed": True,
+        },
+        "partial_target_groups": [
+            "neutron_timing",
+            "neutron_spectrum",
+            "neutron_detector_response",
+            "uncertainty",
+        ],
+        "missing_for_full_tier5": [
+            "digitized_fig4_time_energy_reconstructions",
+            "digitized_fig5_double_pinch_energy_curves",
+            "digitized_fig6_close_range_and_shadow_bar_waveforms",
+            "digitized_fig7_scatter_subtraction_comparison",
+            "tables_i_to_iv_numeric_extraction",
+            "per_trial_uncertainty_budget",
+        ],
+        "validation_note": (
+            "Catenacci 2020 starts a neutron time-energy tomography target "
+            "for an NNSS DPF. It is method and detector-response evidence for "
+            "Tier 5 design, not same-scope PF-1000 validation."
         ),
     }
 
@@ -7938,6 +8686,11 @@ _KR_TARGET_FACTORIES = (
     pf1000_16kv_akel_table_targets,
     pf1000_full_energy_phase_context_targets,
     pf1000_full_energy_neutron_spatial_targets,
+    pf1000_cikhardtova_linear_density_motion_targets,
+    pf1000_szydlowski_fast_ion_neutron_targets,
+    klir_2011_tof_detector_response_targets,
+    nx3_springham_zrbe_activation_targets,
+    nnss_dpf_neutron_time_energy_tomography_targets,
     deuterium_argon_admixture_neutron_targets,
     ff1_focus_fusion_plasmoid_targets,
     lee_drive_parameter_speed_enhancement_targets,
@@ -8034,6 +8787,36 @@ _TARGET_SEMANTIC_MARKERS = {
         "2.45 mev",
         "temperature",
         "bubble",
+    ),
+    "pf1000_linear_density_motion_2015_cikhardtova": (
+        "linear density",
+        "527 nm",
+        "zippering",
+        "timing of different",
+    ),
+    "pf1000_fast_ion_neutron_2004_szydlowski": (
+        "silver activation",
+        "2.2",
+        "cr-39",
+        "anisotropy",
+    ),
+    "tof_detector_response_2011_klir": (
+        "bc-408",
+        "5.7",
+        "2.45 mev",
+        "pmt delay",
+    ),
+    "nx3_zrbe_activation_2021_springham": (
+        "zr/be",
+        "2.8 mev",
+        "anisotropy",
+        "straightforward beam",
+    ),
+    "nnss_dpf_neutron_time_energy_tomography_2020_catenacci": (
+        "shadow bar",
+        "energy spectrum",
+        "100 kev",
+        "scatter",
     ),
     "deuterium_argon_admixture_neutron_2026_omar": (
         "argon",

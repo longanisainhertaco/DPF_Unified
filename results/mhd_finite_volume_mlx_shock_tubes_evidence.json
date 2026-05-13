@@ -1,0 +1,58 @@
+{
+  "analytic_tests": {
+    "brio_wu": true,
+    "sod": true
+  },
+  "details": {
+    "backend": "mlx",
+    "backend_authority": "preview",
+    "brio_wu": {
+      "cases": {
+        "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s6_briowu_compound_waves": {
+          "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+          "found": true,
+          "passed": true,
+          "time_s": "0.100"
+        }
+      },
+      "passed": true
+    },
+    "junitxml": "results/mhd_finite_volume_mlx_shock_tubes.junit.xml",
+    "sod": {
+      "cases": {
+        "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s5_sod_cross_backend_parity": {
+          "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+          "found": true,
+          "passed": true,
+          "time_s": "0.383"
+        },
+        "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s7_sod_convergence": {
+          "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+          "found": true,
+          "passed": true,
+          "time_s": "0.475"
+        }
+      },
+      "passed": true
+    },
+    "suite": {
+      "errors": null,
+      "failures": null,
+      "skipped": null,
+      "tests": null,
+      "time_s": null
+    }
+  },
+  "model_role": "code_verification_analytic_tests",
+  "passed": true,
+  "required_tests": [
+    "brio_wu",
+    "sod"
+  ],
+  "source": "MLX preview finite-volume shock-tube pytest evidence",
+  "validation_tier": 3,
+  "validity_notes": {
+    "backend_boundary": "This is preview-backend finite-volume code verification from MLX standalone shock-tube pytest results. Backend parity remains a separate required packet."
+  },
+  "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+}

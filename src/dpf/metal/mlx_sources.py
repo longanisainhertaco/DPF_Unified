@@ -171,11 +171,11 @@ def apply_geometric_sources(
     vz = U[IMZ] * inv_rho
     vt = U[IMT] * inv_rho
 
-    # src[1]=S_vr, src[2]=S_vz, src[3]=S_vt are accelerations (per unit mass not momentum)
-    # cylindrical_source_numpy returns primitive increments: S_mr in velocity units
-    dmr = rho * src[1] * dt
-    dmz = rho * src[2] * dt
-    dmt = rho * src[3] * dt
+    # cylindrical_source_numpy returns conserved momentum-density sources.
+    # Do not multiply by rho again.
+    dmr = src[1] * dt
+    dmz = src[2] * dt
+    dmt = src[3] * dt
 
     # Full cylindrical energy geometric source (Stone & Norman 1992, eq 3.4):
     #   S_E = [(E + p_total) * vr - Br * (v . B)] / r

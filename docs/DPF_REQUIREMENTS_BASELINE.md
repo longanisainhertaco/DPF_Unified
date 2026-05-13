@@ -1,0 +1,96 @@
+# DPF-Unified Candidate Requirements Baseline
+
+Document ID: `DPF-REQ-BASELINE-001`
+Status: candidate baseline for review, RTM-exported, Doorstop installed, not yet Doorstop-imported
+Date: 2026-05-09
+Source draft: `docs/DPF_UNIFIED_SRS_DRAFT.md`
+
+## Scope
+
+This file is the first stable-ID requirements table for the DPF-Unified SRS
+ratchet. It converts P0/P1 requirements from the SRS draft into traceable rows
+with owner role, current status, verification method, and acceptance evidence or
+explicit blocker.
+
+Status values: `implemented`, `partial`, `planned`, `blocked`, `deferred`, and
+`rejected`.
+
+Verification methods: `test`, `inspection`, `analysis`, `demonstration`, and
+`review`.
+
+## Guardrails
+
+- Scientific requirements remain tied to local `KnowledgeReference/` evidence.
+- Draft or `blocked_by_review` digitization packets cannot satisfy accepted
+  validation requirements.
+- Scaffolded interfaces are not marked implemented unless acceptance evidence
+  exists.
+- Doorstop import is deferred until this candidate table is reviewed.
+- Doorstop is installed in the active environment as `Doorstop v3.1`; the
+  requirements tree itself has not been initialized.
+- A machine-readable staged export now exists at
+  `docs/SRS_TRACEABILITY_MATRIX.json` and `docs/SRS_TRACEABILITY_MATRIX.csv`.
+
+## Candidate Requirements
+
+| ID | Priority | Requirement | Owner | Status | Verification method | Acceptance evidence or blocker |
+| --- | --- | --- | --- | --- | --- | --- |
+| DPF-VV-001 | P0 | The system shall treat local `KnowledgeReference/` records as the only scientific source authority for validation claims. | V&V | implemented | test, inspection | `src/dpf/validation/kr_targets.py`; `src/dpf/validation/quality_assessment.py`; `tests/test_kr_targets.py`; `tests/test_quality_assessment.py`. |
+| DPF-VV-002 | P0 | The system shall fail closed when scientific evidence lacks local source path, source hash, line range where applicable, or required KR status. | V&V | partial | test | Existing KR source audits cover coded targets; remaining evidence types require expansion. |
+| DPF-VV-003 | P0 | Predictive and high-fidelity readiness shall remain blocked until same-scope evidence passes all required tiers. | V&V | partial | test, analysis | `predictive_readiness_report()` and scientific gap tests; same-scope spatial/neutron/UQ evidence remains blocked. |
+| DPF-SYS-001 | P1 | The SRS shall define user-facing scientific claim labels and prohibit promotion of engineering probes into validation evidence. | Product/V&V | implemented | inspection, test | `docs/ADR_COMPUTE_AUTHORITY.md`; `src/dpf/validation/artifacts.py`; `SimulationEngine.run()` summaries/manifests and UI/API surfacing emit fail-closed classification. |
+| DPF-OPS-001 | P1 | Major validation or findings-status changes shall update `CodexFindings.md` and, when plan status changes, `CortexFindings.md`. | Project governance | partial | inspection | Findings docs are current as of A1 completion; no automated enforcement yet. |
+| DPF-SYS-002 | P0 | The system shall load and validate simulation configuration from project/config files. | Engine/Product | partial | test | `src/dpf/config.py`; add product-level project schema tests. |
+| DPF-SYS-003 | P0 | The system shall validate units, dimensional bounds, supported geometry, supported backend, and unsupported physics options before launch. | Engine/UX | partial | test | Config validators and backend capability diagnostics exist; broader unit/project preflight remains open. |
+| DPF-DATA-001 | P0 | The system shall produce a run manifest for every solver execution, including failed and blocked runs. | Data/V&V | implemented | test, inspection | `SimulationEngine.run()` writes a sidecar `*.run_manifest.json` for file-backed runs and attempts failed-run manifest emission before re-raising; blocked status is supported by the manifest factory. |
+| DPF-DATA-002 | P0 | Every result shall carry a classification label such as Reference, Preview, Derived Diagnostic, Exploratory, Superseded, or Invalid. | Data/Product | implemented | test, inspection | `ResultClassification` and `SimulationEngine.run()` fail closed to Preview/not-evaluated unless accepted evidence and reference-candidate backend are present. |
+| DPF-UI-001 | P1 | The CLI shall expose every intentionally supported backend, or explicitly reject unavailable backends with a documented reason. | CLI/Product | implemented | test | `dpf simulate --backend mlx` is accepted; `dpf backends` lists MLX availability. |
+| DPF-SYS-004 | P1 | The system shall support project create, load, duplicate, and archive operations with preserved provenance. | Product/API | implemented | test, inspection | `dpf.project.lifecycle` provides local create/load/duplicate/archive helpers; FastAPI exposes bounded `/api/projects*` lifecycle endpoints under `DPF_PROJECTS_ROOT`; GUI wire client types mirror the endpoints; `tests/test_project_lifecycle.py`; `tests/test_server_projects.py`. |
+| DPF-OPS-002 | P0 | The SRS shall designate an authoritative reference backend or reference workflow for validation claims. | Architecture/V&V | implemented | inspection, analysis | `docs/ADR_COMPUTE_AUTHORITY.md` designates reference candidates and preview defaults; promotion still requires accepted evidence. |
+| DPF-DATA-003 | P0 | MLX/Metal float32 outputs shall be labeled according to scientific authority and shall not satisfy validation claims without source-gated evidence. | Architecture/Data | implemented | test, inspection | `backend_authority_for("mlx")` returns Preview and accepted MLX status still cannot support validation claims. |
+| DPF-UI-002 | P0 | Backend authority boundaries shall be visible in UI, API, logs, and exported artifacts. | Product/API | implemented | demonstration, inspection, test | Run summaries, run manifests, FastAPI `SimulationInfo`, GUI wire types, and the TopBar Preview/Reference badge expose authority labels; `tests/test_server_readiness.py`; `npm --prefix gui run typecheck`. |
+| DPF-OPS-003 | P1 | The system shall compute projected memory demand before solver start and refuse or require explicit override for unsafe runs. | Runtime/QA | implemented | test | `run_memory_preflight()` estimates demand before solver allocation, blocks above `memory_limit_fraction`, and requires `allow_memory_overcommit=true` to override. |
+| DPF-OPS-004 | P1 | The system shall record runtime memory telemetry for long or GPU runs. | Runtime/QA | implemented | test, inspection | Run summaries and manifests now include `runtime_memory_telemetry` with process start/end/peak RSS, sample count, backend, and optional MLX backend memory fields; `tests/test_memory_preflight.py`. |
+| DPF-OPS-005 | P1 | The engineering backlog shall use a current TODO/FIXME/XXX audit rather than stale monolithic-engine references. | Engineering governance | implemented | inspection | `docs/todo_audit.md` was refreshed on 2026-05-08 and marks old `src/dpf/engine.py` blockers obsolete. |
+| DPF-SYS-005 | P1 | Backend parity checks shall warn or fail when selected physics is unsupported by the chosen backend. | Engine/UX | implemented | test | `backend_feature_diagnostics()` and engine logging expose skipped Athena/AthenaK/hybrid physics and GPU diffusion fallbacks; MLX transport flags are passed through to the solver. |
+| DPF-PHYS-001 | P0 | The system shall solve coupled circuit/plasma workflows using validated inputs and SI units. | Engine/V&V | partial | test, analysis | Existing config/engine/circuit tests; add unit audit. |
+| DPF-PHYS-002 | P0 | Lee/snowplow circuit-facing `Lp` and `dL/dt` shall preserve current-factor scaling without corrupting unscaled geometry coefficients. | Physics/Engine | implemented | test, analysis | `src/dpf/fluid/snowplow.py`; `tests/test_snowplow_consolidated.py`; Akel M2 probe evidence. |
+| DPF-PHYS-003 | P0 | PF-1000/Akel scientific gates shall not mix Akel 16 kV shot-12581 scope with Scholz/Gribkov full-energy PF-1000 scope. | V&V/Physics | partial | test, inspection | Source-scope guards exist; further comparator tests required. |
+| DPF-PHYS-004 | P0 | S1/S2 waveform acceptance shall require accepted same-scope digitized current waveform and uncertainty evidence. | V&V/Physics | blocked | review, analysis, test | Akel Fig. 1 packet remains `blocked_by_review`; A2/A3 active. |
+| DPF-PHYS-005 | P1 | The project shall define one documented Lee/RADPF reference implementation and require backend parity against it. | Physics/Architecture | planned | inspection, test | Planned consolidation; not closed. |
+| DPF-PHYS-006 | P1 | MHD-mode field/circuit coupling claims shall require validated field-derived inductance, `dL/dt`/back-EMF, Poynting power, and energy balance evidence. | Physics/V&V | planned | analysis, test | `field_coupling_validation` evidence remains planned. |
+| DPF-PHYS-007 | P1 | Physics-fidelity gaps shall be explicit for each run across EOS, ionization, two-temperature, radiation transport, impurity, kinetic/Hall/FLR, 3D, startup, restrike, anomalous resistance, and beam-target coupling. | Physics/V&V | partial | inspection, test | Scientific gap report exists; per-run expansion remains open. |
+| DPF-VV-004 | P0 | Digitized figure/table data shall pass provenance verification before it supports validation. | V&V | partial | test, review | Digitization gates exist; additional figure packets remain planned. |
+| DPF-VV-005 | P0 | Akel Fig. 1 draft data shall remain non-accepting until independent review count and `review_status="accepted"` pass. | V&V | implemented | test, review | Current helper returns `waveform_digitization_status="blocked_by_review"`. |
+| DPF-VV-006 | P0 | Digitization packets shall include source path/hash, figure path/hash, figure ID, axis calibration, units, series arrays, overlay residuals, and reviewer metadata. | V&V | partial | test, inspection | Akel Fig. 1 draft has these fields; independent review is missing. |
+| DPF-VV-007 | P1 | Akel Fig. 2-4 current waveforms and Fig. 5-6 yield plots shall be tracked through the same queue/status workflow. | V&V | planned | inspection, test | Source queue entries exist; accepted packets do not. |
+| DPF-VV-008 | P0 | Tier 2 validation shall pass only from same-device KR-backed phase targets attached to production results. | V&V/Physics | blocked | analysis, test | Same-device phase target evidence remains absent. |
+| DPF-VV-009 | P0 | Tier 4 validation shall require same-scope density, magnetic/EM, and temperature evidence. | V&V/Physics | blocked | analysis, test | Same-scope spatial evidence remains absent. |
+| DPF-VV-010 | P0 | Tier 5 validation shall require same-scope neutron timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty. | V&V/Physics | blocked | analysis, test | Same-scope neutron evidence remains absent. |
+| DPF-DATA-004 | P1 | The system shall produce a validation certificate artifact only when all linked gates pass. | V&V/Data | implemented | test, inspection | `ValidationCertificate` and `write_validation_certificate()` reject blocked/cross-scope evidence before any accepted certificate can be persisted. |
+| DPF-DATA-005 | P0 | The system shall write time-series diagnostics with units and a consistent time base. | Diagnostics/Data | implemented | test, inspection | HDF5 scalar and field datasets carry units and root `time_base_units="s"`; `tests/test_export_scope.py`. |
+| DPF-DATA-006 | P0 | HDF5 outputs shall include provenance, backend, solver mode, validation status, and source/readiness metadata. | Diagnostics/Data | implemented | test, inspection | HDF5 diagnostics carry schema/time-base attributes plus embedded backend, solver mode, validation status, result label, source authority, and classification JSON before sidecar manifest hashing; `tests/test_validation_artifacts.py`. |
+| DPF-DATA-007 | P1 | Checkpoint/restart shall preserve state sufficiently for deterministic restart comparisons. | Engine/Data | implemented | test, inspection | `scripts/build_mhd_restart_reproducibility_evidence.py`, `results/mhd_restart_reproducibility_evidence.json`, and `tests/test_mhd_numerical_fidelity.py` cover deterministic restart comparisons for the scheduled Tier-3 fixture. |
+| DPF-DATA-008 | P1 | Well-format HDF5 export for training data shall be schema-tested and provenance-tagged. | Export/Data | implemented | test, inspection | Well exporter schema/unit tests exist; the engine Well adapter now flushes on run completion, forwards circuit scalars, passes grid spacing/geometry/provenance metadata, and cylindrical Well files label `grid_type="cylindrical"`; `tests/test_export_scope.py`; `tests/test_walrus_consolidated.py`. |
+| DPF-UI-003 | P1 | User-facing outputs shall display predictive-readiness and high-fidelity-readiness blockers. | Product/UI | implemented | demonstration, test | FastAPI `SimulationInfo` includes predictive/high-fidelity readiness, Akel digitization status, and source blockers; GUI TopBar shows blocker count from the same wire payload. |
+| DPF-UI-004 | P1 | Preview/non-certifying outputs shall be visibly labeled and blocked from Reference promotion. | Product/UI | implemented | demonstration, test | Fail-closed result classification is surfaced through API, GUI wire types, and TopBar Preview/Reference badge; promotion remains blocked by `ResultClassification` validation rules. |
+| DPF-UI-005 | P1 | Beginner/pedagogical and advanced workflows shall not implicitly change physical results. | Product/UI | planned | demonstration, test | UI mode requirements not implemented. |
+| DPF-UI-006 | P1 | Backend API schemas shall expose units, dimensions, backend mode, validation status, and source authority. | API/Product | implemented | inspection, test | FastAPI `SimulationInfo` exposes backend mode, validation status, result authority, readiness, digitization status, and source blockers; `/api/metadata/units` exposes units/dimensions/authority metadata. |
+| DPF-SEC-001 | P0 | The current release shall not control physical pulsed-power hardware or lab equipment. | Security/Product | implemented | inspection, test | `local_first_security_audit()` scans active `src/dpf` Python imports for direct hardware-control libraries; `tests/test_local_first_security.py`. |
+| DPF-SEC-002 | P0 | The system shall run local-first and shall not transmit project data externally by default. | Security/Product | implemented | inspection, test | `dpf ui` and root Gradio app default to `127.0.0.1`; public share remains opt-in; FastAPI CORS defaults to localhost origins and wildcard CORS requires `DPF_ALLOW_WILDCARD_CORS=1`; `tests/test_local_first_security.py`. |
+| DPF-SEC-003 | P1 | Runtime AI agents shall not modify solver code, active config, or active simulation state during execution. | Security/Product | implemented | inspection, test | `scan_runtime_ai_mutation_boundaries()` audits runtime AI entrypoints for active simulation mutation paths; `local_first_security_audit()` fails closed on findings. |
+| DPF-SEC-004 | P1 | Project and export artifacts shall support owner-supplied classification/distribution metadata. | Security/Data | implemented | test, inspection | `ProjectManifest` and `RunManifest` carry owner-supplied `artifact_classification`; accepted HDF5 outputs embed artifact classification JSON; Well exports carry fail-closed validation/result labels. |
+| DPF-REL-001 | P1 | Releases shall have an offline/air-gap-capable build and test path where licensing permits. | Release/QA | partial | demonstration, inspection, test | `docs/AIR_GAP_RELEASE_GATE.md` and `airgap_release_gate()` define the offline path and fail closed until `dist/wheelhouse`, `SHA256SUMS`, and offline smoke logs exist. Current repo is not yet air-gap-release-ready. |
+| DPF-REL-002 | P0 | Every P0 baseline requirement shall map to at least one test, inspection, analysis, demonstration, or review. | Release/V&V | partial | inspection | This candidate table provides first mapping; Doorstop import and validation are pending. |
+
+## Deferred Or Scope-Decision Requirements
+
+| ID | Priority | Requirement | Owner | Status | Decision needed |
+| --- | --- | --- | --- | --- | --- |
+| DPF-DATA-009 | P2 | VTK/VTU, CGNS/HDF5, OpenFOAM, and Ansys/PyMAPDL export requirements shall be accepted, deferred, or rejected for v1.0. | Export/Product | implemented | `docs/EXPORT_SCOPE_V1.md` and `export_scope_decisions()` accept HDF5 diagnostics and Well HDF5 for v1, while deferring VTK/VTU, CGNS/HDF5, OpenFOAM, and Ansys/PyMAPDL until writer/readability/license-aware tests exist. |
+
+## Next Traceability Step
+
+After review, import this candidate table or the staged RTM export into a
+Doorstop tree with parent documents for SRS requirements and child documents
+for tests, analyses, inspections, demonstrations, and review gates.

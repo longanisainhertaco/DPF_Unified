@@ -4,6 +4,12 @@
 **Scope**: Phase AA (D1+D2 fix), Strike-team (C2+C3+M9), Accuracy-team (viscosity stencils, Coulomb log, electrode BC, snowplow mass pickup, radiation recombination, Abel transform, CT parallelization, Metal dead code removal)
 **Previous Score**: 5.8/10 (Debate #8)
 
+> 2026-05-11 supersession note: this historical debate predates the
+> source-scoped formulary audit. Any C_REC/recombination-radiation conclusion in
+> this document is superseded by `docs/FORMULARY_CODE_AUDIT_2026_05_11.md`,
+> which ties the active code to NRL Eq. 33 and uses
+> `C_REC = 6.23241205313e-38`.
+
 ## VERDICT: CONSENSUS (3-0) — 6.1/10
 
 The panel agrees on a +0.3 improvement from 5.8 to 6.1 (rounded from computed 6.05). The D1 fix (removing double circuit step) is the single most impactful change, restoring correct circuit-MHD coupling. However, the calibration has NOT been re-run post-fix, so the improvement is theoretical (code is now structurally correct) rather than empirically validated (no I(t) waveform comparison exists).

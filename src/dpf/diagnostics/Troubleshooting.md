@@ -1,5 +1,25 @@
 # Diagnostics Module Troubleshooting
 
+Current audit status: 2026-05-09
+
+This file is historical troubleshooting context, not source-of-truth science.
+Use `docs/MODULE_AUDIT/diagnostics.md` and
+`docs/MODULE_AUDIT/BACKLOG.md` for current audit status before acting on any
+entry below.
+
+- `BeamTracker` no longer passes beam energy in joules as `V_pinch` to the
+  beam-target helper. Current results expose `equivalent_V_pinch`,
+  `yield_status`, and `yield_model_role`, and remain
+  `engineering_estimate_not_validation`.
+- HDF5 `max_div_B` is now a compatibility scalar labeled as a rough array-index
+  metric with `T/cell` units and
+  `diagnostic_status="rough_array_metric_not_physical_divergence"`. It is not
+  physical divergence evidence until a geometry/grid-spacing-aware diagnostic is
+  implemented.
+- Older entries below can still describe useful risk areas, but they must be
+  re-checked against current code and local `KnowledgeReference/` evidence
+  before becoming tasks or validation claims.
+
 Cross-review by: xreview-ai (Python + Physics expert synthesis)
 Date: 2026-02-25
 Files reviewed: 7 files (~1,100 LOC)

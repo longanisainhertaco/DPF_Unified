@@ -587,7 +587,8 @@ def _hll_flux_cpu64(
     # Boris correction: cap Alfven speed at c_boris instead of c_light.
     # v_A'^2 = v_A^2 * c^2 / (v_A^2 + c^2) bounds vacuum wavespeeds
     # without the E-KE-ME cancellation that causes NaN in float32.
-    # Gombosi 2002, validated for z-pinch by PERSEUS (Gourdain 2025).
+    # Gombosi 2002; z-pinch applicability remains source-scoped and is not
+    # accepted local validation evidence by this numerical guard alone.
     _C_BORIS_SQ = C_BORIS_SQ  # (500 km/s)^2
     a_sq_L = np.minimum(gamma*p_L/rho_L, _C_BORIS_SQ)
     a_sq_R = np.minimum(gamma*p_R/rho_R, _C_BORIS_SQ)
@@ -1042,24 +1043,19 @@ def _mhd_rhs_cylindrical(
         )
     src = cylindrical_source_mlx(Q_prim, r_cell_for_src, inv_r_for_src, gamma)
 
-    # KNOWN ISSUE (2026-03-31 audit): The rho factor below attenuates the
-    # geometric source by ~rho (order 1e-3 for deuterium at 3 Torr). Without
-    # it, the source is physically correct but numerically unstable on coarse
-    # grids (<32 radial cells) because the pressure gradient that should balance
-    # the 1/r source terms is under-resolved. Removing rho requires either
-    # higher resolution or a well-balanced source treatment.
-    # See docs/PHYSICS_AUDIT_2026_03_31.md, BUG-1.
-    dmr = rho * src[IMR]
-    dmt = rho * src[IMT]
+    # cylindrical_source_mlx returns momentum-density source terms directly.
+    # Do not multiply by rho again; that attenuates the geometric force density
+    # and changes the formula in low-density regions.
+    dmr = src[IMR]
+    dmt = src[IMT]
     dBt = src[IBT]
-    dE = vr * dmr + vt * dmt
 
     src_list = [
         mx.zeros_like(rho) if i == IDN else
         dmr if i == IMR else
         mx.zeros_like(rho) if i == IMZ else
         dmt if i == IMT else
-        dE if i == IEN else
+        mx.zeros_like(rho) if i == IEN else
         mx.zeros_like(rho) if i == ISR else
         mx.zeros_like(rho) if i == IBR else
         mx.zeros_like(rho) if i == IBZ else

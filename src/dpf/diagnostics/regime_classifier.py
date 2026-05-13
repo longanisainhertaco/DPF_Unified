@@ -85,19 +85,23 @@ def classify_regime(
     else:
         lambda_D = 1.0
 
-    # Coulomb logarithm
+    # NRL electron-ion Coulomb logarithm, with n_e in cm^-3 and T_e in eV.
     if n_e > 0 and T_e_eV > 0:
-        ln_Lambda = max(1.0, 23.0 - 0.5 * math.log(n_e / 1e6) + 1.5 * math.log(T_e_eV))
+        n_e_cm3 = n_e * 1.0e-6
+        if T_e_eV < 10.0 * Z * Z:
+            ln_Lambda = 23.0 - math.log(
+                math.sqrt(n_e_cm3) * max(Z, 1.0e-30) * T_e_eV ** -1.5
+            )
+        else:
+            ln_Lambda = 24.0 - math.log(math.sqrt(n_e_cm3) * T_e_eV ** -1.0)
+        ln_Lambda = max(1.0, ln_Lambda)
     else:
         ln_Lambda = 10.0
 
-    # Spitzer resistivity: eta = 0.51 * m_e * nu_ei / (n_e * e^2)
-    # nu_ei = n_e * e^4 * ln_Lambda / (3 * (2*pi)^1.5 * epsilon_0^2 * m_e^0.5 * (k_B*T)^1.5)
-    if T_K > 0 and n_e > 0:
-        nu_ei = (n_e * E_CHARGE**4 * ln_Lambda /
-                 (3.0 * (2 * math.pi)**1.5 * EPSILON_0**2 *
-                  M_E**0.5 * (K_B * T_K)**1.5))
-        eta = 0.51 * M_E * nu_ei / (n_e * E_CHARGE**2)
+    # NRL/Braginskii-corrected parallel Spitzer resistivity for diagnostics:
+    # eta_parallel ~= 5.2e-5 * Z * ln_Lambda / T_eV^1.5 [Ohm*m] for Z=1.
+    if T_e_eV > 0 and n_e > 0:
+        eta = 5.2e-5 * Z * ln_Lambda / (T_e_eV ** 1.5)
     else:
         eta = 1e-4
 

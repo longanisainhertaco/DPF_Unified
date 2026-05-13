@@ -1,4 +1,4 @@
-"""Tests for CircuitCoupler — density-weighted circuit-MHD coupling.
+"""Engineering tests for CircuitCoupler density-weighted circuit-MHD coupling.
 
 Tests cover:
 - Unit: synthetic density fields with known r_eff, z_sheath
@@ -15,7 +15,12 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from dpf.circuit.coupler import BACK_EMF_CLAMP_V, CircuitCoupler, FeedbackResult
+from dpf.circuit.coupler import (
+    BACK_EMF_CLAMP_V,
+    CircuitCoupler,
+    FeedbackResult,
+    circuit_coupler_authority,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -80,6 +85,14 @@ class TestCircuitCouplerInit:
         assert c._Lp_max == 0.0
         assert c._time == 0.0
         assert len(c._history) == 0
+
+    def test_authority_labels_fail_closed(self, cylindrical_coupler: CircuitCoupler):
+        authority = cylindrical_coupler.authority
+        assert authority == circuit_coupler_authority()
+        assert authority["classification"] == "engineering_coupling_scaffold"
+        assert authority["source_status"] == "missing_same_scope_validation_packet"
+        assert authority["validation_status"] == "not_validation_evidence"
+        assert authority["can_support_scientific_claims"] is False
 
 
 class TestFeedbackComputation:
@@ -176,8 +189,8 @@ class TestBDF2:
 
 
 class TestBackEMFClamp:
-    def test_back_emf_clamped(self):
-        """Extreme dLp/dt should be clamped to +/-50 kV."""
+    def test_equivalent_inductive_voltage_clamped(self):
+        """Extreme I*dLp/dt should be clamped to +/-50 kV."""
         c = CircuitCoupler(
             anode_radius=0.008,
             cathode_radius=0.032,
@@ -191,10 +204,11 @@ class TestBackEMFClamp:
 
         state2 = _make_cylindrical_state(rho_peak_z=49, rho_peak=100.0)
         fb2 = c.compute_feedback(state2, current=1e6, dt=1e-12)
-        assert abs(fb2.back_emf) <= BACK_EMF_CLAMP_V
+        assert abs(fb2.dLp_dt * 1e6) <= BACK_EMF_CLAMP_V
+        assert fb2.back_emf == 0.0
 
     def test_back_emf_clamps_dLp_dt_consistently(self):
-        """The RLC solver must not receive unclamped dLp/dt with clamped EMF."""
+        """The RLC solver receives clamped dLp/dt and no duplicate back-EMF."""
         c = CircuitCoupler(
             anode_radius=0.008,
             cathode_radius=0.032,
@@ -210,7 +224,7 @@ class TestBackEMFClamp:
         fb2 = c.compute_feedback(state2, current=current, dt=1e-12)
 
         assert abs(fb2.dLp_dt * current) <= BACK_EMF_CLAMP_V
-        assert fb2.back_emf == pytest.approx(current * fb2.dLp_dt)
+        assert fb2.back_emf == 0.0
 
 
 class TestCartesianFallback:
@@ -333,6 +347,86 @@ class TestCouplerOnEngine:
         engine = SimulationEngine(config)
         assert engine.coupling_mode == "auto"
         assert engine.coupler is not None
+
+    def test_auto_coupler_rejects_uniform_initial_density_only(self):
+        """Auto mode should not trust MHD coupling from density presence alone."""
+        from dpf.config import SimulationConfig
+        config = SimulationConfig(
+            grid_shape=[16, 1, 20],
+            dx=0.002,
+            sim_time=1e-8,
+            circuit=dict(
+                C=204e-6, V0=27e3, L0=33.5e-9, R0=12.5e-3,
+                anode_radius=0.008, cathode_radius=0.032,
+                coupling_mode="auto",
+            ),
+            geometry=dict(type="cylindrical", dz=0.004),
+            fluid=dict(backend="python", cfl=0.3, riemann_solver="hll"),
+            snowplow=dict(enabled=False),
+            boundary=dict(electrode_bc=True),
+            diagnostics=dict(hdf5_filename=":memory:"),
+        )
+        from dpf.engine import SimulationEngine
+        engine = SimulationEngine(config)
+
+        assert engine._should_use_coupler() is False
+        assert engine._coupler_trust_status["reason"] == "uniform_initial_state"
+        assert engine._coupler_trust_status["validation_status"] == "not_validation_evidence"
+        assert engine._coupler_trust_status["can_support_scientific_claims"] is False
+
+    def test_auto_coupler_accepts_resolved_magnetic_signal(self):
+        """Auto mode can use coupling after fields carry an engineering MHD signal."""
+        from dpf.config import SimulationConfig
+        config = SimulationConfig(
+            grid_shape=[16, 1, 20],
+            dx=0.002,
+            sim_time=1e-8,
+            circuit=dict(
+                C=204e-6, V0=27e3, L0=33.5e-9, R0=12.5e-3,
+                anode_radius=0.008, cathode_radius=0.032,
+                coupling_mode="auto",
+            ),
+            geometry=dict(type="cylindrical", dz=0.004),
+            fluid=dict(backend="python", cfl=0.3, riemann_solver="hll"),
+            snowplow=dict(enabled=False),
+            boundary=dict(electrode_bc=True),
+            diagnostics=dict(hdf5_filename=":memory:"),
+        )
+        from dpf.engine import SimulationEngine
+        engine = SimulationEngine(config)
+        engine.state["B"][2, 3, 0, 4] = 1.0e-3
+        engine._coupler_decision_cache = None
+
+        assert engine._should_use_coupler() is True
+        assert engine._coupler_trust_status["reason"] == "resolved_mhd_signal"
+        assert engine._coupler_trust_status["validation_status"] == "not_validation_evidence"
+        assert engine._coupler_trust_status["can_support_scientific_claims"] is False
+
+    def test_density_weighted_mode_remains_explicit_coupler_opt_in(self):
+        """Explicit density_weighted mode bypasses the auto trust heuristic."""
+        from dpf.config import SimulationConfig
+        config = SimulationConfig(
+            grid_shape=[16, 1, 20],
+            dx=0.002,
+            sim_time=1e-8,
+            circuit=dict(
+                C=204e-6, V0=27e3, L0=33.5e-9, R0=12.5e-3,
+                anode_radius=0.008, cathode_radius=0.032,
+                coupling_mode="density_weighted",
+            ),
+            geometry=dict(type="cylindrical", dz=0.004),
+            fluid=dict(backend="python", cfl=0.3, riemann_solver="hll"),
+            snowplow=dict(enabled=False),
+            boundary=dict(electrode_bc=True),
+            diagnostics=dict(hdf5_filename=":memory:"),
+        )
+        from dpf.engine import SimulationEngine
+        engine = SimulationEngine(config)
+
+        assert engine._should_use_coupler() is True
+        assert engine._coupler_trust_status["reason"] == "explicit_density_weighted_mode"
+        assert engine._coupler_trust_status["validation_status"] == "not_validation_evidence"
+        assert engine._coupler_trust_status["can_support_scientific_claims"] is False
 
 
 class TestFeedbackResultDataclass:

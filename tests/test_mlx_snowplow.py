@@ -13,17 +13,18 @@ from pathlib import Path
 import pytest
 
 
-def _load_mlx_snowplow_class():
+def _load_mlx_snowplow_module():
     """Load the pure-Python module without importing dpf.metal/__init__.py."""
     module_path = Path(__file__).resolve().parents[1] / "src/dpf/metal/mlx_snowplow.py"
     spec = importlib.util.spec_from_file_location("_mlx_snowplow_under_test", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.MLXSnowplow
+    return module
 
 
-MLXSnowplow = _load_mlx_snowplow_class()
+MLX_SNOWPLOW_MODULE = _load_mlx_snowplow_module()
+MLXSnowplow = MLX_SNOWPLOW_MODULE.MLXSnowplow
 
 
 def _make_radial_snowplow(
@@ -85,6 +86,20 @@ def test_deuterium_radial_stop_uses_gross_rmin_not_axis() -> None:
     assert math.isclose(result["r_piston"], expected_rmin)
     assert math.isclose(result["r_shock"], expected_rmin)
     assert result["r_shock"] > 0.01 * a
+
+
+def test_reduced_mlx_radius_convention_is_scope_separated() -> None:
+    a = 0.10
+    sp = _make_radial_snowplow(anode_radius=a, cathode_radius=0.20)
+    convention = sp.radius_convention
+
+    assert convention == MLX_SNOWPLOW_MODULE.mlx_snowplow_radius_convention()
+    assert convention["radial_inductance_radius"] == "r_p"
+    assert convention["radial_inductance_radius_meaning"] == "piston_radius"
+    assert convention["r_min_over_a"] == 0.13
+    assert convention["full_lee_five_phase_coverage"] is False
+    assert convention["cross_backend_equivalent_to_cpu"] is False
+    assert convention["validation_status"] == "not_validation_evidence"
 
 
 def test_invalid_geometry_rejected() -> None:

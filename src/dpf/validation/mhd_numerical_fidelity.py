@@ -12,6 +12,9 @@ _KR_SOURCE_BASIS = {
     "beresnyak_mhd_coupling": (
         "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md"
     ),
+    "leveque_finite_volume_methods": (
+        "KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md"
+    ),
     "bennett_zpinch_equilibrium": (
         "KnowledgeReference/"
         "bennett-vorticity-analytic-solutions-to-a-flowing-nonlinear-"
@@ -33,8 +36,8 @@ _KR_SOURCE_BASIS = {
 
 _REQUIRED_EVIDENCE = {
     "finite_volume_mhd_verification": {
-        "source_key": "beresnyak_mhd_coupling",
-        "source_lines": "336-347",
+        "source_key": "leveque_finite_volume_methods",
+        "source_lines": "1319-1467, 5239-5376, 5901-6038, 8061-8127, 8471-8584",
         "requirement": (
             "The MHD backend must have named finite-volume/ideal-MHD analytic "
             "verification evidence, not just a backend flag."
@@ -81,6 +84,15 @@ _REQUIRED_EVIDENCE = {
             "results are not backend-specific artifacts."
         ),
     },
+    "restart_reproducibility": {
+        "source_key": "beresnyak_mhd_coupling",
+        "source_lines": "336-347, 1900-1955",
+        "requirement": (
+            "Production MHD verification needs checkpoint/restart "
+            "reproducibility evidence so long runs and backend comparisons are "
+            "not artifacts of one uninterrupted execution path."
+        ),
+    },
     "dpf_scope_limit": {
         "source_key": "beresnyak_mhd_coupling",
         "source_lines": "2506-2519, 2690-2711",
@@ -119,6 +131,26 @@ _MHD_LIMIT_REASON_TERMS = {
     "disruption",
     "beyond_ideal_mhd",
 }
+_NUMERICAL_VERIFICATION_CLAIM_BOUNDARY = {
+    "evidence_class": "code_numerical_verification",
+    "experimental_dpf_validation": False,
+    "supports_predictive_scientific_claims": False,
+    "supports_high_fidelity_scientific_claims": False,
+    "supports_validation_tiers": [3],
+    "cannot_substitute_for_validation_tiers": [4, 5],
+    "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority",
+    ],
+}
+
+
+def _numerical_verification_claim_boundary() -> dict[str, object]:
+    return {
+        key: list(value) if isinstance(value, list) else value
+        for key, value in _NUMERICAL_VERIFICATION_CLAIM_BOUNDARY.items()
+    }
 
 
 def _is_nonempty(value: object) -> bool:
@@ -172,6 +204,7 @@ def _record(
         "status": status,
         "present": present,
         "validated": validated,
+        **_numerical_verification_claim_boundary(),
         "source": _KR_SOURCE_BASIS[str(meta["source_key"])],
         "source_lines": meta["source_lines"],
         "requirement": meta["requirement"],
@@ -319,6 +352,7 @@ def cylindrical_convergence_evidence_from_results(
         "passed": passed,
         "validation_tier": 3,
         "model_role": "code_verification_cylindrical_convergence",
+        **_numerical_verification_claim_boundary(),
         "verification_scope": verification_scope
         or str(results.get("verification_scope", "")),
         "source": _KR_SOURCE_BASIS["beresnyak_mhd_coupling"],
@@ -440,6 +474,7 @@ def resistive_diffusion_convergence_evidence_from_results(
         "passed": passed,
         "validation_tier": 3,
         "model_role": "code_verification_resistive_diffusion_convergence",
+        **_numerical_verification_claim_boundary(),
         "verification_scope": verification_scope
         or str(_field_value(results, "verification_scope") or ""),
         "source": _KR_SOURCE_BASIS["mhd_resistive_diffusion"],
@@ -651,6 +686,8 @@ def backend_parity_evidence_from_results(
         "passed": passed,
         "validation_tier": 3,
         "model_role": "code_verification_backend_parity",
+        **_numerical_verification_claim_boundary(),
+        "authority_label": "BackendParityVerification",
         "verification_scope": verification_scope
         or str(results.get("verification_scope", "")),
         "source": _KR_SOURCE_BASIS["beresnyak_mhd_coupling"],
@@ -681,6 +718,10 @@ def backend_parity_evidence_from_results(
                 "Supports backend parity only for the supplied observables and "
                 "tolerances. It does not validate those observables against "
                 "experiment or prove convergence of the individual backends."
+            ),
+            "authority_boundary": (
+                "Backend parity is a numerical consistency label, not "
+                "Reference scientific authority."
             ),
         },
     }
@@ -723,6 +764,173 @@ def _backend_parity_evidence(
     return None, []
 
 
+def restart_reproducibility_evidence_from_results(
+    results: Mapping[str, object],
+    *,
+    verification_scope: str = "",
+    relative_tolerance: float = 1.0e-9,
+    required_observables: Sequence[str] | None = None,
+) -> dict[str, object]:
+    """Build Tier-3 evidence for checkpoint/restart reproducibility."""
+    continuous = results.get("continuous")
+    if not isinstance(continuous, Mapping):
+        continuous = results.get("uninterrupted")
+    baseline_values = _numeric_mapping(continuous)
+
+    restarted = results.get("restarted")
+    if not isinstance(restarted, Mapping):
+        restarted = results.get("restart")
+    restarted_values = _numeric_mapping(restarted)
+
+    if required_observables is None:
+        common_observables = (
+            sorted(set(baseline_values) & set(restarted_values))
+            if baseline_values and restarted_values
+            else []
+        )
+    else:
+        common_observables = [str(observable) for observable in required_observables]
+
+    tolerance_block = results.get("relative_tolerances")
+    tolerances = _numeric_mapping(tolerance_block)
+    comparisons: dict[str, float] = {}
+    all_within_tolerance = True
+    max_relative_error = 0.0
+    for observable in common_observables:
+        baseline = baseline_values.get(observable)
+        restart = restarted_values.get(observable)
+        if baseline is None or restart is None:
+            all_within_tolerance = False
+            continue
+        scale = max(abs(baseline), abs(restart), 1.0e-300)
+        relative_error = abs(restart - baseline) / scale
+        comparisons[observable] = relative_error
+        max_relative_error = max(max_relative_error, relative_error)
+        if relative_error > tolerances.get(observable, relative_tolerance):
+            all_within_tolerance = False
+
+    config_hash = str(results.get("config_hash") or "")
+    restart_config_hash = str(
+        results.get("restart_config_hash")
+        or results.get("checkpoint_config_hash")
+        or ""
+    )
+    restart_marker = (
+        results.get("restart_step")
+        or results.get("checkpoint_step")
+        or results.get("restart_time_s")
+        or results.get("checkpoint_time_s")
+    )
+    metrics = {
+        "continuous_run_observables_present": bool(baseline_values),
+        "restarted_run_observables_present": bool(restarted_values),
+        "restart_marker_present": _is_nonempty(restart_marker),
+        "config_identity_declared": bool(config_hash and restart_config_hash),
+        "config_hashes_match": bool(
+            config_hash and restart_config_hash and config_hash == restart_config_hash
+        ),
+        "common_observables_present": len(common_observables) > 0,
+        "required_observables_present": all(
+            observable in baseline_values and observable in restarted_values
+            for observable in common_observables
+        ),
+        "relative_errors_within_tolerance": bool(
+            all_within_tolerance and comparisons
+        ),
+    }
+    passed = all(metrics.values())
+    return {
+        "passed": passed,
+        "validation_tier": 3,
+        "model_role": "code_verification_restart_reproducibility",
+        **_numerical_verification_claim_boundary(),
+        "verification_scope": verification_scope
+        or str(results.get("verification_scope", "")),
+        "source": _KR_SOURCE_BASIS["beresnyak_mhd_coupling"],
+        "source_lines": "336-347, 1900-1955",
+        "source_basis": {
+            "finite_volume_mhd_code_context": (
+                _KR_SOURCE_BASIS["beresnyak_mhd_coupling"]
+            ),
+            "multi_code_verification_context": (
+                _KR_SOURCE_BASIS["beresnyak_mhd_coupling"]
+            ),
+        },
+        "source_line_basis": {
+            "finite_volume_mhd_code_context": "336-347",
+            "multi_code_verification_context": "1900-1955",
+        },
+        "metrics": metrics,
+        "missing_or_failed_metrics": [
+            name for name, ok in metrics.items() if not ok
+        ],
+        "details": {
+            "restart_marker": restart_marker,
+            "observables": common_observables,
+            "relative_tolerance": relative_tolerance,
+            "relative_tolerances": tolerances,
+            "max_relative_error": max_relative_error,
+            "comparisons": comparisons,
+        },
+        "validity_notes": {
+            "claim_scope": (
+                "Supports checkpoint/restart reproducibility only for the "
+                "supplied observables, config identity, restart marker, and "
+                "tolerances. It does not validate the physics model or the "
+                "observables against experiment."
+            ),
+            "authority_boundary": (
+                "Restart reproducibility is Tier-3 code verification, not "
+                "Reference scientific authority or high-fidelity DPF validation."
+            ),
+        },
+    }
+
+
+def _valid_restart_reproducibility_evidence(
+    evidence: object,
+) -> Mapping[str, object] | None:
+    if not isinstance(evidence, Mapping):
+        return None
+    if evidence.get("passed") is not True:
+        return None
+    if evidence.get("model_role") != "code_verification_restart_reproducibility":
+        return None
+    if _as_finite_float(evidence.get("validation_tier")) != 3.0:
+        return None
+    return (
+        evidence
+        if evidence.get("source") == _KR_SOURCE_BASIS["beresnyak_mhd_coupling"]
+        else None
+    )
+
+
+def _restart_reproducibility_evidence(
+    result: Mapping[str, object],
+) -> tuple[Mapping[str, object] | None, list[str]]:
+    for key in (
+        "restart_reproducibility_verification",
+        "checkpoint_restart_verification",
+        "restart_reproducibility_evidence",
+    ):
+        evidence = _valid_restart_reproducibility_evidence(result.get(key))
+        if evidence is not None:
+            return evidence, [key]
+
+    for key in (
+        "restart_reproducibility_results",
+        "checkpoint_restart_results",
+    ):
+        raw = result.get(key)
+        if not isinstance(raw, Mapping):
+            continue
+        evidence = restart_reproducibility_evidence_from_results(raw)
+        if evidence["passed"] is True:
+            return evidence, [key]
+
+    return None, []
+
+
 def mhd_scope_limit_evidence_from_phases(
     applicable_phases: Sequence[str],
     invalid_phases: Sequence[str],
@@ -751,6 +959,7 @@ def mhd_scope_limit_evidence_from_phases(
         "passed": passed,
         "validation_tier": 3,
         "model_role": "mhd_phase_scope_limit",
+        **_numerical_verification_claim_boundary(),
         "verification_scope": verification_scope,
         "source": _KR_SOURCE_BASIS["beresnyak_mhd_coupling"],
         "source_lines": "2506-2519, 2689-2711",
@@ -1135,6 +1344,52 @@ def mhd_numerical_fidelity_evidence_from_result(
         ),
     )
 
+    restart_evidence, restart_evidence_keys = _restart_reproducibility_evidence(result)
+    restart_validated = restart_evidence is not None
+    if restart_validated:
+        validated_evidence_scopes["restart_reproducibility"] = (
+            _verification_scope(restart_evidence)
+        )
+
+    restart_present, restart_keys = _has_any(
+        result,
+        "restart_reproducibility_verification",
+        "checkpoint_restart_verification",
+        "restart_reproducibility_evidence",
+        "restart_reproducibility_results",
+        "checkpoint_restart_results",
+        "restart_metadata",
+        "checkpoint_metadata",
+        "restart_step",
+        "checkpoint_step",
+    )
+    if restart_validated:
+        restart_present = True
+        restart_keys = sorted(set(restart_keys + restart_evidence_keys))
+    evidence["restart_reproducibility"] = _record(
+        "restart_reproducibility",
+        status=(
+            "supported"
+            if restart_validated else
+            "diagnostic_not_validated"
+            if restart_present else
+            "absent"
+        ),
+        present=restart_present,
+        validated=restart_validated,
+        evidence_keys=restart_keys,
+        notes=(
+            "KR-scoped checkpoint/restart reproducibility evidence is attached "
+            "for the supplied observables and tolerances."
+            if restart_validated
+            else
+            "Checkpoint or restart metadata is present, but no complete "
+            "restart reproducibility evidence is attached."
+            if restart_present
+            else "No checkpoint/restart reproducibility evidence is attached."
+        ),
+    )
+
     scope_evidence, scope_evidence_keys = _mhd_scope_limit_evidence(result)
     scope_validated = scope_evidence is not None
     if scope_validated:
@@ -1195,6 +1450,7 @@ def mhd_numerical_fidelity_evidence_from_result(
         "passed": passed,
         "validation_tier": "mhd_numerical_fidelity",
         "model_role": "mhd_numerical_fidelity_audit",
+        **_numerical_verification_claim_boundary(),
         "source": _KR_SOURCE_BASIS["beresnyak_mhd_coupling"],
         "source_basis": _KR_SOURCE_BASIS,
         "required_evidence": evidence,
@@ -1205,12 +1461,249 @@ def mhd_numerical_fidelity_evidence_from_result(
             "claim_scope": (
                 "Tier-3 MHD evidence is not high-fidelity complete unless "
                 "finite-volume, cylindrical, circuit-coupled, resistive, "
-                "convergence, backend-parity, and scope-limit evidence are "
-                "validated for the claimed DPF phase."
+                "convergence, backend-parity, restart reproducibility, and "
+                "scope-limit evidence are validated for the claimed DPF phase."
             ),
             "audit_role": (
                 "This audit separates generic MHD backend presence from "
                 "DPF-specific numerical-fidelity evidence."
+            ),
+        },
+    }
+
+
+def _copy_mapping_with_scope(value: object, verification_scope: str) -> object:
+    if not isinstance(value, Mapping):
+        return value
+    copied = dict(value)
+    copied.setdefault("verification_scope", verification_scope)
+    return copied
+
+
+def build_mhd_numerical_verification_packet(
+    result: Mapping[str, object] | None = None,
+    *,
+    verification_scope: str,
+    mhd_numerical_method: Mapping[str, object] | None = None,
+    mhd_verification: Mapping[str, object] | None = None,
+    cylindrical_convergence: Mapping[str, object] | None = None,
+    circuit_coupled_energy_verification: Mapping[str, object] | None = None,
+    resistive_diffusion_convergence: object | None = None,
+    backend_parity_results: Mapping[str, object] | None = None,
+    restart_reproducibility_results: Mapping[str, object] | None = None,
+    mhd_scope_limit: Mapping[str, object] | None = None,
+    applicable_phases: Sequence[str] = (),
+    invalid_phases: Sequence[str] = (),
+    limit_reasons: Sequence[str] = (),
+    metadata: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Assemble a reviewer-visible Tier-3 MHD numerical packet.
+
+    The function builds evidence records from explicit verification-run
+    outputs, then immediately runs the same conservative audit used by
+    production summaries.  It is intentionally fail-closed: partial packets
+    remain ``production_packet_status="blocked"`` and cannot substitute for
+    DPF experimental validation.
+    """
+    if not verification_scope:
+        raise ValueError("verification_scope is required for Tier-3 packet assembly")
+
+    assembled: dict[str, object] = dict(result or {})
+
+    if mhd_numerical_method is not None:
+        assembled["mhd_numerical_method"] = _copy_mapping_with_scope(
+            mhd_numerical_method,
+            verification_scope,
+        )
+    if mhd_verification is not None:
+        assembled["mhd_verification"] = _copy_mapping_with_scope(
+            mhd_verification,
+            verification_scope,
+        )
+    if cylindrical_convergence is not None:
+        assembled["cylindrical_convergence_verification"] = (
+            cylindrical_convergence_evidence_from_results(
+                cylindrical_convergence,
+                verification_scope=verification_scope,
+            )
+        )
+    if circuit_coupled_energy_verification is not None:
+        assembled["circuit_coupled_energy_verification"] = (
+            _copy_mapping_with_scope(
+                circuit_coupled_energy_verification,
+                verification_scope,
+            )
+        )
+    if resistive_diffusion_convergence is not None:
+        assembled["resistive_diffusion_verification"] = (
+            resistive_diffusion_convergence_evidence_from_results(
+                resistive_diffusion_convergence,
+                verification_scope=verification_scope,
+            )
+        )
+    if backend_parity_results is not None:
+        assembled["backend_parity_verification"] = (
+            backend_parity_evidence_from_results(
+                backend_parity_results,
+                verification_scope=verification_scope,
+            )
+        )
+    if restart_reproducibility_results is not None:
+        assembled["restart_reproducibility_verification"] = (
+            restart_reproducibility_evidence_from_results(
+                restart_reproducibility_results,
+                verification_scope=verification_scope,
+            )
+        )
+    if mhd_scope_limit is not None:
+        assembled["mhd_scope_limit"] = _copy_mapping_with_scope(
+            mhd_scope_limit,
+            verification_scope,
+        )
+    elif applicable_phases or invalid_phases or limit_reasons:
+        assembled["mhd_scope_limit"] = mhd_scope_limit_evidence_from_phases(
+            applicable_phases,
+            invalid_phases,
+            verification_scope=verification_scope,
+            limit_reasons=limit_reasons,
+        )
+
+    audit = mhd_numerical_fidelity_evidence_from_result(assembled)
+    status = mhd_numerical_verification_packet_status({
+        **assembled,
+        "mhd_numerical_fidelity": audit,
+    })
+    return {
+        "packet_version": "1.0",
+        "validation_tier": 3,
+        "model_role": "mhd_numerical_verification_packet",
+        **_numerical_verification_claim_boundary(),
+        "passed": status["passed"],
+        "production_packet_status": status["production_packet_status"],
+        "verification_scope": verification_scope,
+        "metadata": dict(metadata or {}),
+        "result": assembled,
+        "mhd_numerical_fidelity": audit,
+        "mhd_numerical_verification_packet_status": status,
+        "validity_notes": {
+            "claim_scope": (
+                "This packet is Tier-3 code numerical verification only. It "
+                "does not validate DPF spatial observables, neutron outputs, "
+                "or Reference scientific authority."
+            ),
+            "evidence_rule": (
+                "The packet passes only when all required evidence channels "
+                "are attached, validated, and share this verification scope."
+            ),
+        },
+    }
+
+
+def mhd_numerical_verification_packet_status(
+    result: Mapping[str, object],
+) -> dict[str, object]:
+    """Report production-visible Tier-3 verification packet status.
+
+    This is a scheduling/reporting helper. It does not run verification jobs and
+    it does not promote method metadata or diagnostic outputs into evidence.
+    """
+    audit = result.get("mhd_numerical_fidelity")
+    if not isinstance(audit, Mapping):
+        audit = mhd_numerical_fidelity_evidence_from_result(result)
+    required = audit.get("required_evidence")
+    required_evidence = required if isinstance(required, Mapping) else {}
+
+    packet_next_actions = {
+        "finite_volume_mhd_verification": (
+            "Attach Tier-3 Sod and Brio-Wu finite-volume analytic-test evidence "
+            "for the claimed method scope."
+        ),
+        "cylindrical_geometry_verification": (
+            "Attach cylindrical z-pinch convergence evidence for the claimed "
+            "geometry/backend scope."
+        ),
+        "circuit_coupled_energy_verification": (
+            "Attach circuit/MHD power and integrated-energy balance evidence "
+            "for the claimed coupling scope."
+        ),
+        "resistive_or_nonideal_verification": (
+            "Attach resistive magnetic-diffusion convergence evidence for each "
+            "enabled non-ideal operator."
+        ),
+        "convergence_study": (
+            "Attach convergence evidence with grid sequence, observables, "
+            "tolerances, and observed order."
+        ),
+        "backend_parity": (
+            "Attach parity evidence across the production backends used for "
+            "the claim observables."
+        ),
+        "restart_reproducibility": (
+            "Attach checkpoint/restart evidence with matching config hashes, "
+            "restart marker, and tolerance-bounded observables."
+        ),
+        "dpf_scope_limit": (
+            "Attach explicit DPF phase/scope-limit evidence for where MHD "
+            "verification is applicable."
+        ),
+    }
+
+    packet_status: dict[str, dict[str, object]] = {}
+    attached_validated: list[str] = []
+    attached_diagnostic: list[str] = []
+    missing_required: list[str] = []
+    for name in _REQUIRED_EVIDENCE:
+        item = required_evidence.get(name)
+        if not isinstance(item, Mapping):
+            packet_status[name] = {
+                "status": "missing_required",
+                "validated": False,
+                "present": False,
+                "evidence_keys": [],
+                "next_action": packet_next_actions[name],
+            }
+            missing_required.append(name)
+            continue
+        validated = item.get("validated") is True
+        present = item.get("present") is True
+        if validated:
+            status = "attached_validated"
+            attached_validated.append(name)
+        elif present:
+            status = "attached_non_validating"
+            attached_diagnostic.append(name)
+            missing_required.append(name)
+        else:
+            status = "missing_required"
+            missing_required.append(name)
+        packet_status[name] = {
+            "status": status,
+            "validated": validated,
+            "present": present,
+            "audit_status": item.get("status"),
+            "source": item.get("source"),
+            "source_lines": item.get("source_lines"),
+            "evidence_keys": list(item.get("evidence_keys", [])),
+            "next_action": packet_next_actions[name],
+        }
+
+    complete = not missing_required and audit.get("same_scope_passed") is True
+    return {
+        "passed": complete,
+        "validation_tier": 3,
+        "model_role": "mhd_numerical_verification_packet_status",
+        **_numerical_verification_claim_boundary(),
+        "production_packet_status": "complete" if complete else "blocked",
+        "same_scope_passed": audit.get("same_scope_passed") is True,
+        "attached_validated_packets": attached_validated,
+        "attached_non_validating_packets": attached_diagnostic,
+        "missing_required_packets": missing_required,
+        "packet_status": packet_status,
+        "validity_notes": {
+            "claim_scope": (
+                "This status names the Tier-3 verification packets needed for "
+                "a production MHD numerical-fidelity claim. Missing packets "
+                "keep the claim blocked; diagnostic metadata does not pass."
             ),
         },
     }

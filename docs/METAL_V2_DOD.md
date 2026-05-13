@@ -317,15 +317,19 @@ where:
 
 Dimensional check: `[H/m] * [m] * [1] = [H]`. Correct.
 
-**Back-EMF**:
+**Back-EMF / inductive-voltage ownership**:
 
 ```
-back_emf = I * dLp/dt    [V]
+dLp_dt remains in the RLC solver's R_star term.
+back_emf = 0.0 for the inductive I*dLp/dt contribution.
 ```
 
 NOT `d(Lp * I)/dt = I * dLp/dt + Lp * dI/dt` -- the Lp * dI/dt term is already
 in the inductive voltage `L_total * dI/dt` on the left side of the circuit equation.
 Double-counting this was a v1 bug (coupler.py:194, identified in Troubleshooting.md).
+The 2026-05-11 formulary/local-KR audit selected the `back_emf=0.0` ownership
+path for the inductive term; the separate `back_emf` channel is reserved for a
+future distinct motional-EMF model.
 
 **Lp monotonicity**: dLp/dt must be computed from a monotonically increasing Lp estimate.
 Noisy z_sheath detection causes oscillating dLp/dt that destabilizes the circuit.
@@ -455,9 +459,10 @@ float32, producing corrupted dp/dt that accumulates into negative pressure.
 
 1. MHD solver computes Lp from density-weighted radius (not B^2 energy integral).
 2. MHD solver computes dLp/dt with monotonicity enforcement (running max on Lp).
-3. Engine passes `back_emf = I * dLp/dt` to circuit solver in ALL coupling modes,
-   not just when bridge phase is complete.
-4. Back-EMF clamped to +/- 50 kV to prevent handoff instability.
+3. Engine passes `dLp_dt` to the circuit solver in ALL coupling modes, not just
+   when bridge phase is complete, while keeping inductive `back_emf=0.0`.
+4. Equivalent `I*dLp/dt` voltage is clamped through `dLp_dt` to prevent handoff
+   instability.
 
 ### 4.3 Ghost Cell Count for WENO5
 
@@ -555,9 +560,9 @@ def test_v2_circuit_coupling_lp():
     # where Lp_analytical = (mu_0 / 2pi) * z * ln(b / r_eff)
 
 def test_v2_back_emf_wired():
-    """Back-EMF is non-zero when dLp/dt is non-zero."""
+    """Inductive coupling is wired without duplicate back-EMF."""
     # Setup: simulation with changing Lp
-    # Assert: back_emf = I * dLp/dt, not zero
+    # Assert: dLp_dt carries the inductive term and back_emf == 0.0
 
 def test_v2_ohmic_in_entropy():
     """Ohmic heating appears in both E and S_rho."""

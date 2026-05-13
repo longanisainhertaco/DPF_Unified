@@ -31,6 +31,41 @@ from scipy.constants import Boltzmann as k_B
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures
 from dpf.radiation.bremsstrahlung import bremsstrahlung_power
 
+TWO_TEMPERATURE_MODEL_ROLE = "operator_split_two_temperature_scaffold"
+TWO_TEMPERATURE_SOURCE_STATUS = "equilibration_convention_source_audit_needed"
+TWO_TEMPERATURE_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def two_temperature_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for 2T source terms."""
+    return {
+        "model_role": TWO_TEMPERATURE_MODEL_ROLE,
+        "source_status": TWO_TEMPERATURE_SOURCE_STATUS,
+        "validation_status": TWO_TEMPERATURE_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "electron_energy": (
+                "Ideal electron internal-energy bookkeeping is implemented."
+            ),
+            "ohmic_heating": "Ohmic heating is deposited into electron energy.",
+            "equilibration": (
+                "Electron-ion relaxation uses the shared Spitzer helper; the "
+                "public equilibration-rate convention still needs a local NRL "
+                "line-by-line audit before validation use."
+            ),
+            "radiation_loss": (
+                "Bremsstrahlung loss is delegated to the radiation helper; line "
+                "cooling and opacity remain separately source-blocked."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use as engineering 2T energy bookkeeping only until same-scope "
+                "temperature diagnostics and source-closed relaxation evidence exist."
+            ),
+        },
+    }
+
 
 def electron_energy_from_temperature(
     Te: np.ndarray,

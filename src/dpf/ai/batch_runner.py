@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,12 @@ import numpy as np
 
 from dpf.ai.well_exporter import WellExporter
 from dpf.config import SimulationConfig
+from dpf.validation.artifacts import (
+    artifact_classification_from_config,
+    file_sha256,
+    stable_json_hash,
+    utc_now_iso,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +56,8 @@ class BatchResult:
         Number of failed simulations
     output_dir : str
         Directory where trajectories were saved
+    dataset_manifest_path : str | None
+        Dataset-level manifest path when one was written.
     failed_configs : list[tuple[int, str]]
         List of (index, error_message) for failed runs
     """
@@ -57,6 +66,7 @@ class BatchResult:
     n_success: int = 0
     n_failed: int = 0
     output_dir: str = ""
+    dataset_manifest_path: str | None = None
     failed_configs: list[tuple[int, str]] = field(default_factory=list)
 
 
@@ -206,6 +216,9 @@ class BatchRunner:
                 dz=dz,
                 geometry=config.geometry.type,
                 sim_params=params,
+                artifact_classification=artifact_classification_from_config(
+                    config
+                ).model_dump(mode="json"),
             )
 
             # Capture initial state
@@ -329,6 +342,9 @@ class BatchRunner:
             output_dir=str(self.output_dir),
             failed_configs=failed_configs,
         )
+        batch_result.dataset_manifest_path = str(
+            self._write_dataset_manifest(samples, results, batch_result)
+        )
 
         logger.info(
             f"Batch complete: {n_success}/{self.n_samples} succeeded, "
@@ -336,6 +352,68 @@ class BatchRunner:
         )
 
         return batch_result
+
+    def _write_dataset_manifest(
+        self,
+        samples: list[dict[str, float]],
+        results: list[tuple[int, str | None]],
+        batch_result: BatchResult,
+    ) -> Path:
+        """Write a fail-closed manifest for generated training trajectories."""
+
+        artifact_classification = artifact_classification_from_config(self.base_config)
+        output_records = []
+        for idx, error in sorted(results, key=lambda item: item[0]):
+            path = self.output_dir / f"trajectory_{idx:04d}.h5"
+            output_records.append(
+                {
+                    "index": idx,
+                    "path": path.name,
+                    "status": "failed" if error is not None else "generated",
+                    "sha256": file_sha256(path) if path.exists() else None,
+                    "error": error,
+                }
+            )
+
+        manifest = {
+            "manifest_version": "1.0",
+            "manifest_type": "walrus_training_dataset_candidate",
+            "created_utc": utc_now_iso(),
+            "generator": "dpf.ai.batch_runner.BatchRunner",
+            "validation_status": "not_validation_evidence",
+            "result_label": "Preview",
+            "can_support_validation_claims": False,
+            "source_status": "not_source_backed",
+            "artifact_role": "training_data_interchange_not_validation",
+            "artifact_classification": artifact_classification.model_dump(mode="json"),
+            "base_config_hash": stable_json_hash(
+                self.base_config.model_dump(mode="json")
+            ),
+            "parameter_ranges": [
+                {
+                    "name": item.name,
+                    "low": item.low,
+                    "high": item.high,
+                    "log_scale": item.log_scale,
+                }
+                for item in self.parameter_ranges
+            ],
+            "n_total": batch_result.n_total,
+            "n_success": batch_result.n_success,
+            "n_failed": batch_result.n_failed,
+            "samples": samples,
+            "outputs": output_records,
+            "guardrail": (
+                "Batch Well trajectories are training-data candidates and are not "
+                "validation evidence without source-backed dataset review."
+            ),
+        }
+        path = self.output_dir / "dataset_manifest.json"
+        path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True, default=str),
+            encoding="utf-8",
+        )
+        return path
 
     @staticmethod
     def _latin_hypercube(n_samples: int, n_dims: int, seed: int = 42) -> np.ndarray:

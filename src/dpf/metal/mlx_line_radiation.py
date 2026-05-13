@@ -5,22 +5,24 @@ dpf/radiation/line_radiation.py into pure MLX mx.where chains.
 All coefficients are in log-space to avoid float32 subnormal issues
 (same approach as bremsstrahlung in mlx_sources.py).
 
-The parent module's 21-point cooling curves are fitted to CHIANTI/ADAS data
-and Post et al. (1977) tables. The 6-segment piecewise approximations here
-capture the dominant features (M-shell peak, trough, L-shell bump) within
-factor-of-2 accuracy. The specific piecewise coefficients are an internal
-simplification — NOT direct from any single published table.
-
-References:
-    Post et al., Atomic Data and Nuclear Data Tables 20, 397 (1977) —
-        cooling curves for Z=2 to Z=92.
-    Summers, ADAS User Manual (2004) — atomic data.
-    NRL Plasma Formulary (2019) — basic radiation formulas.
+Provenance status:
+    This backend mirrors the CPU line-radiation surface, whose piecewise
+    coefficients are explicitly marked as unknown-provenance empirical fits.
+    Older CHIANTI/ADAS/Post wording is not a source claim for the coefficients
+    here. Treat this as an engineering cooling estimate, not validation
+    evidence or predictive high-Z radiation modeling.
 """
 from __future__ import annotations
 
 import mlx.core as mx
 import numpy as np
+
+from dpf.radiation.line_radiation import (
+    LINE_RADIATION_MODEL_ROLE,
+    LINE_RADIATION_SOURCE_STATUS,
+    LINE_RADIATION_VALIDATION_ROLE,
+    LINE_RADIATION_VALIDATION_STATUS,
+)
 
 # Physical constants — from single source of truth
 from dpf.metal.constants import E_CHARGE as _EV  # noqa: E402
@@ -31,6 +33,24 @@ from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IDN, IEE, IEN, IMR, IMT, IMZ, I
 
 _KB_OVER_EV = _KBOLTZ / _EV  # ~8.617e-5 eV/K
 _LOG_FLOOR = -92.0  # exp(-92) ~ 1e-40, safe minimum for log(Lambda)
+
+
+def mlx_line_radiation_model_metadata() -> dict[str, object]:
+    """Return source/validity metadata for the MLX line-radiation mirror."""
+    return {
+        "model_role": LINE_RADIATION_MODEL_ROLE,
+        "validation_role": LINE_RADIATION_VALIDATION_ROLE,
+        "source_status": LINE_RADIATION_SOURCE_STATUS,
+        "validation_status": LINE_RADIATION_VALIDATION_STATUS,
+        "claim_scope": "engineering_cooling_estimate",
+        "backend": "mlx",
+        "mirrors": "dpf.radiation.line_radiation",
+        "predictive_high_z": False,
+        "notes": (
+            "Pure-MLX coefficient chains mirror unknown-provenance empirical "
+            "CPU fits and are not direct CHIANTI/ADAS/Post source tables."
+        ),
+    }
 
 
 def _log_cooling_copper(log_Te_eV: mx.array) -> mx.array:

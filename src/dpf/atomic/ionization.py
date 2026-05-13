@@ -211,12 +211,21 @@ def lotz_ionization_rate(Te_eV: float, I_Z_eV: float) -> float:
 def radiative_recombination_rate(Te_eV: float, Z_ion: int) -> float:
     """Radiative recombination rate coefficient.
 
-    Uses Seaton's formula (hydrogenic scaling):
-        α_rr = 5.2e-14 * Z * (13.6 * Z² / Te_eV)^{0.5} [cm³/s]
+    Uses the NRL Plasma Formulary Eq. 13 hydrogenic radiative
+    recombination expression:
+
+        alpha_r = 5.2e-14 * Z * (E_inf / Te_eV)^0.5
+                  * [0.43 + 0.5 ln(E_inf / Te_eV)
+                     + 0.469 (E_inf / Te_eV)^(-1/3)]  [cm^3/s]
+
+    with ``E_inf = 13.6 * Z^2`` eV. Eq. 13 is stated for
+    ``Te/Z^2 <= 400 eV``; outside that range this helper keeps the
+    same form but floors the bracket at zero rather than returning an
+    unphysical negative rate.
 
     Converted to SI: multiply by 1e-6.
 
-    Reference: Seaton, MNRAS 119:81 (1959).
+    Reference: NRL Plasma Formulary, Ionization and Recombination Eq. 13.
 
     Args:
         Te_eV: Electron temperature [eV].
@@ -228,9 +237,10 @@ def radiative_recombination_rate(Te_eV: float, Z_ion: int) -> float:
     if Te_eV < 0.01 or Z_ion < 1:
         return 0.0
 
-    # Seaton formula in CGS
-    chi = 13.6 * Z_ion * Z_ion / Te_eV
-    alpha_cgs = 5.2e-14 * Z_ion * np.sqrt(chi)  # cm³/s
+    z = float(Z_ion)
+    chi = 13.6 * z * z / Te_eV
+    bracket = 0.43 + 0.5 * np.log(chi) + 0.469 * chi ** (-1.0 / 3.0)
+    alpha_cgs = 5.2e-14 * z * np.sqrt(chi) * max(bracket, 0.0)  # cm³/s
 
     return alpha_cgs * 1.0e-6  # m³/s
 

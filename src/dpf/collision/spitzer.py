@@ -1,8 +1,8 @@
 """Spitzer collision frequencies and Braginskii transport coefficients.
 
 Pure-function implementations (no classes, no @njit on methods) extracted
-from DPF_AI's collision_model.py. All physics verified correct against
-NRL Plasma Formulary.
+from DPF_AI's collision_model.py. Formulary-backed coefficients are covered
+by targeted tests where the local NRL source gives an unambiguous convention.
 
 Functions:
     coulomb_log: Dynamic Coulomb logarithm with quantum correction.
@@ -265,7 +265,10 @@ def braginskii_kappa(
     """Braginskii parallel and perpendicular thermal conductivity.
 
     kappa_par = delta_e(Z) * k_B^2 * n_e * T_e / (m_e * nu_ei)
-    kappa_per = kappa_par / (1 + (omega_ce / nu_ei)^2)
+    kappa_per approaches kappa_par when B -> 0 and the NRL high-field
+    perpendicular limit when omega_ce / nu_ei >> 1:
+
+        kappa_per -> 4.7 * n_e * k_B^2 * T_e * nu_ei / (m_e * omega_ce^2)
 
     where delta_e(Z) is the Z-dependent coefficient from Braginskii (1965)
     Table 1: delta_e(1)=3.16, delta_e(2)=3.14, ..., delta_e(inf)=3.21.
@@ -290,7 +293,8 @@ def braginskii_kappa(
 
     delta_e = braginskii_kappa_coefficient(Z)
     kappa_par = delta_e * k_B**2 * ne * Te / (m_e * np.maximum(freq, 1e-300))
-    kappa_per = kappa_par / (1.0 + x**2)
+    high_field_coeff = 4.7
+    kappa_per = kappa_par / (1.0 + (delta_e / high_field_coeff) * x**2)
 
     return kappa_par, kappa_per
 

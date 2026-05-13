@@ -1,27 +1,39 @@
-"""Standalone PF-1000 MLX stepping probe.
+"""Standalone opt-in PF-1000 MLX endurance/regression stepping probe.
 
 This bypasses pytest/conftest so native MLX/Metal aborts can be separated from
-test-harness subprocess or import-probe behavior.  It assumes the caller is
-running in a Metal-visible process.
+test-harness subprocess or import-probe behavior. It assumes the caller is
+running in a Metal-visible process and requires ``DPF_MLX_RUN_ENDURANCE=1`` so
+long PF-1000 execution cannot be mistaken for an ordinary scientific gate.
 """
 
 from __future__ import annotations
 
 import os
-from types import MethodType
 
 import numpy as np
 
-import mlx.core as mlx
+_ENDURANCE_OPT_IN_ENV = "DPF_MLX_RUN_ENDURANCE"
+_ENDURANCE_POLICY = {
+    "lane": "endurance_regression",
+    "scientific_status": "non_scientific",
+    "source_status": "s1_s2_source_closure_blocked",
+    "opt_in_env": _ENDURANCE_OPT_IN_ENV,
+}
 
-os.environ.setdefault("DPF_MLX_ASSUME_AVAILABLE", "1")
 
-from dpf.config import SimulationConfig  # noqa: E402
-from dpf.engine import SimulationEngine  # noqa: E402
-from dpf.presets import get_preset  # noqa: E402
+def _load_runtime():
+    import mlx.core as mlx
+
+    os.environ.setdefault("DPF_MLX_ASSUME_AVAILABLE", "1")
+
+    from dpf.config import SimulationConfig
+    from dpf.engine import SimulationEngine
+    from dpf.presets import get_preset
+
+    return mlx, SimulationConfig, SimulationEngine, get_preset
 
 
-def _make_pf1000_mlx_engine() -> SimulationEngine:
+def _make_pf1000_mlx_engine(SimulationConfig, SimulationEngine, get_preset):
     preset_name = os.environ.get("DPF_MLX_PROBE_PRESET", "pf1000")
     preset = get_preset(preset_name)
     preset["fluid"] = {
@@ -36,10 +48,36 @@ def _make_pf1000_mlx_engine() -> SimulationEngine:
     preset["sim_time"] = 12e-6
     preset["radiation"] = {"bremsstrahlung_enabled": False, "fld_enabled": False}
     preset["collision"] = {"enabled": False}
+    preset["nan_check_stride"] = 1
+    preset["fail_fast_on_nonfinite"] = True
     return SimulationEngine(SimulationConfig(**preset))
 
 
+def _memory_fields(mlx) -> list[str]:
+    fields: list[str] = []
+    for attr, label in (
+        ("get_active_memory", "mlx_active_MB"),
+        ("get_cache_memory", "mlx_cache_MB"),
+        ("get_peak_memory", "mlx_peak_MB"),
+    ):
+        getter = getattr(mlx, attr, None)
+        if getter is not None:
+            fields.append(f"{label}={float(getter()) / 1e6:.3f}")
+    return fields or ["mlx_memory_unavailable=1"]
+
+
 def main() -> int:
+    if os.environ.get(_ENDURANCE_OPT_IN_ENV) != "1":
+        print(
+            "ENDURANCE_NOT_OPTED_IN",
+            *[f"{key}={value}" for key, value in _ENDURANCE_POLICY.items()],
+            f"set={_ENDURANCE_OPT_IN_ENV}=1",
+            flush=True,
+        )
+        return 3
+
+    mlx, SimulationConfig, SimulationEngine, get_preset = _load_runtime()
+
     if mlx.default_device().type != mlx.gpu:
         raise SystemExit(f"Metal GPU not available: {mlx.default_device()}")
 
@@ -50,32 +88,23 @@ def main() -> int:
     print_start = int(os.environ.get("DPF_MLX_PROBE_PRINT_START", str(target_steps + 1)))
     print_start_interval = int(os.environ.get("DPF_MLX_PROBE_PRINT_START_INTERVAL", "1"))
     clear_cache_interval = int(os.environ.get("DPF_MLX_PROBE_CLEAR_CACHE_INTERVAL", "0"))
-    memory_telemetry = os.environ.get("DPF_MLX_PROBE_MEMORY", "0") == "1"
+    memory_telemetry = True
     if memory_telemetry and hasattr(mlx, "reset_peak_memory"):
         mlx.reset_peak_memory()
 
-    engine = _make_pf1000_mlx_engine()
-    engine._nan_check_stride = 1
+    engine = _make_pf1000_mlx_engine(SimulationConfig, SimulationEngine, get_preset)
     peak_current = 0.0
     peak_time = 0.0
-
-    def _fail_on_nonfinite(self: SimulationEngine, label: str) -> int:
-        for key, arr in self.state.items():
-            if not isinstance(arr, np.ndarray):
-                continue
-            bad = ~np.isfinite(arr)
-            count = int(np.sum(bad))
-            if count:
-                first = tuple(int(i) for i in np.argwhere(bad)[0])
-                value = arr[first]
-                raise AssertionError(
-                    f"{label}: {count} non-finite value(s) in {key}; "
-                    f"first={first}, value={value}, step={self.step_count}, "
-                    f"t={self.time * 1e6:.6f} us"
-                )
-        return 0
-
-    engine._sanitize_state = MethodType(_fail_on_nonfinite, engine)
+    print(
+        "POLICY",
+        *[f"{key}={value}" for key, value in _ENDURANCE_POLICY.items()],
+        f"target_us={(target_s * 1e6) if target_s is not None else -1.0:.6f}",
+        f"cap_steps={target_steps}",
+        "memory_telemetry=1",
+        "nan_check_stride=1",
+        "fail_fast_on_nonfinite=1",
+        flush=True,
+    )
 
     for step in range(target_steps):
         dt_fluid_before = float(engine.fluid._compute_dt(engine.state))
@@ -119,16 +148,6 @@ def main() -> int:
             or result.finished
         )
         if should_print:
-            memory_fields: list[str] = []
-            if memory_telemetry:
-                for attr, label in (
-                    ("get_active_memory", "mlx_active_MB"),
-                    ("get_cache_memory", "mlx_cache_MB"),
-                    ("get_peak_memory", "mlx_peak_MB"),
-                ):
-                    getter = getattr(mlx, attr, None)
-                    if getter is not None:
-                        memory_fields.append(f"{label}={float(getter()) / 1e6:.3f}")
             print(
                 "probe",
                 f"step={step + 1}",
@@ -149,7 +168,7 @@ def main() -> int:
                 f"min_rho={min_rho:.6e}",
                 f"min_p={min_p:.6e}",
                 f"max_B={max_b:.6e}",
-                *memory_fields,
+                *_memory_fields(mlx),
                 flush=True,
             )
         assert np.all(np.isfinite(rho)), (
@@ -174,18 +193,26 @@ def main() -> int:
     if target_s is not None and engine.time < target_s:
         print(
             "CAP_EXHAUSTED",
+            f"scientific_status={_ENDURANCE_POLICY['scientific_status']}",
+            f"source_status={_ENDURANCE_POLICY['source_status']}",
             f"steps={target_steps}",
             f"target_us={target_s * 1e6:.6f}",
             f"final_t_us={engine.time * 1e6:.6f}",
+            *_memory_fields(mlx),
             flush=True,
         )
         return 2
     print(
         "PASSED",
+        f"scientific_status={_ENDURANCE_POLICY['scientific_status']}",
+        f"source_status={_ENDURANCE_POLICY['source_status']}",
+        f"target_us={(target_s * 1e6) if target_s is not None else -1.0:.6f}",
+        f"cap_steps={target_steps}",
         f"steps={engine.step_count}",
         f"final_t_us={engine.time * 1e6:.6f}",
         f"peak_I_MA={peak_current / 1e6:.6f}",
         f"peak_t_us={peak_time * 1e6:.6f}",
+        *_memory_fields(mlx),
         flush=True,
     )
     return 0

@@ -38,6 +38,43 @@ from dpf.collision.spitzer import coulomb_log
 from dpf.constants import e as e_charge
 from dpf.constants import epsilon_0, k_B, m_d, pi
 
+BRAGINSKII_VISCOSITY_MODEL_ROLE = "braginskii_ion_viscosity_scaffold"
+BRAGINSKII_VISCOSITY_SOURCE_STATUS = (
+    "partial_nrl_coefficients_ion_collision_log_audit_needed"
+)
+BRAGINSKII_VISCOSITY_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def braginskii_viscosity_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for ion viscosity."""
+    return {
+        "model_role": BRAGINSKII_VISCOSITY_MODEL_ROLE,
+        "source_status": BRAGINSKII_VISCOSITY_SOURCE_STATUS,
+        "validation_status": BRAGINSKII_VISCOSITY_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "eta_coefficients": (
+                "Local NRL rows support eta_i0, eta_i1, eta_i2, eta_i3, "
+                "and eta_i4 coefficients for magnetized ion viscosity."
+            ),
+            "collision_time": (
+                "The implementation uses the shared Coulomb-log helper; the "
+                "ion-ion Coulomb-log branch and tau_i convention still need "
+                "a dedicated source audit."
+            ),
+            "stress_tensor": (
+                "The Cartesian stress application is an implementation scaffold "
+                "and has not been tied to a same-scope DPF validation packet."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use for engineering viscosity experiments only; do not promote "
+                "as validated Braginskii viscosity without the tau_i/log audit."
+            ),
+        },
+    }
+
 # ============================================================
 # Ion collision time
 # ============================================================
@@ -54,8 +91,11 @@ def ion_collision_time(
     tau_i = 3 sqrt(2 pi) epsilon_0^2 sqrt(m_ion) (k_B Ti)^{3/2}
             / (ni * Z^4 * e^4 * ln Lambda)
 
-    The Coulomb logarithm uses the NRL expression for ion-ion collisions:
-        ln Lambda = max(2, 23 - ln(sqrt(ni [cm^-3]) * Z / Ti^{3/2} [eV]))
+    Source-status note:
+        The local NRL formulary provides ion-viscosity coefficients and
+        ion-ion Coulomb-log branches, but this helper currently uses the
+        shared Coulomb-log implementation. Treat the collision-time branch as
+        source-audit-needed before using viscosity for validation claims.
 
     Args:
         ni: Ion number density [m^-3].

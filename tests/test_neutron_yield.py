@@ -10,6 +10,7 @@ Covers:
 from __future__ import annotations
 
 import math
+import warnings
 
 import numpy as np
 import pytest
@@ -791,6 +792,19 @@ def test_dd_reactivity_array():
     sv_arr = dd_reactivity_array(temps)
     sv_scalar = np.array([dd_reactivity(T) for T in temps])
     np.testing.assert_allclose(sv_arr, sv_scalar, rtol=1e-12)
+
+
+def test_app_engine_dd_reactivity_uses_finite_reference_impl():
+    """The app runner should not carry a divergent Bosch-Hale copy."""
+    from app_engine import _bosch_hale_dd
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        sv = _bosch_hale_dd(10.0)
+
+    assert np.isfinite(sv)
+    assert sv == pytest.approx(dd_reactivity(10.0), rel=1e-12)
+    assert not any(issubclass(item.category, RuntimeWarning) for item in caught)
 
 
 def test_neutron_yield_rate_basic():

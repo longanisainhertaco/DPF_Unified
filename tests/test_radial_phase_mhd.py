@@ -25,9 +25,10 @@ References
   cylindrical metric source for radial momentum is
       S_r = (rho v_theta^2 + p + B_theta^2/(2 mu_0))/r - B_r B_theta/(mu_0 r)
   Matches `geometric_source_momentum` in geometry/cylindrical.py:209-267.
-- NRL Plasma Formulary p.58 (Bremsstrahlung): power density for hot D plasma
-  P_brem = 1.69e-32 * n_e^2 * Z^2 * sqrt(T_e[eV]) [erg/cm^3/s] (CGS), or
-  in SI W/m^3 = 1.69e-38 * n_e^2 * Z^2 * sqrt(T_e[eV]).
+- NRL Plasma Formulary Eq. 30 (Bremsstrahlung): power density is
+  P_brem = 1.69e-32 * Ne * sqrt(T_e[eV]) * sum_Z[Z^2 N(Z)] [W/cm^3].
+  For quasi-neutral single-effective-charge deuterium, this becomes
+  P_brem = 1.69e-38 * Z_eff * n_e^2 * sqrt(T_e[eV]) [W/m^3].
   This harness does not enable bremsstrahlung directly (it is a black-box
   RHS source via `source_terms`) — but the energy-residual check budgets
   for the bremsstrahlung power density in the pinch column.

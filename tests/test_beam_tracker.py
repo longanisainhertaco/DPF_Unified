@@ -102,3 +102,64 @@ class TestBeamResult:
         assert result.max_energy_keV >= result.mean_energy_keV
         assert len(result.energy_spectrum) > 0
         assert isinstance(result, BeamTrackerResult)
+
+    def test_yield_estimate_uses_voltage_equivalent_and_marks_authority(
+        self,
+        monkeypatch,
+    ):
+        from dpf.diagnostics import beam_target
+
+        calls = []
+
+        def fake_yield_rate(I_pinch, V_pinch, n_target, L_target, f_beam=0.14):
+            calls.append(
+                {
+                    "I_pinch": I_pinch,
+                    "V_pinch": V_pinch,
+                    "n_target": n_target,
+                    "L_target": L_target,
+                    "f_beam": f_beam,
+                },
+            )
+            return 2.0e8
+
+        monkeypatch.setattr(beam_target, "beam_target_yield_rate", fake_yield_rate)
+
+        bt = BeamTracker(n_particles=100)
+        bt.inject_beam(
+            center=np.array([0.005, 0.005, 0.01]),
+            direction=np.array([0, 0, 1]),
+            energy_eV=150e3,
+        )
+
+        result = bt.get_result(n_target=1.0e25, L_pinch=0.01)
+
+        expected_V_pinch = result.mean_energy_keV * 1.0e3 / 3.0
+        assert result.equivalent_V_pinch == pytest.approx(expected_V_pinch)
+        assert calls[0]["V_pinch"] == pytest.approx(expected_V_pinch)
+        assert calls[0]["V_pinch"] > 1.0e4
+        assert result.Y_bt_kinetic == pytest.approx(20.0)
+        assert result.yield_status == "engineering_estimate_not_validation"
+        assert result.yield_model_role == "engineering_estimate_not_validation"
+        assert "engineering estimate" in result.yield_warning
+
+    def test_yield_estimate_failure_is_reported(self, monkeypatch):
+        from dpf.diagnostics import beam_target
+
+        def broken_yield_rate(*args, **kwargs):
+            raise RuntimeError("synthetic failure")
+
+        monkeypatch.setattr(beam_target, "beam_target_yield_rate", broken_yield_rate)
+
+        bt = BeamTracker(n_particles=10)
+        bt.inject_beam(
+            center=np.array([0.005, 0.005, 0.01]),
+            direction=np.array([0, 0, 1]),
+            energy_eV=80e3,
+        )
+
+        result = bt.get_result(n_target=1.0e25, L_pinch=0.01)
+
+        assert result.Y_bt_kinetic == 0.0
+        assert result.yield_status == "failed"
+        assert result.yield_warning == "RuntimeError: synthetic failure"

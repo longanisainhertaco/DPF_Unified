@@ -10,6 +10,8 @@ export interface ServerStatus {
     athena: boolean;
     athenak: boolean;
     metal: boolean;
+    mlx: boolean;
+    hybrid: boolean;
   };
   error?: string;
 }

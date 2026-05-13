@@ -335,8 +335,8 @@ def mhd_rhs_cylindrical_mps(
 
     Geometric source terms added after flux divergence (Heaviside-Lorentz units):
 
-        r-momentum:  +(rho*vtheta^2 - Btheta^2) / r   (centrifugal + hoop stress)
-        theta-momentum: -2*(rho*vr*vtheta - Br*Btheta) / r   (Coriolis + magnetic tension)
+        r-momentum: (p_total + rho*vtheta^2 - Btheta^2) / r
+        theta-momentum: -(rho*vr*vtheta - Br*Btheta) / r
 
     References:
         Stone & Norman, ApJS 80:753 (1992) -- ZEUS-2D cylindrical.
@@ -514,10 +514,12 @@ def mhd_rhs_cylindrical_mps(
     B_r = B[0]
     B_theta = B[1]
 
-    S_mr_geom = (rho * v_theta ** 2 - B_theta ** 2) * inv_r
+    B_sq_geom = B[0] ** 2 + B[1] ** 2 + B[2] ** 2
+    p_total_geom = p + 0.5 * B_sq_geom
+    S_mr_geom = (p_total_geom + rho * v_theta ** 2 - B_theta ** 2) * inv_r
     dvx_dt = dvx_dt + S_mr_geom * inv_rho
 
-    S_mtheta = -2.0 * (rho * v_r * v_theta - B_r * B_theta) * inv_r
+    S_mtheta = -(rho * v_r * v_theta - B_r * B_theta) * inv_r
     dvy_dt = dvy_dt + S_mtheta * inv_rho
 
     dvel_dt = torch.stack([dvx_dt, dvy_dt, dvz_dt], dim=0)

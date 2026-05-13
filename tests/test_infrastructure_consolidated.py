@@ -195,6 +195,61 @@ class TestCheckpointSaveLoad:
         finally:
             os.unlink(fname)
 
+    def test_checkpoint_writes_fail_closed_artifact_metadata(self):
+        """Checkpoint HDF5 carries non-validation artifact metadata."""
+        h5py = pytest.importorskip("h5py")
+        from dpf.diagnostics.checkpoint import save_checkpoint
+
+        config = SimulationConfig(
+            grid_shape=[2, 2, 2],
+            dx=1e-3,
+            sim_time=1e-9,
+            circuit={
+                "C": 1e-6,
+                "V0": 1e3,
+                "L0": 1e-7,
+                "R0": 0.01,
+                "anode_radius": 0.005,
+                "cathode_radius": 0.01,
+            },
+            diagnostics={
+                "hdf5_filename": ":memory:",
+                "artifact_owner": "checkpoint-owner",
+                "artifact_classification": "internal",
+                "artifact_distribution": "restart-only",
+                "artifact_handling_notes": "checkpoint metadata",
+            },
+        )
+        state = {"rho": np.ones((2, 2, 2))}
+        circuit = {"current": 0.0}
+
+        with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as f:
+            fname = f.name
+
+        try:
+            save_checkpoint(
+                fname,
+                state,
+                circuit,
+                time=0.0,
+                step_count=0,
+                config_json=config.to_json(),
+            )
+            with h5py.File(fname, "r") as handle:
+                assert handle.attrs["validation_status"] == "not_validation_evidence"
+                assert handle.attrs["result_label"] == "Preview"
+                assert not bool(handle.attrs["can_support_validation_claims"])
+                assert (
+                    handle.attrs["artifact_role"]
+                    == "checkpoint_restart_not_validation_evidence"
+                )
+                assert handle.attrs["artifact_owner"] == "checkpoint-owner"
+                assert handle.attrs["artifact_classification"] == "internal"
+                payload = json.loads(handle.attrs["artifact_classification_json"])
+                assert payload["distribution"] == "restart-only"
+        finally:
+            os.unlink(fname)
+
     def test_round_trip_all_arrays(self):
         """Full round-trip preserves all array types."""
         from dpf.diagnostics.checkpoint import load_checkpoint, save_checkpoint

@@ -24,6 +24,7 @@ Thumbs.db
 # Output data
 *.h5
 *.hdf5
+*.run_manifest.json
 *.bp
 *.bp5
 

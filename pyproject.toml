@@ -75,6 +75,9 @@ docs = [
     "mkdocs-material>=9.0",
     "mkdocstrings[python]>=0.24",
 ]
+traceability = [
+    "doorstop>=3.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/anthonyzamora/dpf-unified"
@@ -125,6 +128,11 @@ markers = [
     "athenak: marks tests that require AthenaK binary",
     "athena: marks tests that require Athena++ binary",
     "validation: marks validation tests against experimental data",
+    "diagnostics_engineering: diagnostics engineering or regression tests; not source-backed validation",
+    "diagnostics_synthetic: synthetic diagnostics tests; not detector or experimental validation",
+    "diagnostics_source_component: diagnostics tests for source-backed components that do not validate total DPF observables",
+    "diagnostics_source_blocked: diagnostics tests whose physics claims remain blocked by missing local source or same-scope packets",
+    "diagnostics_validation: diagnostics validation tests backed by accepted same-scope source evidence",
     "tolerance_unit: machine-precision tests (rtol=1e-10)",
     "tolerance_integration: solver-level fidelity tests (rtol=0.01)",
     "tolerance_acceptance: experimental validation tests (device-dependent)",

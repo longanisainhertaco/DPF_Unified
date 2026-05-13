@@ -216,6 +216,9 @@ class LeeModel:
         current_fraction: Fraction of total current in the current sheet
             (Lee's fc factor).  Paper-attested: fc=0.7 for PF1000 (Malek
             et al. 2025) and KSU PF (Lee 2014 Fig. 7).
+        radial_current_fraction: Fraction of total current in the radial
+            piston/sheath (Lee's fcr factor). Defaults to current_fraction if
+            None; device records may override with ``lee_fcr``.
         mass_fraction: Fraction of swept mass retained by the sheet
             (Lee's fm factor).  Paper-attested: fm=0.13 for PF1000 (Malek
             et al. 2025), fm=0.10 for KSU PF (Lee 2014 Fig. 7).
@@ -249,6 +252,7 @@ class LeeModel:
         fill_gas_mass: float = 6.687e-27,  # D2 molecular mass (2 * m_d)
         current_fraction: float = 0.7,
         mass_fraction: float = 0.13,
+        radial_current_fraction: float | None = None,
         radial_mass_fraction: float | None = None,
         pinch_column_fraction: float = 1.0,
         liftoff_delay: float = 0.0,
@@ -258,16 +262,59 @@ class LeeModel:
         self.fill_gas_mass = fill_gas_mass
         self.fm = mass_fraction      # Mass fraction factor (Lee's f_m)
         self.fc = current_fraction   # Current fraction factor (Lee's f_c)
+        self.f_cr = (
+            radial_current_fraction
+            if radial_current_fraction is not None
+            else current_fraction
+        )
         self.f_mr = radial_mass_fraction if radial_mass_fraction is not None else mass_fraction
         # Track whether caller explicitly set fc/fm (non-default) to avoid device override
         self._fc_explicit = current_fraction != self._DEFAULT_FC
         self._fm_explicit = mass_fraction != self._DEFAULT_FM
+        self._fcr_explicit = radial_current_fraction is not None or self._fc_explicit
         self.pinch_column_fraction = max(min(pinch_column_fraction, 1.0), 0.01)
         self.liftoff_delay = liftoff_delay  # Insulator flashover delay [s]
         self.crowbar_enabled = crowbar_enabled
         self.crowbar_resistance = crowbar_resistance  # [Ohm] spark gap arc resistance
         self._rhs_evals = 0
         self._max_rhs_evals = 500_000  # Safety limit to prevent ODE hang
+
+    def _radial_circuit_inductance(
+        self, L_pinch: float, cathode_radius: float, radius: float,
+    ) -> float:
+        """Circuit-facing radial inductance with Lee radial current factor."""
+        return (
+            self.f_cr * (mu_0 / (2.0 * pi)) * L_pinch
+            * np.log(max(cathode_radius / radius, 1.01))
+        )
+
+    def _radial_circuit_dLp_dt(self, L_pinch: float, radius: float, vr: float) -> float:
+        """Circuit-facing radial dLp/dt with Lee radial current factor."""
+        return -(
+            self.f_cr * (mu_0 / (2.0 * pi)) * L_pinch * vr
+            / max(radius, 1e-10)
+        )
+
+    def _radial_magnetic_force(self, current: float, L_pinch: float, radius: float) -> float:
+        """Radial JxB force using the Lee radial piston current ``fcr * I``."""
+        return (
+            (mu_0 / (4.0 * pi)) * (self.f_cr * current) ** 2 * L_pinch
+            / max(radius, 1e-10)
+        )
+
+    def _frozen_circuit_inductance(
+        self,
+        L_per_length: float,
+        z_max: float,
+        L_pinch: float,
+        cathode_radius: float,
+        radius: float,
+    ) -> float:
+        """Frozen post-pinch circuit-facing inductance preserving fc/fcr."""
+        return (
+            self.fc * L_per_length * z_max
+            + self._radial_circuit_inductance(L_pinch, cathode_radius, radius)
+        )
 
     def run(
         self,
@@ -316,9 +363,11 @@ class LeeModel:
 
         # Device-specific calibrated Lee parameters override constructor defaults.
         # Only apply when the user did NOT explicitly pass non-default fc/fm to the constructor.
-        _fc_save, _fm_save, _fmr_save = self.fc, self.fm, self.f_mr
+        _fc_save, _fm_save, _fmr_save, _fcr_save = self.fc, self.fm, self.f_mr, self.f_cr
         if not self._fc_explicit:
             self.fc = float(device_params.get("lee_fc", self.fc))
+        if not self._fcr_explicit:
+            self.f_cr = float(device_params.get("lee_fcr", self.fc))
         if not self._fm_explicit:
             self.fm = float(device_params.get("lee_fm", self.fm))
             self.f_mr = float(device_params.get("lee_fmr", self.f_mr))
@@ -365,12 +414,12 @@ class LeeModel:
             # Swept mass
             M_swept = self.fm * rho0 * annulus_area * max(z_pos, 1e-6)
 
-            # Plasma inductance: L_p = L_per_length * z
-            L_p = L_per_length * max(z_pos, 1e-6)
+            # Circuit-facing axial plasma inductance includes Lee current
+            # fraction scaling in the local Lee thesis circuit equation.
+            L_p = self.fc * L_per_length * max(z_pos, 1e-6)
             L_total = L0 + L_p
 
-            # dL_p/dt = L_per_length * vz
-            dLp_dt = L_per_length * vz
+            dLp_dt = self.fc * L_per_length * vz
 
             # Circuit equation
             dI_dt = (Vcap - R0 * I - I * dLp_dt) / max(L_total, 1e-15)
@@ -460,9 +509,9 @@ class LeeModel:
             p_fill = p_Pa  # Fill gas pressure [Pa]
             r_min = 0.1 * a  # Minimum pinch radius
 
-            # Plasma inductance during radial phase
-            # L_p = L_per_length * z_max + (mu_0/(2*pi)) * L_pinch * ln(b/r)
-            L_p_axial = L_per_length * z_max
+            # Plasma inductance during radial phase. Axial contribution is
+            # fc-scaled; radial contribution is fcr-scaled in the RHS helpers.
+            L_p_axial = self.fc * L_per_length * z_max
 
             def radial_rhs(t: float, y: np.ndarray) -> np.ndarray:
                 self._rhs_evals += 1
@@ -473,12 +522,12 @@ class LeeModel:
                 r_s = max(r_s, 0.001 * a)  # Minimum radius
 
                 # Plasma inductance
-                L_p_rad = (mu_0 / (2.0 * pi)) * L_pinch * np.log(max(b / r_s, 1.01))
+                L_p_rad = self._radial_circuit_inductance(L_pinch, b, r_s)
                 L_p_total = L_p_axial + L_p_rad
                 L_total = L0 + L_p_total
 
                 # dL_p/dt for radial phase
-                dLp_dt_rad = -(mu_0 / (2.0 * pi)) * L_pinch * vr / max(r_s, 1e-10)
+                dLp_dt_rad = self._radial_circuit_dLp_dt(L_pinch, r_s, vr)
 
                 # Circuit
                 dI_dt = (Vcap_r - R0 * I_r - I_r * dLp_dt_rad) / max(L_total, 1e-15)
@@ -492,11 +541,8 @@ class LeeModel:
                 # Mass pickup rate: dM/dt = f_mr * rho0 * 2*pi * r_s * |vr| * z_f
                 dm_dt = self.f_mr * rho0 * 2.0 * pi * r_s * abs(vr) * L_pinch
 
-                # Radial J×B force: (mu_0/(4*pi)) * (fc*I)^2 * z_f / r_s
-                F_rad = (
-                    (mu_0 / (4.0 * pi)) * (self.fc * I_r)**2 * L_pinch
-                    / max(r_s, 1e-10)
-                )
+                # Radial J×B force uses Lee's radial current factor fcr.
+                F_rad = self._radial_magnetic_force(I_r, L_pinch, r_s)
 
                 # Adiabatic back-pressure: p_fill * (b/r_s)^(2*gamma)
                 r_eff = max(r_s, r_min)
@@ -580,18 +626,12 @@ class LeeModel:
                     r_s = max(r_s, 0.001 * a)
 
                     # Plasma inductance (same formula as Phase 2)
-                    L_p_rad = (
-                        (mu_0 / (2.0 * pi)) * L_pinch
-                        * np.log(max(b / r_s, 1.01))
-                    )
+                    L_p_rad = self._radial_circuit_inductance(L_pinch, b, r_s)
                     L_p_total = L_p_axial + L_p_rad
                     L_total = L0 + L_p_total
 
                     # dL_p/dt: vr4 > 0 (outward) → dL/dt < 0
-                    dLp_dt_r4 = (
-                        -(mu_0 / (2.0 * pi)) * L_pinch * vr4
-                        / max(r_s, 1e-10)
-                    )
+                    dLp_dt_r4 = self._radial_circuit_dLp_dt(L_pinch, r_s, vr4)
 
                     # Circuit equation
                     dI_dt = (
@@ -618,11 +658,8 @@ class LeeModel:
                     p_back = p_fill * (b / r_eff) ** (2.0 * gamma)
                     F_pressure = p_back * 2.0 * pi * r_eff * L_pinch
 
-                    # J×B force opposes outward motion
-                    F_rad = (
-                        (mu_0 / (4.0 * pi)) * (self.fc * I_r4)**2 * L_pinch
-                        / max(r_s, 1e-10)
-                    )
+                    # J×B force opposes outward motion and uses radial fcr.
+                    F_rad = self._radial_magnetic_force(I_r4, L_pinch, r_s)
 
                     # EOM: F_pressure - F_rad - drag
                     dvr_dt = (F_pressure - F_rad - vr4 * dm_dt) / M_slug
@@ -688,11 +725,13 @@ class LeeModel:
                 V_post_start = float(V2[-1])
                 r_pinch = float(r2[-1])
 
-                # Frozen plasma inductance at pinch
-                L_p_frozen = L_per_length * z_max
-                L_p_frozen += (
-                    (mu_0 / (2.0 * pi)) * z_max
-                    * np.log(max(b / max(r_pinch, 0.001 * a), 1.01))
+                # Frozen plasma inductance at pinch, preserving fc/fcr loading.
+                L_p_frozen = self._frozen_circuit_inductance(
+                    L_per_length,
+                    z_max,
+                    z_max,
+                    b,
+                    max(r_pinch, 0.001 * a),
                 )
                 L_total_frozen = L0 + L_p_frozen
 
@@ -767,11 +806,11 @@ class LeeModel:
 
                 # Total inductance at crowbar time (frozen)
                 # Use the last known plasma inductance
-                L_p_at_cb = L_per_length * z_max
+                L_p_at_cb = self.fc * L_per_length * z_max
                 if len(r2) > 0:
                     # Add radial phase inductance
                     r_at_cb = max(float(r_combined[cb_idx]), 0.001 * a)
-                    L_p_at_cb += (mu_0 / (2.0 * pi)) * z_max * np.log(max(b / r_at_cb, 1.01))
+                    L_p_at_cb += self._radial_circuit_inductance(z_max, b, r_at_cb)
                 L_total_cb = L0 + L_p_at_cb
 
                 # L-R decay: I(t) = I_cb * exp(-R_post * (t - t_cb) / L_total_cb)
@@ -819,7 +858,7 @@ class LeeModel:
             pinch_time = peak_current_time * 1.2  # Rough estimate
 
         # V_max = L_total * max(|dI/dt|) — peak inductive voltage across the load
-        L_p_final = L_per_length * z_max
+        L_p_final = self.fc * L_per_length * z_max
         L_total_final = L0 + L_p_final
         if len(t_combined) > 1:
             dt_arr = np.diff(t_combined)
@@ -865,12 +904,13 @@ class LeeModel:
                 "fm": self.fm,
                 "f_mr": self.f_mr,
                 "fc": self.fc,
+                "fcr": self.f_cr,
                 "liftoff_delay": self.liftoff_delay,
                 "V_max_kV": V_max_kV,
             },
         )
         # Restore constructor defaults (device params are per-run overrides only)
-        self.fc, self.fm, self.f_mr = _fc_save, _fm_save, _fmr_save
+        self.fc, self.fm, self.f_mr, self.f_cr = _fc_save, _fm_save, _fmr_save, _fcr_save
         return _result
 
     def compare_with_experiment(

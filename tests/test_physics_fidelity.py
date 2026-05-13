@@ -21,6 +21,10 @@ def test_physics_fidelity_audit_blocks_reduced_default_result():
     assert evidence["source"].startswith("KnowledgeReference/")
     assert "tabulated_eos_and_conductivity" in evidence["required_effects"]
     assert "hall_flr_kinetic_or_pic_effects" in evidence["missing_or_unvalidated_effects"]
+    assert evidence["engineering_run_blocked"] is False
+    assert evidence["required_effects"]["tabulated_eos_and_conductivity"][
+        "fidelity_status"
+    ] == "absent"
 
 
 def test_physics_fidelity_audit_marks_active_modules_unvalidated():
@@ -51,6 +55,9 @@ def test_physics_fidelity_audit_marks_active_modules_unvalidated():
     assert effects["material_ablation_impurity_mixing"]["status"] == (
         "empirical_not_validated"
     )
+    assert effects["material_ablation_impurity_mixing"]["fidelity_status"] == (
+        "empirical"
+    )
     assert effects["hall_flr_kinetic_or_pic_effects"]["status"] == (
         "required_unvalidated"
     )
@@ -73,6 +80,8 @@ def test_physics_effect_validation_evidence_supports_one_effect():
     assert effect["passed"] is True
     assert evidence["passed"] is False
     assert effects["tabulated_eos_and_conductivity"]["status"] == "validated"
+    assert effects["tabulated_eos_and_conductivity"]["fidelity_status"] == "validated"
+    assert effects["tabulated_eos_and_conductivity"]["verified"] is True
     assert effects["tabulated_eos_and_conductivity"]["validated"] is True
     assert "physics_effect_validation" in (
         effects["tabulated_eos_and_conductivity"]["evidence_keys"]
@@ -97,8 +106,57 @@ def test_physics_effect_validation_evidence_can_bound_effect_out_of_scope():
 
     assert effect["passed"] is True
     assert beam["status"] == "bounded_out"
+    assert beam["fidelity_status"] == "bounded_out"
     assert beam["implemented"] is False
     assert beam["validated"] is True
+
+
+def test_unverified_physics_effect_evidence_does_not_pass():
+    effect = physics_effect_validation_evidence(
+        "tabulated_eos_and_conductivity",
+        validation_scope="unit_test_scope",
+        verified=False,
+        notes="implementation exists, but numerical/source verification is absent",
+    )
+    evidence = physics_fidelity_evidence_from_result({
+        "physics_effect_validation": {
+            "tabulated_eos_and_conductivity": effect,
+        },
+    })
+
+    assert effect["passed"] is False
+    assert evidence["required_effects"]["tabulated_eos_and_conductivity"][
+        "fidelity_status"
+    ] == "absent"
+    assert "tabulated_eos_and_conductivity" in (
+        evidence["missing_or_unvalidated_effects"]
+    )
+
+
+def test_physics_fidelity_claim_blockers_are_scope_specific():
+    beam = physics_effect_validation_evidence(
+        "beam_generation_and_target_coupling",
+        validation_scope="current_waveform_only_scope",
+        implemented=False,
+        bounded_out=True,
+        notes="scope excludes neutron and p-B11 observables",
+    )
+    evidence = physics_fidelity_evidence_from_result({
+        "beam_generation_and_target_coupling_validation": beam,
+    })
+    claim_blockers = evidence["claim_blockers"]
+
+    assert "beam_generation_and_target_coupling" not in claim_blockers[
+        "circuit_waveform_prediction"
+    ]["blocking_effects"]
+    assert "beam_generation_and_target_coupling" not in claim_blockers[
+        "neutron_prediction"
+    ]["blocking_effects"]
+    assert "hall_flr_kinetic_or_pic_effects" in claim_blockers[
+        "neutron_prediction"
+    ]["blocking_effects"]
+    assert "p_b11_prediction" in evidence["blocked_claims"]
+    assert evidence["engineering_run_blocked"] is False
 
 
 def test_complete_physics_effect_packet_can_pass_gap_gate():
@@ -133,6 +191,11 @@ def test_complete_physics_effect_packet_can_pass_gap_gate():
     assert evidence["passed"] is True
     assert evidence["same_scope_passed"] is True
     assert evidence["missing_or_unvalidated_effects"] == []
+    assert evidence["blocked_claims"] == []
+    assert all(
+        blocker["blocked"] is False
+        for blocker in evidence["claim_blockers"].values()
+    )
     assert gaps["missing_physics_fidelity"].status == "supported"
 
 

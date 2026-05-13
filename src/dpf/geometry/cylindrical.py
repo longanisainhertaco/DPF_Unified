@@ -29,9 +29,9 @@ Laplacian of a scalar T:
     lap(T) = (1/r) * d(r * dT/dr)/dr + d^2T/dz^2
            = d^2T/dr^2 + (1/r) * dT/dr + d^2T/dz^2
 
-Geometric source terms for momentum (hoop stress):
-    S_r = p_theta / r  (centrifugal + magnetic pressure)
-    For MHD: p_total / r contribution to radial momentum
+Geometric source terms for momentum:
+    S_r = (rho*v_theta^2 + p_total - B_theta^2/mu_0) / r
+    S_theta = -(rho*v_r*v_theta - B_r*B_theta/mu_0) / r
 
 Reference:
     Lieberman & Lichtenberg, "Principles of Plasma Discharges" Ch. 5
@@ -78,7 +78,7 @@ class CylindricalGeometry:
     differential operators (div, grad, curl, laplacian) for the MHD solver.
 
     The grid is cell-centered with:
-        r[i] = (i + 0.5) * dr  for i = 0, ..., nr-1
+        r[i] = r_min + (i + 0.5) * dr  for i = 0, ..., nr-1
         z[j] = (j + 0.5) * dz  for j = 0, ..., nz-1
 
     Args:
@@ -86,16 +86,26 @@ class CylindricalGeometry:
         nz: Number of axial cells.
         dr: Radial grid spacing [m].
         dz: Axial grid spacing [m].
+        r_min: Physical radius at the inner radial face [m]. Use 0 for an
+            axis-including domain, or the anode radius for an annular DPF gap.
     """
 
-    def __init__(self, nr: int, nz: int, dr: float, dz: float) -> None:
+    def __init__(
+        self,
+        nr: int,
+        nz: int,
+        dr: float,
+        dz: float,
+        r_min: float = 0.0,
+    ) -> None:
         self.nr = nr
         self.nz = nz
         self.dr = dr
         self.dz = dz
+        self.r_min = r_min
 
         # Cell-centered radial coordinates
-        self.r = np.array([(i + 0.5) * dr for i in range(nr)])
+        self.r = np.array([r_min + (i + 0.5) * dr for i in range(nr)])
 
         # Precompute 1/r (with axis protection)
         self.inv_r = _safe_inv_r(self.r)
@@ -106,8 +116,8 @@ class CylindricalGeometry:
         self.inv_r_2d = self.inv_r[:, np.newaxis]
 
         # Face-centered radial coordinates for flux computation
-        # r_face[i] = i * dr (left face of cell i; r_face[0] = 0 = axis)
-        self.r_face = np.array([i * dr for i in range(nr + 1)])
+        # r_face[i] = r_min + i * dr (left face of cell i)
+        self.r_face = np.array([r_min + i * dr for i in range(nr + 1)])
 
     def divergence(self, F: np.ndarray) -> np.ndarray:
         """Compute divergence of a vector field in cylindrical coords.
@@ -218,15 +228,15 @@ class CylindricalGeometry:
         In cylindrical coords, the momentum equation has additional source
         terms from the curvature:
 
-        Radial momentum source:
-            S_r = (rho * v_theta^2 + p + B_theta^2/(2*mu_0)) / r
-                - (B_r * B_theta) / (mu_0 * r)
+        Radial momentum source for the r-weighted finite-volume form:
+            S_r = (rho * v_theta^2 + p_total - B_theta^2/mu_0) / r
+            where p_total = p + B^2/(2*mu_0)
 
         For axisymmetric DPF (v_theta = 0, B_r = 0 in initial state):
-            S_r = p / r + B_theta^2 / (2 * mu_0 * r)  (hoop stress)
+            S_r = p / r - B_theta^2 / (2 * mu_0 * r)
 
         Theta momentum source:
-            S_theta = -(rho * v_r * v_theta + B_r * B_theta / mu_0) / r
+            S_theta = -(rho * v_r * v_theta - B_r * B_theta / mu_0) / r
 
         Args:
             rho: Density, shape (nr, nz).
@@ -246,19 +256,16 @@ class CylindricalGeometry:
 
         source = np.zeros((3, self.nr, self.nz))
 
-        # Radial: hoop stress + centrifugal + magnetic tension
-        # S_r = (rho * v_theta^2 + p + B_theta^2/(2*mu_0)) / r
-        #     - B_r * B_theta / (mu_0 * r)
-        p_mag_theta = B_theta**2 / (2.0 * mu_0)
+        B_sq = B[0] ** 2 + B[1] ** 2 + B[2] ** 2
+        p_total = pressure + B_sq / (2.0 * mu_0)
         source[0] = self.inv_r_2d * (
-            rho * v_theta**2 + pressure + p_mag_theta
-            - B_r * B_theta / mu_0
+            rho * v_theta**2 + p_total - B_theta**2 / mu_0
         )
 
         # Theta: Coriolis + magnetic tension
-        # S_theta = -(rho * v_r * v_theta + B_r * B_theta / mu_0) / r
+        # S_theta = -(rho * v_r * v_theta - B_r * B_theta / mu_0) / r
         source[1] = -self.inv_r_2d * (
-            rho * v_r * v_theta + B_r * B_theta / mu_0
+            rho * v_r * v_theta - B_r * B_theta / mu_0
         )
 
         # Axial: no geometric source

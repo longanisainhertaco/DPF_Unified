@@ -8,15 +8,21 @@ import { API_BASE_URL } from "@shared/constants";
 
 import type {
   ConfigValidationResponse,
+  ArchiveProjectRequest,
   CreateSimulationRequest,
+  CreateProjectRequest,
+  DuplicateProjectRequest,
   HealthResponse,
+  LoadProjectRequest,
   PresetInfo,
+  ProjectInfo,
   SimulationConfig,
   SimulationInfo,
   InverseDesignResult,
   PredictionResult,
   ConfidenceResult,
   RolloutResult,
+  UnitsMetadata,
 } from "./types";
 
 /** Base URL — can be overridden for testing */
@@ -57,10 +63,56 @@ export async function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>("/api/health");
 }
 
+export async function fetchUnitsMetadata(): Promise<UnitsMetadata> {
+  return apiFetch<UnitsMetadata>("/api/metadata/units");
+}
+
 // ── Presets ─────────────────────────────────────────────────────
 
 export async function fetchPresets(): Promise<PresetInfo[]> {
   return apiFetch<PresetInfo[]>("/api/presets");
+}
+
+// ── Projects ───────────────────────────────────────────────────
+
+export async function fetchProjectsRoot(): Promise<{ root: string }> {
+  return apiFetch<{ root: string }>("/api/projects/root");
+}
+
+export async function createProject(
+  req: CreateProjectRequest
+): Promise<ProjectInfo> {
+  return apiFetch<ProjectInfo>("/api/projects", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function loadProject(
+  req: LoadProjectRequest
+): Promise<ProjectInfo> {
+  return apiFetch<ProjectInfo>("/api/projects/load", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function duplicateProject(
+  req: DuplicateProjectRequest
+): Promise<ProjectInfo> {
+  return apiFetch<ProjectInfo>("/api/projects/duplicate", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function archiveProject(
+  req: ArchiveProjectRequest
+): Promise<ProjectInfo> {
+  return apiFetch<ProjectInfo>("/api/projects/archive", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
 }
 
 // ── Config ──────────────────────────────────────────────────────

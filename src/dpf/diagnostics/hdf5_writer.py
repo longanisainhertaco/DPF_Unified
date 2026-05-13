@@ -25,6 +25,55 @@ except ImportError:
 
 # Field names to include in snapshots
 _SNAPSHOT_FIELDS = ("rho", "B", "Te", "Ti", "velocity", "pressure")
+_SCALAR_UNITS = {
+    "time": "s",
+    "current": "A",
+    "voltage": "V",
+    "energy_cap": "J",
+    "energy_ind": "J",
+    "energy_res": "J",
+    "energy_total": "J",
+    "max_div_B": "T/cell",
+    "mean_rho": "kg/m^3",
+    "max_Te": "K",
+    "max_Ti": "K",
+}
+_SCALAR_METADATA = {
+    "max_div_B": {
+        "diagnostic_status": "rough_array_metric_not_physical_divergence",
+        "validation_status": "not_validation_evidence",
+        "diagnostic_method": (
+            "component-wise np.gradient over array indices for B shaped "
+            "(3, nx, ny, nz); geometry and grid spacing are not applied"
+        ),
+    },
+}
+_FIELD_UNITS = {
+    "rho": "kg/m^3",
+    "B": "T",
+    "Te": "K",
+    "Ti": "K",
+    "velocity": "m/s",
+    "pressure": "Pa",
+}
+
+
+def _rough_array_max_div_b(B: np.ndarray) -> float:
+    """Return a compatibility metric, not a physical divergence diagnostic."""
+    B_arr = np.asarray(B, dtype=float)
+    if B_arr.ndim != 4 or B_arr.shape[0] != 3:
+        raise ValueError("B must have shape (3, nx, ny, nz)")
+
+    div_B = np.zeros(B_arr.shape[1:], dtype=float)
+    if B_arr.shape[1] > 1:
+        div_B = div_B + np.gradient(B_arr[0], axis=0)
+    if B_arr.shape[2] > 1:
+        div_B = div_B + np.gradient(B_arr[1], axis=1)
+    if B_arr.shape[3] > 1:
+        div_B = div_B + np.gradient(B_arr[2], axis=2)
+    if div_B.size == 0:
+        return 0.0
+    return float(np.max(np.abs(div_B)))
 
 
 class HDF5Writer(DiagnosticsBase):
@@ -103,12 +152,7 @@ class HDF5Writer(DiagnosticsBase):
             self._scalars["mean_rho"].append(0.0)
 
         if B is not None:
-            # Handle cylindrical geometry (ny=1) where gradient along axis=1 fails
-            div_B = np.gradient(B[0], axis=0)
-            if B.shape[2] > 1:
-                div_B = div_B + np.gradient(B[1], axis=1)
-            div_B = div_B + np.gradient(B[2], axis=2)
-            self._scalars["max_div_B"].append(float(np.max(np.abs(div_B))))
+            self._scalars["max_div_B"].append(_rough_array_max_div_b(B))
         else:
             self._scalars["max_div_B"].append(0.0)
 
@@ -149,7 +193,10 @@ class HDF5Writer(DiagnosticsBase):
             # Write scalar time series
             grp = f.create_group("scalars")
             for key, values in self._scalars.items():
-                grp.create_dataset(key, data=np.array(values))
+                dataset = grp.create_dataset(key, data=np.array(values))
+                dataset.attrs["units"] = _SCALAR_UNITS.get(key, "unknown")
+                for attr_key, attr_value in _SCALAR_METADATA.get(key, {}).items():
+                    dataset.attrs[attr_key] = attr_value
 
             # Write field snapshots
             if self._field_snapshots:
@@ -159,12 +206,15 @@ class HDF5Writer(DiagnosticsBase):
                     snap_grp.attrs["time"] = snap["time"]
                     for key, val in snap.items():
                         if key != "time" and isinstance(val, np.ndarray):
-                            snap_grp.create_dataset(key, data=val)
+                            dataset = snap_grp.create_dataset(key, data=val)
+                            dataset.attrs["units"] = _FIELD_UNITS.get(key, "unknown")
                 fields_grp.attrs["num_snapshots"] = len(self._field_snapshots)
                 logger.info(
                     "Wrote %d field snapshots", len(self._field_snapshots),
                 )
 
+            f.attrs["schema_version"] = "dpf-hdf5-diagnostics-v1"
+            f.attrs["time_base_units"] = "s"
             f.attrs["num_records"] = self._call_count
 
         logger.info("Wrote %d diagnostic records to %s", self._call_count, self.filename)

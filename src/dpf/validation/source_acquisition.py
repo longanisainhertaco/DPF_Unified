@@ -22,6 +22,27 @@ _PHYSICS_NEED_BY_GROUP = {
 }
 
 
+_BLOCKED_VALIDATION_TIERS_BY_GROUP = {
+    "circuit_waveform": ["tier_1_circuit_waveform", "akel_s1_s2_waveform"],
+    "phase_timing": ["tier_2_phase_validation"],
+    "spatial_density": ["tier_4_spatial_validation"],
+    "spatial_magnetic_or_em": ["tier_4_spatial_validation"],
+    "spatial_temperature": ["tier_4_spatial_validation"],
+    "neutron_yield": ["tier_5_neutron_validation"],
+    "neutron_timing": ["tier_5_neutron_validation"],
+    "neutron_spectrum": ["tier_5_neutron_validation"],
+    "neutron_anisotropy": ["tier_5_neutron_validation"],
+    "neutron_detector_response": ["tier_5_neutron_validation"],
+    "uncertainty": [
+        "tier_1_circuit_waveform",
+        "tier_2_phase_validation",
+        "tier_4_spatial_validation",
+        "tier_5_neutron_validation",
+        "high_fidelity_readiness",
+    ],
+}
+
+
 _ACQUISITION_PROCESS = [
     "AI researches candidate source documents and provides links.",
     "User acquires the correct source document.",
@@ -330,17 +351,88 @@ _LOCAL_SOURCE_STATUS_BY_DOI = {
             "targets; digitize only for additional arrays."
         ),
     },
+    "10.1515/nuka-2015-0065": {
+        "local_status": "source_fidelity_reviewed_target_extraction_needed",
+        "local_kr_source": "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md",
+        "local_pdf_sha256": (
+            "9dfed6c03000668c5a4926b539b8dc50824fbf8785a069d8a88b319e915fc7f9"
+        ),
+        "remaining_local_action": (
+            "Clean bibliographic title metadata, then extract linear-density "
+            "timing, spatial-density observables, and uncertainty."
+        ),
+    },
+    "10.1016/j.vacuum.2004.07.040": {
+        "local_status": "source_fidelity_reviewed_target_extraction_needed",
+        "local_kr_source": (
+            "KnowledgeReference/doi-10-1016-j-vacuum-2004-07-040-6de67a98.md"
+        ),
+        "local_pdf_sha256": (
+            "6de67a98c1c059193e8e3d8bc56288a2c85f7956d662c83d98e64d0c0a06fe7d"
+        ),
+        "remaining_local_action": (
+            "Clean bibliographic title metadata, then extract neutron spectra, "
+            "anisotropy, silver-activation geometry, CR-39 layout, and "
+            "uncertainty."
+        ),
+    },
+    "10.1109/TPS.2020.3012104": {
+        "local_status": "source_fidelity_reviewed_target_extraction_needed",
+        "local_kr_source": (
+            "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-"
+            "spectrum-from-a-dense-plasma-focus-b78f1154.md"
+        ),
+        "local_pdf_sha256": (
+            "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47"
+        ),
+        "remaining_local_action": (
+            "Extract reconstruction constraints, detector-pair geometry, "
+            "scatter subtraction, time/energy resolution, and uncertainty."
+        ),
+    },
+    "10.1016/j.nima.2020.164830": {
+        "local_status": "source_fidelity_reviewed_target_extraction_needed",
+        "local_kr_source": (
+            "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-"
+            "2021-164830-bc8edab3.md"
+        ),
+        "local_pdf_sha256": (
+            "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f"
+        ),
+        "remaining_local_action": (
+            "Clean bibliographic title metadata, then extract Zr/Be activation "
+            "geometry, MCNP ratio relationship, energy/fluence anisotropy, and "
+            "uncertainty."
+        ),
+    },
+    "10.1063/1.3559548": {
+        "local_status": "source_fidelity_reviewed_target_extraction_needed",
+        "local_kr_source": (
+            "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-"
+            "measurements-in-z-pinch-and-plasma-focus-214fbdae.md"
+        ),
+        "local_pdf_sha256": (
+            "214fbdae9607094628e9cfcf55157b9d59ad72ab9de3d04a3011cb63b1972747"
+        ),
+        "remaining_local_action": (
+            "Extract detector timing, pulse-height method, neutron sensitivity, "
+            "calibration terms, and uncertainty before yield/detector closure."
+        ),
+    },
 }
 
 
 _NOT_FOUND_AS_EXACT_LOCAL_PDF = {
-    "10.1515/nuka-2015-0065",
-    "10.1016/j.vacuum.2004.07.040",
-    "10.1109/TPS.2020.3012104",
-    "10.1016/j.nima.2020.164830",
-    "10.1063/1.3559548",
     "10.1515/nuka-2017-0003",
 }
+
+
+def _is_local_kr_source(candidate: Mapping[str, object]) -> bool:
+    return candidate.get("local_status") in {
+        "parity_verified_knowledge_reference",
+        "text_parity_extracted_review_needed",
+        "source_fidelity_reviewed_target_extraction_needed",
+    }
 
 
 def _annotated_candidate_sources(group: str) -> list[dict[str, object]]:
@@ -364,6 +456,56 @@ def _annotated_candidate_sources(group: str) -> list[dict[str, object]]:
             )
         annotated.append(item)
     return annotated
+
+
+def _same_scope_group_statuses(widest: Mapping[str, object]) -> list[dict[str, object]]:
+    present_groups = {
+        str(group)
+        for group in widest.get("present_groups", [])
+        if str(group)
+    }
+    missing_groups = {
+        str(group)
+        for group in widest.get("missing_groups", [])
+        if str(group)
+    }
+    partial_groups = {
+        str(group)
+        for group in widest.get("partial_groups", [])
+        if str(group)
+    }
+    all_groups = sorted(
+        set(_PHYSICS_NEED_BY_GROUP)
+        | present_groups
+        | missing_groups
+        | partial_groups
+    )
+
+    statuses: list[dict[str, object]] = []
+    for group in all_groups:
+        if group in partial_groups:
+            status = "partial_in_current_scope"
+        elif group in missing_groups:
+            status = "missing_from_current_scope"
+        elif group in present_groups:
+            status = "complete_in_current_scope"
+        else:
+            status = "not_reported_for_current_scope"
+        statuses.append({
+            "group": group,
+            "physics_need": _PHYSICS_NEED_BY_GROUP.get(group, group),
+            "status": status,
+            "blocks_validation_tiers": list(
+                _BLOCKED_VALIDATION_TIERS_BY_GROUP.get(group, [])
+            ),
+        })
+    return statuses
+
+
+def _source_action(local_sources: list[dict[str, object]]) -> str:
+    if local_sources:
+        return "local_digitization_or_target_extraction"
+    return "user_acquisition_then_knowledge_reference_ingestion"
 
 
 def scientific_closure_source_acquisition_queue() -> dict[str, object]:
@@ -394,12 +536,12 @@ def scientific_closure_source_acquisition_queue() -> dict[str, object]:
         local_sources = [
             candidate
             for candidate in candidate_sources
-            if candidate.get("local_status") == "parity_verified_knowledge_reference"
+            if _is_local_kr_source(candidate)
         ]
         acquisition_sources = [
             candidate
             for candidate in candidate_sources
-            if candidate.get("local_status") != "parity_verified_knowledge_reference"
+            if not _is_local_kr_source(candidate)
         ]
         items.append({
             "group": str(group),
@@ -417,6 +559,10 @@ def scientific_closure_source_acquisition_queue() -> dict[str, object]:
             "candidate_sources": candidate_sources,
             "local_sources_available": local_sources,
             "candidate_sources_for_acquisition": acquisition_sources,
+            "source_action": _source_action(local_sources),
+            "blocks_validation_tiers": list(
+                _BLOCKED_VALIDATION_TIERS_BY_GROUP.get(str(group), [])
+            ),
             "status": (
                 "awaiting_local_digitization_or_target_extraction"
                 if local_sources
@@ -429,6 +575,37 @@ def scientific_closure_source_acquisition_queue() -> dict[str, object]:
         })
 
     items.sort(key=lambda item: (int(item["priority"]), str(item["group"])))
+    same_scope_group_statuses = _same_scope_group_statuses(widest)
+    summary = {
+        "blocker_count": len(items),
+        "priority_1_count": sum(1 for item in items if item["priority"] == 1),
+        "priority_2_count": sum(1 for item in items if item["priority"] == 2),
+        "local_digitization_or_target_extraction_count": sum(
+            1
+            for item in items
+            if item["source_action"] == "local_digitization_or_target_extraction"
+        ),
+        "user_acquisition_required_count": sum(
+            1
+            for item in items
+            if item["candidate_sources_for_acquisition"]
+        ),
+        "complete_group_count": sum(
+            1
+            for item in same_scope_group_statuses
+            if item["status"] == "complete_in_current_scope"
+        ),
+        "partial_group_count": sum(
+            1
+            for item in same_scope_group_statuses
+            if item["status"] == "partial_in_current_scope"
+        ),
+        "missing_group_count": sum(
+            1
+            for item in same_scope_group_statuses
+            if item["status"] == "missing_from_current_scope"
+        ),
+    }
     return {
         "passed": False,
         "model_role": "scientific_closure_source_acquisition_queue",
@@ -439,5 +616,7 @@ def scientific_closure_source_acquisition_queue() -> dict[str, object]:
             "after user acquisition and local KnowledgeReference ingestion."
         ),
         "acquisition_process": list(_ACQUISITION_PROCESS),
+        "summary": summary,
+        "same_scope_group_statuses": same_scope_group_statuses,
         "items": items,
     }

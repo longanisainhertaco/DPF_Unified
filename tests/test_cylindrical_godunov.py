@@ -27,9 +27,9 @@ def _make_uniform_state(
     dz: float = 0.001,
     rho0: float = 1e-4,
     p0: float = 1e3,
-    B_theta: float = 0.1,
+    B_theta: float = 0.0,
 ) -> tuple[CylindricalMHDSolver, dict]:
-    """Create a solver + uniform state dict for testing."""
+    """Create a force-free uniform solver state for preservation tests."""
     solver = CylindricalMHDSolver(
         nr=nr, nz=nz, dr=dr, dz=dz,
         gamma=5.0 / 3.0, cfl=0.3,

@@ -1,0 +1,1557 @@
+{
+  "doorstop_document_prefix": "DPF",
+  "doorstop_status": "staged_not_imported",
+  "requirements": [
+    {
+      "acceptance_evidence_or_blocker": "`src/dpf/validation/kr_targets.py`; `src/dpf/validation/quality_assessment.py`; `tests/test_kr_targets.py`; `tests/test_quality_assessment.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "src/dpf/validation/kr_targets.py",
+          "src/dpf/validation/quality_assessment.py",
+          "tests/test_kr_targets.py",
+          "tests/test_quality_assessment.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-VV-001",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "src/dpf/validation/kr_targets.py",
+        "src/dpf/validation/quality_assessment.py",
+        "tests/test_kr_targets.py",
+        "tests/test_quality_assessment.py"
+      ],
+      "id": "DPF-VV-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "The system shall treat local `KnowledgeReference/` records as the only scientific source authority for validation claims.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Existing KR source audits cover coded targets; remaining evidence types require expansion.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-VV-002",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "The system shall fail closed when scientific evidence lacks local source path, source hash, line range where applicable, or required KR status.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`predictive_readiness_report()` and scientific gap tests; same-scope spatial/neutron/UQ evidence remains blocked.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "predictive_readiness_report()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-VV-003",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [
+        "predictive_readiness_report()"
+      ],
+      "id": "DPF-VV-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "Predictive and high-fidelity readiness shall remain blocked until same-scope evidence passes all required tiers.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`docs/ADR_COMPUTE_AUTHORITY.md`; `src/dpf/validation/artifacts.py`; `SimulationEngine.run()` summaries/manifests and UI/API surfacing emit fail-closed classification.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/ADR_COMPUTE_AUTHORITY.md",
+          "src/dpf/validation/artifacts.py",
+          "SimulationEngine.run()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/V&V",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-SYS-001",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "docs/ADR_COMPUTE_AUTHORITY.md",
+        "src/dpf/validation/artifacts.py",
+        "SimulationEngine.run()"
+      ],
+      "id": "DPF-SYS-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/V&V",
+      "priority": "P1",
+      "requirement": "The SRS shall define user-facing scientific claim labels and prohibit promotion of engineering probes into validation evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Findings docs are current as of A1 completion; no automated enforcement yet.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Project governance",
+        "priority": "P1",
+        "status": "partial",
+        "uid": "DPF-OPS-001",
+        "verification": [
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-OPS-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Project governance",
+      "priority": "P1",
+      "requirement": "Major validation or findings-status changes shall update `CodexFindings.md` and, when plan status changes, `CortexFindings.md`.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`src/dpf/config.py`; add product-level project schema tests.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "src/dpf/config.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engine/Product",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-SYS-002",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "src/dpf/config.py"
+      ],
+      "id": "DPF-SYS-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engine/Product",
+      "priority": "P0",
+      "requirement": "The system shall load and validate simulation configuration from project/config files.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Config validators and backend capability diagnostics exist; broader unit/project preflight remains open.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engine/UX",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-SYS-003",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-SYS-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engine/UX",
+      "priority": "P0",
+      "requirement": "The system shall validate units, dimensional bounds, supported geometry, supported backend, and unsupported physics options before launch.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`SimulationEngine.run()` writes a sidecar `*.run_manifest.json` for file-backed runs and attempts failed-run manifest emission before re-raising; blocked status is supported by the manifest factory.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "SimulationEngine.run()",
+          "*.run_manifest.json"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Data/V&V",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-DATA-001",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "SimulationEngine.run()",
+        "*.run_manifest.json"
+      ],
+      "id": "DPF-DATA-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Data/V&V",
+      "priority": "P0",
+      "requirement": "The system shall produce a run manifest for every solver execution, including failed and blocked runs.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`ResultClassification` and `SimulationEngine.run()` fail closed to Preview/not-evaluated unless accepted evidence and reference-candidate backend are present.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "ResultClassification",
+          "SimulationEngine.run()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Data/Product",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-DATA-002",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "ResultClassification",
+        "SimulationEngine.run()"
+      ],
+      "id": "DPF-DATA-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Data/Product",
+      "priority": "P0",
+      "requirement": "Every result shall carry a classification label such as Reference, Preview, Derived Diagnostic, Exploratory, Superseded, or Invalid.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`dpf simulate --backend mlx` is accepted; `dpf backends` lists MLX availability.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "dpf simulate --backend mlx",
+          "dpf backends"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "CLI/Product",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-UI-001",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "dpf simulate --backend mlx",
+        "dpf backends"
+      ],
+      "id": "DPF-UI-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "CLI/Product",
+      "priority": "P1",
+      "requirement": "The CLI shall expose every intentionally supported backend, or explicitly reject unavailable backends with a documented reason.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`dpf.project.lifecycle` provides local create/load/duplicate/archive helpers; FastAPI exposes bounded `/api/projects*` lifecycle endpoints under `DPF_PROJECTS_ROOT`; GUI wire client types mirror the endpoints; `tests/test_project_lifecycle.py`; `tests/test_server_projects.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "dpf.project.lifecycle",
+          "/api/projects*",
+          "DPF_PROJECTS_ROOT",
+          "tests/test_project_lifecycle.py",
+          "tests/test_server_projects.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/API",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-SYS-004",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "dpf.project.lifecycle",
+        "/api/projects*",
+        "DPF_PROJECTS_ROOT",
+        "tests/test_project_lifecycle.py",
+        "tests/test_server_projects.py"
+      ],
+      "id": "DPF-SYS-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/API",
+      "priority": "P1",
+      "requirement": "The system shall support project create, load, duplicate, and archive operations with preserved provenance.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`docs/ADR_COMPUTE_AUTHORITY.md` designates reference candidates and preview defaults; promotion still requires accepted evidence.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/ADR_COMPUTE_AUTHORITY.md"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Architecture/V&V",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-OPS-002",
+        "verification": [
+          "inspection",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [
+        "docs/ADR_COMPUTE_AUTHORITY.md"
+      ],
+      "id": "DPF-OPS-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Architecture/V&V",
+      "priority": "P0",
+      "requirement": "The SRS shall designate an authoritative reference backend or reference workflow for validation claims.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`backend_authority_for(\"mlx\")` returns Preview and accepted MLX status still cannot support validation claims.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "backend_authority_for(\"mlx\")"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Architecture/Data",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-DATA-003",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "backend_authority_for(\"mlx\")"
+      ],
+      "id": "DPF-DATA-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Architecture/Data",
+      "priority": "P0",
+      "requirement": "MLX/Metal float32 outputs shall be labeled according to scientific authority and shall not satisfy validation claims without source-gated evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Run summaries, run manifests, FastAPI `SimulationInfo`, GUI wire types, and the TopBar Preview/Reference badge expose authority labels; `tests/test_server_readiness.py`; `npm --prefix gui run typecheck`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "SimulationInfo",
+          "tests/test_server_readiness.py",
+          "npm --prefix gui run typecheck"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/API",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-UI-002",
+        "verification": [
+          "demonstration",
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "SimulationInfo",
+        "tests/test_server_readiness.py",
+        "npm --prefix gui run typecheck"
+      ],
+      "id": "DPF-UI-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/API",
+      "priority": "P0",
+      "requirement": "Backend authority boundaries shall be visible in UI, API, logs, and exported artifacts.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "demonstration",
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`run_memory_preflight()` estimates demand before solver allocation, blocks above `memory_limit_fraction`, and requires `allow_memory_overcommit=true` to override.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "run_memory_preflight()",
+          "memory_limit_fraction",
+          "allow_memory_overcommit=true"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Runtime/QA",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-OPS-003",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "run_memory_preflight()",
+        "memory_limit_fraction",
+        "allow_memory_overcommit=true"
+      ],
+      "id": "DPF-OPS-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Runtime/QA",
+      "priority": "P1",
+      "requirement": "The system shall compute projected memory demand before solver start and refuse or require explicit override for unsafe runs.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Run summaries and manifests now include `runtime_memory_telemetry` with process start/end/peak RSS, sample count, backend, and optional MLX backend memory fields; `tests/test_memory_preflight.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "runtime_memory_telemetry",
+          "tests/test_memory_preflight.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Runtime/QA",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-OPS-004",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "runtime_memory_telemetry",
+        "tests/test_memory_preflight.py"
+      ],
+      "id": "DPF-OPS-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Runtime/QA",
+      "priority": "P1",
+      "requirement": "The system shall record runtime memory telemetry for long or GPU runs.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`docs/todo_audit.md` was refreshed on 2026-05-08 and marks old `src/dpf/engine.py` blockers obsolete.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/todo_audit.md",
+          "src/dpf/engine.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engineering governance",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-OPS-005",
+        "verification": [
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "docs/todo_audit.md",
+        "src/dpf/engine.py"
+      ],
+      "id": "DPF-OPS-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engineering governance",
+      "priority": "P1",
+      "requirement": "The engineering backlog shall use a current TODO/FIXME/XXX audit rather than stale monolithic-engine references.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`backend_feature_diagnostics()` and engine logging expose skipped Athena/AthenaK/hybrid physics and GPU diffusion fallbacks; MLX transport flags are passed through to the solver.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "backend_feature_diagnostics()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engine/UX",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-SYS-005",
+        "verification": [
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "backend_feature_diagnostics()"
+      ],
+      "id": "DPF-SYS-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engine/UX",
+      "priority": "P1",
+      "requirement": "Backend parity checks shall warn or fail when selected physics is unsupported by the chosen backend.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Existing config/engine/circuit tests; add unit audit.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engine/V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-PHYS-001",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engine/V&V",
+      "priority": "P0",
+      "requirement": "The system shall solve coupled circuit/plasma workflows using validated inputs and SI units.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`src/dpf/fluid/snowplow.py`; `tests/test_snowplow_consolidated.py`; Akel M2 probe evidence.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "src/dpf/fluid/snowplow.py",
+          "tests/test_snowplow_consolidated.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Engine",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-PHYS-002",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [
+        "src/dpf/fluid/snowplow.py",
+        "tests/test_snowplow_consolidated.py"
+      ],
+      "id": "DPF-PHYS-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Engine",
+      "priority": "P0",
+      "requirement": "Lee/snowplow circuit-facing `Lp` and `dL/dt` shall preserve current-factor scaling without corrupting unscaled geometry coefficients.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Source-scope guards exist; further comparator tests required.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-PHYS-003",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P0",
+      "requirement": "PF-1000/Akel scientific gates shall not mix Akel 16 kV shot-12581 scope with Scholz/Gribkov full-energy PF-1000 scope.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Akel Fig. 1 packet remains `blocked_by_review`; A2/A3 active.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "blocked_by_review"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-004",
+        "verification": [
+          "review",
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "blocked_by_review"
+      ],
+      "id": "DPF-PHYS-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P0",
+      "requirement": "S1/S2 waveform acceptance shall require accepted same-scope digitized current waveform and uncertainty evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "review",
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Planned consolidation; not closed.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Architecture",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-PHYS-005",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Architecture",
+      "priority": "P1",
+      "requirement": "The project shall define one documented Lee/RADPF reference implementation and require backend parity against it.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`field_coupling_validation` evidence remains planned.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "field_coupling_validation"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-PHYS-006",
+        "verification": [
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "field_coupling_validation"
+      ],
+      "id": "DPF-PHYS-006",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P1",
+      "requirement": "MHD-mode field/circuit coupling claims shall require validated field-derived inductance, `dL/dt`/back-EMF, Poynting power, and energy balance evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Scientific gap report exists; per-run expansion remains open.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P1",
+        "status": "partial",
+        "uid": "DPF-PHYS-007",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-007",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P1",
+      "requirement": "Physics-fidelity gaps shall be explicit for each run across EOS, ionization, two-temperature, radiation transport, impurity, kinetic/Hall/FLR, 3D, startup, restrike, anomalous resistance, and beam-target coupling.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Digitization gates exist; additional figure packets remain planned.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-VV-004",
+        "verification": [
+          "test",
+          "review"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "Digitized figure/table data shall pass provenance verification before it supports validation.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "review"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current helper returns `waveform_digitization_status=\"blocked_by_review\"`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "waveform_digitization_status=\"blocked_by_review\""
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-VV-005",
+        "verification": [
+          "test",
+          "review"
+        ]
+      },
+      "evidence_refs": [
+        "waveform_digitization_status=\"blocked_by_review\""
+      ],
+      "id": "DPF-VV-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "Akel Fig. 1 draft data shall remain non-accepting until independent review count and `review_status=\"accepted\"` pass.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "review"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Akel Fig. 1 draft has these fields; independent review is missing.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-VV-006",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-006",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P0",
+      "requirement": "Digitization packets shall include source path/hash, figure path/hash, figure ID, axis calibration, units, series arrays, overlay residuals, and reviewer metadata.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Source queue entries exist; accepted packets do not.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-VV-007",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-007",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V",
+      "priority": "P1",
+      "requirement": "Akel Fig. 2-4 current waveforms and Fig. 5-6 yield plots shall be tracked through the same queue/status workflow.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Same-device phase target evidence remains absent.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-VV-008",
+        "verification": [
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-008",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P0",
+      "requirement": "Tier 2 validation shall pass only from same-device KR-backed phase targets attached to production results.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Same-scope spatial evidence remains absent.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-VV-009",
+        "verification": [
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-009",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P0",
+      "requirement": "Tier 4 validation shall require same-scope density, magnetic/EM, and temperature evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Same-scope neutron evidence remains absent.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-VV-010",
+        "verification": [
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-010",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P0",
+      "requirement": "Tier 5 validation shall require same-scope neutron timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`ValidationCertificate` and `write_validation_certificate()` reject blocked/cross-scope evidence before any accepted certificate can be persisted.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "ValidationCertificate",
+          "write_validation_certificate()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Data",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-DATA-004",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "ValidationCertificate",
+        "write_validation_certificate()"
+      ],
+      "id": "DPF-DATA-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Data",
+      "priority": "P1",
+      "requirement": "The system shall produce a validation certificate artifact only when all linked gates pass.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "HDF5 scalar and field datasets carry units and root `time_base_units=\"s\"`; `tests/test_export_scope.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "time_base_units=\"s\"",
+          "tests/test_export_scope.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Diagnostics/Data",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-DATA-005",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "time_base_units=\"s\"",
+        "tests/test_export_scope.py"
+      ],
+      "id": "DPF-DATA-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Diagnostics/Data",
+      "priority": "P0",
+      "requirement": "The system shall write time-series diagnostics with units and a consistent time base.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "HDF5 diagnostics carry schema/time-base attributes plus embedded backend, solver mode, validation status, result label, source authority, and classification JSON before sidecar manifest hashing; `tests/test_validation_artifacts.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "tests/test_validation_artifacts.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Diagnostics/Data",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-DATA-006",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "tests/test_validation_artifacts.py"
+      ],
+      "id": "DPF-DATA-006",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Diagnostics/Data",
+      "priority": "P0",
+      "requirement": "HDF5 outputs shall include provenance, backend, solver mode, validation status, and source/readiness metadata.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`scripts/build_mhd_restart_reproducibility_evidence.py`, `results/mhd_restart_reproducibility_evidence.json`, and `tests/test_mhd_numerical_fidelity.py` cover deterministic restart comparisons for the scheduled Tier-3 fixture.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "scripts/build_mhd_restart_reproducibility_evidence.py",
+          "results/mhd_restart_reproducibility_evidence.json",
+          "tests/test_mhd_numerical_fidelity.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Engine/Data",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-DATA-007",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "scripts/build_mhd_restart_reproducibility_evidence.py",
+        "results/mhd_restart_reproducibility_evidence.json",
+        "tests/test_mhd_numerical_fidelity.py"
+      ],
+      "id": "DPF-DATA-007",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Engine/Data",
+      "priority": "P1",
+      "requirement": "Checkpoint/restart shall preserve state sufficiently for deterministic restart comparisons.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Well exporter schema/unit tests exist and the engine Well adapter now passes grid spacing, geometry, and simulation provenance metadata; `tests/test_export_scope.py`; `tests/test_walrus_consolidated.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "tests/test_export_scope.py",
+          "tests/test_walrus_consolidated.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Export/Data",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-DATA-008",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "tests/test_export_scope.py",
+        "tests/test_walrus_consolidated.py"
+      ],
+      "id": "DPF-DATA-008",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Export/Data",
+      "priority": "P1",
+      "requirement": "Well-format HDF5 export for training data shall be schema-tested and provenance-tagged.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "FastAPI `SimulationInfo` includes predictive/high-fidelity readiness, Akel digitization status, and source blockers; GUI TopBar shows blocker count from the same wire payload.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "SimulationInfo"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/UI",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-UI-003",
+        "verification": [
+          "demonstration",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "SimulationInfo"
+      ],
+      "id": "DPF-UI-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/UI",
+      "priority": "P1",
+      "requirement": "User-facing outputs shall display predictive-readiness and high-fidelity-readiness blockers.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "demonstration",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Fail-closed result classification is surfaced through API, GUI wire types, and TopBar Preview/Reference badge; promotion remains blocked by `ResultClassification` validation rules.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "ResultClassification"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/UI",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-UI-004",
+        "verification": [
+          "demonstration",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "ResultClassification"
+      ],
+      "id": "DPF-UI-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/UI",
+      "priority": "P1",
+      "requirement": "Preview/non-certifying outputs shall be visibly labeled and blocked from Reference promotion.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "demonstration",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "UI mode requirements not implemented.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Product/UI",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-UI-005",
+        "verification": [
+          "demonstration",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-UI-005",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Product/UI",
+      "priority": "P1",
+      "requirement": "Beginner/pedagogical and advanced workflows shall not implicitly change physical results.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "demonstration",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "FastAPI `SimulationInfo` exposes backend mode, validation status, result authority, readiness, digitization status, and source blockers; `/api/metadata/units` exposes units/dimensions/authority metadata.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "SimulationInfo",
+          "/api/metadata/units"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "API/Product",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-UI-006",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "SimulationInfo",
+        "/api/metadata/units"
+      ],
+      "id": "DPF-UI-006",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "API/Product",
+      "priority": "P1",
+      "requirement": "Backend API schemas shall expose units, dimensions, backend mode, validation status, and source authority.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`local_first_security_audit()` scans active `src/dpf` Python imports for direct hardware-control libraries; `tests/test_local_first_security.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "local_first_security_audit()",
+          "src/dpf",
+          "tests/test_local_first_security.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Security/Product",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-SEC-001",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "local_first_security_audit()",
+        "src/dpf",
+        "tests/test_local_first_security.py"
+      ],
+      "id": "DPF-SEC-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Security/Product",
+      "priority": "P0",
+      "requirement": "The current release shall not control physical pulsed-power hardware or lab equipment.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`dpf ui` and root Gradio app default to `127.0.0.1`; public share remains opt-in; FastAPI CORS defaults to localhost origins and wildcard CORS requires `DPF_ALLOW_WILDCARD_CORS=1`; `tests/test_local_first_security.py`.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "dpf ui",
+          "127.0.0.1",
+          "DPF_ALLOW_WILDCARD_CORS=1",
+          "tests/test_local_first_security.py"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Security/Product",
+        "priority": "P0",
+        "status": "implemented",
+        "uid": "DPF-SEC-002",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "dpf ui",
+        "127.0.0.1",
+        "DPF_ALLOW_WILDCARD_CORS=1",
+        "tests/test_local_first_security.py"
+      ],
+      "id": "DPF-SEC-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Security/Product",
+      "priority": "P0",
+      "requirement": "The system shall run local-first and shall not transmit project data externally by default.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`scan_runtime_ai_mutation_boundaries()` audits runtime AI entrypoints for active simulation mutation paths; `local_first_security_audit()` fails closed on findings.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "scan_runtime_ai_mutation_boundaries()",
+          "local_first_security_audit()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Security/Product",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-SEC-003",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "scan_runtime_ai_mutation_boundaries()",
+        "local_first_security_audit()"
+      ],
+      "id": "DPF-SEC-003",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Security/Product",
+      "priority": "P1",
+      "requirement": "Runtime AI agents shall not modify solver code, active config, or active simulation state during execution.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`ProjectManifest` and `RunManifest` carry owner-supplied `artifact_classification`; accepted HDF5 outputs embed artifact classification JSON; Well exports carry fail-closed validation/result labels.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "ProjectManifest",
+          "RunManifest",
+          "artifact_classification"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Security/Data",
+        "priority": "P1",
+        "status": "implemented",
+        "uid": "DPF-SEC-004",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [
+        "ProjectManifest",
+        "RunManifest",
+        "artifact_classification"
+      ],
+      "id": "DPF-SEC-004",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Security/Data",
+      "priority": "P1",
+      "requirement": "Project and export artifacts shall support owner-supplied classification/distribution metadata.",
+      "source_section": "Candidate Requirements",
+      "status": "implemented",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`docs/AIR_GAP_RELEASE_GATE.md` and `airgap_release_gate()` define the offline path and fail closed until `dist/wheelhouse`, `SHA256SUMS`, and offline smoke logs exist. Current repo is not yet air-gap-release-ready.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/AIR_GAP_RELEASE_GATE.md",
+          "airgap_release_gate()",
+          "dist/wheelhouse",
+          "SHA256SUMS"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Release/QA",
+        "priority": "P1",
+        "status": "partial",
+        "uid": "DPF-REL-001",
+        "verification": [
+          "demonstration",
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [
+        "docs/AIR_GAP_RELEASE_GATE.md",
+        "airgap_release_gate()",
+        "dist/wheelhouse",
+        "SHA256SUMS"
+      ],
+      "id": "DPF-REL-001",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Release/QA",
+      "priority": "P1",
+      "requirement": "Releases shall have an offline/air-gap-capable build and test path where licensing permits.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "demonstration",
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "This candidate table provides first mapping; Doorstop import and validation are pending.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Release/V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-REL-002",
+        "verification": [
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-REL-002",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Release/V&V",
+      "priority": "P0",
+      "requirement": "Every P0 baseline requirement shall map to at least one test, inspection, analysis, demonstration, or review.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "`docs/EXPORT_SCOPE_V1.md` and `export_scope_decisions()` accept HDF5 diagnostics and Well HDF5 for v1, while deferring VTK/VTU, CGNS/HDF5, OpenFOAM, and Ansys/PyMAPDL until writer/readability/license-aware tests exist.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/EXPORT_SCOPE_V1.md",
+          "export_scope_decisions()"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Export/Product",
+        "priority": "P2",
+        "status": "implemented",
+        "uid": "DPF-DATA-009",
+        "verification": []
+      },
+      "evidence_refs": [
+        "docs/EXPORT_SCOPE_V1.md",
+        "export_scope_decisions()"
+      ],
+      "id": "DPF-DATA-009",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Export/Product",
+      "priority": "P2",
+      "requirement": "VTK/VTU, CGNS/HDF5, OpenFOAM, and Ansys/PyMAPDL export requirements shall be accepted, deferred, or rejected for v1.0.",
+      "source_section": "Deferred Or Scope-Decision Requirements",
+      "status": "implemented",
+      "verification_methods": []
+    }
+  ],
+  "schema": "dpf.srs.traceability.v1",
+  "source_document": "docs/DPF_REQUIREMENTS_BASELINE.md",
+  "summary": {
+    "p0_or_p1_without_verification": [],
+    "priority_counts": {
+      "P0": 25,
+      "P1": 22,
+      "P2": 1
+    },
+    "requirement_count": 48,
+    "status_counts": {
+      "blocked": 4,
+      "deferred": 0,
+      "implemented": 28,
+      "partial": 12,
+      "planned": 4,
+      "rejected": 0
+    }
+  }
+}

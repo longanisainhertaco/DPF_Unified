@@ -101,6 +101,7 @@ _VALIDATION_OBSERVABLES = (
     ("mhd_numerical_fidelity", "mhd_numerical_fidelity"),
     ("spatial_validation", "spatial_validation"),
     ("spatial_validation_candidate", "spatial_validation_candidate"),
+    ("neutron_yield_validation", "neutron_yield"),
     ("neutron_mechanism_timing_validation", "neutron_timing"),
     ("neutron_spectrum_validation", "neutron_spectrum"),
     ("neutron_anisotropy_validation", "neutron_anisotropy"),
@@ -110,6 +111,29 @@ _VALIDATION_OBSERVABLES = (
         "neutron_detector_response_candidate",
     ),
 )
+
+_VALIDATION_TIER_AREAS = {
+    1: {"circuit_waveform"},
+    2: {
+        "snowplow_phase",
+        "snowplow_phase_candidate",
+        "snowplow_dynamics_candidate",
+    },
+    3: {"mhd_verification", "mhd_numerical_fidelity"},
+    4: {
+        "spatial_validation",
+        "spatial_validation_candidate",
+        "spatial_component",
+    },
+    5: {
+        "neutron_yield",
+        "neutron_timing",
+        "neutron_spectrum",
+        "neutron_anisotropy",
+        "neutron_detector_response",
+        "neutron_detector_response_candidate",
+    },
+}
 
 _UNCERTAINTY_FIELDS = {
     "uncertainty",
@@ -205,6 +229,38 @@ def _result_uncertainty_paths(
     return paths
 
 
+def _tier_uncertainty_status(
+    records: Sequence[Mapping[str, object]],
+) -> dict[str, dict[str, object]]:
+    status: dict[str, dict[str, object]] = {}
+    for tier, areas in _VALIDATION_TIER_AREAS.items():
+        present = [
+            record for record in records
+            if str(record.get("area", "")) in areas
+        ]
+        missing = [
+            str(record.get("observable", ""))
+            for record in present
+            if record.get("has_uncertainty") is not True
+        ]
+        if not present:
+            tier_status = "not_present"
+        elif missing:
+            tier_status = "missing_uncertainty"
+        else:
+            tier_status = "complete_for_present_observables"
+        status[f"tier_{tier}"] = {
+            "validation_tier": tier,
+            "status": tier_status,
+            "present_observables": [
+                str(record.get("observable", ""))
+                for record in present
+            ],
+            "missing_uncertainty_observables": missing,
+        }
+    return status
+
+
 def validation_uncertainty_coverage_from_result(
     result: Mapping[str, object],
 ) -> dict[str, object]:
@@ -252,6 +308,7 @@ def validation_uncertainty_coverage_from_result(
         for record in records
         if record.get("has_uncertainty") is not True
     ]
+    tier_status = _tier_uncertainty_status(records)
     return {
         "passed": bool(records) and not missing,
         "validation_tier": "uncertainty_quantification",
@@ -259,6 +316,7 @@ def validation_uncertainty_coverage_from_result(
         "source": _KR_SOURCE_BASIS["plasma_uq_review"],
         "source_lines": "1118-1138, 6889-6892",
         "observables": records,
+        "tier_uncertainty_status": tier_status,
         "missing_uncertainty_observables": missing,
         "validity_notes": {
             "coverage_scope": (
@@ -275,7 +333,36 @@ def _kr_sourced_evidence_passed(evidence: object) -> bool:
         return False
     if evidence.get("passed") is not True:
         return False
-    return str(evidence.get("source", "")).startswith("KnowledgeReference/")
+    return (
+        str(evidence.get("source", "")).startswith("KnowledgeReference/")
+        and _has_source_uncertainty_values(evidence)
+    )
+
+
+def _has_source_uncertainty_values(evidence: Mapping[str, object]) -> bool:
+    """Return True only when evidence carries explicit source uncertainty data."""
+    for key in (
+        "source_uncertainty_values",
+        "source_uncertainty",
+        "uncertainty_values",
+        "source_error_bars",
+        "source_standard_deviation",
+    ):
+        if _is_nonempty(evidence.get(key)):
+            return True
+    details = evidence.get("details")
+    if isinstance(details, Mapping):
+        return any(
+            _is_nonempty(details.get(key))
+            for key in (
+                "source_uncertainty_values",
+                "source_uncertainty",
+                "uncertainty_values",
+                "source_error_bars",
+                "source_standard_deviation",
+            )
+        )
+    return False
 
 
 def _record(
@@ -306,6 +393,7 @@ def uncertainty_component_evidence(
     validation_scope: str,
     source: str | None = None,
     source_lines: str | None = None,
+    source_uncertainty_values: Mapping[str, object] | None = None,
     notes: str = "",
 ) -> dict[str, object]:
     """Build line-referenced evidence for one uncertainty-budget component."""
@@ -325,6 +413,7 @@ def uncertainty_component_evidence(
         and bool(validation_scope)
         and str(source_value).startswith("KnowledgeReference/")
         and bool(line_value)
+        and _is_nonempty(source_uncertainty_values)
     )
     return {
         "passed": passed,
@@ -334,8 +423,12 @@ def uncertainty_component_evidence(
         "validation_scope": validation_scope,
         "source": source_value,
         "source_lines": line_value,
+        "source_uncertainty_values": dict(source_uncertainty_values or {}),
         "details": {
             "known_component": known_component,
+            "source_uncertainty_values_present": _is_nonempty(
+                source_uncertainty_values
+            ),
             "notes": notes,
         },
         "validity_notes": {
@@ -343,6 +436,10 @@ def uncertainty_component_evidence(
                 "This evidence supports one uncertainty-budget component for "
                 "the stated validation scope; it does not validate the other "
                 "uncertainty components."
+            ),
+            "source_uncertainty_rule": (
+                "Passing uncertainty-component evidence must carry explicit "
+                "source uncertainty values; KR citations alone are not enough."
             ),
         },
     }
@@ -365,6 +462,8 @@ def _valid_component_evidence(
     if not str(evidence.get("source", "")).startswith("KnowledgeReference/"):
         return None
     if not evidence.get("validation_scope"):
+        return None
+    if not _has_source_uncertainty_values(evidence):
         return None
     return evidence
 
@@ -667,6 +766,11 @@ def uncertainty_evidence_from_result(
         "source": _KR_SOURCE_BASIS["plasma_uq_review"],
         "source_basis": _KR_SOURCE_BASIS,
         "required_components": components,
+        "tier_uncertainty_status": (
+            coverage.get("tier_uncertainty_status")
+            if isinstance(coverage, Mapping)
+            else {}
+        ),
         "component_validation_scopes": validated_component_scopes,
         "same_scope_passed": same_scope_passed,
         "missing_or_unvalidated_components": missing,

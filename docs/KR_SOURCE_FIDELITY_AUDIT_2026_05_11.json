@@ -1,0 +1,1567 @@
+{
+  "date": "2026-05-11",
+  "applied": true,
+  "deep_tables": false,
+  "records_checked": 91,
+  "records_updated": 91,
+  "records_with_recovered_items": 90,
+  "recovered_items_total": 10767,
+  "totals": {
+    "figure_captions": 2012,
+    "table_captions": 255,
+    "extracted_tables": 345,
+    "formula_like_lines": 14554,
+    "numeric_target_contexts": 9533,
+    "uncertainty_contexts": 2143,
+    "image_blocks": 19784
+  },
+  "records": [
+    {
+      "source": "2026-05-11-user-ingest/10.1002@ctpp.201000046.pdf",
+      "sha256": "3a20181e65d1a70773612e5d4c2ab571a4cd6f310e3bd8b1756243c915eefe1b",
+      "markdown": "KnowledgeReference/optical-spectroscopy-of-freepropagating-plasma-and-its-interaction-with-tungsten-targets-i-3a20181e.md",
+      "json": "KnowledgeReference/optical-spectroscopy-of-freepropagating-plasma-and-its-interaction-with-tungsten-targets-i-3a20181e.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 10,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 20,
+        "numeric_target_contexts": 18,
+        "uncertainty_contexts": 9,
+        "image_blocks": 8
+      },
+      "recovered_missing_from_primary_text_count": 13
+    },
+    {
+      "source": "2026-05-11-user-ingest/10.1002@ctpp.201000047.pdf",
+      "sha256": "f8dc9d1bf9ae4f9808a44bda10e440ba663e6b49322deb15ec5ee3415e807f05",
+      "markdown": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+      "json": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 7,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 4,
+        "numeric_target_contexts": 14,
+        "uncertainty_contexts": 2,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 5
+    },
+    {
+      "source": "2026-05-11-user-ingest/10.1088@0741-3335@50@12@125006.pdf",
+      "sha256": "527cc53389bc09b003a68786110ff59ff3697d5ea362d3eb7cae3c247b0a00c8",
+      "markdown": "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+      "json": "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 37,
+        "numeric_target_contexts": 71,
+        "uncertainty_contexts": 1,
+        "image_blocks": 9
+      },
+      "recovered_missing_from_primary_text_count": 43
+    },
+    {
+      "source": "2026-05-11-user-ingest/10.1088@1741-4326@ab0384.pdf",
+      "sha256": "3895757927253aefb67e5d5be179818ebf6cba4265a99efb504b206903d8202c",
+      "markdown": "KnowledgeReference/determination-of-the-tolerable-impurity-concentrations-in-a-fusion-reactor-38957579.md",
+      "json": "KnowledgeReference/determination-of-the-tolerable-impurity-concentrations-in-a-fusion-reactor-38957579.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 34,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 636,
+        "numeric_target_contexts": 121,
+        "uncertainty_contexts": 71,
+        "image_blocks": 5
+      },
+      "recovered_missing_from_primary_text_count": 292
+    },
+    {
+      "source": "2026-05-11-user-ingest/buneman1959.pdf",
+      "sha256": "ad2e29101bf23bc04d134c9c662166f5c5ff051007fa3acfcb05e59022d83989",
+      "markdown": "KnowledgeReference/dissipation-of-currents-in-ionized-media-ad2e2910.md",
+      "json": "KnowledgeReference/dissipation-of-currents-in-ionized-media-ad2e2910.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 7,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 121,
+        "numeric_target_contexts": 82,
+        "uncertainty_contexts": 22,
+        "image_blocks": 15
+      },
+      "recovered_missing_from_primary_text_count": 104
+    },
+    {
+      "source": "2026-05-11-user-ingest/catenacci2020.pdf",
+      "sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+      "markdown": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "json": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 16,
+        "table_captions": 5,
+        "extracted_tables": 0,
+        "formula_like_lines": 47,
+        "numeric_target_contexts": 49,
+        "uncertainty_contexts": 11,
+        "image_blocks": 28
+      },
+      "recovered_missing_from_primary_text_count": 51
+    },
+    {
+      "source": "2026-05-11-user-ingest/cikhardtova2015.pdf",
+      "sha256": "9dfed6c03000668c5a4926b539b8dc50824fbf8785a069d8a88b319e915fc7f9",
+      "markdown": "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md",
+      "json": "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 9,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 21,
+        "numeric_target_contexts": 76,
+        "uncertainty_contexts": 5,
+        "image_blocks": 11
+      },
+      "recovered_missing_from_primary_text_count": 46
+    },
+    {
+      "source": "2026-05-11-user-ingest/delzanna2015.pdf",
+      "sha256": "26ccc010e15dc76f94acbb7cda794aa01b13fd02b9cccd5b55caba1f839fc280",
+      "markdown": "KnowledgeReference/chianti-an-atomic-database-for-emission-lines-version-8-26ccc010.md",
+      "json": "KnowledgeReference/chianti-an-atomic-database-for-emission-lines-version-8-26ccc010.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 2,
+        "table_captions": 1,
+        "extracted_tables": 0,
+        "formula_like_lines": 95,
+        "numeric_target_contexts": 93,
+        "uncertainty_contexts": 41,
+        "image_blocks": 27
+      },
+      "recovered_missing_from_primary_text_count": 103
+    },
+    {
+      "source": "2026-05-11-user-ingest/jednorog2014.pdf",
+      "sha256": "46bcae32e30f929c152c64206a16b651d360f1ee6a4ab135357184b40f9b3681",
+      "markdown": "KnowledgeReference/radioindium-and-determination-of-neutron-radial-asymmetry-46bcae32.md",
+      "json": "KnowledgeReference/radioindium-and-determination-of-neutron-radial-asymmetry-46bcae32.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 12,
+        "table_captions": 1,
+        "extracted_tables": 0,
+        "formula_like_lines": 34,
+        "numeric_target_contexts": 45,
+        "uncertainty_contexts": 85,
+        "image_blocks": 3
+      },
+      "recovered_missing_from_primary_text_count": 33
+    },
+    {
+      "source": "2026-05-11-user-ingest/klir2011-2.pdf",
+      "sha256": "ad181105ecda9dbd66c6d7219e8ba7a7f7750f3d77f001c343bfbf7423d3738a",
+      "markdown": "KnowledgeReference/experimental-evidence-of-thermonuclear-neutrons-in-a-modified-plasma-focus-ad181105.md",
+      "json": "KnowledgeReference/experimental-evidence-of-thermonuclear-neutrons-in-a-modified-plasma-focus-ad181105.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 9,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 12,
+        "numeric_target_contexts": 122,
+        "uncertainty_contexts": 0,
+        "image_blocks": 2
+      },
+      "recovered_missing_from_primary_text_count": 60
+    },
+    {
+      "source": "2026-05-11-user-ingest/klir2011.pdf",
+      "sha256": "214fbdae9607094628e9cfcf55157b9d59ad72ab9de3d04a3011cb63b1972747",
+      "markdown": "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.md",
+      "json": "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 21,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 14,
+        "numeric_target_contexts": 163,
+        "uncertainty_contexts": 43,
+        "image_blocks": 77
+      },
+      "recovered_missing_from_primary_text_count": 87
+    },
+    {
+      "source": "2026-05-11-user-ingest/kortanek2014.pdf",
+      "sha256": "7dbd9199ba8c4a825b83ed8e02657b182578a1e3ff1ec9b0474d0c25275230ff",
+      "markdown": "KnowledgeReference/this-content-has-been-downloaded-from-iopscience-please-scroll-down-to-see-the-full-text-7dbd9199.md",
+      "json": "KnowledgeReference/this-content-has-been-downloaded-from-iopscience-please-scroll-down-to-see-the-full-text-7dbd9199.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 8,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 28,
+        "numeric_target_contexts": 54,
+        "uncertainty_contexts": 6,
+        "image_blocks": 5
+      },
+      "recovered_missing_from_primary_text_count": 38
+    },
+    {
+      "source": "2026-05-11-user-ingest/krauz2012.pdf",
+      "sha256": "705bcc836646b1887ea985d4d28e7fd0bbae6ce326797d0e1a8cdd70bdb162b2",
+      "markdown": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+      "json": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 28,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 75,
+        "numeric_target_contexts": 220,
+        "uncertainty_contexts": 29,
+        "image_blocks": 8
+      },
+      "recovered_missing_from_primary_text_count": 139
+    },
+    {
+      "source": "2026-05-11-user-ingest/kubes2009.pdf",
+      "sha256": "dee3911f48898a43a1ad6a1fa95d3dfb226fd9d1f83361c9f7dd3b54bb07e5cc",
+      "markdown": "KnowledgeReference/ieee-transactions-on-plasma-science-vol-37-no-11-november-2009-dee3911f.md",
+      "json": "KnowledgeReference/ieee-transactions-on-plasma-science-vol-37-no-11-november-2009-dee3911f.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 22,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 24,
+        "numeric_target_contexts": 98,
+        "uncertainty_contexts": 1,
+        "image_blocks": 12
+      },
+      "recovered_missing_from_primary_text_count": 49
+    },
+    {
+      "source": "2026-05-11-user-ingest/kubes2012-2.pdf",
+      "sha256": "19056f65c3d248fbbbcba686bac2063500c05a50932047b77cac19ad785e298b",
+      "markdown": "KnowledgeReference/ieee-transactions-on-plasma-science-vol-40-no-2-february-2012-19056f65.md",
+      "json": "KnowledgeReference/ieee-transactions-on-plasma-science-vol-40-no-2-february-2012-19056f65.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 7,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 24,
+        "numeric_target_contexts": 123,
+        "uncertainty_contexts": 19,
+        "image_blocks": 4
+      },
+      "recovered_missing_from_primary_text_count": 70
+    },
+    {
+      "source": "2026-05-11-user-ingest/kubes2012.pdf",
+      "sha256": "7fd84db70be7a63f3090f399c5d555d86cdf75e54522de3e5d376011712df8ae",
+      "markdown": "KnowledgeReference/correlation-of-magnetic-probe-and-neutron-signals-with-interferometry-figures-on-the-plasm-7fd84db7.md",
+      "json": "KnowledgeReference/correlation-of-magnetic-probe-and-neutron-signals-with-interferometry-figures-on-the-plasm-7fd84db7.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 15,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 41,
+        "numeric_target_contexts": 211,
+        "uncertainty_contexts": 17,
+        "image_blocks": 14
+      },
+      "recovered_missing_from_primary_text_count": 100
+    },
+    {
+      "source": "2026-05-11-user-ingest/kubes2013.pdf",
+      "sha256": "9adae07fee2ea6359662ec7811eb77fbd877573ad7e1841b6d623fe4bb944cd4",
+      "markdown": "KnowledgeReference/scenario-of-pinch-evolution-in-a-plasma-focus-discharge-9adae07f.md",
+      "json": "KnowledgeReference/scenario-of-pinch-evolution-in-a-plasma-focus-discharge-9adae07f.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 8,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 12,
+        "numeric_target_contexts": 76,
+        "uncertainty_contexts": 7,
+        "image_blocks": 8
+      },
+      "recovered_missing_from_primary_text_count": 42
+    },
+    {
+      "source": "2026-05-11-user-ingest/lee2008-2.pdf",
+      "sha256": "61bd14afbbdb92edd1425b16ee7aaed297e20e72cb078ee73abe469556b50b0d",
+      "markdown": "KnowledgeReference/pinch-current-limitation-effect-in-plasma-focus-61bd14af.md",
+      "json": "KnowledgeReference/pinch-current-limitation-effect-in-plasma-focus-61bd14af.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 2,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 32,
+        "numeric_target_contexts": 116,
+        "uncertainty_contexts": 0,
+        "image_blocks": 3
+      },
+      "recovered_missing_from_primary_text_count": 72
+    },
+    {
+      "source": "2026-05-11-user-ingest/lee2008.pdf",
+      "sha256": "dbfa1caaf18931512aed0acf7b1eb510c0f09a908c99c3afe41f662d1e3d7091",
+      "markdown": "KnowledgeReference/original-paper-dbfa1caa.md",
+      "json": "KnowledgeReference/original-paper-dbfa1caa.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 4,
+        "table_captions": 2,
+        "extracted_tables": 0,
+        "formula_like_lines": 14,
+        "numeric_target_contexts": 17,
+        "uncertainty_contexts": 0,
+        "image_blocks": 2
+      },
+      "recovered_missing_from_primary_text_count": 18
+    },
+    {
+      "source": "2026-05-11-user-ingest/lee2016.pdf",
+      "sha256": "d1825800bb549df06aeb0da9a8398f0716c822780a185ff94cb01e798f196e95",
+      "markdown": "KnowledgeReference/this-article-has-been-accepted-for-inclusion-in-a-future-issue-of-this-journal-content-is-d1825800.md",
+      "json": "KnowledgeReference/this-article-has-been-accepted-for-inclusion-in-a-future-issue-of-this-journal-content-is-d1825800.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 14,
+        "table_captions": 6,
+        "extracted_tables": 0,
+        "formula_like_lines": 83,
+        "numeric_target_contexts": 190,
+        "uncertainty_contexts": 8,
+        "image_blocks": 28
+      },
+      "recovered_missing_from_primary_text_count": 117
+    },
+    {
+      "source": "2026-05-11-user-ingest/lotz1967.pdf",
+      "sha256": "b5fde85cc0bfc3fa7f89de696e6bec2c132798f96d40625fa385a63d4a65082f",
+      "markdown": "KnowledgeReference/an-empirical-formula-for-the-electron-impact-ionization-cross-section-b5fde85c.md",
+      "json": "KnowledgeReference/an-empirical-formula-for-the-electron-impact-ionization-cross-section-b5fde85c.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 4,
+        "table_captions": 2,
+        "extracted_tables": 0,
+        "formula_like_lines": 21,
+        "numeric_target_contexts": 57,
+        "uncertainty_contexts": 26,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 11
+    },
+    {
+      "source": "2026-05-11-user-ingest/munzar2021.pdf",
+      "sha256": "c041d3f70c315ce72b83747c6b67d0a47abc36610720435eb9fa289773c78f6f",
+      "markdown": "KnowledgeReference/mapping-of-azimuthal-b-fields-in-z-pinch-plasmas-using-z-pinch-driven-ion-deflectometry-c041d3f7.md",
+      "json": "KnowledgeReference/mapping-of-azimuthal-b-fields-in-z-pinch-plasmas-using-z-pinch-driven-ion-deflectometry-c041d3f7.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 26,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 66,
+        "numeric_target_contexts": 224,
+        "uncertainty_contexts": 56,
+        "image_blocks": 43
+      },
+      "recovered_missing_from_primary_text_count": 175
+    },
+    {
+      "source": "2026-05-11-user-ingest/seaton1959.pdf",
+      "sha256": "586d5f741f26e4a8a258f58df7097718b0b262579cdfc51fd15ffdce30db24d5",
+      "markdown": "KnowledgeReference/1959mnras-119-81s-586d5f74.md",
+      "json": "KnowledgeReference/1959mnras-119-81s-586d5f74.json",
+      "status": "reviewed_source_critical_content_copied",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 9,
+        "uncertainty_contexts": 0,
+        "image_blocks": 9
+      },
+      "recovered_missing_from_primary_text_count": 0
+    },
+    {
+      "source": "2026-05-11-user-ingest/shumlak1995.pdf",
+      "sha256": "8e0bd47a99009f4bd98b44f07f5fbc6d02e6d57206be2a688dac83a8ae66a278",
+      "markdown": "KnowledgeReference/sheared-flow-stabilization-of-the-m-8e0bd47a.md",
+      "json": "KnowledgeReference/sheared-flow-stabilization-of-the-m-8e0bd47a.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 6,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 27,
+        "numeric_target_contexts": 3,
+        "uncertainty_contexts": 0,
+        "image_blocks": 4
+      },
+      "recovered_missing_from_primary_text_count": 11
+    },
+    {
+      "source": "2026-05-11-user-ingest/shumlak2001.pdf",
+      "sha256": "fd194438b6dcb8bfb14bd4056e9349d52a2ab5b3e5f326c1f1ab79de1094f577",
+      "markdown": "KnowledgeReference/volume-87-number-20-fd194438.md",
+      "json": "KnowledgeReference/volume-87-number-20-fd194438.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 13,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 46,
+        "uncertainty_contexts": 2,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 26
+    },
+    {
+      "source": "2026-05-11-user-ingest/springham2021.pdf",
+      "sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "markdown": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "json": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 16,
+        "table_captions": 5,
+        "extracted_tables": 0,
+        "formula_like_lines": 68,
+        "numeric_target_contexts": 278,
+        "uncertainty_contexts": 42,
+        "image_blocks": 5
+      },
+      "recovered_missing_from_primary_text_count": 172
+    },
+    {
+      "source": "2026-05-11-user-ingest/stepniewski2004.pdf",
+      "sha256": "f931cb0bc7a0c20d5d9331dc8223d2014807620f6ab189de16fba1bbec41ce63",
+      "markdown": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md",
+      "json": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 3,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 38,
+        "uncertainty_contexts": 0,
+        "image_blocks": 5
+      },
+      "recovered_missing_from_primary_text_count": 16
+    },
+    {
+      "source": "2026-05-11-user-ingest/szydlowski2004.pdf",
+      "sha256": "6de67a98c1c059193e8e3d8bc56288a2c85f7956d662c83d98e64d0c0a06fe7d",
+      "markdown": "KnowledgeReference/doi-10-1016-j-vacuum-2004-07-040-6de67a98.md",
+      "json": "KnowledgeReference/doi-10-1016-j-vacuum-2004-07-040-6de67a98.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 10,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 1,
+        "numeric_target_contexts": 43,
+        "uncertainty_contexts": 2,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 15
+    },
+    {
+      "source": "2026-05-11-user-ingest/toro2009.pdf",
+      "sha256": "433cd86174534f8d28702a173c247f29b0028c8153526b2282951ba9c458405e",
+      "markdown": "KnowledgeReference/toro2009-433cd861.md",
+      "json": "KnowledgeReference/toro2009-433cd861.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 471,
+        "table_captions": 65,
+        "extracted_tables": 0,
+        "formula_like_lines": 7729,
+        "numeric_target_contexts": 478,
+        "uncertainty_contexts": 415,
+        "image_blocks": 1368
+      },
+      "recovered_missing_from_primary_text_count": 3477
+    },
+    {
+      "source": "2026-05-11-user-ingest/vikhrev2007.pdf",
+      "sha256": "6fb2ee87f02d7b0d48470691e8899961991a33d056f7c17835ee5e65907c5fff",
+      "markdown": "KnowledgeReference/neutron-generation-from-z-pinches-6fb2ee87.md",
+      "json": "KnowledgeReference/neutron-generation-from-z-pinches-6fb2ee87.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 26,
+        "table_captions": 2,
+        "extracted_tables": 8,
+        "formula_like_lines": 250,
+        "numeric_target_contexts": 335,
+        "uncertainty_contexts": 13,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 252
+    },
+    {
+      "source": "AD1076777_OptimizationofbDensebbPlasmabFocusDPFNeutronSources.pdf",
+      "sha256": "8b83e6b55436a2330973f06c6a4589f4ce2839dde381a3db175a0e442c509a64",
+      "markdown": "KnowledgeReference/optimization-of-dense-plasma-focus-dpf-neutron-sources-via-experiments-and-kinetic-modelin-8b83e6b5.md",
+      "json": "KnowledgeReference/optimization-of-dense-plasma-focus-dpf-neutron-sources-via-experiments-and-kinetic-modelin-8b83e6b5.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 10,
+        "numeric_target_contexts": 23,
+        "uncertainty_contexts": 7,
+        "image_blocks": 10
+      },
+      "recovered_missing_from_primary_text_count": 12
+    },
+    {
+      "source": "AD1079881_OptimizationofbDensebbPlasmabFocusDPFNeutronSources.pdf",
+      "sha256": "2c016fb54004f1a1a8ad3bdcc62826607d833adfe4b85cd01f66c3144f50689d",
+      "markdown": "KnowledgeReference/optimization-of-dense-plasma-focus-dpf-neutron-sources-via-experiments-and-kinetic-modelin-2c016fb5.md",
+      "json": "KnowledgeReference/optimization-of-dense-plasma-focus-dpf-neutron-sources-via-experiments-and-kinetic-modelin-2c016fb5.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 10,
+        "numeric_target_contexts": 23,
+        "uncertainty_contexts": 7,
+        "image_blocks": 10
+      },
+      "recovered_missing_from_primary_text_count": 12
+    },
+    {
+      "source": "AD1095975_SpatialDistributionofIonEmissioninGas-PuffbZb-bPinches.pdf",
+      "sha256": "7c486e76c3d7bf98edad1fe72172a82429356fa126d23d26960ba5166b4a764e",
+      "markdown": "KnowledgeReference/spatial-distri-utionof-ion-emissionin-gas-puff-z-pinches-7c486e76.md",
+      "json": "KnowledgeReference/spatial-distri-utionof-ion-emissionin-gas-puff-z-pinches-7c486e76.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 13,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 31,
+        "numeric_target_contexts": 164,
+        "uncertainty_contexts": 29,
+        "image_blocks": 80
+      },
+      "recovered_missing_from_primary_text_count": 98
+    },
+    {
+      "source": "AD1098588_AccelerationofProtonsandDeuteronsUpto35MevandGenerationof1.pdf",
+      "sha256": "3f0ebd08020635ec18e73c84634f127c45097841b5e08ad32bb5dac4308416b0",
+      "markdown": "KnowledgeReference/accelerationof-protonsand-deuterons-upto35mevand-generationof1-3f0ebd08.md",
+      "json": "KnowledgeReference/accelerationof-protonsand-deuterons-upto35mevand-generationof1-3f0ebd08.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 16,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 50,
+        "numeric_target_contexts": 197,
+        "uncertainty_contexts": 3,
+        "image_blocks": 8
+      },
+      "recovered_missing_from_primary_text_count": 101
+    },
+    {
+      "source": "AD1099126_EffectsofaPreembeddedAxialMagneticFieldontheCurrentDistribut.pdf",
+      "sha256": "fed533116bb5b7cce996d17ad3bbdeecfe0fbf0cc80c87b5b8cb85033402d9e6",
+      "markdown": "KnowledgeReference/effects-of-a-preembedded-axial-magnetic-field-on-the-current-distribution-in-a-z-pinch-imp-fed53311.md",
+      "json": "KnowledgeReference/effects-of-a-preembedded-axial-magnetic-field-on-the-current-distribution-in-a-z-pinch-imp-fed53311.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 6,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 66,
+        "numeric_target_contexts": 92,
+        "uncertainty_contexts": 18,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 82
+    },
+    {
+      "source": "AD1100306_SimulationsofabDensebbPlasmabFocusonaHigh-Impedance.pdf",
+      "sha256": "0358c24d9e71dffd8ac423c60b212a782b66fb598294763fbd08fea5baae103e",
+      "markdown": "KnowledgeReference/beresnyak_2018_dpf_hawk_simulations.md",
+      "json": "KnowledgeReference/beresnyak_2018_dpf_hawk_simulations.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 14,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 21,
+        "numeric_target_contexts": 30,
+        "uncertainty_contexts": 2,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 25
+    },
+    {
+      "source": "AD1101079_GuestEditorialSpecialIssueonZPinchbPlasmasb.pdf",
+      "sha256": "b1c47de6159d27310d16cf31493d12bf0ddf49b77cda9eea0cbe9cfa1e6ac53d",
+      "markdown": "KnowledgeReference/guest-editorial-special-issueon-zpinch-plasmas-b1c47de6.md",
+      "json": "KnowledgeReference/guest-editorial-special-issueon-zpinch-plasmas-b1c47de6.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 3,
+        "uncertainty_contexts": 4,
+        "image_blocks": 1
+      },
+      "recovered_missing_from_primary_text_count": 3
+    },
+    {
+      "source": "AD1123736_CharacterizationofElectronBeamsfromabDensebbPlasmabF.pdf",
+      "sha256": "d48f6741c06bded703c9efa64d512819fb9f32c5dae0520049537211a1f5b2f4",
+      "markdown": "KnowledgeReference/characterization-of-electron-beams-from-a-dense-plasma-focus-d48f6741.md",
+      "json": "KnowledgeReference/characterization-of-electron-beams-from-a-dense-plasma-focus-d48f6741.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 20,
+        "table_captions": 2,
+        "extracted_tables": 2,
+        "formula_like_lines": 35,
+        "numeric_target_contexts": 46,
+        "uncertainty_contexts": 6,
+        "image_blocks": 14
+      },
+      "recovered_missing_from_primary_text_count": 30
+    },
+    {
+      "source": "AD1148035_RubricsforChargeConservingCurrentMappinginFiniteElementElectr.pdf",
+      "sha256": "7373140c775c282812b219b8d42c59f8db8d253a96041805c124bea568d5903f",
+      "markdown": "KnowledgeReference/ru-ricsfor-charge-conserving-current-mappingin-finite-element-electr-7373140c.md",
+      "json": "KnowledgeReference/ru-ricsfor-charge-conserving-current-mappingin-finite-element-electr-7373140c.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 26,
+        "table_captions": 7,
+        "extracted_tables": 16,
+        "formula_like_lines": 200,
+        "numeric_target_contexts": 64,
+        "uncertainty_contexts": 38,
+        "image_blocks": 17
+      },
+      "recovered_missing_from_primary_text_count": 168
+    },
+    {
+      "source": "AD1156411_RobustMaxwellSolversForLargeScalebParticleb-In-bCellb.pdf",
+      "sha256": "cffb92861d5bb1cb99bec6bd915a905440291aed0103026f25221486fafbe037",
+      "markdown": "KnowledgeReference/ro-ust-maxwell-solvers-for-large-scale-particle-in-cell-cffb9286.md",
+      "json": "KnowledgeReference/ro-ust-maxwell-solvers-for-large-scale-particle-in-cell-cffb9286.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 108,
+        "table_captions": 36,
+        "extracted_tables": 0,
+        "formula_like_lines": 420,
+        "numeric_target_contexts": 199,
+        "uncertainty_contexts": 158,
+        "image_blocks": 57
+      },
+      "recovered_missing_from_primary_text_count": 221
+    },
+    {
+      "source": "AD1180075_MitigationofMagneto-Rayleigh-TaylorInstabilityGrowthinaTriple-N.pdf",
+      "sha256": "0f97b437ead20d19d634aabc64110e81be839944bd4ea29854e8be9736aaceb2",
+      "markdown": "KnowledgeReference/mitigationof-magneto-rayleigh-taylor-insta-ility-growthina-triple-n-0f97b437.md",
+      "json": "KnowledgeReference/mitigationof-magneto-rayleigh-taylor-insta-ility-growthina-triple-n-0f97b437.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 13,
+        "table_captions": 2,
+        "extracted_tables": 0,
+        "formula_like_lines": 55,
+        "numeric_target_contexts": 115,
+        "uncertainty_contexts": 0,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 81
+    },
+    {
+      "source": "AD1187201_TheMFiXbParticlebinbCellbMethodMFiXPICTheoryGuide.pdf",
+      "sha256": "8adceb05e2820cf365262be5a6269b852ce4313b0482ab71ded3c22a65a127de",
+      "markdown": "KnowledgeReference/the-mfi-x-particle-in-cell-method-mfi-xpictheory-guide-8adceb05.md",
+      "json": "KnowledgeReference/the-mfi-x-particle-in-cell-method-mfi-xpictheory-guide-8adceb05.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 14,
+        "table_captions": 0,
+        "extracted_tables": 12,
+        "formula_like_lines": 15,
+        "numeric_target_contexts": 2,
+        "uncertainty_contexts": 19,
+        "image_blocks": 13
+      },
+      "recovered_missing_from_primary_text_count": 21
+    },
+    {
+      "source": "AD1206892_bParticleb-in-bCellbModelingofOmegaExperimentsonAblati.pdf",
+      "sha256": "153394e55da3a2661b9051fe4624542fc07e39e31b65c8cb14ad2eb5986ae228",
+      "markdown": "KnowledgeReference/particle-in-cell-modeling-of-omega-experiments-on-ablation-of-plasmas-153394e5.md",
+      "json": "KnowledgeReference/particle-in-cell-modeling-of-omega-experiments-on-ablation-of-plasmas-153394e5.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 62,
+        "numeric_target_contexts": 104,
+        "uncertainty_contexts": 19,
+        "image_blocks": 10
+      },
+      "recovered_missing_from_primary_text_count": 88
+    },
+    {
+      "source": "AD1302183_ReducingtheComputationalComplexityofImplicitSchemesintheModel.pdf",
+      "sha256": "62b3fa3523717d9cde8b1a5fb5ea15762d00fccd68787d1fc3e1d0baf31b2edb",
+      "markdown": "KnowledgeReference/reducing-the-computational-complexity-of-implicit-schemes-in-the-modeling-of-kinetic-inelastic-5.md",
+      "json": "KnowledgeReference/reducing-the-computational-complexity-of-implicit-schemes-in-the-modeling-of-kinetic-inelastic-5.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 19,
+        "table_captions": 6,
+        "extracted_tables": 16,
+        "formula_like_lines": 143,
+        "numeric_target_contexts": 35,
+        "uncertainty_contexts": 23,
+        "image_blocks": 11
+      },
+      "recovered_missing_from_primary_text_count": 97
+    },
+    {
+      "source": "AD1302801_MeasurementsandApplicationsofStronglyCorrelatedbPlasmasbGe.pdf",
+      "sha256": "41f88be94ca247ca7c3abbf862b20fcb6440d6ce4c0ee4fc40329bbd759f52f1",
+      "markdown": "KnowledgeReference/measurementsand-applicationsof-strongly-correlated-plasmas-ge-41f88be9.md",
+      "json": "KnowledgeReference/measurementsand-applicationsof-strongly-correlated-plasmas-ge-41f88be9.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 77,
+        "table_captions": 10,
+        "extracted_tables": 0,
+        "formula_like_lines": 479,
+        "numeric_target_contexts": 298,
+        "uncertainty_contexts": 191,
+        "image_blocks": 345
+      },
+      "recovered_missing_from_primary_text_count": 266
+    },
+    {
+      "source": "AD1321188_NovelCollisionalbParticleb-In-bCellbCPICMethodsforKi.pdf",
+      "sha256": "8a90e551c6e5bae42222090121b4062c377fc2a959d7b848256f0cc15ab35b22",
+      "markdown": "KnowledgeReference/novel-collisional-particle-in-cell-cpicmethodsfor-ki-8a90e551.md",
+      "json": "KnowledgeReference/novel-collisional-particle-in-cell-cpicmethodsfor-ki-8a90e551.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 1,
+        "numeric_target_contexts": 8,
+        "uncertainty_contexts": 4,
+        "image_blocks": 2
+      },
+      "recovered_missing_from_primary_text_count": 5
+    },
+    {
+      "source": "AD1321713_DirectedHighEnergyRadiationandParticleBeamsGeneratedUsingExtr.pdf",
+      "sha256": "f2c2e23186417530d5088b5b62bea284c18c2b303b9e236111b9f02f223234d6",
+      "markdown": "KnowledgeReference/directed-high-energy-radiationand-particle-beams-generated-using-extr-f2c2e231.md",
+      "json": "KnowledgeReference/directed-high-energy-radiationand-particle-beams-generated-using-extr-f2c2e231.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 16,
+        "table_captions": 0,
+        "extracted_tables": 9,
+        "formula_like_lines": 99,
+        "numeric_target_contexts": 61,
+        "uncertainty_contexts": 4,
+        "image_blocks": 77
+      },
+      "recovered_missing_from_primary_text_count": 81
+    },
+    {
+      "source": "AD1338534_AssemblingaDeep-HistoryBinaryCorpus (1).pdf",
+      "sha256": "c01698b17c7edcfad4df07570c0c06fc57c3b01fc72f5480aff6b797d589e5b0",
+      "markdown": "KnowledgeReference/assem-linga-deep-history-binary-corpus-1-c01698b1.md",
+      "json": "KnowledgeReference/assem-linga-deep-history-binary-corpus-1-c01698b1.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 13,
+        "table_captions": 4,
+        "extracted_tables": 6,
+        "formula_like_lines": 62,
+        "numeric_target_contexts": 22,
+        "uncertainty_contexts": 19,
+        "image_blocks": 9
+      },
+      "recovered_missing_from_primary_text_count": 54
+    },
+    {
+      "source": "AD1345078_EffectofCurrentSheathInitiationontheRadialCollapseandEnerget.pdf",
+      "sha256": "b2e95b882b6addf4e61db11616edc6e6458212233602eabf2d9a6a4c8283d159",
+      "markdown": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
+      "json": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 21,
+        "table_captions": 0,
+        "extracted_tables": 3,
+        "formula_like_lines": 25,
+        "numeric_target_contexts": 99,
+        "uncertainty_contexts": 23,
+        "image_blocks": 38
+      },
+      "recovered_missing_from_primary_text_count": 25
+    },
+    {
+      "source": "ADA433824_AdvancementsinDensePlasmaFocusbDPFbforSpacePropulsion.pdf",
+      "sha256": "6e45eca49152e4e74e0882a9a6358f1edf9c5491e3c4014caac9dab849e9bc5e",
+      "markdown": "KnowledgeReference/advancements-in-dense-plasma-focus-dpf-for-space-propulsion-6e45eca4.md",
+      "json": "KnowledgeReference/advancements-in-dense-plasma-focus-dpf-for-space-propulsion-6e45eca4.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 9,
+        "table_captions": 1,
+        "extracted_tables": 3,
+        "formula_like_lines": 15,
+        "numeric_target_contexts": 30,
+        "uncertainty_contexts": 3,
+        "image_blocks": 10
+      },
+      "recovered_missing_from_primary_text_count": 10
+    },
+    {
+      "source": "ADA454652_AnInvestigationofBremsstrahlungReflectioninaDensePlasmaFocus.pdf",
+      "sha256": "f17533f2f1c9bc378b7ecd65dea0a6ed125eb067503eb84f7402e0b24979f98c",
+      "markdown": "KnowledgeReference/an-investigation-of-bremsstrahlung-reflection-in-a-dense-plasma-focus-f17533f2.md",
+      "json": "KnowledgeReference/an-investigation-of-bremsstrahlung-reflection-in-a-dense-plasma-focus-f17533f2.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 8,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 25,
+        "numeric_target_contexts": 19,
+        "uncertainty_contexts": 1,
+        "image_blocks": 8
+      },
+      "recovered_missing_from_primary_text_count": 21
+    },
+    {
+      "source": "ADA589175_HierarchicalReconstructionwithUptoSecondDegreeRemainderforSol.pdf",
+      "sha256": "577e3e5b899e51ea9c5bdd8d2ed3f37a9cb6653498c181b79dbe51df2d288c16",
+      "markdown": "KnowledgeReference/hierarchical-reconstructionwith-upto-second-degree-remainderfor-sol-577e3e5b.md",
+      "json": "KnowledgeReference/hierarchical-reconstructionwith-upto-second-degree-remainderfor-sol-577e3e5b.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 13,
+        "table_captions": 8,
+        "extracted_tables": 6,
+        "formula_like_lines": 230,
+        "numeric_target_contexts": 7,
+        "uncertainty_contexts": 43,
+        "image_blocks": 0
+      },
+      "recovered_missing_from_primary_text_count": 121
+    },
+    {
+      "source": "ADA589371_LocalDiscontinuousGalerkinMethodsfortheGeneralizedZakharovSyst.pdf",
+      "sha256": "fde62bccc571a858023d887f894645752c7fdc67d6c34576af91513fb12f4600",
+      "markdown": "KnowledgeReference/local-discontinuous-galerkin-methodsforthe-generalized-zakharov-syst-fde62bcc.md",
+      "json": "KnowledgeReference/local-discontinuous-galerkin-methodsforthe-generalized-zakharov-syst-fde62bcc.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 26,
+        "table_captions": 4,
+        "extracted_tables": 7,
+        "formula_like_lines": 43,
+        "numeric_target_contexts": 29,
+        "uncertainty_contexts": 29,
+        "image_blocks": 9
+      },
+      "recovered_missing_from_primary_text_count": 58
+    },
+    {
+      "source": "ADA598221_Magneto-Rayleigh-TaylorInstabilityExperimentsonabDensebZ-Pi.pdf",
+      "sha256": "b55fe77022316aff238ee842feee1819305e7d7a11e6d33aef5e0c307b37372d",
+      "markdown": "KnowledgeReference/magneto-rayleigh-taylor-insta-ility-experimentsona-dense-z-pi-b55fe770.md",
+      "json": "KnowledgeReference/magneto-rayleigh-taylor-insta-ility-experimentsona-dense-z-pi-b55fe770.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 2,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 18,
+        "uncertainty_contexts": 4,
+        "image_blocks": 2
+      },
+      "recovered_missing_from_primary_text_count": 8
+    },
+    {
+      "source": "ADA598893_KineticComputationalModelofExplosiveEmissionCenterInitiationby.pdf",
+      "sha256": "6429b871e05600b8a078222655c824121782dc968b6e80477006cf12fd42e4cd",
+      "markdown": "KnowledgeReference/kinetic-computational-modelof-explosive-emission-center-initiation-y-6429b871.md",
+      "json": "KnowledgeReference/kinetic-computational-modelof-explosive-emission-center-initiation-y-6429b871.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 9,
+        "table_captions": 2,
+        "extracted_tables": 4,
+        "formula_like_lines": 11,
+        "numeric_target_contexts": 32,
+        "uncertainty_contexts": 4,
+        "image_blocks": 20
+      },
+      "recovered_missing_from_primary_text_count": 21
+    },
+    {
+      "source": "ADA599854_ElectrodynamicPropertiesofbDensebSemiclassicalbPlasmab.pdf",
+      "sha256": "9a31f386d8a554a3c2f06c5a1b47ecdb924a451dc99d515e264d5aae5a860ac9",
+      "markdown": "KnowledgeReference/electrodynamic-propertiesof-dense-semiclassical-plasma-9a31f386.md",
+      "json": "KnowledgeReference/electrodynamic-propertiesof-dense-semiclassical-plasma-9a31f386.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 3,
+        "table_captions": 0,
+        "extracted_tables": 3,
+        "formula_like_lines": 3,
+        "numeric_target_contexts": 9,
+        "uncertainty_contexts": 1,
+        "image_blocks": 0
+      },
+      "recovered_missing_from_primary_text_count": 10
+    },
+    {
+      "source": "ADA606395_bParticlebinbCellbSimulationofPlasmaThrusters.pdf",
+      "sha256": "778ab66ca7e990b21cf736b80cba4583c06de450a350965b4c4a35fa990d7449",
+      "markdown": "KnowledgeReference/particle-in-cell-simulationof-plasma-thrusters-778ab66c.md",
+      "json": "KnowledgeReference/particle-in-cell-simulationof-plasma-thrusters-778ab66c.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 9,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 46,
+        "uncertainty_contexts": 5,
+        "image_blocks": 10
+      },
+      "recovered_missing_from_primary_text_count": 35
+    },
+    {
+      "source": "ADA628985_MAGIC3DElectromagneticFDTD-PICCodebDensebbPlasmabModel.pdf",
+      "sha256": "12af3670b9750b76b15223dac604f3bc2bc87089e86d35f1b3c80b5c26f024fb",
+      "markdown": "KnowledgeReference/magic3delectromagnetic-fdtd-piccode-dense-plasma-model-12af3670.md",
+      "json": "KnowledgeReference/magic3delectromagnetic-fdtd-piccode-dense-plasma-model-12af3670.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 51,
+        "numeric_target_contexts": 41,
+        "uncertainty_contexts": 5,
+        "image_blocks": 14132
+      },
+      "recovered_missing_from_primary_text_count": 44
+    },
+    {
+      "source": "Wave 5/1169854.pdf",
+      "sha256": "3f439245a587d93ac22c428451fc35a70252dc73bac0fa3bd2e43dbe01625090",
+      "markdown": "KnowledgeReference/fully-kinetic-simulations-of-megajoule-scale-dense-plasma-focus-3f439245-2.md",
+      "json": "KnowledgeReference/fully-kinetic-simulations-of-megajoule-scale-dense-plasma-focus-3f439245-2.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 1,
+        "extracted_tables": 6,
+        "formula_like_lines": 11,
+        "numeric_target_contexts": 63,
+        "uncertainty_contexts": 8,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 13
+    },
+    {
+      "source": "Wave 5/AD1001263_ModelingofInelasticCollisionsinaMultifluidPlasmaExcitationan.pdf",
+      "sha256": "c90bc64ecd07bcf162c470cfaedd6e213402183bcd84c7bcc56025bb688abd3a",
+      "markdown": "KnowledgeReference/modelingof-inelastic-collisionsina-multifluid-plasma-excitationan-c90bc64e.md",
+      "json": "KnowledgeReference/modelingof-inelastic-collisionsina-multifluid-plasma-excitationan-c90bc64e.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 22,
+        "table_captions": 2,
+        "extracted_tables": 18,
+        "formula_like_lines": 457,
+        "numeric_target_contexts": 145,
+        "uncertainty_contexts": 15,
+        "image_blocks": 450
+      },
+      "recovered_missing_from_primary_text_count": 262
+    },
+    {
+      "source": "Wave 5/AD1095966_IonAccelerationandNeutronProductioninHybridGasPuffZPincheso.pdf",
+      "sha256": "e1335f508ed0426b1b7f349577b7fe33dffaeeb0a29a01f5ac46d615501c0ce8",
+      "markdown": "KnowledgeReference/ion-accelerationand-neutron-productionin-hy-rid-gas-puff-zpincheso-e1335f50.md",
+      "json": "KnowledgeReference/ion-accelerationand-neutron-productionin-hy-rid-gas-puff-zpincheso-e1335f50.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 1,
+        "extracted_tables": 0,
+        "formula_like_lines": 19,
+        "numeric_target_contexts": 254,
+        "uncertainty_contexts": 14,
+        "image_blocks": 125
+      },
+      "recovered_missing_from_primary_text_count": 123
+    },
+    {
+      "source": "Wave 5/AD1096219_LocalMeasurementsoftheSpatialMagneticFieldDistributioninaZ-P.pdf",
+      "sha256": "7a665849ebdf2ddd36b0dbf9e498c3d9be47772a13a865696d7dcb713f919e28",
+      "markdown": "KnowledgeReference/local-measurementsofthe-spatial-magnetic-field-distri-utionina-z-p-7a665849.md",
+      "json": "KnowledgeReference/local-measurementsofthe-spatial-magnetic-field-distri-utionina-z-p-7a665849.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 23,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 24,
+        "numeric_target_contexts": 184,
+        "uncertainty_contexts": 31,
+        "image_blocks": 23
+      },
+      "recovered_missing_from_primary_text_count": 114
+    },
+    {
+      "source": "Wave 5/AD1100651_ObservationsoftheMagneto-Rayleigh-TaylorInstabilityandShockDyna.pdf",
+      "sha256": "912060223b28054105305aee6ac2414b1b4706ff730da34194959651c5d24d81",
+      "markdown": "KnowledgeReference/o-servationsofthe-magneto-rayleigh-taylor-insta-ilityand-shock-dyna-91206022.md",
+      "json": "KnowledgeReference/o-servationsofthe-magneto-rayleigh-taylor-insta-ilityand-shock-dyna-91206022.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 26,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 25,
+        "numeric_target_contexts": 126,
+        "uncertainty_contexts": 16,
+        "image_blocks": 38
+      },
+      "recovered_missing_from_primary_text_count": 69
+    },
+    {
+      "source": "Wave 5/AD1116543_2019NRLPlasmaFormulary.pdf",
+      "sha256": "037290d47c8ff043cad3c846dba42f7233037a7c9077f61343564472d8ccf31b",
+      "markdown": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+      "json": "KnowledgeReference/2019nrlplasma-formulary-037290d4.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 946,
+        "numeric_target_contexts": 270,
+        "uncertainty_contexts": 5,
+        "image_blocks": 3
+      },
+      "recovered_missing_from_primary_text_count": 268
+    },
+    {
+      "source": "Wave 5/AD1194691_bSimulatingbaPulsed-Power-DrivenPlasmawithIdealbMHDb.pdf",
+      "sha256": "b5b77f274da5d975d9a026ff207679959f73f8c97fa0f137b2dfa34f81aa1b80",
+      "markdown": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "json": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 1,
+        "extracted_tables": 0,
+        "formula_like_lines": 41,
+        "numeric_target_contexts": 70,
+        "uncertainty_contexts": 21,
+        "image_blocks": 26
+      },
+      "recovered_missing_from_primary_text_count": 65
+    },
+    {
+      "source": "Wave 5/AD1300646_StudiesofbPlasmabSheathPhysicsusingContinuumKineticbSim.pdf",
+      "sha256": "e15a4b416ec0e492ce73a5b1129a2c0a030cbceecb5c10c81e24bdb1d5c26da1",
+      "markdown": "KnowledgeReference/studies-of-plasma-sheath-physics-using-continuum-kinetic-simulations-of-plasmas-e15a4b41.md",
+      "json": "KnowledgeReference/studies-of-plasma-sheath-physics-using-continuum-kinetic-simulations-of-plasmas-e15a4b41.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 8,
+        "uncertainty_contexts": 1,
+        "image_blocks": 1
+      },
+      "recovered_missing_from_primary_text_count": 5
+    },
+    {
+      "source": "Wave 5/AD1330276_PhysicsandApplicationsofDustyPlasmasThePerspectives2023.pdf",
+      "sha256": "070a82829ee95eee263bf3aab048a0267c70b36c738ade10184cf7e05a555a51",
+      "markdown": "KnowledgeReference/dusty-plasmas.md",
+      "json": "KnowledgeReference/dusty-plasmas.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 12,
+        "table_captions": 0,
+        "extracted_tables": 3,
+        "formula_like_lines": 22,
+        "numeric_target_contexts": 1208,
+        "uncertainty_contexts": 47,
+        "image_blocks": 85
+      },
+      "recovered_missing_from_primary_text_count": 1292
+    },
+    {
+      "source": "Wave 5/AD1340820_Thermo-HydrodynamicsofaStronglyCoupledPlasma.pdf",
+      "sha256": "d2b9cecde8275721cfc0205821642623c8bf21b94b9ffc02dc19300df74b2468",
+      "markdown": "KnowledgeReference/thermo-hydrodynamicsofa-strongly-coupled-plasma-d2b9cecd.md",
+      "json": "KnowledgeReference/thermo-hydrodynamicsofa-strongly-coupled-plasma-d2b9cecd.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 36,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 167,
+        "numeric_target_contexts": 190,
+        "uncertainty_contexts": 29,
+        "image_blocks": 91
+      },
+      "recovered_missing_from_primary_text_count": 145
+    },
+    {
+      "source": "Wave2/AD1036184_Multi-scaleandmulti-bphysicsbbsimulationsbusingthemult.pdf",
+      "sha256": "3bf9895a5579a718879d747ba675b767d372325a8837b48da23c9780e9ce6c16",
+      "markdown": "KnowledgeReference/multi-scaleandmulti-physics-simulations-usingthemult-3bf9895a.md",
+      "json": "KnowledgeReference/multi-scaleandmulti-physics-simulations-usingthemult-3bf9895a.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 68,
+        "formula_like_lines": 89,
+        "numeric_target_contexts": 17,
+        "uncertainty_contexts": 4,
+        "image_blocks": 426
+      },
+      "recovered_missing_from_primary_text_count": 49
+    },
+    {
+      "source": "Wave2/AD1038890_ALEGRA-bMHDbSimulationsforMagnetizationofanEllipsoidalIncl.pdf",
+      "sha256": "e2b69c609f2285fbe309225111425ba6ab7020ce20ef224a7da1e6456026916c",
+      "markdown": "KnowledgeReference/alegra-mhd-simulationsfor-magnetizationofan-ellipsoidal-incl-e2b69c60.md",
+      "json": "KnowledgeReference/alegra-mhd-simulationsfor-magnetizationofan-ellipsoidal-incl-e2b69c60.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 19,
+        "table_captions": 3,
+        "extracted_tables": 2,
+        "formula_like_lines": 62,
+        "numeric_target_contexts": 24,
+        "uncertainty_contexts": 27,
+        "image_blocks": 39
+      },
+      "recovered_missing_from_primary_text_count": 26
+    },
+    {
+      "source": "Wave2/AD1057898_3-DbALEGRAbSimulationsofMagneticFieldShieldingEffectsofC.pdf",
+      "sha256": "4e04c8807de9a1c43d373a77671b63470e68361e8054aa7dcc19a4cdb4e39e8c",
+      "markdown": "KnowledgeReference/3-d-alegra-simulationsof-magnetic-field-shielding-effectsof-c-4e04c880.md",
+      "json": "KnowledgeReference/3-d-alegra-simulationsof-magnetic-field-shielding-effectsof-c-4e04c880.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 4,
+        "extracted_tables": 4,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 17,
+        "uncertainty_contexts": 12,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 6
+    },
+    {
+      "source": "Wave2/AD1096774_ALE3D-bMHDbModelingofModifiedSqueeze5MagneticFluxCompress.pdf",
+      "sha256": "7022ab0decd65498ca66d865da7187065690073b19bd7605280c08b1d0694d29",
+      "markdown": "KnowledgeReference/ale3d-mhd-modelingof-modified-squeeze5magnetic-flux-compress-7022ab0d.md",
+      "json": "KnowledgeReference/ale3d-mhd-modelingof-modified-squeeze5magnetic-flux-compress-7022ab0d.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 41,
+        "table_captions": 4,
+        "extracted_tables": 2,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 47,
+        "uncertainty_contexts": 2,
+        "image_blocks": 18
+      },
+      "recovered_missing_from_primary_text_count": 7
+    },
+    {
+      "source": "Wave2/AD1097132_Physics-Based-AdaptivebPlasmabModelforHigh-FidelityNumerical.pdf",
+      "sha256": "68a8c2e87812438e5439560a3627b8d6bfcba83a6184365e67c196d5aa8b0d2f",
+      "markdown": "KnowledgeReference/physics-based-adaptive-plasma-modelfor-high-fidelity-numerical-68a8c2e8.md",
+      "json": "KnowledgeReference/physics-based-adaptive-plasma-modelfor-high-fidelity-numerical-68a8c2e8.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 11,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 144,
+        "numeric_target_contexts": 12,
+        "uncertainty_contexts": 14,
+        "image_blocks": 20
+      },
+      "recovered_missing_from_primary_text_count": 72
+    },
+    {
+      "source": "Wave2/AD1105890_TowardpredictivemodelingofExBbplasmabdischarges.pdf",
+      "sha256": "548301391e2ac245167ead77c6f616aa2cf79175044dc3caf83d6f1f62bab585",
+      "markdown": "KnowledgeReference/towardpredictivemodelingof-ex-b-plasma-discharges-54830139.md",
+      "json": "KnowledgeReference/towardpredictivemodelingof-ex-b-plasma-discharges-54830139.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 15,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 4,
+        "numeric_target_contexts": 20,
+        "uncertainty_contexts": 3,
+        "image_blocks": 25
+      },
+      "recovered_missing_from_primary_text_count": 11
+    },
+    {
+      "source": "Wave2/AD1142423_TheRigid-BeamModelforbSimulatingbbPlasmasbGeneratedby.pdf",
+      "sha256": "8201d8a7fca192c7b19bbccef0291b25212aec41682be961d21cd0681c4d95da",
+      "markdown": "KnowledgeReference/the-rigid-beam-modelfor-simulating-plasmas-generated-y-8201d8a7.md",
+      "json": "KnowledgeReference/the-rigid-beam-modelfor-simulating-plasmas-generated-y-8201d8a7.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 5,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 36,
+        "numeric_target_contexts": 18,
+        "uncertainty_contexts": 1,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 26
+    },
+    {
+      "source": "Wave2/AD1194307_EnablingReduced-OrderCollisional-RadiativeModelingforReactiveb.pdf",
+      "sha256": "3f5ffcf29a1174837033a875baeb1a772d1a0aed5c974d4d82b1f08c1cd11aad",
+      "markdown": "KnowledgeReference/ena-ling-reduced-order-collisional-radiative-modelingfor-reactive-3f5ffcf2.md",
+      "json": "KnowledgeReference/ena-ling-reduced-order-collisional-radiative-modelingfor-reactive-3f5ffcf2.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 29,
+        "formula_like_lines": 121,
+        "numeric_target_contexts": 36,
+        "uncertainty_contexts": 7,
+        "image_blocks": 381
+      },
+      "recovered_missing_from_primary_text_count": 94
+    },
+    {
+      "source": "Wave2/AD1326156_PREDICTIVEANDPRACTICALbSIMULATIONSbOFbPLASMAbSYSTEMSA.pdf",
+      "sha256": "f40a112610c992d6623bb92869f86ca2eeb9f2eaceca9112ee0d1f95319a191e",
+      "markdown": "KnowledgeReference/predictiveandpractical-simulations-of-plasma-systemsa-f40a1126.md",
+      "json": "KnowledgeReference/predictiveandpractical-simulations-of-plasma-systemsa-f40a1126.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 10,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 10,
+        "uncertainty_contexts": 2,
+        "image_blocks": 40
+      },
+      "recovered_missing_from_primary_text_count": 14
+    },
+    {
+      "source": "Wave2/AD1331701_ExperimentModelingandbSimulationbofAdvancedMaterials-b.pdf",
+      "sha256": "dc4703eb8af1330de08a944a63871a74ec518e9d2541c72548fc06f570041002",
+      "markdown": "KnowledgeReference/experiment-modelingand-simulation-of-advanced-materials-dc4703eb.md",
+      "json": "KnowledgeReference/experiment-modelingand-simulation-of-advanced-materials-dc4703eb.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 27,
+        "table_captions": 3,
+        "extracted_tables": 2,
+        "formula_like_lines": 2,
+        "numeric_target_contexts": 41,
+        "uncertainty_contexts": 9,
+        "image_blocks": 62
+      },
+      "recovered_missing_from_primary_text_count": 13
+    },
+    {
+      "source": "Wave2/AD1334827_AHybridModelforMultiscaleLaserbPlasmabbSimulationsbw.pdf",
+      "sha256": "69b33ebe2e88a6d93eb6e41fccc08c2737aabf175cbb407bdbdbd651fee8037b",
+      "markdown": "KnowledgeReference/ahy-rid-modelfor-multiscale-laser-plasma-simulations-w-69b33ebe.md",
+      "json": "KnowledgeReference/ahy-rid-modelfor-multiscale-laser-plasma-simulations-w-69b33ebe.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 21,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 1,
+        "numeric_target_contexts": 9,
+        "uncertainty_contexts": 6,
+        "image_blocks": 14
+      },
+      "recovered_missing_from_primary_text_count": 6
+    },
+    {
+      "source": "Wave2/AD1337397_Electronemissionbphysicsbbsimulationsb.pdf",
+      "sha256": "4c71fbe527f7674beacf8813f5fc43db95bb6c7a82a935a5b68415ec3a5a8c9e",
+      "markdown": "KnowledgeReference/electronemission-physics-simulations-4c71fbe5.md",
+      "json": "KnowledgeReference/electronemission-physics-simulations-4c71fbe5.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 2,
+        "table_captions": 2,
+        "extracted_tables": 4,
+        "formula_like_lines": 0,
+        "numeric_target_contexts": 8,
+        "uncertainty_contexts": 4,
+        "image_blocks": 3
+      },
+      "recovered_missing_from_primary_text_count": 6
+    },
+    {
+      "source": "Wave2/AD1338034_ExperimentModelingandbSimulationbofAdvancedMaterials-b.pdf",
+      "sha256": "ea1817c6d5049681873eaa8b5aeee0c3ba87d6d0a3d808e7206b5dbcf681b30b",
+      "markdown": "KnowledgeReference/experiment-modelingand-simulation-of-advanced-materials-ea1817c6.md",
+      "json": "KnowledgeReference/experiment-modelingand-simulation-of-advanced-materials-ea1817c6.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 27,
+        "table_captions": 3,
+        "extracted_tables": 2,
+        "formula_like_lines": 2,
+        "numeric_target_contexts": 42,
+        "uncertainty_contexts": 9,
+        "image_blocks": 62
+      },
+      "recovered_missing_from_primary_text_count": 13
+    },
+    {
+      "source": "Wave2/ADA462260_DeviceDemonstration.pdf",
+      "sha256": "72fd2b544e20dfd1d8ca5273217b78696dbfdcbe939a9caa41196a91b41c74a9",
+      "markdown": "KnowledgeReference/device-demonstration-72fd2b54.md",
+      "json": "KnowledgeReference/device-demonstration-72fd2b54.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 223,
+        "table_captions": 57,
+        "extracted_tables": 0,
+        "formula_like_lines": 138,
+        "numeric_target_contexts": 949,
+        "uncertainty_contexts": 110,
+        "image_blocks": 190
+      },
+      "recovered_missing_from_primary_text_count": 147
+    },
+    {
+      "source": "Wave2/ADA610142_Characterizationofa500JbDensebbPlasmabbFocusbfor.pdf",
+      "sha256": "db2349b11e58e97dc7226321f1ed8062296f3a86db8d397034444a9d6337eb8e",
+      "markdown": "KnowledgeReference/characterization-of-a-500j-dense-plasma-focus-for-producing-soft-x-rays-db2349b1.md",
+      "json": "KnowledgeReference/characterization-of-a-500j-dense-plasma-focus-for-producing-soft-x-rays-db2349b1.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 15,
+        "table_captions": 0,
+        "extracted_tables": 8,
+        "formula_like_lines": 6,
+        "numeric_target_contexts": 79,
+        "uncertainty_contexts": 14,
+        "image_blocks": 2
+      },
+      "recovered_missing_from_primary_text_count": 35
+    },
+    {
+      "source": "Wave2/ADA635195_PFMA-1A1-Hz150-kJPulsedPowerSystemforPlasmaFocusGeneration.pdf",
+      "sha256": "9590eb6507db55e268053b12ff8fc7d47e720860f163d8581c092b370614a23a",
+      "markdown": "KnowledgeReference/pfma-1-a-1-hz-150-kj-pulsed-power-system-for-plasma-focus-generation-9590eb65.md",
+      "json": "KnowledgeReference/pfma-1-a-1-hz-150-kj-pulsed-power-system-for-plasma-focus-generation-9590eb65.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 7,
+        "table_captions": 0,
+        "extracted_tables": 4,
+        "formula_like_lines": 4,
+        "numeric_target_contexts": 74,
+        "uncertainty_contexts": 6,
+        "image_blocks": 7
+      },
+      "recovered_missing_from_primary_text_count": 20
+    },
+    {
+      "source": "Wave2/ADA635937_2DMHDComputerModelingofbDensebbPlasmabbFocusbAc.pdf",
+      "sha256": "74d0df14b491317892936789149417558b647a33c0045a7acde59366b5243b15",
+      "markdown": "KnowledgeReference/esaulov_2003_2d_mhd_dpf.md",
+      "json": "KnowledgeReference/esaulov_2003_2d_mhd_dpf.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 0,
+        "extracted_tables": 5,
+        "formula_like_lines": 25,
+        "numeric_target_contexts": 34,
+        "uncertainty_contexts": 1,
+        "image_blocks": 6
+      },
+      "recovered_missing_from_primary_text_count": 58
+    },
+    {
+      "source": "Wave2/ADA636210_bSnowplowbModelingofaLong-Conduction-TimePlasmaOpeningSwit.pdf",
+      "sha256": "7b686fb62c50e1c2b059468c05f0def821fe6dac36f617a9c0ead1c5aca700d5",
+      "markdown": "KnowledgeReference/snowplow_modeling_plasma_switch.md",
+      "json": "KnowledgeReference/snowplow_modeling_plasma_switch.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 4,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 13,
+        "numeric_target_contexts": 14,
+        "uncertainty_contexts": 6,
+        "image_blocks": 133
+      },
+      "recovered_missing_from_primary_text_count": 12
+    },
+    {
+      "source": "Wave2/DSIAC-2195387_ClassicalTrajectoryMonteCarlobSimulationbofbPlasmabFu.pdf",
+      "sha256": "31246535f2e0545ef96d3412e4777db4d0cde4a5c679a9fca94676dd7ab45c3e",
+      "markdown": "KnowledgeReference/classical-trajectory-monte-carlo-simulation-of-plasma-fu-31246535.md",
+      "json": "KnowledgeReference/classical-trajectory-monte-carlo-simulation-of-plasma-fu-31246535.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 12,
+        "table_captions": 0,
+        "extracted_tables": 2,
+        "formula_like_lines": 162,
+        "numeric_target_contexts": 25,
+        "uncertainty_contexts": 21,
+        "image_blocks": 18
+      },
+      "recovered_missing_from_primary_text_count": 86
+    },
+    {
+      "source": "Wave4/033302_1_5.0311453.pdf",
+      "sha256": "365ec9f0b28db4b111f0f12b57bfefbfee026b4ba11acbebe6a00ce7a51157ac",
+      "markdown": "KnowledgeReference/formation-and-dynamics-of-z-pinch-plasma-in-a-coaxial-plasma-gun.md",
+      "json": "KnowledgeReference/formation-and-dynamics-of-z-pinch-plasma-in-a-coaxial-plasma-gun.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 24,
+        "table_captions": 1,
+        "extracted_tables": 24,
+        "formula_like_lines": 59,
+        "numeric_target_contexts": 138,
+        "uncertainty_contexts": 32,
+        "image_blocks": 26
+      },
+      "recovered_missing_from_primary_text_count": 107
+    },
+    {
+      "source": "Wave4/AD1230244_DevelopingMethodsofControlofSelf-OrganizedbPlasmabStructur.pdf",
+      "sha256": "6d5767901062080300d981fc7f71b73a4dc4da28a5ba7c63f74d0bb1308fac38",
+      "markdown": "KnowledgeReference/developing-methodsof-controlof-self-organized-plasma-structur-6d576790.md",
+      "json": "KnowledgeReference/developing-methodsof-controlof-self-organized-plasma-structur-6d576790.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 17,
+        "table_captions": 0,
+        "extracted_tables": 13,
+        "formula_like_lines": 6,
+        "numeric_target_contexts": 52,
+        "uncertainty_contexts": 16,
+        "image_blocks": 28
+      },
+      "recovered_missing_from_primary_text_count": 10
+    },
+    {
+      "source": "Wave4/Borges An improved weighted essentially non-oscillatory scheme for hyperbolic conservation laws.pdf",
+      "sha256": "18aac89e24e61fbc8b5a1c9f1550f680ade17b76411f6a97221f7ec6aa65fd2c",
+      "markdown": "KnowledgeReference/an-improved-weighted-essentially-non-oscillatory-scheme-for-hyperbolic-conservation-laws-18aac89e.md",
+      "json": "KnowledgeReference/an-improved-weighted-essentially-non-oscillatory-scheme-for-hyperbolic-conservation-laws-18aac89e.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 18,
+        "table_captions": 2,
+        "extracted_tables": 2,
+        "formula_like_lines": 210,
+        "numeric_target_contexts": 41,
+        "uncertainty_contexts": 26,
+        "image_blocks": 127
+      },
+      "recovered_missing_from_primary_text_count": 112
+    },
+    {
+      "source": "Wave4/HDIAC-2191925_bWeightedbbEssentiallybbNonb-bOscillatorybbSc.pdf",
+      "sha256": "d14050ec8071e7010441f9d6eec5fb9a2803b717474696730892e513c71fd308",
+      "markdown": "KnowledgeReference/weighted-essentially-non-oscillatory-schemes-d14050ec.md",
+      "json": "KnowledgeReference/weighted-essentially-non-oscillatory-schemes-d14050ec.json",
+      "status": "reviewed_with_recovered_secondary_extraction_items",
+      "counts": {
+        "figure_captions": 0,
+        "table_captions": 0,
+        "extracted_tables": 0,
+        "formula_like_lines": 60,
+        "numeric_target_contexts": 22,
+        "uncertainty_contexts": 22,
+        "image_blocks": 648
+      },
+      "recovered_missing_from_primary_text_count": 46
+    }
+  ]
+}

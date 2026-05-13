@@ -36,7 +36,14 @@ let mainWindow: BrowserWindow | null = null;
 let serverStatus: ServerStatus = {
   ready: false,
   port: DEFAULT_SERVER_PORT,
-  backends: { python: false, athena: false, athenak: false, metal: false },
+  backends: {
+    python: false,
+    athena: false,
+    athenak: false,
+    metal: false,
+    mlx: false,
+    hybrid: false,
+  },
 };
 
 function createWindow(): void {
@@ -92,7 +99,14 @@ async function bootBackend(): Promise<void> {
     serverStatus = {
       ready: false,
       port,
-      backends: { python: false, athena: false, athenak: false, metal: false },
+      backends: {
+        python: false,
+        athena: false,
+        athenak: false,
+        metal: false,
+        mlx: false,
+        hybrid: false,
+      },
       error: errorMsg,
     };
     mainWindow?.webContents.send("server:status", serverStatus);

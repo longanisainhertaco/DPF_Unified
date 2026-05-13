@@ -21,6 +21,37 @@ from numba import njit
 
 from dpf.constants import e, epsilon_0, k_B, m_e, m_p
 
+SHEATH_MODEL_ROLE = "bohm_child_langmuir_sheath_utility"
+SHEATH_SOURCE_STATUS = "partial_nrl_textbook_support_needs_scope_packet"
+SHEATH_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def sheath_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for sheath utilities."""
+    return {
+        "model_role": SHEATH_MODEL_ROLE,
+        "source_status": SHEATH_SOURCE_STATUS,
+        "validation_status": SHEATH_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "debye_length": "Local NRL/formulary support exists for Debye scale.",
+            "bohm_velocity": (
+                "Bohm criterion support is method-level; DPF electrode/sheath "
+                "startup validation requires a same-scope source packet."
+            ),
+            "child_langmuir": (
+                "Planar Child-Langmuir utility is not by itself a DPF flashover "
+                "or sheath-initiation validation model."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use as boundary-condition scaffolding only; do not claim "
+                "validated startup or flashover physics from these utilities."
+            ),
+        },
+    }
+
 
 @njit(cache=True)
 def bohm_velocity(Te: float, mi: float = m_p) -> float:

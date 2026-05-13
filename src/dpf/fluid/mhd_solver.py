@@ -1847,10 +1847,11 @@ class MHDSolver(PlasmaSolverBase):
             p_total = p + B_sq_e / (2.0 * mu_0)
             v_dot_B = np.sum(vel * B, axis=0)
 
-            # MHD energy flux: F_E,i = (E+p_tot)*v_i - B_i*(v.B)
+            # SI MHD energy flux:
+            # F_E,i = (E+p_tot)*v_i - B_i*(v.B)/mu_0
             div_flux_E = np.zeros_like(rho)
             for i in range(3):
-                F_Ei = (E_total + p_total) * vel[i] - B[i] * v_dot_B
+                F_Ei = (E_total + p_total) * vel[i] - B[i] * v_dot_B / mu_0
                 div_flux_E += np.gradient(F_Ei, self.dx, axis=i)
 
             dE_total_dt = (

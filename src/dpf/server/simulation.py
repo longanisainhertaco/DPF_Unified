@@ -18,6 +18,7 @@ from dpf.config import SimulationConfig
 from dpf.core.bases import StepResult
 from dpf.engine import SimulationEngine
 from dpf.server.models import SimulationStatus
+from dpf.server.readiness import api_readiness_payload
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,20 @@ class SimulationManager:
         *,
         max_steps: int | None = None,
         sim_id: str | None = None,
+        validation_scope: str | None = None,
+        source_scope: str | None = None,
+        source_scope_status: str | None = None,
+        preset_name: str | None = None,
+        run_mode: str | None = None,
     ) -> None:
         self.sim_id = sim_id or uuid.uuid4().hex[:12]
         self.config = config
         self.max_steps = max_steps
+        self.validation_scope = validation_scope
+        self.source_scope = source_scope
+        self.source_scope_status = source_scope_status
+        self.preset_name = preset_name
+        self.run_mode = run_mode
         self.status = SimulationStatus.idle
         self.engine: SimulationEngine | None = None
         self.last_result: StepResult | None = None
@@ -134,18 +145,36 @@ class SimulationManager:
         backend = "python"
         if self.engine is not None:
             backend = getattr(self.engine, "backend", "python")
-        return {
-            "sim_id": self.sim_id,
-            "status": self.status.value,
-            "backend": backend,
+        result_payload = {
             "step": r.step if r else 0,
             "time": r.time if r else 0.0,
             "current": r.current if r else 0.0,
             "voltage": r.voltage if r else 0.0,
             "energy_conservation": r.energy_conservation if r else 1.0,
+            "validation_scope": self.validation_scope or "",
+            "source_scope": self.source_scope or "",
+            "source_scope_status": self.source_scope_status or "",
+            "preset_name": self.preset_name or "",
+            "run_mode": self.run_mode or "",
+        }
+        readiness = api_readiness_payload(
+            backend=backend,
+            result=result_payload,
+            validation_scope=self.validation_scope,
+        )
+        return {
+            "sim_id": self.sim_id,
+            "status": self.status.value,
+            "backend": backend,
+            "step": result_payload["step"],
+            "time": result_payload["time"],
+            "current": result_payload["current"],
+            "voltage": result_payload["voltage"],
+            "energy_conservation": result_payload["energy_conservation"],
             "max_Te": r.max_Te if r else 0.0,
             "max_rho": r.max_rho if r else 0.0,
             "total_radiated_energy": r.total_radiated_energy if r else 0.0,
+            **readiness,
             "error_message": self.error_message,
         }
 

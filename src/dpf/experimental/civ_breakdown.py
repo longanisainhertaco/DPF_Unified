@@ -51,6 +51,42 @@ class GasProperties:
 # Precomputed CIV: v_crit = sqrt(2 * e * V_i / m_i)
 _GAS_DB: dict[str, GasProperties] = {}
 
+CIV_BREAKDOWN_MODEL_ROLE = "civ_paschen_startup_scaffold"
+CIV_BREAKDOWN_SOURCE_STATUS = "civ_paschen_gas_coefficients_source_packets_missing"
+CIV_BREAKDOWN_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def civ_breakdown_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for CIV/Paschen startup."""
+    return {
+        "model_role": CIV_BREAKDOWN_MODEL_ROLE,
+        "source_status": CIV_BREAKDOWN_SOURCE_STATUS,
+        "validation_status": CIV_BREAKDOWN_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "civ_threshold": (
+                "Critical velocity is computed from ionization energy and mass, "
+                "but DPF applicability and gas-state assumptions need local "
+                "source closure."
+            ),
+            "paschen_coefficients": (
+                "Townsend/Paschen coefficients and secondary-emission values are "
+                "not reviewed local source evidence."
+            ),
+            "startup_conditions": (
+                "Seed-current, magnetization, sheath thickness, and breakdown "
+                "time rules are engineering assumptions until same-scope startup "
+                "evidence exists."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use for startup sensitivity studies only; do not treat as "
+                "validated DPF flashover or sheath-initiation evidence."
+            ),
+        },
+    }
+
 
 def _register_gas(
     name: str,

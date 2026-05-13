@@ -48,6 +48,46 @@ import numpy as np
 
 from dpf.constants import e, hbar, k_B, m_e
 
+QMF_MODEL_ROLE = "heuristic_qmf_radiation_diagnostic"
+QMF_VALIDATION_ROLE = "unverified_not_design_evidence"
+QMF_SOURCE_STATUS = "free_free_suppression_source_missing"
+QMF_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def qmf_model_metadata() -> dict[str, object]:
+    """Return source/validity metadata for QMF suppression diagnostics."""
+    return {
+        "model_role": QMF_MODEL_ROLE,
+        "validation_role": QMF_VALIDATION_ROLE,
+        "source_status": QMF_SOURCE_STATUS,
+        "validation_status": QMF_VALIDATION_STATUS,
+        "predictive_qmf_suppression": False,
+        "components": {
+            "critical_field": (
+                "Cyclotron-to-thermal energy threshold from physical constants; "
+                "useful as a regime indicator."
+            ),
+            "suppression_factor": (
+                "Heuristic interpolation without a verified local free-free "
+                "suppression source."
+            ),
+            "synchrotron_enhancement": (
+                "Order-of-magnitude competing-radiation estimate; not a "
+                "validated DPF design model."
+            ),
+        },
+        "validity_notes": {
+            "source_gap": (
+                "Add a primary free-free QMF reference to KnowledgeReference "
+                "before using suppression outputs as source-backed evidence."
+            ),
+            "claim_limit": (
+                "QMF outputs are diagnostics/regime flags only and must not be "
+                "used as p-B11 feasibility or high-field radiation claims."
+            ),
+        },
+    }
+
 
 @dataclass
 class QMFDiag:
@@ -61,6 +101,12 @@ class QMFDiag:
     net_radiation_factor: float  # Net radiation change (suppression * enhancement)
     is_qmf_regime: bool  # True if E_c > E_th
     note: str
+    model_role: str = QMF_MODEL_ROLE
+    validation_role: str = QMF_VALIDATION_ROLE
+    source_status: str = QMF_SOURCE_STATUS
+    validation_status: str = QMF_VALIDATION_STATUS
+    can_support_validation_claims: bool = False
+    can_support_design_claims: bool = False
 
 
 def cyclotron_energy(B: float) -> float:

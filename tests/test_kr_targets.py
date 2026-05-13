@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from dpf.validation import (
@@ -26,6 +28,7 @@ from dpf.validation import (
     kr_validation_target_manifest,
     kr_validation_target_semantic_audit,
     kr_validation_target_source_audit,
+    klir_2011_tof_detector_response_targets,
     kiai_double_dpf_icf_concept_targets,
     lee_2014_radiative_model_review_targets,
     lee_course_nx2_neon_phase_timing_example_targets,
@@ -52,25 +55,127 @@ from dpf.validation import (
     pf1000_16kv_akel_table_candidate_evidence,
     pf1000_16kv_akel_table_targets,
     pf1000_16kv_derived_output_candidate_evidence,
+    pf1000_16kv_current_waveform_comparison_candidate_evidence,
     pf1000_16kv_current_waveform_digitization_candidate_evidence,
     pf1000_16kv_current_waveform_targets,
     pf1000_16kv_phase_candidate_evidence_from_history,
     pf1000_16kv_shot12581_phase_targets,
+    pf1000_cikhardtova_linear_density_motion_targets,
     pf1000_full_energy_neutron_spatial_targets,
     pf1000_full_energy_phase_context_targets,
     pf1000_interferometry_density_evidence_from_profile,
+    pf1000_szydlowski_fast_ion_neutron_targets,
     pf1000_interferometry_density_targets,
     pf400j_xray_inference_targets,
     pf1000_spatial_pinch_evidence_from_geometry,
     pf1000_spatial_pinch_targets,
+    nnss_dpf_neutron_time_energy_tomography_targets,
+    nx3_springham_zrbe_activation_targets,
     pfz200_hybrid_xpinch_proton_neutron_targets,
     predictive_readiness_report,
     rawat_dpf_operating_envelope_targets,
+    sha256_file,
     uofsi_argon_temperature_targets,
     validation_tier_report,
     wante_nitrogen_ion_irradiation_targets,
     wang_metallic_vapor_interferometry_targets,
 )
+
+
+def _write_bytes(path, content: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return path
+
+
+def _accepted_pf1000_waveform_packet(tmp_path, *, validation_scope="pf1000_16kv_2021_akel"):
+    repo_root = Path(__file__).resolve().parents[1]
+    source_path = _write_bytes(
+        tmp_path / "KnowledgeReference" / "radiation-physics-and-chemistry-188-2021-109633.md",
+        (
+            repo_root
+            / "KnowledgeReference"
+            / "radiation-physics-and-chemistry-188-2021-109633.md"
+        ).read_bytes(),
+    )
+    figure_path = _write_bytes(
+        tmp_path
+        / "KnowledgeReference"
+        / "figures"
+        / "akel-2021-fig1-current-waveform-shot-12581.png",
+        (
+            repo_root
+            / "KnowledgeReference"
+            / "figures"
+            / "akel-2021-fig1-current-waveform-shot-12581.png"
+        ).read_bytes(),
+    )
+    packet_sha = "synthetic-accepted-waveform-packet"
+    return {
+        "task_id": "akel_2021_fig1_current_waveform_shot_12581",
+        "validation_scope": validation_scope,
+        "packet_sha256": packet_sha,
+        "source_path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+        "source_sha256": sha256_file(source_path),
+        "source_pdf_sha256": (
+            "9a762bc36bc1f5c175a0ec8dc07b69c48ad956d0c6a382882daf4e24677dcb3b"
+        ),
+        "source_lines": "294-295",
+        "figure_image_path": (
+            "KnowledgeReference/figures/"
+            "akel-2021-fig1-current-waveform-shot-12581.png"
+        ),
+        "figure_image_sha256": sha256_file(figure_path),
+        "figure_id": "Fig. 1",
+        "page": 3,
+        "extraction_type": "figure",
+        "axis_calibration": {
+            "x": {
+                "pixel_points": [0.0, 600.0],
+                "data_values": [0.0, 6.0],
+                "unit": "us",
+                "rms_residual_px": 0.2,
+            },
+            "y": {
+                "pixel_points": [400.0, 20.0],
+                "data_values": [0.0, 1.4],
+                "unit": "MA",
+                "rms_residual_px": 0.2,
+            },
+        },
+        "digitized_series": [
+            {
+                "name": "measured_current",
+                "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+                "y": [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+                "x_unit": "us",
+                "y_unit": "MA",
+            },
+            {
+                "name": "computed_current",
+                "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+                "y": [0.0, 0.25, 0.75, 1.18, 1.02, 0.63, 0.72],
+                "x_unit": "us",
+                "y_unit": "MA",
+            },
+        ],
+        "verification": {
+            "overlay_rms_residual_px": 0.4,
+            "independent_review_count": 1,
+            "review_status": "accepted",
+            "review_metadata": {
+                "reviewed_packet_sha256": packet_sha,
+                "reviewed_source_sha256": sha256_file(source_path),
+                "reviewed_figure_image_sha256": sha256_file(figure_path),
+                "task_id": "akel_2021_fig1_current_waveform_shot_12581",
+                "validation_scope": validation_scope,
+                "reviewer": "independent-reviewer",
+                "review_date": "2026-05-08",
+                "review_notes": "Independent review accepted the source-bound packet.",
+                "decision": "accepted",
+            },
+        },
+    }
 
 
 def test_mjolnir_neutron_timing_target_metadata():
@@ -998,6 +1103,152 @@ def test_pf1000_current_waveform_digitization_candidate_reports_review_blocker()
     )
 
 
+def test_pf1000_current_waveform_comparison_blocks_draft_without_metrics():
+    packet = akel_fig1_draft_digitization_packet()
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0],
+        [0.0, 0.5, 1.0],
+        packet,
+    )
+
+    assert evidence["passed"] is False
+    assert evidence["waveform_comparison_status"] == "blocked_by_review"
+    assert evidence["metrics_computed"] is False
+
+
+def test_pf1000_current_waveform_comparison_requires_uncertainty(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+        packet,
+        base_path=tmp_path,
+    )
+
+    assert evidence["passed"] is False
+    assert evidence["waveform_comparison_status"] == "blocked_by_missing_uncertainty"
+    assert evidence["metrics_computed"] is False
+
+
+def test_pf1000_current_waveform_comparison_blocks_stale_review_without_metrics(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+    packet["verification"]["review_metadata"][
+        "reviewed_packet_sha256"
+    ] = "stale-packet-hash"
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is False
+    assert evidence["waveform_comparison_status"] == "blocked_by_review"
+    assert evidence["metrics_computed"] is False
+    checks = evidence["details"]["digitization_readiness"]["details"][
+        "missing_or_failed_checks"
+    ]
+    assert checks == ["review_packet_hash_mismatch"]
+
+
+def test_pf1000_current_waveform_comparison_blocks_malformed_review_without_metrics(
+    tmp_path,
+):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+    review = packet["verification"]["review_metadata"]
+    review["reviewer"] = ""
+    review["review_notes"] = ""
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is False
+    assert evidence["waveform_comparison_status"] == "blocked_by_review"
+    assert evidence["metrics_computed"] is False
+    checks = evidence["details"]["digitization_readiness"]["details"][
+        "missing_or_failed_checks"
+    ]
+    assert checks == ["review_notes_missing", "reviewer_missing"]
+
+
+def test_pf1000_current_waveform_comparison_passes_same_scope_trace(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is True
+    assert evidence["waveform_comparison_status"] == "passed"
+    assert evidence["metrics_computed"] is True
+    assert evidence["details"]["waveform_nrmse"] == 0.0
+    assert evidence["details"]["simulated_dip"]["dip_present"] is True
+
+
+def test_pf1000_current_waveform_comparison_rejects_cross_scope_packet(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(
+        tmp_path,
+        validation_scope="pf1000_27kv_full_energy",
+    )
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.3, 0.8, 1.2, 1.0, 0.6, 0.7],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is False
+    assert evidence["waveform_comparison_status"] == "blocked_by_scope_mismatch"
+    assert evidence["metrics_computed"] is False
+
+
+def test_pf1000_current_waveform_comparison_fails_distorted_waveform(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.1, 0.2, 0.25, 0.2, 0.15, 0.1],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is False
+    assert "waveform_nrmse_too_large" in evidence["details"]["missing_or_failed_checks"]
+
+
+def test_pf1000_current_waveform_comparison_fails_missing_dip(tmp_path):
+    packet = _accepted_pf1000_waveform_packet(tmp_path)
+
+    evidence = pf1000_16kv_current_waveform_comparison_candidate_evidence(
+        [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2],
+        packet,
+        base_path=tmp_path,
+        uncertainty={"current_MA": 0.03, "time_us": 0.02},
+    )
+
+    assert evidence["passed"] is False
+    assert "simulated_current_dip_missing" in (
+        evidence["details"]["missing_or_failed_checks"]
+    )
+
+
 def test_pf1000_akel_table_target_metadata():
     target = pf1000_16kv_akel_table_targets()
 
@@ -1260,6 +1511,134 @@ def test_pf1000_full_energy_neutron_spatial_target_metadata():
     assert target["anisotropy_targets"]["shot_3121_Y0_over_Y90"] == 1.8
     assert target["uncertainty"]["bubble_detector_relative_lower_at_90deg"] == 0.30
     assert "neutron_field_transport_or_room_scatter_response_model" in (
+        target["missing_for_full_tier5"]
+    )
+
+
+def test_pf1000_cikhardtova_linear_density_motion_target_metadata():
+    target = pf1000_cikhardtova_linear_density_motion_targets()
+
+    assert target["target_id"] == "pf1000_linear_density_motion_2015_cikhardtova"
+    assert target["validation_scope"] == (
+        "pf1000_shot9881_linear_density_2015_cikhardtova"
+    )
+    assert target["source"] == "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md"
+    assert target["source_lines"]["linear_density_formula"] == "124-140"
+    assert target["shot_context"]["shot"] == 9881
+    assert target["density_formula_targets"][
+        "linear_density_per_shifted_fringe_coefficient"
+    ] == 2.1e15
+    assert target["phase_timing"]["timing_uncertainty_ns_range"] == [2.0, 3.0]
+    assert target["spatial_motion_targets"]["zipper_velocity_m_per_s_range"] == [
+        5.0e5,
+        1.5e6,
+    ]
+    assert target["spatial_motion_targets"]["mean_implosion_velocity_m_per_s"] == 2.2e5
+    assert "spatial_density" in target["partial_target_groups"]
+    assert "digitized_linear_density_profiles_from_figures_3_to_6" in (
+        target["missing_for_full_tier4"]
+    )
+
+
+def test_pf1000_szydlowski_fast_ion_neutron_target_metadata():
+    target = pf1000_szydlowski_fast_ion_neutron_targets()
+
+    assert target["target_id"] == "pf1000_fast_ion_neutron_2004_szydlowski"
+    assert target["validation_scope"] == (
+        "pf1000_full_energy_fast_ion_neutron_2004_szydlowski"
+    )
+    assert target["source_lines"]["device_geometry_and_energy"] == "90-112"
+    assert target["shot_context"]["energy_level_kJ_range"] == [266.0, 1064.0]
+    assert "review source PDF glyph" in target["shot_context"]["capacitance_source_text"]
+    assert target["activation_requirements"]["silver_activation_counter_count"] == 4
+    assert target["neutron_yield_targets"][
+        "regular_neutron_emission_neutrons_per_shot_range"
+    ] == [1.0e10, 1.0e11]
+    assert target["anisotropy_targets"]["coefficient_at_133_Pa"] == 1.4
+    assert target["anisotropy_targets"]["coefficient_at_665_Pa_less_than"] == 1.2
+    assert target["spectral_targets"]["upstream_spectrum_peak_MeV_range"] == [2.2, 2.3]
+    assert target["fast_ion_targets"]["crater_density_per_mm2_range"] == [
+        1.0e3,
+        1.0e5,
+    ]
+    assert "pdf_review_of_ocr_suspect_units" in target["missing_for_full_tier5"]
+
+
+def test_klir_tof_detector_response_target_metadata():
+    target = klir_2011_tof_detector_response_targets()
+
+    assert target["target_id"] == "tof_detector_response_2011_klir"
+    assert target["source_lines"]["temporal_resolution"] == "171-198"
+    assert target["detector_use_scope"]["neutron_yield_range_per_shot"] == [
+        1.0e6,
+        1.0e13,
+    ]
+    assert target["scintillator_targets"]["material"] == "Saint Gobain BC-408"
+    assert target["scintillator_targets"]["thickness_mm"] == 50.0
+    assert target["pmt_targets"]["assembly"] == "Hamamatsu H1949-51"
+    assert target["response_timing_targets"]["single_neutron_signal_fwhm_ns"] == 5.7
+    assert target["response_timing_targets"][
+        "single_neutron_signal_fwhm_uncertainty_ns_2sigma"
+    ] == 0.6
+    assert target["timing_calibration"]["pmt_delay_uncertainty_ns_less_than"] == 1.0
+    assert "neutron_detector_response" in target["partial_target_groups"]
+    assert "digitized_fig2_voltage_response_curve" in target["missing_for_full_tier5"]
+
+
+def test_springham_zrbe_activation_target_metadata():
+    target = nx3_springham_zrbe_activation_targets()
+
+    assert target["target_id"] == "nx3_zrbe_activation_2021_springham"
+    assert target["validation_scope"] == "nx3_zrbe_activation_2021_springham"
+    assert target["source_lines"]["abstract_targets"] == "36-60"
+    assert target["shot_context"]["bank_energy_kJ"] == 7.2
+    assert target["shot_context"]["fill_pressure_mbar_values"] == [
+        1.5,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0,
+        9.0,
+        10.0,
+    ]
+    assert target["activation_requirements"]["detector_angles_deg"] == [0.0, 90.0]
+    assert target["neutron_yield_targets"]["highest_yield_pressure_mbar"] == 5.0
+    assert target["spectral_targets"]["effective_energy_MeV_at_0deg_approx"] == 2.8
+    assert target["anisotropy_targets"]["fluence_anisotropy_AnBe_range"] == [2.5, 4.5]
+    assert target["mechanism_targets"]["beam_target_model_consistent"] is True
+    assert target["mechanism_targets"]["thermonuclear_contribution_negligible"] is True
+    assert "mcnp_response_curve_packet" in target["missing_for_full_tier5"]
+
+
+def test_catenacci_time_energy_tomography_target_metadata():
+    target = nnss_dpf_neutron_time_energy_tomography_targets()
+
+    assert target["target_id"] == (
+        "nnss_dpf_neutron_time_energy_tomography_2020_catenacci"
+    )
+    assert target["validation_scope"] == "nnss_dpf_neutron_tomography_2020_catenacci"
+    assert target["source_lines"]["shadow_bar_subtraction"] == "388-463"
+    assert target["tomography_model_targets"]["energy_grid_MeV_range"] == [1.45, 3.45]
+    assert target["tomography_model_targets"]["typical_energy_bin_count_range"] == [
+        25,
+        30,
+    ]
+    assert target["detector_geometry"]["shadow_bar_pair_distances_m"] == [
+        10.0,
+        14.0,
+        18.0,
+        22.0,
+    ]
+    assert target["detector_geometry"]["close_range_detector_distance_cm"] == 25.0
+    assert target["neutron_timing_targets"]["double_pinch_separation_ns_less_than"] == 50.0
+    assert target["spectral_targets"]["energy_resolution_estimated_finer_than_keV"] == 100.0
+    assert target["spectral_targets"][
+        "scatter_correction_max_relative_difference_fraction"
+    ] == 0.23
+    assert "digitized_fig4_time_energy_reconstructions" in (
         target["missing_for_full_tier5"]
     )
 
@@ -1650,7 +2029,7 @@ def test_mjolnir_timing_evidence_passes_with_kr_like_history():
         "neutron_spectrum_validation": spectrum,
         "neutron_anisotropy_validation": anisotropy,
     })}
-    assert tiers[5].status == "supported"
+    assert tiers[5].status == "decomposed_estimate"
 
 
 def test_mjolnir_spectrum_evidence_requires_narrow_thermo_and_broad_beam():

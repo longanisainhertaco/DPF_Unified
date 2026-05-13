@@ -240,6 +240,38 @@ def test_floor_preserves_good_cells():
     assert rho_diff < 1e-6
 
 
+def test_apply_floors_does_not_inject_density_for_strong_field():
+    """The legacy B^2/va_max^2 density injection path must stay removed."""
+    U = _uniform_U(nr=4, nz=4, rho=1e-10, p=1e3, Bz=0.0, Bt=100.0)
+
+    U_floored = _apply_floors(U)
+    rho_out = _np(U_floored[IDN])
+
+    assert np.max(rho_out) <= 1e-9
+
+
+def test_rk2_zero_dt_does_not_inject_density_for_strong_field():
+    """Full RK2 path must not add fake mass when only floor logic can run."""
+    grid = _grid(nr=4, nz=4)
+    U = _uniform_U(nr=4, nz=4, rho=1e-10, p=1e3, Bz=0.0, Bt=100.0)
+
+    U_out = ssp_rk2_step(U, grid, 0.0, method="plm", riemann="hll")
+    rho_out = _np(U_out[IDN])
+
+    assert np.max(rho_out) <= 1e-9
+
+
+def test_rk3_zero_dt_does_not_inject_density_for_strong_field():
+    """Full RK3 path must not add fake mass when only floor logic can run."""
+    grid = _grid(nr=4, nz=4)
+    U = _uniform_U(nr=4, nz=4, rho=1e-10, p=1e3, Bz=0.0, Bt=100.0)
+
+    U_out = ssp_rk3_step(U, grid, 0.0, method="plm", riemann="hll")
+    rho_out = _np(U_out[IDN])
+
+    assert np.max(rho_out) <= 1e-9
+
+
 # ---------------------------------------------------------------------------
 # 5. Velocity clamping
 # ---------------------------------------------------------------------------

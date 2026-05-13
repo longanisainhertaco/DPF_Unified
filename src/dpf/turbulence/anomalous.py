@@ -40,6 +40,44 @@ from numba import njit
 
 from dpf.constants import e, epsilon_0, k_B, m_e, m_p
 
+ANOMALOUS_RESISTIVITY_MODEL_ROLE = "microinstability_resistivity_scaffold"
+ANOMALOUS_RESISTIVITY_SOURCE_STATUS = "microinstability_source_packets_missing"
+ANOMALOUS_RESISTIVITY_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def anomalous_resistivity_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for anomalous resistivity."""
+    return {
+        "model_role": ANOMALOUS_RESISTIVITY_MODEL_ROLE,
+        "source_status": ANOMALOUS_RESISTIVITY_SOURCE_STATUS,
+        "validation_status": ANOMALOUS_RESISTIVITY_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "ion_acoustic": (
+                "Threshold implementation exists, but DPF regime limits and "
+                "alpha ranges still require reviewed local sources."
+            ),
+            "lhdi": (
+                "Lower-hybrid drift threshold is implemented as a model-form "
+                "option; source packet and same-scope validation are missing."
+            ),
+            "buneman": (
+                "Classic Buneman threshold utility exists; it does not validate "
+                "post-pinch resistance or restrike behavior."
+            ),
+            "civ": (
+                "CIV anomalous resistivity shares the same non-validation status "
+                "until CIV source and gas-coefficient packets are reviewed."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use as empirical/model-form resistivity scaffolding only; do not "
+                "treat as validated anomalous resistance."
+            ),
+        },
+    }
+
 
 @njit(cache=True)
 def electron_drift_velocity(

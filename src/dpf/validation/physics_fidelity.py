@@ -31,6 +31,14 @@ _REQUIRED_EFFECTS = {
     "tabulated_eos_and_conductivity": {
         "source_key": "ordinary_mhd_limits",
         "source_lines": "332-362",
+        "blocks_claims": (
+            "circuit_waveform_prediction",
+            "phase_dynamics_prediction",
+            "spatial_mhd_prediction",
+            "high_z_radiation_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "High-fidelity HEDP DPF modeling needs EOS and advanced transport/"
             "conductivity closures appropriate to the material state."
@@ -39,6 +47,14 @@ _REQUIRED_EFFECTS = {
     "ionization_and_charge_state_kinetics": {
         "source_key": "ordinary_mhd_limits",
         "source_lines": "332-362",
+        "blocks_claims": (
+            "circuit_waveform_prediction",
+            "phase_dynamics_prediction",
+            "spatial_mhd_prediction",
+            "high_z_radiation_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Ionization, dissociation, and charge-state evolution must be "
             "modeled or bounded for breakdown, sheath, radiation, and high-Z work."
@@ -47,6 +63,13 @@ _REQUIRED_EFFECTS = {
     "two_temperature_energy_partition": {
         "source_key": "ordinary_mhd_limits",
         "source_lines": "332-362",
+        "blocks_claims": (
+            "spatial_mhd_prediction",
+            "neutron_prediction",
+            "high_z_radiation_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Electron/ion temperature separation and relaxation are required "
             "when one-temperature MHD is outside the claimed regime."
@@ -55,6 +78,11 @@ _REQUIRED_EFFECTS = {
     "radiation_transport_opacity": {
         "source_key": "kr_doped_mhd_requirements",
         "source_lines": "184-190",
+        "blocks_claims": (
+            "high_z_radiation_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "High-Z and radiating DPF claims need opacities and radiation "
             "transport, not only local reduced cooling fits."
@@ -63,6 +91,12 @@ _REQUIRED_EFFECTS = {
     "material_ablation_impurity_mixing": {
         "source_key": "kr_doped_mhd_requirements",
         "source_lines": "488-517",
+        "blocks_claims": (
+            "spatial_mhd_prediction",
+            "high_z_radiation_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Electrode material and dopant effects need material mixing and "
             "validated impurity/radiation coupling."
@@ -71,6 +105,11 @@ _REQUIRED_EFFECTS = {
     "hall_flr_kinetic_or_pic_effects": {
         "source_key": "mhd_kinetic_transition",
         "source_lines": "174-215",
+        "blocks_claims": (
+            "neutron_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Finite-Larmor-radius, mean-free-path, Hall, and kinetic/PIC "
             "effects must be handled when late pinch or neutron mechanisms "
@@ -80,6 +119,13 @@ _REQUIRED_EFFECTS = {
     "three_dimensional_instabilities": {
         "source_key": "review_kinetic_3d_limits",
         "source_lines": "184-190",
+        "blocks_claims": (
+            "phase_dynamics_prediction",
+            "spatial_mhd_prediction",
+            "neutron_prediction",
+            "p_b11_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Instability, beam formation, and non-axisymmetric pinch behavior "
             "must be modeled or bounded for final-pinch predictive claims."
@@ -88,6 +134,10 @@ _REQUIRED_EFFECTS = {
     "flashover_sheath_initiation": {
         "source_key": "review_kinetic_3d_limits",
         "source_lines": "184-190",
+        "blocks_claims": (
+            "circuit_waveform_prediction",
+            "phase_dynamics_prediction",
+        ),
         "requirement": (
             "Breakdown/flashover and sheath initiation need validated treatment "
             "for startup-sensitive predictions."
@@ -96,6 +146,12 @@ _REQUIRED_EFFECTS = {
     "restrike_and_anomalous_resistance": {
         "source_key": "ordinary_mhd_limits",
         "source_lines": "287-326",
+        "blocks_claims": (
+            "circuit_waveform_prediction",
+            "phase_dynamics_prediction",
+            "neutron_prediction",
+            "late_pinch_prediction",
+        ),
         "requirement": (
             "Post-pinch disruption, restrike, and anomalous-resistance behavior "
             "must be validated before full-discharge predictive claims."
@@ -104,11 +160,26 @@ _REQUIRED_EFFECTS = {
     "beam_generation_and_target_coupling": {
         "source_key": "mhd_kinetic_transition",
         "source_lines": "405-448",
+        "blocks_claims": (
+            "neutron_prediction",
+            "p_b11_prediction",
+        ),
         "requirement": (
             "Neutron prediction needs validated beam generation and beam-target "
             "coupling, not only scalar yield formulas."
         ),
     },
+}
+
+
+_CLAIM_LABELS = {
+    "circuit_waveform_prediction": "circuit waveform prediction",
+    "phase_dynamics_prediction": "snowplow/phase dynamics prediction",
+    "spatial_mhd_prediction": "spatial MHD state prediction",
+    "neutron_prediction": "neutron yield/mechanism prediction",
+    "high_z_radiation_prediction": "high-Z radiation prediction",
+    "p_b11_prediction": "p-B11 DPF prediction",
+    "late_pinch_prediction": "late-pinch/final-pinch prediction",
 }
 
 
@@ -125,19 +196,39 @@ def _effect_record(
     *,
     status: str,
     implemented: bool,
+    verified: bool = False,
     validated: bool,
     notes: str,
     evidence_keys: Sequence[str] = (),
 ) -> dict[str, object]:
     meta = _REQUIRED_EFFECTS[effect]
     source = _KR_SOURCE_BASIS[str(meta["source_key"])]
+    blocks_claims = list(meta.get("blocks_claims", ()))
+    if status == "bounded_out":
+        fidelity_status = "bounded_out"
+    elif validated:
+        fidelity_status = "validated"
+    elif verified:
+        fidelity_status = "verified"
+    elif implemented and any(
+        marker in status
+        for marker in ("empirical", "diagnostic", "estimate")
+    ):
+        fidelity_status = "empirical"
+    elif implemented:
+        fidelity_status = "implemented"
+    else:
+        fidelity_status = "absent"
     return {
         "status": status,
+        "fidelity_status": fidelity_status,
         "implemented": implemented,
+        "verified": verified,
         "validated": validated,
         "source": source,
         "source_lines": meta["source_lines"],
         "requirement": meta["requirement"],
+        "blocks_claims": blocks_claims,
         "evidence_keys": list(evidence_keys),
         "notes": notes,
     }
@@ -150,6 +241,7 @@ def physics_effect_validation_evidence(
     source: str | None = None,
     source_lines: str | None = None,
     implemented: bool = True,
+    verified: bool = True,
     bounded_out: bool = False,
     notes: str = "",
 ) -> dict[str, object]:
@@ -171,6 +263,7 @@ def physics_effect_validation_evidence(
         and str(source_value).startswith("KnowledgeReference/")
         and bool(line_value)
         and (implemented or bounded_out)
+        and (verified or bounded_out)
     )
     return {
         "passed": passed,
@@ -178,6 +271,7 @@ def physics_effect_validation_evidence(
         "model_role": "physics_effect_validation",
         "effect": effect_key,
         "implemented": bool(implemented),
+        "verified": bool(verified),
         "bounded_out": bool(bounded_out),
         "validation_scope": validation_scope,
         "source": source_value,
@@ -216,6 +310,8 @@ def _valid_effect_evidence(
         return None
     if evidence.get("implemented") is not True and evidence.get("bounded_out") is not True:
         return None
+    if evidence.get("verified", True) is not True and evidence.get("bounded_out") is not True:
+        return None
     return evidence
 
 
@@ -250,6 +346,36 @@ def _validated_effects(
             found[effect] = (evidence, key)
 
     return found
+
+
+def _claim_blocker_matrix(
+    effects: Mapping[str, Mapping[str, object]],
+) -> dict[str, dict[str, object]]:
+    matrix: dict[str, dict[str, object]] = {
+        claim: {
+            "claim": claim,
+            "label": label,
+            "blocked": False,
+            "blocking_effects": [],
+            "blocking_statuses": {},
+        }
+        for claim, label in _CLAIM_LABELS.items()
+    }
+    for effect, record in effects.items():
+        if record.get("validated") is True or record.get("fidelity_status") == "bounded_out":
+            continue
+        for claim in record.get("blocks_claims", []):
+            claim_key = str(claim)
+            if claim_key not in matrix:
+                continue
+            matrix[claim_key]["blocked"] = True
+            blocking_effects = matrix[claim_key]["blocking_effects"]
+            if isinstance(blocking_effects, list):
+                blocking_effects.append(effect)
+            blocking_statuses = matrix[claim_key]["blocking_statuses"]
+            if isinstance(blocking_statuses, dict):
+                blocking_statuses[effect] = record.get("fidelity_status", "absent")
+    return matrix
 
 
 def physics_fidelity_evidence_from_result(
@@ -452,6 +578,7 @@ def physics_fidelity_evidence_from_result(
             effect,
             status="bounded_out" if bounded else "validated",
             implemented=bool(effect_evidence.get("implemented", not bounded)),
+            verified=bool(effect_evidence.get("verified", True)),
             validated=True,
             evidence_keys=[evidence_key],
             notes=(
@@ -478,6 +605,11 @@ def physics_fidelity_evidence_from_result(
     if not missing and not same_scope_passed:
         missing.append("same_scope_physics_packet")
     passed = not missing
+    claim_blockers = _claim_blocker_matrix(effects)
+    blocked_claims = [
+        claim for claim, record in claim_blockers.items()
+        if record.get("blocked") is True
+    ]
     return {
         "passed": passed,
         "validation_tier": "high_fidelity_physics",
@@ -485,6 +617,9 @@ def physics_fidelity_evidence_from_result(
         "source": _KR_SOURCE_BASIS["ordinary_mhd_limits"],
         "source_basis": _KR_SOURCE_BASIS,
         "required_effects": effects,
+        "claim_blockers": claim_blockers,
+        "blocked_claims": blocked_claims,
+        "engineering_run_blocked": False,
         "effect_validation_scopes": validated_effect_scopes,
         "same_scope_passed": same_scope_passed,
         "missing_or_unvalidated_effects": missing,
@@ -493,6 +628,10 @@ def physics_fidelity_evidence_from_result(
                 "A run is not high-fidelity predictive unless each required "
                 "effect is implemented, verified, and validated or explicitly "
                 "bounded out for one claimed validation scope."
+            ),
+            "claim_blocker_scope": (
+                "Missing physics blocks only the listed predictive claims; it "
+                "does not by itself invalidate non-predictive engineering runs."
             ),
             "audit_role": (
                 "This audit reports physics-fidelity blockers; it is not a "

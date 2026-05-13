@@ -1,241 +1,122 @@
-# DPF-Unified TODO / Placeholder Audit
+# DPF-Unified Current TODO/FIXME/XXX Audit
 
-> **Archive Notice (2026-03-25):** References to `src/dpf/engine.py` in this document are historical. The engine was decomposed into `src/dpf/engine/` package (core.py, circuit_coupling.py, physics_operators.py, state_management.py, athena_step.py, backend_dispatch.py). See commit `a877795`.
+Generated: 2026-05-08
 
-Generated: 2026-02-25
-Scope: `src/dpf/**/*.py`, `tests/**/*.py`
+Task: B14 current TODO audit refresh
 
----
+## Scope
+
+This audit refreshes the historical placeholder audit against the current source
+tree. It intentionally does not treat the former monolithic
+`src/dpf/engine.py` path as a live blocker: that file is absent in the current
+tree, and the live engine is the decomposed `src/dpf/engine/` package.
+
+Audited as live project-owned scope:
+
+- `src/` and `tests/`, excluding `src/dpf/engine_archive/`
+- Current project docs and tooling: `docs/`, `tools/`, `assess.py`,
+  `CRITICAL_BLOCKER.md`, `CortexFindings.md`, and `CodexFindings.md`
+- `docs/todo_audit.md` itself is excluded from marker scans because this file
+  necessarily contains marker strings and command evidence.
+
+Excluded from live blocker status:
+
+- `external/` vendored upstream trees
+- `.claude/` and `.worktrees/` hidden worktree snapshots
+- `gui/package-lock.json` hash text
+- `src/dpf/engine_archive/` historical monolith archive
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| CRITICAL (broken physics / silently wrong) | 3 |
-| MEDIUM (missing feature, incomplete) | 9 |
-| LOW (cleanup / minor) | 5 |
-| BENIGN (correct except-pass patterns) | 5 |
-| EXPERIMENTAL (by design, not bugs) | 4 |
+| Classification | Count | Meaning |
+| --- | ---: | --- |
+| bug | 1 | Current code marker that points at a live backend behavior gap. |
+| deferred | 4 | Planned work, roadmap test rows, or metadata still intentionally open. |
+| benign | 4 | Marker strings used as detector text, templates, CI policy text, or findings context. |
+| obsolete | 8 | Historical or stale references that should not be carried as live blockers. |
 
----
+No current `FIXME` markers were found in active project-owned files outside
+vendored and hidden worktree paths. No current active `src/` or `tests/` marker
+points at `src/dpf/engine.py`.
 
-## CRITICAL
+## Current Source Findings
 
-### C1 — Back-EMF hardcoded to zero
-**File:** `src/dpf/engine.py:643-644`
-**Context:**
-```python
-# TODO: Compute Back-EMF from field motion (-v x B)
-back_emf = 0.0
+| ID | Classification | Location | Finding | Backlog routing |
+| --- | --- | --- | --- | --- |
+| B14-001 | bug | `src/dpf/engine/core.py:148` | Athena++ backend still has an inline marker that `dpf_zpinch.cpp` needs a C++ source function to inject circuit B-field. The current source comment says Python-side electrode boundary injection segfaults because pybind11 arrays are read-only views. | Engineering backlog for Athena++ circuit-field source coupling. |
+| B14-002 | deferred | `src/dpf/metal/mlx_solver.py:1342` | MLX AMR gather currently copies level-0 blocks back to the global state and leaves fine-level overlay as future work. This is an AMR refinement fidelity gap, not a stale monolithic-engine blocker. | Engineering backlog for two-level AMR overlay before claiming refined-grid AMR production fidelity. |
+
+## Documentation And Tooling Findings
+
+| ID | Classification | Location | Finding | Action |
+| --- | --- | --- | --- | --- |
+| B14-003 | deferred | `CRITICAL_BLOCKER.md:124` | Self-consistent MHD `Lp` remains marked as a post-PR-B follow-up. | Keep in engineering backlog; not a TODO-audit blocker by itself. |
+| B14-004 | benign | `CortexFindings.md:135,188`; `CodexFindings.md:899,940,954` | Findings docs reference the B14 audit task. The user explicitly requested that these files not be edited in this pass. | Leave untouched; this audit is the closure artifact for B14. |
+| B14-005 | obsolete | `docs/DPF_UNIFIED_SRS_DRAFT.md:40,181,285,313,319,341` | The SRS draft still describes `docs/todo_audit.md` as historical or unrefreshed. This is stale after this refresh, but outside the owned edit scope. | Treat as follow-up SRS text cleanup only; do not carry as a live code blocker. |
+| B14-006 | benign | `assess.py:35,37,107,112`; `tools/memory_manager.py:270,273` | These are scanners looking for marker strings in other files. | No action. |
+| B14-007 | deferred | `docs/joss-paper-draft.md:12` | JOSS draft has an open ORCID metadata marker. | Publication metadata follow-up. |
+| B14-008 | benign | `docs/design/frontend-dmaic-execution.md:31` | CI policy text names marker strings as blocked tokens. | No action. |
+| B14-009 | obsolete | `docs/ARCHITECTURAL_DEBT.md:74` | This doc says line 706 of `mlx_solver.py` carries a current-density TODO. Current `mlx_solver.py` line 706 imports `cons_to_prim`, and the surrounding code now imports `compute_current_density_si`; the referenced marker no longer exists. | Stale architectural-debt text; do not carry as a live blocker. |
+| B14-010 | benign | `docs/SPRINT_S3_QUALITY_PLAN.md:77` | `REQ-XXX` is a template placeholder in a requirements example. | No action. |
+| B14-011 | deferred | `docs/VERIFICATION_AND_UAT_PLAN.md:551-567` | Verification/UAT matrix rows mark several planned tests as open. | Keep in V&V backlog; these are roadmap rows, not discovered source TODO bugs. |
+| B14-012 | obsolete | `docs/RESEARCH_INDEX.md:131,137` | Research index still reports the old audit counts and memory TODO inventory. | Stale index metadata; do not carry as live source blockers. |
+
+## Historical Audit Entries Retired
+
+| Historical entry | Current classification | Reason |
+| --- | --- | --- |
+| `src/dpf/engine.py` C1 back-EMF blocker | obsolete | `src/dpf/engine.py` is absent. Current back-EMF concerns are covered by circuit-coupling code/tests and not by a current marker at that path. |
+| `src/dpf/engine.py` C2 zipper-BC blocker | obsolete | `src/dpf/engine.py` is absent. No current active marker at that path exists. |
+| Old `src/dpf/engine.py` priority action list | obsolete | The current engine package is decomposed under `src/dpf/engine/`; only the Athena++ source-function marker at `src/dpf/engine/core.py:148` remains live. |
+| `src/dpf/engine_archive/engine_v1_monolith_20260324.py:153` duplicate marker | obsolete | This is an archive copy of the old monolith and is excluded from live blocker status. |
+| Old audit severity counts | obsolete | The refreshed active scan found 2 active `src`/`tests` markers outside the archive, not the historical 3 critical / 9 medium / 5 low set. |
+
+## Audit Commands And Results
+
+Active code scan:
+
+```text
+$ rg -n --sort path -S "\b(TODO|FIXME|XXX)\b" src tests --glob '!src/dpf/engine_archive/**'
+src/dpf/engine/core.py:148:            # TODO: dpf_zpinch.cpp needs C++ source function to inject circuit
+src/dpf/metal/mlx_solver.py:1342:        # TODO: overlay fine-level data for 2-level AMR
 ```
-**Function:** `SimulationEngine._apply_source_terms()` (circuit step)
-**Impact:** The circuit solver never receives any motional EMF from MHD field motion. The `-v×B` term couples fluid velocity to circuit voltage and is physically essential for current quench dynamics. Currently the circuit sees only the plasma inductance change (dL/dt), not the field-advection EMF. Missing for ALL backends.
-**Fix:** Compute volume-averaged `-v×B` from MHD state and pass to `circuit.step()`.
 
----
+Engine path check:
 
-### C2 — Radial zipper BC only implemented for Python backend
-**File:** `src/dpf/engine.py:1089-1092`
-**Context:**
-```python
-elif self.backend == "athena":
-    pass
-else:
-    pass
+```text
+$ test -e src/dpf/engine.py && echo 'src/dpf/engine.py exists' || echo 'src/dpf/engine.py missing'
+src/dpf/engine.py missing
 ```
-**Function:** `SimulationEngine._apply_radial_zipper_bc()`
-**Impact:** The zipper boundary condition (zeros B_theta outside r_shock during radial phase, enforcing thin-sheath topology) is silently skipped for Athena++ and Metal backends. Cross-backend physics diverge at radial phase entry.
-**Fix:** Implement zipper BC for Athena++ (via EnrollUserBoundaryFunction) and Metal (Metal tensor slice zeroing).
 
----
+Current engine path inventory:
 
-### C3 — WALRUS normalization stats not computed (returns empty dict)
-**File:** `src/dpf/ai/well_loader.py:170-185`
-**Context:**
-```python
-pass  # Doing proper pass requires refactoring slightly.
-...
-return {} # Placeholder
+```text
+$ find src/dpf -maxdepth 2 -path 'src/dpf/engine*' -print
+src/dpf/engine_archive
+src/dpf/engine_archive/__init__.py
+src/dpf/engine_archive/engine_v1_monolith_20260324.py
+src/dpf/engine
+src/dpf/engine/circuit_coupling.py
+src/dpf/engine/__init__.py
+src/dpf/engine/core.py
+src/dpf/engine/__pycache__
+src/dpf/engine/athena_step.py
+src/dpf/engine/physics_operators.py
+src/dpf/engine/backend_dispatch.py
+src/dpf/engine/state_management.py
 ```
-**Function:** `WellDataLoader._compute_normalization_stats()`
-**Impact:** WALRUS RevIN normalization requires per-field statistics (mean/std or RMS). This method returns `{}` unconditionally. Downstream callers that use these stats will apply zero normalization or fall back to identity, silently degrading inference quality.
-**Fix:** Implement HDF5 attribute read (many Well datasets expose `mean`/`std` attrs) or compute from sampled trajectories.
 
----
+Project docs/tooling scan used for the documentation classifications:
 
-## MEDIUM
-
-### M1 — J_kin shape mismatch silently ignored
-**File:** `src/dpf/fluid/mhd_solver.py:1541-1542`
-**Context:**
-```python
-else:
-    pass # TODO: Add shape check/warning
+```text
+$ rg -n --sort path -S "\b(TODO|FIXME|XXX)\b" docs tools assess.py CRITICAL_BLOCKER.md CortexFindings.md CodexFindings.md --glob '!docs/todo_audit.md' --glob '!docs/session_logs/**' --glob '!docs/EXECUTION_PLAN.md'
+Result: 34 matching lines across CRITICAL_BLOCKER.md, CortexFindings.md, CodexFindings.md, assess.py, tools/memory_manager.py, docs/DPF_UNIFIED_SRS_DRAFT.md, docs/design/frontend-dmaic-execution.md, docs/SPRINT_S3_QUALITY_PLAN.md, docs/VERIFICATION_AND_UAT_PLAN.md, docs/RESEARCH_INDEX.md, docs/joss-paper-draft.md, and docs/ARCHITECTURAL_DEBT.md.
 ```
-**Function:** `MHDSolver._compute_mhd_rhs()` (kinetic current subtraction)
-**Impact:** If `J_kin` has the wrong shape, the kinetic current is silently dropped and the MHD-PIC coupling fails without any diagnostic. Should at least emit a `logger.warning`.
-**Fix:** Add `logger.warning("J_kin shape mismatch: %s vs %s; skipping kinetic subtraction", J_kin.shape, J.shape)`.
 
----
+Excluded-scope scan used to confirm vendored, hidden worktree, archive, and
+generated-lockfile markers were not promoted into the live blocker list:
 
-### M2 — Default checkpoint auto-discovery not implemented
-**File:** `src/dpf/ai/surrogate.py:104-106`
-**Context:**
-```python
-def _find_default_checkpoint(self) -> Path | None:
-    """Attempt to locate a default checkpoint."""
-    return None  # Placeholder logic for now, or scan directories
+```text
+$ rg -n -S "\b(TODO|FIXME|XXX)\b" external .claude .worktrees gui/package-lock.json src/dpf/engine_archive --hidden --glob '!external/verif_coupling/.git/**'
+Result: 680 matching lines; excluded from live blocker status by scope.
 ```
-**Impact:** `DPFSurrogate()` without an explicit `checkpoint_path` always falls back to placeholder prediction. Users who install the pretrained checkpoint at `models/walrus-pretrained/walrus.pt` still get placeholder behavior unless they pass the path explicitly.
-**Fix:** Scan `[project_root]/models/walrus-pretrained/walrus.pt`, `~/.dpf/walrus.pt`, and `WALRUS_CHECKPOINT` env var.
-
----
-
-### M3 — Well exporter has dead `pass` block before re-implementation
-**File:** `src/dpf/io/well_exporter.py:131-134`
-**Context:**
-```python
-# Optimize: direct assignment if dpf_scalar_to_well returns full array
-# But dpf_scalar_to_well returns a full (1,1,...) array.
-# Let's perform a simpler loop here to avoid alloc turnover.
-pass
-```
-**Function:** `WellExporter._write_scalar_fields()` (inner loop)
-**Impact:** Dead code block. The `pass` is followed by a working `np.stack` re-implementation. Confusing and suggests abandoned optimization attempt. No functional bug, but code quality issue.
-**Fix:** Remove the dead comment block and `pass`.
-
----
-
-### M4 — Kinetic manager uses placeholder dt and "ions" comment
-**File:** `src/dpf/kinetic/manager.py:34,42-44`
-**Context:**
-```python
-dt=1e-9,  # placeholder, will be overridden in step
-...
-# Let's create a placeholder "ions" species
-```
-**Function:** `KineticManager.__init__()`
-**Impact:** The `HybridPIC` driver is initialized with `dt=1e-9` which is overridden later, but the ion species initialization comment indicates incomplete design. The "beam" species is created but no thermal background species is initialized, which may cause unphysical behavior for non-beam runs.
-**Fix:** Remove placeholder dt entirely (pass dt in `step()` only) and clarify the species initialization design.
-
----
-
-### M5 — Orszag-Tang periodic BCs not supported
-**File:** `src/dpf/verification/orszag_tang.py:290-293`
-**Context:**
-```python
-bc_note = (
-    "Zero-gradient (Neumann) BCs used; periodic BCs not yet supported. "
-    "Boundary effects may degrade accuracy at late times."
-)
-```
-**Function:** `run_orszag_tang()`
-**Impact:** The Orszag-Tang vortex is a canonical *periodic* MHD test. Using Neumann BCs reduces accuracy at late times and prevents comparison with published periodic-BC benchmarks.
-**Fix:** Add periodic BC option to the MHD solver (wrap ghost cells from opposite boundary).
-
----
-
-### M6 — Multi-species WENO5 advection deferred to future phase
-**File:** `src/dpf/experimental/species.py:264-265`
-**Context:**
-```python
-Higher-order reconstruction (WENO5) will be added in a future phase.
-```
-**Function:** `SpeciesMixture.advect_species()` docstring
-**Impact:** Only first-order upwind advection implemented for multi-species transport. Module is in `experimental/` so this is expected, but the gap is documented.
-**Severity:** LOW within the experimental context.
-
----
-
-### M7 — Beam-target neutron yield requires particle tracking (deferred)
-**File:** `src/dpf/diagnostics/neutron_yield.py:14-15`
-**Context:**
-```python
-This module computes the thermonuclear component; beam-target is a
-correction that requires particle tracking (future Phase).
-```
-**Impact:** For most DPF devices, the beam-target mechanism dominates (10-100× over thermonuclear). The missing beam-target component means neutron yield estimates are likely 1-2 orders of magnitude low for realistic DPF conditions. Note: beam-target diagnostic was added in Phase Y (`diagnostics/beam_target.py`), so this comment in `neutron_yield.py` is now partially outdated — the beam-target module exists but is separate, not integrated into `neutron_yield.py`.
-**Fix:** Update docstring to reference `diagnostics/beam_target.py` for beam-target yields.
-
----
-
-### M8 — RHO_FLOOR source ambiguous in Metal cylindrical solver
-**File:** `src/dpf/metal/metal_solver.py:528`
-**Context:**
-```python
-rho_safe = torch.clamp(rho, min=1e-12) # RHO_FLOOR hardcoded or import?
-```
-**Function:** `MetalMHDSolver._cylindrical_source_terms()`
-**Impact:** The floor value `1e-12` is hardcoded inline rather than imported from a central `RHO_FLOOR` constant. Minor inconsistency risk if the floor is changed elsewhere.
-**Fix:** Import `RHO_FLOOR` from `metal_solver.py` module-level constant (already defined at line ~35 as `P_FLOOR = 1e-20`) or create a shared constants module.
-
----
-
-### M9 — Instability detector uses loop index as placeholder time
-**File:** `src/dpf/ai/instability_detector.py:200-201`
-**Context:**
-```python
-# Use index as step number, placeholder time
-event = self.check(history, actual_next, step=i, time=float(i))
-```
-**Function:** `InstabilityDetector.monitor_trajectory()`
-**Impact:** Events are tagged with `time=float(i)` (integer step index) rather than actual simulation time in seconds. Post-processing code that sorts or filters events by time will get meaningless timestamps.
-**Fix:** Accept an optional `times` list parameter and pass `time=times[i] if times else float(i)`.
-
----
-
-## LOW
-
-### L1 — Incomplete test: Whistler wave parity test missing
-**File:** `tests/test_phase_g_parity.py:65`
-**Context:**
-```python
-# TODO: Implement a specific test case (e.g. Whistler wave)
-```
-**Impact:** Cross-backend Hall MHD parity test has a placeholder comment instead of an actual test case. Reduces coverage of Hall MHD correctness verification.
-**Fix:** Implement Whistler wave dispersion test (ω = k²c²/ωci) comparing Python and Metal backends.
-
----
-
-### L2 — `_find_default_checkpoint` (surrogate.py) cannot scan for checkpoints
-*(Listed above as M2, repeated here for completeness at LOW since fallback is graceful.)*
-
----
-
-## BENIGN (Correct Pattern — No Action Needed)
-
-These `pass` statements are idiomatic Python in exception handlers or TYPE_CHECKING guards:
-
-| File | Line | Context | Why Benign |
-|------|------|---------|-----------|
-| `src/dpf/benchmarks/metal_benchmark.py` | 38, 45 | `except ImportError: pass` | Optional dependency |
-| `src/dpf/server/app.py` | 263, 289 | `except WebSocketDisconnect: pass` | Expected disconnect |
-| `src/dpf/metal/metal_transport.py` | 23 | `if TYPE_CHECKING: pass` | Type-checking guard |
-| `src/dpf/metal/device.py` | 193 | `except ValueError: pass` | Graceful sysctl failure |
-
----
-
-## EXPERIMENTAL (By Design — Unintegrated Modules)
-
-The `src/dpf/experimental/` package contains complete-but-unintegrated modules. These are not bugs; they are explicitly documented as building blocks for future development.
-
-| Module | LOC | Status |
-|--------|-----|--------|
-| `experimental/amr/` | ~756 | Block-structured AMR, gradient tagging — needs solver refactoring |
-| `experimental/pic/` | ~979 | Boris pusher + CIC deposition — never instantiated in engine |
-| `experimental/species.py` | ~410 | SpeciesMixture class — not wired into engine.py |
-| `experimental/gpu_backend.py` | ~119 | CuPy detection only, no actual kernels (irrelevant on M3 Pro) |
-
----
-
-## Priority Action List
-
-1. **[C1]** Implement Back-EMF coupling in `engine.py` — affects circuit accuracy for all backends
-2. **[C3]** Implement `WellDataLoader._compute_normalization_stats()` — affects WALRUS inference quality
-3. **[C2]** Implement zipper BC for Athena++ and Metal backends — cross-backend physics parity
-4. **[M2]** Implement `_find_default_checkpoint()` scan — improves surrogate.py UX
-5. **[M1]** Add shape-mismatch warning in `mhd_solver.py` — debug quality
-6. **[M5]** Add periodic BCs for Orszag-Tang verification — accuracy testing
-7. **[M7]** Update `neutron_yield.py` docstring to reference `beam_target.py`
-8. **[L1]** Implement Whistler wave parity test in `test_phase_g_parity.py`
-9. **[M3]** Remove dead `pass` block in `well_exporter.py`

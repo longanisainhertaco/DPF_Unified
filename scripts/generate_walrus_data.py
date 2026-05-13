@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Generate WALRUS training trajectories from Lee model simulations.
+"""Generate exploratory WALRUS candidate trajectories from Lee model simulations.
 
-Produces Well-format HDF5 files for WALRUS fine-tuning.
-Each trajectory is a Lee model discharge at varied parameters.
+Produces JSON trajectory summaries that may be converted later by a reviewed
+export pipeline. These outputs are not Well HDF5 files and are not validation
+evidence.
 
 Usage:
     python3 scripts/generate_walrus_data.py [--n-trajectories 100] [--output-dir training/walrus]
@@ -129,6 +130,10 @@ def main():
     # Write manifest
     manifest = {
         "n_trajectories": n_success,
+        "generated_file_format": "json",
+        "artifact_classification": "exploratory_training_candidate",
+        "validation_status": "not_validation_evidence",
+        "source_status": "not_source_backed",
         "presets": presets,
         "parameter_ranges": {
             "V0_kV": V0_ranges,

@@ -60,17 +60,16 @@ DOUBLE_RAREFACTION_RIGHT = RiemannState(rho=1.0, u=2.0, p=0.4)
 # Woodward-Colella's blast-wave test is a *3-region* problem with
 # reflecting walls (p_L=1000, p_M=0.01, p_R=100) and is NOT a single
 # Riemann problem -- see LeVeque 2002, "Finite Volume Methods for
-# Hyperbolic Problems," Eq 15.65 p.331 (on disk at
-# references/papers/textbooks/leveque-2002-finite-volume-hyperbolic.pdf).
+# Hyperbolic Problems," Eq. 15.65 p.331. Local method source:
+# KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md.
 #
 # This 2-region IC is widely referred to as "Toro Test 3" or
 # "left-blast Sod variant" in the Riemann-solver community, but the
-# on-disk Toro 2009 excerpt
-# (references/papers/textbooks/toro-2009-riemann-solvers-excerpt.pdf)
-# only covers Ch.2 (background); the chapter cataloguing the standard
-# 5 test problems (typically Ch.4 or Ch.6) is NOT on disk, so the
-# specific test number cannot be verified from the source. Marked
-# UNVERIFIED pending acquisition of the full Toro textbook.
+# earlier on-disk Toro 2009 excerpt only covered Ch.2. The full Toro
+# text is now locally ingested as KnowledgeReference/toro2009-433cd861.md
+# with page-range chunks under KnowledgeReference/chunks/toro2009-433cd861/.
+# Keep the specific "Test 3" label unpromoted until that chapter is
+# reviewed and mapped to a typed method target.
 STRONG_BLAST_LEFT = RiemannState(rho=1.0, u=0.0, p=1000.0)
 STRONG_BLAST_RIGHT = RiemannState(rho=1.0, u=0.0, p=0.01)
 # Backward-compatible aliases (deprecated names; do not rely on them).

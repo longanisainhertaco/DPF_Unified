@@ -11,6 +11,7 @@ References:
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from dpf.ai.field_mapping import (
     SCALAR_FIELDS,
     VECTOR_FIELDS,
 )
+from dpf.validation.artifacts import ArtifactClassification
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,7 @@ class WellExporter:
         dz: float | None = None,
         geometry: str = "cartesian",
         sim_params: dict[str, Any] | None = None,
+        artifact_classification: ArtifactClassification | dict[str, Any] | None = None,
     ) -> None:
         self.output_path = Path(output_path)
         self.grid_shape = grid_shape
@@ -65,6 +68,11 @@ class WellExporter:
         self.dz = dz if dz is not None else dx
         self.geometry = geometry
         self.sim_params = sim_params or {}
+        self.artifact_classification = (
+            ArtifactClassification.model_validate(artifact_classification)
+            if artifact_classification is not None
+            else ArtifactClassification()
+        )
         self._snapshots: list[dict] = []
         self._times: list[float] = []
         self._circuit_history: list[dict] = []
@@ -170,13 +178,36 @@ class WellExporter:
         with h5py.File(self.output_path, "w") as f:
             # Root attributes
             f.attrs["dataset_name"] = "dpf_simulation"
-            f.attrs["grid_type"] = "cartesian"
+            f.attrs["grid_type"] = self.geometry
             f.attrs["n_spatial_dims"] = 2 if self.geometry == "cylindrical" else 3
             f.attrs["n_trajectories"] = n_trajectories
+            f.attrs["validation_status"] = "not_validation_evidence"
+            f.attrs["result_label"] = "Preview"
+            f.attrs["can_support_validation_claims"] = False
+            f.attrs["source_status"] = "not_source_backed"
+            f.attrs["artifact_role"] = "training_data_interchange_not_validation"
+            artifact_payload = self.artifact_classification.model_dump(mode="json")
+            artifact_json = json.dumps(artifact_payload, sort_keys=True)
+            f.attrs["artifact_classification"] = self.artifact_classification.classification
+            f.attrs["artifact_distribution"] = self.artifact_classification.distribution
+            f.attrs["artifact_classification_json"] = artifact_json
+            f.attrs["dpf_artifact_classification_json"] = artifact_json
+            if self.artifact_classification.owner:
+                f.attrs["artifact_owner"] = self.artifact_classification.owner
+            if self.artifact_classification.handling_notes:
+                f.attrs["artifact_handling_notes"] = (
+                    self.artifact_classification.handling_notes
+                )
+            f.attrs["dpf_source_authority"] = (
+                "local KnowledgeReference only for validation claims; Well export is "
+                "training-data interchange, not validation evidence"
+            )
 
             # Add simulation parameters as root attributes
             for key, value in self.sim_params.items():
                 f.attrs[key] = value
+
+            sanitized_nonfinite_count = 0
 
             # Dimensions group
             dims_grp = f.create_group("dimensions")
@@ -221,10 +252,17 @@ class WellExporter:
                         "Sanitized %d non-finite values in %s", n_bad, well_name,
                     )
                     field_array = np.nan_to_num(field_array, nan=0.0, posinf=0.0, neginf=0.0)
+                    sanitized_nonfinite_count += int(n_bad)
 
                 dataset = t0_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
                     dataset.attrs["units"] = FIELD_UNITS[dpf_name]
+                dataset.attrs["nonfinite_sanitized"] = bool(n_bad > 0)
+                dataset.attrs["nonfinite_count"] = int(n_bad)
+                if n_bad > 0:
+                    dataset.attrs["sanitization_policy"] = (
+                        "nan_inf_to_zero_for_ml_stability_not_validation_evidence"
+                    )
                 dataset.attrs["dim_varying"] = True
                 dataset.attrs["sample_varying"] = True
                 dataset.attrs["time_varying"] = True
@@ -251,10 +289,17 @@ class WellExporter:
                         "Sanitized %d non-finite values in %s", n_bad, well_name,
                     )
                     field_array = np.nan_to_num(field_array, nan=0.0, posinf=0.0, neginf=0.0)
+                    sanitized_nonfinite_count += int(n_bad)
 
                 dataset = t1_grp.create_dataset(well_name, data=field_array)
                 if dpf_name in FIELD_UNITS:
                     dataset.attrs["units"] = FIELD_UNITS[dpf_name]
+                dataset.attrs["nonfinite_sanitized"] = bool(n_bad > 0)
+                dataset.attrs["nonfinite_count"] = int(n_bad)
+                if n_bad > 0:
+                    dataset.attrs["sanitization_policy"] = (
+                        "nan_inf_to_zero_for_ml_stability_not_validation_evidence"
+                    )
                 dataset.attrs["dim_varying"] = True
                 dataset.attrs["sample_varying"] = True
                 dataset.attrs["time_varying"] = True
@@ -273,6 +318,9 @@ class WellExporter:
                         scalar_array = np.zeros((n_trajectories, n_steps), dtype=np.float32)
                         scalar_array[0, :] = np.array(values, dtype=np.float32)
                         scalars_grp.create_dataset(scalar_name, data=scalar_array)
+
+            f.attrs["contains_sanitized_nonfinite"] = bool(sanitized_nonfinite_count > 0)
+            f.attrs["sanitized_nonfinite_count"] = sanitized_nonfinite_count
 
         logger.info("Wrote Well HDF5 to %s", self.output_path)
         return self.output_path

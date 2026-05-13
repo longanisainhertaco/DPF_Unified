@@ -1,0 +1,958 @@
+{
+  "cannot_substitute_for": [
+    "same_scope_spatial_dpf_validation",
+    "neutron_timing_spectrum_anisotropy_validation",
+    "reference_scientific_authority"
+  ],
+  "cannot_substitute_for_validation_tiers": [
+    4,
+    5
+  ],
+  "evidence_class": "code_numerical_verification",
+  "experimental_dpf_validation": false,
+  "metadata": {
+    "artifact_role": "scheduled_tier3_partial_numerical_packet",
+    "circuit_energy_runner": "manufactured_constant_power_balance",
+    "cylindrical_runner": "dpf.verification.cylindrical_convergence",
+    "diffusion_runner": "dpf.verification.diffusion_convergence",
+    "generated_by": "scripts/build_mhd_tier3_numerical_packet.py",
+    "input_result_sha256": "c86f2b7fdba60a7307c5e4f5870367912b926a1be5a5ef644a6d4647232eb9b8"
+  },
+  "mhd_numerical_fidelity": {
+    "cannot_substitute_for": [
+      "same_scope_spatial_dpf_validation",
+      "neutron_timing_spectrum_anisotropy_validation",
+      "reference_scientific_authority"
+    ],
+    "cannot_substitute_for_validation_tiers": [
+      4,
+      5
+    ],
+    "evidence_class": "code_numerical_verification",
+    "evidence_verification_scopes": {
+      "backend_parity": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "circuit_coupled_energy_verification": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "convergence_study": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "cylindrical_geometry_verification": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "dpf_scope_limit": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "finite_volume_mhd_verification": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "resistive_or_nonideal_verification": "scheduled_tier3_cpu_mhd_numerical_2026_05_09",
+      "restart_reproducibility": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "experimental_dpf_validation": false,
+    "missing_or_unvalidated_evidence": [],
+    "model_role": "mhd_numerical_fidelity_audit",
+    "passed": true,
+    "required_evidence": {
+      "backend_parity": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "backend_parity_verification"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped backend parity evidence is attached for the supplied observables and tolerances.",
+        "present": true,
+        "requirement": "Multiple production backends need parity evidence so numerical results are not backend-specific artifacts.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "circuit_coupled_energy_verification": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "circuit_coupled_energy_verification"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped circuit/MHD power and integrated-energy evidence is attached for the supplied history. Full DPF numerical fidelity still requires the remaining audit channels.",
+        "present": true,
+        "requirement": "The circuit equation and MHD voltage/current coupling must be verified as an energy-coupled numerical system.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "399-414",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "convergence_study": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "cylindrical_convergence_verification"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "Cylindrical z-pinch convergence evidence is attached. It closes only the cylindrical convergence slice; convergence remains needed for DPF observables, circuit coupling, non-ideal physics, and production backends.",
+        "present": true,
+        "requirement": "Numerical fidelity requires convergence evidence with tolerances for the claimed DPF observables.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "1939-1955",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "cylindrical_geometry_verification": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "backend",
+          "cylindrical_convergence_verification",
+          "mhd_numerical_method"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped cylindrical convergence evidence is attached. This supports cylindrical source-term verification, but not the remaining DPF numerical-fidelity channels.",
+        "present": true,
+        "requirement": "DPF MHD verification must cover cylindrical geometry, boundary conditions, and convergence against a cylindrical test solution.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "383-398, 1900-1955",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "dpf_scope_limit": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "mhd_scope_limit"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped MHD phase/scope limit evidence is attached.",
+        "present": true,
+        "requirement": "Numerical evidence must state the DPF phase/scope where ideal or resistive MHD remains applicable.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "2506-2519, 2690-2711",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "finite_volume_mhd_verification": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "mhd_verification",
+          "mhd_numerical_method"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "Finite-volume method metadata and required Sod/Brio-Wu code-verification evidence are attached. This supports the generic finite-volume MHD channel only; DPF-specific cylindrical, circuit, resistive, convergence, backend, and scope evidence are separate audit channels.",
+        "present": true,
+        "requirement": "The MHD backend must have named finite-volume/ideal-MHD analytic verification evidence, not just a backend flag.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "resistive_or_nonideal_verification": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "resistive_diffusion_verification"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped resistive magnetic-diffusion convergence evidence is attached. This supports only the resistive operator; anomalous resistivity, Hall terms, and DPF current-density redistribution remain unvalidated.",
+        "present": true,
+        "requirement": "Resistive or non-ideal terms used in DPF simulations need explicit verification because resistivity choices affect current-density and implosion structure.",
+        "source": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+        "source_lines": "511-541, 912-930",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      },
+      "restart_reproducibility": {
+        "cannot_substitute_for": [
+          "same_scope_spatial_dpf_validation",
+          "neutron_timing_spectrum_anisotropy_validation",
+          "reference_scientific_authority"
+        ],
+        "cannot_substitute_for_validation_tiers": [
+          4,
+          5
+        ],
+        "evidence_class": "code_numerical_verification",
+        "evidence_keys": [
+          "restart_reproducibility_verification"
+        ],
+        "experimental_dpf_validation": false,
+        "notes": "KR-scoped checkpoint/restart reproducibility evidence is attached for the supplied observables and tolerances.",
+        "present": true,
+        "requirement": "Production MHD verification needs checkpoint/restart reproducibility evidence so long runs and backend comparisons are not artifacts of one uninterrupted execution path.",
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347, 1900-1955",
+        "status": "supported",
+        "supports_high_fidelity_scientific_claims": false,
+        "supports_predictive_scientific_claims": false,
+        "supports_validation_tiers": [
+          3
+        ],
+        "validated": true
+      }
+    },
+    "same_scope_passed": true,
+    "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+    "source_basis": {
+      "auluck_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+      "bennett_zpinch_equilibrium": "KnowledgeReference/bennett-vorticity-analytic-solutions-to-a-flowing-nonlinear-shear-flow-stabilized-z-pinch.md",
+      "beresnyak_mhd_coupling": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "hall_anomalous_resistivity": "KnowledgeReference/the-hall-term-and-anomalous-resistivity-effects-in-neon-gas-puff-z-pinches.md",
+      "malir_resistive_dpf": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+      "mhd_resistive_diffusion": "KnowledgeReference/modeling-and-simulation-in-science-engineering-and-technology-mathematical-models-and.md"
+    },
+    "supports_high_fidelity_scientific_claims": false,
+    "supports_predictive_scientific_claims": false,
+    "supports_validation_tiers": [
+      3
+    ],
+    "validation_tier": "mhd_numerical_fidelity",
+    "validity_notes": {
+      "audit_role": "This audit separates generic MHD backend presence from DPF-specific numerical-fidelity evidence.",
+      "claim_scope": "Tier-3 MHD evidence is not high-fidelity complete unless finite-volume, cylindrical, circuit-coupled, resistive, convergence, backend-parity, restart reproducibility, and scope-limit evidence are validated for the claimed DPF phase."
+    }
+  },
+  "mhd_numerical_verification_packet_status": {
+    "attached_non_validating_packets": [],
+    "attached_validated_packets": [
+      "finite_volume_mhd_verification",
+      "cylindrical_geometry_verification",
+      "circuit_coupled_energy_verification",
+      "resistive_or_nonideal_verification",
+      "convergence_study",
+      "backend_parity",
+      "restart_reproducibility",
+      "dpf_scope_limit"
+    ],
+    "cannot_substitute_for": [
+      "same_scope_spatial_dpf_validation",
+      "neutron_timing_spectrum_anisotropy_validation",
+      "reference_scientific_authority"
+    ],
+    "cannot_substitute_for_validation_tiers": [
+      4,
+      5
+    ],
+    "evidence_class": "code_numerical_verification",
+    "experimental_dpf_validation": false,
+    "missing_required_packets": [],
+    "model_role": "mhd_numerical_verification_packet_status",
+    "packet_status": {
+      "backend_parity": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "backend_parity_verification"
+        ],
+        "next_action": "Attach parity evidence across the production backends used for the claim observables.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "circuit_coupled_energy_verification": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "circuit_coupled_energy_verification"
+        ],
+        "next_action": "Attach circuit/MHD power and integrated-energy balance evidence for the claimed coupling scope.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "399-414",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "convergence_study": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "cylindrical_convergence_verification"
+        ],
+        "next_action": "Attach convergence evidence with grid sequence, observables, tolerances, and observed order.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "1939-1955",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "cylindrical_geometry_verification": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "backend",
+          "cylindrical_convergence_verification",
+          "mhd_numerical_method"
+        ],
+        "next_action": "Attach cylindrical z-pinch convergence evidence for the claimed geometry/backend scope.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "383-398, 1900-1955",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "dpf_scope_limit": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "mhd_scope_limit"
+        ],
+        "next_action": "Attach explicit DPF phase/scope-limit evidence for where MHD verification is applicable.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "2506-2519, 2690-2711",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "finite_volume_mhd_verification": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "mhd_verification",
+          "mhd_numerical_method"
+        ],
+        "next_action": "Attach Tier-3 Sod and Brio-Wu finite-volume analytic-test evidence for the claimed method scope.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "resistive_or_nonideal_verification": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "resistive_diffusion_verification"
+        ],
+        "next_action": "Attach resistive magnetic-diffusion convergence evidence for each enabled non-ideal operator.",
+        "present": true,
+        "source": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+        "source_lines": "511-541, 912-930",
+        "status": "attached_validated",
+        "validated": true
+      },
+      "restart_reproducibility": {
+        "audit_status": "supported",
+        "evidence_keys": [
+          "restart_reproducibility_verification"
+        ],
+        "next_action": "Attach checkpoint/restart evidence with matching config hashes, restart marker, and tolerance-bounded observables.",
+        "present": true,
+        "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "source_lines": "336-347, 1900-1955",
+        "status": "attached_validated",
+        "validated": true
+      }
+    },
+    "passed": true,
+    "production_packet_status": "complete",
+    "same_scope_passed": true,
+    "supports_high_fidelity_scientific_claims": false,
+    "supports_predictive_scientific_claims": false,
+    "supports_validation_tiers": [
+      3
+    ],
+    "validation_tier": 3,
+    "validity_notes": {
+      "claim_scope": "This status names the Tier-3 verification packets needed for a production MHD numerical-fidelity claim. Missing packets keep the claim blocked; diagnostic metadata does not pass."
+    }
+  },
+  "model_role": "mhd_numerical_verification_packet",
+  "packet_version": "1.0",
+  "passed": true,
+  "production_packet_status": "complete",
+  "result": {
+    "backend_parity_verification": {
+      "authority_label": "BackendParityVerification",
+      "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority"
+      ],
+      "cannot_substitute_for_validation_tiers": [
+        4,
+        5
+      ],
+      "details": {
+        "backend_pair": [
+          "python-cylindrical",
+          "mlx"
+        ],
+        "junitxml": "results/mhd_backend_parity_cross_backend_current.junit.xml",
+        "observables": [
+          "I(t)"
+        ],
+        "parity": {
+          "cases": {
+            "tests/test_cross_backend_parity.py::test_cross_backend_current_nrmse_parity": {
+              "classname": "tests.test_cross_backend_parity",
+              "found": true,
+              "passed": true,
+              "time_s": "7.563"
+            }
+          },
+          "passed": true
+        },
+        "suite": {
+          "errors": null,
+          "failures": null,
+          "skipped": null,
+          "tests": null,
+          "time_s": null
+        }
+      },
+      "evidence_class": "code_numerical_verification",
+      "experimental_dpf_validation": false,
+      "metrics": {
+        "gate": "python-cylindrical vs mlx I(t) NRMSE: 1e-6 < NRMSE < 0.10",
+        "pytest_backend_parity_gate_passed": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "code_verification_backend_parity",
+      "passed": true,
+      "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "source_basis": {
+        "multi_code_verification_context": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md"
+      },
+      "source_line_basis": {
+        "multi_code_verification_context": "1900-1903, 1939-1955"
+      },
+      "source_lines": "1900-1903, 1939-1955",
+      "supports_high_fidelity_scientific_claims": false,
+      "supports_predictive_scientific_claims": false,
+      "supports_validation_tiers": [
+        3
+      ],
+      "validation_tier": 3,
+      "validity_notes": {
+        "authority_boundary": "Backend parity is a numerical consistency label, not Reference scientific authority.",
+        "claim_scope": "Supports backend parity only for the named pytest gate, backend pair, observable, and tolerance. It does not validate the observable against experiment."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "circuit_coupled_energy_verification": {
+      "details": {
+        "accounted_energy_J": 20.0,
+        "circuit_power_W_range": [
+          10.0,
+          10.0
+        ],
+        "input_energy_J": 20.0,
+        "max_relative_power_residual": 0.0,
+        "n_samples": 3,
+        "relative_energy_residual": 0.0,
+        "relative_tolerance": 0.05
+      },
+      "metrics": {
+        "circuit_power_matches_poynting": true,
+        "finite_monotonic_samples": true,
+        "integrated_energy_accounted": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "code_verification_circuit_coupled_energy_balance",
+      "passed": true,
+      "source": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+      "source_basis": {
+        "mhd_voltage_circuit_feedback": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "poynting_theorem_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md"
+      },
+      "source_line_basis": {
+        "mhd_voltage_circuit_feedback": "383-414",
+        "poynting_theorem_circuit_element": "1026-1031"
+      },
+      "source_lines": "1026-1031",
+      "validation_tier": 3,
+      "validity_notes": {
+        "claim_scope": "Supports circuit/MHD interface power and integrated energy accounting for the supplied history only. It does not validate experimental current agreement, field topology, or late-pinch MHD activity."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "cylindrical_convergence_verification": {
+      "analytic_tests": {
+        "cylindrical_zpinch_equilibrium_convergence": true
+      },
+      "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority"
+      ],
+      "cannot_substitute_for_validation_tiers": [
+        4,
+        5
+      ],
+      "details": {
+        "Btheta_errors": [
+          0.0014407098338781483,
+          0.0005092017281638689,
+          0.0001800153038522951
+        ],
+        "convergence_order": 1.5002941662044993,
+        "minimum_convergence_order": 1.0,
+        "pressure_errors": [
+          0.04078980609602495,
+          0.0288451370628922,
+          0.02039701220830157
+        ],
+        "resolutions": [
+          16,
+          32,
+          64
+        ],
+        "velocity_errors": [
+          619.4821454107462,
+          446.42933192070996,
+          318.60188490257667
+        ]
+      },
+      "evidence_class": "code_numerical_verification",
+      "experimental_dpf_validation": false,
+      "metrics": {
+        "btheta_errors_decrease": true,
+        "btheta_errors_match_resolutions": true,
+        "convergence_order_passed": true,
+        "finite_positive_btheta_errors": true,
+        "three_or_more_resolutions": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "code_verification_cylindrical_convergence",
+      "passed": true,
+      "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "source_basis": {
+        "cylindrical_mhd_convergence": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "zpinch_equilibrium_force_balance": "KnowledgeReference/bennett-vorticity-analytic-solutions-to-a-flowing-nonlinear-shear-flow-stabilized-z-pinch.md"
+      },
+      "source_line_basis": {
+        "cylindrical_mhd_convergence": "1900-1955",
+        "zpinch_equilibrium_force_balance": "285-299, 386-397, 452-485"
+      },
+      "source_lines": "1900-1955",
+      "supports_high_fidelity_scientific_claims": false,
+      "supports_predictive_scientific_claims": false,
+      "supports_validation_tiers": [
+        3
+      ],
+      "validation_tier": 3,
+      "validity_notes": {
+        "claim_scope": "Supports cylindrical z-pinch equilibrium convergence only; it is not a DPF shot validation or a circuit-coupled verification.",
+        "kr_basis": "Beresnyak reports cylindrical MHD verification and convergence against a theoretical self-similar solution; the Bennett reference supplies the local z-pinch force-balance basis."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "mhd_numerical_method": {
+      "coordinates": "cylindrical",
+      "finite_volume": true,
+      "reconstruction": "plm",
+      "riemann_solver": "hll",
+      "time_integrator": "cfl_limited_explicit",
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "mhd_scope_limit": {
+      "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority"
+      ],
+      "cannot_substitute_for_validation_tiers": [
+        4,
+        5
+      ],
+      "details": {
+        "applicable_phases": [
+          "first_collapse",
+          "formation",
+          "rundown"
+        ],
+        "invalid_phases": [
+          "after_first_collapse",
+          "post_disruption",
+          "secondary_collapse"
+        ],
+        "limit_reasons": [
+          "beyond_ideal_mhd_after_disruption",
+          "non_ideal_electric_fields",
+          "rayleigh_taylor_instability"
+        ]
+      },
+      "evidence_class": "code_numerical_verification",
+      "experimental_dpf_validation": false,
+      "metrics": {
+        "limit_reason_declared": true,
+        "post_disruption_or_post_collapse_excluded": true,
+        "pre_disruption_scope_declared": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "mhd_phase_scope_limit",
+      "passed": true,
+      "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "source_basis": {
+        "dpf_mhd_applicability_limit": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md"
+      },
+      "source_line_basis": {
+        "dpf_mhd_applicability_limit": "2506-2519, 2689-2711"
+      },
+      "source_lines": "2506-2519, 2689-2711",
+      "supports_high_fidelity_scientific_claims": false,
+      "supports_predictive_scientific_claims": false,
+      "supports_validation_tiers": [
+        3
+      ],
+      "validation_tier": 3,
+      "validity_notes": {
+        "claim_scope": "Supports only an explicit phase boundary for MHD numerical claims. It does not validate the solver inside that boundary."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "mhd_verification": {
+      "analytic_tests": {
+        "brio_wu": true,
+        "sod": true
+      },
+      "details": {
+        "backend": "mlx",
+        "backend_authority": "preview",
+        "brio_wu": {
+          "cases": {
+            "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s6_briowu_compound_waves": {
+              "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+              "found": true,
+              "passed": true,
+              "time_s": "0.100"
+            }
+          },
+          "passed": true
+        },
+        "junitxml": "results/mhd_finite_volume_mlx_shock_tubes.junit.xml",
+        "sod": {
+          "cases": {
+            "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s5_sod_cross_backend_parity": {
+              "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+              "found": true,
+              "passed": true,
+              "time_s": "0.383"
+            },
+            "tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s7_sod_convergence": {
+              "classname": "tests.test_mlx_acceptance.TestStandardShockTubes",
+              "found": true,
+              "passed": true,
+              "time_s": "0.475"
+            }
+          },
+          "passed": true
+        },
+        "suite": {
+          "errors": null,
+          "failures": null,
+          "skipped": null,
+          "tests": null,
+          "time_s": null
+        }
+      },
+      "model_role": "code_verification_analytic_tests",
+      "passed": true,
+      "required_tests": [
+        "brio_wu",
+        "sod"
+      ],
+      "source": "MLX preview finite-volume shock-tube pytest evidence",
+      "validation_tier": 3,
+      "validity_notes": {
+        "backend_boundary": "This is preview-backend finite-volume code verification from MLX standalone shock-tube pytest results. Backend parity remains a separate required packet."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "resistive_diffusion_verification": {
+      "analytic_tests": {
+        "resistive_magnetic_diffusion_convergence": true
+      },
+      "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority"
+      ],
+      "cannot_substitute_for_validation_tiers": [
+        4,
+        5
+      ],
+      "details": {
+        "convergence_order": 2.005535963474413,
+        "errors": [
+          0.04222374566471515,
+          0.010642732372904487,
+          0.002618808803093956
+        ],
+        "eta_ohm_m": 1.2566370612700002e-07,
+        "method": "implicit",
+        "minimum_convergence_order": 1.0,
+        "resolutions": [
+          16,
+          32,
+          64
+        ],
+        "sigma0_m": 0.05,
+        "t_end_s": 0.012500000000000002
+      },
+      "evidence_class": "code_numerical_verification",
+      "experimental_dpf_validation": false,
+      "metrics": {
+        "convergence_order_passed": true,
+        "errors_decrease": true,
+        "errors_match_resolutions": true,
+        "finite_positive_errors": true,
+        "positive_resistivity": true,
+        "recognized_diffusion_method": true,
+        "three_or_more_resolutions": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "code_verification_resistive_diffusion_convergence",
+      "passed": true,
+      "source": "KnowledgeReference/modeling-and-simulation-in-science-engineering-and-technology-mathematical-models-and.md",
+      "source_basis": {
+        "anomalous_resistivity_scope_limit": "KnowledgeReference/the-hall-term-and-anomalous-resistivity-effects-in-neon-gas-puff-z-pinches.md",
+        "dpf_resistivity_sensitivity": "KnowledgeReference/malir-2024-interferometry-dpf.md",
+        "resistive_magnetic_diffusion_operator": "KnowledgeReference/modeling-and-simulation-in-science-engineering-and-technology-mathematical-models-and.md"
+      },
+      "source_line_basis": {
+        "anomalous_resistivity_scope_limit": "17-38, 402-410",
+        "dpf_resistivity_sensitivity": "511-545, 908-930",
+        "resistive_magnetic_diffusion_operator": "1288-1295, 1341-1358"
+      },
+      "source_lines": "1288-1295, 1341-1358",
+      "supports_high_fidelity_scientific_claims": false,
+      "supports_predictive_scientific_claims": false,
+      "supports_validation_tiers": [
+        3
+      ],
+      "validation_tier": 3,
+      "validity_notes": {
+        "claim_scope": "Supports the numerical resistive magnetic-diffusion operator only; it does not validate Spitzer closure, anomalous resistivity, Hall physics, or DPF current redistribution.",
+        "kr_basis": "The KR corpus identifies resistive magnetic diffusion as a term in the magnetic-field evolution equation and separately shows DPF current-density structure is sensitive to the chosen resistivity model."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    },
+    "restart_reproducibility_verification": {
+      "cannot_substitute_for": [
+        "same_scope_spatial_dpf_validation",
+        "neutron_timing_spectrum_anisotropy_validation",
+        "reference_scientific_authority"
+      ],
+      "cannot_substitute_for_validation_tiers": [
+        4,
+        5
+      ],
+      "details": {
+        "comparisons": {
+          "B_l2": 0.0,
+          "circuit_total_energy_J": 0.0,
+          "current_A": 0.0,
+          "max_Te_eV": 0.0,
+          "max_density_kg_m3": 0.0,
+          "max_pressure_Pa": 0.0,
+          "pressure_l2": 0.0,
+          "rho_l2": 0.0,
+          "step_count": 0.0,
+          "time_s": 0.0,
+          "velocity_l2": 0.0,
+          "voltage_V": 0.0
+        },
+        "max_relative_error": 0.0,
+        "observables": [
+          "step_count",
+          "time_s",
+          "current_A",
+          "voltage_V",
+          "circuit_total_energy_J",
+          "max_density_kg_m3",
+          "max_pressure_Pa",
+          "max_Te_eV",
+          "rho_l2",
+          "pressure_l2",
+          "velocity_l2",
+          "B_l2"
+        ],
+        "relative_tolerance": 1e-12,
+        "relative_tolerances": {
+          "B_l2": 1e-12,
+          "circuit_total_energy_J": 1e-12,
+          "current_A": 1e-12,
+          "max_Te_eV": 1e-12,
+          "max_density_kg_m3": 1e-12,
+          "max_pressure_Pa": 1e-12,
+          "pressure_l2": 1e-12,
+          "rho_l2": 1e-12,
+          "step_count": 1e-12,
+          "time_s": 1e-12,
+          "velocity_l2": 1e-12,
+          "voltage_V": 1e-12
+        },
+        "restart_marker": 5
+      },
+      "evidence_class": "code_numerical_verification",
+      "experimental_dpf_validation": false,
+      "metrics": {
+        "common_observables_present": true,
+        "config_hashes_match": true,
+        "config_identity_declared": true,
+        "continuous_run_observables_present": true,
+        "relative_errors_within_tolerance": true,
+        "required_observables_present": true,
+        "restart_marker_present": true,
+        "restarted_run_observables_present": true
+      },
+      "missing_or_failed_metrics": [],
+      "model_role": "code_verification_restart_reproducibility",
+      "passed": true,
+      "raw_results": {
+        "continuous": {
+          "B_l2": 0.0,
+          "circuit_total_energy_J": 0.5000000000000003,
+          "current_A": 884.7819661566681,
+          "max_Te_eV": 300.0,
+          "max_density_kg_m3": 0.0001,
+          "max_pressure_Pa": 247.75494110021958,
+          "pressure_l2": 1982.039528801757,
+          "rho_l2": 0.0008000000000000003,
+          "step_count": 10.0,
+          "time_s": 9.009999999999998e-08,
+          "velocity_l2": 0.0,
+          "voltage_V": 959.808337708175
+        },
+        "restarted": {
+          "B_l2": 0.0,
+          "circuit_total_energy_J": 0.5000000000000003,
+          "current_A": 884.7819661566681,
+          "max_Te_eV": 300.0,
+          "max_density_kg_m3": 0.0001,
+          "max_pressure_Pa": 247.75494110021958,
+          "pressure_l2": 1982.039528801757,
+          "rho_l2": 0.0008000000000000003,
+          "step_count": 10.0,
+          "time_s": 9.009999999999998e-08,
+          "velocity_l2": 0.0,
+          "voltage_V": 959.808337708175
+        }
+      },
+      "run_metadata": {
+        "artifact_role": "scheduled_tier3_restart_reproducibility",
+        "backend": "python",
+        "config_sha256": "35463f4c4d60ead082fe8c6a883e503d5ffed6ad7cb3956d72bee876c4e2e52e",
+        "fixture": "minimal_cpu_python_checkpoint_restart",
+        "generated_by": "scripts/build_mhd_restart_reproducibility_evidence.py",
+        "grid_shape": [
+          4,
+          4,
+          4
+        ],
+        "input_result_sha256": "023fe0836d13a8fe8dba5a296021c0ab240d0d19bace4d795449fe3d3455863d",
+        "restart_step": 5,
+        "target_step": 10
+      },
+      "source": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+      "source_basis": {
+        "finite_volume_mhd_code_context": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+        "multi_code_verification_context": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md"
+      },
+      "source_line_basis": {
+        "finite_volume_mhd_code_context": "336-347",
+        "multi_code_verification_context": "1900-1955"
+      },
+      "source_lines": "336-347, 1900-1955",
+      "supports_high_fidelity_scientific_claims": false,
+      "supports_predictive_scientific_claims": false,
+      "supports_validation_tiers": [
+        3
+      ],
+      "validation_tier": 3,
+      "validity_notes": {
+        "authority_boundary": "Restart reproducibility is Tier-3 code verification, not Reference scientific authority or high-fidelity DPF validation.",
+        "claim_scope": "Supports checkpoint/restart reproducibility only for the supplied observables, config identity, restart marker, and tolerances. It does not validate the physics model or the observables against experiment."
+      },
+      "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+    }
+  },
+  "supports_high_fidelity_scientific_claims": false,
+  "supports_predictive_scientific_claims": false,
+  "supports_validation_tiers": [
+    3
+  ],
+  "validation_tier": 3,
+  "validity_notes": {
+    "claim_scope": "This packet is Tier-3 code numerical verification only. It does not validate DPF spatial observables, neutron outputs, or Reference scientific authority.",
+    "evidence_rule": "The packet passes only when all required evidence channels are attached, validated, and share this verification scope."
+  },
+  "verification_scope": "scheduled_tier3_cpu_mhd_numerical_2026_05_09"
+}

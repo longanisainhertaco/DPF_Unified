@@ -481,7 +481,11 @@ The specific interaction with dual-energy: the back-EMF `V_back = -I * dLp/dt` d
 
 **Mitigation**: Fix the back-EMF bug in BOTH solvers simultaneously (as part of Sprint 3 engine integration). This ensures cross-backend comparisons are meaningful. Then recalibrate fc/fm for both solvers against the Akel dataset.
 
-The fix itself is simple: remove `dLp_dt` from `R_star` in rlc_solver.py and let `back_emf = I * dLp_dt` in coupler.py carry it alone. This is ~5 LOC in rlc_solver.py.
+2026-05-11 update: the formulary/local-KR audit chose the other equivalent
+ownership path. `RLCSolver` keeps `dLp_dt` in `R_star`, and `CircuitCoupler`
+returns `back_emf=0.0` for the inductive term so `I*dLp/dt` is not counted
+twice. A future distinct motional-EMF model must use the separate `back_emf`
+channel.
 
 **Fallback**: If fixing the bug breaks both solvers' I(t) waveforms beyond recalibration, investigate whether the "double-counting" is actually compensating for a missing term in the circuit model (e.g., the motional back-EMF from radial compression velocity).
 

@@ -59,6 +59,27 @@ class MockSurrogate:
         return [{k: v.copy() for k, v in last.items()} for _ in range(n_steps)]
 
 
+class MockPlaceholderSurrogate:
+    """Mock non-predictive placeholder surrogate for status testing."""
+
+    def __init__(self):
+        self.history_length = 4
+        self.is_loaded = True
+        self.placeholder_loaded = True
+        self.real_model_loaded = False
+        self.source_backed_model_loaded = False
+        self.device = "cpu"
+        self.model_load_status = {
+            "loaded": True,
+            "placeholder_loaded": True,
+            "real_model_loaded": False,
+            "source_backed_model_loaded": False,
+            "validation_status": "not_validation_evidence",
+            "source_status": "source_packet_missing",
+            "placeholder_reason": "checkpoint_missing",
+        }
+
+
 class MockEnsemble:
     """Mock ensemble predictor for testing."""
 
@@ -1210,7 +1231,15 @@ class TestPresetsBackend:
         for name in get_preset_names():
             data = get_preset(name)
             config = SimulationConfig(**data)
-            assert config.fluid.backend in ("python", "athena", "athenak", "metal", "auto")
+            assert config.fluid.backend in (
+                "python",
+                "athena",
+                "athenak",
+                "metal",
+                "mlx",
+                "hybrid",
+                "auto",
+            )
 
 
 class TestConfigBackendSerialization:
@@ -1455,6 +1484,11 @@ def test_status_returns_correct_structure_when_no_model_loaded(ai_client):
     data = response.json()
     assert "torch_available" in data
     assert data["model_loaded"] is False
+    assert data["placeholder_loaded"] is False
+    assert data["real_model_loaded"] is False
+    assert data["source_backed_model_loaded"] is False
+    assert data["model_status"]["validation_status"] == "not_validation_evidence"
+    assert data["model_status"]["source_status"] == "source_packet_missing"
     assert data["device"] == "none"
     assert data["ensemble_size"] == 0
 
@@ -1466,7 +1500,31 @@ def test_status_returns_model_loaded_true_when_surrogate_set(ai_client_with_surr
     assert response.status_code == 200
     data = response.json()
     assert data["model_loaded"] is True
+    assert data["placeholder_loaded"] is False
+    assert data["real_model_loaded"] is True
+    assert data["source_backed_model_loaded"] is False
     assert data["device"] == "cpu"
+
+
+def test_status_keeps_placeholder_separate_from_loaded_model(ai_client):
+    """GET /api/ai/status does not count placeholder mode as a loaded model."""
+    from dpf.ai import realtime_server
+
+    original = realtime_server._surrogate
+    realtime_server._surrogate = MockPlaceholderSurrogate()
+    try:
+        response = ai_client.get("/api/ai/status")
+    finally:
+        realtime_server._surrogate = original
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model_loaded"] is False
+    assert data["placeholder_loaded"] is True
+    assert data["real_model_loaded"] is False
+    assert data["source_backed_model_loaded"] is False
+    assert data["model_status"]["placeholder_reason"] == "checkpoint_missing"
+    assert data["model_status"]["source_status"] == "source_packet_missing"
 
 
 def test_predict_returns_503_when_no_model_loaded(ai_client, ai_sample_history):

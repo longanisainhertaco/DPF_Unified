@@ -1,0 +1,1007 @@
+{
+  "accepted_for_validation_count": 0,
+  "axis_context_item_count": 3,
+  "axis_context_items": [
+    {
+      "accepted_for_validation": false,
+      "axis_calibration_candidate": {
+        "x": {
+          "calibration_status": "draft_approximate_raster_frame",
+          "data_range": [
+            10.0,
+            50.0
+          ],
+          "pixel_range_approx": [
+            179.0,
+            774.0
+          ],
+          "quantity": "z_axis",
+          "unit": "mm",
+          "visible_tick_labels": [
+            10,
+            20,
+            30,
+            40,
+            50
+          ]
+        },
+        "y": {
+          "calibration_status": "draft_approximate_raster_frame",
+          "data_range": [
+            5e+17,
+            5e+18
+          ],
+          "pixel_range_approx": [
+            459.0,
+            14.0
+          ],
+          "quantity": "linear_density",
+          "unit": "per_mm_context_from_source_lines_208_218",
+          "visible_tick_labels": [
+            "5,00E+017",
+            "1,00E+018",
+            "1,50E+018",
+            "2,00E+018",
+            "2,50E+018",
+            "3,00E+018",
+            "3,50E+018",
+            "4,00E+018",
+            "4,50E+018",
+            "5,00E+018"
+          ]
+        }
+      },
+      "current_gate_status": "context_only_axis_scaffold_no_digitized_series_or_residual",
+      "extraction_status": "axis_calibration_draft_no_series",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-6.png",
+      "figure_or_crop_sha256": "28f54e7976045c2068742fb003a6aa149f22f44d3174937cc1ee2da52664afde",
+      "figure_or_table_id": "Fig. 6",
+      "packet_index": 0,
+      "packet_kind": "axis_calibration_context_not_digitization_packet",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-axis-calibration-draft-packets.json",
+      "packet_sha256": "439c50cc6bd1cddd41a14bed3ec82c9dad3e7762fd7422ebf397b4f092c8dce6",
+      "page": 3,
+      "source_lines": "200-222",
+      "source_path": "KnowledgeReference/cikhardtova-plazma-indd-9dfed6c0.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/cikhardtova2015.pdf",
+      "source_pdf_sha256": "9dfed6c03000668c5a4926b539b8dc50824fbf8785a069d8a88b319e915fc7f9",
+      "source_sha256": "5246398a5ea85ef24233a19ca925a12dd6c79b37128e0a06178e411e49100ad0",
+      "task_id": "a14_cikhardtova_2015_fig6_axis_calibration_draft",
+      "validation_scope": "a14_cikhardtova_2015_linear_density_motion",
+      "visible_series": [
+        {
+          "name": "-5 ns",
+          "style": "black dotted"
+        },
+        {
+          "name": "+25 ns",
+          "style": "black dashed"
+        },
+        {
+          "name": "+55 ns",
+          "style": "black solid"
+        },
+        {
+          "name": "+85 ns",
+          "style": "black dash-dot"
+        },
+        {
+          "name": "+95 ns",
+          "style": "black long-dashed"
+        }
+      ]
+    },
+    {
+      "accepted_for_validation": false,
+      "axis_calibration_candidate": {
+        "x": {
+          "calibration_status": "draft_visible_tick_range",
+          "data_range": [
+            1.0,
+            2.4
+          ],
+          "pixel_range_approx": [
+            218.0,
+            808.0
+          ],
+          "quantity": "pmt_voltage",
+          "unit": "kV",
+          "visible_tick_labels": [
+            1.0,
+            1.2,
+            1.4,
+            1.6,
+            1.8,
+            2.0,
+            2.2,
+            2.4
+          ]
+        },
+        "y": {
+          "calibration_status": "draft_visible_tick_range",
+          "data_range": [
+            1.0,
+            5.0
+          ],
+          "pixel_range_approx": [
+            539.0,
+            102.0
+          ],
+          "quantity": "time_response",
+          "unit": "ns",
+          "visible_tick_labels": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      },
+      "current_gate_status": "context_only_axis_scaffold_no_digitized_series_or_residual",
+      "extraction_status": "axis_calibration_draft_no_series",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-03-fig-2.png",
+      "figure_or_crop_sha256": "a88d8b1b963574cc2d9d5c03c02b82cc9bffaa823c57ab4f9ed6451ded8dbee2",
+      "figure_or_table_id": "Fig. 2",
+      "packet_index": 1,
+      "packet_kind": "axis_calibration_context_not_digitization_packet",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-axis-calibration-draft-packets.json",
+      "packet_sha256": "439c50cc6bd1cddd41a14bed3ec82c9dad3e7762fd7422ebf397b4f092c8dce6",
+      "page": 3,
+      "source_lines": "172-209",
+      "source_path": "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/klir2011.pdf",
+      "source_pdf_sha256": "214fbdae9607094628e9cfcf55157b9d59ad72ab9de3d04a3011cb63b1972747",
+      "source_sha256": "bcc56597489a23020b325d0bab1ee10b5db5cd2a581951db0c097b7e565cf196",
+      "task_id": "a14_klir_2011_fig2_axis_calibration_draft",
+      "validation_scope": "a14_klir_2011_tof_detector_response",
+      "visible_series": [
+        {
+          "name": "FWHM",
+          "style": "black curve with error bars"
+        },
+        {
+          "name": "Rise time",
+          "style": "black curve with error bars"
+        }
+      ]
+    },
+    {
+      "accepted_for_validation": false,
+      "axis_calibration_candidate": {
+        "x": {
+          "calibration_status": "draft_approximate_raster_frame",
+          "data_range": [
+            0.0,
+            0.14
+          ],
+          "pixel_range_approx": [
+            506.0,
+            1408.0
+          ],
+          "quantity": "zr_to_be_detector_count_ratio",
+          "unit": "dimensionless",
+          "visible_tick_labels": [
+            0.0,
+            0.02,
+            0.04,
+            0.06,
+            0.08,
+            0.1,
+            0.12,
+            0.14
+          ]
+        },
+        "y": {
+          "calibration_status": "draft_approximate_raster_frame",
+          "data_range": [
+            2.2,
+            3.6
+          ],
+          "pixel_range_approx": [
+            740.0,
+            15.0
+          ],
+          "quantity": "effective_neutron_energy",
+          "unit": "MeV",
+          "visible_tick_labels": [
+            2.2,
+            2.4,
+            2.6,
+            2.8,
+            3.0,
+            3.2,
+            3.4,
+            3.6
+          ]
+        }
+      },
+      "current_gate_status": "context_only_axis_scaffold_no_digitized_series_or_residual",
+      "extraction_status": "axis_calibration_draft_no_series",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-06-fig-5.png",
+      "figure_or_crop_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+      "figure_or_table_id": "Fig. 5",
+      "packet_index": 2,
+      "packet_kind": "axis_calibration_context_not_digitization_packet",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-axis-calibration-draft-packets.json",
+      "packet_sha256": "439c50cc6bd1cddd41a14bed3ec82c9dad3e7762fd7422ebf397b4f092c8dce6",
+      "page": 6,
+      "source_lines": "546-616",
+      "source_path": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf",
+      "source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+      "task_id": "a14_springham_2021_fig5_axis_calibration_draft",
+      "validation_scope": "a14_springham_2021_zrbe_activation_response",
+      "visible_series": [
+        {
+          "name": "mono-energetic neutrons",
+          "style": "blue open-circle curve"
+        },
+        {
+          "name": "Gaussian peak neutrons (200 keV FWHM)",
+          "style": "black curve"
+        },
+        {
+          "name": "Gaussian peak neutrons (400 keV FWHM)",
+          "style": "red curve"
+        }
+      ]
+    }
+  ],
+  "context_artifacts": [
+    {
+      "artifact_role": "crop_boundary_review",
+      "path": "docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json",
+      "sha256": "fa0cbc3f4c5657390436d9edb22505821cf470b1d026581552d8825441009c84"
+    },
+    {
+      "artifact_role": "target_extraction_render_and_crop_inventory",
+      "path": "docs/TARGET_EXTRACTION_DIGITIZATION_2026_05_11.json",
+      "sha256": "8cf00029b3d5c9bcff04d24d29e8b69039f9149144b9bf4136a7f6b205c52444"
+    },
+    {
+      "artifact_role": "remaining_extraction_backlog",
+      "path": "docs/A14_REMAINING_EXTRACTION_BACKLOG_2026_05_11.md",
+      "sha256": "0fcccb0eff26a0a4eed9d4841b9bf3fe9e050b25da1443cb1c8e107093ded636"
+    },
+    {
+      "artifact_role": "table_draft_report",
+      "path": "docs/A14_TABLE_EXTRACTION_DRAFTS_2026_05_11.md",
+      "sha256": "bb3025125c40620978199776627d3f36b905132e9883e860e29d34ff7f61f160"
+    },
+    {
+      "artifact_role": "axis_calibration_draft_report",
+      "path": "docs/A14_AXIS_CALIBRATION_DRAFTS_2026_05_11.md",
+      "sha256": "09877621ec8633bbf30093f5453d55e847f618c9f3f4b487423f33d2ba5cdfd7"
+    },
+    {
+      "artifact_role": "cikhardtova_fig6_extraction_blocker",
+      "path": "docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.md",
+      "sha256": "36731b029ad439d8c57d2ef101cc6f556ed3beda2262b99a04333eb2e96a8c6c"
+    },
+    {
+      "artifact_role": "springham_fig5_digitization_report",
+      "path": "docs/A14_SPRINGHAM_FIG5_DIGITIZATION_DRAFT_2026_05_11.md",
+      "sha256": "2214e90584933300d5f57c45fcc08f704383efe4358ced39b9ccd74f5f809e96"
+    }
+  ],
+  "generated_utc": "2026-05-12T16:01:25.683550+00:00",
+  "model_role": "a14_independent_review_handoff",
+  "review_checklist_required": [
+    "source_hash_matches_current_artifact",
+    "pdf_hash_matches_current_artifact",
+    "figure_or_crop_hash_matches_current_artifact",
+    "source_lines_support_item_identity",
+    "axis_or_table_structure_checked",
+    "series_or_table_values_checked_against_source",
+    "units_checked",
+    "uncertainty_or_error_bar_handling_checked",
+    "residual_or_table_transcription_quality_checked",
+    "no_hidden_or_occluded_values_synthesized",
+    "review_status_is_accepted_or_explicitly_rejected"
+  ],
+  "review_fields_required": [
+    "reviewer_identity_or_role",
+    "review_date_utc",
+    "reviewed_packet_path",
+    "reviewed_packet_sha256",
+    "reviewed_source_path",
+    "reviewed_source_sha256",
+    "reviewed_source_pdf_path",
+    "reviewed_source_pdf_sha256",
+    "reviewed_figure_image_sha256",
+    "reviewed_crop_image_sha256",
+    "review_status",
+    "independent_review_count",
+    "reviewer_notes"
+  ],
+  "review_item_count": 9,
+  "review_items": [
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-07-table-1.png",
+      "figure_or_crop_sha256": "3976e260331c75ee90f3ac1689ca948bc7d14f5ca5d9ee20888e826e510a8db7",
+      "figure_or_table_id": "Table 1",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 0,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "ab3bdd405f1c57a297c93a3497a1c883bd13bb42220340e73840bd17fb16ee90",
+      "page": 7,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "3976e260331c75ee90f3ac1689ca948bc7d14f5ca5d9ee20888e826e510a8db7",
+          "reviewed_packet_sha256": "ab3bdd405f1c57a297c93a3497a1c883bd13bb42220340e73840bd17fb16ee90",
+          "reviewed_source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+          "reviewed_source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+          "reviewer": "",
+          "task_id": "a14_springham_2021_table1_shot_counts",
+          "validation_scope": "nx3_springham_2021_zrbe_activation"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "709-724",
+      "source_path": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf",
+      "source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+      "table_row_count": 10,
+      "task_id": "a14_springham_2021_table1_shot_counts",
+      "validation_scope": "nx3_springham_2021_zrbe_activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 3,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-09-table-2.png",
+      "figure_or_crop_sha256": "ffd4664d5a1759d9a8a11d1e32242bc6897d77a22fa1cbf815ce8d7c3bd51f1f",
+      "figure_or_table_id": "Table 2",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 1,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "e010c937640090ce481dc73ed4164517c5ef3f20ec151f077ca572c1e33c8fab",
+      "page": 9,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "ffd4664d5a1759d9a8a11d1e32242bc6897d77a22fa1cbf815ce8d7c3bd51f1f",
+          "reviewed_packet_sha256": "e010c937640090ce481dc73ed4164517c5ef3f20ec151f077ca572c1e33c8fab",
+          "reviewed_source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+          "reviewed_source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+          "reviewer": "",
+          "task_id": "a14_springham_2021_table2_four_mbar_activation_summary",
+          "validation_scope": "nx3_springham_2021_zrbe_activation"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "1047-1054",
+      "source_path": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf",
+      "source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+      "table_row_count": 4,
+      "task_id": "a14_springham_2021_table2_four_mbar_activation_summary",
+      "validation_scope": "nx3_springham_2021_zrbe_activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 1,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-04-table-i.png",
+      "figure_or_crop_sha256": "9b6969ddb3b617f859af35fb714e53f4883d2e5b6519c1b340b93b2b1082211b",
+      "figure_or_table_id": "Table I",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 2,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "fef3ec1837301da57edc6f310c6d8d867c05847d58e1939c3663bb63a79d2268",
+      "page": 4,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "9b6969ddb3b617f859af35fb714e53f4883d2e5b6519c1b340b93b2b1082211b",
+          "reviewed_packet_sha256": "fef3ec1837301da57edc6f310c6d8d867c05847d58e1939c3663bb63a79d2268",
+          "reviewed_source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+          "reviewed_source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+          "reviewer": "",
+          "task_id": "a14_catenacci_2020_table_i_shadow_bar_scale_factors",
+          "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "448-456",
+      "source_path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/catenacci2020.pdf",
+      "source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+      "source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+      "table_row_count": 4,
+      "task_id": "a14_catenacci_2020_table_i_shadow_bar_scale_factors",
+      "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-04-table-ii.png",
+      "figure_or_crop_sha256": "9985eec86b0843f409262c26a803b15b88b8bfc90198e52243411be95b83dcce",
+      "figure_or_table_id": "Table II",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 3,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "398a1f6c8dc0300fd4480c2c9b3a32b70cd97e1f13218c008b1cddc0f4c40c0f",
+      "page": 4,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "9985eec86b0843f409262c26a803b15b88b8bfc90198e52243411be95b83dcce",
+          "reviewed_packet_sha256": "398a1f6c8dc0300fd4480c2c9b3a32b70cd97e1f13218c008b1cddc0f4c40c0f",
+          "reviewed_source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+          "reviewed_source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+          "reviewer": "",
+          "task_id": "a14_catenacci_2020_table_ii_detector_positions",
+          "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "481-489",
+      "source_path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/catenacci2020.pdf",
+      "source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+      "source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+      "table_row_count": 8,
+      "task_id": "a14_catenacci_2020_table_ii_detector_positions",
+      "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-05-table-iii.png",
+      "figure_or_crop_sha256": "e6f2d997c6299381ac2540ddd63e5c89899758a42e64bc0a426a7e15c74e2260",
+      "figure_or_table_id": "Table III",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 4,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "e22fdb038f8177bfd7910dde6d549b741b2d7c5d8e9af53346d79a523ac59ad7",
+      "page": 5,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "e6f2d997c6299381ac2540ddd63e5c89899758a42e64bc0a426a7e15c74e2260",
+          "reviewed_packet_sha256": "e22fdb038f8177bfd7910dde6d549b741b2d7c5d8e9af53346d79a523ac59ad7",
+          "reviewed_source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+          "reviewed_source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+          "reviewer": "",
+          "task_id": "a14_catenacci_2020_table_iii_peak_energy_yield",
+          "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "549-557",
+      "source_path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/catenacci2020.pdf",
+      "source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+      "source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+      "table_row_count": 4,
+      "task_id": "a14_catenacci_2020_table_iii_peak_energy_yield",
+      "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed",
+      "extraction_type": "table",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-07-table-iv.png",
+      "figure_or_crop_sha256": "8f4c62bb24695a880abe16756123edd7899bd08c008e88787bea4b9871068d77",
+      "figure_or_table_id": "Table IV",
+      "overlay_max_residual_px": null,
+      "overlay_rms_residual_px": null,
+      "packet_bundle_sha256": "e72d746338bc5fa92bb473e3f457df90ea88264bbcc586c615871b0b309bf97d",
+      "packet_index": 5,
+      "packet_kind": "table_draft_in_bundle",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+      "packet_sha256": "dde0e0de214d25e6e11a1276f9253047f1028792bd149c176fa897836884e0ed",
+      "page": 7,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_crop_image_sha256": "8f4c62bb24695a880abe16756123edd7899bd08c008e88787bea4b9871068d77",
+          "reviewed_packet_sha256": "dde0e0de214d25e6e11a1276f9253047f1028792bd149c176fa897836884e0ed",
+          "reviewed_source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+          "reviewed_source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+          "reviewer": "",
+          "task_id": "a14_catenacci_2020_table_iv_max_energy_comparison",
+          "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "668-676",
+      "source_path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/catenacci2020.pdf",
+      "source_pdf_sha256": "b78f115458d7d25960d9f6596c7af0449c6809b69516372f54a61f1006c86a47",
+      "source_sha256": "5c4cccc23a843a1f6353d820132c076aefb6b238f2151f004fa5a9be7c4ab9b0",
+      "table_row_count": 4,
+      "task_id": "a14_catenacci_2020_table_iv_max_energy_comparison",
+      "validation_scope": "nnss_catenacci_2020_neutron_time_energy_tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 1,
+      "extraction_status": "draft_unreviewed_residual_measured",
+      "extraction_type": "figure",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-06-fig-5.png",
+      "figure_or_crop_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+      "figure_or_table_id": "Fig. 5",
+      "overlay_max_residual_px": 0.0031865149536866814,
+      "overlay_rms_residual_px": 0.002049609754498783,
+      "packet_bundle_sha256": "8f31280e86003b71992601100b2d5b1fdfbe3a0a386d1da511002a5ea0bb61f7",
+      "packet_index": null,
+      "packet_kind": "figure_digitization_draft",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json",
+      "packet_sha256": "8f31280e86003b71992601100b2d5b1fdfbe3a0a386d1da511002a5ea0bb61f7",
+      "page": 6,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_figure_image_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+          "reviewed_packet_sha256": "8f31280e86003b71992601100b2d5b1fdfbe3a0a386d1da511002a5ea0bb61f7",
+          "reviewed_source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+          "reviewed_source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+          "reviewer": "",
+          "task_id": "a14_springham_2021_fig5_monoenergetic_response_draft",
+          "validation_scope": "a14_springham_2021_zrbe_activation_response"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "546-616",
+      "source_path": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf",
+      "source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+      "table_row_count": 0,
+      "task_id": "a14_springham_2021_fig5_monoenergetic_response_draft",
+      "validation_scope": "a14_springham_2021_zrbe_activation_response"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed_residual_measured",
+      "extraction_type": "figure",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-06-fig-5.png",
+      "figure_or_crop_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+      "figure_or_table_id": "Fig. 5",
+      "overlay_max_residual_px": 0.0029145045435868006,
+      "overlay_rms_residual_px": 0.0018671406448293362,
+      "packet_bundle_sha256": "9d9cc3ef0c272026bef3ff3f7fec220c2131c98df9e80698acacc33ed542c5ca",
+      "packet_index": null,
+      "packet_kind": "figure_digitization_draft",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-gaussian-curves-draft-packet.json",
+      "packet_sha256": "9d9cc3ef0c272026bef3ff3f7fec220c2131c98df9e80698acacc33ed542c5ca",
+      "page": 6,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_figure_image_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+          "reviewed_packet_sha256": "9d9cc3ef0c272026bef3ff3f7fec220c2131c98df9e80698acacc33ed542c5ca",
+          "reviewed_source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+          "reviewed_source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+          "reviewer": "",
+          "task_id": "a14_springham_2021_fig5_gaussian_curves_draft",
+          "validation_scope": "a14_springham_2021_zrbe_activation_response"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "546-616",
+      "source_path": "KnowledgeReference/nuclear-inst-and-methods-in-physics-research-a-988-2021-164830-bc8edab3.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf",
+      "source_pdf_sha256": "bc8edab30c159ab76609cce7e1505a0d615f99108cd959f0e06bb4ce29dcc33f",
+      "source_sha256": "899ce065b1fffbefb230c2babc76fc162edd964f0a06154041cae96636c1eb29",
+      "table_row_count": 0,
+      "task_id": "a14_springham_2021_fig5_gaussian_curves_draft",
+      "validation_scope": "a14_springham_2021_zrbe_activation_response"
+    },
+    {
+      "accepted_for_validation": false,
+      "current_gate_missing_or_failed_checks": [
+        "independent_review_missing",
+        "review_status_not_accepted"
+      ],
+      "current_gate_passed": false,
+      "digitized_series_count": 2,
+      "extraction_status": "draft_unreviewed_residual_measured",
+      "extraction_type": "figure",
+      "figure_or_crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-03-fig-2.png",
+      "figure_or_crop_sha256": "a88d8b1b963574cc2d9d5c03c02b82cc9bffaa823c57ab4f9ed6451ded8dbee2",
+      "figure_or_table_id": "Fig. 2",
+      "overlay_max_residual_px": 0.571428571737872,
+      "overlay_rms_residual_px": 0.2766416685859599,
+      "packet_bundle_sha256": "399047a31638d91be271491ea0e6a3e48f274ad92ced336f925a4ebc6d65b5aa",
+      "packet_index": null,
+      "packet_kind": "figure_digitization_draft",
+      "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-klir-fig2-timing-response-draft-packet.json",
+      "packet_sha256": "399047a31638d91be271491ea0e6a3e48f274ad92ced336f925a4ebc6d65b5aa",
+      "page": 3,
+      "review_decision_template": {
+        "accepted_for_validation": false,
+        "independent_review_count": 0,
+        "required_checklist": [
+          "source_hash_matches_current_artifact",
+          "pdf_hash_matches_current_artifact",
+          "figure_or_crop_hash_matches_current_artifact",
+          "source_lines_support_item_identity",
+          "axis_or_table_structure_checked",
+          "series_or_table_values_checked_against_source",
+          "units_checked",
+          "uncertainty_or_error_bar_handling_checked",
+          "residual_or_table_transcription_quality_checked",
+          "no_hidden_or_occluded_values_synthesized",
+          "review_status_is_accepted_or_explicitly_rejected"
+        ],
+        "required_fields": [
+          "reviewer_identity_or_role",
+          "review_date_utc",
+          "reviewed_packet_path",
+          "reviewed_packet_sha256",
+          "reviewed_source_path",
+          "reviewed_source_sha256",
+          "reviewed_source_pdf_path",
+          "reviewed_source_pdf_sha256",
+          "reviewed_figure_image_sha256",
+          "reviewed_crop_image_sha256",
+          "review_status",
+          "independent_review_count",
+          "reviewer_notes"
+        ],
+        "review_metadata": {
+          "decision": "accepted_or_rejected",
+          "review_date": "",
+          "review_notes": "",
+          "reviewed_figure_image_sha256": "a88d8b1b963574cc2d9d5c03c02b82cc9bffaa823c57ab4f9ed6451ded8dbee2",
+          "reviewed_packet_sha256": "399047a31638d91be271491ea0e6a3e48f274ad92ced336f925a4ebc6d65b5aa",
+          "reviewed_source_pdf_sha256": "214fbdae9607094628e9cfcf55157b9d59ad72ab9de3d04a3011cb63b1972747",
+          "reviewed_source_sha256": "bcc56597489a23020b325d0bab1ee10b5db5cd2a581951db0c097b7e565cf196",
+          "reviewer": "",
+          "task_id": "a14_klir_2011_fig2_timing_response_draft",
+          "validation_scope": "a14_klir_2011_tof_detector_response"
+        },
+        "review_status": "draft_unreviewed"
+      },
+      "source_lines": "172-209",
+      "source_path": "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.md",
+      "source_pdf_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/klir2011.pdf",
+      "source_pdf_sha256": "214fbdae9607094628e9cfcf55157b9d59ad72ab9de3d04a3011cb63b1972747",
+      "source_sha256": "bcc56597489a23020b325d0bab1ee10b5db5cd2a581951db0c097b7e565cf196",
+      "table_row_count": 0,
+      "task_id": "a14_klir_2011_fig2_timing_response_draft",
+      "validation_scope": "a14_klir_2011_tof_detector_response"
+    }
+  ],
+  "source_scope_guardrails": [
+    "Use only the listed local KnowledgeReference and hashed local PDF artifacts.",
+    "Do not accept packets if packet/source/PDF/crop hashes drift.",
+    "Do not treat axis scaffolds as digitized data.",
+    "Do not synthesize occluded curve segments or missing table entries.",
+    "For table drafts, bind review to the per-table item hash and crop hash.",
+    "Record rejected or correction-needed review outcomes explicitly."
+  ],
+  "status_boundary": "This handoff is a review manifest only. It does not promote draft tables, axis scaffolds, or figure digitization packets to accepted validation evidence.",
+  "validation_gate": "digitization_verification_evidence"
+}

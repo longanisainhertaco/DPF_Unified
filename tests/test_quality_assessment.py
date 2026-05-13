@@ -61,6 +61,45 @@ def _kr_neutron_yield_evidence(
     }
 
 
+def _kr_neutron_detector_response_evidence(
+    scope: str = "KnowledgeReference/neutron.md",
+) -> dict[str, object]:
+    return {
+        "passed": True,
+        "validated_features": {"detector_response": True},
+        "diagnostics": {"activation_response": True},
+        "validation_scope": scope,
+        "source": (
+            "KnowledgeReference/neutron-generation-dynamics-inside-a-"
+            "ma-class-dense-plasma-focus-z-pinch-5.md"
+        ),
+        "source_lines": "132-168,449-509,595-607",
+        "validation_tier": 5,
+        "model_role": "simulation_to_kr_detector_response_audit",
+    }
+
+
+def _kr_neutron_uncertainty_evidence(
+    scope: str = "KnowledgeReference/neutron.md",
+) -> dict[str, object]:
+    return {
+        "passed": True,
+        "validated_features": {"uncertainty": True},
+        "validation_scope": scope,
+        "source": (
+            "KnowledgeReference/neutron-generation-dynamics-inside-a-"
+            "ma-class-dense-plasma-focus-z-pinch-5.md"
+        ),
+        "source_lines": "565-604",
+        "validation_tier": 5,
+        "model_role": "simulation_to_kr_neutron_uncertainty_comparison",
+        "source_uncertainty_values": {
+            "yield_relative_sigma": 0.10,
+            "arrival_time_sigma_ns": 1.0,
+        },
+    }
+
+
 class TestQualityAssessment:
     def _good_result(self) -> dict:
         return {
@@ -167,8 +206,8 @@ class TestQualityAssessment:
 
         assert gaps["source_authority_data"].status == "partial"
         assert "registered devices" in gaps["source_authority_data"].blocker
-        assert gaps["kr_source_review"].status == "supported"
-        assert "DPF-relevant KnowledgeReference markdown review is closed" in (
+        assert gaps["kr_source_review"].status == "partial"
+        assert "DPF-relevant KnowledgeReference markdown files still need" in (
             gaps["kr_source_review"].blocker
         )
         assert gaps["kr_target_coverage"].status == "partial"
@@ -393,12 +432,13 @@ class TestQualityAssessment:
             gaps["neutron_validation"].blocker
         )
 
-        r["neutron_detector_response_validation"] = {
-            "passed": True,
-            "source": "KnowledgeReference/neutron.md",
-            "validation_tier": 5,
-            "model_role": "simulation_to_kr_detector_response_audit",
-        }
+        r["neutron_detector_response_validation"] = (
+            _kr_neutron_detector_response_evidence(scope)
+        )
+        gaps = {gap.area: gap for gap in scientific_accuracy_gap_report(r)}
+        assert gaps["neutron_validation"].status == "partial"
+
+        r["neutron_uncertainty_validation"] = _kr_neutron_uncertainty_evidence(scope)
         gaps = {gap.area: gap for gap in scientific_accuracy_gap_report(r)}
         assert gaps["neutron_validation"].status == "supported"
 
@@ -458,6 +498,10 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence(scope)
+            ),
+            "neutron_uncertainty_validation": _kr_neutron_uncertainty_evidence(scope),
         })
 
         readiness = high_fidelity_readiness_report(r)
@@ -557,17 +601,16 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
-            "neutron_detector_response_validation": {
-                "passed": True,
-                "validation_scope": "synthetic_complete_high_fidelity_scope",
-                "source": (
-                    "KnowledgeReference/neutron-generation-dynamics-inside-a-"
-                    "ma-class-dense-plasma-focus-z-pinch-5.md"
-                ),
-                "source_lines": "449-509",
-                "validation_tier": 5,
-                "model_role": "simulation_to_kr_detector_response_audit",
-            },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence(
+                    "synthetic_complete_high_fidelity_scope"
+                )
+            ),
+            "neutron_uncertainty_validation": (
+                _kr_neutron_uncertainty_evidence(
+                    "synthetic_complete_high_fidelity_scope"
+                )
+            ),
             "field_coupling_validation": field_coupling_evidence_from_result({
                 "field_coupling_component_validations": {
                     component: field_coupling_component_evidence(
@@ -581,6 +624,7 @@ class TestQualityAssessment:
                         "poynting_power_balance",
                         "circuit_energy_balance",
                         "handoff_transition_metadata",
+                        "coupling_interval_authority",
                         "kr_experimental_comparison",
                     )
                 },
@@ -610,6 +654,9 @@ class TestQualityAssessment:
                     component: uncertainty_component_evidence(
                         component,
                         validation_scope="synthetic_complete_high_fidelity_scope",
+                        source_uncertainty_values={
+                            f"{component}_relative_sigma": 0.05,
+                        },
                     )
                     for component in (
                         "experimental_measurement_uncertainty",
@@ -623,6 +670,14 @@ class TestQualityAssessment:
                     )
                 },
             }),
+            "kr_corpus_review_status": {
+                "model_role": "kr_corpus_review_status",
+                "reviewed_dpf_relevant_md_files": 1,
+                "unreviewed_dpf_relevant_md_files": [],
+                "corpus_counts": {
+                    "dpf_relevant_md_files": 1,
+                },
+            },
             "kr_validation_target_coverage": {
                 "passed": True,
                 "model_role": "kr_validation_target_coverage_report",
@@ -660,7 +715,9 @@ class TestQualityAssessment:
         gaps = {gap.area: gap for gap in scientific_accuracy_gap_report(r)}
 
         assert predictive_readiness_report(r).ready is True
-        assert gaps["same_scope_high_fidelity_claim"].status == "supported"
+        assert gaps["same_scope_high_fidelity_claim"].status == "supported", (
+            gaps["same_scope_high_fidelity_claim"].blocker
+        )
         assert readiness.ready is True
         assert readiness.status == "high_fidelity_ready"
         assert readiness.remaining_areas == []
@@ -739,16 +796,12 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
-            "neutron_detector_response_validation": {
-                "passed": True,
-                "validation_scope": target_scope,
-                "source": (
-                    "KnowledgeReference/neutron-generation-dynamics-inside-a-"
-                    "ma-class-dense-plasma-focus-z-pinch-5.md"
-                ),
-                "validation_tier": 5,
-                "model_role": "simulation_to_kr_detector_response_audit",
-            },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence(target_scope)
+            ),
+            "neutron_uncertainty_validation": (
+                _kr_neutron_uncertainty_evidence(target_scope)
+            ),
             "field_coupling_validation": field_coupling_evidence_from_result({
                 "field_coupling_component_validations": {
                     component: field_coupling_component_evidence(
@@ -762,6 +815,7 @@ class TestQualityAssessment:
                         "poynting_power_balance",
                         "circuit_energy_balance",
                         "handoff_transition_metadata",
+                        "coupling_interval_authority",
                         "kr_experimental_comparison",
                     )
                 },
@@ -791,6 +845,9 @@ class TestQualityAssessment:
                     component: uncertainty_component_evidence(
                         component,
                         validation_scope=uq_scope,
+                        source_uncertainty_values={
+                            f"{component}_relative_sigma": 0.05,
+                        },
                     )
                     for component in (
                         "experimental_measurement_uncertainty",
@@ -873,6 +930,10 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence(scope)
+            ),
+            "neutron_uncertainty_validation": _kr_neutron_uncertainty_evidence(scope),
         })
         readiness = predictive_readiness_report(r)
         assert readiness.ready is True
@@ -935,6 +996,12 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence("scope_neutron")
+            ),
+            "neutron_uncertainty_validation": (
+                _kr_neutron_uncertainty_evidence("scope_neutron")
+            ),
         })
 
         readiness = predictive_readiness_report(r)
@@ -1067,6 +1134,10 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence()
+            ),
+            "neutron_uncertainty_validation": _kr_neutron_uncertainty_evidence(),
         }
         tiers = {t.level: t for t in validation_tier_report(r)}
         assert tiers[1].status == "supported"
@@ -1442,6 +1513,13 @@ class TestQualityAssessment:
 
         r["neutron_yield_validation"] = _kr_neutron_yield_evidence()
         tiers = {t.level: t for t in validation_tier_report(r)}
+        assert tiers[5].status == "decomposed_estimate"
+
+        r["neutron_detector_response_validation"] = (
+            _kr_neutron_detector_response_evidence()
+        )
+        r["neutron_uncertainty_validation"] = _kr_neutron_uncertainty_evidence()
+        tiers = {t.level: t for t in validation_tier_report(r)}
         assert tiers[5].status == "supported"
 
     def test_neutron_validation_requires_same_scope_closure(self):
@@ -1506,12 +1584,74 @@ class TestQualityAssessment:
                 "validation_tier": 5,
                 "model_role": "simulation_to_kr_target_comparison",
             },
+            "neutron_detector_response_validation": (
+                _kr_neutron_detector_response_evidence(scope)
+            ),
+            "neutron_uncertainty_validation": _kr_neutron_uncertainty_evidence(scope),
         }
 
         closure = neutron_validation_scope_closure_report(r)
         assert closure["passed"] is True
         assert closure["closed_scopes"] == [scope]
         assert closure["scopes"][0]["missing_features"] == []
+
+    def test_neutron_scope_closure_requires_detector_response_and_uncertainty(self):
+        scope = "mjolnir_neutron_timing_2025_goyon"
+        r = {
+            "neutron_yield_validation": _kr_neutron_yield_evidence(scope),
+            "neutron_mechanism_timing_validation": {
+                "passed": True,
+                "mechanisms": {"thermonuclear": True, "beam_target": True},
+                "validation_scope": scope,
+                "source": "KnowledgeReference/neutron.md",
+                "validation_tier": 5,
+                "model_role": "simulation_to_kr_target_comparison",
+            },
+            "neutron_spectrum_validation": {
+                "passed": True,
+                "validated_features": {"spectrum": True},
+                "validation_scope": scope,
+                "source": "KnowledgeReference/neutron.md",
+                "validation_tier": 5,
+                "model_role": "simulation_to_kr_target_comparison",
+            },
+            "neutron_anisotropy_validation": {
+                "passed": True,
+                "validated_features": {"anisotropy": True},
+                "validation_scope": scope,
+                "source": "KnowledgeReference/neutron.md",
+                "validation_tier": 5,
+                "model_role": "simulation_to_kr_target_comparison",
+            },
+        }
+
+        closure = neutron_validation_scope_closure_report(r)
+        assert closure["passed"] is False
+        assert closure["closed_scopes"] == []
+        assert set(closure["scopes"][0]["missing_features"]) == {
+            "detector_response",
+            "uncertainty",
+        }
+        tiers = {t.level: t for t in validation_tier_report(r)}
+        assert tiers[5].status == "decomposed_estimate"
+
+        r["neutron_detector_response_validation"] = (
+            _kr_neutron_detector_response_evidence(scope)
+        )
+        bad_uncertainty = _kr_neutron_uncertainty_evidence(scope)
+        bad_uncertainty.pop("source_uncertainty_values")
+        r["neutron_uncertainty_validation"] = bad_uncertainty
+        closure = neutron_validation_scope_closure_report(r)
+        assert closure["passed"] is False
+        assert closure["scopes"][0]["missing_features"] == ["uncertainty"]
+        uncertainty_component = [
+            component for component in closure["scopes"][0]["components"]
+            if component["feature"] == "uncertainty"
+        ][0]
+        assert uncertainty_component["source_uncertainty_values_passed"] is False
+
+        r["neutron_uncertainty_validation"] = _kr_neutron_uncertainty_evidence(scope)
+        assert neutron_validation_scope_closure_report(r)["passed"] is True
 
     def test_combined_spatial_evidence_requires_consistent_scope(self):
         density = {

@@ -90,7 +90,8 @@ def _mc_limit(a: mx.array, b: mx.array) -> mx.array:
         mc(a, b) = sign(a) * min(2|a|, 2|b|, |a+b|/2)   if sign(a) == sign(b)
                  = 0                                       otherwise
 
-    This is the standard "minmod of three" form (LeVeque 2002, §6.10).
+    This is the standard "minmod of three" form (LeVeque 2002, sec. 6.10;
+    KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md).
 
     Args:
         a: Left slope.

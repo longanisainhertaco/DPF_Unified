@@ -31,14 +31,14 @@ def test_kr_corpus_review_status_remains_open_until_validation_coverage_closed()
     assert status["model_role"] == "kr_corpus_review_status"
     assert status["coded_target_count"] > 0
     assert status["unique_coded_target_source_count"] > 0
-    assert status["reviewed_dpf_named_md_files"] == (
+    assert status["reviewed_dpf_named_md_files"] < (
         status["corpus_counts"]["dpf_named_md_files"]
     )
-    assert status["unreviewed_dpf_named_md_files"] == []
-    assert status["reviewed_dpf_relevant_md_files"] == (
+    assert status["unreviewed_dpf_named_md_files"]
+    assert status["reviewed_dpf_relevant_md_files"] < (
         status["corpus_counts"]["dpf_relevant_md_files"]
     )
-    assert status["unreviewed_dpf_relevant_md_files"] == []
+    assert status["unreviewed_dpf_relevant_md_files"]
     assert status["target_coverage_passed"] is False
     assert status["same_scope_passed"] is False
     assert "phase_timing" in status["target_missing_or_partial_groups"]
@@ -46,9 +46,9 @@ def test_kr_corpus_review_status_remains_open_until_validation_coverage_closed()
     assert status["reviewed_by_explicit_decision_files"] >= 0
     assert "explicit_review_decisions" in status
     assert status["next_ratcheting_steps"][0].startswith(
-        "DPF-relevant KnowledgeReference markdown review is complete"
+        "Review each unreviewed DPF-relevant markdown source"
     )
-    assert "circuit_waveform" in status["next_ratcheting_steps"][1]
+    assert "typed KR targets" in status["next_ratcheting_steps"][1]
 
 
 def test_kr_corpus_review_decisions_track_duplicate_sources():
@@ -239,8 +239,9 @@ def test_kr_corpus_review_decisions_track_duplicate_sources():
 def test_unreviewed_dpf_source_triage_prioritizes_remaining_sources():
     triage = kr_unreviewed_dpf_source_triage(max_hits_per_category=1)
 
-    assert triage["passed"] is True
+    assert triage["passed"] is False
     assert triage["model_role"] == "kr_unreviewed_dpf_source_triage"
-    assert triage["unreviewed_dpf_relevant_md_files"] == 0
-    assert triage["records"] == []
-    assert all(count == 0 for count in triage["category_counts"].values())
+    assert triage["unreviewed_dpf_relevant_md_files"] > 0
+    assert triage["records"]
+    assert any(count > 0 for count in triage["category_counts"].values())
+    assert all(record["needs_human_review"] is True for record in triage["records"])

@@ -26,7 +26,24 @@ export default function App() {
   const simStatus = useSimulationStore((s) => s.status);
   const currentStep = useSimulationStore((s) => s.currentStep);
   const currentTime = useSimulationStore((s) => s.currentTime);
+  const lastInfo = useSimulationStore((s) => s.lastInfo);
   const setPresets = useConfigStore((s) => s.setPresets);
+
+  const resultLabel =
+    typeof lastInfo?.result_classification?.label === "string"
+      ? lastInfo.result_classification.label
+      : undefined;
+  const canSupportValidationClaims =
+    lastInfo?.result_classification?.can_support_validation_claims === true;
+  const blockerCount = lastInfo?.source_blockers?.length ?? 0;
+  const digitizationStatus =
+    typeof lastInfo?.digitization_status?.model_role === "string"
+      ? String(lastInfo.digitization_status.model_role)
+      : undefined;
+  const readinessScopeNote =
+    typeof lastInfo?.readiness_scope?.source_blocker_scope_note === "string"
+      ? String(lastInfo.readiness_scope.source_blocker_scope_note)
+      : undefined;
 
   // Listen for server status from Electron main process (IPC bridge)
   useEffect(() => {
@@ -84,11 +101,18 @@ export default function App() {
             athena: false,
             athenak: false,
             metal: false,
+            mlx: false,
+            hybrid: false,
           }
         }
         simStatus={simStatus}
         step={currentStep}
         time={currentTime}
+        resultLabel={resultLabel}
+        canSupportValidationClaims={canSupportValidationClaims}
+        blockerCount={blockerCount}
+        digitizationStatus={digitizationStatus}
+        readinessScopeNote={readinessScopeNote}
         coPilotOpen={coPilotOpen}
         onToggleCoPilot={() => setCoPilotOpen((prev) => !prev)}
       />

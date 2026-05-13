@@ -16,9 +16,11 @@ In the optically thin limit (R -> inf): lambda -> 1/R (free streaming)
 The FLD approximation is operator-split from the hydrodynamics and
 solved with explicit sub-cycling for stability.
 
-Reference:
-    Levermore & Pomraning, ApJ 248, 321 (1981)
-    Mihalas & Mihalas, "Foundations of Radiation Hydrodynamics" (1984)
+Source-status note:
+    This is a Kramers-style engineering radiation-transport scaffold. The local
+    NRL formulary provides bremsstrahlung optical-depth and inverse-bremsstrahlung
+    absorption rows, but the Rosseland/Kramers/FLD closure used here is not
+    source-closed by the current local KnowledgeReference corpus.
 """
 
 from __future__ import annotations
@@ -27,6 +29,43 @@ import numpy as np
 
 from dpf.constants import c as c_light
 from dpf.constants import k_B
+
+
+RADIATION_TRANSPORT_MODEL_ROLE = "engineering_fld_transport_scaffold"
+RADIATION_TRANSPORT_SOURCE_STATUS = "rosseland_kramers_fld_source_packet_missing"
+RADIATION_TRANSPORT_VALIDATION_STATUS = "not_validation_evidence"
+
+
+def radiation_transport_model_metadata() -> dict[str, object]:
+    """Return fail-closed source-status metadata for FLD transport."""
+    return {
+        "model_role": RADIATION_TRANSPORT_MODEL_ROLE,
+        "source_status": RADIATION_TRANSPORT_SOURCE_STATUS,
+        "validation_status": RADIATION_TRANSPORT_VALIDATION_STATUS,
+        "can_support_validation_claims": False,
+        "components": {
+            "flux_limiter": (
+                "Levermore-Pomraning limiter mechanics are implemented, but "
+                "the local source packet for using this FLD closure in DPF "
+                "validation is missing."
+            ),
+            "rosseland_opacity": (
+                "Kramers-style Rosseland opacity is an engineering closure; "
+                "it is not source-closed by the visible local NRL rows."
+            ),
+            "local_nrl_rows": (
+                "NRL Eq. 31 and Eq. 32 cover optical depth and inverse "
+                "bremsstrahlung absorption helpers, not this full Rosseland "
+                "mean/FLD validation claim."
+            ),
+        },
+        "validity_notes": {
+            "claim_limit": (
+                "Use for mechanics/prototype transport only until a local "
+                "Rosseland/Kramers/FLD source packet is reviewed."
+            ),
+        },
+    }
 
 
 def levermore_pomraning_limiter(R: np.ndarray) -> np.ndarray:
@@ -94,7 +133,7 @@ def compute_rosseland_opacity(
     Z: float = 1.0,
     gaunt_factor: float = 1.2,
 ) -> np.ndarray:
-    """Compute Rosseland mean free-free (inverse bremsstrahlung) opacity.
+    """Compute a Kramers-style mean free-free opacity.
 
     The Kramers opacity law for free-free absorption:
         kappa_ff = C_ff * Z^2 * g_ff * ne * ni / Te^{3.5}   [1/m]
@@ -105,7 +144,9 @@ def compute_rosseland_opacity(
     With ni = ne / Z for quasi-neutrality:
         kappa = C * ne^2 * Z * g_ff / Te^{3.5}
 
-    Reference: NRL Plasma Formulary, Kramers opacity.
+    Source status:
+        Engineering closure only. The visible local NRL rows do not source-close
+        this Rosseland/Kramers mean opacity for validation claims.
 
     Args:
         ne: Electron number density [m^-3].

@@ -425,6 +425,8 @@ export const ParameterStack: React.FC = () => {
                 <option value="athena">Athena++ (C++)</option>
                 <option value="athenak">AthenaK (Kokkos/GPU)</option>
                 <option value="metal">Metal GPU (Apple Silicon)</option>
+                <option value="mlx">MLX Metal v2</option>
+                <option value="hybrid">Hybrid (Athena/WALRUS)</option>
                 <option value="auto">Auto (best available)</option>
               </select>
             </div>

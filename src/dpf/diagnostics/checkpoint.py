@@ -16,10 +16,16 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 import numpy as np
+
+from dpf.validation.artifacts import (
+    ArtifactClassification,
+    artifact_classification_from_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +36,18 @@ try:
 except ImportError:
     HAS_H5PY = False
     logger.warning("h5py not available; checkpoint/restart disabled")
+
+
+def _checkpoint_artifact_classification(config_json: str | None) -> ArtifactClassification:
+    if not config_json:
+        return ArtifactClassification()
+    try:
+        config_payload = json.loads(config_json)
+    except Exception:
+        return ArtifactClassification(
+            handling_notes="checkpoint config JSON could not be parsed for artifact metadata"
+        )
+    return artifact_classification_from_config(config_payload)
 
 
 def save_checkpoint(
@@ -57,12 +75,33 @@ def save_checkpoint(
         return
 
     logger.info("Saving checkpoint to %s at t=%.4e s, step=%d", filename, time, step_count)
+    artifact_classification = _checkpoint_artifact_classification(config_json)
+    artifact_json = json.dumps(
+        artifact_classification.model_dump(mode="json"),
+        sort_keys=True,
+    )
 
     with h5py.File(filename, "w") as f:
         # Metadata
         f.attrs["time"] = time
         f.attrs["step_count"] = step_count
         f.attrs["checkpoint_version"] = 2
+        f.attrs["artifact_role"] = "checkpoint_restart_not_validation_evidence"
+        f.attrs["validation_status"] = "not_validation_evidence"
+        f.attrs["result_label"] = "Preview"
+        f.attrs["can_support_validation_claims"] = False
+        f.attrs["artifact_classification"] = artifact_classification.classification
+        f.attrs["artifact_distribution"] = artifact_classification.distribution
+        f.attrs["artifact_classification_json"] = artifact_json
+        f.attrs["dpf_artifact_classification_json"] = artifact_json
+        f.attrs["dpf_source_authority"] = (
+            "local KnowledgeReference only for validation claims; checkpoint "
+            "restart files are not validation evidence"
+        )
+        if artifact_classification.owner:
+            f.attrs["artifact_owner"] = artifact_classification.owner
+        if artifact_classification.handling_notes:
+            f.attrs["artifact_handling_notes"] = artifact_classification.handling_notes
 
         if config_json is not None:
             f.attrs["config_json"] = config_json

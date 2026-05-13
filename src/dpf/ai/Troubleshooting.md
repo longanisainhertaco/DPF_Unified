@@ -4,6 +4,15 @@ Cross-review by: xreview-ai (Python + Physics expert synthesis)
 Date: 2026-02-25
 Files reviewed: 14 files (~4,200 LOC)
 
+> **Audit update (2026-05-09)**: Treat this file as historical routing
+> material, not source-of-truth science. Current AI/WALRUS guardrails keep local
+> WALRUS/HDF5 artifacts out of validation claims, label Well exports as
+> `not_validation_evidence`, detect strict scalar/provenance/geometry failures in
+> `DatasetValidator`, and split model status into `placeholder_loaded`,
+> `real_model_loaded`, and `source_backed_model_loaded`. `DPFSurrogate`
+> placeholder mode is non-predictive; `predict_next_step()` raises instead of
+> returning an identity copy.
+>
 > **Note (2026-04-30)**: `preconditioner.py` was deleted as dead code (135 LOC, never wired into the solver). All findings below referencing `preconditioner.py` (CRIT-1, HIGH-3, HIGH-4) are historical — the file no longer exists in the tree.
 
 ---

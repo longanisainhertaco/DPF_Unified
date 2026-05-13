@@ -79,6 +79,12 @@ from dpf.validation._calibration_stats import (
     bootstrap_calibration,
     monte_carlo_nrmse,
 )
+from dpf.validation.calibration_provenance import (
+    CALIBRATION_PROVENANCE_CLASS,
+    CALIBRATION_RESULT_LABEL,
+    CALIBRATION_VALIDATION_STATUS,
+    calibration_provenance_metadata,
+)
 
 __all__ = [
     # Core
@@ -131,4 +137,9 @@ __all__ = [
     "MultiDeviceCalibrator",
     "MultiConditionResult",
     "multi_condition_validation",
+    # Provenance labels
+    "CALIBRATION_PROVENANCE_CLASS",
+    "CALIBRATION_RESULT_LABEL",
+    "CALIBRATION_VALIDATION_STATUS",
+    "calibration_provenance_metadata",
 ]

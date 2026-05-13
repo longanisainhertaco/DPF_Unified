@@ -1,5 +1,21 @@
 # Radiation Module Troubleshooting
 
+Current audit status: 2026-05-09
+
+This file is historical troubleshooting context, not source-of-truth science.
+Use `docs/MODULE_AUDIT/radiation_atomic_neutrons.md` and
+`docs/MODULE_AUDIT/BACKLOG.md` for current audit status before acting on any
+entry below.
+
+- CPU and MLX line-radiation surfaces now expose matching
+  unknown-provenance empirical-fit status and
+  `validation_status="not_validation_evidence"`.
+- QMF suppression metadata now marks the free-free suppression formula as
+  source-missing and `unverified_not_design_evidence`.
+- Older entries below can still describe useful risk areas, but they must be
+  re-checked against current code and local `KnowledgeReference/` evidence
+  before becoming tasks or validation claims.
+
 Cross-review by: xreview-ai (Python + Physics expert synthesis)
 Date: 2026-02-25
 Files reviewed: 3 files (~1,100 LOC)

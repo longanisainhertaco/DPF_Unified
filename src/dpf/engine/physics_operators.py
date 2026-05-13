@@ -213,7 +213,11 @@ def _apply_collision_radiation(
 
     # --- Implicit / STS magnetic and thermal diffusion ---
     fc = self.config.fluid
-    if fc.diffusion_method != "explicit" and fc.enable_resistive:
+    if (
+        fc.diffusion_method != "explicit"
+        and fc.enable_resistive
+        and self.backend not in ("metal", "mlx")
+    ):
         self._apply_diffusion(dt_sub, Z_bar, Z_bar_field=Z_bar_field)
         if self.step_count == 0 or self.step_count % self._nan_check_stride == 0:
             self._sanitize_state("after diffusion step")

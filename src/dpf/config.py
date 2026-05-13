@@ -283,6 +283,45 @@ class DiagnosticsConfig(BaseModel):
         "well_output",
         description="Prefix for Well-format output files",
     )
+    memory_preflight_enabled: bool = Field(
+        True,
+        description="Estimate run memory before solver allocation and fail closed if unsafe",
+    )
+    memory_limit_fraction: float = Field(
+        0.70,
+        gt=0.0,
+        le=1.0,
+        description="Maximum fraction of currently available memory allowed for projected run use",
+    )
+    allow_memory_overcommit: bool = Field(
+        False,
+        description="Allow launch when projected memory exceeds memory_limit_fraction",
+    )
+    runtime_memory_telemetry_enabled: bool = Field(
+        True,
+        description="Record process and backend peak-memory telemetry during solver runs",
+    )
+    memory_telemetry_interval_steps: int = Field(
+        50,
+        ge=1,
+        description="Step interval for runtime memory telemetry sampling",
+    )
+    artifact_owner: str | None = Field(
+        None,
+        description="Owner recorded in run/export artifact classification metadata",
+    )
+    artifact_classification: str = Field(
+        "owner_unspecified",
+        description="Owner-supplied classification label for run/export artifacts",
+    )
+    artifact_distribution: str = Field(
+        "owner_unspecified",
+        description="Owner-supplied distribution scope for run/export artifacts",
+    )
+    artifact_handling_notes: str = Field(
+        "",
+        description="Owner-supplied handling notes for run/export artifacts",
+    )
 
 
 class SweepConfig(BaseModel):
@@ -496,11 +535,11 @@ class SnowplowConfig(BaseModel):
         "lee_only",
         description=(
             "Circuit-MHD coupling mode. "
-            "'lee_only': snowplow Lp drives circuit throughout (validated, default). "
+            "'lee_only': snowplow Lp drives circuit throughout (default). "
             "'radial_mhd': transition to density-weighted Lp at radial phase onset. "
             "'full_mhd': density-weighted Lp from axial rundown onward (experimental). "
             "full_mhd uses CircuitCoupler.compute_feedback() during axial phase "
-            "for improved timing accuracy via density-weighted sheath tracking."
+            "as an engineering feedback signal, not validation evidence."
         ),
     )
 
@@ -593,6 +632,29 @@ class SimulationConfig(BaseModel):
     dx: float = Field(..., gt=0, description="Grid spacing [m]")
     sim_time: float = Field(..., gt=0, description="Total simulation time [s]")
     dt_init: float | None = Field(None, gt=0, description="Initial timestep [s]")
+    run_mode: str = Field(
+        "standard",
+        description=(
+            "Public run-mode authority label. first_principles_mhd is a "
+            "fail-closed PF-1000/Akel readiness mode, not a backend name."
+        ),
+    )
+    validation_scope: str = Field(
+        "",
+        description="Optional same-scope validation target label for readiness gates.",
+    )
+    source_scope: str = Field(
+        "",
+        description="Optional local source-scope label for readiness gates.",
+    )
+    source_scope_status: str = Field(
+        "",
+        description="Optional source-scope status such as same_scope_blocked_by_review.",
+    )
+    preset_name: str = Field(
+        "",
+        description="Optional preset key used for non-promoting authority metadata.",
+    )
 
     # Initial conditions (exposed for GUI / parameter sweeps)
     rho0: float = Field(1e-4, gt=0, description="Initial fill gas density [kg/m^3]")
@@ -623,6 +685,35 @@ class SimulationConfig(BaseModel):
     ion_mass: float = Field(
         3.34358377e-27, gt=0,
         description="Ion mass [kg] (default: deuterium m_d = 3.34e-27 kg)",
+    )
+    nan_check_stride: int = Field(
+        10,
+        ge=1,
+        description=(
+            "State sanitation cadence in engine steps. Probe/audit runs can set "
+            "this to 1 to inspect every step."
+        ),
+    )
+    nonfinite_repair_limit: int = Field(
+        10000,
+        ge=0,
+        description=(
+            "Maximum cumulative NaN/Inf repairs allowed before the engine fails "
+            "closed as numerically unstable."
+        ),
+    )
+    fail_fast_on_nonfinite: bool = Field(
+        False,
+        description=(
+            "When true, state sanitation raises on the first NaN/Inf detection "
+            "without repairing the state. Intended for audit/probe runs."
+        ),
+    )
+    nonfinite_event_history_limit: int = Field(
+        16,
+        ge=1,
+        le=1024,
+        description="Maximum recent nonfinite sanitation events retained for run evidence.",
     )
 
     circuit: CircuitConfig

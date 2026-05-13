@@ -56,6 +56,13 @@ def _default_validity_notes() -> dict[str, str]:
             "largely non-thermonuclear and that pure MHD cannot capture "
             "kinetic beam-target production without an added model."
         ),
+        "first_principles_boundary": (
+            "The time history is mechanism-separated reporting. Total neutron "
+            "yield is not first-principles predictive authority unless the "
+            "beam-target component is produced by an accepted kinetic/hybrid "
+            "model and same-scope yield, timing, spectrum, anisotropy, "
+            "detector response, and uncertainty gates pass together."
+        ),
     }
 
 
@@ -121,6 +128,15 @@ class YieldResult:
             "peak_yield_time_s": self.peak_yield_time,
             "model_components": dict(self.model_components),
             "validity_notes": dict(self.validity_notes),
+            "model_role": "mechanism_separated_neutron_yield_estimate",
+            "validation_status": "estimate_not_validation",
+            "first_principles_total_yield_authority": "blocked",
+            "thermonuclear_input_authority": "resolved_field_history_candidate",
+            "beam_target_input_authority": (
+                "lee_saw_reduced_model"
+                if Y_bt > 0.0 else "not_produced"
+            ),
+            "can_support_first_principles_neutron_yield": False,
         }
 
 

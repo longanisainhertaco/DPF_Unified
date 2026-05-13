@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from dpf.constants import e, epsilon_0, k_B, m_d, m_e, mu_0, pi
+from dpf.collision.spitzer import spitzer_resistivity
+from dpf.constants import e, epsilon_0, k_B, m_d, mu_0, pi
 
 
 def plasma_parameter_ND(
@@ -88,13 +89,9 @@ def magnetic_reynolds_number(
         Auluck, Phys. Plasmas 31, 010704 (2024).
         NRL Plasma Formulary (2019), p. 34.
     """
-    # Spitzer resistivity: eta = m_e * nu_ei / (ne * e^2)
-    # nu_ei = (4*sqrt(2*pi) * ne * e^4 * lnL) / (3 * (4*pi*eps0)^2 * sqrt(m_e) * (kT)^1.5)
-    nu_ei = (
-        4.0 * np.sqrt(2.0 * pi) * ne * e**4 * lnL
-        / (3.0 * (4.0 * pi * epsilon_0) ** 2 * np.sqrt(m_e) * (k_B * Te + 1e-300) ** 1.5)
-    )
-    eta = m_e * nu_ei / (ne * e**2 + 1e-300)
+    # Use the centralized NRL/Braginskii-corrected parallel Spitzer
+    # resistivity instead of duplicating the uncorrected classical expression.
+    eta = spitzer_resistivity(ne, Te, lnL=lnL, Z=1.0)
     return mu_0 * velocity * L_scale / (eta + 1e-300)
 
 

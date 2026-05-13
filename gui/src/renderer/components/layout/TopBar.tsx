@@ -1,20 +1,35 @@
 import React from 'react';
 
 interface TopBarProps {
-  backends: { python: boolean; athena: boolean; athenak: boolean; metal: boolean };
+  backends: {
+    python: boolean;
+    athena: boolean;
+    athenak: boolean;
+    metal: boolean;
+    mlx: boolean;
+    hybrid: boolean;
+  };
   simStatus: 'idle' | 'running' | 'paused' | 'finished' | 'error';
   step: number;
   time: number;
+  resultLabel?: string;
+  canSupportValidationClaims?: boolean;
+  blockerCount?: number;
+  digitizationStatus?: string;
+  readinessScopeNote?: string;
   coPilotOpen: boolean;
   onToggleCoPilot: () => void;
 }
 
-const formatTime = (timeNs: number): string => {
-  if (timeNs === 0) return '0.00 ns';
-  if (timeNs < 1000) return `${timeNs.toFixed(2)} ns`;
-  if (timeNs < 1e6) return `${(timeNs / 1000).toFixed(2)} μs`;
-  if (timeNs < 1e9) return `${(timeNs / 1e6).toFixed(2)} ms`;
-  return `${(timeNs / 1e9).toFixed(2)} s`;
+export const formatSimulationTime = (timeSeconds: number): string => {
+  if (!Number.isFinite(timeSeconds)) return 'n/a';
+
+  const absSeconds = Math.abs(timeSeconds);
+  if (absSeconds === 0) return '0.00 ns';
+  if (absSeconds < 1e-6) return `${(timeSeconds * 1e9).toFixed(2)} ns`;
+  if (absSeconds < 1e-3) return `${(timeSeconds * 1e6).toFixed(2)} μs`;
+  if (absSeconds < 1) return `${(timeSeconds * 1e3).toFixed(2)} ms`;
+  return `${timeSeconds.toFixed(2)} s`;
 };
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -22,6 +37,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   simStatus,
   step,
   time,
+  resultLabel,
+  canSupportValidationClaims = false,
+  blockerCount = 0,
+  digitizationStatus,
+  readinessScopeNote,
   coPilotOpen,
   onToggleCoPilot,
 }) => {
@@ -53,7 +73,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           DPF SIMULATOR
         </h1>
         <span className="dpf-label text-xs px-2 py-1 bg-[#2A2A2A] rounded">
-          v1.0.0
+          v{__APP_VERSION__}
         </span>
       </div>
 
@@ -90,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
           <div className="dpf-label">
             <span className="text-[#666666]">Time:</span>{' '}
-            <span className="font-mono font-medium">{formatTime(time)}</span>
+            <span className="font-mono font-medium">{formatSimulationTime(time)}</span>
           </div>
         </div>
       </div>
@@ -103,7 +123,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               key={backend}
               className="dpf-label text-xs px-3 py-1 bg-[#2A2A2A] rounded border border-[#00E5FF]/30"
             >
-              {backend === 'python'
+            {backend === 'python'
                 ? 'Python'
                 : backend === 'athena'
                 ? 'Athena++'
@@ -111,12 +131,40 @@ export const TopBar: React.FC<TopBarProps> = ({
                 ? 'AthenaK'
                 : backend === 'metal'
                 ? 'Metal GPU'
+                : backend === 'mlx'
+                ? 'MLX'
+                : backend === 'hybrid'
+                ? 'Hybrid'
                 : backend}
             </span>
           ))
         ) : (
           <span className="dpf-label text-xs px-3 py-1 bg-[#2A2A2A] rounded border border-[#666666]">
             No Backend
+          </span>
+        )}
+        {resultLabel && (
+          <span
+            className={`dpf-label text-xs px-3 py-1 rounded border ${
+              canSupportValidationClaims
+                ? 'bg-accent-green-dim text-accent-green border-accent-green/40'
+                : 'bg-accent-amber-dim text-accent-amber border-accent-amber/40'
+            }`}
+            title={
+              canSupportValidationClaims
+                ? 'Reference-authorized result'
+                : 'Preview or non-certifying result'
+            }
+          >
+            {resultLabel}
+          </span>
+        )}
+        {blockerCount > 0 && (
+          <span
+            className="dpf-label text-xs px-3 py-1 rounded border border-accent-crimson/40 bg-accent-crimson-dim text-accent-crimson"
+            title={readinessScopeNote || digitizationStatus || 'Readiness blockers present'}
+          >
+            Blockers {blockerCount}
           </span>
         )}
         <div className="h-4 w-px bg-[#333333]" />

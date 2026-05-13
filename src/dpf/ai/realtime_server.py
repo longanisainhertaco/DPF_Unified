@@ -79,6 +79,54 @@ def _require_ensemble() -> Any:
     return _ensemble
 
 
+def _surrogate_status(surrogate: Any | None) -> dict[str, Any]:
+    """Return fail-closed model status flags for API reporting."""
+    if surrogate is None:
+        return {
+            "model_loaded": False,
+            "placeholder_loaded": False,
+            "real_model_loaded": False,
+            "source_backed_model_loaded": False,
+            "model_status": {
+                "loaded": False,
+                "placeholder_loaded": False,
+                "real_model_loaded": False,
+                "source_backed_model_loaded": False,
+                "validation_status": "not_validation_evidence",
+                "source_status": "source_packet_missing",
+            },
+        }
+
+    placeholder_loaded = bool(getattr(surrogate, "placeholder_loaded", False))
+    real_attr = getattr(surrogate, "real_model_loaded", None)
+    if real_attr is None:
+        real_model_loaded = bool(getattr(surrogate, "is_loaded", False)) and not placeholder_loaded
+    else:
+        real_model_loaded = bool(real_attr)
+
+    source_backed_model_loaded = bool(
+        getattr(surrogate, "source_backed_model_loaded", False)
+    )
+    model_status = getattr(surrogate, "model_load_status", None)
+    if model_status is None:
+        model_status = {
+            "loaded": bool(getattr(surrogate, "is_loaded", real_model_loaded)),
+            "placeholder_loaded": placeholder_loaded,
+            "real_model_loaded": real_model_loaded,
+            "source_backed_model_loaded": source_backed_model_loaded,
+            "validation_status": "not_validation_evidence",
+            "source_status": "source_packet_missing",
+        }
+
+    return {
+        "model_loaded": real_model_loaded,
+        "placeholder_loaded": placeholder_loaded,
+        "real_model_loaded": real_model_loaded,
+        "source_backed_model_loaded": source_backed_model_loaded,
+        "model_status": model_status,
+    }
+
+
 def _arrays_to_lists(state: dict[str, Any]) -> dict[str, Any]:
     """Recursively convert NumPy arrays to nested lists for JSON serialization."""
     result = {}
@@ -134,9 +182,10 @@ async def ai_status() -> dict[str, Any]:
     if _ensemble is not None:
         ensemble_size = getattr(_ensemble, "n_models", 0)
 
+    model_status = _surrogate_status(_surrogate)
     return {
         "torch_available": HAS_TORCH,
-        "model_loaded": _surrogate is not None,
+        **model_status,
         "device": device,
         "ensemble_size": ensemble_size,
     }

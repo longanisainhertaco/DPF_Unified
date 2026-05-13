@@ -144,8 +144,9 @@ class TestCoronalRadiationPower:
         Z_high = coronal_z_eff(Te_high)
         P_low = coronal_radiation_power(Te_low, ne, Z_low)
         P_high = coronal_radiation_power(Te_high, ne, Z_high)
-        # At low Te, line enhancement factor > 1, so P_low/P_brems_low > P_high/P_brems_high
-        # (normalized by Z_eff^2 * sqrt(Te))
+        # At low Te, line enhancement factor > 1, so the total coronal power
+        # remains positive even as the NRL Eq. 30 base term scales linearly
+        # with Z_eff for a single effective charge state.
         assert P_low > 0 and P_high > 0
 
     def test_array_shapes_match(self):

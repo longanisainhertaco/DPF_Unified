@@ -32,17 +32,17 @@ const config: Config = {
       },
       fontFamily: {
         mono: [
-          "JetBrains Mono",
-          "Fira Code",
           "SF Mono",
           "Menlo",
+          "Consolas",
+          "Liberation Mono",
           "monospace",
         ],
         sans: [
-          "Inter",
           "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
+          "Segoe UI",
           "sans-serif",
         ],
       },

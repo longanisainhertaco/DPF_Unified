@@ -4,6 +4,12 @@
 **Scope**: Phase AC.2 (cross-verification), AC.3 (wider-bounds recalibration), AC.4 (LeeModel vs RLCSolver), AC.5 (crowbar model)
 **Previous Score**: 6.2/10 (Debate #10)
 
+> 2026-05-11 supersession note: this historical debate predates the
+> source-scoped formulary audit. Any C_REC/recombination-radiation conclusion in
+> this document is superseded by `docs/FORMULARY_CODE_AUDIT_2026_05_11.md`,
+> which ties the active code to NRL Eq. 33 and uses
+> `C_REC = 6.23241205313e-38`.
+
 ## VERDICT: CONSENSUS (3-0) — 6.3/10
 
 The panel agrees on a +0.1 improvement from 6.2 to 6.3. Phase AC.2-AC.5 delivers genuine cross-verification infrastructure, experimentally confirms the fc^2/fm degeneracy, resolves the fc boundary artifact, and adds a crowbar model that reduces NRMSE from 0.209 to 0.133 (36% improvement). However, the score increase is modest because: (1) the NRMSE improvement is 92% liftoff delay (already credited in Debate #10) and only 8% crowbar, (2) the crowbar fires at t=37 us, well outside the 0-10 us experimental comparison window, (3) the newly identified Pease-Braginskii pathway gap partially offsets the gains, and (4) these remain Lee-model improvements, not production engine validation.

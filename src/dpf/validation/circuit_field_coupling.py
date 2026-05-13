@@ -13,6 +13,8 @@ from math import isfinite
 
 import numpy as np
 
+from dpf.constants import mu_0
+
 
 _KR_SOURCE_BASIS = {
     "auluck_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
@@ -80,6 +82,15 @@ _REQUIRED_EVIDENCE = {
             "collapsed into one unqualified current prediction."
         ),
     },
+    "coupling_interval_authority": {
+        "source_key": "auluck_circuit_element",
+        "source_lines": "35-38, 957-991",
+        "requirement": (
+            "Circuit-field coupling evidence must distinguish snowplow-loaded, "
+            "blended, field-derived candidate, and validated field-coupled "
+            "intervals before supporting MHD current-prediction claims."
+        ),
+    },
     "kr_experimental_comparison": {
         "source_key": "auluck_circuit_element",
         "source_lines": "35-38",
@@ -94,6 +105,13 @@ _REQUIRED_EVIDENCE = {
 _COMPONENT_BY_NORMALIZED = {
     key.lower(): key for key in _REQUIRED_EVIDENCE
 }
+
+_INTERVAL_AUTHORITY_LABELS = (
+    "snowplow_loaded",
+    "blended",
+    "field_derived_candidate",
+    "validated_field_coupled",
+)
 
 
 def _is_sequence(value: object) -> bool:
@@ -133,6 +151,157 @@ def _finite_values(value: object, *, limit: int = 16) -> list[float]:
     except (TypeError, ValueError):
         return []
     return [number] if isfinite(number) else []
+
+
+def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:
+    integrator = getattr(np, "trapezoid", np.trapz)
+    return float(integrator(values, times))
+
+
+def _axisym_scalar(value: object) -> np.ndarray:
+    arr = np.asarray(value, dtype=float)
+    if arr.ndim == 3 and arr.shape[1] == 1:
+        return arr[:, 0, :]
+    if arr.ndim == 2:
+        return arr
+    raise ValueError(f"expected scalar field shape (nr, nz) or (nr, 1, nz), got {arr.shape}")
+
+
+def _axisym_vector(value: object) -> np.ndarray:
+    arr = np.asarray(value, dtype=float)
+    if arr.ndim == 4 and arr.shape[0] == 3 and arr.shape[2] == 1:
+        return arr[:, :, 0, :]
+    if arr.ndim == 3 and arr.shape[0] == 3:
+        return arr
+    raise ValueError(
+        f"expected vector field shape (3, nr, nz) or (3, nr, 1, nz), got {arr.shape}"
+    )
+
+
+def _safe_gradient(values: np.ndarray, spacing: float, *, axis: int) -> np.ndarray:
+    if values.shape[axis] < 2:
+        return np.zeros_like(values)
+    return np.gradient(values, spacing, axis=axis)
+
+
+def _eta_array(eta: object | None, shape: tuple[int, int]) -> np.ndarray:
+    if eta is None:
+        return np.zeros(shape, dtype=float)
+    arr = np.asarray(eta, dtype=float)
+    if arr.ndim == 0:
+        return np.full(shape, float(arr), dtype=float)
+    if arr.ndim == 3 and arr.shape[1] == 1:
+        arr = arr[:, 0, :]
+    return np.broadcast_to(arr, shape).astype(float, copy=False)
+
+
+def field_power_diagnostics_from_cylindrical_state(
+    state: Mapping[str, object],
+    *,
+    dr: float,
+    dz: float,
+    current_A: float,
+    r_cell_m: Sequence[float] | None = None,
+    r_min_m: float = 0.0,
+    eta_ohm_m: object | None = None,
+    previous_inductance_H: float | None = None,
+    dt_s: float | None = None,
+    current_floor_A: float = 5.0e4,
+) -> dict[str, object]:
+    """Compute field-derived circuit diagnostics from an axisymmetric MHD state.
+
+    This is an engineering diagnostic, not accepted validation evidence. It
+    uses resolved fields to compute magnetic energy, the corresponding
+    energy-derived inductance, and the generalized-Ohm-law volume integral
+    ``integral(J dot E) dV`` on a cylindrical grid.
+    """
+    B = np.nan_to_num(_axisym_vector(state["B"]))
+    velocity = np.nan_to_num(
+        _axisym_vector(state.get("velocity", np.zeros_like(B)))
+    )
+    nr, nz = B.shape[1], B.shape[2]
+    if r_cell_m is None:
+        r = r_min_m + (np.arange(nr, dtype=float) + 0.5) * dr
+    else:
+        r = np.asarray(r_cell_m, dtype=float)
+        if r.size != nr:
+            raise ValueError(f"r_cell_m length {r.size} does not match nr={nr}")
+    r_safe = np.maximum(r, 1.0e-12)
+    volume = 2.0 * np.pi * r_safe[:, None] * dr * dz
+
+    Br, Bt, Bz = B[0], B[1], B[2]
+    vr, vt, vz = velocity[0], velocity[1], velocity[2]
+    B_sq = Br * Br + Bt * Bt + Bz * Bz
+    magnetic_energy_J = float(np.sum(0.5 * B_sq / mu_0 * volume))
+
+    current_sq = float(current_A) * float(current_A)
+    field_inductance_H = (
+        2.0 * magnetic_energy_J / max(current_sq, 1.0e-30)
+        if abs(float(current_A)) >= current_floor_A
+        else 0.0
+    )
+    if (
+        previous_inductance_H is not None
+        and dt_s is not None
+        and dt_s > 0.0
+        and np.isfinite(previous_inductance_H)
+    ):
+        dL_field_dt_H_s = (field_inductance_H - float(previous_inductance_H)) / dt_s
+    else:
+        dL_field_dt_H_s = 0.0
+
+    dBt_dz = _safe_gradient(Bt, dz, axis=1)
+    rBt = r_safe[:, None] * Bt
+    d_rBt_dr = _safe_gradient(rBt, dr, axis=0)
+    dBr_dz = _safe_gradient(Br, dz, axis=1)
+    dBz_dr = _safe_gradient(Bz, dr, axis=0)
+
+    inv_mu0 = 1.0 / mu_0
+    Jr = -dBt_dz * inv_mu0
+    Jt = (dBr_dz - dBz_dr) * inv_mu0
+    Jz = (d_rBt_dr / r_safe[:, None]) * inv_mu0
+    eta_arr = _eta_array(eta_ohm_m, (nr, nz))
+
+    # Generalized Ohm law in cylindrical components: E = -v x B + eta J.
+    Er = vz * Bt - vt * Bz + eta_arr * Jr
+    Et = vr * Bz - vz * Br + eta_arr * Jt
+    Ez = vt * Br - vr * Bt + eta_arr * Jz
+    j_dot_e = Jr * Er + Jt * Et + Jz * Ez
+    j_dot_e_power_W = float(np.sum(j_dot_e * volume))
+    J_sq = Jr * Jr + Jt * Jt + Jz * Jz
+    joule_power_W = float(np.sum(eta_arr * J_sq * volume))
+
+    if abs(float(current_A)) >= current_floor_A:
+        load_voltage_V = j_dot_e_power_W / float(current_A)
+        source_orientation_voltage_V = -load_voltage_V
+    else:
+        load_voltage_V = 0.0
+        source_orientation_voltage_V = 0.0
+    field_interface_power_W = float(current_A) * load_voltage_V
+
+    return {
+        "classification": "engineering_field_coupling_diagnostic",
+        "validation_status": "not_validation_evidence",
+        "magnetic_energy_J": magnetic_energy_J,
+        "field_derived_inductance_H": field_inductance_H,
+        "dL_field_dt_H_s": dL_field_dt_H_s,
+        "j_dot_e_power_W": j_dot_e_power_W,
+        "poynting_power_W": field_interface_power_W,
+        "joule_power_W": joule_power_W,
+        "field_terminal_voltage_V": load_voltage_V,
+        "poynting_voltage_source_orientation_V": source_orientation_voltage_V,
+        "back_emf_V": load_voltage_V,
+        "current_A": float(current_A),
+        "current_floor_A": current_floor_A,
+        "n_cells": int(nr * nz),
+        "sign_convention": (
+            "Positive j_dot_e_power_W is power absorbed by the resolved plasma. "
+            "field_terminal_voltage_V = integral(J dot E)dV / current_A is "
+            "passed to RLCSolver as opposing back_emf; "
+            "poynting_voltage_source_orientation_V stores the opposite terminal "
+            "orientation."
+        ),
+    }
 
 
 def _series_info(
@@ -443,7 +612,7 @@ def circuit_coupled_energy_evidence_from_history(
         max_relative_power_residual = float(
             np.max(np.abs(circuit_power - poynting_power) / power_scale)
         )
-        input_energy = float(np.trapezoid(poynting_power, times))
+        input_energy = _trapezoid_integral(poynting_power, times)
         accounted_energy = float(
             stored_energy[-1]
             - stored_energy[0]
@@ -570,6 +739,133 @@ def _has_metadata(result: Mapping[str, object], *keys: str) -> tuple[bool, list[
     return bool(found), found
 
 
+def _normalize_interval_authority(value: object) -> str | None:
+    text = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    if not text:
+        return None
+    if "blend" in text or "handoff" in text or "transition" in text:
+        return "blended"
+    if "snowplow" in text or "lee" in text or "density_weight" in text:
+        return "snowplow_loaded"
+    if "validated" in text and "field" in text:
+        return "validated_field_coupled"
+    if "field" in text or "mhd" in text or "poynting" in text:
+        return "field_derived_candidate"
+    return None
+
+
+def _add_interval_authority_labels(
+    value: object,
+    labels: set[str],
+    keys: set[str],
+    *,
+    key_hint: str,
+) -> None:
+    if isinstance(value, Mapping):
+        for raw_key, raw_value in value.items():
+            label = _normalize_interval_authority(raw_key)
+            if label is None and isinstance(raw_value, Mapping):
+                label = _normalize_interval_authority(
+                    raw_value.get("authority")
+                    or raw_value.get("label")
+                    or raw_value.get("status")
+                    or raw_value.get("mode")
+                )
+            if label is None:
+                label = _normalize_interval_authority(raw_value)
+            if label is not None:
+                labels.add(label)
+                keys.add(key_hint)
+        return
+
+    if _is_sequence(value):
+        for item in value:
+            if isinstance(item, Mapping):
+                label = _normalize_interval_authority(
+                    item.get("authority")
+                    or item.get("label")
+                    or item.get("status")
+                    or item.get("mode")
+                )
+            else:
+                label = _normalize_interval_authority(item)
+            if label is not None:
+                labels.add(label)
+                keys.add(key_hint)
+        return
+
+    label = _normalize_interval_authority(value)
+    if label is not None:
+        labels.add(label)
+        keys.add(key_hint)
+
+
+def _coupling_interval_authority(
+    result: Mapping[str, object],
+) -> tuple[set[str], list[str]]:
+    labels: set[str] = set()
+    keys: set[str] = set()
+    for key in (
+        "field_coupling_intervals",
+        "coupling_intervals",
+        "coupling_interval_authority",
+        "interval_authority",
+    ):
+        if key in result:
+            _add_interval_authority_labels(result.get(key), labels, keys, key_hint=key)
+
+    field_coupled_declared = result.get("field_coupled_candidate") is True or any(
+        key in result
+        for key in (
+            "field_inductance",
+            "field_derived_inductance",
+            "magnetic_energy_inductance",
+        )
+    )
+    if "Lp_snowplow_nH" in result or (
+        not field_coupled_declared
+        and any(key in result for key in ("L_p_nH", "Lp_nH", "L_plasma"))
+    ):
+        labels.add("snowplow_loaded")
+    if "coupling_alpha" in result or (
+        "Lp_snowplow_nH" in result and "Lp_mhd_nH" in result
+    ):
+        labels.add("blended")
+    if any(
+        key in result
+        for key in (
+            "Lp_mhd_nH",
+            "field_inductance",
+            "field_derived_inductance",
+            "magnetic_energy_inductance",
+            "poynting_power",
+            "poynting_power_W",
+            "poynting_balance",
+        )
+    ):
+        labels.add("field_derived_candidate")
+
+    if labels:
+        keys.update(
+            key for key in (
+                "Lp_snowplow_nH",
+                "L_p_nH",
+                "Lp_nH",
+                "L_plasma",
+                "Lp_mhd_nH",
+                "coupling_alpha",
+                "field_inductance",
+                "field_derived_inductance",
+                "magnetic_energy_inductance",
+                "poynting_power",
+                "poynting_power_W",
+                "poynting_balance",
+            )
+            if key in result
+        )
+    return labels, sorted(keys)
+
+
 def _derived_dldt_available(result: Mapping[str, object]) -> tuple[bool, str | None]:
     time_key, times = _series_info(result, "t_s", "time_s", "t_us", "time_us")
     inductance_key, inductance = _series_info(
@@ -633,6 +929,10 @@ def field_coupling_evidence_from_result(
         "field_derived_inductance",
         "magnetic_energy_inductance",
     )
+    density_weighted_candidate = "Lp_mhd_nH" in field_keys and not any(
+        key in field_keys
+        for key in ("field_inductance", "field_derived_inductance", "magnetic_energy_inductance")
+    )
     reduced_like = inductance_key in {"L_p_nH", "Lp_nH", "L_plasma"}
     evidence["field_derived_inductance"] = _record(
         "field_derived_inductance",
@@ -646,7 +946,11 @@ def field_coupling_evidence_from_result(
         present=field_like,
         evidence_keys=field_keys or ([inductance_key] if inductance_key else []),
         notes=(
-            "A field-derived or MHD inductance series is exported, but it has "
+            "An MHD/density-weighted inductance series is exported. It is "
+            "candidate coupling evidence only, not fully field-derived or "
+            "validated field-coupled authority."
+            if density_weighted_candidate
+            else "A field-derived inductance series is exported, but it has "
             "not been validated against a KR field-coupling target."
             if field_like
             else "Only a reduced or source-ambiguous inductance signal is present."
@@ -689,9 +993,13 @@ def field_coupling_evidence_from_result(
     poynting_like, poynting_keys = _has_signal(
         result,
         "poynting_power",
+        "poynting_power_W",
         "poynting_flux",
         "poynting_voltage",
         "V_poynting",
+        "field_terminal_voltage_V",
+        "j_dot_e_power_W",
+        "field_interface_power_W",
         "poynting_balance",
     )
     if circuit_energy_validated:
@@ -786,6 +1094,34 @@ def field_coupling_evidence_from_result(
         ),
     )
 
+    interval_labels, interval_keys = _coupling_interval_authority(result)
+    missing_interval_labels = [
+        label for label in _INTERVAL_AUTHORITY_LABELS if label not in interval_labels
+    ]
+    evidence["coupling_interval_authority"] = _record(
+        "coupling_interval_authority",
+        status=(
+            "staged_not_validated"
+            if interval_labels and not missing_interval_labels else
+            "incomplete_interval_authority"
+            if interval_labels else
+            "absent"
+        ),
+        present=bool(interval_labels),
+        evidence_keys=interval_keys,
+        notes=(
+            "Interval labels are exported, but they are not KR-validated "
+            "field-coupling authority; missing labels: "
+            + ", ".join(missing_interval_labels)
+            if missing_interval_labels
+            else "All staged interval labels are visible, but interval "
+            "authority still needs KR-backed component validation before it "
+            "can support predictive field-coupled claims."
+            if interval_labels
+            else "No staged coupling interval authority labels are exported."
+        ),
+    )
+
     kr_evidence = result.get("field_coupling_experimental_validation")
     kr_validated = _kr_sourced_evidence_passed(kr_evidence)
     if kr_validated and isinstance(kr_evidence, Mapping):
@@ -848,6 +1184,10 @@ def field_coupling_evidence_from_result(
         "source": _KR_SOURCE_BASIS["auluck_circuit_element"],
         "source_basis": _KR_SOURCE_BASIS,
         "required_evidence": evidence,
+        "coupling_interval_authority": {
+            "labels": sorted(interval_labels),
+            "missing_labels": missing_interval_labels,
+        },
         "component_validation_scopes": validated_component_scopes,
         "same_scope_passed": same_scope_passed,
         "missing_or_unvalidated_evidence": missing,

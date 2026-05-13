@@ -399,7 +399,8 @@ def compute_resistivity(
         #
         # Hansen et al. (2024), staged-zpinch-2024-flash-mach2-pop.pdf, Sec IV:
         #   "magnetic diffusivity of 10^11-10^12 cm^2/s" in vacuum cells.
-        #   Results verified INSENSITIVE to exact value (Fig. 4).
+        #   Reports low sensitivity to exact value (Fig. 4); this is source
+        #   context, not accepted local DPF validation evidence.
         #
         # ALEGRA (Haill 2005, Sec 6.3.10-12): void conductivity 1e-6 S/m
         #   with ecdf density ramp.
@@ -651,6 +652,42 @@ def apply_resistive_diffusion(
 # ── Thermal Conduction ──────────────────────────────────────────
 
 
+def _nrl_ei_coulomb_log(Te_K: np.ndarray, ne: np.ndarray, Z_eff: float = 1.0) -> np.ndarray:
+    """NRL electron-ion Coulomb logarithm for T in K and density in m^-3."""
+    Te_eV = np.maximum(Te_K * K_B / E_CHARGE, 1.0e-6)
+    ne_cm3 = np.maximum(ne * 1.0e-6, 1.0e-30)
+    z = max(float(Z_eff), 1.0e-30)
+    low = 23.0 - np.log(np.sqrt(ne_cm3) * z * Te_eV ** -1.5)
+    high = 24.0 - np.log(np.sqrt(ne_cm3) * Te_eV ** -1.0)
+    lnL = np.where(Te_eV < 10.0 * z * z, low, high)
+    return np.maximum(lnL, 2.0)
+
+
+def _braginskii_kappa_perp_nrl(
+    Te_K: np.ndarray,
+    rho: np.ndarray,
+    B_mag: np.ndarray,
+    Z_eff: float = 1.0,
+    ion_mass: float = M_D,
+) -> np.ndarray:
+    """NRL high-field Braginskii perpendicular electron conductivity."""
+    Te_safe = np.maximum(Te_K, 1.0)
+    rho_safe = np.maximum(rho, 1.0e-30)
+    z = max(float(Z_eff), 1.0e-30)
+    ne = z * rho_safe / ion_mass
+    lnL = _nrl_ei_coulomb_log(Te_safe, ne, z)
+
+    Te_eV = np.maximum(Te_safe * K_B / E_CHARGE, 1.0e-6)
+    ne_cm3 = np.maximum(ne * 1.0e-6, 1.0e-30)
+    tau_e = 3.44e5 * Te_eV ** 1.5 / np.maximum(ne_cm3 * z * lnL, 1.0e-300)
+    omega_ce = E_CHARGE * np.maximum(np.abs(B_mag), 1.0e-30) / M_E
+
+    kappa_perp = 4.7 * ne * K_B**2 * Te_safe / (
+        M_E * np.maximum(omega_ce**2 * tau_e, 1.0e-300)
+    )
+    return np.where(np.isfinite(kappa_perp), kappa_perp, 0.0)
+
+
 def apply_thermal_conduction(
     Te: mx.array,
     Ti: mx.array,
@@ -665,6 +702,9 @@ def apply_thermal_conduction(
     Bt: mx.array | None = None,
     anisotropic: bool = True,
     gamma: float = 5.0 / 3.0,
+    kappa_perpendicular: float | mx.array | None = None,
+    Z_eff: float = 1.0,
+    ion_mass: float = M_D,
 ) -> tuple[mx.array, mx.array]:
     """Apply Braginskii anisotropic thermal conduction.
 
@@ -673,7 +713,9 @@ def apply_thermal_conduction(
     so the parallel (along-B) direction is primarily toroidal. Conduction
     in the r-z plane comes from:
       - kappa_parallel * (b_r^2 or b_z^2) components (small when B_theta >> B_r,B_z)
-      - kappa_perp * (1 - b_r^2 or 1 - b_z^2) components (tiny: ~10^-7 * kappa_par)
+      - kappa_perp * (1 - b_r^2 or 1 - b_z^2) components from the
+        NRL/Braginskii high-field perpendicular coefficient when not
+        supplied explicitly
 
     When anisotropic=True, the effective diffusivity in each direction is:
       chi_r = kappa_par * b_r^2 + kappa_perp * (1 - b_r^2)
@@ -703,6 +745,14 @@ def apply_thermal_conduction(
     anisotropic : bool
         If True (default), compute direction-weighted conduction.
         If False, use isotropic kappa_parallel in z only (legacy behavior).
+    kappa_perpendicular : float or mx.array or None
+        Perpendicular thermal conductivity [W/(m*K)]. If omitted and field
+        components are available, compute the NRL high-field Braginskii
+        perpendicular coefficient and cap it at ``kappa_parallel``.
+    Z_eff : float
+        Effective ion charge used for the NRL electron-ion Coulomb logarithm.
+    ion_mass : float
+        Ion mass [kg] used to recover electron density from rho.
 
     Returns
     -------
@@ -722,7 +772,7 @@ def apply_thermal_conduction(
     else:
         kappa_np = np.asarray(kappa_parallel, dtype=np.float64)
 
-    n_np = apply_floor(rho_np / M_D, 1e-10, name="apply_thermal_conduction/n_np")
+    n_np = apply_floor(rho_np / ion_mass, 1e-10, name="apply_thermal_conduction/n_np")
 
     # Compute anisotropy weighting from B-field direction
     if anisotropic and Br is not None and Bz is not None and Bt is not None:
@@ -733,13 +783,27 @@ def apply_thermal_conduction(
         br = Br_np / B_mag
         bz = Bz_np / B_mag
 
-        # Perpendicular suppression: kappa_perp/kappa_par ~ (omega_ce * tau_e)^{-2}
-        # For DPF at pinch: ratio ~ 10^{-7}. Use a floor of 1e-6 for stability.
-        kappa_perp_ratio = 1e-6
+        if kappa_perpendicular is None:
+            kappa_perp_np = _braginskii_kappa_perp_nrl(
+                Te_np,
+                rho_np,
+                B_mag,
+                Z_eff=Z_eff,
+                ion_mass=ion_mass,
+            )
+        elif isinstance(kappa_perpendicular, (int, float)):
+            kappa_perp_np = np.full(
+                (nr, nz), float(kappa_perpendicular), dtype=np.float64
+            )
+        else:
+            kappa_perp_np = np.asarray(kappa_perpendicular, dtype=np.float64)
+
+        kappa_perp_np = np.where(np.isfinite(kappa_perp_np), kappa_perp_np, 0.0)
+        kappa_perp_np = np.minimum(np.maximum(kappa_perp_np, 0.0), kappa_np)
 
         # Effective kappa in each direction
-        kappa_z = kappa_np * (bz**2 + kappa_perp_ratio * (1.0 - bz**2))
-        kappa_r = kappa_np * (br**2 + kappa_perp_ratio * (1.0 - br**2))
+        kappa_z = kappa_np * bz**2 + kappa_perp_np * (1.0 - bz**2)
+        kappa_r = kappa_np * br**2 + kappa_perp_np * (1.0 - br**2)
     else:
         # Isotropic fallback
         kappa_z = kappa_np

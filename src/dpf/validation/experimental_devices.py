@@ -33,11 +33,14 @@ PF1000_DATA = ExperimentalDevice(
     institution="IPPLM Warsaw",
     capacitance=1.332e-3,          # 1.332 mF
     voltage=27e3,                  # 27 kV
-    inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1 - 24 shots; text: "Bank: L0 = 25 nH")
-    resistance=2.3e-3,             # 2.3 mOhm bare-bank short-circuit (Scholz 2006 Table 1). Wave-10 RCA: Akel's 6.1 mOhm includes plasma-phase resistance which is double-counted when used as bank R; plasma R enters via sheath model.
-    anode_radius=0.115,            # 115 mm outer radius (IPPLM: anode OD 230mm)
-    cathode_radius=0.16,           # 160 mm effective (Lee & Saw 2014; rods at 200mm)
-    anode_length=0.48,             # 480 mm (Akel et al. 2021 p.1: "PF-1000 plasma focus has 480 mm long coaxial electrodes"; Table 1: z0 = 48 cm)
+    # Standard 27 kV PF-1000 scope: Lee course and Malek 2025 give
+    # L0=33-33.5 nH, r0=6-6.3 mOhm, a=11.55 cm, b=16 cm, z0=60 cm.
+    # Akel 16 kV/shot-series 25 nH / 48 cm values stay in PF1000_16KV_DATA.
+    inductance=33.5e-9,
+    resistance=6.1e-3,
+    anode_radius=0.1155,
+    cathode_radius=0.16,
+    anode_length=0.60,
     fill_pressure_torr=3.5,
     fill_gas="deuterium",
     peak_current=1.87e6,           # 1.87 MA
@@ -49,7 +52,8 @@ PF1000_DATA = ExperimentalDevice(
         "Malek et al., Plasma Physics and Technology 12(1):9 (2025) "
         "[KR: plasma-physics-and-technology-1211-9-2025.md §3 lines 177-180]: "
         "fm=0.13, fc=0.7, fmr=0.35, fcr=0.65 obtained by fitting computed and "
-        "measured current waveforms at 27 kV / 3.5 Torr D2 in PF-1000."
+        "measured current waveforms at 27 kV / 3.5 Torr D2 in PF-1000. "
+        "Bank/geometry cross-check: Lee course KR lines 2199-2207 and 14500-14508."
     ),
     crowbar_resistance=1.5e-3,     # 1.5 mOhm (spark gap arc, PhD Debate #30)
     peak_current_uncertainty=0.05,     # 5% (Rogowski coil + calibration)
@@ -75,6 +79,8 @@ PF1000_DATA = ExperimentalDevice(
         "Temporal uncertainty ~0.05 us (Type B, 0.5% of 10 us trace). "
         "Effective independent data points ~5 (autocorrelation time ~1-2 us on 10 us trace). "
         "Scholz (2006) does not state measurement uncertainty; values above are estimates. "
+        "Standard bank and electrode geometry use the Lee/Malek 27 kV PF-1000 scope "
+        "(L0=33.5 nH, r0=6.1 mOhm, z0=60 cm), not the separate Akel 16 kV shot-series scope. "
         "Framework: ASME V&V 20-2009 for validation, GUM (JCGM 100:2008) for measurement."
     ),
 )
@@ -95,8 +101,11 @@ NX2_DATA = ExperimentalDevice(
     neutron_yield=1e8,
     current_rise_time=1.8e-6,      # 1.8 us
     reference="Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1",
-    lee_fc=0.7, lee_fm=0.10, lee_fmr=0.12, lee_fcr=0.7,
-    lee_reference="Lee & Saw, J. Fusion Energy 27:292 (2008)",
+    lee_fc=0.7, lee_fm=0.10, lee_fmr=0.12, lee_fcr=0.68,
+    lee_reference=(
+        "Lee-course NX2 current-trace fit: fm=0.1, fc=0.7, fmr=0.12, fcr=0.68 "
+        "[KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md lines 13801-13822]"
+    ),
     peak_current_uncertainty=0.08,     # 8% (compact device, lower SNR)
     rise_time_uncertainty=0.12,        # 12%
     neutron_yield_uncertainty=0.60,    # 60% (shot-to-shot)
@@ -107,6 +116,10 @@ NX2_DATA = ExperimentalDevice(
         "Module 1 preset (plasmafocus.net); actual RESF=R0/sqrt(L0/C)=0.086 "
         "(not 0.1 as sometimes stated). "
         "Fill pressure 3 Torr D2 for neutron operation. "
+        "Local KR also contains an NX2 neon measured-waveform course example "
+        "at 11 kV / 2.6 Torr with fitted factors fm=0.1, fc=0.7, "
+        "fmr=0.12, fcr=0.68; that example is not a same-shot deuterium "
+        "validation target. "
         "L0 uncertainty: literature reports 15-20 nH (Sahyouni et al. 2021 "
         "DOI:10.1155/2021/6611925 vs RADPF preset). "
         "Uncertainties are Type B estimates (not stated in source)."
@@ -187,15 +200,15 @@ PF1000_16KV_DATA = ExperimentalDevice(
     institution="IPPLM Warsaw",
     capacitance=1.332e-3,          # Same bank
     voltage=16e3,                  # 16 kV (reduced from 27 kV)
-    inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1 - these are literally Akel shots 12590-12606 at 1.05 Torr)
-    resistance=2.3e-3,             # Same circuit
+    inductance=25e-9,              # 25 nH (Akel et al. 2021 Table 1, shot 12581)
+    resistance=6.1e-3,             # 6.1 mOhm (Akel et al. 2021 Table 1, shot 12581)
     anode_radius=0.115,            # Same geometry
     cathode_radius=0.16,           # Same geometry
     anode_length=0.48,             # 480 mm (Akel et al. 2021 p.1: "480 mm long coaxial electrodes"; Table 1: z0 = 48 cm)
-    fill_pressure_torr=1.05,       # 1.05 Torr D2 (Akel 2021)
+    fill_pressure_torr=1.20,       # 1.20 Torr D2 (Akel 2021 Table 1, shot 12581)
     fill_gas="deuterium",
     peak_current=1.165e6,          # 1.165 MA (Akel et al. 2021 Table 1, shot 12581: Ipeak = 1165 kA)
-    neutron_yield=2.33e9,          # 2.33e9 n/shot at 1.05 Torr (average of 16 shots)
+    neutron_yield=6.1e9,           # 6.1e9 n/shot measured for shot 12581
     current_rise_time=6.0e-6,      # ~6 us (estimated from Lee model fit in paper)
     reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
     crowbar_resistance=1.5e-3,     # Same crowbar as 27 kV (PhD Debate #30)
@@ -209,19 +222,21 @@ PF1000_16KV_DATA = ExperimentalDevice(
     waveform_uncertainty_type="reconstruction",  # Physics-scaled from 27kV Scholz waveform
     peak_current_from_shot_spread=True,  # 10% derives from 1.1-1.3 MA shot range
     waveform_provenance="reconstructed",
-    lee_fc=0.70, lee_fm=0.20, lee_fmr=0.12, lee_fcr=0.47,
-    lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (24-shot avg at 16 kV)",
+    lee_fc=0.70, lee_fm=0.17, lee_fmr=0.26, lee_fcr=0.75,
+    lee_reference="Akel et al., Radiat. Phys. Chem. 188:109633, 2021 Table 1, shot 12581",
     measurement_notes=(
-        "PF-1000 operated at 16 kV (170.5 kJ) with 1.05 Torr D2 fill. "
-        "Peak current 1.131-1.328 MA across the 16 shots at 1.05 Torr (Akel et al. 2021 Table 1). "
-        "I_peak reference = 1.165 MA from shot 12581 (Table 1: Ipeak = 1165 kA). "
+        "PF-1000 shot 12581 operated at 16 kV (170.5 kJ) with 1.20 Torr D2 fill. "
+        "Akel et al. 2021 Table 1 gives shot 12581: r0=6.1 mOhm, "
+        "I_peak=1165 kA, I_pinch=523 kA, fm=0.17, fc=0.70, fmr=0.26, fcr=0.75. "
+        "The text reports measured neutron yield (6.1 ± 0.2)e9 n/shot for this shot. "
         "WAVEFORM NOTE: Reconstructed from physics scaling of 27 kV Scholz (2006) "
-        "waveform, rescaled by 1.165/1.20 = 0.9708 to match Akel shot 12581 peak. Same bank (C0, L0, R0), "
-        "so T/4=10.49 us is identical. Current dip shifted earlier (~5.5 us vs ~7.0 us) "
-        "due to lower fill pressure (1.05 Torr vs 3.5 Torr → faster sheath). "
+        "waveform, rescaled by 1.165/1.20 = 0.9708 to match Akel shot 12581 peak. "
+        "The reconstructed timing remains nonaccepting until replaced by accepted digitization. "
+        "Current dip shifted earlier (~5.5 us vs ~7.0 us) "
+        "due to lower fill pressure (1.20 Torr vs 3.5 Torr → faster sheath). "
         "Waveform_digitization_uncertainty set to 5% (higher than 3% for 27 kV) to "
         "account for reconstruction uncertainty. Replace with actual digitized data "
-        "from Akel (2021) Fig. 3 when paper access is obtained. "
+        "from Akel (2021) Fig. 1 when review accepts the local packet. "
         "DOI: 10.1016/j.radphyschem.2021.109633"
     ),
 )
@@ -238,7 +253,7 @@ PF1000_GRIBKOV_DATA = ExperimentalDevice(
     # Malek 2025 lists Bank parameters: L0=33.5 nH, C0=1332 uF, r0=6.1 mOhm.
     # Previous value (2.3 mOhm) was inconsistent — Gribkov shot uses the same bank.
     resistance=6.1e-3,
-    anode_radius=0.115,
+    anode_radius=0.1155,
     cathode_radius=0.16,
     anode_length=0.60,
     fill_pressure_torr=3.5,
@@ -378,8 +393,8 @@ PF1000_20KV_DATA = ExperimentalDevice(
     capacitance=1.332e-3,          # Same bank
     voltage=20e3,                  # 20 kV
     inductance=33.5e-9,            # Same circuit
-    resistance=2.3e-3,             # Same circuit (Scholz 2006 baseline, no Akel offset)
-    anode_radius=0.115,            # Same geometry
+    resistance=6.1e-3,             # Same Lee/Malek standard PF-1000 bank
+    anode_radius=0.1155,           # Same Lee/Malek standard PF-1000 geometry
     cathode_radius=0.16,           # Same geometry
     anode_length=0.60,             # Same geometry
     fill_pressure_torr=2.0,        # 2.0 Torr D2 (lower V0 → lower optimal pressure)
@@ -431,8 +446,8 @@ FAETON_DATA = ExperimentalDevice(
         "Damideh et al., Scientific Reports 15:23048, 2025; "
         "DOI: 10.1038/s41598-025-07939-x"
     ),
-    lee_fc=0.70, lee_fm=0.70, lee_fmr=0.10, lee_fcr=0.14,
-    lee_reference="Damideh et al., Sci. Rep. 15:23048 (2025); Lee co-author",
+    lee_fc=0.70, lee_fm=0.70, lee_fmr=0.10, lee_fcr=0.80, lee_fcr2=0.58,
+    lee_reference="Damideh et al., Sci. Rep. 15:23048 (2025) Table 3 shot 1027",
     crowbar_resistance=0.0,        # No crowbar switch
     peak_current_uncertainty=0.08, # 8% (Rogowski coil + Marx jitter)
     rise_time_uncertainty=0.10,    # 10% (not precisely stated)
@@ -452,7 +467,9 @@ FAETON_DATA = ExperimentalDevice(
         "WAVEFORM: RECONSTRUCTED from damped RLC parameters, NOT digitized from paper. "
         "L_p/L0 = 0.107 — extremely circuit-dominated; plasma loading is minimal. "
         "The reconstructed waveform is essentially a bare damped sinusoid with 4% pinch dip. "
-        "Damideh (2025) uses modified Lee model with two-step radial fitting for re-strikes. "
+        "Damideh (2025) Table 3 shot 1027 gives fcr=0.8 and fcr2=0.58; "
+        "the paper uses modified Lee model with two-step radial fitting for re-strikes. "
+        "The current KR extract does not provide an accepted absolute transition time. "
         "Replace with digitized data from Damideh (2025) Fig. 3 when full paper is obtained. "
         "Uncertainties on waveform are higher than digitized sources (8% vs 2-3%). "
         "Fill pressure 12 Torr D2 is optimal for neutron yield (range 10-40 Torr). "

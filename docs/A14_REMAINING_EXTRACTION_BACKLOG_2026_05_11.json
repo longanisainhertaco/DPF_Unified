@@ -1,0 +1,543 @@
+{
+  "accepted_for_validation_count": 0,
+  "backlog_items": [
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-02-fig-1.png",
+      "crop_sha256": "3db638fb32a2265c5147c9c5d436d136a6afc306e115aa6fb7027ef891f228cc",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 1",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-02-fig-2.png",
+      "crop_sha256": "6e0a1b0c4d78058e9416d1fbf557fab3e05f7b7eb98e52b5ce4b5a9c5c704c96",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 2",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-3.png",
+      "crop_sha256": "6839fd9ebfe4d3bc3e8a0f73dfb36e15019db9bd6bb405c1bf53473860ec6873",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 3",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-4.png",
+      "crop_sha256": "7bb38f2c61e082addc334b46877931d3272be7b038ca43531834da1fc46c45af",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 4",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-5.png",
+      "crop_sha256": "a507de1de508ca4b94619d9a9f77d92c1f7bf244744fc529997345a3a6a4154e",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 5",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": {
+        "blocker_path": "docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.json",
+        "draft_extraction_status": "blocked_manual_curve_separation_required",
+        "task_id": "a14_cikhardtova_2015_fig6_linear_density_extraction_blocker"
+      },
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/cikhardtova-2015-linear-density/crops/page-03-fig-6.png",
+      "crop_sha256": "28f54e7976045c2068742fb003a6aa149f22f44d3174937cc1ee2da52664afde",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "extraction_blocked",
+      "figure_id": "Fig. 6",
+      "next_action": "perform manual or vector-assisted curve separation",
+      "source_slug": "cikhardtova-2015-linear-density"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/szydlowski-2004-fast-ion-neutron/crops/page-02-fig-1.png",
+      "crop_sha256": "c6a60ac0d3c32ac61d47ef6cfd131b42fb1703cf747fa0cff91f32a02e1b5401",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 1",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "szydlowski-2004-fast-ion-neutron"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/szydlowski-2004-fast-ion-neutron/crops/page-03-fig-2.png",
+      "crop_sha256": "491a2e9df04253d93fbd1ca4974c1dfd0d6d1a9dc290b279846c32974252f87c",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 2",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "szydlowski-2004-fast-ion-neutron"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/szydlowski-2004-fast-ion-neutron/crops/page-03-fig-3.png",
+      "crop_sha256": "ca9abf54e0ec6ef137b867bcea4b30759554de11b15de7af9b6f4a568d90e97b",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 3",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "szydlowski-2004-fast-ion-neutron"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/szydlowski-2004-fast-ion-neutron/crops/page-03-fig-4.png",
+      "crop_sha256": "feef20fa95acc0d09e5eb63cf691ca651aaa1cc8104c6e1dc455b07254476f7b",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 4",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "szydlowski-2004-fast-ion-neutron"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/szydlowski-2004-fast-ion-neutron/crops/page-04-fig-5.png",
+      "crop_sha256": "913ff6560ce234cc9522cee13ca93057264debbcf5e98a71d79b9b43c652eba9",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 5",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "szydlowski-2004-fast-ion-neutron"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-03-fig-1.png",
+      "crop_sha256": "0fa804e9de0e4c8804a9c04a57172380c758b9350bd6d86538e294003a708471",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 1",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "klir-2011-tof-detector"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-03-fig-2.png",
+      "crop_sha256": "a88d8b1b963574cc2d9d5c03c02b82cc9bffaa823c57ab4f9ed6451ded8dbee2",
+      "draft_packets": [
+        {
+          "packet_kind": "figure_digitization_draft",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-klir-fig2-timing-response-draft-packet.json",
+          "task_id": "a14_klir_2011_fig2_timing_response_draft"
+        }
+      ],
+      "extraction_kind": "figure",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Fig. 2",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "klir-2011-tof-detector"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-04-fig-3.png",
+      "crop_sha256": "83e83a7e134e9eb86a4c17c7e50719f4cd053e6b09bd87b62fd1f38b2bd24e9a",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 3",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "klir-2011-tof-detector"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/klir-2011-tof-detector/crops/page-04-fig-4.png",
+      "crop_sha256": "238c8c457e546839d738bb4fe0e61a64ddc33c9faa8975042074489f92c56941",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 4",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "klir-2011-tof-detector"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-02-fig-1.png",
+      "crop_sha256": "8ae9a75d27e15c42d2a0c309cb771347ea49bf54a46f1921f432d79a0d78aee2",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 1",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-04-fig-2.png",
+      "crop_sha256": "f4d99d165c3b1280d0e8035cccb50911170025e09b9cbe0b2e0f6d20ee508491",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 2",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-04-fig-3.png",
+      "crop_sha256": "378109b81aade918074c53502ee767a5cd338723aeb129cdf2304d5e908b4514",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 3",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-05-fig-4.png",
+      "crop_sha256": "f1c077393e1a0bac3430ad7fd6d991e3d78e03906a1238bb0009d225f2eb78ca",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 4",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-06-fig-5.png",
+      "crop_sha256": "bc3b646fb4351ab6eb897d74fe90f262a4769db131628c3fe39ff6b0adb17533",
+      "draft_packets": [
+        {
+          "packet_kind": "figure_digitization_draft",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json",
+          "task_id": "a14_springham_2021_fig5_monoenergetic_response_draft"
+        },
+        {
+          "packet_kind": "figure_digitization_draft",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-gaussian-curves-draft-packet.json",
+          "task_id": "a14_springham_2021_fig5_gaussian_curves_draft"
+        }
+      ],
+      "extraction_kind": "figure",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Fig. 5",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-07-table-1.png",
+      "crop_sha256": "3976e260331c75ee90f3ac1689ca948bc7d14f5ca5d9ee20888e826e510a8db7",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_springham_2021_table1_shot_counts"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table 1",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-08-fig-6.png",
+      "crop_sha256": "0459ced11acc24619d56480e10eb46dbf0e6fd1024c35bef1bc3f83a959e4326",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 6",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-09-table-2.png",
+      "crop_sha256": "ffd4664d5a1759d9a8a11d1e32242bc6897d77a22fa1cbf815ce8d7c3bd51f1f",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_springham_2021_table2_four_mbar_activation_summary"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table 2",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/springham-2021-zrbe-activation/crops/page-09-fig-7.png",
+      "crop_sha256": "fe079db97f27f38445e18a05eae465eb73e004ef05bfc14c2ea085b20abb39eb",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 7",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "springham-2021-zrbe-activation"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-03-fig-1.png",
+      "crop_sha256": "938a55e0c8c4fe1d37ef77ea76ce72e0b905ca66e758bdb0010e5c017f6a2e35",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 1",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-04-fig-2.png",
+      "crop_sha256": "7c77ed0596ae20d37346bb7f566f51080af3304e9c372fa0436df2132e43bd6f",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 2",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-04-table-i.png",
+      "crop_sha256": "9b6969ddb3b617f859af35fb714e53f4883d2e5b6519c1b340b93b2b1082211b",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_catenacci_2020_table_i_shadow_bar_scale_factors"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table I",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-04-table-ii.png",
+      "crop_sha256": "9985eec86b0843f409262c26a803b15b88b8bfc90198e52243411be95b83dcce",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_catenacci_2020_table_ii_detector_positions"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table II",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-05-fig-3.png",
+      "crop_sha256": "67329d55f74bab0c2116760cdeae9d66f4c57e51b4d8268ff27bc2742ee1be1a",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 3",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-05-table-iii.png",
+      "crop_sha256": "e6f2d997c6299381ac2540ddd63e5c89899758a42e64bc0a426a7e15c74e2260",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_catenacci_2020_table_iii_peak_energy_yield"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table III",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-06-fig-4.png",
+      "crop_sha256": "0ae89cf1a8538e15aa6d19ac2e57ecf7a665596053afb5abf69d6b17b27d1017",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 4",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-06-fig-5.png",
+      "crop_sha256": "4c3bc43c3fdae337abd3c411699dc30b11ba4f6594f7745221d829cae6ef4f79",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 5",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-06-fig-6.png",
+      "crop_sha256": "b5556a46b8cd17b55e17aad1c6bdd1cb0a409b01db431906b93420f26a14adec",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 6",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "manual_review_required",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-07-fig-7.png",
+      "crop_sha256": "541d7b58eb26873aae484d09e4cba29a74fe6122b765b580169d27b384b1b7b2",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "manual_review_required",
+      "figure_id": "Fig. 7",
+      "next_action": "complete visual/manual review before numeric extraction",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "boundary_ready_for_draft_extraction",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-07-fig-8.png",
+      "crop_sha256": "d470e3e0292faf90b7b6db2e0ca30a96e809989fcf6115455e8251a90f9b35b3",
+      "draft_packets": [],
+      "extraction_kind": "figure",
+      "extraction_status": "ready_not_started",
+      "figure_id": "Fig. 8",
+      "next_action": "create source-bound draft digitization packet",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    },
+    {
+      "accepted_for_validation": false,
+      "blocker": null,
+      "crop_boundary_status": "draft_extracted_review_blocked",
+      "crop_path": "KnowledgeReference/figures/target-extraction/2026-05-11/catenacci-2020-neutron-tomography/crops/page-07-table-iv.png",
+      "crop_sha256": "8f4c62bb24695a880abe16756123edd7899bd08c008e88787bea4b9871068d77",
+      "draft_packets": [
+        {
+          "packet_kind": "table_draft_in_bundle",
+          "packet_path": "KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json",
+          "task_id": "a14_catenacci_2020_table_iv_max_energy_comparison"
+        }
+      ],
+      "extraction_kind": "table",
+      "extraction_status": "reviewable_draft_packet_exists",
+      "figure_id": "Table IV",
+      "next_action": "submit draft packet for independent review or correct it",
+      "source_slug": "catenacci-2020-neutron-tomography"
+    }
+  ],
+  "distinct_reviewable_crop_count": 8,
+  "generated_utc": "2026-05-12T16:01:25.117598+00:00",
+  "model_role": "a14_remaining_extraction_backlog",
+  "reviewable_draft_packet_count": 9,
+  "source_crop_review_path": "docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json",
+  "source_crop_review_sha256": "fa0cbc3f4c5657390436d9edb22505821cf470b1d026581552d8825441009c84",
+  "status_counts": {
+    "extraction_blocked": 1,
+    "manual_review_required": 9,
+    "ready_not_started": 18,
+    "reviewable_draft_packet_exists": 8
+  },
+  "total_crop_count": 36
+}

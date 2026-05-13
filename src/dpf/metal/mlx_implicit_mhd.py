@@ -40,7 +40,7 @@ so the system is exactly resistive diffusion.
 When to use
 -----------
 - Enable when ``ImplicitMHDConfig.threshold > 0`` (disabled by default to
-  preserve Phase Q validated behaviour until Phase S-3 is complete).
+  preserve current Phase Q behavior until Phase S-3 is complete).
 - Recommended threshold: 1e-3 (denser than the CFL mask at 1e-4, so it covers
   more of the under-resolved region while leaving physical cells explicit).
 - Not needed if the resistive-diffusion sub-cycle (mlx_transport) already

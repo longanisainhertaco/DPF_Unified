@@ -33,7 +33,11 @@ from dpf.constants import e as e_charge
 from dpf.core.bases import CouplingState
 from dpf.engine import SimulationEngine
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
-from dpf.fluid.snowplow import SnowplowModel
+from dpf.fluid.snowplow import (
+    SnowplowModel,
+    cpu_snowplow_radius_convention,
+    post_pinch_resistance_authority,
+)
 from dpf.presets import get_preset
 from dpf.turbulence.anomalous import (
     anomalous_resistivity_field,
@@ -114,6 +118,24 @@ class TestSnowplowInstantiation:
     def test_force_coefficient(self, snowplow):
         expected = (mu_0 / (4.0 * pi)) * np.log(PF1000_B / PF1000_A)
         assert snowplow.F_coeff == pytest.approx(expected, rel=1e-10)
+
+    def test_radius_convention_is_scope_separated(self, snowplow):
+        convention = snowplow.radius_convention
+        assert convention == cpu_snowplow_radius_convention()
+        assert convention["radial_inductance_radius"] == "r_s"
+        assert convention["radial_inductance_radius_meaning"] == "shock_front_radius"
+        assert convention["r_min_over_a"] == pytest.approx(0.17)
+        assert convention["cross_backend_equivalent_to_mlx"] is False
+        assert convention["validation_status"] == "not_validation_evidence"
+
+    def test_post_pinch_resistance_authority_is_empirical(self, snowplow):
+        authority = snowplow.post_pinch_resistance_authority
+        assert authority == post_pinch_resistance_authority()
+        assert authority["classification"] == "empirical_engineering_continuity_model"
+        assert authority["source_status"] == "multiplier_source_missing"
+        assert authority["validation_status"] == "not_validation_evidence"
+        assert authority["can_support_scientific_claims"] is False
+        assert authority["resistance_multiplier"] == pytest.approx(2.0)
 
 
 class TestSnowplowProperties:
@@ -1415,6 +1437,12 @@ class TestLCoeffFix:
         sp = _pf1000_snowplow()
         expected = (mu_0 / (2.0 * pi)) * np.log(sp.b / sp.a)
         assert sp.L_coeff == pytest.approx(expected, rel=1e-14)
+
+    def test_L_coeff_is_geometric_not_current_factor_scaled(self) -> None:
+        sp_high = _pf1000_snowplow(current_fraction=0.9)
+        sp_low = _pf1000_snowplow(current_fraction=0.4)
+
+        assert sp_high.L_coeff == pytest.approx(sp_low.L_coeff, rel=1e-14)
 
     def test_plasma_inductance_axial(self) -> None:
         sp = _pf1000_snowplow()
@@ -5046,17 +5074,17 @@ class TestReflectedShockPhysics:
         )
 
 
-@pytest.mark.xfail(
-    reason="All current-dip tests in this class were calibrated against "
-    "PF-1000 R0=2.3 mOhm. Akel 2021 (commit 07a4566) set R0=6.1 mOhm + "
-    "L0=25 nH, fundamentally shifting dip depth and timing. Thresholds "
-    "need recalibration against published Akel waveforms — tracked as "
-    "follow-up to fix/audit-cleanup-apr23 PR.",
-    strict=False,
-)
 class TestCurrentDipWithReflectedShock:
     """Validate current dip behavior with reflected shock."""
 
+    @pytest.mark.xfail(
+        reason=(
+            "Standard Lee/Malek PF-1000 scope now gives pcf=1.0 dip ~14.6%; "
+            "this reflected-shock dip-depth threshold still needs source-scoped "
+            "acceptance recalibration"
+        ),
+        strict=False,
+    )
     def test_pcf1_deep_dip(self):
         """pcf=1.0 with reflected shock still gives deep dip (>50%)."""
         from dpf.validation.experimental import _find_first_peak
@@ -5076,6 +5104,14 @@ class TestCurrentDipWithReflectedShock:
         dip = (abs_I[peak_idx] - np.min(post_peak)) / abs_I[peak_idx]
         assert dip > 0.40, f"pcf=1.0 dip {dip:.0%} should be > 40%"
 
+    @pytest.mark.xfail(
+        reason=(
+            "Standard Lee/Malek PF-1000 scope now gives pcf=0.14 dip ~1.5%; "
+            "this reflected-shock dip-depth threshold still needs source-scoped "
+            "acceptance recalibration"
+        ),
+        strict=False,
+    )
     def test_pcf014_experimental_dip(self):
         """pcf=0.14 with reflected shock gives 20-90% dip."""
         from dpf.validation.experimental import _find_first_peak
@@ -5121,14 +5157,6 @@ class TestCurrentDipWithReflectedShock:
             assert recovery >= 0.0, "No current recovery after dip minimum"
 
 
-@pytest.mark.xfail(
-    reason="All NRMSE / peak-error tests in this class were calibrated against "
-    "PF-1000 R0=2.3 mOhm. Akel 2021 (commit 07a4566) set R0=6.1 mOhm + L0=25 nH, "
-    "raising peak error to ~12%% and NRMSE to ~0.21. Thresholds need "
-    "recalibration against published Akel waveforms — tracked as follow-up "
-    "to fix/audit-cleanup-apr23 PR.",
-    strict=False,
-)
 class TestNRMSEWithReflectedShock:
     """Verify NRMSE against Scholz (2006) is maintained."""
 
@@ -5153,6 +5181,14 @@ class TestNRMSEWithReflectedShock:
             f"NRMSE {comp.waveform_nrmse:.4f} exceeds 0.22"
         )
 
+    @pytest.mark.xfail(
+        reason=(
+            "Standard Lee/Malek PF-1000 scope gives ~8.7% Lee reflected-shock "
+            "peak error for this calibrated parameter set; the 5% floor needs "
+            "source-scoped acceptance recalibration"
+        ),
+        strict=False,
+    )
     def test_peak_error_below_5pct(self):
         """Peak current error < 5% with reflected shock."""
         from dpf.validation.lee_model_comparison import LeeModel
@@ -5196,15 +5232,6 @@ class TestReflectedShockConsistency:
             f"Snowplow phase is '{sp.phase}', expected reflected/frozen"
         )
 
-    @pytest.mark.xfail(
-        reason="Lee model and run_rlc_snowplow_pf1000 read device params from "
-        "different sources (LeeModel reads PF1000_DATA, run_rlc_snowplow_pf1000 "
-        "reads SimulationConfig preset). After commit 07a4566 updated PF1000_DATA "
-        "L0/R0 per Akel 2021, the two diverge by ~14%%. Reconciliation requires "
-        "unifying device-param source — tracked as follow-up to "
-        "fix/audit-cleanup-apr23 PR.",
-        strict=False,
-    )
     def test_peak_currents_consistent(self):
         """Lee model and engine (RLCSolver+Snowplow) produce similar peaks."""
         from dpf.validation.engine_validation import run_rlc_snowplow_pf1000
@@ -5387,7 +5414,7 @@ class TestTwoStepRadialPhysics:
         assert "radial_current_fraction_2" in faeton
         assert "radial_transition_time" in faeton
         assert faeton["radial_current_fraction"] == 0.8
-        assert faeton["radial_current_fraction_2"] == 0.5
+        assert faeton["radial_current_fraction_2"] == 0.58
         assert faeton["radial_transition_time"] == 7.0e-6
 
     def test_config_accepts_two_step_params(self) -> None:

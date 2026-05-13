@@ -81,6 +81,9 @@ from dpf.presets import _PRESETS, get_preset, list_presets
 
 RUNTIME_PER_US = {
     ("lee", "coarse"): 0.02, ("lee", "medium"): 0.02, ("lee", "fine"): 0.02,
+    ("first_principles_mhd", "coarse"): 1.5,
+    ("first_principles_mhd", "medium"): 8.0,
+    ("first_principles_mhd", "fine"): 50.0,
     ("python", "coarse"): 1.5, ("python", "medium"): 8.0, ("python", "fine"): 50.0,
     ("metal_plm", "coarse"): 0.8, ("metal_plm", "medium"): 4.0, ("metal_plm", "fine"): 25.0,
     ("metal_weno5", "coarse"): 2.5, ("metal_weno5", "medium"): 15.0, ("metal_weno5", "fine"): 90.0,
@@ -92,15 +95,18 @@ RUNTIME_PER_US = {
 }
 
 FIDELITY = {
-    "lee": "Level 1 — Circuit model (validated, no spatial resolution)",
-    "hybrid": "Level 2 — Circuit + MHD (validated waveforms + spatial detail)",
+    "lee": "Level 1 — Circuit model (Preview; no spatial resolution)",
+    "first_principles_mhd": (
+        "First-principles MHD mode (PF-1000/Akel fail-closed readiness)"
+    ),
+    "hybrid": "Level 2 — Circuit + MHD (Preview; spatial detail)",
     "python": "Level 3 — Full 2D MHD (shock-capturing, cross-platform)",
     "metal_plm": "Level 4 — Full 2D MHD (GPU-accelerated)",
-    "metal_weno5": "Level 5 — Research grade (5th-order, float64)",
+    "metal_weno5": "Level 5 — High-resolution preview (5th-order, float64)",
     "engine_python": "Level 3E — SimulationEngine + Python MHD (full CircuitCoupler feedback)",
     "engine_metal": "Level 4E — SimulationEngine + Metal MHD (full CircuitCoupler feedback)",
-    "engine_athena": "Level 9 — Athena++ C++ pybind11 backend (research grade, 9.0/10 fidelity)",
-    "engine_athenak": "Level 9 — AthenaK Kokkos backend (GPU-portable, research grade, 9.0/10 fidelity)",
+    "engine_athena": "Level 9 — Athena++ C++ pybind11 backend (Preview; source-gated validation)",
+    "engine_athenak": "Level 9 — AthenaK Kokkos backend (Preview; source-gated validation)",
 }
 
 # Dynamic availability checks for compiled backends
@@ -117,30 +123,41 @@ except Exception:
 
 # Status: whether the backend is fully operational
 BACKEND_STATUS = {
-    "lee": "WORKING",
-    "python": "WORKING",
-    "metal_plm": "WORKING",
-    "metal_weno5": "WORKING",
-    "hybrid": "WORKING",
-    "engine_python": "WORKING",
-    "engine_metal": "WORKING",
-    "engine_athena": "WORKING" if _athena_ok else "Requires compiled Athena++ binary",
-    "engine_athenak": "WORKING" if _athenak_ok else "Requires compiled AthenaK binary",
+    "lee": "Available",
+    "first_principles_mhd": "Available",
+    "python": "Available",
+    "metal_plm": "Available",
+    "metal_weno5": "Available",
+    "hybrid": "Available",
+    "engine_python": "Available",
+    "engine_metal": "Available",
+    "engine_athena": "Available" if _athena_ok else "Requires compiled Athena++ binary",
+    "engine_athenak": "Available" if _athenak_ok else "Requires compiled AthenaK binary",
 }
 
 BACKEND_HELP = {
-    "lee": "*SPEED: < 1 second | VALIDATED against 7+ published devices\n\n"
+    "lee": "*SPEED: < 1 second | PREVIEW; source-gated validation only\n\n"
            "Solves the circuit equations as ordinary differential equations -- no spatial grid. "
            "Computes current I(t), voltage V(t), sheath trajectory, pinch radius, and neutron yield. "
-           "Two fitted parameters (fc, fm) calibrate it to match experimental data.\n\n"
+           "Two fitted parameters (fc, fm) may be fit to selected data, but Reference claims require "
+           "accepted local KnowledgeReference evidence and same-scope validation packets.\n\n"
            "**Best for:** Quick parameter sweeps, fitting to experiments, device exploration.\n"
            "**Does NOT show:** Internal plasma structure, magnetic field maps, or instabilities.*",
 
+    "first_principles_mhd": "*SPEED: 10-30 seconds | FAIL-CLOSED PF-1000/AKEL READINESS\n\n"
+                            "Runs through the current MHD execution path but labels the result as "
+                            "first_principles_mhd and exports readiness blockers for accepted Akel "
+                            "evidence, field-derived circuit coupling, energy accounting, startup/sheath "
+                            "initialization, numerical verification, and physics-fidelity coverage. "
+                            "Lee/snowplow outputs remain baseline_reduced_model only.\n\n"
+                            "**Best for:** Developing the PF-1000/Akel first-principles acceptance path "
+                            "without promoting reduced-model closure factors to predictive evidence.*",
+
     "hybrid": "*SPEED: 3-30 seconds | RECOMMENDED for most users\n\n"
-              "Best of both worlds: the validated circuit model handles the axial rundown phase, "
+              "Best of both worlds: the circuit model handles the axial rundown phase, "
               "then hands off to a 2D MHD solver for the radial implosion where spatial resolution "
-              "matters. You get accurate current waveforms AND spatially resolved pinch compression.\n\n"
-              "**Best for:** Most users. Combines validated accuracy with spatial physics.*",
+              "matters. Outputs remain Preview until accepted source evidence supports the exact scope.\n\n"
+              "**Best for:** Most users. Combines circuit speed with spatial physics previews.*",
 
     "python": "*SPEED: 10-30 seconds | WORKS EVERYWHERE (no GPU needed)\n\n"
               "Full 2D MHD simulation with shock-capturing (PLM + HLL Riemann solver). "
@@ -157,7 +174,8 @@ BACKEND_HELP = {
                    "5th-order WENO-Z reconstruction with 4-wave HLLD Riemann solver. "
                    "Float64 double precision. Produces the sharpest current sheaths "
                    "and most accurate shock fronts.\n\n"
-                   "**Best for:** Publication figures, validation studies, resolving fine structure.*",
+                   "**Best for:** High-resolution preview figures, numerical studies, and resolving fine structure. "
+                   "Validation claims still require accepted source evidence.*",
 
     "engine_python": "*SPEED: 10-60 seconds | FULL CIRCUIT-MHD FEEDBACK (CPU)\n\n"
                      "Routes through SimulationEngine — the full orchestration layer with "
@@ -175,19 +193,19 @@ BACKEND_HELP = {
 
     "engine_athena": "*SPEED: 2-10 seconds | ATHENA++ C++ PYBIND11 BACKEND\n\n"
                      "Routes through SimulationEngine with Athena++ as the MHD solver. "
-                     "Athena++ is a production-grade C++ MHD code (Princeton) with PPM "
+                     "Athena++ is a high-capability C++ MHD code (Princeton) with PPM "
                      "reconstruction, characteristic wave decomposition, and constrained "
                      "transport. Requires a compiled Athena++ binary (see scripts/build_athena.sh).\n\n"
-                     "**Fidelity:** 9.0/10 — publication-grade accuracy.\n"
-                     "**Best for:** Production runs and validation studies requiring Athena++ physics.*",
+                     "**Authority:** Preview until same-scope validation evidence is accepted.\n"
+                     "**Best for:** Higher-performance runs and engineering comparisons requiring Athena++ physics.*",
 
     "engine_athenak": "*SPEED: 0.8-4 seconds | ATHENAK KOKKOS BACKEND\n\n"
                       "Routes through SimulationEngine with AthenaK as the MHD solver. "
                       "AthenaK uses Kokkos for GPU-portable performance (CUDA, HIP, OpenMP, Serial). "
                       "On M3 Pro, runs OpenMP multi-threaded. Requires a compiled AthenaK binary "
                       "(see scripts/build_athenak.sh).\n\n"
-                      "**Fidelity:** 9.0/10 — publication-grade accuracy.\n"
-                      "**Best for:** Fast production runs; GPU-enabled HPC nodes.*",
+                      "**Authority:** Preview until same-scope validation evidence is accepted.\n"
+                      "**Best for:** Fast engineering runs; GPU-enabled HPC nodes.*",
 }
 
 
@@ -318,7 +336,7 @@ def on_settings_change(backend: str, grid_preset: str, sim_time_us: float):
     help_text = BACKEND_HELP.get(backend, "")
     status = BACKEND_STATUS.get(backend, "UNKNOWN")
 
-    status_emoji = {"WORKING": "Ready"}.get(status, status)
+    status_emoji = {"Available": "Ready"}.get(status, status)
 
     if is_lee or backend == "hybrid":
         info = f"**{est}** | {status_emoji} | {fid}\n\n{help_text}"
@@ -379,7 +397,10 @@ def _build_metrics(data: dict, backend: str, val: dict | None = None) -> str:
             parts.append(f"vs. expt I_peak: {dI:.0f}% dev (MHD — no snowplow load)")
         else:
             label = "PASS" if dI <= 5 else "FAIR" if dI <= 15 else "POOR" if dI <= 30 else "FAIL"
-            parts.append(f"vs. expt: **{dI:.0f}% ({label})**")
+            parts.append(
+                f"vs. expt engineering grade: **{dI:.0f}% ({label})** "
+                "(Preview; not Reference validation)"
+            )
         if val.get("waveform_nrmse") is not None:
             nrmse = val["waveform_nrmse"]
             parts.append(f"NRMSE: {nrmse:.1%}")
@@ -1146,20 +1167,20 @@ Runs on any machine -- no Apple Silicon, no GPU, no special hardware. The curren
 
 **Requires:** Apple Silicon Mac (M1/M2/M3/M4). Falls back to CPU if Metal is unavailable.
 
-### MHD High Fidelity (30-120 sec) -- Publication Quality
+### MHD High Fidelity (30-120 sec) -- High-Resolution Preview
 **What it computes:** Same physics as other MHD backends, but with 5th-order spatial accuracy and double precision.
 **How:** WENO5-Z reconstruction (less numerical diffusion) + 4-wave HLLD Riemann solver (resolves contact and Alfven discontinuities) + 3rd-order SSP-RK3 time integration.
 
 Runs on **CPU** in float64 because Apple Metal doesn't support double precision. Slower but produces the sharpest current sheaths and most accurate shock fronts.
 
-**When to use:** Publication figures, validation studies, resolving features thinner than a few grid cells.
+**When to use:** High-resolution preview figures, numerical studies, and resolving features thinner than a few grid cells. Reference validation still requires accepted source evidence.
 
 ### Hybrid Lee+MHD (3-30 sec) -- RECOMMENDED
 **What it computes:** Everything the Lee model does, PLUS spatially resolved compression, magnetic fields, and density maps during the pinch phase.
 
-The best of both worlds: the Lee model handles the well-understood axial rundown phase (validated 0D), then hands off to a 2D MHD solver for the radial implosion where spatial resolution matters. The handoff happens when the sheath reaches the anode tip.
+The best of both worlds: the Lee model handles the well-understood axial rundown phase, then hands off to a 2D MHD solver for the radial implosion where spatial resolution matters. The handoff happens when the sheath reaches the anode tip.
 
-**Accuracy:** Lee-validated current waveforms + MHD-resolved compression (97x demonstrated on PF-1000).
+**Authority:** Preview result. Current waveform and MHD compression claims require accepted local KnowledgeReference evidence and same-scope validation packets before Reference use.
 
 **Important caveat:** On Coarse grid (16 radial cells), the current sheath (~1mm thick) cannot be resolved. Use Medium or Fine grid for meaningful spatial results.
 
@@ -1367,12 +1388,14 @@ def _warmup():
 if __name__ == "__main__":
     _warmup()
     server_port = int(os.environ.get("DPF_UI_PORT", "7860"))
+    server_name = os.environ.get("DPF_UI_HOST", "127.0.0.1")
+    share = os.environ.get("DPF_UI_SHARE", "0").strip().lower() in {"1", "true", "yes"}
     app.queue(max_size=5)
     auth_user = os.environ.get("DPF_AUTH_USER")
     auth_pass = os.environ.get("DPF_AUTH_PASS")
     auth = (auth_user, auth_pass) if auth_user and auth_pass else None
     app.launch(
-        server_name="0.0.0.0", server_port=server_port, share=False,
+        server_name=server_name, server_port=server_port, share=share,
         theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
         css=CSS,
         auth=auth,

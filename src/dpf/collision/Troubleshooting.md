@@ -6,9 +6,15 @@ Files reviewed: 1 file (319 LOC)
 
 ---
 
-## No critical issues found.
+## Superseded 2026-05-11 by the formulary code audit
 
-The Spitzer resistivity and Braginskii transport module (`spitzer.py`) is one of the strongest modules in the codebase. All core formulas verified correct against NRL Plasma Formulary and Braginskii (1965).
+This historical note predates the 2026-05-11 source-scoped formulary audit.
+Keep it as review history only. The older claim that all core formulas were
+verified correct was too broad: the Braginskii perpendicular conductivity
+closure has since been corrected to preserve the NRL high-field coefficient
+`4.7`, and the electron-electron collision-frequency convention remains
+source-convention blocked until the API explicitly names the NRL relaxation
+rate it intends to represent.
 
 ---
 
@@ -30,7 +36,9 @@ The Spitzer resistivity and Braginskii transport module (`spitzer.py`) is one of
 
 ### Braginskii Thermal Conductivity (lines 250-283)
 - kappa_par formula: CORRECT
-- kappa_per = kappa_par / (1 + x^2): CORRECT (leading-order magnetization dependence)
+- Historical finding superseded: `kappa_per = kappa_par / (1 + x^2)` did not
+  preserve the NRL high-field coefficient. Current code uses the 2026-05-11
+  audited closure in `spitzer.py`.
 - Z-dependent delta_e coefficient: Z=1->3.16, Z=2->3.14, Z=3->3.12, Z=4->3.11, Z->inf->3.21. ALL CORRECT.
 
 ### Temperature Relaxation (lines 287-318)

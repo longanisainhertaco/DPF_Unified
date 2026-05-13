@@ -863,7 +863,8 @@ class TestEnergyConservation:
         e_kin = 0.5 * rho * u**2
         e_int = p / (gamma - 1)
         E_vol = (e_kin + e_int) * 4 * np.pi * r**2
-        E_total = np.trapezoid(E_vol, r)
+        integrate = getattr(np, "trapezoid", np.trapz)
+        E_total = integrate(E_vol, r)
         assert E_total == pytest.approx(E0, rel=0.05)
 
 
@@ -3296,4 +3297,3 @@ class TestRegressionBaselines:
         diff = np.array(rho_1d) - np.array(baseline)
         L2 = np.sqrt(np.mean(diff**2))
         assert L2 < 0.01, f"Sod density L2 diff from baseline = {L2:.6f}"
-

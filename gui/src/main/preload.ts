@@ -24,7 +24,14 @@ contextBridge.exposeInMainWorld("dpf", {
     callback: (status: {
       ready: boolean;
       port: number;
-      backends: { python: boolean; athena: boolean; athenak: boolean; metal: boolean };
+      backends: {
+        python: boolean;
+        athena: boolean;
+        athenak: boolean;
+        metal: boolean;
+        mlx: boolean;
+        hybrid: boolean;
+      };
       error?: string;
     }) => void
   ) => {
@@ -33,7 +40,14 @@ contextBridge.exposeInMainWorld("dpf", {
       status: {
         ready: boolean;
         port: number;
-        backends: { python: boolean; athena: boolean; athenak: boolean; metal: boolean };
+        backends: {
+          python: boolean;
+          athena: boolean;
+          athenak: boolean;
+          metal: boolean;
+          mlx: boolean;
+          hybrid: boolean;
+        };
         error?: string;
       }
     ) => callback(status);
@@ -66,7 +80,14 @@ export interface DPFBridge {
     callback: (status: {
       ready: boolean;
       port: number;
-      backends: { python: boolean; athena: boolean; athenak: boolean; metal: boolean };
+      backends: {
+        python: boolean;
+        athena: boolean;
+        athenak: boolean;
+        metal: boolean;
+        mlx: boolean;
+        hybrid: boolean;
+      };
       error?: string;
     }) => void
   ) => () => void;

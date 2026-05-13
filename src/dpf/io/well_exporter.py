@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -32,13 +33,24 @@ class WellExporter:
         filename_prefix: str = "simulation",
         buffer_size: int = 100,
         enable: bool = True,
+        dx: float = 1.0,
+        dz: float | None = None,
+        geometry: str = "cartesian",
+        sim_params: dict[str, Any] | None = None,
+        artifact_classification: dict[str, Any] | None = None,
     ) -> None:
         self.output_dir = Path(output_dir)
         self.filename_prefix = filename_prefix
         self.buffer_size = buffer_size
         self.enable = enable
+        self.dx = dx
+        self.dz = dz
+        self.geometry = geometry
+        self.sim_params = dict(sim_params or {})
+        self.artifact_classification = dict(artifact_classification or {})
 
         self._buffer: list[dict[str, np.ndarray]] = []
+        self._circuit_buffer: list[dict[str, float]] = []
         self._times: list[float] = []
         self._batch_count = 0
 
@@ -46,19 +58,24 @@ class WellExporter:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def append_state(
-        self, state: dict[str, np.ndarray], time: float = 0.0,
+        self,
+        state: dict[str, np.ndarray],
+        time: float = 0.0,
+        circuit_scalars: dict[str, float] | None = None,
     ) -> None:
         """Add a state to the buffer.
 
         Args:
             state: DPF state dict (keys: rho, velocity, B, etc.)
             time: Simulation time [s].
+            circuit_scalars: Optional scalar circuit quantities for the same time.
         """
         if not self.enable:
             return
 
         state_copy = {k: v.copy() for k, v in state.items() if isinstance(v, np.ndarray)}
         self._buffer.append(state_copy)
+        self._circuit_buffer.append(dict(circuit_scalars or {}))
         self._times.append(time)
 
         if len(self._buffer) >= self.buffer_size:
@@ -75,6 +92,7 @@ class WellExporter:
         if rho is None:
             logger.warning("No 'rho' field in state — cannot infer grid shape for Well export")
             self._buffer.clear()
+            self._circuit_buffer.clear()
             self._times.clear()
             return
 
@@ -89,11 +107,20 @@ class WellExporter:
         exporter = _FullWellExporter(
             output_path=path,
             grid_shape=grid_shape,
-            dx=1.0,  # placeholder — engine doesn't pass dx to exporter
+            dx=self.dx,
+            dz=self.dz,
+            geometry=self.geometry,
+            sim_params=self.sim_params,
+            artifact_classification=self.artifact_classification or None,
         )
 
-        for state_copy, t in zip(self._buffer, self._times, strict=True):
-            exporter.add_snapshot(state_copy, time=t)
+        for state_copy, t, circuit_scalars in zip(
+            self._buffer,
+            self._times,
+            self._circuit_buffer,
+            strict=True,
+        ):
+            exporter.add_snapshot(state_copy, time=t, circuit_scalars=circuit_scalars)
 
         try:
             exporter.finalize()
@@ -102,6 +129,7 @@ class WellExporter:
             logger.warning("h5py not available — skipping Well export")
 
         self._buffer.clear()
+        self._circuit_buffer.clear()
         self._times.clear()
         self._batch_count += 1
 

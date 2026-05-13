@@ -49,8 +49,9 @@ class DPFSurrogate(WalrusInferenceMixin):
       (fine-tuned format)
 
     When the ``walrus`` package is installed, loads a real ``IsotropicModel`` with
-    RevIN normalization and runs delta-prediction inference. Otherwise falls back
-    to a placeholder that returns the last input state unchanged.
+    RevIN normalization and runs delta-prediction inference. Otherwise records a
+    non-predictive placeholder state; prediction refuses to run in placeholder
+    mode.
 
     Args:
         checkpoint_path: Path to WALRUS checkpoint (directory or .pt file)
@@ -133,7 +134,10 @@ class DPFSurrogate(WalrusInferenceMixin):
         """
         if self.checkpoint_path is None:
             logger.warning("No checkpoint path provided. Using prediction placeholder.")
-            self._model = {"placeholder": True}
+            self._model = {
+                "placeholder": True,
+                "placeholder_reason": "checkpoint_missing",
+            }
             return
 
         try:
@@ -161,6 +165,8 @@ class DPFSurrogate(WalrusInferenceMixin):
             else:
                 # Placeholder — store checkpoint info for later
                 self._model = {
+                    "placeholder": True,
+                    "placeholder_reason": "walrus_not_installed",
                     "checkpoint_path": self.checkpoint_path,
                     "device": self.device,
                     "data": checkpoint_data,
@@ -176,12 +182,55 @@ class DPFSurrogate(WalrusInferenceMixin):
                 f"Failed to load checkpoint from {self.checkpoint_path}: {e}. "
                 "Using prediction placeholder."
             )
-            self._model = {"placeholder": True}
+            self._model = {
+                "placeholder": True,
+                "placeholder_reason": "load_failed",
+                "load_error": str(e),
+            }
 
     @property
     def is_loaded(self) -> bool:
         """Check if model is loaded and ready for inference."""
         return self._model is not None
+
+    @property
+    def placeholder_loaded(self) -> bool:
+        """Return True when only a non-predictive placeholder is loaded."""
+        return isinstance(self._model, dict) and bool(self._model.get("placeholder"))
+
+    @property
+    def real_model_loaded(self) -> bool:
+        """Return True when a real WALRUS model object is loaded."""
+        return self._is_walrus_model
+
+    @property
+    def source_backed_model_loaded(self) -> bool:
+        """Return True only after WALRUS model provenance is source-backed.
+
+        Local audit status for WALRUS model cards, checkpoint provenance, and
+        source acceptance is still blocked. Keep this fail-closed until a
+        reviewed source packet records the checkpoint hash, version, license,
+        and validation status.
+        """
+        return False
+
+    @property
+    def model_load_status(self) -> dict[str, Any]:
+        """Structured model-load state for API/UI reporting."""
+        status = {
+            "loaded": self.is_loaded,
+            "placeholder_loaded": self.placeholder_loaded,
+            "real_model_loaded": self.real_model_loaded,
+            "source_backed_model_loaded": self.source_backed_model_loaded,
+            "checkpoint_path": str(self.checkpoint_path) if self.checkpoint_path else None,
+            "validation_status": "not_validation_evidence",
+            "source_status": "source_packet_missing",
+        }
+        if isinstance(self._model, dict):
+            reason = self._model.get("placeholder_reason")
+            if reason is not None:
+                status["placeholder_reason"] = reason
+        return status
 
     @property
     def _is_walrus_model(self) -> bool:

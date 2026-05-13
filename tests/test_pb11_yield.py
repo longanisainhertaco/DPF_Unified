@@ -32,6 +32,11 @@ class TestPb11ModelMetadata:
         metadata = pb11_model_metadata()
         assert metadata["model_role"] == "reactivity_table_estimate"
         assert metadata["validation_role"] == "not_dpf_feasibility_validation"
+        assert metadata["source_status"] == (
+            "reactivity_table_source_missing_q_value_local_nrl_supported"
+        )
+        assert metadata["validation_status"] == "not_validation_evidence"
+        assert metadata["can_support_validation_claims"] is False
         assert metadata["predictive_dpf_pb11"] is False
         assert "KnowledgeReference" in metadata["components"]["reactivity"]
         assert "10-2000 keV" in metadata["validity_notes"]["temperature_range"]

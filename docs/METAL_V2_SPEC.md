@@ -222,6 +222,10 @@ V_back = -I · dLp/dt
 
 **Existing bug to fix**: `rlc_solver.py:52` adds `dLp_dt` to `R_star`, AND `coupler.py:194` computes `back_emf = I * dLp_dt`. This double-counts. Fix: remove `dLp_dt` from `R_star` and let `back_emf` carry it alone, OR set `back_emf = 0` in coupler and let `R_star` handle it.
 
+2026-05-11 audit decision: keep `dLp_dt` in `R_star`, clamp the equivalent
+`I*dLp/dt` voltage through `dLp_dt`, and return `back_emf=0.0` from
+`CircuitCoupler` unless a future distinct motional-EMF model is implemented.
+
 ### 5.3 MLX Zero-Copy Coupling
 
 Volume integrals for Lp, R_plasma computed directly on MLX GPU arrays. Scalar extraction via `mx.eval()` + `.item()` has ~20-50μs latency per extraction — acceptable for 2 scalars per timestep. Circuit solver runs in float64 on CPU via standard Python.

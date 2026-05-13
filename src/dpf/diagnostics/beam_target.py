@@ -40,6 +40,12 @@ from numba import njit
 from dpf.constants import e as e_charge
 from dpf.constants import eV
 
+
+def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:
+    integrator = getattr(np, "trapezoid", np.trapz)
+    return float(integrator(values, times))
+
+
 # ---------------------------------------------------------------------------
 # Bosch-Hale DD fusion cross section (D(d,n)He3 branch)
 # ---------------------------------------------------------------------------
@@ -551,7 +557,7 @@ def decompose_neutron_events(
         return {
             "n_events": 0,
             "events": [],
-            "total_yield": float(np.trapezoid(rates, times)),
+            "total_yield": _trapezoid_integral(rates, times),
             "primary_fraction": 0.0,
         }
 
@@ -589,8 +595,10 @@ def decompose_neutron_events(
         fwhm_ns = (end_time - start_time) * 1e9
 
         # Integrated yield over this event window
-        event_yield = float(np.trapezoid(rates[left_idx:right_idx + 1],
-                                     times[left_idx:right_idx + 1]))
+        event_yield = _trapezoid_integral(
+            rates[left_idx:right_idx + 1],
+            times[left_idx:right_idx + 1],
+        )
 
         events.append({
             "peak_time": peak_time,
@@ -601,7 +609,7 @@ def decompose_neutron_events(
             "end_time": end_time,
         })
 
-    total_yield = float(np.trapezoid(rates, times))
+    total_yield = _trapezoid_integral(rates, times)
     primary_yield = max(ev["yield_count"] for ev in events) if events else 0.0
     primary_fraction = primary_yield / max(total_yield, 1e-300)
 

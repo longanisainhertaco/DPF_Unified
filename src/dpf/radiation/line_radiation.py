@@ -24,6 +24,10 @@ References:
     - NRL Plasma Formulary (2019)
     - Seaton, MNRAS 119, 81 (1959)
 
+These references are background context only for this module unless a specific
+formula is separately source-closed. The line-cooling piecewise coefficients
+below remain unknown-provenance empirical fits.
+
 Provenance note (2026-04-23, P1.9.4):
     The piecewise power-law fits in this module were previously labeled
     as drawn from "Post, Jensen, Tarter, Grasberger & Lokke,
@@ -52,6 +56,8 @@ logger = logging.getLogger(__name__)
 
 LINE_RADIATION_MODEL_ROLE = "empirical_cooling_estimate"
 LINE_RADIATION_VALIDATION_ROLE = "not_high_z_predictive"
+LINE_RADIATION_SOURCE_STATUS = "unknown_provenance_empirical_fits"
+LINE_RADIATION_VALIDATION_STATUS = "not_validation_evidence"
 
 
 def line_radiation_model_metadata() -> dict[str, object]:
@@ -59,6 +65,9 @@ def line_radiation_model_metadata() -> dict[str, object]:
     return {
         "model_role": LINE_RADIATION_MODEL_ROLE,
         "validation_role": LINE_RADIATION_VALIDATION_ROLE,
+        "source_status": LINE_RADIATION_SOURCE_STATUS,
+        "validation_status": LINE_RADIATION_VALIDATION_STATUS,
+        "claim_scope": "engineering_cooling_estimate",
         "predictive_high_z": False,
         "components": {
             "bremsstrahlung": (
@@ -96,11 +105,14 @@ def line_radiation_model_metadata() -> dict[str, object]:
 # Constants
 # ═══════════════════════════════════════════════════════
 
-# Seaton recombination coefficient [W m^3]
-# Derived: alpha_R = 5.197e-20 * Z * sqrt(chi/(kB*Te)) [m^3/s]  (Seaton 1959, Phi~1)
-# P_rec = ne * (ne/Z) * alpha_R * chi = C_REC * ne^2 * Z^2 * sqrt(chi/(kB*Te))
-# where chi = 13.6 * Z^2 * eV (hydrogenic ionisation energy).
-C_REC: float = 1.13e-37
+# NRL Plasma Formulary Eq. 33 free-bound coefficient [W m^3].
+# Eq. 33 gives:
+#   P_r = 1.69e-32 Ne Te_eV^0.5 sum_Z[Z^2 N(Z) (E_inf/Te_eV)] [W/cm^3].
+# For a hydrogenic single-species plasma with ni = ne / Z and
+# chi = 13.6 Z^2 eV, this can be written as
+#   P_r = C_REC * ne^2 * Z^2 * sqrt(chi / (k_B T)).
+# Matching Eq. 33 in SI gives C_REC = 1.69e-38 * sqrt(13.6).
+C_REC: float = 6.23241205313e-38
 
 
 # ═══════════════════════════════════════════════════════
@@ -145,8 +157,8 @@ def _cooling_neon(Te_eV: float) -> float:
     Moderate-Z impurity with strong line radiation in 10-200 eV range.
 
     EMPIRICAL piecewise power-law fit calibrated to give peak
-    Lambda ~ 2e-32 near 30-50 eV. Targets ADAS coronal rates within
-    factor of 2-3 over 5-500 eV. Previous "Post et al. (1977) Table II"
+    Lambda ~ 2e-32 near 30-50 eV and expected shell structure over
+    5-500 eV. Previous "Post et al. (1977) Table II"
     citation removed (P1.9.4) -- Post 1977 not on disk, and Post's
     published fits are log-polynomial, not power-law. Provenance of
     the actual coefficients is unknown.
@@ -176,8 +188,8 @@ def _cooling_argon(Te_eV: float) -> float:
     Strong M-shell and L-shell line radiation in 10-1000 eV range.
 
     EMPIRICAL piecewise power-law fit calibrated to give peak
-    Lambda ~ 3e-33 near 30-100 eV. Targets ADAS within factor of 3
-    over 10-1000 eV. Previous "Post et al. (1977) Table II" citation
+    Lambda ~ 3e-33 near 30-100 eV and expected shell structure over
+    10-1000 eV. Previous "Post et al. (1977) Table II" citation
     removed (P1.9.4) -- Post 1977 not on disk, and Post's published
     fits are log-polynomial, not power-law. Provenance of the actual
     coefficients is unknown.
@@ -224,7 +236,8 @@ def _cooling_copper(Te_eV: float) -> float:
         K-shell (n=1):  IP 11062–11568 eV (Cu27+, Cu28+)
 
     Uses log-log linear interpolation on 21 data points spanning
-    1 eV to 10 keV.  Accuracy: ±30-50% vs. ADAS/CHIANTI tabulations.
+    1 eV to 10 keV. The table is an empirical approximation, not a direct
+    CHIANTI/ADAS/Post source table.
     Peak Lambda ~ 3e-30 W m^3 at ~100 eV (global M-shell maximum).
     """
     if Te_eV < 1.0:
@@ -338,10 +351,10 @@ def _cooling_tungsten(Te_eV: float) -> float:
     Dominant radiator in tokamak divertors and DPF with W electrodes.
     Peak Lambda ~ 1e-31 near 50 eV.
 
-    EMPIRICAL piecewise power-law fit calibrated against
-    Putterich et al., Nucl. Fusion 59, 056020 (2019) within factor of
-    2-3 over 10-10000 eV. Previous Post et al. (1977) co-citation
-    removed (P1.9.4) -- Post 1977 not on disk.
+    EMPIRICAL piecewise power-law fit calibrated to broad expected high-Z
+    cooling behavior over 10-10000 eV. Previous Post et al. (1977)
+    co-citation removed (P1.9.4) -- Post 1977 not on disk. The actual
+    coefficient provenance remains unverified.
     """
     if Te_eV < 2.0:
         return 1.0e-38
@@ -451,7 +464,7 @@ def cooling_function(Te: np.ndarray, Z: float) -> np.ndarray:
 
         P_line = ne * n_Z * Lambda(Te, Z)
 
-    Uses piecewise power-law fits to CHIANTI / ADAS data for common
+    Uses unknown-provenance empirical piecewise power-law fits for common
     elements (H, Ne, Ar, Cu, W) and a generic Z-scaling for others.
 
     Args:

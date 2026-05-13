@@ -18,6 +18,12 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+_DEFAULT_SOURCE_SCOPE = "not_declared"
+_DEFAULT_SOURCE_SCOPE_STATUS = "not_validation_evidence"
+_DEFAULT_SOURCE_SCOPE_NOTE = "No reviewed source scope is declared for this preset."
+_DEFAULT_VALUE_SOURCE_STATUS = "narrative_or_generic_preset_not_validation_evidence"
+_PRESET_VALIDATION_STATUS = "not_validation_evidence"
+
 _PRESETS: dict[str, dict[str, Any]] = {
     "tutorial": {
         "_meta": {
@@ -68,6 +74,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "device": "PF-1000",
             "geometry": "cylindrical",
             "topology": "mather",
+            "source_scope": "pf1000_standard_27kv_lee_malek",
+            "source_scope_status": "same_scope_source_reviewed_not_certificate",
+            "source_scope_note": (
+                "Standard PF-1000 27 kV preset using the local Lee/Malek "
+                "bank, geometry, and current-factor scope. It is separate "
+                "from the Akel shot-12581 16 kV validation scope and still "
+                "requires run-level accepted evidence before certification."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
@@ -77,14 +92,16 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Scholz et al., Nukleonika 51(1):79-84, 2006, Table 1
-        # L0, R0 from short-circuit discharge calibration (includes AC effects)
+        # Circuit: Lee/Malek standard PF-1000 27 kV scope.
+        # KnowledgeReference supports L0=33-33.5 nH, r0=6-6.3 mOhm,
+        # a=11.55 cm, b=16 cm, z0=60 cm, fc=0.7, fm=0.13,
+        # fmr=0.35, fcr=0.65 at 3.5 Torr D2.
         "circuit": {
             "C": 1.332e-3,     # 1.332 mF (Scholz 2006)
             "V0": 27e3,        # 27 kV charging voltage
-            "L0": 33.5e-9,     # 33.5 nH external inductance (RADPF default)
-            "R0": 2.3e-3,      # 2.3 mOhm bare-bank short-circuit (Scholz 2006 Table 1) — plasma R enters via sheath, not bank
-            "anode_radius": 0.115,   # 115 mm (Scholz 2006)
+            "L0": 33.5e-9,     # 33.5 nH standard PF-1000 bank
+            "R0": 6.1e-3,      # 6.1 mOhm standard PF-1000 bank
+            "anode_radius": 0.1155,  # 11.55 cm
             "cathode_radius": 0.16,  # 160 mm effective (Lee & Saw 2014)
             "n_cathode_rods": 12,  # UNVERIFIED: cited as 12 (Gribkov 2007) but PDF not read in session
             "crowbar_enabled": True,
@@ -109,8 +126,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "current_fraction": 0.7,  # RADPF default: fc=0.7
             "mass_fraction": 0.13,  # RADPF default: fm=0.13 (was 0.08 — not a published value)
             "radial_mass_fraction": 0.35,  # RADPF default: fmr=0.35
-            "radial_current_fraction_2": 0.45,  # EMPIRICAL: two-step radial (Damideh 2025 method)
-            "radial_transition_time": 5.5e-6,  # EMPIRICAL: re-strike onset during radial phase
+            "radial_current_fraction": 0.65,  # Malek 2025 PF-1000 fit: fcr=0.65
             "pinch_column_fraction": 0.14,  # Lee & Saw (2014): z_f ~ 84 mm of 600 mm
         },
     },
@@ -126,6 +142,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
+            "source_scope": "pf1000_16kv_2021_akel_shot12581",
+            "source_scope_status": "same_scope_blocked_by_review",
+            "source_scope_note": (
+                "Source-scoped PF-1000 Akel shot-12581 preset. It is same-scope "
+                "with pf1000_16kv_2021_akel, but waveform validation remains "
+                "blocked until the Akel Fig. 1 digitization packet is accepted."
+            ),
+            "validation_scope": "pf1000_16kv_2021_akel",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
@@ -170,6 +194,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (voltage trend)",
+            "source_scope": "pf1000_20kv_derived_operating_point",
+            "source_scope_status": "derived_operating_point_not_validation_evidence",
+            "source_scope_note": (
+                "PF-1000 20 kV operating-point preset. It is a derived trend "
+                "case and must not be confused with the source-scoped Akel "
+                "shot-12581 16 kV validation scope."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,
@@ -179,14 +211,13 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: Same PF-1000 bank, different operating voltage
-        # R0 = 2.3 mOhm baseline (no Akel correction — this is not a per-shot comparison)
+        # Circuit: Same Lee/Malek standard PF-1000 bank, different operating voltage.
         "circuit": {
             "C": 1.332e-3,     # 1.332 mF (same bank)
             "V0": 20e3,        # 20 kV charging voltage
             "L0": 33.5e-9,     # 33.5 nH (same circuit)
-            "R0": 2.3e-3,      # 2.3 mOhm baseline (Scholz 2006)
-            "anode_radius": 0.115,   # Same geometry
+            "R0": 6.1e-3,      # 6.1 mOhm same Lee/Malek bank
+            "anode_radius": 0.1155,  # Same Lee/Malek geometry
             "cathode_radius": 0.16,  # Same geometry
             "crowbar_enabled": True,
             "crowbar_mode": "fixed_time",
@@ -202,6 +233,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.6,  # Same geometry
             # At 20 kV (lower stored energy), lower fill pressure (2 Torr vs 3.5 Torr)
             # means lighter mass loading, similar fc but potentially lower fm
+            "fill_pressure_Pa": 266.644,  # 2 Torr D2, aligned with PF-1000-20kV registry
             "current_fraction": 0.7,   # Same as 27 kV (Lee & Saw 2014)
             "mass_fraction": 0.08,     # Same fm as 27 kV (same device geometry)
             "radial_mass_fraction": 0.16,  # Same as 27 kV
@@ -215,6 +247,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Lee & Saw, J. Fusion Energy 27:292 (2008); RADPF Module 1",
+            "source_scope": "nx2_reference_only_lee_radpf",
+            "source_scope_status": "reference_only_not_validation_evidence",
+            "source_scope_note": (
+                "NX2 preset is source-aligned to local Lee/RADPF model factors "
+                "but remains reference-only: the 400 kA value is not an accepted "
+                "same-shot waveform validation target and no digitized waveform "
+                "is available."
+            ),
+            "validation_scope": "",
             "validation_note": (
                 "Published 'experimental' 400 kA is RADPF model output, not Rogowski "
                 "measurement (unloaded circuit peak = 402 kA, implying <1% plasma "
@@ -250,9 +291,9 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "anode_length": 0.05,
             "fill_pressure_Pa": 400.0,  # 3 Torr D2 = 400 Pa
             "current_fraction": 0.7,  # Lee & Saw (2008); Lee et al. (2009)
-            "mass_fraction": 1.0,    # EMPIRICAL: calibrated to minimize loading vs RADPF 400 kA target
-            "radial_mass_fraction": 0.14,  # Arwinder thesis Table 3.34 (C1: fmr=0.14)
-            "radial_current_fraction": 0.69,  # Arwinder thesis Table 3.34 (C1: fcr=0.69)
+            "mass_fraction": 0.10,    # Lee/RADPF NX2 current-trace fit
+            "radial_mass_fraction": 0.12,  # Lee/RADPF NX2 current-trace fit
+            "radial_current_fraction": 0.68,  # Lee/RADPF NX2 current-trace fit
             "pinch_column_fraction": 0.5,  # Small device: larger fraction focuses
         },
     },
@@ -263,12 +304,21 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Lee et al., Am. J. Phys. 56:62 (1988); Lee (2014) Review",
+            "source_scope": "unu_ictp_lee_saw_2014_table_p152_ipfs",
+            "source_scope_status": "same_scope_source_reviewed_waveform_unverified_not_certificate",
+            "source_scope_note": (
+                "UNU-ICTP preset values follow the local Lee/Saw table p.152 "
+                "registry scope. The waveform is retained from the IPFS trace "
+                "and remains waveform_kr_status=unverified, so this preset "
+                "does not support validation claims or certificates."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [64, 1, 256],
         "dx": 3e-4,
         "sim_time": 5e-6,
         "dt_init": 1e-11,
-        "rho0": 6.46e-4,  # 3 Torr D2 at 300K: P/(kB*T) * m_D2
+        "rho0": 8.61e-4,  # 4 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
@@ -276,7 +326,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         # RESF = r0/sqrt(L0/C0) = 12e-3/sqrt(110e-9/30e-6) = 0.198
         "circuit": {
             "C": 30e-6,           # 30 uF
-            "V0": 14e3,           # 14 kV
+            "V0": 15e3,           # 15 kV
             "L0": 110e-9,         # 110 nH
             "R0": 12e-3,          # 12 mOhm (RESF~0.2)
             "anode_radius": 0.0095,
@@ -288,7 +338,7 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "radiation": {"bremsstrahlung_enabled": True},
         "snowplow": {
             "anode_length": 0.16,        # 160 mm
-            "fill_pressure_Pa": 400.0,   # 3 Torr D2 = 400 Pa
+            "fill_pressure_Pa": 533.288,  # 4 Torr D2
             "current_fraction": 0.7,     # Lee & Saw (2009, 2014): fc=0.7
             "mass_fraction": 0.08,       # Lee & Saw (2014): fm=0.08 (published Lee model fit)
             "radial_mass_fraction": 0.16,  # Lee & Saw (2014): fmr=0.16
@@ -331,40 +381,41 @@ _PRESETS: dict[str, dict[str, Any]] = {
     },
     "mjolnir": {
         "_meta": {
-            "description": "MJOLNIR (LLNL) — 2 MJ configuration, MA-class deuterium DPF at 60 kV",
+            "description": "MJOLNIR (LLNL) — 1 MJ source-scoped MA-class deuterium DPF",
             "device": "MJOLNIR",
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": (
-                "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313; "
-                "Goyon et al., Phys. Plasmas 32:033105 (2025); "
-                "Petrov et al., Phys. Plasmas 29:062708 (2022)"
+                "Schmidt et al., IEEE TPS (2021) DOI: 10.1109/TPS.2021.3106313"
             ),
+            "source_scope": "mjolnir_schmidt_2021_1mj",
+            "source_scope_status": "same_scope_partial_source_review_waveform_reconstructed_not_certificate",
+            "source_scope_note": (
+                "MJOLNIR preset follows the local Schmidt 2021 registry circuit "
+                "and geometry. Lee factors remain registry placeholders and the "
+                "waveform remains reconstructed and unverified, so this preset "
+                "cannot support validation claims or certificates."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [128, 1, 256],
         "dx": 1e-3,
         "sim_time": 14e-6,  # 14 us: covers peak (~5 us), radial, pinch, post-pinch
         "dt_init": 1e-10,
-        "rho0": 6e-4,  # ~7 Torr D2 fill
+        "rho0": 1.507e-3,  # 7 Torr D2 at 300K
         "T0": 300.0,
         "anomalous_alpha": 0.05,
         "anomalous_threshold_model": "lhdi",
-        # Circuit: 2 MJ configuration (6 towers, 24 Marx modules)
-        # Goyon et al. 2025: 60 kV typical, 2.8 MA peak current
-        # C = 408 uF (24 modules x 2 x 34 uF caps, single-stage erection)
-        # L0 = 67.4 nH (measured lumped circuit; Offermann 2021)
-        # R0 = 6.25 mOhm (EMPIRICAL: Offermann 2021 gives 12.5 mOhm/tower;
-        #       /2 not /6 — includes Marx erection losses + cable impedance)
-        # Anode OD = 228.6 mm -> radius 114.3 mm (Goyon 2025)
-        # Cathode: 24 rods, inner radius ~157 mm (4.3 cm A-K gap; Petrov 2022)
+        # Circuit and geometry: Schmidt 2021 source-scoped 1 MJ MJOLNIR values.
+        # The 204 uF, 67.4 nH, and 12.5 mOhm values are already the measured
+        # lumped bank/cable/plate parameters and must not be halved again.
         "circuit": {
-            "C": 408e-6,           # 408 uF — 2 MJ config (Goyon 2025)
-            "V0": 60e3,            # 60 kV typical operation (Goyon 2025)
-            "L0": 67.4e-9,         # 67.4 nH — measured lumped circuit (Offermann 2021)
-            "R0": 6.25e-3,         # 6.25 mOhm — 12.5/2 for 6-tower (Offermann 2021)
-            "anode_radius": 0.1143,  # 114.3 mm — 228.6 mm OD / 2 (Goyon 2025)
-            "cathode_radius": 0.157,  # ~157 mm — 24-rod cathode (Petrov 2022)
-            "n_cathode_rods": 24,  # Goyon 2025 p.2: "a set of 24 cathode rods"
+            "C": 204e-6,           # 204 uF
+            "V0": 100e3,           # 100 kV erected
+            "L0": 67.4e-9,         # 67.4 nH measured lumped circuit
+            "R0": 12.5e-3,         # 12.5 mOhm measured lumped circuit
+            "anode_radius": 0.076,  # 15.2 cm anode diameter / 2
+            "cathode_radius": 0.119,  # 4.3 cm A-K gap from 7.6 cm anode radius
             "crowbar_enabled": True,
             "crowbar_mode": "voltage_zero",
             "crowbar_resistance": 1.5e-3,  # estimated spark gap
@@ -373,12 +424,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "boundary": {"electrode_bc": True},
         "radiation": {"bremsstrahlung_enabled": True, "fld_enabled": True},
         "sheath": {"enabled": True, "boundary": "z_high"},
-        # Anode effective length 18.3-22.1 cm (Petrov 2022)
+        # Anode effective length 18.3-22.1 cm (Schmidt 2021).
         "snowplow": {
             "anode_length": 0.20,  # 200 mm (midpoint of Petrov 2022 range)
+            "fill_pressure_Pa": 933.254,  # 7 Torr D2
             "current_fraction": 0.70,  # EMPIRICAL: standard fc for Mather-type
-            "mass_fraction": 1.0,     # EMPIRICAL: calibrated to 2.8 MA at 60 kV (Goyon 2025)
+            "mass_fraction": 0.50,     # Current registry fit placeholder
             "radial_mass_fraction": 0.1,
+            "radial_current_fraction": 0.14,
             "pinch_column_fraction": 0.14,  # MA-class geometry: ~14% per Lee & Saw
         },
     },
@@ -389,12 +442,21 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Damideh et al., Sci. Rep. 15:23048 (2025)",
+            "source_scope": "faeton_i_damideh_2025_table3_shot1027_two_step_restrike",
+            "source_scope_status": "same_scope_partial_source_review_waveform_reconstructed_not_certificate",
+            "source_scope_note": (
+                "Circuit/geometry and two-step radial current factors are scoped to "
+                "the local Damideh 2025 FAETON-I extract. The waveform remains "
+                "reconstructed, and the radial transition time is an engineering "
+                "timing knob until accepted digitization closes that source gap."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [64, 1, 192],
         "dx": 1.5e-3,
         "sim_time": 8e-6,
         "dt_init": 1e-10,
-        "rho0": 1.29e-3,  # 12 Torr D2 at 300K: P/(kB*T) * m_D2
+        "rho0": 2.583e-3,  # 12 Torr D2 at 300K: P/(kB*T) * m_D2
         "T0": 300.0,
         "anomalous_alpha": 0.03,
         "anomalous_threshold_model": "lhdi",
@@ -422,13 +484,12 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "mass_fraction": 0.70,     # Lee model fit: fm=0.70 (Damideh 2025)
             "radial_mass_fraction": 0.1,
             "pinch_column_fraction": 0.14,
-            # Two-step radial model (Damideh et al. 2025, FFV5-2 Lee code)
-            # Re-strikes occur during radial compression, after rundown (~6.2 us).
-            # Transition at ~7.0 us (0.8 us into radial phase) matches observed
-            # current slope deviation in Damideh 2025 Fig. 4.
-            "radial_current_fraction": 0.8,     # f_cr pre-re-strike (Table 3 avg)
-            "radial_current_fraction_2": 0.5,   # f_cr2 post-re-strike (Table 3 avg)
-            "radial_transition_time": 7.0e-6,   # ~7.0 us: onset of re-strike during radial
+            # Two-step radial model (Damideh et al. 2025, FFV5-2 Lee code).
+            # The current KR extract gives Table 3 fcr/fcr2 values, not an
+            # accepted absolute transition time.
+            "radial_current_fraction": 0.8,     # f_cr, Damideh 2025 Table 3 shot 1027
+            "radial_current_fraction_2": 0.58,  # f_cr2, Damideh 2025 Table 3 shot 1027
+            "radial_transition_time": 7.0e-6,   # engineering timing knob pending accepted digitization
         },
     },
     "poseidon": {
@@ -477,6 +538,15 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "IPFS (plasmafocus.net); Herold et al., Nucl. Fusion 29:33 (1989)",
+            "source_scope": "poseidon_60kv_lee_saw_2014_ipfs",
+            "source_scope_status": "same_scope_source_reviewed_waveform_unverified_not_certificate",
+            "source_scope_note": (
+                "POSEIDON 60 kV preset values follow the local Lee/Saw table and "
+                "IPFS fit stored in the registry. The waveform remains "
+                "waveform_kr_status=unverified, so this preset cannot support "
+                "validation claims or certificates."
+            ),
+            "validation_scope": "",
         },
         "grid_shape": [96, 1, 300],
         "dx": 1e-3,
@@ -503,9 +573,11 @@ _PRESETS: dict[str, dict[str, Any]] = {
         "sheath": {"enabled": True, "boundary": "z_high"},
         "snowplow": {
             "anode_length": 0.30,
-            "current_fraction": 0.450,   # Calibrated: I_peak 3.175 MA (-0.47% vs 3.19 MA exp)
-            "mass_fraction": 0.450,      # Calibrated: Yn 7.24e10 (0.14 dec vs 1e11 exp)
+            "fill_pressure_Pa": 506.624,  # 3.8 Torr D2, Lee/Saw table p.152
+            "current_fraction": 0.60,     # IPFS Lee model fit: fc=0.595 rounded in registry
+            "mass_fraction": 0.275,       # IPFS Lee model fit (fm)
             "radial_mass_fraction": 0.45,  # IPFS Lee model fit (fmr)
+            "radial_current_fraction": 0.44,  # IPFS Lee model fit (fcr)
             "pinch_column_fraction": 0.14,
         },
     },
@@ -687,23 +759,98 @@ _PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def list_presets() -> list[dict[str, str]]:
+def list_presets() -> list[dict[str, Any]]:
     """Return summary info for all available presets.
 
     Returns:
-        List of dicts with keys: name, description, device, geometry, grid_shape.
+        List of dicts with preset metadata and non-validating source-scope labels.
     """
     result = []
     for name, preset in _PRESETS.items():
         meta = preset.get("_meta", {})
+        authority = _preset_authority_summary(preset)
         result.append({
             "name": name,
             "description": meta.get("description", ""),
             "device": meta.get("device", ""),
             "geometry": meta.get("geometry", "cartesian"),
             "grid_shape": preset.get("grid_shape", []),
+            "source_scope": authority["source_scope"],
+            "source_scope_status": authority["source_scope_status"],
+            "source_scope_note": authority["source_scope_note"],
+            "value_source_status": authority["value_source_status"],
+            "validation_status": authority["validation_status"],
+            "can_support_validation_claims": authority["can_support_validation_claims"],
+            "validation_scope": authority["validation_scope"],
         })
     return result
+
+
+def _preset_authority_summary(preset: dict[str, Any]) -> dict[str, Any]:
+    meta = preset.get("_meta", {})
+    source_scope = meta.get("source_scope", _DEFAULT_SOURCE_SCOPE)
+    source_scope_status = meta.get("source_scope_status", _DEFAULT_SOURCE_SCOPE_STATUS)
+    return {
+        "source_scope": source_scope,
+        "source_scope_status": source_scope_status,
+        "source_scope_note": meta.get("source_scope_note", _DEFAULT_SOURCE_SCOPE_NOTE),
+        "value_source_status": meta.get(
+            "value_source_status",
+            (
+                source_scope_status
+                if source_scope != _DEFAULT_SOURCE_SCOPE
+                else _DEFAULT_VALUE_SOURCE_STATUS
+            ),
+        ),
+        "validation_status": meta.get("validation_status", _PRESET_VALIDATION_STATUS),
+        "can_support_validation_claims": False,
+        "validation_scope": meta.get("validation_scope", ""),
+    }
+
+
+def _iter_preset_value_paths(data: dict[str, Any], prefix: str = "") -> list[str]:
+    paths: list[str] = []
+    for key, value in sorted(data.items()):
+        if key == "_meta":
+            continue
+        path = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            paths.extend(_iter_preset_value_paths(value, path))
+        else:
+            paths.append(path)
+    return paths
+
+
+def preset_value_authority(name: str) -> list[dict[str, Any]]:
+    """Return fail-closed authority records for every config value in a preset."""
+    if name not in _PRESETS:
+        available = ", ".join(_PRESETS.keys())
+        raise KeyError(f"Unknown preset '{name}'. Available: {available}")
+
+    preset = _PRESETS[name]
+    authority = _preset_authority_summary(preset)
+    records: list[dict[str, Any]] = []
+    for path in _iter_preset_value_paths(preset):
+        value: Any = preset
+        for part in path.split("."):
+            value = value[part]
+        records.append({
+            "preset": name,
+            "path": path,
+            "value_type": type(value).__name__,
+            "source_scope": authority["source_scope"],
+            "source_scope_status": authority["source_scope_status"],
+            "source_scope_note": authority["source_scope_note"],
+            "value_source_status": authority["value_source_status"],
+            "validation_status": authority["validation_status"],
+            "can_support_validation_claims": False,
+        })
+    return records
+
+
+def preset_authority_manifest() -> dict[str, list[dict[str, Any]]]:
+    """Return per-preset value-authority records for all named presets."""
+    return {name: preset_value_authority(name) for name in _PRESETS}
 
 
 def get_preset(name: str) -> dict[str, Any]:

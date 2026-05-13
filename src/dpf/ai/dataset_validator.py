@@ -63,8 +63,16 @@ class DatasetValidator:
         energy_drift_threshold: Maximum acceptable energy drift (fraction).
     """
 
-    def __init__(self, energy_drift_threshold: float = 0.05) -> None:
+    def __init__(
+        self,
+        energy_drift_threshold: float = 0.05,
+        *,
+        strict: bool = False,
+        saturation_abs_threshold: float = 1.0e30,
+    ) -> None:
         self.energy_drift_threshold = energy_drift_threshold
+        self.strict = strict
+        self.saturation_abs_threshold = saturation_abs_threshold
 
     def validate_file(self, path: str | Path) -> ValidationResult:
         """Run all validation checks on a single Well HDF5 file.
@@ -101,6 +109,9 @@ class DatasetValidator:
 
         # Compute field statistics
         result.field_stats = self.compute_field_statistics(path)
+
+        if self.strict:
+            result.errors.extend(self.check_strict_integrity(path))
 
         # Check energy conservation. NaN means the check was skipped
         # (h5py missing, field absent, or read error -- see
@@ -191,10 +202,112 @@ class DatasetValidator:
                         if np.any(np.isnan(data)) or np.any(np.isinf(data)):
                             bad_fields.append(f"t1_fields/{field_name}")
 
+                # Check non-spatial scalar histories such as current/voltage.
+                if "scalars" in f:
+                    for scalar_name, dataset in f["scalars"].items():
+                        data = dataset[...]
+                        if np.any(np.isnan(data)) or np.any(np.isinf(data)):
+                            bad_fields.append(f"scalars/{scalar_name}")
+
         except Exception as e:
             logger.error(f"Failed to check NaN/Inf in {path}: {e}")
 
         return bad_fields
+
+    def check_strict_integrity(self, path: str | Path) -> list[str]:
+        """Run fail-closed checks for training-data provenance and integrity."""
+        if not HAS_H5PY:
+            return ["h5py not available"]
+
+        errors: list[str] = []
+
+        try:
+            with h5py.File(path, "r") as f:
+                if "scalars" not in f or "energy_conservation" not in f["scalars"]:
+                    errors.append(
+                        "Strict validation requires scalars/energy_conservation"
+                    )
+
+                if "dimensions" not in f or "time" not in f["dimensions"]:
+                    errors.append("Strict validation requires dimensions/time")
+                elif np.any(np.diff(f["dimensions/time"][...]) <= 0.0):
+                    errors.append("Strict validation requires strictly increasing time")
+
+                grid_type = f.attrs.get("grid_type")
+                if grid_type not in ("cartesian", "cylindrical"):
+                    errors.append(
+                        "Strict validation requires root grid_type "
+                        "'cartesian' or 'cylindrical'"
+                    )
+                elif "dimensions" in f:
+                    dims = f["dimensions"]
+                    dim_names = set(dims.keys())
+                    if grid_type == "cartesian":
+                        missing = {"x", "y", "z"} - dim_names
+                        if missing:
+                            errors.append(
+                                "Strict cartesian grid missing dimensions: "
+                                + ", ".join(sorted(missing))
+                            )
+                    if grid_type == "cylindrical":
+                        missing = {"r", "z"} - dim_names
+                        if missing:
+                            errors.append(
+                                "Strict cylindrical grid missing dimensions: "
+                                + ", ".join(sorted(missing))
+                            )
+                        if "x" in dim_names or "y" in dim_names:
+                            errors.append(
+                                "Strict cylindrical grid must not be labeled "
+                                "with cartesian x/y dimensions"
+                            )
+
+                if "validation_status" not in f.attrs or "result_label" not in f.attrs:
+                    errors.append(
+                        "Strict validation requires validation_status and "
+                        "result_label root attributes"
+                    )
+                if "source_status" not in f.attrs and "artifact_classification" not in f.attrs:
+                    errors.append(
+                        "Strict validation requires source_status or "
+                        "artifact_classification root metadata"
+                    )
+
+                for group_name in ("t0_fields", "t1_fields", "scalars"):
+                    if group_name not in f:
+                        continue
+                    for dataset_name, dataset in f[group_name].items():
+                        if bool(dataset.attrs.get("nonfinite_sanitized", False)):
+                            errors.append(
+                                f"Strict validation rejects sanitized non-finite "
+                                f"dataset: {group_name}/{dataset_name}"
+                            )
+                        data = dataset[...]
+                        if np.any(np.abs(data) > self.saturation_abs_threshold):
+                            errors.append(
+                                f"Strict validation detected saturation-scale values "
+                                f"in {group_name}/{dataset_name}"
+                            )
+
+                b_dataset = None
+                if "t1_fields" in f:
+                    if "magnetic_field" in f["t1_fields"]:
+                        b_dataset = f["t1_fields/magnetic_field"]
+                    elif "B" in f["t1_fields"]:
+                        b_dataset = f["t1_fields/B"]
+                if b_dataset is None:
+                    errors.append("Strict validation requires magnetic field data")
+                else:
+                    b_data = b_dataset[...]
+                    if np.all(np.isfinite(b_data)) and np.allclose(b_data, 0.0):
+                        errors.append(
+                            "Strict validation rejects all-zero magnetic field data"
+                        )
+
+        except Exception as e:
+            errors.append(f"Failed strict integrity validation: {e}")
+
+        return errors
 
     def check_well_schema(self, path: str | Path) -> list[str]:
         """Verify required groups and attributes exist.

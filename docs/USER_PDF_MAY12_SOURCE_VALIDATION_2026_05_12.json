@@ -1,0 +1,707 @@
+{
+  "date": "2026-05-12",
+  "guardrail": "This validates local source identity and source-authority readiness. It does not accept scientific target values, plotted curves, tables, formula thresholds, uncertainty values, or validation pass/fail criteria.",
+  "source_reports": {
+    "intake": "docs/USER_PDF_INTAKE_2026_05_12.json",
+    "promotion": "docs/USER_PDF_KR_PROMOTION_2026_05_12.json",
+    "source_fidelity": "docs/USER_PDF_KR_SOURCE_FIDELITY_AUDIT_2026_05_12.json",
+    "triage": "docs/USER_PDF_MAY12_TARGET_TRIAGE_2026_05_12.json"
+  },
+  "promoted_source_records_checked": 28,
+  "stage_only_records_checked": 7,
+  "target_extraction_candidates_source_validated": 5,
+  "method_or_context_sources_validated": 23,
+  "stage_only_validated_count": 7,
+  "failure_count": 0,
+  "role_counts": {
+    "source_validated_materials_context": 1,
+    "source_validated_method_reference": 20,
+    "source_validated_review_context_only": 2,
+    "source_validated_target_extraction_needed": 5
+  },
+  "stage_only_counts": {
+    "stage_only_validated_not_physics_authority": 7
+  },
+  "false_existing_promotions": [
+    {
+      "path": "trunk1975.pdf",
+      "sha256": "ec4e13982a43dc7e06dc0cf00ac6449b4a8b423f17ad0193dcc7561d5f73eb5f",
+      "title": "Numerical Parameter Studies for the Dense Plasma Focus",
+      "doi": "",
+      "accession": "",
+      "relevance": "promote_to_kr_source_review",
+      "pages": 13,
+      "nonempty_pages": 13,
+      "markdown": "KnowledgeReference/numerical-parameter-studies-for-the-dense-plasma-focus-ec4e1398.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/numerical-parameter-studies-for-the-dense-plasma-focus-ec4e1398.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed",
+      "manual_reconciliation": "generic IOP cover-page title matched an unrelated Kortanek 2014 KR record; SHA differs, so Trunk 1975 requires its own KR pair"
+    }
+  ],
+  "kortanek_repair_validation": {
+    "knowledge_reference_json": "KnowledgeReference/this-content-has-been-downloaded-from-iopscience-please-scroll-down-to-see-the-full-text-7dbd9199.json",
+    "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kortanek2014.pdf",
+    "source_pdf_sha256": "7dbd9199ba8c4a825b83ed8e02657b182578a1e3ff1ec9b0474d0c25275230ff",
+    "source_fidelity_review_source": "2026-05-11-user-ingest/kortanek2014.pdf",
+    "source_fidelity_review_sha256": "7dbd9199ba8c4a825b83ed8e02657b182578a1e3ff1ec9b0474d0c25275230ff",
+    "status": "repaired_and_validated",
+    "failures": []
+  },
+  "source_records": [
+    {
+      "source": "10.1088@1742-6596@370@1@012059.pdf",
+      "title": "Dynamics of the expansion discharge originated by a dense",
+      "doi": "10.1088/1742-6596/370/1/012059",
+      "sha256": "08712d78305ffcc2edf3e54f0e8879bd6045982032b09d9b02462462e8f6bfdc",
+      "knowledge_reference_json": "KnowledgeReference/dynamics-of-the-expansion-discharge-originated-by-a-dense-08712d78.json",
+      "knowledge_reference_markdown": "KnowledgeReference/dynamics-of-the-expansion-discharge-originated-by-a-dense-08712d78.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/10.1088@1742-6596@370@1@012059.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "target_extraction_candidate",
+      "priority": "P1",
+      "next_actions": [
+        "source_line_review",
+        "typed_target_extraction",
+        "figure_digitization_triage",
+        "table_extraction_triage"
+      ],
+      "source_validation_status": "source_validated_target_extraction_needed"
+    },
+    {
+      "source": "A-Hybrid-Quantum-Classical-Particle-in-Cell-Method-for-Plasma-Simulations.pdf",
+      "title": "A hybrid quantum-classical particle-in-cell method for plasma simulations",
+      "doi": "10.1016/j.future.2025.108087",
+      "sha256": "31539cff90a1eb3d05071c04b85147ce39fa27add862d2451f724ed8a367f215",
+      "knowledge_reference_json": "KnowledgeReference/a-hybrid-quantum-classical-particle-in-cell-method-for-plasma-simulations-31539cff.json",
+      "knowledge_reference_markdown": "KnowledgeReference/a-hybrid-quantum-classical-particle-in-cell-method-for-plasma-simulations-31539cff.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/A-Hybrid-Quantum-Classical-Particle-in-Cell-Method-for-Plasma-Simulations.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "alexiou2002.pdf",
+      "title": "302_1.pdf",
+      "doi": "10.1063/1.1525469",
+      "sha256": "98ebde8ee07e5f47341bb7c3fb94951c0dd8449bb167b7e4d5c73a20c35a4bac",
+      "knowledge_reference_json": "KnowledgeReference/302-1-pdf-98ebde8e.json",
+      "knowledge_reference_markdown": "KnowledgeReference/302-1-pdf-98ebde8e.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/alexiou2002.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_source_critical_content_copied",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "auluck2014.pdf",
+      "title": "Dense Plasma Focus: A question in search of answers, a technology in search of applications",
+      "doi": "10.1142/S2010194514603159",
+      "sha256": "7e3643366bb7eeebc789a156891142d4a543beab3ab2fdcd160b345cf89afa5b",
+      "knowledge_reference_json": "KnowledgeReference/dense-plasma-focus-a-question-in-search-of-answers-a-technology-in-search-of-applications-7e364336.json",
+      "knowledge_reference_markdown": "KnowledgeReference/dense-plasma-focus-a-question-in-search-of-answers-a-technology-in-search-of-applications-7e364336.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/auluck2014.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "review_context_only",
+      "priority": "P3",
+      "next_actions": [
+        "bibliography_map_only_use_primary_sources_for_targets"
+      ],
+      "source_validation_status": "source_validated_review_context_only"
+    },
+    {
+      "source": "baxevanis2018.pdf",
+      "title": "Novel fast simulation technique for axisymmetric plasma wakefield acceleration configurations in the blowout regime",
+      "doi": "10.1103/PhysRevAccelBeams.21.071301",
+      "sha256": "f94cb8145ae08f782223e28a0f3ef78d452370aea3fbf846e6a4b80cab77a262",
+      "knowledge_reference_json": "KnowledgeReference/novel-fast-simulation-technique-for-axisymmetric-plasma-wakefield-acceleration-configurati-f94cb814.json",
+      "knowledge_reference_markdown": "KnowledgeReference/novel-fast-simulation-technique-for-axisymmetric-plasma-wakefield-acceleration-configurati-f94cb814.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/baxevanis2018.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "bilbao2006.pdf",
+      "title": "A Three-Dimensional Finite Volume Arbitrary Lagrangian-",
+      "doi": "",
+      "sha256": "f0967271f72fa35b5a12e8c60b02e1d3416763baf83b02859c2edbe4f89ea837",
+      "knowledge_reference_json": "KnowledgeReference/a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271.json",
+      "knowledge_reference_markdown": "KnowledgeReference/a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/bilbao2006.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "chen2019.pdf",
+      "title": "Plasma Physics and Controlled Fusion",
+      "doi": "10.1088/1361-6587/aaf42d",
+      "sha256": "1d7b935e7d22f5c03aeaadf6e3920feee055f23c26c0fa4eff842834d7b71fcc",
+      "knowledge_reference_json": "KnowledgeReference/plasma-physics-and-controlled-fusion-1d7b935e.json",
+      "knowledge_reference_markdown": "KnowledgeReference/plasma-physics-and-controlled-fusion-1d7b935e.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/chen2019.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Hybrid-Modeling-and-Simulation.pdf",
+      "title": "Hybrid Modeling and Simulation",
+      "doi": "10.1007/978-3-031-59999-6",
+      "sha256": "80f517b3f75e68f03285b3fa1ee9656734e4ab27d11911477f31a0f241e601b0",
+      "knowledge_reference_json": "KnowledgeReference/hybrid-modeling-and-simulation-80f517b3.json",
+      "knowledge_reference_markdown": "KnowledgeReference/hybrid-modeling-and-simulation-80f517b3.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Hybrid-Modeling-and-Simulation.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "kasperczuk2002.pdf",
+      "title": "Final stages of the plasma column evolution in the plasma-focus PF1000 device - Plasma Science, IEEE Transactions on",
+      "doi": "",
+      "sha256": "fa128cfdd160ea743b15469428184d0a7d767d4b0db72a459a6d2abc9d619dca",
+      "knowledge_reference_json": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.json",
+      "knowledge_reference_markdown": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/kasperczuk2002.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "target_extraction_candidate",
+      "priority": "P1",
+      "next_actions": [
+        "source_line_review",
+        "typed_target_extraction",
+        "figure_digitization_triage"
+      ],
+      "source_validation_status": "source_validated_target_extraction_needed"
+    },
+    {
+      "source": "kubes2020.pdf",
+      "title": "Characteristics of closed currents and magnetic fields outside the dense pinch column in a plasma focus discharge",
+      "doi": "10.1063/5.0010249",
+      "sha256": "40d59f2dae61876064666dd6ebdceea12c7b5fb26557bbc8797c2502b7509394",
+      "knowledge_reference_json": "KnowledgeReference/characteristics-of-closed-currents-and-magnetic-fields-outside-the-dense-pinch-column-in-a-40d59f2d.json",
+      "knowledge_reference_markdown": "KnowledgeReference/characteristics-of-closed-currents-and-magnetic-fields-outside-the-dense-pinch-column-in-a-40d59f2d.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/kubes2020.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "target_extraction_candidate",
+      "priority": "P1",
+      "next_actions": [
+        "source_line_review",
+        "typed_target_extraction",
+        "figure_digitization_triage"
+      ],
+      "source_validation_status": "source_validated_target_extraction_needed"
+    },
+    {
+      "source": "lindemuth1982.pdf",
+      "title": "Shock dynamics and neutron production in an explosive generator driven dense",
+      "doi": "10.1063/1.93149",
+      "sha256": "3f4e364067154eb35ad05b8263dd840901ac20be472ac276ed74cd08c24951cd",
+      "knowledge_reference_json": "KnowledgeReference/shock-dynamics-and-neutron-production-in-an-explosive-generator-driven-dense-3f4e3640.json",
+      "knowledge_reference_markdown": "KnowledgeReference/shock-dynamics-and-neutron-production-in-an-explosive-generator-driven-dense-3f4e3640.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/lindemuth1982.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "target_extraction_candidate",
+      "priority": "P2",
+      "next_actions": [
+        "source_line_review",
+        "typed_target_extraction",
+        "figure_digitization_triage",
+        "table_extraction_triage"
+      ],
+      "source_validation_status": "source_validated_target_extraction_needed"
+    },
+    {
+      "source": "Linear-Algebra-for-Physics.pdf",
+      "title": "Nikolaos A. Papadopoulos",
+      "doi": "10.1007/978-3-031-64908-0",
+      "sha256": "654950f9197ac65925cd42b56b8b900548bce3e106dbd59541ba7bf572ff0fbf",
+      "knowledge_reference_json": "KnowledgeReference/nikolaos-a-papadopoulos-654950f9.json",
+      "knowledge_reference_markdown": "KnowledgeReference/nikolaos-a-papadopoulos-654950f9.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Linear-Algebra-for-Physics.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Mathematical-Modeling-and-Simulation-of-Systems.pdf",
+      "title": "Mathematical Modeling and Simulation of Systems",
+      "doi": "10.1007/978-3-031-30251-0",
+      "sha256": "114c5cf6a0e81518443fbf91e809bcc9a2afcadec8fd928adb8a54a5ecbf95d3",
+      "knowledge_reference_json": "KnowledgeReference/mathematical-modeling-and-simulation-of-systems-114c5cf6.json",
+      "knowledge_reference_markdown": "KnowledgeReference/mathematical-modeling-and-simulation-of-systems-114c5cf6.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Mathematical-Modeling-and-Simulation-of-Systems.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Mathematics-for-Engineers-and-Scientists.pdf",
+      "title": "Vinh Phu Nguyen",
+      "doi": "10.1007/978-981-97-4631-6",
+      "sha256": "e8103853250b49e0c68b1c2b023db607cd37db0a924640bc96898e6c214d55d4",
+      "knowledge_reference_json": "KnowledgeReference/vinh-phu-nguyen-e8103853.json",
+      "knowledge_reference_markdown": "KnowledgeReference/vinh-phu-nguyen-e8103853.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Mathematics-for-Engineers-and-Scientists.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "matsumoto2007.pdf",
+      "title": "Relativistic Electron Fluid Simulation and Studies on Electric Shock Wave Formation",
+      "doi": "10.1143/JPSJ.76.044502",
+      "sha256": "73db548cae2a26fddaf2fc4cb8c5130f151fc45cc38624f8b2ebbdf5224d2179",
+      "knowledge_reference_json": "KnowledgeReference/relativistic-electron-fluid-simulation-and-studies-on-electric-shock-wave-formation-73db548c.json",
+      "knowledge_reference_markdown": "KnowledgeReference/relativistic-electron-fluid-simulation-and-studies-on-electric-shock-wave-formation-73db548c.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/matsumoto2007.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Monte-Carlo-Simulation-of-Neutral-Particle-Transport.pdf",
+      "title": "Monte Carlo Simulation of",
+      "doi": "10.1016/B978-0-12-819739-4.00018-4",
+      "sha256": "4977d92eca35cc7547f90ed1339bbe7d1f283938d1a1fecdaf623dd3fe8a2f9d",
+      "knowledge_reference_json": "KnowledgeReference/monte-carlo-simulation-of-4977d92e.json",
+      "knowledge_reference_markdown": "KnowledgeReference/monte-carlo-simulation-of-4977d92e.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Monte-Carlo-Simulation-of-Neutral-Particle-Transport.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Numerical-simulation-of-deuterium-retention-in-tungsten-under-ELM-like-conditions.pdf",
+      "title": "Numerical simulation of deuterium retention in tungsten under ELM-like conditions",
+      "doi": "10.1016/j.jnucmat.2024.155370",
+      "sha256": "cc615dda480b0633f173ffc837d6ea11f874f95aee57a9ddd773f468e8dcbfcc",
+      "knowledge_reference_json": "KnowledgeReference/numerical-simulation-of-deuterium-retention-in-tungsten-under-elm-like-conditions-cc615dda.json",
+      "knowledge_reference_markdown": "KnowledgeReference/numerical-simulation-of-deuterium-retention-in-tungsten-under-elm-like-conditions-cc615dda.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-simulation-of-deuterium-retention-in-tungsten-under-ELM-like-conditions.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "materials_context",
+      "priority": "P3",
+      "next_actions": [
+        "scope_for_wall_material_or_plasma_wall_context_only"
+      ],
+      "source_validation_status": "source_validated_materials_context"
+    },
+    {
+      "source": "Numerical-simulation-of-equilibrium-air-plasma-flow-in-the-induction-chamber-of-a-high-power.pdf",
+      "title": "Continuum Mech. Thermodyn. (2023) 35:1689–1701",
+      "doi": "10.1007/s00161-023-01192-1",
+      "sha256": "54dcbef7c7fbf09387d0e98779ab92a1330badc96483b6245a5aa1bc7f5279f0",
+      "knowledge_reference_json": "KnowledgeReference/continuum-mech-thermodyn-2023-35-16891701-54dcbef7.json",
+      "knowledge_reference_markdown": "KnowledgeReference/continuum-mech-thermodyn-2023-35-16891701-54dcbef7.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-simulation-of-equilibrium-air-plasma-flow-in-the-induction-chamber-of-a-high-power.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Numerical-Simulation-of-Pulsed-Plasma-Thruster.pdf",
+      "title": "Yuanzheng Zhao",
+      "doi": "10.1007/978-981-97-7958-1",
+      "sha256": "498e3385c34e98b951ea21e2148a183375a9ca427b7df609b4966884bd273063",
+      "knowledge_reference_json": "KnowledgeReference/yuanzheng-zhao-498e3385.json",
+      "knowledge_reference_markdown": "KnowledgeReference/yuanzheng-zhao-498e3385.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-Simulation-of-Pulsed-Plasma-Thruster.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "oh2014.pdf",
+      "title": "A comparative study of algorithm for fluid simulation of high density plasma",
+      "doi": "10.1063/1.4864527",
+      "sha256": "4e7e3f20eb388198508ec5bfcd3f27114bb5778e4db9fcadebc30db5786eead1",
+      "knowledge_reference_json": "KnowledgeReference/a-comparative-study-of-algorithm-for-fluid-simulation-of-high-density-plasma-4e7e3f20.json",
+      "knowledge_reference_markdown": "KnowledgeReference/a-comparative-study-of-algorithm-for-fluid-simulation-of-high-density-plasma-4e7e3f20.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/oh2014.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "Precalculus.pdf",
+      "title": "Mehdi Rahmani-Andebili",
+      "doi": "10.1007/978-3-030-65056-8",
+      "sha256": "b5dece2048177f4f2b104d2a45d60fbfb04483d395039de12eb71aacb4d67205",
+      "knowledge_reference_json": "KnowledgeReference/mehdi-rahmani-andebili-b5dece20.json",
+      "knowledge_reference_markdown": "KnowledgeReference/mehdi-rahmani-andebili-b5dece20.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Precalculus.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "sadowski2008.pdf",
+      "title": "The main issues of research on dense magnetized plasmas in PF discharges",
+      "doi": "10.1088/0963-0252/17/2/024001",
+      "sha256": "dec2781c1fccf51cf63311f4eedc9f839cf9e49f0b5760d9acb974c9a858291f",
+      "knowledge_reference_json": "KnowledgeReference/the-main-issues-of-research-on-dense-magnetized-plasmas-in-pf-discharges-dec2781c.json",
+      "knowledge_reference_markdown": "KnowledgeReference/the-main-issues-of-research-on-dense-magnetized-plasmas-in-pf-discharges-dec2781c.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/sadowski2008.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "review_context_only",
+      "priority": "P3",
+      "next_actions": [
+        "bibliography_map_only_use_primary_sources_for_targets"
+      ],
+      "source_validation_status": "source_validated_review_context_only"
+    },
+    {
+      "source": "Simulation-and-Modeling.pdf",
+      "title": "Simulation and Modeling: Current Technologies and Applications",
+      "doi": "",
+      "sha256": "19015a0d034c44c0890954b08b54be6c730c51c22c2701384ef66f545e24c916",
+      "knowledge_reference_json": "KnowledgeReference/simulation-and-modeling-current-technologies-and-applications-19015a0d.json",
+      "knowledge_reference_markdown": "KnowledgeReference/simulation-and-modeling-current-technologies-and-applications-19015a0d.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Simulation-and-Modeling.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "The-role-of-Pauli-principle-in-simulations-of-classical-plasma.pdf",
+      "title": "RESEARCH ARTICLE | APRIL 21 2026",
+      "doi": "10.1063/5.0315414",
+      "sha256": "ace009c190417e9221b6de283b94f12f64603eeeb96c651e72ddc5576cb6a5f0",
+      "knowledge_reference_json": "KnowledgeReference/research-article-april-21-2026-ace009c1.json",
+      "knowledge_reference_markdown": "KnowledgeReference/research-article-april-21-2026-ace009c1.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/The-role-of-Pauli-principle-in-simulations-of-classical-plasma.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "timofeev2011.pdf",
+      "title": "Full Terms & Conditions of access and use can be found at",
+      "doi": "10.13182/FST11-A11577",
+      "sha256": "3f373fce0f8e97df1df5ee8559b7597eff923ac9d696cf3157e537ec8e2357f3",
+      "knowledge_reference_json": "KnowledgeReference/full-terms-conditions-of-access-and-use-can-be-found-at-3f373fce.json",
+      "knowledge_reference_markdown": "KnowledgeReference/full-terms-conditions-of-access-and-use-can-be-found-at-3f373fce.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/timofeev2011.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "trunk1975.pdf",
+      "title": "Numerical Parameter Studies for the Dense Plasma Focus",
+      "doi": "",
+      "sha256": "ec4e13982a43dc7e06dc0cf00ac6449b4a8b423f17ad0193dcc7561d5f73eb5f",
+      "knowledge_reference_json": "KnowledgeReference/numerical-parameter-studies-for-the-dense-plasma-focus-ec4e1398.json",
+      "knowledge_reference_markdown": "KnowledgeReference/numerical-parameter-studies-for-the-dense-plasma-focus-ec4e1398.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/trunk1975.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "target_extraction_candidate",
+      "priority": "P1",
+      "next_actions": [
+        "source_line_review",
+        "typed_target_extraction",
+        "figure_digitization_triage",
+        "table_extraction_triage"
+      ],
+      "source_validation_status": "source_validated_target_extraction_needed"
+    },
+    {
+      "source": "urano2018.pdf",
+      "title": "Plasma and Fusion Research,ISSN 1880-6821",
+      "doi": "10.1585/pfr.13.3403055",
+      "sha256": "703d0300473befb1d61dc770f0fd87286683c02feee68a1e2c96690531ef2fde",
+      "knowledge_reference_json": "KnowledgeReference/plasma-and-fusion-research-issn-1880-6821-703d0300.json",
+      "knowledge_reference_markdown": "KnowledgeReference/plasma-and-fusion-research-issn-1880-6821-703d0300.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/urano2018.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "bibliographic_title_cleanup",
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    },
+    {
+      "source": "verboncoeur2005.pdf",
+      "title": "Particle simulation of plasmas: review and advances",
+      "doi": "10.1088/0741-3335/47/5A/017",
+      "sha256": "6d7355ba514f3e982b200c359ae7f74ecf4d2d87783270c54fac321a82cc4ea1",
+      "knowledge_reference_json": "KnowledgeReference/particle-simulation-of-plasmas-review-and-advances-6d7355ba.json",
+      "knowledge_reference_markdown": "KnowledgeReference/particle-simulation-of-plasmas-review-and-advances-6d7355ba.md",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/verboncoeur2005.pdf",
+      "source_pdf_exists": true,
+      "parity_passed": true,
+      "source_fidelity_status": "reviewed_with_recovered_secondary_extraction_items",
+      "status": "source_validated",
+      "failures": [],
+      "validation_role": "method_reference_mapping",
+      "priority": "method",
+      "next_actions": [
+        "map_to_method_or_numerical_verification_claims"
+      ],
+      "source_validation_status": "source_validated_method_reference"
+    }
+  ],
+  "stage_only_records": [
+    {
+      "source": "A-survey-of-large-language-models-for-cyber-threat-detection.pdf",
+      "title": "Computers & Security 145 (2024) 104016",
+      "reason": "staged_for_review_not_physics_or_core_simulation_authority",
+      "sha256": "79fc2231657018be4876910970eb88d7aee34e65ad771e8153ab2818d5da7f70",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/A-survey-of-large-language-models-for-cyber-threat-detection.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "apostolou2020.pdf",
+      "title": "The art of flirting_ What are the traits that make it effective?",
+      "reason": "out_of_scope_social_science_not_dpf_or_simulation_source",
+      "sha256": "15b0d057bee95db9c10110a4dec2a9f095f73851ded9b48411e5b648d833ee09",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/apostolou2020.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "Gradient-Based-Physics-Informed-Neural-Network.pdf",
+      "title": "Gradient-Based Physics-Informed",
+      "reason": "staged_for_review_not_physics_or_core_simulation_authority",
+      "sha256": "59cc2a09a9c87ba16bfb572692e944937c74dafbcc8a14f60f0a4804d0a7711f",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Gradient-Based-Physics-Informed-Neural-Network.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "Large-Language-Models-A-Deep-Dive.pdf",
+      "title": "Large Language",
+      "reason": "staged_for_review_not_physics_or_core_simulation_authority",
+      "sha256": "c14da8038806dedeece9f5a2add5040412c05b11c8532df36865ce2bf6259fc2",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Large-Language-Models-A-Deep-Dive.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "Machine-Learning-of-Forced-Convection-Heat-Transfer.pdf",
+      "title": "Machine Learning of Forced Convection Heat",
+      "reason": "staged_for_review_not_physics_or_core_simulation_authority",
+      "sha256": "30396467452f223596159246fee1e7e4a77d48ce0c989f882a5d0b27e2eef7f1",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Machine-Learning-of-Forced-Convection-Heat-Transfer.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "Poisson-Boltzmann-based-machine-learning-model-for-electrostatic-analysis.pdf",
+      "title": "Poisson-Boltzmann-based machine learning model for electrostatic analysis",
+      "reason": "staged_for_review_not_physics_or_core_simulation_authority",
+      "sha256": "5ef0fd20980ad9e81ea294e562f907f41f82e1b179da8945a49470ad889f087e",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Poisson-Boltzmann-based-machine-learning-model-for-electrostatic-analysis.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    },
+    {
+      "source": "symons1994.pdf",
+      "title": "Author(s): Douglas K. Symons",
+      "reason": "out_of_scope_jstor_social_science_review_not_dpf_or_simulation_source",
+      "sha256": "ff763c329872aa446cd0d6604dfdca1a0ad9208db8da571d562a71829e70b020",
+      "staged_path": "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/symons1994.pdf",
+      "status": "stage_only_validated_not_physics_authority",
+      "failures": []
+    }
+  ],
+  "failures": []
+}

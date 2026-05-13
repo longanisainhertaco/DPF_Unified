@@ -1,0 +1,1105 @@
+{
+  "circuit_waveform_devices": [
+    {
+      "accuracy_flags": [],
+      "device": "FAETON-I",
+      "lee_reference": "Damideh et al., Sci. Rep. 15:23048 (2025) Table 3 shot 1027",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.25981455362018663,
+      "nrmse_rise": 0.08662993151781356,
+      "nrmse_to_dip": 0.15047373779950904,
+      "peak_current_error_rel": 0.018325318485209834,
+      "reference": "Damideh et al., Scientific Reports 15:23048, 2025; DOI: 10.1038/s41598-025-07939-x",
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "summary": {
+        "dt_s": 9.250000000000001e-10,
+        "elapsed_s": 0.33134216599864885,
+        "fc": 0.7,
+        "fcr": 0.8,
+        "fcr2": 0.58,
+        "first_nonfinite": null,
+        "fm": 0.7,
+        "fmr": 0.1,
+        "peak_current_A": 981674.6815147902,
+        "peak_current_time_s": 3.5566249999997603e-06,
+        "phases_seen": [
+          "radial",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 9.250000000000001e-06,
+        "steps_completed": 10000,
+        "steps_requested": 10000
+      },
+      "timing_error_rel": 0.03875000000006482,
+      "waveform_points": 25,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [
+        "peak_current_error>0.160_two_sigma"
+      ],
+      "device": "MJOLNIR",
+      "lee_reference": "Gemini research synthesis (2026-03-13); Lee model conventions",
+      "model_coverage_flags": [
+        "mjolnir_restrike_current_trace_model_required_by_kr_but_no_accepted_timing_or_magnitude_parameters"
+      ],
+      "nrmse_full": 0.14717192103610635,
+      "nrmse_rise": 0.17200624829682679,
+      "nrmse_to_dip": 0.14717192103610635,
+      "peak_current_error_rel": 0.2746340956054449,
+      "reference": "Schmidt et al., IEEE Trans. Plasma Sci. (2021) DOI: 10.1109/TPS.2021.3106313 [KR: ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging.md \u00a7III.A]",
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "summary": {
+        "dt_s": 1e-09,
+        "elapsed_s": 0.09630733402445912,
+        "fc": 0.7,
+        "fcr": 0.14,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.5,
+        "fmr": 0.1,
+        "peak_current_A": 3186585.2390136123,
+        "peak_current_time_s": 5.130999999999746e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 1.4575e-05,
+        "steps_completed": 14575,
+        "steps_requested": 14575
+      },
+      "timing_error_rel": 0.11989708404807095,
+      "waveform_points": 25,
+      "workflow_status": "model_coverage_review_needed"
+    },
+    {
+      "accuracy_flags": [
+        "peak_current_error>0.160_two_sigma",
+        "timing_error>0.240_two_sigma"
+      ],
+      "device": "NX2",
+      "lee_reference": "Lee-course NX2 current-trace fit: fm=0.1, fc=0.7, fmr=0.12, fcr=0.68 [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md lines 13801-13822]",
+      "model_coverage_flags": [],
+      "peak_current_error_rel": 0.23541817015158276,
+      "reference": "Lee & Saw, J. Fusion Energy 27:292, 2008; RADPF Module 1",
+      "source_gap_flags": [
+        "reference_only_device_not_scientific_validation_target",
+        "measured_current_waveform_missing",
+        "waveform_kr_status=unverified",
+        "nx2_course_example_not_same_shot_deuterium_target_missing=deuterium_device_match,measured_current_trace_source,experimental_phase_timing_uncertainty"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "reliability=reference_only",
+          "waveform_missing",
+          "waveform_provenance=unset",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "reference_only",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": ""
+      },
+      "summary": {
+        "dt_s": 7.999999999999999e-10,
+        "elapsed_s": 0.0756882909918204,
+        "fc": 0.7,
+        "fcr": 0.68,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.1,
+        "fmr": 0.12,
+        "peak_current_A": 305832.7319393669,
+        "peak_current_time_s": 9.711999999999768e-07,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.5,
+        "radial_transition_time_s": null,
+        "sim_time_s": 8e-06,
+        "steps_completed": 10000,
+        "steps_requested": 10000
+      },
+      "timing_error_rel": 0.4604444444444573,
+      "waveform_points": 0,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "PF-1000",
+      "lee_reference": "Malek et al., Plasma Physics and Technology 12(1):9 (2025) [KR: plasma-physics-and-technology-1211-9-2025.md \u00a73 lines 177-180]: fm=0.13, fc=0.7, fmr=0.35, fcr=0.65 obtained by fitting computed and measured current waveforms at 27 kV / 3.5 Torr D2 in PF-1000. Bank/geometry cross-check: Lee course KR lines 2199-2207 and 14500-14508.",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.16792502792332603,
+      "nrmse_rise": 0.12800546366332008,
+      "nrmse_to_dip": 0.16792502792332603,
+      "peak_current_error_rel": 0.023257588899791997,
+      "reference": "Scholz et al., Nukleonika 51(1), 2006",
+      "source_gap_flags": [],
+      "source_state": {
+        "blockers": [],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": true,
+        "waveform_kr_status": "verified",
+        "waveform_provenance": "measured"
+      },
+      "summary": {
+        "dt_s": 1e-09,
+        "elapsed_s": 0.09035429201321676,
+        "fc": 0.7,
+        "fcr": 0.65,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.13,
+        "fmr": 0.35,
+        "peak_current_A": 1826508.308757389,
+        "peak_current_time_s": 6.340999999999325e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 1.45e-05,
+        "steps_completed": 14500,
+        "steps_requested": 14500
+      },
+      "timing_error_rel": 0.09327586206884904,
+      "waveform_points": 26,
+      "workflow_status": "within_current_pipeline"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "PF-1000-16kV",
+      "lee_reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021 Table 1, shot 12581",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.16734079710311903,
+      "nrmse_rise": 0.17285050803534835,
+      "nrmse_to_dip": 0.16953834964144013,
+      "peak_current_error_rel": 0.016133861574400298,
+      "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "summary": {
+        "dt_s": 1e-09,
+        "elapsed_s": 0.09306558297248557,
+        "fc": 0.7,
+        "fcr": 0.75,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.17,
+        "fmr": 0.26,
+        "peak_current_A": 1146204.0512658237,
+        "peak_current_time_s": 5.2399999999997084e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 1.5e-05,
+        "steps_completed": 15000,
+        "steps_requested": 15000
+      },
+      "timing_error_rel": 0.12666666666671528,
+      "waveform_points": 25,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "PF-1000-20kV",
+      "lee_reference": "Lee & Saw (2014): same device geometry, same fc/fm as 27 kV",
+      "model_coverage_flags": [],
+      "peak_current_error_rel": 0.08701389465359123,
+      "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021 (voltage trend)",
+      "source_gap_flags": [
+        "measured_current_waveform_missing",
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "reliability=estimated",
+          "waveform_missing",
+          "waveform_provenance=unset",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "estimated",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": ""
+      },
+      "summary": {
+        "dt_s": 1e-09,
+        "elapsed_s": 0.0979504999704659,
+        "fc": 0.7,
+        "fcr": 0.7,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.08,
+        "fmr": 0.16,
+        "peak_current_A": 1278180.5474849723,
+        "peak_current_time_s": 6.15299999999939e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 1.575e-05,
+        "steps_completed": 15749,
+        "steps_requested": 15749
+      },
+      "timing_error_rel": 0.023333333333430076,
+      "waveform_points": 0,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "PF-1000-Gribkov",
+      "lee_reference": "Lee & Saw 2014, IPFS PF1000data.xls (same device/voltage as PF-1000 standard)",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.15746688540537018,
+      "nrmse_rise": 0.04962848799736154,
+      "nrmse_to_dip": 0.1531812566587308,
+      "peak_current_error_rel": 0.0701932447706604,
+      "reference": "Gribkov et al., J. Phys. D: Appl. Phys. 40:1977-1989 (Part I), 2007, doi:10.1088/0022-3727/40/7/021",
+      "source_gap_flags": [
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "measured"
+      },
+      "summary": {
+        "dt_s": 1e-09,
+        "elapsed_s": 0.11164479103172198,
+        "fc": 0.7,
+        "fcr": 0.7,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.08,
+        "fmr": 0.16,
+        "peak_current_A": 1716423.270153361,
+        "peak_current_time_s": 6.266999999999351e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 1.7678399999999997e-05,
+        "steps_completed": 17678,
+        "steps_requested": 17678
+      },
+      "timing_error_rel": 0.019248826291181406,
+      "waveform_points": 90,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "POSEIDON-60kV",
+      "lee_reference": "Lee & Saw 2014 (fit at 60 kV); [KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152]",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.07111942866099309,
+      "nrmse_rise": 0.009118801840230069,
+      "nrmse_to_dip": 0.07111942866099309,
+      "peak_current_error_rel": 0.010992289563584313,
+      "reference": "[KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.152 line 12736] Lee & Saw 2014 Table p.152; IPFS digitized waveform",
+      "source_gap_flags": [
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "measured"
+      },
+      "summary": {
+        "dt_s": 7.999999999999999e-10,
+        "elapsed_s": 0.06504366698209196,
+        "fc": 0.6,
+        "fcr": 0.44,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.275,
+        "fmr": 0.45,
+        "peak_current_A": 3154934.596292166,
+        "peak_current_time_s": 1.9888000000000533e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.14,
+        "radial_transition_time_s": null,
+        "sim_time_s": 8e-06,
+        "steps_completed": 10000,
+        "steps_requested": 10000
+      },
+      "timing_error_rel": 0.004444444444471301,
+      "waveform_points": 35,
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "accuracy_flags": [],
+      "device": "UNU-ICTP",
+      "lee_reference": "IPFS plasmafocus.net preset; Lee & Saw (2014)",
+      "model_coverage_flags": [],
+      "nrmse_full": 0.10671311846591079,
+      "nrmse_rise": 0.05740787747934648,
+      "nrmse_to_dip": 0.09705509882740727,
+      "peak_current_error_rel": 0.00499886777428165,
+      "reference": "[KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md p.10/152] Lee & Saw 2014; geometry also at KR lines 16146-16151",
+      "source_gap_flags": [
+        "waveform_kr_status=unverified"
+      ],
+      "source_state": {
+        "blockers": [
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "measured"
+      },
+      "summary": {
+        "dt_s": 7.999999999999999e-10,
+        "elapsed_s": 0.06472187500912696,
+        "fc": 0.7,
+        "fcr": 0.7,
+        "fcr2": null,
+        "first_nonfinite": null,
+        "fm": 0.08,
+        "fmr": 0.16,
+        "peak_current_A": 181090.20606508074,
+        "peak_current_time_s": 2.47760000000009e-06,
+        "phases_seen": [
+          "pinch",
+          "radial",
+          "reflected",
+          "rundown"
+        ],
+        "pinch_column_fraction": 0.06,
+        "radial_transition_time_s": null,
+        "sim_time_s": 8e-06,
+        "steps_completed": 10000,
+        "steps_requested": 10000
+      },
+      "timing_error_rel": 0.12618181818185903,
+      "waveform_points": 45,
+      "workflow_status": "source_gap_review_needed"
+    }
+  ],
+  "findings": [
+    "All preset app-engine simulations completed without nonfinite arrays.",
+    "No validation-ready preset crossed the current monitor accuracy flags.",
+    "Preset source-gap review needed for: nx2 vs NX2 [reference_only_device_not_scientific_validation_target, measured_current_waveform_missing, waveform_kr_status=unverified, nx2_course_example_not_same_shot_deuterium_target_missing=deuterium_device_match,measured_current_trace_source,experimental_phase_timing_uncertainty]",
+    "Preset model-coverage review needed for: mjolnir vs MJOLNIR [mjolnir_restrike_current_trace_model_required_by_kr_but_no_accepted_timing_or_magnitude_parameters]",
+    "Preset source-config review needed for: faeton vs FAETON-I [snowplow.radial_transition_time_not_in_faeton_kr_extract_observed=7e-06]",
+    "No validation-ready waveform device crossed the current monitor accuracy flags.",
+    "Waveform/device source-gap review needed for: FAETON-I [waveform_reconstructed_not_digitized, waveform_kr_status=unverified]; NX2 [reference_only_device_not_scientific_validation_target, measured_current_waveform_missing, waveform_kr_status=unverified, nx2_course_example_not_same_shot_deuterium_target_missing=deuterium_device_match,measured_current_trace_source,experimental_phase_timing_uncertainty]; PF-1000-16kV [waveform_reconstructed_not_digitized, waveform_kr_status=unverified]; PF-1000-20kV [measured_current_waveform_missing, waveform_kr_status=unverified]; PF-1000-Gribkov [waveform_kr_status=unverified]; POSEIDON-60kV [waveform_kr_status=unverified]; UNU-ICTP [waveform_kr_status=unverified]",
+    "Waveform/device model-coverage review needed for: MJOLNIR [mjolnir_restrike_current_trace_model_required_by_kr_but_no_accepted_timing_or_magnitude_parameters]",
+    "Nonaccepting waveform/device evidence still simulated but not scored as accepted: FAETON-I, MJOLNIR, NX2, PF-1000-16kV, PF-1000-20kV, PF-1000-Gribkov, POSEIDON-60kV, UNU-ICTP",
+    "All requested pytest monitor lanes returned success."
+  ],
+  "generated_at": "2026-05-12T20:01:13+00:00",
+  "monitor_scope": {
+    "science_authority": "local KnowledgeReference/ plus registry source metadata only",
+    "validation_boundary": "engineering monitor; does not accept draft digitizations, reconstructed waveforms, reference-only devices, or MHD/RADPF gates"
+  },
+  "preset_runs": [
+    {
+      "I_peak_MA": 0.18508809288961023,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "Tutorial Device (UNU-ICTP based)",
+      "dip_pct": 0.0,
+      "dt_ns": 2.2931474494459376,
+      "elapsed_s": 0.028743874980136752,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 2180,
+      "nonfinite_counts": {},
+      "preset": "tutorial",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 2.504117014795033,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 1.8263026758751677,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "PF-1000",
+      "dip_pct": 39.076617023850915,
+      "dt_ns": 8.518664690174491,
+      "elapsed_s": 0.020216665987391025,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 1702,
+      "nonfinite_counts": {},
+      "preset": "pf1000",
+      "reference_device": "PF-1000",
+      "reference_peak_error_rel": 0.023367553007931766,
+      "reference_source_state": {
+        "blockers": [],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": true,
+        "waveform_kr_status": "verified",
+        "waveform_provenance": "measured"
+      },
+      "reference_timing_error_rel": 0.09420779209999298,
+      "sim_time_us": 14.5,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "pf1000_standard_27kv_lee_malek",
+      "source_scope_status": "same_scope_source_reviewed_not_certificate",
+      "t_peak_us": 6.34640519417996,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 1.1504449532620644,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "PF-1000",
+      "dip_pct": 41.81370172772513,
+      "dt_ns": 7.3951783169146275,
+      "elapsed_s": 0.02158025000244379,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 2028,
+      "nonfinite_counts": {},
+      "preset": "pf1000_akel",
+      "reference_device": "PF-1000-16kV",
+      "reference_peak_error_rel": 0.012493602350159337,
+      "reference_source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "reference_timing_error_rel": 0.12490389916511607,
+      "sim_time_us": 15.0,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "pf1000_16kv_2021_akel_shot12581",
+      "source_scope_status": "same_scope_blocked_by_review",
+      "t_peak_us": 5.250576605009304,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 1.2779101626556089,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "PF-1000",
+      "dip_pct": 40.61439249062072,
+      "dt_ns": 8.518664690174491,
+      "elapsed_s": 0.022712834004778415,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 1848,
+      "nonfinite_counts": {},
+      "preset": "pf1000_20kv",
+      "reference_device": "PF-1000-20kV",
+      "reference_peak_error_rel": 0.08720702667456502,
+      "reference_source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "reliability=estimated",
+          "waveform_missing",
+          "waveform_provenance=unset",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "estimated",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": ""
+      },
+      "reference_timing_error_rel": 0.02373398312603934,
+      "sim_time_us": 15.75,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "measured_current_waveform_missing",
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "pf1000_20kv_derived_operating_point",
+      "source_scope_status": "derived_operating_point_not_validation_evidence",
+      "t_peak_us": 6.150475906305952,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.3058194658078543,
+      "accuracy_flags": [
+        "preset_peak_error>0.160_two_sigma",
+        "preset_timing_error>0.240_two_sigma"
+      ],
+      "can_support_validation_claims": false,
+      "device": "NX2",
+      "dip_pct": 75.41852040905991,
+      "dt_ns": 0.9636038512036401,
+      "elapsed_s": 0.040138417039997876,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 4669,
+      "nonfinite_counts": {},
+      "preset": "nx2",
+      "reference_device": "NX2",
+      "reference_peak_error_rel": 0.2354513354803642,
+      "reference_source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "reliability=reference_only",
+          "waveform_missing",
+          "waveform_provenance=unset",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "reference_only",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": ""
+      },
+      "reference_timing_error_rel": 0.460381843325971,
+      "sim_time_us": 4.5,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "reference_only_device_not_scientific_validation_target",
+        "measured_current_waveform_missing",
+        "waveform_kr_status=unverified",
+        "nx2_course_example_not_same_shot_deuterium_target_missing=deuterium_device_match,measured_current_trace_source,experimental_phase_timing_uncertainty"
+      ],
+      "source_scope": "nx2_reference_only_lee_radpf",
+      "source_scope_status": "reference_only_not_validation_evidence",
+      "t_peak_us": 0.9713126820132523,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "source_gap_review_needed"
+    },
+    {
+      "I_peak_MA": 0.1810867120807162,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "UNU-ICTP",
+      "dip_pct": 23.021283715535372,
+      "dt_ns": 2.2931474494459376,
+      "elapsed_s": 0.023752000008244067,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 2616,
+      "nonfinite_counts": {},
+      "preset": "unu_ictp",
+      "reference_device": "UNU-ICTP",
+      "reference_peak_error_rel": 0.0050180654905704145,
+      "reference_source_state": {
+        "blockers": [
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "measured"
+      },
+      "reference_timing_error_rel": 0.1267692694777848,
+      "sim_time_us": 6.0,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "unu_ictp_lee_saw_2014_table_p152_ipfs",
+      "source_scope_status": "same_scope_source_reviewed_waveform_unverified_not_certificate",
+      "t_peak_us": 2.478892392851127,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.2820413943218587,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "LLNL-DPF",
+      "dip_pct": 0.0,
+      "dt_ns": 1.1351544170755918,
+      "elapsed_s": 0.03457708301721141,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 4404,
+      "nonfinite_counts": {},
+      "preset": "llnl_dpf",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 1.7958142878135388,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 3.1859631384329186,
+      "accuracy_flags": [
+        "preset_peak_error>0.160_two_sigma"
+      ],
+      "can_support_validation_claims": false,
+      "device": "MJOLNIR",
+      "dip_pct": 9.295810213716518,
+      "dt_ns": 4.694107147836154,
+      "elapsed_s": 0.028062416007742286,
+      "engine_status": "completed",
+      "model_coverage_flags": [
+        "mjolnir_restrike_current_trace_model_required_by_kr_but_no_accepted_timing_or_magnitude_parameters"
+      ],
+      "n_steps": 3104,
+      "nonfinite_counts": {},
+      "preset": "mjolnir",
+      "reference_device": "MJOLNIR",
+      "reference_peak_error_rel": 0.27438525537316744,
+      "reference_source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "reference_timing_error_rel": 0.11995555530276716,
+      "sim_time_us": 14.575000000000001,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "mjolnir_schmidt_2021_1mj",
+      "source_scope_status": "same_scope_partial_source_review_waveform_reconstructed_not_certificate",
+      "t_peak_us": 5.130659112584868,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "model_coverage_review_needed"
+    },
+    {
+      "I_peak_MA": 0.981671868059327,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "FAETON-I",
+      "dip_pct": 0.0,
+      "dt_ns": 2.9537654427125717,
+      "elapsed_s": 0.023490082996431738,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 3131,
+      "nonfinite_counts": {},
+      "preset": "faeton",
+      "reference_device": "FAETON-I",
+      "reference_peak_error_rel": 0.01832813194067299,
+      "reference_source_state": {
+        "blockers": [
+          "kr_status=unverified",
+          "waveform_provenance=reconstructed",
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "unverified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "reconstructed"
+      },
+      "reference_timing_error_rel": 0.038828758641661944,
+      "sim_time_us": 9.250000000000002,
+      "source_config_flags": [
+        "snowplow.radial_transition_time_not_in_faeton_kr_extract_observed=7e-06"
+      ],
+      "source_gap_flags": [
+        "waveform_reconstructed_not_digitized",
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "faeton_i_damideh_2025_table3_shot1027_two_step_restrike",
+      "source_scope_status": "same_scope_partial_source_review_waveform_reconstructed_not_certificate",
+      "t_peak_us": 3.556333593025851,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "source_config_review_needed"
+    },
+    {
+      "I_peak_MA": 2.878958116835355,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "POSEIDON",
+      "dip_pct": 0.0,
+      "dt_ns": 5.057866606349323,
+      "elapsed_s": 0.015340207959525287,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 988,
+      "nonfinite_counts": {},
+      "preset": "poseidon",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 5.002230073679431,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 3.1548342225921995,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "POSEIDON-60kV",
+      "dip_pct": 42.4358799447292,
+      "dt_ns": 2.146312557251916,
+      "elapsed_s": 0.022595042013563216,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 2306,
+      "nonfinite_counts": {},
+      "preset": "poseidon_60kv",
+      "reference_device": "POSEIDON-60kV",
+      "reference_peak_error_rel": 0.011023754673291634,
+      "reference_source_state": {
+        "blockers": [
+          "waveform_kr_status=unverified"
+        ],
+        "kr_status": "verified",
+        "reliability": "measured",
+        "validation_ready": false,
+        "waveform_kr_status": "unverified",
+        "waveform_provenance": "measured"
+      },
+      "reference_timing_error_rel": 0.004864515440677989,
+      "sim_time_us": 4.95,
+      "source_config_flags": [],
+      "source_gap_flags": [
+        "waveform_kr_status=unverified"
+      ],
+      "source_scope": "poseidon_60kv_lee_saw_2014_ipfs",
+      "source_scope_status": "same_scope_source_reviewed_waveform_unverified_not_certificate",
+      "t_peak_us": 1.9896317405725426,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.1476186039959514,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "AECS-PF2",
+      "dip_pct": 97.18646641534225,
+      "dt_ns": 2.0933476429116293,
+      "elapsed_s": 0.02262233302462846,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 2388,
+      "nonfinite_counts": {},
+      "preset": "aecs_pf2",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 2.1603347674847906,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.1257802687781776,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "PF-400J",
+      "dip_pct": 0.0,
+      "dt_ns": 0.24800680359133068,
+      "elapsed_s": 0.1305187080288306,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 20160,
+      "nonfinite_counts": {},
+      "preset": "pf400j",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 0.29537610307727374,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.24087644376275733,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "Custom Device",
+      "dip_pct": 99.19310987803772,
+      "dt_ns": 1.554374201209823,
+      "elapsed_s": 0.02944554202258587,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 3216,
+      "nonfinite_counts": {},
+      "preset": "custom",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 1.5870160594352634,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.046334600058613735,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "Generic",
+      "dip_pct": 0.0,
+      "dt_ns": 0.6345706103850429,
+      "elapsed_s": 0.02250533294863999,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 7879,
+      "nonfinite_counts": {},
+      "preset": "cartesian_demo",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 0.7614847324620598,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    },
+    {
+      "I_peak_MA": 0.046334600058613735,
+      "accuracy_flags": [],
+      "can_support_validation_claims": false,
+      "device": "Generic",
+      "dip_pct": 0.0,
+      "dt_ns": 0.6345706103850429,
+      "elapsed_s": 0.02203312498750165,
+      "engine_status": "completed",
+      "model_coverage_flags": [],
+      "n_steps": 7879,
+      "nonfinite_counts": {},
+      "preset": "phase_p_fidelity",
+      "reference_device": "",
+      "reference_peak_error_rel": null,
+      "reference_source_state": {},
+      "reference_timing_error_rel": null,
+      "sim_time_us": 5.0,
+      "source_config_flags": [],
+      "source_gap_flags": [],
+      "source_scope": "not_declared",
+      "source_scope_status": "not_validation_evidence",
+      "t_peak_us": 0.7614847324620598,
+      "validation_status": "not_validation_evidence",
+      "warnings": [],
+      "workflow_status": "completed"
+    }
+  ],
+  "pytest_lanes": [
+    {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+        "-m",
+        "pytest",
+        "tests/test_validation_ci.py",
+        "-q",
+        "-o",
+        "addopts="
+      ],
+      "elapsed_s": 3.012876165972557,
+      "output_tail": "...........................s                                             [100%]\n27 passed, 1 skipped in 2.14s",
+      "returncode": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+        "-m",
+        "pytest",
+        "tests/test_mhd_acceptance.py",
+        "-q",
+        "-rsx",
+        "-o",
+        "addopts="
+      ],
+      "elapsed_s": 0.9980751659604721,
+      "output_tail": "sssss                                                                    [100%]\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_mhd_acceptance.py:52: MLX not available\nSKIPPED [1] tests/test_mhd_acceptance.py:70: MLX not available\nSKIPPED [1] tests/test_mhd_acceptance.py:81: MLX not available\nSKIPPED [1] tests/test_mhd_acceptance.py:106: MLX not available\nSKIPPED [1] tests/test_mhd_acceptance.py:147: MLX not available\n5 skipped in 0.33s",
+      "returncode": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+        "-m",
+        "pytest",
+        "tests/test_quality_assessment.py::TestQualityAssessment::test_scientific_accuracy_gap_report_lists_remaining_work",
+        "tests/test_mhd_physics_integration.py::test_predictive_readiness_exported_and_blocks_unvalidated_claims",
+        "tests/test_akel_digitization_source_integrity.py",
+        "tests/test_preset_source_scope.py",
+        "tests/test_unreviewed_physics_metadata.py",
+        "-q",
+        "-o",
+        "addopts="
+      ],
+      "elapsed_s": 3.63691529200878,
+      "output_tail": ".........................                                                [100%]\n=============================== warnings summary ===============================\n<frozen importlib._bootstrap>:241\n<frozen importlib._bootstrap>:241\n  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute\n\n<frozen importlib._bootstrap>:241\n<frozen importlib._bootstrap>:241\n  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute\n\n<frozen importlib._bootstrap>:241\n  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n25 passed, 5 warnings in 2.54s\nsys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute",
+      "returncode": 0,
+      "status": "passed"
+    }
+  ],
+  "repo_root": "/Users/anthonyzamora/dpf-unified",
+  "summary": {
+    "accuracy_review_device_count": 0,
+    "accuracy_review_preset_count": 0,
+    "broken_preset_count": 0,
+    "device_count": 9,
+    "model_coverage_review_device_count": 1,
+    "model_coverage_review_preset_count": 1,
+    "preset_count": 16,
+    "pytest_failed_lane_count": 0,
+    "pytest_lane_count": 3,
+    "source_config_review_preset_count": 1,
+    "source_gap_review_device_count": 7,
+    "source_gap_review_preset_count": 1,
+    "validation_ready_device_count": 1,
+    "warning_preset_count": 0
+  }
+}

@@ -16,6 +16,114 @@ from dpf.core.bases import CouplingState
 from dpf.metal.constants import MU_0
 
 
+_COUPLING_METHOD_AUTHORITY: dict[str, dict[str, Any]] = {
+    "density_weighted_lp": {
+        "method": "density_weighted_lp",
+        "implementation_path": "dpf.metal.mlx_coupling.update_coupling",
+        "classification": "engineering_coupling_scaffold",
+        "source_status": "missing_same_scope_validation_packet",
+        "validation_status": "not_validation_evidence",
+        "can_support_scientific_claims": False,
+        "claim_limit": (
+            "Computes a finite field-derived coupling signal for engineering "
+            "experiments; it is not accepted device-validation evidence."
+        ),
+        "guardrails": [
+            "requires accepted same-scope source packet before scientific use",
+            "synthetic Bennett tests verify plumbing only",
+            "engine handoff must remain explicitly labeled",
+        ],
+    },
+    "voltage_flux": {
+        "method": "voltage_flux",
+        "implementation_path": "dpf.metal.mlx_coupling.compute_upf_voltage_flux",
+        "classification": "experimental_coupling_scaffold",
+        "source_status": "unreviewed_or_missing_local_source",
+        "validation_status": "not_validation_evidence",
+        "can_support_scientific_claims": False,
+        "claim_limit": (
+            "Flux-derived terminal voltage is an experimental implementation "
+            "path and is not currently wired as accepted validation evidence."
+        ),
+        "guardrails": [
+            "do not describe as correct or source-closed",
+            "requires local source review plus same-scope comparator",
+        ],
+    },
+    "poynting_voltage": {
+        "method": "poynting_voltage",
+        "implementation_path": "dpf.metal.mlx_coupling.compute_voltage_poynting",
+        "classification": "experimental_coupling_scaffold",
+        "source_status": "theory_context_without_accepted_validation_packet",
+        "validation_status": "not_validation_evidence",
+        "can_support_scientific_claims": False,
+        "claim_limit": (
+            "Poynting-theorem voltage is available for experiments only until "
+            "same-scope source and uncertainty packets are accepted."
+        ),
+        "guardrails": [
+            "do not describe as first-principles validation",
+            "requires accepted local source packet and uncertainty budget",
+        ],
+    },
+}
+
+
+def coupling_method_authority() -> dict[str, dict[str, Any]]:
+    """Return fail-closed authority labels for MLX circuit-coupling methods."""
+    return {
+        name: {
+            key: (list(value) if isinstance(value, list) else value)
+            for key, value in record.items()
+        }
+        for name, record in _COUPLING_METHOD_AUTHORITY.items()
+    }
+
+
+def evaluate_mhd_coupling_gate(
+    *,
+    phase: str,
+    lp_mhd: float,
+    lp_snowplow: float,
+    dlp_dt_mhd: float | None,
+    resistance_mhd: float,
+    allowed_phases: set[str] | frozenset[str],
+) -> dict[str, Any]:
+    """Evaluate engineering eligibility for MHD-derived circuit coupling.
+
+    This gate is intentionally stricter than "finite and positive" while still
+    failing closed for scientific claims. Passing it means the value may be used
+    for the engineering blend only; accepted source evidence is still required
+    before MHD-derived Lp, dL/dt, or resistance can support validation claims.
+    """
+    checks = {
+        "phase_allowed": phase in allowed_phases,
+        "lp_finite": bool(np.isfinite(lp_mhd)),
+        "lp_positive": lp_mhd > 0.0,
+        "lp_comparable_to_snowplow": (
+            lp_snowplow <= 0.0 or lp_mhd >= 0.5 * lp_snowplow
+        ),
+        "dlp_dt_finite_or_unset": (
+            dlp_dt_mhd is None or bool(np.isfinite(dlp_dt_mhd))
+        ),
+        "resistance_finite": bool(np.isfinite(resistance_mhd)),
+        "resistance_nonnegative": resistance_mhd >= 0.0,
+    }
+    failed_checks = [name for name, passed in checks.items() if not passed]
+    eligible = not failed_checks
+    return {
+        "classification": "engineering_blend_gate",
+        "validation_status": "not_validation_evidence",
+        "scientific_gate_status": "blocked_missing_same_scope_validation_packet",
+        "can_support_scientific_claims": False,
+        "eligible_for_engineering_blend": eligible,
+        "phase": phase,
+        "allowed_phases": sorted(allowed_phases),
+        "checks": checks,
+        "failed_checks": failed_checks,
+    }
+
+
 def _bdf2_dLp_dt(history: list[tuple[float, float]], Lp: float, t: float) -> float:
     """Compute dLp/dt using BDF2 (3-point) when history is available.
 
@@ -57,17 +165,18 @@ def compute_upf_voltage_flux(
     current: float,
     voltage: float,
 ) -> tuple[CouplingState, float]:
-    """Compute DPF terminal voltage U_PF from magnetic flux at inlet boundary.
+    """Estimate DPF terminal voltage U_PF from magnetic flux at inlet boundary.
 
-    This is the CORRECT method for MHD-circuit coupling. Instead of computing
-    Lp and dLp/dt (which requires sheath detection and density-weighted radius),
-    compute the magnetic flux Phi at the inlet boundary and derive U_PF = dPhi/dt.
-    The circuit equation becomes:
+    This is an experimental MHD-circuit coupling path. Instead of computing
+    Lp and dLp/dt from sheath detection and density-weighted radius, it computes
+    magnetic flux Phi at the inlet boundary and derives U_PF = dPhi/dt. The
+    circuit equation becomes:
 
         L0 * dI/dt = V_cap - R*I - U_PF
 
-    No inductance calculation needed. The B-field at the inlet naturally captures
-    the correct circuit loading through Faraday's law.
+    This implementation is not accepted validation evidence. Keep it labeled
+    as an engineering scaffold until local source review and same-scope
+    comparator evidence exist.
 
     References
     ----------
@@ -85,7 +194,7 @@ def compute_upf_voltage_flux(
         Extracted in memory/dpf-papers/dpf-high-impedance-sims.md.
 
     Auluck (2021), Phys. Plasmas 28:030703, Eq. (10)-(13):
-        Shows density-weighted Lee formula is fundamentally incomplete.
+        Theoretical context for limitations of inductance-only coupling.
         PDF: references/papers/core-dpf/auluck-2021-dpf-circuit-element.pdf
 
     Parameters
@@ -115,10 +224,9 @@ def compute_upf_voltage_flux(
     from dpf.metal.mlx_kernels import IBT
 
     Bt_np = np.asarray(U[IBT])  # (nr, nz)
-    nr, nz = Bt_np.shape
     dr = grid.dr
     dz = grid.dz
-    r_inner + (np.arange(nr) + 0.5) * dr
+    _ = r_inner, cathode_radius
 
     # Magnetic flux linkage for a coaxial DPF device.
     #
@@ -132,9 +240,10 @@ def compute_upf_voltage_flux(
     # B_theta exists (i.e., where current flows between the electrodes):
     #     Phi_total = integral_0^z_max [ integral_a^b B_theta(r,z) dr ] dz
     #
-    # This naturally captures the axial extent of the current sheath —
-    # where B_theta is zero (ahead of sheath), that z-column contributes
-    # zero flux. No sheath detection algorithm needed.
+    # This captures the axial extent of the current sheath in the computed
+    # field state: where B_theta is zero ahead of the sheath, that z-column
+    # contributes zero flux. This remains an experimental implementation path,
+    # not accepted validation evidence.
     #
     # In HL units (mu0=1 in solver): B_HL = B_SI / sqrt(mu0)
     # Phi_SI = sqrt(mu0) * integral(B_HL * dr * dz)
@@ -143,8 +252,9 @@ def compute_upf_voltage_flux(
     #   Phi_per_length = integral_a^b (mu0*I)/(2*pi*r) dr = (mu0*I)/(2*pi) * ln(b/a)
     #   Phi_total = Phi_per_length * z_domain
     #   L = Phi/I = (mu0/(2*pi)) * ln(b/a) * z = Lee formula
-    # So this flux integral IS the Lee formula when B is the vacuum field,
-    # and automatically includes plasma compression effects when B differs.
+    # In this idealized vacuum-field check, the flux integral reduces to the
+    # Lee-form inductance expression. Plasma-compression behavior still needs
+    # same-scope source closure before it can support scientific claims.
     sqrt_mu0 = math.sqrt(MU_0)
 
     # Integrate B_theta over full (r,z) domain
@@ -184,23 +294,20 @@ def compute_voltage_poynting(
     eta: Any | None = None,
     convert_hl_to_si: bool = True,
 ) -> float:
-    """Compute device voltage from Poynting theorem (Auluck 2021 Eq. 1).
+    """Estimate device voltage from Poynting theorem (Auluck 2021 Eq. 1).
 
     V_12(t) = -(1/I(t)) * integral_Omega(J . E d^3r)
 
-    This is the CORRECT first-principles method for MHD-circuit coupling.
-    No inductance formula. No sheath detection. No flux integral.
-
-    Key property: J = curl(B)/mu0 = 0 in vacuum where B = mu0*I/(2*pi*r),
-    so prescribed vacuum B contributes ZERO to the integral. Only plasma
-    regions (sheath, pinch) where B deviates from vacuum contribute.
-    This naturally avoids the circular dependency that plagues dPhi/dt.
+    This is an experimental coupling path, not accepted validation evidence.
+    It avoids an inductance formula by integrating J.E over the domain, but it
+    still needs local source review, same-scope comparator evidence, and an
+    uncertainty budget before scientific use.
 
     References
     ----------
     Auluck (2021), Phys. Plasmas 28:030703, Eq. (1), (6).
         PDF: references/papers/core-dpf/auluck-2021-dpf-circuit-element.pdf
-        Proves that Lp-based coupling and dPhi/dt are fundamentally incomplete.
+        Theoretical context for limits of Lp-based coupling and dPhi/dt.
         The motional impedance (1/2 I^2 dL/dt) != magnetic energy flux through
         the plasma boundary (Eq. 13). The difference is the "anomalous impedance."
 
@@ -348,10 +455,10 @@ def update_coupling(
     Malir et al., Phys. Plasmas 31:042513 (2024) — density profiles confirm
         sheath appears as radial density peak detectable on-axis.
 
-    Verified
-    --------
+    Engineering regression
+    ----------------------
     Synthetic Bennett pinch (a=5mm, b=160mm, z=300mm): L_p error 4.5%
-    vs analytic (grid discretization limited). See test_mlx_circuit_coupling.py.
+    vs analytic in plumbing tests. This is not device-validation evidence.
     """
     from dpf.metal.mlx_kernels import IDN
 

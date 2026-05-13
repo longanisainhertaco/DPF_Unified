@@ -3,7 +3,7 @@
 Chains MLXCircuitSolver + MLXSnowplow + MLXMHDSolver into a single
 discharge simulation. In MHD mode, the MHD solver's density-weighted
 plasma inductance is recorded separately and can feed back into the
-circuit ODE through a trust-gated blend once the MHD fields are resolved.
+circuit ODE through a guarded blend once the MHD fields are resolved.
 
 Compatible with mx.grad for differentiable calibration.
 
@@ -19,9 +19,48 @@ from typing import Any
 
 import numpy as np
 
+from dpf.metal.mlx_coupling import (
+    coupling_method_authority,
+    evaluate_mhd_coupling_gate,
+)
 from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_snowplow import MLXSnowplow
-from dpf.presets import get_preset
+from dpf.presets import get_preset, list_presets
+from dpf.validation.first_principles_mhd import (
+    annotate_first_principles_mhd_result,
+    normalize_first_principles_run_mode,
+)
+
+
+_REDUCED_PHASE_MODEL_AUTHORITY: dict[str, Any] = {
+    "model": "reduced_mlx_snowplow",
+    "implemented_phases": ["rundown", "radial", "pinch"],
+    "not_implemented_phases": [
+        "reflected_shock",
+        "radiative_pinch",
+        "expanded_column",
+    ],
+    "full_lee_five_phase_coverage": False,
+    "validation_status": "not_validation_evidence",
+    "classification": "engineering_model_limit",
+    "note": (
+        "Pure-MLX discharge uses a reduced axial/radial/pinch snowplow model; "
+        "do not present it as full Lee five-phase coverage."
+    ),
+}
+
+
+_BACK_EMF_AUTHORITY: dict[str, Any] = {
+    "applied_to_circuit": False,
+    "status": "not_applied",
+    "path": "circuit.step(..., back_emf=0.0)",
+    "validation_status": "not_validation_evidence",
+    "classification": "engineering_model_limit",
+    "note": (
+        "MLX discharge circuit loading currently uses Lp and dLp_dt through "
+        "the circuit solver; separate motional back-EMF is explicitly zero."
+    ),
+}
 
 
 def _blend_lp(
@@ -82,14 +121,22 @@ def run_mlx_discharge(
         mode: "lee" for circuit+snowplow only (1ms/shot), or
               "mhd" for circuit+snowplow+MLX MHD solver (7min/shot).
               In MHD mode, the solver's density-weighted Lp is recorded
-              and feeds back through a trust-gated blend once resolved.
+              and feeds back through a guarded blend once resolved.
         grid_shape: MHD grid resolution (only used in "mhd" mode).
 
     Returns dict with I_peak_MA, t_peak_us, n_steps, elapsed_s, and
     time-series arrays (I_MA, t_us, Lp_nH, Lp_snowplow_nH, Lp_mhd_nH,
     phases, coupling_source).
     """
+    requested_mode = str(mode or "lee").strip().lower()
+    mode, first_principles_requested = normalize_first_principles_run_mode(
+        requested_mode
+    )
     preset = get_preset(preset_name)
+    preset_authority = next(
+        (item for item in list_presets() if item.get("name") == preset_name),
+        {},
+    )
     cc = preset["circuit"]
     sp_cfg = preset.get("snowplow", {})
 
@@ -239,19 +286,34 @@ def run_mlx_discharge(
     Lp_list: list[float] = []
     Lp_snowplow_list: list[float] = []
     Lp_mhd_list: list[float] = []
+    back_emf_list: list[float] = []
+    E_cap_kJ_list: list[float] = []
+    E_ind_kJ_list: list[float] = []
+    E_res_kJ_list: list[float] = []
+    circuit_energy_residual_kJ_list: list[float] = []
+    dynamic_inductance_power_W_list: list[float] = []
+    z_sheath_cm_list: list[float] = []
+    r_shock_cm_list: list[float] = []
+    r_piston_cm_list: list[float] = []
     coupling_sources: list[str] = []
     phases: list[str] = []
+    mhd_gate_counts = {"eligible": 0, "blocked": 0}
+    mhd_gate_failed_check_counts: dict[str, int] = {}
+    mhd_gate_last: dict[str, Any] | None = None
 
     t = 0.0
     t0_wall = time.perf_counter()
     I_peak = 0.0
     t_peak = 0.0
     prev_Lp_circuit = 0.0
+    E_bank_initial_J = 0.5 * cc["C"] * _V0 * _V0
+    E_res_J = 0.0
 
     # MHD-circuit coupling state
     blend_alpha = 0.0
-    # Phases where MHD Lp can be trusted (includes rundown with density gate)
-    _MHD_TRUST_PHASES = {"rundown", "radial", "radial_reflected", "pinch", "column"}
+    # Engineering-only phases where the MHD-derived Lp signal is eligible for
+    # blending. Eligibility is not source-backed validation.
+    _MHD_BLEND_ALLOWED_PHASES = {"rundown", "radial", "radial_reflected", "pinch", "column"}
 
     for _step in range(n_steps_max):
         # Snowplow step (always runs — provides phase detection)
@@ -302,21 +364,24 @@ def run_mlx_discharge(
             if not np.isfinite(R_mhd_val):
                 R_mhd_val = 0.0
 
-        # Trust-gated MHD handoff. KR-backed DPF modeling supports MHD for
-        # rundown/bulk-fluid evolution, while final pinch/yield physics remains
-        # kinetic; keep the circuit snowplow-driven until the resolved MHD Lp is
-        # finite, positive, and comparable to the analytic snowplow load.
+        # Guarded MHD handoff. Keep the circuit snowplow-driven until the
+        # resolved MHD Lp is finite, positive, and comparable to the analytic
+        # snowplow load. This is an engineering stability guard, not accepted
+        # device-validation evidence.
         Lp_circuit = Lp_sp
         dLp_dt_circuit = dLp_dt_sp
         coupling_source = "snowplow"
         if mhd_solver is not None:
-            mhd_lp_ok = (
-                np.isfinite(Lp_mhd_val)
-                and Lp_mhd_val > 0.0
-                and (Lp_sp <= 0.0 or Lp_mhd_val >= 0.5 * Lp_sp)
+            mhd_gate_last = evaluate_mhd_coupling_gate(
+                phase=phase,
+                lp_mhd=Lp_mhd_val,
+                lp_snowplow=Lp_sp,
+                dlp_dt_mhd=dLp_dt_mhd_val,
+                resistance_mhd=R_mhd_val,
+                allowed_phases=_MHD_BLEND_ALLOWED_PHASES,
             )
-            phase_ok = phase in _MHD_TRUST_PHASES
-            if mhd_lp_ok and phase_ok:
+            if mhd_gate_last["eligible_for_engineering_blend"]:
+                mhd_gate_counts["eligible"] += 1
                 tau_blend = 5.0 * dt
                 blend_alpha = min(
                     1.0,
@@ -332,20 +397,34 @@ def run_mlx_discharge(
                 )
                 coupling_source = "mhd_blend" if blend_alpha < 0.999 else "mhd"
             else:
+                mhd_gate_counts["blocked"] += 1
+                for failed_check in mhd_gate_last["failed_checks"]:
+                    mhd_gate_failed_check_counts[failed_check] = (
+                        mhd_gate_failed_check_counts.get(failed_check, 0) + 1
+                    )
                 blend_alpha = 0.0
             if R_mhd_val > R_plasma:
                 R_plasma = R_mhd_val
 
         # Circuit step
+        back_emf = 0.0
         circuit.step(
             Lp=Lp_circuit,
             dLp_dt=dLp_dt_circuit,
             R_plasma=R_plasma,
-            back_emf=0.0,
+            back_emf=back_emf,
             dt=dt,
         )
         prev_Lp_circuit = Lp_circuit
         t += dt
+        R_eff_energy = cc["R0"] + R_plasma
+        if getattr(circuit, "_crowbar_fired", False):
+            R_eff_energy += cc.get("crowbar_resistance", 0.0)
+        E_res_J += max(R_eff_energy, 0.0) * circuit.current * circuit.current * dt
+        E_cap_J = 0.5 * cc["C"] * circuit.voltage * circuit.voltage
+        E_ind_J = 0.5 * (cc["L0"] + Lp_circuit) * circuit.current * circuit.current
+        dynamic_inductance_power_W = 0.5 * circuit.current * circuit.current * dLp_dt_circuit
+        circuit_energy_residual_J = E_bank_initial_J - E_cap_J - E_ind_J - E_res_J
 
         # Record
         I_MA = circuit.current / 1e6
@@ -355,6 +434,15 @@ def run_mlx_discharge(
         Lp_list.append(Lp_circuit * 1e9)
         Lp_snowplow_list.append(Lp_sp * 1e9)
         Lp_mhd_list.append(Lp_mhd_val * 1e9)
+        back_emf_list.append(back_emf)
+        E_cap_kJ_list.append(E_cap_J / 1e3)
+        E_ind_kJ_list.append(E_ind_J / 1e3)
+        E_res_kJ_list.append(E_res_J / 1e3)
+        circuit_energy_residual_kJ_list.append(circuit_energy_residual_J / 1e3)
+        dynamic_inductance_power_W_list.append(dynamic_inductance_power_W)
+        z_sheath_cm_list.append(float(sp_result.get("z_sheath", 0.0)) * 100.0)
+        r_shock_cm_list.append(float(sp_result.get("r_shock", 0.0)) * 100.0)
+        r_piston_cm_list.append(float(sp_result.get("r_piston", 0.0)) * 100.0)
         coupling_sources.append(coupling_source)
         phases.append(phase)
 
@@ -369,7 +457,7 @@ def run_mlx_discharge(
 
     elapsed = time.perf_counter() - t0_wall
 
-    return {
+    result = {
         "preset": preset_name,
         "I_peak_MA": abs(I_peak),
         "t_peak_us": t_peak,
@@ -384,7 +472,87 @@ def run_mlx_discharge(
         "Lp_nH": Lp_list,
         "Lp_snowplow_nH": Lp_snowplow_list,
         "Lp_mhd_nH": Lp_mhd_list,
+        "mhd_coupling_authority": coupling_method_authority()["density_weighted_lp"],
+        "mhd_coupling_gate": {
+            "classification": "engineering_blend_gate_summary",
+            "validation_status": "not_validation_evidence",
+            "scientific_gate_status": "blocked_missing_same_scope_validation_packet",
+            "can_support_scientific_claims": False,
+            "eligible_step_count": mhd_gate_counts["eligible"],
+            "blocked_step_count": mhd_gate_counts["blocked"],
+            "failed_check_counts": dict(sorted(mhd_gate_failed_check_counts.items())),
+            "last_gate": mhd_gate_last,
+        },
+        "back_emf_V": back_emf_list,
+        "back_emf_authority": dict(_BACK_EMF_AUTHORITY),
+        "E_cap_kJ": E_cap_kJ_list,
+        "E_ind_kJ": E_ind_kJ_list,
+        "E_res_kJ": E_res_kJ_list,
+        "circuit_energy_residual_kJ": circuit_energy_residual_kJ_list,
+        "dynamic_inductance_power_W": dynamic_inductance_power_W_list,
+        "z_sheath_cm": z_sheath_cm_list,
+        "r_shock_cm": r_shock_cm_list,
+        "r_piston_cm": r_piston_cm_list,
+        "circuit_energy_accounting_authority": {
+            "classification": "engineering_energy_accounting",
+            "validation_status": "not_validation_evidence",
+            "can_support_scientific_claims": False,
+            "notes": (
+                "Tracks capacitor, inductive, resistive, and residual energy "
+                "for production visibility. Field Poynting power and same-scope "
+                "field-coupling validation remain required before acceptance."
+            ),
+        },
+        "startup_sheath_initialization": {
+            "classification": "engineering_initialization_scaffold",
+            "validation_status": "not_validation_evidence",
+            "can_support_first_principles_startup": False,
+            "initial_distribution": (
+                "MHD mode seeds a thin inlet plasma layer; Lee/snowplow still "
+                "provides phase detection and sheath-position diagnostics."
+            ),
+            "missing_for_first_principles_acceptance": [
+                "source_backed_breakdown_model",
+                "source_backed_flashover_or_preionization_state",
+                "validated_initial_plasma_distribution",
+                "same_scope_sheath_position_validation",
+            ],
+        },
+        "electrode_boundary_conditions": {
+            "classification": "implemented_not_validated",
+            "validation_status": "not_validation_evidence",
+            "can_support_first_principles_startup": False,
+            "model": "axisymmetric electrode B_theta ghost-cell boundary condition",
+            "missing_for_first_principles_acceptance": [
+                "same_scope_electrode_boundary_validation",
+                "breakdown_to_boundary_consistency_evidence",
+            ],
+        },
+        "sheath_position_authority": {
+            "output_role": "baseline_reduced_model",
+            "validation_status": "not_first_principles_evidence",
+            "can_support_first_principles_acceptance": False,
+            "notes": (
+                "z_sheath_cm, r_shock_cm, and r_piston_cm are snowplow-derived "
+                "diagnostics until resolved field/sheath validation is attached."
+            ),
+        },
         "phases": phases,
+        "phase_model_authority": dict(_REDUCED_PHASE_MODEL_AUTHORITY),
         "coupling_source": coupling_sources,
         "blend_alpha": blend_alpha,
     }
+    if first_principles_requested:
+        annotate_first_principles_mhd_result(
+            result,
+            preset_name=preset_name,
+            validation_scope=str(preset_authority.get("validation_scope", "")),
+            source_scope=str(preset_authority.get("source_scope", "")),
+            source_scope_status=str(preset_authority.get("source_scope_status", "")),
+            requested_mode=requested_mode,
+            execution_mode=mode,
+        )
+    else:
+        result["run_mode"] = requested_mode
+        result["execution_mode"] = mode
+    return result
