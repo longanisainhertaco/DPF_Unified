@@ -210,7 +210,15 @@ pip install -e ".[dev,athena]"
 ```bash
 dpf simulate config.json --steps=1000
 dpf simulate config_cylindrical.json --steps=1000
+
+# PF-1000/Akel first-principles-only engineering candidate
+dpf first-principles --sim-time-us=0.2 --output results/first_principles_pf1000_akel_smoke.json
 ```
+
+The `first-principles` command is locked to the PF-1000/Akel demonstrator and
+uses the field-coupled `first_principles_mhd` path. Its output is an engineering
+probe artifact with fail-closed readiness metadata; it is not scientific
+validation evidence and does not accept the Akel draft waveform packet.
 
 ### Python API
 ```python

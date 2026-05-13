@@ -110,22 +110,897 @@ truthful even if later steps are incomplete.
 
 ## Current Execution Position
 
-Step 0 and Step 2 are in progress. The corpus has now been counted and the
-project can report that the full local source of truth has not been completely
-review-closed. Current inventory: 827 total files, 398 markdown files, 396 JSON
-files, and 54 DPF-named markdown files. Current coded targets cover 26 target
-records from 22 unique KR sources. Including explicit review decisions, 27 of
-the 54 DPF-named markdown files count as review-closed: 21 by coded targets and
-6 by explicit decisions. Target extraction remains open:
-`circuit_waveform`, `phase_timing`, and `spatial_temperature` are still partial,
-27 DPF-named markdown files remain unreviewed, and no same-scope target set
-passes. The current best available same-scope report is MJOLNIR by audit rank,
-but it lacks circuit waveform, phase semantics, phase timing, spatial density,
-spatial magnetic/EM, and uncertainty groups and has partial temperature. The
-PF-1000 full-energy scope remains the broadest end-to-end source packet by
-present groups: every required observable group is present in that scope, but
-current waveform, phase timing, neutron timing/spectrum/anisotropy/detector
-response, magnetic/EM, temperature, and uncertainty remain partial.
+Step 0 source-review control is complete for the DPF-relevant local markdown
+corpus. Later execution log entries supersede the older partial-source position:
+96 of 96 DPF-relevant markdown files are review-closed through coded target
+records or explicit non-target/duplicate/context decisions. The current blocker
+is validation evidence quality, not unreviewed DPF-named sources.
+
+The active scientific ratchet is now Akel/PF-1000 same-scope source closure.
+Standalone source-scoped no-crowbar `pf1000_akel` M2/M6 evidence is current
+after the Lee current-factor circuit-loading fix: the 12 us probe reached
+`peak_I_MA=1.150507` inside the shot-12581 M2 band `1.0485-1.2815 MA`. S1/S2
+remain blocked because accepted same-scope digitized current waveform/current-dip
+evidence with uncertainty does not yet exist. The Akel Fig. 1 draft packet is no
+longer missing waveform data; it has 294 measured-current candidate points, 34
+computed-current candidate points, and internal overlay RMS `0.213455189 px`,
+but it remains `blocked_by_review` until independent review is completed and
+`review_status="accepted"`.
+
+Parallel scientific-closure work started on 2026-05-11 for newly promoted local
+PF-1000/diagnostic KR sources. Cikhardtova 2015, Szydlowski 2004, Klir 2011,
+Springham 2021, and Catenacci 2020 now have typed target records and a dated
+target-extraction workbench report. The report contains 23 rendered pages and
+36 unreviewed crop candidates, all with `accepted_for_validation=false`; this
+is preparation for digitization, not accepted validation evidence.
+
+Supplemental user intake on 2026-05-12 staged 35 unique local PDFs from 39
+supplied paths, promoted 28 new DPF/plasma/numerics/math-method records into
+`KnowledgeReference/`, repaired a false Trunk 1975/Kortanek 2014 title match, and
+kept seven non-physics/AI-only support PDFs staged but outside physics authority.
+Six promoted book-length sources were chunked into 126 Markdown chunks, and 28
+promoted records received a second-pass source-fidelity review. This
+adds local source text and source-critical artifact indexes only; every new
+record remains `source_available_not_target_extracted` and cannot validate
+physics until typed targets or reviewed digitization packets are created.
+
+The SRS/productization ratchet is separate from the scientific ratchet. The
+draft SRS now identifies missing product controls that are not closed by science
+evidence alone: formal requirement traceability, compute-authority labels
+(`Reference`/`Preview` or equivalent), run manifests, validation certificates,
+memory preflight, unsupported-backend-feature warnings, local-first/security
+audits, export acceptance decisions, and a refreshed current TODO audit.
+
+First-principles MHD execution now has a fail-closed mode contract but not a
+validated physics stack. `first_principles_mhd` is initially scoped to the
+PF-1000/Akel path, maps onto the current MHD execution path, and exports
+readiness metadata that blocks on accepted Akel evidence, field-derived
+coupling, numerical-fidelity packets, physics-fidelity coverage, and removal of
+Lee/RADPF closure factors from acceptance scoring. Lee/snowplow remains allowed
+only as `baseline_reduced_model` for initialization, comparison, and regression.
+The first production energy-accounting slice exposes capacitor, inductive,
+resistive, residual, and dynamic-inductance power channels, but it remains
+blocked until field Poynting power and same-scope field-coupling validation are
+attached. Startup/sheath initialization is also surfaced as scaffolded metadata:
+the current seeded inlet layer, electrode boundary condition, and snowplow
+sheath-position outputs remain blocked until source-backed breakdown,
+preionization, initial plasma, and same-scope sheath evidence exist. No new
+scientific evidence is promoted by this contract. The app/post-processing path
+now honors the same `first_principles_mhd` fail-closed metadata, so UI/API-style
+MHD runs cannot skip the Akel review or first-principles evidence blockers.
+The server/API response model now exposes the same first-principles readiness,
+energy-accounting, and startup-initialization blocker packets for declared
+`first_principles_mhd` runs, and the legacy Gradio selector includes the mode
+with explicit `baseline_reduced_model` language for Lee/snowplow outputs.
+Config/CLI/engine summaries now carry the same `run_mode` authority label, so
+`dpf simulate --run-mode=first_principles_mhd` can write fail-closed readiness
+metadata into ordinary run summaries and manifests without changing backend
+selection or promoting evidence.
+
+Plan audit 2026-05-13: `docs/FIRST_PRINCIPLES_EXECUTION_AUDIT_2026_05_13.md`
+supersedes the broad blocker plan as the immediate execution guide. The
+metadata/readiness/reporting layer is good enough for now. Stop adding
+additional readiness surfaces and move the critical path to one working
+field-coupled PF-1000/Akel candidate run. The next code target is resolved-field
+coupling: magnetic field energy, field-derived inductance, Poynting or `J.E`
+power, nonzero field-derived back-EMF/terminal voltage, and an inspectable
+energy ledger wired into the circuit after startup/handoff. Broad tests and
+validation gates resume after that candidate run exists.
+
+Execution update 2026-05-13: the first field-coupled Python MHD candidate now
+runs as an engineering probe for `first_principles_mhd`. The cylindrical grid
+now supports an annular radial offset for PF-1000/Akel, and the candidate path
+computes magnetic energy, `L_field`, `dL_field/dt`, `integral(J dot E)dV`,
+field terminal voltage/back-EMF, interface power, Joule-power history, and
+energy residual from resolved fields. Coarse PF-1000/Akel probes completed
+finite 0.2 us and 1.0 us intervals with nonzero `B_max`, `L_field`, `J.E`
+power, and back-EMF histories. Follow-on ratcheting added capped
+Spitzer/Braginskii resistivity, nonzero Joule heating, corrected field-power
+circuit authority, and a recorded engineering limiter. A coarse PF-1000/Akel
+12 us `first_principles_mhd` shot now completes with `nan_detected=False` over
+24,000 steps and `I_peak_MA=1.1930438248311477`. This is not scientific
+validation; the limiter remains an engineering blocker, and same-scope Akel
+evidence remains blocked by review.
+
+Execution update 2026-05-13, neutron-yield authority: first-principles
+acceptance now includes a fail-closed neutron-yield gate. A total neutron yield
+cannot support first-principles predictive claims unless thermonuclear yield is
+integrated from resolved field history, beam-target yield is supplied by an
+accepted kinetic/hybrid beam model rather than Lee/Saw calibration, and
+same-scope scalar yield, mechanism timing, spectrum, anisotropy,
+detector/activation response, uncertainty, numerical-fidelity, and
+physics-fidelity evidence all pass together. Existing app-level neutron totals
+are therefore explicitly `blocked` for first-principles total-yield authority
+when they depend on final-state duration approximation or reduced beam-target
+estimators. The 10% paper-yield recreation target is an acceptance criterion
+for future same-scope packets, not a current validated capability.
+
+Execution update 2026-05-13, thermonuclear history: the Python MHD candidate
+now performs the thermonuclear DD part as a resolved-field history integral over
+cylindrical cell volumes rather than a final-state-times-duration shortcut.
+Post-processing preserves that field-history result and keeps total-yield
+authority blocked until an accepted kinetic/hybrid beam-target model and the
+same-scope neutron evidence packet exist. This moves the thermonuclear component
+toward first principles without relaxing the total-yield validation gate.
+
+Tool update 2026-05-13: the first-principles PF-1000/Akel engineering candidate
+now has a narrow user-facing entrypoint. `run_pf1000_akel_first_principles()`
+locks the app path to `backend="first_principles_mhd"` and
+`preset_name="pf1000_akel"`, and `dpf first-principles` calls that helper,
+enforces `field_coupled_candidate=True` plus `has_snowplow=False`, and can write
+a compact JSON artifact. A 0.2 us smoke wrote
+`results/first_principles_pf1000_akel_smoke.json` with 400 finite steps,
+`I_peak_MA=0.1128993`, nonzero field back-EMF, and `readiness=blocked`. This is
+still engineering-probe evidence only: Akel S1/S2 remain blocked, the Fig. 1
+packet remains `blocked_by_review`, and first-principles readiness/neutron-yield
+authority remain blocked until the same-scope evidence gates pass.
+
+Tooling activation 2026-05-08: the Codex environment now has curated `pdf`,
+`playwright`, `security-best-practices`, `security-threat-model`, and
+`security-ownership-map` skills installed, plus local `dpf-validation` and
+`srs-traceability` skills under `~/.codex/skills`. The repo now exposes a
+`traceability` optional dependency group with Doorstop and documents the
+first-pass SRS/RTM tooling path in `docs/SRS_TRACEABILITY_TOOLING.md`. Doorstop
+is tooling only; it does not change scientific acceptance status.
+
+## Blocker Closure Plan
+
+This plan tracks every remaining scientific blocker and every new SRS/product
+blocker identified from the draft SRS review. Each task must leave evidence in
+code, tests, docs, or findings before it can be marked complete. If a task cannot
+be closed with current local evidence, it must preserve a blocker rather than
+create a passing placeholder.
+
+### Track A: Scientific Closure
+
+| ID | Task | Goals and objectives | Guardrails | Skills and methods | Exit evidence |
+| --- | --- | --- | --- | --- | --- |
+| A1 | Findings/status hygiene | Keep `CortexFindings.md`, `CodexFindings.md`, SRS draft, and source queue mutually consistent. Correct stale status before implementing downstream work. | Do not delete historical log entries; supersede them with dated addenda. Preserve exact probe values and failure strings. | Technical writing, git diff review, evidence reconciliation. | Current-position sections name source review as closed and identify Akel S1/S2 plus SRS product controls as active blockers. |
+| A2 | Akel Fig. 1 independent review gate | Move the Fig. 1 draft packet from `blocked_by_review` only if an independent review accepts the digitization. | Do not self-promote draft arrays. Do not treat internal overlay residual as independent review. Keep `passed=False` until review metadata is valid. | Digitization QA, figure/axis audit, JSON packet review, hash verification. | `digitization_verification_evidence()` fails only before review and passes only after valid reviewer count and `review_status="accepted"`. |
+| A3 | S1/S2 waveform comparator | Add a source-scoped comparator for accepted Akel current waveform and current-dip evidence. | Use Akel 16 kV shot-12581 scope only. Do not mix Scholz/Gribkov 27 kV/full-energy PF-1000 evidence. Do not compare against draft data. | Signal processing, NRMSE/dip metrics, uncertainty-aware acceptance, pytest. | Tests show draft packet reports blocked-by-review; accepted packet enables S1/S2 candidate evidence with explicit uncertainty and source scope. |
+| A4 | Remaining Akel figure digitization | Process Fig. 2-4 current waveforms and Fig. 5-6 yield plots through the same queue/gate. | Each packet needs source path/hash, figure path/hash, page/figure ID, axis calibration, arrays, overlay residual, and review acceptance. | PDF/SVG extraction, axis calibration, JSON schema, residual analysis. | `scientific_closure_digitization_status()` reports each processed task as accepted or explicitly blocked with reason. |
+| A5 | Source acquisition and KR ingestion | Acquire missing exact source documents for detector response, anisotropy, spectra, neutron timing, and same-scope diagnostics. | External links are not evidence. User must acquire the document, it must be placed under `KnowledgeReference/`, and local review must pass before use. | Literature triage, local PDF parity, KR markdown ingestion, source-line extraction. | Source queue entries move from candidate acquisition to local KR-reviewed status with hashes and target decisions. |
+| A6 | Tier 2 phase validation | Build same-device KR-backed axial, radial, pinch/stagnation timing targets and attach them to production runs. | Targetless phase labels stay candidates. Phase evidence must name diagnostic source and uncertainty. | Lee/RADPF semantics, phase-history extraction, event detection, tolerance design. | Tier 2 passes only for same-scope targets; partial/cross-scope phase evidence remains blocked. |
+| A7 | Tier 3 numerical fidelity | Expand production MHD evidence beyond generic Sod/Brio-Wu tests. | Verification is not DPF validation. Do not let generic shock tests substitute for spatial experiment evidence. | Numerical methods, convergence studies, backend parity, restart tests, energy accounting. | Tier 3 packet includes named tests for cylindrical source terms, resistive diffusion/heating, circuit energy, backend parity, convergence, restart/reproducibility. |
+| A8 | Tier 4 spatial validation | Build one same-scope density, magnetic/EM, and temperature validation packet. | Reject cross-device mixing and review-only context. Temperature-only or density-only packets stay partial. | Diagnostic interpretation, spatial comparison metrics, source authority, uncertainty tracking. | Tier 4 support requires density, magnetic/EM, and temperature evidence from one KR-backed validation scope. |
+| A9 | Tier 5 neutron validation | Generate or ingest same-scope neutron timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty. | Do not count helper comparisons on supplied arrays as production neutron validation. Do not treat scalar yield alone as tier 5. | Neutron diagnostics, detector response, TOF/spectrum analysis, mechanism-separated histories. | Tier 5 passes only when all neutron components share one KR-backed validation scope and uncertainty model. |
+| A10 | Physics-fidelity closure | Make missing/empirical physics status explicit for each claimed scope. | Keep reduced/empirical models, but label them. Do not claim predictive high-Z, p-B11, late-pinch, or neutron behavior unless required physics is implemented/validated or bounded out. | Physics model audit, evidence schema design, source-backed scope limits. | Run results report implemented, verified, validated, empirical, absent, or bounded-out status for each required physics effect. |
+| A11 | Circuit-field coupling fidelity | Define and validate evidence for field-derived inductance, dL/dt/back-EMF, Poynting flux, circuit energy, and handoff timing. | Do not call density-weighted or Lee-style coupling fully field-derived. Preserve snowplow/blended/field-coupled interval labels. | Circuit/MHD coupling, energy balance, Poynting theorem, result metadata. | `field_coupling_validation` evidence distinguishes snowplow-loaded, blended, and validated field-coupled intervals. |
+| A12 | UQ propagation | Extend uncertainty beyond circuit waveform comparisons into phase, spatial, neutron, numerical, model-form, and shot-to-shot evidence. | Avoid point-tolerance-only pass/fail for high-fidelity claims. Missing uncertainty keeps readiness blocked. | ASME/GUM UQ, error propagation, statistical validation, acceptance-rule design. | Every supported validation tier reports experimental, input, numerical, model-form, shot-to-shot, propagated-observable, and acceptance-rule uncertainty status. |
+| A13 | Long PF-1000 fixture policy | Decide whether the long PF-1000 xfailed classes stay scientific gates or become opt-in endurance/regression tests. | Do not re-enable as passing scientific gates until same-scope S1/S2 evidence exists. Do not hide long-run cap exhaustion. | Test architecture, pytest markers, MLX process isolation, runtime budgeting. | `tests/test_mlx_pf1000.py` clearly separates scientific xfail gates from opt-in endurance/regression paths. |
+| A14 | Newly promoted KR target extraction and digitization | Move Cikhardtova 2015, Szydlowski 2004, Klir 2011, Springham 2021, and Catenacci 2020 from reviewed source text into reviewed target/digitization packets. | Use only local KR markdown records and hashed local intake source PDFs. Rendered pages and crop candidates are workbench artifacts, not validation evidence. Do not promote any packet before axis/table calibration, numeric arrays, residual checks, and independent review. | PDF rendering, crop QA, axis calibration, table extraction, figure digitization, JSON packet schema, independent review gating. | A14 crop-boundary QA report exists with 36 crops, 21 ready-for-draft-extraction figure crops, 9 manual-review crops, 0 crop-adjustment-needed crops, 6 review-blocked table drafts, and 0 accepted validation packets; all accepted packets must pass `digitization_verification_evidence()` before validation use. |
+
+#### Track A Detailed Simulation/Physics Breakdown
+
+This section breaks the remaining simulation and physics plan into smaller
+work units. Status terms are intentionally conservative:
+
+- `ready-to-code` means the repo has enough local context to implement or test
+  the guardrail now.
+- `evidence-blocked` means implementation must keep reporting a blocker until
+  local `KnowledgeReference/` evidence, digitization, or review metadata exists.
+- `policy-decision` means the code path exists or can be built, but the release
+  posture must be chosen before it is treated as a gate.
+
+| Parent | Work unit | Current state | Guardrails | Concrete objective | Methods and skills | Verification / exit |
+| --- | --- | --- | --- | --- | --- | --- |
+| A2 | Review packet intake | evidence-blocked | Only an independent accepted review can promote Akel Fig. 1. Internal overlay residuals and local helper output are not review acceptance. | Define the minimum accepted-review packet fields: reviewer identity or role, review date, reviewed source hash, reviewed packet hash, accepted status, and reviewer notes. | Digitization QA, provenance hashing, review metadata schema, negative tests. | Draft packet remains `blocked_by_review`; accepted status is honored only when packet hash and reviewer metadata match the current artifact. |
+| A2 | Review-gate regression hardening | completed guardrail; evidence-blocked for real acceptance | Do not allow manual field flips to bypass packet-bound review checks. | Add or keep tests for stale packet hash, missing reviewer fields, mismatched figure hash, and non-accepted review states. | Pytest, JSON fixture mutation, failure-mode assertions. | `digitization_verification_evidence()` fails closed for every malformed or stale review fixture. |
+| A3 | Accepted waveform comparator path | evidence-blocked | Compare only accepted Akel 16 kV shot-12581 current traces; no draft packet, cross-scope PF-1000, or scalar-only substitution. | Finish the S1/S2 comparison path for NRMSE, peak-current error, current-dip depth, current-dip timing, and uncertainty-aware acceptance. | Signal processing, interpolation, uncertainty bands, source-scope validation records. | Draft data reports `blocked_by_review`; an accepted same-scope fixture produces explicit metrics and requirement IDs without promoting unrelated scopes. |
+| A3 | Production run attachment | completed guardrail; evidence-blocked for accepted metrics | Do not let helper-only comparisons become production validation unless run metadata names the source scope and accepted evidence. | Attach S1/S2 waveform comparison output to production summaries, manifests, readiness reports, and certificate inputs. | Engine metadata wiring, manifest/certificate tests, readiness schema checks. | A normal run can carry blocked S1/S2 evidence today and accepted S1/S2 evidence only after accepted waveform data exists. |
+| A4 | Akel Fig. 2-4 waveform queue | evidence-blocked | Each figure must keep its own source path/hash, page/figure ID, axis calibration, series arrays, overlay residual, and review status. | Extract, digitize, review-gate, and status-report each remaining Akel waveform figure. | PDF/SVG extraction, manual/vector digitization, axis calibration, JSON packet tests. | Queue status distinguishes `not_extracted`, `draft_unreviewed`, `blocked_by_review`, and `accepted` per figure. |
+| A4 | Akel Fig. 5-6 yield queue | evidence-blocked | Yield figures cannot substitute for waveform validation; they need their own observables and uncertainty. | Digitize yield plots into source-scoped packets usable for scalar-yield or trend checks only. | Figure digitization, yield-unit audit, uncertainty capture, source-scope labels. | Yield packets can support only their mapped requirements and cannot close S1/S2 waveform gates. |
+| A5 | Source acquisition queue by physics need | completed queue guardrail; evidence-blocked for source ingestion | External links and remembered citations are not evidence. Local files under `KnowledgeReference/` plus review/hash metadata are required. | Maintain an acquisition queue for current traces, phase timing, density, magnetic/EM, temperature, neutron timing/spectrum/anisotropy, detector response, and UQ sources. | Literature triage, local PDF parity, source-line extraction, queue/status schema. | Every missing validation input is represented as an acquisition item with required data, candidate source, local-evidence status, and done condition. |
+| A5 | KR ingestion and source authority | evidence-blocked until documents exist | Do not mark a source usable from title/abstract or DOI alone. | Convert acquired local sources into reviewed KR entries with exact line ranges or figure/table references. | OCR/PDF review, hash checks, source authority audit, source-backed target records. | Source status moves to KR-reviewed only when local artifact hashes and extracted support lines are recorded. |
+| A5 | May 12 user intake promotion and fidelity | completed text-parity/source-fidelity intake; evidence-blocked for target use | Promotion is not validation. Stage-only AI/non-physics PDFs must not be cited as DPF physics authority. Newly promoted records remain unusable for thresholds until target extraction or reviewed digitization is done. | Local PDF staging, SHA-256 de-duplication, PyMuPDF text extraction, book chunking, source-critical fidelity audit. | `docs/USER_PDF_INTAKE_2026_05_12.*`, `docs/USER_PDF_KR_PROMOTION_2026_05_12.*`, and `docs/USER_PDF_KR_SOURCE_FIDELITY_AUDIT_2026_05_12.*` record 35 unique staged PDFs, 28 new KR pairs, 126 book chunks, and 28 source-fidelity-reviewed records. |
+| A14 | All-source crop-boundary review | completed QA inventory and crop rectification; evidence-blocked for acceptance | The 36 crop candidates are not evidence. Review only crop completeness: axes, captions, legends, units, trace visibility, and any missing panels. A visual QA pass is not independent scientific review. | Boundary-review six Cikhardtova 2015 crops, five Szydlowski 2004 crops, four Klir 2011 crops, nine Springham 2021 crops, and twelve Catenacci 2020 crops, adjusting crop rectangles only when axes/captions/traces are incomplete. | Visual crop QA, PDF coordinate review, hash-recorded artifact regeneration, report invariant checks. | `docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json` records 36 crop entries, 21 boundary-ready figure crops, 9 manual-review crops, 0 crop-adjustment-needed crops, 6 review-blocked table drafts, and 0 accepted packets. |
+| A14 | Klir/Springham/Catenacci crop generation | completed workbench crop generation; evidence-blocked for acceptance | Crops cannot be treated as digitized data. Rendered pages and crop images are only provenance-preserving workbench artifacts until calibrated/extracted/reviewed. | Keep crop hashes and report invariants current while moving Klir detector figures, Springham activation figures/tables, and Catenacci tomography figures/tables into numeric extraction packets. | Page-image review, PyMuPDF crop rectangles, figure/table task inventory, report regeneration. | The target-extraction report records crop candidates for all cited figures/tables: Klir Figs. 1-4, Springham Figs. 1-7 and Tables 1-2, and Catenacci Figs. 1-8 and Tables I-IV. |
+| A14 | Axis/table calibration and numeric extraction | draft table extraction complete for 6 tables; draft axis-calibration scaffolds complete for 3 priority figures; Springham Fig. 5 and Klir Fig. 2 numeric drafts extracted; evidence-blocked for acceptance | Do not invent values from OCR-suspect text. Every extracted value needs source path/hash, local PDF hash, figure/table ID, units, calibration points or table structure, and residual evidence. Axis scaffolds without series arrays are not digitization packets. | Build draft extraction packets for timing traces, density profiles, spectra, anisotropy, detector response, activation response, and tomography tables. | Figure digitization, table parsing, unit normalization, uncertainty capture, overlay residual analysis. | `a14-2026-05-11-table-draft-packets.json` contains 6 review-blocked table drafts with loader-provided per-table item hashes plus enforced local-PDF and crop-hash checks; Springham Fig. 5 now has mono-energetic and Gaussian-curve draft packets; Klir Fig. 2 now has an FWHM/rise-time timing-response draft packet; all remain blocked on independent review/status acceptance. |
+| A14 | Independent review gate for new packets | review handoff, local-PDF hash checks, and table hash guardrails complete; evidence-blocked for real acceptance | Codex cannot self-accept target/digitization packets. Review metadata must bind to the current packet/source/local-PDF/figure-or-crop hashes. | Apply the same review-gate model used for Akel to every newly extracted packet and provide a reviewer-facing manifest. | Review workflow, packet-hash binding, source-PDF binding, crop-hash binding, negative tests for stale or incomplete review metadata. | `docs/A14_INDEPENDENT_REVIEW_HANDOFF_2026_05_11.json` lists 9 reviewable draft packets and 3 context-only axis scaffolds; packets pass `digitization_verification_evidence()` only with current hashes, required arrays, residuals, and independent accepted review. |
+| A6 | Tier 2 target selection | evidence-blocked | Targetless phase labels are candidates, not validation. Do not mix Akel shot-12581 with full-energy PF-1000. | Choose one same-device validation scope and define axial end, radial start/end, pinch/stagnation, and current-derivative timing targets with uncertainty. | Lee/RADPF phase semantics, event detection, target schema design. | Phase targets are typed, source-backed, same-scope, and uncertainty-bearing before Tier 2 can pass. |
+| A6 | Phase-history comparator | completed comparator/status guardrail; evidence-blocked for targets | Simulation event detection must not invent target tolerances. | Compare production phase histories to verified targets and attach pass/blocked/failed Tier 2 evidence. | Time-series event detection, tolerance checks, readiness/certificate integration. | Tier 2 remains blocked without verified targets and passes only on same-scope comparison. |
+| A7 | Cylindrical MHD source-term verification | scheduled Tier-3 packet complete for code verification | Numerical verification is not experimental DPF validation. | Add named cylindrical source-term checks with expected invariants and convergence behavior. | Numerical methods, manufactured/analytic checks, convergence studies. | `results/mhd_tier3_numerical_packet.json` carries cylindrical z-pinch convergence evidence for the scheduled CPU scope and now closes the same-scope Tier-3 packet. |
+| A7 | Resistive diffusion/heating verification | scheduled Tier-3 magnetic-diffusion packet complete; real heating validation still required outside Tier-3 code verification | Passing generic shock tubes cannot stand in for resistive DPF numerics. | Verify magnetic diffusion and Joule/resistive heating against analytic or reference checks. | PDE verification, energy accounting, tolerance design. | `results/mhd_tier3_numerical_packet.json` carries resistive magnetic-diffusion convergence evidence; DPF Joule/heating validation remains a higher-scope evidence need. |
+| A7 | Circuit-coupled energy, backend parity, and restart evidence | scheduled Tier-3 packet complete for same-scope code verification | MLX/Metal preview behavior must stay labeled until parity and evidence support promotion. | Check circuit energy balance, restart reproducibility, CPU/MLX parity where comparable, and finite-volume MHD channel behavior. | Backend parity tests, restart tests, energy-budget tests, deterministic fixtures. | `results/mhd_tier3_numerical_packet.json` now attaches finite-volume, circuit-energy, backend-parity, and restart reproducibility evidence with no missing Tier-3 packet channels. |
+| A8 | Same-scope spatial packet selection | evidence-blocked | Density-only, temperature-only, or EM-only evidence is partial; cross-device merging is rejected. | Select one validation scope that can supply density/proxy, magnetic/EM, and temperature observables with uncertainty. | Diagnostic interpretation, source acquisition, spatial comparison schema. | Tier 4 combiner sees all three components from the same scope before it can support high-fidelity readiness. |
+| A8 | Spatial comparison implementation | completed closure/status guardrail; evidence-blocked for packet selected | Derived or proxy diagnostics must be labeled as such and cannot masquerade as direct field validation. | Implement component metrics for density/proxy geometry, magnetic/EM signal, and temperature comparison. | Image/signal comparison, uncertainty propagation, component evidence records. | Partial components remain visible but non-promoting; complete same-scope packets can support Tier 4. |
+| A9 | Neutron evidence packet selection | completed same-scope closure guardrail; evidence-blocked for real packet | Scalar yield alone is not Tier 5. Timing-only evidence is not detector/anisotropy/spectrum validation. Missing detector/activation response or explicit uncertainty keeps the gate blocked. | Select or build a same-scope packet for neutron pulse timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty. | Neutron diagnostics, TOF/spectrum review, detector response modeling, source authority. | Tier 5 cannot pass until scalar yield, timing, spectrum, anisotropy, detector/activation response, and uncertainty all share one KR-backed validation scope. |
+| A9 | Mechanism-separated production output | completed reporting guardrail; evidence-blocked for validation | MHD-side helper arrays are not proof of beam-target physics. Mechanism labels must remain explicit. | Ensure production runs expose thermonuclear, beam-target/fast-ion, detector/activation, and timing histories separately enough for comparison. | Diagnostics integration, yield decomposition, result metadata, tests. | Neutron readiness reports blocked components instead of collapsing them into a single total yield. |
+| A10 | Per-run physics-fidelity matrix | completed reporting guardrail; evidence-blocked for real validation | Reduced or empirical models are allowed only when labeled. Do not imply predictive late-pinch, high-Z, p-B11, or neutron behavior. | Attach per-run status for EOS, ionization, two-temperature, radiation transport, impurities/ablation, Hall/FLR/kinetic/PIC, 3D, flashover/startup, restrike/anomalous resistance, and beam-target coupling. | Physics model audit, metadata schema, warning/readiness tests. | Run summaries and readiness reports state `implemented`, `verified`, `validated`, `empirical`, `absent`, or `bounded_out` for each effect. |
+| A10 | Scope-bounding rules | completed reporting guardrail | Missing physics should block only claims that depend on it, not every engineering run. | Map each physics effect to the claims it blocks: circuit waveform, phase dynamics, spatial MHD, neutron, high-Z, p-B11, or late-pinch prediction. | Requirements mapping, source-backed claim limits, negative tests. | Predictive/high-fidelity readiness identifies exactly which claims remain blocked and why. |
+| A11 | Field-derived coupling evidence design | completed reporting guardrail; evidence-blocked for validated coupling | Density-weighted or Lee-style inductance is not fully field-derived coupling. | Define evidence fields for field-derived inductance, `dL/dt`, back-EMF, Poynting power, circuit energy, handoff timing, and interval label. | Circuit/MHD coupling, energy balance, Poynting theorem, evidence schema. | `field_coupling_validation` distinguishes snowplow-loaded, blended, and validated field-coupled intervals. |
+| A11 | Minimal staged coupling acceptance | completed reporting guardrail; evidence-blocked for validated intervals | Do not jump directly from blended coupling to full MHD circuit authority. | Stage acceptance as: snowplow-loaded baseline, blended interval accounting, field-derived candidate interval, then validated field-coupled interval. | Incremental tests, energy closure metrics, backend-specific labels. | Each interval reports its authority and blockers; unsupported intervals cannot support field-coupled MHD claims. |
+| A12 | UQ schema per validation tier | completed tier/status/source-value guardrail; evidence-blocked for real source values | Point tolerances alone are insufficient for high-fidelity claims. Missing uncertainty keeps tiers blocked. | Define required uncertainty fields for circuit waveform, phase, spatial, neutron, numerical, model-form, and shot-to-shot evidence. | UQ modeling, evidence schema, acceptance-rule design. | Every tier can report whether experimental, input, numerical, model-form, shot-to-shot, propagated-observable, and acceptance-rule uncertainty exists. |
+| A12 | Propagation and acceptance rules | evidence-blocked for real sources | Do not invent uncertainty values where source packets lack them. | Propagate available uncertainties into comparison metrics and mark missing terms as blockers. | Error propagation, interval comparisons, statistical validation. | Readiness uses interval-aware pass/blocked/fail decisions and names missing UQ components. |
+| A13 | Long fixture classification | completed policy; scientific gates remain evidence-blocked | Do not re-enable long PF-1000 xfails as scientific gates until S1/S2 source closure exists. | Decide whether long PF-1000 classes are scientific xfails, opt-in endurance checks, or scheduled regression jobs. | Pytest marker design, runtime budgeting, MLX process isolation. | `tests/test_mlx_pf1000.py` documents the policy and separates scientific blockers from endurance/runtime evidence. |
+| A13 | Endurance/run-budget implementation | completed implementation; scientific gates remain evidence-blocked | Cap exhaustion must be explicit; long-run tests must not hide process aborts or skipped source closure. | Add marker/env controls for target time, cap, memory telemetry, and expected blocker classification. | Test architecture, standalone runner controls, CI/runtime policy. | Endurance jobs report target, cap, final time, memory telemetry, and scientific/non-scientific status. |
+
+Near-term simulation/physics execution order:
+
+1. Advance A14 through all-source crop-boundary review, axis/table calibration,
+   numeric extraction, and residual checks, while preserving 0 accepted packets.
+2. Preserve the A2/A3 blocker while preparing the accepted-review intake path.
+3. Finish the S1/S2 production-attachment path so blocked waveform evidence
+   appears consistently in run summaries, manifests, readiness reports, and
+   certificates.
+4. Use A4/A5/A14 source queues for every missing same-scope observable before
+   attempting Tier 2, Tier 4, or Tier 5 acceptance.
+5. Continue A7, A10, A11, and A12 as code-ready guardrail work that can proceed
+   without pretending the missing experimental packets exist.
+6. Treat A6, A8, and A9 acceptance as evidence-blocked until verified local
+   source packets provide the same-scope targets.
+7. Keep A13 scientific gates blocked until S1/S2 source closure exists; use the
+   opt-in endurance path only as non-scientific regression evidence.
+
+Current Track A closure status after the 2026-05-12 source-intake pass:
+
+- Code-ready guardrails and production status surfaces are complete for A2/A3,
+  A5, A6, A7, A8, A9, A10, A11, A12, and A13.
+- A5 gained a new local-source intake batch: 39 supplied PDF paths were all
+  readable; 35 unique SHA-256 payloads were staged; 28 new KR Markdown/JSON
+  records were promoted; a false Trunk 1975/Kortanek 2014 generic-title match
+  was repaired; and 7 stage-only records remain outside
+  physics authority. Source-fidelity review updated 28 records and recovered
+  source-critical secondary-extraction items. A follow-on triage report now
+  ranks 5 target-extraction candidates and 23 method/context references, but
+  no validation targets were accepted.
+- A14 is active: typed target records exist for five newly promoted local KR
+  sources, 23 pages were rendered, and 36 crop candidates were generated. A
+  crop-boundary QA report now classifies 21 figure crops as ready for draft
+  axis/numeric extraction, 9 as manual-review diagram/image crops, and 0 as
+  needing crop adjustment before extraction. Six table draft packets now exist
+  for Springham 2021 Tables 1-2 and Catenacci 2020 Tables I-IV, but every
+  packet remains review-blocked and `accepted_for_validation=false`. Three
+  priority figure crops now have axis-calibration draft scaffolds: Cikhardtova
+  2015 Fig. 6, Klir 2011 Fig. 2, and Springham 2021 Fig. 5. These scaffolds
+  are not validation evidence. Springham 2021 Fig. 5 now also has a 14-point
+  mono-energetic curve draft packet with draft round-trip RMS residual
+  `0.002049609754498783 px` and max residual `0.0031865149536866814 px`; it
+  remains blocked on independent review and accepted review status only. The
+  companion Gaussian-curve draft packet extracts the visible 200 keV and
+  400 keV FWHM curves as review-blocked draft data. Klir 2011 Fig. 2 now has
+  a timing-response draft packet for the visible FWHM and rise-time curves;
+  error-bar magnitudes remain open. Cikhardtova 2015 Fig. 6 is explicitly
+  blocked for manual/vector curve separation because five monochrome line
+  styles overlap and merge. The A14 independent-review handoff now lists 9
+  reviewable draft packets and 3 context-only axis
+  scaffolds while preserving `accepted_for_validation=false` for every item.
+  The A14 remaining-extraction backlog now reports 18 ready-not-started crops,
+  9 manual-review crops, 1 blocked crop, and 8 distinct crops with reviewable
+  drafts.
+- Scientific acceptance remains blocked, not incomplete-by-plumbing, for the
+  tasks that require new evidence: independent Akel review acceptance, accepted
+  S1/S2 waveform/current-dip data with uncertainty, remaining Akel Fig. 2-6
+  digitization/review, A14 numeric extraction, same-device
+  phase targets, same-scope Tier-4 spatial packets, same-scope Tier-5 neutron packets,
+  and real same-scope physics/coupling/UQ validation evidence.
+- The correct current product behavior is therefore explicit blockers and
+  non-promoting candidates, not predictive/high-fidelity support.
+
+### Track B: SRS/Productization Closure
+
+| ID | Task | Goals and objectives | Guardrails | Skills and methods | Exit evidence |
+| --- | --- | --- | --- | --- | --- |
+| B1 | Formal SRS baseline | Convert `docs/DPF_UNIFIED_SRS_DRAFT.md` into a baselineable SRS with stable IDs, owners, priorities, status, and verification mappings. | Do not baseline speculative capabilities as implemented. Keep scientific-source claims tied to KR evidence. | Requirements engineering, IEEE/ISO SRS structure, traceability design, Doorstop candidate requirement tree. | SRS table links every P0/P1 requirement to test/inspection/analysis/demo and an owner/status. |
+| B2 | Compute-authority model | Decide whether to adopt T0/T2 from the template or define DPF-Unified-specific authority labels. | Do not call MLX float32 a certification backend unless validated for the claim. Do not demote existing useful MLX evidence; label it correctly. | Architecture decision record, backend audit, precision/risk analysis. | ADR and SRS update define Reference/Preview or equivalent labels and promotion rules. |
+| B3 | Result classification labels | Add output labels such as `Reference`, `Preview`, `Derived Diagnostic`, `Exploratory`, `Superseded`, and `Invalid`. | Labels must fail closed. Preview or draft evidence cannot be promoted by UI/API convenience. | Data modeling, schema design, regression tests. | Result metadata and tests prove unsupported/draft/preview outputs cannot masquerade as reference evidence. |
+| B4 | Run manifest schema | Emit a manifest for each run with input hashes, backend, solver mode, hardware profile, dependency hashes, seed, output list, and validation status. | Manifest must be generated for failed and blocked runs too. Do not rely on prose logs as manifest substitutes. | Schema design, hashing, runtime metadata collection, tests. | `run_manifest.json` or equivalent validates against schema in unit/integration tests. |
+| B5 | Validation certificate schema | Define certificates with evidence links, requirement IDs, reviewer fields, pass/fail status, and supersession status. | Certificate creation must be impossible when gates are partial, draft, cross-scope, or failed. | V&V process design, schema validation, negative tests. | Certificate artifact is emitted only when linked gates pass; negative tests cover draft Akel and cross-scope packets. |
+| B6 | Project lifecycle | Define create/load/duplicate/archive project behavior and preserve inputs, outputs, manifests, validation status, and logs. | Project operations must not mutate physics results silently. Archived projects remain reproducible or explicitly stale. | Product/API design, file layout, schema migration. | Project lifecycle tests cover create/load/duplicate/archive and metadata preservation. |
+| B7 | Memory preflight and telemetry | Add projected memory budget and runtime telemetry rules for solver starts and long runs. | Unsafe memory estimates must block or require explicit override. Do not silently swap or downcast to make a run fit. | Performance modeling, MLX/Python memory telemetry, failure-code design. | Memory-exceeding test refuses launch; accepted runs record projected and peak memory telemetry. |
+| B8 | Backend unsupported-feature warnings | Prevent selected physics flags from silently skipping on unsupported backends. | Unsupported requested physics should warn or fail according to severity. Do not break intentionally unavailable optional dependencies. | Backend capability matrix, config validation, warning/error tests. | Tests prove unsupported backend/physics combinations produce explicit diagnostics. |
+| B9 | CLI/backend consistency | Align CLI backend choices with `SimulationConfig` and engine support, including `mlx` if supported. | If `mlx` is intentionally excluded from CLI, document why and fail with a clear message. | CLI/API review, Click tests, backend availability guards. | CLI tests cover `--backend mlx` or its explicit rejection path. |
+| B10 | UI/API readiness surfacing | Expose result classification, predictive readiness, high-fidelity gaps, digitization status, and source blockers in UI/API. | Do not hide blockers behind summary quality scores. Draft packets must display draft/review-blocked state. | API schema, frontend review, status UX, snapshot tests. | API/UI tests show blockers for Akel draft, missing spatial/neutron/UQ, and preview outputs. |
+| B11 | Export bridge scope and acceptance | Decide v1.0 export scope for HDF5, Well, VTK/VTU, CGNS, OpenFOAM, and Ansys/PyMAPDL. | If external tool support is not tested, mark it deferred. Do not imply export correctness from file creation alone. | Data exchange, schema tests, external smoke tests, product scoping. | SRS marks each export required/deferred/rejected and tests accepted exports for units/provenance/readability. |
+| B12 | Local-first/security controls | Formalize no hardware control, local-first network default, classification metadata, runtime AI boundaries, and audit logs. | Do not add hidden network calls or hardware-control endpoints. AI agents must not mutate active simulation state at runtime. | Security review, network audit, metadata schema, process audit. | Security tests/inspection show local-only default, no hardware drivers, classification fields, and runtime AI absence. |
+| B13 | Air-gap build and release gate | Define offline install/test path and pinned dependency/hash expectations where licensing allows. | Do not promise air-gap support for dependencies that cannot be legally vendored. | Release engineering, dependency locking, CI design. | Air-gap runbook and reproducible baseline test logs exist. |
+| B14 | Current TODO audit refresh | Replace historical `docs/todo_audit.md` with a current audit against decomposed engine paths and active source tree. | Do not carry stale `src/dpf/engine.py` references forward as live blockers. Classify comments as bug, deferred, benign, or obsolete. | Static search, source inspection, issue triage, documentation. | New TODO audit lists current blockers and maps any real bugs into SRS or engineering backlog. |
+
+### Execution Order
+
+1. Close A1 immediately so the plan artifacts stop contradicting the latest log.
+2. Run A2 and A3 next because they control S1/S2 and prevent false waveform
+   acceptance.
+3. Start B1, B2, B3, B4, and B5 in parallel with A2/A3 as the minimum SRS
+   productization spine.
+4. Use A4/A5/A14 to expand source coverage only after the review gate pattern is
+   stable.
+5. Continue A6-A12 as the high-fidelity scientific closure path; each task must
+   leave readiness blocked until real same-scope evidence exists.
+6. Use B6-B14 to turn the workbench into a releasable, auditable product rather
+   than only a scientifically honest research code.
+
+### Task Completion Log
+
+- 2026-05-12 user PDF intake, KR promotion, and source-fidelity review:
+  completed staging for the new supplied local batch. Evidence:
+  `scripts/stage_user_pdf_batch_2026_05_12.py` generated
+  `docs/USER_PDF_INTAKE_2026_05_12.json`, `.md`, and `.csv` with 39 readable
+  inputs, 35 unique SHA-256 payloads, 4 duplicate input paths, and 0
+  missing/read failures. `scripts/promote_user_pdf_batch_2026_05_12.py`
+  promoted 28 new selected physics/method records into `KnowledgeReference/`,
+  repaired the false Trunk 1975/Kortanek 2014 generic-title match, left 7 non-physics/AI-only
+  support PDFs staged but not promoted, and chunked 6 book-length sources into
+  126 page-range Markdown chunks. `scripts/verify_user_pdf_batch_source_fidelity_2026_05_12.py`
+  updated 28 KR records with source-fidelity reviews, detecting 1,698 figure
+  captions, 293 table-caption hits, 68 extracted table matrices, 25,298
+  formula-like lines, 4,423 numeric target contexts, 1,666 uncertainty
+  contexts, 1,433 image blocks, and 11,376 recovered secondary-extraction
+  items. Checks run: `py_compile` passed for the three intake scripts; the
+  promotion report shows 28/28 parity checks passed. Boundary: this is source
+  availability and copy-fidelity only, not accepted target/digitization
+  evidence.
+- 2026-05-12 May batch target triage: completed the first backlog split for
+  newly local May 12 records. Evidence:
+  `scripts/create_user_pdf_may12_target_triage.py` generated
+  `docs/USER_PDF_MAY12_TARGET_TRIAGE_2026_05_12.json` and `.md` with 28
+  entries, 5 target-extraction candidates, 4 P1 source-review candidates, 1 P2
+  source-review candidate, 3 P3 context/materials records, and 20 method
+  references. Boundary: this is a planning report only; every target candidate
+  still requires source-line review, unit normalization, typed target records,
+  uncertainty handling, and reviewed digitization for figure/table values.
+- 2026-05-12 May batch source validation: completed source-level validation
+  for the corrected May 12 batch. Evidence:
+  `scripts/validate_user_pdf_may12_sources.py` generated
+  `docs/USER_PDF_MAY12_SOURCE_VALIDATION_2026_05_12.json` and `.md` with 28
+  promoted source records checked, 7 stage-only records checked, 5
+  source-validated target-extraction candidates, 23 source-validated
+  method/context records, and 0 validation failures. The report also records
+  the Trunk 1975 false-match repair and confirms the Kortanek 2014
+  source-fidelity annotation is repaired and validated. Boundary: source-level
+  validation does not accept target values, plotted curves, tables, formula
+  thresholds, uncertainty values, or simulation validation criteria.
+- 2026-05-11 A14 remaining-extraction backlog: completed the generated backlog
+  tying the crop review, draft packets, and Cikhardtova blocker into one
+  status artifact. Evidence: `scripts/create_a14_remaining_extraction_backlog.py`
+  generated `docs/A14_REMAINING_EXTRACTION_BACKLOG_2026_05_11.json` and `.md`
+  with 36 crop candidates, 9 reviewable draft packets across 8 distinct crops,
+  18 ready-not-started crops, 9 manual-review crops, 1 blocked crop, and 0
+  accepted validation items. Checks run: `py_compile` passed; A14 backlog gate
+  passed; `python3 -m pytest tests/test_digitization.py -q` passed
+  (`37 passed`).
+- 2026-05-11 A14 Cikhardtova Fig. 6 extraction blocker: completed the safe
+  non-extraction decision for the remaining priority axis scaffold. Evidence:
+  `scripts/create_a14_cikhardtova_fig6_extraction_blocker.py` generated
+  `docs/A14_CIKHARDTOVA_FIG6_EXTRACTION_BLOCKER_2026_05_11.json` and `.md`
+  with source/PDF/figure hashes, five visible series labels, blocker reason,
+  and required next steps for manual or vector-assisted curve separation.
+  Checks run: `py_compile` passed; Cikhardtova blocker gate passed; `python3 -m
+  pytest tests/test_digitization.py -q` passed (`36 passed`).
+- 2026-05-11 A14 Klir Fig. 2 timing-response draft extraction: completed a
+  review-blocked numeric draft for the visible PMT response curves. Evidence:
+  `scripts/create_a14_klir_fig2_timing_response_draft.py` generated
+  `KnowledgeReference/digitization/a14-2026-05-11-klir-fig2-timing-response-draft-packet.json`
+  and `docs/A14_KLIR_FIG2_TIMING_RESPONSE_DRAFT_2026_05_11.md` with two draft
+  series: FWHM and rise time versus PMT voltage. Error-bar magnitudes are
+  explicitly not digitized in this packet. The handoff now lists 9 reviewable
+  draft packets and 3 context-only axis scaffolds. Checks run: `py_compile`
+  passed; Klir Fig. 2 draft gate passed; `python3 -m pytest
+  tests/test_digitization.py -q` passed (`35 passed`).
+- 2026-05-11 A14 Springham Fig. 5 Gaussian-curve draft extraction: completed a
+  second Springham Fig. 5 numeric draft packet for the visible Gaussian
+  response curves without modifying the mono-energetic packet. Evidence:
+  `scripts/create_a14_springham_fig5_gaussian_curve_drafts.py` generated
+  `KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-gaussian-curves-draft-packet.json`
+  and `docs/A14_SPRINGHAM_FIG5_GAUSSIAN_CURVES_DRAFT_2026_05_11.md` with two
+  draft series: Gaussian peak neutrons at 200 keV FWHM and 400 keV FWHM. The
+  handoff now lists 9 reviewable draft packets and 3 context-only axis
+  scaffolds. Checks run: `py_compile` passed; Gaussian draft gate passed;
+  `python3 -m pytest tests/test_digitization.py -q` passed (`34 passed`).
+- 2026-05-11 A14 source-PDF review-gate hardening: completed the next hash
+  binding guardrail for A14 digitization packets. Evidence:
+  `digitization_verification_evidence()` now verifies a declared
+  `source_pdf_path`/`source_pdf_sha256` pair and accepted review metadata must
+  match `reviewed_source_pdf_sha256` when a packet declares a local PDF.
+  `scripts/create_a14_independent_review_handoff.py` regenerated the handoff
+  template with `reviewed_source_pdf_sha256` in review metadata. Checks run:
+  `py_compile` passed; A14 source-PDF/table gate check passed; `python3 -m
+  pytest tests/test_digitization.py -q` passed (`30 passed`).
+- 2026-05-11 A14 Springham Fig. 5 accepted-review fixture hardening: added the
+  figure-specific future acceptance path and negative review checks without
+  accepting the packet. Evidence: `tests/test_digitization.py` now proves the
+  Springham Fig. 5 packet can pass only when synthetic accepted review metadata
+  binds to the current packet, source, local PDF, and figure hashes; stale
+  source-PDF or figure-image review hashes fail. Checks run: `py_compile`
+  passed; Springham accepted-review fixture gate passed; `python3 -m pytest
+  tests/test_digitization.py -q` passed (`33 passed`).
+- 2026-05-11 A14 independent-review handoff and table review hardening:
+  completed the reviewer-facing handoff bundle and tightened table review
+  gates without accepting any packet. Evidence:
+  `scripts/create_a14_independent_review_handoff.py` generated
+  `docs/A14_INDEPENDENT_REVIEW_HANDOFF_2026_05_11.json` and `.md` with 7
+  reviewable draft packets, 3 context-only axis scaffolds, required review
+  fields/checklist, source/crop hashes, and zero accepted validation packets.
+  `a14_table_extraction_draft_packets()` now supplies per-table item hashes,
+  and `digitization_verification_evidence()` verifies table crop hashes and
+  accepted-review crop-hash binding. Checks run: `py_compile` passed; handoff
+  invariant check passed; `python3 -m pytest tests/test_digitization.py -q`
+  passed (`28 passed`).
+- 2026-05-11 A14 Springham Fig. 5 draft residual check: closed the stale
+  residual blocker on the first A14 figure numeric draft without promoting it
+  to validation evidence. Evidence:
+  `scripts/create_a14_springham_fig5_digitization_draft.py` regenerated
+  `KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json`
+  and `docs/A14_SPRINGHAM_FIG5_DIGITIZATION_DRAFT_2026_05_11.md` with draft
+  round-trip RMS residual `0.002049609754498783 px` and max residual
+  `0.0031865149536866814 px`. `digitization_verification_evidence()` now
+  intentionally fails only on `independent_review_missing` and
+  `review_status_not_accepted`. Checks run: `py_compile` passed; residual gate
+  check passed; `python3 -m pytest tests/test_digitization.py -q` passed
+  (`24 passed`).
+- 2026-05-11 A14 Springham Fig. 5 mono-energetic draft extraction: completed
+  the first A14 figure numeric draft packet. Evidence:
+  `scripts/create_a14_springham_fig5_digitization_draft.py` generated
+  `KnowledgeReference/digitization/a14-2026-05-11-springham-fig5-monoenergetic-draft-packet.json`
+  and `docs/A14_SPRINGHAM_FIG5_DIGITIZATION_DRAFT_2026_05_11.md` with 14
+  candidate mono-energetic Zr/Be count-ratio versus effective-energy points,
+  source hash, local PDF hash, crop hash, axis calibration, and pixel-pick
+  metadata. The follow-on residual check measured draft round-trip residuals
+  and left the packet blocked only on independent review/status. Checks run:
+  `py_compile` passed; draft gate check passed; `python3 -m pytest
+  tests/test_digitization.py -q` passed (`24 passed`).
+- 2026-05-11 A14 axis-calibration draft scaffolds: completed the first
+  source-bound figure calibration scaffolds for Cikhardtova 2015 Fig. 6, Klir
+  2011 Fig. 2, and Springham 2021 Fig. 5. Evidence:
+  `scripts/create_a14_axis_calibration_drafts.py` generated
+  `KnowledgeReference/digitization/a14-2026-05-11-axis-calibration-draft-packets.json`
+  and `docs/A14_AXIS_CALIBRATION_DRAFTS_2026_05_11.md` with 3 packets, 0
+  accepted validation packets, source hashes, local PDF hashes, crop hashes,
+  visible axis ranges, visible series names, and extraction notes. The packets
+  intentionally contain no digitized arrays or residuals. Checks run:
+  `py_compile` passed; axis draft invariant check passed; `python3 -m pytest
+  tests/test_digitization.py -q` passed (`23 passed`).
+- 2026-05-11 A14 crop-boundary rectification: completed the six flagged crop
+  rectangle fixes and regenerated the target-extraction and crop-boundary
+  reports. Evidence: `scripts/start_target_extraction_digitization.py` now
+  produces corrected crops for Cikhardtova 2015 Fig. 5, Klir 2011 Figs. 1/3/4,
+  and Catenacci 2020 Figs. 1/2. `docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json`
+  now records 21 `boundary_ready_for_draft_extraction` figure crops, 9
+  `manual_review_required` crops, 6 `draft_extracted_review_blocked` table
+  crops, 0 `crop_adjustment_needed` crops, and 0 accepted validation packets.
+  Checks run: `py_compile` passed; A14 invariant check passed; `python3 -m
+  pytest tests/test_digitization.py -q` passed (`22 passed`).
+- 2026-05-11 A14 crop-boundary QA inventory: completed the all-source crop
+  boundary status artifact without accepting any validation evidence. Evidence:
+  `scripts/create_a14_crop_boundary_review.py` generated
+  `docs/A14_CROP_BOUNDARY_REVIEW_2026_05_11.json` and `.md`. The report records
+  36 crop entries, 30 figure crops, 6 table crops, 21
+  `boundary_ready_for_draft_extraction` figure crops, 9 `manual_review_required`
+  crops, 0 `crop_adjustment_needed` crops, 6 `draft_extracted_review_blocked`
+  table crops, and 0 accepted validation packets after the follow-on crop
+  rectification. The recommended next axis calibration crops are Cikhardtova
+  2015 Fig. 6, Klir 2011 Fig. 2, and Springham 2021 Fig. 5. Checks run:
+  `py_compile` passed and
+  `python3 -m pytest tests/test_digitization.py -q` passed (`22 passed`).
+- 2026-05-11 A14 table draft extraction: completed the first source-bound
+  table extraction pass for Springham 2021 Tables 1-2 and Catenacci 2020
+  Tables I-IV. Evidence:
+  `scripts/create_a14_table_extraction_drafts.py` generated
+  `KnowledgeReference/digitization/a14-2026-05-11-table-draft-packets.json`
+  and `docs/A14_TABLE_EXTRACTION_DRAFTS_2026_05_11.md` with 6 draft packets,
+  0 accepted validation packets, local KR source hashes, local PDF hashes,
+  crop-image hashes, source line windows, table rows, and numeric series.
+  `digitization_verification_evidence()` fails every packet only on
+  `independent_review_missing` and `review_status_not_accepted`. Checks run:
+  `py_compile` passed; report invariant check passed with 5/23/36/0 for the
+  crop workbench; `python3 -m pytest tests/test_digitization.py -q` passed
+  (`21 passed`).
+- 2026-05-11 A14 crop-generation expansion: completed the all-source
+  workbench crop pass. Evidence:
+  `docs/TARGET_EXTRACTION_DIGITIZATION_2026_05_11.json` now reports 5 local
+  KR-backed source tasks, 23 rendered pages, 36 unreviewed crop candidates, and
+  0 accepted validation packets. The 36 crops cover Cikhardtova 2015 Figs. 1-6,
+  Szydlowski 2004 Figs. 1-5, Klir 2011 Figs. 1-4, Springham 2021 Figs. 1-7 and
+  Tables 1-2, and Catenacci 2020 Figs. 1-8 and Tables I-IV. Representative
+  Klir, Springham, and Catenacci crop boundaries were visually spot-checked and
+  adjusted where captions, rotated axes, or table boundaries were clipped.
+  Remaining A14 work is crop-boundary review notes, axis/table calibration,
+  numeric extraction, residual checks, and independent review.
+- 2026-05-11 A14 target-extraction/digitization lane: started and now tracked
+  as a first-class Track A work item. Evidence:
+  `scripts/start_target_extraction_digitization.py` generated
+  `docs/TARGET_EXTRACTION_DIGITIZATION_2026_05_11.md` / `.json` with 5 local
+  KR-backed source tasks, 23 rendered pages, 36 unreviewed crop candidates, and
+  0 accepted validation packets. Crop candidates now cover Cikhardtova 2015
+  Figs. 1-6, Szydlowski 2004 Figs. 1-5, Klir 2011 Figs. 1-4, Springham 2021
+  Figs. 1-7 and Tables 1-2, and Catenacci 2020 Figs. 1-8 and Tables I-IV.
+  Remaining A14 work is crop-boundary review, axis/table calibration, numeric
+  extraction, residual checks, and independent review. These artifacts are
+  workbench material only and cannot support validation until accepted packets pass
+  `digitization_verification_evidence()`.
+- 2026-05-08 A2/A3 digitization and waveform-comparator guardrail expansion:
+  completed. Evidence: accepted review metadata must now bind to packet hash,
+  source hash, figure hash, task ID, validation scope, reviewer, review date,
+  review notes, and accepted decision. The S1/S2 comparator continues to refuse
+  metrics for draft, stale-review, malformed-review, cross-scope, and
+  missing-uncertainty states. Additional integration tightening requires the
+  packet itself to carry a packet hash before review metadata can accept it.
+  Checks run: `python3 -m py_compile src/dpf/validation/digitization.py src/dpf/validation/kr_targets.py src/dpf/validation/source_acquisition.py tests/test_digitization.py tests/test_kr_targets.py tests/test_source_acquisition.py`
+  and `python3 -m pytest tests/test_digitization.py tests/test_kr_targets.py tests/test_source_acquisition.py -q`
+  passed (`109 passed`). Remaining scientific blockers: no real independent
+  accepted Akel Fig. 1 review packet exists, and same-scope per-point
+  current/timing uncertainty remains absent.
+- 2026-05-08 A3 production waveform-comparison attachment: completed for app
+  result surfaces. Evidence: `_apply_post_processing()` now attaches
+  `pf1000_16kv_current_waveform_comparison_candidate` to production-style app
+  results using the current Akel Fig. 1 draft packet when no accepted packet is
+  supplied. Current app results therefore carry the S1/S2 blocker as
+  `waveform_comparison_status="blocked_by_review"` with
+  `metrics_computed=False`, rather than leaving the comparator as a standalone
+  helper. Checks run: `python3 -m py_compile app_mhd.py tests/test_mhd_physics_integration.py`
+  and `python3 -m pytest tests/test_mhd_physics_integration.py::test_predictive_readiness_exported_and_blocks_unvalidated_claims -q`
+  passed (`1 passed`). Scientific acceptance remains blocked.
+- 2026-05-08 A3 run-manifest waveform blocker propagation: completed for
+  artifact traceability. Evidence: `RunManifest` now carries compact
+  `validation_evidence`, and `build_run_manifest()` copies blocker-oriented
+  fields from known validation summary packets, including
+  `pf1000_16kv_current_waveform_comparison_candidate` and nested
+  digitization-readiness status. Bulk candidate trace arrays are not copied into
+  the manifest. Checks run:
+  `python3 -m py_compile src/dpf/validation/artifacts.py tests/test_validation_artifacts.py`
+  and the focused validation-artifact slice passed (`3 passed`). This makes
+  blocked S1/S2 evidence auditable in run artifacts without promoting draft
+  Akel data.
+- 2026-05-08 A5 source-acquisition queue matrix: completed for machine-readable
+  blocker triage. Evidence: `scientific_closure_source_acquisition_queue()` now
+  reports summary counts, same-scope group statuses, `source_action`, and
+  blocked validation tiers for each blocker. Current PF-1000 full-energy queue
+  state is 10 blockers, 5 priority-1 items, 5 priority-2 items, 7 local
+  digitization/target-extraction actions, 5 items with user-acquisition
+  requirements, 2 complete same-scope groups, 10 partial same-scope groups, and
+  0 missing same-scope groups. `docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md` records
+  the updated queue semantics. This closes queue detail, not the underlying
+  evidence gaps.
+- 2026-05-08 A7 numerical-fidelity claim-boundary guardrail: completed.
+  Evidence: MHD numerical-fidelity evidence now carries
+  `evidence_class="code_numerical_verification"`, explicitly marks itself as
+  not experimental DPF validation, not predictive scientific support, not
+  high-fidelity scientific support, and not a substitute for Tier 4 spatial or
+  Tier 5 neutron validation. Backend parity evidence is labeled
+  `BackendParityVerification`, distinct from Reference scientific authority.
+  Checks run: `python3 -m py_compile src/dpf/validation/mhd_numerical_fidelity.py tests/test_mhd_numerical_fidelity.py`
+  and `python3 -m pytest tests/test_mhd_numerical_fidelity.py -q` passed
+  (`22 passed`). Tier 4 and Tier 5 remain blocked on same-scope experimental
+  evidence.
+- 2026-05-08 A7 restart/reproducibility evidence guardrail: completed.
+  Evidence: MHD numerical-fidelity evidence now requires
+  `restart_reproducibility` as a Tier-3 code-verification channel. The new
+  `restart_reproducibility_evidence_from_results()` helper requires continuous
+  and restarted observables, a restart/checkpoint marker, matching config
+  hashes, and tolerance-bounded relative errors before a restart packet can
+  support the audit. Checks run:
+  `python3 -m py_compile src/dpf/validation/mhd_numerical_fidelity.py tests/test_mhd_numerical_fidelity.py src/dpf/validation/__init__.py`
+  and `python3 -m pytest tests/test_mhd_numerical_fidelity.py -q` passed
+  (`25 passed`). This remains code reproducibility evidence only, not DPF
+  experimental validation or Reference scientific authority.
+- 2026-05-08 A7 production Tier-3 verification packet status: completed as a
+  production-visible blocker map. Evidence:
+  `mhd_numerical_verification_packet_status()` now reports every required
+  Tier-3 packet as `attached_validated`, `attached_non_validating`, or
+  `missing_required`, and app post-processing exports
+  `mhd_numerical_verification_packet_status` beside the main
+  `mhd_numerical_fidelity` audit. Checks run:
+  `python3 -m py_compile app_mhd.py src/dpf/validation/mhd_numerical_fidelity.py src/dpf/validation/__init__.py src/dpf/validation/quality_assessment.py tests/test_mhd_numerical_fidelity.py tests/test_mhd_physics_integration.py`
+  and `python3 -m pytest tests/test_mhd_numerical_fidelity.py tests/test_mhd_physics_integration.py::test_predictive_readiness_exported_and_blocks_unvalidated_claims -q`
+  passed (`28 passed`). Remaining A7 work is to generate or attach real
+  scheduled verification packets for the claimed backend/scope; packet status
+  reporting itself is now wired.
+- 2026-05-09 A7 scheduled Tier-3 packet artifact path: completed for the first
+  partial local packet. Evidence:
+  `build_mhd_numerical_verification_packet()` assembles same-scope Tier-3
+  packets from explicit verification-run outputs and immediately applies the
+  production fail-closed packet status. The new
+  `scripts/build_mhd_tier3_numerical_packet.py` ran the local cylindrical
+  z-pinch convergence and implicit resistive-diffusion convergence studies and
+  wrote `results/mhd_tier3_numerical_packet.json`. The packet is correctly
+  `production_packet_status="blocked"` with attached validated packets for
+  `finite_volume_mhd_verification`, `cylindrical_geometry_verification`,
+  `circuit_coupled_energy_verification`,
+  `resistive_or_nonideal_verification`, `convergence_study`, and
+  `backend_parity`, and `dpf_scope_limit`; it still names
+  `restart_reproducibility` as the missing same-scope packet. Finite-volume
+  evidence is preview-backend MLX pytest/JUnit evidence, and backend parity is
+  the existing Python-cylindrical vs MLX current-NRMSE gate.
+  Checks run:
+  `python3 -m py_compile src/dpf/validation/mhd_numerical_fidelity.py src/dpf/validation/__init__.py scripts/build_mhd_tier3_numerical_packet.py tests/test_mhd_numerical_fidelity.py`,
+  `python3 -m pytest tests/test_mhd_numerical_fidelity.py -q` passed
+  (`29 passed`), and
+  `python3 -m pytest tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s5_sod_cross_backend_parity tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s6_briowu_compound_waves tests/test_mlx_acceptance.py::TestStandardShockTubes::test_s7_sod_convergence -q --junitxml=results/mhd_finite_volume_mlx_shock_tubes.junit.xml`
+  passed (`3 passed`); `python3 scripts/record_mhd_finite_volume_pytest_evidence.py --junitxml results/mhd_finite_volume_mlx_shock_tubes.junit.xml --output results/mhd_finite_volume_mlx_shock_tubes_evidence.json`
+  produced passing finite-volume evidence;
+  `python3 -m pytest tests/test_cross_backend_parity.py -q --junitxml=results/mhd_backend_parity_cross_backend_current.junit.xml`
+  passed (`1 passed`); `python3 scripts/record_mhd_backend_parity_pytest_evidence.py --junitxml results/mhd_backend_parity_cross_backend_current.junit.xml --output results/mhd_backend_parity_cross_backend_current_evidence.json`
+  produced passing backend-parity evidence; and
+  `python3 scripts/build_mhd_tier3_numerical_packet.py --mhd-verification-file results/mhd_finite_volume_mlx_shock_tubes_evidence.json --backend-parity-file results/mhd_backend_parity_cross_backend_current_evidence.json --output results/mhd_tier3_numerical_packet.json`
+  completed. This is Tier-3 code numerical verification only, not experimental
+  DPF validation or Reference scientific authority.
+- 2026-05-09 A7 same-scope restart evidence and complete Tier-3 packet:
+  completed for code numerical verification. Evidence:
+  `scripts/build_mhd_restart_reproducibility_evidence.py` runs a deterministic
+  CPU checkpoint/restart fixture, compares uninterrupted and restarted circuit
+  plus field-norm observables, and writes
+  `results/mhd_restart_reproducibility_evidence.json`. The restart packet
+  passed with `max_relative_error=0.0`, matching config hashes, checkpoint
+  marker present, and no missing metrics. The updated
+  `scripts/build_mhd_tier3_numerical_packet.py` accepts
+  `--restart-reproducibility-file`; rebuilding
+  `results/mhd_tier3_numerical_packet.json` with finite-volume, backend-parity,
+  and restart evidence now reports `production_packet_status="complete"`,
+  `missing_required_packets=[]`, and attached validated packets for all eight
+  required Tier-3 channels. Checks run:
+  `python3 -m py_compile scripts/build_mhd_restart_reproducibility_evidence.py scripts/build_mhd_tier3_numerical_packet.py`,
+  `python3 -m pytest tests/test_mhd_numerical_fidelity.py -q` passed
+  (`30 passed`),
+  `python3 scripts/build_mhd_restart_reproducibility_evidence.py --output results/mhd_restart_reproducibility_evidence.json`
+  produced passing restart evidence, and
+  `python3 scripts/build_mhd_tier3_numerical_packet.py --mhd-verification-file results/mhd_finite_volume_mlx_shock_tubes_evidence.json --backend-parity-file results/mhd_backend_parity_cross_backend_current_evidence.json --restart-reproducibility-file results/mhd_restart_reproducibility_evidence.json --output results/mhd_tier3_numerical_packet.json`
+  completed the packet. This remains Tier-3 code numerical verification only;
+  it does not close Tier-4 spatial validation, Tier-5 neutron validation, or
+  Reference scientific authority.
+- 2026-05-08 A6/A8 production blocker status surfaces: completed as
+  non-promoting status reporting. Evidence: app post-processing now emits
+  `snowplow_phase_validation_status` for phase-history output even when
+  verified phase targets are absent, and `spatial_validation_scope_closure` is
+  emitted even when no spatial components are supplied. Checks run:
+  `python3 -m py_compile app_mhd.py tests/test_mhd_physics_integration.py` and
+  the focused app integration slice passed (`3 passed`). Tier 2 and Tier 4
+  remain evidence-blocked until same-device KR phase targets and same-scope
+  density/magnetic-field/temperature packets exist.
+- 2026-05-08 A12 tier-grouped uncertainty reporting: completed as reporting
+  polish. Evidence: `validation_uncertainty_coverage_from_result()` now reports
+  `tier_uncertainty_status` for T1-T5, including present observables and
+  missing uncertainty per tier, and `uncertainty_evidence_from_result()` carries
+  that tier map forward. Checks run:
+  `python3 -m py_compile src/dpf/validation/uncertainty_budget.py tests/test_uncertainty_budget.py`
+  and `python3 -m pytest tests/test_uncertainty_budget.py -q` passed
+  (`13 passed`). Real UQ support still requires same-scope KR uncertainty
+  values and full component validation.
+- 2026-05-08 Track A code-ready closure sweep: completed. Evidence: the
+  multi-agent audit found the remaining small code-ready gaps in A3, A6, A8,
+  A9, and A12; the implementation sweep closed them with run-manifest blocker
+  propagation, phase/spatial blocker status packets, stricter neutron
+  detector/UQ same-scope closure, and tier-grouped UQ reporting. Verification:
+  `python3 -m py_compile app_mhd.py src/dpf/validation/quality_assessment.py src/dpf/validation/uncertainty_budget.py src/dpf/validation/artifacts.py src/dpf/validation/mhd_numerical_fidelity.py src/dpf/validation/physics_fidelity.py src/dpf/validation/circuit_field_coupling.py tests/test_mhd_physics_integration.py tests/test_quality_assessment.py tests/test_kr_targets.py tests/test_uncertainty_budget.py tests/test_validation_artifacts.py tests/test_mhd_numerical_fidelity.py tests/test_physics_fidelity.py tests/test_circuit_field_coupling.py`
+  passed; `python3 -m pytest tests/test_mhd_physics_integration.py tests/test_quality_assessment.py tests/test_kr_targets.py tests/test_uncertainty_budget.py tests/test_validation_artifacts.py tests/test_mhd_numerical_fidelity.py tests/test_physics_fidelity.py tests/test_circuit_field_coupling.py -q`
+  passed (`263 passed, 3 skipped`). Remaining Track A items are evidence or
+  independent-review campaigns, not open guardrail plumbing.
+- 2026-05-08 A10 per-run physics-fidelity claim matrix: completed as a
+  fail-closed reporting guardrail. Evidence:
+  `physics_fidelity_evidence_from_result()` now preserves detailed effect
+  statuses while adding canonical `fidelity_status` values
+  (`implemented`, `verified`, `validated`, `empirical`, `absent`, or
+  `bounded_out`), per-effect `blocks_claims`, a top-level `claim_blockers`
+  matrix, and `blocked_claims`. Missing or empirical physics now blocks only
+  the mapped predictive claims, not non-predictive engineering runs. Checks run:
+  `python3 -m py_compile src/dpf/validation/physics_fidelity.py tests/test_physics_fidelity.py`
+  and `python3 -m pytest tests/test_physics_fidelity.py -q` passed
+  (`9 passed`). Remaining blocker: real KR-backed same-scope effect evidence is
+  still required before late-pinch, neutron, high-Z, p-B11, or high-fidelity
+  MHD claims can pass.
+- 2026-05-08 A11 staged circuit-field coupling authority: completed as a
+  fail-closed guardrail. Evidence: field-coupling evidence now requires
+  `coupling_interval_authority` and reports staged labels for
+  `snowplow_loaded`, `blended`, `field_derived_candidate`, and
+  `validated_field_coupled`. Density-weighted/`Lp_mhd_nH` coupling remains
+  candidate-only and cannot support validated field-coupled authority without
+  same-scope KR-backed component validation. Checks run:
+  `python3 -m py_compile src/dpf/validation/circuit_field_coupling.py tests/test_circuit_field_coupling.py`
+  and `python3 -m pytest tests/test_physics_fidelity.py tests/test_circuit_field_coupling.py -q`
+  passed (`21 passed`). Predictive/high-fidelity field-coupling claims remain
+  blocked until same-scope field-coupling evidence exists.
+- 2026-05-08 A9 mechanism-separated neutron output reporting: completed as a
+  non-promoting production guardrail. Evidence: app post-processing now attaches
+  `neutron_mechanism_outputs` when neutron-yield estimates or time-resolved
+  neutron histories are present. The summary separates thermonuclear and
+  beam-target yields/histories, reports detector/activation, timing, spectrum,
+  anisotropy, and UQ blockers, and sets `validation_status` to
+  `estimate_not_validation`. Checks run:
+  `python3 -m py_compile app_mhd.py tests/test_mhd_physics_integration.py` and
+  focused app tests passed (`3 passed`). Tier 5 remains blocked until one
+  same-scope KR-backed packet supplies scalar yield, mechanism timing,
+  spectrum, anisotropy, detector/activation response, and uncertainty.
+- 2026-05-08 A9 same-scope neutron closure gate: completed as a fail-closed
+  Tier-5 guardrail. Evidence: `neutron_validation_scope_closure_report()` now
+  requires scalar yield, mechanism timing, spectrum, anisotropy,
+  detector/activation response, and explicit source uncertainty to contribute
+  within one validation scope before Tier 5 can report support. Missing
+  detector-response evidence or uncertainty source values are now named in the
+  closure packet instead of being implied by timing/spectrum/anisotropy
+  support. Checks run:
+  `python3 -m py_compile src/dpf/validation/quality_assessment.py tests/test_quality_assessment.py tests/test_kr_targets.py tests/test_mhd_physics_integration.py`
+  and the focused A9 quality/KR/app slice passed (`8 passed`). Real neutron
+  validation remains blocked until a same-scope KR-backed packet supplies those
+  observables and uncertainty values.
+- 2026-05-08 A12 UQ source-value guardrail: completed as fail-closed
+  implementation. Evidence: uncertainty component evidence and KR uncertainty
+  evidence now require explicit source uncertainty values before supporting UQ
+  targets. A KnowledgeReference citation plus validation scope is no longer
+  enough to create passing UQ evidence. Checks run: combined focused suite
+  `python3 -m pytest tests/test_digitization.py tests/test_kr_targets.py tests/test_source_acquisition.py tests/test_uncertainty_budget.py tests/test_quality_assessment.py -q`
+  passed (`176 passed`). Remaining blocker: real same-scope KR uncertainty
+  packets with source values are still required for supported validation tiers.
+- 2026-05-08 A13 long PF-1000 fixture policy: completed. Evidence:
+  `tests/test_mlx_pf1000.py` keeps scientific long-fixture gates
+  `xfail(run=False)` and source-blocked on S1/S2 closure. Endurance/regression
+  probe paths in `tests/test_mlx_pf1000_probe.py` and
+  `scripts/run_mlx_pf1000_probe.py` now require `DPF_MLX_RUN_ENDURANCE=1` and
+  report `scientific_status=non_scientific`, target, cap, final time,
+  cap-exhaustion status, and memory telemetry/unavailable marker.
+  `docs/PF1000_LONG_FIXTURE_POLICY.md` records the policy. Checks run:
+  `python3 scripts/run_mlx_pf1000_probe.py` refused with
+  `ENDURANCE_NOT_OPTED_IN` and exit `3`; focused policy tests passed
+  (`1 passed, 1 skipped`); PF-1000 gate tests remained blocked as intended
+  (`5 passed, 14 xfailed`).
+- 2026-05-08 Track A detailed simulation/physics breakdown: completed as a
+  planning update. Evidence: Track A now has a subtask-level breakdown with
+  current state, guardrails, objectives, methods, and exit evidence for A2-A13.
+  The added breakdown distinguishes ready-to-code guardrail work from
+  evidence-blocked scientific acceptance and the A13 policy decision. No
+  scientific evidence was promoted.
+- 2026-05-08 A1 findings/status hygiene: completed. Evidence: the current
+  execution position now names source review closure, Akel S1/S2 review
+  blockers, and the separate SRS/productization ratchet; the SRS draft,
+  traceability tooling note, and both findings docs agree on the next work.
+  Checks run: `dpf_skill_preflight.py /Users/anthonyzamora/dpf-unified`,
+  `srs_trace_audit.py /Users/anthonyzamora/dpf-unified`, `git diff --check`,
+  and TOML parse of `pyproject.toml`. No scientific evidence was promoted.
+- 2026-05-08 B1 formal SRS baseline: completed for candidate-baseline stage.
+  Evidence: `docs/DPF_REQUIREMENTS_BASELINE.md` now contains the first
+  stable-ID P0/P1 requirements table with 47 unique `DPF-*` IDs, owner roles,
+  current status, verification methods, and evidence/blocker links. The SRS
+  draft and traceability tooling note now point to that candidate baseline.
+  Doorstop tree import remains a follow-on after review; this completion does
+  not mark blocked/scaffolded requirements as implemented.
+- 2026-05-08 B2 compute-authority model: completed. Evidence:
+  `docs/ADR_COMPUTE_AUTHORITY.md` now defines Reference/Preview/Derived
+  Diagnostic/Exploratory/Superseded/Invalid labels and backend authority
+  defaults. `src/dpf/validation/artifacts.py` implements fail-closed
+  classification rules. `tests/test_validation_artifacts.py` proves MLX remains
+  Preview even with accepted validation status unless future promotion rules are
+  added, and proves Reference requires accepted evidence on a reference-candidate
+  backend. Later 2026-05-08 entries supersede the original schema-stage note
+  by wiring B3-B5 runtime output and certificate persistence guards.
+- 2026-05-08 A2 review-gate hardening: completed as an implementation subtask;
+  scientific acceptance remains blocked. Evidence:
+  `digitization_verification_evidence()` now requires packet-tied review
+  metadata when review count/status are accepting, so simply flipping
+  `independent_review_count=1` and `review_status="accepted"` cannot promote a
+  draft packet. Checks run: targeted digitization/KR tests passed (`4 passed`).
+  Remaining A2 blocker: no real independent accepted review for the Akel Fig. 1
+  packet exists.
+- 2026-05-08 A3 waveform comparator scaffold: completed as guarded comparator
+  implementation; S1/S2 validation remains blocked. Evidence:
+  `pf1000_16kv_current_waveform_comparison_candidate_evidence()` now refuses to
+  compute metrics for draft/review-blocked digitization, rejects cross-scope
+  packets, requires current/time uncertainty metadata, and computes NRMSE plus
+  current-dip depth/timing only for accepted same-scope packets. Targeted KR
+  tests passed (`7 passed`). Remaining A3 blocker: real accepted Akel Fig. 1
+  waveform packet and uncertainty are still absent.
+- 2026-05-08 B3 result classification labels: completed for engine/runtime
+  output. Evidence: `ResultClassification` is exported from
+  `dpf.validation`, `SimulationEngine.run()` now attaches
+  `validation_status`, `result_classification`, and `run_manifest` metadata to
+  run summaries, and MLX remains Preview/non-certifying even if a caller passes
+  accepted validation status. Checks run: `tests/test_validation_artifacts.py`
+  passed (`13 passed`).
+- 2026-05-08 B4 run manifest schema/runtime emission: completed for normal and
+  failed engine runs. Evidence: file-backed engine runs now write a
+  `*.run_manifest.json` sidecar with config hash, backend, solver mode,
+  hardware profile, output hashes, validation status, and result
+  classification. Failed runs attempt manifest emission before re-raising.
+  Checks run: focused artifact tests passed (`13 passed`) and runtime smoke
+  tests passed.
+- 2026-05-08 B5 validation certificate schema/writer: completed for
+  fail-closed artifact creation. Evidence: `ValidationCertificate`,
+  `build_validation_certificate()`, and `write_validation_certificate()` reject
+  accepted certificates with blocked, failed, draft, or cross-scope evidence
+  before persistence. This does not create an Akel certificate because Akel Fig.
+  1 remains `blocked_by_review`.
+- 2026-05-08 B9 CLI/backend consistency: completed. Evidence:
+  `dpf simulate --backend mlx` is now accepted by Click and passed through to
+  the engine config, and `dpf backends` lists MLX availability. Checks run:
+  focused CLI/backend tests passed (`11 passed`).
+- 2026-05-08 B8 backend unsupported-feature diagnostics: completed. Evidence:
+  `backend_feature_diagnostics()` now returns explicit warning/info records for
+  skipped Athena/AthenaK/hybrid physics and GPU diffusion fallbacks,
+  `SimulationEngine` logs those diagnostics and includes them in run summaries,
+  and MLX now receives requested Hall, Braginskii conduction/viscosity, Nernst,
+  and precision flags instead of silently dropping them. Checks run:
+  `tests/test_backend_capabilities.py` passed (`3 passed`) and existing backend
+  warning tests passed (`4 passed`).
+- 2026-05-08 B7 memory preflight: completed for launch-time safety. Evidence:
+  `run_memory_preflight()` estimates projected memory from grid/backend
+  configuration before solver allocation, blocks unsafe launches above
+  `diagnostics.memory_limit_fraction`, allows only explicit
+  `diagnostics.allow_memory_overcommit`, and attaches the preflight record to
+  run summaries. Checks run: `tests/test_memory_preflight.py` passed
+  (`5 passed`).
+- 2026-05-08 B14 current TODO audit refresh: completed. Evidence:
+  `docs/todo_audit.md` now audits active `TODO`/`FIXME`/`XXX` markers against
+  the decomposed source tree, excludes vendored/hidden/archive paths from live
+  blocker status, classifies current findings as bug/deferred/benign/obsolete,
+  and retires stale `src/dpf/engine.py` blockers because that file is absent.
+  Checks run: active source marker scan, engine path check, docs/tooling marker
+  scan, excluded-scope scan, and `git diff --check -- docs/todo_audit.md`.
+- 2026-05-08 B12 local-first/security controls: completed for current release
+  defaults and manifest metadata. Evidence: `dpf ui` and root Gradio launch now
+  default to `127.0.0.1`, public Gradio share remains opt-in, FastAPI CORS
+  defaults to localhost origins and rejects wildcard CORS unless
+  `DPF_ALLOW_WILDCARD_CORS=1`, `local_first_security_audit()` scans active
+  source for direct hardware-control imports and runtime-AI mutation paths, and
+  `RunManifest` carries owner-supplied artifact classification/distribution
+  metadata. Checks run: `tests/test_local_first_security.py` passed
+  (`6 passed`) and `tests/test_validation_artifacts.py` passed (`14 passed`).
+  Remaining related work: propagate classification metadata into non-manifest
+  export schemas and decide audit-log depth.
+- 2026-05-08 DPF-OPS-004 runtime memory telemetry: completed. Evidence:
+  `RuntimeMemoryTelemetry` records process start/end/peak RSS, sample count,
+  backend, and optional MLX active/peak backend memory when MLX exposes it.
+  `SimulationEngine.run()` samples during normal, failed, and hybrid runs and
+  attaches `runtime_memory_telemetry` to summaries before run manifests are
+  built. Checks run: `tests/test_memory_preflight.py` passed (`8 passed`) and
+  the artifact/backend slice passed (`17 passed`).
+- 2026-05-08 B6 project lifecycle: completed for local project helpers.
+  Evidence: `dpf.project.lifecycle` now provides create/load/duplicate/archive
+  operations around a `project_manifest.json` and preserved `config.json`.
+  The manifest tracks config hash, output paths, run-manifest paths,
+  validation status, result classification, logs, archive metadata, and
+  duplicate provenance. Loading rejects silent config mutation, duplicate
+  preserves result files, and archive marks status without changing outputs.
+  Checks run: `tests/test_project_lifecycle.py` passed (`4 passed`) and the
+  memory/artifact regression slice passed (`22 passed`). Remaining related
+  work: expose these lifecycle helpers through UI/API if v1.0 product scope
+  requires it.
+- 2026-05-08 B10 UI/API readiness surfacing: completed for authority and
+  readiness visibility. Evidence: FastAPI `SimulationInfo` now exposes
+  `validation_status`, fail-closed `result_classification`,
+  `predictive_readiness`, `high_fidelity_readiness`, Akel
+  `digitization_status`, and `source_blockers`. The GUI wire type mirrors
+  those fields, the simulation store preserves the latest response, and the
+  TopBar displays a Preview/Reference badge plus blocker count. Checks run:
+  `tests/test_server_readiness.py` passed (`3 passed`), focused server
+  lifecycle tests passed (`2 passed`), and `npm --prefix gui run typecheck`
+  passed. Remaining related work: explicit units/dimensions API schema and
+  broader UI mode requirements.
+- 2026-05-08 B11 export bridge scope and acceptance: completed for v1 scope.
+  Evidence: `docs/EXPORT_SCOPE_V1.md` and `export_scope_decisions()` accept
+  DPF HDF5 diagnostics and Well HDF5, while explicitly deferring VTK/VTU,
+  CGNS/HDF5, OpenFOAM, and Ansys/PyMAPDL until writer/readability or
+  license-aware tests exist. HDF5 diagnostics now write schema/time-base root
+  attributes and dataset units. The engine Well adapter now passes grid
+  spacing, geometry, and simulation provenance instead of hardcoding `dx=1.0`.
+  Checks run: `tests/test_export_scope.py` passed (`3 passed`) and the
+  validation/project regression slice passed (`18 passed`). Remaining related
+  work: fully embed run-manifest provenance inside HDF5 if v1 requires
+  single-file artifacts.
+- 2026-05-08 B13 air-gap build and release gate: completed for fail-closed
+  gate definition; actual air-gap release remains blocked. Evidence:
+  `docs/AIR_GAP_RELEASE_GATE.md` defines required artifacts and offline
+  commands, while `airgap_release_gate()` checks for `dist/wheelhouse`,
+  `dist/wheelhouse/SHA256SUMS`, and offline smoke/typecheck logs. The current
+  repo correctly reports `passed=false` until those release artifacts exist.
+  Checks run: `tests/test_airgap_gate.py` passed (`2 passed`) and the
+  export/server readiness slice passed (`6 passed`). Remaining related work:
+  produce license-reviewed wheelhouse artifacts and real offline logs.
+- 2026-05-08 HDF5 embedded run metadata: completed for accepted HDF5
+  diagnostics. Evidence: `_attach_run_artifacts()` embeds backend, solver mode,
+  validation status, result label, validation-claim capability,
+  classification JSON, artifact classification JSON, and KR source-authority
+  text into HDF5 before the sidecar manifest hashes the file. Well exports now
+  carry fail-closed `validation_status`/`result_label` defaults through
+  `sim_params`. Checks run: `tests/test_validation_artifacts.py` passed
+  (`14 passed`) and `tests/test_export_scope.py` passed (`3 passed`).
+- 2026-05-08 project owner classification metadata: completed. Evidence:
+  `ProjectManifest` now carries owner-supplied `artifact_classification`
+  metadata using the same schema as run manifests. Create/load/duplicate/archive
+  tests preserve classification/distribution fields. Checks run:
+  `tests/test_project_lifecycle.py` passed (`4 passed`) and
+  `tests/test_validation_artifacts.py` passed (`14 passed`).
+- 2026-05-08 API units/dimensions schema: completed. Evidence:
+  `/api/metadata/units` now returns canonical scalar, field, time-base, and
+  authority metadata with units and dimensions, and the GUI client has a typed
+  `UnitsMetadata` response. Checks run: `tests/test_server_metadata.py` passed
+  (`2 passed`) and `npm --prefix gui run typecheck` passed.
 
 ## Execution Log
 
@@ -3865,3 +4740,1764 @@ response, magnetic/EM, temperature, and uncertainty remain partial.
   downstream code can now distinguish draft waveform data blocked by review
   from missing waveform data. This is not a simulation-vs-trace comparator and
   does not close S1/S2 or tier-1 waveform validation.
+
+### 2026-05-09: Track A/B Change-Set Verification Consolidation
+
+- Progress made:
+  verified the current large Track A/B implementation set before taking on the
+  next work-ready item. This is an engineering/productization checkpoint, not a
+  scientific-evidence promotion.
+- Verification status:
+  `python3 ~/.codex/skills/srs-traceability/scripts/srs_trace_audit.py /Users/anthonyzamora/dpf-unified`
+  passed and reported `48` unique requirement IDs across the SRS baseline and
+  findings docs; `npm --prefix gui run typecheck` passed; `git diff --check`
+  passed; and the focused Python regression suite
+  `python3 -m pytest tests/test_digitization.py tests/test_kr_targets.py tests/test_source_acquisition.py tests/test_uncertainty_budget.py tests/test_quality_assessment.py tests/test_validation_artifacts.py tests/test_mhd_numerical_fidelity.py tests/test_physics_fidelity.py tests/test_circuit_field_coupling.py tests/test_mhd_physics_integration.py tests/test_memory_preflight.py tests/test_backend_capabilities.py tests/test_cli_backend_options.py tests/test_export_scope.py tests/test_local_first_security.py tests/test_project_lifecycle.py tests/test_server_metadata.py tests/test_server_readiness.py tests/test_airgap_gate.py -q`
+  passed (`323 passed, 3 skipped`).
+- Current boundary:
+  this confirms the current guardrail/productization implementation remains
+  internally consistent. It does not unblock Akel S1/S2, Tier 2, Tier 4, Tier
+  5, predictive readiness, or high-fidelity readiness, all of which still need
+  accepted same-scope evidence.
+- Next work-ready item:
+  continue with SRS traceability/Doorstop import preparation, then the remaining
+  productization follow-ons that do not require new science sources: UI/API
+  units schema, lifecycle API exposure, export provenance completion, and
+  air-gap release artifacts.
+
+### 2026-05-09: SRS Traceability Matrix Export Staged
+
+- Progress made:
+  advanced the Doorstop/traceability path without requiring a network install
+  in the active shell. Doorstop remains the planned requirements-management
+  tool, but the candidate baseline now has import-ready JSON/CSV traceability
+  artifacts that can be reviewed and later imported.
+- Modules/docs/tests/artifacts touched:
+  `scripts/export_srs_traceability.py`,
+  `tests/test_srs_traceability_export.py`,
+  `docs/SRS_TRACEABILITY_MATRIX.json`,
+  `docs/SRS_TRACEABILITY_MATRIX.csv`,
+  `docs/DPF_REQUIREMENTS_BASELINE.md`,
+  `docs/SRS_TRACEABILITY_TOOLING.md`, and
+  `docs/DPF_UNIFIED_SRS_DRAFT.md`.
+- Current artifact status:
+  `scripts/export_srs_traceability.py` parses
+  `docs/DPF_REQUIREMENTS_BASELINE.md`, validates duplicate IDs, known
+  statuses/priorities, P0/P1 verification methods, and implemented-row
+  evidence, then writes `48` requirements into staged RTM JSON/CSV exports.
+- Verification status:
+  `python3 scripts/export_srs_traceability.py` exported `48` requirements;
+  `python3 -m py_compile scripts/export_srs_traceability.py tests/test_srs_traceability_export.py`
+  passed; `python3 -m pytest tests/test_srs_traceability_export.py -q` passed
+  (`2 passed`); `python3 ~/.codex/skills/srs-traceability/scripts/srs_trace_audit.py /Users/anthonyzamora/dpf-unified`
+  still reports `48` unique requirement IDs; and `git diff --check` passed for
+  the traceability files.
+- Remaining boundary:
+  this is an RTM staging step, not formal Doorstop validation. A real Doorstop
+  tree still requires the optional `dpf-unified[traceability]` dependency in
+  the active environment and review acceptance of the candidate baseline.
+- Post-change regression status:
+  the combined focused suite including `tests/test_srs_traceability_export.py`
+  passed (`325 passed, 3 skipped`); `npm --prefix gui run typecheck` passed;
+  the SRS trace audit still reports `48` unique requirement IDs; and
+  `git diff --check` passed.
+
+### 2026-05-09: Project Lifecycle API Surface
+
+- Progress made:
+  exposed the existing local project lifecycle helpers through bounded FastAPI
+  endpoints and GUI wire client types. The API uses `DPF_PROJECTS_ROOT`
+  (`./projects` by default) as the local project boundary, so create/load/
+  duplicate/archive requests cannot write arbitrary paths outside the configured
+  project root.
+- Modules/docs/tests touched:
+  `src/dpf/server/app.py`, `src/dpf/server/models.py`,
+  `gui/src/renderer/api/client.ts`, `gui/src/renderer/api/types.ts`,
+  `tests/test_server_projects.py`, `docs/DPF_REQUIREMENTS_BASELINE.md`,
+  `docs/DPF_UNIFIED_SRS_DRAFT.md`, and regenerated
+  `docs/SRS_TRACEABILITY_MATRIX.json` / `docs/SRS_TRACEABILITY_MATRIX.csv`.
+- API surface added:
+  `GET /api/projects/root`, `POST /api/projects`,
+  `POST /api/projects/load`, `POST /api/projects/duplicate`, and
+  `POST /api/projects/archive`.
+- Verification status:
+  `python3 -m py_compile src/dpf/server/app.py src/dpf/server/models.py tests/test_server_projects.py`
+  passed; `python3 -m pytest tests/test_server_projects.py tests/test_project_lifecycle.py tests/test_server_readiness.py tests/test_server_metadata.py tests/test_local_first_security.py -q`
+  passed (`18 passed`); `npm --prefix gui run typecheck` passed;
+  `python3 scripts/export_srs_traceability.py` regenerated the staged RTM with
+  `48` requirements; and `git diff --check` passed for the touched API/client
+  files.
+- Remaining boundary:
+  this exposes lifecycle operations but does not add a full GUI project browser
+  or user workflow view. It also does not change scientific readiness.
+
+### 2026-05-09: Doorstop Installed And Verified
+
+- Progress made:
+  installed the repository traceability extra with
+  `python3 -m pip install -e '.[traceability]'`.
+- Installed tool status:
+  `doorstop --version` reports `Doorstop v3.1`, and `doorstop --help` shows the
+  expected create/import/export/publish commands. The package does not provide
+  a `python3 -m doorstop` entrypoint, so the console script is the supported
+  invocation.
+- Verification status:
+  `python3 -m pytest tests/test_srs_traceability_export.py tests/test_server_projects.py tests/test_project_lifecycle.py -q`
+  passed (`9 passed`); the SRS trace audit still reports `48` unique
+  requirement IDs; and `git diff --check` passed.
+- Environment caveat:
+  `python3 -m pip check` still reports global Python environment conflicts,
+  including `letta` requiring `typer<0.10.0` while the active environment now
+  has `typer 0.25.1`, plus several unrelated pre-existing dependency conflicts.
+  Use a dedicated virtual environment before treating a release or air-gap
+  build as clean.
+- Remaining boundary:
+  Doorstop is installed, but no Doorstop requirements tree has been initialized
+  yet. The current guardrail still says to review/accept the candidate baseline
+  and staged RTM before importing it into Doorstop.
+
+### 2026-05-09: Extended Local Source Search Outside KnowledgeReference
+
+- Progress made:
+  searched likely local machine source pools outside `KnowledgeReference/` for
+  the currently needed paper and textbook/method references, then captured the
+  result in `docs/LOCAL_SOURCE_SEARCH_2026_05_09.md`.
+- Search coverage:
+  checked top-level Downloads, the two OneDrive paper drops, GPT paper
+  downloads, DPF-U2 paper and converted-text pools, old project paper archives,
+  `downloaded_books_papers`, and the Claude memory-stage DPF paper text store.
+  Build/cache trees, `node_modules`, `.web`, `.next`, `.git`, and
+  `KnowledgeReference/` were excluded.
+- Result:
+  no exact local copy was found for the six blocking/secondary paper
+  acquisitions: Klir 2011, Sadowski/Scholz/PF-1000 2004, Catenacci 2020,
+  Springham 2021, Jednorog 2017, or Cikhardtova 2015. Klir appeared only as a
+  citation in a 2026 hybrid X-pinch paper, not as the target source.
+- Method-source candidates found:
+  LeVeque 2002 appears as a 580-page local PDF outside KR with SHA-256
+  `b3adec0d3616dbde57a5522cfce1861890887d7c03a2232d2136cb94c9bac1d5`;
+  Toro 2009 appears only as a 47-page reading sample/excerpt with SHA-256
+  `78144939eadb0f7382c222f49a9a11ce9bae3e19c4f866b94e4aa6de1f39d73f`; and
+  Rybicki-Lightman appears only as a 63-page partial/frontmatter candidate with
+  SHA-256 `fcff04d2c6c1c77855192cd107ad144497cc7637706a66278658af1a5f23a08d`.
+- Boundary:
+  these local method files are not source-of-truth evidence yet. They need KR
+  ingestion/review before they can support method authority, verification, or
+  readiness claims.
+
+### 2026-05-09: Local Method Source Candidate Review
+
+- Progress made:
+  reviewed the local method-source candidates from the extended source search
+  and added `docs/LOCAL_METHOD_SOURCE_REVIEW_2026_05_09.md`.
+- LeVeque review result:
+  `archive_reference_OLD/references/papers/textbooks/leveque-2002-finite-volume-hyperbolic.pdf`
+  is a likely full local candidate: metadata title is `Finite Volume Methods
+  for Hyperbolic Problems`, author is `RANDALL J.LEVEQUE`, page count is `580`,
+  and SHA-256 is
+  `b3adec0d3616dbde57a5522cfce1861890887d7c03a2232d2136cb94c9bac1d5`.
+  It covers finite-volume conservation laws, CFL, Godunov/Riemann methods,
+  high-resolution/TVD methods, convergence, source terms, nonlinear systems,
+  Euler equations, shock tubes, multidimensional finite-volume methods, and
+  quadrilateral grids.
+- Toro review result:
+  `toro-2009-riemann-solvers-excerpt.pdf` is only a 47-page reading sample. It
+  can support terminology checks but cannot close Riemann-solver method
+  authority; at that checkpoint, the full Toro source was still marked needed.
+  Superseded 2026-05-11: the full Toro source has now been promoted to KR and
+  chunked for readable Markdown review; Toro remains a method-target extraction
+  task, not an acquisition blocker.
+- Rybicki-Lightman review result:
+  `rybicki-lightman-1979-radiative-processes.pdf` is only a 63-page partial
+  candidate with frontmatter and Chapter 1 radiative-transfer material. It does
+  not include the full radiation-process coverage needed for bremsstrahlung or
+  radiation-loss closure.
+- Boundary:
+  LeVeque is review-ready for KR method-source ingestion, but no method-source
+  authority has been promoted yet. At that checkpoint, Toro and
+  Rybicki-Lightman were treated as acquisition blockers for their broader
+  method areas.
+  Superseded 2026-05-11: LeVeque and full Toro have now been promoted to KR;
+  Rybicki-Lightman remains only a partial local candidate.
+
+### 2026-05-09: LeVeque Method Source Promotion
+
+- Progress made:
+  converted the local LeVeque 2002 PDF into paired `KnowledgeReference/`
+  records:
+  `KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md` and
+  `KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.json`.
+- Provenance:
+  original local PDF path is
+  `archive_reference_OLD/references/papers/textbooks/leveque-2002-finite-volume-hyperbolic.pdf`;
+  original PDF SHA-256 is
+  `b3adec0d3616dbde57a5522cfce1861890887d7c03a2232d2136cb94c9bac1d5`.
+- Validation:
+  `scripts/validate_kr_schema.py` passed for the promoted JSON record, and
+  `scripts/verify_kr_pdf_parity.py` passed across all `580` pages with no JSON
+  page-text mismatches and no Markdown missing pages.
+- Source-list update:
+  `docs/SOURCE_ACQUISITION_NEEDED.md` now moves LeVeque out of the needed
+  acquisition list and into the promoted local method-source section.
+- Mapping update:
+  code references that previously pointed to the old archive location now point
+  to `KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md`.
+  The structured MHD numerical-fidelity audit now uses the promoted LeVeque KR
+  record for the generic `finite_volume_mhd_verification` method authority,
+  while Beresnyak remains the DPF-specific source for cylindrical, circuit, and
+  phase-scope evidence.
+- Boundary:
+  LeVeque is now usable as local KR method authority for finite-volume and
+  hyperbolic-conservation-law numerical verification only. It is not DPF
+  experimental evidence and does not close PF-1000 same-scope Tier 4 spatial
+  validation, Tier 5 neutron validation, or predictive scientific readiness.
+
+### 2026-05-09: Compact Restart Handoff And Remaining Work Summary
+
+- Current source-of-truth state:
+  `CortexFindings.md` and `CodexFindings.md` are synchronized through the
+  LeVeque promotion. Scientific claims remain limited to local
+  `KnowledgeReference/` artifacts. The promoted LeVeque 2002 records exist at
+  `KnowledgeReference/finite-volume-methods-for-hyperbolic-problems.md` and
+  `.json`; `KnowledgeReference/` is git-ignored, so those local files do not
+  appear in ordinary `git status`.
+- Track A coding/simulation state:
+  the code-ready guardrails, reporting surfaces, fail-closed blockers, and
+  Tier-3 numerical verification packet are complete for the current plan.
+  Remaining Track A work is not more blocker plumbing; it is source evidence,
+  accepted review metadata, same-scope target packets, and validation/UQ values.
+- Track A scientific blockers still open:
+  Akel Fig. 1 needs a real independent accepted review; Akel Figs. 2-6 still
+  need verified digitization/review; S1/S2 waveform/current-dip validation
+  remains `blocked_by_review`; Tier 2 phase, Tier 4 spatial, Tier 5 neutron,
+  field-coupling, physics-fidelity, and UQ acceptance remain blocked until
+  same-scope KR-backed targets and uncertainty values exist.
+- Source acquisition still open:
+  the exact local search did not find Klir 2011, Sadowski/Scholz/PF-1000 2004,
+  Catenacci 2020, Springham 2021, Jednorog 2017, or Cikhardtova 2015. Method
+  sources still needing full acquisition include Hutchinson diagnostics, full
+  Toro, Freidberg or Goedbloed depending on the next MHD scope, Birdsall and
+  Langdon for PIC/kinetic work, Griem for spectroscopy, and full
+  Rybicki-Lightman for radiation-process closure. LeVeque no longer needs
+  acquisition.
+- Track B product/SRS state:
+  the candidate SRS baseline, staged RTM JSON/CSV, compute-authority labels,
+  result classification, run manifests, validation certificates, memory
+  preflight/telemetry, unsupported-backend diagnostics, project lifecycle API,
+  units metadata, local-first controls, export v1 scope, and air-gap gate
+  definition are implemented or staged. Doorstop is installed and usable, but
+  no Doorstop requirements tree has been initialized/imported yet.
+- Track B remaining work:
+  review and accept the candidate requirements baseline, initialize/import a
+  Doorstop tree, build the full GUI project browser/workflow if required,
+  decide audit-log depth, propagate classification metadata into any remaining
+  non-manifest exports, produce license-reviewed wheelhouse/SHA256/offline
+  smoke logs for the air-gap gate, and clean dependency conflicts in a dedicated
+  release virtual environment.
+- Recommended restart order after compaction:
+  1. Re-anchor with `dpf_skill_preflight.py`, `git status --short`, and the
+     tail of both findings docs.
+  2. Pick one lane: evidence lane (`Akel Fig. 1 review` or `Figs. 2-6
+     digitization`), requirements lane (`Doorstop import`), source-acquisition
+     lane, or release lane (`air-gap artifacts / clean venv`).
+  3. Preserve all scientific blockers until same-scope KR evidence and review
+     metadata pass their gates.
+
+### 2026-05-09: Web And Google Scholar Source-Acquisition Review
+
+- Scope:
+  reviewed the six open paper acquisitions in
+  `docs/SOURCE_ACQUISITION_NEEDED.md` through Google Scholar title-query URLs
+  and reachable scholarly pages. Direct automated access to
+  `scholar.google.com` returned HTTP 403, so the durable record now stores
+  reproducible Scholar queries plus publisher, institutional, repository, and
+  scholarly-index pages instead of scraped citation counts.
+- Existing blockers:
+  Klir 2011, Sadowski/Scholz/PF-1000 2004, Catenacci 2020, Springham 2021,
+  Jednorog 2017, and Cikhardtova 2015 remain acquisition targets only. Their
+  blocker status is unchanged until exact files are acquired, hashed, reviewed
+  into `KnowledgeReference/`, and mapped into typed targets or digitization
+  packets.
+- Fastest apparent paper acquisitions:
+  Jednorog 2017 and Cikhardtova 2015 have open Sciendo/Nukleonika routes and
+  should be the quickest paper-PDF intake candidates. Klir 2011, Sadowski 2004,
+  Catenacci 2020, and Springham 2021 appear to require publisher/licensed or
+  author/institutional access.
+- New candidate acquisitions added:
+  Rezac et al. 2026 silver activation counter, Rezac/Klir/Kubes/Kravarik 2012
+  TOF reconstruction, Klir/Kubes/PF-1000 2012 thermonuclear-neutron search,
+  Krauz et al. 2012 PF-1000 plasma-current sheath structure, Kubes/Klir/PF-1000
+  2013 pinch-evolution scenario, Kortanek/Kubes/PF-1000 2014 current-flow and
+  energy-balance paper, Scholz et al. 2012 IPPLM MJ plasma-focus progress,
+  Auluck et al. 2021 DPF review, and Bernard et al. 1998 DPF status review.
+- Guardrail:
+  ResearchGate/Academia-style pages were treated only as discovery leads.
+  CTU FEE, IPPLM, PNNL, OSTI, IAEA/INIS, PubMed, Sciendo, ScienceDirect, MDPI,
+  Nukleonika, J-GLOBAL, and ICDMP pages were recorded as verified metadata or
+  acquisition leads, not scientific evidence.
+
+### 2026-05-09: Physics-Gap-Driven Source Search
+
+- Scope:
+  reran source discovery from the remaining validation physics instead of from
+  the existing acquisition titles alone. The search targeted the missing
+  physics behind Akel S1/S2, Tier 2 phase timing, Tier 4 density/field/temperature
+  spatial closure, Tier 5 neutron timing/spectrum/anisotropy/detector closure,
+  circuit-field energy coupling, and physics-fidelity/model-form limits.
+- Highest-value new or re-ranked acquisition leads:
+  Zielinska/Paduch/Scholz 2011 sixteen-frame interferometer
+  (`10.1002/ctpp.201000047`), Kubes et al. 2009 interferometric pinch/neutron
+  timing (`10.1109/TPS.2009.2030576`), Kubes et al. 2012 magnetic-probe/neutron/
+  interferometry correlation (`10.1088/0741-3335/54/10/105023`), Krauz et al.
+  2012 current-sheath structure (`10.1088/0741-3335/54/2/025010`), Mitrofanov
+  et al. 2014 fine current-sheath/magnetic-field structure
+  (`10.1134/S1063780X14070071`), and Malir et al. 2022 implosion dynamics
+  (`10.1063/5.0098124`).
+- Tier 5 neutron additions:
+  Krasa et al. 2008 vessel-caused DD neutron anisotropy
+  (`10.1088/0741-3335/50/12/125006`), Jednorog et al. 2015 radioindium radial
+  asymmetry (`10.1007/s10967-014-3444-z`), Klir et al. 2011 thermonuclear-neutron
+  evidence (`10.1063/1.3555447`), and Kubes et al. 2009 deuteron energy
+  distribution from neutron diagnostics were added as neutron mechanism,
+  anisotropy, activation, and spectrum/TOF leads.
+- Tier 4 temperature and model-form additions:
+  Jakubowska et al. 2011 optical emission spectroscopy public Nukleonika PDF,
+  Skladnik-Sadowska et al. 2011 optical spectroscopy in PF-1000
+  (`10.1002/ctpp.201000046`), Stepniewski 2004 PF-1000 MHD modelling
+  (`10.1016/j.vacuum.2004.05.019`), Schmidt et al. 2014 fully kinetic MJ DPF
+  (`10.1063/1.4897192`), Munzar et al. 2021 azimuthal B-field mapping
+  (`10.1063/5.0040515`), and Lee/Saw/Akel/Kubes/Paduch 2016 radiative-cooling
+  limits (`10.1109/TPS.2015.2497269`) were added or re-ranked.
+- Local extraction leads:
+  the search also flagged already-local KR records that should be mined before
+  acquiring adjacent material: PF-1000 pinch-column evolution/fast particle
+  acceleration, DPF-1000U optical spectra with gas puffing, and Malir 2024
+  interferometry-vs-MHD. These are not automatic same-scope closures; each needs
+  extraction, scope matching, and uncertainty review.
+- Status:
+  no validation blocker changed state. `docs/SOURCE_ACQUISITION_NEEDED.md` now
+  records this as a physics-gap-ranked acquisition and local-review shortlist.
+
+### 2026-05-09: Module-Coverage Source Search
+
+- Scope:
+  ran another acquisition search from code surfaces that were not fully covered
+  by the PF-1000/Track A physics-gap queue. The pass covered atomic/CR rates,
+  line radiation, electrode ablation, anomalous resistivity, scaling-law
+  diagnostics, p-B11 reactivity, Thomson and X-ray synthetic diagnostics,
+  instability/shear diagnostics, CIV/Paschen breakdown, PIC/hybrid kinetics,
+  Bohm/sheath support, Sedov verification, Athena/AthenaK backend wrappers, and
+  AI/surrogate provenance.
+- Highest-priority module gaps:
+  `src/dpf/radiation/line_radiation.py` still needs Post/ADAS/CHIANTI-compatible
+  cooling tables before it can move beyond `empirical_cooling_estimate`;
+  `src/dpf/atomic/ionization.py` needs exact Lotz/Seaton/Burgess/NIST evidence
+  before stronger CR/impurity-charge-state claims; `src/dpf/experimental/pic`
+  needs Nanbu/Perez plus DPF kinetic validation papers; and
+  `src/dpf/diagnostics/pb11_yield.py` needs p-B11 reactivity/cross-section
+  tables before feasibility claims.
+- Additional module guardrails:
+  ablation, anomalous resistivity, CIV breakdown, scaling laws, X-ray images,
+  instability/shear margins, Athena/AthenaK comparison, and ML/surrogate outputs
+  remain method or diagnostic scaffolds until exact source records, dataset
+  hashes, validity ranges, and tests/certificates are added.
+- Search leads added:
+  Lotz 1967/ApJS ionization, Post 1977 cooling, ADAS/Summers, CHIANTI,
+  Puetterich 2019, Seaton/Burgess recombination, NIST ASD, Buneman 1959,
+  Davidson/Gladd LHDI, Nevins/Swain and Sikora/Weller p-B11, Salpeter/Hutchinson
+  /Sheffield scattering, Danielsson/Brenning CIV, Nanbu/Perez collisions,
+  Schmidt DPF kinetic simulations, Shumlak-Hartman shear stabilization, Taylor
+  1950, and Athena/Athena++/AthenaK method papers.
+- Status:
+  no scientific blocker changed state. This pass updates
+  `docs/SOURCE_ACQUISITION_NEEDED.md` so future work does not accidentally
+  promote scaffolded modules without local KR evidence and module-specific
+  verification.
+
+### 2026-05-09: WALRUS / MHD Training Data Review
+
+- Scope:
+  searched external WALRUS, The Well, and public MHD dataset sources, then
+  audited local WALRUS/DPF training artifacts under `docs/`, `training_data/`,
+  `models/`, and the WALRUS integration code.
+- New review artifact:
+  added `docs/WALRUS_MHD_TRAINING_DATA_REVIEW_2026_05_09.md` and linked it
+  from `docs/SOURCE_ACQUISITION_NEEDED.md`.
+- External leads added:
+  WALRUS arXiv/GitHub/model-card sources, The Well NeurIPS 2024 paper and docs,
+  The Well `MHD_64`/`MHD_256` pages, the CATS astrophysical turbulence paper
+  (`10.3847/1538-4357/abc484`), and NASA/ASME/FDA credibility-method leads.
+- Local data assessment:
+  tracked `docs/walrus_training_*.json` files are Lee-model current/yield
+  waveform sweeps, not volumetric MHD and not experimental validation. Ignored
+  HDF5 training sets under `training_data/` are not defensible as-is: the audit
+  found missing manifests, missing energy-conservation fields, non-finite
+  circuit scalars, suspicious float32-limit field values, metadata/geometry
+  mismatches, and sampled all-zero magnetic fields.
+- Decision:
+  the current WALRUS/DPF data can support pipeline development, schema tests,
+  negative tests, and exploratory ML only. It cannot support scientific
+  validation, high-fidelity readiness, or publication claims unless regenerated
+  with strict validation, manifests, accepted source-backed solver evidence,
+  and clear context-of-use limits.
+
+### 2026-05-09: Module-By-Module Suspect-Code Audit Notes
+
+- Scope:
+  performed the requested module-by-module audit as notes only. No source code
+  or `KnowledgeReference/` files were edited. All non-`KnowledgeReference/`
+  code, tests, comments, docs, generated data, and training artifacts were
+  treated as suspect until backed by local reviewed evidence.
+- New audit packet:
+  added `docs/MODULE_AUDIT/INDEX.md`, `docs/MODULE_AUDIT/BACKLOG.md`, and one
+  module note each for validation, engine/core, Metal/MLX, circuit/snowplow,
+  diagnostics, radiation/atomic/neutrons, IO/export, AI/WALRUS, and
+  server/GUI/CLI.
+- Module findings:
+  validation has good blocker-preserving guardrails but still mixes authority,
+  target extraction, calibration, diagnostics, and verification roles; engine/
+  app surfaces can hide failures through fallback or mismatched feature labels;
+  MLX and circuit/snowplow contain useful engineering paths but need source-
+  status labels around coupling, floor, radius, and current-factor assumptions;
+  diagnostics and radiation contain several source-backed pieces but many
+  synthetic or empirical outputs remain non-authoritative; IO/export and
+  AI/WALRUS are useful scaffolds but not validation evidence; and server/GUI/CLI
+  surfaces need tighter backend, unit, readiness, and claim-label consistency.
+- Backlog update:
+  `docs/MODULE_AUDIT/BACKLOG.md` now contains module-specific task IDs for all
+  nine modules. These are advisory future-work entries, not implementation
+  authority, and each still requires current-code review, source review, and
+  task sizing before work begins.
+- Verification:
+  `git diff --check -- docs/MODULE_AUDIT` passed, and the module-audit folder
+  has no pending markers or trailing whitespace.
+
+### 2026-05-09: Engine/Core MHD Wrapper Guardrails
+
+- Scope:
+  started engine/core implementation work while validation remains blocked on
+  independent review. This closes the first two code-ready items from
+  `docs/MODULE_AUDIT/BACKLOG.md`: `ENG-001` and `ENG-002`.
+- Changes made:
+  `app_engine.run_mhd_simulation_core()` now honors the requested `n_steps` by
+  calling `SimulationEngine.run(max_steps=...)`; validates `n_steps`; exposes
+  `requested_max_steps` and `terminated_by_max_steps`; and no longer silently
+  falls back to Lee-only output after a full-engine failure.
+- Explicit fallback path:
+  callers that intentionally want Lee fallback must pass
+  `allow_engine_fallback=True`. Those fallback results are labeled with
+  `engine_status="failed"`, `engine_fallback="lee"`,
+  `engine_fallback_allowed=True`, and the engine error type/message.
+- Tests:
+  added `tests/test_app_engine_core_guardrails.py` for max-step forwarding,
+  invalid step rejection, default fail-visible failure, and explicit fallback
+  metadata. Focused test result:
+  `python3 -m pytest tests/test_app_engine_core_guardrails.py -q` passed
+  (`4 passed`). `git diff --check` also passed for the touched files.
+- Boundary:
+  this improves auditability and prevents an MHD failure from masquerading as a
+  successful engine result. It does not promote any validation evidence or close
+  scientific blockers.
+- Follow-on `ENG-007` closure:
+  separated backend implementation maturity from validation status by adding
+  `backend_authority_labels()` and attaching backend authority metadata to
+  `SimulationEngine.run()` summaries. `engine_tier` remains backward-compatible,
+  but the new summary fields mark backend tier as `not_validation_evidence`
+  unless real readiness artifacts say otherwise.
+- Additional verification:
+  extended `tests/test_backend_capabilities.py`; focused run
+  `python3 -m pytest tests/test_backend_capabilities.py
+  tests/test_app_engine_core_guardrails.py -q` passed (`9 passed`). Compile and
+  `git diff --check` checks also passed for the touched engine/app/test files.
+- `ENG-004` closure:
+  since breakdown is not yet wired into the engine initial-state path, the run
+  summary now reports `breakdown_authority` with
+  `status="config_only_not_applied"`, `applied_to_initial_state=False`, and
+  `validation_status="not_validation_evidence"`. The focused engine/core suite
+  now passes with `10 passed`.
+- `ENG-006` closure:
+  `src/dpf/constants.py` now states that these are standards-scoped
+  implementation constants, not KR-scoped scientific validation inputs. The
+  code adds `CONSTANTS_SCOPE` and `CONSTANTS_AUTHORITY`, derives `m_d` from
+  SciPy's deuteron-mass constant, and adds direct constants authority tests.
+- `ENG-008` closure:
+  state sanitation now preserves first-failure evidence before repair and
+  exposes it through `SimulationEngine.nonfinite_state_evidence` and run
+  summaries. Probe/audit runs can set `fail_fast_on_nonfinite=True` with
+  `nan_check_stride=1` to fail before repair while retaining the first event.
+- Probe wiring:
+  the opt-in PF-1000 MLX pytest probe and standalone probe script now use the
+  built-in fail-fast sanitation path instead of monkeypatching `_sanitize_state`.
+- Verification:
+  focused run `python3 -m pytest tests/test_constants_authority.py
+  tests/test_backend_capabilities.py tests/test_app_engine_core_guardrails.py -q`
+  passed (`15 passed`). Compile checks passed for touched constants, config,
+  engine, app, test, and probe files.
+
+### 2026-05-09: Metal/MLX Engineering Guardrails
+
+- Scope:
+  continued with simulation-side engineering work after engine/core. Closed the
+  unblocked MLX backlog items `MLX-001`, `MLX-002`, `MLX-003`, `MLX-005`,
+  `MLX-006`, `MLX-007`, and `MLX-008`. Source-dependent item `MLX-004`
+  remains blocked.
+- Coupling authority cleanup:
+  MLX coupling comments and docstrings no longer describe voltage-flux or
+  Poynting-voltage coupling as "correct" or "first-principles" authority.
+  `coupling_method_authority()` now labels density-weighted `Lp`,
+  voltage-flux, and Poynting-voltage paths as
+  `validation_status="not_validation_evidence"` with
+  `can_support_scientific_claims=False`; `run_mlx_discharge()` returns
+  `mhd_coupling_authority`, and claim-guard tests pin those labels.
+- No-density-injection guardrail:
+  `_apply_floors()` no longer raises density using the old `B^2/va_max^2`
+  vacuum floor. New tests cover the direct helper and zero-`dt` RK2/RK3 paths
+  so the full timestepper cannot add fake mass through floor logic alone.
+- Coupling cleanup:
+  removed the dead radial-coordinate expression in `compute_upf_voltage_flux()`.
+  This does not source-close the voltage-flux method; it only removes stale code.
+- Probe policy:
+  added a non-slow policy test for the standalone PF-1000 MLX probe so it stays
+  classified as engineering endurance regression, not scientific acceptance.
+- MLX result metadata:
+  `run_mlx_discharge()` now emits `back_emf_V`, `back_emf_authority`, and
+  `phase_model_authority`. These fields make clear that separate motional
+  back-EMF is not applied and that pure MLX snowplow output is reduced
+  axial/radial/pinch coverage, not full Lee five-phase coverage.
+- MHD coupling gate:
+  `evaluate_mhd_coupling_gate()` now requires phase eligibility,
+  finite/positive/comparable `Lp`, finite `dLdt`, and finite/nonnegative
+  resistance before MHD-derived coupling can enter the engineering blend.
+  `run_mlx_discharge()` emits `mhd_coupling_gate`, which remains
+  `not_validation_evidence` and cannot support scientific claims without
+  same-scope validation packets.
+- Verification:
+  MLX timestepper/boris slice passed (`24 passed`), focused discharge metadata
+  tests passed (`2 passed`), probe policy tests passed (`3 passed`), the
+  combined MLX claim/gate guard and discharge authority slice passed (`7
+  passed`), and compile checks passed for the touched MLX code/tests.
+
+### 2026-05-09: Circuit/Snowplow Engineering Guardrails
+
+- Scope:
+  closed the unblocked circuit/snowplow items `CIR-001`, `CIR-002`, `CIR-003`,
+  `CIR-004`, `CIR-006`, `CIR-007`, and `CIR-008`. The remaining item stays
+  blocked on Akel waveform review.
+- CircuitCoupler authority:
+  density-weighted MHD feedback is now labeled as engineering scaffolding in
+  `src/dpf/circuit/coupler.py`. `circuit_coupler_authority()` and
+  `CircuitCoupler.authority` report `validation_status="not_validation_evidence"`
+  and `can_support_scientific_claims=False`, and engine summaries include the
+  same authority record.
+- Current-factor boundary:
+  `src/dpf/fluid/snowplow.py` now documents `L_coeff` as the unscaled geometric
+  coefficient while circuit-facing helpers apply `f_c` and `f_cr_eff`. Tests now
+  assert that `L_coeff` does not vary with `current_fraction`.
+- Radius convention boundary:
+  CPU and reduced-MLX snowplows now expose `radius_convention` metadata. CPU
+  radial loading is labeled as shock-front-radius `r_s` with PF-1000/0.14-0.17
+  `r_min` scope. MLX radial loading is labeled as piston-radius `r_p` with a
+  reduced deuterium gross `0.13a` termination and no full Lee five-phase
+  coverage. The records explicitly reject cross-backend equivalence as
+  validation evidence.
+- Post-pinch resistance provenance:
+  CPU post-pinch resistance multipliers now expose
+  `post_pinch_resistance_authority`, labeling them as empirical engineering
+  continuity knobs with missing multiplier source provenance and
+  `validation_status="not_validation_evidence"`.
+- Auto-coupler trust gate:
+  `_should_use_coupler()` no longer treats any positive density as enough for
+  auto MHD circuit loading. It requires a resolved MHD signal such as nonzero
+  `B`, nonzero velocity, or dynamic density. Explicit `density_weighted` remains
+  caller-controlled.
+- Summary metadata:
+  `SimulationEngine.run()` now includes `circuit_coupler_trust_status` so runs
+  can report whether auto coupling was trusted and why. The trust-status record
+  is still explicitly non-validation evidence.
+- Verification:
+  focused circuit/snowplow tests passed (`15 passed`), and compile checks passed
+  for the touched circuit, engine, snowplow, config, and test files. The focused
+  CircuitCoupler authority slice passed (`4 passed`), and focused CPU/MLX
+  radius-convention tests passed (`3 passed`). The post-pinch resistance
+  authority test passed (`1 passed`).
+
+### 2026-05-09: Diagnostics Engineering Guardrails
+
+- Scope:
+  closed the unblocked diagnostics items `DIA-001`, `DIA-002`, and `DIA-007`.
+  Source-dependent diagnostics items remain blocked until same-scope local KR
+  evidence, source-status manifests, and validation packets exist.
+- BeamTracker yield guardrail:
+  `BeamTracker.get_result()` now uses the beam-target helper's voltage-equivalent
+  contract instead of passing kinetic energy in joules as `V_pinch`. The result
+  exposes `equivalent_V_pinch`, `yield_status`, `yield_model_role`, and
+  `yield_warning`.
+- BeamTracker authority:
+  the yield path is explicitly labeled `engineering_estimate_not_validation`.
+  Helper failures are surfaced as `yield_status="failed"` with the exception
+  type/message, rather than being silently swallowed.
+- HDF5 divergence guardrail:
+  exported `max_div_B` is now labeled as
+  `rough_array_metric_not_physical_divergence` with `T/cell` units and
+  `validation_status="not_validation_evidence"`. This preserves compatibility
+  while preventing the scalar from being mistaken for geometry-aware divergence
+  evidence.
+- Stale diagnostics notes:
+  `src/dpf/diagnostics/Troubleshooting.md` now has a current audit preface, and
+  `docs/MODULE_AUDIT/diagnostics.md` records the new BeamTracker/HDF5 status.
+- Verification:
+  BeamTracker tests passed (`10 passed`) and export-scope/HDF5 tests passed
+  (`4 passed`) before the combined diagnostics verification.
+
+### 2026-05-10: Diagnostics Evidence Manifest Guardrail
+
+- Scope:
+  closed `DIA-005`. The diagnostics package now has a single fail-closed
+  evidence manifest for every diagnostics module/public symbol.
+- Manifest behavior:
+  `src/dpf/diagnostics/evidence_manifest.py` classifies diagnostics outputs as
+  `blocked-by-review`, `missing`, `engineering-probe`, or `synthetic-only`.
+  It intentionally contains no accepted validation entries.
+- Guardrails:
+  every manifest entry reports `validation_status="not_validation_evidence"`
+  and `can_support_validation_claims=False`. Same-scope KR/source closure,
+  detector response, uncertainty, and independent review remain prerequisites
+  for future validation promotion.
+- Tests:
+  `tests/test_diagnostics_evidence_manifest.py` parses the diagnostics source
+  tree and requires every public class/function in each diagnostics module to
+  appear in the manifest.
+- Verification:
+  manifest compile checks passed, and the focused diagnostics evidence manifest
+  test passed (`4 passed`). The combined BeamTracker/export-scope/manifest
+  diagnostics slice also passed (`22 passed`).
+- Remaining diagnostics work:
+  `DIA-003`, `DIA-004`, and `DIA-008` remain open for local formula/source
+  closure, anisotropy/beam-target assumptions, and same-scope diagnostic
+  validation packets.
+
+### 2026-05-10: Diagnostics Test-Lane Guardrail
+
+- Scope:
+  closed `DIA-006`. Diagnostics tests now have an explicit non-validation lane
+  manifest and collection-time pytest markers.
+- Test-lane behavior:
+  `src/dpf/diagnostics/test_lanes.py` classifies diagnostics-oriented test
+  files as `engineering-smoke`, `source-component-check`, `source-blocked`, or
+  `synthetic-only`. No diagnostics test is currently classified as
+  `source-backed-validation`.
+- Pytest wiring:
+  `tests/conftest.py` applies diagnostics markers during collection, and
+  `pyproject.toml` registers the marker names, including a reserved future
+  `diagnostics_validation` marker.
+- Guardrails:
+  source-component tests such as DD reactivity checks remain separate from
+  total DPF neutron validation. Synthetic diagnostics tests remain separate
+  from detector-response validation.
+- Verification:
+  manifest compile checks passed, and the focused diagnostics test-lane test
+  passed (`5 passed`). The combined diagnostics manifest/test-lane/BeamTracker/
+  export slice also passed (`27 passed`).
+- Remaining diagnostics work:
+  `DIA-003`, `DIA-004`, and `DIA-008` remain open for local formula/source
+  closure, anisotropy/beam-target assumption review, and same-scope diagnostic
+  validation packets.
+
+### 2026-05-10: Preset Value Authority Guardrail
+
+- Scope:
+  closed `ENG-005`. Preset source-scope labeling now extends from the preset
+  summary level down to every runtime config leaf.
+- Authority behavior:
+  `src/dpf/presets.py` exposes `preset_value_authority()` and
+  `preset_authority_manifest()`. These produce one fail-closed authority record
+  per preset value path.
+- Guardrails:
+  every preset value record reports `validation_status="not_validation_evidence"`
+  and `can_support_validation_claims=False`. Broad PF-1000, derived 20 kV,
+  tutorial/custom/demo, and other narrative/empirical presets remain scaffolds
+  until exact KR line references or accepted source packets are added.
+- Product surface:
+  `list_presets()` now carries compact value-source labels for API/UI display,
+  while `get_preset()` still strips `_meta` and returns only simulation config.
+- Verification:
+  preset compile checks passed, and the focused preset source-scope test passed
+  (`7 passed`). The combined diagnostics/preset guardrail slice also passed
+  (`34 passed`).
+
+### 2026-05-09: Radiation/Atomic/Neutrons Metadata Guardrails
+
+- Scope:
+  closed `RAD-006` and `RAD-008`. The source-dependent radiation/neutron tasks
+  remain blocked by missing local tables, same-scope neutron validation packets,
+  p-B11/QMF source closure, and ionization/ablation provenance work.
+- Conservative metadata:
+  line-radiation metadata now carries `source_status`,
+  `validation_status="not_validation_evidence"`, and
+  `claim_scope="engineering_cooling_estimate"`.
+- QMF label:
+  QMF suppression now exposes `qmf_model_metadata()` and labels the suppression
+  formula as `free_free_suppression_source_missing` and
+  `unverified_not_design_evidence`.
+- CPU/MLX parity:
+  MLX line-radiation provenance wording now matches the CPU surface:
+  unknown-provenance empirical fits, not direct CHIANTI/ADAS/Post source tables.
+- Verification:
+  focused radiation metadata tests passed (`4 passed`) before the combined
+  radiation verification.
+
+### 2026-05-10: QMF Diagnostic-Only Quarantine
+
+- Scope:
+  closed `RAD-005` by quarantine. No QMF derivation/source packet was added or
+  implied.
+- Output authority:
+  `QMFDiag` now carries the same fail-closed status as `qmf_model_metadata()`:
+  heuristic diagnostic role, missing free-free suppression source, not
+  validation evidence, and no validation/design-claim support.
+- Guardrails:
+  QMF suppression outputs can remain useful as regime diagnostics, but they
+  cannot support p-B11 feasibility, high-field radiation, or design claims until
+  a primary local source packet is acquired and reviewed.
+- Verification:
+  QMF/radiation metadata compile checks passed, and the focused QMF/radiation
+  metadata tests passed (`17 passed`). The combined diagnostics/preset/QMF
+  guardrail slice also passed (`51 passed`).
+
+### 2026-05-09: IO/Export Well Guardrails
+
+- Scope:
+  closed `IO-001`, `IO-006`, `IO-007`, and `IO-008`. The remaining IO/export
+  tasks remain blocked by local Well-schema source review, strict validator
+  work, deferred bridge classification propagation, and training-data
+  quarantine/regeneration decisions.
+- Well flush:
+  `SimulationEngine.run()` now flushes Well output on normal completion and
+  attempts the same after run errors. A short-run regression confirms a Well file
+  is emitted without manual `engine.close()`.
+- Circuit scalars:
+  the buffered `src/dpf/io/well_exporter.py` adapter now forwards circuit
+  scalars to the full AI Well exporter, and engine/Athena export calls provide
+  current, voltage, circuit energies, and total circuit energy.
+- Grid metadata:
+  the full AI Well exporter now writes cylindrical root `grid_type` as
+  `cylindrical` instead of always writing `cartesian`.
+- Scope/SRS sync:
+  the export scope, SRS draft, and candidate requirements baseline now state
+  that accepted HDF5/Well paths carry fail-closed classification/provenance
+  labels; deferred external bridges still need their own classification
+  propagation before acceptance.
+
+### 2026-05-09: Source-Truth Verification Boundary
+
+- Answer:
+  no current work should be read as verification of all modules against
+  `KnowledgeReference/`. The closed items are engineering, metadata, lifecycle,
+  or claim-boundary guardrails unless an accepted source packet says otherwise.
+- Current matrix:
+  `docs/MODULE_AUDIT/INDEX.md` now records module-level source-truth status.
+  All modules remain blocked, partial, engineering-guarded, or product/export
+  guarded; none is globally source-verified.
+- Practical effect:
+  future work must continue to treat older formulas, generated data, broad
+  tests, and provenance comments as suspect until local KR evidence and
+  same-scope validation packets promote them.
+
+### 2026-05-09: AI/WALRUS Guardrails
+
+- Scope:
+  closed `AI-003`, `AI-004`, `AI-006`, and `AI-008` from
+  `docs/MODULE_AUDIT/BACKLOG.md`. The remaining AI/WALRUS blockers are source
+  acquisition/review for WALRUS/The Well/CATS, checkpoint/license provenance,
+  local-data quarantine, and real formatter/checkpoint verification.
+- Strict dataset validation:
+  `DatasetValidator(strict=True)` now checks scalar finite values, required
+  energy/time datasets, monotonic time, geometry/root consistency,
+  provenance/classification attrs, non-finite sanitation labels, saturation
+  thresholds, and all-zero magnetic fields.
+- Export metadata:
+  the full AI Well exporter now labels preview/source status and records
+  non-finite sanitation counts at dataset/root level, so sanitized output cannot
+  masquerade as validation evidence.
+- Model reporting:
+  `DPFSurrogate` and the AI status API now distinguish placeholder, real model,
+  and source-backed model states. `source_backed_model_loaded` remains false
+  until a reviewed source packet records checkpoint hash/version/license/source
+  and accepted validation scope.
+- Stale-doc cleanup:
+  AI/WALRUS audit notes, AI troubleshooting notes, and the WALRUS data generator
+  script now describe JSON exploratory candidates and non-validation status
+  instead of Well HDF5 or identity-placeholder behavior.
+- Verification:
+  focused AI/WALRUS pytest slices passed. Treat those passes as implementation
+  guardrails only; they do not validate WALRUS physics against
+  `KnowledgeReference/`.
+
+### 2026-05-09: Server/GUI/CLI Time Display Guardrail
+
+- Scope:
+  closed `SGC-002`.
+- Fix:
+  `TopBar` now formats simulation time from seconds, matching API/store units,
+  and displays ns/us/ms/s based on magnitude. This removes the prior
+  seconds-as-nanoseconds display bug.
+- Verification:
+  `npm run typecheck` passed in `gui/`.
+- Boundary:
+  this is a renderer display guardrail only, not a physics-validation change.
+
+### 2026-05-09: Server/GUI/CLI Version Display Guardrail
+
+- Scope:
+  closed `SGC-007`.
+- Fix:
+  the renderer TopBar version label now uses a Vite-injected value from
+  `gui/package.json`, replacing the stale hardcoded `v1.0.0` display.
+- Verification:
+  `npm run typecheck` and `npm run build:renderer` passed in `gui/`. Vite still
+  reports non-fatal chunk-size and Node module-type warnings.
+- Boundary:
+  this is product-label hygiene only, not source-truth verification.
+
+### 2026-05-09: Server/GUI/CLI Local-First Renderer Guardrail
+
+- Scope:
+  closed `SGC-006`.
+- Fix:
+  renderer HTML no longer loads remote Google font assets. The renderer CSP now
+  permits self/local style/script/font sources and localhost/127.0.0.1 API and
+  WebSocket connections only.
+- Audit coverage:
+  local-first security audit now includes `DPF-SEC-005` for non-local renderer
+  HTTP asset references.
+- Verification:
+  local-first security tests passed (`8 passed`), Python compile checks passed,
+  `npm run typecheck` passed in `gui/`, and `npm run build:renderer` passed with
+  non-fatal Vite/Node warnings.
+- Boundary:
+  this is a local-first product/security guardrail only, not source-backed
+  scientific validation.
+
+### 2026-05-09: Server/GUI/CLI Validation Authority Display
+
+- Scope:
+  closed `SGC-003` for the CLI validation path.
+- Fix:
+  `dpf validate` now shows source-authority status and blocker count alongside
+  the peak-current PASS/FAIR/POOR grade, plus a note that those grades are
+  engineering comparisons until accepted KR/same-scope source gates promote the
+  result.
+- Verification:
+  CLI backend/validation tests passed (`4 passed`) and Python compile checks
+  passed.
+- Boundary:
+  no validation result was promoted to Reference; this only prevents the CLI
+  from presenting peak-current grade as source-backed validation.
+
+### 2026-05-09: Server/GUI/CLI Backend Contract Alignment
+
+- Scope:
+  closed `SGC-001`.
+- Fix:
+  backend names now align across server health, CLI `simulate`, CLI
+  `export-well`, renderer/Electron status types, TopBar badges, and the backend
+  selector for `mlx` and `hybrid`.
+- Verification:
+  backend contract tests passed (`6 passed`), Python compile checks passed,
+  `npm run typecheck` passed in `gui/`, and `npm run build:renderer` passed with
+  non-fatal Vite/Node warnings.
+- Boundary:
+  availability/status wiring is not validation authority. `mlx` and `hybrid`
+  remain subject to the same source-truth and readiness gates as other backends.
+
+### 2026-05-09: Server/GUI/CLI Gradio Claim Hygiene
+
+- Scope:
+  closed `SGC-005`.
+- Fix:
+  legacy Gradio copy now labels backends and high-resolution output as
+  Preview/source-gated instead of using validated, publication-grade, WORKING,
+  or 97x-demonstrated language. Backend availability is presented as product
+  readiness only.
+- Validation markdown:
+  Gradio validation output now reports an engineering comparison and states
+  that Reference validation requires accepted local `KnowledgeReference/`
+  evidence plus same-scope validation packets.
+- Verification:
+  Gradio claim-hygiene tests passed and reject the old overclaim phrases.
+- Follow-on regression cleanup:
+  the focused combined suite exposed stale slow-test assumptions rather than a
+  source-backed validation issue. The hybrid linked-Athena test now uses a
+  minimal valid cylindrical/PLM config, and real WALRUS tests now skip unless
+  `dpf.ai.HAS_WALRUS` is true.
+- Combined verification:
+  the focused Server/GUI/CLI + AI/WALRUS suite passed (`494 passed`, `12
+  skipped`, `1 xfailed`). Skips remain dependency/source availability states,
+  not validation success.
+- Boundary:
+  this is claim-boundary enforcement, not physics validation. At this checkpoint
+  the remaining Server/GUI/CLI work was readiness-scope semantics (`SGC-004`)
+  and PF-1000 source-scope labeling (`SGC-008`).
+
+### 2026-05-09: Server/GUI/CLI Readiness Scope Metadata
+
+- Scope:
+  closed `SGC-004`.
+- Fix:
+  API readiness now reports explicit `readiness_scope` metadata so Akel Fig. 1
+  digitization blockers are not implied to be per-run blockers for undeclared or
+  unrelated tutorial runs. Same-scope runs can still show the blocker as
+  applying to the run.
+- Propagation:
+  simulation managers store an optional declared validation scope; REST creation
+  reads a raw `validation_scope` or the source-scoped `pf1000_akel` preset; the
+  renderer blocker badge uses the scope note as tooltip context.
+- Verification:
+  server readiness tests cover undeclared/global source queue behavior and
+  declared PF-1000 Akel same-scope behavior. The combined focused
+  Server/GUI/CLI + AI/WALRUS suite passed (`500 passed`, `12 skipped`, `1
+  xfailed`).
+- Boundary:
+  this adds scope clarity only. Akel evidence remains blocked pending accepted
+  independent review. At this checkpoint, broader PF-1000 preset source-scope
+  labeling was still tracked separately as `SGC-008`.
+
+### 2026-05-09: Server/GUI/CLI PF-1000 Preset Source-Scope Labels
+
+- Scope:
+  closed `SGC-008`.
+- Fix:
+  preset listings and the REST preset endpoint now carry explicit
+  source-scope labels. The broad PF-1000 engineering preset, Akel shot-12581
+  preset, and 20 kV derived trend preset are separated at the product/API
+  metadata layer.
+- UI/API behavior:
+  renderer preset selection can show the source-scope status and note, while
+  `get_preset()` continues to return only simulation config values.
+- Verification:
+  preset source-scope and server readiness tests passed (`10 passed`), and GUI
+  typecheck passed.
+- Boundary:
+  no PF-1000 preset was promoted to validation evidence. The labels prevent
+  scope confusion while preserving the remaining source-closure blockers.
+
+### 2026-05-09: Validation Calibration Provenance Labels
+
+- Scope:
+  closed `VAL-007` for active calibration outputs.
+- Fix:
+  added a shared calibration provenance helper and attached its metadata to
+  Lee/MLX calibration result dictionaries. Calibration fits now report
+  `optimized_parameter_fit`, `Calibration Fit`, `not_validation_evidence`, and
+  `can_support_validation_claims=false`.
+- UI behavior:
+  calibration markdown now says optimized fits are not validation evidence and
+  that Reference validation still requires accepted local `KnowledgeReference/`
+  evidence plus same-scope validation packets.
+- Verification:
+  calibration provenance tests passed (`3 passed`).
+- Boundary:
+  this is claim hygiene for fitted parameters, not source closure for the device
+  registry or reconstructed waveforms.
+
+### 2026-05-09: IO/Export Well Artifact Classification Propagation
+
+- Scope:
+  partially closed `IO-004` for the Well HDF5 and CLI export path.
+- Fix:
+  Well HDF5 exports now carry fail-closed artifact classification metadata
+  (`artifact_classification`, `artifact_distribution`,
+  `artifact_classification_json`, and `dpf_artifact_classification_json`) while
+  retaining `validation_status="not_validation_evidence"` and Preview labels.
+  `dpf export-well` now exposes owner/classification/distribution/handling-note
+  flags, and engine-flushed Well artifacts keep training-data-interchange status
+  instead of generic run `not_evaluated`.
+- Plan status:
+  `docs/MODULE_AUDIT/BACKLOG.md` now marks `IO-004` as partial. Remaining work
+  is config/API-level classification propagation and dataset-manifest linkage;
+  Well/WALRUS/The Well source authority is still blocked by local source review.
+- Verification:
+  `python3 -m py_compile src/dpf/ai/well_exporter.py
+  src/dpf/io/well_exporter.py src/dpf/engine/core.py src/dpf/cli/main.py
+  tests/test_export_scope.py tests/test_cli_backend_options.py` passed;
+  `python3 -m pytest tests/test_export_scope.py tests/test_cli_backend_options.py
+  -q` passed (`15 passed`); targeted WALRUS metadata/strict-validator tests
+  passed (`3 passed`); and the engine manifest regression passed (`1 passed`).
+- Boundary:
+  this does not validate Well compatibility, WALRUS data, or physics outputs. It
+  prevents exported artifacts from losing governance metadata while remaining
+  non-validation evidence.
+
+### 2026-05-09: IO/Export Config-Driven Artifact Classification
+
+- Scope:
+  extended the `IO-004` partial closure into the normal engine configuration
+  path.
+- Fix:
+  `SimulationConfig.diagnostics` now has artifact owner, classification,
+  distribution, and handling-note fields. `build_run_manifest()` extracts those
+  fields by default, and `SimulationEngine` uses the same metadata for HDF5
+  governance attributes, run manifests, and engine-flushed Well output.
+- Plan status:
+  `IO-004` remains partial, not complete. The closed slice is config-driven
+  propagation for engine HDF5/Well/run-manifest artifacts; the remaining slices
+  are batch-generated Well trajectories, dataset manifests, checkpoint HDF5
+  labeling, and certificate/readiness context.
+- Verification:
+  `python3 -m py_compile src/dpf/config.py src/dpf/validation/artifacts.py
+  src/dpf/engine/core.py tests/test_validation_artifacts.py` passed, and
+  `python3 -m pytest tests/test_validation_artifacts.py tests/test_export_scope.py
+  tests/test_cli_backend_options.py -q` passed (`32 passed`).
+- Boundary:
+  this is export governance metadata only. It does not promote any artifact to
+  Reference, and it does not source-close The Well/WALRUS compatibility.
+
+### 2026-05-09: IO/Export Batch Well Classification Propagation
+
+- Scope:
+  extended `IO-004` partial closure to batch-generated Well trajectories.
+- Fix:
+  `BatchRunner.run_single()` now uses config-derived artifact classification
+  metadata when constructing `WellExporter`, so sweep-generated training
+  artifacts inherit owner, classification, distribution, and handling-note
+  labels.
+- Plan status:
+  batch Well propagation is closed. `IO-004` remains partial because dataset
+  manifests and certificate readiness/context propagation still need separate
+  implementation.
+- Verification:
+  `python3 -m py_compile src/dpf/ai/batch_runner.py
+  tests/test_walrus_consolidated.py` passed, and the focused
+  BatchRunner/export/artifact pytest slice passed (`27 passed`).
+- Boundary:
+  batch artifacts remain training-data interchange and non-validation evidence.
+
+### 2026-05-09: IO/Export Checkpoint Artifact Classification
+
+- Scope:
+  extended `IO-004` partial closure to checkpoint/restart HDF5 artifacts.
+- Fix:
+  checkpoint files now carry fail-closed artifact role, Preview/non-validation
+  labels, source-authority text, and config-derived artifact classification
+  metadata. This closes the unclassified checkpoint HDF5 surface identified in
+  the IO/export propagation audit.
+- Plan status:
+  checkpoint labeling is closed. `IO-004` remains partial because dataset
+  manifests and certificate readiness/context propagation still need separate
+  implementation.
+- Verification:
+  `python3 -m py_compile src/dpf/diagnostics/checkpoint.py
+  tests/test_infrastructure_consolidated.py` passed, and the focused checkpoint
+  artifact pytest slice passed (`6 passed`).
+- Boundary:
+  checkpoint metadata is governance labeling only, not scientific restart
+  validation.
+
+### 2026-05-09: IO/Export Dataset Manifest And API Classification Closure
+
+- Scope:
+  closed `IO-004` for artifact-classification propagation.
+- Fix:
+  Batch runs now write a fail-closed `dataset_manifest.json` with artifact
+  classification, config hash, parameter ranges, output hashes, counts, and a
+  training-candidate guardrail. The REST create-simulation path preserves
+  artifact classification fields supplied in the config payload, completing the
+  config/CLI/API propagation path for HDF5, Well, manifests, checkpoint HDF5,
+  and dataset manifests.
+- Plan status:
+  `IO-004` is marked complete in `docs/MODULE_AUDIT/BACKLOG.md`. Certificate
+  readiness/context propagation remains under `VAL-010`.
+- Verification:
+  `python3 -m py_compile src/dpf/ai/batch_runner.py
+  tests/test_walrus_consolidated.py tests/test_server_readiness.py` passed,
+  focused dataset/API tests passed (`4 passed`), and the broader
+  BatchRunner/export/artifact slice passed (`31 passed`).
+- Boundary:
+  dataset manifests are provenance/guardrail artifacts. They do not promote
+  WALRUS/The Well data to validation evidence.
+
+### 2026-05-09: Validation Certificate Readiness Context
+
+- Scope:
+  partially closed `VAL-010` for validation certificate artifacts.
+- Fix:
+  certificates now carry result classification, artifact classification,
+  readiness summaries, and blocker lists. Accepted certificates fail closed when
+  blockers are present or a supplied result classification cannot support
+  validation claims.
+- Plan status:
+  `VAL-010` is now partial in `docs/MODULE_AUDIT/BACKLOG.md`. Certificate
+  context is closed; embedded HDF5 readiness-summary propagation remains open.
+- Verification:
+  `python3 -m py_compile src/dpf/validation/artifacts.py
+  tests/test_validation_artifacts.py` passed, and
+  `python3 -m pytest tests/test_validation_artifacts.py -q` passed (`19
+  passed`).
+- Boundary:
+  this is artifact governance. No validation evidence was promoted.
+
+### 2026-05-09: Validation HDF5 Readiness Metadata
+
+- Scope:
+  completed `VAL-010` propagation guardrails.
+- Fix:
+  HDF5 run metadata now embeds compact readiness/source-blocker evidence when a
+  run summary provides it, using the same blocker-oriented evidence compaction
+  used for run manifests. Oversized payloads are not copied into attributes.
+- Plan status:
+  `VAL-010` is marked complete in `docs/MODULE_AUDIT/BACKLOG.md`. Remaining
+  validation work is source/evidence closure, not readiness surfacing.
+- Verification:
+  `python3 -m py_compile src/dpf/validation/artifacts.py src/dpf/engine/core.py
+  tests/test_validation_artifacts.py` passed, and
+  `python3 -m pytest tests/test_validation_artifacts.py tests/test_export_scope.py
+  tests/test_server_readiness.py -q` passed (`35 passed`).
+- Boundary:
+  no source blocker was cleared.
+
+### 2026-05-09: IO/Export Strict Well Validator Closure
+
+- Scope:
+  closed `IO-003`.
+- Fix/verification:
+  no code change was needed for this task in the current pass. Existing strict
+  validator behavior already covers scalar-history finiteness, required
+  provenance/classification attrs, energy evidence, monotonic time, geometry
+  consistency, sanitized-dataset rejection, saturation-scale values, and all-zero
+  magnetic-field rejection. Focused validator tests passed (`7 passed`).
+- Boundary:
+  this is local dataset integrity checking, not source-backed Well/WALRUS
+  validation.
+
+### 2026-05-09: Engine/Core GPU Operator Ownership Guardrail
+
+- Scope:
+  closed `ENG-003`.
+- Fix:
+  backend diagnostics now distinguish backend-owned, explicit-fallback, and
+  Python-operator-owned physics paths for GPU backends. Python-side Nernst and
+  implicit/STS diffusion are skipped for `metal`/`mlx` so those requested
+  operators cannot be applied twice.
+- Verification:
+  `python3 -m py_compile src/dpf/engine/backend_capabilities.py
+  src/dpf/engine/physics_operators.py src/dpf/engine/core.py
+  tests/test_backend_capabilities.py` passed, and the backend capability suite
+  passed (`11 passed`).
+- Boundary:
+  this closes an engineering ownership blocker only. It does not source-verify
+  the GPU physics models.
+
+### 2026-05-11: Root Agent Operating Contract
+
+- Scope:
+  added root `AGENTS.md` as the project-level operating contract for future
+  Codex/Cortex/sub-agent work.
+- Plan effect:
+  this supports A1 findings/status hygiene by making the first-read sequence,
+  source hierarchy, evidence-state vocabulary, blocker preservation,
+  verification commands, module routing, and delegation rules explicit for every
+  future task.
+- Scientific boundary:
+  this is not validation evidence and does not change the state of Akel
+  review, S1/S2 source closure, Tier 2/4/5 readiness, diagnostics formulas,
+  radiation/QMF/p-B11 closure, or WALRUS/The Well provenance.
+- Maintenance:
+  `AGENTS.md` must be updated whenever the source-of-truth policy, evidence
+  states, verification matrix, module routing, hard blockers, or multi-agent
+  expectations change.
+
+### 2026-05-11: Akel Digitization Source-Integrity Verifier
+
+- Scope:
+  added `scripts/verify_akel_digitization_source_integrity.py` as the review
+  preflight for Akel Fig. 1 digitization.
+- Plan effect:
+  this strengthens A2 review packet intake and A3 guarded waveform comparison
+  by proving the local document, PDF text parity, figure crop, SVG overlay
+  source, draft packet hash, and series counts have not drifted before any
+  independent reviewer decision is considered.
+- Current status:
+  live source-integrity verification passes all non-review checks and reports
+  `validation_status="blocked_by_review"` with
+  `accepted_for_validation=false`. The accepted-review gate remains blocked by
+  `independent_review_missing` and `review_status_not_accepted`.
+- Scientific boundary:
+  this is not accepted digitization evidence and does not close S1/S2. It only
+  protects the input artifact chain so a future independent review can be tied
+  to the exact local source and packet.
+
+### 2026-05-11: Source Acquisition Team Handoff Workbook
+
+- Scope:
+  exported the current source-acquisition queue to
+  `docs/SOURCE_ACQUISITION_TEAM_HANDOFF_2026_05_11.xlsx` for handoff to a team
+  that can acquire missing papers, books, data sheets, datasets, and supporting
+  process references.
+- Plan effect:
+  this supports A5 source acquisition by turning the current queue into an
+  email-ready workbook with 91 actionable acquisition rows, 10 already-local
+  rows to avoid duplicate requests, and an intake checklist for post-acquisition
+  hash/review/KR promotion steps.
+- Scientific boundary:
+  the workbook is not source evidence. External links remain acquisition leads
+  only; validation or method support still requires local acquisition, hashing,
+  `KnowledgeReference/` review, and independent review where the gate requires
+  it.
+
+### 2026-05-11: Research Papers KR Promotion And Deduplication
+
+- Scope:
+  advanced A5 source acquisition/KR ingestion for the local
+  `downloaded_books_papers/Research Papers` intake folder.
+- Plan effect:
+  54 unique PDFs are now local `KnowledgeReference/` markdown/JSON text records,
+  and 7 unique PDFs were skipped because they were already represented at
+  source level. The promotion report path was
+  `docs/RESEARCH_PAPERS_KR_PROMOTION_2026_05_11.md` / `.json`; that path was
+  later refreshed by the supplemental user-intake run below, while this
+  initial-run count remains preserved here and in
+  `docs/RESEARCH_PAPERS_INTAKE_AUDIT_2026_05_11.md`.
+- Deduplication:
+  16 exact byte-for-byte duplicate intake files were removed, leaving 61
+  PDF-like files with 61 unique SHA-256 payloads in the intake folder.
+- Newly unblocked source availability:
+  Schmidt et al. 2014, "Fully Kinetic Simulations of MegaJoule-Scale Dense
+  Plasma Focus" is no longer merely a citation in other KR files; the exact
+  `1169854.pdf` source is now promoted as
+  `KnowledgeReference/fully-kinetic-simulations-of-megajoule-scale-dense-plasma-focus-3f439245.md`
+  / `.json`.
+- Remaining A5 boundary:
+  the new KR records are `text_parity_extracted_review_needed`. They improve
+  local source availability and searchability, but they do not by themselves
+  close typed target extraction, figure/table review, same-scope comparison, or
+  validation-tier acceptance.
+
+### 2026-05-11: Formulary And Local-KR Formula Audit
+
+- Scope:
+  added `docs/FORMULARY_CODE_AUDIT_2026_05_11.md` and patched confirmed
+  formula mismatches found while comparing coded module families to the local
+  NRL formulary and local-KR MHD/circuit identities.
+- Plan effect:
+  this advances A7 numerical/formula correctness and A10 physics-fidelity
+  closure by removing known incorrect formula implementations while preserving
+  blocker status for empirical or source-missing physics.
+- Completed fixes:
+  NRL Eq. 30 bremsstrahlung, Eq. 33 recombination radiation, Eq. 34 cyclotron,
+  Eq. 13 radiative recombination, Braginskii perpendicular conductivity,
+  electron-ion Coulomb-log/resistivity diagnostics, electron-ion mfp Coulomb log,
+  SI MHD energy flux, cylindrical conservative source terms, circuit inductive
+  EMF ownership, and Lee axial `fc` circuit loading.
+- Remaining blockers:
+  `nu_ee` needs an explicit collision/relaxation-rate convention before edit;
+  empirical line cooling, QMF, p-B11, opacity/FLD, detector response, high-Z
+  EOS/radiation, ablation/impurity mixing, and kinetic/neutron production paths
+  still require separate source packets. A same-day physics follow-up closed
+  the Lee radial `fcr` helper-level audit and replaced MLX field-aware
+  fixed-ratio cross-field conduction with the local-NRL Braginskii path.
+- Verification:
+  the focused formulary/MHD/circuit regression suite passed (`202 passed`).
+- Scientific boundary:
+  this work improves coded formula correctness. It is not end-to-end DPF
+  validation and does not close same-scope Akel review, S1/S2, Tier 2, Tier 4,
+  Tier 5, or high-fidelity readiness.
+
+### 2026-05-11: Physics Focus - Transport, Lee fcr, Radiation Provenance
+
+- Scope:
+  advanced the physics side of A7/A10 using only local `KnowledgeReference/`
+  authority, with transport, Lee/circuit, and radiation/atomic sub-agent review
+  feeding into local final checks.
+- Plan effect:
+  `MLX-010` is now complete: MLX field-aware thermal conduction computes the
+  NRL electron-ion Coulomb log and Braginskii high-field perpendicular
+  conductivity instead of using a fixed cross-field ratio when field components
+  are available.
+- Plan effect:
+  `CIR-010` is now complete for the validation Lee helper: axial `fc` and
+  radial `fcr` are separated, device `lee_fcr` overrides are applied per run,
+  and radial/frozen circuit-facing inductance, `dLp/dt`, force, and metadata
+  use the radial factor.
+- Plan effect:
+  `RAD-010` remains blocked but guarded; radiation transport now exposes
+  fail-closed metadata showing the FLD/Rosseland/Kramers source packet is
+  missing. `RAD-011` is complete for p-B11 metadata separation, but p-B11
+  reactivity/yield remain non-validation evidence.
+- Verification:
+  py-compile for touched modules/tests passed, and the focused physics
+  regression suite passed (`80 passed`).
+- Remaining plan work:
+  keep `nu_ee` convention-blocked until the public API names the intended
+  collision/relaxation-rate convention. Continue source-packet work for line
+  cooling, QMF derivation, p-B11 reactivity/yield, opacity/FLD, detector
+  response, high-Z EOS/radiation, ablation/impurity mixing, kinetic/neutron
+  production, Akel S1/S2, and validation tier closure.
+- Scientific boundary:
+  this makes several physics formulas and metadata surfaces more correct. It
+  does not make the simulator globally verified against source of truth, does
+  not close same-scope waveform validation, and does not promote scaffolded
+  physics to predictive evidence.
+
+### 2026-05-11: File-Level Supplemental Physics Guardrail Pass
+
+- Scope:
+  continued A10 physics-fidelity cleanup by checking files that were not
+  individually represented in the initial module notes: ablation,
+  two-temperature energy, viscosity, Nernst/Ettingshausen, sheath utilities,
+  anomalous resistivity, CIV/Paschen startup, turbulence, Auluck/GV poloidal
+  field utilities, and Sedov verification.
+- Plan effect:
+  added `PHX-001` through `PHX-006` to the module backlog and created
+  `docs/MODULE_AUDIT/supplemental_physics_helpers.md`.
+- Plan effect:
+  `PHX-001` is complete. Seven uncovered physics helper surfaces now expose
+  fail-closed metadata with `validation_status="not_validation_evidence"` and
+  `can_support_validation_claims=False`.
+- Remaining plan work:
+  keep `PHX-002` through `PHX-006` blocked until local source packets close
+  ablation constants, 2T equilibration, ion-viscosity collision conventions,
+  Nernst/Ettingshausen coefficients, anomalous/CIV/Paschen startup rules,
+  sheath validation, Sedov normalization, and method-only bounds for Auluck/GV
+  and verification helpers.
+- Verification:
+  py-compile for touched helper modules/tests passed, and the focused
+  supplemental-physics metadata/readiness suite passed (`16 passed`).
+- Scientific boundary:
+  this improves status hygiene for previously under-reviewed physics helpers.
+  It does not source-verify those helpers and does not promote high-fidelity,
+  startup, late-pinch, neutron, high-Z, or p-B11 claims.
+
+### 2026-05-11: Supplemental User PDF Intake Promotion
+
+- Scope:
+  advanced A5 source acquisition/KR ingestion with the 30 PDFs supplied from
+  `/Users/anthonyzamora/Downloads`, copied into
+  `downloaded_books_papers/Research Papers/2026-05-11-user-ingest/`.
+- Plan effect:
+  the current promotion run scanned 91 unique intake PDFs, promoted 32 new
+  `KnowledgeReference/` Markdown/JSON records, skipped 59 already represented
+  records, failed 0 extractions, and deleted 0 duplicates. The two promoted
+  records beyond the supplied batch were existing intake copies of Schmidt et
+  al. 2014 (`1169854.pdf`) and the 2019 NRL Plasma Formulary.
+- Source-queue effect:
+  `docs/SOURCE_ACQUISITION_NEEDED.md` now distinguishes newly local text
+  records from still-missing acquisitions. Many PF-1000 phase/spatial/neutron/
+  energy/model-form leads now move from acquisition blockers to title-cleanup,
+  figure/table review, typed target extraction, and uncertainty extraction.
+  The code-backed `scientific_closure_source_acquisition_queue()` and
+  `docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md` were updated to match that state.
+- Tooling effect:
+  `scripts/promote_research_papers_to_kr.py` now treats an existing source
+  SHA-256 in KR metadata as authoritative before accession/title heuristics.
+  The follow-up dry-run is idempotent: `files=91 unique=91 promoted=0
+  skipped_existing=91 failed=0 deleted_duplicates=0`.
+- Remaining plan work:
+  prioritize metadata cleanup and target extraction for the newly local PF-1000
+  diagnostics papers, Toro method mapping, Lotz/Seaton atomic source packets,
+  CHIANTI/Puetterich radiation review, Shumlak/Buneman instability guardrails,
+  and Stepniewski/Lee/Schmidt model-form bounds. Jednorog 2017, Rezac 2012,
+  Malir 2022, Mitrofanov 2014, Jakubowska 2011, Post/ADAS/Dere, Burgess/NIST,
+  Nanbu/Perez, p-B11 reactivity/cross-section sources, Hutchinson, Freidberg/
+  Goedbloed, and Rybicki-Lightman still remain acquisition or extraction gaps.
+- Scientific boundary:
+  these records are `text_parity_extracted_review_needed` and
+  `source_available_not_target_extracted`. This pass improves local source
+  availability only; it does not accept formulas, figures, tables, plotted
+  curves, waveform points, validation targets, or any pass/fail physics claim.
+
+### 2026-05-11: Broader PDF Inventory And Textbook Chunking
+
+- Scope:
+  corrected the source-inventory scope after the active intake reported only 91
+  unique payloads.
+- Plan effect:
+  generated `docs/PDF_SOURCE_INVENTORY_2026_05_11.md` / `.json` with a broader
+  count: 1,159 project PDF-like files outside `KnowledgeReference/`, 583
+  unique project payloads, 139 Downloads PDF-like files at depth 2, 130 unique
+  Downloads payloads, and 651 unique payloads across project plus Downloads.
+- Intake policy:
+  do not bulk-promote the 651-unique inventory. Triage
+  `archive_reference_OLD/references/papers` into the active intake only when a
+  source directly closes a named source-packet, module, or validation blocker.
+- Textbook policy:
+  large/book-length sources should use chunked Markdown. The promotion utility
+  now writes sources over the page threshold as a top-level Markdown index plus
+  `KnowledgeReference/chunks/` page-range files, with full page text preserved
+  in JSON.
+- Completed chunking:
+  Toro 2009 now has a readable index at
+  `KnowledgeReference/toro2009-433cd861.md` and 30 page-range chunks under
+  `KnowledgeReference/chunks/toro2009-433cd861/`. The chunking report is
+  `docs/KR_TEXTBOOK_CHUNKING_2026_05_11.md` / `.json`.
+- Remaining plan work:
+  avoid rechunking older large KR records unless actively reviewing them,
+  because older docs/findings may cite top-level line numbers. Continue source
+  triage from the broader inventory before any further KR promotion.
+
+### 2026-05-11: Kepler Read-Only Formulary Audit Backlog
+
+- Audit result:
+  Kepler completed an independent read-only pass over formula-bearing
+  collision, radiation, diagnostics, sheath, atomic, and fluid modules using
+  only `KnowledgeReference/plasma-formulary.md` for directly comparable
+  formulas.
+- New suspected physics tasks:
+  check and patch `src/dpf/fluid/ionization.py` bremsstrahlung coefficient/unit
+  conversion; check and patch recombination radiation scaling in
+  `src/dpf/radiation/improved_radiation.py` and
+  `src/dpf/radiation/line_radiation.py`; replace or explicitly label
+  `src/dpf/collision/spitzer.py` perpendicular conductivity interpolation; and
+  resolve the `nu_ee = sqrt(2) * nu_ei(..., Z=1)` convention before changing
+  behavior.
+- Confirmed direct-formulary matches:
+  keep the audit notes for bremsstrahlung helper, cyclotron radiation, e-i/i-i
+  collision rates, Spitzer resistivity, Debye length, cold-ion Bohm speed, EOS,
+  Saha ratio, beta/Alfven/fast speeds, Bennett diagnostics, and the
+  direction/dimensional form of two-temperature equilibration.
+- Plan boundary:
+  no code was changed by this audit. These items are queued for focused patch
+  and test work, with each formula still requiring source-line traceability
+  before being called validated.
+
+### 2026-05-11: Active Intake Source Fidelity Review Applied
+
+- Work completed:
+  added and ran `scripts/verify_kr_source_fidelity.py --apply` across the 91
+  active-intake KR records. Each matching KR JSON now has a
+  `source_fidelity_review` section, and each same-stem Markdown file has a
+  source-fidelity summary marker.
+- Audit result:
+  `docs/KR_SOURCE_FIDELITY_AUDIT_2026_05_11.md` / `.json` reports 91 checked
+  and 91 updated records, with 90 records containing recovered secondary
+  extraction items and 10,767 recovered items copied into KR JSON.
+- Source-critical coverage:
+  the pass copied or indexed 2,012 figure captions, 255 table captions,
+  345 extracted table matrices, 14,554 formula-like lines, 9,533 numeric target
+  contexts, 2,143 uncertainty contexts, and 19,784 PDF image-block counts.
+- Plan effect:
+  the active intake is no longer text-parity-only for the reviewed source
+  records. Remaining scientific work is typed target extraction, plotted-curve
+  digitization where needed, uncertainty normalization, and module/test
+  traceability.
+- Boundary:
+  source PDFs remain authoritative for visual geometry and plotted curves. This
+  pass prevents source-critical text artifacts from being dropped, but it does
+  not by itself accept validation thresholds.
+
+### 2026-05-11: Target Extraction And Digitization Start
+
+- Work completed:
+  started typed target extraction for Cikhardtova 2015, Szydlowski 2004, Klir
+  2011, Springham 2021, and Catenacci 2020, using only local
+  `KnowledgeReference/` records and their local source PDFs.
+- Implementation status:
+  `src/dpf/validation/kr_targets.py` now exposes five new target records for
+  PF-1000 linear-density motion, PF-1000 fast-ion/neutron spectrum and
+  anisotropy, ToF detector response, NX3 Zr/Be activation anisotropy, and NNSS
+  DPF neutron time-energy tomography.
+- Digitization status:
+  `scripts/start_target_extraction_digitization.py` generated
+  `docs/TARGET_EXTRACTION_DIGITIZATION_2026_05_11.md` / `.json` and rendered
+  23 crop-pending workbench pages under
+  `KnowledgeReference/figures/target-extraction/2026-05-11/`. It also created
+  36 hash-recorded crop candidates: Cikhardtova 2015 Figs. 1-6, Szydlowski
+  2004 Figs. 1-5, Klir 2011 Figs. 1-4, Springham 2021 Figs. 1-7 and
+  Tables 1-2, and Catenacci 2020 Figs. 1-8 and Tables I-IV.
+- Boundary:
+  no new figure/table digitization packet is accepted. Crop candidates remain
+  `crop_candidate_unreviewed` with `accepted_for_validation=false`. OCR-suspect
+  values, plotted curves, table matrices, and visual geometry remain
+  review-blocked until extracted packets pass
+  `digitization_verification_evidence()` and independent review.
+- Verification:
+  focused target/digitization/source/quality tests passed (`169 passed`);
+  `py_compile`, `git diff --check`, and the generated report invariant check
+  passed with 5 sources, 23 rendered pages, 36 unreviewed crop candidates, and
+  0 accepted validation packets.
+
+### 2026-05-12: Validated Physics Pipeline Plan
+
+- Work completed:
+  added `docs/VALIDATED_PHYSICS_PIPELINE_PLAN.md` as the planning baseline for
+  promoting local sources into validated physics evidence.
+- Plan effect:
+  the scientific closure plan is now explicitly staged from
+  `source_validated` through source-line review, typed target extraction,
+  figure/table digitization, formula evidence, uncertainty propagation,
+  comparator binding, same-scope packet assembly, and validation certificate
+  release gates.
+- Guardrails:
+  no state may skip independent review or same-scope checks. Source validation,
+  recovered source-fidelity text, crop candidates, axis scaffolds, formula
+  audits, and typed target drafts remain non-accepting until their specific
+  gates pass.
+- Immediate execution order:
+  finish independent review handoff for existing A14/Akel draft packets, start
+  source-line review for the five May 12 target candidates, build canonical
+  evidence schemas and typed target validators, then wire UQ, comparator, and
+  same-scope packet gates before any validation certificate can be written.
+- SRS traceability:
+  the plan proposes candidate requirements `DPF-VV-011` through `DPF-VV-016`
+  for typed evidence, independent digitization review, formula packets, UQ
+  propagation, comparator binding, and same-scope packet rejection of
+  cross-scope evidence. These are not Doorstop-imported until reviewed.
+
+### 2026-05-12: Source-Truth Pipeline Validation Pass
+
+- Work completed:
+  ran the May 12 source-validation, target-triage, A14 handoff/backlog, Akel
+  source-integrity, source-fidelity, and pytest validation lanes against the
+  current workspace state.
+- Source pipeline evidence:
+  `scripts/validate_user_pdf_may12_sources.py` completed with
+  `promoted=28 stage_only=7 target_candidates=5 failures=0`;
+  `scripts/create_user_pdf_may12_target_triage.py` completed with
+  `entries=28 target_candidates=5`.
+- Review-gated digitization evidence:
+  `scripts/create_a14_independent_review_handoff.py` reported
+  `review_item_count=9`, `axis_context_item_count=3`, and
+  `accepted_for_validation_count=0`;
+  `scripts/create_a14_remaining_extraction_backlog.py` reported
+  `total_crop_count=36`, `reviewable_draft_packet_count=9`, and
+  `accepted_for_validation_count=0`.
+- Akel integrity evidence:
+  `scripts/verify_akel_digitization_source_integrity.py` passed its
+  pre-review integrity checks but still reports
+  `validation_status=blocked_by_review` and `accepted_for_validation=false`.
+  Remaining blockers are independent review missing and review status not
+  accepted.
+- Source-fidelity evidence:
+  `scripts/verify_user_pdf_batch_source_fidelity_2026_05_12.py` was run
+  without `--apply` and reported `selected=28`, `records=28`, `updated=0`,
+  `recovered_records=27`, and `recovered_items=11376`.
+- Pytest evidence:
+  the top-level non-slow/non-Athena pipeline completed:
+  `python3 -m pytest tests/ -q -m "not slow and not athena"` ->
+  `4151 passed, 7 skipped, 362 deselected, 48 xfailed, 14 xpassed,
+  25 warnings in 445.00s`.
+- Focused source/guardrail evidence:
+  source, digitization, acquisition, diagnostics, readiness, calibration,
+  Akel integrity, preset scope, MHD physics, MLX guardrail, and unreviewed
+  physics lanes also passed in focused runs before the full pass. The largest
+  split lanes completed as `878 passed, 3 skipped, 242 deselected, 30 xfailed,
+  9 xpassed`, `380 passed, 3 skipped, 6 deselected, 1 xfailed`,
+  `161 passed, 22 deselected, 4 xfailed`, and
+  `2343 passed, 1 skipped, 69 deselected, 10 xfailed, 5 xpassed`.
+- Validation blockers preserved:
+  passing pytest does not mean all physics evidence is accepted. Explicit
+  blocked gates remain for MHD/RADPF acceptance angles 1, 3, and 5; PF-1000
+  circuit validation (`I_peak=2.277 MA`, `21.8%` high, and PF-1000
+  `NRMSE=0.370` above the `0.35` fence); PF-1000 model-validity fraction
+  (`0.3077` below the `0.40` gate); and all A14/Akel draft digitizations until
+  independent review accepts them.
+- Boundary:
+  no plotted curve, table extraction, formula threshold, uncertainty value, or
+  simulation validation criterion was newly accepted. The current state is
+  source-validated and pipeline-clean with explicit review/acceptance blockers,
+  not a release of new validated physics claims.
+
+### 2026-05-12: PF-1000 Standard Circuit Source-Scope Repair
+
+- Work completed:
+  repaired the standard 27 kV PF-1000 production validation path so it no
+  longer mixes Akel 16 kV/shot-series bank and geometry values into the
+  Scholz/Gribkov 27 kV validation scope.
+- Source basis:
+  local `KnowledgeReference/plasma-physics-and-technology-1211-9-2025.md`
+  supports the standard PF-1000 bank/model fit (`L0=33.5 nH`,
+  `C0=1332 uF`, `r0=6.1 mOhm`, `fc=0.7`, `fm=0.13`, `fmr=0.35`,
+  `fcr=0.65`) at 3.5 Torr D2; local Lee-course KR lines support the
+  same standard geometry (`a=11.55 cm`, `b=16 cm`, `z0=60 cm`) and
+  `L0/r0` range. Akel 16 kV/shot-series `25 nH` / `48 cm` values remain
+  isolated in `PF-1000-16kV`.
+- Implementation:
+  `run_rlc_snowplow_pf1000()` now uses the Lee/Malek standard PF-1000 bank
+  and passes `radial_current_fraction=0.65` into `SnowplowModel`.
+  `PF1000_DATA`, `PF1000_GRIBKOV_DATA`, and the estimated 20 kV variant now
+  share the standard 27 kV bank/geometry scope where applicable.
+- Validation result:
+  the previous blocked PF-1000 circuit evidence is superseded. The current
+  production RLC+snowplow run gives `I_peak=1.826508 MA`,
+  `t_peak=7.041 us`, Scholz peak error `2.33%`, Scholz `NRMSE=0.181734`,
+  Gribkov peak error `1.06%`, and Gribkov `NRMSE=0.153639`.
+- Pipeline result:
+  `python3 -m pytest tests/test_validation_ci.py -q -o addopts=""` completed
+  as `28 passed`; `TestModelValidityWindow` completed as `2 passed` with
+  PF-1000 20% point-wise validity fraction `0.692308`; `TestBlindPrediction16kV`
+  completed as `4 passed`; quality/readiness guardrails completed as
+  `2 passed`.
+- Remaining blockers:
+  MHD/RADPF acceptance is still blocked on angles 1, 3, and 5
+  (`tests/test_mhd_acceptance.py`: `2 passed, 3 xfailed`). Reflected-shock
+  dip/peak acceptance remains partly blocked (`3 passed, 3 xfailed`) pending
+  source-scoped threshold recalibration. A14/Akel digitization packets remain
+  `blocked_by_review` until independent review accepts them.
+- Boundary:
+  this repair validates the standard PF-1000 circuit regression path and
+  clears the stale PF-1000 circuit/model-validity blockers. It does not issue
+  a new validation certificate and does not accept cross-scope Akel 16 kV
+  data for 27 kV PF-1000 scoring.
+
+### 2026-05-12: Source-Truth Simulation Monitor And Preset Repair
+
+- Work completed:
+  added and ran `scripts/run_source_truth_simulation_monitor.py` to monitor the
+  full local app-engine preset set plus all source-registered waveform devices.
+  The monitor writes auditable JSON/Markdown and classifies broken runs,
+  nonfinite arrays, runtime warnings, source authority, and accuracy-review
+  flags.
+- Generated evidence:
+  `docs/SOURCE_TRUTH_SIMULATION_MONITOR_2026_05_12.json` and
+  `docs/SOURCE_TRUTH_SIMULATION_MONITOR_2026_05_12.md`.
+- Source boundary:
+  monitor science labels come only from local `KnowledgeReference/`-backed
+  registry metadata. Reconstructed waveforms, unverified waveforms,
+  reference-only devices, and Akel draft digitization remain nonaccepting.
+- Repair finding:
+  the monitor caught the stale user-facing `pf1000` app preset: it completed
+  but peaked at `2.249 MA` against the standard PF-1000 reference, while the
+  source-scoped production circuit path had already cleared the current
+  pipeline fence. The preset now uses the Lee/Malek standard PF-1000 values
+  (`R0=6.1 mOhm`, `a=0.1155 m`, `fcr=0.65`) and is labeled
+  `same_scope_source_reviewed_not_certificate`.
+- Runtime repair:
+  `app_engine.py` now delegates DD reactivity to
+  `dpf.diagnostics.neutron_yield.dd_reactivity`, eliminating the monitor
+  runtime warning from the duplicate Bosch-Hale helper.
+- Current result:
+  `python3 scripts/run_source_truth_simulation_monitor.py --include-pytest-lanes`
+  completed with 16/16 presets operational, `broken_preset_count=0`,
+  `warning_preset_count=0`, and `pytest_failed_lane_count=0`.
+- Current PF-1000 preset:
+  `pf1000` now reports `I_peak=1.826 MA`, `t_peak=6.346 us`, and
+  `2.337%` peak error against the PF-1000 registry reference. It remains
+  non-certifying until accepted run-level validation evidence exists.
+- Remaining monitor findings:
+  `nx2` preset timing and `poseidon_60kv` preset peak/timing need accuracy
+  review. Nonaccepting device-level review flags remain for `MJOLNIR`, `NX2`,
+  and `PF-1000-16kV`; those are tracked as source/provenance or review-gated
+  work rather than accepted validation failures.
+- Verification:
+  `python3 -m pytest tests/test_neutron_yield.py tests/test_preset_source_scope.py tests/test_validation_ci.py -q -o addopts=""`
+  passed as `103 passed`; `git diff --check` passed. The monitor's MHD
+  acceptance lane skipped all 5 tests because MLX was unavailable in this
+  shell, so it does not refresh MHD/RADPF acceptance evidence.
+
+### 2026-05-12: Source-Config Monitor Ratchet
+
+- Work completed:
+  extended the full simulator monitor to compare source-facing preset
+  configuration against the local device registry, so operational runs now
+  expose source-config mismatches as explicit `source_config_flags` instead of
+  relying only on output peak/timing errors.
+- Source-scope repairs:
+  `poseidon_60kv` now uses the local POSEIDON-60kV registry fit
+  (`fc=0.60`, `fm=0.275`, `fmr=0.45`, `fcr=0.44`) and is labeled
+  `same_scope_source_reviewed_waveform_unverified_not_certificate`.
+  Current monitor result: `I_peak=3.155 MA`, `t_peak=1.990 us`, `1.102%`
+  peak error, no warnings, and no source-config flags.
+- Akel registry repair:
+  `PF-1000-16kV` now matches the local Akel shot-12581 source scope:
+  `p0=1.20 Torr`, `r0=6.1 mOhm`, `Yn=6.1e9`, `fm=0.17`, `fc=0.70`,
+  `fmr=0.26`, `fcr=0.75`. The direct device monitor now reports
+  `Ipeak Err=1.613%`, `Timing Err=12.667%`, `NRMSE=0.167`; this remains
+  nonaccepting because the waveform is reconstructed and unverified.
+- Additional source-alignment repairs:
+  `unu_ictp` now uses the local Lee/Saw table p.152 registry conditions
+  (`15 kV`, `4 Torr`) and reports `I_peak=0.181 MA`, `0.502%` peak error.
+  FAETON fill density now matches its 12 Torr source scope; its remaining
+  source-config flag is the two-step radial-current model versus the registry
+  single `fcr`.
+- Final monitor evidence:
+  `python3 scripts/run_source_truth_simulation_monitor.py --include-pytest-lanes`
+  completed with `device_count=9`, `preset_count=16`,
+  `broken_preset_count=0`, `warning_preset_count=0`,
+  `accuracy_review_preset_count=1`, `source_config_review_preset_count=3`,
+  `accuracy_review_device_count=2`, and `pytest_failed_lane_count=0`.
+- Remaining monitor findings:
+  `nx2` remains accuracy/source-config review only; the registry marks it
+  `reference_only` with no waveform. `MJOLNIR` remains nonaccepting and source
+  config review needed. `FAETON-I` remains nonaccepting pending source review
+  of the two-step radial current convention.
+- Test evidence:
+  `python3 -m pytest tests/test_validation_ci.py tests/test_neutron_yield.py tests/test_preset_source_scope.py -q -o addopts=`
+  passed as `106 passed`; `python3 -m pytest tests/test_akel_digitization_source_integrity.py tests/test_unreviewed_physics_metadata.py -q -o addopts=`
+  passed as `9 passed, 5 warnings`. The monitor lanes passed, with MHD
+  acceptance skipped because MLX was unavailable in this shell.
+- Boundary:
+  this is an operational/source-truth audit improvement, not a new validation
+  certificate. Nonaccepting waveform provenance and review gates remain
+  preserved.
+
+### 2026-05-12: Full Source-Truth Simulator Monitor Closure
+
+- Work completed:
+  finished the current simulator-monitor ratchet for NX2, MJOLNIR, and FAETON.
+  NX2 is now reference-only instead of silently empirical, MJOLNIR follows the
+  local Schmidt 2021 1 MJ registry values, and FAETON declares a noncertifying
+  Damideh 2025 Table 3 two-step radial-current source scope.
+- FAETON source-config result:
+  FAETON now uses the KR-backed Table 3 shot-1027 factors `fcr=0.8` and
+  `fcr2=0.58`. The remaining monitor flag is limited to
+  `snowplow.radial_transition_time_not_in_faeton_kr_extract_observed=7e-06`,
+  which means the transition time still needs accepted digitization/source
+  closure.
+- Full monitor evidence:
+  `python3 scripts/run_source_truth_simulation_monitor.py --include-pytest-lanes`
+  completed with `device_count=9`, `validation_ready_device_count=1`,
+  `preset_count=16`, `broken_preset_count=0`, `warning_preset_count=0`,
+  `accuracy_review_preset_count=2`, `source_config_review_preset_count=1`,
+  `accuracy_review_device_count=2`, `pytest_lane_count=3`, and
+  `pytest_failed_lane_count=0`.
+- Remaining monitor findings:
+  all presets completed without nonfinite arrays. `nx2` still needs peak and
+  timing accuracy review; `mjolnir` still needs peak-current accuracy review.
+  Those remain nonaccepting source/provenance issues, not accepted validation
+  failures.
+- Test evidence:
+  `tests/test_preset_source_scope.py` passed as `13 passed`;
+  `tests/test_validation_ci.py tests/test_neutron_yield.py tests/test_preset_source_scope.py`
+  passed as `109 passed`;
+  `tests/test_akel_digitization_source_integrity.py tests/test_unreviewed_physics_metadata.py`
+  passed as `9 passed, 5 warnings`; and the FAETON preset-specific snowplow
+  regression passed as `1 passed, 425 deselected`. The full monitor lanes also
+  passed, with MHD acceptance skipped because MLX is unavailable in this shell.
+- Boundary:
+  this pass makes the simulator workflow operationally auditable against local
+  source truth. It does not issue validation certificates or accept any
+  reconstructed, unverified, reference-only, or review-blocked evidence.
+
+### 2026-05-12: Source-Gap And Model-Coverage Classification
+
+- Work completed:
+  updated the source-truth monitor to distinguish actual validation-ready
+  accuracy failures from nonaccepting source gaps, source-config gaps, and
+  missing model coverage.
+- Current result:
+  `python3 scripts/run_source_truth_simulation_monitor.py --include-pytest-lanes`
+  completed with `preset_count=16`, `broken_preset_count=0`,
+  `warning_preset_count=0`, `accuracy_review_preset_count=0`,
+  `source_gap_review_preset_count=1`,
+  `model_coverage_review_preset_count=1`,
+  `source_config_review_preset_count=1`,
+  `accuracy_review_device_count=0`,
+  `source_gap_review_device_count=7`,
+  `model_coverage_review_device_count=1`, and
+  `pytest_failed_lane_count=0`.
+- What is now pinpointed:
+  `nx2` is a source-gap case, not an accepted physics failure: the local source
+  state is reference-only and lacks same-shot deuterium waveform evidence.
+  `mjolnir` is a model-coverage case: the local MJOLNIR source says current
+  traces require restrike timing/magnitude variation, which is not yet present
+  as accepted structured simulator input. `faeton` remains a source-config case
+  because the 7 us radial transition time is not in the current KR extract.
+- Test evidence:
+  `tests/test_preset_source_scope.py` passed as `14 passed`;
+  `tests/test_validation_ci.py tests/test_neutron_yield.py tests/test_preset_source_scope.py`
+  passed as `110 passed`; `tests/test_akel_digitization_source_integrity.py tests/test_unreviewed_physics_metadata.py`
+  passed as `9 passed, 5 warnings`; and `git diff --check` passed.
+- Boundary:
+  this is a troubleshooting classification improvement, not a validation
+  certificate. It makes the next science work concrete: add accepted MJOLNIR
+  restrike/current-diversion parameters or a supported model path, and acquire
+  or digitize same-scope waveforms for the source-gap rows.

@@ -13,7 +13,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app_mhd import _apply_post_processing, run_mhd_simulation
+from app_mhd import (
+    BACKENDS,
+    _apply_post_processing,
+    _neutron_mechanism_output_summary,
+    run_pf1000_akel_first_principles,
+    run_mhd_simulation,
+)
 from dpf.validation import pf1000_16kv_akel_table_targets
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
@@ -103,6 +109,99 @@ def test_mhd_neutron_yield_non_negative_when_present(d2_result):
     assert 0.0 <= ny["bt_fraction"] <= 1.0
 
 
+def test_neutron_mechanism_output_summary_keeps_estimates_non_promoting():
+    summary = _neutron_mechanism_output_summary({
+        "neutron_yield": {
+            "Y_thermonuclear": 6.0e7,
+            "Y_beam_target": 4.0e7,
+            "Y_neutron": 1.0e8,
+        },
+        "yield_time_resolved": {
+            "t_s": np.array([0.0, 1.0e-9]),
+            "dY_th": np.array([0.0, 6.0e7]),
+            "dY_bt": np.array([0.0, 4.0e7]),
+        },
+    })
+
+    assert summary is not None
+    assert summary["passed"] is False
+    assert summary["validation_status"] == "estimate_not_validation"
+    assert summary["first_principles_total_yield_authority"] == "blocked"
+    assert summary["mechanisms"]["thermonuclear"]["yield_n"] == 6.0e7
+    assert (
+        summary["mechanisms"]["beam_target"]["authority"]
+        == "baseline_reduced_model"
+    )
+    assert summary["mechanisms"]["beam_target"]["fraction"] == 0.4
+    assert summary["timing_history"]["status"] == "candidate_available"
+    assert summary["detector_activation_response"]["status"] == "not_produced"
+    assert "kinetic_or_hybrid_beam_target_model" in summary["validation_blockers"]
+    assert "detector_activation_response_validation" in (
+        summary["validation_blockers"]
+    )
+
+
+def test_post_processing_preserves_field_history_thermonuclear_yield():
+    rho = np.full((2, 1, 2), 1.0e-4)
+    pressure = np.full((2, 1, 2), 1.0e8)
+    result = {
+        "device": "PF-1000",
+        "t_us": np.array([0.0, 0.1]),
+        "I_MA": np.array([0.0, 0.2]),
+        "V_kV": np.array([16.0, 15.9]),
+        "L_p_nH": np.array([0.0, 1.0]),
+        "phases": ["field_coupled_candidate", "field_coupled_candidate"],
+        "n_steps": 2,
+        "final_state": {
+            "rho": rho,
+            "pressure": pressure,
+            "B": np.zeros((3, 2, 1, 2)),
+            "Te": np.full((2, 1, 2), 1.0e8),
+            "Ti": np.full((2, 1, 2), 1.0e8),
+        },
+        "yield_time_resolved": {
+            "t_s": np.array([0.0, 1.0e-7]),
+            "times_us": np.array([0.0, 0.1]),
+            "dY_thermo": np.array([0.0, 1.0e3]),
+            "dY_th": np.array([0.0, 1.0e3]),
+            "dY_bt": np.array([0.0, 0.0]),
+            "source_authority": "resolved_field_history_candidate",
+            "validation_status": "estimate_not_validation",
+        },
+        "neutron_yield": {
+            "Y_thermonuclear": 1.0e3,
+            "Y_beam_target": 0.0,
+            "Y_neutron": 1.0e3,
+            "bt_fraction": 0.0,
+            "tau_ns": 100.0,
+            "thermonuclear_input_authority": "resolved_field_history_candidate",
+            "beam_target_input_authority": "kinetic_hybrid_missing",
+        },
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 16e3, "L0": 25e-9, "C": 1332e-6, "R0": 6.1e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 160.0,
+        0.1155, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000_akel", "python", (2, 1, 2), 0.1,
+        requested_run_mode="first_principles_mhd",
+    )
+
+    assert result["neutron_yield"]["Y_thermonuclear"] == 1.0e3
+    assert (
+        result["neutron_yield"]["thermonuclear_input_authority"]
+        == "resolved_field_history_candidate"
+    )
+    assert result["neutron_yield"]["Y_beam_target"] == 0.0
+    assert (
+        result["first_principles_neutron_yield_authority"]["mechanisms"][
+            "thermonuclear"
+        ]["authority"]
+        == "resolved_field_history_candidate"
+    )
+
+
 def test_mhd_neutron_yield_absent_for_non_deuterium(ne_result):
     """neutron_yield must NOT appear for Ne (Z != 1 / A != 2) fills."""
     assert "neutron_yield" not in ne_result
@@ -122,14 +221,18 @@ def test_predictive_readiness_exported_and_blocks_unvalidated_claims(d2_result):
     assert "scientific_closure_source_acquisition_queue" in d2_result
     assert "scientific_closure_digitization_queue" in d2_result
     assert "scientific_closure_digitization_status" in d2_result
+    assert "pf1000_16kv_current_waveform_comparison_candidate" in d2_result
+    assert "snowplow_phase_validation_status" in d2_result
     assert "mhd_numerical_method" in d2_result
     assert "physics_fidelity_evidence" in d2_result
     assert "dynamic_inductance_power_balance" in d2_result
     assert "field_coupling_validation" in d2_result
+    assert "spatial_validation_scope_closure" in d2_result
     assert "validation_uncertainty_coverage" in d2_result
     assert "uncertainty_validation" in d2_result
     assert "mhd_scope_limit" in d2_result
     assert "mhd_numerical_fidelity" in d2_result
+    assert "mhd_numerical_verification_packet_status" in d2_result
     readiness = d2_result["predictive_readiness"]
     assert readiness["ready"] is False
     assert readiness["status"] == "not_predictive_ready"
@@ -158,11 +261,44 @@ def test_predictive_readiness_exported_and_blocks_unvalidated_claims(d2_result):
         "task_count"
     ] == 6
     assert d2_result["scientific_closure_digitization_status"]["open_task_count"] == 6
+    waveform_comparison = d2_result[
+        "pf1000_16kv_current_waveform_comparison_candidate"
+    ]
+    assert waveform_comparison["passed"] is False
+    assert waveform_comparison["waveform_comparison_status"] == "blocked_by_review"
+    assert waveform_comparison["metrics_computed"] is False
+    assert waveform_comparison["details"]["digitization_readiness"][
+        "waveform_digitization_status"
+    ] == "blocked_by_review"
+    phase_status = d2_result["snowplow_phase_validation_status"]
+    assert phase_status["passed"] is False
+    assert phase_status["status"] in {
+        "candidate_observed_no_verified_targets",
+        "missing_phase_history",
+        "target_comparison_failed_or_blocked",
+        "missing_verified_targets",
+    }
+    if phase_status["phase_history_present"]:
+        assert "same_device_kr_verified_phase_targets" in (
+            phase_status["missing_required_inputs"]
+        ) or "passing_same_device_phase_comparison" in (
+            phase_status["missing_required_inputs"]
+        )
+    spatial_closure = d2_result["spatial_validation_scope_closure"]
+    assert spatial_closure["passed"] is False
+    assert set(spatial_closure["required_quantities"]) == {
+        "density",
+        "magnetic_field",
+        "temperature",
+    }
     assert "phase_timing" in (
         d2_result["kr_validation_target_coverage"]["missing_or_partial_groups"]
     )
     assert gaps["mhd_numerical_fidelity"]["status"] == "partial"
-    assert gaps["kr_source_review"]["status"] == "supported"
+    assert gaps["kr_source_review"]["status"] == "partial"
+    assert "DPF-relevant KnowledgeReference markdown files still need" in (
+        gaps["kr_source_review"]["blocker"]
+    )
     assert gaps["kr_target_coverage"]["status"] == "partial"
     assert "closure path" in gaps["kr_target_coverage"]["blocker"]
     assert gaps["figure_digitization"]["status"] == "blocked"
@@ -190,6 +326,92 @@ def test_predictive_readiness_exported_and_blocks_unvalidated_claims(d2_result):
     assert d2_result["field_coupling_validation"]["passed"] is False
     assert d2_result["uncertainty_validation"]["passed"] is False
     assert d2_result["mhd_numerical_fidelity"]["passed"] is False
+    packet_status = d2_result["mhd_numerical_verification_packet_status"]
+    assert packet_status["production_packet_status"] == "blocked"
+    assert "restart_reproducibility" in packet_status["missing_required_packets"]
+    assert packet_status["packet_status"]["dpf_scope_limit"]["status"] == (
+        "attached_validated"
+    )
+
+
+def test_first_principles_mhd_mode_exports_fail_closed_app_readiness():
+    assert "first_principles_mhd" in BACKENDS
+    result = {
+        "device": "PF-1000",
+        "t_us": np.array([0.0, 0.1, 0.2]),
+        "I_MA": np.array([0.0, 0.4, 0.7]),
+        "V_kV": np.array([16.0, 15.5, 14.8]),
+        "Lp_snowplow_nH": np.array([0.8, 1.0, 1.2]),
+        "Lp_mhd_nH": np.array([0.7, 0.9, 1.1]),
+        "back_emf_V": np.array([0.0, 5.0, 8.0]),
+        "phases": ["rundown", "rundown", "radial"],
+        "coupling_source": ["snowplow", "mhd_blend", "mhd"],
+        "has_mhd": True,
+        "n_steps": 3,
+        "startup_sheath_initialization": {
+            "classification": "engineering_initialization_scaffold",
+            "can_support_first_principles_startup": False,
+        },
+        "electrode_boundary_conditions": {
+            "classification": "implemented_not_validated",
+        },
+        "z_sheath_cm": np.array([0.0, 0.1, 0.2]),
+    }
+    gas = {"A": 2, "Z": 1, "m_mol": 3.34e-27}
+    cc = {"V0": 16e3, "L0": 25e-9, "C": 1332e-6, "R0": 6.1e-3}
+
+    _apply_post_processing(
+        result, cc, gas, "D2", 160.0,
+        0.1155, 0.16, 0.48, 1e-3, 1e-3,
+        [], "pf1000_akel", "python", (8, 1, 8), 0.2,
+        requested_run_mode="first_principles_mhd",
+    )
+
+    readiness = result["first_principles_mhd_readiness"]
+    assert result["run_mode"] == "first_principles_mhd"
+    assert result["source_scope"] == "pf1000_16kv_2021_akel_shot12581"
+    assert result["first_principles_energy_accounting"]["status"] == "incomplete"
+    assert (
+        result["first_principles_startup_initialization"]["status"]
+        == "incomplete"
+    )
+    assert readiness["ready"] is False
+    assert readiness["status"] == "blocked"
+    assert "accepted_same_scope_akel_digitization" in readiness["missing_evidence"]
+    assert "field_coupled_energy_accounting" in readiness["missing_evidence"]
+    assert "first_principles_startup_initialization" in readiness["missing_evidence"]
+
+
+def test_pf1000_akel_first_principles_helper_locks_scope(monkeypatch):
+    import app_mhd
+
+    observed: dict[str, object] = {}
+
+    def fake_run_mhd_simulation(**kwargs):
+        observed.update(kwargs)
+        return {
+            "run_mode": "first_principles_mhd",
+            "source_scope": "pf1000_16kv_2021_akel_shot12581",
+        }
+
+    monkeypatch.setattr(app_mhd, "run_mhd_simulation", fake_run_mhd_simulation)
+
+    result = run_pf1000_akel_first_principles(
+        grid_preset="coarse",
+        sim_time_us=0.2,
+        gas_key="D2",
+    )
+
+    assert observed == {
+        "backend": "first_principles_mhd",
+        "grid_preset": "coarse",
+        "preset_name": "pf1000_akel",
+        "sim_time_us": 0.2,
+        "gas_key": "D2",
+        "progress_fn": None,
+    }
+    assert result["run_mode"] == "first_principles_mhd"
+    assert result["source_scope"] == "pf1000_16kv_2021_akel_shot12581"
 
 
 def _synthetic_mjolnir_result(include_pinch_phase: bool) -> dict:
@@ -265,6 +487,10 @@ def test_mjolnir_neutron_timing_evidence_is_exported_when_phase_timed():
     assert "neutron_mechanism_timing_validation" in result
     assert "neutron_spectrum_validation" in result
     assert "neutron_anisotropy_validation" in result
+    assert result["neutron_mechanism_outputs"]["passed"] is False
+    assert result["neutron_mechanism_outputs"]["timing_history"]["status"] == (
+        "candidate_available"
+    )
     assert "neutron_timing_validation_candidate" not in result
     evidence = result["neutron_mechanism_timing_validation"]
     assert evidence["passed"] is True
@@ -701,8 +927,10 @@ def test_app_exports_pf1000_16kv_akel_scalar_yield_validation():
     assert closure["scopes"][0]["covered_features"]["yield"] is True
     assert set(closure["scopes"][0]["missing_features"]) == {
         "anisotropy",
+        "detector_response",
         "spectrum",
         "timing",
+        "uncertainty",
     }
     tier_status = {tier["level"]: tier["status"] for tier in result["validation_tiers"]}
     assert tier_status[5] == "decomposed_estimate"

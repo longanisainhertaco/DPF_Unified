@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 BACKENDS = {
     "lee": "Level 1 — Circuit Model (< 1 sec)",
+    "first_principles_mhd": "First-principles MHD - PF-1000/Akel fail-closed readiness",
     "hybrid": "Level 2 — Circuit + MHD (3-30 sec) [RECOMMENDED]",
     "python": "Level 3 — Full MHD (10-30 sec)",
     "metal_plm": "Level 4 — Full MHD, GPU (5-15 sec)",
@@ -76,6 +77,344 @@ def _mhd_numerical_method_metadata(
             "metadata_scope": (
                 "Run-level method metadata supports numerical audits but is not "
                 "a substitute for analytic verification or convergence evidence."
+            ),
+        },
+    }
+
+
+def _first_principles_eta_field(
+    state: dict[str, np.ndarray],
+    gas: dict,
+    *,
+    eta_floor: float = 1.0e-8,
+    eta_cap: float = 1.0e-4,
+) -> tuple[np.ndarray, dict[str, object]]:
+    """Return a capped Spitzer/Braginskii resistivity field for the candidate.
+
+    The cap/floor are engineering stability limits for the current explicit
+    Python MHD path. They keep the run finite; they are not accepted physics
+    validation evidence.
+    """
+    rho = np.asarray(state["rho"], dtype=float)
+    rho_safe = np.maximum(rho, 1.0e-30)
+    Te_raw = state.get("Te")
+    if Te_raw is None:
+        pressure = np.asarray(state.get("pressure", np.zeros_like(rho_safe)), dtype=float)
+        Te = pressure * float(gas["m_mol"]) / (2.0 * rho_safe * kB)
+    else:
+        Te = np.asarray(Te_raw, dtype=float)
+    Te = np.nan_to_num(Te, nan=300.0, posinf=1.16e9, neginf=300.0)
+    Te = np.clip(Te, 300.0, 1.16e9)
+    Z_eff = float(gas.get("Z", 1.0))
+    ne = np.maximum(rho_safe / float(gas["m_mol"]) * max(Z_eff, 1.0), 1.0e6)
+    model = "spitzer_braginskii_capped"
+    try:
+        from dpf.collision.spitzer import coulomb_log, spitzer_resistivity
+
+        lnL = coulomb_log(ne, Te)
+        eta = spitzer_resistivity(ne, Te, lnL, Z=Z_eff)
+        lnL_range = [
+            float(np.nanmin(lnL)),
+            float(np.nanmax(lnL)),
+        ]
+    except Exception as exc:
+        # Fallback keeps the candidate executable if numba compilation fails.
+        Te_eV = np.maximum(Te * kB / 1.602176634e-19, 0.1)
+        eta = 5.2e-5 * max(Z_eff, 1.0) * 10.0 / np.power(Te_eV, 1.5)
+        lnL_range = [10.0, 10.0]
+        model = f"nrl_formula_fallback:{type(exc).__name__}"
+    eta = np.nan_to_num(
+        eta,
+        nan=eta_cap,
+        posinf=eta_cap,
+        neginf=eta_cap,
+    )
+    eta = np.clip(eta, eta_floor, eta_cap)
+    return eta, {
+        "model": model,
+        "validation_status": "engineering_probe_not_validation",
+        "eta_floor_ohm_m": eta_floor,
+        "eta_cap_ohm_m": eta_cap,
+        "lnL_range": lnL_range,
+        "limitations": [
+            "explicit-MHD stability cap/floor are active",
+            "cold-fill/breakdown ionization state is not yet source-closed",
+        ],
+    }
+
+
+def _apply_first_principles_engineering_bounds(
+    state: dict[str, np.ndarray],
+    gas: dict,
+    rho0: float,
+    *,
+    dr: float | None = None,
+    dz: float | None = None,
+    r_cell_m: np.ndarray | None = None,
+    magnetic_energy_cap_J: float | None = None,
+) -> tuple[dict[str, np.ndarray], dict[str, object]]:
+    """Apply explicit finite-state bounds for the first-principles candidate.
+
+    These limits prevent late explicit finite-volume overflow while preserving
+    the resolved-field coupling path. They are engineering stability guards and
+    must not be interpreted as accepted physics closure.
+    """
+    rho_floor = max(1.0e-12, 1.0e-6 * rho0)
+    rho_cap = max(1.0e3 * rho0, rho_floor * 10.0)
+    pressure_floor = 1.0e-6
+    T_cap_K = 1.16e9
+    pressure_cap = max(
+        rho_cap * kB * T_cap_K / max(float(gas["m_mol"]), 1.0e-30),
+        1.0e6,
+    )
+    B_cap_T = 50.0
+    v_cap_m_s = 2.0e6
+    mu_0_local = 4.0 * np.pi * 1.0e-7
+
+    limiter_counts: dict[str, int] = {}
+
+    def _repair_array(
+        key: str,
+        arr: np.ndarray,
+        *,
+        floor: float | None = None,
+        cap: float | None = None,
+        abs_cap: float | None = None,
+    ) -> np.ndarray:
+        values = np.asarray(arr, dtype=float)
+        repaired = values.copy()
+        before = repaired.copy()
+        finite = np.isfinite(repaired)
+        if not np.all(finite):
+            replacement = floor if floor is not None else 0.0
+            repaired = np.where(finite, repaired, replacement)
+        if floor is not None:
+            repaired = np.maximum(repaired, floor)
+        if cap is not None:
+            repaired = np.minimum(repaired, cap)
+        if abs_cap is not None:
+            repaired = np.clip(repaired, -abs_cap, abs_cap)
+        changed = int(np.count_nonzero(repaired != before))
+        if changed:
+            limiter_counts[key] = limiter_counts.get(key, 0) + changed
+        return repaired
+
+    if "rho" in state:
+        state["rho"] = _repair_array(
+            "rho",
+            state["rho"],
+            floor=rho_floor,
+            cap=rho_cap,
+        )
+    if "pressure" in state:
+        state["pressure"] = _repair_array(
+            "pressure",
+            state["pressure"],
+            floor=pressure_floor,
+            cap=pressure_cap,
+        )
+    if "Te" in state:
+        state["Te"] = _repair_array("Te", state["Te"], floor=1.0, cap=T_cap_K)
+    if "Ti" in state:
+        state["Ti"] = _repair_array("Ti", state["Ti"], floor=1.0, cap=T_cap_K)
+    if "psi" in state:
+        state["psi"] = _repair_array("psi", state["psi"], abs_cap=1.0e6)
+    if "velocity" in state:
+        velocity = _repair_array("velocity_nonfinite", state["velocity"], abs_cap=1.0e12)
+        v_mag = np.sqrt(np.sum(velocity**2, axis=0))
+        mask = v_mag > v_cap_m_s
+        if np.any(mask):
+            scale = np.ones_like(v_mag)
+            scale[mask] = v_cap_m_s / np.maximum(v_mag[mask], 1.0e-30)
+            velocity = velocity * scale[np.newaxis, :, :, :]
+            limiter_counts["velocity_magnitude"] = int(np.count_nonzero(mask))
+        state["velocity"] = velocity
+    if "B" in state:
+        B = _repair_array("B_nonfinite", state["B"], abs_cap=1.0e12)
+        B_mag = np.sqrt(np.sum(B**2, axis=0))
+        mask = B_mag > B_cap_T
+        if np.any(mask):
+            scale = np.ones_like(B_mag)
+            scale[mask] = B_cap_T / np.maximum(B_mag[mask], 1.0e-30)
+            B = B * scale[np.newaxis, :, :, :]
+            limiter_counts["B_magnitude"] = int(np.count_nonzero(mask))
+        if (
+            magnetic_energy_cap_J is not None
+            and magnetic_energy_cap_J > 0.0
+            and dr is not None
+            and dz is not None
+            and r_cell_m is not None
+        ):
+            r = np.asarray(r_cell_m, dtype=float)
+            volume = 2.0 * np.pi * np.maximum(r, 1.0e-12)[:, None] * dr * dz
+            B2 = np.sum(B[:, :, 0, :] ** 2, axis=0)
+            magnetic_energy_J = float(np.sum(0.5 * B2 / mu_0_local * volume))
+            if np.isfinite(magnetic_energy_J) and magnetic_energy_J > magnetic_energy_cap_J:
+                scale = float(np.sqrt(magnetic_energy_cap_J / magnetic_energy_J))
+                B = B * scale
+                limiter_counts["B_energy"] = int(B2.size)
+        state["B"] = B
+
+    return state, {
+        "validation_status": "engineering_probe_not_validation",
+        "rho_floor": rho_floor,
+        "rho_cap": rho_cap,
+        "pressure_floor": pressure_floor,
+        "pressure_cap": pressure_cap,
+        "B_cap_T": B_cap_T,
+        "magnetic_energy_cap_J": magnetic_energy_cap_J,
+        "velocity_cap_m_s": v_cap_m_s,
+        "counts": limiter_counts,
+    }
+
+
+def _neutron_mechanism_output_summary(
+    result: dict[str, Any],
+) -> dict[str, object] | None:
+    """Return mechanism-separated neutron output metadata without promoting it."""
+    yield_block = result.get("neutron_yield")
+    if not isinstance(yield_block, dict):
+        yield_block = result.get("neutron_yield_details")
+    history = result.get("yield_time_resolved")
+    if not isinstance(yield_block, dict) and not isinstance(history, dict):
+        return None
+
+    def _number(value: object) -> float | None:
+        if isinstance(value, bool):
+            return None
+        try:
+            number = float(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        return number if np.isfinite(number) else None
+
+    y_thermo = (
+        _number(yield_block.get("Y_thermonuclear"))
+        if isinstance(yield_block, dict) else None
+    )
+    y_beam = (
+        _number(yield_block.get("Y_beam_target"))
+        if isinstance(yield_block, dict) else None
+    )
+    y_total = (
+        _number(yield_block.get("Y_neutron"))
+        if isinstance(yield_block, dict) else None
+    )
+    if y_total is None and y_thermo is not None and y_beam is not None:
+        y_total = y_thermo + y_beam
+
+    def _fraction(value: float | None) -> float | None:
+        if value is None or y_total is None or y_total <= 0.0:
+            return None
+        return float(value / y_total)
+
+    time_key = None
+    thermo_history_key = None
+    beam_history_key = None
+    if isinstance(history, dict):
+        if history.get("t_s") is not None:
+            time_key = "yield_time_resolved.t_s"
+        elif history.get("times_us") is not None:
+            time_key = "yield_time_resolved.times_us"
+        if history.get("dY_th") is not None:
+            thermo_history_key = "yield_time_resolved.dY_th"
+        elif history.get("dY_thermo") is not None:
+            thermo_history_key = "yield_time_resolved.dY_thermo"
+        if history.get("dY_bt") is not None:
+            beam_history_key = "yield_time_resolved.dY_bt"
+    timing_available = bool(time_key and thermo_history_key and beam_history_key)
+    validation_blockers = [
+        "same_scope_scalar_yield_validation",
+        "mechanism_timing_validation",
+        "neutron_spectrum_validation",
+        "neutron_anisotropy_validation",
+        "detector_activation_response_validation",
+        "same_scope_neutron_uncertainty",
+        "kinetic_or_hybrid_beam_target_model",
+    ]
+    thermo_authority = None
+    beam_authority = None
+    if isinstance(yield_block, dict):
+        thermo_authority = yield_block.get("thermonuclear_input_authority")
+        beam_authority = yield_block.get("beam_target_input_authority")
+    return {
+        "passed": False,
+        "model_role": "mechanism_separated_neutron_output_summary",
+        "validation_tier": 5,
+        "validation_status": "estimate_not_validation",
+        "first_principles_total_yield_authority": "blocked",
+        "mechanisms": {
+            "thermonuclear": {
+                "yield_n": y_thermo,
+                "fraction": _fraction(y_thermo),
+                "status": "estimate" if y_thermo is not None else "not_produced",
+                "authority": (
+                    str(thermo_authority)
+                    if thermo_authority else (
+                        "field_derived_candidate"
+                        if y_thermo is not None else "not_produced"
+                    )
+                ),
+                "history_key": thermo_history_key if timing_available else None,
+            },
+            "beam_target": {
+                "yield_n": y_beam,
+                "fraction": _fraction(y_beam),
+                "status": "estimate" if y_beam is not None else "not_produced",
+                "authority": (
+                    str(beam_authority)
+                    if beam_authority else (
+                        "baseline_reduced_model"
+                        if y_beam is not None else "not_produced"
+                    )
+                ),
+                "history_key": beam_history_key if timing_available else None,
+            },
+        },
+        "total_yield_n": y_total,
+        "timing_history": {
+            "status": "candidate_available" if timing_available else "not_produced",
+            "time_key": time_key if timing_available else None,
+        },
+        "spectrum": {
+            "status": (
+                "candidate_available"
+                if isinstance(result.get("neutron_spectrum_samples_MeV"), dict)
+                else "not_produced"
+            ),
+        },
+        "anisotropy": {
+            "status": (
+                "candidate_available"
+                if isinstance(result.get("neutron_anisotropy"), dict)
+                else "not_produced"
+            ),
+        },
+        "detector_activation_response": {
+            "status": (
+                "candidate_available"
+                if isinstance(
+                    result.get("neutron_detector_response")
+                    or result.get("detector_response"),
+                    dict,
+                )
+                else "not_produced"
+            ),
+            "required_for_tier5": True,
+        },
+        "validation_blockers": validation_blockers,
+        "validity_notes": {
+            "claim_scope": (
+                "Mechanism-separated neutron outputs are estimates until "
+                "same-scope KR-backed scalar yield, mechanism timing, spectrum, "
+                "anisotropy, detector/activation response, and uncertainty "
+                "evidence pass together."
+            ),
+            "first_principles_boundary": (
+                "Total neutron-yield authority also requires a field-history "
+                "thermonuclear integral plus kinetic/hybrid beam-target "
+                "production; Lee/Saw or empirical beam-target terms stay "
+                "baseline-only."
             ),
         },
     }
@@ -217,6 +556,15 @@ def run_mhd_simulation(
     """Run MHD simulation and return data in the same format as Lee model."""
     from dpf.presets import _PRESETS, get_preset
 
+    requested_backend = str(backend)
+    requested_run_mode = (
+        "first_principles_mhd"
+        if requested_backend == "first_principles_mhd"
+        else str(backend)
+    )
+    if requested_backend == "first_principles_mhd":
+        backend = "python"
+
     preset = get_preset(preset_name)
     cc = preset["circuit"]
     sc = preset.get("snowplow", {})
@@ -308,6 +656,9 @@ def run_mhd_simulation(
         result = _run_python_mhd(
             grid_shape, dr, dz, gas, rho0, p_pa,
             cc, t_end, a, b, L_anode, progress_fn,
+            field_coupled_candidate=(
+                requested_run_mode == "first_principles_mhd"
+            ),
             )
 
     elapsed = wall_time.perf_counter() - t0_wall
@@ -335,6 +686,8 @@ def run_mhd_simulation(
         "circuit": cc, "snowplow_cfg": sc,
         "gas": gas, "gas_key": gas_key,
         "rho0": rho0,
+        "requested_backend": requested_backend,
+        "requested_run_mode": requested_run_mode,
         "backend": effective_backend,
         "grid_shape": grid_shape,
         "mhd_numerical_method": _mhd_numerical_method_metadata(
@@ -348,9 +701,28 @@ def run_mhd_simulation(
 
     _apply_post_processing(result, cc, gas, gas_key, p_pa, a, b, L_anode, dr, dz,
                            active_modules, preset_name, effective_backend,
-                           grid_shape, sim_time_us)
+                           grid_shape, sim_time_us,
+                           requested_run_mode=requested_run_mode)
 
     return result
+
+
+def run_pf1000_akel_first_principles(
+    *,
+    grid_preset: str = "coarse",
+    sim_time_us: float = 0.2,
+    gas_key: str = "D2",
+    progress_fn=None,
+) -> dict[str, Any]:
+    """Run the locked PF-1000/Akel first-principles engineering candidate."""
+    return run_mhd_simulation(
+        backend="first_principles_mhd",
+        grid_preset=grid_preset,
+        preset_name="pf1000_akel",
+        sim_time_us=sim_time_us,
+        gas_key=gas_key,
+        progress_fn=progress_fn,
+    )
 
 
 def _phase_stagnation_time_s(result: dict) -> float | None:
@@ -383,6 +755,7 @@ def _apply_post_processing(
     dr: float, dz: float, active_modules: list,
     preset_name: str, effective_backend: str,
     grid_shape: tuple, sim_time_us: float,
+    requested_run_mode: str | None = None,
 ) -> None:
     """Apply all post-simulation diagnostics to the result dict."""
     import subprocess as _sp
@@ -445,7 +818,21 @@ def _apply_post_processing(
     # Compute neutron yield from MHD state for deuterium fills
     if gas.get("A") == 2 and gas.get("Z") == 1:
         final_state = result.get("final_state")
-        if final_state is not None:
+        existing_neutron_yield = result.get("neutron_yield")
+        existing_yield_history = result.get("yield_time_resolved")
+        existing_field_history_yield = (
+            (
+                isinstance(existing_neutron_yield, dict)
+                and existing_neutron_yield.get("thermonuclear_input_authority")
+                == "resolved_field_history_candidate"
+            )
+            or (
+                isinstance(existing_yield_history, dict)
+                and existing_yield_history.get("source_authority")
+                == "resolved_field_history_candidate"
+            )
+        )
+        if final_state is not None and not existing_field_history_yield:
             try:
                 from dpf.diagnostics.neutron_yield import neutron_yield_rate
 
@@ -498,6 +885,30 @@ def _apply_post_processing(
                         "bt_fraction": float(Y_bt / Y_total) if Y_total > 0 else 0.0,
                         "V_pinch_kV": float(V_pinch / 1e3),
                         "tau_ns": float(tau_pinch * 1e9),
+                        "model_role": "mechanism_separated_neutron_yield_estimate",
+                        "validation_status": "estimate_not_validation",
+                        "first_principles_total_yield_authority": "blocked",
+                        "thermonuclear_input_authority": (
+                            "final_state_duration_approximation"
+                        ),
+                        "beam_target_input_authority": (
+                            "lee_saw_reduced_model_with_empirical_length"
+                            if Y_bt > 0.0 else "not_produced"
+                        ),
+                        "beam_target_length_authority": (
+                            "empirical_fraction_of_anode_length"
+                            if Y_bt > 0.0 else "not_used"
+                        ),
+                        "can_support_first_principles_neutron_yield": False,
+                        "validity_notes": {
+                            "first_principles_boundary": (
+                                "This app-level total is a reporting estimate. "
+                                "The thermonuclear term uses final-state fields "
+                                "over the simulated duration, and the beam-target "
+                                "term uses the Lee/Saw reduced estimator with an "
+                                "empirical pinch-length proxy."
+                            ),
+                        },
                     }
             except (ImportError, Exception) as exc:
                 logger.debug("Neutron yield computation skipped: %s", exc)
@@ -822,11 +1233,14 @@ def _apply_post_processing(
 
         phases_sp = result.get("phases")
         t_us_sp = result.get("t_us", np.array([]))
-        if phases_sp is not None and len(t_us_sp) > 1 and len(phases_sp) > 1:
-            phase_targets_s = (
-                result.get("snowplow_phase_targets_s")
-                or result.get("phase_timing_targets_s")
-            )
+        phase_targets_s = (
+            result.get("snowplow_phase_targets_s")
+            or result.get("phase_timing_targets_s")
+        )
+        phase_history_present = (
+            phases_sp is not None and len(t_us_sp) > 1 and len(phases_sp) > 1
+        )
+        if phase_history_present:
             if phase_targets_s and "snowplow_validation" not in result:
                 phase_target_metadata = result.get("snowplow_phase_target_metadata", {})
                 result["snowplow_validation"] = (
@@ -900,6 +1314,46 @@ def _apply_post_processing(
                                 observables,
                             )
                         )
+        phase_validation = result.get("snowplow_validation")
+        phase_candidate = result.get("snowplow_validation_candidate")
+        if isinstance(phase_validation, dict) and phase_validation.get("passed") is True:
+            phase_status = "supported"
+            missing_phase_inputs: list[str] = []
+        elif not phase_history_present:
+            phase_status = "missing_phase_history"
+            missing_phase_inputs = ["phase_history"]
+        elif phase_targets_s:
+            phase_status = "target_comparison_failed_or_blocked"
+            missing_phase_inputs = ["passing_same_device_phase_comparison"]
+        elif isinstance(phase_candidate, dict):
+            phase_status = "candidate_observed_no_verified_targets"
+            missing_phase_inputs = [
+                "same_device_kr_verified_phase_targets",
+                "phase_timing_uncertainty",
+            ]
+        else:
+            phase_status = "missing_verified_targets"
+            missing_phase_inputs = [
+                "same_device_kr_verified_phase_targets",
+                "phase_timing_uncertainty",
+            ]
+        result["snowplow_phase_validation_status"] = {
+            "passed": phase_status == "supported",
+            "validation_tier": 2,
+            "model_role": "snowplow_phase_validation_status",
+            "status": phase_status,
+            "phase_history_present": phase_history_present,
+            "phase_targets_present": bool(phase_targets_s),
+            "candidate_present": isinstance(phase_candidate, dict),
+            "missing_required_inputs": missing_phase_inputs,
+            "validity_notes": {
+                "tier_scope": (
+                    "Observed phase labels are candidates. Tier-2 support "
+                    "requires same-device KR-verified axial, radial, and "
+                    "pinch/stagnation timing targets with uncertainty."
+                ),
+            },
+        }
     except Exception as exc:
         _record_validation_error(result, "snowplow_phase_validation", exc)
 
@@ -1003,6 +1457,10 @@ def _apply_post_processing(
                 result["spatial_validation"] = combined_spatial
             else:
                 result["spatial_validation_candidate"] = combined_spatial
+        elif "spatial_validation_scope_closure" not in result:
+            result["spatial_validation_scope_closure"] = (
+                spatial_validation_scope_closure_report([])
+            )
     except Exception as exc:
         _record_validation_error(result, "spatial_validation", exc)
 
@@ -1035,6 +1493,36 @@ def _apply_post_processing(
                 result["neutron_yield_validation_candidate"] = yield_evidence
     except Exception as exc:
         _record_validation_error(result, "pf1000_16kv_akel_yield_validation", exc)
+
+    # Mechanism-separated neutron output summary. This is production reporting,
+    # not validation; it prevents total-yield estimates from hiding missing
+    # timing, spectrum, anisotropy, detector/activation, and UQ evidence.
+    try:
+        from dpf.validation.first_principles_mhd import (
+            first_principles_neutron_yield_authority_status,
+        )
+
+        mechanism_summary = _neutron_mechanism_output_summary(result)
+        if mechanism_summary is not None:
+            result.setdefault("neutron_mechanism_outputs", mechanism_summary)
+            neutron_yield = result.get("neutron_yield")
+            if isinstance(neutron_yield, dict):
+                result.setdefault(
+                    "neutron_yield_details",
+                    {
+                        **neutron_yield,
+                        "model_role": "mechanism_separated_neutron_yield_estimate",
+                        "validation_status": "estimate_not_validation",
+                        "validation_blockers": mechanism_summary[
+                            "validation_blockers"
+                        ],
+                    },
+                )
+            result["first_principles_neutron_yield_authority"] = (
+                first_principles_neutron_yield_authority_status(result)
+            )
+    except Exception as exc:
+        _record_validation_error(result, "neutron_mechanism_outputs", exc)
 
     # KnowledgeReference-backed MJOLNIR neutron timing comparison.
     # Only phase-timed comparisons are fed to the predictive-readiness gate.
@@ -1195,6 +1683,7 @@ def _apply_post_processing(
     try:
         from dpf.validation.mhd_numerical_fidelity import (
             mhd_numerical_fidelity_evidence_from_result,
+            mhd_numerical_verification_packet_status,
             mhd_scope_limit_evidence_from_phases,
         )
 
@@ -1214,14 +1703,52 @@ def _apply_post_processing(
         result["mhd_numerical_fidelity"] = (
             mhd_numerical_fidelity_evidence_from_result(result)
         )
+        result["mhd_numerical_verification_packet_status"] = (
+            mhd_numerical_verification_packet_status(result)
+        )
     except Exception as exc:
         _record_validation_error(result, "mhd_numerical_fidelity", exc)
+
+    # First-principles run-mode metadata. This is a fail-closed contract layer:
+    # it never promotes app results to accepted evidence by itself.
+    try:
+        from dpf.presets import list_presets
+        from dpf.validation.first_principles_mhd import (
+            FIRST_PRINCIPLES_MHD_MODE,
+            annotate_first_principles_mhd_result,
+        )
+
+        run_mode = str(
+            requested_run_mode
+            or result.get("requested_run_mode")
+            or result.get("run_mode")
+            or ""
+        )
+        if run_mode == FIRST_PRINCIPLES_MHD_MODE:
+            preset_authority = next(
+                (item for item in list_presets() if item.get("name") == preset_name),
+                {},
+            )
+            annotate_first_principles_mhd_result(
+                result,
+                preset_name=preset_name,
+                validation_scope=str(preset_authority.get("validation_scope", "")),
+                source_scope=str(preset_authority.get("source_scope", "")),
+                source_scope_status=str(
+                    preset_authority.get("source_scope_status", "")
+                ),
+                requested_mode=FIRST_PRINCIPLES_MHD_MODE,
+                execution_mode=str(effective_backend),
+            )
+    except Exception as exc:
+        _record_validation_error(result, "first_principles_mhd", exc)
 
     # Validation and predictive-readiness gate
     try:
         from dataclasses import asdict
 
         from dpf.validation.digitization import (
+            akel_fig1_draft_digitization_packet,
             scientific_closure_digitization_queue,
             scientific_closure_digitization_status,
         )
@@ -1231,6 +1758,7 @@ def _apply_post_processing(
             kr_validation_target_coverage_report,
             kr_validation_target_semantic_audit,
             kr_validation_target_source_audit,
+            pf1000_16kv_current_waveform_comparison_candidate_evidence,
         )
         from dpf.validation.quality_assessment import (
             high_fidelity_readiness_report,
@@ -1268,6 +1796,23 @@ def _apply_post_processing(
         )
         result["scientific_closure_digitization_status"] = (
             scientific_closure_digitization_status(digitization_packets)
+        )
+        waveform_packet = (
+            result.get("pf1000_16kv_current_waveform_digitization_packet")
+            or result.get("akel_fig1_current_waveform_digitization_packet")
+            or akel_fig1_draft_digitization_packet()
+        )
+        result["pf1000_16kv_current_waveform_comparison_candidate"] = (
+            pf1000_16kv_current_waveform_comparison_candidate_evidence(
+                result.get("t_us", []),
+                result.get("I_MA", []),
+                waveform_packet,
+                uncertainty=(
+                    result.get("pf1000_16kv_current_waveform_uncertainty")
+                    or result.get("current_waveform_uncertainty")
+                    or {}
+                ),
+            )
         )
         if "source_authority_validation" not in result:
             result["source_authority_validation"] = (
@@ -2838,6 +3383,7 @@ def _run_python_mhd(
     cc: dict, t_end: float,
     a: float, b: float, L_anode: float,
     progress_fn=None,
+    field_coupled_candidate: bool = False,
 ) -> dict[str, Any]:
     """Run Python NumPy MHD solver (CylindricalMHDSolver).
 
@@ -2848,6 +3394,10 @@ def _run_python_mhd(
     from dpf.circuit.rlc_solver import RLCSolver
     from dpf.core.bases import CouplingState
     from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
+    from dpf.diagnostics.neutron_yield import neutron_yield_rate
+    from dpf.validation.circuit_field_coupling import (
+        field_power_diagnostics_from_cylindrical_state,
+    )
 
     nr, ny, nz = grid_shape
 
@@ -2860,6 +3410,7 @@ def _run_python_mhd(
         ion_mass=gas["m_mol"],
         use_godunov_flux=True,
         conservative_energy=True,
+        r_min=a,
     )
 
     circuit = RLCSolver(
@@ -2890,23 +3441,114 @@ def _run_python_mhd(
     E_cap, E_ind, E_res = [], [], []
     rho_max_arr, T_max_arr, B_max_arr = [], [], []
     mhd_snapshots = []
+    magnetic_energy_arr: list[float] = []
+    field_L_arr: list[float] = []
+    dL_field_dt_arr: list[float] = []
+    j_dot_e_power_arr: list[float] = []
+    poynting_power_arr: list[float] = []
+    joule_power_arr: list[float] = []
+    joule_energy_arr: list[float] = []
+    back_emf_arr: list[float] = []
+    field_energy_residual_arr: list[float] = []
+    coupling_source_arr: list[str] = []
+    field_terminal_voltage_arr: list[float] = []
+    poynting_source_voltage_arr: list[float] = []
+    j_dot_e_voltage_arr: list[float] = []
+    magnetic_power_arr: list[float] = []
+    field_load_power_arr: list[float] = []
+    field_power_back_emf_arr: list[float] = []
+    eta_min_arr: list[float] = []
+    eta_mean_arr: list[float] = []
+    eta_max_arr: list[float] = []
+    resistivity_meta: dict[str, object] | None = None
+    limiter_meta: dict[str, object] | None = None
+    limiter_activation_arr: list[int] = []
+    limiter_nonfinite_repair_arr: list[int] = []
+    cumulative_joule_energy = 0.0
+    compute_thermonuclear_history = gas.get("A") == 2 and gas.get("Z") == 1
+    neutron_cell_volumes = (
+        2.0 * np.pi * np.maximum(solver.geom.r, 1.0e-12)[:, None, None] * dr * dz
+        if compute_thermonuclear_history else None
+    )
+    neutron_times_s: list[float] = []
+    neutron_dY_thermo: list[float] = []
+    neutron_dY_beam: list[float] = []
+    neutron_rate_thermo: list[float] = []
+    neutron_Y_thermo_cumulative: list[float] = []
+    neutron_T_peak_keV: list[float] = []
+    neutron_n_peak: list[float] = []
+    cumulative_thermonuclear_yield = 0.0
+    previous_field_L: float | None = None
+    previous_magnetic_energy_J = 0.0
+    _MAX_BEMF = 50e3  # [V], engineering limiter for early field-coupling probes
+    _FIELD_CURRENT_FLOOR_A = 5.0e4
 
     step = 0
     nan_detected = False
+    nonfinite_counts: dict[str, int] = {}
     while t < t_end:
+        remaining = t_end - t
+        if field_coupled_candidate and remaining <= max(1.0e-15, 1.0e-9 * t_end):
+            break
         dt_mhd = solver.compute_dt(state)
-        dt = min(dt_mhd, t_end - t)
+        if field_coupled_candidate:
+            field_coupled_max_dt = 5.0e-10
+            dt = min(dt_mhd, field_coupled_max_dt, remaining)
+        else:
+            dt = min(dt_mhd, remaining)
         if dt <= 0:
             break
 
+        eta_field = None
+        if field_coupled_candidate:
+            eta_field, resistivity_meta = _first_principles_eta_field(state, gas)
+            eta_min_arr.append(float(np.nanmin(eta_field)))
+            eta_mean_arr.append(float(np.nanmean(eta_field)))
+            eta_max_arr.append(float(np.nanmax(eta_field)))
+
         state = solver.step(
             state, dt, current=circuit.current, voltage=circuit.voltage,
+            anode_radius=a, cathode_radius=b, apply_electrode_bc=True,
+            eta_field=eta_field,
         )
+        if field_coupled_candidate:
+            state, limiter_meta = _apply_first_principles_engineering_bounds(
+                state,
+                gas,
+                rho0,
+                dr=dr,
+                dz=dz,
+                r_cell_m=solver.geom.r,
+                magnetic_energy_cap_J=0.8 * circuit.initial_energy(),
+            )
+            counts = dict(limiter_meta.get("counts", {}))
+            limiter_activation_arr.append(int(sum(counts.values())))
+            limiter_nonfinite_repair_arr.append(
+                int(
+                    sum(
+                        value for key, value in counts.items()
+                        if "nonfinite" in str(key)
+                    )
+                )
+            )
 
-        # NaN detection — break early and return valid data so far
-        if np.any(np.isnan(state["rho"])) or np.any(np.isnan(state["pressure"])):
+        # Nonfinite detection — break early and return valid data so far.
+        nonfinite_counts = {
+            key: int(np.size(value) - np.count_nonzero(np.isfinite(value)))
+            for key, value in state.items()
+            if isinstance(value, np.ndarray)
+        }
+        nonfinite_counts = {
+            key: count for key, count in nonfinite_counts.items() if count > 0
+        }
+        if nonfinite_counts:
             nan_detected = True
-            logger.warning("Python MHD: NaN detected at step %d, t=%.3e — stopping early", step, t)
+            logger.warning(
+                "Python MHD: nonfinite state at step %d, t=%.3e: %s — stopping early",
+                step,
+                t,
+                nonfinite_counts,
+            )
             break
 
         # Radiation cooling (Frontier D): bremsstrahlung + line radiation
@@ -2928,20 +3570,136 @@ def _run_python_mhd(
             except ImportError:
                 pass
 
-        # Back-EMF from MHD plasma inductance change
-        mhd_coupling = solver.coupling_interface()
-        back_emf = 0.0
-        if mhd_coupling.dL_dt is not None and abs(circuit.current) > 1.0:
-            back_emf = mhd_coupling.dL_dt * circuit.current
+        if compute_thermonuclear_history and neutron_cell_volumes is not None:
+            try:
+                rho_for_yield = np.maximum(state["rho"], 0.0)
+                n_D = rho_for_yield / max(float(gas["m_mol"]), 1.0e-30)
+                rho_safe_yield = np.maximum(rho_for_yield, 1.0e-30)
+                Ti = state.get(
+                    "Ti",
+                    state["pressure"] * float(gas["m_mol"])
+                    / (2.0 * rho_safe_yield * kB),
+                )
+                _, thermo_rate = neutron_yield_rate(
+                    n_D,
+                    Ti,
+                    neutron_cell_volumes,
+                )
+                dY_thermo = max(float(thermo_rate) * dt, 0.0)
+                cumulative_thermonuclear_yield += dY_thermo
+                neutron_times_s.append(t + dt)
+                neutron_dY_thermo.append(dY_thermo)
+                neutron_dY_beam.append(0.0)
+                neutron_rate_thermo.append(max(float(thermo_rate), 0.0))
+                neutron_Y_thermo_cumulative.append(cumulative_thermonuclear_yield)
+                neutron_T_peak_keV.append(
+                    float(np.nanmax(Ti)) * kB / (1000.0 * 1.602176634e-19)
+                )
+                neutron_n_peak.append(float(np.nanmax(n_D)))
+            except Exception as exc:
+                logger.debug("Field-history thermonuclear yield skipped: %s", exc)
 
-        coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
+        # Field-derived circuit coupling for first_principles_mhd. The legacy
+        # Python mode keeps its previous reduced coupling behavior.
+        mhd_coupling = solver.coupling_interface()
+        if field_coupled_candidate:
+            field_diag = field_power_diagnostics_from_cylindrical_state(
+                state,
+                dr=dr,
+                dz=dz,
+                current_A=circuit.current,
+                r_cell_m=solver.geom.r,
+                eta_ohm_m=eta_field,
+                previous_inductance_H=previous_field_L,
+                dt_s=dt,
+                current_floor_A=_FIELD_CURRENT_FLOOR_A,
+            )
+            L_field = float(field_diag["field_derived_inductance_H"])
+            dL_field_dt = float(field_diag["dL_field_dt_H_s"])
+            previous_field_L = L_field
+            magnetic_energy_J = float(field_diag["magnetic_energy_J"])
+            magnetic_power_W = (magnetic_energy_J - previous_magnetic_energy_J) / dt
+            previous_magnetic_energy_J = magnetic_energy_J
+            joule_power_W = max(float(field_diag["joule_power_W"]), 0.0)
+            # The circuit load is the resolved-field energy draw. J.E remains a
+            # diagnostic because the current boundary condition directly changes
+            # magnetic energy at the electrode-facing cells.
+            field_load_power_W = magnetic_power_W + joule_power_W
+            if abs(circuit.current) >= _FIELD_CURRENT_FLOOR_A:
+                back_emf_raw = field_load_power_W / circuit.current
+            else:
+                back_emf_raw = 0.0
+            back_emf = float(np.clip(back_emf_raw, -_MAX_BEMF, _MAX_BEMF))
+            if not np.isfinite(back_emf):
+                back_emf = 0.0
+            # L_field is exported as a diagnostic. The plasma load enters the
+            # circuit through field-power back-EMF to avoid double counting
+            # magnetic energy in both Lp and the resolved field ledger.
+            coupling_input = CouplingState(
+                Lp=0.0,
+                dL_dt=0.0,
+                current=circuit.current,
+                voltage=circuit.voltage,
+            )
+            coupling = circuit.step(coupling_input, back_emf=back_emf, dt=dt)
+            Lp_mhd = L_field if np.isfinite(L_field) and L_field > 0.0 else 0.0
+            cumulative_joule_energy += joule_power_W * dt
+            external_inductive_J = 0.5 * circuit.L_ext * circuit.current**2
+            energy_residual_J = (
+                circuit.initial_energy()
+                - circuit.state.energy_cap
+                - external_inductive_J
+                - magnetic_energy_J
+                - circuit.state.energy_res
+                - cumulative_joule_energy
+            )
+            magnetic_energy_arr.append(magnetic_energy_J / 1e3)
+            field_L_arr.append(L_field * 1e9)
+            dL_field_dt_arr.append(dL_field_dt)
+            j_dot_e_power_arr.append(float(field_diag["j_dot_e_power_W"]))
+            poynting_power_arr.append(field_load_power_W)
+            joule_power_arr.append(joule_power_W)
+            joule_energy_arr.append(cumulative_joule_energy / 1e3)
+            field_energy_residual_arr.append(energy_residual_J / 1e3)
+            field_terminal_voltage_arr.append(back_emf)
+            poynting_source_voltage_arr.append(
+                float(field_diag["poynting_voltage_source_orientation_V"])
+            )
+            j_dot_e_voltage_arr.append(float(field_diag["field_terminal_voltage_V"]))
+            magnetic_power_arr.append(magnetic_power_W)
+            field_load_power_arr.append(field_load_power_W)
+            field_power_back_emf_arr.append(back_emf)
+            coupling_source_arr.append("field_coupled_candidate")
+        else:
+            back_emf = 0.0
+            if mhd_coupling.dL_dt is not None and abs(circuit.current) > 1.0:
+                back_emf = mhd_coupling.dL_dt * circuit.current
+            coupling = circuit.step(coupling, back_emf=back_emf, dt=dt)
+            Lp_mhd = mhd_coupling.Lp if mhd_coupling.Lp > 0 else coupling.Lp
+            magnetic_energy_arr.append(0.0)
+            field_L_arr.append(Lp_mhd * 1e9)
+            dL_field_dt_arr.append(
+                float(mhd_coupling.dL_dt) if mhd_coupling.dL_dt is not None else 0.0
+            )
+            j_dot_e_power_arr.append(0.0)
+            poynting_power_arr.append(0.0)
+            joule_power_arr.append(0.0)
+            joule_energy_arr.append(0.0)
+            field_energy_residual_arr.append(0.0)
+            field_terminal_voltage_arr.append(back_emf)
+            poynting_source_voltage_arr.append(-back_emf)
+            j_dot_e_voltage_arr.append(back_emf)
+            magnetic_power_arr.append(0.0)
+            field_load_power_arr.append(0.0)
+            field_power_back_emf_arr.append(back_emf)
+            coupling_source_arr.append("mhd_inductance_candidate")
+        back_emf_arr.append(back_emf)
         t += dt
         step += 1
 
         times.append(t * 1e6)
         currents.append(circuit.current / 1e6)
         voltages.append(circuit.voltage / 1e3)
-        Lp_mhd = mhd_coupling.Lp if mhd_coupling.Lp > 0 else coupling.Lp
         L_plasmas.append(Lp_mhd * 1e9)
         E_cap.append(circuit.state.energy_cap / 1e3)
         E_ind.append(circuit.state.energy_ind / 1e3)
@@ -2972,11 +3730,46 @@ def _run_python_mhd(
     I_arr = np.array(currents)
     I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
 
-    return {
+    result = {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
         "L_p_nH": np.array(L_plasmas),
         "E_cap_kJ": np.array(E_cap), "E_ind_kJ": np.array(E_ind),
         "E_res_kJ": np.array(E_res),
+        "magnetic_energy_kJ": np.array(magnetic_energy_arr),
+        "magnetic_energy_J": np.array(magnetic_energy_arr) * 1e3,
+        "magnetic_energy_inductance": np.array(field_L_arr),
+        "field_derived_inductance": np.array(field_L_arr),
+        "field_derived_inductance_H": np.array(field_L_arr) * 1e-9,
+        "Lp_field_nH": np.array(field_L_arr),
+        "Lp_mhd_nH": np.array(field_L_arr),
+        "dL_field_dt_H_s": np.array(dL_field_dt_arr),
+        "j_dot_e_power_W": np.array(j_dot_e_power_arr),
+        "poynting_power_W": np.array(poynting_power_arr),
+        "field_interface_power_W": np.array(poynting_power_arr),
+        "joule_power_W": np.array(joule_power_arr),
+        "joule_energy_kJ": np.array(joule_energy_arr),
+        "magnetic_power_W": np.array(magnetic_power_arr),
+        "field_load_power_W": np.array(field_load_power_arr),
+        "field_power_back_emf_V": np.array(field_power_back_emf_arr),
+        "j_dot_e_voltage_V": np.array(j_dot_e_voltage_arr),
+        "field_terminal_voltage_V": np.array(field_terminal_voltage_arr),
+        "poynting_voltage_source_orientation_V": np.array(poynting_source_voltage_arr),
+        "back_emf_V": np.array(back_emf_arr),
+        "field_energy_residual_kJ": np.array(field_energy_residual_arr),
+        "circuit_energy_residual_kJ": np.array(field_energy_residual_arr),
+        "eta_min_ohm_m": np.array(eta_min_arr),
+        "eta_mean_ohm_m": np.array(eta_mean_arr),
+        "eta_max_ohm_m": np.array(eta_max_arr),
+        "first_principles_resistivity": resistivity_meta or {
+            "validation_status": "not_applied",
+        },
+        "field_limiter_activation_count": np.array(limiter_activation_arr),
+        "field_limiter_nonfinite_repair_count": np.array(limiter_nonfinite_repair_arr),
+        "first_principles_engineering_limiter": limiter_meta or {
+            "validation_status": "not_applied",
+        },
+        "coupling_source": coupling_source_arr,
+        "coupling_interval_authority": coupling_source_arr,
         "mhd_snapshots": mhd_snapshots,
         "final_state": state,
         "I_peak": float(np.abs(I_arr[I_peak_idx])) if len(I_arr) > 0 else 0,
@@ -2984,7 +3777,11 @@ def _run_python_mhd(
         "n_steps": step,
         "has_snowplow": False,
         "has_mhd": True,
-        "phases": ["mhd"] * len(times),
+        "phases": (
+            ["field_coupled_candidate"] * len(times)
+            if field_coupled_candidate
+            else ["mhd"] * len(times)
+        ),
         "z_mm": np.full(len(times), L_anode * 1e3),
         "r_mm": np.zeros(len(times)),
         "rho_max": np.array(rho_max_arr),
@@ -2997,7 +3794,63 @@ def _run_python_mhd(
         "snowplow_obj": None, "dt_ns": 0,
         "nan_detected": nan_detected,
         "nan_step": step if nan_detected else None,
+        "nonfinite_state_counts": nonfinite_counts if nan_detected else {},
+        "field_coupled_candidate": field_coupled_candidate,
+        "field_power_sign_convention": (
+            "field_terminal_voltage_V = -integral(J dot E)dV / current_A; "
+            "passed as RLCSolver back_emf during first_principles_mhd."
+        ),
     }
+    if compute_thermonuclear_history and neutron_times_s:
+        Y_thermo = float(cumulative_thermonuclear_yield)
+        result["yield_time_resolved"] = {
+            "t_s": np.array(neutron_times_s),
+            "times_us": np.array(neutron_times_s) * 1.0e6,
+            "dY_thermo": np.array(neutron_dY_thermo),
+            "dY_th": np.array(neutron_dY_thermo),
+            "dY_bt": np.array(neutron_dY_beam),
+            "thermonuclear_rate": np.array(neutron_rate_thermo),
+            "Y_thermo_cumulative": np.array(neutron_Y_thermo_cumulative),
+            "Y_bt_cumulative": np.zeros(len(neutron_times_s)),
+            "T_peak_keV": np.array(neutron_T_peak_keV),
+            "n_peak": np.array(neutron_n_peak),
+            "Y_total": Y_thermo,
+            "bt_fraction": 0.0,
+            "peak_yield_time_us": (
+                float(neutron_times_s[int(np.argmax(neutron_dY_thermo))]) * 1.0e6
+                if neutron_dY_thermo else 0.0
+            ),
+            "source_authority": "resolved_field_history_candidate",
+            "validation_status": "estimate_not_validation",
+        }
+        if Y_thermo > 0.0:
+            result["neutron_yield"] = {
+                "Y_thermonuclear": Y_thermo,
+                "Y_beam_target": 0.0,
+                "Y_neutron": Y_thermo,
+                "bt_fraction": 0.0,
+                "tau_ns": float((neutron_times_s[-1] - neutron_times_s[0]) * 1.0e9)
+                if len(neutron_times_s) > 1 else 0.0,
+                "model_role": "mechanism_separated_neutron_yield_estimate",
+                "validation_status": "estimate_not_validation",
+                "first_principles_total_yield_authority": "blocked",
+                "thermonuclear_input_authority": "resolved_field_history_candidate",
+                "beam_target_input_authority": "kinetic_hybrid_missing",
+                "can_support_first_principles_neutron_yield": False,
+                "validity_notes": {
+                    "thermonuclear": (
+                        "Thermonuclear DD yield is integrated over the "
+                        "resolved MHD field history and cylindrical cell "
+                        "volumes using Bosch-Hale reactivity."
+                    ),
+                    "beam_target": (
+                        "No first-principles kinetic/hybrid beam-target "
+                        "neutron model is accepted for this run; total-yield "
+                        "authority remains blocked."
+                    ),
+                },
+            }
+    return result
 
 
 def create_mhd_fields_fig(d: dict[str, Any]) -> Any:

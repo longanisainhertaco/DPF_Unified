@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 import sys
+from pathlib import Path
+from typing import Any
 
 import click
 
@@ -33,10 +35,48 @@ def cli(verbose: bool) -> None:
 @click.option("--checkpoint-interval", type=int, default=0, help="Auto-checkpoint every N steps (0=off).")
 @click.option(
     "--backend",
-    type=click.Choice(["python", "athena", "athenak", "metal", "auto"], case_sensitive=False),
+    type=click.Choice(
+        ["python", "athena", "athenak", "metal", "mlx", "hybrid", "auto"],
+        case_sensitive=False,
+    ),
     default=None,
     help="MHD solver backend. Overrides config file setting. "
-    "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'athenak'=AthenaK Kokkos, 'auto'=best available.",
+    "'python'=NumPy/Numba, 'athena'=Athena++ C++, 'athenak'=AthenaK Kokkos, "
+    "'metal'=PyTorch MPS, 'mlx'=MLX Metal v2, 'hybrid'=Athena/WALRUS hybrid, "
+    "'auto'=best available.",
+)
+@click.option(
+    "--run-mode",
+    type=click.Choice(["first_principles_mhd"], case_sensitive=False),
+    default=None,
+    help=(
+        "Optional public run-mode authority label. first_principles_mhd "
+        "keeps the selected backend but adds fail-closed PF-1000/Akel readiness."
+    ),
+)
+@click.option(
+    "--validation-scope",
+    type=str,
+    default=None,
+    help="Optional same-scope validation target label for run-mode readiness.",
+)
+@click.option(
+    "--source-scope",
+    type=str,
+    default=None,
+    help="Optional local source-scope label for run-mode readiness.",
+)
+@click.option(
+    "--source-scope-status",
+    type=str,
+    default=None,
+    help="Optional source-scope status such as same_scope_blocked_by_review.",
+)
+@click.option(
+    "--preset-name",
+    type=str,
+    default=None,
+    help="Optional preset key recorded in run-mode authority metadata.",
 )
 def simulate(
     config_file: str,
@@ -45,6 +85,11 @@ def simulate(
     restart: str | None,
     checkpoint_interval: int,
     backend: str | None,
+    run_mode: str | None,
+    validation_scope: str | None,
+    source_scope: str | None,
+    source_scope_status: str | None,
+    preset_name: str | None,
 ) -> None:
     """Run a DPF simulation from a configuration file."""
     from dpf.config import SimulationConfig
@@ -55,6 +100,16 @@ def simulate(
 
     if backend:
         config.fluid.backend = backend
+    if run_mode:
+        config.run_mode = run_mode
+    if validation_scope:
+        config.validation_scope = validation_scope
+    if source_scope:
+        config.source_scope = source_scope
+    if source_scope_status:
+        config.source_scope_status = source_scope_status
+    if preset_name:
+        config.preset_name = preset_name
 
     if output:
         config.diagnostics.hdf5_filename = output
@@ -77,6 +132,243 @@ def simulate(
             click.echo(f"  {key}: {val:.6e}")
         else:
             click.echo(f"  {key}: {val}")
+
+
+def _load_first_principles_runner():
+    """Load the app-backed first-principles runner from a local checkout."""
+    repo_root = Path(__file__).resolve().parents[3]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+    import importlib.util
+
+    app_path = repo_root / "app_mhd.py"
+    if not app_path.exists():
+        raise click.ClickException(
+            "first-principles runner requires the local checkout app_mhd.py path"
+        )
+    spec = importlib.util.spec_from_file_location("app_mhd", app_path)
+    if spec is None or spec.loader is None:
+        raise click.ClickException(f"unable to load first-principles runner at {app_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.run_pf1000_akel_first_principles
+
+
+def _json_series(value: object, *, stride: int) -> list[object]:
+    """Convert a scalar/array-like history to a JSON-safe list."""
+    if value is None:
+        return []
+    if hasattr(value, "tolist"):
+        value = value.tolist()  # type: ignore[assignment]
+    if isinstance(value, (str, bytes, bytearray)):
+        return [str(value)]
+    if not isinstance(value, list):
+        try:
+            value = list(value)  # type: ignore[arg-type]
+        except TypeError:
+            return [value]
+    return value[:: max(int(stride), 1)]
+
+
+def _float_metric(value: object, default: float = 0.0) -> float:
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    if number != number or number in (float("inf"), float("-inf")):
+        return default
+    return number
+
+
+def _max_abs_series(value: object) -> float:
+    values = _json_series(value, stride=1)
+    finite = [_float_metric(item) for item in values]
+    return max((abs(item) for item in finite), default=0.0)
+
+
+def _last_series_float(value: object) -> float:
+    values = _json_series(value, stride=1)
+    return _float_metric(values[-1]) if values else 0.0
+
+
+def _first_principles_payload(
+    result: dict[str, Any],
+    *,
+    preset: str,
+    grid_preset: str,
+    sim_time_us: float,
+    history_stride: int,
+) -> dict[str, Any]:
+    """Build a compact first-principles engineering-probe artifact."""
+    limiter_counts = _json_series(
+        result.get("field_limiter_activation_count"),
+        stride=1,
+    )
+    histories = {
+        key: _json_series(result.get(key), stride=history_stride)
+        for key in (
+            "t_us",
+            "I_MA",
+            "V_kV",
+            "back_emf_V",
+            "Lp_field_nH",
+            "magnetic_energy_kJ",
+            "joule_power_W",
+            "joule_energy_kJ",
+            "field_energy_residual_kJ",
+            "B_max",
+            "rho_max",
+            "T_max",
+            "field_limiter_activation_count",
+        )
+    }
+    readiness = result.get("first_principles_mhd_readiness")
+    neutron_authority = result.get("first_principles_neutron_yield_authority")
+    return {
+        "tool": "dpf first-principles",
+        "preset": preset,
+        "grid_preset": grid_preset,
+        "requested_sim_time_us": sim_time_us,
+        "run_mode": result.get("run_mode"),
+        "execution_backend": result.get("backend"),
+        "source_scope": result.get("source_scope"),
+        "validation_scope": result.get("validation_scope"),
+        "scientific_status": "engineering_probe_not_validation",
+        "first_principles_only_enforced": (
+            result.get("field_coupled_candidate") is True
+            and result.get("has_snowplow") is False
+        ),
+        "metrics": {
+            "n_steps": int(_float_metric(result.get("n_steps"), 0.0)),
+            "nan_detected": bool(result.get("nan_detected")),
+            "I_peak_MA": _float_metric(result.get("I_peak")),
+            "t_peak_us": _float_metric(result.get("t_peak")),
+            "back_emf_abs_max_V": _max_abs_series(result.get("back_emf_V")),
+            "B_max_T": _max_abs_series(result.get("B_max")),
+            "L_field_max_nH": _max_abs_series(result.get("Lp_field_nH")),
+            "joule_energy_final_kJ": _last_series_float(result.get("joule_energy_kJ")),
+            "field_energy_residual_final_kJ": _last_series_float(
+                result.get("field_energy_residual_kJ")
+            ),
+            "limiter_activation_max": max(
+                (int(_float_metric(item)) for item in limiter_counts),
+                default=0,
+            ),
+        },
+        "readiness": readiness if isinstance(readiness, dict) else {},
+        "neutron_yield_authority": (
+            neutron_authority if isinstance(neutron_authority, dict) else {}
+        ),
+        "histories": histories,
+    }
+
+
+@cli.command("first-principles")
+@click.option(
+    "--preset",
+    type=click.Choice(["pf1000_akel"], case_sensitive=False),
+    default="pf1000_akel",
+    show_default=True,
+    help="First-principles demonstrator scope. Locked to PF-1000/Akel for now.",
+)
+@click.option(
+    "--grid-preset",
+    type=click.Choice(["coarse", "medium", "fine"], case_sensitive=False),
+    default="coarse",
+    show_default=True,
+    help="MHD grid preset.",
+)
+@click.option(
+    "--sim-time-us",
+    type=float,
+    default=0.2,
+    show_default=True,
+    help="Candidate run duration in microseconds.",
+)
+@click.option("--gas", "gas_key", default="D2", show_default=True, help="Fill gas key.")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write compact JSON artifact with selected time histories.",
+)
+@click.option(
+    "--history-stride",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Keep every Nth sample in the JSON history artifact.",
+)
+@click.option(
+    "--require-field-feedback/--allow-zero-field-feedback",
+    default=True,
+    show_default=True,
+    help="Fail when field-derived back-EMF stays zero.",
+)
+def first_principles(
+    preset: str,
+    grid_preset: str,
+    sim_time_us: float,
+    gas_key: str,
+    output: Path | None,
+    history_stride: int,
+    require_field_feedback: bool,
+) -> None:
+    """Run the PF-1000/Akel first-principles-only engineering candidate."""
+    if sim_time_us <= 0.0:
+        raise click.BadParameter("must be positive", param_hint="--sim-time-us")
+    if history_stride <= 0:
+        raise click.BadParameter("must be positive", param_hint="--history-stride")
+
+    runner = _load_first_principles_runner()
+    result = runner(
+        grid_preset=grid_preset,
+        sim_time_us=sim_time_us,
+        gas_key=gas_key,
+    )
+    payload = _first_principles_payload(
+        result,
+        preset=preset,
+        grid_preset=grid_preset,
+        sim_time_us=sim_time_us,
+        history_stride=history_stride,
+    )
+
+    if output is not None:
+        import json
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(payload, indent=2, sort_keys=True))
+
+    metrics = payload["metrics"]
+    click.echo("First-principles PF-1000/Akel engineering candidate")
+    click.echo(f"  steps: {metrics['n_steps']}")
+    click.echo(f"  nan_detected: {metrics['nan_detected']}")
+    click.echo(f"  I_peak_MA: {metrics['I_peak_MA']:.6e}")
+    click.echo(f"  back_emf_abs_max_V: {metrics['back_emf_abs_max_V']:.6e}")
+    click.echo(f"  L_field_max_nH: {metrics['L_field_max_nH']:.6e}")
+    click.echo(f"  joule_energy_final_kJ: {metrics['joule_energy_final_kJ']:.6e}")
+    click.echo(
+        "  readiness: "
+        f"{payload.get('readiness', {}).get('status', 'unknown')}"
+    )
+    if output is not None:
+        click.echo(f"  artifact: {output}")
+
+    if payload["first_principles_only_enforced"] is not True:
+        raise click.ClickException(
+            "first-principles-only enforcement failed: run did not stay on the "
+            "field-coupled candidate path"
+        )
+    if metrics["nan_detected"]:
+        raise click.ClickException("first-principles candidate produced nonfinite state")
+    if require_field_feedback and metrics["back_emf_abs_max_V"] <= 0.0:
+        raise click.ClickException(
+            "field-derived back-EMF stayed zero; increase --sim-time-us or inspect "
+            "the field-current floor"
+        )
 
 
 @cli.command()
@@ -128,6 +420,16 @@ def backends() -> None:
     except ImportError:
         click.echo("  metal   — Apple Metal GPU MHD solver (not installed)")
 
+    # MLX Metal v2 backend
+    try:
+        from dpf.metal.mlx_solver import MLXMHDSolver
+        if MLXMHDSolver.is_available():
+            click.echo("  mlx     — MLX Metal v2 MHD solver (available)")
+        else:
+            click.echo("  mlx     — MLX Metal v2 MHD solver (not available)")
+    except ImportError:
+        click.echo("  mlx     — MLX Metal v2 MHD solver (not installed)")
+
     click.echo("\nDefault: python")
     if athenak_available():
         click.echo("Auto selection: athenak (preferred when available)")
@@ -149,7 +451,7 @@ def metal_info() -> None:
 
 
 @cli.command()
-@click.option("--host", default="127.0.0.1", help="Bind address.")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Bind address.")
 @click.option("--port", type=int, default=8765, help="Port number.")
 @click.option("--reload", is_flag=True, help="Auto-reload on code changes (dev only).")
 @click.option(
@@ -209,9 +511,43 @@ def serve(host: str, port: int, reload: bool, checkpoint: str | None, device: st
 @click.option("--output", "-o", type=str, default="well_output.h5", help="Output HDF5 file.")
 @click.option("--field-interval", type=int, default=10, help="Steps between field snapshots.")
 @click.option("--steps", type=int, default=None, help="Max timesteps.")
-@click.option("--backend", type=click.Choice(["python", "athena", "athenak", "auto"]), default=None)
+@click.option(
+    "--backend",
+    type=click.Choice(
+        ["python", "athena", "athenak", "metal", "mlx", "hybrid", "auto"],
+        case_sensitive=False,
+    ),
+    default=None,
+)
+@click.option("--artifact-owner", type=str, default=None, help="Owner recorded in Well artifact metadata.")
+@click.option(
+    "--artifact-classification",
+    type=str,
+    default="owner_unspecified",
+    help="Owner-supplied artifact classification label for Well output.",
+)
+@click.option(
+    "--artifact-distribution",
+    type=str,
+    default="owner_unspecified",
+    help="Owner-supplied distribution scope for Well output.",
+)
+@click.option(
+    "--artifact-handling-notes",
+    type=str,
+    default="",
+    help="Owner-supplied handling notes for Well output.",
+)
 def export_well(
-    config_file: str, output: str, field_interval: int, steps: int | None, backend: str | None,
+    config_file: str,
+    output: str,
+    field_interval: int,
+    steps: int | None,
+    backend: str | None,
+    artifact_owner: str | None,
+    artifact_classification: str,
+    artifact_distribution: str,
+    artifact_handling_notes: str,
 ) -> None:
     """Run a simulation and export to Well format for WALRUS training."""
     from dpf.ai.well_exporter import WellExporter
@@ -231,7 +567,19 @@ def export_well(
         dx=config.dx,
         dz=config.geometry.dz,
         geometry=config.geometry.type,
-        sim_params={"V0": config.circuit.V0, "C": config.circuit.C},
+        sim_params={
+            "V0": config.circuit.V0,
+            "C": config.circuit.C,
+            "backend": engine.backend,
+            "validation_status": "not_validation_evidence",
+            "result_label": "Preview",
+        },
+        artifact_classification={
+            "owner": artifact_owner,
+            "classification": artifact_classification,
+            "distribution": artifact_distribution,
+            "handling_notes": artifact_handling_notes,
+        },
     )
 
     step_count = 0
@@ -368,7 +716,7 @@ def inverse(
 
 @cli.command("serve-ai")
 @click.option("--checkpoint", type=click.Path(exists=True), required=True, help="WALRUS checkpoint.")
-@click.option("--host", default="127.0.0.1", help="Bind address.")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Bind address.")
 @click.option("--port", type=int, default=8766, help="Port number.")
 @click.option("--device", type=click.Choice(["cpu", "mps", "cuda"]), default="cpu")
 def serve_ai(checkpoint: str, host: str, port: int, device: str) -> None:
@@ -398,8 +746,9 @@ def serve_ai(checkpoint: str, host: str, port: int, device: str) -> None:
 
 @cli.command()
 @click.option("--port", type=int, default=7860, help="Port to bind the web UI (default: 7860).")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Bind address.")
 @click.option("--share", is_flag=True, help="Create a public Gradio share link.")
-def ui(port: int, share: bool) -> None:
+def ui(port: int, host: str, share: bool) -> None:
     """Launch the Gradio web interface."""
     try:
         import gradio as gr  # noqa: F401
@@ -420,13 +769,13 @@ def ui(port: int, share: bool) -> None:
         click.echo(f"Web UI not found at {app_path}", err=True)
         sys.exit(1)
 
-    click.echo(f"Starting DPF web UI on http://localhost:{port}")
+    click.echo(f"Starting DPF web UI on http://{host}:{port}")
     spec = importlib.util.spec_from_file_location("dpf_app", app_path)
     module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     spec.loader.exec_module(module)  # type: ignore[union-attr]
     module.app.queue(max_size=5)
     module.app.launch(
-        server_name="0.0.0.0",
+        server_name=host,
         server_port=port,
         share=share,
         theme=module.gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
@@ -502,17 +851,33 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
     for dev_name, preset_key in _MANUAL_MAP.items():
         device_to_preset.setdefault(dev_name, preset_key)
 
-    col_w = (14, 12, 12, 12, 12, 8)
+    col_w = (14, 12, 12, 12, 12, 8, 22, 8)
     header = (
         f"{'Device':<{col_w[0]}}  "
         f"{'I_peak sim':<{col_w[1]}}  "
         f"{'I_peak ref':<{col_w[2]}}  "
         f"{'Error':>{col_w[3]}}  "
         f"{'t_peak sim':<{col_w[4]}}  "
-        f"{'Status':<{col_w[5]}}"
+        f"{'Status':<{col_w[5]}}  "
+        f"{'Authority':<{col_w[6]}}  "
+        f"{'Blockers':>{col_w[7]}}"
     )
     click.echo(header)
     click.echo("-" * len(header))
+
+    def source_authority(result: dict[str, object] | None = None) -> tuple[str, str]:
+        from dpf.server.readiness import api_readiness_payload
+
+        readiness = api_readiness_payload(
+            backend="python",
+            result=result,
+            validation_status="not_evaluated",
+        )
+        classification = readiness.get("result_classification", {})
+        label = str(classification.get("label", "Preview"))
+        status = str(readiness.get("validation_status", "not_evaluated"))
+        blocker_count = len(readiness.get("source_blockers", []))
+        return f"{label}/{status}", str(blocker_count)
 
     any_fail = False
     for dev_name in targets:
@@ -524,7 +889,9 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
                 f"{'n/a':<{col_w[2]}}  "
                 f"{'n/a':>{col_w[3]}}  "
                 f"{'n/a':<{col_w[4]}}  "
-                f"{'SKIP':<{col_w[5]}}"
+                f"{'SKIP':<{col_w[5]}}  "
+                f"{'n/a':<{col_w[6]}}  "
+                f"{'n/a':>{col_w[7]}}"
             )
             click.echo(row)
             continue
@@ -538,7 +905,9 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
                 f"{'n/a':<{col_w[2]}}  "
                 f"{'n/a':>{col_w[3]}}  "
                 f"{'n/a':<{col_w[4]}}  "
-                f"{'EXCL':<{col_w[5]}}"
+                f"{'EXCL':<{col_w[5]}}  "
+                f"{'source-excluded':<{col_w[6]}}  "
+                f"{'n/a':>{col_w[7]}}"
             )
             click.echo(row)
             continue
@@ -555,7 +924,9 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
                 f"{'n/a':<{col_w[2]}}  "
                 f"{'n/a':>{col_w[3]}}  "
                 f"{'n/a':<{col_w[4]}}  "
-                f"{'FAIL':<{col_w[5]}}"
+                f"{'FAIL':<{col_w[5]}}  "
+                f"{'n/a':<{col_w[6]}}  "
+                f"{'n/a':>{col_w[7]}}"
             )
             click.echo(row)
             click.echo(f"  -> {exc}", err=True)
@@ -572,7 +943,9 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
                 f"{'n/a':<{col_w[2]}}  "
                 f"{'n/a':>{col_w[3]}}  "
                 f"{'n/a':<{col_w[4]}}  "
-                f"{'SKIP':<{col_w[5]}}"
+                f"{'SKIP':<{col_w[5]}}  "
+                f"{'n/a':<{col_w[6]}}  "
+                f"{'n/a':>{col_w[7]}}"
             )
             click.echo(row)
             continue
@@ -585,6 +958,14 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
         I_sim = val["I_peak_sim_MA"]
         I_ref = val["I_peak_ref_MA"]
         t_sim = val["t_peak_sim_us"]
+        authority, blockers = source_authority(
+            {
+                "backend": "python",
+                "step": data.get("n_steps", 0),
+                "current": I_sim * 1e6,
+                "validation_status": "not_evaluated",
+            }
+        )
 
         row = (
             f"{dev_name:<{col_w[0]}}  "
@@ -592,9 +973,17 @@ def validate(run_all: bool, device: str | None, sim_time_us: float) -> None:
             f"{I_ref:.3f} MA   "
             f"{dI:>6.1f}%   "
             f"{t_sim:.1f} us     "
-            f"{status:<{col_w[5]}}"
+            f"{status:<{col_w[5]}}  "
+            f"{authority:<{col_w[6]}}  "
+            f"{blockers:>{col_w[7]}}"
         )
         click.echo(row)
+
+    click.echo(
+        "\nSource authority: PASS/FAIR/POOR are peak-current engineering grades. "
+        "Reference validation requires accepted KnowledgeReference evidence and "
+        "same-scope source gates."
+    )
 
     if any_fail:
         sys.exit(1)

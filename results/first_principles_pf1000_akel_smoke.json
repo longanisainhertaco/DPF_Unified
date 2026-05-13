@@ -1,0 +1,688 @@
+{
+  "execution_backend": "python",
+  "first_principles_only_enforced": true,
+  "grid_preset": "coarse",
+  "histories": {
+    "B_max": [
+      0.0,
+      0.010937053592497064,
+      0.02184742050124315,
+      0.032731133038453264,
+      0.043588223517542234,
+      0.054418724253024964,
+      0.06522266756041671,
+      0.07600008575613387,
+      0.0865898980307513,
+      0.09575631010109947,
+      0.10486477158638943,
+      0.11391744887587756,
+      0.12291639821612545,
+      0.1318635056773174,
+      0.14076050265937168,
+      0.14960897989065441,
+      0.15841039953488484,
+      0.16716610636402043,
+      0.17587733773218622,
+      0.18454523256061284
+    ],
+    "I_MA": [
+      0.00031998048059012,
+      0.00671139532756901,
+      0.013087214003062888,
+      0.019447455392083247,
+      0.02579213838033989,
+      0.03212128185418266,
+      0.038434904700543136,
+      0.04473302580687671,
+      0.05087638258142698,
+      0.05623204222640789,
+      0.06155385065146661,
+      0.06684311843414915,
+      0.07210104214771743,
+      0.07732871938404454,
+      0.08252715776971757,
+      0.08769728309153405,
+      0.09283994633588172,
+      0.09795593018648123,
+      0.1030459548222189,
+      0.10811068314100304
+    ],
+    "Lp_field_nH": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.6779544167304925,
+      2.6964319708792397,
+      2.715878097874655,
+      2.7361537007594405,
+      2.7571419511653428,
+      2.778742179359063,
+      2.8008664337470033,
+      2.8234373186692814,
+      2.8463867219483494,
+      2.8696547917200146,
+      2.8931891726321544,
+      2.9169443738931573
+    ],
+    "T_max": [
+      149.9978494100413,
+      179.7980120620382,
+      269.32298356869165,
+      418.9271429498881,
+      629.1807780702783,
+      900.7353984763671,
+      1234.2557633553258,
+      1630.393095596611,
+      2082.597611380909,
+      2527.09112682944,
+      3017.2353289082685,
+      3552.9970713861853,
+      4134.351073570221,
+      4761.2744922478505,
+      5433.745361378924,
+      6151.7413954930025,
+      6915.239051557497,
+      7724.212857356011,
+      8578.634941387807,
+      9478.474738661102
+    ],
+    "V_kV": [
+      15.999999939943605,
+      15.999973536151408,
+      15.999899207320237,
+      15.999777070467575,
+      15.999607242469127,
+      15.999389840058809,
+      15.999124979828746,
+      15.998812778229263,
+      15.998453431685983,
+      15.998051351464333,
+      15.99760919152512,
+      15.997127200998328,
+      15.996605619626632,
+      15.996044678546905,
+      15.995444600998962,
+      15.994805602969707,
+      15.994127893780712,
+      15.993411676624994,
+      15.992657149057601,
+      15.99186450344496
+    ],
+    "back_emf_V": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2256.6325300769,
+      2307.483575793858,
+      2357.592052574435,
+      2404.729122012569,
+      2449.148032446096,
+      2491.078692499605,
+      2530.7299412756843,
+      2568.2923040397836,
+      2603.9397767059127,
+      2637.83140088445,
+      2670.1128019775965,
+      2700.9175286253085
+    ],
+    "field_energy_residual_kJ": [
+      -8.76717545104183e-15,
+      -5.63612627120177e-05,
+      -0.00023572828031581303,
+      -0.0005523301888396735,
+      -0.0010189273664877093,
+      -0.0016469685403760687,
+      -0.002446731499105796,
+      -0.003427449981445786,
+      -0.00440909796404994,
+      -0.004406042051693237,
+      -0.004402936746144194,
+      -0.004399786257950039,
+      -0.0043965943781474025,
+      -0.0043933645365423464,
+      -0.004390099840860072,
+      -0.0043868031110500865,
+      -0.004383476908380189,
+      -0.004380123562468325,
+      -0.00437674519380063,
+      -0.004373343734688271
+    ],
+    "field_limiter_activation_count": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "joule_energy_kJ": [
+      0.0,
+      3.045371588668674e-06,
+      2.267901066818829e-05,
+      7.303294950938713e-05,
+      0.00016628158261831996,
+      0.00031287579276285455,
+      0.000521753564484544,
+      0.0008005304347474854,
+      0.00115554043799845,
+      0.0015816922516131834,
+      0.002075389087478306,
+      0.002638457407648029,
+      0.003272361321770736,
+      0.0039782642672967685,
+      0.004757081311274733,
+      0.005609523293401757,
+      0.006536133788993932,
+      0.007537319853912855,
+      0.008613377427285972,
+      0.009764512133426016
+    ],
+    "joule_power_W": [
+      0.0,
+      839534.4804206177,
+      3204323.280342627,
+      6885196.793136153,
+      11697959.570593838,
+      17480615.58899319,
+      24091243.509211235,
+      31406056.32593833,
+      39146149.13968907,
+      45789761.24376428,
+      52637622.81097167,
+      59649807.606895745,
+      66793175.8131174,
+      74040290.87387694,
+      81368538.79563467,
+      88759365.00240353,
+      96197598.7535056,
+      103670877.38019007,
+      111169148.09289902,
+      118684241.06031686
+    ],
+    "magnetic_energy_kJ": [
+      0.0,
+      5.3315891037426894e-05,
+      0.00021304926955989674,
+      0.00047929723925748205,
+      0.0008526457837901383,
+      0.0013340927474920835,
+      0.001924977934471476,
+      0.002626919546630124,
+      0.003429312096433567,
+      0.004222733245565018,
+      0.005100806840828129,
+      0.006064435280469955,
+      0.007114561738964195,
+      0.008252145242013464,
+      0.009478145943510742,
+      0.010793513740842045,
+      0.012199180525242038,
+      0.013696054785394022,
+      0.01528501861188153,
+      0.016966926658469956
+    ],
+    "rho_max": [
+      0.0002584291880123043,
+      0.00025842919918929474,
+      0.00025842937685026504,
+      0.0002584301648615229,
+      0.00025843231873141936,
+      0.0002584369197926377,
+      0.0002584453942816225,
+      0.0002584595349846645,
+      0.0002584815213563295,
+      0.0002585138570705051,
+      0.0002585591655499907,
+      0.000258620319791684,
+      0.0002587004726921767,
+      0.00025880303800155085,
+      0.00025893167660871405,
+      0.0002590902790836855,
+      0.00025928292070685695,
+      0.000259513849891262,
+      0.0002597874504730919,
+      0.00026010820288822716
+    ],
+    "t_us": [
+      0.0005,
+      0.010499999999999999,
+      0.020500000000000008,
+      0.030500000000000027,
+      0.04049999999999999,
+      0.05049999999999994,
+      0.0604999999999999,
+      0.07049999999999985,
+      0.08049999999999981,
+      0.09049999999999978,
+      0.10049999999999973,
+      0.11049999999999968,
+      0.12049999999999968,
+      0.1304999999999999,
+      0.14050000000000012,
+      0.15050000000000036,
+      0.16050000000000056,
+      0.1705000000000008,
+      0.18050000000000102,
+      0.19050000000000122
+    ]
+  },
+  "metrics": {
+    "B_max_T": 0.1927405482086,
+    "I_peak_MA": 0.11289930078444298,
+    "L_field_max_nH": 2.9396806009347562,
+    "back_emf_abs_max_V": 2728.926072970461,
+    "field_energy_residual_final_kJ": -0.004370092567844218,
+    "joule_energy_final_kJ": 0.010927751399268396,
+    "limiter_activation_max": 0,
+    "n_steps": 400,
+    "nan_detected": false,
+    "t_peak_us": 0.19999999999999998
+  },
+  "neutron_yield_authority": {
+    "blockers": [
+      "first_principles_neutron_yield_not_computed",
+      "same_scope_scalar_neutron_yield_validation_missing",
+      "same_scope_neutron_timing_validation_missing",
+      "same_scope_neutron_spectrum_validation_missing",
+      "same_scope_neutron_anisotropy_validation_missing",
+      "same_scope_detector_activation_response_validation_missing",
+      "same_scope_neutron_uncertainty_validation_missing",
+      "kinetic_or_hybrid_beam_target_model_missing",
+      "mhd_numerical_fidelity_packet_missing",
+      "physics_fidelity_packet_missing"
+    ],
+    "can_support_first_principles_acceptance": false,
+    "mechanisms": {
+      "beam_target": {
+        "authority": "not_produced",
+        "can_support_component_acceptance": false,
+        "yield_n": null
+      },
+      "thermonuclear": {
+        "authority": "resolved_field_history_candidate",
+        "can_support_component_acceptance": false,
+        "yield_n": null
+      }
+    },
+    "passed": false,
+    "required_validation": {
+      "kinetic_or_hybrid_beam_target_model": false,
+      "mhd_numerical_fidelity": false,
+      "physics_fidelity": false,
+      "same_scope_anisotropy": false,
+      "same_scope_detector_response": false,
+      "same_scope_mechanism_timing": false,
+      "same_scope_scalar_yield": false,
+      "same_scope_spectrum": false,
+      "same_scope_uncertainty": false
+    },
+    "status": "not_produced",
+    "ten_percent_paper_yield_accuracy": {
+      "claim": "A 10 percent paper-yield comparison is an acceptance criterion only after same-scope scalar yield, mechanism timing, spectrum, anisotropy, detector response, UQ, and kinetic beam-target evidence pass together.",
+      "status": "blocked",
+      "target_relative_error": 0.1
+    },
+    "total_yield_n": null,
+    "validation_tier": 5,
+    "validity_notes": {
+      "reduced_model_boundary": "Lee/Saw beam-target yield and empirical beam fractions are baseline reduced-model estimates, not first-principles predictive authority.",
+      "source_scope": "Local KnowledgeReference evidence must be same-scope with the paper/device/shot being compared; cross-device neutron yield packets cannot pass this authority gate."
+    }
+  },
+  "preset": "pf1000_akel",
+  "readiness": {
+    "blockers": [
+      "sheath_position: missing required first-principles output",
+      "PF-1000/Akel source scope is blocked_by_review; accepted same-scope waveform/current-dip evidence is required before first-principles acceptance.",
+      "Lee/RADPF closure factors are present in the run metadata; first_principles_mhd must keep them baseline-only and out of predictive scoring.",
+      "Field-coupled energy accounting is not accepted for first_principles_mhd; missing or unvalidated channels: status=complete_candidate_not_validated.",
+      "Startup/sheath initialization is not accepted for first_principles_mhd; missing or unvalidated channels: breakdown_model, preionization_state, initial_plasma_distribution, electrode_boundary_conditions, resolved_sheath_position.",
+      "Field-derived coupling is not validated for one same-scope packet; inductance, dL/dt/back-EMF, Poynting power, energy balance, handoff metadata, and KR comparison must all pass.",
+      "First-principles neutron-yield authority is not accepted; remaining blockers: first_principles_neutron_yield_not_computed, same_scope_scalar_neutron_yield_validation_missing, same_scope_neutron_timing_validation_missing, same_scope_neutron_spectrum_validation_missing, same_scope_neutron_anisotropy_validation_missing, same_scope_detector_activation_response_validation_missing, same_scope_neutron_uncertainty_validation_missing, kinetic_or_hybrid_beam_target_model_missing, mhd_numerical_fidelity_packet_missing, physics_fidelity_packet_missing.",
+      "Physics-fidelity packet is missing or not accepted for startup, ionization/EOS/two-temperature/transport/radiation, and late-pinch scope.",
+      "MHD numerical-fidelity packet is missing or incomplete for cylindrical terms, diffusion/heating, circuit energy, backend parity, and restart/reproducibility."
+    ],
+    "closure_factor_status": {
+      "allowed_role": "baseline_reduced_model_only",
+      "can_support_first_principles_acceptance": false,
+      "keys": [
+        "snowplow_cfg.current_fraction",
+        "snowplow_cfg.mass_fraction",
+        "snowplow_cfg.radial_current_fraction",
+        "snowplow_cfg.radial_mass_fraction"
+      ],
+      "present": true
+    },
+    "coupling_interval_authority": [
+      {
+        "authority": "field_derived_candidate",
+        "can_support_first_principles_acceptance": false,
+        "coupling_source": "field_coupled_candidate",
+        "interval_label": "field_coupled",
+        "t_end_us": 0.19999999999999998,
+        "t_start_us": 0.0005,
+        "validated": false
+      }
+    ],
+    "energy_accounting_status": {
+      "can_support_first_principles_acceptance": false,
+      "missing_channels": [],
+      "required_channels": {
+        "circuit_energy_channels": {
+          "evidence_keys": [
+            "E_cap_kJ",
+            "E_ind_kJ",
+            "E_res_kJ"
+          ],
+          "present": true,
+          "status": "diagnostic_not_validated",
+          "validated": false
+        },
+        "circuit_energy_residual": {
+          "evidence_keys": [
+            "circuit_energy_residual_kJ"
+          ],
+          "present": true,
+          "status": "diagnostic_not_validated",
+          "validated": false
+        },
+        "dLdt_or_back_emf": {
+          "evidence_keys": [
+            "back_emf_V"
+          ],
+          "present": true,
+          "status": "present_not_validated",
+          "validated": false
+        },
+        "field_poynting_power": {
+          "evidence_keys": [
+            "poynting_power_W"
+          ],
+          "present": true,
+          "status": "diagnostic_not_validated",
+          "validated": false
+        },
+        "magnetic_energy_or_field_inductance": {
+          "evidence_keys": [
+            "magnetic_energy_inductance",
+            "field_derived_inductance",
+            "Lp_mhd_nH"
+          ],
+          "present": true,
+          "status": "candidate_not_validated",
+          "validated": false
+        }
+      },
+      "status": "complete_candidate_not_validated",
+      "validated": false,
+      "validity_notes": {
+        "claim_scope": "Circuit energy channels and density-weighted MHD inductance are diagnostics until field Poynting power and same-scope field-coupling evidence pass."
+      }
+    },
+    "execution_mode": "python",
+    "missing_evidence": [
+      "accepted_same_scope_akel_digitization",
+      "closure_factor_free_acceptance_path",
+      "field_coupled_energy_accounting",
+      "first_principles_neutron_yield_authority",
+      "first_principles_startup_initialization",
+      "mhd_numerical_fidelity_packet",
+      "physics_fidelity_packet",
+      "sheath_position",
+      "validated_field_coupling_packet"
+    ],
+    "neutron_yield_authority_status": {
+      "blockers": [
+        "first_principles_neutron_yield_not_computed",
+        "same_scope_scalar_neutron_yield_validation_missing",
+        "same_scope_neutron_timing_validation_missing",
+        "same_scope_neutron_spectrum_validation_missing",
+        "same_scope_neutron_anisotropy_validation_missing",
+        "same_scope_detector_activation_response_validation_missing",
+        "same_scope_neutron_uncertainty_validation_missing",
+        "kinetic_or_hybrid_beam_target_model_missing",
+        "mhd_numerical_fidelity_packet_missing",
+        "physics_fidelity_packet_missing"
+      ],
+      "can_support_first_principles_acceptance": false,
+      "mechanisms": {
+        "beam_target": {
+          "authority": "not_produced",
+          "can_support_component_acceptance": false,
+          "yield_n": null
+        },
+        "thermonuclear": {
+          "authority": "resolved_field_history_candidate",
+          "can_support_component_acceptance": false,
+          "yield_n": null
+        }
+      },
+      "passed": false,
+      "required_validation": {
+        "kinetic_or_hybrid_beam_target_model": false,
+        "mhd_numerical_fidelity": false,
+        "physics_fidelity": false,
+        "same_scope_anisotropy": false,
+        "same_scope_detector_response": false,
+        "same_scope_mechanism_timing": false,
+        "same_scope_scalar_yield": false,
+        "same_scope_spectrum": false,
+        "same_scope_uncertainty": false
+      },
+      "status": "not_produced",
+      "ten_percent_paper_yield_accuracy": {
+        "claim": "A 10 percent paper-yield comparison is an acceptance criterion only after same-scope scalar yield, mechanism timing, spectrum, anisotropy, detector response, UQ, and kinetic beam-target evidence pass together.",
+        "status": "blocked",
+        "target_relative_error": 0.1
+      },
+      "total_yield_n": null,
+      "validation_tier": 5,
+      "validity_notes": {
+        "reduced_model_boundary": "Lee/Saw beam-target yield and empirical beam fractions are baseline reduced-model estimates, not first-principles predictive authority.",
+        "source_scope": "Local KnowledgeReference evidence must be same-scope with the paper/device/shot being compared; cross-device neutron yield packets cannot pass this authority gate."
+      }
+    },
+    "output_status": {
+      "current_waveform": {
+        "evidence_keys": [
+          "I_MA"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "dLdt_or_back_emf": {
+        "evidence_keys": [
+          "back_emf_V"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "density_field": {
+        "evidence_keys": [
+          "final_state",
+          "mhd_snapshots"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "energy_balance": {
+        "evidence_keys": [
+          "E_cap_kJ",
+          "E_ind_kJ",
+          "E_res_kJ",
+          "dynamic_inductance_power_balance"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "field_derived_plasma_inductance": {
+        "evidence_keys": [
+          "field_derived_inductance",
+          "magnetic_energy_inductance",
+          "Lp_mhd_nH"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "magnetic_field": {
+        "evidence_keys": [
+          "final_state",
+          "mhd_snapshots"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "phase_labels": {
+        "evidence_keys": [
+          "phases"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "sheath_position": {
+        "evidence_keys": [],
+        "present": false,
+        "required": true,
+        "status": "missing"
+      },
+      "temperature_field": {
+        "evidence_keys": [
+          "final_state",
+          "mhd_snapshots"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      },
+      "voltage_waveform": {
+        "evidence_keys": [
+          "V_kV"
+        ],
+        "present": true,
+        "required": true,
+        "status": "present_not_validated"
+      }
+    },
+    "ready": false,
+    "reduced_model_baselines": {
+      "lee_snowplow": {
+        "can_support_first_principles_acceptance": false,
+        "closure_factor_keys": [
+          "snowplow_cfg.current_fraction",
+          "snowplow_cfg.mass_fraction",
+          "snowplow_cfg.radial_current_fraction",
+          "snowplow_cfg.radial_mass_fraction"
+        ],
+        "notes": "Lee/RADPF snowplow outputs may support comparison, initialization, and regression only. They are excluded from first_principles_mhd predictive scoring.",
+        "output_role": "baseline_reduced_model",
+        "result_keys": [
+          "snowplow_phase_validation_status"
+        ],
+        "validation_status": "not_first_principles_evidence"
+      }
+    },
+    "run_mode": "first_principles_mhd",
+    "satisfied_evidence": [
+      "current_waveform",
+      "dLdt_or_back_emf",
+      "density_field",
+      "energy_balance",
+      "field_derived_plasma_inductance",
+      "magnetic_field",
+      "phase_labels",
+      "temperature_field",
+      "voltage_waveform"
+    ],
+    "source_scope": "pf1000_16kv_2021_akel_shot12581",
+    "source_scope_status": "same_scope_blocked_by_review",
+    "startup_initialization_status": {
+      "can_support_first_principles_acceptance": false,
+      "missing_channels": [
+        "breakdown_model",
+        "preionization_state",
+        "initial_plasma_distribution",
+        "electrode_boundary_conditions",
+        "resolved_sheath_position"
+      ],
+      "required_channels": {
+        "breakdown_model": {
+          "evidence_keys": [],
+          "present": false,
+          "status": "missing",
+          "validated": false
+        },
+        "electrode_boundary_conditions": {
+          "evidence_keys": [],
+          "present": false,
+          "status": "missing",
+          "validated": false
+        },
+        "initial_plasma_distribution": {
+          "evidence_keys": [],
+          "present": false,
+          "status": "missing",
+          "validated": false
+        },
+        "preionization_state": {
+          "evidence_keys": [],
+          "present": false,
+          "status": "missing",
+          "validated": false
+        },
+        "resolved_sheath_position": {
+          "evidence_keys": [],
+          "present": false,
+          "status": "missing",
+          "validated": false
+        }
+      },
+      "status": "incomplete",
+      "validity_notes": {
+        "claim_scope": "First-principles startup requires source-backed breakdown, preionization, initial plasma distribution, electrode boundary conditions, and resolved sheath-position evidence. A seeded thin layer or snowplow sheath position is initialization scaffold only until validated."
+      }
+    },
+    "status": "blocked",
+    "validation_scope": "pf1000_16kv_2021_akel",
+    "validity_notes": {
+      "baseline_boundary": "Lee/snowplow outputs are retained for initialization, comparison, and regression, not predictive authority.",
+      "scope": "Initial first_principles_mhd acceptance is limited to the PF-1000/Akel same-scope path."
+    }
+  },
+  "requested_sim_time_us": 0.2,
+  "run_mode": "first_principles_mhd",
+  "scientific_status": "engineering_probe_not_validation",
+  "source_scope": "pf1000_16kv_2021_akel_shot12581",
+  "tool": "dpf first-principles",
+  "validation_scope": "pf1000_16kv_2021_akel"
+}

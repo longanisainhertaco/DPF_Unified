@@ -60,6 +60,20 @@ print(f"Energy conservation: {summary['energy_conservation']:.6f}")
 print(f"Neutron yield: {summary['total_neutron_yield']:.2e}")
 ```
 
+### PF-1000/Akel First-Principles Candidate
+
+The current first-principles executable is a locked PF-1000/Akel engineering
+probe. It runs the field-coupled `first_principles_mhd` path and writes
+fail-closed readiness metadata; it is not scientific validation evidence.
+
+```bash
+dpf first-principles --sim-time-us=0.2 --output results/first_principles_pf1000_akel_smoke.json
+```
+
+Use this command for first-principles development runs. Do not interpret the
+output as accepted Akel waveform validation, neutron-yield validation, or
+first-principles readiness until the same-scope review and validation gates pass.
+
 ### Step-by-Step Control
 
 ```python
