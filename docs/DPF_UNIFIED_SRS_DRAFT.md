@@ -35,6 +35,7 @@ Project source root: `/Users/anthonyzamora/dpf-unified`
 | `docs/METAL_V2_SPEC.md` | Current Metal/MLX architecture status and source-scope caveats |
 | `docs/SPRINT4_VALIDATION_REVIEW.md` | Historical MLX review plus superseded-status addendum |
 | `docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md` | Source acquisition and Akel digitization queue |
+| `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` | Active first-principles finish-line roadmap from PF-1000/Akel engineering probe to accepted simulation |
 | `CortexFindings.md` | Detailed plan and execution log |
 | `CodexFindings.md` | Running findings, verdict, completed ratchets, remaining scientific plan |
 | `docs/todo_audit.md` | Current 2026-05-08 TODO/FIXME/XXX audit; stale `src/dpf/engine.py` entries are retired |
@@ -158,6 +159,7 @@ These are already planned in current project artifacts.
 | Physics-fidelity closure | Mark or validate EOS, ionization, two-temperature, radiation transport, impurity/ablation, kinetic/Hall/FLR, 3D, startup, restrike, anomalous resistance, and beam-target effects. | Remaining high-fidelity plan. |
 | Circuit-field coupling fidelity | Define evidence for inductance, dL/dt, back-EMF, Poynting flux, circuit energy, and snowplow-to-MHD transition timing. | Remaining high-fidelity plan. |
 | UQ propagation | Extend UQ from circuit waveform tools into phase, spatial, neutron, numerical, model-form, and shot-to-shot evidence. | Remaining high-fidelity plan. |
+| First-principles finish-line plan | Execute the phased PF-1000/Akel path from no-hidden-limiter numerics through source-backed startup, validated field-circuit coupling, physics-fidelity closure, same-scope evidence, neutron authority, certificate gate, and second-scope generalization. | `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md`. |
 | Long PF-1000 gate handling | Decide whether to convert long xfailed PF-1000 fixture into opt-in endurance/regression path with adequate step cap. | Latest findings entries. |
 | Findings doc maintenance | Update stale top-of-file `CortexFindings.md` current-position text so it reflects later source-review closure. | Current review observation. |
 
@@ -224,6 +226,16 @@ The following requirements adapt the supplied SRS structure to the current repos
 | PHY-005 | P1 | The project shall define one documented Lee/RADPF reference implementation and require backend parity against it. | Planned | Code consolidation and parity tests. |
 | PHY-006 | P1 | MHD-mode field/circuit coupling claims shall require validated field-derived inductance, dL/dt/back-EMF, Poynting power, and energy balance evidence. | Planned | `field_coupling_validation` evidence record. |
 | PHY-007 | P1 | Physics-fidelity gaps shall be explicit for each run: EOS, ionization, two-temperature, radiation transport, impurity, kinetic/Hall/FLR, 3D, startup, restrike, anomalous resistance, and beam-target coupling. | Partial/planned | Current gap report plus per-run evidence expansion. |
+| PHY-008 | P0 | First-principles mode shall drive circuit feedback from resolved field power and conservation ledgers rather than Lee/RADPF closure factors. | Partial | Field-coupled engineering probe exists; accepted field-coupling evidence remains blocked. |
+| PHY-009 | P0 | Accepted first-principles runs shall not depend on hidden engineering limiters or unreported state repair. | Planned/blocked | Limiter telemetry and replacement with verified numerical controls. |
+| PHY-010 | P0 | First-principles startup shall be source-backed for breakdown, preionization, electrode boundary, initial plasma, and sheath evidence. | Planned/blocked | Source-backed startup state generator, evidence packet, and comparator tests. |
+| PHY-011 | P0 | Total neutron-yield authority shall require resolved thermonuclear history plus accepted kinetic/hybrid beam-target production and same-scope neutron UQ. | Planned/blocked | Mechanism-separated neutron evidence and first-principles neutron authority tests. |
+| PHY-012 | P0 | First-principles acceptance shall define dimensionality and any MHD-to-kinetic handoff for the claimed interval and observables. | Planned/blocked | Dimensionality/handoff packet plus tests that reject out-of-scope observables. |
+| PHY-013 | P0 | First-principles numerical-fidelity packets shall define named tests, norms, mesh families, tolerances, precision/backend scope, and limiter-zero acceptance. | Planned/blocked | Numerical-fidelity packet, limiter-zero evidence, and reference-workflow tests. |
+| PHY-014 | P0 | The active first-principles circuit power port shall pass Poynting or `J.E`, electrode-work, time-centering, sign, and residual tests without clipped back-EMF for acceptance. | Planned/blocked | Power-port component tests and integrated energy-ledger tests. |
+| PHY-015 | P0 | First-principles startup shall be generated as a source-backed boundary-value problem with current-density, field, ionization, temperature, and sheath-liftoff consistency checks. | Planned/blocked | Startup BVP packet, source evidence, and consistency tests. |
+| PHY-016 | P0 | Every active or bounded-out physical closure shall have a packet with source equations, symbol map, units, validity regime, verification, sensitivity/UQ, and claim impact. | Planned/blocked | Closure packet registry and physics-fidelity tests. |
+| PHY-017 | P1 | Accepted first-principles execution shall run through one package-native `src/dpf` path shared by CLI, API, config, and app surfaces. | Planned | Package-native runner consolidation and app-only rejection test. |
 
 ### 4.5 Digitization and Validation Evidence
 
@@ -237,6 +249,7 @@ The following requirements adapt the supplied SRS structure to the current repos
 | VAL-002 | P0 | Tier 4 shall require same-scope density, magnetic/EM, and temperature evidence. | Planned/blocked | Spatial evidence combiner tests plus real KR packets. |
 | VAL-003 | P0 | Tier 5 shall require same-scope neutron timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty. | Planned/blocked | Neutron validation outputs and evidence tests. |
 | VAL-004 | P1 | The system shall produce a validation certificate artifact only when all linked gates pass. | Completed | Validation certificate schema/writer rejects blocked, failed, draft, and cross-scope evidence. |
+| VAL-005 | P0 | First-principles PF-1000/Akel acceptance shall require same-scope waveform, phase, spatial, neutron, detector, coupling, physics-fidelity, numerical-fidelity, and UQ evidence in one certificate path. | Planned/blocked | Finish-line plan and certificate gate. |
 
 ### 4.6 Diagnostics, Data, and Export Requirements
 

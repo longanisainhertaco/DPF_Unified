@@ -201,6 +201,7 @@ def write_csv(rows: list[RequirementRow], path: Path) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
+            lineterminator="\n",
             fieldnames=[
                 "id",
                 "priority",

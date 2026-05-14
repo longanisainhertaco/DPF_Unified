@@ -8,6 +8,21 @@ Plan note 2026-05-05:
 
 - The detailed forward plan requested as `CortexFindings.md` has been created in the repository. `CodexFindings.md` remains the running findings and ratchet log, while `CortexFindings.md` records the reviewed plan sequence from target authority through end-to-end high-fidelity demonstration.
 
+Plan update 2026-05-13, first-principles execution specification:
+
+- Rewrote `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` from a finish-line roadmap into a complete execution specification for a true first-principles DPF simulator.
+- The plan now adds explicit gates for package-native execution, global limiter registry, limiter-zero numerical acceptance, startup boundary-value problem, resolved power-port coupling, dimensionality/MHD-to-kinetic handoff, closure packets, mechanism-separated neutron authority, comparator/UQ matrix, certificate payload, and release labels.
+- Added requirements `DPF-PHYS-014` through `DPF-PHYS-019` to `docs/DPF_REQUIREMENTS_BASELINE.md` and mirrored the new physics/SRS rows in `docs/DPF_UNIFIED_SRS_DRAFT.md`.
+- Immediate FP-2 target is now the full active-path limiter registry across `app_mhd.py`, solver internals, backend adapters, circuit coupling, and post-processing, with first-principles readiness failing on any acceptance-blocking limiter activation.
+- Scientific status remains fail-closed. This planning update does not accept Akel waveform evidence, spatial evidence, neutron evidence, field-coupling evidence, or first-principles readiness.
+
+Plan update 2026-05-13, first-principles finish-line baseline:
+
+- Added `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` as the active execution roadmap from PF-1000/Akel engineering probe to accepted first-principles simulation.
+- The finish line is now explicit: source-backed startup, no hidden engineering limiters, resolved-field circuit feedback, accepted numerical-fidelity and physics-fidelity packets, accepted same-scope waveform/phase/spatial/neutron/detector/UQ evidence, and a validation certificate that rejects blocked or cross-scope evidence.
+- Added first-principles requirement rows to `docs/DPF_REQUIREMENTS_BASELINE.md` and linked the plan from `docs/VALIDATED_PHYSICS_PIPELINE_PLAN.md`, `docs/DPF_UNIFIED_SRS_DRAFT.md`, and the execution audit.
+- Immediate critical path is FP-2: expose and eliminate acceptance-blocking engineering limiters before adding more readiness surfaces. Scientific status remains fail-closed; no Akel packet, neutron authority, or first-principles readiness status is promoted by this planning update.
+
 Plan audit 2026-05-13, first-principles execution pivot:
 
 - Added `docs/FIRST_PRINCIPLES_EXECUTION_AUDIT_2026_05_13.md` after reviewing the current first-principles plan and implementation path.

@@ -29,6 +29,21 @@ uncertainty value, validation threshold, or simulation result.
 | `src/dpf/validation/uncertainty_budget.py` | Existing UQ audit requirements | UQ completeness and propagation gate |
 | `docs/FORMULARY_CODE_AUDIT_2026_05_11.md` | Local-formulary code audit with fixed and blocked formula surfaces | Formula validation backlog and method |
 | `docs/DPF_REQUIREMENTS_BASELINE.md` | Candidate SRS/RTM baseline, Doorstop not initialized | Future traceability import |
+| `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` | Active first-principles execution specification from engineering probe to accepted PF-1000/Akel simulator | Orders package-native execution, limiter removal, numerical verification, startup, coupling, dimensionality, physics closure, evidence, UQ, and certificate work |
+
+## Relationship To First-Principles Development
+
+This document defines how evidence becomes accepted validation evidence.
+`docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` defines what must be built, which
+implementation gates must pass, and in what order for the first-principles
+PF-1000/Akel path. The two plans are intentionally separate:
+
+- the finish-line plan owns solver/startup/coupling/physics implementation
+  sequencing;
+- this validated-physics pipeline owns source review, digitization, UQ,
+  comparator binding, same-scope packet assembly, and certificate gates;
+- neither plan can promote an engineering probe or draft packet without accepted
+  same-scope evidence.
 
 ## Output Definition
 

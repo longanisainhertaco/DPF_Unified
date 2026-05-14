@@ -801,6 +801,358 @@
       ]
     },
     {
+      "acceptance_evidence_or_blocker": "`docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md`; `dpf first-principles` emits field-coupled engineering evidence, but field-coupling acceptance remains blocked.",
+      "doorstop_import": {
+        "evidence_refs": [
+          "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+          "dpf first-principles"
+        ],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Engine",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-PHYS-008",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [
+        "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+        "dpf first-principles"
+      ],
+      "id": "DPF-PHYS-008",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Engine",
+      "priority": "P0",
+      "requirement": "Circuit feedback for first-principles mode shall be driven by resolved field power and conservation ledgers, not Lee/RADPF closure factors.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current first-principles candidate reports explicit resistivity/state/field limiters as engineering blockers; no accepted limiter-free scientific run exists.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Engine",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-009",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-009",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Engine",
+      "priority": "P0",
+      "requirement": "First-principles PF-1000/Akel runs shall reject hidden engineering limiters for accepted claims.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Startup remains scaffolded until local source-backed startup/sheath evidence and comparator status are attached.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-010",
+        "verification": [
+          "review",
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-010",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P0",
+      "requirement": "First-principles startup shall use source-backed breakdown, preionization, electrode boundary, and initial plasma evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "review",
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Field diagnostics exist as engineering evidence; accepted same-scope field-coupling packet is still required.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-PHYS-011",
+        "verification": [
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-011",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P0",
+      "requirement": "Field-circuit coupling shall carry validated inductance, terminal voltage/back-EMF, Poynting or `J.E` power, handoff intervals, and energy residual evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current gap report exists; accepted PF-1000/Akel effect-by-effect physics-fidelity packet remains open.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P0",
+        "status": "partial",
+        "uid": "DPF-PHYS-012",
+        "verification": [
+          "inspection",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-012",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P0",
+      "requirement": "First-principles physics fidelity shall classify each required effect as implemented, validated, bounded out, blocked, or missing for the claimed scope.",
+      "source_section": "Candidate Requirements",
+      "status": "partial",
+      "verification_methods": [
+        "inspection",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Resolved thermonuclear history exists as candidate evidence; beam-target authority and same-scope neutron packet remain blocked.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-013",
+        "verification": [
+          "analysis",
+          "review",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-013",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P0",
+      "requirement": "Total neutron-yield authority shall require resolved thermonuclear history, accepted kinetic/hybrid beam-target production, same-scope neutron evidence, and UQ.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "analysis",
+        "review",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "No accepted dimensionality or handoff packet exists; current candidate is axisymmetric engineering MHD.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Architecture",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-014",
+        "verification": [
+          "analysis",
+          "test",
+          "review"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-014",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Architecture",
+      "priority": "P0",
+      "requirement": "First-principles acceptance shall define dimensionality and any MHD-to-kinetic handoff for the claimed interval and observables.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "analysis",
+        "test",
+        "review"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Numerical-fidelity tolerances and global limiter-zero packet are not complete.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Numerics/V&V",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-015",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-015",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Numerics/V&V",
+      "priority": "P0",
+      "requirement": "First-principles numerical-fidelity packets shall define named tests, norms, mesh families, tolerances, precision/backend scope, and limiter-zero acceptance.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current field-coupled probe still uses engineering power/back-EMF caps and candidate-only diagnostics.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Engine",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-016",
+        "verification": [
+          "test",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-016",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Engine",
+      "priority": "P0",
+      "requirement": "The active first-principles circuit power port shall pass Poynting or `J.E`, electrode-work, time-centering, sign, and residual tests without clipped back-EMF for acceptance.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "test",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current startup is scaffolded engineering initialization.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/Engine",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-017",
+        "verification": [
+          "test",
+          "review",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-017",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/Engine",
+      "priority": "P0",
+      "requirement": "First-principles startup shall be generated as a source-backed boundary-value problem with current-density, field, ionization, temperature, and sheath-liftoff consistency checks.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "test",
+        "review",
+        "analysis"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Closure packet registry is not complete.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Physics/V&V",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-PHYS-018",
+        "verification": [
+          "inspection",
+          "analysis",
+          "test"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-018",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Physics/V&V",
+      "priority": "P0",
+      "requirement": "Every active or bounded-out physical closure shall have a packet with source equations, symbol map, units, validity regime, verification, sensitivity/UQ, and claim impact.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "inspection",
+        "analysis",
+        "test"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "Current runnable tool is app-backed; package-native path consolidation remains planned.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "Architecture/Engine",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-PHYS-019",
+        "verification": [
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-PHYS-019",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "Architecture/Engine",
+      "priority": "P1",
+      "requirement": "Accepted first-principles execution shall run through one package-native `src/dpf` path shared by CLI, API, config, and app surfaces.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "test",
+        "inspection"
+      ]
+    },
+    {
       "acceptance_evidence_or_blocker": "Digitization gates exist; additional figure packets remain planned.",
       "doorstop_import": {
         "evidence_refs": [],
@@ -1001,6 +1353,64 @@
       ]
     },
     {
+      "acceptance_evidence_or_blocker": "Certificate schema rejects blocked evidence today; no accepted first-principles PF-1000/Akel packet exists.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Data",
+        "priority": "P0",
+        "status": "blocked",
+        "uid": "DPF-VV-017",
+        "verification": [
+          "review",
+          "test",
+          "inspection"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-017",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Data",
+      "priority": "P0",
+      "requirement": "A first-principles validation certificate shall require same-scope waveform, phase, spatial, neutron, detector, field-coupling, physics-fidelity, numerical-fidelity, and UQ evidence.",
+      "source_section": "Candidate Requirements",
+      "status": "blocked",
+      "verification_methods": [
+        "review",
+        "test",
+        "inspection"
+      ]
+    },
+    {
+      "acceptance_evidence_or_blocker": "PF-1000/Akel remains the first demonstrator; second-scope generalization is planned after certificate closure.",
+      "doorstop_import": {
+        "evidence_refs": [],
+        "level": "shall",
+        "normative": true,
+        "owner": "V&V/Physics",
+        "priority": "P1",
+        "status": "planned",
+        "uid": "DPF-VV-018",
+        "verification": [
+          "review",
+          "analysis"
+        ]
+      },
+      "evidence_refs": [],
+      "id": "DPF-VV-018",
+      "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
+      "owner": "V&V/Physics",
+      "priority": "P1",
+      "requirement": "A generalized DPF-machine first-principles claim shall require repeating the full evidence path on at least one additional device or shot scope.",
+      "source_section": "Candidate Requirements",
+      "status": "planned",
+      "verification_methods": [
+        "review",
+        "analysis"
+      ]
+    },
+    {
       "acceptance_evidence_or_blocker": "`ValidationCertificate` and `write_validation_certificate()` reject blocked/cross-scope evidence before any accepted certificate can be persisted.",
       "doorstop_import": {
         "evidence_refs": [
@@ -1137,9 +1547,10 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Well exporter schema/unit tests exist and the engine Well adapter now passes grid spacing, geometry, and simulation provenance metadata; `tests/test_export_scope.py`; `tests/test_walrus_consolidated.py`.",
+      "acceptance_evidence_or_blocker": "Well exporter schema/unit tests exist; the engine Well adapter now flushes on run completion, forwards circuit scalars, passes grid spacing/geometry/provenance metadata, and cylindrical Well files label `grid_type=\"cylindrical\"`; `tests/test_export_scope.py`; `tests/test_walrus_consolidated.py`.",
       "doorstop_import": {
         "evidence_refs": [
+          "grid_type=\"cylindrical\"",
           "tests/test_export_scope.py",
           "tests/test_walrus_consolidated.py"
         ],
@@ -1155,6 +1566,7 @@
         ]
       },
       "evidence_refs": [
+        "grid_type=\"cylindrical\"",
         "tests/test_export_scope.py",
         "tests/test_walrus_consolidated.py"
       ],
@@ -1540,17 +1952,17 @@
   "summary": {
     "p0_or_p1_without_verification": [],
     "priority_counts": {
-      "P0": 25,
-      "P1": 22,
+      "P0": 37,
+      "P1": 24,
       "P2": 1
     },
-    "requirement_count": 48,
+    "requirement_count": 62,
     "status_counts": {
-      "blocked": 4,
+      "blocked": 13,
       "deferred": 0,
       "implemented": 28,
-      "partial": 12,
-      "planned": 4,
+      "partial": 15,
+      "planned": 6,
       "rejected": 0
     }
   }

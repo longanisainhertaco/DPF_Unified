@@ -22,6 +22,43 @@ and observables.
 The plan below is intentionally ordered. Each step should leave the tool more
 truthful even if later steps are incomplete.
 
+## First-Principles Finish-Line Baseline
+
+2026-05-13 update: `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` is now the active
+execution specification for the first-principles priority. The older validation
+plan below remains useful for evidence gates, but the first-principles critical
+path is now ordered around these executable gates:
+
+1. consolidate the first-principles candidate into a package-native `src/dpf`
+   runner shared by CLI, API, config, and app surfaces;
+2. build a global limiter/repair registry across `app_mhd.py`, solver internals,
+   backend adapters, circuit coupling, and post-processing;
+3. make first-principles readiness fail on any acceptance-blocking limiter
+   activation and replace blocker limiters with verified numerical methods or
+   source-backed physical bounds;
+4. close numerical-fidelity tests with named norms, mesh families, tolerances,
+   precision/backend scope, and limiter-zero acceptance;
+5. build a source-backed startup boundary-value problem for breakdown,
+   preionization, electrode/insulator boundaries, current density, fields,
+   ionization, temperature, and sheath lift-off;
+6. validate resolved power-port circuit coupling with Poynting or `J.E`,
+   electrode work, time centering, sign convention, and residual tolerance;
+7. decide dimensionality and any MHD-to-kinetic handoff for the claimed interval
+   and observables;
+8. close physics-fidelity packets for each active or bounded-out effect;
+9. independently accept same-scope waveform, phase, spatial, neutron, detector,
+   field-coupling, and UQ evidence, or narrow/switch the accepted demonstrator
+   scope if PF-1000/Akel lacks the required evidence;
+10. generate a validation certificate only after same-scope packet, comparator,
+    UQ, review, physics-fidelity, numerical-fidelity, limiter, dimensionality,
+    and package-native gates pass;
+11. repeat the full evidence path on a second device or shot before claiming a
+    generalized first-principles DPF-machine tool.
+
+No scientific acceptance is promoted by this update. Akel Fig. 1 remains
+`blocked_by_review`, Lee/snowplow remains baseline-only, and the current
+`dpf first-principles` run remains engineering-probe evidence.
+
 ## Detailed Plan
 
 0. KR Corpus Inventory And Exhaustive Review Control

@@ -5,6 +5,11 @@ Date: 2026-05-13
 Status: pivot directive for implementation. This document does not promote any
 simulation result, digitization packet, source target, or readiness status.
 
+Follow-on baseline: `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` is now the
+active finish-line roadmap. This audit explains the pivot; the finish-line plan
+defines the phase gates, requirement IDs, acceptance evidence, and critical path
+from engineering probe to accepted first-principles PF-1000/Akel simulation.
+
 ## Verdict
 
 The plan has been protecting scientific claims correctly, but it is no longer
