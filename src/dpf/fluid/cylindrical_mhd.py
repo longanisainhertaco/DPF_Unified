@@ -42,10 +42,12 @@ from dpf.fluid.constrained_transport import (
     face_to_cell_centered,
 )
 from dpf.fluid.eos import IdealEOS
+from dpf.fluid.implicit_diffusion import implicit_cylindrical_btheta_diffusion
 from dpf.fluid.mhd_solver import (
     _hll_flux_1d_core,
     _weno5_reconstruct_1d,
 )
+from dpf.fluid.super_time_step import rkl2_coefficients, rkl2_stability_limit
 from dpf.geometry.cylindrical import CylindricalGeometry
 
 logger = logging.getLogger(__name__)
@@ -360,6 +362,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         conservative_energy: bool = True,
         use_godunov_flux: bool = False,
         r_min: float = 0.0,
+        diffusion_method: str = "explicit",
+        sts_stages: int = 8,
     ) -> None:
         self.nr = nr
         self.nz = nz
@@ -377,7 +381,24 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         self.conservative_energy = conservative_energy
         self.use_godunov_flux = use_godunov_flux
         self.r_min = r_min
+        method = str(diffusion_method or "explicit").lower()
+        method_aliases = {
+            "implicit": "implicit_cylindrical_btheta",
+            "implicit_btheta": "implicit_cylindrical_btheta",
+        }
+        method = method_aliases.get(method, method)
+        self.diffusion_method = (
+            method
+            if method in ("explicit", "sts", "implicit_cylindrical_btheta")
+            else "explicit"
+        )
+        self.sts_stages = max(2, int(sts_stages))
         self._last_eta_max = 0.0  # For resistive diffusion CFL
+        self._last_dt_diagnostics: dict[str, object] = {
+            "controller": "uncomputed",
+            "dt_s": 0.0,
+            "diffusion_method": self.diffusion_method,
+        }
         self._last_div_B: float = 0.0
         # CT is disabled in cylindrical mode — the CT implementation uses Cartesian
         # metric (see H5 in Troubleshooting.md). Use Dedner cleaning instead.
@@ -401,6 +422,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         # Grid shape for compatibility with Cartesian interface
         self.grid_shape = (nr, 1, nz)
+        self._last_limiter_events: list[dict[str, object]] = []
 
         logger.info(
             "CylindricalMHDSolver initialized: (nr=%d, nz=%d), dr=%.2e, dz=%.2e, "
@@ -431,6 +453,112 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         elif arr.ndim == 3 and arr.shape[0] == 3:
             return arr[:, :, np.newaxis, :]
         return arr
+
+    @property
+    def last_limiter_events(self) -> list[dict[str, object]]:
+        """Return limiter/repair events recorded during the last step."""
+        return list(self._last_limiter_events)
+
+    @staticmethod
+    def _limiter_stats(values: object) -> dict[str, object]:
+        try:
+            arr = np.asarray(values, dtype=float)
+        except (TypeError, ValueError):
+            return {
+                "count": 0,
+                "finite_count": 0,
+                "nonfinite_count": 0,
+                "min": None,
+                "max": None,
+            }
+        flat = arr.ravel()
+        if flat.size == 0:
+            return {
+                "count": 0,
+                "finite_count": 0,
+                "nonfinite_count": 0,
+                "min": None,
+                "max": None,
+            }
+        finite = np.isfinite(flat)
+        finite_values = flat[finite]
+        return {
+            "count": int(flat.size),
+            "finite_count": int(np.count_nonzero(finite)),
+            "nonfinite_count": int(flat.size - np.count_nonzero(finite)),
+            "min": float(np.min(finite_values)) if finite_values.size else None,
+            "max": float(np.max(finite_values)) if finite_values.size else None,
+        }
+
+    def _record_limiter_event(
+        self,
+        *,
+        limiter_id: str,
+        affected_field: str,
+        classification: str,
+        activation_count: int,
+        before: object | None = None,
+        after: object | None = None,
+        threshold: object | None = None,
+        acceptance_blocking: bool = True,
+        justification: str = "",
+    ) -> None:
+        if activation_count <= 0:
+            return
+        event: dict[str, object] = {
+            "limiter_id": limiter_id,
+            "code_path": "dpf.fluid.cylindrical_mhd.CylindricalMHDSolver",
+            "affected_field": affected_field,
+            "classification": classification,
+            "activation_count": int(activation_count),
+            "acceptance_blocking": bool(acceptance_blocking),
+            "justification": justification,
+        }
+        if before is not None:
+            event["before"] = self._limiter_stats(before)
+        if after is not None:
+            event["after"] = self._limiter_stats(after)
+        if threshold is not None:
+            event["threshold"] = threshold
+        self._last_limiter_events.append(event)
+
+    def _record_bound_event(
+        self,
+        *,
+        limiter_id: str,
+        affected_field: str,
+        before: np.ndarray,
+        after: np.ndarray,
+        threshold: object,
+        classification: str = "acceptance_blocker",
+        acceptance_blocking: bool = True,
+        justification: str = "",
+    ) -> None:
+        before_arr = np.asarray(before, dtype=float)
+        after_arr = np.asarray(after, dtype=float)
+        changed = int(
+            np.count_nonzero(
+                ~np.isclose(
+                    before_arr,
+                    after_arr,
+                    rtol=0.0,
+                    atol=0.0,
+                    equal_nan=True,
+                )
+            )
+        )
+        if changed:
+            self._record_limiter_event(
+                limiter_id=limiter_id,
+                affected_field=affected_field,
+                classification=classification,
+                activation_count=changed,
+                before=before_arr,
+                after=after_arr,
+                threshold=threshold,
+                acceptance_blocking=acceptance_blocking,
+                justification=justification,
+            )
 
     def _weno5_flux_sweep_2d(
         self,
@@ -663,6 +791,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         eta_field: np.ndarray | None = None,
         source_terms: dict | None = None,
         e_electron: np.ndarray | None = None,
+        include_resistive_induction: bool = True,
     ) -> dict[str, np.ndarray]:
         """Godunov (PLM+HLL) RHS for cylindrical MHD.
 
@@ -880,10 +1009,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         E_field = np.zeros((3, nr, nz))
         ohmic_heating = np.zeros((nr, nz))
         if self.enable_resistive and eta_field is not None:
-            for d in range(3):
-                E_field[d] = eta_field * J_total[d]
             J_sq = np.sum(J_total**2, axis=0)
             ohmic_heating = eta_field * J_sq
+            if include_resistive_induction:
+                for d in range(3):
+                    E_field[d] = eta_field * J_total[d]
 
         if self.enable_hall:
             ne = rho / self.ion_mass
@@ -895,7 +1025,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             E_field = E_field + E_Hall
 
         # Resistive/Hall correction to induction (added on top of HLL ideal fluxes)
-        if self.enable_resistive or self.enable_hall:
+        if (self.enable_resistive and include_resistive_induction) or self.enable_hall:
             eEr, eEt, eEz = _plm_curl_parallel(
                 E_field[0], E_field[1], E_field[2], _r, _inv_r, self.dr, self.dz,
             )
@@ -990,17 +1120,234 @@ class CylindricalMHDSolver(PlasmaSolverBase):
 
         dt_r = self.cfl * self.dr / max(v_max_r, 1e-30)
         dt_z = self.cfl * self.dz / max(v_max_z, 1e-30)
-        dt = min(dt_r, dt_z)
+        dt_adv = min(dt_r, dt_z)
+        dt = dt_adv
+        dt_diff = None
+        dt_sts = None
+        resistive_stiffness_ratio = None
+        eta_max = float(getattr(self, "_last_eta_max", 0.0))
 
         # Resistive diffusion CFL: dt < 0.5 * dx^2 * mu_0 / eta_max
-        if self.enable_resistive and hasattr(self, "_last_eta_max") and self._last_eta_max > 0:
+        if self.enable_resistive and eta_max > 0:
             dx_min = min(self.dr, self.dz)
-            dt_diff = 0.5 * dx_min**2 * mu_0 / self._last_eta_max
-            dt = min(dt, dt_diff)
+            dt_diff = 0.5 * dx_min**2 * mu_0 / eta_max
+            resistive_stiffness_ratio = dt_adv / max(dt_diff, 1.0e-300)
+            if self.diffusion_method == "implicit_cylindrical_btheta":
+                dt = dt_adv
+            elif self.diffusion_method == "sts":
+                dt_sts = rkl2_stability_limit(self.sts_stages, dt_diff)
+                dt = min(dt, dt_sts)
+            else:
+                dt = min(dt, dt_diff)
 
+        if dt_diff is not None and dt_diff < dt_adv:
+            if self.diffusion_method == "implicit_cylindrical_btheta":
+                controller = "hyperbolic_cfl"
+            elif self.diffusion_method == "sts":
+                controller = (
+                    "sts_resistive_diffusion"
+                    if dt_sts is not None and dt_sts < dt_adv
+                    else "hyperbolic_cfl"
+                )
+            else:
+                controller = "resistive_diffusion"
+        else:
+            controller = "hyperbolic_cfl"
         if dt < 1e-30:
             dt = 1e-10
+            controller = "minimum_timestep_fallback"
+        self._last_dt_diagnostics = {
+            "controller": controller,
+            "dt_s": float(dt),
+            "dt_adv_s": float(dt_adv),
+            "dt_r_s": float(dt_r),
+            "dt_z_s": float(dt_z),
+            "dt_diff_s": float(dt_diff) if dt_diff is not None else None,
+            "dt_sts_s": float(dt_sts) if dt_sts is not None else None,
+            "resistive_stiffness_ratio": (
+                float(resistive_stiffness_ratio)
+                if resistive_stiffness_ratio is not None
+                else None
+            ),
+            "eta_max_ohm_m": eta_max,
+            "v_max_r_m_s": float(v_max_r),
+            "v_max_z_m_s": float(v_max_z),
+            "diffusion_method": self.diffusion_method,
+            "sts_stages": self.sts_stages if self.diffusion_method == "sts" else None,
+        }
         return dt
+
+    def compute_dt(self, state: dict[str, np.ndarray]) -> float:
+        """Public timestep hook used by app/engine drivers."""
+        return self._compute_dt(state)
+
+    @property
+    def last_dt_diagnostics(self) -> dict[str, object]:
+        """Return diagnostics for the most recent timestep calculation."""
+        return dict(self._last_dt_diagnostics)
+
+    def _resistive_induction_rhs(
+        self,
+        B: np.ndarray,
+        eta_2d: np.ndarray,
+        source_terms: dict | None = None,
+    ) -> np.ndarray:
+        """Evaluate the cylindrical resistive induction operator.
+
+        This is the same physics operator used by the explicit resistive term:
+        dB/dt = -curl(eta * J), J = curl(B) / mu_0.  The STS path calls this
+        directly so it keeps the cylindrical curl geometry instead of routing
+        through the Cartesian component-wise diffusion helper.
+        """
+        cBr, cBt, cBz = _plm_curl_parallel(
+            B[0], B[1], B[2], self.geom.r, self.geom.inv_r, self.dr, self.dz,
+        )
+        curl_B = np.empty((3, self.nr, self.nz))
+        curl_B[0] = cBr
+        curl_B[1] = cBt
+        curl_B[2] = cBz
+        J_total = curl_B / mu_0
+        if source_terms and "J_kin" in source_terms:
+            J_kin = source_terms["J_kin"]
+            if J_kin.ndim == 4:
+                J_kin = J_kin[:, :, 0, :]
+            J_total = J_total - J_kin
+
+        E_resistive = np.empty((3, self.nr, self.nz))
+        for d in range(3):
+            E_resistive[d] = eta_2d * J_total[d]
+        eBr, eBt, eBz = _plm_curl_parallel(
+            E_resistive[0],
+            E_resistive[1],
+            E_resistive[2],
+            self.geom.r,
+            self.geom.inv_r,
+            self.dr,
+            self.dz,
+        )
+        dB_dt = np.empty((3, self.nr, self.nz))
+        dB_dt[0] = -eBr
+        dB_dt[1] = -eBt
+        dB_dt[2] = -eBz
+        return dB_dt
+
+    def _apply_sts_resistive_induction(
+        self,
+        B: np.ndarray,
+        eta_2d: np.ndarray | None,
+        dt: float,
+        source_terms: dict | None = None,
+    ) -> np.ndarray:
+        """Advance resistive induction with RKL2 super-time-stepping."""
+        if (
+            not self.enable_resistive
+            or self.diffusion_method != "sts"
+            or eta_2d is None
+            or dt <= 0.0
+        ):
+            return B
+
+        s = self.sts_stages
+        mu, nu, mu_tilde, gamma_tilde = rkl2_coefficients(s)
+        y0 = B.copy()
+        l0 = self._resistive_induction_rhs(y0, eta_2d, source_terms)
+        y_prev2 = y0.copy()
+        y_prev1 = y0 + mu_tilde[1] * dt * l0
+
+        for stage in range(2, s + 1):
+            l_prev1 = self._resistive_induction_rhs(
+                y_prev1,
+                eta_2d,
+                source_terms,
+            )
+            y_curr = (
+                mu[stage] * y_prev1
+                + nu[stage] * y_prev2
+                + (1.0 - mu[stage] - nu[stage]) * y0
+                + mu_tilde[stage] * dt * l_prev1
+                + gamma_tilde[stage] * dt * l0
+            )
+            y_prev2 = y_prev1
+            y_prev1 = y_curr
+
+        y_prev1[0, 0, :] = 0.0
+        return y_prev1
+
+    def _apply_implicit_btheta_resistive_induction(
+        self,
+        B: np.ndarray,
+        eta_2d: np.ndarray | None,
+        dt: float,
+    ) -> np.ndarray:
+        """Advance the axisymmetric ``B_theta`` resistive operator implicitly."""
+        if (
+            not self.enable_resistive
+            or self.diffusion_method != "implicit_cylindrical_btheta"
+            or eta_2d is None
+            or dt <= 0.0
+        ):
+            return B
+
+        poloidal_mag = np.sqrt(B[0] ** 2 + B[2] ** 2)
+        btheta_mag = np.abs(B[1])
+        poloidal_threshold = max(1.0e-12, 1.0e-8 * float(np.max(btheta_mag)))
+        material_poloidal = poloidal_mag > poloidal_threshold
+        material_count = int(np.count_nonzero(material_poloidal))
+        self._record_limiter_event(
+            limiter_id=(
+                "dpf.fluid.cylindrical_mhd.implicit_btheta."
+                "material_poloidal_field"
+            ),
+            affected_field="B",
+            classification="acceptance_blocker",
+            activation_count=material_count,
+            before=poloidal_mag,
+            threshold={
+                "max_abs_Br_Bz_T": poloidal_threshold,
+                "operator_scope": "axisymmetric_Btheta_only",
+            },
+            acceptance_blocking=True,
+            justification=(
+                "Implicit cylindrical resistive split currently solves only "
+                "the axisymmetric B_theta operator; material B_r/B_z content "
+                "blocks first-principles acceptance until the full vector "
+                "operator is implemented."
+            ),
+        )
+
+        B_new = B.copy()
+        Btheta_before = B[1]
+        Btheta_after = implicit_cylindrical_btheta_diffusion(
+            Btheta_before,
+            eta_2d,
+            dt,
+            self.dr,
+            self.dz,
+            self.geom.r,
+        )
+        nonfinite_count = int(Btheta_after.size - np.count_nonzero(np.isfinite(Btheta_after)))
+        self._record_limiter_event(
+            limiter_id=(
+                "dpf.fluid.cylindrical_mhd.implicit_btheta."
+                "nonfinite_output"
+            ),
+            affected_field="B_theta",
+            classification="debug_repair",
+            activation_count=nonfinite_count,
+            before=Btheta_after,
+            after=Btheta_before,
+            threshold={"method": "implicit_cylindrical_btheta"},
+            acceptance_blocking=True,
+            justification=(
+                "Implicit cylindrical B_theta resistive split produced "
+                "non-finite output."
+            ),
+        )
+        if nonfinite_count:
+            return B
+        B_new[1] = Btheta_after
+        B_new[0, 0, :] = 0.0
+        return B_new
 
     def _compute_rhs(
         self,
@@ -1012,6 +1359,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         eta_field: np.ndarray | None = None,
         source_terms: dict | None = None,
         e_electron: np.ndarray | None = None,
+        include_resistive_induction: bool = True,
     ) -> dict[str, np.ndarray]:
         """Compute RHS of the MHD equations in cylindrical coordinates.
 
@@ -1028,7 +1376,15 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # Delegate to Godunov (PLM+HLL) path if enabled
         if self.use_godunov_flux:
             return self._compute_godunov_rhs(
-                rho, vel, p, B, psi, eta_field, source_terms, e_electron,
+                rho,
+                vel,
+                p,
+                B,
+                psi,
+                eta_field,
+                source_terms,
+                e_electron,
+                include_resistive_induction,
             )
 
         geom = self.geom
@@ -1117,13 +1473,14 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # --- Resistive term: E_resistive = eta * J_total ---
         ohmic_heating = np.zeros((self.nr, self.nz))
         if self.enable_resistive and eta_field is not None:
-            E_resistive = np.zeros((3, self.nr, self.nz))
-            for d in range(3):
-                E_resistive[d] = eta_field * J_total[d]
-            E_field = E_field + E_resistive
             # Ohmic heating: Q_ohm = eta * |J_total|^2 [W/m^3]
             J_sq = np.sum(J_total**2, axis=0)
             ohmic_heating = eta_field * J_sq
+            if include_resistive_induction:
+                E_resistive = np.zeros((3, self.nr, self.nz))
+                for d in range(3):
+                    E_resistive[d] = eta_field * J_total[d]
+                E_field = E_field + E_resistive
 
         # Hall term: E_Hall = (J_total × B) / (ne * e)
         if self.enable_hall:
@@ -1335,6 +1692,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         eta_2d: np.ndarray | None,
         source_terms: dict | None = None,
         e_electron: np.ndarray | None = None,
+        include_resistive_induction: bool = True,
     ) -> tuple:
         """Compute one forward-Euler stage: U^(1) = U^n + dt * L(U^n).
 
@@ -1342,10 +1700,36 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             (rho, mom, p, B, psi, rhs, E_total_or_None, e_electron_or_None)
         """
         vel = mom / np.maximum(rho[np.newaxis, :, :], 1e-30)
-        rhs = self._compute_rhs(rho, vel, p, B, psi, eta_2d, source_terms, e_electron)
-        rho_new = np.maximum(rho + dt * rhs["drho_dt"], 1e-10)
+        rhs = self._compute_rhs(
+            rho,
+            vel,
+            p,
+            B,
+            psi,
+            eta_2d,
+            source_terms,
+            e_electron,
+            include_resistive_induction,
+        )
+        rho_raw = rho + dt * rhs["drho_dt"]
+        rho_new = np.maximum(rho_raw, 1e-10)
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.euler.rho_floor",
+            affected_field="rho",
+            before=rho_raw,
+            after=rho_new,
+            threshold={"floor": 1.0e-10},
+            justification="Euler stage density floor changed the state path.",
+        )
         mom_new = mom + dt * rhs["dmom_dt"]
         B_new = B + dt * rhs["dB_dt"]
+        B_new = self._apply_implicit_btheta_resistive_induction(B_new, eta_2d, dt)
+        B_new = self._apply_sts_resistive_induction(
+            B_new,
+            eta_2d,
+            dt,
+            source_terms,
+        )
         psi_new = psi + dt * rhs["dpsi_dt"]
 
         E_total_new = None
@@ -1355,7 +1739,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             v_sq = np.sum(vel**2, axis=0)
             B_sq = np.sum(B**2, axis=0)
             E_n = p / gm1 + 0.5 * rho * v_sq + B_sq / (2.0 * mu_0)
-            E_total_new = np.maximum(E_n + dt * rhs["dE_dt"], 1e-20)
+            E_raw = E_n + dt * rhs["dE_dt"]
+            E_total_new = np.maximum(E_raw, 1e-20)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.euler.total_energy_floor",
+                affected_field="E_total",
+                before=E_raw,
+                after=E_total_new,
+                threshold={"floor": 1.0e-20},
+                justification="Euler stage total-energy floor changed the state path.",
+            )
             # Recover pressure from updated conserved variables
             vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
             # Inter-stage velocity clamping: prevent kinetic energy from exceeding total energy
@@ -1365,15 +1758,46 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             v_sq_new = np.sum(vel_new**2, axis=0)
             KE_actual = 0.5 * rho_new * v_sq_new
             v_scale = np.where(KE_actual > KE_max, np.sqrt(KE_max / np.maximum(KE_actual, 1e-30)), 1.0)
+            vel_before = vel_new.copy()
             vel_new = vel_new * v_scale[np.newaxis, :, :]
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.euler.velocity_energy_clamp",
+                affected_field="velocity",
+                before=vel_before,
+                after=vel_new,
+                threshold={"internal_energy_reserve_fraction": 0.01},
+                justification=(
+                    "Euler stage kinetic-energy clamp changed velocity to "
+                    "recover positive internal energy."
+                ),
+            )
             mom_new = rho_new[np.newaxis, :, :] * vel_new
             v_sq_new = np.sum(vel_new**2, axis=0)
-            p_new = np.maximum(
-                gm1 * (E_total_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)),
-                1e-20,
+            p_raw = gm1 * (
+                E_total_new
+                - 0.5 * rho_new * v_sq_new
+                - B_sq_new / (2.0 * mu_0)
+            )
+            p_new = np.maximum(p_raw, 1e-20)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.euler.pressure_floor",
+                affected_field="pressure",
+                before=p_raw,
+                after=p_new,
+                threshold={"floor": 1.0e-20},
+                justification="Euler stage pressure floor changed recovered pressure.",
             )
         else:
-            p_new = np.maximum(p + dt * rhs["dp_dt"], 1e-20)
+            p_raw = p + dt * rhs["dp_dt"]
+            p_new = np.maximum(p_raw, 1e-20)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.euler.pressure_floor",
+                affected_field="pressure",
+                before=p_raw,
+                after=p_new,
+                threshold={"floor": 1.0e-20},
+                justification="Euler stage pressure floor changed evolved pressure.",
+            )
 
         # Axis boundary conditions: v_r=0, B_r=0 at r=0
         mom_new[0, 0, :] = 0.0
@@ -1382,7 +1806,16 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # Electron energy advection update
         ee_new = None
         if e_electron is not None and "dee_dt" in rhs:
-            ee_new = np.maximum(e_electron + dt * rhs["dee_dt"], 0.0)
+            ee_raw = e_electron + dt * rhs["dee_dt"]
+            ee_new = np.maximum(ee_raw, 0.0)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.euler.electron_energy_floor",
+                affected_field="e_electron",
+                before=ee_raw,
+                after=ee_new,
+                threshold={"floor": 0.0},
+                justification="Euler stage electron-energy floor changed the state path.",
+            )
 
         return rho_new, mom_new, p_new, B_new, psi_new, rhs, E_total_new, ee_new
 
@@ -1419,6 +1852,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Returns:
             Updated state dictionary with 3D arrays.
         """
+        self._last_limiter_events = []
         # Squeeze to 2D
         rho = self._squeeze(state["rho"])
         vel = self._squeeze(state["velocity"])
@@ -1427,12 +1861,19 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         Te = self._squeeze(state.get("Te", np.full((self.nr, 1, self.nz), 1e4)))
         Ti = self._squeeze(state.get("Ti", np.full((self.nr, 1, self.nz), 1e4)))
         psi = self._squeeze(state.get("psi", np.zeros((self.nr, 1, self.nz))))
+        Z_bar_input = state.get("Z_bar")
+        if Z_bar_input is None:
+            Z_bar = np.ones_like(rho)
+        else:
+            Z_bar = self._squeeze(Z_bar_input)
+            Z_bar = np.where(np.isfinite(Z_bar) & (Z_bar >= 0.0), Z_bar, 0.0)
 
         # Squeeze eta_field if provided
         eta_2d = None
         if eta_field is not None:
             eta_2d = self._squeeze(eta_field) if eta_field.ndim == 3 else eta_field
             self._last_eta_max = float(np.max(eta_2d))
+        include_resistive_induction = self.diffusion_method == "explicit"
 
         # Save U^n
         rho_n = rho.copy()
@@ -1460,6 +1901,7 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         # === Stage 1: U^(1) = U^n + dt * L(U^n) ===
         rho_1, mom_1, p_1, B_1, psi_1, rhs1, E_1, ee_1 = self._euler_stage(
             rho_n, mom_n, p_n, B_n, psi_n, dt, eta_2d, source_terms, ee_n,
+            include_resistive_induction,
         )
         # NOTE: Electrode BC is NOT applied between RK substages.
         # Applying it here would inject magnetic energy without updating E_total,
@@ -1470,22 +1912,76 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             # === Stage 2: U^(2) = 3/4*U^n + 1/4*(U^(1) + dt * L(U^(1))) ===
             rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
                 rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
+                include_resistive_induction,
             )
-            rho_2 = np.maximum(0.75 * rho_n + 0.25 * rho_2e, 1e-10)
+            rho_2_raw = 0.75 * rho_n + 0.25 * rho_2e
+            rho_2 = np.maximum(rho_2_raw, 1e-10)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.rk.rho_floor",
+                affected_field="rho",
+                before=rho_2_raw,
+                after=rho_2,
+                threshold={"floor": 1.0e-10},
+                justification="SSP-RK density floor changed an intermediate state.",
+            )
             mom_2 = 0.75 * mom_n + 0.25 * mom_2e
             B_2 = 0.75 * B_n + 0.25 * B_2e
             psi_2 = 0.75 * psi_n + 0.25 * psi_2e
-            ee_2 = np.maximum(0.75 * ee_n + 0.25 * ee_2e, 0.0) if ee_n is not None else None
+            ee_2 = None
+            if ee_n is not None:
+                ee_2_raw = 0.75 * ee_n + 0.25 * ee_2e
+                ee_2 = np.maximum(ee_2_raw, 0.0)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.electron_energy_floor",
+                    affected_field="e_electron",
+                    before=ee_2_raw,
+                    after=ee_2,
+                    threshold={"floor": 0.0},
+                    justification=(
+                        "SSP-RK electron-energy floor changed an intermediate state."
+                    ),
+                )
 
             if use_E and E_2e is not None:
                 # SSP combine on conserved E_total, then recover p
-                E_2 = np.maximum(0.75 * E_n + 0.25 * E_2e, 1e-20)
+                E_2_raw = 0.75 * E_n + 0.25 * E_2e
+                E_2 = np.maximum(E_2_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.total_energy_floor",
+                    affected_field="E_total",
+                    before=E_2_raw,
+                    after=E_2,
+                    threshold={"floor": 1.0e-20},
+                    justification=(
+                        "SSP-RK total-energy floor changed an intermediate state."
+                    ),
+                )
                 vel_2 = mom_2 / np.maximum(rho_2[np.newaxis, :, :], 1e-30)
                 v_sq_2 = np.sum(vel_2**2, axis=0)
                 B_sq_2 = np.sum(B_2**2, axis=0)
-                p_2 = np.maximum(gm1 * (E_2 - 0.5 * rho_2 * v_sq_2 - B_sq_2 / (2.0 * mu_0)), 1e-20)
+                p_2_raw = gm1 * (
+                    E_2 - 0.5 * rho_2 * v_sq_2 - B_sq_2 / (2.0 * mu_0)
+                )
+                p_2 = np.maximum(p_2_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_2_raw,
+                    after=p_2,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed an intermediate state.",
+                )
             else:
-                p_2 = np.maximum(0.75 * p_n + 0.25 * p_2e, 1e-20)
+                p_2_raw = 0.75 * p_n + 0.25 * p_2e
+                p_2 = np.maximum(p_2_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_2_raw,
+                    after=p_2,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed an intermediate state.",
+                )
                 E_2 = None
 
             # (electrode BC deferred to final stage — see note above)
@@ -1493,21 +1989,71 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             # === Stage 3: U^(n+1) = 1/3*U^n + 2/3*(U^(2) + dt * L(U^(2))) ===
             rho_3e, mom_3e, p_3e, B_3e, psi_3e, rhs3, E_3e, ee_3e = self._euler_stage(
                 rho_2, mom_2, p_2, B_2, psi_2, dt, eta_2d, source_terms, ee_2,
+                include_resistive_induction,
             )
-            rho_new = np.maximum((1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e, 1e-10)
+            rho_new_raw = (1.0 / 3.0) * rho_n + (2.0 / 3.0) * rho_3e
+            rho_new = np.maximum(rho_new_raw, 1e-10)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.rk.rho_floor",
+                affected_field="rho",
+                before=rho_new_raw,
+                after=rho_new,
+                threshold={"floor": 1.0e-10},
+                justification="SSP-RK density floor changed the returned state.",
+            )
             mom_new = (1.0 / 3.0) * mom_n + (2.0 / 3.0) * mom_3e
             B_new = (1.0 / 3.0) * B_n + (2.0 / 3.0) * B_3e
             psi_new = (1.0 / 3.0) * psi_n + (2.0 / 3.0) * psi_3e
-            ee_new_adv = np.maximum((1.0 / 3.0) * ee_n + (2.0 / 3.0) * ee_3e, 0.0) if ee_n is not None else None
+            ee_new_adv = None
+            if ee_n is not None:
+                ee_new_raw = (1.0 / 3.0) * ee_n + (2.0 / 3.0) * ee_3e
+                ee_new_adv = np.maximum(ee_new_raw, 0.0)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.electron_energy_floor",
+                    affected_field="e_electron",
+                    before=ee_new_raw,
+                    after=ee_new_adv,
+                    threshold={"floor": 0.0},
+                    justification="SSP-RK electron-energy floor changed the returned state.",
+                )
 
             if use_E and E_3e is not None:
-                E_new = np.maximum((1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e, 1e-20)
+                E_new_raw = (1.0 / 3.0) * E_n + (2.0 / 3.0) * E_3e
+                E_new = np.maximum(E_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.total_energy_floor",
+                    affected_field="E_total",
+                    before=E_new_raw,
+                    after=E_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK total-energy floor changed the returned state.",
+                )
                 vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
                 v_sq_new = np.sum(vel_new**2, axis=0)
                 B_sq_new = np.sum(B_new**2, axis=0)
-                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+                p_new_raw = gm1 * (
+                    E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)
+                )
+                p_new = np.maximum(p_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_new_raw,
+                    after=p_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed the returned state.",
+                )
             else:
-                p_new = np.maximum((1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e, 1e-20)
+                p_new_raw = (1.0 / 3.0) * p_n + (2.0 / 3.0) * p_3e
+                p_new = np.maximum(p_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_new_raw,
+                    after=p_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed the returned state.",
+                )
 
             vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
             ohmic_avg = (1.0 / 3.0) * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"] + rhs3["ohmic_heating"])
@@ -1515,21 +2061,71 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             # === SSP-RK2: U^(n+1) = 0.5*U^n + 0.5*(U^(1) + dt*L(U^(1))) ===
             rho_2e, mom_2e, p_2e, B_2e, psi_2e, rhs2, E_2e, ee_2e = self._euler_stage(
                 rho_1, mom_1, p_1, B_1, psi_1, dt, eta_2d, source_terms, ee_1,
+                include_resistive_induction,
             )
-            rho_new = np.maximum(0.5 * rho_n + 0.5 * rho_2e, 1e-10)
+            rho_new_raw = 0.5 * rho_n + 0.5 * rho_2e
+            rho_new = np.maximum(rho_new_raw, 1e-10)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.rk.rho_floor",
+                affected_field="rho",
+                before=rho_new_raw,
+                after=rho_new,
+                threshold={"floor": 1.0e-10},
+                justification="SSP-RK density floor changed the returned state.",
+            )
             mom_new = 0.5 * mom_n + 0.5 * mom_2e
             B_new = 0.5 * B_n + 0.5 * B_2e
             psi_new = 0.5 * psi_n + 0.5 * psi_2e
-            ee_new_adv = np.maximum(0.5 * ee_n + 0.5 * ee_2e, 0.0) if ee_n is not None else None
+            ee_new_adv = None
+            if ee_n is not None:
+                ee_new_raw = 0.5 * ee_n + 0.5 * ee_2e
+                ee_new_adv = np.maximum(ee_new_raw, 0.0)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.electron_energy_floor",
+                    affected_field="e_electron",
+                    before=ee_new_raw,
+                    after=ee_new_adv,
+                    threshold={"floor": 0.0},
+                    justification="SSP-RK electron-energy floor changed the returned state.",
+                )
 
             if use_E and E_2e is not None:
-                E_new = np.maximum(0.5 * E_n + 0.5 * E_2e, 1e-20)
+                E_new_raw = 0.5 * E_n + 0.5 * E_2e
+                E_new = np.maximum(E_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.total_energy_floor",
+                    affected_field="E_total",
+                    before=E_new_raw,
+                    after=E_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK total-energy floor changed the returned state.",
+                )
                 vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
                 v_sq_new = np.sum(vel_new**2, axis=0)
                 B_sq_new = np.sum(B_new**2, axis=0)
-                p_new = np.maximum(gm1 * (E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)), 1e-20)
+                p_new_raw = gm1 * (
+                    E_new - 0.5 * rho_new * v_sq_new - B_sq_new / (2.0 * mu_0)
+                )
+                p_new = np.maximum(p_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_new_raw,
+                    after=p_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed the returned state.",
+                )
             else:
-                p_new = np.maximum(0.5 * p_n + 0.5 * p_2e, 1e-20)
+                p_new_raw = 0.5 * p_n + 0.5 * p_2e
+                p_new = np.maximum(p_new_raw, 1e-20)
+                self._record_bound_event(
+                    limiter_id="dpf.fluid.cylindrical_mhd.rk.pressure_floor",
+                    affected_field="pressure",
+                    before=p_new_raw,
+                    after=p_new,
+                    threshold={"floor": 1.0e-20},
+                    justification="SSP-RK pressure floor changed the returned state.",
+                )
 
             vel_new = mom_new / np.maximum(rho_new[np.newaxis, :, :], 1e-30)
             ohmic_avg = 0.5 * (rhs1["ohmic_heating"] + rhs2["ohmic_heating"])
@@ -1542,7 +2138,19 @@ class CylindricalMHDSolver(PlasmaSolverBase):
         v_mag = np.sqrt(np.sum(vel_new**2, axis=0))
         v_excess = v_mag / np.maximum(v_max, 1e-30)
         limiter = np.where(v_excess > 1.0, 1.0 / np.maximum(v_excess, 1e-30), 1.0)
+        vel_before = vel_new.copy()
         vel_new *= limiter[np.newaxis, :, :]
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.final.velocity_fast_speed_cap",
+            affected_field="velocity",
+            before=vel_before,
+            after=vel_new,
+            threshold={"max_fast_magnetosonic_multiplier": 10.0},
+            justification=(
+                "Final velocity cap at 10x fast magnetosonic speed changed "
+                "the returned state."
+            ),
+        )
 
         # Final axis BC enforcement: v_r=0, B_r=0 at r=0
         vel_new[0, 0, :] = 0.0
@@ -1561,7 +2169,20 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             B_sq_after = np.sum(B_new**2, axis=0)
             delta_ME = (B_sq_after - B_sq_before) / (2.0 * mu_0)  # [J/m³]
             # Inject the magnetic energy change into pressure to preserve conservation
-            p_new = np.maximum(p_new + delta_ME * gm1, 1e-20)
+            p_bc_raw = p_new + delta_ME * gm1
+            p_new = np.maximum(p_bc_raw, 1e-20)
+            self._record_bound_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.electrode.pressure_floor",
+                affected_field="pressure",
+                before=p_bc_raw,
+                after=p_new,
+                threshold={"floor": 1.0e-20},
+                classification="engineering_guard",
+                justification=(
+                    "Electrode magnetic-energy correction pressure floor changed "
+                    "the returned state."
+                ),
+            )
 
         # --- Constrained transport correction (optional) ---
         if self.enable_ct:
@@ -1599,8 +2220,11 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             self._last_div_B = float(np.max(np.abs(compute_div_B(staggered_new))))
 
         # --- Two-temperature update ---
-        n_i = rho_new / self.ion_mass
-        n_i_safe = np.maximum(n_i, 1e-30)
+        n_total = rho_new / self.ion_mass
+        n_i_safe = np.maximum(n_total, 1e-30)
+        Z_bar_safe = np.maximum(Z_bar, 0.0)
+        n_e_safe = np.maximum(Z_bar_safe * n_total, 1e-30)
+        n_ionized_safe = np.maximum(Z_bar_safe * n_total, 1e-30)
 
         if ee_new_adv is not None:
             # True 2T: apply source terms to ADVECTED electron energy
@@ -1612,31 +2236,76 @@ class CylindricalMHDSolver(PlasmaSolverBase):
                 rho_e_e=e_e_2d, rho=rho_new,
                 velocity=vel_new, eta=eta_eff,
                 J_sq=J_sq, Te=Te, Ti=Ti,
-                n_e=n_i_safe, n_i=n_i_safe,
+                n_e=n_e_safe, n_i=n_ionized_safe,
                 dx=self.geom.dr, dt=dt,
                 Z=1.0, gaunt_factor=1.2,
                 gamma=self.gamma,
             )
         else:
-            # Fraction-preserving hack (legacy fallback)
+            # Partial-ionization pressure recovery.  The heavy particle
+            # temperature represents ions plus neutrals, while the electron
+            # partial pressure scales with Z_bar.
             e_e_new = None
             Te_old = Te
             Ti_old = Ti
-            T_sum_old = np.maximum(Te_old + Ti_old, 1.0)
-            f_e = Te_old / T_sum_old
-            T_total_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
-            Te_new = f_e * T_total_new
-            Ti_new = (1.0 - f_e) * T_total_new
-            dTe_ohmic = (2.0 / 3.0) * ohmic_avg * dt / np.maximum(n_i_safe * k_B, 1e-30)
+            electron_to_heavy_temperature = Te_old / np.maximum(Ti_old, 1e-30)
+            T_pressure_new = p_new / np.maximum(n_i_safe * k_B, 1e-30)
+            Ti_new = T_pressure_new / np.maximum(
+                1.0 + Z_bar_safe * electron_to_heavy_temperature,
+                1e-30,
+            )
+            Te_new = electron_to_heavy_temperature * Ti_new
+            dTe_ohmic = (
+                (2.0 / 3.0)
+                * ohmic_avg
+                * dt
+                / np.maximum(n_e_safe * k_B, 1e-30)
+            )
             Te_new = Te_new + dTe_ohmic
 
+        Te_before_floor = Te_new.copy()
+        Ti_before_floor = Ti_new.copy()
         Te_new = np.maximum(Te_new, 1.0)
         Ti_new = np.maximum(Ti_new, 1.0)
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.temperature.Te_floor",
+            affected_field="Te",
+            before=Te_before_floor,
+            after=Te_new,
+            threshold={"floor_K": 1.0},
+            justification="Electron-temperature floor changed the returned state.",
+        )
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.temperature.Ti_floor",
+            affected_field="Ti",
+            before=Ti_before_floor,
+            after=Ti_new,
+            threshold={"floor_K": 1.0},
+            justification="Ion-temperature floor changed the returned state.",
+        )
 
         # Cap temperatures at physically reasonable maximum (100 keV ~ 1.16e9 K)
         T_max = 1.16e9  # 100 keV in Kelvin
+        Te_before_cap = Te_new.copy()
+        Ti_before_cap = Ti_new.copy()
         Te_new = np.minimum(Te_new, T_max)
         Ti_new = np.minimum(Ti_new, T_max)
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.temperature.Te_cap",
+            affected_field="Te",
+            before=Te_before_cap,
+            after=Te_new,
+            threshold={"cap_K": T_max},
+            justification="Electron-temperature cap changed the returned state.",
+        )
+        self._record_bound_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.temperature.Ti_cap",
+            affected_field="Ti",
+            before=Ti_before_cap,
+            after=Ti_new,
+            threshold={"cap_K": T_max},
+            justification="Ion-temperature cap changed the returned state.",
+        )
 
         # --- Update coupling ---
         # Lp from magnetic energy: Lp = 2*W_mag/I² = ∫B²/µ₀ dV / I²
@@ -1672,6 +2341,8 @@ class CylindricalMHDSolver(PlasmaSolverBase):
             "Ti": self._unsqueeze(Ti_new),
             "psi": self._unsqueeze(psi_new),
         }
+        if Z_bar_input is not None:
+            result["Z_bar"] = self._unsqueeze(Z_bar)
         if e_e_new is not None:
             result["e_electron"] = self._unsqueeze(e_e_new)
         return result

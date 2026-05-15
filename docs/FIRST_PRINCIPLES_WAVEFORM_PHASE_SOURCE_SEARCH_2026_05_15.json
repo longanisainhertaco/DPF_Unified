@@ -1,0 +1,103 @@
+{
+  "date": "2026-05-15",
+  "blocker": "FP-10",
+  "question": "Can PF-1000/Akel current-waveform, current-dip, and phase-timing evidence support accepted first-principles comparators today?",
+  "verdict": "blocked",
+  "decision": "do_not_enable_current_waveform_or_phase_acceptance",
+  "candidate_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
+  "supported_text_channels": [
+    "voltage_current_derivative_and_current_traces_measured",
+    "derivative_dip_zero_time_definition",
+    "breakdown_to_derivative_dip_time",
+    "constriction_timing_text",
+    "secondary_plasmoid_decay_timing_text",
+    "channel_timing_uncertainty_text",
+    "measured_current_figures_exist",
+    "current_fit_through_dip_text",
+    "peak_current_scalar",
+    "pinch_current_scalar",
+    "pinch_duration_scalar"
+  ],
+  "draft_packet_status": {
+    "path": "KnowledgeReference/digitization/akel-2021-fig1-current-waveform-shot-12581-draft-packet.json",
+    "measured_candidate_count": 294,
+    "computed_candidate_count": 34,
+    "overlay_rms_residual_px": 0.213455189,
+    "review_status": "draft",
+    "accepted_for_validation": false
+  },
+  "missing_required_channels": [
+    "accepted_digitized_current_waveform",
+    "accepted_current_derivative_or_dip_trace",
+    "time_axis_calibration",
+    "current_axis_calibration",
+    "per_point_waveform_uncertainty",
+    "independent_review_accepted",
+    "current_dip_timing_and_depth",
+    "axial_phase_timing",
+    "radial_phase_timing",
+    "pinch_phase_timing",
+    "production_output_mapping",
+    "comparator_metric_and_tolerance",
+    "uq_budget"
+  ],
+  "source_answers": [
+    {
+      "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+      "lines": "108-142",
+      "role": "pf1000_akel_waveform_diagnostic_and_timing_context",
+      "limitation": "no accepted digitized waveform arrays, per-point uncertainty, or dip depth"
+    },
+    {
+      "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+      "lines": "218-295,318-333",
+      "role": "pf1000_akel_measured_current_figures_and_phase_scalars",
+      "limitation": "phase and waveform context comes from Lee-fit/scalar text and figure captions, not accepted comparator arrays"
+    },
+    {
+      "path": "docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md",
+      "lines": "146-172,198-215,224-249",
+      "role": "local_digitization_and_phase_queue_status",
+      "limitation": "Akel Fig. 1 is blocked_by_review; phase targets and derivative traces remain missing"
+    },
+    {
+      "path": "KnowledgeReference/digitization/akel-2021-fig1-current-waveform-shot-12581-draft-packet.json",
+      "lines": "710-787",
+      "role": "draft_waveform_packet_not_acceptance_evidence",
+      "limitation": "review_status is draft and independent_review_count is zero"
+    },
+    {
+      "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+      "lines": "75-79",
+      "role": "acceptance_gate_requirements",
+      "limitation": "independent review and accepted status are mandatory before waveform evidence can support validation"
+    }
+  ],
+  "implementation": [
+    "src/dpf/first_principles/waveform_phase.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "current_implementation_ratchet": {
+    "implemented_files": [
+      "src/dpf/first_principles/waveform_phase.py",
+      "src/dpf/first_principles/runner.py",
+      "tests/test_first_principles_runner.py"
+    ],
+    "packet_fields_added": [
+      "waveform_phase_channel_status",
+      "text_supported_not_acceptance_channels",
+      "draft_digitization_packet_status",
+      "required_review_channels",
+      "validation_target_scope_decisions"
+    ],
+    "remaining_blocker": "no accepted digitized waveform derivative phase comparator or waveform UQ packet exists"
+  },
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
+    }
+  ],
+  "next_blocker": "FP-11"
+}

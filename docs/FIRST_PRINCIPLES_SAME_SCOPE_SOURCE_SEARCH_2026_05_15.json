@@ -1,0 +1,92 @@
+{
+  "date": "2026-05-15",
+  "blocker": "FP-9",
+  "question": "Does the local source of truth contain enough same-scope material to support an accepted whole-shot first-principles PF-1000/Akel demonstrator?",
+  "verdict": "blocked",
+  "decision": "keep_pf1000_akel_as_engineering_reference_candidate_do_not_promote_whole_shot_claim",
+  "candidate_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
+  "supported_same_scope_text_channels": [
+    "device_geometry_and_electrode_dimensions",
+    "bank_circuit_drive",
+    "gas_species_pressure",
+    "measured_current_shape_described_not_target_extracted",
+    "peak_current_scalar",
+    "pinch_current_scalar",
+    "pinch_geometry_lee_output",
+    "neutron_scalar_yield",
+    "neutron_detector_layout_text",
+    "timing_uncertainty_text"
+  ],
+  "missing_required_channels": [
+    "accepted_digitized_current_waveform",
+    "startup_breakdown_preionization",
+    "density_spatial_history",
+    "em_field_history",
+    "electron_temperature_history",
+    "ion_temperature_or_distribution_history",
+    "neutron_timing_history",
+    "neutron_spectrum",
+    "neutron_anisotropy",
+    "detector_response_and_calibration",
+    "propagated_uncertainty_budget",
+    "source_review_certificate"
+  ],
+  "source_answers": [
+    {
+      "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+      "lines": "108-142,256-333,862-889",
+      "role": "pf1000_akel_16kv_current_yield_reference_candidate",
+      "limitation": "scalar and text-supported evidence only; plotted traces and full diagnostics are not accepted comparator targets"
+    },
+    {
+      "path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+      "lines": "129-131,162-176",
+      "role": "pf1000_spatial_density_other_scope",
+      "limitation": "not Akel 16 kV shot 12581; useful for requirements, not same-scope validation"
+    },
+    {
+      "path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+      "lines": "1459-1517",
+      "role": "pf1000_sheath_field_other_scope",
+      "limitation": "different PF-1000 campaign with different voltage, pressure, and shot conditions"
+    },
+    {
+      "path": "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+      "lines": "121-137,175-177,269-275",
+      "role": "pf1000_neutron_transport_detector_other_scope",
+      "limitation": "full-scale PF-1000 at 450-500 kJ and 3.5 Torr, not Akel 16 kV"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "1220-1266",
+      "role": "hybrid_pic_architecture_order_of_magnitude_other_scope",
+      "limitation": "2-D axisymmetric non-PF-1000/Akel architecture source, not precise same-scope validation"
+    }
+  ],
+  "implementation": [
+    "src/dpf/first_principles/same_scope.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "current_implementation_ratchet": {
+    "implemented_files": [
+      "src/dpf/first_principles/same_scope.py",
+      "src/dpf/first_principles/runner.py",
+      "tests/test_first_principles_runner.py"
+    ],
+    "packet_fields_added": [
+      "same_scope_channel_status",
+      "text_supported_not_acceptance_channels",
+      "cross_scope_policy",
+      "validation_target_scope_decisions"
+    ],
+    "remaining_blocker": "no accepted one-scope PF-1000/Akel packet or reviewed transfer rule exists"
+  },
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
+    }
+  ],
+  "next_blocker": "FP-10"
+}

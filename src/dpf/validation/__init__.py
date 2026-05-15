@@ -58,6 +58,7 @@ from dpf.validation.first_principles_mhd import (
     PF1000_AKEL_VALIDATION_SCOPE,
     FirstPrinciplesMHDReadiness,
     annotate_first_principles_mhd_result,
+    first_principles_backend_scope_status,
     first_principles_energy_accounting_status,
     first_principles_intervals_from_sources,
     first_principles_mhd_readiness_report,
@@ -66,6 +67,23 @@ from dpf.validation.first_principles_mhd import (
     first_principles_startup_initialization_status,
     normalize_first_principles_run_mode,
     reduced_model_baseline_authority,
+)
+from dpf.validation.first_principles_limiters import (
+    finite_stats,
+    first_principles_limiter_status,
+    limiter_event,
+    summarize_limiter_ledger,
+)
+from dpf.validation.hybrid_pic_3d import (
+    HYBRID_PIC_3D_CAPABILITIES,
+    HYBRID_PIC_3D_CAPABILITY_IDS,
+    HYBRID_PIC_3D_SOURCE,
+    hybrid_pic_3d_readiness_status,
+)
+from dpf.validation.hybrid_pic_3d_validation_packet import (
+    HybridPIC3DValidationPacket,
+    candidate_packet_from_source_geometry,
+    evaluate_hybrid_pic_3d_validation_packet,
 )
 from dpf.validation.digitization import (
     a14_axis_calibration_draft_packets,
@@ -414,12 +432,20 @@ __all__ = [
     "PF1000_AKEL_VALIDATION_SCOPE",
     "FirstPrinciplesMHDReadiness",
     "annotate_first_principles_mhd_result",
+    "first_principles_backend_scope_status",
     "first_principles_energy_accounting_status",
     "first_principles_intervals_from_sources",
     "first_principles_mhd_readiness_report",
     "first_principles_neutron_yield_authority_status",
     "first_principles_output_status",
     "first_principles_startup_initialization_status",
+    "HYBRID_PIC_3D_CAPABILITIES",
+    "HYBRID_PIC_3D_CAPABILITY_IDS",
+    "HYBRID_PIC_3D_SOURCE",
+    "hybrid_pic_3d_readiness_status",
+    "HybridPIC3DValidationPacket",
+    "candidate_packet_from_source_geometry",
+    "evaluate_hybrid_pic_3d_validation_packet",
     "normalize_first_principles_run_mode",
     "reduced_model_baseline_authority",
     "compression_ratio",

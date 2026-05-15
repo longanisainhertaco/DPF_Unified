@@ -1,0 +1,85 @@
+{
+  "id": "FP-4",
+  "title": "Numerical-fidelity packet",
+  "date": "2026-05-15",
+  "source_scope": "local KnowledgeReference source truth plus first-principles planning artifacts and package-native test surfaces",
+  "verdict": "blocked_numerical_fidelity_packet_not_available",
+  "decision": "do_not_accept_numerical_fidelity",
+  "runner_packet": "src/dpf/first_principles/numerical_fidelity.py",
+  "required_test_surfaces": [
+    "finite_volume_shock_behavior",
+    "cylindrical_source_terms",
+    "maxwell_yee_update_and_courant_limit",
+    "divergence_b_control",
+    "gauss_law_or_charge_current_continuity",
+    "resistive_diffusion",
+    "joule_heating_and_total_energy",
+    "circuit_power_port_coupling",
+    "particle_push_and_current_deposition",
+    "mesh_and_timestep_convergence",
+    "restart_reproducibility",
+    "backend_and_precision_parity",
+    "limiter_zero_acceptance"
+  ],
+  "required_channels": [
+    "test_surface_registry",
+    "source_backed_numerical_method_map",
+    "analytic_or_manufactured_reference_solutions",
+    "mesh_family_definitions",
+    "timestep_family_definitions",
+    "norms_by_test_surface",
+    "tolerances_by_test_surface",
+    "observed_order_or_monotonic_convergence",
+    "finite_volume_shock_packet",
+    "cylindrical_source_term_packet",
+    "maxwell_yee_courant_packet",
+    "divergence_b_packet",
+    "gauss_law_or_continuity_packet",
+    "resistive_diffusion_packet",
+    "joule_heating_energy_packet",
+    "circuit_power_port_numerical_packet",
+    "particle_push_deposition_packet",
+    "mesh_timestep_convergence_packet",
+    "restart_reproducibility_packet",
+    "backend_precision_parity_packet",
+    "limiter_zero_packet",
+    "same_scope_numerical_observable_mapping",
+    "artifact_links_and_hashes",
+    "negative_tests_for_failed_tolerance",
+    "independent_review_certificate"
+  ],
+  "source_references": [
+    "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md:243-260",
+    "docs/DPF_REQUIREMENTS_BASELINE.md:70",
+    "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:410-424,609-645,1018-1110",
+    "KnowledgeReference/particle-simulation-of-plasmas-review-and-advances-6d7355ba.md:456-530,671-705,744-755",
+    "KnowledgeReference/a-constrained-transport-embedded-boundary-method-for-compressible-resistive-magnetohydrodynamics.md:55-90,429-500",
+    "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2444-2576"
+  ],
+  "existing_candidate_test_surfaces": [
+    "tests/test_maxwell_3d_field_core.py",
+    "tests/test_marder_correction.py",
+    "tests/test_pic_current_source_port.py",
+    "tests/test_hybrid_3d_loop.py",
+    "tests/test_circuit_magnetic_boundary.py",
+    "tests/test_first_principles_runner.py",
+    "test_phase_c_verification.py",
+    "test_phase_f_verification.py",
+    "test_phase_n_cross_backend.py",
+    "test_phase_o_physics_accuracy.py"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.json",
+      "result": "valid JSON"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
+      "result": "33 passed"
+    }
+  ]
+}

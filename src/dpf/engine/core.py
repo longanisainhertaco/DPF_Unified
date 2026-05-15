@@ -252,6 +252,8 @@ class SimulationEngine:
                 riemann_solver=fc.riemann_solver,
                 conservative_energy=fc.conservative_energy,
                 use_godunov_flux=fc.use_godunov_flux,
+                diffusion_method=fc.diffusion_method,
+                sts_stages=fc.sts_stages,
             )
             # Cylindrical cell volumes from geometry: pi*(r_out^2-r_in^2)*dz
             # Expand (nr, nz) → (nr, 1, nz) for broadcast with 3D state arrays

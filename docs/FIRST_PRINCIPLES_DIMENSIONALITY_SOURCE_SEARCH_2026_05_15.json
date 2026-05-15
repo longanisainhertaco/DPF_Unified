@@ -1,0 +1,92 @@
+{
+  "date": "2026-05-15",
+  "source_scope": "KnowledgeReference and source-truth index artifacts",
+  "blocker_id": "FP-7",
+  "blocker": "3D hybrid PIC-fluid dimensionality and handoff",
+  "verdict": "finish_line_direction_supported_but_accepted_whole_shot_authority_blocked",
+  "summary": "The local source of truth supports a 3D hybrid EM/PIC-fluid engineering direction and source-backed 3D MHD for macroscopic rundown, but accepted whole-shot authority remains blocked by source-model dimensionality limits, MHD pinch breakdown, missing handoff packet, and fully kinetic beam-target requirements.",
+  "claim_modes": [
+    {
+      "mode": "bounded_axisymmetric_mhd_claim",
+      "status": "interim_only",
+      "allowed_claim": "pre-breakdown comparator or narrowed macroscopic scope"
+    },
+    {
+      "mode": "validated_3d_mhd_rundown_claim",
+      "status": "requires_review",
+      "allowed_claim": "3D electrode-geometry and rundown behavior only"
+    },
+    {
+      "mode": "mhd_to_kinetic_handoff_claim",
+      "status": "required_for_mhd_plus_pic_path",
+      "allowed_claim": "handoff only after transferred state and conservation evidence pass"
+    },
+    {
+      "mode": "validated_3d_hybrid_pic_fluid_claim",
+      "status": "target_engineering_path_blocked_for_acceptance",
+      "allowed_claim": "3D hybrid engineering candidate until source-equivalence and same-scope evidence pass"
+    },
+    {
+      "mode": "fully_kinetic_pinch_claim",
+      "status": "required_for_unrestricted_beam_target_authority_if_hybrid_limits_dominate",
+      "allowed_claim": "beam-target authority only with kinetic electrons/ions and detector/UQ packet"
+    }
+  ],
+  "sources": [
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "246-320",
+      "answers": "hybrid PIC-fluid loop architecture",
+      "blocked": "accepted local 3D source-to-code equivalence"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "1210-1230,1270-1280",
+      "answers": "hybrid source limitations and need for 3D/electron-temperature improvements",
+      "blocked": "full 3D, Debye sheath, electron kinetics, m-mode authority"
+    },
+    {
+      "path": "KnowledgeReference/fully-three-dimensional-simulation-and-modeling-of-a-dense-plasma-focus.md",
+      "lines": "352-380",
+      "answers": "MHD breakdown near pinch and PIC handoff need",
+      "blocked": "accepted handoff packet"
+    },
+    {
+      "path": "KnowledgeReference/fully-three-dimensional-simulation-and-modeling-of-a-dense-plasma-focus.md",
+      "lines": "474-546,614-624",
+      "answers": "3D MHD electrode geometry and rundown timing advantage",
+      "blocked": "kinetic pinch and neutron authority"
+    },
+    {
+      "path": "KnowledgeReference/fully-kinetic-simulations-of-dense-plasma-focus-z-pinch.md",
+      "lines": "34-80,152-168",
+      "answers": "fully kinetic need for nonthermal ions and beam-target yield",
+      "blocked": "local fully kinetic pinch implementation and same-scope packet"
+    },
+    {
+      "path": "KnowledgeReference/comparisons-of-dense-plasma-focus-kinetic-simulations-with-experimental-measurements.md",
+      "lines": "126-200",
+      "answers": "experimental comparisons for fully kinetic yields, ion energy distributions, RF fluctuations, and driver effects",
+      "blocked": "PF-1000/Akel same-scope validation"
+    }
+  ],
+  "implementation_actions": [
+    "emit dimensionality and handoff packet from package-native runner and manifest",
+    "record active claim mode and blocked observables",
+    "separate 3D hybrid engineering capability from accepted whole-shot authority",
+    "block total neutron authority unless thermonuclear and beam-target mechanisms are separated",
+    "add tests proving a 3D runner remains non-promoting without handoff and kinetic evidence"
+  ],
+  "implemented_files": [
+    "src/dpf/first_principles/dimensionality.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
+    }
+  ],
+  "next_blocker": "FP-8 physics closure packets"
+}

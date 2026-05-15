@@ -16,6 +16,531 @@ Plan update 2026-05-13, first-principles execution specification:
 - Immediate FP-2 target is now the full active-path limiter registry across `app_mhd.py`, solver internals, backend adapters, circuit coupling, and post-processing, with first-principles readiness failing on any acceptance-blocking limiter activation.
 - Scientific status remains fail-closed. This planning update does not accept Akel waveform evidence, spatial evidence, neutron evidence, field-coupling evidence, or first-principles readiness.
 
+Ratchet update 2026-05-14, FP-2 limiter ledger first pass:
+
+- Added `src/dpf/validation/first_principles_limiters.py` as the compact run
+  ledger helper for first-principles limiter events. The ledger records limiter
+  ID, code path, affected field, classification, activation count,
+  acceptance-blocking status, and before/after finite statistics.
+- Wired the app-level PF-1000/Akel first-principles candidate to emit limiter
+  events for resistivity density/temperature/electron-density/eta guards,
+  fallback resistivity, app-level state bounds, timestep capping, current-floor
+  suppression, back-EMF clipping, and nonfinite back-EMF repair.
+- `first_principles_mhd_readiness_report()` now has a top-level limiter gate:
+  a missing ledger or any acceptance-blocking limiter activation adds
+  `acceptance_blocking_limiter_activation` and keeps readiness blocked. Reduced
+  model active closure metadata now reports as
+  `reduced_model_active_closure_rejected`.
+- CLI and manifest surfaces now carry compact limiter-ledger summaries without
+  dumping large per-cell entries. This makes `dpf first-principles` artifacts
+  and run manifests auditable for hidden engineering intervention.
+- Verification status: `python3 -m py_compile app_mhd.py
+  src/dpf/validation/first_principles_limiters.py
+  src/dpf/validation/first_principles_mhd.py src/dpf/cli/main.py
+  src/dpf/validation/artifacts.py` passed; `python3 -m pytest
+  tests/test_first_principles_mhd.py tests/test_cli_backend_options.py
+  tests/test_validation_artifacts.py -q -o addopts=` passed (`44 passed`).
+  A short real app-path smoke run,
+  `run_pf1000_akel_first_principles(sim_time_us=0.01)`, completed with
+  `nan_detected=False`, `n_steps=20`, `first_principles_limiter_ledger.status=blocked`,
+  `entry_count=4`, and `acceptance_blocking_activation_count=20007`.
+- Boundary: this is the first FP-2 implementation slice, not FP-2 completion.
+  Solver-internal Python/Metal/MLX limiter activations still need normalized
+  per-run telemetry or verified-numerical-method classification before a
+  limiter-zero first-principles candidate can support acceptance.
+
+Ratchet update 2026-05-14, FP-2 Python solver limiter telemetry:
+
+- Extended `CylindricalMHDSolver` with per-step `last_limiter_events` telemetry
+  for state-mutating solver repairs: Euler/RK density floors, total-energy
+  floors, pressure recovery floors, electron-energy floors, inter-stage
+  kinetic-energy velocity clamps, final fast-magnetosonic velocity cap,
+  electrode pressure floor, and electron/ion temperature floor/caps.
+- Wired the Python `first_principles_mhd` app path to merge solver-internal
+  limiter events into the existing `first_principles_limiter_ledger` before
+  app-level engineering bounds are applied. This keeps readiness, CLI payloads,
+  and manifest evidence on the same ledger.
+- Added regression tests for direct solver velocity-cap telemetry and app-path
+  propagation of a synthetic solver-internal acceptance blocker into the run
+  ledger/readiness gate.
+- Verification status: `python3 -m py_compile app_mhd.py
+  src/dpf/fluid/cylindrical_mhd.py src/dpf/validation/first_principles_limiters.py
+  src/dpf/validation/first_principles_mhd.py tests/test_cylindrical_godunov.py
+  tests/test_mhd_physics_integration.py` passed; `python3 -m pytest
+  tests/test_cylindrical_godunov.py tests/test_mhd_physics_integration.py
+  tests/test_first_principles_mhd.py tests/test_cli_backend_options.py
+  tests/test_validation_artifacts.py -q -o addopts=` passed (`107 passed,
+  3 skipped`).
+- Boundary: this advances FP-2 but still does not complete it. Flux-local
+  positivity floors and PLM/HLL limiter controls still need formal
+  verified-numerical-method classification, and Metal/MLX repair/fallback paths
+  still need result-bound telemetry or exclusion from first-principles
+  acceptance scope.
+
+Ratchet update 2026-05-14, FP-2 method classification and backend scope:
+
+- Added nonblocking `verified_numerical_method` ledger entries for the Python
+  cylindrical PLM/minmod reconstruction, HLL flux, reconstructed-state
+  positivity floors, and CFL timestep control. These entries have
+  `acceptance_blocking=False` and `activation_count=0`; state-mutating floors
+  and clamps remain separately recorded as acceptance blockers.
+- Added fail-closed first-principles backend scope metadata. The current
+  accepted backend scope is limited to the Python cylindrical MHD path with
+  result-bound limiter telemetry. Metal/MLX/Athena/AthenaK/hybrid remain
+  runnable engineering infrastructure, but readiness now reports
+  `instrumented_backend_scope` missing until backend-native limiter/fallback
+  telemetry and parity evidence are attached. Fallback labels preserve the
+  requested backend token so an Athena-to-Metal fallback is blocked as Athena,
+  not silently accepted as a Metal or Python path.
+- CLI payloads and run manifests now preserve compact
+  `first_principles_backend_scope` evidence alongside the limiter ledger so
+  backend exclusions are visible in user-facing artifacts.
+- Verification status: focused readiness/CLI checks passed
+  (`15 passed` for first-principles readiness and `11 passed` for CLI payloads)
+  after adding tests for nonblocking verified-method records, all advertised
+  non-Python backend-scope rejections, requested-backend fallback identity,
+  app-path method entries, and artifact/backend-scope compaction. The broader
+  touched suite passed as `110 passed, 3 skipped`.
+  A short real app-path smoke run,
+  `run_pf1000_akel_first_principles(sim_time_us=0.01)`, completed with
+  `nan_detected=False`, `n_steps=20`, `first_principles_limiter_ledger.status=blocked`,
+  `entry_count=8`, `first_principles_backend_scope.status=python_cylindrical_instrumented`,
+  and `plm_minmod_reconstruction.classification=verified_numerical_method`.
+- Boundary: FP-2 is still not complete. Explicit exclusion tests now cover the
+  advertised non-Python backend labels and requested-backend fallback token.
+  The remaining work is backend-native limiter/fallback telemetry plus parity
+  evidence for any backend that should enter first-principles acceptance, and
+  replacing active Python state repairs with verified numerical methods or
+  source-backed physical bounds.
+
+Ratchet update 2026-05-14, FP-2 source-traced resistivity and power-port blocker removal:
+
+- Replaced the app-level field-coupled resistivity floor/cap and temperature
+  floor/cap with an uncapped partial-ionization Spitzer/Braginskii candidate.
+  The source basis is local only: PF-1000 MHD sources describe post-breakdown
+  partially ionized startup with Braginskii transport and ionization kinetics,
+  and the NRL Formulary source supports the collision/resistivity parameters.
+  This remains `source_traced_candidate_not_validation` because ionization
+  kinetics, electron-neutral coefficients, and anomalous resistivity are not
+  fully source-closed in code.
+- Added the public `CylindricalMHDSolver.compute_dt()` hook so the app uses the
+  solver's physical CFL/resistive diffusion timestep instead of the
+  `PlasmaSolverBase` fallback hidden behind the old hard field-coupled timestep
+  cap.
+- Replaced the `app_mhd.field_coupling.current_floor` and back-EMF clip in the
+  Python first-principles path with an implicit-midpoint power-port solve:
+  `P_load = I_mid * V_load`, using the same midpoint circuit equation as
+  `RLCSolver.step`. This removes arbitrary low-current voltage suppression
+  while keeping the power-port residual explicit.
+- Bounded PF-1000/Akel probes now clear the app/solver limiter ledger:
+  `sim_time_us=0.002` completed with `n_steps=56`, `sim_time_us=0.01` with
+  `n_steps=287`, and `sim_time_us=0.05` with `n_steps=1415`; all had
+  `nan_detected=False` and `first_principles_limiter_ledger.status=clear`.
+  The `0.05 us` probe had maximum field-power back-EMF about `1.19e4 V` and
+  power-port residual below `1.5e-8 W`. A `0.1 us` exploratory run was stopped
+  because the physical timestep loop was too slow for this pass, so it is not
+  closure evidence.
+- Verification status: `python3 -m pytest
+  tests/test_circuit_field_coupling.py tests/test_cylindrical_godunov.py
+  tests/test_mhd_physics_integration.py -q` passed (`82 passed, 3 skipped`).
+- Boundary: this removes the immediate eta floor/cap, temperature floor/cap,
+  hard timestep cap, current floor, and back-EMF clip blockers from bounded
+  Python probes. It does not complete FP-2/FP-3, accept startup, accept
+  field-coupling validation, accept Akel waveform evidence, or promote neutron
+  authority. Current readiness remains blocked by same-scope evidence,
+  startup, field-coupling packet, numerical-fidelity packet,
+  physics-fidelity packet, reduced-model rejection, sheath position, and neutron
+  authority gates.
+
+Ratchet update 2026-05-14, partial-ionization thermodynamics and timestep diagnostics:
+
+- Profiled the apparent `0.1 us` slowdown and found the bad branch was not
+  solved by hiding resistivity. Cells that reached the solver's `Te=1 K` floor
+  drove uncapped Spitzer resistivity to about `258 ohm m`, forcing the explicit
+  resistive diffusion timestep to about `1.9e-14 s`.
+- Corrected the Python cylindrical first-principles temperature reconstruction
+  so `Z_bar` participates in electron density, electron Ohmic heating, and the
+  electron/heavy-particle pressure split. The app startup pressure now records
+  the neutral heavy-particle pressure plus electron partial pressure for the
+  local PF-1000 1% post-breakdown ionization candidate.
+- Added per-step timestep diagnostics from `CylindricalMHDSolver.compute_dt()`:
+  selected controller, global timestep, hyperbolic CFL timestep, resistive
+  diffusion timestep, `eta_max`, and directional CFL speeds. The run result now
+  exports `dt_s`, `dt_adv_s`, `dt_diff_s`, and `dt_controller`.
+- Bounded probe evidence improved: `sim_time_us=0.1` completed in `422` steps
+  with `nan_detected=False`, clear limiter ledger, `Te_min=1122 K`, and
+  `eta_max=0.0496 ohm m`; `sim_time_us=1.0` completed in `1305` steps with a
+  clear limiter ledger. Both probes were resistive-diffusion controlled, so the
+  next performance improvement is an implicit or STS resistive operator, not an
+  eta cap.
+- Verification status: focused thermodynamics/timestep tests passed (`3
+  passed`), and the touched physics/circuit suite passed:
+  `python3 -m pytest tests/test_cylindrical_godunov.py
+  tests/test_mhd_physics_integration.py tests/test_circuit_field_coupling.py -q`
+  -> `84 passed, 3 skipped`.
+- Boundary: this is still engineering readiness evidence. `Z_bar` is still held
+  at the source-traced initial 1% value rather than evolved by the source
+  ionization/recombination equation, and the active resistive term remains
+  explicit and CFL-limited.
+
+Ratchet update 2026-05-14, implicit cylindrical resistive operator and coupled timestep control:
+
+- Replaced the active first-principles Python resistive-induction update with
+  an operator-split Crank-Nicolson ADI candidate for the local-source
+  axisymmetric `B_theta` scope. The solved operator is the cylindrical
+  `-curl(eta * curl(B) / mu_0)_theta` form for `B=(0,B_theta,0)`, not the
+  Cartesian component-wise diffusion helper.
+- The solver still computes and exports the explicit resistive diffusion
+  timestep as `dt_diff_s`, but `implicit_cylindrical_btheta` no longer clamps
+  the accepted app timestep to that value. It also exports
+  `resistive_stiffness_ratio`; material `B_r`/`B_z` content now records an
+  acceptance-blocking limiter because the implicit split is currently scoped to
+  axisymmetric `B_theta`.
+- Removing the explicit diffusion clamp exposed a coupled circuit/field
+  resolution issue: the app could otherwise take one large MHD step before the
+  current boundary developed. Added a reported LC phase timestep controller
+  (`dt_circuit_s`, `circuit_lc_phase_resolution`) so field updates and the
+  implicit-midpoint circuit power port advance on the same resolved bank
+  timescale rather than relying on the old resistive-diffusion CFL accident.
+- Bounded probe evidence now clears with the implicit operator and no eta cap:
+  `sim_time_us=0.1` completed in `91` steps with a clear limiter ledger,
+  `dt_diff_s` still below the actual coupled timestep, `Te_min=296.7 K`, and
+  peak field-power back-EMF about `8.05 kV`; `sim_time_us=1.0` completed in
+  `904` steps with a clear limiter ledger, `Te_min=193.7 K`, and the same
+  peak field-power back-EMF scale.
+- Verification status: `python3 -m py_compile app_mhd.py
+  src/dpf/fluid/cylindrical_mhd.py src/dpf/fluid/implicit_diffusion.py
+  tests/test_cylindrical_godunov.py tests/test_mhd_physics_integration.py`
+  passed. Focused implicit-resistive tests passed, and the broader touched
+  suite passed: `python3 -m pytest tests/test_cylindrical_godunov.py
+  tests/test_mhd_physics_integration.py tests/test_circuit_field_coupling.py
+  tests/test_first_principles_mhd.py tests/test_cli_backend_options.py
+  tests/test_validation_artifacts.py -q` -> `136 passed, 3 skipped`.
+- Boundary: this is a first-principles-safe numerical-method ratchet, not
+  scientific validation. The implicit operator is currently `B_theta`-only,
+  startup is still the 1% post-breakdown candidate, `Z_bar` is still not
+  evolved by the source ionization/recombination equation, and same-scope
+  field-coupling, numerical-fidelity, physics-fidelity, Akel waveform, and
+  neutron-authority gates remain blocked.
+
+Ratchet update 2026-05-14, KR ingestion for arXiv 2604.09032v1:
+
+- Ingested the user-validated PDF
+  `/Users/anthonyzamora/Downloads/2604.09032v1.pdf` into the local source of
+  truth as
+  `KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md`
+  and matching `.json`.
+- Staged the immutable local PDF copy at
+  `downloaded_books_papers/Research Papers/2026-05-14-user-ingest/2604.09032v1-fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield.pdf`
+  with SHA-256
+  `acb71fa9f1ce260b81402086a9d2cc9506e9b3f0f7a5ab49078bcbba459b1682`.
+- Source metadata: 22 pages, arXiv accession `2604.09032v1`, title
+  "A Fully Electromagnetic Hybrid PIC-Fluid Model for Predictive Fusion
+  Neutron Yield in Dense Plasma Focus", authors Yinjian Zhao, Zhe Liu, Qiang
+  Sun, Qianhong Zhou, and Guangrui Sun. Text extraction found 22 nonempty
+  pages, 23 figure captions, and no detected tables; page 1 was rendered for a
+  visual check.
+- Added `docs/USER_PDF_INTAKE_2026_05_14.json` and a KR corpus review decision
+  marking the source as `source_ingested_target_extraction_needed`.
+- Boundary: this source is now available for first-principles model-architecture
+  and neutron-yield authority review, but its geometry, sheath-front benchmark,
+  cross-section fit, and neutron-yield values are not accepted validation
+  targets until separate typed KR target packets, traceability rows, and
+  same-scope review are created.
+
+Ratchet update 2026-05-14, 3D hybrid PIC-fluid application gate:
+
+- Reviewed the new local `KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md`
+  source for first-principles architecture, not validation targets. The
+  actionable lesson is that the finish line is a 3D full-Maxwell
+  ion-PIC/electron-fluid field-particle-current loop, not simply an improved
+  2D MHD run.
+- Added `docs/FIRST_PRINCIPLES_3D_HYBRID_PIC_REVIEW_2026_05_14.md` to map the
+  source-derived requirements to repo code paths and gaps: 3D Maxwell
+  plasma/vacuum fields, kinetic ion PIC push/deposition, electron-fluid
+  generalized Ohm closure, current predictor-corrector, Gauss-law/Marder
+  control, plasma-vacuum conductivity blending, PML/conductor/particle boundary
+  semantics, ion collisions, true 3D dimensionality, separate electron-energy
+  closure, kinetic ion neutron-yield histories, and same-scope 3D validation.
+- Added `src/dpf/validation/hybrid_pic_3d.py` and surfaced
+  `hybrid_pic_3d_first_principles_core` through
+  `first_principles_mhd_readiness_report()`. Current runs remain blocked unless
+  every source-derived 3D hybrid PIC-fluid capability has accepted evidence and
+  the run declares explicit 3D geometry.
+- Updated `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` so FP-7 now points at the
+  full 3D hybrid PIC-fluid finish line. A bounded 2D/cylindrical claim remains
+  allowed only as an interim comparator/scaffold, not as the `/goal` simulator.
+- Boundary: no paper yield, sheath-front number, geometry, cross-section fit, or
+  LLNL comparison was promoted to a validation target. The new gate is an
+  implementation and evidence contract for the next architecture slice.
+
+Ratchet update 2026-05-15, 3D Maxwell field core, PIC current source port, Ohm component, predictor-corrector integration, Marder integration, conductivity blend, loop, particle-boundary hook, collision telemetry, electron-energy hook, kinetic-yield history, multi-step driver, and source-geometry packet:
+
+- Added `src/dpf/fields/maxwell_3d.py` and package exports for the first 3D
+  full-Maxwell component on the repo's Yee/CT layout. It carries
+  edge-centered `E`, face-centered `B`, Ampere/Faraday stepping,
+  conductor electric masks, deterministic PML damping metadata, Courant
+  timestep calculation, `div B` diagnostics, and EM energy accounting.
+- Added `src/dpf/fields/pic_coupling.py` with `PICCurrentSourcePort`, which
+  maps cell-centered PIC current deposition to Yee edge current density for
+  Ampere's law. Its telemetry is deliberately nonaccepting: continuity is
+  either blocked by incomplete inputs or `measured_not_accepted`.
+- Added `src/dpf/fields/ohm_solver.py` with a source-derived generalized
+  Ohm-Ampere algebraic current solver. It implements the midpoint current solve
+  with the Hall cross product retained, the Hall-disabled `A/D` reduction, and a
+  density-thresholded electron-pressure-gradient term for the low-density
+  pressure-term instability described by the local source.
+- Added `src/dpf/fields/predictor_corrector.py` with the source linear current
+  extrapolation and an end-step generalized Ohm correction around a supplied
+  provisional ion current. This is a primitive for the source method, not the
+  full provisional particle-push/rebuild loop.
+- Added `src/dpf/fields/marder.py` with the source Marder/Gauss-law electric
+  correction and residual telemetry. This is a component test surface, not an
+  accepted divergence-control packet for full DPF runs. The candidate
+  `HybridPIC3DFieldStepper`/`HybridPIC3DLoop` path can now map the
+  cell-centered correction back to Yee electric edges and reapply field
+  boundaries, while telemetry records residual reduction.
+- Added `src/dpf/fields/conductivity.py` with the source plasma-vacuum
+  conductivity transition and Ohmic CFL cap. It reports vacuum/transition/plasma
+  fractions and CFL-limited fraction, but remains a candidate until loop
+  integration and sensitivity evidence exist.
+- Added `src/dpf/fields/hybrid_stepper.py` with the first candidate integrated
+  field-current step tying the Yee Maxwell state, conductivity blend,
+  generalized Ohm current solve, current edge mapping, and Maxwell advance
+  together. It now has optional candidate predictor-corrector telemetry:
+  Maxwell advances on the midpoint current, then the end-step current is
+  corrected from the next fields and retained for the next step. It still lacks
+  the full provisional ion-push/rebuild sequence and cannot support acceptance.
+- Added `src/dpf/fields/hybrid_loop.py` with the first candidate
+  particle-field loop step: Yee fields are averaged to cell centers, HybridPIC
+  ions are pushed, current is deposited, electron density is rebuilt under the
+  quasi-neutral assumption, and the field-current stepper advances Maxwell
+  fields. This remains engineering evidence only.
+- Added `src/dpf/fields/particle_boundaries.py` with candidate particle
+  absorption for the source boundary rule that particles entering conductor or
+  PML regions are absorbed and deleted. `HybridPIC3DLoop` can now invoke this
+  hook before deposition so deleted particles do not contribute charge/current
+  to the field step. This remains nonaccepting because geometry masks,
+  electrode semantics, and same-scope boundary validation are not closed.
+- Extended `HybridPIC3DLoop` telemetry with source-traced ion-collision status.
+  It reports disabled collision runs and candidate Nanbu/Perez-enabled runs
+  from the existing `HybridPIC` collision kernel. This is evidence plumbing
+  only; collision parameters and cell-local DPF validation are still missing.
+- Added `src/dpf/fields/electron_energy.py` as a candidate 3D wrapper around
+  the repo two-temperature source-term scaffold. `HybridPIC3DLoop` can now use
+  a supplied separate electron-energy state to form the electron pressure
+  gradient for Ohm closure, then update that state from the solved current,
+  resistivity, collisional equilibration, and bremsstrahlung source terms. This
+  remains nonaccepting because the heat-flux/collisional coupling source audit,
+  same-scope electron-temperature diagnostics, and neutron-yield UQ packet are
+  not closed.
+- Added `src/dpf/fields/kinetic_yield.py` as a candidate D-D neutron-yield
+  history accumulator from PIC ion distributions. `HybridPIC3DLoop` can now
+  attach an instantaneous particle-distribution yield rate and cumulative
+  neutron count to loop telemetry. This is not neutron authority because
+  same-scope detector response, mechanism separation, angular/spectral
+  diagnostics, and UQ are still blocked.
+- Added `src/dpf/fields/hybrid_simulator.py` as a compact multi-step driver for
+  the candidate 3D hybrid PIC-fluid loop. It carries Maxwell state, PIC state,
+  optional electron-energy state, predictor-corrector, Marder, boundary,
+  collision, and kinetic-yield telemetry across repeated steps. This is the
+  first executable 3D loop driver, but it remains engineering evidence only.
+- Added `src/dpf/fields/source_geometry.py` with a typed LLNL-like source setup
+  packet extracted from the new local source. It records the source's
+  axisymmetric geometry, grid, PML, timestep, density, and particle-count
+  values and can derive a Cartesian smoke grid, but it is explicitly blocked
+  from acceptance because it is not a reviewed same-scope true-3D validation
+  packet.
+- Added `src/dpf/fields/circuit_boundary.py` as a candidate source-scoped
+  external RLC current and magnetic injection-boundary component. It implements
+  the local source's explicit current/charge update and `B_theta = mu0 I/(2 pi
+  r)` boundary formula as a Cartesian engineering projection onto the 3D
+  Maxwell grid. It is nonaccepting because `U_DPF` is still an input placeholder
+  rather than a magnetic-flux derivative, and true injection-port geometry plus
+  same-scope circuit validation remain absent.
+- Wired the candidate circuit boundary into `HybridPIC3DSimulator` as an
+  optional multi-step drive. When requested, each step applies the current
+  magnetic boundary to the injection plane, advances the RLC state, and records
+  circuit telemetry; the coupled path still reports nonaccepting status because
+  it lacks accepted `U_DPF` closure and same-scope circuit evidence.
+- Added a candidate source-ordered loop mode to `HybridPIC3DLoop` and exposed it
+  through `HybridPIC3DSimulator`. The mode advances particle positions from
+  stored half-step velocities, deposits current from `x_n` to `x_{n+1}`, can use
+  half-step charge density for electron-density rebuild, advances the
+  Ohm/Maxwell/Marder/predictor path, then applies the source Eq. 7 ion velocity
+  update and only then invokes the configured collision operator. This closes a
+  real ordering gap in executable code, but it remains nonaccepting until
+  accepted Te/Ti rebuild, predictor-corrector particle rebuild, long-run
+  stability/nondominance, and same-scope validation exist.
+- Added candidate predictor-corrector particle-rebuild telemetry inside the
+  source-ordered loop. When predictor-corrector is requested, the loop now
+  estimates provisional ion velocities and a provisional ion current from the
+  particle state and feeds that provisional ion current into the candidate
+  end-step Ohm correction. The remaining blocker is no longer wiring; it is
+  accepted Te/Ti rebuild, conservation/nondominance, and same-scope validation
+  of this source-ordered predictor-corrector loop.
+- Expanded Marder/Gauss-law telemetry with correction magnitude, relative
+  correction, explicit nondominance threshold, and nondominance status. Smooth
+  quasineutral component tests can show a bounded correction, while the coupled
+  particle-loop test currently flags explicit-charge Marder as
+  `candidate_dominant_correction`. That is a preserved blocker, not a failure
+  to hide: accepted 3D DPF runs must prove divergence control is nondominant
+  against sheath/current observables before this capability can promote.
+- Added an extended-Ohm electron-temperature authority check. Hall or
+  pressure-gradient runs now return `blocked_te_equal_ti_or_missing_separate_te`
+  when no separate electron-temperature evidence is present, and
+  `candidate_separate_te_still_blocked` when only the current candidate
+  electron-energy scaffold is attached. This encodes the source warning that
+  `Te = Ti` is qualitative for extended Ohm/neutron-yield claims, while
+  baseline resistive-only runs do not require the same Te authority.
+- Added kinetic neutron-yield authority gating around the candidate PIC yield
+  history. Yield telemetry now records that the current channel is only
+  `dd_particle_distribution_total` and `not_mechanism_separated`. A total-yield
+  authority check blocks scalar cumulative-yield claims unless accepted kinetic
+  history, mechanism-separated channels, same-scope detector response, UQ, and
+  electron-temperature authority are all present.
+- Added `src/dpf/validation/hybrid_pic_3d_validation_packet.py` as the
+  same-scope validation-packet gate for the 3D hybrid core. It wraps the
+  source-derived capability gate and additionally requires accepted
+  same-scope targets, detector response, uncertainty budget,
+  conservation/nondominance packets, and backend-scaling evidence. A complete
+  synthetic packet can pass, but the current source geometry packet remains
+  blocked because it is 2D axisymmetric architecture evidence, not accepted
+  true-3D validation.
+- Added the `dpf hybrid-3d-smoke` CLI command. It runs the candidate 3D
+  hybrid PIC-fluid smoke with source-ordered loop mode, circuit boundary
+  coupling, separate-Te telemetry, kinetic-yield telemetry, and the same
+  fail-closed validation packet. The command writes a JSON artifact marked
+  `engineering_candidate_not_validation`; it is a runnable tool surface, not a
+  promoted first-principles certificate.
+- Exported the 3D hybrid PIC-fluid readiness gate through
+  `dpf.validation.__all__` so downstream validation/reporting code can use the
+  same fail-closed gate instead of importing the module privately.
+- Updated the source-derived 3D hybrid gate hooks so the Maxwell component and
+  PIC current port, Ohm component, predictor-corrector primitive, Marder
+  correction, conductivity blend, loop, particle-boundary hook, and collision
+  telemetry, electron-energy hook, kinetic-yield history, stepper-level
+  predictor-corrector integration, stepper-level Marder integration, and the
+  multi-step simulator driver/source-geometry packet plus circuit magnetic
+  boundary drive appear as current
+  implementation hooks,
+  while the gate still
+  requires accepted evidence for every capability before
+  `hybrid_pic_3d_first_principles_core` can pass.
+- Verification status: `python3 -m pytest tests/test_maxwell_3d_field_core.py
+  -q -o addopts=` passed (`7 passed`); `python3 -m pytest
+  tests/test_pic_current_source_port.py -q -o addopts=` passed (`4 passed`);
+  `python3 -m pytest tests/test_generalized_ohm_solver.py -q -o addopts=`
+  passed (`5 passed`); `python3 -m pytest
+  tests/test_current_predictor_corrector.py -q -o addopts=` passed (`4 passed`);
+  and `python3 -m pytest tests/test_marder_correction.py -q -o addopts=`
+  passed (`4 passed`); `python3 -m pytest tests/test_conductivity_blend.py
+  -q -o addopts=` passed (`4 passed`); `python3 -m pytest
+  tests/test_hybrid_3d_field_stepper.py -q -o addopts=` passed (`3 passed`).
+  `python3 -m pytest tests/test_hybrid_3d_loop.py -q -o addopts=` passed
+  (`4 passed`). `python3 -m pytest tests/test_particle_boundaries.py
+  tests/test_hybrid_3d_loop.py -q -o addopts=` passed (`7 passed`). The combined
+  field/PIC/Ohm/predictor/Marder/conductivity/stepper/loop/particle-boundary/readiness
+  lane passed as `55 passed` before the electron-energy hook. `python3 -m pytest
+  tests/test_hybrid_3d_loop.py tests/test_electron_energy_closure.py -q
+  -o addopts=` passed (`8 passed`). The updated combined
+  field/PIC/Ohm/predictor/Marder/conductivity/stepper/loop/particle-boundary/electron-energy/readiness
+  lane passed as `59 passed`. The broader touched regression lane including
+  circuit coupling, CLI backend payloads, validation artifacts, MHD physics
+  integration, and first-principles readiness passed as `158 passed, 3 skipped`.
+  `python3 -m pytest tests/test_kinetic_yield_history.py
+  tests/test_hybrid_3d_loop.py -q -o addopts=` passed (`8 passed`). The updated
+  field/PIC/Ohm/predictor/Marder/conductivity/stepper/loop/particle-boundary/electron-energy/kinetic-yield/readiness
+  lane passed as `62 passed`; the broader touched regression lane passed as
+  `161 passed, 3 skipped`. `python3 -m pytest
+  tests/test_hybrid_3d_field_stepper.py tests/test_hybrid_3d_loop.py
+  tests/test_current_predictor_corrector.py -q -o addopts=` passed
+  (`15 passed`) after wiring predictor-corrector into the stepper/loop. The
+  updated component/readiness lane passed as `64 passed`; the broader touched
+  regression lane passed as `163 passed, 3 skipped`.
+  `python3 -m pytest tests/test_hybrid_3d_field_stepper.py
+  tests/test_hybrid_3d_loop.py tests/test_marder_correction.py -q
+  -o addopts=` passed (`17 passed`) after wiring Marder into the stepper/loop.
+  The updated component/readiness lane passed as `66 passed`; the broader
+  touched regression lane passed as `165 passed, 3 skipped`.
+  `python3 -m pytest tests/test_hybrid_3d_simulator.py -q -o addopts=`
+  passed (`2 passed`). The updated component/readiness lane passed as
+  `68 passed`; the broader touched regression lane passed as
+  `167 passed, 3 skipped`.
+  `python3 -m pytest tests/test_source_geometry_packet.py -q -o addopts=`
+  passed (`3 passed`). The updated component/readiness lane passed as
+  `71 passed`; the broader touched regression lane passed as
+  `170 passed, 3 skipped`.
+  `python3 -m pytest tests/test_circuit_magnetic_boundary.py
+  tests/test_first_principles_mhd.py -q -o addopts=` passed (`23 passed`) after
+  adding the source RLC/magnetic-boundary component and blocking it in the 3D
+  hybrid gate until accepted evidence exists.
+  `python3 -m pytest tests/test_circuit_magnetic_boundary.py
+  tests/test_hybrid_3d_simulator.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`27 passed`) after coupling the optional circuit
+  boundary into the multi-step simulator telemetry.
+  `python3 -m pytest tests/test_hybrid_3d_loop.py
+  tests/test_hybrid_3d_simulator.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`31 passed`) after adding the candidate source-ordered
+  Eq. 7 loop mode and simulator pass-through.
+  `python3 -m pytest tests/test_marder_correction.py
+  tests/test_hybrid_3d_field_stepper.py tests/test_hybrid_3d_loop.py
+  tests/test_hybrid_3d_simulator.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`41 passed`) after adding Marder nondominance telemetry.
+  `python3 -m pytest tests/test_electron_energy_closure.py
+  tests/test_hybrid_3d_loop.py tests/test_generalized_ohm_solver.py
+  tests/test_hybrid_3d_simulator.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`43 passed`) after adding the extended-Ohm Te authority
+  gate.
+  `python3 -m pytest tests/test_kinetic_yield_history.py
+  tests/test_hybrid_3d_loop.py tests/test_hybrid_3d_simulator.py
+  tests/test_electron_energy_closure.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`41 passed`) after adding kinetic-yield authority
+  blocking.
+  `python3 -m pytest tests/test_hybrid_pic_3d_validation_packet.py
+  tests/test_source_geometry_packet.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`24 passed`) after adding the same-scope validation
+  packet gate.
+  `python3 -m pytest tests/test_cli_backend_options.py
+  tests/test_hybrid_3d_simulator.py tests/test_hybrid_pic_3d_validation_packet.py
+  -q -o addopts=` passed (`20 passed`) after adding the 3D hybrid smoke CLI.
+  `python3 -m pytest tests/test_hybrid_3d_loop.py
+  tests/test_hybrid_3d_simulator.py tests/test_current_predictor_corrector.py
+  tests/test_cli_backend_options.py tests/test_first_principles_mhd.py -q
+  -o addopts=` passed (`49 passed`) after adding predictor particle-rebuild
+  telemetry.
+  Final recheck for this ratchet after feeding provisional particle current
+  into the candidate correction: full 3D component/readiness lane remained
+  `89 passed`, broader touched regression remained `190 passed, 3 skipped`,
+  `git diff --check` and `py_compile` passed, and the manual
+  `hybrid-3d-smoke` CLI smoke remained blocked as an engineering candidate.
+  The updated full 3D component/readiness lane passed as `86 passed`. The
+  broader touched regression lane passed as `185 passed, 3 skipped` on rerun;
+  an immediately preceding attempt exited `-1` with no test output and did not
+  reproduce. `git diff --check` and `python3 -m py_compile` over the touched
+  3D field/validation modules passed.
+  After the validation-packet gate, the full 3D component/readiness lane passed
+  as `89 passed`, and the broader touched regression lane passed as
+  `188 passed, 3 skipped`.
+  After the `hybrid-3d-smoke` CLI command, the full 3D component/readiness lane
+  still passed as `89 passed`, and the broader touched regression lane passed
+  as `190 passed, 3 skipped`; `py_compile` and `git diff --check` passed.
+  Manual smoke `python3 -m dpf.cli.main hybrid-3d-smoke --steps=1 --shape=4,4,4`
+  completed with `validation_packet: blocked` and
+  `scientific_status: engineering_candidate_not_validation`.
+  `python3 -m pytest tests/test_first_principles_mhd.py -q -o addopts=`
+  passed (`18 passed`) after the public validation export. The focused
+  component/readiness lane passed as `72 passed` after the export; the broader
+  touched regression lane passed as `171 passed, 3 skipped`.
+- Boundary: this is engineering component progress toward FP-7, not a complete
+  first-principles DPF simulator. The remaining blockers are production-scale
+  long-run ion PIC field coupling, accepted source-ordered predictor-corrector
+  particle rebuild, accepted nondominant Gauss-law/Marder and conductivity
+  sensitivity packets, accepted external-circuit `U_DPF` closure, accepted
+  electrode and boundary-validation packets, accepted electron-energy
+  heat-flux/collisional coupling, accepted mechanism-separated kinetic
+  neutron-yield authority, and same-scope true-3D validation.
+
 Plan update 2026-05-13, first-principles finish-line baseline:
 
 - Added `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` as the active execution roadmap from PF-1000/Akel engineering probe to accepted first-principles simulation.

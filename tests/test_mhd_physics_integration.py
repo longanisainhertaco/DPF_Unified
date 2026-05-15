@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app_mhd import (
     BACKENDS,
     _apply_post_processing,
+    _first_principles_eta_field,
     _neutron_mechanism_output_summary,
     run_pf1000_akel_first_principles,
     run_mhd_simulation,
@@ -412,6 +413,150 @@ def test_pf1000_akel_first_principles_helper_locks_scope(monkeypatch):
     }
     assert result["run_mode"] == "first_principles_mhd"
     assert result["source_scope"] == "pf1000_16kv_2021_akel_shot12581"
+
+
+def test_first_principles_eta_is_uncapped_source_traced_candidate():
+    state = {
+        "rho": np.full((4, 1, 4), 400.0 * 6.69e-27 / (1.380649e-23 * 300.0)),
+        "Te": np.full((4, 1, 4), 300.0),
+        "Z_bar": np.full((4, 1, 4), 0.01),
+        "pressure": np.full((4, 1, 4), 400.0),
+    }
+    gas = {"m_mol": 6.69e-27, "Z": 1}
+
+    eta, meta = _first_principles_eta_field(state, gas)
+
+    assert meta["model"] == "partial_ionization_spitzer_braginskii_uncapped"
+    assert meta["eta_floor_ohm_m"] is None
+    assert meta["eta_cap_ohm_m"] is None
+    assert meta["limiter_events"] == []
+    assert np.all(np.isfinite(eta))
+    assert float(np.max(eta)) > 1.0e-4
+
+
+def test_pf1000_first_principles_short_probe_clears_app_limiter_blockers():
+    result = run_pf1000_akel_first_principles(sim_time_us=0.002)
+    ledger = result["first_principles_limiter_ledger"]
+    entries = {
+        entry["limiter_id"]: entry
+        for entry in ledger["entries"]
+    }
+
+    assert result["nan_detected"] is False
+    assert result["n_steps"] > 1
+    assert ledger["status"] == "clear"
+    for removed_limiter in (
+        "app_mhd.resistivity.eta_floor_cap",
+        "app_mhd.resistivity.temperature_floor_cap",
+        "app_mhd.time_step.field_coupled_max_dt",
+        "app_mhd.field_coupling.current_floor",
+        "app_mhd.field_coupling.back_emf_clip",
+    ):
+        assert removed_limiter not in entries
+    assert (
+        entries["app_mhd.field_coupling.implicit_midpoint_power_port"][
+            "classification"
+        ]
+        == "verified_numerical_method"
+    )
+    assert result["field_power_port"]["method"] == "implicit_midpoint_power_port"
+    assert np.max(np.abs(result["field_power_port_residual_W"])) < 1.0e-6
+    assert result["preionization"]["ionization_fraction"] == 0.01
+    assert (
+        result["startup_sheath_initialization"][
+            "can_support_first_principles_startup"
+        ]
+        is False
+    )
+
+
+def test_pf1000_first_principles_0p1us_no_resistive_timestep_collapse():
+    result = run_pf1000_akel_first_principles(sim_time_us=0.1)
+    ledger = result["first_principles_limiter_ledger"]
+
+    assert result["nan_detected"] is False
+    assert float(result["t_us"][-1]) == pytest.approx(0.1)
+    assert result["n_steps"] < 1000
+    assert ledger["status"] == "clear"
+    assert len(result["dt_s"]) == result["n_steps"]
+    assert len(result["dt_controller"]) == result["n_steps"]
+    assert "resistive_diffusion" not in set(result["dt_controller"])
+    assert "sts_resistive_diffusion" not in set(result["dt_controller"])
+    assert "circuit_lc_phase_resolution" in set(result["dt_controller"])
+    assert np.nanmax(result["dt_diff_s"]) < np.nanmax(result["dt_adv_s"])
+    assert np.nanmax(result["dt_s"]) > np.nanmax(result["dt_diff_s"])
+    assert np.nanmax(result["dt_circuit_s"]) > np.nanmax(result["dt_diff_s"])
+    assert np.nanmax(result["resistive_stiffness_ratio"]) > 1.0
+    entries = {
+        entry["limiter_id"]: entry
+        for entry in ledger["entries"]
+    }
+    assert (
+        entries[
+            "dpf.fluid.cylindrical_mhd."
+            "implicit_cylindrical_btheta_resistive_induction"
+        ]["classification"]
+        == "verified_numerical_method"
+    )
+    assert (
+        entries["app_mhd.circuit_coupling.lc_phase_timestep_control"][
+            "classification"
+        ]
+        == "verified_numerical_method"
+    )
+    assert float(np.nanmin(result["final_state"]["Te"])) > 250.0
+    assert float(np.nanmax(result["eta_max_ohm_m"])) < 0.1
+    assert (
+        result["startup_sheath_initialization"]["pressure_model"]
+        == "neutral_heavy_particle_pressure_plus_electron_partial_pressure"
+    )
+
+
+def test_first_principles_ledger_merges_solver_internal_limiter_events(monkeypatch):
+    from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
+    from dpf.validation.first_principles_limiters import limiter_event
+
+    original_step = CylindricalMHDSolver.step
+
+    def patched_step(self, *args, **kwargs):
+        result = original_step(self, *args, **kwargs)
+        self._last_limiter_events.append(
+            limiter_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.test_solver_limiter",
+                code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver.step",
+                affected_field="velocity",
+                classification="acceptance_blocker",
+                activation_count=3,
+                before=[3.0e6, 4.0e6, 1.0e5],
+                after=[2.0e6, 2.0e6, 1.0e5],
+                threshold={"cap_m_s": 2.0e6},
+                acceptance_blocking=True,
+                justification="Synthetic solver-internal limiter activation.",
+            )
+        )
+        return result
+
+    monkeypatch.setattr(CylindricalMHDSolver, "step", patched_step)
+
+    result = run_pf1000_akel_first_principles(sim_time_us=0.002)
+    ledger = result["first_principles_limiter_ledger"]
+    readiness = result["first_principles_mhd_readiness"]
+    entries = {
+        entry["limiter_id"]: entry
+        for entry in ledger["entries"]
+    }
+
+    assert "dpf.fluid.cylindrical_mhd.test_solver_limiter" in ledger[
+        "activated_acceptance_blockers"
+    ]
+    assert entries[
+        "dpf.fluid.cylindrical_mhd.plm_minmod_reconstruction"
+    ]["classification"] == "verified_numerical_method"
+    assert entries[
+        "dpf.fluid.cylindrical_mhd.plm_minmod_reconstruction"
+    ]["acceptance_blocking"] is False
+    assert readiness["limiter_ledger_status"]["ledger_present"] is True
+    assert "acceptance_blocking_limiter_activation" in readiness["missing_evidence"]
 
 
 def _synthetic_mjolnir_result(include_pinch_phase: bool) -> dict:

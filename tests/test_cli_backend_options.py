@@ -151,9 +151,28 @@ def test_first_principles_command_runs_field_coupled_candidate(
             "B_max": np.array([0.0, 0.2, 0.3]),
             "joule_energy_kJ": np.array([0.0, 0.01, 0.02]),
             "field_energy_residual_kJ": np.array([0.0, -0.01, -0.02]),
-            "field_limiter_activation_count": np.array([0, 0, 0]),
+            "field_limiter_activation_count": np.array([0, 2, 0]),
+            "first_principles_limiter_ledger": {
+                "schema": "dpf.first_principles.limiter_ledger.v1",
+                "status": "blocked",
+                "validation_status": "blocked",
+                "activation_count": 2,
+                "acceptance_blocking_activation_count": 2,
+                "activated_acceptance_blockers": ["fp2.velocity_cap"],
+                "can_support_first_principles_acceptance": False,
+                "entries": [
+                    {
+                        "limiter_id": "fp2.velocity_cap",
+                        "activation_count": 2,
+                    }
+                ],
+            },
             "first_principles_mhd_readiness": {"status": "blocked"},
             "first_principles_neutron_yield_authority": {"status": "not_produced"},
+            "first_principles_backend_scope": {
+                "status": "python_cylindrical_instrumented",
+                "can_support_first_principles_acceptance": True,
+            },
             "t_us": np.array([0.0, 0.1, 0.2]),
             "I_MA": np.array([0.0, 0.1, 0.25]),
             "V_kV": np.array([16.0, 15.9, 15.8]),
@@ -179,6 +198,16 @@ def test_first_principles_command_runs_field_coupled_candidate(
     assert payload["first_principles_only_enforced"] is True
     assert payload["scientific_status"] == "engineering_probe_not_validation"
     assert payload["metrics"]["back_emf_abs_max_V"] == 15.0
+    assert payload["metrics"]["limiter_activation_max"] == 2
+    assert payload["limiter_ledger_summary"]["status"] == "blocked"
+    assert payload["limiter_ledger_summary"][
+        "acceptance_blocking_activation_count"
+    ] == 2
+    assert payload["limiter_ledger_summary"]["activated_acceptance_blockers"] == [
+        "fp2.velocity_cap"
+    ]
+    assert "entries" not in payload["limiter_ledger_summary"]
+    assert payload["backend_scope"]["status"] == "python_cylindrical_instrumented"
     assert payload["readiness"]["status"] == "blocked"
     assert "First-principles PF-1000/Akel engineering candidate" in result.output
 
@@ -204,6 +233,48 @@ def test_first_principles_command_fails_on_reduced_fallback(monkeypatch) -> None
 
     assert result.exit_code != 0
     assert "first-principles-only enforcement failed" in result.output
+
+
+def test_hybrid_3d_smoke_command_writes_blocked_candidate(tmp_path) -> None:
+    from dpf.cli.main import cli
+
+    output = tmp_path / "hybrid_3d_smoke.json"
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "hybrid-3d-smoke",
+            "--steps=1",
+            "--shape=4,4,4",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(output.read_text())
+    assert payload["tool"] == "dpf hybrid-3d-smoke"
+    assert payload["scientific_status"] == "engineering_candidate_not_validation"
+    assert payload["simulation"]["status"] == (
+        "candidate_engineering_3d_hybrid_pic_simulation"
+    )
+    assert payload["simulation"]["last_step"]["source_workflow"]["status"] == (
+        "candidate_engineering_source_ordered_loop"
+    )
+    assert payload["simulation"]["circuit"]["status"] == (
+        "candidate_engineering_circuit_boundary_coupled"
+    )
+    assert payload["validation_packet"]["status"] == "blocked"
+    assert "3D hybrid PIC-fluid engineering candidate" in result.output
+
+
+def test_hybrid_3d_smoke_rejects_invalid_shape() -> None:
+    from dpf.cli.main import cli
+
+    result = CliRunner().invoke(cli, ["hybrid-3d-smoke", "--shape=2,4,4"])
+
+    assert result.exit_code != 0
+    assert "all shape entries must be >= 3" in result.output
 
 
 def test_first_principles_runner_loader_adds_checkout_root(monkeypatch) -> None:

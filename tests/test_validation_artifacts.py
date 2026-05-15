@@ -187,6 +187,73 @@ def test_run_manifest_carries_blocked_s1_s2_waveform_evidence(tmp_path) -> None:
     ] == "blocked_by_review"
 
 
+def test_run_manifest_carries_first_principles_limiter_ledger_summary(tmp_path) -> None:
+    config = SimulationConfig(
+        grid_shape=[4, 4, 4],
+        dx=1e-2,
+        sim_time=1e-9,
+        circuit={
+            "C": 1e-6,
+            "V0": 1e3,
+            "L0": 1e-7,
+            "R0": 0.01,
+            "anode_radius": 0.005,
+            "cathode_radius": 0.01,
+        },
+        diagnostics={"hdf5_filename": ":memory:"},
+    )
+    summary = {
+        "first_principles_limiter_ledger": {
+            "schema": "dpf.first_principles.limiter_ledger.v1",
+            "status": "blocked",
+            "validation_status": "blocked",
+            "activation_count": 2,
+            "acceptance_blocking_activation_count": 2,
+            "activated_acceptance_blockers": ["fp2.velocity_cap"],
+            "can_support_first_principles_acceptance": False,
+            "entries": [
+                {
+                    "limiter_id": "fp2.velocity_cap",
+                    "activation_count": 2,
+                    "before": {"min": 3.0e6, "max": 4.0e6},
+                }
+            ],
+        },
+        "first_principles_backend_scope": {
+            "status": "backend_scope_blocked",
+            "backend": "metal_plm",
+            "requested_backend": "metal_plm",
+            "requested_run_mode": "first_principles_mhd",
+            "blocked_backend": "metal",
+            "can_support_first_principles_acceptance": False,
+            "required_limiter_telemetry": (
+                "backend_native_first_principles_limiter_ledger"
+            ),
+            "reason": "outside first-principles acceptance scope",
+        },
+    }
+
+    manifest = build_run_manifest(
+        config=config,
+        backend="python",
+        summary=summary,
+        validation_status=ValidationStatus.BLOCKED,
+        reason="first-principles limiter ledger blocked",
+    )
+
+    ledger = manifest.validation_evidence["first_principles_limiter_ledger"]
+    assert ledger["status"] == "blocked"
+    assert ledger["acceptance_blocking_activation_count"] == 2
+    assert ledger["activated_acceptance_blockers"] == ["fp2.velocity_cap"]
+    assert "entries" not in ledger
+    backend_scope = manifest.validation_evidence["first_principles_backend_scope"]
+    assert backend_scope["status"] == "backend_scope_blocked"
+    assert backend_scope["blocked_backend"] == "metal"
+    assert backend_scope["required_limiter_telemetry"] == (
+        "backend_native_first_principles_limiter_ledger"
+    )
+
+
 def test_build_run_manifest_accepts_owner_classification_metadata(tmp_path) -> None:
     config = SimulationConfig(
         grid_shape=[4, 4, 4],

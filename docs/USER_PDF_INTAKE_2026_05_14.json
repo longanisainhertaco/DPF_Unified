@@ -1,0 +1,45 @@
+{
+  "date": "2026-05-14",
+  "applied": true,
+  "batch_dir": "downloaded_books_papers/Research Papers/2026-05-14-user-ingest",
+  "input_count": 1,
+  "existing_input_count": 1,
+  "missing_input_count": 0,
+  "failed_input_count": 0,
+  "unique_sha256_count": 1,
+  "staged_canonical_count": 1,
+  "duplicate_input_count": 0,
+  "already_in_kr_count": 0,
+  "copied_new_or_review_needed_count": 1,
+  "subject_class_counts": {
+    "dpf_plasma_physics": 1
+  },
+  "relevance_counts": {
+    "promote_to_kr_source_truth_user_validated": 1
+  },
+  "records": [
+    {
+      "input_index": 1,
+      "path": "/Users/anthonyzamora/Downloads/2604.09032v1.pdf",
+      "exists": true,
+      "sha256": "acb71fa9f1ce260b81402086a9d2cc9506e9b3f0f7a5ab49078bcbba459b1682",
+      "size": 8263180,
+      "page_count": 22,
+      "nonempty_pages": 22,
+      "title": "A Fully Electromagnetic Hybrid PIC-Fluid Model for Predictive Fusion Neutron Yield in Dense Plasma Focus",
+      "doi": "",
+      "accession": "arXiv:2604.09032v1",
+      "subject_class": "dpf_plasma_physics",
+      "relevance": "promote_to_kr_source_truth_user_validated",
+      "destination": "downloaded_books_papers/Research Papers/2026-05-14-user-ingest/2604.09032v1-fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield.pdf",
+      "knowledge_reference_markdown": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "knowledge_reference_json": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.json",
+      "validation_status": "source_available_not_target_extracted",
+      "canonical_for_sha": true,
+      "duplicate_of": "",
+      "already_in_kr": "",
+      "error": ""
+    }
+  ],
+  "guardrail": "This user-validated source is now in KnowledgeReference as source authority. Numeric targets and simulator acceptance gates still require separate typed extraction, same-scope review, tests, and traceability."
+}

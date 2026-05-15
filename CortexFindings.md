@@ -59,6 +59,211 @@ No scientific acceptance is promoted by this update. Akel Fig. 1 remains
 `blocked_by_review`, Lee/snowplow remains baseline-only, and the current
 `dpf first-principles` run remains engineering-probe evidence.
 
+2026-05-14 FP-2 status: the first limiter-ledger slice is implemented for the
+app-level PF-1000/Akel first-principles path. Run results now expose
+`first_principles_limiter_ledger`, readiness blocks on missing or active
+acceptance-blocking limiter evidence, and CLI/manifest artifacts carry compact
+ledger summaries. This does not finish FP-2: solver-internal Python/Metal/MLX
+limiters still need result-bound activation telemetry or verified-method
+classification before limiter-zero acceptance is possible.
+
+2026-05-14 FP-2 continuation: the Python cylindrical solver now emits
+result-bound limiter events for state-mutating floors/clamps/repairs, and the
+app-level first-principles path merges those events into
+`first_principles_limiter_ledger`. Remaining FP-2 scope is narrower but still
+blocking: classify flux-local positivity controls and PLM/HLL limiters with
+verification evidence, then add or exclude Metal/MLX repair/fallback telemetry.
+
+2026-05-14 FP-2 backend scope update: PLM/minmod, HLL flux,
+reconstructed-state positivity floors, and CFL timestep control are now
+nonblocking `verified_numerical_method` ledger entries for the Python
+cylindrical path. Readiness also has an explicit backend-scope gate: Metal,
+MLX, Athena, AthenaK, and hybrid paths remain outside first-principles
+acceptance until backend-native limiter/fallback telemetry and parity evidence
+are attached. Negative coverage now checks the advertised non-Python backend
+labels and preserves requested backend identity across fallback labels.
+
+2026-05-14 FP-2 blocker reduction: the active Python PF-1000/Akel
+field-coupled path now removes the app-level resistivity floor/cap, temperature
+floor/cap, hard field-coupled timestep cap, low-current voltage floor, and
+back-EMF clip from bounded probes. The replacements are still candidate
+engineering evidence, not validation: an uncapped partial-ionization
+Spitzer/Braginskii resistivity path initialized from the local PF-1000
+post-breakdown source state, public solver `compute_dt()` routing for
+CFL/resistive diffusion control, and an implicit-midpoint circuit power port
+that enforces `P_load = I_mid * V_load`. Bounded probes through `0.05 us`
+now complete with clear limiter ledgers, but the full-horizon limiter-zero run,
+startup BVP, same-scope field-coupling packet, numerical-fidelity packet,
+physics-fidelity packet, Akel evidence review, and neutron authority gates
+remain blocking.
+
+2026-05-14 FP-2 timestep diagnosis update: the Python cylindrical path now uses
+`Z_bar` in partial-ionization pressure recovery, electron-density bookkeeping,
+and Ohmic electron heating. This prevents the false `Te=1 K` floor collapse
+that previously drove uncapped resistivity into a prohibitive explicit
+resistive timestep. Per-step timestep diagnostics are now exported as
+`dt_s`, `dt_adv_s`, `dt_diff_s`, and `dt_controller`. Bounded probes through
+`1.0 us` now complete with clear limiter ledgers, but they remain
+resistive-diffusion controlled. The next numerics target is therefore a
+verified implicit or STS resistive operator, followed by source-scoped
+ionization/recombination evolution instead of constant `Z_bar`.
+
+2026-05-14 FP-2 implicit resistive update: the active Python first-principles
+path now uses a Crank-Nicolson ADI split for the cylindrical axisymmetric
+`B_theta` resistive-induction operator and reports the old explicit
+diffusion-CFL value as stiffness evidence instead of timestep authority. A
+separate LC phase timestep controller keeps the field boundary and
+implicit-midpoint circuit power port time-resolved after removing the accidental
+explicit-diffusion clamp. Bounded probes through `1.0 us` now clear with
+nonzero field feedback and no active acceptance blockers. Remaining FP-2/FP-3
+work is now source-scoped ionization/recombination, electron-neutral transport,
+anomalous resistivity, full-vector resistive operator scope if `B_r/B_z`
+becomes material, and the same-scope validation packets.
+
+2026-05-14 source-of-truth ingestion update: the user-validated arXiv
+`2604.09032v1` paper, "A Fully Electromagnetic Hybrid PIC-Fluid Model for
+Predictive Fusion Neutron Yield in Dense Plasma Focus", is now represented in
+`KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md`
+and `.json`, with the staged PDF hash recorded in
+`docs/USER_PDF_INTAKE_2026_05_14.json`. Treat it as source authority for the
+first-principles architecture review queue, especially kinetic-ion/fluid-electron
+handoff, fully electromagnetic field evolution, Hall/resistive/electron-pressure
+Ohm-law terms, vacuum-field handling, and mechanism-separated neutron-yield
+review. Do not promote its LLNL-like geometry, sheath-front comparison,
+cross-section fit, or total neutron-yield number into simulator acceptance until
+Step 2 creates typed KR target packets with same-scope traceability and review.
+
+2026-05-14 3D finish-line gate update: the new source has been converted into a
+concrete architecture gate rather than a loose literature note.
+`docs/FIRST_PRINCIPLES_3D_HYBRID_PIC_REVIEW_2026_05_14.md` now records the
+source-derived application map. `src/dpf/validation/hybrid_pic_3d.py` defines
+the required 3D hybrid PIC-fluid capability set, and
+`first_principles_mhd_readiness_report()` now blocks on
+`hybrid_pic_3d_first_principles_core` until a run has accepted evidence for
+full Maxwell plasma/vacuum fields, kinetic ion PIC push/deposition,
+electron-fluid generalized Ohm closure, current predictor-corrector,
+divergence control, plasma-vacuum conductivity blending,
+PML/conductor/particle-boundary semantics, ion collisions, true 3D
+dimensionality, separate electron-energy closure, kinetic ion yield histories,
+and same-scope 3D validation. Current 2D/cylindrical work remains valuable as
+an engineering ratchet and comparator path, but it is no longer framed as the
+finish line for the `/goal` simulator.
+
+2026-05-15 FP-7 field/current/Ohm/predictor/Marder/conductivity/loop/boundary/collision/electron-energy/yield/multi-step/geometry implementation ratchet: the first isolated
+3D Maxwell component, PIC current-source bridge, generalized Ohm component,
+predictor-corrector primitive, Marder correction, conductivity blend,
+particle-field loop step, particle-boundary hook, collision telemetry,
+electron-energy hook, kinetic-yield history, multi-step driver, and
+source-geometry packet now exist under
+`src/dpf/fields/`. `maxwell_3d.py` uses the existing Yee/CT convention for
+edge-centered `E` and face-centered `B`, provides Ampere/Faraday stepping,
+conductor masks, deterministic PML damping metadata, Courant timestep, `div B`,
+and EM energy diagnostics. `pic_coupling.py` maps cell-centered PIC deposition
+to Yee edge currents for Ampere's law and reports continuity status as
+nonaccepting telemetry. `ohm_solver.py` implements the source-derived
+Ohm-Ampere midpoint algebraic current solve with Hall, Hall-disabled, and
+density-thresholded pressure-gradient paths. `predictor_corrector.py` implements
+the source current extrapolation and end-step Ohm correction around a supplied
+provisional ion current. `marder.py` implements the source electric-field
+correction for Gauss-law residual control with residual telemetry, and the
+candidate stepper can map that correction back to Yee electric edges.
+`conductivity.py` implements the source plasma-vacuum conductivity transition
+and Ohmic CFL cap with active-fraction telemetry. `hybrid_stepper.py` ties the
+Yee Maxwell state, conductivity blend, generalized Ohm solve, current edge
+mapping, Maxwell advance, and optional predictor-corrector end-step current
+solve/Marder correction into one candidate field-current step.
+`hybrid_loop.py` pushes HybridPIC ions, deposits current, rebuilds
+quasi-neutral electron density, and advances the field-current stepper in one
+candidate particle-field loop step. `particle_boundaries.py` implements
+candidate deletion of particles entering conductor/PML regions and the loop can
+apply it before deposition. The loop also reports disabled versus
+Nanbu/Perez-enabled ion-collision status from the existing HybridPIC kernel.
+`electron_energy.py` wraps the repo two-temperature scaffold as candidate
+source-term telemetry, and the loop can use a supplied electron-energy state to
+build the pressure-gradient term and then update `Te` from the solved current.
+`kinetic_yield.py` accumulates candidate D-D yield history from PIC ion
+distributions and can attach instantaneous rate plus cumulative neutrons to the
+loop telemetry. `hybrid_simulator.py` runs the candidate 3D loop for repeated
+steps while carrying field, particle, optional `Te`, and yield state forward.
+`source_geometry.py` captures the local source's LLNL-like axisymmetric setup
+as blocked candidate geometry, not same-scope true-3D validation.
+`circuit_boundary.py` now implements the local source's explicit RLC
+current/charge update and `B_theta = mu0 I/(2 pi r)` injection-boundary formula
+as a Cartesian engineering projection onto the 3D Maxwell grid; it remains
+blocked because `U_DPF` flux-derivative closure, true injection-port geometry,
+and same-scope circuit validation are missing. `HybridPIC3DSimulator` can now
+optionally apply that boundary and advance the RLC state each step, recording
+candidate telemetry without promoting the run.
+`HybridPIC3DLoop` now also has a candidate source-ordered mode that advances
+positions from stored half-step velocities, deposits current from old/new
+positions, can rebuild density from half-step charge deposition, advances the
+Ohm/Maxwell/Marder/predictor path, and then updates ion velocities with source
+Eq. 7 before applying collisions. The simulator can request this mode for
+multi-step runs. When predictor-corrector is requested, the loop now also
+builds candidate provisional ion velocities and provisional ion current from
+the particle state and feeds that provisional ion current into the candidate
+end-step Ohm correction.
+Marder telemetry now records correction magnitude, relative correction, an
+explicit nondominance threshold, and whether the correction is within bound or
+dominant. The current coupled particle-loop test deliberately preserves a
+`candidate_dominant_correction` result for explicit charge density, so the gate
+cannot overclaim divergence-control authority.
+Extended-Ohm temperature authority is now explicit: Hall/pressure-gradient runs
+without separate electron-temperature evidence are blocked as
+`blocked_te_equal_ti_or_missing_separate_te`, and the candidate Te scaffold
+still reports `candidate_separate_te_still_blocked` rather than promoting
+quantitative extended-Ohm or neutron-yield claims.
+Kinetic neutron-yield telemetry now records its mechanism status as
+`not_mechanism_separated`, and a total-yield authority check blocks cumulative
+scalar yield unless accepted kinetic history, mechanism-separated channels,
+same-scope detector response, UQ, and electron-temperature authority are all
+attached.
+`hybrid_pic_3d_validation_packet.py` now provides the public same-scope
+validation-packet evaluator: even if all 3D hybrid capabilities are accepted,
+the final packet remains blocked without accepted targets, detector response,
+UQ, conservation, nondominance, and backend-scaling evidence.
+The CLI now exposes `dpf hybrid-3d-smoke`, a runnable engineering candidate
+that exercises source-ordered 3D hybrid PIC-fluid stepping, circuit boundary
+coupling, Te/yield telemetry, and the blocked validation packet in one JSON
+artifact.
+Focused tests pass for field
+stepping, CT `div B`, conductor/PML behavior, HybridPIC current mapping,
+Ampere current sourcing, Ohm residual closure, predictor-corrector residual
+closure, Marder residual correction, conductivity blending, and gate
+non-promotion; the integrated stepper test verifies Ohmic current reduces a
+uniform electric field energy, and the loop test verifies particle motion plus
+Esirkepov deposition after push plus optional particle absorption before
+deposition, collision telemetry, optional Marder correction, optional
+electron-energy coupling, candidate kinetic-yield history, and a three-step
+candidate simulator run; the circuit-boundary tests verify Eq. 34 scaling, Eq.
+37-38 current/charge stepping, azimuthal Cartesian direction, injection-plane
+application, simulator coupling, and fail-closed gate behavior. Source-ordered
+loop tests verify Eq. 7 velocity update telemetry, old/new current deposition,
+half-step density use, optional predictor-corrector/Marder hooks, simulator
+pass-through, candidate predictor-particle rebuild telemetry, and fail-closed
+gate behavior. Marder tests now verify bounded smooth residual cleanup and
+dominant-correction flagging. Extended-Ohm Te tests
+verify missing separate-Te evidence and candidate Te evidence both remain
+blocked for Hall/pressure claims. Kinetic-yield authority tests verify scalar
+cumulative yield remains blocked without mechanism/detector/UQ/Te authority.
+Validation-packet tests verify the current 2D source-geometry packet remains
+blocked while a complete synthetic same-scope 3D packet can pass. CLI tests
+verify the 3D smoke command writes a blocked engineering-candidate artifact.
+FP-7 remains
+blocked until the rest of the 3D hybrid
+PIC-fluid source-derived capability set is implemented and accepted:
+self-consistent long-run source-ordered ion PIC sequencing, accepted Ohm-loop
+integration, accepted Te/Ti rebuild, accepted provisional ion-push/rebuild
+predictor-corrector conservation/stability evidence, accepted nondominant
+divergence-control evidence
+against sheath/current observables,
+accepted weakly active plasma-vacuum conductivity, external-circuit `U_DPF`
+closure, electrode and boundary-validation packets, accepted collision
+parameterization, accepted electron-energy
+heat-flux/collisional coupling, mechanism-separated kinetic neutron-yield
+authority with detector/UQ closure, and
+same-scope 3D validation.
+
 ## Detailed Plan
 
 0. KR Corpus Inventory And Exhaustive Review Control

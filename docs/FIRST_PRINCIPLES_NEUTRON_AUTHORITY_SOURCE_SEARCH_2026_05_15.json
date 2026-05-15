@@ -1,0 +1,92 @@
+{
+  "date": "2026-05-15",
+  "blocker": "FP-12",
+  "question": "Can PF-1000/Akel neutron evidence support accepted first-principles total-yield authority today?",
+  "verdict": "blocked",
+  "decision": "do_not_enable_total_neutron_yield_authority",
+  "candidate_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
+  "supported_text_channels": [
+    "scintillator_detector_layout_0_90_180_degrees",
+    "time_of_flight_mean_neutron_deuteron_energy_method",
+    "silver_activation_total_yield_measurement",
+    "am_be_activation_calibration_text",
+    "yield_uncertainty_scalar",
+    "measured_scalar_yield_shot_12581",
+    "lee_thermonuclear_and_beam_target_model_text",
+    "lee_beam_target_formula_context",
+    "current_derivative_t0_reference_for_neutron_timing",
+    "average_yield_series_fit_context"
+  ],
+  "candidate_runtime_channels": [
+    "candidate_pic_ion_neutron_yield_history",
+    "candidate_dd_particle_distribution_total"
+  ],
+  "missing_required_channels": [
+    "accepted_thermonuclear_yield_history",
+    "accepted_beam_target_yield_history",
+    "mechanism_separated_yield_channels",
+    "ion_energy_distribution_history",
+    "beam_angular_distribution_history",
+    "beam_transport_stopping_model",
+    "target_density_path_length_history",
+    "neutron_timing_history",
+    "neutron_energy_spectrum",
+    "neutron_anisotropy_angular_yield",
+    "detector_response_model",
+    "activation_counter_response_model",
+    "direct_scattered_neutron_transport",
+    "yield_uncertainty_budget",
+    "electron_temperature_yield_sensitivity_uq",
+    "output_mapping_and_comparator",
+    "source_review_certificate"
+  ],
+  "source_answers": [
+    {
+      "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+      "lines": "120-131,190-215,282-288,862-889",
+      "role": "pf1000_akel_neutron_detector_yield_and_lee_baseline_context",
+      "limitation": "reduced-model and scalar detector context, not accepted mechanism-separated first-principles authority"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "952-970,1037-1040,1083-1089,1214-1266",
+      "role": "hybrid_pic_fluid_yield_history_and_limitations",
+      "limitation": "other-scope 2D hybrid source; order-of-magnitude yield with electron-temperature closure sensitivity"
+    },
+    {
+      "path": "KnowledgeReference/fully-kinetic-simulations-of-dense-plasma-focus-z-pinch.md",
+      "lines": "34-43,68-78,126-161",
+      "role": "fully_kinetic_mev_ion_and_beam_target_requirement",
+      "limitation": "LLNL scope, not PF-1000/Akel same-scope evidence"
+    },
+    {
+      "path": "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md",
+      "lines": "39-44,409-418,433-445,551-613",
+      "role": "mechanism_separation_timing_spectrum_anisotropy_requirement",
+      "limitation": "MA-class/MJOLNIR scope, not Akel same-scope evidence"
+    },
+    {
+      "path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "lines": "32-53,337-351,390-427,518-526",
+      "role": "tof_tomography_detector_response_and_scatter_subtraction_schema",
+      "limitation": "detector setup is not PF-1000/Akel same scope"
+    },
+    {
+      "path": "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+      "lines": "121-137,175-204,269-288",
+      "role": "pf1000_anisotropy_detector_and_scattering_schema_other_scope",
+      "limitation": "full-energy PF-1000 source is not Akel 16 kV shot 12581"
+    }
+  ],
+  "implementation": [
+    "src/dpf/first_principles/neutron_authority.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    "python3 -m pytest tests/test_first_principles_runner.py",
+    "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
+    "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py"
+  ],
+  "next_blocker": "FP-13"
+}

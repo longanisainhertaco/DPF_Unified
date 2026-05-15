@@ -1591,37 +1591,62 @@ class HybridPIC:
             # Reflecting boundary conditions at domain edges
             new_pos, new_vel = self._apply_reflecting_bc(new_pos, new_vel)
 
-            # Collision operator
-            if self._collision_enabled and sp.n_particles() > 1:
-                if self.use_binary_collisions:
-                    # Nanbu-Perez (2012) relativistic binary collisions
-                    # Self-collisions: pair species with itself
-                    n_sp = self._n_background
-                    ln_lam = max(
-                        5.0,
-                        23.0
-                        - 0.5 * np.log(n_sp / 1e20)
-                        + 1.5 * np.log(self._T_background_eV),
-                    )
-                    cell_vol = self.dx * self.dy * self.dz
-                    _nanbu_scatter_kernel(
-                        new_vel, new_vel,
-                        sp.weights, sp.weights,
-                        sp.mass, sp.mass,
-                        sp.charge, sp.charge,
-                        n_sp, n_sp,
-                        ln_lam, dt, cell_vol,
-                    )
-                else:
-                    # Takizuka-Abe (1977) fallback
-                    new_vel = _coulomb_scatter(
-                        new_vel, sp.charge, sp.mass,
-                        self._n_background, self._T_background_eV,
-                        dt,
-                    )
+            new_vel = self._collide_species_velocities(sp, new_vel, dt)
 
             sp.positions = new_pos
             sp.velocities = new_vel
+
+    def apply_collisions(self, dt: float | None = None) -> None:
+        """Apply the configured ion-ion collision operator to current velocities."""
+        if dt is None:
+            dt = self.dt
+        for sp in self.species:
+            if sp.n_particles() == 0:
+                continue
+            sp.velocities = self._collide_species_velocities(sp, sp.velocities, dt)
+
+    def _collide_species_velocities(
+        self,
+        sp: ParticleSpecies,
+        velocities: np.ndarray,
+        dt: float,
+    ) -> np.ndarray:
+        """Return velocities after the configured collision operator."""
+        if not self._collision_enabled or sp.n_particles() <= 1:
+            return velocities
+        if self.use_binary_collisions:
+            n_sp = self._n_background
+            ln_lam = max(
+                5.0,
+                23.0
+                - 0.5 * np.log(n_sp / 1e20)
+                + 1.5 * np.log(self._T_background_eV),
+            )
+            cell_vol = self.dx * self.dy * self.dz
+            _nanbu_scatter_kernel(
+                velocities,
+                velocities,
+                sp.weights,
+                sp.weights,
+                sp.mass,
+                sp.mass,
+                sp.charge,
+                sp.charge,
+                n_sp,
+                n_sp,
+                ln_lam,
+                dt,
+                cell_vol,
+            )
+            return velocities
+        return _coulomb_scatter(
+            velocities,
+            sp.charge,
+            sp.mass,
+            self._n_background,
+            self._T_background_eV,
+            dt,
+        )
 
     def _apply_reflecting_bc(
         self, positions: np.ndarray, velocities: np.ndarray,

@@ -832,6 +832,23 @@ _EXPLICIT_REVIEW_DECISIONS = (
             "high/low-yield sources now carry the coded campaign targets."
         ),
     },
+    {
+        "source": (
+            "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-"
+            "dpf-neutron-yield-acb71fa9.md"
+        ),
+        "status": "source_ingested_target_extraction_needed",
+        "canonical_source": "",
+        "reason": (
+            "User-validated arXiv:2604.09032v1 DPF hybrid PIC-fluid source "
+            "is now locally ingested with PDF hash and text parity metadata. "
+            "It is first-principles-relevant source authority for model "
+            "architecture review, but its geometry, benchmarks, cross-section "
+            "fit, and neutron-yield numbers are not accepted validation "
+            "targets until typed same-scope target packets are extracted and "
+            "reviewed."
+        ),
+    },
 )
 
 

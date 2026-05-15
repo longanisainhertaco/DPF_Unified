@@ -76,6 +76,16 @@ comparator binding, same-scope packet assembly, and certificate gates. This plan
 does not accept any target, curve, table, formula, uncertainty value, or
 validation threshold by itself.
 
+2026-05-14 supplemental source-of-truth ingestion: the user-validated arXiv
+`2604.09032v1` PDF, "A Fully Electromagnetic Hybrid PIC-Fluid Model for
+Predictive Fusion Neutron Yield in Dense Plasma Focus", has been staged and
+ingested as
+`KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md`
+and `.json`; the intake manifest is `docs/USER_PDF_INTAKE_2026_05_14.json`.
+This creates a new first-principles architecture and neutron-yield authority
+review source. It does not close any validation tier until typed targets are
+extracted and independently reviewed for same-scope use.
+
 ## Machine-Readable Queue State
 
 `scientific_closure_source_acquisition_queue()` now reports both blocker items

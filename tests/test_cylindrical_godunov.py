@@ -129,6 +129,179 @@ class TestGodunovUniformState:
         )
 
 
+def test_solver_records_internal_velocity_cap_limiter_event() -> None:
+    solver, state = _make_uniform_state(nr=8, nz=8, p0=1.0e-6)
+    state["velocity"][0, :, :, :] = 1.0e8
+
+    solver.step(state, dt=1.0e-12, current=0.0, voltage=0.0)
+
+    velocity_events = [
+        event
+        for event in solver.last_limiter_events
+        if event["limiter_id"]
+        == "dpf.fluid.cylindrical_mhd.final.velocity_fast_speed_cap"
+    ]
+    assert velocity_events
+    assert velocity_events[0]["classification"] == "acceptance_blocker"
+    assert velocity_events[0]["acceptance_blocking"] is True
+    assert velocity_events[0]["activation_count"] > 0
+
+
+def test_public_compute_dt_includes_resistive_diffusion_limit() -> None:
+    solver, state = _make_uniform_state(nr=8, nz=8)
+    solver.enable_resistive = True
+
+    dt_without_eta = solver.compute_dt(state)
+    solver._last_eta_max = 0.5
+    dt_with_eta = solver.compute_dt(state)
+    expected_diffusive_dt = 0.5 * min(solver.dr, solver.dz) ** 2 * mu_0 / 0.5
+    diagnostics = solver.last_dt_diagnostics
+
+    assert dt_with_eta < dt_without_eta
+    np.testing.assert_allclose(dt_with_eta, expected_diffusive_dt)
+    assert diagnostics["controller"] == "resistive_diffusion"
+    np.testing.assert_allclose(diagnostics["dt_diff_s"], expected_diffusive_dt)
+    assert diagnostics["dt_adv_s"] > diagnostics["dt_diff_s"]
+    assert diagnostics["diffusion_method"] == "explicit"
+
+
+def test_sts_compute_dt_extends_resistive_diffusion_limit() -> None:
+    solver, state = _make_uniform_state(nr=8, nz=8)
+    solver.enable_resistive = True
+    solver.diffusion_method = "sts"
+    solver.sts_stages = 8
+    solver._last_eta_max = 0.5
+
+    dt_sts = solver.compute_dt(state)
+    diagnostics = solver.last_dt_diagnostics
+    expected_diffusive_dt = 0.5 * min(solver.dr, solver.dz) ** 2 * mu_0 / 0.5
+    expected_sts_dt = 0.25 * solver.sts_stages**2 * expected_diffusive_dt
+
+    np.testing.assert_allclose(diagnostics["dt_diff_s"], expected_diffusive_dt)
+    np.testing.assert_allclose(diagnostics["dt_sts_s"], expected_sts_dt)
+    assert diagnostics["diffusion_method"] == "sts"
+    assert diagnostics["controller"] == "sts_resistive_diffusion"
+    assert dt_sts > expected_diffusive_dt
+    np.testing.assert_allclose(dt_sts, expected_sts_dt)
+
+
+def test_implicit_btheta_compute_dt_uses_hyperbolic_cfl_but_reports_dt_diff() -> None:
+    solver, state = _make_uniform_state(nr=8, nz=8)
+    solver.enable_resistive = True
+    solver.diffusion_method = "implicit_cylindrical_btheta"
+    solver._last_eta_max = 0.5
+
+    dt_implicit = solver.compute_dt(state)
+    diagnostics = solver.last_dt_diagnostics
+    expected_diffusive_dt = 0.5 * min(solver.dr, solver.dz) ** 2 * mu_0 / 0.5
+
+    assert diagnostics["controller"] == "hyperbolic_cfl"
+    assert diagnostics["diffusion_method"] == "implicit_cylindrical_btheta"
+    np.testing.assert_allclose(diagnostics["dt_diff_s"], expected_diffusive_dt)
+    np.testing.assert_allclose(dt_implicit, diagnostics["dt_adv_s"])
+    assert dt_implicit > expected_diffusive_dt
+    assert diagnostics["resistive_stiffness_ratio"] > 1.0
+
+
+def test_implicit_btheta_matches_explicit_small_dt() -> None:
+    nr, nz = 16, 16
+    solver, state = _make_uniform_state(nr=nr, nz=nz)
+    solver.enable_resistive = True
+    solver.diffusion_method = "implicit_cylindrical_btheta"
+    rho = solver._squeeze(state["rho"])
+    vel = solver._squeeze(state["velocity"])
+    pressure = solver._squeeze(state["pressure"])
+    B = solver._squeeze(state["B"])
+    psi = solver._squeeze(state["psi"])
+    r = solver.geom.r[:, None]
+    z = np.linspace(0.0, 1.0, nz)[None, :]
+    B[1] = 0.05 + 0.01 * np.sin(np.pi * z) * np.exp(-((r - r.mean()) ** 2) / 1.0e-4)
+    eta = np.full((nr, nz), 1.0e-5)
+    rhs = solver._compute_rhs(
+        rho,
+        vel,
+        pressure,
+        B,
+        psi,
+        eta,
+        include_resistive_induction=True,
+    )
+    dt = 1.0e-4 * 0.5 * min(solver.dr, solver.dz) ** 2 * mu_0 / float(np.max(eta))
+
+    implicit_B = solver._apply_implicit_btheta_resistive_induction(B, eta, dt)
+    explicit_Btheta = B[1] + dt * rhs["dB_dt"][1]
+
+    np.testing.assert_allclose(
+        implicit_B[1, 1:-1, 1:-1],
+        explicit_Btheta[1:-1, 1:-1],
+        rtol=1.0e-4,
+        atol=1.0e-10,
+    )
+
+
+def test_implicit_btheta_large_dt_finite_smooths_without_limiter() -> None:
+    nr, nz = 16, 16
+    solver, state = _make_uniform_state(nr=nr, nz=nz)
+    solver.enable_resistive = True
+    solver.diffusion_method = "implicit_cylindrical_btheta"
+    B = solver._squeeze(state["B"])
+    B[1, nr // 2, nz // 2] = 1.0
+    eta = np.full((nr, nz), 0.1)
+    explicit_dt = 0.5 * min(solver.dr, solver.dz) ** 2 * mu_0 / float(np.max(eta))
+
+    diffused = solver._apply_implicit_btheta_resistive_induction(
+        B,
+        eta,
+        10.0 * explicit_dt,
+    )
+
+    assert np.all(np.isfinite(diffused))
+    assert float(np.max(np.abs(diffused[1]))) < 1.0
+    assert solver.last_limiter_events == []
+
+
+def test_implicit_btheta_blocks_material_br_bz() -> None:
+    solver, state = _make_uniform_state(nr=8, nz=8)
+    solver.enable_resistive = True
+    solver.diffusion_method = "implicit_cylindrical_btheta"
+    B = solver._squeeze(state["B"])
+    B[1] = 1.0e-3
+    B[0, 3, 3] = 1.0e-4
+    eta = np.full((8, 8), 1.0e-5)
+
+    solver._apply_implicit_btheta_resistive_induction(B, eta, 1.0e-9)
+
+    events = [
+        event
+        for event in solver.last_limiter_events
+        if event["limiter_id"]
+        == "dpf.fluid.cylindrical_mhd.implicit_btheta.material_poloidal_field"
+    ]
+    assert events
+    assert events[0]["classification"] == "acceptance_blocker"
+    assert events[0]["acceptance_blocking"] is True
+    assert events[0]["activation_count"] == 1
+
+
+def test_partial_ionization_pressure_recovery_preserves_temperatures() -> None:
+    ion_mass = 6.69e-27
+    n_total = 400.0 / (1.380649e-23 * 300.0)
+    rho0 = n_total * ion_mass
+    Z_bar = 0.01
+    p_total = n_total * 1.380649e-23 * 300.0 * (1.0 + Z_bar)
+    solver, state = _make_uniform_state(nr=8, nz=8, rho0=rho0, p0=p_total)
+    solver.ion_mass = ion_mass
+    state["Te"] = np.full((8, 1, 8), 300.0)
+    state["Ti"] = np.full((8, 1, 8), 300.0)
+    state["Z_bar"] = np.full((8, 1, 8), Z_bar)
+
+    result = solver.step(state, solver.compute_dt(state), current=0.0, voltage=0.0)
+
+    np.testing.assert_allclose(result["Te"], 300.0, rtol=1.0e-10)
+    np.testing.assert_allclose(result["Ti"], 300.0, rtol=1.0e-10)
+    np.testing.assert_allclose(result["Z_bar"], Z_bar, rtol=0.0, atol=0.0)
+
+
 class TestGodunovConservation:
     """Energy conservation on uniform state with no sources."""
 

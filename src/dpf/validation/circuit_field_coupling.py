@@ -234,12 +234,18 @@ def field_power_diagnostics_from_cylindrical_state(
     B_sq = Br * Br + Bt * Bt + Bz * Bz
     magnetic_energy_J = float(np.sum(0.5 * B_sq / mu_0 * volume))
 
-    current_sq = float(current_A) * float(current_A)
-    field_inductance_H = (
-        2.0 * magnetic_energy_J / max(current_sq, 1.0e-30)
-        if abs(float(current_A)) >= current_floor_A
-        else 0.0
+    current_value = float(current_A)
+    current_sq = current_value * current_value
+    threshold = max(float(current_floor_A), 0.0)
+    has_terminal_current = (
+        abs(current_value) >= threshold
+        if threshold > 0.0
+        else current_value != 0.0
     )
+    if has_terminal_current:
+        field_inductance_H = 2.0 * magnetic_energy_J / current_sq
+    else:
+        field_inductance_H = 0.0 if magnetic_energy_J == 0.0 else float("inf")
     if (
         previous_inductance_H is not None
         and dt_s is not None
@@ -271,13 +277,16 @@ def field_power_diagnostics_from_cylindrical_state(
     J_sq = Jr * Jr + Jt * Jt + Jz * Jz
     joule_power_W = float(np.sum(eta_arr * J_sq * volume))
 
-    if abs(float(current_A)) >= current_floor_A:
-        load_voltage_V = j_dot_e_power_W / float(current_A)
+    if has_terminal_current:
+        load_voltage_V = j_dot_e_power_W / current_value
         source_orientation_voltage_V = -load_voltage_V
-    else:
+    elif j_dot_e_power_W == 0.0:
         load_voltage_V = 0.0
         source_orientation_voltage_V = 0.0
-    field_interface_power_W = float(current_A) * load_voltage_V
+    else:
+        load_voltage_V = float("nan")
+        source_orientation_voltage_V = float("nan")
+    field_interface_power_W = current_value * load_voltage_V
 
     return {
         "classification": "engineering_field_coupling_diagnostic",
@@ -301,6 +310,130 @@ def field_power_diagnostics_from_cylindrical_state(
             "poynting_voltage_source_orientation_V stores the opposite terminal "
             "orientation."
         ),
+    }
+
+
+def implicit_midpoint_power_port_back_emf(
+    *,
+    current_A: float,
+    capacitor_voltage_V: float,
+    L_total_H: float,
+    resistance_ohm: float,
+    capacitance_F: float,
+    dL_dt_H_s: float,
+    dt_s: float,
+    power_W: float,
+    crowbar_fired: bool = False,
+) -> dict[str, object]:
+    """Convert field load power to an RLC back-EMF without a current floor.
+
+    The app-level field-coupled candidate computes the resolved-field load as
+    a power.  The circuit solver accepts a terminal voltage.  This helper
+    enforces the same implicit-midpoint relation used by ``RLCSolver.step`` and
+    chooses the root continuous with the zero-load circuit update:
+
+    ``power_W = I_mid * back_emf_V``.
+
+    It is a numerical power-port closure, not validation evidence.
+    """
+    I_n = float(current_A)
+    V_n = float(capacitor_voltage_V)
+    L_total = float(L_total_H)
+    R_star = float(resistance_ohm) + float(dL_dt_H_s)
+    C = float(capacitance_F)
+    dt = float(dt_s)
+    power = float(power_W)
+    if not all(
+        np.isfinite(value)
+        for value in (I_n, V_n, L_total, R_star, C, dt, power)
+    ):
+        return {
+            "passed": False,
+            "reason": "nonfinite_input",
+            "back_emf_V": 0.0,
+            "power_W": power,
+        }
+    if L_total <= 0.0 or dt <= 0.0 or (not crowbar_fired and C <= 0.0):
+        return {
+            "passed": False,
+            "reason": "invalid_circuit_domain",
+            "back_emf_V": 0.0,
+            "power_W": power,
+            "L_total_H": L_total,
+            "dt_s": dt,
+            "capacitance_F": C,
+        }
+
+    alpha = dt / (2.0 * L_total)
+    beta = 0.0 if crowbar_fired else alpha * dt / (2.0 * C)
+    denom = 1.0 + alpha * R_star + beta
+    A = I_n * (1.0 - alpha * R_star - beta)
+    if not crowbar_fired:
+        A += 2.0 * alpha * V_n
+    if not np.isfinite(denom) or denom == 0.0:
+        return {
+            "passed": False,
+            "reason": "singular_midpoint_denominator",
+            "back_emf_V": 0.0,
+            "power_W": power,
+            "denominator": denom,
+        }
+
+    I_no_load_new = A / denom
+    if power == 0.0:
+        I_mid = 0.5 * (I_n + I_no_load_new)
+        return {
+            "passed": True,
+            "method": "implicit_midpoint_power_port",
+            "back_emf_V": 0.0,
+            "current_mid_A": I_mid,
+            "current_new_A": I_no_load_new,
+            "current_new_no_load_A": I_no_load_new,
+            "power_W": power,
+            "power_residual_W": 0.0,
+        }
+
+    b = denom * I_n - A
+    c = 4.0 * alpha * power - A * I_n
+    discriminant = b * b - 4.0 * denom * c
+    if not np.isfinite(discriminant) or discriminant < 0.0:
+        return {
+            "passed": False,
+            "reason": "no_real_midpoint_power_port_root",
+            "back_emf_V": 0.0,
+            "power_W": power,
+            "discriminant": discriminant,
+            "current_new_no_load_A": I_no_load_new,
+        }
+
+    sqrt_discriminant = float(np.sqrt(discriminant))
+    roots = (
+        (-b + sqrt_discriminant) / (2.0 * denom),
+        (-b - sqrt_discriminant) / (2.0 * denom),
+    )
+    I_new = min(roots, key=lambda root: abs(root - I_no_load_new))
+    I_mid = 0.5 * (I_n + I_new)
+    if not np.isfinite(I_mid) or I_mid == 0.0:
+        return {
+            "passed": False,
+            "reason": "zero_midpoint_current_for_nonzero_power",
+            "back_emf_V": 0.0,
+            "power_W": power,
+            "current_mid_A": I_mid,
+            "current_new_A": I_new,
+            "current_new_no_load_A": I_no_load_new,
+        }
+    back_emf = power / I_mid
+    return {
+        "passed": bool(np.isfinite(back_emf)),
+        "method": "implicit_midpoint_power_port",
+        "back_emf_V": float(back_emf) if np.isfinite(back_emf) else 0.0,
+        "current_mid_A": float(I_mid),
+        "current_new_A": float(I_new),
+        "current_new_no_load_A": float(I_no_load_new),
+        "power_W": power,
+        "power_residual_W": float(back_emf * I_mid - power),
+        "discriminant": float(discriminant),
     }
 
 

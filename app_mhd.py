@@ -85,60 +85,192 @@ def _mhd_numerical_method_metadata(
 def _first_principles_eta_field(
     state: dict[str, np.ndarray],
     gas: dict,
-    *,
-    eta_floor: float = 1.0e-8,
-    eta_cap: float = 1.0e-4,
 ) -> tuple[np.ndarray, dict[str, object]]:
-    """Return a capped Spitzer/Braginskii resistivity field for the candidate.
+    """Return a source-traced Spitzer/Braginskii resistivity field.
 
-    The cap/floor are engineering stability limits for the current explicit
-    Python MHD path. They keep the run finite; they are not accepted physics
-    validation evidence.
+    The PF-1000 local source path supports starting after breakdown from a
+    partially ionized plasma and using Braginskii transport. This helper keeps
+    that transport explicit and leaves missing ionization/anomalous-resistivity
+    closure as metadata blockers instead of hiding it behind eta caps.
     """
+    from dpf.constants import e as electron_charge
+    from dpf.constants import m_e
+    from dpf.validation.first_principles_limiters import limiter_event
+
+    limiter_events: list[dict[str, object]] = []
     rho = np.asarray(state["rho"], dtype=float)
-    rho_safe = np.maximum(rho, 1.0e-30)
+    valid_rho = np.isfinite(rho) & (rho > 0.0)
+    if not bool(np.all(valid_rho)):
+        rho_safe = np.where(valid_rho, rho, np.nan)
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.invalid_density_domain",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="rho",
+                classification="debug_repair",
+                activation_count=int(rho.size - np.count_nonzero(valid_rho)),
+                before=rho,
+                acceptance_blocking=True,
+                justification=(
+                    "Resistivity requires positive finite density; invalid "
+                    "density was converted to NaN so the run remains blocked."
+                ),
+            )
+        )
+    else:
+        rho_safe = rho
+
     Te_raw = state.get("Te")
     if Te_raw is None:
-        pressure = np.asarray(state.get("pressure", np.zeros_like(rho_safe)), dtype=float)
-        Te = pressure * float(gas["m_mol"]) / (2.0 * rho_safe * kB)
+        pressure = np.asarray(
+            state.get("pressure", np.zeros_like(rho_safe)),
+            dtype=float,
+        )
+        Te_before = pressure * float(gas["m_mol"]) / (2.0 * rho_safe * kB)
     else:
-        Te = np.asarray(Te_raw, dtype=float)
-    Te = np.nan_to_num(Te, nan=300.0, posinf=1.16e9, neginf=300.0)
-    Te = np.clip(Te, 300.0, 1.16e9)
+        Te_before = np.asarray(Te_raw, dtype=float)
+    valid_Te = np.isfinite(Te_before) & (Te_before > 0.0)
+    if not bool(np.all(valid_Te)):
+        Te = np.where(valid_Te, Te_before, np.nan)
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.invalid_temperature_domain",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="Te",
+                classification="debug_repair",
+                activation_count=int(Te_before.size - np.count_nonzero(valid_Te)),
+                before=Te_before,
+                acceptance_blocking=True,
+                justification=(
+                    "Resistivity requires positive finite electron temperature; "
+                    "invalid temperature was converted to NaN so the run remains blocked."
+                ),
+            )
+        )
+    else:
+        Te = Te_before
+
+    n_total = rho_safe / float(gas["m_mol"])
     Z_eff = float(gas.get("Z", 1.0))
-    ne = np.maximum(rho_safe / float(gas["m_mol"]) * max(Z_eff, 1.0), 1.0e6)
-    model = "spitzer_braginskii_capped"
+    Z_bar_raw = state.get("Z_bar")
+    if Z_bar_raw is None:
+        Z_bar = np.ones_like(rho_safe)
+    else:
+        Z_bar = np.asarray(Z_bar_raw, dtype=float)
+    valid_Z = np.isfinite(Z_bar) & (Z_bar > 0.0) & (Z_bar <= max(Z_eff, 1.0))
+    if not bool(np.all(valid_Z)):
+        Z_bar = np.where(valid_Z, Z_bar, np.nan)
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.invalid_ionization_domain",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="Z_bar",
+                classification="debug_repair",
+                activation_count=int(np.size(Z_bar) - np.count_nonzero(valid_Z)),
+                before=Z_bar_raw,
+                after=Z_bar,
+                threshold={"valid_range": "(0, Z_eff]"},
+                acceptance_blocking=True,
+                justification=(
+                    "Resistivity requires a positive finite ionization fraction; "
+                    "invalid ionization state was converted to NaN."
+                ),
+            )
+        )
+
+    ne = n_total * Z_bar
+    valid_ne = np.isfinite(ne) & (ne > 0.0)
+    if not bool(np.all(valid_ne)):
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.invalid_electron_density_domain",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="ne",
+                classification="debug_repair",
+                activation_count=int(ne.size - np.count_nonzero(valid_ne)),
+                before=ne,
+                acceptance_blocking=True,
+                justification=(
+                    "Collisional resistivity requires positive finite electron density."
+                ),
+            )
+        )
+
+    Z_eff = float(gas.get("Z", 1.0))
+    model = "partial_ionization_spitzer_braginskii_uncapped"
     try:
-        from dpf.collision.spitzer import coulomb_log, spitzer_resistivity
+        from dpf.collision.spitzer import coulomb_log, nu_ei
 
         lnL = coulomb_log(ne, Te)
-        eta = spitzer_resistivity(ne, Te, lnL, Z=Z_eff)
+        nu_ei_field = nu_ei(ne, Te, lnL, Z=Z_eff)
+        eta = m_e * nu_ei_field / (ne * electron_charge**2)
         lnL_range = [
             float(np.nanmin(lnL)),
             float(np.nanmax(lnL)),
         ]
     except Exception as exc:
-        # Fallback keeps the candidate executable if numba compilation fails.
-        Te_eV = np.maximum(Te * kB / 1.602176634e-19, 0.1)
+        Te_eV = Te * kB / 1.602176634e-19
         eta = 5.2e-5 * max(Z_eff, 1.0) * 10.0 / np.power(Te_eV, 1.5)
         lnL_range = [10.0, 10.0]
-        model = f"nrl_formula_fallback:{type(exc).__name__}"
-    eta = np.nan_to_num(
-        eta,
-        nan=eta_cap,
-        posinf=eta_cap,
-        neginf=eta_cap,
-    )
-    eta = np.clip(eta, eta_floor, eta_cap)
+        model = f"nrl_formula_fallback_blocking:{type(exc).__name__}"
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.nrl_formula_fallback",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="eta",
+                classification="debug_repair",
+                activation_count=1,
+                acceptance_blocking=True,
+                justification=(
+                    "Fallback resistivity formula used because Spitzer path "
+                    f"raised {type(exc).__name__}."
+                ),
+            )
+        )
+    eta = np.asarray(eta, dtype=float)
+    valid_eta = np.isfinite(eta) & (eta > 0.0)
+    if not bool(np.all(valid_eta)):
+        limiter_events.append(
+            limiter_event(
+                limiter_id="app_mhd.resistivity.invalid_eta_domain",
+                code_path="app_mhd._first_principles_eta_field",
+                affected_field="eta",
+                classification="debug_repair",
+                activation_count=int(eta.size - np.count_nonzero(valid_eta)),
+                before=eta,
+                acceptance_blocking=True,
+                justification=(
+                    "Resistivity model produced non-positive or non-finite eta; "
+                    "the run cannot support first-principles acceptance."
+                ),
+            )
+        )
     return eta, {
         "model": model,
-        "validation_status": "engineering_probe_not_validation",
-        "eta_floor_ohm_m": eta_floor,
-        "eta_cap_ohm_m": eta_cap,
+        "validation_status": "source_traced_candidate_not_validation",
+        "eta_floor_ohm_m": None,
+        "eta_cap_ohm_m": None,
         "lnL_range": lnL_range,
+        "electron_density_min_m3": float(np.nanmin(ne)),
+        "electron_density_max_m3": float(np.nanmax(ne)),
+        "ionization_fraction_min": float(np.nanmin(Z_bar)),
+        "ionization_fraction_max": float(np.nanmax(Z_bar)),
+        "source_basis": {
+            "pf1000_mhd_model": (
+                "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json:57-62"
+            ),
+            "pf1000_breakdown_transport_note": (
+                "KnowledgeReference/scholz-2006-pf1000-mega-joule.md:149-208"
+            ),
+            "plasma_parameter_domain": (
+                "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2594-2706"
+            ),
+        },
+        "limiter_events": limiter_events,
         "limitations": [
-            "explicit-MHD stability cap/floor are active",
-            "cold-fill/breakdown ionization state is not yet source-closed",
+            "ionization kinetics are not evolved yet",
+            "electron-neutral transport coefficients are not source-closed yet",
+            "anomalous resistivity trigger/strength is not implemented yet",
         ],
     }
 
@@ -159,6 +291,8 @@ def _apply_first_principles_engineering_bounds(
     the resolved-field coupling path. They are engineering stability guards and
     must not be interpreted as accepted physics closure.
     """
+    from dpf.validation.first_principles_limiters import limiter_event
+
     rho_floor = max(1.0e-12, 1.0e-6 * rho0)
     rho_cap = max(1.0e3 * rho0, rho_floor * 10.0)
     pressure_floor = 1.0e-6
@@ -172,6 +306,14 @@ def _apply_first_principles_engineering_bounds(
     mu_0_local = 4.0 * np.pi * 1.0e-7
 
     limiter_counts: dict[str, int] = {}
+    limiter_events: list[dict[str, object]] = []
+
+    def _classification_for_key(key: str) -> str:
+        if "nonfinite" in key:
+            return "debug_repair"
+        if key == "psi":
+            return "engineering_guard"
+        return "acceptance_blocker"
 
     def _repair_array(
         key: str,
@@ -197,6 +339,27 @@ def _apply_first_principles_engineering_bounds(
         changed = int(np.count_nonzero(repaired != before))
         if changed:
             limiter_counts[key] = limiter_counts.get(key, 0) + changed
+            limiter_events.append(
+                limiter_event(
+                    limiter_id=f"app_mhd.state_bounds.{key}",
+                    code_path="app_mhd._apply_first_principles_engineering_bounds",
+                    affected_field=key,
+                    classification=_classification_for_key(key),
+                    activation_count=changed,
+                    before=before,
+                    after=repaired,
+                    threshold={
+                        "floor": floor,
+                        "cap": cap,
+                        "abs_cap": abs_cap,
+                    },
+                    acceptance_blocking=True,
+                    justification=(
+                        "App-level first-principles finite-state bound changed "
+                        f"{changed} value(s)."
+                    ),
+                )
+            )
         return repaired
 
     if "rho" in state:
@@ -224,20 +387,50 @@ def _apply_first_principles_engineering_bounds(
         v_mag = np.sqrt(np.sum(velocity**2, axis=0))
         mask = v_mag > v_cap_m_s
         if np.any(mask):
+            velocity_before = velocity.copy()
             scale = np.ones_like(v_mag)
             scale[mask] = v_cap_m_s / np.maximum(v_mag[mask], 1.0e-30)
             velocity = velocity * scale[np.newaxis, :, :, :]
             limiter_counts["velocity_magnitude"] = int(np.count_nonzero(mask))
+            limiter_events.append(
+                limiter_event(
+                    limiter_id="app_mhd.state_bounds.velocity_magnitude",
+                    code_path="app_mhd._apply_first_principles_engineering_bounds",
+                    affected_field="velocity",
+                    classification="acceptance_blocker",
+                    activation_count=int(np.count_nonzero(mask)),
+                    before=velocity_before,
+                    after=velocity,
+                    threshold={"cap_m_s": v_cap_m_s},
+                    acceptance_blocking=True,
+                    justification="Velocity magnitude cap changed resolved velocity cells.",
+                )
+            )
         state["velocity"] = velocity
     if "B" in state:
         B = _repair_array("B_nonfinite", state["B"], abs_cap=1.0e12)
         B_mag = np.sqrt(np.sum(B**2, axis=0))
         mask = B_mag > B_cap_T
         if np.any(mask):
+            B_before = B.copy()
             scale = np.ones_like(B_mag)
             scale[mask] = B_cap_T / np.maximum(B_mag[mask], 1.0e-30)
             B = B * scale[np.newaxis, :, :, :]
             limiter_counts["B_magnitude"] = int(np.count_nonzero(mask))
+            limiter_events.append(
+                limiter_event(
+                    limiter_id="app_mhd.state_bounds.B_magnitude",
+                    code_path="app_mhd._apply_first_principles_engineering_bounds",
+                    affected_field="B",
+                    classification="acceptance_blocker",
+                    activation_count=int(np.count_nonzero(mask)),
+                    before=B_before,
+                    after=B,
+                    threshold={"cap_T": B_cap_T},
+                    acceptance_blocking=True,
+                    justification="Magnetic-field magnitude cap changed resolved B cells.",
+                )
+            )
         if (
             magnetic_energy_cap_J is not None
             and magnetic_energy_cap_J > 0.0
@@ -251,8 +444,23 @@ def _apply_first_principles_engineering_bounds(
             magnetic_energy_J = float(np.sum(0.5 * B2 / mu_0_local * volume))
             if np.isfinite(magnetic_energy_J) and magnetic_energy_J > magnetic_energy_cap_J:
                 scale = float(np.sqrt(magnetic_energy_cap_J / magnetic_energy_J))
+                B_before = B.copy()
                 B = B * scale
                 limiter_counts["B_energy"] = int(B2.size)
+                limiter_events.append(
+                    limiter_event(
+                        limiter_id="app_mhd.state_bounds.B_energy",
+                        code_path="app_mhd._apply_first_principles_engineering_bounds",
+                        affected_field="B",
+                        classification="acceptance_blocker",
+                        activation_count=int(B2.size),
+                        before=B_before,
+                        after=B,
+                        threshold={"magnetic_energy_cap_J": magnetic_energy_cap_J},
+                        acceptance_blocking=True,
+                        justification="Magnetic-energy cap scaled the resolved B field.",
+                    )
+                )
         state["B"] = B
 
     return state, {
@@ -265,6 +473,7 @@ def _apply_first_principles_engineering_bounds(
         "magnetic_energy_cap_J": magnetic_energy_cap_J,
         "velocity_cap_m_s": v_cap_m_s,
         "counts": limiter_counts,
+        "limiter_events": limiter_events,
     }
 
 
@@ -3397,6 +3606,11 @@ def _run_python_mhd(
     from dpf.diagnostics.neutron_yield import neutron_yield_rate
     from dpf.validation.circuit_field_coupling import (
         field_power_diagnostics_from_cylindrical_state,
+        implicit_midpoint_power_port_back_emf,
+    )
+    from dpf.validation.first_principles_limiters import (
+        limiter_event,
+        summarize_limiter_ledger,
     )
 
     nr, ny, nz = grid_shape
@@ -3411,6 +3625,12 @@ def _run_python_mhd(
         use_godunov_flux=True,
         conservative_energy=True,
         r_min=a,
+        diffusion_method=(
+            "implicit_cylindrical_btheta"
+            if field_coupled_candidate
+            else "explicit"
+        ),
+        sts_stages=8,
     )
 
     circuit = RLCSolver(
@@ -3424,14 +3644,53 @@ def _run_python_mhd(
         crowbar_inductance=cc.get("crowbar_inductance", 0.0),
     )
 
+    initial_ionization_fraction = 0.01 if field_coupled_candidate else 1.0
+    startup_initialization = None
+    if field_coupled_candidate:
+        startup_initialization = {
+            "classification": "source_traced_startup_candidate_not_validation",
+            "model": "pf1000_post_breakdown_partially_ionized_initial_state",
+            "initial_Te_K": 300.0,
+            "initial_Ti_K": 300.0,
+            "initial_ionization_fraction": initial_ionization_fraction,
+            "fill_pressure_Pa": float(p_pa),
+            "can_support_first_principles_startup": False,
+            "source_basis": {
+                "post_breakdown_initialization": (
+                    "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json:62"
+                ),
+                "breakdown_and_transport_sensitivity": (
+                    "KnowledgeReference/scholz-2006-pf1000-mega-joule.md:149-208"
+                ),
+            },
+            "blockers": [
+                "same_scope_akel_startup_packet_missing",
+                "ionization_kinetics_not_evolved",
+                "insulator_surface_state_not_source_closed",
+            ],
+        }
+
     # Uniform IC — no stochastic perturbation for Python solver (numerically fragile)
+    initial_pressure_pa = (
+        p_pa * (1.0 + initial_ionization_fraction)
+        if field_coupled_candidate
+        else p_pa
+    )
+    if startup_initialization is not None:
+        startup_initialization["initial_total_pressure_Pa"] = float(
+            initial_pressure_pa
+        )
+        startup_initialization["pressure_model"] = (
+            "neutral_heavy_particle_pressure_plus_electron_partial_pressure"
+        )
     state = {
         "rho": np.full((nr, 1, nz), rho0),
         "velocity": np.zeros((3, nr, 1, nz)),
-        "pressure": np.full((nr, 1, nz), p_pa),
+        "pressure": np.full((nr, 1, nz), initial_pressure_pa),
         "B": np.zeros((3, nr, 1, nz)),
         "Te": np.full((nr, 1, nz), 300.0),
         "Ti": np.full((nr, 1, nz), 300.0),
+        "Z_bar": np.full((nr, 1, nz), initial_ionization_fraction),
         "psi": np.zeros((nr, 1, nz)),
     }
 
@@ -3457,11 +3716,128 @@ def _run_python_mhd(
     magnetic_power_arr: list[float] = []
     field_load_power_arr: list[float] = []
     field_power_back_emf_arr: list[float] = []
+    field_power_port_current_arr: list[float] = []
+    field_power_port_residual_arr: list[float] = []
     eta_min_arr: list[float] = []
     eta_mean_arr: list[float] = []
     eta_max_arr: list[float] = []
+    dt_s_arr: list[float] = []
+    dt_adv_s_arr: list[float] = []
+    dt_diff_s_arr: list[float] = []
+    dt_sts_s_arr: list[float] = []
+    dt_circuit_s_arr: list[float] = []
+    resistive_stiffness_ratio_arr: list[float] = []
+    dt_controller_arr: list[str] = []
     resistivity_meta: dict[str, object] | None = None
     limiter_meta: dict[str, object] | None = None
+    limiter_event_log: list[dict[str, object]] = []
+    if field_coupled_candidate and solver.use_godunov_flux:
+        numerical_verification = {
+            "verification_tests": [
+                "tests/test_cylindrical_godunov.py",
+                "tests/test_mhd_solver_consolidated.py",
+            ],
+            "claim_scope": "code_verification_only_not_experimental_validation",
+        }
+        limiter_event_log.extend([
+            limiter_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.plm_minmod_reconstruction",
+                code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver._plm_reconstruct",
+                affected_field="reconstructed_state",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "reconstruction": "plm",
+                    "slope_limiter": "minmod",
+                    **numerical_verification,
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "PLM minmod reconstruction is an explicit numerical method, "
+                    "not a hidden state repair; it remains code-verification "
+                    "evidence only."
+                ),
+            ),
+            limiter_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.hll_riemann_flux",
+                code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver._hll_flux_8",
+                affected_field="fluxes",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "riemann_solver": "hll",
+                    **numerical_verification,
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "HLL flux is an explicit finite-volume method component, "
+                    "not a hidden first-principles closure."
+                ),
+            ),
+            limiter_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.reconstructed_state_positivity_floor",
+                code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver._compute_godunov_rhs",
+                affected_field="flux_reconstruction_inputs",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "rho_floor": 1.0e-20,
+                    "pressure_floor": 1.0e-20,
+                    **numerical_verification,
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "Reconstructed-state positivity floors are flux-local "
+                    "finite-volume method controls; returned-state floors "
+                    "remain separately recorded as acceptance blockers."
+                ),
+            ),
+            limiter_event(
+                limiter_id="dpf.fluid.cylindrical_mhd.cfl_timestep_control",
+                code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver._compute_dt",
+                affected_field="dt",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "cfl": solver.cfl,
+                    **numerical_verification,
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "CFL timestep control is an explicit numerical stability "
+                    "method; debug timestep fallbacks remain separate blockers."
+                ),
+            ),
+            limiter_event(
+                limiter_id=(
+                    "dpf.fluid.cylindrical_mhd."
+                    "implicit_cylindrical_btheta_resistive_induction"
+                ),
+                code_path=(
+                    "dpf.fluid.cylindrical_mhd.CylindricalMHDSolver."
+                    "_apply_implicit_btheta_resistive_induction"
+                ),
+                affected_field="B",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "method": "Crank-Nicolson ADI",
+                    "operator": "-curl(eta * curl(B) / mu_0)_theta",
+                    "scope": "axisymmetric B_theta",
+                    "source_basis": [
+                        "KnowledgeReference/scholz-2006-pf1000-mega-joule.md:190-208",
+                        "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2259-2283",
+                    ],
+                    **numerical_verification,
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "The implicit split advances the source-traced cylindrical "
+                    "B_theta resistive induction operator without an eta cap "
+                    "or hidden explicit diffusion timestep collapse."
+                ),
+            ),
+        ])
     limiter_activation_arr: list[int] = []
     limiter_nonfinite_repair_arr: list[int] = []
     cumulative_joule_energy = 0.0
@@ -3480,8 +3856,64 @@ def _run_python_mhd(
     cumulative_thermonuclear_yield = 0.0
     previous_field_L: float | None = None
     previous_magnetic_energy_J = 0.0
-    _MAX_BEMF = 50e3  # [V], engineering limiter for early field-coupling probes
-    _FIELD_CURRENT_FLOOR_A = 5.0e4
+    circuit_phase_step_rad = 2.0 * np.pi / 32768.0
+    circuit_lc_time_s = float(np.sqrt(max(circuit.L_ext * circuit.C, 1.0e-300)))
+    if field_coupled_candidate:
+        limiter_event_log.append(
+            limiter_event(
+                limiter_id="app_mhd.field_coupling.implicit_midpoint_power_port",
+                code_path="app_mhd._run_python_mhd",
+                affected_field="field_coupling",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "power_port": "P_load = I_mid * V_load",
+                    "circuit_update": "RLCSolver implicit midpoint",
+                    "source_basis": [
+                        "KnowledgeReference/auluck-2021-dpf-circuit-element.md:443-450",
+                        (
+                            "KnowledgeReference/a-course-on-plasma-focus-numerical-"
+                            "experiments-s-lee-and-s-h-saw-part-1-basic-course.md:"
+                            "12103-12128"
+                        ),
+                    ],
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "Field load power is coupled through the circuit power port "
+                    "without an arbitrary minimum-current floor."
+                ),
+            )
+        )
+        limiter_event_log.append(
+            limiter_event(
+                limiter_id="app_mhd.circuit_coupling.lc_phase_timestep_control",
+                code_path="app_mhd._run_python_mhd",
+                affected_field="dt",
+                classification="verified_numerical_method",
+                activation_count=0,
+                threshold={
+                    "method": "LC phase resolution",
+                    "phase_step_rad": circuit_phase_step_rad,
+                    "base_lc_time_s": circuit_lc_time_s,
+                    "source_basis": [
+                        "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json:62",
+                        (
+                            "KnowledgeReference/a-course-on-plasma-focus-numerical-"
+                            "experiments-s-lee-and-s-h-saw-part-1-basic-course.md:"
+                            "870-872"
+                        ),
+                    ],
+                },
+                acceptance_blocking=False,
+                justification=(
+                    "The field-coupled split advances MHD and the capacitor "
+                    "bank on a reported LC phase increment so removing the "
+                    "resistive diffusion CFL does not decouple the field "
+                    "boundary from the circuit current."
+                ),
+            )
+        )
 
     step = 0
     nan_detected = False
@@ -3490,21 +3922,68 @@ def _run_python_mhd(
         remaining = t_end - t
         if field_coupled_candidate and remaining <= max(1.0e-15, 1.0e-9 * t_end):
             break
-        dt_mhd = solver.compute_dt(state)
-        if field_coupled_candidate:
-            field_coupled_max_dt = 5.0e-10
-            dt = min(dt_mhd, field_coupled_max_dt, remaining)
-        else:
-            dt = min(dt_mhd, remaining)
-        if dt <= 0:
-            break
-
         eta_field = None
         if field_coupled_candidate:
             eta_field, resistivity_meta = _first_principles_eta_field(state, gas)
+            limiter_event_log.extend(
+                event
+                for event in resistivity_meta.get("limiter_events", [])
+                if isinstance(event, dict)
+            )
             eta_min_arr.append(float(np.nanmin(eta_field)))
             eta_mean_arr.append(float(np.nanmean(eta_field)))
             eta_max_arr.append(float(np.nanmax(eta_field)))
+            finite_eta = eta_field[np.isfinite(eta_field) & (eta_field > 0.0)]
+            solver._last_eta_max = float(np.max(finite_eta)) if finite_eta.size else 0.0
+
+        dt_mhd = solver.compute_dt(state)
+        dt_diag = solver.last_dt_diagnostics
+        dt_circuit = np.nan
+        if field_coupled_candidate:
+            L_for_dt = circuit.L_ext
+            if circuit.state.crowbar_fired:
+                t_since_fire = max(
+                    circuit.state.time - circuit.state.crowbar_fire_time,
+                    0.0,
+                )
+                closure_time = getattr(circuit, "crowbar_closure_time", 0.0)
+                ramp = (
+                    t_since_fire / closure_time
+                    if closure_time > 0.0 and t_since_fire < closure_time
+                    else 1.0
+                )
+                L_for_dt += circuit.crowbar_inductance * ramp
+            dt_circuit = circuit_phase_step_rad * float(
+                np.sqrt(max(L_for_dt * circuit.C, 1.0e-300))
+            )
+        dt_limit = dt_mhd
+        controller = str(dt_diag.get("controller") or "unknown")
+        if np.isfinite(dt_circuit) and dt_circuit < dt_limit:
+            dt_limit = dt_circuit
+            controller = "circuit_lc_phase_resolution"
+        dt = min(dt_limit, remaining)
+        if remaining < dt_limit:
+            controller = "remaining_interval"
+        dt_s_arr.append(float(dt))
+        dt_adv_s_arr.append(float(dt_diag.get("dt_adv_s") or np.nan))
+        dt_diff_value = dt_diag.get("dt_diff_s")
+        dt_diff_s_arr.append(
+            float(dt_diff_value) if dt_diff_value is not None else np.nan
+        )
+        dt_sts_value = dt_diag.get("dt_sts_s")
+        dt_sts_s_arr.append(
+            float(dt_sts_value) if dt_sts_value is not None else np.nan
+        )
+        dt_circuit_s_arr.append(
+            float(dt_circuit) if np.isfinite(dt_circuit) else np.nan
+        )
+        stiffness_value = dt_diag.get("resistive_stiffness_ratio")
+        resistive_stiffness_ratio_arr.append(
+            float(stiffness_value) if stiffness_value is not None else np.nan
+        )
+        dt_controller_arr.append(controller)
+        if dt <= 0:
+            break
 
         state = solver.step(
             state, dt, current=circuit.current, voltage=circuit.voltage,
@@ -3512,6 +3991,16 @@ def _run_python_mhd(
             eta_field=eta_field,
         )
         if field_coupled_candidate:
+            state["Z_bar"] = np.full_like(
+                state["rho"],
+                initial_ionization_fraction,
+                dtype=float,
+            )
+            limiter_event_log.extend(
+                event
+                for event in getattr(solver, "last_limiter_events", [])
+                if isinstance(event, dict)
+            )
             state, limiter_meta = _apply_first_principles_engineering_bounds(
                 state,
                 gas,
@@ -3522,6 +4011,11 @@ def _run_python_mhd(
                 magnetic_energy_cap_J=0.8 * circuit.initial_energy(),
             )
             counts = dict(limiter_meta.get("counts", {}))
+            limiter_event_log.extend(
+                event
+                for event in limiter_meta.get("limiter_events", [])
+                if isinstance(event, dict)
+            )
             limiter_activation_arr.append(int(sum(counts.values())))
             limiter_nonfinite_repair_arr.append(
                 int(
@@ -3555,8 +4049,12 @@ def _run_python_mhd(
         if "Te" in state:
             try:
                 from dpf.radiation.bremsstrahlung import apply_bremsstrahlung_losses
-                rho_safe = np.where(state["rho"] > 0, state["rho"], 1.0)
-                ne = rho_safe / gas["m_mol"]
+                rho_positive = np.where(state["rho"] > 0, state["rho"], 0.0)
+                Z_bar_radiation = np.asarray(
+                    state.get("Z_bar", np.ones_like(rho_positive)),
+                    dtype=float,
+                )
+                ne = rho_positive / gas["m_mol"] * np.maximum(Z_bar_radiation, 0.0)
                 Z_eff = gas.get("Z", 1)
                 state["Te"], _ = apply_bremsstrahlung_losses(
                     state["Te"], ne, dt, Z=Z_eff,
@@ -3573,7 +4071,15 @@ def _run_python_mhd(
         if compute_thermonuclear_history and neutron_cell_volumes is not None:
             try:
                 rho_for_yield = np.maximum(state["rho"], 0.0)
-                n_D = rho_for_yield / max(float(gas["m_mol"]), 1.0e-30)
+                Z_bar_yield = np.asarray(
+                    state.get("Z_bar", np.ones_like(rho_for_yield)),
+                    dtype=float,
+                )
+                n_D = (
+                    rho_for_yield
+                    / max(float(gas["m_mol"]), 1.0e-30)
+                    * np.maximum(Z_bar_yield, 0.0)
+                )
                 rho_safe_yield = np.maximum(rho_for_yield, 1.0e-30)
                 Ti = state.get(
                     "Ti",
@@ -3612,7 +4118,7 @@ def _run_python_mhd(
                 eta_ohm_m=eta_field,
                 previous_inductance_H=previous_field_L,
                 dt_s=dt,
-                current_floor_A=_FIELD_CURRENT_FLOOR_A,
+                current_floor_A=0.0,
             )
             L_field = float(field_diag["field_derived_inductance_H"])
             dL_field_dt = float(field_diag["dL_field_dt_H_s"])
@@ -3625,12 +4131,76 @@ def _run_python_mhd(
             # diagnostic because the current boundary condition directly changes
             # magnetic energy at the electrode-facing cells.
             field_load_power_W = magnetic_power_W + joule_power_W
-            if abs(circuit.current) >= _FIELD_CURRENT_FLOOR_A:
-                back_emf_raw = field_load_power_W / circuit.current
+            power_port_L_total = circuit.L_ext
+            power_port_R_eff = circuit.R_total
+            if circuit.state.crowbar_fired:
+                t_since_fire = max(
+                    circuit.state.time - circuit.state.crowbar_fire_time,
+                    0.0,
+                )
+                closure_time = getattr(circuit, "crowbar_closure_time", 0.0)
+                ramp = (
+                    t_since_fire / closure_time
+                    if closure_time > 0.0 and t_since_fire < closure_time
+                    else 1.0
+                )
+                power_port_R_eff += circuit.crowbar_resistance * ramp
+                power_port_L_total += circuit.crowbar_inductance * ramp
+            power_port = implicit_midpoint_power_port_back_emf(
+                current_A=circuit.current,
+                capacitor_voltage_V=circuit.voltage,
+                L_total_H=power_port_L_total,
+                resistance_ohm=power_port_R_eff,
+                capacitance_F=circuit.C,
+                dL_dt_H_s=0.0,
+                dt_s=dt,
+                power_W=field_load_power_W,
+                crowbar_fired=circuit.state.crowbar_fired,
+            )
+            if bool(power_port.get("passed")):
+                back_emf = float(power_port["back_emf_V"])
             else:
-                back_emf_raw = 0.0
-            back_emf = float(np.clip(back_emf_raw, -_MAX_BEMF, _MAX_BEMF))
+                back_emf = 0.0
+                limiter_event_log.append(
+                    limiter_event(
+                        limiter_id=(
+                            "app_mhd.field_coupling."
+                            "midpoint_power_port_no_real_root"
+                        ),
+                        code_path="app_mhd._run_python_mhd",
+                        affected_field="field_coupling",
+                        classification="acceptance_blocker",
+                        activation_count=1,
+                        before=field_load_power_W,
+                        after=0.0,
+                        threshold={
+                            "reason": str(power_port.get("reason", "unknown")),
+                            "method": "implicit_midpoint_power_port",
+                            "current_A": circuit.current,
+                            "voltage_V": circuit.voltage,
+                            "dt_s": dt,
+                        },
+                        acceptance_blocking=True,
+                        justification=(
+                            "Resolved-field load power could not be represented "
+                            "as a real implicit-midpoint circuit terminal voltage."
+                        ),
+                    )
+                )
             if not np.isfinite(back_emf):
+                limiter_event_log.append(
+                    limiter_event(
+                        limiter_id="app_mhd.field_coupling.back_emf_nonfinite_repair",
+                        code_path="app_mhd._run_python_mhd",
+                        affected_field="back_emf",
+                        classification="debug_repair",
+                        activation_count=1,
+                        before=back_emf,
+                        after=0.0,
+                        acceptance_blocking=True,
+                        justification="Non-finite back-EMF repaired to zero.",
+                    )
+                )
                 back_emf = 0.0
             # L_field is exported as a diagnostic. The plasma load enters the
             # circuit through field-power back-EMF to avoid double counting
@@ -3669,6 +4239,12 @@ def _run_python_mhd(
             magnetic_power_arr.append(magnetic_power_W)
             field_load_power_arr.append(field_load_power_W)
             field_power_back_emf_arr.append(back_emf)
+            field_power_port_current_arr.append(
+                float(power_port.get("current_mid_A", 0.0))
+            )
+            field_power_port_residual_arr.append(
+                float(power_port.get("power_residual_W", 0.0))
+            )
             coupling_source_arr.append("field_coupled_candidate")
         else:
             back_emf = 0.0
@@ -3692,6 +4268,8 @@ def _run_python_mhd(
             magnetic_power_arr.append(0.0)
             field_load_power_arr.append(0.0)
             field_power_back_emf_arr.append(back_emf)
+            field_power_port_current_arr.append(circuit.current)
+            field_power_port_residual_arr.append(0.0)
             coupling_source_arr.append("mhd_inductance_candidate")
         back_emf_arr.append(back_emf)
         t += dt
@@ -3729,6 +4307,10 @@ def _run_python_mhd(
     t_arr = np.array(times)
     I_arr = np.array(currents)
     I_peak_idx = int(np.argmax(np.abs(I_arr))) if len(I_arr) > 0 else 0
+    limiter_ledger = summarize_limiter_ledger(
+        limiter_event_log,
+        source="app_mhd._run_python_mhd",
+    )
 
     result = {
         "t_us": t_arr, "I_MA": I_arr, "V_kV": np.array(voltages),
@@ -3751,6 +4333,8 @@ def _run_python_mhd(
         "magnetic_power_W": np.array(magnetic_power_arr),
         "field_load_power_W": np.array(field_load_power_arr),
         "field_power_back_emf_V": np.array(field_power_back_emf_arr),
+        "field_power_port_current_A": np.array(field_power_port_current_arr),
+        "field_power_port_residual_W": np.array(field_power_port_residual_arr),
         "j_dot_e_voltage_V": np.array(j_dot_e_voltage_arr),
         "field_terminal_voltage_V": np.array(field_terminal_voltage_arr),
         "poynting_voltage_source_orientation_V": np.array(poynting_source_voltage_arr),
@@ -3760,6 +4344,14 @@ def _run_python_mhd(
         "eta_min_ohm_m": np.array(eta_min_arr),
         "eta_mean_ohm_m": np.array(eta_mean_arr),
         "eta_max_ohm_m": np.array(eta_max_arr),
+        "dt_s": np.array(dt_s_arr),
+        "dt_adv_s": np.array(dt_adv_s_arr),
+        "dt_diff_s": np.array(dt_diff_s_arr),
+        "dt_sts_s": np.array(dt_sts_s_arr),
+        "dt_circuit_s": np.array(dt_circuit_s_arr),
+        "resistive_stiffness_ratio": np.array(resistive_stiffness_ratio_arr),
+        "dt_controller": dt_controller_arr,
+        "timestep_controller": dt_controller_arr,
         "first_principles_resistivity": resistivity_meta or {
             "validation_status": "not_applied",
         },
@@ -3768,6 +4360,7 @@ def _run_python_mhd(
         "first_principles_engineering_limiter": limiter_meta or {
             "validation_status": "not_applied",
         },
+        "first_principles_limiter_ledger": limiter_ledger,
         "coupling_source": coupling_source_arr,
         "coupling_interval_authority": coupling_source_arr,
         "mhd_snapshots": mhd_snapshots,
@@ -3796,11 +4389,55 @@ def _run_python_mhd(
         "nan_step": step if nan_detected else None,
         "nonfinite_state_counts": nonfinite_counts if nan_detected else {},
         "field_coupled_candidate": field_coupled_candidate,
+        "field_power_port": {
+            "classification": "source_traced_numerical_power_port_candidate",
+            "validation_status": "not_validation_evidence",
+            "method": "implicit_midpoint_power_port",
+            "power_equation": "P_load = I_mid * V_load",
+            "source_basis": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:443-450",
+                (
+                    "KnowledgeReference/a-course-on-plasma-focus-numerical-"
+                    "experiments-s-lee-and-s-h-saw-part-1-basic-course.md:"
+                    "12103-12128"
+                ),
+            ],
+            "limitation": (
+                "The power port removes arbitrary current-floor suppression, "
+                "but the field-load partition still requires same-scope "
+                "field-coupling validation before predictive claims."
+            ),
+        },
         "field_power_sign_convention": (
-            "field_terminal_voltage_V = -integral(J dot E)dV / current_A; "
-            "passed as RLCSolver back_emf during first_principles_mhd."
+            "field_terminal_voltage_V is the implicit-midpoint load voltage "
+            "whose product with field_power_port_current_A equals the resolved "
+            "field_load_power_W; it is passed as RLCSolver back_emf during "
+            "first_principles_mhd."
         ),
     }
+    if startup_initialization is not None:
+        result["startup_sheath_initialization"] = startup_initialization
+        result["breakdown_model"] = {
+            "classification": "post_breakdown_source_traced_candidate",
+            "validation_status": "candidate_not_validated",
+            "source_basis": startup_initialization["source_basis"],
+            "can_support_first_principles_startup": False,
+        }
+        result["preionization"] = {
+            "classification": "source_traced_initial_preionization_candidate",
+            "ionization_fraction": initial_ionization_fraction,
+            "validation_status": "candidate_not_validated",
+            "source_basis": startup_initialization["source_basis"],
+        }
+        result["initial_plasma_distribution"] = {
+            "classification": "uniform_post_breakdown_candidate",
+            "rho0_kg_m3": float(rho0),
+            "pressure_Pa": float(p_pa),
+            "Te_K": 300.0,
+            "Ti_K": 300.0,
+            "ionization_fraction": initial_ionization_fraction,
+            "validation_status": "candidate_not_validated",
+        }
     if compute_thermonuclear_history and neutron_times_s:
         Y_thermo = float(cumulative_thermonuclear_yield)
         result["yield_time_resolved"] = {

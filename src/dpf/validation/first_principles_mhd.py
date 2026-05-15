@@ -14,6 +14,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from dpf.validation.circuit_field_coupling import field_coupling_evidence_from_result
+from dpf.validation.first_principles_limiters import first_principles_limiter_status
+from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
 
 
 FIRST_PRINCIPLES_MHD_MODE = "first_principles_mhd"
@@ -92,6 +94,9 @@ class FirstPrinciplesMHDReadiness:
     energy_accounting_status: dict[str, object] = field(default_factory=dict)
     startup_initialization_status: dict[str, object] = field(default_factory=dict)
     neutron_yield_authority_status: dict[str, object] = field(default_factory=dict)
+    limiter_ledger_status: dict[str, object] = field(default_factory=dict)
+    backend_scope_status: dict[str, object] = field(default_factory=dict)
+    hybrid_pic_3d_status: dict[str, object] = field(default_factory=dict)
     validity_notes: dict[str, str] = field(default_factory=dict)
 
 
@@ -388,6 +393,76 @@ def _closure_factor_status(result: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def first_principles_backend_scope_status(
+    result: Mapping[str, object],
+) -> dict[str, object]:
+    """Classify backend eligibility for current first-principles acceptance."""
+    backend = str(result.get("backend") or "").strip()
+    requested_backend = str(result.get("requested_backend") or "").strip()
+    requested_run_mode = str(result.get("requested_run_mode") or "").strip()
+    normalized = backend.lower()
+    requested = requested_backend.lower() or requested_run_mode.lower()
+
+    if not normalized:
+        return {
+            "status": "backend_missing",
+            "backend": backend,
+            "requested_backend": requested_backend,
+            "requested_run_mode": requested_run_mode,
+            "can_support_first_principles_acceptance": False,
+            "blocked_backends": ["metal", "mlx", "athena", "athenak", "hybrid"],
+            "reason": "No effective backend label is attached to the run result.",
+        }
+
+    python_instrumented = normalized.startswith("python") and "fallback" not in normalized
+    if python_instrumented:
+        return {
+            "status": "python_cylindrical_instrumented",
+            "backend": backend,
+            "requested_backend": requested_backend,
+            "requested_run_mode": requested_run_mode,
+            "can_support_first_principles_acceptance": True,
+            "required_limiter_telemetry": "first_principles_limiter_ledger",
+            "reason": (
+                "Current first-principles acceptance scope is limited to the "
+                "Python cylindrical MHD path with result-bound limiter telemetry."
+            ),
+        }
+
+    backend_tokens = ("athenak", "athena", "metal", "mlx", "hybrid")
+    blocked_token = next(
+        (
+            token
+            for token in backend_tokens
+            if token in requested
+        ),
+        None,
+    )
+    if blocked_token is None:
+        blocked_token = next(
+            (
+                token
+                for token in backend_tokens
+                if token in normalized
+            ),
+            normalized,
+        )
+    return {
+        "status": "backend_scope_blocked",
+        "backend": backend,
+        "requested_backend": requested_backend,
+        "requested_run_mode": requested_run_mode,
+        "blocked_backend": blocked_token,
+        "can_support_first_principles_acceptance": False,
+        "required_limiter_telemetry": "backend_native_first_principles_limiter_ledger",
+        "reason": (
+            "This backend is runnable engineering infrastructure, but it is "
+            "outside first-principles acceptance scope until backend-native "
+            "limiter/fallback telemetry and parity evidence are attached."
+        ),
+    }
+
+
 def _finite_number(value: object) -> float | None:
     if isinstance(value, bool):
         return None
@@ -460,15 +535,10 @@ def first_principles_neutron_yield_authority_status(
         and _value_present(result.get("final_state"))
     )
 
-    limiter = result.get("first_principles_engineering_limiter")
-    limiter_active = False
-    if isinstance(limiter, Mapping):
-        counts = limiter.get("counts")
-        if isinstance(counts, Mapping):
-            limiter_active = any(
-                (_finite_number(value) or 0.0) > 0.0
-                for value in counts.values()
-            )
+    limiter_status = first_principles_limiter_status(result)
+    limiter_active = (
+        int(limiter_status.get("acceptance_blocking_activation_count") or 0) > 0
+    )
 
     kinetic_beam = result.get("kinetic_beam_neutron_model")
     if not isinstance(kinetic_beam, Mapping):
@@ -625,6 +695,9 @@ def first_principles_mhd_readiness_report(
     energy_status = first_principles_energy_accounting_status(result)
     startup_status = first_principles_startup_initialization_status(result)
     neutron_status = first_principles_neutron_yield_authority_status(result)
+    limiter_status = first_principles_limiter_status(result)
+    backend_status = first_principles_backend_scope_status(result)
+    hybrid_pic_3d_status = hybrid_pic_3d_readiness_status(result)
     intervals = list(result.get("first_principles_intervals") or [])
     coupling_evidence = _field_coupling_evidence(result)
 
@@ -657,11 +730,48 @@ def first_principles_mhd_readiness_report(
         )
 
     if closure_status["present"]:
-        missing.append("closure_factor_free_acceptance_path")
+        missing.append("reduced_model_active_closure_rejected")
         blockers.append(
             "Lee/RADPF closure factors are present in the run metadata; "
             "first_principles_mhd must keep them baseline-only and out of "
             "predictive scoring."
+        )
+
+    if limiter_status["can_support_first_principles_acceptance"] is True:
+        satisfied.append("limiter_zero_acceptance")
+    else:
+        missing.append("acceptance_blocking_limiter_activation")
+        active_ids = ", ".join(
+            str(item) for item in limiter_status.get("activated_acceptance_blockers", [])
+        )
+        if not active_ids:
+            active_ids = str(limiter_status.get("validation_status") or "missing")
+        blockers.append(
+            "First-principles run has no accepted zero-limiter ledger; "
+            f"acceptance-blocking limiter status: {active_ids}."
+        )
+
+    if backend_status["can_support_first_principles_acceptance"] is True:
+        satisfied.append("instrumented_backend_scope")
+    else:
+        missing.append("instrumented_backend_scope")
+        blockers.append(
+            "First-principles backend scope is not accepted; "
+            f"{backend_status.get('reason', backend_status.get('status'))}"
+        )
+
+    if hybrid_pic_3d_status["can_support_first_principles_acceptance"] is True:
+        satisfied.append("hybrid_pic_3d_first_principles_core")
+    else:
+        missing.append("hybrid_pic_3d_first_principles_core")
+        missing_capabilities = ", ".join(
+            str(item)
+            for item in hybrid_pic_3d_status.get("missing_capabilities", [])
+        )
+        blockers.append(
+            "Full first-principles DPF acceptance requires a reviewed 3-D "
+            "hybrid PIC-fluid core informed by the local 2604.09032v1 source; "
+            f"missing capabilities: {missing_capabilities or 'unknown'}."
         )
 
     if energy_status["can_support_first_principles_acceptance"] is True:
@@ -750,10 +860,14 @@ def first_principles_mhd_readiness_report(
         energy_accounting_status=energy_status,
         startup_initialization_status=startup_status,
         neutron_yield_authority_status=neutron_status,
+        limiter_ledger_status=limiter_status,
+        backend_scope_status=backend_status,
+        hybrid_pic_3d_status=hybrid_pic_3d_status,
         validity_notes={
             "scope": (
                 "Initial first_principles_mhd acceptance is limited to the "
-                "PF-1000/Akel same-scope path."
+                "PF-1000/Akel same-scope path while the full 3-D hybrid "
+                "PIC-fluid finish line is implemented."
             ),
             "baseline_boundary": (
                 "Lee/snowplow outputs are retained for initialization, "
@@ -796,6 +910,10 @@ def annotate_first_principles_mhd_result(
     result["first_principles_neutron_yield_authority"] = (
         first_principles_neutron_yield_authority_status(result)
     )
+    result["first_principles_backend_scope"] = (
+        first_principles_backend_scope_status(result)
+    )
+    result["hybrid_pic_3d_readiness"] = hybrid_pic_3d_readiness_status(result)
     readiness = first_principles_mhd_readiness_report(
         result,
         preset_name=preset_name,

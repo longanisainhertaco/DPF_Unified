@@ -801,11 +801,10 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "`docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md`; `dpf first-principles` emits field-coupled engineering evidence, but field-coupling acceptance remains blocked.",
+      "acceptance_evidence_or_blocker": "`docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md`; the Python first-principles candidate now drives circuit feedback through resolved field-load power and an implicit-midpoint power port, but accepted same-scope field-coupling evidence remains blocked.",
       "doorstop_import": {
         "evidence_refs": [
-          "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
-          "dpf first-principles"
+          "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md"
         ],
         "level": "shall",
         "normative": true,
@@ -819,8 +818,7 @@
         ]
       },
       "evidence_refs": [
-        "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
-        "dpf first-principles"
+        "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md"
       ],
       "id": "DPF-PHYS-008",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -835,14 +833,14 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Current first-principles candidate reports explicit resistivity/state/field limiters as engineering blockers; no accepted limiter-free scientific run exists.",
+      "acceptance_evidence_or_blocker": "App-level ledger, Python cylindrical state-mutating limiter telemetry, nonblocking Python PLM/HLL/CFL/implicit-resistive/circuit-resolution method records, uncapped source-traced resistivity, partial-ionization pressure/electron-density bookkeeping, per-step timestep-controller diagnostics, bounded Python limiter-clear probes through 1.0 us, and backend-scope rejection are wired through readiness, CLI, and manifests; Metal/MLX/Athena/AthenaK/hybrid telemetry, full 12 us limiter-zero proof, B_theta-only implicit scope closure, and accepted scientific validation remain incomplete.",
       "doorstop_import": {
         "evidence_refs": [],
         "level": "shall",
         "normative": true,
         "owner": "Physics/Engine",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-009",
         "verification": [
           "test",
@@ -856,7 +854,7 @@
       "priority": "P0",
       "requirement": "First-principles PF-1000/Akel runs shall reject hidden engineering limiters for accepted claims.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "test",
         "inspection"
@@ -1037,28 +1035,32 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Current field-coupled probe still uses engineering power/back-EMF caps and candidate-only diagnostics.",
+      "acceptance_evidence_or_blocker": "The active Python path now uses an implicit-midpoint `P_load = I_mid * V_load` power port with no current floor or back-EMF clip in bounded probes; electrode-work, field-load partition, full-run residual, and same-scope validation evidence remain blocked.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "P_load = I_mid * V_load"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/Engine",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-016",
         "verification": [
           "test",
           "analysis"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "P_load = I_mid * V_load"
+      ],
       "id": "DPF-PHYS-016",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/Engine",
       "priority": "P0",
       "requirement": "The active first-principles circuit power port shall pass Poynting or `J.E`, electrode-work, time-centering, sign, and residual tests without clipped back-EMF for acceptance.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "test",
         "analysis"
@@ -1958,10 +1960,10 @@
     },
     "requirement_count": 62,
     "status_counts": {
-      "blocked": 13,
+      "blocked": 11,
       "deferred": 0,
       "implemented": 28,
-      "partial": 15,
+      "partial": 17,
       "planned": 6,
       "rejected": 0
     }

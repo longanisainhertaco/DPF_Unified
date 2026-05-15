@@ -1,0 +1,71 @@
+{
+  "date": "2026-05-15",
+  "source_scope": "KnowledgeReference and source-truth index artifacts",
+  "blocker_id": "FP-8",
+  "blocker": "physics closure packets",
+  "verdict": "closure_contract_supported_but_accepted_whole_shot_packet_blocked",
+  "summary": "The local source of truth supports engineering-candidate closures for conductivity, generalized Ohm, predictor-corrector current, Marder cleaning, ion PIC plumbing, and electron-energy scaffolding, but accepted whole-shot closure authority remains blocked for EOS, ionization, electron heat flux, radiation, impurity/electrode ablation, anomalous resistivity, restrike, and beam-target coupling.",
+  "sources": [
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "431-619",
+      "answers": "predictor-corrector, conductivity, Coulomb-log collision frequency, conductivity blending, Ohmic CFL, Yee/PML/conductor/particle boundary pattern",
+      "blocked": "accepted nondominance and same-scope validity"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "1210-1280",
+      "answers": "hybrid model limitations and electron-temperature/Hall sensitivity",
+      "blocked": "separate electron energy, heat flux, collisional coupling, kinetic electrons, near-wall sheaths, 3D modes"
+    },
+    {
+      "path": "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md",
+      "lines": "333-369",
+      "answers": "EOS, transport, two-temperature, radiation, material, neutron diagnostic, QEOS and radiation-bounding context",
+      "blocked": "local accepted QEOS/tabular EOS, radiation transport, material model"
+    },
+    {
+      "path": "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md",
+      "lines": "277-293",
+      "answers": "pinch physics requires nonthermal/beam-target/instability treatment beyond MHD",
+      "blocked": "anomalous resistivity, hot spots, beam formation, post-pinch closure"
+    },
+    {
+      "path": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+      "lines": "general formulary plus source fidelity review",
+      "answers": "plasma formulary support for units, collisions, transport, radiation constants, and fusion cross sections",
+      "blocked": "same-scope DPF closure validation and implementation symbol maps"
+    }
+  ],
+  "effects": [
+    "eos_thermodynamics",
+    "ionization_charge_state",
+    "single_two_temperature_energy",
+    "electrical_thermal_transport",
+    "radiation_losses",
+    "impurity_electrode_ablation",
+    "hall_flr_kinetic_scope",
+    "three_d_instabilities",
+    "restrike_anomalous_resistance",
+    "beam_target_coupling"
+  ],
+  "implementation_actions": [
+    "emit package-native physics closure packet",
+    "classify every active or bounded-out effect",
+    "block Hall/pressure authority without accepted electron-temperature closure",
+    "block total-yield authority without mechanism-separated kinetic packet",
+    "require closure packets before promotion beyond engineering candidate"
+  ],
+  "implemented_files": [
+    "src/dpf/first_principles/closure_packet.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
+    }
+  ],
+  "next_blocker": "FP-9 same-scope source availability decision"
+}

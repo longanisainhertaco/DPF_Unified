@@ -155,6 +155,380 @@ def _load_first_principles_runner():
     return module.run_pf1000_akel_first_principles
 
 
+def _parse_grid_shape(value: str) -> tuple[int, int, int]:
+    parts = [item.strip() for item in value.split(",")]
+    if len(parts) != 3:
+        raise click.BadParameter("shape must be formatted as NX,NY,NZ")
+    try:
+        shape = tuple(int(item) for item in parts)
+    except ValueError as exc:
+        raise click.BadParameter("shape entries must be integers") from exc
+    if min(shape) < 3:
+        raise click.BadParameter("all shape entries must be >= 3")
+    return shape  # type: ignore[return-value]
+
+
+def _hybrid_3d_smoke_payload(
+    *,
+    steps: int,
+    shape: tuple[int, int, int],
+    dt_s: float,
+    tool: str = "dpf hybrid-3d-smoke",
+    deck_name: str = "built_in_hybrid_3d_smoke",
+    initial_ex_V_m: float = 1.0e5,
+    sigma0_S_m: float = 1.0e2,
+    background_density_m3: float = 1.0e20,
+    electron_density_m3: float = 1.0e20,
+    electron_temperature_K: float = 1.0e5,
+    ion_temperature_K: float = 1.0e5,
+    particle_weight: float = 1.0e8,
+    include_hall: bool = False,
+    use_predictor_corrector: bool = True,
+    apply_circuit_boundary: bool = True,
+) -> dict[str, Any]:
+    """Run a compact fail-closed 3-D hybrid PIC-fluid engineering smoke."""
+    if steps <= 0:
+        raise click.BadParameter("must be positive", param_hint="--steps")
+    if dt_s <= 0.0:
+        raise click.BadParameter("must be positive", param_hint="--dt-s")
+    if electron_density_m3 <= 0.0:
+        raise click.BadParameter("must be positive", param_hint="electron_density_m3")
+    if background_density_m3 <= 0.0:
+        raise click.BadParameter("must be positive", param_hint="background_density_m3")
+    if particle_weight <= 0.0:
+        raise click.BadParameter("must be positive", param_hint="particle_weight")
+
+    import numpy as np
+
+    from dpf.constants import e as elementary_charge
+    from dpf.experimental.pic.hybrid import HybridPIC
+    from dpf.fields import (
+        CircuitMagneticBoundaryDrive,
+        CircuitState,
+        ElectronEnergyClosure,
+        HybridPIC3DLoop,
+        HybridPIC3DSimulator,
+        HybridPICSourceGeometry,
+        KineticIonYieldHistory,
+    )
+    from dpf.validation import (
+        candidate_packet_from_source_geometry,
+        evaluate_hybrid_pic_3d_validation_packet,
+    )
+
+    deuteron_mass_kg = 3.344e-27
+    geometry = HybridPICSourceGeometry()
+    grid = geometry.smoke_grid(shape=shape)
+    center = np.array(
+        [
+            0.5 * grid.nx * grid.dx,
+            0.5 * grid.ny * grid.dy,
+            0.5 * grid.nz * grid.dz,
+        ],
+        dtype=float,
+    )
+    offsets = np.array(
+        [
+            [-0.25 * grid.dx, 0.0, 0.0],
+            [0.25 * grid.dx, 0.0, 0.0],
+            [0.0, -0.25 * grid.dy, 0.0],
+            [0.0, 0.25 * grid.dy, 0.0],
+        ],
+        dtype=float,
+    )
+    velocities = np.array(
+        [
+            [8.0e5, 0.0, 0.0],
+            [-8.0e5, 0.0, 0.0],
+            [0.0, 8.0e5, 0.0],
+            [0.0, -8.0e5, 0.0],
+        ],
+        dtype=float,
+    )
+    pic = HybridPIC(
+        grid_shape=grid.shape,
+        dx=grid.dx,
+        dy=grid.dy,
+        dz=grid.dz,
+        dt=dt_s,
+        use_esirkepov=True,
+        use_binary_collisions=False,
+    )
+    pic.add_species(
+        "d",
+        deuteron_mass_kg,
+        elementary_charge,
+        positions=center[np.newaxis, :] + offsets,
+        velocities=velocities,
+        weights=np.full(4, float(particle_weight)),
+    )
+
+    electron_closure = ElectronEnergyClosure(grid)
+    electron_density = np.full(grid.shape, float(electron_density_m3))
+    electron_state = electron_closure.initialize(
+        electron_temperature_K=electron_temperature_K,
+        ion_temperature_K=ion_temperature_K,
+        electron_density_m3=electron_density,
+    )
+    loop = HybridPIC3DLoop(
+        grid,
+        electron_energy_closure=electron_closure,
+        kinetic_yield_history=KineticIonYieldHistory(grid),
+    )
+    state = loop.field_stepper.maxwell.empty_state()
+    state.E.Ex_edge.fill(float(initial_ex_V_m))
+    simulator = HybridPIC3DSimulator(
+        grid=grid,
+        loop=loop,
+        state=state,
+        pic=pic,
+        circuit_boundary=(
+            CircuitMagneticBoundaryDrive(grid) if apply_circuit_boundary else None
+        ),
+    )
+    result = simulator.run(
+        n_steps=steps,
+        dt_s=dt_s,
+        sigma0_S_m=sigma0_S_m,
+        background_density_m3=background_density_m3,
+        ohmic_cfl_safety=1.0,
+        density_floor_m3=electron_density_m3,
+        include_hall=include_hall,
+        use_predictor_corrector=use_predictor_corrector,
+        marder_factor_m2=1.0e-6 * min(grid.spacing) ** 2,
+        marder_nondominance_threshold=0.5,
+        electron_energy_state=electron_state,
+        mass_density_kg_m3=electron_density * deuteron_mass_kg,
+        plasma_velocity_m_s=np.zeros(grid.shape + (3,)),
+        electron_temperature_floor_K=10.0,
+        use_source_ordered_velocity_update=True,
+        circuit_state=CircuitState() if apply_circuit_boundary else None,
+        apply_circuit_boundary=apply_circuit_boundary,
+    )
+    validation_packet = candidate_packet_from_source_geometry(geometry)
+    validation_status = evaluate_hybrid_pic_3d_validation_packet(validation_packet)
+    telemetry = result.telemetry.to_dict()
+    return {
+        "tool": tool,
+        "runner": "dpf.fields.HybridPIC3DSimulator",
+        "deck": {
+            "name": deck_name,
+            "steps": int(steps),
+            "grid_shape": list(grid.shape),
+            "dt_s": float(dt_s),
+            "initial_ex_V_m": float(initial_ex_V_m),
+            "sigma0_S_m": float(sigma0_S_m),
+            "background_density_m3": float(background_density_m3),
+            "electron_density_m3": float(electron_density_m3),
+            "electron_temperature_K": float(electron_temperature_K),
+            "ion_temperature_K": float(ion_temperature_K),
+            "particle_weight": float(particle_weight),
+            "include_hall": bool(include_hall),
+            "use_predictor_corrector": bool(use_predictor_corrector),
+            "apply_circuit_boundary": bool(apply_circuit_boundary),
+        },
+        "scientific_status": "engineering_candidate_not_validation",
+        "source": geometry.source,
+        "source_scope": geometry.source_scope,
+        "grid_shape": list(grid.shape),
+        "dt_s": dt_s,
+        "n_steps": steps,
+        "simulation": telemetry,
+        "validation_packet": validation_status,
+        "final_particle_count": telemetry["n_particles_final"],
+        "final_field_energy_J": telemetry["final_field_energy_J"],
+    }
+
+
+def _default_first_principles_3d_deck() -> dict[str, Any]:
+    from dpf.first_principles import pf1000_akel_16kv_engineering_deck
+
+    return pf1000_akel_16kv_engineering_deck(n_steps=2).to_dict()
+
+
+def _default_compact_first_principles_3d_deck() -> dict[str, Any]:
+    return {
+        "name": "minimal_engineering_3d",
+        "steps": 2,
+        "grid_shape": [5, 5, 5],
+        "dt_s": 1.0e-13,
+        "initial_ex_V_m": 1.0e5,
+        "sigma0_S_m": 1.0e2,
+        "background_density_m3": 1.0e20,
+        "electron_density_m3": 1.0e20,
+        "electron_temperature_K": 1.0e5,
+        "ion_temperature_K": 1.0e5,
+        "particle_weight": 1.0e8,
+        "include_hall": False,
+        "use_predictor_corrector": True,
+        "apply_circuit_boundary": True,
+    }
+
+
+def _load_first_principles_3d_deck(deck_path: Path | None) -> dict[str, Any]:
+    if deck_path is None:
+        deck = _default_first_principles_3d_deck()
+        deck["source"] = "built_in"
+        return deck
+
+    import json
+
+    try:
+        raw = json.loads(deck_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(
+            f"invalid first-principles 3-D deck JSON: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise click.ClickException("first-principles 3-D deck must be a JSON object")
+
+    if {"device", "circuit", "grid"}.issubset(raw.keys()):
+        deck = dict(raw)
+        deck["source"] = str(deck_path)
+        return deck
+
+    deck = _default_compact_first_principles_3d_deck()
+    deck.update(raw)
+    deck["source"] = str(deck_path)
+    return deck
+
+
+def _positive_int_deck_value(deck: dict[str, Any], key: str) -> int:
+    try:
+        value = int(deck[key])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise click.BadParameter(f"{key} must be a positive integer") from exc
+    if value <= 0:
+        raise click.BadParameter(f"{key} must be positive")
+    return value
+
+
+def _positive_float_deck_value(deck: dict[str, Any], key: str) -> float:
+    try:
+        value = float(deck[key])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise click.BadParameter(f"{key} must be a positive number") from exc
+    if value <= 0.0:
+        raise click.BadParameter(f"{key} must be positive")
+    return value
+
+
+def _bool_deck_value(deck: dict[str, Any], key: str) -> bool:
+    value = deck[key]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    raise click.BadParameter(f"{key} must be a boolean")
+
+
+def _deck_grid_shape(deck: dict[str, Any]) -> tuple[int, int, int]:
+    value = deck.get("grid_shape", deck.get("shape"))
+    if isinstance(value, str):
+        return _parse_grid_shape(value)
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        raise click.BadParameter("grid_shape must be [NX, NY, NZ] or NX,NY,NZ")
+    try:
+        shape = tuple(int(item) for item in value)
+    except (TypeError, ValueError) as exc:
+        raise click.BadParameter("grid_shape entries must be integers") from exc
+    if min(shape) < 3:
+        raise click.BadParameter("all grid_shape entries must be >= 3")
+    return shape  # type: ignore[return-value]
+
+
+def _first_principles_3d_payload(deck: dict[str, Any]) -> dict[str, Any]:
+    from dpf.first_principles import FirstPrinciplesInputDeck
+    from dpf.first_principles.runner import run_first_principles_3d_deck
+
+    if {"device", "circuit", "grid"}.issubset(deck.keys()):
+        package_deck = FirstPrinciplesInputDeck.from_mapping(deck)
+        steps = package_deck.diagnostics.n_steps
+        shape = package_deck.grid.shape
+        dt_s = package_deck.diagnostics.dt_s
+        apply_circuit_boundary = package_deck.closures.apply_circuit_boundary
+        deck_summary = {
+            "name": package_deck.deck_id,
+            "source": deck.get("source", "built_in"),
+            "steps": steps,
+            "grid_shape": list(shape),
+            "dt_s": dt_s,
+            "apply_circuit_boundary": apply_circuit_boundary,
+            "device_name": package_deck.device.name,
+            "scientific_status": package_deck.scientific_status,
+        }
+        run = run_first_principles_3d_deck(package_deck)
+    else:
+        shape = _deck_grid_shape(deck)
+        steps = _positive_int_deck_value(deck, "steps")
+        dt_s = _positive_float_deck_value(deck, "dt_s")
+        apply_circuit_boundary = _bool_deck_value(deck, "apply_circuit_boundary")
+        deck_summary = {
+            "name": str(deck.get("name", "minimal_engineering_3d")),
+            "source": deck.get("source", "built_in"),
+            "steps": steps,
+            "grid_shape": list(shape),
+            "dt_s": dt_s,
+            "apply_circuit_boundary": apply_circuit_boundary,
+        }
+        run = run_first_principles_3d_deck(
+            {
+                "n_steps": steps,
+                "grid_shape": shape,
+                "dt_s": dt_s,
+                "sigma0_S_m": _positive_float_deck_value(deck, "sigma0_S_m"),
+                "background_density_m3": _positive_float_deck_value(
+                    deck, "background_density_m3"
+                ),
+                "density_floor_m3": _positive_float_deck_value(
+                    deck, "background_density_m3"
+                ),
+                "electron_temperature_K": _positive_float_deck_value(
+                    deck, "electron_temperature_K"
+                ),
+                "ion_temperature_K": _positive_float_deck_value(
+                    deck, "ion_temperature_K"
+                ),
+                "particle_weight": _positive_float_deck_value(deck, "particle_weight"),
+                "initial_E_x_V_m": float(deck.get("initial_ex_V_m", 1.0e5)),
+                "include_hall": _bool_deck_value(deck, "include_hall"),
+                "use_predictor_corrector": _bool_deck_value(
+                    deck, "use_predictor_corrector"
+                ),
+                "apply_circuit_boundary": apply_circuit_boundary,
+            }
+        )
+    simulation = run.telemetry["simulation"]
+    payload = {
+        "tool": "dpf first-principles-3d",
+        "runner": "dpf.fields.HybridPIC3DSimulator",
+        "command_status": "package_native_first_principles_3d_engineering_run",
+        "deck": deck_summary,
+        "scientific_status": run.status,
+        "source": run.telemetry["source"],
+        "source_scope": run.telemetry["source_scope"],
+        "grid_shape": run.telemetry["grid_shape"],
+        "dt_s": dt_s,
+        "n_steps": steps,
+        "simulation": simulation,
+        "validation_packet": run.validation_packet,
+        "manifest": run.manifest,
+        "conservation_telemetry": run.conservation_telemetry,
+        "final_particle_count": simulation["n_particles_final"],
+        "final_field_energy_J": simulation["final_field_energy_J"],
+        "reduced_models_used": run.reduced_models_used,
+        "can_support_first_principles_acceptance": (
+            run.can_support_first_principles_acceptance
+        ),
+    }
+    payload["command_status"] = "package_native_first_principles_3d_engineering_run"
+    return payload
+
+
 def _json_series(value: object, *, stride: int) -> list[object]:
     """Convert a scalar/array-like history to a JSON-safe list."""
     if value is None:
@@ -225,6 +599,17 @@ def _first_principles_payload(
     }
     readiness = result.get("first_principles_mhd_readiness")
     neutron_authority = result.get("first_principles_neutron_yield_authority")
+    backend_scope = result.get("first_principles_backend_scope")
+    if not isinstance(backend_scope, dict) and isinstance(readiness, dict):
+        backend_scope = readiness.get("backend_scope_status")
+    limiter_ledger = result.get("first_principles_limiter_ledger")
+    limiter_ledger_summary: dict[str, Any] = {}
+    if isinstance(limiter_ledger, dict):
+        limiter_ledger_summary = {
+            key: value
+            for key, value in limiter_ledger.items()
+            if key != "entries"
+        }
     return {
         "tool": "dpf first-principles",
         "preset": preset,
@@ -255,11 +640,18 @@ def _first_principles_payload(
                 (int(_float_metric(item)) for item in limiter_counts),
                 default=0,
             ),
+            "acceptance_blocking_limiter_activation_count": int(
+                _float_metric(
+                    limiter_ledger_summary.get("acceptance_blocking_activation_count")
+                )
+            ),
         },
         "readiness": readiness if isinstance(readiness, dict) else {},
         "neutron_yield_authority": (
             neutron_authority if isinstance(neutron_authority, dict) else {}
         ),
+        "backend_scope": backend_scope if isinstance(backend_scope, dict) else {},
+        "limiter_ledger_summary": limiter_ledger_summary,
         "histories": histories,
     }
 
@@ -369,6 +761,107 @@ def first_principles(
             "field-derived back-EMF stayed zero; increase --sim-time-us or inspect "
             "the field-current floor"
         )
+
+
+@cli.command("hybrid-3d-smoke")
+@click.option(
+    "--steps",
+    type=int,
+    default=2,
+    show_default=True,
+    help="Number of candidate 3-D hybrid PIC-fluid steps.",
+)
+@click.option(
+    "--shape",
+    type=str,
+    default="5,5,5",
+    show_default=True,
+    help="Cartesian smoke grid shape as NX,NY,NZ.",
+)
+@click.option(
+    "--dt-s",
+    type=float,
+    default=1.0e-13,
+    show_default=True,
+    help="Candidate timestep in seconds.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write compact JSON artifact for the 3-D hybrid smoke.",
+)
+def hybrid_3d_smoke(
+    steps: int,
+    shape: str,
+    dt_s: float,
+    output: Path | None,
+) -> None:
+    """Run a fail-closed 3-D hybrid PIC-fluid engineering smoke."""
+    payload = _hybrid_3d_smoke_payload(
+        steps=steps,
+        shape=_parse_grid_shape(shape),
+        dt_s=dt_s,
+    )
+    if output is not None:
+        import json
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(payload, indent=2, sort_keys=True))
+
+    click.echo("3D hybrid PIC-fluid engineering candidate")
+    click.echo(f"  steps: {payload['n_steps']}")
+    click.echo(f"  grid_shape: {payload['grid_shape']}")
+    click.echo(f"  final_particle_count: {payload['final_particle_count']}")
+    click.echo(f"  final_field_energy_J: {payload['final_field_energy_J']:.6e}")
+    click.echo(
+        "  validation_packet: "
+        f"{payload['validation_packet'].get('status', 'unknown')}"
+    )
+    click.echo(f"  scientific_status: {payload['scientific_status']}")
+    if output is not None:
+        click.echo(f"  artifact: {output}")
+
+
+@cli.command("first-principles-3d")
+@click.option(
+    "--deck",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Optional JSON input deck. Defaults to the built-in PF-1000/Akel "
+        "16 kV engineering deck."
+    ),
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write JSON artifact. Without this option, JSON is printed to stdout.",
+)
+def first_principles_3d(deck: Path | None, output: Path | None) -> None:
+    """Run the package-native 3-D first-principles engineering candidate."""
+    payload = _first_principles_3d_payload(_load_first_principles_3d_deck(deck))
+
+    import json
+
+    text = json.dumps(payload, indent=2, sort_keys=True)
+    if output is None:
+        click.echo(text)
+        return
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(text)
+    click.echo("Package-native 3-D first-principles engineering candidate")
+    click.echo(f"  deck: {payload['deck']['source']}")
+    click.echo(f"  steps: {payload['n_steps']}")
+    click.echo(f"  grid_shape: {payload['grid_shape']}")
+    click.echo(f"  final_particle_count: {payload['final_particle_count']}")
+    click.echo(f"  final_field_energy_J: {payload['final_field_energy_J']:.6e}")
+    click.echo(f"  scientific_status: {payload['scientific_status']}")
+    click.echo(f"  artifact: {output}")
 
 
 @cli.command()

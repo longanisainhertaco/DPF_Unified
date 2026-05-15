@@ -1,0 +1,130 @@
+{
+  "date": "2026-05-15",
+  "source_scope": "KnowledgeReference only plus ingested user PDF record",
+  "blocker_id": "FP-5",
+  "blocker": "source-backed startup boundary-value problem",
+  "verdict": "partial_answer_still_blocked_for_accepted_whole_shot",
+  "summary": "The source of truth supports explicit startup packet modes and an end-of-rundown sheath engineering candidate, but it does not yet provide a complete neutral-gas breakdown, insulator flashover, preionization, current-density, and sheath-liftoff BVP for accepted whole-shot first-principles authority.",
+  "accepted_modes": [
+    {
+      "mode": "imported_pic_sheath_state",
+      "status": "accepted_only_after_review",
+      "required_payload": [
+        "mesh_mapping",
+        "particles",
+        "electron_density",
+        "ion_density",
+        "electron_temperature",
+        "ion_temperature",
+        "velocity",
+        "electric_field",
+        "magnetic_field",
+        "current_density",
+        "charge_consistency",
+        "boundary_labels",
+        "source_references",
+        "hashes",
+        "units",
+        "conservation_checks"
+      ]
+    },
+    {
+      "mode": "source_backed_end_rundown_sheath",
+      "status": "engineering_candidate_not_whole_shot",
+      "required_payload": [
+        "hybrid_pic_fluid_initial_sheath_values",
+        "explicit_end_of_rundown_scope",
+        "breakdown_liftoff_exclusion"
+      ]
+    },
+    {
+      "mode": "surface_breakdown_bvp",
+      "status": "blocked",
+      "required_payload": [
+        "surface_flashover_equations",
+        "secondary_emission_or_material_model",
+        "avalanche_streamer_closure",
+        "preionization_model",
+        "pressure_regime_classifier",
+        "electrode_insulator_boundary_data",
+        "verification_tests"
+      ]
+    },
+    {
+      "mode": "plasma_injection_startup",
+      "status": "separate_device_scope",
+      "required_payload": [
+        "source_backed_density_distribution",
+        "source_backed_velocity_distribution",
+        "device_scope_limitation"
+      ]
+    },
+    {
+      "mode": "seeded_layer",
+      "status": "rejected_for_accepted_first_principles_claims",
+      "required_payload": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "613-735",
+      "answers": "end-of-rundown hybrid PIC-fluid initialization values and boundary pattern",
+      "blocked": "neutral-gas breakdown, surface flashover, avalanche, preionization, liftoff"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "1219-1220",
+      "answers": "quasi-neutrality and non-resolution of near-wall sheath microphysics",
+      "blocked": "Debye sheath, double layers, wall sheath microphysics"
+    },
+    {
+      "path": "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md",
+      "lines": "245-392",
+      "answers": "standard DPF sequence and warning that arbitrary MHD seed layers are engineering starts",
+      "blocked": "local LSP arrays and same-scope startup packet"
+    },
+    {
+      "path": "KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md",
+      "lines": "520-590",
+      "answers": "insulator breakdown and pressure/sheath speed constraints",
+      "blocked": "executable breakdown BVP"
+    },
+    {
+      "path": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
+      "lines": "452-670",
+      "answers": "pressure regimes, insulator length, breakdown path, sheath mass and velocity effects",
+      "blocked": "first-principles surface-breakdown solver"
+    },
+    {
+      "path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+      "lines": "56-74",
+      "answers": "PF-1000 startup surface discharge and kinetic avalanche/streamer character",
+      "blocked": "executable kinetic surface-discharge closure"
+    }
+  ],
+  "implementation_actions": [
+    "replace generic startup labels with explicit startup modes",
+    "preserve startup evidence fields in the package-native input deck",
+    "reject seeded or arbitrary uniform startup for accepted whole-shot claims",
+    "add negative acceptance tests for seeded startup",
+    "keep source_backed_end_rundown_sheath as engineering candidate until breakdown/liftoff BVP is available"
+  ],
+  "implemented_files": [
+    "src/dpf/first_principles/startup_bvp.py",
+    "src/dpf/first_principles/runner.py",
+    "src/dpf/first_principles/certificate_gate.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
+      "result": "35 passed"
+    },
+    {
+      "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_BLOCKER_SOURCE_SEARCH_2026_05_15.json",
+      "result": "valid JSON"
+    }
+  ],
+  "next_blocker": "FP-6 resolved field/circuit power-port coupling"
+}

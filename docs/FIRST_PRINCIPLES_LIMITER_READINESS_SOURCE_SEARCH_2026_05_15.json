@@ -1,0 +1,55 @@
+{
+  "id": "FP-2_FP-3",
+  "title": "Limiter-readiness and limiter-zero packet",
+  "date": "2026-05-15",
+  "source_scope": "local KnowledgeReference source truth plus first-principles planning artifacts and package-native runner telemetry",
+  "verdict": "blocked_limiter_readiness_packet_not_available",
+  "decision": "do_not_mark_limiter_zero_or_physical_bounds_accepted",
+  "runner_packet": "src/dpf/first_principles/limiter_readiness.py",
+  "required_channels": [
+    "active_path_limiter_inventory",
+    "limiter_event_schema",
+    "code_path_and_field_mapping",
+    "classification_by_limiter",
+    "activation_count_by_limiter",
+    "before_after_minmax_by_limiter",
+    "nonfinite_count_by_limiter",
+    "source_or_method_justification",
+    "readiness_effect_by_limiter",
+    "source_backed_physical_bounds",
+    "verified_numerical_method_bounds",
+    "zero_acceptance_blocker_full_run",
+    "full_horizon_run_manifest",
+    "backend_precision_fallback_inventory",
+    "fallback_rejection_tests",
+    "synthetic_acceptance_blocker_negative_test",
+    "app_only_runner_rejection_test",
+    "artifact_links_and_hashes",
+    "independent_review_certificate"
+  ],
+  "known_limiter_families": [
+    "state_mutating_floor_cap_clip",
+    "method_limiter_or_stability_guard",
+    "repair_or_fallback"
+  ],
+  "source_references": [
+    "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md:61-63,159-160,210-239",
+    "docs/DPF_REQUIREMENTS_BASELINE.md:64",
+    "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:410-424,582-605,1046-1067",
+    "KnowledgeReference/a-constrained-transport-embedded-boundary-method-for-compressible-resistive-magnetohydrodynamics.md:326,471-500,952"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_LIMITER_READINESS_SOURCE_SEARCH_2026_05_15.json",
+      "result": "valid JSON"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
+      "result": "33 passed"
+    }
+  ]
+}

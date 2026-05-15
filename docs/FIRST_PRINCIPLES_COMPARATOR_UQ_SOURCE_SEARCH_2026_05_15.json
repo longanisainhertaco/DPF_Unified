@@ -1,0 +1,100 @@
+{
+  "date": "2026-05-15",
+  "blocker": "FP-13",
+  "question": "Can PF-1000/Akel first-principles outputs be compared with accepted same-scope evidence using complete metrics, tolerances, pass/fail rules, and uncertainty today?",
+  "verdict": "blocked",
+  "decision": "do_not_enable_comparator_or_uq_acceptance",
+  "candidate_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
+  "supported_text_channels": [
+    "scalar_neutron_yield_uncertainty_text",
+    "channel_timing_uncertainty_text",
+    "shot_series_yield_range_text",
+    "scintillator_detector_geometry_text",
+    "activation_counter_calibration_text"
+  ],
+  "missing_required_channels": [
+    "accepted_same_scope_target_registry",
+    "source_hashes_and_review_status",
+    "output_field_mapping_by_observable",
+    "unit_conversion_and_coordinate_mapping",
+    "time_alignment_policy",
+    "comparator_metric_by_observable",
+    "comparator_tolerance_by_observable",
+    "measurement_uncertainty_by_observable",
+    "model_uncertainty_by_observable",
+    "numerical_uncertainty_by_observable",
+    "closure_sensitivity_uncertainty",
+    "detector_response_uncertainty",
+    "shot_to_shot_uncertainty_or_scope_rule",
+    "uq_propagation_method",
+    "pass_fail_rule_by_observable",
+    "negative_control_cases",
+    "requirement_links",
+    "artifact_links_and_hashes",
+    "independent_review_certificate"
+  ],
+  "required_observable_groups": [
+    "current_waveform",
+    "current_dip",
+    "phase_timing",
+    "spatial_density",
+    "magnetic_em_field",
+    "temperature",
+    "field_coupling",
+    "neutron_scalar_yield",
+    "neutron_timing",
+    "neutron_spectrum",
+    "neutron_anisotropy",
+    "detector_activation_response",
+    "numerical_fidelity",
+    "physics_fidelity"
+  ],
+  "source_answers": [
+    {
+      "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+      "lines": "120-139,862-889",
+      "role": "pf1000_akel_scalar_yield_timing_and_series_uncertainty_context",
+      "limitation": "no accepted target arrays, detector response, comparator metric, or propagated uncertainty matrix"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "1018-1040,1042-1089,1214-1266",
+      "role": "numerical_resolution_parameter_sensitivity_and_yield_uncertainty_context",
+      "limitation": "other-scope 2D hybrid examples do not set PF-1000/Akel tolerances"
+    },
+    {
+      "path": "KnowledgeReference/tomographic-reconstruction-of-the-neutron-time-energy-spectrum-from-a-dense-plasma-focus-b78f1154.md",
+      "lines": "32-53,337-351,390-427,518-526",
+      "role": "time_energy_spectrum_detector_model_and_scatter_subtraction_context",
+      "limitation": "not same-scope Akel detector or spectrum evidence"
+    },
+    {
+      "path": "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+      "lines": "175-204,277-284",
+      "role": "direct_scattered_neutron_and_anisotropy_comparator_context",
+      "limitation": "full-energy PF-1000 other-scope source"
+    },
+    {
+      "path": "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md",
+      "lines": "529-604",
+      "role": "mechanism_timing_spectrum_anisotropy_error_bar_context",
+      "limitation": "MJOLNIR source is not Akel same-scope evidence"
+    },
+    {
+      "path": "docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md",
+      "lines": "224-289",
+      "role": "local_queue_required_current_phase_neutron_temperature_uncertainty_channels",
+      "limitation": "queue entries are partial and not reviewed comparator artifacts"
+    }
+  ],
+  "implementation": [
+    "src/dpf/first_principles/comparator_uq.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    "python3 -m pytest tests/test_first_principles_runner.py",
+    "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py"
+  ],
+  "next_blocker": "FP-14"
+}

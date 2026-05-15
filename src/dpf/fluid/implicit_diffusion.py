@@ -169,6 +169,115 @@ def diffuse_field_1d(
     return _thomas_solve(lower, diag, upper, rhs)
 
 
+def diffuse_btheta_cylindrical_radial_1d(
+    field: np.ndarray,
+    coeff: np.ndarray,
+    r: np.ndarray,
+    dt: float,
+    dr: float,
+) -> np.ndarray:
+    """Crank-Nicolson radial diffusion for axisymmetric ``B_theta``.
+
+    Solves the radial part of the cylindrical resistive induction operator
+
+        dB_theta/dt = d/dr [ D/r * d(r B_theta)/dr ],
+
+    where ``D = eta / mu_0``.  Zero radial resistive flux is used at the pencil
+    boundaries.  This helper intentionally differs from scalar Cartesian
+    diffusion because the vector Laplacian for the azimuthal magnetic field
+    includes the cylindrical ``-B_theta/r^2`` term through ``r B_theta``.
+    """
+    n = len(field)
+    if n < 3:
+        return field.copy()
+
+    r_safe = np.maximum(np.asarray(r, dtype=np.float64), 1.0e-30)
+    coeff_safe = np.asarray(coeff, dtype=np.float64)
+    dr2 = dr * dr
+
+    lower_l = np.zeros(n)
+    diag_l = np.zeros(n)
+    upper_l = np.zeros(n)
+
+    for i in range(n):
+        if i < n - 1:
+            r_plus = max(0.5 * (r_safe[i] + r_safe[i + 1]), 1.0e-30)
+            d_plus = 0.5 * (coeff_safe[i] + coeff_safe[i + 1])
+            c_plus = d_plus / r_plus / dr2
+        else:
+            c_plus = 0.0
+        if i > 0:
+            r_minus = max(0.5 * (r_safe[i] + r_safe[i - 1]), 1.0e-30)
+            d_minus = 0.5 * (coeff_safe[i] + coeff_safe[i - 1])
+            c_minus = d_minus / r_minus / dr2
+        else:
+            c_minus = 0.0
+
+        lower_l[i] = c_minus * r_safe[i - 1] if i > 0 else 0.0
+        diag_l[i] = -(c_plus + c_minus) * r_safe[i]
+        upper_l[i] = c_plus * r_safe[i + 1] if i < n - 1 else 0.0
+
+    half_dt = 0.5 * dt
+    rhs = np.empty(n)
+    lower = np.zeros(n)
+    diag = np.ones(n)
+    upper = np.zeros(n)
+
+    for i in range(n):
+        lu = diag_l[i] * field[i]
+        if i > 0:
+            lu += lower_l[i] * field[i - 1]
+        if i < n - 1:
+            lu += upper_l[i] * field[i + 1]
+        rhs[i] = field[i] + half_dt * lu
+
+        lower[i] = -half_dt * lower_l[i]
+        diag[i] = 1.0 - half_dt * diag_l[i]
+        upper[i] = -half_dt * upper_l[i]
+
+    return _thomas_solve(lower, diag, upper, rhs)
+
+
+def implicit_cylindrical_btheta_diffusion(
+    Btheta: np.ndarray,
+    eta: np.ndarray,
+    dt: float,
+    dr: float,
+    dz: float,
+    r: np.ndarray,
+) -> np.ndarray:
+    """Apply CN-ADI resistive diffusion to axisymmetric ``B_theta``.
+
+    The solved operator is ``dB_theta/dt = -curl(eta * curl(B)/mu_0)_theta``
+    for an axisymmetric state whose magnetic field is carried by ``B_theta``.
+    Radial pencils use :func:`diffuse_btheta_cylindrical_radial_1d`; axial
+    pencils use the scalar CN helper because the cylindrical correction is only
+    radial.
+    """
+    coeff = np.asarray(eta, dtype=np.float64) / mu_0
+    field = np.asarray(Btheta, dtype=np.float64).copy()
+    nr, nz = field.shape
+
+    for j in range(nz):
+        field[:, j] = diffuse_btheta_cylindrical_radial_1d(
+            field[:, j],
+            coeff[:, j],
+            r,
+            dt,
+            dr,
+        )
+
+    for i in range(nr):
+        field[i, :] = diffuse_field_1d(
+            field[i, :],
+            coeff[i, :],
+            dt,
+            dz,
+        )
+
+    return field
+
+
 # ============================================================
 # 3D ADI resistive diffusion
 # ============================================================

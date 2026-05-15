@@ -7,6 +7,7 @@ from dpf.validation.circuit_field_coupling import (
     dynamic_inductance_power_balance_from_waveforms,
     field_coupling_component_evidence,
     field_coupling_evidence_from_result,
+    implicit_midpoint_power_port_back_emf,
 )
 from dpf.validation.quality_assessment import scientific_accuracy_gap_report
 
@@ -94,6 +95,56 @@ def test_dynamic_inductance_power_balance_marks_energy_channel_present():
         required["circuit_energy_balance"]["evidence_keys"]
     )
     assert evidence["passed"] is False
+
+
+def test_implicit_midpoint_power_port_enforces_power_without_current_floor():
+    from dpf.circuit.rlc_solver import RLCSolver
+    from dpf.core.bases import CouplingState
+
+    result = implicit_midpoint_power_port_back_emf(
+        current_A=0.0,
+        capacitor_voltage_V=16_000.0,
+        L_total_H=33.0e-9,
+        resistance_ohm=0.01,
+        capacitance_F=1.332e-3,
+        dL_dt_H_s=0.0,
+        dt_s=1.0e-12,
+        power_W=100.0,
+    )
+
+    assert bool(result["passed"]) is True
+    assert result["method"] == "implicit_midpoint_power_port"
+    assert result["current_mid_A"] != 0.0
+    assert abs(
+        result["current_mid_A"] * result["back_emf_V"] - result["power_W"]
+    ) < 1.0e-8
+
+    circuit = RLCSolver(C=1.332e-3, V0=16_000.0, L0=33.0e-9, R0=0.01)
+    coupling = circuit.step(
+        CouplingState(Lp=0.0, dL_dt=0.0),
+        back_emf=result["back_emf_V"],
+        dt=1.0e-12,
+    )
+    assert abs(coupling.current - result["current_new_A"]) < 1.0e-12
+
+
+def test_implicit_midpoint_power_port_blocks_impossible_power_load():
+    result = implicit_midpoint_power_port_back_emf(
+        current_A=0.0,
+        capacitor_voltage_V=0.0,
+        L_total_H=33.0e-9,
+        resistance_ohm=0.01,
+        capacitance_F=1.332e-3,
+        dL_dt_H_s=0.0,
+        dt_s=1.0e-12,
+        power_W=1.0e3,
+    )
+
+    assert result["passed"] is False
+    assert result["reason"] in {
+        "no_real_midpoint_power_port_root",
+        "zero_midpoint_current_for_nonzero_power",
+    }
 
 
 def test_circuit_coupled_energy_evidence_passes_power_and_energy_history():

@@ -8,6 +8,7 @@ from dpf.validation.first_principles_mhd import (
     PF1000_AKEL_SOURCE_SCOPE,
     PF1000_AKEL_VALIDATION_SCOPE,
     annotate_first_principles_mhd_result,
+    first_principles_backend_scope_status,
     first_principles_energy_accounting_status,
     first_principles_intervals_from_sources,
     first_principles_mhd_readiness_report,
@@ -15,6 +16,15 @@ from dpf.validation.first_principles_mhd import (
     first_principles_startup_initialization_status,
     normalize_first_principles_run_mode,
     reduced_model_baseline_authority,
+)
+from dpf.validation.first_principles_limiters import (
+    limiter_event,
+    summarize_limiter_ledger,
+)
+from dpf.validation.hybrid_pic_3d import (
+    HYBRID_PIC_3D_CAPABILITY_IDS,
+    HYBRID_PIC_3D_SOURCE,
+    hybrid_pic_3d_readiness_status,
 )
 
 
@@ -50,7 +60,7 @@ def test_first_principles_readiness_blocks_closure_factors_and_missing_fields() 
     assert readiness.status == "blocked"
     assert readiness.closure_factor_status["present"] is True
     assert "fc" in readiness.closure_factor_status["keys"]
-    assert "closure_factor_free_acceptance_path" in readiness.missing_evidence
+    assert "reduced_model_active_closure_rejected" in readiness.missing_evidence
     assert any("Lee/RADPF closure factors" in blocker for blocker in readiness.blockers)
     assert (
         readiness.output_status["field_derived_plasma_inductance"]["status"]
@@ -62,6 +72,162 @@ def test_first_principles_readiness_blocks_closure_factors_and_missing_fields() 
         ]
         is False
     )
+
+
+def test_readiness_blocks_acceptance_blocking_limiter_activation() -> None:
+    ledger = summarize_limiter_ledger([
+        limiter_event(
+            limiter_id="fp2.velocity_cap",
+            code_path="unit.test",
+            affected_field="velocity",
+            classification="acceptance_blocker",
+            activation_count=2,
+            before=[3.0e6, 4.0e6],
+            after=[2.0e6, 2.0e6],
+            threshold={"cap_m_s": 2.0e6},
+            acceptance_blocking=True,
+            justification="Synthetic acceptance-blocking limiter activation.",
+        )
+    ])
+    readiness = first_principles_mhd_readiness_report(
+        {"first_principles_limiter_ledger": ledger},
+        preset_name="pf1000_akel",
+        validation_scope=PF1000_AKEL_VALIDATION_SCOPE,
+        source_scope=PF1000_AKEL_SOURCE_SCOPE,
+        source_scope_status="same_scope_source_reviewed_not_certificate",
+    )
+
+    assert readiness.ready is False
+    assert readiness.status == "blocked"
+    assert "acceptance_blocking_limiter_activation" in readiness.missing_evidence
+    assert readiness.limiter_ledger_status[
+        "acceptance_blocking_activation_count"
+    ] == 2
+    assert (
+        "fp2.velocity_cap"
+        in readiness.limiter_ledger_status["activated_acceptance_blockers"]
+    )
+    assert any("acceptance-blocking limiter" in item for item in readiness.blockers)
+
+
+def test_verified_numerical_method_events_do_not_block_limiter_zero_gate() -> None:
+    ledger = summarize_limiter_ledger([
+        limiter_event(
+            limiter_id="dpf.fluid.cylindrical_mhd.plm_minmod_reconstruction",
+            code_path="dpf.fluid.cylindrical_mhd.CylindricalMHDSolver._plm_reconstruct",
+            affected_field="reconstructed_state",
+            classification="verified_numerical_method",
+            activation_count=0,
+            threshold={"verification_tests": ["tests/test_cylindrical_godunov.py"]},
+            acceptance_blocking=False,
+            justification="Synthetic verified numerical-method registry entry.",
+        )
+    ])
+
+    assert ledger["status"] == "clear"
+    assert ledger["acceptance_blocking_activation_count"] == 0
+    assert ledger["can_support_first_principles_acceptance"] is True
+    assert ledger["entries"][0]["classification"] == "verified_numerical_method"
+    assert ledger["entries"][0]["acceptance_blocking"] is False
+
+
+def test_first_principles_backend_scope_rejects_uninstrumented_metal() -> None:
+    status = first_principles_backend_scope_status({
+        "backend": "metal_plm",
+        "requested_backend": "metal_plm",
+        "requested_run_mode": "first_principles_mhd",
+    })
+
+    assert status["status"] == "backend_scope_blocked"
+    assert status["can_support_first_principles_acceptance"] is False
+    assert status["blocked_backend"] == "metal"
+
+    readiness = first_principles_mhd_readiness_report(
+        {
+            "backend": "metal_plm",
+            "requested_backend": "metal_plm",
+            "requested_run_mode": "first_principles_mhd",
+            "first_principles_limiter_ledger": summarize_limiter_ledger([]),
+        },
+        preset_name="pf1000_akel",
+        validation_scope=PF1000_AKEL_VALIDATION_SCOPE,
+        source_scope=PF1000_AKEL_SOURCE_SCOPE,
+        source_scope_status="same_scope_source_reviewed_not_certificate",
+    )
+
+    assert "instrumented_backend_scope" in readiness.missing_evidence
+    assert any("outside first-principles acceptance scope" in item for item in readiness.blockers)
+
+
+def test_first_principles_backend_scope_rejects_each_uninstrumented_backend() -> None:
+    cases = [
+        ("metal_plm", "metal_plm", "metal"),
+        ("metal_weno5", "metal_weno5", "metal"),
+        ("mlx", "mlx", "mlx"),
+        ("athena", "athena", "athena"),
+        ("athenak", "athenak", "athenak"),
+        ("hybrid", "hybrid", "hybrid"),
+        ("metal_plm (fallback from athena)", "athena", "athena"),
+    ]
+
+    for backend, requested_backend, blocked_backend in cases:
+        status = first_principles_backend_scope_status({
+            "backend": backend,
+            "requested_backend": requested_backend,
+            "requested_run_mode": "first_principles_mhd",
+        })
+        assert status["status"] == "backend_scope_blocked", backend
+        assert status["blocked_backend"] == blocked_backend
+        assert status["can_support_first_principles_acceptance"] is False
+        assert status["required_limiter_telemetry"] == (
+            "backend_native_first_principles_limiter_ledger"
+        )
+
+
+def test_hybrid_pic_3d_gate_blocks_current_mhd_path_without_evidence() -> None:
+    status = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "2d_axisymmetric",
+    })
+
+    assert status["status"] == "blocked"
+    assert status["can_support_first_principles_acceptance"] is False
+    assert status["source"] == HYBRID_PIC_3D_SOURCE
+    assert "explicit_3d_geometry" in status["missing_capabilities"]
+    assert "kinetic_ion_pic_push_deposition" in status["missing_capabilities"]
+    assert (
+        status["capabilities"]["full_maxwell_vacuum_plasma_fields"]["source"]
+        == HYBRID_PIC_3D_SOURCE
+    )
+
+
+def test_hybrid_pic_3d_gate_is_public_validation_api() -> None:
+    import dpf.validation as validation
+
+    assert "hybrid_pic_3d_readiness_status" in validation.__all__
+    assert validation.HYBRID_PIC_3D_SOURCE == HYBRID_PIC_3D_SOURCE
+    assert validation.HYBRID_PIC_3D_CAPABILITY_IDS == HYBRID_PIC_3D_CAPABILITY_IDS
+    assert validation.hybrid_pic_3d_readiness_status({})["status"] == "blocked"
+
+
+def test_hybrid_pic_3d_gate_requires_all_reviewed_capabilities() -> None:
+    evidence = {
+        capability_id: {
+            "passed": True,
+            "status": "accepted",
+            "source": HYBRID_PIC_3D_SOURCE,
+        }
+        for capability_id in HYBRID_PIC_3D_CAPABILITY_IDS
+    }
+
+    status = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "3d",
+        "hybrid_pic_3d_evidence": evidence,
+    })
+
+    assert status["status"] == "accepted"
+    assert status["can_support_first_principles_acceptance"] is True
+    assert status["missing_capabilities"] == []
+    assert set(status["satisfied_capabilities"]) == set(HYBRID_PIC_3D_CAPABILITY_IDS)
 
 
 def test_reduced_model_outputs_are_baseline_only() -> None:
@@ -248,6 +414,8 @@ def test_annotation_exports_fail_closed_intervals_and_readiness() -> None:
     assert "field_coupled_energy_accounting" in readiness["missing_evidence"]
     assert "first_principles_startup_initialization" in readiness["missing_evidence"]
     assert "first_principles_neutron_yield_authority" in readiness["missing_evidence"]
+    assert "hybrid_pic_3d_first_principles_core" in readiness["missing_evidence"]
+    assert annotated["hybrid_pic_3d_readiness"]["status"] == "blocked"
     assert (
         annotated["first_principles_neutron_yield_authority"]["status"]
         == "not_produced"

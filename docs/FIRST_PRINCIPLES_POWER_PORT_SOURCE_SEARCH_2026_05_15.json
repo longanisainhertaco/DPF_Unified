@@ -1,0 +1,89 @@
+{
+  "date": "2026-05-15",
+  "source_scope": "KnowledgeReference and source-truth index artifacts",
+  "blocker_id": "FP-6",
+  "blocker": "resolved field/circuit power-port coupling",
+  "verdict": "physics_contract_supported_but_accepted_packet_blocked",
+  "summary": "The local source of truth requires field-power authority through Poynting flux or volume J.E, not a fitted dynamic inductance alone. Accepted whole-shot authority remains blocked until the implementation has a reviewed packet for sign convention, time centering, electrode work, named interface or volume domain, and residual budget.",
+  "sources": [
+    {
+      "path": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md",
+      "lines": "43-49,89-94",
+      "answers": "capability routing and explicit missing exact power-port evidence",
+      "blocked": "implemented geometry validation"
+    },
+    {
+      "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+      "lines": "151-200",
+      "answers": "terminal voltage from field power divided by current using 3D J.E domain integral",
+      "blocked": "implementation-specific domain, electrode terminals, sign, discretization"
+    },
+    {
+      "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+      "lines": "206-262,426-445",
+      "answers": "Poynting theorem interface surface and generator boundary power input",
+      "blocked": "discrete surface packet and J.E equivalence evidence"
+    },
+    {
+      "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+      "lines": "1026-1047",
+      "answers": "magnetic-energy inductance alone is incomplete for motional impedance",
+      "blocked": "accepted use of L_field as load"
+    },
+    {
+      "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "lines": "740-805",
+      "answers": "external circuit current update, magnetic boundary drive, DPF voltage feedback pattern",
+      "blocked": "sign, centering, electrode-work partition, residual tests"
+    },
+    {
+      "path": "KnowledgeReference/beresnyak_2018_dpf_hawk_simulations.md",
+      "lines": "170-200",
+      "answers": "MHD-circuit coupling pattern with current and dI/dt inputs and terminal electric-field voltage output",
+      "blocked": "PF-1000/Akel same-scope authority"
+    }
+  ],
+  "required_packet_fields": [
+    "interface_surface_or_volume_domain",
+    "terminal_current",
+    "terminal_voltage",
+    "poynting_power_or_j_dot_e",
+    "electrode_work",
+    "external_circuit_energy",
+    "magnetic_energy",
+    "electric_energy",
+    "thermal_energy",
+    "kinetic_energy",
+    "particle_energy",
+    "radiation_energy",
+    "residual",
+    "sign_convention",
+    "time_centering",
+    "boundary_labels",
+    "startup_handoff_interval",
+    "source_references"
+  ],
+  "implementation_actions": [
+    "emit package-native PowerPortPacket from the runner and manifest",
+    "record active load and diagnostic alternatives separately",
+    "keep L_field diagnostic-only until reviewed packet proves load equivalence",
+    "fail accepted claims when sign, centering, electrode work, residual, or source references are missing",
+    "add standalone and integrated power-port tests"
+  ],
+  "implemented_files": [
+    "src/dpf/first_principles/power_port.py",
+    "src/dpf/first_principles/runner.py",
+    "tests/test_first_principles_runner.py"
+  ],
+  "validated_commands": [
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
+      "result": "35 passed"
+    },
+    {
+      "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_POWER_PORT_SOURCE_SEARCH_2026_05_15.json",
+      "result": "valid JSON"
+    }
+  ],
+  "next_blocker": "FP-7 dimensionality and 3D hybrid PIC-fluid completeness"
+}
