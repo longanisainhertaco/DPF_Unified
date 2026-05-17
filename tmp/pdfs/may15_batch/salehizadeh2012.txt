@@ -1,0 +1,242 @@
+J Fusion Energ (2013) 32:293–297
+DOI 10.1007/s10894-012-9567-8
+
+ ORIGINAL RESEARCH
+
+
+
+Preliminary Results of the 115 kJ Dense Plasma Focus Device
+IR-MPF-100
+A. Salehizadeh • A. Sadighzadeh • M. Sedaghat Movahhed • A. A. Zaeem •
+A. Heidarnia • R. Sabri • M. Bakhshzad Mahmoudi • H. Rahimi •
+S. Rahimi • E. Johari • M. Torabi • V. Damideh
+
+
+
+
+Published online: 9 August 2012
+ Springer Science+Business Media, LLC 2012
+
+
+Abstract This work summarizes the design and con-            Introduction
+struction of the first Iranian 115 kJ Mather type plasma
+focus (PF) machine (IR-MPF-100). This machine consists       Production of short-lived hot and dense plasma column
+of a 6.25 cm radius and 22 cm height brass made anode        produced by the electromagnetic acceleration of the current
+with a 50 mm height insulator which separates the anode      sheath is the specific role of the plasma focus (PF) devices
+and cathode electrodes. Twelve copper made 22 cm height      [1–4]. This plasma column is hot enough to produce X-rays
+rods play the role of cathode with 10.2 cm radius. Twenty    emission [5] and fusion products like neutrons and 3He, in
+four 6 lF capacitors were used with the maximum charg-       case of using deuterium filling gas. This machine is also a
+ing voltage of 40 kV (maximum energy of 115 kJ) as the       favorite inexpensive one, for the study of fusion plasmas. The
+capacitor bank and maximum theoretical current around        accurate mechanisms of neutron production in PF devices are
+1.224 MA. The total inductance of the system is 120 nH.      not clear processes but experimental observations of the
+By using NE-102 plastic Scintillator, Rogowski coil, cur-    pinch column represent that there are three mechanisms
+rent and voltage probes, hard X-ray, current derivative,     which are responsible for the productions of fusion neutrons:
+current and voltage signals of IR-MPF-100 were measured.     thermonuclear process, beam-target and trapped gyrating
+The primary result of neutron detection by neutron acti-     particles in the pinched plasma. However, the anisotropy
+vation counter represents approximately 109 neutrons per     studies of the neutrons show that the thermonuclear process
+shot at 65 kJ discharge energy while using deuterium fill-   has the least contribution and the gyrating particle has the
+ing gas. Also IR-MPF-100 PF has been tested successfully     maximum portion at the optimum condition [6].
+at 90 kJ by using the argon gas.                                 Every day increments in the applications and new
+                                                             achievements in the field of PF machine [7–14] was the
+Keywords High energy plasma focus  Current derivative       reason for the design and construction of a 100 kJ PF.
+signal  Neutron detection  Double pinch structure          Besides the formation and acceleration of the current sheath,
+                                                             the discreet characters of dense and hot pinched plasma and
+                                                             consequently the formation of hot spots (plasmoides) in PFs
+                                                             is encouraging, particularly for their use in nuclear fusion of
+A. Salehizadeh
+Department of Nuclear Engineering Physics,                   the hydrogen–boron fuel [15, 16]. Usually the final temper-
+Amirkabir University of Technology, PO Box 15875-4413,       ature and density of the focused plasma in PFs are 1 keV and
+Tehran, Iran                                                 1019/cm3 [17] however, the accurate mechanism in the for-
+                                                             mation of the dense structure in PFs is a challenging issue
+A. Salehizadeh  A. Sadighzadeh  M. S. Movahhed 
+A. A. Zaeem  A. Heidarnia  R. Sabri                       which still is an open area for more research.
+M. B. Mahmoudi  H. Rahimi  S. Rahimi  E. Johari 
+M. Torabi  V. Damideh (&)                                   Design and Construction of the Device
+Plasma Physics and Nuclear Fusion Research School,
+Nuclear Science and Technology Research Institute,
+AEOI, PO Box 14155-1339, Tehran, Iran                        One of the goals in the design steps of PF device is the
+e-mail: v_damideh@yahoo.com                                  formation of a well-shaped current layer in order to achieve
+
+
+                                                                                                                 123
+294                                                                                                   J Fusion Energ (2013) 32:293–297
+
+Fig. 1 Discharge current
+waveform at 21 kV, 30 torr
+argon
+
+
+
+
+Fig. 2 Schematics of cross sectional view of the (1) Cathode rods (2)
+Anode (3) PTFE insulator (4) Pyrex insulator
+
+
+
+
+                                                                        Fig. 4 IR-MPF-100 spark-gape and set up
+
+
+
+Fig. 3 Electrodes configuration of the IR-MPF-100
+                                                                        maximum charging voltage of 40 kV (maximum energy of
+the top of the anode and finally form a hot and dense                   115 kJ). Regarding to previous experiments and our cur-
+plasma column (pinch) another goal is the simultaneous                  rent laboratory facilities, the total inductance of the device
+occurrence of the peak current and the pinch effect. For                was estimated to be 120 nH [due to capacitor bank
+these satisfactions some semi-empirical relations have to               (*4 nH), spark gap (*40 nH), coaxial cable (*60 nH),
+be considered in the design of the device [18].                         other connections (*16 nH)]. By using the following
+   For design of IR-MPF-100 device, we consider a 144 lF                formulas for current, resistance and period of the PF device
+capacitor bank (twenty four 6 lF capacitors) with the                   and discharge current waveform (Fig. 1):
+
+
+123
+J Fusion Energ (2013) 32:293–297                                                                                            295
+
+Fig. 5 a Hard X-ray, current
+derivative and voltage signals.
+b Current signal of the IR-MPF-
+100 at 1.9 torr deuterium and
+20 kV
+
+
+
+
+I0 ¼ pC0 V0 ð1 þ f Þ=T                                   ð1Þ    sheath in PF [21], the axial and radial velocity are given
+             rﬃﬃﬃ                                               according to the following equations:
+       2        L                                                         pﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃ
+r0 ¼  Lnf                                               ð2Þ                lðc þ 1Þ f c
+       p        C                                               vradial ¼                     pﬃﬃﬃﬃﬃ S                 ð4Þ
+                                                                                4p                fm
+In which f is the reversal ratio obtained from the sequential             sﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃ
+                                             P
+current peaks I1, I2, …, In with f ¼ 1n ni¼1 Inþ1  In ¼ 0:76
+                                                                                  lLnC
+                                                                                  
+                                                                                                     fc
+                                                                                                  pﬃﬃﬃﬃﬃ
+                                                                vaxial ¼                                  S            ð5Þ
+where ‘‘n’’ is the number of half cycles in the discharge                  4p2 C2  1 f m
+current [19].
+         pﬃﬃﬃﬃﬃﬃ                                                    On the other hand, pf cﬃﬃﬃﬃ parameter in Yousefi’s paper
+                                                                                            fm
+T ¼ 2p LC                                                 ð3Þ
+                                                                [20] has reported between 1.3 and 2.2 which was
+   The highest Peak current (I0), resistance and period of      considered to be 1.3 for IR-MPF-100. Now, by using the
+the IR-MPF-100 are obtained 1.224 MA, 5 mX and 26 ls            equations of (4) and (5), axial and radial velocities are
+respectively. On the other hand, the working pressure in the    obtained 4.037 and 6.071 cm/ls, respectively. The radial
+Mather type PF is usually between 0.1 and 10 torr there-        time of current sheath (a/vradial) is equal to 1.029 ls then
+fore, the considered pressure for this device is 7.7 torr.      the axial time of current sheath is obtained to be 5.449 ls
+Taking into consideration that for similar capacitor bank       (taxial = T/4 - tradial). So the anode length (z = vaxialtaxial)
+energy of PFs (such as PF-360 [15, 17]), the radius of IR-      could be estimated as 22 cm. The space between two
+MPF-100 is taken to be 6.25 cm. According to Ref. [20]          electrodes must be in optimum condition to form a suitable
+the average ratio of cathode to anode radius (c = b/a)          final plasma column (pinch). In addition experimental
+approximately is 1.63, therefore this ratio has been selected                                           Lin
+                                                                results [22] represent the amount of ba    is usually between
+for IR-MPF-100. Then the cathode radius and speed factor
+      I =a
+                                                                1 and 1.9 therefore we take insulator length (Lin) as 5 cm.
+(S ¼ pp ﬃﬃﬃ
+        q , Ip = 0.7I0) are obtained around 10.2 cm and             Figures 2 and 3 display the cross sectional view and
+        0
+
+50 kA/cm (torr)1/2. With respect to Lee’s Slug and Snow-        image of the IR-MPF-100 electrodes configuration
+Plow Model for the axial and radial phases of current           respectively. Also general set up of device is presented in
+
+
+                                                                                                                     123
+296                                                                                        J Fusion Energ (2013) 32:293–297
+
+Fig. 6 Double pinch observed
+in the IR-MPF-100 at 0.3 torr
+deuterium and 20 kV
+
+
+
+
+Fig. 4. This design has several prominent features such as        Trigatron atmospheric air pressure spark gap switch was
+knife edge which was made in cathode plate near the quartz     used in IR-MPF-100 device. Using one spark gap has the
+insulator. The knife edge help form the symmetrical cur-       advantage of easy simultaneous discharge of capacitor
+rent sheath. The other significant feature is the hollow       bank but it has low life time because of high corrosion of
+detachable anode. It is possible to perform various exper-     the spark gap electrodes and increases the inductance of
+iments by using the different anode shapes and electron        system.
+lithography because of this structure.
+    IR-MPF-100 anode is a 22 cm high and 12.5 cm
+diameter brass made rode which has a tapered configura-        Results and Discussion
+tion. The brass anode leads to increasing emissions such as
+neutrons and particularly X-rays. Because the brass anode      By using NE-102 plastic Scintillator, Rogowski coil, the
+has low sputtering than copper; therefore, increases neutron   integrator probe and voltage probe, hard X-ray, current
+yield [4]. Also the brass made up of two components:           derivative, current signals and voltage signals were mea-
+copper and zinc, where the later has an upper atomic           sured at the initial pressure of 1.9 torr deuterium gas,
+number than former thus, causes to increase X-ray emis-        which are depicted in Fig. 5. Preliminary experiments of
+sion. There has been made a central hole in the middle of      the neutron emission in IR-MPF-100 PF were performed.
+the anode, in order to prevent the undesirable hard X-ray      In order to measure the neutron emission, we utilized
+emissions and the sequential personal dose absorption.         neutron activation counter detector which covered by Ag
+Twelve copper rods of the cathode are placed on a 10.2 cm      foil. Neutron activation counter detector was placed at
+radius circle. The rods of cathode have 12 mm diameter         130 cm from top of the anode.
+and 22 cm length. Annular ring used at the top of squirrel        The GM counter was calibrated using a 10 Ci Am–Be
+cage cathode rods which help maintain the distance             source. By using Neutron activation counter neutron
+between rods more accurately. Also this ring suppresses        emission of IR-MPF-100 was measured nearly
+more tensions on the rods and prevents them from bending       1.5 9 109 n/shot at 29 kJ and 1.9 torr deuterium filling
+by the Lorentz electromagnetic force.                          gas. Obviously a double pinch phenomenon was observed
+
+
+123
+J Fusion Energ (2013) 32:293–297                                                                                                   297
+
+
+Table 1 Some features of the IR-MPF-100                          performed on the neutron detections represented around
+Parameter                                   Value
+                                                                 109 neutrons per shot using deuterium gas. Regarding to
+                                                                 our preliminary experimental results, the neutron yield
+Energy of capacitor bank                    115 kJ               while using the full energy of capacitor bank (115 kJ)
+Total inductance of the system              120 nH               predicted to be more than 1010 n/shot and 1012 n/shot for
+Capacitor bank                              144 lF               D–T fuel.
+Maximum operational voltage                 40 kV
+Theoretical current                         1.224 MA
+Speed factor                                50 kA/cm (torr)1/2
+Discharge time period                       26 ls                References
+Operating deuterium gas pressure            7.7 torr
+                                                                  1. M.M. Milanese, J.J. Niedbalski, R.L. Moroso, IEEE Trans.
+Resistance                                  5 mX                     Plasma Sci. 35(4), 808–812 (2007)
+           qﬃﬃ
+Impedance ( CL )                            28.87 mX              2. L. Soto et al., Plasma Sources Sci. Technol. 19, 1–9 (2010)
+                                                                  3. A. Bernard et al., J. Mosc. Phys. Soc. 8, 93–170 (1998)
+Effective anode length                      22 cm                 4. V. Damideh et al., J. Fusion Energ. 30(6), 462–465 (2011)
+Anode radius                                6.25 cm               5. H. Ghomi, V. Damideh et al., 14th Iranian Conference on Optics
+Cathode radius                              10.2 cm                  and Photonics (Rafsanjan University, Iran, 2007)
+                                                                  6. U. Jäger, H. Herold, Nucl. Fusion 27, 407 (1987)
+Insulator sleeve length                     50 mm                 7. L.Y. Soh, P. Lee, X. Shuyan, S. Lee, R.S. Rawat, IEEE Trans.
+                                                                     Plasma Sci. 32, 448 (2004)
+                                                                  8. T. Hussain, R. Ahmad et al., Nucl. Instrum. Methods Phys. Res. B
+during various shots of the IR-MPF-100 filling Ar gas at             267, 768 (2009)
+20 kV and 0.3 torr with an approximately time delay of            9. R.S. Rawat, T. Zhang et al., Appl. Surf. Sci. 253, 1611 (2006)
+2.5 ls (Fig. 6). While the current sheath forms on the           10. J.O. Pouzo, IEEE Trans. Plasma Sci. 31(6), 1237–1242 (2003)
+                                                                 11. V. Raspa, L. Sigaut, R. Llovera et al., Braz. J. Phys. 34(4B),
+insulator and moves toward the top of the anode the                  1969–1999 (2004)
+dynamical resistance increases so that it would be easier for    12. S. Lee, X. Feng, G.X. Zhang, P. Lee et al., SPIE 3183, 123–127
+the electrical field between the electrodes to form a new            (1997)
+current sheath and move off the insulator while the first        13. E. Angeli, A. Tartari, M. Frignani et al., Appl. Radiat. Isot. 63,
+                                                                     545–551 (2005)
+current sheath is still in the middle of its way [23, 24]        14. E.J. Lerner et al., J. Fusion Energ. 30(5), 367–376 (2011)
+(Table 1).                                                       15. L. Soto, Plasma Phys. Control Fusion 47, A361 (2005)
+                                                                 16. E.J. Lerner et al., Phys. Plasmas 19, 032704 (2012)
+                                                                 17. V. Damideh et al., J. Fusion Energ. 31, 47–51 (2012)
+                                                                 18. J. Zebrowski et al., Nukleonika 46, S65 (2001)
+Conclusion                                                       19. S.H. Saw, S. Lee et al., Rev. Sci. Instrum. 81, 053505 (2010)
+                                                                 20. H.R. Yousefi et al., 31st EPS Conference on Plasma Phys. Lon-
+This paper reports on the design and construction of the IR-         don, vol. 28 (2004)
+MPF-100 PF as the first Iranian 115 kJ PF device. The            21. S. Lee, Radiative dense plasma focus computation package:
+                                                                     RADPF. http://www.intimal.edu.my/school/fas/UFLF/; http://www.
+hollow detachable structure of the anode would make it               plasmafocus.net
+possible to exchange the anode with different length or          22. H.R. Yousefi, F.M. Aghamir et al., Phys. Lett. A 361, 360–363
+structure. And the knife edge of the cathode plate help form         (2007)
+the symmetrical current sheath. Also the hollow structure        23. M. Scholz et al., Czech. J. Phys. 52, 893–899 (2002)
+                                                                 24. M. Sumini, D. Mostacci et al., IEEE Nuclear Science Symposium
+provides a suitable condition for the use of the device in           Conference Record (2007)
+electron lithography experiments. The first experiments
+
+
+
+
+                                                                                                                           123
+

@@ -17,6 +17,32 @@
     "current_derivative_t0_reference_for_neutron_timing",
     "average_yield_series_fit_context"
   ],
+  "acceptance_gate": "scalar_yield_reduced_model_text_and_other_scope_neutron_diagnostics_cannot_support_total_yield_authority_until_same_scope_mechanism_separated_histories_detector_transport_comparator_uq_and_review_pass",
+  "mechanism_separation_policy": {
+    "total_yield_is_not_authoritative_without_separate_mechanisms": true,
+    "required_mechanisms": [
+      "thermonuclear_yield_history",
+      "beam_target_yield_history"
+    ],
+    "scalar_yield_agreement_usable_for": "baseline_comparison_only",
+    "candidate_pic_yield_usable_for": "runtime_diagnostic_only"
+  },
+  "cross_scope_policy": {
+    "status": "blocked_without_reviewed_transfer_rule",
+    "other_scope_sources_usable_for": "requirements_or_schema_only",
+    "can_use_other_scope_for_acceptance": false,
+    "required_transfer_rule_channels": [
+      "source_scope_identity",
+      "target_scope_identity",
+      "changed_device_or_shot_parameters",
+      "mechanism_transfer_equations_or_bounds",
+      "detector_response_transfer_bounds",
+      "spectrum_anisotropy_transfer_bounds",
+      "uncertainty_inflation_rule",
+      "review_certificate",
+      "negative_test_cross_scope_promotion"
+    ]
+  },
   "candidate_runtime_channels": [
     "candidate_pic_ion_neutron_yield_history",
     "candidate_dd_particle_distribution_total"
@@ -82,6 +108,13 @@
     "src/dpf/first_principles/neutron_authority.py",
     "src/dpf/first_principles/runner.py",
     "tests/test_first_principles_runner.py"
+  ],
+  "implementation_ratchet": [
+    "Scope-gate validation targets before accepting neutron authority observables.",
+    "Emit per-channel neutron_authority_channel_status decisions.",
+    "Emit text_supported_not_acceptance_channels for Akel scalar yield and detector text.",
+    "Emit mechanism_separation_policy so scalar total-yield agreement remains baseline-only.",
+    "Emit cross_scope_policy so other-scope neutron diagnostics remain requirements/schema-only without reviewed transfer rules."
   ],
   "validated_commands": [
     "python3 -m pytest tests/test_first_principles_runner.py",

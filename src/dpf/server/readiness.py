@@ -6,15 +6,14 @@ from dataclasses import asdict
 from typing import Any
 
 from dpf.validation import (
-    FIRST_PRINCIPLES_MHD_EXECUTION_MODE,
-    FIRST_PRINCIPLES_MHD_MODE,
     akel_fig1_draft_digitization_packet,
-    first_principles_mhd_readiness_report,
     high_fidelity_readiness_report,
     predictive_readiness_report,
     scientific_closure_digitization_status,
 )
 from dpf.validation.artifacts import ValidationStatus, classify_result
+
+FIRST_PRINCIPLES_MHD_MODE = "first_principles_mhd"
 
 
 def api_readiness_payload(
@@ -52,33 +51,20 @@ def api_readiness_payload(
     first_principles_startup = {}
     first_principles_neutron = {}
     if declared_run_mode == FIRST_PRINCIPLES_MHD_MODE or backend == FIRST_PRINCIPLES_MHD_MODE:
-        first_principles = asdict(
-            first_principles_mhd_readiness_report(
-                readiness_input,
-                preset_name=str(readiness_input.get("preset_name", "")),
+        first_principles, first_principles_energy, first_principles_startup, first_principles_neutron = (
+            _package_native_first_principles_readiness(
                 validation_scope=str(
-                    validation_scope or readiness_input.get("validation_scope") or ""
+                    validation_scope
+                    or readiness_input.get("validation_scope")
+                    or "not_declared"
                 ),
-                source_scope=str(readiness_input.get("source_scope", "")),
-                source_scope_status=str(
-                    readiness_input.get("source_scope_status", "")
-                ),
-                run_mode=FIRST_PRINCIPLES_MHD_MODE,
-                execution_mode=str(
-                    readiness_input.get("execution_mode")
-                    or readiness_input.get("backend")
-                    or FIRST_PRINCIPLES_MHD_EXECUTION_MODE
+                source_scope=str(
+                    readiness_input.get("source_scope")
+                    or validation_scope
+                    or readiness_input.get("validation_scope")
+                    or "not_declared"
                 ),
             )
-        )
-        first_principles_energy = dict(
-            first_principles.get("energy_accounting_status", {})
-        )
-        first_principles_startup = dict(
-            first_principles.get("startup_initialization_status", {})
-        )
-        first_principles_neutron = dict(
-            first_principles.get("neutron_yield_authority_status", {})
         )
     digitization = scientific_closure_digitization_status([akel_fig1_draft_digitization_packet()])
     digitization_scope = str(digitization.get("validation_scope", "not_declared"))
@@ -122,3 +108,53 @@ def api_readiness_payload(
         },
         "source_blockers": sorted(set(blockers)),
     }
+
+
+def _package_native_first_principles_readiness(
+    *,
+    validation_scope: str,
+    source_scope: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    from dpf.first_principles import pf1000_akel_16kv_engineering_deck
+    from dpf.first_principles.runner import RUN_MODE, run_first_principles_3d_deck
+
+    deck = pf1000_akel_16kv_engineering_deck(n_steps=1)
+    run = run_first_principles_3d_deck(deck)
+    validation_packet = dict(run.validation_packet)
+    telemetry = run.telemetry
+    startup = dict(telemetry.get("startup", {}))
+    neutron = dict(telemetry.get("neutron_authority", {}))
+    energy = dict(run.conservation_telemetry)
+    missing_evidence = [
+        key
+        for key in (
+            "startup_bvp",
+            "power_port",
+            "dimensionality_handoff",
+            "physics_closure",
+            "limiter_readiness",
+            "same_scope_source",
+            "waveform_phase",
+            "spatial_field_temperature",
+            "neutron_authority",
+            "comparator_uq",
+            "numerical_fidelity",
+            "certificate_gate",
+            "generalization",
+        )
+        if validation_packet.get(f"{key}_status")
+    ]
+    readiness = {
+        "ready": False,
+        "status": "blocked",
+        "run_mode": FIRST_PRINCIPLES_MHD_MODE,
+        "execution_mode": RUN_MODE,
+        "source_scope": source_scope,
+        "validation_scope": validation_scope,
+        "package_native_runner": RUN_MODE,
+        "scientific_status": validation_packet.get("scientific_status"),
+        "missing_evidence": missing_evidence,
+        "blockers": list(validation_packet.get("blocking_reasons", ())),
+        "can_support_first_principles_acceptance": False,
+    }
+    return readiness, energy, startup, neutron

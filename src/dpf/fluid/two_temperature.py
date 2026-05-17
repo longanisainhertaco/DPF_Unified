@@ -29,10 +29,11 @@ import numpy as np
 from scipy.constants import Boltzmann as k_B
 
 from dpf.collision.spitzer import coulomb_log, nu_ei, relax_temperatures
+from dpf.constants import eV, m_d, m_e, m_p
 from dpf.radiation.bremsstrahlung import bremsstrahlung_power
 
-TWO_TEMPERATURE_MODEL_ROLE = "operator_split_two_temperature_scaffold"
-TWO_TEMPERATURE_SOURCE_STATUS = "equilibration_convention_source_audit_needed"
+TWO_TEMPERATURE_MODEL_ROLE = "operator_split_two_temperature_source_terms"
+TWO_TEMPERATURE_SOURCE_STATUS = "equilibration_convention_source_audit_incomplete"
 TWO_TEMPERATURE_VALIDATION_STATUS = "not_validation_evidence"
 
 
@@ -50,8 +51,9 @@ def two_temperature_model_metadata() -> dict[str, object]:
             "ohmic_heating": "Ohmic heating is deposited into electron energy.",
             "equilibration": (
                 "Electron-ion relaxation uses the shared Spitzer helper; the "
-                "public equilibration-rate convention still needs a local NRL "
-                "line-by-line audit before validation use."
+                "active arbitrary-Te/Ti convention is cross-checked against "
+                "the local NRL equal-temperature equilibration formula but "
+                "still needs same-scope review before validation use."
             ),
             "radiation_loss": (
                 "Bremsstrahlung loss is delegated to the radiation helper; line "
@@ -198,8 +200,6 @@ def compute_equilibration_source(
     where tau_eq = 1 / nu_ei. This is the standard Braginskii (1965)
     equilibration rate with mass ratio correction.
     """
-    from dpf.constants import m_d, m_e
-
     Te_safe = np.maximum(Te, 1.0)
     lnL = coulomb_log(n_e, Te_safe)
     freq_ei = nu_ei(n_e, Te_safe, lnL, Z)
@@ -208,6 +208,89 @@ def compute_equilibration_source(
     # Factor of 3 from (3/2) * 2 * (m_e/m_i) in Braginskii's formulation
     Q_ei = 3.0 * n_e * k_B * (Ti - Te) * (m_e / m_d) * freq_ei
     return Q_ei
+
+
+def nrl_equal_temperature_ei_equilibration_frequency(
+    ion_density_m3: np.ndarray,
+    temperature_K: np.ndarray,
+    *,
+    Z: float = 1.0,
+    ion_mass_kg: float = m_d,
+    coulomb_log_value: np.ndarray | float | None = None,
+) -> np.ndarray:
+    """NRL equal-temperature electron-ion thermal equilibration frequency.
+
+    Local source:
+    ``KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2996-3020``.
+    The cited NRL special case is for ``Te ~= Ti == T`` and gives
+    ``nu_e|i^epsilon / n_i = 3.2e-9 Z^2 lambda / (mu T_eV^1.5)``
+    in ``cm^3/s``.  This helper is therefore an audit/reference channel for
+    the active arbitrary-Te/Ti relaxation, not a whole-shot validation claim.
+    """
+    ni = np.asarray(ion_density_m3, dtype=float)
+    T = np.asarray(temperature_K, dtype=float)
+    if np.any(ni <= 0.0):
+        raise ValueError("ion_density_m3 must be positive")
+    if np.any(T <= 0.0):
+        raise ValueError("temperature_K must be positive")
+    if Z <= 0.0:
+        raise ValueError("Z must be positive")
+    if ion_mass_kg <= 0.0:
+        raise ValueError("ion_mass_kg must be positive")
+
+    T_eV = np.maximum(k_B * T / eV, 1.0e-300)
+    ni_cm3 = ni * 1.0e-6
+    mu = ion_mass_kg / m_p
+    if coulomb_log_value is None:
+        lnL = coulomb_log(np.maximum(Z * ni, 1.0), T)
+    else:
+        lnL = np.asarray(coulomb_log_value, dtype=float)
+    frequency = 3.2e-9 * ni_cm3 * Z * Z * lnL / (mu * T_eV**1.5)
+    return np.where(np.isfinite(frequency), frequency, 0.0)
+
+
+def equilibration_convention_audit(
+    *,
+    electron_temperature_K: np.ndarray,
+    ion_temperature_K: np.ndarray,
+    electron_density_m3: np.ndarray,
+    ion_density_m3: np.ndarray,
+    Z: float = 1.0,
+    ion_mass_kg: float = m_d,
+) -> dict[str, float | str | bool]:
+    """Compare active relaxation rate to the local NRL equal-T reference."""
+    Te = np.asarray(electron_temperature_K, dtype=float)
+    Ti = np.asarray(ion_temperature_K, dtype=float)
+    ne = np.asarray(electron_density_m3, dtype=float)
+    ni = np.asarray(ion_density_m3, dtype=float)
+    T_ref = np.maximum(0.5 * (Te + Ti), 1.0)
+    lnL = coulomb_log(ne, np.maximum(Te, 1.0))
+    active_rate = 2.0 * (m_e / ion_mass_kg) * nu_ei(ne, np.maximum(Te, 1.0), lnL, Z)
+    nrl_rate = nrl_equal_temperature_ei_equilibration_frequency(
+        ni,
+        T_ref,
+        Z=Z,
+        ion_mass_kg=ion_mass_kg,
+    )
+    ratio = np.divide(
+        active_rate,
+        nrl_rate,
+        out=np.full_like(active_rate, np.nan, dtype=float),
+        where=nrl_rate > 0.0,
+    )
+    finite_ratio = ratio[np.isfinite(ratio)]
+    max_ratio = float(np.max(finite_ratio)) if finite_ratio.size else float("nan")
+    min_ratio = float(np.min(finite_ratio)) if finite_ratio.size else float("nan")
+    return {
+        "status": "candidate_nrl_equal_temperature_equilibration_audit",
+        "source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+        "source_lines": "2996-3020",
+        "active_model": "spitzer_nu_ei_mass_ratio_temperature_relaxation",
+        "reference_model": "nrl_equal_temperature_thermal_equilibration_frequency",
+        "min_active_to_nrl_rate_ratio": min_ratio,
+        "max_active_to_nrl_rate_ratio": max_ratio,
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def compute_radiation_loss(

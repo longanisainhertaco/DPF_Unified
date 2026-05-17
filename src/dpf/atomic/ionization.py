@@ -12,12 +12,13 @@ Provides two levels of ionization modelling:
    state using Lotz ionization rates and radiative+dielectronic recombination.
    Returns spatially-resolved Z_bar(r,z) for multi-species tracking.
 
-References:
-    NRL Plasma Formulary (2019)
-    Griem, "Principles of Plasma Spectroscopy" (1997)
-    Lotz, Z. Phys. 206:205 (1967)  — empirical ionization rate
-    Burgess, ApJ 139:776 (1964)    — dielectronic recombination
-    Post et al., At. Data Nucl. Data Tables 20:397 (1977)
+Local source-truth routing:
+    KnowledgeReference/2019nrlplasma-formulary-037290d4.md
+    KnowledgeReference/an-empirical-formula-for-the-electron-impact-ionization-cross-section-b5fde85c.md
+
+The Saha and NRL recombination pieces are source-grounded engineering
+closures. The multi-Z CR table helpers retain literature formulas that still
+need per-species source packet extraction before they can support acceptance.
 """
 
 from __future__ import annotations
@@ -26,6 +27,17 @@ import numpy as np
 from numba import njit
 
 from dpf.constants import eV, h, k_B, m_e, pi
+
+IONIZATION_SOURCE_REFERENCES = {
+    "nrl_formulary": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+    "lotz_electron_impact": (
+        "KnowledgeReference/"
+        "an-empirical-formula-for-the-electron-impact-ionization-cross-section-b5fde85c.md"
+    ),
+}
+IONIZATION_SOURCE_STATUS = "source_grounded_engineering_closure_not_validation"
+IONIZATION_ACCEPTANCE_STATUS = "blocked_pending_species_table_packet_review"
+IONIZATION_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 # ---------------------------------------------------------------------------
 # Physical constants used locally

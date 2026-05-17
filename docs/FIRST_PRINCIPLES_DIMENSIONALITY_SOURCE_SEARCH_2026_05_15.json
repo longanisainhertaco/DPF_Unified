@@ -77,6 +77,23 @@
     "block total neutron authority unless thermonuclear and beam-target mechanisms are separated",
     "add tests proving a 3D runner remains non-promoting without handoff and kinetic evidence"
   ],
+  "acceptance_gate": "true_3d_runtime_channels_cannot_support_unrestricted_whole_shot_authority_until_claim_boundary_source_equivalence_same_scope_3d_evidence_mhd_to_kinetic_transfer_electron_scope_mechanism_separated_neutrons_detector_uq_hashes_and_review_pass",
+  "negative_test_policy": {
+    "axisymmetric_or_2d_promotion_rejection_required": true,
+    "missing_handoff_state_rejection_required": true,
+    "mhd_only_pinch_neutron_rejection_required": true,
+    "hybrid_without_electron_scope_rejection_required": true,
+    "m1_or_higher_mode_claim_rejection_required": true,
+    "same_scope_3d_evidence_missing_rejection_required": true,
+    "mechanism_unseparated_neutron_claim_rejection_required": true
+  },
+  "implementation_ratchet": [
+    "Emit claim_mode_status decisions.",
+    "Emit handoff_channel_status decisions.",
+    "Emit source_model_limitation_status and handoff_observable_status matrices.",
+    "Emit upstream_acceptance_gate for startup and power-port packets.",
+    "Emit acceptance_gate and negative_test_policy for dimensionality and handoff promotion."
+  ],
   "implemented_files": [
     "src/dpf/first_principles/dimensionality.py",
     "src/dpf/first_principles/runner.py",
@@ -86,6 +103,10 @@
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
       "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     }
   ],
   "next_blocker": "FP-8 physics closure packets"

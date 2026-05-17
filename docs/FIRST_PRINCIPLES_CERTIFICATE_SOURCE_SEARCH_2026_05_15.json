@@ -6,6 +6,36 @@
   "decision": "do_not_write_accepted_first_principles_certificate",
   "candidate_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
   "release_label": "engineering_candidate_not_releasable_for_first_principles_claim",
+  "release_decision": "do_not_release_first_principles_claim",
+  "acceptance_policy": {
+    "all_certificate_channels_required": true,
+    "all_upstream_packets_must_be_accepted": true,
+    "draft_candidate_blocked_or_rejected_packets_block_release": true,
+    "reduced_model_or_app_only_evidence_blocks_release": true,
+    "cross_scope_evidence_blocks_release_without_reviewed_transfer_rule": true
+  },
+  "upstream_packet_acceptance_matrix_required": [
+    "same_scope_source_packet_accepted",
+    "waveform_phase_packet_accepted",
+    "spatial_field_temperature_packet_accepted",
+    "neutron_authority_packet_accepted",
+    "comparator_uq_packet_accepted",
+    "numerical_fidelity_packet_accepted",
+    "physics_closure_packet_accepted",
+    "limiter_zero_or_physical_bounds_packet",
+    "power_port_packet_accepted",
+    "startup_packet_accepted",
+    "dimensionality_handoff_packet_accepted"
+  ],
+  "negative_test_matrix_required": [
+    "negative_test_draft_evidence",
+    "negative_test_blocked_evidence",
+    "negative_test_cross_scope_evidence",
+    "negative_test_missing_uq",
+    "negative_test_missing_review",
+    "negative_test_hidden_limiter",
+    "negative_test_app_only_or_reduced_model_fallback"
+  ],
   "missing_required_channels": [
     "run_manifest_hash",
     "evidence_packet_hashes",
@@ -75,6 +105,12 @@
     "src/dpf/first_principles/certificate_gate.py",
     "src/dpf/first_principles/runner.py",
     "tests/test_first_principles_runner.py"
+  ],
+  "implementation_ratchet": [
+    "Emit per-channel certificate_channel_status decisions.",
+    "Emit release_decision and acceptance_policy for first-principles release.",
+    "Emit upstream_packet_acceptance_matrix linking required certificate channels to concrete package-native packets.",
+    "Emit negative_test_matrix for draft, blocked, cross-scope, missing-UQ, missing-review, hidden-limiter, app-only, and reduced-model fallback evidence."
   ],
   "validated_commands": [
     "python3 -m pytest tests/test_first_principles_runner.py",

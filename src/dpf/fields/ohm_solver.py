@@ -13,13 +13,13 @@ from typing import Any
 
 import numpy as np
 
+from dpf.constants import e
 from dpf.fields.maxwell_3d import (
     EPSILON_0,
     HYBRID_PIC_3D_SOURCE,
     SPEED_OF_LIGHT,
     Maxwell3DGrid,
 )
-from dpf.constants import e as ELEMENTARY_CHARGE
 
 
 @dataclass(frozen=True)
@@ -76,7 +76,7 @@ class GeneralizedOhmSolver:
         active = ne >= density_threshold_m3
         pressure_term = np.zeros(self.grid.shape + (3,), dtype=float)
         pressure_term[active] = grad[active] / (
-            ELEMENTARY_CHARGE * ne[active, np.newaxis]
+            e * ne[active, np.newaxis]
         )
         telemetry = {
             "status": "candidate_pressure_gradient_term",
@@ -131,10 +131,10 @@ class GeneralizedOhmSolver:
             )
 
         D = 1.0 + sigma * dt_s / (2.0 * EPSILON_0)
-        alpha = sigma / (ELEMENTARY_CHARGE * ne)
+        alpha = sigma / (e * ne)
         known_velocity_like = (
             0.5 * SPEED_OF_LIGHT**2 * dt_s * curl_B
-            + Ji / (ELEMENTARY_CHARGE * ne[..., np.newaxis])
+            + Ji / (e * ne[..., np.newaxis])
         )
         A = sigma[..., np.newaxis] * (E + np.cross(known_velocity_like, B) + pressure)
 
@@ -198,7 +198,10 @@ def _solve_hall_system(
     matrix[..., 1, 2] = alpha * B[..., 0]
     matrix[..., 2, 0] = alpha * B[..., 1]
     matrix[..., 2, 1] = -alpha * B[..., 0]
-    solved = np.linalg.solve(matrix.reshape((-1, 3, 3)), A.reshape((-1, 3)))
+    solved = np.linalg.solve(
+        matrix.reshape((-1, 3, 3)),
+        A.reshape((-1, 3, 1)),
+    )
     return solved.reshape(shape + (3,))
 
 

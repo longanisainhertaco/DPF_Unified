@@ -1,0 +1,210 @@
+{
+  "date": "2026-05-16",
+  "applied": true,
+  "intake_dir": "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses",
+  "files_scanned": 7,
+  "promoted_count": 7,
+  "skipped_existing_count": 0,
+  "failed_count": 0,
+  "promoted": [
+    {
+      "path": "arwinderphdthesis.pdf",
+      "sha256": "2c7a8f4bd3b4d000638e4a7bd612a63d87cf1e179ee13365bd0dded40524b08c",
+      "title": "Comparative Study of Plasma Focus Machines",
+      "doi": "",
+      "pages": 305,
+      "nonempty_pages": 303,
+      "markdown": "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0001-0025.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0026-0050.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0051-0075.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0076-0100.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0101-0125.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0126-0150.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0151-0175.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0176-0200.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0201-0225.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0226-0250.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0251-0275.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0276-0300.md",
+        "KnowledgeReference/chunks/comparative-study-of-plasma-focus-machines-2c7a8f4b/pages-0301-0305.md"
+      ],
+      "json": "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "PhD2012AlirezaTalebitaher.pdf",
+      "sha256": "9b79429f0cc5b2b8a12e8e13c0331a61a354694bbe551eb51891a80b1d674af2",
+      "title": "Coded Aperture Imaging of Nuclear Fusion in the Plasma Focus Device",
+      "doi": "",
+      "pages": 304,
+      "nonempty_pages": 304,
+      "markdown": "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0001-0025.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0026-0050.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0051-0075.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0076-0100.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0101-0125.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0126-0150.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0151-0175.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0176-0200.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0201-0225.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0226-0250.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0251-0275.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0276-0300.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0301-0304.md"
+      ],
+      "json": "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "sawsorheoh.pdf",
+      "sha256": "ad6e93b2d85363348874702c8ff55abd73ee2037eb2e5de464853c0cbb82d096",
+      "title": "Experimental Studies of a Current-Stepped Z-Pinch",
+      "doi": "",
+      "pages": 182,
+      "nonempty_pages": 181,
+      "markdown": "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0001-0025.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0026-0050.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0051-0075.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0076-0100.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0101-0125.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0126-0150.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0151-0175.md",
+        "KnowledgeReference/chunks/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2/pages-0176-0182.md"
+      ],
+      "json": "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "ocr_text_extracted_review_needed"
+    },
+    {
+      "path": "A SerbanPhD1995.pdf",
+      "sha256": "5a19c05d03b4daf92dc6cdbcb53aecbd07a52db9939db82ff3f10136321fbdf1",
+      "title": "Anode Geometry and Focus Characteristics",
+      "doi": "",
+      "pages": 271,
+      "nonempty_pages": 271,
+      "markdown": "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0001-0025.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0026-0050.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0051-0075.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0076-0100.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0101-0125.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0126-0150.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0151-0175.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0176-0200.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0201-0225.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0226-0250.md",
+        "KnowledgeReference/chunks/anode-geometry-and-focus-characteristics-5a19c05d/pages-0251-0271.md"
+      ],
+      "json": "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "MSR PhD thesis.pdf",
+      "sha256": "1eb27545f8fbaa8798278109af2a1242eb655209617270db5b832cf6278507f5",
+      "title": "Compression Dynamics and Radiation Emission from a Deuterium Plasma Focus",
+      "doi": "",
+      "pages": 303,
+      "nonempty_pages": 303,
+      "markdown": "KnowledgeReference/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0001-0025.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0026-0050.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0051-0075.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0076-0100.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0101-0125.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0126-0150.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0151-0175.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0176-0200.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0201-0225.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0226-0250.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0251-0275.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0276-0300.md",
+        "KnowledgeReference/chunks/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545/pages-0301-0303.md"
+      ],
+      "json": "KnowledgeReference/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "PhD2010VermaRishi.pdf",
+      "sha256": "78b15cba0c57936cdfd24d2a8dc697abaff34f778a0f0a69ac741b80802536a5",
+      "title": "Construction and Optimization of Low Energy (<240J) Miniature Repetitive Plasma Focus Neutron Source",
+      "doi": "",
+      "pages": 290,
+      "nonempty_pages": 290,
+      "markdown": "KnowledgeReference/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0001-0025.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0026-0050.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0051-0075.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0076-0100.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0101-0125.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0126-0150.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0151-0175.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0176-0200.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0201-0225.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0226-0250.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0251-0275.md",
+        "KnowledgeReference/chunks/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba/pages-0276-0290.md"
+      ],
+      "json": "KnowledgeReference/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "s41598-022-19764-7.pdf",
+      "sha256": "9ff0186062bd335802e1aa5e204e040182cbee36a04b00c3c2832c2913b6cda4",
+      "title": "Bayesian inference of spectrometric data and validation with numerical simulations of plasma sheath diagnostics of a plasma focus discharge",
+      "doi": "10.1038/s41598-022-19764-7",
+      "pages": 12,
+      "nonempty_pages": 12,
+      "markdown": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    }
+  ],
+  "skipped_existing": [],
+  "failed": [],
+  "user_validation_status": "all_seven_user_verified_validated_documents",
+  "notes": "Promotion means local PDF/OCR text was extracted into KnowledgeReference markdown/JSON. It does not accept figures, tables, plotted curves, numeric targets, simulation outputs, or first-principles claims."
+}

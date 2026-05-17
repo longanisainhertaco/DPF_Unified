@@ -1,0 +1,1783 @@
+{
+  "can_support_first_principles_acceptance": false,
+  "checkpoint_restart_family_probe": {
+    "acceptance_state": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_validation_claims": false,
+      "review_decision": "checkpoint_restart_family_probe_only",
+      "validated": false
+    },
+    "all_cases_match": true,
+    "can_support_first_principles_acceptance": false,
+    "case_count": 3,
+    "cases": [
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0002.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 3,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 2,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 3,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0002.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 2497159.962110861,
+                "max_abs_power_density_W_m3": 25466981.035327587,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 2,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 2,
+              "total_time_s": 4.318165850466363e-10
+            },
+            "final_time_s": 4.318165850466363e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 4.318165850466363e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 2,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 244
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "f3eb1e96efb8e6ba3d514427223351362d17ca4f666a5a5f1352f183f1908b95",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "fb8aea6c1a205ac9577a0b05cf0721f6fcba427692c5d673a61f37310cfdab5e",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "f3eb1e96efb8e6ba3d514427223351362d17ca4f666a5a5f1352f183f1908b95",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 2,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 3,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 3,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 2,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 2,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      },
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0003.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 2,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 3,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 2,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0003.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 141752.9734223523,
+                "max_abs_power_density_W_m3": 2400233.0312753413,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 3,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 3,
+              "total_time_s": 6.477248775699544e-10
+            },
+            "final_time_s": 6.477248775699544e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 6.477248775699544e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 3,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 261
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "b5df1a0c70f24851ff284405d4debda4974a1d7176fa05c55780a5f4bbe7ee3d",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "068c3f8d0eebe8a98572c8de4418eaac11fc8e0fd212cbfb60c753a6b5874791",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "b5df1a0c70f24851ff284405d4debda4974a1d7176fa05c55780a5f4bbe7ee3d",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 3,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 2,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 2,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 3,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 3,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      },
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0004.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 1,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 4,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 1,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0004.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 14618527.477645636,
+                "max_abs_power_density_W_m3": 330567934.22256726,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 4,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 4,
+              "total_time_s": 8.636331700932726e-10
+            },
+            "final_time_s": 8.636331700932726e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 8.636331700932726e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 4,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 278
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "71ff8a31ae2729d8c131bf7beae11343ad8559513e7aa7a5a7c564000e437ac8",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "9523b7cbad169bde0d1bb288c1c9a02ac20a862d53d5808d81148724835c3b68",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "71ff8a31ae2729d8c131bf7beae11343ad8559513e7aa7a5a7c564000e437ac8",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 4,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 1,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 1,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 4,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 4,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      }
+    ],
+    "checkpoint_dir": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16",
+    "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+    "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+    "matching_case_count": 3,
+    "remaining_for_acceptance": [
+      "whole_shot_horizon_restart_family",
+      "accepted_nonbitwise_tolerances_if_backend_changes",
+      "limiter_zero_interpretation_for_every_restart_case",
+      "independent_engineering_review"
+    ],
+    "run_intent": "experimental_multi_offset_checkpoint_restart_family",
+    "source_truth_policy": {
+      "physics_claim_authority": "local_knowledge_reference_only",
+      "restart_family_outputs_are_troubleshooting_only": true,
+      "validation_promotion_allowed": false
+    },
+    "split_after_steps": [
+      2,
+      3,
+      4
+    ],
+    "status": "experimental_checkpoint_restart_family_probe_not_validation",
+    "total_steps": 5
+  },
+  "command_status": "experimental_checkpoint_restart_family_engineering_candidate_run",
+  "experimental_checkpoint_restart_family": {
+    "acceptance_state": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_validation_claims": false,
+      "review_decision": "checkpoint_restart_family_probe_only",
+      "validated": false
+    },
+    "all_cases_match": true,
+    "can_support_first_principles_acceptance": false,
+    "case_count": 3,
+    "cases": [
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0002.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 3,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 2,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 3,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0002.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 2497159.962110861,
+                "max_abs_power_density_W_m3": 25466981.035327587,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 2,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 2,
+              "total_time_s": 4.318165850466363e-10
+            },
+            "final_time_s": 4.318165850466363e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 4.318165850466363e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 2,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 244
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "f3eb1e96efb8e6ba3d514427223351362d17ca4f666a5a5f1352f183f1908b95",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "fb8aea6c1a205ac9577a0b05cf0721f6fcba427692c5d673a61f37310cfdab5e",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "f3eb1e96efb8e6ba3d514427223351362d17ca4f666a5a5f1352f183f1908b95",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 2,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 3,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 3,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 2,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 2,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      },
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0003.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 2,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 3,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 2,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0003.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 141752.9734223523,
+                "max_abs_power_density_W_m3": 2400233.0312753413,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 3,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 3,
+              "total_time_s": 6.477248775699544e-10
+            },
+            "final_time_s": 6.477248775699544e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 6.477248775699544e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 3,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 261
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "b5df1a0c70f24851ff284405d4debda4974a1d7176fa05c55780a5f4bbe7ee3d",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "068c3f8d0eebe8a98572c8de4418eaac11fc8e0fd212cbfb60c753a6b5874791",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "b5df1a0c70f24851ff284405d4debda4974a1d7176fa05c55780a5f4bbe7ee3d",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 3,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 2,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 2,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 3,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 3,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      },
+      {
+        "acceptance_state": {
+          "can_support_first_principles_acceptance": false,
+          "can_support_validation_claims": false,
+          "review_decision": "checkpoint_restart_probe_only",
+          "validated": false
+        },
+        "can_support_first_principles_acceptance": false,
+        "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0004.npz",
+        "checkpoint_restart": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 1,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 4,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 1,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        },
+        "checkpoint_roundtrip": {
+          "acceptance_state": {
+            "can_support_first_principles_acceptance": false,
+            "can_support_validation_claims": false,
+            "review_decision": "terminal_checkpoint_roundtrip_only",
+            "validated": false
+          },
+          "array_count": 19,
+          "can_support_first_principles_acceptance": false,
+          "checkpoint_format": "npz",
+          "checkpoint_path": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16/checkpoint_restart_split_0004.npz",
+          "metadata": {
+            "continuation_state": {
+              "can_support_checkpoint_restart_acceptance": false,
+              "has_lagged_field_work": true,
+              "lagged_field_work": {
+                "can_support_first_principles_acceptance": false,
+                "cell_volume_m3": 0.0017091250000000004,
+                "domain": "full_cartesian_grid_volume",
+                "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+                "j_dot_e_power_W": 14618527.477645636,
+                "max_abs_power_density_W_m3": 330567934.22256726,
+                "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+                "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+                "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+                "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+                "time_centering": "begin_step_E_with_midpoint_candidate_current"
+              },
+              "segment_steps_completed": 4,
+              "status": "experimental_live_continuation_state_not_restart_acceptance",
+              "step_index_offset": 0,
+              "total_steps_completed": 4,
+              "total_time_s": 8.636331700932726e-10
+            },
+            "final_time_s": 8.636331700932726e-10,
+            "has_circuit_state": true,
+            "has_electron_energy": true,
+            "has_ionization_charge_state": true,
+            "kinetic_yield_state": {
+              "cumulative_neutrons": 0.0,
+              "time_s": 8.636331700932726e-10
+            },
+            "manifest_sha256": null,
+            "n_steps_completed": 4,
+            "particle_species": [
+              {
+                "charge": 1.602176634e-19,
+                "index": 0,
+                "mass": 3.344e-27,
+                "name": "D",
+                "particle_count": 278
+              }
+            ],
+            "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+            "telemetry_status": "candidate_engineering_3d_hybrid_pic_simulation"
+          },
+          "read_content_sha256": "71ff8a31ae2729d8c131bf7beae11343ad8559513e7aa7a5a7c564000e437ac8",
+          "restart_acceptance": {
+            "can_restart_live_runner_from_checkpoint": false,
+            "continued_run_equivalence_available": false,
+            "status": "checkpoint_roundtrip_only_no_live_restart",
+            "still_required": [
+              "load_checkpoint_into_first_principles_runner_state",
+              "restore_lagged_field_work_and_circuit_sequence_state",
+              "continue_from_multiple_restart_offsets",
+              "compare_against_uninterrupted_terminal_state_fingerprint"
+            ]
+          },
+          "source_references": [
+            {
+              "lines": "87-88",
+              "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+              "role": "checkpoint_restart_deterministic_comparison_requirement"
+            },
+            {
+              "lines": "412-414",
+              "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+              "role": "restart_reproducibility_acceptance_fields"
+            },
+            {
+              "lines": "60-85",
+              "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+              "role": "restart_hash_and_artifact_requirement"
+            }
+          ],
+          "source_truth_policy": {
+            "checkpoint_artifact_is_restart_plumbing_only": true,
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "validation_promotion_allowed": false
+          },
+          "status": "experimental_state_checkpoint_roundtrip_not_restart_acceptance",
+          "terminal_state_fingerprint_sha256": "9523b7cbad169bde0d1bb288c1c9a02ac20a862d53d5808d81148724835c3b68",
+          "terminal_state_fingerprint_status": "experimental_terminal_state_fingerprint_not_restart_acceptance",
+          "write_content_sha256": "71ff8a31ae2729d8c131bf7beae11343ad8559513e7aa7a5a7c564000e437ac8",
+          "write_read_hashes_match": true
+        },
+        "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+        "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+        "first_segment_steps_completed": 4,
+        "observable_comparisons": {
+          "candidate_cumulative_neutrons": {
+            "absolute_delta": 0.0,
+            "left": 0.0,
+            "right": 0.0
+          },
+          "final_circuit_current_A": {
+            "absolute_delta": 0.0,
+            "left": 4376.544376849281,
+            "right": 4376.544376849281
+          },
+          "final_field_energy_J": {
+            "absolute_delta": 0.0,
+            "left": 0.25771076839392254,
+            "right": 0.25771076839392254
+          },
+          "final_particle_count": {
+            "absolute_delta": 0.0,
+            "left": 295.0,
+            "right": 295.0
+          },
+          "final_time_s": {
+            "absolute_delta": 0.0,
+            "left": 1.0795414626165907e-09,
+            "right": 1.0795414626165907e-09
+          }
+        },
+        "restart_segment_steps_completed": 1,
+        "restart_state": {
+          "kinetic_yield_state_loaded": true,
+          "lagged_field_work_loaded": true,
+          "loaded_completed_steps": 5,
+          "previous_total_current_loaded": true,
+          "second_segment_continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 1,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 4,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          }
+        },
+        "restart_total_steps_completed": 5,
+        "run_intent": "experimental_checkpoint_loaded_restart_troubleshooting",
+        "source_references": [
+          {
+            "lines": "412-414",
+            "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+            "role": "restart_reproducibility_acceptance_fields"
+          },
+          {
+            "lines": "60-85",
+            "path": "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md",
+            "role": "checkpoint_restart_packet_requirement"
+          },
+          {
+            "lines": "87-88",
+            "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+            "role": "deterministic_checkpoint_restart_requirement"
+          }
+        ],
+        "source_truth_policy": {
+          "checkpoint_restart_outputs_are_troubleshooting_only": true,
+          "physics_claim_authority": "local_knowledge_reference_only",
+          "validation_promotion_allowed": false
+        },
+        "split_after_steps": 4,
+        "state_fingerprints_match": true,
+        "status": "experimental_checkpoint_restart_probe_not_validation",
+        "total_steps": 5,
+        "tracked_observables_match_exactly": true,
+        "uninterrupted": {
+          "candidate_cumulative_neutrons": 0.0,
+          "continuation_state": {
+            "can_support_checkpoint_restart_acceptance": false,
+            "has_lagged_field_work": true,
+            "lagged_field_work": {
+              "can_support_first_principles_acceptance": false,
+              "cell_volume_m3": 0.0017091250000000004,
+              "domain": "full_cartesian_grid_volume",
+              "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+              "j_dot_e_power_W": 12037267.133726222,
+              "max_abs_power_density_W_m3": 444626001.5638053,
+              "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+              "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+              "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+              "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+              "time_centering": "begin_step_E_with_midpoint_candidate_current"
+            },
+            "segment_steps_completed": 5,
+            "status": "experimental_live_continuation_state_not_restart_acceptance",
+            "step_index_offset": 0,
+            "total_steps_completed": 5,
+            "total_time_s": 1.0795414626165907e-09
+          },
+          "final_circuit_current_A": 4376.544376849281,
+          "final_field_energy_J": 0.25771076839392254,
+          "final_particle_count": 295,
+          "final_time_s": 1.0795414626165907e-09,
+          "finite_state_all": true,
+          "limiter_zero_probe": {
+            "review_required": [
+              "resolve_acceptance_blocking_conductivity_ohmic_cfl_limited_steps",
+              "review_method_limiter_nondominance_marder_correction_steps",
+              "attach_source_backed_physical_bounds_or_method_proofs",
+              "run_backend_precision_parity_matrix",
+              "independent_engineering_review_decision"
+            ],
+            "status": "experimental_limiter_zero_probe_not_validation",
+            "total_acceptance_blocking_activations": 5,
+            "zero_acceptance_blockers_observed": false
+          },
+          "n_steps_completed": 5,
+          "state_fingerprint_sha256": "1f113f1765586d5f3c05984e22b369c9168c48d16e2b6091614b0f33385c3a06",
+          "status": "candidate_engineering_3d_hybrid_pic_simulation"
+        }
+      }
+    ],
+    "checkpoint_dir": "results/experimental_checkpoint_restart_family_pf1000_ns_2026_05_16",
+    "deck_name": "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
+    "device_name": "PF-1000/Akel shot 12581 engineering candidate",
+    "matching_case_count": 3,
+    "remaining_for_acceptance": [
+      "whole_shot_horizon_restart_family",
+      "accepted_nonbitwise_tolerances_if_backend_changes",
+      "limiter_zero_interpretation_for_every_restart_case",
+      "independent_engineering_review"
+    ],
+    "run_intent": "experimental_multi_offset_checkpoint_restart_family",
+    "source_truth_policy": {
+      "physics_claim_authority": "local_knowledge_reference_only",
+      "restart_family_outputs_are_troubleshooting_only": true,
+      "validation_promotion_allowed": false
+    },
+    "split_after_steps": [
+      2,
+      3,
+      4
+    ],
+    "status": "experimental_checkpoint_restart_family_probe_not_validation",
+    "total_steps": 5
+  },
+  "reduced_models_used": false,
+  "scientific_status": "engineering_candidate_not_validation",
+  "tool": "dpf experimental-checkpoint-restart-family"
+}

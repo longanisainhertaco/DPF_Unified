@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Dense Plasma Focus simulator — unified multi-physics code"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     {name = "DPF Team"},
 ]
@@ -17,8 +17,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Physics",
 ]
@@ -78,6 +76,9 @@ docs = [
 traceability = [
     "doorstop>=3.1",
 ]
+audit = [
+    "plasmapy>=2026.2; python_version >= '3.12'",
+]
 
 [project.urls]
 Homepage = "https://github.com/anthonyzamora/dpf-unified"
@@ -92,7 +93,7 @@ dpf = "dpf.cli.main:cli"
 where = ["src"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -110,7 +111,7 @@ ignore = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true

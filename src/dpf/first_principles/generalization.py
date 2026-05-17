@@ -64,6 +64,32 @@ GENERALIZATION_SOURCE_REFS = (
         "lines": "46-55,64-78",
         "role": "faeton_i_second_device_voltage_yield_anisotropy_and_ion_beam_context",
     },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md"
+        ),
+        "lines": "232-239,305-320,331-354,403-438,526-898,917-957,976-1006,1170-1202",
+        "role": "soto_2010_cchen_device_configs_aggregate_targets_and_scaling_matrix",
+    },
+    {
+        "path": "KnowledgeReference/original-research-f7894f85.md",
+        "lines": "30-45,108-170,200-215,269-288,300-323,365-394",
+        "role": "user_validated_ir_mpf100_second_scope_deck_and_neutron_context",
+    },
+    {
+        "path": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
+        "lines": "38-41,66-91,103-147,161-200,210-237,291-295",
+        "role": "user_validated_compact_chinese_dpf_second_scope_deck_and_tof_context",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md"
+        ),
+        "lines": "1196-1209,1382-1496,1697-1702,1857-1901,3367-3439",
+        "role": "user_validated_historical_dpf_startup_diagnostic_design_scope",
+    },
 )
 
 REQUIRED_GENERALIZATION_CHANNELS = (
@@ -90,6 +116,24 @@ REQUIRED_GENERALIZATION_CHANNELS = (
 )
 
 CANDIDATE_SECOND_SCOPES = (
+    {
+        "scope_id": "soto2010_cchen_pf400j_pf50j_speed_nanofocus_matrix",
+        "device_family": "CCHEN PF-400J/PF-50J/SPEED/Nanofocus",
+        "source_status": "candidate_requirement_material_not_acceptance",
+        "source_supported_channels": (
+            "machine_geometry_and_bank_configuration",
+            "aggregate_peak_current_pressure_and_energy_context",
+            "pf400j_pf50j_neutron_yield_density_line_density_and_energy_context",
+            "pf400j_angular_distribution_context",
+            "cross_device_drive_and_energy_density_scaling_matrix",
+            "pinch_radius_density_magnetic_field_velocity_and_temperature_sanity_bounds",
+        ),
+        "blocks": (
+            "table targets are not yet extracted into accepted typed evidence",
+            "aggregate observations do not provide a complete same-shot time-history packet",
+            "requires independent FP-1 through FP-14 packet chain and certificate for the selected second scope",
+        ),
+    },
     {
         "scope_id": "pf1000_full_energy_anisotropy_450_500kj_3p5torr",
         "device_family": "PF-1000",
@@ -122,6 +166,39 @@ CANDIDATE_SECOND_SCOPES = (
         "blocks": (
             "source currently leans on Lee-model comparisons rather than a complete first-principles certificate",
             "requires typed extraction into FP-1 through FP-14 gates and independent review",
+        ),
+    },
+    {
+        "scope_id": "ir_mpf_100_115kj_second_device_scope",
+        "device_family": "IR-MPF-100",
+        "source_status": "user_validated_source_target_material_not_acceptance",
+        "source_supported_channels": (
+            "144uf_40kv_115kj_bank",
+            "1p224ma_theoretical_current_and_120nh_total_inductance",
+            "mather_geometry_anode_cathode_insulator_deck",
+            "current_voltage_hard_xray_and_activation_counter_context",
+            "preliminary_neutron_yield_and_double_pinch_context",
+        ),
+        "blocks": (
+            "measured waveforms are not digitized with uncertainties",
+            "neutron data are scalar/preliminary and not mechanism separated",
+            "requires full FP-1 through FP-14 packet extraction and review",
+        ),
+    },
+    {
+        "scope_id": "compact_chinese_dpf_400ka_second_device_scope",
+        "device_family": "compact Mather-type DPF neutron source",
+        "source_status": "user_validated_source_target_material_not_acceptance",
+        "source_supported_channels": (
+            "40uf_10_20kv_bank_and_400ka_current_context",
+            "17mm_anode_40mm_outer_radius_8rod_cathode_geometry",
+            "tof_neutron_detector_and_fwhm_context",
+            "pressure_yield_and_voltage_threshold_context",
+        ),
+        "blocks": (
+            "translation and visual table review still required for target extraction",
+            "pressure-yield and current waveform curves are not digitized",
+            "requires full FP-1 through FP-14 packet extraction and review",
         ),
     },
     {
@@ -185,6 +262,23 @@ BLOCKING_UPSTREAM_STATUSES = (
     "candidate_engineering_power_port_not_validation",
 )
 
+SECOND_SCOPE_REQUIRED_GATE_IDS = (
+    "FP-1",
+    "FP-2",
+    "FP-3",
+    "FP-4",
+    "FP-5",
+    "FP-6",
+    "FP-7",
+    "FP-8",
+    "FP-9",
+    "FP-10",
+    "FP-11",
+    "FP-12",
+    "FP-13",
+    "FP-14",
+)
+
 
 def build_generalized_dpf_machine_packet(
     *,
@@ -214,11 +308,27 @@ def build_generalized_dpf_machine_packet(
         "required_channels": list(REQUIRED_GENERALIZATION_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "generalization_channel_status": _generalization_channel_statuses(
+            accepted=accepted,
+            missing=missing,
+        ),
+        "claim_policy": {
+            "single_scope_is_not_generalized": True,
+            "accepted_primary_scope_certificate_required": True,
+            "accepted_second_scope_certificate_required": True,
+            "second_scope_must_repeat_full_fp_1_through_fp_14_chain": True,
+            "cross_scope_transfer_or_scale_review_required": True,
+        },
+        "required_second_scope_gate_ids": list(SECOND_SCOPE_REQUIRED_GATE_IDS),
         "candidate_second_scopes": [
             _coerce_candidate_scope(scope) for scope in CANDIDATE_SECOND_SCOPES
         ],
+        "candidate_second_scope_decisions": [
+            _candidate_second_scope_decision(scope) for scope in CANDIDATE_SECOND_SCOPES
+        ],
         "upstream_packet_statuses": upstream_statuses,
         "upstream_generalization_blockers": upstream_blockers,
+        "upstream_acceptance_gate": _upstream_acceptance_gate(upstream_statuses),
         "source_references": list(GENERALIZATION_SOURCE_REFS),
         "can_claim_generalized_dpf_machine": False,
         "can_support_first_principles_acceptance": False,
@@ -234,6 +344,40 @@ def _upstream_statuses(
             None if packet.get("status") is None else str(packet["status"])
         )
     return statuses
+
+
+def _generalization_channel_statuses(
+    *,
+    accepted: set[str],
+    missing: set[str],
+) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for channel in REQUIRED_GENERALIZATION_CHANNELS:
+        if channel in accepted:
+            statuses[channel] = "accepted_generalization_channel"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _upstream_acceptance_gate(
+    upstream_statuses: Mapping[str, str | None],
+) -> dict[str, Any]:
+    blockers = {
+        name: status
+        for name, status in upstream_statuses.items()
+        if _status_blocks_generalization(status)
+    }
+    return {
+        "status": "blocked_by_primary_scope_packets" if blockers else "ready",
+        "blocking_upstream_packets": blockers,
+        "acceptance_rule": (
+            "primary_scope_certificate_and_all_prior_packets_must_be_accepted_"
+            "before_generalization_can_start"
+        ),
+    }
 
 
 def _status_blocks_generalization(status: str | None) -> bool:
@@ -254,6 +398,18 @@ def _coerce_candidate_scope(scope: Mapping[str, Any]) -> dict[str, Any]:
         "scope_id": str(scope["scope_id"]),
         "device_family": str(scope["device_family"]),
         "source_status": str(scope["source_status"]),
+        "source_supported_channels": list(scope["source_supported_channels"]),
+        "blocks": list(scope["blocks"]),
+    }
+
+
+def _candidate_second_scope_decision(scope: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "scope_id": str(scope["scope_id"]),
+        "device_family": str(scope["device_family"]),
+        "decision": "candidate_requirement_material_not_acceptance",
+        "required_gate_ids": list(SECOND_SCOPE_REQUIRED_GATE_IDS),
+        "must_write_independent_certificate": True,
         "source_supported_channels": list(scope["source_supported_channels"]),
         "blocks": list(scope["blocks"]),
     }

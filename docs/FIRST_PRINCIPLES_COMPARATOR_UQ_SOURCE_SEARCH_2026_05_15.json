@@ -12,6 +12,23 @@
     "scintillator_detector_geometry_text",
     "activation_counter_calibration_text"
   ],
+  "acceptance_gate": "text_uncertainty_other_scope_sensitivity_and_partial_targets_cannot_support_comparator_acceptance_until_same_scope_targets_output_mapping_metrics_tolerances_uq_propagation_reviews_and_negative_controls_pass",
+  "cross_scope_policy": {
+    "status": "blocked_without_reviewed_transfer_rule",
+    "other_scope_sources_usable_for": "requirements_or_schema_only",
+    "can_use_other_scope_for_acceptance": false,
+    "required_transfer_rule_channels": [
+      "source_scope_identity",
+      "target_scope_identity",
+      "changed_device_or_shot_parameters",
+      "observable_transfer_equations_or_bounds",
+      "metric_transfer_or_rejection_rule",
+      "tolerance_transfer_or_rejection_rule",
+      "uncertainty_inflation_rule",
+      "review_certificate",
+      "negative_test_cross_scope_promotion"
+    ]
+  },
   "missing_required_channels": [
     "accepted_same_scope_target_registry",
     "source_hashes_and_review_status",
@@ -91,6 +108,14 @@
     "src/dpf/first_principles/comparator_uq.py",
     "src/dpf/first_principles/runner.py",
     "tests/test_first_principles_runner.py"
+  ],
+  "implementation_ratchet": [
+    "Scope-gate validation targets before accepting comparator/UQ observables.",
+    "Emit per-channel comparator_uq_channel_status decisions.",
+    "Emit observable_group_status for every comparator group.",
+    "Emit text_supported_not_acceptance_channels for Akel scalar and timing uncertainty text.",
+    "Emit upstream_acceptance_gate so candidate or blocked upstream packets keep comparator authority blocked.",
+    "Emit cross_scope_policy so other-scope sensitivity and detector methodology remain requirements/schema-only without reviewed transfer rules."
   ],
   "validated_commands": [
     "python3 -m pytest tests/test_first_principles_runner.py",

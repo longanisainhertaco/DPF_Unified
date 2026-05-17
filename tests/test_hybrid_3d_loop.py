@@ -9,6 +9,7 @@ from dpf.fields.hybrid_loop import (
     ion_collision_loop_candidate_evidence,
     source_ordered_loop_candidate_evidence,
 )
+from dpf.fields.ionization_transport import DeuteriumIonizationTransport
 from dpf.fields.kinetic_yield import KineticIonYieldHistory
 from dpf.fields.maxwell_3d import Maxwell3DGrid
 from dpf.fields.particle_boundaries import ParticleAbsorbingBoundaries
@@ -242,6 +243,13 @@ def test_hybrid_loop_can_apply_candidate_electron_energy_update() -> None:
     assert result.telemetry.electron_energy["status"] == (
         "candidate_engineering_electron_energy_closure"
     )
+    assert result.telemetry.electron_energy["heat_flux"]["status"] == (
+        "candidate_braginskii_anisotropic_heat_flux_applied"
+    )
+    assert result.telemetry.electron_energy["equilibration_audit"]["status"] == (
+        "candidate_nrl_equal_temperature_equilibration_audit"
+    )
+    assert result.telemetry.electron_energy["include_heat_flux"] is True
     assert result.telemetry.temperature_authority["status"] == (
         "candidate_separate_te_still_blocked"
     )
@@ -249,6 +257,101 @@ def test_hybrid_loop_can_apply_candidate_electron_energy_update() -> None:
     assert np.mean(result.electron_energy.electron_temperature_K) > np.mean(
         electron_state.electron_temperature_K
     )
+
+
+def test_hybrid_loop_can_apply_candidate_ionization_transport() -> None:
+    grid = _grid()
+    electron_closure = ElectronEnergyClosure(grid)
+    ionization_transport = DeuteriumIonizationTransport(grid)
+    loop = HybridPIC3DLoop(
+        grid,
+        electron_energy_closure=electron_closure,
+        ionization_transport=ionization_transport,
+    )
+    ne = np.full(grid.shape, 1.0e20)
+    electron_state = electron_closure.initialize(
+        electron_temperature_K=4.0e5,
+        ion_temperature_K=1.0e5,
+        electron_density_m3=ne,
+    )
+    ionization_state = ionization_transport.initialize(
+        total_deuterium_density_m3=ne,
+        ionization_fraction=0.01,
+    )
+
+    result = loop.step(
+        loop.field_stepper.maxwell.empty_state(),
+        _pic(grid, use_esirkepov=False),
+        dt_s=1.0e-13,
+        sigma0_S_m=1.0e3,
+        background_density_m3=1.0e20,
+        ohmic_cfl_safety=1.0,
+        density_floor_m3=1.0e20,
+        include_hall=False,
+        electron_energy_state=electron_state,
+        ionization_state=ionization_state,
+        use_source_backed_conductivity=True,
+        mass_density_kg_m3=ne * M_D,
+        plasma_velocity_m_s=np.zeros(grid.shape + (3,)),
+        electron_temperature_floor_K=10.0,
+    )
+
+    assert result.ionization_charge_state is not None
+    assert result.telemetry.ionization_charge_state is not None
+    assert result.telemetry.ionization_charge_state["status"] == (
+        "candidate_deuterium_charge_state_transport"
+    )
+    assert result.telemetry.ionization_charge_state["particle_source"]["status"] == (
+        "candidate_ionization_pic_particle_source"
+    )
+    assert result.telemetry.source_backed_transport["status"] == (
+        "candidate_source_backed_partial_ionized_conductivity"
+    )
+    assert result.telemetry.field_step["conductivity"][
+        "density_blend_applied"
+    ] is False
+    assert result.telemetry.ionization_charge_state[
+        "can_support_first_principles_acceptance"
+    ] is False
+    assert np.mean(result.ionization_charge_state.mean_charge_state) >= np.mean(
+        ionization_state.mean_charge_state
+    )
+
+
+def test_electron_energy_closure_applies_candidate_braginskii_heat_flux() -> None:
+    grid = _grid()
+    closure = ElectronEnergyClosure(grid)
+    ne = np.full(grid.shape, 1.0e20)
+    Te = np.full(grid.shape, 1.0e5)
+    Te[2, 2, 2] = 2.0e5
+    electron_state = closure.initialize(
+        electron_temperature_K=Te,
+        ion_temperature_K=Te,
+        electron_density_m3=ne,
+    )
+
+    next_state, telemetry = closure.step_sources(
+        electron_state,
+        electron_density_m3=ne,
+        ion_density_m3=ne,
+        mass_density_kg_m3=ne * M_D,
+        velocity_m_s=np.zeros(grid.shape + (3,)),
+        resistivity_ohm_m=0.0,
+        current_A_m2=np.zeros(grid.shape + (3,)),
+        dt_s=1.0e-10,
+        gaunt_factor=0.0,
+        temperature_floor_K=10.0,
+        magnetic_field_T=np.zeros(grid.shape + (3,)),
+    )
+
+    assert telemetry.heat_flux["status"] == (
+        "candidate_braginskii_anisotropic_heat_flux_applied"
+    )
+    assert telemetry.heat_flux["applied"] is True
+    assert telemetry.include_heat_flux is True
+    assert telemetry.can_support_first_principles_acceptance is False
+    assert next_state.electron_temperature_K[2, 2, 2] < Te[2, 2, 2]
+    assert next_state.electron_temperature_K[2, 2, 1] > Te[2, 2, 1]
 
 
 def test_hybrid_loop_blocks_extended_ohm_temperature_authority_without_te() -> None:
@@ -420,7 +523,15 @@ def test_hybrid_loop_can_run_candidate_source_ordered_eq7_update() -> None:
         "candidate_engineering_predictor_particle_rebuild"
     )
     assert workflow["predictor_particle_rebuild"]["feeds_corrected_current"] is True
-    assert "candidate_predictor_particle_rebuild" in workflow["stages_executed"]
+    assert (
+        "runtime_predictor_particle_rebuild_executed_review_required"
+        in workflow["stages_executed"]
+    )
+    assert (
+        "long_run_source_ordered_stability_review_required"
+        in workflow["review_required_stages"]
+    )
+    assert "same_scope_3d_validation" in workflow["acceptance_blocking_stages"]
     assert "electron_density_from_x_n_plus_half" in workflow["stages_executed"]
     assert result.telemetry.deposition_method == "esirkepov"
     assert np.max(np.abs(pic.species[0].positions - before_positions)) > 0.0

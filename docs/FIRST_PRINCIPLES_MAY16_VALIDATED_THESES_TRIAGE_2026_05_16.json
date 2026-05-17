@@ -1,0 +1,126 @@
+{
+  "date": "2026-05-16",
+  "batch_id": "user_validated_thesis_pdf_batch_2026_05_16",
+  "source_status": "all_seven_user_verified_validated_documents_promoted_to_knowledge_reference",
+  "source_ingestion_ledger": {
+    "markdown": "docs/USER_VALIDATED_THESES_KR_PROMOTION_2026_05_16.md",
+    "json": "docs/USER_VALIDATED_THESES_KR_PROMOTION_2026_05_16.json",
+    "promoted_count": 7,
+    "skipped_existing_count": 0,
+    "failed_count": 0
+  },
+  "accepted_for_whole_shot_first_principles": false,
+  "source_targets_helper": "src/dpf/first_principles/source_targets.py::may16_validated_thesis_source_targets",
+  "intermediate_extraction_dir": "tmp/pdfs/may16_verified_batch",
+  "documents": [
+    {
+      "source_id": "arwinder_2015_comparative_pf_machines",
+      "path": "/Users/anthonyzamora/Downloads/arwinderphdthesis.pdf",
+      "sha256": "2c7a8f4bd3b4d000638e4a7bd612a63d87cf1e179ee13365bd0dded40524b08c",
+      "title": "Comparative Study of Plasma Focus Machines",
+      "knowledge_reference": "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.md",
+      "document_type": "phd_thesis",
+      "pages": 305,
+      "useful_gate_ids": ["FP-10", "FP-15"],
+      "primary_use": "44-machine deck and waveform map with Lee-model baseline boundaries",
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "talebitaher_2012_nx2_coded_aperture_imaging",
+      "path": "/Users/anthonyzamora/Downloads/PhD2012AlirezaTalebitaher.pdf",
+      "sha256": "9b79429f0cc5b2b8a12e8e13c0331a61a354694bbe551eb51891a80b1d674af2",
+      "title": "Coded Aperture Imaging of Nuclear Fusion in the Plasma Focus Device",
+      "knowledge_reference": "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.md",
+      "document_type": "phd_thesis",
+      "pages": 304,
+      "useful_gate_ids": ["FP-11", "FP-12", "FP-13", "FP-15"],
+      "primary_use": "NX2 fusion-source imaging, CR-39 protons, beryllium detector response, anisotropy",
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "saw_1990_current_stepped_z_pinch",
+      "path": "/Users/anthonyzamora/Downloads/sawsorheoh.pdf",
+      "sha256": "ad6e93b2d85363348874702c8ff55abd73ee2037eb2e5de464853c0cbb82d096",
+      "title": "Experimental Studies of a Current-Stepped Z-Pinch",
+      "knowledge_reference": "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.md",
+      "document_type": "phd_thesis",
+      "pages": 182,
+      "useful_gate_ids": ["FP-5", "FP-6", "FP-8"],
+      "primary_use": "current-step driver, radial compression, shock-jump/Saha/gamma-varying model context",
+      "ocr_artifacts": [
+        "tmp/pdfs/may16_verified_batch/sawsorheoh_ocr.txt",
+        "tmp/pdfs/may16_verified_batch/sawsorheoh_ocr.pdf"
+      ],
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "serban_1995_anode_geometry_focus_characteristics",
+      "path": "/Users/anthonyzamora/Downloads/A SerbanPhD1995.pdf",
+      "sha256": "5a19c05d03b4daf92dc6cdbcb53aecbd07a52db9939db82ff3f10136321fbdf1",
+      "title": "Anode Geometry and Focus Characteristics",
+      "knowledge_reference": "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.md",
+      "document_type": "phd_thesis",
+      "pages": 271,
+      "useful_gate_ids": ["FP-5", "FP-8", "FP-11", "FP-12", "FP-15"],
+      "primary_use": "anode geometry, sheath velocity, pinch lifetime, plasma impedance, x-ray/neutron diagnostics",
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "rafique_2000_deuterium_pf_compression_radiation",
+      "path": "/Users/anthonyzamora/Downloads/MSR PhD thesis.pdf",
+      "sha256": "1eb27545f8fbaa8798278109af2a1242eb655209617270db5b832cf6278507f5",
+      "title": "Compression Dynamics and Radiation Emission from a Deuterium Plasma Focus",
+      "knowledge_reference": "KnowledgeReference/compression-dynamics-and-radiation-emission-from-a-deuterium-plasma-focus-1eb27545.md",
+      "document_type": "phd_thesis",
+      "pages": 303,
+      "useful_gate_ids": ["FP-11", "FP-12", "FP-13", "FP-15"],
+      "primary_use": "deuteron spectra, neutron energy/anisotropy, shadowgraph pinch dynamics, instability growth",
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "verma_2010_miniature_repetitive_pf_neutron_source",
+      "path": "/Users/anthonyzamora/Downloads/PhD2010VermaRishi.pdf",
+      "sha256": "78b15cba0c57936cdfd24d2a8dc697abaff34f778a0f0a69ac741b80802536a5",
+      "title": "Construction and Optimization of Low Energy (<240J) Miniature Repetitive Plasma Focus Neutron Source",
+      "knowledge_reference": "KnowledgeReference/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba.md",
+      "document_type": "phd_thesis",
+      "pages": 290,
+      "useful_gate_ids": ["FP-8", "FP-10", "FP-12", "FP-15"],
+      "primary_use": "FMPF decks, repetition-rate behavior, electrode aging, neutron timing and scaling baseline",
+      "accepted_for_validation": false
+    },
+    {
+      "source_id": "avaria_2022_bayesian_sheath_diagnostics",
+      "path": "/Users/anthonyzamora/Downloads/s41598-022-19764-7.pdf",
+      "sha256": "9ff0186062bd335802e1aa5e204e040182cbee36a04b00c3c2832c2913b6cda4",
+      "title": "Bayesian inference of spectrometric data and validation with numerical simulations of plasma sheath diagnostics of a plasma focus discharge",
+      "knowledge_reference": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
+      "document_type": "peer_reviewed_article",
+      "pages": 12,
+      "useful_gate_ids": ["FP-5", "FP-11", "FP-13"],
+      "primary_use": "Stark-broadened H-alpha rundown density, Bayesian UQ, sheath velocity and temperature target candidate",
+      "accepted_for_validation": false
+    }
+  ],
+  "gate_coverage_candidates": {
+    "FP-5": ["saw_1990_current_stepped_z_pinch", "serban_1995_anode_geometry_focus_characteristics", "avaria_2022_bayesian_sheath_diagnostics"],
+    "FP-6": ["saw_1990_current_stepped_z_pinch"],
+    "FP-8": ["saw_1990_current_stepped_z_pinch", "serban_1995_anode_geometry_focus_characteristics", "verma_2010_miniature_repetitive_pf_neutron_source"],
+    "FP-10": ["arwinder_2015_comparative_pf_machines", "verma_2010_miniature_repetitive_pf_neutron_source"],
+    "FP-11": ["talebitaher_2012_nx2_coded_aperture_imaging", "serban_1995_anode_geometry_focus_characteristics", "rafique_2000_deuterium_pf_compression_radiation", "avaria_2022_bayesian_sheath_diagnostics"],
+    "FP-12": ["talebitaher_2012_nx2_coded_aperture_imaging", "serban_1995_anode_geometry_focus_characteristics", "rafique_2000_deuterium_pf_compression_radiation", "verma_2010_miniature_repetitive_pf_neutron_source"],
+    "FP-13": ["talebitaher_2012_nx2_coded_aperture_imaging", "rafique_2000_deuterium_pf_compression_radiation", "avaria_2022_bayesian_sheath_diagnostics"],
+    "FP-15": ["arwinder_2015_comparative_pf_machines", "talebitaher_2012_nx2_coded_aperture_imaging", "serban_1995_anode_geometry_focus_characteristics", "rafique_2000_deuterium_pf_compression_radiation", "verma_2010_miniature_repetitive_pf_neutron_source"]
+  },
+  "does_not_close": [
+    "typed target extraction",
+    "same-scope PF-1000/Akel evidence",
+    "mechanism-separated neutron authority",
+    "detector-response and propagated UQ",
+    "first-principles validation certificate"
+  ],
+  "next_required_actions": [
+    "extract typed targets with units, uncertainty, page and figure references, and hashes",
+    "bind reviewed same-scope targets into fail-closed FP packets only after output mapping and UQ"
+  ]
+}

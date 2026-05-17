@@ -94,5 +94,28 @@ Immediate implementation requirements:
   baseline/comparison context, not first-principles authority.
 - Require same-scope detector response and direct/scattered transport before
   neutron spectrum or angular evidence can affect a certificate.
+- Scope-gate every validation target before accepting it as neutron evidence.
+  Accepted-looking target rows with missing/mismatched scope metadata remain
+  rejected for first-principles promotion.
+- Emit per-channel status, text-supported-not-acceptance channels, validation
+  target scope decisions, mechanism-separation policy, and a cross-scope
+  transfer-rule block so scalar yield, Lee/Saw formulas, candidate PIC yield,
+  and other-scope neutron diagnostics cannot satisfy total-yield authority.
+
+## Implementation Ratchet
+
+Implemented in this pass:
+
+- `src/dpf/first_principles/neutron_authority.py` now rejects loose validation
+  target metadata and only maps same-scope accepted targets onto required
+  neutron-authority channels.
+- The packet now carries an explicit `acceptance_gate`,
+  `text_supported_not_acceptance_channels`,
+  `neutron_authority_channel_status`, `mechanism_separation_policy`,
+  `validation_target_scope_decisions`, and `cross_scope_policy`.
+- `tests/test_first_principles_runner.py` asserts that Akel measured scalar
+  yield remains non-acceptance context, mechanism-separated yield remains
+  blocked, candidate PIC yield remains diagnostic-only, and other-scope neutron
+  sources are schema-only without a reviewed transfer rule.
 
 Next blocker to search after this one: `FP-13`, comparator and UQ matrix.

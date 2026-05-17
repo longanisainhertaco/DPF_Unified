@@ -1,0 +1,17 @@
+{
+  "artifact": "experimental_unclamped_source_backed_conductivity_trial",
+  "status": "failed_nonfinite_runtime_not_validation",
+  "command": "MPLCONFIGDIR=/private/tmp/dpf-mpl-cache .venv312/bin/dpf experimental-inverse-calibration --deck-preset gv_pf24_krakow_16092202 --parameters inductance,resistance,pressure --candidate-scales 1 --parameter-scale inductance=0.875 --parameter-scale resistance=1.5 --parameter-scale pressure=0.75,1,1.25 --target-time-s 1.6e-6 --dt-policy vacuum-cfl --vacuum-cfl 0.95 --auto-step-budget --max-auto-steps 30000 --history-stride 500 --max-step-results 2 --output results/experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_1p6us_2026_05_17.json",
+  "trial_change": "source-backed conductivity was passed to the generalized-Ohm path without the explicit Ohmic CFL cap, but no implicit resistive Maxwell update was added",
+  "failure": {
+    "exception": "ValueError: value must be finite",
+    "gate": "first_principles_conservation_manifest_final_field_energy",
+    "symptoms": [
+      "overflow in current norm and Ohmic heating",
+      "overflow in Maxwell electric and magnetic energy diagnostics",
+      "non-finite final field energy rejected by conservation ledger"
+    ]
+  },
+  "conclusion": "Removing the explicit Ohmic CFL cap alone is not a first-principles solution. The next required implementation is a source-grounded implicit or semi-implicit resistive Maxwell/power-port update that can use raw source-backed conductivity while preserving finite field energy.",
+  "can_support_first_principles_acceptance": false
+}

@@ -11,9 +11,13 @@ where w_i is the macro-particle weight, n_target is the local background
 density, E_cm = m_D * v_rel^2 / 4 (equal-mass CM), and sigma_DD is the
 Bosch-Hale parametrization.
 
-References:
-    Bosch & Hale, Nucl. Fusion 32:611 (1992) — DD cross section.
-    Schmidt et al., PRL 109:205003 (2012) — kinetic DPF neutrons.
+Local source-truth routing:
+    KnowledgeReference/bosch-hale-1992-fusion-reactivity.md
+    KnowledgeReference/this-work-was-performed-under-the-auspices-of-the-us-department-of-energy-by-lawrence-livermore.md
+
+This module produces runtime diagnostic yield-rate telemetry only. It cannot
+promote total neutron-yield authority without the mechanism-separated
+``neutron_authority`` packet, detector response, comparator mapping, and UQ.
 """
 
 from __future__ import annotations
@@ -22,6 +26,16 @@ import numpy as np
 from numba import njit
 
 from dpf.diagnostics.beam_target import dd_cross_section
+
+PIC_YIELD_SOURCE_REFERENCES = {
+    "bosch_hale_dd": "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
+    "llnl_kinetic_dpf_context": (
+        "KnowledgeReference/"
+        "this-work-was-performed-under-the-auspices-of-the-us-department-of-energy-by-lawrence-livermore.md"
+    ),
+}
+PIC_YIELD_SOURCE_STATUS = "runtime_diagnostic_not_validation"
+PIC_YIELD_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 _EV = 1.602176634e-19
 _M_D = 3.3436e-27

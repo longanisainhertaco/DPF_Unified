@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 import types
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -75,27 +74,12 @@ def test_simulate_first_principles_run_mode_metadata_is_forwarded(
 ) -> None:
     import dpf.engine as engine_module
     from dpf.cli.main import cli
-    from dpf.validation import PF1000_AKEL_SOURCE_SCOPE, PF1000_AKEL_VALIDATION_SCOPE
 
-    observed: dict[str, object] = {}
+    class ForbiddenSimulationEngine:
+        def __init__(self, _config) -> None:
+            raise AssertionError("legacy SimulationEngine first-principles path used")
 
-    class FakeSimulationEngine:
-        def __init__(self, config) -> None:
-            observed["run_mode"] = config.run_mode
-            observed["validation_scope"] = config.validation_scope
-            observed["source_scope"] = config.source_scope
-            observed["source_scope_status"] = config.source_scope_status
-            observed["preset_name"] = config.preset_name
-            self.backend = config.fluid.backend
-
-        def run(self, max_steps=None):
-            observed["max_steps"] = max_steps
-            return {
-                "run_mode": observed["run_mode"],
-                "first_principles_mhd_readiness": {"status": "blocked"},
-            }
-
-    monkeypatch.setattr(engine_module, "SimulationEngine", FakeSimulationEngine)
+    monkeypatch.setattr(engine_module, "SimulationEngine", ForbiddenSimulationEngine)
 
     result = CliRunner().invoke(
         cli,
@@ -103,8 +87,8 @@ def test_simulate_first_principles_run_mode_metadata_is_forwarded(
             "simulate",
             cli_config_file,
             "--run-mode=first_principles_mhd",
-            f"--validation-scope={PF1000_AKEL_VALIDATION_SCOPE}",
-            f"--source-scope={PF1000_AKEL_SOURCE_SCOPE}",
+            "--validation-scope=pf1000_akel_16kv_1p2torr_shot_12581",
+            "--source-scope=pf1000_akel_16kv_1p2torr_shot_12581",
             "--source-scope-status=same_scope_blocked_by_review",
             "--preset-name=pf1000_akel",
             "--steps=1",
@@ -112,73 +96,17 @@ def test_simulate_first_principles_run_mode_metadata_is_forwarded(
     )
 
     assert result.exit_code == 0, result.output
-    assert observed == {
-        "run_mode": "first_principles_mhd",
-        "validation_scope": PF1000_AKEL_VALIDATION_SCOPE,
-        "source_scope": PF1000_AKEL_SOURCE_SCOPE,
-        "source_scope_status": "same_scope_blocked_by_review",
-        "preset_name": "pf1000_akel",
-        "max_steps": 1,
-    }
-    assert "first_principles_mhd_readiness" in result.output
+    assert "Backend: package_native" in result.output
+    assert "first_principles_3d_hybrid_em_pic_fluid" in result.output
+    assert "blocked_same_scope_source_packet_not_available" in result.output
 
 
 def test_first_principles_command_runs_field_coupled_candidate(
     tmp_path,
-    monkeypatch,
 ) -> None:
-    import dpf.cli.main as cli_module
     from dpf.cli.main import cli
 
     output = tmp_path / "first_principles.json"
-    observed: dict[str, object] = {}
-
-    def fake_runner(**kwargs):
-        observed.update(kwargs)
-        return {
-            "run_mode": "first_principles_mhd",
-            "backend": "python",
-            "source_scope": "pf1000_16kv_2021_akel_shot12581",
-            "validation_scope": "pf1000_16kv_2021_akel",
-            "field_coupled_candidate": True,
-            "has_snowplow": False,
-            "n_steps": 3,
-            "nan_detected": False,
-            "I_peak": 0.25,
-            "t_peak": 0.1,
-            "back_emf_V": np.array([0.0, 12.0, 15.0]),
-            "Lp_field_nH": np.array([0.0, 1.1, 1.2]),
-            "B_max": np.array([0.0, 0.2, 0.3]),
-            "joule_energy_kJ": np.array([0.0, 0.01, 0.02]),
-            "field_energy_residual_kJ": np.array([0.0, -0.01, -0.02]),
-            "field_limiter_activation_count": np.array([0, 2, 0]),
-            "first_principles_limiter_ledger": {
-                "schema": "dpf.first_principles.limiter_ledger.v1",
-                "status": "blocked",
-                "validation_status": "blocked",
-                "activation_count": 2,
-                "acceptance_blocking_activation_count": 2,
-                "activated_acceptance_blockers": ["fp2.velocity_cap"],
-                "can_support_first_principles_acceptance": False,
-                "entries": [
-                    {
-                        "limiter_id": "fp2.velocity_cap",
-                        "activation_count": 2,
-                    }
-                ],
-            },
-            "first_principles_mhd_readiness": {"status": "blocked"},
-            "first_principles_neutron_yield_authority": {"status": "not_produced"},
-            "first_principles_backend_scope": {
-                "status": "python_cylindrical_instrumented",
-                "can_support_first_principles_acceptance": True,
-            },
-            "t_us": np.array([0.0, 0.1, 0.2]),
-            "I_MA": np.array([0.0, 0.1, 0.25]),
-            "V_kV": np.array([16.0, 15.9, 15.8]),
-        }
-
-    monkeypatch.setattr(cli_module, "_load_first_principles_runner", lambda: fake_runner)
 
     result = CliRunner().invoke(
         cli,
@@ -191,48 +119,50 @@ def test_first_principles_command_runs_field_coupled_candidate(
     )
 
     assert result.exit_code == 0, result.output
-    assert observed["grid_preset"] == "coarse"
-    assert observed["sim_time_us"] == 0.2
-    assert observed["gas_key"] == "D2"
     payload = json.loads(output.read_text())
+    assert payload["tool"] == "dpf first-principles"
+    assert payload["package_native_tool"] == "dpf first-principles-3d"
     assert payload["first_principles_only_enforced"] is True
-    assert payload["scientific_status"] == "engineering_probe_not_validation"
-    assert payload["metrics"]["back_emf_abs_max_V"] == 15.0
-    assert payload["metrics"]["limiter_activation_max"] == 2
-    assert payload["limiter_ledger_summary"]["status"] == "blocked"
-    assert payload["limiter_ledger_summary"][
-        "acceptance_blocking_activation_count"
-    ] == 2
-    assert payload["limiter_ledger_summary"]["activated_acceptance_blockers"] == [
-        "fp2.velocity_cap"
-    ]
-    assert "entries" not in payload["limiter_ledger_summary"]
-    assert payload["backend_scope"]["status"] == "python_cylindrical_instrumented"
-    assert payload["readiness"]["status"] == "blocked"
-    assert "First-principles PF-1000/Akel engineering candidate" in result.output
+    assert payload["execution_backend"] == "package_native"
+    assert payload["grid_preset"] == "coarse"
+    assert payload["requested_sim_time_us"] == 0.2
+    assert payload["simulated_time_us"] == pytest.approx(2.0e-7)
+    assert payload["candidate_step_budget"] == 2
+    assert payload["history_stride"] == 1
+    assert payload["simulation"]["history_stride"] == 1
+    assert payload["simulation"]["retained_step_result_count"] == 2
+    assert payload["duration_request_satisfied"] is False
+    assert payload["duration_gate_status"] == (
+        "blocked_requested_duration_exceeds_candidate_step_budget"
+    )
+    assert payload["scientific_status"] == "engineering_candidate_not_validation"
+    assert payload["validation_packet"]["status"] == "not_validation"
+    assert payload["validation_packet"]["same_scope_source_status"] == (
+        "blocked_same_scope_source_packet_not_available"
+    )
+    assert payload["manifest"]["candidate_evidence"]["certificate_gate_packet"][
+        "release_decision"
+    ] == "do_not_release_first_principles_claim"
+    assert "Package-native first-principles PF-1000/Akel engineering candidate" in (
+        result.output
+    )
+    assert "duration_gate: blocked_requested_duration_exceeds_candidate_step_budget" in (
+        result.output
+    )
 
 
-def test_first_principles_command_fails_on_reduced_fallback(monkeypatch) -> None:
-    import dpf.cli.main as cli_module
+def test_first_principles_command_has_no_legacy_app_runner_loader() -> None:
     from dpf.cli.main import cli
+    import dpf.cli.main as cli_module
 
-    def fake_runner(**_kwargs):
-        return {
-            "run_mode": "first_principles_mhd",
-            "backend": "python",
-            "field_coupled_candidate": False,
-            "has_snowplow": True,
-            "n_steps": 1,
-            "nan_detected": False,
-            "back_emf_V": np.array([1.0]),
-        }
-
-    monkeypatch.setattr(cli_module, "_load_first_principles_runner", lambda: fake_runner)
+    assert not hasattr(cli_module, "_load_first_principles_runner")
 
     result = CliRunner().invoke(cli, ["first-principles"])
 
-    assert result.exit_code != 0
-    assert "first-principles-only enforcement failed" in result.output
+    assert result.exit_code == 0, result.output
+    assert "Package-native first-principles PF-1000/Akel engineering candidate" in (
+        result.output
+    )
 
 
 def test_hybrid_3d_smoke_command_writes_blocked_candidate(tmp_path) -> None:
@@ -275,18 +205,6 @@ def test_hybrid_3d_smoke_rejects_invalid_shape() -> None:
 
     assert result.exit_code != 0
     assert "all shape entries must be >= 3" in result.output
-
-
-def test_first_principles_runner_loader_adds_checkout_root(monkeypatch) -> None:
-    import dpf.cli.main as cli_module
-
-    repo_root = str(Path(cli_module.__file__).resolve().parents[3])
-    monkeypatch.setattr(sys, "path", [item for item in sys.path if item != repo_root])
-
-    runner = cli_module._load_first_principles_runner()
-
-    assert sys.path[0] == repo_root
-    assert runner.__name__ == "run_pf1000_akel_first_principles"
 
 
 def test_backends_command_lists_mlx() -> None:

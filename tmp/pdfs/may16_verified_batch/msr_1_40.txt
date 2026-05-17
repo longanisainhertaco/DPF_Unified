@@ -1,0 +1,1832 @@
+COMPRESSION DYNAMICS AND RADIATION
+    EMISSION FROM A DEUTERIUM
+           PLASMA FOCUS
+
+
+
+
+     MUHAMMAD SHAHID RAFIQUE
+
+
+
+
+ A THESIS SUBMITTED FOR THE DEGREE
+     OF DOCTOR OF PHILOSOPHY
+
+
+
+
+  NATIONAL INSTITUTE OF EDUCATION
+NANYANG TECHNOLOGICAL UNIVERSITY
+               2000
+To my loving father and mother,
+
+     beloved sister and brothers
+                             ACKNOWLEDGEMENTS
+
+
+        My heartfelt and sincere thanks go to my supervisor Assistant Professor Adrian
+
+Serban. Without his support, it would have been impossible for me to complete this
+
+project. His continuous guidance, inspiration, advice and personal encouragement were
+
+invaluable.
+
+        I would like to pay deepest gratitude to Professor Lee Sing, Head of Physics
+
+Division for his kind and patient guidance during this research period.
+
+        I sincerely acknowledge Professor Leo Tan Wee Hin, Director of NIE and Dean
+
+of School of Science for giving me the opportunity to pursue my Ph.D. programme with
+
+the University.
+
+        I am thankful to the National Institute of Education, Nanyang Technological
+
+University for providing me the financial support, the research scholarship and the
+
+necessary facilities.
+
+        My sincere appreciation goes to Assistant Professor Paul Lee for helping me
+
+during the whole period of the project.
+
+        I am grateful to Mr. A. Patran for his help, valuable suggestions and providing me
+
+a nice company during the period of stay.
+
+        I wish to pay my thanks to other members of the plasma physics group for their
+
+valuable suggestions and friendship particularly, Associate Professor S.V. Springham,
+
+Dr. R. S. Rawat, Dr. M. Liu, Dr. Zhang Guixin, Dr. Shan Bing, Mr. Wang Wei Long,
+
+Mr. Bang Ke, Mr. Asutosh Srivastava, Andrew Kang, Chew Wye Mun and Mrs. Cecelia
+
+Selvam-Lee.
+       I would also like to express my thanks to Erekle Tsakadze, Nana Quparadze,
+
+Roshan and Azam for their priceless friendship during this period.
+
+       The co-operation from the general workshop, especially from Mr. Anthony
+
+Thang, Mr. Michael Ng and Mr. Chat Mun Lee is also acknowledged.
+
+       Finally, I wish to pay a bundle of thanks to my loving father and mother, my
+
+beloved sister and brothers for their moral support from afar in Pakistan.
+
+
+
+
+                                                     MUHAMMAD SHAHID RAFIQUE
+ COMPRESSION DYNAMICS AND RADIATION EMISSION FROM A
+              DEUTERIUM PLASMA FOCUS
+                                                      by
+                                 MUHAMMAD SHAHID RAFIQUE
+
+        The main aim of the project was to investigate and correlate the focus dynamics during the radial
+
+phase with the radiation (deuterons, neutrons and X-rays) emitted from our 3 kJ plasma focus device.
+
+        A magnetic spectrometer was successfully designed, constructed and implemented on the forward
+
+axis of our focus device. An automated scanning and measurement system was also successfully designed,
+
+developed and employed. This developmental work enabled us to obtain the energy spectra of the deuterons
+
+emitted in the forward direction, and to correlate the ion emission with the neutron output.
+
+        The plasma dynamics was investigated by means of a three-frame computer-controlled laser
+
+shadowgraphic system specifically designed, developed and successfully implemented in this project.
+
+        The deuteron energy spectra ranging from 80 keV to 250 keV are in strong correlation with the
+
+corresponding total neutron yield. The ion energy distribution is well fitted by an exponential function of the
+
+form exp (-Ed/B). The spectra at higher energies are in good agreement with the empirical relation
+
+dN dE ∝ E − x .
+
+        An average neutron energy of 2.48 MeV and 3 MeV were determined in the radial and the axial
+
+directions, respectively. The neutron production was correlated with the neutron anisotropy and soft X-ray
+
+output. The discharges with high neutron yield exhibit high anisotropy and low soft X-ray production.
+
+        Higher growth rates of the instabilities favor neutron emission. The pinch lifetime is shorter for the
+
+discharges with higher growth rates. The radiation output is higher for the discharges with shorter pinch
+
+lifetime. The neutron yield is higher for smaller pinch radius, and the soft X-ray production is lower. The
+
+neutron yield is lower for the discharges with the longer pinch length, which is favorable for the soft X-ray
+
+production. The radiation output appears higher for the discharges with larger aspect ratio. The discharges
+
+with higher radial implosion speeds exhibit higher radiation output.
+
+        The experimentally measured radial and axial elongation trajectories along with the radial implosion
+
+speed are in good agreement with the results obtained from the numerical simulation of the plasma focus.
+                          CONTENTS
+
+
+Acknowledgements
+
+Contents …………………………………………………………....…………………i
+
+Summary ……………………………………………………………………………vii
+
+List of Figures……………………………………………………………………...…x
+
+List of Tables ...……………………………………………………………………xxii
+
+
+1. INTRODUCTION……………………………………………………...………...1
+
+  1.1. Objectives of the Thesis………………………………………………………5
+
+  1.2. Layout of the Dissertation……………………………….……………………8
+
+
+
+2. PLASMA FOCUS DYNAMICS, RADIATION EMISSION AND
+
+  ASSOCIATED PHENOMENA…………………………………..……………...9
+
+  2.1. Dynamics of the DPF Discharge………………………….…………….…….9
+
+     2.1.1. Breakdown or Inverse Pinch Phase…………………..………………11
+
+     2.1.2. Axial Acceleration Phase…………………………….………………12
+
+     2.1.3. Radial Phase……………………………………….…………………14
+
+        2.1.3.1.   The Compression Phase…………………………...…………15
+
+        2.1.3.2.   The Quiescent Phase……………...………………………….16
+
+        2.1.3.3.   The Unstable Phase………………………...…………….…..17
+
+        2.1.3.4.   The Decay Phase………………………………..……………19
+
+  2.2. Models of D-D Fusion…………………………………………...………….20
+
+  2.3. Instabilities in Dense Plasma Focus………………...…….…………………20
+
+
+                                                              i
+     2.3.1. Rayleigh-Taylor Instability…………………………..………………21
+
+     2.3.2. The m=0 Instability……………………….………………………….22
+
+     2.3.3. The m=1 Instability…………………………………………….…….23
+
+     2.3.4. Microinstabilities and Turbulence………………………...………….24
+
+  2.4. Radiation Emission from the Dense Plasma Focus…………….……………25
+
+     2.4.1. Neutrons and Energetic Ions Emission…………...……...…..………27
+
+     2.4.2. X-ray Emission……………………………………………………….35
+
+
+
+3. PLASMA DIAGNOSTIC TECHNIQUES…………………………………….41
+
+  3.1. Electrical Diagnostics……………………………..…………………………41
+
+     3.1.1. Rogowski Coil…………………………………………..……………42
+
+     3.1.2. Voltage Probe……………………………………………...…………44
+
+  3.2. Total Neutron Yield Measurements…………………………………………45
+
+  3.3. Charged Particle Detection……………………………...…………………..46
+
+     3.3.1. Formation of Tracks in SSNTDs……………………………………..47
+
+     3.3.2. Track Etching Techniques……………………………………………49
+
+  3.4. Time-resolved Hard X-rays and Neutron Measurements ………….……….51
+
+     3.4.1. Neutron Time-of-Flight Method……………….…………………….54
+
+  3.5. Time-resolved Soft X-ray Measurements……………...……………………55
+
+  3.6. Laser Shadowgraphy Method……………………….………………………57
+
+  3.7. Electron Temperature Measurement……………………..………………….62
+
+
+
+4. THEORETICAL MODEL OF PLASMA FOCUS………………..………….65
+
+  4.1. Introduction………………………………………………….………………65
+
+                                                                    ii
+4.2. Electrical Properties and Circuit Equations…………………………………68
+
+   4.2.1. Equivalent Circuit Equations…………...…………………………….68
+
+      4.2.1.1.   Axial Phase………………………………….………………..69
+
+      4.2.1.2.   Radial Phase………………………………………………….71
+
+   4.2.2. Plasma Resistance…………………………..………………………..73
+
+4.3. Shock Wave and Shock Wave Equations……….…………………………..74
+
+   4.3.1. Equation for 1D Shock Wave………………….……………………..74
+
+   4.3.2. Parameters of 1D Shock Wave……………………………………….76
+
+   4.3.3. Shock Wave with Changing Piston Pressure or Changing Ambient Gas
+
+       Pressure……………………………………………..…………………..78
+
+4.4. Plasma as Thermodynamic Gas………………………………….………….80
+
+   4.4.1. Thermodynamic Properties of Plasma Gas………………..…………80
+
+   4.4.2. Effective Specific Heat Ratio of Plasma Gas……………….………..82
+
+   4.4.3. Thermodynamic Equation for Plasma Gas………………...…………85
+
+4.5. Energy and Temperature of the Plasma in Plasma Focus.………………..…85
+
+   4.5.1. Mechanisms of Energy Transfer into Plasma and Plasma Tube….….85
+
+   4.5.2. Driving Parameters…………………………………………...………88
+
+   4.5.3. Energy Transfer Process………………….…………………………..90
+
+4.6. Equations and Expressions……………………………..……………………92
+
+   4.6.1. Axial Phase………………………………………..………………….92
+
+   4.6.2. Radial Inward Shock Phase………………………….……………….95
+
+      4.6.2.1.   Shock Wave Equations………………………….……………95
+
+      4.6.2.2.   Thermodynamic Equations……………………...……………96
+
+      4.6.2.3.   Expressions of Plasma Parameters……………...……………98
+
+                                                                        iii
+     4.6.3. Reflected Shock Equations……………………………….…………..99
+
+     4.6.4. Slow Compression Equations…………………………………....….101
+
+     4.6.5. Dependence of the Plasma Dynamics on Gas Properties…………...101
+
+  4.7. Simulation using NIE-SSC-PFF parameters ………………...…………….103
+
+     4.7.1. Numerical Calculation Method……………………….…………….103
+
+     4.7.2. Results for NIE-SSC-PFF ……………………….…………………105
+
+     .
+
+5. EXPERIMENTAL SET-UP…………………………………..………………106
+
+  5.1. Detailed Description of NIE-SSC-PFF…………………………………….106
+
+     5.1.1. Switching System…………………………………………….……..107
+
+  5.2. Parameters of NIE-SSC-PFF…………………….…………………………110
+
+  5.3. Total Neutron Yield Measurements……………..………………………....111
+
+  5.4. Deuteron Measurements……………………………………………………112
+
+     5.4.1. Magnetic Spectrometer………………………………..………….....113
+
+     5.4.2. Automated Analysis System………………………………………..114
+
+  5.5. Time-resolved Hard X-ray and Neutron Measurements…………...………119
+
+  5.6. Time-resolved Soft X-ray Measurements………………...………………..121
+
+  5.7. Optical Measurements…………………………………………………..….123
+
+     5.7.1. Single-frame Laser Shadowgraphy…………………………………124
+
+     5.7.2. Three-frame Shadowgraphy...................................…………………127
+
+         5.7.2.1.   Construction of the Nitrogen Lasers………………….…….127
+
+         5.7.2.2.   Synchronization and Triggering System……………..……..130
+
+         5.7.2.3.   Optical Arrangement……………………………..…...…….132
+
+         5.7.2.4.   Three-frame Capture System...................................………...132
+
+                                                                                        iv
+  5.8. Data Acquisition and Analysis System…….………………………………135
+
+
+
+6. RESULTS AND DISCUSSION……………………………………….………136
+
+  6.1. Introduction………………………………………………...……………....136
+
+  6.2. Time Integrated Measurements…………………………………………….137
+
+     6.2.1. Total Neutron Yield………………………………………………....137
+
+     6.2.2. Deuteron Energy Spectra…………………...……………………….138
+
+  6.3. Time-resolved Measurements…………………………….………………..156
+
+     6.3.1. Single-compression Regime……………………………………...…158
+
+        6.3.1.1.   Time-resolved Hard X-rays and Neutron Measurements…...158
+
+        6.3.1.2.   Time-resolved Soft X-ray Measurements……………….….162
+
+     6.3.2. Multiple-compression Regime………………………………….…..164
+
+        6.3.2.1.   Time-resolved Hard X-rays and Neutron Measurements…..165
+
+        6.3.2.2.   Time-resolved Soft X-ray Measurement…………...……….166
+
+     6.3.3. Electron Temperature Measurements………………………….……167
+
+  6.4. Analysis and Correlation of Radiation Parameters………….……………..169
+
+     6.4.1. Soft X-ray and Neutron Production………………………..………..169
+
+     6.4.2. Neutron Energies……………………………………..……………..173
+
+     6.4.3. Neutron Anisotropy……………………………...……….…………174
+
+     6.4.4. Neutron Anisotropy and Soft X-ray Production……...…………..…182
+
+  6.5. Focus Dynamics and Radiation Emission…………………...……………..184
+
+     6.5.1. Preliminary Investigations of Gross Dynamics………….....……….184
+
+        6.5.1.1.   Pre-focus (Radial) Phase………………..…………………..185
+
+        6.5.1.2.   Focus (Pinch) Phase……………………………...…………187
+
+                                                                           v
+         6.5.1.3.   Post-focus (Decay ) Phase………………………………….189
+
+     6.5.2. Focus Evolution and Radiation Output……………………………..190
+
+         6.5.2.1.   Pre-focus (Radial) Phase……………………………………192
+
+             a) Low Neutron Yield (LNY)………………………………………192
+
+             b) High Neutron Yield (HNY)…………….…………….………….195
+
+         6.5.2.2.   Focus (Pinch) Phase…………………………………..…….196
+
+             a) Low Neutron Yield (LNY)………………...…………………….197
+
+             b) High Neutron Yield (HNY)………………………...……………207
+
+         6.5.2.3.   Post-focus (Decay) Phase…………………………….……..214
+
+             a) Low Neutron Yield (LNY)………………………………………214
+
+             b) High Neutron Yield (HNY)……………………..……………….217
+
+         6.5.2.4.   Instabilities Growth Rate and Pinch Lifetime………………218
+
+            a) Low Neutron Yield (LNY)………………...…………………….218
+
+            b) High Neutron Yield (HNY)………………..…………………….221
+
+  6.6. Dynamics of the Radial inward Shock and Axial Elongation of the Current
+
+      Sheath………………………………………………………………………223
+
+     6.6.1. Comparison Between Experimental and Theoretical Results………226
+
+
+
+7. CONCLUSIONS AND SUGGESTIONS FOR FURTHER WORK…….....230
+
+
+
+REFERENCES………………….…………………………………………………240
+
+
+
+
+                                                                                 vi
+                                    SUMMARY
+
+                                of the PhD thesis entitled
+
+
+COMPRESSION DYNAMICS AND RADIATION EMISSION
+              FROM A DEUTERIUM PLASMA FOCUS
+
+
+
+                                      submitted by
+                          MUHAMMAD SHAHID RAFIQUE
+
+
+
+
+                             SUPERVISOR: Prof. Sing Lee
+
+
+
+
+       This thesis presents the results of our investigations performed on the radiation
+
+(neutrons, deuterons, soft X-rays and hard X-rays) emitted from a 3kJ Mather-type
+
+plasma focus device.
+
+       The first objective of this project was to investigate the contribution to the neutron
+
+yield from the beam-target mechanism in the deuterium plasma focus. This aim was
+
+achieved by studying the correlation between the total neutron yield and the time-
+
+integrated energy spectra of the axially emitted deuteron beam, on a shot-to-shot basis.
+
+       To attain this goal, a magnetic spectrometer was successfully designed,
+
+constructed and implemented in our experiments. CR-39 solid state nuclear track material
+
+was used in the plane of the spectrometer to detect the energetic ions.
+
+
+
+
+                                                                                           1
+       More importantly, an automated scanning and measurement system was also
+
+successfully developed and employed to overcome the traditional time-consuming and
+
+laborious counting and measurement of ion tracks. This automated image analysis system
+
+was controlled by a PC running a program written in ALI (analytical language for image
+
+processing) specifically developed for this application This complex automated deuteron
+
+energy spectra analysis system represents the element of novelty of this work.
+
+       Deuteron spectra and total neutron yield for more than five hundred plasma focus
+
+discharges were obtained. Cumulative spectra for three sequential discharges were taken
+
+for improved statistical accuracy. A sequence of spectra was obtained for deuterium gas
+
+pressures of 3.5, 4.0, and 4.5 mbar.
+
+       Our analysis shows a clear correlation between the intensity of the axially emitted
+
+deuteron beam and the corresponding total neutron yield. The deuteron energy spectra
+
+range from 80 keV to 250 keV, with 100 keV < Ed <140 keV as the most frequent energy
+
+range for each operating pressure.
+
+       The experimental ion energy distribution is relatively well fitted by an
+
+exponential function of the form exp (-Ed/B). It is also noted that the spectra at higher
+
+energies are in good agreement with the empirical relation dN dE ∝ E − x , as suggested
+
+by previous workers.
+
+       Time-resolved measurements were also performed on the emission of neutrons,
+
+soft X-rays, and hard X-rays. Our objective was to correlate the electrical discharge
+
+parameters and the characteristic time periods of the focus with some of the emission
+
+parameters. The idea was to identify the focus operating regimes and the favorable
+
+conditions for enhanced emission of radiation.
+
+
+
+                                                                                        2
+       Different diagnostics were employed for this purpose. The time-resolved soft X-
+
+ray measurements employed two filtered PIN diodes. This enabled us not only to monitor
+
+the emission characteristics of the focus in the soft X-ray range, but also to determine, in
+
+some discharges, the electron temperature of the pinch by employing the filter ratio
+
+method.
+
+       The time-resolved hard X-ray and neutron measurements were performed using
+
+three plastic scintillator-photomultiplier systems. Two of these detectors were placed
+
+radially with respect to the focus in a time-of-flight geometry. The other detector was
+
+placed in the axial direction of the focus. The idea was to estimate the neutron energies
+
+and prove the dominant effect of beam-target mechanism responsible for the neutron
+
+production.
+
+       The signals from our time-resolved diagnostics were recorded using a 1 GSa/s,
+
+250 MHz Hewlett Packard digital logic analyzer [model 16500A]. Using the software
+
+library that came with the interface card, a program written in C++ was developed to
+
+transfer and store data from the scope to an ASCII file on a PC via a GPIB interface. The
+
+acquired data were analyzed using Microsoft Excel and Microcal Origin 6.0. The time
+
+resolution achieved in our work was 1 nanosecond.
+
+       An average neutron energy of 2.48 MeV in the radial direction was determined
+
+using the peak-to-peak method of analysis. This result was combined with the estimated
+
+average neutron energy of 3 MeV in axial direction. This supports the dominant effect of
+
+the beam-target mechanism responsible for neutron production.
+
+
+
+
+                                                                                          3
+       These results correlate very well with our work on deuteron emission spectra.
+
+Deuterons of energy 100 keV were found to be responsible for the production of 3 MeV
+
+neutrons in the forward direction.
+
+       The neutron anisotropy was determined by integrating the time-resolved emission
+
+rate signals from the fast plastic scintillator-photomultiplier systems placed at the same
+
+distance from the pinch, one in the axial and the other one in the radial direction. An
+
+average value of 1.45 for the neutron anisotropy was determined in our experiments.
+
+       For each focus discharge, the neutron anisotropy was correlated with the total
+
+neutron yield and the soft X-ray production. The correlation reveals that, regardless of the
+
+operating pressure, the anisotropy is greater for discharges with higher neutron yield. The
+
+correlation between the anisotropy and the soft X-ray production shows that the
+
+anisotropy is lower for discharges with high soft X-ray production (regardless of the
+
+operating pressure).
+
+       The soft X-ray and the total neutron yield were also correlated. While performing
+
+the neutron optimization of the device, it was observed that lower operating pressures
+
+favor the soft X-ray production. As the pressure increases, the soft X-ray yield decreases
+
+and the neutron emission is enhanced. The optimum neutron production pressure is 4
+
+mbar of deuterium. The further increase of the pressure (beyond 4 mbar) causes a
+
+reduction in both soft X-ray and neutron emission. The plasma focus device cannot be
+
+optimized, simultaneously, for both neutron and soft X-ray production.
+
+       The correlation of all our time-resolved diagnostic parameters help us to identify
+
+two regimes of the plasma focus, when operated in deuterium. One is the single-
+
+compression regime corresponding to a single-compression during the pinch phase. The
+
+
+
+
+                                                                                          4
+other one is the multiple-compression regime associated with two or more compressions
+
+of the focussed column. Our data show that the neutron yield is greater in discharges
+
+exhibiting the single-compression regime.
+
+       The optical investigation of the radial phase of the focus was initially performed
+
+by means of a single-frame laser shadowgraphy. The shadowgraphic images of the focus
+
+were correlated with the electrical parameters of the discharge, as well as with the X-ray
+
+and neutron emission characteristics. This enabled us to identify the important periods of
+
+the focus (i.e. the radial compression, the instant when minimum pinch radius is attained,
+
+the pinch lifetime, and the post focus phenomena), and to correlate the presence of the
+
+plasma instabilities with the radiation output.
+
+       Due to shot-to-shot variations in the focus evolution, one needs to capture
+
+multiple frames in order to get a clearer picture of the focus dynamics. For this purpose, a
+
+three-frame, computer-controlled laser shadowgraphic system was developed and
+
+implemented successfully. The implementation of this method allowed us i) to study the
+
+plasma dynamics during the compression phase, ii) to examine the temporal evolution of
+
+the plasma instabilities during the radial and pinch phases, iii) to monitor the radial
+
+implosion parameters (i.e. radial and axial shock positions, radial and axial shock speeds,
+
+etc.), iv) to determine the pinch lifetime and its geometrical characteristics, v) to correlate
+
+all this information with the radiation emission characteristics of the focus, and vi) to
+
+compare the experimental data with the results predicted by the theoretical model.
+
+       The growth rate of the instabilities was correlated with the radiation output:
+
+higher growth rates favour neutron emission. A correlation of the instability growth rate
+
+with the pinch lifetime showed that the pinch lifetime is shorter for the discharges with
+
+
+
+
+                                                                                             5
+higher growth rates. The radiation output is higher for the discharges with shorter pinch
+
+lifetime. The pinch dimensions (column radius, column length and aspect ratio) were also
+
+correlated with the radiation output.
+
+         The trajectories of the inward radial shock front and its axial elongation were
+
+determined from the shadowgraphic images. Radial and axial elongation velocities were
+
+also calculated. The results were then correlated with the radiation output. The discharges
+
+with higher radial implosion speeds exhibit higher radiation output.
+
+         A computational modeling of the plasma focus was also performed. The
+
+experimentally measured radial and axial elongation trajectories were compared with the
+
+simulated trajectories. The simulated results are in fairly good agreement with the
+
+experimental data.
+
+         This dissertation is structured in seven chapters. The first chapter is an
+
+introductory description of the historical elements of the plasma focus.
+
+         The focus dynamics, together with the radiation emission and related phenomena,
+
+are thoroughly discussed in the second chapter devoted to the literature review.
+
+         The theoretical descriptions of the diagnostics employed are presented in chapter
+
+three.
+
+         A computational model of the plasma focus is discussed in chapter four.
+
+         Chapter five presents the experimental set-up of the diagnostics employed.
+
+         Chapter six presents the results of our experiments and provides a detailed
+
+discussion and interpretation of the data.
+
+         Chapter seven is devoted to the conclusions of this work, and proposes some
+
+directions for the future investigations on the radiation emitted from the plasma focus.
+
+
+
+
+                                                                                           6
+                              LIST OF FIGURES
+
+Figure 1.1: Sketch of plasma focus geometry (a) Mather-type (b) Filippov-type.
+
+
+Figure 2.1: Current sheath dynamics in DPF and the corresponding current and
+
+             voltage signal profiles showing the phases of the discharge.
+
+Figure 2.2: Emission of radiation from the focus.
+
+Figure 2.3: The m=0 instability.
+
+Figure 2.4: The m=1 instability.
+
+Figure 3.1: Schematic diagram of a Rogowski coil.
+
+Figure 3.2: Equivalent circuit of the Rogowski coil.
+
+Figure 3.3: Schematic of voltage probe.
+
+Figure 3.4:Typical waveforms of the current (upper trace) and the voltage
+
+             (lower trace).
+
+
+Figure 3.5: Three steps approach for track creation and observation.
+
+
+Figure 3.6: Ion explosion mechanism for track formation.
+
+
+Figure 3.7: Track etching geometry for normally incident ions.
+
+
+Figure 3.8: Side view of an etched track to explain the phenomenon of critical angle.
+
+Figure 3.9: Angular deviation of a wave front due to refractive index gradient.
+
+Figure 4.1: Simplified processes in plasma.
+
+
+Figure 4.2: Equivalent circuit structure of the plasma focus.
+
+
+                                                                                        x
+Figure 4.3: Shock wave induced by a fast piston with (a); constant pressure and
+
+             ambient parameters; (b); changing pressure and constant ambient
+
+             parameters and (c); changing pressure and changing ambient parameters.
+
+Figure 4.4: Relationship between shock speed and shock temperature for
+
+            hydrogen, deuterium, neon and argon plasma [179].
+
+Figure 4.5: Energy transfer process in plasma.
+
+Figure 5.1: Block diagram of NIE-SSC-PFF and the diagnostics employed. L1, L2
+
+             and L3 are three lasers used for the shadowgraphy. PM1, PM2 and PM3
+
+             are the scintillator-photomultiplier systems for time-resolved neutron and
+
+             hard X-ray detection. Yn is the total neutron yield detector. dYsx/dt is the
+
+             time-resolved soft X-ray detection system.
+
+
+Figure 5.2: Triggering system.
+
+Figure 5.3: Diagram of NIE-SSC-PFF.
+
+Figure 5.4: A schematic of Indium foil activation detector.
+
+
+Figure 5.5: A schematic of the set-up for the total neutron yield measurement
+
+Figure5.6: (a) The magnetic spectrometer fixed above the focus chamber; (b) the
+
+            detector holder and the translator.
+
+Figure 5.7: Block diagram of the automated image analysis system.
+
+
+Figure 5.8: a) Paths of neutrals and different energy deuterons, forming tracks on
+
+             CR-39; b) front view of CR-39 exposed at one position after etching.
+
+Figure 5.9: A schematic of front view of a detector exposed for 8 positions.
+
+
+                                                                                       xi
+Figure 5.10: A geometrical diagram representing different parameters to calculate
+
+              energy of the deuterons passing through a magnetic field.
+
+Figure   5.11:   a)     An   assembly   of   the   scintillator-photomultiplier   system;
+
+              b) Arrangement for the time-resolved neutron and hard X-rays
+
+              measurements.
+
+Figure 5.12: a) The arrangement for the soft X-ray measurements; b) biasing circuit
+
+              for the diode.
+
+
+Figure 5.13: BPX-65 sensitivity in wavelength range < 20 Å.
+
+
+Figure 5.14: Sensitivity curve of BPX-65 with different filters.
+
+Figure 5.15: Block diagram of the laser shadowgraphy system.
+
+Figure 5.16: a) Optical arrangement for the laser shadowgraphy; b) the corresponding
+
+              ray diagram of the image formation. All distances are expressed in mm.
+
+Figure 5.17: Block diagram of the electronic time sequence for the shadowgraphy
+
+              system.
+
+
+Figure 5.18: A schematic of the field of view of the laser shadowgraphy.
+
+
+Figure 5.19: a) A view of the nitrogen laser; b) dye module.
+
+
+Figure 5.20: A view of the three lasers used for the shadowgraphy set-up.
+
+
+Figure 5.21: Synchronization circuit for the three lasers.
+
+
+Figure 5.22: Triggering system of the three lasers.
+
+
+Figure 5.23: A view of the three-frame laser shadowgraphy set-up.
+
+                                                                                      xii
+Figure 5.24: Schematic diagram of the top view of three-frame laser shadowgraphy
+
+              set-up.
+
+Figure 5.25: A block diagram of a set-up for the image capture system.
+
+
+Figure 6.1: Histograms of the neutron yield for different pressures. Plasma focus
+
+             operated at 14.5 kV in deuterium.
+
+
+Figure 6.2: Total neutron yield as a function of pressure. The error bars represent the
+
+             standard deviation.
+
+
+Figure 6.3: (a) Five averaged deuteron energy spectra; (b) Neutron yield
+
+             corresponding to each spectrum. Plasma focus operated at 14.5 kV and
+
+             3.5 mbar of deuterium.
+
+
+Figure 6.4: (a) Five averaged deuteron energy spectra; (b) Neutron yield
+
+             corresponding to each spectrum. Plasma focus operated at 14.5 kV and 4
+
+             mbar of deuterium.
+
+
+Figure 6.5: (a) Five averaged deuteron energy spectra; (b) Neutron yield
+
+             corresponding to each spectrum. Plasma focus operated at 14.5 kV and
+
+             4.5 mbar of deuterium.
+
+
+Figure 6.6: (a) Percentile divisions I, II, III, IV and V, respectively, as a function of
+
+             pressure; (b) Corresponding neutron yield.
+
+
+Figure 6.7: Five averaged deuteron energy spectra (dotted curves) and exp(-Ed /B)
+
+             fitting curves (line). Plasma focus operated at 14.5 kV and 3.5 mbar
+
+             deuterium.
+
+                                                                                      xiii
+Figure 6.8: Five averaged deuteron energy spectra (dotted curves) and exp(-Ed /B)
+
+            fitting curves (line). Plasma focus operated at 14.5 kV and 4 mbar
+
+            deuterium.
+
+Figure 6.9: Five averaged deuteron energy spectra (dotted curves) and exp(-Ed /B)
+
+             fitting curves (line). Plasma focus operated at 14.5 kV and 4.5 mbar
+
+             deuterium.
+
+
+Figure 6.10: Deuteron spectra (dots), and the E -x fitting curve (solid line). Plasma
+
+              focus operated at 14.5 kV and 3.5 mbar deuterium.
+
+
+Figure 6.11: Deuteron spectra (dots), and the E -x fitting curve (solid line). Plasma
+
+              focus operated at 14.5 kV and 4.0 mbar deuterium.
+
+
+Figure 6.12: Deuteron spectra (dots), and the E -x fitting curve (solid line). Plasma
+
+              focus operated at 14.5 kV and 4.5 mbar deuterium.
+
+
+Figure 6.13: Synchronised signals from PM1, PM2 and PM3.
+
+
+Figure 6.14: Current derivative and voltage signal profiles (top) and the time periods
+
+              of the focus (bottom).
+
+
+Figure 6.15: Signal profiles of dI/dt, V and dYn/dt. Yn = 2.3 x 108.
+
+
+Figure 6.16: Three normalised (a) and smooth (b) neutron signals from PM1, PM2
+
+              and PM3.
+
+
+Figure 6.17: Signal profiles of dI/dt, V and dYSX/dt. Yn = 1.3 x 108.
+
+
+Figure 6.18: Signal profiles of dI/dt, dYn/dt, dYHX/dt and V. Yn= 1.8 x 108.
+
+                                                                                   xiv
+Figure 6.19: Signal profiles of dI/dt, V and dYSX/dt. Yn= 1.5 x 108.
+
+Figure 6.20: A 100 ns window of soft X-ray signal profiles (red and black) and the
+
+              electron temperature determined using filter ration method (blue trace).
+
+
+Figure 6.21: Experimentally determined (black line) and simulated (red line) electron
+
+              temperature curves.
+
+
+Figure 6.22: Variation of the soft X-ray production (SXRP) and total neutron yield as
+
+              a function of pressure.
+
+
+Figure 6.23: Soft X-ray production (SXRP) as a function of the total neutron yield at
+
+              different pressures.
+
+
+Figure 6.24: Soft X-ray production as a function of total neutron yield.
+
+
+Figure 6.25: Histograms of the experimentally determined neutron energies in (a)
+
+              axial and (b) radial direction.
+
+
+Figure: 6.26: Energies of the forwardly moving neutrons from D-D beam-target
+
+                reaction as a function of the deuteron beam energies.
+
+
+Figure 6.27: Variation of the anisotropy and the total neutron yield as a function of
+
+              pressure.
+
+
+Figure 6.28: Anisotropy as a function of the total neutron yield at different pressures.
+
+
+Figure 6.29: Anisotropy as a function of the total neutron yield.
+
+
+Figure 6.30: Anisotropy and the soft X-ray production as a function of pressure.
+
+
+                                                                                      xv
+Figure 6.31: Anisotropy as a function of the soft X-ray production at different
+
+              pressures.
+
+
+Figure 6.32: Variation of the anisotropy with the soft X-ray production.
+
+
+Figure 6.33: Shadowgraphs during the radial phase exhibiting high neutron yield.
+
+              Yn = 1.6 × 108.
+
+
+Figure 6.34: Shadowgraphs illustrating Rayleigh-Taylor instabilities. Yn = 2 × 108.
+
+
+Figure 6.35: Shadowgraphs during the radial phase with asymmetrical current sheath.
+
+              Yn = 0.2 × 108.
+
+
+Figure 6.36: Shadowgraph exhibiting a necking effect. Yn = 1.8 × 108.
+
+
+Figure 6.37: Shadowgraphs during the pinch phase exhibiting low neutron yield.
+
+              Average Yn = 0.3 ×108.
+
+
+Figure 6.38: Shadowgraphs during the pinch phase for discharges exhibiting high
+
+              neutron yield. Yn = 2 × 108.
+
+
+Figure 6.39: Shadowgraphs during the decay phase. Average Yn = 1 × 108.
+
+
+Figure 6.40: Shadowgraphs during the post focus phase forming bubble-like
+
+              structures. Average Yn = 1.6 × 108.
+
+
+Figure 6.41: Shadowgraphs showing the emission of the copper vapors from the
+
+              inner electrode. Yn = 1 × 108.
+
+
+Figure 6.42: Sequence of compression in plasma focus. Yn = 1.2 × 108.
+
+                                                                                      xvi
+Figure 6.43: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I
+
+             Yn = 0.5 × 108.
+
+
+Figure 6.44: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and
+
+             dI/dt. Yn = 0.4 × 108.
+
+
+Figure 6.45: A three-frame sequence during pre-focus phase. Yn = 1 × 108.
+
+
+Figure 6.46: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I.
+
+             Yn = 1.6 × 108.
+
+
+Figure 6.47: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I
+
+             Yn = 0.45 × 108.
+
+
+Figure 6.48: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I.
+
+             Yn = 0.45 × 108.
+
+
+Figure 6.49: A three-frame sequence of a discharge during pre-focus phase;
+
+             b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and
+
+             dI/dt. Yn = 0.45 × 108.
+
+
+
+
+                                                                               xvii
+Figure 6.50: A three-frame sequence of a discharge during pre-focus phase;
+
+              b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and
+
+              dI/dt. Yn = 0.45 × 108.
+
+
+Figure 6.51: Variation of column length with the column radius.
+
+
+Figure 6.52: Neutron yield as a function of column radius.
+
+
+Figure 6.53: Soft X-ray production as a function of column radius.
+
+
+Figure 6.54: Neutron yield as a function of column length.
+
+
+Figure 6.55: Soft X-ray production as a function of column length.
+
+
+Figure 6.56: Neutron yield as a function of aspect ratio.
+
+
+Figure 6.57: Soft X-ray production as a function of aspect ratio.
+
+
+Figure 6.58: A three-frame sequence of a discharge during focus phase.
+
+              Yn = 0.6 × 108.
+
+
+Figure 6.59: A three-frame sequence of a discharge during focus phase. Yn = 1 x 108.
+
+
+Figure 6.60: A three-frame sequence of a discharge during the focus phase.
+
+              Yn = 1 x 108.
+
+
+Figure 6.61: A three-frame sequence of a discharge during the focus phase;
+
+              b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I.
+
+              Yn = 1.55 × 108.
+
+
+
+
+                                                                                xviii
+Figure 6.62: A three-frame sequence of a discharge during pre-focus phase;
+
+              b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and
+
+              dI/dt. Yn = 1.65 × 108.
+
+
+Figure 6.63: A three-frame sequence of a discharge during focus phase;
+
+              b) Corresponding signal profiles of dYn/dt, dYHX/dt, dYSX/dt, V and I.
+
+              Yn = 2 × 108.
+
+
+Figure 6.64: Column radius as a function of column length.
+
+
+Figure 6.65: Neutron yield as a function of column radius.
+
+
+Figure 6.66: Soft X-ray production as a function of column radius
+
+
+Figure 6.67: Neutron yield as a function of column length.
+
+
+Figure 6.68: Soft X-ray production as a function of column length.
+
+
+Figure 6.69: Neutron yield as a function of aspect ratio.
+
+
+Figure 6.70: Soft X-ray production as a function of aspect ratio.
+
+
+Figure 6.71: A three-frame sequence of a discharge during the post-focus phase.
+
+              Yn= 0.45 × 108.
+
+
+Figure 6.72: A three-frame sequence of a discharge during the post-focus phase.
+
+              Yn = 0.9 × 108.
+
+
+Figure 6.73: A three-frame sequence of a discharge during post-focus phase;
+
+              b) Corresponding signal profiles of dYSX/dt, V and I. Yn = 1.02 × 108.
+
+                                                                                   xix
+Figure 6.74: A three-frame sequence of a discharge during the post-focus phase;
+
+              b)   Corresponding    signal   profiles   of    dYSX/dt,   V   and   dI/dt.
+
+              Yn = 1.9 × 108.
+
+
+Figure 6.75: Growth rate as a function of wavelength.
+
+
+Figure 6.76: Pinch lifetime as a function of growth rate.
+
+
+Figure 6.77: Neutron yield as a function of growth rate.
+
+
+Figure 6.78: Soft X-ray production as a function of growth rate.
+
+
+Figure 6.79: Neutron yield as a function of pinch lifetime.
+
+
+Figure 6.80: Soft X-ray production as a function of pinch lifetime.
+
+
+Figure 6.81: Growth rate as a function of wavelength.
+
+
+Figure 6.82: Pinch lifetime as a function of growth rate.
+
+
+Figure 6.83: Neutron yield as a function of growth rate.
+
+
+Figure 6.84: Soft X-ray production as a function of growth rate.
+
+
+Figure 6.85: Neutron yield as function of pinch life time.
+
+
+Figure 6.86: Soft X-ray production as a function of pinch lifetime.
+
+
+Figure 6.87: Experimentally measured trajectories of the radial inward shock front
+
+              and the axial elongation of the sheath.
+
+
+Figure 6.88: Radial inward shock speed (calculated and measured).
+
+                                                                                      xx
+Figure 6.89: Radial inward shock speed (calculated and measured).
+
+
+Figure 6.90: Comparison between the experimental (black) and simulated (red) for
+
+             current and voltage signal profiles. Plasma Focus operated at 14.5 kV
+
+             and 4 mbar of deuterium.
+
+
+Figure 6.91: Experimental (green dots) and simulated (solid black) trajectories of the
+
+             radial inward shock front, reflected shock (solid black), and magnetic
+
+             piston (solid red). The experimental values represent the average of all
+
+             the discharges.
+
+
+Figure 6.92: Experimental (black dots) and simulated (solid red) axial elongation of
+
+             the current sheath. The experimental values represent the average of all
+
+             the discharges.
+
+
+Figure 6.93: Experimental (black dots) and theoretical (red line) inward shock
+
+             speeds.
+
+
+
+
+                                                                                   xxi
+                               LIST OF TABLES
+
+Table 4.1: Thermodynamic quantities in plasma column.
+
+Table 5.1: Design parameters of NIE-SSC-PFF.
+
+Table 5.2: Experimentally measured parameters of NIE-SSC-PFF.
+
+Table 5.3: The absorption foil combinations of the five channels in DSX4
+
+            spectrometer.
+
+Table 6.1: Comparison of the percentile decrease in the deuteron flux and the
+
+           corresponding neutron yield for the two consecutive spectra.
+
+
+Table 6.2: Values of B (expressed in keV) for the function exp(-Ed /B).
+
+
+Table 6.3: The values of x for the solid lines drawn in Figures 6.10 - 6.12
+
+Table 6.4: Pinch dimensions.
+
+Table 6.5: Growth rate and pinch lifetime for each category.
+
+Table 6.6: Experimental and calculated radial inward shock speeds for the two
+
+           categories.
+
+
+
+
+                                                                              xxii
+Chapter 1
+
+
+
+
+                                INTRODUCTION
+
+
+
+
+       For many years, the greatest effort in the direction of achieving controlled
+
+thermonuclear fusion has been concentrated on the study of powerful electrical
+
+discharges. In these high power discharges, the electrodynamic forces cause both the
+
+magnetic confinement and the heating of the plasma.
+
+       The experiments were termed as linear and toroidal Z-pinches, as the current
+
+flows in the axial direction or Z-axis [1]. The investigation of powerful electrical
+
+discharges in coaxial geometries (i.e. linear Z-pinches) in atmosphere of deuterium
+
+led to the observation of neutron emission. The internal flux of neutrons was found to
+
+vary with the gas filling pressure, purity of the gas and the discharge current.
+
+       The intense burst of neutrons was found to be accompanied by X-ray emission
+
+[2]. The focused plasma column becomes unstable due to magnetohydrodynamic
+
+instabilities (sausage and kink modes) which also cause high electric fields that
+
+accelerate ions to very high energies. The highly energetic ion beams produce
+
+neutrons by interaction with the residual plasma, a mechanism known as beam-target
+
+interaction.
+
+       One of the devices developed for producing hot and dense plasmas of fusion
+
+interest is the plasma focus.
+
+                                                                                    1
+                                     INTRODUCTION
+
+
+
+
+                                 K K
+          Plasma acceleration by j x B forces has been experimentally and theoretically
+
+studied in many laboratories since the beginning of the controlled fusion program.
+
+The early work in USA
+
+with coaxial gun systems
+
+was        pioneered       by                                                  Electrodes
+
+
+Marshall      [3].    Mather,
+                                       Capacitor Bank                      Insulator Sleeve
+following the work of
+
+Osher [4], investigated
+                                                                           Sparkgap
+                                           (a)
+the fast coaxial gun mode
+
+which       led      to    the
+                                                              Electrodes
+development of the high
+                                 Capacitor Bank
+pressure          mode     of
+
+operation.                                                         Insulator Sleeve
+
+                                                                    Sparkgap
+          The plasma focus           (b)
+
+
+device,     in    which    an    Figure 1.1: Sketch of plasma focus geometry
+                                 a) Mather-type b) Filippov-type
+accelerated       plasma    is
+
+magnetically compressed to a short lived (50-200 ns), rather dense (~ 10-19 cm-3) and
+
+hot (~ 1keV) filament (focus), was discovered independently by Mather (USA) [5]
+
+and Filippov (USSR) [6] in early 1960s.
+
+          The devices investigated by these two pioneers have significantly different
+
+geometries, though they are similar in many aspects and results. Both are composed
+
+of two coaxial electrodes (see Figure 1.1) separated by an insulator sleeve. They form
+
+an accelerator powered by a capacitor bank switched by a sparkgap. The acceleration
+
+of the current sheath, the radial compression to the axis at the end of the gun leading
+                                                                                              2
+                                      INTRODUCTION
+
+
+
+
+to a dense Z-pinch filament, and the following turbulent plasma phase, characterize
+
+the typical plasma focus discharge.
+
+       Many plasma focus devices have since been built by other investigators, but
+
+all broadly conform to one of the two original geometries, and can be classified as
+
+either of Mather- or Filippov-type.
+
+       A large range of investigations have been performed on both types of plasma
+
+focus geometries with stored energies varying from 1kJ to 1 MJ. During 60’s, the
+
+intense bursts of neutrons from the plasma focus device operated in deuterium led to
+
+the premature announcement of the achievement of the thermonuclear fusion. This, in
+
+turn, led to great progress in improving the associated pulse power technology. It also
+
+helped to understand the various physical phenomena occurring in these systems.
+
+       Over the years, scientists have developed several devices with the goal of
+
+increasing the neutron yield. For more than 20 years, the dense plasma focus (DPF)
+
+device was the strongest pulsed neutron source available. The transient nature (i.e. the
+
+neutron emission time is ~ 0.1 μs) of the plasma focus is both its beauty and a
+
+drawback.
+
+       The plasma focus device emits neutrons from fusion reaction depending on the
+
+fuel used (e. g. deuterium, mixture of deuterium and tritium, etc.). Fueling the focus
+
+with the mixture of tritium and deuterium, ~ 5-10 times more neutrons of 10-13 MeV
+
+energy can be produced form the D - Li reaction as compared to the D - D reaction
+
+(2.5 MeV) [7]. Thus, plasma focus can generate neutrons above 10 MeV without the
+
+implications associated with the handling of tritium.
+
+       The half width of the neutron spectrum emitted by plasma focus is close to the
+
+one emitted by a thermonuclear plasma with kTi = 3 keV [8]. Since, in DPF devices,
+
+                                                                                      3
+                                    INTRODUCTION
+
+
+
+
+plasma generation does not require a massive structure like the tokamak, the useful
+
+neutron spectrum is distorted little by neutron scattering in the structural material of
+
+the device.
+
+         The neutron-emitting volume is a cone, the height of which can range between
+
+1 and 100 mm [9], depending on the experimental conditions. Within limits, plasma
+
+focus can be operated as a point source, or as a volume source.
+
+         All the plasma neutron sources developed and operated so far have achieved
+
+comparable values of the neutron flux. Plasma focus, however, offers a cost reduction
+
+of a factor of 100 for a given number of neutrons produced per square centimeter [10].
+
+         Besides being a ready source of hot dense plasma and fusion neutrons, the
+
+focus also emits copious amount of X- rays (soft and hard), especially when operated
+
+with high Z gases. This distinctive feature of the plasma focus sets it apart from other
+
+devices as a prime candidate for industrial applications.
+
+         In summary, a wide range of plasma phenomena is readily available from this
+
+easily constructed machine, and has led to its study in many laboratories around the
+
+world.
+
+
+
+
+                                                                                      4
+                                   INTRODUCTION
+
+
+
+
+1.1 OBJECTIVES OF THE THESIS
+
+       The main purpose of this experimental work was to study the emission of
+
+radiation (neutrons, deuterons and X-rays) from a small plasma focus device operated
+
+in deuterium and to correlate the radiation output with the focus dynamics during the
+
+radial phase.
+
+       The first objective of the project was to obtain the energy spectra of the axially
+
+emitted deuteron beams on a shot-to-shot basis and to correlate the deuteron flux with
+
+the total neutron yield.
+
+       To attain this goal, a magnetic spectrometer was designed, constructed and
+
+implemented on the forward axis of our 3 kJ plasma focus device.
+
+       In order to detect the energetic ions, CR-39 solid state nuclear track material
+
+was used in the plane of the spectrometer. To overcome the major shortcoming of
+
+very laborious and time-consuming requirement of counting/measuring tracks by
+
+visual inspection using an optical microscope at high magnification, an automated
+
+image scanning and track measurement system was developed and implemented.
+
+       The second objective of the project was to investigate the correlation between
+
+the focus dynamics and the related phenomena. This goal was achieved by studying
+
+the emission of soft X-rays, hard X-rays and neutrons and by correlating some of the
+
+emission parameters with the characteristic time periods of the focus.
+
+       Different diagnostics were employed for this purpose. The idea was to
+
+improve and extend some of the classical methods of detection by developing and
+
+implementing, in our work, new and updated high performance data acquision and
+
+analysis systems provided by the modern technologies.
+
+
+
+                                                                                       5
+                                   INTRODUCTION
+
+
+
+
+       The optical investigation of the radial phase of the focus was initially
+
+performed by means of single-shot laser shadowgraphy in a divergent beam. The new
+
+element of this work was the use of a CCD based image capture system.
+
+       The time-resolved soft X-ray measurements employed filtered PIN diodes.
+
+This enabled us not only to monitor the emission characteristics of the focus in the
+
+soft X-ray region, but also to determine, in some discharges, the electron temperature
+
+of the pinch by employing the filter ratio method.
+
+       The time-resolved hard X-rays and neutron measurements used three plastic
+
+scintillator-photomultiplier systems, of which two were placed radially at different
+
+distances from the anode (time-of-flight geometry). The other detector was placed in
+
+the axial direction of the focus. The idea was to measure the neutron energies and re-
+
+iterate the dominant effect of the beam-target mechanism responsible for the neutron
+
+production.
+
+       The total neutron yield was monitored by an In foil activation detector placed
+
+axially on top of the focus chamber.
+
+       Another new element introduced by the present work was the measurement of
+
+the anisotropy of the neutron emission. The anisotropy was determined by integrating
+
+the time-resolved emission rate signals from the scintillator-photomultiplier systems
+
+placed at the same distance from the pinch, one in the axial and the other in the radial
+
+direction.
+
+       The focus discharge and the diagnostics were triggered and controlled by a
+
+computer. Our data acquisition and analysis system enabled us to record, transfer and
+
+store data from all the diagnostics simultaneously. The time resolution achieved in our
+
+work was 1 nanosecond.
+
+                                                                                      6
+                                    INTRODUCTION
+
+
+
+
+       The diagnostics employed enabled us to analyze and correlate the following
+
+radiation parameters: total neutron yield, neutron flux anisotropy and soft X-ray
+
+production.
+
+       The correlation of the shadowgraphic images of the focus with the electrical
+
+parameters of the discharge together with the X-rays and neutron emission
+
+characteristics enabled us to identify the important periods of the focus (i.e. the radial
+
+compression, the instant when minimum pinch radius is attained, the pinch lifetime,
+
+and the post focus phenomena).
+
+       With respect to this idea, we extended our work in developing a three-frame
+
+computer-controlled CCD-based laser shadowgraphy system.
+
+       Our aim was to study the correlation between the pinch characteristics
+
+(column length, column radius, aspect ratio), the radiation (neutrons and soft X-rays)
+
+emission, and the instabilities growth rates.
+
+       The third objective of this project was to perform a numerical simulation of
+
+the focus dynamics and to correlate the data with the experimental results. This aim
+
+was achieved by implementing a computational model which includes the effect of
+
+radiation.
+
+
+
+
+                                                                                        7
+                                    INTRODUCTION
+
+
+
+
+1.2 LAYOUT OF THE DISSERTATION
+
+       A summary of the content of each chapter is presented in the following
+
+paragraphs.
+
+       The first chapter gives some introductory and historical elements of the
+
+plasma focus. This is followed by the presentation of the objectives of the thesis.
+
+       The second chapter is devoted to the description of the plasma focus and the
+
+emission of the radiation. The first part describes the dynamics of the dense plasma
+
+focus discharge. Various phenomena like fusion reaction and emission of the fusion
+
+products, instabilities and X-ray emission are discussed in the next sections.
+
+       A detailed description of the diagnostic techniques employed in the
+
+experiments is given in the third chapter.
+
+       In chapter four, a one dimensional plasma focus model is discussed.
+
+       Chapter five provides the details of the plasma focus facility (NIE-SSC-PFF)
+
+and the experimental set-up employed in our project.
+
+       Chapter six presents the results and provides a detailed discussion and
+
+interpretation of the data.
+
+       Chapter seven is devoted to the conclusions of the present work, and proposes
+
+some directions for the future investigations of the focus phenomena, as well as some
+
+practical applications of the radiation emitted from the DPF device.
+
+
+
+
+                                                                                      8
+Chapter 2
+
+
+
+
+     PLASMA FOCUS DYNAMICS, RADIATION
+    EMISSION AND ASSOCIATED PHENOMENA
+
+
+
+       The dense plasma focus device is a magnetohydrodynamic coaxial plasma
+
+accelerator [11, 12]. In this device, the magnetic energy is initially stored behind the
+
+moving current sheath. A fraction of this energy is converted into plasma energy
+
+during the rapid collapse (Z-pinch) of the current sheath towards the axis beyond the
+
+end of the central electrode.
+
+       The dynamics of the plasma focus discharge presented in the first section of
+
+this chapter is followed by a discussion on the radiation (neutrons and X-rays)
+
+emission and related phenomena.
+
+
+
+2.1 DYNAMICS OF THE DPF DISCHARGE
+
+       The dense plasma focus (DPF) consists of two coaxial electrodes (anode and
+
+cathode) separated by an insulator sleeve. The Filippov [13] geometry has an anode
+
+aspect ratio (diameter/length) >1, whereas the Mather-type [3] is characterised by an
+
+aspect ratio < 1. The device under investigation in the Division of Physics, NIE/NTU
+
+is of Mather-type, as shown schematically in Figure 2.1.
+
+
+
+
+                                                                                      9
+ PLASMA FOCUS DYNAMICS, RADIATION EMISSION AND ASSOCIATED PHENOMENA
+
+
+
+
+       The operation of the plasma focus can be divided into three stages separated
+
+both in time and location: breakdown or inverse pinch phase, axial acceleration phase,
+
+and radial collapse phase.
+
+
+
+
+                                            70
+
+                                                                                        Current
+                                            60
+
+
+
+
+                                                  Breakdown Phase
+                                                                                        Voltage
+
+                                            50
+
+
+
+
+                                                                                                                   Current (170kA/div)
+                                            40
+
+
+
+                               Volts (kV)
+                                            30
+
+
+                                            20
+
+
+                                            10
+
+
+                                             0
+
+
+                                            -10
+                                                                    0   500   1000       1500     2000   2500   3000
+
+                                                                                     Time (ns)
+
+        Figure 2.1: Current sheath dynamics in DPF and the
+        corresponding current and voltage signal profiles showing the
+        phases of the discharge.
+
+
+       These three phases are illustrated in Figure 2.1. The plasma focus device is
+
+usually operated with the inner electrode as anode and the outer electrode as cathode.
+
+The operation of the device with the reverse polarity decreases the neutron and X-ray
+
+output [14]. The gross dynamics of the three distinct phases is described below.
+
+                                                                                                                                         10
+

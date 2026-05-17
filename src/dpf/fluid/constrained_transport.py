@@ -26,9 +26,12 @@ Data layout:
     Ez lives on z-edges (x-y edges): shape (nx+1, ny+1, nz)
 
 References:
-    Evans C.R. & Hawley J.F., ApJ 332, 659 (1988).
-    Gardiner T.A. & Stone J.M., JCP 205, 509 (2005).
-    Toth G., JCP 161, 605 (2000).
+    KnowledgeReference/a-constrained-transport-embedded-boundary-method-for-compressible-resistive-magnetohydrodynamics.md
+    KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md
+    KnowledgeReference/2023-mhd-numerics-mpi-amrvac-30-updates-to-an-open-source-simulation-framework.md
+
+This is a numerical-method utility. It can support a candidate divergence
+control packet only after convergence, limiter, and conservation gates pass.
 
 Classes:
     StaggeredBField: Dataclass for face-centred magnetic field.
@@ -47,6 +50,20 @@ from dataclasses import dataclass
 
 import numpy as np
 from numba import njit, prange
+
+CONSTRAINED_TRANSPORT_SOURCE_REFERENCES = {
+    "ct_embedded_boundary_method": (
+        "KnowledgeReference/"
+        "a-constrained-transport-embedded-boundary-method-for-compressible-resistive-magnetohydrodynamics.md"
+    ),
+    "pulsed_power_mhd_context": "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
+    "mpi_amrvac_numerics_context": (
+        "KnowledgeReference/"
+        "2023-mhd-numerics-mpi-amrvac-30-updates-to-an-open-source-simulation-framework.md"
+    ),
+}
+CONSTRAINED_TRANSPORT_SOURCE_STATUS = "numerical_method_candidate_not_validation"
+CONSTRAINED_TRANSPORT_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 # ============================================================
 # Staggered B-field data structure

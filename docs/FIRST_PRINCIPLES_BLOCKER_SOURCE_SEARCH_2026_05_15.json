@@ -110,6 +110,22 @@
     "add negative acceptance tests for seeded startup",
     "keep source_backed_end_rundown_sheath as engineering candidate until breakdown/liftoff BVP is available"
   ],
+  "acceptance_gate": "engineering_end_rundown_seeded_or_text_startup_cannot_support_whole_shot_first_principles_until_reviewed_imported_pic_state_or_source_backed_surface_breakdown_bvp_payload_channels_hashes_consistency_tests_and_review_pass",
+  "negative_test_policy": {
+    "seeded_layer_rejection_required": true,
+    "uniform_or_profile_startup_rejection_required": true,
+    "end_rundown_whole_shot_rejection_required": true,
+    "unreviewed_imported_pic_state_rejection_required": true,
+    "missing_field_particle_payload_rejection_required": true,
+    "civ_paschen_scaffold_promotion_rejection_required": true,
+    "cross_scope_startup_promotion_rejection_required": true
+  },
+  "implementation_ratchet": [
+    "Emit startup_channel_status decisions.",
+    "Emit startup_mode_status and mode_payload_status decisions.",
+    "Emit candidate_input_policy that marks device/gas/circuit/startup inputs as engineering-only.",
+    "Emit acceptance_gate and negative_test_policy for startup promotion."
+  ],
   "implemented_files": [
     "src/dpf/first_principles/startup_bvp.py",
     "src/dpf/first_principles/runner.py",
@@ -118,8 +134,12 @@
   ],
   "validated_commands": [
     {
-      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
-      "result": "35 passed"
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     },
     {
       "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_BLOCKER_SOURCE_SEARCH_2026_05_15.json",

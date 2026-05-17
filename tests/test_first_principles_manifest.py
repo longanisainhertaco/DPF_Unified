@@ -82,7 +82,7 @@ def test_conservation_ledger_records_energy_particles_and_residuals() -> None:
     assert ledger.source_index_references[0].status == "source_reference_not_validation"
 
 
-def test_hybrid_telemetry_conservation_extracts_residual_placeholders() -> None:
+def test_hybrid_telemetry_conservation_extracts_measured_residual_channels() -> None:
     telemetry = {
         "n_steps_requested": 3,
         "n_steps_completed": 2,
@@ -112,6 +112,7 @@ def test_hybrid_telemetry_conservation_extracts_residual_placeholders() -> None:
     assert ledger.residuals.div_B_linf == 8.0e-9
     assert ledger.residuals.current_continuity_linf_A_m3 == 9.0e4
     assert ledger.residuals.current_residual_linf_A_m2 == 2.0e-7
+    assert ledger.residuals.missing_channels == ()
 
 
 def test_first_principles_manifest_is_engineering_candidate_not_validation() -> None:

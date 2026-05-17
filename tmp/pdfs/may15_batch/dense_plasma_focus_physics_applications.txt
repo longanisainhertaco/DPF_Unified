@@ -1,0 +1,1035 @@
+Home   Search    Collections   Journals   About   Contact us    My IOPscience
+
+
+
+
+       Dense Plasma Focus: physics and applications (radiation material science, single-shot
+
+       disclosure of hidden illegal objects, radiation biology and medicine, etc.)
+
+
+
+       This content has been downloaded from IOPscience. Please scroll down to see the full text.
+
+       2015 J. Phys.: Conf. Ser. 591 012020
+
+       (http://iopscience.iop.org/1742-6596/591/1/012020)
+
+       View the table of contents for this issue, or go to the journal homepage for more
+
+
+
+
+       Download details:
+
+
+       IP Address: 87.30.54.86
+       This content was downloaded on 26/10/2016 at 16:05
+
+
+
+       Please note that terms and conditions apply.
+
+
+
+
+       You may also be interested in:
+
+
+       Multi-scaling of the dense plasma focus
+       S H Saw and S Lee
+
+       Dense plasma focus PACO as a hard X-ray emitter: a study on the radiation source
+       L Supán, S Guichón, M Milanese et al.
+
+       Instability Enhanced Emissions of X-Ray and Neutron in Plasma Focus
+       Aye Thein, Yoneyoshi Kitagawa, Ryukichi Takahashi et al.
+
+       Spectroscopic measurement method of electron temperature and density in a 'plasma focus' type
+       discharge
+       P Gratreau
+
+       Neutron emission characterisation at the FN-II Dense Plasma Focus
+       F Castillo-Mejía, I Gamboa-de Buen, J J E Herrera-Velázquez et al.
+
+       Sequences of neutron and X-ray flashes during a long-lasting current in a plasma focus device
+       J. Salge, U. Braunsberger, B. Fell et al.
+
+       Deposition of aluminium nanoparticles using dense plasma focus device
+       Naorem Bilasini Devi, Savita Roy and M P Srivastava
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                                     IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                                    doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+Dense Plasma Focus: physics and applications (radiation
+material science, single-shot disclosure of hidden illegal
+objects, radiation biology and medicine, etc.)
+
+                     V.A. Gribkov1,2,3,4, R. Miklaszewski1, M. Paduch1, E. Zielinska1, M.
+                     Chernyshova1, T. Pisarczyk1, V.N. Pimenov2, E.V. Demina2, J. Niemela3, M.-L.
+                     Crespo3, A. Cicuttin3, K. Tomaszewski5, M.J. Sadowski1,6, E. Skladnik-
+                     Sadowska6, K. Pytel6, A. Zawadka6, G. Giannini7, F. Longo7, A. Talab8, S.E.
+                     Ul’yanenko9
+
+
+                     1
+                       Institute of Plasma Physics and Laser Microfusion, Warsaw, Poland,
+                     2
+                       A.A. Baikov Institute of Metallurgy and Material Sciences, Russ. Ac. Sci., Moscow,
+                     R.F.
+                     3
+                       The Abdus Salam International Centre for Theoretical Physics, Trieste, Italy
+                     4
+                       A.I. Alikhanov Institute of Theoretical and Experimental Physics, Moscow, R.F.
+                     5
+                       ACS Ltd., Warsaw, Poland
+                     6
+                       National Centre for Nuclear Research, 05-400 Otwock, Poland
+                     7
+                       Department of Physics, University of Trieste, Trieste, Italy
+                     8
+                       Atomic Energy Authority, NRC, Plasma Physics and Nuclear Fusion Department,
+                     Egypt
+                     9
+                        Medical Radiological Research Center, Russ. Ac. Med. Sci., Obninsk, Kaluga
+                     region, R.F.
+
+                     E-mail: gribkovv@rambler.ru
+
+                     Abstract. The paper presents some outcomes obtained during the year of 2013 of the activity in
+                     the frame of the International Atomic Energy Agency Co-ordinated research project
+                     “Investigations of Materials under High Repetition and Intense Fusion-Relevant Pulses”. The
+                     main results are related to the effects created at the interaction of powerful pulses of different
+                     types of radiation (soft and hard X-rays, hot plasma and fast ion streams, neutrons, etc. generated
+                     in Dense Plasma Focus (DPF) facilities) with various materials including those that are counted
+                     as perspective ones for their use in future thermonuclear reactors. Besides we discuss phenomena
+                     observed at the irradiation of biological test objects. We examine possible applications of
+                     nanosecond powerful pulses of neutrons to the aims of nuclear medicine and for disclosure of
+                     hidden illegal objects. Special attention is devoted to discussions of a possibility to create
+                     extremely large and enormously diminutive DPF devices and probabilities of their use in
+                     energetics, medicine and modern electronics.
+
+
+1. Introduction
+The most important effect ruled the physical processes in a DPF device [1] is the “current abruption”
+(CA) phenomenon [2, 3]. During this transient event (occurring in the ps time scale) a plasma diode is
+
+              Content from this work may be used under the terms of the Creative Commons Attribution 3.0 licence. Any further distribution
+              of this work must maintain attribution to the author(s) and the title of the work, journal citation and DOI.
+Published under licence by IOP Publishing Ltd                         1
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                          IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                         doi:10.1088/1742-6596/591/1/012020
+
+
+
+produced, which switches stored energy over to the beams of fast particles – electrons and ions. These
+fast particles produce extremely bright flashes of X-rays and neutrons. It gives us an opportunity to make
+heavy science by means of light technology.
+
+
+
+
+                                                  Plasma diode
+
+
+                                                    Anode
+
+                     a)                                                                     b)
+
+Figure 1.          1-ns laser interferometric (a) and self-luminescence (b) pictures of the pinch during
+the plasma-diode formation on the plasma column.
+
+
+         Value of current of fast electrons Ife can be sharply inferred from X-ray dosimetry, i.e. by
+measuring an X-ray dose (D = F×τx) where F is energy flux with its spectral distribution (depends on
+Ueff), anode material (Z) and pulse duration (τx):
+                                 F ~ kxZUeff 2Ife where kx = 10–9 [W/(V2А)]
+        Current of fast ions Ifi can be estimated by measuring neutron yield taking into consideration
+size (Vpinch) and density (npl) of the pinch plasma, time duration of the fast ions pulse (τfi) with the
+corresponding cross-section (σv) and magnetization degree of the ions km (5…10 [2, 3]):
+                             Yn ~ nplNfi(σv)Vpinchτfi = npl (Ifi /evfi Sfi) (σv)Vpinchτfi
+          According to these measurements and formulae both types of currents (of fast electrons and
+high-energy ions) sequentially in time substitute almost the overall discharge current in DPF during the
+course of the CA phenomenon.
+          In particular one may see that the total number of fast deuterons generated in the PF-1000 facility
+[2, 3] is about 1018. It means that a DPF is a good accelerator (efficiency of the bank energy conversion
+to the overall energy of the fast ion beam is η ~ 10%) but a bad target (the product of density and
+dimensions is npl×lpinch<< 1/σfusion, and the Lawson criterion is about nplτ ~ 1011 [cm-3s]).
+
+2. Medium-sized DPF and their applications
+At present time the following two types of energy transfer from the primary source to the load are mainly
+used: capacitive storage with the circuit closer and inductive storage with the circuit interrupter:
+
+
+
+
+                                             a)                      b)
+
+Figure 2.        Capacitive and inductive storage systems with current closer and current interrupter
+correspondingly.
+
+
+
+                                                          2
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+          In the second case where L = const and when the load ZH ≈ LH in the most favorite case (when
+L ≈ LH) according to the Ampere’s law the two portions by ~ ¼ part of the overall energy accumulated
+first in the magnetic storage system L will correspondingly be preserved in this primary storage L and
+another ¼ will be transferred to the load ZH ≈ LH, whereas ½ part of it will be lost inside the breaker K1.
+          In the medium-sizes DPF devices (with energies in the capacitor banks from 1 kJ till 100 kJ)
+one can reach the optimal (variable!) ratio of external (Lext) and internal (Lint) inductances. Namely in
+the beginning of the discharge (at the breakdown phase) Lext >> Lint, but during the pinching stage the
+ratio becomes just opposite Lext << Lint due to a variation of the dynamical internal inductance.
+          Moreover, during the maximal compression, when our pinch represents by itself a plasma
+inductive storage, the current breaker is situated inside the pinch (formation of a plasma diode). Energy
+that is usually lost in the external current interrupter in the classical scheme (K1 in Fig. 2) is converted
+within the DPF pinch into beams of fast electrons and ions.
+          Because of the above two unique features (the dynamical change of the ratio Lext / Lint and the
+active role of the current interrupter) it is possible to transfer from “plasma inductive storage” to the
+“load” (in the ideal theoretical approximation) up to 100% of the energy of azimuth magnetic field of
+the pinch, which is of the order of primary energy stored in the capacitor bank.
+          It is interesting to compare parameters of the discharge of the PF-6 device (IPPLM, Warsaw,
+Poland; Cbank = 32 µF, Ebank ≈ 6.4 kJ, Imax ≈ 760 kA, ωdisch ≈ 106 c-1, Lpinch ≈ 30 nH): ρ = √Lpinch/Cbank ≈
+Zpinch = ωL ≈ REMH = 30uc ≈ 30 mΩ (where u – current drift velocity, c – speed of light), i.e. the wave
+impedance ρ, the impedance of the pinch (Zpinch = ωL) and the electron magneto-hydrodynamic
+resistance (REMH = 30uc) [4] of the plasma diode are equal. Thus matching of all important circuit
+characteristics is excellent.
+          Such an apt combination of electrical parameters of the circuit facilitates a broad range of
+applications of these devices in various fields of science and technology with a very high efficiency of
+use of ionizing radiations generated by them.
+          Among these areas we shall present recent results obtained in radiation material science (testing
+of materials perspective for use in nuclear fusion devices), in unveiling of hidden fissile illegal items in
+a luggage, in dynamic quality control of machines and mechanisms in a course of their operation, in
+radiation biology (radio-enzymology), and in nuclear medicine (pulsed neutron treatment of cancer).
+The most important advantages in the applications of a DPF are demonstrated in those cases where
+nanosecond radiation pulses are used in pulsed radiation physics/chemistry/biology in their “perfect
+sense” [5], i.e. when micro-volumes of activity of secondary particles are overlapped during a time
+interval, which is short compared with the reciprocal physical/chemical/biological process. This time
+we used for irradiation 4 devices: PF-6 and PF-1000 (both IPPLM, Poland), the “Bora” facility (ICTP,
+Italy) and PF-5M (IMET, R.F.).
+
+2.1.     Radiation material science
+In the past year we have irradiated targets made of different materials counted as the perspective ones
+for implementation of them in nuclear fusion reactors (Ti-based alloys, Mo, carbon-based composites
+CFC and SiC, low-activated stainless steels – all prepared in IMET, R.F., and in particular the tungsten-
+based material, identical samples of which were supplied to the participants of the IAEA CRP by the
+team of the FZJ, Juelich, Germany). Our main aim in these experiments was to test the above samples
+by fusion relevant pulses of hot plasma and fast ion streams generated in DPF. Results of their analytical
+examination after irradiation are presented in Fig. 3.
+         Fig. 3a shows a W-sample’s photo after irradiation. One may clearly see a region (in the low-
+right corner) of the action of strong beam of fast deuterons (average energy is Ed ~ 100 keV). The rest
+part of the sample was irradiated mainly by a hot plasma stream (Te ~ 300 eV, vpl ~ 2×107 cm/s). In the
+border between these zones an optical microscopy (b) has shown pores and ridges in the plasma-action
+area (power flux density here is estimated as ~109 W/cm2, penetration depth of plasma ions is about 1
+nm). Remelted surface in the fast ion beam action part of the sample with cracks (fracturing pattern) on
+
+
+                                                     3
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                   IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                  doi:10.1088/1742-6596/591/1/012020
+
+
+
+it is seen better in the SEM picture (c). Roughness of the surface was measured by atomic-force
+microscopy (Fig. 3d). In Fig. 3e we have presented a result obtained by an X-ray micro-tomographic
+computer technique using 150 kV HAMAMTSU micro-focus X-ray source L8121-03 and COBRA
+micro CT software. The picture is a cross-section of a Ti foil taken in a certain part of the sample after
+its irradiation. In the slice one may see some imperfections that are probably a result of a damage
+produced by a shock wave generated and penetrated through the foil after the action of the beam of fast
+deuterons.
+
+
+
+
+          a)                       b)                     c)                d)                   e)
+
+Figure 3.           Macroscopic image (a) of the tungsten specimen No. 40 after its irradiation in DPF,
+an optical microscopic picture of it (b) at the border between zones of irradiation by hot plasma and fast
+ion beam, a scanning electron microscopic view (c) of the part of the same sample with the strongest
+action of the ion beam, an atomic force microscopy (d) of the sample with its roughness, as well as one
+cross-section of the Ti foil made by the X-ray micro-tomography (e).
+
+         It is important to note that we can investigate the samples not only after their irradiation by
+various analytical methods. In fact we are able to monitor the irradiation process itself with high
+temporal, spatial and spectral resolution by laser interferometry (Fig. 4 and 5) or by registering self-
+luminescence of plasma (Fig. 1b and Fig. 6).
+         Processing of an interferometric picture taken at the beginning of the formation of secondary
+plasmas produced on the anode by the self-focused beam of fast electrons (on the left side) and by the
+divergent stream of fast ions on the stainless steel plate of 2-mm thickness (on the right side) is shown
+in Fig. 5.
+         From processing of the interferometric pictures one may see that in secondary plasma produced
+by the electron beam near the anode surface the upper measured limit of density is higher than in
+secondary plasma produced by the ion beam. It results from the fact that the lateral dimension of the
+first type of plasma is small compared with the second one. In its turn it is a consequence of self-focusing
+of the electron beam in opposite to the divergent ions beam. Thus the upper limit is determined by
+crowding of interferometric fringes.
+         From Fig. 6 one may see that in the first period of time after the CB phenomenon our
+spectrometer registers mainly deuterium plasma lines (Dα, Dβ…). This is our “primary” plasma
+generated in the pinch and colliding with the target. Then at the moments near the second microsecond
+after CA secondary plasma is generated near the target (in this case a sample of SiC).
+         One may see here mainly lines of the target’s material (C and Si). The degree of ionization (e.g.
+an observation of C IV lines) confirms the high value of secondary plasma temperature that was deduced
+earlier from the velocity of its expansion. In the late stages the spectrometer registers a mixture of both
+substances.
+         In the very late stage (10μs after CA phenomenon) at using for an irradiation in the PF-1000
+facility a thin (2 mm) sheet of stainless steel we were able to register a shock wave generated inside the
+target by the ion beam and escaping subsequently from the rear side of the blade (see Fig. 7).
+         What is of a particular interest in the picture – it is a “post pinch” that continues to exist during
+a very long period of time (much more than 10 microsecond after CA phenomenon).
+
+
+
+
+                                                      4
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                               IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020              doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+                                                                                 b)
+
+
+
+
+                a)                                                                    c)
+
+
+
+
+                d)                                                                    e)
+
+Figure 4.           Laser interferometric images of target’s plasma (specimen’s material – SiC) taken at
+4 consecutive time moments (temporal resolution – 1 ns): beginning of the secondary plasma formation
+(а and b), well-developed secondary plasma cloud (c), beginning of the formation of the unloading wave
+(d) and well-developed unloading wave (e).
+
+
+
+
+           a)                                      b)                                      c)
+
+Figure 5.          Electron density distribution (a) according to the processing of the interferometric
+image (Fig. 4 a) of the interaction of the powerful electron (left-hand side) and ion (right-hand side)
+streams with targets: b) – two-dimensional map, c) – cross-section along the Z-axis.
+
+
+
+
+                                                   5
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020               doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+Figure 6.          Time evolution of the secondary plasma spectrum taken in visual range with
+temporal resolution equal to 100 ns.
+
+
+                                                                                        Shock wave
+
+
+                                                                                        Target (SS plate)
+
+
+
+
+                                                                                        Secondary target’s
+                                                                                        plasma (produced
+                                                                                        by ion stream)
+
+
+
+
+                                                                                        Post-pinch
+
+                                                                                        Secondary anode’s
+                                                                                        plasma (produced
+                                                                                        by the electron
+                                                                                        stream)
+
+                                                                                        Anode
+
+
+
+Figure 7.            Late stage of the secondary plasmas/pinch development (10 µs after the current dip)
+taken at the irradiation of thin stainless plate with a post-pinch and a shock wave escaping from the rear
+side of the plate.
+
+
+
+
+                                                    6
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020               doi:10.1088/1742-6596/591/1/012020
+
+
+
+         Together with the data of measurements provided in the collector part of the DPF chamber (in
+the PF-1000 facility) by a set of magnetic probes we have learned that at this configuration with the
+large-size metallic blade placed in a distance of ~ 10 cm from the anode the pinch is separated from the
+main electrical circuit and works as a torus-like self-organized magnetic storage dissipating its energy
+during period of time of the order: Δt ~ L/R (~ 100 µs for the PF-1000), where L is the post-pinch
+inductance and R is its resistivity. This result is supported by the spectroscopic investigations (of the
+type of Fig. 6).
+
+2.2.    Microlithography and micromachining
+DPF can be effectively used by means of irradiating of photoresists with soft X-rays for
+microlithography (with Ne-filled chamber) [6] and micromachining [7], i.e. in manufacturing of 3D
+structures (with Ar-filled chamber).
+
+
+
+
+Figure 8.          Soft X-ray pulse obtained at the DPF operation with Ar-Kr gas mixture.
+
+         In Fig. 8 one may see an X-ray pulse obtained in the second case whereas Fig. 9 is a picture of
+a structure obtained in such schemes at the National Institute of Education (Singapore) with a photoresist
+with chemical amplification.
+         As it will be seen from the subsequent part this micromachining technique can in principle be
+used for manufacturing of super-miniature DPF devices.
+
+
+
+
+Figure 9.          3-dimentional structure obtained in the wave-length rang near 0.4 nm at the
+photoresist with chemical amplification.
+
+
+
+                                                    7
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+2.3.     Dynamic quality control of machines and mechanisms in a course of their operation
+DPF as a source of very bright nanosecond pulses X-rays and neutrons can be implemented for the
+dynamic quality control of machines and mechanisms in a course of their operation. In principle these
+two types of radiation are additive and can provide information on dissimilar features of the object under
+irradiation (e.g. X-rays can give us information about high-Z materials whereas neutrons – about low-Z
+– light – parts of it). At this stage we used hard X-ray flash generated by “Bora” device.
+         Spatial resolution of an image of a mechanism’s detail (turbine’s blade, car tire, piston of a car
+engine, etc.) taken during its operation by a flash of the hard X-Ray radiation from DPF determined by
+a number of factors:
+         - Pulse duration of X-Rays (ns)
+         - Size of the source of X-Rays and its remoteness from an object (< 100 μm, usually from 10
+cm to a few meters)
+         - Diffraction (wavelength, distance)
+         - Contrast degree of an object’s detail to be visualized (spectrum of hard X-Rays)
+         Theoretically for DPF it could be ~ 1 μm in a 10-cm distance at the rotation speed of a machine’s
+part ~ 10,000 rotations per minute.
+         We have made several experiments in this field including the last one with a plastic fan during
+its operation. In the below Fig. 10 one may see the overview of the experiment (a and b) and two pictures
+taken with soft X-rays irradiating by the “Bora” device (ICTP) – one in a static position of the fan (c -
+7 shots of DPF) and the other one during the fan’s rotation (d – one shot of the “Bora” device). It is
+possible to see that the dynamic picture does not differ from the static one.
+
+
+
+
+                      a)                                                          b)
+
+
+
+
+                                                                           Direction of
+                                                                           rotation
+
+                      c)                                                          d)
+
+Figure 10.          The arrangement of the experiment on the dynamic quality control (a and b) and two
+X-ray pictures of a fan in its static (c) and dynamic (d) states.
+
+
+
+
+                                                    8
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                                                            IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                                                           doi:10.1088/1742-6596/591/1/012020
+
+
+
+        This technique opens opportunities in a dynamic quality control of machines during their
+operation. It can be important e.g. in mass production and defectoscopy of car tires moving in the
+conveyer, in a woodworking industry, in a quality control of turbine’s blades when a “closed” defect
+might be visualized during the rotation because of a centrifugal force that may “open” this crack.
+
+2.4.     Radiation chemistry/biology
+Formerly in these experiments enzymes were irradiated in vitro with various doses, dose power and
+spectral range by X-Ray photons.
+        We have found here a very large (4 orders (!) of magnitude) difference in doses for the enzyme
+activation/inactivation by their irradiation with X-Rays from DPF compared with the same procedure
+using an isotope source (Cs137) [8].
+        However our attempts to find the same effect with neutron irradiations produced by DPF,
+neutron generators and pulsed fission reactor BARS were failed.
+        In these experiments the maximum of 14-MeV neutron tissue kerma obtained with DPF devices
+was 0.8 Gy, whereas for X-rays it was 0.5 Gy. ING-104 pulsed neutron generator is a Dense Plasma
+Focus (DPF) device, which serves as a source of nanosecond pulses of X-rays and neutron radiation.
+Pulses duration ranges from 20 to 30 ns. Below we present results of cytogenetic effects of mixed X-ray
+and 14-MeV neutron radiation of nanosecond pulses on human lymphocytes (Fig. 11 and 12).
+
+                                                    0.45                                                                             0.45
+
+                                                    0.40         Tot_Pohl-Ruling                                                     0.40
+                                                                 Lloyd total
+                                                                 DPF total
+                                                    0.35                                                                             0.35
+
+
+
+
+                       Total aberration frequency
+                                                    0.30                                                                             0.30
+
+                                                    0.25                                                                             0.25
+
+                                                    0.20                                                                             0.20
+
+                                                    0.15                                                                             0.15
+
+                                                    0.10                                                                             0.10
+
+                                                    0.05                                                                             0.05
+
+                                                    0.00                                                                             0.00
+
+                                                           0.0     0.2       0.4     0.6   0.8       0.0   0.2   0.4   0.6   0.8   1.0
+                                                                                   14 MeV neutron kerma / Gy
+
+
+Figure 11.          Dose curves of the total chromosomal aberration yield in human lymphocytes
+irradiated with 14 MeV neutrons. Left panel – neutron kerma was calculated using 237Np fission detector;
+right panel – neutron kerma was calculated using SIVN 61 neutron yield monitor with activation silver
+detector. Linear regression equation are Ytot = (0.041+0.009) + (0.36+0.022)K and Ytot = (0.021+0.01)
++ (0.28+0.028)K, respectively. DPF – Dense Plasma Focus.
+
+        5 plastic tubes with blood samples were placed in a cylinder plastic container using special
+holder. Diameter (inner) of the container was 55 mm, diameter of each tube was 10 mm, and wall
+thickness was 1 mm. Since DPF produced only 1 pulse every 10 minutes, to prevent damage reparation
+between pulses container was filled with melting ice and then it was mounted on the top of the plasma
+focus discharge chamber. Fission detectors with 237Np were placed outside the container opposite to
+each tube with blood. Neutron kerma was calculated using two types of detectors – the above-mentioned
+237
+   Np detector and the activation silver detector, which was the part of neutron yield monitor SIVN 61.
+In calculating kerma we supposed that neutron flux decreased according to 1/R2 law and the plasma
+focus neutron source was 25 mm below the top of the discharge chamber. To estimate the influence of
+scattered neutrons on detectors indications a Monte Carlo calculations were made with MCNP-4b code.
+
+
+                                                                                           9
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                                                    IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                                                   doi:10.1088/1742-6596/591/1/012020
+
+
+
+X-rays doses were measured with a 27012 clinical dosimeter (Dresden). The blood samples were
+received 16 pulses in total.
+
+                                           0.30                                            0.30
+                                                         Dic_Pohl-Ruling
+                                                         Lloyd dic
+                                                         DPF dic
+                                           0.25          Sev dic
+                                                                                           0.25
+
+
+
+                                           0.20                                            0.20
+
+
+
+
+                    Dicentrics frequency
+                                           0.15                                            0.15
+
+
+
+                                           0.10                                            0.10
+
+
+
+                                           0.05                                            0.05
+
+
+
+                                           0.00                                            0.00
+
+                                                  0.0   0.2    0.4     0.6    0.8    1.0          0.0   0.2   0.4   0.6   0.8   1.0
+                                                                             14 MeV neutron kerma / Gy
+
+
+Figure 12.          Dose curves of the dicentric chromosome yield in human lymphocytes irradiated
+with 14-MeV neutrons. Left panel – neutron kerma was calculated using 237Np fission detector; right
+panel – neutron kerma was calculated using SIVN 61 neutron yield monitor with activation silver
+detector. Linear regression equation are Ydic = (0.012+0.006) + (0.21+0.026)K and Ydic = (0.005+0.01)
++ (0.15+0.026)K, respectively.
+
+         At least three conclusions may be inferred from the above figures:
+         - First, the major contribution to the cytogenetic effect of the DPF neutron generator radiation
+is made by neutrons.
+         - Second, pulsed neutron radiation of short, nanoseconds, duration is as effective as it is at
+continuous mode of neutron radiation, at least, within the mutual experimental uncertainties at its
+relatively high values (< 108 Gy/min) for 14-MeV neutrons. It gives hope of applicability of DPF for
+the potential methods of neutron therapy instead of cumbersome, expensive and dangerous nuclear
+reactors.
+         - Third, our estimations made for boron-capture neutron therapy with Li ions and α-particles as
+products of nuclear reactions with their mean-free paths (6 and 9 μm respectively) have shown that for
+the above-mentioned overlapping of activity of the nuclear reaction products we need a flux of neutrons
+~ 1012 n/cm2.
+
+2.5.    Nuclear medicine (pulsed neutron treatment of cancer)
+The main ideas to expect the same effects as with X-rays namely in malignant cells enriched with boron
+to higher degree compared with sound cells are as follows:
+        - Usage of epithermal neutrons (high cross-section, deep penetration)
+        - Simultaneous destruction of both spirals of DNA of malignant cells during the ns period of
+time by a high-density neutron flux (a “shock-like action” at a double-strand rupture)
+        - Threshold-like behavior of radiation damage of malignant cells due to the overlapping of
+micro-volumes of activity of free radicals and nuclear reaction products only in malignant cells.
+        All these opportunities might open ways for a low-dose therapy of cancer.
+
+
+
+
+                                                                                    10
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                  IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                 doi:10.1088/1742-6596/591/1/012020
+
+
+
+         It is clear that to gain these opportunities we have to change spectrum of fast neutrons from DPF
+into spectrum with a large quantity of epithermal neutrons. However we must:
+         1) Not to lose too many neutrons
+         2) Not to increase neutron pulse duration too much (should be < 1 µs that is the time duration
+of biochemical reactions with free radicals).
+         In this work we focus on the development of a detailed simulation of interaction of short-pulse
+radiation generated by a DPF with tissue to estimate the absorbed dose by the cells for this dynamic
+case. The simulation was carried out by means of the Geant4 code [9], a toolkit to simulate the
+interaction of radiation with matter, originally developed for nuclear and particle physics. One of the
+results is presented in Fig. 13.
+
+
+
+
+                   a)                                                      b)
+Figure 13.       Neutron energy spectrum (a) and time profile (b) obtained by simulating a
+monochromatic pulse of 10 ns of 2.45-MeV neutrons in the small chamber of the “Bora” device with a
+15-cm Fluental TM moderator.
+
+        From this picture it is clearly seen that we have fulfilled the above-mentioned conditions. We
+investigated also some other moderators (e.g. tungsten) and we have also done such works for the 14-
+MeV neutrons that can be generated in DPF filled with D-T mixture.
+
+2.6.     A single-shot nanosecond neutron pulsed technique for the detection of fissile materials
+In principle there are two methods that can be applied with DPF-generated neutrons due to the fact that
+spectrum of fission neutrons induced in fissile materials from an external source (“Watt spectrum”)
+covers the range extended from 0.5 till 5.0 MeV with a maximum positioned near 1.5 MeV:
+         1)           To use 2.5-MeV neutrons and look for a component of fission neutrons having
+energy higher than 2.5 MeV
+         2)           To use 14-MeV neutrons and look for a component of fission neutrons having energy
+lower than 14 MeV.
+         Our MCNP modeling has shown that our neutron yield generated with pure deuterium (109
+n/shot) is not enough for the first method; so we used 14-MeV neutrons.
+         Experimental results obtained with the PF-6 device working with D-T mixture on the irradiation
+of the EK-10 fuel element are shown in Fig. 14 and 15.
+     From these pictures one may clearly see neutrons elastically and inelastically scattered by elements
+ingressed into the fuel element. It is essential to note that these oscilloscope traces were obtained just in
+one shot of our DPF. This single-shot technique of collecting information during about 100 ns is in
+particular important for application in unveiling of fissile materials hidden in fast-moving objects (cars,
+trains, ships, etc.).
+
+
+
+
+                                                     11
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                     IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                    doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+Figure 14.         Two oscilloscope traces overlapping one another: one is taken without fuel element
+(the black one, smooth) and another one is taken with fuel element EK-10 (the blue one with multiple
+peaks).
+
+
+
+
+Figure 15.       A result of the subtraction of oscilloscope traces with attribution of different peaks
+and comparison with the results of MCNP modelling calculations.
+
+3.      Contemporary scaling laws and drivers for DP foci
+Fig. 16 presents a collection of experimental results on neutron and hard X-ray yields obtained to the
+moment with DPF devices of energy ranged from 1 J till few hundred kJ. We add some possible data
+using approximations to much higher and much lower currents/energies of the DPF discharge.
+        As it was found in the end of 80’s of the last century for the medium-sized DPF neutron yield
+scaling may be roughly described by a formula:
+
+                                        YN ~ nplNi(σv)VplΔt ~ Ipinch4 ,
+
+where plasma density npl = const, density of fast ions Ni ~ Ipinch , Tpl = const, Energy Distribution Function
+of fast ions ~ const, i.e. (σv) ~ const, Vpl ~ Ipinch2, Δt ~ Ipinch – Plasma Confinement Time.
+         For the hard X-ray yield the situation is a bit more complicated due to the facts that we have in
+DPF not just an electron beam but relativistic electron plasma (ν/γ >> 1) and the absorption
+(deceleration) of fast electrons in the anode’s material is accompanied by a collective plasma
+mechanisms and by a so-called “magnetic stopping” within the anode’s plasma. But roughly:
+
+                                        YX ~ IpinchU2Zanodeτe ~ Ipinch2,
+
+where U ~ Ei (more precisely speaking the distribution function of fast electrons) ~ const, τe ~ Ipinch.
+
+
+
+                                                      12
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                               IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020              doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+Figure 16.         Experimental scaling for neutron and X-ray production in DPF. Regions in a circles
+has not been reached yet.
+
+        DPF is a high-current accelerator producing nanosecond pulses of fast particles without
+expensive and cumbersome intermediate elements of the type of PULSE FORMING LINES (e.g. the
+Blumlein line) that are not very reliable in exploitation, very expensive and have problems at their
+exploitation with a high repetition rate. However in the case of large DPF devices the usage of the in-
+between elements as in a classical scheme of high-current high-voltage generators (see e.g. in Fig. 17 a
+design map of GAMMA facility) might be productive from the point of view of matching all elements
+of it.
+
+
+
+
+Figure 17.         Design map of a high-voltage section of accelerator with a high-current vacuum
+diode (GAMMA facility, Sarov, R.F.): 1 – the first four double-stepped forming line – DSFL – cascades,
+2 – DSFL multichannel switch, 3 – DSFL output cascade with a built-in duration converter, 4 – pre-
+pulse switch, 5 – WTL, 6 – vacuum insulator with MITL and vacuum diode.
+
+
+
+
+                                                   13
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020               doi:10.1088/1742-6596/591/1/012020
+
+
+
+         Indeed after current abruption taking time of about an inverse increment of Langmuir plasma
+instability (in ps range) a DPF chamber of the Mather geometry is nothing more than a Transmission
+Line with Magnetic Insulation (MITL – see Fig. 18) where the overall e/m energy is transported as a
+e/m wave to the plasma diode as it is realized in the above Fig. 17. So in the case of a very large DPF it
+is impossible to expect a fulfillment of a good matching of current generator (primary energy storage)
+with the plasma diode.
+
+
+
+
+Figure 18.         DPF with intermediate matching element.
+
+       In this case due to this intermediate element we can match the primary energy source with the
+load much easier. E.g. at the use of a double forming line (DFL – the so-called Blumlein line) the value
+of power released at the DPF will be (see e.g. [10]):
+
+
+
+
+where Em – maximal electric field in the line, R – load resistance (DPF’s diode), Ri – radii of coaxial
+conductors of the line, ρ = ρ1 + ρ2 – summarized wave impedance of the line, X = R2 /R1. By changing
+X it is possible to match DFL with DPF. Maximal power will be released in DPF at X = 1.52.
+         However at the numerical modeling of these schemes the full set of MHD equations must be
+used together with the equations of telegraphy at the final stage instead of simple electrotechnical
+equations of C-L-R circuitry to describe electro-magnetic wave travelling along the MITL.
+     Understanding the problems of matching of big devices with a large-scale DPF chamber in general
+and with its diode in particular as well as the problem of spending too much energy for the rundown
+phase in big DPF facilities we took out three patents (Fig. 19) in the beginning of 80’s [11] with the
+following ideas:
+     1) Usual contemporary 1-MW electric power turbine has U = 30 kV and I = 30 kA. We may use
+         transformer to change 30 kV into 10 V. In this case we shall obtain the output current I = 90
+         MA. We may use here an invertor (or convertor) to fit (match) operation frequency to the
+         travelling time of the current sheath inside the DPF chamber, and/or -
+     2) To initiate the discharge by means of a laser pulse not to spend too much energy for the rundown
+         phase (or to use one or several small DPF):
+
+
+
+
+             a)                                     b)                                     c)
+
+Figure 19.         3 modifications of DPF or their chains to overcome problems with energy loss for a
+rundown phase.
+
+
+
+                                                    14
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+         Two important issues are raised in such schemes:
+     1) Whether recovering of electric insulation between anode and cathode of a DPF chamber after
+         the discharge (or better to say a disconnection between the DPF chamber and primary source of
+         energy) is possible?
+     2) How much power may we extract from the mains?
+         The answer to the first question has been obtained in our experiments. Namely, the interruption
+of current circulating in a DPF circuit may be ensured either in pseudo-spark switches (PSS) usually
+used by us [12] (see Fig. 20a and b) or directly in a gap between the anode and the cathode of the DPF
+chamber (as it is seen in Fig. 20c – during the pinch phase – and 20d – 10 µs later the CA phenomenon
+if the space above the anode is large enough).
+
+
+
+
+               a)                            b)                  c)                       d)
+
+Figure 20.        PSS’s disconnection: current (a) and voltage (b); blow-off of plasma in PF-1000:
+moment of the dip (c) and 10 µs later (d).
+
+    According to electric power generation laws an allowable unsinusoidality of the current generated
+may be not more than 5%. This demand implies the restriction upon our “dip” and consequently on the
+extracted power if we want to use the rest power to feed the common mains.
+
+4.         Possible applications of a very large DPF
+4.1.     Medicine
+In previous paragraphs we have discussed a possibility of application of a DPF for the low-dose high
+intensity single shot neutron therapy of cancer. The characteristics of the radiation fields in this case of
+‘classical BNCT’ by epithermal neutrons are as follows: neutron intensity on the tumor surface is 109 n
+cm−2 s−1; time of irradiation – 40…60 min; dose – 60…70 Gy. It means that the overall neutron fluence
+is on the level of 3…5×1012 n cm−2 and the dose rate is equal to 1 Gy·min−1.
+         Unfortunately the present-day boron preparations are capable to increase concentration of boron
+atoms within the malignant cells by 3-5 times higher compared with normal cells only (instead of
+demanded figure equal to 20).
+         Large DPF (a few MJ) can ensure the dose power on the level exceeding 109 Gy/min at a neutron
+pulse of ~ 100-ns duration. For this we need a neutron flux ~ 1012 n/cm2 acting during a time interval <<
+the reaction time with Li, α and free radicals (i.e. < 1 µs). In this case we shall overcome the above-
+mentioned threshold in malignant cells only. Because of this we shall increase selectivity, and we shall
+be able to decrease the overall fluence by an order of magnitude, thus providing treatment just in a
+single pulse.
+
+4.2.    Radiation material sciences
+One of the possible exploitations of DPF as a powerful source namely of fusion neutrons in material
+sciences is its use as the source for testing of materials perspective for the first wall components and
+construction elements in the magnetic confinement fusion and in the inertial confinement fusion reactors
+where the neutron interaction with materials will be of the “explosive-like” type.
+
+
+
+                                                     15
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+         The IFMIF (~109 US$) as expected will be able to ensure during one year of irradiation the
+neutron fluence on the level from 0.01 till 50 displacements per atom (dpa) in various zones positioned
+near a target having the area 520 cm2. The value of 1 dpa corresponds to the fluence of 1021 n/sm2 for
+Be- and C-based materials.
+         If in the DPF facility the pinch current would be about 20 MA its neutron yield will exceed 1017
+of the 14-MeV neutrons. Taking into consideration a possible geometry of the near-pinch anode part of
+the DPF of this energy level it is easy to estimate that 100 dpa can be succeeded during an operational
+year in a volume of about 1 liter with the irradiation area  0.1 m2. But for all that a DPF must work
+with a repetition rate 3-4 cps with the irradiating zone positioned 0.1 m apart from specimens. Such a
+device would be cost 100 times less compared with IFMIF in spite of the fact that during this experiment
+we shall have to change elements of the facility 10 time during the year.
+
+4.3.    Energetics
+Let us assume a DPF device with energy consumption during the shot on the level 30 MJ (so the overall
+amount of energy circulated within the facility is about 100 MJ). Such DPF may produce about 5×1017
+n/pulse (~ 1 MJ in neutrons). We have made calculations for the hybrid reactor with a fission blanket
+having 100 time coefficient of gain [13] (see Fig. 21).
+
+
+
+
+Figure 21.            Evolution of energy in a hybrid reactor based on a DPF facility
+
+        We obtained the following parameters for the thermal power of the reactor equal to 0.5-1.0 GW
+and the operation period 2-5 year, efficiency of the fuel cycle 0.4, blanket thickness (for pure U238) 12
+cm and thickness of the SS wall 2 cm: uranium mass = 0.8-4 t, mean radius of energy zone is 0.33 m,
+mean operation rate of the DPF device is 13 cps, mean electric power consumed by the neutron source
+= 100-300 MW, mean useful electric power at the output = 270 MW. DPF size will be about 2.5 m.
+        However before reaching by the reactor of the positive value of the energy balance it will
+consume 6×108 kilowatt-hours of electric energy. This is an atonement for the low efficiency of the
+DPF-based neutron source. But we may use for this purpose the hydro-electric power generated in an
+estuary of a river in Siberia (see Fig. 22).
+
+
+
+
+                 a)                                       b)                            c)
+
+Figure 22.            Map of Siberia (a), Lena’s estuary (60 km) (b) and Siberia by night (c)
+
+
+
+
+                                                     16
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                  IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                 doi:10.1088/1742-6596/591/1/012020
+
+
+
+         Indeed, in these places because of a very large width of a river (b) a power dam may be very
+low (just 1-3 meters by height). It is good from ecological point of view. But before it was not used as
+in these regions of Russia are almost uninhabited (c). And transportation of electric energy from these
+territories to industrial regions or delivering of raw materials to these areas are economically ineffective.
+However with the above-described hybrid nuclear power stations we may interrupt the campaign at its
+summit and deliver a fission fuel to the industrial territories by a single ship per year.
+
+5.         How small a DPF can be?
+From the above-presented scaling diagram one may see that at the values of the discharge current of
+DPF on the level of about 1 A we cannot expect any neutron yield. However the “hard X-ray” yield
+could be of the order 10-8 J that means up to 107 hard X-ray photons irradiated in full solid angle!
+         Pulse duration can be estimated using present day data on this parameter in the range of the bank
+energy 106 down to 1 J. It appears that this duration will be in the range 0.1 – 1 ps. This time is of the
+order of the increment of Langmuir turbulence presumably responsible for the current abruption
+phenomenon. So it is feasible.
+         Size of electrodes of such a device can be calculated using the Lee parameter. It appears that
+this “facility” will be in a sub-micrometer range of dimensions. With these dimensions the problem of
+ion saturation current becomes profound: in each successive shot we shall have or have not ion
+component. To support it we must change polarity and sputter a layer saturated with working gas. It
+means that such a source of the type of “current breaker” can be inserted in modern microchip structures.
+Manufacturing of these elements should be provided using micro-mechanics technology, e.g. with the
+help of medium-sized DPF working with Ar as a working gas.
+
+6.        Opportunities for a miniature DPF
+In his 1971 paper, Chua extrapolated the conceptual symmetry between the resistor (voltage vs. current),
+capacitor (voltage vs. charge), and inductor (magnetic flux vs. current), and inferred the memristor [14]
+(see Fig. 23) as a similarly fundamental circuit element linking magnetic flux and charge. In contrast to
+a linear (or nonlinear) resistor the memristor has a dynamic relationship between current and voltage
+including a memory of past voltages or currents.
+
+
+
+
+Figure 23.          Zone occupied by a memristor in the symmetrical scheme of passive electrical
+elements.
+
+        Device                  Characteristic property (units)                Differential equation
+        Resistor               Resistance (V per A, or Ohm, Ω)                      R = dV / dI
+       Capacitor               Capacitance (C per V, or Farads)                    C = dq / dV
+       Inductor               Inductance (Wb per A, or Henrys)                     L = dΦm / dI
+       Memristor              Memristance (Wb per C, or Ohm)                      M = dΦm / dq
+
+
+
+
+                                                     17
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+        The resistance of a memristor depends on the integral of the input applied to the terminals, i.e.
+on the charge coming through it (rather than on the instantaneous value of the input as in a varistor). For
+some memristors, applied current or voltage will cause a great change in resistance. Such devices may
+be characterized as switches by investigating the time and energy that must be spent in order to achieve
+a desired change in resistance.
+        E.g. the HP memristor device is composed of a thin (50 nm) titanium dioxide film between two
+5 nm thick electrodes, one Ti, the other Pt. Initially, there are two layers to the titanium dioxide film,
+one of which has a slight depletion of oxygen atoms. The oxygen vacancies act as charge carriers,
+meaning that the depleted layer has a much lower resistance than the non-depleted layer.
+        When an electric field is applied, the oxygen vacancies drift, changing the boundary between
+the high-resistance and low-resistance layers. Thus the resistance of the film as a whole is dependent on
+how much charge has been passed through it in a particular direction, which is reversible by changing
+the direction of current.
+        One of the resulting properties of memristors is the existence of a pinched hysteresis effect (see
+Fig. 24).
+
+
+
+
+Figure 24.           For a current-controlled memristive system, the input x(t) is the current i(t), the
+output y(t) is the voltage v(t), and the slope of the curve represents the electrical resistance.
+
+         The change in slope of the pinched hysteresis curves demonstrates a switching between different
+states of resistance, which is a phenomenon central to ReRAM and other forms of two-terminal
+resistance memory.
+         Following to these descriptions we may suppose that nano-sized foci may use the following
+opportunities to be counted (or hereafter used) as memristors:
+     1) DPF really is a circuit element linking magnetic flux and charge: M = dΦm / dq (the higher
+         charge in a capacitor – the bigger values of current and reciprocal magnetic field)
+     2) Because of a very small size of the chamber we can control a discharge in time at any stage thus
+         making linkage between charge flowing through and magnetic flux
+     3) We may use ion saturation current effect (in an analogy to the depletion of oxygen atoms in the
+         titanium dioxide film of a HP© memristor that is under construction)
+     4) We may exploit a great change in resistance taking place twice in the DPF dynamics – in the
+         breakdown phase and during CA phenomenon.
+         However additionally we may take advantage from radiation properties of this miniature DPF
+device. Indeed, because the overall number of hard X-ray photons is not small we can organize an
+electrical circuit in such a manner that this X-ray photon flux from DPF will open (or close) locally
+semiconductor elements (e.g. diodes or transistors) just through the space, i.e. without electrical
+connections. It can be done by interaction of X-rays with a semiconductor material and creation of
+uncombined carriers in the surrounding elements of a microchip.
+         In some cases it will be very important thus making such a memristor not simply a passive
+element of the circuitry but the active one.
+
+
+
+                                                    18
+15th Latin American Workshop on Plasma Physics (LAWPP2014)                                 IOP Publishing
+Journal of Physics: Conference Series 591 (2015) 012020                doi:10.1088/1742-6596/591/1/012020
+
+
+
+
+7.        Conclusions
+With the above speculations we can see that in future there is a quite imaginable probability to gain
+prospects for:
+        1) Production of energy with huge DPF facilities
+        2) Implementation of these large DPF facilities in medicine for a single-shot low-dose cancer
+therapy
+        3) Use this energy for feeding medium-sized DPF devices that could be applied in different
+applications – radiation material sciences, biology, medicine, dynamic quality control, single-shot
+interrogation of illegal objects, but in particular for manufacturing of very tiny elements of sophisticated
+computers including super-miniature DPF as the parts of them
+        4) In the last case we may obtain IT technique not only with the super-miniature passive
+elements in its content but with the active ones.
+
+8.      Acknowledgments
+This work was partially supported by the International Atomic Energy Agency CRP grants numbers
+RC-16932, RC-16954, RC-16955, RC-16956, RC-16960, RC-17167.
+
+9.         References
+[1]    Bernard A., H. Bruzzone et al 1998 J. Moscow Phys. Soc. 8 1–93
+[2]    Gribkov V.A., Bienkowska B., Borowiecki M. et al 2007 J. Phys. D: Appl. Phys. 40 1977–89
+[3]    Gribkov V.A., A. Banaszak, B. Bienkowska et al 2007 J. Phys. D: Appl. Phys. 40 3592–607
+[4]    Kingsep A.S., Chukbar K.V. and Yan’kov V.V. 1987 Electron magnetic hydrodynamics Voprosy
+          Teorii Plazmy (Problems of Plasma Theory) ed. by B.B. Kadomtsev 16 (Moscow:
+          Energoatomizdat) 209 (in Russian)
+[5]    Gribkov V.A., Orlova M.A. 2004 Radiat. Environ. Biophys. 43 303–309, DOI 10.1007/s00411-
+          004-0259-2
+[6]    Gribkov, Lee S., Lee P. et al 2000 ISMA-2000: International Symposium on Microelectronics
+          and Assembly, 27 November - 2 December 2000, Singapore
+[7]    Gribkov V.A., Lee S. et al 2000 Proc. of the ICPP-2000: International Congress on Plasma
+          Physics, 42nd Annual Meeting of the Division of Plasma Physics of the American Physical
+          Society, October 23 - 27, 2000, Quebec City, Canada
+[8]    Orlova M.A., Kost O.A., Gribkov V.A. et al 2000 Applied Biochemistry and Biotechnology 88
+          243-55
+[9]    Giannini G., Gribkov V., Longo F., Ramos Aruca M. and Tuniz C. 2012 Phys. Scr. 86 055801
+          (9pp) doi:10.1088/0031-8949/86/05/055801
+[10]   Arzhannikov A.V., Sinitskij S.L., Powerful pulsed beams, Teaching aid, Novosibirsk State
+          University, 2007, 74 pp. (in Russian)
+[11]   Gribkov V.A., Tyagunov M.G., USSR patents Nos. 1012707 (26.01.1981), 1026439 (01.03.1981)
+          and 1101838 (20.12.1982) (in Russian)
+[12]   V.A. Gribkov, M. Scholz, V.D. Bochkov et al 2004 J. Phys. D: Appl. Phys. 37 2107-2111
+[13]   Gribkov V.A., Tyaganov M.C., Possible applications of a hybrid thermonuclear source based on
+          the DPF device in modern energy complexes. – Nuclear Technologies in a Sustainable energy
+          System, ed. by G.S. Bauer and A. McDonald, 1983, Springer-Verlag; B.,H., N.-Y.; 187-202
+[14]   http://en.wikipedia.org/wiki/memristor
+
+
+
+
+                                                     19
+

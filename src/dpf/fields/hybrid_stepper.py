@@ -11,6 +11,7 @@ from dpf.fields.conductivity import PlasmaVacuumConductivityBlend
 from dpf.fields.marder import MarderCorrection
 from dpf.fields.maxwell_3d import (
     HYBRID_PIC_3D_SOURCE,
+    Maxwell3DBoundaries,
     Maxwell3DFieldCore,
     Maxwell3DGrid,
     Maxwell3DState,
@@ -32,6 +33,7 @@ class HybridPIC3DStepTelemetry:
     predictor_corrector: dict[str, Any] | None
     marder: dict[str, Any] | None
     current_port: dict[str, Any]
+    field_work: dict[str, Any]
     diagnostics_before: dict[str, Any]
     diagnostics_after: dict[str, Any]
     can_support_first_principles_acceptance: bool = False
@@ -54,9 +56,14 @@ class HybridPIC3DStepResult:
 class HybridPIC3DFieldStepper:
     """Couple source conductivity, generalized Ohm current, and Maxwell fields."""
 
-    def __init__(self, grid: Maxwell3DGrid) -> None:
+    def __init__(
+        self,
+        grid: Maxwell3DGrid,
+        *,
+        boundaries: Maxwell3DBoundaries | None = None,
+    ) -> None:
         self.grid = grid
-        self.maxwell = Maxwell3DFieldCore(grid)
+        self.maxwell = Maxwell3DFieldCore(grid, boundaries=boundaries)
         self.conductivity = PlasmaVacuumConductivityBlend(grid)
         self.ohm_solver = GeneralizedOhmSolver(grid)
         self.predictor_corrector = CurrentPredictorCorrector(grid)
@@ -80,6 +87,8 @@ class HybridPIC3DFieldStepper:
         marder_factor_m2: float = 0.0,
         marder_nondominance_threshold: float | None = None,
         charge_density_C_m3: np.ndarray | None = None,
+        apply_density_conductivity_blend: bool = True,
+        apply_ohmic_cfl_limit: bool = True,
     ) -> HybridPIC3DStepResult:
         """Advance one candidate field-current step without particle pushing."""
         self.maxwell.validate_state(state)
@@ -96,6 +105,8 @@ class HybridPIC3DFieldStepper:
             background_density_m3=background_density_m3,
             dt_s=dt_s,
             ohmic_cfl_safety=ohmic_cfl_safety,
+            apply_density_blend=apply_density_conductivity_blend,
+            apply_ohmic_cfl_limit=apply_ohmic_cfl_limit,
         )
         total_current, ohm_telemetry = self.ohm_solver.solve_current(
             electric_field_V_m=E_cell,
@@ -113,6 +124,11 @@ class HybridPIC3DFieldStepper:
             total_current[..., 1],
             total_current[..., 2],
             deposition_method="generalized_ohm_total_current",
+        )
+        field_work = _field_work_telemetry(
+            total_current_A_m2=total_current,
+            electric_field_V_m=E_cell,
+            cell_volume_m3=self.grid.cell_volume,
         )
         before = self.maxwell.diagnostics(state)
         next_state = self.maxwell.step(
@@ -179,6 +195,7 @@ class HybridPIC3DFieldStepper:
             predictor_corrector=predictor_corrector_telemetry,
             marder=marder_telemetry,
             current_port=current_telemetry.to_dict(),
+            field_work=field_work,
             diagnostics_before=before.to_dict(),
             diagnostics_after=after.to_dict(),
         )
@@ -209,4 +226,29 @@ def hybrid_stepper_candidate_evidence(
             "Predictor-corrector is an optional candidate end-step current solve, not a full accepted provisional ion push.",
             "Does not supply same-scope 3-D DPF validation.",
         ],
+    }
+
+
+def _field_work_telemetry(
+    *,
+    total_current_A_m2: np.ndarray,
+    electric_field_V_m: np.ndarray,
+    cell_volume_m3: float,
+) -> dict[str, Any]:
+    power_density = np.sum(total_current_A_m2 * electric_field_V_m, axis=-1)
+    j_dot_e_power_W = float(np.sum(power_density) * cell_volume_m3)
+    return {
+        "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+        "domain": "full_cartesian_grid_volume",
+        "integral": "sum_cell_centered_J_dot_E_times_cell_volume",
+        "j_dot_e_power_W": j_dot_e_power_W,
+        "max_abs_power_density_W_m3": float(np.max(np.abs(power_density))),
+        "cell_volume_m3": float(cell_volume_m3),
+        "sign_convention": (
+            "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted"
+        ),
+        "time_centering": "begin_step_E_with_midpoint_candidate_current",
+        "can_support_first_principles_acceptance": False,
     }

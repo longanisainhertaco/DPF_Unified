@@ -1,0 +1,219 @@
+{
+  "date": "2026-05-15",
+  "scope": "usefulness review for eight user-supplied PDFs",
+  "verdict": {
+    "useful": true,
+    "closes_full_shot_first_principles_simulator": false,
+    "reason": "The batch adds useful deck, startup, dimensionality, scaling, and neutron-mechanism source material, but no source supplies a complete reviewed full-shot startup BVP, same-scope 3D field/temperature history, mechanism-separated neutron history, detector response, comparator/UQ packet, and certificate chain."
+  },
+  "papers": [
+    {
+      "path": "/Users/anthonyzamora/Downloads/s41598-025-07939-x.pdf",
+      "title": "Experimental results and analysis of plasma dynamics and radiation output of the 100 kV dense plasma focus FAETON-I",
+      "sha256": "b02a711d90395e9c9ee3d4c4ab4d11c61db7be2c28a4b2b50578ee85ad0bb2e5",
+      "pages": 12,
+      "knowledge_reference_status": "user_validated_already_represented",
+      "candidate_priority": "P1",
+      "usefulness": [
+        "faeton_i_second_scope_deck",
+        "high_voltage_restrike_behavior",
+        "current_voltage_neutron_yield_targets",
+        "beam_target_timing_context"
+      ],
+      "required_action": "target_extract_existing_kr_record",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/faeton-i-investigation-of-plasma-dynamics-and-radiation-output-of-a-100-kv-plasma-focus-device.md",
+        "KnowledgeReference/experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense-5.md"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/salehizadeh2012.pdf",
+      "title": "Preliminary Results of the 115 kJ Dense Plasma Focus Device IR-MPF-100",
+      "sha256": "f7894f85fd4d1826a5d98933453bd09664e260d46a2c9fedc4ce79491d2be4ad",
+      "pages": 5,
+      "knowledge_reference_status": "user_validated_promoted_to_knowledge_reference",
+      "candidate_priority": "P1",
+      "usefulness": [
+        "ir_mpf_100_second_scope_deck",
+        "preliminary_current_voltage_hard_xray_targets",
+        "neutron_activation_yield_targets",
+        "double_pinch_context"
+      ],
+      "required_action": "target_extract_promoted_kr_record",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/original-research-f7894f85.md",
+        "KnowledgeReference/original-research-f7894f85.json"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/1000284.pdf",
+      "title": "ALEGRA-HEDP Simulations of the Dense Plasma Focus",
+      "sha256": "b93aec67a34ed9cd63176dc3fdf404df4aa29ff16cf8807eb68568ed1dbc0f9c",
+      "pages": 28,
+      "knowledge_reference_status": "user_validated_already_represented_and_batch_record_promoted",
+      "candidate_priority": "P0",
+      "usefulness": [
+        "pic_startup_import_requirement",
+        "two_d_three_d_dimensionality_blocker",
+        "mhd_thermonuclear_only_neutron_limitation",
+        "alegra_eos_conductivity_radiation_context"
+      ],
+      "required_action": "target_extract_existing_and_promoted_kr_records",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md",
+        "KnowledgeReference/sand2009-6373-b93aec67.md",
+        "KnowledgeReference/sand2009-6373-b93aec67.json"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/Development of dense plasma focus device.pdf",
+      "title": "Development of dense plasma focus device",
+      "sha256": "d1758d55ea9a32f6edb17107a86b033d8078cad337f0531ca10f18190fb220b5",
+      "pages": 5,
+      "knowledge_reference_status": "user_validated_promoted_to_knowledge_reference",
+      "candidate_priority": "P1_P2",
+      "usefulness": [
+        "compact_mather_device_deck",
+        "pressure_yield_curve_candidate",
+        "current_waveform_candidate",
+        "neutron_tof_fwhm_candidate"
+      ],
+      "required_action": "target_extract_promoted_kr_record_with_visual_translation_checks",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
+        "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.json"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/2307.07715v1.pdf",
+      "title": "On the failure of neutron yield scaling in the Dense Plasma Focus",
+      "sha256": "0f7f5a0deae96f074d37e192ed2825cbaaa8407b510d27dd3887e8675402b244",
+      "pages": 13,
+      "knowledge_reference_status": "user_validated_already_represented",
+      "candidate_priority": "P1",
+      "usefulness": [
+        "drive_parameter_constraints",
+        "scale_transition_review",
+        "lift_off_time_generalization_check",
+        "neutron_scaling_failure_taxonomy"
+      ],
+      "required_action": "target_extract_existing_kr_record",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/on-the-failure-of-neutron-yield-scaling-in-the-dense-plasma-focus-s-k-h-auluck-international.md"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/Arnab-the-physics-of-fluids-and-plasmas_compress.pdf",
+      "title": "The Physics of Fluids and Plasmas",
+      "sha256": "eef02f492c5dec82c501fb5040f1fc3bdaa5603ab3a16bdf58dfe909caa16c70",
+      "pages": 416,
+      "knowledge_reference_status": "user_validated_promoted_method_reference",
+      "candidate_priority": "P3",
+      "usefulness": [
+        "general_plasma_theory",
+        "boltzmann_vlasov_mhd_hierarchy",
+        "transport_and_collisions_background",
+        "weakly_ionized_mhd_background"
+      ],
+      "required_action": "method_reference_linking_only",
+      "acceptance_status": "method_source_accepted_not_dpf_target_evidence",
+      "knowledge_reference_records": [
+        "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.md",
+        "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.json",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/Dense+Plasma+Focus+physics+and+applications.pdf",
+      "title": "Dense Plasma Focus: physics and applications",
+      "sha256": "ed1967114c762f608493bd4d049b627ed0d13165d435ed7d5c23efa92a93cc2a",
+      "pages": 20,
+      "knowledge_reference_status": "user_validated_promoted_to_knowledge_reference",
+      "candidate_priority": "P2",
+      "usefulness": [
+        "current_abruption_plasma_diode_context",
+        "fast_electron_fast_ion_current_estimates",
+        "large_dpf_matching_constraints",
+        "application_and_detector_context"
+      ],
+      "required_action": "target_extract_promoted_kr_record_as_mechanism_context",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.md",
+        "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.json"
+      ]
+    },
+    {
+      "path": "/Users/anthonyzamora/Downloads/ADA037245.pdf",
+      "title": "Design and Construction of a Dense Plasma Focus Device",
+      "sha256": "12205ba4bb0d1edc11b069dda4e0e084b89597a8f14ff61c3a65e0b712926a75",
+      "pages": 97,
+      "knowledge_reference_status": "user_validated_promoted_to_knowledge_reference",
+      "candidate_priority": "P1",
+      "usefulness": [
+        "startup_breakdown_design",
+        "insulator_conditioning_and_failure",
+        "low_inductance_circuit_design",
+        "voltage_current_xray_diagnostics"
+      ],
+      "required_action": "target_extract_promoted_kr_record",
+      "acceptance_status": "source_accepted_targets_not_extracted",
+      "knowledge_reference_records": [
+        "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
+        "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.json"
+      ]
+    }
+  ],
+  "recommended_actions": [
+    "target_extract_faeton_i_existing_kr_record",
+    "target_extract_alegra_hedp_existing_and_promoted_kr_records",
+    "target_extract_auluck_scaling_existing_kr_record",
+    "target_extract_salehizadeh2012_promoted_kr_record",
+    "target_extract_ada037245_promoted_kr_record",
+    "target_extract_development_dense_plasma_focus_device_with_visual_translation_checks",
+    "target_extract_gribkov_applications_promoted_kr_record_as_mechanism_context",
+    "link_arnab_method_reference_to_solver_derivation_reviews_only"
+  ],
+  "blocked_claims": [
+    "full_first_principles_whole_shot",
+    "accepted_startup_bvp",
+    "accepted_same_scope_3d_field_temperature_history",
+    "mechanism_separated_neutron_authority",
+    "detector_response_uq_certificate",
+    "generalized_dpf_machine_certificate"
+  ],
+  "user_validation_status": "all_eight_user_verified_validated_research_sources",
+  "knowledge_reference_ingestion": {
+    "ledger_markdown": "docs/USER_VALIDATED_PDF_KR_PROMOTION_2026_05_15.md",
+    "ledger_json": "docs/USER_VALIDATED_PDF_KR_PROMOTION_2026_05_15.json",
+    "promoted_count": 6,
+    "already_represented_count": 2,
+    "parity_failed_count": 0,
+    "source_status_note": "User validation accepts the papers as source-truth research inputs. Extracted targets, curves, formulas, uncertainties, simulation outputs, and whole-shot claims remain unaccepted until typed target extraction and gate binding pass."
+  },
+  "first_principles_code_bindings": {
+    "source_targets_helper": "src/dpf/first_principles/source_targets.py::may15_user_validated_source_targets",
+    "second_scope_deck_helper": "src/dpf/first_principles/deck.py::may15_second_scope_engineering_decks",
+    "deck_builders": [
+      "src/dpf/first_principles/deck.py::ir_mpf_100_engineering_deck",
+      "src/dpf/first_principles/deck.py::compact_chinese_dpf_engineering_deck",
+      "src/dpf/first_principles/deck.py::willenborg_hendricks_engineering_deck"
+    ],
+    "accepted_for_whole_shot_first_principles": false,
+    "accepted_for_validation": false,
+    "execution_status": "runnable_engineering_candidates_only",
+    "blocked_by": [
+      "accepted_startup_bvp",
+      "typed_target_extraction",
+      "figure_table_digitization_review",
+      "mechanism_separated_neutron_authority",
+      "detector_response_uq",
+      "second_scope_certificate"
+    ]
+  }
+}

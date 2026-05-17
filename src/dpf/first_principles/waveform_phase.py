@@ -156,6 +156,22 @@ def build_waveform_phase_packet(
         ),
         "draft_digitization_packet_status": dict(DRAFT_AKEL_FIG1_PACKET_STATUS),
         "required_review_channels": list(REQUIRED_REVIEW_CHANNELS),
+        "waveform_phase_target_policy": {
+            "draft_digitization_can_seed_engineering_reference": True,
+            "draft_digitization_can_support_acceptance": False,
+            "text_timing_scalars_can_support_acceptance": False,
+            "accepted_targets_must_match_declared_scope": True,
+            "accepted_targets_require_per_point_uncertainty": True,
+            "accepted_targets_require_independent_review": True,
+        },
+        "negative_test_policy": {
+            "draft_waveform_promotion_rejection_required": True,
+            "text_timing_scalar_promotion_rejection_required": True,
+            "missing_per_point_uncertainty_rejection_required": True,
+            "missing_independent_review_rejection_required": True,
+            "mismatched_scope_waveform_rejection_required": True,
+            "missing_output_mapping_or_tolerance_rejection_required": True,
+        },
         "validation_target_scope_decisions": target_decisions,
         "source_references": list(WAVEFORM_PHASE_SOURCE_REFS),
         "same_scope_source_status": (

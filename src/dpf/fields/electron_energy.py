@@ -4,8 +4,8 @@ The local hybrid PIC-fluid source identifies ``Te = Ti`` as a simplifying
 closure and states that pressure-gradient/Hall runs need a separate electron
 temperature evolution with collisional coupling and heat-flux models before
 they can be quantitative.  This module wraps the repo's existing
-two-temperature source-term scaffold behind explicit nonaccepting telemetry for
-the 3-D first-principles gate.
+two-temperature source-term implementation behind explicit nonaccepting
+telemetry for the 3-D first-principles gate.
 """
 
 from __future__ import annotations
@@ -17,9 +17,11 @@ from typing import Any
 import numpy as np
 from scipy.constants import Boltzmann as K_B
 
+from dpf.collision.spitzer import braginskii_kappa
 from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE, Maxwell3DGrid
 from dpf.fluid.two_temperature import (
     electron_energy_from_temperature,
+    equilibration_convention_audit,
     step_electron_energy,
     temperature_from_electron_energy,
     two_temperature_model_metadata,
@@ -56,6 +58,9 @@ class ElectronEnergyTelemetry:
     include_ohmic_heating: bool
     include_equilibration: bool
     include_bremsstrahlung_loss: bool
+    include_heat_flux: bool
+    heat_flux: dict[str, Any]
+    equilibration_audit: dict[str, Any]
     can_support_first_principles_acceptance: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -107,6 +112,8 @@ class ElectronEnergyClosure:
         charge_state_Z: float = 1.0,
         gaunt_factor: float = 1.2,
         temperature_floor_K: float = 1.0,
+        magnetic_field_T: np.ndarray | None = None,
+        heat_flux_subcycles_max: int = 1000,
     ) -> tuple[ElectronEnergyState, ElectronEnergyTelemetry]:
         if dt_s < 0.0:
             raise ValueError("dt_s must be non-negative")
@@ -114,6 +121,10 @@ class ElectronEnergyClosure:
             raise ValueError("charge_state_Z must be positive")
         if temperature_floor_K <= 0.0:
             raise ValueError("temperature_floor_K must be positive")
+        if int(heat_flux_subcycles_max) != heat_flux_subcycles_max:
+            raise ValueError("heat_flux_subcycles_max must be an integer")
+        if heat_flux_subcycles_max < 1:
+            raise ValueError("heat_flux_subcycles_max must be positive")
 
         ne = _scalar("electron_density_m3", electron_density_m3, self.grid.shape)
         ni = _scalar("ion_density_m3", ion_density_m3, self.grid.shape)
@@ -142,15 +153,28 @@ class ElectronEnergyClosure:
             state.electron_energy_J_m3,
             self.grid.shape,
         )
+        working_energy, working_Te, heat_flux_telemetry = (
+            _apply_braginskii_heat_flux_candidate(
+                electron_energy_J_m3=energy,
+                electron_temperature_K=before_Te,
+                electron_density_m3=ne,
+                magnetic_field_T=magnetic_field_T,
+                grid=self.grid,
+                dt_s=dt_s,
+                charge_state_Z=charge_state_Z,
+                temperature_floor_K=temperature_floor_K,
+                max_subcycles=int(heat_flux_subcycles_max),
+            )
+        )
         J_sq = np.sum(current * current, axis=-1)
         velocity_fluid_layout = np.moveaxis(velocity, -1, 0)
         new_energy, new_Te, new_Ti = step_electron_energy(
-            energy,
+            working_energy,
             rho,
             velocity_fluid_layout,
             eta,
             J_sq,
-            before_Te,
+            working_Te,
             before_Ti,
             ne,
             ni,
@@ -166,6 +190,13 @@ class ElectronEnergyClosure:
             ion_temperature_K=new_Ti,
         )
         metadata = two_temperature_model_metadata()
+        equilibration_audit = equilibration_convention_audit(
+            electron_temperature_K=working_Te,
+            ion_temperature_K=before_Ti,
+            electron_density_m3=ne,
+            ion_density_m3=ni,
+            Z=charge_state_Z,
+        )
         telemetry = ElectronEnergyTelemetry(
             status="candidate_engineering_electron_energy_closure",
             source=HYBRID_PIC_3D_SOURCE,
@@ -181,6 +212,9 @@ class ElectronEnergyClosure:
             include_ohmic_heating=True,
             include_equilibration=True,
             include_bremsstrahlung_loss=True,
+            include_heat_flux=bool(heat_flux_telemetry["applied"]),
+            heat_flux=heat_flux_telemetry,
+            equilibration_audit=equilibration_audit,
         )
         return next_state, telemetry
 
@@ -200,9 +234,11 @@ def electron_energy_candidate_evidence(
         "max_abs_delta_electron_temperature_K": (
             telemetry.max_abs_delta_electron_temperature_K
         ),
+        "heat_flux": telemetry.heat_flux,
+        "equilibration_audit": telemetry.equilibration_audit,
         "can_support_first_principles_acceptance": False,
         "limitations": [
-            "Uses the repo two-temperature scaffold; heat flux and relaxation conventions remain source-audit blocked.",
+            "Uses the repo two-temperature source terms; Braginskii heat flux is candidate-only and relaxation conventions remain source-audit blocked.",
             "Not yet coupled into the accepted 3-D Yee/PIC pressure-gradient/Hall loop.",
             "No same-scope electron-temperature diagnostic or neutron-yield UQ packet is attached.",
         ],
@@ -242,8 +278,8 @@ def extended_ohm_temperature_authority_status(
             "can_support_first_principles_acceptance": False,
             "blocker": (
                 "Pressure-gradient/Hall terms are qualitative only until a "
-                "reviewed separate Te equation, heat flux, collisional coupling, "
-                "diagnostics, and UQ packet are accepted."
+                "reviewed separate Te equation, accepted heat flux, collisional "
+                "coupling, diagnostics, and UQ packet are accepted."
             ),
         }
 
@@ -308,6 +344,224 @@ def _vector(name: str, value: np.ndarray, shape: tuple[int, int, int]) -> np.nda
     return arr
 
 
+def _vector_optional(
+    name: str,
+    value: np.ndarray | None,
+    shape: tuple[int, int, int],
+) -> np.ndarray | None:
+    if value is None:
+        return None
+    arr = np.asarray(value, dtype=float)
+    expected_cell_last = shape + (3,)
+    expected_component_first = (3,) + shape
+    if arr.shape == expected_cell_last:
+        vector = arr
+    elif arr.shape == expected_component_first:
+        vector = np.moveaxis(arr, 0, -1)
+    else:
+        raise ValueError(
+            f"{name} shape {arr.shape} != expected {expected_cell_last} "
+            f"or {expected_component_first}"
+        )
+    if not np.all(np.isfinite(vector)):
+        raise ValueError(f"{name} must be finite")
+    return vector
+
+
 def _require_positive(name: str, value: np.ndarray) -> None:
     if np.any(value <= 0.0):
         raise ValueError(f"{name} must be positive")
+
+
+def _apply_braginskii_heat_flux_candidate(
+    *,
+    electron_energy_J_m3: np.ndarray,
+    electron_temperature_K: np.ndarray,
+    electron_density_m3: np.ndarray,
+    magnetic_field_T: np.ndarray | None,
+    grid: Maxwell3DGrid,
+    dt_s: float,
+    charge_state_Z: float,
+    temperature_floor_K: float,
+    max_subcycles: int,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    """Apply source-backed Braginskii heat flux as non-promoting telemetry."""
+    base = {
+        "source": (
+            "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json"
+        ),
+        "source_lines": "57-62",
+        "transport_source": "src/dpf/collision/spitzer.py::braginskii_kappa",
+        "boundary_condition": "candidate_zero_normal_heat_flux",
+        "can_support_first_principles_acceptance": False,
+    }
+    if magnetic_field_T is None or dt_s == 0.0:
+        return (
+            electron_energy_J_m3,
+            electron_temperature_K,
+            {
+                **base,
+                "status": "not_applied_missing_magnetic_field_or_zero_dt",
+                "applied": False,
+                "subcycles": 0,
+            },
+        )
+
+    B = _vector_optional("magnetic_field_T", magnetic_field_T, grid.shape)
+    assert B is not None
+    Te = np.array(electron_temperature_K, dtype=float, copy=True)
+    ne = np.array(electron_density_m3, dtype=float, copy=False)
+    energy = np.array(electron_energy_J_m3, dtype=float, copy=True)
+    B_mag = np.sqrt(np.sum(B * B, axis=-1))
+    kappa_par, kappa_perp = braginskii_kappa(ne, Te, B_mag, charge_state_Z)
+    kappa_par = np.maximum(np.where(np.isfinite(kappa_par), kappa_par, 0.0), 0.0)
+    kappa_perp = np.maximum(np.where(np.isfinite(kappa_perp), kappa_perp, 0.0), 0.0)
+    max_kappa = float(np.max(kappa_par))
+    min_ne = float(np.min(np.maximum(ne, 1.0)))
+    if max_kappa <= 0.0:
+        return (
+            energy,
+            Te,
+            {
+                **base,
+                "status": "not_applied_zero_conductivity",
+                "applied": False,
+                "subcycles": 0,
+                "max_kappa_parallel_W_m_K": max_kappa,
+            },
+        )
+
+    diffusivity = max_kappa / max(1.5 * min_ne * K_B, 1e-300)
+    dx_min = min(grid.spacing)
+    n_dim = 3
+    dt_stable = 0.25 * dx_min * dx_min / max(n_dim * diffusivity, 1e-300)
+    if not np.isfinite(dt_stable) or dt_stable <= 0.0:
+        return (
+            energy,
+            Te,
+            {
+                **base,
+                "status": "blocked_nonfinite_heat_flux_stability_limit",
+                "applied": False,
+                "subcycles": 0,
+                "max_kappa_parallel_W_m_K": max_kappa,
+            },
+        )
+    required_subcycles = max(1, int(np.ceil(dt_s / dt_stable)))
+    if required_subcycles > max_subcycles:
+        return (
+            energy,
+            Te,
+            {
+                **base,
+                "status": "blocked_heat_flux_subcycle_limit_exceeded",
+                "applied": False,
+                "required_subcycles": required_subcycles,
+                "subcycles": 0,
+                "max_subcycles": max_subcycles,
+                "max_kappa_parallel_W_m_K": max_kappa,
+                "dt_stable_s": dt_stable,
+            },
+        )
+
+    dt_sub = dt_s / required_subcycles
+    max_abs_source = 0.0
+    for _ in range(required_subcycles):
+        B_mag = np.sqrt(np.sum(B * B, axis=-1))
+        kappa_par, kappa_perp = braginskii_kappa(ne, Te, B_mag, charge_state_Z)
+        kappa_par = np.maximum(np.where(np.isfinite(kappa_par), kappa_par, 0.0), 0.0)
+        kappa_perp = np.maximum(np.where(np.isfinite(kappa_perp), kappa_perp, 0.0), 0.0)
+        heat_source = _braginskii_heat_source(
+            electron_temperature_K=Te,
+            magnetic_field_T=B,
+            kappa_parallel_W_m_K=kappa_par,
+            kappa_perpendicular_W_m_K=kappa_perp,
+            spacing_m=grid.spacing,
+        )
+        max_abs_source = max(max_abs_source, float(np.max(np.abs(heat_source))))
+        energy = energy + dt_sub * heat_source
+        energy_floor = 1.5 * ne * K_B * temperature_floor_K
+        energy = np.maximum(energy, energy_floor)
+        Te = temperature_from_electron_energy(energy, ne, temperature_floor_K)
+
+    return (
+        energy,
+        Te,
+        {
+            **base,
+            "status": "candidate_braginskii_anisotropic_heat_flux_applied",
+            "applied": True,
+            "subcycles": required_subcycles,
+            "dt_stable_s": dt_stable,
+            "max_kappa_parallel_W_m_K": float(np.max(kappa_par)),
+            "max_kappa_perpendicular_W_m_K": float(np.max(kappa_perp)),
+            "max_abs_heat_flux_source_W_m3": max_abs_source,
+            "net_heat_flux_power_W": float(np.sum(heat_source) * grid.cell_volume),
+        },
+    )
+
+
+def _braginskii_heat_source(
+    *,
+    electron_temperature_K: np.ndarray,
+    magnetic_field_T: np.ndarray,
+    kappa_parallel_W_m_K: np.ndarray,
+    kappa_perpendicular_W_m_K: np.ndarray,
+    spacing_m: tuple[float, float, float],
+) -> np.ndarray:
+    grad_T = np.stack(
+        [
+            _center_gradient(electron_temperature_K, spacing_m[axis], axis)
+            for axis in range(3)
+        ],
+        axis=-1,
+    )
+    B_mag = np.sqrt(np.sum(magnetic_field_T * magnetic_field_T, axis=-1))
+    b_hat = np.divide(
+        magnetic_field_T,
+        B_mag[..., np.newaxis],
+        out=np.zeros_like(magnetic_field_T),
+        where=B_mag[..., np.newaxis] > 0.0,
+    )
+    b_dot_grad = np.sum(b_hat * grad_T, axis=-1)
+    grad_parallel = b_dot_grad[..., np.newaxis] * b_hat
+    grad_perpendicular = grad_T - grad_parallel
+    heat_flux_positive_to_cold = (
+        kappa_parallel_W_m_K[..., np.newaxis] * grad_parallel
+        + kappa_perpendicular_W_m_K[..., np.newaxis] * grad_perpendicular
+    )
+    heat_flux_positive_to_cold = np.where(
+        np.isfinite(heat_flux_positive_to_cold),
+        heat_flux_positive_to_cold,
+        0.0,
+    )
+    source = np.zeros_like(electron_temperature_K)
+    for axis, dx in enumerate(spacing_m):
+        source += _face_divergence_zero_boundary(
+            heat_flux_positive_to_cold[..., axis],
+            dx,
+            axis,
+        )
+    return np.where(np.isfinite(source), source, 0.0)
+
+
+def _center_gradient(value: np.ndarray, dx: float, axis: int) -> np.ndarray:
+    moved = np.moveaxis(value, axis, 0)
+    grad = np.zeros_like(moved)
+    grad[1:-1] = (moved[2:] - moved[:-2]) / (2.0 * dx)
+    if moved.shape[0] > 1:
+        grad[0] = (moved[1] - moved[0]) / dx
+        grad[-1] = (moved[-1] - moved[-2]) / dx
+    return np.moveaxis(grad, 0, axis)
+
+
+def _face_divergence_zero_boundary(
+    centered_flux: np.ndarray,
+    dx: float,
+    axis: int,
+) -> np.ndarray:
+    moved = np.moveaxis(centered_flux, axis, 0)
+    faces = np.zeros((moved.shape[0] + 1,) + moved.shape[1:], dtype=float)
+    faces[1:-1] = 0.5 * (moved[:-1] + moved[1:])
+    divergence = (faces[1:] - faces[:-1]) / dx
+    return np.moveaxis(divergence, 0, axis)

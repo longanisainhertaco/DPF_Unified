@@ -1,0 +1,2025 @@
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                 ANODE GEOMETRY AND FOCUS CHARACTERISTICS
+
+
+
+
+                                                       A THESIS SUBMITTED BY
+
+                                                               ADRIAN SERBAN
+
+                                    FOR THE DEGREE OF DOCTOR OF PHEOSOPHY
+
+
+
+
+                                                          SCHOOL OF SCIENCE
+
+                                         NANYANG TECHNOLOGICAL UNIVERSITY
+
+                                                                    JANUARY 1995
+
+
+                                                                                 -*,..:.
+                                             fi~tlo,;.~     :l.;;   ;;;,.:;E   "1 ;~bwCAm@
+                                                         LIBRARY, SLNGAPQRE
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                            ACKNOWLEDGEMENTS
+
+
+
+
+                            This dissertation is submitted for a PhD in physics at the Nanyang
+                  Technological University, Singapore. It took almost three years from the
+                  inception of the proposal through to the final draft, and during this
+                  period a number of individuals and institutions contributed to this
+                  study in many different ways. I would like to take this opportunity to
+                  express my deepest gratitude to them.
+                            My    heartfelt thanks together with my                             deepest        gratitude and
+                  indebtedness go to my supervisor Professor Lee Sing, Head of Division
+                  of Physics, School of Science, National Institute of Education, Nanyang
+                  Technological University. Without his support and encouragement this
+                  study would never have been completed. During the period of my research
+                  and writing this thesis he extended both intellectual and emotional
+                  support. He was a constant source of inspiration and stimulation. His
+                  invaluable advice was immensely beneficial to me in understanding some
+                  aspects of shock waves theory, pulse power technology and computation.
+                  At times, I lost hope but I could not abandon the project because of his
+                  confidence in me.
+                            I would like to express my sincere thanks to Nanyang Technological
+                  University. I was deeply honoured to have been given the opportunity to
+                  pursue my PhD programme with the University. I am very appreciative of
+                  the financial support - the research scholarship awarded to me for a
+                  period of three years - which enabled me to carry out the research under
+                  the School of Science.
+                            I am thankful to National Institute of Education for hosting my
+                  research and providing me with the necessary facilities. I would like
+                  to acknowledge Professor Leo Tan Wee Hin, Dlrector of National Institute
+                  of Education, and Dean of School of Science for his support, help,
+                  encouragement, understanding and confidence in me.
+                            I wish to thank Mr. Suresh Kumar, PhD student, for his friendship,
+                  his moral support and                    for encouraging and helping me                           during       the
+                  experimental work in the laboratory. Lots of things were easier for me
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   as he shared his knowledge in computers and physics.
+                            My special thanks go to Associate Professor Lars Kryger, Division
+                   of Chemistry, for his friendship, support, encouragement and advice, and
+                   for sharing with me some of his experience.
+                             I am thankful to Mr. Yeo Keng Hoe, lecturer, Division of Physics,
+                   for sharing his personal experience and his ongoing support.
+                             It is my pleasure to also thank some other lecturers of the
+                   Division of Physics: Dr. Khoo Guan Seng, Dr. Cheah Horn Mun, and Mr.
+                   Chen Lai Keat for their friendship, help and support.
+                             The cooperation from the General Workshop, in particular from Mr.
+                   Erik Low Y e w San, lecturer, is acknowledged. I am also thankful to Mr.
+                  Michael Ng Yiow Piow for his help.
+                             Thanks also go to Mr. Collin Lim and Miss Cecilla M. N. Selvam for
+                   their help in the laboratory.
+                             Many other people have helped in one way or another and I am
+                   pleased to acknowledge them. They include Miss Tan Kar Buay, Miss Mary
+                   Sheila Pereira and               Miss Ida de Almeida.
+                             I am indebted to Sachiko Toda, whose friendship, help and support
+                   were there whenever I needed it.
+                             It is my pleasure to thank Julian Brown, Alix Denzler, Foo Mooh
+                   Thong, Brian Kemp, Teresa Lawler, Mollie Neville and Paul O'Shea for
+                   their friendship and help. Special thanks go to Serena Ao Foong Meng.
+                             To Mr. Constantin Lupeanu, Charge d'hffaires a.i. of the Romanian
+                   Embassy in Singapore, as well as to staff members of the embassy
+                   especially Catalin and Tatiana Cosma and Stefan and Stela Niculcea, I
+                   wish to express my gratitude for their help, support and friendship.
+                             I would also like to take this opportunity to express my gratitude
+
+                   to the Institute of Atomic Physics, Institute of Physics and Technology
+                   of Radiation Devices, Bucharest, Romania, for encouraging and helping
+                  me to start this PhD research programme wlth Nanyang Technological
+                   University and for their financial support for my                                          initial travel
+                   expenses to Singapore.
+                             To    document         the     many       circumstances            in    which       people        were
+                   instrumental in helping me carry out this work would take up several
+                   pages. Although space does not allow me to do so, I cannot let this
+                   otcasion go by without acknowledging a number of individuals, colleagues
+
+                                                                           ii
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   and friends, staff members of the Institute of Physics and Technology
+                   of Radiation Devices who, in various ways, supported me when needed.
+                   They include Dr. Nicolae Bogdar. Mandache, Dr. Viorel Zkbreanu, Dr. Ioan
+                   Baltog, Dr. Bucur Novac, Vasile Zoita, Radu Presura, Ion Tiseanu, Dr.
+                   Calin Atanasiu and Dr. Theodor Ionescu-Sujor, Director of Institute of
+                   Physics and Technology of Radiation Devices. They introduced me to
+                   literature relevant to my work, offered valuable suggestions and helped
+                  me      in     understanding,             improving         and      developing          some       diagnostic
+                   techniques.          They     shared        their      knowledge and             experience with              me.
+                  Noreover, some of                 them kept in             touch with me              and     encouraged me
+                   continually with regular messages sent ~hroughElectronic mail.
+                             It is my pleasure to acknowledge Professor Ioan-Iovit Popescu.
+                  Member of the Romanian Academy, and Professor Iancu Iova, Head of
+                   Optics, Spectroscopy, Lasers and Plasma Department, Faculty of Physics,
+                  University           of      Bucharest,           for      their       warm       recommendations              and
+                   encouragement in my taking on this project. Their courses during my
+                   undergraduate studies and later their suggestions and comments on my
+                   research work were illuminating.
+                            My best friend, Liviu Ion was far away from me, but his constant
+                   inquiry of my progress, his encouragement and advice were like a bescon
+                   in the dark night on a rough sea. It is because of him that I knew what
+                  problems I might have to face far away from home and therefore I could
+                  prepare myself to tackle those situations. His far sightedness and
+                   clarity are a continual source of wonder to me. Special thanks go also
+                   to his wife, Iulia.
+                            I wish to thank my very good friends from Romania who never forgot
+                  me and showed their affection and encouraged me                                         through warm and
+                   cheerful letters. They are Madalina and Anca (Bobi) Gilcd, Constantin
+                   (Bianchi) and Liliana Albu, Ofelia Muresan and Catalin Brad.
+                            The last, though most important expression of my gratitude, goes
+                   to Elena Anastasiu, my mother. She gave me love, affection and moral
+                   support without which it would not have been possible to venture into
+                   this work.
+
+
+                                                                                                                Adrian Serban
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                      SUMMARY
+
+
+
+
+                            An analysis of data for plasma focus devices in their wide range
+                  of sizes has been made. The data show that for neutron optimized
+                  operation all plasma focus devices have the same peak axial sheath
+                  velocity of 10 cm/ps or a little less, driven by a standard value of
+
+                  characteristic current per unit anode radius I,/a of 250 kA/cm.
+
+                            Dur experimental efforts were devoted to study the evolution,
+
+                  dynamics and focussing characteristics of a 3kJ plasma focus device
+                  operated at speeds significantly higher than 10 cm/ps. The increase in
+
+                  speed was achieved by increasing the linear current density using a two-
+                  stage stepped-down composite anode geometry. This method of increasing
+                  the speed allows us to keep the voltage and pressure constant. The
+                  composite anode also allows us to vary the length of the speed-enhanced
+                  region. Our purpose was to investigate the possibility of enhancing the
+                  zadiation output, i.e. neutrons and X-rays, for a given Input energy.
+
+                            Several         diagnostic           techniques          were       applied        simultaneously
+
+                  including the current derivative, current and voltage. The peak axial
+                  speed was measured with an optical fibre detector developed during this
+                  p,roject.The radiai and pinch phases were investigated using the shadow
+                  method. Time-resolved neutron and hard X-ray measurements were carried
+                  out using plastic scintiliator/photomultiplier systems and the time-of-
+                  flight method of analysis. A neutron activation technique was used to
+                  measure the total neutron yield. Time-resolved soft X-ray measurements
+
+                  were performed with filtered PIN diodes. The electron temperature of the
+
+                  argon and deuterium focus was determined using a filter ratio method.
+
+                  A one-dimensional three-phase computational model was used to describe
+                  the gross dynamics of the plasma focus and to design new electrode
+                  geometries. Current shedding and mass loss effects were considered.
+
+                  Discharge parameters and radiation outputs were correlated. Experimental
+
+                  data and results of the computation were compared.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                            Peak axial sheath velocities up to 15 cm/ps were achieved. The
+                  composite anode configuration was optimized at 11.2 c m / p for the
+
+                  neutron output, for which an increase of 70% compared to the standard
+
+                  electrode geometry was achieved. At the same time, the soft X-ray o u t p u ~
+
+                  increased by almost four times. The results showed that if the speed-
+                  enhanced section was too long the radial compression was noc driven
+
+                  properly resulting in poor reproducibility, efficiency and radiation
+                  output. This could be ascribed to a significant separation of the plasma
+
+                  layer from the magnetic piston at the end of the axlal phase.
+                            Shadowgraphic investigations showed that as the speed increased
+
+                  the sheath was more canted. This aspect was correlated with the mass
+                  loss effect and was taken into account in the computational model.
+
+                            Two focus evolution regimes were identified. One is a single
+
+                  compression during the pinch phase and leads to high neutron yield. The
+
+                  other regime features multiple compressions of the plasma with high soft
+                  X-ray production. Focussing characteristics depend strongly on gas
+
+                  filling pressure and speed. The optimum conditions for neutron yield are
+                  different from those for soft X-ray production. The peak value of plasma
+                  impedance (typically greater than 0.2 Q) during focussing was proposed
+
+                  as a factor of merit. Electron temperatures of 1 - 2 kev were determined
+
+                  for both the argon and deuterium focus.
+
+                            Each linear dimension of the pinch and the lifetime of the focus
+
+                  phase were found to scale proportionally to the anode radius. Scaling
+
+                  laws for the non-beam component of the neutron yield and soft X-ray
+                  production were proposed based on the experimental results. These show
+
+                  a strong enhancement of the neutron and soft X-ray yields when the focus
+
+                  axial speed is increased.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                      CONTENTS
+
+
+
+
+                   ACKNOWLEDGEMENTS              ..............................................
+
+                   SUMMARY        .......................................................
+
+                   1 . INTRODUCTION    .................................................
+                        1.1 World Energy Requirements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                        1.2 Nuclear Fusion: A Long Term Energy Alternative                                     ............
+                        1.3 Plasma Confinement  ........................................
+                        1.4 Dense Plasma Focus as a Nuclear Fusion Device .............
+                        1.5 Small Plasma Focus Device: a Simple Facility
+                            to Study Pulse Power Technology and Plasma Dynamics                                         ......
+
+                   2   . PLASMA FOCUS DYNAMICS ANE RELATED PHENOMENA . . . . . . . . . . . . . . . . . .
+                        2.1 Introduction  ..............................................
+                        2.2 Review of Plasma Focus Dynamics ...........................
+                            2.2.1 The Breakdown Phase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                            2.2.2 The Axial Rundown Phase .............................
+                            2.2.3 The Radial Phase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                              2.2.3.1 The Compression Phase ...........................
+                              2.2.3.2 The Quiescent Phase .............................
+
+                              2.2.3.3 The unstable Phase ..............................
+                              2.2.3.4 The Decay Phase .................................
+                        2.3 Review of Plasma Related Phenomena                            ........................
+                             2.3.1 Plasma Impedance  ....................................
+                             2.3.2 Plasma Instabilities . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                                 2.3.2.1 MHD Instabilities                    ...............................
+                                 2.3.2.2 Microinstabilities and Turbulence                               ...............
+                             2.3.3 Electric and Magnetic Fields ........................
+                             2.3.4 Electron Beams . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                             2.3.5 X-Rays ..............................................
+                             2.3.6 Neutrons . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                            2.3.7 Ion Beams               ...........................................
+                            2.3.8 Protons             .............................................
+                      2.4 Influence of Speed on Focus Performance . . . . . . . . . . . . . . . . . . .
+                      2 . 5 Discussion of Thesis Objectives                           ...........................
+
+                  3 . ONE DIMENSIONAL DYNAMIC MODEL OF PLASMA FOCUS                                       ................
+                      3 . 1 Introduction            ..............................................
+                      3 . 2 Standard Configuration                ....................................
+                            3 . 2 . 1 Axial Phase            .........................................
+                                3 . 2 . 1 . 1 Equation of Motion                 ..............................
+                                3.2.1.2       Circuit Equation     ................................
+                            3 . 2 . 2 Radial Phase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                                 3 . 2 . 2 . 1 Radial Shock Motion .............................
+
+                                 3 . 2 . 2 . 2 Axial Elongation of the Focus Pinch .............
+
+                                 3 . 2 . 2 . 3 Circuit Equation ................................
+
+                                 3 . 2 . 2 . 4 Radial Piston Motion . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            3 . 2 . 3 Expanded Column .....................................
+
+                                 3 . 2 . 3 . 1 Equation of Motion ..............................
+
+                                 3 . 2 . 3 . 2 Circuit Equation ................................
+
+                            3 . 2 . 4 Normalization ........................................
+
+                                3.2.4.1       Axial Phase   .....................................
+                                 3 . 2 . 4 . 2 Radial Phase ....................................
+
+                                 3 . 2 . 4 . 3 Expanded Column Phase ...........................
+
+                            3 . 2 . 5 Voltage Computation .................................
+
+                            3 . 2 . 6 Numerical Computation                    ...............................
+                                3.2.6.1       Initialization              ..................................
+                                3.2.6.2       Integration           .....................................
+                      3 . 3 Composite Anode Configuration                          .............................
+                            3 . 3 . 1 Axial Phase I . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            3.3.2     Axial Phase I1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                            3 . 3 . 3 Radial Phase       ........................................
+                            3 . 3 . 4 Expanded Column . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            3 . 3 . 5 Normalization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                                 3 . 3 . 5 . 1 Axial Phase I . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                3 . 3 . 5 . 2 Axial Phase I1          ..................................
+                                3 . 3 . 5 . 3 Radial Phase          ....................................
+                                3 . 3 . 5 . 4 Expanded Column Phase                ...........................
+                            3 . 3 . 6 Voltage Computation                .................................
+                            3 . 3 . 7 Numerical Computation                  .................
+                                3 . 3 . 7 . 1 Initialization            ..................................
+                                3 . 3 . 7 . 2 Integration          .....................................
+
+                  4 . DIAGNOSTIC TECHNIQUES                  ........................................
+                      4 . 1 Electrical Measurements                   ...................................
+                            4 . 1 . 1 Current Measurements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                                4 . 1 . 1 . 1 Introduction  ....................................
+                                4 . 1 . 1 . 2 The Rogowski Coil . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            4 . 1 . 2 Voltage Measurements .................................
+
+                      4 . 2 Magnetic Probe Measurements ...............................
+
+                      4 . 3 Optical and Spectroscopic Techniques . . . . . . . . . . . . . . . . . . . .
+
+                            4 . 3 . 1 Laser Shadowgraphy Method ............................
+
+                                4 . 3 . 1 . 1 Plasma Refractivity - A General Consideration                                 ...
+                                4 . 3 . 1 . 2 The Shadowgraph Technique    .......................
+                            4 . 3 . 2 Optical Fibre Axial Speed Detection Technique .......
+
+                            4 . 3 . 3 Spectroscopic Techniques . . . . . . . . . . . . . . . . .
+
+                                4 . 3 . 3 . 1 Relative Intensities of Atomic Lines
+                                             with the Same Lower Level ........................
+
+                                4 . 3 . 3 . 2 Relative Intensitles of Lines from the
+                                             Same Element and Ionization Stage                     ..............
+                      4 . 4 X-Ray Measurements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            4 . 4 . 1 Time-Resolved Soft X-Ray Measurements . . . . . . . . . . . . . . . .
+
+                            4 . 4 . 2 Electron Temperature Measurements:
+                                      Filter Ratio Method . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                            4 . 4 . 3 Time-Resolved Hard X-Ray Measurements . . . . . . . . . . . . . . . .
+
+                      4 . 5 Neutron Measurements                 ......................................
+                            4 . 5 . 1 Time-Resolved Neutron Flux Measurements . . . . . . . . . . . . . .
+
+                            4 . 5 . 2 Neutron Time-Of-Flight Method                       .......................
+                            4 . 5 . 3 Neutron Yield Measurement . . . . . . . . . . . . . . . . . . . . .
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  9   . EXPERIMENTAL SET UP . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                       5.1 The Plasma Focus Device: NIE-SSC-NFF                                  ......................
+                              5.1.1 Description of NIE-SSC-PFF . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+                                  5.1.1.1 Driver . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                                  5.1.1.2 Switch             ..........................................
+                                  5.1.1.3 Focus Tube                ......................................
+                                  5.1.1.4 Anode Configurations                        ............................
+                                  5.1.1.5 Triggering System and Control Electronics                                        ........
+                                  5.1.1.6 Data Acquisition and Analysis System                                    .............
+                                  5.1.1.7 Rogowski Coil Calibration and
+                                          NIE-SSC-PFF Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . .
+                              5.2.2 Equivalent Circuit of NIE-SSC-NFF      ....................
+                       5.2 Experimental Set Up: the Layout . . . . . . . . . . . . . . . . . . . . . . . . . . . 100
+                       5.3 Experimental Set Up for Laser Shadowgraphy            . . . . . . . . . . . . . . . . 101
+                       5.4 New Design of TEA Nitrogen Laser . . . . . . . . . . . . . . . . . . . . . . . . . . 102
+
+                       5.5 Optics1 Fibre Axial Speed Detector . . . . . . . . . . . . . . . . . . . . . . . . 104
+
+                       5.6 Experimental Set Up for Spectroscopic Measurements . . . . . . . . 105
+
+                       5.7 Five Channel Diode X-Ray Spectrometer . . . . . . . . . . . . . . . . . . . . . 106
+
+                       5.8 Experimental Set Up for Neutron Measurements . . . . . . . . . . . . . . 107
+
+
+                  6 . EXPERIMENTS . RESULTS AND DISCUSSION              .........................                                        109
+
+                       6.1 Preliminary Experiments . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                 109
+
+                              6.1.1 Experiments with the
+                                    Standard Electrode Configuration        ....................                                         110
+                                  6.1.1.1 Gross Dynamics of the Plasma Focus . . . . . . . . . . . . . .                                 110
+                                  6.1.1.2 Soft X-Ray Measurements . . . . . . . . . . . . . . . . . . . . . . . . .                      111
+
+                                  6.l.i.3 Soft X-Ray Production and
+                                          Argon Filling Pressure . . . . . . . . . . . . . . . . . . . . . . . . . .                     113
+                                  6.1.1.4 Axial Rundown Phase .
+                                          Comparison with Computational Model . . . . . . . . . . . . . . 114
+
+                                  6.1.1.5 Shadowgraphic Observations                            ......................                   116
+                                         .
+                              6.1.2 T Measurements in Operation
+                                    as an Electromagnetic Shock Tube . . . . . . . . . . . . . . . . . . . . .                           116
+
+                                 6.1.2.1 General Considerations              ..........................                                  116
+                                  6.1.2.2 Measurements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           118
+
+                                  6.1.2.3 Discussion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         118
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                            6.1.3 Experiments with a Composite Anode
+                                  (CCA-120/19+50/15) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .               119
+                                6.1.3.1 Anode Design Using Computational Model . . . . . . . . . . . 119
+
+                                6.1.3.2 Focussing Effect . Reproducibility . . . . . . . . . . . . . . . . 119
+
+                                6.1.3.3 Shadowgraphic Observations              . . . . . . . . . . . . . . . . . . . . . . 120
+                            6.1.3.4 Discussion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  121
+
+                      6.2 Experiments with deuterium as the Working Gas . . . . . . . . . . . . . 121
+
+                            6.2.1 Experiments with the Standard
+                                  Electrode Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                      121
+
+                                6.2.1.1 Introduction                . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 121
+                                6.2.1.2 Total Neutron Yield Measurements                                 ................                122
+
+                                6.2.1.3 Time-Resolved Neutron and
+                                        Hard X-Rays Measurements . . . . . . . . . . . . . . . . . . . . . . . .                         125
+
+                                6.2.1.4 Plasma Focus Dynamics  . . . . . . . . . . . . . . . . . . . . . . . . . . . 128
+                                6.2.1.5 Comparison with Computational Model . . . . . . . . . . . . . . 149
+
+                            6.2.2 Experiments with Composite Anode Configurations . . . . . . 151
+                                6.2.2.1 Introduction                ....................................                                 151
+                                6.2.2.2 CCA-103/19+70/15 and CCA-93/19+80/15
+                                        Configurations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .               152
+                                6.2.2.3 CCA-90/19+100/15 and CCA-95/19+90/14
+                                        Configurations .....................
+
+                                6.2.2.4 CCA-65/19+120/15 and CCA-45/19+140/15
+                                        Configurations ..................................                                                194
+
+                            6.2.3 Experiments with One-Piece Anode Configurations . . . . . . 207
+
+                                6.2.3.1 Introduction  ....................................                                               207
+                                6.2.3.2 Total Neutron Yield .............................                                                208
+                                6.2.3.3 Time-Resolved Neutron and
+                                        Hard X-Rays Measurements . . . . . . . . . . . . . . . . . . . . . . . .                         210
+
+                                6.2.3.4 Plasma Focus Dynamics         . . . . . . . . . . . . . . . . . . . . . . . . . . . 210
+                            6.2.3.5 Comparison with Computational Model . . . . . . . . . . . . . . 220
+
+                      6.3 Anode Geometry and Focus Characteristics . . . . . . . . . . . . . . . . . . 223
+                          6.3.1 General Considerations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          223
+
+                          6.3.2 Plasma Impedance ....................................                                       226
+
+                          6.3.3 Discharge Efficiency . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 228
+
+                          6.3.4 Axial Velocity . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  230
+
+                            6.3.5 Pinch Dimensions and Lifetime                             . . . . . . . . . . . . . . . . . . . . . . . 232
+                            6.3.6 Neutrons             .........................................                                         233
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                             6.3.7 X-Rays           ..........................................                                   236
+
+                             6.3.8 Enhanced Radiation Yield                   ............................                        238
+
+                             6.3.9 Computational Model                   .................................                        240
+
+
+                  7 . CONCLUSIONS            ...............................................                                      242
+
+
+                   REFERENCES         ......................................................                                     247
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                             1. INTRODUCTION
+
+
+
+
+                  1.1 World Energy Requirements
+
+
+                            One of the vital problems (amonq the many) that man must solve is
+
+                  how to continue his technologically based civilization without at the
+
+                  same tine damaging irreversibly the environment.
+
+                            Industrial development in the last century and the desire for
+                  better living conditions have resulted in massive increase of global
+                  energy requirement [l] from 0.3 Q/century in 1850 to about 0.3 Q/year
+                  at present (1 Q = 1.05*10~'J) . The expected world energy requirement
+
+                  from 1970 to 2050 has been estimated to be about 100 Q.
+                            Two major commercial energy sources at present are fossil fuels
+
+                  and nuclear fission fuels. The supply of fossil fuels (coal, petroleum
+
+                  and natural gas) is limited and at the present rate of consumption the
+                  reserves are expected to exhaust by the middle of the next century.
+
+                  Moreover, the long-term addition of carbon dioxide to the atmosphere
+                  from combustion of such fuels has alarming effects on the ecological
+
+                  balance of the world.
+                            The current, first generation, commercial nuclear power plants use
+                  92$d5   as the primary nuclear fission fu-l. The percentage of this isotope
+
+                  c~ntainedin natural uranium, however, is only 0.72 % . Based upon known
+                  wqrld reserves of uranium, the total amount of energy obtainable from
+
+                  the non-breeding fission reactors is estimated to be around 3 Q, which
+
+                  is far from the long term demand of world energy. A proposed solution
+
+                  to this problem is the development of fast breeder reactors where
+                  fission of ,,u"~ is used as a source of fast neutrons, which in turn are
+
+                 made to collide with                        or p O ~ h Uto
+                                                                          2 produce the fissionable nuclear
+
+                  fuels ,puU9 and ,,uZJ3,respectively [21. However, a number of questions
+
+                  cannot be answered about the safety of fission reactors, radioactive
+
+                  waste disposal, the                  risks      associated with              the health hazards                 of
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  plutonium and the feasibility of adequate nuclear safeguards. In this
+                  context the problem of fusion energy becomes very urgent.
+
+
+
+                  1.2 Nuclear Fusion: A Long Term Enerqy Alternative
+
+
+                            Relative to the projected energy requirements for the future,
+
+                  there is a virtually unlimited energy source: nuclear fusion.
+                            Fusion, an exoenergetic procesq in which light nuclei react to
+
+                  form heavier nuclei, occurs in the S L I ~ and the stars and much is known
+
+                  about the process after it was eluciriated by C. von Weizsacker (1937)
+
+                  and H.A. Bethe (1938). However, man has not yet learned how to use it
+
+                  on the earth as a controlled source of energy. Ironically, man has
+
+                  learned how to use it as a weapon, thn H-bomb. Controlled thermonuclear
+
+                  fusion with net                energy yield has yet                   to be       demonstrated in              the
+
+                  laboratory. Fusion reactors are, therefore, in an early developmental
+                  stage. But, once they become reality, the energy problem of mankind will
+
+                  be closer to a solution. Resources for fusion fuel are estimated to be
+                  sufficient for one billion years.
+
+                            The nuclear reactions of interest for fusion reactors are as
+
+                  fo11ows:
+
+
+
+                                      ,D' + ,D'         -   T      (l.01 Mev) c ,p' ( 3.03 MeV)                               (1.1)
+
+                                      ,Dz + ,D'         -   ,~e' (0.82 Me'])        c ,n' ( 2.45 MeV)                         (1.2)
+
+                                      ,D'    +   ,T3    -   ,Hed (3.52 M?'/)        + ,n' (14.06 MeV)                         (1.3)
+
+                                      ,D2 + 8e'         +          (3.67 MaV) + ,p1 (14.67 MeV)                               (1.4)
+
+
+
+                            The reactions (1.1). (1.2) and (1.3) were discovered in 1933 by
+
+                  Oliphant, Harteck and Rutherford [3]. The reaction (1.4) is an example
+
+                  for the clean fuel fusion reaction 1 4 1 where the reaction products are
+
+                  charged particles, whose kinetic energy can then be converted directly
+
+                  into electrical power and therefore avoiding heat pollution through
+                  thermomechanical conversion.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   1.3 Plasma Confinement
+
+
+
+                              For such reactions as (1.1) to (1.4) to take place, the reacting
+                   p~articlesmust come within range of the nuclear forces and this means
+                   that the Coulomb barrier has to be penetrated. It was soon realized that
+                   bombardment of light-element targets by high energy particie beams could
+                   not efficiently produce power, unless the energy, necessarily imparted
+                   t,o outer shell electrons in the collision process, was utilized. This
+                   means that the reacting particles must be confined at high density for
+                   a time sufficiently long for energy transfer to the nuclei to take
+                   pIlace. This transfer is disorderly, i.e. the ions (or nuclei) are heated
+                   tb a high temperature. At a given temperature, the reaction rate is
+                   p~roportionalto the square of the density. For target bombardment, the
+                   t:imeduring which confinement can be secured turns out to be limited to
+                   a small fraction of a second and, therefore, the density needed in order
+                   to achieve a useful power output is very high. The temperature required
+                   for barrier penetration and the density required for a practical device
+                   can be determined from data concerning reaction cross-sections. The
+                   reaction rates can be estimated by means of theoretical considerations
+                    ['5,6].     Useful curves            showing values              of    tov> based          on Maxwellian
+                   d,istribution for the reactions (1.1), (1.2) and (1.4) are often found
+                   in literature of fusion [7-111. The D-T reaction rate in the range up
+                   to 60 kev is orders of magnitude higher than the D-D rate and at 9 kev
+                   it is already up to 10% of the maximum rate. From this was inferred that
+                   the most suitable fuel for nuclear fusion is the deuterium-tritium
+                   admixture.
+                              The problem of confinement of hot plasmas forms the core of major
+                   research efforts in the area of controlled thermonuclear fusion. Broadly
+                   there are two approaches: magnetic confinement of hot                                             plasma and
+                   inertial confinement.
+                             Magnetic confinement is based on the principle that a charged
+                   particle gyrates about a magnetic field line. This method suffers from
+                   a drawback that the particles are lost at the ends in open ended systems
+                   and undergo drift in both open and closed ended systems. The different
+                   approaches actively investigated in controlled fusion are classified as
+                   follows: open systems and toroidal systems. The former contains mirrors,
+                   fleld reverse configuration and cusps, wnile the latter can be divided
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   into axially symmetric systems                          (tokamak, reverse field pinch and
+                   spheromak) and axially asymmetric systems (stellarator, heliac, bumpy
+                   torus).
+                             Inertial confinement schemes aim at compression of deuterium-
+                   tritium fuel to very high densities and temperatures within a very short
+                   time so that fusion reaction can take place over a time scale, much
+                   shorter than inertial confinement time. The inertial confinement time
+                   is the time taken by the ions moving with mean ion sound speed to
+                   traverse the dimensions of the pellet. This compression may be achieved
+                  by a flux of energetic particles (electrons or ions) or by means of
+                   laser light [ll,121 .
+                            The above introductory remarks give only a brief, necessarily
+                   incomplete introduction to the need for nuclear fusion and the obstacles
+                  and continuing effort to harness nuclear fusion energy. In this world-
+                  wide effort the dense plasma focus has emerged as a very cost-effective
+                  device for the study of plasma nuclear fusion. This present project will
+                  study this device.
+
+
+                  1.4 Dense Plasma Focus as a Nuclear Fusion Device
+
+
+                            The Dense Plasma Focus (DPF) device [13,14] is a hydromagnetic
+                  coaxial plasma accelerator which involves the storage of magnetic energy
+                  behind a moving current sheath and the partial conversion of this energy
+                  to plasma energy during the rapid collapse (2-pinch) of the current
+                  sheath toward the axis beyond the end of the centre electrode.
+                            The DPF has attracted much interest since its discovery, mainly
+                   for its high neutron yield. During 1960's, the observation of intense
+                  bursts of neutrons from DPF led to the premature announcement of
+                  thermonuclear fusion being achieved. As a result of this, research on
+                  DPF started in laboratories all over the world leading to the great
+                  progress in improving the associated pulse power technology and in
+                  understanding of the physical phenomena taking place in this system. At
+                  present, a better understanding of the mechanism of neutron emission
+                  raises        fundamental doubts                on    the     relevance and             the     interest         in
+                  developing it further for the application in the field of controlled
+                  thermonuclear fusion. But nevertheless, the scope of DPF in fusion and
+                  p h s e power technology research is still under active consideration
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                 because        the     technological development                     has      enabled       the     successful
+                  operation of large DPF devices leading to better understanding and
+                  formulation of scaling laws of DPF performances.
+                            in the following some of the main investigations concerning the
+                  position of DPF in fusion research programmes are briefly discussed.
+                           Rager [l51 proposed that a 30 33 device may act as a nuclear
+                  design test facility, working much be1.o~breakeven at a level at which
+                  a-particles do not influence the scaling of neutron yield and the whole
+                 dynamics of the process. Some optimistic calculations showed that a
+                  total neutron yield of a 300 M 3 device will be Y, = 3*102' corresponding
+                  to 1 GW for thermonuclear power for 1 Hz repetition rate. Korzhavin
+                  proposed        [l61 that if the currents are raised to 10 MA the neutron
+                  emission will be predominantly thermonuclear and the contribution of
+                  turbulent mechanism will be comparatively very small.
+                            Cloth and Conrads [l71 as well as Zucker et al. [l81 suggested
+                  that the DPF is a fusion device which can be used as a neutron source
+                  for reactor materials testing. So far, the DPF appears to be the most
+                  effective pulsed neutron source [19,20]. If a large DPF facility is to
+                  be developed with a repetition rate of 1 shot/s, the endurance of the
+                  first wall and the blanket of a fusion reactor could be investigated.
+                  DPF could possibly help to clarify a lot of technological problems and
+                  throw light on the radiation-induced fatigue.
+                            From their analysis Gratton et al. [211 concluded that attention
+                  should be paid LO DPF research in the context of inertial confinement.
+                 They studied the properties of the out flowing corona generated by the
+                  ablation of solid micro-sphere within a hot, dense plasma and noticed
+                  that plasma such as that produced in DPF devices may drive the implosion
+                 of solid micro-spheres.
+
+
+                  1.5 Small Plasma Focus Device: a Simple Facility to Study
+                        Pulse Power Technology and Plasma Dynamics
+
+
+                            Developed in            the years          from 1960 to             1964      by    Filippov and
+                  independently in a variant form by Mather, the DPF is not only one of
+                  the     complementary            fusion       device       between          low-B tokamak            and     high
+                 compression           inertial         fusion,        but     also       a    suitable         facility         for
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  understanding the fundamental problems of pulse power technology, plasma
+                  physics and other related phenomena. The availaaility of a large range
+                  of plasma phenomena arising from this easily constructed machine has led
+                  to its study in many laboratories around the world.
+                            An assembly of data [ 2 2 ] produced by large (above 100 kJ) , medium-
+                  sized (10 - 100 kJ) and small plasma focus devices all over the world
+                  indicates that plasma focus machines irrespective of size all produce
+                  plasmas of the same temperature within a small range of densities [ 2 3 ] .
+                  This is a remarkable and useful characteristic for design purposes. This
+                  characteristic is closely related to a simple conventional design
+                  criterion thac the current amplitude per unit anode radius I,/a is
+                  almost the same for all devices at about 250 kA/cm. This ensures Eor all
+                  machines the same value of drive magnetic field in the axial phase and
+                   t,he same compressed energy density in the focus phase leading to the
+                  same high temperature in all devices, large or small. On the other hand,
+                  this energy density limit corresponding also to an axial drive speed
+                  limit of about 10 cm/ps may also be suspected of limiting the neutron
+                  yield scaling law to Y -                        instead of a better scaling law of Y - I"
+
+                  ihere n could be as high as 8 if advantage is taken of the rapid
+                   increase of D-D fusion cross-section with temperature (power greater
+                  than 4) at the relatively low operating temperature of existing plasma
+                  focus machines.
+                            Judging from these points of view all DPF devices are almost
+                  identical.            But if one considers the low-cost, cost-effectiveness,
+                  simplicity, and educational value combined with a large variety of
+                  plasma phenomena amenable to study by simple diagnostics, then the
+                  advantage oE using small plasma focus devices is obvious [ 2 4 ] . Moreover,
+                  a small facility has features like easy maintenance, compact design,
+                  flexibility, and short turn-around time - characteristics which are not
+                  found in big machines. It is the latter features that made our study
+                  possible because more than ten anode configurations were analyzed.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                               2. PLASMA FOCUS DYNAMICS AND RELATED PHENOMENA
+
+
+
+
+                  2 . l Introduction
+
+
+
+                            The Plasma Focus is a two-dimensional 2-pinch formed on or near
+
+                  the axis at the end of a coaxial plasma accelerator. As mentioned
+                  earlier, two different electrode geometries were developed independently
+                  by Filippov [25] in the Soviet Union and Mather [26! in the United
+                  States. Basic details of the Mather-type and Filippov-type plasma focus
+                  electrode geometries are illustrated in Fig. 2.1
+                            The Filippov machine was
+
+                  developed as a modification of
+
+                  the straight 2-pinch to ''hide"                                                                       MATHER
+                                                                                                                        DESIGN
+                  the insulator zone from the
+
+                  pinch        region          and      prevent
+
+                  restrikes caused by radiation
+                  from       the      hot      plasma.        The
+                  Mather-type             device        was       a
+                  modified          regime           from     the
+                  coaxial plasma gun, that is
+                  operated           at        higher        fill
+
+                  pressure.
+                            The operating principle
+
+                  of     the     DPF      is    simple:       the
+                  energy stored electrically in                               1
+                                                                              U+
+                                                                                            J                FILIPFVV
+
+                  a capacitor bank                is rapidly                  CnlArnP.    m                  DESIGN
+
+
+                  transferred to the electrodes
+                                                                        Fig. 2.1 Schematic drawings of Mather-
+                  by means of a fast switch. In                         type and Filippov-type Dense Plasma
+                                                                        Focus devices
+                  both      geometries          the     current
+                  discharge initiates along the surface of a cylindrical insulator in a
+
+                  coaxial electrode region (see 1 in Fig. 2.1). By the Lorentz force
+
+                  action the conducting plasma sheath moves from position 1 through
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  position 2 to position 3 (same flgure) . In 4 the sheath reaches the axis
+                  of symmetry of the electrodes. In Fig. 2.1 positions 1 and 4 are not
+                   represented for the Fillipov-type geometry.
+                            To optimize the machine one chooses                                 the dimensions of                the
+                   electrodes         (length and diameters) and the operational pressure in
+                  reletionshlp with the characteristics of the energy source so that the
+                   current is maximum when the sheath reaches the axis. At this instant a
+                   filament of hot and dense plasma (pinch) is formed in front of the inner
+
+                  electrode          (usually the            anode). After             a    very      short      time      due     to
+                   instabilities the plasma column breaks up and decays. Details oE the
+                   time scale and other plasma parameters will be given later.
+
+                            The obvious differences between the two configurations lie in the
+                   electrode dimensions and the aspect ratio (diameter/length)of the inner
+
+                  electrode. The Filippov-type device has a large aspect ratio, usually
+                  greater than 5 with the inner electrode diameter of 50 - 200 cm. The
+                  mather-type device has a small aspect ratio of typically below 0.25.
+
+                  with an inner electrode diameter of 2 - 22 cm. The electrodes are
+                  usually made of copper or stainless steel. The anode may be a solid
+
+                   cylinder or a cylindrical tube in order to avoid excessive hard X-ray
+
+                  emission due to electron bombardment. The cathode is in the form of a
+
+                   squirrel cage consisting of 6 - 24 rods arranged in a circle around the
+                  anode. The insulator may be made of Pyrex, glass, alumina or ceramic.
+                            The similarities between these devices are in (i) the dynamics of
+                   the current sheath, (ii) the scaling laws [16.19,27-301 for neutron
+                  emission and (iii) the emission of energetic ion and electron beams, X-
+                   rays, microwaves etc.
+
+
+
+                  2.2 Review of Plasma Focus Dynamics
+
+
+                            For this thesis our interest is on the Mather-type plasma focus.
+                            The study           of plasma focus dynamics can be divided into three
+                  distinct phases: the breakdown phase, the axial acceleration phase (or
+
+                  axial rundown phase) and the radial phase (or radial collapse phase).
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  2.2.1 The Breakdown Phase
+
+
+                            The DPF device is filled up with                              the working           gas under an
+                  appropriate pressure                 (usually several mbar H2 or D,). When the high
+
+                  voltage pulse is applied between the electrodes an axisymmetric radial
+                  electrical discharge will be initiated. This discharge is preceded by
+                  an     electrical breakdown                 phase      which       generates an            initial        plasma
+                  configuration through which the discharge current can flow. According
+                  to Paschen's law [31] the values of the static breakdown voltage for 1 -
+                  10 mbar deuterium are lower than 1 kV, which is one order of magnitude
+                  smaller than the usual (14 - 60 kV) capacitor bank voltage. Therefore,
+
+                  in this device, the breakdown is always a highly overvolted phenomenon.
+
+                            The development of the high current discharge in a DPF depends
+
+                  substantially on the initial gas conditions [32,33] and the parameters
+                  of the electrodes [34,35] and insulator [32,33,36,37].The polarity of
+
+                  the electrodes and the initial steepness of the current rise which
+                  depends on the inductance and charging voltage of the electrical circuit
+                  play      also significant roles. For optimized conditions, a sliding
+                  discharge (or gliding discharge) will develop along the insulator.
+
+                            The     process        can     be    explained         by     the     effect       of    a    surface
+
+                  capacitance. Before applying the high voltage, free charged particles
+                  drift towards the surface of the electrodes as well as towards the
+                  insulator because of the image forces. Free electrons in the vicinity
+
+                  of the insulator tend to create a negative potential at the insulator
+                  surface because of the dielectric constant of the material (usually €,>l)
+
+                  and high surface resistivity. On applying high voltage to the electrodes
+
+                  a time delay of some tens of nanosecond is observed                                               [32] before
+                  breakdown         along      the     insulator surface. During                       this     time      further
+
+                  electrons are created by                      field emission from metallic edges and
+                  ionization of the ambient gas. These electrons are accelerated along the
+                  field lines of mainly radially directed electric field towards the inner
+                  electrode and the insulator surface, or the outer electrode, depending
+
+                  upon the polarity of the applied voltage. Since the electrons are charge
+                  carriers of importance for gaseous breakdown, the polarity of the inner
+
+                                                                           9
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   electrode should be positive to concentrate them to the insulator
+                   surface in order to support a symmetrical breakdown. In other words, the
+                   discharge is initiated at an edge of the outer electrode (the back plate
+                   of the focus tube) where the highest electric field appears. As the
+                   discharge develops the surface capacitance is charged gradually while
+
+                   the highest electric field remains at the front of the discharge. This
+                   effect assists the propagation of the lonization front along the
+
+                   insulator. When the sliding discharge reaches the end of the insulator
+                   it connects both electrodes. Due to the 7 X 3 force the current is
+                   lifted off in an Inverse pinch manner. After some time (50 - 500 ns) the
+                   conductance of             the sliding discharge becomes high enough and the
+                   discharge converts into a plasma                             sheatn, in          fact      a   double-layer
+
+                   structure consisting of the Ionization front and the magnetic piston
+                   138-401. This is the end of the breakdown phase and the focus formation
+
+                   process will enter into the second phase, the axial rundown phase.
+                             Monitoring the voltage across the electrodes of a DPF machine, it
+
+                   is observed that an initial voltage rise is followed by a voltage drop
+                   determined by the breakdown development and parameters of the electrical
+                   circuit, as shown in Fig. 2.2.
+                             According to Bostick et al. [?E], additionally to the primary
+
+                   sliding discharge, filamentary radial discharges are often observed.
+                             Mather       [39] reported             that      a    singular, axisymetric                    prompt
+                   initiation of discharge is required for the current sheath to develop.
+
+                   Using a fast image convertor camera he confirmed that when the discharge
+
+                   produced was non-symmetrical, or some radial spokes occurred within the
+
+                   interelectrode region, then the neutron and X-ray yield was lower
+
+                   compared to the normal operation. Decker et al. 1411 underlined the
+                   importance and strong influence of initial breakdown and conditions
+                   prior to it for the entire evolution of the plasma focus discharge.
+                             Donges et al. 1321 reported that the discharge occurs at the open
+                   end of the accelerator or within the whole interelectrode volume if the
+                   initial pressure in the plasma focus vessel is too low (below 0.1 mbar) .
+
+                  When the pressure value is too high (above 10 mbar) a radial filamentary
+
+                  discharge tends to start between the coaxial electrodes [33].
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                             Borowiecki et ai.              [35]
+
+                   used         various           electrode-
+                   insulator             configurations
+
+                   during the optimization of a
+
+                   13    kJ plasma          focus device.
+                   They found that when a knife-
+
+                   edge cathode was used, the
+
+                   breakdown          conditions            were
+
+                   improved          and       the      system
+
+                   performance turned out to be
+
+                   more            reliable                 and
+                   reproducible.                                        I                                            d
+                                                                      Fig.   2.2 Typical waveforms of the
+                             The                               On     current [upper trace) and voltage [lower
+                                                                      trace) .
+                   Poseidon               and         PF-360          time scale : 5 0 0 ns,div
+                   experiments [201 revealed the
+
+                   great importance of the insulator material on neutron yield saturation
+
+                   of the plasma focus, particularly when the lnput electrical energy
+
+                   exceeds several hundred kilojoules. In the Poseidon the neutron yield
+
+                   starts to saturate at 300 kJ when Pyrex insulator is used. The situation
+
+                   was considerably improved using a ceramic insulator.
+
+                             In order to describe the breakeown phase different computational
+                   models have been developed. Kolesnikov                              [42] proposed the first l - D
+
+                  model. Later, 2-D 2-fluid 143,441 and 2-D 3-fluid [45] MHD models
+                   assuming a thin plasma layer or ionized gas as initial conditions were
+
+                   developed for the entire evolution oE the plasma focus discharge until
+
+                   the final pinch phase.
+
+
+
+                   2.2.2 The Axial Rundown Phase
+
+
+
+                            The next stage of the evolution of plasma focus discharge is known
+
+                  as the axial rundown phase or axial acceleration phase or simply, axial
+                  phase. It consists in the propagation of a magnetically driven plasma
+
+                  sheath along the z-axis towards the open end of the electrodes (position
+
+                   3 in Fig. 2.1) .
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                            The axial phase is relevant for the subsequent formation of the
+                  hot and dense plasma (pinch) in two aspects: (i) the imploding current
+                  sheath should arrive on axis in coincidence with the first maximum of
+                  the discharge current and (ii) the structure and the (r,z) profile of
+
+                  the plasma sheath should have certain characteristics for a good
+                  focusing effect. The first condition is a common requirement to all
+                  pinch devices representing the optimization of the energy transfer from
+                  the power source (capacitor bank) to the pinch plasma. The duration of
+                  the axial phase is usually 1 - 4 vs. The second condition includes
+                  requirements of axial symmetry, smooth (r,z) profiles and of a thin,
+
+                  uniform current sheath structure.
+                            Even at the beginning of the axial phase, the sheath pushed by the
+                  *
+                  3 X 3 force moves at supersonic speeds. The mean free path for both
+
+                  ion-atom charge exchange and elastic collisions are very small in the
+                  usual range of filling pressures, hence the moving structure produces
+                  a gas-dynamical shock which heats and compresses the neutral gas in its
+                  front. Therefore, the sheath will have a complex structure with a
+                  compressed and hot ionizing region, a plasma region carrying the current
+                  at its trailing edge and a nearly vacuum magnetic field region. The
+
+                  complete structure of the sheath is determined by the pattern of the
+                  current that drives it (see the breakdown phase); if this pattern is
+                  uniform, the plasma structure will be likewise, while an azimuthal
+
+                  filamented pattern will                      produce        a   filamentary structured                    sheath
+                   [40,46,471.
+                            Magnetic probes measurements (detecting only the magnetic piston)
+                  optical and speotroscopic diagnostic techniques (Schlieren, shadow and
+                  interferometric arrangements, image convertor cameras or other light
+                  detecting systems) are usually employed for the axial rundown phase.
+                  Axial sheath velocities ranging from 1.7 to 15 cm/vs were measured
+                   148,491. It was found that a large fraction (up to 50%) of the current
+
+                  going into the device flows behind the current sheath especially in
+
+                  large DPF machines [50,51]. The thickness of the plasma sheath structure
+
+                  iS 2 - 4 cm 1521. Due to the l/r dependence of the magnetic field within
+                  the interelectrode region, the current sheath profiles are curved 1r.z)
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  functions. The current sheath, maintaining its axisymmetric character,
+
+                  acquires a paraboloid shape [531 being thinner in the region near the
+                  central electrode [54].
+                            Theoretical descriptions of the dynamics of the axial rundown
+
+                  phase frequently use the so called "snowplow model" (either l - D or 2 - D
+
+                   [55,56]) which have proven to predict reasonably well the current sheath
+
+                  velocity and duration of the phase [57-601 and in its 2 - D version also,
+
+                  the profile [61]. The fitting of experimental data to the model requires
+
+                  the introduction of a so called "sweeping efficiency" or mass loss
+
+                  factor interpreted as an incomplete sweeping of the filling gas and                                                a
+
+                  current factor to take into account the current shedding effect. Several
+
+                  other computational models like 2 - D 2 fluid time dependent [431, l - D 3
+                  fluid time dependent [45] and 2 - D 3 fluid time dependent 1621 MHD codes
+
+                  have been also developed.
+
+                            At the end of the axial rundown phase, the inner end of the
+
+                  current sheath sweeps around the end of the anode. The outer end of the
+
+                  current sheath continues up the tube sweeping along with it the greater
+
+                  portion of the accumulated plasma in the axial direction. At most only
+
+                  a small fraction of the plasma at the end of the axial phase will
+
+                  contribute to the final focus.
+
+
+
+                  2.2.3     The Radial Phase
+
+
+
+                            At the end of the axial rundown phase, the current sheath sweeps
+
+                  around the end of the inner electrode (anode) and finally collapses due
+                  to the radially inward 7 X 3 force (see position 3 to position 4 in
+
+                  Fig. 2.1) in 50 - 200 ns, depending on the DPF machine characteristics.
+                  This process is similar to che 2-pinch phenomenon, but the pinching
+
+                  effect occurs much more rapidly, with enhanced compression and plasma
+
+                  heating.
+
+                            The radial phase leading to the pinch as the final stage of plasma
+
+                  compression plays the most important role in the plasma focus evolution
+
+                  due to its extremely high energy density, its transient character and
+
+                  the emission of intense radiation, high energy particles as well as
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  copious nuclear fusion products.
+                            Using the available experimental data reported, the following
+                  paragraphs will describe the radial phase divided into four sub-phases:
+                   (i) compression phase, (ii) quiescent phase, (iii) unstable phase and
+                   (iv) decay phase [63].
+
+
+                  2.2.3.1 The Compression Phase
+
+
+
+                            This phase begins with the sweeping of the current sheath around
+
+                   the end of the central electrode. The sheath collapses radiaily and
+
+                  axisymmetrically with a non-cylindrical, funnel-shaped profile. The
+
+                  implosion ends when the plasma column reaches the minimum radius with
+                  plasma density at its maxinum n                         - 1019 cm~').
+                            The instant of time of the first plasma compression to a minimum
+                  radius (t=O, r              r will be taken as the reference point in chronology.
+
+                            The radial collapsing velocities range between 7 to 60 cm/ps and
+
+                  depend mainly on che initial gas filling pressure, current density,
+
+                   geometry of electrodes and structure of current sheath [20,391.
+
+                            The main heating mechanism inside the plasma before the front of
+                   che current sheath meets along the z-axis is shock heating. Therefore,
+
+                   the electrons with temperature of about 100 eV are cold compared to the
+                  ions whose temperature is around 300 eV [64]. After the transformation
+                  of plasma structure to plasma column, Joule heacing becomes the main
+                  heating        mechanism          [40].       This      plasma       column       will      be     compressed
+                  adiabatically 1641 further to form the final focus. Peacock et al. [65]
+                  observed the onset of the Rayleigh-Taylor instability about 30 ns before
+                   the end of this phase. This type of instability is damped out when the
+
+                  radial velocity is diminishing [66].
+
+                            Towards the end of this phase the magnetic field starts diffusing
+                  into the plasma column. Very quickly it will be completely diffused
+                   leading to an anomalous high plasma resistance. Also, the inductance of
+                   the system is increased [ 6 7 ] . The sharp voltage spike and the current
+                  dip (see Fig. 2.2) are features typical of a focusing discharge where
+                  the large increase of the plasma column impedance has occurred. The high
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   frequency oscillations at the beginning of the signal and also during
+                   the focus phase are due                      to    the transmission line connecting the
+                   capacitor bank to the electrodes [68]. Final electron temperature will
+
+                  be around 1-2 kev. Maximum values of electron density and electron (ion)
+                   temperature have been determined by spectroscopy [ 6 9 ] ,                                  interferometry
+                   [63], laser scattering [40] and other methods.
+                             It is often assumed that a Bennett equilibrium exists in the pinch
+                  phase, according to which the final temperature should depend only on
+
+                   the current I and the line density N : T                               - I'/N:      the lower the line
+
+                  density, the higher the temperature. The minimum pinch radius r
+                                                                                ,                                               is a
+
+                   free parameter.
+                             Simple computational physical models have been constructed for the
+                   radial phase based on the snowplow equation. As is well known this model
+                  when      applied to a radial compression gives a zero-radius column.
+
+                  Attempts have been made to overcome this by devising a retarding kinetic
+                  pressure term. Other attempts use criteria for the minimum radius such
+                  as the Larmor radius. However, Lee [70] had shown that these methods are
+                  not energy-consistent and therefore should be replaced by an energy
+                  balance model which provides the correct end-point for the implosion
+                   trajectory, thus giving the correct quasi-equilibrium radius. Combining
+
+                   the conventional snowplow model with an energy-balance criterion enables
+
+                  a complete energy-consistent trajectory to be obtained [71]. Also, the
+
+                  computed pinch length and minimum radius are in very good agreement with
+
+                   the experimental values.
+
+
+                  2.2.3.2 The Quiescent Phase
+
+
+
+                            This phase marks the beginning of the expansion of the pinch
+                  plasma column. The electron temperature will decrease to about 600 - 800
+
+                  eV. An ion temperature of about 700 eV has been estimated [40]. The
+
+                  plasma density will also drop to about 2*10'~cm.'. The neutron yield up
+
+                  to this point is around 5-10' [40] which is negligible compared to the
+
+                  typical         total        neutron         production           of     about        109/shot         measured
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  expsrimentally.
+
+                            During this phase of expansion which occurs in radial as well as
+
+                  axial direction, the rate of radial expansion is hindered by                                                   the
+                  confining magnetic pressure. But due to the "fountain" like geometry of
+
+                  the current sheath, the rate of the axial expansion is unhindered
+                  resulting in the formation of an axial shock front.
+
+                            The     sharp      change        in    plasma       inductance          (started during              the
+
+                  compression phase) induces electric field in the plasma column. This
+
+                  electric field will accelerate the ions and the electrons in opposite
+
+                  direction. The relative drift velocity between the electrons and ions
+
+                  will increase and approach the increasing electron thermal velocity.
+
+                  This is the condition for the onset of the microinstabilities such as
+
+                  the electron cyclotron and various forms of beam-plasma instability.
+
+                            At the end of the quiescent phase the m=O instability develops
+
+                  rapidly due to increasing electron temperature. The plasma column will
+
+                  be compressed again, this time locally due, to the m=O instabilities.
+
+                            Based on these facts, one can define the pinch lifetime t, as the
+
+                  time between            the first          compression and             the instant when                the m=O
+
+                  instability occurs. The pinch lifetime t, is correlated with the total
+
+                  neutron yieid Y, as follows: the shorter t,, the higher Y, for fixed
+
+                  discharge parameters. In comparison to radial Alfven transit time of the
+
+                  pinch column, t, is many times larger, the reason being attributed to
+
+                  strong axial flow, two-dimensional curvature of the current flow, B x
+
+                  drift or the influence of self generated axial magnetic fields.
+
+                            The length of the pinch column as well as the minimum radius scale
+
+                  to the radius of the central electrode [ 7 2 , 1 4 5 ] .
+
+
+
+                  2 . 2 . 3 . 3 The Unstable Phase
+
+
+
+                            The unstable phase is the richest stage of the plasma focus
+
+                  evolution in associated phenomena like soft and hard X-ray emission,
+
+                  fast deuterons and electrons and D-D reaction products                                              (neutrons,
+
+                  protons) .
+
+                            An induced electric field is enhanced locally due to growing m=O
+
+                                                                          16
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  instabilities. Therefore, electrons are accelerated towards the inner
+                  electrode and ions in the opposite direction. Plasma density increases
+
+                  again up to 10l9 cm-'. At the same time an axial ionization wave was
+
+                  observed [13,40] using tine resolved interferometry. This accelerating
+
+                  ionization wave quickly overtakes the axial shock front which is formed
+                  due to the axial expansion of the plasma column (see quiescent phase).
+                  The start of this ionization wave coincides with the beginning of the
+
+                  main hard X-ray and neutron pulses. The peak velocity of this ionization
+
+                  wave in deuterium is about 120 cm/ps, confirming that the ionization is
+
+                  caused by fast deuterons [40,73]. The ionization wave develops into a
+
+                  bubble-like structure with several density gradients L40.741, the first
+
+                  one being attributed to the ionization front that separates the ambient
+
+                  gas from the ionized structure.
+
+                            A fairly large amount of impurities is injected into the plasma
+
+                  col.umn due to the bombardment of accelerated runaway electrons on the
+
+                  anode. This decreases the Pease-Braginski current causing the plasma
+
+                  column to explode near the inner electrode 1 7 5 1 . The explosion proceeds
+                  sequentially along the plasma column. This breaking up corresponds to
+
+                  the second density gradient in the interferometric holograms (401. This
+
+                  density gradient moves away from the anode at a rate (20 cm/ps) slower
+
+                  than the ionization front.
+
+                            The disruption of the plasma column continues until the whole
+
+                  plasma column has been broken up completely. The plasma density drops.
+
+                  The calculated electrons drift velocity from the current density is
+                  about Z*IO7 m/s, which is definitely greater than the electron thermal
+
+                  velocity of 6*106 m/s estimated from the electron temperature. The
+
+                  condition for the onset of microinscabilities can be met. This also
+
+                  gives rise to strong plasma heating. As indicated by the large amount
+
+                  of measured Bremsstrahlung radiation the electron temperatures increases
+
+                  up to 4 - 5 keV.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  2.2.3.4      The Decay Phase
+
+
+                            The last phase of the radial collapse and also the last stage of
+                  the plasma focus dynamics is the decay phase. The focus process is said
+                  to enter this phase when the plasma density drops below 2*1017 cm-'.
+
+                            During the decay phase a very large, hot and thin plasma cloud is
+
+                  formed due to the complete breaking of plasma column. This plasma cloud
+
+                  emits a large amount of Bremsstrahlung radiation. The soft X-ray
+
+                  emission rises sharply during the pinch decay, it reaches a first peak
+                  shortly after the pinch break-up and continues at a high, almost
+                  constant level for over 300 ns                       [76].     The neutron pulse which started
+                  from the beginning of the unstable phase reaches its peak during this
+                  phase.
+
+
+                  2.3 Review of Plasma Related Phenomena
+
+
+
+                  2.3.1 Plasma Impedance
+
+
+
+                            The necessary condition for high neutron yield (if deuterium is
+
+                  used as the working gas) and high X-rays production of a DPF device is
+                  the presence of a strong and fast dip on the current derivative
+
+                  oscillogram [dI/dt) accompanied by the voltage spike on the voltage
+                  signal and the dip on the current signal. This singularity on the dI/dt
+
+                  oscillogram shows a large impedance increase.
+                           The voltage signal V(t) measured with the voltage probe outside
+
+                  the reaction chamber of the DPF machine but as close as possible to the
+                 electrodes can be written:
+
+
+
+
+                 where L and R are the time dependent inductance and resistance of the
+
+                  current sheath. Note that L = L, + L,!t), where L, is the inductance of
+
+                  the device up to the focussing column and L, is the varying inductance
+
+                 of the focussing column. Thus:
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  where :
+
+
+
+
+                  and
+
+
+
+
+                            The voltage V, is the voltage drop along the focus column due to
+
+                  the rapidly increasing inductance L, and the plasma resistance R , but
+
+                  reduced by the negative term L,dI/dt since dI/dt is negative during this
+
+                  phase due to the increasing impedance.
+
+                            At the time t, when dI/dt reaches maximum negative value we may
+
+                  write:
+
+
+
+
+                  where the subscript s indicates the time t,.
+
+                            The quantity V,/I, may be taken as the measured peak impedance. The
+
+                  values of V,/I, are in the range of 0.2 - 0.4 R for all focus devices
+
+                   [ 7 7 ] , projecting the idea that this value is a kind of factor of merit
+
+                  of the discharge. As indicated by the Rogowski coil signal the current
+                  decreases due to the large impedance term V,/I,. The impedance increase
+
+                  can be attributed preferentially to either the IdL,/dt or the IR term oE
+
+                  Eqn. (2.3). If the dLf/dt term is negligible, the purely resistive term
+
+                  is dominant. However, on the assumption :hat                                    the plasma column is
+
+                  thermal and its resistivity is given by Spitzer's formula, the IR term
+
+                  can be neglected. In such a case the dL,/dt term is dominant. The term
+
+                  dL,/dt contributes to a dynamical effect by which electrical energy is
+
+                  transferred to kinetic energy in the imploding (collapsing) sheath. In
+                  fact, we may take XdL,/dt as a dynamic resistance. We note that:
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  and its time derivative is:
+
+
+
+
+                  where lf and r, are the length and radius respectively of the plasma
+
+                  column and b is the cathode radius. The value of the dynamlc resistance
+                  f;dL,/dt is around 0.15                C2   for typical values of pinch dimensions and
+
+                  collapse and elongation velocities.
+                            The conclusion is that both the IdL,/dt and the IR terms in Eqn.
+
+                   (2.3) play important roles in the impedance mechanism in the plasma
+
+                  focus.
+
+
+                  2.3.2     Plasma Instabilities
+
+
+                            The influence of the instabilities on the plasma focus dynamics,
+                  confinement, acceleration processes and radiation production has been
+                  intensely studied by                  many      research groups. Both                   experimental and
+                  theoretical investigations on the nature, wavelengths, growth rates and
+                  damping mechanisms of the instabilities have been carried out. The list
+                  of diagnostic techniques engaged in the experimental work includes:
+
+                  imterferometry, Schlieren, shadowgraphy, laser beam deflection, laser
+
+                  scattering, spectroscopy, plasma radiation near characteristic plasma
+
+                  frequencies, and electric and magnetic measurements.
+
+
+                  2!3.2.1      MHD Instabilities
+
+
+
+                            The      onset        and         occurrence         of      magnetohydrodynamic                  (MHD)
+
+                  i4stabilities limit the confinement time of the plasma. The interface
+                  between the plasma and the magnetic field is known to be unstable during
+
+                  the radial collapse phase. The inertia force inside the plasma column
+
+                  i$ in the direction normal to the magnetic field and towards the vacuum
+
+                                                                          20
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                     region behind the magnetic piston. This force, independent of charge,
+                     interacts with the magnetic field causing the electrons and ions to
+
+                     clrift in opposite direction. This drift causes a charge separation in
+                     the surface layer of the plasma column. The charge separation generates
+
+                     an electric field which will induce a further drift. Hence, the system
+
+                     becomes unstable and ready for the onset of interchange instabilities.
+
+                     Towards the end of the compression phase the boundary of the plasma
+
+                     column is fluted due to Rayleigh-Taylor instabilities with a growth rate
+
+                     of about 30 ns [ 6 5 1 .
+                               At the end of the confinement period of the focus the rupture of
+
+                     the pinch column occurs. Sometimes the break-up of the pinch results in
+
+                     the development of the m=O instability up to the end [ 7 8 ] ,                                        but more
+
+                     often this rupture does not take place in the neck, where the current
+
+                     density has its maximum, nor in the thick part of the pinch, where the
+
+                     magnetic field has its maximum, but in the region of                                            the maximum
+
+                     curvature of the boundary [ 7 9 ] .
+
+                               Based on the location and instant of time when the m=O instability
+                     develops, one can identify three regimes of operation of the DPF. They
+
+                     are: (i) single compression regime, where, after the compression phase,
+
+                     none or only one m=O                  (or m=l) instability develops followed by the
+
+                     explosive-like breach of the current sheath boundary due to some non-
+                     linear phenomena [ 7 8 ] ,            (ii) regime with two compressions, characterized
+
+                     by well developed Rayleigh-Taylor instabilities (the normal situation
+                     for Mather-type DPF machines described in the previous section) and
+
+                     (iii) X-ray regime, with the highest hard X-ray and neutron yields, in
+
+                     which the break-up of the current sheath takes place near the anode
+
+                     before the end of the compression phase [ 8 0 ] .
+
+                               in some regimes of operation of the plasma focus when the pinch
+
+                     has much impurities and the anomalous resistivity cannot reach a high
+
+                     level, the evolution of the m=O instability can have a special nature,
+                     resulting in radiative collapse and the so called "hot spot" formation.
+
+                     The idea is that the collapse can proceed until the energy loss due to
+
+                     radiation in a characteristic instability time is a significant part. of
+
+                     the heat content of the plasma [ 7 5 ] .
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                              The theoretical treatment of the MAD instabilities has taken into
+                    account the plasma viscosity and electrical conductivity as stabilizing
+
+                    mechanisms [ E l l . The viscosity has only a small damping effect because
+
+                    it acts selectively on the wavelength for maximum                                          growth rate of
+
+                    instability, whereas an anomalous plasma resistivity can promote the
+
+                    stabilization             of    the     Rayleigh-Taylor instabilities.                          The    relative
+
+                    contribution of both stabilization mechanisms is determined by the ratio
+
+                    of the hydromagnetic and hydrodynamic Reynolds numbers.
+
+
+
+                    2.3.2.2 Microinstabilities and Turbulence
+
+
+
+                              The presence of microinstabilities and turbulence effects in the
+
+                    plasma focus dynamics was proven by a large number of experimental
+
+                    ojservations like:                (i) non-thermal radiation                    [a21 in the microwave
+
+                    range, (ii) bursts of high energy electrons and ions, (iii) anomalous
+
+                    resistivity          in     the    pinched        plasma       and     (iv) anomalous             laser beam
+
+                    scattering          within        the     current       sheath        skin      layer,       which      can      be
+
+                    interpreted as the correlation of                             the microinstabilities with                      the
+
+                    relative drift velocities between electrons and ions due to the current
+
+                    flow along the electrode axis.
+
+                              During the radial compression phase, the rapid change of the
+
+                    inductance results in an induced electric field E in the plasma column,
+
+                    given by: E = I dL,/dt, where I is the current and dL,/dt is the rate of
+
+                    change of inductance. If this electric field exceeds the critical field
+
+                    strength of 300 kV/cm, runaway electrons move towards the anode and
+
+                    produce hard X-rays [78] through electron bombardment mechanism. The
+
+                    estimated electron energy range is 50 -                                500 keV. Hence, the drift
+
+                    velocity exceeds the thermal velocity calculated from the measured
+
+                    electron temperature. Under this condition the beam-plasma instabilities
+
+                    will grow rapidly, as confirmed by infrared absorption experiments
+
+                     [83,841.Moreover, theoretical analysis shows that as the electron beam
+
+                    moves       through       the     confined plasma, various                      types      of    beam-plasma
+
+                    interactions occur giving rise to a number of Instabilities (e.g. Weibel
+
+                    instabilities [a51 distorted by "hose" instabilities). There are certain
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                    conditions           1861     required         for     these       Instabilities            to    arise.        The
+                    o=currence of elementary processes such as Cerenkov effect 1871 and
+                    anomalous or normal Doppler effect are necessary for conditions to be
+                    established.
+
+                              The observed microwave emission (2.6 - 18 G H z ) during the pinch
+
+                    phase correlated to the soft X-rays (10 - 15 A)                                       emitted in a cone
+                     typically of 200 mrad [881 was interpreted as effects due to current
+                    driven microinstabilities.
+                              Turbulence during focusing causes particle acceleration. Several
+                    particle acceleration mechanisms have been identified within the plasma
+
+                     focus. These fast particle beams are usually investigated by hard X-ray
+                    measurements, by direct measurements of electrons and ions and by
+
+                    measurements of electric and magnetic fields.
+                              The first acceleration takes place due to the runaway process, as
+
+                    earlier mentioned. Other mechanisms are acceleration by strong turbulent
+                     structures           [89]      and       by     non-linear           effects         of      the      electron
+
+                    magnetohydrodynamics                 (EMH). A s a result of these effects bursts of
+                    electrons with energy above 600 KeV with less than 1 ns rise time and
+
+                    pulse duration about 20 ns were detected using the interferometric
+
+                    method [go].
+
+
+                    2.3.3      Electric and Magnetic Fields
+
+
+                               Several mechanisms               for high electric fields responsible for
+
+                    particle acceleration operate in the plasma focus. Estimates of the
+                    maximum values of the electric fields are based on energy measurements
+
+                    of fast electrons and ions corroborated with theoretical predictions .
+                              One mechanism is the rupture of the current due to pinch break up
+                    and the appearance of a displacement current. The energy of the magnetlc
+                    field is converted into electromagnetic wave energy.
+
+                              Due to        the fast sheath compression towards the end of                                         the
+                    compression phase, an inductive field responsible for the low energy
+
+                    part of the fast particles spectrum occurs [78].
+                              One of the most important mechanisms revealed by both experimental
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                    and theoretical work is hlgh electric field generation by anomalous
+                    resistivity. In cooperation with the voltage drop on the BMH resistance
+
+                    and with the inductive field due to magnetic vortex penetration inside
+                    the piasma, these mechanisms can give a magnitude of the electric field
+
+                    abouc 1W.
+                              Strong turbulence effects and fast reconnection of the magnetic
+                    field lines are also considered mechanisms responsible for creation of
+
+                    high electric fields.
+
+                              Magnetic        fields        (B,) around          LMG     have     been measured             in     DPF
+
+                    experiments using optical and spectroscopic techniques based on Faraday
+                    rotation effect, Zeeman effect or X-ray luminescence anisotropy.
+                              A longitudinal B, component has been also detected. During the
+
+                    rundown phase B, is about one order of magnitude smaller than B, [91j.
+
+
+
+                    2.3.4 Electron Beams
+
+
+
+                              It is known experimentally that the energy of the electron beam
+
+                    (in keV) can far exceed the charging voltage (in kV) of the capacitor
+                    bank.
+                              The relativistic component of the electron beam is produced around
+                    the time of the first compression in the absence of any large scale
+
+                    disruptive instability due EO the sudden increase in plasma impedance
+                    (the dL/dt term) associated wiEh an uniform collapse. Outside the
+
+                    acceleration zone during the transportation through plasma towards the
+
+                    anode, these relativistic electron beams (REB) are subject to self-
+                    focusing effect by their own magnecic field, taking place due to the
+
+                    imperfect compensation of the free streaming RE8 current by the return
+
+                   current. At the same time, beam instabilities will develop, resulting
+                    in an anomalous REB absorption. The anomalous RE8 absorption creates a
+
+                   powerful shock wave which penetrates through the pinch, heats the ions,
+                   produces neutrons and explodes the pinch column.
+                             The     low energy component originates from an                                   electric field
+                    supported by the anomalous resistivity as a result of plasma turbulence.
+
+                   Electrons are scattered in a random electric field originating from
+
+                                                                            24
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                  microinstability mechanisms. Plasma conditions facilitating the grcwth
+                   of these instabilities would enhance the production of electron beams.
+                            Direct investigations of the whole electron beam are difficult.
+
+                  These       direct       measuremer-ts use               Faraday       cups      to     obtain       the      beam
+
+                   characteristics. Also, time integrated energy spectra were obtained by
+                   using magnetic spectrometers and photographic recording medium. Stygar
+                  et al. L921 scaled primary electron beam current as a function of main
+                  bank current during pinch time : I"""'                          . A total electron current of 17
+                  kh was estimated for a 12.5 kJ DPF device. It was alsc observed that the
+
+                   el.ectron beam current increases as the filling pressure decreases.
+                            Beckner et al. 3 9 3 1 studied the X-ray spectral distribution and
+                  proposed a scaling 1a.w as I(E)                      - E-", with a = 2 and 7 < E < 29 keV.
+                  From time integrated energy measurements with nuclear emulsions fcr fast
+
+                  electrons (30 - 4C0 keV), the energy spectrum was also described by a
+
+                  power law with a = 2.5 - 5 . Experimenco with 1 ns time resolution [ g o ]
+                   showed that the spectrum of a high energy component at any instant is
+                  sir,ilar to the monochromatic electron beam energy spectrcm, but with a
+                  certair change of the accelerating electric field in time. Therefore,
+                   the abcve mentioned power law is the result cf the integration of the
+
+                  variable diode-like law.
+
+                            The performance of a 3 kJ modified Mather geometry DPF device as
+                  an electron accelerator operated with several gas species at different
+
+                  pressures was also investigated [ 3 4 ] .                        The electron beams measured in
+                  this work were characterized by the following parameters: 10 - 20 ns,
+
+                  100 - 300 keV and 1 - 1 0 kA.
+                            Using a Perspex Cerenkov detector on a 28 kJ /                                G O kV   Hather-like
+
+                  DPF devlce operated with 5 torr hydrogen and 0.15 torr argon, Choi et
+                  al.     [95]     have correlated the electron beams with the plasma focus
+
+                  dynamics with nanosecond resolutior.. The REF! with energy above 180 kev
+                  occurs at the time of maximum compression and the m=O instability is not
+
+                  corl-elated to the relativistic beam. Following the break up of the pinch
+                  column, a sudden onset of intense low-energy electron beams correlated
+
+                  with the formation of a high temperature plasma                                  (    2 keV) in a region
+                  away fro? the anode is observed.
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                             The radiation spectrum of the plasma focus in the X-ray region
+                   covers a large range from below 1 keV up to over 500 keV in a time span
+
+                   ranging from a few nanoseconds :o                             a fe% hundred nanoseconds. The
+                   integrated energy represents a significant fraction of the energy stored
+
+                   in the DPF driver. It can reach up to 20% in a Fillppov-type geometry.
+                             The electromagnetic radiative processes of the plasma focus are:
+
+                   quasi-equilibrium thermal radiation from macroscopic plasma structures
+                   and radiation due to electron beams interacting with non-plasma targets
+                    ( L .electrodes) and/or with periodic electron density structures [ 9 6 ] .
+                   The following electron-ion interaction processes are considered to be
+
+                   responsible for the thermal X-ray camponent: Bremsstrahlung (free-free
+                   transitions), recombination emisslon (free-bound transitions) and line
+
+                   emission (hound-hound transitions). Most of the hard X-ray emission is
+
+                   attributed to the non-thermal tigh energy electron beams striking the
+
+                   anode surface. Time-resolved measurements 1971 showed that the power law
+                   spectrum (dN,/dE             - E - " , with a = 2 - 4, E ir. keV and Nm the hard X-ray
+                   flux in photons per cm2) found f3r tie plasma focus in tie range of 100
+
+                   - 500 kev is the result of the time integration over spectra produced
+                   by quasi-monochroma:ic                 electron beams with average energies changing
+                   over a ten nanoseconds time scale.
+                             Hard X-ray emission was correlated with :he                                neutron production
+                   when deuterium was used as the working gas: the total neutron yield is
+
+                   large when the hard X-ray emission is large [ 9 8 ] .
+
+                             The emission of soft X-rays from the plasma focus have long been
+                   studied and various diagnostic techr.iques have been employed over the
+
+                   years. These diagnostics include: (1) pinhole cameras                                          (with one or
+
+                   multiple pinholes and appropriate filters) to record the time-integrated
+                   spatial/spectral distribution of                           the X-ray emitting                 region,         (ii)
+                   microchannel plates used in conjunction with pinhole cameras for time-
+
+                   resolved spatial distribution of soft X-rays, (iii) semiconductor
+
+                   detectors with appropriate filters for space-integratedtemporal/spatial
+
+                   distribution           of      the      soft      X-ray       emission,           (iv)      crystal        X-ray
+
+                                                                           26
+ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                   spectrographs for space-resolved line spectrum analysis, (v) X-ray
+                   streak photography for temporal distri~utionof the X-rays in one space
+                  dimension (radial or axial), and (vi) X-ray fllms, X-ray resists and X -
+                   ray pulse calorimeters for absolute soft X-ray yield measurements.
+
+                            The soEt X-ray (i.e. with energy below 10 keV) emitting source is
+                   situated on the electrode axis at the open end of the electrode system
+                   in the vicinity of the inner electrode face. The time-integrated images
+
+                   showed that it has a roughly cyLindrica1 shape. Its dimensions are from
+                  below 1 mm to over 10 mm in diameter, with an axial length from few
+                  millimeters to few centimeters. Spectral filtering of the X-ray image
+
+                   revealed        a     fine       structure        presenting          intensely          radiating         small
+                  macroscopic entities (called by various authors "hot spots" [13], "plasma
+
+                  beads" [991, "bright spots" or "micropinches"[ICO]) as well as filaments
+                  inside and along the axis of the pinch [78].
+                            Choi et al. [101,102] reported X-ray "hot spots" with typical
+                  dhension of about L O O                    pm which occur within 5                      ns of       the first
+
+                   compression (the focus formation) during the period of the stable phase
+                  of     the     pinch.       They     concluded         that      the     "hot spots" are not                   the
+
+                  manifestation of the m=O instabilities which disrupt the pinch column.
+
+                            A detailed grey level analysis of X-ray images [l031 indicated the
+
+                  presence of helical structures of high emissivity at the center of these
+                  images which helps in explaining the production of axial magnetic field
+                  and the relaxation of the pinch in the plasma focus.
+                            For a low energy deuterium filled plasma focus device the soft X-
+
+                  ray emission extends over a time interval of 60 - 70 ns and features
+                  three peaks: the first is emitted by the dense pinched plasma column at
+
+                  the end of the compression phase, the second by the unstable plasma
+
+                  col.Jmn and the third (corresponding to the disruption phase) is due to
+
+                  emission from the face of the inner electrode [104].
+                            Favre       et    al.      [l051      investigated           the     temporal         and     spatial
+                  characteristics of the X-ray emisslon in a 3 kJ DPF operated in hydrogen
+                  with an argon admixture. They reported two main periods in the soft X-
+                  ray emission corresponding to two successive compressions in the focus.
+
+                            Zoita et          al.     [106; studied the influence of                           the radiation
+

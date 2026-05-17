@@ -119,8 +119,22 @@ The packet records runtime conservation, `div B`, and hybrid-loop channels as
 candidate telemetry only. It cannot promote without accepted tolerances,
 convergence, limiter-zero proof, backend scope, hashes, and review.
 
+Additional ratchet added in this pass:
+
+- `src/dpf/first_principles/numerical_fidelity.py` now emits
+  `numerical_channel_status`, `test_surface_status`, `runtime_observations`,
+  `upstream_acceptance_gate`, `acceptance_gate`, and `negative_test_policy`.
+- Current component and legacy verification tests are classified as
+  candidate-only coverage until every required surface has source-backed
+  reference solutions, norms, tolerances, convergence evidence, artifact hashes,
+  limiter-zero scope, and review.
+- Runtime conservation, `div B`, circuit, electron-energy, and kinetic-yield
+  observations are explicitly non-promoting numerical telemetry.
+- Startup, limiter-readiness, power-port, dimensionality, and closure packets
+  are recorded as upstream blockers for accepted whole-shot numerical authority.
+
 ## Validated Commands
 
-- `python3 -m pytest tests/test_first_principles_runner.py` -> 7 passed.
+- `python3 -m pytest tests/test_first_principles_runner.py` -> 8 passed.
 - `python3 -m json.tool docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.json` -> valid JSON.
-- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py` -> 33 passed.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py` -> 60 passed.

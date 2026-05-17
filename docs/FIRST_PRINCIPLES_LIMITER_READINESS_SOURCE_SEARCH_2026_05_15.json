@@ -32,24 +32,37 @@
     "method_limiter_or_stability_guard",
     "repair_or_fallback"
   ],
+  "acceptance_gate": "candidate_runtime_telemetry_cannot_support_limiter_zero_acceptance_until_active_path_inventory_full_horizon_zero_blocker_run_fallback_rejection_tests_hashes_and_review_pass",
+  "negative_test_policy": {
+    "synthetic_acceptance_blocker_required": true,
+    "app_only_runner_rejection_required": true,
+    "fallback_rejection_required": true,
+    "hidden_limiter_regression_required": true
+  },
   "source_references": [
     "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md:61-63,159-160,210-239",
     "docs/DPF_REQUIREMENTS_BASELINE.md:64",
     "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:410-424,582-605,1046-1067",
     "KnowledgeReference/a-constrained-transport-embedded-boundary-method-for-compressible-resistive-magnetohydrodynamics.md:326,471-500,952"
   ],
+  "implementation_ratchet": [
+    "Emit per-channel limiter_channel_status decisions.",
+    "Emit limiter_family_status for state-mutating, method/stability, and repair/fallback families.",
+    "Emit runtime_observations as candidate-only telemetry.",
+    "Emit acceptance_gate and negative_test_policy for limiter-zero promotion."
+  ],
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
-      "result": "7 passed"
+      "result": "8 passed"
     },
     {
       "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_LIMITER_READINESS_SOURCE_SEARCH_2026_05_15.json",
       "result": "valid JSON"
     },
     {
-      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
-      "result": "33 passed"
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     }
   ]
 }

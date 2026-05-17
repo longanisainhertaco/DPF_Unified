@@ -1,0 +1,1372 @@
+COMPARATIVE STUDY OF PLASMA FOCUS MACHINES
+
+
+
+
+       ARWINDER SINGH A/L JIGIRI SINGH
+
+
+
+
+            Centre for Plasma Research
+           INTI International University
+                       2015
+Comparative Study of Plasma Focus Machines
+
+
+                    by
+
+
+      Arwinder Singh A/L Jigiri Singh
+
+
+
+
+         being a thesis submitted to
+       INTI International University
+      in candidature for the degree of
+           Doctor of Philosophy
+
+
+
+
+        Centre for Plasma Research
+       INTI International University
+                   2015
+                                    COPYRIGHT
+The copyright of this thesis belongs to the author under the terms of the Copyright
+Act 1987 as qualified by Section 4 of INTI International University Intellectual
+Property Policy. Due acknowledgement shall always be made of the use of any
+material contained in, or derived from, this thesis.
+
+
+© Arwinder Singh, 2015
+All rights reserved
+
+
+
+
+                                           ii
+                                DECLARATION
+
+       I hereby declare that the work has been done by myself and no portion of the
+work contained in this thesis has been submitted in support of any application for
+any other degree or qualification of this or any other university or institute of
+learning.
+
+
+
+
+______________
+Arwinder Singh
+
+
+
+
+                                        iii
+                             ACKNOWLEDMENTS
+
+
+        Waheguru ji ka Khalsa, Waheguru ji ki Fateh. I firstly wish to express my
+deepest gratitude and thanks to both my supervisor Professor Saw Sor Heoh and my
+mentor Professor Lee Sing for their kind directions and inspiring guidance
+throughout this PhD course. Without their patience and encouragement, this thesis
+would never have been completed. I am very grateful to have such dedicated and
+encouraging supervisors.
+
+
+        I am also very grateful to Professor Paul Lee and Professor Rajdeep Singh
+Rawat of National Institute of Education, Nanyang Technological University,
+Singapore for their invaluable suggestions and generous help when I have
+difficulties.
+
+
+        I would also wish to express thanks to Dr Tania Davari, R A Behbahani,
+Professor Tanu Lass, Metrofanis Konstantin, Dr Rahindra Kumar Rout and Dr
+Brian Bures for providing me with the parameters and the current waveforms of the
+PPRC PF device, University of Tehran plasma focus, PF12, PF3, BARC plasma
+focus and the AASC plasma focus
+
+
+        Finally, I am deeply indebted to my late father, Mr. Jigiri Singh, my mother
+Madam Mukhtiar Kaur, my wife Pritam Kaur and my two lovely daughters Arprita
+Kaur Bedi and Pavandeep Kaur for all their support and understanding. I cannot find
+words to express my appreciation.
+
+
+        I acknowledge research grants INT-CPR-01-02-2012 and
+FRGS/2/2013/SG02/ INTI/01/1 in the research and preparation of this thesis.
+
+
+
+
+                                         iv
+                                    ABSTRACT
+
+       The Lee Model code is a very powerful and convenient numerical
+experiment facility. This thesis analysed 44 Mather-type plasma focus (PF)
+machines operating in Deuterium, Neon and Argon; obtaining reasonably good fits
+for all machines so that realistic PF properties are computed and presented. Even the
+Speed-2 PF machine which uses a Marx bank is reasonably modelled and analysed.
+Also for Filippov-type PF machines, the computed current traces could be fitted to
+the measured only up to about half of the rising current trace.
+
+
+       For optimised low-inductance Type-1 machines (typically those in the region
+of or below 50 nH) the Lee Model 5-phase code is sufficient to fit the measured
+current traces. Those not properly time-matched may require the Lee Model 6-
+phase code to complete the fitting of the extended parts of the measured current dip.
+Type-2 high inductance machines (typically those above 100 nH) require the Lee
+Model 6-phase code even for optimised condition. The Lee Model 5-phase code is
+used to start the analysis of a machine, and when necessary proceeds to use the Lee
+Model 6-phase code to complete the fitting of any extended current dip. The code is
+found useful for testing whether machines are optimised or not. This has been the
+case of the India-Assam PF machine with electrodes designed to work in a different
+energy range. The code also assists in guiding the experimental process towards
+optimised operation as was the case for NX3. In analyzing radiation yields, it is
+found that the computed optimised neutron yield agrees with the measured
+maximum yield (difference between computed and measured being a factor about
+3); the computed and available measured neon SXR yields agree in both optimised
+yields as well as yield versus pressure curves. Data from the machines studied was
+combined with that from existing machines to obtain neutron, Ne lines and Ar all-
+lines scaling laws.
+
+
+       One final observation is that, the Slow Focus Mode (SFM) is encountered at
+the highest pressure at which a pinch just occurs. This SFM produces a much larger
+pinch cross-section which may be a desirable property for deposition of advanced
+materials and nano-materials.
+
+
+
+
+                                           v
+                              TABLE OF CONTENTS
+
+                                                                         Page
+COPYRIGHT                                                                ii
+DECLARATION                                                              iii
+ACKNOWLEDGEMENT                                                          iv
+ABSTRACT                                                                 v
+TABLE OF CONTENTS                                                        vi
+LIST OF TABLES                                                           x
+LIST OF FIGURES                                                          xxi
+
+
+CHAPTER 1   INTRODUCTION                                                 1
+1.1         Background                                                   1
+1.2         Problem statement                                            2
+1.3         Objective                                                    2
+1.4         Literature Review                                            3
+1.4.1       Numerical Experiments                                        6
+1.4.2       Neutron Yield                                                9
+1.4.3       Radiation Yield                                              9
+1.5         The Lee Model                                                10
+1.6         Layout of the thesis                                         15
+
+
+
+
+CHAPTER 2   METHODOLOGY                                                  17
+2.1         Introduction                                                 17
+2.2         The current fitting technique                                18
+2.3         Type 1 (T1) and Type 2 (T2) machine                          23
+2.4         Type 1 (T1) machine that shows Type 2 (T2) characteristics   24
+2.5         NX2 Plasma Focus machine                                     24
+2.6         INTI Plasma Focus machine                                    26
+
+
+
+
+                                     vi
+                                                                Page
+CHAPTER 3   RESULTS FROM DENSE PLASMA FOCUS MACHINES 28
+            BELOW 2.5 kJ FOR DEUTERIUM, ARGON AND NEON
+3.1         Introduction                                        28
+3.2         PF50 Plasma Focus machine                           30
+3.3         BARC Plasma Focus 1 machine                         34
+3.4         AASC Plasma Focus machine                           39
+3.5         Argentina nanofocus machine                         43
+3.6         FMPF-1 Plasma Focus machine                         47
+3.7         India’s smallest sealed type Plasma Focus machine   51
+3.8         PF400 Plasma Focus machine                          55
+3.9         NX1 Plasma Focus machine                            59
+3.9.1       Case of early focus                                 60
+3.8.2       Case of late dip                                    63
+3.10        PPRC Plasma Focus machine                           67
+3.11        Kansas State University Plasma Focus machine        73
+3.12        Imperial college Plasma Focus machine               78
+3.13        NX2 Plasma Focus machine                            81
+3.13.1      Case1(C1)                                           82
+3.13.2      Case2(C2)                                           85
+3.13.3      Case3(C3)                                           86
+3.13.4      NX2-T Plasma Focus machine                          88
+3.14        Paco Plasma Focus machine                           91
+3.15        University of Teheran Plasma Focus machine          96
+3.16        Montecucolino Plasma Focus machine                  102
+3.17        DPF 2.2 Plasma Focus machine                        105
+
+
+CHAPTER 4   RESULTS FROM DENSE PLASMA FOCUS MACHINES 108
+            ABOVE 2.5 kJ FOR DEUTERIUM, ARGON AND NEON
+4.1         Introduction                                        108
+4.2         PF12 Plasma Focus machine                           109
+4.3         Amir Kabir Plasma Focus machine                     112
+
+
+
+
+                                    vii
+                                                                        Page
+4.4         INTI Plasma Focus machine                                   122
+4.5         Syrian Plasma Focus machine                                 129
+4.6         Bora Plasma Focus machine                                   131
+4.7         Hanyang University Plasma Focus machine                     134
+4.8         GN1 Plasma Focus machine                                    140
+4.9         FNII Plasma Focus machine                                   152
+4.10        Assam Plasma Focus machine                                  155
+4.11        NX3 Plasma Focus machine                                    158
+4.11.1      The current waveform fit at 12kV, 2.28 Torr deuterium gas   159
+4.11.2      The current waveform fit at 12kV, 3.75 Torr deuterium gas   160
+4.11.3      The current waveform fit at 13kV, 3.0 Torr deuterium gas    161
+4.11.4      The current waveform fit at 14kV, 3.75 Torr deuterium gas   162
+4.12        BARC Plasma Focus 2 machine                                 168
+4.13        PF143 Plasma Focus machine                                  171
+4.14        DPF78 Plasma Focus machine                                  177
+4.15        Tamu Plasma Focus machine                                   182
+4.16        Poseidon Plasma Focus machine                               184
+4.17        PF1000 Plasma Focus machine                                 188
+
+
+CHAPTER 5   RESULTS FROM DENSE PLASMA FOCUS MACHINES 191
+            USING OTHER GASES AND OTHER
+            CONFIGURTIONS
+5.1         Introduction                                                191
+5.2         India Mohanty Plasma Focus machine                          192
+5.3         Sofia Plasma Focus machine                                  202
+5.4         Zimbabwe Plasma Focus machine                               205
+5.5         Nano Focus machine (PF 0.2 Joules)                          209
+5.6         QUAID I AZAM University Plasma Focus machine                212
+5.7         Egypt Plasma Focus machine                                  214
+5.8         PFMA-1 Plasma Focus machine                                 216
+5.9         Rico Plasma Focus machine                                   218
+
+
+
+
+                                   viii
+                                                                         Page
+5.10         PF 3 Plasma Focus machine (Filippov configuration)          220
+5.11         Dena Plasma Focus machine (Filippov configuration)          223
+5.12         Speed 2 Plasma Focus machine                                227
+5.13         University Malaya Plasma Focus machine                      229
+
+
+CHAPTER 6    DISCUSSIONS                                                 233
+6.1          Introduction                                                233
+6.2          Investigation                                               234
+6.3          Machines working in deuterium gas medium                    236
+6.4          Machines working in neon gas medium                         243
+6.5          Machines working in argon gas medium                        246
+
+
+CHAPTER 7    CONCLUSIONS                                                 249
+7.1          Introduction                                                249
+7.2          Observations obtained from the comparative study            249
+7.3          Comparison of computed yields and measured yields           250
+7.4          Scaling and Related scaling laws obtained from this study   252
+7.5          Observation of Slow Focus Mode in relative high pressure    253
+             machine
+
+
+REFERENCES                                                               254
+
+
+LIST OF PUBLICATIONS                                                     265
+
+
+
+
+                                     ix
+                                  LIST OF TABLES
+
+
+                                                                         Page
+CHAPTER 2
+2.1         The actual machine, operational and fitting parameters       21
+            configured for the INTI Plasma Focus.
+2.2         An example of the values of the anomalous resistance used    22
+            to fit the INTI Plasma Focus shot for Figures 2.3 and 2.4.
+
+
+CHAPTER 3
+3.1         The machine, operational and fitting parameters for PF50     31
+            Plasma Focus machine.
+3.2         Information obtained from Lee Model 5-phase code             32
+            configured for PF50 Plasma Focus machine at 29kV, 6.8
+            Torr deuterium gas.
+3.3         The machine, operational and fitting parameters for INDIA-   34
+            BARC Plasma Focus 1 machine.
+3.4         Information obtained from Lee Model 6-phase code             35
+            configured for INDIA-BARC Plasma Focus 1 machine at 4.2
+            kV, 1.2 Torr hydrogen gas.
+3.5         The operational and fitting parameters for INDIA- BARC       36
+            Plasma Focus 1 machine working in deuterium gas.
+3.6         Information obtained from Lee Model 6-phase code             37
+            configured for INDIA- BARC Plasma Focus 1 machine at
+            4.3 kV, 1.2 Torr deuterium gas.
+3.7         The machine, operation and fitting parameters for AASC       40
+            Plasma Focus machine.
+3.8         Information obtained from Lee Model 6-phase code             41
+            configured for AASC Plasma Focus machine at 4kV, 2.9
+            Torr deuterium gas.
+3.9         Machines, operational and fitting parameters for Argentina   44
+            Nano Focus machine.
+
+
+
+
+                                      x
+                                                                    Page
+3.10   Information obtained from Lee Model 5-phase code             45
+       configured for Argentina Nano Focus Machine at 16kV, 1.5
+       Torr deuterium gas.
+3.11   The machine, operational and fitting parameters for FMPF-1   48
+       Plasma Focus machine.
+3.12   Information obtained from Lee Model 5-phase code             49
+       configured for FMPF-1 Plasma Focus machine at 12kV, 2.25
+       Torr deuterium gas.
+3.13   The machine, operation and fitting parameters for India’s    52
+       smallest seal- type Plasma Focus machine
+3.14   Information obtained from Lee Model 6-phase code             54
+       configured for India’s smallest sealed-type Plasma Focus
+       machine at 10 kV, 6.0 Torr deuterium gas
+3.15   The machine, operation and fitting parameters for PF400      56
+       Plasma Focus machine.
+3.16   Information obtained from Lee Model 5-phase code             57
+       configured for PF400 Plasma Focus machine at 28kV, 6.6
+       Torr deuterium gas.
+3.17   Machines bank and focus tube parameters for NX1 Plasma       59
+       Focus machine operating in Neon
+3.18   The machine, operation and fitting parameters for NX1        60
+       Plasma Focus machine when focus came early.
+3.19   Information obtained from Lee Model 6-phase code             62
+       configured for NX1 Plasma Focus machine at 10kV, 3.0 Torr
+       neon gas.
+3.20   Machine and model parameters for NX1 Plasma Focus            63
+       machine when dip comes late.
+3.21   Information obtained from Lee Model 5-phase code             64
+       configured for NX1 Plasma Focus machine at 14kV, 11.0
+       Torr neon gas.
+
+
+
+
+                                xi
+                                                                   Page
+3.22   The machine and operation parameters for PPRC Plasma        67
+       Focus machine operating in Argon.
+3.23   Current and mass factors as well as anomalous resistance    68
+       values of PPRC Plasma Focus machine working at 14.2kV,
+       0.3 Torr argon gas.
+3.24   Current and mass factors as well as anomalous resistance    69
+       values of PPRC Plasma Focus machine working at 18.5kV,
+       0.15 Torr argon gas.
+3.25   Current and mass factors as well as anomalous resistance    70
+       values of PPRC Plasma Focus machine working at 19kV, 0.7
+       Torr argon gas.
+3.26   Current and mass factors as well as anomalous resistance    71
+       values of PPRC Plasma Focus machine working at 18kV, 0.3
+       Torr argon gas.
+3.27   Comparison on information about PPRC Plasma Focus           72
+       machine working at different pressure and charged voltage
+       obtained from Lee Model 6-phase code when computed
+       current waveform is compared to the measured current
+       waveform.
+3.28   Machines operational and fitting parameters for KSU-PF2     73
+       Plasma Focus machine.
+3.29   Information obtained from Lee Model 6-phase code            74
+       configured for KSU-PF2 Plasma Focus machine at 17 kV,
+       3.0 Torr deuterium gas
+3.30   Machines operational and fitting parameters for KSU-PF2     76
+       Plasma Focus machine with 125 nH inductance at 1.125 Torr
+       neon gas.
+3.31   Information obtained from Lee Model 6-phase code            77
+       configured for KSU-PF2 Plasma Focus machine at 17 kV,
+       1.125 Torr neon gas.
+
+
+
+
+                                xii
+                                                                      Page
+3.32   The machine, operational and fitting parameters for Imperial   78
+       College Plasma Focus machine.
+3.33   Information obtained from Lee Model 5-phase code               79
+       configured for Imperial College Plasma Focus machine at
+       38kV, 2.62 Torr deuterium gas.
+3.34   The machine, operational and fitting parameters for NX2        81
+       Plasma Focus machine with 3 different anode lengths,
+       charging voltages, operating pressures and model parameters
+3.35   Information obtained from Lee Model 5-phase code               82
+       configured for NX2 Plasma Focus machine.
+3.36   The machine, operation and fitting parameters for NX2-T        89
+       Plasma Focus machine
+3.37   Information obtained from Lee Model 5-phase code               90
+       configured for NX2-T Plasma Focus machine at 12.5kV,
+       10.6 Torr deuterium gas.
+3.38   The machine, operation and fitting parameters for Paco         92
+       Plasma Focus machine.
+3.39   Information obtained from Lee Model 5-phase code               93
+       configured for Paco Plasma Focus machine at 31kV, 1.35
+       Torr deuterium gas.
+3.40   The machine and operational parameters for University of       96
+       Tehran Plasma Focus machine.
+3.41   Fitted current and mass factors of University of Tehran        96
+       Plasma Focus machine working at 0.375 Torr argon (st1, st2
+       and st3).
+3.42   Fitted anomalous resistance parameters of University of        97
+       Tehran Plasma Focus machine working at 0.375 Torr argon
+       (st1, st2 and st3).
+3.43   Comparison of computed plasma parameters for 3 different       100
+       shots fired at 19kV, 0.375 Torr argon gas in University of
+       Tehran Plasma Focus machine.
+
+
+
+
+                               xiii
+                                                                          Page
+3.44        The machine, operational and fitting parameters for           102
+            Montecucolino Plasma Focus machine.
+3.45        Information obtained from Lee Model 5-phase code              103
+            configured for Montecucolino Plasma Focus machine at
+            25kV, 2.0 Torr deuterium gas.
+3.46        The machine, operational and fitting parameters for DPF2.2    106
+            Plasma Focus machine.
+3.47        Information obtained from Lee Model 6-phase code              107
+            configured for DPF2.2 Plasma Focus machine at 18kV, 11.0
+            Torr deuterium gas.
+
+
+CHAPTER 4
+4.1         The machine, operational and fitting parameters for PF12      110
+            Plasma Focus machine.
+4.2         Information obtained from Lee Model 5-phase code              111
+            configured for PF12 Plasma Focus Machine at 16kV, 3.5
+            Torr deuterium gas.
+4.3         The machine, operational and fitting parameters for           113
+            Amirkabir Plasma Focus machine working in argon gas.
+4.4         Information obtained from Lee Model 6-phase code              114
+            configured for Amirkabir Plasma Focus machine at 12 kV,
+            1.26 Torr argon gas.
+4.5         Information from Figure 4.6 presented in a table format.      116
+4.6         The operational and fitting parameters for Amirkabir Plasma   118
+            Focus machine working in neon gas.
+4.7         Information obtained from Lee Model 6-phase code              119
+            configured for Amirkabir Plasma Focus machine at 12 kV,
+            4.5 Torr neon gas.
+4.8         Information from Figure 4.10 presented in a table format.     121
+4.9         The operational and fitting parameters for UNU/ICTP PFF       122
+            Plasma Focus machine.
+
+
+
+
+                                    xiv
+                                                                   Page
+4.10   The anomalous resistances Dip value for UNU/ICTP PFF        125
+       machine when working in argon gas medium (13.5kV, 1.5
+       Torr), deuterium gas medium (13.5 kV, 3.0 Torr) and neon
+       gas (12kV, 2.0 Torr and 14kV, 2.8 Torr) respectively.
+4.11   Information obtained from Lee Model 6-phase code            126
+       configured for UNU-ICTP Plasma Focus machine working
+       in neon gas (12kV, 2.0 Torr and 14kV, 2.8 Torr) and
+       deuterium gas (13.5kV, 3.0 Torr).
+4.12   The machine, operational and fitting parameters for AECS-   129
+       PF2.
+4.13   Information obtained from Lee Model 6-phase code            130
+       configured for AECS-PF2 at 15kV, 0.41 Torr argon gas.
+4.14   The machine, operational and fitting parameters for Bora    132
+       Plasma Focus machine.
+4.15   Information obtained from Lee Model 5-phase code            133
+       configured for Bora Plasma Focus machine at 17 kV, 7.6
+       Torr deuterium gas.
+4.16   The machine, operational and fitting parameters for HU PF   135
+       with anode length of 18cm (2.9 Torr) and 22 cm (1.4 Torr)
+       respectively.
+4.17   Information obtained from Lee Model 6-phase code for HU     136
+       PF which was configured to work at 16 kV, 2.9 Torr
+       deuterium gas (using 18 cm anode).
+4.18   Information obtained from Lee Model 6-phase code for HU     137
+       PF which was configured to work at 16 kV, 1.4 Torr
+       deuterium gas (using 22 cm anode).
+4.19   The machine, operational and fitting parameters for GN1     141
+       Plasma Focus machine with anode radius 1.8 cm and length
+       12 cm.
+
+
+
+
+                               xv
+                                                                     Page
+4.20   Information obtained from Lee Model 6-phase code              141
+       configured for GN1 Plasma Focus machine at 30 kV, 0.75
+       Torr deuterium gas.
+4.21   The machine, operational and fitting parameters for GN1       144
+       Plasma Focus machine with anode radius 1.9 cm and length
+       8.7 cm.
+4.22   Information obtained from Lee Model 6-phase code              145
+       configured for GN1 Plasma Focus machine at 30 kV, 0.75
+       Torr deuterium gas.
+4.23   The machine, operational and fitting parameters for GN1       147
+       Plasma Focus machine with 8.5 cm anode, 12.6 µF capacitor.
+4.24   Information obtained from Lee Model 6-phase code              149
+       configured for GN1 Plasma Focus machine at 30 kV, 3 Torr
+       deuterium gas (using anode radius 1.9 cm and length 8.5 cm,
+       12.6µF capacitor).
+4.25   The machine, operational and fitting parameters for FNII      153
+       Plasma Focus machine.
+4.26   Information obtained from Lee Model 5-phase code              154
+       configured for FNII Plasma Focus machine at 36kV, 2.75
+       Torr deuterium gas.
+4.27   The machine, operational and fitting parameters for INDIA-    155
+       ASSAM Plasma Focus machine.
+4.28   Information obtained from Lee Model 6-phase code              156
+       configured for INDIA-ASSAM Plasma Focus machine at 19
+       kV, 0.4 Torr deuterium gas.
+4.29   The machine, operational and fitting parameters for NX3       158
+       Plasma Focus machine operated at different voltages and
+       different pressures in deuterium gas.
+4.30   Current and mass factor for the fitting of the computed       159
+       waveform at 12kV, 2.28 Torr deuterium gas.
+
+
+
+
+                                xvi
+                                                                   Page
+4.31   Current and mass factors for the fitting of the computed    160
+       waveform at 12kV, 3.75 Torr deuterium gas and anomalous
+       resistance values.
+4.32   Current and mass factors for the fitting of the computed    161
+       waveform at 13kV, 3.0 Torr deuterium gas; and anomalous
+       resistance values.
+4.33   Current and mass factors for the fitting of the computed    163
+       waveform at 14kV, 3.75 Torr deuterium gas; and anomalous
+       resistance values.
+4.34   Computed pinch parameters for NX3 Plasma Focus machine      164
+       working at different pressures and charge voltages.
+4.35   The machine, operational and fitting parameters for the     169
+       BARC Plasma Focus 2 machine. The information was
+       obtained from Dr Rabindra Kumar Rout.
+4.36   Information obtained from Lee Model 5-phase code            170
+       configured for the BARC Plasma Focus 2 machine at 24 kV,
+       3.0 Torr deuterium gas.
+4.37   The machine, operational and fitting parameters for PF143   172
+       Plasma Focus machine working at 1.5 Torr and 9.75 Torr
+       respectively.
+4.38   Information obtained from Lee Model 6-phase code            173
+       configured for PF143 Plasma Focus machine at 30kV, 1.5
+       Torr deuterium gas.
+4.39   Information obtained from Lee Model 6-phase code            174
+       configured for PF143 Plasma Focus machine at 30kV, 9.75
+       Torr deuterium gas.
+4.40   The machine, operational and fitting parameters for DPF78   178
+       Plasma Focus machine.
+4.41   Information obtained from Lee Model 5-phase code            179
+       configured for DPF78 Plasma focus machine at 60kV, 7.6
+       Torr deuterium gas.
+
+
+
+
+                                 xvii
+4.42        The machine, operational and fitting parameters for Tamu     182
+            Plasma Focus machine.
+4.43        Information obtained from Lee Model 5-phase code             183
+            configured for Tamu Plasma Focus machine at 30kV, 12.0
+            Torr deuterium gas.
+4.44        The machine, operational and fitting parameters for Posideon 184
+            Plasma Focus machine.
+4.45        Information obtained from Lee Model 5-phase code             185
+            configured for Posideon Plasma Focus machine at 60kV, 3.8
+            Torr deuterium gas.
+4.46        Computed and experimental neutron yield as compared to       186
+            different pressure and voltages for Posideon Plasma Focus
+            machine [16].
+4.47        The machine, operational and fitting parameters for PF1000   188
+            Plasma Focus machine.
+4.48        Information obtained from Lee Model 5-phase code             190
+            configured for PF1000 Plasma Focus machine at 27kV, 3.5
+            Torr deuterium gas.
+
+
+CHAPTER 5
+5.1         The machine, operational and fitting parameters of INDIA-    193
+            Mohanty’s Plasma Focus machine for different anode
+            lengths in nitrogen gas medium.
+5.2         The parameters of the anomalous resistances for the for      194
+            INDIA-Mohanty’s Plasma Focus machine that uses different
+            anode lengths in nitrogen gas medium.
+5.3         Computed properties of INDIA-Mohanty’s Plasma Focus          197
+            machine using 5 different anode lengths.
+5.4         Computed current sheath speed of plasma of INDIA-            198
+            Mohanty’s Plasma Focus machine at 25kV, 0.3 Torr nitrogen
+            gas.
+
+
+
+
+                                    xviii
+                                                                     Page
+5.5    The machine, operational and fitting parameters for Sofia     202
+       Plasma Focus machine.
+5.6    Information obtained from Lee Model 5-phase code              203
+       configured for Sofia Plasma Focus machine at 16kV, 1.05
+       Torr nitrogen gas.
+5.7    The machine, operational and fitting parameters for           206
+       Zimbabwe Plasma Focus machine.
+5.8    Information obtained from Lee Model 6-phase code              207
+       configured for Zimbabwe Plasma Focus machine at 13kV,
+       1.0 Torr nitrogen gas.
+5.9    Information obtained from Lee Model 6-phase code              208
+       configured for Zimbabwe Plasma Focus machine for
+       nitrogen gas at 13 kV compared to the experimental values
+       (air) obtained from Table 2, page 4574 of reference [122].
+5.10   The machine, operational and fitting parameters for the Nano 209
+       Focus machine.
+5.11   Information obtained from Lee Model 5-phase code              210
+       configured for Nano Focus machine at 6.5kV, 2.25Torr
+       hydrogen gas.
+5.12   The machine, operational and fitting parameters for Quaid I   212
+       Azam University Plasma Focus machine.
+5.13   Information obtained from Lee Model 6-phase code              213
+       configured for Quaid I Azam University Plasma Focus
+       machine at 20kV, 0.38 Torr hydrogen gas.
+5.14   The machine, operational and fitting parameters for Egypt     214
+       Plasma Focus machine.
+5.15   Information obtained from Lee Model 5-phase code              215
+       configured for Eygpt Plasma Focus machine at 15kV, 0.8
+       Torr helium gas.
+5.16   The machine, operational and fitting parameters for PFMA-1    216
+       Plasma Focus machine working in helium gas.
+
+
+
+
+                                xix
+                                                                         Page
+5.17        Information obtained from Lee Model 5-phase code             217
+            configured for the PFMA-1 Plasma Focus machine at
+            20.5kV, 9.8 Torr helium gas.
+5.18        The machine, operational and fitting parameters for Rico     218
+            Plasma Focus machine.
+5.19        Information obtained from Lee Model 6-phase code             219
+            configured for Rico Plasma Focus machine at 14.9kV, 0.2
+            Torr oxygen gas.
+5.20        The machine, operational and fitting parameters for PF3      220
+            Plasma Focus machine.
+5.21        The machine, operational and fitting parameters for Dena     223
+            Plasma Focus machine.
+5.22        The machine, operational and fitting parameters for SPEED2   228
+            Plasma Focus machine.
+5.23        The machine, operational and fitting parameters for          230
+            UMDPF1 Plasma Focus machine.
+5.24        Information obtained from Lee Model 5-phase code             231
+            configured for UMDPF1 Plasma Focus machine at 14 kV,
+            7.6 Torr deuterium gas.
+
+
+CHAPTER 6
+6.1         Parameters corresponding to optimum computed neutron         237
+            yield for the machines named below (1/3).
+6.2         Parameters corresponding to computed optimum neutron         238
+            yield for the machines named below (2/3).
+6.3         Parameters corresponding to computed optimum neutron         239
+            yield for the machines named below (3/3).
+6.4         Parameters corresponding to computed neon SXR for the        243
+            machines named below.
+6.5         Parameters corresponding to computed total argon all-line    247
+            yield for the machines named below.
+
+
+
+
+                                      xx
+                                LIST OF FIGURES
+
+
+                                                                            Page
+CHAPTER 1
+1.1         Mather and Filippov type Dense Plasma Focus devices             4
+            schematic drawing [35, 36].
+1.2         The physical basis, structure, results and extensive scope of   8
+            the Lee Model code [57, 58, 63].
+1.3         Plasma Focus device with current sheet position [83].           10
+
+
+CHAPTER 2
+2.1         The flow chart showing the fitting procedure for using Lee      18
+            codes.
+2.2         The 5-point fitting of current trace to the measured current    20
+            trace obtained from INTI Plasma Focus (INTI PF) machine
+            (a T2) fired at 2.0 Torr in neon gas.
+2.3         The 6-point fitting of computed current trace to the measured 22
+            current trace obtained from INTI PF machine fired at 2.0
+            Torr in neon gas.
+2.4         Expanded (zoom in) region of Point 6 to show how the            23
+            anomalous resistance phase was fitted.
+2.5         General overview of the NX2 apparatus [6].                      25
+2.6         NX2 Plasma Focus schematic of electrodes and chamber [6].       25
+2.7         INTI Plasma Focus device schematic diagram [84].                27
+
+
+CHAPTER 3
+3.1         Measured current waveform of PF50 at 29kV, 6.8 Torr             31
+            deuterium gas compared with Lee Model 5-phase code
+            computed current waveform.
+3.2         Variation of computed and measured neutron yield in PF50        32
+            plasma focus machine with respect to pressure when
+            capacitor is charged to 29kV in deuterium gas.
+
+
+
+
+                                     xxi
+                                                                      Page
+3.3    Variation of computed and measured neutron yield in PF50       33
+       plasma focus machine with respect to pressure when
+       capacitor is charged to 25kV in deuterium gas.
+3.4    The measured current waveform of INDIA-BARC Plasma             35
+       Focus 1 machine at 4.2 kV, 1.2 Torr hydrogen gas compared
+       with Lee Model 6-phase code computed current waveform.
+3.5    The measured current waveform of INDIA-BARC Plasma             37
+       Focus 1 machine at 4.3 kV, 1.2 Torr deuterium gas compared
+       with Lee Model 6-phase code computed current waveform.
+3.6    Variation of computed neutron yield with respect to pressure   38
+       operating at 4.3 kV in deuterium for INDIA-BARC PF1.
+3.7    The picture of the system used in Alameda Applied Sciences     39
+       Corporation system which is taken from Figure 1, page 4 of
+       reference [107].
+3.8    The measured current waveform of AASC Plasma Focus             41
+       machine at 4 kV, 2.9 Torr deuterium gas compared with Lee
+       Model 6-phase code computed current.
+3.9    Variation of computed neutron yield with respect to pressure   42
+       operating at 14 kV in deuterium for AASC Plasma Focus
+       machine.
+3.10   Picture of Argentina Nano focus machine taken from Figure      43
+       5, page 79 of reference [28].
+3.11   The measured current waveform of Argentina Nano Focus          44
+       machine at 16 kV, 1.5 Torr deuterium gas compared with
+       Lee Model 5-phase code computed current waveform.
+3.12   Computed tube voltage versus time for Argentina Nano           45
+       Focus machine at 16kV, 1.5 Torr deuterium.
+3.13   Computed inductance variation with time for Argentina          45
+       Nano Focus machine at 16kV, 1.5 Torr deuterium.
+
+
+
+
+                               xxii
+                                                                      Page
+3.14   Variation of computed neutron yield with respect to pressure   46
+       operating at 16 kV in deuterium for Argentina Nano Focus
+       machine.
+3.15   Schematic of Composite anode geometry used in FMPF-1           48
+3.16   The measured current waveform of FMPF-1 Plasma Focus           49
+       machine at 12kV, 2.25 Torr deuterium gas compared with
+       Lee Model 5-phase code computed current waveform.
+3.17   Variation of computed and experimental neutron yield with      50
+       respect to pressure operating at 12 kV in deuterium for
+       FMPF-1 Plasma Focus machine.
+3.18   Photograph of India’s smallest sealed- type Plasma Focus       51
+       machine which was obtained from Figure 2, page 026104-2
+       of reference [108].
+3.19   The measured current waveform of India’s smallest sealed       53
+       Plasma Focus machine at 10 kV, 6.0 Torr deuterium gas
+       compared with Lee Model 6-phase code computed current
+       waveform.
+3.20   Variation of computed neutron yield with respect to pressure   54
+       operating at 10 kV in deuterium for India’s smallest sealed
+       Plasma Focus machine.
+3.21   Neutron yield variation with shot number and with days,        54
+       taken from Figure 4, page 026104-3 of reference [98].
+3.22   Measured current waveform of PF400 Plasma Focus                56
+       machine at 28kV, 6.6 Torr deuterium gas compared with Lee
+       Model 5-phase code computed current waveform.
+3.23   Variation of computed and experimental neutron yield with      57
+       respect to pressure operating at 2.8 kV in deuterium for
+       PF400 Plasma Focus machine.
+3.24   Computed PF400 radial start time and time to peak current      58
+       versus pressure.
+
+
+
+
+                               xxiii
+                                                                       Page
+3.25   Measured Pinch time ( • ) and time to peak current vs filling   58
+       pressure (   ) taken from Figure 2, page 3270 of reference
+       [26]
+3.26   Variation of computed and experimental soft X-ray yield         61
+       with respect to pressure operating at 10 kV in neon for NX1
+       Plasma Focus machine with anode length of 4.5cm.
+3.27   The measured current waveform of NX1 Plasma Focus               62
+       machine at 10kV, 3.0 Torr neon gas, with anode length of
+       4.5cm compared with Lee Model 6-phase code computed
+       current waveform.
+3.28   The measured current waveform of NX1 Plasma Focus               64
+       machine at 14kV, 11.0 Torr neon gas, with anode length of
+       5.4cm compared with Lee Model 5-phase code computed
+       current.
+3.29   Variation of computed and experimental soft X-ray yield         65
+       with respect to pressure operating at 14 kV in neon for NX1
+       Plasma Focus machine with anode length of 5.4cm.
+3.30   Variation of computed and experimental focus time with          65
+       respect to pressure operating at 14 kV in neon for NX1
+       Plasma Focus machine with anode length of 5.4cm.
+3.31   Variation of computed and experimental axial speed with         66
+       respect to pressure operating at 14 kV in neon for NX1
+       Plasma Focus machine with anode length of 5.4cm.
+3.32   Measured current waveform of PPRC Plasma Focus machine 68
+       at 14.2kV, 0.3 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+3.33   Measured current waveform of PPRC Plasma Focus machine 69
+       at 18.5kV, 0.15 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+
+
+
+
+                               xxiv
+                                                                      Page
+3.34   Measured current waveform of PPRC Plasma Focus machine 70
+       at 19kV, 0.7 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+3.35   Measured current waveform of PPRC Plasma Focus machine 71
+       at 18kV, 0.3 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+3.36   The measured current waveform of KSU-PF2 Plasma Focus          74
+       machine at 17kV, 3.0 Torr deuterium gas compared with Lee
+       Model 6-phase code computed current waveform.
+3.37   Variation of computed neutron yield with respect to pressure   75
+       operating at 17 kV in deuterium for KSU-PF2 Plasma Focus
+       machine.
+3.38   The measured current waveform of KSU-PF2 Plasma Focus          76
+       machine with 125 nH inductance at 1.125 Torr neon gas
+       compared with Lee Model 6-phase code computed current
+       waveform.
+3.39   Variation of soft X ray yield with respect to pressure         77
+       operating at 17 kV in deuterium for KSU-PF2 Plasma Focus
+       machine
+3.40   The measured current waveform of Imperial College Plasma       79
+       Focus machine at 38kV, 2.62 Torr deuterium gas compared
+       with Lee Model 5-phase code computed current waveform.
+3.41   Variation of computed and experimental neutron yield with      80
+       respect to pressure operating at 38 kV in deuterium for
+       Imperial College Plasma Focus machine.
+3.42   Variation of computed and experimental soft X-ray yield        83
+       with respect to pressure operating with an anode length of
+       5cm, 11 kV in neon for NX2 Plasma Focus machine (C1).
+3.43   Measured current waveform of NX2 at 11kV, 2.6 Torr neon        84
+       gas and anode length of 5cm compared with Lee Model 5-
+       phase code computed current waveform (C1).
+
+
+
+
+                                xxv
+                                                                      Page
+3.44   Measured current waveform of NX2 at 11.5kV, 1.5 Torr           84
+       neon gas and anode length of 7cm compared with Lee Model
+       5-phase code computed current waveform (C2).
+3.45   Variation of computed and experimental soft X-ray yield        85
+       with respect to pressure operating with an anode length of
+       7cm, 11.5 kV in neon for NX2 Plasma Focus machine (C2).
+3.46   Variation of computed and experimental soft X-ray yield        86
+       with respect to pressure operating with an anode length of
+       4cm, 11.5 kV in neon for NX2 Plasma Focus machine (C3).
+3.47   Measured current waveform of NX2 at 11.5kV, 6.0 Torr           87
+       neon gas compared with Lee Model 5-phase code computed
+       current waveform (C3).
+3.48   Measured current waveform of NX2-T at 12.5kV, 10.6 Torr        89
+       deuterium gas compared with Lee Model 5-phase code
+       computed current waveform.
+3.49   Variation of computed and experimental neutron yield with      90
+       respect to pressure operating at 12.5 kV in deuterium for
+       NX2-T Plasma Focus machine.
+3.50   Measured current waveform of Paco Plasma Focus machine         92
+       at 31kV, 1.35 Torr deuterium gas compared with Lee Model
+       5-phase code computed current waveform.
+3.51   The computed time to pinch compared with the experimental      93
+       results for Paco Plasma focus machine at 31kV.
+3.52   Variation of computed neutron yield with respect to pressure   94
+       operating at 31 kV in deuterium for Paco Plasma Focus
+       machine.
+3.53   Measured current waveform of University of Tehran Plasma       97
+       Focus machine at 19kV, 0.375 Torr argon gas compared with
+       Lee Model 6-phase code computed current waveform (St1).
+
+
+
+
+                                xxvi
+                                                                             Page
+3.54        Measured current waveform of University of Tehran Plasma         98
+            Focus machine at 19kV, 0.375 Torr argon gas compared with
+            Lee Model 6-phase code computed current waveform (St2).
+3.55        Measured current waveform of University of Tehran Plasma         98
+            Focus machine at 19kV, 0.375 Torr argon gas compared with
+            Lee Model 6-phase code computed current waveform (St3).
+3.56        Anomalous resistance of all three shots of University of         99
+            Tehran Plasma Focus machine at 19kV, 0.375 Torr argon gas
+            and averaged values for the three shots.
+3.57        The variation of axial phase mass factor (if all other factors   101
+            are constant) and its effect on axial speed on University of
+            Tehran Plasma Focus machine at 19kV, 0.375 Torr argon
+            gas.
+3.58        The measured current waveform of Montecucolino Plasma            103
+            Focus machine at 25kV, 2.0 Torr deuterium gas compared
+            with Lee Model 5-phase code computed current waveform.
+3.59        Variation of computed neutron yield with respect to pressure     104
+            operating at 25 kV in deuterium for Montecucolino Plasma
+            Focus machine.
+3.60        Measured current waveform of DPF 2.2 Plasma Focus                106
+            machine at 18kV, 11.0 Torr deuterium gas compared with
+            Lee Model 6-phase code computed current waveform.
+3.61        Variation of computed and experimental neutron yield with        107
+            respect to pressure operating at 18 kV in deuterium for
+            DPF2.2 Plasma Focus machine.
+
+
+CHAPTER 4
+4.1         The measured current waveform of PF12 at 16kV, 3.5 Torr          110
+            deuterium gas compared with Lee Model 5-phase code
+            current waveform.
+
+
+
+
+                                    xxvii
+                                                                    Page
+4.2    Information obtained from Lee Model 5-phase code             111
+       configured for PF12 Plasma Focus Machine at 16kV, 3.5
+       Torr deuterium gas.
+4.3    The measured current waveform of Amirkabir Plasma Focus      114
+       machine at 12 kV, 1.26 Torr argon gas compared compared
+       with Lee Model 6-phase code computed current waveform.
+4.4    Variation of computed and experimental optimum pressure      115
+       versus capacitor voltage for Amir Kabir Plasma Focus
+       machine working in argon gas.
+4.5    Variation of computed and experimental total current at      115
+       pinch time versus voltage at optimum pressure for Amir
+       Kabir Plasma Focus machine working in argon gas.
+4.6    Variation of computed total line yield with respect to       116
+       pressure operating at different voltages in argon for Amir
+       Kabir Plasma Focus machine.
+4.7    The measured current waveform of Amirkabir Plasma Focus      119
+       machine at 12 kV, 4.5 Torr neon gas compared compared
+       with Lee Model 6-phase code computed current waveform.
+4.8    Variation of computed and experimental optimum pressure      120
+       versus capacitor voltage for Amir Kabir Plasma Focus
+       machine working in neon gas.
+4.9    Variation of computed and experimental total current at      120
+       pinch time versus voltage at optimum pressure for Amir
+       Kabir Plasma Focus machine working in neon gas.
+4.10   Variation of computed soft X ray yield with respect to       121
+       pressure operating at different voltages in neon for Amir
+       Kabir Plasma Focus machine.
+4.11   Measured current waveform of UNU ICTP PFF machine at         123
+       13.5kV, 1.5 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+
+
+
+
+                              xxviii
+                                                                      Page
+4.12   Measured current waveform of UNU ICTP PFF machine at           123
+       12kV, 2.0 Torr neon gas compared with Lee Model 6-phase
+       code computed current waveform.
+4.13   Measured current waveform of UNU ICTP PFF machine at           124
+       14kV, 2.8 Torr neon gas.compared with Lee Model 6-phase
+       code computed current waveform
+4.14   Measured current waveform of UNU ICTP PFF machine at           124
+       13.5kV, 3.0 Torr deuterium gas compared with Lee Model 6-
+       phase code computed current waveform.
+4.15   Variation of computed and experimental soft X-ray yield        127
+       with respect to pressure operating at 14 kV in neon for
+       UNU/ICTP Plasma Focus machine.
+4.16   Variation of computed neutron yield with respect to pressure   128
+       operating at 13.5 kV in neon for UNU/ICTP Plasma Focus
+       machine.
+4.17   The measured current waveform of AECS-PF2 machine at           130
+       15kV, 0.41 Torr argon gas compared with Lee Model 6-
+       phase code computed current waveform.
+4.18   The measured current waveform of Bora Plasma focus             132
+       machine at 17kV, 7.6 Torr deuterium gas compared with Lee
+       Model 5-phase code computed waveform.
+4.19   Variation of computed neutron yield with respect to pressure   133
+       operating at 17 kV in deuterium for Bora Plasma Focus
+       machine.
+4.20   The measured current waveform of HU PF at 16 kV, 2.9           136
+       Torr deuterium gas compared with Lee Model 6-phase code
+       computed current waveform.
+4.21   The measured current waveform of HU PF at 16 kV, 1.4           137
+       Torr deuterium gas compared with Lee Model 6-phase code
+       computed current waveform.
+
+
+
+
+                               xxix
+                                                                      Page
+4.22   Variation of computed neutron yield with pressure for          138
+       different anode lengths in deuterium for HU PF. The
+       maximum neutron yield is 9.7 × 106 n/shot for 14.5 cm
+       anode with peak va=6.3cm/ µs and peak vs=20cm/ µs
+4.23   Variation of computed and experimental optimum pressure        139
+       with respect to different anode lengths of HU PF.
+4.24   The measured current waveform of GN1 Plasma Focus              142
+       machine at 30kV, 0.75 Torr deuterium gas compared with
+       Lee Model 6-phase code computed current waveform.
+4.25   Variation of computed and experimental arrival time with       143
+       respect to pressure operating at 30 kV in deuterium for GN1
+       Plasma Focus machine.
+4.26   Variation of computed neutron yield with respect to pressure   143
+       operating at 30 kV (using anode radius 1.8 cm and length 12
+       cm) in deuterium for GN1 Plasma Focus machine.
+4.27   The measured current waveform of GN1 Plasma Focus              145
+       machine at 30kV, 3.0 Torr deuterium gas compared with Lee
+       Model 6-phase code computed current waveform.
+4.28   Variation of computed and experimental pinch time with         146
+       respect to pressure operating at 30 kV (using anode radius
+       1.9 cm and length 8.7 cm) in deuterium for GN1 Plasma
+       Focus machine.
+4.29   Variation of computed and experimental neutron yield with      146
+       respect to pressure operating at 30 kV (using anode radius
+       1.9 cm and length 8.7 cm) in deuterium for GN1 Plasma
+       Focus machine.
+4.30   The measured current waveform of GN1 Plasma Focus              148
+       machine at 30kV, 3.0 Torr deuterium gas compared with Lee
+       Model 6-phase code computed current waveform.
+
+
+
+
+                               xxx
+                                                                       Page
+4.31   Computed tube voltage versus time as obtained from Lee          149
+       Model 6-phase code configured for GN1 Plasma Focus
+       machine at 30 kV, 3 Torr deuterium gas (using anode radius
+       1.9 cm and length 8.5 cm, 12.6µF capacitor).
+4.32   The maximum pinch voltage on the deuterium filling              151
+       pressure (estimated in published paper) compared to
+       maximum tube voltage versus pressure from Lee Model 6-
+       phase code.
+4.33   Variation of computed neutron yield with respect to pressure    151
+       operating at 30 kV (using anode radius 1.9 cm and length 8.5
+       cm, 12.6µF capacitor) in deuterium for GN1 Plasma Focus
+       machine.
+4.34   Measured current waveform of FNII Plasma Focus machine          153
+       at 36kV, 2.75 Torr deuterium compared with Lee Model 5-
+       phase code computed current waveform.
+4.35   Variation of computed and experimental neutron yield with       154
+       respect to pressure operating at 36 kV in deuterium for FNII
+       Plasma Focus machine.
+4.36   The measured current waveform of India Assam Plasma             157
+       Focus machine working at 19kV deuterium compared with
+       Lee Model 6-phase code computed current waveform.
+4.37   Variation of computed and experimental neutron yield with       157
+       respect to pressure operating at 19 kV in deuterium for India
+       Assam Plasma Focus machine.
+4.38   Measured current waveform of NX3 at 12kV, 2.28 Torr             159
+       deuterium gas compared with Lee Model 5-phase code
+       computed current waveform (fm=0.18, fc=0.7, fmr=0.1 and
+       fcr=0.7).
+
+
+
+
+                               xxxi
+                                                                      Page
+4.39   Measured current waveform of NX3 at 12kV, 3.75 Torr            160
+       deuterium gas compared with Lee Model 6-phase code
+       computed current waveform (fm=0.13, fc=0.7, fmr=0.1 and
+       fcr=0.7).
+4.40   Measured current waveform of NX3 at 13kV, 3.0 Torr             162
+       deuterium gas compared with Lee Model 6-phase code
+       computed current waveform (fm=0.195, fc=0.7, fmr=0.1 and
+       fcr=0.7).
+4.41   Measured current waveform of NX3 at 13kV, 3.0 Torr             163
+       deuterium gas compared with Lee Model 6-phase code
+       computed current waveform (fm=0.172, fc=0.7, fmr=0.1 and
+       fcr=0.7).
+4.42   Variation of computed neutron yield with respect to pressure   165
+       operating at 12 kV in deuterium for NX3 Plasma Focus
+       machine.
+4.43   Variation of computed energy input into plasma with respect    165
+       to pressure operating at 12 kV in deuterium for NX3 Plasma
+       Focus machine.
+4.44   Variation of computed neutron yield with respect to pressure   166
+       operating at 14 kV in deuterium for NX3 Plasma Focus
+       machine.
+4.45   Variation of computed energy input into plasma with respect    167
+       to pressure operating at 14 kV in deuterium for NX3 Plasma
+       Focus machine.
+4.46   The measured current waveform of BARC Plasma Focus 2           169
+       machine at 24kV, deuterium gas compared with Lee Model
+       5-phase code computed current for deuterium gas.
+4.47   Variation of computed and experimental neutron yield with      170
+       respect to pressure operating at 24 kV in deuterium for
+       INDIA-BARC PF2.
+
+
+
+
+                              xxxii
+                                                                         Page
+4.48   The measured current waveform of PF143 Plasma Focus               173
+       machine at 30kV, 1.5 Torr deuterium gas compared with Lee
+       Model 6-phase code computed current waveform.
+4.49   The measured current waveform of PF143 Plasma Focus               174
+       machine at 30kV, 9.75 Torr deuterium gas compared with
+       Lee Model 6-phase code computed current waveform.
+4.50   The compression time of plasma from the peak value to the         175
+       end of the radial phase as defined in Figure 1, page 250 of
+       reference [126].
+4.51   Variation of computed and experimental compression time           175
+       with respect to pressure operating at 30 kV in deuterium for
+       PF143.
+4.52   Variation of computed and experimental neutron yield with         176
+       respect to pressure operating at 30 kV in deuterium for
+       PF143.
+4.53   Measured current waveform of DPF78 at 60kV, 7.6 Torr              178
+       deuterium gas compared with Lee Model 5-phase code
+       computed current waveform.
+4.54   DPF78 measured Itotal (labeled as Iges) and measured Ip           179
+       waveforms. The third trace Iis is the difference of I total and
+       Ip.
+4.55   Ratio of measured Ip to Itotal as a function of time [128].       180
+4.56   Variation of computed neutron yield with respect to pressure      180
+       operating at 36 kV in deuterium for DPF78.
+4.57   Variation of computed neutron yield with respect to pressure 181
+       operating at 30 kV in deuterium for Tamu PF.
+4.58   The measured current waveform of Tamu Plasma Focus                182
+       machine at 30kV, 12.0 Torr deuterium gas compared with
+       Lee Model 5-phase code computed current waveform.
+
+
+
+
+                               xxxiii
+                                                                           Page
+4.59        The measured current waveform of Posideon Plasma Focus         185
+            machine at 60kV, 3.8 Torr deuterium gas compared with Lee
+            Model 5-phase code computed current.
+4.60        Variation of computed and experimental neutron yield with      187
+            respect to pressure operating at 60 kV in deuterium for
+            POSIDEON PF.
+4.61        Measured current waveform of PF1000 at27kV, 3.5 Torr           189
+            deuterium gas compared with Lee Model 5-phase code
+            computed current waveform.
+4.62        Variation of computed neutron yield with respect to pressure   190
+            operating at 27 kV in deuterium for PF1000 plasma focus
+            machine.
+
+
+CHAPTER 5
+5.1         The measured current waveforms (anode of 110 mm-figure         195
+            (a) and anode 115 mm-figure (b)) of INDIA-Mohanty’s
+            Plasma Focus machine at 25kV, 0.3 Torr nitrogen gas
+            compared with Lee Model 6-phase code computed current.
+5.2         The measured current wave forms (anode of 120 mm-              196
+            figure(c), anode 125 mm-figure (d) and anode 130 mm-
+            figure (e)) of INDIA-Mohanty’s Plasma Focus machine at
+            25kV, 0.3 Torr nitrogen gas compared with Lee Model 6-
+            phase code computed current.
+5.3         Published average speed compared to computed average           199
+            speed for different anode lengths of INDIA-Mohanty’s
+            Plasma Focus machine at 25kV, 0.3 Torr nitrogen gas.
+5.4         Ch5 shows the estimated time taken from the start of plasma    200
+            to the pinch of a 13cm anode and Ch 3 shows the estimated
+            time taken in a 12 cm anode for INDIA-Mohanty’s Plasma
+            Focus machine.
+
+
+
+
+                                   xxxiv
+                                                                      Page
+5.5    Computed soft X-ray yield versus pressure (a) and              201
+       experimental soft X-ray yield versus pressure (b) for INDIA-
+       Mohanty’s Plasma Focus machine.
+5.6    The measured current waveform for Sofia Plasma Focus           203
+       machine at 16kV, 1.05 Torr nitrogen gas compared with Lee
+       Model 5-phase code computation.
+5.7    Variation of computed soft X ray yield with respect to         204
+       pressure operating at 16 kV in nitrogen for Sofia Plasma
+       Focus machine.
+5.8    The measured current waveform for Zimbabwe Plasma              207
+       Focus machine at 13kV, 1.0 Torr nitrogen gas compared
+       with Lee Model 6-phase code computed current waveform.
+5.9    Measured current waveform of the Nano Focus machine at         210
+       6.5kV, 2.25 Torr hydrogen gas compared with Lee Model 5-
+       phase code computed current waveform.
+5.10   The measured current waveform of Quaid I Azam University       213
+       Plasma Focus machine at 20kV, 0.38 Torr hydrogen gas
+       compared with Lee Model 6-phase code computed current.
+5.11   The measured current waveform of Egypt Plasma Focus            215
+       machine at 15kV, 0.8 Torr helium gas compared with Lee
+       Model 5-phase code computed current waveform.
+5.12   The measured current waveform of PFMA-1 Plasma Focus           217
+       machine at 20.5kV, 9.8 Torr helium gas compared with Lee
+       Model 5-phase code computed current waveform.
+5.13   The measured current waveform of Rico Plasma Focus             219
+       machine at 14.9kV, 0.2 Torr oxygen gas compared with Lee
+       Model 6-phase code computed current waveform.
+5.14   Measured current waveform of Filippov PF3 Plasma Focus         221
+       at 9kV, 1.5 Torr neon gas compared with Lee Model 5-phase
+       code computed current waveform.
+
+
+
+
+                              xxxv
+                                                                           Page
+5.15        Radial trajectory of Filippov PF3 according to the Lee Model 222
+            5-phase code; taken from same numerical shot as Figure
+            5.14.
+5.16        Measured current waveform of Filippov Dena Plasma Focus        224
+            at 16kV, 0.5 Torr argon gas compared with Lee Model 5-
+            phase code computed current waveform.
+5.17        Siahpoush’s Modified Lee [ML] code used to fit Dena            226
+            Plasma Focus machine [41]; with our additional small
+            adjustments: time shifted 0.3 microseconds and the
+            amplitude reduced by 1 %. These small adjustments
+            significantly improve the fit.
+5.18        The measured current waveform at 180kV, 1.875Torr              228
+            deuterium gas compared with Lee Model 5-phase code
+            computed current waveform.
+5.19        The measured current waveform compared with Lee Model          230
+            5-phase code computed.
+5.20        Variation of computed neutron yield with respect to pressure   231
+            when capacitor in UMDPF1 Plasma Focus machine is
+            charged to 14kV in deuterium gas.
+
+
+CHAPTER 6
+6.1         3 kJ UNU ICTP PF.                                              233
+6.2         1 MJ PF1000 Plasma Focus.                                      233
+6.3         Computed neutron yield versus input energy in the Plasma       236
+            Focus machine.
+6.4         Neutron yield versus input energy Neutron yield versus input 240
+            energy (All data-computed and measured)..
+6.5         Computed neutron yield versus peak current.                    240
+6.6         Computed neutron yield versus pinch current.                   241
+6.7         Computed peak current versus energy input into plasma.         241
+6.8         Computed pinch current versus energy input into plasma.        242
+
+
+
+
+                                    xxxvi
+                                                                   Page
+6.9    Computed neutron yield versus pinch duration.               242
+6.10   Computed neon soft X-ray yield versus pinch current.        244
+6.11   Computed neon soft X-ray yield versus peak current.         245
+6.12   Computed neon soft X ray versus energy input into plasma.   245
+6.13   Computed energy input into plasma versus pinch duration     246
+6.14   Computed line yield versus peak current.                    247
+6.15   Computed line yield versus pinch current.                   248
+6.16   Computed line yield versus energy input into plasma.        248
+
+
+
+
+                             xxxvii
+                                    CHAPTER 1
+                                    Introduction
+
+
+1.1      Background
+
+
+
+         Ever since the industrial revolution, the demand for electrical power has
+increased tremendously. With the ever depleting amount of petroleum, gas and coal
+sources, the need to find a long-term source of energy is of extreme importance [1].
+Controlled nuclear fusion is one of the alternatives as it is environmentally friendly
+and practically inexhaustible. To understand fusion reaction, dense plasma focus
+devices have been built in various parts of the world and studies have been carried
+out on high energy density nuclear fusion in plasmas as well as applications with
+fusion neutrons and with other emissions from high density plasmas in various
+gases.
+
+
+         A plasma focus device is a machine that produces by electromagnetic
+acceleration and compression, short lived plasma that is so hot and dense that it
+emits radiation including x-rays and undergoes nuclear fusion when operated in
+deuterium.These     outputs   can   be   used   in various applications such       as
+microelectronics, lithography, medical applications, material modifications and
+various other applications [2].
+
+
+         There are presently many research centres and universities around the world
+which operate various dense plasma focus (DPF) machines. This includes a network
+of ten identical DPF machines operating in eight countries under the Asian African
+Association for Plasma Training [3]; International Centre for Dense Magnetised
+Plasmas (ICDMP) in Warsaw, Poland which operates the largest DPF machine in
+the world, PF 1000 [4]; National Institute of Education, Nanyang Technological
+University, Singapore which operates NX1 [5-7], NX2 [7-9], NX3 [10-11] and
+FMPF-1 [11-12]; INTI International University in Malaysia which operates the INTI
+PF [13-18]; Tsinghua University in China which operates the DPF 2.2 [19];
+Amirkabir University in Iran which operates the Amirkabir PF [20]; and India
+
+
+
+
+                                          1
+Bhabha Atomic Research Centre which operates the BARC PF1 [21] and BARC
+PF2 [22]. The Inter-institutional Program for Plasma Focus Research coordinated by
+the National Laboratory of Dense Magnetized Plasmas in Buenos Aires which
+cooperates with the Chilean Nuclear Energy Commission has various DPF machines
+such as PF50 [23-25], PF 400 [26-27], Speed 2 [25], Argentina Nano focus machine
+[28-29], Chile Nano focus machine [23-25] and GN1 [30-32].
+
+
+1.2       Problem Statement
+
+
+
+          With the increasing number and types of DPF machines all over the world,
+the performance of these machines comes into question. Are these machines
+operating at the optimal yields or performing according to any existing or new
+scaling laws?
+
+
+1.3       Objective
+
+
+
+          The main objective of the thesis is to carry out a comparative study on the
+DPF machines worldwide with the aid of the Lee Model codes to compare the
+operations, yields and performance of the machines according to any existing or new
+scaling laws. It requires obtaining the current waveforms, including results of yields
+where available, of DPF machines from published articles or directly from research
+groups.
+
+
+          A comprehensive collection of DPF machines data will provide reference
+data on the machine parameters, operating parameters, current waveforms, fitting
+parameters and plasma parameters. These reference data contribute to enhancing the
+understanding of plasma focus dynamics. It will also confirm the radiation
+computation of the Lee Model code specifically neutron yield, soft X-ray yield and
+plasma focus scaling laws.
+
+
+
+
+                                           2
+

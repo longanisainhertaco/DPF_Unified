@@ -1,0 +1,210 @@
+{
+  "date": "2026-05-15",
+  "applied": true,
+  "intake_dir": "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch",
+  "files_scanned": 8,
+  "unique_sha256_payloads": 8,
+  "promoted_count": 6,
+  "skipped_existing_count": 2,
+  "failed_count": 0,
+  "deleted_duplicate_count": 0,
+  "retained_count": 8,
+  "promoted": [
+    {
+      "path": "1000284.pdf",
+      "sha256": "b93aec67a34ed9cd63176dc3fdf404df4aa29ff16cf8807eb68568ed1dbc0f9c",
+      "title": "ALEGRA-HEDP Simulations of the Dense Plasma Focus",
+      "doi": "",
+      "accession": "1000284",
+      "relevance": "",
+      "pages": 28,
+      "nonempty_pages": 27,
+      "markdown": "KnowledgeReference/sand2009-6373-b93aec67.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/sand2009-6373-b93aec67.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "ADA037245.pdf",
+      "sha256": "12205ba4bb0d1edc11b069dda4e0e084b89597a8f14ff61c3a65e0b712926a75",
+      "title": "Design and Construction of a Dense Plasma Focus Device",
+      "doi": "",
+      "accession": "ADA037245",
+      "relevance": "",
+      "pages": 97,
+      "nonempty_pages": 97,
+      "markdown": "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "Arnab-the-physics-of-fluids-and-plasmas_compress.pdf",
+      "sha256": "eef02f492c5dec82c501fb5040f1fc3bdaa5603ab3a16bdf58dfe909caa16c70",
+      "title": "The Physics of Fluids and Plasmas",
+      "doi": "",
+      "accession": "",
+      "relevance": "",
+      "pages": 416,
+      "nonempty_pages": 411,
+      "markdown": "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0001-0025.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0026-0050.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0051-0075.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0076-0100.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0101-0125.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0126-0150.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0151-0175.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0176-0200.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0201-0225.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0226-0250.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0251-0275.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0276-0300.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0301-0325.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0326-0350.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0351-0375.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0376-0400.md",
+        "KnowledgeReference/chunks/the-physics-of-fluids-and-plasmas-eef02f49/pages-0401-0416.md"
+      ],
+      "json": "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "Dense+Plasma+Focus+physics+and+applications.pdf",
+      "sha256": "ed1967114c762f608493bd4d049b627ed0d13165d435ed7d5c23efa92a93cc2a",
+      "title": "Dense Plasma Focus: physics and applications",
+      "doi": "10.1088/1742-6596/591/1/012020",
+      "accession": "",
+      "relevance": "",
+      "pages": 20,
+      "nonempty_pages": 20,
+      "markdown": "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "Development of dense plasma focus device.pdf",
+      "sha256": "d1758d55ea9a32f6edb17107a86b033d8078cad337f0531ca10f18190fb220b5",
+      "title": "Development of Dense Plasma Focus Device",
+      "doi": "10.11884/HPLPB201830.180230",
+      "accession": "",
+      "relevance": "",
+      "pages": 5,
+      "nonempty_pages": 5,
+      "markdown": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    },
+    {
+      "path": "salehizadeh2012.pdf",
+      "sha256": "f7894f85fd4d1826a5d98933453bd09664e260d46a2c9fedc4ce79491d2be4ad",
+      "title": "Preliminary Results of the 115 kJ Dense Plasma Focus Device IR-MPF-100",
+      "doi": "10.1007/s10894-012-9567-8",
+      "accession": "",
+      "relevance": "",
+      "pages": 5,
+      "nonempty_pages": 5,
+      "markdown": "KnowledgeReference/original-research-f7894f85.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/original-research-f7894f85.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    }
+  ],
+  "skipped_existing": [
+    {
+      "path": "2307.07715v1.pdf",
+      "sha256": "0f7f5a0deae96f074d37e192ed2825cbaaa8407b510d27dd3887e8675402b244",
+      "title": "On the failure of neutron yield scaling in the Dense Plasma Focus",
+      "doi": "",
+      "accession": "",
+      "reason": "Already represented in KnowledgeReference/on-the-failure-of-neutron-yield-scaling-in-the-dense-plasma-focus-s-k-h-auluck-international.md"
+    },
+    {
+      "path": "s41598-025-07939-x.pdf",
+      "sha256": "b02a711d90395e9c9ee3d4c4ab4d11c61db7be2c28a4b2b50578ee85ad0bb2e5",
+      "title": "Experimental results and analysis of plasma dynamics and radiation output of the 100 kV dense plasma focus FAETON-I",
+      "doi": "10.1038/s41598-025-07939-x",
+      "accession": "",
+      "reason": "Already represented in KnowledgeReference/experimental-results-and-analysis-of-plasma-dynamics-and-radiation-output-of-the-100-kv-dense-5.md"
+    }
+  ],
+  "failed": [],
+  "deleted_duplicates": [],
+  "retained": [
+    {
+      "sha256": "b93aec67a34ed9cd63176dc3fdf404df4aa29ff16cf8807eb68568ed1dbc0f9c",
+      "canonical_path": "1000284.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "0f7f5a0deae96f074d37e192ed2825cbaaa8407b510d27dd3887e8675402b244",
+      "canonical_path": "2307.07715v1.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "12205ba4bb0d1edc11b069dda4e0e084b89597a8f14ff61c3a65e0b712926a75",
+      "canonical_path": "ADA037245.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "eef02f492c5dec82c501fb5040f1fc3bdaa5603ab3a16bdf58dfe909caa16c70",
+      "canonical_path": "Arnab-the-physics-of-fluids-and-plasmas_compress.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "ed1967114c762f608493bd4d049b627ed0d13165d435ed7d5c23efa92a93cc2a",
+      "canonical_path": "Dense+Plasma+Focus+physics+and+applications.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "d1758d55ea9a32f6edb17107a86b033d8078cad337f0531ca10f18190fb220b5",
+      "canonical_path": "Development of dense plasma focus device.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "b02a711d90395e9c9ee3d4c4ab4d11c61db7be2c28a4b2b50578ee85ad0bb2e5",
+      "canonical_path": "s41598-025-07939-x.pdf",
+      "duplicate_count": 0
+    },
+    {
+      "sha256": "f7894f85fd4d1826a5d98933453bd09664e260d46a2c9fedc4ce79491d2be4ad",
+      "canonical_path": "salehizadeh2012.pdf",
+      "duplicate_count": 0
+    }
+  ],
+  "notes": "Promotion means local PDF text was extracted into KnowledgeReference markdown/JSON. It does not accept figures, tables, plotted curves, numeric targets, or validation claims. User validation accepts these PDFs as validated research sources; it does not accept extracted targets or simulation claims.",
+  "user_validation_status": "all_eight_user_verified_validated_research_sources"
+}

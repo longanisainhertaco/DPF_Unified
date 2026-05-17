@@ -100,17 +100,27 @@ Implemented after this source search:
 
 - `src/dpf/first_principles/startup_bvp.py` emits a fail-closed startup BVP
   packet with accepted, engineering-only, and rejected startup-mode classes.
+- The startup packet now emits `startup_channel_status`,
+  `startup_mode_status`, `mode_payload_status`, `candidate_input_policy`,
+  `acceptance_gate`, and `negative_test_policy`.
+- Candidate device/gas/circuit/startup inputs are explicitly usable for
+  engineering initialization only; they cannot support whole-shot startup
+  acceptance without a reviewed imported PIC state or source-backed
+  surface-breakdown BVP payload.
 - `src/dpf/first_principles/runner.py` now places the startup packet in run
   telemetry, manifest candidate evidence, validation packet summaries, and the
   upstream status maps for numerical, comparator/UQ, certificate, and
   generalization gates.
 - `tests/test_first_principles_runner.py` proves end-of-rundown startup remains
-  blocked and seeded startup is rejected for first-principles acceptance.
+  blocked, startup payload fields remain unreviewed, and seeded startup is
+  rejected for first-principles acceptance.
 
 Verified command:
 
-- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py`
-  -> `35 passed`.
+- `python3 -m pytest tests/test_first_principles_runner.py`
+  -> `8 passed`.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py`
+  -> `60 passed`.
 
 Remaining blocker:
 

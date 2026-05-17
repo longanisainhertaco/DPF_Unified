@@ -101,8 +101,19 @@ evidence only. It cannot promote without a full active-path limiter inventory,
 zero acceptance-blocker full-horizon run proof, fallback rejection tests,
 artifact hashes, and review.
 
+Additional ratchet added in this pass:
+
+- `src/dpf/first_principles/limiter_readiness.py` now emits
+  `limiter_channel_status`, `limiter_family_status`, `runtime_observations`,
+  `acceptance_gate`, and `negative_test_policy`.
+- Runtime observations are explicitly candidate-only and cannot claim
+  limiter-zero acceptance without a full-horizon manifest and zero
+  acceptance-blocker proof.
+- `tests/test_first_principles_runner.py` asserts that zero-blocker proof,
+  fallback/hidden-limiter negative tests, and family review remain blocked.
+
 ## Validated Commands
 
-- `python3 -m pytest tests/test_first_principles_runner.py` -> 7 passed.
+- `python3 -m pytest tests/test_first_principles_runner.py` -> 8 passed.
 - `python3 -m json.tool docs/FIRST_PRINCIPLES_LIMITER_READINESS_SOURCE_SEARCH_2026_05_15.json` -> valid JSON.
-- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py` -> 33 passed.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py` -> 60 passed.

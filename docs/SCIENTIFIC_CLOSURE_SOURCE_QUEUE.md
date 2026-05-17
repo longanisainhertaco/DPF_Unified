@@ -86,6 +86,88 @@ This creates a new first-principles architecture and neutron-yield authority
 review source. It does not close any validation tier until typed targets are
 extracted and independently reviewed for same-scope use.
 
+2026-05-15 supplemental source-of-truth ingestion: the user-supplied Soto et
+al. 2010 PDF, "Studies on scalability and scaling laws for the plasma focus:
+similarities and differences in devices from 1MJ to 0.1J", has been staged and
+ingested as
+`KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md`
+and `.json`; the intake manifest is
+`docs/USER_PDF_KR_PROMOTION_2026_05_15.json`, and the first-principles source
+triage is
+`docs/FIRST_PRINCIPLES_SOTO2010_SOURCE_TRIAGE_2026_05_15.md`. This source
+provides CCHEN device configurations, aggregate shot/diagnostic observations,
+PF-400J/PF-50J neutron and density targets, a PF-1000 aggregate scaling row,
+and a cross-device scaling matrix useful for target extraction and second-scope
+generalization. It does not close the whole-shot startup BVP, same-scope
+PF-1000/Akel acceptance, mechanism-separated neutron authority, comparator/UQ,
+or certificate gates until typed targets are extracted and independently
+reviewed.
+
+2026-05-15 user PDF batch ingestion: the user confirmed all eight supplied PDFs
+are verified validated research sources. The batch review is recorded in
+`docs/FIRST_PRINCIPLES_USER_PDF_BATCH_TRIAGE_2026_05_15.md` and `.json`, and
+the source-ingestion ledger is
+`docs/USER_VALIDATED_PDF_KR_PROMOTION_2026_05_15.md` / `.json`. Six new
+parity-passed local `KnowledgeReference/` records were created:
+Salehizadeh 2012 IR-MPF-100, Willenborg/Hendricks `ADA037245`, the Chinese DPF
+device-development paper, Sandia ALEGRA-HEDP, Gribkov DPF applications, and
+the Arnab fluids/plasmas method text. FAETON-I 2025 and Auluck 2023 scaling
+failure were already represented locally. This changes source availability
+status only. The next work is typed target extraction, figure/table review,
+units, uncertainties, and gate binding. Non-promoting structured source packets
+for the batch are exposed through
+`src/dpf/first_principles/source_targets.py::may15_user_validated_source_targets`.
+Runnable non-promoting second-scope engineering decks for IR-MPF-100, the
+compact Chinese Mather DPF, and the Willenborg/Hendricks startup-design device
+are exposed through
+`src/dpf/first_principles/deck.py::may15_second_scope_engineering_decks`.
+None of the batch closes whole-shot first-principles startup, same-scope,
+neutron-authority, comparator/UQ, or certificate gates.
+
+2026-05-16 verified local GV shot bundle: the user supplied
+`/Users/anthonyzamora/Downloads/GV` as verified shot information. The triage is
+recorded in
+`docs/FIRST_PRINCIPLES_GV_SHOT_INFO_TRIAGE_2026_05_16.md`. The bundle contains
+eight unique machine/current examples for LPP-FF1, PF-24-KRAKOW, PF-360,
+Gemini, and OneSys, including `.inp` machine/circuit/gas decks, `.TXT`
+Gratton-Vargas reduced-model outputs, and `.xlsx` workbooks with experimental
+current waveform columns. Structured non-promoting packets are exposed through
+`src/dpf/first_principles/source_targets.py::gv_verified_shot_targets`, and
+runnable non-promoting engineering decks are exposed through
+`src/dpf/first_principles/deck.py::gv_verified_engineering_decks`. These are
+useful for current-waveform target extraction and second-scope engineering
+runs. They are not accepted source-truth evidence until raw artifacts or
+verified extracts are promoted into `KnowledgeReference/`, and they do not
+close startup BVP, spatial field/temperature, neutron mechanism, detector
+response, comparator/UQ, or certificate gates.
+
+The first extraction implementation is now available through
+`src/dpf/first_principles/gv_waveforms.py` and the CLI command
+`dpf first-principles-gv-waveform`. It reads experimental workbook current
+columns, checks workbook hashes, and emits candidate packet arrays with
+`x_unit=us` and `y_unit=kA`. These packets remain `candidate_not_reviewed` and
+must not be used as accepted validation evidence until source-truth promotion,
+uncertainty, review, output mapping, and comparator/UQ gates pass.
+
+2026-05-16 verified thesis/PDF batch: the user supplied seven verified
+documents, including defended theses, for first-principles source triage:
+Arwinder 2015, Talebitaher 2012, Saw 1990, Serban 1995, Rafique 2000, Verma
+2010, and Avaria et al. 2022. The triage is recorded in
+`docs/FIRST_PRINCIPLES_MAY16_VALIDATED_THESES_TRIAGE_2026_05_16.md` and
+`.json`, and the source-ingestion ledger is
+`docs/USER_VALIDATED_THESES_KR_PROMOTION_2026_05_16.md` / `.json`. All seven
+documents were promoted into local `KnowledgeReference/` text-or-OCR records
+with parity checks. These sources are useful for startup/rundown observables,
+current-step and shock/EOS context, anode/sheath velocity and pinch-lifetime
+targets, fusion-source imaging, deuteron spectra, neutron anisotropy,
+detector-response methods, Bayesian spectroscopic UQ, repetitive miniature DPF
+decks, and second-scope/generalization candidates. Structured non-promoting
+source packets are exposed through
+`src/dpf/first_principles/source_targets.py::may16_validated_thesis_source_targets`.
+This changes source availability only. It does not close typed target
+extraction, same-scope PF-1000/Akel evidence, mechanism-separated neutron
+authority, detector-response and propagated UQ, or certificate gates.
+
 ## Machine-Readable Queue State
 
 `scientific_closure_source_acquisition_queue()` now reports both blocker items

@@ -21,6 +21,7 @@ from dpf.fields import (
     CircuitMagneticBoundaryDrive,
     CircuitParameters,
     CircuitState,
+    DeuteriumIonizationTransport,
     ElectronEnergyClosure,
     ElectronEnergyState,
     HybridPIC3DLoop,
@@ -28,7 +29,9 @@ from dpf.fields import (
     HybridPIC3DSimulator,
     HybridPICSourceGeometry,
     KineticIonYieldHistory,
+    Maxwell3DBoundaries,
     Maxwell3DGrid,
+    ParticleAbsorbingBoundaries,
     hybrid_loop_candidate_evidence,
     hybrid_simulator_candidate_evidence,
     source_geometry_candidate_evidence,
@@ -40,9 +43,21 @@ from dpf.first_principles.certificate_gate import (
 )
 from dpf.first_principles.closure_packet import build_physics_closure_packet
 from dpf.first_principles.comparator_uq import build_comparator_uq_packet
+from dpf.first_principles.current_waveform_comparator import (
+    build_engineering_current_waveform_comparator,
+)
 from dpf.first_principles.deck import FirstPrinciplesInputDeck
 from dpf.first_principles.dimensionality import build_dimensionality_handoff_packet
+from dpf.first_principles.experimental_numerics import (
+    build_experimental_numerical_runtime_audit_packet,
+)
+from dpf.first_principles.experimental_shot import (
+    build_experimental_whole_shot_packet,
+)
 from dpf.first_principles.generalization import build_generalized_dpf_machine_packet
+from dpf.first_principles.limiter_proof import (
+    build_experimental_limiter_zero_probe_packet,
+)
 from dpf.first_principles.limiter_readiness import build_limiter_readiness_packet
 from dpf.first_principles.manifest import (
     build_first_principles_manifest_from_hybrid_result,
@@ -51,10 +66,14 @@ from dpf.first_principles.neutron_authority import (
     build_mechanism_separated_neutron_packet,
 )
 from dpf.first_principles.numerical_fidelity import build_numerical_fidelity_packet
+from dpf.first_principles.plasmapy_audit import build_plasmapy_formulary_audit_packet
 from dpf.first_principles.power_port import build_engineering_power_port_packet
 from dpf.first_principles.same_scope import build_same_scope_source_packet
 from dpf.first_principles.spatial_field_temperature import (
     build_spatial_field_temperature_packet,
+)
+from dpf.first_principles.startup_breakdown import (
+    build_candidate_startup_breakdown_audit,
 )
 from dpf.first_principles.startup_bvp import build_startup_bvp_packet
 from dpf.first_principles.waveform_phase import build_waveform_phase_packet
@@ -63,6 +82,8 @@ ENGINEERING_CANDIDATE_STATUS = "engineering_candidate_not_validation"
 RUN_MODE = "first_principles_3d_hybrid_em_pic_fluid"
 ELEMENTARY_CHARGE = dpf_constants.e
 DEUTERON_MASS_KG = dpf_constants.m_d
+K_B = dpf_constants.k_B
+MU_0 = dpf_constants.mu_0
 
 
 @dataclass(frozen=True)
@@ -70,12 +91,16 @@ class FirstPrinciples3DDeck:
     """Minimal input deck for a package-native 3-D hybrid EM/PIC-fluid run."""
 
     n_steps: int = 1
+    history_stride: int = 1
+    max_step_results: int | None = 256
+    target_time_s: float | None = None
     grid_shape: tuple[int, int, int] = (5, 5, 5)
     grid_spacing_m: tuple[float, float, float] | None = None
     dt_s: float = 1.0e-13
     sigma0_S_m: float = 1.0e2
     background_density_m3: float = 1.0e20
     density_floor_m3: float = 1.0e20
+    initial_ionization_fraction: float = 0.01
     electron_temperature_K: float = 1.0e5
     ion_temperature_K: float = 1.0e5
     ion_species_name: str = "d"
@@ -97,12 +122,27 @@ class FirstPrinciples3DDeck:
     circuit_resistance_ohm: float = 1.2e-2
     circuit_state: CircuitState | None = None
     circuit_udpf_V: float | tuple[float, ...] = 0.0
+    circuit_udpf_mode: str = "lagged_volume_j_dot_e"
+    circuit_feedback_min_current_A: float = 1.0
     circuit_z_index: int = 0
     circuit_blend: float = 1.0
+    pml_cells: int = 0
+    pml_strength: float = 0.0
+    particle_absorption_enabled: bool = False
+    open_boundary: bool = True
+    conductor_cells: Any | None = None
+    conductor_mask_status: str = "not_supplied"
+    conductor_mask_mode: str = "none"
     device_anode_radius_m: float | None = None
     device_cathode_radius_m: float | None = None
     device_anode_length_m: float | None = None
     device_insulator_length_m: float | None = None
+    device_anode_inner_radius_m: float | None = None
+    device_cathode_rod_count: int | None = None
+    device_cathode_rod_diameter_m: float | None = None
+    device_cathode_rod_length_m: float | None = None
+    device_insulator_outer_radius_m: float | None = None
+    device_insulator_material: str | None = None
     gas_pressure_Pa: float | None = None
     gas_temperature_K: float | None = None
     startup_mode: str = "source_backed_end_rundown_sheath"
@@ -168,6 +208,13 @@ class FirstPrinciples3DDeck:
         if values.get("shape") is not None:
             values["grid_shape"] = values.pop("shape")
 
+        boundary_policy = values.pop("boundary_policy", None) or values.pop(
+            "boundaries",
+            None,
+        )
+        if boundary_policy is not None:
+            values.update(_boundary_values_from_policy(boundary_policy))
+
         if geometry is not None and grid is None and values.get("grid_spacing_m") is None:
             grid_from_geometry = geometry.smoke_grid(shape=tuple(values.get("grid_shape", cls.grid_shape)))
             values["grid_shape"] = grid_from_geometry.shape
@@ -203,6 +250,15 @@ class FirstPrinciples3DDeck:
                 "grid_spacing_m": (
                     None if self.grid_spacing_m is None else list(self.grid_spacing_m)
                 ),
+                "anode_radius_m": self.device_anode_radius_m,
+                "anode_inner_radius_m": self.device_anode_inner_radius_m,
+                "cathode_radius_m": self.device_cathode_radius_m,
+                "cathode_rod_count": self.device_cathode_rod_count,
+                "cathode_rod_diameter_m": self.device_cathode_rod_diameter_m,
+                "cathode_rod_length_m": self.device_cathode_rod_length_m,
+                "insulator_length_m": self.device_insulator_length_m,
+                "insulator_outer_radius_m": self.device_insulator_outer_radius_m,
+                "insulator_material": self.device_insulator_material,
             },
             "fluid": {
                 "backend": "hybrid",
@@ -210,16 +266,26 @@ class FirstPrinciples3DDeck:
                 "sigma0_S_m": self.sigma0_S_m,
                 "background_density_m3": self.background_density_m3,
                 "density_floor_m3": self.density_floor_m3,
+                "initial_ionization_fraction": self.initial_ionization_fraction,
             },
             "diagnostics": {
                 "artifact_classification": ENGINEERING_CANDIDATE_STATUS,
                 "artifact_distribution": "local_engineering",
                 "artifact_handling_notes": "candidate 3D hybrid EM/PIC-fluid run",
+                "history_stride": self.history_stride,
+                "max_step_results": self.max_step_results,
+                "target_time_s": self.target_time_s,
             },
             "first_principles_3d": {
                 "n_steps": self.n_steps,
                 "dt_s": self.dt_s,
+                "history_stride": self.history_stride,
+                "max_step_results": self.max_step_results,
+                "target_time_s": self.target_time_s,
                 "apply_circuit_boundary": self.apply_circuit_boundary,
+                "boundary_policy": _boundary_policy_manifest(self),
+                "circuit_udpf_mode": self.circuit_udpf_mode,
+                "circuit_feedback_min_current_A": self.circuit_feedback_min_current_A,
                 "include_hall": self.include_hall,
                 "use_predictor_corrector": self.use_predictor_corrector,
                 "use_source_ordered_velocity_update": (
@@ -276,52 +342,69 @@ class FirstPrinciples3DDeck:
         }
 
     def startup_packet(self) -> dict[str, Any]:
+        device = {
+            "device_name": self.device_name,
+            "anode_radius_m": self.device_anode_radius_m,
+            "cathode_radius_m": self.device_cathode_radius_m,
+            "anode_length_m": self.device_anode_length_m,
+            "insulator_length_m": self.device_insulator_length_m,
+            "anode_inner_radius_m": self.device_anode_inner_radius_m,
+            "cathode_rod_count": self.device_cathode_rod_count,
+            "cathode_rod_diameter_m": self.device_cathode_rod_diameter_m,
+            "cathode_rod_length_m": self.device_cathode_rod_length_m,
+            "insulator_outer_radius_m": self.device_insulator_outer_radius_m,
+            "insulator_material": self.device_insulator_material,
+        }
+        gas = {
+            "species": self.ion_species_name,
+            "pressure_Pa": self.gas_pressure_Pa,
+            "temperature_K": self.gas_temperature_K,
+        }
+        circuit = {
+            "voltage_V": self.circuit_voltage_V,
+            "initial_current_A": (
+                None if self.circuit_state is None else self.circuit_state.current_A
+            ),
+            "charge_C": (
+                None if self.circuit_state is None else self.circuit_state.charge_C
+            ),
+        }
+        startup = {
+            "mode": self.startup_mode,
+            "evidence_status": self.startup_evidence_status,
+            "source_scope": self.startup_source_scope,
+            "can_support_whole_shot_acceptance": (
+                self.startup_can_support_whole_shot_acceptance
+            ),
+            "accepted_channels": list(self.startup_accepted_channels),
+            "required_channels": list(self.startup_required_channels),
+            "missing_channels": list(self.startup_missing_channels),
+            "background_density_m3": self.background_density_m3,
+            "electron_temperature_K": self.electron_temperature_K,
+            "ion_temperature_K": self.ion_temperature_K,
+            "initial_electric_field_V_m": (
+                self.initial_E_x_V_m,
+                0.0,
+                0.0,
+            ),
+            "initial_magnetic_field_T": (
+                0.0,
+                0.0,
+                self.initial_B_z_T,
+            ),
+        }
+        candidate_breakdown_audit = build_candidate_startup_breakdown_audit(
+            device=device,
+            gas=gas,
+            circuit=circuit,
+            startup=startup,
+        )
         packet = build_startup_bvp_packet(
-            {
-                "mode": self.startup_mode,
-                "evidence_status": self.startup_evidence_status,
-                "source_scope": self.startup_source_scope,
-                "can_support_whole_shot_acceptance": (
-                    self.startup_can_support_whole_shot_acceptance
-                ),
-                "accepted_channels": list(self.startup_accepted_channels),
-                "required_channels": list(self.startup_required_channels),
-                "missing_channels": list(self.startup_missing_channels),
-                "background_density_m3": self.background_density_m3,
-                "electron_temperature_K": self.electron_temperature_K,
-                "ion_temperature_K": self.ion_temperature_K,
-                "initial_electric_field_V_m": (
-                    self.initial_E_x_V_m,
-                    0.0,
-                    0.0,
-                ),
-                "initial_magnetic_field_T": (
-                    0.0,
-                    0.0,
-                    self.initial_B_z_T,
-                ),
-            },
-            device={
-                "device_name": self.device_name,
-                "anode_radius_m": self.device_anode_radius_m,
-                "cathode_radius_m": self.device_cathode_radius_m,
-                "anode_length_m": self.device_anode_length_m,
-                "insulator_length_m": self.device_insulator_length_m,
-            },
-            gas={
-                "species": self.ion_species_name,
-                "pressure_Pa": self.gas_pressure_Pa,
-                "temperature_K": self.gas_temperature_K,
-            },
-            circuit={
-                "voltage_V": self.circuit_voltage_V,
-                "initial_current_A": (
-                    None if self.circuit_state is None else self.circuit_state.current_A
-                ),
-                "charge_C": (
-                    None if self.circuit_state is None else self.circuit_state.charge_C
-                ),
-            },
+            startup,
+            device=device,
+            gas=gas,
+            circuit=circuit,
+            candidate_breakdown_audit=candidate_breakdown_audit,
             accepted_channels=self.startup_accepted_channels,
         )
         packet["declared_startup_required_channels"] = list(
@@ -362,6 +445,166 @@ class HybridEMPicFluidRunResult:
         }
 
 
+@dataclass
+class FirstPrinciples3DSession:
+    """Reusable first-principles 3-D simulator session for split runs."""
+
+    deck: FirstPrinciples3DDeck
+    simulator: HybridPIC3DSimulator
+    electron_state: ElectronEnergyState
+    ionization_state: Any
+    circuit_state: CircuitState | None
+    total_deuterium_density_m3: np.ndarray
+    plasma_velocity_m_s: np.ndarray
+    completed_steps: int = 0
+    lagged_field_work: dict[str, Any] | None = None
+
+    @classmethod
+    def from_deck(
+        cls,
+        deck: Mapping[str, Any] | object | None = None,
+        *,
+        circuit_boundary: CircuitMagneticBoundaryDrive | None = None,
+    ) -> FirstPrinciples3DSession:
+        resolved = FirstPrinciples3DDeck.from_deck(deck)
+        _validate_deck(resolved)
+        if resolved.seed is not None:
+            np.random.seed(int(resolved.seed))
+
+        grid = resolved.grid()
+        conductor_cells, _ = _resolve_conductor_cells(resolved, grid)
+        maxwell_boundaries = Maxwell3DBoundaries(
+            conductor_cells=conductor_cells,
+            pml_cells=resolved.pml_cells,
+            pml_strength=resolved.pml_strength,
+            open_boundary=resolved.open_boundary,
+        )
+        particle_boundaries = (
+            ParticleAbsorbingBoundaries(
+                grid,
+                conductor_cells=conductor_cells,
+                pml_cells=resolved.pml_cells,
+            )
+            if resolved.particle_absorption_enabled
+            else None
+        )
+        total_deuterium_density = np.full(
+            grid.shape,
+            resolved.background_density_m3,
+            dtype=float,
+        )
+        initial_electron_density = np.maximum(
+            total_deuterium_density * resolved.initial_ionization_fraction,
+            1.0,
+        )
+        electron_closure = ElectronEnergyClosure(grid)
+        electron_state = electron_closure.initialize(
+            electron_temperature_K=resolved.electron_temperature_K,
+            ion_temperature_K=resolved.ion_temperature_K,
+            electron_density_m3=initial_electron_density,
+        )
+        ionization_transport = DeuteriumIonizationTransport(grid)
+        ionization_state = ionization_transport.initialize(
+            total_deuterium_density_m3=total_deuterium_density,
+            ionization_fraction=resolved.initial_ionization_fraction,
+        )
+        loop = HybridPIC3DLoop(
+            grid,
+            maxwell_boundaries=maxwell_boundaries,
+            particle_boundaries=particle_boundaries,
+            electron_energy_closure=electron_closure,
+            ionization_transport=ionization_transport,
+            kinetic_yield_history=KineticIonYieldHistory(grid),
+        )
+        state = loop.field_stepper.maxwell.empty_state()
+        state.E.Ex_edge.fill(resolved.initial_E_x_V_m)
+        state.B.Bz_face.fill(resolved.initial_B_z_T)
+        pic, _ = _build_initial_pic(resolved, grid, conductor_cells)
+        active_circuit_boundary = circuit_boundary
+        if resolved.apply_circuit_boundary and active_circuit_boundary is None:
+            active_circuit_boundary = CircuitMagneticBoundaryDrive(
+                grid,
+                parameters=CircuitParameters(
+                    capacitance_F=resolved.circuit_capacitance_F,
+                    voltage_V=resolved.circuit_voltage_V,
+                    inductance_H=resolved.circuit_inductance_H,
+                    resistance_ohm=resolved.circuit_resistance_ohm,
+                ),
+            )
+        simulator = HybridPIC3DSimulator(
+            grid=grid,
+            loop=loop,
+            state=state,
+            pic=pic,
+            circuit_boundary=active_circuit_boundary,
+        )
+        return cls(
+            deck=resolved,
+            simulator=simulator,
+            electron_state=electron_state,
+            ionization_state=ionization_state,
+            circuit_state=(
+                (resolved.circuit_state or CircuitState())
+                if resolved.apply_circuit_boundary
+                else None
+            ),
+            total_deuterium_density_m3=total_deuterium_density,
+            plasma_velocity_m_s=np.zeros(grid.shape + (3,), dtype=float),
+        )
+
+    def run_segment(self, n_steps: int) -> HybridPIC3DSimulationResult:
+        """Advance this live session by a fixed number of steps."""
+
+        if int(n_steps) != n_steps or n_steps <= 0:
+            raise ValueError("n_steps must be a positive integer")
+        deck = self.deck
+        result = self.simulator.run(
+            n_steps=int(n_steps),
+            dt_s=deck.dt_s,
+            sigma0_S_m=deck.sigma0_S_m,
+            background_density_m3=deck.background_density_m3,
+            ohmic_cfl_safety=deck.ohmic_cfl_safety,
+            density_floor_m3=deck.density_floor_m3,
+            include_hall=deck.include_hall,
+            use_predictor_corrector=deck.use_predictor_corrector,
+            marder_factor_m2=deck.marder_factor_scale
+            * min(self.simulator.grid.spacing) ** 2,
+            marder_nondominance_threshold=deck.marder_nondominance_threshold,
+            electron_energy_state=self.electron_state,
+            ionization_state=self.ionization_state,
+            use_source_backed_conductivity=True,
+            mass_density_kg_m3=self.total_deuterium_density_m3 * deck.ion_mass_kg,
+            plasma_velocity_m_s=self.plasma_velocity_m_s,
+            electron_temperature_floor_K=10.0,
+            heat_flux_subcycles_max=5000,
+            use_source_ordered_velocity_update=deck.use_source_ordered_velocity_update,
+            circuit_state=self.circuit_state,
+            apply_circuit_boundary=deck.apply_circuit_boundary,
+            circuit_udpf_V=_segment_circuit_udpf(
+                deck.circuit_udpf_V,
+                start=self.completed_steps,
+                count=int(n_steps),
+            ),
+            circuit_udpf_mode=deck.circuit_udpf_mode,
+            circuit_feedback_min_current_A=deck.circuit_feedback_min_current_A,
+            circuit_z_index=deck.circuit_z_index,
+            circuit_blend=deck.circuit_blend,
+            history_stride=deck.history_stride,
+            max_step_results=deck.max_step_results,
+            target_time_s=None,
+            initial_lagged_field_work=self.lagged_field_work,
+            step_index_offset=self.completed_steps,
+        )
+        self.completed_steps += result.telemetry.n_steps_completed
+        if result.electron_energy is not None:
+            self.electron_state = result.electron_energy
+        if result.ionization_charge_state is not None:
+            self.ionization_state = result.ionization_charge_state
+        self.circuit_state = result.circuit
+        self.lagged_field_work = _last_field_work_from_simulation(result)
+        return result
+
+
 class HybridEMPicFluidRun:
     """Orchestrate a minimal whole-shot-candidate 3-D hybrid EM/PIC-fluid run."""
 
@@ -382,22 +625,60 @@ class HybridEMPicFluidRun:
 
         geometry = HybridPICSourceGeometry()
         grid = deck.grid()
-        electron_density = np.full(grid.shape, deck.background_density_m3, dtype=float)
+        conductor_cells, conductor_mask_packet = _resolve_conductor_cells(deck, grid)
+        maxwell_boundaries = Maxwell3DBoundaries(
+            conductor_cells=conductor_cells,
+            pml_cells=deck.pml_cells,
+            pml_strength=deck.pml_strength,
+            open_boundary=deck.open_boundary,
+        )
+        particle_boundaries = (
+            ParticleAbsorbingBoundaries(
+                grid,
+                conductor_cells=conductor_cells,
+                pml_cells=deck.pml_cells,
+            )
+            if deck.particle_absorption_enabled
+            else None
+        )
+        boundary_policy_packet = _boundary_policy_telemetry(
+            deck=deck,
+            grid=grid,
+            conductor_cells=conductor_cells,
+            conductor_mask=conductor_mask_packet,
+        )
+        total_deuterium_density = np.full(
+            grid.shape,
+            deck.background_density_m3,
+            dtype=float,
+        )
+        initial_electron_density = np.maximum(
+            total_deuterium_density * deck.initial_ionization_fraction,
+            1.0,
+        )
         electron_closure = ElectronEnergyClosure(grid)
         electron_state = electron_closure.initialize(
             electron_temperature_K=deck.electron_temperature_K,
             ion_temperature_K=deck.ion_temperature_K,
-            electron_density_m3=electron_density,
+            electron_density_m3=initial_electron_density,
+        )
+        ionization_transport = DeuteriumIonizationTransport(grid)
+        ionization_state = ionization_transport.initialize(
+            total_deuterium_density_m3=total_deuterium_density,
+            ionization_fraction=deck.initial_ionization_fraction,
         )
         loop = HybridPIC3DLoop(
             grid,
+            maxwell_boundaries=maxwell_boundaries,
+            particle_boundaries=particle_boundaries,
             electron_energy_closure=electron_closure,
+            ionization_transport=ionization_transport,
             kinetic_yield_history=KineticIonYieldHistory(grid),
         )
         state = loop.field_stepper.maxwell.empty_state()
         state.E.Ex_edge.fill(deck.initial_E_x_V_m)
         state.B.Bz_face.fill(deck.initial_B_z_T)
-        pic = _build_minimal_pic(deck, grid)
+        pic, pic_loading_packet = _build_initial_pic(deck, grid, conductor_cells)
         initial_circuit_state = deck.circuit_state or CircuitState()
         circuit_boundary = self.circuit_boundary
         if deck.apply_circuit_boundary and circuit_boundary is None:
@@ -438,15 +719,23 @@ class HybridEMPicFluidRun:
             marder_factor_m2=deck.marder_factor_scale * min(grid.spacing) ** 2,
             marder_nondominance_threshold=deck.marder_nondominance_threshold,
             electron_energy_state=electron_state,
-            mass_density_kg_m3=electron_density * deck.ion_mass_kg,
+            ionization_state=ionization_state,
+            use_source_backed_conductivity=True,
+            mass_density_kg_m3=total_deuterium_density * deck.ion_mass_kg,
             plasma_velocity_m_s=np.zeros(grid.shape + (3,), dtype=float),
             electron_temperature_floor_K=10.0,
+            heat_flux_subcycles_max=5000,
             use_source_ordered_velocity_update=deck.use_source_ordered_velocity_update,
             circuit_state=initial_circuit_state,
             apply_circuit_boundary=deck.apply_circuit_boundary,
             circuit_udpf_V=deck.circuit_udpf_V,
+            circuit_udpf_mode=deck.circuit_udpf_mode,
+            circuit_feedback_min_current_A=deck.circuit_feedback_min_current_A,
             circuit_z_index=deck.circuit_z_index,
             circuit_blend=deck.circuit_blend,
+            history_stride=deck.history_stride,
+            max_step_results=deck.max_step_results,
+            target_time_s=deck.target_time_s,
         )
         final_energy = _energy_snapshot(
             loop=loop,
@@ -458,7 +747,7 @@ class HybridEMPicFluidRun:
         )
         conservation = _conservation_telemetry(
             grid=grid,
-            n_steps=deck.n_steps,
+            n_steps=simulation.telemetry.n_steps_completed,
             dt_s=deck.dt_s,
             initial=initial_energy,
             final=final_energy,
@@ -468,19 +757,35 @@ class HybridEMPicFluidRun:
             geometry=geometry,
             simulation=simulation,
             conservation=conservation,
+            boundary_policy=boundary_policy_packet,
+            pic_loading=pic_loading_packet,
         )
         startup_packet = deck.startup_packet()
+        simulation_telemetry = simulation.telemetry.to_dict()
+        current_waveform_comparison_packet = (
+            build_engineering_current_waveform_comparator(
+                declared_scope=deck.validation_scope,
+                device_name=deck.device_name,
+                validation_targets=deck.validation_targets,
+                simulation_telemetry=simulation_telemetry,
+            )
+        )
         power_port_packet = build_engineering_power_port_packet(
             simulation.telemetry.circuit,
             startup=startup_packet,
             conservation=conservation,
+            simulation_telemetry=simulation_telemetry,
         )
-        simulation_telemetry = simulation.telemetry.to_dict()
         limiter_readiness_packet = build_limiter_readiness_packet(
             declared_scope=deck.validation_scope,
             device_name=deck.device_name,
             accepted_channels=deck.limiter_readiness_accepted_channels,
             conservation=conservation,
+            simulation_telemetry=simulation_telemetry,
+        )
+        limiter_zero_probe_packet = build_experimental_limiter_zero_probe_packet(
+            declared_scope=deck.validation_scope,
+            device_name=deck.device_name,
             simulation_telemetry=simulation_telemetry,
         )
         dimensionality_packet = build_dimensionality_handoff_packet(
@@ -491,12 +796,27 @@ class HybridEMPicFluidRun:
             simulation_telemetry=simulation_telemetry,
         )
         last_step = simulation.telemetry.last_step or {}
+        plasmapy_audit_packet = build_plasmapy_formulary_audit_packet(
+            _plasmapy_reference_state(deck)
+        )
         physics_closure_packet = build_physics_closure_packet(
             include_hall=deck.include_hall,
             electron_energy_present=simulation.electron_energy is not None,
             kinetic_yield_present=_last_step_has_key(last_step, "kinetic_yield"),
             collisions_enabled=_collisions_enabled_in_telemetry(last_step),
+            electron_heat_flux_present=_last_step_has_applied_heat_flux(last_step),
+            electron_equilibration_audit_present=(
+                _last_step_has_equilibration_audit(last_step)
+            ),
+            ionization_charge_state_present=_last_step_has_key(
+                last_step,
+                "ionization_charge_state",
+            ),
+            source_backed_transport_present=_last_step_has_source_backed_transport(
+                last_step
+            ),
             dimensionality=dimensionality_packet,
+            community_formula_audit=plasmapy_audit_packet,
         )
         numerical_fidelity_packet = build_numerical_fidelity_packet(
             declared_scope=deck.validation_scope,
@@ -507,6 +827,7 @@ class HybridEMPicFluidRun:
             upstream_packets={
                 "startup_bvp": startup_packet,
                 "limiter_readiness": limiter_readiness_packet,
+                "experimental_limiter_zero_probe": limiter_zero_probe_packet,
                 "power_port": power_port_packet,
                 "dimensionality_handoff": dimensionality_packet,
                 "physics_closure": physics_closure_packet,
@@ -552,6 +873,7 @@ class HybridEMPicFluidRun:
             upstream_packets={
                 "startup_bvp": startup_packet,
                 "limiter_readiness": limiter_readiness_packet,
+                "experimental_limiter_zero_probe": limiter_zero_probe_packet,
                 "power_port": power_port_packet,
                 "dimensionality_handoff": dimensionality_packet,
                 "physics_closure": physics_closure_packet,
@@ -560,6 +882,9 @@ class HybridEMPicFluidRun:
                 "spatial_field_temperature": spatial_field_temperature_packet,
                 "neutron_authority": neutron_authority_packet,
                 "numerical_fidelity": numerical_fidelity_packet,
+                "engineering_current_waveform_comparison": (
+                    current_waveform_comparison_packet
+                ),
             },
         )
         certificate_gate_packet = build_first_principles_certificate_gate_packet(
@@ -569,6 +894,7 @@ class HybridEMPicFluidRun:
             upstream_packets={
                 "startup_bvp": startup_packet,
                 "limiter_readiness": limiter_readiness_packet,
+                "experimental_limiter_zero_probe": limiter_zero_probe_packet,
                 "power_port": power_port_packet,
                 "dimensionality_handoff": dimensionality_packet,
                 "physics_closure": physics_closure_packet,
@@ -587,6 +913,7 @@ class HybridEMPicFluidRun:
             upstream_packets={
                 "startup_bvp": startup_packet,
                 "limiter_readiness": limiter_readiness_packet,
+                "experimental_limiter_zero_probe": limiter_zero_probe_packet,
                 "power_port": power_port_packet,
                 "dimensionality_handoff": dimensionality_packet,
                 "physics_closure": physics_closure_packet,
@@ -599,6 +926,50 @@ class HybridEMPicFluidRun:
                 "certificate_gate": certificate_gate_packet,
             },
         )
+        experimental_whole_shot_packet = build_experimental_whole_shot_packet(
+            declared_scope=deck.validation_scope,
+            device_name=deck.device_name,
+            requested_duration_s=deck.target_time_s,
+            step_budget=deck.n_steps,
+            simulation_telemetry=simulation_telemetry,
+            upstream_packets={
+                "startup_bvp": startup_packet,
+                "limiter_readiness": limiter_readiness_packet,
+                "experimental_limiter_zero_probe": limiter_zero_probe_packet,
+                "boundary_policy": boundary_policy_packet,
+                "pic_particle_loading": pic_loading_packet,
+                "power_port": power_port_packet,
+                "dimensionality_handoff": dimensionality_packet,
+                "physics_closure": physics_closure_packet,
+                "same_scope_source": same_scope_source_packet,
+                "waveform_phase": waveform_phase_packet,
+                "engineering_current_waveform_comparison": (
+                    current_waveform_comparison_packet
+                ),
+                "spatial_field_temperature": spatial_field_temperature_packet,
+                "neutron_authority": neutron_authority_packet,
+                "comparator_uq": comparator_uq_packet,
+                "numerical_fidelity": numerical_fidelity_packet,
+                "certificate_gate": certificate_gate_packet,
+                "generalization": generalization_packet,
+                "plasmapy_audit": plasmapy_audit_packet,
+            },
+            grid_spacing_m=grid.spacing,
+            dt_s=deck.dt_s,
+        )
+        experimental_numerics_packet = (
+            build_experimental_numerical_runtime_audit_packet(
+                declared_scope=deck.validation_scope,
+                device_name=deck.device_name,
+                simulation_telemetry=simulation_telemetry,
+                conservation=conservation,
+                duration_plan=experimental_whole_shot_packet.get("duration_plan"),
+                limiter_readiness=limiter_readiness_packet,
+                numerical_fidelity=numerical_fidelity_packet,
+                grid_spacing_m=grid.spacing,
+                dt_s=deck.dt_s,
+            )
+        )
         validation_packet = _first_principles_candidate_packet(
             geometry_dimensionality="cartesian_3d",
             source_scope=geometry.source_scope,
@@ -610,6 +981,7 @@ class HybridEMPicFluidRun:
             same_scope_source=same_scope_source_packet,
             waveform_phase=waveform_phase_packet,
             spatial_field_temperature=spatial_field_temperature_packet,
+            current_waveform_comparison=current_waveform_comparison_packet,
             neutron_authority=neutron_authority_packet,
             comparator_uq=comparator_uq_packet,
             numerical_fidelity=numerical_fidelity_packet,
@@ -623,21 +995,33 @@ class HybridEMPicFluidRun:
             "source_scope": geometry.source_scope,
             "startup": startup_packet,
             "limiter_readiness": limiter_readiness_packet,
+            "experimental_limiter_zero_probe": limiter_zero_probe_packet,
+            "boundary_policy": boundary_policy_packet,
+            "pic_particle_loading": pic_loading_packet,
             "power_port": power_port_packet,
             "dimensionality_handoff": dimensionality_packet,
             "physics_closure": physics_closure_packet,
             "same_scope_source": same_scope_source_packet,
             "waveform_phase": waveform_phase_packet,
+            "engineering_current_waveform_comparison": (
+                current_waveform_comparison_packet
+            ),
             "spatial_field_temperature": spatial_field_temperature_packet,
             "neutron_authority": neutron_authority_packet,
             "comparator_uq": comparator_uq_packet,
             "numerical_fidelity": numerical_fidelity_packet,
             "certificate_gate": certificate_gate_packet,
             "generalization": generalization_packet,
+            "experimental_whole_shot": experimental_whole_shot_packet,
+            "experimental_numerics": experimental_numerics_packet,
             "grid_shape": list(grid.shape),
             "grid_spacing_m": list(grid.spacing),
             "n_steps": deck.n_steps,
+            "n_steps_completed": simulation.telemetry.n_steps_completed,
             "dt_s": deck.dt_s,
+            "history_stride": deck.history_stride,
+            "max_step_results": deck.max_step_results,
+            "target_time_s": deck.target_time_s,
             "simulation": simulation.telemetry.to_dict(),
             "candidate_evidence": evidence,
             "reduced_models_used": False,
@@ -674,9 +1058,61 @@ def run_first_principles_3d_deck(
     )
 
 
+def build_first_principles_3d_session(
+    deck: Mapping[str, Any] | object | None = None,
+    *,
+    circuit_boundary: CircuitMagneticBoundaryDrive | None = None,
+) -> FirstPrinciples3DSession:
+    """Build a reusable session for fixed-step split-continuation probes."""
+
+    return FirstPrinciples3DSession.from_deck(
+        deck,
+        circuit_boundary=circuit_boundary,
+    )
+
+
+def _segment_circuit_udpf(
+    values: float | tuple[float, ...],
+    *,
+    start: int,
+    count: int,
+) -> float | tuple[float, ...]:
+    array = np.asarray(values, dtype=float)
+    if array.ndim == 0:
+        return float(array)
+    segment = array[int(start) : int(start) + int(count)]
+    if segment.shape != (int(count),):
+        raise ValueError("circuit_udpf_V sequence does not cover segment")
+    return tuple(float(item) for item in segment)
+
+
+def _last_field_work_from_simulation(
+    result: HybridPIC3DSimulationResult,
+) -> dict[str, Any] | None:
+    last_step = result.telemetry.last_step
+    if not isinstance(last_step, Mapping):
+        return None
+    field_step = last_step.get("field_step")
+    if not isinstance(field_step, Mapping):
+        return None
+    field_work = field_step.get("field_work")
+    if not isinstance(field_work, Mapping):
+        return None
+    return dict(field_work)
+
+
 def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
     if int(deck.n_steps) != deck.n_steps or deck.n_steps <= 0:
         raise ValueError("n_steps must be a positive integer")
+    if int(deck.history_stride) != deck.history_stride or deck.history_stride <= 0:
+        raise ValueError("history_stride must be a positive integer")
+    if deck.max_step_results is not None and (
+        int(deck.max_step_results) != deck.max_step_results
+        or deck.max_step_results < 0
+    ):
+        raise ValueError("max_step_results must be a non-negative integer or None")
+    if deck.target_time_s is not None and deck.target_time_s <= 0.0:
+        raise ValueError("target_time_s must be positive")
     if deck.dt_s <= 0.0:
         raise ValueError("dt_s must be positive")
     if deck.sigma0_S_m < 0.0:
@@ -685,6 +1121,8 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         raise ValueError("background_density_m3 must be positive")
     if deck.density_floor_m3 <= 0.0:
         raise ValueError("density_floor_m3 must be positive")
+    if not 0.0 <= deck.initial_ionization_fraction <= 1.0:
+        raise ValueError("initial_ionization_fraction must be in [0, 1]")
     if deck.particle_weight <= 0.0:
         raise ValueError("particle_weight must be positive")
     if deck.ion_mass_kg <= 0.0:
@@ -699,31 +1137,43 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         raise ValueError("circuit_inductance_H must be positive")
     if deck.circuit_resistance_ohm < 0.0:
         raise ValueError("circuit_resistance_ohm must be non-negative")
+    if deck.circuit_udpf_mode not in {"input_sequence", "lagged_volume_j_dot_e"}:
+        raise ValueError(
+            "circuit_udpf_mode must be 'input_sequence' or 'lagged_volume_j_dot_e'"
+        )
+    if deck.circuit_feedback_min_current_A < 0.0:
+        raise ValueError("circuit_feedback_min_current_A must be non-negative")
+    if int(deck.pml_cells) != deck.pml_cells or deck.pml_cells < 0:
+        raise ValueError("pml_cells must be a non-negative integer")
+    if deck.pml_strength < 0.0:
+        raise ValueError("pml_strength must be non-negative")
+    if deck.conductor_mask_status not in {
+        "not_supplied",
+        "candidate_geometry_mask",
+        "reviewed_same_scope_geometry_mask",
+    }:
+        raise ValueError("unknown conductor_mask_status")
+    if deck.conductor_mask_mode not in {
+        "none",
+        "axisymmetric_coaxial_projection",
+        "pf1000_rod_hollow_projection",
+    }:
+        raise ValueError("unknown conductor_mask_mode")
+    if (
+        deck.conductor_mask_mode
+        in {"axisymmetric_coaxial_projection", "pf1000_rod_hollow_projection"}
+        and deck.conductor_mask_status == "not_supplied"
+    ):
+        raise ValueError(
+            f"{deck.conductor_mask_mode} requires conductor_mask_status"
+        )
 
 
-def _build_minimal_pic(deck: FirstPrinciples3DDeck, grid: Maxwell3DGrid) -> HybridPIC:
-    center = np.array(
-        [0.5 * grid.nx * grid.dx, 0.5 * grid.ny * grid.dy, 0.5 * grid.nz * grid.dz],
-        dtype=float,
-    )
-    offsets = np.array(
-        [
-            [-0.25 * grid.dx, 0.0, 0.0],
-            [0.25 * grid.dx, 0.0, 0.0],
-            [0.0, -0.25 * grid.dy, 0.0],
-            [0.0, 0.25 * grid.dy, 0.0],
-        ],
-        dtype=float,
-    )
-    velocities = np.array(
-        [
-            [8.0e5, 0.0, 0.0],
-            [-8.0e5, 0.0, 0.0],
-            [0.0, 8.0e5, 0.0],
-            [0.0, -8.0e5, 0.0],
-        ],
-        dtype=float,
-    )
+def _build_initial_pic(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+    conductor_cells: np.ndarray | None,
+) -> tuple[HybridPIC, dict[str, Any]]:
     pic = HybridPIC(
         grid_shape=grid.shape,
         dx=grid.dx,
@@ -733,15 +1183,131 @@ def _build_minimal_pic(deck: FirstPrinciples3DDeck, grid: Maxwell3DGrid) -> Hybr
         use_esirkepov=True,
         use_binary_collisions=False,
     )
+    active_cells = _initial_pic_active_cells(
+        grid,
+        conductor_cells=conductor_cells,
+        pml_cells=deck.pml_cells,
+    )
+    conductor_mask = (
+        np.zeros(grid.shape, dtype=bool)
+        if conductor_cells is None
+        else np.asarray(conductor_cells, dtype=bool)
+    )
+    pml_mask = _initial_pic_pml_mask(grid, deck.pml_cells)
+    indices = np.argwhere(active_cells)
+    spacings = np.array(grid.spacing, dtype=float)
+    cell_centers = (indices.astype(float) + 0.5) * spacings
+    initial_ion_density_m3 = (
+        float(deck.background_density_m3) * float(deck.initial_ionization_fraction)
+    )
+    physical_ions_per_cell = initial_ion_density_m3 * grid.cell_volume
+    thermal_speed_m_s = float(
+        np.sqrt(3.0 * K_B * float(deck.ion_temperature_K) / float(deck.ion_mass_kg))
+    )
+    velocity_basis = np.array(
+        [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+        ],
+        dtype=float,
+    )
+    quadrature_count = int(velocity_basis.shape[0])
+    if cell_centers.size and physical_ions_per_cell > 0.0:
+        positions = np.repeat(cell_centers, quadrature_count, axis=0)
+        velocities = np.tile(
+            velocity_basis * thermal_speed_m_s,
+            (cell_centers.shape[0], 1),
+        )
+        weights = np.full(
+            positions.shape[0],
+            physical_ions_per_cell / quadrature_count,
+            dtype=float,
+        )
+    else:
+        positions = np.empty((0, 3), dtype=float)
+        velocities = np.empty((0, 3), dtype=float)
+        weights = np.empty((0,), dtype=float)
     pic.add_species(
         deck.ion_species_name,
         deck.ion_mass_kg,
         deck.ion_charge_C,
-        positions=center[np.newaxis, :] + offsets,
+        positions=positions,
         velocities=velocities,
-        weights=np.full(4, deck.particle_weight, dtype=float),
+        weights=weights,
     )
-    return pic
+    represented_ions = float(np.sum(weights))
+    active_count = int(indices.shape[0])
+    total_cells = int(np.prod(grid.shape))
+    loading_packet = {
+        "status": "candidate_density_normalized_pic_loading_not_validation",
+        "source": (
+            "KnowledgeReference/"
+            "the-vlasov-two-fluid-and-mhd-models-of-plasma-dynamics.md:1028-1060"
+        ),
+        "architecture_source": HYBRID_PIC_3D_SOURCE,
+        "implementation": "src/dpf/first_principles/runner.py",
+        "loading_policy": (
+            "six_stream_zero_mean_thermal_moment_quadrature_per_active_cell"
+        ),
+        "grid_shape": list(grid.shape),
+        "total_cells": total_cells,
+        "active_loaded_cells": active_count,
+        "macroparticles_loaded": int(weights.size),
+        "velocity_quadrature_directions_per_cell": quadrature_count,
+        "ion_thermal_speed_m_s": thermal_speed_m_s,
+        "excluded_conductor_cells": int(np.count_nonzero(conductor_mask)),
+        "excluded_pml_cells": int(np.count_nonzero(pml_mask & ~conductor_mask)),
+        "initial_total_deuterium_density_m3": float(deck.background_density_m3),
+        "initial_ionization_fraction": float(deck.initial_ionization_fraction),
+        "initial_ion_density_m3": initial_ion_density_m3,
+        "cell_volume_m3": float(grid.cell_volume),
+        "macro_particle_weight_min": float(np.min(weights)) if weights.size else 0.0,
+        "macro_particle_weight_max": float(np.max(weights)) if weights.size else 0.0,
+        "represented_physical_ions": represented_ions,
+        "nominal_deck_particle_weight": float(deck.particle_weight),
+        "particle_weight_policy": (
+            "runtime weights are density times cell volume so the initial ion "
+            "macroparticles conserve the deck ion density; six-stream velocity "
+            "quadrature preserves zero drift and the isotropic thermal second moment"
+        ),
+        "can_support_first_principles_acceptance": False,
+        "limitations": [
+            "Cell-centered six-stream loading is a deterministic engineering PIC initialization, not an accepted startup BVP.",
+            "The six-stream quadrature matches thermal moments but is not a sampled or reviewed DPF startup distribution.",
+            "Molecular deuterium, preionization gradients, sheath liftoff, and surface flashover remain blocked upstream.",
+        ],
+    }
+    return pic, loading_packet
+
+
+def _initial_pic_active_cells(
+    grid: Maxwell3DGrid,
+    *,
+    conductor_cells: np.ndarray | None,
+    pml_cells: int,
+) -> np.ndarray:
+    active = np.ones(grid.shape, dtype=bool)
+    if conductor_cells is not None:
+        active &= ~np.asarray(conductor_cells, dtype=bool)
+    active &= ~_initial_pic_pml_mask(grid, pml_cells)
+    return active
+
+
+def _initial_pic_pml_mask(grid: Maxwell3DGrid, pml_cells: int) -> np.ndarray:
+    mask = np.zeros(grid.shape, dtype=bool)
+    p = int(pml_cells)
+    if p > 0:
+        mask[:p, :, :] = True
+        mask[-p:, :, :] = True
+        mask[:, :p, :] = True
+        mask[:, -p:, :] = True
+        mask[:, :, :p] = True
+        mask[:, :, -p:] = True
+    return mask
 
 
 def _candidate_evidence(
@@ -749,6 +1315,8 @@ def _candidate_evidence(
     geometry: HybridPICSourceGeometry,
     simulation: HybridPIC3DSimulationResult,
     conservation: dict[str, Any],
+    boundary_policy: Mapping[str, Any],
+    pic_loading: Mapping[str, Any],
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
         "true_3d_dimensionality": hybrid_simulator_candidate_evidence(
@@ -758,6 +1326,16 @@ def _candidate_evidence(
             geometry
         ),
         "conservation_telemetry": conservation,
+        "field_particle_boundary_policy": _candidate_record(
+            capability="field_particle_boundary_policy",
+            implementation="src/dpf/first_principles/runner.py",
+            telemetry=boundary_policy,
+        ),
+        "density_normalized_pic_particle_loading": _candidate_record(
+            capability="density_normalized_pic_particle_loading",
+            implementation="src/dpf/first_principles/runner.py",
+            telemetry=pic_loading,
+        ),
     }
     if simulation.step_results:
         last_step = simulation.step_results[-1]
@@ -778,6 +1356,12 @@ def _candidate_evidence(
                 capability="kinetic_ion_neutron_yield_history",
                 implementation="src/dpf/fields/kinetic_yield.py",
                 telemetry=last_step.telemetry.kinetic_yield,
+            )
+        if last_step.telemetry.particle_boundaries is not None:
+            evidence["pml_conductor_particle_boundaries"] = _candidate_record(
+                capability="pml_conductor_particle_boundaries",
+                implementation="src/dpf/fields/particle_boundaries.py",
+                telemetry=last_step.telemetry.particle_boundaries,
             )
         if simulation.telemetry.circuit is not None:
             evidence["external_circuit_magnetic_boundary"] = {
@@ -824,6 +1408,7 @@ def _first_principles_candidate_packet(
     same_scope_source: Mapping[str, Any],
     waveform_phase: Mapping[str, Any],
     spatial_field_temperature: Mapping[str, Any],
+    current_waveform_comparison: Mapping[str, Any],
     neutron_authority: Mapping[str, Any],
     comparator_uq: Mapping[str, Any],
     numerical_fidelity: Mapping[str, Any],
@@ -870,6 +1455,12 @@ def _first_principles_candidate_packet(
         "waveform_phase_missing_acceptance_channels": waveform_phase.get(
             "missing_acceptance_channels",
             (),
+        ),
+        "engineering_current_waveform_comparison_status": (
+            current_waveform_comparison.get("status")
+        ),
+        "engineering_current_waveform_comparison_missing_for_acceptance": (
+            current_waveform_comparison.get("missing_for_acceptance", ())
         ),
         "spatial_field_temperature_status": spatial_field_temperature.get("status"),
         "spatial_field_temperature_missing_acceptance_channels": (
@@ -969,9 +1560,10 @@ def _circuit_energy_J(
     if circuit_boundary is None or circuit_state is None:
         return 0.0
     params = circuit_boundary.parameters
+    capacitor_voltage_V = params.voltage_V - circuit_state.charge_C / params.capacitance_F
     return float(
         0.5 * params.inductance_H * circuit_state.current_A**2
-        + 0.5 * circuit_state.charge_C**2 / params.capacitance_F
+        + 0.5 * params.capacitance_F * capacitor_voltage_V**2
     )
 
 
@@ -1012,6 +1604,310 @@ def _conservation_telemetry(
             "Does not include accepted source-backed detector, UQ, nondominance, or backend-scaling evidence.",
             "Finite conservation telemetry is engineering evidence, not validation.",
         ],
+    }
+
+
+def _boundary_values_from_policy(value: Mapping[str, Any] | object) -> dict[str, Any]:
+    return {
+        "pml_cells": int(_get(value, "pml_cells", 0)),
+        "pml_strength": float(_get(value, "pml_strength", 0.0)),
+        "particle_absorption_enabled": bool(
+            _get(value, "particle_absorption_enabled", False)
+        ),
+        "open_boundary": bool(_get(value, "open_boundary", True)),
+        "conductor_cells": _get(value, "conductor_cells", None),
+        "conductor_mask_status": str(_get(value, "conductor_mask_status", "not_supplied")),
+        "conductor_mask_mode": str(_get(value, "conductor_mask_mode", "none")),
+    }
+
+
+def _plasmapy_reference_state(deck: FirstPrinciples3DDeck) -> dict[str, float | str]:
+    startup_B = abs(float(deck.initial_B_z_T))
+    current_A = 0.0 if deck.circuit_state is None else float(deck.circuit_state.current_A)
+    anode_radius_m = (
+        float(deck.device_anode_radius_m)
+        if deck.device_anode_radius_m is not None
+        else float((deck.grid_spacing_m or (1.0e-3, 1.0e-3, 1.0e-3))[0])
+    )
+    circuit_B = (
+        MU_0 * abs(current_A) / (2.0 * np.pi * max(anode_radius_m, 1.0e-12))
+    )
+    return {
+        "electron_density_m3": float(deck.background_density_m3),
+        "electron_temperature_K": float(deck.electron_temperature_K),
+        "magnetic_field_T": startup_B if startup_B > 0.0 else max(circuit_B, 1.0e-9),
+        "mass_density_kg_m3": float(deck.background_density_m3)
+        * float(deck.ion_mass_kg),
+        "ion": "D+",
+    }
+
+
+def _boundary_policy_manifest(deck: FirstPrinciples3DDeck) -> dict[str, Any]:
+    conductor_cells = None
+    if deck.conductor_cells is not None:
+        conductor_cells = np.asarray(deck.conductor_cells, dtype=bool)
+    return {
+        "status": "candidate_engineering_boundary_policy_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": "613-619, 625-628",
+        "pml_cells": int(deck.pml_cells),
+        "pml_strength": float(deck.pml_strength),
+        "particle_absorption_enabled": bool(deck.particle_absorption_enabled),
+        "open_boundary": bool(deck.open_boundary),
+        "conductor_mask_status": deck.conductor_mask_status,
+        "conductor_mask_mode": deck.conductor_mask_mode,
+        "conductor_cells_active": (
+            0 if conductor_cells is None else int(np.count_nonzero(conductor_cells))
+        ),
+        "conductor_mask_supplied": conductor_cells is not None,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _coerce_conductor_cells(
+    value: Any,
+    grid: Maxwell3DGrid,
+) -> np.ndarray | None:
+    if value is None:
+        return None
+    mask = np.asarray(value, dtype=bool)
+    if mask.shape != grid.shape:
+        raise ValueError("conductor_cells must match grid shape")
+    return mask
+
+
+def _resolve_conductor_cells(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+) -> tuple[np.ndarray | None, dict[str, Any]]:
+    supplied = _coerce_conductor_cells(deck.conductor_cells, grid)
+    if supplied is not None:
+        return supplied, _conductor_mask_packet(
+            deck=deck,
+            grid=grid,
+            mask=supplied,
+            source="supplied_conductor_cells",
+        )
+    if deck.conductor_mask_mode == "none":
+        return None, _conductor_mask_packet(
+            deck=deck,
+            grid=grid,
+            mask=None,
+            source="not_supplied",
+        )
+    if deck.conductor_mask_mode == "axisymmetric_coaxial_projection":
+        mask = _axisymmetric_coaxial_conductor_mask(deck, grid)
+        return mask, _conductor_mask_packet(
+            deck=deck,
+            grid=grid,
+            mask=mask,
+            source="candidate_axisymmetric_coaxial_projection",
+        )
+    if deck.conductor_mask_mode == "pf1000_rod_hollow_projection":
+        mask = _pf1000_rod_hollow_conductor_mask(deck, grid)
+        return mask, _conductor_mask_packet(
+            deck=deck,
+            grid=grid,
+            mask=mask,
+            source="candidate_pf1000_rod_hollow_projection",
+        )
+    raise ValueError("unknown conductor_mask_mode")
+
+
+def _axisymmetric_coaxial_conductor_mask(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+) -> np.ndarray:
+    if deck.device_anode_radius_m is None:
+        raise ValueError("device_anode_radius_m is required for conductor mask")
+    if deck.device_cathode_radius_m is None:
+        raise ValueError("device_cathode_radius_m is required for conductor mask")
+    if deck.device_anode_length_m is None:
+        raise ValueError("device_anode_length_m is required for conductor mask")
+
+    x = (np.arange(grid.nx, dtype=float) + 0.5) * grid.dx
+    y = (np.arange(grid.ny, dtype=float) + 0.5) * grid.dy
+    z = (np.arange(grid.nz, dtype=float) + 0.5) * grid.dz
+    radius = np.sqrt(x[:, np.newaxis, np.newaxis] ** 2 + y[np.newaxis, :, np.newaxis] ** 2)
+    axial = z[np.newaxis, np.newaxis, :]
+    anode = (radius <= float(deck.device_anode_radius_m)) & (
+        axial <= float(deck.device_anode_length_m)
+    )
+    cathode = radius >= float(deck.device_cathode_radius_m)
+    return np.broadcast_to(anode | cathode, grid.shape).copy()
+
+
+def _pf1000_rod_hollow_conductor_mask(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+) -> np.ndarray:
+    if deck.device_anode_radius_m is None:
+        raise ValueError("device_anode_radius_m is required for conductor mask")
+    if deck.device_cathode_radius_m is None:
+        raise ValueError("device_cathode_radius_m is required for conductor mask")
+    if deck.device_anode_length_m is None:
+        raise ValueError("device_anode_length_m is required for conductor mask")
+    if deck.device_cathode_rod_count is None:
+        raise ValueError("device_cathode_rod_count is required for PF-1000 rod mask")
+    if deck.device_cathode_rod_diameter_m is None:
+        raise ValueError("device_cathode_rod_diameter_m is required for PF-1000 rod mask")
+
+    x = (np.arange(grid.nx, dtype=float) - 0.5 * (grid.nx - 1)) * grid.dx
+    y = (np.arange(grid.ny, dtype=float) - 0.5 * (grid.ny - 1)) * grid.dy
+    z = (np.arange(grid.nz, dtype=float) + 0.5) * grid.dz
+    xx = x[:, np.newaxis, np.newaxis]
+    yy = y[np.newaxis, :, np.newaxis]
+    axial = z[np.newaxis, np.newaxis, :]
+    radius = np.sqrt(xx**2 + yy**2)
+
+    anode_outer_radius = float(deck.device_anode_radius_m)
+    anode_inner_radius = (
+        0.0
+        if deck.device_anode_inner_radius_m is None
+        else float(deck.device_anode_inner_radius_m)
+    )
+    anode = (
+        (radius <= anode_outer_radius)
+        & (radius >= anode_inner_radius)
+        & (axial <= float(deck.device_anode_length_m))
+    )
+
+    rod_radius = 0.5 * float(deck.device_cathode_rod_diameter_m)
+    rod_center_radius = float(deck.device_cathode_radius_m) + rod_radius
+    rod_length = (
+        float(deck.device_cathode_rod_length_m)
+        if deck.device_cathode_rod_length_m is not None
+        else float(deck.device_anode_length_m)
+    )
+    cathode = np.zeros(grid.shape, dtype=bool)
+    for index in range(int(deck.device_cathode_rod_count)):
+        angle = 2.0 * np.pi * index / int(deck.device_cathode_rod_count)
+        center_x = rod_center_radius * np.cos(angle)
+        center_y = rod_center_radius * np.sin(angle)
+        rod_radius_field = np.sqrt((xx - center_x) ** 2 + (yy - center_y) ** 2)
+        cathode |= (rod_radius_field <= rod_radius) & (axial <= rod_length)
+
+    return np.broadcast_to(anode | cathode, grid.shape).copy()
+
+
+def _conductor_mask_packet(
+    *,
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+    mask: np.ndarray | None,
+    source: str,
+) -> dict[str, Any]:
+    active = 0 if mask is None else int(np.count_nonzero(mask))
+    total = int(np.prod(grid.shape))
+    pf1000_rod_projection = source == "candidate_pf1000_rod_hollow_projection"
+    return {
+        "status": "candidate_engineering_conductor_mask_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": (
+            "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, "
+            "Krauz 2012 PF-1000 geometry lines 344-351 and 453-454"
+        ),
+        "mask_source": source,
+        "conductor_mask_status": deck.conductor_mask_status,
+        "conductor_mask_mode": deck.conductor_mask_mode,
+        "grid_shape": list(grid.shape),
+        "conductor_cells_active": active,
+        "conductor_cell_fraction": 0.0 if total == 0 else active / total,
+        "device_anode_radius_m": deck.device_anode_radius_m,
+        "device_anode_inner_radius_m": deck.device_anode_inner_radius_m,
+        "device_cathode_radius_m": deck.device_cathode_radius_m,
+        "device_anode_length_m": deck.device_anode_length_m,
+        "device_cathode_rod_count": deck.device_cathode_rod_count,
+        "device_cathode_rod_diameter_m": deck.device_cathode_rod_diameter_m,
+        "device_cathode_rod_length_m": deck.device_cathode_rod_length_m,
+        "device_insulator_length_m": deck.device_insulator_length_m,
+        "device_insulator_outer_radius_m": deck.device_insulator_outer_radius_m,
+        "device_insulator_material": deck.device_insulator_material,
+        "pf1000_geometry_features": {
+            "cathode_rods_projected": bool(
+                pf1000_rod_projection
+                and deck.device_cathode_rod_count
+                and deck.device_cathode_rod_diameter_m
+            ),
+            "hollow_anode_declared_by_source": bool(pf1000_rod_projection),
+            "hollow_anode_inner_radius_supplied": (
+                deck.device_anode_inner_radius_m is not None
+            ),
+            "insulator_material_surface_declared": bool(deck.device_insulator_material),
+            "insulator_material_surface_resolved": False,
+            "reviewed_same_scope_voxel_mask": (
+                deck.conductor_mask_status == "reviewed_same_scope_geometry_mask"
+            ),
+        },
+        "coordinate_interpretation": (
+            "centered_cartesian_full_azimuth_projection"
+            if pf1000_rod_projection
+            else "positive_quadrant_cartesian_projection_from_axis_r_equals_zero"
+        ),
+        "can_support_first_principles_acceptance": False,
+        "limitations": [
+            (
+                "PF-1000 cathode rods are projected onto a Cartesian engineering grid."
+                if pf1000_rod_projection
+                else "Axisymmetric electrode dimensions are projected onto a Cartesian engineering grid."
+            ),
+            "Hollow-anode bore is not resolved unless an accepted inner radius is supplied.",
+            "Insulator material surfaces are declared but not resolved as material boundary regions.",
+            "No reviewed same-scope electrode mask or boundary-validation packet is attached.",
+        ],
+    }
+
+
+def _boundary_policy_telemetry(
+    *,
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+    conductor_cells: np.ndarray | None,
+    conductor_mask: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "status": "candidate_engineering_boundary_policy_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": "613-619, 625-628",
+        "capability": "pml_conductor_field_particle_boundaries",
+        "implementation": [
+            "src/dpf/fields/maxwell_3d.py",
+            "src/dpf/fields/particle_boundaries.py",
+            "src/dpf/fields/hybrid_loop.py",
+            "src/dpf/first_principles/runner.py",
+        ],
+        "grid_shape": list(grid.shape),
+        "pml_cells": int(deck.pml_cells),
+        "pml_strength": float(deck.pml_strength),
+        "particle_absorption_enabled": bool(deck.particle_absorption_enabled),
+        "open_boundary": bool(deck.open_boundary),
+        "conductor_mask_status": deck.conductor_mask_status,
+        "conductor_mask_mode": deck.conductor_mask_mode,
+        "conductor_mask": dict(conductor_mask),
+        "conductor_cells_active": (
+            0 if conductor_cells is None else int(np.count_nonzero(conductor_cells))
+        ),
+        "field_boundary_runtime": {
+            "maxwell_core_receives_boundary_policy": True,
+            "pml_damping_candidate": deck.pml_cells > 0 and deck.pml_strength > 0.0,
+            "conductor_e_zero_candidate": conductor_cells is not None,
+        },
+        "particle_boundary_runtime": {
+            "absorbing_boundary_enabled": bool(deck.particle_absorption_enabled),
+            "deletes_pml_conductor_or_outside_particles": bool(
+                deck.particle_absorption_enabled
+            ),
+        },
+        "acceptance_gate": (
+            "pml_conductor_boundary_runtime_is_candidate_only_until_same_scope_"
+            "geometry_masks_boundary_validation_and_particle_boundary_order_are_accepted"
+        ),
+        "negative_test_policy": {
+            "raw_boundary_runtime_promotion_rejection_required": True,
+            "raw_conductor_mask_without_same_scope_review_rejection_required": True,
+            "particle_deletion_after_reflecting_pic_push_rejection_required": True,
+        },
+        "can_support_first_principles_acceptance": False,
     }
 
 
@@ -1060,6 +1956,11 @@ def _build_manifest(
         "conservation_telemetry": conservation,
         "startup_bvp_packet": telemetry["startup"],
         "limiter_readiness_packet": telemetry["limiter_readiness"],
+        "experimental_limiter_zero_probe_packet": telemetry[
+            "experimental_limiter_zero_probe"
+        ],
+        "boundary_policy_packet": telemetry["boundary_policy"],
+        "pic_particle_loading_packet": telemetry["pic_particle_loading"],
         "power_port_packet": telemetry["power_port"],
         "dimensionality_handoff_packet": telemetry["dimensionality_handoff"],
         "physics_closure_packet": telemetry["physics_closure"],
@@ -1071,6 +1972,10 @@ def _build_manifest(
         "numerical_fidelity_packet": telemetry["numerical_fidelity"],
         "certificate_gate_packet": telemetry["certificate_gate"],
         "generalization_packet": telemetry["generalization"],
+        "experimental_whole_shot_packet": telemetry["experimental_whole_shot"],
+        "experimental_numerical_runtime_audit_packet": telemetry[
+            "experimental_numerics"
+        ],
         "hybrid_pic_3d": telemetry["candidate_evidence"],
     }
     payload["first_principles_manifest"] = package_manifest
@@ -1082,8 +1987,42 @@ def _coerce_deck_values(values: dict[str, Any]) -> dict[str, Any]:
     for key in ("grid_shape", "grid_spacing_m"):
         if coerced.get(key) is not None:
             coerced[key] = tuple(coerced[key])
+    if coerced.get("history_stride") is not None:
+        coerced["history_stride"] = int(coerced["history_stride"])
+    if coerced.get("max_step_results") is not None:
+        coerced["max_step_results"] = int(coerced["max_step_results"])
+    if coerced.get("target_time_s") is not None:
+        coerced["target_time_s"] = float(coerced["target_time_s"])
     if isinstance(coerced.get("circuit_udpf_V"), list):
         coerced["circuit_udpf_V"] = tuple(float(v) for v in coerced["circuit_udpf_V"])
+    if coerced.get("circuit_udpf_mode") is not None:
+        coerced["circuit_udpf_mode"] = str(coerced["circuit_udpf_mode"])
+    if coerced.get("pml_cells") is not None:
+        coerced["pml_cells"] = int(coerced["pml_cells"])
+    if coerced.get("pml_strength") is not None:
+        coerced["pml_strength"] = float(coerced["pml_strength"])
+    if coerced.get("particle_absorption_enabled") is not None:
+        coerced["particle_absorption_enabled"] = bool(
+            coerced["particle_absorption_enabled"]
+        )
+    if coerced.get("open_boundary") is not None:
+        coerced["open_boundary"] = bool(coerced["open_boundary"])
+    if coerced.get("conductor_mask_status") is not None:
+        coerced["conductor_mask_status"] = str(coerced["conductor_mask_status"])
+    if coerced.get("conductor_mask_mode") is not None:
+        coerced["conductor_mask_mode"] = str(coerced["conductor_mask_mode"])
+    if coerced.get("device_cathode_rod_count") is not None:
+        coerced["device_cathode_rod_count"] = int(coerced["device_cathode_rod_count"])
+    for key in (
+        "device_anode_inner_radius_m",
+        "device_cathode_rod_diameter_m",
+        "device_cathode_rod_length_m",
+        "device_insulator_outer_radius_m",
+    ):
+        if coerced.get(key) is not None:
+            coerced[key] = float(coerced[key])
+    if coerced.get("device_insulator_material") is not None:
+        coerced["device_insulator_material"] = str(coerced["device_insulator_material"])
     for key in (
         "startup_accepted_channels",
         "startup_required_channels",
@@ -1148,6 +2087,34 @@ def _last_step_has_key(last_step: Mapping[str, Any], key: str) -> bool:
     return isinstance(last_step.get(key), Mapping)
 
 
+def _last_step_has_applied_heat_flux(last_step: Mapping[str, Any]) -> bool:
+    electron_energy = last_step.get("electron_energy")
+    if not isinstance(electron_energy, Mapping):
+        return False
+    heat_flux = electron_energy.get("heat_flux")
+    return isinstance(heat_flux, Mapping) and heat_flux.get("applied") is True
+
+
+def _last_step_has_equilibration_audit(last_step: Mapping[str, Any]) -> bool:
+    electron_energy = last_step.get("electron_energy")
+    if not isinstance(electron_energy, Mapping):
+        return False
+    audit = electron_energy.get("equilibration_audit")
+    return (
+        isinstance(audit, Mapping)
+        and audit.get("status") == "candidate_nrl_equal_temperature_equilibration_audit"
+    )
+
+
+def _last_step_has_source_backed_transport(last_step: Mapping[str, Any]) -> bool:
+    transport = last_step.get("source_backed_transport")
+    return (
+        isinstance(transport, Mapping)
+        and transport.get("status")
+        == "candidate_source_backed_partial_ionized_conductivity"
+    )
+
+
 def _collisions_enabled_in_telemetry(last_step: Mapping[str, Any]) -> bool:
     source_order = last_step.get("source_ordered_loop")
     if not isinstance(source_order, Mapping):
@@ -1160,6 +2127,7 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
     diagnostics = deck.diagnostics
     startup = deck.startup
     closures = deck.closures
+    boundaries = getattr(deck, "boundaries", None)
     circuit = deck.circuit
     gas = deck.gas
     electric = tuple(getattr(startup, "initial_electric_field_V_m", (1.0e5, 0.0, 0.0)))
@@ -1170,9 +2138,26 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         "device_cathode_radius_m": deck.device.cathode_radius_m,
         "device_anode_length_m": deck.device.anode_length_m,
         "device_insulator_length_m": deck.device.insulator_length_m,
+        "device_anode_inner_radius_m": _get(
+            deck.device, "anode_inner_radius_m", None
+        ),
+        "device_cathode_rod_count": _get(deck.device, "cathode_rod_count", None),
+        "device_cathode_rod_diameter_m": _get(
+            deck.device, "cathode_rod_diameter_m", None
+        ),
+        "device_cathode_rod_length_m": _get(
+            deck.device, "cathode_rod_length_m", None
+        ),
+        "device_insulator_outer_radius_m": _get(
+            deck.device, "insulator_outer_radius_m", None
+        ),
+        "device_insulator_material": _get(deck.device, "insulator_material", None),
         "validation_scope": _validation_scope_from_package_deck(deck),
         "validation_targets": tuple(asdict(target) for target in deck.validation_targets),
         "n_steps": diagnostics.n_steps,
+        "history_stride": _get(diagnostics, "history_stride", 1),
+        "max_step_results": _get(diagnostics, "max_step_results", 256),
+        "target_time_s": _get(diagnostics, "target_time_s", None),
         "grid_shape": tuple(grid.shape),
         "grid_spacing_m": tuple(grid.spacing_m),
         "dt_s": diagnostics.dt_s,
@@ -1198,10 +2183,25 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         "marder_nondominance_threshold": closures.marder_nondominance_threshold,
         "ohmic_cfl_safety": closures.ohmic_cfl_safety,
         "apply_circuit_boundary": closures.apply_circuit_boundary,
+        "pml_cells": int(_get(boundaries, "pml_cells", 0)),
+        "pml_strength": float(_get(boundaries, "pml_strength", 0.0)),
+        "particle_absorption_enabled": bool(
+            _get(boundaries, "particle_absorption_enabled", False)
+        ),
+        "open_boundary": bool(_get(boundaries, "open_boundary", True)),
+        "conductor_mask_status": str(
+            _get(boundaries, "conductor_mask_status", "not_supplied")
+        ),
+        "conductor_mask_mode": str(
+            _get(boundaries, "conductor_mask_mode", "none")
+        ),
         "circuit_capacitance_F": circuit.capacitance_F,
         "circuit_voltage_V": circuit.voltage_V,
         "circuit_inductance_H": circuit.inductance_H,
         "circuit_resistance_ohm": circuit.resistance_ohm,
+        "circuit_udpf_mode": str(
+            _get(closures, "circuit_udpf_mode", "lagged_volume_j_dot_e")
+        ),
         "circuit_state": CircuitState(
             current_A=circuit.initial_current_A,
             charge_C=circuit.charge_C,

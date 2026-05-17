@@ -114,13 +114,14 @@ class ParticleCountLedger:
 
 @dataclass(frozen=True)
 class ResidualLedger:
-    """Residual placeholders and measured engineering residuals."""
+    """Measured divergence and current residual accounting."""
 
     status: str
     gauss_law_linf: float | None = None
     div_B_linf: float | None = None
     current_continuity_linf_A_m3: float | None = None
     current_residual_linf_A_m2: float | None = None
+    missing_channels: tuple[str, ...] = ()
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -313,9 +314,10 @@ def build_residual_ledger(
     div_B_linf: float | None = None,
     current_continuity_linf_A_m3: float | None = None,
     current_residual_linf_A_m2: float | None = None,
+    missing_channels: Sequence[str] | None = None,
     notes: str = "",
 ) -> ResidualLedger:
-    """Build measured-or-placeholder residual ledger fields."""
+    """Build measured residual ledger fields without synthetic substitutes."""
 
     values = {
         "gauss_law_linf": gauss_law_linf,
@@ -324,16 +326,26 @@ def build_residual_ledger(
         "current_residual_linf_A_m2": current_residual_linf_A_m2,
     }
     clean = {name: _optional_float(value) for name, value in values.items()}
+    missing = tuple(
+        str(channel)
+        for channel in (
+            missing_channels
+            if missing_channels is not None
+            else tuple(name for name, value in clean.items() if value is None)
+        )
+    )
     status = (
         "measured_residuals_not_validation"
+        if not missing
+        else "partial_measured_residuals_not_validation"
         if any(value is not None for value in clean.values())
-        else "placeholders_unavailable_not_validation"
+        else "measured_residual_channels_missing_not_validation"
     )
-    return ResidualLedger(status=status, notes=notes, **clean)
+    return ResidualLedger(status=status, missing_channels=missing, notes=notes, **clean)
 
 
 def residual_ledger_from_hybrid_telemetry(telemetry: Mapping[str, Any]) -> ResidualLedger:
-    """Extract residual placeholders from 3-D hybrid loop or run telemetry."""
+    """Extract measured residual channels from 3-D hybrid loop or run telemetry."""
 
     last_step = _mapping_or_none(telemetry.get("last_step")) or telemetry
     field_step = _mapping_or_none(last_step.get("field_step")) or last_step
@@ -378,7 +390,7 @@ def build_conservation_ledger(
     elif isinstance(residuals, ResidualLedger):
         residual_ledger = residuals
     elif isinstance(residuals, Mapping):
-        residual_ledger = build_residual_ledger(**dict(residuals))
+        residual_ledger = _coerce_residual_ledger(residuals)
     else:
         raise TypeError("residuals must be a ResidualLedger, mapping, or None")
 
@@ -485,6 +497,21 @@ def _coerce_energy_snapshot(
             inductive_J=_optional_float(value.get("inductive_J")),
         )
     raise TypeError("energy snapshot must be EnergySnapshot, mapping, or None")
+
+
+def _coerce_residual_ledger(value: Mapping[str, Any]) -> ResidualLedger:
+    """Normalize serialized residual channels without trusting stale status."""
+
+    allowed = {
+        "gauss_law_linf",
+        "div_B_linf",
+        "current_continuity_linf_A_m3",
+        "current_residual_linf_A_m2",
+        "missing_channels",
+        "notes",
+    }
+    payload = {key: item for key, item in value.items() if key in allowed}
+    return build_residual_ledger(**payload)
 
 
 def _energy_delta(

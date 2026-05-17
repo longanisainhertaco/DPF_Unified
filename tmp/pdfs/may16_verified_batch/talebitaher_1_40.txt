@@ -1,0 +1,1712 @@
+     ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+  CODED APERTURE IMAGING
+  OF NUCLEAR FUSION IN THE
+       PLASMA FOCUS DEVICE
+
+
+                         Alireza Talebitaher
+
+
+
+
+            A thesis submitted to the
+          National Institute of Education
+        Nanyang Technological University
+In fulfilment of the requirement for the degree of
+               Doctor of Philosophy
+
+
+                                                                      2012
+    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                   Dedicated to:
+
+
+                                     my dear wife, Elahe
+
+
+and my lovely kids, Azam, Akram and Hamed
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Acknowledgement
+          Foremost, I want to express my heartfelt thanks to my supervisor A/P S.V.
+
+Springham; his continual help and expertise have been most invaluable, and his
+
+friendship, guidance, enthusiasm are also much appreciated.
+
+          I want to extend my sincere appreciation to my co-supervisor, A/P Paul Lee
+
+Choon Keat, for his guidance and support.
+
+          It is with pleasure for me to express my sincere gratitude to A/P Paul Shutler; his
+
+support and guidance to carry out this work are highly appreciated.
+
+          I am thankful to National Institute of Education (NIE)Nanyang Technological
+
+University (NTU) for hosting my research and financial support for my study in
+
+Singapore.
+
+          I also wish to recognize the contributions and camaraderie of the members of the
+
+plasma research group, particularly A/P Rajdeep Sing Rawat, A/P Augustine Tan Tuck
+
+Lee and Prof. Xu Shuyan. It had been great experience learning from their scholarly
+
+advice.
+
+          It is my pleasure to thank Prof. Lee Sing for his invaluable advices and sharing
+
+me some of his experiences and experiments.
+
+          My sincere gratitude is also due to all my friends in Plasma Focus lab for their
+
+much-valued guidance, assistance and friendship. I am also grateful to the laboratory
+
+technical staff, Ms. Cecelia Selvam, for her help.
+
+          My deep heartfelt gratitude goes to my dear wife, Elahe and my lovely kids,
+
+Azam, Akram and Hamed, for their great sacrifices and unremitting moral supports.
+                    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Contents
+Abstract.............................................................................................................................. i
+Publication ....................................................................................................................... iii
+List of Figures.................................................................................................................. vi
+List of tables ................................................................................................................... xv
+1      Introduction to Plasma Focus ................................................................................... 3
+    1.1       Structure and Working Principle ....................................................................... 3
+    1.2       Dynamics of Plasma Focus ................................................................................ 4
+       1.2.1         The Breakdown phase (Inverse Pinch phase) .............................................. 5
+       1.2.2         The Axial Acceleration (Run Down) phase in Mather geometry ................6
+       1.2.3         The Radial Collapse phase .......................................................................... 7
+    1.3       Plasma Instabilities .......................................................................................... 10
+       1.3.1         Rayleigh-Taylor Instability ....................................................................... 10
+    1.4       Plasma Focus Models ...................................................................................... 12
+       1.4.1         Snow Plow model: ..................................................................................... 12
+       1.4.2         Quasi-Steady-State model: ........................................................................ 12
+       1.4.3         Slug model: ................................................................................................ 12
+       1.4.4         Gas dynamic model: .................................................................................. 13
+       1.4.5         Ion beam acceleration and neutron production models: ............................ 13
+    1.5       Plasma Focus Radiation: .................................................................................. 17
+       1.5.1         Ion-electron production ............................................................................. 17
+       1.5.2         X-ray production ....................................................................................... 18
+    1.6       Radiation Measurement ................................................................................... 20
+       1.6.1         Neutron Yield ............................................................................................ 20
+       1.6.2         Neutron Energy Measurement ................................................................... 21
+       1.6.3         Proton and Ion Measurement..................................................................... 22
+       1.6.4         Hard X-ray Measurement .......................................................................... 23
+       1.6.5         Soft X-ray Measurement ........................................................................... 23
+    1.7       NX2 Plasma Focus........................................................................................... 24
+       1.7.1         Chamber .................................................................................................... 25
+       1.7.2         Electric System .......................................................................................... 25
+       1.7.3         Electrical Diagnostics ................................................................................ 26
+    1.8       Layout of Thesis: ............................................................................................. 30
+                 ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+2     Coded Aperture Imaging (CAI) .............................................................................. 32
+    2.1    CAI Theory ...................................................................................................... 32
+      2.1.1       Overview ................................................................................................... 32
+      2.1.2       Coded Aperture Families:.......................................................................... 37
+      2.1.3       Coded Aperture Geometry ........................................................................ 41
+      2.1.4       Singer set array, a new approach for coded aperture imaging: ................. 42
+      2.1.5       Signal to Noise Ratio (SNR) in Coded Aperture Imaging ........................ 45
+      2.1.6       Mask Design .............................................................................................. 50
+      2.1.7       Image Reconstruction ................................................................................ 55
+    2.2    CAI Experimental Procedure ........................................................................... 56
+      2.2.1       Mask Fabrication ....................................................................................... 56
+      2.2.2       Charge Particle Detection .......................................................................... 58
+      2.2.3       Scanning .................................................................................................... 67
+      2.2.4       Image-Pro for Track Analysis ................................................................... 69
+      2.2.5       Data Analysis............................................................................................. 70
+    2.3    Monte Carlo Numerical Simulation of CAI System ........................................ 72
+      2.3.1       Simulated Source Distributions ................................................................. 75
+      2.3.2       Fusion Source Simulation with mask-1365 and mask-4680 ..................... 77
+3     Beryllium Activation Neutron Detector ................................................................. 80
+    3.1    Overview .......................................................................................................... 80
+    3.2    Construction ..................................................................................................... 85
+    3.3    Energy Calibration and Procedure for Setting the Energy Threshold ............. 86
+    3.4    Rate count and capability ................................................................................. 90
+    3.5    Numerical Calibration of Detector Response .................................................. 94
+      3.5.1       General Purpose Calibration...................................................................... 94
+      3.5.2       Special Calibration for NX2 Plasma Focus Device ................................ 100
+    3.6    Experimental Setup and Results .................................................................... 109
+      3.6.1       Data Acquisition System ......................................................................... 109
+      3.6.2       Interfering Activation .............................................................................. 111
+      3.6.3       Comparison of Response for Two Be Activation Detectors ................... 112
+      3.6.4       NX2 neutron yield and anisotropy measurements ................................... 114
+    3.7    Conclusion ..................................................................................................... 119
+4     Other Diagnostics ................................................................................................. 121
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+    4.1      X-Ray Pinhole Imaging ................................................................................. 121
+    4.2      Plastic Scintillator .......................................................................................... 124
+    4.3      Cesium Iodide (CsI) ....................................................................................... 125
+    4.4      Barium Fluoride ............................................................................................. 125
+5      Experiments and Results ...................................................................................... 128
+    5.1      Alpha Source Imaging ................................................................................... 128
+       5.1.1        Experimental Setup ................................................................................. 128
+       5.1.2        Results and Discussion ............................................................................ 131
+    5.2      Fusion Source 3-D Imaging ........................................................................... 134
+       5.2.1        Experimental Setup ................................................................................. 134
+       5.2.2        Experimental Results ............................................................................... 139
+    5.3      Fusion Imaging with Spaced Mask ................................................................ 142
+       5.3.1        Experimental Setup ................................................................................. 142
+       5.3.2        Experimental Results of operation in pure deuterium ............................. 151
+       5.3.3        Experimental Results of operation in admixture gas ...............................157
+       5.3.4        Image registration .................................................................................... 164
+       5.3.5        Fusion imaging with pure deuterium gas ................................................ 169
+       5.3.6        Fusion imaging with admixture gas ........................................................ 202
+6      Discussion............................................................................................................. 218
+    6.1      Mask design: .................................................................................................. 218
+    6.2      Simulation: ..................................................................................................... 221
+    6.3      Detector:......................................................................................................... 221
+    6.4      Scanning and Analyzing: ............................................................................... 222
+    6.5      Other diagnostics: .......................................................................................... 223
+    6.6      Alpha source imaging: ................................................................................... 224
+    6.7      Fusion source imaging with mask-400: ......................................................... 224
+    6.8      Fusion source imaging with spaced mask: .................................................... 225
+       6.8.1        Pure deuterium: ....................................................................................... 225
+       6.8.2        D2+2%Kr Admixture gas: ....................................................................... 226
+    6.9      Final conclusion and suggested future work:................................................. 227
+Appendices ................................................................................................................... 229
+References .................................................................................................................... 276
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Abstract
+          The Coded Aperture Imaging (CAI) technique has been used to image the
+deuterium-deuterium (D-D) fusion source in the NX2 plasma focus (PF) device, using
+protons emitted from the D(d,p)T reaction. CAI is a form of multiplexed pinhole
+imaging which uses many small pinholes arranged in specific patterns so as to obtain
+images with the good spatial resolution expected for a small pinhole, together with high
+brightness and signal-to-noise ratio (SNR) associated with a much larger open aperture.
+Our theoretical study of CAI led us to the conclusion that for extended sources, such as
+the PF pinch, coded mask patterns of relatively low open fraction (i.e. significantly less
+than 50%) are optimal. Therefore the mask patterns used in our experimental work are
+based on Singer cyclic difference sets. Monte Carlo simulations of CAI and pinhole
+imaging were performed in order to validate our theoretical SNR formulae and test our
+decoding algorithm. CR-39 polymer nuclear track detectors were used to register the
+~3 MeV protons emitted from the PF pinch. As an additional test of the CR-39 detector
+scanning procedures, theoretical formulae, and CAI decoding algorithm, various source
+                                                                                                               226
+shapes were simulated experimentally using a                                                                         Ra alpha particle source. As
+anticipated, the obtained alpha particle CAI images were found to be considerably better
+than the corresponding single-pinhole images. Significantly, this work represents the
+first application of the CAI technique to imaging the fusion source in a plasma focus
+device.
+
+          The time-integrated neutron yield and anisotropy for each NX2 plasma focus
+shot were measured using fast-neutron detectors based on the production of radioactive
+6
+    He via the 9Be(n,α)6He reaction. The newly fabricated detectors comprise a beryllium
+metal sheet sandwiched between two large-area xenon-filled proportional counters. A
+methodology was developed for calculating the absolute neutron response function of
+these beryllium activation detectors, based on: the 9Be(n,α)6He reaction cross-section,
+energy calibration of the proportional counters, and numerical simulations (using
+MCNP5) of neutron and beta-particle interactions.
+
+          In one series of experiments, five CAI cameras with identical masks were
+employed simultaneously: one placed on-axis (0°) and four at 45° to the plasma focus
+axis at the distances of 10.3 cm and 4.9 cm from the source respectively, to investigate
+the spatial distribution of D-D fusion in the NX2 PF device operated in pure D2 gas and
+
+                                                                                        i
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+with a PF bank energy of 1.6 kJ. These conditions represent the neutron-optimized
+regime, for which the neutron yield is typically 1-3×108 n/shot. In a second series of
+experiments, two larger coded masks: mask-1345 (91×15 array and 341 holes each
+0.3 mm side) and mask-4680 (104×45 arrays and 585 holes each 0.27 mm side) were
+placed at 90° to the plasma focus axis to investigate the fusion source in pure deuterium
+and deuterium-krypton admixture working gases. The number of proton tracks
+registered on the CR-39 detectors per shot was typically (1-3)×105. The results clearly
+show the different size, density and shape of the fusion source in pure D2 and D2-Kr
+admixture operation. For this second series of experiments, an x-ray pinhole imaging
+system with suitable filtering was employed simultaneously to record the associated x-
+ray images of the hot dense pinched plasma column for comparison with the fusion
+source images. A plastic scintillation detector was used to measure the time-resolved
+neutron signal, while the time-resolved hard x-ray pulse was measured using both
+cesium-iodide and barium-fluoride scintillation detectors.
+
+       The results show little apparent correlation between the shape of the D-D fusion
+source and the corresponding soft x-ray image of the plasma pinch. For pure D2
+discharges the proton CAI images show a reasonably symmetrical “cigar-shaped” fusion
+source surrounding the pinch column, without any appreciable indication of m = 0 or
+m = 1 plasma instabilities. Soft x-ray emission from the pinch column is much stronger
+for D2-Kr admixture operation than for pure D2 operation, and micro-pinches are
+frequently present within the main pinch column. Despite this, there are again no
+discernable indications of plasma instabilities in the associated proton CAI images.
+Proton CAI images show that the D-D fusion source is much narrower (i.e. of smaller
+diameter) for D2-Kr admixture operation of the NX2 than it is for pure D2 operation. It
+is concluded that a collective mechanism of deuteron acceleration occurs throughout the
+length of the pinch column in the NX2 device, and therefore the fusion is distributed
+rather evenly around the pinch column. Although m = 0 instabilities in the pinch column
+may initiate deuteron acceleration, the fast deuterons and resulting fusion are not
+concentrated within, or around, m = 0 instabilities.
+
+
+
+
+                                                                                     ii
+           ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Publication
+
+Recent Journal Papers:
+1. A. Talebitaher, S.V. Springham, P.M.E. Shutler, P. Lee, R.S. Rawat “Imaging of
+   Plasma Focus Fusion by Proton Coded Aperture Technique” Journal of Fusion
+   Energy, DOI 10.1007/s10894-011-9462-8
+
+2. A. Talebitaher, S.V. Springham, R.S. Rawat, P. Lee “Beryllium Neutron
+   Activation Detector for Pulsed DD Fusion Sources” Nuclear Inst. and Methods in
+   Physics Research A, DOI:10.1016/j.nima.2011.08.063
+
+3. A. Talebitaher, P.M.E. Shutler, S.V. Springham, R.S. Rawat, P. Lee “Coded
+   Aperture Imaging of Alpha Source Spatial Distribution” (submitted to Radiation
+   Measurements).
+
+4. A. Talebitaher, P.M.E. Shutler, S.V. Springham, R.S. Rawat, P. Lee “Coded
+   Aperture Imaging of Fusion Source in a Plasma Focus Operated with pure D2 and
+   a D2-Kr Gas Admixture” (submitted to Applied Physics Letter).
+
+1. P.M.E. Shutler, A. Talebitaher, S.V. Springham “Signal-to-Noise ratio in Coded
+   Aperture Imaging” Nuclear Instr. and Methods in Physics Research Section A,
+   669, (21 March 2012), Pages 22-31, DOI:10.1016/j.nima.2011.12.023
+
+2. A. Talebitaher, S.V. Springham, R.S. Rawat, P. Lee “Neutron Yield and
+   Anisotropy Measurement in Plasma Focus using Beryllium Activation detector”
+   (under revision).
+
+3. S. Lee, S H Saw, R.S. Rawat, P. Lee, R. Verma, A. Talebitaher, et al.
+   “Measurement and Processing of Fast Pulsed Discharge Current in Plasma
+   Focus Machines” Journal of Fusion Energy, DOI 10.1007/s10894-011-9456-6.
+
+4. S. Lee, S H Saw, R.S. Rawat, P. Lee, A. Talebitaher, et al. “Correlation of
+   Measured soft x-ay pulses with modeled dynamics of the plasma focus” IEEE
+   Transactions on Plasma Science, 39, 11, 3196-3202 (2011).
+
+5. M V Roshan, S V Springham, A Talebitaher, R S Rawat, P Lee “Magnetic
+   spectroscopy of high energy deuteron beams from pulsed plasma system” Plasma
+   Phys. Control Fusion 52 085007 pp17 (2010).
+
+
+                                                                                   iii
+           ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+6. M V. Roshan, St V Springham, A Talebitaher, R S Rawat, P Lee “Nuclear
+   Activation Measurements of High Energy Deuterons from a Small Plasma Focus”
+   Physics Letters A, 373, 851 (2009).
+
+7. M V. Roshan, P. Lee, S. Lee, A. Talebitaher, R. S. Rawat, and S. V. Springham
+   “backward high energy ion beams from plasma focus” Physics of Plasma 16,
+   074506 (2009).
+
+8. M V. Roshan, S.V. Springham, A.R. Talebitaher, R.S. Rawat, P. Lee, “Intense
+   deuteron beam investigation by activation yield-ratio technique” Physics Letters
+   A, 373, 3771-3774 (2009).
+
+9. S.V. Springham, F. Malik, M.V. Roshan, A. Talebitaher, R.S. Rawat, P. Lee,
+   “Ferrofluidic Masking of Solid State Nuclear Track Detectors During Etching”
+   Radiation Measurements, 44 173-175 (2009).
+
+10. M.V. Roshan, Alireza Talebitaher, et al. “High Energy Deuterons Emission in
+   NX2 Plasma Focus” Journal of Plasma and Fusion Research, Vol. 8 (2009)
+
+11. M.V. Roshan, R.S. Rawat, A. Talebitaher, P. Lee, S.V. Springham “Neutron and
+   high energy deuteron anisotropy investigation in Plasma Focus Device” Physics
+   of Plasmas 16, 053301 (2009)
+
+12. A.R. Talebitaher, M.V. Roshan, R. Verma, P. Lee, R.S. Rawat, S.V. Springham
+   “Soft x-ray emission investigation in plasma focus device (NX2) with neon filling
+   gas” Iranian Physical Journal 2-3, 38-41 (2008)
+
+
+Recent Conference Papers:
+13. A.R. Talebitaher, S.V. Springham, P.M.E. Shutler, R.S. Rawat, P. Lee “Coded
+   Aperture Imaging Technique for Investigation of Fusion Source Spatial
+   Distribution its Correlation with X-Ray Images in Plasma Focus Device” ICOPS
+   conference, June 2011, Chicago-USA
+
+14. R. Verma, T. L. Tan, P. Lee, A.R. Talebitaher, et al. “NX-3 Plasma Focus
+   Device: High Flux Pulsed Neutron Sources” ICOPS conference, June 2011,
+   Chicago-USA
+
+15. A.R. Talebitaher, et al. “A new approach for Investigation of Fusion Source by
+   Coded Aperture Imaging” FPPT5 conference, April 2011. Singapore.
+
+                                                                                   iv
+           ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+16. A.R. Talebitaher, S.V. Springham, P.M.E. Shutler, R.S. Rawat, P. Lee “Coded
+   Aperture Imaging Technique for Investigation of Fusion Source Spatial
+   Distribution in Plasma Focus Device” IPS meeting Singapore, February 2011
+
+17. R. Verma, T. Tan, P. Lee, A. Talebitaher, H. Shariff, S.V. Springham, R.S. Rawat
+   “20KJ Plasma Focus Device Neutron Source: Development and Recent Results”
+   FPPT5 conference, April 2011. Singapore.
+
+18. A. Bisht, A. Talebitaher, et al. “Synthesis of Nanoparticles Using Atmospheric
+   Microplasma Discharge” FPPT5 conference, April 2011. Singapore.
+
+19. A.R. Talebitaher, et al. “Preliminary Result of Coded Aperture Imaging on NX2
+   Plasma Focus Device” Proceeding of International Workshop on Plasma
+   Diagnostics and Application (IWPDA), July 2009 Singapore. ISBN: 978-983-
+   44947-2-8
+
+20. A.R. Talebitaher, et al. “Soft X-ray emission in Plasma Focus device with Neon
+   filling gas” IPS March Meeting Singapore, 6,7 March 2009
+
+21. P. Lee, R.S. Rawat, S.V. Springham, A. Talebitaher, S. K. Munirah, Lyna, C.C.
+   Lim, C.M. Yau and S.K. Foong “The need for special courses in physics for NIE
+   student teachers” Redesigning Pedagogies: Designing New Learning Contexts for
+   a Globalizing World, 1-3 June 2009, National Institute of Education (NIE),
+   Singapore
+
+22. S.V. Springham, M.V. Roshan, A. Talebitaher et al. “Neutron & Charged-
+   Particle Diagnostics and Preliminary Studies of Coded Aperture Imaging” ICTP
+   2008 Italy Conference
+
+
+
+
+                                                                                    v
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+List of Figures
+Figure 1: Schematic diagram of Mather-type and Filippov-type PF device .................... 4
+
+Figure 2: a) Schematic of plasma focus dynamic b) current and voltage signals ............ 5
+
+Figure 3: sausage (m = 0) and kink (m = 1) instability ................................................... 11
+
+Figure 4: Radial trajectories of shock (rs) and piston (rp) versus time in collapse phase
+
+(Slug model) ................................................................................................................... 13
+
+Figure 5: NX2 Plasma Focus device. ............................................................................. 24
+
+Figure 6: Rogowski coil and its equivalent circuit ......................................................... 27
+
+Figure 7: current trace for NX2 short circuit test. The experiment was done with Argon
+
+gas at pressure 20 mbar .................................................................................................. 28
+
+Figure 8: dI/dt RC signal by NX2 with single pinch (left) and double pinch (right) ..... 28
+
+Figure 9: High Voltage Probe using in PF ..................................................................... 29
+
+Figure 10: Coded Mask pattern of 9595 elements formed by a replicated 5353
+
+MURA basic pattern. [from: A. Goldwurm et al.: IBIS science data analysis (2003)] .. 32
+
+Figure 11: a) pinhole imaging and b) collimator imaging systems ................................ 35
+
+Figure 12: Pinhole camera and its limitation. ................................................................. 35
+
+Figure 13: Fresnel Zone Plate; theoretical (left) and practical (right) ............................ 38
+
+Figure 14: Random array and its periodic self-correction. ............................................. 38
+
+Figure 15: non-redundant array ...................................................................................... 39
+
+Figure 16: 61 59 Uniformly Redundant Array. ............................................................ 39
+
+Figure 17: MURA pattern, while the 79 79 is anti-symmetric about its center, the 73
+
+73 is symmetric. ........................................................................................................... 40
+
+Figure 18: CAI geometry to identify the magnification, object pixel size (resolution),
+
+image pixel size and field of view. ................................................................................. 42
+
+Figure 19:1D Cyclic Difference Singer Set in modulo 2 ............................................... 44
+
+                                                                                           vi
+                    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 20: schematic of reconstruction algorithm (Deconvolution) .............................. 44
+
+Figure 21: SNR vs. open fraction (ρ) for objects (of the same total brightness) which
+
+illuminate different numbers of pixels (m) the vertical black lines represent the possible
+
+open fraction for Singer Set. ........................................................................................... 48
+
+Figure 22: mask-400 (20×20) pattern with ρ = 1/7 open fraction .................................. 50
+
+Figure 23: mask-1365 (91×15) pattern with ρ=1/4 open fraction .................................. 50
+
+Figure 24: mask-4680 (104×45) pattern with ρ = 1/8 open fraction, with one pixel
+
+truncated from the complete CDS length of 4681. ......................................................... 51
+
+Figure 25: mask 1365 (91×15) spaced by factor of k=6 ................................................ 52
+
+Figure 26: mask-4680 (104×45) spaced by factor of k=2 .............................................. 52
+
+Figure 27: SNR of mask-1365; basic pattern (blue lines) and spaced mask (red lines) for
+
+different object size (m=32, 64 and 128). Bold black line represents ρ=1/4 (the optimum
+
+open fraction for m=64).................................................................................................. 54
+
+Figure 28: SNR of mask-4680; basic pattern (blue lines) and spaced mask (red lines) for
+
+different object size (m=32, 64 and 128). Bold black line represents ρ=1/8.................. 54
+
+Figure 29: schematic diagram for reconstruction algorithm (cyclic convolution) ......... 55
+
+Figure 30: mask-400, Physical mask (right) made by Micro-EDM drilling and its pattern
+
+(left) ................................................................................................................................ 56
+
+Figure 31: The mask-400 pattern (a), and a photograph of the fabricated mask (b) made
+
+by laser drilling. .............................................................................................................. 57
+
+Figure 32: Stopping power graph for protons in CR-39................................................. 59
+
+Figure 33: The SRIM simulation result by 3 MeV proton pass through the CR-39 with
+
+250 μm thickness ............................................................................................................ 60
+
+Figure 34: very high dense deuteron tracks on the detector (occasionally) evidence the
+
+existence of extremely high energy deuterons in plasma focus device. The deuteron
+
+
+                                                                                           vii
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+tracks can be seen in images, taken by different microscope object lens: ×50 at the left
+
+side and ×5 at the right side. ........................................................................................... 62
+
+Figure 35: the scanned image of detector (right) shows the same pattern as the mask
+
+(left) which shows the present of a point source. The shadows of mask pattern in up-left
+
+and down parts of image also evidence that there are more than one point source which
+
+are coming like a narrow beam....................................................................................... 62
+
+Figure 36: Bragg curve for proton particle. The relative dose (y-axis) and depth (x-axis)
+
+are arbitrary unit. ............................................................................................................ 63
+
+Figure 37: Etching speed and normal track shape .......................................................... 64
+
+Figure 38: NRU program output shows the 5 MeV  track size after 5 h etching. ....... 65
+
+Figure 39: Over etched track shape is shallow and appears like bright circle................ 66
+
+Figure 40: normal track (a) and over etched track (b) taken by confocal microscope. (c)
+
+Distinguishing between usual proton and deuteron tracks under microscope................ 66
+
+Figure 41: Microscope Olympus BX51 and its attachments. ......................................... 68
+
+Figure 42: overlapped tracks (left) have been separated by watershed filter (right) ...... 70
+
+Figure 43: Scatter plots of measured parameters of dark features on CR-39 detector
+
+surface: (a) grey-value vs. area, (b) roundness vs. area, and (c) roundness vs. grey-value,
+
+with user-defined polygon for each.(d) Positions (x,y) of genuine particle tracks (for 1-
+
+spot source) selected by applying the logical AND of within-polygon criteria shown in
+
+a-c. This (x,y) data represents the coded image ............................................................. 71
+
+Figure 44: reconstructed image of 1-spot α source with mask-400................................ 72
+
+Figure 45: isotropic particles distribution within a cone from a point source ................ 74
+
+Figure 46: Reconstructed images from Monte Carlo generated data for different source
+
+shapes with pinhole (top row) and 20×20 CAI mask (bottom row). All images are of
+
+
+
+
+                                                                                         viii
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+10 cm side (in the source plane). 1-point source for pinhole (a1) and mask (a2); 2-point
+
+source for pinhole (b1) and mask (b2); ridge source for pinhole (c1) and mask (c2) .... 76
+
+Figure 47: mask-1365: reconstructed image from Monte Carlo generated data for a
+
+10 mm×2 mm rectangular source. .................................................................................. 78
+
+Figure 48: mask-4680: reconstructed image from Monte Carlo generated data for a
+
+10 mm×2 mm rectangular source. .................................................................................. 78
+
+Figure 49: The 9Be(n,α)6He reaction cross-section as function of neutron energy. ....... 83
+
+Figure 50: (a) Assembled activation counter comprising beryllium sandwiched between
+
+two xenon-filled proportional counters, aluminium holding plate, and two PDT10A
+
+units attached. (b) One PDT10A unit providing preamplifier, shaping amplifier and
+
+discriminator functions. .................................................................................................. 87
+
+Figure 51: Plot of channel centriod for 5.90, 6.49 and 22.16 keV x-rays for LND-PC 83
+
+as a function of applied bias voltage. Overlaid on this plot is the energy spectrum in the
+
+vicinity of the 5.90 and 6.49 keV x-rays from 55Fe acquired with Ortec pulse
+
+processing electronics. .................................................................................................... 88
+
+Figure 52: Plot of relative gas-gain for each of the four LND proportional counters,
+
+normalized to unity at 1500 V for each LND proportional counter. The dashed curve
+
+represents the empirical function gg(V). ........................................................................ 89
+
+Figure 53: β-particle energy spectrum for the decay of 6He. ......................................... 96
+
+Figure 54: MCNP simulation results of frequency distribution of energy deposition in
+
+PC xenon gas layer (12.7 mm depth) by 6He β particles which escape from Be sheet and
+
+enter PC. Separate curves are for 6He β particles originating in each 1 mm thick layer of
+
+the 5 mm thick Be sheet. In this simulation a PC is located on one side only of the Be
+
+sheet, and adjacent to layer 1. ......................................................................................... 96
+
+
+
+
+                                                                                           ix
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 55: Response function R(En ) of beryllium neutron activation detector for a
+
+parallel neutron beam of fluence 1 neutron/cm2, and contributions RL(En ) from each
+
+1 mm thick layer of the Be sheet. Note that the vertical axis is broken and the two parts
+
+are scaled differently. The absolute R(En ) values across the curve as a whole, have an
+
+estimated uncertainty of ±10%. ...................................................................................... 98
+
+Figure 56: Beryllium neutron detector response function                                                                                                                    for a
+
+point source at distance d. .............................................................................................. 99
+
+Figure 57: Center of Mass (C.M.) cross-section for D-D reaction with the deuteron
+
+energy (in keV) as a parameter ..................................................................................... 100
+
+Figure 58: Lab frame cross-section for D-D reaction with the deuteron energy (in keV)
+
+as a parameter ............................................................................................................... 101
+
+Figure 59: Lab frame (L.F.) neutron energy distribution for D-D reaction with the
+
+deuteron energy (in keV) as a parameter ...................................................................... 102
+
+Figure 60: Simulation of NX2 chamber and Beryllium detectors in MCNP-visual .... 103
+
+Figure 61: total efficiency of neutron detector in axial and radial direction at 25.0 cm
+
+from anode tip............................................................................................................... 105
+
+Figure 62: the result of neutron anisotropy versus deuteron energy by MCNP ........... 106
+
+Figure 63: neuron fluence vs. energy at different angles with 100keV deuteron energy
+
+30° forward cone at r =100cm from centre of pinch, without chamber. ...................... 107
+
+Figure 64: neuron fluence vs. energy at different angles with 100keV deuteron energy
+
+30° forward cone at r =100cm from centre of pinch, with NX2 chamber. .................. 108
+
+Figure 65: Ortec MCS-pci board .................................................................................. 109
+
+Figure 66: MCS-32 software for Data Acquisition System – showing 6He decay plot for
+
+a series of 20 NX2 shots fired at 0.125 Hz repetition rate. .......................................... 110
+
+Figure 67: Ortec 556 H.V. power supply ..................................................................... 111
+
+
+                                                                                            x
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 68: Experimental setup for the NX2 plasma focus neutron fluence measurements
+
+and detectors’ cross comparing. ................................................................................... 113
+
+Figure 69: Experimental data from the two beryllium detectors placed in radial
+
+directions, for 60 plasma focus shots............................................................................ 113
+
+Figure 70: Experimental setup for neutron anisotropy measurements using both
+
+beryllium activation detectors. ..................................................................................... 114
+
+Figure 71: Average neutron anisotropy and beryllium count (0° and 90°) vs. pressure
+
+(top plots) neutron anisotropy vs. neutron yield in different filling gas pressure ........ 115
+
+Figure 72: proton tracks distribution on PM-355 detector with pinhole imaging at a)
+
+AP1 (0°) and b) AP2 (90°) ........................................................................................... 116
+
+Figure 73: Experiment setup for anisotropy with Pyrex plate (6 mm thick and diameter
+
+slightly less than chamber) ........................................................................................... 117
+
+Figure 74: anisotropy variation with Pyrex which prevents the deuterons reaching the
+
+upper part of the chamber. ............................................................................................ 118
+
+Figure 75: Circuit diagram of Synchronization Board using for x-ray imaging. ......... 123
+
+Figure 76: components of Scintillator-PMT combination [PhD thesis: Rishi Verma] 124
+
+Figure 77: BaF2 scintillation emission spectrum [SAINT-GORBAIN CRYSTALS] . 126
+
+Figure 78: Radium-226 alpha-particle source (left) and its Decay Chain (right) ......... 128
+
+Figure 79: Experimental arrangement of CR-39 detector, CAI mask and Ra-226 α
+
+source within vacuum enclose. ..................................................................................... 129
+
+Figure 80: Optical micrograph of etched alpha-particle tracks on CR-39 surface. The
+
+overall dimensions of the image are 262×152 µm2 . .................................................... 131
+
+Figure 81: Reconstructed image from experimental track data for different source
+
+shapes with pinhole (top row) and 20×20 CAI mask (bottom row). All images are of
+
+
+
+
+                                                                                          xi
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+10 cm side (in the source plane). 1-point source for pinhole (a1) and mask (a2); 2-point
+
+source for pinhole (b1) and mask (b2); ridge source for pinhole (c1) and mask (c2) .. 133
+
+Figure 82: The hollow anode using in NX2 ................................................................. 134
+
+Figure 83: experimental arrangement for 3-D fusion imaging in NX2 ........................ 135
+
+Figure 84 Trajectories of 3 MeV protons (which impinge on coded mask at 45 degree)
+
+in plasma pinch magnetic field. .................................................................................... 137
+
+Figure 85: Magnitude of mean displacement of apparent source position                                                                                                      versus
+
+actual z position of source within the pinch for mask-400 at 45 degree. ..................... 139
+
+Figure 86: elongation of image for 45° view................................................................ 140
+
+Figure 87: reconstructed images: Camera-1 to Camera-4 at 45° and Camera-0 at 0° . 141
+
+Figure 88: insert tapered anode with 2 mm diameter hole (middle) and complete anode
+
+shape (right). ................................................................................................................. 142
+
+Figure 89: mask-1365 (left) and the pattern (right) ...................................................... 143
+
+Figure 91: mask-4680 (left) and the pattern (right) ...................................................... 144
+
+Figure 90: both masks were housed on the base .......................................................... 144
+
+Figure 92: Trajectories of 3 MeV protons (which impinge on coded mask) in plasma
+
+pinch magnetic field for mask-1365 and mask-4680 at side-on................................... 145
+
+Figure 93: Magnitude of mean displacement of apparent source position                                                                                                      versus
+
+actual z position of source within the pinch for masks at side-on. ............................... 147
+
+Figure 94: the position of masks in NX2 chamber. ...................................................... 148
+
+Figure 95: plastic Scintillator with lead sheet in front, Cesium-Iodide and Barium-
+
+Fluoride, with included PMTs. ..................................................................................... 149
+
+Figure 96: YOKOGAWA 4-channels digital oscilloscope .......................................... 149
+
+Figure 97: The experimental setup on NX2: Be detector, pinhole x-ray imaging and
+
+admixture gas valves. ................................................................................................... 150
+
+
+                                                                                          xii
+                    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 98: Beryllium filter transmission for x-ray starts from ~700 eV ...................... 151
+
+Figure 99: x-ray images in pure deuterium. While the left image shows a strong pinch at
+
+middle of anode, the right image does not have any particular shape. ......................... 152
+
+Figure 100: recorded signals: current derivative, plastic Scintillator (neutron and hard x-
+
+ray), CsI and BaF2 (hard x-ray) signals. ....................................................................... 152
+
+Figure 101: anisotropy versus neutron yield with pure deuterium gas at 13 mbar....... 153
+
+Figure 102: hard x-ray (integral of CsI signal) versus neutron yield with pure deuterium
+
+gas at 13 mbar ............................................................................................................... 154
+
+Figure 103: hard x-ray (integral of CsI signal) versus neutron anisotropy with pure
+
+deuterium as working gas at 13 mbar ........................................................................... 155
+
+Figure 104: recorded signals: current derivative, plastic Scintillator, CsI and BaF2
+
+signals for the best shot. ............................................................................................... 156
+
+Figure 105: x-ray image in pure deuterium for the best shot shows a dense and strong
+
+pinch. ............................................................................................................................ 156
+
+Figure 106: saturation of x-ray image in krypton seeding gas admixture with beryllium
+
+filter thickness: 20 µm (left) and 50 µm (right)............................................................ 157
+
+Figure 107: x-ray transmission of combination filter: titanium (12.5 µm) and beryllium
+
+(50 µm) for admixture gas ............................................................................................ 158
+
+Figure 108: x-ray images in D2+2% Kr admixture gas with combination filter: titanium
+
+(12.5 µm) and beryllium (50 µm). ................................................................................ 158
+
+Figure 109: x-ray images in pure deuterium gas with combination filter: titanium
+
+(12.5 µm) and beryllium (50 µm). ................................................................................ 159
+
+Figure 110: anisotropy versus neutron yield with admixture gas ................................. 159
+
+Figure 111: hard x-ray (integral of CsI signal) versus neutron anisotropy with admixture
+
+gas ................................................................................................................................. 160
+
+
+                                                                                          xiii
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 112: hard x-ray (integral of CsI signal) vs. neutron yield with admixture gas . 160
+
+Figure 113: x-ray image in pure deuterium for one of the best shots shows a multi-hot
+
+spot pinch...................................................................................................................... 162
+
+Figure 114: recorded signals: current derivative, plastic scintillator, CsI and BaF2
+
+signals for one of the best shot. .................................................................................... 162
+
+Figure 115: anode tip has been changed after 100s shots............................................. 164
+
+Figure 116: The reconstructed image of plasma focus fusion source from mask-1365
+
+(91×90 pixels). The actual fusion source position must be zoomed-in, calibrated and
+
+registered by referring to anode tip place (left down image). ...................................... 165
+
+Figure 117: 5.5 MeV α tracks on the detector after 6 hours etching ............................ 166
+
+Figure 118: Am-241 α source (left) with 9 mm actual diameter and 14 mm case
+
+diameter. It is covered partially by a set of metal mesh. The reconstructed image (right)
+
+shows clearly the detail of the source and mesh. .......................................................... 167
+
+Figure 119: α tracks (upper size) and the D-D reaction proton tracks (lower size) on the
+
+detector (after 12 hours etching) can be distinguished very clearly. ............................ 168
+
+Figure 120: Reconstructed image of mixed α and proton tracks .................................. 168
+
+
+
+
+                                                                                         xiv
+                    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+List of tables
+Table 1: Main parameter of NX2 Plasma Focus ............................................................ 24
+
+Table 2: characteristic of CR-39 elements for stopping power calculation ................... 59
+
+Table 3: minimum energy of proton and deuteron to pass the Kapton filter.................. 61
+
+Table 4: Track number and SNR for CAI and pinhole system from experimental results
+
+and theoretical calculation .............................................................................................. 75
+
+Table 5: Beryllium layers (each 1 mm) contribution to 6He production ........................ 95
+
+Table 6: Sum of frequencies of β particle originating in each 1 mm layer of the Be cell
+
+entering a Xe cell and depositing energy > 2.5keV........................................................ 95
+
+Table 7: Counts from layers for a parallel neutron beam fluence of 1 neutron/cm2 ...... 98
+
+Table 8: Efficiency and anisotropy for different deuteron energy ............................... 104
+
+Table 9: Changing percentage of efficiency and anisotropy by scattering effect ........ 105
+
+Table 10: average neutron count and anisotropy for different distances of Pyrex ....... 118
+
+Table 11: Track number and SNR for CAI and pinhole system from Experimental
+
+results ............................................................................................................................ 132
+
+Table 12: Displacements of apparent proton source position versus emission angle, for
+
+trajectories which impinge on coded mask at 45 degree. Actual source position is mid-
+
+pinch: z = 5 mm. ........................................................................................................... 138
+
+Table 13: proton count and yield for five coded aperture imaging cameras ................ 140
+
+Table 14: Displacements of apparent proton source position versus emission angle, for
+
+trajectories which impinge on coded mask at side-on. Actual source position is mid-
+
+pinch: z = 5 mm. ........................................................................................................... 146
+
+
+
+
+                                                                                           xv
+  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                              Chapter 1
+
+
+
+Introduction to Plasma Focus
+
+
+
+
+                                                                           2
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+1 Introduction to Plasma Focus
+1.1 Structure and Working Principle
+
+         The Plasma Focus (PF) device is a pulsed electrical discharge in different gases
+which was discovered independently by Mather (1961) [1] and Filippov (1954) [2] in
+1965. Although these two systems were different in terms of constructional geometries,
+they were very similar as regards the dynamics of the current sheath and in the scaling
+laws [3] for neutron yield, X-ray and other kinds of emission. Since then PF devices
+have been built with energies ranging from a few joules to a few mega-joules with a
+consequent variation in the physical size. The main difference between Mather-type and
+Filippov-type is in the electrode dimension and the aspect ratio (diameter/length) of the
+anode, as is shown in Figure 1. The Mather-type device has an aspect ratio less than 1
+(typically 0.25), while for the Filippov–type device the typical aspect ratio is around 5.
+
+         Physicists are interested in the Plasma Focus because of the high nτ value for the
+pinched plasma (where n is the particle density ~1019 cm-3 and τ is the confinement time
+~50 ns, giving nτ = 5×1011), and bursts of fusion neutrons when operated in deuterium.
+However to reach ignition in a thermonuclear reaction requires fulfilling the Lawson
+Criterion of nτ greater than 3×1014 cm-3). Also the hot (~1 keV) dense plasma emits
+abundant soft and hard x-rays, especially when operated with high-Z gases like neon or
+argon.
+
+         The PF has a very complex behavior and exhibits a rich variety of plasma
+phenomena. The PF is essentially a two dimensional Z-pinch formed on, or near, the
+axis at the end of a coaxial plasma accelerator. The Filippov machine was developed as
+a modification of the straight Z-pinch and the Mather-type device was modified from
+the coaxial plasma gun. The device used for the present investigation in the Plasma
+Radiation Source Laboratory (PRSL)–NIE–NTU is a Mather-type PF device, called the
+NX2. As with most other PF devices, the NX2 is operated with the inner electrode as
+the anode and the outer electrode as the cathode. Operation of PF devices with reverse
+polarity decreases the neutron and x-ray outputs substantially [4].
+
+
+
+
+                                                                                       3
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+           Figure 1: Schematic diagram of Mather-type and Filippov-type PF device
+
+       The PF has several sub-systems which include: the capacitor bank providing
+energy storage prior to each shot, the charger/power supply to charge the capacitors to
+high voltage, fast high-power spark-gap switches, a vacuum system for evacuating air
+(and any impurities) from the chamber and a gas injector system for filling the chamber
+with a working gas. Naturally, there are also diagnostic systems for investigation of the
+plasma behavior and its products.
+
+1.2 Dynamics of Plasma Focus
+
+       In a Mather-type device, the study of Plasma Focus dynamics can be divided
+into three distinct phases:
+
+            The breakdown phase
+
+            The axial acceleration phase
+
+            The radial phase
+
+       The three phases are illustrated in Figure 2 which shows the current and voltage
+signals corresponding to the different phases of the discharge.
+
+
+
+
+                                                                                        4
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+         Figure 2: a) Schematic of plasma focus dynamic b) current and voltage signals
+
+
+ 1.2.1 The Breakdown phase (Inverse Pinch phase)
+
+When the high voltage pulse is applied between the electrodes of the PF filled with the working
+gas at an appropriate pressure (usually Deuterium, Neon or Argon at few mbar), an azimuthal
+symmetric electrical discharge will be initiated along the surface of the insulator. This discharge
+is preceded by an electrical breakdown phase which generates an initial plasma configuration
+through which the discharge current can flow. According to Paschen’s law [5] the values of the
+static breakdown voltage in any PF device operating with 1 to 10 mbar deuterium is lower than
+1 kV DC voltage, which is smaller than the usual working voltage (10 to 60 kV). Therefore the
+breakdown is always a highly overvoltage phenomenon.
+        The development of the high current discharge depends on factors such as the
+voltage applied across the electrodes, the initial gas conditions [6, 7] and the parameters
+of the electrode-insulator configuration [8].
+
+        For a given electrode-insulator configuration, an applied voltage at a low
+pressure (e.g. 1 mbar) will cause current flow to develop throughout the whole inter-
+electrode volume [9]. On the other hand, at high pressure (e.g. 50 mbar), the applied
+voltage will result in radial filamentary current discharged between the coaxial
+electrodes [10]. At the optimum initial gas pressure, the gas starts to breakdown along
+the insulator surface after a delay of a few nanoseconds [6].
+
+
+
+                                                                                       5
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+       Due to the initial high dielectric constant and high surface resistivity of the
+insulator, free electrons in the vicinity have a tendency to drift towards its surface and
+hence create a negative potential there with respect to the electrodes. To ensure a
+symmetrical breakdown, the polarity of the inner electrode (anode) should be positive
+so as to concentrate the electrons at the insulator surface. Further electrons created by
+field emission from metallic edges and by ionization of the ambient gas are accelerated
+along the radially directed electric field lines towards the insulator surface. As the
+discharge develops, the surface is charged gradually while the highest electric field
+remains at the leading-edge of the discharge. Due to this effect, an ionization front
+propagates along the insulator surface until it reaches the conducting anode.
+
+       Another mechanism is based on the electron avalanche principle. The initial free
+electrons in the vicinity of the electrodes are accelerated toward the anode due to the
+electric field, which strike the insulator, causing more electrons to be emitted from it.
+This causes a buildup or avalanche of electrons on the insulator surface, resulting in a
+sliding discharge across it.
+
+       When the sliding discharge reaches the end of the insulator, both electrodes are
+connected by weak current filaments which blend to from a uniform current sheath
+within 100 to 300 ns. “Double-layered structure” in DPF consists of a current sheath
+(CS) and a shock wave in front [11, 12]. The current sheath subsequently lifts off from
+the insulator surface in an inverse pinch manner, propelled by the                                                                                                    force (see
+Figure 2) which indicates the end of the breakdown phase.
+
+ 1.2.2 The Axial Acceleration (Run Down) phase in Mather geometry
+
+       This phase begins with the magnetically-driven current sheath accelerating along
+the axial direction (z-axis) and ends when it arrives at the open end of the inner
+electrode (anode) (see Figure 2). The magnetic field is produced by the electric current
+which flows from the central electrode (anode). The radial component of the                                                                                                force
+pushes the current sheath towards the outer electrode (cathode) while the axial
+component pushes it along the electrodes. As the                                                                      force has a                          dependence, the
+
+axial component is stronger near the anode, resulting in a higher acceleration close to
+the anode. This gives rise to a current sheath that is parabolic [13] (rather than like a flat
+disc) and is thinner in the region near the anode [14].
+
+
+
+
+                                                                                       6
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+       Two important factors affect the subsequent formation of the hot dense plasma
+pinch. Firstly, the current sheath should reach the axis at the time close to the first
+maximum (near 1/4 cycle time) of the discharge current. This condition represents the
+optimization of the energy transfer from the capacitor bank to the pinch plasma. This is
+important in the sense that it does not only determine the time instant when the plasma
+begins to collapse, but also the final current sheath profile that directly affects the
+focus/pinch efficiency of the plasma. The first condition is a requirement representing
+the optimization of the energy transfer from the power source (capacitor bank) to the
+pinch plasma. For DPF devices, optimization studies require the discharge current to
+reach its maximum value near the end of the axial phase for an optimum energy transfer
+through reasonable choice of central electrode dimensions, filling gas pressure, charging
+voltage, etc. Lee et al. [15] have lumped these various parameters into a single
+parameter called the “drive parameter”,                                                       (where IP is the peak discharge current
+
+driving the PF, a is the anode radius, and ρ is the ambient gas density) to investigate the
+neutron optimized regime from various DPF devices.
+
+       The second condition is that the structure, i.e. the (r, z) profile, of the current
+sheath should have certain characteristics for a good focusing effect. This condition
+requires smooth and uniform axially symmetric current sheath (r, z) profiles with
+optimized angle between the current sheath and the inner electrode. The pattern of the
+driving current determines the complete structure of the sheath: the more uniform the
+pattern, the smoother will be the current sheath.
+
+ 1.2.3 The Radial Collapse phase
+
+       At the end of the axial phase, the current sheath pinches inwardly sweeping
+around the end of the inner electrode and finally collapses in about 50-200 ns,
+depending on the DPF machine characteristics (mainly the anode radius) [15, 16]. The
+radial phase, as the final stage of plasma compression, plays the most important role in
+the plasma focus evolution due to its extremely high energy density, its transient
+character and for being a rich source of phenomena such as the emission of intense
+electromagnetic radiation, high energy particle beams, and a burst of nuclear fusion
+products (i.e. neutrons and protons). The radial phase can be divided into four sub-
+phases, compression phase, quiescent phase, unstable phase and decay phase.
+
+
+
+
+                                                                                      7
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Compression phase:
+
+       The compression phase begins when the current sheath reaches the top of the
+anode and ends when the plasma column reaches the minimum radius with maximum
+plasma density (ne ~ 1019 cm-3) [17]. During this phase the current sheath sweeps around
+the end of the central electrode, and collapses radially with azimuthal symmetry, with a
+non-cylindrical, funnel-shaped profile. The main heating mechanism for the plasma
+before the front of the current sheath collapses along the z-axis is shock heating and the
+ions with temperature around 300 eV play more important role than the electrons with
+temperature of ~100 eV [18]. After the transformation of plasma structure to plasma
+column, at the end of the compression phase, Joule heating becomes the main heating
+mechanism [19] as the maximum discharge current flows through the pinched plasma
+column, and the kinetic energy of the collapsing current sheath is converted into the
+thermal energy of the plasma. The plasma column is then further compressed
+adiabatically [18] to form the final focus. Peacock et al [20] observed the onset of the
+Rayleigh-Taylor instability (instability of an interface between two fluids of different
+densities) about 30 ns before the end of this phase. This type of instability is damped out
+when the radial velocity is diminished.
+
+       Towards the end of this phase the magnetic field starts diffusing into the plasma
+column. The quick and complete diffusion of magnetic field into the focused plasma
+column leads to an anomalously high plasma resistance. Also, due to the faster speed of
+the collapsing current sheath in the compression phase, the rate of change of inductance
+of the plasma is increased [21]. This induces an electromotive force and contributes to
+the sharp spike and the voltage signal. The sharp voltage spike and the current dip are
+typical features of the plasma column’s increasing impedance. The final electron
+temperature will be around 1 keV. The maximum values of electron density and
+electron (ion) temperature have been determined by laser scattering [19], spectroscopy
+[22], interferometry [23] and other methods. According to Bennett equilibrium the final
+temperature should depend only on the current I and the line density N, i.e. T ~ I2/N.
+This shows that the lower the line density, the higher the temperature of the pinched
+plasma column.
+
+
+
+
+                                                                                      8
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Quiescent phase:
+
+       The quiescent phase marks the beginning of the expansion of the pinch plasma
+column. During this phase, the rate of radial expansion is limited by the confining
+magnetic pressure. The increasing length of the plasma column results in an increase in
+the plasma resistance and inductance, which in turn leads to sharp increase in voltage
+signal due to the changing current. The sharp change in plasma inductance induces an
+electric field in the plasma column. This electric field accelerates the ions and electrons
+in opposite directions. The relative drift velocity between the electrons and ions
+increases and exceeds the electron thermal velocity, which is the condition for the onset
+of micro-instabilities (such as the electron cyclotron and various forms of beam-plasma
+instability) in the focused plasma column. At the end of the quiescent phase, the m = 0
+instability develops rapidly due to the increase of electron temperature. The plasma
+column is locally compressed again due to the m = 0 instability. The pinch lifetime,
+which is defined as the time between the first compression and the instant when the
+m = 0 instability occurs, affects the emission characteristics of DPF device: the shorter
+the pinch lifetime, the higher the neutron yield for fixed DPF discharge parameters [24].
+
+Unstable phase:
+
+       The sub-phase during which these micro-instabilities occur and disrupt the pinch
+plasma column is called the unstable phase. The unstable phase is the richest stage of
+the plasma focus evolution in terms of associated phenomena like soft and hard x-ray
+emission, fast deuterons, electrons and D-D reaction products (neutrons and protons)
+when operated in deuterium. The induced electric field is enhanced locally due to
+growing m = 0 instabilities. Therefore, electrons are accelerated towards the inner
+electrode and ions in the opposite direction (when operated with a positive polarity
+central electrode), and a fairly large amount of impurities are injected into the plasma
+column due to the bombardment of the anode by accelerated runaway electrons. The
+“explosion” proceeds sequentially along the plasma column. This disruption of the
+plasma column continues until the whole plasma column has completely broken up, and
+the plasma density decreases.
+
+
+
+
+                                                                                      9
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Decay phase:
+
+       The last phase of the radial collapse and also the last stage of the plasma focus
+dynamics is the decay phase. The plasma density drops below 21017 cm-3. During the
+decay phase a large, hot and thin plasma cloud is formed due to the complete breakup of
+the plasma column. This plasma cloud emits a large amount of Bremsstrahlung and line
+radiation. The neutron pulse which started from the beginning of the unstable phase
+reaches its peak during this phase.
+
+1.3 Plasma Instabilities
+
+       Over the several decades of plasma physics research, more than 100 types of
+plasma instability have been identified, and more than 20 of these have been observed
+in plasma focus devices. Plasma instabilities can be divided into two general groups
+Magneto-Hydro-Dynamic (MHD) instabilities and kinetic instabilities. Some of the
+more important instabilities in PF device are described here:
+
+ 1.3.1 Rayleigh-Taylor Instability
+
+       In plasma focus device, the Rayleigh-Taylor instability is happen because the
+magnetic field as a light fluid supports the dense and incompressible plasma. During the
+radial compression, the interface between the plasma and magnetic field will be
+unstable [25]. The rapid compression of relatively dense plasma heats the plasma to a
+high temperature (~1 keV). Then the plasma collapses toward the axis with
+approximately constant acceleration and flutes on the outer surface of the plasma.
+Rayleigh-Taylor instability prevents the compression of the plasma column from being
+radially uniform. The magnetic field then begins to diffuse into the plasma column,
+leading to an increase in the inductance of the system due to the increasing density of
+the plasma within the pinch column.
+
+Sausage (m = 0) Instability:
+
+       A radial perturbation of the plasma column may causes it to become constricted
+in a place where the magnetic pressure exceeds the kinetic pressure [26]. Then the
+current flowing in the smaller cross sectional area produces a stronger magnetic field
+around the constricted region which exerts greater inward pressure on the column, and
+subsequently causes it to become still more constricted and unstable. Rapid change in
+radial magnetic field produces a strong axial electric field (EZ ≡ dBθ / dt) which
+
+
+
+                                                                                    10
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+accelerates the ion-electron in plasma column up to hundreds of keV in opposite
+directions. The high energy particles are the source of multiple radiation emission.
+
+Kink (m = 1) Instability:
+
+       The bending of the plasma column causes the poloidal field on the inner edge of
+the bend to become stronger than that at the outer edge, and the associated larger
+magnetic pressure on the inner edge causes the column to bend further. Figure 3 shows
+m = 0 and m = 1 instabilities.
+
+
+
+
+                        Figure 3: sausage (m = 0) and kink (m = 1) instability
+
+
+
+
+                                                                                    11
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+1.4 Plasma Focus Models
+
+       Based on properties of the electrical system and the working gas, the dynamics
+of the current sheath can be understood in terms of a few different models. The main
+differences between these models can be identified by their approach to representing the
+accumulation of mass near the driving magnetic piston.
+
+ 1.4.1 Snow Plow model:
+
+       It is presumed that a very thin layer swept up by the magnetic piston and the
+plasma balance the driving magnetic pressure. In the snow-plow model, the arbitrarily
+large compression of mass is assumed as it is swept up and accumulated in a thin layer
+which is considered to be highly ionized, resulting in an infinite electrical conductivity
+and thus requiring no energy to ionize the fluid. This model has been applied in
+studying the shock phenomena associated with current sheath propagation [27].
+
+ 1.4.2 Quasi-Steady-State model:
+
+       In this model, the advancing shock front overtakes the stationary fluid, and this
+overtaken fluid is then uniformly distributed between the shock front and the magnetic
+piston. This region of shocked fluid moves at the piston velocity [28].
+
+ 1.4.3 Slug model:
+
+       The simplest physical model assumes that the incompressible mass of the
+current sheath increases as encountered ambient gas is swept into the sheath. The
+thickness of the sheath increases. In this model [15], the magnetic pressure drives a
+shock wave ahead of it, creating a space for the magnetic piston (current sheath) to
+move into. Lee has used this model for the radial phase of Plasma Focus dynamics, as is
+shown in Figure 4 [29]. In slug model a zero length pinch starts at r = a (anode radius)
+and elongates as it pinches inwards. The collapsing magnetic piston at position rp
+pushes ahead of it a radially converging structure at position rs. With assuming a
+constant speed in radial direction, the compression time (tcomp) is depended to anode
+radius, when the shock converges on the axis and piston reaches to rc. After hitting the
+shock wave to the axis, a reflected shock propagates outward until reaches to the piston
+at position rp = rmin and then the plasma column pinches for a while (tf ) before
+explosion.
+
+
+
+                                                                                    12
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Figure 4: Radial trajectories of shock (rs) and piston (rp) versus time in collapse phase (Slug model)
+
+ 1.4.4 Gas dynamic model:
+
+       This model tries to include the non-steady-state gas-dynamic motion between
+the shock front and the magnetic piston. The mass is continuously overtaken by the
+advancing shock and is distributed between the shock and current sheath.
+
+ 1.4.5 Ion beam acceleration and neutron production models:
+
+       The 2H(d,n)3He and 2H(d,p)3H reactions are of interest for fusion energy
+applications when deuterium is the working gas. The D-D fusion reactions are:
+
+                                                                                                                                                                      (1-1)
+
+                                                                                                                                                                      (1-2)
+
+       Classically, the energy required to overcome the Coulomb barrier which is due
+to electrostatic repulsion, so that D-D fusion takes place is:
+
+                                                                                                                                                                      (1-3)
+
+Where Z1 and Z2 are the atomic number of two nucleus and R0 is the distance between
+nuclei centers at which the short-range nuclear force exceeds long-range repulsive
+Coulomb force. However, according to quantum mechanics, there is a finite probability
+
+
+
+                                                                                     13
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+that two nuclei will fuse even though they do not have sufficient energy to overcome the
+Coulomb barrier. The penetration probability for a given nuclear fusion reaction
+increases as the energy of the fusing nuclei approach the top of the barrier. Fusion
+reactors such as Tokamak are expected to operate at temperatures in the range
+to 30 keV [30].
+
+        The principal mechanisms for proton and neutron production in the plasma focus
+can be categorized as thermonuclear and non-thermonuclear (beam target).
+
+Thermonuclear reaction:
+
+        For the thermonuclear mechanism the ions are approximately in thermal
+equilibrium with one another. If the thermal plasma is considered to have an isotropic
+Maxwellian ion-energy distribution, then the energy spectra are independent of proton
+emission angle, and FWHM of proton line will be significant. Concerning the proton
+fluence anisotropy, for a stationary isotropic Maxwellian energy distribution, the proton
+intensity is spatially isotropic. One characteristic of a thermonuclear reaction is that the
+reacting center of mass of any two deuterons should be statistically stationary in the
+laboratory frame of reference. This is in contrast to the case of an accelerated beam
+striking a target, in which case the reaction center of mass has a directed momentum
+equal to the incident particle momentum in the beam. The resulting velocity of the
+reacting system results in a non-isotropic velocity distribution (in the laboratory frame).
+
+        An accelerated ion beam incident upon a cold target cannot produce useful
+(positive net output) thermonuclear power because the irreversible energy loss of
+slowing down in the target is always greater than the reaction energy produced. In this
+case the bulk of the kinetic energy of the impinging beam is dissipated uselessly by
+ionization, radiation, and energy transfer to the atomic electrons of the target [31].
+
+        Approximately one-half of the thermonuclear reactions produce protons, so the
+number of protons (and neutrons) in thermal mechanism, is:
+
+
+
+                                                                                                                                                                     (1-4)
+
+
+
+where                                              is the deuteron density inside the pinch,
+                 is the cross-section velocity product of D-D fusion reaction at ~1 keV.
+
+
+
+                                                                                    14
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Also rp ≈ 0.1 cm and hp ≈ 1 cm are the pinch radius and height respectively for NX2
+plasma focus device. By replacing the τ ≈ 50 ns as neutron emission time, the neutron
+yield will be in order of 106.
+
+       This model was rejected very soon with observing the relatively high anisotropy
+in neutron emission. Moreover, the actual neutron yield is much higher (2 order of
+magnitude) than calculated yield based on plasma temperature (~keV) in pinch plasma.
+
+Moving Boiler model:
+
+       This model, based on thermonuclear mechanism, tries to explain the anisotropy
+in neutron production where is assumed the plasma centre of mass is moving along the
+axis of plasma focus device [32]. The required velocity to produce anisotropy of 1.5 is
+about 5×108 cm/sec. However, it is in contrary to many experimental results such as
+optical observation which indicates a velocity of 5×107 cm/sec. Moreover, regarding to
+the neutron emission interval time (50-100 nsec) gives us a fusion source length around
+25-50 cm which is very unrealistic (the average length of fusion source in NX2 is about
+1 cm). In addition, the neutron energy spectrum shows a large range of energy (2.2-
+2.9 MeV) which indicates the involvement of high energy deuteron in neutron
+production.
+
+Beam target mechanism:
+
+       In order to explain the neutron energy spectrum, several models for acceleration
+mechanisms have been considered for energetic electron and ion (in our case, deuteron)
+beams. However, mechanisms for ion acceleration and the formation of intense ion
+beams have still not been enough clarified yet. Some of the proposed mechanisms are
+fluid-like and others are kinetic in nature. An important test of any hypothetical theory
+is whether total axial momentum is conserved during the ion beam formation.
+
+       With regard to the ion beam, Bernard et al. [33] Claim that it is the main source
+of neutrons, as the deuterons bombard both the dense gas and the ionized but relatively
+cold gas bubble between the ionization-front and the shock-front.
+
+       The non-thermonuclear (beam target) model considers a high current of charged
+particles accelerated in an electromagnetic field giving a different proton and neutron
+production mechanism. In this mechanism the accelerated deuterons strike ions at rest.
+The beam-target yield is written in the form [29]:
+
+
+
+
+                                                                                     15
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                                                                                                                     (1-5)
+
+where                                 is the number of beam ions per unit plasma volume,
+                 is the target ion density, σ ≈ 0.02 barn = 2×10-26 cm2 is the cross-section
+of D-D fusion reaction and                                                                        at ~100 keV. So the total neutron yield
+will be in order of 108 which is matched with experimental result from NX2.
+
+Gyrating Particle Model (GPM):
+
+        In a generalized beam-target model GPM, the trajectories of trapped high energy
+deuterons are simulated in the time varying structure pinch plasma column. It is
+assumed that the deuteron source is a series of local point source positioned on the axis.
+The main difference between conventional beam target model and GPM is the
+stretching of deuteron path by gyro-motion in GPM against a straight and un-scattered
+axial beam in origin version. Jager shows the results of this new model [34] in
+comparison with spectrally and spatially resolved measurements of fusion protons
+(pinhole imaging) and accelerated deuterons in POSEIDON plasma focus device
+(W0 = 280 kJ, U0 = 60 kV, Mather type).
+
+Cross Field Acceleration:
+
+        Bernstein and Comisar [35] proposed another generalized beam-target model
+which is assumed: (1) high energy deuterons have angular distributions consistent with
+a cross field acceleration mechanism and have velocity vectors distributed
+anisotropically in space and energy. (2) These energetic deuterons undergo fusion
+collisions primarily with stationary target ions. The principle assumption is that the
+azimuthal magnetic field diffuses rapidly toward the axis of self-pinching discharge.
+
+Plasma Diode:
+
+        The study of ion-induced pinch and enhancement of ion current by pinched
+electron flow in relativistic diodes was done by S.A. Goldstein and R. Lee [36]. In this
+model, the initial motion of the ions, accelerated from the anode plasma, forms an ion
+sheath which modifies the electric field. When an electron enters the ion sheath with
+grazing incidence, it will be reflected back into the diode by the unaffected magnetic
+field but reduced electric field. The necessary ion-sheath thickness to provide such
+electron reflection is reached in times which are short enough (<1 nsec) to explain the
+fast collapsing pinch. The electric field in the diode is of order ~1 MV/cm.
+
+
+                                                                                    16
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Double-layer pulse current model:
+
+       H. Hora et al. developed a new model [37] for the mechanism of the plasma
+focus based on the assumption that the space charge term in Maxwell’s equation
+(usually neglected) is dominating due to the double layer of discharge. The model
+assumes that the current pulse is being produced during the several nanoseconds in the
+focus by the charge separation in the double layer between the collapsing plasma and
+the remaining gas in the focus.
+
+Surfing model:
+
+       The simulation of high energy proton production by fast magneto-sonic shock
+waves in pinched plasma focus was done by Y. Mizuguchi et al. [38]. It is focused on
+the shock formation and the shock acceleration during the pinched current. Some
+protons are trapped in the electrostatic potential produced near the shock front can be
+accelerated to a few MeV by surfatron acceleration mechanism.
+
+Collective focusing model:
+
+       Recently the collective focusing of intense ion beam pulses model was proposed
+by M.A. Dorf et al. [39]. The main concept is that a weak magnetic lens (several
+hundred gauss) can provide a strong focusing of an intense ion beam pulse carrying a
+neutralizing electron background. Note that for a single-species non-neutral ion beam, a
+several Tesla magnetic field would be required to achieve the same focal length.
+Collective focusing will only occur if no background plasma or secondary electrons are
+present inside the lens.
+
+1.5 Plasma Focus Radiation:
+
+       Depending on working gas, the plasma focus device can be used as a strong
+source of various radiations such as high energy neutron and proton (fusion products
+which has been already explained) different range of energetic electron-ion and intense
+electromagnetic wave such as ultra-violet and x-ray.
+
+ 1.5.1 Ion-electron production
+
+       Some of the most interesting applications of energetic ion beams are in materials
+science, such as ion implantation, surface modification, thin film deposition and
+semiconductor doping. Ion beams are also of importance for the production of short-
+
+
+
+                                                                                     17
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+lived isotopes for medical imaging. The high energy electron beam interaction with the
+metallic anode is the source of hard x-ray emission.
+
+          The disruption of plasma column in radial phase mostly because of m = 0
+instability, anomalous resistivity and fast magneto-sonic shock waves have been
+proposed as the source high electric field which accelerates the ion-electron in opposite
+direction to gain their energy from tens of keV to few MeV. Different theories have
+been proposed for acceleration mechanisms [34, 40], however it is not well understood
+and none of them satisfies the experimental results. Even it has not been proved that the
+mechanisms for the acceleration of ions and electrons are the same. Most measurements
+on electrons and ion beams show the independency of the peak energy from charging
+voltage and total stored energy of capacitor bank.
+
+          For the NX2 plasma focus device, the deuteron energy range has been measured
+by different methods such as the nuclear activation of low-Z elements such as B, C, and
+N. Examples of such studies are the activation of graphite targets via the reaction
+12
+     C(d,n)13N [41], and boron-carbide targets via the previous reaction and also
+10
+     B(d,n)11C [42]. Magnetic spectroscopy represents another important technique for
+investigation of ion beams [43]. It has even been found that there can be a high energy
+deuteron beam in backward direction (towards the anode) [44].
+
+ 1.5.2 X-ray production
+
+Hard X-ray radiation:
+
+          Moderately high energy (several keV) electrons striking the copper anode
+producing bremsstrahlung and characteristic radiation is the main mechanism of hard x-
+ray production in plasma focus devices. Measurements of x-ray energy spectra in
+different devices have revealed a very broad range of energies covering the range 10 to
+500 keV.
+
+Bremsstrahlung (Free-Free) radiation:
+
+          Acceleration of the electrons in the ion coulomb field causes a continuous
+emitted radiation as the initial and final state is continuous.
+
+
+
+
+                                                                                      18
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Recombination (Free-Bound) radiation:
+
+          Capturing a free electron into ion bound state causes the excess energy which
+will be emitted as a photon. The chainlike emission spectrum for each bound state has a
+low-frequency cut-off, the minimum energy for removing the electron from the bound
+state.
+
+Line (Bound-Bound transition) radiation:
+
+         Electron transition between the discrete energy levels in atoms or ions gives a
+quantized energy photon with the energy of level difference: hν = Ef - Ei. It is known as
+characteristic radiation because the x-ray spectra are associated with certain series of
+lines, K, L, M, etc.
+
+
+
+
+                                                                                      19
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+1.6 Radiation Measurement
+
+        In this section, different radiation measurement techniques which are often
+employed in the plasma focus labs are presented.
+
+ 1.6.1 Neutron Yield
+
+        As the neutron and proton yield in PF device is the same, by measuring the
+neutron yield, we can estimate the total protons for each shot.
+
+Indium foil activation detector:
+
+        Natural indium consists of 115In (95.8% abundance) and 113In (4.2%). The
+activation cross-section is about 200 barns. Here detection involves three: the fast
+neutrons are first thermalized in steps using moderator such as paraffin or polyethylene.
+The thermal neutrons are captured predominantly by the 115In within an indium foil,
+making it beta radioactive as described by the following reaction:
+
+                                                                                                                                                                       (1-6)
+
+        The activated 116In has three separate half-lives: 14.1 s, 54.15 min, 2.18 s
+associated with the ground state and two isomeric levels. For the indium activation
+detector used on the NX2, only the beta decay with the half-life of 14.1 s (and with end-
+point energy of 3.3 MeV) are counted. The beta particles are counted by the Geiger-
+Muller tube detector (or plastic scintillator with photomultiplier). This detector can be
+calibrated by 252Cf fission source (positioned temporarily at the top of the anode).
+
+Silver activation detector:
+
+        Natural silver consists of 107Ag (51.35% abundance) and 109Ag (48.65%). Both
+isotopes have a sufficiently high activation cross section for thermal neutrons and a
+relatively short decay time. The activation cross-sections for thermal neutrons are 35
+and 92 barns, respectively. When 109Ag is activated with thermal neutrons, 110Ag (half-
+life of 24.2 s) and 110mAg (half-life of 270 day) are produced which undergo beta decay
+to 110Cd. Activation of 107Ag results in the generation of 108Ag with a half-life of 2.3
+min. So the total activity is the sum of the activities of 110Ag and 108Ag. A paraffin
+cylinder moderates the fast neutrons, and the so thermalized neutrons activate a natural
+silver foil.
+
+
+
+
+                                                                                      20
+

@@ -29,7 +29,10 @@ def test_ablation_metadata_fails_closed_for_missing_source_packet() -> None:
 def test_two_temperature_metadata_fails_closed_for_equilibration_audit() -> None:
     metadata = two_temperature_model_metadata()
     _assert_not_validation_evidence(metadata)
-    assert metadata["source_status"] == "equilibration_convention_source_audit_needed"
+    assert (
+        metadata["source_status"]
+        == "equilibration_convention_source_audit_incomplete"
+    )
 
 
 def test_viscosity_metadata_fails_closed_for_collision_log_audit() -> None:

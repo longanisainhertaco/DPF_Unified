@@ -97,6 +97,12 @@ Implemented after this source search:
   dimensionality/handoff packet with explicit claim modes, allowed-claim text,
   source-model limitations, handoff-required observables, candidate runtime
   channels, and missing acceptance channels.
+- The packet now emits `claim_mode_status`, `handoff_channel_status`,
+  `source_model_limitation_status`, `handoff_observable_status`,
+  `upstream_acceptance_gate`, `acceptance_gate`, and `negative_test_policy`.
+- True 3D grid and hybrid/PIC runtime telemetry are explicitly candidate-only;
+  MHD-to-kinetic transfer, electron-scope disposition, same-scope 3D evidence,
+  and mechanism-separated neutron authority remain blocking channels.
 - `src/dpf/first_principles/runner.py` now feeds package-native simulation
   telemetry into that packet so 3D grid, hybrid PIC-fluid runtime, electron
   energy scaffold, source-ordered loop, and kinetic-yield history remain
@@ -108,6 +114,8 @@ Implemented after this source search:
 Verified command:
 
 - `python3 -m pytest tests/test_first_principles_runner.py` -> `8 passed`.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py`
+  -> `60 passed`.
 
 Remaining blocker:
 

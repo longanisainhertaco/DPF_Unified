@@ -25,6 +25,14 @@ STARTUP_BVP_SOURCE_REFS = (
     {
         "path": (
             "KnowledgeReference/"
+            "sand2009-6373-b93aec67.md"
+        ),
+        "lines": "151-163,317-352,360-369,470-475,682-690",
+        "role": "user_validated_alegra_pic_startup_import_and_3d_requirement",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
             "the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md"
         ),
         "lines": "520-590,1488-1545",
@@ -42,6 +50,22 @@ STARTUP_BVP_SOURCE_REFS = (
         "path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
         "lines": "56-74",
         "role": "pf1000_surface_discharge_avalanche_streamer_context",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md"
+        ),
+        "lines": "506-514,579-653,1545-1640,3372-3380",
+        "role": "user_validated_insulator_breakdown_symmetry_and_conditioning_design",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "high-power-laser-and-particle-beams-d1758d55.md"
+        ),
+        "lines": "103-147,161-176,180-200,210-237",
+        "role": "user_validated_compact_mather_geometry_tof_and_neutron_pulse_context",
     },
     {
         "path": "docs/FIRST_PRINCIPLES_BLOCKER_SOURCE_SEARCH_2026_05_15.md",
@@ -130,6 +154,21 @@ MODE_REQUIRED_PAYLOADS = {
     "source_backed_profile": (),
 }
 
+CANDIDATE_INPUT_TO_REQUIRED_CHANNEL = {
+    "candidate_device_geometry": "device_geometry_and_insulator",
+    "candidate_insulator_geometry": "device_geometry_and_insulator",
+    "candidate_gas_species_pressure_temperature": "gas_species_pressure_temperature",
+    "candidate_bank_voltage_and_initial_circuit": "bank_voltage_and_early_circuit",
+    "candidate_initial_density": "initial_density_ionization_charge_state",
+    "candidate_initial_electron_temperature": "electron_temperature_initial",
+    "candidate_initial_ion_temperature": "ion_temperature_initial",
+    "candidate_initial_electric_field": "initial_electric_field",
+    "candidate_initial_magnetic_field": "initial_magnetic_field",
+    "candidate_civ_paschen_breakdown_audit": "breakdown_or_flashover_model",
+    "candidate_civ_paschen_initial_ionization": "initial_density_ionization_charge_state",
+    "candidate_civ_paschen_liftoff_delay": "sheath_liftoff_and_handoff_interval",
+}
+
 
 def build_startup_bvp_packet(
     startup: Mapping[str, Any],
@@ -137,6 +176,7 @@ def build_startup_bvp_packet(
     device: Mapping[str, Any] | None = None,
     gas: Mapping[str, Any] | None = None,
     circuit: Mapping[str, Any] | None = None,
+    candidate_breakdown_audit: Mapping[str, Any] | None = None,
     accepted_channels: tuple[str, ...] | list[str] = (),
 ) -> dict[str, Any]:
     """Return a startup packet that rejects non-source-backed whole-shot starts."""
@@ -151,6 +191,7 @@ def build_startup_bvp_packet(
         gas=gas,
         circuit=circuit,
     )
+    candidate_inputs.update(_candidate_breakdown_channels(candidate_breakdown_audit))
     missing = set(REQUIRED_STARTUP_CHANNELS) - accepted
     missing.update(str(channel) for channel in startup.get("missing_channels", ()))
 
@@ -186,13 +227,131 @@ def build_startup_bvp_packet(
         "required_channels": list(REQUIRED_STARTUP_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "startup_channel_status": _startup_channel_statuses(
+            accepted=accepted,
+            missing=missing,
+            candidate_inputs=candidate_inputs,
+        ),
         "candidate_input_channels": sorted(candidate_inputs),
+        "candidate_breakdown_audit": _candidate_breakdown_audit_packet(
+            candidate_breakdown_audit
+        ),
+        "candidate_input_policy": {
+            "candidate_inputs_can_seed_engineering_runs": True,
+            "candidate_inputs_can_support_whole_shot_acceptance": False,
+            "required_promotion_path": (
+                "reviewed_imported_pic_sheath_state_or_source_backed_"
+                "surface_breakdown_bvp"
+            ),
+        },
         "mode_required_payload": list(MODE_REQUIRED_PAYLOADS.get(mode, ())),
+        "mode_payload_status": _mode_payload_status(mode, accepted),
+        "startup_mode_status": _startup_mode_statuses(
+            current_mode=mode,
+            can_support=can_support,
+        ),
         "source_references": list(STARTUP_BVP_SOURCE_REFS),
+        "acceptance_gate": (
+            "engineering_end_rundown_seeded_or_text_startup_cannot_support_"
+            "whole_shot_first_principles_until_reviewed_imported_pic_state_or_"
+            "source_backed_surface_breakdown_bvp_payload_channels_hashes_"
+            "consistency_tests_and_review_pass"
+        ),
+        "negative_test_policy": {
+            "seeded_layer_rejection_required": True,
+            "uniform_or_profile_startup_rejection_required": True,
+            "end_rundown_whole_shot_rejection_required": True,
+            "unreviewed_imported_pic_state_rejection_required": True,
+            "missing_field_particle_payload_rejection_required": True,
+            "civ_paschen_scaffold_promotion_rejection_required": True,
+            "cross_scope_startup_promotion_rejection_required": True,
+        },
         "whole_shot_startup_blocked": not can_support,
         "can_support_whole_shot_acceptance": can_support,
         "can_support_first_principles_acceptance": can_support,
     }
+
+
+def _startup_channel_statuses(
+    *,
+    accepted: set[str],
+    missing: set[str],
+    candidate_inputs: set[str],
+) -> dict[str, str]:
+    candidate_required = {
+        CANDIDATE_INPUT_TO_REQUIRED_CHANNEL[channel]
+        for channel in candidate_inputs
+        if channel in CANDIDATE_INPUT_TO_REQUIRED_CHANNEL
+    }
+    statuses: dict[str, str] = {}
+    for channel in REQUIRED_STARTUP_CHANNELS:
+        if channel in accepted:
+            statuses[channel] = "accepted_startup_channel_declared"
+        elif channel in candidate_required:
+            statuses[channel] = "candidate_input_only_not_acceptance"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _mode_payload_status(mode: str, accepted: set[str]) -> dict[str, str]:
+    return {
+        payload: (
+            "accepted_payload_channel_declared"
+            if payload in accepted
+            else "missing_or_unreviewed_payload"
+        )
+        for payload in MODE_REQUIRED_PAYLOADS.get(mode, ())
+    }
+
+
+def _startup_mode_statuses(
+    *,
+    current_mode: str,
+    can_support: bool,
+) -> dict[str, dict[str, Any]]:
+    all_modes = (
+        ACCEPTED_STARTUP_MODES
+        + ENGINEERING_ONLY_STARTUP_MODES
+        + REJECTED_STARTUP_MODES
+    )
+    statuses: dict[str, dict[str, Any]] = {}
+    for mode in all_modes:
+        if mode in REJECTED_STARTUP_MODES:
+            status = "rejected_for_accepted_first_principles_claims"
+            decision = "must_fail_acceptance_gate"
+        elif mode in ENGINEERING_ONLY_STARTUP_MODES:
+            status = "engineering_candidate_not_whole_shot"
+            decision = "usable_for_engineering_or_narrowed_handoff_only"
+        elif mode == "surface_breakdown_bvp":
+            status = "accepted_only_after_complete_source_bvp_payload_and_review"
+            decision = "blocked_until_payload_channels_and_review_pass"
+        else:
+            status = "accepted_only_after_complete_reviewed_imported_state"
+            decision = "blocked_until_particles_fields_currents_hashes_and_review_pass"
+        if mode == current_mode and can_support:
+            status = "accepted_startup_bvp_packet"
+            decision = "can_support_whole_shot_startup_claim"
+        statuses[mode] = {
+            "current_mode": mode == current_mode,
+            "mode_class": _mode_class(mode),
+            "required_payload": list(MODE_REQUIRED_PAYLOADS.get(mode, ())),
+            "status": status,
+            "decision": decision,
+            "can_support_acceptance_without_complete_payload": False,
+        }
+    if current_mode not in statuses:
+        statuses[current_mode] = {
+            "current_mode": True,
+            "mode_class": "unknown",
+            "required_payload": [],
+            "status": "unknown_startup_mode_blocks_acceptance",
+            "decision": "must_fail_acceptance_gate",
+            "can_support_acceptance_without_complete_payload": False,
+        }
+    return statuses
 
 
 def _candidate_input_channels(
@@ -229,6 +388,47 @@ def _candidate_input_channels(
     if startup.get("source_scope") is not None:
         channels.add("candidate_startup_source_scope")
     return channels
+
+
+def _candidate_breakdown_channels(
+    candidate_breakdown_audit: Mapping[str, Any] | None,
+) -> set[str]:
+    if not candidate_breakdown_audit:
+        return set()
+    if candidate_breakdown_audit.get("can_support_first_principles_acceptance") is True:
+        return set()
+    status = str(candidate_breakdown_audit.get("status", ""))
+    if status != "candidate_civ_paschen_breakdown_audit_engineering_only":
+        return set()
+    channels = {"candidate_civ_paschen_breakdown_audit"}
+    breakdown = candidate_breakdown_audit.get("breakdown")
+    if (
+        isinstance(breakdown, Mapping)
+        and breakdown.get("initial_ionization_fraction") is not None
+    ):
+        channels.add("candidate_civ_paschen_initial_ionization")
+    liftoff = candidate_breakdown_audit.get("liftoff")
+    if (
+        isinstance(liftoff, Mapping)
+        and liftoff.get("candidate_liftoff_delay_s") is not None
+    ):
+        channels.add("candidate_civ_paschen_liftoff_delay")
+    return channels
+
+
+def _candidate_breakdown_audit_packet(
+    candidate_breakdown_audit: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if not candidate_breakdown_audit:
+        return {
+            "status": "candidate_breakdown_audit_not_supplied",
+            "can_support_whole_shot_acceptance": False,
+            "can_support_first_principles_acceptance": False,
+        }
+    packet = dict(candidate_breakdown_audit)
+    packet["can_support_whole_shot_acceptance"] = False
+    packet["can_support_first_principles_acceptance"] = False
+    return packet
 
 
 def _has_any(mapping: Mapping[str, Any], *keys: str) -> bool:

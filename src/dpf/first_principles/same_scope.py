@@ -164,12 +164,33 @@ def build_same_scope_source_packet(
             text_supported=text_supported,
             missing=missing,
         ),
+        "same_scope_target_policy": {
+            "text_supported_channels_can_seed_engineering_reference": True,
+            "text_supported_channels_can_support_acceptance": False,
+            "accepted_targets_must_match_declared_scope": True,
+            "accepted_targets_must_include_review_certificate": True,
+            "cross_scope_targets_require_reviewed_transfer_rule": True,
+        },
         "other_scope_source_groups": list(OTHER_SCOPE_SOURCE_GROUPS),
         "cross_scope_policy": {
             "status": "blocked_without_reviewed_transfer_rule",
             "required_transfer_rule_channels": list(TRANSFER_RULE_REQUIRED_CHANNELS),
             "other_scope_sources_usable_for": "requirements_or_schema_only",
             "can_use_other_scope_for_acceptance": False,
+        },
+        "acceptance_gate": (
+            "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_"
+            "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
+            "current_startup_density_fields_temperatures_neutrons_detector_uq_"
+            "review_and_cross_scope_rejection_tests_pass"
+        ),
+        "negative_test_policy": {
+            "text_reference_promotion_rejection_required": True,
+            "other_scope_diagnostic_promotion_rejection_required": True,
+            "mismatched_shot_or_pressure_rejection_required": True,
+            "missing_review_certificate_rejection_required": True,
+            "missing_uncertainty_budget_rejection_required": True,
+            "cross_scope_without_transfer_rule_rejection_required": True,
         },
         "validation_target_scope_decisions": target_decisions,
         "source_references": list(SAME_SCOPE_SOURCE_REFS),

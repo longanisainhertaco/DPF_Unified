@@ -6,6 +6,29 @@
   "verdict": "blocked_generalized_dpf_machine_path_not_available",
   "decision": "do_not_claim_general_dpf_first_principles_tool",
   "runner_packet": "src/dpf/first_principles/generalization.py",
+  "claim_policy": {
+    "single_scope_is_not_generalized": true,
+    "accepted_primary_scope_certificate_required": true,
+    "accepted_second_scope_certificate_required": true,
+    "second_scope_must_repeat_full_fp_1_through_fp_14_chain": true,
+    "cross_scope_transfer_or_scale_review_required": true
+  },
+  "required_second_scope_gate_ids": [
+    "FP-1",
+    "FP-2",
+    "FP-3",
+    "FP-4",
+    "FP-5",
+    "FP-6",
+    "FP-7",
+    "FP-8",
+    "FP-9",
+    "FP-10",
+    "FP-11",
+    "FP-12",
+    "FP-13",
+    "FP-14"
+  ],
   "required_channels": [
     "accepted_primary_scope_certificate",
     "declared_second_scope",
@@ -29,6 +52,13 @@
     "cross_scope_negative_tests"
   ],
   "candidate_second_scopes": [
+    {
+      "scope_id": "soto2010_cchen_pf400j_pf50j_speed_nanofocus_matrix",
+      "status": "candidate_requirement_material_not_acceptance",
+      "sources": [
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:232-239,305-320,331-354,403-438,526-898,917-957,976-1006,1170-1202"
+      ]
+    },
     {
       "scope_id": "pf1000_full_energy_anisotropy_450_500kj_3p5torr",
       "status": "candidate_requirement_material_not_acceptance",
@@ -70,12 +100,29 @@
   ],
   "source_references": [
     "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md:88-89,133-135,172,713",
-    "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md:86-91,130-157"
+    "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md:86-91,130-157",
+    "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:232-239,305-320,331-354,403-438,526-898,917-957,976-1006,1170-1202"
+  ],
+  "implementation_ratchet": [
+    "Emit Soto 2010 CCHEN matrix as second-scope requirement material, not acceptance evidence.",
+    "Emit per-channel generalization_channel_status decisions.",
+    "Emit claim_policy preventing a single-scope engineering candidate from becoming a generalized DPF claim.",
+    "Emit required_second_scope_gate_ids requiring FP-1 through FP-14 on a second scope.",
+    "Emit candidate_second_scope_decisions marking all candidate second scopes as requirement material, not acceptance evidence.",
+    "Emit upstream_acceptance_gate so blocked primary-scope packets prevent generalization."
   ],
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
-      "result": "7 passed"
+      "result": "11 passed after adding the Soto 2010 CCHEN second-scope candidate"
+    },
+    {
+      "command": "python3 -c \"import json; [json.load(open(path)) for path in ['docs/FIRST_PRINCIPLES_SOTO2010_SOURCE_TRIAGE_2026_05_15.json','docs/USER_PDF_KR_PROMOTION_2026_05_15.json','docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.json']]; print('json ok')\"",
+      "result": "valid JSON"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_runner.py",
+      "result": "8 passed"
     },
     {
       "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.json",
@@ -83,7 +130,11 @@
     },
     {
       "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
-      "result": "33 passed"
+      "result": "superseded_by_38_test_packet_suite"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "38 passed"
     }
   ]
 }

@@ -77,15 +77,31 @@
     "packet_fields_added": [
       "same_scope_channel_status",
       "text_supported_not_acceptance_channels",
+      "same_scope_target_policy",
       "cross_scope_policy",
+      "acceptance_gate",
+      "negative_test_policy",
       "validation_target_scope_decisions"
     ],
     "remaining_blocker": "no accepted one-scope PF-1000/Akel packet or reviewed transfer rule exists"
+  },
+  "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",
+  "negative_test_policy": {
+    "text_reference_promotion_rejection_required": true,
+    "other_scope_diagnostic_promotion_rejection_required": true,
+    "mismatched_shot_or_pressure_rejection_required": true,
+    "missing_review_certificate_rejection_required": true,
+    "missing_uncertainty_budget_rejection_required": true,
+    "cross_scope_without_transfer_rule_rejection_required": true
   },
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
       "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     }
   ],
   "next_blocker": "FP-10"

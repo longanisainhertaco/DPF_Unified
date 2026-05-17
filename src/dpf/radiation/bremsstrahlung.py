@@ -7,7 +7,8 @@ Physics:
     P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)  [W/m^3]  (SI coefficient)
 
     Source: NRL Plasma Formulary (2019) eq.(30), p. 58
-        [KR: plasma-formulary.md L5101 eq.(30)]
+        KnowledgeReference/plasma-formulary.md
+        KnowledgeReference/2019nrlplasma-formulary-037290d4.md
         P_Br = 1.69e-32 * Ne * Te^(1/2) * sum_Z[Z^2 N(Z)]   [W/cm^3]
         with Ne in cm^-3, Te in eV.
 
@@ -37,6 +38,13 @@ from __future__ import annotations
 
 import numpy as np
 from numba import njit
+
+BREMSSTRAHLUNG_SOURCE_REFERENCES = {
+    "nrl_formulary_local": "KnowledgeReference/plasma-formulary.md",
+    "nrl_2019": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+}
+BREMSSTRAHLUNG_SOURCE_STATUS = "source_grounded_engineering_radiation_not_validation"
+BREMSSTRAHLUNG_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 # Bremsstrahlung coefficient in SI (W m^3 K^{-1/2})
 # P_ff = BREM_COEFF * g_ff * Z * ne^2 * sqrt(Te)    [quasi-neutral: ni = ne/Z]

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dpf.server.readiness import api_readiness_payload
-from dpf.validation import (
-    FIRST_PRINCIPLES_MHD_MODE,
-    PF1000_AKEL_SOURCE_SCOPE,
-    PF1000_AKEL_VALIDATION_SCOPE,
-)
+
+FIRST_PRINCIPLES_MHD_MODE = "first_principles_mhd"
+PF1000_AKEL_SOURCE_SCOPE = "pf1000_akel_16kv_1p2torr_shot_12581"
+PF1000_AKEL_VALIDATION_SCOPE = "pf1000_akel_16kv_1p2torr_shot_12581"
 
 
 def test_api_readiness_payload_exposes_fail_closed_authority_and_blockers() -> None:
@@ -70,12 +69,24 @@ def test_api_readiness_payload_exports_first_principles_blockers() -> None:
     assert readiness["status"] == "blocked"
     assert readiness["source_scope"] == PF1000_AKEL_SOURCE_SCOPE
     assert readiness["validation_scope"] == PF1000_AKEL_VALIDATION_SCOPE
-    assert "accepted_same_scope_akel_digitization" in readiness["missing_evidence"]
-    assert "field_coupled_energy_accounting" in readiness["missing_evidence"]
-    assert "first_principles_startup_initialization" in readiness["missing_evidence"]
-    assert payload["first_principles_energy_accounting"]["status"] == "incomplete"
-    assert payload["first_principles_startup_initialization"]["status"] == "incomplete"
-    assert any("blocked_by_review" in item for item in payload["source_blockers"])
+    assert readiness["package_native_runner"] == (
+        "first_principles_3d_hybrid_em_pic_fluid"
+    )
+    assert "same_scope_source" in readiness["missing_evidence"]
+    assert "startup_bvp" in readiness["missing_evidence"]
+    assert payload["first_principles_energy_accounting"]["status"] == (
+        "engineering_candidate_conservation_telemetry_not_validation"
+    )
+    assert payload["first_principles_startup_initialization"]["status"] == (
+        "blocked_startup_bvp_packet_not_available"
+    )
+    assert payload["first_principles_neutron_yield_authority"]["status"] == (
+        "blocked_mechanism_separated_neutron_authority_not_available"
+    )
+    assert any(
+        "same-scope source-truth acceptance packet" in item
+        for item in payload["source_blockers"]
+    )
 
 
 def test_simulation_info_includes_api_readiness_fields() -> None:
@@ -144,7 +155,8 @@ def test_simulation_info_includes_first_principles_readiness_fields() -> None:
     assert readiness["source_scope"] == PF1000_AKEL_SOURCE_SCOPE
     assert readiness["validation_scope"] == PF1000_AKEL_VALIDATION_SCOPE
     assert readiness["ready"] is False
-    assert "accepted_same_scope_akel_digitization" in readiness["missing_evidence"]
+    assert "same_scope_source" in readiness["missing_evidence"]
+    assert readiness["execution_mode"] == "first_principles_3d_hybrid_em_pic_fluid"
 
 
 def test_simulation_info_preserves_declared_validation_scope() -> None:
@@ -219,7 +231,10 @@ def test_rest_simulation_response_exposes_first_principles_preset_scope() -> Non
     assert readiness["source_scope"] == PF1000_AKEL_SOURCE_SCOPE
     assert readiness["validation_scope"] == PF1000_AKEL_VALIDATION_SCOPE
     assert readiness["status"] == "blocked"
-    assert "accepted_same_scope_akel_digitization" in readiness["missing_evidence"]
+    assert "same_scope_source" in readiness["missing_evidence"]
+    assert readiness["package_native_runner"] == (
+        "first_principles_3d_hybrid_em_pic_fluid"
+    )
 
 
 def test_rest_simulation_response_preserves_declared_validation_scope() -> None:

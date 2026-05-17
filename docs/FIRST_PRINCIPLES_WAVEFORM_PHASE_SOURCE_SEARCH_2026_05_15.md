@@ -100,6 +100,10 @@ Implemented after this source search:
   waveform/phase packet with per-channel status, text-supported-but-not-accepted
   fields, required review channels, draft Akel Fig. 1 digitization packet
   status, and validation-target scope decisions.
+- The packet now emits `waveform_phase_target_policy` and
+  `negative_test_policy` so draft digitization, text timing/scalars, missing
+  per-point UQ, missing review, mismatched scope, and missing output
+  mapping/tolerances cannot be promoted.
 - Accepted target channels require matching declared-scope metadata; draft,
   text, or mismatched-scope waveform evidence is not promoted.
 - `tests/test_first_principles_runner.py` proves the package-native runner keeps
@@ -109,6 +113,8 @@ Implemented after this source search:
 Verified command:
 
 - `python3 -m pytest tests/test_first_principles_runner.py` -> `8 passed`.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py`
+  -> `60 passed`.
 
 Remaining blocker:
 

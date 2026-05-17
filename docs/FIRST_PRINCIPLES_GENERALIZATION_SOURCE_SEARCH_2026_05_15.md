@@ -37,21 +37,29 @@ candidate second scopes, but it cannot claim generalized DPF-machine authority.
 
 ### Candidate Second Scopes
 
-1. `pf1000_full_energy_anisotropy_450_500kj_3p5torr`
+1. `soto2010_cchen_pf400j_pf50j_speed_nanofocus_matrix`
+   - Supported by Soto 2010 CCHEN device configurations, aggregate shot and
+     diagnostic observations, and cross-device scaling matrix:
+     `KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:232-239,305-320,331-354,403-438,526-898,917-957,976-1006,1170-1202`.
+   - Blocker: table targets are not accepted typed evidence yet, aggregate
+     observations are not complete same-shot time histories, and each selected
+     device still needs its own FP-1 through FP-14 packet chain and certificate.
+
+2. `pf1000_full_energy_anisotropy_450_500kj_3p5torr`
    - Supported by PF-1000 full-energy anisotropy/TOF/direct-scattered context:
      `KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md:121-137,175-204,269-284,432-438`.
    - Supported by PF-1000 interferometry density/pinch context:
      `KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md:130-174`.
    - Blocker: not Akel shot 12581; requires its own full packet chain and review.
 
-2. `faeton_i_100kv_second_device_scope`
+3. `faeton_i_100kv_second_device_scope`
    - Supported by high-voltage current-sheath, voltage, neutron-yield,
      anisotropy, PMT-scintillator, and Faraday-cup context:
      `KnowledgeReference/faeton-i-investigation-of-plasma-dynamics-and-radiation-output-of-a-100-kv-plasma-focus-device.md:46-55,64-78`.
    - Blocker: current source leans on Lee-model comparison and must be
      re-extracted as first-principles evidence before use.
 
-3. `llnl_180ka_kinetic_or_hybrid_reference`
+4. `llnl_180ka_kinetic_or_hybrid_reference`
    - Supported by LLNL-like fully kinetic geometry/current/beam/yield context:
      `KnowledgeReference/fully-kinetic-simulations-of-dense-plasma-focus-z-pinch.md:87-118,135-156`.
    - Supported by the newly ingested hybrid PIC-fluid source:
@@ -59,7 +67,7 @@ candidate second scopes, but it cannot claim generalized DPF-machine authority.
    - Blocker: hybrid source is 2D axisymmetric and public same-scope
      experimental packet is incomplete.
 
-4. `mjolnir_60kv_735kj_9torr_mechanism_scope`
+5. `mjolnir_60kv_735kj_9torr_mechanism_scope`
    - Supported by MJOLNIR diagnostic layout, transmission-line circuit,
      MHD-to-kinetic modeling, neutron pulse/spectrum/anisotropy, and activation
      detector context:
@@ -67,7 +75,7 @@ candidate second scopes, but it cannot claim generalized DPF-machine authority.
    - Blocker: strong mechanism material, but no accepted first-principles
      certificate until all FP gates are re-run for this scope.
 
-5. `pf1000_akel_other_shot_or_pressure_series`
+6. `pf1000_akel_other_shot_or_pressure_series`
    - Supported by Akel/PF-1000 shot-series scalar context already captured in
      FP-9 through FP-14.
    - Blocker: a second shot on the same machine can test reproducibility, but it
@@ -102,8 +110,26 @@ The packet is deliberately non-promoting. It does not select a second
 demonstrator; it preserves the candidate list and forces the next execution
 step to assemble one complete second-scope evidence chain.
 
+Additional ratchet added in this pass:
+
+- Soto 2010 CCHEN PF-400J/PF-50J/SPEED/Nanofocus matrix is now listed as
+  candidate second-scope requirement material, not acceptance evidence.
+- `src/dpf/first_principles/generalization.py` now emits
+  `generalization_channel_status`, `claim_policy`,
+  `required_second_scope_gate_ids`, `candidate_second_scope_decisions`, and
+  `upstream_acceptance_gate`.
+- Candidate scopes are now explicitly marked
+  `candidate_requirement_material_not_acceptance` and each requires an
+  independent FP-1 through FP-14 packet chain plus its own certificate.
+- `tests/test_first_principles_runner.py` asserts that a single PF-1000/Akel
+  scope is not a generalized claim, the second scope must carry `FP-1` through
+  `FP-14`, and blocked primary packets prevent starting a generalization claim.
+
 ## Validated Commands
 
-- `python3 -m pytest tests/test_first_principles_runner.py` -> 7 passed.
+- `python3 -m pytest tests/test_first_principles_runner.py` -> 11 passed after
+  adding the Soto 2010 CCHEN second-scope candidate to the runtime packet.
+- `python3 -c "import json; [json.load(open(path)) for path in ['docs/FIRST_PRINCIPLES_SOTO2010_SOURCE_TRIAGE_2026_05_15.json','docs/USER_PDF_KR_PROMOTION_2026_05_15.json','docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.json']]; print('json ok')"` -> valid JSON.
+- `python3 -m pytest tests/test_first_principles_runner.py` -> 8 passed.
 - `python3 -m json.tool docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.json` -> valid JSON.
-- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py` -> 33 passed.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py` -> 38 passed.

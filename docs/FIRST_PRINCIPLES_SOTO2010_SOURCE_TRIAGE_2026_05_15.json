@@ -1,0 +1,126 @@
+{
+  "date": "2026-05-15",
+  "source": {
+    "title": "Studies on scalability and scaling laws for the plasma focus: similarities and differences in devices from 1MJ to 0.1J",
+    "doi": "10.1088/0963-0252/19/5/055017",
+    "local_pdf": "downloaded_books_papers/Research Papers/2026-05-15-user-ingest/soto2010.pdf",
+    "sha256": "5f680756a4a1ba12192e60d2e6d773be9f5279d89e05fdf6e66e2f5260f1a7fa",
+    "kr_markdown": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md",
+    "kr_json": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.json",
+    "ingestion_status": "text_parity_extracted_review_needed",
+    "validation_status": "source_available_not_target_extracted"
+  },
+  "whole_shot_verdict": {
+    "can_unblock_full_first_principles_whole_shot": false,
+    "reason": "The source provides machine configuration, aggregate diagnostic observations, and scaling constraints, but not a complete same-shot startup BVP, current waveform, spatial field/temperature history, mechanism-separated neutron history, detector response, or UQ certificate."
+  },
+  "implemented_in": [
+    "docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md",
+    "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+    "docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.md",
+    "docs/FIRST_PRINCIPLES_GENERALIZATION_SOURCE_SEARCH_2026_05_15.json",
+    "src/dpf/first_principles/generalization.py"
+  ],
+  "target_extraction_candidates": [
+    {
+      "id": "soto2010_table1_cchen_device_configs",
+      "priority": "P1",
+      "source_lines": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:526-732",
+      "devices": ["SPEED2", "SPEED4", "PF-400J", "PF-50J", "Nanofocus"],
+      "observables": [
+        "capacitance",
+        "charging_voltage",
+        "inductance",
+        "time_to_peak_current",
+        "stored_energy",
+        "peak_current",
+        "anode_radius",
+        "cathode_radius",
+        "effective_anode_length",
+        "insulator_length",
+        "neutron_yield",
+        "ion_density",
+        "line_density",
+        "neutron_energy",
+        "repetition_rate"
+      ],
+      "acceptance_status": "not_accepted_target_extraction_required"
+    },
+    {
+      "id": "soto2010_table2_cross_device_scaling_matrix",
+      "priority": "P1",
+      "source_lines": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:741-898",
+      "devices": [
+        "PF-1000",
+        "PF-360",
+        "SPEED2",
+        "7 kJ PF",
+        "GN1",
+        "Fuego Nuevo II",
+        "UNU/ICTP-PF",
+        "PACO",
+        "PF-400J",
+        "FMPF-1",
+        "200J Batt-PF",
+        "125J PF",
+        "PF-50J",
+        "Nanofocus"
+      ],
+      "observables": [
+        "stored_energy_kJ",
+        "anode_radius_cm",
+        "peak_current_kA",
+        "pressure_mbar",
+        "energy_density_parameter",
+        "drive_parameter",
+        "energy_per_mass_parameter"
+      ],
+      "acceptance_status": "not_accepted_target_extraction_required"
+    },
+    {
+      "id": "soto2010_pf400j_pf50j_neutron_density_velocity_targets",
+      "priority": "P1",
+      "source_lines": [
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:232-239",
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:331-354",
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:403-438",
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:680-731"
+      ],
+      "devices": ["PF-400J", "PF-50J"],
+      "observables": [
+        "neutron_yield_vs_pressure",
+        "neutron_angular_distribution_fraction",
+        "neutron_energy_mean_and_dispersion",
+        "electron_density",
+        "line_density",
+        "radial_velocity"
+      ],
+      "acceptance_status": "not_accepted_target_extraction_required"
+    },
+    {
+      "id": "soto2010_first_principles_scaling_sanity_bounds",
+      "priority": "P2",
+      "source_lines": [
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:917-957",
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:976-1006",
+        "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md:1170-1202"
+      ],
+      "observables": [
+        "pinch_radius_fraction",
+        "pinch_length_fraction",
+        "pinch_density_scaling",
+        "pinch_edge_magnetic_field",
+        "alfven_speed",
+        "temperature_order"
+      ],
+      "acceptance_status": "engineering_sanity_bounds_only_not_solver_closure"
+    }
+  ],
+  "blocked_claims": [
+    "full_first_principles_whole_shot",
+    "pf1000_akel_same_shot_acceptance",
+    "startup_bvp_acceptance",
+    "mechanism_separated_neutron_authority",
+    "comparator_uq_certificate"
+  ]
+}

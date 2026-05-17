@@ -25,11 +25,15 @@ The legacy `beam_target_yield_rate(I_pinch, V_pinch, n_target, L_target,
 f_beam)` function with f_beam-style scaling is retained as
 `_legacy_beam_target_yield_rate` for backward-compat consumers.
 
-References:
-    Lee S. & Saw S.H., A Course on Plasma Focus Numerical Experiments
-        Part 1 (Basic Course), §5109-5145 (KR).
-    Bosch & Hale, Nuclear Fusion 32:611 (1992)
-    NRL Plasma Formulary (2019)
+Local source-truth routing:
+    KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md
+    KnowledgeReference/bosch-hale-1992-fusion-reactivity.md
+    KnowledgeReference/2019nrlplasma-formulary-037290d4.md
+
+The Lee/Saw form is baseline/comparator context only for the first-principles
+track. Accepted neutron authority remains in
+``dpf.first_principles.neutron_authority`` and requires mechanism-separated,
+same-scope evidence.
 """
 
 from __future__ import annotations
@@ -39,6 +43,17 @@ from numba import njit
 
 from dpf.constants import e as e_charge
 from dpf.constants import eV
+
+BEAM_TARGET_SOURCE_REFERENCES = {
+    "lee_saw_baseline": (
+        "KnowledgeReference/"
+        "a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md"
+    ),
+    "bosch_hale_dd": "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
+    "nrl_formulary": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+}
+BEAM_TARGET_SOURCE_STATUS = "baseline_or_runtime_diagnostic_not_validation"
+BEAM_TARGET_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 
 def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:

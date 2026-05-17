@@ -1,0 +1,1762 @@
+     ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+            Jai Mata Dee
+Construction and Optimization of Low
+Energy (< 240J) Miniature Repetitive
+     Plasma Focus Neutron Source
+
+
+
+
+                                                        Rishi Verma
+
+
+
+
+               A thesis submitted to the
+             National Institute of Education
+           Nanyang Technological University
+  in fulfillment of the requirement for the degree of
+
+                                           Doctor of Philosophy
+
+                                                                          2010
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                 Acknowledgement
+
+        I wish to express my sincere gratitude and heartfelt thanks to my supervisor, A/P Rajdeep
+Singh Rawat for his esteemed guidance, continual support and motivation. Without his thought
+provoking ideas, constructive comments, patience and encouragement, this work would have never
+been successfully accomplished. He has certainly been an excellent mentor, providing me with much
+needed ideas and directions for work. I am very grateful to have such a fulfilling and enriching
+experience of working under him. I also want to extend my sincere appreciations to my co-supervisor
+A/P Paul Lee Choon Keat, for his invaluable advices and constant encouragement. His enthusiasm in
+sharing methodological expertise has been great nourishment for this project. I am extremely thankful
+for his continual help and inspiring guidance.
+        I do express my gratitude to A/P S. V. Springham for the help, valuable suggestions and
+discussions, in particular, on setting-up and using of the nuclear diagnostics. I would also like to thank
+A/P Augustine Tan Tuck Lee for enriching encouragement and motivation to excel in research.
+Discussions on various issues of plasma focus operation with Dr. Mahadevan Krishnan, (Alameda
+Applied Sciences Corporation, USA) and Dr. M. Zakaullah (Quaid-i-Azam University, Pakistan) were
+invaluable. I sincerely thank them for giving fruitful suggestions and exchanging ideas during the
+experimental work of this project. The privileged interaction with Prof. Lee Sing has left deep
+impression on me; the passion he has towards plasma focus research is truly exemplary. Thanks are
+indeed due to Ms. Cecelia Selvam and Mr. Lionel Lim as well as to all colleagues in Plasma Radiation
+Source Lab, Mr. M. V. Roshan, Mr. A. R. Talebitaher, Dr. Jiaji Lin, Ms. Zhenying Pan, Ms. Shumaila
+Karamat, Mr. S. Mahmood, Mr. G. Macharaga and Mr. Usman Ilyas for their kind help at various
+stages, together with moral support. It has been a pleasant experience to work with them.
+       Special thanks are given to Prof. P. K. Kaw, Prof. A. Sen and Dr. Anurag Shyam of Institute
+for Plasma Research, Gandhinagar, Gujarat, India for their confidence on me that encouraged and
+inspired me to pursue PhD Programme at National Institute of Education (NIE)/ Nanyang
+Technological University (NTU), Singapore. Furthermore, I must convey my sincere thanks to NIE/
+NTU, Singapore for giving me the opportunity to pursue my PhD with scholarship.
+       Finally, I wish to thank my beloved parents, in-laws and all members of family for their moral
+support from afar in India, especially my dearly missed wife Ruchi and son Pratyush, for their indebted
+loving support, encouragement and forbearance. For this I am truly blessed and highly grateful.
+
+
+
+                                                                                              ii
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                                 Abstract
+
+    In the recent years, the upcoming diversified applications of neutron sources have compelled thrust
+towards the research and development of compact pulsed neutron generators. Amongst various
+options, miniature plasma focus (MPF) device based compact neutron generators have evolved as
+simple and economical alternative but yet from the application point of view, the neutron yield is far
+behind the threshold requirement. The potential limitation of MPF devices for practical applications
+comes from the fact that the neutron output tends to scale roughly as I4 (where I is the peak discharge
+current) or as E2 (where E is the energy stored in the system) and since MPF devices typically operate
+in sub-kilojoule range, their neutron output is in the range of 103 – 106 neutrons/shot (with peak
+discharge current in the range of 40 – 150kA) depending upon device energy, efficiency and design. In
+order to make the MPF device useful as compact source of fast neutrons for the widest range of
+applications, the typical requirement for time averaged neutron output is in the order of 107 – 1010
+neutrons/second. To achieve such a time averaged neutron output in MPF devices, it is necessary to
+operate them in repetitive mode at repetition rate of more than 1Hz.
+
+      The work presented in this thesis is mainly based on the design, construction and optimization of
+indigenously developed three different versions of sub-kilojoule range fast miniature plasma focus
+devices – FMPF-1, FMPF-2 and FMPF-3 operating at <240J. The designations of the devices have
+been made on the basis of their pulsed power system configuration and electrical characteristics.
+
+      The first version of fast miniature plasma focus device FMPF-1 was primarily made for
+investigating the performance of the newly designed device at such low energy and to optimize plasma
+focus tube parameters. After going through several stages of design and experimental iterations of
+coaxial electrode assembly and other operating parameters, the ‘FMPF-1’ device was successfully
+demonstrated as a portable neutron source producing maximum average neutron yield of
+(1.15±0.2)×106 neutrons/shot at 230J/80kA/5.5mbar Deuterium (D2) filling gas pressure. The
+conceived model of ‘FMPF-1’ is extremely compact and aids the feature of portability/table top model.
+The overall dimensions of the apparatus, which includes capacitor bank, sparkgap switch and the focus
+chamber is 0.2m × 0.2m × 0.5m and the total weight of the system is ~25kgs.
+
+      The second version of fast miniature plasma focus device FMPF-2 was specifically designed to
+operate in repetitive mode ranging from 0.2 – 10Hz using newly developed high wattage pulsed power
+system. Many technological challenges were confronted and resolved for making the successful
+
+                                                                                             iii
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+operation of the device in repetitive mode up to 10Hz. Using the repetitive miniature plasma focus
+device FMPF-2, for the first time, the enhancement in time averaged neutron yield has been
+successfully demonstrated by an order of magnitude, realizing the long stated concept of ‘enhancement
+by repetition’. While operating at 228J/80kA/6mbar Deuterium (D2) filling gas pressure, the time
+averaged neutron yield of (6.2±4)×105 neutrons/second at 1Hz operation was enhanced to
+(6.5±0.6)×106 neutrons/second at 10Hz operation for the burst length of 30 consecutive shots.
+
+      In the third version of fast miniature plasma focus device FMPF-3 (a four module upgraded
+version of FMPF-2), significant improvements were made to enhance the efficiency of high wattage
+pulsed power system used in FMPF-2 device. As an outcome of rigorous transformations made, the
+FMPF-3 pulsed power system delivered ~20% higher peak discharge current than FMPF-2 pulsed
+power system while operating at similar energy level. In FMPF-3 device, at 200J/90kA/5.5mbar
+Deuterium (D2) filling gas pressure, the time averaged neutron yield of (1.4±0.6)×106 neutrons/second
+at 1Hz operation was enhanced to record yield of (1.4±0.2)×107 neutrons/second at 10Hz operation for
+the improvised burst length of 50 consecutive shots.
+
+      In the thesis, along with exclusive description on design methodology, construction and
+optimization exercises of all versions of newly developed miniature plasma focus devices (FMPF-1,
+FMPF-2 and FMPF-3), the time integrated and time resolved investigations on their neutron and hard
+X-ray emission characteristics have also been dealt in detail.
+
+
+
+
+                                                                                             iv
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                          List of Publications
+
+Journal Papers:
+
+1. Rishi Verma, R. S. Rawat, P. Lee, M. Krishnan, S. V. Springham and T. L. Tan, Miniature
+   plasma focus device as a compact hard X-ray source for fast radiography applications, IEEE
+   Transactions on Plasma Science, 38(4), 652 (2010).
+
+2. Rishi Verma, R. S. Rawat, P. Lee, M. Krishnan, S. V. Springham and T. L. Tan, Realization of
+   enhancement in time averaged neutron yield by using repetitive miniature plasma focus device
+   as pulsed neutron source, J. Phys. D: Appl. Phys., 42, 235203, (2009).
+
+3. Rishi Verma, R. S. Rawat, P. Lee, S. V. Springham, T. L. Tan and M. Krishnan, Experimental
+   study of neutron emission characteristics in a compact sub-kilojoule range miniature plasma
+   focus device, Plasma Physics and Controlled Fusion, 51, 075008 (2009).
+
+4. Rishi Verma, R. S. Rawat, P. Lee, S. V. Springham, T. L. Tan and M. Krishnan, Effect of
+   cathode structure on neutron yield performance of a miniature plasma focus device, Physics
+   Letters A, 373, 2568 (2009).
+
+5. R. Verma, R. S. Rawat, P. Lee, S. V. Springham, T. L. Tan, M. V. Roshan and M. Krishnan, A
+   fast miniature plasma focus based compact and portable nanosecond pulsed neutron
+   source, Journal of Plasma and Fusion Research Series, 8, 1283 (2009).
+
+6. Rishi Verma, P. Lee, S. Lee, S. V. Springham, T. L. Tan, R. S. Rawat and M. Krishnan, Order
+   of magnitude enhancement in neutron emission with Deuterium-Krypton admixture operation
+   in miniature plasma focus device, Applied Physics Letters, 93(10), 101501 (2008).
+7. Rishi Verma, M. V. Roshan, F. Malik, P. Lee, S. Lee, S. V. Springham, T. L. Tan, M.
+   Krishnan and R. S. Rawat, Compact sub-kilojoule range fast miniature plasma focus as
+   portable neutron source, Plasma Sources Science and Technology, 17(4), 045020 (2008).
+8. Rishi Verma, P. Lee, S. V. Springham, T. L. Tan, M. Krishnan and R. S. Rawat, Order of
+   magnitude enhancement in X-ray yield at low pressure Deuterium-krypton admixture operation
+   in miniature plasma focus device, Applied Physics Letters 92(1), 011506 (2008).
+9. Rishi Verma, P. Lee, S. V. Springham, T. L. Tan, and R. S. Rawat , High performance
+   thyratron driver with low jitter, Review of Scientific Instruments, 78(8), 086107 (2007).
+
+
+
+                                                                                         v
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+10. M. A. Mohammadi, R. Verma, S. Sobhanian, C.S. Wong, S. Lee, S.V. Springham, T. L. Tan,
+   P. Lee and R.S. Rawat, Neon soft X-ray emission studies from UNU-ICTP plasma focus
+   operated with longer than optimal anode length, Plasma Sources Science and Technology,
+   16(4), 785 (2007).
+
+11. Z. Y. Pan, R. S. Rawat, R. Verma, J. J. Lin, H. Yan, R.V. Ramanujan, P. Lee, S. V.
+   Springham, T. L. Tan, ‘Miniature Plasma Focus as a Novel Device for Synthesis of
+   Magnetically Soft Granular Thin Films of FeCo’, Physics Letters A 374, 1043 (2010).
+
+12. Z. Y. Pan, R. S. Rawat, J. J. Lin, R. Verma, M. V. Roshan, P. Lee, S. V. Springham and T. L.
+   Tan, Nanostructured magnetic CoPt thin films synthesis using dense plasma focus device
+   operating at sub-kilojoule range, J. Phys. D: Appl. Phys. 42 175001 (2009).
+
+13. Z. Y. Pan, R. S. Rawat, J. J. Lin, R. Verma, M. V. Roshan, P. Lee, S. V. Springham and T. L.
+   Tan, Magnetic CoPt Nanoparticles Deposition using Plasma Focus Device, Journal of Plasma
+   and Fusion Research Series, 8, 504 (2009).
+
+14. J. J. Lin, M. V. Roshan, Z. Y. Pan, R.Verma, P. Lee, S. V. Springham, T. L. Tan and R. S.
+   Rawat, FePt nanoparticle formation with lower phase transition temperature by single shot
+   plasma focus ion irradiation, Journal of Physics D: Applied Physics, 41(13), 135213 (2008).
+
+15. M. V. Roshan, R. S. Rawat, A. Talebitaher, R. Verma, P. Lee, S. V. Springham, High Energy
+   Deuterons Emission in NX2 Plasma Focus, Journal of Plasma and Fusion Research Series, 8,
+   1273 (2009).
+16. M. V. Roshan, R. S. Rawat, A. R. Babazadeh, M. Emami, S. M. Sadat Kiai, R. Verma, J. J.
+   Lin, A. R. Talebitaher, P. Lee, S. V. Springham, High energy ions and energetic plasma
+   irradiation effects on aluminum in a Filippov-type plasma focus, Applied Surface Science,
+   255(5), 2461 (2008).
+
+17. A. R. Talebitaher, M. V. Roshan R Verma, , P. Lee, R. S. Rawat and S. V. Springham, Soft X-
+   ray emission investigation in plasma focus device (NX-2) with neon filling gas, Iranian Physical
+   Journal, 2, 38 (2008).
+
+
+
+
+                                                                                         vi
+             ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+Conference Papers:
+1. Rishi Verma, R. S. Rawat, P. Lee, S. V. Springham, T. L. Tan and M. Krishnan, Miniature
+   plasma focus device as portable hard X-ray source for fast radiography applications, 36th
+   International Conference on Plasma Sciences, San Diego, CA, USA, May 31- June 5, 2009.
+2. Rishi Verma, R. S. Rawat, P. Lee, S. V. Springham, T. L. Tan and M. Krishnan, Miniature
+   plasma focus device based compact and repetitive pulsed neutron sources: Design, technology,
+   performance and applications, Inaugural IPS March Meeting, Singapore, 6-7 March, 2009.
+3. Rishi Verma, R. S. Rawat, P. Lee, M. Krishnan, Z. Y. Pan, E. Ghareshabani, M. V. Roshan, A.
+   R. Talebitaher, S. V. Springham and T. L. Tan,                                                          Sub-kilojoule range miniature plasma focus
+   devices as multiple radiation source, International Workshop on Plasma Diagnostics and
+   Applications, Singapore,2-3 July, 2009.
+4. Rishi Verma, R. S. Rawat, P. Lee, M. Krishnan, S. V. Springham and T. L. Tan, Electrical
+   diagnostics for pulsed power, International Workshop on Plasma Diagnostics and Applications,
+   Singapore, 2-3 July, 2009.
+5. Rishi Verma, Z. Y. Pan, E. Ghareshabani, P. Lee, S. V. Springham, T. L. Tan, M. Krishnan
+   and R. S. Rawat, Miniature Plasma Focus Devices: Development, Scope and Applications,
+   International Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+6. Rishi Verma, M. V. Roshan, P. Lee, S. V. Springham, T. L. Tan, M. Krishnan and R. S.
+   Rawat, A fast miniature plasma focus based compact and portable nanosecond pulsed neutron
+   source, International Congress on Plasma Physics, Fukuoka, Japan, 8-12 September, 2008.
+7. Rishi Verma, P. Lee, S. V. Springham, T. L. Tan, M. Krishnan and R. S. Rawat, Development
+   of Miniature Plasma Focus as Portable Neutron Source, International Workshop on Plasma
+   Computations and Applications, Kualalumpur, Malaysia, 14-15 July, 2008.
+8. Rishi Verma, P. Lee, S. V. Springham, T. L. Tan, M. Krishnan and R. S. Rawat, Development
+   of Low Jitter Triggerable Sparkgap Switch for High Speed Applications, 10th International
+   Conference on Gas Discharge Plasmas and Their Technological Applications, Tomsk, Russia,
+   17-20 September, 2007.
+9. Anurag Shyam and Rishi Verma, Pulsed Neutrons and Microwaves from Plasma Devices,
+   International Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+10. L. C. Tan, R. Verma, R. S. Rawat, S. V. Springham, P. Lee and S. Lee, Modelling of Pure
+   deuterium and deuterium-krypton admixture operated in miniature plasma focus device,
+   International Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+                                                                                       vii
+              ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+11. L. S. Loh, R. S. Rawat and R. Verma, Automating Lee’s Plasma Focus Model, International
+   Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+12. T. L. Tan, R. Verma, R. S. Rawat, P. Lee, M. Krishnan, S. V. Springham and D. Wong,
+   Lithographic studies of chemically-amplified resist using soft X-rays from dense plasma focus
+   (DPF) device and by infrared spectroscopy, International Workshop on Plasma Diagnostics
+   and Applications, Singapore, 2-3 July, 2009.
+13. Z. Y. Pan, R. S. Rawat, J. J. Lin, R. Verma, M. V. Roshan, P. Lee, S. V. Springham and T. L.
+   Tan, Nanostructured Magnetic FePt and CoPt Thin Films Synthesis using Dense Plasma Focus
+   Device, International Workshop on Plasma Diagnostics and Applications, 2-3 July, Singapore,
+   2009.
+14. E. Ghareshabani, R. S. Rawat, S. Sobhanian, R. Verma, S. Karamat and Z. Y. Pan, Synthesis of
+   nanocrystalline multiphase TiCxNy/a-C thin films by plasma focus device, International
+   Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+15. I. A. Khan, R. Verma, R. Ahmad and R. S. Rawat, Effect of annealing temperature on the
+   structural and morphological properties of AIN film deposited by plasma focus device,
+   International Workshop on Plasma Diagnostics and Applications, Singapore, 2-3 July, 2009.
+16. A.R. Talebitaher, M.V. Roshan, R. Verma, P. Lee, R.S. Rawat and S.V. Springham, Soft X-ray
+   emission in Plasma Focus device with Neon filling gas, IPS March Meeting Singapore, 6-7
+   March 2009.
+
+
+
+
+                                                                                        viii
+               ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                 Table of Contents
+Acknowledgements...........................................................................................................                                            ii
+Abstract..………………………………………………………………………………...                                                                                                                            iii
+List of Publications...........................................................................................................                                        v
+List of Tables…………………………………………………………………………….                                                                                                                           xiv
+List of Figures...................................................................................................................                                     xv
+
+
+1. Introduction
+     1.1. Dense Plasma Focus: Brief History and Universal Presence……………………                                                                                             1
+     1.2. Miniature Plasma Focus Device: A New Perspective…………………………...                                                                                                4
+     1.3. A Spin-off in Application as Neutron Generator………………………………... 8
+     1.4. Scope of Research…………………………………………………….……...….. 12
+     1.5. Layout of the Thesis……………………………………………………………..                                                                                                                15
+
+
+2. Plasma Focus Review: Plasma Dynamics and Radiation Emission
+     2.1. The Focus Device……………………………………….……….........................                                                                                                 17
+     2.2. Structure and Operation…………………………………….……………………                                                                                                               18
+     2.3. The Discharge Phases………………………………………………..………….                                                                                                                21
+           2.3.1. Breakdown Phase….………………………………………………..........                                                                                                        21
+           2.3.2. Axial Acceleration Phase………….……………………………………..                                                                                                        23
+           2.3.3. Radial Phase……………………………………………………………..                                                                                                                24
+                 2.3.3.1.                Compression Phase ………………………………………………                                                                                          25
+                 2.3.3.2.                Quiescent Phase…………………………………………………..                                                                                          27
+                 2.3.3.3.                Unstable Phase……………………………………………………                                                                                            28
+                 2.3.3.4.                Decay Phase………………………………………………………                                                                                              30
+     2.4. Plasma Instabilities………………………………………………………………                                                                                                                 30
+           2.4.1. Rayleigh-Taylor Instability………………………………………………. 31
+           2.4.2. Sausage (m=0) Instability……………….………………………..............                                                                                              32
+           2.4.3. Kink (m=1) Instability……………………………………………………                                                                                                           33
+           2.4.4. Microinstabilities and Turbulence……………...………………………...                                                                                                34
+     2.5. Electrical behavior and energy transfer process..……………………………….                                                                                               35
+     2.6. Radiation products from the Dense Plasma Focus………………………………                                                                                                   39
+
+                                                                                               ix
+         ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+      2.6.1. Neutrons...………………………………………………………………..                                                                                                               40
+           2.6.1.1.                Neutron production mechanism………………………...………... 40
+           2.6.1.2.                Neutron yield scaling………………………………………..........                                                                                42
+           2.6.1.3.                Neutron yield enhancement and impurity effect…………………                                                                          46
+      2.6.2. X-rays……………………………………………………………..……..                                                                                                                 47
+           2.6.2.1.                X-ray Emission Processes……………………………………….                                                                                      48
+           2.6.2.2.                X-ray Emission Studies in Plasma Focus Devices…...…..……..                                                                     51
+      2.6.3. Ions…………………………………...…………………………………..                                                                                                                 53
+      2.6.4. Electrons………...………………………………………………………..                                                                                                              55
+   2.7. Energy density and Drive parameter..…………………………………………...                                                                                                  57
+
+
+3. Design and Construction of Fast Miniature Plasma Focus Devices
+   3.1. Introduction……………………………….……………………………………..                                                                                                                59
+   3.2. Design approach…………………………………………………………………                                                                                                                 60
+   3.3. Considerations of pulsed power system design………………….………………                                                                                               64
+      3.3.1. Electrical response………………………………………………………..                                                                                                          65
+      3.3.2. Capacitors…………………………………….…………………………..                                                                                                               66
+      3.3.3. Triggerable switches…………………………………………………...…                                                                                                         68
+      3.3.4. Connections………………….………………………………………….... 69
+      3.3.5. High voltage charger………….………………………………………….                                                                                                          70
+           3.3.5.1.                Determining maximum charging cycle rate ……………………..                                                                            71
+           3.3.5.2.                Protection against voltage reversal……………………………….                                                                              72
+   3.4. The FMPF-1 device……………………………………………………………...                                                                                                              73
+      3.4.1. Capacitor bank.…………………………………………………………...                                                                                                            74
+      3.4.2. Switch development and characterization…..……………………….…...                                                                                            75
+           3.4.2.1.                Construction and operation of trigatron switch…………………..                                                                       76
+           3.4.2.2.                Switch Characterization………………….……………………….                                                                                     79
+                   3.4.2.2.1. Operating regimes for stable trigger performance…………....                                                                           80
+                   3.4.2.2.2. Breakdown time delay measurement…………………………                                                                                         81
+                   3.4.2.2.3. Lifetime estimation……………………………………..........                                                                                        83
+      3.4.3. Triggering system………………………………………………………...                                                                                                           85
+      3.4.4. Plasma focus tube …………...…………………………………………...                                                                                                        87
+
+                                                                                          x
+    ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+  3.4.5. Connections and assembly……………………………………………….. 91
+  3.4.6. HV charging power supply…………………………………….…..……..                                                                                                     94
+3.5. The FMPF-2 device……………………………………………………………...                                                                                                            94
+  3.5.1. Upgradation approach and design considerations for FMPF-2...………...                                                                                 95
+  3.5.2. Capacitor bank …………………………………………………………...                                                                                                           97
+  3.5.3. Triggerable sparkgap switch…………….…..……………………….…...                                                                                                 100
+  3.5.4. Triggering system………………………………………………………...                                                                                                          105
+      3.5.4.1.                Control module……………………………….…………………..                                                                                          106
+      3.5.4.2.                Trigger head and Pulse transformer….….……………………….                                                                              107
+  3.5.5. Plasma focus tube…………………………………………...…………....                                                                                                       109
+  3.5.6. Connections and assembly……………………..………………………… 110
+  3.5.7. Constant power charger……………………………………………..........                                                                                                  111
+  3.5.8. Control scheme for operation in repetitive mode………………………...                                                                                        113
+3.6. The FMPF-3 device…… …………...…………………………………………...                                                                                                         116
+  3.6.1. Layout of modular assembly……………….…………………………….. 117
+  3.6.2. Configuration of main electrical circuit………………………………….. 118
+  3.6.3. Pseudospark switch……......……………………………………………... 120
+  3.6.4. The 4-Channel triggering system………………………………………… 122
+  3.6.5. The 4-Channel H2 generator heating system……………………………..                                                                                             126
+  3.6.6. Scheme of operation for FMPF-3……………..………………………...                                                                                                  127
+3.7. Vacuum pumping system………………………………………………………..                                                                                                           128
+3.8. Data acquisition system…………...……………………………………………..                                                                                                      129
+
+
+
+
+                                                                                    xi
+        ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+4. Diagnostic Techniques
+   4.1. Complications in diagnostics of FMPF devices………………….…………..….                                                                                            130
+   4.2. Electrical diagnostics...…………………………………………….…………….                                                                                                       132
+   4.3. Time resolved neutron and hard X-ray diagnostics……. ………………………                                                                                           135
+      4.3.1. Scintillator Photomultiplier (SPMT) detector……………………………. 136
+      4.3.2. Neutron time of flight technique…………………………………………. 137
+   4.4. Total neutron yield measurements………………………………………………. 138
+                  3
+      4.4.1.          He Proportional Counter………………………………………………...                                                                                              138
+      4.4.2. Solid State Nuclear Track Detector (SSNTD)……………………………                                                                                              143
+   4.5. Time resolved soft X-ray measurements …………………………….………...                                                                                                145
+   4.6. Ion measurement using Faraday Cup.…………………………………………...                                                                                                   147
+
+
+
+
+                                                                                       xii
+        ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+5. Experimental Results and Discussion
+   5.1. Introduction…………………………………………………….….…………….. 150
+   5.2. Results of FMPF-1 device……………………………………….………………                                                                                                          151
+      5.2.1. Short circuit discharge characteristics…..………………………………..                                                                                           152
+      5.2.2. Optimization of anode parameters…………………………...…………...                                                                                               155
+      5.2.3. Deciding factors for efficient focusing…………………….……………..                                                                                            160
+          5.2.3.1.                Speed factor………………………………………………………                                                                                             161
+          5.2.3.2.                Ignition process in breakdown phase…………………………….. 162
+      5.2.4. Preliminary results on radiation emission from FMPF-1….……………..                                                                                     163
+          5.2.4.1.                Soft and Medium energy X-ray measurements……...……..……                                                                          164
+          5.2.4.2.                First results of neutrons and hard X-ray emission from FMPF-1..                                                               170
+          5.2.4.3.                Simulation ‘fitting’ results with FMPF-1..……………………….                                                                          175
+          5.2.4.4.                Neutron yield enhancement with D2-Kr admixture operation…....                                                                 177
+      5.2.5. Effect of cathode structure on neutron yield in FMPF-1..………...……...                                                                                183
+          5.2.5.1.                Experimental setup and diagnostics arrangement……….……….. 184
+          5.2.5.2.                Average neutron yield against pressure…..………………………                                                                            186
+          5.2.5.3.                Time resolved investigation of HXR and neutron emission……..                                                                   186
+          5.2.5.4.                Discussion on the effects of cathode geometries………..………..                                                                     188
+      5.2.6. Investigation of anisotropy in neutron and hard X-ray emissions……….                                                                                192
+          5.2.6.1.                Experimental arrangement………………………………………..                                                                                     193
+          5.2.6.2.                Total neutron yield against pressure…………………..………….                                                                            194
+          5.2.6.3.                Measurement of neutron and HXR fluence anisotropy…………..                                                                       196
+          5.2.6.4.                Energy spread in neutron spectrum…………………..….……….. 200
+          5.2.6.5.                Neutron production kinematics and deuteron energy spectra……                                                                   202
+          5.2.6.6.                Findings………………………………………..…………………                                                                                              206
+   5.3. Results of FMPF-2 device………………………………………………………                                                                                                           207
+      5.3.1. Electrical characteristics……………………………………….………...                                                                                                   208
+      5.3.2. Experimental setup and diagnostics…………….………………………... 209
+      5.3.3. Determination of optimum D2 filling gas pressure for FMPF-2…………. 211
+      5.3.4. Time resolved measurements……………………………….……………. 213
+      5.3.5. Measurement of time averaged neutron yield in repetitive mode …..…… 214
+      5.3.6. Shot-to-shot stability of neutron emission...………………...……………                                                                                        216
+
+                                                                                      xiii
+        ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+      5.3.7. Physics of repetition rate effect on neutron yield………………………...                                                                                     217
+   5.4. Results of FMPF-3 device………………………………….……………………                                                                                                          224
+      5.4.1. Upgradation in electrical characteristics…………….……………………                                                                                            225
+      5.4.2. Experimental setup and diagnostics arrangement…………………….….. 227
+      5.4.3. Anode design and neutron yield optimization……..……………………..                                                                                          228
+      5.4.4. Time resolved neutron and HXR measurements from FMPF-3………….                                                                                        230
+      5.4.5. Total neutron yield and anisotropy measurements using SSNTD…….….                                                                                   232
+      5.4.6. Neutron yield scaling in FMPF-3 with peak and pinch current ………..... 234
+      5.4.7. Measurements of time averaged neutron yield in repetitive mode ...….…                                                                              237
+      5.4.8. Investigation on shot-to-shot stability in neutron emission...…….………                                                                               240
+      5.4.9. Effect of repetition rate on time to pinch at different pressures...………..                                                                          241
+
+
+6. Conclusions and Suggested Future Work
+   6.1. Summary and Conclusion……………………………………………………….. 248
+   6.2. Suggested future work…………………………………………………….……..                                                                                                          255
+
+
+7. References…………………………………………………………………………...                                                                                                                    258
+
+
+
+
+                                                                                       xiv
+         ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                        List of Tables
+
+
+1.1 Characteristics of different Plasma Focus Devices………………………………….                                                                                              3
+1.2 Applications of compact and portable neutron generator………................................ 9
+3.1 Specifications of Capacitors used in FMPF-1...……………………………………..                                                                                               75
+3.2 Spark erosion rate and density of various electrode materials………………………                                                                                       83
+3.3 Specifications of indigenously developed Trigatron Switch ……………………….. 84
+3.4 Specifications of Trigger Module……………………………………….................... 87
+3.5 Dielectric constants and densities of various insulator sleeve materials…………….                                                                               89
+3.6 Specifications of Capacitors used in FMPF-2..……………………………………..                                                                                                98
+3.7 Specifications of Trigatron Sparkgap Switch Model SG-101M-75C……………….                                                                                         101
+3.8 Specifications of Trigger Head and Pulse Transformer……………………………..                                                                                            109
+3.9 Specifications of constant power charger ‘EMI HVPS 802L’………………………                                                                                            112
+3.10 Specifications of Pseudo-sparkgap Switch Model TDI1-150k/25…………………                                                                                          122
+3.11 Specifications of the 4-Channel triggering system………………………………… 125
+4.1 Neutron detection efficiency and gamma ray sensitivity for some detectors……….. 139
+4.2 Threshold energies of charged particles for passing through Kapton filter…………                                                                                144
+5.1 Main electrical characteristics of FMPF-1 device..…………………………………                                                                                              155
+5.2 Model parameters and simulation results……………………………………………                                                                                                     192
+5.3 Main electrical characteristics of FMPF-2 device..…………………………………                                                                                              209
+5.4 Main electrical characteristics of FMPF-3 device..…………………………………                                                                                              226
+5.5 Results obtained from neutron yield scaling experiments…………………………..                                                                                          236
+5.6 Time averaged neutron yields for experimental run in repetitive mode at different
+   D2 filling gas pressures/ discharge repetition rates (DRR)…………………………... 239
+
+
+
+
+                                                                                        xv
+         ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                       List of Figures
+
+
+2.1 Schematic of Mather and Filippov type Plasma Focus devices……………………..                                                                                         19
+2.2 Current sheath dynamics under various phases of plasma focus operation…………                                                                                   20
+2.3 Typical oscillogram of voltage and current derivative signals in PF discharge…...... 26
+2.4 Particle and photon emission from a plasma focus device; the X-ray photons are
+   emitted from the plasma region and from the anode rim……………………………                                                                                              28
+2.5 The schematic presentation of m=0 instability………………………….................... 32
+2.6 The schematic presentation of m=1 instability………………………….................... 33
+2.7 Equivalent circuit of the plasma focus………………………………………………                                                                                                     35
+2.8 Energy transfer process in plasma focus…………………………………………….                                                                                                    38
+3.1 Equivalent circuit of the pulsed power system ………………………...……………                                                                                              65
+3.2 Typical charging cycle waveform…………………………………………………...                                                                                                        71
+3.3 Basic pulsed power system connected to switching power supply.……………...….                                                                                     73
+3.4 Oscillogram of short circuit discharge current trace (at 9kV)………………………                                                                                       74
+3.5 Cross-sectional view of the Trigatron Switch………….……………………………                                                                                                 77
+3.6 Photographs of transmission plate embedded switch assembly ……………..……..                                                                                       78
+3.7 Schematic of configuration used in sparkgap characterization…………...................                                                                          80
+3.8 Operating voltage as function of gas pressure………………………………………. 80
+3.9 Operating Voltage as function of trigger reliability (%)…………………………….                                                                                         81
+3.10 Time delay (tbd) as function of main gap voltage…………………………………                                                                                               82
+3.11 Breakdown time delay as function of pressure…………………...……………….                                                                                               82
+3.12 Sparkgap electrodes showing erosion after 5000 shots of operation…….…………….                                                                                  84
+3.13 Simplified circuit diagram of the trigger module………………...……...................                                                                              85
+3.14 High Voltage output waveform of trigger pulse……………………….................... 86
+3.15 Various anode geometries/ designs that have been tested……….………………… 88
+3.16 (a) Damaged Pyrex insulator sleeve and (b) SEM image of insulator surface
+    pattern after ~5000 shots of operation………………………………………………                                                                                                     88
+
+                                                                                        xvi
+           ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+3.17 Coaxial electrode assembly arrangement in FMPF-1..…………………………….                                                                                                89
+3.18 Cathode geometries/ designs that have been experimented………………………..                                                                                            90
+3.19 Photograph of the vacuum chamber with various diagnostic attachments………… 91
+3.20 Schematic and actual layout of the capacitors in staggered configuration………… 91
+3.21 Schematic of integrated assembly of FMPF-1 with tubular cathode..……………..                                                                                      92
+3.22 Integrated assembly of FMPF-1 and sub-systems………………………………….                                                                                                   93
+3.23 Oscillogram of current derivative signal under short circuit tests of capacitors…...                                                                          97
+3.24 Layout of the capacitor bank in FMPF-2 device…………..……………………….                                                                                                 98
+3.25 Shot life of pulse discharge capacitor (#37323, GA, USA) as a function of
+     operating voltage and voltage reversal (k) in the circuit…………...……………….                                                                                       99
+3.26 Photograph of SG-101M-75C Trigatron switch……………………………............ 100
+3.27 Operation curve as function of gas pressure for Trigatron switch…………...…….                                                                                    101
+3.28 Oscillograms showing variation in the breakdown time delay at different
+     operating voltages…………… …………………………………………….………. 104
+3.29 Time delay (tbd) as function of operating voltage for SG-101M-75C Trigatron
+     switches……………………………………………………………………………..                                                                                                                       104
+3.30 View of front panel controls and input of the PG-103D4-02 pulser……………….                                                                                       106
+3.31 View of rear panel outputs of the PG-103D4-02 pulser……………………………                                                                                               106
+3.32 ‘Sync’ and ‘Recharge’ signal output waveforms…………………………………..                                                                                                  107
+3.33 Photograph showing interconnection between subsystems of single channel
+     trigger system……………………………………………………………………….                                                                                                                    107
+3.34 Time resolved information of single channel trigger outputs……………………… 108
+3.35 Coaxial electrode arrangement and vacuum chamber used in FMPF-2 device …...                                                                                   109
+3.36 Construction details of FMPF-2 device………........................................................                                                              110
+3.37 Integrated assembly of FMPF-2 device..…………………………………………..                                                                                                      111
+3.38 The electrical output feature of ‘EMI HVPS 802L’ power supply………………...                                                                                        112
+3.39 Block diagram representation of operation and control scheme for FMPF-2 device 113
+3.40 Optically isolated handheld remote control………………………………………... 114
+3.41 Sample charging waveform during INHIBIT mode of operation………………….                                                                                             116
+3.42 Constructional layout of FMPF-3 device assembly………………………………..                                                                                                 118
+3.43 Configuration of main electrical circuit……………………………………………                                                                                                     119
+3.44 Mountings of charging/ discharging subsystems and accessories………………….                                                                                         120
+
+                                                                                         xvii
+           ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+3.45 Appearance and constructional schematic of TDI1-150k/25 Pseudospark switch...                                                                                 121
+3.46 Electrical schematic of repetitive 4-Channel triggering system……………………                                                                                        123
+3.47 Impulse charging waveform of Blumlien pulser…………………………………..                                                                                                   124
+3.48 Indigenously designed and constructed 4-Channel Blumlien pulser………………                                                                                         124
+3.49 Sample oscillogram of Blumlien pulser output……………………………………                                                                                                    125
+3.50 The 4-Channel heater circuit………………………………………………………                                                                                                             126
+3.51 Block diagram representation scheme of operation in FMPF-3 device……………                                                                                        127
+4.1 Conceptual schematic (a) and electrical equivalent (b) of the Rogowski coil. …..…                                                                              132
+4.2 Arrangement of strip wounded Rogowski Coils in (a) FMPF-1 and (b) FMPF-2
+    device ………............................................................................................................. 134
+4.3 A passively integrated Rogowski output signal …………………….………………                                                                                                  134
+4.4 Composites of SPMT detector assembly……………………………………………. 137
+4.5 Detection of neutrons using 3He proportional counter………………………………                                                                                               140
+4.6 Overall layout of neutron detection and instrumentation set-up…………………….                                                                                        141
+4.7 Calibration curve for 3He proportional counter (at bias voltage of +650V)……...…                                                                                142
+4.8 BPX-65 sensitivity in wavelength range below 20Å and its major specifications….. 146
+4.9 Electrical schematic of the biasing and decoupling circuit………………………….                                                                                          147
+4.10 Biased Faraday cup collector for ion energy measurement………………………... 147
+5.1 Equivalent circuit for short circuited discharge.………………………………...…... 152
+5.2 Sample oscillograms of short circuit discharge current traces at various voltages….                                                                            153
+5.3 Maximum peak currents in FMPF-1 device at different charging voltages…………                                                                                      154
+5.4 Schematic of various anode geometries that have been experimentally studied……. 156
+5.5 Representative di/dt patterns for the experimented anode designs …………………                                                                                       158
+5.6 Focusing peak amplitude and Speed factor for various anode geometries……….…                                                                                     158
+5.7 Sample oscilloscope traces of current derivative and DXS signals…………………                                                                                        165
+5.8 X-ray yields in the spectral range of 0.9keV to 1.6keV (SXR) and 3.2keV to
+   7.7keV (MXR) for D2 and D2-Kr admixture at different filling pressures………….                                                                                     166
+5.9 Focusing peak amplitude and focusing duration for D2 and D2-Kr admixture at
+   different filling pressures…………………………………………………………….. 168
+5.10 Time lead in start of X-ray emission (t-lead) and time duration of X-ray pulse (t-
+   pulse) for D2 and D2-Kr admixture at different filling pressures……………………                                                                                        169
+5.11 Typical current derivative and current trace for shots in D2 using composite anode
+
+                                                                                        xviii
+          ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+      design V4/CA/17-3/SS at 3mbar pressure………………………..……………...                                                                                                   170
+5.12 Time to pinch and radial phase duration (FWHM) versus Deuterium gas pressure.                                                                                171
+                                                                                  3
+5.13 Time integrated oscilloscope trace of He detector output………………………...                                                                                         171
+5.14 Total neutron yield versus Deuterium filling pressure……………………………..                                                                                           172
+5.15 Current derivative signal trace with HXR and neutron signal……………………... 174
+5.16 Relative measurements of HXR and neutron emission signals ……………………                                                                                           175
+5.17 Current-trace ‘fitting’ result for composite anode…………………………………. 177
+5.18 Experimental setup for ‘dual time of flight’ measurement………………………… 178
+5.19 Neutron yields obtained with various admixture concentrations…………….…….                                                                                       178
+5.20 Current derivative (di/dt) trace with HXR and neutron signals……..……………... 179
+5.21 HXR yield for D2 and D2-Kr admixtures at different pressures……………………                                                                                         180
+5.22 Schematic of utilized cathode structures…………………………………………..                                                                                                   184
+5.23 Layout of time resolved and time integrated neutron diagnostic set-up along with
+     schematic of utilized (a) tubular and (b) squirrel cage cathode structure……..…….                                                                             185
+5.24 Neutron yield versus D2 filling gas pressure for tubular and squirrel cage
+     cathode...................................................................................................................... 186
+5.25 Current derivative signal trace with HXR/ neutron signal recorded with side-on
+     (PMT-1) and end-on (PMT-2) scintillator-photomultiplier detector with (a)
+     tubular cathode (b) squirrel cage cathode………………………………………...                                                                                                  187
+5.26 Time to pinch versus D2 pressure for tubular and squirrel cage cathode operation..                                                                           190
+5.27 A “fitted” current trace for squirrel cage cathode operation at 6mbar pressure…...                                                                           191
+5.28 Schematic of the (a) electrode assembly and (b) implemented diagnostics setup…. 194
+5.29 Average neutron yield versus D2 filling gas pressure....…....……………………… 195
+5.30 (a) Variation in axial, radial and total relative neutron yields with D2 filling gas
+     pressure (b) Current derivative (di/dt) signal trace with HXR and neutron signal
+     recorded with side-on and end-on scintillator-photomultiplier detectors PMT1
+     and PMT2 respectively……………………………………………………………                                                                                                                 195
+5.31 (a) Variation of average pulse duration (FWHM) of HXR and neutron bursts and
+     (b) Variation of HXR and neutron anisotropy as a function of pressure……….…. 197
+5.32 (a) Neutron anisotropy versus total neutron yield and (b) HXR anisotropy versus
+      total neutron yield for neutron optimized pressure of 5.5mbar……….…………                                                                                       199
+5.33 Neutron energy spectrum in the optimized pressure range………………………..                                                                                           201
+
+                                                                                         xix
+          ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+5.34 Schematic diagram and (a) Momentum triangle (b) of D-D fusion reaction……....                                                                                 202
+5.35 Graph of neutron energy versus angle of neutron detection for various deuteron
+       energies…………………………………………………………………………                                                                                                                       203
+5.36 Oscilloscope traces of Faraday cup and current derivative signal………………..                                                                                     204
+5.37 Ion density as a function of deuteron beam energy………………………………..                                                                                              205
+5.38 Sample oscillogram of short circuit discharge in FMPF-2 device at 14kV………..                                                                                  208
+5.39 Layout of time resolved and time integrated diagnostic set-up …………………… 210
+
+5.40 Typical current derivative trace for a shot in Deuterium at 6mbar pressure……….                                                                               211
+5.41 Average neutron yield and time to pinch/ focus at different D2 pressures………...                                                                               212
+5.42 Current derivative (di/dt) and PMT signals at 6mbar D2 filling gas pressure……...                                                                             213
+5.43 History mode captured 3He detector signals while operation at 6Hz……………...                                                                                    215
+5.44 Time averaged neutron output at different discharge repetition rates for 6mbar D2
+    filling gas pressure ………………………………………………….……………… 216
+5.45 Neutron yield per shot at different repetition rates for 6mbar D2 pressure………..                                                                              217
+5.46 Time to pinch at different repetition rates for 6mbar D2 filling gas pressure……...                                                                           218
+5.47 Estimated residual density vs. rep-rate (diffusion loss)……………………………. 221
+5.48 Physical condition of SS anode after 5000 shots of operation in repetition mode.... 222
+5.49 Sample oscillogram of short circuit discharge in FMPF-3 device at 14kV………... 226
+5.50 Maximum peak currents in FMPF devices at different charging voltages………… 227
+5.51 Average neutron yield and time to pinch/ focus for FMPF-3 at different D2
+    pressures for composite anode that provided optimum yield for FMPF-2………..                                                                                     229
+5.52 Average neutron yield and time to pinch/ focus at different D2 pressures for
+    FMPF-3 device with cylindrical anode…………………………………….……….                                                                                                       230
+5.53 Current derivative (di/dt) and scintillator photomultiplier (PMT) detector signals
+    at 4.5mbar D2 filling gas pressure………………………………………………….                                                                                                        231
+5.54 Single frame microphotograph of Proton recoil tracks on CR-39 detector……….                                                                                   233
+5.55 Registered tracks on axially (a) and radially (b) positioned CR-39 detectors
+    satisfying the implemented boundary conditions………………………………......                                                                                              234
+5.56 Neutron yield versus peak and pinch current in FMPF-3 device in log-log scale to
+    determine the scaling laws for MPF devices…………………………………..……                                                                                                   236
+5.57 History mode captured 3He detector signals while operation at 10Hz……………..                                                                                    238
+5.58 Time averaged neutron output at different discharge repetition rates………………                                                                                   239
+                                                                                         xx
+          ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+5.59 Neutron yield per shot at different repetition rates for (a) 4.5mbar and (b) 5.5mbar
+     D2 filling gas pressures……………………………………………………………..                                                                                                            241
+5.60 Time to pinch at different repetition rates for 4.5 and 5.5mbar D2 gas pressures..…                                                                          242
+5.61 Physical condition of cylindrical anode after 5000 shots of operation in repetition
+     mode in FMPF-3 device…………………………...………………………………..                                                                                                             243
+5.62 Photographs of (a) eroded cathode edge and (b) cathode plate with replaceable
+     Brass bush in the modified assembly……………………………………………….                                                                                                       244
+5.63 Microscopical images of damaged insulator surface patterns………………………                                                                                          245
+
+
+
+
+                                                                                         xxi
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                           Chapter 1
+
+                                                                      Introduction
+The research topic of this thesis is the “Construction and Optimization of Low Energy (< 240J)
+
+Miniature Repetitive Plasma Focus Neutron Source”. This chapter begins with the introduction of a
+
+brief history of plasma focus devices and their universal presence pursued by highlighting the fast
+
+growing need of compact neutron generators in the present scenario, illustrating their importance and
+
+applications. In the later section, a brief literature survey on the ongoing trend of scaling down the
+
+plasma focus devices to sub-kilojoule range is given, followed by research scopes and motivation
+
+behind this research project. The chapter then ends by presenting a layout of the thesis.
+
+
+1.1 Dense Plasma Focus: Brief History and Universal Presence
+       Dense Plasma Focus (DPF) device is a hydromagnetic coaxial plasma accelerator [1-2] which
+
+involves the storage of magnetic energy behind a moving current sheath and the pumping of this energy
+
+into pinched plasma column during the rapid collapse phase, producing short duration (~10 to 50ns), high
+
+temperature(~1keV) and high density plasma (~1019cm-3), which is a rich source of energetic and
+
+multiple radiations like fast electrons and soft/hard X-rays (10−1 – 103keV), fast ions (up to 10MeV) and
+
+neutrons (2.45MeV or 14MeV). These intrinsic radiations from the plasma focus device, sets it apart from
+
+other devices as a prime candidate for various applications.
+
+       The DPF attracted much attention from the scientific community during the 1960’s as it was
+
+considered as efficient fusion device, producing an intense burst of neutrons when operated with
+
+Deuterium/ Deuterium-Tritium as filling gas. This led to intensive research on DPF in laboratories all
+
+over the world to attain controlled thermonuclear fusion using this alternative magnetic confinement
+
+scheme. Since then, the scope of DPF in fusion research is under active consideration because
+
+significant progress in the associated pulsed power technology has enabled the successful operation of
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+large plasma focus devices, which has led to better understanding of plasma dynamics and neutron
+
+production mechanisms. But unfortunately, beyond 500kJ bank energy, the production of neutrons no
+
+longer follows established scaling laws and reaches saturation [3-4]. Hence, the essential problem to
+
+be resolved in PF research has always been to discover the physics, which dominates the neutron yield
+
+limitation/saturation at higher bank energies. Also, it was realized later that the neutrons are not of
+
+purely thermonuclear origin rather they are mainly due to beam target mechanism. It is a question
+
+related to the neutron production mechanism and plasma dynamics.
+
+       The better physical understanding and viability of other fusion technologies such as tokamaks
+
+and high-power laser driven fusion experiments downgraded the importance of plasma focus devices
+
+as controlled thermonuclear fusion device. But nevertheless, this device was soon recognized as a
+
+powerful and compact source of energetic radiations producing fast neutrons [5-6], intense X-rays [7-
+
+11], energetic ions [12-14] and electrons [15-16] which have important role in variety of scientific and
+
+industrial applications.
+
+       In the last few decades, most of the experimental studies performed on plasma focus devices
+
+were mainly focused in medium (2-10kJ) [17-24], large 10-500kJ [25-30] and mega-joule [31-32]
+
+energy range devices. A brief summary of such worldwide facilities, with their characteristic
+
+parameters, optimized for enhanced neutron yield is listed in Table 1.1.
+
+
+
+
+                                                                                               2
+                        ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                          Introduction
+
+
+                              Table 1.1 Characteristics of different Plasma Focus Devices.
+
+  Device[ref.] –          Energy               Anode                Peak               Pressure                Neutron                  Operation                       Energy        Drive
+    location                (kJ)               radius              current              (mbar)                  Yield                    mode                           density     Parameter
+                                                (cm)                (kA)                                       (n/shot)                                               parameter     S [I/ap1/2]
+                                                                                                                                                                       [28E/a3]      (kA cm-1
+                                                                                                                                                                        (J m-3)       mbar-1/2)
+
+  PF-1000[31] –             1064                 12.2                2300                    6.6                 2x1011                Single shot                    1.6 × 1010       73.4
+  Poland
+  FRASCATI[32]              1000                    8                1850                  10.6                   5x1011               Single shot                  #5.46 × 1010      69.10
+  – Italy
+  TAMU[29]          –        480                    5                1400                  13.3                2.6x1011                Single shot                     10 × 1010      76.77
+  Texas, USA
+  SPEED2 [25-                187                    6                4000                    2.5                 1x1011                Single shot                   2.42 × 1010     421.63
+  26] – Germany
+  PF-360 [27] –              130                    6                1200                    5.6               3.8x1010                Single shot                    1.7 × 1010      84.51
+  Poland
+  DENA [28] –                 90                   25                2800                    1.3                1.2x109                Single shot                    0.16 × 109      98.23
+  Iran
+  DPF-40 [30] –               18                  3.2                 350                    3.3                2.1x108                Single shot                   1.53 × 1010      60.20
+  China
+  7 kJ PF [22] –                7                1.75                 400                     6                 5.8x108                Single shot                   3.65 × 1010      93.31
+  Japan
+  GN1 [21] –                  4.7                 1.9                 350                     4                  3x108                    0.02Hz                     1.91 × 1010      92.10
+  Argentina
+  FN II [20] –                4.6                 2.5                 350                    3.7                 3x108                 Single shot                   0.82 × 1010      72.78
+  Mexico
+
+  UNU/ICTP                    2.9                0.95                 170                    8.5                1.2x108               Single shot                     9.5 × 1010      61.37
+  [19, 23] –
+  Europe,
+  Africa, Asia1,2
+  NX2 [18] –                  2.9                1.15                 410                    20                  7x108                Repetitive,                     5.3 × 1010      79.72
+  Singapore*                                                                                                                          Max 16 Hz
+
+  BARC [24] –                 2.2                1.05                 180                    6.2              14.4x107                Single Shot                    5.32 × 1010      68.84
+  India
+
+  PACO [17] –                   2                 2.5                 250                    1.5                 5x108                 Single shot                   0.35 × 1010      81.64
+  Argentina
+
+  1                                                                                                                                         #
+      Plasma Radiation Sources Laboratory, NIE/ NTU, Singapore                                                                                  At 560kJ Operation
+  2
+      Quaid-i-Azam University, Islamabad, Pakistan
+
+
+
+
+                                                                                                    3
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+1.2 Miniature Plasma Focus Device: A New Perspective
+       The first order description of any pulsed plasma device is the energy that is stored in capacitor
+
+bank. A comparison between plasma foci of different energies is interesting. Although only a fraction
+
+of the initial energy E stored in the capacitor bank is transferred to the plasma, the parameter E/Vp (Vp
+
+being the plasma volume) is usually used to characterize the plasma energy density in order to compare
+
+different devices. According to the established scaling laws [33] and performed optical investigations
+
+[34], the final pinch radius and the maximum pinch length are proportional to anode radius a (~0.12a
+
+and ~0.8a, respectively). Thus, the final plasma volume Vp (prior to the appearance of probable
+
+instabilities) is of the order of π(0.12a2)×(0.8a) ≈ 0.036a3, and the plasma energy density at the pinch
+
+moment is proportional to E/Vp ~ 28E/a3 [35]. In the wide energy range of plasma focus devices listed
+
+in Table 1.1, this value typically lies in the range of (0.1-10) ×1010 J/m3.
+
+       Other relevant parameter in plasma foci is the called drive parameter (I/ap1/2) [33], where I is
+
+the peak discharge current, a the anode radius, and p is the Deuterium gas filling pressure for the
+
+maximum neutron yield. It has been theoretically and experimentally conjectured that the typical
+
+velocity of the current sheath in the axial rundown and radial compression phases (lying in the range of
+
+(0.8-1) ×105 and (2-2.5)×105 m/s respectively for a wide range of plasma focus devices) is proportional
+
+to the drive parameter i.e. I/ap1/2 [33]. It may be noted from Table 1.1 that for the PF devices ranging
+
+from kJ-MJ, the drive parameter is typically in the range of 78±12 kA/cm-1 mbar1/2 .
+
+       Thus, judging from the view point of ‘energy density’ and ‘driver parameter’ (as shown in
+
+Table 1.1) of medium [17-24], large [25-30] and mega-joule [31-32] energy range plasma focus
+
+devices, it can be interpreted that in all plasma focus machines optimized for Deuterium(D2) operation,
+
+irrespective of their energy and size, have similar magnitude of drive parameter in the axial phase and
+
+narrow range of orders of magnitude of compressed energy density in the focus phase that produce
+
+pinch plasmas with similar order of temperature and densities. The data shown in Table 1.1 also
+                                                                                               4
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                 Introduction
+
+
+indicates that the higher the capacitor bank energy and the peak discharge current are, the bigger is the
+
+anode (and hence chamber/device) size. This observation has an important implication, that if the
+
+stored energy of the capacitor bank is reduced to sub-kilojoule values then the anode/device size has to
+
+be reduced for electrical and dynamical/geometrical parameter matching but the energy density or
+
+drive parameter can still be the same as that of medium or large focus facility and hence plasma
+
+densities and temperatures of similar magnitudes can be achieved, resulting in similar nuclear and
+
+atomic reactions to those occurring in medium/ large energy plasma foci. This means that a radiation
+
+spectra similar to that of medium, large or mega-joule focus facility, although at an altogether different
+
+scale, can be achieved in a miniature plasma focus device. It translates into the fact that the
+
+miniaturization of plasma focus device is possible making this device portable which can then be
+
+applied for field applications of commercial importance.
+
+       In recent years, many research groups across the globe have shown keen interest in research
+
+and development of sub-kilojoule range miniature plasma focus devices.
+
+       The experimental study on electron density measurement in sub-kilojoule range, low energy
+
+plasma focus device of 400J has been reported by Cristian et al [36]. An electron density of
+
+(0.9±0.25)×1019 cm-3 was measured at the axis of the plasma column close to the pinch time. This
+
+value is at par with the plasma density of a conventional plasma focus devices operating in the energy
+
+range of 1kJ to 1MJ.
+
+       J. Moreno et al [34] made optical observations of the plasma motion (radial and axial) in a very
+
+small plasma focus device of 50J, operated in hydrogen at 25kV, to provide the pinching evidence in
+
+miniature plasma focus device. A single frame image converter camera of 5ns exposure time was used
+
+to obtain plasma images in the visible range. They used six bars around the central anode to serve as
+
+cathodes having a hybrid Filippov-Mather configuration of aspect ratio 0.625.
+
+
+                                                                                              5
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+       More recently L. Soto et al [37] demonstrated the pinch evidence in an ultra-miniature PF
+
+device (named as Nanofocus) with submilimetric anode (of radius ~0.8mm and length ~0.5mm)
+
+operating at 0.1J bank energy.
+
+       Hassan et al [38] reported optical observations of the current sheath evolution and radial
+
+collapse phase in a miniature plasma focus device of ~100J, operated in Hydrogen at 15kV and
+
+confirmed pinching. An ICCD camera attached to the spectrometer ACTON 750 (with 20ns exposure
+
+time) and streak camera, IMACON-500 was used for imaging. In the experimental setup, coaxial
+
+electrode assembly constitutes - anode of 9.5mm diameter/ 21.6mm length and vacuum chamber wall
+
+of 48mm inner diameter acting as cathode. The system has Mather configuration with the aspect ratio
+
+of ~2.3.
+
+       Recently many groups have also reported the development of miniature plasma focus devices
+
+as portable neutron source [39-44].
+
+       M. Milanese et al [39] have reported the development of 125J small plasma focus that produces
+
+yield in the order of ~106 neutrons/shot. R. K. Rout et al [40] have reported development of battery
+
+powered tabletop pulsed neutron source based on a 200J sealed miniature plasma focus device that
+
+produces average yield of the order of ~106 neutrons/shot in 4π sr. A. V. Dubrovsky et al [41] have
+
+reported the development of 200J plasma focus device for both neutron and X-ray production.
+
+       In the last few years, extensive efforts have been made at the Chilean Nuclear Energy
+
+Commission to develop MPF as radiation source of X-rays and neutrons in the energy range of few
+
+tens to hundreds of joules. Those miniature devices not only demonstrate the evidence of pinching but
+
+also produced a good amount of X-rays and neutrons. The reported average neutron yields from such
+
+small PF devices are of the order of 106 and 104 neutrons/shot for 400J [42] and 50J [43] bank
+
+energies, respectively.
+
+
+                                                                                               6
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                 Introduction
+
+
+       P. Silva et al [43] reported the pinching evidence in a Deuterium-filled plasma focus operating
+
+at 50J and 67J by observing the dip in the current derivative signal and the typical peak in the voltage
+
+signal which indicates pinch compression, usually observed in several kJ DPF devices. In their setup,
+
+the electrode assembly consisted of 29mm long, 6mm diameter copper tube anode and an outer
+
+cathode of eight 5mm diameter copper rods, uniformly spaced on a diameter of 27mm. The size of
+
+their device was in the order of 25cm × 25cm × 50cm. Very recently neutron emission from this device
+
+has been reported by L. Soto et al [44]. The average neutron yield for 50J discharges at 6mbar was
+
+(1.2±0.5) ×104 neutrons/shot, and (3.6±1.6) ×104 neutrons/shot for 67J discharge at 9mbar.
+
+       It is important to note regarding all the Deuterium optimized MPF devices mentioned above
+
+[39-44] that they have all been operated in single shot mode and no information on the statistics of
+
+their radiation generation reproducibility has been reported.
+
+       From the point of view of extreme ultraviolet microlithography application, Cymer Inc. (USA)
+
+[45-47] have chosen a low energy plasma focus device of 18J as a potential pulsed plasma EUV source
+
+for lithography application at production level. Their MPF device is driven by fast current pulse of
+
+magnitude around 50kA. Development of a ~24J miniature hybrid plasma focus as an EUV source,
+
+driven by 10kA fast current pulse has been reported by S. R. Mohanty et al [48].
+
+       The above mentioned ongoing trends conclusively indicate that the research and development
+
+of sub-kilojoule range of plasma focus devices is now gaining momentum [36-47], but currently it is in
+
+an underdeveloped stage and a lot more effort is needed to develop an efficient and reproducible
+
+miniature plasma focus device which would find its way into commercial applications. Experimental
+
+research on miniature plasma focus devices of sub-kilojoule range would also provide avenues to test
+
+the validity of (i) present theoretical models and (ii) radiation emission scaling laws, in this newly
+
+explored low energy regime.
+
+
+
+                                                                                              7
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                 Introduction
+
+
+1.3 A Spin-off in Application as Neutron Generator
+       In the recent years there has been consistently growing demand for compact neutron generators
+
+since they can be used as portable non-invasive interrogation tools (i.e. without physically touching the
+
+object being analyzed) because of the high penetration capability of neutrons. This feature is of
+
+significant importance when dealing with old, potentially unstable high explosives, chemical weapons
+
+and nuclear materials. At present, the global market potential for compact neutron generators has
+
+grown from below $60 million per annum in the period 1993-2001 (focused on drug trafficking to
+
+explosive detection) to over $750 million in 2006 and is expected to exceed $1.4 billion by 2010.
+
+       An important and growing market for neutron generators is in analyzing bulk materials. The
+
+analytical technique for detecting elemental compositions of various materials including nuclear, drugs
+
+and explosives is known as pulsed fast thermal neutron analysis (PFTNA) [49]. This technique utilizes
+
+the (n,n’γ), (n,pγ), and (n,γ) reactions to identify and quantify a large number of elements. When a
+
+sample is irradiated with a short pulse of neutrons then it becomes activated and emits γ-rays with
+
+characteristic and distinct energies. These γ-rays are like the ‘fingerprints’ of the elements contained in
+
+the object. By counting the number of γ-rays emitted with a specific energy, one can deduce the
+
+amount of the element contained within the object. In the case of an object that is hidden among other
+
+innocuous materials, the identification takes place through the correlation of various chemical elements
+
+observed, coupled to the information about the innocuous material itself. A complete PFTNA
+
+interrogation tool is composed of compact neutron generator, a gamma radiation detector (like HPGe
+
+i.e. Hyper-Pure Germanium detector) and a Multi-Channel Analyzer for accumulating the energy
+
+spectrum of emitted gamma rays. The stoichiometric relationships are used to convert the elemental
+
+information to chemical assays for detecting the elemental content of the major constituents in the bulk
+
+material [50]. Other than bulk material analysis, neutrons are also being used in many other
+
+
+                                                                                              8
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+applications like – radiography, tomography, defectoscopy etc. The vast range of applications in which
+
+portable neutron sources can be used, are summarized in Table 1.2 [49, 50].
+
+        To fulfill these application requirements, there is a large thrust to develop neutron generators
+
+that are compact, long-lasting, efficient and inexpensive to construct and yet capable of using safe
+
+Deuterium-Deuterium reactions to produce a high neutron yield or flux and can be tailored to meet a
+
+variety of specifications.
+
+                  Table 1.2 Applications of compact and portable neutron generators.
+
+ S. No.      Application Field                                                                         Specific Applications
+   1.     Homeland Security                                       •        Explosive detection and identification
+                                                                  •        Special nuclear materials detection and identification
+                                                                  •        Land mine detection
+   2.     Nuclear Geophysics                                      •        Gas and oil well-logging
+                                                                  •        Ore (uranium) well-logging
+                                                                  •        Mine mineral mapping and analysis
+   3.     Neutron Radiography                                     •        Thermal neutron radiography
+                                                                  •        Fast neutron radiography
+   4.     Medicine                                                •        Boron capture neutron therapy
+                                                                  •        Neutron beam therapy
+   5.     Industrial Processing                                   •        Cement process control
+                                                                  •        Coal quality analysis
+                                                                  •        Wall thickness analysis
+
+
+
+        Neutrons may be produced using a number of techniques including radioactive isotopic
+
+sources, electro-physical neutron generators and large accelerators [49-50]. Typical isotopic sources
+
+producing continuous fluxes of neutrons are Californium-252 (252Cf), with a half-life of about 2.6 years
+
+or Americium-Beryllium (Am-Be, 241Am has a half-life of 458 years). Isotopic neutron sources have
+
+the advantage that they have long life and have relatively constant flux of neutrons but the major
+
+                                                                                               9
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                 Introduction
+
+
+disadvantage associated in their use is that they cannot be turned off, therefore they have to be
+
+contained within bulky shielding at all times. Also their fluence is limited to <108 neutrons/second.
+
+The main advantage of compact pulsed neutron generators over passive radioactive sources (like 252Cf
+
+or Am-Be) is that they simplify safety procedures for deployment and storage because they can be
+
+turned off.
+
+       Over the last few years accelerator based neutron sources have evolved in the two main streams
+
+(i) Large accelerator based neutron source [50], and (ii) Compact and portable neutron sources ; mainly
+
+based on either a sealed tube generator [51] or Plasma Focus [39-44].
+
+       Even though accelerator based neutron sources (like Spallation Neutron Source (SNS) at Oak
+
+Ridge, Tennessee, USA [50]) provide the most intense pulsed neutron beams but they are very
+
+expensive, technically complicated and immensely bulky. They have their own set of limitations that
+
+keep them out of range for use in many of the commercial and industrial applications.
+
+       Sealed tube neutron generators are basically miniature particle accelerators. It consists of a
+
+source to generate positively charged ions; one or more structures to accelerate the ions (usually up to
+
+~110 kV); a metal hydride target loaded with either Deuterium, Tritium, or a mixture of the two; and a
+
+gas-control reservoir, also made of a metal hydride material. The most common ion source used in
+
+neutron generators is a cold-cathode, or Penning ion source, which is a derivative of the Penning trap
+
+used in Penning ion gauges. The principle of operation is that when Deuterium and/or Tritium gas is
+
+introduced into the anode at a pressure of a few mbar, firstly the electric field between the anode and
+
+cathodes ionizes the gas and then the Deuterium ions are accelerated and bombarded in a sold target
+
+which is loaded with Tritium (or Deuterium) resulting in the production of neutrons via D-D or D-T
+
+fusion reaction. Normally, the commercially available compact accelerator neutron tubes are loaded
+
+with 1 to 2Ci of Tritium [51]. Although the sealed tube generators are very compact, the major issue in
+
+
+                                                                                             10
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                 Introduction
+
+
+their utilization for commercial purposes is (i) very high cost of the tubes and (ii) limited operating
+
+lifetime (the API 120 sealed tube neutron generator offered from Thermo Electron Corp. gives neutron
+
+yield (D-T) of ~2×107 neutrons/second, having operating lifetime of ~1200 hours may typically cost
+
+~US $ 60k – 80k).
+
+        Plasma Focus based neutron generators have evolved from a large, expensive instrument to a
+
+compact, affordable product to be commercially viable. Ideally Plasma Focus devices have unlimited
+
+lifetime, since all parts of the coaxial electrode assembly are replaceable and Deuterium (or D-T
+
+mixture) gas is being used as fuel for neutron production. Plasma focus device is amongst the strongest
+
+contenders in the category of coaxial accelerators to be used as portable neutron source. Due to pulsed
+
+nature, the plasma focus machine does not pose any activation problem for storage and handling. It
+
+produces bursts of neutrons lasting for about 10-100 ns, with energies of 2.5-3, 10–11 or 14MeV
+
+depending on the gas filled in the machine (Deuterium, Deuterium with a Lithium target or a
+
+Deuterium–Tritium mixture). Typical threshold requirement of fluence in various applications is 106 to
+
+108 neutrons/second. To the best of our experience with various plasma focus machines, such neutron
+
+fluxes are conventionally obtained from 2-3kJ PF device [17-24], which are bulky and lack the feature
+
+of portability.
+
+        According to current scaling estimations, which have been proven to be valid in lower energy
+
+regime during this project work, yields of the order of ~106 neutrons/second is practically feasible to
+
+obtain in miniaturized versions of tabletop plasma focus device operating at sub-kilojoule range which
+
+can be further enhanced by another order of magnitude if the device is made to operate in the repetitive
+
+mode. The inherent advantage with ‘Miniature Plasma Focus’ (MPF) device is that they are of low
+
+energy, much smaller in size and cost effective in comparison to medium and high plasma foci and
+
+also easier to operate in a repetitive regime from few Hz to kHz range since the driving power
+
+requirement is low. A possibility of working with DPF on a low energy level and at relatively low cost
+
+                                                                                             11
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+makes miniature plasma focus devices commercially viable. The present research and development
+
+work aims at demonstrating the potential of miniature plasma focus devices as compact pulsed neutron
+
+sources.
+
+
+1.4 Scope of Research
+       Due to various potential applications of low energy (sub-kilojoule range) miniature plasma
+
+focus (MPF) devices, many scientific and industrial laboratories are taking a keen interest in its
+
+research and development. But as mentioned before, exploration of MPF devices has just started only
+
+couple of years ago, therefore a lot more research and dedicated effort is required to develop an
+
+efficient and reproducible repetitive miniature plasma focus device, with its technology and physics
+
+understood and outlined in much more elaborated way, so that it would find its way as commercially
+
+viable compact radiation source fulfilling the competing requirements of being portable and cost-
+
+effective. The efforts have mainly been concentrated on engineering and optimization of compact sub-
+
+kilojoule range plasma focus device so as to make the neutron flux of this fusion-based neutron
+
+generator comparable to that of expensive sealed tube neutron sources of similar volume.
+
+       Based on above considerations, in this project, we have demonstrated the feasibility of low
+
+energy Miniature Plasma Focus (MPF) device along with its applicability as quasi-continuous
+
+(repetitive) pulsed neutron source; for being utilized as a portable neutron generator with appreciable
+
+amount of neutron flux, while operating at ~0.2kJ. We have developed three different versions of low
+
+energy repetitive plasma focus devices named as FMPF-1, FMPF-2 and FMPF-3. The preliminary
+
+version FMPF-1 device can be operated at maximum repetition rate of 0.5Hz whereas the advanced
+
+versions FMPF-2 and FMPF-3 devices can be operated at maximum repetition rate of 10Hz in quasi-
+
+continuous mode.
+
+
+
+
+                                                                                              12
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+       The FMPF-1 and FMPF-2 devices are single module systems (comprising of four 0.6µF/30kV
+
+capacitors and eight 0.3µF/30kV capacitors respectively with one trigatron switch) whereas FMPF-3
+
+device is a four module system (with eight 0.3µF/30kV capacitors and four pseudospark switches). The
+
+FMPF-1 device, with Deuterium gas operation, produces a maximum average neutron yield of (1.15 ±
+
+0.2)×106 neutrons/shot at ~230J/ ~80kA peak discharge current.
+
+       The FMPF-2 device is a first prototype of high repetition rate miniature plasma focus device
+
+with newly developed high wattage pulsed power system. This device has been successively fired and
+
+tested up to 10Hz repetition rate under different operating conditions. Using pure Deuterium as the
+
+filling gas, at ~230J operation (delivering ~80kA peak discharge current) the time averaged neutron
+
+yield of (6.2±4)×105 n/sec at 1Hz operation was enhanced to (6.5±0.6)×106 n/sec at 10Hz operation for
+
+the burst length of 30 consecutive shots.
+
+       The FMPF-3 is an advanced version of the FMPF-2 device having superior pulsed power
+
+system efficiency along with high repetition rate capability. It delivers ~20% more peak discharge
+
+current than the FMPF-2 device and thus produces a higher neutron yield, while operating at a similar
+
+charging voltage and energy. Using pure Deuterium as the filling gas, at ~200J operation (delivering
+
+~90kA peak discharge current) the time averaged neutron yield of (1.4±0.6)×106 neutrons/second at
+
+1Hz operation was enhanced to (1.4±0.2)×107 neutrons/second at 10Hz operation for the improved
+
+burst length of 50 consecutive shots.
+
+       The present research and development work includes:
+
+       (a) Conceptualization, designing and development of three different versions of low energy
+
+            repetitive miniature plasma focus devices with a stored energy of <240J.
+
+       (b) Design and development of customized, compact pulsed power drivers of minimum
+
+            practical inductance for the FMPF-1, FMPF-2 and FMPF-3 devices, with available
+
+            resources.
+                                                                                              13
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+      (c) Demonstration of the feasibility of production of neutrons, reproducibly, at the lower limit
+
+            of plasma focus energy at < 240J.
+
+      (d) Performance optimization of the newly developed miniature plasma focus devices by
+
+            refining/adjusting various operating/design parameters such as bank energy and discharge
+
+            current, anode shape and its material, anode length, insulator length and its material, gas
+
+            composition and filling gas pressure to obtain efficient and reproducible plasma pinches for
+
+            maximum neutron yield.
+
+      (e) The investigation also incorporates numerical experiments that have been performed using
+
+            the ‘Lee Code’, to simulate the modifications in the axial and radial phase dynamics along
+
+            with gross plasma focus properties, with the use of different anode/cathode geometries at
+
+            different operating parameters.
+
+      (f) Investigations of hard X-ray and neutron emission characteristics for revealing relevant
+
+            plasma phenomenon and their correlation with neutron production, in sub-kilojoule range
+
+            miniature plasma focus devices.
+
+      (g) Investigation of the stability in neutron emission in repetitive mode of operation from 1 to
+
+            10Hz to reveal the issues/factors responsible for constraining the use of higher repetition
+
+            frequency in pulsed plasma radiation devices.
+
+      (h) Exploration of unconventional techniques of neutron yield enhancement like usage of
+
+            composite geometry anode shapes and Deuterium-high Z gas admixture operation.
+
+      (i) Development, customization and calibration of required electrical, X-ray and neutron
+
+            diagnostics for measuring/monitoring various outputs/parameters.
+
+      (j) Demonstration of the utility of the newly developed devices in other areas of basic and
+
+            applied research such as in Radiography with nanosecond exposure time and in material
+
+            modification studies.
+
+                                                                                              14
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+       In addition to the above mentioned research and development work related to the design,
+
+construction and optimization of low energy miniaturized plasma focus device, the characterization
+
+study of the FMPF-1, FMPF-2 and FMPF-3 device also helped in understanding and exploring the
+
+physics related to plasma focus operation at this limit of low energy leading to formulations of scaling
+
+laws of DPF performance in sub-kilojoule range.
+
+
+1.5 Layout of the Thesis
+The organization of this thesis is as follows:
+
+    Chapter 1 (Introduction) begins with a general introduction of Plasma Focus with summarized
+
+highlights of previous works and brief literature review, followed by importance and applications of,
+
+the recently envisioned Miniature Plasma Focus (MPF) device. Research scopes and motivation behind
+
+carrying out this project are explained.
+
+    Chapter 2 (Plasma Focus Review: Plasma Dynamics and Radiation Emission) starts with
+
+basic description of plasma focus device operation and gives an overview of the plasma dynamics of
+
+various phases. Following that is a review of some related phenomena like instabilities, micro-
+
+instabilities, turbulence etc. For investigating design criteria in the low energy region, the neutron yield
+
+scaling laws of the PF devices is also discussed in brief. The later part of the chapter illustrates
+
+mechanisms responsible for production of X-rays and neutrons. In the last part of the chapter, the
+
+relevance of ‘drive parameter’ and ‘energy density parameter’ has been discussed in the context of
+
+scalability and energy transfer efficiency.
+
+    Chapter 3 (Design and Construction of Fast Miniature Plasma Focus Devices) describes the
+
+conceptualization and synthesis of newly developed miniature plasma focus devices (FMPF-1, FMPF-
+
+2 and FMPF-3) accompanied by the details on engineering criterion, as well as tradeoffs in design
+
+
+
+
+                                                                                              15
+                   ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 1                                                                                                                                                                  Introduction
+
+
+approach, architecture, pulsed power systems, construction, technical constitution and performance of
+
+subsystems.
+
+    Chapter 4 (Diagnostics Techniques) provides a detailed description of various diagnostic tools
+
+that are employed in the experimental setups. In this chapter, initially, the indigenously designed high
+
+bandwidth current derivative probe (used as electrical diagnostic tool for the measuring the
+
+electromagnetic parameters of the device) is introduced, followed by the description of other
+
+diagnostics that have been used for the detection and time resolved measurements of hard X-rays and
+
+neutrons (i.e. fast response plastic scintillator coupled with a high gain photomultiplier tube), soft X-
+
+rays (i.e. Multi-channel channel PIN Diode X-ray Spectrometer) and ions (i.e. Faraday Cup for the
+
+measurement of typical deuteron energy spectra). The description of the specifically tailored and
+
+customized, high sensitivity neutron detection and measurement setup of the 3He proportional counter
+
+has also been detailed along with the briefing on solid state nuclear track detector (SSNTD) based
+
+passive technique that has been used for the confirmation of neutron yield by imaging fusion protons.
+
+    Chapter 5 (Experimental Results and Discussion) describes the characterization results,
+
+analysis and discussion of the experiments performed on all the three versions of indigenously
+
+developed miniature plasma focus devices along with performance evaluation of their pulsed power
+
+systems. Optimization study of the electrode geometry (such as anode shape, its dimension, insulator
+
+sleeve length, cathode structure etc.) that affects the neutron yield performance of MPF device is
+
+presented. Analysis of experimental results obtained (for single shot and repetitive mode of operation)
+
+by using different diagnostic techniques and a discussion of the interpretation of data, for all the three
+
+devices, is explained in detail.
+
+    Chapter 6 (Conclusions and Future Work) summarizes and concludes the major experimental
+
+findings of this research project and outlines possible directions of future work that can be undertaken.
+
+
+
+                                                                                              16
+                  ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+
+                                                                          Chapter 2
+
+                Plasma Focus Review: Plasma Dynamics
+                                              and Radiation Emission
+The plasma focus is a simple device with complex physics phenomena and multiple dynamic processes.
+
+This chapter starts with a basic description of the plasma focus device and its fundamental operation
+
+along with a briefing on conventionally followed configurations. A systematic description of plasma
+
+dynamics in various plasma focus phases is provided which is followed by a discussion of some pinch
+
+related phenomenon like instabilities, micro-instabilities and turbulence. The electrical behavior and
+
+the energy transfer process in the plasma focus device are then described to better understand this
+
+complex device. The later part of the chapter illustrates the multiple radiation emissions from the
+
+dense plasma focus and possible mechanisms of their production. The neutron yield scaling laws of the
+
+plasma focus devices are also discussed briefly. At last, the roles of ‘drive parameter’ and ‘energy
+
+density parameter’ from the perspective of scalability and energy transfer efficiency are illustrated.
+
+
+2.1 The Focus Device
+       One of the most efficient and perhaps the simplest ways of producing high temperature fusion
+
+plasma in the laboratory is through the pinch effect. The incarnation of Dense Plasma Focus (DPF)
+
+device is mainly related with the intensive efforts laid down during 1960’s towards the development of
+
+Z-pinch devices to create and confine dense plasma for attaining controlled thermonuclear fusion.
+
+Those classical Z-pinch devices (basically Plasma Guns, first investigated by J. Marshall [52] and H.
+
+Alfven [53] between 1958 and 1960), in which the current is passed directly across the length of
+
+cylindrical plasma, were observed not to produce very high temperatures since the plasma is disrupted
+
+by hydro-magnetic instabilities before sufficient energy is transferred.                                                                                        This shortcoming was
+                     ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 2                                                        Plasma Focus Review: Plasma Dynamics and Radiation Emission
+
+
+overcome in a modified version of the coaxial plasma gun called ‘Plasma Focus’ [1, 2]. In this device,
+
+the pinch formation is delayed, until the discharge current reaches its peak value. The delay is
+
+generated by allowing the plasma to travel between a pair of coaxial electrodes before pinching.
+
+Hence, DPF is a pulsed plasma device that generates, accelerates and then pinches the plasma due to
+
+interaction of current with its self-induced magnetic field, producing compressed, hot and dense
+
+plasma. Over forty years of experiments, in a wide energy range of this device, has demonstrated that
+
+the short lived pinched plasma attains sufficiently high temperature and pressures necessary for fusion
+
+reactions, when filled with Deuterium or Deuterium-Tritium gases. Since the discharge period
+
+typically lies in the range of a few hundreds of nanoseconds to microseconds, for this wide range of
+
+energies, hence conceptually plasma focus devices can be efficiently designed to be operated in the
+
+repetitive regime.
+
+
+2.2 Structure and Operation
+       Plasma Focus device was independently discovered by N.V. Filippov [1] and J. W. Mather [2]
+
+in the early 60’s. Traditionally plasma focus devices have been characterized as ‘Mather’ and
+
+‘Filippov’ types according to their anode aspect ratio A, with A = z0/2a in which z0 is the effective
+
+anode length and a is the radius of the anode. The ‘Mather’ configuration is defined by A>1 (typically
+
+5-10) whereas the ‘Filippov’ configuration has A<1 (typically ~0.2). Fig. 2.1 illustrates the electrode
+
+geometries of the Mather-type and Filippov-type plasma focus devices.
+
+       As can be seen from this schematic, fundamentally both configurations of dense plasma focus
+
+devices consists of two coaxial electrodes i.e. anode and cathode separated by an insulator sleeve.
+
+Macroscopically, ‘Mather’ and ‘Filippov’ configurations differ in the direction of motion of the accelerated
+
+plasma, which is axial and radial respectively. However both the configurations exhibit similar (1)
+
+dynamics of the current sheath, (2) scaling laws for neutron emission and (3) characteristic emission of
+
+                                                                                                18
+                        ATTENTION: The Singapore Copyright Act applies to the use of this document. Library and Information Services Centre, National Institute of Education.
+
+
+
+Chapter 2                                                           Plasma Focus Review: Plasma Dynamics and Radiation Emission
+
+
+energetic ion and electron beams, X-rays, microwaves etc. Eventhough both the devices behave similarly;
+
+the ‘Mather’ type is preferred due to its simpler design, convenient access to various diagnostics,
+
+distinguishable phases of current sheath dynamics and high neutron yield for same driver energy [1].
+
+
+                    4
+
+            3
+
+
+                2
+
+
+                                                                                                          2                    3
+                                                                   cathode
+                                                                    anode
+            1
+                                                                   insulator
+
+
+                                                                                                                                                                 anode
+                                                       capacitor                                    capacitor                switch
+                          switch                       bank                                                                                                              insulator
+                                                                                                    bank
+                                                                                                                                                                                cathode
+            MATHER                                                                                                     FILIPPOV
+            DESIGN                                                                                                     DESIGN
+
+                    Fig. 2.1 Schematic of Mather and Filippov type plasma focus devices.
+
+
+       Irrespective of configuration, typical plasma parameters over a wide energy range of plasma
+
+focus devices are:
+
+        ♦ Electron densities in the range: 5 ×1024 –1026m-3
+
+        ♦ Electron temperatures in the range: 200eV–2keV
+
+        ♦ Ion temperatures in the range: 300eV–1.5keV
+
+        ♦ Current sheath velocity in the axial phase: ~1 ×105ms-1
+
+        ♦ Current sheath velocity in the radial compression phase: ~2.5 ×105ms-1 (typically twice that
+
+                of the axial speed)
+
+
+
+                                                                                                   19
+

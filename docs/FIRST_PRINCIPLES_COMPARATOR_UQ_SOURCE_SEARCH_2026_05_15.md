@@ -92,6 +92,28 @@ Immediate implementation requirements:
   schema and requirement material until their exact source scope is selected.
 - Require negative controls proving draft, missing-UQ, cross-scope, missing
   review, and reduced-model comparison artifacts cannot enter a certificate.
+- Scope-gate every validation target before accepting it as comparator evidence.
+  Target rows with accepted status but missing/mismatched scope metadata remain
+  rejected for first-principles promotion.
+- Emit per-channel status, observable-group status, text-supported-not-
+  acceptance channels, upstream packet gate status, validation target scope
+  decisions, and a cross-scope transfer-rule block so partial evidence cannot
+  silently satisfy the comparator/UQ matrix.
+
+## Implementation Ratchet
+
+Implemented in this pass:
+
+- `src/dpf/first_principles/comparator_uq.py` now rejects loose validation
+  target metadata and records scope decisions for every candidate target.
+- The packet now carries an explicit `acceptance_gate`,
+  `text_supported_not_acceptance_channels`, `comparator_uq_channel_status`,
+  `observable_group_status`, `upstream_acceptance_gate`,
+  `validation_target_scope_decisions`, and `cross_scope_policy`.
+- `tests/test_first_principles_runner.py` asserts that scalar/timing
+  uncertainty text remains non-acceptance context, observable groups remain
+  blocked until full comparator/UQ channels pass, and blocked upstream packets
+  keep comparator authority blocked.
 
 Next blocker to search after this one: `FP-14`, validation certificate and
 release decision.

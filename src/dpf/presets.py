@@ -142,14 +142,14 @@ _PRESETS: dict[str, dict[str, Any]] = {
             "geometry": "cylindrical",
             "topology": "mather",
             "reference": "Akel et al., Radiat. Phys. Chem. 188:109633, 2021",
-            "source_scope": "pf1000_16kv_2021_akel_shot12581",
+            "source_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
             "source_scope_status": "same_scope_blocked_by_review",
             "source_scope_note": (
                 "Source-scoped PF-1000 Akel shot-12581 preset. It is same-scope "
-                "with pf1000_16kv_2021_akel, but waveform validation remains "
+                "with pf1000_akel_16kv_1p2torr_shot_12581, but waveform validation remains "
                 "blocked until the Akel Fig. 1 digitization packet is accepted."
             ),
-            "validation_scope": "pf1000_16kv_2021_akel",
+            "validation_scope": "pf1000_akel_16kv_1p2torr_shot_12581",
         },
         "grid_shape": [240, 1, 800],
         "dx": 7.5e-4,

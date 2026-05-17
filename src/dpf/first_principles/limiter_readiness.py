@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.first_principles.limiter_proof import (
+    build_experimental_limiter_zero_probe_packet,
+)
+
 LIMITER_READINESS_SOURCE_REFS = (
     {
         "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
@@ -104,6 +108,11 @@ def build_limiter_readiness_packet(
     accepted = {str(channel) for channel in accepted_channels}
     missing = set(REQUIRED_LIMITER_READINESS_CHANNELS) - accepted
     missing.update(REQUIRED_LIMITER_READINESS_CHANNELS)
+    limiter_zero_probe = build_experimental_limiter_zero_probe_packet(
+        declared_scope=declared_scope,
+        device_name=device_name or "not_declared",
+        simulation_telemetry=simulation_telemetry,
+    )
 
     return {
         "status": "blocked_limiter_readiness_packet_not_available",
@@ -113,20 +122,94 @@ def build_limiter_readiness_packet(
         "required_channels": list(REQUIRED_LIMITER_READINESS_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "limiter_channel_status": _limiter_channel_statuses(
+            accepted=accepted,
+            missing=missing,
+        ),
         "known_limiter_families": [dict(family) for family in KNOWN_LIMITER_FAMILIES],
+        "limiter_family_status": _limiter_family_statuses(),
         "candidate_runtime_channels": _candidate_runtime_channels(
             conservation=conservation,
             simulation_telemetry=simulation_telemetry,
         ),
+        "runtime_observations": _runtime_observations(
+            conservation=conservation,
+            simulation_telemetry=simulation_telemetry,
+        ),
+        "runtime_limiter_zero_probe": limiter_zero_probe,
         "source_references": list(LIMITER_READINESS_SOURCE_REFS),
+        "acceptance_gate": (
+            "candidate_runtime_telemetry_cannot_support_limiter_zero_acceptance_"
+            "until_active_path_inventory_full_horizon_zero_blocker_run_fallback_"
+            "rejection_tests_hashes_and_review_pass"
+        ),
         "validation_rule": (
             "Accepted first-principles readiness requires a complete active-path "
             "limiter inventory and a full-horizon run with zero acceptance-blocking "
             "activations; missing ledger evidence blocks acceptance."
         ),
+        "negative_test_policy": {
+            "synthetic_acceptance_blocker_required": True,
+            "app_only_runner_rejection_required": True,
+            "fallback_rejection_required": True,
+            "hidden_limiter_regression_required": True,
+        },
         "can_support_limiter_zero_acceptance": False,
         "can_support_first_principles_acceptance": False,
     }
+
+
+def _limiter_channel_statuses(
+    *,
+    accepted: set[str],
+    missing: set[str],
+) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for channel in REQUIRED_LIMITER_READINESS_CHANNELS:
+        if channel in accepted:
+            statuses[channel] = "accepted_limiter_readiness_channel"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _limiter_family_statuses() -> dict[str, dict[str, Any]]:
+    return {
+        str(family["family"]): {
+            "examples": list(family["examples"]),
+            "acceptance_rule": str(family["acceptance_rule"]),
+            "status": "requires_inventory_and_review",
+        }
+        for family in KNOWN_LIMITER_FAMILIES
+    }
+
+
+def _runtime_observations(
+    *,
+    conservation: Mapping[str, Any] | None,
+    simulation_telemetry: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    observations: dict[str, Any] = {
+        "candidate_only": True,
+        "full_horizon_run": False,
+        "zero_acceptance_blocker_claim": False,
+    }
+    if conservation:
+        observations["conservation_passed"] = conservation.get("passed")
+        observations["final_max_abs_div_B_T_per_m"] = conservation.get(
+            "final_max_abs_div_B_T_per_m"
+        )
+    if simulation_telemetry:
+        observations["simulation_status"] = simulation_telemetry.get("status")
+        observations["n_steps_completed"] = simulation_telemetry.get(
+            "n_steps_completed"
+        )
+        observations["has_circuit_boundary_runtime"] = (
+            simulation_telemetry.get("circuit") is not None
+        )
+    return observations
 
 
 def _candidate_runtime_channels(

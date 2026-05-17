@@ -68,18 +68,35 @@
     "test_phase_n_cross_backend.py",
     "test_phase_o_physics_accuracy.py"
   ],
+  "acceptance_gate": "candidate_component_tests_and_runtime_diagnostics_cannot_support_numerical_acceptance_until_all_test_surfaces_have_source_backed_references_norms_tolerances_convergence_limiter_zero_backend_scope_artifact_hashes_negative_tests_and_review",
+  "negative_test_policy": {
+    "failed_tolerance_negative_required": true,
+    "hidden_limiter_regression_required": true,
+    "backend_precision_fallback_rejection_required": true,
+    "gauss_or_divergence_residual_failure_required": true,
+    "conservation_residual_failure_required": true,
+    "restart_mismatch_required": true,
+    "candidate_component_promotion_rejection_required": true
+  },
+  "implementation_ratchet": [
+    "Emit per-channel numerical_channel_status decisions.",
+    "Emit per-test-surface test_surface_status decisions.",
+    "Emit runtime_observations as candidate-only numerical telemetry.",
+    "Emit upstream_acceptance_gate for startup, limiter-readiness, power-port, dimensionality, and closure packets.",
+    "Emit acceptance_gate and negative_test_policy for numerical-fidelity promotion."
+  ],
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
-      "result": "7 passed"
+      "result": "8 passed"
     },
     {
       "command": "python3 -m json.tool docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.json",
       "result": "valid JSON"
     },
     {
-      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py",
-      "result": "33 passed"
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     }
   ]
 }

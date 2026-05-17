@@ -162,7 +162,7 @@ def _project_info(bundle) -> ProjectInfo:
 
 
 _PRESET_VALIDATION_SCOPES = {
-    "pf1000_akel": "pf1000_16kv_2021_akel",
+    "pf1000_akel": "pf1000_akel_16kv_1p2torr_shot_12581",
 }
 
 

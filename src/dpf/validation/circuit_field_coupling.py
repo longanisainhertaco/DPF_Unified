@@ -15,7 +15,6 @@ import numpy as np
 
 from dpf.constants import mu_0
 
-
 _KR_SOURCE_BASIS = {
     "auluck_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
     "beresnyak_mhd_coupling": (
@@ -154,7 +153,9 @@ def _finite_values(value: object, *, limit: int = 16) -> list[float]:
 
 
 def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:
-    integrator = getattr(np, "trapezoid", np.trapz)
+    integrator = getattr(np, "trapezoid", None)
+    if integrator is None:  # pragma: no cover - compatibility with old NumPy.
+        integrator = np.trapz
     return float(integrator(values, times))
 
 

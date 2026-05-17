@@ -1,8 +1,16 @@
 """Spitzer collision frequencies and Braginskii transport coefficients.
 
 Pure-function implementations (no classes, no @njit on methods) extracted
-from DPF_AI's collision_model.py. Formulary-backed coefficients are covered
-by targeted tests where the local NRL source gives an unambiguous convention.
+from DPF_AI's collision_model.py. Formulary-backed coefficients are covered by
+targeted tests where the local NRL source gives an unambiguous convention.
+
+Local source-truth routing:
+    KnowledgeReference/2019nrlplasma-formulary-037290d4.md
+    KnowledgeReference/plasma-formulary.md
+
+These routines are engineering transport closures until a run attaches the
+first-principles closure packet, numerical-fidelity packet, and same-scope
+review metadata.
 
 Functions:
     coulomb_log: Dynamic Coulomb logarithm with quantum correction.
@@ -21,6 +29,13 @@ import numpy as np
 from numba import njit
 
 from dpf.constants import e, epsilon_0, h, k_B, m_d, m_e, m_p, pi
+
+SPITZER_SOURCE_REFERENCES = {
+    "nrl_2019": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+    "nrl_formulary_local": "KnowledgeReference/plasma-formulary.md",
+}
+SPITZER_SOURCE_STATUS = "source_grounded_engineering_transport_not_validation"
+SPITZER_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 
 @njit(cache=True)
@@ -287,7 +302,7 @@ def braginskii_kappa(
         Braginskii, S.I., Reviews of Plasma Physics Vol. 1 (1965).
     """
     lnL = coulomb_log(ne, Te)
-    freq = nu_ei(ne, Te, lnL)
+    freq = nu_ei(ne, Te, lnL, Z)
     omega_ce = e * Bmag / m_e
     x = omega_ce / np.maximum(freq, 1e-300)
 

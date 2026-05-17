@@ -1,0 +1,589 @@
+               On the failure of neutron yield scaling in the Dense Plasma Focus
+                                                     S K H Auluck
+                       International Scientific Committee on Dense Magnetized Plasmas,
+                           Hery 23, P.O. Box 49, 00-908 Warsaw, Poland, skhauluck@gmail.com
+
+
+                                             Abstract:
+         The observed scaling of neutron yield in the Dense Plasma Focus (DPF) as the fourth
+power of the current in the plasma was the principal driver of the growth of DPF research in
+its early days. Subsequent discovery of failure of this scaling law was also the principal reason
+for its abandonment by major laboratories. Attempts to understand this failure of scaling have
+so far been inconclusive. This letter looks at this failure in the context of the recently introduced
+Generalized Plasma Focus (GPF) problem and suggests a possible reason that can be
+experimentally examined using small plasma focus devices. This involves restrictions placed
+on the drive parameter by conservation laws for mass, momentum and energy. A suggested
+empirical workaround to the problem of neutron yield scaling failure could also be configured
+as a method for increasing the pressure range for neutron emission in small DPF devices.
+
+
+        The Dense Plasma Focus (DPF) [1,2,3] attracted interest from large national
+laboratories in the early days of Controlled Fusion Research mainly because of the observed
+scaling of its neutron yield as the fourth power of current, even though this neutron yield was
+known to be from a non-thermal reaction mechanism. There was hope that even this non-
+thermal fusion mechanism could be scaled up to a very intense neutron source producing
+neutron fluxes similar to a fusion reactor [4] and even up to a breakeven reactor size [5].
+Eventually, many large DPF laboratories encountered failure of neutron yield scaling and
+discontinued their research [3]. The evolution of DPF as a research discipline [3] was
+profoundly affected by this realization. Current commercial attempts to develop the plasma
+focus as an energy producing machine [6-8] and optimistic conceptual engineering studies of
+plasma focus based space propulsion for interplanetary and deep space missions [9,10] are also
+adversely affected by the failure of neutron yield scaling.
+
+        There have been many inconclusive attempts at understanding the cause of this scaling
+failure. These can be categorised into three cases [3]:
+(1) The pinch current limitation effect [11-14]: A larger capacitor bank does not lead to a larger
+pinch current because of progressively more imperfect matching between the plasma load and
+its power source.
+(2) Failure of neutron scaling: A pinch is formed and is driven at a high current but fails to
+produce the expected neutron yield [15,16,17].
+
+
+                                                 1
+(3) Failure to form a pinch: A larger capacitor bank or operation at a higher voltage fails to
+form a pinch - no current derivative singularity or voltage spike results anywhere during the
+discharge [3,18].
+       No definitive understanding of the causes for the failure of neutron yield scaling and
+possible workaround have resulted so far. This is partly due to [3] absence of interpretable data
+in the corresponding operating regime. The mechanism responsible for this scaling has been
+mentioned as an open question in a recent comprehensive review [3].
+       A significant clue to neutron yield scaling issue is provided by the observation
+[19,20,21] that the “drive parameter”  ≡ I0 a ρ0 is nearly constant for neutron optimized
+
+devices over the energy range of 1 MJ to 0.1 J.
+       This Letter demonstrates that the constancy of the drive parameter is a direct
+consequence of conservation laws for mass, momentum and energy. It also provides a reason
+for the existence of the neutron scaling law and derives its fourth-power-of-current form. For
+this purpose, it uses a newly proposed [22] scaling theory of the plasma focus “…that is well-
+grounded in physics, in conformity with existing experimental knowledge and applicable to
+experimentally untested configurations.” This scaling theory is a component of the
+“Generalized Plasma Focus (GPF) problem” which “…concerns a finite, axisymmetric plasma,
+driven through a neutral gas at supersonic speed over distances much larger than its typical
+gradient scale length by its azimuthal magnetic field while remaining connected with its pulse
+power source through suitable boundaries.” This development is a conceptual outgrowth of the
+Resistive Gratton-Vargas model [23-27], largely retaining its mathematical structure but
+redefining its basic assumptions.
+       A generic description is provided in the GPF problem for a class of phenomena that are
+similar to the plasma focus in having an initial neutral gas ambience, an initial plasma formation
+phase, a plasma propagation phase and an “approach-to-the-symmetry-axis” phase. The plasma
+propagation problem for this class of phenomena is decomposed into two weakly
+interdependent subproblems in the GPF approach [22]. This is achieved by expressing
+equations governing plasma dynamics – “ which could be any variety of single or multi-species
+MHD fluid model” – into a dimensionless form by writing every descriptive field variable as
+“a product of a scaling parameter, denoted with a subscript 0 (except the scale length ‘a’ [of
+the physical problem]) and a scaled variable, denoted by an overtilde; for example, mass
+                                                                                      
+density ρ ≡ ρ0ρ ; radial and axial coordinates r ≡ ar ; z ≡ az ; gradient operator ∇ ≡ a −1∇ ;
+
+
+
+                                                2
+                                                                      
+velocity v = v0 v ; magnetic field B ≡ B0 B , electric field E = E 0 E , pressure p = p0 p , current
+
+I(t
+ =  ) I0 I ( τ ) .”
+          The scaling parameter for magnetic field is chosen to be the magnitude of the azimuthal
+magnetic field produced by a straight current-carrying conductor at a certain radial distance,
+that for coordinates is chosen to be the physical scale length ‘a’ of the problem and that for
+mass density of plasma as the mass density ρ0 of the neutral gas medium. This leads to a unique
+
+scaling scheme in which the dimensionless time τ turns out to be proportional to the charge
+flow in real time t:
+τ =Q m −1 ∫ I ( t ) dt ; Q m = πµ0 −1a 2 2µ0ρ0                                                     (1)
+
+The scaling parameters for magnetic field, velocity, electric field and pressure are found to be
+       µ0 I ( t )          B0                                B0 2
+B0 =              ; v0 ≡            ; E 0 = v 0 B0 ; p 0 ≡                                         (2)
+        2πar              2µ 0ρ0                            2µ 0
+
+All the information about the physical device is seen to reside in the scaling parameters. The
+scaled plasma variables are left without any connection with the physical device.
+          The first subproblem consists of determining the evolution of an imaginary traveling
+surface of rotation ψ ( t, r, z ) 0 ,
+                                 =    called the Gratton-Vargas (GV) surface, whose normal
+
+velocity equals v 0 , the scaling parameter for velocity. This surface belongs to the family of
+
+integral surfaces of the Gratton-Vargas (GV) equation [23-27] which obey algebraically
+defined initial and boundary conditions [23,27]. A general procedure for numerical calculations
+of this family of travelling integral surfaces is available [23,27]. The resulting data is are used
+to obtain the inductance associated with a current assumed to be localized at the GV surface.
+A circuit equation is then used to determine the current as a function of time, determining all
+the scaling parameters.
+          This first subproblem uses a result from an earlier Letter [28] regarding a lower bound
+placed on the scaling velocity by the laws on conservation of mass, momentum and energy.
+The present Letter revisits this result, which is really a part of the second subproblem described
+below, and discusses its significance in the context of the failure of neutron yield scaling.
+          The second subproblem consists of solution of equations governing plasma dynamics
+in dimensionless form. These equations contain no information about the physical device and
+their solutions must therefore be universally applicable to the entire class of devices which
+conform to the generic description and the physics model adopted. In particular, this implies
+that the physics involved in the existence of the neutron yield scaling must be explainable in
+
+                                                                    3
+terms of the scaling theory and the physical process leading to the failure of the scaling law
+ought to be observed also at lower scales of energy input.
+          The interdependence between the two subproblems can be neglected in a first iteration
+for the fully dissociated and ionized current-carrying zone of the plasma. The magnetic
+Reynolds number for this case can be high enough to produce a narrow spatial width of the
+current distribution. Under this condition, the local curvature of the traveling plasma, an aspect
+related to the first subproblem, can be neglected, assuming the plasma to be locally planar. In
+a local, orthogonal, curvilinear frame of reference [29] whose axes are aligned with the local
+tangent to the GV surface, with the azimuthal direction and with the local normal to the GV
+surface, a traditional planar shock wave solution can therefore be considered as a good first
+approximation.
+           Equations for conservation of mass, momentum and energy of the fluid can be written
+[28] in Hyperbolic Conservation Law form [27] using Maxwell’s stress tensor and Poynting’s
+theorem. The equivalent Rankine-Hugoniot jump conditions, with subscripts (0) and (1)
+denoting quantities on undisturbed and shock-affected sides of the shock discontinuity, can be
+simplified to obtain [28] the equivalent relations for the Michelson–Rayleigh line
+p(1) + B(21) 2µ 0 − p( 0)
+                            = −ρ( 0) 2s 2                                                                         (3)
+       V(1) − V( 0)
+
+and the Hugoniot curve
+ γ (1)                    γ ( 0)               1                             B(21)  5       3
+
+ γ (1) − 1
+            p(1) V(1) −
+                        γ ( 0) − 1
+                                                (         )(             )
+                                   p( 0) V( 0)  − p(1) − p( 0) V(1) + V( 0) +
+                                                2                                   
+                                                                               2µ 0  2
+                                                                                                      
+                                                                                         V(1) − V( 0)  + εd +i = 0 (4)
+                                                                                               2      
+                                              
+
+where s is the shock speed, V ≡ ρ−1 is the specific volume, ρ( 0) =ρ0 , B(1) = B0 and εd +i is the
+
+specific energy for complete dissociation and ionization of deuterium (~7.4x108 J/kg). The
+polytropic index γ ( 0) =
+                        7 5 for the diatomic neutral gas while it is γ (1) =
+                                                                           5 3 for the fully
+
+ionized mono-atomic plasma.
+          These relations can be reduced to a dimensionless form using the scaling scheme of the
+GPF with s ≡ v 0s , ε d +i =
+                             εd +i v 0 2 :
+p(1) + 1 − p( 0)
+                   = s 2                                                                                         (5)
+    1− V 
+           (1)
+
+ γ (1)                    γ             
+                   − ( 0) p  − 1 p − p
+            p (1) V                        (          +1 +  5 V
+                                                     )(
+                                                      V           − 3  + ε = 0
+                                                                 )                                                (6)
+ γ (1) − 1         (1)            ( 0 )  2 (1) ( 0)  (1)       (1)   d +i
+                       γ ( 0) − 1                          2       2
+
+
+                                                          4
+                                                                          containing the
+Equations (5) and (6) can be reduced to quadratic equations in p(1) and V(1)
+
+dimensionless parameters p( 0) , s and ε d +i . In practice, p( 0)  1 , and can be neglected. Only
+
+                                                                                      can represent
+those values of s and ε d +i which yield real and positive solutions for p(1) and V(1)
+
+                                                                                                       
+a physical plasma. Fig 1 plots the region in the ( s, ε d + i ) parameter space where both p(1) and V (1)
+
+are real and positive for p( 0) → 0 .
+
+
+
+
+                                                          are real and positive for p → 0 . The subregion
+Fig 1: This figure shows the region where both p(1) and V(1)                          ( 0)
+with a red border and blue shading ends in a red dot with coordinates              ( 6 5,11 10) . The lower and upper red
+borders of this subregion are curves described by ε d + i = 7 − 4s 2 (       ) 2 and ε   d +i   =   ( 36 − 32s + 9s ) 8s in the
+                                                                                                                2      4     2
+
+
+
+interval      6 5 ≤ s ≤ 2         3 . The contiguous subregion shaded in green is bounded between the curves
+        (
+ε d + i = 7 − 4s   2
+                         ) 2 and ε   d +i   (
+                                             =−5 2s ) 2s in the interval 2 3 < s ≤ 7 2 . The next contiguous region
+                                                    2     2
+
+
+                                                                 0 and on the upper side by the curve
+shaded magenta is bounded on the lower side by the axis ε d + i =
+
+        ( 5 2s 2
+ε d + i =−              ) 2s in the interval
+                             2                                                                            . The region to
+                                                   7 2 < s < 5 2 . The blue dashed lines are contours of V(1)
+                                   < 0 and the one to the right has p < 0 .
+the left of the shaded region has V(1)                                 (1)
+
+
+Supersonic propagation is not allowed by the conservation laws until ε d +i , which has a very
+
+large value at the beginning of the discharge, decreases below the value represented by the red
+dot in Fig 1:
+
+ε d +i =ε d +i v 0 2 ≤ 11 10                                                                                         (7)
+
+            After application of voltage across the plasma focus, a weakly ionized plasma is formed
+over the insulator [3]. As current builds up, the resulting magnetic pressure detaches the still-
+
+                                                                   5
+   developing plasma layer from the surface of the insulator in a subsonic flow [3]. The
+   displacement of the plasma remains negligible compared to its initial radius until the beginning
+   of its supersonic movement away from the insulator. The time interval between the start of
+   current and beginning of the supersonic movement is referred to as the lift-off time t L . During
+
+   this interval, the circuit behaves essentially as a constant-parameter inductive-capacitive-
+   resistive (LCR) circuit, with inductance L0 , capacitance C0 , resistance R 0 and charging
+
+   voltage V0 , whose current follows the well-known expression
+
+                     I0
+I
+= LCR ( t )                2
+                               exp ( −γ 0 t ) sin ( ω0 t ) ≡ I0 ILCR ( t ) ; 0 ≤ t ≤ t L                   (8)
+                   1− λ
+
+
+                 C0       R       R                  C0        1 − λ2 γ0
+    I0 = V0         ; γ0 = 0 ; λ ≡ 0                    ; ω0 =       ;   =λ≡λ               1 − λ2          (9)
+                 L0       2L0      2                 L0        L0 C0 ω0
+
+
+   The scaling velocity given by (2) at the surface of the insulator is
+                    µ0 I ( t )
+    v 0,Ins =                                                                                        (10)
+                2πa 2µ 0ρ0 R I
+
+   Thus, from (7), the scaling parameter for velocity v0,Ins at the insulator has a lower bound for
+
+   supersonic propagation of a fully ionized plasma
+
+    v LB ≡ εd +i 10 11 ≤ v 0,Ins                                                                     (11)
+
+   Numerically, v LB  2.59 × 104 m / s for deuterium. At this threshold, the shock velocity has the
+
+   value
+       = s          6 5v 0,Ins ≥ 2.84 × 104 m / s .
+
+                These numerical values will be different if the plasma is substantially (say 20-80%),
+   but not fully, ionized and the width of the current carrying zone is smaller but not substantially
+   smaller than the radius of curvature. This can be taken into account by applying a correction
+   factor f LB ~ 1 to the right-hand side of (11). Note that the limit represented by the left boundary
+                                                  → 0 which implies infinite compression. The
+   of the shaded region in Fig. 1 corresponds to V(1)
+
+   right boundary corresponds to p(1) → 0 , which implies a very weak shock. Physically realistic
+
+   values must lie well within these boundaries. These can be obtained only by solving the second
+   subproblem referred above. At present, therefore, the correction factor f LB may be considered
+
+   an empirical number which may be either slightly less than or slightly more than unity.
+
+                                                                          6
+                Using (11), (10) and (8), the reduced lift-off time tL ≡ ω0 t L is seen to be related to the
+
+    drive parameter [19]  ≡ I0 a ρ0 via the transcendental equation
+
+                   exp ( −λ tL ) sin ( tL ) 10εd + i 2πa 2µ 0ρ0 R I      10εd + i 2π 2µ 0 R I
+=I ( t )          = f LB =                                          f LB                       ≡  (12)
+   LCR L
+                          1 − λ2              11         µ0 I0              11       µ0     
+
+                A given plasma focus device can be considered optimised with respect to its design
+    parameters if it is ensured that (1) the capacitor bank is fully discharged at the dimensionless
+    time τp when the plasma arrives at the anode centre (2) the current at this moment is the
+
+    maximum that can be achieved. Referring to the scaling theory of the GPF formalism [19]
+    applied to a classical Mather type plasma focus, this implies the following optimum choice of
+
+    the operating parameter ε ≡ πa 2 2µ 0ρ0 µ 0 C0 V0 :
+
+    εopt = ατp −1 ; τp ≡ 2 ( z A − z I ) + 1 ; α ≡ exp ( −λ tL ) ( cos ( tL ) + λ sin ( tL ) )          (13)
+
+     where z A , z I are the lengths of anode and insulator normalized to anode radius a. It can be
+
+    demonstrated that scaled current I ( τp ) has no true maximum with respect to the other
+
+    dimensionless operating parameter κ ≡ µ 0a 2πL0 for a classical Mather type plasma focus.
+
+    One can, however, require the fraction of energy converted into magnetic energy at τp to be a
+
+    certain desired value ηm,des . Ideally, one would like the plasma to have a minimum of kinetic
+
+    energy when it arrives at the axis in order to have a near-equilibrium pinch, suggesting that all
+    the energy that is not dissipated in the circuit resistance or spent in ionization be converted into
+    the magnetic energy. This criterion, together with (13), translates into an optimum value of κ
+
+    κopt =
+                                             (     )
+           exp ( −2λ tL ) sin2 ( tL ) 1 − λ 2 + α 2 − ηm,des
+                                                                                                          (14)
+            (                      (
+          ηm,des L ( τp ) − 2α 2 τp −1M 0 ( τp ) − τp −2 M1 ( τp )   ))
+    and an optimum value of the zeroth approximation of the scaled current at τp
+
+                                  I 2 ( t ) + α 2 − η        
+    I ( τ ) = η
+      0,opt p   m,des
+                               1 + LCR L
+                                       η(     − 2 α 2
+                                                       N
+                                                         m,des
+
+                                                           )              (          ( )
+                                                                ; N ≡ τp −1M 0 τp − τp −2 M1 τp
+                                                               
+                                                                                                   ( ) ) (15)
+                                        m,des                 
+
+    The dynamic inductance L ( τ ) and its moments M 0 and M1 in (14) can be expressed [21] as
+
+    algebraic functions of the scaled geometry of the plasma focus. The number N is 0.128 for
+    PF-1000 [3], 0.176 for OneSys [3,17], 0.155 for Gemini [17] and 0.145 for LPP-FF1 [6]. Fig.
+    2 presents a contour plot of the variation of I0,opt ( τp ) when the ratio of the circuit resistance to
+
+
+                                                                 7
+circuit impedance and the drive parameter are varied. For clarity, the data are plotted in terms
+of the ratio  on the right-hand side of (12), which is inversely proportional to the drive
+
+parameter  and the                 ratio Λ ≡ exp − πλ  (                )
+                                                                    1 − λ 2 of consecutive peaks of the damped
+
+sinusoidal short circuit current waveform. The figure is calculated using inductance data
+N = 0.176 for the OneSys plasma focus [3,17] and ηm,des =
+                                                        0.7 .
+
+
+
+
+Fig. 2: Contour plot of I0,opt   ( τ ) in (15). The abscissa is the ratio  on the right-hand side of (12), which is
+                                    p
+
+
+inversely proportional to the drive parameter                                          (
+                                                             . The ordinate Λ ≡ exp − πλ          1 − λ2   )   is the ratio of
+
+consecutive peaks of the damped sinusoidal short circuit current waveform. The figure is calculated using
+                                                                        0.7 .
+inductance data N = 0.176 for the OneSys plasma focus [3,17] and ηm,des =
+
+
+
+           High current capacitor banks are usually designed so that the ratio Λ of successive
+peaks of the damped-sinusoidal short-circuit current falls in the range 0.6 to 0.8, marked by
+dashed lines in Fig 2. It is seen that the optimum conditions represented by (13) and (14) are
+satisfied only in a limited range of  . The upper limit on  (and the lower limit on  ) comes
+
+from the fact [19] that the function exp ( −λ tL ) sin ( tL )                    1 − λ 2 has a maximum value
+
+      (
+exp − λArc Cos ( λ )         1 − λ2     ) . The lower limit on  (and the upper limit on  ) comes from
+optimization conditions.
+           This means that the operating value of the drive parameter  ≡ I0 a ρ0 is allowed by
+
+the       conservation       laws       to       vary   only     over    a   limited       range    of      multiples       of
+
+                         (                   )                                   (
+0 ≡ f LB 10ε d + i 11 2π 2µ 0 µ 0 R I , which equals 2 × 108 f LB R I amp m × kg m3                      ) for D . This
+                                                                                                                       2
+
+
+conclusion is verified by plotting these data over the values of N in the range 0.1-0.2 and of
+ηm,des in the range 0.5-0.8. Outside this limited range, the energy transfer would be sub-
+
+                                                                8
+optimal. For example, energy may either remain in the capacitor or the plasma may have too
+much kinetic energy that leads to early disassembly by instabilities.
+           Condition (13) can be rewritten as
+a ( z A − z I + 1 2 )       2µ 0 α           2α      10εd + i R I
+                          =               =        f LB                                  (16)
+     π
+     2    L 0 C0               2π   2
+                                                 π        11 
+
+
+The numerator on the left-hand side is the effective anode length and the denominator is the
+ideal quarter cycle time. The right-hand side is proportional to the lower bound v LB prescribed
+
+by the conservation laws and given by (11) . Equation (16) is a more concrete statement of the
+well-known practice [21] of ensuring that the discharge reaches the anode centre in coincidence
+with the ideal quarter cycle time of the capacitor bank. The optimum energy transfer conditions
+discussed above are equivalent to ‘impedance matching’ for maximum power transfer in
+electrical circuits.
+
+           The “open question” regarding the origin of the scaling law of fusion yield as the fourth
+power of current can be answered in terms of the above discussion based on the GPF scaling
+theory in the following way.
+           The reaction yield expressed as Yield  n beam n Target σv b −T ( Vol )( Time ) , with the
+
+density of “beam particles” n beam ~ f beamρ0 , of target particles n Target ~ f Target ρ0 , velocity-
+
+averaged beam-target reaction rate σv b −T , volume of the reaction zone ( Vol ) ~ f Vol a 3 and
+
+reaction time ( time ) ~ f time a v 0,pinch , can be shown to scale as
+
+                                                2π 2µ 0       rpinch
+Yield  f beam f Target σv b − T f Vol f Time                              I0 4          (17)
+                                                   µ0     0 I0,opt ( τp )
+                                                             
+                                                             5
+
+
+
+
+           The question of why a universal scaling law for reaction yield must exist is answered
+by the feasibility of decomposition of the GPF plasma dynamics problem into two weakly
+interdependent subproblems, one that contains all the device-related information but very little
+physics and the other that contains all the physics but very little device-specific information,
+that must apply to all such devices.
+           The fourth power of current scaling law is seen to be a consequence of the above
+demonstration that devices optimised for energy transfer are forced by conservation laws to
+operate at a value of the drive parameter confined to a narrow range of multiples of a value 0
+
+related to material properties of the gas. This scaling of the reaction yield is seen to be
+applicable to all binary nuclear fusion reactions between gaseous reactants.
+
+                                                                           9
+         The “failure of neutron yield scaling” is an inference drawn from the fact that many
+large plasma focus installations abruptly stop performing according to expectations above some
+voltage. This fact can be understood in terms of the above discussion. The device that fails to
+perform above a certain value of the drive parameter needs to be physically tweaked to comply
+with the limits on the drive parameter and the generalized optimization criteria discussed
+above.
+         The new aspect of this discussion is the proportionality of 0 with R I , the ratio of the
+
+outer radius of the insulator to the anode radius. Relation (17) shows that the reaction yield
+should vary as the inverse fifth power of the R I . Decreasing R I , which is normally ~1, to a
+value ~ 0.4 by placing the insulator in the shadow of the anode should increase the yield by
+two orders of magnitude provided all the optimization conditions mentioned above are
+implemented simultaneously.
+         These insights from the above discussion can be tested in small plasma focus devices.
+Measurement of the lift-off time and its correlation with the operating drive parameter and
+insulator radius according to (12) can be an inexpensive test. The change in the operating
+pressure range by increasing the insulator radius using an add-on insulator might be another
+indication to look for. Insulators with outer radius less than the anode radius can be tested for
+their effect on the operating pressure range. Smaller plasma focus devices can therefore be
+realistically expected to play a significant role in understanding the failure of neutron emission
+scaling in large devices, not by making measurements with neutrons but by making
+measurements on the lift-off time.
+
+
+
+References:
+   [1.] Mather, J.W. Dense Plasma Focus. Methods of Exp. Phys. 1971,9B, 187-249
+   [2.] Bernard, A.; Bruzzone, H.; Choi, P.; Chuaqui, H.; Gribkov, V.; Herrera, J.; Hirano, K.;
+       Lee, S.; Luo, C.; Mezzetti, F.; Sadowski, M.; Schmidt, H.; Ware, K.; Wong, C.S.; Zoita,
+       V. Scientific status of the dense plasma focus. J. Moscow Phys. Soc.1998, 8, 93-170.
+       Available at URL http://www.icdmp.pl/home/scientificstatus
+   [3.] Auluck, S.; Kubes, P.; Paduch, M.; Sadowski, M.J.; Krauz, V.I.; Lee, S.; Soto, L.;
+       Scholz, M.; Miklaszewski, R.; Schmidt, H.; et al. "Update on the Scientific Status of
+       the Plasma Focus." Plasma 2021, 4,450–669. https://doi.org/10.3390/ plasma4030033
+   [4.] Zucker, O.; Bostick, W.; Long, J.; Luce J.; Sahlin, H. The plasma focus as a large
+         fluence neutron source. Nucl. Instrum. Methods1977, 145, 85-190.
+   [5.] Brzosko, J.S.; Degnan, J.H.; Filippov, N.V.; Freeman, B.L.; Kiutlu, G.F.; Mather,
+         J.W.Comments on the Feasibility of Achieving Scientific Break-even with a Plasma
+
+                                                 10
+   Focus Machine. In Current Trends in International Fusion Research, ed. Panarella,
+   E.; Springer, Boston, USA, 1997, pp. 11-32.
+   https://link.springer.com/book/10.1007/978-1-4615-5867-5
+[6.] Lerner, E.J.; Murali, S.K.; Haboub, A. Theory and Experimental Program for p-B11
+   Fusion with the Dense Plasma Focus. J. Fusion Energy2011, 30, 367–376. DOI
+   10.1007/s10894-011-9385-4
+[7.] Lerner, E.J.; Krupakar Murali, S.; Shannon, D.; Blake, A.M.; Van Roessel, F. Fusion
+   reactions from > 150-keV ions in a dense plasma focus plasmoid. Phys. Plasmas2012,
+   19, 032704
+[8.] Lerner, E.J.; Hassan, S.M.; Karamitsos, I.; Von Roessel, F. Confined ion energy >200
+   keV and increased fusion yield in a DPF with monolithic tungsten electrodes and pre-
+   ionization. Phys. Plasmas2017, 24, 102708. https://doi.org/10.1063/1.4989859
+[9.] Robert Thomas, Yang Yang, G.H. Miley, F.B. Mead, “Advancements in Dense Plasma
+    Focus (DPF) for Space Propulsion” AIP Conference Proceedings 746, 536 (2005);
+    https://doi.org/10.1063/1.1867170
+[10.] Tara Polsgrove, Sharon Fincher, Robert B. Adams, Jason Cassibry, Ross Cortez,
+    Matthew Turner, C. Daphne Maples, Janie N. Miernik, Geoffrey N. Statham, Leo
+    Fabisinski, John Santarius and Tom Percy, 2011, “Design of Z-pinch and Dense
+    Plasma Focus Powered Vehicles”, 49th AIAA Aerospace Sciences Meeting including
+    the New Horizons Forum and Aerospace Exposition, 4 - 7 January 2011, Orlando,
+    Florida, AIAA 2011-962 https://doi.org/10.2514/6.2011-962
+[11.] Lee, S.; Saw, S.H. Pinch current limitation effect in plasma focus. Appl. Phys. Lett.
+   2008, 92,021503.
+[12.] Lee, S.; Lee, P.; Saw, S.H.; Rawat, R.S. Numerical experiments on plasma focus
+    pinch current limitation. Plasma Phys. Control. Fusion2008, 50, 065012.
+[13.] Lee, S. Neutron yield saturation in plasma focus: a fundamental cause. Appl. Phys.
+    Lett.2009, 95, 151503
+[14.] Nikulin, V.Ya.;Polukhin, S.N. Saturation of the Neutron Yield from Megajoule
+    Plasma Focus Facilities. Plasma Phys. Rep. 2007, 33, 271–277.
+[15.] Herold, H.; Jerzykiewicz, A.; Sadowski M.; Schmidt, H. Comparative analysis of
+   large plasma focus experiments performed at IPF, Stuttgart, and IPJ, Świerk.Nucl.
+   Fusion 1989, 29 1255-1270.
+[16.] Herold, H.; Kaeppeler, H.J.; Schmidt, H.; Shakhatre, M.; Wong, C.S.; Deeney, C.;
+    Choi, P. Progress in plasma focus operation up to 500 kJ bank energy. IAEA-CN-S0/C-
+    IV-S-2, 1988
+[17.] Lowe, D. The NSTec Dense Plasma Focus Laboratories – An Overview.
+   https://www.osti.gov/servlets/purl/1245474 (24.04.2021)
+[18.] Shakhatre, M.; Auluck, S. Saettigung der Neutronenausbeute am Plasmafokus. Proc.
+    Spring meeting of the German Physical Society, Kiel, Germany, March, 1991.
+
+
+                                          11
+[19.] Lee, Sing, and Adrian Serban. "Dimensions and lifetime of the plasma focus pinch."
+    IEEE Transactions on plasma science 24, 1101 (1996).
+[20.] L. Soto, C. Pavez, A. Tarifeño, J. Moreno and F. Veloso, “Studies on scalability and
+    scaling laws for the plasma focus: similarities and differences in devices from 1 MJ to
+    0.1 J”, Plasma Sources Sci. and Technol.19, 055017 (2010).
+[21.] Soto, L.; Pavez, C.; Moreno, J.; Barbaglia, M.; Clausse, A. Nanofocus: ultra-
+    miniature dense pinch plasma focus device with submillimetric anode operating at
+    0.1J.Plasma Sources Sci. Technol.2009,18, 015007
+[22.] S K H Auluck, “The Generalized plasma focus problem and its application to space
+    propulsion”, Physics of Plasmas 30, 043109 (2023),
+    https://doi.org/10.1063/5.0141622
+[23.] Auluck, S.K.H. Re-appraisal and extension of the Gratton-Vargas two-dimensional
+   analytical snowplow model of plasma focus evolution in the context of contemporary
+   research. Phys. Plasmas 2013, 20, 112501.
+[24.] Auluck, S.K.H. Re-appraisal and extension of the Gratton-Vargas two-dimensional
+   analytical snowplow model of plasma focus - II: Looking at the singularity.Phys.
+   Plasmas 2015, 22, 112509. doi: 10.1063/1.4936283
+[25.] Auluck, S.K.H. Re-appraisal and extension of the Gratton-Vargas two-dimensional
+   analytical snowplow model of plasma focus - III: Scaling theory for high pressure
+   operation and its implications. Phys. Plasmas 2016, 23, 122508. doi:
+   http://dx.doi.org/10.1063/1.4972081
+[26.] Gratton F.; Vargas, J.M. Two dimensional electromechanical model of the plasma
+   focus.In Energy Storage, Compression and Switching.Eds. Nardi, V.; Sahlin, H.;
+   Bostick, W.H. Vol. 2. Plenum, New York, USA, 1983, pp. 353-386.
+[27.] S K H Auluck, “First steps towards a theory of the Dense Plasma Focus: Part-I:
+    Kinematic framework with built-in propagation delay and nonzero thickness of dense
+    sheath for generalized electrode geometry”, https://arxiv.org/abs/2211.16775.
+[28.] Auluck, S.K.H. Bounds imposed on the sheath velocity of a dense plasma focus by
+   conservation laws and ionization stability condition. Phys. Plasmas2014, 21, 090703.
+   doi: 10.1063/1.4894680
+[29.] Auluck, S.K.H. Axial magnetic field and toroidally streaming fast ions in the dense
+   plasma focus are natural consequences of conservation laws in the curved
+   axisymmetric geometry of the current sheath. Phys. of Plasmas2014, 21, 102515. doi:
+   10.1063/1.4900753
+[30.] Randall J. LeVeque, “Nonlinear Conservation Laws And Finite Volume Methods
+    For Astrophysical Fluid Flow” in Computational Methods for Astrophysical Fluid
+    Flow, Saas-Fee Advanced Course 27. Lecture Notes 1997, Swiss Society for
+
+
+
+                                          12
+Astrophysics and Astronomy, LeVeque, R.J., Mihalas, D., Dorfi, E.A., Müller, E.
+Steiner, Oskar, Gautschy, A. (Eds.) ISBN 978-3-540-31632-9
+
+
+
+
+                                     13
+

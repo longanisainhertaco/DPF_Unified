@@ -1,4 +1,8 @@
-"""Field solvers and staggered-grid electromagnetic utilities."""
+"""Field solvers and staggered-grid electromagnetic utilities.
+
+Export surface only. Physics authority remains in the imported modules, each of
+which must carry local ``KnowledgeReference/`` or first-principles docs routing.
+"""
 
 from dpf.fields.maxwell_3d import (
     EPSILON_0,
@@ -34,8 +38,10 @@ from dpf.fields.marder import (
 )
 from dpf.fields.conductivity import (
     ConductivityBlendTelemetry,
+    PartialIonizedConductivityTelemetry,
     PlasmaVacuumConductivityBlend,
     conductivity_blend_candidate_evidence,
+    partial_ionized_conductivity,
 )
 from dpf.fields.hybrid_stepper import (
     HybridPIC3DFieldStepper,
@@ -62,6 +68,16 @@ from dpf.fields.electron_energy import (
     ElectronEnergyTelemetry,
     electron_energy_candidate_evidence,
     extended_ohm_temperature_authority_status,
+)
+from dpf.fields.ionization_transport import (
+    DeuteriumIonizationState,
+    DeuteriumIonizationTransport,
+    IonizationParticleSourceTelemetry,
+    IonizationTransportTelemetry,
+    apply_ionization_particle_source,
+    ionization_transport_candidate_evidence,
+    nrl_ground_state_ionization_rate,
+    nrl_three_body_recombination_rate,
 )
 from dpf.fields.kinetic_yield import (
     KineticIonYieldHistory,
@@ -112,8 +128,10 @@ __all__ = [
     "MarderCorrectionTelemetry",
     "marder_candidate_evidence",
     "ConductivityBlendTelemetry",
+    "PartialIonizedConductivityTelemetry",
     "PlasmaVacuumConductivityBlend",
     "conductivity_blend_candidate_evidence",
+    "partial_ionized_conductivity",
     "HybridPIC3DFieldStepper",
     "HybridPIC3DStepResult",
     "HybridPIC3DStepTelemetry",
@@ -132,6 +150,14 @@ __all__ = [
     "ElectronEnergyTelemetry",
     "electron_energy_candidate_evidence",
     "extended_ohm_temperature_authority_status",
+    "DeuteriumIonizationState",
+    "DeuteriumIonizationTransport",
+    "IonizationParticleSourceTelemetry",
+    "IonizationTransportTelemetry",
+    "apply_ionization_particle_source",
+    "ionization_transport_candidate_evidence",
+    "nrl_ground_state_ionization_rate",
+    "nrl_three_body_recombination_rate",
     "KineticIonYieldHistory",
     "KineticYieldTelemetry",
     "kinetic_yield_candidate_evidence",

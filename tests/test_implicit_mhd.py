@@ -1,8 +1,7 @@
 """Tests for the implicit MHD module (mlx_implicit_mhd).
 
-All test bodies are stubs — they are marked xfail until Phase S-3 implements
-the module.  The stubs document the acceptance criteria and serve as the
-test plan for the implementation sprint.
+The tests document the accepted runtime behavior for the explicit/implicit
+operator split used to keep low-density magnetic diffusion finite.
 
 Test structure
 --------------
@@ -20,14 +19,6 @@ import math
 
 import numpy as np
 import pytest
-
-# Mark all tests in this module as expected-fail until implementation.
-# Remove the module-level mark and switch individual tests to xpass once
-# Phase S-3 is underway.
-pytestmark = pytest.mark.xfail(
-    reason="Phase S-3: mlx_implicit_mhd not yet implemented",
-    strict=False,
-)
 
 # Skip entire module if MLX is not available (e.g., CI without Apple Silicon).
 mlx = pytest.importorskip("mlx.core", reason="MLX not available")

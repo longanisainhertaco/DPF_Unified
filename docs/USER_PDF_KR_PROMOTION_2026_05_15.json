@@ -1,0 +1,44 @@
+{
+  "date": "2026-05-15",
+  "applied": true,
+  "intake_dir": "downloaded_books_papers/Research Papers/2026-05-15-user-ingest",
+  "files_scanned": 1,
+  "unique_sha256_payloads": 1,
+  "promoted_count": 1,
+  "skipped_existing_count": 0,
+  "failed_count": 0,
+  "deleted_duplicate_count": 0,
+  "retained_count": 1,
+  "promoted": [
+    {
+      "path": "soto2010.pdf",
+      "sha256": "5f680756a4a1ba12192e60d2e6d773be9f5279d89e05fdf6e66e2f5260f1a7fa",
+      "title": "Studies on scalability and scaling laws for the plasma focus: similarities and differences in devices from 1MJ to 0.1J",
+      "doi": "10.1088/0963-0252/19/5/055017",
+      "accession": "",
+      "relevance": "",
+      "pages": 10,
+      "nonempty_pages": 10,
+      "markdown": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/studies-on-scalability-and-scaling-laws-for-the-plasma-focus-similarities-and-differences-5f680756.json",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "status": "text_parity_extracted_review_needed"
+    }
+  ],
+  "skipped_existing": [],
+  "failed": [],
+  "deleted_duplicates": [],
+  "retained": [
+    {
+      "sha256": "5f680756a4a1ba12192e60d2e6d773be9f5279d89e05fdf6e66e2f5260f1a7fa",
+      "canonical_path": "soto2010.pdf",
+      "duplicate_count": 0
+    }
+  ],
+  "notes": "Promotion means local PDF text was extracted into KnowledgeReference markdown/JSON. It does not accept figures, tables, plotted curves, numeric targets, or validation claims."
+}

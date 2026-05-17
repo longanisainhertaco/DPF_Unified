@@ -25,6 +25,11 @@ NEUTRON_AUTHORITY_SOURCE_REFS = (
         "role": "fully_kinetic_mev_ion_and_beam_target_requirement",
     },
     {
+        "path": "KnowledgeReference/sand2009-6373-b93aec67.md",
+        "lines": "346-352,394-397,511-557,671-679",
+        "role": "user_validated_alegra_mhd_thermonuclear_limit_and_nonthermal_requirement",
+    },
+    {
         "path": (
             "KnowledgeReference/"
             "neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md"
@@ -47,6 +52,24 @@ NEUTRON_AUTHORITY_SOURCE_REFS = (
         ),
         "lines": "121-137,175-204,269-288",
         "role": "pf1000_anisotropy_detector_and_scattering_schema_other_scope",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "open-access-proceedings-journal-of-physics-conference-series-ed196711.md"
+        ),
+        "lines": "93-141,152-190,680-697,782-805",
+        "role": "user_validated_current_abruption_plasma_diode_mitl_and_neutron_application_context",
+    },
+    {
+        "path": "KnowledgeReference/original-research-f7894f85.md",
+        "lines": "269-288,300-323",
+        "role": "user_validated_ir_mpf100_neutron_activation_and_double_pinch_context",
+    },
+    {
+        "path": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
+        "lines": "180-200,210-237,291-295",
+        "role": "user_validated_compact_dpf_tof_fwhm_pressure_yield_context",
     },
 )
 
@@ -104,6 +127,18 @@ BLOCKING_NEUTRON_AUTHORITY_CHANNELS = (
     "source_review_certificate",
 )
 
+TRANSFER_RULE_REQUIRED_CHANNELS = (
+    "source_scope_identity",
+    "target_scope_identity",
+    "changed_device_or_shot_parameters",
+    "mechanism_transfer_equations_or_bounds",
+    "detector_response_transfer_bounds",
+    "spectrum_anisotropy_transfer_bounds",
+    "uncertainty_inflation_rule",
+    "review_certificate",
+    "negative_test_cross_scope_promotion",
+)
+
 OTHER_SCOPE_SOURCE_GROUPS = (
     {
         "name": "new_2026_axisymmetric_hybrid_pic_fluid",
@@ -149,7 +184,12 @@ def build_mechanism_separated_neutron_packet(
     """Return a non-promoting neutron-yield authority packet."""
 
     accepted = {str(channel) for channel in accepted_channels}
-    accepted.update(_accepted_channels_from_targets(validation_targets))
+    target_channels, target_decisions = _accepted_channels_from_targets(
+        validation_targets,
+        declared_scope=declared_scope,
+        device_name=device_name,
+    )
+    accepted.update(target_channels)
     text_supported = (
         set(PF1000_AKEL_TEXT_SUPPORTED_CHANNELS)
         if _looks_like_pf1000_akel_scope(declared_scope, device_name)
@@ -164,12 +204,40 @@ def build_mechanism_separated_neutron_packet(
         "declared_scope": declared_scope,
         "device_name": device_name or "not_declared",
         "decision": "do_not_enable_total_neutron_yield_authority",
+        "acceptance_gate": (
+            "scalar_yield_reduced_model_text_and_other_scope_neutron_diagnostics_"
+            "cannot_support_total_yield_authority_until_same_scope_mechanism_"
+            "separated_histories_detector_transport_comparator_uq_and_review_pass"
+        ),
         "required_channels": list(REQUIRED_NEUTRON_AUTHORITY_CHANNELS),
         "text_supported_reference_channels": sorted(text_supported),
+        "text_supported_not_acceptance_channels": sorted(text_supported - accepted),
         "candidate_runtime_channels": _candidate_runtime_channels(kinetic_yield),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "neutron_authority_channel_status": _channel_statuses(
+            required_channels=REQUIRED_NEUTRON_AUTHORITY_CHANNELS,
+            accepted=accepted,
+            text_supported=text_supported,
+            missing=missing,
+        ),
         "other_scope_source_groups": list(OTHER_SCOPE_SOURCE_GROUPS),
+        "cross_scope_policy": {
+            "status": "blocked_without_reviewed_transfer_rule",
+            "required_transfer_rule_channels": list(TRANSFER_RULE_REQUIRED_CHANNELS),
+            "other_scope_sources_usable_for": "requirements_or_schema_only",
+            "can_use_other_scope_for_acceptance": False,
+        },
+        "mechanism_separation_policy": {
+            "total_yield_is_not_authoritative_without_separate_mechanisms": True,
+            "required_mechanisms": [
+                "thermonuclear_yield_history",
+                "beam_target_yield_history",
+            ],
+            "scalar_yield_agreement_usable_for": "baseline_comparison_only",
+            "candidate_pic_yield_usable_for": "runtime_diagnostic_only",
+        },
+        "validation_target_scope_decisions": target_decisions,
         "source_references": list(NEUTRON_AUTHORITY_SOURCE_REFS),
         "same_scope_source_status": (
             None if same_scope_source is None else same_scope_source.get("status")
@@ -202,9 +270,13 @@ def _candidate_runtime_channels(kinetic_yield: Mapping[str, Any] | None) -> list
 
 
 def _accepted_channels_from_targets(
-    validation_targets: tuple[Mapping[str, Any], ...] | list[Mapping[str, Any]]
-) -> set[str]:
+    validation_targets: tuple[Mapping[str, Any], ...] | list[Mapping[str, Any]],
+    *,
+    declared_scope: str,
+    device_name: str | None,
+) -> tuple[set[str], list[dict[str, Any]]]:
     accepted: set[str] = set()
+    decisions: list[dict[str, Any]] = []
     aliases = {
         "thermonuclear_yield_history": "accepted_thermonuclear_yield_history",
         "beam_target_yield_history": "accepted_beam_target_yield_history",
@@ -223,16 +295,96 @@ def _accepted_channels_from_targets(
     }
     for target in validation_targets:
         status = str(target.get("status", ""))
+        observable = str(target.get("observable", "")).strip()
+        name = str(target.get("name", observable or "unnamed_target"))
         if status not in {
             "accepted_same_scope_source",
             "reviewed_same_scope_source",
             "accepted",
         }:
+            decisions.append({
+                "target": name,
+                "observable": observable,
+                "status": status,
+                "decision": "not_accepted_neutron_authority_status",
+            })
             continue
-        observable = str(target.get("observable", "")).strip()
+        if not _target_scope_matches(target, declared_scope, device_name):
+            decisions.append({
+                "target": name,
+                "observable": observable,
+                "status": status,
+                "decision": "rejected_missing_or_mismatched_scope_metadata",
+            })
+            continue
         if observable in aliases:
             accepted.add(aliases[observable])
-    return accepted
+            decisions.append({
+                "target": name,
+                "observable": observable,
+                "status": status,
+                "decision": "accepted_neutron_authority_target_channel",
+            })
+        else:
+            decisions.append({
+                "target": name,
+                "observable": observable,
+                "status": status,
+                "decision": "ignored_unmapped_neutron_authority_observable",
+            })
+    return accepted, decisions
+
+
+def _channel_statuses(
+    *,
+    required_channels: tuple[str, ...],
+    accepted: set[str],
+    text_supported: set[str],
+    missing: set[str],
+) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for channel in required_channels:
+        if channel in accepted:
+            statuses[channel] = "accepted_neutron_authority"
+        elif channel in text_supported:
+            statuses[channel] = "text_supported_reference_only_not_acceptance"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _target_scope_matches(
+    target: Mapping[str, Any],
+    declared_scope: str,
+    device_name: str | None,
+) -> bool:
+    target_scope = str(
+        target.get("declared_scope")
+        or target.get("validation_scope")
+        or target.get("scope")
+        or ""
+    ).strip()
+    if target_scope:
+        return _normalized_scope(target_scope) == _normalized_scope(declared_scope)
+
+    source_reference = target.get("source_reference")
+    if isinstance(source_reference, Mapping):
+        haystack = " ".join(
+            str(source_reference.get(key, ""))
+            for key in ("record_id", "role", "path")
+        ).lower()
+        if _looks_like_pf1000_akel_scope(declared_scope, device_name):
+            return (
+                "akel" in haystack
+                and ("12581" in haystack or "16kv" in haystack or "16_kv" in haystack)
+            )
+    return False
+
+
+def _normalized_scope(value: str) -> str:
+    return "".join(ch for ch in value.lower() if ch.isalnum())
 
 
 def _beam_target_closure_status(physics_closure: Mapping[str, Any] | None) -> str | None:

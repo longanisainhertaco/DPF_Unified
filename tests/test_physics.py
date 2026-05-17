@@ -1513,7 +1513,7 @@ class TestBraginskiiKappaZDependent:
         kpar_z1, _ = braginskii_kappa(ne, Te, Bmag, Z=1.0)
         kpar_z2, _ = braginskii_kappa(ne, Te, Bmag, Z=2.0)
         ratio = kpar_z2[0] / kpar_z1[0]
-        assert 0.99 < ratio < 1.0
+        assert 0.45 < ratio < 0.55
 
 
 # --- Section: Phase U Ablation ---

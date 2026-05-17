@@ -41,7 +41,7 @@ This makes the project target sharper:
 | PML, conductor, and particle-boundary semantics | 613-619, 625-628 | Make field boundaries and particle deletion/absorption part of the geometry contract, not hidden solver behavior. |
 | Ion collision operator | 310-311 | Verify Nanbu/Perez-style ion collisions in the accepted DPF particle loop, not only in isolated PIC utilities. |
 | True 3D dimensionality | 1215-1225, 1274-1278 | Require 3D azimuthal modes before any final "full first-principles DPF" claim. Current 2D axisymmetric paths cannot capture m=1 kink or fragmentation. |
-| Separate electron-energy closure | 1074-1097, 1226-1240 | Treat `Te = Ti` as a blocker for quantitative Hall/pressure and neutron-yield authority; add a separate electron energy equation and heat-flux/collisional coupling. |
+| Separate electron-energy closure | 1074-1097, 1226-1240; PF-1000 heat-flux boundary support from `doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json:57-62` | Treat `Te = Ti` as a blocker for quantitative Hall/pressure and neutron-yield authority; add a separate electron energy equation plus heat-flux/collisional coupling as candidate runtime channels until reviewed. |
 | Kinetic ion neutron-yield history | 952-963, 1083-1089, 1259-1266 | Compute time-resolved yield from resolved ion distributions and mechanism-separated histories; do not accept terminal scalar yield fits. |
 | Same-scope 3D validation packet | 942-951, 974-991, 1215-1225, 1259-1266 | The source's comparison is order-of-magnitude and 2D/non-hollow; use it for architecture, not as validation closure. |
 
@@ -72,24 +72,36 @@ Existing useful hooks:
   only candidate-coupled back to Yee edges and has not been bounded as
   nondominant in DPF runs.
 - `src/dpf/fields/conductivity.py`: candidate source-derived
-  plasma-vacuum conductivity transition with Ohmic CFL limiting. It is not yet
-  accepted because it has only candidate loop integration and lacks a
-  DPF sensitivity packet showing the limiter is weakly active.
+  plasma-vacuum conductivity transition with Ohmic CFL limiting, plus
+  candidate weakly ionized scalar conductivity from Spitzer electron-ion
+  resistivity and NRL electron-neutral drag. It is not yet accepted because it
+  has only candidate loop integration and lacks tensor-transport review,
+  cross-section review, and a DPF sensitivity packet showing remaining
+  numerical limiters are weakly active.
 - `src/dpf/fields/hybrid_stepper.py`: candidate one-step field-current
   integration tying the Yee Maxwell state, conductivity blend, generalized Ohm
   current solve, current edge mapping, Maxwell advance, and optional end-step
-  predictor-corrector current solve together. It still lacks the source's full
+  predictor-corrector current solve together. It now accepts explicit
+  `Maxwell3DBoundaries` from the 3D loop so PML/conductor semantics are not
+  silently dropped, and records candidate full-grid volume `J.E` field-work
+  telemetry for the power-port packet. It still lacks the source's full
   provisional ion-push/rebuild sequence and same-scope DPF validation.
 - `src/dpf/fields/hybrid_loop.py`: candidate particle-field loop step tying the
   Maxwell state to HybridPIC push/deposit, quasi-neutral electron-density
-  rebuild, ion-current deposition, and field-current advance. It is not yet an
-  accepted DPF loop because nondominance gates, long-run conservation,
-  electron energy, kinetic yield, and same-scope validation remain missing.
+  rebuild, ion-current deposition, and field-current advance. It now receives
+  explicit Maxwell boundary policy and optional particle-absorption policy
+  instead of relying on field defaults. It can also carry candidate
+  ionization/charge-state state, use source-backed weakly ionized conductivity,
+  and apply candidate ionization/recombination PIC particle source/sink weight
+  for the next deposition step. It is not yet an accepted DPF loop because
+  nondominance gates, long-run conservation, accepted electron energy, accepted
+  transport, kinetic yield authority, and same-scope validation remain missing.
 - `src/dpf/fields/particle_boundaries.py`: candidate conductor/PML particle
   absorption hook. It deletes particles entering conductor/PML regions before
-  deposition when configured in `HybridPIC3DLoop`, but remains nonaccepting
-  because electrode geometry, face-specific boundary metadata, and same-scope
-  boundary validation are not closed.
+  deposition when configured in `HybridPIC3DLoop`, and the first-principles
+  runner can now activate this from its deck boundary policy. It remains
+  nonaccepting because electrode geometry, face-specific boundary metadata,
+  particle-boundary ordering, and same-scope boundary validation are not closed.
 - `src/dpf/experimental/pic/hybrid.py`: 3D particle push, CIC/Esirkepov
   deposition, interpolation, collisions, beam injection. This is the closest
   local foundation for the kinetic-ion part. `HybridPIC3DLoop` now reports
@@ -98,9 +110,19 @@ Existing useful hooks:
 - `src/dpf/fields/electron_energy.py`: candidate separate electron-energy
   source update using the repo two-temperature scaffold. `HybridPIC3DLoop` can
   use a supplied electron-energy state to build the pressure-gradient term and
-  then update `Te` from the solved current, but this remains nonaccepting until
-  heat-flux/collisional coupling, diagnostics, UQ, and same-scope validation
-  are closed.
+  then update `Te` from the solved current. It now also applies candidate
+  Braginskii anisotropic heat flux from cell-centered magnetic field with
+  zero-normal-flux boundary handling, using PF-1000 source boundary language as
+  the local source hook. It also emits a candidate NRL equal-temperature
+  electron-ion thermal-equilibration audit for the active relaxation convention.
+  This remains nonaccepting until collisional coupling conventions, diagnostics,
+  UQ, and same-scope validation are closed.
+- `src/dpf/fields/ionization_transport.py`: candidate deuterium ionization and
+  recombination transport on the 3D grid. It advances neutral/D+/electron
+  density and mean charge state from local PF-1000/NRL source structure, and
+  can couple chemistry deltas into PIC macroparticle source/sink weight for the
+  next deposit. It remains nonaccepting until startup, D2/excited-state,
+  impurity, EOS/transport feedback, diagnostics, UQ, and review packets exist.
 - `src/dpf/fields/kinetic_yield.py`: candidate time-history accumulator for
   D-D neutron yield from PIC ion distributions. `HybridPIC3DLoop` can attach
   instantaneous rate and cumulative neutrons to loop telemetry, but detector
@@ -108,8 +130,18 @@ Existing useful hooks:
   unclosed.
 - `src/dpf/fields/hybrid_simulator.py`: candidate multi-step 3D hybrid
   PIC-fluid driver. It repeatedly advances the loop while carrying field,
-  particle, optional electron-energy, and yield state forward, but it is still
-  an engineering smoke surface rather than accepted DPF predictive authority.
+  particle, optional electron-energy, ionization/charge-state, yield state, and
+  optional lagged volume-`J.E` circuit feedback forward, but it is still an
+  engineering smoke surface rather than accepted DPF predictive authority.
+- `src/dpf/first_principles/deck.py` and
+  `src/dpf/first_principles/runner.py`: package-native deck and runtime now
+  carry a candidate `BoundaryPolicy` with PML cell count/strength, open-boundary
+  flag, optional particle absorption, and candidate conductor-mask mode. The
+  runner can project source-backed coaxial anode/cathode dimensions onto the
+  Cartesian engineering grid as a candidate conductor mask, records this in
+  telemetry, manifest metadata, and candidate evidence; raw runtime boundary
+  behavior still cannot promote without reviewed same-scope geometry masks and
+  boundary validation.
 - `src/dpf/fields/source_geometry.py`: typed source-geometry packet for the
   local LLNL-like axisymmetric setup. It records the source values and exposes a
   Cartesian smoke-grid projection, but it is blocked as same-scope true-3D
@@ -134,15 +166,17 @@ New gate added:
 
 1. Build a minimal 3D full-EM field object: Yee layout, curl operators,
    conductor masks, PML/open boundary metadata, and energy diagnostics.
-   Started as `src/dpf/fields/maxwell_3d.py`; remaining work is accepted
-   plasma/electron closure, validated boundary coefficients, and integration
-   into a full DPF run loop.
+   Started as `src/dpf/fields/maxwell_3d.py` and is now wired through the
+   first-principles runner boundary policy; remaining work is accepted
+   plasma/electron closure, validated boundary coefficients, reviewed geometry
+   masks, and same-scope boundary validation.
 2. Bind the existing 3D PIC particle utilities to that field object:
    interpolation, Boris push, charge-conserving current deposition, density
    deposition, and particle-boundary handling. Started as the nonaccepting
    `PICCurrentSourcePort`, `hybrid_loop.py`, and `particle_boundaries.py`;
    remaining work is self-consistent long-run push/deposition sequencing,
-   continuity control, face-specific boundary semantics, and validation.
+   continuity control, face-specific boundary semantics, particle-boundary
+   ordering proof, and validation.
 3. Add the electron-fluid Ohm-Ampere closure as an explicit solver stage:
    resistive term first, then pressure-gradient and Hall terms behind
    independent gates. Started as `src/dpf/fields/ohm_solver.py`; remaining work
@@ -169,8 +203,10 @@ New gate added:
    runs as quantitative. Started as `src/dpf/fields/electron_energy.py` and
    optional `HybridPIC3DLoop` coupling; extended-Ohm temperature authority now
    blocks Hall/pressure claims when separate Te evidence is missing or only
-   candidate. Remaining work is source-closed heat flux, collisional coupling
-   audit, accepted diagnostics, and UQ.
+   candidate. Candidate Braginskii heat flux and an NRL equal-temperature
+   equilibration audit are now wired into the loop; remaining work is accepted
+   arbitrary-`Te/Ti` collisional coupling, accepted heat-flux diagnostics,
+   accepted temperature diagnostics, and UQ.
 7. Attach and validate loop-local ion collisions with reviewed density,
    temperature, Coulomb-log, timestep, and cell-pairing metadata before using
    collisional kinetic histories as accepted DPF evidence.
@@ -211,7 +247,10 @@ candidate source-ordered Eq. 7 velocity-update loop mode with provisional
 predictor particle-current rebuild telemetry, a multi-step driver, and a
 blocked source-geometry packet plus a source-scoped candidate RLC/magnetic
 injection boundary wired into the multi-step simulator now exist as engineering
-ratchets, `dpf hybrid-3d-smoke` can produce a blocked JSON engineering
+ratchets, the package-native first-principles runner now carries explicit
+candidate PML/open/particle-absorption boundary policy into the field loop and
+manifest plus candidate lagged volume-`J.E` circuit feedback, `dpf
+hybrid-3d-smoke` can produce a blocked JSON engineering
 artifact, and a final same-scope validation-packet gate now exists, but the
 full goal still requires an accepted 3D hybrid
 PIC-fluid core. The current Python cylindrical MHD path can support near-term

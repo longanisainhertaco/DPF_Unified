@@ -1,0 +1,2895 @@
+{
+  "can_support_first_principles_acceptance": false,
+  "contradiction_or_scope_mismatch": [
+    {
+      "entry": {
+        "calculated_value": 1385640.6460551019,
+        "fraction_difference": 0.11665408813987262,
+        "notes": "The source inductance and theoretical peak current do not match the undamped LC formula at the listed maximum voltage; keep source inductance and current as separate observables.",
+        "source_value": 1224000.0,
+        "status": "contradiction_or_scope_mismatch",
+        "tolerance_fraction": 0.05,
+        "unit": "A"
+      },
+      "machine_id": "ir_mpf_100_salehizadeh_2012",
+      "parameter": "source_L_vs_source_theoretical_peak_current",
+      "section": "consistency_checks"
+    }
+  ],
+  "contradiction_or_scope_mismatch_count": 1,
+  "deck_completion_policy": {
+    "may_fill_experimental_decks": true,
+    "may_promote_to_first_principles_acceptance": false,
+    "reason": "Algebra can fill circuit/geometry/gas candidates, but startup state, dynamic plasma loading, transport closures, detector UQ, and same-scope histories remain independent physics requirements."
+  },
+  "machine_count": 12,
+  "machines": {
+    "compact_chinese_dpf_2018": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {},
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 4e-05
+        },
+        "inductance_H": {
+          "formula": "capacitance_F * (20 kV / delivered_current_A_approx)**2",
+          "inputs": {
+            "capacitance_F": 4e-05,
+            "delivered_current_A_approx": 400000.0,
+            "voltage_V": 20000.0
+          },
+          "notes": "Matches the existing executable engineering deck candidate.",
+          "status": "direct_algebraic_inference",
+          "unit": "H",
+          "value": 1.0000000000000002e-07
+        },
+        "pressure_Pa": {
+          "source": "source reported pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 580.0
+        },
+        "voltage_V": {
+          "source": "upper end of source voltage range",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 20000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_range_J": {
+          "formula": "0.5 * capacitance_F * charging_voltage_range_V**2",
+          "inputs": {
+            "capacitance_F": 4e-05,
+            "charging_voltage_range_V": [
+              10000.0,
+              20000.0
+            ]
+          },
+          "status": "bracketed_source_range",
+          "unit": "J",
+          "value": [
+            2000.0,
+            8000.0
+          ]
+        },
+        "current_implied_inductance_range_H": {
+          "formula": "capacitance_F * (charging_voltage_range_V / delivered_current_A_approx)**2",
+          "inputs": {
+            "capacitance_F": 4e-05,
+            "charging_voltage_range_V": [
+              10000.0,
+              20000.0
+            ],
+            "delivered_current_A_approx": 400000.0
+          },
+          "notes": "This is an ideal LC range from approximate delivered current; dynamic plasma inductance remains unresolved.",
+          "status": "bracketed_source_range",
+          "unit": "H",
+          "value": [
+            2.5000000000000005e-08,
+            1.0000000000000002e-07
+          ]
+        },
+        "pressure_range_torr": {
+          "formula": "pressure_Pa / TORR_TO_PA",
+          "inputs": {
+            "optimum_pressure_Pa_range": [
+              550.0,
+              600.0
+            ]
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "torr",
+          "value": [
+            4.125339254872934,
+            4.500370096225018
+          ]
+        }
+      },
+      "device": "compact Mather-type DPF neutron source",
+      "known_parameters": {
+        "capacitance_F": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 4e-05
+        },
+        "charging_voltage_range_V": {
+          "source": "source operating range",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": [
+            10000.0,
+            20000.0
+          ]
+        },
+        "delivered_current_A_approx": {
+          "source": "source approximate delivered current",
+          "status": "known_source_value",
+          "unit": "A",
+          "value": 400000.0
+        },
+        "reported_pressure_Pa": {
+          "source": "source operating target",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 580.0
+        }
+      },
+      "machine_id": "compact_chinese_dpf_2018",
+      "source_references": [
+        {
+          "path": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
+          "sha256": "d1758d55ea9a32f6edb17107a86b033d8078cad337f0531ca10f18190fb220b5",
+          "source_lines": {
+            "abstract_targets": "38-41",
+            "bank_and_current": "66-91",
+            "english_abstract": "291-295",
+            "geometry": "103-147,161-176",
+            "simulation_and_measurement": "180-200,210-232"
+          }
+        }
+      ],
+      "source_status": "may15_user_verified_knowledge_reference_source",
+      "status_counts": {
+        "bracketed_source_range": 2,
+        "direct_algebraic_inference": 2,
+        "known_source_value": 7,
+        "underdetermined_requires_additional_observable": 2
+      },
+      "unresolved_parameters": {
+        "resistance_ohm": {
+          "notes": "Capacitance, voltage, and one current amplitude do not uniquely solve resistance.",
+          "required_observable": "ringdown current decay or source resistance",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "The source gives focus timing and pressure/yield targets, not the initial BVP.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_gemini_rog_i005_20130716": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 1.1759156783401458e-07,
+          "fraction_difference": 0.7474308698569033,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 2.97e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000432
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.97e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 759.9375
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0025
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 40130.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.000432,
+            "voltage_V": 40130.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 347850.0504
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.000432,
+            "static_inductance_H": 2.97e-08,
+            "voltage_V": 40130.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 4839860.103162262
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.000432,
+            "static_inductance_H": 2.97e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 5.626521401090928e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.000432,
+            "voltage_V": 40130.0,
+            "waveform_peak_current_A": 2432332.5
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.1759156783401458e-07
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "gemini_rog_i005_20130716",
+            "workbook_series_sha256": "26184a33b1e3ce878d74528693cf865c7cbc4b16a069f58cf095d0419dce55dc"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 2432332.5
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "gemini_rog_i005_20130716"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 4.7796e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.000432,
+            "waveform_peak_time_s": 4.7796e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 2.1431847188321593e-08
+        }
+      },
+      "device": "Gemini",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.5969
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.0762
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000432
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.1016
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 759.9375
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.127
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0025
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.97e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 40130.0
+        }
+      },
+      "machine_id": "gv_gemini_rog_i005_20130716",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gemini.TXT",
+            "sha256": "7bb2423ab847ded0527102ee5fb8a7c8cc8040f6d880f05a68188761f5bd7dba"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-Gemini.inp",
+            "sha256": "6ff50da814e0e1626d61305d6327e0ac8098af5d4cc18b621120a03db8138535"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gemini.xlsx",
+            "sha256": "b62c62383ff03bb1ecce6cbd508be5054450ec21d1febd591021c32a337730d3"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_lpp_ff1_05_23_16_1": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 9.894144793388432e-08,
+          "fraction_difference": 0.6563624172680409,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 3.4e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 7.52e-05
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 3.4e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1599.8684210526317
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.007
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 39900.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "voltage_V": 39900.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 59859.576
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "static_inductance_H": 3.4e-08,
+            "voltage_V": 39900.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1876473.162454439
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "static_inductance_H": 3.4e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.511702835364151e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "voltage_V": 39900.0,
+            "waveform_peak_current_A": 1100000.0
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 9.894144793388432e-08
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "lpp_ff1_05_23_16_1",
+            "workbook_series_sha256": "aae4aa9cc5268edb034c64443ff72faa771dcf7cfa67bea47949a0c5bed1f1f9"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 1100000.0
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "lpp_ff1_05_23_16_1"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 1.80239999999999e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "waveform_peak_time_s": 1.80239999999999e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.7508331576481823e-08
+        }
+      },
+      "device": "LPP-FF1",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.14
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.028
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 7.52e-05
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.05
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1599.8684210526317
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.027
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.007
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 3.4e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 39900.0
+        }
+      },
+      "machine_id": "gv_lpp_ff1_05_23_16_1",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/LPP-FF1-05_23_16_1.TXT",
+            "sha256": "0e7c77da81df09ebccb26607ca3f8df3911900a64e5cedcadc3a180f1867a232"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp -LPP-FF1-05_23_16_1.inp",
+            "sha256": "522795d96f4c9e6a4c4c5f6df1a369749d5490d047bd24b2ade1dc93fc92daac"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/LPP-FF1-05_23_16_1.xlsx",
+            "sha256": "30975c452deb35828988c9bc9971cf1585e6f3269c6e181621c415e471b5c54b"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_lpp_ff1_05_24_16_6": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 1.008244599861916e-07,
+          "fraction_difference": 0.6528620137931467,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 3.5e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 7.52e-05
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 3.5e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1626.532894736842
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0056
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 40100.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "voltage_V": 40100.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 60461.176
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "static_inductance_H": 3.5e-08,
+            "voltage_V": 40100.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1858742.677956565
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "static_inductance_H": 3.5e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.548371969692964e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "voltage_V": 40100.0,
+            "waveform_peak_current_A": 1095141.7619999999
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.008244599861916e-07
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "lpp_ff1_05_24_16_6",
+            "workbook_series_sha256": "8a3ee5b3ce12f1f40fa3f194c395892272ba6164dcb64a6d62453b79d44c928b"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 1095141.7619999999
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "lpp_ff1_05_24_16_6"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 1.8096e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 7.52e-05,
+            "waveform_peak_time_s": 1.8096e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.7648491110007343e-08
+        }
+      },
+      "device": "LPP-FF1",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.14
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.028
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 7.52e-05
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.05
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1626.532894736842
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.027
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0056
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 3.5e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 40100.0
+        }
+      },
+      "machine_id": "gv_lpp_ff1_05_24_16_6",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/LPP-FF1-05_24_16_6.TXT",
+            "sha256": "9689b356602785a984314094d10bb79497c72cbbad99f2d7fb39e5755fc0cb7a"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp - LPP-FF1-05_24_16_6.inp",
+            "sha256": "3a691e41f91caa353d5840e441fb5509212737855fb9a75bdc56e556b1d46a1a"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/LPP-FF1-05_24_16_6.xlsx",
+            "sha256": "8e5c14f2c77e0a4623f49394e4935f64693083350db3d73fca74965373c0d3d4"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_onesys_rog01004_20051208": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 1.152628261436785e-07,
+          "fraction_difference": 0.6009120933521129,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 4.6e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000216
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 4.6e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 906.5921052631578
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.002
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 35000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.000216,
+            "voltage_V": 35000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 132300.0
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.000216,
+            "static_inductance_H": 4.6e-08,
+            "voltage_V": 35000.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 2398369.011024675
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.000216,
+            "static_inductance_H": 4.6e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 4.951373277415667e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.000216,
+            "voltage_V": 35000.0,
+            "waveform_peak_current_A": 1515131.3625
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.152628261436785e-07
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "onesys_rog01004_20051208",
+            "workbook_series_sha256": "823361bef9b1e3a01a5c8e7f3ede39f640f57580a62b545213fd758b9176891d"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 1515131.3625
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "onesys_rog01004_20051208"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 3.9804e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.000216,
+            "waveform_peak_time_s": 3.9804e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 2.972760555978137e-08
+        }
+      },
+      "device": "OneSys",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.3937
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.0508
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000216
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.0762
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 906.5921052631578
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.108
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.002
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 4.6e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 35000.0
+        }
+      },
+      "machine_id": "gv_onesys_rog01004_20051208",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/OneSys.TXT",
+            "sha256": "1d23b34a5c022a017fc517afa7327d2fd1c41570bd0a80f2661b4abf073b811f"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp - OneSys.inp",
+            "sha256": "dfa321a545d59c3f62198c5662cb6c7da3b30d18bbeb9f5de41fe6849a498341"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/OneSys.xlsx",
+            "sha256": "aca1bdaba358f0ab05c2656a21bbeb9099c275c82c74c156a490534ba6b2c2ae"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_pf24_krakow_14082734": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 9.608883212344746e-08,
+          "fraction_difference": 0.8438944498697917,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 1.5000000000000002e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.5000000000000002e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 179.98519736842107
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.008
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 14745.6
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 1.5000000000000002e-08,
+            "voltage_V": 16000.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1402169.7472132253
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 1.5000000000000002e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.0648653954363713e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0,
+            "waveform_peak_current_A": 554000.0
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 9.608883212344746e-08
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_14082734",
+            "workbook_series_sha256": "bd6436d33f03d557d4014a6a8f35ec783652298b83e8ad859b389f17943f2ba4"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 554000.0
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_14082734"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 1.38e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "waveform_peak_time_s": 1.38e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 6.699863268349585e-09
+        }
+      },
+      "device": "PF-24-KRAKOW",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.17200000000000001
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.031
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.049
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 179.98519736842107
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.04
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.008
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.5000000000000002e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "machine_id": "gv_pf24_krakow_14082734",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-14082734.TXT",
+            "sha256": "63aa6bde3936a10453e5110adc7d993eb1d0c69802099f637ffc217f36addc50"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-14082734.inp",
+            "sha256": "f7a7d0713f34cd25cc45015cb198730c8c49141efa2e0cbb0d1b582df5184d1c"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-14082734.xlsx",
+            "sha256": "5e7bd36f21ab74ee468b2b2986b39876b378e15fd2d1125b15add50a6140a398"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_pf24_krakow_16052007": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 1.3660269107301412e-07,
+          "fraction_difference": 0.8535900000000001,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 2e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 146.65460526315792
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.014
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 14745.6
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 2e-08,
+            "voltage_V": 16000.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1214314.6215046577
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 2e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.384301183791064e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0,
+            "waveform_peak_current_A": 464640.0
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.3660269107301412e-07
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_16052007",
+            "workbook_series_sha256": "56269a914ca3356136924393b71924f45ca2cef6df885be821180fce25587667"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 464640.0
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_16052007"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 1.1399999999999999e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "waveform_peak_time_s": 1.1399999999999999e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 4.572118411860491e-09
+        }
+      },
+      "device": "PF-24-KRAKOW",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.17200000000000001
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.031
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.049
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 146.65460526315792
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.04
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.014
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "machine_id": "gv_pf24_krakow_16052007",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16052007.TXT",
+            "sha256": "fcb8fe6bc3c637ba215eb090d6c6b7fe2c667e1576e1936f2ea5c04a7b6e172e"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp - PF-24-KRAKOW-16052007.inp",
+            "sha256": "02a76b0ab0db1353970313efe4f25846ce0d6c8bb1fe57a9a8f531898557ee7f"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16052007.xlsx",
+            "sha256": "3a897522b30fe0d3fcea209d41ca30b94a5203f3bef6ae82595377ef1139aa7a"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_pf24_krakow_16092202": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 1.828542404088824e-07,
+          "fraction_difference": 0.8851544270833334,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 2.1000000000000003e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.1000000000000003e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 146.65460526315792
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.022
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 14745.6
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 2.1000000000000003e-08,
+            "voltage_V": 16000.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1185049.7277088657
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "static_inductance_H": 2.1000000000000003e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.4431816841526224e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "voltage_V": 16000.0,
+            "waveform_peak_current_A": 401600.0
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 1.828542404088824e-07
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_16092202",
+            "workbook_series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 401600.0
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "measured_current",
+            "shot_id": "pf24_krakow_16092202"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 1.36e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.0001152,
+            "waveform_peak_time_s": 1.36e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 6.507071571696803e-09
+        }
+      },
+      "device": "PF-24-KRAKOW",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.17200000000000001
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.031
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0001152
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.049
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 146.65460526315792
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.04
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.022
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.1000000000000003e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "machine_id": "gv_pf24_krakow_16092202",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.TXT",
+            "sha256": "0ffe8638abd054864643e69097ca6508b69d544293ffa47a89219ffbd3f5bbbc"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+            "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.xlsx",
+            "sha256": "43ef75fd63caf1aaa4fc7be72b6e92c63851c6e9220daa6291be974a92a02e73"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "gv_pf360_20140122_7": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "waveform_current_implied_L_vs_static_source_L": {
+          "calculated_value": 6.213380137572804e-08,
+          "fraction_difference": 0.7263969108022275,
+          "notes": "This mismatch is expected for dynamic plasma-loaded current; the packet records it for deck tuning but does not overwrite the source static inductance.",
+          "source_value": 1.7e-08,
+          "status": "waveform_derived_candidate",
+          "tolerance_fraction": null,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0002626
+        },
+        "inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.7e-08
+        },
+        "pressure_Pa": {
+          "source": "GV fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1333.2236842105262
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.005200000000000001
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 31000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.0002626,
+            "voltage_V": 31000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 126179.29999999999
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.0002626,
+            "static_inductance_H": 1.7e-08,
+            "voltage_V": 31000.0
+          },
+          "notes": "Ideal static-circuit upper-bound; measured current includes switching and plasma dynamics.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 3852872.1143338983
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.0002626,
+            "static_inductance_H": 1.7e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 3.3188811355388696e-06
+        },
+        "waveform_current_implied_inductance_H": {
+          "formula": "capacitance_F * (voltage_V / waveform_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.0002626,
+            "voltage_V": 31000.0,
+            "waveform_peak_current_A": 2015325.0
+          },
+          "notes": "Effective ideal-current inductance from measured peak; dynamic plasma loading prevents using it as a unique source inductance.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 6.213380137572804e-08
+        },
+        "waveform_peak_current_A": {
+          "formula": "abs(workbook_current_max_kA) * 1e3",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "pf360_20140122_7",
+            "workbook_series_sha256": "c59e6a928d50189a010d0c4c93d0c39347c19e5e90260fdb224194d0135d04d0"
+          },
+          "notes": "Measured workbook current is a candidate observable, not a drive waveform.",
+          "status": "waveform_derived_candidate",
+          "unit": "A",
+          "value": 2015325.0
+        },
+        "waveform_peak_time_s": {
+          "formula": "workbook_peak_time_us * 1e-6",
+          "inputs": {
+            "series": "raw_measured_current",
+            "shot_id": "pf360_20140122_7"
+          },
+          "notes": "Time zero is workbook/diagnostic dependent; use as a candidate quarter-cycle observable only after review.",
+          "status": "waveform_derived_candidate",
+          "unit": "s",
+          "value": 2.5032e-06
+        },
+        "waveform_quarter_cycle_implied_inductance_H": {
+          "formula": "((2 * waveform_peak_time_s / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 0.0002626,
+            "waveform_peak_time_s": 2.5032e-06
+          },
+          "notes": "Candidate only until timing origin and switch delay are reviewed.",
+          "status": "waveform_derived_candidate",
+          "unit": "H",
+          "value": 9.670671351588866e-09
+        }
+      },
+      "device": "PF-360",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.304
+        },
+        "anode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.06
+        },
+        "capacitance_F": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.0002626
+        },
+        "cathode_radius_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.075
+        },
+        "fitted_pressure_Pa": {
+          "source": "GV verified input deck fitted pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 1333.2236842105262
+        },
+        "insulator_length_m": {
+          "source": "GV verified geometry",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.075
+        },
+        "resistance_ohm": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.005200000000000001
+        },
+        "static_inductance_H": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.7e-08
+        },
+        "voltage_V": {
+          "source": "GV verified input deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 31000.0
+        }
+      },
+      "machine_id": "gv_pf360_20140122_7",
+      "source_references": [
+        {
+          "gv_reduced_model_output_not_used_for_inference": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-360.TXT",
+            "sha256": "951d9f33bd43a069bcd6ade465f445231783473e73e1002ca4a19a2eb75e0329"
+          },
+          "input_deck": {
+            "path": "/Users/anthonyzamora/Downloads/GV/Gvinp - PF-360.inp",
+            "sha256": "37ccc655ad7c4447ecbcca2c87f8ce416c4f5f0a55db9b073cae039d5b918560"
+          },
+          "workbook": {
+            "path": "/Users/anthonyzamora/Downloads/GV/PF-360.xlsx",
+            "sha256": "0007a509d49c753f7338b43a655221f2c67593b721a24890cc4524164ee6b072"
+          }
+        }
+      ],
+      "source_status": "gv_user_verified_local_source_candidate",
+      "status_counts": {
+        "direct_algebraic_inference": 3,
+        "known_source_value": 14,
+        "underdetermined_requires_additional_observable": 2,
+        "waveform_derived_candidate": 5
+      },
+      "unresolved_parameters": {
+        "dynamic_plasma_impedance": {
+          "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+          "required_observable": "field/plasma state history or accepted inverse circuit model",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "ir_mpf_100_salehizadeh_2012": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "source_L_vs_source_theoretical_peak_current": {
+          "calculated_value": 1385640.6460551019,
+          "fraction_difference": 0.11665408813987262,
+          "notes": "The source inductance and theoretical peak current do not match the undamped LC formula at the listed maximum voltage; keep source inductance and current as separate observables.",
+          "source_value": 1224000.0,
+          "status": "contradiction_or_scope_mismatch",
+          "tolerance_fraction": 0.05,
+          "unit": "A"
+        },
+        "stored_energy_CV_vs_source": {
+          "calculated_value": 115200.0,
+          "fraction_difference": 0.001736111111111111,
+          "notes": "calculated value matches source within tolerance",
+          "source_value": 115000.0,
+          "status": "direct_algebraic_inference",
+          "tolerance_fraction": 0.02,
+          "unit": "J"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000144
+        },
+        "inductance_H": {
+          "source": "source total inductance",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.2e-07
+        },
+        "pressure_Pa": {
+          "source": "source measured-shot pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 253.31249999999997
+        },
+        "resistance_ohm": {
+          "source": "source design resistance",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.005
+        },
+        "voltage_V": {
+          "source": "engineering deck operating voltage",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 20000.0
+        }
+      },
+      "derived_parameters": {
+        "bank_energy_from_CV_J": {
+          "formula": "0.5 * capacitance_F * maximum_voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.000144,
+            "maximum_voltage_V": 40000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 115200.0
+        },
+        "ideal_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(source_total_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.000144,
+            "source_total_inductance_H": 1.2e-07
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 6.529677711243183e-06
+        },
+        "ideal_peak_current_from_source_L_A": {
+          "formula": "maximum_voltage_V * sqrt(capacitance_F / source_total_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.000144,
+            "maximum_voltage_V": 40000.0,
+            "source_total_inductance_H": 1.2e-07
+          },
+          "notes": "Undamped LC upper-bound only; not a plasma-loaded current waveform substitute.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 1385640.6460551019
+        },
+        "source_peak_current_implied_inductance_H": {
+          "formula": "capacitance_F * (maximum_voltage_V / source_theoretical_peak_current_A)**2",
+          "inputs": {
+            "capacitance_F": 0.000144,
+            "maximum_voltage_V": 40000.0,
+            "source_theoretical_peak_current_A": 1224000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "H",
+          "value": 1.537870049980777e-07
+        }
+      },
+      "device": "IR-MPF-100",
+      "known_parameters": {
+        "capacitance_F": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.000144
+        },
+        "design_resistance_ohm": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.005
+        },
+        "maximum_voltage_V": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 40000.0
+        },
+        "source_maximum_stored_energy_J": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "J",
+          "value": 115000.0
+        },
+        "source_theoretical_peak_current_A": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "A",
+          "value": 1224000.0
+        },
+        "source_total_inductance_H": {
+          "source": "source circuit table",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1.2e-07
+        }
+      },
+      "machine_id": "ir_mpf_100_salehizadeh_2012",
+      "source_references": [
+        {
+          "path": "KnowledgeReference/original-research-f7894f85.md",
+          "sha256": "f7894f85fd4d1826a5d98933453bd09664e260d46a2c9fedc4ce79491d2be4ad",
+          "source_lines": {
+            "abstract_deck": "30-45",
+            "bank_and_current": "108-160",
+            "diagnostics_and_neutron_measurement": "269-288",
+            "full_bank_projection": "300-323",
+            "geometry": "163-215,244-257",
+            "sheath_design_timing": "200-215",
+            "summary_table": "365-394"
+          }
+        }
+      ],
+      "source_status": "may15_user_verified_knowledge_reference_source",
+      "status_counts": {
+        "contradiction_or_scope_mismatch": 1,
+        "direct_algebraic_inference": 5,
+        "known_source_value": 11,
+        "underdetermined_requires_additional_observable": 2
+      },
+      "unresolved_parameters": {
+        "measured_waveform_peak_time": {
+          "notes": "The source target is not yet digitized into a typed time-current series.",
+          "required_observable": "measured_current_waveform_digitization",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "Circuit and geometry do not determine the initial plasma state.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "pf1000_akel_16kv_shot_12581": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {},
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.001332
+        },
+        "inductance_H": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.5e-08
+        },
+        "pressure_Pa": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 159.98684210526315
+        },
+        "resistance_ohm": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0061
+        },
+        "voltage_V": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "derived_parameters": {
+        "axial_extent_m": {
+          "formula": "anode_length_m + insulator_length_m",
+          "inputs": {
+            "anode_length_m": 0.48,
+            "insulator_length_m": 0.085
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "m",
+          "value": 0.565
+        },
+        "bank_energy_J": {
+          "formula": "0.5 * capacitance_F * voltage_V**2",
+          "inputs": {
+            "capacitance_F": 0.001332,
+            "voltage_V": 16000.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "J",
+          "value": 170496.0
+        },
+        "cathode_outer_radius_m": {
+          "formula": "cathode_inner_radius_m + 0.5 * cathode_rod_diameter_m",
+          "inputs": {
+            "cathode_inner_radius_m": 0.16,
+            "cathode_rod_diameter_m": 0.08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "m",
+          "value": 0.2
+        },
+        "fill_pressure_torr": {
+          "formula": "fill_pressure_Pa / TORR_TO_PA",
+          "inputs": {
+            "fill_pressure_Pa": 159.98684210526315
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "torr",
+          "value": 1.2
+        },
+        "ideal_peak_current_from_static_L_A": {
+          "formula": "voltage_V * sqrt(capacitance_F / static_inductance_H)",
+          "inputs": {
+            "capacitance_F": 0.001332,
+            "static_inductance_H": 2.5e-08,
+            "voltage_V": 16000.0
+          },
+          "notes": "Ideal bank current upper-bound; does not include sheath loading or dynamic inductance.",
+          "status": "direct_algebraic_inference",
+          "unit": "A",
+          "value": 3693193.7398408987
+        },
+        "ideal_static_lc_quarter_cycle_s": {
+          "formula": "0.5 * pi * sqrt(static_inductance_H * capacitance_F)",
+          "inputs": {
+            "capacitance_F": 0.001332,
+            "static_inductance_H": 2.5e-08
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 9.064461188568734e-06
+        }
+      },
+      "device": "PF-1000/Akel shot 12581 engineering candidate",
+      "known_parameters": {
+        "anode_length_m": {
+          "source": "PF-1000 geometry source deck",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.48
+        },
+        "anode_radius_m": {
+          "source": "PF-1000 geometry source deck",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.1155
+        },
+        "capacitance_F": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 0.001332
+        },
+        "cathode_inner_radius_m": {
+          "source": "PF-1000 geometry source deck",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.16
+        },
+        "cathode_rod_diameter_m": {
+          "source": "PF-1000 geometry source deck",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.08
+        },
+        "fill_pressure_Pa": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 159.98684210526315
+        },
+        "insulator_length_m": {
+          "source": "PF-1000 geometry source deck",
+          "status": "known_source_value",
+          "unit": "m",
+          "value": 0.085
+        },
+        "resistance_ohm": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.0061
+        },
+        "static_inductance_H": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 2.5e-08
+        },
+        "voltage_V": {
+          "source": "PF-1000/Akel source deck",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 16000.0
+        }
+      },
+      "machine_id": "pf1000_akel_16kv_shot_12581",
+      "source_references": [
+        {
+          "capability_tags": [
+            "dpf_device",
+            "circuit_coupling",
+            "startup_breakdown",
+            "detector_response",
+            "validation_target"
+          ],
+          "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+          "record_id": "kr:akel-2021-pf1000-neutron-yield",
+          "role": "pf1000_akel_16kv_shot_12581_source"
+        },
+        {
+          "capability_tags": [
+            "dpf_device",
+            "electrode_geometry",
+            "cathode_rods",
+            "insulator_geometry",
+            "hollow_anode_context"
+          ],
+          "path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+          "record_id": "kr:krauz-2012-pf1000-electrode-geometry",
+          "role": "pf1000_electrode_geometry_source"
+        }
+      ],
+      "source_status": "built_in_pf1000_akel_knowledge_reference_source",
+      "status_counts": {
+        "direct_algebraic_inference": 6,
+        "known_source_value": 15,
+        "underdetermined_requires_additional_observable": 3
+      },
+      "unresolved_parameters": {
+        "hollow_anode_inner_radius_m": {
+          "notes": "The geometry source tags hollow-anode context, but the current executable deck does not carry an anode_inner_radius_m.",
+          "required_observable": "reviewed hollow-anode inner radius/source mask",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "measured_waveform_peak_time": {
+          "notes": "The built-in target references a blocked-by-review figure, not a typed series.",
+          "required_observable": "reviewed Akel current waveform digitization",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "startup_initial_state": {
+          "notes": "Circuit and static geometry do not define a whole-shot startup BVP.",
+          "required_observable": "breakdown/preionization/sheath-liftoff observables",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    },
+    "willenborg_hendricks_1977_startup_design": {
+      "can_seed_experimental_deck": true,
+      "can_support_first_principles_acceptance": false,
+      "consistency_checks": {
+        "capacitance_energy_voltage_vs_source": {
+          "calculated_value": 4.35e-05,
+          "fraction_difference": 0.0,
+          "notes": "calculated value matches source within tolerance",
+          "source_value": 4.35e-05,
+          "status": "direct_algebraic_inference",
+          "tolerance_fraction": 0.02,
+          "unit": "F"
+        },
+        "focus_delay_sum_vs_source": {
+          "calculated_value": 2.8e-06,
+          "fraction_difference": 0.0,
+          "notes": "calculated value matches source within tolerance",
+          "source_value": 2.8e-06,
+          "status": "direct_algebraic_inference",
+          "tolerance_fraction": 0.05,
+          "unit": "s"
+        },
+        "system_quarter_cycle_L_vs_source": {
+          "calculated_value": 1.0146093699908586e-07,
+          "fraction_difference": 0.014399009533087868,
+          "notes": "calculated value matches source within tolerance",
+          "source_value": 1e-07,
+          "status": "direct_algebraic_inference",
+          "tolerance_fraction": 0.05,
+          "unit": "H"
+        }
+      },
+      "deck_fill_candidates": {
+        "capacitance_F": {
+          "source": "source inferred capacitance",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 4.35e-05
+        },
+        "inductance_H": {
+          "formula": "quarter-cycle inferred system inductance",
+          "inputs": {
+            "capacitance_F": 4.35e-05,
+            "system_quarter_cycle_s_approx": 3.3e-06
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "H",
+          "value": 1.0146093699908586e-07
+        },
+        "pressure_Pa": {
+          "source": "source conditioning pressure",
+          "status": "known_source_value",
+          "unit": "Pa",
+          "value": 133.32236842105263
+        },
+        "resistance_ohm": {
+          "source": "source average device impedance",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.03
+        },
+        "voltage_V": {
+          "source": "upper operated voltage",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 19000.0
+        }
+      },
+      "derived_parameters": {
+        "capacitance_from_energy_and_voltage_F": {
+          "formula": "2 * stored_energy_J_at_20kV / rated_voltage_V**2",
+          "inputs": {
+            "rated_voltage_V": 20000.0,
+            "stored_energy_J_at_20kV": 8700.0
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "F",
+          "value": 4.35e-05
+        },
+        "focus_delay_from_breakdown_plus_travel_s": {
+          "formula": "breakdown_delay_s_approx + sheath_travel_time_s_approx",
+          "inputs": {
+            "breakdown_delay_s_approx": 1e-06,
+            "sheath_travel_time_s_approx": 1.8e-06
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "s",
+          "value": 2.8e-06
+        },
+        "system_inductance_from_quarter_cycle_H": {
+          "formula": "((2 * system_quarter_cycle_s_approx / pi)**2) / capacitance_F",
+          "inputs": {
+            "capacitance_F": 4.35e-05,
+            "system_quarter_cycle_s_approx": 3.3e-06
+          },
+          "status": "direct_algebraic_inference",
+          "unit": "H",
+          "value": 1.0146093699908586e-07
+        }
+      },
+      "device": "Willenborg/Hendricks dense plasma focus device",
+      "known_parameters": {
+        "average_device_impedance_ohm_approx": {
+          "source": "source device impedance estimate",
+          "status": "known_source_value",
+          "unit": "ohm",
+          "value": 0.03
+        },
+        "capacitance_F": {
+          "source": "source inferred capacitance",
+          "status": "known_source_value",
+          "unit": "F",
+          "value": 4.35e-05
+        },
+        "operated_voltage_V_range": {
+          "source": "source operation range",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": [
+            9000.0,
+            19000.0
+          ]
+        },
+        "rated_voltage_V": {
+          "source": "source bank rating",
+          "status": "known_source_value",
+          "unit": "V",
+          "value": 20000.0
+        },
+        "stored_energy_J_at_20kV": {
+          "source": "source bank energy",
+          "status": "known_source_value",
+          "unit": "J",
+          "value": 8700.0
+        },
+        "total_system_inductance_H_approx": {
+          "source": "source timing estimate",
+          "status": "known_source_value",
+          "unit": "H",
+          "value": 1e-07
+        }
+      },
+      "machine_id": "willenborg_hendricks_1977_startup_design",
+      "source_references": [
+        {
+          "path": "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
+          "sha256": "12205ba4bb0d1edc11b069dda4e0e084b89597a8f14ff61c3a65e0b712926a75",
+          "source_lines": {
+            "bank": "1697-1702,1825-1830,1884-1901",
+            "breakdown_and_sheath_start": "506-514,579-594",
+            "diagnostics": "2720-2790,2870-2924,2930-2964,3089-3133",
+            "electrodes": "1382-1496",
+            "gas_pressure": "2617-2639,2716-2719",
+            "insulator": "1503-1520,1545-1629",
+            "insulator_conditioning": "1545-1640,3372-3380",
+            "mather_envelope": "1196-1209",
+            "operation_gates": "3367-3439",
+            "remaining_unaccepted": "3383-3390,3446-3455",
+            "switching": "1961-2000,2287-2316,2372-2421",
+            "symmetry_and_liftoff": "625-653",
+            "timing_to_current_peak": "762-773,1365-1373,1857-1901"
+          }
+        }
+      ],
+      "source_status": "may15_user_verified_knowledge_reference_source",
+      "status_counts": {
+        "direct_algebraic_inference": 7,
+        "known_source_value": 10,
+        "underdetermined_requires_additional_observable": 2
+      },
+      "unresolved_parameters": {
+        "preionization_density": {
+          "notes": "No electron-density initial condition is supplied.",
+          "required_observable": "preionization measurement or breakdown BVP",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        },
+        "surface_flashover_state": {
+          "notes": "Historical timing constraints do not uniquely define the plasma launch state.",
+          "required_observable": "surface flashover equations/material secondary emission",
+          "status": "underdetermined_requires_additional_observable",
+          "unit": "not_applicable",
+          "value": null
+        }
+      }
+    }
+  },
+  "scope": "all",
+  "source_packets": {
+    "gv_verified_local_shots": {
+      "accepted_for_whole_shot_first_principles": false,
+      "batch_id": "gv_verified_local_shot_bundle_2026_05_16",
+      "root": "/Users/anthonyzamora/Downloads/GV",
+      "shot_count": 8,
+      "source_status": "user_verified_local_download_not_knowledge_reference_promoted"
+    },
+    "may15_user_validated": {
+      "accepted_for_whole_shot_first_principles": false,
+      "batch_id": "user_validated_pdf_batch_2026_05_15",
+      "source_status": "all_eight_user_verified_validated_research_sources"
+    }
+  },
+  "source_policy": {
+    "algebraic_inference_only": true,
+    "gv_reduced_model_output_used": false,
+    "measured_waveforms_used_as_drive": false,
+    "reduced_models_used": false,
+    "source_truth": "local KnowledgeReference/user-verified source packets only; GV workbooks are local user-verified candidates until promoted"
+  },
+  "status": "experimental_inverse_parameter_completion_not_validation",
+  "status_counts": {
+    "bracketed_source_range": 2,
+    "contradiction_or_scope_mismatch": 1,
+    "direct_algebraic_inference": 44,
+    "known_source_value": 155,
+    "underdetermined_requires_additional_observable": 25,
+    "waveform_derived_candidate": 40
+  },
+  "task_id": "experimental_inverse_parameter_completion",
+  "unresolved_parameter_count": 25,
+  "unresolved_parameters": [
+    {
+      "entry": {
+        "notes": "The geometry source tags hollow-anode context, but the current executable deck does not carry an anode_inner_radius_m.",
+        "required_observable": "reviewed hollow-anode inner radius/source mask",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "pf1000_akel_16kv_shot_12581",
+      "parameter": "hollow_anode_inner_radius_m",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "The built-in target references a blocked-by-review figure, not a typed series.",
+        "required_observable": "reviewed Akel current waveform digitization",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "pf1000_akel_16kv_shot_12581",
+      "parameter": "measured_waveform_peak_time",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "Circuit and static geometry do not define a whole-shot startup BVP.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "pf1000_akel_16kv_shot_12581",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "The source target is not yet digitized into a typed time-current series.",
+        "required_observable": "measured_current_waveform_digitization",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "ir_mpf_100_salehizadeh_2012",
+      "parameter": "measured_waveform_peak_time",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "Circuit and geometry do not determine the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "ir_mpf_100_salehizadeh_2012",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "Capacitance, voltage, and one current amplitude do not uniquely solve resistance.",
+        "required_observable": "ringdown current decay or source resistance",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "compact_chinese_dpf_2018",
+      "parameter": "resistance_ohm",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "The source gives focus timing and pressure/yield targets, not the initial BVP.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "compact_chinese_dpf_2018",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "Historical timing constraints do not uniquely define the plasma launch state.",
+        "required_observable": "surface flashover equations/material secondary emission",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "willenborg_hendricks_1977_startup_design",
+      "parameter": "surface_flashover_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "No electron-density initial condition is supplied.",
+        "required_observable": "preionization measurement or breakdown BVP",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "willenborg_hendricks_1977_startup_design",
+      "parameter": "preionization_density",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_lpp_ff1_05_23_16_1",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_lpp_ff1_05_23_16_1",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_lpp_ff1_05_24_16_6",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_lpp_ff1_05_24_16_6",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_14082734",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_14082734",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_16052007",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_16052007",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_16092202",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf24_krakow_16092202",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf360_20140122_7",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_pf360_20140122_7",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_gemini_rog_i005_20130716",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_gemini_rog_i005_20130716",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "GV input decks and workbook current traces do not define the initial plasma state.",
+        "required_observable": "breakdown/preionization/sheath-liftoff observables",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_onesys_rog01004_20051208",
+      "parameter": "startup_initial_state",
+      "section": "unresolved_parameters"
+    },
+    {
+      "entry": {
+        "notes": "A measured terminal current alone does not uniquely split static and plasma inductance/resistance.",
+        "required_observable": "field/plasma state history or accepted inverse circuit model",
+        "status": "underdetermined_requires_additional_observable",
+        "unit": "not_applicable",
+        "value": null
+      },
+      "machine_id": "gv_onesys_rog01004_20051208",
+      "parameter": "dynamic_plasma_impedance",
+      "section": "unresolved_parameters"
+    }
+  ]
+}

@@ -96,5 +96,21 @@ Immediate implementation requirements:
   full certificate path passes.
 - Add first-principles-specific negative tests before any accepted certificate
   writer is allowed.
+- Emit per-channel certificate status, upstream packet acceptance matrix,
+  negative-test matrix, acceptance policy, and a release decision so reviewers
+  can see exactly which gate prevents an accepted certificate.
+
+## Implementation Ratchet
+
+Implemented in this pass:
+
+- `src/dpf/first_principles/certificate_gate.py` now emits
+  `certificate_channel_status`, `release_decision`, `acceptance_policy`,
+  `upstream_packet_acceptance_matrix`, and `negative_test_matrix`.
+- Required upstream packet channels are mapped to the concrete package-native
+  packets that must become accepted before release.
+- `tests/test_first_principles_runner.py` asserts that blocked upstream packets,
+  missing negative tests, and candidate/rejected evidence keep release
+  fail-closed.
 
 Next blocker to search after this one: `FP-15`, generalized DPF-machine path.

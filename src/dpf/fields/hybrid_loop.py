@@ -7,12 +7,16 @@ from typing import Any
 
 import numpy as np
 
-from dpf.constants import e as ELEMENTARY_CHARGE
+from dpf.constants import e
 from dpf.experimental.pic.hybrid import (
     HybridPIC,
     deposit_current,
     deposit_density,
     interpolate_field_to_particles,
+)
+from dpf.fields.conductivity import (
+    PartialIonizedConductivityTelemetry,
+    partial_ionized_conductivity,
 )
 from dpf.fields.electron_energy import (
     ElectronEnergyClosure,
@@ -23,14 +27,25 @@ from dpf.fields.electron_energy import (
 from dpf.fields.hybrid_stepper import (
     HybridPIC3DFieldStepper,
     HybridPIC3DStepResult,
-    HybridPIC3DStepTelemetry,
+)
+from dpf.fields.ionization_transport import (
+    DeuteriumIonizationState,
+    DeuteriumIonizationTransport,
+    IonizationParticleSourceTelemetry,
+    IonizationTransportTelemetry,
+    apply_ionization_particle_source,
 )
 from dpf.fields.kinetic_yield import (
     KineticIonYieldHistory,
     KineticYieldTelemetry,
     kinetic_neutron_yield_authority_status,
 )
-from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE, Maxwell3DGrid, Maxwell3DState
+from dpf.fields.maxwell_3d import (
+    HYBRID_PIC_3D_SOURCE,
+    Maxwell3DBoundaries,
+    Maxwell3DGrid,
+    Maxwell3DState,
+)
 from dpf.fields.particle_boundaries import (
     ParticleAbsorbingBoundaries,
     ParticleBoundaryTelemetry,
@@ -50,7 +65,9 @@ class HybridPIC3DLoopTelemetry:
     particle_boundaries: dict[str, Any] | None
     collision_operator: dict[str, Any]
     pressure_gradient: dict[str, Any] | None
+    source_backed_transport: dict[str, Any] | None
     electron_energy: dict[str, Any] | None
+    ionization_charge_state: dict[str, Any] | None
     temperature_authority: dict[str, Any]
     kinetic_yield: dict[str, Any] | None
     neutron_yield_authority: dict[str, Any] | None
@@ -74,6 +91,7 @@ class HybridPIC3DLoopResult:
     ion_current_A_m2: np.ndarray
     electron_density_m3: np.ndarray
     electron_energy: ElectronEnergyState | None
+    ionization_charge_state: DeuteriumIonizationState | None
     field_step: HybridPIC3DStepResult
     telemetry: HybridPIC3DLoopTelemetry
 
@@ -84,14 +102,20 @@ class HybridPIC3DLoop:
     def __init__(
         self,
         grid: Maxwell3DGrid,
+        maxwell_boundaries: Maxwell3DBoundaries | None = None,
         particle_boundaries: ParticleAbsorbingBoundaries | None = None,
         electron_energy_closure: ElectronEnergyClosure | None = None,
+        ionization_transport: DeuteriumIonizationTransport | None = None,
         kinetic_yield_history: KineticIonYieldHistory | None = None,
     ) -> None:
         self.grid = grid
-        self.field_stepper = HybridPIC3DFieldStepper(grid)
+        self.field_stepper = HybridPIC3DFieldStepper(
+            grid,
+            boundaries=maxwell_boundaries,
+        )
         self.particle_boundaries = particle_boundaries
         self.electron_energy_closure = electron_energy_closure
+        self.ionization_transport = ionization_transport
         self.kinetic_yield_history = kinetic_yield_history
 
     def cell_centered_fields(
@@ -122,10 +146,13 @@ class HybridPIC3DLoop:
         marder_factor_m2: float = 0.0,
         marder_nondominance_threshold: float | None = None,
         electron_energy_state: ElectronEnergyState | None = None,
+        ionization_state: DeuteriumIonizationState | None = None,
+        use_source_backed_conductivity: bool = False,
         mass_density_kg_m3: np.ndarray | None = None,
         plasma_velocity_m_s: np.ndarray | None = None,
         charge_state_Z: float = 1.0,
         electron_temperature_floor_K: float = 1.0,
+        heat_flux_subcycles_max: int = 1000,
         pressure_density_threshold_m3: float = 0.0,
         use_source_ordered_velocity_update: bool = False,
     ) -> HybridPIC3DLoopResult:
@@ -157,9 +184,25 @@ class HybridPIC3DLoop:
             density_sample = "x_n_plus_1"
         ion_current = np.stack((Jx, Jy, Jz), axis=-1)
         electron_density = np.maximum(
-            np.abs(rho_for_density) / ELEMENTARY_CHARGE,
+            np.abs(rho_for_density) / e,
             float(density_floor_m3),
         )
+        sigma0_for_step: np.ndarray | float = sigma0_S_m
+        apply_density_conductivity_blend = True
+        source_backed_transport: PartialIonizedConductivityTelemetry | None = None
+        if use_source_backed_conductivity:
+            if ionization_state is None or electron_energy_state is None:
+                raise ValueError(
+                    "ionization_state and electron_energy_state are required "
+                    "when use_source_backed_conductivity is True"
+                )
+            electron_density = np.maximum(ionization_state.electron_density_m3, 1.0)
+            sigma0_for_step, source_backed_transport = partial_ionized_conductivity(
+                electron_density_m3=electron_density,
+                neutral_density_m3=ionization_state.neutral_density_m3,
+                electron_temperature_K=electron_energy_state.electron_temperature_K,
+            )
+            apply_density_conductivity_blend = False
         kinetic_yield_telemetry: KineticYieldTelemetry | None = None
         if self.kinetic_yield_history is not None:
             kinetic_yield_telemetry = self.kinetic_yield_history.step(
@@ -188,7 +231,7 @@ class HybridPIC3DLoop:
             dt_s=dt_s,
             ion_current_A_m2=ion_current,
             electron_density_m3=electron_density,
-            sigma0_S_m=sigma0_S_m,
+            sigma0_S_m=sigma0_for_step,
             background_density_m3=background_density_m3,
             ohmic_cfl_safety=ohmic_cfl_safety,
             pressure_term_V_m=pressure_term_V_m,
@@ -199,6 +242,8 @@ class HybridPIC3DLoop:
             marder_factor_m2=marder_factor_m2,
             marder_nondominance_threshold=marder_nondominance_threshold,
             charge_density_C_m3=rho,
+            apply_density_conductivity_blend=apply_density_conductivity_blend,
+            apply_ohmic_cfl_limit=True,
         )
         source_velocity_telemetry: dict[str, Any] | None = None
         provisional_rebuild_telemetry: dict[str, Any] | None = None
@@ -278,6 +323,10 @@ class HybridPIC3DLoop:
                 out=np.zeros_like(field_step.conductivity_S_m),
                 where=field_step.conductivity_S_m > 0.0,
             )
+            magnetic_field_for_heat_flux = np.stack(
+                face_to_cell_centered(field_step.state.B),
+                axis=-1,
+            )
             next_electron_energy_state, electron_energy_telemetry = (
                 self.electron_energy_closure.step_sources(
                     electron_energy_state,
@@ -290,8 +339,39 @@ class HybridPIC3DLoop:
                     dt_s=dt_s,
                     charge_state_Z=charge_state_Z,
                     temperature_floor_K=electron_temperature_floor_K,
+                    magnetic_field_T=magnetic_field_for_heat_flux,
+                    heat_flux_subcycles_max=heat_flux_subcycles_max,
                 )
             )
+        next_ionization_state: DeuteriumIonizationState | None = None
+        ionization_telemetry: IonizationTransportTelemetry | None = None
+        ionization_particle_source_telemetry: (
+            IonizationParticleSourceTelemetry | None
+        ) = None
+        if self.ionization_transport is not None and ionization_state is not None:
+            temperature_state = next_electron_energy_state or electron_energy_state
+            if temperature_state is None:
+                raise ValueError(
+                    "electron_energy_state is required when ionization_state is supplied"
+                )
+            next_ionization_state, ionization_telemetry = (
+                self.ionization_transport.step(
+                    ionization_state,
+                    electron_temperature_K=temperature_state.electron_temperature_K,
+                    dt_s=dt_s,
+                )
+            )
+            ionization_particle_source_telemetry = apply_ionization_particle_source(
+                pic,
+                self.grid,
+                previous_state=ionization_state,
+                next_state=next_ionization_state,
+                species_name=pic.species[0].name if pic.species else "d",
+                ion_mass_kg=pic.species[0].mass if pic.species else None,
+                ion_charge_C=pic.species[0].charge if pic.species else None,
+                velocity_m_s=plasma_velocity_m_s,
+            )
+            n_after = _particle_count(pic)
         temperature_authority = extended_ohm_temperature_authority_status(
             include_hall=bool(field_step.telemetry.ohm_solver["include_hall"]),
             include_pressure=bool(field_step.telemetry.ohm_solver["include_pressure"]),
@@ -316,10 +396,27 @@ class HybridPIC3DLoop:
             ),
             collision_operator=_collision_operator_telemetry(pic),
             pressure_gradient=pressure_gradient_telemetry,
+            source_backed_transport=(
+                None
+                if source_backed_transport is None
+                else source_backed_transport.to_dict()
+            ),
             electron_energy=(
                 None
                 if electron_energy_telemetry is None
                 else electron_energy_telemetry.to_dict()
+            ),
+            ionization_charge_state=(
+                None
+                if ionization_telemetry is None
+                else {
+                    **ionization_telemetry.to_dict(),
+                    "particle_source": (
+                        None
+                        if ionization_particle_source_telemetry is None
+                        else ionization_particle_source_telemetry.to_dict()
+                    ),
+                }
             ),
             temperature_authority=temperature_authority,
             kinetic_yield=(
@@ -333,6 +430,7 @@ class HybridPIC3DLoop:
                 position_telemetry=position_telemetry,
                 velocity_telemetry=source_velocity_telemetry,
                 provisional_rebuild_telemetry=provisional_rebuild_telemetry,
+                electron_energy_telemetry=electron_energy_telemetry,
                 density_sample=density_sample,
                 collisions_enabled=_collisions_enabled(pic),
             ),
@@ -347,6 +445,7 @@ class HybridPIC3DLoop:
             ion_current_A_m2=ion_current,
             electron_density_m3=electron_density,
             electron_energy=next_electron_energy_state,
+            ionization_charge_state=next_ionization_state,
             field_step=field_step,
             telemetry=telemetry,
         )
@@ -369,6 +468,8 @@ def hybrid_loop_candidate_evidence(
             "Conductor/PML particle absorption is candidate-only when configured.",
             "Electron density is quasi-neutral rebuilt from deposited ion charge.",
             "Separate electron-energy coupling is optional candidate telemetry, not accepted Te authority.",
+            "Charge-state transport and PIC particle source/sink coupling are candidate telemetry only.",
+            "Source-backed partial-ionized conductivity is candidate-only when enabled.",
             "Kinetic ion yield history is optional candidate telemetry, not accepted neutron authority.",
             "Source-ordered Eq. 7 velocity update is candidate-only when enabled.",
             "No accepted DPF validation or detector packet is supplied.",
@@ -392,11 +493,12 @@ def source_ordered_loop_candidate_evidence(
         "evidence_type": "engineering_source_ordered_loop_sequence",
         "stages_executed": workflow.get("stages_executed", []),
         "predictor_particle_rebuild": workflow.get("predictor_particle_rebuild"),
-        "missing_accepted_stages": workflow.get("missing_accepted_stages", []),
+        "review_required_stages": workflow.get("review_required_stages", []),
+        "acceptance_blocking_stages": workflow.get("acceptance_blocking_stages", []),
         "can_support_first_principles_acceptance": False,
         "limitations": [
-            "Eq. 7 velocity update is exercised, but the source Te=Ti temperature rebuild is not accepted.",
-            "Predictor-corrector still uses candidate end-step current plumbing, not an accepted provisional particle rebuild.",
+            "Eq. 7 velocity update is exercised, but temperature source terms still require same-scope review.",
+            "Predictor-corrector current rebuild is runtime telemetry, not reviewed acceptance evidence.",
             "No long-run DPF stability, nondominance, or same-scope validation packet is attached.",
         ],
     }
@@ -536,7 +638,7 @@ def _apply_eq7_velocity_update(
     grad_pe_N_m3 = (
         np.zeros_like(total_current_A_m2)
         if pressure_term_V_m is None
-        else ELEMENTARY_CHARGE * density[..., np.newaxis] * pressure_term_V_m
+        else e * density[..., np.newaxis] * pressure_term_V_m
     )
     force_density_N_m3 = np.cross(total_current_A_m2, magnetic_field_T) - grad_pe_N_m3
     max_delta_v = 0.0
@@ -588,7 +690,7 @@ def _provisional_particle_rebuild(
     grad_pe_N_m3 = (
         np.zeros_like(total_current_A_m2)
         if pressure_term_V_m is None
-        else ELEMENTARY_CHARGE * density[..., np.newaxis] * pressure_term_V_m
+        else e * density[..., np.newaxis] * pressure_term_V_m
     )
     force_density_N_m3 = np.cross(total_current_A_m2, magnetic_field_T) - grad_pe_N_m3
     Jx = np.zeros(pic.grid_shape, dtype=float)
@@ -651,12 +753,13 @@ def _source_workflow_telemetry(
     position_telemetry: dict[str, Any] | None,
     velocity_telemetry: dict[str, Any] | None,
     provisional_rebuild_telemetry: dict[str, Any] | None,
+    electron_energy_telemetry: ElectronEnergyTelemetry | None,
     density_sample: str,
     collisions_enabled: bool,
 ) -> dict[str, Any]:
     if not use_source_ordered_velocity_update:
         return {
-            "status": "candidate_legacy_boris_push_before_field_solve",
+            "status": "unsupported_boris_push_before_field_solve_sequence",
             "source": HYBRID_PIC_3D_SOURCE,
             "source_lines": "246-315",
             "stages_executed": [
@@ -664,14 +767,24 @@ def _source_workflow_telemetry(
                 "deposit_charge_current",
                 "ohm_ampere_field_step",
             ],
-            "missing_accepted_stages": [
+            "required_source_ordered_stages": [
                 "source_position_only_leapfrog",
                 "eq7_end_step_velocity_update",
                 "collisions_after_velocity_update",
-                "accepted_predictor_corrector_particle_rebuild",
+                "reviewed_predictor_corrector_particle_rebuild",
             ],
             "can_support_first_principles_acceptance": False,
         }
+    predictor_status = (
+        "runtime_predictor_particle_rebuild_executed_review_required"
+        if provisional_rebuild_telemetry is not None
+        else "predictor_particle_rebuild_not_requested"
+    )
+    temperature_status = (
+        "operator_split_temperature_source_terms_review_required"
+        if electron_energy_telemetry is not None
+        else "temperature_source_terms_not_configured"
+    )
     return {
         "status": "candidate_engineering_source_ordered_loop",
         "source": HYBRID_PIC_3D_SOURCE,
@@ -684,21 +797,29 @@ def _source_workflow_telemetry(
             "fdtd_maxwell_update",
             "optional_marder_correction",
             "optional_predictor_corrector_current",
-            "candidate_predictor_particle_rebuild"
-            if provisional_rebuild_telemetry is not None
-            else "predictor_particle_rebuild_not_requested",
+            predictor_status,
             "eq7_velocity_update_v_half_to_v_three_half",
             "collisions_after_velocity_update"
             if collisions_enabled
             else "collisions_disabled",
+            temperature_status,
         ],
         "position_update": position_telemetry,
         "velocity_update": velocity_telemetry,
         "predictor_particle_rebuild": provisional_rebuild_telemetry,
-        "missing_accepted_stages": [
-            "accepted_Te_or_Ti_rebuild",
-            "accepted_predictor_corrector_particle_rebuild",
-            "accepted_long_run_source_ordered_stability",
+        "temperature_source_terms": (
+            None if electron_energy_telemetry is None else electron_energy_telemetry.to_dict()
+        ),
+        "review_required_stages": [
+            temperature_status,
+            predictor_status,
+            "long_run_source_ordered_stability_review_required",
+            "same_scope_3d_review_required",
+        ],
+        "acceptance_blocking_stages": [
+            "temperature_source_terms_same_scope_review",
+            "predictor_corrector_particle_rebuild_review",
+            "long_run_source_ordered_stability",
             "same_scope_3d_validation",
         ],
         "can_support_first_principles_acceptance": False,

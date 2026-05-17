@@ -29,8 +29,8 @@ cells.  The operator-split approach is:
        interpolation at the boundary because operator splitting treats the
        two regions sequentially.
 
-Implementation plan (Phase S-3)
---------------------------------
+Implementation
+--------------
 The Thomas ADI infrastructure from mlx_transport.apply_resistive_diffusion
 is reused directly.  The implicit step solves the linearised induction equation
 in each vacuum cell column using the existing _build_cylindrical_diffusion_system
@@ -40,7 +40,7 @@ so the system is exactly resistive diffusion.
 When to use
 -----------
 - Enable when ``ImplicitMHDConfig.threshold > 0`` (disabled by default to
-  preserve current Phase Q behavior until Phase S-3 is complete).
+  preserve current default solver behavior unless explicitly configured).
 - Recommended threshold: 1e-3 (denser than the CFL mask at 1e-4, so it covers
   more of the under-resolved region while leaving physical cells explicit).
 - Not needed if the resistive-diffusion sub-cycle (mlx_transport) already
@@ -56,6 +56,9 @@ Ryu D. et al., ApJ 452:364 (1995) — implicit B diffusion in tenuous regions.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
+
+import numpy as np
 
 try:
     import mlx.core as mx
@@ -63,7 +66,14 @@ try:
 except ImportError:
     _MLX_AVAILABLE = False
 
+from dpf.metal.constants import MU_0
 from dpf.metal.mlx_grid import CylindricalGrid
+from dpf.metal.mlx_kernels import IBR, IBT, IBZ, IDN
+from dpf.metal.mlx_transport import (
+    _build_cylindrical_diffusion_system,
+    _build_diffusion_system,
+    thomas_solve,
+)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -79,13 +89,13 @@ class ImplicitMHDConfig:
     threshold : float
         Fraction of rho_max below which a cell is treated as vacuum and
         handed to the implicit solver.  0.0 disables the module entirely
-        (default: disabled to preserve Phase Q behaviour until Phase S-3).
+        (default: disabled to preserve current solver behavior).
     method : str
         Implicit method to use.  Currently only ``"adi"`` (Alternating
-        Direction Implicit via Thomas tridiagonal) is planned.
+        Direction Implicit via Thomas tridiagonal) is implemented.
     max_iterations : int
-        Maximum iterations for iterative implicit solvers (reserved for
-        future Gauss-Seidel / multigrid methods).  Not used by the ADI path.
+        Maximum iterations for non-ADI solver variants.  Not used by the
+        current ADI path.
     eta_vacuum : float | None
         Override resistivity [Ohm*m] used in vacuum cells.  If None, the
         same eta array as the rest of the domain is used.  A higher value
@@ -154,7 +164,15 @@ def identify_vacuum_cells(
     Uses IDN=0 slice of U for density.  Safe to call before or after floor
     enforcement; a post-floor call will reflect the true physical density.
     """
-    raise NotImplementedError("Phase S-3: implement after AMR + species validation")
+    _require_mlx()
+    if rho_threshold < 0.0:
+        raise ValueError("rho_threshold must be non-negative")
+    rho = U[IDN]
+    if rho_threshold == 0.0:
+        return mx.zeros(rho.shape, dtype=mx.bool_)
+    rho_max = float(mx.max(rho))
+    threshold_abs = float(rho_threshold) * max(rho_max, 1.0)
+    return rho < threshold_abs
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +246,51 @@ def implicit_induction_step(
     MHD module replaces (rather than supplements) the transport step in vacuum
     cells, the caller is responsible for routing Ohmic heating correctly.
     """
-    raise NotImplementedError("Phase S-3: implement after AMR + species validation")
+    _require_mlx()
+    del gamma
+    cfg = ImplicitMHDConfig() if config is None else config
+    if dt < 0.0:
+        raise ValueError("dt must be non-negative")
+    if U.shape[1:] != mask.shape:
+        raise ValueError("mask shape must match U spatial shape")
+    if not bool(mx.any(mask)) or dt == 0.0:
+        return U
+
+    U_np = np.asarray(U, dtype=np.float64)
+    mask_np = np.asarray(mask, dtype=bool)
+    nr, nz = mask_np.shape
+    if grid.nr != nr or grid.nz != nz:
+        raise ValueError("grid shape must match U spatial shape")
+
+    eta_np = _eta_array(eta, mask_np.shape)
+    if cfg.eta_vacuum is not None:
+        if cfg.eta_vacuum < 0.0:
+            raise ValueError("eta_vacuum must be non-negative")
+        eta_np = np.where(mask_np, float(cfg.eta_vacuum), eta_np)
+    eta_np = np.where(mask_np, eta_np, 0.0)
+    alpha_np = np.maximum(eta_np, 0.0) / MU_0
+
+    n_sub = 1
+    if cfg.sub_cycle:
+        dx_min = min(float(grid.dr), float(grid.dz))
+        max_alpha = float(np.max(alpha_np))
+        if max_alpha > 0.0:
+            n_sub = max(1, int(math.ceil(max_alpha * dt / max(dx_min * dx_min, 1e-300))))
+            n_sub = min(n_sub, 10_000)
+
+    U_work = U_np.copy()
+    r_cell = np.asarray(grid.r_cell, dtype=np.float64)
+    for _ in range(n_sub):
+        U_work = _implicit_b_diffusion_substep(
+            U_work,
+            dt / n_sub,
+            alpha_np,
+            mask_np,
+            dr=float(grid.dr),
+            dz=float(grid.dz),
+            r_cell=r_cell,
+        )
+    return mx.array(U_work.astype(np.asarray(U).dtype, copy=False))
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +338,12 @@ def merge_explicit_implicit(
     the physical direction (i.e., avoid mask=True cells immediately adjacent
     to inflowing boundaries unless resistive diffusion smooths the transition).
     """
-    raise NotImplementedError("Phase S-3: implement after AMR + species validation")
+    _require_mlx()
+    if U_explicit.shape != U_implicit.shape:
+        raise ValueError("U_explicit and U_implicit shapes must match")
+    if U_explicit.shape[1:] != mask.shape:
+        raise ValueError("mask shape must match state spatial shape")
+    return mx.where(mask[None, :, :], U_implicit, U_explicit)
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +399,22 @@ def apply_implicit_mhd_split(
     U_out : mx.array
         Merged state, shape (NVAR, nr, nz), float32.
     """
-    raise NotImplementedError("Phase S-3: implement after AMR + species validation")
+    _require_mlx()
+    if config.threshold == 0.0:
+        return U_explicit
+    mask = identify_vacuum_cells(U_pre_explicit, config.threshold)
+    if not bool(mx.any(mask)):
+        return U_explicit
+    U_implicit = implicit_induction_step(
+        U_pre_explicit,
+        dt,
+        eta,
+        grid,
+        mask,
+        gamma=gamma,
+        config=config,
+    )
+    return merge_explicit_implicit(U_explicit, U_implicit, mask)
 
 
 # ---------------------------------------------------------------------------
@@ -366,4 +448,80 @@ def vacuum_cell_stats(
         - ``B_max_vacuum``: maximum |B| in vacuum region (HL units).
         - ``va_max_vacuum``: maximum Alfven speed in vacuum region [m/s].
     """
-    raise NotImplementedError("Phase S-3: implement after AMR + species validation")
+    _require_mlx()
+    if U.shape[1:] != mask.shape:
+        raise ValueError("mask shape must match U spatial shape")
+    U_np = np.asarray(U, dtype=np.float64)
+    mask_np = np.asarray(mask, dtype=bool)
+    n_vacuum = int(np.count_nonzero(mask_np))
+    total = int(mask_np.size)
+    if n_vacuum == 0:
+        return {
+            "n_vacuum": 0,
+            "frac_vacuum": 0.0,
+            "rho_min_vacuum": 0.0,
+            "B_max_vacuum": 0.0,
+            "va_max_vacuum": 0.0,
+        }
+
+    rho = np.maximum(U_np[IDN], 1.0e-300)
+    B_mag = np.sqrt(U_np[IBR] ** 2 + U_np[IBZ] ** 2 + U_np[IBT] ** 2)
+    va = B_mag / np.sqrt(rho)
+    return {
+        "n_vacuum": n_vacuum,
+        "frac_vacuum": float(n_vacuum / total),
+        "rho_min_vacuum": float(np.min(rho[mask_np])),
+        "B_max_vacuum": float(np.max(B_mag[mask_np])),
+        "va_max_vacuum": float(np.max(va[mask_np])),
+    }
+
+
+def _require_mlx() -> None:
+    if not _MLX_AVAILABLE:
+        raise ImportError("mlx is required for mlx_implicit_mhd")
+
+
+def _eta_array(eta: mx.array | float, shape: tuple[int, int]) -> np.ndarray:
+    if isinstance(eta, (int, float)):
+        return np.full(shape, float(eta), dtype=np.float64)
+    eta_np = np.asarray(eta, dtype=np.float64)
+    if eta_np.shape == ():
+        return np.full(shape, float(eta_np), dtype=np.float64)
+    if eta_np.shape != shape:
+        raise ValueError("eta shape must match U spatial shape")
+    return eta_np
+
+
+def _implicit_b_diffusion_substep(
+    U: np.ndarray,
+    dt: float,
+    alpha: np.ndarray,
+    mask: np.ndarray,
+    *,
+    dr: float,
+    dz: float,
+    r_cell: np.ndarray,
+) -> np.ndarray:
+    U_next = U.copy()
+    r_safe = np.maximum(r_cell, 0.5 * dr)
+    for slot in (IBR, IBZ, IBT):
+        field = U_next[slot].copy()
+        if field.shape[1] > 1:
+            for ir in range(field.shape[0]):
+                a, b, c, d = _build_diffusion_system(field[ir, :], alpha[ir, :], dt, dz)
+                field[ir, :] = thomas_solve(a, b, c, d)
+        if field.shape[0] > 1:
+            for iz in range(field.shape[1]):
+                a, b, c, d = _build_cylindrical_diffusion_system(
+                    field[:, iz],
+                    alpha[:, iz],
+                    r_safe,
+                    dt,
+                    dr,
+                )
+                field[:, iz] = thomas_solve(a, b, c, d)
+        if slot in {IBR, IBT}:
+            sink = dt * alpha / (r_safe[:, None] ** 2)
+            field = field / (1.0 + sink)
+        U_next[slot] = np.where(mask, field, U[slot])
+    return U_next

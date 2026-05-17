@@ -119,6 +119,83 @@ EXISTING_TEST_SURFACES = (
     },
 )
 
+CANDIDATE_TEST_SURFACE_COVERAGE = (
+    {
+        "surface": "finite_volume_shock_behavior",
+        "candidate_artifacts": (
+            "legacy_mhd_verification_surfaces_not_attached_to_package_native_fp4",
+        ),
+        "coverage_status": "legacy_candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "cylindrical_source_terms",
+        "candidate_artifacts": (
+            "legacy_cylindrical_source_term_tests_not_attached_to_package_native_fp4",
+        ),
+        "coverage_status": "legacy_candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "maxwell_yee_update_and_courant_limit",
+        "candidate_artifacts": ("tests/test_maxwell_3d_field_core.py",),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "divergence_b_control",
+        "candidate_artifacts": (
+            "tests/test_maxwell_3d_field_core.py",
+            "tests/test_marder_correction.py",
+        ),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "gauss_law_or_charge_current_continuity",
+        "candidate_artifacts": (
+            "tests/test_marder_correction.py",
+            "tests/test_pic_current_source_port.py",
+        ),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "resistive_diffusion",
+        "candidate_artifacts": (
+            "legacy_resistive_diffusion_surfaces_not_attached_to_package_native_fp4",
+        ),
+        "coverage_status": "legacy_candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "joule_heating_and_total_energy",
+        "candidate_artifacts": (
+            "tests/test_hybrid_3d_loop.py",
+            "tests/test_first_principles_runner.py",
+        ),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "circuit_power_port_coupling",
+        "candidate_artifacts": (
+            "tests/test_circuit_magnetic_boundary.py",
+            "tests/test_first_principles_runner.py",
+        ),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+    {
+        "surface": "particle_push_and_current_deposition",
+        "candidate_artifacts": (
+            "tests/test_pic_current_source_port.py",
+            "tests/test_hybrid_3d_loop.py",
+        ),
+        "coverage_status": "candidate_component_coverage_not_acceptance",
+    },
+)
+
+REQUIRED_UPSTREAM_NUMERICAL_PACKETS = (
+    "startup_bvp",
+    "limiter_readiness",
+    "power_port",
+    "dimensionality_handoff",
+    "physics_closure",
+)
+
 
 def build_numerical_fidelity_packet(
     *,
@@ -144,20 +221,119 @@ def build_numerical_fidelity_packet(
         "required_channels": list(REQUIRED_NUMERICAL_FIDELITY_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "numerical_channel_status": _numerical_channel_statuses(
+            accepted=accepted,
+            missing=missing,
+        ),
+        "test_surface_status": _test_surface_statuses(accepted),
         "candidate_runtime_channels": _candidate_runtime_channels(
+            conservation=conservation,
+            simulation_telemetry=simulation_telemetry,
+        ),
+        "runtime_observations": _runtime_observations(
             conservation=conservation,
             simulation_telemetry=simulation_telemetry,
         ),
         "existing_test_surfaces": [dict(surface) for surface in EXISTING_TEST_SURFACES],
         "upstream_packet_statuses": _upstream_statuses(upstream_packets),
+        "upstream_acceptance_gate": _upstream_acceptance_gate(upstream_packets),
         "source_references": list(NUMERICAL_FIDELITY_SOURCE_REFS),
+        "acceptance_gate": (
+            "candidate_component_tests_and_runtime_diagnostics_cannot_support_"
+            "numerical_acceptance_until_all_test_surfaces_have_source_backed_"
+            "references_norms_tolerances_convergence_limiter_zero_backend_scope_"
+            "artifact_hashes_negative_tests_and_review"
+        ),
         "validation_rule": (
             "No numerical packet can pass with unspecified tolerances, missing "
             "convergence evidence, hidden limiter activity, or absent review."
         ),
+        "negative_test_policy": {
+            "failed_tolerance_negative_required": True,
+            "hidden_limiter_regression_required": True,
+            "backend_precision_fallback_rejection_required": True,
+            "gauss_or_divergence_residual_failure_required": True,
+            "conservation_residual_failure_required": True,
+            "restart_mismatch_required": True,
+            "candidate_component_promotion_rejection_required": True,
+        },
         "can_support_numerical_acceptance": False,
         "can_support_first_principles_acceptance": False,
     }
+
+
+def _numerical_channel_statuses(
+    *,
+    accepted: set[str],
+    missing: set[str],
+) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for channel in REQUIRED_NUMERICAL_FIDELITY_CHANNELS:
+        if channel in accepted:
+            statuses[channel] = "accepted_numerical_channel_declared"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _test_surface_statuses(accepted: set[str]) -> dict[str, dict[str, Any]]:
+    coverage = {str(item["surface"]): item for item in CANDIDATE_TEST_SURFACE_COVERAGE}
+    statuses: dict[str, dict[str, Any]] = {}
+    for surface in REQUIRED_NUMERICAL_TEST_SURFACES:
+        surface_coverage = coverage.get(surface)
+        declared_accepted = surface in accepted
+        if declared_accepted:
+            status = "accepted_test_surface_declared_packet_still_blocked"
+        elif surface_coverage is not None:
+            status = str(surface_coverage["coverage_status"])
+        else:
+            status = "missing_or_blocked"
+        statuses[surface] = {
+            "status": status,
+            "candidate_artifacts": list(
+                surface_coverage.get("candidate_artifacts", ())
+                if surface_coverage is not None
+                else ()
+            ),
+            "acceptance_rule": (
+                "requires_source_backed_reference_solution_norm_tolerance_"
+                "convergence_artifacts_hashes_limiter_zero_scope_and_review"
+            ),
+            "can_support_numerical_acceptance": False,
+        }
+    return statuses
+
+
+def _runtime_observations(
+    *,
+    conservation: Mapping[str, Any] | None,
+    simulation_telemetry: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    observations: dict[str, Any] = {
+        "candidate_only": True,
+        "accepted_numerical_packet": False,
+        "tolerance_claim": False,
+        "convergence_claim": False,
+    }
+    if conservation:
+        observations["conservation_passed"] = conservation.get("passed")
+        observations["final_max_abs_div_B_T_per_m"] = conservation.get(
+            "final_max_abs_div_B_T_per_m"
+        )
+        observations["relative_tracked_total_energy_change"] = conservation.get(
+            "relative_tracked_total_energy_change"
+        )
+    if simulation_telemetry:
+        observations["simulation_status"] = simulation_telemetry.get("status")
+        observations["n_steps_completed"] = simulation_telemetry.get(
+            "n_steps_completed"
+        )
+        observations["has_circuit_boundary_runtime"] = (
+            simulation_telemetry.get("circuit") is not None
+        )
+    return observations
 
 
 def _candidate_runtime_channels(
@@ -200,3 +376,31 @@ def _upstream_statuses(
             None if packet.get("status") is None else str(packet["status"])
         )
     return statuses
+
+
+def _upstream_acceptance_gate(
+    upstream_packets: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[str, Any]:
+    statuses = _upstream_statuses(upstream_packets)
+    blockers = {
+        name: statuses.get(name)
+        for name in REQUIRED_UPSTREAM_NUMERICAL_PACKETS
+        if not _status_is_accepted(statuses.get(name))
+    }
+    return {
+        "status": (
+            "blocked_by_upstream_packets"
+            if blockers
+            else "upstream_packets_accepted_numerical_channels_still_required"
+        ),
+        "required_upstream_packets": list(REQUIRED_UPSTREAM_NUMERICAL_PACKETS),
+        "blocking_upstream_packets": blockers,
+        "all_required_upstream_packets_accepted": not blockers,
+    }
+
+
+def _status_is_accepted(status: str | None) -> bool:
+    if status is None:
+        return False
+    normalized = status.strip().lower()
+    return normalized.startswith("accepted") or normalized in {"passed", "ready"}

@@ -18,6 +18,15 @@ Key components:
     - ``detect_instability``: heuristic m=0 sausage instability detector.
 
 Units: SI throughout (m, s, kg, C, V, T).
+
+Local source-truth routing:
+    KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
+    KnowledgeReference/fully-kinetic-simulations-of-megajoule-scale-dense-plasma-focus-3f439245.md
+    KnowledgeReference/novel-collisional-particle-in-cell-cpicmethodsfor-ki-8a90e551.md
+
+This is candidate PIC machinery for the package-native first-principles path.
+It is not validation evidence and cannot by itself close the hybrid handoff,
+collision, boundary, or neutron-authority gates.
 """
 
 from __future__ import annotations
@@ -28,6 +37,22 @@ import numpy as np
 from numba import njit
 
 from dpf.constants import e as e_charge
+
+HYBRID_PIC_SOURCE_REFERENCES = {
+    "hybrid_pic_fluid_dpf": (
+        "KnowledgeReference/"
+        "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"
+    ),
+    "fully_kinetic_mj_dpf": (
+        "KnowledgeReference/"
+        "fully-kinetic-simulations-of-megajoule-scale-dense-plasma-focus-3f439245.md"
+    ),
+    "collisional_pic_methods": (
+        "KnowledgeReference/novel-collisional-particle-in-cell-cpicmethodsfor-ki-8a90e551.md"
+    ),
+}
+HYBRID_PIC_SOURCE_STATUS = "candidate_pic_machinery_not_validation"
+HYBRID_PIC_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
 # =====================================================================
 # Numba-accelerated kernels

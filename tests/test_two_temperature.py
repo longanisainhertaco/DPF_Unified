@@ -21,8 +21,10 @@ from dpf.fluid.two_temperature import (
     compute_radiation_loss,
     electron_energy_from_temperature,
     electron_energy_rhs,
+    equilibration_convention_audit,
     initialize_electron_energy,
     ion_temperature_from_total,
+    nrl_equal_temperature_ei_equilibration_frequency,
     step_electron_energy,
     temperature_from_electron_energy,
 )
@@ -365,6 +367,29 @@ class TestEquilibrationSource:
         Q = compute_equilibration_source(Te, Ti, n_e, Z)
         np.testing.assert_allclose(Q, 0.0, atol=1e-10)
         assert np.isfinite(Q[0]), "Q_ei at equilibrium must be finite (not NaN)"
+
+    def test_nrl_equal_temperature_equilibration_frequency_positive(self) -> None:
+        """Local NRL equal-T audit frequency should be finite and positive."""
+        ni = np.array([1e25])
+        T = np.array([1e7])
+        freq = nrl_equal_temperature_ei_equilibration_frequency(ni, T, Z=1.0)
+        assert freq[0] > 0.0
+        assert np.isfinite(freq[0])
+
+    def test_equilibration_convention_audit_fails_closed(self) -> None:
+        Te = np.array([1e7])
+        Ti = np.array([1e7])
+        ne = np.array([1e25])
+        audit = equilibration_convention_audit(
+            electron_temperature_K=Te,
+            ion_temperature_K=Ti,
+            electron_density_m3=ne,
+            ion_density_m3=ne,
+            Z=1.0,
+        )
+        assert audit["status"] == "candidate_nrl_equal_temperature_equilibration_audit"
+        assert audit["can_support_first_principles_acceptance"] is False
+        assert audit["max_active_to_nrl_rate_ratio"] > 0.0
 
 
 # --- Initialize from existing state ---

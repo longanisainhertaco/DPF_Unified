@@ -1,0 +1,915 @@
+  第 30 卷第 11 期             强    激    光    与       粒     子      束           Vo
+                                                                            l. 30,No.11
+ 2018 年 11 月             HIGH POWER LASER AND PARTICLE BEAMS                  Nov.,2018
+
+
+                                                                    *
+                      稠密等离子体焦点装置研制
+             李名加1,2, 范    娟1, 章法强1,2, 王文川1, 梁          川1, 郭洪生1,2, 杨        军1
+ (
+ 1.中国工程物理研究院 核物理与化学研究所,四川 绵阳 621900; 2.中国工程物理研究院 中子物理学重点实验室,四川 绵阳 621900)
+
+         摘    要: 研制了一台用作脉冲中子源的稠 密 等 离 子 体 焦 点 装 置 (
+                                                  DPF),其 放 电 室 为 Ma
+                                                                  the
+                                                                    r型 结 构。 介
+      绍了整个装置的工作原理及系统组成,详细论述了放电室的设计方法。实验结果表 明,在 550~600Pa 充 氘 压
+                                           0×108 (
+      力范围下,当储能电容充电电压大于 19kV 时,装置的平均中子产额大于 5.     D-D)中子/脉 冲,中 子 脉 冲
+        FWHM)为(
+      宽度(     40±5)ns。该装置能用于中子、伽马辐射诊断中探测系统灵敏度实验研究,也可用于开展 快
+      中子照相、中子活化分析以及单粒子效应等方面的研究工作。
+         关键词: 稠密等离子体焦点; Ma
+                         the
+                           r型; 放电室
+                     5; TL51
+         中图分类号: TN752.               文献标志码: A          i:
+                                                      do   11884/HPLPB201830.
+                                                         10.                180230
+
+   稠密等离子体焦点( DPF)装置是 20 世纪 60 年代初期发展起来的快脉冲(        μs量级)、大电流(几百 kA 到几
+MA)的等离子体放电 装 置 ,它 用 较 简 单 方 法 产 生 高 温 度(
+                                       10 K)、高 速 度(>107 cm/s)、高 密 度 (
+                                                                    1016 ~1020
+              [1]                        7
+
+
+cm-3)等离子体,持续时间为几十到几百 ns。DPF 最初是用来探索受控核聚变,随着对其研究的深入,人们发
+现 DPF 适合于作为各种脉冲辐射源(电子、离子、 X 射线和中子)2-5 ,具有广泛的应用前景。当 DPF 放电气体
+                                  [ ]
+
+
+主要为氘气或氘氚混和气体时,产 生 的 是 单 一 能 量 的 中 子 [6],该 特 性 使 DPF 可 用 于 各 种 物 理 实 验 (如 中 子 照
+相、脉冲活化分析、中子探头标定等)。等离子体焦点运行过程涉及丰富的物理内 容,同 时 又 具 有 结 构 简 单、投
+资少维修简便等特点。很多国家及实验室把它作为研究高密度等离子体物理及其基本规律的重要手段。对等
+离子体焦点从几十 kJ,MJ级的大 中 型 装 置 到 几 百 J 的 小 装 置,从 单 次 放 电 到 重 复 频 率 放 电 等 做 了 广 泛 的 研
+究 [7-11]。目前,美、英、俄、马来西亚、新加坡、印 度 等 国 家 仍 在 致 力 于 等 离 子 体 焦 点 装 置 的 中 子 产 生 机 理、强 X
+射线源及其重复频率装置等相关的研究。本文研制了基于 Ma
+                           the
+                             r结构的 DPF 装置,将 其 作 为 脉 冲 中 子 源 能
+用于中子、伽马辐射诊断中探测系统灵敏度实验研究,也可用于开展快中子照相、中子 活 化 分 析 以 及 单 粒 子 效
+应等方面的研究工作。
+
+1 装置简介
+    等 离 子 体 焦 点 装 置 主 要 由 储 能 电 容 器 组、高 压 开 关 及
+DPF 放 电 室 组 成,其 工 作 原 理 如 图 1 所 示:首 先 充 电 电 源 给
+储能电容器组 充 电 (一 般 几 十 kV),电 容 器 充 到 设 计 电 压 后
+高压开关击穿,电容器 上 的 电 压 立 即 加 到 了 内、外 电 极 上,导
+致放电室中绝 缘 子 沿 面 击 穿,并 在 其 表 面 形 成 等 离 子 体 层。
+放电电流产生的强磁 场,使 等 离 子 体 层 受 洛 仑 兹 力 的 作 用 而
+向上运动,抵达内电极 端 部。最 后 一 部 分 等 离 子 体 被 压 缩 在
+内电极端部上方而形成一根细柱(即等离子体焦点)。由于各
+种不稳定性,导致聚焦 柱 的 崩 溃,强 烈 地 辐 射 出 各 种 粒 子(电
+    X 射 线 和 中 子)。 整 个 放 电 过 程 可 分 为 三 个 阶 段,
+子、离子、
+                                                  F
+                                                  ig.
+                                                    1 Pr
+                                                       inc
+                                                         ipl
+                                                           eofdens
+                                                                 epl
+                                                                   asmaf
+                                                                       ocus(
+                                                                           DPF)dev
+                                                                                 ice
+即击穿阶段、电流鞘加速阶段和焦点形成阶段 [12]。
+                                                             图 1 DPF 装置工作原理图
+   所研制的稠密等 离 子 体 焦 点 装 置 系 统 组 成 如 图 2 所 示,
+整个装置由脉冲电源、控制系统、测试诊断系统、放电 室 等 组 成。由 4 个 10μF 电 容 器 并 联 组 成 DPF 的 能 库,
+               10~20kV)后,控制系统控制触发系统同步触发与脉冲电容器相连接的 4
+当能库由充电系统充至设定电压体(
+
+
+
+        2018
+  * 收稿日期:  -09
+             -03; 修订日期:2018
+                          -10
+                            -08
+    基金项目:中国工程物理研究院发展基金项目(     2014B0103005);中国工程物理研究院中子物理学重点实验室基金项目(
+                                                                   2015BB01)
+            1977—),男,副研究员,博士,从事脉冲功率技术研究;c
+    作者简介:李名加(                                   aep
+                                                  lmj@163.om。
+                                                          c
+            1977—),男,副研究员,硕士,从事脉冲功率技术研究;l
+    通信作者:梁 川(                                   c
+                                                jxm@sina.
+                                                        com。
+
+                                      115002
+                                           -1
+                           强     激   光     与   粒   子     束
+
+
+个大电流开关,将约 400kA 的大电流传输至放电室上产生脉冲中子。
+
+
+
+
+                               F
+                               ig.
+                                 2 S
+                                   truc
+                                      tur
+                                        edi
+                                          agr
+                                            amo
+                                              fDPFdev
+                                                    ice
+                           图 2 稠密等离子体焦点装置系统组成框图
+
+
+
+2 放电室设计
+   DPF 获得所需的中子产额与能库 的 大 小、放 电 室 结 构、氘 的 最 佳 工 作 气 压 等 密 切 相 关。在 脉 冲 电 源 确 定
+的情况下,其核心就是由真空室、真空室内的一对电极以及电极之间的高强度绝缘子所构成的放电室。根据电
+极结构不一样,放电室主要有 F
+              ili
+                ppov 型 和 Ma
+                      [
+                      13]
+                          the
+                            r 型 14 两 种 类 型,它 们 的 差 别 在 于 内 电 极 的 直 径 与 长 度
+                               [ ]
+
+
+比不一样: Fi
+       lippov 型放电室内电极直 径 与 长 度 比 率 一 般 大 于 5,即 圆 饼 型,其 内 电 极 的 直 径 一 般 在 50~200
+cm 之间;而 Mathe
+            r型放电室内电极直径与长度比率一般小于 0.          25,即长圆柱型,其内电极的直径一般在 2~
+22cm 之间。此外,Ma
+            t r型装置等离子 体 箍 缩 过 程 持 续 数 十 ns,而 F
+             he                              ili
+                                               ppov 型 装 置 此 过 程 的 时 间 高 达 200
+ns。考虑直径方向的尺寸及形成中子脉冲宽度,本文采用 Ma        ther型放电室,这也是目前国外大多数 装 置 所 采
+用的放电室类型。
+2.
+ 1 放电室参数设计
+   放电室参数主要包括内电极半径及长度、外电极内半径及长度、绝缘子长度及所充气体压力。充气压力通
+过实验来进行调整,因此主要确定的参数为内外电极半径及长度和绝缘子长度。
+   脉冲电源放电电流的最大值Imax约为 400kA,内电极的外半径根据经验公式(
+                                         a≈Imax/(
+                                                150~250))可知,
+取值范围为 16~27 mm,最终选择中心电极外半径 a=17 mm;相关文献指出,国内外研制成功的 DPF 装置外
+电极内半径b 与内电极外半径a 比值c 一般在2~3 范围内 [8,10],在此选择c=2.
+                                             3 得b=40mm。根据公式(
+                                                           1)
+计算可得内电极的长度l 为 15cm,外 电 极 的 长 度 一 般 要 比 内 电 极 略 长,以 使 放 电 等 离 子 体 在 内 外 电 极 范 围
+内,在此选择外电极的长度为 16cm。
+                                  ìï     μ0(γ+1)
+                                   ïvr =    4π
+                                                   KS
+                                   ï
+                                   ï
+                                   ïva =     μ0l
+                                               n c
+                                                    KS
+                                   í     4π2( c2 -1)                        (
+                                                                            1)
+                                   ïl=va(tp -a/ vr)
+                                   ï
+                                   ï
+                                   ïS =Imax
+                                        aρ
+                                   ï
+                                   î
+              cm/μs;
+  vr 为等离子体径向速度,
+式中:                μ0 =4π×10 H/m;
+                            -7
+                                γ 为 常 数,氘 气 此 常 数 为 5/3;
+                                                       K 为 常 数,取 值 范 围
+为 1.  2,在此取 1.
+   3~2.      3;            cm/μs;
+               va 为等离子体轴向速度,    tp 为脉冲电源 1/4 放电周期,
+                                                 μs;
+                                                   ρ 为所充气体密度,
+kg/m3 ;
+      S 为驱动系数。
+    等离子体的初始位形在很大程度上取决于绝缘子,为了得到更高的中子产额,需 要 产 生 均 匀、对 称 的 等 离
+子体鞘层,这就要求沿绝缘子表面放电要尽量均匀、对称。绝缘子长度不能太长,否则产生不了沿面放电,而且
+绝缘子长度也不能太短,否则达不到工作电压就产生沿面放电或者产生多次沿面放 电。考 虑 绝 缘 子 所 承 受 的
+电压约为 20kV,取绝缘子高度为 40 mm(指绝缘子离外电极底板的高度)。
+
+                                         115002
+                                              -2
+                            李名加等:稠密等离子体焦点装置研制
+
+
+2.
+ 2 放电室结构设计
+   所研制的放电室如图 3 所示。内电极(阳极)采用半空心圆棒结
+构,其材料为无氧铜;阴极为 8 根直径 8 mm 的无氧铜杆所组成的鼠
+笼结构(squ
+      irr
+        elc
+          -age),在直径 88 mm 的 圆 周 上 均 匀 分 布 所 有 阴 极
+杆,一端通过螺纹连接于 阴 极 底 板 上,另 外 一 端 用 圆 铜 环 固 定,以 保
+证 8 根阴极杆的圆周度、同心度和垂直度;阴极底板通过螺钉固定在
+放电室底座上,其为回环 结 构;底 板 内 环 套 在 绝 缘 子 上,离 绝 缘 子 表
+面约 1 mm,其截面 为 三 角 形,形 成 了 刀 口 结 构,使 得 绝 缘 子 如 果 发
+生沿面放电,就只在刀口附近开始,减少了放电的不确定性。
+   绝缘子材料要求有足够的机械强度,良好的绝缘性能以及防等
+离子体侵蚀能力,本文选用 95 陶瓷。绝缘子在放电室内部分的内径
+为 36 mm,外 径 为 46 mm。 绝 缘 子 在 空 气 中 的 部 分,需 要 耐 受 25
+kV 的电压,考虑到高低压连接 部 分 的 电 场 不 均 匀 性,取 绝 缘 子 空 气         F
+                                                      ig.
+                                                        3 Pho
+                                                            too
+                                                              fDPFchambe
+                                                                       r
+                                                         图 3 放电室实物图
+部分的长度为 45 mm,并在表面采用波纹结构以增长其沿面距离。
+                                                r)连 接 件,由 柯 伐 直 接
+                                             kova
+   整个放电室气密性最难保证的是金属件和陶瓷的密 封,绝 缘 子 封 接 件 为 柯 伐(
+加工成所需的零件,柯伐封接件经过电镀和烧氢处理后与金属化后的陶瓷绝缘子在钎焊点通过钎焊(钎料为纯
+银)焊接在一起,从而实现陶瓷绝缘子与金属件的可靠密封。此外,其他法兰、抽气 口、进 气 口 等 连 接 处 均 使 用
+钎焊进行密封。同时,放电室各部件均进行了高温烘烤去氢处理,去除金属电极等金属零件表面残存吸附的气
+体,以使放电室能够达到所需要的真空度,减少放电时杂质的产生。
+2.
+ 3 放电室模拟结果
+   当电容器充电电压为 20kV 时,采用 S.LEE 计 算 模 型 [15]模 拟 所 设 计 的 放 电 室,计 算 所 得 的 电 流 波 形 如
+图 4(
+   a)所示,由图可知,所设计的放电室焦点形成时刻约在放电电流 1/4 周期处(对应放电电流最大值时刻),
+此时 DPF 的阻抗突然增大,放电电流突然下降导致大的电流变 化 率,由 此 可 判 定 所 设 计 的 放 电 室 能 够 良 好 聚
+焦;电极结构和尺寸选定后,其放电性能就基本上已确定。但其最大输出则需要通过对充气气压进行优化后才
+能确定,即充气气压存在一个最佳值。中子产额Y 随氘气压力变化曲线如图 4(
+                                    b)所 示,其 中 子 产 额 随 气 压 的
+                   45 ×108(
+增大先增加后减小,最大中子产额约为 6.      D-D)中子/脉冲,此时对应的气压约为 1kPa。
+
+
+
+
+                                  F
+                                  ig.
+                                    4 S
+                                      imu
+                                        lat
+                                          ionr
+                                             esu
+                                               lts
+                                     图 4 模拟结果
+
+
+
+3 实验研究
+   采用 Rogowsk
+            i线圈测量脉冲电源放电电流波形;使用光电倍增管探测器来进行中子产额测量,将它置于
+与焦点轴线成 90
+        °的方向上,放置在与焦点距离 2~3 m 处,通 过 示 波 器 读 出 探 测 器 测 量 所 得 中 子 波 形 的 面 积
+A,通过公式(
+      2)可计算出中子产额
+                           4πL2A                  (
+                         Y=                       2)
+                            Zk
+                   cm;
+  L 为探测器到 DPF 焦点的距离,
+式中:                                   V·s;
+                     A 为探测器测量所得中子波形的面积,  Z 为示波器输入阻抗,
+                                     115002
+                                          -3
+                                 强    激   光     与   粒   子   束
+
+
+50Ω;
+   k 为闪烁体探测器的灵敏度, C·cm2 。
+   典型实验波形如图 5 所示,图中示波器通道 1 为放电电流波形,通道 2 为光电倍增管所测波形。首先需要
+                                 TOF)来区分焦点的中子信号和
+确定光电倍增管探测器所测得的信号是否中子信号,这里利用中子飞行时间(
+X 射线信号(光子速度vX =3×108 m/s,
+                        2.                    16×107 m/s)。这 里 认 为 DPF 聚 焦 所 产
+                          45 MeV 中 子 速 度 vn =2.
+生的中子和 X 射线是同时产生的,那么光电倍增管探 测 器 距 离 焦 点 每 增 加 1 m,中 子 信 号 和 X 射 线 信 号 的 时
+间间隔将增加 43ns,因此,可以通过测量光电倍增管探测器与焦点的距离以及所测得两个信号峰 值 间 的 时 间
+                                   5,
+间隔来判断其产生的是否为中子。当光电倍增管探测器与焦点的距离分别为 2.  4,
+                                     2. 2.
+                                         15 m 时,所 测 得 的
+两个信号峰值间的时间间隔分别为115,
+                  107,
+                     96ns,则每1m 两个信号的时间间隔分别为46, 6,
+                                             44.   7ns,平
+                                                 44.
+      1ns,考虑到测量及读数误差,可以认为光电倍增管探测器测量得到的第二个信号为中子信号。
+均值为 45.
+
+
+
+
+                                     F
+                                     ig.
+                                       5 Typ
+                                           ica
+                                             lexpe
+                                                 rimen
+                                                     talwave
+                                                           forms
+                                           图 5 典型实验波形
+
+    放电电流与中子 波 形 的 对 应 关 系 如 图 5(
+                               a)所 示,图 中 通 道 1 为 放 电 电 流 波 形,通 道 2 为 光 电 倍 增 管
+(
+PMT)探测器所测得的波形。由图可 见,在 DPF 聚 焦 之 前,放 电 电 流 与 电 容 器 放 电 电 流 的 波 形 类 似,此 时 放
+电室阻抗变化不大;在焦点形成时刻,由于等离子体被压缩成一根细柱,其阻抗突然增大,放电电流突然下降导
+致大的电流变化率,此后,由于各种不稳定性,导致聚 焦 柱 的 崩 溃,强 烈 地 辐 射 出 X 射 线 和 中 子。DPF 聚 焦 时
+                    8μs,此时所充氘气压力约为 580Pa。光电倍增管展开波形如图 5
+刻基本对应放电电流的最大值时刻,约为 1.
+(
+b)所示,所研制的放电室充 氘 最 佳 工 作 气 压 范 围 为 550~600Pa,与 模 拟 结 果 相 比,氘 气 的 最 佳 压 力 有 所 减
+小,其原因主要是因为设计时电流达到 最 大 值 的 时 间 是 按 2.    0μs 设 计,而 实 际 电 流 达 到 最 大 值 的 时 间 为 1.
+                                                                             8
+μs,为了使 DPF 聚焦时刻对应放电电 流 的 最 大 值 时 刻,在 结 构 已 经 确 定 的 情 况 下,需 要 减 小 氘 气 的 压 力 来 实
+现。在此充氘压力范围下,当储能电容充电电压大于 19kV 时,所 研 制 放 电 室 的 平 均 中 子 产 额 大 于 5.         0×108
+(
+D-D)中子/脉冲,中子脉冲宽度(
+                FWHM)为(
+                      40±5)ns。
+
+4 结     论
+    本文研制了基于 Ma
+             t r型放电室的 DPF 装置,放电室充氘最佳工作气压范围为 550~600Pa,在此充氘
+              he
+                                      0×108(
+压力范围下,当储能电容充电电压大于 19kV 时,装置的平均中子产额大于 5.    D-D)中子/脉冲,中子脉
+   FWHM)为(
+冲宽度(     40±5)ns。
+
+
+参考文献:
+1] Ma
+[   the
+      rJW.Me
+           thodso   r
+                fexpeimen
+                        talphys
+                              ic          rk:Ac
+                                s[M].New Yo   ademi
+                                                  cPr
+                                                    ess,1971:
+                                                            187
+                                                              -190.
+[
+2] Gr
+    ibkovV A,La
+              tyshevSV,Mi
+                        kla
+                          sz   iR A,e
+                            ewsk    tal.Adens
+                                            epl
+                                              asmaf
+                                                  ocus
+                                                     -ba
+                                                       sedneu
+                                                            trons c
+                                                                our o
+                                                                   efras
+                                                                       ing
+                                                                         lesho
+                                                                           - tde
+                                                                               tec
+                                                                                 ti  fi
+                                                                                   ono l
+                                                                                       li
+                                                                                        citma
+                                                                                            te-
+   r
+   ial
+     sandexp
+           los
+             ive
+               sbyanano
+                      sec
+                        ondneu
+                             tronpu
+                                  lse[       r,2010,81:
+                                     J].PhysSc        035502.
+3] Lo
+[   r  oFD,Ra
+     enz    spaV,Knob
+                    lauchP,e
+                           tal.Ha
+                                rdX-
+                                   rayss c
+                                       ouref
+                                           orf
+                                             lashr
+                                                 adi
+                                                   ogr
+                                                     aphyba
+                                                          sedona2.
+                                                                 5kJp
+                                                                    lasmaf
+                                                                         o         lPhys,
+                                                                             J].JApp
+                                                                          cus[
+   2007,
+       102:
+          033304.
+[
+4] Toma
+      rBS,Kaush
+              ikTC,Ando
+                      laS,e
+                          tal.Non
+                                - s
+                                 detr
+                                    uct
+                                      ivea
+                                         ssayo
+                                             ffi
+                                               ssi
+                                                 lema
+                                                    ter
+                                                      ial
+                                                        sthr   c
+                                                           oughati
+                                                                 veneu
+                                                                     troni
+                                                                         ntr
+                                                                           eroga
+                                                                               tiont
+                                                                                   echn
+                                                                                      iqueus
+                                                                                           ing
+    l
+   pus    t
+      edneuron (
+               pla
+                 smaf
+                    ocus)dev
+                           ic J].Nuc
+                             e[    lIns
+                                      trum Me
+                                            t         s,Se
+                                             hodsPhysRe  ctA,2013,703:
+                                                                     11-
+                                                                       15.
+5] Ro
+[   shan M V,Sp
+              ringham SV,Rawa
+                            tRS,e
+                                tal.Sho
+                                      rtl
+                                        -ivedPETr
+                                                adi
+                                                  ois
+                                                    otopep
+                                                         r   t
+                                                          oducioni
+                                                                 nasma
+                                                                     llp
+                                                                       lasmaf
+                                                                            ocusdev
+                                                                                  ice[
+                                                                                     J].IEEE Tr
+                                                                                              ans
+   P
+   la    i,2010,38(
+     smaSc        12):
+                     3393
+                        -3397.
+
+                                              115002
+                                                   -4
+                                  李名加等:稠密等离子体焦点装置研制
+
+
+6] Gr
+[   ibkovV A,B
+             ienkowskaB,Bo
+                         rowi
+                            e iM,e
+                             ck  tal.P
+                                     lasmadynami
+                                               csi -
+                                                 nPF1000unde
+                                                           rfu
+                                                             lls
+                                                               -ca
+                                                                 leene
+                                                                     r  t
+                                                                      gysor
+                                                                          age.I.P
+                                                                                inchdynami
+                                                                                         cs,sho
+                                                                                              ck-
+   waved
+       iff
+         rac
+           tionandi
+                  ner
+                    tia
+                      lel
+                        ecr
+                          tode[           lPhys,2007,40:
+                              J].JPhysD:App            1977.
+7] Scho
+[     lzM,Mi
+           kls
+             az   iR A,Gr
+               ewsk     ibkovV A,e
+                                 tal.PF
+                                      -1000dev
+                                             ic J].Nuk
+                                               e[    leon
+                                                        i          3):
+                                                         ka,2000,45( 155
+                                                                       -158.
+8] Ma
+[   thu
+      thu M,Zengen
+                 iT G,Gho
+                        lapA V.De
+                                sign,f
+                                     abr
+                                       ica
+                                         tion,andcha
+                                                   rac
+                                                     ter
+                                                       iza
+                                                         tiono
+                                                             fa2.
+                                                                3kJp
+                                                                   lasmaf
+                                                                        ocuso
+                                                                            fnega
+                                                                                tivei
+                                                                                    nne
+                                                                                      ree
+                                                                                        lcr
+                                                                                          tode[
+                                                                                              J].
+   RevSc
+       iIns
+          trum,1997,68(
+                      3):
+                        1429.
+9] Fr
+[   eemanBL,Boyds
+                tonJ,Fe
+                      r  onJ,e
+                       gus   tal.Pr
+                                  elimi
+                                      nayneu
+                                        r  trons
+                                               cal
+                                                 ingo
+                                                    ftheTAMU460kJp
+                                                                 la   o
+                                                                   smaf   C]
+                                                                       cus[ //Pr
+                                                                               oce
+                                                                                 edi
+                                                                                   ngso
+                                                                                      fthe27
+                                                                                           th
+   IEEEI
+       nte
+         rna
+           tiona
+               lCon
+                  fer
+                    enc
+                      eonPu
+                          lsedPowe
+                                 rPl
+                                   asmaSc
+                                        ienc
+                                           e.2001.
+10] Ni
+[    ran
+       janR,Rou
+              tR K,Mi aP,e
+                    shr  tal.No
+                              te:Apo
+                                   rtab
+                                      lepu
+                                         lsedneu
+                                               tr  our
+                                                 ons ceba
+                                                        sedont
+                                                             hesma
+                                                                 lle
+                                                                   s e
+                                                                    tsal
+                                                                       edt
+                                                                         -ypep
+                                                                             lasmaf
+                                                                                  ocusdev
+                                                                                        ic J].
+                                                                                          e[
+    RevSc
+        iIns
+           trum,2011,82:
+                       026104.
+11] Ni
+[    ran
+       janR,Rou
+              tR K,Sr
+                    iva
+                      stavaR,e
+                             tal.Thesma
+                                      lls
+                                        etp
+                                          lasmaa
+                                               cce
+                                                 ler
+                                                   ato  i
+                                                     rdevcea
+                                                           sar
+                                                             adi
+                                                               ati
+                                                                 ons
+                                                                   af epe
+                                                                     er tit
+                                                                          ivepu
+                                                                              lsedneu
+                                                                                    trons
+                                                                                        our
+                                                                                          c J].
+                                                                                           e[
+    I
+    ndi
+      anJPur  lPhys,2012,50:
+           eApp            785.
+12] Ma
+[    thu
+       thu M,Zengen
+                  iT G,Gho
+                         lapA V,e
+                                ta     hr
+                                  l.Thet e
+                                         e-pha
+                                             set
+                                               heo
+                                                 r o
+                                                  yfrp
+                                                     la   o
+                                                       smafcusdev
+                                                                ics[
+                                                                  e J].IEEE Tr
+                                                                             ansP
+                                                                                lasmaSc
+                                                                                      i  e,1997,
+                                                                                       enc
+    25(
+      6):
+        1382
+           -1388.
+13] F
+[   ilppovN V,F
+      i       ilppovaTI,Vi
+                i        nog
+                           r          e,h
+                            adovVP.Dens ight
+                                           empe
+                                              raur
+                                                t  l
+                                                  epasmai
+                                                        nanon
+                                                            -cl
+                                                              yind
+                                                                 ria
+                                                                   c -
+                                                                    lZpi
+                                                                       nchc
+                                                                          omp
+                                                                            res
+                                                                              sion[
+                                                                                  J].Nuc
+                                                                                       lFus
+                                                                                          ion,
+    1962,2:
+          577
+            -587.
+14] Ma
+[    the
+       rJW.Fo
+            rma
+              tiono i
+                  fahgh
+                      -dens
+                          itydeu
+                               ter
+                                 iump
+                                    lasmaf
+                                         o   J].PhysF
+                                          cus[      lu         2):
+                                                      ds,1965,8(
+                                                      i          366
+                                                                   -377.
+15] SawS H,Le
+[           eS.Sc
+                ali
+                  ngt
+                    hep
+                      la   o
+                        smaf   o
+                            cusf us
+                                rf i
+                                   onene
+                                       r  ons
+                                        gyc ide
+                                              rat
+                                                i   J].I
+                                                 ons[  ntJEne
+                                                            r   s,2011,35:
+                                                             gyRe        81-
+                                                                           88.
+
+
+
+                        De
+                         vel
+                           opmen
+                               tofd
+                                  ens
+                                    epl
+                                      asmaf
+                                          ocu
+                                            sde
+                                              vic
+                                                e
+  L
+  iMi
+    ngia1 2 , FanJuan1 , ZhangFaq
+                                iang1 2 , Wang Wenchuan1 , L
+                                                           iangChuan1 , GuoHongsheng1 2 , YangJun1
+           ,                         ,                                               ,
+      j
+               (
+               1.Ins
+                   tit
+                     uteof Nucl
+                              earPhysi
+                                     csandChemisry,CAEP,Mi
+                                                t          anyang621900,Ch
+                                                                         ina;
+                  2.KeyLabora
+                            toryof Neu
+                                     tronPhys
+                                            ics,CAEP,Mianyang621900,China)
+
+
+    s
+   Abta
+      rct: Adens
+               epa
+                 lsmaf
+                     ocus (
+                          DPF)de
+                               vic
+                                 ewi
+                                   tha Ma
+                                        the
+                                          rchambe
+                                                rwa
+                                                  sde
+                                                    veoped.Thewo
+                                                      l        rk  r
+                                                                 ngp
+                                                                 i  inc
+                                                                      ipl
+                                                                        eandsy
+                                                                             stem
+c
+ompo
+   sit
+     iono
+        ftheDPFde
+                vic
+                  ear
+                    ein
+                      tr   ed,andt
+                        oduc     hede
+                                    si  ft
+                                      gno heDPFchambe
+                                                    risd
+                                                       iscus
+                                                           sedi
+                                                              nde
+                                                                tai
+                                                                  l.Thef
+                                                                       oll
+                                                                         owi
+                                                                           ngt
+                                                                             echn
+                                                                                ica
+                                                                                  l
+pa
+ rame
+    ter
+      soft
+         hede
+            vic
+              e we
+                 rea
+                   chi
+                     eved:ave
+                            r     t
+                             ageneurony
+                                      iel
+                                        dgr
+                                          eat
+                                            ert   0×108/pu
+                                              han5.      ls D-D)wi
+                                                           e(    thneu
+                                                                     tronpu
+                                                                          lse wi
+                                                                               dth
+(
+FWHM)(
+     40±5)nswhent
+                hecha
+                    rgi
+                      ngvo
+                         ltageo
+                              fthep
+                                  rima
+                                     r apa
+                                      yc cit
+                                           orsi
+                                              sgr
+                                                eat
+                                                  ert
+                                                    han19kVandt
+                                                              hedeu
+                                                                  ter
+                                                                    iumga
+                                                                        spr
+                                                                          essu
+                                                                             rei
+                                                                               s
+  -
+550600Pa.Thede
+             vic
+               ecanbeus
+                      edf
+                        orc
+                          ali
+                            bra
+                              tiono
+                                  fde
+                                    tet
+                                      cors
+                                         ens
+                                           iti
+                                             viyi
+                                               t    t
+                                                 nneuronandgammar
+                                                                adi
+                                                                  ati
+                                                                    ond
+                                                                      iagno
+                                                                          stc
+                                                                            is,a
+                                                                               swe
+                                                                                 lla
+                                                                                   sto
+a
+crr
+  you
+    tre
+      ser
+        ache
+           sonf
+              astneu
+                   tronr
+                       adi
+                         ogaphy,neu
+                           r      trona
+                                      cti
+                                        vat
+                                          ionana
+                                               lys
+                                                 isands
+                                                      ing
+                                                        lee
+                                                          ven
+                                                            tef
+                                                              fec
+                                                                t.
+   Ke
+    ywo
+      rds: dens
+              epl
+                asmaf
+                    ocus(
+                        DPF); Ma
+                               the
+                                 r-ype; DPFchambe
+                                   t            r
+   PACS: 29. Dz; 84.
+           25.       Ng; 84.
+                   30.     70.+p
+
+
+
+
+                                             115002
+                                                  -5
+

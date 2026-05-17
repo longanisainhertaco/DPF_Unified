@@ -1,0 +1,608 @@
+SANDIA REPORT
+SAND2009-6373
+Unlimited Release
+Printed September 2009
+
+
+
+
+ALEGRA-HEDP Simulations of the
+Dense Plasma Focus
+C.S. Kueny, D.G. Flicker, and D.V. Rose
+
+
+
+
+Prepared by
+Sandia National Laboratories
+Albuquerque, New Mexico 87185 and Livermore, California 94550
+
+Sandia is a multiprogram laboratory operated by Sandia Corporation,
+a Lockheed Martin Company, for the United States Department of Energy’s
+National Nuclear Security Administration under Contract DE-AC04-94AL85000.
+
+Approved for public release; further dissemination unlimited.
+Issued by Sandia National Laboratories, operated for the United States Department of Energy
+by Sandia Corporation.
+
+NOTICE: This report was pr epared as an acco unt of work sponsored b y an agency of the
+United S tates G overnment. Nei ther th e Uni ted States Governm ent, nor an y agency th ereof,
+nor any of their employees, nor an y of their co ntractors, subcontractors, or their emplo yees,
+make any warranty, express or im plied, or assu me any legal liability or responsibili ty for th e
+accuracy, completeness, or usefulness of an y i nformation, app aratus, produc t, or process
+disclosed, or represent that its use would not infringe privately owned rights. Reference herein
+to an y specific commercial p roduct, pro cess, or service b y tr ade name, trademark,
+manufacturer, o r otherwise, do es not necessa rily consti tute o r imply its en dorsement,
+recommendation, or favoring b y the United States Government, any agency thereof, or any of
+their contractor s or subcontractors. The views and opinions expr essed h erein do not
+necessarily state or reflect those of the United States Government, any agency thereof, or any
+of their contractors.
+
+Printed in the United States of America. This report has been reproduced directly from the best
+available copy.
+
+Available to DOE and DOE contractors from
+    U.S. Department of Energy
+    Office of Scientific and Technical Information
+    P.O. Box 62
+    Oak Ridge, TN 37831
+
+Telephone:              (865) 576-8401
+Facsimile:              (865) 576-5728
+E-Mail:                 reports@adonis.osti.gov
+Online     ordering:    http://www.osti.gov/bridge
+
+Available to the public from
+    U.S. Department of Commerce
+    National Technical Information Service
+    5285 Port Royal Rd.
+    Springfield, VA 22161
+
+Telephone:              (800) 553-6847
+Facsimile:              (703) 605-6900
+E-Mail:                 orders@ntis.fedworld.gov
+Online     order:       http://www.ntis.gov/help/ordermethods.asp?loc=7-4-0#online
+
+
+
+
+                                             2
+                                SAND2009-6373
+                                 Unlimited Release
+                              Printed September 2009
+
+
+
+
+         ALEGRA-HEDP Simulations of the
+             Dense Plasma Focus
+                                   C. S. Kueny
+                             Hewlett-Packard Company
+
+                                   D. G. Flicker
+                            Sandia National Laboratories
+
+                                     D.V. Rose
+                                Voss Scientific, LLC
+
+                           Sandia National Laboratories
+                                 P. O. Box 5800
+                      Albuquerque, New Mexico 87185-1135
+
+
+                                  ABSTRACT
+We have carried out 2D simulations of three dense plasma focus (DPF) devices using
+the ALEGRA-HEDP code and validated the results against experiments. The three
+devices included two Mather-type machines described by Bernard et. al. [1] and the
+Tallboy device currently in operation at NSTec in North Las Vegas. We present
+simulation results and compare to detailed plasma measurements for one Bernard
+device and to current and neutron yields for all three. We also describe a new
+ALEGRA capability to import data from particle-in-cell calculations of initial gas
+breakdown, which will allow the first ever simulations of DPF operation from the
+beginning of the voltage discharge to the pinch phase for arbitrary operating
+conditions and without assumptions about the early sheath structure. The next step in
+understanding DPF pinch physics must be three-dimensional modeling of conditions
+going into the pinch, and we have just launched our first 3D simulation of the best-
+diagnosed Bernard device.
+
+
+
+
+                                          3
+                                                 TABLE OF CONTENTS
+1. Introduction           ............................................................................................................................ 9
+2.      DPF Operation and Simulation............................................................................................ 11
+3.      Overview of Targeted Experiments ..................................................................................... 13
+4. ALEGRA-HEDP.................................................................................................................                   . 15
+5. Problem           Set-up..................................................................................................................... 17
+6. Sim      ulation Results ............................................................................................................... 19
+         6.1 Bernard Long ........................................................................................................... 19
+         6.2 Bernard Short ........................................................................................................... 21
+         6.3 Tallboy ..................................................................................................................... 23
+7. Discussion           ............................................................................................................................ 25
+8. Distribution           .......................................................................................................................... 27
+
+
+                                                      LIST OF FIGURES
+Figure 1. Schematic of DPF operation, showing sheath creation (I), lift-off (II), run-down
+          (III) and collapse (IV)....................................................................................................11
+Figure 2. Plasma density plots for Bernard Long device, showing the lift-off, run-down
+          and pinch phases........................................................................................................... 19
+Figure 3. Computed current traces for open- and closed-cathode models of Bernard Long,
+          and accompanying thermonuclear neutron yields between 1 and 2 × 105.
+          Experimental values were 0.6 MA and 1.5 × 109 neutrons.......................................... 20
+Figure 4. Density plot for pinch phase in Bernard Short device.................................................. 22
+Figure 5. Computed current traces and thermonuclear neutron yields for Bernard Short
+          device............................................................................................................................ 22
+Figure 6. Plasma density during run-down in Tallboy closed-cathode configuration,
+          showing plasma tendril that disrupted the simulation. ................................................. 23
+Figure 7. Plasma density during pinch for open-cathode Tallboy simulation. ............................ 23
+Figure 8. Plot of electron temperatures near Bernard Long insulator, computed by LSP
+          and imported to ALEGRA-HEDP................................................................................ 25
+Figure 9. Copper and insulator surfaces for 3D simulation of Bernard Long device.................. 26
+
+
+                                                       LIST OF TABLES
+Table 1. Peak Currents and Neutron Yields from Experiment and from ALEGRA
+         Simulations, for all Three Test Devices ........................................................................24
+
+
+
+
+                                                                         4
+                              ACKNOWLEDGEMENTS
+This work was carried out at Sandia National Laboratories, which is operated by Lockheed
+Martin for the Department of Energy’s National Nuclear Security Administration under Contract
+DE-AC04-94-AL85000. This project was supported by the Defense Threat Reduction Agency.
+The completion of this work relied upon the support of many fellow researchers. The scientific
+staff of SNL’s HEDP Theory group were particularly helpful in bringing C.S. Kueny up to speed
+on the operation of the ALEGRA code; special thanks are due Kyle Cochrane for an immense
+amount of help with EOS issues including the generation of the QEOS tables, Tom Haill for help
+in understanding ALEGRA’s magnetics and other packages, Ray Lemke and Edmund Yu for
+proving sample input decks and answering questions, and Heath Hanshaw for neutronics support.
+Allen Robinson of the ALEGRA team provided help in understanding hydro issues, and Dave
+Hensinger is working hard to complete the new data import/interpolation capability that we are
+using to read LSP data. NSTec data is courtesy of Edward “Chris” Hagen and Tim Meehan, and
+Tim shared a great deal of knowledge of DPF experiments. Sophie Chantrenne of SAIC helped
+with meshing issues, and Bruce Freeman of KTech Corporation carried on a generous
+correspondence on his experience with DPFs.
+
+
+
+
+                                              5
+6
+                                  NOMENCLATURE
+2D two-dim             ensional
+3D            three-dimensional
+3D            three-dimensional
+ALE Arbitrary            Eulerian-Lagrangian
+DOE           Department of Energy
+DPF           dense plasma focus
+DTRA
+EOS equation           -of-state
+HEDP
+LANL          Los Alamos National Laboratory
+LSP
+MHD
+NNSA          National Nuclear Security Administration
+NSTec
+PIC particle          -in-cell
+QEOS
+SNL           Sandia National Laboratories
+
+
+
+
+                                             7
+8
+                                    1. INTRODUCTION
+The dense plasma focus is a pulsed power device that accelerates and compresses plasma along a
+coaxial cavity and into a small pinch, which (depending upon the material) may emit intense
+bursts of neutrons, x-rays and charged particles. DPFs were invented independently by Mather
+[2] and Filippov [3] in the 1960s and are still studied intensely in laboratories around the world
+as inexpensive sources of neutrons, ion beams and x-rays, and as platforms for the study of high
+energy-density physics phenomena. [4,5,6]. Our interest is in their use as a compact neutron
+source, and to that end we have carried out simulations of three DPF experiments using Sandia
+National Laboratories’ (SNL’s) ALEGRA-HEDP code [7]. We validate the code as an accurate
+modeling tool and describe coming enhancements, we describe the need for a three-dimensional
+capability and our first launch of a three-dimensional (3D) simulation, and we suggest the next
+steps needed in order to provide an adequate predictive and design capability for higher neutron
+yields.
+
+
+
+
+                                                9
+10
+                      2. DPF OPERATION AND SIMULATION
+A schematic of a DPF is shown in Figure 1. A high voltage discharge across the anode-cathode
+gap in a low-pressure, static gas fill initiates gas breakdown along the insulator and current flow
+along the path indicated by (I). The current interacts with its self magnetic field, providing lift-
+off (II) of a plasma sheath some millimeters thick and propelling it down the tube in phase (III),
+the run-down. As the sheath passes the anode tip, it is forced into a hot, dense pinch (IV), which
+must be timed via machine geometry, input voltage and fill pressure to coincide with the peak of
+the current flow. Pinch size is typically one mm wide and a few mm long, with particle densities
+of 1019–1020/cm3 and temperatures of hundreds of eV or more, lasting tens of nanoseconds [1].
+For devices studied in this paper, we consider gas fills of 3–10 Torr, discharge voltages of
+20–50 kV and currents of 0.6–1.8 MA, producing neutron yields of up to 5 × 1011.
+
+
+
+
+       Figure 1. Schematic of DPF operation, showing sheath creation (I), lift-off (II), run-
+                 down (III) and collapse (IV).
+
+Several aspects of DPF function are still poorly understood. Optimal neutron production requires
+the creation of a uniform, relatively thin sheath [8,9]. Choosing the correct gas fill to achieve this
+for new geometries is a still matter of trial and error. Outside of the ideal range the sheath may
+appear diffuse and reach across the cavity, or secondary sheaths or filaments may appear [8],
+both apparently harmful to performance. Voss Scientific has recently carried out 2D, fully
+electromagnetic particle-in-cell (PIC) simulations of sheath creation [10] using their code LSP,
+modeling the creation of the plasma sheath for arbitrary operating conditions. This is an
+important step toward a design tool for choosing DPF operating conditions. The ALEGRA team
+is completing work on a new capability to directly import data derived from these PIC
+simulations and use it to initiate our MHD simulations.
+
+
+
+
+                                                 11
+Current knowledge of pinch physics is even spottier. Plasma densities and temperatures, both
+predicted and measured, are insufficient to produce thermonuclear neutrons in the quantities
+observed, and the anisotropy and energy spectra of neutrons, and the ejection of high-energy
+charged particles all indicate non-thermonuclear mechanisms [1,11-27,49]. The pinch is subject
+to a variety of instabilities, producing complex structures, hot spots, strong electric fields and
+axial particle acceleration, all of which may contribute to neutron production [11,12,14,28-
+32,44]. In some experiments neutron emission has been observed in two discrete bursts, the first
+occurring at maximum pinch compression and a much larger, apparently non-thermonuclear
+burst as the pinch expands [12,49]. Yield saturation at higher energy inputs has been observed in
+some experiments [33-35] and is still not understood. Explanations for the high yields have
+focused on beam-target fusion driven by deuteron acceleration from MHD instabilities [11-
+13,22,24], but other observed features such as small, high-temperature hot spots [4,5,36,37] have
+not been explained and may be relevant.
+
+MHD simulations can model conditions only up to the early pinch stage, when charge separation
+and instabilities occur, MHD approximations break down and the simulation must be stopped
+[42,43,45-48]. 2D simulations also miss many critical details: parallel cathode bars cannot be
+modeled, nor filamentation or other structuring in the sheath and pinch. An accurate simulation
+would require a three-dimensional MHD model up to the early pinch stage, where one might
+gain insight into the 3D structure as a starting point for further, particle-based simulations to
+follow the non-thermal plasma evolution. Ref. 26 documents a three-dimensional (3D), fully
+electromagnetic PIC simulation of sausage and kink instabilities in z-pinch-like plasmas for an
+idealized situation. We believe that PIC calculations guided by 3D MHD modeling of DPF pinch
+physics could shed new light on the mechanisms of neutron production. ALEGRA-HEDP is fully
+capable of high-resolution, massively parallel 3D simulations, and with the 2D benchmarks
+described in this paper completed, we are ready to carry out this 3D modeling.
+
+
+
+
+                                               12
+                 3. OVERVIEW OF TARGETED EXPERIMENTS
+Three experimental devices were chosen for modeling by agreement with DTRA/NumerEx/SNL.
+Two of these were documented by Bernard et al. [1]; the third device currently operated by
+NSTec in North Las Vegas. All three geometries are of the common “Mather” design. The center
+electrode is a solid copper anode, the outer electrode a cage of parallel copper bars (which appear
+as a solid wall in 2D cross-section). The base of the anode is wrapped in a 1/4”-thick pyrex
+insulator reaching 5 cm into the cavity. All three machines have a coaxial cavity of
+approximately one inch radial extent, and differ mainly in the anode length and width, and input
+power. We will refer to them as Bernard Long (25-cm anode, 27 kJ), Bernard Short (15-cm
+anode, 96 kJ) and Tallboy (nearly 66-cm anode, 270 kJ). The cathode length and insulator width
+for both Bernard devices had to be estimated from descriptions that were not clear and
+sometimes contradictory. Cross-sections of the three geometries from our 2D simulations are
+shown in Figures 2, 4 and 6, and the geometry for an upcoming 3D simulation of the Bernard
+Long machine is seen in Figure 9.
+
+The documentation of the Bernard experiments included measurements of density and
+temperature obtained from holographic interferometry and laser scattering for one of the
+machines, and peak current and neutron yield for both machines. NSTec provided us current vs.
+time traces and total neutron yield for Tallboy.
+
+As discussed earlier, neutron production in DPFs appear to be largely non-thermonuclear in
+origin. MHD codes such as ALEGRA can model only the thermonuclear contribution arising
+from hot, dense plasma, and only through the early part of the pinch phase after which the MHD
+approximation fails. We therefore expect that computed predictions of neutron yield will fall far
+below the experimental observations.
+
+
+
+
+                                                13
+14
+                                    4. ALEGRA-HEDP
+ALEGRA-HEDP [7] is a 2D/3D ALE (Arbitrary Eulerian-Lagrangian) code featuring coupled,
+operator-split models for hydrodynamics, magnetics, thermal conduction and radiation physics;
+multi-material, multiphase equation-of-state (EOS) models; material strength and fracture
+models; MHD including advanced thermal/electrical conductivity and lumped circuit models;
+two-temperature physics (separate ion and electron temperatures); emission, multi-group
+diffusion and implicit monte-carlo for radiation modeling; neutron yield and time-of-flight
+diagnostics; and a very full complement of output diagnostics. The ALEGRA code family runs
+both in serial and massively parallel mode on a wide variety of platforms, and has been
+successfully used to model a wide variety of experiments with high fidelity in both two and three
+dimensions [refs].
+
+
+
+
+                                               15
+16
+                                  5. PROBLEM SET-UP
+Simulations were carried out on meshes fitted to each geometry, with deuterium gas completely
+filling the computational domain. ALEGRA-HEDP provides extensive control over the
+computational approximations used, requiring a detailed knowledge of the assumptions involved
+and how these controls work. Our greatest challenge involved the equation-of-state model. We
+began with the widely used Los Alamos National Laboratory (LANL) Sesame model containing
+tabulated EOS data for deuterium down to a lowest meaningful density of .01 kg/m3, below
+which thermodynamic consistency is guaranteed not to hold. For DPF simulations, the initial gas
+fill and the low-density region behind the sheath are both in this thermodynamically inconsistent
+regime. We found that the plasma sheath would not propagate stably using this model,
+apparently due to this lack of consistency. An ideal gas model allowed modeling of sheath
+dynamics for a single-temperature approximation but did not handle two-temperature physics
+well. We finally employed the analytic QEOS model with parameters chosen for gaseous
+deuterium. Evaluating the equations in this model slow the computation significantly compared
+to a tabular EOS, so we carried out simulations with a tabularized version of this model,
+generated by Kyle Cochrane of SNL. Simulations using the table and the full QEOS model were
+found to differ very little.
+
+Cell size was roughly 0.5 mm, with finer meshing along the rounded end of the anode. This is
+the minimum for capturing the pinch structure; with the code now validated for a series of
+geometries, higher-resolution simulations should be carried out. We modeled the insulator both
+as fully embedded in the anode and more accurately as 0.25 in. thick, with little effect on the
+results. Estimate of photon mean free paths indicates that radiation diffusion should be of little
+consequence, so a thermal emission model was used to avoid the heavy computations of full
+radiation diffusion.
+
+As already mentioned, one limitation of 2D simulations involves the cathode bars. The cathode
+consists of a cage of parallel bars, and much of the plasma is lost between the bars while the rest
+accumulates against the bars. When modeling a 2D slice of this geometry in ALEGRA, we must
+choose between representing the bars as a solid impermeable boundary, or as completely open to
+mass flow while maintaining the correct boundary conditions for current flow. Running in these
+two modes produced different details for the current rise and the timing of the pinch. We expect
+the two results to bracket the correct value, which would only be obtained by a full 3D model of
+the bars (Figure 9). It is interesting to note that early DPF experiments were done with solid
+cathode walls, but these were abandoned in favor of porous walls and then parallel bars, because
+residual gas accumulating against the cathode could sometimes form a second current path
+behind the sheath that would disrupt power flow. This is indeed what happened in our Tallboy
+simulation when carried out with a solid wall model.
+
+Each problem was set up with a circuit model comprising appropriate values of capacitance,
+inductance, resistance and charging voltage. The problem was initialized with a uniform, room-
+temperature deuterium gas fill, and a thin layer of higher-temperature gas in a thin layer along
+the insulator. MHD DPF simulations require choosing this seed ionized gas rather arbitrarily; we
+chose a thin layer of 1 eV temperature. Again, we are in the process of importing a first-
+principles PIC description of the sheath from LSP (Figure 8).
+
+
+
+                                                17
+18
+                               6. SIMULATION RESULTS
+We relate the simulation results in turn for the Bernard Long, Bernard Short and Tallboy devices,
+and compare to all available experimental data. All three devices were run with both open and
+closed cathode boundaries, as discussed in the last section, to bound the peak current and the
+timing.
+
+6.1    Bernard Long
+The Bernard Long device featured a 135 microF capacitor bank at 20 kV charging voltage, for
+total stored energy of 27 kJ. We ran our circuit model with 27 nH stray inductance and 3.3 mΩ
+resistance, values not given in the paper but estimated from measurements on other machines.
+We ran with a 3 Torr gas fill for comparison to experiment.
+
+
+
+
+      Figure 2. Plasma density plots for Bernard Long device, showing the lift-off,
+                run-down and pinch phases.
+
+Plasma density for this device is plotted for closed-cathode-boundary conditions in Figure 2,
+showing the lift-off, rundown and pinch phase. (The computational domain was just one side of
+the region shown; we plot a reflection of the data about the vertical axis to make the geometry
+more clear.) A substantial amount of residual plasma is seen against the cathode wall. Figure 3
+displays current traces for the open- and closed-cathode boundary cases along with neutron
+yields of between 1 and 2 × 105 and rising at the end of the simulation, compared to 1.5 × 109
+reported from the experiment. We see that the presence or absence of residual plasma strongly
+affects the current peak and timing. Neutron yields differ for the two simulations, but since the
+yield was rising at the end of the simulation the difference is not meaningful. Again, the
+discrepancy between computed and experimental neutron yields was expected due to the
+inability of MHD to model non-thermonuclear production mechanisms.
+
+
+
+                                                19
+       Figure 3. Computed current traces for open- and closed-cathode models of
+                 Bernard Long, and accompanying thermonuclear neutron yields
+                 between 1 and 2 × 105. Experimental values were 0.6 MA and 1.5 × 109
+                 neutrons.
+
+Bernard et al. measured peak current, neutron yield, estimated ion and electron temperature and
+plasma density during rundown and pinch. Some detailed pinch observations were made at times
+beyond the reach of our MHD code and are not discussed here. The peak current reported was
+0.6 MA, with 0.5 MA quoted for their neutron yield of 1.5 × 109. Our simulation produced a
+peak current of 0.60 MA. They report a maximum ion temperature of 300 eV before the plasma
+pinches, with “much lower” electron temperature, and a collapse velocity of 1.8 × 107 cm/s,
+although they don’t specify exactly where this was measured. Immediately before the pinch in
+Figure 2, computed peak ion and electron temperatures in the densest part of the sheath were in
+the ranges 250–650 eV and 200-360 eV respectively (lower temperature farther from the anode),
+with sheath radial speed of 6 × 107 cm/s. Very shortly before that, when the sheath was
+approximately ¾ of the way around the curved tip of the anode, sheath radial velocity was 1.8 ×
+107 cm/s, and total speed 2.2 × 107 cm/s, much closer to the experimental figure. The simulation
+produced higher temperatures in the extremely low-density plasma behind the sheath, but
+densities there are so low—more or less at the density floors imposed on the simulation—that the
+temperatures not considered meaningful.
+
+Bernard reports a pinch lifetime of 20–50 ns, experiencing “large variations in size and density”
+during that time, with number densities ranging from 1018 to 5 × 1019/cm3, and ion temperatures
+roughly estimated to be 700 eV. The simulation produced peak ion temperatures of 9 keV in the
+pinch, and peak mass density of .045 kg/m3, corresponding to a number density of 1.4 ×
+1019/cm3. From the time the sheath hits the axis to the time our circuit solver fails is only a few
+ns, as long as we can reasonably hope to follow the pinch evolution with an MHD code. The
+cause of the anomalously high ion temperatures in the pinch simulation has not been determined
+
+
+
+                                                20
+yet. Similarly high temperatures were reported by Degnan et al. from the MACH2 code in the
+April 30, 2009 DTRA briefing at SNL [40].
+
+Bernard et al. observed neutron yield of 1.5 × 109 for this experiment, and this pulse was not
+observed until after the pinch had broken up. They point out that the peak measured ion densities
+and temperatures in the pinch could produce only 5 × 105 neutrons (in the neighborhood of what
+ALEGRA predicted), which is negligible compared to the observation.
+
+For the closed-cathode case the leveling off of current for the open case was due to an apparently
+random sheath non-uniformity that developed into a tendril and affected current flow as it exited
+the boundary. The collapse speeds, densities and temperatures were similar to the closed-
+cathode-boundary case. The pinch came out somewhat thinner, with density close to the axis
+reaching .079 kg/m3, and temperature reaching 9 keV. This very high-density region only
+spanned one cell radially, so these simulations should be done at higher resolution in order to
+confirm these numbers.
+
+Bernard et al. also relate experiments on this device with an 8-Torr gas fill, but the data
+presented mainly comprises interferometric observations of pinch stages later than what can be
+accessed with our simulations. They present visible-light photos of very prominent radial
+filamentation in the plasma sheath during rundown, documentation of high-energy, anisotropic
+neutron emissions, and speculative discussion of the apparently non-thermonuclear origins of the
+emitted neutrons. They also point out from estimates of electron drift speeds that the pinch
+plasma would be subject to cyclotron drift, Buneman and beam-plasma instabilities.
+
+6.2    Bernard Short
+This device was powered by a 120 microF capacitor bank charged to 40 kV for a stored power of
+96 kJ, and the circuit model was run with same resistance and inductance as Bernard Long. Gas
+fill was 10 Torr. The experiment produced a peak current of 1.5 MA and total neutron yield of
+3 × 1010. In Figures 4 and 5 respectively we show a snapshot of plasma density in the pinch
+phase for the closed-cathode configuration, and the current trace and neutron yields for open and
+closed configuration. The open- and closed-cathode cases both agreed precisely with peak
+current value, and were much closer to one another than in the Bernard Long case, presumably
+because the compact size of Bernard Short doesn’t allow the discrepancies to accumulate over
+time. Neutron yields for both were around 3.5 × 106 at the end of the simulation.
+
+
+
+
+                                               21
+   Figure 4. Density plot for pinch phase in Bernard Short device.
+
+
+
+
+Figure 5. Computed current traces and thermonuclear neutron yields for
+          Bernard Short device. Peak current was 1.5 MA and neutron yields
+          around 1.5 × 106, compared to experimental values of 1.5 MA and 3 ×
+          1010 neutrons.
+
+
+
+
+                                  22
+6.3    Tallboy
+We modeled Tallboy in its then-current configuration with geometry and experimental
+parameters provided by NSTec: 270 kJ stored energy, with 216 microF capacitor bank, 50 kV
+charging voltage, 50 nH inductance, and resistance set to the 3.3 mΩ guess for the Bernard
+machines. We were not able to obtain Tallboy experimental data until September 14, 2009 (one
+week ago). When our first simulation did not agree with experiment, we made inquiries and
+learned that the cathode length and gas fill for the experiments were different from that we had
+originally been advised, necessitating a rapid setup of a new simulation with the correct
+parameters. We are still verifying the veracity of the data.
+
+
+
+
+Figure 6. Plasma density during run-down in Tallboy closed-cathode configuration,
+          showing plasma tendril that disrupted the simulation.
+
+
+
+
+       Figure 7. Plasma density during pinch for open-cathode Tallboy simulation.
+
+
+
+
+                                               23
+Simulations were carried out with both open and closed cathode boundaries. The closed-cathode
+case experienced a disruption to the current flow, after which that simulation was terminated.
+The culprit is seen in Figure 6. Closed-cathode cases frequently exhibited thin plasma tendrils
+extending out from the residual plasma on the cathode boundary; shortly after the time shown in
+Figure 6, the large tendril immediately behind the sheath touched the anode surface, providing a
+second current path which caused the disruption. As already mentioned, this is why solid-wall
+cathodes were abandoned. In Figure 7 we see the pinch phase for the open-cathode Tallboy
+simulation, apparently showing an m=0 instability.
+
+Experimental data for thirteen shots was very recently obtained and compared to our open-
+cathode simulation. We were surprised at a large discrepancy between ALEGRA’s prediction of
+1.8 MA peak current and the experimental value of 2.3 MA. MACH2 results presented by
+Degnan et al. at the April 30, 2009 DTRA briefing [40] were also close to ALEGRA’s
+prediction. We are currently tracking down whether there could be an error in what is being
+compared, as previous experience with both ALEGRA and MACH2 indicate that we should be
+able to predict the current quite closely. The computed neutron yield at job finish was 3.7 × 107,
+compared to an average experimental value of 3.5 × 1011.
+
+Table 1. Peak Currents and Neutron Yields from Experiment and from ALEGRA
+         Simulations, for all Three Test Devices
+
+                                  Peak Current (MA)                  Neutron Yield
+                             Experiment        ALEGRA         Experiment       ALEGRA
+                                                                       9
+        Bernard Long              0.6          0.5 – 0.6       1.5 × 10        1.2 × 105
+        Bernard Short             1.5             1.5           3 × 1010        1.5 × 106
+        Tallboy                   2.3             1.8          3.5 × 1011      3.7 × 107
+
+
+
+
+                                                24
+                                      7. DISCUSSION
+2D ALEGRA-HEDP simulations accurately reproduced most of the key characteristics of the
+three devices tested. Computed pinch temperatures for the Bernard experiments were higher than
+those estimated from experiments; the reason for this is still under investigation. Timing, peak
+currents, sheath speed and temperatures in the collapse phase were in good agreement for the
+Bernard devices; the Tallboy comparisons are still under review. The computed and
+experimental peak currents and neutron yields for all three machines are shown in Table 1.
+Neutron yields were underestimated, as we expected since MHD can only predict the
+thermonuclear portion of neutron production. We have confirmed the ability of ALEGRA-HEDP
+to perform accurate simulations of DPF operation in 2D, an ability that should extend to 3D
+simulations, and establishes the code as a powerful tool for other applications in the DTRA loads
+effort.
+
+The ALEGRA capability to import existing 2D LSP data for the early time-sheath is very nearly
+in place: ALEGRA can now import ion and electron densities and temperatures, and the
+magnetic field import capability is being completed. Figure 8 shows electron temperatures
+during sheath initiation for the Mather Long device imported from LSP, which will be used to
+initiate a 2D simulation. The ability to easily couple electromagnetic PIC calculations and
+resistive MHD simulations is a new and powerful tool that should have applications in many
+areas.
+
+
+
+
+   Figure 8. Plot of electron temperatures near Bernard Long insulator, computed by
+             LSP and imported to ALEGRA-HEDP.
+
+The ultimate goal of this work was to optimize DPF designs for increased neutron yields. The
+successful simulations presented here confirm our ability to address this task. With validation on
+the Bernard devices and a first Tallboy simulation completed, we can easily increase the driving
+voltage and gas fills, and scale up and modify the geometry to predict machine behavior. We
+have launched a first 3D simulation of the Bernard Long device, with Figure 9 showing the
+copper and insulator geometry, which should provide a more realistic glimpse of conditions
+going into the pinch and point the way for future computational efforts.
+
+
+
+
+                                                25
+Figure 9. Copper and insulator surfaces for 3D simulation of Bernard Long device.
+
+
+
+
+                                       26
+                          DISTRIBUTION
+
+1 MS0899   Technical Library        9536 (1 electronic copy)
+
+
+
+
+                               27
+

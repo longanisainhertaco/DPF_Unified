@@ -10,7 +10,10 @@ set -e
 cd /Users/anthonyzamora/dpf-unified
 source ~/.zshenv 2>/dev/null
 
-export OPENAI_API_KEY="${OPENAI_API_KEY:-sk-dummy-embeddings-disabled}"
+if [ -z "${OPENAI_API_KEY:-}" ]; then
+    export SHINKA_EMBEDDINGS_DISABLED=1
+    echo "OPENAI_API_KEY unset; remote embedding calls disabled for this loop."
+fi
 
 MAX_ROUNDS=100
 GENS_PER_ROUND=50

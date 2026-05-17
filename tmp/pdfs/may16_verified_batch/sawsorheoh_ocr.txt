@@ -1,0 +1,5612 @@
+Experimental Studies of a Current-stepped Z-pinch
+
+Saw Sor Heoh, B.Sc. (Hons.)
+
+being a thesis submitted to
+Universiti Malaya
+in candidature for the degree of
+
+Doctor of Philosophy
+
+Department of Physics
+Universiti Malaya
+Kuala Lumpur
+December, 1990
+
+To Mother
+ACKNOWLEDGEMENT
+
+It is a great pleasure to express my gratitude for the
+assistance of the individuals and institutions which made: this
+work possible. Among them, I am most* grateful to my teachers: and
+supervisors Prof. Dr. S.lee and Assoc. Prof. Dr. C.S.Wong for
+their continual guidance, support and understanding without which
+this work would not have been completed. I would also like to
+
+thank the following individuals and institutions :-
+
+Mr A.E.Dangor, Dr. P.Choi, Dr. M.Favre, Dr. R.Miklazewski and Dr.
+Chaivitya Silawatshananai, Dr. F.d. Wessel for fruitful
+discussions.
+
+Assoc. Prof. Dr. S.P.Moo, head of plasma laboratory, Assoc. Prof.
+Dr. Y.H.Chen, Assoc. Prof. A.C.Chew and fellow colleagues and
+staffs of plasma laboratory for the pleasant environment and the
+sharing of equipment and taboratory time.
+
+Mr. J.Singh for his unfailing technical assistance.
+
+All the staffs of Physics Department who have assisted and
+contributed in one way or another.
+
+Universiti Malaya for research grant and facilities.
+
+IcTP, Trieste, ITALY for sponsoring my attendence in the Spring
+College on Plasma Physics, [1987].
+
+Alexander Humbolt Foundation for donating the Ja@lich bank, [1977].
+
+Last but not least, I am grateful to my mother, sisters
+
+&
+wt
+and brother, Tin, Kee, Geng and Hock and friend, Kheng Sun for
+
+their love, support and understanding which made this work
+
+possible.
+
+ii
+ABSTRACT
+
+The current-stepping technique was first introduced by
+S.Lee (1984). This thesis is a pilot effort to investigate
+experimentally the effect of a current-step on the enhancement of
+pinch compression as predicted by the energy balance theorv.
+
+The Universiti Malaya Current-Stepped Z-pinch, UMCSZP is
+designed and constructed using the energy balance slug model.
+Electrical signals of the plasma current and voltage and streak
+photographs of the radial compression were taken of the Z-pinch
+plasma without and with current-stepping. Magnetic field mapping
+along the radial direction is also carried out to obtain the
+evolution of the current density profile. Results obtained
+indicate that the assumptions of a plasma of infinite
+conductivity in the energy balance slug model together with a
+constant specific heat ratio, y equals to 5/3 at the moment of
+current-stepping are not valid in this experiment.
+
+The energy balance slug model is extended to represent
+more closely the real plasma condition with transient effective
+specific heat ratio, Vere’ The transient variation of YVeore with
+the shock speed is obtained numerically from the simultaneous
+solutions of the closed system formed by the 1-D shock jump
+equations, the thermal equation of state, the Saha equation and
+the caloric equation. The extended model with the consideration
+of the varying Veer with shock speed is called the y-varying
+
+energy balance model.
+
+iii
+e With the parameters of UMCSZP, the new model predicts no
+change in the final radius of the plasma column produced by
+current-stepping. This is in agreement with the experimental
+observations. The average effective specific heat ratio, Vers of
+1.2 during the first compression increases to 1.6 upon
+current-stepping. This decreases the compressibility of the
+plasma and masks the enhancement in compression from
+current-stepping.
+
+Based on the new model a new current~stepped Z-pinch
+
+experiment called the Marx-line Combination Current-stepped
+
+Z-pinch, MLCCSZP is designed.
+
+iv
+CONTENTS
+
+Page
+ACKNOWLEDGEMENT i
+ABSTRACT , iii
+LIST OF FIGURES ix
+LIST OF TABLES xviii
+CHAPTER 1 INTRODUCTION 1
+1.1 Introduction 1
+1.2 Overview of the experiment 2
+1.3 Layout of the thesis 3
+CHAPTER 2 THE CURRENT-STEPPED Z~PINCH 5
+2.1 Introduction 5
+2.2 Theory / 5
+2.3 The energy balance slug model 12
+2.4 The strong compression phase 13
+2.5 The slow dynamics phase 14
+2.6 The circuit equations 15
+CHAPTER 3 THE CAPACITOR-CAPACITOR COMBINATION - A FIRST
+ATTEMPT TO CURRENT-STEP A Z-PINCH 19
+3.1 Design considerations 19
+3.2 Diagnostics and instrumentation 28
+3.2.1 Current measurement 28
+CHAPTER 4
+
+oy
+ty
+nN
+
+CHAPTER 5
+
+Voltage measurement
+Construction of the voltage probe
+Streak photography
+B-field measurement
+Experimental set-up
+
+Experimental procedures
+
+RESULTS AND ANALYSIS
+
+Current, voltage and streak measurements
+Current and voltage measurements
+
+High speed photography
+
+Discharge with first bank alone
+Current-stepped Z-pinch discharges
+Magnetic fields measurements
+Introduction
+
+Discharge with first bank alone
+Current-stepped Z-pinch discharges
+
+Conclusions
+
+THE EFFECT OF VARIATION OF Yett
+Introduction
+
+Calculation of y
+
+Numerical solutions
+
+Improved slug model with varying gamma, y(t)
+Computation procedures
+
+Numerical results
+
+First bank alone - without current-stepping
+
+vi
+
+Page
+
+33
+36
+36
+39
+
+42
+
+43
+43
+43
+44
+44
+50
+56
+56
+57
+57
+
+57
+
+65
+65
+65
+69
+74
+15
+76
+
+78
+5.6.2
+
+5.7
+
+5.8
+
+5.9
+
+CHAPTER 6
+
+6.1
+
+Current-stepped Z-pinch with varying
+specific heat ratio, y(t).
+Comparison with experimental results
+Discussions
+
+Conclusions
+
+THE DESIGN OF THE MARX-WATER LINE COMBINATION
+
+CURRENT-STEPPED Z~PINCH [MLCCSZP]
+Introduction
+
+The design of MLCCSZP
+
+Design procedures
+
+Design of the Marx system
+
+Marxl ~ First current source of MLCCSZP
+Marx2 - For pulse charging of the water-line
+Design of the water-~line
+
+Design of the water-line switch
+
+The circuit equations of MLCCSZP current
+generator
+
+Charging of the water-line
+
+Discharging of the water-line
+
+The MLCCSZP circuit
+
+Computation procedures
+
+Numerical results
+
+Comparison of the first compression between
+UMCSZP and MLCCSZP
+
+Current~stepped Z-pinch
+
+vii
+
+Page
+
+87
+
+95
+102
+
+106
+
+110
+110
+410
+110
+113
+113
+113
+115
+
+121
+
+123
+123
+123
+125
+127
+
+127
+
+127
+
+129
+6.7
+
+6.8
+
+6.9
+
+6.9.1
+
+6.10
+
+CHAPTER 7
+
+Fd
+
+7.2
+
+7.3
+
+REFERENCES
+
+Experimental set-up of MLCCSZP
+
+The trigger pulse generator
+
+Electrical measurements
+
+Construction of the high power voltage probe
+
+Preliminary testing of Marxl
+
+CONCLUSION
+
+Introduction
+
+Review of the experimental results
+
+Future plans
+
+viii
+
+Page
+140
+140
+148
+151
+
+153
+
+155
+155
+155
+
+156
+
+158
+CHAPTER 2
+
+2.1 (a)
+
+to
+
+«1 (b)
+
+bo
+
+-2 (a)
+
+2.2 (b)
+
+bo
+w
+
+CHAPTER 3
+
+3.1
+
+3.2
+
+3.3
+
+3.4
+
+3.5
+
+LIST OF FIGURES
+
+Page
+Functions of Ph and Po versus radius ratio
+without a current~step. 9
+Radial trajectory and current waveform
+without a current-step. 9
+Functions of Fy and Fa versus radius ratio
+with a current-step. 10
+Radial trajectory and current waveform with
+a current-step. 10
+Schematic diagram of the arrangement
+of a current-stepped Z-pinch. 11
+The circuit diagram of a current-stepped
+Z2-pinch. 16
+Design of the current-stepped Z-pinch. 22
+Discharge circuitry of the first bank of the
+current-stepped Z-pinch. 24
+The capacitor, Cc, and the spark-gap
+connections. 25
+Top view of the capacitors arrangement of Cy
+(reproduced from original diagram of KFA,
+IPP, 45 00 00-1). 26
+
+Cross-sectional view of one of the arms in
+Page
+Fig. 3.4 showing the connections between the
+capacitor, the pressurised spark-gap and the
+
+anode flange (reproduced from original
+
+diagram of KFA, IPP, 45 02 00-1). 27
+3.6 Discharge circuitry of the second bank of
+
+the current-stepped Z-pinch. ‘ 29
+3.7 Discharge circuitry of the UMCSZP. 30
+3.8 The Rogowski coil as a current transformer. 31
+3.9 Sinusoidal current signal for the
+
+calibration of the Rogowski coil. 31
+3.10 The principle of the voltage probe. 34
+3.11 The design of Cy. 34
+3.12 Equivalent circuit of the voltage probe
+
+system. 35
+3.13 Calibration of the voltage probe. 35
+3.14 Design of the magnetic probe. 38
+3.15 Equivalent circuit of the magnetic probe 38
+
+system.
+3.16 Block diagram of the UMCSZP set-up. 40
+CHAPTER 4 43
+4.4 The electrical signals and the corresponding
+
+streak photograph showing the radial
+
+compression of a hydrogen pinch at 0.8 mbar
+driven by the first bank alone (without
+current~stepping) . 45
+
+4.2 Normalised radial trajectories of the
+4.3
+
+4.4
+
+4.5
+
+4.6
+
+4.7
+
+4.8
+
+4.9
+
+Page
+magnetic piston, k versus normalised time,
+v of a 0.8 mbar hydrogen Z-pinch driven by
+the first bank alone. Al
+Variation of the plasma resistance, Rg due
+to skin depth and dL/dt versus plasma
+temperature, Te 49
+Relations between the ratio of skin depth to
+the radius of the plasma column, 6/r and the
+percentage error in the plasma radius,
+(Ar/r x 100%) as a function of plasma
+temperature, T,. 49
+Electrical measurements and the
+corresponding streak photographs of the
+radial compression of UMCSZP at 0.8 mbar Hy
+with different times of current-stepping. 51
+Piston trajectories of UMCSZP with different
+times of current-stepping. 52
+Reproduction of the streak images of the
+final stage of the UMCSZP for single
+compression and current-stepped compressions
+with different times of current~stepping. 54
+Blectrical and magnetic field signals of a
+0.8 mbar hydrogen pinch driven by the first
+bank alone. 58
+The development of the current density of a
+0.8 mbar hydrogen pinch driven by the first
+
+bank alone. 59
+
+xi
+Page
+4.10 Electrical and magnetic field signals of a
+0.8 mbar hydrogen current-stepped Z~-pinch
+(tas is 1.9 ys). 60
+4.44 The development of the current density of a
+0.8 mbar hydrogen current~stepped Z-pinch
+
+(ta, is 1.9 ps). 61
+
+CHAPTER 5 65
+5.1 Degree of dissociation, 6 and degree of
+
+ionisation, « versus shock speed, Vy for
+
+hydrogen gas at 0.8 mbar. V1
+5.2 Specific heat ratio, y versus shock speed,
+
+Vy for hydrogen gas at 0.8 mbar. 72
+5.3 Temperature, T. versus shock speed, ve for
+
+hydrogen gas at 0.8 mbar. 73
+5.4 Flow chart of the extended current-stepped
+
+model. T
+5.5 The variation of Vere for a hydrogen
+
+discharge at 0.8 mbar driven by the first
+
+bank alone (without current-stepping) . 79
+5.6 The variation of shock speed, Ve for a
+
+hydrogen discharge at 0.8 mbar driven by the
+
+first bank alone (without current-stepping). 80
+5.7 The development of the temperature of the
+
+shock heated plasma of a hydrogen discharge
+
+at 0.8 mbar without current~stepping. 81
+
+xii
+5.8
+
+5.9
+
+5.10
+
+5.11
+
+§.12
+
+5.13
+
+5.44
+
+Page
+The corresponding shock and piston
+trajectories of the hydrogen pinch without
+current-stepping predicted by the y-varying
+and the y = 5/3 model. 83
+The corresponding plasma current and
+voltage of the hydrogen pinch without
+current-stepping predicted by the y-varying
+and the y = 5/3 model. 84
+The corresponding plasma inductance, uy of
+the hydrogen pinch without current-stepping
+predicted by the y-varying and the y = 5/3
+model. 51
+The development of the magnetic Reynolds
+number, &,, of the hydrogen pinch without
+current-stepping predicted by the y-varying
+model. 86
+Normalised plasma current versus time
+predicted by the y-varying model for UMCSZP
+with various times of current~-stepping (0.8
+mbar hydrogen). 88
+Normalised plasma voltage versus time
+predicted by the y-varying model for UMCSZP
+with various times of current-stepping (0.8
+mbar hydrogen). 89
+Normalised shock trajectories predicted by
+the y-varying model for UMCSZP with
+
+various times of current-stepping (0.8 mbar
+
+xiii
+-15
+
+16
+
+17
+
+18
+
+-19
+
+221
+
+-22
+
++23
+
+24
+
+Page
+hydrogen) . 90
+Normalised piston trajectories predicted by
+the y-varying model for UMCSZP with various
+times of current~-stepping (0.8 mbar Hy). 91
+The variation of ore for UMCSZP predicted
+by the y-varying model for various times of
+current-stepping. 92
+The variation of shock speed, Yo for UMCSZP
+predicted by the y-varying model for various
+times of current-stepping. 93
+The variation of plasma temperature, Ty, for
+UMCSZP predicted by the y-varying model for
+various times of current-stepping. 94
+Minimum radius ratio, kon versus wp for
+UMCSPZ predicted by the y-varving model. 96
+The enhancement factor, E.f. versus p for
+UMCSZP predicted by the y-varving model. 97
+Experimental and theoretical piston
+trajectories predicted by the y-varying
+current-stepped model of UMCSZP. 98
+
+Minimum radius ratio, Kon versus p predicted
+
+by both the y-varying and the y = 5/3 model. 100
+Enhancement factor, E.f. versus p predicted
+
+by both the y-varying and the y = 5/3 model. 101
+
+Mt
+
+The plasma dynamic resistance, R, versus
+normalised time for a 0.8 mbar Hy pinch
+
+without current-stepping predicted by the
+
+xiv
+CHAPTER 6
+
+6.
+
+-10
+
+11
+
++12
+
+13
+
+14
+
+15
+
+16
+
+y-varying model and the y = 5/3 model.
+
+A schematic of the layout of Marxl.
+
+The arrangement of the capacitors of Marx2.
+The pressurised spark-gap of Marx2.
+
+A schematic of the layout of Marx2.
+
+The design of the water~line.
+
+The design of the water-line switch.
+
+The circuit diagram representing the pulse
+charged water-line.
+
+The discharge circuitry of the first bank
+(Marxl)of MLCCSZP.
+
+The discharge circuitry of the MLCCSZP.
+Block diagram of the computation sequences
+of MLCCSZP.
+
+Variation of ete of MLCCSZP and UMCSZP
+without current-stepping.
+
+Variation of the shock speed of MLCCSZP and
+UMCSZP without current-stepping.
+
+Piston and shock trajectories with y-varying
+and y = 5/3 of UMCSZP.
+Piston and shock trajectories with y-varying
+and y = 5/3 of MLCCSZP.
+
+Development of the magnetic Reynolds number,
+ae of MLCCSZP and UMCSZP.
+
+Variation of y tt of MLCCSZP with various
+e
+
+Page
+
+105
+
+110
+
+114
+
+116
+
+117
+
+118
+
+119
+
+124
+
+126
+
+128
+
+130
+
+131
+
+132
+
+132
+
+133
+17
+
++18
+
+.19
+
+-20
+
+24
+
++22
+
++23
+
+-25
+
++26
+
++28
+
++29
+
+times of current-stepping.
+
+Variation of shock speed, vs of MLCCSZP
+with various times of current-stepping.
+Variation of plasma temperature, Te of
+MLCCSZP with various times of current-
+stepping.
+
+Normalised plasma current, Ly of MLCCSZP
+with various times of current-stepping.
+Normalised plasma voltage, dy of MLCCSZP
+with various times of current-stepping.
+Plasma inductance, Ly versus normalised time,
+
+vt of MLCCSZP with various times of current-
+
+stepping.
+
+Normalised shock trajectories, k. of MLCCSZP
+
+with various times of current-stepping.
+Normalised piston trajectories, ky of
+MLCCSZP with various times of current-
+stepping.
+
+Compression enhancement factor, E.f. versus
+wp of MLCCSZP and UMCSZP.
+
+The circuit diagram of Marxl.
+
+The circuit diagram of the 50 kV charger for
+Marxl and Marx2.
+
+A schematic layout of the MLCCSZP system.
+The circuit diagram of the 40 kV, 40 ns
+pulse generator.
+
+A typical output pulse of the cascaded SCR
+
+Page
+
+134
+
+135
+
+136
+
+137
+
+138
+
+139
+
+141
+
+143
+
+144
+
+145
+
+146
+
+147
+Page
+
+pulse generator. 149
+6.30 The high voltage probe system. 150
+6.31 The design of the high power resistor. 152
+6.32 The output voltage signal of Marxl at 120 kV
+
+discharging through a load of 75 Q. 154
+
+xvii
+CHAPTER 4
+4.1
+
+4.2
+
+CHAPTER 5
+
+5.1
+
+LIST OF TABLES
+
+Page
+Theoretical and experimental quasi-~ ,
+equilibrium radius ratio, Kom for a simple
+gas compressional Z-pinch and a current-
+stepped Z-pinch. 53
+Results obtained from streak photography. 55
+
+Theoretical (y = 5/3 and y-varying) and
+experimental minimum radius-ratio, Kom for
+for a simple gas compressional and a
+
+current-stepped Z-pinch using UMCSZP system. 108
+
+xviii
+CHAPTER 1
+
+INTRODUCTION
+
+1.1 Introduction
+
+The Z-pinch is one of the earliest fusion devices
+proposed and studied. Unfortunately, it is plagued by inherent
+instabilities, predicted by ideal MHD theory and observed in early
+experiments leading to its early and sudden dismissal as a
+possible fusion device [Kruskal & Schwarzchild, 1954; Carruthers &
+Davenport, 1957]. However recent work on stability regimes such
+as finite Larmor-radius effect (Haines, 1981] and works by Hammel
+et. al [1989] and Sethian et. al, [1989] indicate stability as
+long as I is increasing. This, coupled with the rapid advances
+in modern high-voltage pulse generators, have rekindled interest
+in Z-pinch research to the extent of being considered again as a
+possible fusion device. This renewed status also stems partly
+from the growing realisation that ‘conventional’ approaches to
+fusion may not lead to reactors that will be economically
+competitive with other sources of energy {(Pfirsch, D. and
+Schmitter, K.H. ,1987],.
+
+Various types of Z-pinches have been proposed and
+investigated. These include early examples summarised by Robson,
+the gas embedded Z-pinch investigated by Walker et. al. [1986],
+Bolton et. al. [1986], Nargundkar [1986] and Haines, [1987], the
+fiber 2-pinch investigated by Scudder et. a1.[1986], Sethian et.
+
+al, [1985], Ishii et. al [1989] and the hybrid 2-@ pinch
+
+initiated by Rahman, [1987].
+
+The current-stepped Z-pinch proposed by Lee [198da]
+which indicates enhanced compression by means of tailoring the
+current-profile is of interest here. A numerical study of the
+current-stepped Z-pinch including the effect of radiation cooling
+has been conducted by Ali [1985] for an ideal gas of specific heat
+ratio, y of 5/3. This thesis represents the first experimental
+
+attempt to investigate the enhancement in compression predicted by
+
+the current-stepped Z-pinch.
+
+1.2 Overview of the Experiment
+
+The experiment is a pilot effort in the investigation of
+the enhancement effect of the current-stepped hydrogen Z-pinch. A
+Z-pinch system is chosen for its relatively large radius
+facilitating the observation of the reduction in radius predicted
+by the current~stepping theory. This experiment can be divided
+into 3 phases.
+
+In the first phase, a capacitor-capacitor combination
+system, UMCSZ2P, is designed and constructed to operate as a
+current-stepped Z-pinch. The parameters of the pinch are
+length 15 cm and initial radius 7.5 cm. The operating pressure
+ranges from 0.4 to 3.0 mbar. Preliminary testing is followed by
+electrical and magnetic field measurements and streak photography
+of the pinch. Analysis of the results suqgests that the deviation
+of the experimental results from those predicted by the model may
+be due to the breakdown of the assumptions adopted in the model.
+This leads to the second phase of this experiment.
+
+The energy balance model is extended to include the
+effective specific heat ratio, err of the plasma. The
+development of the plasma flow field ~magnetic field coupling is
+also checked using the magnetic Reynolds number, Rye The new
+model predicts no significant enhancement in the current-stepped
+compression by UMCSZP. This is because the enhancement is being
+Masked by the thermodynamic and magnetohydrodynamic effects of the
+plasma. The average compressing shock speed of the first
+compression is about 4 cm/ys giving an effective specific heat
+ratio, Vere of ~ 1.2. This low speed also leads to a diffusive
+current sheath. Upon current-stepping, the increase in shock
+speed rapidly raises the effective specific heat ratio, Vert of
+the plasma to ~ 1.5 and hence lowers the compressibility /[Lee, S.,
+1983aj] of the plasma. Further, the diffusive current sheath
+inhibits proper merging of the current sheath upon
+current~stepping. These phenomena produce an opposing effect
+which masks the enhanced compression of current-stepping.
+
+The new model predicts that an average shock speed
+beyond 10 cm/ys corresponding to a peak shock speed = 30 cm/yus for
+the first compression at the instant of current-stepping is
+necessary to observe the enhancement effect by current-stepping.
+A new system, the Marx-line combination current~stepped Z2-pinch,
+MLCCSZP is designed and constructed on the new model. The high
+impedance current sources are provided by a 3-stage 150 kV Marx
+
+and a 150 kV, 1.7 Q water-line pulse charged by another 3-stage
+
+150 kV Marx.
+
+1.3 Layout of the thesis
+
+This thesis is written in 7 chapters with the first
+chapter as introduction. The current-stepped theory by Lee,
+(1984) will be presented in chapter 2. In chapter 3, the design
+of the capacitor-capacitor bank combination system called the
+Universiti Malaya Current-stepped Z-Pinch, UMCSZP is described.
+The diagnostics employed to measure the plasma parameters are also
+discussed. Presentation of the results obtained in the first
+attempt at current~stepping is found in Chapter 4. ‘comparison of
+the experimental results with that predicted from the
+current-stepped theory is conducted and conclusions drawn. It is
+found that the energy balance slug model needs to be extended to
+include the effective specific heat ratio, Vert of the plasma.
+This leads to Chapter 5 where the solution of Vere with respect to
+shock speed is obtained and incorporated into the current-stepped
+model. In Chapter 6, a new system is designed on the extended
+y-varying model. The thesis is concluded in Chapter 7 with
+
+discussions on the results and suggestions for further work.
+CHAPTER 2
+
+THE CURRENT-STEPPED Z-PINCH
+
+2.1 Introduction
+
+The current-stepping technique proposed ‘by Lee [1984a]
+is presented. It is a novel method to obtain pinch enhancement by
+tailoring the time-profile of the current source driver. The
+theory states that the quasi-equilibrium minimum radius ratio is
+dependent on the time-profile of the current and not on the
+
+absolute value of the current.
+
+2.2 Theory
+The energy balance theory [fLee, S., 1983b] applied to a
+fast radial gas compressional pinch of constant length equates the
+work done by the magnetic piston to the plasma internal energy.
+Consider the energy in the system at the point of time
+represented by m. The work done per unit mass Hs by the magnetic
+
+piston in compressing the plasma from an initial radius Lo to Ln
+
+is
+Po pot ;
+WY o= ——- dr {2.1]
+Mm 23 Dp
+La 4n ry Pn
+where Pm is the mass density, ry the radial position of the
+
+piston and I the instantaneous current flowing in the piston.
+
+The plasma internal energy is
+yo = Sy [2.2]
+
+where R, is the universal gas constant, M the molecular weight, x
+the departure coefficient, T the plasma temperature and y the
+specific heat ratio of the gas.
+
+Assuming a lossless system and equating Hs to oy the
+
+instantaneous plasma temperature is given by
+
+d. 2.3
+ry {2.3]
+
+M(y-1) [° Hot
+
+ROX ly anr Om
+
+Next, we consider the pressure relationship at this
+time. The plasma kinetic pressure, Py = (pf MIR Tak exceeds the
+
+magnetic pressure, Pa by the reflected shock pressure jump factor,
+
+fag fLee, S., 1985a, 1988a]. This gives
+
+9
+
+f Mop
+
+roe °
+Rk Om bn,
+
+ks]
+a
+wo
+on
+rae
+
+ty
+
+From [2.3] and [2.4], the combined energy and pressure
+
+balance condition is given as
+
+ar, [2.5]
+
+Dp
+firs ry
+
+2y-1) po Oo?
+[° =
+p
+
+Upon normalisation, equation [2.5] becomes
+> 2(y-1) L ak
+nr: a? ue
+rs om Pp
+
+where = I /t
+
+“p p10
+
+kom = Pilko
+
+k = r/r
+
+Pp p” o
+
+I, = WA L,/C,)
+
+= characteristic peak current of the LC
+discharge
+x = specific heat ratio of the gas and
+I, = pinch current at quasi~equilibrium
+
+2 2
+Generally, u* can be written as a product of ._* and
+
+Pp
+2
+f° (t) where f(t) is a time form function ;
+2 2
+oe eu? et) (2.7
+Dp
+Therefore equation [2.6] becomes
+1
+2(y-1) » dk
+1= | f(t) — [2.8]
+k
+rs Kom D
+
+Equation [2.8] shows that the quasi-equilibrium minimum
+radius ratio corresponding to maximum compression at energy
+balance does not depend on the absolute magnitude of the current.
+It depends only on the time variation function of the current
+profile. Lee (1983b) has shown that for a constant length
+
+deuterium pinch, the quasi-equilibrium minimum radius ratio at
+maximum compression varies from 0.17 for a linearly rising current
+to 0.40 for an energy optimised plasma coupled LC discharge.
+
+Following equation [2.6], the two functions may be
+
+_ 2 , _ 2-1) 1 2,
+referred to as F, = ¢” and function F, = a Tig! (dk ,/k,) -
+
+It is observed that Fy is a function of the absolute magnitude of
+
+Lt squared whereas Pp is an integral of the square of t. Initially
+
+when ky is less than 1, Fy is very much greater than Fo (see Fig.
+
+R begins to
+
+increase faster than Ph and rises to meet Py at the point Kon
+
+This is the quasi-equilibrium minimum pinch radius ratio at energy
+
+2.1) but as the compression proceeds and ky » 0, F
+
+balance and is shown in Fig. 2.1. The corresponding normalised
+piston trajectory and current are also shown.
+Now, if the current . is raised rapidly just before Kom
+
+is reached, then F, would increase faster than F, since F, is the
+
+L R L
+absolute value of the square of the current whereas Fo is the
+integral of the square of the current. Py and Pp would then be
+
+diverged to meet at a smaller value of Kye thereby enhancing the
+pinch compression. This is shawn in Fig. 2.2.
+
+Consider a single current-step added to the primary
+pinching current. The coaxial system is as shown in Fig. -2.3.
+When the switch 5, in the primary circuit is closed, the capacitor
+Cy initially charged to a voltage of V,, starts to discharge the
+current J, through the inductance Ly into the pinch with a varying
+inductance, L(t). The pinching current is flowing at radius ry
+with its coaxial return path at initial radial position, ro When
+the pinch approaches its quasi-equilibrium radius-ratio, the
+switch 55 in the current-stepped circuit is closed so that the
+
+capacitor Cy starts to discharge the current JI, through the
+FL Fr
+
+Fig. 2.1 (a)
+
+(b)
+
+Kom Kp=1
+
+(b)
+
+Functions of Fo and Fo versus radius
+
+ratio without a current-step.
+
+Radial trajectory and current waveform
+
+without a current-step.
+coor
+
+to
+
+F. Fr
+
+(a)
+
+(b)
+
+ce
+
+7 FL
+| Fr
+. |
+1
+Kpm-cs
+(a)
+|
+!
+1 C
+}
+‘ '
+yo
+k |
+Piro,
+14
+Vee
+‘Lo
+a
+I
+
+L { tT
+
+Kom t
+Kom-cs
+(b)
+Functions of Fo and Fo versus radius
+
+ratio with a current-step.
+
+Radial trajectory and current waveform
+
+with a current-step,
+
+10
+c, Ly S$; 4, 1g
+Tp} —_——*
+
+=|
+
+Ny
+8
+°
+
+Fig, 2.3 Schematic diagram of the arrangement of a
+
+current-stepped Z-pinch.
+
+11
+
+inductance Ly into the compressed plasma column in the pinch
+machine. The instant of switching of 5» to discharge Co is
+determined by the extent of approach of the energy balance
+condition. This is expressed by the convergence ratio, yw defined
+
+as
+
+so
+
+p= , (2.9]
+
+t
+
+Numerical studies conducted show that the value of p between 0.3
+
+and 0.9 is suitable.
+
+2.3 The energy balance slug model
+
+The slug model originally developed by Potter [1978] and
+used by Lee [1984b] in a circuit~coupled form is used here to
+describe the dynamics of the linear gas compressional pinch. The
+plasma is treated as a slug of finite thickness consisting of
+fully ionised shock-heated particles. The slug is assumed to be
+of infinite conductivity such that the current only flows in a
+thin outer layer of the glug. The inner boundary of the slug is
+the shock front while the outer boundary is provided by the
+Magnetic piston. The compression of the slug is also assumed to
+be axisymmetric and collision dominated. This model is chosen
+because of its simplicity in approach and its potential to provide
+a physical representation of the dynamics involved in the
+compressional process. The model yields description of the shock
+trajectory, the piston trajectory, the formation of a column of
+shock heated plasma and the corresponding temporal profile of the
+
+discharge current.
+
+12
+In the model, the compression is divided into 2
+consecutive phases; namely the strong shock compression phase and
+the slow dynamics phase. The strong shock compression phase
+describes the start of the compression from the glass wall until
+the instant when the shock front hits the axis. This is
+immediately followed by the slow dynamics phase which describes
+the subsequent compression until when the point of maximum
+compression corresponding to minimum radius ratio is reached.
+(The point of maximum compression is determined either by the
+energy balance condition, wp =1, or the intersection of the
+reflected shock coming out from the axis at 1/3 of the speed of
+the incoming shock at the axis, (G.Guderley, 1942] with the
+
+magnetic piston, whichever is satisfied earlier.)
+
+2.4 The_strong compression phase
+
+tn the strong compression phase, the slug of. the plasma
+bounded by the radial inward propagating shock front and. the
+compressing piston is assumed to be of uniform pressure across the
+
+two boundaries. This is based on the assumption that sound waves
+
+travel faster than the particle kinetic motion in the slug such
+that the small pressure disturbances induced by the piston travel
+to and fro between the shock front and the piston in a time
+shorter than the characteristic time of the particle kinetic
+motion.
+
+Therefore by equating the magnetic pressure, Py of the
+piston resulting from the driving current to the shock pressure,
+P, resulting from the shock compression an expression for the
+
+shock trajectory can be obtained.
+
+13
+
+By putting
+
+ut
+Pa = ; (2.10]
+8 2
+Te Sp
+2 2
+Po — 2o%s (2.11]
+yr.
+
+and equating [2.10] to [2.11],
+
+{2.12]
+
+dr, 7 uy td)
+
+"
+Po
+
+4nr
+™D
+
+The negative sign is introduced because the radial outward
+direction is taken as positive.
+
+The piston trajectory is obtained by considering the
+compression as adiabatic in a volume of uniform pressure. In
+considering the adiabatic compression, the actual change in volume
+resulting from the compression, after taking into account the mass
+swept in by the shock front, as suggested by Potter, [1978], must
+
+be used. This gives the piston trajectory as
+
+{2.13]
+
+2.5 The slow dynamics phase
+
+This phase starts when the shock front. hits the axis.
+
+14
+In this phase the plasma is still assumed to be a slug bounded by
+the axis and the piston with a uniform pressure profile across the
+boundaries. A reflected shock is assumed to travel outwards from
+the axis while the piston compresses further inwards. This
+assumption is adopted to provide a reasonable representation of
+this further compression. The minimum radius ratio of the piston
+corresponding to maximum compression is obtained when the
+reflected shock hits the piston. It has been shown by Ali [1984]
+that the minimum radius obtained in this manner agrees fairly well
+with that obtained using the energy balance theory.
+
+Therefore by equating the rate of change of enthalpy to
+the first law of thermodynamics for a lossless system, the slow
+piston compression igs represented as
+
+dr r df
+
+— =-_2. — [2.14]
+dt (y-1)T dt
+
+2.6 The circuit equations
+The current flowing in the pinch is provided by two
+parallel LCR discharge systems. A schematic of the circuit
+
+involved is shown in Fig. 2.4.
+
+Li c, and Ry
+
+resistance respectively of the first capacitor bank system. yy is
+
+are the inductance, capacitance and
+
+the initial voltage on C,. L C, and R&, are the inductance,
+
+1 2 72 2
+capacitance and resistance respectively of the second capacitor
+bank system and V, is the initial voltage on C,. The circuit
+
+resistances of Ry and R, are determined from the degree of damping
+
+of the short-circuit current signals of each of the capacitor
+
+15
+TIT WN <
+Cy Ly Ry Ss, 1, lo
+Iy+lg
+Lope
+Lott)
+
+Fig. 2.4 The circuit diagram of the current-stepped
+
+Z-pinch.
+
+16
+banks alone. The pinch load is assumed to be a purely inductive
+load and since its voltage is usually measured across the anode
+and the cathode coaxial return, thus constituting a fixed
+inductance, the pinch load is represented as two inductances in
+series, a constant Loo and a time varying b(t). {50 is the
+
+inductance of the pinch chamber input flange and b(t) is the
+
+inductance of the pinching plasma. When switch S, is closed, C
+
+1 1
+discharges through L, and Ry providing the first current source
+to drive the pinch load. The closing of switch So discharges
+
+capacitor Cy through by and Ro providing the second current
+source for the investigation of the enhancement in the
+compression by current-stepping. If either 54 or 5, is switched
+on alone, a slower or faster current source is obtained to drive
+the pinch load just like any other conventional gas compressional
+
+pinch. if S$, is switched on after a suitable delay upon the
+
+2
+
+switching of S, (as determined by the energy balance theory) to
+
+1
+obtain a current-stepped profile for the current source to drive
+the pinch, an enhanced compression is expected as predicted by Lee
+[1984]. The system then operates as a current~-stepped Z-pinch.
+
+The circuit equations describing the above current sources
+
+are as follows :
+
+(i) Son and 5, off
+
+d ft,at
+— | (bjt) + y+ byt) + Ry = Vy -
+
+(2.15]
+dt rl I
+
+17
+or (ii) Sy and 85 on
+d SI,at
+- {L,1,] + (Ln0 + b(t) Iu + L,Ry = Y, - [2.16a]
+t cy
+d SI ,at
+un [Lolo] + Une + hy] Fit Ik, = Vo - - {2.16b]
+2
+
+where equation [2.15] represents the case when only the first bank
+is switched on while (2.16a] and [2.16bl represent the condition
+when switch So is switched on as well after a suitable delay as
+determined by the energy balance theory to produce the enhanced
+
+compression.
+
+18
+
+CHAPTER 3
+
+The Capacitor-Capacitor Combination
+
+- A First Attempt to Current-Step a Z pinch
+
+3.1 Design considerations
+
+The design /[Saw,S.H. et.al, 1987] of the Z-pinch is
+based upon the energy balance theory [Lee,S. 1983b] using the slug
+model for the trajectory computation. From equation [2.12] upon
+normalisation, a characteristic time of pinch, ty is obtained as
+
+given by
+
+Py Ve ant”
+t= (3.1)
+
+Hy (ytd) Z,
+
+where Po is the ambient gas density, Lo the radius of the pinch
+tube, I, = VATE SCD, y the specific heat ratio and Uo the
+permeability of free space. Vor Ly and Cy are respectively the
+initial discharge voltage, the total external inductance of the
+system and the capacitance of the bank.
+
+The first design consideration is to match the expected
+pinch time to the quarter-period current rise time, be For a LC
+discharge through a plasma load, the current rises sinusoidally to
+about 0.7 I, This corresponds to an average current over half a
+
+eycle of 0.45 I, From equation [3.1] the expected pinch time,
+
+t ' becomes
+D
+
+19
+~ t = 23.2 3.2
+D [3.2]
+Also, the current rise~time is given by
+t. = O.5n (Thc) {3.3]
+Thus for proper matching
+t= t¢ =2.2¢ 3.4
+D (3.4]
+The second design consideration in designing a pinch
+
+machine is to provide good energy coupling between the capacitor
+
+bank and the pinch machine. This is governed by
+
+Hye
+
+(3.5]
+2h
+
+where ut /2n is the characteristic inductance of the pinch tube of
+length £& and Ly the total external inductance of the system.
+For good energy coupling, a value of 8 > 0.1 is necessary. ([Lee,
+S., 1983c].
+
+A major constraint in the design of the current~stepped
+Z-pinch at the present stage is to utilise technology and
+facilities currently available in the laboratory to avoid high
+cost. A capacitor-capacitor combination unit, UMCSZP is designed
+
+with the following characteristics for the first stage; hereafter
+
+refered to as the first bank,
+
+20
+SS
+ul
+Xo
+oo
+=
+Q
+hi
+
+60 pF L, = 70 ni
+
+251 kA dIy /dt = 1.2 x 10"! ays
+
+oF
+|
+
+rey
+
+oY
+7
+Lo)
+
+hy
+H
+
+Ol”
+
+and
+V,= 18 kV C5 = 22 uF L, = 26 nH
+a a
+‘ _ _ ig) 11
+tg 1.3 ps Ioo= 463 kA dIgofat = 5.5 x 10° A/s
+for the current-stepped stage or the second bank. These
+
+parameters are chosen for a Z-pinch of length 15 cm and radius
+7.5 cm. The inductance of the input flange is 6.8 mH and the
+operating pressure is between 0.4 and 3.0 mbar of hydrogen. The
+construction of the Z-pinch machine is shown in Fig.3.1. The
+chamber is a glass cylinder of length 21 cm and diameter 15 cm
+with a wall thickness of 6 mm. The actual discharge length is 15
+cm. The anode and cathode are made from brass with a small
+tapering at the edge around the inner circumference of the groove
+where the glass chamber sits (refer Fig. 3.1). This facilitates
+the formation of the current sheath at the wall of the glass
+chamber during the initial period of the current discharge. The
+current return is via a solid coaxial brass cylinder. A small
+slit of width 12.5 mm and length 21 cm is cut in the radial plane
+midway along the length of the brass cylinder. This allows
+side-on streak photography of the radial compression. The
+cathode return is made as close as possible to the glass chamber
+to minimise tube inductance. The anode and cathode return of the
+Z-pinch machine are fitted on to the anode and cathode flange of
+
+the second bank, C5 respectively (refer Fig. 3.1). This second
+Ny
+UT bs 6
+
+re) © O®
+
+Fig. 3.1 Design of the current-stepped Z-pinch.
+
+1. anode flange of co.
+
+2. cathode flange of Co
+3. silicon rubber and insulation sheets
+4, brass flange
+
+5. anode collector plate
+6. O-ring seal
+
+7. cathode return plate
+
+8. glass chamber
+
+9. cathode return cage
+
+10. Rogowski coil
+
+11. brass flange
+
+12. O-ring seal
+
+13. O-ring seal
+
+14. gas inlet
+
+15. to vacuum pump
+
+16 magnetic probe inlets
+17. cathode collector plate
+18.
+
+coaxial cable from c,
+
+22
+bank is formerly the capacitor bank use for DPF-I in KFA, Jtlich
+[P.cloth & H.Conrads, 1977] which has been installed in our
+laboratory as a gift from the Humbolt Foundation and KFA, Jflich.
+Connection of the Z-pinch machine to the first capacitor bank
+system, c, is via short parallel coaxial cables to reduce the
+inductance of the system. The first capacitor bank system
+consists of 3 units of 20 pF, 10 kV maximum capacitors each with
+an equivalent series inductance of 40 nH, connected in parallel
+using parallel plates. A swinging cascade spark gap [Lee, S. et
+al, 1988b] is connected in series to the high voltage plate. The
+other end of the swinging cascade spark gap is connected to the
+anode flange of the Z-pinch machine via parallel coaxial cables.
+The schematic of the first capacitor bank system and the swinging
+cascade spark gap is as shown in Fig. 3.2. Fig. 3.3 shows the
+parallel plate and the series connection of the capacitor to the
+swinging cascade spark gap. The 9 MQ resistor connected across
+the spark gap provides some preionisation to the ambient gas
+inside the pinch chamber and thus facilitates the initiation of
+the current sheath.
+
+The second capacitor bank system, cy consists of 12
+units of 1.86 pF, 60 kV maximum capacity capacitors each with an
+equivalent series inductance of 15 nH, connected in parallel using
+parallel plates in a circular arrangement (refer Fig. 3.4). Each
+of these capacitors is switched by two pressurised spark gaps.
+These spark gaps are simultaneously triggered by a master trigger
+pulse (refer Fig. 3.5). The master trigger pulse is provided by a
+-30 kV capacitor discharge system which triggers upon receiving of
+
+a 16 kV pulse by its trigger~pin. The equivalent circuit of the
+
+23
++9 kV
+
+Re
+39 MQ
+(1/3)Cy
+141 MQ 94 MO
+a Fe (1/3)C,
+isolating ——
+| ! capacitor ~T~
+tv, transformer
+(5: 1 )
+-700V
+1/3)C
+Z—pinch E| le (173),
+
+Fig. 3.2 Discharge circuitry of the first bank of the
+
+current-stepped Z-pinch. (c, = 60 pF).
+
+©
+
+Fig. 3.3 The capacitor, Cy and the spark-gap
+
+connections.
+
+IW DW AID UO BA Ow BS
+
+O-
+
+60 uF, 10 kV
+
+earth return plate
+
+high voltage collector plate
+mvlar-polyethylene-mylar sheets
+insulator cap
+
+perspex box
+
+spark-gap electrode
+
+triggering rod
+
+spark gap electrode
+
+high voltage transmission cable
+
+Fig. 3.4 Top view of the capacitors arrangement of C,.
+
+(reproduced from original diagram of KFA,
+
+FIPP, 45 00 00-1).00 00-1).
+5
+
+Cross sectional view of one of the arms in
+Fig. 3.4 showing the connections between the
+capacitor, the pressurised spark gap and the
+anode flange. (reproduced from original
+
+diagram of KFA, IPP, 45 02 00-1)
+
+high voltage connectors
+
+high voltage connectors
+mylar-polyethylene-mvlar sheets
+anode connector plate
+mylar-polyethvlene-mylar sheets
+cathode connector plate
+insulator support
+
+gas inlets/outlets
+spark gap electrodes
+cathude return of the ovark yap
+11. earth plate
+
+12 trolley
+
+13. capacitor (1.86 uF, 60 kV)
+
+PO ON H Om Ww roar
+
+ron
+an
+second capacitor bank system is shown in Fig. 3.6. Fig. 3.7 shows
+
+the schematic of the overall set-up of the UMCSZP.
+
+3.2 Diagnostics and instrumentation
+3.2.1 Current measurement
+
+The discharge current is measured by means of a Rogowski
+coil [Leonard, S.L., 1965] placed in the upper part of the coaxial
+cathode return between the glass chamber and the cathode return.
+The Rogowski coil has approximately 500 turns and it is operated
+as a current transformer by shorting the terminals with a small
+resistance, r as shown in Fig. 3.8. The calibration of the
+current transformer is obtained by operating the pinch machine in
+the non-pinching mode where the current waveform resembles that of
+a typical underdamped discharge. This is achieved by operating
+the pinch machine at a pressure of 5 mbar air to produce a
+
+sinusoidal waveform as shown in Fig. 3.9.
+
+The first peak value of the current waveform [, is given
+
+by
+nC V (+f)
+Po [3.6]
+
+where fo = capacitance of the capacitor, 60 pF
+
+Yo = fixed charged voltage of the capacitor, 9kV
+
+fT = period of the current pulse
+
+f = reversal ratio
+
+u
+
+(Vpf¥q) = 1/2 (WV Y/V,) + (VofV))
+
+The calibration factor, Ky of the coil is determined by
+
+28
+“(UOTIRANHTJUOD al [ered Aep_ Wis ut
+
+T w -_g
+
+sde6B yaeds pestanssead pz ayy jo euo st ‘g pue a gg = 9 ‘at ee = %D)
+
+‘youtd-z peddeys-yuerind eq] Jo yueq puooas ay] Jo AAQTNOITO abreyostg 9°€ “BISA
+
+J —wwrwnre-o AY @L+ qinowo sebbbi
+ra =
+
+8]9D9 {oyxHe9 seABpy
+
+OAD
+
+-=SSE=
+ae
+i]
+=a
+=
+oO
+29
+
+youtd—7 yy)
+Cl 1) y
+
+At Of
+AX 91
+9
+
+30
+
+‘youtd-z peddeqs-quarino dZSoWN 949 Jo AaqTNoIpo abreyosta ie ‘ba
+= . = — Zz
+( i st) _ *9 Zr 404
+Pann o 4966s
+A 004 - uy AX BE+ JINJA! ean
+4oyoodpo eiqno jnyxpoo seShy1
+Buyojos] I t 5 ——|
+t t
+OM V6 OW L¥t
++ 2 vy
+i i S ]
+| | L L ” C | {
+i AS
+We.
+_- a
+ee) DN 6 yould—Z (In) Se 4
+by =
+AX Of-
+AA 9t=
+
+At 6+
+
+insulating tube
+
+Fig. 3.8 The Rogowski coil as a current transformer.
+
+Fig. 3.9 Sinusoidal current signal for the calibration
+of Ragowski anil.
+
+(Scale : 5 V/cm, 2 ps/cm at 5 mbar H,)
+
+31
+comparing the value of I, calculated from equation [3.6] with the
+
+amplitude of the first peak of the current waveform, Vy.
+
+3.2.2 Voltage measurement
+
+The voltage induced across the pinch tube during the
+discharge is measured by means of a capacitive voltage probe
+(R. Keller, 1964]. It consists of two cascading sections as shown
+in the schematic diagram of Fig. 3.10. The first section is a
+differentiator with a time constant, RC, It also serves as a
+low-pass filter whereby for = 1/(2nR ,C,) determines the upper
+response limit of the probe. An RC integrator with a time
+constant of RC, forms the second section of the probe. This
+section which is also a high-pass filter only reproduces signals
+
+of frequency equal to or greater than E oh = I/(2KR Cy). The
+
+output signals of section one and section two are as follows:
+
+dv
+VY, = R,C, — {3.7]
+1 Il dt
+J Vjdt
+Vy = (3.8]
+RCo
+Combining [3.7] and [3.8] gives
+RC
+Vo = ja V {3.9}
+RCo
+The bandwidth is given by
+fay > £> fon {3.10]
+
+32
+3.2.3 Construction of the voltage probe
+
+The probe constructed is mounted directly to the cathode
+flange of the Z-pinch unit [Saw, S.H., Wong, C.S. & Lee,S., 1991].
+Capacitor, c, forming the differentiator is a coaxial capacitor
+made from the inner core of a 50 Q coaxial cable and aligned
+facing the anode flange (or the high voltage point of interest)
+with an additional perspex dielectric as shown in Fig. 3.11. It
+is secured to the cathode plate by a coaxial copper adaptor.
+Since the signal is carried by a 50 Q coaxial line to the
+Measuring station, Ry is fixed at 50 Q for impedance matching.
+The integrator consisting of components Ro and 5 is housed in a
+module together with the Ry = 50 Q for line termination. This
+integrating module is then connected to the input of the
+oscilloscope.
+
+With this design, it is not necessary for the
+oscilloscope to be placed near the discharge system. The choice
+of values for the capacitors and resistors are determined by the
+bandwidth response required. In our present design, Cy is
+approximately 12 pF, Ry is 502, C4 is 4700 pF and Ro is 20 kk.
+The calculated frequency response is from 1.7 kHz to 0.3 GHz. The
+equivalent circuit of the probe system is as shown in Fig. 3.12.
+Calibration of the probe is done in situ by operating the 2-pinch
+machine at a known voltage, e.g. 9 kV, at a sufficiently low
+pressure (for Hy gas, P < 0.8 mbar). The voltage signal will show
+a pre-discharge holding phase as shown in Fig. 3.13. The flat top
+of the square pulse corresponds to the initial charged voltage, Yo
+
+of the capacitor switched over and held across the pinch tube.
+
+This is used to calibrate the voltage probe.
+
+33
+|
+T
+| Cosa y
+|
+
+Fig. 3.10 The principle of the voltage probe,
+
+li BNC male connector
+
+copper adaptor
+
+La
+
+cathode
+
+QO | MONS hcurator
+NN NIN
+
+ZZ ; ZA aneds
+
+perspex
+
+Fig. 3.11 The design of C,.
+
+1
+
+34
+
+copper wire (enamel)
+Fig. 3.12 Equivalent circuit of the voltage probe
+
+system.
+{C, =12 pF, Ry = 50 Q, R, = 20 kg, C, = 4700
+uF)
+
+vi
+
+6 kV/div
+2 us/div
+
+Fig. 3.13 Calibration of the voltage probe.
+
+35
+3.2.4 Streak photography
+High speed photography of the pinching event of the
+plasma is obtained using the IMACON, a streak unit with a scanning
+
+speed from 10 ns/mm to 100 ns/mm with a streak length of 76 mm.
+
+3.2.5 B-field measurement
+
+The time-resolved distribution of the ftadial current
+density is obtained by mapping the @ field in the @ direction at
+various radial positions. The Byfield is obtained by means of
+magnetic probe [Lovberg, R.H., 1965] which is sensitive to the
+rate of change of flux through the probe and hence to the
+turns-area of the probe and to the rate of change of the Ag field.
+The major factor limiting the frequency response of the coil of
+inductance ¢ terminated with a resistance ® is the ¢-® time
+constant, «= £/®. Since it is necessary to carry the signal more
+than 10 m from the pinch system, ® is normally taken as 50 Q
+which is the characteristic impedance of the coaxial cable used
+to carry the signal. Therefore. to keep the response fast enough
+% must be made small in the order of tens of nanohenries. For an
+W-turns coil of length 2 and cross-sectional area a, the
+inductance is equal to ¢ = pt at/e where Lo is the permittivity of
+free space.
+
+Furthermore, the signal which is proportional to the
+rate of change of the Byfield has to be integrated to obtain the
+B,-field. As such the magnitude of the signal will be further
+attenuated by the RC time constant of the passive intergrator,
+which is at least ten times longer than the fastest signal of
+
+interest. Therefore in order to keep the final integrated signal
+
+36
+of measureable magnitude, the initial voltage carried by the line
+must be made as large as possible. Unfortunately this is only
+possible at the expense of the response of the inductive coil,
+since a larger magnitude requires a bigger turns-area which
+increases the inductance of the coil and thus decreases the
+response of the probe to the changing magnetic flux. A suitable
+arrangement can be obtained by keeping the ratio 4/2 as small as
+possible in the order of 107%.
+
+The magnetic probe constructed is as shown in Fig. 3.14.
+The coil is made from SWG 44 enamel coated copper wire. The
+length of the coil is approximately 3 mm with 20 turns wound on a
+PVC sleeving core of diameter 1.5 mm. It is then inserted inside
+a glass tubing sealed at one end. The outer diameter of the
+glass tubing is 4 mm and the wall thickness 1 mm. The two leads
+from the coil are brought out from the glass tubing as a tightly
+twisted pair and is connected via an adapter to a male BNC
+connector. A 50 Q coaxial cable is used to carry the signal to
+the screen room. The signal is introduced to the oscilloscope
+
+input channel via an integrator. The voltage recorded is given by
+
+v= [3.11]
+
+The equivalent circuit of the magnetic probe system is shown in
+Fig.3.15.
+
+The probe is calibrated together with the integrator
+using a standard LC discharge through a 2-turns Helmholtz coil.
+
+For an accurate calibration including frequency response, the
+
+37
+8~fleld
+
+Fig. 3.14 Design of the magnetic probe.
+
+1. BNC socket 2. copper adapter
+3. perspex holder 4. glass tube
+
+Z = R = 50 ohm
+
+Ry
+— G _— i ° Vout
+R a
+I -°
+
+Fig. 3.15 Equivalent circuit of the magnetic probe
+
+system.
+
+(Ry = 20 kQ, C, = 4700 yr)
+
+38
+discharge time of the LC system is made the same order as that of
+the Z-pinch system.
+
+The radius of the Z-pinch chamber is 7.5 cm. Seven
+probes are introduced into the pinch chamber axially at various
+radial positions across the diameter of the chamber. Four probes
+are placed at r=6 cm, r=4 cm, r=2 cm and r=0 cm. Another three
+are placed on the opposite side at r=7 cm, r=5 cm and r= 3 cm.
+Since the number of oscilloscope channels are limited, at each
+discharge only signals from four probes (r=6 cm, 4 cm, 2 cm, O
+cm or r=7 cm, 5 cm, Jem) are recorded simultaneously with the
+current and voltage signals. The time resolved radial current
+density is then obtained from 2 sets of probe positions obtained
+from two different discharges. This is possible since the
+discharge of the system is quite reproducible. Further only two
+sets of probe positions with identical current and voltage signals
+
+are used to determine the radial current density of the pinch.
+
+3.3 Experimental set-up
+
+A schematic diagram of the experimental set-up of UMCSZP
+to record the current, voltage and streak pulses for streak
+photography or magnetic probe signals for @-field measurements
+simultaneously is shown in Fig. 3.16. The block TRIGI sends out a
+Master pulse which controls the discharge of the whole system. It
+consists of a press-button operated low-voltage SCR unit which
+triggers a HVSCR unit via a press-button switch. Upon triggering,
+the HVSCR sends out a negative pulse of approximately 700V to a
+t.v. transformer to be stepped up to approximately 10 kV, 1 us
+
+rise time. This pulse is used to trigger the swinging cascade
+
+39
+‘dn-388 qZSOWN 84] Jo weABerp YOOTA 9T"e
+
+“Bta
+
+% se6s0y9 |
+Mubq pucdes
+
+[es]
+
+al _ Monae -
+Ls} vospusyy Zora
+{ay 91) {A set)
+Oo
+4A teBDIIOA i egind S
+z Avreg doyuoUr yooys ORG
+paso uid
+os om ooo nL SoS AOL
+Z adoog } adeog
+9) queuing esjnd soyuour
+808 F wns,
+[is
+{A 0%-) indino moj an
+a Vora |
+(at $701) tk 00L-)
+
+| sefunys
+
+spark gap and thus discharging the first capacitor bank system
+onto the pinch chamber.
+
+At the same time, the HVSCR unit sends out an attenuated
+pulse of about -20 V (monitor pulse) to trigger the oscilloscopes
+(Tektronix 556) to record the current, voltage and the streak
+signals. With the triggering of the oscilloscopes, delayed pulses
+are send out from delay units in the oscilloscopes to switch the
+streak camera and the second capacitor bank system. As the
+magnitudes of these delayed pulses from the oscilloscopes are only
+about 7 V, they are insufficient to trigger the streak camera and
+the second capacitor bank system directly.
+
+In the case of the streak camera, the delayed pulse is
+sent to another low voltage SCR unit of output 40 V which then
+triggers the streak camera. Upon triggering, the streak camera
+sends out a streak pulse to be recorded by the oscilloscope. The
+streak pulse is used to monitor the setting of the delay time
+required to switch the streak camera.
+
+For the second capacitor bank system, the delayed pulse
+from the oscilloscope goes to a low voltage SCR of output 135 V.
+This then triggers the thyratron to switch a 16 kV pulse used to
+trigger the master gap. Upon triggering, the master gap switches
+the -30 kV and distributes through 24 lines to trigger 24 parallel
+spark gaps thus discharging the second capacitor bank system onto
+the pinch chamber. The output from the low voltage SCR is
+recorded by the oscilloscope. It is used to monitor the setting
+of the delay time required to switch the second bank with
+
+reference to the discharge of the first bank.
+
+41
+3.4 Experimental procedures
+
+The pinch chamber is initially pumped to a base pressure
+of 10 7 mbar by a diffusion pump backed by a rotary pump. It is
+then flushed with hydrogen a number of times before filling to the
+required pressure. This reduces the impurities of the system.
+Compressions from the single discharge by the first bank alone are
+studied. Current, voltage and streak photography or B-field
+measurements are obtained simultaneously. This is followed by the
+implementation of the current-stepping technique to observe the
+compression by the consecutive discharges of two capacitor banks
+at different switching times as determined by the energy balance
+
+theory.
+
+42
+
+CHAPTER 4
+RESULTS AND ANALYSIS
+
+4.1 Current, voltage and streak measurements
+4.1.1 Current and voltage measurements
+
+The time resolved trajectory of the compressional
+hydrogen Z-pinch can be deduced from the current and voltage
+measurements of the pinch formed.
+
+At any point of time t, for a fully ionised plasma where
+current flows in a thin outer layer, the voltage between the anode
+and the cathode is given by, assuming an inductive model,
+
+d
+
+Ys = -" (Ln, + £,(0)] Pi) {4.1]
+
+where Lo is the inductance of the input flange which is deduced
+from the dimensions of the pinch chamber and the coaxial cathode
+return, ft) is the inductance of the pinched plasma and Tift)
+is the current of the pinched plasma.
+
+Therefore the plasma inductance becomes
+
+t
+St, ¥@) at
+co Pp, - [4.2]
+
+L(t) =
+p po
+T(t)
+
+The radial piston position, ry of the plasma is then
+
+obtained from
+
+L(t) = 2(In (r,/r,(t)) (nH] [4.3]
+
+43
+which gives the radial piston trajectory of the pinched plasma
+
+column as
+ry (t) = ©, exp (“hy (t) /28) {4.4]
+
+where re is the initial radius of the plasma corresponding to the
+inner radius of the glass chamber assuming that the plasma lifts
+off from the glass wall and & the length in cm of the pinch
+corresponding to the distance between the anode and the cathode
+
+flanges of the pinch chamber.
+
+4.1.2 High speed photography
+
+The final phase of the radial compression can also be
+observed in streak photography using the high speed image
+converter camera, the Imacon. The final radius achieved by the
+compression is measured from the streak photograph. The average
+shock speed is also measured from the streak photograph and the
+
+plasma temperature deduced from the shock jump equations.
+
+4.1.3 Discharge with first bank alone
+
+The current and voltage signals and the corresponding
+streak photograph of a typical hydrogen discharge at~a filling
+pressure of 0.8 mbar are shown in Fig. 4.1. The top trace is the
+voltage signal while the bottom trace is the current signal of the
+Z~pinch plasma. Using equation [4.2] the pinch inductance is
+obtained from the voltage and current measurements taken. The
+
+radial trajectory of the compressing plasma ig then obtained from
+
+44
+
+Fig. 4.1
+
+| Noltage = 6kVidiv
+
+time —»
+
+The electrical signals and the corresponding
+streak photograph showing the radial
+compression of a hydrogen pinch at 0.8 mbar
+driven by the first bank alone (without
+
+current~stepping).
+
+45
+following the above procedures. Superimposed is the expected
+radial trajectory numerically computed using the energy balance
+slug model.
+
+It is observed that the piston seems to compress in
+faster experimentally compared to that from theoretical
+prediction, especially so during the initial phase. This is also
+observed by P.Choi [1983] where it is suggested that the
+assumption made by Bodin et. al [1960], which is also adopted
+here, that the plasma column is purely inductive with infinite
+conductivity and with the current flowing in an infinitesimally
+thin layer is only satisfied at high temperature corresponding toa
+high compressing shock speed. At low plasma temperature the
+
+plasma voltage should be represented as
+
+dI dL
+Vi2b—+2)—Pse (4.5]
+
+P dt dt
+
+The resistance of the plasma column, R can be
+approximated by assuming the plasma current to flow in an annulus
+column of thickness 6 at radius r, with the skin depth of the
+plasma current estimated by assuming a fully ionised plasma and
+the plasma resistivity as gqiven by the transverse Spitzer
+resistivity (Spitzer, Lyman dr., 1967]. Fig 4.3 shows the
+estimated plasma resistance and the rate of change of plasma
+inductance for the present pinch as a function of plasma
+temperature. It is observed that initially when the plasma
+is cold, the plasma resistive component dominates. Therefore
+ignoring it will falsely indicate a faster compression than
+
+that obtained from electrical measurements. Furthermore, since
+
+46
+0.0 0.2 O04 O06 O8 1.0 1.2
+
+Fig. 4.2 Normalised radial trajectories of the
+magnetic piston, ky vs normalised time, rt of
+a 0.8 mbar hydrogen pinch driven by the first
+
+bank alone.
+
+——~ +— from IV measurements ~
+
+re from IV measurements (corrected)
+
+—---—- extrapolated from streak photography
+from theory
+
+47
+the plasma current flows in an annular column of finite skin
+depth, a relative error will result from the contribution of the
+magnetic field inside the annular current. Bv assuming a uniform
+current density Jy in the annulus of thickness 6, the relation
+between the relative error in the radius and the ratio of 6&/r as
+a function of T, is shown in Fig.4.4. If these effects of skin
+depth of the plasma current are taken into consideration, a
+slower initial compression which is closer to that obtained from
+theoretical simulation is obtained. This is superimposed in Fig.
+4.2.
+
+An average shock speed is calculated from the measured
+ty as the time taken for the compressing shock to hit the axis.
+The peak shock speed associated with this average shock speed can
+be obtained from numerical computation. The plasma temperature
+can then be estimated from the peak shock speed. For a fully
+jlonised shock heated plasma with y = 5/3 and the departure
+coefficient y = 2, the plasma temperature is related to the shock
+velocity, ve by T, = 1130 ve where ve is in cm/ys and Ps in K
+[S. Lee, 1985b].
+
+From the analysis of the electrical signals of the
+plasma from the discharge of the first bank alone, it is observed
+that the pinch is formed at te 2.1 ps producing a column of
+radius ratio 0.30. This indicates an average shock ~speed of ~
+3.4 cm/ys. From the numerical computation, the peak shock speed
+is about 10 cm/us. The plasma temperature at this speed is 1.1
+x 10° K.
+
+From the analyses of the side-on streak photographs
+taken of the compression, the pinch is observed to form at t =
+
+Pp
+
+48
+dL.
+Rp [0] at (2)
+
+0.20 - 5 0.20
+
+0.12
+
+0.08
+
+0.04
+
+fa) ye) Ett
+103 104 705 106
+
+Te [k]
+
+Fig. 4.3 Variation of plasma resistance, Ry due to skin
+
+dL r
+depth and ap versus plasma temperature, Ty:
+
+6 Ar
+
+= [2%] = ([%]
+100 - = 100
+Bo fb 4 80
+60 - + 60
+4o 4 4 40
+20 + + 20
+fe) Lop 0
+
+103 104 105 108
+
+Fig. 4.4 Relations between the ratio of skin depth to
+radius of the plasma column, 6/r and
+percentage error in the plasma radius, (aAr/r x
+
+100%) as a function of plasma temperature, T,:
+
++9
+
+2.0 ps with a minimum radius ratio of 0.25. The average shock
+speed is 3.8 cm/ys. The peak shock speed measured from the
+photograph is about 6.5 cm/ps corresponding to a plasma
+temperature of 4.8 x 10’ K. It is believed that the measured peak
+shock speed is a little low due to the difficulties involved in
+identifying the shock front near the axis where it begins to
+
+4
+
+merge.
+
+4.1.4 Current-stepped Z-pinch discharges
+
+The current and voltage signals and the corresponding
+streak photograph for a 0.8 mbar hydrogen current-stepped
+compression for different switching times, tos of the second bank
+are shown in Fig. 4.5. The piston trajectories obtained from
+the analyses of the electrical measurements and those predicted
+by the model are shown in Fig. 4.6. A summary of the results
+obtained is tabulated in Table 4.1. It is observed that the
+minimum radius ratios obtained upon current-stepping for different
+switching times do not differ much from that obtained with the
+first bank alone, infact they are slightly larger than that by the
+single stage compression. The corresponding streak is reproduced
+in Fig. 4.7 and the result. derived are summarised in Table 4.2.
+The temperatures deduced from the shock jump relations are also
+shown. ~
+
+Therefore it appears that current-stepping does not
+enhance the pinch compression contrary to the prediction by the
+energy balance model. This could be due to the introduction of
+other factors upon current-stepping which have the effect of
+
+decreasing the compressibility of the plasma and thus masking the
+
+50
+
+80
+
+“""y ‘Butddejs-quaaqind Jo sauwty yueteystp WTA uohoapAy
+
+Jequ g°Q 928 dZSOWM JOJ suotsseiduoo
+
+jo sydeibojoyd yearjs Hutpuodseizz09 ayy
+
+AIp/STL ~ SwLE
+
+a
+
+\
+
+ALB/ WHOSE — WSN
+
+AID; ANG — BGRI}OR
+
+peddeqs-quadino [erper 34)
+
+pue squaweinseow TeoTaqoeTy gp 7h
+
+APINTS = abexoK’
+
+TA
+
+bal
+
+APINTS
+
+eBeyON
+
+51
+- ‘burddays-quartina jo sew} yusleyjip
+
+3
+
+2
+ono = 4 (9)
+
+cio 80 90 FO e0 OO
+
+por T T T t t
+
+g
+
+a
+95°0 = 2 (Q)
+
+ft of 80 90 FO ZO OO
+
+T T T —r 1 T
+
+S je+ueuy sodxe
+
+oo
+
+raat)
+
+ae)
+
+90
+
+00
+
+raat)
+
+ro
+
+30
+
+dZSOWN
+
+jo
+
+(st! Giz = % Many = 2 ‘BSurddeqs-queqinds yyta - - - ‘BHutddeys-yuerzins ynoyyts
+
+SeTIoOVOe(eIAy
+
+—)
+
+uolstd 9h “Ald
+
+oO
+
+oo
+
+rane
+
+i ans
+
+syoutd-Z peddays—yuerin9
+
+JOJ
+
+wd
+
+e  pue youtd-z
+
+[euotssaiduos
+
+Y'sorzea sntped wntaqr{inbe-tsenb [equewtiadxe pue [eopJe1oayy,
+
+seb atduts e
+
+T°) erqeL
+
+so—urd
+: . 4
+_ (ab - gb) wa 'yojoD} JueWaeoUDYUS
+z uojssssdiuoo Ausueg
+seo glo “Li
+9¢°0 61'0 SE
+yourd—7
+pedde|s—juesing
+rZ'0 61°0 el
+ora 120 60
+so~tud so~uud so
+> (s7) 4
+: . suojD
+wud uid
+4 q
+(e/g = 4 UHM
+(peyeis0a — jepow Grys
+
+sjpuBys aj wos)
+
+jOjuslupedxy
+
+soupjoq AB.1eue)
+
+JDO]osOOUL
+
+53
+Fig.
+
+3 single bank
+
+ak i ee
+
+T. = 0642 nO.
+Po Tog * 0°96
+
+4.7 Reproduction of the streak images of the final
+stage of the UMCSZP for single compression and
+current-stepped compression with different
+
+times of current-stepping.
+
+54
+Aydeaboyoyd yeoays wory pautejqo si[usoy C°P 8TqeL
+'
+“Ls We <e sz’O “Ss “ty
+a) 69 se £00 m4 ct
+yourd—Z
+peddejs—jusuny
+iy 0°93 sc sco Ve ah
+S's OL ec Seo et 60
+. . . . BUdjD
+s'+ s‘9 ee Sz'0 4 ~ yuog {ssid
+(4,01) (sri/uis) | (s7//uio)
+CJ d s
+L A A wd a $9.
+sunjoredwuey ped ebpseay 4 | (sf) | (st)
+plusD( peads ya0US
+
+55
+effect of enhancement in the compression expected from
+current-stepping. One of the factors which could result in an
+increase in the radius ratio is an increase in the effective
+
+specific heat ratio, y er of the real gas. This is because y
+
+e eff
+
+determines the compressibility of the gas. A larger Vere
+corresponds to a lower compressibility while a lower ore
+indicates a higher compressibility. Hence if Vers rises upon
+current-stepping, the reduced compressibility may overshadow the
+enhancement effect of current-stepping. It is therefore necessary
+
+to compute the variation of y tr with temperature and shock speed,
+e
+
+This will be done in the next chapter.
+
+4.2 Magnetic field measurements
+4.2.1 Introduction
+
+In order to observe the formation of the radial current
+density profile and its development upon current-stepping,
+magnetic probe signals are taken at various radial positions
+together with the current and voltage signals for both cases of
+the plasma formed from the first bank alone and for the plasma
+formed from current-stepping.
+
+Assuming that the current flows in a hollow shell
+parallel to the cylindrical axis, the radial current density can
+
+be related to the axial B-field as given below: .
+
+jr) = LL © op) [4.6]
+
+56
+4.2.2 Discharge with first bank alone
+
+The magnetic probe signals for the hydrogen discharge at
+0.8 mbar of the first bank alone are shown in Fig.4.8. Two
+different discharges at the same pressure and with similar current
+profiles are used to map the radial current density with the aid
+of equation [4.6]. The evolution of the radial current density
+is shown in Fig. 4.9. It is observed that the current sheath
+is rather diffusive and thick, indicating a poor coupling between
+
+the plasma flow field and the magnetic field.
+
+4.2.3 Current-stepped Z-pinch discharges
+
+The magnetic probe signals for the hydrogen discharges
+at 0.8 mbar for the current-stepped Z-pinch with the second bank
+switching at 1.9 us after the first bank are shown in Fig.4.10.
+Two different discharges at the same pressure and with similar
+current profiles are again used to map the radial current density
+with the aid of equation [4.6]. The evolution of the radial
+current density is shown in Fig. 4.11. It is observed that upon
+current-stepping, the current density profile broadens before
+commencing to increase further. This indicates a delay in the
+merging of the current sheath upon current~stepping resulting in a
+pulling back effect on the piston. This is also observed from the
+radial trajectory obtained from electrical measurements presented
+
+in Fig.4.7.
+
+4.3 Conclusion
+
+The experimental results and those predicted by the
+
+model seem to disagree. This may he attributed to a combination
+
+57
+Fig.4.8 Electrical and magnetic field siqnals of a 0.8
+mbar hydrogen pinch driven by the first bank
+
+alone.
+(Scale : voltage : 3kV/div, current : 150 kA/div,
+
+B-field - r = 7 cm: 0.767 T/div, r = 5 cm : 1.015 T/div,
+r= 3 cm: 1.075 T/div, r = 6 cm: 0.729 T/div,
+r= 4m: 0.789 T/div, r = 2 cm: 0.972 T/div,
+
+time : 1 us/div).
+
+58
+
+*(juezIno ayy Jo y7vys Byy ST 6 = 2)
+
+‘auojTe yueq ysary ey) Aq waatap youtd uaborpAy
+
+requ g79 e& Jo Aytsuep jusetano 9y4
+
+£9 ¢G
+
+JO juewdoTaAep ay, 6°P “Fla
+
+[wo] 4 —»
+
+vee € | 0
+
+59
+Fig. 4.10 Electrical and magnetic field signals of a
+0.8 mbar hydrogen current-stepped Z-pinch
+
+{tag is 1.9 us).
+
+(Scale : voltage : 3kV/div, current : 150 kA/div,
+
+B-field - r = 7 cm: 0.767 T/div, r= 5 cm: 1.015 T/div,
+r= 3 cm: 1.075 T/div, r = 6 om : 0.729 T/div,
+r= 4 cm: 0.789 T/div, r = 2 om: 0.972 T/div,
+
+time : 1 ys/div).
+
+60
+uaboipAky requ go
+
+e
+
+“(sf 6°L ST
+
+jo
+
+“(quetand ey) Jo 94R98 8y2 St O = 1)
+
+§9, ) youtd-z peddays-quesino
+
+Aytsuap quseaind ayy Jo Juswdozaaap ayy,
+
+Itt ‘bra
+
+61
+of several effects. However, 2 major effects will be discussed,
+namely the thermodynamic and electromagnetic effects of the
+plasma.
+
+In our modelling so far, the thermodynamics of an ideal
+gas is assumed with the specific heat ratio of the gas taken as a
+constant and equal to 5/3. If the deviation of the real gas
+system from the ideal gas condition is small, a good approximation
+can be obtained without requiring the knowledge of the effective
+specific heat ratio, Vort of the real gas. However for shocked
+compression the variation of Yorr with shock speed becomes
+important. We may make a preliminary consideration in the
+following wav. For hydrogen atom, the estimated shock speed
+corresponding to the ionisation potential of 13.6 eV is about 4
+em/us. Therefore for shock speed below 4 cm/s, Vere will be
+considerably below 5/3. As the shock speed increases from 4cm/yus
+and as the translational modes dominate the internal energy of the
+gas, Vere will approach the ideal constant equal to 5/3.
+
+In the present experimental set-up, the shock speed of
+the hydrogen Z-pinch during the first compression is about 4
+em/ps. This implies that the effective specific heat ratio, Vere
+during the first compression will be significantly below 5/3.
+Upon current-stepping, the shock speed will increase and Torr will
+be raised. Hence the compressibility of the plasma will be
+affected. It has been shown by Lee [1983a] that the radius of an
+argon pinch depends on the effective specific heat ratio of argon.
+The dependence of the final radius on the specific heat ratio of
+
+the gas has also been discussed by Potter [1978].
+
+Therefore, it appears that current-stepping raises the
+
+62
+effective specific heat ratio and thus reduces the compressibility
+of the plasma. The enhanced compression expected from
+current-stepping has to compete with this reduced compression.
+The enhancement by current-stepping is being masked by the
+y-effect.
+
+A second major factor also needs to be considered. In
+our modelling, the plasma current is assumed to flow in an
+infinitesimally thin layer of plasma with infinite electrical
+conductivity. From the considerations of the MHD, this requires
+that the magnetic Reynolds number, Rn >> J, representing a
+condition whereby the plasma flow field convection predominates
+over the magnetic field diffusion due to the electrical
+resistivity of the plasma column. This condition is fully
+satisfied if the electrical conductivity is large enough, since
+the magnetic field diffusion will be very smal] then. However, if
+the resistivity is large enough such that R, « 10, then the
+magnetic field diffusion component may be significantly large and
+a thick and diffusive layer of current may result. The plasma
+resistivity is a temperature dependent function, varying inversely
+to the power of 3/2. The magnetic Reynolds number, a is then
+
+4 or the shock speed to the power of 4 flee, S.,
+
+dependent on Ye
+1985b]. For a plasma of characteristic length, £ = 1 cm, and
+taking In (A) equal to 10, then ® is given by (4 x 103 ve)
+where V, is in cm/ys. Therefore for v= 4 cm/ys, Re equals to 1.
+This indicates that the magnetic field diffusion is large and of
+equal significance to the plasma flow field convection. Hence
+
+the plasma generated is comparatively more resistive than
+
+assumed. In order to obtain a good plasma flow field-magnetic
+
+63
+
+field coupling, it is necessary for Re to exceed 10 or a shock
+speed beyond 8 cm/ys. .
+
+From the above discussion, the indication is that the
+enhancement effect by current~stepping is being masked by both the
+thermodynamic and the magnetohydrodynamic effects of the moving
+plasma. The disagreement between the experimental results and
+those predicted by the model could be due to the breakdown of the
+assumptions adopted in the model; namely, that the specific heat
+ratio is constant and equal to 5/3 and the plasma conductivity is
+infinite. An improvement in the model is necessary to provide a
+better representation of the plasma produced in the present
+experimental conditions. This is realised by introducing the
+effective specific heat ratio, Vert into the existing model. The
+Magnetic Reynolds number, z, should also be estimated at each
+stage to observe the extent of field diffusion of the current
+
+sheath.
+
+64
+
+CHAPTER 5
+
+The effect of variation of y tr
+e
+
+5.1 Introduction
+
+As mentioned in Chapter 4, it is necessary to extend the
+current-stepping model to consider the effective specific heat
+ratio, Vere of the plasma since the condition of the plasma may
+deviate from the assumed constant specific heat ratio of 5/3. In
+this chapter, the effective specific heat ratio, Vere of hydrogen
+and its variation with shock speed is obtained [Saw, S.H., Lee, 8.
+& Wong, C.S., 1988] from the solution of the 1-D plane shock jump
+equations [A.G.Gaydon,1963], the thermal equation of state, the
+Saha equation and the caloric equation of state (Cambell, A.B.,
+1963]. Introduction of this variation into the energy balance
+slug model allows a closer representation of the hydrogen plasma
+produced. In this extended model, the development of the plasma
+flow field~magnetic field coupling of the plasma and its
+development in time ig also checked using the magnetic Reynolds
+
+number, R_.
+™
+
+5.2 Calculation of y
+For shocks faster than Mach 10 the 1-D shock jump
+equations relating the shocked condition to the ambient condition
+
+measured in the shock fixed coordinates may be written as
+
+01%, = Pol» (5.1]
+
+65
+2 2
+01%] = Poy t Po [5.2]
+12 12
+Ty * 242 * Ma [8-3]
+Ro
+Pa = — Pol oX (5.4]
+ff
+
+where the subscript 1 refers to the ambient condition and
+subscript 2 refers to the shocked condition. , qg, P and H are
+the density, particle velocity, pressure, and enthalpy
+respectively. Ry is the universal gas constant and MH is the
+molecular weight of the gas. Both yy and y are temperature
+dependent. x(T) is the departure coefficient of the gas
+describing the degree of dissociation and ionisation in the
+thermal equation of state.
+
+The enthalpy corresponding to the shocked condition
+
+expressed in terms of shocked pressure and density is given by
+
+a]
+)
+
+x
+
+le
+
+Ho = [5.5]
+
+y-1
+
+cor
+bg
+
+From equations [5.4] and [5.5], it is observed that y
+can be solved as a function of shocked temperature once H» and x
+are known. Ho can be obtained by taking the summation over all
+energy levels while x(T) is obtained from the thermal equation of
+
+state and the Saha equation.
+
+The corresponding shock speed can then be obtained from
+
+o”@-Pr-1
+Py = qT - | —- | [5.6]
+
+r
+
+oe bh
+
+oO
+
+66
+where f is the compression ratio and is given by
+
+reste (5.7]
+
+For diatomic hydrogen, the equilibrium state for
+
+dissociation and ionisation reactions can be represented as
+
+H+ v—_— 2H
+
+H+U—— Ht+e
+
+where uD is the dissociation energy (4.5 eV) of the He molecule
+and a the ionisation energy (13.6 eV) of the H atom.
+
+The thermal equation of state is given by
+
+bol, (1 +8 + 2x) (5.8)
+2
+
+bo
+wa lo”
+
+where 6, the degree of dissociation is the ratio of the number of
+q, molecules dissociated to the total number of 4, molecules
+initially present in the system, Ne The degree of ionisation, «
+is the ratio of the number of H* ions to aN. The departure
+coefficient, x(7) is equal to (1 +6 + 2). -
+
+The degrees of dissociation and ionisation are described
+
+by the Saha equations.
+
+For dissociation, this is given by
+
+67
+>
+4 (6-a)* tr,
+= 0.44 Me = — exp (-Up/kT 4) [5.9]
+(1-6) 2p, Cee y
+
+where 2 22 oly {Herbert, G., 1950, Moore, C.E., 1949] are the
+2
+
+rotational, vibrational and electronic partition functions of the
+
+a, molecule respectively. 2Z 4 is the partition function of the
+
+e
+4
+
+hydrogen atom. These quantities are computed from the general
+
+expression for the partition function as given below;
+
+Zz =) gy exp (U,/kT) [5.10]
+i
+
+where U, is the i-excitation energy level and 9; the
+
+corresponding statistical weight. [Pointon, A.J., 1967].
+The diatomic molecule here is treated as a homonuclear
+
+rigid rotator and a harmonic oscillator (Barrow, 1962]. My is
+
+the atomic weight of the hydrogen molecule.
+
+And for ionization,
+
+2
+2a #, +
+= 8.0x10°® H2 y 3/t ot
+
+b-a Py Zz
+
+exp (-Up/KT 4) (5.11)
+
+eH
+
+where oat and 2 on are the electronic partition functions of the
+hydrogen ion and atom respectively. These quantities are computed
+from [5.10]. From equations [5.9] and [5.11], 6 and qw are solved
+for each value of f and hence x{(T) can be determined.
+
+The value of the enthalpy may be computed as follows;
+
+68
+5R (1-6) U,. (1-8) U bu al
+H = — 7,(1+6+2q) + vib 4 ror, Pt
+ro) an M M M4 M
+H2 H2 H2 H2 H
+(6-a) U (1-8) U al
++ eH + eH2 + eH (5.12)
+M M My
+H H2 H
+where the computed quantities ¢ , U and U 4. are the
+eH eH2 eH
+
+electronic excitation energies of the H atom, the HS molecule and
+the H" ion respectively. Yot and Uip are the rotational and
+
+vibrational excitation energies of the q, molecule.
+
+y is then computed as a function of f, using equations
+
+{5.5] and (5.12).
+
+2 R Ty 1+5 +20)
+
+Ss a (I-O)pgp + I-8)U, = Oly + (1-0)
+
+aly . (d-a) U . al yt
+Af ¥f +
++ A A u [5.13]
+RTs (1+8+2y)
+Me
+
+Finally the shock speed is obtained as a function of Ty
+
+from Eqn [5.6] & [5.7], using the values of y and x computed for
+Ty.
+
+5.3. Numerical solutions
+
+The solutions of the effective specific heat ratio, ors
+e
+
+for hydrogen with an ambient pressure, P = 0.8 mbar are presented.
+
+69
+The dependence of the degrees of dissociation and ionisation on
+shock speed is shown in Fig. 5.1. The variation of Vere with
+shock speed is shown in Fig. 5.2.
+
+For low shock speeds at room temperature, only the
+translational and rotational degrees of freedom are excited. This
+results in an effective specific heat ratio, Vere equal to 1.4.
+At shock speeds of about 0.7 cm/us, the hydrogen molecule starts
+to dissociate. The degree of dissociation then rises rapidly with
+shock speed followed by a relatively gradual rise which finally
+slows as the degree of dissociation approaches 100%. During this
+process, the effective specific heat ratio, Voce drops from 7/5
+to a minimum of 1.1 at about 2.2 cm/ps, which then rises towards
+1.2 as full dissociation is reached. This increase in Voor
+continues until the shock speed reaches 2.8 cm/ps and ionisation
+begins to set in. The increase in the degree of ionisation with
+shock speed is less rapid compared to that for dissociation. This
+is due to the higher ionisation potential. Similarly, the
+increase in the degree of ionisation with shock speed levels off
+with the approach of full ionisation. Correspondingly, Vere
+drops from 1.2 to a minimum of 1.14 at a shock speed of 6 cm/ys.
+At about 7 cm/us, hydrogen is 99% ionised. With further increase
+in the shock speed, Voor rises asymptotically towards 5/3.
+
+The variation of the temperature with shock speed is
+shown in Fig. 5.3. Initially the shock temperature increases
+rapidly with shock speed until dissociation sets in. During this
+process of dissociation energy is absorbed and hence the
+
+temperature rises very little between 1 cm/us and 2 cm/us. Once
+
+=the hydrogen molecules are fully dissociated, the temperature
+
+70
+"zequ g°Q 7e se3 uesoxzpAy
+
+AOF an ‘peads yooys snszea P ‘UOT IeSTUCT Jo seagep puke 9 ‘UCTJeTOOSSTp Jo seaaq [°C *8Tgq
+
+Ot 6 8 Z c | 6)
+0°0 - | | a 0°O
+Z'0 | —- 20
+VOR — v'0
+
+9
+9°0 -- + 90
+8°0 j- 1 80
+OL i —1 OL
+
+71
+ol
+
+LoL
+
+ol
+
+gh
+
+vik
+
+Gi
+
+gL
+
+Lt
+
+‘requ g°Q 38 sed usesoazpéy 10F Sa ‘peeds yous snszea A ‘oTqer qeay oTZTOeds 7°¢ *3Ta
+
+[s7//uio] Sa
+era ol
+
+O°1
+
+bol
+
+cL
+
+gt
+
+vil
+
+gh
+
+9° 1
+
+LI
+
+72
+4 on
+
+T, [xto* k] T, [x10% Kj
+10 10
+QL 49
+Be + 8
+7eR + 7
+6 + 6
+5b = 5
+4b 14
+Ze += 3
+2k 4 2
+0 a | 0
+
+0 2 4 6 8 10 12
+vg lom/us]
+
+Fig. 5.3 Temperature, T, versus shock speed, Vs for
+
+hydrogen gas at 0.8 mbar.
+
+73
+rises rapidly again with the shock speed until ionisation
+commences. Again the temperature rises very slowly with shock
+speeds between 4 cm/yps and 6 cm/ps until 99% ionisation is
+achieved at about 7 cm/ys. Beyond this, the temperature increases
+
+with the square of the shock speed.
+
+5.4 Improved energy balance slug model with varying gamma,
+
+y(t).
+
+The energy balance slug model used to describe the
+compressional pinch dynamics as described in Chapter 2 is extended
+to include the effective specific heat ratio, Vers of the plasma.
+For hydrogen with an ambient pressure of 0.8 mbar, this is
+necessary for shock speeds below 40 cm/ps. This is because at
+these shock speeds, Vert deviates from the constant ideal gas
+value of 5/3. It varies with the shock speed from a value of
+1.11 at 2 cm/ps, rising to 1.5 at 14 cm/ys in contrast to the
+ideal gas y which is constant. Therefore it ig necessary to
+include the effective specific heat ratio, Voor in the energy
+balance slug model for the UMCSZP.
+
+Hence the equations describing the shock and piston
+trajectories for the strong compression phase and the slow
+dynamics phase as given in [2.12] - [2.14] now contain a time
+varying effective specific heat ratio, y(t) in place of the ideal
+
+constant value of 5/3. The equations involved become as follows:
+
+74
+I. The strong compression phase
+
+fil The shock trajectory :
+
+dr uly(ten Ti? or
+8 - | 2 | [5.14]
+4
+
+tur
+Po m
+
+Pp
+
+{ii] The piston trajectory :
+
+{5.15]
+II The slow dynamics phase
+{i] The piston trajectory is :
+adr r dq
+Pos- P — [5.16]
+dt fyt)-1] I at
+
+where y(t) is a time-varying function solved as shown in section
+5.2.
+
+The circuit equations governing the formation of the
+plasma remain unchanged as in equations [2.15] or {2.46a] and
+{2.16b] corresponding to the compression without and with
+
+current-stepping respectively.
+
+5.5 Computation procedures
+
+The computation procedures adopted for the y-varying
+
+75
+current~stepped model are as follows. First, the computation of
+the effective specific heat ratio, Yeor corresponding to the
+experimental discharge pressure or initial density is computed.
+The values of the shock speed and the corresponding effective
+specific heat ratio, Vere obtained are stored in a data file.
+This is followed by the computation of the energy balance slug
+model where the varying Vers corresponding to the ‘instantaneous
+shock speed is read from the data file. Values in between the
+stored points are interpolated using cubic spline interpolation.
+The flow chart of the extended current-stepped model incorporating
+the effect of the varying Vere is as shown in Fig. 5.4. The
+program has options to treat y as constant or as time varving.
+With the extended current~stepped model a closer
+representation of the experimental compression is obtained. The
+effective specific heat ratio, Vere and the temperature are
+simulated as well. In addition, the development of the plasma
+flow field-magnetic field coupling describing the degree of plasma
+flow field convection over the magnetic field diffusion due to
+
+electrical resistivity of the plasma is also checked using the
+
+magnetic Reynolds. number, Ra:
+
+5.6 Numerical results
+
+Using the designed parameters for the UMCSZP, the
+following numerical results were obtained for the single stage
+compressional Z-pinch driven by the first bank alone and the
+current~stepped Z-pinch driven by the  capacitor-capacitor
+combination current source. Section 5.6.1 presents the results of
+
+the first bank alone. The results with current-stepping are
+
+76
+*Tepow peddeis—-quezimd pepueyxe ay} FO Jzeyo MOT, 7°¢ *3TA
+
+,
+(ona
+\ ry
+d N #
+ON
+Dp eyop
+Gor = wl opp
+pucoms
+poco 1 | probes
+4 N
+opp
+Li ie) t= we 08
+al
+4 au
+a
+& payer
+Dh eeueees eas sousypq Afueue
+x sonujpoo
+uo eyuDG puree wz PUI ed aun
+peddeys—pueuino YHA ~ pool yung seult
+Uojesssdulseo wopessrduzce
+yooys suas qa yaoys Sucys
+4
+Ls A 00) =H “ow
+A
+esp sotipudp nos Ps . eto4d eopuoulp aoe
+wads Ps
+teams wa TT ot oyana x fo=x| b+ aie = ae o en
+
+uo squUog puccee @ Mui)
+peddaye.jueuins yi
+
+bens et
+
+auopipucs.
+ONRrom ys,
+
+77
+presented in section 5.6.2.
+
+5.6.1 First bank alone - without current-stepping
+
+With the parameters of the designed pinch of the first
+bank (as given in section 3.1) and the Z-pinch operated at 0.8
+mbar Hoe the new model predicts a smaller final radius ratio than
+that predicted by the y-constant model. This can be understood in
+terms of the increased compressibility resulting from the Lower
+varying y.
+
+A set of results obtained with the extended energy
+balance slug model is presented. The variation of Vert is shown
+in Fig. 5.5. Initially at r= 0, Vere drops from 5/3 to 1.1 at
+t = 0.46 at which time the compressing shock speed is 2.3 cm/ps.
+As the plasma proceeds toward full dissociation, Vere starts to
+rise to 1.2 at + = 0.58. At this time, the compressing shock
+speed reaches 3 cm/ys and ionisation begins to set in. Vers
+starts to drop again with the onset of ionisation until the
+hydrogen gas reaches 80% ionisation at r = 0.88, Voor is then
+1.14, The corresponding shock speed is 6 cm/us. As the degree of
+ionisation approaches 100%, Veet starts to rise again until ore =
+1.58 at vc =1.02 at which time the shock front hits the axis.
+During this time the shock speed rises from 6 cm/ps to 20 cm/us.
+The variation of the shock speed during the compression is
+presented in Fig. 5.6.
+
+The development of the temperature of the shock heated
+hydrogen plasma ig shown in Fig. 5.7. The plasma temperature
+
+rises slowly from room temperature at x= 0 to 1.3 x 104 K at
+
+c= 0.9. It then rises sharply to 4.1 x 10° K when the shock
+
+78
+*(Sutddajs—qusezmo ynoyATA) suoTe yueq
+
+ASATZ ay. hq vsATIp requ g°o Ie S8aePsTpP ueSoaxpAy aoz 24°, JO UOTIETIBA OUT C°S *8Tq
+
+L ‘Ou pes|pouuo0U
+
+ol Ol 80 9°0 v0 20 ome)
+bk | tC | ik
+pa = eh
+an
+m
+I a
+Gk Gl
+- Buiddajs—jussina jnouyM — ~
+Lio dZSOWA | Lt
+
+*(SuTddeqs—quezIMo yoyITA) suoTe Yyueq ISAT
+
+ayq Aq UsATAP TeEqU g°O 2e B8xeYyOsTp uasorpAY eB TOT en ‘peads yooys JO UOTIPTAPA BUT, 9°¢ “3TA
+Lt ‘@lul, pastouu0U
+
+cl O'l 8°0 9°0 v0 c0 0
+
+0 7 ! aa 0
+
+o L : 4 Ss
+
+orb + OL
+¢/§ = 4 -----
+
+GloF BulAipA — { ————— + St
+
+oz Burddejs—juasind jnoulim — GZSOWN —-4 OZ
+
+GZ
+
+[sn//us] Fa [s7/wo] Sa
+
+80
+*Sutddeqs—juezmMo yNoyITA FZeqU g°Q Je esxeYyOSTp
+
+uasorpéy e jo euseTd peqeey yooys ey jo emmjeredueq ey Jo queudoTeasp ayy £°¢ *3Td
+
+L *8Wl, pesipoluuou
+
+ZI “O'L 3°0 9°0 7°0 Z'0 00
+an —Sereneewn ToT 0
+—— 4
+Zi 4 Zz
+gk BuyAupA —~ ¢
+
+Buiddajs—jussind jnoupM —
+pk y+
+dZSOWN
+GE 7 4s
+gk tg
+
+[4 01x] PL [¥ 01x] 71
+
+81
+front hits the axis at +t = 1.02. This increase in plasma
+temperature is due to the increase in the shock speed arising from
+the smaller effective specific heat ratio.
+
+The deviation of Vere below 5/3 results in an increase
+in the piston speed. The shock speed does not vary much until at
+ct = 0.5 when the smaller radius of the piston results in an
+increase in shock speed. These give rise to a thinner current
+sheath and a smaller final column of plasma. The radial piston
+and shock front trajectories are shown in Fig. 5.8. Those
+obtained from the y-constant model are also shown in broken line
+for comparison. The final radius ratio predicted for a single
+stage Z-pinch by the y-varying model is 0.11 while that of the
+y-constant model is 0.24.
+
+The corresponding plasma currents and voltages are shown
+in Fig. 5.9. The increase compression results in a reduced
+column and hence a higher plasma voltage is shown. The plasma
+inductance is shown in Fig. 5.10. The plasma inductance rises
+slowly at first until + = 0.88 at which time it begins to rise
+sharply towards 77 nH at rt = 1.02.
+
+The development of the plasma flow field-magnetic field
+coupling described by the magnetic Reynolds number, R, during the
+compression is presented in Fig. 5.11. It is found that during
+the early period of the compression from +t = 0 to t = 0.9, Ry is
+less than 5. It only rises to 14 at + = 0.95 and above 500 at + =
+1.02 when the shock front hits the axis.
+
+Thus the new model demonstrates that for the major
+duration of the compression, Vert oscillates around 1.14. It only
+
+rises towards 5/3 during the last 200 ns of the compression. In
+
+82
+0°0
+
+c'0
+
+vO
+
+9°0
+
+80
+
+*(uesozpAy azequ g*OQ = d)
+
+‘Tepow ¢/G = A 94] pue Tepou SuTArea-A aya Aq peqoTpesd surddeqs—jueazammo ynoyzTA
+
+youtd uaSorzpéy ay go satszoqoefer3 uoysTd pue yooys SuTpucdsezz0o sul, g'¢ “8TAd
+
+L ‘awl, pesipouwuou
+
+0°0
+
+v cl Ol 3°0 9°0 ae C0
+TUL | | | | | |
+- oe G/S =k ----- 7
+a BulAupA — |
+Bulddejs—juauino jnoylim —
+F 4 dZSOWN
+
+0°0
+
+c'0
+
+vO
+
+9°0
+
+83
+*(uagoapéy requ g*O = d)
+*Tapow ¢/¢ = A 24a pue ~epow supézea-) oy Aq poqotpesd surddejs—jquezino
+
+qnoyytA youtd ua8oxzpsy eyQ Jo e8e]TOA pue querINO euseTd SuTpucdsezz0d eyL 6°S “STA
+
+L ‘OW pes}jDluuo0U
+
+vil cl Ov 8°0 9°0 vO c 0 0°0
+0 0°0
+tor _
+Fou J .
+v d 4 BuyAupn — {0 g'0
+S/S =k wnn-
+2 Buiddejs—jussind gnoulMm — dZSOWN |
+
+ye — O}1
+
+84
+*(ueBorpéy requ g*Q = qd) ‘“Tepow ¢/¢ = A ou pue Tepow Bursaea ~ A ayy Aq peqoTpead
+
+sutddeqs-Juezmd JNoyITA yOuTd usesorpAY ayy Fo q ‘gouejonpuT euseTd Sutpuodsesz209 SUT, OLS “STH
+
+L ‘ali, pestpOui0U
+
+vil cl orl 8°0 9°0 vo c0 0°0
+en re | 0
+OZ [- 7 QS
+OV fee wor —~) OF
+
+E/G = hk -----
+09 BuyAuDA — 4 ——— ~ 09
+08 L. Buiddajs—juasins jnouyIM gZ7SOWN + O8
+OO} - —~ BOL
+
+[Hu] 44 [Hu] 24
+
+85
+*Tepow SurAzea - 4 aya Aq paqyotpead 8utddeys—quazamo
+
+OL
+
+qynoyyTA yourd uesozpAy oy] FO “y ‘zequnu sproudey oTJeusew ayy Jo yueudoTeAep eUy II's ‘3Ta
+
+L ‘@UNp pesijDW40U
+
+Z| Ot 8°0 9°0 70 ZO 0
+0 CT ee ee ee ee ee | 0
+oz i 4+ 02
+oy | OF
+09 F- + og
+Buirdupa — 4
+og I Bulddajs—jussind ynouym — GZSOWN —-| 08
+oor & 8 + oo1
+
+wo
+fee]
+
+accordance with the effect of Vere OF the compressibility of the
+plasma, a smaller final radius is predicted. The Voge Variation
+mechanism is found to reduce the final radius ratio of a single
+stage compressional Z-pinch of UMCSZP from 0.21 to 0.11 as shown
+in Fig.5.8. Also the plasma flow field-magnetic field coupling is
+
+poor until tr> 0.9.
+
+5.6.2. Current-stepped Z-pinch with varying specific heat
+
+ratio, y(t)
+
+Using the designed parameters of the UMCSZP as given in
+section 3.1, and with the Z-pinch operated at 0.8 mbar q, the
+effect of Veer on current stepping is investigated using the
+extended model. The numerical results show that the expected
+enhancement predicted by the y-constant model upon
+current~stepping is insignificant here. The extended model
+indicates no significant enhancement in the current-stepped
+compression. The final radius ratio upon current-stepping remains
+approximately the same.
+
+Results obtained with the extended current-stepped model
+for various times of switching of the second bank are shown in
+Fig. 5.12 to Fig. 5.18. Fig. 5.12 and Fig. 5.13 show the
+numerically simulated plasma current and voltage responsible for
+the shock and piston trajectories presented in Fig. 5.14 and Fig.
+5.15. The variations of Voor! shock speed and plasma temperature
+are shown in Fig. 5.16, Fig. 5.17 and Fig. 5.18 respectively.
+
+The results from the extended current~stepped model
+indicate no enhancement in current-stepping for UMCSZP system.
+
+This is because of the low value of y er for the major duration of
+e
+
+87
+*(uesorpéy zequ g*Q) B8uTddeys—quezimo Jo sewE] snoTzeaA YITA qZSONO
+
+Joy Tepow Supszea ~ A 98yq Aq paqoTperd owe, snszea quero euseTd pestTeUION ZIG “Sta
+Lt ‘AW pesiowuou
+
+ZL O°} g°0 9°0 v0 Z'0 0°0
+VQ TT TOT OTOP EE] 290
+
+oy Bulddajs—juasind ULM — dZSOWN ~ ol
+
+88
+
+*(uesorpséy requ g°g) Surddeqs—yueamo JO SOUWE] snNOTIeA YITA a@ZSono
+
+toy Tapow Supsazea ~ 4. aya Aq poyotperd awry snsz0a asej]pToA wwserd pestyeuzoy ET's “Brg
+
+Lt ‘Olt peslotusou
+
+ZL Ol 80 9°0 v0 c°0 0°
+0
+me 4
+Ze Buikipa — 4 |
+Gok P Buiddajs—jussino YM —~ qgZSOWNN 7
+yl _
+Rn
+
+a7
+
+89
+*(ueso0rpéy requ g*Q) Surddeqys—queamo Jo sour] snoTzea
+
+UITA dZSOWN FOF Tepou Surézea— , oy. Aq poqoTpead seTzojoe[ezy YoOoys pesTTeUION HIG “STZ
+
+9°0
+
+8°70
+
+orl
+
+Ovl
+
+L ‘ell pesiypuuou
+
+8°0
+
+9°0
+
+ae) 0
+
+0°0
+
+Buiddajs—
+
+BulAupa — ¥
+
+jueasNo UA —
+
+dZSOWN
+
+0°0
+
+oO
+
+me)
+
+9°0
+
+90
+0°0
+
+ane)
+
+mane)
+
+9°O
+
+80
+
+*(usdozpéy zequ gg) Surddezys—juezmo Jo sour] snoTzea YITA
+
+AZSOWN OF Tepow SutArea — A oy kq poroppesd sepsoqoefer7 uoystd pestpewion CIs “Sta
+L ‘OW, pesipou40U
+cl O'l 8°0 9°0 vO c 0 0°O
+| | | ! |
+- BulAipa — 4 7
+| Buiddejs—juauno YLiM — |
+- dZSOWN
+
+Ql
+
+0°0
+
+0
+
+ae)
+
+91
+*(uesorpéy requ g*o) Surddeys_quaaano jo soury
+
+SnoTAeA OF Topo Sutsrea — , yy Aq poqotpead azsown szoz +4°A Jo uoTjeTIea syE 91'S “STA
+
+. Lt fall) pasiyousou
+
+aa) ol 80 9°0 ane) c'0 ome)
+
+. LTS I ]
+_ Pp 3 _ p _
+
+Bulddajs—jusiinos UyM —
+
+Lk dZSOWN 7+ Lb
+
+*(uasorpéy requ g°Q) Supddeqs—juezmmd FO sowry snoTzeA OF
+
+Toepow Surézea — A aya Aq peqoTpead qzsoWM roy SA ‘peads yooys JO UOTIeTAeA BUT, /T *G *3ta
+
+L ‘@Wl pasi|DWJoU
+
+cl Ol 8°0 9°0 v0 c 0 0°0
+| ! ! ! | a ae eee _
+2 nn a
+G [ p q dD a G
+OL fF — OL
+Buldupa — X
+Gl i Bulddejs—juswino UpIM — + GI
+Oc {- dZSOWN 3 — O02
+Go — GS
+
+|sr//uo] Sa [sr//wo] Sa
+
+*(ueorpAYy xequ g°Q) Surddeys—queamo yo sow? SNOTAeA AOS Tepouw
+
+Surézen — A ayy Sq poqortpead azgonn a0z cad ‘amyereduey euse[d Jo uotqetTazea ey gt +S ‘8TH
+
+Lt ‘SWI, pesiouueU
+
+ch “O"1 870 9°0 ¥'0 20 0'0
+i a ee
+bof P qd
+ZF 4 >
+gob BuidupaA — 4 _] S
+Buiddajs—juasino ulm —
+vor — v
+dZSOWN
+GE 4S
+9 - —~ 9
+
+[¥ ox] 9 [¥ ox] 91
+
+the first compression. Upon current-stepping Tors rises rapidly
+towards 5/3 and this has an effect of decreasing the
+compressibility of the plasma which opposes the enhanced
+compression of current~stepping. In the UMCSZP system these two
+factors cancel each other and hence no enhancement in compression
+is predicted. The minimum radius ratio for the various times of
+current-stepping predicted by the extended model is ‘shown in Fig.
+
+5.19. The corresponding enhancement factor is shown in Fig. 5.20.
+
+5.7 Comparison with experimental results
+
+The numerical results obtained from the extended
+current-stepped model are compared to the experimental results
+obtained. Fig. 5.21 shows the experimental and theoretical radial
+trajectories with different times of implementation of current
+stepping for the current-stepped pinch at 0.8 mbar hydrogen. The
+result for the first bank alone is also superimposed for
+comparison.
+
+Experimental observations made have shown no enhancement
+in compression by current-stepping for the UMCSZP system.
+Instead, a slightly larger final radius is obtained upon
+current~stepping. This phenomena has been attributed to the
+observed pulling back effect of the current-sheath at the instant
+of attachment of the second current to the plasma - upon the
+switching of the second bank.
+
+The extended current-stepped model also indicates no
+enhancement upon current-stepping for the UMCSZP system. This is
+because of the low compressing shock speed, below 5 cm/ps, for
+
+the major duration of the first compression. At this shock speed
+
+95
+‘Tapow Burséazea -) Aq peqotperd qzsonn oxy ft snsizea wd ‘orqea sniper wnwTUTY 61°S *8Ta
+
+aN
+Ov; 80 9°0 ame) a0 0
+
+Bulddajs—juasind up
+
+Buiddajs—juesind {NOULIM
+
+0 | Builipan — 4 =| 20
+ae dzsown —
+gob J ¢9
+wd ud
+
+96
+* Toepour
+
+Surdaea — k oyq Aq paqotperd azsonn 20x ff snszea ‘*y'y ‘s0}0eF QUeWeODUeYUS euT, OZ'G “BTg
+
+h
+
+Ob 8°0 9°0 vO rage) 0°0
+0 ns en 0
+Lo 44
+ff Buikupa — 4 7]
+be dZSOWN as
+gf — ¢
+
+yy V4
+
+0.6 -
+
+0.4
+
+0.2
+
+0.0
+
+kp Kp
+1.0
+L O38
+0.6 +
+exper imental exper imental
+- O45
+‘
+he 0.25 ‘
+! fl : : + 0.0 : L : : ‘ r
+0.0 0.2 0.4 0.6 0.8 1.0 9.0 0.2 0.4 0.6 0.8 1.0
+(e) (d)
+
+Fig. 5.21 Experimental and theoretical piston trajectories
+
+predicted by the y - varying model of the UMCSZP.
+
+(a) 4.= 0.42 (b) 20.56 (ce) t= 0.70
+
+id) Le 0.79
+
+98
+the degree of ionisation achieved is about 50 % and Tort is about
+1.2. At the instant of current-stepping Vere rises rapidly from
+1.2 to 1.6, greatly decreasing the compressibility of the plasma.
+This opposes the compression enhancement effect of
+current-stepping. Hence for the UMCSZP system the enhancement
+effect of current-stepping is being masked by the Yong cttect-
+
+The variations of Torr for single and current-stepped
+compressions at different times of current-stepping for UMCSZP
+operated at 0.8 mbar qe have been shown in Fig. 5.16. A sharp
+increase in Vers can be observed upon current-stepping for the
+various experimental times of current-stepping.
+
+However, the theory predicts a smaller final radius than
+that observed experimentally for both without and with
+current-stepping. This may be due to the assumption adopted in
+the theory that current flows in a very thin current sheath of
+infinite conductivity. From the consideration of the plasma flow
+field-magnetic field coupling represented by the magnetic Reynolds
+number, R, (refer Fig. 5.11) a rather diffusive and resistive
+plasma except during the final stage of compression is indicated
+in agreement with experimental deductions. Fig. 5.22 and 5.23
+show the theoretical minimum radius ratio and the current-stepping
+enhancement factor predicted by both the y-constant and the
+y-varying model for UMCSZP at various times of switching of the
+second bank for a 0.8 mbar q, discharge. It appears that with the
+present set-up the effect of pinch enhancement cannot be observed
+
+due to the y-masking effect.
+
+99
+* Tepouw
+
+€/¢ = 4.94) pue SupAzea ~ 4 ayy yQ0qg Aq paqorpezd mh snsaaa wd ‘OTQeaA SNTper umwruy zz°s¢ *8Tq
+
+- S/§ Bk ---
+Bujluoa - 4 -——— - dZSONN
+nN
+ol 80 9°0 v0 20 0
+
+Bujddsjs—jussino UIA
+
+Buiddejs—jueiune {NoUsIM
+
+ZO EL Burddajs—juesino UR - z-0
+
+Burddejs—juasino JNoULM
+
+SO = — £0
+
+ud ud
+
+100
+* Tapou
+€/S¢ = A 94} pue SuTAtea - A 949 YI0q Aq peqoTpead  snszea *y*y ‘ZoJOeF JUSWooURYyUg E7°C¢ *8TT
+
+pe '
+Ol 80 9°0 ae) c 0 0°0
+
+S/S =k -~~-
+Bujdaoa - { —— dZSOWN
+
+V4 F4
+
+101
+5.8 Discussions
+
+The above studies indicate that to observe’ the
+enhancement effect of current-stepping, it is absolutely necessary
+to minimise the y-masking effect. This may be done by reducing
+the sharp increase in Voor upon current-stepping. This is
+possible by having Vote just before current-stepping close to the
+ideal constant value of 5/3. However the approach of Vere close
+to 5/3 is a function of the shock speed. For higher shock speed,
+Vere will reach close to 5/3 in a shorter time thus allowing a
+wider range of time for successful operation of current-stepping.
+Enhancement of compression by current-stepping is possible if the
+average compressing shock speed is 10 cm/ys and above. With this
+average shock speed, the Voor at the instant of current~stepping
+is close to 1.6 since the shock speed then is at least 30 cm/us.
+The introduction of current-stepping brings Veer to 1.6 and
+approaches 5/3. This reduced compression due to the increase in
+Voce produces only a small opposing effect of y-masking and thus
+allows the enhancement effect of current-stepping to emerge. If
+the prediction of the theory is correct, successful
+current-stepping can then be observed.
+
+A survey is made on UMCSZP to study possible regime for
+successful operation of current-stepping. Since the average shock
+speed is equal to the initial radius, lo divided by the
+characteristic pinch time, fo the average compressing shock speed
+can only be increased by either increasing the initial pinch
+radius, roo reducing the characteristic pinch time, ty:
+
+From eqn [3.1], the characteristic pinch time, ty is
+
+observed to be dependent on the particle density, po and the
+°
+
+102
+
+2 tae . :
+current density, (I o/ 6S ). The characteristic pinch speed is
+
+— « a7? [3.1]
+
+For a matched condition, ty is approximately equal to
+to However since to is a fixed quantity in UNCSZP, to increase
+the average shock speed we have to increase the initial radius of
+the pinch, to: Therefore to increase the average compressing
+shock speed from =~ (3 cm/ys} of the present system to about 10
+cm/ps or higher would require an increase in the initial radius by
+at least 3 times. The initial density will have to be reduced by
+more than 81 times, see equation [3.1]. The minimum requirement
+of an initial radius of 20 cm and an initial operating pressure of
+10°? mbar is not practical with our present system.
+
+Further it is also predicted by the extended model that
+there is an increase in the plasma inductance and more importantly
+the plasma dynamic resistance associated with the increased
+speed.
+
+From the consideration of energy balance, the electrical
+power input into the plasma of inductance, Ly) as given by
+
+Poo ery arta + Pk [5.17]
+input Pp PPP Pp oP
+exceeds that stored in the plasma associated with the B-field
+
+generated
+
+P
+
+- + rae
+stored — = Ib, + Zeb, (5.18)
+
+103
+by 3Iibyy which is treated as an ohmic loss associated with a
+
+. ‘ 1
+dynamic plasma resistance Ry (t) equal to wp:
+
+The dynamic plasma resistance Ry tt) can be expressed in
+
+terms of the physical dimensions of the pinched column and the
+
+speed of the compressing piston. This is given below as
+
+r () [5.19]
+
+_ -7
+R(t) =1x 10 D
+
+Kyles
+
+Pp
+
+In the case of our present pinch of length 15 cm,
+
+r
+R(t) = 15 x 107% 2 (9) [5.20]
+P r,
+
+where ry is in cm/ys and ry is in cm. For a piston speed of =
+(20 cm/s) and ry of ~ 2 cm, the plasma dynamic resistance is
+0.15 9.
+
+The extended model predicts a faster compression and a
+smaller final column of plasma. These lead to a higher dynamic
+resistance in the plasma. The increase in the plasma dynamic
+resistance is shown in Fig. 5.24. If the current-step is executed
+at + between 0.8 and 1.0, the extended model predicts a dynamic
+plasma resistance in the range of 15 to 140 mQ. This indicates
+the requirement of high impedance current sources to ensure that
+upon the implementation of current-stepping, most of the current
+from the second current-stepped source flows through the plasma
+column and not through the first source while that of the first
+
+source continues to supply a major portion of its current to the
+
+104
+*Tepou ¢/¢ = A ey pue SarAzea — 4 oy 4q peqotpead Sutddeqs-queazmo ynoyATA
+
+youtd uesorpAy azequ g°Q @ AO] sul} pesTTeumoU snszBA 4, ‘goueyjstsez oTueudp eusetTd eu], 7°¢ “Std
+
+L faui, pasipouu0u
+
+vk Zk ov} "0 9°0 70 Z°0 0°0
+ee ee ee °
+oz & . + 02
+oy LF + ov
+09 + cue. : 93
+og Bujddejs—juetino jnoyyM gZSOWNN — OB
+OO 7 00!
+OZ b - “| 0
+orp ~ OVI
+
+[uw] dy [ow] dy
+
+105
+pinching column of plasma and not to the second bank. The present
+current~stepped current sources of LC discharge systems are of low
+impedance in the region of 20 to 40 mQ and hence they are not
+
+suitable.
+
+5.9 Conclusions
+
+The extended current-stepped model shows that it is not
+possible to observe the enhancement effect of current-stepping
+with the present UMCSZP system because of the y-masking effect.
+However, if the y-masking effect is reduced sufficiently, the
+enhancement effect of current-stepping may dominate over the
+yomasking effect. This is possible if the average compressing
+shock speed of the first compression is increased to beyond 10
+em/ps corresponding to a peak speed of = 30 cm/ys just before
+current-stepping. Then, at the instant of current-stepping, Veer
+would have reached a value of above 1.5. Hence the
+current-stepped results in only a small increase in Vere
+
+With the present UMCSZP it is not possible to increase
+the average shock speed towards 10 cm/us. Also the current
+sources are underdamped LCR discharge systems with rather low
+impedances. These low impedance systems become unsuitable since
+the new model predicts an increase in the plasma dynamic
+resistance brought about by the higher compressing speed and the
+smaller radius at the instant of current-stepping. At the instant
+of current-stepping, the plasma dynamic resistance is comparable
+to the source impedances and thus a substantial amount of current
+
+is lost through the sources. This reduces the increase in the
+
+plasma current upon current-stepping.
+
+106
+A summary of the theoretical and experimental results
+obtained for UMCSZP operating at 0.8 mbar Ay is shown in Table
+5.1. It is observed that firstly, the y-effect increases the
+compressibility of the first compression resulting in a final
+radius ratio of 0.11 compared to that of the y-constant prediction
+of 0.24. Secondly, upon current-stepping, the y-effect causes the
+compressibility of the plasma to decrease due to the increase in
+Voce and hence opposes the effect of current-stepping. Therefore
+no enhancement is predicted by the y-varying model. Upon current
+stepping the final radius ratio predicted by the y-varying model
+remains around 0.11 while for the y-constant model, the final
+radius ratio decreases from 0.24 to a minimum of 0.18.
+
+Experimentally, the final radius ratios obtained without
+current-stepping is 0.30 and with current-stepping is about 0.35.
+It shows no enhancement in compression upon current-stepping.
+Moreover, during the attachment of the second bank current with
+the plasma current sheath upon current-stepping, a pulling back
+effect of the current sheath ‘is observed . This has been
+attributed to the poor plasma flow field-magnetic field coupling
+of the plasma current sheath.
+
+A new system is necessary to observe the enhancement
+effect in current~stepping. The system must operate in a regime
+where the y-masking effect is greatly reduced if not @liminated,
+that is with an average compressing shock speed of the first
+compression beyond 10 cm/ys corresponding to a peak shock speed
+of 2 30 cm/ps just before current-stepping. With this, the
+y-masking effect will be greatly reduced since at the instant of
+
+current-stepping the shock speed will be above 30 cm/us and y er
+e
+
+107
+so-tud pue youtd-z [ewuoTsseadwoo se8 ayy 40
+
+a ‘soTqea sniper unuTUTW Tequewrrzedxe pue (Supézea ~ A pue €/g = 4) TeoTJesosyL_ T'S STIL
+
+so—wd
+_ - (eb - 27h) eI ‘40joD} jUBLIEOUDYUS
+t4 uojssesduios Aysueg
+se'0 alo gto ae
+a2°0 tho 6L'0 gh
+youd-Z
+. peddejs—jueung
+ve'0 bho 610 wh
+ovo ho 170 60
+Buydion — 4 “/s ed
+so—ud so
+4 on (sf) 4
+4
+eug|D
+oso bro vz'0 yung jsul
+Bujdiva — 4 e/s =4
+wad
+Bs —
+Lud
+x
+(peyoesson — jepow Bnjs
+sjpuB|s A] woss) aounjog ABueue)
+pPyueWIedxy joo}Jet08y |
+
+108
+close to 5/3. Hence, the rise in Yope Upon current-stepping is
+small and the y-masking effect minimal, allowing the enhancement
+effect of current-stepping to emerge. With this improvement, the
+plasma will be heated to a higher temperature and hence its
+resistivity will also be reduced, thus facilitating the
+attachment to the current sheath upon current stepping.
+Furthermore, high impedance sources are required ag the
+plasma dynamic resistance increases with increasing compressing
+shock speed and reduced pinch column. The requirement of high
+impedance current sources leads to the necessity of having
+voltage sources above 100 kV in order to deliver enough current
+density to drive the pinch. Thus a high impedance and high
+voltage source such as the Marx and water-line systems are
+required. Since the second bank must be faster than the first for
+current-stepping, a Marx system is chosen for the first bank and
+a pulse charged water-line for the second stepped current source.
+A new system comprising of a 3-stage Marx and a pulse charged
+water-line system is designed to study the enhancement in the
+compression by a current-step based on the extended
+
+current-stepped model. This will be presented in Chapter 6.
+
+109
+CHAPTER 6
+
+The Design of the Marx-Water Line Combination
+
+Current-Stepped 7Z-Pinch, [MLCCSZP]
+
+6.1 Introduction
+
+A Marx-line combination system consisting of a Marx for
+the first compression and a water-line /Miller, R.B., 1982] pulse
+charged by another Marx for the second or the current-stepped
+compression, named the Marx-water-line combination
+current-stepped Z-pinch, MLCCSZP is designed based on the improved
+energy balance model. A minimum average shock speed of 10 cm/ps
+with a peak shock speed of 30 cm/ps at the instant of
+current~-stepping for the first compression is suitable for the
+
+enhanced compression of the current-step to be visible.
+
+6.2 The design of MLCCSZP
+6.2.1 Design Procedures
+
+From the prediction of the extended model, an average
+compressing shock speed of at least 10 cm/yus for the first
+compression with a peak shock speed of 30 cm/ps at the instant of
+current-stepping is required for the enhancement of the
+
+compression by the current-step to be observed.
+
+From equation [3.1], the average shock speed is given by
+
+{6.1]
+
+oO
+Vo=~e 3
+Sy 2
+
+fe) r
+
+r uit) | I,
+an
+fs)
+
+oO
+
+ao)
+
+110
+The first design consideration is to fix the average
+shock speed. The next consideration is to fix the parameters of
+the first current source. The requirement of high impedance
+source in the range of 1 to 2Q has to be considered because of
+the high plasma dynamic resistance resulting from the higher
+compressing speed and the smaller final radius produced. However
+we limit the maximum operating voltage to 150 kv in order to
+minimise high voltage breakdown problems. A source of impedance
+1Q at 150 kV is deemed suitable to provide a current rising to
+150 KA in 900 ns. The initial radius is fixed at 6 cm. Then with
+Py = 1a x10 78 kg m7? or an operating pressure of 0.14 mbar, we
+design ty equa] to 0.6 ws. An average compressing shock speed of
+10 cm/ps peaking to about 30 cm/ps at the time of current-stepping
+can thus be obtained for the compression of the first bank.
+
+Next, the second current source to provide’ the
+current-step has to be at least two times faster than that of the
+first current source. Since the duration of the pinch upon
+current-stepping is ~ 100 ns, a source that delivers at least 50
+kA in 100 ns is required. A pulse charged water-line current
+source is chosen for this purpose. The 1.7 Q water-line is 1.5 m
+in length with an inner diameter of 15 cm and outer diameter of 20
+cm. When charged to 150 kV it can deliver about 52 kA in 100 ns
+for a matched load. ~
+
+Further the ion-ion equilibrium time f[Lee, S., 1985b]
+given by,
+
+pela
+7 2
+
+Ct. . = 1.1 x 10 [6.2]
+n,inta)
+
+ind
+
+111
+where n, = TH: is the plasma density; I and n, are the
+compression ratio, (y+l)/(y-1) and the initial
+
+density respectively, and
+A is the ratio of the Debve length to the 90° e-i
+
+impact parameter; In(A) = 10.
+
+is checked to ensure that the ion-ion equilibrium time is
+sufficiently small for shocked heating to be effective.
+With these considerations the following design
+
+parameters are arrived at for the MLCCSZP :
+
+{i] First bank - A 3-stage Marx :
+
+rye 6 cm & = 5 om Py = 0.14 mbar
+Vo = 150 kV L = 600 nH C_ = 600 nF
+
+fe) o oO
+
+to 0.6 us Z =1Q I, = 150 kA
+
+dI,/dt = 2.5 x 1011 a/s
+
+{ii] Second bank - A Marx-pulse-charged water~-line :
+
+Water-line:
+
+Vo = 150 kV Ly, = 90 nH C_ = 30 nF
+(7) 0 (e)
+
+i, = 150 cm DE 20 cm a, = 15 cm
+t= 52 ng Z = 1.79 I. = 88 kA
+fo) W o
+
+4
+dI jdt = 2x 107? a/s -
+
+For the first bank, a 3-stage Marx with 50 kV per stage
+is designed to provide the first current source. Another 3-stage
+Marx also with 50 kV per stage but of lower energy is designed to
+
+pulse charge the 150 kV water-line.
+
+112
+6.3 Design of the Marx system
+6.3.1 Marxl - First current source of MLCCSZP
+The Marxl constituting the first bank consists of 3
+units of Maxwell capacitors, each 1.8 uF, 60 KV maximum with an
+equivalent series inductance of 20 ni. These capacitors are
+charged in parallel and discharged in series upon the switching of
+the first capacitor. They are arranged lengthwise with the anode
+facing the cathode and placed inside a rectangular mild-steel
+casing which is grounded. Each of these capacitors rests on 6
+pieces of insulator blocks. The inside of the casing is lined
+with layers of mylar sandwiched between polyethylene sheets to
+provide the necessary insulation between the capacitors and the
+earth casing. Each of the capacitors is also similarly insulated.
+A coaxial configuration is chosen here since a rather low
+inductance (600 nH) is required. A schematic of the capacitors
+arrangement is shown in Fig.6.1. The first switch, Si uses a
+swinging cascade spark gap operating at atmospheric pressure.
+The second and third switches are also atmospheric spark gaps
+operating in the overvoltage mode. The output from the third gap
+is connected to the anode of the 2Z-pinch. High power CuSO
+
+4
+
+resistors are used as earthing resistors.
+
+6.3.2 Marx2 ~ For pulse-charging of the water-line ~
+
+The design of Marx2 is an improvement over that of Marxl
+and it is also more compact. It makes use of 3 units of Maxwell
+capacitors each of 0.33 uF, 100 kV maximum and with an equivalent
+series inductance of 25 nH. These capacitors are stacked
+
+vertically one above the other and supported by perspex holders
+
+113
+“[xaey JO ynodeT ay. Jo orqeweyos y L'9 ‘*8Ta
+
+youjd—z yo epoun of <— _——
+
+CI
+
+£ YOLOVdVS
+
+>
+zs
+
+£s
+
+Co
+
+@ YOLOVdVS
+
+[IO C] ft yoLovdvo
+
+a
+
+[za
+
+F
+
+Bujspo jeojs priw
+
+114
+(refer Fig. 6.2). Pressurised spark gaps are used here and they
+are arranged in rows as shown in Fig. 6.3. This arrangement
+facilitates the erection of the Marx2 through the irradiation of
+the second and third gaps upon the switching of the first gap.
+Again CusO resistors are used as earthing resistors. The
+capacitors, pressurised spark gap system and the earthing
+resistors are placed inside a grounded mild steel casing filled
+with oil to provide the necessary insulation. The output of the
+Marx is taken through a damping resistor (Cus0 4) to charge the
+
+water-line. A schematic of the the overall setup of Marx2 is
+
+shown in Fig. 6.4.
+
+6.3.3 Design of the water-line
+
+The coaxial water-line is made from brass sheet of
+thickness approximately 2 mm rolled into a cylindrical tube of
+diameter 15 cm (d) for the inner electrode and 20 cm (D) for the
+outer electrode. The length is 150 cm (2). At each end of the
+rolled brass tube for each of the inner and outer electrodes, a
+curved brass plate is attached. (see Fig. 6.5). This is to
+increase the electric field across the insulation and to reduce
+the electric field parallel to the insulating surface. This
+prevents flashover across the inner and outer electrodes. A
+diagram of the water-line is shown in Fig. 6.5. The -electrical
+
+parameters of the water-line are as follows :
+
+we
+Ly = —21n(D/d) 6.3]
+an
+
+115
+*7xazey Jo szoqzToedeo aya yo quewesuerze suL 7°9 *3TA
+
+| ae od
+i
+depjoy xedsied
+
+iN (UHR)
+
+L YOLIOVd¥O >
+id
+tN
+
+Z YOLOvdvO
+td
+€N
+
+£§ YOLOVdVO —
+
+€d
+
+116
+PO
+
+N3
+
+N2
+
+L—|
+g Z
+Z Z
+ir A Pai
+- | at + P3
+I 4
+| L|
+1] L|
+Zane
+4 |
+- + aa
+AE
+s Cx iS gas inlet/outlet
+mo Tp |
+- | olf + Pt
+Ta a
+cue
+qe perspex
+
+Fig. 6.3 The pressurised spark gaps of Marx2.
+No, Nj are connected through 500 @ to
+ground. PO, from the output gap is
+connected to the anode flange of the
+
+Z-pinch,
+
+1i7
+uojAu
+
+*7xarBy FO modkepT ayy Jo oTaeweyos y 4°9 *3Tg
+
+aayom
+
+xedsied aA
+
+SNIT~YZ1VM
+
+SdvV9 MYvdS GASINNSSAdd
+
+¢d
+
+SYOLIOVdVI
+
+118
+uojAu
+
+JB{DM
+
+youd—Z of
+YOM OUJ—JOJOM Of
+
+a
+
+‘OUTT-20}eM OY JO UBTSEp eur
+
+eqoid eBpy0A waypoodns
+
+G*9 *8Taq
+
+Joyjno iejom
+
+]
+
+C e&
+
+yolul 4040
+
+1.
+(“F
+
+=) > ss od ot
+
+119
+ane 6 &
+c _ wo
+
+i [6.4]
+
+In(D/d)
+
+1 mn 1/2
+z,=70,/C,) =— | | In(D/d) 16.5]
+
+Qn | ee
+woo
+
+ty =¥ Le = ” (6.6]
+
+where Cy Loy 20, t, are the capacitance, inductance, impedance
+
+W W
+
+and the characteristic transit time of the coaxial water-line
+respectively. Ey is the dielectric constant of the line
+insulator, which in the case of water is approximately 80. Uy and
+€, are the permeability and permittivity of free space
+respectively and ec the speed of light.
+
+The duration of the current pulse, tq is given by
+
+fe,
+
+Cc
+
+{6.7]
+
+Water is chosen as the line insulator because of its
+high dielectric properties which remain stable up to about 1 GHz,
+resulting in an increased line capacitance per unit length. The
+resistivi of the water must be kept at 104 9 n, therefore
+deionised water must be used and continuously recycled through a
+resin deioniser.
+
+The breakdown voltage of the line assuming a uniform
+
+electric field as given by Martin [1970] is reproduced below ;
+
+120
+1/3 ,1/10 _
+Ena Cert 4 =k [6.8]
+
+where Ena is the breakdown field in MV/cm, t
+
+ps when the field is 63% of Eng and A the electrode area in cm
+
+eff the duration in
+vi
+
+over which the electric field does not vary by more than 10% from
+the maximum value. &k is a polarity dependent constant which is
+0.3 for a water-line charged positively. If the water-line is
+charged negatively then kis 0.6.
+
+The maximum voltage that the line has to tolerate is
+
+given by
+
+= —— [6.9]
+
+where Va! Cn are the series output voltage and capacitance of the
+erected Marx used to pulse charge the water-line and cy the
+
+capacitance of the water-line.
+
+6.3.4 Design of the water-line switch
+
+A pressurised spark gap /[Favre, M.B., 1985] is to be
+used to switch the pulse charged water-line onto the pinch load.
+It consists of two brass electrodes placed approximately 1 cm
+apart and enclosed in a cylindrical nylon casing machined from a
+solid nylon block. The design is as shown in Fig. 6.6. The
+
+estimated inductance of the switch is 100 nH.
+
+121
+*YOTEMS SUTT-JOIeA OQ Jo USTSsep sUy,
+
+9°9 “BT
+
+soypjnsu] C4
+sooaqg [|
+uojAu f=]
+
+youjd—z Jo epoun of <——
+
+—>
+
+OUI|-—1G}DM JO
+
+Z¥ epound of
+
+122
+6.4 The Circuit equations of MLCCSZP current generator
+6.4.1 Charging of the water-line
+
+The water-line is pulse charged by a 3-stage Marx
+generator. During charging, the water-line behaves as a
+capacitor of capacitance Cy The charging process is presented
+in Fig. 6.7. The Marx upon erection can be represented as a
+capacitor, Cn with a series inductance, Lat Ra is included to
+obtain a critically damped charging source. Applying Kirchoff's
+
+law the following circuit equations are obtained.
+
+Yom = vem + Vp t Vey [6.10]
+t, q
+Vy oo FAyb + IR + — {6.11]
+Cc Cc
+m ‘m
+6.4.2 Discharging of the water-line
+
+The pulse charged water-line discharges through the load
+upon switching. For the duration of two transit times, 0 « T <¢
+2b the discharge of the water-line through an inductive load
+can be represented as being driven by a voltage source, vy = ye
+with a series impedance, Zo equal to the line impedance (see Fig.
+6.8). The current delivered by the water-line when switched is
+given by
+
+(Vv, ~ IZ)
+
+l= Z [6.12]
+(L, + Ly)
+
+where £. is the inductance of the switch and Ly is the inductance
+
+123
+Lim Ss Rm
+
+Cm 2 lim — cy
+
+Fig. 6.7 The circuit diagram representing the pulse
+
+charged water-line.
+
+Zo $s Ls
+7} “e ot
+a |
+Vy be ly
+
+Lp)
+
+ORES E,
+
+Fig. 6.8 The discharge circuitry of the first bank
+(Marx1) of MLCCSZP.
+
+124
+of the load.
+
+6.4.3 The MLCCSZP circuit
+
+The circuit representing the current-stepped source of
+the MLCCSZP is shown in Fig. 6.9.
+
+The first current source delivered by the 3-stage Marx
+system is represented as a capacitor discharge through a series
+inductor to the pinch load. The second current source provided by
+the discharge of the water-line is represented as in section
+6.4.2.
+
+The circuit equations describing the MLCCSZP
+
+current-stepped sources are as follows :
+
+{a] 5) on & 54 off
+d SI,dt
+- {L41,] + [Ln6 + L(t = Yi0 - (6.13]
+c
+1
+I= I, {6.13a]
+(b] Ss; on & $4 on; (So on)
+a f[ SI,at
+x (L421 + [Log + br = Yi0 ~ , : {6.14a]
+L 1
+at
+a Lh,T4] t [Ln6 + Ler = Yoo - 1,2, {6.14b]
+
+125
+"dZSOOIW 842 Jo Ar]ENOIATO eszTeyosTp eu, 6°9 *8TWq
+
+an
+
+has]
+
+ods
+
+TMT
+
+Sy
+
+ZA
+
+126
+Io= 1,410, [6.14]
+
+Le is the inductance of the water-line switch.
+
+When s) is switched alone a conventional gas
+
+compressional Z-pinch is obtained. Switching of 5S, after a
+
+suitable delay will produce the current-stepped Z-pinch.
+
+6.5 Computation procedures
+
+Equations [6.13] to [6.14] are solved numerically
+together with the extended model representing the plasma dynamics
+as given in equations [5.14] to [5.16]. For the single
+compression by the first bank alone, the circuit conditions are
+represented by equations [6.13] and [6.13a]. In the case of the
+current-stepped compression by the first bank followed by the
+second bank, the circnit conditions are represented by equations
+{6.14a], [6.14b] and [6.14c]. The condition of the water-line
+during charging is represented -by equation [6.11]. The block
+
+diagram of the computational procedures is shown in Fig. 6.10.
+
+6.6 Numerical results
+A set of numerical results obtained for the MLCCSZP
+designed using the y-varving energy balance slug- model is
+
+presented.
+6.6.1 Comparison of the first compression between UNCSZP and
+MLCCSZP
+
+The variations of y ee during the first compression
+e
+
+127
+Computation of 7
+
+Computation of pulse—charged
+waterline to Vo
+
+Computation of Z—pinch
+with first Marx
+
+Computation of Z-pinch
+with first Marx
+and water—line
+
+Fig. 6.10 Block diagram of the computation sequences
+
+of MLCCSZP. -
+
+128
+MLCCSZP and UMCSZP are shown in Fig. 6.11. Comparing to UMCSzP
+which is shown in broken line, the new MLCCSZP system y
+approaches 5/3 in a shorter time due to the higher compressing
+shock speed (refer Fig. 6.12). Its deviation from the compression
+of an ideal gas with y = 5/3 is reduced. The minimum radius
+ratio predicted by the extended model for the new system is 0.17
+and the difference from that predicted by the y-constant model is
+reduced from 50% for UMCSZP to 19% for the MLCCSZP. This has an
+effect in the piston and shock trajectories shown in Fig. 6.13
+for UMCSZP and Fig. 6.14 for the MLCCSZP.
+
+There is also a significant improvement in the plasma
+
+fiow field-magnetic field coupling represented by the magnetic
+
+Reynolds number, %,.and shown in Fig. 6.15.
+
+6.6.2 Current-stepped Z-pinch
+
+With the MLCCSZP system, an enhancement in the
+compression upon current-stepping is indicated. The increase in
+the compressing speed of the first compression is sufficient to
+produce an annular column of plasma with Yeors approaching 1.6,
+which is relatively closer to 5/3, at the instant of
+current-stepping. Therefore, upon current-stepping, the increase
+in y is small and thus enables the enhanced effect of the
+current~stepped compression to dominate. The variation of Vorr
+for different times of current~stepped are shown on Fig. 6.16.
+The associated shock speed and plasma temperature are shown in
+Fig. 6.17 and Fig. 6.18. The plasma current, voltage and
+
+inductance are shown in Fig. 6.19, Fig 6.20 and Fig. 6.21
+
+respectively. The corresponding shock and piston trajectories of
+
+129
+
+*Sutddeqs—-queammo ynoyITa dzsonn pue azsooww Jo *4°, zo uorzerszeA 119 ‘BTA
+
+L ‘elu, pesljoWtoU
+
+L*L
+
+cl
+
+Zh
+
+vil
+
+G*l
+
+9°
+
+Zk
+
+dZSOWNn
+
+Bulddejs—juesino pnouyIM —
+
+dZSOD1W
+
+Buiddajs—juasino ynoulia —
+
+LoL
+
+ci
+
+an
+
+vil
+
+Gl
+
+9°
+
+L
+
+130
+*Zurddeqs—quazind yoyATA JZSOWA PUR AZSOOIN JO an ‘peeds yooys Jo uoTIeTIzeA ZI‘9 ‘3Ta
+
+L ‘awl, pesijouoU
+
+Am O°l 80 9°0 ane) rane) 070
+
+0 0
+
+0 0¢
+
+OF — OV
+dZSOWN ----
+
+09 dZSooIW — | 99
+
+O8 -F Burddajs—jusiino {NOUN — —~+ O8
+BulAupa — £
+
+OOL — ool
+
+[s7i/wo| Sr [s7/uso] Sp
+
+131
+UMCSZP
+
+0.6 4
+~ without current—stepping
+0.4 7 — varying |
+02h resp RQ 4
+0.0 ! 1 | ! | Gal i 1
+0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4
+normalised time, T
+Fig. 6.13 Piston and shock trajectories with Y - varying
+and y = 5/3 of UMCSZP.
+ks kp
+1.0 — 1.0
+0.8 MLCCSZP . -| 0.8
+- without current—steppi
+06 L withou ran pping + os
+votes ~y= 5/3
+0.4 + ——_ 777 varying 4 0.4
+0.2 - Wee -t 0.2
+0.0 bot tt : 0.0
+9.0 0.2 0.4 0.6 0.8 1.0. 1.2
+
+normalised time, T
+
+Fig. 6.14 Piston and shock trajectories with y - varying
+
+and y = 5/3 of MLCCSZP.
+
+132
+
+0.2
+
+0.0
+azsonn ue aZso7 go “ty ‘requ gprouked oTyausew aya go quewdopaaed «ST"9 “3Td
+
+_ feu pasijouou
+
+Zt , , 9'0 ae) ZO 0
+) 0
+ex 0%
+OV ov
+09 dZSOOIN ~~ 09
+dZSOWN -- 7
+08 “Burddays—juedine ynouyyr — 08
+Bupa — A
+ool o oot
+
+-
+_
+
+yee
+
+133
+Lt
+
+cl
+
+aa
+
+vl
+
+GI
+
+9°
+
+Ly
+
+“(gto= ip Oh fyOahi gq "oRhi 2)
+
+332
+*Surddeqs—juerzms JO sauUT] snorzea YATM dZSOOIN jo A Jo uorqerTzeaA 91°9 *8Ta
+
+L ‘aul, pasipuisou
+
+cl O'l 8°0 9°0 yo 0 » 0'0
+
+I LL
+
+vel
+GL
+
+9°
+
+= Buyddejs—jusuino uM — dZSOOIN 4 Lt
+
+134
+“(gto=hip Qo=hi 2d SHO ehiq Forti)
+
+*Butddeqs—querand FO SowWE] sNOTAeA UTA qZSOOIW jo SA ‘pseds yooys Jo uoTIeTIAeA /T'9 *8TA
+
+L ‘OWI, peslouuou ‘
+
+cL O'l 80 9°0 ae) Aaa) 0°70
+0 | an a ee oe ee
+OZ | 02
+Ov + oF
+09 — 09
+og te BulAipa — £ — 08
+ool Burddeys—jussund YM ~ q7ZSOOIN ~~ 901
+
+[sr//wo] Sa [s7//wo] Sa
+
+135
+"CeO=hiP GQOHRT2 ‘HOahig ‘os: 2) *Burddors
+
+—JuezTIND JO SeWL2 snoTazeA YATM qZSOOWW Fo 87, ‘eanqezedwey euseyd Fo uorqeTszeA gT*g *3Tg
+
+Lt ‘auilp pesippuuo0U
+
+Zk ol 20 9°0 v0 Zz'0 0
+He en He
+bo —" = L
+ol F + ol
+ool E = 001
+| Buldipa — 4 |
+: Bujddejs—juesino yim — qZSODIN
+oool = = 0001
+
+136
+0°0
+
+v0
+
+BO
+
+cl
+
+9°}
+
+O°?
+
+“CeO ahi Pp ‘9O=h 22 “oe hid Zoshie)
+d
+
+*Sutddejs—juazmmd Jo seuwT] SNOTAPA YITA qZSOOTW JO 1 ‘queamNd euseTd pesTTewIoN 61°9 “3TH
+
+L few, paesipouuo0U
+
+ZI OL 30 9°0 7-0 ZO one)
+a nn 0°0
+— eee | v'O
+- ped | + 90
+| 4 zat
+BuydAupa — 4
+L- Buiddajs—juesino uM — dZSOOIN — Q'L
+L + oz
+d q
+
+137
+vO-
+
+c 07
+
+0°0
+
+gO
+
+yO
+
+9°0
+
+8°0
+
+“Ceoah > Pp ‘goehio Woshiq ‘oahie#)
+d
+
+*Sutddeqs—jqueaIND JO SOWE] SNOTAIBA UTA dZSOOIW jo “a ‘eseqtoa vuseTd pesT[euaIoN
+
+cl
+
+O°
+
+L ‘@UW, pesipouo0U
+
+ome) 9°0 v0 c'0
+
+029 “STA
+
+0°0
+
+v-O-
+
+0°O
+
+Buldupa —4
+
+Bulddajs—juesinod YIM — gqZ7SOD IW
+
+138
+“CgtO= hi Pp
+
+‘goeh io fo =h:q ‘779 =h: B ) *Butddeqs—quermo
+
+d
+
+JO SOUT? SnNOTIeA YITA dZSOOIW FO 2 ‘owT] pesTTeuou snszaa “Y faouRjONpUT eUseTg 12°9 “Str
+
+L ‘OWH paesiOuUUOU
+
+8°0 9°0 vO c'0
+
+0°0
+
+_ Lt
+
+Burana — £
+
+Buyddajs—jueiino Um -— d7SODTIW
+
+[Hu] 94
+
+139
+the enhanced compression are shown in Fig. 6.22 and Pig. 6.23.
+The enhanced compression factor predicted by the MLCCSZP
+is shown in Fig. 6.24. There is a marked improvement compared to
+
+that of UMCSZP shown in broken line.
+
+6.7 Experimental set-up of MLCCSZP
+
+The circuit equation for Marxl is as shown in Fig. 6.25.
+The load resistors are high power cuso , resistors. The
+capacitors are charged in parallel by a 60 kV, 30 mA pc -er supply
+unit. The power supply unit is desiqned to charge both Marx units
+together. The circuit diagram of the power supply unit is as
+shown in Fig. 6.26. The output gap of the third capacitor is
+connected to the anode of the pinch machine. The anode of the
+pinch machine is also connected via a parallel plate to the self
+breakdown gap of the water-line which switches the water-line onto
+the pinch load. The other end of the water-line is connected to
+the output gap of Marx2, its charging source. A schematic of the
+
+layout is as shown in Fig. 6.27
+
+6.8 The trigger pulse generator
+
+The triggering pulse of 40 kV, 40 ns rise-time is
+provided by a 50 stage cascaded SCR unit. The circuit of the
+cascaded SCR switch is as shown in Fig. 6.28. When ~a trigger
+pulse is introduced to the gate of the lowest SCR which has its
+cathode connected to ground, this SCR switches on and swings the
+anode to ground. This causes the lowest triggering capacitor to
+discharge through R, through the gate to switch the next higher
+
+SCR and so on. Once the chain of cascaded SCRs becomes fully
+
+140
+0°0
+
+ane)
+
+yO
+
+9°0
+
+8°0
+
+Ol
+
+"(8 O=hi Pp
+
+*SuTddejs.quezmmd jo sour] snoTzea YyATA qZSOOIW Fo Sy ‘setaoqoefer] yOoys pesTpTewroN 7z‘9 “ST
+
+‘970 = hi > “HORH Ed OHhi ® )
+
+L ‘@Wh pesioudo0U
+
+80
+
+9
+
+0 v0 20
+
+0°0
+
+BujAupa ~— £
+
+Buiddajs—juesind YLIM —
+
+dZSOO IN
+
+0°0
+
+20
+
+vO
+
+9°0
+
+141
+*Zurddeqs—quezmnd JO sout] snoTzeaA UITA dZSOOTK FO
+
+0°0
+
+c 0
+
+vane)
+
+9°0
+
+8°0
+
+Ovl
+
+“(eos hip Qo=h 2 ‘orb gq orhie)
+4
+
+L ‘OU, pasiyDus0U
+
+80
+
+9°0 yO c'0 0°0
+
+BujAupa —4
+
+Bujddejs—juesns YM —
+
+oO dZSOO1IN
+
+oe
+
+y ¢ setsoqveferq uoystd pestpeumon ¢7°9 “STH
+
+0°0
+
+c0
+
+v0
+
+9°0
+
+80
+
+OvL
+
+142
+*dZSOnO pue dZSOVIN Jo * snsazea ‘F°y ‘amojJOey JuoWeouRYyUS LOTsserduCg 77°9 *3TY
+
+ih
+O4 80 9°0 70 ZO 00
+0 ne 0
+Loe + |
+ZE dZSOWn ~--- + Zz
+dZSD0IN ——
+[ BulAspA — 4 |
+g & t¢
+
+H4 “4
+
+143
+600 ko Co
+
++50 kV a |
+3,
+don f
+soo kn | Cy
+— |
+|
+
+Fig. 6.25 The circuit diagram of Marxl.
+
+144
+ve (og = 91)
+
+unt (09 » ex)
+Is
+as as
+aun 9g ono
+es
+an ve On oe
+—
+= He ~ wyoYo eporp
+IN
+wit (os — of) '
+un (039 * ge)
+D4 008
+bd
+ax 009 =
+
+<4
+U4 G09
+
+BN OL Ul
+
+(Rez 1)
+sousoysuas, “A-H DDHDA
+
+Ta
+
+t
+
+145
+‘waysks JZSOOW 2u7 JO nosey oTJeweyoSs Y /7°9 “STA
+
+yoyas doBxy20ds oinssead apeydsouyo
+
+sb
+
+D
+
+Q4upq 48443) PuDy
+
+youd-z » <
+
+(4uDq pucses) eujj—s9;0mK
+
+D
+
+@u}[—1ByDM
+ayy eBaoys—esind oa,
+— Z xs0W
+
+T
+
+yous doB—yxspde peslinssed
+
+7
+
+yojias doB—x20ds eunsseid opeydsotyp
+
+146
+{+ —-O +40 KV
+=e
+
+cC —_—
+TSO Rrao Raso
+
+Cc a
+T49 Rrag ZL. Roag
+
+pO “OUTPUT
+
+TRIG, IN| O he
+it
+
+Fig. 6.28 The circuit diagram of the 40 kV, 40 ns pulse
+generator. ( Cos 0.01 uF ( 1 kV), R, = 33 MQ,
+R= 2k@, R= 100k, BR = 12, C,= 0.0L uF
+
+(40 kV) ).
+
+147
+conducting, the discharge time of the storage capacitor, Ce is
+determined by its capacitance, the load resistance and the current
+dependent resistance of the SCR. The magnitude of the load
+resistor is limited by the current and power handling ability of
+the SCR. The rise time of the voltage pulse is determined by the
+magnitude of the voltage being switched and the circuit
+configuration. ,
+
+The output pulse of the cascaded SCR measured across a
+
+load of 2 kQ is as shown in Fig. 6.29.
+
+6.9 Electrical measurements
+
+The output voltage of the Marxl is measured using a high
+power resistive voltage probe [Saw, S.H., Wong, C.S. & Lee, S.,
+1991]. It consists of a series of resistive dividers cascaded
+together. The first section consists of a resistive divider
+whereby Ry and Ro attenuate the voltage to a few thousand volts.
+
+The high power resistor R, is made from Cuso - 5H,0 solution. It
+
+1 4
+
+has been found to be reliable if the resistivity of the solution
+is kept between 30 and 104 Qem (Bishop, A.E. & Edmonds, G.D.,
+1965].
+
+The choice of R, and Ry are determined by the
+resistivity and the line impedance respectively. Since the probe
+is used in the pulse discharge environment it is preferable to
+carry a large signal on the line to the measuring station to
+increase the signal to noise ratio. Further attenuation to a
+suitable value for the input channel of the scope is via in-line
+
+attenuators. A schematic of the high power voltage probe system
+
+is as shown in Fig. 6.30.
+
+148
+Fig. 6.29 A typical pulse of the cascaded SCR pulse
+
+generator. ( scale : 13 kV/div, 50 ns/div).
+
+149
+‘ueqshs agord o8eqjoa ysTy euL OC'9 °8Ta
+
+or
+ap KR Bot o2 = q voy yenueyyy
+
+it
+N
+
+souepoduy (yndyno) ynduy
+4oponueyO sul|—Uy
+
+"
+m
+
+9
+CCh- ND /N2T Zz
+
+° e
+[CEtN)/CE-NDT Z
+
+t mr
+d/d* NH
+dy BJqdd [PIXDOD YOG z
+WA ¥
+o- Lo o—_{} LZ. f
+. .
+
+%
+m
+
+By By WZ 7
+
+150
+
+6.9.1 Construction of the high power probe
+
+The CuSO 4 resistor Ry
+
+standard solution of 1N diluted to the required resistivity. [t
+
+shown in Fig. 6.31 is made from a
+
+ig contained in a reinforced rubber water-hose with copper
+electrodes and nylon rings to secure the copper electrodes to the
+water-hose,. Copper electrodes are chosen to maintain the
+concentration of the CuSO 4 solution as well as to prevent
+corrosion of the electrodes which will contaminate the solution.
+The cuso solution is filled into the water-hose through a small
+opening at one end of the electrode using a syringe. In the
+preparation of the copper sulphate solution deionised water or
+distilled water is used. The area of the electrode, length of the
+water-hose and resistivity of the solution are determined by the
+
+desired value of &, and the power it has to handle under fault
+
+1
+conditions. Generally 1 em” can safely absorb 100 J of energy.
+In our design, it is required to absorb a maximum energy of 7 kJ
+under fault conditions; when for example the pinch tube does not
+
+breakdown. This sets the minimum volume of CuSO, solution
+
+4
+required to 70 om. Normally the probe is designed to take at
+least twice the energy. As such the following parameters are
+chosen; area, A = 5 cm’, length, & = 50 cm and resistivity, p =
+
+400 Qem. This gives a 25 kJ, 4 kQ resistor as R With the value
+
+1
+of Ry chosen as 50 Q, an attenuation factor of 8@ times is
+obtained from this resistive divider stage. Hence for a 150 kV
+pulse, about 1900 VY is carried by the line to the measuring
+station. The second stage of the attenuation makes use of
+
+home-made in-line attenuators since commercially available
+
+attenuators are of insufficient wattage. These in-line
+
+151
+
+*zoysTser xenod ystTy ayy FO ustsep eyL 1e°9 “BTA
+
+Bup—Q sfayu
+Sup—psonB uolAu
+SROY—JO}OM POUOJUJOS Z
+
+uoynjos eypydins 1eddoo Ey
+
+sepoageye Jeddoo |_|
+
+soysises ayouding seddog
+
+152
+attenuators are designed to see an impedance of 50 9, at both ends
+and thus can be placed in series to produce further attenuation.
+The resulting attenuation factor is given by the sum of the
+attenuation ratios measured in dB.
+
+The current signal is measured by means of a Rogowski
+coil placed between the output gap of Marxl and the anode of the
+
+4
+
+Z-pinch machine.
+
+6.10 Preliminary testing of Marxl
+
+Initially each of the capacitors are charged in stages
+to 50 kV to test the insulation. Next, the first gap, 5, (refer
+Fig. 6.1) which is to be triggered ig set. The first capacitor is
+then charged to 50 kV with the second capacitor connected through
+
+a 500 Q CuSO, resistor to ground. Upon being triggered 5
+
+4 1
+switches, connecting the anode of the first capacitor to the
+cathode of the second capacitor through the 500 Q CusO 4 resistor
+to ground. Similarly the second and third gaps are set and tested
+individually to hold 50 kV and to break down at 55 kV by charging
+each of the capacitors one at a time. (shorting the other two
+capacitors to prevent inductive charging).
+
+The Marxl is initially tested at 90 kV. It is gradually
+increased to 120 kV. Fig. 6.32 shows a typical output voltage
+signal of 120 kV when the Marxl is discharged through a load of 75
+Q. The operating voltage of the Marxl will eventually be
+increased to 150 kv.
+
+Further experimental studies planned for future work
+
+will be presented in Chapter 7.
+
+153
+25 kV/div
+
+eee
+
+500 ns/div
+
+Fig. 6.32 The output voltage signal of Marxl at 120 kV
+
+discharging through a load of 75 Q.
+
+154
+
+CHAPTER 7
+CONCLUSION
+
+7.1 Introduction
+
+The current-stepping technique was first introduced by
+Lee [1984]. It has been proposed as one of the various means of
+producing a dense plasma as a prelude to radiation cooling with
+eventual applications towards pinch fusion reactor. A numerical
+study has been conducted by dali (1985) using the energy balance
+slug model assuming y-constant. Experimental studies take off
+from thence with the desiqn and construction of the UMCSZP.
+Analysis of the results obtained leads to the improvement of the
+energy balance slug model and the design of a new system, the
+
+MLCCSZP.
+
+7.2 Review of the experimental results
+
+The first attempt to observe the enhancement effect in
+the current-stepped compression in a hydrogen Z-pinch using UMCSZP
+indicates that there is no enhancement upon current-stepping. The
+deviation of the experimental results from that predicted by the
+model is attributed to the breakdown of the assumptions adopted in
+the model. These assumptions adopted in the model do not hold in
+UMCSZP. It is found necessary to improve the model to include the
+varying effective specific heat ratio, Voce associated with the
+plasma.
+
+From the extended theory, it is found that no
+
+155
+enhancement effect will be observed as it is being masked by the
+thermodynamic and electromagnetic effects of the plasma. The
+first compression occurs with an average shock speed of 4 cm/us.
+Upon current-stepping the computation shows a sharp rise in Veer
+leading to a decrease in the compressibility of the plasma. Hence
+the enhancement effect of the current-stepped compression is being
+masked. To allow the enhancement effect of current-stepping to
+emerge, it is necessary for the first compression to have an
+average compressing shock speed exceeding 10 cm/yus. With these
+average shock speeds, the shock speed at the instant of
+current-stepping is close to 30 cm/ps and Vere is close to 5/3.
+Therefore the rise in oor brought about by current-stepping is
+also small. Hence the decrease in the compressibility of the
+plasma is small. Thus the y-masking effect is reduced enabling
+the enhancement effect of current-stepping to emerge and become
+obvious.
+
+To operate at the necessary high speed regime a new
+system comprising of a Marx-Water-line combination current
+source, MLCCSZP is designed and constructed on the extended
+y-varying model to investigate the enhancement effect of
+
+current-stepping.
+
+7.3 Future plans -
+
+At the moment of writing this thesis, the MLCCSZP is
+still under construction. The first Marx bank, Marxl has been
+set-up and tested up to 120 kY. The new pinch unit has been
+constructed. However, it is yet to be connected to Marxl. The
+
+water-line and the second Marx, Marx2 used to pulse charge the
+
+156
+water-line is under construction. The Marx has probably never
+been used to drive a gas compressional Z~-pinch before although the
+water-line has. The combination of both the Marx and the
+water-line has certainly never been attempted before and presents
+a considerable technological challenge. However, it would be an
+interesting attempt to demonstrate the pinch compression
+
+enhancement of the current-step.
+
+157
+REFERENCES
+
+Ali, J. et. al., [1984]. J. Fiz. Mal. 5 153-162,
+
+Ali, J., [1985]. M.Sc. Thesis, Universiti Malaya, Kuala Lumpur,
+Malaysia.
+
+Barrow, G.M. [1962]. Introduction to Molecular Spectroscopy,
+McGraw Hill.
+
+Bishop, A.E. & Edmonds, G.D., [1965]. Plasma Physics, J. Nuclear
+Energy Part C, Vol 7, 423.
+
+Bodin, H.A.B., Newton, A.A. & Peacock, N.J., [1960]. Nucl. Fusion
+1, 54.
+
+Bolton, H.R., et. al., [1987]. Plasma Physics and Controlled
+Nuclear Fusion Research 1986, IAEA, Vol 3, 367
+(IAEA).
+
+Cambell, A.B., [1963]. Plasma Physics and Magnetofluid Mechanics,
+Chapter 5 & 6, (McGraw Hill).
+
+Carruthers, R & Davenport, P.A., [1957]. Proc. Phys. Soc. B70, 49
+
+Choi, P., (1983]. Ph. D. Thesis, University of London, London.
+
+Cloth, P. & Conrads, H., [1977]. Nuc. Sc. and Eng. 62, 591
+
+Favre, M., [1985]. Ph. D. Thesis, University of London, London.
+
+Gaydon, A.G., [1963]. The Shock Tube in High Temperature Chemical
+Physics, Chapman & Hall Ltd., London, Chapter 2.
+
+Guderley, G., [1942]. Luftfahrt-forsch, 19, 302.
+
+Haines, M.G., [1981]. Phil. Trans. R. Soc. Lond. A300, 649.
+
+Haines, M.G. & Walker, S.P., [1987]. Nucl. Energy. 26, 361.
+
+Hammel, J., [1989]. AIP Conf. Procs. 195, on Dense Z-pinches,
+
+158
+303.
+
+Herzberg, G., [1950]. Spectra to Diatomic Molecules. D.Van
+Nostrand Co., Inc., Princeton, N.J.
+
+Ishii, S. et. al. [1989]. AIP Conf. Procs. 195, on Dense
+Z-pinches, 320.
+
+Keller, R., (1964]. Rev. Sci. Instr. 35, 125.
+
+Kruskal, M. & Schwarzchild, M., [1954]. Proc. Roy. Soc., A223,
+348.
+
+Lee, S., [1983a]. Aust. J. Phys., 36, 891.
+
+Lee, S., [1983b]. J. Appl. Phys., 54 (6), 3603.
+
+Lee, S., [1983c]. J. Phys. D. : Appl. Phys. 16, 2463.
+
+Lee, &., [1984a]. J. Phys. D. : Appl. Phys. 17, 733.
+
+Lee, §., [1984b]. Procs. on Radiation in Plasma, College on
+PLasma Physics, Trieste, Italy, 1983, Ed. 8B.
+McNamara, (World Scientific), (Vol. II, 978.
+
+Lee, S., [1985a]. IcTP ~ Report IC/85/65 - Miramare, Trieste,
+IAEA, UNESCO.
+
+Lee, S., [1985b]. Procs. of the ist Tropical College on Appl.
+Phys. on Laser and Plasma Technology, 8, 21, 319,
+343, 402.
+
+Lee, S., [1988a]. Laser and Particle Beams (1988), vol 6, part 3,
+597.
+
+Lee, S. et. al., [1988b]. Am. J. Phys. 56, [1], 62.
+
+Leonard, §S. L., [1965]. Plasma Diagnostic Techniques, eds.
+Huddlestone, R.H. and Leonard, $.b., (Academic
+Press).
+
+Lovberg, R.H., [1965]. Plasma Diagnostic Techniques, eds.
+
+159
+Huddlestone, R.H. and Leonard, S.L., (Academic
+Press).
+
+Martin, J.C., [1970]. AWRE Report SSWA/JCM/704/49.
+
+Miller, R.B., [1982]. An Introduction to the Physics of Intense
+Charged Particle Beams. Ch. 1. (Plenum Press), New
+York and London.
+
+Moore, C.E., [1949]. Atomic energy levels. Vol. 1. Circular of
+National Bureau of Standards, 467.
+
+Nargundkar, V.R. et. al., [1987]. Procs. of the 4th Int. Conf. on
+Emerging Nuclear Energy Systems, Madrid (World
+Scientific).
+
+Pfirsch, D. & Schmitter, K.H., [1987] on The Economic Prospect of
+Fusion with Tokamaks, IPP 6/271, Max Planck
+Inst. fur Plasma Physik, Garching.
+
+Pointor, A.J., [1967]. Introduction to Statictical Physics,
+Chapter 7, (Longman), London.
+
+Potter, D.E., [1987]. Nucl. Fusion 18, 813.
+
+Rahman, H.U. et. al. [1987]. Bull. Am. Phys. Soc. 32, 1818.
+
+Robson, A.E., [1984]. Procs. of the lst Conf. on Dense Z-pinches
+for fusion, Alexandria, VA 29-30, eds. Sethian, J.D.
+& Gerber, K.A. (Naval Research Lab.).
+
+Saw, S.H., Wong, C.S. & Lee, S., [1987]. Procs. on Small Scale
+Lab. Plasma Physics Expts., Spring Coll. on Plasma
+Physics, ICTP, Trieste, ITALY, 116. (World
+Scientific, Singapore).
+
+Saw, S.H., S.Lee & Wong, C.S., [1988]. J. Piz. Mal., 9, 93.
+
+Saw, S.H., Wong, C.S. & Lee, &., [1989]. AIP Conf. Procs. 195, on
+
+160
+Dense Z-Pinches, 500.
+
+Saw, S.H., Wong, C.S. & Lee, S., (1991]. A low-cost high power
+fast response voltage probe, Rev. Sci. Instrum. 62
+(2), 1991.
+
+Saw, $.H., Wong, C.S. and Lee, S., [1991]. A fast capacitive-RC
+hybrid probe for high power voltage pulse
+measurement, Rev. Sci. Instrum. 62 (2), 1991.
+
+Spitzer, Lyman Jr., [1967]. Physics fo Fully Ionised Gases.
+(Interscience Publishers) .
+
+Sethian, J.D. et. al., [1985]. Phys. Rev. Lett. 59, 892.
+
+Sethian, J.D. et. al., [1989]. AIP Conf. Procs. 195, on Dense
+
+Z~pinches, 308.
+Scudder, D.W. et. al., [1986]. Bull. Am. Phys. Soc. 31, 1381.
+Walker, S.P., Javedi, M & Ropbson, A.E., [1986]. Procs. of the
+14th Symposium on fusion Technology, Avignon,
+
+France, Vol. 2, 1875.
+
+161

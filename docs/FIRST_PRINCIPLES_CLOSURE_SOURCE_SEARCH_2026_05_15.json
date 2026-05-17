@@ -4,7 +4,7 @@
   "blocker_id": "FP-8",
   "blocker": "physics closure packets",
   "verdict": "closure_contract_supported_but_accepted_whole_shot_packet_blocked",
-  "summary": "The local source of truth supports engineering-candidate closures for conductivity, generalized Ohm, predictor-corrector current, Marder cleaning, ion PIC plumbing, and electron-energy scaffolding, but accepted whole-shot closure authority remains blocked for EOS, ionization, electron heat flux, radiation, impurity/electrode ablation, anomalous resistivity, restrike, and beam-target coupling.",
+  "summary": "The local source of truth supports engineering-candidate closures for conductivity, weakly ionized transport, generalized Ohm, predictor-corrector current, Marder cleaning, ion PIC plumbing, electron-energy scaffolding, deuterium ionization/recombination transport, and Braginskii heat flux, but accepted whole-shot closure authority remains blocked for EOS, accepted ionization/transport authority, accepted electron heat flux/collisional coupling, radiation, impurity/electrode ablation, anomalous resistivity, restrike, and beam-target coupling.",
   "sources": [
     {
       "path": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
@@ -35,6 +35,18 @@
       "lines": "general formulary plus source fidelity review",
       "answers": "plasma formulary support for units, collisions, transport, radiation constants, and fusion cross sections",
       "blocked": "same-scope DPF closure validation and implementation symbol maps"
+    },
+    {
+      "path": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md",
+      "lines": "252-259",
+      "answers": "PF-1000 ionization structure with electron-impact ionization, radiative recombination, and three-body recombination",
+      "blocked": "accepted 3D hybrid charge-state packet, startup link, particle-source review, conductivity/EOS feedback authority"
+    },
+    {
+      "path": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+      "lines": "3379-3425,4572-4648",
+      "answers": "weakly ionized conductivity structure and NRL charge-state rate support",
+      "blocked": "magnetized tensor transport, gas-specific cross-section review, D2/excited-state/impurity kinetics, same-scope review and UQ"
     }
   ],
   "effects": [
@@ -54,17 +66,54 @@
     "classify every active or bounded-out effect",
     "block Hall/pressure authority without accepted electron-temperature closure",
     "block total-yield authority without mechanism-separated kinetic packet",
+    "wire candidate deuterium ionization transport and candidate PIC particle source/sink without promoting it",
+    "wire candidate weakly ionized scalar conductivity without promoting it",
     "require closure packets before promotion beyond engineering candidate"
   ],
+  "acceptance_gate": "candidate_transport_ohm_electron_energy_hall_instability_and_yield_closures_cannot_support_physics_acceptance_until_every_required_effect_is_implemented_validated_or_bounded_out_with_source_equations_units_validity_tests_sensitivity_uq_claim_impact_hashes_and_review",
+  "negative_test_policy": {
+    "missing_effect_rejection_required": true,
+    "candidate_closure_promotion_rejection_required": true,
+    "hall_pressure_without_electron_temperature_rejection_required": true,
+    "total_yield_without_mechanism_separation_rejection_required": true,
+    "radiation_or_ablation_absent_claim_rejection_required": true,
+    "anomalous_resistance_or_restrike_claim_rejection_required": true,
+    "closure_sensitivity_uq_missing_rejection_required": true
+  },
+  "implementation_ratchet": [
+    "Emit closure_effect_status decisions.",
+    "Emit per-effect channel_status decisions.",
+    "Emit active_closure_policy marking candidate closures as engineering-only.",
+    "Emit dimensionality_acceptance_gate linking closure authority to dimensionality and handoff status.",
+    "Emit acceptance_gate and negative_test_policy for closure promotion.",
+    "Run candidate deuterium ionization/recombination transport with PIC particle source/sink telemetry.",
+    "Run candidate source-backed partial-ionized scalar conductivity with electron-neutral drag telemetry."
+  ],
   "implemented_files": [
+    "src/dpf/fields/ionization_transport.py",
+    "src/dpf/fields/conductivity.py",
+    "src/dpf/fields/hybrid_loop.py",
+    "src/dpf/fields/hybrid_simulator.py",
     "src/dpf/first_principles/closure_packet.py",
     "src/dpf/first_principles/runner.py",
+    "tests/test_ionization_transport.py",
+    "tests/test_conductivity_blend.py",
+    "tests/test_hybrid_3d_loop.py",
+    "tests/test_hybrid_3d_simulator.py",
     "tests/test_first_principles_runner.py"
   ],
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
       "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_3d_simulator.py tests/test_hybrid_pic_3d_validation_packet.py tests/test_maxwell_3d_field_core.py tests/test_particle_boundaries.py tests/test_unreviewed_physics_metadata.py tests/test_two_temperature.py tests/test_formulary_transport_audit.py tests/test_conductivity_blend.py tests/test_ionization_transport.py tests/test_physics.py::TestBraginskiiKappaZDependent",
+      "result": "147 passed"
     }
   ],
   "next_blocker": "FP-9 same-scope source availability decision"

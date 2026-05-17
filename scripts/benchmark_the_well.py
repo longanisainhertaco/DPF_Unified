@@ -9,7 +9,7 @@ This script:
 
 Usage:
     python scripts/benchmark_the_well.py --dataset_path /path/to/MHD_64.h5
-    python scripts/benchmark_the_well.py --mock  # Use generated dummy data
+    python scripts/benchmark_the_well.py --synthetic  # Use generated synthetic data
 
 Dependencies:
     h5py, torch, numpy
@@ -34,9 +34,9 @@ from dpf.metal.metal_solver import MetalMHDSolver
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("benchmark")
 
-def generate_mock_well_data(grid_size=64, n_steps=10):
-    """Generate a dummy dataset in memory matching The Well format."""
-    logger.info(f"Generating mock data {grid_size}^3 x {n_steps} steps...")
+def generate_synthetic_well_data(grid_size=64, n_steps=10):
+    """Generate a synthetic dataset in memory matching The Well format."""
+    logger.info(f"Generating synthetic data {grid_size}^3 x {n_steps} steps...")
 
     # MHD_64 usually has: density, velocity, magnetic_field, pressure
     # Shape: (n_traj, n_steps, nx, ny, nz, [dims])
@@ -178,18 +178,22 @@ def run_benchmark(data, attrs, device="mps", steps_to_run=10):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", type=str, help="Path to .h5 file")
-    parser.add_argument("--mock", action="store_true", help="Use mock data")
+    parser.add_argument(
+        "--synthetic",
+        action="store_true",
+        help="Use generated synthetic data for benchmark plumbing",
+    )
     parser.add_argument("--device", type=str, default="mps", help="Compute device")
     parser.add_argument("--steps", type=int, default=50, help="Steps to run")
 
     args = parser.parse_args()
 
-    if args.mock:
-        data, attrs = generate_mock_well_data()
+    if args.synthetic:
+        data, attrs = generate_synthetic_well_data()
     elif args.dataset_path:
         data, attrs = load_well_data(args.dataset_path)
     else:
-        logger.error("Must specify --dataset_path or --mock")
+        logger.error("Must specify --dataset_path or --synthetic")
         sys.exit(1)
 
     run_benchmark(data, attrs, device=args.device, steps_to_run=args.steps)

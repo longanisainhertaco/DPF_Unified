@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import logging
 import math
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -82,11 +83,11 @@ class MLXMHDSolver(PlasmaSolverBase):
     ion_mass : float
         Ion mass [kg] for temperature conversion (default deuterium).
     enable_hall : bool
-        Hall term flag (stored; not yet wired — future use).
+        Enable the cylindrical Hall-MHD source update in the MLX operator split.
     enable_braginskii_conduction : bool
         Enable operator-split Braginskii parallel thermal conduction.
     enable_braginskii_viscosity : bool
-        Viscosity flag (stored; not yet wired — future use).
+        Enable the Braginskii viscosity operator split.
     enable_bremsstrahlung : bool
         Bremsstrahlung radiation flag (stored; engine drives the operator split).
     gaunt_factor : float
@@ -511,23 +512,20 @@ class MLXMHDSolver(PlasmaSolverBase):
         # z geometry unchanged
         z_cell_mx = self._grid.z_cell
 
-        # Assemble a simple namespace object matching CylindricalGrid API
-        class _PaddedGrid:
-            pass
-
-        grid_g = _PaddedGrid()
-        grid_g.nr = nr_g
-        grid_g.nz = self.nz
-        grid_g.dr = dr
-        grid_g.dz = dz
-        grid_g.r_inner = r_inner_g
-        grid_g.r_cell = r_cell_mx
-        grid_g.r_face = r_face_mx
-        grid_g.z_cell = z_cell_mx
-        grid_g.inv_r = inv_r_mx
-        grid_g.cell_volume = cell_volume
-        grid_g.face_area_r = face_area_r
-        grid_g.face_area_z = face_area_z
+        grid_g = SimpleNamespace(
+            nr=nr_g,
+            nz=self.nz,
+            dr=dr,
+            dz=dz,
+            r_inner=r_inner_g,
+            r_cell=r_cell_mx,
+            r_face=r_face_mx,
+            z_cell=z_cell_mx,
+            inv_r=inv_r_mx,
+            cell_volume=cell_volume,
+            face_area_r=face_area_r,
+            face_area_z=face_area_z,
+        )
 
         mx.eval(r_cell_mx, r_face_mx, inv_r_mx, cell_volume, face_area_r, face_area_z)
 
@@ -1329,17 +1327,7 @@ class MLXMHDSolver(PlasmaSolverBase):
         )
         self._amr_hierarchy = h
 
-        # Gather blocks back into global state
-        U_out = np.zeros_like(U_np)
-        for idx, block in h.levels[0].blocks.items():
-            ir, iz = idx
-            r_s, z_s = ir * bnr, iz * bnz
-            bU = np.asarray(block.U)
-            r_e = r_s + bU.shape[1]
-            z_e = z_s + bU.shape[2]
-            U_out[:, r_s:r_e, z_s:z_e] = bU
-
-        # TODO: overlay fine-level data for 2-level AMR
+        U_out = self._amr_global_conserved_state(h, U_np.shape)
 
         # Unpack conserved -> state dict
         U_mx = mx.array(U_out)
@@ -1350,6 +1338,54 @@ class MLXMHDSolver(PlasmaSolverBase):
         result["pressure"] = np.asarray(p_o)
         result["B"] = np.stack([np.asarray(Br_o), np.asarray(Bz_o), np.asarray(Bt_o)])
         return result
+
+    def _amr_global_conserved_state(
+        self,
+        hierarchy: Any,
+        global_shape: tuple[int, int, int],
+    ) -> np.ndarray:
+        """Gather AMR levels into one coarse-resolution conserved state.
+
+        Level-0 blocks supply the full domain. Any active level-1 children are
+        volume-restricted over their parent before the parent region is written
+        to the returned global array, so refined data is represented in solver
+        outputs instead of being discarded after the AMR step.
+        """
+
+        from dpf.metal.mlx_amr import AMRBlock, restrict_to_coarse
+
+        U_out = np.zeros(global_shape, dtype=np.float32)
+        coarse_level = hierarchy.levels[0]
+        fine_level = hierarchy.levels[1] if len(hierarchy.levels) > 1 else None
+        ratio = int(hierarchy.ratio)
+        bnr = int(hierarchy.block_nr)
+        bnz = int(hierarchy.block_nz)
+
+        for idx, block in coarse_level.blocks.items():
+            ir, iz = idx
+            r_s, z_s = ir * bnr, iz * bnz
+            bU = np.asarray(block.U).astype(np.float32, copy=True)
+            if fine_level is not None and fine_level.blocks:
+                children = [
+                    child
+                    for child in fine_level.active_blocks()
+                    if child.index[0] // ratio == ir and child.index[1] // ratio == iz
+                ]
+                if children:
+                    overlay = AMRBlock(
+                        level=block.level,
+                        index=block.index,
+                        U=bU.copy(),
+                        r_min=block.r_min,
+                        z_min=block.z_min,
+                        active=block.active,
+                    )
+                    restrict_to_coarse(children, overlay, fine_level, ratio, bnr, bnz)
+                    bU = np.asarray(overlay.U).astype(np.float32, copy=False)
+            r_e = min(r_s + bU.shape[1], global_shape[1])
+            z_e = min(z_s + bU.shape[2], global_shape[2])
+            U_out[:, r_s:r_e, z_s:z_e] = bU[:, : r_e - r_s, : z_e - z_s]
+        return U_out
 
     # ------------------------------------------------------------------
     # Saha EOS: temperature with variable Z_bar

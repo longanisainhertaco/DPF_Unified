@@ -86,6 +86,30 @@ BLOCKING_UPSTREAM_STATUSES = (
     "blocked_comparator_uq_matrix_not_available",
 )
 
+REQUIRED_UPSTREAM_PACKET_CHANNELS = {
+    "same_scope_source_packet_accepted": "same_scope_source",
+    "waveform_phase_packet_accepted": "waveform_phase",
+    "spatial_field_temperature_packet_accepted": "spatial_field_temperature",
+    "neutron_authority_packet_accepted": "neutron_authority",
+    "comparator_uq_packet_accepted": "comparator_uq",
+    "numerical_fidelity_packet_accepted": "numerical_fidelity",
+    "physics_closure_packet_accepted": "physics_closure",
+    "limiter_zero_or_physical_bounds_packet": "limiter_readiness",
+    "power_port_packet_accepted": "power_port",
+    "startup_packet_accepted": "startup_bvp",
+    "dimensionality_handoff_packet_accepted": "dimensionality_handoff",
+}
+
+REQUIRED_NEGATIVE_TEST_CHANNELS = (
+    "negative_test_draft_evidence",
+    "negative_test_blocked_evidence",
+    "negative_test_cross_scope_evidence",
+    "negative_test_missing_uq",
+    "negative_test_missing_review",
+    "negative_test_hidden_limiter",
+    "negative_test_app_only_or_reduced_model_fallback",
+)
+
 
 def build_first_principles_certificate_gate_packet(
     *,
@@ -115,8 +139,24 @@ def build_first_principles_certificate_gate_packet(
         "required_channels": list(REQUIRED_CERTIFICATE_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "certificate_channel_status": _certificate_channel_statuses(
+            accepted=accepted,
+            missing=missing,
+        ),
+        "release_decision": "do_not_release_first_principles_claim",
+        "acceptance_policy": {
+            "all_certificate_channels_required": True,
+            "all_upstream_packets_must_be_accepted": True,
+            "draft_candidate_blocked_or_rejected_packets_block_release": True,
+            "reduced_model_or_app_only_evidence_blocks_release": True,
+            "cross_scope_evidence_blocks_release_without_reviewed_transfer_rule": True,
+        },
         "upstream_packet_statuses": upstream_statuses,
         "upstream_certificate_blockers": upstream_blockers,
+        "upstream_packet_acceptance_matrix": _upstream_packet_acceptance_matrix(
+            upstream_statuses
+        ),
+        "negative_test_matrix": _negative_test_matrix(accepted),
         "source_references": list(CERTIFICATE_GATE_SOURCE_REFS),
         "can_write_accepted_certificate": False,
         "can_release_first_principles_claim": False,
@@ -135,6 +175,49 @@ def _upstream_statuses(
     return statuses
 
 
+def _certificate_channel_statuses(
+    *,
+    accepted: set[str],
+    missing: set[str],
+) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for channel in REQUIRED_CERTIFICATE_CHANNELS:
+        if channel in accepted:
+            statuses[channel] = "accepted_certificate_channel"
+        elif channel in missing:
+            statuses[channel] = "missing_or_blocked"
+        else:
+            statuses[channel] = "not_available"
+    return statuses
+
+
+def _upstream_packet_acceptance_matrix(
+    upstream_statuses: Mapping[str, str | None],
+) -> dict[str, dict[str, Any]]:
+    matrix: dict[str, dict[str, Any]] = {}
+    for channel, packet_name in REQUIRED_UPSTREAM_PACKET_CHANNELS.items():
+        status = upstream_statuses.get(packet_name)
+        accepted = _status_is_accepted_for_certificate(status)
+        matrix[channel] = {
+            "packet": packet_name,
+            "upstream_status": status,
+            "accepted_for_certificate": accepted,
+            "decision": "accepted" if accepted else "missing_or_blocking_upstream_packet",
+        }
+    return matrix
+
+
+def _negative_test_matrix(accepted: set[str]) -> dict[str, dict[str, Any]]:
+    matrix: dict[str, dict[str, Any]] = {}
+    for channel in REQUIRED_NEGATIVE_TEST_CHANNELS:
+        present = channel in accepted
+        matrix[channel] = {
+            "present": present,
+            "decision": "accepted" if present else "missing_required_negative_test",
+        }
+    return matrix
+
+
 def _status_blocks_certificate(status: str | None) -> bool:
     if status is None:
         return True
@@ -146,3 +229,14 @@ def _status_blocks_certificate(status: str | None) -> bool:
         or normalized.startswith("candidate")
         or normalized.startswith("rejected")
     )
+
+
+def _status_is_accepted_for_certificate(status: str | None) -> bool:
+    if status is None:
+        return False
+    normalized = status.strip().lower()
+    return normalized.startswith("accepted") or normalized in {
+        "ready",
+        "passed",
+        "reviewed_accepted",
+    }

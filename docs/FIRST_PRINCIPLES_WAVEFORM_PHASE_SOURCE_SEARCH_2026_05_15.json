@@ -89,14 +89,28 @@
       "text_supported_not_acceptance_channels",
       "draft_digitization_packet_status",
       "required_review_channels",
+      "waveform_phase_target_policy",
+      "negative_test_policy",
       "validation_target_scope_decisions"
     ],
     "remaining_blocker": "no accepted digitized waveform derivative phase comparator or waveform UQ packet exists"
+  },
+  "negative_test_policy": {
+    "draft_waveform_promotion_rejection_required": true,
+    "text_timing_scalar_promotion_rejection_required": true,
+    "missing_per_point_uncertainty_rejection_required": true,
+    "missing_independent_review_rejection_required": true,
+    "mismatched_scope_waveform_rejection_required": true,
+    "missing_output_mapping_or_tolerance_rejection_required": true
   },
   "validated_commands": [
     {
       "command": "python3 -m pytest tests/test_first_principles_runner.py",
       "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py",
+      "result": "60 passed"
     }
   ],
   "next_blocker": "FP-11"

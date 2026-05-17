@@ -1,0 +1,4891 @@
+      UFOSR - TR. 77-      1.3 4.
+
+
+        kFS44   rReport      '1 .72i
+
+                  CHARGED PARTICLE LABORATORY REPORT NO. 2-76
+
+                          DESIGN AND CONSTRUCTION
+COF                     A DENSE PLASMA FOCUS DEVICE
+
+
+                                      BY
+                             DAVID LEE WILLENBORG
+                             CHARLES D. HENDRICKS
+
+                     CHARGED PARTICLE RESEARCH LABORATORY
+                     DEPARTMENT OF-ELECTRICAL ENGINEERING
+                            UNIVERSITY OF ILLINOIS
+                            URBANA, ILLINOIS 61801
+                          Contract No. AFOSR-74-2643
+                           'roject Task No. 9751-0.
+
+
+
+
+                                 October 1976
+                            Distribution Statement                   .*   ,
+
+            "Approved for public release; distribution unlimited."
+
+                             Research Sponsored By
+
+                 THE AIR FORCE OFFICE OF SCIENTIFIC RESEARCH
+                        OFFICE OF AEROSPACE RESEARCH
+                           UNITED STATES AIR FORCE
+
+                Reproduction, translation, publication, use and
+                  disposal in whole or in part by or for the
+                    United States Government is permitted.
+AlR FORCE OFFICE OF SCIENTIFIC InSPAJxCH (AFSC)
+           C~OF TRAUISMITTAL TO DDC
+       .tochujical    report has boon rv   wdm       is
+  4;1f*ro',Cd for public role~nso IAW AZ.. 1.9c)-12 (7b).
+1)J:,.I'i1hutiofl is unilimited.
+A. D). BLOSE
+Technical Information officer
+     k
+     ':       "q'
+                            " UNCLASSIFIED
+                       IFqXJRIT Y CLASS-IiCATION
+                                                      r
+                                                    OF TNIt OAS     (%%I   11..i/ol   ntvred)
+
+                                                                                                                               READ INSTRUCTIONS
+                                                                  RE OCUMENTATION
+                                                                        PAGE                                            BEFORE COMPLETING FORM
+                                                                                          GOVT--FSSiiN                PECJ@TS CATALOG NUMBER
+
+                            gAFOtR-f R 77 A(IL3 4                                     .                                                                        E
+
+
+
+                      DESIGN            D COSRUCTION OF A PENSE                                   cus
+                                                                                                 OLASMA                                . (ART          I),
+
+                    *17.    AUTHOR(s)
+
+                           avid -LeeWillenborg                                                     4 -6    -f          0S*-63
+                                    DL     endricks
+                                                .RCharles
+
+                      9. PERFORMING ORGANIZATION NAME AND ADDRESS                                               10     'POGPAM   ELEMENT PROJECT. TASK
+                      University of Illinois-Dept.                   of Electrical Eng.                     &           PEA AWORK UNIT NUMBERS
+                      Charged Particle Laboratory                                                            9
+               ? Urbana, Illinois
+                      I1. CONTROLLING OFFICE NAME AND ADDRESS                                                                                                                1,
+                      AF Office of Scientific Research/NPC                                                   OcI29                7
+                       "BoilIing AFB DC 20332                                                                   1.3UU            ]'.
+                                                                                                                                  r- ..                -
+
+                       14   MONITORING AGENCY NAME & ADDRESS(//diflahi from Controllng Office)                  IS.    SECU1           &1poot)
+
+                                                                                                             UNCLASSIFIED
+                                                                                                                1Sa.   DECL ASSIFICATION         DOWNGRADING
+                                                                                                                       SCHEDULE
+
+                      I.    DISTRIBUTION STATEMENT (of this Report)
+
+
+
+                      Approved for public release; distribution unlimited.
+
+
+
+                      1?.   DISTRIBUTION STATEMENT (of the abetrect entered In Block 20. It different Irom Report)
+
+
+
+
+                      1S.   SUPPLEMENTARY NOTES
+
+
+
+
+                      19.   KEY WORDS (Continue on reverse aide it neceeary end Identify by block number)
+                            Dense Plasma Focus
+          4                 Dense Plasma Focus Circuit
+                            Pulse Circuit
+                            Pulsed X-ray Generation
+                            Instrumentation                                                                                        ,             *./               "
+                      26    4STRACT (Con tinue on reverse side It neceeery end identify by block number)
+
+                            his paper deals with the design of a dense plasma focus device as an engi-
+                      neering project. Essentially this approach can be summarized as follows: First,
+                      an introduction dealing with a general discussion of plasma devices focusing on
+                      the role of a dense plasma focus device as a useful tool in future research;
+                      second, an explanation of the operation of the dense plasma focus; third, a
+                      general design.discussion of the dense plasma focus device; fourth, specificatior net
+                      of a realizable system; and finally, a discussion of the problems encountered in      9
+
+                     DD        OR       1473    EOITION Of I NOV    S IS OSSOLCET                    UNCLASSIFIED
+                                                                                                SECURITY CLASSIFICATIiJN OF THIS PAGE                      Date
+                                                                                                                                                            eltae Entered)
+
+
+
+
+i'
+     z vt.SECURITY CLASSIFICATION OF THIS PAGE(K4~on Dota Entered)
+                2 constructing this design and observations concerning the effectiveness of
+                   this dense plasma focus design.
+
+
+
+
+J'
+                                       UILU-ENG-76-2557
+
+
+
+
+    DESIGN AND CONSTRUCTION
+OF A DENSE PLASMA FOCUS DEVICE
+
+
+
+
+        lues    Report
+
+
+
+
+         October 1976
+
+
+
+
+  Contract No. AFOSR-74-2643/
+   Project Task No. 9751-03
+
+
+
+
+                                 XIS            set          0
+
+
+                                                          ...................
+                                               ...................................................
+          Submitted by...................
+
+
+      David Lee Willenborg
+      Charles D. Hendricks             gd
+   Charged Particle Laboratory
+     University of Illinois
+
+        Urbana, Illinois
+                                     ABSTRACT
+
+
+       This paper deals with the design of a dense plasma focus device as
+
+   an engineering project.   Essentially this approach can be summarized as
+
+   follows: First, an introduction dealing with a general discussion of
+   plasma devices focusing on the role of a dense plasma focus device as a
+
+
+   useful tool in future research; second, an explanation of the operation
+
+   of the dense plasma focus; third, a general design discussion of the dense
+
+   plasma focus device; fourth, specification of a realizable system; and
+
+   finally, a discussion of the problems encountered in constructing this
+
+   design and observ~ions concerning the effectiveness of this dense plasma
+
+   focus design.
+
+
+
+
+t="1
+                             ACKNOWLEDGMENT
+
+
+          eserchforthis report was supported~ by the United St~ates Air
+         The
+
+Force Office of Scientific Research Grant AFOSR-74-2643.
+                 Ui                            TABLE OF CONTENTS
+
+
+
+
+                1.   INTRODUCTION .. ....... ....................                      1
+
+                2.   THEORETICAL DEVICE OPERATION. .. ..................               3
+
+                     2.1   Breakdown Phase. .. ......................                   5
+         *2.2              The Acceleration Phase .. .. ..................              8
+                     2.3   Collapse Phase. .. ........ ..............                  12
+
+      -'3.           DENSE PLASMA FOCUS DEVICE DESIGN .. ......... .......            21
+
+                     3.1   Mather- vs. Filipov-Type Device .. ......... .....     21
+                     3.2   Dense Plasma Focus Device Configuration .. ........ .. 23
+                     3.3   Detailed Dense Plasma Focus Device Design .. ......... 25
+
+                           3.3.1   The inner electrode design .. ........ .....    27
+                           3.3.2   The outer electrode design .. ....... ...... 29
+                           3.3.3   End-plate spacer design. .. ....... ....... 31
+                           3.3.4   The electrode insulator design .. ........ ...  32
+                           3.3.5   Other device design considerations .. ......... 34
+
+                4.   EXPERIMENTAL SYSTEM. .. ...... .................                  36
+
+                     4.1   Energy Storage and Transmission...............3
+                     4.2   Fast High-Energy Switch .. ........ .......... 42
+
+                           4.2.1   Tube-type and mechanical switches. .. ......... 42
+                           4.2.2   Electrical discharge initiated switches. .. .... .. 43
+
+                                   4.2.2.1   Vacuum spark gaps .. ......... ....     43
+                                   4.2.2.2   Solid dielectric spark gap. .. ........ 45
+                                   4.2.2.3   Gas dielectric spark gaps .. ......... 48
+
+14~                        4.2.3   System switch design .. ....... ......... 51
+                           4.2.4   System switch trigger. .. ....... ........         55
+
+                     4.3   Vacuum and Gas Control System .. ....... ........          60
+                     4.4   Device Diagnostics. .. ........ ............               62
+
+                           4.4.1   Flectrical instrumentation .. ....... ......       63
+
+                                   4.4.1.1   Voltage measurement device. .. ........ 64
+                                   4.4.1.2   Current measurement device. .. ........ 68
+                           4.4.2   X-ray n*.-asurements .. ......... ........         73
+
+                     4.5   Shielding and Grounding .. ........ .......... 74
+                     4.6   High-Voltage Charging System. .. ....... ........ 78
+
+                5. DEVICE OPERATION. .. ....................                    ...   82
+                                                                V
+
+
+                                                              Page
+
+    6.   SUMMARY. ..       .............   ...............     84
+
+    REFERENCES ..      ..............      ................    85
+
+
+
+
+-
+                                                                                        vi
+                                      LIST OF FIGURES
+
+
+      Figure                                                                          Page
+
+        1.     Typical dense plasma focus apparatus .......          ..............     4
+
+        2.     Dense plasma focus device breakdown phase ............                   6
+
+        3.     Typical device waveforms ........          .................... .       11
+
+        4.     Fluid models of pinch mechanisms ......          ................... 16
+
+        5.     Ion trajectory models ...........             ......................    19
+
+        6.     Fillipov-type plasma focus device ......         ................... 22
+
+        7.     Various device geometries ........         ....................... 24
+
+        8.     Experimental dense plasma focus device ....        ............. ... 26
+
+        9.     Dense plasma focus experimental system ....        ............. ... 37
+
+      lOa.     The capacitor bank arrangement ......         ................. ... 38
+
+      lOb.     Equivalent electrical circuit of bank and gun ................          38
+
+       11.     Solid dielectric switch types .......         ..................... 47
+
+       12.     Gas dielectric switch types .......        ................... ... 50
+
+      13a.     The front view of the spark gap ......        ................. ... 52
+
+      13b.     The side view of the spark gap ......         ................. ... 52
+
+      14a.     Pulse amplifier ..........           ............................       56
+
+      14b.     Triggering circuit for the thyratron tube and spark gap ........ 57
+
+       15.     Vacuum system..........             .......................... ...      61
+
+      16a.     Coaxial capacitative high-voltage divider ....      ...............     65
+
+      16b.     Capacitative divider circuit .......          ..................... 67
+
+      17a.     Rogowski loop circuit ........         ...................... ...       70
+
+      17b.     Rogowski loop current probe .......        ................... ... 72
+
+       18.     Solid-state x-ray detector circuit .....         ............... ...    75
+
+       19.     High-voltage system .........          ..........................       80
+
+       20.     High-voltage control sensing circuit .....         ................. 81
+
+
+
+
+!*4
+                                    1.   INTRODUCTION
+
+
+    Most of the universe, with a few exceptions like the earth, is com-
+
+posed of gaseous plasma in various densities.             In addition to naturally
+
+occurring plasma, man has succeeded in producing artificial plasma for his
+
+own personal use, with nuclear fusion probably the most exciting and so-
+
+cially constructive application.           Nuclear fusion has the potential to
+
+supply the world with abundant, inexpensive, environmentally clean energy
+
+for hundreds of years.
+
+     Fundamentally, the fusion problem is one of bringing the reacting
+
+particles close enough together for sufficient time to allow fusion to
+
+occur.   The particles, which must approach to within atomic radii distances,
+
+require kinetic energies of around 105 eV to overcome the large repulsive
+
+Coulomb forces between nuclei.           A practical figure of merit for fusion re-
+
+action is Lawson's Criterion [1] which is:           nT = 101,   where n = plasma
+                 -3
+density in cm          , and T = containment time in seconds at a plasma tempera-
+             5                                      105
+ture of 10       eV.    Achieving temperatures of 10      eV is technically feasible
+
+but maintAining a dense enough plasma for sufficient time is pushing tech-
+
+nology to the limit.         At present, neither laser fusion nor magnetic con-
+
+finement schemes have come close to Lawson's Criterion; however, plasma
+
+pinch devices have come very close, with the dense plasma focus device one
+of the most promising.
+
+
+     The dense plasma focus is a formof electromagnetic shock tube that
+causes rapid compression and heating of the plasma during a fast coaxial
+
+pinch called a focus. The gas in a plasma focus may reach densities of
+ 119 to120     -3
+10   to 10   cm   and temperatures of a few keV during the several hundred
+
+nanosecond long pinch.         The device characteristics produce a plasma near
+
+Lawson's Criterion, but it is important to note that the focus mechanism
+                                                                                  2
+    is not well-understood and that the scaling laws are not well-defined.
+
+    Thus, to consider the dense plasma focus device as a fusion generator,
+
+    a more complete understanding of the device is necessary.     The dense
+
+    plasma focus is presently a valuable tool in the study of dense plasma
+
+    interactions and a source of high-energy x-ray pulses and neutron pulses
+
+    on the order of 10 2 neutrons per shot despite the lack of understanding
+
+    of device operation.
+
+         The dense plasma focus was discovered independently by Fillipov et al.
+
+    [4], [51 in the early 1960's and shortly after by Mather [2],    [3], who
+
+    used a coaxial gun geometry.     Since then several variations of these two
+
+    original designs have been constructed in more than seventeen laboratories
+
+    in at least six countries.     The interest in this device is great and for
+
+    obvious reasons.   The device discussed in this paper was primarily con-
+
+    structed to study x-ray generation and possible enhancement.     This paper
+
+    will deal with the design, construction and operation of this device with
+
+    emphasis on experimental technique.
+
+
+
+
+I
+
+
+
+
+    .   .....   . . ....                                           .................   l
+                            2. THEORETICAL DEVICE OPERATION
+
+
+         The dense plasma focus effect has been studied extensively in recent
+
+    years, yet the mechanism producing the dense, relatively long-lived plasma
+
+    focus remains a mystery.      The device appears simple to construct, but as
+
+    the discussion in Section 3.3 will reveal, there are certain design para-
+
+    meters that must be carefully considered for the production of a plasma
+
+    pinch.      Essentially, the device, referred to as a gun in dense plasma focus
+
+    literature, consists of a center metal cylinder called the inner electrode
+
+    which is surrounded by a second metal cylinder called the outer electrode
+
+    (see Fig. 1).      Typically, the electrodes are machined from high conductivity
+
+    metals such as copper or brass.      The center electrode is sometimes hollow
+
+    if axial optic measurements are required.       Separating the two electrodes
+
+    at the breech of the gun is an insulator made out of a high dielectric
+
+4   strength and mechanically strong material such as Pyrex glass or ceramic
+
+    material.       The barrel of the gun and the breech formed by the back vacuum
+
+    end plate are enclosed in a vacuum chamber filled with a test gas, usually
+
+    hydrogen or deuterium gas, at pressures in the .1 to 10 torr range.
+
+         After the chamber has been filled to the proper pressure, a high-
+
+    voltage pulse is applied between the coaxial electrodes.       Breakdown of the
+
+    test gas occurs along the insulator and this breakdown essentially determines
+
+    the shape of the ensuing plasma sheath.       If the system is designed well,
+    this initial breakdown will be radially symmetric and the developing plasma
+
+    sheath will also be symmetric.       The initial phase of the plasma generation
+
+    is called the breakdown phase.       Immediately after the thin plasma sheath
+
+    is formed, magnetic forces cause the plasma to be accelerated forward along
+
+    the axis of the electrodes in a classical electromagnetic shock tube
+
+    acceleration mode.      This phase of the dense plasma focus is called the
+
+
+             ('|,
+                    UO                w     M
+
+
+       0                                    LUm
+                                 ww
+                         (n           0
+                         0            tl:   cr~~
+       I-                wr
+                                      0     wJ
+
+
+
+
+                                                           0
+
+                                 L                         -44
+
+
+
+                                                 w         ca
+                                                 ma
+            cr-4
+
+
+                                                           U)
+
+
+       cni
+
+
+                                                           -4
+
+
+                                                      I-
+                             0                        c0
+                             C-u
+
+
+
+              w
+
+
+
+              cr)
+
+
+
+ 1'r
+4D
+                                                                              5
+acceleration phase.     When the plasma sheath i,-aches the muzzle of the gun,
+
+the inner electrode no longer supports the plasma and magnetic forces cause
+
+the plasma sheath to constrict, pinching the plasma into a pencil-shaped
+
+dense plasma located a few centimeters trom the end of the center electrode.
+
+This dense plasma pencil is a few millimeters in diameter and a few centi-
+
+meters long centered on the axis of the device.     Densities reach nearly
+
+10+20 cm 3 with lifetimes nearly 1 microsecond long, much longer than
+
+predicted lifetimes.     This final phase is called the collapse phase and is
+
+not well-understood.
+
+2.1   Breakdown Phase
+
+      The initial breakdown has been found to develop from the center elec-
+
+trode along the insulator to the end-plate portion of the outer electrode
+
+when high voltage is applied between the electrodes.     The breakdown takes
+
+place in several places around the insulator and the result is a radial,
+
+striated light pattern which forms a few tenths of a microsecond after
+
+application of the breakdown voltage.     Polarity of the applied voltage
+
+does not appear to affect the formation of the plasma sheath.
+
+      The initial breakdown has a definite multifilamentary pattern, but
+
+appears to be cylindrically symmetric.     As the current to the electrodes
+
+increases at a rate determined by the ringing frequency of the system, the
+
+filamentary pattern at the breech begins to move radially outward from the
+
+insulator until it reaches the cylinder part of the outer electrode.        This
+
+effect has been called the inverse pinch effect because magnetic forces
+
+cause the plasma sheath to expand instead of pinch.
+
+      The reason for this expansion is diagrammed in Fig. 2.    Figure 2a
+
+shows the initial breakdown across the insulator.     When breakdown has
+
+occurred, the plasma carries current density indicated by the symbol J.
+                                             -PLASMA       SHEATH
+
+
+
+
+         Fig. 2a.                            INDUCED    MAGNETIC    FIELD
+
+
+
+                                             OUTER ELECTRODE
+
+
+
+
+                                                         INNER ELECTRODE
+                      A                                Fz
+
+
+4
+                                                                            '
+
+         Fig. 2b.                        .          PLASMA CURRENT
+                                                    ELECTRICAL CURRENT
+
+
+
+
+    II
+
+
+
+
+          Fig. 2c.
+
+
+
+
+         Fig. 2.    Dense plasma focus device breakdown phase.
+                                                                                  7
+
+      The current flows through the plasma on the surface of the insulator from
+
+      the center positive electrode along the insulator to the outer electrode
+
+      end plate. This current produces a magnetic field inside the current loop
+      according to Maxwell's equation, B • dl = Vi.
+
+           The magnetic field induced by the plasma current flows along the in-
+
+      sulator, and in turn,creates a force acting on this same plasma current
+
+      according to the force equation F =   J i dL x B, where F is the induced
+      magnetic force, i is the current, B is the magnetic field, and dL is a very
+
+      small segment of the current path.    This force is mostly in the outward
+
+      direction, as shown by Fig. 2b.   This outward expansion of the plasma con-
+
+      tinues along the end-plate boundary until the plasma reaches the outer
+
+      electrode.   At this point, as shown by Fig. 2c, the current path is nearly
+
+      as much perpendicular to the inner electrode as it is parallel.     The effect
+
+      of this straightening of the plasma front is that the plasma begins to ex-
+
+      perience a significant axial acceleration and begins to move along the
+'.4                                                         7
+      barrel of the gun, reaching velocities of nearly 10       cm/sec.
+
+           The initial plasma sheath shape is, for the most part, dictated by the
+
+      insulator.   For a strong plasma focus with large x-ray and nettron produc-
+
+      tion, the filamentary pattern must be radially symmetric and the filaments
+
+      must blend to form a uniform radially symmetric sheath about 1 microsecond
+
+      after high-voltage application.   It has been experimentally shown [6] that
+
+      if the current sheath does not become azimuthly symmetric but instead
+
+      develops a preferred radial filament, the neutron yield from a deuterium-
+
+      gas-filled plasma gun is very poor.    It has also been experimentally demon-
+
+      strated [7] that as the capacitor bank energy is increased, the filamentary
+
+      pattern becomes a uniform current sheath earlier.
+
+
+
+
+         4-
+                                                                                                     8
+2.2   The Acceleration Phase
+
+      The acceleration phase begins as the symmetric current sheath, formed
+
+during the breakdown phase, bridges the distance between the inner and outer
+
+electrodes from the breech of the outer electrode to the inner electrode
+
+along the insulator (see Fig. 2c).              Notice that the current sheath is canted
+
+backward from the center electrode to the outer electrode.                          At breakdown
+
+this backwards slope is due to the shape of the insulator, but as the sheath
+
+is accelerated along the barrel, this shape is perpetuated due to the radial
+
+dependence of the j x B force.          £he current sheath has both an outward
+
+radial component and a backward axial component.                    The radial accelerating
+
+force is the result of (jz x B )r where jz is the axial component of the
+
+current and Be is the induced magnetic field.                   This force is outward and
+
+forces the current sheath against the inner surface of the outer electrode.
+
+The axial accelerating force (j x B ) varies as i/r across the annulus
+                               z   Gz
+and results in higher sheath velocities near the center electrode.                              The
+
+radial dependence of the magnetic field follows from the coaxial current
+
+path relationship      B         =   i01Idwhere dl = rdO; thus,                  rdB 0          Io0
+                                                                                                  and
+
+Be M I/r.
+
+      Actual measurements [31 using magnetic probes to determine passage of
+
+the current sheath have shown that the current boundary velocity is in fact
+
+higher near the center electrode than at the outer electrode.                            Without a
+
+perforated outer electrode, the radial force term would lead to a plasma
+
+pileup at the outer electrode surface and in time would reduce the effective
+
+annular spacing, Ar.       Because of the parabolic shape of the sheath, plasma
+
+flows radially outward along the current front and will cause further plasma
+
+pileup and eventual stagnation of the plasma if the outer electrode is not
+
+
+
+
+                M.2. ... . . , . ... . ., , z
+               ..
+               -...                              . , .. , .. . .. 2 ..... .. .. .. ... .. .   . i.    ..............
+                                                                            9
+
+perforated.   It has been found [6] that use of a perforated outer electrode
+
+prevents stagnation at the outer electrode surface and substantially im-
+
+proves quality of focus and neutron production.
+
+     It is interesting to note that examination of the   G x ) forces at
+the inner and outer electrode boundaries reveals that at the center elec-
+
+trode the axial force is much stronger than the radial force due to the
+
+larger radial component of the current distribution at the center electrode.
+
+At the outer electrode, the situation is reversed with a stronger radial
+
+force.    Thus the sheath at the outer electrode boundary will tend to be
+
+accelerated axially much less than at the inner electrode leading to a
+
+further canting effect.   Also, since Be falls off at l/r, the forces at
+
+the outer electrode are even further reduced, leading to further canting.
+
+This expected increase in the slope of the plasma sheath is not seen in
+
+observations of sheath propagation which reveal a much reduced canting
+
+effect.
+
+     The reason for this lack of increasing axial separation between the
+
+inner and outer boundaries of the sheath is that the mass pickup by the
+
+sheath is a nonlinear function of the radius [3].    The sheath mass increases
+
+almost linearly with axial propagation for radial positions near the center
+
+electrode, but at the outer electrode, the mass pickup is almost nonexistent.
+
+Thus, the center electrode boundary of the sheath experiences greater mass
+
+buildup than the outer electrode which reduces the acceleration of the
+
+center electrode boundary, and the sheath does not show an increase in
+
+backwards slope as rapidly as first supposed.
+
+     This nonlinear mass buildup, together with the largely radial forces
+
+at the outer electrode boundary, is called the "snow-plow" effect, and a
+
+model has been developed to predict the behavior of such a plasma sheath.
+                                                                                    10
+The overall time for plasma sheath acceleration to the muzzle of the gun can
+
+be predicted using the velocity relation determined by Rosenbluth and
+
+Garwin [8] in their sheath model called the snow-plow "M" theory.            This
+
+model predicts that the velocity of the sheath can be calculated from the
+
+relationship
+
+                            V    (22          1/4 cm/sec
+                                  (cE /4irp       cm)e
+where c = 3 x 1010 cm/sec, pO = initial mass density of the gas, and
+
+E = electric field between the electrodes. Assuming a cylindrical geometry,
+          V
+E                 where V is the applied breech voltage, r is the radius of
+    r * ln(r 2 /r1
+interest between the electrodes, and r1 and r2 are the inner and outer
+
+electrode radii, respectively.
+
+     This velocity relationship was shown to be very effective [3] in pre-
+
+dicting the arrival times of the current sheath at the muzzle of the gun.
+
+Predicting the time of arrival of the current sheath allows tailoring of
+
+the dense plasma focus system parameters such as gas-filling pressure,
+
+applied voltage, and center electrode length to produce a plasma focus
+
+coincident with the maximum bank current.      By synchronizing the focus with
+
+the maximum sheath current, the energy stored in the magnetic field, which
+
+drives the pinch phase, can be maximized, thereby increasing x-ray and
+
+neutron production.
+
+     Typical test results [9] for a deuterium-gas-filled dense plasma focus
+
+are shown in Fig. 3.     The time axis of each graph starts at the initiation
+
+                                                                       3
+of the breakdown phase.     The steady current rise shown in Fig.          a is largely
+
+determined by the ringing frequency of the system, f =            1-   , where
+
+C = bank capacitance and L = system inductance.          More will be said about
+
+this in Sec. 4.1     After about 2.1 psec from initiation, the current ex-
+
+periences a sudden drop and slowly falls off.       This sudden drop in current
+
+
+
+
+     .9]
+                                                                          11
+
+              8
+              6-
+              4
+
+     x        2
+                  0   0.4     0.8     1.2   1.6   2.0     2.4   2.8
+                                 Fig. 3a.   Sheath current.
+
+     >        12
+
+     o      8
+          X 4-
+                                                                2.8
+
+                                 Fig. 3b.   Breech voltage.
+
+
+
+          X
+              4 -
+     .        2-
+      x
+
+                                                                2.8   T
+
+t                                Fig. 3c.   Device inductance.
+
+
+          1.00
+          0.75
+          050
+          0.I25-
+                                                                2.8   T
+
+                                 Fig. 3d.   Neutron flux.
+
+
+      w 1.00-
+    >   0.75 -
+
+
+                                                                2.8
+                                 Fig. 3e.   X-ray flux.
+
+                            Fig. 3.   Typical device waveforms.
+ r
+                                                                                      12
+
+
+
+
+ L
+       is due to a rapid increase in internal inductance of the current sheath as
+
+       the plasma sheath collapses due to lack of support from the center electrode
+
+       as the sheath reaches the muzzle of the gun.     A simple explanation of the
+
+       increase in inductance is that the inductance can be defined by the following
+       relationship:     L =    in      ,where r I and r2 are the inner and outer
+
+       electrode radii, resulting in a large inductive increase as the inner radius
+
+       decreases from a few centimeters to less than one millimeter when pinch
+
+       occurs.
+
+             Note in Fig. 3b that simultaneously with the current drop the breech
+                                                        d           dL
+       voltage experiences rapid increase due to V =        (LI) = I d-   .   The neutron
+
+       and x-ray graphs also show a marked increase at this time, indicating that
+
+       indeed this is the plasma pinch stage.     Thus, sheath arrival times may be
+
+       easily detected from the breech voltage and sheath current wave forms, and
+
+       synchronization of the maximum current with the pinch may be accomplished.
+
+             Before leaving the acceleration phase, mention must be made of the gas
+
+       removal efficiency of the plasma "snow-plow."     Observations of photographs
+
+       taken of the interelectrode space during and after pinch show no subsidiary
+
+       breakdown between the electrodes indicating a rarified gas loading between
+
+       the electrodes.     Quantitatively, considerations of the Alflen speed of the
+
+       current front allow prediction of the gas density immediately following the
+
+       front, and such calculations applied to the dense plasma focus [9] show that
+
+       the gas density after "snow-plow" is reduced by a factor of 104 of the
+
+       initial gas-filling density.    Thus, the accelerating plasma sheath is a very
+
+       efficient means of gas removal between the coaxial electrodes.
+
+       2.3   Collapse Phase
+
+             The collapse phase is by far the most interesting, but also the least
+
+       understood portion of the dense plasma focus formation.      The third phase
+
+
+
+
+'4~4
+                                                                                      13
+
+      encompasses the rapid convergence of the plasma sheath to the axis and the
+
+      conversion of stored magnetic energy to plasma energy in the focus.        The
+
+      two-dimensional radial and axial compression force offers no equilibrium
+
+      alone the axis, and plasma readily escapes axially in either direction.
+
+      The very nature of the convergence causes much of the gas swept up by the
+
+      plasma sheath to be ejected downstream and lost to the pinch.        It is esti-
+
+      mated [31   that the gas trapped in the focus is   %   10 percent of the gas
+
+      originally in the compression region.    Even though the amount of gas trapped
+
+      in the focus is relatively small, the pinch effect is perhaps the most effi-
+
+      cient way of heating and compressing a plasma presently available.        The
+
+      pinch effect produces plasma densities of 10 19 to 10 20 cm -3 . x-rays near
+
+      500 keV, and neutron pulses of > 1012 neutrons per pulse, when driven by
+
+      large (multimegajoule)capacitor banks.
+
+           The production of x-rays remains obscure as current theoretical pinch
+
+      models do not include a detailed x-ray production mechanism.        Soft x-ray
+
+      (< 7 keV) is emitted by thermal Bremsstrahlung from the focus region and
+
+      hard x-ray originates at the surface of the center electrode and is caused
+
+      by thick target Bremsstrahlung [10],    [11].   As the inductance of the sheath
+
+      increases during pinch, very large axial voltages are developed in the
+
+      pinch region which accelerate electrons into the center electrode.
+
+      Experiments have shown [12] that a large percentage (> 90 percent) of the
+
+      total x-ray energy appears as line emissions characteristic of the center
+
+      electrode material.   More recent experimental data [13] show an anisotropic
+
+      hard x-ray distribution with a 75 percent increase in x-ray intensity be-
+
+      tween the angles of 380 and 750 from the gun axis, thus indicating a more
+
+      complicated hard x-ray production mechanism than simple anode Bremsstrahlung
+
+      bombardment.
+
+
+
+
+4M-                               0
+                                                                                               14
+                     When the dense plasma focus device is filled initially with deuterium
+
+
+            gas, neutrons are produced in a pulse during the pinch, reaching magnitudes
+
+            of 10        to > 1012 neutrons per burst.    The pinch lasts about 100 nanoseconds,
+
+            much longer than predicted by simple hydromagnetic theory.          If the pinch
+
+            phenomenon were connected with either a simple collapse-expansion mechanism
+
+            or a sausage instability, one would expect that the lifetime would be on the
+
+            order of a few nanoseconds.          This expected confinement time is derived
+
+            simply [9] from the time required for the ions to reach the center of the
+
+            pinch which would imply infinite compression, obviously a maximum unstable
+
+            situation.       Dividing the pinch radius by the ion speed yields an estimate
+
+            of stable pinch lifetimes.       Typical values are 1 mm for the radius and
+                 7
+            10       cm/sec for the ion velocity resulting in a confinement time of about
+
+            10 nanoseconds.
+
+                      A working model of the dense plasma pinch must account for the longevity
+4
+            of the focus and also certain experimental data concerning neutron production.
+
+            It has been shown [9],      [101 that the neutron-flux is anisotropic with an
+
+            axial neutron-flux shift in the 300 to 750 keV range indicating axial
+
+            motion of the ions.       In order to explain these unexpected results, several
+            models of the dense plasma focus have been proposed.          They can be described
+
+            as follows:
+
+                      (1) Ion Beam (Beam-Target) Model.    According to this model, at the
+
+            neck of the pinch very high electric fields generated by the collapsing
+
+            sheath accelerate both electrons and ions to energies of several tens of
+
+            keV.       The ions strike the relatively stationary dense plasma near the
+
+            focus, and thus produce neutrons from the ensuing collisions.
+
+                      (2) Moving Boiler Model.     In this model the collapse produces a rela-
+
+            tively stable magnetohydrodynamic structure which moves axially away from
+
+
+
+
+    7'- 7
+                                                                                15
+
+      the center electrode.    It is thought that this structure may be thermo-
+
+      nuclear in nature.
+
+           (3) The Crossed-Field Model.    This model is based on computing ion
+
+      trajectories in a pinched plasma discharge.    Theory predicts that high-
+
+      energy ions are produced by acceleration in the crossed electric and
+
+      magnetic fields generated by the rapidly constricting current distribution.
+
+      These same crossed fields result in the high energy ions spending relatively
+
+      short periods on the axis of the pinch, thus producing a smaller anisotropic
+
+      neutron shift and accordingly smaller net plasma axial motion than the pre-
+
+      vious two models.
+
+           All three models offer a qualitative description of dense plasma
+
+      focus mechanics, but only the crossed-field acceleration model seems to
+
+      support experimental data.   Figure 4a is a drawing which shows the Beam-
+
+      Target model.    The arrows indicate the supposed path of the ion beam.
+
+      The first objection to this model lies in the resulting anisotropic shift
+
+      introduced in the neutron yield from such a beam-target interaction.      The
+
+      resulting anisotropic shift would be greatest at a 45' angle to the axis,
+
+      rather than at the axis as experimental data indicate.    Second, to pro-
+
+      duce the required center of mass velocity of 108 cm/sec measured experi-
+
+      mentally, the incident beam ions would require energies greater than
+
+      60 keV [14], much more energetic than temperatures measured experimentally.
+
+      Electron temperatures are less than 10 keV and it is thought that the ion
+
+      temperature is less than the electron temperature because plasma lifetimes
+
+      are too short for the ions and electrons to achieve equipartition of
+
+      energies [15].   Thus, it appears that the Beam-Target model is not valid.
+
+           The Moving Boiler model was introduced to account for the largely
+
+      axial anisotropic neutron shift (see Fig. 4b).    To produce the observed
+
+      axial shift, the "boiler" must move axially at a velocity of 108 cm/sec.
+
+
+
+.4.                                                                               ....
+                                                                                   16
+
+
+
+
+                            ELECTRODE
+                    [OUTER ELECTRODE
+                     -INNER
+
+                                                                    NEUTRON BEAM
+
+                                                  ~.   9 'I         PLASMA TARGET
+
+
+                                                              -PLASMA SHEATH
+                                                        /o
+
+
+
+
+                  Fig. 4a.   Beam targit model.
+
+
+
+
+                                                                         THERMONUCLEAR
+                                                                         "BOILER"
+
+
+i   It   ,~~                                      -e           --   40
+
+
+
+
+                  Fig. 4b.   moving "boiler" model.
+
+
+
+
+               Fig. 4.   Fluid models of pinch mechanisms.
+                                                                                      17
+
+    Also, to account for the magnitude of electron flux measured (up to 3.5 MeV)
+
+    it is assumed that the "boiler" is thermonuclear in nature.
+
+         The first objection is obvious.       The velocity of the movinF boiler must
+
+    be about 108 cm/sec and will lead to an axial "boiler" translation of nearly
+
+    10 cm for a pinch lasting typically 100 nsec.       Such translations are not
+
+    observed, and typical movements are from 2 to 4 cm [10].        Also, the 108 cm/sec
+
+    velocity is difficult to explain because the maximum constriction velocity
+
+    of the plasma pinch is 107 cm/sec, suggesting unknown accelerating
+
+    mechanisms [16].
+
+         Second, the plasma focus does not appear to be dominated by thermo-
+
+    nuclear neutron generation for two reasons.       One, measured electron energy
+
+    is around 3 keV and lifetimes of the plasma focus are such that equiparti-
+
+    tion of ion and electron energies is not attained; thus,the ions have less
+
+    energy than the electrons with ion       energies suspected to be < 1 keV [15].
+
+    Neutron energies this small indicate that the thermonuclear portion of
+
+    the neutron generation is 1 percent or less [15].         Two, a detailed study of
+
+    the neutron energy spectra provides additional evidence that the focus is
+
+    not thermonuclear [16].       These experimental observations lead to a rejec-
+
+    tion of the first two macroscopic or "fluid" models of the plasma focus
+
+    neutron generation.
+
+         The third model, the Crossed-Field Acceleration model, is a micro-
+
+    scopic or "particle" model of the neutron production mechanism.         This
+
+    model was first developed by Bernstein [10],      [16],   [17], and later modi-
+
+i   fied by Gary and Hohl [18].       Essentially, the Bernstein model accounts ror
+
+    neutron trajectories due to the E x B forces generated by the nonuniform
+
+    plasma pinch.    As tie plasma constricts nonuniformly due to the driving
+
+    magnetic field B,     axial electric fields with radial dependence are pro-
+
+    duced due to E     r.dt
+                          _   .   Reference [17] contains graphs of the radial
+                                                                                           18
+     dependence of J       (axial sheath current), Be, and E       .   Calculations of ion
+                       z                                       z
+     trajectories show that ions can be accelerated to energies of 200-600 keV
+
+     following trajectories similar to the drawing in Fig. 5a [17].               The path
+
+     of the ion loops back and forth in the azimuthal magnetic field crossing
+
+     the axis at a range of angles.       The path the ion takes is not a function of
+
+     the initial energy but rather the angle of incidence upon entering the
+
+     accelerating mechanism of the pinch.       Since the magnetic field is zero at
+
+     the axis, the ions spend more time moving at an angle to the axis than
+
+     parallel to it.       As the ion gains in energy, the path tends to smooth out
+
+     and the ion proceeds in a largely axial trajectory as in Fig. 5a.               The
+
+     effect of all this is that the ion ga4st               energy when moving at
+
+     an angle to the axis but as it gains energy, the path of the ion will be
+
+     axial, thus realizing the large axial, highly energetic ion beam needed to
+
+     produce the noted anisotropy of the neutrons.       In this way, ions are
+
+     sufficiently energized but spend little time in axial motion, thereby
+
+     resulting in the proper center of mass energy shift and yet still achieving
+
+     the large observed neutron energies.
+
+          Gary and Hohl contend that Bernstein's particle approach is basically
+
+     correct, but it suffers from a serious weakness.       They note that the
+
+     electric field generated by the nonlinear collapsing magnetic field should
+
+     produce an axial electric field, but one that is largest on the axis,
+
+     rather than off-axis as Bernstein's model predicts.               A choice of E z(0) = 0
+
+     implies strong electric fields radially away from the axis, leading to a
+
+     cyclotron acceleration ion hea-ing process.       Gary and Hohl, however, feel
+
+~z   it is more appropriate to choose E (r) = 0 outside the plasma in agreement
+
+     with Lenz's law.       This implies a strong induced electric field which is
+
+     largest on the axis.
+                                                     19
+
+
+
+
+                    8                             Z AXIS
+     Ex
+
+
+
+
+                  Fig. 5a.    Bernstein model.
+
+
+
+
+4!
+              4
+
+
+          3
+
+
+
+
+                                                   ZAXIS
+
+
+                   Fig. 5b.    Gary-Hohi model.
+
+
+
+
+                  Fig. 5.Ion trajectory models.
+                                                                                     20
+
+                As the current drops, the changing magnetic field produces an axial
+
+           electric field in the positive Z direction according to Gary and Hohl.
+
+           This axial electric field not only accelerates ions in the direction of the
+
+           observed neutron anisotropy, but provides an E x B drift toward the axis
+
+           where the ions are most likely to gain energy from the electric field.
+
+           This process is suggested to be a very efficient means of energy transfer
+
+           to the ions.   See Fig. 5b for a drawing of this model.
+
+                For large radii, the ions undergo cyclotron acceleration characterized
+
+           by energy gain but little axial velocity gain.    As the ion drifts to the
+
+           axis where B   is small and Ez is large, the ion experiences axial streaming
+
+           characterized by an axially directed energy gain.    In this way, the ions
+
+           are not simultaneously drawn into the axial ion stream, but rather the ions
+
+           at small radii are pulled into the stream first, followed by the ions at
+
+           larger radii as these ions drift to the axis.    The net effect is an
+
+           efficient heating process with only a small number of ions achieving high
+
+           axial velocities at any one time.
+
+                In summary, the Crossed-Field Acceleration model of the pinch mechanism
+
+*appears           to be the most consistent with experimental data.    It accounts for
+
+           the neutron anisotropy, the neutron heating and the large observed neutron
+
+           energies.   This model also seems realistic when known pinch parameters are
+
+           inserted in the model.    It should be noted that the first two phases of
+
+           the dense plasma focus can be modeled macroscopically, but the pinch phase
+
+           appears to require a microscopic particle model of ion kinematics.
+
+           Computer codes [191 have been devised,which are relatively accurate, except
+
+           for the pinch phase, based upon fluid models.    More detailed data are
+
+           required to determine which models are correct to fully explain the dense
+
+           plasma focus operation.
+                                                                                   21
+                         3. DENSE PLASMA FOCUS DEVICE DESIGN
+
+
+           Most experimental publications tend to abbreviate the experimental
+
+     technique not directly related to the thesis, and by doing so, often make
+
+     duplication of the experiment difficult and at times nearly impossible
+
+     without much developmental experimentation.     It is hoped that this paper
+
+     will allow more rapid duplication of a dense plasma focus experiment by
+
+     considering the detailed explanations of device design in the following
+
+     chapters.
+
+     3.1   Mather- vs. Filipov-Type Device
+
+           Before the dense plasma focus device design could be formalized,
+
+     there were several basic decisions to be made.     First, the type of design,
+
+,*   Mather vs. Filipov, had to be decided upon.
+
+           The Mather type is pictured in Fig. 1. This design is characterized
+
+     by a long coaxial cylinder geometry with cylinder radii of roughly 5 cm
+
+     and 10 cm, a ratio of cylinder diameters of approximately 2:1, and
+
+     cylinder lengths of 15 cm to 30 cm.
+
+           The Filipov type is shown in Fig. 6. The most striking difference
+
+     from the Mather design is the absence of a coaxial length to accelerate the
+
+     plasma.     The plasma is generated in the same way as the Mather device, and
+
+     the pinch phase is similar, but the Filipov-type device lacks an acceleration
+
+     phase.    Immediately after breakdown, the plasma sheath sweeps along the
+
+     outer electrode towards the axis and pinch begins almost immediately.       The
+
+     two devices produce similar results.     However, the Filipov device is of
+
+     considerably larger radial dimensions, being 48 cm for the inner electrode
+
+     and 70 cm for the outer electrode.
+
+
+
+
+MN
+                                   22
+
+
+
+
+         7r--
+
+
+
+     0             x
+
+
+_j            U.       U
+
+
+
+                               0
+
+
+
+
+                               0
+
+
+
+
+          I                z
+                                                                           23
+
+       The vacuum system available for our experiments would have required
+
+considerable modification to house the Fillpov-type device, but a system
+
+already existed consisting of a six-inch diameter Pyrex glass vacuum
+
+chamber in which to house the dense plasma focus device.      It was felt that
+
+the smaller Mather type would be easier to handle, could be used with
+
+existing vacuum equipment, and would operate at lower storage bank
+
+energies.     Therefore, the Mather type was chosen.   That is not to say that
+
+the Filipov type was not equal to the Mather type; in fact, there is evi-
+
+dence [24] that the Filipov type may be the more efficient design.
+
+However, the logistics of the situation left no recourse except the con-
+
+struction of the Mather-type gun.
+
+3.2    Dense Plasma Focus Device Configuration
+
+       Another subject for debate during the earlier stages of the design
+
+was device configuration.     Several design variations have been tried by
+
+various groups and are shown in Fig. 7. Mather [3] tried the arrangement
+
+in Fig. 7 a with the hope of stabilizing the axial flow of the plasma between
+
+the oppositely polarized center electrodes by using the two-gun arrange-
+
+ment shown.     The system did not operate as expected, with almost no
+
+neutron production during synchronous firing, and relatively unstable
+
+plasma focus.     A two-device system was a tempting configuration until this
+
+reference was discovered.
+
+       Figure 7b [20] shows another interesting geometry develoned at the
+
+Aerospace Corporation.     Using this arrangement, it was hoped that the
+
+shape would allow lower gas pressure loading at the breech with the mechani-
+
+cal arrangement providing additional compression at the muzzle.      This inter-
+
+esting electrode configuration did not prove to be of any significant
+
+advantage.
+
+
+
+
+      A7
+                                                                                    24
+
+
+        WSULATOR                                    LCRD
+
+
+
+                                                                            INSULATOR
+
+
+
+
+                                 Fig. 7a.    Opposing gun design.
+
+
+
+
+                        +                                                ELECTROMAGNET
+
+
+
+
+         Fig.   7b.   Parabolic design.
+
+
+
+
+                                               Fig. 7c.   Coaxial magnetic field design.
+
+
+
+
+                               Fig. 7.    Various device geometries.
+
+
+
+
+4,=77
+                                                                           25
+
+      Figure 7c represents another attempt to stabilize the focus using an
+
+axial DC magnetic field.   The magnetic field did in fact stabilize the
+
+focus, but at the expense of the x-ray intensity, resulting in an intensity
+
+reduction of several orders of magnitude [22].
+
+      These findings seemed to indicate that the standard geometry would be
+
+the most suitable for our experiments, thereby greatly reducing the already
+
+complex DPF system design task ahead.
+
+3.3   Detailed Dense Plasma Focus Device Design
+
+      The dense plasma focus design for our experiments, which is shown in
+
+Fig. 8, consists basically of two coaxial cylindrical electrodes with a
+
+hat-shaped insulator between the electrodes to provide electrical isolation
+
+and also determine the initial shape of the plasma sheath.   The electrodes
+
+are each fastened perpendicularly to a large metal disk which provides an
+
+electrical connection to each electrode and is a vacuum end plate as well.
+The outer electrode   endplate forms a vacuum seal to a 6" diameter, Pyrex,
+
+cross-shaped vacuum chamber which houses the plasma gun and the x-ray
+
+diagnostics.   A plexiglass end-plate spacer is placed between the end
+
+plates for electrical isolation and also to provide a vacuum seal between
+
+the inner and outer electrode end plates.   When the electrodes are clamped
+
+together, the plexiglass spacer presses tightly against the electrode in-
+
+sulator forming a rigid assembly able to withstand the severe mechanical
+
+forces developed during the current impulse which drives the dense plasma
+
+focus.
+
+      A more detailed device design will now be presented in four parts:    the
+
+outer electrode, inner electrode, end-plate spacer and electrode insulator
+
+designs.   Each will be discussed in turn with a final discussion of miscel-
+
+laneous device design considerations.
+                                                                                  26
+
+
+
+
+                        ALUMINUM TRANSMISSION LINES
+                        2OmiI POLYETHYLENE SHEET
+~PLEXIGLASS                         DIELECTRIC SPACER
+                        NYLON SPACER WITH 1/4-20 STEEL BOLTS-
+                        CER.AMIC INSULATOR WITH RTV ON SURFACE
+
+
+
+
+      BRASS RING FOR
+      THE CATHODE
+      PYREX GLASS-
+      CHAMBER..-.                                                         ,,,
+
+      OFHC COPPER      -                 -
+      ANODE
+
+
+
+
+                                     \I              I       I                \
+      ELKONITE DISC
+
+                                  SQUIRREL CAGE CATHODE, COMPOSED
+                                  OF 8 BRASS RODS
+
+                                             0       1           2"   3
+                                                         SCALE
+
+
+
+                      Fig. 8.   Experimental dense plasma focus device.
+
+
+
+
+                                  '4'-           V                        "
+                                                                             27
+         3.3.1   The inner electrode design
+
+         There were four fundamental parameters considered before building the
+
+    center electrode assembly.     First of all, a decision had to be made as to
+
+    whether the inner electrode would be adjustable in length.     For optimum
+
+    device operation the current peak of the plasma should coincide with the
+
+    arrival of the current sheath at the muzzle of the gun.     The arrival time
+
+    may be approximated by the center electrode length divided by the average
+
+    sheath velocity.   Thus, by varying the length, the sheath arrival time can
+
+    be tuned to the current peak.    A movable center electrode would have re-
+
+    quired an additional complexity deemed unnecessary because the sheath
+
+    velocity could also be adjusted, to a lesser degree, by varying the fill
+
+    gas pressure and the applied voltage.
+
+         The second design consideration was the choice of a solid versus a
+
+    hollow center electrode.     Hollow center electrodes are used when optical
+
+    diagnostics of the plasma focus are required and also when x-ray
+
+    Bremsstrahlung of the center electrode tip is undesirable.     The hollow cen-
+
+    ter electrode is vacuum sealed at the breech end by a transparent window
+
+    of various materials such as a salt window in the case of an infrared plasma
+
+    probe.   The decision was made to use a solid electrode because of simplicity
+
+    and lack of a real need to use the hollow electrode.
+
+         The center electrode diameter was also a design parameter chosen for
+
+    convenience because of the lack of any reference in the literature regarding
+
+    the importance of this dimension.    The center electrode was machined from
+
+    a 2" diameter solid rod of OFHC copper with a finished diameter of 1.78".
+
+    To reduce plasma erosion of the center electrode tip, an Elkonite disk,
+
+    3/16" thick by I" diameter, was silver soldered into a recess in the center
+
+    electrode tip and then faced-off flush with the surface of the tip.
+
+
+
+
+.
+                                                                              28
+
+Elkonite is a sintered material composed of tungsten and various percentages
+
+of silver, copper or silver carbide.    The Elkonite used was grade 30W3,
+
+80 percent tungsten and 20 percent copper by weight.     This grade is par-
+
+ticularly resistant   to arcing and pitting, yet has good electrical and
+
+thermal conductivities.
+
+     The length of the center electrode, the fourth design parameter,
+
+unfortunately was relatively fixed by the geometry of the Pyrex cross-
+
+vacuum chamber which housed the gun (see Fig. 15, page 61).     It was felt that
+
+an important consideration in determining the center electrode length was in
+
+placing the focus in the center of the Pyrex cross to allow a semiconductor
+
+detector to measure x-ray radiations.    This length measured about 9" from
+
+the outer electrode end plate.    A more rigorous estimate of the electrode
+
+length would have required knowing the risetime of the capacitor discharge
+
+system; then, for various pressures andbankvoltages a sheath velocity could
+
+be estimated allowing the calculation of necessary lengths to time the
+
+sheath arrival with the maximum current from the bank.     The exact bank
+
+parameters were not fixed at the time of device design, so it was felt that
+
+the bank could be designed to accommodate the required 9" length.
+
+     The center electrode, after being fitted with the Elkonite tip insert,
+
+was silver soldered into a recess cut in an 8" diameter, 3/8" thick brass
+
+disc which formed the inner electrode vacuum end plate.    Eleven 1/2" diameter
+holes, spaced 30' apart on a 5.75" bolt circle, were drilled in the end plate
+
+with the twelfth position left blank and positioned at the bottom of the
+
+end plate for maximum electrical connection to the capacitor bank par-
+
+allel plane transmission line.    Nylon T-shaped bushings, 1/2" in diameter,
+
+were inserted in these holes with a 1/4" bolt piercing each bushing.        The
+
+bolts were seated against I" diameter shoulders that formed the top of the
+
+
+
+
+                          M RiP
+                                                                              29
+
+bushings.    In this way, the bolts were electrically insulated from the
+
+inner electrode end plate and yet could still clamp against the end plate
+
+by pressing against the nylon bushing shoulders.     The bolts were screwed
+
+into threaded holes in the outer electrode end plate allowing the end
+
+plates to be clamped together forming a vacuum seal with the end plate
+
+spacer, which will be discussed in Section 3.3.3.
+
+     An early design used only six clamping bolts and it was discovered
+
+that the end plate clamping was not sufficiently uniform, thus unevenly
+
+stressing the insulator and allowing the discharge impulse developed
+
+during device operation to mechanically shock the end-plate assembly to
+
+the point of destruction of the electrode insulator.
+
+     3.3.2   The outer electrode design
+
+     The length, diameter, and the amount of electrode perforation were
+
+primary outer electrode design considerations.     At the time of the device
+
+design, dense plasma focus literature did not indicate quantitatively the
+
+amount of perforation required, although some degree of perforation was
+
+almost always mentioned.   A squirrel-cage geometry was finally adopted to
+
+minimize "snow-plow" buildup during the acceleration phase and also to allow
+
+optical recording of the wavefront if so required.     The squirrel cage also
+
+reduced the weight of the device to allow one-man removal and installa-
+
+tion of the device.
+
+     The diameter was chosen to provide a minimum annular spacing between
+
+the inner and outer electrodes of I" or greater.     Research by Mather [6]
+
+seemed to indicate thaL maintaining a 1" minimum annular spacing was
+
+necessary, and current designs almost without exception conform to this
+
+empirical criterion.   Purely for reasons of convenience, our design was
+                                                                           30...
+
+
+
+
+given an annular spacing of 1.13".    The length of the center electrode
+
+was chosen to coincide with the length of the inner electrode which extended
+
+9" into the vacuum chamber.
+
+     The squirrel cage was composed of eight 1/2" diameter brass rods
+
+rounded at the muzzle end.    The rods were evenly spaced with a 450 angle be-
+
+tween the rods.   The rods were silver soldered to a .35" thick, 5.75"
+
+outside and 4.3" inside diameter brass ring which provided support for the
+
+rods and also electrical connection to the rods from the outer electrode end
+
+plate by way of six evenly spaced 1/4" Allen head bolts,which screwed into
+
+holes tapped in the end plate, pressing the ring firmly against the end
+
+plate.
+
+     During plasma acceleration, magnetic forces generated by the plasma
+
+current exert an outward radial force on the outer electrode, causing the
+
+squirrel cage to expand, thus dissipating energy needed to drive the pinch.
+
+To reduce this loss, a brass ring, 1/2" thick with an annular thickness
+
+of 1.5", was constructed with an inside radius equal to the inside radius
+
+of the outer electrode.   The rods passed through holes in the ring and were
+
+held in place by set screws in the ring.    The ring was positioned about
+
+halfway down the gun barrel and not moved again.
+
+     The outer electrode end plate was constructed from 1/2" thick brass
+
+plate and given an outside radius of 11.5".     Threaded holes were tapped in
+
+the end plate to match the inner electrode clamping bolts and the squirrel
+
+cage ring bolts previously discussed.    Also, eight .4" diameter holes on a
+
+9.375" bolt circle were drilled to provide bolt holes for clamping the end
+
+plate to the Pyrex vacuum chamber collar.     A 2.4" diameter hole was drilled
+
+through the center of the end plate to allow clearance for the electrode
+
+insulator.   The edges of this hole were rounded with a 1/4" radius corner
+
+to reduce the electric field intensity with the purpose of preventing di-
+
+electric breakdown of the electrode insulator.
+                                                                               31
+
+             3.3.3   End-plate spacer design
+
+             The end-plate spacer design required that the spacer provide a vacuum
+
+     seal, electrical isolation and a rigid mechanical support between the end
+
+     plates.     To meet these requirements a disc-shaped plexiglass spacer was
+
+     developed with a diameter of 8.5" and a thickness of 3/4", radially wide
+
+     enough to fill the space between the end plates and thick enough to avoid
+
+     surface tracking across the thickness of the spacer.      Once again, eleven
+
+     holes were drilled in the spacer to coincide with the end plate clamping
+
+     bolts.    Also, a circular recess, 1/4" deep with a 4" diameter, was machined
+
+     in the plexiglass to fit the collar of the electrode insulator, and a 2"
+
+     diameter hole was cut through the center of the spacer for the center
+
+     electrode to pass through.      O-ring grooves were machined into both sides of
+
+     the spacer to coincide with identical grooves in the end plates, thus
+
+     forming vacuum seals when Viton o-rings were inserted in the grooves,and
+
+     the assembly was clamped together by the eleven clamping bolts.      The spacer
+
+     was rigid enough to withstand deformation caused by clamping the end-plate
+
+     assembly together as evidenced by the lack of objectionable vacuum leaks
+
+     during the pretest pump-down periods.      During device operation, however,
+
+     the violent mechanical forces applied to the end-plate assembly caused
+
+     intermittent vacuum leaks on the order of .05 torr of impurity gas per
+
+     shot.     This did not occur often, and by tightening the end-plate clamping
+
+     bolts again, the problem was often momentarily reduced.      The existence of
+
+     such a problem, however, indicates a problem with the end-plate clamping
+
+     mechanism and possibly the choice of plexiglass as the end-plate spacer.
+
+             An alternative design might possibly be the construction of the spacer
+
+     from the same material as the electrode insulator with vacuum seals cut
+
+     in the collar of the insulator.      The advantages are a reduction of parts
+
+     and a more rigid insulator/spacer assembly.
+
+
+A€
+                                                                              32
+
+       3.3.4   The electrode insulator design
+
+       The design of the electrode insulator was a very critical part of the
+
+device and much experimentation was required to produce a useable insulator.
+
+The insulator material had to be mechanically strong, a good electrical in-
+
+sulator and also resistant to plasma erosion.       Two available materials that
+
+met these requirements were Pyrex glass and Lava, a machineable ceramic.
+
+The first insulators were made from Pyrex because Pyrex was cheap and
+
+simple to work with.     There seemed to be no difference in the sought-after
+
+qualities of the two materials so the decision to use Pyrex seemed a good
+
+one.
+
+       The Pyrex insulator was made from a Pyrex tube 0.10" thick with a
+
+1.98" nominal inside diameter.     The tube was slightly elliptical with a
+
+cross section whose axes varied the whole length of the tube.       The ratio
+
+of major to minor axes had a maximum of 1.05.       The portions used for the
+
+insulator were selected for maximum symmetry, but at best were still
+
+marginally round.     An 8" long section of the tube formed the raw material
+
+for an insulator.     The tube section was placed in a glass lathe and approx-
+
+imately 5" were heated until soft enough to flare the glass into a 4"
+
+diameter collar perpendicular to the tube axis with about a 1/8" radius
+
+bend at the tube.     The tube was then cut to a length long enough to allow
+
+2" of glass insulator to extend into the vacuum chamber along the surface
+
+of the inner electrode.     After cutting, the insulator was annealed to reduce
+
+strains in the glass from the previous work done on the insulator.
+
+       There were many problems with this design.    The method of forming the
+
+collar did not produce uniform fillets at the bends nor did it produce
+
+collars that were uniformly perpendicular to the tube axis.       Also, the
+
+nonuniformity of the tube diameter allowed the tube to move when the device
+                                                                                              33
+
+           was pulsed, and the resulting motion was a contributing factor in the de-
+
+           struction of almost every glass collar after only a few shots.         In general,
+
+           destruction of the insulator was largely initiated in the collar bend area
+
+           with almost total pulverization of the collar the end result.        The tube
+
+           portion of the insulator was usually relatively intact with only a few
+
+           long cracks.
+
+                Several attempts were made to nullify this mechanical shock destruction.
+
+           First, Dow-Corning #4, a silicon high-dielectric grease, was used to coat
+
+*'         the surfaces of the collar, forming a cushion for the collar.         The
+
+ *grease                  did not work as expected and actually caused the insulator to
+
+           destruct more easily.         Various other shock-absorbing materials were tried
+
+           and rejected with a final attempt using Viton o-rings as shock absorbers.
+
+           Viton is 90 percent shock absorbing [22] so it was felt that a cushion made
+
+           from Viton might provide a solution.         The Viton cushioned insulators delayed
+
+           but did not stop the insulator destruction, and the initial Pyrex insulator
+
+           design was discarded.
+
+                It appeared that if the collar could be made more uniform and more
+
+           nearly perpendicular the shattering problem might be solved.         To meet these
+
+           new collar requirements a new manufacturing technique was needed.           One
+
+           possible solution might have been to weld a glass tube to a disc-shaped
+
+           collar cut from Pyrex sheet.         In this way the collar would be uniform and
+
+           the collar could be carefully fastened perpendicular to the tube.           This
+
+           design was not tried, however, because the decision was made to use a
+
+           machineable hydrous aluminum silicate ceramic to manufacture the insulator.
+
+           The ceramic could be machined wit         sufficient accuracy to produce a uniform
+
+           perpendicular collar which could be made thicker to withstand the mechanical
+
+           shock.         The insulator tube section could also be made thicker for increased
+
+           strength.
+
+
+
+                    -Ai
+                                                                            34
+
+     The end result was a hat-shaped ceramic insulator with cylinder walls
+
+.312" thick and 2.93" long with a collar .25" thick and 4.0" wide.        The
+
+increase in thickness was dictated by the failure of earlier thinner
+
+ceramic insulators.     After machining, the ceramic was cured at about
+
+i000* C for six hours to strengthen the ceramic.      Ceramic glazes were not
+
+tried, so it is not known what effect the insulator surface might have on
+
+device operation.     The insulator did require a certain amount of condition-
+
+ing, however, before the device would pinch.      Conditioning is the process
+
+of repeatedly   firing the gun until x-rays are detected from the focus
+
+region.   It is suspected that the conditioning process is actually the
+
+deposition of short conducting paths on the insulator providing a voltage
+
+grading effect resulting in more uniform breakdown at the insulator [24].
+
+     3.3.5   Other device design considerations
+
+     Two other elements of the device design that are only indirectly
+
+related to the previous design discussion were discovered during develop-
+
+ment testing.   The first design precaution is to provide adequate insula-
+
+tion between the electrode end plates.    The second is the avoidance of
+
+exposure of easily ablated materials to the plasma.
+
+     As a further precaeJtion against breakdown between the eni plates, mylar
+
+sheet .040" thick was cut to cover the area between the end plates that
+
+was not already protected by the disc-shaped plexiglass spacer.     Mylar has
+
+a high dielectric breakdown strength of greater than 4 MV/cm resulting in
+
+a breakdown voltage for the mylar end plate insulator of 400 kV, apparently
+
+more than enough for the magnitude of bank voltages used in the experiments.
+
+However, the breakdown strength of mylar is susceptible to minor surface
+
+damage.   Also inductive changes during plasma focus may produce breech
+
+voltages exceeding five times the applied breech voltage; therefore, such
+
+a large margin of safety is not unreasonable.
+                                                                              35
+
+          It should also be noted that extreme care must be taken to totally
+
+     remove easily ablated surfaces from exposure to the plasma.     Upon contact
+
+     with the high-energy plasma found in dense plasma devices, solid layers may
+
+     vaporize, although it appears that metal vapors and ablated glasses and
+
+     ceramics do not impair operation.    Other device materials such as o-rings,
+
+     nylon, and similar materials partly vaporize and ablate onto the electrodes
+
+     causing erratic operation [23].     The device used in this experiment was de-
+
+     signed to minimize this ablated contamination by removing all easily ablated
+
+     materials from direct exposure to the plasma.
+
+
+
+
+'4
+
+
+
+
+1
+
+4,
+
+          4l
+          '4.j
+                                                                                          36
+4                                4.    EXPERIMENTAL SYSTEM
+
+
+            The design of the dense plasma focus device is only a small part of
+
+     the system design.     A complete system is composed of an energy storage
+
+     and transmission system, a high-energy switch, a vacuum and gas control
+
+     system, instrumentation, shielding, grounding, and high-voltage charging
+
+     circuitry, in addition to the dense plasma focus device.             The goal of this
+
+     overall design was to achieve an operational system at minimum cost while
+
+     maintaining acceptable performance.       In several instances, a more thorough
+
+     design was theoretically possible had time and funds permitted.             A dis-
+
+     cussion of possible improvements is presented to allow consideration of
+
+     alternative designs.     A block diagram of the experimental system is shown
+
+     in Fig. 9.
+
+     4.1    Energy Storage and Transmission
+
+            The capacitor bank used for this experiment was a 43.5 pF, 8.7 kJ
+
+     (at 20 kV) bank composed of three 14.5 iF Aerovox capacitors with indi-
+
+     vidual internal inductances of % 89 nH.      The ringing frequency of the bank
+
+     alone was 143 kHz with a quarter cycle time of      ''   1.8 psec.     Figures 10a,b
+
+     show    the capacitor bank arrangement and equivalent circuit.
+
+            The capacitors were seventeen years old and required high-voltage
+     cycling to recondition each capacitor.       This cycling was accomplished by
+
+
+
+-I   charging each capacitor to several kV, then discharging each capacitor
+
+     through a spark-gap shunt.       Some capacitors required repeated initiation
+
+     of the spark gap before the capacitor would discharge totally.             The cause
+     of this reluctance to discharge is unknown.       Because of the age of the
+
+     bank, capacitor explosions were feared and cycling was operated inside a
+
+     3/4" thick plywood box because plywood is an excellent explosive shock
+                                                                        37
+
+
+                    z
+                    2a.
+                          40             -j
+      *                                  4
+                          U.U
+
+
+
+
+                                                   43-0
+
+
+
+
+                                 4                             w4
+
+
+
+
+                            Ix       0                              0
+
+'a.
+
+
+                                              J           cc
+
+
+                                              vi               A
+
+
+
+
+oo w
+                w
+
+
+
+
+          a..
+                                                                                   38
+
+
+                                                 1/16" ALUMINUM PLATE AS
+                                                         TRANSMISSION LINE
+
+
+
+
+           THREE 14.5juf 20KVBo
+           CAPACITORS
+
+               PARALLEL
+
+
+                                                             TRIGATRON
+
+                                     rHOT ELECTRODE
+          ALUMINUM CAP TO                         HTPAEPAM
+          PROVIDE ELECTRICAbN .c.    'm,
+                 CONTACT
+                   AD-----------                      ---------            GUN
+          MECHANICAL CLAMP
+          TO HOT PLATEPLT
+
+                                     14.5 j.
+                                     fPOLYETHYLENE                SHEETS
+4                                2   VFOR.                INSULATION
+
+
+
+
+                       Fig. 10a.       The capacitor bank arrangement.
+                                 SWITCH
+                                 INDUCTANCE
+           I89/N MLH         I2OMLH           20p&H               130ILaH (Avg)I
+
+    Ii     I                               TRANSMISSION
+                                                   I-I       NE
+    4                        I             INDUCTANCE             I   mf
+
+
+
+
+         CAPACITOR BANK,                                          DENSE PLASMA
+         N #OF CAPACITORS                                         FOCUS GUN
+
+
+           Fig. 10b.      Equivalent electrical circuit of bank and gun.
+                                                                            39
+absorber.    In an effort to extend the life of the bank, the bank was
+
+operated below the rated 20 kV, as studies of capacitor lifetimes reveal
+
+that the lifetime of a high-energy capacitor varies inversely as the
+
+fifth power of the working voltage [251.
+
+     The capacitors had four 3/8" tapped holes on the top of each capacitor
+
+case, one hole at each corner, which comprised the negative grounded
+
+terminal of the capacitors.    The positive lead was a 1/2" threaded post
+
+that pierced the case in the center of the top of the case and was insu-
+
+lated from the case by a 4" diameter circular porcelain bushing.     For
+
+safety purposes, the capacitor cases rested on a 1/32" thick copper sheet
+
+grounded to single-point ground of the system.     The copper sheet rested on
+
+a mobile plywood platform that could be wheeled away from the breech of the
+
+plasma gun for easy access to the gun.     During operation the bank was en-
+
+closed in a 3/4" plywood box used both for protection from possible capaci-
+
+tor rupture and from the possibility of electrical shock to operating
+
+personnel from the lethal energies stored in the bank.
+
+     Satisfactory operation of the dense plasma focus requires prompt
+initiation of energy transfer from a high-current, low-inductance capaci-
+
+tor discharge bank.    Also, to effectively transfer energy from the bank to
+
+the device, the bank impedance must be matched as closely as possible to the
+
+average impedance of the device which was about .03 ohm.     To satisfy these
+
+requirements with modest cost, a parallel plane transmission line was
+
+used (see Fig. 10a).    The cases of the capacitors were tied in parallel
+
+by bolting four lugs on the top of each capacitor case to a single sheet
+
+of 1/16" thick aluminum sheet.    Three holes, 4" in diameter, were cut in
+
+this sheet to provide electrical isolation from the positive capacitor
+
+terminals.   The 1/2" threaded positive terminals extended % 1" above the
+
+ground plate of the transmission line, and to these terminals, a threaded
+                                                                                 40
+      low-inductance aluminum cap was screwed which pressed tightly against the
+
+      upper positive plate of the transmission line to give the electrical connec-
+
+      tion to the upper plate.     The upper plate was also 1/16" aluminum sheet and
+
+      was perforated by three holes 1/2" in diameter through which the positive
+
+      capacitor terminal passed.     All metal edges were rounded to prevent unwanted
+
+      breakdown.
+
+           The capacitors were arranged symmetrically around the 7" wide parallel
+
+      plane transmission line feeder which connected the bank to the spark gap
+
+      switch.     To separate the plates, .020" of polystyrene sheet was used with
+
+      a total electrical breakdown strength of 300 kV.
+
+           Measurement of the internal inductance of the capacitors was accom-
+
+      plished by measuring the capacitor ringing frequency when the transmission
+
+      line feeder was shorted.     This was done by removing the last 3" of insula-
+      tion from between the transmission lines at the feeder end and then dropping
+
+      the top feeder plate onto the bottom plate.     A weight was attached to the
+
+      top plate to reduce contact bounce when the plate was dropped.     Measurements
+
+      of the capacitor voltage showed a damped sinusoidal waveform.     The period
+
+      of the oscillation combined with the known capacitance can be used to cal-
+
+      culate the internal inductance of the capacitors.     The quarter-cycle time
+
+      of the bank plus the transmission line not including the trigatron switch
+
+      and the breech connections was about 1.8 psec.     Typical plasma sheath
+
+      velocity is about 5 x 106 in/sec; therefore, with the 9" gun length of our
+
+      system, the sheath travel time would be about 1.8 psec.     Adding to this
+
+      time the initial breakdown time of about 1 psec, the total estimated delay
+
+      from voltage application to the breech and formation of the focus is about
+
+      2.8 wsec.    The bank risetime was easily fast enough to produce maximum
+
+      current by pinch formation, provided the external inductance was negligible.
+
+
+
+
+.4.             ,. _
+                                                                            41
+
+This was not the case, however.     Figure 10b shows the other inductance
+
+contributing elements of the system.     The total system inductance was not
+
+due only to the bank, but was LTOT=        + 20 + 20 + 301nH, or about 100 nH.
+
+With a known capacitance of 43.5 pF, the average system ringing frequency
+
+was about 76 kHz.     The quarter-cycle time was 3.3 psec for the entire
+
+system, not optimum for the current peak to be coincident with the focus.
+
+Assuming a sinusoidal bank discharge with a current peak at 3.3 Psec
+
+allows an estimate of the magnitude of the current at 2.8 visec or
+
+85 percent of the quarter-cycle time.     Such a calculation yields the in-
+
+teresting result that the current at 85 percent of the quarter cycle is
+
+about 97 percent of the maximum current, owing to the fact that a sine
+
+wave is slowly varying around the quarter-cycle times.     Thus it was felt
+
+that the encrgy storage system risetime was sufficient to allow almost
+
+maximum current to drive the pinch.
+
+       These calculations are admittedly crude, but still illuminating.
+
+The discharge system risetime is crucial for effective coupling of the
+
+current peak to the focus formation.     A previous bank with nine capacitors
+
+identical to the three used in the present bank produced very unsatisfac-
+
+tory results.    Even though the energy storage was three times larger for
+
+the nine capacitor bank, the current risetime was also larger, having
+
+increased to 5.11 jsec.
+
+       The current is limited by the impedance of the bank plus the impedance
+
+of the gun, switch, and transmission line.     For the circuit in Fig. 10b,
+
+the impedance at resonant frequency is Z =       tot , where
+       LBANK
+L            + L        + L      + L     and C       n   C         The valuer.
+  TOT    n       SWITCH     LINE     gun       TOT         BANK'
+is the number of capacitors. The general formula for the impedance is
+Zn =    B SacL
+           +   n+L L + L g  Calculating values for Z resulted in
+                n n • CB                               n
+
+
+                             B                  B
+
+
+ 4]i
+                                                                                      42
+
+     Z     = 8.8 x 10- 2 and Z   = 8.2 x 10- 2 .   Increasing the bank energy by adding
+
+     more capacitors only succeeded in increasing the maximum current by 7 percent
+
+     but moved the current peak to 5.11 psec resulting in a net decrease in the
+
+     current at pinch of 21 percent, largely because the current peak was
+
+     shifted too far.
+
+             Three capacitors were optimum for maximizing current and still maintained
+
+     a risetime close to the estimated sheath arrival time of 2.8 sec.
+
+     4.2     Fast High-Energy Switch
+
+             It has been found experimentally that satisfactory operation of the
+
+     dense plasma focus device requires prompt application of large currents to
+
+      the plasma at initiation of the breakdown phase.        Recall from Section 2.1
+
+      that gas breakdown occurs across the insulator in is6lated streamers that
+
+     expand as plasma current increases until the striated pattern becomes a
+
+     uniform sheath.       Without a uniform sheath, the plasma focus will not form.
+
+             To insure rapid current rise, the inductance of the transmission line,
+
+     breech connections, and the switch must be small so as not to seriously
+
+     degrade the current risetime.        In addition, the current must reach hundreds
+
+     of kiloamps within the microsecond lifetimes of the operating device.
+
+     Therefore, the switch must be low inductance, capable of carrying large
+
+     currents, inexpensive, reliable, easily triggered, and with a geometry
+
+     compatible with the system transmission line.         The first two requirements
+
+     are mandatory, but the remaining requirements allow some compromise.
+
+             4.2.1   Tube-type and mechanical switches
+
+             Tube-type switches were considered and immediately rejected.      Tube
+
+     switches, most notably thyratrons and ignitrons, are reliable, industry
+
+     proven, and have well-characterized operation, but have relatively slow
+
+     risetimes and are not able to carry the current load required unless many
+
+
+
+
+L   ..                 .                                                                . ..
+                                                                                                  43
+
+              devices are operated in parallel.          For further discussion of tube switches
+
+              refer to Reference [27].
+
+                        Various mechanical switches such as solenoid and massive gravity-
+
+              driven plungers were also considered, but were rejected because of suspected
+
+              contact bounce and trigger jitter.          Welding of contacts during high current
+
+              passage was not considered a problem, as electrodes could be machined from
+
+              arc-resistant materials such as Elkonite.          The mechanical switch is almost
+
+              ideal in all other respects.          Such switches can be made low inductance,
+
+              easily triggerable, inexpensive, and capable of conducting large currents.
+
+              Mechanical switches of the gravity-driven massive plunger type have been
+
+              used as impulse bank switches, but it was felt that our experimental system
+
+              may at some time require more carefully controlled triggering.           Therefore,
+
+              electrical discharge initiated switches were studied and,as a result,a
+
+              simple, reliable, and relatively low-jitter switch of this type was
+
+              constructed.
+
+                        4.2.2     Electrical discharge initiated switches
+
+                        The remaining class of switches considered for the system was
+
+              basically switches closed by means of an electrical discharge through a
+
+              gaseous, solid, liquid or vacuum dielectri, medium.           Liquid gap switches
+
+              are somewhat difficult to use because of explosive pressure buildup in
+
+              the liquid during large current flow and because of erratic self-breakdown
+
+              voltages caused by trapped bubbles, density gradients and impurities [28].
+
+              Because of these undesirable characteristics, the liquid dielectric
+
+              switches were rejected.
+
+                        4.2.2.1    Vacuum spark gaps.   Vacuum spark gaps are inherently complex,
+
+              requiring a gap enclosure capable of maintaining a vactum of 10- 5 to
+                   -7
+              10        torr during the explosive conduction of the gap.      Vacuum gaps, however,
+
+              offer the following advantages:
+
+
+
+        i.I
+
+
+
+nor-_
+                                                                                      44
+               (1) High dielectric strength
+
+               (2) Rapid deionization time
+
+               (3) Wide voltage range
+
+               (4) High current capability
+
+               (5) Low inductance
+
+               (6) Quiet operation.
+
+               The design of vacuum spark gaps is not straightforward, and the
+
+          obvious advantages must be weighed against several inconvenient design
+
+          considerations.    First of all, the ultimate breakdown voltage of the gap
+
+          is greatly dependent upon the electrode surface conditions, which may
+
+          vary the breakdown voltage by as much as 108 percent [29].     Thus, it is
+
+          not practical to attempt to control the breakdown voltage accurately by
+
+          electrode spacing.     This electrode surface roughness effect is a major
+
+          consideration when using data from vacuum breakdown measurements to
+
+4design          low inductance, hence, minimum spacing, vacuum spark gaps.
+
+              Another consideration when designing low-inductance spark gaps is
+
+          the prevention of flashover along the external surface of the gap.     The
+
+          switch electrodes are so closely spaced in a low-inductance gap that
+
+          unless special care is taken, breakdown will occur along the outside sur-
+
+          face of the gap vacuum enclosure.    Often this outer surface is immersed in
+
+          transformer oil or a high-pressure electronegative gas.     Interior dielec-
+
+          trics must be low-vapor-pressure materials that will not degrade the gap
+
+          vacuum but will provide high dielectric strengths.    Porcelain, ceramics
+
+          and glass are often used.     The gap vacuum is typically maintained by an
+
+          active pumping system with a cold trap for oil pumps to remove oil
+
+          contamination.    Also, dielectric spacers are often inserted between the
+
+          electrodes to cause the current to flow around the dielectric spacers,
+
+          thus forcing the current to flow in a large cross-sectional area, further
+
+          reducing inductance.
+                                                                              45
+
+     The major difficulty with vacuum gaps, other than the inconvenience
+
+of maintaining a vacuum, is triggering complexity.       Spark-initiated gaps
+
+require relatively high pressures of 10- 1 to 10. 3 torr to provide enough
+
+molecules to supply charge carriers once they are ionized.       The firing
+
+delay time is a strong function of the pressure and gap voltage, as well
+
+as trigger and electrode polarity [30]; thus, spark-initiated devices may
+
+have inherently long delays.       Plasma injection is another method of
+
+triggering vacuum gaps, but such trigger devices tend to be complex.
+
+Lasers have been used as vacuum spark-gap triggers but require very high
+
+power lasers.
+
+     A vacuum spark gap has many advantages, but is complex to design,
+
+construct and maintain, and for these reasons was rejected in favor of a
+
+more simple, easily maintained switch.
+
+     4.2.2.2     Solid dielectric spark gap.    Solid dielectric switches offer
+
+all th2 advantages of the vacuum dielectric switch with the excLption of a
+
+self-healing dielectric.     The solid dielectric switch, however, is simple,
+
+inexpensive and is easily triggered.       The disadvantage of a nonhealing
+
+dielectric dictates the replacement of the switch dielectric after each
+
+switch closure, which will prohibit high repetition rates.       For switching
+
+applications with relatively long cycle times, the solid dielectric switch
+
+may be suitable.
+
+     Triggering is accomplished by puncturing the dielectric, causing
+
+breakdown.     puncturing may be accomplished by electromechanical methods
+
+with microsecond    jitter timi-   or by electrically exploded foil or wire
+
+with nanosecond jitter times.       The latter method has tl,,disadvantage of
+
+requiring the replacement of both the dielectric and the trigger after
+
+each closure.    A crude and relatively erratic triggering mechanism is to
+                                                                               46
+    simply overvolt the gap.   This method may be somewhat enhanced by partially
+
+    prepuncturing the dielectric to a uniform depth, thus providing a more
+
+    consistent breakdown voltage.   For certain applications this method offers
+
+    the simplest and least expensive low-inductance switch available.
+
+         Triggered multielectrode solid dielectric switches are typically
+
+    composed of one or more foil or wire electrodes sandwiched between solid
+
+    dielectric sheets that are positioned between the switch electrodes.
+
+    Puncture of the dielectric may be achieved simply by driving a ball point
+
+    punch, through the dielectric as shown in Fig. lla.   Before puncture, the
+
+    trigger electrode is biased equipotentially between the switch electrodes.
+
+    After puncture, however, the ensuring breakdown between the trigger elec-
+
+    trode and the bottom electrode causes the trigger electrode to attain the
+
+    same potential as the bottom electrode, thus greatly overvolting the
+
+    upper gap causing the switch to close.   Field distortion is also used in
+
+    place of the ball punch as the trigger mechanism, as shown in Fig. llb.
+
+    The trigger electrode, normally biased equipotentially between the switch
+
+    electrodes, is pulsed by a voltage large enough to cause 0 4 electric
+
+    breakdown between the bottom electrode and the trigger thus suddenly
+
+    bringing the trigger to the potential of the bottom electrode.    The gap
+
+    between the trigger electrode and the top electrode is then severely
+
+    overvolted causing complete switch closure.
+
+         Explosively triggered switches use a similar geometry, but instead
+
+    of an electromechanical puncture mechanism, use the piercing force of
+
+    either explosives or an electrically exploded metal foil.    This method
+
+    provides rapid closure but requires the replacement of both the trigger
+
+    mechanism and the dielectric, greatly decreasing the firing rate.
+
+         Other factors affecting switch operation are electrode surface con-
+
+    ditions, the switch package and surface contamination of the dielectric.
+
+
+
+A
+                                                                                            47
+
+
+
+
+EQUIPOTENTIAL                                                       ,-ELECTRODE        2
+  BIAS
+                                                                                   DELECTRIC
+                                                                                    SHEETS
+
+
+   BALL                 CZZ2                 77,                            LCRD
+  PUNCH
+
+
+                        Fig. lla.             Ball punch trigger.
+
+
+
+
+                  ELELECTROD                                                           AV
+
+                                                                     22 1SR"4     DIELECTRIC
+                                ________
+                                   _______                                         SHEETS
+
+
+      -
+                TRIGGER
+                PULS
+                                                                           ELECTRODE   B
+            GENERATOR
+
+
+
+                       Fig.     11b.         Field distortion trigger.
+
+
+
+
+                    Fig.      11.      Solid dielectric switchi types.
+,%                                                                            48
+
+     Often the dielectric is submerged in transformer oil to reduce surface
+
+     tracking and somewhat reduce switching noise [31].     To initiate multiple
+
+     arcs between the switch electrodes, the trigger must have a risetime less
+
+     than the arc formation time.    It has also been found experimentally [28]
+
+     that suitable channel formation occurs for 0.3 < q < 0.6 where q = Y/(X + Y),
+
+     Y = dielectric thickness between the ground electrode and the trigger,
+
+     X = dielectric thickness between the -V electrode and the trigger.
+
+          4.2.2.3     Gas dielectric spark gas.   Gas dielectric switches have all
+
+     the advantages of the vacuum and solid dielectric switches with two
+
+     disadvantages.    First of all, for low inductance the gap must be pressurized
+
+     to increase gap breakdown voltages to allow minimum gap spacing.     Pressuri-
+
+     zation will increase the cost of construction and maintenance of the switch.
+
+     Second, several of the gases used for higher breakdown voltages such as
+
+     SF6 and fluorocarbons combine to form toxic vapors when high currents are
+
+     passed through them.    Other gases commonly used where very low inductance
+
+     is not needed are air, N2, and CO2 , which are inexpensive and relatively
+
+     carefree.
+
+          The simplest type of gas dielectric switch is the overvolted gap in
+
+     which the voltage applied to the gap increases until the gap breaks down.
+
+     Such a gap has poor synchronization characteristics when used by itself,
+
+     but when the voltage applied to the gap has a fast risetime and is much
+
+     greater than the self-breakdown of the gap, then the switch closure is
+
+     rapid with jitter in the nanosecond range.     The overvolted gap is often
+
+     used as a steeping gap or as a crowbar switch to guard against transients
+
+     [321 and other overvoltage conditions.
+
+          An improvement in synchronization and a reduction in jitter and delay
+
+     can be achieved by using a third trigger electrode to initiate breakdown,
+
+     either by field distortion or by both ionization and field distortion.
+                                                                          49
+
+The midplane trigger of a field-distortion triggered gap shown in Fig. 12a.
+
+is normally biased equipotentially between the gap electrodes.     The gap is
+
+triggered by pulsing the trigger with a voltage large enough and steep
+
+enough to cause rapid and low jitter breakdown between the trigger and
+
+electrode A.   As breakdown begins, the trigger is pulsed again but in the
+
+opposite direction, causing the gap between the trigger and electrode B
+
+to break down, thus closing the switch.    The placement of the trigger rela-
+
+tive to the gap space is in the proportion of from 60/40 to 70/30 [33],
+
+depending upon the total switch package.     The requirements for the trigger
+
+pulses are severe for nanosecond jitter switching, with leading edge rise-
+
+times at least 4 kV per nanosecond [34], and for high-voltage switches
+
+the trigger voltages may be nearly as large as the holdoff voltage of an
+
+entire switch.
+
+     The trigatron form of the three-electrode spark gap switch initiates
+
+closure by ionization and field distortion.     The third electrode is usually
+
+a pin inserted coaxially and electrically isolated from the host electrode
+
+as shown in Fig. 12b.   A voltage pulse of a few kV to several thousand kV
+
+is applied to the trigger pin causing breakdown between the host electrode
+
+and the trigger, producing ionized charge carriers to be introduced into
+
+the switch gap leading to rapid switch closure.
+
+     The trigger mechanism has been studied elsewhere [35]-[38] and will not
+
+be discussed in detail; however, one important design consideration is
+
+electrode polarity [351.   The results of such a study, which are shown in
+
+Table 1 [351, are for gaps operated in excess of 40 percent of the static
+
+breakdown voltage of the gaps.   For gaps operated at lower voltages, the
+
+trigger currents must be much larger to sufficiently ionize the gap.     Also,
+
+lower voltage switches require trigger voltages that are a substantial por-
+
+tion of the gap voltage.
+                                                                       50
+
+
+
+
+                                        TRIGGER ELECTRODE
+                                                                   +Vp
+                                           HOST ELECTRODE
+
+    OPPOSITE ELECTRC,
+
+
+                                                                        _VP
+
+
+
+
+                    Fig. 12a.      Field distortion trigger.
+
+
+
+
+                                   TRIGGER BREAKDOWN
+
+
+                                               ECI ,__
+                                          HOST ELECTRODE           L
+                                        "DT.E(.
+    OPPOSITE ELECTRODE
+
+                                                         TRIGGER PIN
+                                                         ELECTRODE
+
+
+
+                            Fig. 12b.    Trigatron switch.
+
+
+
+
+                        Fig. 12.    Gas dielectric switch types.
+
+
+
+4
+                                                                                     51
+
+           Trigatron gaps are well-characterized and have been designed for a wide
+
+       range of voltages and timing requirements.   The trigatron gap is easily
+
+       triggered, can be operated in air, can operate at voltages in the range
+
+       needed by dense plasma focus devices, and can be designed for low jitter,
+
+       short delay and moderately low inductance of tens of nanohenries.   In
+
+       short, the air dielectric spark gap was the best compromise for our dense
+
+       plasma focus high-energy switch.
+
+            4.2.3   System switch design
+
+           The trigatron-type air dielectric spark gap was chosen as the system
+
+       switch because of low cost, triggering ease and simplicity of construction.
+       The present design, however, evolved as a consequence of the failure of an
+
+
+       earlier energy storage system design.   The initial storage design consisted
+
+       of a capacitor bank composed of ten 14.5 pF capacitors in parallel arranged
+
+       in five groups of two capacitors per group with a trigatron switch for each
+
+       group to reduce the overall inductance of the switches.   Parallel plane
+
+       transmission lines connected the groups to a center parallel plane collec-
+
+       tion plate which fed directly to the plasma gun.   Many problems were en-
+
+       countered using this design, and after much frustration, it was dismantled.
+
+       The primary problem was synchronous ignition of the switches.   A very fast
+
+       risetime high-voltage trigger was required to effectively synchronize the
+
+       triggers, but the development of such a trigger generator would have
+
+       required a major expenditure of time and money.    A simpler solution to
+
+       the synchronization problem was simply to remove the problem by directly
+
+       connecting all the capacitors in parallel and switching the total bank
+
+       through a single trigatron switch.   The latter solution was adopted and
+
+       has proven adequate.   The present experimental setup is shown in Fig. 10a
+
+       and a detailed diagram of the switch is shown in Figs. 13a,b.
+
+
+
+
+NONE
+                                                                                              52
+
+
+
+
+             SCREW FOR FINE ADJUSTMENTS
+             OF TRIGGER ELECTRODE
+                                                                        CONNECTORS TO AIR-
+                                                                        CORE
+             TUNGSTEN WIRE AS
+             TRIGGER ELECTRODE          .                               TRANSFORMER
+
+             TUBULAR TEFLON                                              PLEXIGLASS SUPPORT
+             INSULATOR                                                   BOLTED TO AL. BOX
+             COPPER HOST                                                 1/2" ALUMINUM BOX
+             ELECTRODE WITH
+             ELKONITE INSERT                                             SURFACE COATED WITH
+
+             COPPER ELECTRODE                                             OCORNIND
+
+                                                                         1/2" THICK TEFLON
+
+             1/2" BRASS PLATE TO "HOT"A
+             SIDE OF TRANSMISSION LINE
+
+
+                                   Fig. 13a.    The front view of the spark gap.
+
+
+
+
+                                                                         20 ril THICK MYLAR
+                                                                         SHEET
+              PLEXIGLASS SUPPORT
+         -
+
+
+
+
+     '        TO PULSE
+A.            TRANSFOR
+
+
+
+              ALUMINUM BOX
+
+              COPPER ELECTRODES                                          AL PLATE TO CATHODE
+                                                                         OF PLASMA GUN
+              1/16" AL PLATE TO ANODE
+              OF CAPACITOR BANK                                           ROGOWSKI COIL FOR
+                                                                          CURRENT MEASUREMENT
+                                                                          BRASS PLATE
+
+
+
+                                    Fig. 13b.    The side view of the spark gap.
+                                                                                 53
+          The system switch is basically composed of two hemispherical upper
+
+      electrodes pierced by tungsten trigger wires and a single hemicylindrical
+
+      bottom electrode long enough to provide an opposite electrode surface for
+
+      both upper electrodes.     The electrodes were machined from 2" diameter OFHC
+
+      copper and the upper electrodes were machined and fitted with Elkonite
+
+      disks 1" in diameter and 3/16" thick.     The upper electrodes were also
+
+      drilled and tapped to accept 1/2" diameter steel bolts used to clamp the
+
+      electrodes to the aluminum housing.     The bolts were also drilled to pro-
+
+      vide a 1/4" diameter hole through which a cylindrical teflon insulator
+
+      was inserted to insulate the trigger from the host electrode.     At the
+
+      Elkonite surface a .063" diameter hole was drilled to provide an ignition
+
+      gap between the host electrode and the .050" tungsten wire.     The switch
+
+      housing was composed of 1/2" thick aluminum plates which formed a six-
+
+      sided box.   The upper plate was drilled to provide entry for the steel
+
+4     electrode clamping bolts.     The bottom electrode was silver soldered to the
+
+      bottom plate of the housing and measured .93" high and 5" long.     The
+
+      bottom plate was electrically insulated from the top of the housing by
+
+      a teflon spacer and the whole assembly was rigidly clamped to reduce
+
+      switching noise and offset internal pressures caused by the large current
+
+      flow in the air gap.     After clamping, the electrode gap spacing measured
+
+      .39" providing a static breakdown voltage of about 20 kV.
+
+           The teflon spacer geometry used in the switch was developed to provide
+
+      long breakdown paths between the edges of the upper and lower switch housing
+
+      and also to center the upper housing with respect to the lower plate.        Con-
+
+4sistent      alignment of the electrodes is important for repeatable switch
+
+      operation.   After repeated operation of the switch, it was found that a
+
+      fine, powdery, reddish-brown grit coated the teflon surface and it was
+
+      feared that surface degradation would become severe enough to cause
+                                                                                  54
+      flashover of the insulator.     To reduce teflon contamination, the insulator
+
+      was coated by a thin film of Dow Corning #4 high-dielectric silicon grease
+
+      which could be easily wiped off when contamination grew severe and a new
+
+      layer reapplied.
+
+           Switch closure was initiated by pulsing the trigger electrode with a
+
+      14 kV pulse causing breakdown of the trigger-host electrode gap.     The
+
+      breakdown was so severe that a bright flare of ionized gas was ejected
+
+      toward the opposite electrode even without a voltage applied across the
+
+      main gap.     The polarity of the trigger pulse did not affect switch operation,
+
+      but for convenience, the trigger was operated with a positive polarity.
+
+           The jitter of the switch was measured to be 20 nsec with a trigger
+
+      delay of about 200 nsec.     The inductance of the switch was measured by
+
+      discharging a capacitor with known inductance through the switch into a
+
+      low-inductance load, and then measuring the ringing frequency of this RLC
+
+      circuit.     The circuit resistance was very small and could be ignored.    The
+
+      circuit capacitance was due to the storage capacitor applied to the switch
+
+      and shunt.     The shunt was constructed to provide an inductance of about 1 nH
+
+      and could also be ignored.     The remaining inductance in the circuit was due
+
+      to the internal inductance of the capacitor and the unknown inductance of
+
+      the switch.     Thus by measuring the ringing frequency, the switch inductance
+                                                            1
+      could be calculated from the relationship Lg = (2f)2       C   Lcap where Lg
+
+      is the switch gap inductance, C is the storage capacitor's capacitance, and
+
+      Lcap is the capacitor's internal inductance.
+
+           Such a measurement yielded a switch inductance of 20 nH.     The breakdown
+
+      voltage of the gap was much greater than 20 kV, so some improvement in in-
+
+      ductance might have been possible by narrowing the switch gap.     This was
+
+      not done because the breakdown voltage is greatly affected by the tempera-
+
+      ture and humidity of the air [39], so some safety factor was deemed necessary.
+
+
+
+
+L.'
+                                                                                55
+
+To somewhat reduce the dependence of the breakdown voltage on air conditions,
+
+the gap was flushed continuously by a dry air flush from a high-pressure
+
+air bottle.
+
+     4.2.4     System switch trigger
+
+     The switch trigger system was required to provide a fast risetime,
+
+high-voltage pulse to the trigger electrode of the trigatron switch with a
+
+repeatable delay and low jitter upon command from either automatic timing
+
+circuitry or manual initiation.        The circuit eventually developed to meet
+
+these requirements is shown in Figs. 14a,b.
+
+     The interface from a manual switch or various triggering devices to
+
+the pulse amplifier circuit was provided by a Tektronix type 161 pulse
+
+generator and a type 162 waveform generator which allowed control of trigger
+
+delay, waveshape and amplitude to the pulse amplifier.        The pulse ampli-
+
+fier thyratron tube, type 2D21, was triggered by a 25-volt pulse from the
+
+161, causing the 2D21 to rapidly conduct, effectively coupling the 100-ohm
+
+output resistor to a .05 pF storage capacitor.        The output of the pulse
+
+amplifier was a sharply rising 350-volt pulse with more than enough voltage
+
+to trigger the 5C22 high-voltage power thyratron with low jitter.
+
+     The anode of the 5C22 was connected to a 2 pF high-voltage capacitor
+
+which was connected in series to the primary of a stepup high-voltage
+
+transformer.    At this stage of the trigger cycle the 2 pF capacitor had
+
+already been charged to the desired trigger level, typically 7 kV.
+
+Because the 5C22 load was an LC oscillating circuit, three fast high-voltage
+
+diodes with reverse breakdown voltages of 7 kV were connected to the 5C22
+
+anode in a reverse bias configuration to shunt negative voltages from the
+
+LC load to the 5C22 anode so as not to exceed the 5 kV reverse-bias tube
+
+specifications.
+
+
+
+
+      4!J
+                                                  56
+
+
+
+
+                                      zc,
+
+
+
+
+                 0                        a
+
+
+
+
+                          )Iz
+
+
+
+
+                      r              00       L
+
+
+
+                                ir
+
+
+
+
+                     ZN
+             >                       c:L
+
+
+
+
+((I
+
+
+
+      4.11
+                                                                     57
+
+
+
+
+                C30                              0
+
+
+
+
+                                                -j~
+
+
+
+
+                                        L) 00
+
+
+
+
+                                        F0'0
+
+
+
+                    CfLI                                        U-
+
+
+
+                N   0)
+
+                         0)-I
+                                I.'-,                           5o
+
+
+
+
+                                        I                       .o
+
+
+
+
+I..)
+           >i             z                     >     <-
+
+
+
+
+       N                 C              NQ                 Ia
+                         owo
+
+
+                                        0-Jto
+
+
+
+
+IIN
+                                                                                   58
+
+              The pulse transformer was constructed from unshielded 30 kV breakdown
+
+          high-voltage wire wound around a 2" diameter plexiglass tube.   An air core
+
+          was used to achieve the high-frequency response required and also because
+
+          the air core will not saturate as most magnetic core materials will.     Due
+
+          to the air core and the relatively thick high-voltage insulation on the
+
+          transformer windings, the magnetic flux coupling was poor and the actual
+
+          turns ratio was 2.9:1 to achieve a voltage gain of 2:1.   The windings were
+
+          also scatter wound to lower the inductance of the transformer to improve
+
+          the risetime of the transformer.
+
+              When the 5C22 was triggered, the 2 pF capacitor was discharged through
+
+          the 5C22,and the current through the 5C22 also passed through the trans-
+
+          former primary.   This current caused a voltage to appear at the secondary
+
+          connected to the trigatron trigger pin , causing the switch to break down
+
+          and close.   The isolation provided by the transformer allowed the triga-
+
+          tron trigger to be pulsed with either polarity trigger pulse and also
+
+          decoupled the trigger circuit ground from the high-voltage switch.     This
+
+          trigger circuit performed reliably and satisfied the trigger system
+
+          requirements.
+
+              An earlier trigger circuit design using TTL logic circuitry in place
+
+          of the 161 and 162 to provide timing, interlock detection and semiautoma-
+
+*         tion of the device operation proved unsuccessful.   The original trigger
+
+          circuit plans called for the correlation of external events with the
+
+          trigger pulse and programmable delays synchronizing external events and
+
+          devices such as counters, oscilloscopes, and other experimental apparatus.
+
+    .JA   The concept was ambitious but was not realized due to an unsolved prefire
+    f     condition in the TTL trigger circuit.
+
+
+
+
+    I
+                                                                             59
+        Basically, the initial circuit was composed of a series of TTL mono-
+
+stable multivibrators, called one-shots, connected in series forming a
+
+delay line with taps that could be switched to various outputs for control
+
+and timing.     The output of a selected one-shot fired a trigger pulsewidth
+
+control one-shot which in turn fired a Schmidt trigger level shifter.        The
+
+output of the Schmidt trigger was capacitively coupled to the 5C22 grid,
+
+causing the 5C22 to conduct.     Used separately, the TTL and Schmidt trigger
+
+worked reliably and the 5C22 was capable of holding off up to 16 kV for
+
+hours if necessary.     However, when the circuits were connected, charging
+
+the 5C22 would cause the TTL to fire when the charge voltage reached about
+
+4 kV.     One attempted solution involved total isolation of the various
+
+circuit grounds and the use of bypass capacitors where possible, all with
+
+no detectable change.     The solid-state electronics were also placed in a
+
+carefully shielded housing with no improvement noted.     Various logic
+
+schemes were tried to cancel the prefire effect, to no avail.     The power
+
+supplies were also doubly filtered without any effect.
+
+        The investigation into the causes of the prefire condition was very
+
+time-consuming, and rather than waste more time, it was decided that an
+
+all-tube circuit with inherent hiy',, r noise thresholds and larger noise
+
+coupling impedances would be constructed and the solid-state trigger
+
+circuit would be abandoned.     Possible solutions that were not tried but
+
+could possibly have provided the isolation needed are optical isolation
+
+devices and/or pulse transformers.     These two methods of decoupling the
+
+high-voltage circuitry were difficult to implement because of the un-
+
+availability of these devices within a reasonable time.     It is not known
+
+why the high-voltage circuitry caused the TTL to prefire.     One can only
+
+conjecture that because of the low I-volt noise immunity of the TTL, a
+
+small percentage of noise in the high-voltage circuitry was more than
+
+enough to trigger the TTL one-shots.
+                                                                                                                                      60
+           4.3       Vacuum and Gas Control System
+
+                     The vacuum source for this experiment is composed of a Veeco
+
+           vacuum station, type R3-3A with a diffusion pump, liquid nitrogen cold
+
+           trap and a standard mechanical vacuum pump (see Fig. 15).                                                 This system is
+                                                                                               -6
+           capable of pumping the plasma focus chamber to 10                                             torr within eight
+
+           minutes.            The mechanical pump is relatively slow, requiring the bulk of the
+
+           pump down-time.                        The diffusion pump is manually switched into the system
+
+           when the pressure reaches about 40 torr and quickly pulls the vacuum down
+
+           to 10- 6 torr.                    The liquid nitrogen cold trap is necessary to contain the
+
+           diffusion pump oil to prevent backstreaming of diffusion pump oil vapor
+
+           into the vacuum system.
+
+                     The system was initially pumped down to 10- 6 torr to keep the per-
+
+           centage of contaminating gas to a low level.                                  The operating sequence was
+
+           simply to pump down to the 10- 6 torr range, then close off the plasma
+
+           chamber from the vacuum station. Once the plasma chamber was isolated,
+
+           the test gas was bled into the chamber at pressures in the 0.1 to 10 torr
+
+           range.         Thus impurities from previous gas fillings are estimated to be
+                                                    6
+           only one part in 10
+
+                     The plasma chamber consisted of a 6" tube diameter Pyrex cross with
+
+           the ports of the cross loaded as shown in Fig. 15.                                            Semiconductor x-ray
+
+           detectors were placed at 90* to the plasma gun axis.                                           Also in the vacuum
+
+           end plate            opposite the plasma gun were connections to the test gas-
+
+           filling apparatus.                       An Airco vacuum gate valve was used to close off the
+
+           vacuum station from the plasma chamber.                           To decouple mechanical shock from
+
+           the plasma chamber to the vacuum station, two 4" diameter steel bellows
+
+           were used between the vacuum station and the gate valve.
+
+                     Glass vacuum systems are often composed of many short sections pieced
+
+           together like a plumber's nightmare.                        These sections are at times difficult
+
+
+
+
+A
+
+
+
+
+    .. .         f    -    -    r     ----
+                                    ,,-u-     r                       " ..    .Il   i_    ..   ..   ..         ...
+                                                                                                              __      _ ..._..   ..        ..
+                                                61
+
+
+
+
+          z         _   _        _
+
+
+
+
+                                 ww
+                                 w-
+                                 >4
+
+
+
+
+                                      w
+
+
+                                          cni
+
+
+
+
+Vc
+
+
+
+
+     Cr
+
+
+
+
+                            4w
+
+
+
+              w s           C.
+                                                                         62
+to align for a proper vacuum seal and the sections must be carefully
+
+supported so as not to overstress the glass joints.    Glass was used here
+
+only because it allowed easy access for optical measurements of the plasma
+
+focus and because it was readily available.    Metal chambers can and have
+
+been used successfully for dense plasma focus experiments and are preferable
+
+because the metal chamber can be grounded, thus reducing electrical shock
+
+danger, the metal chambers are less susceptible to mechanical breakage, and
+
+the metal chambers are usually custom made, which allows the designer to
+
+minimize vacuum connections and reduce the volume of the vacuum chamber to
+
+a minimum.   Care should be taken, however, in the selection of a suitable
+
+vacuum chamber metal, as certain metals used in the plasma chamber appear
+
+to have a marked effect on plasma focus formation [21].
+
+     The test gas was introduced into the plasma chamber using a Veeco
+
+PV-10 model precision leak valve.    The fill gas pressure was monitored by
+
+a Hastings thermocouple gauge with a working range from .01 to 20 torr.
+
+This procedure was somewhat tedious but was adequate for our purposes.
+
+
+4.4 Device Diagnostics
+
+     Instrumentation for the DPF experiment can be divided into two main
+
+areas, instrumentation associated with the electrical energy transferred
+
+to the pinch and instrumentation of the plasma focus properties, especially
+
+x-rays.   The electrical measurements yielded information about energy
+
+transfer into the device in the form of breech current and voltage waveforms.
+
+During a satisfactory plasma focus the waveforms exhibited distinct
+
+features found only when a focus was formed.    By viewing the current and
+
+voltage waveforms, the time from breakdown to pinch could be measured and
+
+in this way the gun could be tuned for a pinch during the current peak.
+                                                                                       63
+
+         The primary plasma property of interest was x-ray emission from the focus,
+
+         which was measured using solid-state detectors.
+
+              4.4.1     Electrical instrumentation
+
+              The basic design problems of the electrical instrumentation were fast
+
+         response, adequate insulation against high-voltage breakdown from the large
+
+         voltages developed at the breech, output signal levels less than 100 volts
+
+         peak-to-peak, and sufficient shielding to provide reasonable signal-to-noise
+
+         ratios.    The designs which finally met these goals were a high-voltage
+
+         capacitive divider and an air core Rogowski loop magnetic probe for current
+
+         measurement.     These designs were chosen because of simplicity and low cost
+
+         construction as well as applicability and reliability.      Several good refer-
+
+         ences [27],    [39]-[43] are available on high-voltage instrumentation that
+
+         describe alternative methods with varying degrees of accuracy and applica-
+
+         bility, but the methods chosen seemed the most appropriate.
+
+              The voltage divider and current probe were each connected by solid
+
+         Souter conductor coaxial cable to an individual plug-in unit of a dual beam
+
+         model 555 Tektronix oscilloscope inside an electromagnetic interference
+
+         screen room.     By using the dual beam scope, a single photograph could be
+
+         taken of the two waveforms simultaneously for a time comparison.      The 555
+
+         also had delayed sweep capability, allowing sweep expansion for greater
+
+J.time        resolution.     Due to the peak voltage limitations of the plug-ins, the
+
+         input signals had to be restricted to amplitudes less than 100 volts peak-
+
+         to-peak.     In environments with extremely high noise, probe signals are
+
+         connected directly to the plates of CRT's for maximum speed and increased
+
+.        signal-to-noise ratios    [43].   In our experiment, the noise levels were
+
+f        severe, but not to the point of requiring direct coupling of the instrumen-
+
+         tation signals to the CRT deflection plates.
+
+
+
+
+            A'$
+                                                                                    64
+
+         4.4.1.1    Voltage measurement device.     The signal to be measured by the
+
+voltage measurement device is shown in Fig. 3b.           The waveform rises very
+
+rapidly during the plasma focus to a level much greater than the applied
+                               dL
+bank voltage due to the sudden dL change when the focus forms. This voltage
+
+spike is of primary importance, thus dictating minimum requirements for the
+
+measurement device of a few tens of nanoseconds risetime response and the
+
+ability to withstand voltages several times the applied voltage, which
+
+in our case ranged from under 10 kV to 20 kV.           The capacitive voltage divi-
+
+der was ideal for this application, with fast response, high-divider ratios
+
+with relatively small size, simple and inexpensive construction, and high-
+
+voltage capability.        Other types of dividers such as resistive, compensated
+
+RC, or transmission-line reflection-type attenuators were built and tested,
+
+and found lacking either in linearity, noise rejection or cost effectiveness.
+
+         The capacitive divider design is shown in Fig. 16a.        The capacitance
+
+of a coaxial cylinder capacitor is C = 2ircd/ln          r2   Farads where
+
+E1 = dielectric constant of the insulator, r I is the radius of the inside
+
+cylinder, r2 is the radius of the outer cylinder, and d is the length of
+
+the cylinders in meters.           With a third coaxial cylinder of radius r3 > r2,
+
+series coaxial capacitors are formed from the inner to the middle cylinder
+
+and from the middle to the outer cylinder. The ratio of the two capacitors
+is Cl/C 2 =E 1 In r  d   2 Inl    d 2 where C = inner capacitor and
+           cl/c
+            2       1nj2     1/2
+C       = outer capacitor.   By applying the high-voltage signal to the inner
+    2
+cylinder with the outer cylinder referenced to ground, the voltage formed
+
+at the middle electrode will be equal to the signal voltage multiplied by
+                                                                    C1
+the capacitive voltage divider ratio. This relationship is V0      C +                V..
+Thus by making C 2 large and C I small, the desired divider ratio can be
+
+
+achieved.         Fortunately, making C1 small means making the annular spacing
+                                               65
+
+
+
+
+        eI
+      000
+
+
+
+
+ZI-
+             z                            -4
+
+
+
+                                          CO
+
+
+
+
+                                          4J
+                              CY   (D-I
+
+
+                         00
+
+
+
+
+                 CQO
+                 8-
+
+
+
+
+                       16--
+                       0C
+                                                                              866
+large which is desirable because the bulk of the high-voltage drop will be
+
+across C1 and a large spacing is required to minimize breakdown of the
+
+intercylinder dielectric.    C2 will normally be about 1000 times smaller
+
+than C,   resulting in a spacing 1000 times smaller, but the voltage across
+
+this space will only be .001 times the signal voltage and will not over-
+
+stress the thin dielectric of C2 .
+
+     The coaxial geometry of the device offers excellent noise isolation be-
+
+cause the outer cylinder acts as a noise shield as well as the voltage refer-
+
+ence for the capacitive divider.     Another advantage of this geometry is the
+
+convenient connection to coaxial cable afforded by the coaxial arrangement
+
+of the capacitors.     Capacitive dividers also offer the advantage of simple
+
+adjustments of the divider ratios by adding the appropriate capacitance
+
+across the output of the device, effectively increasing C2 and changing the
+
+divider ratio.   The upper frequency response of the capacitive divider is
+
+limited by the inductance of the device [43] caused by the physical length
+
+of the cylinders.    This defines a traveling wave condition which for our
+
+device results in a risetime of less than 10 nsec, well within acceptable
+
+limits.   The low-frequency response is limited by the decay rate of C2
+
+with the input impedance of the scope.    This was estimated by calculating
+
+the RC time constant of the divider and the scope, then choosing a
+
+1 percent droop in the signal as the maximum allowable error.     Such a cal-
+
+culation gives a cutoff frequency of 9 kHz, much lower than the lower
+
+frequencies of the signal since the experiments last only a few microseconds.       i
+     The divider is not matched to the coaxial signal cable until a resistor
+
+
+is inserted between the output capacitor and the coaxial cable.     This
+
+resistor is chosen to match the characteristic impedance of the cable and,
+
+when properly chosen, will terminate all reflections that are reflected
+
+back to the divider.     This resistor connection is shown in Fig. 16b.    The
+
+
+
+
+   4!
+    4,t
+                    67
+
+
+
+
+  w
+      C.
+      0
+      U)
+      0
+      -J
+
+      U)
+      0
+      0
+
+
+
+           >0
+           >    r
+
+
+
+
+CL-
+
+      xC
+                                                                              68
+coaxial cable capacitance will also contribute an error in the signal if
+
+the cable capacitance is a sizeable portion of C2 [42].      For our system,
+
+the coaxial cable had a lumped capacitance of 55 pF/m; thus with the
+
+10 meter lines used in the experiment, the cable capacitance was about
+
+550 pF.    The value of C2 used in the experiments was chosen to be 12,000 pF
+
+so the cable capacitance was not an appreciable amount.
+
+     The dimensions shown in Fig. 16a resulted in a value of C1 of about
+
+15 pF and C 2 of about 6000 pF.     The resulting divider ratio was too small
+
+and had to be augmented by the addition of an additional 6000 pF capacitor
+
+connected across the output of the divider giving a final divider ratio of
+
+800:1.    A 51-ohm resistor was chosen for Z0 to match the cable impedance.
+
+     The divider was fast, accurate, and able to measure voltages over
+
+40 kV by virtue of the teflon insulator used between the inner and center
+
+cylinders.     Teflon has a high resistance to surface tracking and allowed
+
+the outer cylinder shield to fit closely to the high-voltage inner cylinder
+
+without fear of flashover.
+
+     4.4.1.2    Current measurement device.    Several alternatives for current
+
+measurement were considered.      Among the most promising were current shunt,
+
+current transformer, magnetic probe and magneto-optic methods.      The
+
+magneto-optic method was considered too costly and the current transformer
+
+method was found lacking in accuracy and response.      Carefully designed cur-
+
+rent shunts, however, offer excellent response and high accuracy as well as
+
+simple calibration.    The disadvantages of using current shunts are energy
+
+dissipation in the shunt resistance and the lack of electrical isolation
+
+since the shunt must be inserted directly into the circuit, making high-
+
+voltage differential measurements necessary.      The Rogowski coil current
+
+probe offere     reasonable accuracy, fast response as well as noncontact
+                                                                           69
+
+current sensing, mobility, simplicity and low cost.   In the end the choice
+
+was obvious, the Rogowski coil was acceptable in all the areas that the
+
+current shunt performed well but did not have the disadvantages of the
+
+current shunt.
+
+    A Rogowski coil, shown in Fig. 1 7a, is essentially a thin solenoid with
+
+N turns each with a cross-section area A that is bent into a closed loop of
+
+length S making an aperture through which a current can pass.     The magnetic
+
+flux changes created by the current flowing through the aperture also pass
+
+through the center of the solenoid windings inducing a voltage in the coil
+
+windings which is related to the current I0 flowing through the aperture.
+
+This relationship is given by f V dt = 47 x 10- 7(NA/S)I    The coil voltage
+
+must be integrated to produce a signal which is proportional to the aperture
+
+current.   The integration ean be accomplished quite simply by using an RC
+
+integrator connected to the coil output.   In practical Rogowski coils one
+
+end of the coil is brought back through the interior of the windings to
+
+the other end of the coil [44].   In this way stray flux coupling error
+
+from the aperture formed by the coil output connection to the integrator is
+
+almost totally eliminated.
+
+     The RC integrator is normally constructed from carbon or metal-film
+
+resistors (not the spiral type) and the capacitor is usually a low-loss
+
+type such as silver mica for improved frequency response.   The voltage
+
+developed across the capacitor is proportional to     f-V dt.    Thus it
+
+would seem that to maximize the signal output of the integrator, the RC
+
+time constant of the integrator should be as small as possible, but this
+
+is restricted by the low frequency response of the integrator.    A common
+
+rule of thumb is to make the RC time constant at least 10 times as long as
+
+the longest period to be measured, which in our case was conservatively
+                                                  70
+
+
+
+
+            -J
+
+
+
+
+                 +I
+
+
+                      rI..
+
+
+
+
+                                        4    04
+
+
+                                            0
+
+
+
+                                            -1
+                                            -4
+
+
+
+
+      4%4
+
+
+
+
+ VN
+
+
+
+
+             . ...           .   ....
+
+
+
+
+1?l
+                                                                                              71
+                                                                               is that the
+                                    -4
+                                         sec.   Another integrator restriction
+                 estimated to be 10
+
+                 reactance UL of the coil at the upper frequency of interest should be at
+
+                 least 10 times smaller than the resistance of the integrator.      The greater
+
+                 the inductance of the coil, the more sensitive the coil is; therefore,
+
+                 the design of the Rogowski coil and integrator is a compromise between
+
+                 frequency response limits and sensitivity.      Fortunately, in our Lase the
+
+                 currents were of such magnitude that sensitivity was not a major concern
+
+                 and frequency response could be increased.
+
+                       For increased noise rejection, the Rogowski coil was measured using
+
+                 a differential technique by connecting each end of the integrator output
+
+                 to one side of a differential measurement system through solid outer con-
+
+                 ductor coaxial cables.     A coil shield was connected to the shields of the
+
+                 coaxial cable and any noise induced in the shields was rejected by the
+
+                 common mode rejection ratio (CMRR) of the differential amplifier.      The
+       ~choice           of a suitable differential amplifier was somewhat complicated by
+
+                 the high-frequency characteristics of the DPF-induced noise.      The noise
+
+
+                 frequencies were mostly above 1 MHz and ordinary differential amplifier
+
+                 common mode rejection ratios fall off severely above I MHz.      A simple yet
+
+                 satisfactory solution to this problem was to use a dual-trace scope
+
+                 plug-in unit in a subtraction mode.      This method of differential signal
+
+                 extraction was preferential to the use of a dedicated differential ampli-
+
+                 fier plug-in unit because the dual-trace common mode rejection ratio did
+
+                 not fall off until 50 MHz.
+
+                       The current probe design used in the experiments is shown in Fig. 17b.
+
+AThe                   shape of the winding core was such that the ground plane of the paral-
+
+                 lel   plane transmission line feeder could pass through the aperture allowing
+
+                 maximum coupling to the probe.      The probe was positioned near the transmis-
+
+                 sion line connection to the outer electrode end plate because this point
+                                         72
+
+
+
+
+4x
+
+
+
+
+                            0
+
+
+
+
+                                T
+     0
+     I.-                            -w
+
+
+
+
+                  4                 04
+
+
+
+
+           Lo                       r0
+
+                      C~0
+
+
+           I.-.                     0
+                                                                                      73
+
+was easily accessible and also the voltage of the return plate with respect
+
+to the coaxial shields was due to the resistive drop along the transmission
+
+line from the end plate to the capacitor bank, which was relatively small.
+
+The coil was formed by 34 turns of #24 gauge wire with windings spaced as
+
+evenly as possible.         The coil was then covered by copper braid which formed
+
+an electrostatic screen to decouple the coil from the high electric fields
+
+around the breech.         Braid was used because the shield needed to be per-
+
+forated to allow the magnetic flux through.          The braid was connected to
+
+the coaxial cable shields and then carefully covered by many layers of
+
+teflon tape to insulate the braid from the high voltages in the breech area.
+
+          To insure that the detected signal was valid and not due to capacitively
+
+coupled noise, the probe was reversed such that the current direction into
+
+the coil aperture was reversed, and then the experiment was run again and
+
+the waveforms before and after the probe reversal were compared.           The
+
+waveforms proved to be reversals of the other, indicating that the signal
+
+was indeed due to the current flow through the aperture of the coil.             If
+
+the signals had been identical, then the waveforms would have been due to
+
+     iacitively coupled signals.
+
+          4.4.2    X-ray measurements
+
+          The plasma property of primary interest in our experiment is the x-ray
+
+pulse produced during the plasma focus.         During early stages of development
+
+optical photographs of the pinch were taken using an ND-16 neutral. density
+
+filter added to reduce the light intensity to an acceptable level.           These
+
+photographs yielded information about        the pinch symmetry and reproducibility
+
+of the pinch.         In addition to optical photographs,   solid-state detectors
+
+'¢   re   use'd.
+                                                                                                74
+              Double-diffused PIN silicon detectors were used to obtain time-resolved
+
+        information of pinch performance.             The detectors, model number l00-PIN-125,
+
+        were purchased from Solid State Radiations Corporkti(,n.                The detector
+
+        circuitry is shown in Fig. 18.             The diode co11t tkr   irc,   is 100 square
+
+        millimeters with a sensitive depth of 125 ,,m at           in pt,rat ing voltage of
+
+        200 V.   These detectors are well-suited for use with pulsed plasma devices
+
+        because of their inherently fast risetime and high detection sensitivity.
+
+        The risetime of these detectors is related to their thickness divided by
+
+        the bias voltage and is less than 5 nsec for the devices used in this
+
+        experiment.   Silicon PIN detectors are capable of producing signals propor-
+
+        tional to incident x-ray intensity and can be used for quantitative x-ray
+
+        spectra measurements by employing the Ross filter technique [47].
+
+              The silicon detectors were extremely useful when tuning the plasma gun
+
+        for plasma focus at current peak.             Simultaneously triggering the oscillo-
+
+        scopes that recorded the current, voltage and x-ray waveforms allowed a
+
+        time comparison of the x-ray pulse, current dip and voltage spike associated
+
+        with plasma focus.       The x-ray waveforms were extremely noise-free, as signal
+
+        levels recorded during nonpinch experiments were less than 10 mV as compared
+
+        to signals greater than 30 V recorded during strong pinches.                The x-Lay
+
+        waveforms indicated x-ray pulses during pinch ranging from less than
+
+        100 nsec up to several hundred nsec, often with several distinct x-ray
+
+        bursts during a single pinch.
+
+
+        4.5   Shielding and Grounding
+
+
+              With the high currents and short times associated with capacitive
+                           di,                12
+        storage systems,         s reach 10        A/sec producing stray voltages due to
+
+        nanohenry stray inductance on the order of tens of volts.                Megamp
+
+        currents produce kilovoIts a, ross the milliohlm resistance found in
+
+
+
+
+°€---
+                                         75
+              0
+              0
+          0C/)
+
+
+
+    010
+
+
+                   -4J
+
+                  acto
+                  HO4
+
+
+
+
+0                                   -W
+
+
+                              III
+
+
+
+
+          0              a_
+                                                                                76
+     ordinary hook-up wire.    Such large uncommon voltages illustrate the
+
+     shielding and grounding problems encountered in dense plasma focus
+
+     research.
+
+          For safety, it is important that all ground leads be as large in
+
+     size and as low in resistance as possible.    Grounding to the "water pipes"
+
+     should be avoided as megamp ground currents can produce lethal voltages.
+
+     Also, ground loops in instrumentation and charging systems are to be
+
+     avoided for previously mentioned safety reasons and because large current
+
+     flow in instrumentation grounds may cause large common mode signals as
+
+     well as severe transient coupling to the signal.    By practicing the
+
+     single-point ground method of system grounding, our system was assured of
+
+     greatly reducing destructive and lethal ground loops.    Ground straps were
+
+     made from two-inch copper braid and, where distances were large, two
+
+     straps were connected in parallel.    The dense plasma focus system, the
+
+     storage bank, and the charging system were all placed on top of, and
+
+     connected to, a large copper sheet forming a ground plane which was in
+
+     turn connected via two large ground straps to a 6' long, 1" diameter
+
+     copper rod driven into the earth outside the lab area.    The instrumenta-
+
+     tion screen room was also connected to the ground plane via two large
+
+     ground straps.
+          Due to the large electromagnetic fields produced during device
+
+     operation, measurement noise became a severe problem when initial measure-
+
+     ments using ordinary shielding techniques allowed noise levels of tens of
+
+"I   volts into diagnostic signals.   Even after doubly shielding braided
+
+     coaxial cable with an extra braid shield, the noise levels were not greatly
+
+     reduced.    It was evident more rigorous shielding practices were necessary.
+
+
+
+
+        '4r
+                                                                                                     77
+
+                   A brief search of electromagnetic interference (EMI) literature, especially
+
+                   the IEEE Transactions and Electromagnetic Compatibility, revealed an almost
+
+                   overwhelming amount of literature on the subject, but it was apparent that
+
+                   solid outer conductor coaxial cable and a screen room were definitely
+
+                   required.
+
+                           The solid outer conductor coaxial cable finally selected was a 51-ohm,
+
+                   foam dielectric armored Heliax cable produced by the Andrew Company.
+
+                   Standard electrical connections for the Heliax cable were not compatible
+
+                   with the N-type connections used in our system,and special hybrid connectors
+
+                   were constructed to maintain the shielding integrity of the coaxial cable
+
+                   as well as to mate with existing N-type fittings.        Great care was required
+
+                   when installing these hybrid connectors because the connectors were soldered
+
+                   to the coaxial shield and the foam dielectric often melted when heated to
+
+                   soldering temperatures.        The cables with connectors were tested up to 2 kV
+
+                   without breakdown and would pass nanosecond risetime pulses without notice-
+
+                   able degradation.
+
+                           The screen room was constructed from 1/16" thick copper sheets, over-
+
+                   lapped and soldered where possible.        Where soldering was prohibited, copper
+
+                   tape was used to seal all gaps.       Copper sheet 1/16" thick provides greater
+
+                   than 160 dB attenuation of EMI [45] at frequencies near 1 MHz, which is
+
+                   the time scale of the experiment.       The door was made "noise-tight" by
+
+                   fastening copper flaps around the outside edge of the door which pressed
+
+                   firmly against the copper walls of the screen room.         Lighting was neces-
+
+                   sarily incandescent as fluorescent lighting produced RF noise.        A battery-
+
+                   operated AM/FM radio was used to test the effectiveness of the shielding
+
+                   by tuning to strong local stations and listening for a reduction in
+
+                   reception.
+
+A
+
+
+
+
+    .. .   .I.1.    . .I          .. . . ... ..      .   . . .   .   ...   . ..         ..           . ... .
+                                                                                         78
+
+                 One important factor overlooked initially was filtering of the ac
+
+           power into the screen room.       When unfiltered power was introduced into
+
+           the screen room, radio signals were received as strongly as if no screen
+
+           room existed.      Model 10R3, 10 A, 115 V ac power filters were purchased
+
+           from the Corcom Company and installed with immediate success.       The ac
+
+           power control lines to the HV charging system relays were also filtered.
+
+                 All bulkhead feedthroughs were soldered in place to maintain
+
+           shielding integrity, and all unused coaxial cables were capped during testing.
+
+                 Another shielding problem more readily solved was the problem of
+
+           x-ray shielding the dense plasma focus.       Lead shielding 1/8" thick was
+
+           attached to plywood panels which fastened to the supporting framework of
+
+           the device.      The lead protruded about 3" around the edges of the plywood
+
+           panels allowing the lead to be folded over at the corners to provide
+
+           effective x-ray shielding.       Doors were made in the enclosure to permit
+
+           access to device diagnostics and the vacuum chamber.
+
+
+           4.6   High-Voltage Charging System
+
+
+                 High-voltage capacitor lifetimes are greatly reduced when operated
+           for long periods at rated voltages.       Therefore, capacitor banks should
+
+
+           be charged in as short a time as possible.       Saturable reactor circuits and
+                       dv
+           constant-        charging are often used to achieve rapid charging rates.     Our
+
+           system operated with a much simpler yet relatively effective method of
+
+           charging at high currents by applying a voltage much larger than the desired
+
+           voltage to the charging resistor network, then sensing when the bank voltage
+
+           had reached a selected voltage, at which time the charging voltage was
+
+fremoved            from the bank.      In this way the charging current remained high,
+
+           being limited by the series charging resistance chosen so that the current
+
+           maximum would not exceed the current ratings of the power supply.
+                                                                                 79
+
+             The high-voltage charging system is diagrammed in Fig. 19 and the
+
+     voltage control and sensing electronics are shown in Fig. 20.     The high-
+
+     voltage control system senses the capacitor bank voltage attenuated by a
+
+     divide-by-lO00 voltage divider, and the control system compared this volt-
+     age to a precision variable voltage source.     When this voltage reference is
+
+     attained by the bank, a Schmidt trigger causes the control relay Rl to
+
+     drop out, which removes ac power from the high-voltage relays causing them
+
+     to open, thus removing the high-voltage power supplies from the charging
+
+     circuits.     The variable precision voltage reference allows selection of
+
+     bank voltages from a few hundred volts to 19 kV.     In this way consistent
+
+     and repeatable bank voltages were easily attained.
+
+             The control system was designed to provide a measure of safety as
+
+     well.     The control system requires not only ac power to the screen room,
+
+     but also a manual arming command before the bank can be charged, thus
+
+     requiring some degree of forethought before application of high voltage.
+
+     More sophisticated systems often include screen room door interlocks,
+
+     fill gas pressure interlocks and various instrumentation interlocks that
+
+     are required conditions that must be met before the device can be fired.
+
+
+
+
+         S.:
+
+
+
+
+1?
+                                          80
+
+
+
+
+     4
+
+      4>
+     _1w
+
+
+     zc.U
+
+
+
+            !NOO
+              LL.0
+                                00
+                     z
+                                     -4
+
+
+
+
+                     ILL)
+
+
+
+
+4-
+
+
+
+
+                                      >1
+
+
+
+               w            -
+                                                              81
+
+
+                    0I.
+
+                    00
+
+
+
+
+              >                                   z)               '1
+                                 inA-   -r
+                        W-
+
+
+
+
+                                                 o<4
+
+
+
+
+                                                        0-0
+
+
+
+
+1 .0   Z                                     -    I-J
+
+                  0.w
+
+
+
+
+   -   -I.-                  -          a.
+                                                                                   82
+                                  5.     DEVICE OPERATION
+
+
+         The dense plasma device operation was deemed satisfactory after
+
+     meeting three requirements:        consistent performance, x-ray production
+
+     and reliable operation.   The device performed consistently after moderate
+
+     conditioning of the electrode insulator.        Conditioning was required after
+
+     every cleaning of the insulator and especially when a newly constructed
+
+     insulator was used for the first time.        Conditioning consisted of repeated
+
+     firing of the device (up to 15 shots) with bank voltages ranging from
+
+     14 to 15 kV at 1 torr pressure.        It is not known whether higher or lower
+
+     voltages affect the conditioning rate.        Proof of sufficient conditioning
+
+     was determined by the appearance of sizeable voltage pulses (greater than
+
+     .5 V) from the solid-state x-ray detector.        Once conditioning was achieved,
+
+     the x-ray detector waveform remained very consistent for shots with the
+
+     same bank voltage and test gas pressure.
+
+          The x-ray detector waveforms appeared to be a reliable indicator of
+
+.*   x-rays, but the data are totally uncalibrated.         Because of the detector
+
+     signal repeatability   for a given voltage and pressure and the absence of
+
+     electromagnetic intereference coupling into the x-ray detectors, it is
+
+     reasonable to assume that the detector waveforms were dependable indicators
+
+     of x-ray production.
+
+          The device was also made relatively reliable but only after considerable
+
+     development.   Elkonite inserts in the plasma gun center electrode tip and
+
+     the spark gap electrodes provided very effective retardation of arc
+
+     erosion of these surfaces.        After several hundred spark gap shots, the gap
+
+     electrode showed only a slight circular depression about 1/16" deep in the
+
+     center of the Elkonite.   The plasma gun center electrode tip showed a
+
+     smoothing of the edges of the tip with a striated etch pattern radiating
+
+
+
+
+(a
+                                                                            83
+from the center of the Elkonite insert.       The etching depth was less than
+
+1/16" deep.
+
+     The Pyrex cross vacuum chamber showed substantial pitting and darkening,
+
+apparently from electrode material sputtering onto the glass.        This coating
+
+did not impair device operation.     It only became an inconvenience as visual
+
+observations of the device became more difficult.
+
+     At one time during testing, the Rogowski coil current probe was
+
+destroyed when the teflon insulator covering the electrostatic shield
+
+broke down.     In another instance, breakdown occurred between the upper and
+
+lower housings of the spark gap.     The problem of high-voltage breakdown
+
+was always present and, after substantial repair of the capacitor bank
+
+voltage monitor circuitry damaged by the breakdown of the transmission
+
+line insulator, the overall system was upgraded for increased high-voltage
+
+standoff capability by increasing insulator thickness wherever possible and
+
+rounding all sharp metal edges.     The system did not incur any further
+
+breakdown after this upgrade and has performed reliably ever since.
+
+     The device was operated with a variety of bank voltages and test gas
+
+pressures.     The voltages were varied from 9 kV to 19 kV with a variety of
+
+gas pressures.     The device did not produce appreciable x-rays until the
+
+bank voltage was raised to 13 kV, no matter what the gas pressure.        The gas
+
+pressure was varied from .5 torr to 5 torr, but x-ray pulses were very
+
+weak below .75 torr and above 1.5 torr with an optimum pressure about
+
+1 torr.     The time from breech breakdown to pinch formation could be varied
+
+slightly by changing the applied voltage and gas pressure.        The change in
+
+sheath arrival time followed qualitatively the predictions of the sheath
+
+snowplow theory discussed in Section 2.2, but quantitative measurements were
+
+not made.     Only a few hundred nanosecond    change in arrival time is all that
+
+could be made.
+                                                                                84
+                                       6.   SUMMARY
+
+
+           The dense plasma focus device system discussed in this paper is a
+
+      qualified success.    Although optimization of bank parameters to match
+
+      device characteristics was not realized, relatively satisfactory operation
+
+      has been achieved and x-ray production during pinch verified.    At present,
+
+      quantitative measurement of x-ray production during pinch has not been
+
+      implemented, and, while desirable, is not necessary to show fundamental
+
+      device operation, and is rather inconsequential when compared to the
+
+      successful development of technqiues and devices needed to produce a
+
+      working DPF system.
+
+           Some of the more significant accomplishments are:    the development of
+
+      a shatter-resistant electrode insulator; a mechanical-shock-resistant
+
+      breech design; a high-current, relatively low-inductance air dielectric
+
+      spark gap and gap trigger system; an automatic capacitor bank charging
+
+      system for repeatability;    an electromagnetic interference isolated screen
+
+      room; a fast-risetime, high-current probe; and a fast-risetime, high-voltage
+
+      probe.
+
+
+
+
+|-
+
+
+
+i."
+
+
+
+
+'i
+*1
+                                                                        85
+
+                                 REFERENCES
+
+
+ 1.   J. G. Linhart, Nucl. Fus. 10, 211 (1970).
+
+ 2.   J. W. Mather, Phys. Fluids Suppl. 7, 5-28 (1964).
+
+ 3.   J. W. Mather, Phys. Fluids 8, 366 (1965).
+
+ 4.   P. P. Petrov, N. V. Filippov, T. I. Filippova, and V. A. Khrabrov,
+      Plasma Physics and the Problems of Controlled Thermonuclear Reactions,
+      M. A. Leontovich, ed. (Pergamon, New York, 1960), Vol. 4, p. 198.
+
+ 5.   N. V. Filippov, T. I. Filippova, and V. P. Vinogradov, Nucl. Fus. Suppl.
+      Pt. 2, 577 (1962).
+
+ 6.   J. W. Mather, Methods of Experimental Physics, R. H. Lovberg and
+      H. R. Griems, eds. (Academic Press, New York, 1971), Vol. 9b, p. 187.
+
+ 7.   J. W. Mather and A. H. Williams, Phys. Fluids Res. Note 9, 2081 (1966).
+
+ 8.   M. Rosenbluth and R. Garwin, Los Alamos Sci. Lab. Rep. LA-1850.
+      Los Alamos Sci. Lab., Los Alamos, New Mexico (1954).
+
+ 9.   J. W. Mather and P. J. Bottoms, Phys. Fluids 11, 611 (1968).
+
+10.   M. J. Bernstein, D. A. Meskan, and H. L. L. van Paassen, Phys. Fluids 12,
+      2193 (1969).
+
+11.   H. L. L. van Paassen, R. H. Vandre, and R. S. White, Phys. Fluids 13,
+      2606 (1970).
+
+12.   M. J. Bernstein, Phys. Rev. Letters 24, 724 (1970).
+
+13.   N. W. Jalufka and J. H. Lee, Phys. Fluids 15, 1954 (1972).
+
+14.   P. J. Bottoms, J. P. Carpenter, J. W. Mather, K. D. Ware, and A. H.
+      Williams, Plasma Physics and Controlled Nuclear Fusion Research (1968),
+      Vol. 2, p. 67.
+
+15.   N. J. Peacock, M. J. Forest, M. G. Hobly, and P. D. Morgan, 5th European
+      Conf. Cont. Fus. and Plasma Phys. (1972), Vol. 1, p. 66.
+
+16.   M. J. Bernstein, Phys. Fluids 13, 2858 (1970).
+
+17.   M. J. Bernstein and G. G. Comisar, Phys. Fluids 15, 700 (1972).
+
+18.   S. P. Gary and F. Hohl, Phys. Fluids 16, 997 (1973).
+
+19.   D. E. Potter, Phys. Fluids 14, 1911 (1971).
+
+20.   M. H. Dazey, H. L. L. van Paassen, and V. Josephson, J. Appl. Phys. 41,
+
+
+
+
+                                                                                  4
+      3545 (1970).
+
+21.   D. W. Kerst, Rev. Sci. Instr. 36, 1670 (1965).
+
+
+
+
+       I                                      ..
+
+
+
+
+L
+                                                                               86
+     22.   J. W. Mather, P. J. Bottoms, J. P. Carpenter, A. H. Williams, and
+           K. D. Ware, Phys. Fluids 12, 2343 (1969).
+
+     23.   R. S. Post and T. C. Marshall, Phys. Fluids 17, 452 (1974).
+
+     24.   R. L. Gullickson, Lawrence Livermore Laboratory Report UCID-16892.
+           Lawrence Livermore Laboratory, Livermore, California (1975).
+
+     25.   R. A. (ross and B. Miller, Methods of Experimental Physics,
+           R. H. Lovberg and H. R. Griems, eds. (Academic Press, New York, 1970),
+           Vol. 9a, p. 169.
+
+     26.   W. C. Nunnally, M. Kristiansen, and M. 0. Hagler, IEEE Trans. Instrum.
+           Meas. 24, 112 (1975).
+
+     27.   F. B. A. Frungel, High Speed Pulse Technology (Academic Press, New
+           York, 1965), Vol. 1, p. 59-171.
+
+     28.   A. S. Denholm et al.,"Review of Dielectrics and Switching," Air
+           Force Weapons Lab Technical Report AFWL-TR-72-88, p. 417-503 (1972).
+
+     29.   J. M. Lafferty, Proc. IEEE 54, 23-32 (1966).
+
+     30.   G. N. Aretov, V. I. Vasil'ev, M. I. Pergament, and S. S. Tserevitinov,
+           Soy. Phys.-Tech. Phys. 11, 1548-1555 (1967).
+
+     31.   W. C. Nunnally, Ph.D. Thesis, Texas Tech. University, Lubbock, Texas
+           (1974).
+
+     32.   J. E. Gruber, Rev. Sci. Instr. 39, 1740 (1968).
+
+     33.   P. M. Barnes, J. E. Gruber, and T. E. James, J. Sci. Instr. 44, 599
+           (1967).
+
+     34.   J.-E. Gruber and T. E. James, Proc. lEE 115, 1530-1534 (1968).
+
+     35.   T. E. Broadbent and A. H. A. Shlash, Proc. lEE 112, 2152-2158 (1965).
+
+     36.   P. I. Shkuropat, Sov. Phys.-Tech. Phys. 11, 779-783 (1966).
+
+     37.   P.   1. Shkuropat, Soy. Phys.-Tech. Phys. 14, 943-948 (1970).
+
+     38.   G. A. Mesyats, Y. I. Bychkov, and A. I. Iskol'dskii, Soy. Phys.-
+           Tech. Phys. 13, 1051-1055 (1969).
+
+     39.   E. Kuffel and M. Abdullah, High Voltage Engineering (Pergamon Press,
+           Oxford, 1970).
+     40.   G. W. Bowder, Measurements in High Voltage Test Circuits (Pergamon
+           Press, Oxford, 1973).
+
+     41.   A. J. Schwab, High Voltage Measurement Techniques (MIT Press,
+           Cambridge, 1972).
+
+
+
+
+I!
+                                                                               87
+     42.   J. D. Craggs and J. M. Meek, High Voltage Laboratory Technique
+           (Buttersworth Publications Ltd., London, 1954).
+     43.   R. J. Thomas, IEEE Trans. Instrum. Mea. 114-19, 102 (1970).
+
+     44.   R. H. Huddlestone and S. L. Leonard, Plasma Dli aostic Techniques
+           (Academic Press, New York, 1965).
+
+     45.   J. Severinsen, "Designer's Guide to EMI Shielding, Part l,"
+           Electronic Design News 19, 47 (1975).
+
+     46.   D. J. Johnson, Rev. Sci. Instr. 45, 191-194 (1974).
+
+
+
+
+TO
+

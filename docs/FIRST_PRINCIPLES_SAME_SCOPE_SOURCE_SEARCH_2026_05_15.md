@@ -102,6 +102,9 @@ Implemented after this source search:
   packet with a per-channel status matrix, text-supported-but-not-accepted
   channels, cross-scope policy, reviewed-transfer-rule requirements, and
   per-target scope decisions.
+- The packet now emits `same_scope_target_policy`, `acceptance_gate`, and
+  `negative_test_policy` so text-supported PF-1000/Akel scalars and
+  other-scope diagnostics remain engineering/reference evidence only.
 - Accepted validation targets without matching declared-scope metadata are
   rejected as same-scope channels rather than silently accepted.
 - `tests/test_first_principles_runner.py` proves PF-1000/Akel scalar/text
@@ -111,6 +114,8 @@ Implemented after this source search:
 Verified command:
 
 - `python3 -m pytest tests/test_first_principles_runner.py` -> `8 passed`.
+- `python3 -m pytest tests/test_first_principles_input_deck.py tests/test_first_principles_runner.py tests/test_first_principles_manifest.py tests/test_cli_first_principles_3d.py tests/test_cli_backend_options.py tests/test_server_readiness.py tests/test_kinetic_yield_history.py tests/test_hybrid_3d_loop.py tests/test_hybrid_pic_3d_validation_packet.py`
+  -> `60 passed`.
 
 Remaining blocker:
 

@@ -1,0 +1,317 @@
+{
+  "best_candidates": [
+    {
+      "candidate_id": "candidate_0003",
+      "duration_request_satisfied": true,
+      "finite_state_all_finite": true,
+      "metrics": {
+        "horizon_covers_peak_candidate": false,
+        "peak_at_final_sample": true,
+        "peak_current_relative_error": 0.16156059713109486,
+        "peak_time_relative_error": 0.17650309186405605,
+        "simulation_peak_current_A": 466482.7358078477,
+        "simulation_peak_time_s": 1.600044204935116e-06,
+        "simulation_point_count": 59,
+        "target_peak_current_A": 401600.0,
+        "target_peak_time_s": 1.36e-06
+      },
+      "parameter_factors": {
+        "inductance": 1.25
+      },
+      "parameter_values": {
+        "inductance": 2.6250000000000003e-08
+      },
+      "score": 0.16919687937862116
+    },
+    {
+      "candidate_id": "candidate_0002",
+      "duration_request_satisfied": true,
+      "finite_state_all_finite": true,
+      "metrics": {
+        "horizon_covers_peak_candidate": false,
+        "peak_at_final_sample": true,
+        "peak_current_relative_error": 0.23649674504366847,
+        "peak_time_relative_error": 0.17650309186405605,
+        "simulation_peak_current_A": 496577.09280953725,
+        "simulation_peak_time_s": 1.600044204935116e-06,
+        "simulation_point_count": 59,
+        "target_peak_current_A": 401600.0,
+        "target_peak_time_s": 1.36e-06
+      },
+      "parameter_factors": {
+        "inductance": 1.0
+      },
+      "parameter_values": {
+        "inductance": 2.1000000000000003e-08
+      },
+      "score": 0.20866726127236793
+    },
+    {
+      "candidate_id": "candidate_0001",
+      "duration_request_satisfied": true,
+      "finite_state_all_finite": true,
+      "metrics": {
+        "horizon_covers_peak_candidate": true,
+        "peak_at_final_sample": false,
+        "peak_current_relative_error": 0.3048991277402382,
+        "peak_time_relative_error": 0.002850115702283944,
+        "simulation_peak_current_A": 524047.48970047967,
+        "simulation_peak_time_s": 1.363876157355106e-06,
+        "simulation_point_count": 59,
+        "target_peak_current_A": 401600.0,
+        "target_peak_time_s": 1.36e-06
+      },
+      "parameter_factors": {
+        "inductance": 0.75
+      },
+      "parameter_values": {
+        "inductance": 1.5750000000000002e-08
+      },
+      "score": 0.21560566000951192
+    },
+    {
+      "candidate_id": "candidate_0000",
+      "duration_request_satisfied": true,
+      "finite_state_all_finite": true,
+      "metrics": {
+        "horizon_covers_peak_candidate": true,
+        "peak_at_final_sample": false,
+        "peak_current_relative_error": 0.3931790566496262,
+        "peak_time_relative_error": 0.2269601270527081,
+        "simulation_peak_current_A": 559500.7091504899,
+        "simulation_peak_time_s": 1.051334227208317e-06,
+        "simulation_point_count": 59,
+        "target_peak_current_A": 401600.0,
+        "target_peak_time_s": 1.36e-06
+      },
+      "parameter_factors": {
+        "inductance": 0.5
+      },
+      "parameter_values": {
+        "inductance": 1.0500000000000001e-08
+      },
+      "score": 0.3210145400598479
+    }
+  ],
+  "blocked_candidate_count": 0,
+  "can_support_first_principles_acceptance": false,
+  "candidate_count": 4,
+  "candidate_results": [
+    {
+      "can_support_first_principles_acceptance": false,
+      "candidate": {
+        "baseline_parameters": {
+          "inductance": 2.1000000000000003e-08
+        },
+        "candidate_id": "candidate_0000",
+        "parameter_factors": {
+          "inductance": 0.5
+        },
+        "parameter_values": {
+          "inductance": 1.0500000000000001e-08
+        },
+        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
+      },
+      "case_status": "completed_engineering_candidate_run",
+      "duration_request_satisfied": true,
+      "final_circuit_current_A": 510654.34437564784,
+      "final_time_s": 1.600044204935116e-06,
+      "finite_state_all_finite": true,
+      "n_steps_completed": 28157,
+      "scoring": {
+        "metrics": {
+          "horizon_covers_peak_candidate": true,
+          "peak_at_final_sample": false,
+          "peak_current_relative_error": 0.3931790566496262,
+          "peak_time_relative_error": 0.2269601270527081,
+          "simulation_peak_current_A": 559500.7091504899,
+          "simulation_peak_time_s": 1.051334227208317e-06,
+          "simulation_point_count": 59,
+          "target_peak_current_A": 401600.0,
+          "target_peak_time_s": 1.36e-06
+        },
+        "score": 0.3210145400598479,
+        "status": "scored_against_source_observables",
+        "usable": true
+      },
+      "termination_reason": "target_time_reached"
+    },
+    {
+      "can_support_first_principles_acceptance": false,
+      "candidate": {
+        "baseline_parameters": {
+          "inductance": 2.1000000000000003e-08
+        },
+        "candidate_id": "candidate_0001",
+        "parameter_factors": {
+          "inductance": 0.75
+        },
+        "parameter_values": {
+          "inductance": 1.5750000000000002e-08
+        },
+        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
+      },
+      "case_status": "completed_engineering_candidate_run",
+      "duration_request_satisfied": true,
+      "final_circuit_current_A": 517411.5744301375,
+      "final_time_s": 1.600044204935116e-06,
+      "finite_state_all_finite": true,
+      "n_steps_completed": 28157,
+      "scoring": {
+        "metrics": {
+          "horizon_covers_peak_candidate": true,
+          "peak_at_final_sample": false,
+          "peak_current_relative_error": 0.3048991277402382,
+          "peak_time_relative_error": 0.002850115702283944,
+          "simulation_peak_current_A": 524047.48970047967,
+          "simulation_peak_time_s": 1.363876157355106e-06,
+          "simulation_point_count": 59,
+          "target_peak_current_A": 401600.0,
+          "target_peak_time_s": 1.36e-06
+        },
+        "score": 0.21560566000951192,
+        "status": "scored_against_source_observables",
+        "usable": true
+      },
+      "termination_reason": "target_time_reached"
+    },
+    {
+      "can_support_first_principles_acceptance": false,
+      "candidate": {
+        "baseline_parameters": {
+          "inductance": 2.1000000000000003e-08
+        },
+        "candidate_id": "candidate_0002",
+        "parameter_factors": {
+          "inductance": 1.0
+        },
+        "parameter_values": {
+          "inductance": 2.1000000000000003e-08
+        },
+        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
+      },
+      "case_status": "completed_engineering_candidate_run",
+      "duration_request_satisfied": true,
+      "final_circuit_current_A": 496577.09280953725,
+      "final_time_s": 1.600044204935116e-06,
+      "finite_state_all_finite": true,
+      "n_steps_completed": 28157,
+      "scoring": {
+        "metrics": {
+          "horizon_covers_peak_candidate": false,
+          "peak_at_final_sample": true,
+          "peak_current_relative_error": 0.23649674504366847,
+          "peak_time_relative_error": 0.17650309186405605,
+          "simulation_peak_current_A": 496577.09280953725,
+          "simulation_peak_time_s": 1.600044204935116e-06,
+          "simulation_point_count": 59,
+          "target_peak_current_A": 401600.0,
+          "target_peak_time_s": 1.36e-06
+        },
+        "score": 0.20866726127236793,
+        "status": "scored_against_source_observables",
+        "usable": true
+      },
+      "termination_reason": "target_time_reached"
+    },
+    {
+      "can_support_first_principles_acceptance": false,
+      "candidate": {
+        "baseline_parameters": {
+          "inductance": 2.1000000000000003e-08
+        },
+        "candidate_id": "candidate_0003",
+        "parameter_factors": {
+          "inductance": 1.25
+        },
+        "parameter_values": {
+          "inductance": 2.6250000000000003e-08
+        },
+        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
+      },
+      "case_status": "completed_engineering_candidate_run",
+      "duration_request_satisfied": true,
+      "final_circuit_current_A": 466482.7358078477,
+      "final_time_s": 1.600044204935116e-06,
+      "finite_state_all_finite": true,
+      "n_steps_completed": 28157,
+      "scoring": {
+        "metrics": {
+          "horizon_covers_peak_candidate": false,
+          "peak_at_final_sample": true,
+          "peak_current_relative_error": 0.16156059713109486,
+          "peak_time_relative_error": 0.17650309186405605,
+          "simulation_peak_current_A": 466482.7358078477,
+          "simulation_peak_time_s": 1.600044204935116e-06,
+          "simulation_point_count": 59,
+          "target_peak_current_A": 401600.0,
+          "target_peak_time_s": 1.36e-06
+        },
+        "score": 0.16919687937862116,
+        "status": "scored_against_source_observables",
+        "usable": true
+      },
+      "termination_reason": "target_time_reached"
+    }
+  ],
+  "completed_candidate_count": 4,
+  "declared_scope": "gv_pf24_krakow_16092202",
+  "device_name": "PF-24-KRAKOW pf24_krakow_16092202 GV verified-shot engineering candidate",
+  "finite_candidate_count": 4,
+  "identifiability": {
+    "acceptance_policy": "non_promoting_experimental_inverse_fit",
+    "best_candidate_id": "candidate_0003",
+    "best_score": 0.16919687937862116,
+    "can_conclude_unique_parameters": false,
+    "horizon_limited_candidate_ids": [
+      "candidate_0003"
+    ],
+    "near_best_candidate_count": 1,
+    "near_best_candidate_ids": [
+      "candidate_0003"
+    ],
+    "near_best_score_threshold": 0.1861165673164833,
+    "parameter_intervals": {
+      "inductance": {
+        "baseline": 2.1000000000000003e-08,
+        "max": 2.6250000000000003e-08,
+        "min": 2.6250000000000003e-08,
+        "narrow_at_configured_threshold": true,
+        "span_fraction_of_baseline": 0.0
+      }
+    },
+    "status": "horizon_limited_requires_longer_run"
+  },
+  "parameter_names": [
+    "inductance"
+  ],
+  "runtime_policy": {
+    "auto_step_budget": true,
+    "dt_policy": "vacuum-cfl",
+    "history_stride": 500,
+    "max_auto_steps": 30000,
+    "max_step_results": 2,
+    "target_time_s": 1.6e-06,
+    "vacuum_cfl": 0.95
+  },
+  "source_policy": {
+    "calibration_changes_are_candidate_parameters_only": true,
+    "measured_waveforms_used_as_drive": false,
+    "reduced_models_used": false,
+    "source_truth": "typed local source targets and user-verified workbook observables"
+  },
+  "status": "experimental_inverse_calibration_not_validation",
+  "target_observables": {
+    "accepted_for_validation": false,
+    "observable_status": "user_verified_workbook_waveform_candidate",
+    "peak_current_A": 401600.0,
+    "peak_time_s": 1.36e-06,
+    "series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611",
+    "source": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.xlsx",
+    "target_time_range_us": [
+      -0.5,
+      6.0
+    ]
+  },
+  "task_id": "experimental_inverse_calibration"
+}

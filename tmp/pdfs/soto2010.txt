@@ -1,0 +1,691 @@
+Home   Search    Collections   Journals    About   Contact us   My IOPscience
+
+
+
+
+       Studies on scalability and scaling laws for the plasma focus: similarities and differences in
+
+       devices from 1MJ to 0.1J
+
+
+
+       This content has been downloaded from IOPscience. Please scroll down to see the full text.
+
+       2010 Plasma Sources Sci. Technol. 19 055017
+
+       (http://iopscience.iop.org/0963-0252/19/5/055017)
+
+       View the table of contents for this issue, or go to the journal homepage for more
+
+
+       Download details:
+
+
+       IP Address: 132.239.1.231
+       This content was downloaded on 21/04/2017 at 04:02
+
+       Please note that terms and conditions apply.
+
+
+       You may also be interested in:
+
+
+       Dense transient pinches and pulsed power technology: research and applications using medium and
+       small devices
+       Leopoldo Soto, Cristian Pavez, José Moreno et al.
+
+       Trends on plasma focus research
+       Leopoldo Soto
+
+       Neutrons from a table-top pinch plasma focus of tens of joules
+       Leopoldo Soto, Patricio Silva, José Moreno et al.
+
+       Pinch evidence in a plasma focus
+       Patricio Silva, Leopoldo Soto, Walter Kies et al.
+
+       Nanofocus: an ultra-miniature dense pinch plasma focus device with submillimetric anode operating
+       at 0.1J
+       Leopoldo Soto, Cristian Pavez, José Moreno et al.
+
+       Scaling and stabilization due to the large ion Larmor radius (LLR) effects in plasma focus devices
+       Cristian Pavez and Leopoldo Soto
+
+       Optical observations of plasma motion
+       José Moreno, Patricio Silva and Leopoldo Soto
+
+       Compact sub-kilojoule range fast miniature plasma focus as portable neutron source
+       Rishi Verma, M V Roshan, F Malik et al.
+
+       Experimental study of the hard x-ray emissions in a plasma focus of hundreds of Joules
+       M Barbaglia, H Bruzzone, H Acuña et al.
+IOP PUBLISHING                                                                                           PLASMA SOURCES SCIENCE AND TECHNOLOGY
+Plasma Sources Sci. Technol. 19 (2010) 055017 (9pp)                                                             doi:10.1088/0963-0252/19/5/055017
+
+
+
+
+Studies on scalability and scaling laws for
+the plasma focus: similarities and
+differences in devices from 1 MJ to 0.1 J∗
+Leopoldo Soto1,2,4 , Cristian Pavez1,2 , Ariel Tarifeño2,3 , José Moreno1,2 and
+Felipe Veloso1,2
+1
+  Comisión Chilena de Energı́a Nuclear, Casilla 188-D, Santiago, Chile
+2
+  Center for Research and Applications in Plasma Physics and Pulsed Power, P4 , Santiago-Curicó, Chile
+3
+  Universidad de Concepción, Barrio Universitario, Concepción, Chile
+E-mail: lsoto@cchen.cl
+
+Received 16 August 2009, in final form 14 May 2010
+Published 20 September 2010
+Online at stacks.iop.org/PSST/19/055017
+
+Abstract
+A comprehensive analysis of scaling laws for plasma focus devices producing neutrons is
+presented. Similarities and differences in plasma focus devices working with stored energies
+ranging from 1 MJ to 0.1 J are found. First, a brief review listing the most important results
+achieved by the Thermonuclear Plasma Department of the Chilean Nuclear Energy
+Commission, CCHEN, is presented. The aim of the work at CCHEN has been to characterize
+the physics of dense plasma foci and also to carry out the design and construction of smaller
+devices—in terms of both input energy and size—capable of providing dense hot plasmas.
+Certain scaling rules have been found from this research. These rules combined with other
+scaling laws have been applied to design and construct plasma focus devices with storage
+energy in a region never explored before (tens of joules and less than 1 J). Thus, a
+comprehensive analysis also including results from other groups is presented. In particular, all
+the devices, from the largest to the smallest, maintain the same value of ion density, magnetic
+field, plasma sheath velocity, Alfvén speed and the quantity of energy per particle. Therefore,
+fusion reactions are even possible to obtain in ultraminiature devices (driven by generators of
+0.1 J for example), as they are in the larger devices (driven by generators of 1 MJ). However,
+the stability of the plasma pinch highly depends on the size and energy of the device.
+
+
+
+1. Introduction                                                               source of radiation (x-rays, XUV and neutrons), there is
+                                                                              a renewed interest in the development of transportable and
+Originally, in the last century (1960s, 1970s and 1980s                       portable plasma foci for industrial and field applications, as
+inclusive), the plasma focus (PF) was studied as a possible                   nanoflashes of radiation. A new generation of very small, fast
+device for controlled thermonuclear fusion. However, the main                 and compact devices has been developed during the present
+mechanisms producing neutrons are the thermonuclear and the                   century [2–12].
+beam target, the beam target being the dominant mechanism.                        A PF is a kind of pinch discharge in which a high-
+At present, on the one hand, there are some suggestions to                    pulsed voltage is applied to a low-pressure gas between
+increase the thermonuclear component of neutron production                    coaxial cylindrical electrodes, generating a short-duration
+over the beam target component in the hope of obtaining a                     high-density plasma region in the axis (pinch) [2]. The
+device relevant to thermonuclear fusion studies [1, 2]. On the                maximum pinch compression should be close to the peak
+other hand, as the PF is an intense pulsed non-radioactive                    current in order to achieve the best efficiency. Two geometries
+∗
+                                                                              were proposed for these devices differing in their electrodes’
+  This paper was presented as an invited talk at the 29th International
+Conference on Phenomena in Ionized Gases (ICPIG XXIX) held in Cancun,
+                                                                              aspect ratio (electrode length divided by inner electrode
+Mexico on 12–17 July 2009. See stacks.iop.org/PSST/19/3                       diameter): the Filipov configuration [13], with an aspect ratio
+4 Author to whom any correspondence should be addressed.                      <1 (typical values are 0.2) and the Mather configuration [14],
+
+0963-0252/10/055017+09$30.00                                              1                 © 2010 IOP Publishing Ltd   Printed in the UK & the USA
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                          L Soto et al
+
+                                                                               the pinch current [47]. On the other hand, using the data
+                                                                               of 117 experiments it has been found that Y goes as Y ∼
+                                                                               I04.0–4.7 [10, 42]. Recent works based on numerical experiments
+                                                                               [48–50] have shown that the yield scales as Y ∼ E 2 and
+                                                                               Y ∼ I04.5 for low kilojoules and sub-kilojoules devices, while
+                                                                               for high kilojoules and megajoules PF devices the scaling is
+                                                                               deteriorating for energy as Y ∼ E 0.8 , but scaling with the
+                                                                               current is maintained as Y ∼ I04.5 . In addition, it is well known
+                                                                               that the axial and radial velocities of the plasma sheath are
+                                                                               proportional to (Io /ap 1/2 ) (where a is the anode radius, and p
+                                                                               is the gas filling pressure or mass density filling pressure) [29].
+                                                                               Lee and Serban [17] observed in the 1990s that (Io /ap 1/2 ),
+                                                                               called ‘drive parameter’ by them, has an average value of
+                                                                               77 kA cm−1 mbar−1/2 with a small variation of 10% for PF
+                                                                               devices experimentally optimized for neutron production. A
+                                                                               few years ago, Soto [2, 7] extended this observation to PF
+                                                                               devices working with stored energy of hundreds and tens of
+                                                                               joules. Soto also introduced the ‘energy density parameter’
+Figure 1. A scheme of the equivalent circuit and the plasma                    (28E/a 3 ) as an additional observation to the PF common
+dynamics are shown. The capacitor C is discharged over the                     parameters. The value for the energy density parameter is
+electrode through a spark gap (SG). The plasma dynamics is                     (1–10) × 1010 J m−3 for devices working from 1 MJ to 50 J. At
+sketched in a side section of the electrodes, I: the discharge starts          present, the constancy of the drive parameter and that of the
+over the insulator, II, III: the current sheath is accelerated along the
+                                                                               energy density parameter are useful design tools for PF devices.
+coaxial electrodes and IV: pinch.
+
+
+with an aspect ratio >1 (typically 5–10). Also, devices with                   2. Research program at the Chilean Nuclear Energy
+a hybrid aspect ratio (typically 1 to 2) have been developed                   Commission
+[2–9, 15, 16].
+                                                                               In the last few years, on the one hand, a few works on PF
+     Figure 1 shows the scheme of the equivalent electrical                    configuration using the SPEED2 generator charging at 70 kJ
+circuit and the discharge evolution in a Mather type PF. The                   have been made at the Chilean Nuclear Energy Commission
+electrodes are in the vertical position; the anode at the center               (CCHEN). On the other hand, experimental studies in PF have
+is partially covered from its base by a coaxial insulator. The                 been extended to devices operating under 1 kJ, in the range
+discharge starts over the insulator surface. Then, the plasma                  of hundreds and tens of joules [3–8]. Moreover, a device
+sheath comes off and it is axially accelerated by the magnetic                 that operates with only 100 mJ has recently been designed and
+field self-generated by the current. After the current sheath                  constructed at CCHEN [9]. The experiments at CCHEN have
+runs over the upper end of the central electrode, the plasma is                been performed in the following devices: SPEED2 (70 kJ),
+compressed in a small region (the focus or pinch). In most                     PF-400J (400 J), PF-50J (50 and 67 J) and Nanofocus, NF
+of the devices, these three stages last a few microseconds,                    (0.1 and 0.26 J). Further details of these experiments and their
+and less than 500 ns in the new generation of fast plasma                      diagnostics can be found elsewhere [3–9, 18, 19]. The research
+foci [2]. The maximum pinch compression should be close                        work includes the study of neutron yield, angular distribution
+to the peak current in order to achieve the best efficiency.                   of neutrons, energy distribution of neutrons, x-ray emission,
+Depending on the energy of the pulse power generator, the                      plasma dynamics and density measurements.
+current in the pinch varies from tens of kiloamperes to some                        The results obtained in the PF research program at
+mega-amperes. The pinch generates beams of ions and                            CCHEN can be summarized as follows.
+electrons, and ultrashort x-ray pulses. The duration of these
+pulses is of the order of a few nanoseconds to hundreds of                     Neutron yield. Neutron yield versus deuterium filled pressure
+nanoseconds. Using deuterium gas, PF devices produce fusion                    has been obtained for PF-400J operating at ∼400 J and for
+D–D reactions, generating fast-neutron pulses (∼2.5 MeV)                       PF-50J operating at 50 and 70 J. The maximum measured
+and protons (leaving behind 3 He and 3 H).                                     neutron yield was (1.06 ± 0.13) × 106 neutrons per shot at
+     Scaling laws for neutron yield and the scalability                        9 mbar in the PF-400J [6] and (3.6±1.5)×104 neutrons per shot
+properties in PF devices have been a subject of study since                    at 9 mbar in the PF-50J operating at 67 J and (1.3 ± 0.5) × 104
+early PF research [45, 46]. From experimental data compiled                    neutrons per shot at 6 mbar in the PF-50J operating at 50 J [8].
+during the past decades, scaling laws for neutron yield, Y,                    From these results, the following scaling laws for PF devices
+were established in the 1970s and 1980s. From different                        operating under 1 kJ have been obtained: Y ∼ 7.73×10−5 Io4.82
+optimized devices that operate with D2 in a particular stored                  (with Io the pinch current in kA), Y ∼ 3.15E 2.13 (with
+energy from a few kilojoules to hundreds of kilojoules, most                   E the energy in the capacitor bank in J). If additional data
+authors agree that Y scale as Y ∼ E 2 and Y ∼ I03.3 (where                     obtained recently by other groups are considered [10–12],
+E is the initial stored energy in the capacitor bank and I0                    similar power dependences are obtained for sub-kilojoules
+
+                                                                           2
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                                   L Soto et al
+
+                                                                                         Angular distribution of neutron emission. Angular distri-
+                                                      200J
+         6                            FMPF-1                                             bution of neutron emission was obtained in the PF-400J
+                                                                      A]
+                            125J
+                                                      4.59   [I : k        PF-400J       device using CR-39 nuclear track detectors covered with
+                                                   -4
+                                           I                                             polyethylene located at several positions (between −90◦ to
+                                      x 10
+log Y
+                                 8.43                                                    90◦ ). The angular measurements were compared with the
+         5                    Y=
+                                                                                         total neutron yield (integral of the angular measurements).
+                             PF-50J
+                                                                                         The results are consistent with an angular uniform plateau
+         4       PF-50J                                                                  (isotropic emission) plus a shape peaked in the direction of
+                                                                                         the axis of the discharge (anisotropic emission). Isotropic
+               1.7           1.8              1.9            2.0           2.1           components account for 57.5% of the accumulative emission,
+                                             log I                                       while the anisotropy component accounts for the remaining
+                                                                                         42.5%. The anisotropic component appears between +50◦ and
+                                                   200J                                  −50◦ approximately [21].
+         6                            125J
+                                                             FMPF-1        PF-400J
+                                              J]
+                                   2.3
+                                      8   [E:                                            Energy distribution of the neutrons. Five scintillation
+                              3E                                                         detectors (scintillator + photomultiplier) were located at
+                           2.4
+ log Y
+         5                                                                               different distances in radial orientation with the discharge in
+                     Y=
+                           PF-50J                                                        the PF-400J; the energy spectrum was obtained [21], with an
+                                                                                         average energy and dispersion of (2.5 ± 1) MeV. In the case of
+         4      PF-50J
+                                                                                         the PF-50J only two scintillation detectors were used and the
+                                                                                         energy of the neutrons was estimated to be 2.7 ± 1.8 MeV [8].
+         1.6         1.8            2.0            2.2         2.4          2.6
+                                           log E                                         X-ray emission. Hard x-ray emission has been studied in the
+Figure 2. Neutron yield, Y, scaling laws for sub-kilojoules PF                           PF-400J using a commercial radiographic recording system
+devices (I: current, E: stored energy). Data include results from                        (13 × 18 cm2 ), Curix ST-G2 from AGFA was used together
+CCHEN (PF-400J [6], PF-50J [8]) and others groups (125 J [10],                           with AGFA suggested developer and fixer for this film. The
+200 J [11], FMPF-1 [12]).                                                                film is placed inside a plastic light tight cassette, Curix
+                                                                                         from AGFA, containing intensifying plastic screen sensitive
+PF devices: Y ∼ 8.43 × 10−4 Io4.59 , Y ∼ 2.43E 2.38 (as shown                            to x-radiation. The cassette with the film was placed as close
+in figure 2). This result is consistent with scaling laws with
+                                                                                         to the object to be imaged as possible to improve the image
+numerical experiments for a few kilojoules and sub-kilojoules
+                                                                                         quality. The object is placed between the PF device and the
+devices [48, 50].
+                                                                                         cassette. A photomultiplier tube with a plastic scintillator
+     In the SPEED2 the neutron yield versus deuterium filled
+                                                                                         is used to monitor the x-ray emission in each shot. This
+pressure is still being characterized. SPEED2 uses a special
+                                                                                         diagnostic is placed perpendicularly to the symmetry axis at
+insulator, quartz covered with alumina, and it requires several
+                                                                                         the anode top level. Radiographs of an array of filters of
+shots of preparation in order to obtain a neutron yield with
+                                                                                         different materials of millimeter thickness were obtained with
+dispersion lower than 30% between shots. We have not had
+                                                                                         the PF-400J.
+enough shots with the same insulator in order to achieve the
+proper conditions of operation. Preliminary results obtained                                  In order to estimate the average energy of the x-ray
+at CCHEN show a neutron yield of the order of 1010 neutrons                              emitted by the PF devices, a monoenergetic radiation was
+per shot; the maximum value obtained till now at CCHEN                                   assumed. When a monoenergetic radiation interacts with
+is 2 × 1010 neutrons per shot at 2–3 mbar, 70 kJ, 2.4 MA. In                             an element, the classical exponential radiation decay relation
+Düsseldorf, a neutron yield of the order of 1011 –1012 neutrons                         through the matter is I (x)/I0 = exp(−K · x), where I (x)/I0
+per shot was obtained [20].                                                              is the normalized radiation intensity after traveling a distance
+     A repetitive PF, PFR, which works at 30 kV with                                     x inside the material characterized by a linear attenuation
+deuterium at a pressure of 9.2 mbar with a repetition rate from                          coefficient K. From this relation, it is possible to obtain the
+3 to 6 Hz was developed. It produces (2.1 ± 0.34) × 107                                  effective linear attenuation coefficient K when different gray
+neutrons, for each burst of 5 s duration, i.e. 15 to 30 shots per                        shades of the digitalized images are linked to the I (x)/I0 ratio.
+burst.                                                                                   This method provides a correlation between K and the x-ray
+     In addition, evidence of neutron emission has been                                  energy [22]. Thus, an effective mean energy of 90 ± 5 keV
+observed in the ultraminiature device Nanofocus operating at                             was obtained for the PF-400J using the Curix ST-G2 AGFA
+0.1 J of stored energy and 20 Hz of repetition rate. However,                            system as the recording media.
+the reproducibility of this miniature device is low and several                               The same method was used to characterize the x-ray
+technological subjects have to be previously solved in order                             emission from the Nanofocus device operating at 0.1 J.
+to produce neutrons for periods greater than minutes. Due to                             Radiographs of an array of aluminum filters of 30, 45 and
+the low reproducibility of the Nanofocus and the fact that the                           60 µm on a HP5 Ilford film were obtained by integrating 1200
+device has not yet been optimized, the data of its neutron yield                         shots on the film. In this case, an effective mean energy of
+were not included in the plot of figure 2.                                               4.3 ± 0.3 keV was obtained [23].
+
+                                                                                     3
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                      L Soto et al
+
+Plasma dynamics and electron density. An intensified CCD                stored energy under 1 kJ, to hundreds and tens of joules
+camera (ICCD) gated at 5 ns exposure time and synchronized              (section 2 and table 1). It is interesting to point out that
+with the discharge has been used in order to obtain the side            the plasma parameters (which remain practically constant in
+view images of the visible light emitted from the plasma.               PF devices) are correlated with the value of electrical and
+A sequence of the plasma dynamics was obtained for the                  geometrical parameters of the devices through to the drive
+PF-50J [5]. From the observations, an average radial velocity           parameter Io /ap 1/2 and the energy density parameter 28E/a 3 .
+of the order of 105 m s−1 was obtained. It was also found that          Table 2 shows the value of these parameters for devices with
+the plasma velocity speeds up nearly twice its value close to           stored energies ranging from 1 MJ to 0.1 J. More devices in
+the pinching time. The final pinch radius observed was of the           the range of hundreds of joules reported recently are included,
+order of 0.12a, with a the anode radius. This diagnostic was            complementing the data tabulated previously in [2, 7, 17].
+also used to characterize the plasma motion in the Nanofocus                 From table 2, if only the data for optimized PF devices
+device. The dynamics observed from the photographs in this              emitting neutrons are considered it is clear that when the initial
+ultraminiaturized device operating at only 0.1 J is consistent          stored energy varies by a factor of 108 , the drive parameter
+with the dynamics observed in devices operating at energies             varies only by a factor of 2, the energy density parameter varies
+several orders of magnitude higher: (a) formation of a plasma           by a factor of ∼10 and the energy per mass parameter varies
+sheath close to the insulator surface, (b) the plasma covering          by a factor of 23.
+the anode, (c) radial compression over the anode and (d) finally
+the plasma is detached from the anode in the axial direction [9].       3.1. Similarities
+     In addition, a refractive optical system was employed in           A discussion about the significance of the drive parameter and
+order to measure the electron density and the dimensions of the         of the energy density parameter allows one to understand the
+pinch column. A Mach–Zehnder interferometer using a pulsed              similarities observed in PF devices ranging eight orders of
+Nd-YAG laser was employed (600 mJ, 532 nm, 8 ns) [19, 24].              magnitude in energy.
+The diagnostic was applied to the PF-400J and PF-50J devices.                The drive parameter and its importance in the performance
+A maximum electron density of (8.4 ± 1.3) × 1024 m−3 was                of PF as a source of fusion neutrons were discussed by Lee and
+measured on the axis in the PF-400J operated in H2 [24] and of          Serban [17]. Simple models to describe the PF dynamics show
+(1.5 ± 0.2) × 1025 m−3 in the PF-50J operated in D2 [19]. The           that I /ap1/2 is relevant. The model developed by Lee describes
+pinch radius observed with this method in the PF-400J was of            the axial phase of the dynamics by a snow-plow model and the
+the order of 0.12a, and between 0.1a and 0.2a in the PF-50J.            radial phase by a slug model [4, 30]. The coupling of drive
+The corresponding line density was measured in (8.6 ± 1) ×              magnetic field to the plasma sheath in the axial and radial
+1018 m−1 for the PF-400J operated in H2 and in (2.2 ± 0.3) ×            phases, using either the snow-plow or the slug model, indicates
+1018 m−1 for the PF-50J operated in D2 . In addition, in the            that the characteristic axial velocity, va , and radial velocity, vr ,
+PF-50J, a temporal sequence of interferograms was obtained              both depend on I /ap1/2 . Thus,
+and the same radial velocities obtained with the ICCD camera
+were measured (of the order of 105 m s−1 for the average radial                                   va ∝ I /ap 1/2 ,
+velocity and ∼2 × 105 m s−1 close to the pinch moment) [19].
+     Table 1 summarizes the main characteristics of the PF                                        vr ∝ I /ap 1/2 .
+devices at the CCHEN.
+                                                                             Note that the magnetic pressure, B 2 /2µ ∝ (I /a)2 , is the
+     Even though the results obtained in our laboratory
+                                                                        magnetic energy per unit volume associated with the current I
+devoted to x-ray emission have been summarized and some
+                                                                        flowing in radius a. Dividing by the mass density ρ (or p, given
+papers related to the study of scaling laws for x-rays or
+                                                                        that ρ ∝ p), the magnetic energy per unit mass is obtained.
+particle emission in PF devices are available [43, 44], there is
+                                                                        Thus, magnetic energy per unit mass ∝(I /a)2 /p ≡ ζ 2 .
+insufficient information to propose a comprehensive analysis
+                                                                             Zhang et al [31] note a simple consistent picture. The
+related to scaling laws of x-rays and other emission for PF
+                                                                        magnetic piston delivering magnetic energy per unit mass ∝ζ 2
+devices. In the next section a discussion on scalability                drives the shock system to velocity ζ with kinetic energy per
+properties, scaling laws, similarities and differences among            unit mass ∝ζ 2 .
+PF devices optimized for neutron emission is presented.                      The energy density parameter was introduced by Soto
+                                                                        [2, 7] as a way to compare different PF devices. Although
+3. Discussion                                                           only a fraction of the initial energy E stored in the capacitor
+                                                                        bank is transferred to the plasma, the parameter E/Vp (where
+A common feature of PF devices is the existence of plasma               Vp is the final pinch volume) is often used to characterize
+parameters that remain relatively constant for facilities in            the plasma energy density in order to compare different
+every optimized plasma foci for neutron production in a wide            devices. According to scaling numerical simulations [17, 30]
+range of energy, from a few kilojoules to 1 MJ: electron                and experimental observations [5, 8, 17, 19] the final pinch
+density ∼1025 m−3 , temperature in the range 300 eV–1 keV,              radius rp (prior to the appearance of instabilities with the
+and the velocity of the current sheath with an average value            subsequent appearance of smaller inhomogeneities in the
+of ∼1 × 105 m s−1 in the axial phase and ∼2.5 × 105 m s−1               plasma column) is of the order of 0.12a and the maximum
+at the end of the pinch compression. At the CCHEN, these                pinch height is of the order 0.8a. Thus the final plasma
+observations have been extended to devices working with                 volume Vp (prior to the appearance of probable instabilities)
+
+                                                                    4
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                     L Soto et al
+
+                          Table 1. Main characteristics of the PF devices at CCHEN and experimental observations.
+                                                                     Device
+                      SPEED2                                     PF-400J                 PF-50J                     NF
+                      [41]                      SPEED4           [6]                     [8, 19]                    [9]
+Capacity (nF)         4.16a                     1.25a            880                     160                        5
+Charging
+ voltage (kV)
+Maximum               300                       100                  35                  35                         15
+Typical               150                        60                  30                  25–30                      5–10
+ operation
+Inductance             20                        40                  38                  38                         5
+ (nH)
+Time to peak          400                       350              300                     150                        16
+ current (ns)
+Stored energy
+ (J)
+Maximum               187                       6.25             540                     100                        0.56
+Typical operation      67                       2.25             400                     50–70                      0.1
+Peak current
+ (kA)
+Maximum               4000                      550              168                     70                         15
+Typical               2400                      330              127                     50–60                      5–10
+ operation
+Anode
+Radius (cm)           5.4                       1.6              0.6                     0.3                        0.08–0.022
+Material              Copper                    Copper           Copper                  Copper                     Copper
+Cathode
+Radius (cm)           11                        4.5              1.3                     1.1                        —
+Material              Copper                    Copper           Copper                  Copper                     Copper
+Effective anode       1.5–2.5                   1–2              0.7                     0.48                       0.04
+ length (cm)
+Insulator
+Length (cm)           6.5                       2.7–3.9          2.1                     2.4                  1
+Material              Quartz                    Alumina          Alumina                 Alumina              Quartz
+                       covered                                                                                  and
+                       with alumina                                                                             alumina
+Size (capacitor       8m × 8m × 2m              1 m × 1 m × 0.5 m 50 cm × 30 cm × 30 cm 50 cm × 30 cm × 20 cm 25 cm × 25 cm × 5 cm
+ bank and
+ discharge
+ chamber)
+Weight (capacitor     10 000                    200              50                      50                         5
+ bank and
+ discharge
+ chamber) (kg)
+Maximum                                                          1                       1                          50
+ repetition
+ rate (Hz)
+Typical               Single shot               Single shot      Single shot             Single shot                1–20
+ operation
+ (Hz)
+Neutron yield         ∼1011 –1012         —                      1.2 × 106 at 400 J      3.6 × 104 at 70 J          102 with low
+ per shot              (Düsseldorf) [20]                         and 9 mbar in D2        and 9 mbar in D2           reproducibility
+                       ∼2 × 1010 (CCHEN)                                                  1.3 × 104 at 50 J
+                                                                                          and 6 mbar in D2
+Ion density on the —                            —                (8.4 ± 1.3) × 1024      (1.5 ± 0.2) × 1025         —
+ axis n (m−3 )                                                    in H2                   in D2
+Number of ions per —                            —                (8.6 ± 1) × 1018        (2.2 ± 0.3) × 1018         —
+ unit length (line                                                in H2                   in D2
+ density) N (m−1 )
+Energy of the      —                            —                2.5 ± 1                 2.7 ± 1.8                  —
+ neutrons ±
+ dispersion (MeV)
+Maximum            —                            —                106 n s−1               3.6 × 104 n s−1            ∼103 –104 n s−1
+ neutron flux                                                                                                        expected for
+ in repetitive                                                                                                       short periods
+ operation                                                                                                           (less than 1 min.)
+a
+    Equivalent capacity of the SPEED generators.
+
+                                                                          5
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                         L Soto et al
+
+Table 2. The drive parameter (Io /ap 1/2 ) and the density energy parameter (28E/a 3 ) are listed for various PF devices, E is the stored energy
+in the capacitor bank, Io is the peak current, a the anode radius and p the gas filling pressure for the maximum neutron yield.
+                                                                                                                          Energy per
+                                                                                Energy              Drive                 mass
+                                                Anode    Peak                   density             parameter             parameter
+Device [reference]-              Energy         radius   current   Pressure     parameter           I /p1/2 a             E/a 3 p
+location                         E (kJ)         a (cm)   (kA)      (mbar)       28 E/a 3 (J m−3 )   (kA mbar−1/2 cm−1 )   (×107 J m−3 mbar−1 )
+PF-1000 [25]-Poland              1064           12.2     2300      6.6          1.6 × 1010          73.4                  8.5
+PF-360 [26]-Poland               130            6        1200      1.6          1.7 × 1010          61.4                  38
+SPEED2 [2]-Chile                 70             5.4      2400      2.7          1.2 × 1010          —                     15.9
+7 kJ PF [27]-Japan               7              1.75     390       6            3.7 × 1010          91                    22
+GN1 [28]-Argentina               4.7            1.9      —         —            1.9 × 1010          —                     —
+Fuego Nuevo II [16] Mexico       4.6            2.5      350       3.7          0.8 × 1010          73                    7.7
+UNU/ICTP-PF [29]-Asia            2.9            0.95     172       8.5          9.5 × 1010          81                    4.1
+ and Africa
+PACOa [15, 16]-Argentina         2              2.5      250       1.5          3.6 × 109           95                    8.5
+PF-400J [6]-Chile                0.4            0.6      127       9            5.2 × 1010          70                    2
+FMPF-1 [12] Singapore            0.23           0.35     80        5.5          1.5 × 1011          97                    5.35
+200Ja Batt-PF [11] India         0.2            0.5      83        10           4.5 × 1010          52a                   1.6a
+125J PF [10] Argentina           0.125          0.75     62        2            0.83 × 1010         58a                   1.5a
+PF-50J [2, 8]-Chile              0.07           0.3      60        9            7.3 × 1010          66.7                  2.9
+                                 0.05           0.3      50        6            5.2 × 1010          68
+NFa [9]-Chile                    0.000 25       0.021    6         16           7.6 × 1011          70                    16.9
+                                 0.000 1        0.08     4.5       3            5.5 × 109           32a                   0.65a
+a
+  Some very small devices, recently developed, are probably not optimized yet. The energy density parameter has a value of the order of
+(1–10) × 1010 J m−3 for all the experimentally optimized machines listed. The drive parameter has practically the same value for all the
+experimentally optimized machines listed (68–95 kA cm−1 mbar−1/2 ). A new parameter related to the energy per mass was introduced now,
+‘energy per mass parameter’ E/a 3 p. Note that the three parameters listed in the right-hand side columns are practically constant in
+comparison throughout the eight orders of magnitude in stored energy range.
+
+
+is of the order of π(0.12a 2 ) × (0.8a) = 0.036a 3 , and the                      gas density, n0 , compressed to the pinch radius, rp , thus
+plasma energy density at the pinch moment is proportional                         n = fmr n0 (a/rp )2 , with fmr the ionization mass factor
+to E/Vp ∼ 28E/a 3 . Soto observed that the value of this                          in the radial phase and n0 the number of atoms per volume
+parameter, 28E/a 3 , is roughly constant in various devices that                  at filling pressure. Considering that rp ∼ 0.12a and
+operate at different energies.                                                    fmr ∼ 0.25 (typical values from numerical simulations
+     The constancy of these parameters for any PF                                 [30] and also experimentally measured [5, 19]), an average
+experimentally optimized for neutron emission and the fact                        pinch ion density of the order of n = 18n0 is estimated.
+that the dimensions of the pinch, length zp and radius rp ,                       Typically the filling gas pressure is of a few mbars. Thus
+are both proportional to the anode radius a have interesting                      the value of n = 18n0 is consistent with the n value
+consequences.                                                                     measured experimentally on the pinch axis of the order of
+                                                                                  1025 m−3 , i.e. an average of the order of 5 × 1024 m−3 for
+(a) The magnetic field at the pinch radius has practically the                    a PF with initial stored energy of MJ, kJ, J or less than 1 J,
+    same value for PF devices with energies from 1 MJ to less                     in any of them.
+    than 1 J. This statement is a consequence of the variation                (c) The mean Alfvén speed is practically the same for any
+    of nearly one order of magnitude in the operating pressure                    PF experimentally optimized for neutron emission. The
+    and the constancy of the drive parameter. The mass per                        mean Alfvén speed for a Z-pinch is valfven  = B(r =
+    unit volume p (or pressure) ranges on order of magnitude,                     rp )/2(µ0 rp )1/2 , with ρp  the mean pinch mass density.
+    thus p 1/2 varies by nearly 30%. As the magnetic field                        Following the arguments presented in (b) it is clear that
+    is proportional to I0 /rp ∝ I0 /a and the drive parameter                     ρp  is proportional to the filling gas density or filling gas
+    remains constant in devices operating in a wide range of                      pressure. Thus, valfven  ∝ I0 /ap 1/2 , and its value can be
+    energies, it is possible to roughly consider that I /a could                  estimated to be above 105 m s−1 .
+    vary only in the order of 30% in the same range of devices                (d) The temperature in the pinch is of the same order of
+    with different energies. Therefore it is possible to obtain                   magnitude in any PF experimentally optimized for neutron
+    at the edge of the pinch magnetic fields of the order of 30                   emission. This statement is valid for the two main
+    to 40 T, in any of the PF with initial stored energy of MJ,                   mechanisms that contribute to the heating of the plasma
+    kJ, J or less than 1 J.                                                       in a PF: the shock wave in the radial phase and the current
+(b) The ion pinch density is proportional to the filling gas                      at the pinch moment. On the one hand, for a strong shock
+    density (or filling mass, or filling pressure). To estimate                   system, approximately 50% of the shock kinetic energy is
+    the average ion density in the pinch, n, in PF devices,                     converted into the thermal energy in the shock layer. As it
+    we consider the sweep gas onto the anode from the filling                     has been established that kinetic energy per unit mass of
+
+                                                                         6
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                     L Soto et al
+
+     the plasma sheath is proportional to I 2 /a 2 p [31], it means       3.2. Differences
+     that the square of the drive parameter is a measure of the
+                                                                          Even though several plasma parameters remain practically with
+     energy per unit mass.
+                                                                          the same value in any PF experimentally optimized for neutron
+On the other hand, the contribution to heating by the current             emission, there is an important difference which determines
+can be estimated by the Bennett relation:                                 the stability properties of the plasma pinch. As the ion pinch
+                     kTB = (µ0 /16π)I 2 /N,                               density, n, is practically the same, but the pinch radius changes,
+                                                                          the line density N is different in every device and depends on
+with N the number of ions per unit length (ion line density),             the stored energy and on the anode radius.
+                             
+                    N = 2π nr dr,                                                                    N ∝ a 2 n,
+
+                           n = N/π rp2 ,                                             E/Vp n = const. → E ∝ Vp n ∝ a 3 n.
+
+                       N = nπrp2 ∝ n0 a 2 ,                             Thus, N ∝ E/a.
+                                                                               As the stability properties in a Z-pinch depend on the line
+                    kTB ∝ I 2 /n0 a 2 ∝ I 2 /a 2 p.                       density N and other parameters, it means that the stability
+                                                                          regime, in which a particular PF device lives, depends on the
+     Therefore, the Bennett temperature is proportional to the            energy of the device and on the anode radius.
+square value of the drive parameter.                                           It is well known that a large majority of the modern
+     As the two main heating mechanisms are proportional                  Z-pinch experiments operate in a region of parameter space
+to the square value of the drive parameter, it is possible to             in which ideal MHD stability is not applicable. The stability
+conclude that the plasma temperature in the pinch does not                behavior can be discussed in terms of certain dimensionless
+deviate much among different devices with energies from                   parameters. This can be visualized in the diagram for
+megajoules to less than 1 J.                                              regimes of Z-pinch stability developed by Haines and Coppins
+     The statement can also be analyzed using other constant              [32]. If the Bennett equilibrium holds, the stability can be
+parameters (the energy density parameter E/Vp and the mean                characterized in terms of the line density N and the product
+ion density n). Combining these parameters, the quantity                  between the total pinch current raised to the fourth power and
+E/(Vp n) is also constant. The latter parameter represents the            the pinch radius I 4 rp . Details of this diagram can be found
+energy per ion, which defines the ion temperature. Thus,                  elsewhere [32]. In particular for a Z-pinch in deuterium the
+                           T ∝ E/(Vp n).                                  Lundquist number S, the product between the ion Larmor i
+                                                                          and the ion collision frequency τi and the mean ion Larmor
+     Therefore, any PF device with a similar energy density               radius ai can be written as
+parameter and ion density has a temperature of the same order.
+                                                                                             S = 3.86 × 1023 I 4 rp /N,
+     The last column of table 2 includes a parameter
+proportional to the energy per ion. Note that for devices with
+                                                                                          i τi = 3.64 × 1030 I 4 rp /N 5/2 ,
+stored energy ranging eight orders of magnitude, the energy per
+particle parameter (essentially the energy per mass parameter,
+E/a 3 p) ranges in the same order of magnitude for neutron                                   ai /rp = 8.08 × 1030 N −1/2 .
+optimized PF (only a factor 1/23 versus a factor 1/108 ).
+     As previously discussed, on eight orders of magnitude of             It has been theoretically conjectured that there is a threshold for
+variation in stored energy, the drive parameter varies only by a          stabilization due to resistive effects corresponding to S ∼ 100;
+factor of 2 while the energy density parameter varies by a factor         enhanced stability is expected if S < 100 [32]. In addition,
+of 10 and the energy per mass parameter varies by a factor                it has been experimentally observed that for Z-pinches with a
+of 23. The energy density and energy per mass parameters                  value of S < 100, no instabilities are observed [35–38]. Also
+are essentially proportional to the square of drive parameter,            large Larmor radius (LLR) effects play a stabilization role. The
+thus only a variation by a factor of 4 should be expected.                LLR stabilization effects are important when ai /rp > 0.1 and
+However, it is necessary to remember that for calculating the             if i τi > 1.
+energy density parameter, E/Vp ∼ 28E/a 3 , and the energy                      Most of the theoretical works on this topic use the basic
+per mass parameter, E/a 3 p, the pinch radius is considered to            Vlasov fluid model to treat the ions, where it is obtained that the
+be 0.15a, but actually the pinch radius could vary from 0.1a              LLR effects can reduce linear growth rates of the instabilities
+to 0.2a. Therefore, a variation factor of 23 = 8 in the energy            by up to a factor of about 5 for m = 0 and 8 for m = 1.
+density parameter is possible. In the case of the energy per              Theoretically, the lowest growth rate occurs for ai /rp ∼ 0.1–
+mass parameter, the variation in the filling pressure could also          0.2 [33, 34]. There exists experimental evidence indicating that
+be considered which would increase the expected variation of              enhanced stability is found for values of ai /rp close to 0.1–0.2
+this parameter. In spite of these considerations, a variation by          for both m = 1 [24, 36, 37] and m = 0 [39] instabilities.
+a factor of 10 or 23 compared with a factor of 108 could be                    All the PF devices listed in table 2 are plotted in the
+considered negligible. However, it can be clearly seen in table 2         diagram for Z-pinch stability regimes (figure 3). Although
+that the most constant parameter is the ‘drive parameter’.                the pinch current is a fraction of the peak current (typically
+
+                                                                      7
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                                                                                           L Soto et al
+
+                                                                                                                     γi τi = 1                     – Any PF device with a similar drive parameter, energy
+                                                                                                                                  Ωiτi = 1
+
+                                                                                        ai = rpinch / 10
+                                                                                                                                                     density parameter and ion density has a temperature of
+                                                                      ai = rpinch / 5
+                   24
+
+                                                 ai = rpinch
+                  10                                                                                        SPEED2
+                                                                                                                         PF-1000                     the same order. Thus, an experimental measurement of
+                                                                                                                                   00                temperature in a particular PF could be used to estimate
+                                                                                                                                 =1
+                                                                                                           PF-360
+                   21            50kJ - 1MJ                                                                                  S
+                  10
+                                   1kJ - 50kJ
+                                                                                                                                                     the temperature of any PF experimentally optimized for
+                                                                                        7kJ
+
+
+
+ I rpinch [A m]
+                                 100J - 1kJ                                                                 Fuego Nuevo II                           neutron emission. In [40] the temperature was measured
+                                                                                                            PACO
+4                                   1J - 100J                                                                                                        in a PF of some kilojoules by means of spectroscopy
+                   18                                UNU/ICTP-PFF
+                  10              < 1J
+                                 Ideal MHD              200J
+                                                               PF-400J                                                                               techniques as ∼0.6–1 keV. Then, it is possible to assume
+                                                 FMPF-1
+                                                 PF-50J         125J                                                                                 that the temperature in any PF operating properly,
+4                  15
+                  10                                     PF-50J
+                                                                                                                                                     including the smallest ones such as the PF-50J and the
+                                                                                                                                                     Nanofocus, has a temperature of that order.
+                   12
+                  10
+                           NF 0.25J
+                                                                                                                                                       The PF is a self-scaled device. However, the stability
+                                            NF 0.1J                                                                                              regime, in which a particular PF device lives, depends on the
+                       9
+                  10 15               16    17                  18               19                        20       21           22              energy of the device and the anode radius. Large PF devices
+                    10          10         10              10        10                              10         10        10
+                                                                     -1                                                                          (hundreds of kilojoules and megajoules) are in the ideal MHD
+                                                               N [m ]
+                                                                                                                                                 region, and are unstable. In contrast, the smallest device with
+Figure 3. Different plasma foci that work with stored energy                                                                                     stored energy less than 1 J, Nanofocus, could present enhanced
+ranging from 0.1 J to 1 MJ are plotted in the diagram for Z-pinch                                                                                stability by means of the resistive effects. PF devices in the
+stability given by Haines and Coppins [32].                                                                                                      range of hundreds and tens of joules could present enhanced
+                                                                                                                                                 stability by means of LLR effects.
+0.8–0.9 from numerical simulations fitted with experimental                                                                                            An open challenge for PF research, for both basic
+results [30]) the peak current I0 of table 2 was used. The log                                                                                   and applied science, is to increase the energy per particle
+plot and the scale used practically absorb this difference. The                                                                                  (temperature) in order to increase the neutron yield. Is there
+line density was estimated for each device using the relation                                                                                    any operational region in which this could be possible? The PF
+N = nπ rp2 , with rp = 0.15a.                                                                                                                  is a self-scaled device; however, the dependence of the stability
+     From the diagram in figure 3, it is possible to note that                                                                                   properties on the energy of the device and on the anode radius
+large PF devices (hundreds of kilojoules and megajoules) are                                                                                     could open this possibility.
+in the ideal MHD region, and are unstable. In contrast, the
+smallest device with stored energy less than 1 J, Nanofocus,                                                                                     Acknowledgments
+could be stabilized by means of the resistive effects. With
+more current, the PF devices in the range of hundreds and tens                                                                                   Currently, this work is supported by the grant P4 Project
+of joules could be stabilized by means of the LLR effects [24].                                                                                  ‘Center for Research and Applications in Plasma Physics
+                                                                                                                                                 and Pulsed Power Technology’, PBCT-CONICYT Chile ACT
+4. Conclusions                                                                                                                                   26 grant and a Postdoctoral PBCT-CONICYT Chile PSD-01
+                                                                                                                                                 grant. Also, part of this work was supported by IAEA-CRP
+A comprehensive study of the scaling laws together with                                                                                          contract No. 14722.
+similarities and differences in PF devices working with stored
+energy ranging eight orders of magnitude, from 1 MJ to 0.1 J
+                                                                                                                                                 References
+was presented. From the study it is possible to draw the
+following conclusions for any PF experimentally optimized                                                                                         [1] Serban A and Lee S 1998 J. Plasma Phys. 60 3
+for neutron emission, independent of the initial stored energy.                                                                                   [2] Soto L 2005 Plasma Phys. Control. Fusion 47 A361
+                                                                                                                                                  [3] Soto L, Esaulov A, Moreno J, Silva P, Sylvester G, Zambra M,
+      – The pinch radius and pinch length scale with the                                                                                                 Nazarenko A and Clausse A 2001 Phys. Plasmas 8 2572
+        anode radius, and rp ∼ (0.1–0.2)a, zp ∼ (0.8–1)a                                                                                          [4] Silva P, Soto L, Moreno J, Sylvester G, Zambra M,
+                                                                                                                                                         Altamirano L, Bruzzone H, Clausse A and Moreno C 2002
+         [5, 8, 17, 19, 30].                                                                                                                             Rev. Sci. Instrum. 73 2583
+      – The mean value of the pinch ion density scales with the                                                                                   [5] Moreno J, Silva P and Soto L 2003 Plasma Sources Sci.
+        filling gas density, and n ∼ 18n0 ∼ 5 × 1024 m−3 .                                                                                             Technol. 12 39
+      – The drive parameter, the energy density parameter and the                                                                                 [6] Silva P, Moreno J, Soto L, Birstein L, Mayer R and Kies W
+        energy per mass parameter have practically the same value                                                                                        2003 Appl. Phys. Lett. 83 3269
+                                                                                                                                                  [7] Silva P, Soto L, Kies W and Moreno J 2004 Plasma Sources
+        for any PF experimentally optimized for neutron emission.                                                                                        Sci. Technol. 13 329
+        This implies the following:                                                                                                               [8] Soto L, Silva P, Moreno J, Zambra M, Kies W, Mayer R E,
+      – The magnetic field at the pinch edge has a value of the                                                                                          Clausse A, Altamirano L, Pavez C and Huerta L 2008
+        order of 30–40 T for any PF experimentally optimized for                                                                                         J. Phys. D: Appl. Phys. 41 205215
+                                                                                                                                                  [9] Soto L, Pavez C and Moreno J, Barbaglia M and Clausse A
+        neutron emission.                                                                                                                                2009 Plasma Sources Sci. Technol. 18 015007
+      – The Alfvén speed in the pinch has practically the same                                                                                  [10] Milanese M, Moroso R and Pouzo J 2003 Eur. Phys. J. D 27 77
+        value in any PF experimentally optimized for neutron                                                                                     [11] Rout R K, Mishra P, Rawool A M, Kulkarani L V and
+        emission.                                                                                                                                        Gupta S C 2008 J. Phys. D: Appl. Phys. 41 205211
+
+                                                                                                                                             8
+Plasma Sources Sci. Technol. 19 (2010) 055017                                                                                L Soto et al
+
+[12] Verma R, Rawat R S, Lee P, Krishnan M, Sprinham S V and            [31] Zhang T, Rawat R S, Hassan S M, Lin J J, Mahmood S,
+        Tan T L 2009 Plasma Phys. Control. Fusion 51 075008                    Tan T L, Springham S V, Gribkov V A, Lee P and Lee S
+[13] Filipov N V, Filipova T I and Vinogradov V P 1962 Nucl.                   2006 IEEE Trans. Plasma Sci. 34 2356
+        Fusion (Suppl.) 2 577                                           [32] Haines M G and Coppins M 1991 Phys. Rev. Lett. 66 1462
+[14] Mather J W 1964 Phys. Fluids (Suppl.) 7 28                         [33] Arber T D, Coppins M and Scheaffel J 1994 Phys. Rev. Lett.
+[15] Pouzo J and Milanese M 2003 IEEE Trans. Plasma Sci.                       72 2399
+        31 1237                                                         [34] Arber T D et al 1995 Phys. Rev. Lett. 74 2698
+[16] Castillo F, Herrera J J E, Rangel J, Milanese M, Moroso R,         [35] Chuaqui H, Soto L, Favre M and Wyndham E 1994 Proc. 3rd
+        Pouzo J, Golzarri J I and Espinosa G 2003 Plasma Phys.                 Int. Conf. on Dense Z-Pinches (London, UK, 1993) AIP
+        Control. Fusion 45 289                                                 Conf. Proc. 299 27
+[17] Lee S and Serban A 1996 IEEE Trans. Plasma Sci. 24 1101            [36] Soto L, Chuaqui H, Favre M and Wyndham E 1994 Phys. Rev.
+[18] Moreno J, Birstein L, Mayer R E, Silva P and Soto L 2008                  Lett. 72 2891
+        Meas. Sci. Technol. 19 087002                                   [37] Soto L, Chuaqui H, Favre M, Saavedra R, Wyndham E,
+[19] Tarifeño A, Pavez C, Moreno J and Soto L 2009 Dynamics and               Skowronek M, Romeas P, Aliaga-Rossel R and Mitchell I
+        density measurements in a small plasma focus of tens of                1998 IEEE Trans. Plasma Sci. 24 1162
+        joules emitting neutrons, submitted                             [38] Soto L, Chuaqui H, Favre M and Wyndham E 1994 Proc. Int.
+[20] Kies W 2002 private communication                                         Conf. on Plasma Physics ICPP 1994 (Foz do Iguazú,
+[21] Pavez C, Moreno J, Silva P, Castillo F, Herrera J and Soto L              Brazil) p 216
+        2008 J. Phys.: Conf. Ser. 134 012049                            [39] Davies H, Dangor A, Coppins M and Haines M 2001 Phys.
+[22] Da Re A, Mezzetti F, Tartari A, Verri G, Rapezzi L and                    Rev. Lett. 87 145004
+        Gribkov V A 2001 Nukleonika 46 S123–5                           [40] Bergmann K, Rosmej O N, Rosmej F B, Engel A,
+[23] Pavez C and Soto L 2010 IEEE Trans. Plasma Sci. 38 1132                   Gavrilescu C, Neff W and Lebert R 1997 Phys. Rev. E
+[24] Pavez C and Soto L 2008 Phys. Scr. T131 014030                            56 5959
+[25] Schdmidt H, Kasperczuk A, Paduch M, Pisarczyk T,                   [41] Decker G, Kies W, Mälzig M, Van Valker C and Ziethen G
+        Scholz M, Tomaszewski K and Szydlowsky A 2002 Phys.                    1986 Nucl. Instrum. Methods A 249 477
+        Scr. 66 168                                                     [42] Pouzo J and Milanese M 2007 Proc. 4th Symp. on Current
+[26] Zebrowski J, Baranowski J, Jakubowski L and Sadowski M                    Trends in International Fusion Research (Washington, DC,
+        2001 Nukleonika 46 S1                                                  2001) (Ottawa: NRC Research Press) NRC 46856
+     Zebrowski J, Baranowski J, Jakubowski L and Sadowski M                    p 33
+        2001 Nukleonika 46 S65                                          [43] Zakaullah M, K Alamgir, Shafiq M, Hassan S M, Sharif M and
+[27] Kashani M A M and Miyamoto T 2002 Dense Z-pinches 5th                     Waheed A 2001 Appl. Phys. Lett. 78 877
+        Int. Conf. on Dense Z-Pinch (Albuquerque, NM, 2001) AIP         [44] Lee S, Saw S H, Lee P and Rawat R S 2009 Plasma Phys.
+        Conf. Proc. 651 249                                                    Control. Fusion 51 105013
+[28] Moreno C, Bruzzone H, Martinez J and Clausse A 2000 IEEE           [45] Rapp H 1973 Phys. Lett. A 43 420
+        Trans. Plasma Sci. 28 1735                                      [46] Kromholz H, Ruhl F, Schneider W, Schonbach K and
+[29] Lee S et al 1988 Am. J. Phys. 56 62                                       Herziger G 1981 Phys. Lett. A 82 82
+[30] Lee S Radiative Dense Plasma Focus Computation Package:            [47] Bernard A et al 1998 J. Moscow Phys. Soc. 8 93
+        RADPF http://www.intimal.edu.my/school/fas/UFLF/;               [48] Lee S and Saw S H 2008 J. Fusion Energy 27 292
+        http://www.plasmafocus.net/IPFS/modelpackage/                   [49] Lee S 2008 Plasma Phys. Control. Fusion 50 105005
+        File1RADPF.htm                                                  [50] Lee S 2009 Appl. Phys. Lett. 95 151503
+
+
+
+
+                                                                    9
+
