@@ -1,0 +1,19 @@
+blocker_id,title,sprint_owner,status,required_treatment,evidence_or_next_action
+A-1,manifest provenance,Sprint 1,closed,Implement and test non-empty source packet hashes.,Commit 4424785; source_packet_hashes added to REQUIRED_PROVENANCE_FIELDS and linter C7 re-derived; tests/test_first_principles_manifest.py + tests/test_first_principles_artifact_linter.py (29 passed).
+A-2,stale active artifacts,Sprint 1,closed,Regenerate from HEAD or quarantine.,Commit 1abe15a; 3 artifacts quarantined under results/archive_stale_pre_ssr_codex_a2_2026_05_18/; rationale in sprint_1/ARTIFACT_REGENERATION_OR_QUARANTINE_PLAN.md.
+A-3,read-only CI gates,Sprint 1,closed,Add no-write/check mode and git diff --exit-code.,Commits 80654b9 + bf22c33; --check mode plus deterministic output; CI ends with git diff --exit-code; tests/test_first_principles_verification_check_mode.py (10 passed).
+A-4,archive policy CI coverage,Sprint 1,closed,Recursive linter or archive inventory gate.,Commit bf22c33; CI runs results/**/*.json recursive scan (81 scanned, 39 first-principles, 50 exempt, 0 failed).
+A-5,broad ruff failures,Sprint 1,closed,Fix or explicit allowlist.,Commit b626ad9; all 7 ruff findings fixed; audit broad lint slice reports All checks passed.
+A-6,resume ledger continuity,Sprint 1,closed,Fix cumulative ledger rehydration on resume.,Commit 55e3f94; per-checkpoint cumulative-ledger sidecar; tests/test_first_principles_segmented_whole_shot.py (21 passed incl. resumed-equals-uninterrupted regression test).
+A-7,stale SRS/RTM,Sprint 1,closed,Update requirement status and regenerate RTM.,Commit fe038f7; DPF-PHYS-020 and DPF-PHYS-023 moved blocked->partial; RTM regenerated (blocked 17->15, partial 18->20); Sprint 0 marked closed-with-debt.
+WP-N1B,power-port acceptance,Sprint 2,pending,"Research and propose independent electrode/interface work, residual tolerance, and time-centering.",Deferred until Submission 1 is accepted; see sprint_2/PENDING.md.
+WP-N4B,12 us segmented runtime,Sprint 2,pending,"Propose production orchestration, wall-time slicing, ledger merge, and artifact combiner.",Deferred until Submission 1 is accepted; see sprint_2/PENDING.md.
+WP-N2,startup BVP,Sprint 3,pending,Research every startup channel packet and propose runtime handoff.,Deferred; see sprint_3/PENDING.md.
+WP-N3,PF-1000 geometry/material masks,Sprint 3,pending,Research and propose reviewed masks and resolution gates.,Deferred; see sprint_3/PENDING.md.
+WP-N5-EOS,EOS and closure registry,Sprint 3,pending,Research closure packets and regime gates.,Deferred; see sprint_3/PENDING.md.
+WP-N5-RAD,radiation/ablation/impurity,Sprint 3,pending,Research packet and runtime integration proposal.,Deferred; see sprint_3/PENDING.md.
+WP-N5-RES,anomalous resistance/restrike,Sprint 3,pending,Research packet and runtime trigger criteria proposal.,Deferred; see sprint_3/PENDING.md.
+WP-N5-COL,collision/stopping/electron inertia,Sprint 3,pending,Research packet and PlasmaPy/regime-warning policy.,Deferred; see sprint_3/PENDING.md.
+WP-N6,neutron mechanism authority,Sprint 3,pending,"Research thermonuclear/beam-target separation, spectra, anisotropy, detector response, and UQ.",Deferred; see sprint_3/PENDING.md.
+WP-N7,comparator/UQ/certificate,Sprint 3,pending,Propose same-scope comparator bundle and certificate gating.,Deferred; see sprint_3/PENDING.md.
+numerical-acceptance,numerical acceptance,Sprint 3,pending,"Propose convergence, limiter-zero, backend parity, and restart reproducibility gates.",Deferred; see sprint_3/PENDING.md.

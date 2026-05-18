@@ -1,0 +1,2 @@
+source_path,lines,source_hash,claim_supported,proposal_id
+NONE,NONE,NONE,"Sprint 1 is control-gate engineering and consumes no KnowledgeReference physics source packets. The local authority for every Sprint 1 claim is the Codex audit document docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md, which is a control-gate requirement, not a physics source. KnowledgeReference physics source packets begin in Sprint 2 (WP-N1B Auluck eq. 5/6) and Sprint 3 (WP-N2/N3/N5/N6/N7).",none
