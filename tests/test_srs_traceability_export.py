@@ -36,6 +36,9 @@ def test_requirements_baseline_exports_import_ready_matrix(tmp_path: Path):
     assert by_id["DPF-PHYS-004"].status == "blocked"
     assert by_id["DPF-DATA-009"].source_section == "Deferred Or Scope-Decision Requirements"
     assert "inspection" in by_id["DPF-REL-002"].verification_methods
+    # A-7: candidate implementations exist; statuses must be partial, not blocked
+    assert by_id["DPF-PHYS-020"].status == "partial"
+    assert by_id["DPF-PHYS-023"].status == "partial"
 
     json_path = tmp_path / "matrix.json"
     csv_path = tmp_path / "matrix.csv"

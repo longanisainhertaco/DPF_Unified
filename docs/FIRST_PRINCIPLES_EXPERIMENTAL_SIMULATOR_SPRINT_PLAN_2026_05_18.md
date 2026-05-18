@@ -222,12 +222,19 @@ Add these gates to CI or a required local pre-review script:
 
 ### Sprint 0: Evidence Hygiene And Provenance
 
-Status as of the follow-up Codex-agent audit on 2026-05-18: mostly closed for
-active root artifacts, with follow-up control-plane changes still pending.
-`results/*.json` now passes the artifact linter, source-truth exhaustion is
-clean, module source-vetting is clean, and focused first-principles tests pass.
-Remaining Sprint 0 work is CI/RTM closure, linter test coverage, archive policy,
-and complete manifest source-index/source-packet provenance.
+Status: **closed-with-debt** as of 2026-05-18 Sprint 1 control-gate submission.
+`results/*.json` passes the artifact linter, source-truth exhaustion is clean,
+module source-vetting is clean, and focused first-principles tests pass. The
+control-plane items (CI/RTM closure, linter test coverage, archive policy, and
+manifest source-packet provenance) are addressed by the 2026-05-18 Sprint 1
+control-gate submission at
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/`.
+Remaining debt is physics blockers: WP-N1B power-port acceptance (non-independent
+electrode/interface work, no accepted Auluck eq. 5/6 moving-boundary
+implementation, no source-backed residual tolerance), WP-N4B 12 us orchestration
+(compute-wall blocker, cross-restart ledger-merge, artifact-combiner not built),
+and WP-N2/N3/N5/N6/N7 (startup BVP, PF-1000 geometry, closures, neutron
+mechanism, comparator/UQ/certificate). Physics is not done.
 
 Goal: make the project audit-clean enough that engineers can trust the evidence
 package before reviewing physics.

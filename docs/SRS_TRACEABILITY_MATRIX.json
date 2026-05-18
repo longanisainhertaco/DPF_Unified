@@ -1921,18 +1921,21 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 1 / audit finding A-5; blocker IDs `DPF-PHYS-016` (power port) and `DPF-PHYS-008` (resolved-field circuit feedback). An implicit-midpoint power port exists, but the named Auluck integration domain, electrode-work term, declared-port Poynting partition, and source-backed residual policy remain blocked. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 1 / audit finding A-7 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md`). A candidate Auluck-style five-term power-port ledger now exists in `src/dpf/first_principles/power_port.py` (terminal port work, Omega-volume J.E work, wall Poynting excluding the declared port, stored EM-energy delta, electrode/interface work); term 4 is explicitly labeled `electrode_interface_work_J__closure_estimate_not_independent` and `can_support_first_principles_acceptance` remains `False`. Remaining acceptance blockers (audit P-1): non-independent electrode/interface work; no accepted Auluck eq. 5/6 moving-boundary electrode-work implementation; no source-backed residual tolerance; only step-consistent (not accepted high-order) time-centering; candidate-only geometry masks; no same-scope power-port review packet. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
       "doorstop_import": {
         "evidence_refs": [
-          "DPF-PHYS-016",
-          "DPF-PHYS-008",
+          "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
+          "src/dpf/first_principles/power_port.py",
+          "electrode_interface_work_J__closure_estimate_not_independent",
+          "can_support_first_principles_acceptance",
+          "False",
           "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
         ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/Engine",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-020",
         "verification": [
           "test",
@@ -1940,8 +1943,11 @@
         ]
       },
       "evidence_refs": [
-        "DPF-PHYS-016",
-        "DPF-PHYS-008",
+        "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
+        "src/dpf/first_principles/power_port.py",
+        "electrode_interface_work_J__closure_estimate_not_independent",
+        "can_support_first_principles_acceptance",
+        "False",
         "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
       ],
       "id": "DPF-PHYS-020",
@@ -1950,7 +1956,7 @@
       "priority": "P0",
       "requirement": "WP-N1 power-port closure shall deliver a named Auluck integration domain with source-interface exclusion and a five-term ledger (terminal work, volume J.E, wall Poynting excluding the declared port, electrode/interface work, stored-field delta) emitting units, signs, and time-centering.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "test",
         "analysis"
@@ -2031,9 +2037,10 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 4 / audit finding A-4; blocker IDs `DPF-PHYS-015` (numerical-fidelity packets) and `DPF-DATA-007` (deterministic restart). The 12 us source-sign path is step-budget blocked (a timestep of 1e-13 s implies 120,000,000 steps); existing segmentation tests cover tiny step counts only, and staged restart-equivalence evidence is incomplete. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 4 / audit finding A-7 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md`). A candidate WP-N4 segmented whole-shot runner now exists (static segment planner, segmented execution, checkpoint roundtrip through the fail-closed loader, per-segment manifests, cumulative ledgers, small-horizon restart-equivalence evidence, explicit 12 us compute-wall blocker reporting). Remaining acceptance blockers: the 12 us source-sign compute-wall (a ~1e-13 s timestep implies ~1.2e8 steps); production orchestration / cross-restart ledger-merge / artifact-combiner not yet built (WP-N4B); restart-equivalence evidence only at small horizon. Blocker IDs `DPF-PHYS-015` (numerical-fidelity packets) and `DPF-DATA-007` (deterministic restart). See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
       "doorstop_import": {
         "evidence_refs": [
+          "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
           "DPF-PHYS-015",
           "DPF-DATA-007",
           "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
@@ -2042,7 +2049,7 @@
         "normative": true,
         "owner": "Numerics/Engine",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-023",
         "verification": [
           "test",
@@ -2050,6 +2057,7 @@
         ]
       },
       "evidence_refs": [
+        "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
         "DPF-PHYS-015",
         "DPF-DATA-007",
         "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
@@ -2060,7 +2068,7 @@
       "priority": "P0",
       "requirement": "WP-N4 segmented whole-shot runtime shall make a 12 us source-sign run reproducible and restartable, carrying cumulative circuit/field/particle/energy/ionization/kinetic-yield/limiter/power-port ledgers across segments with restart-equivalence gates and a PML removed-energy ledger.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "test",
         "analysis"
@@ -2220,10 +2228,10 @@
     },
     "requirement_count": 69,
     "status_counts": {
-      "blocked": 17,
+      "blocked": 15,
       "deferred": 0,
       "implemented": 28,
-      "partial": 18,
+      "partial": 20,
       "planned": 6,
       "rejected": 0
     }
