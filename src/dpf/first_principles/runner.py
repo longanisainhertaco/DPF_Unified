@@ -70,7 +70,9 @@ from dpf.first_principles.manifest import (
     ARTIFACT_SCHEMA_VERSION,
     build_first_principles_manifest_from_hybrid_result,
     git_provenance,
+    sha256_of_file_soft,
     sha256_of_text,
+    source_packet_hashes_from_references,
 )
 from dpf.first_principles.neutron_authority import (
     build_mechanism_separated_neutron_packet,
@@ -2873,16 +2875,21 @@ def _build_manifest(
     _deck_sha = sha256_of_text(
         json.dumps(deck.manifest_config(), sort_keys=True, default=str)
     )
+    _source_refs = [{
+        "source_id": "hybrid_pic_3d_architecture_source",
+        "path": HYBRID_PIC_3D_SOURCE,
+        "scope": RUN_MODE,
+        "status": "source_reference_not_validation",
+    }]
+    _source_truth_index_sha = sha256_of_file_soft(
+        "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
+    )
+    _source_packet_hashes = source_packet_hashes_from_references(_source_refs)
     package_manifest = build_first_principles_manifest_from_hybrid_result(
         simulation,
         backend="package_native",
         grid=grid,
-        source_index_references=[{
-            "source_id": "hybrid_pic_3d_architecture_source",
-            "path": HYBRID_PIC_3D_SOURCE,
-            "scope": RUN_MODE,
-            "status": "source_reference_not_validation",
-        }],
+        source_index_references=_source_refs,
         metadata={
             "status": ENGINEERING_CANDIDATE_STATUS,
             "run_mode": RUN_MODE,
@@ -2893,6 +2900,8 @@ def _build_manifest(
         command_argv=tuple(sys.argv),
         git_commit=_commit,
         dirty_worktree=_dirty,
+        source_truth_index_sha256=_source_truth_index_sha,
+        source_packet_hashes=_source_packet_hashes,
         input_deck_sha256=_deck_sha,
         artifact_schema_version=ARTIFACT_SCHEMA_VERSION,
         artifact_generation_commit=_commit,

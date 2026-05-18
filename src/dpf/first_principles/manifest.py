@@ -7,7 +7,7 @@ import json
 import platform
 import sys
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -355,6 +355,59 @@ def sha256_of_file(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 16), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_of_file_soft(path: str | Path) -> str | None:
+    """Return the SHA-256 hex digest of a file, or ``None`` if unreadable.
+
+    Fail-soft companion to :func:`sha256_of_file` for provenance collection
+    inside a live run: a missing or unreadable cited source must never crash
+    the run, but it must also never be silently fabricated. ``None`` is the
+    honest result -- it propagates into ``source_packet_hashes`` as an absent
+    hash, which keeps the manifest's provenance state truthful.
+    """
+
+    try:
+        return sha256_of_file(path)
+    except (OSError, ValueError):
+        return None
+
+
+def source_packet_hashes_from_references(
+    references: Iterable[SourceIndexReference | Mapping[str, Any]],
+    *,
+    repo_root: str | Path | None = None,
+) -> dict[str, str]:
+    """Hash every cited source packet, keyed by its ``source_id``.
+
+    For each reference this resolves ``path`` (relative paths are joined to
+    ``repo_root`` when given) and records its SHA-256 under the reference's
+    ``source_id``. Hashing is fail-soft: a cited source whose file cannot be
+    read is omitted from the result rather than crashing the run -- an absent
+    key is honest about a missing hash. A reference without a usable
+    ``source_id`` or ``path`` is skipped.
+    """
+
+    root = None if repo_root is None else Path(repo_root)
+    hashes: dict[str, str] = {}
+    for reference in references:
+        if isinstance(reference, SourceIndexReference):
+            source_id = reference.source_id
+            path = reference.path
+        elif isinstance(reference, Mapping):
+            source_id = reference.get("source_id") or reference.get("id")
+            path = reference.get("path")
+        else:  # pragma: no cover - defensive; refs are normalized upstream
+            continue
+        if not source_id or not path:
+            continue
+        candidate = Path(path)
+        if root is not None and not candidate.is_absolute():
+            candidate = root / candidate
+        digest = sha256_of_file_soft(candidate)
+        if digest is not None:
+            hashes[str(source_id)] = digest
+    return hashes
 
 
 def sha256_of_text(text: str) -> str:

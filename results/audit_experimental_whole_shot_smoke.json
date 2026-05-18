@@ -1,5 +1,5 @@
 {
-  "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+  "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
   "artifact_schema_version": "first_principles_artifact_v1",
   "boundary_policy": {
     "acceptance_gate": "pml_conductor_boundary_runtime_is_candidate_only_until_same_scope_geometry_masks_boundary_validation_and_particle_boundary_order_are_accepted",
@@ -802,17 +802,17 @@
       "pml_conductor_particle_boundary_policy",
       "source_geometry_pic_particle_loading",
       "volume_j_dot_e_power_accounting",
-      "kinetic_yield_history",
       "hybrid_pic_fluid_solver_family",
-      "true_3d_grid",
       "separate_electron_energy_source_terms",
-      "ionization_charge_state_transport",
-      "source_backed_partial_ionized_conductivity",
+      "kinetic_yield_history",
+      "true_3d_grid",
+      "electron_energy_source_terms",
       "braginskii_electron_heat_flux",
       "plasmapy_community_formula_audit",
-      "electron_ion_equilibration_audit",
-      "electron_energy_source_terms",
       "electrical_transport_source_terms",
+      "ionization_charge_state_transport",
+      "source_backed_partial_ionized_conductivity",
+      "electron_ion_equilibration_audit",
       "kinetic_neutron_yield_history"
     ],
     "candidate_modules_executed": [
@@ -860,21 +860,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
-        "packet": "dimensionality_handoff",
-        "role": "dimensionality_or_handoff_candidate_runtime",
-        "status": "candidate_engineering_dimensionality_handoff_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
         "name": "hybrid_pic_fluid_solver_family",
-        "packet": "dimensionality_handoff",
-        "role": "dimensionality_or_handoff_candidate_runtime",
-        "status": "candidate_engineering_dimensionality_handoff_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "true_3d_grid",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -888,21 +874,21 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "ionization_charge_state_transport",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "source_backed_partial_ionized_conductivity",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
         "name": "kinetic_yield_history",
+        "packet": "dimensionality_handoff",
+        "role": "dimensionality_or_handoff_candidate_runtime",
+        "status": "candidate_engineering_dimensionality_handoff_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "true_3d_grid",
+        "packet": "dimensionality_handoff",
+        "role": "dimensionality_or_handoff_candidate_runtime",
+        "status": "candidate_engineering_dimensionality_handoff_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "electron_energy_source_terms",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -923,14 +909,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "electron_ion_equilibration_audit",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "electron_energy_source_terms",
+        "name": "kinetic_yield_history",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -938,6 +917,27 @@
       {
         "can_support_first_principles_acceptance": false,
         "name": "electrical_transport_source_terms",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "ionization_charge_state_transport",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "source_backed_partial_ionized_conductivity",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "electron_ion_equilibration_audit",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -1086,7 +1086,7 @@
   },
   "final_field_energy_J": 7.474149229707433e-12,
   "final_particle_count": 108,
-  "generated_at_utc": "2026-05-18T20:06:51+00:00",
+  "generated_at_utc": "2026-05-18T21:01:24+00:00",
   "grid_shape": [
     5,
     5,
@@ -1094,7 +1094,7 @@
   ],
   "history_stride": 5,
   "manifest": {
-    "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "artifact_schema_version": "first_principles_artifact_v1",
     "artifact_status": "engineering_candidate_not_validation",
     "backend": "package_native",
@@ -2738,17 +2738,17 @@
           "pml_conductor_particle_boundary_policy",
           "source_geometry_pic_particle_loading",
           "volume_j_dot_e_power_accounting",
-          "kinetic_yield_history",
           "hybrid_pic_fluid_solver_family",
-          "true_3d_grid",
           "separate_electron_energy_source_terms",
-          "ionization_charge_state_transport",
-          "source_backed_partial_ionized_conductivity",
+          "kinetic_yield_history",
+          "true_3d_grid",
+          "electron_energy_source_terms",
           "braginskii_electron_heat_flux",
           "plasmapy_community_formula_audit",
-          "electron_ion_equilibration_audit",
-          "electron_energy_source_terms",
           "electrical_transport_source_terms",
+          "ionization_charge_state_transport",
+          "source_backed_partial_ionized_conductivity",
+          "electron_ion_equilibration_audit",
           "kinetic_neutron_yield_history"
         ],
         "candidate_modules_executed": [
@@ -2796,21 +2796,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
-            "packet": "dimensionality_handoff",
-            "role": "dimensionality_or_handoff_candidate_runtime",
-            "status": "candidate_engineering_dimensionality_handoff_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
             "name": "hybrid_pic_fluid_solver_family",
-            "packet": "dimensionality_handoff",
-            "role": "dimensionality_or_handoff_candidate_runtime",
-            "status": "candidate_engineering_dimensionality_handoff_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "true_3d_grid",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -2824,21 +2810,21 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "ionization_charge_state_transport",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "source_backed_partial_ionized_conductivity",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
             "name": "kinetic_yield_history",
+            "packet": "dimensionality_handoff",
+            "role": "dimensionality_or_handoff_candidate_runtime",
+            "status": "candidate_engineering_dimensionality_handoff_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "true_3d_grid",
+            "packet": "dimensionality_handoff",
+            "role": "dimensionality_or_handoff_candidate_runtime",
+            "status": "candidate_engineering_dimensionality_handoff_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "electron_energy_source_terms",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -2859,14 +2845,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "electron_ion_equilibration_audit",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "electron_energy_source_terms",
+            "name": "kinetic_yield_history",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -2874,6 +2853,27 @@
           {
             "can_support_first_principles_acceptance": false,
             "name": "electrical_transport_source_terms",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "ionization_charge_state_transport",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "source_backed_partial_ionized_conductivity",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "electron_ion_equilibration_audit",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -7332,7 +7332,205 @@
         "status": "candidate_engineering_power_port_not_validation",
         "terminal_current_A": 0.02005092996489906,
         "terminal_voltage_V": 0.0,
-        "time_centering": "candidate_runner_step_metadata_only"
+        "time_centering": "candidate_runner_step_metadata_only",
+        "wp_n1_auluck_power_port_ledger": {
+          "accepted_residual_tolerance": "not_attached",
+          "auluck_omega_domain": {
+            "can_support_power_port_acceptance": false,
+            "geometry_review_status": "geometry_candidate_not_reviewed",
+            "labels": {
+              "omega_volume_cells": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 3,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 48,
+                "mask_sha256": "d7fee7a5032fa9633cf294b6622c1f6b09e81acaf8eef98ba124415c293af4f8",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "open_pml_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 4,
+                  "k_min": 4,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "terminal_source_interface_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 0,
+                  "k_min": 0,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "wall_material_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 3,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 27,
+                "mask_sha256": "ca71c9ba5680d498fc3d274a5d21739426449cbba1dfa458187cb83a3d37acd3",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              }
+            },
+            "partition_exhaustive": true,
+            "partition_mutually_disjoint": true,
+            "partition_valid": true,
+            "source_interface_z_index": 0,
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+            ],
+            "status": "candidate_auluck_omega_domain_not_validation",
+            "terminal_source_interface_disjoint_from_omega": true,
+            "terminal_source_interface_non_empty": true
+          },
+          "can_support_first_principles_acceptance": false,
+          "can_support_power_port_acceptance": false,
+          "closure_estimate_terms": [
+            "electrode_interface_work_J"
+          ],
+          "electrode_interface_work_J__closure_estimate_not_independent": 5.4615264512865765e-12,
+          "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+          "electrode_interface_work_independence": "not_independent_closure_estimate",
+          "energy_ledger_term_status": {
+            "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+            "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+            "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+            "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+            "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+          },
+          "energy_ledger_terms_J": {
+            "electrode_interface_work_J": 5.4615264512865765e-12,
+            "stored_em_energy_delta_J": 1.8893071867794806e-12,
+            "terminal_port_work_J": 0.0,
+            "volume_j_dot_e_work_J": -7.350833638066046e-12,
+            "wall_poynting_flux_excluding_declared_port_J": -1.1090047648636128e-26
+          },
+          "first_step_fallback": true,
+          "first_step_udpf_source": "input_sequence_fallback_first_step",
+          "fully_implemented_terms": [
+            "terminal_port_work_J",
+            "volume_j_dot_e_work_J",
+            "wall_poynting_flux_excluding_declared_port_J",
+            "stored_em_energy_delta_J"
+          ],
+          "residual_J": 0.0,
+          "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+          "residual_fraction": 0.0,
+          "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+          "scientific_status": "engineering_candidate_not_validation",
+          "sign_convention": {
+            "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+            "can_support_power_port_acceptance": false,
+            "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+            "negative_local_j_dot_e_clipped": false,
+            "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+            "status": "candidate_wp_n1_sign_convention_not_accepted",
+            "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+            "surface_flux_terms": "outflow_positive_dS_outward",
+            "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+            "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+            "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+          },
+          "source_basis": [
+            "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+            "NRL Plasma Formulary 2019 Poynting theorem"
+          ],
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+          ],
+          "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+          "steps_accumulated": 20,
+          "time_centering": {
+            "accuracy_order_claim": "none_no_source_in_scope_g3",
+            "all_terms_share_centering": true,
+            "can_support_power_port_acceptance": false,
+            "declared_centering": "step_consistent_trapezoidal",
+            "snapshot_provenance": {
+              "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+              "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+              "time_centering": "candidate_step_consistent_not_accepted",
+              "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+              "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+            },
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+              "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+            ],
+            "status": "candidate_step_consistent_not_accepted"
+          },
+          "tracked_energy_delta_is_residual": false
+        },
+        "wp_n1_negative_test_policy": {
+          "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+          "all_six_required": true,
+          "can_support_power_port_acceptance": false,
+          "required_negative_tests": {
+            "N1_sign_reversal": {
+              "asserts_on": "residual_J and residual_fraction",
+              "corruption": "flip sign of terminal_port_work_J",
+              "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+            },
+            "N2_wrong_domain": {
+              "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+              "corruption": "include source interface in Omega or shift Omega into current-free cells",
+              "expected": "partition_valid becomes False"
+            },
+            "N3_omitted_electrode_work": {
+              "asserts_on": "residual_J with electrode_interface_work_J omitted",
+              "corruption": "drop term 4 from the residual sum (set to 0)",
+              "expected": "residual no longer closes when dL/dt-type work is nonzero"
+            },
+            "N4_low_current_p_over_i": {
+              "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+              "corruption": "drive I -> 0 while volume J.E stays finite",
+              "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+            },
+            "N5_first_step_fallback": {
+              "asserts_on": "first_step_fallback and first_step_udpf_source",
+              "corruption": "run step 0 with no lagged field work",
+              "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+            },
+            "N6_default_mode_leakage": {
+              "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+              "corruption": "run default input_sequence mode and read port as accepted",
+              "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+            }
+          },
+          "status": "candidate_wp_n1_negative_test_policy_not_validation"
+        }
       },
       "same_scope_source_packet": {
         "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",
@@ -8341,11 +8539,11 @@
       ],
       "validation_status": "not_validation"
     },
-    "created_utc": "2026-05-18T20:06:51+00:00",
+    "created_utc": "2026-05-18T21:01:24+00:00",
     "dirty_worktree": true,
     "final_time_s": 3.2978503351158346e-14,
     "first_principles_manifest": {
-      "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "artifact_schema_version": "first_principles_artifact_v1",
       "artifact_status": "engineering_candidate_not_validation",
       "backend": "package_native",
@@ -8457,11 +8655,11 @@
         ],
         "validation_status": "not_validation"
       },
-      "created_utc": "2026-05-18T20:06:51+00:00",
+      "created_utc": "2026-05-18T21:01:24+00:00",
       "dirty_worktree": true,
       "final_time_s": 3.2978503351158346e-14,
       "geometry_dimensionality": "3d",
-      "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "grid_shape": [
         5,
         5,
@@ -8474,7 +8672,7 @@
       ],
       "input_deck_sha256": "dc00159c47e18ef7262b0c29c35e16949893a8f81480ed97733d6124a9facb5a",
       "inputs": [],
-      "manifest_sha256": "27d6f03b0dc1de67af1842dce6514a3a482ddfa4181bb998bce524133b76b920",
+      "manifest_sha256": "6cdd3f03bf69a1e556e1f9cc883a0af5531325499ef7429145e5a04d75699ad6",
       "manifest_version": "1.0",
       "metadata": {
         "deck": {
@@ -8999,15 +9197,13 @@
         "status": "engineering_candidate_not_validation",
         "validation_packet_status": "not_validation"
       },
-      "missing_provenance_fields": [
-        "source_truth_index_sha256"
-      ],
+      "missing_provenance_fields": [],
       "n_steps_completed": 20,
       "n_steps_requested": 20,
       "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
       "outputs": [],
-      "provenance_complete": false,
-      "run_id": "fp-run-b0b56eb75d014b1bb0433237c81e7945",
+      "provenance_complete": true,
+      "run_id": "fp-run-85b660278f414f7f90fb513297e9b0c1",
       "run_status": "engineering_candidate",
       "runtime": {
         "machine": "arm64",
@@ -9026,12 +9222,14 @@
           "status": "source_reference_not_validation"
         }
       ],
-      "source_packet_hashes": {},
-      "source_truth_index_sha256": null,
+      "source_packet_hashes": {
+        "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+      },
+      "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
       "validation_status": "not_validation"
     },
     "geometry_dimensionality": "3d",
-    "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "grid_shape": [
       5,
       5,
@@ -9044,7 +9242,7 @@
     ],
     "input_deck_sha256": "dc00159c47e18ef7262b0c29c35e16949893a8f81480ed97733d6124a9facb5a",
     "inputs": [],
-    "manifest_sha256": "27d6f03b0dc1de67af1842dce6514a3a482ddfa4181bb998bce524133b76b920",
+    "manifest_sha256": "6cdd3f03bf69a1e556e1f9cc883a0af5531325499ef7429145e5a04d75699ad6",
     "manifest_version": "1.0",
     "metadata": {
       "deck": {
@@ -9569,16 +9767,14 @@
       "status": "engineering_candidate_not_validation",
       "validation_packet_status": "not_validation"
     },
-    "missing_provenance_fields": [
-      "source_truth_index_sha256"
-    ],
+    "missing_provenance_fields": [],
     "n_steps_completed": 20,
     "n_steps_requested": 20,
     "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
     "outputs": [],
-    "provenance_complete": false,
+    "provenance_complete": true,
     "reduced_models_used": false,
-    "run_id": "fp-run-b0b56eb75d014b1bb0433237c81e7945",
+    "run_id": "fp-run-85b660278f414f7f90fb513297e9b0c1",
     "run_mode": "first_principles_3d_hybrid_em_pic_fluid",
     "run_status": "engineering_candidate",
     "runtime": {
@@ -9599,8 +9795,10 @@
         "status": "source_reference_not_validation"
       }
     ],
-    "source_packet_hashes": {},
-    "source_truth_index_sha256": null,
+    "source_packet_hashes": {
+      "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+    },
+    "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
     "status": "engineering_candidate_not_validation",
     "validation_status": "not_validation"
   },
@@ -10837,6 +11035,335 @@
     "n_particles_initial": 24,
     "n_steps_completed": 20,
     "n_steps_requested": 20,
+    "power_port_ledger": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_power_port_acceptance": false,
+      "cumulative_omega_volume_j_dot_e_work_J": -7.350833638066046e-12,
+      "cumulative_terminal_port_work_J": 0.0,
+      "cumulative_wall_poynting_flux_excluding_declared_port_J": -1.1090047648636128e-26,
+      "domain_partition": {
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "electron_density_floor_m3": 1.0,
+        "geometry_review_status": "geometry_candidate_not_reviewed",
+        "grid_shape": [
+          5,
+          5,
+          5
+        ],
+        "labels": [
+          "omega_volume_cells",
+          "terminal_source_interface_faces",
+          "wall_material_faces",
+          "open_pml_faces"
+        ],
+        "omega_current_floor_A_m2": 1e-06,
+        "omega_volume_cells": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 3,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 48,
+          "label": "omega_volume_cells",
+          "mask_sha256": "d7fee7a5032fa9633cf294b6622c1f6b09e81acaf8eef98ba124415c293af4f8",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "open_pml_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 4,
+            "k_min": 4,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "open_pml_faces",
+          "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "partition_constraints": {
+          "exhaustive": true,
+          "max_labels_per_cell": 1,
+          "min_labels_per_cell": 1,
+          "mutually_disjoint": true,
+          "omega_contains_only_current_carrying_cells": true,
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "partition_kind": "per_cell_exhaustive_disjoint_label",
+        "pml_layers": 1,
+        "source_interface_z_index": 0,
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+        ],
+        "status": "candidate_auluck_omega_domain_partition_not_validation",
+        "terminal_source_interface_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 0,
+            "k_min": 0,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "terminal_source_interface_faces",
+          "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "wall_material_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 3,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 27,
+          "label": "wall_material_faces",
+          "mask_sha256": "ca71c9ba5680d498fc3d274a5d21739426449cbba1dfa458187cb83a3d37acd3",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        }
+      },
+      "domain_partition_constraints_ok": true,
+      "first_step_fallback": true,
+      "first_step_udpf_source": "input_sequence_fallback_first_step",
+      "n_steps_completed": 20,
+      "sign_convention": "wp_n1_packet_section_3_1_into_omega_positive",
+      "snapshot_provenance": {
+        "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+        "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+        "time_centering": "candidate_step_consistent_not_accepted",
+        "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+        "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+      },
+      "status": "candidate_auluck_power_port_five_term_ledger_not_validation",
+      "step_records": [
+        {
+          "omega_cell_count": 16,
+          "step_index": 0,
+          "stored_em_energy_begin_J": 0.0,
+          "stored_em_energy_end_J": 7.929943878097065e-15,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_first_step",
+          "volume_j_dot_e_power_W": 0.0,
+          "wall_poynting_flux_W": -6.7256228304865805e-12
+        },
+        {
+          "omega_cell_count": 32,
+          "step_index": 1,
+          "stored_em_energy_begin_J": 1.0601082030750154e-14,
+          "stored_em_energy_end_J": 4.0477769210833716e-14,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -49.09450931322206,
+          "wall_poynting_flux_W": 1.4014336973302458e-19
+        },
+        {
+          "omega_cell_count": 44,
+          "step_index": 2,
+          "stored_em_energy_begin_J": 4.0477769221642474e-14,
+          "stored_em_energy_end_J": 8.69800461036662e-14,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -91.86971952011451,
+          "wall_poynting_flux_W": 2.619890656816454e-25
+        },
+        {
+          "omega_cell_count": 44,
+          "step_index": 3,
+          "stored_em_energy_begin_J": 8.69800461036662e-14,
+          "stored_em_energy_end_J": 1.477495451922285e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -128.95892944466502,
+          "wall_poynting_flux_W": 4.48321123962494e-24
+        },
+        {
+          "omega_cell_count": 44,
+          "step_index": 4,
+          "stored_em_energy_begin_J": 1.477495451922285e-13,
+          "stored_em_energy_end_J": 2.2068792623050392e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -160.9370419125344,
+          "wall_poynting_flux_W": 2.9799320530289376e-23
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 5,
+          "stored_em_energy_begin_J": 2.2068792623050394e-13,
+          "stored_em_energy_end_J": 3.0392897624174927e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -188.3257846566305,
+          "wall_poynting_flux_W": 1.2820091795977776e-22
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 6,
+          "stored_em_energy_begin_J": 3.0392897624174927e-13,
+          "stored_em_energy_end_J": 3.9581392370897473e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -211.59846635851244,
+          "wall_poynting_flux_W": 3.905665302551504e-22
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 7,
+          "stored_em_energy_begin_J": 3.9581392370897473e-13,
+          "stored_em_energy_end_J": 4.948695418548695e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -231.18431007486788,
+          "wall_poynting_flux_W": 9.69100119459717e-22
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 8,
+          "stored_em_energy_begin_J": 4.948695418548695e-13,
+          "stored_em_energy_end_J": 5.997886824223209e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -247.47240222904503,
+          "wall_poynting_flux_W": 2.0717794367502988e-21
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 9,
+          "stored_em_energy_begin_J": 5.997886824223209e-13,
+          "stored_em_energy_end_J": 7.094129357104639e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -260.8152917202556,
+          "wall_poynting_flux_W": 3.956563914087667e-21
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 10,
+          "stored_em_energy_begin_J": 7.094129357104639e-13,
+          "stored_em_energy_end_J": 8.227171573554422e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -271.5322704593117,
+          "wall_poynting_flux_W": 6.917902738910861e-21
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 11,
+          "stored_em_energy_begin_J": 8.227171573554422e-13,
+          "stored_em_energy_end_J": 9.387956393741387e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -279.91236373101856,
+          "wall_poynting_flux_W": 1.1269494124017693e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 12,
+          "stored_em_energy_begin_J": 9.387956393741387e-13,
+          "stored_em_energy_end_J": 1.0568497338150127e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -286.2170561686648,
+          "wall_poynting_flux_W": 1.7325815340011e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 13,
+          "stored_em_energy_begin_J": 1.0568497338150127e-12,
+          "stored_em_energy_end_J": 1.1761767631659732e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -290.6827767707848,
+          "wall_poynting_flux_W": 2.538449984095643e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 14,
+          "stored_em_energy_begin_J": 1.1761767631659732e-12,
+          "stored_em_energy_end_J": 1.2961600733908858e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -293.5231642648634,
+          "wall_poynting_flux_W": 3.571104483894057e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 15,
+          "stored_em_energy_begin_J": 1.2961600733908858e-12,
+          "stored_em_energy_end_J": 1.4162601038476697e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -294.93113220145415,
+          "wall_poynting_flux_W": 4.852673977929042e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 16,
+          "stored_em_energy_begin_J": 1.4162601038476697e-12,
+          "stored_em_energy_end_J": 1.5360063639757328e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -295.0807514232573,
+          "wall_poynting_flux_W": 6.400019484394295e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 17,
+          "stored_em_energy_begin_J": 1.5360063639757328e-12,
+          "stored_em_energy_end_J": 1.6549902200048543e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -294.12896597784993,
+          "wall_poynting_flux_W": 8.224245251216381e-20
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 18,
+          "stored_em_energy_begin_J": 1.6549902200048543e-12,
+          "stored_em_energy_end_J": 1.7728584064151965e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -292.21715711323424,
+          "wall_poynting_flux_W": 1.033053881209337e-19
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 19,
+          "stored_em_energy_begin_J": 1.7728584064151965e-12,
+          "stored_em_energy_end_J": 1.8893071867794806e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -289.472568697373,
+          "wall_poynting_flux_W": 1.2718293472133475e-19
+        }
+      ],
+      "steps_accumulated": 20,
+      "stored_em_energy_delta_J": 1.8893071867794806e-12,
+      "stored_em_energy_final_J": 1.8893071867794806e-12,
+      "stored_em_energy_initial_J": 0.0,
+      "time_centering": "candidate_step_consistent_not_accepted"
+    },
     "retained_step_result_count": 4,
     "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
     "state_fingerprint": {
@@ -12356,17 +12883,17 @@
         "pml_conductor_particle_boundary_policy",
         "source_geometry_pic_particle_loading",
         "volume_j_dot_e_power_accounting",
-        "kinetic_yield_history",
         "hybrid_pic_fluid_solver_family",
-        "true_3d_grid",
         "separate_electron_energy_source_terms",
-        "ionization_charge_state_transport",
-        "source_backed_partial_ionized_conductivity",
+        "kinetic_yield_history",
+        "true_3d_grid",
+        "electron_energy_source_terms",
         "braginskii_electron_heat_flux",
         "plasmapy_community_formula_audit",
-        "electron_ion_equilibration_audit",
-        "electron_energy_source_terms",
         "electrical_transport_source_terms",
+        "ionization_charge_state_transport",
+        "source_backed_partial_ionized_conductivity",
+        "electron_ion_equilibration_audit",
         "kinetic_neutron_yield_history"
       ],
       "candidate_modules_executed": [
@@ -12414,21 +12941,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
-          "packet": "dimensionality_handoff",
-          "role": "dimensionality_or_handoff_candidate_runtime",
-          "status": "candidate_engineering_dimensionality_handoff_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
           "name": "hybrid_pic_fluid_solver_family",
-          "packet": "dimensionality_handoff",
-          "role": "dimensionality_or_handoff_candidate_runtime",
-          "status": "candidate_engineering_dimensionality_handoff_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "true_3d_grid",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -12442,21 +12955,21 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "ionization_charge_state_transport",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "source_backed_partial_ionized_conductivity",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
           "name": "kinetic_yield_history",
+          "packet": "dimensionality_handoff",
+          "role": "dimensionality_or_handoff_candidate_runtime",
+          "status": "candidate_engineering_dimensionality_handoff_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "true_3d_grid",
+          "packet": "dimensionality_handoff",
+          "role": "dimensionality_or_handoff_candidate_runtime",
+          "status": "candidate_engineering_dimensionality_handoff_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "electron_energy_source_terms",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -12477,14 +12990,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "electron_ion_equilibration_audit",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "electron_energy_source_terms",
+          "name": "kinetic_yield_history",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -12492,6 +12998,27 @@
         {
           "can_support_first_principles_acceptance": false,
           "name": "electrical_transport_source_terms",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "ionization_charge_state_transport",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "source_backed_partial_ionized_conductivity",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "electron_ion_equilibration_audit",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -15466,7 +15993,205 @@
       "status": "candidate_engineering_power_port_not_validation",
       "terminal_current_A": 0.02005092996489906,
       "terminal_voltage_V": 0.0,
-      "time_centering": "candidate_runner_step_metadata_only"
+      "time_centering": "candidate_runner_step_metadata_only",
+      "wp_n1_auluck_power_port_ledger": {
+        "accepted_residual_tolerance": "not_attached",
+        "auluck_omega_domain": {
+          "can_support_power_port_acceptance": false,
+          "geometry_review_status": "geometry_candidate_not_reviewed",
+          "labels": {
+            "omega_volume_cells": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 3,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 48,
+              "mask_sha256": "d7fee7a5032fa9633cf294b6622c1f6b09e81acaf8eef98ba124415c293af4f8",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "open_pml_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 4,
+                "k_min": 4,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "terminal_source_interface_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 0,
+                "k_min": 0,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "wall_material_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 3,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 27,
+              "mask_sha256": "ca71c9ba5680d498fc3d274a5d21739426449cbba1dfa458187cb83a3d37acd3",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            }
+          },
+          "partition_exhaustive": true,
+          "partition_mutually_disjoint": true,
+          "partition_valid": true,
+          "source_interface_z_index": 0,
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ],
+          "status": "candidate_auluck_omega_domain_not_validation",
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "closure_estimate_terms": [
+          "electrode_interface_work_J"
+        ],
+        "electrode_interface_work_J__closure_estimate_not_independent": 5.4615264512865765e-12,
+        "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+        "electrode_interface_work_independence": "not_independent_closure_estimate",
+        "energy_ledger_term_status": {
+          "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+          "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+          "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+          "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+          "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+        },
+        "energy_ledger_terms_J": {
+          "electrode_interface_work_J": 5.4615264512865765e-12,
+          "stored_em_energy_delta_J": 1.8893071867794806e-12,
+          "terminal_port_work_J": 0.0,
+          "volume_j_dot_e_work_J": -7.350833638066046e-12,
+          "wall_poynting_flux_excluding_declared_port_J": -1.1090047648636128e-26
+        },
+        "first_step_fallback": true,
+        "first_step_udpf_source": "input_sequence_fallback_first_step",
+        "fully_implemented_terms": [
+          "terminal_port_work_J",
+          "volume_j_dot_e_work_J",
+          "wall_poynting_flux_excluding_declared_port_J",
+          "stored_em_energy_delta_J"
+        ],
+        "residual_J": 0.0,
+        "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+        "residual_fraction": 0.0,
+        "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+        "scientific_status": "engineering_candidate_not_validation",
+        "sign_convention": {
+          "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+          "can_support_power_port_acceptance": false,
+          "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+          "negative_local_j_dot_e_clipped": false,
+          "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+          "status": "candidate_wp_n1_sign_convention_not_accepted",
+          "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+          "surface_flux_terms": "outflow_positive_dS_outward",
+          "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+          "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+          "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+        },
+        "source_basis": [
+          "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+          "NRL Plasma Formulary 2019 Poynting theorem"
+        ],
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+          "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+        ],
+        "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+        "steps_accumulated": 20,
+        "time_centering": {
+          "accuracy_order_claim": "none_no_source_in_scope_g3",
+          "all_terms_share_centering": true,
+          "can_support_power_port_acceptance": false,
+          "declared_centering": "step_consistent_trapezoidal",
+          "snapshot_provenance": {
+            "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+            "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+            "time_centering": "candidate_step_consistent_not_accepted",
+            "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+            "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+          },
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+          ],
+          "status": "candidate_step_consistent_not_accepted"
+        },
+        "tracked_energy_delta_is_residual": false
+      },
+      "wp_n1_negative_test_policy": {
+        "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+        "all_six_required": true,
+        "can_support_power_port_acceptance": false,
+        "required_negative_tests": {
+          "N1_sign_reversal": {
+            "asserts_on": "residual_J and residual_fraction",
+            "corruption": "flip sign of terminal_port_work_J",
+            "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+          },
+          "N2_wrong_domain": {
+            "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+            "corruption": "include source interface in Omega or shift Omega into current-free cells",
+            "expected": "partition_valid becomes False"
+          },
+          "N3_omitted_electrode_work": {
+            "asserts_on": "residual_J with electrode_interface_work_J omitted",
+            "corruption": "drop term 4 from the residual sum (set to 0)",
+            "expected": "residual no longer closes when dL/dt-type work is nonzero"
+          },
+          "N4_low_current_p_over_i": {
+            "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+            "corruption": "drive I -> 0 while volume J.E stays finite",
+            "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+          },
+          "N5_first_step_fallback": {
+            "asserts_on": "first_step_fallback and first_step_udpf_source",
+            "corruption": "run step 0 with no lagged field work",
+            "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+          },
+          "N6_default_mode_leakage": {
+            "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+            "corruption": "run default input_sequence mode and read port as accepted",
+            "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+          }
+        },
+        "status": "candidate_wp_n1_negative_test_policy_not_validation"
+      }
     },
     "same_scope_source": {
       "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",

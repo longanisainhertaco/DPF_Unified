@@ -1,5 +1,5 @@
 {
-  "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+  "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
   "artifact_schema_version": "first_principles_artifact_v1",
   "boundary_policy": {
     "acceptance_gate": "pml_conductor_boundary_runtime_is_candidate_only_until_same_scope_geometry_masks_boundary_validation_and_particle_boundary_order_are_accepted",
@@ -124,7 +124,7 @@
     "--steps",
     "2",
     "--output",
-    "/tmp/fp3d_provenance_check.json"
+    "results/audit_first_principles_3d_smoke.json"
   ],
   "command_status": "package_native_first_principles_3d_engineering_run",
   "conservation_telemetry": {
@@ -787,16 +787,16 @@
       "source_geometry_pic_particle_loading",
       "volume_j_dot_e_power_accounting",
       "hybrid_pic_fluid_solver_family",
-      "kinetic_yield_history",
-      "true_3d_grid",
       "separate_electron_energy_source_terms",
+      "true_3d_grid",
+      "kinetic_yield_history",
       "braginskii_electron_heat_flux",
-      "source_backed_partial_ionized_conductivity",
       "electrical_transport_source_terms",
-      "plasmapy_community_formula_audit",
       "electron_energy_source_terms",
-      "electron_ion_equilibration_audit",
+      "plasmapy_community_formula_audit",
+      "source_backed_partial_ionized_conductivity",
       "ionization_charge_state_transport",
+      "electron_ion_equilibration_audit",
       "kinetic_neutron_yield_history"
     ],
     "candidate_modules_executed": [
@@ -851,7 +851,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
+        "name": "separate_electron_energy_source_terms",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -865,7 +865,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "separate_electron_energy_source_terms",
+        "name": "kinetic_yield_history",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -879,21 +879,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "source_backed_partial_ionized_conductivity",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
         "name": "electrical_transport_source_terms",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "plasmapy_community_formula_audit",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -907,7 +893,21 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
+        "name": "plasmapy_community_formula_audit",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "source_backed_partial_ionized_conductivity",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "ionization_charge_state_transport",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -921,7 +921,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "ionization_charge_state_transport",
+        "name": "kinetic_yield_history",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -1070,7 +1070,7 @@
   },
   "final_field_energy_J": 5.777345083037369e-11,
   "final_particle_count": 36,
-  "generated_at_utc": "2026-05-18T20:05:40+00:00",
+  "generated_at_utc": "2026-05-18T21:01:22+00:00",
   "grid_shape": [
     5,
     5,
@@ -1078,7 +1078,7 @@
   ],
   "history_stride": 1,
   "manifest": {
-    "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "artifact_schema_version": "first_principles_artifact_v1",
     "artifact_status": "engineering_candidate_not_validation",
     "backend": "package_native",
@@ -2712,16 +2712,16 @@
           "source_geometry_pic_particle_loading",
           "volume_j_dot_e_power_accounting",
           "hybrid_pic_fluid_solver_family",
-          "kinetic_yield_history",
-          "true_3d_grid",
           "separate_electron_energy_source_terms",
+          "true_3d_grid",
+          "kinetic_yield_history",
           "braginskii_electron_heat_flux",
-          "source_backed_partial_ionized_conductivity",
           "electrical_transport_source_terms",
-          "plasmapy_community_formula_audit",
           "electron_energy_source_terms",
-          "electron_ion_equilibration_audit",
+          "plasmapy_community_formula_audit",
+          "source_backed_partial_ionized_conductivity",
           "ionization_charge_state_transport",
+          "electron_ion_equilibration_audit",
           "kinetic_neutron_yield_history"
         ],
         "candidate_modules_executed": [
@@ -2776,7 +2776,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
+            "name": "separate_electron_energy_source_terms",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -2790,7 +2790,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "separate_electron_energy_source_terms",
+            "name": "kinetic_yield_history",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -2804,21 +2804,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "source_backed_partial_ionized_conductivity",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
             "name": "electrical_transport_source_terms",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "plasmapy_community_formula_audit",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -2832,7 +2818,21 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
+            "name": "plasmapy_community_formula_audit",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "source_backed_partial_ionized_conductivity",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "ionization_charge_state_transport",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -2846,7 +2846,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "ionization_charge_state_transport",
+            "name": "kinetic_yield_history",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -7139,7 +7139,205 @@
         "status": "candidate_engineering_power_port_not_validation",
         "terminal_current_A": 0.064,
         "terminal_voltage_V": 0.0,
-        "time_centering": "candidate_runner_step_metadata_only"
+        "time_centering": "candidate_runner_step_metadata_only",
+        "wp_n1_auluck_power_port_ledger": {
+          "accepted_residual_tolerance": "not_attached",
+          "auluck_omega_domain": {
+            "can_support_power_port_acceptance": false,
+            "geometry_review_status": "geometry_candidate_not_reviewed",
+            "labels": {
+              "omega_volume_cells": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 2,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 32,
+                "mask_sha256": "1b58f1289abdc8312077826cb405b118f726c7e5ac668e4e323acd21e5cae1d7",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "open_pml_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 4,
+                  "k_min": 4,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "terminal_source_interface_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 0,
+                  "k_min": 0,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "wall_material_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 3,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 43,
+                "mask_sha256": "d8180969041897c0e990b904dadf18ce582ede66f08724e5111a6f3a0e794dc6",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              }
+            },
+            "partition_exhaustive": true,
+            "partition_mutually_disjoint": true,
+            "partition_valid": true,
+            "source_interface_z_index": 0,
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+            ],
+            "status": "candidate_auluck_omega_domain_not_validation",
+            "terminal_source_interface_disjoint_from_omega": true,
+            "terminal_source_interface_non_empty": true
+          },
+          "can_support_first_principles_acceptance": false,
+          "can_support_power_port_acceptance": false,
+          "closure_estimate_terms": [
+            "electrode_interface_work_J"
+          ],
+          "electrode_interface_work_J__closure_estimate_not_independent": 3.0428206287970455e-13,
+          "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+          "electrode_interface_work_independence": "not_independent_closure_estimate",
+          "energy_ledger_term_status": {
+            "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+            "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+            "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+            "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+            "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+          },
+          "energy_ledger_terms_J": {
+            "electrode_interface_work_J": 3.0428206287970455e-13,
+            "stored_em_energy_delta_J": 4.337572926668158e-13,
+            "terminal_port_work_J": 0.0,
+            "volume_j_dot_e_work_J": -7.380393548603391e-13,
+            "wall_poynting_flux_excluding_declared_port_J": -6.861812541146945e-22
+          },
+          "first_step_fallback": true,
+          "first_step_udpf_source": "input_sequence_fallback_first_step",
+          "fully_implemented_terms": [
+            "terminal_port_work_J",
+            "volume_j_dot_e_work_J",
+            "wall_poynting_flux_excluding_declared_port_J",
+            "stored_em_energy_delta_J"
+          ],
+          "residual_J": 0.0,
+          "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+          "residual_fraction": 0.0,
+          "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+          "scientific_status": "engineering_candidate_not_validation",
+          "sign_convention": {
+            "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+            "can_support_power_port_acceptance": false,
+            "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+            "negative_local_j_dot_e_clipped": false,
+            "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+            "status": "candidate_wp_n1_sign_convention_not_accepted",
+            "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+            "surface_flux_terms": "outflow_positive_dS_outward",
+            "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+            "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+            "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+          },
+          "source_basis": [
+            "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+            "NRL Plasma Formulary 2019 Poynting theorem"
+          ],
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+          ],
+          "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+          "steps_accumulated": 2,
+          "time_centering": {
+            "accuracy_order_claim": "none_no_source_in_scope_g3",
+            "all_terms_share_centering": true,
+            "can_support_power_port_acceptance": false,
+            "declared_centering": "step_consistent_trapezoidal",
+            "snapshot_provenance": {
+              "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+              "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+              "time_centering": "candidate_step_consistent_not_accepted",
+              "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+              "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+            },
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+              "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+            ],
+            "status": "candidate_step_consistent_not_accepted"
+          },
+          "tracked_energy_delta_is_residual": false
+        },
+        "wp_n1_negative_test_policy": {
+          "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+          "all_six_required": true,
+          "can_support_power_port_acceptance": false,
+          "required_negative_tests": {
+            "N1_sign_reversal": {
+              "asserts_on": "residual_J and residual_fraction",
+              "corruption": "flip sign of terminal_port_work_J",
+              "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+            },
+            "N2_wrong_domain": {
+              "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+              "corruption": "include source interface in Omega or shift Omega into current-free cells",
+              "expected": "partition_valid becomes False"
+            },
+            "N3_omitted_electrode_work": {
+              "asserts_on": "residual_J with electrode_interface_work_J omitted",
+              "corruption": "drop term 4 from the residual sum (set to 0)",
+              "expected": "residual no longer closes when dL/dt-type work is nonzero"
+            },
+            "N4_low_current_p_over_i": {
+              "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+              "corruption": "drive I -> 0 while volume J.E stays finite",
+              "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+            },
+            "N5_first_step_fallback": {
+              "asserts_on": "first_step_fallback and first_step_udpf_source",
+              "corruption": "run step 0 with no lagged field work",
+              "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+            },
+            "N6_default_mode_leakage": {
+              "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+              "corruption": "run default input_sequence mode and read port as accepted",
+              "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+            }
+          },
+          "status": "candidate_wp_n1_negative_test_policy_not_validation"
+        }
       },
       "same_scope_source_packet": {
         "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",
@@ -8049,7 +8247,7 @@
       "--steps",
       "2",
       "--output",
-      "/tmp/fp3d_provenance_check.json"
+      "results/audit_first_principles_3d_smoke.json"
     ],
     "conservation": {
       "artifact_status": "engineering_candidate_not_validation",
@@ -8144,11 +8342,11 @@
       ],
       "validation_status": "not_validation"
     },
-    "created_utc": "2026-05-18T20:05:39+00:00",
+    "created_utc": "2026-05-18T21:01:22+00:00",
     "dirty_worktree": true,
     "final_time_s": 2e-13,
     "first_principles_manifest": {
-      "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "artifact_schema_version": "first_principles_artifact_v1",
       "artifact_status": "engineering_candidate_not_validation",
       "backend": "package_native",
@@ -8161,7 +8359,7 @@
         "--steps",
         "2",
         "--output",
-        "/tmp/fp3d_provenance_check.json"
+        "results/audit_first_principles_3d_smoke.json"
       ],
       "conservation": {
         "artifact_status": "engineering_candidate_not_validation",
@@ -8256,11 +8454,11 @@
         ],
         "validation_status": "not_validation"
       },
-      "created_utc": "2026-05-18T20:05:39+00:00",
+      "created_utc": "2026-05-18T21:01:22+00:00",
       "dirty_worktree": true,
       "final_time_s": 2e-13,
       "geometry_dimensionality": "3d",
-      "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "grid_shape": [
         5,
         5,
@@ -8273,7 +8471,7 @@
       ],
       "input_deck_sha256": "4175d34c46ede785ca164cebf436a959f21af98e7f443487f37d188f75976384",
       "inputs": [],
-      "manifest_sha256": "d177c5d42b34bddea423e9609a38f09e2ac2935a5826d8fabbb17d47f0630ef1",
+      "manifest_sha256": "ebb7c5259aa36aa071c1dc166e449b41a354097d28c60e8ac89d475fe31f23c7",
       "manifest_version": "1.0",
       "metadata": {
         "deck": {
@@ -8798,15 +8996,13 @@
         "status": "engineering_candidate_not_validation",
         "validation_packet_status": "not_validation"
       },
-      "missing_provenance_fields": [
-        "source_truth_index_sha256"
-      ],
+      "missing_provenance_fields": [],
       "n_steps_completed": 2,
       "n_steps_requested": 2,
       "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
       "outputs": [],
-      "provenance_complete": false,
-      "run_id": "fp-run-dc2fd7a6a5234411b13bfe32fb825e72",
+      "provenance_complete": true,
+      "run_id": "fp-run-5045ce32462141e58eca20fdd9364bc4",
       "run_status": "engineering_candidate",
       "runtime": {
         "machine": "arm64",
@@ -8825,12 +9021,14 @@
           "status": "source_reference_not_validation"
         }
       ],
-      "source_packet_hashes": {},
-      "source_truth_index_sha256": null,
+      "source_packet_hashes": {
+        "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+      },
+      "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
       "validation_status": "not_validation"
     },
     "geometry_dimensionality": "3d",
-    "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "grid_shape": [
       5,
       5,
@@ -8843,7 +9041,7 @@
     ],
     "input_deck_sha256": "4175d34c46ede785ca164cebf436a959f21af98e7f443487f37d188f75976384",
     "inputs": [],
-    "manifest_sha256": "d177c5d42b34bddea423e9609a38f09e2ac2935a5826d8fabbb17d47f0630ef1",
+    "manifest_sha256": "ebb7c5259aa36aa071c1dc166e449b41a354097d28c60e8ac89d475fe31f23c7",
     "manifest_version": "1.0",
     "metadata": {
       "deck": {
@@ -9368,16 +9566,14 @@
       "status": "engineering_candidate_not_validation",
       "validation_packet_status": "not_validation"
     },
-    "missing_provenance_fields": [
-      "source_truth_index_sha256"
-    ],
+    "missing_provenance_fields": [],
     "n_steps_completed": 2,
     "n_steps_requested": 2,
     "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
     "outputs": [],
-    "provenance_complete": false,
+    "provenance_complete": true,
     "reduced_models_used": false,
-    "run_id": "fp-run-dc2fd7a6a5234411b13bfe32fb825e72",
+    "run_id": "fp-run-5045ce32462141e58eca20fdd9364bc4",
     "run_mode": "first_principles_3d_hybrid_em_pic_fluid",
     "run_status": "engineering_candidate",
     "runtime": {
@@ -9398,8 +9594,10 @@
         "status": "source_reference_not_validation"
       }
     ],
-    "source_packet_hashes": {},
-    "source_truth_index_sha256": null,
+    "source_packet_hashes": {
+      "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+    },
+    "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
     "status": "engineering_candidate_not_validation",
     "validation_status": "not_validation"
   },
@@ -10436,6 +10634,155 @@
     "n_particles_initial": 24,
     "n_steps_completed": 2,
     "n_steps_requested": 2,
+    "power_port_ledger": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_power_port_acceptance": false,
+      "cumulative_omega_volume_j_dot_e_work_J": -7.380393548603391e-13,
+      "cumulative_terminal_port_work_J": 0.0,
+      "cumulative_wall_poynting_flux_excluding_declared_port_J": -6.861812541146945e-22,
+      "domain_partition": {
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "electron_density_floor_m3": 1.0,
+        "geometry_review_status": "geometry_candidate_not_reviewed",
+        "grid_shape": [
+          5,
+          5,
+          5
+        ],
+        "labels": [
+          "omega_volume_cells",
+          "terminal_source_interface_faces",
+          "wall_material_faces",
+          "open_pml_faces"
+        ],
+        "omega_current_floor_A_m2": 1e-06,
+        "omega_volume_cells": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 2,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 32,
+          "label": "omega_volume_cells",
+          "mask_sha256": "1b58f1289abdc8312077826cb405b118f726c7e5ac668e4e323acd21e5cae1d7",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "open_pml_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 4,
+            "k_min": 4,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "open_pml_faces",
+          "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "partition_constraints": {
+          "exhaustive": true,
+          "max_labels_per_cell": 1,
+          "min_labels_per_cell": 1,
+          "mutually_disjoint": true,
+          "omega_contains_only_current_carrying_cells": true,
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "partition_kind": "per_cell_exhaustive_disjoint_label",
+        "pml_layers": 1,
+        "source_interface_z_index": 0,
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+        ],
+        "status": "candidate_auluck_omega_domain_partition_not_validation",
+        "terminal_source_interface_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 0,
+            "k_min": 0,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "terminal_source_interface_faces",
+          "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "wall_material_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 3,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 43,
+          "label": "wall_material_faces",
+          "mask_sha256": "d8180969041897c0e990b904dadf18ce582ede66f08724e5111a6f3a0e794dc6",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        }
+      },
+      "domain_partition_constraints_ok": true,
+      "first_step_fallback": true,
+      "first_step_udpf_source": "input_sequence_fallback_first_step",
+      "n_steps_completed": 2,
+      "sign_convention": "wp_n1_packet_section_3_1_into_omega_positive",
+      "snapshot_provenance": {
+        "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+        "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+        "time_centering": "candidate_step_consistent_not_accepted",
+        "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+        "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+      },
+      "status": "candidate_auluck_power_port_five_term_ledger_not_validation",
+      "step_records": [
+        {
+          "omega_cell_count": 16,
+          "step_index": 0,
+          "stored_em_energy_begin_J": 0.0,
+          "stored_em_energy_end_J": 7.155449392403292e-14,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_first_step",
+          "volume_j_dot_e_power_W": 0.0,
+          "wall_poynting_flux_W": -6.888643447396925e-09
+        },
+        {
+          "omega_cell_count": 32,
+          "step_index": 1,
+          "stored_em_energy_begin_J": 1.4484208439637683e-13,
+          "stored_em_energy_end_J": 4.337572926668158e-13,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_low_current",
+          "volume_j_dot_e_power_W": -7.380393548603391,
+          "wall_poynting_flux_W": 2.6830906249981034e-11
+        }
+      ],
+      "steps_accumulated": 2,
+      "stored_em_energy_delta_J": 4.337572926668158e-13,
+      "stored_em_energy_final_J": 4.337572926668158e-13,
+      "stored_em_energy_initial_J": 0.0,
+      "time_centering": "candidate_step_consistent_not_accepted"
+    },
     "retained_step_result_count": 2,
     "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
     "state_fingerprint": {
@@ -11945,16 +12292,16 @@
         "source_geometry_pic_particle_loading",
         "volume_j_dot_e_power_accounting",
         "hybrid_pic_fluid_solver_family",
-        "kinetic_yield_history",
-        "true_3d_grid",
         "separate_electron_energy_source_terms",
+        "true_3d_grid",
+        "kinetic_yield_history",
         "braginskii_electron_heat_flux",
-        "source_backed_partial_ionized_conductivity",
         "electrical_transport_source_terms",
-        "plasmapy_community_formula_audit",
         "electron_energy_source_terms",
-        "electron_ion_equilibration_audit",
+        "plasmapy_community_formula_audit",
+        "source_backed_partial_ionized_conductivity",
         "ionization_charge_state_transport",
+        "electron_ion_equilibration_audit",
         "kinetic_neutron_yield_history"
       ],
       "candidate_modules_executed": [
@@ -12009,7 +12356,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
+          "name": "separate_electron_energy_source_terms",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -12023,7 +12370,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "separate_electron_energy_source_terms",
+          "name": "kinetic_yield_history",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -12037,21 +12384,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "source_backed_partial_ionized_conductivity",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
           "name": "electrical_transport_source_terms",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "plasmapy_community_formula_audit",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -12065,7 +12398,21 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
+          "name": "plasmapy_community_formula_audit",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "source_backed_partial_ionized_conductivity",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "ionization_charge_state_transport",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -12079,7 +12426,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "ionization_charge_state_transport",
+          "name": "kinetic_yield_history",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -15056,7 +15403,205 @@
       "status": "candidate_engineering_power_port_not_validation",
       "terminal_current_A": 0.064,
       "terminal_voltage_V": 0.0,
-      "time_centering": "candidate_runner_step_metadata_only"
+      "time_centering": "candidate_runner_step_metadata_only",
+      "wp_n1_auluck_power_port_ledger": {
+        "accepted_residual_tolerance": "not_attached",
+        "auluck_omega_domain": {
+          "can_support_power_port_acceptance": false,
+          "geometry_review_status": "geometry_candidate_not_reviewed",
+          "labels": {
+            "omega_volume_cells": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 2,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 32,
+              "mask_sha256": "1b58f1289abdc8312077826cb405b118f726c7e5ac668e4e323acd21e5cae1d7",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "open_pml_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 4,
+                "k_min": 4,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "terminal_source_interface_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 0,
+                "k_min": 0,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "wall_material_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 3,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 43,
+              "mask_sha256": "d8180969041897c0e990b904dadf18ce582ede66f08724e5111a6f3a0e794dc6",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            }
+          },
+          "partition_exhaustive": true,
+          "partition_mutually_disjoint": true,
+          "partition_valid": true,
+          "source_interface_z_index": 0,
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ],
+          "status": "candidate_auluck_omega_domain_not_validation",
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "closure_estimate_terms": [
+          "electrode_interface_work_J"
+        ],
+        "electrode_interface_work_J__closure_estimate_not_independent": 3.0428206287970455e-13,
+        "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+        "electrode_interface_work_independence": "not_independent_closure_estimate",
+        "energy_ledger_term_status": {
+          "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+          "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+          "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+          "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+          "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+        },
+        "energy_ledger_terms_J": {
+          "electrode_interface_work_J": 3.0428206287970455e-13,
+          "stored_em_energy_delta_J": 4.337572926668158e-13,
+          "terminal_port_work_J": 0.0,
+          "volume_j_dot_e_work_J": -7.380393548603391e-13,
+          "wall_poynting_flux_excluding_declared_port_J": -6.861812541146945e-22
+        },
+        "first_step_fallback": true,
+        "first_step_udpf_source": "input_sequence_fallback_first_step",
+        "fully_implemented_terms": [
+          "terminal_port_work_J",
+          "volume_j_dot_e_work_J",
+          "wall_poynting_flux_excluding_declared_port_J",
+          "stored_em_energy_delta_J"
+        ],
+        "residual_J": 0.0,
+        "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+        "residual_fraction": 0.0,
+        "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+        "scientific_status": "engineering_candidate_not_validation",
+        "sign_convention": {
+          "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+          "can_support_power_port_acceptance": false,
+          "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+          "negative_local_j_dot_e_clipped": false,
+          "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+          "status": "candidate_wp_n1_sign_convention_not_accepted",
+          "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+          "surface_flux_terms": "outflow_positive_dS_outward",
+          "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+          "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+          "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+        },
+        "source_basis": [
+          "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+          "NRL Plasma Formulary 2019 Poynting theorem"
+        ],
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+          "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+        ],
+        "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+        "steps_accumulated": 2,
+        "time_centering": {
+          "accuracy_order_claim": "none_no_source_in_scope_g3",
+          "all_terms_share_centering": true,
+          "can_support_power_port_acceptance": false,
+          "declared_centering": "step_consistent_trapezoidal",
+          "snapshot_provenance": {
+            "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+            "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+            "time_centering": "candidate_step_consistent_not_accepted",
+            "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+            "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+          },
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+          ],
+          "status": "candidate_step_consistent_not_accepted"
+        },
+        "tracked_energy_delta_is_residual": false
+      },
+      "wp_n1_negative_test_policy": {
+        "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+        "all_six_required": true,
+        "can_support_power_port_acceptance": false,
+        "required_negative_tests": {
+          "N1_sign_reversal": {
+            "asserts_on": "residual_J and residual_fraction",
+            "corruption": "flip sign of terminal_port_work_J",
+            "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+          },
+          "N2_wrong_domain": {
+            "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+            "corruption": "include source interface in Omega or shift Omega into current-free cells",
+            "expected": "partition_valid becomes False"
+          },
+          "N3_omitted_electrode_work": {
+            "asserts_on": "residual_J with electrode_interface_work_J omitted",
+            "corruption": "drop term 4 from the residual sum (set to 0)",
+            "expected": "residual no longer closes when dL/dt-type work is nonzero"
+          },
+          "N4_low_current_p_over_i": {
+            "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+            "corruption": "drive I -> 0 while volume J.E stays finite",
+            "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+          },
+          "N5_first_step_fallback": {
+            "asserts_on": "first_step_fallback and first_step_udpf_source",
+            "corruption": "run step 0 with no lagged field work",
+            "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+          },
+          "N6_default_mode_leakage": {
+            "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+            "corruption": "run default input_sequence mode and read port as accepted",
+            "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+          }
+        },
+        "status": "candidate_wp_n1_negative_test_policy_not_validation"
+      }
     },
     "same_scope_source": {
       "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",

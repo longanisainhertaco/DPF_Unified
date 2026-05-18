@@ -3472,6 +3472,195 @@ def experimental_limiter_proof(
     click.echo(f"  artifact: {output}")
 
 
+@cli.command("experimental-segmented-whole-shot")
+@click.option(
+    "--deck",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Optional JSON input deck. Defaults to the built-in PF-1000/Akel "
+        "16 kV engineering deck."
+    ),
+)
+@click.option(
+    "--deck-preset",
+    type=click.Choice(FIRST_PRINCIPLES_3D_DECK_PRESETS, case_sensitive=False),
+    default="pf1000_akel_16kv",
+    show_default=True,
+    help="Built-in source-scoped engineering deck preset.",
+)
+@click.option(
+    "--run-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help=(
+        "Run directory to emit (deck, command, plan, per-segment manifests, "
+        "checkpoint hashes, blocker verdicts, run manifest)."
+    ),
+)
+@click.option(
+    "--target-time-s",
+    type=float,
+    default=None,
+    help=(
+        "Whole-shot horizon in seconds. Defaults to the deck target time. "
+        "total_steps = ceil(target_time_s / dt_s)."
+    ),
+)
+@click.option(
+    "--explicit-total-steps",
+    type=int,
+    default=None,
+    help=(
+        "Exact horizon step count. Overrides --target-time-s for the step "
+        "budget; use this to avoid float round-trip inflation of n*dt."
+    ),
+)
+@click.option(
+    "--segment-steps",
+    type=int,
+    required=True,
+    help="Steps per segment. The horizon is run as checkpointed segments.",
+)
+@click.option(
+    "--dt-s",
+    type=float,
+    default=None,
+    help="Override the deck timestep in seconds.",
+)
+@click.option(
+    "--checkpoint-every-segments",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Write a checkpoint at the end of every Nth segment (and the last).",
+)
+@click.option(
+    "--wall-time-cap-s",
+    type=float,
+    default=None,
+    help=(
+        "Stop after this many wall-clock seconds. The run then emits a "
+        "legitimate partial-run directory with a wall_time_cap blocker."
+    ),
+)
+@click.option(
+    "--resume-from-checkpoint",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Resume the horizon from a prior segment checkpoint .npz.",
+)
+@click.option(
+    "--verify-restart-equivalence/--no-verify-restart-equivalence",
+    default=True,
+    show_default=True,
+    help=(
+        "Also run the horizon uninterrupted and assert the segmented run is "
+        "bit-identical. Disable only for budget-limited probes."
+    ),
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write the run manifest JSON here too. Without it, JSON goes to stdout.",
+)
+def experimental_segmented_whole_shot(
+    deck: Path | None,
+    deck_preset: str,
+    run_dir: Path,
+    target_time_s: float | None,
+    explicit_total_steps: int | None,
+    segment_steps: int,
+    dt_s: float | None,
+    checkpoint_every_segments: int,
+    wall_time_cap_s: float | None,
+    resume_from_checkpoint: Path | None,
+    verify_restart_equivalence: bool,
+    output: Path | None,
+) -> None:
+    """Run a WP-N4 segmented whole-shot engineering-candidate run.
+
+    Plans the segment schedule from the horizon and dt, runs it segment by
+    segment carrying cumulative ledgers across checkpoint boundaries, and
+    emits a run directory. Not a validation run; a full 12 us run is a known
+    compute-wall blocker reported in the blocker verdicts.
+    """
+    import json
+
+    from dpf.first_principles.runner import FirstPrinciples3DDeck
+    from dpf.first_principles.segmented_whole_shot import run_segmented_whole_shot
+
+    if segment_steps <= 0:
+        raise click.BadParameter("must be positive", param_hint="--segment-steps")
+    if checkpoint_every_segments <= 0:
+        raise click.BadParameter(
+            "must be positive", param_hint="--checkpoint-every-segments"
+        )
+
+    runtime_deck = _load_first_principles_3d_deck(deck, deck_preset=deck_preset)
+    if dt_s is not None:
+        runtime_deck = _override_first_principles_3d_deck_runtime(
+            runtime_deck,
+            dt_s=dt_s,
+        )
+    resolved_deck = FirstPrinciples3DDeck.from_deck(runtime_deck)
+
+    try:
+        manifest = run_segmented_whole_shot(
+            deck=resolved_deck,
+            run_dir=run_dir,
+            segment_steps=segment_steps,
+            target_time_s=target_time_s,
+            explicit_total_steps=explicit_total_steps,
+            checkpoint_every_segments=checkpoint_every_segments,
+            wall_time_cap_s=wall_time_cap_s,
+            resume_from_checkpoint=resume_from_checkpoint,
+            verify_restart_equivalence=verify_restart_equivalence,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    text = json.dumps(stamp_artifact_provenance(manifest), indent=2, sort_keys=True)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text)
+    else:
+        click.echo(text)
+        return
+
+    plan = manifest["plan"]
+    equivalence = manifest["restart_equivalence"]
+    click.echo("Experimental segmented whole-shot engineering candidate")
+    click.echo(f"  run_dir: {manifest['run_dir']}")
+    click.echo(
+        f"  planned_total_steps: {plan['total_steps']} "
+        f"in {plan['segment_count']} segments of {plan['segment_steps']}"
+    )
+    click.echo(f"  total_steps_completed: {manifest['total_steps_completed']}")
+    click.echo(f"  horizon_complete: {manifest['horizon_complete']}")
+    click.echo(f"  wall_time_cap_reached: {manifest['wall_time_cap_reached']}")
+    click.echo(
+        "  all_checkpoint_roundtrips_match: "
+        f"{manifest['all_checkpoint_roundtrips_match']}"
+    )
+    if equivalence.get("verified"):
+        click.echo(
+            "  restart_equivalence: fingerprints_match="
+            f"{equivalence.get('state_fingerprints_match')} "
+            "observables_match="
+            f"{equivalence.get('tracked_observables_match_exactly')}"
+        )
+    else:
+        click.echo(
+            f"  restart_equivalence: not asserted ({equivalence.get('reason')})"
+        )
+    click.echo(f"  blocker_summary: {manifest['blocker_verdicts']['summary']}")
+    click.echo(f"  status: {manifest['status']}")
+    click.echo(f"  artifact: {output}")
+
+
 @cli.command("experimental-numerical-family")
 @click.option(
     "--deck",

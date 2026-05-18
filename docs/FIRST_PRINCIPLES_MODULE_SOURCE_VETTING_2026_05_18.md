@@ -1,6 +1,6 @@
 # First-Principles Module Source-Vetting Audit
 
-Generated: 2026-05-18T20:30:32.081152+00:00
+Generated: 2026-05-18T21:03:20.564989+00:00
 
 Strict passed: `true`
 
@@ -10,10 +10,10 @@ KnowledgeReference plus explicitly user-verified staged sources only; module sou
 
 ## Summary
 
-- Total modules: `288`
+- Total modules: `289`
 - Active first-principles import-closure modules: `56`
-- Physics-facing modules: `175`
-- Modules with source references: `62`
+- Physics-facing modules: `176`
+- Modules with source references: `63`
 - Active physics modules needing source vetting: `0`
 - Inactive physics modules needing source vetting: `0`
 - Missing source-reference paths: `0`
@@ -28,7 +28,7 @@ KnowledgeReference plus explicitly user-verified staged sources only; module sou
 - `inactive_legacy_physics_not_first_principles_authority`: `20`
 - `nonphysics_infrastructure`: `62`
 - `package_export_surface`: `32`
-- `physics_source_referenced`: `1`
+- `physics_source_referenced`: `2`
 - `reduced_or_baseline_only_not_first_principles_authority`: `28`
 - `standards_scoped_implementation_constants`: `1`
 - `validation_workflow_not_active_first_principles`: `44`

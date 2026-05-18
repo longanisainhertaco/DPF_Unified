@@ -145,6 +145,13 @@ def build_engineering_power_port_packet(
         conservation=conservation,
         residual_budget=residual_budget,
     )
+    wp_n1_ledger_telemetry = _power_port_ledger_telemetry(simulation_telemetry)
+    wp_n1_power_port_ledger = build_wp_n1_auluck_power_port_ledger(
+        wp_n1_ledger_telemetry
+    )
+    wp_n1_negative_test_policy = build_wp_n1_negative_test_policy(
+        wp_n1_ledger_telemetry
+    )
     missing = list(ACCEPTANCE_BLOCKING_CHANNELS)
     if circuit_step is None:
         missing.extend(("terminal_current", "terminal_voltage", "active_load_relation"))
@@ -198,6 +205,8 @@ def build_engineering_power_port_packet(
         ),
         "energy_ledger_status": _energy_ledger_status(final_energy),
         "candidate_stage0_energy_ledger": candidate_energy_ledger,
+        "wp_n1_auluck_power_port_ledger": wp_n1_power_port_ledger,
+        "wp_n1_negative_test_policy": wp_n1_negative_test_policy,
         "stage0_packet_scaffolds": stage0_packets,
         "stage0_packet_ids": list(STAGE0_PACKET_IDS),
         "power_port_operator_comparison": _operator_comparison_packet(),
@@ -282,6 +291,372 @@ def build_engineering_power_port_packet(
             bool(startup.get("whole_shot_startup_blocked")) if startup else None
         ),
         "can_support_first_principles_acceptance": False,
+    }
+
+
+def _power_port_ledger_telemetry(
+    simulation_telemetry: Mapping[str, Any] | None,
+) -> Mapping[str, Any] | None:
+    """Return the simulator-emitted WP-N1 five-term ledger, if present."""
+    if simulation_telemetry is None:
+        return None
+    ledger = simulation_telemetry.get("power_port_ledger")
+    return ledger if isinstance(ledger, Mapping) else None
+
+
+def _residual_fraction(
+    residual_J: float | None,
+    terminal_port_work_J: float | None,
+    volume_j_dot_e_work_J: float | None,
+) -> float | None:
+    """Return residual / max(|terminal|, |volume J.E|, 1 J) per packet S4."""
+    if residual_J is None:
+        return None
+    denom = _residual_denominator(
+        terminal_port_work_J,
+        volume_j_dot_e_work_J,
+    )
+    if denom is None or denom == 0.0:
+        return None
+    return float(residual_J) / float(denom)
+
+
+def build_wp_n1_auluck_power_port_ledger(
+    ledger: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the WP-N1 Auluck named-domain five-term energy ledger.
+
+    Implements WP-N1 source packet sections 1-4. Terms 1, 2, 3, 5 are taken
+    from the simulator-emitted cumulative ledger. Term 4
+    (electrode_interface_work_J) is the labeled NON-INDEPENDENT closure
+    estimate per source packet section 6 gap G1 option (b): the Auluck eq 5/6
+    moving-boundary integrand is OCR-illegible and must not be invented, so
+    term 4 is defined as
+    terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_delta.
+    This makes residual_J trivially close; that is EXPECTED and means the port
+    CANNOT support acceptance until an independent integrand exists.
+    """
+    if ledger is None:
+        return {
+            "status": "blocked_wp_n1_power_port_ledger_not_available",
+            "reason": (
+                "no circuit-coupled run; simulator emitted no power_port_ledger"
+            ),
+            "auluck_omega_domain": _omega_domain_unavailable_packet(),
+            "energy_ledger_terms_J": {key: None for key in _WP_N1_LEDGER_KEYS},
+            "residual_J": None,
+            "residual_fraction": None,
+            "accepted_residual_tolerance": "not_attached",
+            "can_support_power_port_acceptance": False,
+            "can_support_first_principles_acceptance": False,
+        }
+
+    terminal_port_work_J = _optional_float(ledger, "cumulative_terminal_port_work_J")
+    volume_j_dot_e_work_J = _optional_float(
+        ledger, "cumulative_omega_volume_j_dot_e_work_J"
+    )
+    wall_poynting_J = _optional_float(
+        ledger, "cumulative_wall_poynting_flux_excluding_declared_port_J"
+    )
+    stored_em_delta_J = _optional_float(ledger, "stored_em_energy_delta_J")
+
+    # Term 4 (G1): labeled non-independent closure estimate. NOT an
+    # independent integrand. Defined so the five-term sum closes by
+    # construction; residual is therefore trivially ~0.
+    electrode_interface_work_J = None
+    if (
+        terminal_port_work_J is not None
+        and volume_j_dot_e_work_J is not None
+        and wall_poynting_J is not None
+        and stored_em_delta_J is not None
+    ):
+        electrode_interface_work_J = (
+            terminal_port_work_J
+            - volume_j_dot_e_work_J
+            - wall_poynting_J
+            - stored_em_delta_J
+        )
+
+    # Residual policy S4: residual = term1 - term2 - term3 - term5 - term4.
+    residual_J = None
+    if (
+        terminal_port_work_J is not None
+        and volume_j_dot_e_work_J is not None
+        and wall_poynting_J is not None
+        and stored_em_delta_J is not None
+        and electrode_interface_work_J is not None
+    ):
+        residual_J = (
+            terminal_port_work_J
+            - volume_j_dot_e_work_J
+            - wall_poynting_J
+            - stored_em_delta_J
+            - electrode_interface_work_J
+        )
+
+    domain_partition = ledger.get("domain_partition")
+    auluck_omega_domain = _build_auluck_omega_domain_packet(
+        domain_partition if isinstance(domain_partition, Mapping) else None
+    )
+
+    return {
+        "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+        "source_basis": [
+            "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+            "NRL Plasma Formulary 2019 Poynting theorem",
+        ],
+        "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888",
+        ],
+        "auluck_omega_domain": auluck_omega_domain,
+        "energy_ledger_terms_J": {
+            "terminal_port_work_J": terminal_port_work_J,
+            "volume_j_dot_e_work_J": volume_j_dot_e_work_J,
+            "wall_poynting_flux_excluding_declared_port_J": wall_poynting_J,
+            "stored_em_energy_delta_J": stored_em_delta_J,
+            "electrode_interface_work_J": electrode_interface_work_J,
+        },
+        "energy_ledger_term_status": {
+            "terminal_port_work_J": _candidate_or_missing(terminal_port_work_J),
+            "volume_j_dot_e_work_J": _candidate_or_missing(volume_j_dot_e_work_J),
+            "wall_poynting_flux_excluding_declared_port_J": _candidate_or_missing(
+                wall_poynting_J
+            ),
+            "stored_em_energy_delta_J": _candidate_or_missing(stored_em_delta_J),
+            "electrode_interface_work_J": (
+                "closure_estimate_not_independent_blocked_g1"
+                if electrode_interface_work_J is not None
+                else "missing_or_blocked"
+            ),
+        },
+        "electrode_interface_work_J__closure_estimate_not_independent": (
+            electrode_interface_work_J
+        ),
+        "electrode_interface_work_independence": "not_independent_closure_estimate",
+        "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+        "fully_implemented_terms": [
+            "terminal_port_work_J",
+            "volume_j_dot_e_work_J",
+            "wall_poynting_flux_excluding_declared_port_J",
+            "stored_em_energy_delta_J",
+        ],
+        "closure_estimate_terms": ["electrode_interface_work_J"],
+        "residual_J": residual_J,
+        "residual_fraction": _residual_fraction(
+            residual_J,
+            terminal_port_work_J,
+            volume_j_dot_e_work_J,
+        ),
+        "residual_definition": (
+            "terminal_port_work - volume_j_dot_e_work - wall_poynting "
+            "- stored_em_energy_delta - electrode_interface_work"
+        ),
+        "residual_interpretation": (
+            "trivially_closes_because_term_4_is_closure_estimate_g1; "
+            "engineering_debug_diagnostic_only_not_power_port_acceptance"
+        ),
+        "accepted_residual_tolerance": "not_attached",
+        "tracked_energy_delta_is_residual": False,
+        "sign_convention": _wp_n1_sign_convention_packet(),
+        "time_centering": _wp_n1_time_centering_packet(ledger),
+        "first_step_fallback": bool(ledger.get("first_step_fallback")),
+        "first_step_udpf_source": ledger.get("first_step_udpf_source"),
+        "steps_accumulated": ledger.get("steps_accumulated"),
+        "scientific_status": "engineering_candidate_not_validation",
+        "can_support_power_port_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+_WP_N1_LEDGER_KEYS = (
+    "terminal_port_work_J",
+    "volume_j_dot_e_work_J",
+    "wall_poynting_flux_excluding_declared_port_J",
+    "stored_em_energy_delta_J",
+    "electrode_interface_work_J",
+)
+
+
+def _omega_domain_unavailable_packet() -> dict[str, Any]:
+    return {
+        "status": "blocked_auluck_omega_domain_not_available",
+        "labels": [
+            "omega_volume_cells",
+            "terminal_source_interface_faces",
+            "wall_material_faces",
+            "open_pml_faces",
+        ],
+        "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+        ],
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _build_auluck_omega_domain_packet(
+    domain_partition: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the WP-N1 S1 named Auluck Omega domain packet."""
+    if domain_partition is None:
+        return _omega_domain_unavailable_packet()
+    constraints = domain_partition.get("partition_constraints")
+    constraints = constraints if isinstance(constraints, Mapping) else {}
+    label_packets = {}
+    for label in (
+        "omega_volume_cells",
+        "terminal_source_interface_faces",
+        "wall_material_faces",
+        "open_pml_faces",
+    ):
+        entry = domain_partition.get(label)
+        if isinstance(entry, Mapping):
+            label_packets[label] = {
+                "mask_sha256": entry.get("mask_sha256"),
+                "cell_count": entry.get("cell_count"),
+                "bounds": entry.get("bounds"),
+                "source_refs": entry.get("source_refs"),
+            }
+    disjoint = bool(constraints.get("mutually_disjoint"))
+    exhaustive = bool(constraints.get("exhaustive"))
+    interface_non_empty = bool(
+        constraints.get("terminal_source_interface_non_empty")
+    )
+    interface_disjoint = bool(
+        constraints.get("terminal_source_interface_disjoint_from_omega")
+    )
+    partition_valid = (
+        disjoint and exhaustive and interface_non_empty and interface_disjoint
+    )
+    return {
+        "status": "candidate_auluck_omega_domain_not_validation",
+        "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+        ],
+        "labels": label_packets,
+        "partition_mutually_disjoint": disjoint,
+        "partition_exhaustive": exhaustive,
+        "terminal_source_interface_non_empty": interface_non_empty,
+        "terminal_source_interface_disjoint_from_omega": interface_disjoint,
+        "partition_valid": partition_valid,
+        "source_interface_z_index": domain_partition.get(
+            "source_interface_z_index"
+        ),
+        "geometry_review_status": domain_partition.get(
+            "geometry_review_status", "geometry_candidate_not_reviewed"
+        ),
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _wp_n1_sign_convention_packet() -> dict[str, Any]:
+    """Return the WP-N1 S3.1 declared sign convention."""
+    return {
+        "status": "candidate_wp_n1_sign_convention_not_accepted",
+        "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+        "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+        "surface_flux_terms": "outflow_positive_dS_outward",
+        "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+        "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls",
+        "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+        "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+        "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+        "negative_local_j_dot_e_clipped": False,
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _wp_n1_time_centering_packet(
+    ledger: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return the WP-N1 S3.2 step-consistent time-centering packet."""
+    provenance = ledger.get("snapshot_provenance")
+    provenance = dict(provenance) if isinstance(provenance, Mapping) else {}
+    return {
+        "status": "candidate_step_consistent_not_accepted",
+        "declared_centering": "step_consistent_trapezoidal",
+        "snapshot_provenance": provenance,
+        "all_terms_share_centering": bool(provenance),
+        "accuracy_order_claim": "none_no_source_in_scope_g3",
+        "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+        ],
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def build_wp_n1_negative_test_policy(
+    ledger: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the WP-N1 S5 six-negative-test policy block.
+
+    Enumerates exactly the six audit A-5 negative tests and the emitted
+    packet field each asserts on. The tests themselves live in
+    tests/test_first_principles_power_port.py and assert against these
+    emitted fields.
+    """
+    return {
+        "status": "candidate_wp_n1_negative_test_policy_not_validation",
+        "required_negative_tests": {
+            "N1_sign_reversal": {
+                "corruption": "flip sign of terminal_port_work_J",
+                "asserts_on": "residual_J and residual_fraction",
+                "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)",
+            },
+            "N2_wrong_domain": {
+                "corruption": (
+                    "include source interface in Omega or shift Omega into "
+                    "current-free cells"
+                ),
+                "asserts_on": (
+                    "auluck_omega_domain.partition_valid and "
+                    "terminal_source_interface_disjoint_from_omega"
+                ),
+                "expected": "partition_valid becomes False",
+            },
+            "N3_omitted_electrode_work": {
+                "corruption": "drop term 4 from the residual sum (set to 0)",
+                "asserts_on": "residual_J with electrode_interface_work_J omitted",
+                "expected": (
+                    "residual no longer closes when dL/dt-type work is nonzero"
+                ),
+            },
+            "N4_low_current_p_over_i": {
+                "corruption": "drive I -> 0 while volume J.E stays finite",
+                "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+                "expected": (
+                    "low-current guard fires; U_DPF not computed as P/I; "
+                    "no inf/NaN"
+                ),
+            },
+            "N5_first_step_fallback": {
+                "corruption": "run step 0 with no lagged field work",
+                "asserts_on": "first_step_fallback and first_step_udpf_source",
+                "expected": (
+                    "step 0 marked fallback; no closed first-step residual "
+                    "claimed; all five terms share one centering"
+                ),
+            },
+            "N6_default_mode_leakage": {
+                "corruption": (
+                    "run default input_sequence mode and read port as accepted"
+                ),
+                "asserts_on": (
+                    "accepted_load_power_source, active_load_relation, "
+                    "can_support_power_port_acceptance"
+                ),
+                "expected": (
+                    "accepted_load_power_source stays 'none'; "
+                    "can_support_power_port_acceptance stays False"
+                ),
+            },
+        },
+        "all_six_required": True,
+        "acceptance_unblocks_only_when": (
+            "source_backed_residual_tolerance_attached AND all_six_tests_pass"
+        ),
+        "can_support_power_port_acceptance": False,
     }
 
 

@@ -8,7 +8,7 @@
     "unsafe_claim_surfaces": []
   },
   "date": "2026_05_18",
-  "generated_at_utc": "2026-05-18T20:30:32.081152+00:00",
+  "generated_at_utc": "2026-05-18T21:03:20.564989+00:00",
   "modules": [
     {
       "active_first_principles_closure": false,
@@ -1270,6 +1270,8 @@
         "dpf.first_principles.runner.FirstPrinciples3DDeck",
         "dpf.first_principles.runner.run_first_principles_3d_deck",
         "dpf.first_principles.score_current_history_against_targets",
+        "dpf.first_principles.segmented_whole_shot",
+        "dpf.first_principles.segmented_whole_shot.run_segmented_whole_shot",
         "dpf.first_principles.split_continuation",
         "dpf.first_principles.split_continuation.build_experimental_split_continuation_packet",
         "dpf.first_principles.state_checkpoint",
@@ -3410,12 +3412,22 @@
         "dpf.fields.hybrid_loop",
         "dpf.fields.hybrid_loop.HybridPIC3DLoop",
         "dpf.fields.hybrid_loop.HybridPIC3DLoopResult",
+        "dpf.fields.hybrid_stepper",
+        "dpf.fields.hybrid_stepper.omega_stored_em_energy_J",
+        "dpf.fields.hybrid_stepper.omega_volume_j_dot_e_power_W",
+        "dpf.fields.hybrid_stepper.wall_poynting_flux_W",
         "dpf.fields.ionization_transport",
         "dpf.fields.ionization_transport.DeuteriumIonizationState",
         "dpf.fields.maxwell_3d",
         "dpf.fields.maxwell_3d.HYBRID_PIC_3D_SOURCE",
         "dpf.fields.maxwell_3d.Maxwell3DGrid",
         "dpf.fields.maxwell_3d.Maxwell3DState",
+        "dpf.fields.source_geometry",
+        "dpf.fields.source_geometry.build_auluck_omega_domain",
+        "dpf.fields.source_geometry.omega_domain_label_masks",
+        "dpf.fields.source_geometry.public_omega_domain_packet",
+        "dpf.fluid.constrained_transport",
+        "dpf.fluid.constrained_transport.face_to_cell_centered",
         "hashlib",
         "numpy",
         "typing",
@@ -3471,7 +3483,9 @@
         "dpf.fields.marder",
         "dpf.fields.marder.MarderCorrection",
         "dpf.fields.maxwell_3d",
+        "dpf.fields.maxwell_3d.EPSILON_0",
         "dpf.fields.maxwell_3d.HYBRID_PIC_3D_SOURCE",
+        "dpf.fields.maxwell_3d.MU_0",
         "dpf.fields.maxwell_3d.Maxwell3DBoundaries",
         "dpf.fields.maxwell_3d.Maxwell3DFieldCore",
         "dpf.fields.maxwell_3d.Maxwell3DGrid",
@@ -3489,6 +3503,7 @@
         "typing.Any"
       ],
       "knowledge_reference_paths": [
+        "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
         "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"
       ],
@@ -3496,7 +3511,7 @@
       "module": "dpf.fields.hybrid_stepper",
       "path": "src/dpf/fields/hybrid_stepper.py",
       "physics_facing": true,
-      "source_reference_count": 2,
+      "source_reference_count": 3,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -3951,7 +3966,8 @@
         "radiation",
         "startup_breakdown",
         "three_d_geometry",
-        "two_temperature"
+        "two_temperature",
+        "validation_target"
       ],
       "claim_without_source": false,
       "classification": "active_physics_source_referenced",
@@ -3968,17 +3984,20 @@
         "dpf.fields.maxwell_3d",
         "dpf.fields.maxwell_3d.HYBRID_PIC_3D_SOURCE",
         "dpf.fields.maxwell_3d.Maxwell3DGrid",
+        "hashlib",
+        "numpy",
         "typing",
         "typing.Any"
       ],
       "knowledge_reference_paths": [
+        "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.fields.source_geometry",
       "path": "src/dpf/fields/source_geometry.py",
       "physics_facing": true,
-      "source_reference_count": 1,
+      "source_reference_count": 2,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -4868,6 +4887,7 @@
         "__future__",
         "__future__.annotations",
         "collections.abc",
+        "collections.abc.Iterable",
         "collections.abc.Mapping",
         "collections.abc.Sequence",
         "dataclasses",
@@ -5114,6 +5134,7 @@
         "typing.Any"
       ],
       "knowledge_reference_paths": [
+        "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
         "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "KnowledgeReference/beresnyak_2018_dpf_hawk_simulations.md",
         "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md",
@@ -5123,7 +5144,7 @@
       "module": "dpf.first_principles.power_port",
       "path": "src/dpf/first_principles/power_port.py",
       "physics_facing": true,
-      "source_reference_count": 4,
+      "source_reference_count": 5,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5152,7 +5173,9 @@
       ],
       "claim_without_source": false,
       "classification": "active_physics_source_referenced",
-      "docs_reference_paths": [],
+      "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
+      ],
       "first_principles_verdicts": [
         "directly_needed",
         "supporting_method"
@@ -5221,7 +5244,9 @@
         "dpf.first_principles.manifest.ARTIFACT_SCHEMA_VERSION",
         "dpf.first_principles.manifest.build_first_principles_manifest_from_hybrid_result",
         "dpf.first_principles.manifest.git_provenance",
+        "dpf.first_principles.manifest.sha256_of_file_soft",
         "dpf.first_principles.manifest.sha256_of_text",
+        "dpf.first_principles.manifest.source_packet_hashes_from_references",
         "dpf.first_principles.neutron_authority",
         "dpf.first_principles.neutron_authority.build_mechanism_separated_neutron_packet",
         "dpf.first_principles.numerical_fidelity",
@@ -5257,7 +5282,7 @@
       "module": "dpf.first_principles.runner",
       "path": "src/dpf/first_principles/runner.py",
       "physics_facing": true,
-      "source_reference_count": 4,
+      "source_reference_count": 5,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5310,6 +5335,62 @@
       "physics_facing": true,
       "source_reference_count": 4,
       "status": "active_module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "physics_source_referenced",
+      "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_CODEX_AGENT_AUDIT_AND_NEXT_INSTRUCTIONS_2026_05_18.md",
+        "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+        "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
+      ],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "dataclasses",
+        "dataclasses.asdict",
+        "dataclasses.dataclass",
+        "dpf.fields",
+        "dpf.fields.HybridPIC3DSimulationResult",
+        "dpf.first_principles.checkpoint_restart",
+        "dpf.first_principles.checkpoint_restart._fixed_step_deck",
+        "dpf.first_principles.checkpoint_restart._observable_comparisons",
+        "dpf.first_principles.checkpoint_restart._simulation_summary",
+        "dpf.first_principles.manifest",
+        "dpf.first_principles.manifest.git_provenance",
+        "dpf.first_principles.manifest.sha256_of_file",
+        "dpf.first_principles.manifest.sha256_of_json",
+        "dpf.first_principles.manifest.sha256_of_text",
+        "dpf.first_principles.runner",
+        "dpf.first_principles.runner.FirstPrinciples3DDeck",
+        "dpf.first_principles.runner.build_first_principles_3d_session",
+        "dpf.first_principles.runner.run_first_principles_3d_deck",
+        "dpf.first_principles.state_checkpoint",
+        "dpf.first_principles.state_checkpoint.load_checkpoint_into_first_principles_3d_session",
+        "dpf.first_principles.state_checkpoint.write_simulation_state_checkpoint_roundtrip",
+        "json",
+        "math",
+        "numpy",
+        "pathlib",
+        "pathlib.Path",
+        "sys",
+        "time",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.segmented_whole_shot",
+      "path": "src/dpf/first_principles/segmented_whole_shot.py",
+      "physics_facing": true,
+      "source_reference_count": 3,
+      "status": "module_vetted_nonpromoting"
     },
     {
       "active_first_principles_closure": true,
@@ -11215,7 +11296,7 @@
       "inactive_legacy_physics_not_first_principles_authority": 20,
       "nonphysics_infrastructure": 62,
       "package_export_surface": 32,
-      "physics_source_referenced": 1,
+      "physics_source_referenced": 2,
       "reduced_or_baseline_only_not_first_principles_authority": 28,
       "standards_scoped_implementation_constants": 1,
       "validation_workflow_not_active_first_principles": 44
@@ -11223,16 +11304,16 @@
     "inactive_physics_unvetted_count": 0,
     "missing_source_reference_count": 0,
     "module_role_review_required_count": 0,
-    "physics_facing_count": 175,
-    "source_referenced_count": 62,
+    "physics_facing_count": 176,
+    "source_referenced_count": 63,
     "status_counts": {
       "active_module_vetted_nonpromoting": 49,
       "baseline_only_nonpromoting": 28,
-      "module_vetted_nonpromoting": 166,
+      "module_vetted_nonpromoting": 167,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
     },
-    "total_modules": 288,
+    "total_modules": 289,
     "unsafe_claim_surface_count": 0
   }
 }

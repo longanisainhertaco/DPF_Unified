@@ -1,5 +1,5 @@
 {
-  "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+  "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
   "artifact_schema_version": "first_principles_artifact_v1",
   "boundary_policy": {
     "acceptance_gate": "pml_conductor_boundary_runtime_is_candidate_only_until_same_scope_geometry_masks_boundary_validation_and_particle_boundary_order_are_accepted",
@@ -895,16 +895,16 @@
       "volume_j_dot_e_power_accounting",
       "lagged_volume_j_dot_e_power_feedback",
       "true_3d_grid",
-      "kinetic_yield_history",
-      "separate_electron_energy_source_terms",
       "hybrid_pic_fluid_solver_family",
-      "electron_ion_equilibration_audit",
-      "ionization_charge_state_transport",
-      "plasmapy_community_formula_audit",
-      "source_backed_partial_ionized_conductivity",
+      "separate_electron_energy_source_terms",
+      "kinetic_yield_history",
+      "braginskii_electron_heat_flux",
       "electrical_transport_source_terms",
       "electron_energy_source_terms",
-      "braginskii_electron_heat_flux",
+      "plasmapy_community_formula_audit",
+      "source_backed_partial_ionized_conductivity",
+      "electron_ion_equilibration_audit",
+      "ionization_charge_state_transport",
       "kinetic_neutron_yield_history"
     ],
     "candidate_modules_executed": [
@@ -966,7 +966,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
+        "name": "hybrid_pic_fluid_solver_family",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -980,42 +980,14 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "hybrid_pic_fluid_solver_family",
+        "name": "kinetic_yield_history",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "electron_ion_equilibration_audit",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "ionization_charge_state_transport",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "plasmapy_community_formula_audit",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "source_backed_partial_ionized_conductivity",
+        "name": "braginskii_electron_heat_flux",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -1036,7 +1008,35 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "braginskii_electron_heat_flux",
+        "name": "plasmapy_community_formula_audit",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "source_backed_partial_ionized_conductivity",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "electron_ion_equilibration_audit",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "ionization_charge_state_transport",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "kinetic_yield_history",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -1185,7 +1185,7 @@
   },
   "final_field_energy_J": 631.6004722822383,
   "final_particle_count": 18556,
-  "generated_at_utc": "2026-05-18T20:07:11+00:00",
+  "generated_at_utc": "2026-05-18T21:01:59+00:00",
   "grid_shape": [
     5,
     5,
@@ -1293,7 +1293,7 @@
     "zero_acceptance_blockers_observed": true
   },
   "manifest": {
-    "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "artifact_schema_version": "first_principles_artifact_v1",
     "artifact_status": "engineering_candidate_not_validation",
     "backend": "package_native",
@@ -2928,16 +2928,16 @@
           "volume_j_dot_e_power_accounting",
           "lagged_volume_j_dot_e_power_feedback",
           "true_3d_grid",
-          "kinetic_yield_history",
-          "separate_electron_energy_source_terms",
           "hybrid_pic_fluid_solver_family",
-          "electron_ion_equilibration_audit",
-          "ionization_charge_state_transport",
-          "plasmapy_community_formula_audit",
-          "source_backed_partial_ionized_conductivity",
+          "separate_electron_energy_source_terms",
+          "kinetic_yield_history",
+          "braginskii_electron_heat_flux",
           "electrical_transport_source_terms",
           "electron_energy_source_terms",
-          "braginskii_electron_heat_flux",
+          "plasmapy_community_formula_audit",
+          "source_backed_partial_ionized_conductivity",
+          "electron_ion_equilibration_audit",
+          "ionization_charge_state_transport",
           "kinetic_neutron_yield_history"
         ],
         "candidate_modules_executed": [
@@ -2999,7 +2999,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
+            "name": "hybrid_pic_fluid_solver_family",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -3013,42 +3013,14 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "hybrid_pic_fluid_solver_family",
+            "name": "kinetic_yield_history",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "electron_ion_equilibration_audit",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "ionization_charge_state_transport",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "plasmapy_community_formula_audit",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "source_backed_partial_ionized_conductivity",
+            "name": "braginskii_electron_heat_flux",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -3069,7 +3041,35 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "braginskii_electron_heat_flux",
+            "name": "plasmapy_community_formula_audit",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "source_backed_partial_ionized_conductivity",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "electron_ion_equilibration_audit",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "ionization_charge_state_transport",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "kinetic_yield_history",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -8686,7 +8686,205 @@
         "status": "candidate_engineering_power_port_not_validation",
         "terminal_current_A": 201441.95004551107,
         "terminal_voltage_V": 14655.981927730478,
-        "time_centering": "candidate_runner_step_metadata_only"
+        "time_centering": "candidate_runner_step_metadata_only",
+        "wp_n1_auluck_power_port_ledger": {
+          "accepted_residual_tolerance": "not_attached",
+          "auluck_omega_domain": {
+            "can_support_power_port_acceptance": false,
+            "geometry_review_status": "geometry_candidate_not_reviewed",
+            "labels": {
+              "omega_volume_cells": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 3,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 57,
+                "mask_sha256": "4be11660cc81b1b6a93957dd40f2a2498b4684599e892cd34ddfffe483d1b67f",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "open_pml_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 4,
+                  "k_min": 4,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "terminal_source_interface_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 0,
+                  "k_min": 0,
+                  "non_empty": true
+                },
+                "cell_count": 25,
+                "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              },
+              "wall_material_faces": {
+                "bounds": {
+                  "i_max": 4,
+                  "i_min": 0,
+                  "j_max": 4,
+                  "j_min": 0,
+                  "k_max": 2,
+                  "k_min": 1,
+                  "non_empty": true
+                },
+                "cell_count": 18,
+                "mask_sha256": "b6b1602a766381486ec7583742769afffae12d1c84ff795466df7827bc181784",
+                "source_refs": [
+                  "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+                ]
+              }
+            },
+            "partition_exhaustive": true,
+            "partition_mutually_disjoint": true,
+            "partition_valid": true,
+            "source_interface_z_index": 0,
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+            ],
+            "status": "candidate_auluck_omega_domain_not_validation",
+            "terminal_source_interface_disjoint_from_omega": true,
+            "terminal_source_interface_non_empty": true
+          },
+          "can_support_first_principles_acceptance": false,
+          "can_support_power_port_acceptance": false,
+          "closure_estimate_terms": [
+            "electrode_interface_work_J"
+          ],
+          "electrode_interface_work_J__closure_estimate_not_independent": 1824.9224897532724,
+          "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+          "electrode_interface_work_independence": "not_independent_closure_estimate",
+          "energy_ledger_term_status": {
+            "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+            "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+            "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+            "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+            "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+          },
+          "energy_ledger_terms_J": {
+            "electrode_interface_work_J": 1824.9224897532724,
+            "stored_em_energy_delta_J": 13.043707537098351,
+            "terminal_port_work_J": 1972.1252007579355,
+            "volume_j_dot_e_work_J": 132.90816332711378,
+            "wall_poynting_flux_excluding_declared_port_J": 1.2508401404510545
+          },
+          "first_step_fallback": true,
+          "first_step_udpf_source": "input_sequence_fallback_first_step",
+          "fully_implemented_terms": [
+            "terminal_port_work_J",
+            "volume_j_dot_e_work_J",
+            "wall_poynting_flux_excluding_declared_port_J",
+            "stored_em_energy_delta_J"
+          ],
+          "residual_J": 0.0,
+          "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+          "residual_fraction": 0.0,
+          "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+          "scientific_status": "engineering_candidate_not_validation",
+          "sign_convention": {
+            "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+            "can_support_power_port_acceptance": false,
+            "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+            "negative_local_j_dot_e_clipped": false,
+            "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+            "status": "candidate_wp_n1_sign_convention_not_accepted",
+            "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+            "surface_flux_terms": "outflow_positive_dS_outward",
+            "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+            "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+            "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+          },
+          "source_basis": [
+            "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+            "NRL Plasma Formulary 2019 Poynting theorem"
+          ],
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+          ],
+          "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+          "steps_accumulated": 4632,
+          "time_centering": {
+            "accuracy_order_claim": "none_no_source_in_scope_g3",
+            "all_terms_share_centering": true,
+            "can_support_power_port_acceptance": false,
+            "declared_centering": "step_consistent_trapezoidal",
+            "snapshot_provenance": {
+              "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+              "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+              "time_centering": "candidate_step_consistent_not_accepted",
+              "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+              "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+            },
+            "source_refs": [
+              "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+              "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+            ],
+            "status": "candidate_step_consistent_not_accepted"
+          },
+          "tracked_energy_delta_is_residual": false
+        },
+        "wp_n1_negative_test_policy": {
+          "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+          "all_six_required": true,
+          "can_support_power_port_acceptance": false,
+          "required_negative_tests": {
+            "N1_sign_reversal": {
+              "asserts_on": "residual_J and residual_fraction",
+              "corruption": "flip sign of terminal_port_work_J",
+              "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+            },
+            "N2_wrong_domain": {
+              "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+              "corruption": "include source interface in Omega or shift Omega into current-free cells",
+              "expected": "partition_valid becomes False"
+            },
+            "N3_omitted_electrode_work": {
+              "asserts_on": "residual_J with electrode_interface_work_J omitted",
+              "corruption": "drop term 4 from the residual sum (set to 0)",
+              "expected": "residual no longer closes when dL/dt-type work is nonzero"
+            },
+            "N4_low_current_p_over_i": {
+              "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+              "corruption": "drive I -> 0 while volume J.E stays finite",
+              "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+            },
+            "N5_first_step_fallback": {
+              "asserts_on": "first_step_fallback and first_step_udpf_source",
+              "corruption": "run step 0 with no lagged field work",
+              "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+            },
+            "N6_default_mode_leakage": {
+              "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+              "corruption": "run default input_sequence mode and read port as accepted",
+              "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+            }
+          },
+          "status": "candidate_wp_n1_negative_test_policy_not_validation"
+        }
       },
       "same_scope_source_packet": {
         "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",
@@ -9698,11 +9896,11 @@
       ],
       "validation_status": "not_validation"
     },
-    "created_utc": "2026-05-18T20:07:11+00:00",
+    "created_utc": "2026-05-18T21:01:59+00:00",
     "dirty_worktree": true,
     "final_time_s": 1.0000872109680097e-06,
     "first_principles_manifest": {
-      "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "artifact_generation_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "artifact_schema_version": "first_principles_artifact_v1",
       "artifact_status": "engineering_candidate_not_validation",
       "backend": "package_native",
@@ -9817,11 +10015,11 @@
         ],
         "validation_status": "not_validation"
       },
-      "created_utc": "2026-05-18T20:07:11+00:00",
+      "created_utc": "2026-05-18T21:01:59+00:00",
       "dirty_worktree": true,
       "final_time_s": 1.0000872109680097e-06,
       "geometry_dimensionality": "3d",
-      "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
       "grid_shape": [
         5,
         5,
@@ -9834,7 +10032,7 @@
       ],
       "input_deck_sha256": "d0f5df74ca8a8338b93fd9a9173a6f72761bb6d1f4d4dd5233f320484dfe315c",
       "inputs": [],
-      "manifest_sha256": "f5e30476bb9b10a083b6306f8f47d3f22e5a8a78f751b87c64bf5467f78ceefc",
+      "manifest_sha256": "c2311a18a3a6ac36329601f383c33883a69f6c77f4bc17d70366430a4713c7bb",
       "manifest_version": "1.0",
       "metadata": {
         "deck": {
@@ -10359,15 +10557,13 @@
         "status": "engineering_candidate_not_validation",
         "validation_packet_status": "not_validation"
       },
-      "missing_provenance_fields": [
-        "source_truth_index_sha256"
-      ],
+      "missing_provenance_fields": [],
       "n_steps_completed": 4632,
       "n_steps_requested": 4632,
       "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
       "outputs": [],
-      "provenance_complete": false,
-      "run_id": "fp-run-c9ce74d90d3043b5a9f4531bb3d9881b",
+      "provenance_complete": true,
+      "run_id": "fp-run-34384347254647e6b10a35c4ef78d80f",
       "run_status": "engineering_candidate",
       "runtime": {
         "machine": "arm64",
@@ -10386,12 +10582,14 @@
           "status": "source_reference_not_validation"
         }
       ],
-      "source_packet_hashes": {},
-      "source_truth_index_sha256": null,
+      "source_packet_hashes": {
+        "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+      },
+      "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
       "validation_status": "not_validation"
     },
     "geometry_dimensionality": "3d",
-    "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "git_commit": "466a0a54e992acf61a9dd0f2d12e7e15fd23e9af",
     "grid_shape": [
       5,
       5,
@@ -10404,7 +10602,7 @@
     ],
     "input_deck_sha256": "d0f5df74ca8a8338b93fd9a9173a6f72761bb6d1f4d4dd5233f320484dfe315c",
     "inputs": [],
-    "manifest_sha256": "f5e30476bb9b10a083b6306f8f47d3f22e5a8a78f751b87c64bf5467f78ceefc",
+    "manifest_sha256": "c2311a18a3a6ac36329601f383c33883a69f6c77f4bc17d70366430a4713c7bb",
     "manifest_version": "1.0",
     "metadata": {
       "deck": {
@@ -10929,16 +11127,14 @@
       "status": "engineering_candidate_not_validation",
       "validation_packet_status": "not_validation"
     },
-    "missing_provenance_fields": [
-      "source_truth_index_sha256"
-    ],
+    "missing_provenance_fields": [],
     "n_steps_completed": 4632,
     "n_steps_requested": 4632,
     "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
     "outputs": [],
-    "provenance_complete": false,
+    "provenance_complete": true,
     "reduced_models_used": false,
-    "run_id": "fp-run-c9ce74d90d3043b5a9f4531bb3d9881b",
+    "run_id": "fp-run-34384347254647e6b10a35c4ef78d80f",
     "run_mode": "first_principles_3d_hybrid_em_pic_fluid",
     "run_status": "engineering_candidate",
     "runtime": {
@@ -10959,8 +11155,10 @@
         "status": "source_reference_not_validation"
       }
     ],
-    "source_packet_hashes": {},
-    "source_truth_index_sha256": null,
+    "source_packet_hashes": {
+      "hybrid_pic_3d_architecture_source": "07282c2e97f8ee968309ddce49881ec37600112f09fdcdb32c65ff7ca1cebb59"
+    },
+    "source_truth_index_sha256": "82d93d1b4a6fb360bd5ec13e72e47f53f48560d8ba481d25f2d67471e0188bb1",
     "status": "engineering_candidate_not_validation",
     "validation_status": "not_validation"
   },
@@ -13644,6 +13842,2695 @@
     "n_particles_initial": 24,
     "n_steps_completed": 4632,
     "n_steps_requested": 4632,
+    "power_port_ledger": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_power_port_acceptance": false,
+      "cumulative_omega_volume_j_dot_e_work_J": 132.90816332711378,
+      "cumulative_terminal_port_work_J": 1972.1252007579355,
+      "cumulative_wall_poynting_flux_excluding_declared_port_J": 1.2508401404510545,
+      "domain_partition": {
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "electron_density_floor_m3": 1.0,
+        "geometry_review_status": "geometry_candidate_not_reviewed",
+        "grid_shape": [
+          5,
+          5,
+          5
+        ],
+        "labels": [
+          "omega_volume_cells",
+          "terminal_source_interface_faces",
+          "wall_material_faces",
+          "open_pml_faces"
+        ],
+        "omega_current_floor_A_m2": 1e-06,
+        "omega_volume_cells": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 3,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 57,
+          "label": "omega_volume_cells",
+          "mask_sha256": "4be11660cc81b1b6a93957dd40f2a2498b4684599e892cd34ddfffe483d1b67f",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "open_pml_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 4,
+            "k_min": 4,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "open_pml_faces",
+          "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "partition_constraints": {
+          "exhaustive": true,
+          "max_labels_per_cell": 1,
+          "min_labels_per_cell": 1,
+          "mutually_disjoint": true,
+          "omega_contains_only_current_carrying_cells": true,
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "partition_kind": "per_cell_exhaustive_disjoint_label",
+        "pml_layers": 1,
+        "source_interface_z_index": 0,
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+        ],
+        "status": "candidate_auluck_omega_domain_partition_not_validation",
+        "terminal_source_interface_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 0,
+            "k_min": 0,
+            "non_empty": true
+          },
+          "cell_count": 25,
+          "label": "terminal_source_interface_faces",
+          "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        },
+        "wall_material_faces": {
+          "bounds": {
+            "i_max": 4,
+            "i_min": 0,
+            "j_max": 4,
+            "j_min": 0,
+            "k_max": 2,
+            "k_min": 1,
+            "non_empty": true
+          },
+          "cell_count": 18,
+          "label": "wall_material_faces",
+          "mask_sha256": "b6b1602a766381486ec7583742769afffae12d1c84ff795466df7827bc181784",
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ]
+        }
+      },
+      "domain_partition_constraints_ok": true,
+      "first_step_fallback": true,
+      "first_step_udpf_source": "input_sequence_fallback_first_step",
+      "n_steps_completed": 4632,
+      "sign_convention": "wp_n1_packet_section_3_1_into_omega_positive",
+      "snapshot_provenance": {
+        "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+        "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+        "time_centering": "candidate_step_consistent_not_accepted",
+        "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+        "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+      },
+      "status": "candidate_auluck_power_port_five_term_ledger_not_validation",
+      "step_records": [
+        {
+          "omega_cell_count": 16,
+          "step_index": 0,
+          "stored_em_energy_begin_J": 0.0,
+          "stored_em_energy_end_J": 1.2746338636382128e-12,
+          "terminal_port_power_W": 0.0,
+          "udpf_source": "input_sequence_fallback_first_step",
+          "volume_j_dot_e_power_W": 0.0,
+          "wall_poynting_flux_W": 0.000244819979868972
+        },
+        {
+          "omega_cell_count": 32,
+          "step_index": 1,
+          "stored_em_energy_begin_J": 2.0943605719301634e-12,
+          "stored_em_energy_end_J": 4.674482186825946e-06,
+          "terminal_port_power_W": -0.0,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": -0.020343361746563857,
+          "wall_poynting_flux_W": 5.349516967497045e-06
+        },
+        {
+          "omega_cell_count": 48,
+          "step_index": 2,
+          "stored_em_energy_begin_J": 4.674482192394664e-06,
+          "stored_em_energy_end_J": 3.219132684609274e-05,
+          "terminal_port_power_W": 0.042503711573177304,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 14880.186268439349,
+          "wall_poynting_flux_W": -5.603782197338493e-08
+        },
+        {
+          "omega_cell_count": 56,
+          "step_index": 3,
+          "stored_em_energy_begin_J": 3.21913268467311e-05,
+          "stored_em_energy_end_J": 8.958231059357e-05,
+          "terminal_port_power_W": -29825.23393435304,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 50779.02857098964,
+          "wall_poynting_flux_W": 3.5086592097894614e-07
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 4,
+          "stored_em_energy_begin_J": 8.958231059361427e-05,
+          "stored_em_energy_end_J": 0.00016024937441625145,
+          "terminal_port_power_W": -85535.68600384149,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 65748.46311517416,
+          "wall_poynting_flux_W": 0.002756574184080326
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 5,
+          "stored_em_energy_begin_J": 0.00016024937441625145,
+          "stored_em_energy_end_J": 0.00022519623244795852,
+          "terminal_port_power_W": -90563.01686519588,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 49599.305125069215,
+          "wall_poynting_flux_W": 0.033403464739510495
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 6,
+          "stored_em_energy_begin_J": 0.00022519623244795852,
+          "stored_em_energy_end_J": 0.0002830764941450973,
+          "terminal_port_power_W": -60769.01681990696,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 27463.074793961623,
+          "wall_poynting_flux_W": 0.23584212614758282
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 7,
+          "stored_em_energy_begin_J": 0.0002830764941450973,
+          "stored_em_energy_end_J": 0.0003503845329155752,
+          "terminal_port_power_W": -36564.70683749807,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 17139.050442814125,
+          "wall_poynting_flux_W": 0.9850872654061723
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 8,
+          "stored_em_energy_begin_J": 0.0003503845329155752,
+          "stored_em_energy_end_J": 0.00044493163527071437,
+          "terminal_port_power_W": -28119.83381252649,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 20543.504792145563,
+          "wall_poynting_flux_W": 2.3796541104413835
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 9,
+          "stored_em_energy_begin_J": 0.00044493163527071437,
+          "stored_em_energy_end_J": 0.0005705923283780841,
+          "terminal_port_power_W": -39357.0716193491,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 36343.354782286304,
+          "wall_poynting_flux_W": 3.6779780962391073
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 10,
+          "stored_em_energy_begin_J": 0.0005705923283780841,
+          "stored_em_energy_end_J": 0.0007175604025104062,
+          "terminal_port_power_W": -66513.08934251915,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 56792.355268422616,
+          "wall_poynting_flux_W": 4.136630884753671
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 11,
+          "stored_em_energy_begin_J": 0.0007175604025104062,
+          "stored_em_energy_end_J": 0.0008729903773690114,
+          "terminal_port_power_W": -94653.30829608225,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 67268.57005457746,
+          "wall_poynting_flux_W": 3.229246489279458
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 12,
+          "stored_em_energy_begin_J": 0.0008729903773690114,
+          "stored_em_energy_end_J": 0.0010312496045643544,
+          "terminal_port_power_W": -110362.84965158135,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 64226.3426443315,
+          "wall_poynting_flux_W": 1.2782650972110348
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 13,
+          "stored_em_energy_begin_J": 0.0010312496045643544,
+          "stored_em_energy_end_J": 0.0011956555971248688,
+          "terminal_port_power_W": -114234.59318089699,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 58567.91448221581,
+          "wall_poynting_flux_W": 1.30005968701871
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 14,
+          "stored_em_energy_begin_J": 0.0011956555971248688,
+          "stored_em_energy_end_J": 0.0013731631889052243,
+          "terminal_port_power_W": -118344.89019797658,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 59689.573328507184,
+          "wall_poynting_flux_W": 7.483580849248393
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 15,
+          "stored_em_energy_begin_J": 0.0013731631889052243,
+          "stored_em_energy_end_J": 0.0015691005285027309,
+          "terminal_port_power_W": -131571.48697028897,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 68582.47880028674,
+          "wall_poynting_flux_W": 18.04248753537056
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 16,
+          "stored_em_energy_begin_J": 0.0015691005285027309,
+          "stored_em_energy_end_J": 0.0017847284885169957,
+          "terminal_port_power_W": -154056.46950613562,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 80570.35247263634,
+          "wall_poynting_flux_W": 20.7106487419491
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 17,
+          "stored_em_energy_begin_J": 0.0017847284885169957,
+          "stored_em_energy_end_J": 0.002017927657052735,
+          "terminal_port_power_W": -180769.69051442225,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 90410.21621432005,
+          "wall_poynting_flux_W": 9.71987037897037
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 18,
+          "stored_em_energy_begin_J": 0.002017927657052735,
+          "stored_em_energy_end_J": 0.002265364173198114,
+          "terminal_port_power_W": -206565.1580647547,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 97115.99669891167,
+          "wall_poynting_flux_W": -0.43130187025028976
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 19,
+          "stored_em_energy_begin_J": 0.002265364173198114,
+          "stored_em_energy_end_J": 0.0025243905796455274,
+          "terminal_port_power_W": -230350.36926856483,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 102999.12880151544,
+          "wall_poynting_flux_W": 3.4089198344020946
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 20,
+          "stored_em_energy_begin_J": 0.0025243905796455274,
+          "stored_em_energy_end_J": 0.002794458080813359,
+          "terminal_port_power_W": -254124.67167929196,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 109922.58635041631,
+          "wall_poynting_flux_W": 16.749545973664304
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 21,
+          "stored_em_energy_begin_J": 0.002794458080813359,
+          "stored_em_energy_end_J": 0.0030771754606211447,
+          "terminal_port_power_W": -279844.5751966236,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 117851.9996837737,
+          "wall_poynting_flux_W": 26.666874663800066
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 22,
+          "stored_em_energy_begin_J": 0.0030771754606211447,
+          "stored_em_energy_end_J": 0.0033749577986145534,
+          "terminal_port_power_W": -308041.56375545496,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 126008.54492761551,
+          "wall_poynting_flux_W": 23.503716832447246
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 23,
+          "stored_em_energy_begin_J": 0.0033749577986145534,
+          "stored_em_energy_end_J": 0.0036893442554769462,
+          "terminal_port_power_W": -338327.9600854191,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 134591.19163184174,
+          "wall_poynting_flux_W": 12.746208553431046
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 24,
+          "stored_em_energy_begin_J": 0.0036893442554769462,
+          "stored_em_energy_end_J": 0.00402005391236684,
+          "terminal_port_power_W": -370705.7938130613,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 144359.2584043948,
+          "wall_poynting_flux_W": 9.547356412233519
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 25,
+          "stored_em_energy_begin_J": 0.00402005391236684,
+          "stored_em_energy_end_J": 0.004365549942516423,
+          "terminal_port_power_W": -405364.2318352319,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 155144.0486203925,
+          "wall_poynting_flux_W": 17.339161614204713
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 26,
+          "stored_em_energy_begin_J": 0.004365549942516423,
+          "stored_em_energy_end_J": 0.0047245502716591215,
+          "terminal_port_power_W": -441837.7660616998,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 165829.5744802574,
+          "wall_poynting_flux_W": 26.570458213915572
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 27,
+          "stored_em_energy_begin_J": 0.0047245502716591215,
+          "stored_em_energy_end_J": 0.005096959725255623,
+          "terminal_port_power_W": -479306.17765871016,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 175628.6321441033,
+          "wall_poynting_flux_W": 28.660877704400335
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 28,
+          "stored_em_energy_begin_J": 0.005096959725255623,
+          "stored_em_energy_end_J": 0.0054834989841544245,
+          "terminal_port_power_W": -517412.75992193614,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 185040.492901269,
+          "wall_poynting_flux_W": 24.669002189552497
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 29,
+          "stored_em_energy_begin_J": 0.0054834989841544245,
+          "stored_em_energy_end_J": 0.005884773589064319,
+          "terminal_port_power_W": -556701.2243848601,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 195291.8549052169,
+          "wall_poynting_flux_W": 22.956713652890183
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 30,
+          "stored_em_energy_begin_J": 0.005884773589064319,
+          "stored_em_energy_end_J": 0.006300938164611852,
+          "terminal_port_power_W": -598100.2309541277,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 206928.46283599673,
+          "wall_poynting_flux_W": 27.523077446726724
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 31,
+          "stored_em_energy_begin_J": 0.006300938164611852,
+          "stored_em_energy_end_J": 0.006732004318681597,
+          "terminal_port_power_W": -641941.340824668,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 219339.19296308368,
+          "wall_poynting_flux_W": 34.038636049492375
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 32,
+          "stored_em_energy_begin_J": 0.006732004318681597,
+          "stored_em_energy_end_J": 0.007178004593954167,
+          "terminal_port_power_W": -687733.3582832823,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 231612.58235447147,
+          "wall_poynting_flux_W": 37.451394038437584
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 33,
+          "stored_em_energy_begin_J": 0.007178004593954167,
+          "stored_em_energy_end_J": 0.007638801964225769,
+          "terminal_port_power_W": -734801.8019651155,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 243558.11308641662,
+          "wall_poynting_flux_W": 38.03569290028618
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 34,
+          "stored_em_energy_begin_J": 0.007638801964225769,
+          "stored_em_energy_end_J": 0.008114042764581978,
+          "terminal_port_power_W": -782988.5426258369,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 255716.1115043752,
+          "wall_poynting_flux_W": 39.71564691289467
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 35,
+          "stored_em_energy_begin_J": 0.008114042764581978,
+          "stored_em_energy_end_J": 0.008603476580338507,
+          "terminal_port_power_W": -832653.2394473191,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 268559.81798076356,
+          "wall_poynting_flux_W": 44.4139106145758
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 36,
+          "stored_em_energy_begin_J": 0.008603476580338507,
+          "stored_em_energy_end_J": 0.009107234796556661,
+          "terminal_port_power_W": -884118.4227219089,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 282011.4059401263,
+          "wall_poynting_flux_W": 50.32421608119237
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 37,
+          "stored_em_energy_begin_J": 0.009107234796556661,
+          "stored_em_energy_end_J": 0.009625705359920822,
+          "terminal_port_power_W": -937359.1105406326,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 295705.80393382156,
+          "wall_poynting_flux_W": 55.19128857341312
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 38,
+          "stored_em_energy_begin_J": 0.009625705359920822,
+          "stored_em_energy_end_J": 0.010159173836050467,
+          "terminal_port_power_W": -992180.7226748741,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 309494.8071131223,
+          "wall_poynting_flux_W": 59.08452212453224
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 39,
+          "stored_em_energy_begin_J": 0.010159173836050467,
+          "stored_em_energy_end_J": 0.010707601700702504,
+          "terminal_port_power_W": -1048517.5215832748,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 323576.22161537403,
+          "wall_poynting_flux_W": 63.65009384144979
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 40,
+          "stored_em_energy_begin_J": 0.010707601700702504,
+          "stored_em_energy_end_J": 0.011270707499432493,
+          "terminal_port_power_W": -1106482.3671888397,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 338174.12208334083,
+          "wall_poynting_flux_W": 69.64676780849575
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 41,
+          "stored_em_energy_begin_J": 0.011270707499432493,
+          "stored_em_energy_end_J": 0.011848248856717817,
+          "terminal_port_power_W": -1166159.4603235903,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 353232.7040625157,
+          "wall_poynting_flux_W": 76.38878224662207
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 42,
+          "stored_em_energy_begin_J": 0.011848248856717817,
+          "stored_em_energy_end_J": 0.012440237040075809,
+          "terminal_port_power_W": -1227459.379659828,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 368510.38585459033,
+          "wall_poynting_flux_W": 83.13923524490002
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 43,
+          "stored_em_energy_begin_J": 0.012440237040075809,
+          "stored_em_energy_end_J": 0.013046878364933609,
+          "terminal_port_power_W": -1290233.4866409851,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 383913.9683828939,
+          "wall_poynting_flux_W": 89.91054301958594
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 44,
+          "stored_em_energy_begin_J": 0.013046878364933609,
+          "stored_em_energy_end_J": 0.013668333286082714,
+          "terminal_port_power_W": -1354480.9751569785,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 399609.6386589436,
+          "wall_poynting_flux_W": 97.13215562290813
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 45,
+          "stored_em_energy_begin_J": 0.013668333286082714,
+          "stored_em_energy_end_J": 0.014304581981403212,
+          "terminal_port_power_W": -1420357.0346106642,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 415785.56905143184,
+          "wall_poynting_flux_W": 105.06735078275781
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 46,
+          "stored_em_energy_begin_J": 0.014304581981403212,
+          "stored_em_energy_end_J": 0.014955513424616932,
+          "terminal_port_power_W": -1487970.8125214642,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 432423.18284583435,
+          "wall_poynting_flux_W": 113.58446232144377
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 47,
+          "stored_em_energy_begin_J": 0.014955513424616932,
+          "stored_em_energy_end_J": 0.015621070241206465,
+          "terminal_port_power_W": -1557260.8629852792,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 449357.9873588854,
+          "wall_poynting_flux_W": 122.44210112916916
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 48,
+          "stored_em_energy_begin_J": 0.015621070241206465,
+          "stored_em_energy_end_J": 0.01630127611097939,
+          "terminal_port_power_W": -1628093.1516535347,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 466490.1264652143,
+          "wall_poynting_flux_W": 131.68378907859568
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 49,
+          "stored_em_energy_begin_J": 0.01630127611097939,
+          "stored_em_energy_end_J": 0.016996170786649556,
+          "terminal_port_power_W": -1700416.541040524,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 483872.99993240414,
+          "wall_poynting_flux_W": 141.50777436098394
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 50,
+          "stored_em_energy_begin_J": 0.016996170786649556,
+          "stored_em_energy_end_J": 0.017705763867208978,
+          "terminal_port_power_W": -1774291.5016025547,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 501621.54893208935,
+          "wall_poynting_flux_W": 151.8386772449756
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 51,
+          "stored_em_energy_begin_J": 0.017705763867208978,
+          "stored_em_energy_end_J": 0.01843004345069074,
+          "terminal_port_power_W": -1849800.912168631,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 519779.79723996064,
+          "wall_poynting_flux_W": 162.48769494795923
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 52,
+          "stored_em_energy_begin_J": 0.01843004345069074,
+          "stored_em_energy_end_J": 0.019169003383003348,
+          "terminal_port_power_W": -1926963.0121054247,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 538289.194103348,
+          "wall_poynting_flux_W": 173.5954150705865
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 53,
+          "stored_em_energy_begin_J": 0.019169003383003348,
+          "stored_em_energy_end_J": 0.01992265398216171,
+          "terminal_port_power_W": -2005727.6513860102,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 557072.9696835029,
+          "wall_poynting_flux_W": 185.38607355124321
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 54,
+          "stored_em_energy_begin_J": 0.01992265398216171,
+          "stored_em_energy_end_J": 0.02069100932333031,
+          "terminal_port_power_W": -2086043.42488245,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 576125.5784708819,
+          "wall_poynting_flux_W": 197.7311085619538
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 55,
+          "stored_em_energy_begin_J": 0.02069100932333031,
+          "stored_em_energy_end_J": 0.021474066800940696,
+          "terminal_port_power_W": -2167912.843667809,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 595501.8110008184,
+          "wall_poynting_flux_W": 210.4158382226831
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 56,
+          "stored_em_energy_begin_J": 0.021474066800940696,
+          "stored_em_energy_end_J": 0.022271805064196362,
+          "terminal_port_power_W": -2251373.2232814566,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 615238.0864973089,
+          "wall_poynting_flux_W": 223.51252834118648
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 57,
+          "stored_em_energy_begin_J": 0.022271805064196362,
+          "stored_em_energy_end_J": 0.023084208137137727,
+          "terminal_port_power_W": -2336442.093396573,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 635315.6728062774,
+          "wall_poynting_flux_W": 237.16735514106892
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 58,
+          "stored_em_energy_begin_J": 0.023084208137137727,
+          "stored_em_energy_end_J": 0.023911286978642855,
+          "terminal_port_power_W": -2423102.9474005806,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 655696.0346295296,
+          "wall_poynting_flux_W": 251.37578528875056
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 59,
+          "stored_em_energy_begin_J": 0.023911286978642855,
+          "stored_em_energy_end_J": 0.024753066666740455,
+          "terminal_port_power_W": -2511333.940866052,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 676367.2812493633,
+          "wall_poynting_flux_W": 266.1207705255723
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 60,
+          "stored_em_energy_begin_J": 0.024753066666740455,
+          "stored_em_energy_end_J": 0.025609553698854426,
+          "terminal_port_power_W": -2601131.001834629,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 697351.0255017385,
+          "wall_poynting_flux_W": 281.38819237822145
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 61,
+          "stored_em_energy_begin_J": 0.025609553698854426,
+          "stored_em_energy_end_J": 0.026480728680133042,
+          "terminal_port_power_W": -2692505.784635278,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 718672.8239168443,
+          "wall_poynting_flux_W": 297.076576733764
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 62,
+          "stored_em_energy_begin_J": 0.026480728680133042,
+          "stored_em_energy_end_J": 0.02736657317096188,
+          "terminal_port_power_W": -2785470.0189035875,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 740331.1786805808,
+          "wall_poynting_flux_W": 313.181024406366
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 63,
+          "stored_em_energy_begin_J": 0.02736657317096188,
+          "stored_em_energy_end_J": 0.028267090335498388,
+          "terminal_port_power_W": -2880020.517140373,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 762300.6878172013,
+          "wall_poynting_flux_W": 329.87540006329016
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 64,
+          "stored_em_energy_begin_J": 0.028267090335498388,
+          "stored_em_energy_end_J": 0.029182293674175568,
+          "terminal_port_power_W": -2976140.9004750825,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 784565.8075167148,
+          "wall_poynting_flux_W": 347.2070205925917
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 65,
+          "stored_em_energy_begin_J": 0.029182293674175568,
+          "stored_em_energy_end_J": 0.03011218669648842,
+          "terminal_port_power_W": -3073821.621405136,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 807138.891498553,
+          "wall_poynting_flux_W": 365.00533870320845
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 66,
+          "stored_em_energy_begin_J": 0.03011218669648842,
+          "stored_em_energy_end_J": 0.031056761144896413,
+          "terminal_port_power_W": -3173070.7236229903,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 830039.2615794672,
+          "wall_poynting_flux_W": 383.20438465728455
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 67,
+          "stored_em_energy_begin_J": 0.031056761144896413,
+          "stored_em_energy_end_J": 0.032016008390306855,
+          "terminal_port_power_W": -3273899.075600688,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 853267.8819234659,
+          "wall_poynting_flux_W": 401.92626994293994
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 68,
+          "stored_em_energy_begin_J": 0.032016008390306855,
+          "stored_em_energy_end_J": 0.03298992640578634,
+          "terminal_port_power_W": -3376304.3371328157,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 876810.781611747,
+          "wall_poynting_flux_W": 421.2259330447106
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 69,
+          "stored_em_energy_begin_J": 0.03298992640578634,
+          "stored_em_energy_end_J": 0.033978518283977,
+          "terminal_port_power_W": -3480275.6976007693,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 900657.6330203435,
+          "wall_poynting_flux_W": 441.0509653962349
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 70,
+          "stored_em_energy_begin_J": 0.033978518283977,
+          "stored_em_energy_end_J": 0.03498178648274208,
+          "terminal_port_power_W": -3585806.4889665185,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 924810.4296354447,
+          "wall_poynting_flux_W": 461.391759278941
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 71,
+          "stored_em_energy_begin_J": 0.03498178648274208,
+          "stored_em_energy_end_J": 0.03599972774046288,
+          "terminal_port_power_W": -3692897.641826965,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 949278.8022794928,
+          "wall_poynting_flux_W": 482.2518037048229
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 72,
+          "stored_em_energy_begin_J": 0.03599972774046288,
+          "stored_em_energy_end_J": 0.03703233460016863,
+          "terminal_port_power_W": -3801553.733310646,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 974068.7689575567,
+          "wall_poynting_flux_W": 503.5951907427871
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 73,
+          "stored_em_energy_begin_J": 0.03703233460016863,
+          "stored_em_energy_end_J": 0.03807960261107346,
+          "terminal_port_power_W": -3911776.747568161,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 999174.8641223168,
+          "wall_poynting_flux_W": 525.444655822503
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 74,
+          "stored_em_energy_begin_J": 0.03807960261107346,
+          "stored_em_energy_end_J": 0.03914153314423342,
+          "terminal_port_power_W": -4023561.501666035,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1024586.660210218,
+          "wall_poynting_flux_W": 547.8691919192415
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 75,
+          "stored_em_energy_begin_J": 0.03914153314423342,
+          "stored_em_energy_end_J": 0.04021812795623499,
+          "terminal_port_power_W": -4136899.917619704,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1050302.7087111531,
+          "wall_poynting_flux_W": 570.8482648970228
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 76,
+          "stored_em_energy_begin_J": 0.04021812795623499,
+          "stored_em_energy_end_J": 0.041309384145754614,
+          "terminal_port_power_W": -4251790.317827121,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1076330.939423752,
+          "wall_poynting_flux_W": 594.3150965384032
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 77,
+          "stored_em_energy_begin_J": 0.041309384145754614,
+          "stored_em_energy_end_J": 0.04241529590585287,
+          "terminal_port_power_W": -4368236.970998363,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1102675.5694838315,
+          "wall_poynting_flux_W": 618.2856722091742
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 78,
+          "stored_em_energy_begin_J": 0.04241529590585287,
+          "stored_em_energy_end_J": 0.04353585891010627,
+          "terminal_port_power_W": -4486240.5730860885,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1129331.8973851565,
+          "wall_poynting_flux_W": 642.8048894557795
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 79,
+          "stored_em_energy_begin_J": 0.04353585891010627,
+          "stored_em_energy_end_J": 0.0446710717604244,
+          "terminal_port_power_W": -4605795.712090014,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1156294.3088511124,
+          "wall_poynting_flux_W": 667.8623740646146
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 80,
+          "stored_em_energy_begin_J": 0.0446710717604244,
+          "stored_em_energy_end_J": 0.04582093419605733,
+          "terminal_port_power_W": -4726897.502191998,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1183562.3974600895,
+          "wall_poynting_flux_W": 693.4515142468202
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 81,
+          "stored_em_energy_begin_J": 0.04582093419605733,
+          "stored_em_energy_end_J": 0.046985444442896096,
+          "terminal_port_power_W": -4849544.972732805,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1211138.8022246421,
+          "wall_poynting_flux_W": 719.5917633377454
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 82,
+          "stored_em_energy_begin_J": 0.046985444442896096,
+          "stored_em_energy_end_J": 0.04816459836983404,
+          "terminal_port_power_W": -4973738.332137751,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1239025.441926004,
+          "wall_poynting_flux_W": 746.2630970107252
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 83,
+          "stored_em_energy_begin_J": 0.04816459836983404,
+          "stored_em_energy_end_J": 0.049358391503200864,
+          "terminal_port_power_W": -5099476.76338078,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1267221.6284989803,
+          "wall_poynting_flux_W": 773.4391376281362
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 84,
+          "stored_em_energy_begin_J": 0.049358391503200864,
+          "stored_em_energy_end_J": 0.05056682122291841,
+          "terminal_port_power_W": -5226758.017958242,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1295724.165713691,
+          "wall_poynting_flux_W": 801.1577569922772
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 85,
+          "stored_em_energy_begin_J": 0.05056682122291841,
+          "stored_em_energy_end_J": 0.05178988615073251,
+          "terminal_port_power_W": -5355578.422327798,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1324530.5971758703,
+          "wall_poynting_flux_W": 829.454471646131
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 86,
+          "stored_em_energy_begin_J": 0.05178988615073251,
+          "stored_em_energy_end_J": 0.053027584108896283,
+          "terminal_port_power_W": -5485934.797419056,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1353642.0703475561,
+          "wall_poynting_flux_W": 858.2953511274336
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 87,
+          "stored_em_energy_begin_J": 0.053027584108896283,
+          "stored_em_energy_end_J": 0.054279911607355597,
+          "terminal_port_power_W": -5617826.396015523,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1383060.8231735418,
+          "wall_poynting_flux_W": 887.6519695175698
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 88,
+          "stored_em_energy_begin_J": 0.054279911607355597,
+          "stored_em_energy_end_J": 0.05554686482924194,
+          "terminal_port_power_W": -5751252.975032347,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1412786.1906936106,
+          "wall_poynting_flux_W": 917.5517143191955
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 89,
+          "stored_em_energy_begin_J": 0.05554686482924194,
+          "stored_em_energy_end_J": 0.056828440570729825,
+          "terminal_port_power_W": -5886212.012003083,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1442815.5830015943,
+          "wall_poynting_flux_W": 948.0129521830661
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 90,
+          "stored_em_energy_begin_J": 0.056828440570729825,
+          "stored_em_energy_end_J": 0.05812463648868359,
+          "terminal_port_power_W": -6022699.870479594,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1473147.7997896064,
+          "wall_poynting_flux_W": 979.0231298894275
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 91,
+          "stored_em_energy_begin_J": 0.05812463648868359,
+          "stored_em_energy_end_J": 0.05943545038070183,
+          "terminal_port_power_W": -6160714.219331865,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1503783.2536252555,
+          "wall_poynting_flux_W": 1010.585479649589
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 92,
+          "stored_em_energy_begin_J": 0.05943545038070183,
+          "stored_em_energy_end_J": 0.06076087907525338,
+          "terminal_port_power_W": -6300253.629624356,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1534722.33387962,
+          "wall_poynting_flux_W": 1042.7083102679212
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 93,
+          "stored_em_energy_begin_J": 0.06076087907525338,
+          "stored_em_energy_end_J": 0.06210091862418136,
+          "terminal_port_power_W": -6441316.264314452,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1565964.8083889335,
+          "wall_poynting_flux_W": 1075.3759150162568
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 94,
+          "stored_em_energy_begin_J": 0.06210091862418136,
+          "stored_em_energy_end_J": 0.0634555657062377,
+          "terminal_port_power_W": -6583899.926793274,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1597509.7470721698,
+          "wall_poynting_flux_W": 1108.5866645719218
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 95,
+          "stored_em_energy_begin_J": 0.0634555657062377,
+          "stored_em_energy_end_J": 0.06482481792766068,
+          "terminal_port_power_W": -6728002.152455851,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1629355.8037574526,
+          "wall_poynting_flux_W": 1142.3688375360366
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 96,
+          "stored_em_energy_begin_J": 0.06482481792766068,
+          "stored_em_energy_end_J": 0.06620867263697713,
+          "terminal_port_power_W": -6873620.1077459715,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1661502.3928822393,
+          "wall_poynting_flux_W": 1176.7274188874958
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 97,
+          "stored_em_energy_begin_J": 0.06620867263697713,
+          "stored_em_energy_end_J": 0.06760712641904448,
+          "terminal_port_power_W": -7020751.36059479,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1693949.9689102154,
+          "wall_poynting_flux_W": 1211.6375178142762
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 98,
+          "stored_em_energy_begin_J": 0.06760712641904448,
+          "stored_em_energy_end_J": 0.06902017581069157,
+          "terminal_port_power_W": -7169394.208602427,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1726698.5330516167,
+          "wall_poynting_flux_W": 1247.0982843500735
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 99,
+          "stored_em_energy_begin_J": 0.06902017581069157,
+          "stored_em_energy_end_J": 0.07044781769488252,
+          "terminal_port_power_W": -7319546.568179069,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1759746.9686531052,
+          "wall_poynting_flux_W": 1283.1320964049044
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 100,
+          "stored_em_energy_begin_J": 0.07044781769488252,
+          "stored_em_energy_end_J": 0.0718900490508983,
+          "terminal_port_power_W": -7471205.490573702,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1793094.2626570808,
+          "wall_poynting_flux_W": 1319.7415539948825
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 101,
+          "stored_em_energy_begin_J": 0.0718900490508983,
+          "stored_em_energy_end_J": 0.07334686687380301,
+          "terminal_port_power_W": -7624368.175756817,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1826740.1808460928,
+          "wall_poynting_flux_W": 1356.9174426381314
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 102,
+          "stored_em_energy_begin_J": 0.07334686687380301,
+          "stored_em_energy_end_J": 0.07481826813350119,
+          "terminal_port_power_W": -7779032.408736971,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1860684.5630673424,
+          "wall_poynting_flux_W": 1394.6647953750871
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 103,
+          "stored_em_energy_begin_J": 0.07481826813350119,
+          "stored_em_energy_end_J": 0.07630424953728647,
+          "terminal_port_power_W": -7935195.871957472,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1894926.964843049,
+          "wall_poynting_flux_W": 1432.9880715207282
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 104,
+          "stored_em_energy_begin_J": 0.07630424953728647,
+          "stored_em_energy_end_J": 0.07780480767535405,
+          "terminal_port_power_W": -8092855.945921003,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1929466.895184668,
+          "wall_poynting_flux_W": 1471.8822737229632
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 105,
+          "stored_em_energy_begin_J": 0.07780480767535405,
+          "stored_em_energy_end_J": 0.07931993945012725,
+          "terminal_port_power_W": -8252010.043763669,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1964303.726389346,
+          "wall_poynting_flux_W": 1511.3529247253864
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 106,
+          "stored_em_energy_begin_J": 0.07931993945012725,
+          "stored_em_energy_end_J": 0.08084964194990284,
+          "terminal_port_power_W": -8412655.494997825,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 1999436.730149632,
+          "wall_poynting_flux_W": 1551.411568474542
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 107,
+          "stored_em_energy_begin_J": 0.08084964194990284,
+          "stored_em_energy_end_J": 0.0823939120041196,
+          "terminal_port_power_W": -8574789.467935774,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2034865.5381560265,
+          "wall_poynting_flux_W": 1592.0539782586734
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 108,
+          "stored_em_energy_begin_J": 0.0823939120041196,
+          "stored_em_energy_end_J": 0.08395274626327622,
+          "terminal_port_power_W": -8738409.348352786,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2070590.0192796974,
+          "wall_poynting_flux_W": 1633.272653453778
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 109,
+          "stored_em_energy_begin_J": 0.08395274626327622,
+          "stored_em_energy_end_J": 0.08552614152970116,
+          "terminal_port_power_W": -8903512.681640409,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2106609.651619619,
+          "wall_poynting_flux_W": 1675.0763020648092
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 110,
+          "stored_em_energy_begin_J": 0.08552614152970116,
+          "stored_em_energy_end_J": 0.08711409470065797,
+          "terminal_port_power_W": -9070096.669623671,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2142923.631851646,
+          "wall_poynting_flux_W": 1717.4742898483778
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 111,
+          "stored_em_energy_begin_J": 0.08711409470065797,
+          "stored_em_energy_end_J": 0.08871660260872229,
+          "terminal_port_power_W": -9238158.278172966,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2179531.457365199,
+          "wall_poynting_flux_W": 1760.4630251768492
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 112,
+          "stored_em_energy_begin_J": 0.08871660260872229,
+          "stored_em_energy_end_J": 0.09033366209550632,
+          "terminal_port_power_W": -9407694.712736104,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2216432.840430093,
+          "wall_poynting_flux_W": 1804.0410879852034
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 113,
+          "stored_em_energy_begin_J": 0.09033366209550632,
+          "stored_em_energy_end_J": 0.09196527001965325,
+          "terminal_port_power_W": -9578703.294003544,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2253627.31145881,
+          "wall_poynting_flux_W": 1848.2150831586973
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 114,
+          "stored_em_energy_begin_J": 0.09196527001965325,
+          "stored_em_energy_end_J": 0.09361142315266306,
+          "terminal_port_power_W": -9751181.117116941,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2291114.3172096736,
+          "wall_poynting_flux_W": 1892.9868495371989
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 115,
+          "stored_em_energy_begin_J": 0.09361142315266306,
+          "stored_em_energy_end_J": 0.09527211826761182,
+          "terminal_port_power_W": -9925125.192291185,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2328893.3930442114,
+          "wall_poynting_flux_W": 1938.3551980490693
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 116,
+          "stored_em_energy_begin_J": 0.09527211826761182,
+          "stored_em_energy_end_J": 0.09694735226143056,
+          "terminal_port_power_W": -10100532.61102458,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2366964.0207497803,
+          "wall_poynting_flux_W": 1984.325555197574
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 117,
+          "stored_em_energy_begin_J": 0.09694735226143056,
+          "stored_em_energy_end_J": 0.09863712203220712,
+          "terminal_port_power_W": -10277400.383622611,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2405325.6408130145,
+          "wall_poynting_flux_W": 2030.9025049786387
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 118,
+          "stored_em_energy_begin_J": 0.09863712203220712,
+          "stored_em_energy_end_J": 0.10034142437219033,
+          "terminal_port_power_W": -10455725.42787987,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2443977.8378653643,
+          "wall_poynting_flux_W": 2078.0835202301087
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 119,
+          "stored_em_energy_begin_J": 0.10034142437219033,
+          "stored_em_energy_end_J": 0.10206025608307755,
+          "terminal_port_power_W": -10635504.745255994,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2482920.2195056095,
+          "wall_poynting_flux_W": 2125.869396181315
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 120,
+          "stored_em_energy_begin_J": 0.10206025608307755,
+          "stored_em_energy_end_J": 0.10379361403871423,
+          "terminal_port_power_W": -10816735.328496536,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2522152.2200524034,
+          "wall_poynting_flux_W": 2174.2671724049446
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 121,
+          "stored_em_energy_begin_J": 0.10379361403871423,
+          "stored_em_energy_end_J": 0.1055414950970458,
+          "terminal_port_power_W": -10999413.994574584,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2561673.2588774995,
+          "wall_poynting_flux_W": 2223.2794359274285
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 122,
+          "stored_em_energy_begin_J": 0.1055414950970458,
+          "stored_em_energy_end_J": 0.10730389609636154,
+          "terminal_port_power_W": -11183537.524371345,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2601482.9026453453,
+          "wall_poynting_flux_W": 2272.904529887726
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 123,
+          "stored_em_energy_begin_J": 0.10730389609636154,
+          "stored_em_energy_end_J": 0.10908081391516211,
+          "terminal_port_power_W": -11369102.791603489,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2641580.7164597446,
+          "wall_poynting_flux_W": 2323.145480505249
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 124,
+          "stored_em_energy_begin_J": 0.10908081391516211,
+          "stored_em_energy_end_J": 0.1108722454239792,
+          "terminal_port_power_W": -11556106.618391294,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2681966.170329191,
+          "wall_poynting_flux_W": 2374.007123878864
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 125,
+          "stored_em_energy_begin_J": 0.1108722454239792,
+          "stored_em_energy_end_J": 0.11267818744919302,
+          "terminal_port_power_W": -11744545.705406265,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2722638.759052964,
+          "wall_poynting_flux_W": 2425.490036819323
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 126,
+          "stored_em_energy_begin_J": 0.11267818744919302,
+          "stored_em_energy_end_J": 0.11449863685304278,
+          "terminal_port_power_W": -11934416.75634795,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2763598.016024927,
+          "wall_poynting_flux_W": 2477.5953102405347
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 127,
+          "stored_em_energy_begin_J": 0.11449863685304278,
+          "stored_em_energy_end_J": 0.11633359055096786,
+          "terminal_port_power_W": -12125716.483011143,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2804843.424298573,
+          "wall_poynting_flux_W": 2530.3275413535894
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 128,
+          "stored_em_energy_begin_J": 0.11633359055096786,
+          "stored_em_energy_end_J": 0.11818304542477819,
+          "terminal_port_power_W": -12318441.509990087,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2846374.4694148665,
+          "wall_poynting_flux_W": 2583.6891534305455
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 129,
+          "stored_em_energy_begin_J": 0.11818304542477819,
+          "stored_em_energy_end_J": 0.1200469983226118,
+          "terminal_port_power_W": -12512588.423024556,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2888190.701355569,
+          "wall_poynting_flux_W": 2637.6800924589156
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 130,
+          "stored_em_energy_begin_J": 0.1200469983226118,
+          "stored_em_energy_end_J": 0.12192544613252672,
+          "terminal_port_power_W": -12708153.833429128,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2930291.6430753395,
+          "wall_poynting_flux_W": 2692.3033671805338
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 131,
+          "stored_em_energy_begin_J": 0.12192544613252672,
+          "stored_em_energy_end_J": 0.12381838576581058,
+          "terminal_port_power_W": -12905134.297706798,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 2972676.7528205914,
+          "wall_poynting_flux_W": 2747.5633591462265
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 132,
+          "stored_em_energy_begin_J": 0.12381838576581058,
+          "stored_em_energy_end_J": 0.1257258141076433,
+          "terminal_port_power_W": -13103526.282139767,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3015345.523788081,
+          "wall_poynting_flux_W": 2803.461305438611
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 133,
+          "stored_em_energy_begin_J": 0.1257258141076433,
+          "stored_em_energy_end_J": 0.1276477280483977,
+          "terminal_port_power_W": -13303326.250956405,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3058297.4977408582,
+          "wall_poynting_flux_W": 2859.998209556771
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 134,
+          "stored_em_energy_begin_J": 0.1276477280483977,
+          "stored_em_energy_end_J": 0.12958412450658818,
+          "terminal_port_power_W": -13504530.674770445,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3101532.180461723,
+          "wall_poynting_flux_W": 2917.177784510488
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 135,
+          "stored_em_energy_begin_J": 0.12958412450658818,
+          "stored_em_energy_end_J": 0.13153500038770313,
+          "terminal_port_power_W": -13707135.95361526,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3145049.0520786643,
+          "wall_poynting_flux_W": 2975.0030312109707
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 136,
+          "stored_em_energy_begin_J": 0.13153500038770313,
+          "stored_em_energy_end_J": 0.13350035258310858,
+          "terminal_port_power_W": -13911138.431762688,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3188847.6244995464,
+          "wall_poynting_flux_W": 3033.4750239549116
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 137,
+          "stored_em_energy_begin_J": 0.13350035258310858,
+          "stored_em_energy_end_J": 0.13548017801333584,
+          "terminal_port_power_W": -14116534.45207391,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3232927.4101519217,
+          "wall_poynting_flux_W": 3092.596255340566
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 138,
+          "stored_em_energy_begin_J": 0.13548017801333584,
+          "stored_em_energy_end_J": 0.13747447361380064,
+          "terminal_port_power_W": -14323320.323010543,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3277287.8933647424,
+          "wall_poynting_flux_W": 3152.3703179713325
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 139,
+          "stored_em_energy_begin_J": 0.13747447361380064,
+          "stored_em_energy_end_J": 0.13948323629679746,
+          "terminal_port_power_W": -14531492.289601067,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3321928.5756106135,
+          "wall_poynting_flux_W": 3212.799077012307
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 140,
+          "stored_em_energy_begin_J": 0.13948323629679746,
+          "stored_em_energy_end_J": 0.1415064629739491,
+          "terminal_port_power_W": -14741046.576807734,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3366848.9801634015,
+          "wall_poynting_flux_W": 3273.8840946382497
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 141,
+          "stored_em_energy_begin_J": 0.1415064629739491,
+          "stored_em_energy_end_J": 0.1435441505824626,
+          "terminal_port_power_W": -14951979.39581526,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3412048.602559298,
+          "wall_poynting_flux_W": 3335.6286542420376
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 142,
+          "stored_em_energy_begin_J": 0.1435441505824626,
+          "stored_em_energy_end_J": 0.14559629605932703,
+          "terminal_port_power_W": -15164286.898595009,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3457526.9225973827,
+          "wall_poynting_flux_W": 3398.0357427960757
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 143,
+          "stored_em_energy_begin_J": 0.14559629605932703,
+          "stored_em_energy_end_J": 0.1476628963288712,
+          "terminal_port_power_W": -15377965.18825844,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3503283.448456868,
+          "wall_poynting_flux_W": 3461.106955217886
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 144,
+          "stored_em_energy_begin_J": 0.1476628963288712,
+          "stored_em_energy_end_J": 0.1497439483274649,
+          "terminal_port_power_W": -15593010.358349133,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3549317.6950222426,
+          "wall_poynting_flux_W": 3524.8446269447786
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 145,
+          "stored_em_energy_begin_J": 0.1497439483274649,
+          "stored_em_energy_end_J": 0.15183944900235902,
+          "terminal_port_power_W": -15809418.47199808,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3595629.152346153,
+          "wall_poynting_flux_W": 3589.2520291916335
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 146,
+          "stored_em_energy_begin_J": 0.15183944900235902,
+          "stored_em_energy_end_J": 0.15394939529013654,
+          "terminal_port_power_W": -16027185.534076545,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3642217.311516335,
+          "wall_poynting_flux_W": 3654.3314876226204
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 147,
+          "stored_em_energy_begin_J": 0.15394939529013654,
+          "stored_em_energy_end_J": 0.1560737841274031,
+          "terminal_port_power_W": -16246307.516544485,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3689081.6805130607,
+          "wall_poynting_flux_W": 3720.084928887255
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 148,
+          "stored_em_energy_begin_J": 0.1560737841274031,
+          "stored_em_energy_end_J": 0.15821261246660298,
+          "terminal_port_power_W": -16466780.372253245,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3736221.758181694,
+          "wall_poynting_flux_W": 3786.515284695222
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 149,
+          "stored_em_energy_begin_J": 0.15821261246660298,
+          "stored_em_energy_end_J": 0.16036587725957727,
+          "terminal_port_power_W": -16688600.00933515,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3783637.0331696225,
+          "wall_poynting_flux_W": 3853.625448474675
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 150,
+          "stored_em_energy_begin_J": 0.16036587725957727,
+          "stored_em_energy_end_J": 0.16253357544784902,
+          "terminal_port_power_W": -16911762.290324517,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3831327.0071398765,
+          "wall_poynting_flux_W": 3921.4174404634814
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 151,
+          "stored_em_energy_begin_J": 0.16253357544784902,
+          "stored_em_energy_end_J": 0.16471570397976776,
+          "terminal_port_power_W": -17136263.05444094,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3879291.184747066,
+          "wall_poynting_flux_W": 3989.8936708461138
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 152,
+          "stored_em_energy_begin_J": 0.16471570397976776,
+          "stored_em_energy_end_J": 0.16691225981313607,
+          "terminal_port_power_W": -17362098.108396776,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3927529.0554699707,
+          "wall_poynting_flux_W": 4059.057220752712
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 153,
+          "stored_em_energy_begin_J": 0.16691225981313607,
+          "stored_em_energy_end_J": 0.16912323989980377,
+          "terminal_port_power_W": -17589263.209389243,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 3976040.1098701144,
+          "wall_poynting_flux_W": 4128.91061367248
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 154,
+          "stored_em_energy_begin_J": 0.16912323989980377,
+          "stored_em_energy_end_J": 0.17134864118858842,
+          "terminal_port_power_W": -17817754.079940796,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4024823.851274536,
+          "wall_poynting_flux_W": 4199.455997921128
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 155,
+          "stored_em_energy_begin_J": 0.17134864118858842,
+          "stored_em_energy_end_J": 0.1735884606362606,
+          "terminal_port_power_W": -18047566.418202832,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4073879.777871606,
+          "wall_poynting_flux_W": 4270.696149102501
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 156,
+          "stored_em_energy_begin_J": 0.1735884606362606,
+          "stored_em_energy_end_J": 0.17584269519983972,
+          "terminal_port_power_W": -18278695.88125345,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4123207.3780019484,
+          "wall_poynting_flux_W": 4342.633957852264
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 157,
+          "stored_em_energy_begin_J": 0.17584269519983972,
+          "stored_em_energy_end_J": 0.17811134182985444,
+          "terminal_port_power_W": -18511138.081356443,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4172806.146285475,
+          "wall_poynting_flux_W": 4415.271761684091
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 158,
+          "stored_em_energy_begin_J": 0.17811134182985444,
+          "stored_em_energy_end_J": 0.1803943974799167,
+          "terminal_port_power_W": -18744888.601086117,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4222675.581955369,
+          "wall_poynting_flux_W": 4488.612037056942
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 159,
+          "stored_em_energy_begin_J": 0.1803943974799167,
+          "stored_em_energy_end_J": 0.18269185910862326,
+          "terminal_port_power_W": -18979942.991083834,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4272815.176529851,
+          "wall_poynting_flux_W": 4562.657707111246
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 160,
+          "stored_em_energy_begin_J": 0.18269185910862326,
+          "stored_em_energy_end_J": 0.18500372366938156,
+          "terminal_port_power_W": -19216296.75825337,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4323224.420326136,
+          "wall_poynting_flux_W": 4637.41141263786
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 161,
+          "stored_em_energy_begin_J": 0.18500372366938156,
+          "stored_em_energy_end_J": 0.18732998811169993,
+          "terminal_port_power_W": -19453945.372154593,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4373902.810237545,
+          "wall_poynting_flux_W": 4712.875524787137
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 162,
+          "stored_em_energy_begin_J": 0.18732998811169993,
+          "stored_em_energy_end_J": 0.18967064938937578,
+          "terminal_port_power_W": -19692884.272378743,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4424849.840482402,
+          "wall_poynting_flux_W": 4789.0527929061445
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 163,
+          "stored_em_energy_begin_J": 0.18967064938937578,
+          "stored_em_energy_end_J": 0.19202570445622183,
+          "terminal_port_power_W": -19933108.859716445,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4476064.999240522,
+          "wall_poynting_flux_W": 4865.94609269118
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 164,
+          "stored_em_energy_begin_J": 0.19202570445622183,
+          "stored_em_energy_end_J": 0.19439515026007664,
+          "terminal_port_power_W": -20174614.49291852,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4527547.7784700245,
+          "wall_poynting_flux_W": 4943.557940460787
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 165,
+          "stored_em_energy_begin_J": 0.19439515026007664,
+          "stored_em_energy_end_J": 0.19677898374805622,
+          "terminal_port_power_W": -20417396.497771416,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4579297.673561396,
+          "wall_poynting_flux_W": 5021.8908858531
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 166,
+          "stored_em_energy_begin_J": 0.19677898374805622,
+          "stored_em_energy_end_J": 0.1991772018691259,
+          "terminal_port_power_W": -20661450.1665983,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4631314.174767004,
+          "wall_poynting_flux_W": 5100.947796461996
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 167,
+          "stored_em_energy_begin_J": 0.1991772018691259,
+          "stored_em_energy_end_J": 0.20158980156808112,
+          "terminal_port_power_W": -20906770.750281278,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4683596.7702832455,
+          "wall_poynting_flux_W": 5180.731418856634
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 168,
+          "stored_em_energy_begin_J": 0.20158980156808112,
+          "stored_em_energy_end_J": 0.20401677978527005,
+          "terminal_port_power_W": -21153353.46127874,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4736144.95243075,
+          "wall_poynting_flux_W": 5261.244293821942
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 169,
+          "stored_em_energy_begin_J": 0.20401677978527005,
+          "stored_em_energy_end_J": 0.20645813346160233,
+          "terminal_port_power_W": -21401193.479258858,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4788958.212923599,
+          "wall_poynting_flux_W": 5342.489163974977
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 170,
+          "stored_em_energy_begin_J": 0.20645813346160233,
+          "stored_em_energy_end_J": 0.20891385953632502,
+          "terminal_port_power_W": -21650285.94641621,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4842036.039516239,
+          "wall_poynting_flux_W": 5424.468891310709
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 171,
+          "stored_em_energy_begin_J": 0.20891385953632502,
+          "stored_em_energy_end_J": 0.21138395494281015,
+          "terminal_port_power_W": -21900625.96432563,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4895377.921340994,
+          "wall_poynting_flux_W": 5507.186134330033
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 172,
+          "stored_em_energy_begin_J": 0.21138395494281015,
+          "stored_em_energy_end_J": 0.21386841661158307,
+          "terminal_port_power_W": -22152208.599014524,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 4948983.349621818,
+          "wall_poynting_flux_W": 5590.643545385259
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 173,
+          "stored_em_energy_begin_J": 0.21386841661158307,
+          "stored_em_energy_end_J": 0.2163672414725239,
+          "terminal_port_power_W": -22405028.881545458,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5002851.8126489725,
+          "wall_poynting_flux_W": 5674.843980812069
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 174,
+          "stored_em_energy_begin_J": 0.2163672414725239,
+          "stored_em_energy_end_J": 0.21888042645098163,
+          "terminal_port_power_W": -22659081.803201403,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5056982.797128081,
+          "wall_poynting_flux_W": 5759.790247197514
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 175,
+          "stored_em_energy_begin_J": 0.21888042645098163,
+          "stored_em_energy_end_J": 0.22140796846676009,
+          "terminal_port_power_W": -22914362.316713985,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5111375.79221593,
+          "wall_poynting_flux_W": 5845.485008579391
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 176,
+          "stored_em_energy_begin_J": 0.22140796846676009,
+          "stored_em_energy_end_J": 0.22394986443733467,
+          "terminal_port_power_W": -23170865.339964576,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5166030.286876168,
+          "wall_poynting_flux_W": 5931.931042786988
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 177,
+          "stored_em_energy_begin_J": 0.22394986443733467,
+          "stored_em_energy_end_J": 0.22650611127704662,
+          "terminal_port_power_W": -23428585.753419038,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5220945.767238806,
+          "wall_poynting_flux_W": 6019.131230495506
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 178,
+          "stored_em_energy_begin_J": 0.22650611127704662,
+          "stored_em_energy_end_J": 0.2290767058941548,
+          "terminal_port_power_W": -23687518.397660006,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5276121.7197937295,
+          "wall_poynting_flux_W": 6107.0883371908785
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 179,
+          "stored_em_energy_begin_J": 0.2290767058941548,
+          "stored_em_energy_end_J": 0.23166164519220303,
+          "terminal_port_power_W": -23947658.076363176,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5331557.632543295,
+          "wall_poynting_flux_W": 6195.805101853257
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 180,
+          "stored_em_energy_begin_J": 0.23166164519220303,
+          "stored_em_energy_end_J": 0.23426092607160737,
+          "terminal_port_power_W": -24208999.557250693,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5387252.991893661,
+          "wall_poynting_flux_W": 6285.284391844606
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 181,
+          "stored_em_energy_begin_J": 0.23426092607160737,
+          "stored_em_energy_end_J": 0.23687454542735445,
+          "terminal_port_power_W": -24471537.56908676,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5443207.282835482,
+          "wall_poynting_flux_W": 6375.529068051896
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 182,
+          "stored_em_energy_begin_J": 0.23687454542735445,
+          "stored_em_energy_end_J": 0.23950250014797209,
+          "terminal_port_power_W": -24735266.80185081,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5499419.991531925,
+          "wall_poynting_flux_W": 6466.541901644981
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 183,
+          "stored_em_energy_begin_J": 0.23950250014797209,
+          "stored_em_energy_end_J": 0.24214478711746923,
+          "terminal_port_power_W": -25000181.90913155,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5555890.604154823,
+          "wall_poynting_flux_W": 6558.325723547666
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 184,
+          "stored_em_energy_begin_J": 0.24214478711746923,
+          "stored_em_energy_end_J": 0.2448014032150709,
+          "terminal_port_power_W": -25266277.506945122,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5612618.605074659,
+          "wall_poynting_flux_W": 6650.8834406990645
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 185,
+          "stored_em_energy_begin_J": 0.2448014032150709,
+          "stored_em_energy_end_J": 0.2474723453131575,
+          "terminal_port_power_W": -25533548.171986066,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5669603.478588506,
+          "wall_poynting_flux_W": 6744.217898394649
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 186,
+          "stored_em_energy_begin_J": 0.2474723453131575,
+          "stored_em_energy_end_J": 0.25015761027777617,
+          "terminal_port_power_W": -25801988.44321462,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5726844.709883996,
+          "wall_poynting_flux_W": 6838.331916975507
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 187,
+          "stored_em_energy_begin_J": 0.25015761027777617,
+          "stored_em_energy_end_J": 0.2528571949697673,
+          "terminal_port_power_W": -26071592.82268871,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5784341.783170035,
+          "wall_poynting_flux_W": 6933.2283989951475
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 188,
+          "stored_em_energy_begin_J": 0.2528571949697673,
+          "stored_em_energy_end_J": 0.2555710962434357,
+          "terminal_port_power_W": -26342355.773753345,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5842094.181501376,
+          "wall_poynting_flux_W": 7028.910258065978
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 189,
+          "stored_em_energy_begin_J": 0.2555710962434357,
+          "stored_em_energy_end_J": 0.258299310945614,
+          "terminal_port_power_W": -26614271.72085856,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5900101.388462093,
+          "wall_poynting_flux_W": 7125.380351570786
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 190,
+          "stored_em_energy_begin_J": 0.258299310945614,
+          "stored_em_energy_end_J": 0.26104183591671937,
+          "terminal_port_power_W": -26887335.051088683,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 5958362.88772189,
+          "wall_poynting_flux_W": 7222.641566933706
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 191,
+          "stored_em_energy_begin_J": 0.26104183591671937,
+          "stored_em_energy_end_J": 0.26379866799070933,
+          "terminal_port_power_W": -27161540.113662764,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6016878.1617637,
+          "wall_poynting_flux_W": 7320.69684795091
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 192,
+          "stored_em_energy_begin_J": 0.26379866799070933,
+          "stored_em_energy_end_J": 0.26656980399370345,
+          "terminal_port_power_W": -27436881.218695927,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6075646.692738284,
+          "wall_poynting_flux_W": 7419.549110135116
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 193,
+          "stored_em_energy_begin_J": 0.26656980399370345,
+          "stored_em_energy_end_J": 0.2693552407440768,
+          "terminal_port_power_W": -27713352.637981582,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6134667.96323744,
+          "wall_poynting_flux_W": 7519.201249528012
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 194,
+          "stored_em_energy_begin_J": 0.2693552407440768,
+          "stored_em_energy_end_J": 0.27215497505318254,
+          "terminal_port_power_W": -27990948.6056627,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6193941.455263341,
+          "wall_poynting_flux_W": 7619.656213120654
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 195,
+          "stored_em_energy_begin_J": 0.27215497505318254,
+          "stored_em_energy_end_J": 0.2749690037245522,
+          "terminal_port_power_W": -28269663.317200154,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6253466.649952545,
+          "wall_poynting_flux_W": 7720.916964668424
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 196,
+          "stored_em_energy_begin_J": 0.2749690037245522,
+          "stored_em_energy_end_J": 0.2777973235531062,
+          "terminal_port_power_W": -28549490.92907806,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6313243.028588007,
+          "wall_poynting_flux_W": 7822.986435754452
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 197,
+          "stored_em_energy_begin_J": 0.2777973235531062,
+          "stored_em_energy_end_J": 0.28063993132568876,
+          "terminal_port_power_W": -28830425.559714757,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6373270.072469415,
+          "wall_poynting_flux_W": 7925.867573776026
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 198,
+          "stored_em_energy_begin_J": 0.28063993132568876,
+          "stored_em_energy_end_J": 0.2834968238211048,
+          "terminal_port_power_W": -29112461.289283082,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6433547.262079274,
+          "wall_poynting_flux_W": 8029.563366955384
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 199,
+          "stored_em_energy_begin_J": 0.2834968238211048,
+          "stored_em_energy_end_J": 0.2863679978091943,
+          "terminal_port_power_W": -29395592.15888608,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6494074.07750109,
+          "wall_poynting_flux_W": 8134.076793264781
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 200,
+          "stored_em_energy_begin_J": 0.2863679978091943,
+          "stored_em_energy_end_J": 0.28925345005069963,
+          "terminal_port_power_W": -29679812.170918327,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6554849.998994742,
+          "wall_poynting_flux_W": 8239.410817357453
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 201,
+          "stored_em_energy_begin_J": 0.28925345005069963,
+          "stored_em_energy_end_J": 0.2921531772976788,
+          "terminal_port_power_W": -29965115.289556578,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6615874.506432627,
+          "wall_poynting_flux_W": 8345.568435976737
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 202,
+          "stored_em_energy_begin_J": 0.2921531772976788,
+          "stored_em_energy_end_J": 0.2950671762930176,
+          "terminal_port_power_W": -30251495.440176688,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6677147.079016772,
+          "wall_poynting_flux_W": 8452.55266376821
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 203,
+          "stored_em_energy_begin_J": 0.2950671762930176,
+          "stored_em_energy_end_J": 0.2979954437698037,
+          "terminal_port_power_W": -30538946.509054534,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6738667.195872567,
+          "wall_poynting_flux_W": 8560.366499059677
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 204,
+          "stored_em_energy_begin_J": 0.2979954437698037,
+          "stored_em_energy_end_J": 0.30093797645154485,
+          "terminal_port_power_W": -30827462.343890645,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6800434.336073887,
+          "wall_poynting_flux_W": 8669.01294887462
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 205,
+          "stored_em_energy_begin_J": 0.30093797645154485,
+          "stored_em_energy_end_J": 0.30389477105219437,
+          "terminal_port_power_W": -31117036.75378492,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6862447.978123632,
+          "wall_poynting_flux_W": 8778.495049327901
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 206,
+          "stored_em_energy_begin_J": 0.30389477105219437,
+          "stored_em_energy_end_J": 0.30686582427551196,
+          "terminal_port_power_W": -31407663.508705597,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6924707.600132824,
+          "wall_poynting_flux_W": 8888.815836157053
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 207,
+          "stored_em_energy_begin_J": 0.30686582427551196,
+          "stored_em_energy_end_J": 0.3098511328148364,
+          "terminal_port_power_W": -31699336.339624897,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 6987212.6802118225,
+          "wall_poynting_flux_W": 8999.978337806839
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 208,
+          "stored_em_energy_begin_J": 0.3098511328148364,
+          "stored_em_energy_end_J": 0.312850693353289,
+          "terminal_port_power_W": -31992048.938848257,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7049962.696172959,
+          "wall_poynting_flux_W": 9111.985603611402
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 209,
+          "stored_em_energy_begin_J": 0.312850693353289,
+          "stored_em_energy_end_J": 0.3158645025634589,
+          "terminal_port_power_W": -32285794.959690936,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7112957.125303234,
+          "wall_poynting_flux_W": 9224.840699350525
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 210,
+          "stored_em_energy_begin_J": 0.3158645025634589,
+          "stored_em_energy_end_J": 0.318892557106907,
+          "terminal_port_power_W": -32580568.016231414,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7176195.44470993,
+          "wall_poynting_flux_W": 9338.54668430131
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 211,
+          "stored_em_energy_begin_J": 0.318892557106907,
+          "stored_em_energy_end_J": 0.3219348536341903,
+          "terminal_port_power_W": -32876361.68360342,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7239677.131396762,
+          "wall_poynting_flux_W": 9453.10662348467
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 212,
+          "stored_em_energy_begin_J": 0.3219348536341903,
+          "stored_em_energy_end_J": 0.32499138878484934,
+          "terminal_port_power_W": -33173169.498026494,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7303401.661942544,
+          "wall_poynting_flux_W": 9568.523602990164
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 213,
+          "stored_em_energy_begin_J": 0.32499138878484934,
+          "stored_em_energy_end_J": 0.3280621591869577,
+          "terminal_port_power_W": -33470984.95646652,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7367368.512558199,
+          "wall_poynting_flux_W": 9684.80071359749
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 214,
+          "stored_em_energy_begin_J": 0.3280621591869577,
+          "stored_em_energy_end_J": 0.33114716145686546,
+          "terminal_port_power_W": -33769801.51666098,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7431577.1593470685,
+          "wall_poynting_flux_W": 9801.941043477927
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 215,
+          "stored_em_energy_begin_J": 0.33114716145686546,
+          "stored_em_energy_end_J": 0.33424639219925695,
+          "terminal_port_power_W": -34069612.597329535,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7496027.078163655,
+          "wall_poynting_flux_W": 9919.947695070778
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 216,
+          "stored_em_energy_begin_J": 0.33424639219925695,
+          "stored_em_energy_end_J": 0.33735984800692076,
+          "terminal_port_power_W": -34370411.57800462,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7560717.744445621,
+          "wall_poynting_flux_W": 10038.823785077831
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 217,
+          "stored_em_energy_begin_J": 0.33735984800692076,
+          "stored_em_energy_end_J": 0.34048752546035427,
+          "terminal_port_power_W": -34672191.79884153,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7625648.633404653,
+          "wall_poynting_flux_W": 10158.572429695258
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 218,
+          "stored_em_energy_begin_J": 0.34048752546035427,
+          "stored_em_energy_end_J": 0.34362942112767964,
+          "terminal_port_power_W": -34974946.56076978,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7690819.220105996,
+          "wall_poynting_flux_W": 10279.196750018327
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 219,
+          "stored_em_energy_begin_J": 0.34362942112767964,
+          "stored_em_energy_end_J": 0.34678553156458963,
+          "terminal_port_power_W": -35278669.12553472,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7756228.979278024,
+          "wall_poynting_flux_W": 10400.699882821906
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 220,
+          "stored_em_energy_begin_J": 0.34678553156458963,
+          "stored_em_energy_end_J": 0.34995585331401174,
+          "terminal_port_power_W": -35583352.71548709,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7821877.385317781,
+          "wall_poynting_flux_W": 10523.08497179999
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 221,
+          "stored_em_energy_begin_J": 0.34995585331401174,
+          "stored_em_energy_end_J": 0.3531403829058521,
+          "terminal_port_power_W": -35888990.5135611,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7887763.912459269,
+          "wall_poynting_flux_W": 10646.355161349886
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 222,
+          "stored_em_energy_begin_J": 0.3531403829058521,
+          "stored_em_energy_end_J": 0.3563391168569545,
+          "terminal_port_power_W": -36195575.66340443,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 7953888.034712231,
+          "wall_poynting_flux_W": 10770.513606394783
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 223,
+          "stored_em_energy_begin_J": 0.3563391168569545,
+          "stored_em_energy_end_J": 0.35955205167091103,
+          "terminal_port_power_W": -36503101.2692903,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8020249.22574406,
+          "wall_poynting_flux_W": 10895.563474067038
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 224,
+          "stored_em_energy_begin_J": 0.35955205167091103,
+          "stored_em_energy_end_J": 0.3627791838377403,
+          "terminal_port_power_W": -36811560.39597956,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8086846.958981247,
+          "wall_poynting_flux_W": 11021.507934478785
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 225,
+          "stored_em_energy_begin_J": 0.3627791838377403,
+          "stored_em_energy_end_J": 0.36602050983374484,
+          "terminal_port_power_W": -37120946.068791986,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8153680.707678597,
+          "wall_poynting_flux_W": 11148.350162604842
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 226,
+          "stored_em_energy_begin_J": 0.36602050983374484,
+          "stored_em_energy_end_J": 0.369276026121418,
+          "terminal_port_power_W": -37431251.273644425,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8220749.94481122,
+          "wall_poynting_flux_W": 11276.09334551992
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 227,
+          "stored_em_energy_begin_J": 0.369276026121418,
+          "stored_em_energy_end_J": 0.37254572914917655,
+          "terminal_port_power_W": -37742468.95692295,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8288054.143059871,
+          "wall_poynting_flux_W": 11404.74067798903
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 228,
+          "stored_em_energy_begin_J": 0.37254572914917655,
+          "stored_em_energy_end_J": 0.3758296153511145,
+          "terminal_port_power_W": -38054592.02544606,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8355592.774915304,
+          "wall_poynting_flux_W": 11534.295357724946
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 229,
+          "stored_em_energy_begin_J": 0.3758296153511145,
+          "stored_em_energy_end_J": 0.37912768114690193,
+          "terminal_port_power_W": -38367613.34654046,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8423365.312657423,
+          "wall_poynting_flux_W": 11664.76059089856
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 230,
+          "stored_em_energy_begin_J": 0.37912768114690193,
+          "stored_em_energy_end_J": 0.3824399229416113,
+          "terminal_port_power_W": -38681525.747997165,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8491371.22827757,
+          "wall_poynting_flux_W": 11796.139594141085
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 231,
+          "stored_em_energy_begin_J": 0.3824399229416113,
+          "stored_em_energy_end_J": 0.38576633712544456,
+          "terminal_port_power_W": -38996322.01797643,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8559609.993530696,
+          "wall_poynting_flux_W": 11928.435588928243
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 232,
+          "stored_em_energy_begin_J": 0.38576633712544456,
+          "stored_em_energy_end_J": 0.38910692007356096,
+          "terminal_port_power_W": -39311994.90503732,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8628081.079988608,
+          "wall_poynting_flux_W": 12061.65180182744
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 233,
+          "stored_em_energy_begin_J": 0.38910692007356096,
+          "stored_em_energy_end_J": 0.39246166814595285,
+          "terminal_port_power_W": -39628537.11816666,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8696783.958980707,
+          "wall_poynting_flux_W": 12195.791469195308
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 234,
+          "stored_em_energy_begin_J": 0.39246166814595285,
+          "stored_em_energy_end_J": 0.3958305776872179,
+          "terminal_port_power_W": -39945941.3267029,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8765718.101575151,
+          "wall_poynting_flux_W": 12330.857835139863
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 235,
+          "stored_em_energy_begin_J": 0.3958305776872179,
+          "stored_em_energy_end_J": 0.39921364502632606,
+          "terminal_port_power_W": -40264200.160300955,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8834882.97864229,
+          "wall_poynting_flux_W": 12466.854148110331
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 236,
+          "stored_em_energy_begin_J": 0.39921364502632606,
+          "stored_em_energy_end_J": 0.4026108664764805,
+          "terminal_port_power_W": -40583306.20897399,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8904278.060852958,
+          "wall_poynting_flux_W": 12603.783663840346
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 237,
+          "stored_em_energy_begin_J": 0.4026108664764805,
+          "stored_em_energy_end_J": 0.4060222383349472,
+          "terminal_port_power_W": -40903252.02307378,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 8973902.818629788,
+          "wall_poynting_flux_W": 12741.64964712743
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 238,
+          "stored_em_energy_begin_J": 0.4060222383349472,
+          "stored_em_energy_end_J": 0.40944775688281465,
+          "terminal_port_power_W": -41224030.113229,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9043756.722172,
+          "wall_poynting_flux_W": 12880.455368526074
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 239,
+          "stored_em_energy_begin_J": 0.40944775688281465,
+          "stored_em_energy_end_J": 0.41288741838480664,
+          "terminal_port_power_W": -41545632.95035301,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9113839.241494214,
+          "wall_poynting_flux_W": 13020.20410393662
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 240,
+          "stored_em_energy_begin_J": 0.41288741838480664,
+          "stored_em_energy_end_J": 0.4163412190891369,
+          "terminal_port_power_W": -41868052.96566679,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9184149.846395802,
+          "wall_poynting_flux_W": 13160.89913753973
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 241,
+          "stored_em_energy_begin_J": 0.4163412190891369,
+          "stored_em_energy_end_J": 0.41980915522730067,
+          "terminal_port_power_W": -42191282.55065429,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9254688.006444452,
+          "wall_poynting_flux_W": 13302.54376097552
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 242,
+          "stored_em_energy_begin_J": 0.41980915522730067,
+          "stored_em_energy_end_J": 0.4232912230138551,
+          "terminal_port_power_W": -42515314.05703543,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9325453.191014322,
+          "wall_poynting_flux_W": 13445.141271004646
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 243,
+          "stored_em_energy_begin_J": 0.4232912230138551,
+          "stored_em_energy_end_J": 0.4267874186462563,
+          "terminal_port_power_W": -42840139.796789676,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9396444.86929176,
+          "wall_poynting_flux_W": 13588.694970991375
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 244,
+          "stored_em_energy_begin_J": 0.4267874186462563,
+          "stored_em_energy_end_J": 0.4302977383046875,
+          "terminal_port_power_W": -43165752.0421498,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9467662.510246001,
+          "wall_poynting_flux_W": 13733.208172291397
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 245,
+          "stored_em_energy_begin_J": 0.4302977383046875,
+          "stored_em_energy_end_J": 0.4338221781518383,
+          "terminal_port_power_W": -43492143.0255633,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9539105.582640616,
+          "wall_poynting_flux_W": 13878.68419235712
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 246,
+          "stored_em_energy_begin_J": 0.4338221781518383,
+          "stored_em_energy_end_J": 0.43736073433271255,
+          "terminal_port_power_W": -43819304.93969468,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9610773.555060234,
+          "wall_poynting_flux_W": 14025.126354138662
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 247,
+          "stored_em_energy_begin_J": 0.43736073433271255,
+          "stored_em_energy_end_J": 0.4409134029744656,
+          "terminal_port_power_W": -44147229.937441096,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9682665.895896863,
+          "wall_poynting_flux_W": 14172.537987852695
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 248,
+          "stored_em_energy_begin_J": 0.4409134029744656,
+          "stored_em_energy_end_J": 0.4444801801862071,
+          "terminal_port_power_W": -44475910.131911814,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9754782.073337203,
+          "wall_poynting_flux_W": 14320.922430749863
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 249,
+          "stored_em_energy_begin_J": 0.4444801801862071,
+          "stored_em_energy_end_J": 0.4480610620587912,
+          "terminal_port_power_W": -44805337.5964089,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9827121.555385537,
+          "wall_poynting_flux_W": 14470.283025567916
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 250,
+          "stored_em_energy_begin_J": 0.4480610620587912,
+          "stored_em_energy_end_J": 0.45165604466463877,
+          "terminal_port_power_W": -45135504.364442945,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9899683.809871621,
+          "wall_poynting_flux_W": 14620.623121208035
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 251,
+          "stored_em_energy_begin_J": 0.45165604466463877,
+          "stored_em_energy_end_J": 0.4552651240575625,
+          "terminal_port_power_W": -45466402.42973522,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 9972468.30443416,
+          "wall_poynting_flux_W": 14771.9460737281
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 252,
+          "stored_em_energy_begin_J": 0.4552651240575625,
+          "stored_em_energy_end_J": 0.45888829627255806,
+          "terminal_port_power_W": -45798023.74619728,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 10045474.506525809,
+          "wall_poynting_flux_W": 14924.25524528795
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 253,
+          "stored_em_energy_begin_J": 0.45888829627255806,
+          "stored_em_energy_end_J": 0.4625255573256093,
+          "terminal_port_power_W": -46130360.22793219,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 10118701.88343161,
+          "wall_poynting_flux_W": 15077.554003576493
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 254,
+          "stored_em_energy_begin_J": 0.4625255573256093,
+          "stored_em_energy_end_J": 0.4661769032135148,
+          "terminal_port_power_W": -46463403.74924999,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 10192149.90226386,
+          "wall_poynting_flux_W": 15231.84572283758
+        },
+        {
+          "omega_cell_count": 57,
+          "step_index": 255,
+          "stored_em_energy_begin_J": 0.4661769032135148,
+          "stored_em_energy_end_J": 0.46984232991369607,
+          "terminal_port_power_W": -46797146.14465976,
+          "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+          "volume_j_dot_e_power_W": 10265818.029954096,
+          "wall_poynting_flux_W": 15387.133783885849
+        }
+      ],
+      "steps_accumulated": 4632,
+      "stored_em_energy_delta_J": 13.043707537098351,
+      "stored_em_energy_final_J": 13.043707537098351,
+      "stored_em_energy_initial_J": 0.0,
+      "time_centering": "candidate_step_consistent_not_accepted"
+    },
     "retained_step_result_count": 0,
     "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
     "state_fingerprint": {
@@ -15154,16 +18041,16 @@
         "volume_j_dot_e_power_accounting",
         "lagged_volume_j_dot_e_power_feedback",
         "true_3d_grid",
-        "kinetic_yield_history",
-        "separate_electron_energy_source_terms",
         "hybrid_pic_fluid_solver_family",
-        "electron_ion_equilibration_audit",
-        "ionization_charge_state_transport",
-        "plasmapy_community_formula_audit",
-        "source_backed_partial_ionized_conductivity",
+        "separate_electron_energy_source_terms",
+        "kinetic_yield_history",
+        "braginskii_electron_heat_flux",
         "electrical_transport_source_terms",
         "electron_energy_source_terms",
-        "braginskii_electron_heat_flux",
+        "plasmapy_community_formula_audit",
+        "source_backed_partial_ionized_conductivity",
+        "electron_ion_equilibration_audit",
+        "ionization_charge_state_transport",
         "kinetic_neutron_yield_history"
       ],
       "candidate_modules_executed": [
@@ -15225,7 +18112,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
+          "name": "hybrid_pic_fluid_solver_family",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -15239,42 +18126,14 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "hybrid_pic_fluid_solver_family",
+          "name": "kinetic_yield_history",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "electron_ion_equilibration_audit",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "ionization_charge_state_transport",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "plasmapy_community_formula_audit",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "source_backed_partial_ionized_conductivity",
+          "name": "braginskii_electron_heat_flux",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -15295,7 +18154,35 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "braginskii_electron_heat_flux",
+          "name": "plasmapy_community_formula_audit",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "source_backed_partial_ionized_conductivity",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "electron_ion_equilibration_audit",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "ionization_charge_state_transport",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "kinetic_yield_history",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -18272,7 +21159,205 @@
       "status": "candidate_engineering_power_port_not_validation",
       "terminal_current_A": 201441.95004551107,
       "terminal_voltage_V": 14655.981927730478,
-      "time_centering": "candidate_runner_step_metadata_only"
+      "time_centering": "candidate_runner_step_metadata_only",
+      "wp_n1_auluck_power_port_ledger": {
+        "accepted_residual_tolerance": "not_attached",
+        "auluck_omega_domain": {
+          "can_support_power_port_acceptance": false,
+          "geometry_review_status": "geometry_candidate_not_reviewed",
+          "labels": {
+            "omega_volume_cells": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 3,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 57,
+              "mask_sha256": "4be11660cc81b1b6a93957dd40f2a2498b4684599e892cd34ddfffe483d1b67f",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "open_pml_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 4,
+                "k_min": 4,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "1b0777176a6d93658c3328d6d346712a278c9352a2b8f0672f829d14540221b4",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "terminal_source_interface_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 0,
+                "k_min": 0,
+                "non_empty": true
+              },
+              "cell_count": 25,
+              "mask_sha256": "516535b7713beed13f474251f92e9a5d2975ac57699618062f95294499d20526",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            },
+            "wall_material_faces": {
+              "bounds": {
+                "i_max": 4,
+                "i_min": 0,
+                "j_max": 4,
+                "j_min": 0,
+                "k_max": 2,
+                "k_min": 1,
+                "non_empty": true
+              },
+              "cell_count": 18,
+              "mask_sha256": "b6b1602a766381486ec7583742769afffae12d1c84ff795466df7827bc181784",
+              "source_refs": [
+                "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+              ]
+            }
+          },
+          "partition_exhaustive": true,
+          "partition_mutually_disjoint": true,
+          "partition_valid": true,
+          "source_interface_z_index": 0,
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-257"
+          ],
+          "status": "candidate_auluck_omega_domain_not_validation",
+          "terminal_source_interface_disjoint_from_omega": true,
+          "terminal_source_interface_non_empty": true
+        },
+        "can_support_first_principles_acceptance": false,
+        "can_support_power_port_acceptance": false,
+        "closure_estimate_terms": [
+          "electrode_interface_work_J"
+        ],
+        "electrode_interface_work_J__closure_estimate_not_independent": 1824.9224897532724,
+        "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
+        "electrode_interface_work_independence": "not_independent_closure_estimate",
+        "energy_ledger_term_status": {
+          "electrode_interface_work_J": "closure_estimate_not_independent_blocked_g1",
+          "stored_em_energy_delta_J": "candidate_runtime_only_not_acceptance",
+          "terminal_port_work_J": "candidate_runtime_only_not_acceptance",
+          "volume_j_dot_e_work_J": "candidate_runtime_only_not_acceptance",
+          "wall_poynting_flux_excluding_declared_port_J": "candidate_runtime_only_not_acceptance"
+        },
+        "energy_ledger_terms_J": {
+          "electrode_interface_work_J": 1824.9224897532724,
+          "stored_em_energy_delta_J": 13.043707537098351,
+          "terminal_port_work_J": 1972.1252007579355,
+          "volume_j_dot_e_work_J": 132.90816332711378,
+          "wall_poynting_flux_excluding_declared_port_J": 1.2508401404510545
+        },
+        "first_step_fallback": true,
+        "first_step_udpf_source": "input_sequence_fallback_first_step",
+        "fully_implemented_terms": [
+          "terminal_port_work_J",
+          "volume_j_dot_e_work_J",
+          "wall_poynting_flux_excluding_declared_port_J",
+          "stored_em_energy_delta_J"
+        ],
+        "residual_J": 0.0,
+        "residual_definition": "terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_energy_delta - electrode_interface_work",
+        "residual_fraction": 0.0,
+        "residual_interpretation": "trivially_closes_because_term_4_is_closure_estimate_g1; engineering_debug_diagnostic_only_not_power_port_acceptance",
+        "scientific_status": "engineering_candidate_not_validation",
+        "sign_convention": {
+          "basis": "NRL Plasma Formulary 2019 Poynting theorem",
+          "can_support_power_port_acceptance": false,
+          "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+          "negative_local_j_dot_e_clipped": false,
+          "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+          "status": "candidate_wp_n1_sign_convention_not_accepted",
+          "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
+          "surface_flux_terms": "outflow_positive_dS_outward",
+          "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
+          "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
+          "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls"
+        },
+        "source_basis": [
+          "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
+          "NRL Plasma Formulary 2019 Poynting theorem"
+        ],
+        "source_refs": [
+          "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
+          "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888"
+        ],
+        "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
+        "steps_accumulated": 4632,
+        "time_centering": {
+          "accuracy_order_claim": "none_no_source_in_scope_g3",
+          "all_terms_share_centering": true,
+          "can_support_power_port_acceptance": false,
+          "declared_centering": "step_consistent_trapezoidal",
+          "snapshot_provenance": {
+            "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+            "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+            "time_centering": "candidate_step_consistent_not_accepted",
+            "volume_j_dot_e_work_J": "begin_step_E_with_step_masked_current_over_omega",
+            "wall_poynting_flux_excluding_declared_port_J": "trapezoidal_begin_and_end_step_E_cross_H"
+          },
+          "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888"
+          ],
+          "status": "candidate_step_consistent_not_accepted"
+        },
+        "tracked_energy_delta_is_residual": false
+      },
+      "wp_n1_negative_test_policy": {
+        "acceptance_unblocks_only_when": "source_backed_residual_tolerance_attached AND all_six_tests_pass",
+        "all_six_required": true,
+        "can_support_power_port_acceptance": false,
+        "required_negative_tests": {
+          "N1_sign_reversal": {
+            "asserts_on": "residual_J and residual_fraction",
+            "corruption": "flip sign of terminal_port_work_J",
+            "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)"
+          },
+          "N2_wrong_domain": {
+            "asserts_on": "auluck_omega_domain.partition_valid and terminal_source_interface_disjoint_from_omega",
+            "corruption": "include source interface in Omega or shift Omega into current-free cells",
+            "expected": "partition_valid becomes False"
+          },
+          "N3_omitted_electrode_work": {
+            "asserts_on": "residual_J with electrode_interface_work_J omitted",
+            "corruption": "drop term 4 from the residual sum (set to 0)",
+            "expected": "residual no longer closes when dL/dt-type work is nonzero"
+          },
+          "N4_low_current_p_over_i": {
+            "asserts_on": "low_current_p_over_i_singularity and udpf_source",
+            "corruption": "drive I -> 0 while volume J.E stays finite",
+            "expected": "low-current guard fires; U_DPF not computed as P/I; no inf/NaN"
+          },
+          "N5_first_step_fallback": {
+            "asserts_on": "first_step_fallback and first_step_udpf_source",
+            "corruption": "run step 0 with no lagged field work",
+            "expected": "step 0 marked fallback; no closed first-step residual claimed; all five terms share one centering"
+          },
+          "N6_default_mode_leakage": {
+            "asserts_on": "accepted_load_power_source, active_load_relation, can_support_power_port_acceptance",
+            "corruption": "run default input_sequence mode and read port as accepted",
+            "expected": "accepted_load_power_source stays 'none'; can_support_power_port_acceptance stays False"
+          }
+        },
+        "status": "candidate_wp_n1_negative_test_policy_not_validation"
+      }
     },
     "same_scope_source": {
       "acceptance_gate": "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_cannot_support_whole_shot_acceptance_until_all_same_scope_targets_current_startup_density_fields_temperatures_neutrons_detector_uq_review_and_cross_scope_rejection_tests_pass",

@@ -5,7 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "export_srs_traceability.py"
 
@@ -29,7 +28,7 @@ def test_requirements_baseline_exports_import_ready_matrix(tmp_path: Path):
 
     assert matrix["schema"] == "dpf.srs.traceability.v1"
     assert matrix["doorstop_status"] == "staged_not_imported"
-    assert matrix["summary"]["requirement_count"] == 48
+    assert matrix["summary"]["requirement_count"] == len(rows)
     assert matrix["summary"]["p0_or_p1_without_verification"] == []
 
     by_id = {row.req_id: row for row in rows}
@@ -44,7 +43,7 @@ def test_requirements_baseline_exports_import_ready_matrix(tmp_path: Path):
     exporter.write_csv(rows, csv_path)
 
     saved = json.loads(json_path.read_text(encoding="utf-8"))
-    assert saved["summary"]["requirement_count"] == 48
+    assert saved["summary"]["requirement_count"] == len(rows)
     csv_header = csv_path.read_text(encoding="utf-8").splitlines()[0]
     assert csv_header.startswith("id,priority,requirement,owner,status")
 

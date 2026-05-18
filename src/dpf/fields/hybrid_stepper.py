@@ -10,7 +10,9 @@ import numpy as np
 from dpf.fields.conductivity import PlasmaVacuumConductivityBlend
 from dpf.fields.marder import MarderCorrection
 from dpf.fields.maxwell_3d import (
+    EPSILON_0,
     HYBRID_PIC_3D_SOURCE,
+    MU_0,
     Maxwell3DBoundaries,
     Maxwell3DFieldCore,
     Maxwell3DGrid,
@@ -284,6 +286,162 @@ def mask_current_to_resolved_plasma(
             "Candidate runtime domain guard only; vacuum-floor cells are not a physical electron-fluid conductor.",
         ),
     }
+
+
+def omega_volume_j_dot_e_power_W(
+    *,
+    total_current_A_m2: np.ndarray,
+    electric_field_V_m: np.ndarray,
+    omega_volume_cells: np.ndarray,
+) -> dict[str, Any]:
+    """Return the Auluck volume J.E power over the named Omega domain.
+
+    WP-N1 source packet S2 term 2. Re-scopes the volume J.E integral from the
+    density-threshold mask to the Auluck omega_volume_cells partition label.
+    Poynting theorem RHS is - integral_V (J.E) dV
+    [KR: 2019nrlplasma-formulary-037290d4.md:1886]; Auluck eq 1 uses this same
+    J.E as the numerator of I*V [KR: auluck-2021-dpf-circuit-element.md:173-197].
+    Sign convention: positive J.E is field work on charges. Negative local
+    J.E is physical (dynamo regions) and is NEVER clipped
+    [KR: auluck-2021-dpf-circuit-element.md:158-160].
+    """
+    current = np.asarray(total_current_A_m2, dtype=float)
+    e_field = np.asarray(electric_field_V_m, dtype=float)
+    omega = np.asarray(omega_volume_cells, dtype=bool)
+    power_density = np.sum(current * e_field, axis=-1)
+    if omega.shape != power_density.shape:
+        raise ValueError("omega_volume_cells shape does not match field grid")
+    if np.any(omega):
+        omega_power_density = power_density[omega]
+        j_dot_e_power_W = float(np.sum(omega_power_density))
+        max_abs_power_density = float(np.max(np.abs(omega_power_density)))
+        min_signed_power_density = float(np.min(omega_power_density))
+    else:
+        j_dot_e_power_W = 0.0
+        max_abs_power_density = 0.0
+        min_signed_power_density = 0.0
+    return {
+        "status": "candidate_auluck_omega_volume_j_dot_e_power_not_validation",
+        "domain": "omega_volume_cells",
+        "integral": "sum_cell_centered_J_dot_E_over_omega_volume_cells",
+        "j_dot_e_power_density_summed_W_m3": j_dot_e_power_W,
+        "omega_cell_count": int(np.count_nonzero(omega)),
+        "max_abs_power_density_W_m3": max_abs_power_density,
+        "min_signed_power_density_W_m3": min_signed_power_density,
+        "sign_convention": (
+            "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted"
+        ),
+        "negative_local_j_dot_e_clipped": False,
+        "source_refs": [
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-197",
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+        ],
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _poynting_face_flux_W(
+    *,
+    electric_field_V_m: np.ndarray,
+    magnetic_field_T: np.ndarray,
+    face_mask: np.ndarray,
+    grid: Maxwell3DGrid,
+) -> float:
+    """Return outward Poynting flux N = E x H integrated over masked faces.
+
+    WP-N1 source packet S2 terms 1/3. Poynting theorem surface term
+    +integral_S (N.dS), N = E x H, dS outward
+    [KR: 2019nrlplasma-formulary-037290d4.md:1880-1888]. E and B are
+    interpolated to cell centers (a candidate numerical step, source packet
+    section 2). The flux is the outflow-positive integral over the cell-label
+    set: N projected on the axial (z) normal times the cell cross-section,
+    summed over the labeled cells. This is an engineering surface estimate.
+    """
+    e_field = np.asarray(electric_field_V_m, dtype=float)
+    b_field = np.asarray(magnetic_field_T, dtype=float)
+    mask = np.asarray(face_mask, dtype=bool)
+    if not np.any(mask):
+        return 0.0
+    # H = B / mu0 ; N = E x H. Axial (z) component carries flux through the
+    # axial cell-label slabs used by the partition.
+    h_field = b_field / MU_0
+    n_z = e_field[..., 0] * h_field[..., 1] - e_field[..., 1] * h_field[..., 0]
+    cell_cross_section_m2 = float(grid.dx * grid.dy)
+    return float(np.sum(n_z[mask]) * cell_cross_section_m2)
+
+
+def wall_poynting_flux_W(
+    *,
+    electric_field_V_m: np.ndarray,
+    magnetic_field_T: np.ndarray,
+    wall_material_cells: np.ndarray,
+    open_pml_cells: np.ndarray,
+    grid: Maxwell3DGrid,
+) -> dict[str, Any]:
+    """Return wall + open-boundary Poynting outflow excluding the source port.
+
+    WP-N1 source packet S2 term 3. Integrates +integral_S (N.dS) over
+    Sigma minus the declared source-interface port, i.e. over
+    wall_material_faces UNION open_pml_faces
+    [KR: 2019nrlplasma-formulary-037290d4.md:1882-1888;
+    auluck-2021-dpf-circuit-element.md:215-224,426-443]. Outflow-positive:
+    positive means EM energy leaving Omega through walls / open boundary.
+    """
+    wall_flux_W = _poynting_face_flux_W(
+        electric_field_V_m=electric_field_V_m,
+        magnetic_field_T=magnetic_field_T,
+        face_mask=wall_material_cells,
+        grid=grid,
+    )
+    pml_flux_W = _poynting_face_flux_W(
+        electric_field_V_m=electric_field_V_m,
+        magnetic_field_T=magnetic_field_T,
+        face_mask=open_pml_cells,
+        grid=grid,
+    )
+    return {
+        "status": "candidate_wall_poynting_flux_not_validation",
+        "domain": "wall_material_faces_union_open_pml_faces",
+        "wall_material_poynting_flux_W": wall_flux_W,
+        "open_pml_poynting_flux_W": pml_flux_W,
+        "wall_poynting_flux_excluding_declared_port_W": wall_flux_W + pml_flux_W,
+        "sign_convention": "outflow_positive_energy_leaving_omega",
+        "interpolation_note": (
+            "E and B interpolated to cell centers; candidate numerical step"
+        ),
+        "geometry_review_status": "geometry_candidate_not_reviewed",
+        "source_refs": [
+            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
+            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:215-224,426-443",
+        ],
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def omega_stored_em_energy_J(
+    *,
+    electric_field_V_m: np.ndarray,
+    magnetic_field_T: np.ndarray,
+    omega_volume_cells: np.ndarray,
+    cell_volume_m3: float,
+) -> float:
+    """Return stored EM energy W = (1/2) integral_Omega (H.B + E.D) dV.
+
+    WP-N1 source packet S2 term 5 component. W per the formulary
+    [KR: 2019nrlplasma-formulary-037290d4.md:1869-1879], evaluated on
+    omega_volume_cells. Returned as an instantaneous energy; the ledger
+    forms Delta W = W(end) - W(begin).
+    """
+    e_field = np.asarray(electric_field_V_m, dtype=float)
+    b_field = np.asarray(magnetic_field_T, dtype=float)
+    omega = np.asarray(omega_volume_cells, dtype=bool)
+    e_density = 0.5 * EPSILON_0 * np.sum(e_field * e_field, axis=-1)
+    b_density = 0.5 * np.sum(b_field * b_field, axis=-1) / MU_0
+    if omega.shape != e_density.shape:
+        raise ValueError("omega_volume_cells shape does not match field grid")
+    if not np.any(omega):
+        return 0.0
+    return float(np.sum((e_density + b_density)[omega]) * float(cell_volume_m3))
 
 
 def _field_work_telemetry(

@@ -17,7 +17,10 @@ from dpf.first_principles.manifest import (
     FirstPrinciplesRunManifest,
     ManifestArtifact,
     build_first_principles_run_manifest,
+    sha256_of_file,
+    sha256_of_file_soft,
     sha256_of_text,
+    source_packet_hashes_from_references,
     stable_manifest_hash,
 )
 
@@ -326,3 +329,151 @@ def test_empty_provenance_strings_are_treated_as_missing() -> None:
     assert "git_commit" in missing
     assert "artifact_generation_commit" in missing
     assert blank.has_complete_provenance() is False
+
+
+# ---------------------------------------------------------------------------
+# Codex A-1: source-truth-index and source-packet hashing helpers
+# ---------------------------------------------------------------------------
+
+
+def test_sha256_of_file_soft_returns_none_for_missing_file(tmp_path) -> None:
+    """A-1: fail-soft hashing returns None for an unreadable file rather than
+    raising -- provenance collection must never crash a run."""
+    missing = tmp_path / "does_not_exist.json"
+
+    assert sha256_of_file_soft(missing) is None
+
+
+def test_sha256_of_file_soft_matches_hard_hash_for_real_file(tmp_path) -> None:
+    """A-1: when the file exists, the fail-soft hash equals the strict hash --
+    the soft variant must not fabricate or alter a present digest."""
+    target = tmp_path / "packet.md"
+    target.write_text("source-packet-body", encoding="utf-8")
+
+    soft = sha256_of_file_soft(target)
+    hard = sha256_of_file(target)
+
+    assert soft == hard
+    assert soft is not None and len(soft) == 64
+
+
+def test_source_packet_hashes_from_references_hashes_cited_packets(
+    tmp_path,
+) -> None:
+    """A-1: every cited source packet is hashed under its source_id; the
+    digest matches a direct hash of the file."""
+    packet = tmp_path / "hybrid_pic_3d.md"
+    packet.write_text("hybrid-pic-3d-architecture", encoding="utf-8")
+    references = [
+        SourceIndexReference(
+            source_id="hybrid_pic_3d_architecture_source",
+            path=str(packet),
+        )
+    ]
+
+    hashes = source_packet_hashes_from_references(references)
+
+    assert set(hashes) == {"hybrid_pic_3d_architecture_source"}
+    assert hashes["hybrid_pic_3d_architecture_source"] == sha256_of_file(packet)
+
+
+def test_source_packet_hashes_from_references_omits_missing_source(
+    tmp_path,
+) -> None:
+    """A-1: a cited source whose file is missing is omitted from the hash map
+    (fail-soft) -- an absent key is honest, a fabricated hash is not."""
+    present = tmp_path / "present.md"
+    present.write_text("present-packet", encoding="utf-8")
+    references = [
+        SourceIndexReference(source_id="present_source", path=str(present)),
+        SourceIndexReference(
+            source_id="missing_source",
+            path=str(tmp_path / "missing.md"),
+        ),
+    ]
+
+    hashes = source_packet_hashes_from_references(references)
+
+    assert "present_source" in hashes
+    assert "missing_source" not in hashes
+
+
+def test_source_packet_hashes_from_references_resolves_repo_root(
+    tmp_path,
+) -> None:
+    """A-1: a relative reference path is resolved against repo_root so a run
+    invoked from any working directory still hashes the cited packet."""
+    sub = tmp_path / "KnowledgeReference"
+    sub.mkdir()
+    packet = sub / "packet.md"
+    packet.write_text("relative-packet", encoding="utf-8")
+    references = [
+        {"source_id": "rel_source", "path": "KnowledgeReference/packet.md"}
+    ]
+
+    hashes = source_packet_hashes_from_references(references, repo_root=tmp_path)
+
+    assert hashes["rel_source"] == sha256_of_file(packet)
+
+
+def test_source_packet_hashes_from_references_skips_incomplete_reference(
+    tmp_path,
+) -> None:
+    """A-1: a reference lacking a source_id or a path contributes nothing --
+    it cannot be keyed or hashed, so it is skipped rather than failing."""
+    packet = tmp_path / "packet.md"
+    packet.write_text("body", encoding="utf-8")
+    references = [
+        {"path": str(packet)},  # no source_id
+        {"source_id": "no_path_source"},  # no path
+    ]
+
+    hashes = source_packet_hashes_from_references(references)
+
+    assert hashes == {}
+
+
+def test_full_provenance_manifest_with_index_and_packet_hashes_is_complete(
+    tmp_path,
+) -> None:
+    """A-1: a manifest carrying source_truth_index_sha256 and populated
+    source_packet_hashes has complete provenance and a stable hash."""
+    index = tmp_path / "FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
+    index.write_text('{"sources": []}', encoding="utf-8")
+    packet = tmp_path / "hybrid_pic_3d.md"
+    packet.write_text("hybrid-pic-3d", encoding="utf-8")
+    references = [
+        SourceIndexReference(
+            source_id="hybrid_pic_3d_architecture_source",
+            path=str(packet),
+        )
+    ]
+
+    manifest = build_first_principles_run_manifest(
+        run_id="fp-index-provenance",
+        backend="package_native",
+        command_argv=("dpf", "first-principles-3d", "--steps", "2"),
+        git_commit="0123456789abcdef0123456789abcdef01234567",
+        dirty_worktree=False,
+        source_index_references=references,
+        source_truth_index_sha256=sha256_of_file(index),
+        source_packet_hashes=source_packet_hashes_from_references(references),
+        input_deck_sha256=sha256_of_text("deck"),
+        artifact_schema_version="first_principles_artifact_v1",
+        artifact_generation_commit="0123456789abcdef0123456789abcdef01234567",
+    )
+
+    assert manifest.source_truth_index_sha256 == sha256_of_file(index)
+    assert manifest.source_packet_hashes == {
+        "hybrid_pic_3d_architecture_source": sha256_of_file(packet),
+    }
+    assert manifest.has_complete_provenance() is True
+    assert "source_truth_index_sha256" in REQUIRED_PROVENANCE_FIELDS
+
+    payload = manifest.to_dict()
+    assert payload["provenance_complete"] is True
+    assert payload["missing_provenance_fields"] == []
+    assert payload["source_packet_hashes"] == {
+        "hybrid_pic_3d_architecture_source": sha256_of_file(packet),
+    }
+    assert stable_manifest_hash(payload) == payload["manifest_sha256"]

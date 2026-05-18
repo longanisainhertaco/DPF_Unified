@@ -15,8 +15,19 @@ from dpf.fields.circuit_boundary import (
 )
 from dpf.fields.electron_energy import ElectronEnergyState
 from dpf.fields.hybrid_loop import HybridPIC3DLoop, HybridPIC3DLoopResult
+from dpf.fields.hybrid_stepper import (
+    omega_stored_em_energy_J,
+    omega_volume_j_dot_e_power_W,
+    wall_poynting_flux_W,
+)
 from dpf.fields.ionization_transport import DeuteriumIonizationState
 from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE, Maxwell3DGrid, Maxwell3DState
+from dpf.fields.source_geometry import (
+    build_auluck_omega_domain,
+    omega_domain_label_masks,
+    public_omega_domain_packet,
+)
+from dpf.fluid.constrained_transport import face_to_cell_centered
 
 _CIRCUIT_UDPF_MODES = {
     "input_sequence",
@@ -58,6 +69,7 @@ class HybridPIC3DSimulationTelemetry:
         "candidate_cumulative_terminal_i_udpf_not_validation"
     )
     udpf_source_counts: dict[str, int] = field(default_factory=dict)
+    power_port_ledger: dict[str, Any] | None = None
     limiter_activation_summary: dict[str, Any] | None = None
     state_fingerprint: dict[str, Any] | None = None
     continuation_state: dict[str, Any] | None = None
@@ -179,6 +191,7 @@ class HybridPIC3DSimulator:
         cumulative_active_port_work_J = 0.0
         cumulative_active_port_step_count = 0
         udpf_source_counts: dict[str, int] = {}
+        power_port_ledger_accumulator = _new_power_port_ledger_accumulator()
         limiter_activation_summary = _empty_limiter_activation_summary()
         circuit_records: list[dict[str, Any]] = []
         circuit_history_cap = _circuit_history_record_cap(max_step_results)
@@ -198,6 +211,9 @@ class HybridPIC3DSimulator:
         n_steps_completed = 0
         last_step_telemetry: dict[str, Any] | None = None
         stop_reason = "completed_step_budget"
+        step_terminal_current_A: float | None = None
+        step_terminal_udpf_V: float | None = None
+        step_udpf_source: str | None = None
         finite_state = _finite_state_packet(
             self.state,
             self.pic,
@@ -237,6 +253,9 @@ class HybridPIC3DSimulator:
                 active_port_power_W = float(
                     current_circuit_state.current_A * udpf_value
                 )
+                step_terminal_current_A = float(current_circuit_state.current_A)
+                step_terminal_udpf_V = float(udpf_value)
+                step_udpf_source = str(udpf_source)
                 cumulative_active_port_work_J += active_port_power_W * float(dt_s)
                 cumulative_active_port_step_count += 1
                 udpf_source_counts[udpf_source] = (
@@ -288,6 +307,7 @@ class HybridPIC3DSimulator:
                 if _retain_step(step_index, history_stride):
                     _append_capped(circuit_records, circuit_record, circuit_history_cap)
                 current_circuit_state = next_circuit_state
+            begin_field_state = self.state.copy()
             step = self.loop.step(
                 self.state,
                 self.pic,
@@ -326,6 +346,21 @@ class HybridPIC3DSimulator:
                 cumulative_j_dot_e_work_J += j_dot_e_power_W * float(dt_s)
                 cumulative_j_dot_e_step_count += 1
             n_steps_completed = step_index + 1
+            if apply_circuit_boundary:
+                _accumulate_power_port_ledger(
+                    accumulator=power_port_ledger_accumulator,
+                    field_stepper=self.loop.field_stepper,
+                    begin_field_state=begin_field_state,
+                    end_field_state=step.state,
+                    total_current_A_m2=step.field_step.total_current_A_m2,
+                    electron_density_m3=step.electron_density_m3,
+                    dt_s=float(dt_s),
+                    source_interface_z_index=int(circuit_z_index),
+                    terminal_current_A=step_terminal_current_A,
+                    terminal_udpf_V=step_terminal_udpf_V,
+                    udpf_source=step_udpf_source,
+                    absolute_step_index=absolute_step_index,
+                )
             last_step_telemetry = step.telemetry.to_dict()
             _record_limiter_activation(
                 limiter_activation_summary,
@@ -443,6 +478,11 @@ class HybridPIC3DSimulator:
             ),
             cumulative_active_port_step_count=cumulative_active_port_step_count,
             udpf_source_counts=dict(sorted(udpf_source_counts.items())),
+            power_port_ledger=_finalize_power_port_ledger(
+                accumulator=power_port_ledger_accumulator,
+                n_steps_completed=n_steps_completed,
+                apply_circuit_boundary=apply_circuit_boundary,
+            ),
             limiter_activation_summary=limiter_activation_summary,
             state_fingerprint=_state_fingerprint(
                 self.state,
@@ -726,6 +766,224 @@ def _circuit_voltage_balance(
         "active_port_power_sign": (
             "positive_I_udpf_is_power_drawn_from_generator_by_DPF"
         ),
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _new_power_port_ledger_accumulator() -> dict[str, Any]:
+    """Return a zeroed WP-N1 five-term power-port ledger accumulator."""
+    return {
+        "terminal_port_work_J": 0.0,
+        "volume_j_dot_e_work_J": 0.0,
+        "wall_poynting_flux_excluding_declared_port_J": 0.0,
+        "stored_em_energy_initial_J": None,
+        "stored_em_energy_final_J": None,
+        "steps_accumulated": 0,
+        "first_step_fallback": False,
+        "first_step_udpf_source": None,
+        "step_records": [],
+        "snapshot_provenance": {},
+        "domain_partition": None,
+        "domain_partition_constraints_ok": True,
+    }
+
+
+def _accumulate_power_port_ledger(
+    *,
+    accumulator: dict[str, Any],
+    field_stepper: Any,
+    begin_field_state: Maxwell3DState,
+    end_field_state: Maxwell3DState,
+    total_current_A_m2: np.ndarray,
+    electron_density_m3: np.ndarray,
+    dt_s: float,
+    source_interface_z_index: int,
+    terminal_current_A: float | None,
+    terminal_udpf_V: float | None,
+    udpf_source: str | None,
+    absolute_step_index: int,
+) -> None:
+    """Accumulate one step into the WP-N1 Auluck five-term power-port ledger.
+
+    WP-N1 source packet S2/S3. Builds the Auluck Omega partition for this
+    step, then accumulates terms 1 (terminal port work), 2 (omega volume
+    J.E), 3 (wall Poynting), and the stored-EM endpoints for term 5. Term 4
+    (electrode-interface work) is NOT computed here; it is the labeled
+    non-independent closure estimate assembled in power_port.py (gap G1).
+    """
+    maxwell = field_stepper.maxwell
+    grid = field_stepper.grid
+    cell_volume_m3 = float(grid.cell_volume)
+
+    current = np.asarray(total_current_A_m2, dtype=float)
+    current_norm = np.linalg.norm(current, axis=-1)
+    omega = build_auluck_omega_domain(
+        grid_shape=grid.shape,
+        electron_density_m3=electron_density_m3,
+        current_density_norm_A_m2=current_norm,
+        source_interface_z_index=source_interface_z_index,
+        pml_layers=int(getattr(maxwell.boundaries, "pml_cells", 0)),
+        electron_density_floor_m3=1.0,
+    )
+    masks = omega_domain_label_masks(omega)
+    omega_mask = masks["omega_volume_cells"]
+    wall_mask = masks["wall_material_faces"]
+    pml_mask = masks["open_pml_faces"]
+
+    # Begin/end cell-centered fields (step-consistent: same step endpoints).
+    e_begin = np.stack(maxwell.edge_E_to_cell_centered(begin_field_state.E), axis=-1)
+    e_end = np.stack(maxwell.edge_E_to_cell_centered(end_field_state.E), axis=-1)
+    b_begin = np.stack(_face_to_cell(begin_field_state.B), axis=-1)
+    b_end = np.stack(_face_to_cell(end_field_state.B), axis=-1)
+
+    # Term 2: omega volume J.E. Begin-step E with the (masked) step current,
+    # matching the stepper's begin_step_E_with_midpoint_candidate_current.
+    j_dot_e = omega_volume_j_dot_e_power_W(
+        total_current_A_m2=current,
+        electric_field_V_m=e_begin,
+        omega_volume_cells=omega_mask,
+    )
+    volume_j_dot_e_power_W = (
+        float(j_dot_e["j_dot_e_power_density_summed_W_m3"]) * cell_volume_m3
+    )
+
+    # Term 3: wall Poynting flux, trapezoidal over the step endpoints.
+    wall_begin = wall_poynting_flux_W(
+        electric_field_V_m=e_begin,
+        magnetic_field_T=b_begin,
+        wall_material_cells=wall_mask,
+        open_pml_cells=pml_mask,
+        grid=grid,
+    )
+    wall_end = wall_poynting_flux_W(
+        electric_field_V_m=e_end,
+        magnetic_field_T=b_end,
+        wall_material_cells=wall_mask,
+        open_pml_cells=pml_mask,
+        grid=grid,
+    )
+    wall_power_W = 0.5 * (
+        float(wall_begin["wall_poynting_flux_excluding_declared_port_W"])
+        + float(wall_end["wall_poynting_flux_excluding_declared_port_W"])
+    )
+
+    # Term 5: stored EM energy over Omega, endpoints of this step.
+    stored_begin_J = omega_stored_em_energy_J(
+        electric_field_V_m=e_begin,
+        magnetic_field_T=b_begin,
+        omega_volume_cells=omega_mask,
+        cell_volume_m3=cell_volume_m3,
+    )
+    stored_end_J = omega_stored_em_energy_J(
+        electric_field_V_m=e_end,
+        magnetic_field_T=b_end,
+        omega_volume_cells=omega_mask,
+        cell_volume_m3=cell_volume_m3,
+    )
+
+    # Term 1: terminal port work. Sign convention S3.1: positive = energy
+    # entering Omega from the generator. I*U_DPF with the existing circuit
+    # convention positive_I_udpf_is_power_drawn_from_generator_by_DPF.
+    if terminal_current_A is None or terminal_udpf_V is None:
+        terminal_power_W = 0.0
+    else:
+        terminal_power_W = float(terminal_current_A) * float(terminal_udpf_V)
+
+    first_step = accumulator["steps_accumulated"] == 0
+    if first_step:
+        accumulator["stored_em_energy_initial_J"] = stored_begin_J
+        accumulator["first_step_udpf_source"] = udpf_source
+        if udpf_source in {
+            "input_sequence_fallback_first_step",
+            "input_sequence_fallback_low_current",
+        }:
+            accumulator["first_step_fallback"] = True
+
+    accumulator["terminal_port_work_J"] += terminal_power_W * dt_s
+    accumulator["volume_j_dot_e_work_J"] += volume_j_dot_e_power_W * dt_s
+    accumulator["wall_poynting_flux_excluding_declared_port_J"] += (
+        wall_power_W * dt_s
+    )
+    accumulator["stored_em_energy_final_J"] = stored_end_J
+    accumulator["steps_accumulated"] += 1
+    accumulator["domain_partition"] = public_omega_domain_packet(omega)
+    constraints = omega["partition_constraints"]
+    if not (
+        constraints["mutually_disjoint"]
+        and constraints["exhaustive"]
+        and constraints["terminal_source_interface_non_empty"]
+        and constraints["terminal_source_interface_disjoint_from_omega"]
+    ):
+        accumulator["domain_partition_constraints_ok"] = False
+    accumulator["snapshot_provenance"] = {
+        "terminal_port_work_J": "begin_step_current_times_begin_step_udpf",
+        "volume_j_dot_e_work_J": (
+            "begin_step_E_with_step_masked_current_over_omega"
+        ),
+        "wall_poynting_flux_excluding_declared_port_J": (
+            "trapezoidal_begin_and_end_step_E_cross_H"
+        ),
+        "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+        "time_centering": "candidate_step_consistent_not_accepted",
+    }
+    if len(accumulator["step_records"]) < 256:
+        accumulator["step_records"].append({
+            "step_index": int(absolute_step_index),
+            "terminal_port_power_W": terminal_power_W,
+            "volume_j_dot_e_power_W": volume_j_dot_e_power_W,
+            "wall_poynting_flux_W": wall_power_W,
+            "stored_em_energy_begin_J": stored_begin_J,
+            "stored_em_energy_end_J": stored_end_J,
+            "omega_cell_count": int(j_dot_e["omega_cell_count"]),
+            "udpf_source": udpf_source,
+        })
+
+
+def _face_to_cell(b_field: Any) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return face_to_cell_centered(b_field)
+
+
+def _finalize_power_port_ledger(
+    *,
+    accumulator: dict[str, Any],
+    n_steps_completed: int,
+    apply_circuit_boundary: bool,
+) -> dict[str, Any] | None:
+    """Assemble the cumulative WP-N1 five-term power-port ledger telemetry."""
+    if not apply_circuit_boundary or accumulator["steps_accumulated"] == 0:
+        return None
+    initial = accumulator["stored_em_energy_initial_J"]
+    final = accumulator["stored_em_energy_final_J"]
+    stored_delta_J = (
+        None if initial is None or final is None else float(final) - float(initial)
+    )
+    return {
+        "status": "candidate_auluck_power_port_five_term_ledger_not_validation",
+        "steps_accumulated": int(accumulator["steps_accumulated"]),
+        "n_steps_completed": int(n_steps_completed),
+        "cumulative_terminal_port_work_J": float(
+            accumulator["terminal_port_work_J"]
+        ),
+        "cumulative_omega_volume_j_dot_e_work_J": float(
+            accumulator["volume_j_dot_e_work_J"]
+        ),
+        "cumulative_wall_poynting_flux_excluding_declared_port_J": float(
+            accumulator["wall_poynting_flux_excluding_declared_port_J"]
+        ),
+        "stored_em_energy_initial_J": initial,
+        "stored_em_energy_final_J": final,
+        "stored_em_energy_delta_J": stored_delta_J,
+        "first_step_fallback": bool(accumulator["first_step_fallback"]),
+        "first_step_udpf_source": accumulator["first_step_udpf_source"],
+        "snapshot_provenance": dict(accumulator["snapshot_provenance"]),
+        "domain_partition": accumulator["domain_partition"],
+        "domain_partition_constraints_ok": bool(
+            accumulator["domain_partition_constraints_ok"]
+        ),
+        "step_records": list(accumulator["step_records"]),
+        "sign_convention": "wp_n1_packet_section_3_1_into_omega_positive",
+        "time_centering": "candidate_step_consistent_not_accepted",
+        "can_support_power_port_acceptance": False,
         "can_support_first_principles_acceptance": False,
     }
 
