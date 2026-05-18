@@ -33,6 +33,7 @@ REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
     "command_argv",
     "git_commit",
     "source_truth_index_sha256",
+    "source_packet_hashes",
     "input_deck_sha256",
     "artifact_schema_version",
     "artifact_generation_commit",
@@ -116,7 +117,10 @@ class FirstPrinciplesRunManifest:
         missing: list[str] = []
         for name in REQUIRED_PROVENANCE_FIELDS:
             value = getattr(self, name)
-            if value is None or (isinstance(value, str | tuple) and len(value) == 0):
+            if value is None or (
+                isinstance(value, str | tuple | list | dict | Mapping)
+                and len(value) == 0
+            ):
                 missing.append(name)
         return tuple(missing)
 

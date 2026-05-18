@@ -276,11 +276,32 @@ def _check_artifact(path: Path, doc: dict) -> ArtifactResult:
     if _contains_acceptance_true(doc):
         result.failed_checks.append("C6")
 
-    # C7 (Codex A-1): the run manifest must report complete source/command
-    # provenance. ``manifest.provenance_complete`` missing or false means the
-    # manifest could not name the source-truth index, cited source packets, or
-    # command/commit -- the artifact cannot back a first-principles claim.
-    if not (isinstance(manifest, dict) and manifest.get("provenance_complete") is True):
+    # C7 (Codex A-1): independently verify run-manifest provenance without
+    # trusting the self-reported ``provenance_complete`` boolean.  A stale or
+    # lying manifest can carry ``provenance_complete: true`` while omitting
+    # ``source_packet_hashes`` or other required fields -- this check
+    # re-derives completeness from the raw manifest fields.  Required field
+    # list mirrors ``REQUIRED_PROVENANCE_FIELDS`` from
+    # ``dpf.first_principles.manifest`` (source of truth).
+    _C7_REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
+        "command_argv",
+        "git_commit",
+        "source_truth_index_sha256",
+        "source_packet_hashes",
+        "input_deck_sha256",
+        "artifact_schema_version",
+        "artifact_generation_commit",
+    )
+    _c7_fail = False
+    if not isinstance(manifest, dict) or manifest.get("provenance_complete") is not True:
+        _c7_fail = True
+    else:
+        for _field in _C7_REQUIRED_PROVENANCE_FIELDS:
+            _val = manifest.get(_field)
+            if _val is None or (isinstance(_val, (str, list, dict, tuple)) and len(_val) == 0):
+                _c7_fail = True
+                break
+    if _c7_fail:
         result.failed_checks.append("C7")
 
     return result

@@ -416,6 +416,49 @@ def test_source_packet_hashes_from_references_resolves_repo_root(
     assert hashes["rel_source"] == sha256_of_file(packet)
 
 
+def test_empty_source_packet_hashes_makes_provenance_incomplete() -> None:
+    """A-1: a manifest with every required provenance field populated but
+    ``source_packet_hashes={}`` must report incomplete provenance.
+
+    An empty dict is not a populated hash map -- the manifest cannot certify
+    which source packets were used, so provenance is incomplete (Codex A-1).
+    """
+    manifest = build_first_principles_run_manifest(
+        run_id="fp-empty-hashes",
+        command_argv=("dpf", "first-principles-3d", "--steps", "2"),
+        git_commit="0123456789abcdef0123456789abcdef01234567",
+        dirty_worktree=False,
+        source_truth_index_sha256=sha256_of_text("source-truth-index-content"),
+        source_packet_hashes={},  # deliberately empty
+        input_deck_sha256=sha256_of_text("pf1000-akel-deck"),
+        artifact_schema_version="first_principles_artifact_v1",
+        artifact_generation_commit="0123456789abcdef0123456789abcdef01234567",
+    )
+
+    assert manifest.has_complete_provenance() is False
+    assert "source_packet_hashes" in manifest.missing_provenance_fields()
+
+
+def test_nonempty_source_packet_hashes_with_all_fields_gives_complete_provenance() -> None:
+    """A-1 positive: all required provenance fields populated including a
+    non-empty ``source_packet_hashes`` → ``has_complete_provenance() is True``.
+    """
+    manifest = build_first_principles_run_manifest(
+        run_id="fp-complete-hashes",
+        command_argv=("dpf", "first-principles-3d", "--steps", "2"),
+        git_commit="0123456789abcdef0123456789abcdef01234567",
+        dirty_worktree=False,
+        source_truth_index_sha256=sha256_of_text("source-truth-index-content"),
+        source_packet_hashes={"src": sha256_of_text("packet-body")},
+        input_deck_sha256=sha256_of_text("pf1000-akel-deck"),
+        artifact_schema_version="first_principles_artifact_v1",
+        artifact_generation_commit="0123456789abcdef0123456789abcdef01234567",
+    )
+
+    assert manifest.has_complete_provenance() is True
+    assert "source_packet_hashes" not in manifest.missing_provenance_fields()
+
+
 def test_source_packet_hashes_from_references_skips_incomplete_reference(
     tmp_path,
 ) -> None:

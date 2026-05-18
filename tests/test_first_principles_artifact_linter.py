@@ -46,6 +46,13 @@ def _valid_first_principles_artifact() -> dict[str, object]:
         "manifest": {
             "provenance_complete": True,
             "missing_provenance_fields": [],
+            "command_argv": ["dpf", "first-principles-3d", "--steps", "2"],
+            "git_commit": "0123456789abcdef0123456789abcdef01234567",
+            "source_truth_index_sha256": "a" * 64,
+            "source_packet_hashes": {"hybrid_pic_3d_source": "b" * 64},
+            "input_deck_sha256": "c" * 64,
+            "artifact_schema_version": "first_principles_artifact_v1",
+            "artifact_generation_commit": "0123456789abcdef0123456789abcdef01234567",
             "candidate_evidence": {
                 "deck_diff_packet": {
                     "status": "candidate_deck_diff_packet_not_validation",
@@ -238,6 +245,59 @@ def test_artifact_linter_exit_code_ignores_exempt_artifacts(tmp_path: Path) -> N
     exit_code = linter.main([str(tmp_path / "*.json"), str(archive_dir / "*.json")])
 
     assert exit_code == 0
+
+
+def test_artifact_linter_fails_c7_on_stale_lying_manifest(tmp_path: Path) -> None:
+    """A-1: C7 must NOT trust a self-reported ``provenance_complete: true``.
+
+    A stale/lying manifest can set ``provenance_complete: true`` while
+    carrying ``source_packet_hashes: {}`` (empty dict).  C7 must re-derive
+    completeness from the actual manifest fields and fail in this case.
+    """
+    linter = _load_linter()
+    payload = _valid_first_principles_artifact()
+    assert isinstance(payload["manifest"], dict)
+    # Self-reports complete but the hash map is empty -- a stale lying manifest.
+    payload["manifest"]["provenance_complete"] = True
+    payload["manifest"]["source_packet_hashes"] = {}
+    # Populate all other fields so C7 failure is specifically due to empty hashes.
+    payload["manifest"]["command_argv"] = ["dpf", "first-principles-3d"]
+    payload["manifest"]["git_commit"] = "0123456789abcdef0123456789abcdef01234567"
+    payload["manifest"]["source_truth_index_sha256"] = "a" * 64
+    payload["manifest"]["input_deck_sha256"] = "b" * 64
+    payload["manifest"]["artifact_schema_version"] = "first_principles_artifact_v1"
+    payload["manifest"]["artifact_generation_commit"] = "0123456789abcdef0123456789abcdef01234567"
+    artifact = _write_json(tmp_path / "lying_manifest.json", payload)
+
+    result = linter.lint_artifact(artifact)
+
+    assert result.status == "FAIL"
+    assert "C7" in result.failed_checks
+    assert result.counts_against_exit is True
+
+
+def test_artifact_linter_passes_c7_on_genuinely_complete_manifest(tmp_path: Path) -> None:
+    """A-1: a manifest that genuinely satisfies every required provenance
+    field, including a non-empty ``source_packet_hashes``, does not fail C7.
+    """
+    linter = _load_linter()
+    payload = _valid_first_principles_artifact()
+    assert isinstance(payload["manifest"], dict)
+    payload["manifest"]["provenance_complete"] = True
+    payload["manifest"]["source_packet_hashes"] = {
+        "hybrid_pic_3d_source": "a" * 64,
+    }
+    payload["manifest"]["command_argv"] = ["dpf", "first-principles-3d"]
+    payload["manifest"]["git_commit"] = "0123456789abcdef0123456789abcdef01234567"
+    payload["manifest"]["source_truth_index_sha256"] = "a" * 64
+    payload["manifest"]["input_deck_sha256"] = "b" * 64
+    payload["manifest"]["artifact_schema_version"] = "first_principles_artifact_v1"
+    payload["manifest"]["artifact_generation_commit"] = "0123456789abcdef0123456789abcdef01234567"
+    artifact = _write_json(tmp_path / "complete_manifest.json", payload)
+
+    result = linter.lint_artifact(artifact)
+
+    assert "C7" not in result.failed_checks
 
 
 def test_artifact_linter_exit_code_fails_on_provenance_gap(tmp_path: Path) -> None:
