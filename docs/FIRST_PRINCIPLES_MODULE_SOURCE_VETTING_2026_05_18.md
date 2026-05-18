@@ -1,6 +1,6 @@
 # First-Principles Module Source-Vetting Audit
 
-Generated: 2026-05-18T21:03:20.564989+00:00
+Generated: 2026_05_18
 
 Strict passed: `true`
 

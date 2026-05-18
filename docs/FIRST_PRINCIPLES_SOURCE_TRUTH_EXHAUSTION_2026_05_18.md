@@ -1,6 +1,6 @@
 # First-Principles Source Truth Exhaustion
 
-Generated: 2026-05-18T21:03:19.117638+00:00
+Generated: 2026_05_18
 
 Exhausted: `true`
 Open issue count: `0`

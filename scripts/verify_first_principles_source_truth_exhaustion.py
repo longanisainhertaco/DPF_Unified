@@ -121,14 +121,28 @@ def main() -> int:
         action="store_true",
         help="Regenerate the source-truth index before running the exhaustion audit.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "read-only verification mode: renders the report and fails if the "
+            "on-disk dated docs are missing or stale; never writes (use in CI)."
+        ),
+    )
     args = parser.parse_args()
 
     if args.refresh_index:
-        refreshed = refresh_source_truth_index()
-        INDEX_PATH.write_text(json.dumps(refreshed, indent=2, sort_keys=True) + "\n")
-        (ROOT / "docs" / "FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md").write_text(
-            _source_truth_index_markdown(refreshed)
-        )
+        refreshed = refresh_source_truth_index(date_slug=args.date)
+        if args.check:
+            drift = _check_index_drift(refreshed)
+        else:
+            INDEX_PATH.write_text(json.dumps(refreshed, indent=2, sort_keys=True) + "\n")
+            (ROOT / "docs" / "FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md").write_text(
+                _source_truth_index_markdown(refreshed)
+            )
+            drift = []
+    else:
+        drift = []
 
     payload = build_exhaustion_report(date_slug=args.date)
     output_json = (
@@ -137,8 +151,20 @@ def main() -> int:
     output_md = (
         ROOT / "docs" / f"FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_{args.date}.md"
     )
-    output_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-    output_md.write_text(_markdown_report(payload))
+
+    if args.check:
+        rendered_json = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+        rendered_md = _markdown_report(payload)
+        drift.extend(_check_file_drift(output_json, rendered_json))
+        drift.extend(_check_file_drift(output_md, rendered_md))
+        if drift:
+            for entry in drift:
+                print(entry, file=sys.stderr)
+            return 1
+    else:
+        output_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        output_md.write_text(_markdown_report(payload))
+
     print(json.dumps({
         "exhausted": payload["exhausted"],
         "open_issue_count": payload["open_issue_count"],
@@ -148,6 +174,26 @@ def main() -> int:
     if args.strict and not payload["exhausted"]:
         return 1
     return 0
+
+
+def _check_file_drift(path: Path, rendered: str) -> list[str]:
+    """Return drift messages if *path* is missing or differs from *rendered*."""
+    if not path.exists():
+        return [f"MISSING: {path}"]
+    if path.read_text() != rendered:
+        return [f"STALE: {path}"]
+    return []
+
+
+def _check_index_drift(refreshed: dict[str, Any]) -> list[str]:
+    """Compare refreshed index against on-disk index files; return drift messages."""
+    drift: list[str] = []
+    rendered_json = json.dumps(refreshed, indent=2, sort_keys=True) + "\n"
+    rendered_md = _source_truth_index_markdown(refreshed)
+    index_md = ROOT / "docs" / "FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.md"
+    drift.extend(_check_file_drift(INDEX_PATH, rendered_json))
+    drift.extend(_check_file_drift(index_md, rendered_md))
+    return drift
 
 
 def build_exhaustion_report(*, date_slug: str) -> dict[str, Any]:
@@ -175,7 +221,7 @@ def build_exhaustion_report(*, date_slug: str) -> dict[str, Any]:
     exhausted = open_issue_count == 0
     return {
         "date": date_slug,
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": date_slug,
         "scope": "first_principles_source_truth_exhaustion",
         "authority_policy": (
             "KnowledgeReference plus explicitly user-verified staged sources only; "
@@ -227,9 +273,10 @@ def _inventory_status(index: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def refresh_source_truth_index() -> dict[str, Any]:
+def refresh_source_truth_index(*, date_slug: str = "") -> dict[str, Any]:
     """Build a current source-truth index while preserving reviewed records."""
-
+    if not date_slug:
+        date_slug = datetime.now(UTC).strftime("%Y_%m_%d")
     existing = _read_json(INDEX_PATH) if INDEX_PATH.exists() else {}
     existing_records = _existing_records_by_path(existing)
     file_inventory = _build_file_inventory()
@@ -237,7 +284,7 @@ def refresh_source_truth_index() -> dict[str, Any]:
     external_pdf_records = existing.get("external_pdf_records", [])
     stats = _index_stats(records, file_inventory, external_pdf_records)
     return {
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": date_slug,
         "repo": str(ROOT),
         "scope": {
             "scientific_source_scope": (

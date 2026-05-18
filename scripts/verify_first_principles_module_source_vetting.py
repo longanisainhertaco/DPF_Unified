@@ -13,6 +13,7 @@ import argparse
 import ast
 import json
 import re
+import sys
 from collections import Counter, deque
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
@@ -241,6 +242,14 @@ def main() -> int:
         action="store_true",
         help="Exit nonzero if active physics source-vetting blockers remain.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "read-only verification mode: renders the report and fails if the "
+            "on-disk dated docs are missing or stale; never writes (use in CI)."
+        ),
+    )
     args = parser.parse_args()
 
     payload = build_module_vetting_report(date_slug=args.date)
@@ -250,8 +259,21 @@ def main() -> int:
     output_md = (
         ROOT / "docs" / f"FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_{args.date}.md"
     )
-    output_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-    output_md.write_text(_markdown_report(payload))
+
+    if args.check:
+        rendered_json = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+        rendered_md = _markdown_report(payload)
+        drift: list[str] = []
+        drift.extend(_check_file_drift(output_json, rendered_json))
+        drift.extend(_check_file_drift(output_md, rendered_md))
+        if drift:
+            for entry in drift:
+                print(entry, file=sys.stderr)
+            return 1
+    else:
+        output_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        output_md.write_text(_markdown_report(payload))
+
     print(
         json.dumps(
             {
@@ -275,6 +297,15 @@ def main() -> int:
     return 0
 
 
+def _check_file_drift(path: Path, rendered: str) -> list[str]:
+    """Return drift messages if *path* is missing or differs from *rendered*."""
+    if not path.exists():
+        return [f"MISSING: {path}"]
+    if path.read_text() != rendered:
+        return [f"STALE: {path}"]
+    return []
+
+
 def build_module_vetting_report(*, date_slug: str) -> dict[str, Any]:
     index = _read_json(INDEX_PATH)
     indexed_paths, records_by_path = _indexed_source_paths(index)
@@ -296,7 +327,7 @@ def build_module_vetting_report(*, date_slug: str) -> dict[str, Any]:
     summary = _summary(modules, blockers)
     return {
         "date": date_slug,
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": date_slug,
         "scope": "first_principles_module_source_vetting",
         "authority_policy": (
             "KnowledgeReference plus explicitly user-verified staged sources only; "
