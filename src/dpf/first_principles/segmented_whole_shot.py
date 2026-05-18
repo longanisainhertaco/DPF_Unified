@@ -274,6 +274,71 @@ class _CumulativeLedgers:
             sum(species.n_particles() for species in result.pic.species)
         )
 
+    # Counter fields persisted to / restored from the per-checkpoint sidecar.
+    # Listed explicitly so a resume rehydrates exactly the pre-resume totals.
+    _STATE_FIELDS: tuple[str, ...] = (
+        "cumulative_j_dot_e_work_J",
+        "cumulative_j_dot_e_step_count",
+        "cumulative_active_port_work_J",
+        "cumulative_active_port_step_count",
+        "limiter_steps_observed",
+        "limiter_total_activations",
+        "final_cumulative_neutrons",
+        "final_circuit_current_A",
+        "final_circuit_charge_C",
+        "final_electron_energy_J",
+        "final_ion_temperature_K",
+        "final_ionization_electron_density_m3",
+        "final_particle_count",
+    )
+
+    def to_state_dict(self) -> dict[str, Any]:
+        """Serialise every counter/final field for the per-checkpoint sidecar.
+
+        This is the accumulation of all segments executed so far; a resume
+        rehydrates from it so the resumed run's cumulative ledgers cover the
+        full executed horizon, not just the post-resume segments (audit A-6).
+        """
+
+        return {name: getattr(self, name) for name in self._STATE_FIELDS}
+
+    @classmethod
+    def from_state_dict(cls, state: Mapping[str, Any]) -> _CumulativeLedgers:
+        """Reconstruct ledgers from a sidecar written at an earlier segment.
+
+        Integer counters and float accumulators are coerced back to their
+        declared types; ``None`` finals stay ``None``.  A missing key falls
+        back to the dataclass default so a malformed sidecar cannot crash
+        the resume -- it degrades to the zero baseline for that field only.
+        """
+
+        ledgers = cls()
+        int_fields = {
+            "cumulative_j_dot_e_step_count",
+            "cumulative_active_port_step_count",
+            "limiter_steps_observed",
+            "limiter_total_activations",
+        }
+        float_fields = {
+            "cumulative_j_dot_e_work_J",
+            "cumulative_active_port_work_J",
+        }
+        for name in cls._STATE_FIELDS:
+            if name not in state:
+                continue
+            value = state[name]
+            if value is None:
+                setattr(ledgers, name, None)
+            elif name in int_fields:
+                setattr(ledgers, name, int(value))
+            elif name in float_fields:
+                setattr(ledgers, name, float(value))
+            elif name == "final_particle_count":
+                setattr(ledgers, name, int(value))
+            else:
+                setattr(ledgers, name, float(value))
+        return ledgers
+
     def to_dict(self, *, total_steps_completed: int, horizon_steps: int) -> dict[str, Any]:
         return {
             "ledger_status": (
@@ -387,11 +452,16 @@ def run_segmented_whole_shot(
             deck=horizon_deck,
         )
         resume_completed = int(session.completed_steps)
+        # Rehydrate the cumulative ledgers from the sidecar written beside the
+        # resumed-from checkpoint.  Skipped (already-completed) segments never
+        # call ledgers.accumulate(); without this the resumed run's cumulative
+        # ledgers would cover only post-resume steps (audit A-6).
+        ledgers = _load_cumulative_ledger_sidecar(plan.resume_from_checkpoint)
     else:
         session = build_first_principles_3d_session(horizon_deck)
         resume_completed = 0
+        ledgers = _CumulativeLedgers()
 
-    ledgers = _CumulativeLedgers()
     segment_records: list[dict[str, Any]] = []
     last_result: HybridPIC3DSimulationResult | None = None
     completed = resume_completed
@@ -430,6 +500,22 @@ def run_segmented_whole_shot(
                 simulation=result,
                 checkpoint_path=checkpoint_path,
                 deck=horizon_deck,
+            )
+            # Persist the cumulative-ledger state AS OF this segment beside the
+            # checkpoint.  ``ledgers`` already has segments 0..segment_index
+            # accumulated, so a resume from this checkpoint reconstructs the
+            # exact pre-resume totals (audit A-6).
+            _write_json(
+                _cumulative_ledger_sidecar_path(checkpoint_path),
+                {
+                    "ledger_sidecar_status": (
+                        "candidate_cumulative_segmented_ledger_resume_sidecar"
+                    ),
+                    "checkpoint_path": str(checkpoint_path),
+                    "segment_index": int(segment_index),
+                    "total_steps_completed_after_segment": int(completed),
+                    "cumulative_ledger_state": ledgers.to_state_dict(),
+                },
             )
 
         is_final_segment = segment_index == plan.segment_count - 1
@@ -956,6 +1042,42 @@ def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     # manifest already carries per-segment checkpoint hashes.  This keeps the
     # write deterministic for reproducibility.
     _ = sha256_of_text(text)
+
+
+def _cumulative_ledger_sidecar_path(checkpoint_path: str | Path) -> Path:
+    """Return the cumulative-ledger sidecar path beside a checkpoint ``.npz``.
+
+    The sidecar lives next to the checkpoint with the ``.npz`` suffix replaced
+    by ``.cumulative_ledger.json`` so resume can locate it from the checkpoint
+    path alone, without touching the checkpoint schema or its fail-closed
+    loader (audit A-6, smallest blast radius).
+    """
+
+    path = Path(checkpoint_path)
+    return path.with_suffix("").with_name(
+        f"{path.with_suffix('').name}.cumulative_ledger.json"
+    )
+
+
+def _load_cumulative_ledger_sidecar(
+    checkpoint_path: str | Path,
+) -> _CumulativeLedgers:
+    """Rehydrate cumulative ledgers from a resumed-from checkpoint's sidecar.
+
+    When no sidecar exists (e.g. the checkpoint was the segment-0 checkpoint of
+    a run produced before this fix, or a hand-supplied checkpoint) the resume
+    falls back to a zero baseline -- the same behaviour as before this fix --
+    so a missing sidecar degrades gracefully rather than failing the resume.
+    """
+
+    sidecar_path = _cumulative_ledger_sidecar_path(checkpoint_path)
+    if not sidecar_path.is_file():
+        return _CumulativeLedgers()
+    payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    state = payload.get("cumulative_ledger_state")
+    if not isinstance(state, Mapping):
+        return _CumulativeLedgers()
+    return _CumulativeLedgers.from_state_dict(state)
 
 
 def _as_float(value: Any) -> float | None:

@@ -402,6 +402,100 @@ def test_resume_from_checkpoint_completes_the_horizon(tmp_path: Path) -> None:
     )
 
 
+def test_resume_cumulative_ledgers_cover_full_executed_horizon(
+    tmp_path: Path,
+) -> None:
+    """A resumed run's cumulative ledgers must span pre- + post-resume steps.
+
+    Audit A-6: a resume skips already-completed segments, which never call
+    ``ledgers.accumulate()``.  Without the per-checkpoint ledger sidecar the
+    resumed run's ``cumulative_ledgers`` covers only the post-resume segment,
+    so ``covers_executed_horizon`` is wrongly False at a completed horizon.
+
+    Strongest form: the resumed run's cumulative ledgers are asserted equal,
+    field by field, to a fresh uninterrupted 4-step run -- proving full
+    equivalence, not just that the horizon-coverage flag flipped True.
+    """
+    deck = _smoke_deck(n_steps=4)
+
+    # Fresh uninterrupted 4-step run: the equivalence reference.
+    fresh = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "fresh",
+        segment_steps=2,
+        explicit_total_steps=4,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    assert fresh["horizon_complete"] is True
+    fresh_ledgers = fresh["cumulative_ledgers"]
+
+    # A first run whose segment-0 checkpoint (step 2) we resume from.
+    first = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "first",
+        segment_steps=2,
+        explicit_total_steps=4,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    assert first["horizon_complete"] is True
+    segment0_checkpoint = tmp_path / "first" / "segments" / "segment_0000.npz"
+    assert segment0_checkpoint.is_file()
+
+    resumed = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "resumed",
+        segment_steps=2,
+        explicit_total_steps=4,
+        checkpoint_every_segments=1,
+        resume_from_checkpoint=segment0_checkpoint,
+        verify_restart_equivalence=True,
+    )
+
+    # The resume started at step 2 and finished the full 4-step horizon.
+    assert resumed["resume_started_at_step"] == 2
+    assert resumed["total_steps_completed"] == 4
+    assert resumed["horizon_complete"] is True
+
+    ledgers = resumed["cumulative_ledgers"]
+    # The limiter ledger is observed every step; it must span all 4 steps,
+    # not just the 2 post-resume steps.
+    assert ledgers["limiter_steps_observed"] == 4, (
+        "resumed cumulative ledger covered only the post-resume segment"
+    )
+    assert ledgers["covers_executed_horizon"] is True
+    assert ledgers["executed_steps"] == 4
+    # Cumulative J.E and active-port step counts cover all executed steps.
+    if ledgers["cumulative_j_dot_e_step_count"] > 0:
+        assert ledgers["cumulative_j_dot_e_step_count"] == 4
+    if ledgers["cumulative_active_port_step_count"] > 0:
+        assert ledgers["cumulative_active_port_step_count"] == 4
+
+    # Strongest form: every cumulative counter field of the resumed run equals
+    # the fresh uninterrupted run's -- restart equivalence of the ledger, not
+    # just the horizon-coverage flag.
+    for field in (
+        "cumulative_j_dot_e_work_J",
+        "cumulative_j_dot_e_step_count",
+        "cumulative_active_port_work_J",
+        "cumulative_active_port_step_count",
+        "limiter_steps_observed",
+        "limiter_total_activations",
+        "final_cumulative_neutrons",
+        "final_circuit_current_A",
+        "final_circuit_charge_C",
+        "final_electron_energy_J",
+        "final_ion_temperature_K",
+        "final_ionization_electron_density_m3",
+        "final_particle_count",
+    ):
+        assert ledgers[field] == fresh_ledgers[field], (
+            f"resumed cumulative ledger field '{field}' diverged from the "
+            f"fresh uninterrupted run: {ledgers[field]} != {fresh_ledgers[field]}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Checkpoint mismatch fails before state is written
 # ---------------------------------------------------------------------------
