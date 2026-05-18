@@ -107,7 +107,7 @@ class YeeElectricField:
     Ey_edge: np.ndarray
     Ez_edge: np.ndarray
 
-    def copy(self) -> "YeeElectricField":
+    def copy(self) -> YeeElectricField:
         return YeeElectricField(
             Ex_edge=np.array(self.Ex_edge, copy=True),
             Ey_edge=np.array(self.Ey_edge, copy=True),
@@ -134,7 +134,7 @@ class Maxwell3DState:
     def Ez_edge(self) -> np.ndarray:
         return self.E.Ez_edge
 
-    def copy(self) -> "Maxwell3DState":
+    def copy(self) -> Maxwell3DState:
         return Maxwell3DState(
             E=self.E.copy(),
             B=StaggeredBField(

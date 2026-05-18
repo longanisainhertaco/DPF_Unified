@@ -235,24 +235,23 @@ def _read_xlsx_numeric_pair(
 ) -> tuple[list[float], list[float]]:
     wanted = {time_col.upper(), current_col.upper()}
     rows: dict[int, dict[str, float]] = {}
-    with zipfile.ZipFile(path) as zf:
-        with zf.open("xl/worksheets/sheet1.xml") as sheet:
-            for _, elem in ET.iterparse(sheet, events=("end",)):
-                if _local_name(elem.tag) != "c":
-                    continue
-                ref = elem.attrib.get("r", "")
-                parsed = _parse_cell_ref(ref)
-                if parsed is None:
-                    elem.clear()
-                    continue
-                col, row_number = parsed
-                if col not in wanted:
-                    elem.clear()
-                    continue
-                value = _numeric_cell_value(elem)
-                if value is not None and math.isfinite(value):
-                    rows.setdefault(row_number, {})[col] = value
+    with zipfile.ZipFile(path) as zf, zf.open("xl/worksheets/sheet1.xml") as sheet:
+        for _, elem in ET.iterparse(sheet, events=("end",)):
+            if _local_name(elem.tag) != "c":
+                continue
+            ref = elem.attrib.get("r", "")
+            parsed = _parse_cell_ref(ref)
+            if parsed is None:
                 elem.clear()
+                continue
+            col, row_number = parsed
+            if col not in wanted:
+                elem.clear()
+                continue
+            value = _numeric_cell_value(elem)
+            if value is not None and math.isfinite(value):
+                rows.setdefault(row_number, {})[col] = value
+            elem.clear()
 
     time_values: list[float] = []
     current_values: list[float] = []
@@ -297,7 +296,7 @@ def _gv_shot_row(shot_id: str) -> dict[str, Any]:
 
 
 def _is_monotonic_non_decreasing(values: list[float]) -> bool:
-    return all(left <= right for left, right in zip(values, values[1:]))
+    return all(left <= right for left, right in zip(values, values[1:], strict=False))
 
 
 def _sha256_file(path: Path) -> str:

@@ -112,7 +112,7 @@ class ParticleAbsorbingBoundaries:
             ),
         )
 
-    def classify_positions(self, positions: np.ndarray) -> "_BoundaryFlags":
+    def classify_positions(self, positions: np.ndarray) -> _BoundaryFlags:
         """Classify particle positions against conductor, PML, and domain."""
         pos = np.asarray(positions, dtype=float)
         if pos.ndim != 2 or pos.shape[1] != 3:
