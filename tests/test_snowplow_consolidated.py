@@ -1634,8 +1634,8 @@ class TestPF1000Consistency:
         assert PF1000_DATA.peak_current == pytest.approx(1.87e6, rel=1e-10)
 
     def test_anode_radius_consistency(self) -> None:
-        assert DEVICE_REGISTRY["PF-1000"].anode_radius == pytest.approx(0.115, rel=1e-10)
-        assert PF1000_DATA.anode_radius == pytest.approx(0.115, rel=1e-10)
+        assert DEVICE_REGISTRY["PF-1000"].anode_radius == pytest.approx(0.1155, rel=1e-10)
+        assert PF1000_DATA.anode_radius == pytest.approx(0.1155, rel=1e-10)
 
     def test_cathode_radius_consistency(self) -> None:
         assert DEVICE_REGISTRY["PF-1000"].cathode_radius == pytest.approx(0.16, rel=1e-10)

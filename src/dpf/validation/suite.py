@@ -83,7 +83,7 @@ PF1000 = DeviceData(
     V0=27e3,            # 27 kV charging (Scholz et al. 2006)
     L0=33.5e-9,         # 33.5 nH external inductance
     R0=2.3e-3,          # 2.3 mOhm
-    anode_radius=0.115, # 115 mm anode outer radius (IPPLM: anode OD 230mm)
+    anode_radius=0.1155,  # 11.55 cm — KR radiation-physics-and-chemistry-188-2021-109633.md:264
     cathode_radius=0.16, # 160 mm effective cathode (Lee & Saw 2014)
     peak_current_A=1.87e6,    # 1.87 MA peak at 27 kV (Scholz et al. 2006)
     peak_current_time_s=5.5e-6,  # ~5.5 us to peak
@@ -169,7 +169,7 @@ PF1000_20KV = DeviceData(
     V0=20e3,            # 20 kV
     L0=33.5e-9,         # Same circuit
     R0=2.3e-3,          # 2.3 mOhm baseline (Scholz 2006)
-    anode_radius=0.115,
+    anode_radius=0.1155,  # 11.55 cm — same device as PF-1000 (KR a=11.55 cm)
     cathode_radius=0.16,
     peak_current_A=1.4e6,       # 1.4 MA (voltage-scaled from 27 kV)
     peak_current_time_s=6.3e-6, # ~6.3 us (estimated)

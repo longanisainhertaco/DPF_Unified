@@ -1146,6 +1146,7 @@ class TestMetalPhysicsCoverage:
 
     def test_metal_solver_conservative_formulation(self):
         """Metal solver uses conservative variables (8-component: rho, mom, E, B)."""
+        pytest.importorskip("torch")
         from dpf.metal.metal_riemann import IEN, NVAR
         assert NVAR == 8
         assert IEN == 4
