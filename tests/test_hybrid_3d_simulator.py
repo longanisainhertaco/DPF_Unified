@@ -506,6 +506,19 @@ def test_lagged_j_dot_e_feedback_fails_closed_for_active_port_source() -> None:
     assert source == "input_sequence_fallback_negative_j_dot_e_active_port_blocked"
 
 
+def test_lagged_auluck_j_dot_e_feedback_uses_source_sign_candidate() -> None:
+    udpf, source = _circuit_udpf_for_step(
+        mode="lagged_auluck_volume_j_dot_e",
+        input_udpf_V=0.0,
+        lagged_field_work={"j_dot_e_power_W": -10.0},
+        current_A=2.0,
+        min_current_A=1.0,
+    )
+
+    assert udpf == pytest.approx(5.0)
+    assert source == "candidate_lagged_auluck_volume_j_dot_e"
+
+
 def test_hybrid_simulator_blocks_j_dot_e_feedback_at_low_current() -> None:
     grid = _grid()
     loop = HybridPIC3DLoop(grid)

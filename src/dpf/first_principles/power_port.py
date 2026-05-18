@@ -77,6 +77,15 @@ ACCEPTED_LOAD_POWER_SOURCES = (
     "reviewed_volume_j_dot_e_integral",
 )
 
+STAGE0_PACKET_IDS = (
+    "power_port_source_review",
+    "power_port_domain_review",
+    "power_port_sign_review",
+    "power_port_time_centering_review",
+    "power_port_energy_ledger_review",
+    "negative_test_plan",
+)
+
 
 def build_engineering_power_port_packet(
     circuit: Mapping[str, Any] | None,
@@ -89,6 +98,9 @@ def build_engineering_power_port_packet(
     circuit_record = _last_circuit_record(circuit)
     circuit_step = _circuit_step_from_record(circuit_record)
     udpf_source = _optional_str(circuit_record, "udpf_source")
+    low_current_feedback = _mapping_or_none(
+        None if circuit_record is None else circuit_record.get("low_current_feedback")
+    )
     active_load_relation = _active_load_relation(circuit_step, udpf_source)
     current_A = _optional_float(circuit_step, "current_A")
     terminal_voltage_V = _optional_float(circuit_step, "udpf_V")
@@ -116,6 +128,21 @@ def build_engineering_power_port_packet(
         final_energy=final_energy,
         field_work=field_work,
         diagnostic_field_inductance_H=diagnostic_field_inductance_H,
+        residual_budget=residual_budget,
+    )
+    stage0_packets = _stage0_packet_scaffolds(
+        active_load_relation=active_load_relation,
+        current_A=current_A,
+        terminal_voltage_V=terminal_voltage_V,
+        final_energy=final_energy,
+        field_work=field_work,
+        residual_budget=residual_budget,
+        low_current_feedback=low_current_feedback,
+        startup=startup,
+    )
+    candidate_energy_ledger = _candidate_stage0_energy_ledger(
+        final_energy=final_energy,
+        conservation=conservation,
         residual_budget=residual_budget,
     )
     missing = list(ACCEPTANCE_BLOCKING_CHANNELS)
@@ -149,6 +176,7 @@ def build_engineering_power_port_packet(
             conservation=conservation,
             diagnostic_field_inductance_H=diagnostic_field_inductance_H,
             residual_budget=residual_budget,
+            low_current_feedback=low_current_feedback,
         ),
         "interface_surface_or_volume_domain": "not_declared",
         "poynting_power_W": None,
@@ -169,6 +197,18 @@ def build_engineering_power_port_packet(
             startup=startup,
         ),
         "energy_ledger_status": _energy_ledger_status(final_energy),
+        "candidate_stage0_energy_ledger": candidate_energy_ledger,
+        "stage0_packet_scaffolds": stage0_packets,
+        "stage0_packet_ids": list(STAGE0_PACKET_IDS),
+        "power_port_operator_comparison": _operator_comparison_packet(),
+        "sigma_quasi_tem_line_voltage_operator": (
+            _sigma_quasi_tem_line_voltage_packet()
+        ),
+        "low_current_p_over_i_singularity": (
+            dict(low_current_feedback)
+            if low_current_feedback is not None
+            else _missing_low_current_feedback_packet()
+        ),
         "candidate_power_residual_budget": residual_budget,
         "candidate_runtime_channels": candidate_runtime_channels,
         "active_load_decision": {
@@ -180,17 +220,14 @@ def build_engineering_power_port_packet(
             "diagnostic_relations_do_not_define_load": True,
             "candidate_volume_j_dot_e_is_not_active_load": (
                 j_dot_e_power_W is not None
-                and active_load_relation
-                != "lagged_volume_j_dot_e_voltage_not_accepted"
+                and not _uses_candidate_j_dot_e_active_load(active_load_relation)
             ),
             "candidate_lagged_volume_j_dot_e_is_active_load": (
-                active_load_relation
-                == "lagged_volume_j_dot_e_voltage_not_accepted"
+                _uses_candidate_j_dot_e_active_load(active_load_relation)
             ),
             "decision": (
                 "candidate_lagged_field_power_load_not_accepted"
-                if active_load_relation
-                == "lagged_volume_j_dot_e_voltage_not_accepted"
+                if _uses_candidate_j_dot_e_active_load(active_load_relation)
                 else "input_voltage_sequence_not_accepted_load_authority"
             ),
             "can_support_power_port_acceptance": False,
@@ -207,8 +244,10 @@ def build_engineering_power_port_packet(
             "electrode_work_omission_required": True,
             "residual_tolerance_failure_required": True,
             "diagnostic_inductance_as_load_rejection_required": True,
+            "low_current_p_over_i_singularity_rejection_required": True,
             "hidden_current_floor_or_back_emf_clip_rejection_required": True,
             "startup_handoff_gap_rejection_required": True,
+            "sigma_line_voltage_as_driver_rejection_required": True,
         },
         "residual_policy": {
             "accepted_residual_tolerance": "not_attached",
@@ -276,6 +315,10 @@ def _optional_str(mapping: Mapping[str, Any] | None, key: str) -> str | None:
     return str(mapping[key])
 
 
+def _mapping_or_none(value: Any) -> Mapping[str, Any] | None:
+    return value if isinstance(value, Mapping) else None
+
+
 def _active_load_relation(
     circuit_step: Mapping[str, Any] | None,
     udpf_source: str | None,
@@ -284,7 +327,16 @@ def _active_load_relation(
         return "no_active_circuit_boundary"
     if udpf_source == "candidate_lagged_volume_j_dot_e":
         return "lagged_volume_j_dot_e_voltage_not_accepted"
+    if udpf_source == "candidate_lagged_auluck_volume_j_dot_e":
+        return "lagged_auluck_volume_j_dot_e_voltage_not_accepted"
     return "input_terminal_voltage_sequence_not_active_load_authority"
+
+
+def _uses_candidate_j_dot_e_active_load(active_load_relation: str) -> bool:
+    return active_load_relation in {
+        "lagged_volume_j_dot_e_voltage_not_accepted",
+        "lagged_auluck_volume_j_dot_e_voltage_not_accepted",
+    }
 
 
 def _energy_section(
@@ -334,6 +386,7 @@ def _power_port_step_records(
     conservation: Mapping[str, Any] | None,
     diagnostic_field_inductance_H: float | None,
     residual_budget: Mapping[str, Any],
+    low_current_feedback: Mapping[str, Any] | None,
 ) -> list[dict[str, Any]]:
     if circuit_step is None:
         return []
@@ -370,6 +423,11 @@ def _power_port_step_records(
                 else conservation.get("delta_tracked_total_energy_J")
             ),
             "candidate_power_residual_budget": dict(residual_budget),
+            "low_current_p_over_i_singularity": (
+                dict(low_current_feedback)
+                if low_current_feedback is not None
+                else _missing_low_current_feedback_packet()
+            ),
             "residual_interpretation": (
                 "tracked_energy_delta_not_accepted_power_port_residual"
             ),
@@ -440,6 +498,240 @@ def _energy_ledger_status(
             "can_support_power_port_acceptance": False,
         }
     return statuses
+
+
+def _stage0_packet_scaffolds(
+    *,
+    active_load_relation: str,
+    current_A: float | None,
+    terminal_voltage_V: float | None,
+    final_energy: Mapping[str, Any] | None,
+    field_work: Mapping[str, Any] | None,
+    residual_budget: Mapping[str, Any],
+    low_current_feedback: Mapping[str, Any] | None,
+    startup: Mapping[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    return {
+        "power_port_source_review": {
+            "status": "candidate_source_review_packet_not_validation",
+            "supported_by_local_sources": [
+                "Auluck volume field-power voltage over declared Omega",
+                "Poynting-flux power ledger at declared source interface",
+                "hybrid-PIC external circuit with source-derived U_DPF",
+            ],
+            "deferred_or_unverified_by_local_sources": [
+                "Sigma quasi-TEM line-voltage driver",
+            ],
+            "source_references": list(POWER_PORT_SOURCE_REFS),
+            "can_support_power_port_acceptance": False,
+        },
+        "power_port_domain_review": {
+            "status": "blocked_domain_packet_not_available",
+            "active_load_relation": active_load_relation,
+            "declared_runtime_domain": (
+                None if field_work is None else field_work.get("domain")
+            ),
+            "required_for_acceptance": [
+                "named integration volume or interface surface",
+                "explicit source-interface exclusion",
+                "boundary labels and electrode/interface partition",
+            ],
+            "can_support_power_port_acceptance": False,
+        },
+        "power_port_sign_review": {
+            "status": "candidate_sign_packet_not_validation",
+            "terminal_current_A": current_A,
+            "terminal_voltage_V": terminal_voltage_V,
+            "sign_policy": (
+                "signed J.E and I*U_DPF are retained; negative local J.E is not "
+                "automatically clipped or treated as a limiter condition"
+            ),
+            "required_for_acceptance": [
+                "source-reviewed sign convention",
+                "sign-reversal negative test",
+            ],
+            "can_support_power_port_acceptance": False,
+        },
+        "power_port_time_centering_review": {
+            "status": "candidate_time_centering_packet_not_validation",
+            "runtime_time_centering": "begin_step_or_retained_step_metadata",
+            "required_for_acceptance": [
+                "time-centered terminal power or field-power integral",
+                "time-centering downgrade negative test",
+            ],
+            "can_support_power_port_acceptance": False,
+        },
+        "power_port_energy_ledger_review": {
+            "status": "candidate_energy_ledger_packet_not_validation",
+            "ledger": _candidate_stage0_energy_ledger(
+                final_energy=final_energy,
+                conservation=None,
+                residual_budget=residual_budget,
+            ),
+            "can_support_power_port_acceptance": False,
+        },
+        "negative_test_plan": {
+            "status": "candidate_negative_test_plan_not_validation",
+            "required_negative_tests": [
+                "sign_reversal_fails_residual_budget",
+                "domain_corruption_fails_domain_review",
+                "time_centering_downgrade_fails_time_review",
+                "low_current_p_over_i_singularity_detected",
+                "sigma_line_voltage_driver_rejected_until_source_packet_exists",
+            ],
+            "startup_blocker_visible": (
+                bool(startup.get("whole_shot_startup_blocked"))
+                if startup is not None
+                else None
+            ),
+            "low_current_feedback_status": (
+                None
+                if low_current_feedback is None
+                else low_current_feedback.get("status")
+            ),
+            "can_support_power_port_acceptance": False,
+        },
+    }
+
+
+def _candidate_stage0_energy_ledger(
+    *,
+    final_energy: Mapping[str, Any] | None,
+    conservation: Mapping[str, Any] | None,
+    residual_budget: Mapping[str, Any],
+) -> dict[str, Any]:
+    initial = _energy_section(conservation, "initial")
+    final = final_energy
+    stored_em_delta_J = None
+    if initial is not None and final is not None:
+        initial_em = _sum_optional(
+            _optional_float(initial, "electric_energy_J"),
+            _optional_float(initial, "magnetic_energy_J"),
+        )
+        final_em = _sum_optional(
+            _optional_float(final, "electric_energy_J"),
+            _optional_float(final, "magnetic_energy_J"),
+        )
+        stored_em_delta_J = _difference(final_em, initial_em)
+    return {
+        "status": "candidate_stage0_energy_ledger_not_validation",
+        "terms": {
+            "terminal_port_work_J": residual_budget.get(
+                "cumulative_terminal_active_port_work_J"
+            ),
+            "volume_j_dot_e_work_J": residual_budget.get(
+                "integrated_volume_j_dot_e_work_J"
+            ),
+            "stored_em_energy_delta_J": stored_em_delta_J,
+            "wall_poynting_flux_excluding_declared_port_J": None,
+            "electrode_interface_work_J": None,
+        },
+        "term_status": {
+            "terminal_port_work_J": _candidate_or_missing(
+                residual_budget.get("cumulative_terminal_active_port_work_J")
+            ),
+            "volume_j_dot_e_work_J": _candidate_or_missing(
+                residual_budget.get("integrated_volume_j_dot_e_work_J")
+            ),
+            "stored_em_energy_delta_J": _candidate_or_missing(stored_em_delta_J),
+            "wall_poynting_flux_excluding_declared_port_J": "missing_or_blocked",
+            "electrode_interface_work_J": "missing_or_blocked",
+        },
+        "source_basis": [
+            "Poynting theorem",
+            "Auluck source-interface exclusion and field-power relation",
+        ],
+        "interpretation": (
+            "candidate accounting surface only; missing wall Poynting and "
+            "electrode/interface work prevent power-port acceptance"
+        ),
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _candidate_or_missing(value: Any) -> str:
+    return (
+        "candidate_runtime_only_not_acceptance"
+        if value is not None
+        else "missing_or_blocked"
+    )
+
+
+def _operator_comparison_packet() -> dict[str, Any]:
+    return {
+        "status": "candidate_operator_comparison_not_validation",
+        "operators": {
+            "auluck_volume_j_dot_e": {
+                "role": "candidate field-power voltage relation",
+                "formula": "U_DPF = - integral_Omega(J.E)dV / I",
+                "source_status": "supported_by_local_auluck_source",
+                "runtime_status": "candidate_lagged_driver_or_ledger_only",
+                "main_risk": "1/I singularity and domain/sign/time-centering review",
+                "can_be_accepted_now": False,
+            },
+            "poynting_surface_flux": {
+                "role": "candidate power ledger or future driver basis",
+                "formula": "I*U_DPF equals declared source-interface Poynting flux",
+                "source_status": "supported_by_auluck_and_poynting_theorem",
+                "runtime_status": "not_integrated_as_active_driver",
+                "main_risk": "source interface and wall/electrode partition missing",
+                "can_be_accepted_now": False,
+            },
+            "hybrid_pic_magnetic_flux_udpf": {
+                "role": "external-circuit coupling pattern",
+                "formula": "circuit ODE uses U_DPF from field integration/time derivative",
+                "source_status": "supported_by_local_hybrid_pic_source",
+                "runtime_status": "architecture_pattern_not_pf1000_acceptance",
+                "main_risk": "not same-scope PF-1000/Akel acceptance evidence",
+                "can_be_accepted_now": False,
+            },
+            "sigma_quasi_tem_line_voltage": {
+                "role": "deferred proposed boundary-port line-voltage driver",
+                "formula": "U_DPF = integral_path E.dl on Sigma plane",
+                "source_status": "not_verified_in_local_dpf_source",
+                "runtime_status": "deferred_exploratory_telemetry_only",
+                "main_risk": "assumes port plane and quasi-TEM path equivalence",
+                "can_be_accepted_now": False,
+            },
+        },
+        "decision": "do_not_replace_active_driver_with_sigma_line_voltage",
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _sigma_quasi_tem_line_voltage_packet() -> dict[str, Any]:
+    return {
+        "status": "deferred_sigma_quasi_tem_driver_not_source_verified",
+        "proposed_quantity": "line integral of E between terminals at Sigma plane",
+        "would_require": [
+            "source-verified DPF port plane definition",
+            "path-independence or bounded path-spread evidence",
+            "proof that omitted wall/electrode/interface work is accounted for",
+            "negative tests against Auluck/Poynting domain corruption",
+        ],
+        "allowed_runtime_use": "exploratory_diagnostic_only",
+        "disallowed_runtime_use": "accepted_or_primary_circuit_driver",
+        "difference_from_auluck": (
+            "Auluck derives voltage from total field power over a declared DPF "
+            "domain divided by terminal current; Sigma line voltage samples an "
+            "electric-field path at a boundary plane."
+        ),
+        "difference_from_poynting": (
+            "Poynting flux accounts surface power through a declared interface; "
+            "Sigma line voltage would need a separate current/power closure."
+        ),
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _missing_low_current_feedback_packet() -> dict[str, Any]:
+    return {
+        "status": "low_current_p_over_i_feedback_not_reported",
+        "p_over_i_formula_active_candidate": None,
+        "low_current_threshold_hit": None,
+        "singularity_blocked_this_step": None,
+        "can_support_power_port_acceptance": False,
+    }
 
 
 def _candidate_runtime_channels(

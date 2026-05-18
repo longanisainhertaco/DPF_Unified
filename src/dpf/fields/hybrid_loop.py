@@ -187,10 +187,12 @@ class HybridPIC3DLoop:
             rho_for_density = rho
             density_sample = "x_n_plus_1"
         ion_current = np.stack((Jx, Jy, Jz), axis=-1)
-        electron_density = np.maximum(
-            np.abs(rho_for_density) / e,
-            float(density_floor_m3),
+        raw_electron_density = np.abs(rho_for_density) / e
+        electron_density = np.maximum(raw_electron_density, float(density_floor_m3))
+        electron_density_floor_active_cells = int(
+            np.count_nonzero(raw_electron_density < float(density_floor_m3))
         )
+        electron_density_floor_source = "charge_density_deposition"
         sigma0_for_step: np.ndarray | float = sigma0_S_m
         apply_density_conductivity_blend = True
         source_backed_transport: PartialIonizedConductivityTelemetry | None = None
@@ -200,7 +202,14 @@ class HybridPIC3DLoop:
                     "ionization_state and electron_energy_state are required "
                     "when use_source_backed_conductivity is True"
                 )
-            electron_density = np.maximum(ionization_state.electron_density_m3, 1.0)
+            raw_electron_density = ionization_state.electron_density_m3
+            electron_density = np.maximum(
+                raw_electron_density, float(density_floor_m3)
+            )
+            electron_density_floor_active_cells = int(
+                np.count_nonzero(raw_electron_density < float(density_floor_m3))
+            )
+            electron_density_floor_source = "ionization_state_electron_density"
             sigma0_for_step, source_backed_transport = partial_ionized_conductivity(
                 electron_density_m3=electron_density,
                 neutral_density_m3=ionization_state.neutral_density_m3,
@@ -456,6 +465,12 @@ class HybridPIC3DLoop:
                     half_step_density_bypassed_by_particle_boundary
                 ),
                 collisions_enabled=_collisions_enabled(pic),
+                density_floor_m3=float(density_floor_m3),
+                electron_density_floor_active_cells=(
+                    electron_density_floor_active_cells
+                ),
+                electron_density_floor_source=electron_density_floor_source,
+                electron_density_total_cells=int(electron_density.size),
             ),
             electron_density_min_m3=float(np.min(electron_density)),
             electron_density_max_m3=float(np.max(electron_density)),
@@ -780,6 +795,10 @@ def _source_workflow_telemetry(
     density_sample: str,
     half_step_density_bypassed_by_particle_boundary: bool,
     collisions_enabled: bool,
+    density_floor_m3: float,
+    electron_density_floor_active_cells: int,
+    electron_density_floor_source: str,
+    electron_density_total_cells: int,
 ) -> dict[str, Any]:
     if not use_source_ordered_velocity_update:
         return {
@@ -842,6 +861,14 @@ def _source_workflow_telemetry(
                 if half_step_density_bypassed_by_particle_boundary
                 else f"use_{density_sample}_density"
             ),
+            "can_support_first_principles_acceptance": False,
+        },
+        "electron_density_floor": {
+            "status": "candidate_numerical_density_floor_not_validation",
+            "density_floor_m3": float(density_floor_m3),
+            "floor_active_cells": int(electron_density_floor_active_cells),
+            "total_cells": int(electron_density_total_cells),
+            "floor_source": electron_density_floor_source,
             "can_support_first_principles_acceptance": False,
         },
         "velocity_update": velocity_telemetry,

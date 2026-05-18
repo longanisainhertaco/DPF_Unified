@@ -23,6 +23,12 @@ FIRST_PRINCIPLES_3D_DECK_PRESETS = (
     "gv_pf24_krakow_16092202",
 )
 
+FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES = (
+    "input_sequence",
+    "lagged_volume_j_dot_e",
+    "lagged_auluck_volume_j_dot_e",
+)
+
 
 @click.group()
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging.")
@@ -479,6 +485,7 @@ def _override_first_principles_3d_deck_runtime(
     history_stride: int | None = None,
     max_step_results: int | None = None,
     target_time_s: float | None = None,
+    circuit_udpf_mode: str | None = None,
 ) -> dict[str, Any]:
     """Apply explicit CLI runtime overrides without changing source metadata."""
 
@@ -495,6 +502,15 @@ def _override_first_principles_3d_deck_runtime(
         )
     if target_time_s is not None and target_time_s <= 0.0:
         raise click.BadParameter("must be positive", param_hint="--target-time-s")
+    if (
+        circuit_udpf_mode is not None
+        and circuit_udpf_mode not in FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES
+    ):
+        raise click.BadParameter(
+            "must be one of "
+            f"{FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES}",
+            param_hint="--circuit-udpf-mode",
+        )
 
     overridden = dict(deck)
     if {"device", "circuit", "grid"}.issubset(overridden.keys()):
@@ -510,6 +526,10 @@ def _override_first_principles_3d_deck_runtime(
         if target_time_s is not None:
             diagnostics["target_time_s"] = float(target_time_s)
         overridden["diagnostics"] = diagnostics
+        if circuit_udpf_mode is not None:
+            closures = dict(overridden.get("closures", {}))
+            closures["circuit_udpf_mode"] = str(circuit_udpf_mode)
+            overridden["closures"] = closures
         return overridden
 
     if steps is not None:
@@ -522,6 +542,8 @@ def _override_first_principles_3d_deck_runtime(
         overridden["max_step_results"] = int(max_step_results)
     if target_time_s is not None:
         overridden["target_time_s"] = float(target_time_s)
+    if circuit_udpf_mode is not None:
+        overridden["circuit_udpf_mode"] = str(circuit_udpf_mode)
     return overridden
 
 
@@ -2722,6 +2744,15 @@ def hybrid_3d_smoke(
     help="Stop after reaching this simulated duration, within the step budget.",
 )
 @click.option(
+    "--circuit-udpf-mode",
+    type=click.Choice(
+        FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES,
+        case_sensitive=False,
+    ),
+    default=None,
+    help="Override the candidate DPF terminal-voltage feedback mode.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -2736,6 +2767,7 @@ def first_principles_3d(
     history_stride: int | None,
     max_step_results: int | None,
     target_time_s: float | None,
+    circuit_udpf_mode: str | None,
     output: Path | None,
 ) -> None:
     """Run the package-native 3-D first-principles engineering candidate."""
@@ -2746,6 +2778,9 @@ def first_principles_3d(
         history_stride=history_stride,
         max_step_results=max_step_results,
         target_time_s=target_time_s,
+        circuit_udpf_mode=(
+            None if circuit_udpf_mode is None else circuit_udpf_mode.lower()
+        ),
     )
     payload = _first_principles_3d_payload(
         runtime_deck
@@ -2872,6 +2907,15 @@ def first_principles_3d(
     help="Safety cap for --auto-step-budget.",
 )
 @click.option(
+    "--circuit-udpf-mode",
+    type=click.Choice(
+        FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES,
+        case_sensitive=False,
+    ),
+    default=None,
+    help="Override the candidate DPF terminal-voltage feedback mode.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -2890,6 +2934,7 @@ def experimental_whole_shot(
     target_time_s: float,
     auto_step_budget: bool,
     max_auto_steps: int,
+    circuit_udpf_mode: str | None,
     output: Path | None,
 ) -> None:
     """Run the explicit whole-shot engineering candidate packet."""
@@ -2901,6 +2946,9 @@ def experimental_whole_shot(
         history_stride=history_stride,
         max_step_results=max_step_results,
         target_time_s=target_time_s,
+        circuit_udpf_mode=(
+            None if circuit_udpf_mode is None else circuit_udpf_mode.lower()
+        ),
     )
     runtime_deck = _apply_experimental_dt_policy(
         runtime_deck,
@@ -3177,6 +3225,15 @@ def experimental_machine_shot_family(
     help="Safety cap for auto-step-budget.",
 )
 @click.option(
+    "--circuit-udpf-mode",
+    type=click.Choice(
+        FIRST_PRINCIPLES_CIRCUIT_UDPF_MODE_CHOICES,
+        case_sensitive=False,
+    ),
+    default=None,
+    help="Override the candidate DPF terminal-voltage feedback mode.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -3195,6 +3252,7 @@ def experimental_limiter_proof(
     target_time_s: float,
     auto_step_budget: bool,
     max_auto_steps: int,
+    circuit_udpf_mode: str | None,
     output: Path | None,
 ) -> None:
     """Run a non-promoting full-horizon limiter inventory probe."""
@@ -3206,6 +3264,9 @@ def experimental_limiter_proof(
         history_stride=history_stride,
         max_step_results=max_step_results,
         target_time_s=target_time_s,
+        circuit_udpf_mode=(
+            None if circuit_udpf_mode is None else circuit_udpf_mode.lower()
+        ),
     )
     runtime_deck = _apply_experimental_dt_policy(
         runtime_deck,

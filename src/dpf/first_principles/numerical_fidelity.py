@@ -334,7 +334,7 @@ def _runtime_observations(
         "convergence_claim": False,
     }
     if conservation:
-        observations["conservation_passed"] = conservation.get("passed")
+        observations["conservation_finite_state"] = conservation.get("finite_state")
         observations["final_max_abs_div_B_T_per_m"] = conservation.get(
             "final_max_abs_div_B_T_per_m"
         )

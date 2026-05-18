@@ -197,7 +197,7 @@ def _runtime_observations(
         "zero_acceptance_blocker_claim": False,
     }
     if conservation:
-        observations["conservation_passed"] = conservation.get("passed")
+        observations["conservation_finite_state"] = conservation.get("finite_state")
         observations["final_max_abs_div_B_T_per_m"] = conservation.get(
             "final_max_abs_div_B_T_per_m"
         )
@@ -219,7 +219,7 @@ def _candidate_runtime_channels(
 ) -> list[str]:
     channels: set[str] = set()
     if conservation:
-        if conservation.get("passed") is True:
+        if conservation.get("finite_state") is True:
             channels.add("candidate_finite_conservation_snapshot")
         if conservation.get("final_max_abs_div_B_T_per_m") is not None:
             channels.add("candidate_divergence_b_reported")

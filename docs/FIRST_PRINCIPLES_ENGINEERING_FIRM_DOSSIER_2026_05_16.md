@@ -905,6 +905,47 @@ Troubleshooting update:
   accepted first-principles power-port authority remains blocked on sign,
   time-centering, electrode-work partition, interface/domain, residual
   tolerance, convergence, and independent review.
+- Extended PF-1000/Akel seeded-domain limiter proof:
+  `results/experimental_limiter_proof_pf1000_seeded_power_domain_12us_2026_05_18.json`
+  doubles the preceding PF-1000 horizon to `12.000182898446022 us`. The run
+  completes `55580` vacuum-CFL steps, satisfies the requested duration, keeps a
+  finite state, and again reports `zero_acceptance_blockers_observed=true` with
+  `total_acceptance_blocking_activations=0`. Final terminal current is
+  `1.200240 MA`, final circuit charge is `15.95985 C`, final field energy is
+  `41807.165 J`, and the electron closure remains nonrelativistic
+  (`current_drift_to_c=3.5945e-6`, electron-temperature range
+  `276.682 K` to `56613.620 K`). The particle inventory reaches `222328`
+  particles.
+
+  The 12 us artifact confirms that the resolved-domain guards remain stable
+  beyond the 6 us stress horizon, but it also makes the active power-port
+  blocker more prominent: `candidate_lagged_volume_j_dot_e=1076`,
+  `input_sequence_fallback_first_step=1`, and
+  `input_sequence_fallback_negative_j_dot_e_active_port_blocked=54503`.
+  The simulator is therefore usable for experimental engineering inspection at
+  this horizon, while a true first-principles claim still requires an accepted
+  bidirectional/time-centered power-port closure and numerical-fidelity packet.
+- Source-sign power-port branch:
+  the runtime now exposes an explicit `lagged_auluck_volume_j_dot_e` candidate
+  mode for the local-source relation `U_DPF = - integral(J.E)dV / I`, keeping it
+  separate from the conservative `lagged_volume_j_dot_e` fallback mode. The
+  short source-sign artifact
+  `results/experimental_limiter_proof_pf1000_auluck_power_port_100ns_2026_05_18.json`
+  reaches `100.18144773081963 ns` in `464` vacuum-CFL steps, remains finite,
+  reports `zero_acceptance_blockers_observed=true`, and records
+  `candidate_lagged_auluck_volume_j_dot_e=463` with one first-step input
+  fallback. Its final current is `67.749 kA`, final field energy is
+  `68.296 J`, final `U_DPF=-2078.892 V`, terminal active power is
+  `-1.4084317e8 W`, and the lagged volume `J.E` power is `+1.4084317e8 W`,
+  making the sign hypothesis explicit in the artifact.
+
+  A direct `12 us` source-sign comparison was launched with the same PF-1000
+  deck and vacuum-CFL step budget but produced no artifact within the practical
+  interactive runtime window, so it was stopped rather than left as an
+  unbounded job. Before spending another full-horizon source-sign run, the
+  simulator needs segmented progress/checkpoint telemetry for this branch.
+  This does not invalidate the completed `12 us` conservative fallback run; it
+  identifies the next power-port troubleshooting path.
 
 ## PlasmaPy Use
 

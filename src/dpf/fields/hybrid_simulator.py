@@ -18,6 +18,12 @@ from dpf.fields.hybrid_loop import HybridPIC3DLoop, HybridPIC3DLoopResult
 from dpf.fields.ionization_transport import DeuteriumIonizationState
 from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE, Maxwell3DGrid, Maxwell3DState
 
+_CIRCUIT_UDPF_MODES = {
+    "input_sequence",
+    "lagged_volume_j_dot_e",
+    "lagged_auluck_volume_j_dot_e",
+}
+
 
 @dataclass(frozen=True)
 class HybridPIC3DSimulationTelemetry:
@@ -144,9 +150,10 @@ class HybridPIC3DSimulator:
             raise ValueError(
                 "circuit_boundary is required when apply_circuit_boundary is True"
             )
-        if circuit_udpf_mode not in {"input_sequence", "lagged_volume_j_dot_e"}:
+        if circuit_udpf_mode not in _CIRCUIT_UDPF_MODES:
             raise ValueError(
-                "circuit_udpf_mode must be 'input_sequence' or 'lagged_volume_j_dot_e'"
+                "circuit_udpf_mode must be one of "
+                f"{sorted(_CIRCUIT_UDPF_MODES)}"
             )
         if circuit_feedback_min_current_A < 0.0:
             raise ValueError("circuit_feedback_min_current_A must be non-negative")
@@ -217,6 +224,16 @@ class HybridPIC3DSimulator:
                     current_A=current_circuit_state.current_A,
                     min_current_A=circuit_feedback_min_current_A,
                 )
+                low_current_feedback = _low_current_p_over_i_feedback_packet(
+                    mode=circuit_udpf_mode,
+                    input_udpf_V=float(udpf_values[step_index]),
+                    computed_udpf_V=udpf_value,
+                    udpf_source=udpf_source,
+                    lagged_field_work=lagged_field_work,
+                    lagged_j_dot_e_power_W=lagged_j_dot_e_power_W,
+                    current_A=current_circuit_state.current_A,
+                    min_current_A=circuit_feedback_min_current_A,
+                )
                 active_port_power_W = float(
                     current_circuit_state.current_A * udpf_value
                 )
@@ -260,6 +277,7 @@ class HybridPIC3DSimulator:
                     "active_port_time_centering": (
                         "begin_step_current_times_begin_step_udpf_candidate"
                     ),
+                    "low_current_feedback": low_current_feedback,
                     "voltage_balance": voltage_balance,
                     "boundary": boundary_telemetry.to_dict(),
                     "circuit_step": circuit_step_telemetry.to_dict(),
@@ -534,12 +552,64 @@ def _circuit_udpf_for_step(
     if abs(float(current_A)) <= float(min_current_A):
         return float(input_udpf_V), "input_sequence_fallback_low_current"
     power_W = float(lagged_field_work.get("j_dot_e_power_W", 0.0))
+    if mode == "lagged_auluck_volume_j_dot_e":
+        return (
+            float(-power_W / float(current_A)),
+            "candidate_lagged_auluck_volume_j_dot_e",
+        )
     if power_W < 0.0:
         return (
             float(input_udpf_V),
             "input_sequence_fallback_negative_j_dot_e_active_port_blocked",
         )
     return float(power_W / float(current_A)), "candidate_lagged_volume_j_dot_e"
+
+
+def _low_current_p_over_i_feedback_packet(
+    *,
+    mode: str,
+    input_udpf_V: float,
+    computed_udpf_V: float,
+    udpf_source: str,
+    lagged_field_work: dict[str, Any] | None,
+    lagged_j_dot_e_power_W: float | None,
+    current_A: float,
+    min_current_A: float,
+) -> dict[str, Any]:
+    p_over_i_mode = mode in {
+        "lagged_volume_j_dot_e",
+        "lagged_auluck_volume_j_dot_e",
+    }
+    low_current = abs(float(current_A)) <= float(min_current_A)
+    if not p_over_i_mode:
+        status = "not_applicable_input_sequence_udpf"
+    elif lagged_field_work is None:
+        status = "candidate_first_step_no_lagged_field_power"
+    elif low_current:
+        status = "blocked_low_current_p_over_i_singularity_not_validation"
+    else:
+        status = "candidate_p_over_i_feedback_not_validation"
+    return {
+        "status": status,
+        "requested_udpf_mode": str(mode),
+        "udpf_source": str(udpf_source),
+        "p_over_i_formula_active_candidate": p_over_i_mode,
+        "current_A": float(current_A),
+        "min_current_A": float(min_current_A),
+        "low_current_threshold_hit": low_current,
+        "lagged_j_dot_e_power_W": lagged_j_dot_e_power_W,
+        "input_udpf_V": float(input_udpf_V),
+        "computed_udpf_V": float(computed_udpf_V),
+        "singularity_blocked_this_step": (
+            udpf_source == "input_sequence_fallback_low_current"
+        ),
+        "source_status": "candidate_runtime_safety_not_physics_acceptance",
+        "acceptance_note": (
+            "A source-backed field-power relation containing P/I still needs "
+            "an accepted low-current handoff or regularization packet."
+        ),
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def _blocked_source_term_reason(telemetry: dict[str, Any] | None) -> str | None:

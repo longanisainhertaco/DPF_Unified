@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from dpf.fields import CircuitMagneticBoundaryDrive, Maxwell3DGrid
+from dpf.fields.hybrid_simulator import _circuit_udpf_for_step as _udpf_for_step
 from dpf.first_principles import (
     minimal_engineering_deck,
     pf1000_akel_16kv_engineering_deck,
@@ -87,6 +88,119 @@ def test_power_port_candidate_residual_budget_tracks_sign_hypotheses() -> None:
         "candidate_full_completed_step_terminal_i_udpf_integral"
         in packet["candidate_runtime_channels"]
     )
+
+
+def test_power_port_packet_recognizes_auluck_j_dot_e_source_sign_candidate() -> None:
+    packet = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {
+                    "current_A": 2.0,
+                    "udpf_V": 5.0,
+                },
+            },
+        },
+        simulation_telemetry={
+            "dt_s": 0.5,
+            "n_steps_completed": 1,
+            "cumulative_j_dot_e_work_J": -5.0,
+            "cumulative_j_dot_e_step_count": 1,
+            "cumulative_active_port_work_J": 5.0,
+            "cumulative_active_port_step_count": 1,
+            "udpf_source_counts": {
+                "candidate_lagged_auluck_volume_j_dot_e": 1,
+            },
+            "history_stride": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -10.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    },
+                },
+            },
+        },
+    )
+
+    assert packet["active_load_relation"] == (
+        "lagged_auluck_volume_j_dot_e_voltage_not_accepted"
+    )
+    assert packet["active_load_decision"][
+        "candidate_lagged_volume_j_dot_e_is_active_load"
+    ] is True
+    assert packet["candidate_power_residual_budget"][
+        "active_port_plus_integrated_j_dot_e_work_J"
+    ] == 0.0
+    assert packet["can_support_first_principles_acceptance"] is False
+
+
+def test_power_port_stage0_packets_defer_sigma_line_voltage_driver() -> None:
+    packet = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {
+                    "current_A": 4.0,
+                    "udpf_V": 6.0,
+                },
+            },
+        },
+        conservation={
+            "delta_tracked_total_energy_J": 3.0,
+            "initial": {
+                "electric_energy_J": 1.0,
+                "magnetic_energy_J": 2.0,
+                "tracked_total_energy_J": 20.0,
+            },
+            "final": {
+                "electric_energy_J": 2.0,
+                "magnetic_energy_J": 4.0,
+                "tracked_total_energy_J": 23.0,
+            },
+        },
+        simulation_telemetry={
+            "dt_s": 0.25,
+            "n_steps_completed": 1,
+            "cumulative_j_dot_e_work_J": -6.0,
+            "cumulative_j_dot_e_step_count": 1,
+            "cumulative_active_port_work_J": 6.0,
+            "cumulative_active_port_step_count": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -24.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    },
+                },
+            },
+        },
+    )
+
+    assert set(packet["stage0_packet_ids"]) == {
+        "power_port_source_review",
+        "power_port_domain_review",
+        "power_port_sign_review",
+        "power_port_time_centering_review",
+        "power_port_energy_ledger_review",
+        "negative_test_plan",
+    }
+    assert packet["stage0_packet_scaffolds"]["power_port_source_review"][
+        "deferred_or_unverified_by_local_sources"
+    ] == ["Sigma quasi-TEM line-voltage driver"]
+    sigma = packet["power_port_operator_comparison"]["operators"][
+        "sigma_quasi_tem_line_voltage"
+    ]
+    assert sigma["source_status"] == "not_verified_in_local_dpf_source"
+    assert sigma["can_be_accepted_now"] is False
+    assert packet["sigma_quasi_tem_line_voltage_operator"][
+        "disallowed_runtime_use"
+    ] == "accepted_or_primary_circuit_driver"
+    ledger = packet["candidate_stage0_energy_ledger"]["terms"]
+    assert ledger["terminal_port_work_J"] == 6.0
+    assert ledger["volume_j_dot_e_work_J"] == -6.0
+    assert ledger["stored_em_energy_delta_J"] == 3.0
+    assert ledger["wall_poynting_flux_excluding_declared_port_J"] is None
 
 
 def test_first_principles_3d_session_matches_uninterrupted_split_run() -> None:
@@ -1212,6 +1326,39 @@ def test_hybrid_em_pic_fluid_run_accepts_supplied_circuit_boundary() -> None:
     assert result.manifest["can_support_first_principles_acceptance"] is False
 
 
+def test_first_principles_runner_reports_low_current_p_over_i_feedback_blocker() -> None:
+    result = run_first_principles_3d_deck(
+        {
+            "n_steps": 2,
+            "grid_shape": (4, 4, 4),
+            "dt_s": 1.0e-13,
+            "background_density_m3": 1.0e21,
+            "density_floor_m3": 1.0e21,
+            "apply_circuit_boundary": True,
+            "circuit_udpf_mode": "lagged_auluck_volume_j_dot_e",
+            "circuit_state": {"current_A": 0.0, "charge_C": 0.0},
+            "circuit_feedback_min_current_A": 1.0,
+            "history_stride": 1,
+            "max_step_results": 2,
+        }
+    )
+
+    last = result.result.telemetry.circuit["last"]
+    feedback = last["low_current_feedback"]
+    assert feedback["status"] == (
+        "blocked_low_current_p_over_i_singularity_not_validation"
+    )
+    assert feedback["p_over_i_formula_active_candidate"] is True
+    assert feedback["low_current_threshold_hit"] is True
+    assert feedback["singularity_blocked_this_step"] is True
+    assert result.telemetry["power_port"]["low_current_p_over_i_singularity"][
+        "status"
+    ] == "blocked_low_current_p_over_i_singularity_not_validation"
+    assert result.result.telemetry.udpf_source_counts[
+        "input_sequence_fallback_low_current"
+    ] == 1
+
+
 def test_first_principles_runner_applies_candidate_boundary_policy() -> None:
     result = run_first_principles_3d_deck(
         {
@@ -1298,6 +1445,23 @@ def test_first_principles_runner_projects_candidate_conductor_mask_from_package_
         ]
         == "pf1000_rod_hollow_projection"
     )
+
+
+def test_pf1000_runner_emits_source_locked_deck_diff_packet() -> None:
+    deck = pf1000_akel_16kv_engineering_deck(n_steps=1, shape=(5, 5, 5))
+    result = run_first_principles_3d_deck(deck)
+
+    packet = result.telemetry["deck_diff"]
+    assert packet["status"] == "candidate_source_locked_deck_match_not_validation"
+    assert packet["deck_lock"] == "pf1000_akel_16kv_1p2torr_shot_12581"
+    assert packet["mismatch_keys"] == []
+    assert packet["comparisons"]["circuit_voltage_V"]["status"] == (
+        "source_locked_match_not_validation"
+    )
+    assert packet["comparisons"]["gas_pressure_Pa"]["status"] == (
+        "source_locked_match_not_validation"
+    )
+    assert result.manifest["candidate_evidence"]["deck_diff_packet"] == packet
 
 
 def test_pf1000_candidate_breakdown_profile_seeds_insulator_layer_only() -> None:
@@ -1684,6 +1848,235 @@ def test_first_principles_runner_marks_pf1000_akel_same_scope_as_blocked() -> No
     assert generalization["upstream_packet_statuses"]["certificate_gate"] == (
         "blocked_first_principles_certificate_not_available"
     )
+
+
+# --- WP-1 / SSR-006 power-port negative tests ----------------------------
+
+
+def test_wp1_sign_reversal_breaks_active_port_vs_j_dot_e_residual() -> None:
+    """Negative test: a sign-flipped U_DPF must make active-port work and
+    integrated J.E DISAGREE (residual non-zero); neither path may claim
+    acceptance.  Auluck Eq.1 fixes U_DPF = -J.E_integral / I; reversed sign
+    is wrong physics and the ledger must expose it."""
+    correct = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {"current_A": 2.0, "udpf_V": 5.0},
+            }
+        },
+        simulation_telemetry={
+            "dt_s": 0.5,
+            "n_steps_completed": 1,
+            "cumulative_j_dot_e_work_J": -5.0,
+            "cumulative_j_dot_e_step_count": 1,
+            "cumulative_active_port_work_J": 5.0,
+            "cumulative_active_port_step_count": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -10.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    }
+                }
+            },
+        },
+    )
+    reversed_sign = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {"current_A": 2.0, "udpf_V": -5.0},
+            }
+        },
+        simulation_telemetry={
+            "dt_s": 0.5,
+            "n_steps_completed": 1,
+            "cumulative_j_dot_e_work_J": -5.0,
+            "cumulative_j_dot_e_step_count": 1,
+            "cumulative_active_port_work_J": -5.0,
+            "cumulative_active_port_step_count": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -10.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    }
+                }
+            },
+        },
+    )
+    rb_ok = correct["candidate_power_residual_budget"]
+    rb_bad = reversed_sign["candidate_power_residual_budget"]
+    # Correct sign: active_port + integrated_j_dot_e cancels to 0.
+    assert rb_ok["active_port_plus_integrated_j_dot_e_work_J"] == pytest.approx(0.0)
+    # Reversed sign: residual is non-zero and large.
+    assert abs(rb_bad["active_port_plus_integrated_j_dot_e_work_J"]) > 1.0
+    # Neither path may claim acceptance.
+    assert correct["can_support_first_principles_acceptance"] is False
+    assert reversed_sign["can_support_first_principles_acceptance"] is False
+    assert reversed_sign["active_load_decision"]["can_support_power_port_acceptance"] is False
+
+
+def test_wp1_domain_corruption_is_flagged_by_domain_review() -> None:
+    """Negative test: a J.E integral from an undeclared/unmasked domain must
+    not pass the domain review; the corrupted domain string must be surfaced
+    verbatim, and the interface domain must stay not_declared."""
+    corrupt = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {"current_A": 3.0, "udpf_V": 4.0},
+            }
+        },
+        simulation_telemetry={
+            "dt_s": 0.25,
+            "n_steps_completed": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -12.0,
+                        "domain": "unmasked_full_grid_including_source_interface",
+                    }
+                }
+            },
+        },
+    )
+    dom = corrupt["stage0_packet_scaffolds"]["power_port_domain_review"]
+    assert dom["status"] == "blocked_domain_packet_not_available"
+    assert dom["can_support_power_port_acceptance"] is False
+    # The corrupted domain string is surfaced verbatim, not silently normalized.
+    assert dom["declared_runtime_domain"] == (
+        "unmasked_full_grid_including_source_interface"
+    )
+    assert corrupt["interface_surface_or_volume_domain"] == "not_declared"
+
+
+def test_wp1_time_centering_downgrade_stays_non_accepted() -> None:
+    """Negative test: begin-step (uncentered) time-centering must keep the
+    time-centering review non-accepted; the runtime metadata only carries a
+    begin-step candidate."""
+    packet = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {"current_A": 2.0, "udpf_V": 5.0},
+            }
+        },
+        simulation_telemetry={
+            "dt_s": 0.5,
+            "n_steps_completed": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -10.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    }
+                }
+            },
+        },
+    )
+    tc = packet["stage0_packet_scaffolds"]["power_port_time_centering_review"]
+    assert tc["status"] == "candidate_time_centering_packet_not_validation"
+    assert tc["can_support_power_port_acceptance"] is False
+    assert packet["time_centering"] == "candidate_runner_step_metadata_only"
+    assert tc["runtime_time_centering"] == "begin_step_or_retained_step_metadata"
+
+
+def test_wp1_low_current_p_over_i_singularity_unit_blocked() -> None:
+    """Negative test (unit): at |I| <= min_current_A the P/I feedback must
+    fall back to input sequence with the low-current tag; 1/I is never taken."""
+    udpf, source = _udpf_for_step(
+        mode="lagged_auluck_volume_j_dot_e",
+        input_udpf_V=7.0,
+        lagged_field_work={"j_dot_e_power_W": -10.0},
+        current_A=0.0,
+        min_current_A=1.0,
+    )
+    assert udpf == pytest.approx(7.0)
+    assert source == "input_sequence_fallback_low_current"
+
+
+def test_wp1_sigma_line_voltage_is_rejected_as_driver() -> None:
+    """Negative test: the Sigma/quasi-TEM line-voltage operator must be
+    DEFERRED everywhere and must never be an accepted/primary circuit driver."""
+    packet = build_engineering_power_port_packet(
+        {
+            "last": {
+                "udpf_source": "candidate_lagged_auluck_volume_j_dot_e",
+                "circuit_step": {"current_A": 2.0, "udpf_V": 5.0},
+            }
+        },
+        simulation_telemetry={
+            "dt_s": 0.5,
+            "n_steps_completed": 1,
+            "last_step": {
+                "field_step": {
+                    "field_work": {
+                        "j_dot_e_power_W": -10.0,
+                        "domain": "resolved_plasma_current_carrying_cells",
+                    }
+                }
+            },
+        },
+    )
+    sigma_op = packet["sigma_quasi_tem_line_voltage_operator"]
+    assert sigma_op["status"] == "deferred_sigma_quasi_tem_driver_not_source_verified"
+    assert sigma_op["allowed_runtime_use"] == "exploratory_diagnostic_only"
+    assert sigma_op["disallowed_runtime_use"] == "accepted_or_primary_circuit_driver"
+    assert sigma_op["can_support_power_port_acceptance"] is False
+    cmp_op = packet["power_port_operator_comparison"]
+    assert cmp_op["decision"] == (
+        "do_not_replace_active_driver_with_sigma_line_voltage"
+    )
+    assert (
+        cmp_op["operators"]["sigma_quasi_tem_line_voltage"]["source_status"]
+        == "not_verified_in_local_dpf_source"
+    )
+    assert cmp_op["operators"]["sigma_quasi_tem_line_voltage"]["can_be_accepted_now"] is False
+    from dpf.first_principles.deck import FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES
+    assert not any("sigma" in m for m in FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES)
+
+
+def test_wp1_auluck_mode_first_step_falls_back_without_singularity() -> None:
+    """Negative test (G2): on the first step lagged_field_work is None; the
+    Auluck mode must fall back to the input sequence with the first-step tag,
+    never computing 0/0."""
+    udpf, source = _udpf_for_step(
+        mode="lagged_auluck_volume_j_dot_e",
+        input_udpf_V=3.0,
+        lagged_field_work=None,
+        current_A=0.0,
+        min_current_A=1.0,
+    )
+    assert udpf == pytest.approx(3.0)
+    assert source == "input_sequence_fallback_first_step"
+
+
+def test_wp1_default_circuit_udpf_mode_does_not_silently_take_p_over_i() -> None:
+    """Negative test (G6): a deck with no explicit circuit_udpf_mode must use
+    the conservative default, which must NOT be the source-sign Auluck mode.
+    Guards against a 1/I path being inherited without disclosure."""
+    from dpf.first_principles.deck import ClosurePolicy
+    default_mode = ClosurePolicy().circuit_udpf_mode
+    assert default_mode == "lagged_volume_j_dot_e"
+    assert default_mode != "lagged_auluck_volume_j_dot_e"
+
+
+def test_wp1_auluck_mode_does_not_clip_negative_j_dot_e() -> None:
+    """Hardening test: Auluck mode must pass signed negative J.E straight
+    through as -power_W/I; it must NOT route to the blocked-clip fallback tag.
+    Asserts Auluck 2021 Eq.1 sign contract (KR auluck-2021:173-200)."""
+    udpf, source = _udpf_for_step(
+        mode="lagged_auluck_volume_j_dot_e",
+        input_udpf_V=99.0,
+        lagged_field_work={"j_dot_e_power_W": -8.0},
+        current_A=4.0,
+        min_current_A=1.0,
+    )
+    assert udpf == pytest.approx(2.0)   # -(-8.0) / 4.0
+    assert source == "candidate_lagged_auluck_volume_j_dot_e"
+    assert "negative" not in source
 
 
 def test_first_principles_runner_propagates_long_run_history_controls() -> None:

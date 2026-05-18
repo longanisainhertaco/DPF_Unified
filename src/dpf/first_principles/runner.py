@@ -47,7 +47,10 @@ from dpf.first_principles.comparator_uq import build_comparator_uq_packet
 from dpf.first_principles.current_waveform_comparator import (
     build_engineering_current_waveform_comparator,
 )
-from dpf.first_principles.deck import FirstPrinciplesInputDeck
+from dpf.first_principles.deck import (
+    FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES,
+    FirstPrinciplesInputDeck,
+)
 from dpf.first_principles.dimensionality import build_dimensionality_handoff_packet
 from dpf.first_principles.experimental_numerics import (
     build_experimental_numerical_runtime_audit_packet,
@@ -85,6 +88,36 @@ ELEMENTARY_CHARGE = dpf_constants.e
 DEUTERON_MASS_KG = dpf_constants.m_d
 K_B = dpf_constants.k_B
 MU_0 = dpf_constants.mu_0
+
+PF1000_AKEL_SOURCE_LOCKED_DECK = {
+    "device_anode_radius_m": 0.1155,
+    "device_cathode_radius_m": 0.16,
+    "device_anode_length_m": 0.48,
+    "device_insulator_length_m": 0.085,
+    "device_cathode_rod_count": 12,
+    "device_cathode_rod_diameter_m": 0.080,
+    "circuit_capacitance_F": 1.332e-3,
+    "circuit_voltage_V": 1.6e4,
+    "circuit_inductance_H": 25.0e-9,
+    "circuit_resistance_ohm": 6.1e-3,
+    "gas_pressure_Pa": 1.2 * 133.32236842105263,
+}
+
+PF1000_AKEL_DECK_SOURCE_REFS = (
+    {
+        "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+        "lines": "108-142,262-270",
+        "role": "pf1000_akel_circuit_gas_geometry_scope",
+    },
+    {
+        "path": (
+            "KnowledgeReference/"
+            "experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        ),
+        "lines": "340-356",
+        "role": "pf1000_electrode_rods_and_insulator_geometry",
+    },
+)
 
 
 @dataclass(frozen=True)
@@ -911,6 +944,7 @@ class HybridEMPicFluidRun:
             pic_loading=pic_loading_packet,
         )
         startup_packet = deck.startup_packet()
+        deck_diff_packet = _deck_source_diff_packet(deck)
         simulation_telemetry = simulation.telemetry.to_dict()
         current_waveform_comparison_packet = (
             build_engineering_current_waveform_comparator(
@@ -1086,6 +1120,7 @@ class HybridEMPicFluidRun:
                 "startup_bvp": startup_packet,
                 "limiter_readiness": limiter_readiness_packet,
                 "experimental_limiter_zero_probe": limiter_zero_probe_packet,
+                "deck_diff": deck_diff_packet,
                 "boundary_policy": boundary_policy_packet,
                 "pic_particle_loading": pic_loading_packet,
                 "power_port": power_port_packet,
@@ -1144,6 +1179,7 @@ class HybridEMPicFluidRun:
             "source": HYBRID_PIC_3D_SOURCE,
             "source_scope": geometry.source_scope,
             "startup": startup_packet,
+            "deck_diff": deck_diff_packet,
             "limiter_readiness": limiter_readiness_packet,
             "experimental_limiter_zero_probe": limiter_zero_probe_packet,
             "boundary_policy": boundary_policy_packet,
@@ -1429,9 +1465,10 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         raise ValueError("circuit_inductance_H must be positive")
     if deck.circuit_resistance_ohm < 0.0:
         raise ValueError("circuit_resistance_ohm must be non-negative")
-    if deck.circuit_udpf_mode not in {"input_sequence", "lagged_volume_j_dot_e"}:
+    if deck.circuit_udpf_mode not in FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES:
         raise ValueError(
-            "circuit_udpf_mode must be 'input_sequence' or 'lagged_volume_j_dot_e'"
+            "circuit_udpf_mode must be one of "
+            f"{FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES}"
         )
     if deck.circuit_feedback_min_current_A < 0.0:
         raise ValueError("circuit_feedback_min_current_A must be non-negative")
@@ -2181,7 +2218,8 @@ def _conservation_telemetry(
         and np.isfinite(relative)
     )
     return {
-        "passed": finite,
+        "finite_state": finite,
+        "energy_conservation_assessed": "not_assessed_no_accepted_tolerance",
         "status": "engineering_candidate_conservation_telemetry_not_validation",
         "source": HYBRID_PIC_3D_SOURCE,
         "run_mode": RUN_MODE,
@@ -2200,6 +2238,111 @@ def _conservation_telemetry(
             "Finite conservation telemetry is engineering evidence, not validation.",
         ],
     }
+
+
+def _deck_source_diff_packet(deck: FirstPrinciples3DDeck) -> dict[str, Any]:
+    """Compare a source-locked demonstrator deck against local source values."""
+
+    observed = {
+        "device_anode_radius_m": deck.device_anode_radius_m,
+        "device_cathode_radius_m": deck.device_cathode_radius_m,
+        "device_anode_length_m": deck.device_anode_length_m,
+        "device_insulator_length_m": deck.device_insulator_length_m,
+        "device_cathode_rod_count": deck.device_cathode_rod_count,
+        "device_cathode_rod_diameter_m": deck.device_cathode_rod_diameter_m,
+        "circuit_capacitance_F": deck.circuit_capacitance_F,
+        "circuit_voltage_V": deck.circuit_voltage_V,
+        "circuit_inductance_H": deck.circuit_inductance_H,
+        "circuit_resistance_ohm": deck.circuit_resistance_ohm,
+        "gas_pressure_Pa": deck.gas_pressure_Pa,
+    }
+    is_pf1000_akel = (
+        deck.validation_scope
+        == "pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate"
+        or deck.device_name.startswith("PF-1000/Akel")
+    )
+    if not is_pf1000_akel:
+        return {
+            "status": "candidate_deck_diff_not_applicable",
+            "declared_scope": deck.validation_scope,
+            "device_name": deck.device_name,
+            "observed": observed,
+            "source_references": [],
+            "can_support_first_principles_acceptance": False,
+        }
+
+    comparisons = {
+        key: _deck_value_comparison(
+            observed=observed.get(key),
+            expected=expected,
+            tolerance=_deck_value_tolerance(expected),
+        )
+        for key, expected in PF1000_AKEL_SOURCE_LOCKED_DECK.items()
+    }
+    mismatch_keys = [
+        key
+        for key, comparison in comparisons.items()
+        if comparison["status"] != "source_locked_match_not_validation"
+    ]
+    return {
+        "status": (
+            "candidate_source_locked_deck_match_not_validation"
+            if not mismatch_keys
+            else "blocked_source_deck_drift_not_validation"
+        ),
+        "declared_scope": deck.validation_scope,
+        "device_name": deck.device_name,
+        "deck_lock": "pf1000_akel_16kv_1p2torr_shot_12581",
+        "observed": observed,
+        "expected": dict(PF1000_AKEL_SOURCE_LOCKED_DECK),
+        "comparisons": comparisons,
+        "mismatch_keys": mismatch_keys,
+        "source_references": list(PF1000_AKEL_DECK_SOURCE_REFS),
+        "scope_policy": (
+            "PF-1000/Akel 16 kV values are not interchangeable with PF-1000U "
+            "or full-energy PF-1000 shots without an explicit transfer packet."
+        ),
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _deck_value_comparison(
+    *,
+    observed: Any,
+    expected: float | int,
+    tolerance: float,
+) -> dict[str, Any]:
+    if observed is None:
+        return {
+            "observed": None,
+            "expected": expected,
+            "absolute_error": None,
+            "tolerance": tolerance,
+            "status": "missing_source_locked_value_not_validation",
+        }
+    if isinstance(expected, int):
+        matches = int(observed) == int(expected)
+        error = abs(int(observed) - int(expected))
+    else:
+        error = abs(float(observed) - float(expected))
+        matches = error <= tolerance
+    return {
+        "observed": observed,
+        "expected": expected,
+        "absolute_error": error,
+        "tolerance": tolerance,
+        "status": (
+            "source_locked_match_not_validation"
+            if matches
+            else "source_locked_mismatch_not_validation"
+        ),
+    }
+
+
+def _deck_value_tolerance(expected: float | int) -> float:
+    if isinstance(expected, int):
+        return 0.0
+    return max(abs(float(expected)) * 1.0e-12, 1.0e-15)
 
 
 def _boundary_values_from_policy(value: Mapping[str, Any] | object) -> dict[str, Any]:
@@ -2424,6 +2567,12 @@ def _conductor_mask_packet(
                 and deck.device_cathode_rod_count
                 and deck.device_cathode_rod_diameter_m
             ),
+            "cathode_rod_diameter_grid_cells": (
+                float(deck.device_cathode_rod_diameter_m) / min(grid.dx, grid.dy)
+                if pf1000_rod_projection and deck.device_cathode_rod_diameter_m
+                else None
+            ),
+            "cathode_rods_resolution_reviewed": False,
             "hollow_anode_declared_by_source": bool(pf1000_rod_projection),
             "hollow_anode_inner_radius_supplied": (
                 deck.device_anode_inner_radius_m is not None
@@ -2446,6 +2595,9 @@ def _conductor_mask_packet(
                 if pf1000_rod_projection
                 else "Axisymmetric electrode dimensions are projected onto a Cartesian engineering grid."
             ),
+            "Rod-diameter grid resolution is reported in cathode_rod_diameter_grid_cells; "
+            "values below about two cells do not resolve discrete rods and rod-level "
+            "fidelity is not resolution-reviewed.",
             "Hollow-anode bore is not resolved unless an accepted inner radius is supplied.",
             "Insulator material surfaces are declared but not resolved as material boundary regions.",
             "No reviewed same-scope electrode mask or boundary-validation packet is attached.",
@@ -2550,6 +2702,7 @@ def _build_manifest(
         "first_principles_candidate_packet": validation_packet,
         "conservation_telemetry": conservation,
         "startup_bvp_packet": telemetry["startup"],
+        "deck_diff_packet": telemetry["deck_diff"],
         "limiter_readiness_packet": telemetry["limiter_readiness"],
         "experimental_limiter_zero_probe_packet": telemetry[
             "experimental_limiter_zero_probe"

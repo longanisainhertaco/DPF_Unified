@@ -1609,13 +1609,6 @@
   ],
   "file_inventory": [
     {
-      "extension": "",
-      "kind": "system_metadata",
-      "path": "KnowledgeReference/.DS_Store",
-      "sha256": "407e66921dafa57cb5e488d26b6c4195a3f4280aac45cb91e7812e0922835261",
-      "size_bytes": 8196
-    },
-    {
       "extension": ".json",
       "kind": "source_json_metadata",
       "path": "KnowledgeReference/1959mnras-119-81s-586d5f74.json",
@@ -9547,13 +9540,6 @@
       "size_bytes": 73450
     },
     {
-      "extension": "",
-      "kind": "system_metadata",
-      "path": "KnowledgeReference/reference-images/.DS_Store",
-      "sha256": "19857a27bf2710acb30db0cf69e6cd81fd65b3be5b000ab5a6ad9928bef2ca04",
-      "size_bytes": 6148
-    },
-    {
       "extension": ".md",
       "kind": "system_metadata",
       "path": "KnowledgeReference/reference-images/INDEX.md",
@@ -11388,7 +11374,7 @@
       "size_bytes": 125119
     }
   ],
-  "generated_at_utc": "2026-05-17T16:03:38.492782+00:00",
+  "generated_at_utc": "2026-05-18T17:36:11.815544+00:00",
   "records": [
     {
       "accession": "",
@@ -31467,11 +31453,11 @@
       "figure_or_image": 92,
       "source_json_metadata": 526,
       "source_markdown": 527,
-      "system_metadata": 9
+      "system_metadata": 7
     },
     "json_metadata_count": 526,
     "knowledge_reference_document_count": 527,
-    "knowledge_reference_file_count": 1397,
+    "knowledge_reference_file_count": 1395,
     "markdown_source_count": 527,
     "tag_counts": {
       "circuit_coupling": 143,

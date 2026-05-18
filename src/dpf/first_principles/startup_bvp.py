@@ -211,11 +211,15 @@ def build_startup_bvp_packet(
     whole_shot_requested = bool(startup.get("can_support_whole_shot_acceptance"))
     mode_is_accepted = mode in ACCEPTED_STARTUP_MODES
     reviewed = evidence_status in {"reviewed", "accepted", "accepted_same_scope_source"}
+    payload_acceptance_eligible = bool(
+        startup_payload_review["channel_acceptance_eligible"]
+    )
     can_support = (
         whole_shot_requested
         and mode_is_accepted
         and reviewed
         and not missing
+        and payload_acceptance_eligible
     )
     status = (
         "accepted_startup_bvp_packet"

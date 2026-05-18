@@ -21,6 +21,12 @@ from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE
 ELEMENTARY_CHARGE = dpf_constants.e
 K_B = dpf_constants.k_B
 
+FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES = (
+    "input_sequence",
+    "lagged_volume_j_dot_e",
+    "lagged_auluck_volume_j_dot_e",
+)
+
 REDUCED_MODEL_AUTHORITY_FIELDS = {
     "lee_model",
     "lee_fit_factors",
@@ -427,10 +433,10 @@ class ClosurePolicy:
         _require_positive("density_floor_m3", self.density_floor_m3)
         if self.marder_factor_scale < 0.0:
             raise ValueError("marder_factor_scale must be non-negative")
-        if self.circuit_udpf_mode not in {"input_sequence", "lagged_volume_j_dot_e"}:
+        if self.circuit_udpf_mode not in FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES:
             raise ValueError(
-                "circuit_udpf_mode must be 'input_sequence' or "
-                "'lagged_volume_j_dot_e'"
+                "circuit_udpf_mode must be one of "
+                f"{FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES}"
             )
 
     @classmethod

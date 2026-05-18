@@ -661,7 +661,7 @@ def _courant_budget(
 def _conservation_snapshot(conservation: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "status": conservation.get("status"),
-        "finite_snapshot": conservation.get("passed"),
+        "finite_snapshot": conservation.get("finite_state"),
         "delta_tracked_total_energy_J": _optional_float(
             conservation.get("delta_tracked_total_energy_J")
         ),
@@ -783,7 +783,7 @@ def _troubleshooting_priority(
     priorities: list[str] = []
     if final_time_s is None or target_time_s is None or final_time_s < target_time_s:
         priorities.append("extend_runtime_to_requested_target_with_stable_dt")
-    if conservation.get("passed") is not True:
+    if conservation.get("finite_state") is not True:
         priorities.append("stop_and_fix_nonfinite_or_missing_conservation_snapshot")
     if duration_plan.get("dt_within_vacuum_cfl") is not True:
         priorities.append("reduce_dt_or_refine_grid_until_vacuum_cfl_passes")

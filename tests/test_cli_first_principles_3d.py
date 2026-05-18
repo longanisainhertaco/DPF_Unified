@@ -532,7 +532,7 @@ def test_experimental_limiter_proof_combined_cfl_clears_ohmic_limit_for_short_ta
             "5e-14",
             "--auto-step-budget",
             "--max-auto-steps",
-            "10",
+            "40",
             "--dt-policy",
             "combined-cfl",
             "--history-stride",

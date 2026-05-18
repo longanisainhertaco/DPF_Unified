@@ -1,6 +1,6 @@
 # First-Principles Source Truth Index
 
-Generated: 2026-05-17T16:03:38.492782+00:00
+Generated: 2026-05-18T17:36:11.815544+00:00
 
 ## Boundary
 
@@ -10,7 +10,7 @@ Generated: 2026-05-17T16:03:38.492782+00:00
 
 ## Corpus Counts
 
-- KnowledgeReference files: 1397
+- KnowledgeReference files: 1395
 - Top-level source documents: 527
 - Top-level markdown source records: 527
 - Top-level JSON metadata records: 526
@@ -22,7 +22,7 @@ Generated: 2026-05-17T16:03:38.492782+00:00
 | `figure_or_image` | 92 |
 | `source_json_metadata` | 526 |
 | `source_markdown` | 527 |
-| `system_metadata` | 9 |
+| `system_metadata` | 7 |
 
 ## First-Principles Verdict Counts
 

@@ -202,7 +202,7 @@ def _inventory_status(index: Mapping[str, Any]) -> dict[str, Any]:
     actual_inventory = {
         str(path.relative_to(ROOT)): _sha256(path)
         for path in (ROOT / "KnowledgeReference").rglob("*")
-        if path.is_file()
+        if path.is_file() and path.name != ".DS_Store"
     }
 
     indexed_paths = set(indexed_inventory)
@@ -272,7 +272,7 @@ def _existing_records_by_path(index: Mapping[str, Any]) -> dict[str, dict[str, A
 def _build_file_inventory() -> list[dict[str, Any]]:
     inventory = []
     for path in sorted((ROOT / "KnowledgeReference").rglob("*")):
-        if not path.is_file():
+        if not path.is_file() or path.name == ".DS_Store":
             continue
         rel = str(path.relative_to(ROOT))
         inventory.append({
