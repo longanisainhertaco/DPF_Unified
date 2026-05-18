@@ -69,9 +69,27 @@ jobs:
       - name: Run validation gate (experimental data)
         run: pytest tests/test_validation_ci.py -v --tb=short
 
+  first-principles-audit:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,server]"
+      - name: Verify first-principles source-truth exhaustion
+        run: python scripts/verify_first_principles_source_truth_exhaustion.py --strict
+      - name: Verify first-principles module source vetting
+        run: python scripts/verify_first_principles_module_source_vetting.py --strict
+      - name: Audit first-principles result artifacts
+        run: python scripts/audit_first_principles_artifacts.py 'results/*.json'
+
   smoke-test:
     runs-on: ubuntu-latest
-    needs: test
+    needs:
+      - test
+      - first-principles-audit
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

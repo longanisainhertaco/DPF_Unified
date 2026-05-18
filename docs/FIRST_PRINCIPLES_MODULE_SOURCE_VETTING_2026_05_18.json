@@ -8,7 +8,7 @@
     "unsafe_claim_surfaces": []
   },
   "date": "2026_05_18",
-  "generated_at_utc": "2026-05-18T20:06:54.287267+00:00",
+  "generated_at_utc": "2026-05-18T20:30:32.081152+00:00",
   "modules": [
     {
       "active_first_principles_closure": false,
@@ -7969,6 +7969,9 @@
         "__future__",
         "__future__.annotations",
         "copy",
+        "dpf.validation.first_principles_mhd",
+        "dpf.validation.first_principles_mhd.PF1000_AKEL_SOURCE_SCOPE",
+        "dpf.validation.first_principles_mhd.PF1000_AKEL_VALIDATION_SCOPE",
         "typing",
         "typing.Any"
       ],
@@ -8414,6 +8417,8 @@
         "dpf.server.models.SimulationInfo",
         "dpf.server.simulation",
         "dpf.server.simulation.SimulationManager",
+        "dpf.validation.first_principles_mhd",
+        "dpf.validation.first_principles_mhd.PF1000_AKEL_VALIDATION_SCOPE",
         "fastapi",
         "fastapi.FastAPI",
         "fastapi.HTTPException",

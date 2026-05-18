@@ -36,20 +36,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from dpf.config import SimulationConfig
+from dpf.presets import get_preset, list_presets
 from dpf.project.lifecycle import (
     archive_project,
     create_project,
     duplicate_project,
     load_project,
 )
-from dpf.server.metadata import api_units_metadata
-from dpf.presets import get_preset, list_presets
 from dpf.server.encoding import encode_fields
+from dpf.server.metadata import api_units_metadata
 from dpf.server.models import (
     ArchiveProjectRequest,
     ConfigValidationResponse,
-    CreateSimulationRequest,
     CreateProjectRequest,
+    CreateSimulationRequest,
     DuplicateProjectRequest,
     FieldHeader,
     FieldRequest,
@@ -60,6 +60,7 @@ from dpf.server.models import (
     SimulationInfo,
 )
 from dpf.server.simulation import SimulationManager
+from dpf.validation.first_principles_mhd import PF1000_AKEL_VALIDATION_SCOPE
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ def _project_info(bundle) -> ProjectInfo:
 
 
 _PRESET_VALIDATION_SCOPES = {
-    "pf1000_akel": "pf1000_akel_16kv_1p2torr_shot_12581",
+    "pf1000_akel": PF1000_AKEL_VALIDATION_SCOPE,
 }
 
 

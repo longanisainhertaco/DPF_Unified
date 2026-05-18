@@ -13,7 +13,6 @@ import argparse
 import ast
 import json
 import re
-import sys
 from collections import Counter, deque
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime

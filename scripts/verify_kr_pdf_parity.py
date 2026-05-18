@@ -24,9 +24,21 @@ import unicodedata
 from pathlib import Path
 
 try:
-    import fitz
-except ImportError:  # pragma: no cover
-    sys.exit("ERROR: PyMuPDF not installed. Run: pip install pymupdf")
+    import fitz as _fitz
+except ImportError as exc:  # pragma: no cover
+    _fitz = None
+    _FITZ_IMPORT_ERROR: ImportError | None = exc
+else:  # pragma: no cover - import availability is environment-specific
+    _FITZ_IMPORT_ERROR = None
+
+
+def _fitz_module():
+    """Return PyMuPDF without making importers exit at module import time."""
+    if _fitz is None:
+        raise RuntimeError("PyMuPDF not installed. Run: pip install pymupdf") from (
+            _FITZ_IMPORT_ERROR
+        )
+    return _fitz
 
 
 def sha256_file(path: Path) -> str:
@@ -46,7 +58,7 @@ def normalize_text(text: str) -> str:
 
 
 def pdf_pages(pdf_path: Path) -> list[str]:
-    doc = fitz.open(pdf_path)
+    doc = _fitz_module().open(pdf_path)
     try:
         return [page.get_text("text").strip() for page in doc]
     finally:
@@ -119,7 +131,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pretty", action="store_true")
     args = parser.parse_args(argv)
 
-    result = verify_pair(args.pdf, args.md, args.json)
+    try:
+        result = verify_pair(args.pdf, args.md, args.json)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     print(json.dumps(result, indent=2 if args.pretty else None, sort_keys=True))
     return 0 if result["passed"] else 1
 

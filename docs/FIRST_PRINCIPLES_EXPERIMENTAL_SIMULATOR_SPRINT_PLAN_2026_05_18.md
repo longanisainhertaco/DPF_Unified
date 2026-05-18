@@ -44,8 +44,11 @@ The strongest assets are now in place:
 
 The controlling blockers are still open:
 
-- Active first-principles result artifacts fail the artifact linter because
-  they lack top-level `artifact_generation_commit` and `command_argv`.
+- Sprint 0 artifact hygiene has moved forward: active root-level
+  first-principles artifacts now pass `scripts/audit_first_principles_artifacts.py
+  'results/*.json'`, and stale pre-SSR artifacts are quarantined. The remaining
+  control-plane work is to keep that gate in committed CI, expand/clarify archive
+  policy, and complete manifest source-index/source-packet provenance.
 - The power port is still candidate-only; it lacks a reviewed named runtime
   domain, Poynting/electrode work terms, time-centering, sign convention, and
   accepted residual policy.
@@ -218,6 +221,13 @@ Add these gates to CI or a required local pre-review script:
 ## Backlog
 
 ### Sprint 0: Evidence Hygiene And Provenance
+
+Status as of the follow-up Codex-agent audit on 2026-05-18: mostly closed for
+active root artifacts, with follow-up control-plane changes still pending.
+`results/*.json` now passes the artifact linter, source-truth exhaustion is
+clean, module source-vetting is clean, and focused first-principles tests pass.
+Remaining Sprint 0 work is CI/RTM closure, linter test coverage, archive policy,
+and complete manifest source-index/source-packet provenance.
 
 Goal: make the project audit-clean enough that engineers can trust the evidence
 package before reviewing physics.
@@ -446,4 +456,3 @@ Every external team submission will be audited in this order:
 The audit will reject any submission that has a finite run but lacks provenance,
 uses stale artifacts, hides numerical repairs, promotes candidate packets,
 or cites a physics equation without a local source packet.
-
