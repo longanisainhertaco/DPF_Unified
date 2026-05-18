@@ -15,6 +15,8 @@ from typing import Any
 
 import click
 
+from dpf.first_principles.manifest import stamp_artifact_provenance
+
 FIRST_PRINCIPLES_3D_DECK_PRESETS = (
     "pf1000_akel_16kv",
     "ir_mpf_100",
@@ -126,7 +128,7 @@ def simulate(
 
             output_path = Path(output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+            output_path.write_text(json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True))
         summary = {
             "run_mode": payload["run_mode"],
             "execution_backend": payload["execution_backend"],
@@ -2095,6 +2097,94 @@ def _experimental_limiter_proof_payload(deck: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _experimental_segmented_limiter_proof_payload(
+    deck: dict[str, Any],
+    *,
+    segment_steps: int,
+    checkpoint_dir: Path | None,
+    verify_against_uninterrupted: bool,
+) -> dict[str, Any]:
+    """Run the limiter-proof horizon as checkpointed segments.
+
+    Drives a single first-principles session in fixed-step segments, writing
+    and reloading a validated checkpoint at every segment boundary.  State and
+    cumulative ledgers are preserved across segments, so the result is
+    equivalent to one uninterrupted run at the same step sequence.
+    """
+    import tempfile
+
+    from dpf.first_principles import FirstPrinciplesInputDeck
+    from dpf.first_principles.checkpoint_restart import (
+        build_experimental_segmented_run_packet,
+    )
+    from dpf.first_principles.runner import FirstPrinciples3DDeck
+
+    if segment_steps <= 0:
+        raise click.BadParameter("must be positive", param_hint="--segment-steps")
+
+    if {"device", "circuit", "grid"}.issubset(deck.keys()):
+        package_deck = FirstPrinciplesInputDeck.from_mapping(deck)
+        resolved_deck = FirstPrinciples3DDeck.from_deck(package_deck)
+        deck_name = package_deck.deck_id
+        device_name = package_deck.device.name
+        total_steps = package_deck.diagnostics.n_steps
+        dt_s = package_deck.diagnostics.dt_s
+        target_time_s = package_deck.diagnostics.target_time_s
+    else:
+        total_steps = _positive_int_deck_value(deck, "steps")
+        resolved_deck = FirstPrinciples3DDeck.from_deck(
+            deck,
+            n_steps=total_steps,
+        )
+        deck_name = str(deck.get("name", resolved_deck.validation_scope))
+        device_name = str(deck.get("device_name", resolved_deck.device_name))
+        dt_s = resolved_deck.dt_s
+        target_time_s = resolved_deck.target_time_s
+
+    if segment_steps >= total_steps:
+        raise click.ClickException(
+            f"--segment-steps={segment_steps} must be smaller than the step "
+            f"budget ({total_steps}); a single segment is just a normal run"
+        )
+
+    checkpoint_dir = (
+        Path(tempfile.mkdtemp(prefix="dpf_segmented_run_"))
+        if checkpoint_dir is None
+        else checkpoint_dir
+    )
+
+    segmented_packet = build_experimental_segmented_run_packet(
+        deck=resolved_deck,
+        segment_steps=segment_steps,
+        checkpoint_dir=checkpoint_dir,
+        verify_against_uninterrupted=verify_against_uninterrupted,
+    )
+    return {
+        "tool": "dpf experimental-limiter-proof",
+        "command_status": (
+            "experimental_segmented_limiter_proof_engineering_candidate_run"
+        ),
+        "deck": {
+            "name": deck_name,
+            "device_name": device_name,
+            "source": deck.get("source", "built_in"),
+            "steps": total_steps,
+            "dt_s": dt_s,
+            "target_time_s": target_time_s,
+            "segment_steps": int(segment_steps),
+        },
+        "n_steps_completed": segmented_packet["total_steps_completed"],
+        "target_time_s": target_time_s,
+        "experimental_segmented_run": segmented_packet,
+        "telemetry_packets": {
+            "experimental_segmented_run": segmented_packet,
+        },
+        "scientific_status": "engineering_candidate_not_validation",
+        "reduced_models_used": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
 def _experimental_numerical_family_payload(
     deck: dict[str, Any],
     *,
@@ -2607,7 +2697,7 @@ def first_principles(
         import json
 
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        output.write_text(json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True))
 
     simulation = payload["simulation"]
     validation_packet = payload["validation_packet"]
@@ -2677,7 +2767,7 @@ def hybrid_3d_smoke(
         import json
 
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        output.write_text(json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True))
 
     click.echo("3D hybrid PIC-fluid engineering candidate")
     click.echo(f"  steps: {payload['n_steps']}")
@@ -2788,7 +2878,7 @@ def first_principles_3d(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -2964,7 +3054,7 @@ def experimental_whole_shot(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3123,7 +3213,7 @@ def experimental_machine_shot_family(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3234,6 +3324,36 @@ def experimental_machine_shot_family(
     help="Override the candidate DPF terminal-voltage feedback mode.",
 )
 @click.option(
+    "--segment-steps",
+    type=int,
+    default=None,
+    help=(
+        "Run the horizon as checkpointed segments of N steps each. State "
+        "(fields, particles, previous current, circuit, electron/ion energy, "
+        "ionization, kinetic yield, lagged field work, cumulative ledgers) is "
+        "preserved across segments via the validated checkpoint loader, "
+        "equivalent to one uninterrupted run."
+    ),
+)
+@click.option(
+    "--segment-checkpoint-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Directory for per-segment checkpoint .npz files. Required when "
+        "--segment-steps is set."
+    ),
+)
+@click.option(
+    "--segment-verify-uninterrupted/--no-segment-verify-uninterrupted",
+    default=True,
+    show_default=True,
+    help=(
+        "Also run the same horizon uninterrupted and assert the segmented "
+        "result is bit-equivalent. Disable only for budget-limited probes."
+    ),
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -3253,6 +3373,9 @@ def experimental_limiter_proof(
     auto_step_budget: bool,
     max_auto_steps: int,
     circuit_udpf_mode: str | None,
+    segment_steps: int | None,
+    segment_checkpoint_dir: Path | None,
+    segment_verify_uninterrupted: bool,
     output: Path | None,
 ) -> None:
     """Run a non-promoting full-horizon limiter inventory probe."""
@@ -3278,11 +3401,50 @@ def experimental_limiter_proof(
         enabled=auto_step_budget,
         max_auto_steps=max_auto_steps,
     )
-    payload = _experimental_limiter_proof_payload(runtime_deck)
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    if segment_steps is not None:
+        payload = _experimental_segmented_limiter_proof_payload(
+            runtime_deck,
+            segment_steps=segment_steps,
+            checkpoint_dir=segment_checkpoint_dir,
+            verify_against_uninterrupted=segment_verify_uninterrupted,
+        )
+        text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
+        if output is None:
+            click.echo(text)
+            return
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text)
+        seg_packet = payload["experimental_segmented_run"]
+        click.echo("Experimental segmented limiter-zero engineering candidate")
+        click.echo(f"  deck: {payload['deck']['source']}")
+        click.echo(f"  segment_steps: {seg_packet['segment_steps']}")
+        click.echo(f"  segment_count: {seg_packet['segment_count']}")
+        click.echo(
+            f"  total_steps_completed: {seg_packet['total_steps_completed']}"
+        )
+        click.echo(
+            "  all_segment_checkpoint_roundtrips_match: "
+            f"{seg_packet['all_segment_checkpoint_roundtrips_match']}"
+        )
+        click.echo(
+            "  cumulative_j_dot_e_step_count: "
+            f"{seg_packet['cumulative_ledgers']['cumulative_j_dot_e_step_count']}"
+        )
+        equivalence = seg_packet["equivalence"]
+        if equivalence.get("verified_against_uninterrupted"):
+            click.echo(
+                "  state_fingerprints_match_uninterrupted: "
+                f"{equivalence.get('state_fingerprints_match')}"
+            )
+        click.echo(f"  artifact: {output}")
+        return
+
+    payload = _experimental_limiter_proof_payload(runtime_deck)
+
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3462,7 +3624,7 @@ def experimental_numerical_family(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3618,7 +3780,7 @@ def experimental_reproducibility(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3776,7 +3938,7 @@ def experimental_state_checkpoint(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -3934,7 +4096,7 @@ def experimental_split_continuation(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -4102,7 +4264,7 @@ def experimental_checkpoint_restart(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -4273,7 +4435,7 @@ def experimental_checkpoint_restart_family(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -4334,7 +4496,7 @@ def first_principles_gv_waveform(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return
@@ -4617,7 +4779,7 @@ def experimental_inverse_calibration(
 
     import json
 
-    text = json.dumps(payload, indent=2, sort_keys=True)
+    text = json.dumps(stamp_artifact_provenance(payload), indent=2, sort_keys=True)
     if output is None:
         click.echo(text)
         return

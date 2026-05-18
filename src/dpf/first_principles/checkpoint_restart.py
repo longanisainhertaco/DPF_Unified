@@ -44,6 +44,7 @@ def build_experimental_checkpoint_restart_packet(
     checkpoint_packet = write_simulation_state_checkpoint_roundtrip(
         simulation=first_segment,
         checkpoint_path=checkpoint_path,
+        deck=fixed_deck,
     )
     loaded_session = load_checkpoint_into_first_principles_3d_session(
         checkpoint_path=checkpoint_path,
@@ -194,6 +195,210 @@ def build_experimental_checkpoint_restart_family_packet(
             "can_support_validation_claims": False,
             "validated": False,
             "review_decision": "checkpoint_restart_family_probe_only",
+        },
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+EXPERIMENTAL_SEGMENTED_RUN_STATUS = (
+    "experimental_segmented_checkpointed_run_not_validation"
+)
+
+
+def build_experimental_segmented_run_packet(
+    *,
+    deck: Mapping[str, Any] | object | None,
+    segment_steps: int,
+    checkpoint_dir: str | Path,
+    verify_against_uninterrupted: bool = True,
+) -> dict[str, Any]:
+    """Run a fixed-step horizon as checkpointed segments of ``segment_steps``.
+
+    The horizon ``deck.n_steps`` is advanced in segments.  At every segment
+    boundary the live session state is written to a metadata-tagged checkpoint
+    and reloaded through ``load_checkpoint_into_first_principles_3d_session``
+    -- whose loader validation gate fails closed on any grid/circuit/closure/
+    species mismatch.  Because each segment's checkpoint round-trip restores
+    fields, particles, previous current, circuit state, electron/ion energy,
+    ionization state, kinetic-yield history, and lagged field work, the
+    segmented horizon is equivalent to one uninterrupted run at the same step
+    sequence.
+
+    Cumulative ledgers (volume J.E work, terminal active-port work, limiter
+    activations) are accumulated across segments here, because per-``run``
+    telemetry resets its cumulative counters at each segment start.  History
+    capping caps retained samples only; cumulative counters cover the full
+    horizon.
+    """
+
+    fixed_deck = _fixed_step_deck(deck)
+    total_steps = int(fixed_deck.n_steps)
+    if int(segment_steps) != segment_steps or segment_steps <= 0:
+        raise ValueError("segment_steps must be a positive integer")
+    segment_steps = int(segment_steps)
+    output_dir = Path(checkpoint_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    session = build_first_principles_3d_session(fixed_deck)
+    cumulative = {
+        "cumulative_j_dot_e_work_J": 0.0,
+        "cumulative_j_dot_e_step_count": 0,
+        "cumulative_active_port_work_J": 0.0,
+        "cumulative_active_port_step_count": 0,
+    }
+    limiter_steps_observed = 0
+    segments: list[dict[str, Any]] = []
+    last_segment: HybridPIC3DSimulationResult | None = None
+    completed = 0
+    segment_index = 0
+    while completed < total_steps:
+        this_segment_steps = min(segment_steps, total_steps - completed)
+        result = session.run_segment(this_segment_steps)
+        last_segment = result
+        telemetry = result.telemetry
+        cumulative["cumulative_j_dot_e_work_J"] += float(
+            telemetry.cumulative_j_dot_e_work_J or 0.0
+        )
+        cumulative["cumulative_j_dot_e_step_count"] += int(
+            telemetry.cumulative_j_dot_e_step_count
+        )
+        cumulative["cumulative_active_port_work_J"] += float(
+            telemetry.cumulative_active_port_work_J or 0.0
+        )
+        cumulative["cumulative_active_port_step_count"] += int(
+            telemetry.cumulative_active_port_step_count
+        )
+        if isinstance(telemetry.limiter_activation_summary, Mapping):
+            limiter_steps_observed += int(
+                telemetry.limiter_activation_summary.get("steps_observed", 0)
+            )
+        completed += int(telemetry.n_steps_completed)
+
+        # Boundary checkpoint: write live state and reload through the
+        # fail-closed loader.  This both exercises the validated loader on the
+        # real horizon and proves the checkpoint carries every state channel.
+        checkpoint_path = output_dir / f"segment_{segment_index:04d}.npz"
+        roundtrip = write_simulation_state_checkpoint_roundtrip(
+            simulation=result,
+            checkpoint_path=checkpoint_path,
+            deck=fixed_deck,
+        )
+        if completed < total_steps:
+            session = load_checkpoint_into_first_principles_3d_session(
+                checkpoint_path=checkpoint_path,
+                deck=fixed_deck,
+            )
+        segments.append({
+            "segment_index": segment_index,
+            "segment_steps_requested": this_segment_steps,
+            "segment_steps_completed": int(telemetry.n_steps_completed),
+            "total_steps_completed_after_segment": completed,
+            "checkpoint_path": str(checkpoint_path),
+            "checkpoint_write_read_hashes_match": roundtrip[
+                "write_read_hashes_match"
+            ],
+            "continuation_state": telemetry.continuation_state,
+            "segment_cumulative_j_dot_e_work_J": (
+                telemetry.cumulative_j_dot_e_work_J
+            ),
+            "segment_cumulative_j_dot_e_step_count": (
+                telemetry.cumulative_j_dot_e_step_count
+            ),
+        })
+        segment_index += 1
+
+    if last_segment is None:  # pragma: no cover - total_steps > 0 guaranteed
+        raise RuntimeError("segmented run produced no segments")
+
+    segmented_summary = _simulation_summary(
+        last_segment,
+        declared_scope=fixed_deck.validation_scope,
+        device_name=fixed_deck.device_name,
+        total_steps=completed,
+    )
+
+    equivalence: dict[str, Any] = {
+        "verified_against_uninterrupted": bool(verify_against_uninterrupted),
+    }
+    if verify_against_uninterrupted:
+        uninterrupted = run_first_principles_3d_deck(fixed_deck)
+        uninterrupted_summary = _simulation_summary(
+            uninterrupted.result,
+            declared_scope=fixed_deck.validation_scope,
+            device_name=fixed_deck.device_name,
+            total_steps=uninterrupted.result.telemetry.n_steps_completed,
+        )
+        comparisons = _observable_comparisons(
+            uninterrupted_summary,
+            segmented_summary,
+        )
+        equivalence.update({
+            "uninterrupted": uninterrupted_summary,
+            "observable_comparisons": comparisons,
+            "state_fingerprints_match": (
+                uninterrupted_summary["state_fingerprint_sha256"]
+                == segmented_summary["state_fingerprint_sha256"]
+            ),
+            "tracked_observables_match_exactly": all(
+                item["absolute_delta"] in (0.0, None)
+                for item in comparisons.values()
+            ),
+        })
+
+    return {
+        "status": EXPERIMENTAL_SEGMENTED_RUN_STATUS,
+        "run_intent": "experimental_segmented_checkpointed_long_run",
+        "deck_name": fixed_deck.validation_scope,
+        "device_name": fixed_deck.device_name,
+        "total_steps": total_steps,
+        "segment_steps": segment_steps,
+        "segment_count": len(segments),
+        "total_steps_completed": completed,
+        "checkpoint_dir": str(output_dir),
+        "all_segment_checkpoint_roundtrips_match": all(
+            seg["checkpoint_write_read_hashes_match"] is True for seg in segments
+        ),
+        "cumulative_ledgers": {
+            **cumulative,
+            "limiter_steps_observed": limiter_steps_observed,
+            "ledger_status": (
+                "candidate_cumulative_segmented_ledger_not_validation"
+            ),
+            "covers_full_horizon": limiter_steps_observed == total_steps,
+        },
+        "segments": segments,
+        "segmented_run": segmented_summary,
+        "equivalence": equivalence,
+        "source_truth_policy": {
+            "physics_claim_authority": "local_knowledge_reference_only",
+            "segmented_run_outputs_are_troubleshooting_only": True,
+            "validation_promotion_allowed": False,
+        },
+        "source_references": [
+            {
+                "path": (
+                    "docs/FIRST_PRINCIPLES_EXTERNAL_TEAM_AUDIT_AND_NEXT_"
+                    "INSTRUCTIONS_2026_05_18.md"
+                ),
+                "lines": "508-540",
+                "role": "wp_n4_segmented_run_and_loader_validation_requirement",
+            },
+            {
+                "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+                "lines": "412-414",
+                "role": "restart_reproducibility_acceptance_fields",
+            },
+            {
+                "path": "docs/DPF_REQUIREMENTS_BASELINE.md",
+                "lines": "87-88",
+                "role": "deterministic_checkpoint_restart_requirement",
+            },
+        ],
+        "acceptance_state": {
+            "can_support_first_principles_acceptance": False,
+            "can_support_validation_claims": False,
+            "validated": False,
+            "review_decision": "segmented_checkpointed_run_probe_only",
         },
         "can_support_first_principles_acceptance": False,
     }

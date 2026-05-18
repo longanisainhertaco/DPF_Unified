@@ -1,4 +1,6 @@
 {
+  "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+  "artifact_schema_version": "first_principles_artifact_v1",
   "boundary_policy": {
     "acceptance_gate": "pml_conductor_boundary_runtime_is_candidate_only_until_same_scope_geometry_masks_boundary_validation_and_particle_boundary_order_are_accepted",
     "can_support_first_principles_acceptance": false,
@@ -44,6 +46,36 @@
         "insulator_material_surface_resolved": false,
         "reviewed_same_scope_voxel_mask": false
       },
+      "projection_error": {
+        "axial_cell_size_m": 0.14125,
+        "can_support_first_principles_acceptance": false,
+        "cells_per_anode_length": 3.3982300884955756,
+        "cells_per_anode_radius": 1.0499999999999998,
+        "cells_per_insulator_length": 0.6017699115044248,
+        "cells_per_rod_diameter": 0.7272727272727272,
+        "limitations": [
+          "Discretization error is a half-cell quantization estimate, not a reviewed convergence study against the source geometry.",
+          "Cartesian projection of axisymmetric/rod surfaces is an engineering candidate, not an accepted same-scope geometry mask."
+        ],
+        "mask_sha256": "2e97f838f4c2289d0c895c4f4e45e35139f64c3f417de538ca6cca3fd7ee39a7",
+        "max_axial_discretization_error_m": 0.14125,
+        "max_radial_discretization_error_m": 0.11000000000000001,
+        "radial_cell_size_m": 0.11000000000000001,
+        "reviewed_min_cells_per_rod_diameter": 2.0,
+        "source_dimension_basis": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117,262-268; KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:344-351",
+        "status": "candidate_projection_error_metrics_not_validation"
+      },
+      "resolution_review": {
+        "can_support_first_principles_acceptance": false,
+        "cathode_rods_resolved": false,
+        "cells_per_rod_diameter": 0.7272727272727272,
+        "hollow_anode_resolved": false,
+        "insulator_material_surface_resolved": false,
+        "material_surface_resolved": false,
+        "reviewed_min_cells_per_rod_diameter": 2.0,
+        "reviewed_status_resolution_gate_eligible": false,
+        "status": "candidate_resolution_review_not_validation"
+      },
       "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
       "source_lines": "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, Krauz 2012 PF-1000 geometry lines 344-351 and 453-454",
       "status": "candidate_engineering_conductor_mask_not_validation"
@@ -84,6 +116,16 @@
     "status": "candidate_engineering_boundary_policy_not_validation"
   },
   "can_support_first_principles_acceptance": false,
+  "command_argv": [
+    ".venv312/bin/dpf",
+    "first-principles-3d",
+    "--deck-preset",
+    "pf1000_akel_16kv",
+    "--steps",
+    "2",
+    "--output",
+    "/tmp/fp3d_provenance_check.json"
+  ],
   "command_status": "package_native_first_principles_3d_engineering_run",
   "conservation_telemetry": {
     "can_support_first_principles_acceptance": false,
@@ -172,6 +214,7 @@
     "steps": 2,
     "target_time_s": null
   },
+  "dirty_worktree": true,
   "dt_s": 1e-13,
   "duration_request_satisfied": null,
   "engineering_current_waveform_comparison": {
@@ -743,17 +786,17 @@
       "pml_conductor_particle_boundary_policy",
       "source_geometry_pic_particle_loading",
       "volume_j_dot_e_power_accounting",
-      "kinetic_yield_history",
       "hybrid_pic_fluid_solver_family",
+      "kinetic_yield_history",
       "true_3d_grid",
       "separate_electron_energy_source_terms",
       "braginskii_electron_heat_flux",
-      "ionization_charge_state_transport",
+      "source_backed_partial_ionized_conductivity",
       "electrical_transport_source_terms",
       "plasmapy_community_formula_audit",
-      "electron_ion_equilibration_audit",
       "electron_energy_source_terms",
-      "source_backed_partial_ionized_conductivity",
+      "electron_ion_equilibration_audit",
+      "ionization_charge_state_transport",
       "kinetic_neutron_yield_history"
     ],
     "candidate_modules_executed": [
@@ -801,14 +844,14 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
+        "name": "hybrid_pic_fluid_solver_family",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "hybrid_pic_fluid_solver_family",
+        "name": "kinetic_yield_history",
         "packet": "dimensionality_handoff",
         "role": "dimensionality_or_handoff_candidate_runtime",
         "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -836,14 +879,7 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "kinetic_yield_history",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
-        "name": "ionization_charge_state_transport",
+        "name": "source_backed_partial_ionized_conductivity",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -864,13 +900,6 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "electron_ion_equilibration_audit",
-        "packet": "physics_closure",
-        "role": "physics_closure_candidate_runtime",
-        "status": "candidate_engineering_closure_packet_not_validation"
-      },
-      {
-        "can_support_first_principles_acceptance": false,
         "name": "electron_energy_source_terms",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
@@ -878,7 +907,21 @@
       },
       {
         "can_support_first_principles_acceptance": false,
-        "name": "source_backed_partial_ionized_conductivity",
+        "name": "kinetic_yield_history",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "electron_ion_equilibration_audit",
+        "packet": "physics_closure",
+        "role": "physics_closure_candidate_runtime",
+        "status": "candidate_engineering_closure_packet_not_validation"
+      },
+      {
+        "can_support_first_principles_acceptance": false,
+        "name": "ionization_charge_state_transport",
         "packet": "physics_closure",
         "role": "physics_closure_candidate_runtime",
         "status": "candidate_engineering_closure_packet_not_validation"
@@ -1027,6 +1070,7 @@
   },
   "final_field_energy_J": 5.777345083037369e-11,
   "final_particle_count": 36,
+  "generated_at_utc": "2026-05-18T20:05:40+00:00",
   "grid_shape": [
     5,
     5,
@@ -1034,6 +1078,8 @@
   ],
   "history_stride": 1,
   "manifest": {
+    "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+    "artifact_schema_version": "first_principles_artifact_v1",
     "artifact_status": "engineering_candidate_not_validation",
     "backend": "package_native",
     "can_support_first_principles_acceptance": false,
@@ -1082,6 +1128,36 @@
             "insulator_material_surface_declared": true,
             "insulator_material_surface_resolved": false,
             "reviewed_same_scope_voxel_mask": false
+          },
+          "projection_error": {
+            "axial_cell_size_m": 0.14125,
+            "can_support_first_principles_acceptance": false,
+            "cells_per_anode_length": 3.3982300884955756,
+            "cells_per_anode_radius": 1.0499999999999998,
+            "cells_per_insulator_length": 0.6017699115044248,
+            "cells_per_rod_diameter": 0.7272727272727272,
+            "limitations": [
+              "Discretization error is a half-cell quantization estimate, not a reviewed convergence study against the source geometry.",
+              "Cartesian projection of axisymmetric/rod surfaces is an engineering candidate, not an accepted same-scope geometry mask."
+            ],
+            "mask_sha256": "2e97f838f4c2289d0c895c4f4e45e35139f64c3f417de538ca6cca3fd7ee39a7",
+            "max_axial_discretization_error_m": 0.14125,
+            "max_radial_discretization_error_m": 0.11000000000000001,
+            "radial_cell_size_m": 0.11000000000000001,
+            "reviewed_min_cells_per_rod_diameter": 2.0,
+            "source_dimension_basis": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117,262-268; KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:344-351",
+            "status": "candidate_projection_error_metrics_not_validation"
+          },
+          "resolution_review": {
+            "can_support_first_principles_acceptance": false,
+            "cathode_rods_resolved": false,
+            "cells_per_rod_diameter": 0.7272727272727272,
+            "hollow_anode_resolved": false,
+            "insulator_material_surface_resolved": false,
+            "material_surface_resolved": false,
+            "reviewed_min_cells_per_rod_diameter": 2.0,
+            "reviewed_status_resolution_gate_eligible": false,
+            "status": "candidate_resolution_review_not_validation"
           },
           "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
           "source_lines": "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, Krauz 2012 PF-1000 geometry lines 344-351 and 453-454",
@@ -2635,17 +2711,17 @@
           "pml_conductor_particle_boundary_policy",
           "source_geometry_pic_particle_loading",
           "volume_j_dot_e_power_accounting",
-          "kinetic_yield_history",
           "hybrid_pic_fluid_solver_family",
+          "kinetic_yield_history",
           "true_3d_grid",
           "separate_electron_energy_source_terms",
           "braginskii_electron_heat_flux",
-          "ionization_charge_state_transport",
+          "source_backed_partial_ionized_conductivity",
           "electrical_transport_source_terms",
           "plasmapy_community_formula_audit",
-          "electron_ion_equilibration_audit",
           "electron_energy_source_terms",
-          "source_backed_partial_ionized_conductivity",
+          "electron_ion_equilibration_audit",
+          "ionization_charge_state_transport",
           "kinetic_neutron_yield_history"
         ],
         "candidate_modules_executed": [
@@ -2693,14 +2769,14 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
+            "name": "hybrid_pic_fluid_solver_family",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "hybrid_pic_fluid_solver_family",
+            "name": "kinetic_yield_history",
             "packet": "dimensionality_handoff",
             "role": "dimensionality_or_handoff_candidate_runtime",
             "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -2728,14 +2804,7 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "kinetic_yield_history",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
-            "name": "ionization_charge_state_transport",
+            "name": "source_backed_partial_ionized_conductivity",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -2756,13 +2825,6 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "electron_ion_equilibration_audit",
-            "packet": "physics_closure",
-            "role": "physics_closure_candidate_runtime",
-            "status": "candidate_engineering_closure_packet_not_validation"
-          },
-          {
-            "can_support_first_principles_acceptance": false,
             "name": "electron_energy_source_terms",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
@@ -2770,7 +2832,21 @@
           },
           {
             "can_support_first_principles_acceptance": false,
-            "name": "source_backed_partial_ionized_conductivity",
+            "name": "kinetic_yield_history",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "electron_ion_equilibration_audit",
+            "packet": "physics_closure",
+            "role": "physics_closure_candidate_runtime",
+            "status": "candidate_engineering_closure_packet_not_validation"
+          },
+          {
+            "can_support_first_principles_acceptance": false,
+            "name": "ionization_charge_state_transport",
             "packet": "physics_closure",
             "role": "physics_closure_candidate_runtime",
             "status": "candidate_engineering_closure_packet_not_validation"
@@ -4192,6 +4268,36 @@
                 "insulator_material_surface_declared": true,
                 "insulator_material_surface_resolved": false,
                 "reviewed_same_scope_voxel_mask": false
+              },
+              "projection_error": {
+                "axial_cell_size_m": 0.14125,
+                "can_support_first_principles_acceptance": false,
+                "cells_per_anode_length": 3.3982300884955756,
+                "cells_per_anode_radius": 1.0499999999999998,
+                "cells_per_insulator_length": 0.6017699115044248,
+                "cells_per_rod_diameter": 0.7272727272727272,
+                "limitations": [
+                  "Discretization error is a half-cell quantization estimate, not a reviewed convergence study against the source geometry.",
+                  "Cartesian projection of axisymmetric/rod surfaces is an engineering candidate, not an accepted same-scope geometry mask."
+                ],
+                "mask_sha256": "2e97f838f4c2289d0c895c4f4e45e35139f64c3f417de538ca6cca3fd7ee39a7",
+                "max_axial_discretization_error_m": 0.14125,
+                "max_radial_discretization_error_m": 0.11000000000000001,
+                "radial_cell_size_m": 0.11000000000000001,
+                "reviewed_min_cells_per_rod_diameter": 2.0,
+                "source_dimension_basis": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117,262-268; KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:344-351",
+                "status": "candidate_projection_error_metrics_not_validation"
+              },
+              "resolution_review": {
+                "can_support_first_principles_acceptance": false,
+                "cathode_rods_resolved": false,
+                "cells_per_rod_diameter": 0.7272727272727272,
+                "hollow_anode_resolved": false,
+                "insulator_material_surface_resolved": false,
+                "material_surface_resolved": false,
+                "reviewed_min_cells_per_rod_diameter": 2.0,
+                "reviewed_status_resolution_gate_eligible": false,
+                "status": "candidate_resolution_review_not_validation"
               },
               "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
               "source_lines": "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, Krauz 2012 PF-1000 geometry lines 344-351 and 453-454",
@@ -7935,6 +8041,16 @@
         }
       }
     },
+    "command_argv": [
+      ".venv312/bin/dpf",
+      "first-principles-3d",
+      "--deck-preset",
+      "pf1000_akel_16kv",
+      "--steps",
+      "2",
+      "--output",
+      "/tmp/fp3d_provenance_check.json"
+    ],
     "conservation": {
       "artifact_status": "engineering_candidate_not_validation",
       "can_support_first_principles_acceptance": false,
@@ -8028,12 +8144,25 @@
       ],
       "validation_status": "not_validation"
     },
-    "created_utc": "2026-05-18T18:11:41+00:00",
+    "created_utc": "2026-05-18T20:05:39+00:00",
+    "dirty_worktree": true,
     "final_time_s": 2e-13,
     "first_principles_manifest": {
+      "artifact_generation_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
+      "artifact_schema_version": "first_principles_artifact_v1",
       "artifact_status": "engineering_candidate_not_validation",
       "backend": "package_native",
       "can_support_first_principles_acceptance": false,
+      "command_argv": [
+        ".venv312/bin/dpf",
+        "first-principles-3d",
+        "--deck-preset",
+        "pf1000_akel_16kv",
+        "--steps",
+        "2",
+        "--output",
+        "/tmp/fp3d_provenance_check.json"
+      ],
       "conservation": {
         "artifact_status": "engineering_candidate_not_validation",
         "can_support_first_principles_acceptance": false,
@@ -8127,9 +8256,11 @@
         ],
         "validation_status": "not_validation"
       },
-      "created_utc": "2026-05-18T18:11:41+00:00",
+      "created_utc": "2026-05-18T20:05:39+00:00",
+      "dirty_worktree": true,
       "final_time_s": 2e-13,
       "geometry_dimensionality": "3d",
+      "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
       "grid_shape": [
         5,
         5,
@@ -8140,8 +8271,9 @@
         0.11000000000000001,
         0.14125
       ],
+      "input_deck_sha256": "4175d34c46ede785ca164cebf436a959f21af98e7f443487f37d188f75976384",
       "inputs": [],
-      "manifest_sha256": "e73e531c1839044b137d2b7f6322f88662e16dcca3ad64b00e3291d6cc67629b",
+      "manifest_sha256": "d177c5d42b34bddea423e9609a38f09e2ac2935a5826d8fabbb17d47f0630ef1",
       "manifest_version": "1.0",
       "metadata": {
         "deck": {
@@ -8666,11 +8798,15 @@
         "status": "engineering_candidate_not_validation",
         "validation_packet_status": "not_validation"
       },
+      "missing_provenance_fields": [
+        "source_truth_index_sha256"
+      ],
       "n_steps_completed": 2,
       "n_steps_requested": 2,
       "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
       "outputs": [],
-      "run_id": "fp-run-47eb1845d4c7439ca6766ac1aa5bbf54",
+      "provenance_complete": false,
+      "run_id": "fp-run-dc2fd7a6a5234411b13bfe32fb825e72",
       "run_status": "engineering_candidate",
       "runtime": {
         "machine": "arm64",
@@ -8689,9 +8825,12 @@
           "status": "source_reference_not_validation"
         }
       ],
+      "source_packet_hashes": {},
+      "source_truth_index_sha256": null,
       "validation_status": "not_validation"
     },
     "geometry_dimensionality": "3d",
+    "git_commit": "c847a0dc3a26e1b6d612f6d358d436f83085ab5d",
     "grid_shape": [
       5,
       5,
@@ -8702,8 +8841,9 @@
       0.11000000000000001,
       0.14125
     ],
+    "input_deck_sha256": "4175d34c46ede785ca164cebf436a959f21af98e7f443487f37d188f75976384",
     "inputs": [],
-    "manifest_sha256": "e73e531c1839044b137d2b7f6322f88662e16dcca3ad64b00e3291d6cc67629b",
+    "manifest_sha256": "d177c5d42b34bddea423e9609a38f09e2ac2935a5826d8fabbb17d47f0630ef1",
     "manifest_version": "1.0",
     "metadata": {
       "deck": {
@@ -9228,12 +9368,16 @@
       "status": "engineering_candidate_not_validation",
       "validation_packet_status": "not_validation"
     },
+    "missing_provenance_fields": [
+      "source_truth_index_sha256"
+    ],
     "n_steps_completed": 2,
     "n_steps_requested": 2,
     "notes": "Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
     "outputs": [],
+    "provenance_complete": false,
     "reduced_models_used": false,
-    "run_id": "fp-run-47eb1845d4c7439ca6766ac1aa5bbf54",
+    "run_id": "fp-run-dc2fd7a6a5234411b13bfe32fb825e72",
     "run_mode": "first_principles_3d_hybrid_em_pic_fluid",
     "run_status": "engineering_candidate",
     "runtime": {
@@ -9254,6 +9398,8 @@
         "status": "source_reference_not_validation"
       }
     ],
+    "source_packet_hashes": {},
+    "source_truth_index_sha256": null,
     "status": "engineering_candidate_not_validation",
     "validation_status": "not_validation"
   },
@@ -10382,6 +10528,36 @@
           "insulator_material_surface_declared": true,
           "insulator_material_surface_resolved": false,
           "reviewed_same_scope_voxel_mask": false
+        },
+        "projection_error": {
+          "axial_cell_size_m": 0.14125,
+          "can_support_first_principles_acceptance": false,
+          "cells_per_anode_length": 3.3982300884955756,
+          "cells_per_anode_radius": 1.0499999999999998,
+          "cells_per_insulator_length": 0.6017699115044248,
+          "cells_per_rod_diameter": 0.7272727272727272,
+          "limitations": [
+            "Discretization error is a half-cell quantization estimate, not a reviewed convergence study against the source geometry.",
+            "Cartesian projection of axisymmetric/rod surfaces is an engineering candidate, not an accepted same-scope geometry mask."
+          ],
+          "mask_sha256": "2e97f838f4c2289d0c895c4f4e45e35139f64c3f417de538ca6cca3fd7ee39a7",
+          "max_axial_discretization_error_m": 0.14125,
+          "max_radial_discretization_error_m": 0.11000000000000001,
+          "radial_cell_size_m": 0.11000000000000001,
+          "reviewed_min_cells_per_rod_diameter": 2.0,
+          "source_dimension_basis": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117,262-268; KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:344-351",
+          "status": "candidate_projection_error_metrics_not_validation"
+        },
+        "resolution_review": {
+          "can_support_first_principles_acceptance": false,
+          "cathode_rods_resolved": false,
+          "cells_per_rod_diameter": 0.7272727272727272,
+          "hollow_anode_resolved": false,
+          "insulator_material_surface_resolved": false,
+          "material_surface_resolved": false,
+          "reviewed_min_cells_per_rod_diameter": 2.0,
+          "reviewed_status_resolution_gate_eligible": false,
+          "status": "candidate_resolution_review_not_validation"
         },
         "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
         "source_lines": "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, Krauz 2012 PF-1000 geometry lines 344-351 and 453-454",
@@ -11768,17 +11944,17 @@
         "pml_conductor_particle_boundary_policy",
         "source_geometry_pic_particle_loading",
         "volume_j_dot_e_power_accounting",
-        "kinetic_yield_history",
         "hybrid_pic_fluid_solver_family",
+        "kinetic_yield_history",
         "true_3d_grid",
         "separate_electron_energy_source_terms",
         "braginskii_electron_heat_flux",
-        "ionization_charge_state_transport",
+        "source_backed_partial_ionized_conductivity",
         "electrical_transport_source_terms",
         "plasmapy_community_formula_audit",
-        "electron_ion_equilibration_audit",
         "electron_energy_source_terms",
-        "source_backed_partial_ionized_conductivity",
+        "electron_ion_equilibration_audit",
+        "ionization_charge_state_transport",
         "kinetic_neutron_yield_history"
       ],
       "candidate_modules_executed": [
@@ -11826,14 +12002,14 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
+          "name": "hybrid_pic_fluid_solver_family",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "hybrid_pic_fluid_solver_family",
+          "name": "kinetic_yield_history",
           "packet": "dimensionality_handoff",
           "role": "dimensionality_or_handoff_candidate_runtime",
           "status": "candidate_engineering_dimensionality_handoff_not_validation"
@@ -11861,14 +12037,7 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "kinetic_yield_history",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
-          "name": "ionization_charge_state_transport",
+          "name": "source_backed_partial_ionized_conductivity",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"
@@ -11889,13 +12058,6 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "electron_ion_equilibration_audit",
-          "packet": "physics_closure",
-          "role": "physics_closure_candidate_runtime",
-          "status": "candidate_engineering_closure_packet_not_validation"
-        },
-        {
-          "can_support_first_principles_acceptance": false,
           "name": "electron_energy_source_terms",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
@@ -11903,7 +12065,21 @@
         },
         {
           "can_support_first_principles_acceptance": false,
-          "name": "source_backed_partial_ionized_conductivity",
+          "name": "kinetic_yield_history",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "electron_ion_equilibration_audit",
+          "packet": "physics_closure",
+          "role": "physics_closure_candidate_runtime",
+          "status": "candidate_engineering_closure_packet_not_validation"
+        },
+        {
+          "can_support_first_principles_acceptance": false,
+          "name": "ionization_charge_state_transport",
           "packet": "physics_closure",
           "role": "physics_closure_candidate_runtime",
           "status": "candidate_engineering_closure_packet_not_validation"

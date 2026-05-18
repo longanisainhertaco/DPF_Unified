@@ -9,7 +9,8 @@ import sys
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from dpf.first_principles.conservation import (
@@ -21,6 +22,23 @@ from dpf.first_principles.conservation import (
     build_conservation_ledger_from_hybrid_telemetry,
     normalize_source_index_references,
 )
+
+# Provenance fields that an externally reproducible, certificate-eligible
+# manifest must carry as non-empty values (Codex finding A-8 / WP-N7).
+# A manifest missing any of these cannot back an accepted certificate; the
+# certificate gate's ``commands_and_versions`` and ``run_manifest_hash``
+# channels depend on them.  This list is descriptive only -- the manifest
+# itself stays fail-closed via ``__post_init__`` regardless.
+REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
+    "command_argv",
+    "git_commit",
+    "source_truth_index_sha256",
+    "input_deck_sha256",
+    "artifact_schema_version",
+    "artifact_generation_commit",
+)
+
+ARTIFACT_SCHEMA_VERSION = "first_principles_artifact_v1"
 
 
 @dataclass(frozen=True)
@@ -60,6 +78,19 @@ class FirstPrinciplesRunManifest:
     outputs: tuple[ManifestArtifact, ...] = field(default_factory=tuple)
     runtime: dict[str, str] = field(default_factory=lambda: _runtime_profile())
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Provenance fields (Codex A-8 / WP-N7).  All optional/None-tolerant so
+    # existing construction still works, but present in the schema so an
+    # external engineer can reproduce exactly what code, deck, sources, and
+    # command produced an artifact.  Empty/None provenance is honest -- it
+    # signals the manifest cannot back an accepted certificate.
+    command_argv: tuple[str, ...] | None = None
+    git_commit: str | None = None
+    dirty_worktree: bool | None = None
+    source_truth_index_sha256: str | None = None
+    source_packet_hashes: dict[str, str] = field(default_factory=dict)
+    input_deck_sha256: str | None = None
+    artifact_schema_version: str | None = None
+    artifact_generation_commit: str | None = None
     can_support_first_principles_acceptance: bool = False
     notes: str = ""
 
@@ -73,6 +104,27 @@ class FirstPrinciplesRunManifest:
         if self.can_support_first_principles_acceptance:
             raise ValueError("candidate manifests cannot support first-principles acceptance")
 
+    def missing_provenance_fields(self) -> tuple[str, ...]:
+        """Return required provenance fields that are absent or empty.
+
+        A non-empty result means the manifest cannot back an accepted
+        first-principles certificate (Codex A-8): the certificate gate's
+        ``commands_and_versions`` and ``run_manifest_hash`` channels need
+        complete command/commit provenance.
+        """
+
+        missing: list[str] = []
+        for name in REQUIRED_PROVENANCE_FIELDS:
+            value = getattr(self, name)
+            if value is None or (isinstance(value, str | tuple) and len(value) == 0):
+                missing.append(name)
+        return tuple(missing)
+
+    def has_complete_provenance(self) -> bool:
+        """True only when every required provenance field is populated."""
+
+        return not self.missing_provenance_fields()
+
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["source_index_references"] = [
@@ -80,6 +132,12 @@ class FirstPrinciplesRunManifest:
         ]
         payload["inputs"] = [artifact.to_dict() for artifact in self.inputs]
         payload["outputs"] = [artifact.to_dict() for artifact in self.outputs]
+        payload["command_argv"] = (
+            None if self.command_argv is None else list(self.command_argv)
+        )
+        payload["source_packet_hashes"] = dict(self.source_packet_hashes)
+        payload["provenance_complete"] = self.has_complete_provenance()
+        payload["missing_provenance_fields"] = list(self.missing_provenance_fields())
         payload["manifest_sha256"] = stable_manifest_hash(payload)
         return payload
 
@@ -99,9 +157,22 @@ def build_first_principles_run_manifest(
     n_steps_completed: int | None = None,
     final_time_s: float | None = None,
     metadata: Mapping[str, Any] | None = None,
+    command_argv: Sequence[str] | None = None,
+    git_commit: str | None = None,
+    dirty_worktree: bool | None = None,
+    source_truth_index_sha256: str | None = None,
+    source_packet_hashes: Mapping[str, str] | None = None,
+    input_deck_sha256: str | None = None,
+    artifact_schema_version: str | None = None,
+    artifact_generation_commit: str | None = None,
     notes: str = "",
 ) -> FirstPrinciplesRunManifest:
-    """Build a fail-closed manifest for a package-native first-principles run."""
+    """Build a fail-closed manifest for a package-native first-principles run.
+
+    Provenance arguments are optional.  When omitted the manifest still
+    constructs, but ``has_complete_provenance()`` reports ``False`` and the
+    manifest cannot back an accepted certificate (Codex A-8).
+    """
 
     telem = dict(telemetry or {})
     refs = normalize_source_index_references(source_index_references)
@@ -130,6 +201,14 @@ def build_first_principles_run_manifest(
         inputs=tuple(_coerce_artifact(item) for item in inputs or ()),
         outputs=tuple(_coerce_artifact(item) for item in outputs or ()),
         metadata=dict(metadata or {}),
+        command_argv=_optional_str_tuple(command_argv),
+        git_commit=_optional_str(git_commit),
+        dirty_worktree=None if dirty_worktree is None else bool(dirty_worktree),
+        source_truth_index_sha256=_optional_str(source_truth_index_sha256),
+        source_packet_hashes=_coerce_hash_map(source_packet_hashes),
+        input_deck_sha256=_optional_str(input_deck_sha256),
+        artifact_schema_version=_optional_str(artifact_schema_version),
+        artifact_generation_commit=_optional_str(artifact_generation_commit),
         notes=notes,
     )
 
@@ -144,9 +223,22 @@ def build_first_principles_manifest_from_hybrid_result(
     inputs: Sequence[ManifestArtifact | Mapping[str, Any]] | None = None,
     outputs: Sequence[ManifestArtifact | Mapping[str, Any]] | None = None,
     metadata: Mapping[str, Any] | None = None,
+    command_argv: Sequence[str] | None = None,
+    git_commit: str | None = None,
+    dirty_worktree: bool | None = None,
+    source_truth_index_sha256: str | None = None,
+    source_packet_hashes: Mapping[str, str] | None = None,
+    input_deck_sha256: str | None = None,
+    artifact_schema_version: str | None = None,
+    artifact_generation_commit: str | None = None,
     notes: str = "",
 ) -> FirstPrinciplesRunManifest:
-    """Build a manifest from a HybridPIC3DSimulationResult-like object."""
+    """Build a manifest from a HybridPIC3DSimulationResult-like object.
+
+    Provenance arguments are passed through to
+    :func:`build_first_principles_run_manifest` unchanged; omitting them
+    leaves the manifest non-reproducible and certificate-ineligible.
+    """
 
     telemetry = _to_mapping(getattr(result, "telemetry", result))
     shape = None
@@ -164,6 +256,14 @@ def build_first_principles_manifest_from_hybrid_result(
         grid_shape=shape,
         grid_spacing_m=spacing,
         metadata=metadata,
+        command_argv=command_argv,
+        git_commit=git_commit,
+        dirty_worktree=dirty_worktree,
+        source_truth_index_sha256=source_truth_index_sha256,
+        source_packet_hashes=source_packet_hashes,
+        input_deck_sha256=input_deck_sha256,
+        artifact_schema_version=artifact_schema_version,
+        artifact_generation_commit=artifact_generation_commit,
         notes=notes,
     )
 
@@ -186,7 +286,7 @@ def stable_manifest_hash(payload: FirstPrinciplesRunManifest | Mapping[str, Any]
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _runtime_profile() -> dict[str, str]:
@@ -195,6 +295,84 @@ def _runtime_profile() -> dict[str, str]:
         "platform": platform.platform(),
         "machine": platform.machine(),
     }
+
+
+def git_provenance() -> tuple[str | None, bool | None]:
+    """Return ``(HEAD commit, dirty-worktree flag)``; ``(None, None)`` if git is
+    unavailable. Provenance collection must fail soft, never block a run."""
+
+    import subprocess
+
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        )
+        return (commit or None), dirty
+    except (subprocess.SubprocessError, OSError):
+        return None, None
+
+
+def stamp_artifact_provenance(payload: Any) -> Any:
+    """Return ``payload`` with top-level artifact provenance fields added.
+
+    No-op for non-mapping payloads. Provenance keys are authoritative over any
+    pre-existing keys of the same name."""
+
+    if not isinstance(payload, Mapping):
+        return payload
+    commit, dirty = git_provenance()
+    return {
+        **dict(payload),
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
+        "artifact_generation_commit": commit,
+        "command_argv": list(sys.argv),
+        "dirty_worktree": dirty,
+        "generated_at_utc": _utc_now_iso(),
+    }
+
+
+def sha256_of_file(path: str | Path) -> str:
+    """Return the SHA-256 hex digest of a file's bytes.
+
+    Raises if the file is missing -- provenance hashing must fail closed
+    rather than silently substitute a hash of empty content.
+    """
+
+    resolved = Path(path)
+    digest = hashlib.sha256()
+    with resolved.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 16), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sha256_of_text(text: str) -> str:
+    """Return the SHA-256 hex digest of a UTF-8 encoded string."""
+
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sha256_of_json(payload: Mapping[str, Any]) -> str:
+    """Return a deterministic SHA-256 over a JSON-serializable mapping."""
+
+    encoded = json.dumps(
+        dict(payload),
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _coerce_artifact(value: ManifestArtifact | Mapping[str, Any]) -> ManifestArtifact:
@@ -258,3 +436,33 @@ def _optional_float_tuple(
     if len(parsed) != length:
         raise ValueError(f"expected tuple length {length}")
     return parsed
+
+
+def _optional_str(value: Any) -> str | None:
+    """Coerce to a stripped string, treating None and blanks as absent."""
+
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_str_tuple(value: Sequence[str] | None) -> tuple[str, ...] | None:
+    """Coerce a sequence to a string tuple; None stays None.
+
+    An empty input sequence is preserved as an empty tuple so the
+    manifest can record "command argv was captured but empty" distinctly
+    from "command argv was never captured" (None).
+    """
+
+    if value is None:
+        return None
+    return tuple(str(item) for item in value)
+
+
+def _coerce_hash_map(value: Mapping[str, str] | None) -> dict[str, str]:
+    """Coerce a source-packet hash mapping to a plain ``dict[str, str]``."""
+
+    if value is None:
+        return {}
+    return {str(key): str(item) for key, item in value.items()}

@@ -1,5 +1,6 @@
 import numpy as np
 
+from dpf.first_principles.certificate_gate import REQUIRED_CERTIFICATE_CHANNELS
 from dpf.first_principles.conservation import (
     ARTIFACT_STATUS_ENGINEERING_CANDIDATE,
     VALIDATION_STATUS_NOT_VALIDATION,
@@ -12,8 +13,11 @@ from dpf.first_principles.conservation import (
     compute_field_energy,
 )
 from dpf.first_principles.manifest import (
+    REQUIRED_PROVENANCE_FIELDS,
+    FirstPrinciplesRunManifest,
     ManifestArtifact,
     build_first_principles_run_manifest,
+    sha256_of_text,
     stable_manifest_hash,
 )
 
@@ -167,3 +171,158 @@ def test_first_principles_manifest_is_engineering_candidate_not_validation() -> 
     assert payload["outputs"][0]["role"] == "engineering_artifact_not_validation"
     assert len(payload["manifest_sha256"]) == 64
     assert stable_manifest_hash(payload) == payload["manifest_sha256"]
+
+
+# ---------------------------------------------------------------------------
+# Codex A-8 / WP-N7: manifest provenance fields
+# ---------------------------------------------------------------------------
+
+def _fully_provenanced_manifest() -> FirstPrinciplesRunManifest:
+    """A manifest with every required provenance field populated."""
+    return build_first_principles_run_manifest(
+        run_id="fp-provenance-run",
+        backend="package_native",
+        command_argv=(
+            "dpf",
+            "first-principles-3d",
+            "--deck-preset",
+            "pf1000_akel_16kv",
+            "--steps",
+            "2",
+        ),
+        git_commit="0123456789abcdef0123456789abcdef01234567",
+        dirty_worktree=False,
+        source_truth_index_sha256=sha256_of_text("source-truth-index-content"),
+        source_packet_hashes={
+            "hybrid_pic_3d_source": sha256_of_text("hybrid-pic-3d-packet"),
+        },
+        input_deck_sha256=sha256_of_text("pf1000-akel-deck"),
+        artifact_schema_version="first_principles_artifact_v1",
+        artifact_generation_commit="0123456789abcdef0123456789abcdef01234567",
+    )
+
+
+def test_manifest_exposes_provenance_fields() -> None:
+    """A-8: the eight provenance fields exist as first-class manifest fields
+    and survive serialization."""
+    manifest = _fully_provenanced_manifest()
+
+    # Fields exist on the dataclass instance.
+    assert manifest.command_argv == (
+        "dpf",
+        "first-principles-3d",
+        "--deck-preset",
+        "pf1000_akel_16kv",
+        "--steps",
+        "2",
+    )
+    assert manifest.git_commit == "0123456789abcdef0123456789abcdef01234567"
+    assert manifest.dirty_worktree is False
+    assert len(manifest.source_truth_index_sha256) == 64
+    assert manifest.source_packet_hashes["hybrid_pic_3d_source"]
+    assert len(manifest.input_deck_sha256) == 64
+    assert manifest.artifact_schema_version == "first_principles_artifact_v1"
+    # artifact_generation_commit is a git commit SHA (40 hex chars), not a
+    # content hash.
+    assert manifest.artifact_generation_commit == (
+        "0123456789abcdef0123456789abcdef01234567"
+    )
+
+    # Fields are serialized into the manifest payload.
+    payload = manifest.to_dict()
+    for name in (
+        "command_argv",
+        "git_commit",
+        "dirty_worktree",
+        "source_truth_index_sha256",
+        "source_packet_hashes",
+        "input_deck_sha256",
+        "artifact_schema_version",
+        "artifact_generation_commit",
+    ):
+        assert name in payload, f"provenance field {name!r} missing from payload"
+
+    # command_argv serializes as a JSON-friendly list, not a tuple.
+    assert payload["command_argv"] == [
+        "dpf",
+        "first-principles-3d",
+        "--deck-preset",
+        "pf1000_akel_16kv",
+        "--steps",
+        "2",
+    ]
+    # The hash covers the new provenance fields.
+    assert stable_manifest_hash(payload) == payload["manifest_sha256"]
+
+
+def test_manifest_construction_still_works_without_provenance() -> None:
+    """Provenance fields are optional/None-tolerant: a manifest with no
+    provenance still constructs (existing call sites must not break)."""
+    manifest = build_first_principles_run_manifest(run_id="fp-no-provenance")
+
+    assert manifest.command_argv is None
+    assert manifest.git_commit is None
+    assert manifest.dirty_worktree is None
+    assert manifest.source_truth_index_sha256 is None
+    assert manifest.source_packet_hashes == {}
+    assert manifest.input_deck_sha256 is None
+    assert manifest.artifact_schema_version is None
+    assert manifest.artifact_generation_commit is None
+    # The fail-closed contract is unchanged.
+    assert manifest.can_support_first_principles_acceptance is False
+
+
+def test_missing_provenance_blocks_certificate_acceptance() -> None:
+    """A-8: a manifest without command_argv / artifact_generation_commit
+    cannot support an accepted certificate.
+
+    The certificate gate requires the `commands_and_versions` and
+    `run_manifest_hash` channels.  Those channels cannot be filled by a
+    manifest whose provenance is incomplete, so an incomplete-provenance
+    manifest fails the provenance contract that the certificate depends on.
+    """
+    incomplete = build_first_principles_run_manifest(run_id="fp-incomplete")
+
+    missing = incomplete.missing_provenance_fields()
+    # The provenance contract reports the gap explicitly.
+    assert "command_argv" in missing
+    assert "artifact_generation_commit" in missing
+    assert set(missing) == set(REQUIRED_PROVENANCE_FIELDS)
+    assert incomplete.has_complete_provenance() is False
+
+    payload = incomplete.to_dict()
+    assert payload["provenance_complete"] is False
+    assert "command_argv" in payload["missing_provenance_fields"]
+
+    # The certificate's command/manifest channels exist precisely so this
+    # provenance must be present; an incomplete manifest cannot fill them.
+    assert "commands_and_versions" in REQUIRED_CERTIFICATE_CHANNELS
+    assert "run_manifest_hash" in REQUIRED_CERTIFICATE_CHANNELS
+
+    # A fully provenanced manifest clears the contract.
+    complete = _fully_provenanced_manifest()
+    assert complete.missing_provenance_fields() == ()
+    assert complete.has_complete_provenance() is True
+    # Even with complete provenance the manifest still refuses to claim
+    # acceptance -- provenance is necessary, never sufficient.
+    assert complete.can_support_first_principles_acceptance is False
+
+
+def test_empty_provenance_strings_are_treated_as_missing() -> None:
+    """A-8: empty/blank provenance values do not count as provenance.
+
+    An empty command_argv tuple or a whitespace-only commit must be
+    reported as missing, so blank values cannot sneak past the gate.
+    """
+    blank = build_first_principles_run_manifest(
+        run_id="fp-blank-provenance",
+        command_argv=(),
+        git_commit="   ",
+        artifact_generation_commit="",
+    )
+
+    missing = blank.missing_provenance_fields()
+    assert "command_argv" in missing
+    assert "git_commit" in missing
+    assert "artifact_generation_commit" in missing
+    assert blank.has_complete_provenance() is False

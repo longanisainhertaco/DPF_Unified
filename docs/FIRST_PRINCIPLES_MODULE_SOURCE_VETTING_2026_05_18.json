@@ -8,7 +8,7 @@
     "unsafe_claim_surfaces": []
   },
   "date": "2026_05_18",
-  "generated_at_utc": "2026-05-18T18:07:45.233451+00:00",
+  "generated_at_utc": "2026-05-18T20:06:54.287267+00:00",
   "modules": [
     {
       "active_first_principles_closure": false,
@@ -1246,6 +1246,7 @@
         "dpf.first_principles.checkpoint_restart",
         "dpf.first_principles.checkpoint_restart.build_experimental_checkpoint_restart_family_packet",
         "dpf.first_principles.checkpoint_restart.build_experimental_checkpoint_restart_packet",
+        "dpf.first_principles.checkpoint_restart.build_experimental_segmented_run_packet",
         "dpf.first_principles.compact_chinese_dpf_engineering_deck",
         "dpf.first_principles.experimental_numerics",
         "dpf.first_principles.experimental_numerics.build_experimental_numerical_family_packet",
@@ -1260,6 +1261,8 @@
         "dpf.first_principles.ir_mpf_100_engineering_deck",
         "dpf.first_principles.limiter_proof",
         "dpf.first_principles.limiter_proof.build_experimental_limiter_zero_probe_packet",
+        "dpf.first_principles.manifest",
+        "dpf.first_principles.manifest.stamp_artifact_provenance",
         "dpf.first_principles.may15_second_scope_engineering_decks",
         "dpf.first_principles.may15_user_validated_source_targets",
         "dpf.first_principles.pf1000_akel_16kv_engineering_deck",
@@ -1296,6 +1299,7 @@
         "pathlib",
         "pathlib.Path",
         "sys",
+        "tempfile",
         "typing",
         "typing.Any",
         "uvicorn"
@@ -4146,6 +4150,7 @@
       "claim_without_source": false,
       "classification": "active_physics_source_referenced",
       "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_EXTERNAL_TEAM_AUDIT_AND_NEXT_INSTRUCTIONS_2026_05_18.md",
         "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
         "docs/FIRST_PRINCIPLES_NUMERICAL_FIDELITY_SOURCE_SEARCH_2026_05_15.md"
       ],
@@ -4178,7 +4183,7 @@
       "module": "dpf.first_principles.checkpoint_restart",
       "path": "src/dpf/first_principles/checkpoint_restart.py",
       "physics_facing": true,
-      "source_reference_count": 2,
+      "source_reference_count": 3,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -4871,8 +4876,8 @@
         "dataclasses.field",
         "dataclasses.is_dataclass",
         "datetime",
+        "datetime.UTC",
         "datetime.datetime",
-        "datetime.timezone",
         "dpf.first_principles.conservation",
         "dpf.first_principles.conservation.ARTIFACT_STATUS_ENGINEERING_CANDIDATE",
         "dpf.first_principles.conservation.FirstPrinciplesConservationLedger",
@@ -4883,7 +4888,10 @@
         "dpf.first_principles.conservation.normalize_source_index_references",
         "hashlib",
         "json",
+        "pathlib",
+        "pathlib.Path",
         "platform",
+        "subprocess",
         "sys",
         "typing",
         "typing.Any",
@@ -5210,7 +5218,10 @@
         "dpf.first_principles.limiter_readiness",
         "dpf.first_principles.limiter_readiness.build_limiter_readiness_packet",
         "dpf.first_principles.manifest",
+        "dpf.first_principles.manifest.ARTIFACT_SCHEMA_VERSION",
         "dpf.first_principles.manifest.build_first_principles_manifest_from_hybrid_result",
+        "dpf.first_principles.manifest.git_provenance",
+        "dpf.first_principles.manifest.sha256_of_text",
         "dpf.first_principles.neutron_authority",
         "dpf.first_principles.neutron_authority.build_mechanism_separated_neutron_packet",
         "dpf.first_principles.numerical_fidelity",
@@ -5229,7 +5240,10 @@
         "dpf.first_principles.startup_bvp.build_startup_bvp_packet",
         "dpf.first_principles.waveform_phase",
         "dpf.first_principles.waveform_phase.build_waveform_phase_packet",
+        "hashlib",
+        "json",
         "numpy",
+        "sys",
         "typing",
         "typing.Any"
       ],
@@ -5578,6 +5592,7 @@
         "dpf.fields.DeuteriumIonizationState",
         "dpf.fields.ElectronEnergyState",
         "dpf.first_principles.runner",
+        "dpf.first_principles.runner.FirstPrinciples3DDeck",
         "dpf.first_principles.runner.build_first_principles_3d_session",
         "hashlib",
         "json",

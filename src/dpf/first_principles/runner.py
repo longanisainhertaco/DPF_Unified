@@ -9,6 +9,9 @@ evidence.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import sys
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -64,7 +67,10 @@ from dpf.first_principles.limiter_proof import (
 )
 from dpf.first_principles.limiter_readiness import build_limiter_readiness_packet
 from dpf.first_principles.manifest import (
+    ARTIFACT_SCHEMA_VERSION,
     build_first_principles_manifest_from_hybrid_result,
+    git_provenance,
+    sha256_of_text,
 )
 from dpf.first_principles.neutron_authority import (
     build_mechanism_separated_neutron_packet,
@@ -1496,6 +1502,66 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         raise ValueError(
             f"{deck.conductor_mask_mode} requires conductor_mask_status"
         )
+    _validate_reviewed_geometry_resolution(deck)
+
+
+def _validate_reviewed_geometry_resolution(deck: FirstPrinciples3DDeck) -> None:
+    """Reject a reviewed geometry-mask status on an under-resolved grid.
+
+    A ``reviewed_same_scope_geometry_mask`` status asserts the projected mask
+    resolves PF-1000 rods, the hollow anode, the insulator, and material
+    surfaces.  Coarse Cartesian projections cannot honour that claim, so the
+    status is refused before runtime when any required object is below its
+    declared minimum resolution.  Coarse masks must instead stay at
+    ``candidate_geometry_mask`` (see WP-N3, audit finding A-4).
+    """
+
+    if deck.conductor_mask_status != "reviewed_same_scope_geometry_mask":
+        return
+
+    grid = deck.grid()
+    radial_cell = min(float(grid.dx), float(grid.dy))
+
+    if (
+        deck.conductor_mask_mode == "pf1000_rod_hollow_projection"
+        or deck.device_cathode_rod_diameter_m is not None
+    ):
+        if deck.device_cathode_rod_diameter_m is None:
+            raise ValueError(
+                "reviewed_same_scope_geometry_mask requires "
+                "device_cathode_rod_diameter_m to resolve cells across a rod "
+                "diameter"
+            )
+        cells_per_rod_diameter = (
+            float(deck.device_cathode_rod_diameter_m) / radial_cell
+        )
+        if cells_per_rod_diameter < _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER:
+            raise ValueError(
+                "reviewed_same_scope_geometry_mask rejected: "
+                f"{cells_per_rod_diameter:.3f} cells across a rod diameter is "
+                f"below the declared minimum of "
+                f"{_REVIEWED_MIN_CELLS_PER_ROD_DIAMETER:.1f}; the coarse rod "
+                "projection cannot be a reviewed same-scope geometry mask"
+            )
+
+    if (
+        deck.conductor_mask_mode == "pf1000_rod_hollow_projection"
+        and deck.device_anode_inner_radius_m is None
+    ):
+        raise ValueError(
+            "reviewed_same_scope_geometry_mask rejected: hollow-anode bore is "
+            "unresolved because device_anode_inner_radius_m is not supplied"
+        )
+
+    if deck.device_insulator_material is not None and not (
+        deck.device_insulator_length_m is not None
+        and deck.device_insulator_outer_radius_m is not None
+    ):
+        raise ValueError(
+            "reviewed_same_scope_geometry_mask rejected: insulator material "
+            "surface is declared but not resolved as a material boundary "
+            "region"
+        )
 
 
 def _build_initial_plasma_profile(
@@ -2528,6 +2594,114 @@ def _pf1000_rod_hollow_conductor_mask(
     return np.broadcast_to(anode | cathode, grid.shape).copy()
 
 
+# Declared minimum resolution criterion for a reviewed PF-1000 rod mask.
+# Source dimensions: Krauz 2012 PF-1000 cathode rods are 80 mm diameter
+# (KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-
+# current-sheath-on-the-pf-1000-facility-705bcc83.md:344-347) and Akel 2021
+# states twelve 8-cm-diameter stainless-steel cathode tubes
+# (KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117).
+# A discrete circular rod cross-section cannot be represented on a Cartesian
+# grid below about two cells across its diameter; a reviewed-status mask is
+# rejected before runtime when any object falls below this.
+_REVIEWED_MIN_CELLS_PER_ROD_DIAMETER = 2.0
+
+
+def _conductor_mask_sha256(mask: np.ndarray | None, grid: Maxwell3DGrid) -> str:
+    """Return a deterministic SHA256 over the conductor mask occupancy.
+
+    The hash binds grid shape and the raw boolean occupancy bytes so two runs
+    with the same projected geometry produce an identical, comparable digest.
+    """
+
+    digest = hashlib.sha256()
+    digest.update(np.asarray(grid.shape, dtype=np.int64).tobytes())
+    if mask is None:
+        digest.update(b"no_conductor_mask")
+    else:
+        contiguous = np.ascontiguousarray(np.asarray(mask, dtype=bool))
+        digest.update(contiguous.tobytes())
+    return digest.hexdigest()
+
+
+def _conductor_mask_projection_error(
+    *,
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+    mask: np.ndarray | None,
+    is_pf1000_rod_projection: bool,
+) -> dict[str, Any]:
+    """Projection-error packet: discretized mask deviation from source dimensions.
+
+    Source dimensions are the KnowledgeReference PF-1000/Akel device values
+    carried on the deck (anode/cathode radii, anode length, rod diameter from
+    KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md:111-117,
+    262-268 and KnowledgeReference/experimental-study-of-the-structure-of-the-
+    plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:344-351).  The
+    discretization error is the half-cell quantization a Cartesian projection
+    introduces relative to those continuous source surfaces.
+    """
+
+    dx = float(grid.dx)
+    dy = float(grid.dy)
+    dz = float(grid.dz)
+    radial_cell = min(dx, dy)
+    # A continuous radial surface is quantized to the nearest cell face: the
+    # worst-case radial placement error of any electrode/rod surface is one
+    # half-cell, and the diameter error (two surfaces) is one full cell.
+    max_radial_discretization_error_m = radial_cell
+    max_axial_discretization_error_m = dz
+
+    cells_per_rod_diameter: float | None = None
+    if is_pf1000_rod_projection and deck.device_cathode_rod_diameter_m is not None:
+        cells_per_rod_diameter = (
+            float(deck.device_cathode_rod_diameter_m) / radial_cell
+        )
+
+    cells_per_anode_radius: float | None = None
+    if deck.device_anode_radius_m is not None:
+        cells_per_anode_radius = float(deck.device_anode_radius_m) / radial_cell
+
+    cells_per_anode_length: float | None = None
+    if deck.device_anode_length_m is not None:
+        cells_per_anode_length = float(deck.device_anode_length_m) / dz
+
+    insulator_length_m = (
+        deck.device_insulator_length_m
+        if deck.device_insulator_length_m is not None
+        else deck.device_insulator_outer_radius_m
+    )
+    cells_per_insulator_length: float | None = None
+    if insulator_length_m is not None:
+        cells_per_insulator_length = float(insulator_length_m) / dz
+
+    return {
+        "status": "candidate_projection_error_metrics_not_validation",
+        "mask_sha256": _conductor_mask_sha256(mask, grid),
+        "source_dimension_basis": (
+            "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633"
+            ".md:111-117,262-268; KnowledgeReference/experimental-study-of-the-"
+            "structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-"
+            "705bcc83.md:344-351"
+        ),
+        "radial_cell_size_m": radial_cell,
+        "axial_cell_size_m": dz,
+        "max_radial_discretization_error_m": max_radial_discretization_error_m,
+        "max_axial_discretization_error_m": max_axial_discretization_error_m,
+        "cells_per_rod_diameter": cells_per_rod_diameter,
+        "cells_per_anode_radius": cells_per_anode_radius,
+        "cells_per_anode_length": cells_per_anode_length,
+        "cells_per_insulator_length": cells_per_insulator_length,
+        "reviewed_min_cells_per_rod_diameter": _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER,
+        "can_support_first_principles_acceptance": False,
+        "limitations": [
+            "Discretization error is a half-cell quantization estimate, not a "
+            "reviewed convergence study against the source geometry.",
+            "Cartesian projection of axisymmetric/rod surfaces is an "
+            "engineering candidate, not an accepted same-scope geometry mask.",
+        ],
+    }
+
+
 def _conductor_mask_packet(
     *,
     deck: FirstPrinciples3DDeck,
@@ -2538,6 +2712,17 @@ def _conductor_mask_packet(
     active = 0 if mask is None else int(np.count_nonzero(mask))
     total = int(np.prod(grid.shape))
     pf1000_rod_projection = source == "candidate_pf1000_rod_hollow_projection"
+    projection_error = _conductor_mask_projection_error(
+        deck=deck,
+        grid=grid,
+        mask=mask,
+        is_pf1000_rod_projection=pf1000_rod_projection,
+    )
+    cells_per_rod = projection_error["cells_per_rod_diameter"]
+    rods_resolved = (
+        cells_per_rod is not None
+        and cells_per_rod >= _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER
+    )
     return {
         "status": "candidate_engineering_conductor_mask_not_validation",
         "source": HYBRID_PIC_3D_SOURCE,
@@ -2582,6 +2767,23 @@ def _conductor_mask_packet(
             "reviewed_same_scope_voxel_mask": (
                 deck.conductor_mask_status == "reviewed_same_scope_geometry_mask"
             ),
+        },
+        "projection_error": projection_error,
+        "resolution_review": {
+            "status": "candidate_resolution_review_not_validation",
+            "reviewed_min_cells_per_rod_diameter": (
+                _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER
+            ),
+            "cells_per_rod_diameter": projection_error["cells_per_rod_diameter"],
+            "cathode_rods_resolved": bool(rods_resolved),
+            "hollow_anode_resolved": deck.device_anode_inner_radius_m is not None,
+            "insulator_material_surface_resolved": False,
+            "material_surface_resolved": False,
+            "reviewed_status_resolution_gate_eligible": bool(
+                rods_resolved
+                and deck.device_anode_inner_radius_m is not None
+            ),
+            "can_support_first_principles_acceptance": False,
         },
         "coordinate_interpretation": (
             "centered_cartesian_full_azimuth_projection"
@@ -2667,6 +2869,10 @@ def _build_manifest(
     conservation: dict[str, Any],
     validation_packet: dict[str, Any],
 ) -> dict[str, Any]:
+    _commit, _dirty = git_provenance()
+    _deck_sha = sha256_of_text(
+        json.dumps(deck.manifest_config(), sort_keys=True, default=str)
+    )
     package_manifest = build_first_principles_manifest_from_hybrid_result(
         simulation,
         backend="package_native",
@@ -2684,6 +2890,12 @@ def _build_manifest(
             "reduced_models_used": False,
             "deck": deck.manifest_config(),
         },
+        command_argv=tuple(sys.argv),
+        git_commit=_commit,
+        dirty_worktree=_dirty,
+        input_deck_sha256=_deck_sha,
+        artifact_schema_version=ARTIFACT_SCHEMA_VERSION,
+        artifact_generation_commit=_commit,
         notes="Package-native 3D hybrid EM/PIC-fluid engineering candidate.",
     ).to_dict()
     payload = dict(package_manifest)

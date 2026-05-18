@@ -2,9 +2,9 @@
 
 Fail-closed discipline: coarse or under-resolved geometry must never be marked
 accepted/reviewed, and the geometry packet must honestly report resolution
-adequacy. Tests that assert unimplemented SSR-005 fields (mask hash,
-projection-error block) are xfail(strict=False) until Patches 1 and 2 from the
-WP-3 audit are applied.
+adequacy. WP-N3 Patches 1 and 2 are now applied: the conductor-mask packet
+emits a deterministic mask SHA256 and a projection-error block, and a reviewed
+geometry-mask status is rejected before runtime on an under-resolved grid.
 """
 
 from __future__ import annotations
@@ -25,14 +25,9 @@ def _conductor_mask_packet(shape: tuple[int, int, int]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tests that rely on SSR-005 fields NOT YET IMPLEMENTED (mask hash +
-# projection-error block).  These are xfail until WP-3 Patch 1 lands.
+# SSR-005 fields (mask hash + projection-error block) — WP-N3 Patch 1 applied.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    reason="SSR-005 mask-hash / projection-error packet not yet implemented (WP-3 Patch 1)",
-    strict=False,
-)
 def test_conductor_mask_packet_emits_mask_hash() -> None:
     """SSR-005: geometry packet must emit a mask SHA256 hash."""
     packet = _conductor_mask_packet((9, 9, 9))
@@ -42,10 +37,13 @@ def test_conductor_mask_packet_emits_mask_hash() -> None:
     assert len(proj["mask_sha256"]) == 64
 
 
-@pytest.mark.xfail(
-    reason="SSR-005 mask-hash / projection-error packet not yet implemented (WP-3 Patch 1)",
-    strict=False,
-)
+def test_conductor_mask_hash_is_deterministic() -> None:
+    """SSR-005: the same projected geometry must yield an identical digest."""
+    first = _conductor_mask_packet((9, 9, 9))["projection_error"]["mask_sha256"]
+    second = _conductor_mask_packet((9, 9, 9))["projection_error"]["mask_sha256"]
+    assert first == second
+
+
 def test_conductor_mask_packet_emits_projection_error() -> None:
     """SSR-005: geometry packet must report error-from-source-dimensions."""
     packet = _conductor_mask_packet((9, 9, 9))
@@ -117,15 +115,10 @@ def test_insulator_is_declared_but_not_resolved() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Resolution gate — currently NOT implemented (WP-3 Patch 2).
-# The deck-level BoundaryPolicy.__post_init__ only checks source_references,
-# not rod resolution.  This test is xfail until Patch 2 lands.
+# Resolution gate — WP-N3 Patch 2 applied.  A reviewed geometry-mask status is
+# rejected before runtime when rods are under-resolved on the projected grid.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    reason="Resolution gate for reviewed_same_scope_geometry_mask not yet implemented (WP-3 Patch 2)",
-    strict=False,
-)
 def test_reviewed_rod_mask_requires_resolved_rods() -> None:
     """A reviewed rod mask on an under-resolved grid must raise ValueError."""
     from dataclasses import replace

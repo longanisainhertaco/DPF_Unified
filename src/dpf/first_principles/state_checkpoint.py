@@ -14,6 +14,21 @@ EXPERIMENTAL_STATE_CHECKPOINT_STATUS = (
     "experimental_state_checkpoint_roundtrip_not_restart_acceptance"
 )
 
+# Bumped whenever the checkpoint metadata schema changes in a way that makes a
+# previously written checkpoint unsafe to load into the current loader.
+CHECKPOINT_METADATA_SCHEMA_VERSION = "first_principles_3d_checkpoint_v2"
+
+
+class CheckpointDeckMismatchError(RuntimeError):
+    """Raised when a checkpoint does not match the target deck/grid.
+
+    The message always names the mismatched dimension ('grid'/'shape'/
+    'spacing'/'circuit'/'closure'/'species'/'checkpoint') so a reviewer can
+    attribute the failure.  This error is raised BEFORE any checkpoint array is
+    written into the target session, so a mismatch can never leave a session in
+    a partially-overwritten, wrong-shape state.
+    """
+
 
 def write_terminal_state_checkpoint_roundtrip(
     *,
@@ -34,13 +49,21 @@ def write_simulation_state_checkpoint_roundtrip(
     simulation: Any,
     checkpoint_path: str | Path,
     manifest: Mapping[str, Any] | None = None,
+    deck: Any | None = None,
 ) -> dict[str, Any]:
-    """Write/read a simulation state checkpoint and compare content hashes."""
+    """Write/read a simulation state checkpoint and compare content hashes.
+
+    ``deck`` is the resolved first-principles deck used to produce ``simulation``.
+    When supplied, its grid shape/spacing, circuit mode, closure policy, and
+    particle-species identity are embedded as checkpoint metadata so the loader
+    can fail-closed on a mismatched restart target.
+    """
 
     path = Path(checkpoint_path)
     arrays, metadata = _checkpoint_arrays_and_metadata(
         simulation=simulation,
         manifest=_mapping(manifest),
+        deck=deck,
     )
     write_hash = _checkpoint_content_hash(arrays, metadata)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,6 +147,14 @@ def load_checkpoint_into_first_principles_3d_session(
 
     arrays, metadata = _read_checkpoint_payload(Path(checkpoint_path))
     session = build_first_principles_3d_session(deck)
+    # Fail-closed BEFORE any state array is written into the session: a
+    # grid/spacing/circuit/closure/species mismatch must raise here, never
+    # silently overwrite session state with wrong-shape checkpoint arrays.
+    _validate_checkpoint_against_session(
+        arrays=arrays,
+        metadata=metadata,
+        session=session,
+    )
     state = session.simulator.state
     state.E.Ex_edge = np.array(arrays["E_Ex_edge"], copy=True)
     state.E.Ey_edge = np.array(arrays["E_Ey_edge"], copy=True)
@@ -201,6 +232,7 @@ def _checkpoint_arrays_and_metadata(
     *,
     simulation: Any,
     manifest: Mapping[str, Any],
+    deck: Any | None = None,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     arrays: dict[str, np.ndarray] = {
         "E_Ex_edge": np.asarray(simulation.state.E.Ex_edge),
@@ -212,6 +244,7 @@ def _checkpoint_arrays_and_metadata(
     }
     metadata: dict[str, Any] = {
         "status": EXPERIMENTAL_STATE_CHECKPOINT_STATUS,
+        "checkpoint_metadata_schema_version": CHECKPOINT_METADATA_SCHEMA_VERSION,
         "manifest_sha256": manifest.get("manifest_sha256"),
         "telemetry_status": simulation.telemetry.status,
         "n_steps_completed": simulation.telemetry.n_steps_completed,
@@ -224,6 +257,7 @@ def _checkpoint_arrays_and_metadata(
             simulation.ionization_charge_state is not None
         ),
         "has_circuit_state": simulation.circuit is not None,
+        "deck_fingerprint": _deck_fingerprint(deck),
     }
     if simulation.electron_energy is not None:
         arrays["electron_energy_J_m3"] = np.asarray(
@@ -270,6 +304,14 @@ def _checkpoint_arrays_and_metadata(
         arrays[f"{prefix}_positions_old"] = np.asarray(species.positions_old)
         arrays[f"{prefix}_velocities"] = np.asarray(species.velocities)
         arrays[f"{prefix}_weights"] = np.asarray(species.weights)
+    # State-channel hashes: per-channel content fingerprints so the loader can
+    # verify each array round-tripped intact before assigning it into a session.
+    metadata["state_channel_shapes"] = {
+        key: list(np.asarray(value).shape) for key, value in sorted(arrays.items())
+    }
+    metadata["state_channel_hashes"] = {
+        key: _array_sha256(value) for key, value in sorted(arrays.items())
+    }
     return arrays, metadata
 
 
@@ -308,3 +350,317 @@ def _mapping(value: Any) -> dict[str, Any]:
     if isinstance(value, Mapping):
         return dict(value)
     return {}
+
+
+def _array_sha256(value: Any) -> str:
+    array = np.ascontiguousarray(np.asarray(value))
+    hasher = hashlib.sha256()
+    hasher.update(str(array.shape).encode("utf-8"))
+    hasher.update(str(array.dtype).encode("utf-8"))
+    hasher.update(array.view(np.uint8))
+    return hasher.hexdigest()
+
+
+# Deck fields that change the meaning of a checkpoint.  Restarting from a
+# checkpoint written under a different value for any of these is not equivalent
+# to one uninterrupted run, so they are fingerprinted and checked at load time.
+_DECK_FINGERPRINT_FIELDS: tuple[str, ...] = (
+    "grid_shape",
+    "grid_spacing_m",
+    "dt_s",
+    "sigma0_S_m",
+    "background_density_m3",
+    "density_floor_m3",
+    "initial_ionization_fraction",
+    "pressure_density_threshold_m3",
+    "ion_species_name",
+    "ion_mass_kg",
+    "ion_charge_C",
+    "include_hall",
+    "use_predictor_corrector",
+    "use_source_ordered_velocity_update",
+    "marder_factor_scale",
+    "marder_nondominance_threshold",
+    "ohmic_cfl_safety",
+    "apply_circuit_boundary",
+    "circuit_capacitance_F",
+    "circuit_voltage_V",
+    "circuit_inductance_H",
+    "circuit_resistance_ohm",
+    "circuit_udpf_mode",
+    "circuit_feedback_min_current_A",
+    "circuit_z_index",
+    "circuit_blend",
+    "pml_cells",
+    "pml_strength",
+    "particle_absorption_enabled",
+    "open_boundary",
+)
+
+
+def _deck_values(deck: Any | None) -> dict[str, Any]:
+    """Resolve a deck (mapping/object/None) to a first-principles deck dict."""
+
+    if deck is None:
+        return {}
+    from dpf.first_principles.runner import FirstPrinciples3DDeck
+
+    resolved = FirstPrinciples3DDeck.from_deck(deck)
+    values: dict[str, Any] = {}
+    for name in _DECK_FINGERPRINT_FIELDS:
+        value = getattr(resolved, name, None)
+        if isinstance(value, (tuple, list)):
+            values[name] = [
+                float(item) if isinstance(item, float) else item for item in value
+            ]
+        else:
+            values[name] = value
+    return values
+
+
+def _deck_fingerprint(deck: Any | None) -> dict[str, Any]:
+    """Produce a checkpoint-embeddable fingerprint of the originating deck.
+
+    ``deck_hash`` is the sha256 of the physics-relevant deck fields.  The raw
+    field values are kept alongside the hash so a loader mismatch can report
+    exactly which dimension diverged instead of an opaque hash difference.
+    """
+
+    values = _deck_values(deck)
+    if not values:
+        return {
+            "available": False,
+            "deck_hash": None,
+            "circuit_mode": None,
+            "closure_policy": None,
+            "fields": {},
+        }
+    canonical = json.dumps(values, sort_keys=True, separators=(",", ":"))
+    deck_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    closure_policy = {
+        "include_hall": values.get("include_hall"),
+        "use_predictor_corrector": values.get("use_predictor_corrector"),
+        "use_source_ordered_velocity_update": values.get(
+            "use_source_ordered_velocity_update"
+        ),
+        "marder_factor_scale": values.get("marder_factor_scale"),
+        "density_floor_m3": values.get("density_floor_m3"),
+        "pressure_density_threshold_m3": values.get("pressure_density_threshold_m3"),
+    }
+    return {
+        "available": True,
+        "deck_hash": deck_hash,
+        "circuit_mode": values.get("circuit_udpf_mode"),
+        "apply_circuit_boundary": values.get("apply_circuit_boundary"),
+        "closure_policy": closure_policy,
+        "particle_species": {
+            "ion_species_name": values.get("ion_species_name"),
+            "ion_mass_kg": values.get("ion_mass_kg"),
+            "ion_charge_C": values.get("ion_charge_C"),
+        },
+        "fields": values,
+    }
+
+
+def _validate_checkpoint_against_session(
+    *,
+    arrays: Mapping[str, np.ndarray],
+    metadata: Mapping[str, Any],
+    session: Any,
+) -> None:
+    """Fail-closed checkpoint/session compatibility gate.
+
+    Raises :class:`CheckpointDeckMismatchError` if the checkpoint's grid shape,
+    grid spacing, circuit mode, closure policy, or particle species disagree
+    with the freshly built target ``session``.  Called BEFORE any state array
+    is assigned, so a mismatch can never partially overwrite session state.
+    """
+
+    schema = metadata.get("checkpoint_metadata_schema_version")
+    if schema != CHECKPOINT_METADATA_SCHEMA_VERSION:
+        raise CheckpointDeckMismatchError(
+            "checkpoint metadata schema "
+            f"'{schema}' does not match loader schema "
+            f"'{CHECKPOINT_METADATA_SCHEMA_VERSION}'; the checkpoint predates "
+            "the current loader and cannot be safely restored"
+        )
+
+    simulator = session.simulator
+    grid = simulator.grid
+
+    # 1. Grid array shapes: every checkpoint field/B array must match the
+    #    freshly built session's array of the same name, exactly.
+    target_arrays = {
+        "E_Ex_edge": simulator.state.E.Ex_edge,
+        "E_Ey_edge": simulator.state.E.Ey_edge,
+        "E_Ez_edge": simulator.state.E.Ez_edge,
+        "B_Bx_face": simulator.state.B.Bx_face,
+        "B_By_face": simulator.state.B.By_face,
+        "B_Bz_face": simulator.state.B.Bz_face,
+    }
+    for name, target in target_arrays.items():
+        if name not in arrays:
+            raise CheckpointDeckMismatchError(
+                f"checkpoint is missing required state-channel array '{name}'"
+            )
+        checkpoint_shape = tuple(np.asarray(arrays[name]).shape)
+        target_shape = tuple(np.asarray(target).shape)
+        if checkpoint_shape != target_shape:
+            raise CheckpointDeckMismatchError(
+                f"checkpoint grid shape mismatch for channel '{name}': "
+                f"checkpoint array shape {checkpoint_shape} != target session "
+                f"grid array shape {target_shape}; the checkpoint deck grid "
+                "does not match the restart deck grid"
+            )
+
+    # 2. Grid spacing must match (same shape, different spacing is still a
+    #    physically different problem and not restart-equivalent).
+    deck_fp = metadata.get("deck_fingerprint")
+    if isinstance(deck_fp, Mapping) and deck_fp.get("available"):
+        fields = deck_fp.get("fields")
+        fields = fields if isinstance(fields, Mapping) else {}
+        ckpt_shape = fields.get("grid_shape")
+        if ckpt_shape is not None and tuple(ckpt_shape) != tuple(grid.shape):
+            raise CheckpointDeckMismatchError(
+                f"checkpoint grid shape {tuple(ckpt_shape)} != target deck "
+                f"grid shape {tuple(grid.shape)}"
+            )
+        ckpt_spacing = fields.get("grid_spacing_m")
+        if ckpt_spacing is not None:
+            target_spacing = tuple(float(v) for v in grid.spacing)
+            if not _spacing_close(tuple(ckpt_spacing), target_spacing):
+                raise CheckpointDeckMismatchError(
+                    f"checkpoint grid spacing {tuple(ckpt_spacing)} != target "
+                    f"deck grid spacing {target_spacing}"
+                )
+
+        # 3. Circuit mode and 4. closure policy must match the restart deck.
+        target_fp = _deck_fingerprint(session.deck)
+        target_fields = target_fp.get("fields", {})
+        if deck_fp.get("circuit_mode") != target_fp.get("circuit_mode"):
+            raise CheckpointDeckMismatchError(
+                f"checkpoint circuit mode '{deck_fp.get('circuit_mode')}' != "
+                f"target deck circuit mode '{target_fp.get('circuit_mode')}'"
+            )
+        if deck_fp.get("apply_circuit_boundary") != target_fp.get(
+            "apply_circuit_boundary"
+        ):
+            raise CheckpointDeckMismatchError(
+                "checkpoint circuit boundary policy "
+                f"'{deck_fp.get('apply_circuit_boundary')}' != target deck "
+                f"circuit boundary policy '{target_fp.get('apply_circuit_boundary')}'"
+            )
+        if deck_fp.get("closure_policy") != target_fp.get("closure_policy"):
+            raise CheckpointDeckMismatchError(
+                "checkpoint closure policy does not match the restart deck "
+                "closure policy (one of include_hall, predictor-corrector, "
+                "source-ordered velocity update, marder scale, density floor, "
+                "or pressure-density threshold differs)"
+            )
+        # 5. Particle species identity must match.
+        if deck_fp.get("particle_species") != target_fp.get("particle_species"):
+            raise CheckpointDeckMismatchError(
+                "checkpoint particle species "
+                f"{deck_fp.get('particle_species')} != target deck particle "
+                f"species {target_fp.get('particle_species')}"
+            )
+        # 6. Full physics-deck hash: any remaining divergence is attributable.
+        if deck_fp.get("deck_hash") != target_fp.get("deck_hash"):
+            divergent = _first_divergent_field(
+                deck_fp.get("fields", {}),
+                target_fields,
+            )
+            raise CheckpointDeckMismatchError(
+                "checkpoint deck hash does not match the restart deck; first "
+                f"divergent physics field: {divergent}"
+            )
+
+    # 7. Particle-species count/identity check against the live session PIC.
+    ckpt_species = metadata.get("particle_species")
+    ckpt_species = ckpt_species if isinstance(ckpt_species, list) else []
+    session_species = list(getattr(simulator.pic, "species", []))
+    if len(ckpt_species) != len(session_species):
+        raise CheckpointDeckMismatchError(
+            f"checkpoint species count {len(ckpt_species)} != target session "
+            f"species count {len(session_species)}"
+        )
+    for entry in ckpt_species:
+        if not isinstance(entry, Mapping):
+            continue
+        index = int(entry["index"])
+        if index >= len(session_species):
+            raise CheckpointDeckMismatchError(
+                "checkpoint species index "
+                f"{index} exceeds target session species count "
+                f"{len(session_species)}"
+            )
+        target_species = session_species[index]
+        if str(entry.get("name")) != str(target_species.name):
+            raise CheckpointDeckMismatchError(
+                f"checkpoint species[{index}] name '{entry.get('name')}' != "
+                f"target session species name '{target_species.name}'"
+            )
+        if not _scalar_close(entry.get("mass"), float(target_species.mass)):
+            raise CheckpointDeckMismatchError(
+                f"checkpoint species[{index}] mass {entry.get('mass')} != "
+                f"target session species mass {float(target_species.mass)}"
+            )
+        if not _scalar_close(entry.get("charge"), float(target_species.charge)):
+            raise CheckpointDeckMismatchError(
+                f"checkpoint species[{index}] charge {entry.get('charge')} != "
+                f"target session species charge {float(target_species.charge)}"
+            )
+
+    # 8. State-channel content hashes: confirm the npz arrays round-tripped.
+    declared_hashes = metadata.get("state_channel_hashes")
+    if isinstance(declared_hashes, Mapping):
+        for name, expected in declared_hashes.items():
+            if name not in arrays:
+                raise CheckpointDeckMismatchError(
+                    f"checkpoint declares state channel '{name}' but the array "
+                    "is absent from the checkpoint payload"
+                )
+            actual = _array_sha256(arrays[name])
+            if actual != expected:
+                raise CheckpointDeckMismatchError(
+                    f"checkpoint state-channel '{name}' content hash mismatch; "
+                    "the checkpoint payload is corrupt or was modified"
+                )
+
+
+def _spacing_close(
+    left: tuple[float, ...],
+    right: tuple[float, ...],
+) -> bool:
+    if len(left) != len(right):
+        return False
+    return all(
+        abs(float(a) - float(b)) <= 1e-12 + 1e-9 * abs(float(b))
+        for a, b in zip(left, right, strict=True)
+    )
+
+
+def _scalar_close(left: Any, right: Any) -> bool:
+    if left is None or right is None:
+        return left is right
+    try:
+        a = float(left)
+        b = float(right)
+    except (TypeError, ValueError):
+        return left == right
+    return abs(a - b) <= 1e-12 + 1e-9 * abs(b)
+
+
+def _first_divergent_field(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any],
+) -> str:
+    for name in _DECK_FINGERPRINT_FIELDS:
+        lv = left.get(name)
+        rv = right.get(name)
+        if isinstance(lv, float) or isinstance(rv, float):
+            if not _scalar_close(lv, rv):
+                return f"{name} ({lv} != {rv})"
+        elif lv != rv:
+            return f"{name} ({lv} != {rv})"
+    return "unknown_field"

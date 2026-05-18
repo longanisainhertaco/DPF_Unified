@@ -290,24 +290,16 @@ def test_electron_density_floor_is_telemetered_in_source_workflow() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason=(
-        "B-WP4-6: load_checkpoint_into_first_principles_3d_session has no "
-        "grid/deck shape validation -- a mismatch silently writes wrong-shape "
-        "arrays rather than returning a blocker or raising with 'grid'/'shape' "
-        "in the message.  Fix: add shape assertion in the loader before "
-        "writing state arrays."
-    ),
-    strict=False,
-)
 def test_checkpoint_load_into_mismatched_grid_fails_attributably(
     tmp_path: Path,
 ) -> None:
-    """REGRESSION GUARD for B-WP4-6.
+    """REGRESSION GUARD for B-WP4-6 (closed by WP-N4 loader validation).
 
-    load_checkpoint_into_first_principles_3d_session writes field arrays with
-    no shape check.  A deck/grid mismatch must raise with an attributable
-    message containing 'grid', 'shape', or 'checkpoint' -- not a generic
+    load_checkpoint_into_first_principles_3d_session now validates checkpoint
+    metadata (grid shape/spacing, circuit mode, closure policy, particle
+    species, state-channel hashes) against the restart deck BEFORE writing any
+    state array.  A deck/grid mismatch must raise an attributable error whose
+    message contains 'grid', 'shape', or 'checkpoint' -- not a generic
     ValueError deep in the stepper.
     """
     from dpf.first_principles.state_checkpoint import (
@@ -342,3 +334,101 @@ def test_checkpoint_load_into_mismatched_grid_fails_attributably(
         f"mismatch error message '{exc_info.value}' does not mention "
         "'grid', 'shape', or 'checkpoint' -- the failure is not attributable"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 7: checkpoint loaded under a mismatched circuit/closure deck fails
+# ---------------------------------------------------------------------------
+
+
+def test_checkpoint_load_into_mismatched_closure_fails_attributably(
+    tmp_path: Path,
+) -> None:
+    """A same-grid but different-closure restart deck must also fail closed.
+
+    Grid shape alone is not enough: restarting a checkpoint under a different
+    circuit mode or closure policy is not equivalent to one uninterrupted run.
+    """
+    from dpf.first_principles.state_checkpoint import (
+        CheckpointDeckMismatchError,
+        load_checkpoint_into_first_principles_3d_session,
+        write_simulation_state_checkpoint_roundtrip,
+    )
+
+    writer_deck = _smoke_deck(n_steps=2)
+    writer_session = build_first_principles_3d_session(writer_deck)
+    first_seg = writer_session.run_segment(2)
+
+    ckpt = tmp_path / "closure_mismatch.npz"
+    write_simulation_state_checkpoint_roundtrip(
+        simulation=first_seg,
+        checkpoint_path=ckpt,
+        deck=writer_deck,
+    )
+
+    # Same grid, different closure policy (Hall term toggled on).
+    mismatched_deck = FirstPrinciples3DDeck.from_deck(
+        {"n_steps": 2, "seed": 0, "include_hall": True}
+    )
+    with pytest.raises(CheckpointDeckMismatchError) as exc_info:
+        load_checkpoint_into_first_principles_3d_session(
+            checkpoint_path=ckpt,
+            deck=mismatched_deck,
+        )
+    assert "closure" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# Test 8: segmented checkpointed run equals one uninterrupted run
+# ---------------------------------------------------------------------------
+
+
+def test_segmented_run_equals_uninterrupted_and_preserves_ledgers(
+    tmp_path: Path,
+) -> None:
+    """WP-N4: the segmented checkpointed run must equal one uninterrupted run.
+
+    A segmented run that drops a state channel, double-counts a cumulative
+    ledger, or diverges across a checkpoint boundary would be caught here.
+    """
+    from dpf.first_principles.checkpoint_restart import (
+        build_experimental_segmented_run_packet,
+    )
+
+    n_steps = 6
+    deck = _smoke_deck(n_steps=n_steps)
+    packet = build_experimental_segmented_run_packet(
+        deck=deck,
+        segment_steps=2,
+        checkpoint_dir=tmp_path / "segments",
+        verify_against_uninterrupted=True,
+    )
+
+    # The horizon ran in 3 segments and completed the full step budget.
+    assert packet["segment_count"] == 3
+    assert packet["total_steps_completed"] == n_steps
+
+    # Every segment boundary checkpoint round-tripped bit-identically.
+    assert packet["all_segment_checkpoint_roundtrips_match"] is True
+
+    # Cumulative ledgers cover the FULL horizon, not a single segment.
+    ledgers = packet["cumulative_ledgers"]
+    assert ledgers["limiter_steps_observed"] == n_steps, (
+        "cumulative limiter ledger did not cover the full segmented horizon"
+    )
+    assert ledgers["covers_full_horizon"] is True
+    if ledgers["cumulative_j_dot_e_step_count"] > 0:
+        assert ledgers["cumulative_j_dot_e_step_count"] == n_steps, (
+            "cumulative J.E step count was not accumulated across segments"
+        )
+
+    # Equivalence: the segmented run matches the uninterrupted run exactly.
+    equivalence = packet["equivalence"]
+    assert equivalence["state_fingerprints_match"] is True, (
+        "segmented run diverged from the uninterrupted run -- non-equivalent "
+        "segmented integration or an unsaved state channel"
+    )
+    assert equivalence["tracked_observables_match_exactly"] is True
+
+    # The probe must never claim acceptance.
+    assert packet["can_support_first_principles_acceptance"] is False

@@ -688,7 +688,7 @@ def _source_truth_index_markdown(index: Mapping[str, Any]) -> str:
         "| Capability | Records | Direct | Representative source paths |",
         "| --- | ---: | ---: | --- |",
     ])
-    for tag, packet in capability_index.items():
+    for _tag, packet in capability_index.items():
         reps = "<br>".join(
             f"`{record['path']}`"
             for record in packet["representative_records"][:3]
