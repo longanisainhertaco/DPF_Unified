@@ -43,6 +43,15 @@ class HybridPIC3DSimulationTelemetry:
     history_stride: int = 1
     max_step_results: int | None = None
     history_summary: list[dict[str, Any]] = field(default_factory=list)
+    cumulative_j_dot_e_work_J: float | None = None
+    cumulative_j_dot_e_step_count: int = 0
+    cumulative_j_dot_e_status: str = "candidate_cumulative_volume_j_dot_e_not_validation"
+    cumulative_active_port_work_J: float | None = None
+    cumulative_active_port_step_count: int = 0
+    cumulative_active_port_status: str = (
+        "candidate_cumulative_terminal_i_udpf_not_validation"
+    )
+    udpf_source_counts: dict[str, int] = field(default_factory=dict)
     limiter_activation_summary: dict[str, Any] | None = None
     state_fingerprint: dict[str, Any] | None = None
     continuation_state: dict[str, Any] | None = None
@@ -111,6 +120,7 @@ class HybridPIC3DSimulator:
         charge_state_Z: float = 1.0,
         electron_temperature_floor_K: float = 1.0,
         heat_flux_subcycles_max: int = 1000,
+        pressure_density_threshold_m3: float = 0.0,
         use_source_ordered_velocity_update: bool = False,
         circuit_state: CircuitState | None = None,
         apply_circuit_boundary: bool = False,
@@ -157,6 +167,11 @@ class HybridPIC3DSimulator:
         ).total_energy_J
         step_results: list[HybridPIC3DLoopResult] = []
         history_summary: list[dict[str, Any]] = []
+        cumulative_j_dot_e_work_J = 0.0
+        cumulative_j_dot_e_step_count = 0
+        cumulative_active_port_work_J = 0.0
+        cumulative_active_port_step_count = 0
+        udpf_source_counts: dict[str, int] = {}
         limiter_activation_summary = _empty_limiter_activation_summary()
         circuit_records: list[dict[str, Any]] = []
         circuit_history_cap = _circuit_history_record_cap(max_step_results)
@@ -190,12 +205,25 @@ class HybridPIC3DSimulator:
                 and self.circuit_boundary is not None
                 and current_circuit_state is not None
             ):
+                lagged_j_dot_e_power_W = _optional_float(
+                    None
+                    if lagged_field_work is None
+                    else lagged_field_work.get("j_dot_e_power_W")
+                )
                 udpf_value, udpf_source = _circuit_udpf_for_step(
                     mode=circuit_udpf_mode,
                     input_udpf_V=float(udpf_values[step_index]),
                     lagged_field_work=lagged_field_work,
                     current_A=current_circuit_state.current_A,
                     min_current_A=circuit_feedback_min_current_A,
+                )
+                active_port_power_W = float(
+                    current_circuit_state.current_A * udpf_value
+                )
+                cumulative_active_port_work_J += active_port_power_W * float(dt_s)
+                cumulative_active_port_step_count += 1
+                udpf_source_counts[udpf_source] = (
+                    int(udpf_source_counts.get(udpf_source, 0)) + 1
                 )
                 self.state, boundary_telemetry = (
                     self.circuit_boundary.apply_injection_port_boundary(
@@ -212,11 +240,27 @@ class HybridPIC3DSimulator:
                         udpf_V=udpf_value,
                     )
                 )
+                voltage_balance = _circuit_voltage_balance(
+                    self.circuit_boundary,
+                    current_circuit_state,
+                    udpf_V=udpf_value,
+                    dI_dt_A_s=circuit_step_telemetry.dI_dt_A_s,
+                    lagged_j_dot_e_power_W=lagged_j_dot_e_power_W,
+                )
                 circuit_record = {
                     "step_index": absolute_step_index,
                     "udpf_source": udpf_source,
                     "requested_udpf_mode": circuit_udpf_mode,
                     "feedback_min_current_A": float(circuit_feedback_min_current_A),
+                    "active_port_power_W": active_port_power_W,
+                    "active_port_work_J": active_port_power_W * float(dt_s),
+                    "active_port_power_sign": (
+                        "positive_I_udpf_is_power_drawn_from_generator_by_DPF"
+                    ),
+                    "active_port_time_centering": (
+                        "begin_step_current_times_begin_step_udpf_candidate"
+                    ),
+                    "voltage_balance": voltage_balance,
                     "boundary": boundary_telemetry.to_dict(),
                     "circuit_step": circuit_step_telemetry.to_dict(),
                 }
@@ -246,6 +290,7 @@ class HybridPIC3DSimulator:
                 charge_state_Z=charge_state_Z,
                 electron_temperature_floor_K=electron_temperature_floor_K,
                 heat_flux_subcycles_max=heat_flux_subcycles_max,
+                pressure_density_threshold_m3=pressure_density_threshold_m3,
                 use_source_ordered_velocity_update=use_source_ordered_velocity_update,
             )
             self.state = step.state
@@ -254,6 +299,14 @@ class HybridPIC3DSimulator:
             if step.ionization_charge_state is not None:
                 current_ionization_state = step.ionization_charge_state
             lagged_field_work = step.field_step.telemetry.field_work
+            j_dot_e_power_W = _optional_float(
+                None if lagged_field_work is None else lagged_field_work.get(
+                    "j_dot_e_power_W"
+                )
+            )
+            if j_dot_e_power_W is not None:
+                cumulative_j_dot_e_work_J += j_dot_e_power_W * float(dt_s)
+                cumulative_j_dot_e_step_count += 1
             n_steps_completed = step_index + 1
             last_step_telemetry = step.telemetry.to_dict()
             _record_limiter_activation(
@@ -273,14 +326,19 @@ class HybridPIC3DSimulator:
                 _append_capped(step_results, step, max_step_results)
                 _append_capped(
                     history_summary,
-                    _step_history_summary(
-                        step_index=absolute_step_index,
-                        dt_s=dt_s,
-                        telemetry=last_step_telemetry,
-                        diagnostics=step_diagnostics.to_dict(),
-                    ),
-                    max_step_results,
-                )
+                        _step_history_summary(
+                            step_index=absolute_step_index,
+                            dt_s=dt_s,
+                            telemetry=last_step_telemetry,
+                            diagnostics=step_diagnostics.to_dict(),
+                            circuit_record=last_circuit_record,
+                        ),
+                        max_step_results,
+                    )
+            blocked_source_reason = _blocked_source_term_reason(last_step_telemetry)
+            if blocked_source_reason is not None:
+                stop_reason = blocked_source_reason
+                break
             if abort_on_nonfinite and not finite_state["all_finite"]:
                 stop_reason = "aborted_nonfinite_state"
                 break
@@ -341,7 +399,7 @@ class HybridPIC3DSimulator:
                 None
                 if target_time_s is None
                 else float(n_steps_completed * dt_s) >= float(target_time_s)
-                and stop_reason != "aborted_nonfinite_state"
+                and not stop_reason.startswith("aborted_")
             ),
             last_completed_step_index=(
                 None
@@ -354,6 +412,19 @@ class HybridPIC3DSimulator:
                 None if max_step_results is None else int(max_step_results)
             ),
             history_summary=history_summary,
+            cumulative_j_dot_e_work_J=(
+                cumulative_j_dot_e_work_J
+                if cumulative_j_dot_e_step_count > 0
+                else None
+            ),
+            cumulative_j_dot_e_step_count=cumulative_j_dot_e_step_count,
+            cumulative_active_port_work_J=(
+                cumulative_active_port_work_J
+                if cumulative_active_port_step_count > 0
+                else None
+            ),
+            cumulative_active_port_step_count=cumulative_active_port_step_count,
+            udpf_source_counts=dict(sorted(udpf_source_counts.items())),
             limiter_activation_summary=limiter_activation_summary,
             state_fingerprint=_state_fingerprint(
                 self.state,
@@ -399,7 +470,7 @@ def hybrid_simulator_candidate_evidence(
     return {
         "passed": (
             telemetry.status == "candidate_engineering_3d_hybrid_pic_simulation"
-            and telemetry.stop_reason != "aborted_nonfinite_state"
+            and not telemetry.stop_reason.startswith("aborted_")
         ),
         "status": "candidate",
         "capability": "true_3d_dimensionality",
@@ -463,7 +534,30 @@ def _circuit_udpf_for_step(
     if abs(float(current_A)) <= float(min_current_A):
         return float(input_udpf_V), "input_sequence_fallback_low_current"
     power_W = float(lagged_field_work.get("j_dot_e_power_W", 0.0))
-    return float(-power_W / float(current_A)), "candidate_lagged_volume_j_dot_e"
+    if power_W < 0.0:
+        return (
+            float(input_udpf_V),
+            "input_sequence_fallback_negative_j_dot_e_active_port_blocked",
+        )
+    return float(power_W / float(current_A)), "candidate_lagged_volume_j_dot_e"
+
+
+def _blocked_source_term_reason(telemetry: dict[str, Any] | None) -> str | None:
+    if telemetry is None:
+        return None
+    electron_energy = telemetry.get("electron_energy")
+    if not isinstance(electron_energy, dict):
+        return None
+    electron_status = str(electron_energy.get("status", ""))
+    if electron_status.startswith("blocked_"):
+        return "aborted_blocked_electron_energy_closure"
+    heat_flux = electron_energy.get("heat_flux")
+    if not isinstance(heat_flux, dict):
+        return None
+    status = str(heat_flux.get("status", ""))
+    if status.startswith("blocked_"):
+        return "aborted_blocked_electron_heat_flux"
+    return None
 
 
 def _circuit_current_history(
@@ -489,6 +583,7 @@ def _circuit_current_history(
         "time_us": float(first_index * dt_s * 1.0e6),
         "current_A": float(first_step.get("current_A", 0.0)),
         "source": "candidate_engineering_rlc_circuit_step",
+        "voltage_balance": first_record.get("voltage_balance"),
     })
 
     for record in records:
@@ -503,6 +598,7 @@ def _circuit_current_history(
             "current_A": float(step.get("next_current_A", 0.0)),
             "source": str(step.get("status", "candidate_engineering_rlc_circuit_step")),
             "udpf_source": str(record.get("udpf_source", "not_recorded")),
+            "voltage_balance": record.get("voltage_balance"),
         })
 
     if final_record is not None and (
@@ -521,9 +617,47 @@ def _circuit_current_history(
             "current_A": float(step.get("next_current_A", 0.0)),
             "source": str(step.get("status", "candidate_engineering_rlc_circuit_step")),
             "udpf_source": str(final_record.get("udpf_source", "not_recorded")),
+            "voltage_balance": final_record.get("voltage_balance"),
         })
 
     return history
+
+
+def _circuit_voltage_balance(
+    boundary: CircuitMagneticBoundaryDrive,
+    state: CircuitState,
+    *,
+    udpf_V: float,
+    dI_dt_A_s: float,
+    lagged_j_dot_e_power_W: float | None,
+) -> dict[str, Any]:
+    params = boundary.parameters
+    resistive_drop_V = float(params.resistance_ohm * state.current_A)
+    charge_drop_V = float(state.charge_C / params.capacitance_F)
+    net_drive_voltage_V = float(
+        params.voltage_V - resistive_drop_V - charge_drop_V - float(udpf_V)
+    )
+    return {
+        "status": "candidate_circuit_voltage_balance_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": "740-792",
+        "bank_voltage_V": float(params.voltage_V),
+        "resistive_drop_V": resistive_drop_V,
+        "charge_drop_V": charge_drop_V,
+        "udpf_V": float(udpf_V),
+        "net_drive_voltage_V": net_drive_voltage_V,
+        "current_A": float(state.current_A),
+        "charge_C": float(state.charge_C),
+        "inductance_H": float(params.inductance_H),
+        "dI_dt_A_s": float(dI_dt_A_s),
+        "L_dI_dt_V": float(params.inductance_H * dI_dt_A_s),
+        "lagged_j_dot_e_power_W": lagged_j_dot_e_power_W,
+        "active_port_power_W": float(state.current_A * float(udpf_V)),
+        "active_port_power_sign": (
+            "positive_I_udpf_is_power_drawn_from_generator_by_DPF"
+        ),
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def _retain_step(step_index: int, history_stride: int) -> bool:
@@ -553,6 +687,7 @@ def _empty_limiter_activation_summary() -> dict[str, Any]:
         "steps_observed": 0,
         "activation_counts": {
             "conductivity_ohmic_cfl_limited_steps": 0,
+            "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps": 0,
             "conductivity_density_blend_applied_steps": 0,
             "marder_correction_steps": 0,
             "marder_dominant_correction_steps": 0,
@@ -601,6 +736,13 @@ def _record_limiter_activation(
             cfl_limited_fraction,
         )
         if cfl_limited_fraction > 0.0:
+            counts[
+                "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps"
+            ] += 1
+        if (
+            cfl_limited_fraction > 0.0
+            and conductivity.get("ohmic_cfl_limit_applied") is True
+        ):
             counts["conductivity_ohmic_cfl_limited_steps"] += 1
     if conductivity.get("density_blend_applied") is True:
         counts["conductivity_density_blend_applied_steps"] += 1
@@ -788,10 +930,21 @@ def _step_history_summary(
     dt_s: float,
     telemetry: dict[str, Any],
     diagnostics: dict[str, Any],
+    circuit_record: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     electron_energy = telemetry.get("electron_energy")
     if not isinstance(electron_energy, dict):
         electron_energy = {}
+    heat_flux = (
+        electron_energy.get("heat_flux")
+        if isinstance(electron_energy.get("heat_flux"), dict)
+        else {}
+    )
+    closure_validity = (
+        electron_energy.get("closure_validity")
+        if isinstance(electron_energy.get("closure_validity"), dict)
+        else {}
+    )
     kinetic_yield = telemetry.get("kinetic_yield")
     if not isinstance(kinetic_yield, dict):
         kinetic_yield = {}
@@ -821,6 +974,18 @@ def _step_history_summary(
         if isinstance(telemetry.get("ionization_charge_state"), dict)
         else {}
     )
+    circuit_step = (
+        circuit_record.get("circuit_step")
+        if isinstance(circuit_record, dict)
+        and isinstance(circuit_record.get("circuit_step"), dict)
+        else {}
+    )
+    voltage_balance = (
+        circuit_record.get("voltage_balance")
+        if isinstance(circuit_record, dict)
+        and isinstance(circuit_record.get("voltage_balance"), dict)
+        else None
+    )
     return {
         "step_index": int(step_index),
         "time_s": float((step_index + 1) * dt_s),
@@ -844,10 +1009,34 @@ def _step_history_summary(
         "electron_temperature_max_K": _optional_float(
             electron_energy.get("max_electron_temperature_K")
         ),
+        "electron_energy_status": electron_energy.get("status"),
+        "electron_closure_validity_status": closure_validity.get("status"),
+        "electron_current_drift_to_c": _optional_float(
+            closure_validity.get("current_drift_to_c")
+        ),
+        "electron_thermal_speed_to_c": _optional_float(
+            closure_validity.get("thermal_speed_to_c")
+        ),
+        "electron_heat_flux_status": heat_flux.get("status"),
+        "electron_heat_flux_required_subcycles": _optional_float(
+            heat_flux.get("required_subcycles")
+        ),
+        "electron_heat_flux_dt_stable_s": _optional_float(
+            heat_flux.get("dt_stable_s")
+        ),
         "cumulative_neutrons": _optional_float(
             kinetic_yield.get("cumulative_neutrons")
         ),
         "j_dot_e_power_W": _optional_float(field_work.get("j_dot_e_power_W")),
+        "terminal_current_A": _optional_float(circuit_step.get("current_A")),
+        "terminal_udpf_V": _optional_float(circuit_step.get("udpf_V")),
+        "terminal_dI_dt_A_s": _optional_float(circuit_step.get("dI_dt_A_s")),
+        "circuit_udpf_source": (
+            None
+            if not isinstance(circuit_record, dict)
+            else circuit_record.get("udpf_source")
+        ),
+        "circuit_voltage_balance": voltage_balance,
         "source_backed_sigma_min_S_m": _optional_float(
             source_backed_transport.get("min_sigma_S_m")
         ),
@@ -873,6 +1062,16 @@ def _step_history_summary(
             None
             if conductivity.get("ohmic_cfl_limit_applied") is None
             else bool(conductivity.get("ohmic_cfl_limit_applied"))
+        ),
+        "ohm_time_centering_theta": _optional_float(
+            field_step.get("ohm_solver", {}).get("ohm_time_centering_theta")
+            if isinstance(field_step.get("ohm_solver"), dict)
+            else None
+        ),
+        "electric_update_scheme": (
+            field_step.get("ohm_solver", {}).get("electric_update_scheme")
+            if isinstance(field_step.get("ohm_solver"), dict)
+            else None
         ),
         "ionization_fraction_min": _optional_float(
             ionization.get("min_ionization_fraction")

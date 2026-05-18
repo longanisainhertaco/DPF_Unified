@@ -7,7 +7,10 @@ from dpf.first_principles import (
     pf1000_akel_16kv_engineering_deck,
 )
 from dpf.first_principles.runner import FirstPrinciples3DDeck
-from dpf.first_principles.startup_bvp import build_startup_bvp_packet
+from dpf.first_principles.startup_bvp import (
+    REQUIRED_STARTUP_CHANNELS,
+    build_startup_bvp_packet,
+)
 
 
 def test_candidate_startup_breakdown_audit_computes_pf1000_without_promotion() -> None:
@@ -73,6 +76,75 @@ def test_startup_bvp_packet_treats_breakdown_audit_as_candidate_only() -> None:
     assert packet["candidate_breakdown_audit"]["status"] == (
         "candidate_civ_paschen_breakdown_audit_engineering_only"
     )
+
+
+def test_reviewed_imported_pic_startup_payload_can_close_packet() -> None:
+    payload = {
+        "mode": "imported_pic_sheath_state",
+        "evidence_status": "reviewed",
+        "source_scope": "same_scope_pic_import_fixture",
+        "can_support_whole_shot_acceptance": True,
+        "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+        "mesh_mapping": {"status": "reviewed"},
+        "particles": {"status": "reviewed"},
+        "electron_density": {"units": "m^-3"},
+        "ion_density": {"units": "m^-3"},
+        "electron_temperature": {"units": "K"},
+        "ion_temperature": {"units": "K"},
+        "velocity": {"units": "m/s"},
+        "electric_field": {"units": "V/m"},
+        "magnetic_field": {"units": "T"},
+        "current_density": {"units": "A/m^2"},
+        "charge_consistency": {"max_residual": 0.0},
+        "boundary_labels": {"status": "reviewed"},
+        "source_references": [{"path": "KnowledgeReference/pic-import.md"}],
+        "hashes": {"payload": "sha256:test"},
+        "units": {"system": "SI"},
+        "conservation_checks": {"status": "reviewed"},
+    }
+
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "imported_pic_sheath_state",
+            "evidence_status": "reviewed",
+            "source_scope": "same_scope_pic_import_fixture",
+            "can_support_whole_shot_acceptance": True,
+            "startup_payload": payload,
+        }
+    )
+
+    assert packet["status"] == "accepted_startup_bvp_packet"
+    assert packet["whole_shot_startup_blocked"] is False
+    assert packet["startup_payload_review"]["status"] == (
+        "reviewed_startup_payload_complete"
+    )
+    assert packet["can_support_first_principles_acceptance"] is True
+
+
+def test_incomplete_imported_pic_startup_payload_stays_blocked() -> None:
+    payload = {
+        "mode": "imported_pic_sheath_state",
+        "evidence_status": "reviewed",
+        "source_scope": "same_scope_pic_import_fixture",
+        "can_support_whole_shot_acceptance": True,
+        "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+        "mesh_mapping": {"status": "reviewed"},
+    }
+
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "imported_pic_sheath_state",
+            "evidence_status": "reviewed",
+            "source_scope": "same_scope_pic_import_fixture",
+            "can_support_whole_shot_acceptance": True,
+            "startup_payload": payload,
+        }
+    )
+
+    assert packet["status"] == "blocked_startup_bvp_packet_not_available"
+    assert packet["whole_shot_startup_blocked"] is True
+    assert packet["startup_payload_review"]["status"] == "startup_payload_incomplete"
+    assert "particles" in packet["startup_payload_review"]["missing_payload_fields"]
 
 
 def test_package_runner_attaches_startup_breakdown_audit_to_pf1000_deck() -> None:

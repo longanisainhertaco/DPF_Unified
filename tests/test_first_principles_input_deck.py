@@ -5,6 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from dpf import constants as dpf_constants
 from dpf.first_principles import (
     FirstPrinciplesInputDeck,
     compact_chinese_dpf_engineering_deck,
@@ -16,9 +17,14 @@ from dpf.first_principles import (
     pf1000_akel_16kv_engineering_deck,
     willenborg_hendricks_engineering_deck,
 )
+from dpf.first_principles.runner import FirstPrinciples3DDeck
 
 SOURCE_SHA = "a" * 64
 TARGET_SHA = "b" * 64
+
+
+def ideal_gas_density(pressure_Pa: float, temperature_K: float) -> float:
+    return pressure_Pa / (dpf_constants.k_B * temperature_K)
 
 
 def minimal_3d_deck_payload() -> dict[str, object]:
@@ -211,6 +217,43 @@ def test_startup_policy_preserves_source_truth_blocker_fields() -> None:
     assert deck.startup.missing_channels == ("breakdown_model", "sheath_liftoff")
 
 
+def test_pf1000_deck_uses_candidate_breakdown_initials_without_promotion() -> None:
+    deck = pf1000_akel_16kv_engineering_deck(n_steps=1, shape=(5, 5, 5))
+    runtime_deck = FirstPrinciples3DDeck.from_deck(deck)
+
+    assert deck.startup.initial_ionization_fraction == pytest.approx(0.1)
+    assert deck.startup.electron_temperature_K == pytest.approx(23209.036243100163)
+    assert deck.startup.can_support_whole_shot_acceptance is False
+    assert deck.startup.startup_payload["candidate_breakdown_initials"]["status"] == (
+        "candidate_civ_paschen_initials_engineering_only"
+    )
+    assert deck.startup.mode == "seeded_layer"
+    assert deck.startup.source_scope == (
+        "pf1000_akel_candidate_paschen_insulator_seed_layer_not_startup_bvp"
+    )
+    assert deck.startup.initial_electric_field_V_m == (0.0, 0.0, 0.0)
+    assert deck.startup.startup_payload["profile_type"] == "annular_axial_sheath"
+    assert "source-circuit state" in deck.startup.startup_payload[
+        "initial_electric_field_note"
+    ]
+    assert deck.startup.startup_payload["vacuum_ionization_fraction"] == 0.0
+    assert deck.startup.startup_payload["sheath_ionization_fraction"] == pytest.approx(
+        0.1
+    )
+    assert (
+        deck.startup.startup_payload["sheath_z_max_m"]
+        >= deck.device.insulator_length_m
+    )
+    assert "first non-PML axial cell" in deck.startup.startup_payload[
+        "sheath_projection_note"
+    ]
+    assert runtime_deck.initial_ionization_fraction == pytest.approx(0.1)
+    assert runtime_deck.initial_E_x_V_m == pytest.approx(0.0)
+    assert runtime_deck.electron_temperature_K == pytest.approx(
+        deck.startup.electron_temperature_K
+    )
+
+
 def test_seeded_layer_startup_cannot_claim_whole_shot_acceptance() -> None:
     payload = minimal_3d_deck_payload()
     payload["startup_policy"] = {
@@ -232,7 +275,7 @@ def test_imported_pic_startup_requires_review_before_acceptance() -> None:
         "source_reference_ids": ["pf1000_geometry"],
     }
 
-    with pytest.raises(ValidationError, match="only after evidence_status='reviewed'"):
+    with pytest.raises(ValidationError, match="only after reviewed or accepted"):
         FirstPrinciplesInputDeck.from_dict(payload)
 
 
@@ -271,7 +314,11 @@ def test_pf1000_akel_engineering_deck_is_source_scoped_and_nonpromoting() -> Non
     assert deck.circuit.resistance_ohm == pytest.approx(6.1e-3)
     assert deck.circuit.initial_charge_C == pytest.approx(0.0)
     assert deck.gas.pressure_Pa == pytest.approx(1.2 * 133.32236842105263)
+    expected_density = ideal_gas_density(deck.gas.pressure_Pa, deck.gas.temperature_K)
+    assert deck.startup.background_density_m3 == pytest.approx(expected_density)
+    assert deck.closures.density_floor_m3 == pytest.approx(expected_density)
     assert deck.startup.can_support_whole_shot_acceptance is False
+    assert deck.startup.mode == "seeded_layer"
     assert deck.closures.circuit_udpf_mode == "lagged_volume_j_dot_e"
     assert deck.boundaries.pml_cells == 1
     assert deck.boundaries.particle_absorption_enabled is True
@@ -322,6 +369,9 @@ def test_gv_verified_engineering_deck_uses_verified_shot_values_without_promotin
     assert deck.circuit.voltage_V == pytest.approx(16.0e3)
     assert deck.circuit.initial_charge_C == pytest.approx(0.0)
     assert deck.gas.pressure_Pa == pytest.approx(1.1 * 133.32236842105263)
+    expected_density = ideal_gas_density(deck.gas.pressure_Pa, deck.gas.temperature_K)
+    assert deck.startup.background_density_m3 == pytest.approx(expected_density)
+    assert deck.closures.density_floor_m3 == pytest.approx(expected_density)
     assert deck.startup.can_support_whole_shot_acceptance is False
     assert "neutron_mechanism_separation" in deck.startup.missing_channels
     assert deck.validation_targets[0].status == (
@@ -367,6 +417,9 @@ def test_ir_mpf_100_engineering_deck_uses_validated_source_values() -> None:
     assert deck.circuit.resistance_ohm == pytest.approx(5.0e-3)
     assert deck.circuit.initial_charge_C == pytest.approx(0.0)
     assert deck.gas.pressure_Pa == pytest.approx(1.9 * 133.32236842105263)
+    expected_density = ideal_gas_density(deck.gas.pressure_Pa, deck.gas.temperature_K)
+    assert deck.startup.background_density_m3 == pytest.approx(expected_density)
+    assert deck.closures.density_floor_m3 == pytest.approx(expected_density)
     assert "measured_current_waveform_digitization" in deck.startup.missing_channels
     assert deck.source_references[0].path == "KnowledgeReference/original-research-f7894f85.md"
 
@@ -382,6 +435,9 @@ def test_compact_chinese_dpf_engineering_deck_marks_inferred_circuit_nonacceptin
     assert deck.circuit.inductance_H == pytest.approx(100.0e-9)
     assert deck.circuit.initial_charge_C == pytest.approx(0.0)
     assert deck.gas.pressure_Pa == pytest.approx(580.0)
+    expected_density = ideal_gas_density(deck.gas.pressure_Pa, deck.gas.temperature_K)
+    assert deck.startup.background_density_m3 == pytest.approx(expected_density)
+    assert deck.closures.density_floor_m3 == pytest.approx(expected_density)
     assert "translation_review" in deck.startup.missing_channels
     assert "inferred_circuit_inductance" in deck.startup.source_scope
 
@@ -396,5 +452,8 @@ def test_willenborg_hendricks_engineering_deck_uses_startup_bvp_mode_but_stays_b
     assert deck.circuit.voltage_V == pytest.approx(1.9e4)
     assert deck.circuit.inductance_H == pytest.approx(100.0e-9)
     assert deck.gas.pressure_Pa == pytest.approx(133.32236842105263)
+    expected_density = ideal_gas_density(deck.gas.pressure_Pa, deck.gas.temperature_K)
+    assert deck.startup.background_density_m3 == pytest.approx(expected_density)
+    assert deck.closures.density_floor_m3 == pytest.approx(expected_density)
     assert "surface_flashover_equations" in deck.startup.missing_channels
     assert "modern_device_scope_review" in deck.startup.missing_channels

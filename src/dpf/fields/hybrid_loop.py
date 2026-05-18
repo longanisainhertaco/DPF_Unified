@@ -27,6 +27,7 @@ from dpf.fields.electron_energy import (
 from dpf.fields.hybrid_stepper import (
     HybridPIC3DFieldStepper,
     HybridPIC3DStepResult,
+    mask_current_to_resolved_plasma,
 )
 from dpf.fields.ionization_transport import (
     DeuteriumIonizationState,
@@ -176,6 +177,9 @@ class HybridPIC3DLoop:
         n_after = _particle_count(pic)
         deposition_method = _deposition_method(pic)
         rho, Jx, Jy, Jz = pic.deposit()
+        half_step_density_bypassed_by_particle_boundary = (
+            half_step_charge_density is not None and boundary_telemetry is not None
+        )
         if half_step_charge_density is not None and boundary_telemetry is None:
             rho_for_density = half_step_charge_density
             density_sample = "x_n_plus_half"
@@ -243,7 +247,10 @@ class HybridPIC3DLoop:
             marder_nondominance_threshold=marder_nondominance_threshold,
             charge_density_C_m3=rho,
             apply_density_conductivity_blend=apply_density_conductivity_blend,
-            apply_ohmic_cfl_limit=True,
+            apply_ohmic_cfl_limit=not use_source_backed_conductivity,
+            ohm_time_centering_theta=(
+                1.0 if use_source_backed_conductivity else 0.5
+            ),
         )
         source_velocity_telemetry: dict[str, Any] | None = None
         provisional_rebuild_telemetry: dict[str, Any] | None = None
@@ -280,6 +287,16 @@ class HybridPIC3DLoop:
                         electron_density_m3=electron_density,
                         pressure_term_V_m=pressure_term_V_m,
                         include_hall=include_hall,
+                        dt_s=dt_s,
+                        ohm_time_centering_theta=(
+                            1.0 if use_source_backed_conductivity else 0.5
+                        ),
+                    )
+                )
+                corrected_current, corrected_current_domain = (
+                    mask_current_to_resolved_plasma(
+                        corrected_current,
+                        electron_density,
                     )
                 )
                 self.field_stepper.previous_total_current_A_m2 = np.array(
@@ -293,7 +310,10 @@ class HybridPIC3DLoop:
                 field_step.end_step_current_A_m2 = corrected_current
                 field_step.telemetry = replace(
                     field_step.telemetry,
-                    predictor_corrector=pc_telemetry.to_dict(),
+                    predictor_corrector={
+                        **pc_telemetry.to_dict(),
+                        "current_domain": corrected_current_domain,
+                    },
                 )
             source_velocity_telemetry = _apply_eq7_velocity_update(
                 pic,
@@ -432,6 +452,9 @@ class HybridPIC3DLoop:
                 provisional_rebuild_telemetry=provisional_rebuild_telemetry,
                 electron_energy_telemetry=electron_energy_telemetry,
                 density_sample=density_sample,
+                half_step_density_bypassed_by_particle_boundary=(
+                    half_step_density_bypassed_by_particle_boundary
+                ),
                 collisions_enabled=_collisions_enabled(pic),
             ),
             electron_density_min_m3=float(np.min(electron_density)),
@@ -755,6 +778,7 @@ def _source_workflow_telemetry(
     provisional_rebuild_telemetry: dict[str, Any] | None,
     electron_energy_telemetry: ElectronEnergyTelemetry | None,
     density_sample: str,
+    half_step_density_bypassed_by_particle_boundary: bool,
     collisions_enabled: bool,
 ) -> dict[str, Any]:
     if not use_source_ordered_velocity_update:
@@ -805,6 +829,21 @@ def _source_workflow_telemetry(
             temperature_status,
         ],
         "position_update": position_telemetry,
+        "density_rebuild": {
+            "status": "candidate_source_ordered_density_rebuild_not_validation",
+            "density_sample": density_sample,
+            "half_step_density_available": position_telemetry is not None
+            and position_telemetry.get("half_step_charge_density_available") is True,
+            "half_step_density_bypassed_by_particle_boundary": bool(
+                half_step_density_bypassed_by_particle_boundary
+            ),
+            "decision": (
+                "use_post_boundary_x_n_plus_1_density"
+                if half_step_density_bypassed_by_particle_boundary
+                else f"use_{density_sample}_density"
+            ),
+            "can_support_first_principles_acceptance": False,
+        },
         "velocity_update": velocity_telemetry,
         "predictor_particle_rebuild": provisional_rebuild_telemetry,
         "temperature_source_terms": (

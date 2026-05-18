@@ -1,0 +1,1827 @@
+{
+  "accepted_step_count": 116,
+  "can_support_first_principles_acceptance": false,
+  "circuit": {
+    "can_support_first_principles_acceptance": false,
+    "current_history": [
+      {
+        "current_A": 72446.03514362779,
+        "sample": "initial",
+        "source": "candidate_engineering_rlc_circuit_step",
+        "step_index": 115,
+        "time_s": 3.879602131278373e-10,
+        "time_us": 0.0003879602131278373,
+        "voltage_balance": {
+          "L_dI_dt_V": 606848163625.8191,
+          "active_port_power_W": -4.39637422617511e+16,
+          "active_port_power_sign": "positive_I_udpf_is_power_drawn_from_generator_by_DPF",
+          "bank_voltage_V": 16000.0,
+          "can_support_first_principles_acceptance": false,
+          "charge_C": -0.00018054621461998575,
+          "charge_drop_V": -0.13554520617116048,
+          "current_A": 72446.03514362779,
+          "dI_dt_A_s": 2.4273926545032765e+19,
+          "inductance_H": 2.5e-08,
+          "lagged_j_dot_e_power_W": -4.39637422617511e+16,
+          "net_drive_voltage_V": 606848163625.8191,
+          "resistive_drop_V": 441.9208143761295,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "source_lines": "740-792",
+          "status": "candidate_circuit_voltage_balance_not_validation",
+          "udpf_V": -606848148067.6044
+        }
+      },
+      {
+        "current_A": 81962165.30349475,
+        "sample": "post_step",
+        "source": "candidate_engineering_rlc_circuit_step",
+        "step_index": 115,
+        "time_s": 3.9133378019851416e-10,
+        "time_us": 0.00039133378019851414,
+        "udpf_source": "candidate_lagged_volume_j_dot_e",
+        "voltage_balance": {
+          "L_dI_dt_V": 606848163625.8191,
+          "active_port_power_W": -4.39637422617511e+16,
+          "active_port_power_sign": "positive_I_udpf_is_power_drawn_from_generator_by_DPF",
+          "bank_voltage_V": 16000.0,
+          "can_support_first_principles_acceptance": false,
+          "charge_C": -0.00018054621461998575,
+          "charge_drop_V": -0.13554520617116048,
+          "current_A": 72446.03514362779,
+          "dI_dt_A_s": 2.4273926545032765e+19,
+          "inductance_H": 2.5e-08,
+          "lagged_j_dot_e_power_W": -4.39637422617511e+16,
+          "net_drive_voltage_V": 606848163625.8191,
+          "resistive_drop_V": 441.9208143761295,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "source_lines": "740-792",
+          "status": "candidate_circuit_voltage_balance_not_validation",
+          "udpf_V": -606848148067.6044
+        }
+      }
+    ],
+    "current_history_cap": 64,
+    "final_charge_C": -0.0001803018130614241,
+    "final_current_A": 81962165.30349475,
+    "last": {
+      "active_port_power_W": -4.39637422617511e+16,
+      "active_port_power_sign": "positive_I_udpf_is_power_drawn_from_generator_by_DPF",
+      "active_port_time_centering": "begin_step_current_times_begin_step_udpf_candidate",
+      "active_port_work_J": -148314.63319796752,
+      "boundary": {
+        "blend": 1.0,
+        "btheta_abs_max_T": 0.2634401279384205,
+        "btheta_abs_min_T": 0.0411424358125588,
+        "bx_faces_updated": 30,
+        "by_faces_updated": 30,
+        "can_support_first_principles_acceptance": false,
+        "current_A": 72446.03514362779,
+        "faces_updated": 60,
+        "radius_floor_m": 0.05500000000000001,
+        "radius_max_m": null,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "740-792",
+        "status": "candidate_engineering_magnetic_injection_boundary",
+        "z_index": 0
+      },
+      "circuit_step": {
+        "can_support_first_principles_acceptance": false,
+        "charge_C": -0.00018054621461998575,
+        "current_A": 72446.03514362779,
+        "dI_dt_A_s": 2.4273926545032765e+19,
+        "next_charge_C": -0.0001803018130614241,
+        "next_current_A": 81962165.30349475,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "740-792",
+        "status": "candidate_engineering_rlc_circuit_step",
+        "udpf_V": -606848148067.6044
+      },
+      "feedback_min_current_A": 1.0,
+      "requested_udpf_mode": "lagged_volume_j_dot_e",
+      "step_index": 115,
+      "udpf_source": "candidate_lagged_volume_j_dot_e",
+      "voltage_balance": {
+        "L_dI_dt_V": 606848163625.8191,
+        "active_port_power_W": -4.39637422617511e+16,
+        "active_port_power_sign": "positive_I_udpf_is_power_drawn_from_generator_by_DPF",
+        "bank_voltage_V": 16000.0,
+        "can_support_first_principles_acceptance": false,
+        "charge_C": -0.00018054621461998575,
+        "charge_drop_V": -0.13554520617116048,
+        "current_A": 72446.03514362779,
+        "dI_dt_A_s": 2.4273926545032765e+19,
+        "inductance_H": 2.5e-08,
+        "lagged_j_dot_e_power_W": -4.39637422617511e+16,
+        "net_drive_voltage_V": 606848163625.8191,
+        "resistive_drop_V": 441.9208143761295,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "740-792",
+        "status": "candidate_circuit_voltage_balance_not_validation",
+        "udpf_V": -606848148067.6044
+      }
+    },
+    "n_steps": 1,
+    "retained_record_count": 1,
+    "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+    "source_lines": "740-792",
+    "status": "candidate_engineering_circuit_boundary_coupled"
+  },
+  "dt_history": [
+    {
+      "accepted_step": 53,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.1443139503735875e-08
+    },
+    {
+      "accepted_step": 54,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.1659047796259194e-08
+    },
+    {
+      "accepted_step": 55,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.1874956088782512e-08
+    },
+    {
+      "accepted_step": 56,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.2090864381305831e-08
+    },
+    {
+      "accepted_step": 57,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.230677267382915e-08
+    },
+    {
+      "accepted_step": 58,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.2522680966352468e-08
+    },
+    {
+      "accepted_step": 59,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.2738589258875787e-08
+    },
+    {
+      "accepted_step": 60,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.2954497551399105e-08
+    },
+    {
+      "accepted_step": 61,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.3170405843922424e-08
+    },
+    {
+      "accepted_step": 62,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.3386314136445742e-08
+    },
+    {
+      "accepted_step": 63,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.3602222428969061e-08
+    },
+    {
+      "accepted_step": 64,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.381813072149238e-08
+    },
+    {
+      "accepted_step": 65,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.4034039014015698e-08
+    },
+    {
+      "accepted_step": 66,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.4249947306539017e-08
+    },
+    {
+      "accepted_step": 67,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.4465855599062335e-08
+    },
+    {
+      "accepted_step": 68,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.4681763891585654e-08
+    },
+    {
+      "accepted_step": 69,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.4897672184108972e-08
+    },
+    {
+      "accepted_step": 70,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.511358047663229e-08
+    },
+    {
+      "accepted_step": 71,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.5329488769155608e-08
+    },
+    {
+      "accepted_step": 72,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.5545397061678926e-08
+    },
+    {
+      "accepted_step": 73,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.5761305354202245e-08
+    },
+    {
+      "accepted_step": 74,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.5977213646725563e-08
+    },
+    {
+      "accepted_step": 75,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.6193121939248882e-08
+    },
+    {
+      "accepted_step": 76,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.64090302317722e-08
+    },
+    {
+      "accepted_step": 77,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.662493852429552e-08
+    },
+    {
+      "accepted_step": 78,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.6840846816818838e-08
+    },
+    {
+      "accepted_step": 79,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.7056755109342156e-08
+    },
+    {
+      "accepted_step": 80,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.7272663401865475e-08
+    },
+    {
+      "accepted_step": 81,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.7488571694388793e-08
+    },
+    {
+      "accepted_step": 82,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.7704479986912112e-08
+    },
+    {
+      "accepted_step": 83,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.792038827943543e-08
+    },
+    {
+      "accepted_step": 84,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.813629657195875e-08
+    },
+    {
+      "accepted_step": 85,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.8352204864482068e-08
+    },
+    {
+      "accepted_step": 86,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.8568113157005386e-08
+    },
+    {
+      "accepted_step": 87,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.8784021449528705e-08
+    },
+    {
+      "accepted_step": 88,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.8999929742052023e-08
+    },
+    {
+      "accepted_step": 89,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.9215838034575342e-08
+    },
+    {
+      "accepted_step": 90,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.943174632709866e-08
+    },
+    {
+      "accepted_step": 91,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.964765461962198e-08
+    },
+    {
+      "accepted_step": 92,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 1.9863562912145297e-08
+    },
+    {
+      "accepted_step": 93,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.0079471204668616e-08
+    },
+    {
+      "accepted_step": 94,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.0295379497191935e-08
+    },
+    {
+      "accepted_step": 95,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.0511287789715253e-08
+    },
+    {
+      "accepted_step": 96,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.072719608223857e-08
+    },
+    {
+      "accepted_step": 97,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.094310437476189e-08
+    },
+    {
+      "accepted_step": 98,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.115901266728521e-08
+    },
+    {
+      "accepted_step": 99,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.1374920959808527e-08
+    },
+    {
+      "accepted_step": 100,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.1590829252331846e-08
+    },
+    {
+      "accepted_step": 101,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.1806737544855164e-08
+    },
+    {
+      "accepted_step": 102,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.2022645837378483e-08
+    },
+    {
+      "accepted_step": 103,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.22385541299018e-08
+    },
+    {
+      "accepted_step": 104,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.245446242242512e-08
+    },
+    {
+      "accepted_step": 105,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.267037071494844e-08
+    },
+    {
+      "accepted_step": 106,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.2886279007471757e-08
+    },
+    {
+      "accepted_step": 107,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.3102187299995076e-08
+    },
+    {
+      "accepted_step": 108,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.3318095592518394e-08
+    },
+    {
+      "accepted_step": 109,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.3534003885041713e-08
+    },
+    {
+      "accepted_step": 110,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.374991217756503e-08
+    },
+    {
+      "accepted_step": 111,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.396582047008835e-08
+    },
+    {
+      "accepted_step": 112,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.418172876261167e-08
+    },
+    {
+      "accepted_step": 113,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.4397637055134987e-08
+    },
+    {
+      "accepted_step": 114,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.4613545347658306e-08
+    },
+    {
+      "accepted_step": 115,
+      "dt_s": 2.1590829252331814e-10,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.4829453640181624e-08
+    },
+    {
+      "accepted_step": 116,
+      "dt_s": 3.373567070676846e-12,
+      "stop_reason": "completed_step_budget",
+      "time_s": 2.4832827207252302e-08
+    }
+  ],
+  "duration_request_satisfied": false,
+  "final_dt_s": 5.5347584753292005e-14,
+  "final_time_s": 2.4832827207252302e-08,
+  "finite_state": {
+    "all_finite": true,
+    "checks": {
+      "circuit_state": true,
+      "electric_field": true,
+      "electron_energy": true,
+      "ionization_state": true,
+      "magnetic_field": true,
+      "particles": true
+    },
+    "status": "finite_candidate_state"
+  },
+  "last_step": {
+    "can_support_first_principles_acceptance": false,
+    "collision_operator": {
+      "T_background_eV": 100.0,
+      "algorithm": "disabled",
+      "can_support_first_principles_acceptance": false,
+      "enabled": false,
+      "n_background_m3": 1e+25,
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "310-311",
+      "status": "disabled"
+    },
+    "deposition_method": "esirkepov",
+    "electron_density_max_m3": 4.6210754780619043e+21,
+    "electron_density_min_m3": 1.0,
+    "electron_energy": {
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 0.8817953579517567,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 3878923163855.9346,
+          "max_resolved_current_A_m2": 195723046457.18936,
+          "max_resolved_current_drift_m_s": 264355597.81334698,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 264355597.81334698,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "candidate_nonrelativistic_electron_closure_in_range",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "density_reconciliation": {
+        "can_support_first_principles_acceptance": false,
+        "electron_density_max_m3": 4.6210754780619043e+21,
+        "electron_density_min_m3": 1.0,
+        "formula": "u_e = 3/2 n_e k_B T_e",
+        "limitations": [
+          "Candidate density/temperature consistency repair only.",
+          "Ionization potential energy and molecular chemistry energy sinks remain separate unresolved closures."
+        ],
+        "max_abs_delta_energy_J_m3": 5183.167452663172,
+        "max_relative_delta": 0.14981663749837715,
+        "preserves_temperature_field": true,
+        "reconciled_energy_max_J_m3": 34596.74131799492,
+        "reconciled_energy_min_J_m3": 2.0709735e-22,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "status": "candidate_density_temperature_energy_reconciled",
+        "stored_energy_max_J_m3": 29413.57386533175,
+        "stored_energy_min_J_m3": 2.0709735e-22
+      },
+      "equilibration_audit": {
+        "active_model": "spitzer_nu_ei_mass_ratio_temperature_relaxation",
+        "can_support_first_principles_acceptance": false,
+        "max_active_to_nrl_rate_ratio": 54.33985901972258,
+        "min_active_to_nrl_rate_ratio": 0.37375793733019747,
+        "reference_model": "nrl_equal_temperature_thermal_equilibration_frequency",
+        "source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+        "source_lines": "2996-3020",
+        "status": "candidate_nrl_equal_temperature_equilibration_audit"
+      },
+      "heat_flux": {
+        "applied": true,
+        "boundary_condition": "candidate_zero_normal_heat_flux",
+        "can_support_first_principles_acceptance": false,
+        "density_gate": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "apply electron heat flux only where n_e exceeds the numerical electron-density floor",
+          "limitations": [
+            "Candidate runtime guard only; true startup still needs accepted breakdown/avalanche and neutral/electron energy exchange."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_density_gate",
+          "total_cell_count": 125
+        },
+        "dt_stable_s": 1.3857217190486127e-29,
+        "implicit_iterations": 0,
+        "implicit_residual_abs": 9.20902049239671e-05,
+        "implicit_residual_rel": 2.632439461090338e-09,
+        "implicit_scheme": "frozen_coefficient_backward_euler_tensor_conduction",
+        "implicit_solver": "scipy.sparse.linalg.gmres",
+        "implicit_solver_info": 0,
+        "max_abs_heat_flux_source_W_m3": 0.0,
+        "max_kappa_parallel_W_m_K": 1506.9631830074127,
+        "max_kappa_perpendicular_W_m_K": 2.7085061565912176,
+        "max_subcycles": 5000,
+        "net_heat_flux_power_W": 0.0,
+        "required_subcycles": 243451987819965568,
+        "source": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json",
+        "source_lines": "57-62",
+        "status": "candidate_braginskii_anisotropic_heat_flux_implicit_applied",
+        "subcycles": 0,
+        "temperature_floor_contact_count": 8,
+        "transport_source": "src/dpf/collision/spitzer.py::braginskii_kappa"
+      },
+      "include_bremsstrahlung_loss": true,
+      "include_electron_velocity_pressure_work": true,
+      "include_equilibration": true,
+      "include_heat_flux": true,
+      "include_ohmic_heating": true,
+      "max_abs_delta_electron_temperature_K": 416562841.3133794,
+      "max_current_A_m2": 3878923163855.9346,
+      "max_electron_current_drift_m_s": 264355597.81334698,
+      "max_electron_temperature_K": 416924349.04537374,
+      "max_ion_temperature_K": 23260.716634750366,
+      "max_resistivity_ohm_m": 4.066950233337903e+17,
+      "min_electron_temperature_K": 10.0,
+      "min_ion_temperature_K": 300.0,
+      "model_metadata": {
+        "can_support_validation_claims": false,
+        "components": {
+          "electron_energy": "Ideal electron internal-energy bookkeeping is implemented.",
+          "equilibration": "Electron-ion relaxation uses the shared Spitzer helper; the active arbitrary-Te/Ti convention is cross-checked against the local NRL equal-temperature equilibration formula but still needs same-scope review before validation use.",
+          "ohmic_heating": "Ohmic heating is deposited into electron energy.",
+          "radiation_loss": "Bremsstrahlung loss is delegated to the radiation helper; line cooling and opacity remain separately source-blocked."
+        },
+        "model_role": "operator_split_two_temperature_source_terms",
+        "source_status": "equilibration_convention_source_audit_incomplete",
+        "validation_status": "not_validation_evidence",
+        "validity_notes": {
+          "claim_limit": "Use as engineering 2T energy bookkeeping only until same-scope temperature diagnostics and source-closed relaxation evidence exist."
+        }
+      },
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "1074-1097, 1226-1240, 1267-1278",
+      "status": "candidate_engineering_electron_energy_closure"
+    },
+    "field_step": {
+      "can_support_first_principles_acceptance": false,
+      "conductivity": {
+        "background_density_m3": 3.862599934409183e+22,
+        "can_support_first_principles_acceptance": false,
+        "cfl_limited_fraction": 0.264,
+        "density_blend_applied": false,
+        "max_sigma_effective_S_m": 5537.285695422825,
+        "max_sigma_raw_S_m": 5537.285695422825,
+        "ohmic_cfl_limit_applied": false,
+        "ohmic_cfl_safety": 1.0,
+        "plasma_fraction": 0.0,
+        "sigma_cfl_S_m": 2.6245773767952882,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "status": "candidate_engineering_conductivity_blend",
+        "transition_fraction": 0.064,
+        "vacuum_fraction": 0.936
+      },
+      "current_port": {
+        "can_support_first_principles_acceptance": false,
+        "continuity_linf_A_per_m3": null,
+        "continuity_status": "unverified_no_prior_charge_state",
+        "deposition_method": "generalized_ohm_total_current",
+        "edge_shapes": {
+          "Jx_edge": [
+            5,
+            6,
+            6
+          ],
+          "Jy_edge": [
+            6,
+            5,
+            6
+          ],
+          "Jz_edge": [
+            6,
+            6,
+            5
+          ]
+        },
+        "finite": true,
+        "input_shape": [
+          5,
+          5,
+          5
+        ],
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "status": "candidate_engineering_coupling"
+      },
+      "diagnostics_after": {
+        "electric_energy_J": 5178401469.702317,
+        "grid_shape": [
+          5,
+          5,
+          5
+        ],
+        "magnetic_energy_J": 180316521.67691773,
+        "max_abs_div_B_T_per_m": 1243.4347906780101,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "stable_vacuum_dt_s": 2.2499916799798417e-10,
+        "total_energy_J": 5358717991.379235
+      },
+      "diagnostics_before": {
+        "electric_energy_J": 68174296.49246597,
+        "grid_shape": [
+          5,
+          5,
+          5
+        ],
+        "magnetic_energy_J": 244019079.03942198,
+        "max_abs_div_B_T_per_m": 1379.1495104161836,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "stable_vacuum_dt_s": 2.2499916799798417e-10,
+        "total_energy_J": 312193375.53188795
+      },
+      "field_work": {
+        "can_support_first_principles_acceptance": false,
+        "cell_volume_m3": 0.0017091250000000004,
+        "domain": "resolved_plasma_current_carrying_cells",
+        "integral": "sum_cell_centered_J_dot_E_times_cell_volume_over_resolved_plasma",
+        "j_dot_e_power_W": -2.1488764685981624e+18,
+        "max_abs_power_density_W_m3": 1.2724260665234707e+21,
+        "max_abs_unmasked_power_density_W_m3": 1.2395301721937795e+23,
+        "power_domain_gate": {
+          "can_support_first_principles_acceptance": false,
+          "criterion": "include cells with electron_density_m3 above the numerical electron-density floor",
+          "electron_density_max_m3": 4.6210754780619043e+21,
+          "electron_density_min_m3": 1.0,
+          "excluded_numerical_floor_cell_count": 117,
+          "included_cell_count": 8,
+          "numerical_electron_density_floor_m3": 1.0,
+          "source": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
+          "source_lines": "151-209",
+          "status": "candidate_resolved_plasma_power_domain_not_validation",
+          "total_cell_count": 125,
+          "unmasked_minus_resolved_power_W": 7.560243855142348e+20
+        },
+        "sign_convention": "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted",
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "Auluck 2021 lines 151-200; hybrid source lines 740-805",
+        "status": "candidate_engineering_volume_j_dot_e_power_not_validation",
+        "time_centering": "begin_step_E_with_midpoint_candidate_current",
+        "unmasked_full_grid_j_dot_e_power_W": 7.538755090456366e+20
+      },
+      "marder": null,
+      "ohm_solver": {
+        "can_support_first_principles_acceptance": false,
+        "electric_update_scheme": "backward_euler_resistive_ampere_ohm",
+        "include_hall": false,
+        "include_pressure": true,
+        "max_algebraic_residual_A_m2": 3.637978807091713e-12,
+        "max_conductivity_S_m": 5537.285695422825,
+        "max_current_A_m2": 4207248594267.939,
+        "min_electron_density_m3": 1.0,
+        "ohm_time_centering_theta": 1.0,
+        "pressure_active_fraction": 0.064,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "status": "candidate_engineering_closure"
+      },
+      "predictor_corrector": {
+        "can_support_first_principles_acceptance": false,
+        "corrected_max_current_A_m2": 3878923163855.9346,
+        "corrected_max_residual_A_m2": 1.9073486328125e-06,
+        "electric_update_scheme": "backward_euler_resistive_ampere_ohm",
+        "first_step_initialization": false,
+        "include_hall": false,
+        "ohm_time_centering_theta": 1.0,
+        "predictor_delta_linf_A_m2": 3700116644688.6597,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "status": "candidate_engineering_predictor_corrector"
+      },
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "status": "candidate_engineering_field_current_step"
+    },
+    "ion_current_max_A_m2": 149974362.75500336,
+    "ionization_charge_state": {
+      "can_support_first_principles_acceptance": false,
+      "ionization_energy_eV": 13.6,
+      "limitations": [
+        "Candidate runtime closure only; no engineer review packet yet.",
+        "Single-stage deuterium chemistry only; no molecular D2, impurities, or excited states.",
+        "Neutral depletion changes the chemistry state but does not yet spawn/remove PIC macroparticles.",
+        "Conductivity and EOS are not yet rebuilt from the evolving charge-state field."
+      ],
+      "max_electron_temperature_eV": 35927.76060826926,
+      "max_ionization_fraction": 0.1196894987720585,
+      "max_ionization_rate_m3_s": 3.868978880867559e-15,
+      "max_limited_density_change_m3": 2.0510230023069184e+18,
+      "max_net_source_m3_s": 6.0796864545379184e+29,
+      "max_radiative_recombination_rate_m3_s": 5.263222055740282e-18,
+      "max_three_body_recombination_rate_m6_s": 5.405427574749011e-25,
+      "min_electron_temperature_eV": 0.0008617333262145179,
+      "min_ionization_fraction": 0.0,
+      "min_ionization_rate_m3_s": 0.0,
+      "min_radiative_recombination_rate_m3_s": 0.0,
+      "min_three_body_recombination_rate_m6_s": 2.770590786631095e-59,
+      "model": "single_stage_deuterium_ground_state_ionization_radiative_three_body_recombination",
+      "particle_source": {
+        "can_support_first_principles_acceptance": false,
+        "coupling_stage": "post_field_step_available_to_next_deposit",
+        "limitations": [
+          "Numerical macroparticle source/sink only; no accepted startup breakdown packet.",
+          "New ions are born at cell centers with the supplied plasma velocity or zero velocity.",
+          "Recombination removes available same-cell ion weight and reports any unrepresented deficit.",
+          "Electron density and conductivity feedback remain candidate loop plumbing."
+        ],
+        "macro_particles_created": 8,
+        "macro_particles_removed": 0,
+        "physical_ions_created": 4278706690222051.5,
+        "physical_ions_removed": 0.0,
+        "source": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md:252-259",
+        "status": "candidate_ionization_pic_particle_source",
+        "unrepresented_recombination_ions": 0.0
+      },
+      "rate_source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4572-4648",
+      "source": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md:252-259",
+      "status": "candidate_deuterium_charge_state_transport",
+      "validity_notes": [
+        "NRL ionization formula is used for ground-state ionization only.",
+        "Three-body recombination uses the NRL singly ionized plasma form.",
+        "Hydrogenic radiative recombination is applied to D+ as Z=1."
+      ]
+    },
+    "kinetic_yield": {
+      "can_support_first_principles_acceptance": false,
+      "cumulative_neutrons": 5.73687915962926e-06,
+      "dt_s": 3.373567070676846e-12,
+      "included_species": [
+        "D"
+      ],
+      "mechanism_channels": [
+        "dd_particle_distribution_total"
+      ],
+      "mechanism_separation_status": "not_mechanism_separated",
+      "n_macroparticles": 365,
+      "neutron_increment": 5.73687915962926e-06,
+      "neutron_rate_per_s": 1700538.0475445113,
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "952-963, 1083-1089, 1259-1266",
+      "status": "candidate_engineering_kinetic_yield_history",
+      "target_density_max_m3": 4.6210754780619043e+21,
+      "target_density_min_m3": 1.0,
+      "time_s": 2.4832827207252302e-08
+    },
+    "n_particles_after": 373,
+    "n_particles_before": 369,
+    "neutron_yield_authority": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_total_yield_acceptance": false,
+      "missing_evidence": [
+        "accepted_kinetic_yield_history",
+        "electron_temperature_authority",
+        "mechanism_separated_yield_channels",
+        "same_scope_detector_response",
+        "yield_uncertainty_budget"
+      ],
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "952-963, 1083-1089, 1259-1266",
+      "status": "blocked",
+      "temperature_authority_status": "candidate_separate_te_still_blocked",
+      "validity_note": "The local source treats integral yield as order-of-magnitude and Te-sensitive; scalar cumulative PIC yield cannot be accepted without mechanism separation, detector response, and UQ."
+    },
+    "particle_boundaries": {
+      "can_support_first_principles_acceptance": false,
+      "conductor_cells_active": 27,
+      "deleted_conductor": 0,
+      "deleted_outside_domain": 0,
+      "deleted_pml": 4,
+      "deleted_total": 4,
+      "n_particles_after": 365,
+      "n_particles_before": 369,
+      "pml_cells": 1,
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "status": "candidate_engineering_particle_absorption"
+    },
+    "pressure_gradient": {
+      "active_fraction": 0.064,
+      "can_support_first_principles_acceptance": false,
+      "density_threshold_m3": 3862599934409183.0,
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "1107-1185",
+      "status": "candidate_pressure_gradient_term"
+    },
+    "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+    "source_backed_transport": {
+      "can_support_first_principles_acceptance": false,
+      "electron_neutral_cross_section_m2": 5e-19,
+      "limitations": [
+        "Candidate scalar conductivity; magnetized tensor Pedersen/Hall conductivity is not yet solved as a tensor transport packet.",
+        "Electron-neutral cross section uses the NRL typical weakly ionized estimate, not same-gas reviewed cross-section data.",
+        "No accepted conductivity sensitivity or nondominance packet is attached."
+      ],
+      "max_electron_density_m3": 4.6210754780619043e+21,
+      "max_electron_ion_resistivity_ohm_m": 29.193577361751753,
+      "max_electron_neutral_resistivity_ohm_m": 4.066950233337903e+17,
+      "max_neutral_density_m3": 3.862599934409183e+22,
+      "max_resistivity_ohm_m": 4.066950233337903e+17,
+      "max_sigma_S_m": 5537.285695422825,
+      "min_electron_density_m3": 1.0,
+      "min_neutral_density_m3": 1.0,
+      "min_sigma_S_m": 2.4588449393915042e-18,
+      "source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2660-2725",
+      "status": "candidate_source_backed_partial_ionized_conductivity",
+      "weakly_ionized_source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3379-3425"
+    },
+    "source_workflow": {
+      "acceptance_blocking_stages": [
+        "temperature_source_terms_same_scope_review",
+        "predictor_corrector_particle_rebuild_review",
+        "long_run_source_ordered_stability",
+        "same_scope_3d_validation"
+      ],
+      "can_support_first_principles_acceptance": false,
+      "density_rebuild": {
+        "can_support_first_principles_acceptance": false,
+        "decision": "use_post_boundary_x_n_plus_1_density",
+        "density_sample": "x_n_plus_1",
+        "half_step_density_available": true,
+        "half_step_density_bypassed_by_particle_boundary": true,
+        "status": "candidate_source_ordered_density_rebuild_not_validation"
+      },
+      "position_update": {
+        "can_support_first_principles_acceptance": false,
+        "half_step_charge_density_available": true,
+        "max_displacement_m": 1.946573737485355e-06,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "246-261",
+        "status": "candidate_engineering_leapfrog_position_update"
+      },
+      "predictor_particle_rebuild": {
+        "can_support_first_principles_acceptance": false,
+        "feeds_corrected_current": true,
+        "max_delta_v_m_s": 8491285.42171645,
+        "max_provisional_ion_current_A_m2": 121575494.84514569,
+        "n_particles": 365,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "428-535",
+        "status": "candidate_engineering_predictor_particle_rebuild"
+      },
+      "review_required_stages": [
+        "operator_split_temperature_source_terms_review_required",
+        "runtime_predictor_particle_rebuild_executed_review_required",
+        "long_run_source_ordered_stability_review_required",
+        "same_scope_3d_review_required"
+      ],
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "246-315, 428-535",
+      "stages_executed": [
+        "leapfrog_position_update_xn_to_xn_plus_1",
+        "deposit_current_from_xn_to_xn_plus_1",
+        "electron_density_from_x_n_plus_1",
+        "generalized_ohm_ampere_solve",
+        "fdtd_maxwell_update",
+        "optional_marder_correction",
+        "optional_predictor_corrector_current",
+        "runtime_predictor_particle_rebuild_executed_review_required",
+        "eq7_velocity_update_v_half_to_v_three_half",
+        "collisions_disabled",
+        "operator_split_temperature_source_terms_review_required"
+      ],
+      "status": "candidate_engineering_source_ordered_loop",
+      "temperature_source_terms": {
+        "can_support_first_principles_acceptance": false,
+        "closure_validity": {
+          "can_support_first_principles_acceptance": false,
+          "current_drift_to_c": 0.8817953579517567,
+          "electron_fluid_domain": {
+            "all_cells_at_numerical_floor": false,
+            "can_support_first_principles_acceptance": false,
+            "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+            "excluded_numerical_floor_cell_count": 117,
+            "limitations": [
+              "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+            ],
+            "max_electron_density_m3": 4.6210754780619043e+21,
+            "max_excluded_numerical_floor_current_A_m2": 3878923163855.9346,
+            "max_resolved_current_A_m2": 195723046457.18936,
+            "max_resolved_current_drift_m_s": 264355597.81334698,
+            "min_electron_density_m3": 1.0,
+            "numerical_electron_density_floor_m3": 1.0,
+            "resolved_cell_count": 8,
+            "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+            "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+            "total_cell_count": 125
+          },
+          "max_electron_current_drift_m_s": 264355597.81334698,
+          "max_electron_temperature_K": 416924349.04537374,
+          "max_electron_thermal_speed_m_s": 112419272.55950277,
+          "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+          "status": "candidate_nonrelativistic_electron_closure_in_range",
+          "thermal_speed_to_c": 0.3749903293414498
+        },
+        "density_reconciliation": {
+          "can_support_first_principles_acceptance": false,
+          "electron_density_max_m3": 4.6210754780619043e+21,
+          "electron_density_min_m3": 1.0,
+          "formula": "u_e = 3/2 n_e k_B T_e",
+          "limitations": [
+            "Candidate density/temperature consistency repair only.",
+            "Ionization potential energy and molecular chemistry energy sinks remain separate unresolved closures."
+          ],
+          "max_abs_delta_energy_J_m3": 5183.167452663172,
+          "max_relative_delta": 0.14981663749837715,
+          "preserves_temperature_field": true,
+          "reconciled_energy_max_J_m3": 34596.74131799492,
+          "reconciled_energy_min_J_m3": 2.0709735e-22,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_density_temperature_energy_reconciled",
+          "stored_energy_max_J_m3": 29413.57386533175,
+          "stored_energy_min_J_m3": 2.0709735e-22
+        },
+        "equilibration_audit": {
+          "active_model": "spitzer_nu_ei_mass_ratio_temperature_relaxation",
+          "can_support_first_principles_acceptance": false,
+          "max_active_to_nrl_rate_ratio": 54.33985901972258,
+          "min_active_to_nrl_rate_ratio": 0.37375793733019747,
+          "reference_model": "nrl_equal_temperature_thermal_equilibration_frequency",
+          "source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+          "source_lines": "2996-3020",
+          "status": "candidate_nrl_equal_temperature_equilibration_audit"
+        },
+        "heat_flux": {
+          "applied": true,
+          "boundary_condition": "candidate_zero_normal_heat_flux",
+          "can_support_first_principles_acceptance": false,
+          "density_gate": {
+            "all_cells_at_numerical_floor": false,
+            "can_support_first_principles_acceptance": false,
+            "criterion": "apply electron heat flux only where n_e exceeds the numerical electron-density floor",
+            "limitations": [
+              "Candidate runtime guard only; true startup still needs accepted breakdown/avalanche and neutral/electron energy exchange."
+            ],
+            "max_electron_density_m3": 4.6210754780619043e+21,
+            "min_electron_density_m3": 1.0,
+            "numerical_electron_density_floor_m3": 1.0,
+            "resolved_cell_count": 8,
+            "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+            "status": "candidate_resolved_plasma_electron_density_gate",
+            "total_cell_count": 125
+          },
+          "dt_stable_s": 1.3857217190486127e-29,
+          "implicit_iterations": 0,
+          "implicit_residual_abs": 9.20902049239671e-05,
+          "implicit_residual_rel": 2.632439461090338e-09,
+          "implicit_scheme": "frozen_coefficient_backward_euler_tensor_conduction",
+          "implicit_solver": "scipy.sparse.linalg.gmres",
+          "implicit_solver_info": 0,
+          "max_abs_heat_flux_source_W_m3": 0.0,
+          "max_kappa_parallel_W_m_K": 1506.9631830074127,
+          "max_kappa_perpendicular_W_m_K": 2.7085061565912176,
+          "max_subcycles": 5000,
+          "net_heat_flux_power_W": 0.0,
+          "required_subcycles": 243451987819965568,
+          "source": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json",
+          "source_lines": "57-62",
+          "status": "candidate_braginskii_anisotropic_heat_flux_implicit_applied",
+          "subcycles": 0,
+          "temperature_floor_contact_count": 8,
+          "transport_source": "src/dpf/collision/spitzer.py::braginskii_kappa"
+        },
+        "include_bremsstrahlung_loss": true,
+        "include_electron_velocity_pressure_work": true,
+        "include_equilibration": true,
+        "include_heat_flux": true,
+        "include_ohmic_heating": true,
+        "max_abs_delta_electron_temperature_K": 416562841.3133794,
+        "max_current_A_m2": 3878923163855.9346,
+        "max_electron_current_drift_m_s": 264355597.81334698,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_ion_temperature_K": 23260.716634750366,
+        "max_resistivity_ohm_m": 4.066950233337903e+17,
+        "min_electron_temperature_K": 10.0,
+        "min_ion_temperature_K": 300.0,
+        "model_metadata": {
+          "can_support_validation_claims": false,
+          "components": {
+            "electron_energy": "Ideal electron internal-energy bookkeeping is implemented.",
+            "equilibration": "Electron-ion relaxation uses the shared Spitzer helper; the active arbitrary-Te/Ti convention is cross-checked against the local NRL equal-temperature equilibration formula but still needs same-scope review before validation use.",
+            "ohmic_heating": "Ohmic heating is deposited into electron energy.",
+            "radiation_loss": "Bremsstrahlung loss is delegated to the radiation helper; line cooling and opacity remain separately source-blocked."
+          },
+          "model_role": "operator_split_two_temperature_source_terms",
+          "source_status": "equilibration_convention_source_audit_incomplete",
+          "validation_status": "not_validation_evidence",
+          "validity_notes": {
+            "claim_limit": "Use as engineering 2T energy bookkeeping only until same-scope temperature diagnostics and source-closed relaxation evidence exist."
+          }
+        },
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "1074-1097, 1226-1240, 1267-1278",
+        "status": "candidate_engineering_electron_energy_closure"
+      },
+      "velocity_update": {
+        "can_support_first_principles_acceptance": false,
+        "max_delta_v_m_s": 11224487.141139813,
+        "pressure_term_included": true,
+        "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "source_lines": "224-236, 286-294",
+        "status": "candidate_engineering_eq7_velocity_update",
+        "updated_particles": 365
+      }
+    },
+    "status": "candidate_engineering_particle_field_loop",
+    "temperature_authority": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_pressure_hall_quantitative_claims": false,
+      "evidence_status": "candidate_engineering_electron_energy_closure",
+      "include_hall": false,
+      "include_pressure": true,
+      "requires_separate_te": true,
+      "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+      "source_lines": "1226-1240",
+      "status": "candidate_separate_te_still_blocked"
+    }
+  },
+  "limitations": [
+    "Candidate adaptive runtime controller only; it retries rejected steps but does not validate timestep convergence.",
+    "Variable-dt power-port and restart equivalence still require accepted numerical-fidelity review."
+  ],
+  "limiter_activation_summary": {
+    "acceptance_state": {
+      "can_support_first_principles_acceptance": false,
+      "can_support_limiter_zero_acceptance": false,
+      "review_decision": "adaptive_runtime_inventory_only",
+      "validated": false
+    },
+    "activation_counts": {
+      "blocked_heat_flux_steps": 0,
+      "conductivity_density_blend_applied_steps": 0,
+      "conductivity_ohmic_cfl_limited_steps": 0,
+      "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps": 116,
+      "electron_temperature_floor_contact_steps": 111,
+      "marder_correction_steps": 0,
+      "marder_dominant_correction_steps": 0
+    },
+    "max_observed": {
+      "conductivity_cfl_limited_fraction": 0.28,
+      "electron_temperature_max_K": 416924349.04537374,
+      "electron_temperature_min_K": 10.0,
+      "marder_nondominance_threshold": null,
+      "marder_relative_correction_linf": 0.0,
+      "marder_residual_after_linf": 0.0
+    },
+    "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+    "status": "candidate_adaptive_limiter_inventory_not_validation",
+    "steps_observed": 116
+  },
+  "max_dt_s": 2.1590829252331814e-10,
+  "max_steps": 5000,
+  "min_dt_s": 1e-13,
+  "rejected_step_count": 12,
+  "rejection_records": [
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 2.1590829252331814e-10,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 4803912.892012934,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 5.097311735834559e+24,
+          "max_resolved_current_A_m2": 1.0662751370382912e+18,
+          "max_resolved_current_drift_m_s": 1440176853914446.0,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 1440176853914446.0,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 1.0795414626165907e-10,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 37549.129660428756,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 1.9915459059965965e+22,
+          "max_resolved_current_A_m2": 8334394122947065.0,
+          "max_resolved_current_drift_m_s": 11256945876660.643,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 11256945876660.643,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 5.3977073130829536e-11,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 308.5907674123169,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 7.729018088506635e+19,
+          "max_resolved_current_A_m2": 68494718827727.18,
+          "max_resolved_current_drift_m_s": 92513184678.64478,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 92513184678.64478,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 2.6988536565414768e-11,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 11.076029008501166,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 2.858690180584679e+17,
+          "max_resolved_current_A_m2": 2458432243539.4966,
+          "max_resolved_current_drift_m_s": 3320509961.3378677,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 3320509961.3378677,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 1.3494268282707384e-11,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 4.426120345291636,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 755766880913206.1,
+          "max_resolved_current_A_m2": 982420410988.3976,
+          "max_resolved_current_drift_m_s": 1326917497.7187884,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 1326917497.7187884,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 115,
+      "attempted_dt_s": 6.747134141353692e-12,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 2.1123697692350833,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.6210754780619043e+21,
+          "max_excluded_numerical_floor_current_A_m2": 4759238615110.166,
+          "max_resolved_current_A_m2": 468860992236.455,
+          "max_resolved_current_drift_m_s": 633272525.3238784,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 633272525.3238784,
+        "max_electron_temperature_K": 361507.73199430306,
+        "max_electron_thermal_speed_m_s": 3310327.3051699228,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.011042063323587422
+      },
+      "elapsed_s": 2.4829453640181624e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 3.5422454242106883e-12,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 1048.5047251503909,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 6.726507417668468e+18,
+          "max_resolved_current_A_m2": 232829103379142.3,
+          "max_resolved_current_drift_m_s": 314333808777.4501,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 314333808777.4501,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 1.7711227121053442e-12,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 366.5257332416235,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 3.3172602002141548e+16,
+          "max_resolved_current_A_m2": 81390055561065.38,
+          "max_resolved_current_drift_m_s": 109881650488.75862,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 109881650488.75862,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 8.855613560526721e-13,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 171.51315330383795,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 473756508206952.25,
+          "max_resolved_current_A_m2": 38085907238743.44,
+          "max_resolved_current_drift_m_s": 51418349808.2884,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 51418349808.2884,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 4.4278067802633604e-13,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 75.03673092152093,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 47757843683466.586,
+          "max_resolved_current_A_m2": 16662523650958.068,
+          "max_resolved_current_drift_m_s": 22495446003.247364,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 22495446003.247364,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 2.2139033901316802e-13,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 26.599369721406,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 14122511907741.516,
+          "max_resolved_current_A_m2": 5906608958578.574,
+          "max_resolved_current_drift_m_s": 7974290430.031079,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 7974290430.031079,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    },
+    {
+      "accepted_steps_before_attempt": 116,
+      "attempted_dt_s": 1.1069516950658401e-13,
+      "can_support_first_principles_acceptance": false,
+      "closure_validity": {
+        "can_support_first_principles_acceptance": false,
+        "current_drift_to_c": 7.612507206359806,
+        "electron_fluid_domain": {
+          "all_cells_at_numerical_floor": false,
+          "can_support_first_principles_acceptance": false,
+          "criterion": "evaluate nonrelativistic electron-fluid drift and source work only where n_e exceeds the numerical electron-density floor",
+          "excluded_numerical_floor_cell_count": 117,
+          "limitations": [
+            "Candidate runtime domain guard only; floor cells are vacuum bookkeeping, not a physical electron fluid."
+          ],
+          "max_electron_density_m3": 4.623126501064211e+21,
+          "max_excluded_numerical_floor_current_A_m2": 7341861974737.58,
+          "max_resolved_current_A_m2": 1656085498798.1543,
+          "max_resolved_current_drift_m_s": 2282172246.9373193,
+          "min_electron_density_m3": 1.0,
+          "numerical_electron_density_floor_m3": 1.0,
+          "resolved_cell_count": 8,
+          "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+          "status": "candidate_resolved_plasma_electron_fluid_domain_not_validation",
+          "total_cell_count": 125
+        },
+        "max_electron_current_drift_m_s": 2282172246.9373193,
+        "max_electron_temperature_K": 416924349.04537374,
+        "max_electron_thermal_speed_m_s": 112419272.55950277,
+        "model_scope": "nonrelativistic_braginskii_ohm_electron_energy",
+        "status": "blocked_superluminal_electron_current_drift",
+        "thermal_speed_to_c": 0.3749903293414498
+      },
+      "elapsed_s": 2.4832827207252302e-08,
+      "electron_energy_status": "blocked_superluminal_electron_current_drift",
+      "finite_state": {
+        "all_finite": true,
+        "checks": {
+          "circuit_state": true,
+          "electric_field": true,
+          "electron_energy": true,
+          "ionization_state": true,
+          "magnetic_field": true,
+          "particles": true
+        },
+        "status": "finite_candidate_state"
+      },
+      "status": "candidate_adaptive_step_rejected_and_rolled_back",
+      "stop_reason": "aborted_blocked_electron_energy_closure"
+    }
+  ],
+  "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+  "source_lines": "740-792, 1074-1097, 1226-1240",
+  "state_fingerprint": {
+    "can_support_first_principles_acceptance": false,
+    "can_support_restart_acceptance": false,
+    "hash_algorithm": "sha256",
+    "included_state_count": 20,
+    "included_state_names": [
+      "E.Ex_edge",
+      "E.Ey_edge",
+      "E.Ez_edge",
+      "B.Bx_face",
+      "B.By_face",
+      "B.Bz_face",
+      "electron_energy.electron_energy_J_m3",
+      "electron_energy.electron_temperature_K",
+      "electron_energy.ion_temperature_K",
+      "ionization.neutral_density_m3",
+      "ionization.ion_density_m3",
+      "ionization.electron_density_m3",
+      "pic.species.0.D.mass",
+      "pic.species.0.D.charge",
+      "pic.species.0.D.positions",
+      "pic.species.0.D.positions_old",
+      "pic.species.0.D.velocities",
+      "pic.species.0.D.weights",
+      "circuit.current_A",
+      "circuit.charge_C"
+    ],
+    "particle_count": 373,
+    "particle_species_count": 1,
+    "sha256": "b591a98ddb4c5bd1d1abae9c7af34d6ae6a181385d2f5fef0631f716fc0322c2",
+    "source": "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+    "status": "experimental_terminal_state_fingerprint_not_restart_acceptance"
+  },
+  "status": "candidate_adaptive_validity_run_not_validation",
+  "target_time_s": 5e-07,
+  "termination_reason": "adaptive_min_dt_exhausted"
+}

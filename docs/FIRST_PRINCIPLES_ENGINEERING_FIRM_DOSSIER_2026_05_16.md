@@ -475,13 +475,48 @@ limiter-zero claim.
   `dominant_correction_steps=0`,
   `status=candidate_method_limiter_nondominant_observed`
 
+2026-05-17 source-zero Marder rerun after pressure-density coupling:
+
+- JSON artifact:
+  `results/experimental_limiter_proof_pf1000_combined_cfl_source_zero_marder_2026_05_17.json`
+- Command:
+  `.venv312/bin/python -m dpf.cli.main experimental-limiter-proof --target-time-s 5e-14 --auto-step-budget --max-auto-steps 10 --dt-policy combined-cfl --history-stride 1 --max-step-results 3 --output results/experimental_limiter_proof_pf1000_combined_cfl_source_zero_marder_2026_05_17.json`
+- PF-1000 gas pressure:
+  `159.98684210526315 Pa`
+- Startup/background density from ideal gas:
+  `3.862599934409183e22 m^-3`
+- Closure density floor:
+  `3.862599934409183e22 m^-3`
+- Marder factor scale:
+  `0.0`
+- Timestep selected by combined vacuum/Ohmic CFL policy:
+  `8.411478422160001e-14 s`
+- Steps completed:
+  `1`
+- Zero acceptance blockers observed:
+  `true`
+- Acceptance-blocking limiter activations:
+  `0`
+- Acceptance-blocking counts:
+  `conductivity_ohmic_cfl_limited_steps=0`,
+  `conductivity_density_blend_applied_steps=0`,
+  `marder_dominant_correction_steps=0`,
+  `electron_temperature_floor_contact_steps=0`,
+  `blocked_heat_flux_steps=0`
+- Marder decision:
+  `steps_observed=0`,
+  `status=candidate_method_limiter_requires_review`
+
 This proves the Ohmic-CFL limiter activation is removable by using the
 source-grounded explicit Ohmic relaxation timestep for a short target horizon.
-It also exposes the computational cost of doing this explicitly: at the same
-timestep a `1.0e-6 s` PF-1000 shot would require about `54,362,254` steps
-before mesh refinement, convergence families, or restart families. The next
-physics/numerics decision is therefore explicit small-dt continuation versus a
-source-grounded implicit/semi-implicit resistive update.
+The 2026-05-17 rerun also aligns the production Marder setting with the local
+hybrid-PIC source, which reports `d = 0` for production runs after sensitivity
+checks. This is not a validation claim; it is a cleaner experimental limiter
+inventory. The computational implication remains: explicit small-timestep
+continuation to a full microsecond PF-1000 shot would still require a very large
+step count before mesh refinement, convergence families, or restart families.
+The next physics/numerics decision is therefore explicit small-dt continuation
+versus a source-grounded implicit/semi-implicit resistive update.
 
 The same artifact now carries a candidate power-port residual budget:
 
@@ -696,38 +731,180 @@ Troubleshooting update:
 - Pressure-screen artifact:
   `results/experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_1p6us_2026_05_17.json`
   varies pressure `0.75x`, `1.0x`, and `1.25x` at fixed `L=0.875x`,
-  `R=1.5x`. Pressure calibration now also writes startup density from the
-  ideal-gas relation `n = p/(k_B T)`, giving tested densities from
-  `2.656e22 m^-3` to `4.426e22 m^-3`. The refreshed candidate ledger now
-  separates scored current metrics from retained plasma-loading telemetry:
-  pressure still has no meaningful effect on score, peak current, peak time, or
-  waveform NRMSE, but it does move retained density/ionization/raw-transport
-  metrics. Retained electron density changes from `1.102e22 m^-3` to
-  `2.066e22 m^-3`, raw source-backed conductivity changes from `9834 S/m` to
-  `10065 S/m`, and ionization fraction changes from `0.415` to `0.467`.
-  However, effective conductivity is clamped to `0.155812799 S/m` for all
-  three pressure factors with `conductivity_cfl_limited_fraction=1.0` and
-  `conductivity_ohmic_cfl_limit_applied_counts={"True": 2}` in the retained
-  history window. The final lagged load voltage is only `0.03765221 V`, with
-  final active load power near `1.432e4 W` and `I * U_DPF / J.E = -0.9968`, so
-  the load channel is internally consistent but far too small to move a
-  several-hundred-kA bank-current waveform in this screening run.
+  `R=1.5x`. This artifact has now advanced from a blocked pressure screen to a
+  finite, scored `1.600044e-6 s` experimental run for all three pressure
+  candidates. The source-backed path uses raw conductivity with
+  `ohm_time_centering_theta=1.0` and
+  `backward_euler_resistive_ampere_ohm`; the source-ordered
+  predictor-corrector now uses the same time-centered Ohm solve instead of the
+  previous zero-dt explicit correction.
+
+  All three candidates satisfy the requested duration and pass finite-state
+  checks. The best current score is essentially pressure-insensitive over this
+  short horizon: score `0.0441533467`, simulated peak current
+  `386.373 kA` versus target `401.600 kA`, peak-time relative error
+  `0.01804`, waveform NRMSE `0.06392`, and 59 overlap points. The packet
+  remains `horizon_limited_requires_longer_run` because the verified GV target
+  waveform spans `-0.5 us` to `6.0 us`; this run covers only about `26.67%` of
+  that waveform.
+
+  Pressure is now visible in plasma-loading telemetry instead of being masked
+  by an Ohmic-CFL clamp. Terminal source-backed conductivity changes from
+  `9668.55 S/m` to `9976.70 S/m`, terminal electron temperature changes from
+  `24070 K` to `22710 K`, and terminal electron closure validity remains
+  `candidate_nonrelativistic_electron_closure_in_range`. Terminal heat flux is
+  `candidate_braginskii_anisotropic_heat_flux_applied` in every pressure case.
 - Unclamped conductivity trial:
   `results/experimental_inverse_calibration_gv_pf24_l_r_pressure_unclamped_failure_2026_05_17.json`
   records the attempted removal of the explicit Ohmic CFL cap for the
   source-backed generalized-Ohm path. That trial overflowed current, Ohmic
   heating, and Maxwell field energies, then failed the conservation manifest
   with `ValueError: value must be finite`. Conclusion: simply removing the
-  numerical guard is not a first-principles solution; the missing piece is a
-  source-grounded implicit or semi-implicit resistive Maxwell/power-port update
-  that can use raw conductivity while preserving finite field energy.
+  numerical guard was not a first-principles solution. The current code path
+  supersedes this failure by using backward-Euler Ohm, source-backed
+  Braginskii heat-flux handling, electron-current pressure work, and a
+  nonrelativistic electron-closure validity gate.
+- Current-source-backed full-window PF-24 artifact:
+  `results/experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_6us_single_2026_05_17.json`
+  runs the same calibrated `L=0.875x`, `R=1.5x`, `pressure=1.0x` candidate
+  through the complete positive-time GV waveform window. It completes
+  `105586` steps to `6.000009497541612e-6 s`, satisfies the requested duration,
+  keeps a finite state, and scores the full nonnegative target waveform
+  coverage (`0.0 us` to `6.0 us`) with no blocked candidates.
+
+  This closes the immediate runtime question for that experimental candidate:
+  the current source-backed 3-D path can execute a full PF-24 current-waveform
+  horizon without the earlier heat-flux, Ohmic-CFL, or electron-drift aborts.
+  It does not close predictive physics. The simulated peak is now
+  `328.654 kA` at `2.386741 us` versus the user-verified target peak
+  `401.600 kA` at `1.36 us`; waveform NRMSE is `0.22897`, peak-current
+  relative error is `0.18164`, and peak-time relative error is `0.75496`.
+  The experimental artifact remains non-promoting, and the next inference loop
+  must re-rank source-bounded circuit/startup/power-port candidates against the
+  full waveform under the latest physics path.
+- Packeted PF-24 `6.0 us` rerun:
+  `results/experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_6us_packeted_2026_05_17.json`
+  reproduces the same `L=0.875x`, `R=1.5x`, `pressure=1.0x` full-window
+  metrics after the runtime packet wiring change. The run again completes
+  `105586` steps to `6.000009497541612e-6 s`, score `0.467396`, and full
+  target coverage. Its inverse-calibration candidate now carries the actual
+  startup, power-port, limiter-zero, numerical-fidelity, experimental-whole-shot,
+  and experimental-numerics packets.
+
+  The power-port residual budget now uses a simulator cumulative all-completed
+  step volume `J.E` ledger instead of only retained sparse history:
+  cumulative `J.E` work is `-0.118977481171472 J` over `105586` completed
+  steps, `integrated_volume_j_dot_e_work_source` is
+  `simulator_cumulative_all_completed_steps`, and
+  `full_completed_step_j_dot_e_integral_available` is `true`. This reduces the
+  bookkeeping blocker but does not accept the power port; sign convention,
+  time centering, electrode work, interface domain, and residual tolerance
+  remain unreviewed. The same artifact reports startup payload
+  `startup_payload_not_supplied` and numerical fidelity
+  `blocked_numerical_fidelity_packet_not_available`.
+
+  Limiter accounting has been tightened for the source-backed implicit-Ohm
+  path. The explicit Ohmic CFL cap is not applied in this run, so it is no
+  longer counted as an acceptance-blocking limiter. The updated packet reports
+  `total_acceptance_blocking_activations=0` and
+  `zero_acceptance_blockers_observed=true`; it separately records
+  `conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps=105586` as a method
+  review item with status
+  `candidate_raw_explicit_ohmic_cfl_exceedance_observed_not_applied`. Remaining
+  limiter-review work is therefore
+  `review_unapplied_raw_ohmic_cfl_exceedance`,
+  source-backed physical bounds or method proofs, backend/precision parity,
+  and independent engineering review.
+
+  The numerical-fidelity packet consumes this runtime observation without
+  promoting it. Its `limiter_zero_acceptance` test surface is
+  `candidate_runtime_limiter_zero_observed_not_acceptance` with artifact
+  `runtime_experimental_limiter_zero_probe`, and candidate runtime channels now
+  include `candidate_limiter_zero_no_applied_blockers_observed` and
+  `candidate_full_completed_step_j_dot_e_integral`. The overall numerical gate
+  remains `blocked_numerical_fidelity_packet_not_available` because
+  mesh/timestep convergence, restart reproducibility, backend/precision parity,
+  source-backed tolerances, method proofs, and independent review are still
+  missing.
+
+  Full-horizon checkpoint restart has now been exercised for PF-24. The
+  source-deck artifact
+  `results/experimental_checkpoint_restart_gv_pf24_6us_probe_2026_05_17.json`
+  completes `105586` steps with a midpoint checkpoint at `52793` steps;
+  uninterrupted and checkpoint-loaded restart paths have matching terminal
+  fingerprints and exact tracked observables. The calibrated-candidate artifact
+  `results/experimental_checkpoint_restart_gv_pf24_l0875_r15_p1_6us_probe_2026_05_17.json`
+  repeats the same full `6.000009497541612e-6 s` comparison for the
+  `L=0.875x`, `R=1.5x`, `pressure=1.0x` candidate. It also matches exactly:
+  terminal fingerprint
+  `dd81f04ec3d4a757370990f3a54f24f8d60928369e30858a958c1f979ce77c0f`,
+  final current `110263.02172600424 A`, loaded lagged field work,
+  previous-current state, and kinetic-yield state all preserved. This closes
+  full-horizon experimental restart plumbing for this candidate. It does not
+  close numerical acceptance because restart tolerances, multi-offset families,
+  backend/precision parity, source-backed tolerance packets, and independent
+  review remain missing.
+- Low-inductance inference screens:
+  `results/experimental_inverse_calibration_gv_pf24_l_r_waveform_2p6us_lowL_screen_2026_05_17.json`
+  tested `L=0.30x` and `L=0.40x` at `R=1.5x` through `2.6 us`. Both
+  candidates completed `45754` steps and moved the retained-history peak to
+  `1.704831 us`, closer to the target `1.36 us` than the `L=0.875x`
+  full-window candidate. The best early-window score was `0.22268` for
+  `L=0.30x`, but the run covered only `43.33%` of the verified waveform.
+
+  `results/experimental_inverse_calibration_gv_pf24_l_r_waveform_2p2us_lowL_tight_screen_2026_05_17.json`
+  tested the LC-scaled `L=0.18x` and `L=0.22x` region through `2.2 us`.
+  Both candidates completed `38715` steps, but the peak moved later
+  (`1.841213 us`) and current stayed low (`313.6-317.3 kA`). This rejects a
+  simple monotone LC-only tuning explanation.
+
+  `results/experimental_inverse_calibration_gv_pf24_l_r_waveform_6us_lowL_single_2026_05_17.json`
+  then ran the early-window best `L=0.30x`, `R=1.5x` candidate through the full
+  `6 us` window. It completed `105586` steps to `6.000009497541612e-6 s` with
+  finite state and full waveform coverage, but the full-window peak moved to
+  `4.205166 us` and dropped to `168.645 kA`; score worsened to `1.26562` and
+  waveform NRMSE was `0.30382`. The artifact now includes the attached
+  runtime packets showing the actual blockers: startup payload
+  `startup_payload_not_supplied`, power port
+  `candidate_engineering_power_port_not_validation`, limiter-zero
+  `experimental_limiter_zero_probe_not_validation`, and numerical fidelity
+  `blocked_numerical_fidelity_packet_not_available`.
 - Current conclusion: the code can now infer/test/rank source-bounded candidate
-  parameters against a full positive-time GV waveform. Static L/R calibration
-  has a credible experimental basin, but it is not closed; pressure/plasma
-  loading is present in retained field-work telemetry but is choked by the
-  explicit Ohmic stability cap in the tested path. The next first-principles
-  blocker is the implicit resistive field update and accepted circuit
-  power-port back-reaction, not the source deck value itself.
+  parameters against a positive-time GV waveform and can run the PF-24
+  L/R/pressure screen through the requested `1.6 us` experimental horizon and
+  one full `6 us` PF-24 candidate horizon. Static L/R calibration must be
+  re-ranked after the latest source-backed electron-energy and backward-Euler
+  Ohm changes, because the latest full-window candidates are finite but late
+  and low, and low-inductance early-window tuning does not hold over the full
+  waveform. Pressure is measurable in plasma telemetry, and the early
+  electron-energy/current runaway is closed for this screen. The next
+  first-principles blockers are source-grounded startup payload ingestion,
+  accepted time-centered power-port coupling, limiter-zero/numerical-fidelity
+  evidence, and then full-window candidate re-ranking under those packets.
+- PF-1000/Akel seeded-domain limiter proof:
+  `results/experimental_limiter_proof_pf1000_seeded_power_domain_6us_2026_05_17.json`
+  runs the package-native PF-1000/Akel shot-12581 candidate through
+  `6.000091449223011e-6 s` using the vacuum-CFL timestep policy. The run
+  completes `27790` steps, satisfies the requested duration, keeps a finite
+  state, and reports `zero_acceptance_blockers_observed=true` with
+  `total_acceptance_blocking_activations=0`. Final terminal current is
+  `1.682957 MA`, final field energy is `115359.442 J`, and the electron
+  closure remains nonrelativistic (`current_drift_to_c=7.1369e-6`,
+  electron-temperature range `287.831 K` to `42018.004 K`).
+
+  This run supersedes the earlier PF-1000 microsecond aborts. The fixes are
+  source-domain guards, not accepted validation evidence: the PF-1000 startup
+  seed now carries zero arbitrary volume electric field, the resolved
+  `J.E`/electron-fluid/current domains exclude numerical vacuum-floor cells,
+  and lagged `J.E` feedback fails closed when it would require an unsupported
+  negative active power-port voltage. The artifact records that active-port
+  fallback explicitly: `candidate_lagged_volume_j_dot_e=1076`,
+  `input_sequence_fallback_first_step=1`, and
+  `input_sequence_fallback_negative_j_dot_e_active_port_blocked=26713`.
+  Therefore the code can now run an experimental 6 us PF-1000 shot horizon, but
+  accepted first-principles power-port authority remains blocked on sign,
+  time-centering, electrode-work partition, interface/domain, residual
+  tolerance, convergence, and independent review.
 
 ## PlasmaPy Use
 

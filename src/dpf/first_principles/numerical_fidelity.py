@@ -225,10 +225,14 @@ def build_numerical_fidelity_packet(
             accepted=accepted,
             missing=missing,
         ),
-        "test_surface_status": _test_surface_statuses(accepted),
+        "test_surface_status": _test_surface_statuses(
+            accepted,
+            upstream_packets=upstream_packets,
+        ),
         "candidate_runtime_channels": _candidate_runtime_channels(
             conservation=conservation,
             simulation_telemetry=simulation_telemetry,
+            upstream_packets=upstream_packets,
         ),
         "runtime_observations": _runtime_observations(
             conservation=conservation,
@@ -278,25 +282,37 @@ def _numerical_channel_statuses(
     return statuses
 
 
-def _test_surface_statuses(accepted: set[str]) -> dict[str, dict[str, Any]]:
+def _test_surface_statuses(
+    accepted: set[str],
+    *,
+    upstream_packets: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[str, dict[str, Any]]:
     coverage = {str(item["surface"]): item for item in CANDIDATE_TEST_SURFACE_COVERAGE}
     statuses: dict[str, dict[str, Any]] = {}
+    limiter_zero = _mapping((upstream_packets or {}).get("experimental_limiter_zero_probe"))
     for surface in REQUIRED_NUMERICAL_TEST_SURFACES:
         surface_coverage = coverage.get(surface)
         declared_accepted = surface in accepted
+        candidate_artifacts = list(
+            surface_coverage.get("candidate_artifacts", ())
+            if surface_coverage is not None
+            else ()
+        )
         if declared_accepted:
             status = "accepted_test_surface_declared_packet_still_blocked"
+        elif (
+            surface == "limiter_zero_acceptance"
+            and limiter_zero.get("zero_acceptance_blockers_observed") is True
+        ):
+            status = "candidate_runtime_limiter_zero_observed_not_acceptance"
+            candidate_artifacts.append("runtime_experimental_limiter_zero_probe")
         elif surface_coverage is not None:
             status = str(surface_coverage["coverage_status"])
         else:
             status = "missing_or_blocked"
         statuses[surface] = {
             "status": status,
-            "candidate_artifacts": list(
-                surface_coverage.get("candidate_artifacts", ())
-                if surface_coverage is not None
-                else ()
-            ),
+            "candidate_artifacts": candidate_artifacts,
             "acceptance_rule": (
                 "requires_source_backed_reference_solution_norm_tolerance_"
                 "convergence_artifacts_hashes_limiter_zero_scope_and_review"
@@ -340,6 +356,7 @@ def _candidate_runtime_channels(
     *,
     conservation: Mapping[str, Any] | None,
     simulation_telemetry: Mapping[str, Any] | None,
+    upstream_packets: Mapping[str, Mapping[str, Any]] | None,
 ) -> list[str]:
     channels: set[str] = set()
     if conservation:
@@ -364,6 +381,20 @@ def _candidate_runtime_channels(
                 channels.add("candidate_electron_energy_source_update")
             if last_step.get("kinetic_yield") is not None:
                 channels.add("candidate_kinetic_yield_history")
+    limiter_zero = _mapping((upstream_packets or {}).get("experimental_limiter_zero_probe"))
+    if limiter_zero.get("zero_acceptance_blockers_observed") is True:
+        channels.add("candidate_limiter_zero_no_applied_blockers_observed")
+    power_port = _mapping((upstream_packets or {}).get("power_port"))
+    residual_budget = _mapping(power_port.get("candidate_power_residual_budget"))
+    if residual_budget.get("full_completed_step_j_dot_e_integral_available") is True:
+        channels.add("candidate_full_completed_step_j_dot_e_integral")
+    if residual_budget.get("cumulative_terminal_active_port_work_J") is not None:
+        channels.add("candidate_cumulative_terminal_i_udpf_work")
+    if (
+        residual_budget.get("full_completed_step_active_port_integral_available")
+        is True
+    ):
+        channels.add("candidate_full_completed_step_terminal_i_udpf_integral")
     return sorted(channels)
 
 
@@ -404,3 +435,7 @@ def _status_is_accepted(status: str | None) -> bool:
         return False
     normalized = status.strip().lower()
     return normalized.startswith("accepted") or normalized in {"passed", "ready"}
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}

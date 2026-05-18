@@ -228,6 +228,12 @@ def build_engineering_power_port_packet(
                 if j_dot_e_power_W is not None
                 else []
             ),
+            "candidate_terminal_power_channels": (
+                ["terminal_current_times_udpf_integral"]
+                if residual_budget.get("cumulative_terminal_active_port_work_J")
+                is not None
+                else []
+            ),
         },
         "source_references": list(POWER_PORT_SOURCE_REFS),
         "conservation_status": (
@@ -458,6 +464,10 @@ def _candidate_runtime_channels(
         channels.add("candidate_diagnostic_field_inductance")
     if residual_budget.get("available") is True:
         channels.add("candidate_power_residual_budget")
+    if residual_budget.get("cumulative_terminal_active_port_work_J") is not None:
+        channels.add("candidate_cumulative_terminal_i_udpf_work")
+    if residual_budget.get("full_completed_step_active_port_integral_available") is True:
+        channels.add("candidate_full_completed_step_terminal_i_udpf_integral")
     return sorted(channels)
 
 
@@ -485,6 +495,27 @@ def _candidate_power_residual_budget(
         retained_history=retained_history,
         dt_s=dt_s,
     )
+    cumulative_j_dot_e_work_J = _optional_float(
+        simulation_telemetry,
+        "cumulative_j_dot_e_work_J",
+    )
+    cumulative_j_dot_e_step_count = _optional_float(
+        simulation_telemetry,
+        "cumulative_j_dot_e_step_count",
+    )
+    cumulative_active_port_work_J = _optional_float(
+        simulation_telemetry,
+        "cumulative_active_port_work_J",
+    )
+    cumulative_active_port_step_count = _optional_float(
+        simulation_telemetry,
+        "cumulative_active_port_step_count",
+    )
+    udpf_source_counts = (
+        simulation_telemetry.get("udpf_source_counts")
+        if isinstance(simulation_telemetry, Mapping)
+        else None
+    )
     last_j_dot_e_work_J = (
         None
         if dt_s is None or _optional_float(field_work, "j_dot_e_power_W") is None
@@ -496,18 +527,49 @@ def _candidate_power_residual_budget(
     denominator = _residual_denominator(
         initial_total_J,
         final_total_J,
+        cumulative_j_dot_e_work_J,
+        cumulative_active_port_work_J,
         retained_j_dot_e_work_J,
         last_j_dot_e_work_J,
     )
+    integrated_j_dot_e_work_J = (
+        cumulative_j_dot_e_work_J
+        if cumulative_j_dot_e_work_J is not None
+        else retained_j_dot_e_work_J
+    )
     delta_minus_retained = _difference(delta_energy_J, retained_j_dot_e_work_J)
     delta_plus_retained = _sum_optional(delta_energy_J, retained_j_dot_e_work_J)
+    delta_minus_integrated = _difference(delta_energy_J, integrated_j_dot_e_work_J)
+    delta_plus_integrated = _sum_optional(delta_energy_J, integrated_j_dot_e_work_J)
+    delta_minus_active_port = _difference(delta_energy_J, cumulative_active_port_work_J)
+    delta_plus_active_port = _sum_optional(delta_energy_J, cumulative_active_port_work_J)
+    active_minus_j_dot_e = _difference(
+        cumulative_active_port_work_J,
+        integrated_j_dot_e_work_J,
+    )
+    active_plus_j_dot_e = _sum_optional(
+        cumulative_active_port_work_J,
+        integrated_j_dot_e_work_J,
+    )
     available = delta_energy_J is not None and (
-        retained_j_dot_e_work_J is not None or last_j_dot_e_work_J is not None
+        integrated_j_dot_e_work_J is not None
+        or cumulative_active_port_work_J is not None
+        or last_j_dot_e_work_J is not None
     )
     full_retained_history = (
         n_steps_completed is not None
         and int(n_steps_completed) == len(retained_history)
         and (history_stride is None or int(history_stride) == 1)
+    )
+    full_completed_step_integral = (
+        n_steps_completed is not None
+        and cumulative_j_dot_e_step_count is not None
+        and int(cumulative_j_dot_e_step_count) == int(n_steps_completed)
+    )
+    full_completed_step_active_port_integral = (
+        n_steps_completed is not None
+        and cumulative_active_port_step_count is not None
+        and int(cumulative_active_port_step_count) == int(n_steps_completed)
     )
     return {
         "status": "candidate_power_residual_budget_not_validation"
@@ -517,9 +579,64 @@ def _candidate_power_residual_budget(
         "tracked_energy_delta_J": delta_energy_J,
         "initial_tracked_total_energy_J": initial_total_J,
         "final_tracked_total_energy_J": final_total_J,
+        "integrated_volume_j_dot_e_work_J": integrated_j_dot_e_work_J,
+        "integrated_volume_j_dot_e_work_source": (
+            "simulator_cumulative_all_completed_steps"
+            if cumulative_j_dot_e_work_J is not None
+            else (
+                "retained_history_rectangular_sum"
+                if retained_j_dot_e_work_J is not None
+                else None
+            )
+        ),
+        "cumulative_volume_j_dot_e_work_J": cumulative_j_dot_e_work_J,
+        "cumulative_volume_j_dot_e_step_count": (
+            None
+            if cumulative_j_dot_e_step_count is None
+            else int(cumulative_j_dot_e_step_count)
+        ),
         "retained_volume_j_dot_e_work_J": retained_j_dot_e_work_J,
         "last_step_volume_j_dot_e_work_J": last_j_dot_e_work_J,
         "terminal_active_power_work_last_step_J": terminal_active_work_last_step_J,
+        "cumulative_terminal_active_port_work_J": cumulative_active_port_work_J,
+        "cumulative_terminal_active_port_step_count": (
+            None
+            if cumulative_active_port_step_count is None
+            else int(cumulative_active_port_step_count)
+        ),
+        "udpf_source_counts": (
+            dict(udpf_source_counts) if isinstance(udpf_source_counts, Mapping) else {}
+        ),
+        "delta_minus_active_port_work_J": delta_minus_active_port,
+        "delta_plus_active_port_work_J": delta_plus_active_port,
+        "delta_minus_active_port_fraction": _fraction(
+            delta_minus_active_port,
+            denominator,
+        ),
+        "delta_plus_active_port_fraction": _fraction(
+            delta_plus_active_port,
+            denominator,
+        ),
+        "active_port_minus_integrated_j_dot_e_work_J": active_minus_j_dot_e,
+        "active_port_plus_integrated_j_dot_e_work_J": active_plus_j_dot_e,
+        "active_port_minus_integrated_j_dot_e_fraction": _fraction(
+            active_minus_j_dot_e,
+            denominator,
+        ),
+        "active_port_plus_integrated_j_dot_e_fraction": _fraction(
+            active_plus_j_dot_e,
+            denominator,
+        ),
+        "delta_minus_integrated_j_dot_e_work_J": delta_minus_integrated,
+        "delta_plus_integrated_j_dot_e_work_J": delta_plus_integrated,
+        "delta_minus_integrated_j_dot_e_fraction": _fraction(
+            delta_minus_integrated,
+            denominator,
+        ),
+        "delta_plus_integrated_j_dot_e_fraction": _fraction(
+            delta_plus_integrated,
+            denominator,
+        ),
         "delta_minus_retained_j_dot_e_work_J": delta_minus_retained,
         "delta_plus_retained_j_dot_e_work_J": delta_plus_retained,
         "delta_minus_retained_j_dot_e_fraction": _fraction(
@@ -536,6 +653,12 @@ def _candidate_power_residual_budget(
         ),
         "history_stride": None if history_stride is None else int(history_stride),
         "full_retained_history_available": full_retained_history,
+        "full_completed_step_j_dot_e_integral_available": (
+            full_completed_step_integral
+        ),
+        "full_completed_step_active_port_integral_available": (
+            full_completed_step_active_port_integral
+        ),
         "sign_convention": (
             "positive_J_dot_E_is_field_work_on_charges_candidate_not_accepted"
         ),

@@ -1,7 +1,14 @@
 import numpy as np
+import pytest
 
 from dpf.fields import CircuitMagneticBoundaryDrive, Maxwell3DGrid
-from dpf.first_principles import run_first_principles_3d_deck as package_runner
+from dpf.first_principles import (
+    minimal_engineering_deck,
+    pf1000_akel_16kv_engineering_deck,
+)
+from dpf.first_principles import (
+    run_first_principles_3d_deck as package_runner,
+)
 from dpf.first_principles.power_port import build_engineering_power_port_packet
 from dpf.first_principles.runner import (
     ENGINEERING_CANDIDATE_STATUS,
@@ -33,6 +40,11 @@ def test_power_port_candidate_residual_budget_tracks_sign_hypotheses() -> None:
         simulation_telemetry={
             "dt_s": 0.5,
             "n_steps_completed": 1,
+            "cumulative_j_dot_e_work_J": 1.0,
+            "cumulative_j_dot_e_step_count": 1,
+            "cumulative_active_port_work_J": -3.0,
+            "cumulative_active_port_step_count": 1,
+            "udpf_source_counts": {"candidate_lagged_volume_j_dot_e": 1},
             "history_stride": 1,
             "history_summary": [
                 {
@@ -52,13 +64,29 @@ def test_power_port_candidate_residual_budget_tracks_sign_hypotheses() -> None:
 
     budget = packet["candidate_power_residual_budget"]
     assert budget["available"] is True
+    assert budget["integrated_volume_j_dot_e_work_J"] == 1.0
+    assert (
+        budget["integrated_volume_j_dot_e_work_source"]
+        == "simulator_cumulative_all_completed_steps"
+    )
+    assert budget["full_completed_step_j_dot_e_integral_available"] is True
+    assert budget["cumulative_terminal_active_port_work_J"] == -3.0
+    assert budget["full_completed_step_active_port_integral_available"] is True
+    assert budget["delta_plus_active_port_work_J"] == -2.0
+    assert budget["active_port_plus_integrated_j_dot_e_work_J"] == -2.0
+    assert budget["udpf_source_counts"] == {"candidate_lagged_volume_j_dot_e": 1}
     assert budget["retained_volume_j_dot_e_work_J"] == 1.0
+    assert budget["delta_minus_integrated_j_dot_e_work_J"] == 0.0
     assert budget["delta_minus_retained_j_dot_e_work_J"] == 0.0
     assert budget["delta_plus_retained_j_dot_e_work_J"] == 2.0
     assert budget["full_retained_history_available"] is True
     assert budget["accepted_residual_tolerance"] == "not_attached"
     assert budget["can_support_power_port_acceptance"] is False
     assert "candidate_power_residual_budget" in packet["candidate_runtime_channels"]
+    assert (
+        "candidate_full_completed_step_terminal_i_udpf_integral"
+        in packet["candidate_runtime_channels"]
+    )
 
 
 def test_first_principles_3d_session_matches_uninterrupted_split_run() -> None:
@@ -66,6 +94,8 @@ def test_first_principles_3d_session_matches_uninterrupted_split_run() -> None:
         "n_steps": 4,
         "grid_shape": (4, 4, 4),
         "dt_s": 1.0e-13,
+        "background_density_m3": 1.0e21,
+        "density_floor_m3": 1.0e21,
         "apply_circuit_boundary": True,
         "history_stride": 1,
         "max_step_results": 4,
@@ -97,6 +127,25 @@ def test_first_principles_3d_session_matches_uninterrupted_split_run() -> None:
     )
 
 
+def test_first_principles_3d_session_adaptive_validity_reaches_short_target() -> None:
+    session = build_first_principles_3d_session(
+        pf1000_akel_16kv_engineering_deck(n_steps=1, shape=(5, 5, 5))
+    )
+
+    packet = session.run_adaptive_validity(
+        target_time_s=2.0e-13,
+        max_steps=4,
+    )
+
+    assert packet["status"] == "candidate_adaptive_validity_run_not_validation"
+    assert packet["duration_request_satisfied"] is True
+    assert packet["termination_reason"] == "target_time_reached"
+    assert packet["accepted_step_count"] == 2
+    assert packet["rejected_step_count"] == 0
+    assert packet["limiter_activation_summary"]["steps_observed"] == 2
+    assert packet["state_fingerprint"]["sha256"]
+
+
 def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry() -> (
     None
 ):
@@ -105,6 +154,8 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
             "n_steps": 2,
             "grid_shape": (4, 4, 4),
             "dt_s": 1.0e-13,
+            "background_density_m3": 1.0e21,
+            "density_floor_m3": 1.0e21,
             "apply_circuit_boundary": True,
         }
     )
@@ -279,7 +330,7 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
     )
     assert result.telemetry["power_port"]["j_dot_e_power_W"] is not None
     assert result.telemetry["power_port"]["j_dot_e_domain"] == (
-        "full_cartesian_grid_volume"
+        "resolved_plasma_current_carrying_cells"
     )
     assert (
         result.telemetry["power_port"]["energy_ledger_status"]["magnetic_energy"][
@@ -338,11 +389,37 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
     assert residual_budget["status"] == "candidate_power_residual_budget_not_validation"
     assert residual_budget["available"] is True
     assert residual_budget["tracked_energy_delta_J"] is not None
+    assert residual_budget["integrated_volume_j_dot_e_work_J"] is not None
+    assert (
+        residual_budget["integrated_volume_j_dot_e_work_source"]
+        == "simulator_cumulative_all_completed_steps"
+    )
+    assert (
+        residual_budget["full_completed_step_j_dot_e_integral_available"]
+        is True
+    )
+    assert (
+        residual_budget["cumulative_terminal_active_port_work_J"]
+        is not None
+    )
+    assert (
+        residual_budget["full_completed_step_active_port_integral_available"]
+        is True
+    )
+    assert (
+        residual_budget["cumulative_terminal_active_port_step_count"]
+        == result.telemetry["simulation"]["n_steps_completed"]
+    )
+    assert residual_budget["udpf_source_counts"]
     assert residual_budget["retained_volume_j_dot_e_work_J"] is not None
     assert residual_budget["accepted_residual_tolerance"] == "not_attached"
     assert residual_budget["can_support_power_port_acceptance"] is False
     assert (
         "candidate_power_residual_budget"
+        in result.telemetry["power_port"]["candidate_runtime_channels"]
+    )
+    assert (
+        "candidate_full_completed_step_terminal_i_udpf_integral"
         in result.telemetry["power_port"]["candidate_runtime_channels"]
     )
     assert (
@@ -815,6 +892,10 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
         in result.telemetry["numerical_fidelity"]["candidate_runtime_channels"]
     )
     assert (
+        "candidate_full_completed_step_terminal_i_udpf_integral"
+        in result.telemetry["numerical_fidelity"]["candidate_runtime_channels"]
+    )
+    assert (
         result.telemetry["numerical_fidelity"]["upstream_packet_statuses"][
             "limiter_readiness"
         ]
@@ -1219,6 +1300,26 @@ def test_first_principles_runner_projects_candidate_conductor_mask_from_package_
     )
 
 
+def test_pf1000_candidate_breakdown_profile_seeds_insulator_layer_only() -> None:
+    from dpf.first_principles import pf1000_akel_16kv_engineering_deck
+
+    deck = pf1000_akel_16kv_engineering_deck(n_steps=1, shape=(5, 5, 5))
+    result = run_first_principles_3d_deck(deck)
+
+    startup = result.telemetry["startup"]
+    assert startup["status"] == "rejected_startup_mode_for_first_principles"
+    assert startup["mode"] == "seeded_layer"
+    loading = result.telemetry["pic_particle_loading"]
+    profile = loading["initial_plasma_profile"]
+    assert profile["profile_type"] == "annular_axial_sheath"
+    assert profile["ionization_fraction_min"] == 0.0
+    assert profile["ionization_fraction_max"] == pytest.approx(0.1)
+    assert "preaccelerated_current_sheath" in profile["applied_regions"]
+    assert "background_prefill" not in profile["applied_regions"]
+    assert loading["active_cells_with_positive_ion_weight"] > 0
+    assert loading["active_cells_with_positive_ion_weight"] < loading["active_loaded_cells"]
+
+
 def test_first_principles_3d_runner_rejects_invalid_step_count() -> None:
     runner = HybridEMPicFluidRun({"n_steps": 0})
 
@@ -1242,9 +1343,7 @@ def test_first_principles_3d_runner_rejects_invalid_boundary_policy() -> None:
 
 
 def test_first_principles_3d_runner_carries_startup_policy_from_package_deck() -> None:
-    from dpf.first_principles import minimal_engineering_deck
-
-    deck = minimal_engineering_deck(n_steps=1, shape=(4, 4, 4))
+    deck = minimal_engineering_deck(n_steps=1, shape=(6, 6, 10))
     result = run_first_principles_3d_deck(deck)
 
     startup = result.telemetry["startup"]
@@ -1253,6 +1352,25 @@ def test_first_principles_3d_runner_carries_startup_policy_from_package_deck() -
     assert startup["status"] == "blocked_startup_bvp_packet_not_available"
     assert "breakdown_model" in startup["declared_startup_missing_channels"]
     assert "breakdown_or_flashover_model" in startup["missing_acceptance_channels"]
+    assert (
+        "candidate_source_backed_end_rundown_sheath_profile"
+        in startup["candidate_input_channels"]
+    )
+    assert (
+        "candidate_source_backed_sheath_velocity_distribution"
+        in startup["candidate_input_channels"]
+    )
+    loading = result.telemetry["pic_particle_loading"]
+    profile = loading["initial_plasma_profile"]
+    assert profile["status"] == (
+        "candidate_source_backed_annular_sheath_profile_not_validation"
+    )
+    assert profile["profile_type"] == "annular_axial_sheath"
+    assert "background_prefill" in profile["applied_regions"]
+    assert "preaccelerated_current_sheath" in profile["applied_regions"]
+    assert loading["initial_ion_density_m3"] is None
+    assert loading["initial_ion_density_max_m3"] == 3.3e23
+    assert profile["max_abs_plasma_drift_m_s"] == 1.1e5
     assert result.manifest["metadata"]["deck"]["startup"] == startup
 
 
@@ -1472,7 +1590,13 @@ def test_first_principles_runner_marks_pf1000_akel_same_scope_as_blocked() -> No
     )
     assert (
         numerical["test_surface_status"]["limiter_zero_acceptance"]["status"]
-        == "missing_or_blocked"
+        == "candidate_runtime_limiter_zero_observed_not_acceptance"
+    )
+    assert (
+        "runtime_experimental_limiter_zero_probe"
+        in numerical["test_surface_status"]["limiter_zero_acceptance"][
+            "candidate_artifacts"
+        ]
     )
     assert numerical["acceptance_gate"].startswith(
         "candidate_component_tests_and_runtime_diagnostics_cannot_support"

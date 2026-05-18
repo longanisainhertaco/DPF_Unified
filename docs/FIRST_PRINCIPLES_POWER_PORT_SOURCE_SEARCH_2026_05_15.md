@@ -95,11 +95,14 @@ Implemented after this source search:
   cell-centered electric field. The package-native power-port packet carries
   this as `j_dot_e_power_W` and marks
   `poynting_power_or_j_dot_e` as candidate runtime evidence only.
-- `src/dpf/fields/hybrid_simulator.py` can now use lagged candidate volume
-  `J.E` feedback for the circuit update via
-  `U_DPF = - integral(J.E)dV / I`. This is a real field-power feedback ratchet,
-  but remains non-promoting because it is lagged, full-grid, and lacks accepted
-  sign, centering, electrode-work, interface/domain, and residual packets.
+- `src/dpf/fields/hybrid_simulator.py` can use lagged candidate volume `J.E`
+  feedback for the circuit update. Under the package sign convention,
+  positive resolved `J.E` is treated as power drawn by the DPF and maps to the
+  passive load voltage `U_DPF = integral(J.E)dV / I`; negative lagged `J.E`
+  would require an active plasma-to-circuit power-port closure and therefore
+  now fails closed to the input-sequence fallback. This remains non-promoting
+  because it is lagged, candidate-only, and lacks accepted sign, centering,
+  electrode-work, interface/domain, and residual packets.
 - The packet explicitly separates the active load relation from
   both `L_field = 2 E_B/I^2` and candidate volume `J.E`; neither relation is
   accepted as the circuit load without a reviewed domain/sign/centering/

@@ -169,6 +169,47 @@ def diffuse_field_1d(
     return _thomas_solve(lower, diag, upper, rhs)
 
 
+@njit(cache=True)
+def diffuse_field_1d_backward_euler(
+    field: np.ndarray,
+    coeff: np.ndarray,
+    dt: float,
+    dx: float,
+) -> np.ndarray:
+    """Backward-Euler diffusion solve on a 1D grid.
+
+    Solves ``du/dt = d/dx [D(x) du/dx]`` with nonnegative variable diffusion
+    coefficient and zero-gradient boundary conditions.  The resulting
+    tridiagonal matrix has nonpositive off-diagonal entries and positive row
+    sums, giving the diagonal heat-flux fallback a monotone, positivity-
+    preserving path when the higher-order Crank-Nicolson solve is too stiff.
+    """
+    n = len(field)
+    if n < 3:
+        return field.copy()
+
+    dx2 = dx * dx
+    sigma = np.empty(n - 1)
+    for i in range(n - 1):
+        sigma[i] = dt * 0.5 * (coeff[i] + coeff[i + 1]) / dx2
+
+    lower = np.zeros(n)
+    diag = np.ones(n)
+    upper = np.zeros(n)
+
+    for i in range(1, n - 1):
+        lower[i] = -sigma[i - 1]
+        upper[i] = -sigma[i]
+        diag[i] = 1.0 + sigma[i - 1] + sigma[i]
+
+    diag[0] = 1.0 + sigma[0]
+    upper[0] = -sigma[0]
+    lower[n - 1] = -sigma[n - 2]
+    diag[n - 1] = 1.0 + sigma[n - 2]
+
+    return _thomas_solve(lower, diag, upper, field)
+
+
 def diffuse_btheta_cylindrical_radial_1d(
     field: np.ndarray,
     coeff: np.ndarray,

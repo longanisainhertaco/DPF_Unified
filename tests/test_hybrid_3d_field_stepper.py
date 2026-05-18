@@ -58,6 +58,83 @@ def test_hybrid_stepper_ohmic_current_reduces_uniform_electric_energy() -> None:
     assert result.telemetry.current_port["deposition_method"] == (
         "generalized_ohm_total_current"
     )
+    assert result.telemetry.field_work["domain"] == (
+        "resolved_plasma_current_carrying_cells"
+    )
+    assert (
+        result.telemetry.field_work["power_domain_gate"]["included_cell_count"]
+        == np.prod(grid.shape)
+    )
+
+
+def test_hybrid_stepper_excludes_numerical_floor_cells_from_field_power() -> None:
+    grid = _grid()
+    stepper = HybridPIC3DFieldStepper(grid)
+    state = stepper.maxwell.empty_state()
+    state.E.Ex_edge.fill(10.0)
+    zero_current = np.zeros(grid.shape + (3,), dtype=float)
+    electron_density = np.ones(grid.shape, dtype=float)
+    electron_density[1, 1, 1] = 1.0e20
+
+    result = stepper.step(
+        state,
+        dt_s=1.0e-15,
+        ion_current_A_m2=zero_current,
+        electron_density_m3=electron_density,
+        sigma0_S_m=1.0,
+        background_density_m3=1.0e20,
+        ohmic_cfl_safety=1.0,
+        include_hall=False,
+        apply_density_conductivity_blend=False,
+    )
+
+    gate = result.telemetry.field_work["power_domain_gate"]
+    current_domain = result.telemetry.ohm_solver["current_domain"]
+    assert gate["status"] == "candidate_resolved_plasma_power_domain_not_validation"
+    assert gate["included_cell_count"] == 1
+    assert gate["excluded_numerical_floor_cell_count"] == np.prod(grid.shape) - 1
+    assert current_domain["resolved_cell_count"] == 1
+    assert current_domain["excluded_numerical_floor_cell_count"] == (
+        np.prod(grid.shape) - 1
+    )
+    assert current_domain["max_excluded_numerical_floor_current_A_m2"] > 0.0
+    assert result.telemetry.field_work["j_dot_e_power_W"] != 0.0
+    assert (
+        result.telemetry.field_work["unmasked_full_grid_j_dot_e_power_W"]
+        == result.telemetry.field_work["j_dot_e_power_W"]
+    )
+
+
+def test_hybrid_stepper_backward_euler_ohm_uses_raw_stiff_conductivity() -> None:
+    grid = _grid()
+    stepper = HybridPIC3DFieldStepper(grid)
+    state = stepper.maxwell.empty_state()
+    state.E.Ex_edge.fill(10.0)
+    zero_current = np.zeros(grid.shape + (3,), dtype=float)
+
+    result = stepper.step(
+        state,
+        dt_s=1.0e-12,
+        ion_current_A_m2=zero_current,
+        electron_density_m3=np.full(grid.shape, 1.0e23),
+        sigma0_S_m=1.0e4,
+        background_density_m3=1.0e23,
+        ohmic_cfl_safety=1.0,
+        include_hall=False,
+        apply_ohmic_cfl_limit=False,
+        ohm_time_centering_theta=1.0,
+    )
+
+    assert np.isfinite(result.telemetry.diagnostics_after["total_energy_J"])
+    assert result.telemetry.conductivity["ohmic_cfl_limit_applied"] is False
+    assert result.telemetry.conductivity["max_sigma_effective_S_m"] == 1.0e4
+    assert result.telemetry.ohm_solver["ohm_time_centering_theta"] == 1.0
+    assert result.telemetry.ohm_solver["electric_update_scheme"] == (
+        "backward_euler_resistive_ampere_ohm"
+    )
+    assert stepper.maxwell.electric_energy_J(result.state) < (
+        1.0e-4 * stepper.maxwell.electric_energy_J(state)
+    )
 
 
 def test_hybrid_stepper_can_run_candidate_predictor_corrector() -> None:

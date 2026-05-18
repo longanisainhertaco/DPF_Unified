@@ -1,6 +1,6 @@
 import numpy as np
 
-from dpf.constants import e as ELEMENTARY_CHARGE
+from dpf.constants import e
 from dpf.experimental.pic.hybrid import HybridPIC
 from dpf.fields.electron_energy import ElectronEnergyClosure
 from dpf.fields.hybrid_loop import (
@@ -35,7 +35,7 @@ def _pic(grid: Maxwell3DGrid, *, use_esirkepov: bool = True) -> HybridPIC:
     pic.add_species(
         "d",
         M_D,
-        ELEMENTARY_CHARGE,
+        e,
         positions=np.array([
             [2.0e-3, 2.0e-3, 2.0e-3],
             [2.5e-3, 2.0e-3, 2.0e-3],
@@ -127,7 +127,7 @@ def test_hybrid_loop_can_apply_candidate_particle_absorption_before_deposit() ->
     pic.add_species(
         "d",
         M_D,
-        ELEMENTARY_CHARGE,
+        e,
         positions=np.array([
             [0.2e-3, 2.0e-3, 2.0e-3],
             [2.0e-3, 2.0e-3, 2.0e-3],
@@ -156,6 +156,54 @@ def test_hybrid_loop_can_apply_candidate_particle_absorption_before_deposit() ->
     assert pic.species[0].n_particles() == 1
 
 
+def test_source_ordered_loop_reports_boundary_density_bypass() -> None:
+    grid = _grid()
+    loop = HybridPIC3DLoop(
+        grid,
+        particle_boundaries=ParticleAbsorbingBoundaries(grid, pml_cells=1),
+    )
+    pic = HybridPIC(
+        grid_shape=grid.shape,
+        dx=grid.dx,
+        dy=grid.dy,
+        dz=grid.dz,
+        dt=1.0e-12,
+        use_esirkepov=False,
+        use_binary_collisions=False,
+    )
+    pic.add_species(
+        "d",
+        M_D,
+        e,
+        positions=np.array([
+            [0.2e-3, 2.0e-3, 2.0e-3],
+            [2.0e-3, 2.0e-3, 2.0e-3],
+        ]),
+        velocities=np.zeros((2, 3)),
+        weights=np.full(2, 1.0e8),
+    )
+
+    result = loop.step(
+        loop.field_stepper.maxwell.empty_state(),
+        pic,
+        dt_s=1.0e-13,
+        sigma0_S_m=0.0,
+        background_density_m3=1.0e20,
+        ohmic_cfl_safety=1.0,
+        density_floor_m3=1.0e12,
+        include_hall=False,
+        use_source_ordered_velocity_update=True,
+    )
+
+    workflow = result.telemetry.source_workflow
+    density_rebuild = workflow["density_rebuild"]
+    assert workflow["status"] == "candidate_engineering_source_ordered_loop"
+    assert density_rebuild["half_step_density_available"] is True
+    assert density_rebuild["half_step_density_bypassed_by_particle_boundary"] is True
+    assert density_rebuild["density_sample"] == "x_n_plus_1"
+    assert density_rebuild["decision"] == "use_post_boundary_x_n_plus_1_density"
+
+
 def test_hybrid_loop_reports_candidate_nanbu_collision_telemetry() -> None:
     grid = _grid()
     loop = HybridPIC3DLoop(grid)
@@ -172,7 +220,7 @@ def test_hybrid_loop_reports_candidate_nanbu_collision_telemetry() -> None:
     pic.add_species(
         "d",
         M_D,
-        ELEMENTARY_CHARGE,
+        e,
         positions=np.array([
             [2.0e-3, 2.0e-3, 2.0e-3],
             [2.4e-3, 2.0e-3, 2.0e-3],
@@ -310,6 +358,12 @@ def test_hybrid_loop_can_apply_candidate_ionization_transport() -> None:
     assert result.telemetry.field_step["conductivity"][
         "density_blend_applied"
     ] is False
+    assert result.telemetry.field_step["conductivity"][
+        "ohmic_cfl_limit_applied"
+    ] is False
+    assert result.telemetry.field_step["ohm_solver"][
+        "electric_update_scheme"
+    ] == "backward_euler_resistive_ampere_ohm"
     assert result.telemetry.ionization_charge_state[
         "can_support_first_principles_acceptance"
     ] is False
@@ -392,7 +446,7 @@ def test_hybrid_loop_can_accumulate_candidate_kinetic_yield_history() -> None:
     pic.add_species(
         "d",
         M_D,
-        ELEMENTARY_CHARGE,
+        e,
         positions=np.array([
             [2.0e-3, 2.0e-3, 2.0e-3],
             [2.4e-3, 2.0e-3, 2.0e-3],

@@ -40,6 +40,20 @@ def test_first_principles_3d_default_deck_writes_json(tmp_path) -> None:
         "pf1000_rod_hollow_projection"
     )
     assert payload["deck"]["circuit_udpf_mode"] == "lagged_volume_j_dot_e"
+    assert payload["deck"]["circuit"]["capacitance_F"] == 1.332e-3
+    assert payload["deck"]["circuit"]["voltage_V"] == 1.6e4
+    assert payload["deck"]["circuit"]["inductance_H"] == 25.0e-9
+    assert payload["deck"]["circuit"]["resistance_ohm"] == 6.1e-3
+    assert payload["deck"]["circuit"]["initial_current_A"] == 0.0
+    assert payload["deck"]["circuit"]["initial_charge_C"] == 0.0
+    assert payload["deck"]["circuit"]["circuit_feedback_min_current_A"] == 1.0
+    assert payload["deck"]["gas_pressure_Pa"] == 1.2 * 133.32236842105263
+    assert payload["deck"]["background_density_m3"] > 1.0e22
+    assert payload["deck"]["density_floor_m3"] == payload["deck"][
+        "background_density_m3"
+    ]
+    assert payload["deck"]["marder_factor_scale"] == 0.0
+    assert payload["deck"]["startup_profile_type"] == "annular_axial_sheath"
     assert payload["boundary_policy"]["particle_absorption_enabled"] is True
     assert payload["scientific_status"] == "engineering_candidate_not_validation"
     assert payload["validation_packet"]["same_scope_source_status"] == (
@@ -117,6 +131,11 @@ def test_first_principles_3d_user_validated_deck_presets_are_non_promoting() -> 
         assert payload["deck"]["source"] == f"built_in:{preset}"
         assert payload["deck"]["name"] == deck_id
         assert payload["deck"]["device_name"] == device_name
+        assert payload["deck"]["background_density_m3"] > 0.0
+        assert payload["deck"]["density_floor_m3"] == payload["deck"][
+            "background_density_m3"
+        ]
+        assert payload["deck"]["marder_factor_scale"] == 0.0
         assert payload["scientific_status"] == "engineering_candidate_not_validation"
         assert payload["reduced_models_used"] is False
         assert payload["can_support_first_principles_acceptance"] is False
@@ -534,9 +553,10 @@ def test_experimental_limiter_proof_combined_cfl_clears_ohmic_limit_for_short_ta
     assert counts["conductivity_ohmic_cfl_limited_steps"] == 0
     assert packet["total_acceptance_blocking_activations"] == 0
     assert packet["zero_acceptance_blockers_observed"] is True
-    assert packet["method_limiter_decisions"]["marder_correction"][
-        "nondominant_observed"
-    ] is True
+    marder_decision = packet["method_limiter_decisions"]["marder_correction"]
+    assert marder_decision["steps_observed"] == 0
+    assert marder_decision["nondominant_observed"] is False
+    assert "marder_dominant_correction_steps" not in packet["review_required"]
     assert packet["can_support_first_principles_acceptance"] is False
 
 

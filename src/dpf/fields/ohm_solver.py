@@ -3,7 +3,8 @@
 The local arXiv:2604.09032v1 KnowledgeReference source derives an algebraic
 midpoint solve for current density from generalized Ohm's law coupled to
 Ampere's law.  This module implements that cell-centered algebraic closure as
-engineering component evidence for the 3-D hybrid PIC-fluid path.
+engineering component evidence for the 3-D hybrid PIC-fluid path, with a
+backward-Euler option for the stiff resistive limit of the same equations.
 """
 
 from __future__ import annotations
@@ -35,6 +36,8 @@ class GeneralizedOhmTelemetry:
     max_conductivity_S_m: float
     max_current_A_m2: float
     max_algebraic_residual_A_m2: float
+    ohm_time_centering_theta: float
+    electric_update_scheme: str
     can_support_first_principles_acceptance: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,10 +103,20 @@ class GeneralizedOhmSolver:
         dt_s: float,
         pressure_term_V_m: np.ndarray | None = None,
         include_hall: bool = True,
+        ohm_time_centering_theta: float = 0.5,
     ) -> tuple[np.ndarray, GeneralizedOhmTelemetry]:
-        """Solve for midpoint current density using the source algebraic form."""
+        """Solve for current density using the source algebraic form.
+
+        ``ohm_time_centering_theta=0.5`` gives the midpoint/Crank-Nicolson
+        current used by the original candidate path. ``theta=1`` gives a
+        backward-Euler resistive Ampere-Ohm solve for stiff source-backed
+        conductivity, avoiding an artificial explicit Ohmic conductivity cap.
+        """
         if dt_s < 0.0:
             raise ValueError("dt_s must be non-negative")
+        theta = float(ohm_time_centering_theta)
+        if theta < 0.5 or theta > 1.0:
+            raise ValueError("ohm_time_centering_theta must be in [0.5, 1.0]")
         E = _as_vector("electric_field_V_m", electric_field_V_m, self.grid.shape)
         B = _as_vector("magnetic_field_T", magnetic_field_T, self.grid.shape)
         curl_B = _as_vector("curl_B_T_m", curl_B_T_m, self.grid.shape)
@@ -130,10 +143,10 @@ class GeneralizedOhmSolver:
                 / np.prod(self.grid.shape)
             )
 
-        D = 1.0 + sigma * dt_s / (2.0 * EPSILON_0)
+        D = 1.0 + theta * sigma * dt_s / EPSILON_0
         alpha = sigma / (e * ne)
         known_velocity_like = (
-            0.5 * SPEED_OF_LIGHT**2 * dt_s * curl_B
+            theta * SPEED_OF_LIGHT**2 * dt_s * curl_B
             + Ji / (e * ne[..., np.newaxis])
         )
         A = sigma[..., np.newaxis] * (E + np.cross(known_velocity_like, B) + pressure)
@@ -154,6 +167,12 @@ class GeneralizedOhmSolver:
             max_conductivity_S_m=float(np.max(sigma)),
             max_current_A_m2=float(np.max(np.linalg.norm(J, axis=-1))),
             max_algebraic_residual_A_m2=float(np.max(np.linalg.norm(residual, axis=-1))),
+            ohm_time_centering_theta=theta,
+            electric_update_scheme=(
+                "backward_euler_resistive_ampere_ohm"
+                if theta == 1.0
+                else "midpoint_crank_nicolson_resistive_ampere_ohm"
+            ),
         )
         return J, telemetry
 
@@ -171,6 +190,8 @@ def generalized_ohm_candidate_evidence(
         "evidence_type": "engineering_ohm_ampere_component",
         "include_hall": telemetry.include_hall,
         "include_pressure": telemetry.include_pressure,
+        "ohm_time_centering_theta": telemetry.ohm_time_centering_theta,
+        "electric_update_scheme": telemetry.electric_update_scheme,
         "max_algebraic_residual_A_m2": telemetry.max_algebraic_residual_A_m2,
         "can_support_first_principles_acceptance": False,
         "limitations": [

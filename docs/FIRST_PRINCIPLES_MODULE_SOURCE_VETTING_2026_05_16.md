@@ -1,6 +1,6 @@
 # First-Principles Module Source-Vetting Audit
 
-Generated: 2026-05-17T04:37:55.756922+00:00
+Generated: 2026-05-17T16:03:14.083100+00:00
 
 Strict passed: `true`
 
@@ -11,7 +11,7 @@ KnowledgeReference plus explicitly user-verified staged sources only; module sou
 ## Summary
 
 - Total modules: `288`
-- Active first-principles import-closure modules: `55`
+- Active first-principles import-closure modules: `56`
 - Physics-facing modules: `175`
 - Modules with source references: `62`
 - Active physics modules needing source vetting: `0`

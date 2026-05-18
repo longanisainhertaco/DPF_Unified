@@ -1,0 +1,287 @@
+{
+  "_experimental_calibration_coupling": {
+    "pressure_density_coupling": {
+      "accepted_for_validation": false,
+      "background_density_m3": 3.5407166065417522e+22,
+      "density_floor_m3": 3.5407166065417522e+22,
+      "formula": "n = pressure_Pa / (k_B * gas_temperature_K)",
+      "gas_pressure_Pa": 146.65460526315792,
+      "gas_temperature_K": 300.0,
+      "status": "experimental_ideal_gas_pressure_to_startup_density"
+    }
+  },
+  "boundaries": {
+    "conductor_mask_mode": "axisymmetric_coaxial_projection",
+    "conductor_mask_status": "candidate_geometry_mask",
+    "open_boundary": true,
+    "particle_absorption_enabled": true,
+    "pml_cells": 1,
+    "pml_strength": 0.1,
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      }
+    ]
+  },
+  "circuit": {
+    "capacitance_F": 0.0001152,
+    "inductance_H": 1.8375000000000004e-08,
+    "initial_charge_C": 0.0,
+    "initial_current_A": 0.0,
+    "resistance_ohm": 0.033,
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      }
+    ],
+    "voltage_V": 16000.0
+  },
+  "closures": {
+    "apply_circuit_boundary": true,
+    "circuit_udpf_V": 0.0,
+    "circuit_udpf_mode": "lagged_volume_j_dot_e",
+    "density_floor_m3": 3.5407166065417522e+22,
+    "include_hall": false,
+    "marder_factor_scale": 1e-06,
+    "marder_nondominance_threshold": 0.5,
+    "ohmic_cfl_safety": 1.0,
+    "sigma0_S_m": 100.0,
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      }
+    ],
+    "use_predictor_corrector": true,
+    "use_source_ordered_velocity_update": true
+  },
+  "deck_id": "gv_pf24_krakow_16092202_l0875_r15_p1_experimental_candidate",
+  "device": {
+    "anode_inner_radius_m": null,
+    "anode_length_m": 0.17200000000000001,
+    "anode_radius_m": 0.031,
+    "cathode_radius_m": 0.049,
+    "cathode_rod_count": null,
+    "cathode_rod_diameter_m": null,
+    "cathode_rod_length_m": null,
+    "insulator_length_m": 0.04,
+    "insulator_material": null,
+    "insulator_outer_radius_m": null,
+    "name": "PF-24-KRAKOW pf24_krakow_16092202 GV verified-shot engineering candidate",
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      }
+    ]
+  },
+  "diagnostics": {
+    "dt_s": 1e-13,
+    "emit_particle_history": false,
+    "history_stride": 1,
+    "max_step_results": 256,
+    "n_steps": 2,
+    "output_stride": 1,
+    "target_time_s": null
+  },
+  "gas": {
+    "ion_charge_C": 1.602176634e-19,
+    "ion_mass_kg": 3.344e-27,
+    "pressure_Pa": 146.65460526315792,
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      }
+    ],
+    "species": "D",
+    "temperature_K": 300.0
+  },
+  "grid": {
+    "shape": [
+      5,
+      5,
+      5
+    ],
+    "spacing_m": [
+      0.02695,
+      0.02695,
+      0.053000000000000005
+    ]
+  },
+  "schema_version": "dpf.first_principles.input_deck.v1",
+  "scientific_status": "engineering_candidate_not_validation",
+  "source": "generated_from:gv_pf24_krakow_16092202:inductance=0.875,resistance=1.5,pressure=1.0",
+  "source_references": [
+    {
+      "capability_tags": [
+        "dpf_device",
+        "circuit_coupling",
+        "second_scope_candidate"
+      ],
+      "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+      "record_id": "gv:pf24_krakow_16092202:input",
+      "role": "gv_verified_input_deck_candidate",
+      "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+    },
+    {
+      "capability_tags": [
+        "current_waveform",
+        "validation_target",
+        "second_scope_candidate"
+      ],
+      "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.xlsx",
+      "record_id": "gv:pf24_krakow_16092202:workbook",
+      "role": "gv_verified_workbook_waveform_candidate",
+      "sha256": "43ef75fd63caf1aaa4fc7be72b6e92c63851c6e9220daa6291be974a92a02e73"
+    },
+    {
+      "capability_tags": [
+        "reduced_model_baseline",
+        "current_waveform"
+      ],
+      "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.TXT",
+      "record_id": "gv:pf24_krakow_16092202:reduced_model_output",
+      "role": "gv_reduced_model_baseline_not_authority",
+      "sha256": "0ffe8638abd054864643e69097ca6508b69d544293ffa47a89219ffbd3f5bbbc"
+    }
+  ],
+  "startup": {
+    "accepted_channels": [],
+    "background_density_m3": 3.5407166065417522e+22,
+    "can_support_whole_shot_acceptance": false,
+    "electron_temperature_K": 100000.0,
+    "evidence_status": "engineering_candidate_not_whole_shot",
+    "initial_electric_field_V_m": [
+      100000.0,
+      0.0,
+      0.0
+    ],
+    "initial_magnetic_field_T": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "ion_temperature_K": 100000.0,
+    "missing_channels": [
+      "breakdown_model",
+      "preionization_state",
+      "surface_flashover_closure",
+      "initial_current_density_distribution",
+      "sheath_liftoff",
+      "spatial_density_field_temperature_history",
+      "neutron_mechanism_separation",
+      "detector_response_and_uq"
+    ],
+    "mode": "source_backed_end_rundown_sheath",
+    "particle_weight": 100000000.0,
+    "required_channels": [
+      "breakdown_model",
+      "preionization_state",
+      "electrode_insulator_boundary",
+      "initial_plasma_distribution",
+      "current_density",
+      "electric_field",
+      "magnetic_field",
+      "electron_temperature",
+      "ion_temperature",
+      "sheath_liftoff"
+    ],
+    "source_references": [
+      {
+        "capability_tags": [
+          "dpf_device",
+          "circuit_coupling",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/Gvinp-PF-24-KRAKOW-16092202.inp",
+        "record_id": "gv:pf24_krakow_16092202:input",
+        "role": "gv_verified_input_deck_candidate",
+        "sha256": "6ed5aa219c6e371a384485fe163c8116680e0711668d08507ffe457969a785e2"
+      },
+      {
+        "capability_tags": [
+          "current_waveform",
+          "validation_target",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.xlsx",
+        "record_id": "gv:pf24_krakow_16092202:workbook",
+        "role": "gv_verified_workbook_waveform_candidate",
+        "sha256": "43ef75fd63caf1aaa4fc7be72b6e92c63851c6e9220daa6291be974a92a02e73"
+      }
+    ],
+    "source_scope": "gv_verified_machine_current_waveform_candidate_not_startup_bvp",
+    "startup_payload": {}
+  },
+  "validation_targets": [
+    {
+      "name": "PF-24-KRAKOW pf24_krakow_16092202 workbook current waveform",
+      "observable": "current_waveform",
+      "source_reference": {
+        "capability_tags": [
+          "current_waveform",
+          "validation_target",
+          "second_scope_candidate"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.xlsx",
+        "record_id": "gv:pf24_krakow_16092202:workbook",
+        "role": "gv_verified_workbook_waveform_candidate",
+        "sha256": "43ef75fd63caf1aaa4fc7be72b6e92c63851c6e9220daa6291be974a92a02e73"
+      },
+      "status": "user_verified_waveform_candidate_not_comparator_bound"
+    },
+    {
+      "name": "PF-24-KRAKOW pf24_krakow_16092202 GV current baseline",
+      "observable": "reduced_model_current_baseline",
+      "source_reference": {
+        "capability_tags": [
+          "reduced_model_baseline",
+          "current_waveform"
+        ],
+        "path": "/Users/anthonyzamora/Downloads/GV/PF-24-KRAKOW-16092202.TXT",
+        "record_id": "gv:pf24_krakow_16092202:reduced_model_output",
+        "role": "gv_reduced_model_baseline_not_authority",
+        "sha256": "0ffe8638abd054864643e69097ca6508b69d544293ffa47a89219ffbd3f5bbbc"
+      },
+      "status": "reduced_model_baseline_not_first_principles_closure"
+    }
+  ]
+}

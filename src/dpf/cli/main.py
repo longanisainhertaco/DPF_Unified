@@ -960,6 +960,33 @@ def _first_principles_3d_payload(deck: dict[str, Any]) -> dict[str, Any]:
             "target_time_s": target_time_s,
             "apply_circuit_boundary": apply_circuit_boundary,
             "circuit_udpf_mode": package_deck.closures.circuit_udpf_mode,
+            "circuit": {
+                "capacitance_F": package_deck.circuit.capacitance_F,
+                "voltage_V": package_deck.circuit.voltage_V,
+                "inductance_H": package_deck.circuit.inductance_H,
+                "resistance_ohm": package_deck.circuit.resistance_ohm,
+                "initial_current_A": package_deck.circuit.initial_current_A,
+                "initial_charge_C": package_deck.circuit.charge_C,
+                "circuit_feedback_min_current_A": 1.0,
+            },
+            "gas_pressure_Pa": package_deck.gas.pressure_Pa,
+            "gas_temperature_K": package_deck.gas.temperature_K,
+            "background_density_m3": package_deck.startup.background_density_m3,
+            "density_floor_m3": package_deck.closures.density_floor_m3,
+            "initial_ionization_fraction": (
+                package_deck.startup.initial_ionization_fraction
+            ),
+            "electron_temperature_K": package_deck.startup.electron_temperature_K,
+            "ion_temperature_K": package_deck.startup.ion_temperature_K,
+            "marder_factor_scale": package_deck.closures.marder_factor_scale,
+            "marder_nondominance_threshold": (
+                package_deck.closures.marder_nondominance_threshold
+            ),
+            "ohmic_cfl_safety": package_deck.closures.ohmic_cfl_safety,
+            "startup_profile_type": package_deck.startup.startup_payload.get(
+                "profile_type",
+                "uniform",
+            ),
             "boundary_policy": boundary_policy,
             "device_name": package_deck.device.name,
             "scientific_status": package_deck.scientific_status,
@@ -1013,6 +1040,36 @@ def _first_principles_3d_payload(deck: dict[str, Any]) -> dict[str, Any]:
             "target_time_s": target_time_s,
             "apply_circuit_boundary": apply_circuit_boundary,
             "circuit_udpf_mode": circuit_udpf_mode,
+            "circuit": {
+                "capacitance_F": float(deck.get("circuit_capacitance_F", 2.0e-5)),
+                "voltage_V": float(deck.get("circuit_voltage_V", 1.5e4)),
+                "inductance_H": float(deck.get("circuit_inductance_H", 1.1e-7)),
+                "resistance_ohm": float(deck.get("circuit_resistance_ohm", 1.2e-2)),
+                "initial_current_A": float(deck.get("initial_current_A", 1.773e4)),
+                "initial_charge_C": float(deck.get("initial_charge_C", 0.218)),
+                "circuit_feedback_min_current_A": float(
+                    deck.get("circuit_feedback_min_current_A", 1.0)
+                ),
+            },
+            "background_density_m3": _positive_float_deck_value(
+                deck, "background_density_m3"
+            ),
+            "density_floor_m3": _positive_float_deck_value(
+                deck, "background_density_m3"
+            ),
+            "initial_ionization_fraction": float(
+                deck.get("initial_ionization_fraction", 0.01)
+            ),
+            "electron_temperature_K": _positive_float_deck_value(
+                deck, "electron_temperature_K"
+            ),
+            "ion_temperature_K": _positive_float_deck_value(
+                deck, "ion_temperature_K"
+            ),
+            "marder_factor_scale": float(deck.get("marder_factor_scale", 0.0)),
+            "marder_nondominance_threshold": float(
+                deck.get("marder_nondominance_threshold", 0.5)
+            ),
             "boundary_policy": boundary_policy,
         }
         run = run_first_principles_3d_deck(
@@ -1310,32 +1367,59 @@ def _experimental_inverse_calibration_payload(
             )
             payload = _experimental_whole_shot_payload(runtime_deck)
             current_history = payload["simulation"]["circuit"]["current_history"]
-            scoring = score_current_history_against_targets(
-                current_history=current_history,
-                target_observables=target_observables,
-            )
+            finite_state_all_finite = payload["simulation"]["finite_state"][
+                "all_finite"
+            ]
+            termination_reason = payload["termination_reason"]
+            if finite_state_all_finite and not str(termination_reason).startswith(
+                "aborted_"
+            ):
+                case_status = "completed_engineering_candidate_run"
+                scoring = score_current_history_against_targets(
+                    current_history=current_history,
+                    target_observables=target_observables,
+                )
+            else:
+                case_status = (
+                    "blocked_nonfinite_candidate_run"
+                    if not finite_state_all_finite
+                    else "blocked_runtime_physics_gate"
+                )
+                scoring = {
+                    "status": (
+                        "not_scored_nonfinite_runtime"
+                        if not finite_state_all_finite
+                        else "not_scored_blocked_runtime_physics_gate"
+                    ),
+                    "score": None,
+                    "usable": False,
+                    "metrics": {
+                        "termination_reason": termination_reason,
+                        "finite_state_all_finite": finite_state_all_finite,
+                    },
+                }
             plasma_loading_summary = _experimental_plasma_loading_summary(payload)
+            runtime_evidence_packets = _experimental_runtime_evidence_packets(payload)
             candidate_with_baseline = dict(candidate)
             candidate_with_baseline["baseline_parameters"] = baseline_parameters
             candidate_results.append(
                 {
                     "candidate": candidate_with_baseline,
-                    "case_status": "completed_engineering_candidate_run",
+                    "case_status": case_status,
                     "runtime_coupling": runtime_deck.get(
                         "_experimental_calibration_coupling",
                         {},
                     ),
                     "plasma_loading_summary": plasma_loading_summary,
+                    "runtime_evidence_packets": runtime_evidence_packets,
                     "scoring": scoring,
                     "n_steps_completed": payload["n_steps_completed"],
                     "final_time_s": payload["simulation"]["final_time_s"],
                     "duration_request_satisfied": payload[
                         "duration_request_satisfied"
                     ],
-                    "finite_state_all_finite": payload["simulation"][
-                        "finite_state"
-                    ]["all_finite"],
-                    "termination_reason": payload["termination_reason"],
+                    "finite_state_all_finite": finite_state_all_finite,
+                    "termination_reason": termination_reason,
                     "final_circuit_current_A": payload["simulation"][
                         "circuit"
                     ]["final_current_A"],
@@ -1390,6 +1474,27 @@ def _experimental_inverse_calibration_payload(
     return packet
 
 
+def _experimental_runtime_evidence_packets(payload: dict[str, Any]) -> dict[str, Any]:
+    """Attach non-promoting runtime packets to inverse-calibration candidates."""
+
+    packets = payload.get("telemetry_packets", {})
+    if not isinstance(packets, dict):
+        return {}
+    packet_keys = (
+        "startup",
+        "power_port",
+        "experimental_limiter_zero_probe",
+        "numerical_fidelity",
+        "experimental_whole_shot",
+        "experimental_numerics",
+    )
+    return {
+        key: packets[key]
+        for key in packet_keys
+        if key in packets and isinstance(packets[key], dict)
+    }
+
+
 def _experimental_plasma_loading_summary(payload: dict[str, Any]) -> dict[str, Any]:
     """Summarize retained field-work telemetry for inverse-calibration candidates."""
 
@@ -1403,6 +1508,30 @@ def _experimental_plasma_loading_summary(payload: dict[str, Any]) -> dict[str, A
     current_history = circuit.get("current_history", [])
     if not isinstance(current_history, list):
         current_history = []
+    last_step = simulation.get("last_step", {})
+    if not isinstance(last_step, dict):
+        last_step = {}
+    last_electron_energy = last_step.get("electron_energy", {})
+    if not isinstance(last_electron_energy, dict):
+        last_electron_energy = {}
+    last_heat_flux = last_electron_energy.get("heat_flux", {})
+    if not isinstance(last_heat_flux, dict):
+        last_heat_flux = {}
+    last_closure_validity = last_electron_energy.get("closure_validity", {})
+    if not isinstance(last_closure_validity, dict):
+        last_closure_validity = {}
+    last_field_step = last_step.get("field_step", {})
+    if not isinstance(last_field_step, dict):
+        last_field_step = {}
+    last_conductivity = last_field_step.get("conductivity", {})
+    if not isinstance(last_conductivity, dict):
+        last_conductivity = {}
+    last_ohm = last_field_step.get("ohm_solver", {})
+    if not isinstance(last_ohm, dict):
+        last_ohm = {}
+    last_source_backed = last_step.get("source_backed_transport", {})
+    if not isinstance(last_source_backed, dict):
+        last_source_backed = {}
 
     j_dot_e_values = _finite_history_values(history, "j_dot_e_power_W")
     field_energy_values = _finite_history_values(history, "field_energy_J")
@@ -1442,10 +1571,49 @@ def _experimental_plasma_loading_summary(payload: dict[str, Any]) -> dict[str, A
         history,
         "conductivity_ohmic_cfl_limit_applied",
     )
+    electric_update_scheme_counts = _count_history_values(
+        history,
+        "electric_update_scheme",
+    )
+    ohm_time_centering_values = _finite_history_values(
+        history,
+        "ohm_time_centering_theta",
+    )
     ionization_fraction_values = _finite_history_values(
         history,
         "ionization_fraction_max",
     )
+    electron_energy_status_counts = _count_history_values(
+        history,
+        "electron_energy_status",
+    )
+    terminal_electron_energy_status = last_electron_energy.get("status")
+    if terminal_electron_energy_status is not None:
+        terminal_key = str(terminal_electron_energy_status)
+        electron_energy_status_counts[terminal_key] = (
+            electron_energy_status_counts.get(terminal_key, 0) + 1
+        )
+        electron_energy_status_counts = dict(sorted(electron_energy_status_counts.items()))
+    heat_flux_status_counts = _count_history_values(
+        history,
+        "electron_heat_flux_status",
+    )
+    terminal_heat_flux_status = last_heat_flux.get("status")
+    if terminal_heat_flux_status is not None:
+        terminal_key = str(terminal_heat_flux_status)
+        heat_flux_status_counts[terminal_key] = (
+            heat_flux_status_counts.get(terminal_key, 0) + 1
+        )
+        heat_flux_status_counts = dict(sorted(heat_flux_status_counts.items()))
+    heat_flux_required_subcycles_values = _finite_history_values(
+        history,
+        "electron_heat_flux_required_subcycles",
+    )
+    terminal_required_subcycles = _optional_finite_float(
+        last_heat_flux.get("required_subcycles")
+    )
+    if terminal_required_subcycles is not None:
+        heat_flux_required_subcycles_values.append(terminal_required_subcycles)
     circuit_source_counts = _count_history_values(current_history, "udpf_source")
     last_circuit_record = circuit.get("last")
     if not isinstance(last_circuit_record, dict):
@@ -1490,6 +1658,13 @@ def _experimental_plasma_loading_summary(payload: dict[str, Any]) -> dict[str, A
             if initial_field_energy is None or final_field_energy is None
             else final_field_energy - initial_field_energy
         ),
+        "cumulative_j_dot_e_work_J": _optional_finite_float(
+            simulation.get("cumulative_j_dot_e_work_J")
+        ),
+        "cumulative_j_dot_e_step_count": simulation.get(
+            "cumulative_j_dot_e_step_count"
+        ),
+        "cumulative_j_dot_e_status": simulation.get("cumulative_j_dot_e_status"),
         "retained_field_energy_J_min": _min_or_none(field_energy_values),
         "retained_field_energy_J_max": _max_or_none(field_energy_values),
         "retained_electric_energy_J_final": _last_or_none(electric_energy_values),
@@ -1516,8 +1691,61 @@ def _experimental_plasma_loading_summary(payload: dict[str, Any]) -> dict[str, A
         "conductivity_ohmic_cfl_limit_applied_counts": (
             conductivity_ohmic_limit_counts
         ),
+        "electric_update_scheme_counts": electric_update_scheme_counts,
+        "ohm_time_centering_theta_max_retained": _max_or_none(
+            ohm_time_centering_values
+        ),
         "ionization_fraction_max_retained": _max_or_none(
             ionization_fraction_values
+        ),
+        "electron_heat_flux_status_counts": heat_flux_status_counts,
+        "electron_heat_flux_terminal_status": terminal_heat_flux_status,
+        "electron_heat_flux_required_subcycles_max": _max_or_none(
+            heat_flux_required_subcycles_values
+        ),
+        "electron_heat_flux_max_subcycles_terminal": _optional_finite_float(
+            last_heat_flux.get("max_subcycles")
+        ),
+        "electron_heat_flux_dt_stable_s_terminal": _optional_finite_float(
+            last_heat_flux.get("dt_stable_s")
+        ),
+        "electron_temperature_K_min_terminal": _optional_finite_float(
+            last_electron_energy.get("min_electron_temperature_K")
+        ),
+        "electron_temperature_K_max_terminal": _optional_finite_float(
+            last_electron_energy.get("max_electron_temperature_K")
+        ),
+        "electron_energy_status_counts": electron_energy_status_counts,
+        "electron_energy_terminal_status": terminal_electron_energy_status,
+        "electron_closure_validity_terminal_status": last_closure_validity.get(
+            "status"
+        ),
+        "electron_current_drift_to_c_terminal": _optional_finite_float(
+            last_closure_validity.get("current_drift_to_c")
+        ),
+        "electron_thermal_speed_to_c_terminal": _optional_finite_float(
+            last_closure_validity.get("thermal_speed_to_c")
+        ),
+        "source_backed_sigma_S_m_max_terminal": _optional_finite_float(
+            last_source_backed.get("max_sigma_S_m")
+        ),
+        "source_backed_resistivity_ohm_m_max_terminal": _optional_finite_float(
+            last_source_backed.get("max_resistivity_ohm_m")
+        ),
+        "conductivity_effective_S_m_max_terminal": _optional_finite_float(
+            last_conductivity.get("max_sigma_effective_S_m")
+        ),
+        "conductivity_cfl_limited_fraction_terminal": _optional_finite_float(
+            last_conductivity.get("cfl_limited_fraction")
+        ),
+        "conductivity_ohmic_cfl_limit_applied_terminal": (
+            None
+            if last_conductivity.get("ohmic_cfl_limit_applied") is None
+            else bool(last_conductivity.get("ohmic_cfl_limit_applied"))
+        ),
+        "electric_update_scheme_terminal": last_ohm.get("electric_update_scheme"),
+        "ohm_time_centering_theta_terminal": _optional_finite_float(
+            last_ohm.get("ohm_time_centering_theta")
         ),
         "circuit_current_A_initial": _first_or_none(current_values),
         "circuit_current_A_final": final_current,

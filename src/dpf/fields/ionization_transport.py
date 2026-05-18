@@ -99,15 +99,16 @@ class DeuteriumIonizationTransport:
         self,
         *,
         total_deuterium_density_m3: np.ndarray | float,
-        ionization_fraction: float,
+        ionization_fraction: np.ndarray | float,
     ) -> DeuteriumIonizationState:
         """Initialize neutral, D+, electron, and mean charge-state fields."""
-        if not 0.0 <= ionization_fraction <= 1.0:
-            raise ValueError("ionization_fraction must be in [0, 1]")
         total = _grid_array(total_deuterium_density_m3, self.grid.shape)
+        fraction = _grid_array(ionization_fraction, self.grid.shape)
+        if np.any((fraction < 0.0) | (fraction > 1.0)):
+            raise ValueError("ionization_fraction must be in [0, 1]")
         if np.any(total < 0.0):
             raise ValueError("total_deuterium_density_m3 must be non-negative")
-        ion = total * float(ionization_fraction)
+        ion = total * fraction
         neutral = np.maximum(total - ion, 0.0)
         electron = ion.copy()
         mean_z = _mean_charge_state(neutral, ion, electron)

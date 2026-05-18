@@ -10,7 +10,8 @@ evidence.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -87,6 +88,18 @@ MU_0 = dpf_constants.mu_0
 
 
 @dataclass(frozen=True)
+class InitialPlasmaProfile:
+    """Grid-shaped startup fields used by the candidate 3-D runtime."""
+
+    total_deuterium_density_m3: np.ndarray
+    ionization_fraction: np.ndarray
+    electron_temperature_K: np.ndarray
+    ion_temperature_K: np.ndarray
+    plasma_velocity_m_s: np.ndarray
+    telemetry: dict[str, Any]
+
+
+@dataclass(frozen=True)
 class FirstPrinciples3DDeck:
     """Minimal input deck for a package-native 3-D hybrid EM/PIC-fluid run."""
 
@@ -101,6 +114,7 @@ class FirstPrinciples3DDeck:
     background_density_m3: float = 1.0e20
     density_floor_m3: float = 1.0e20
     initial_ionization_fraction: float = 0.01
+    pressure_density_threshold_m3: float | None = None
     electron_temperature_K: float = 1.0e5
     ion_temperature_K: float = 1.0e5
     ion_species_name: str = "d"
@@ -112,7 +126,7 @@ class FirstPrinciples3DDeck:
     include_hall: bool = False
     use_predictor_corrector: bool = True
     use_source_ordered_velocity_update: bool = True
-    marder_factor_scale: float = 1.0e-6
+    marder_factor_scale: float = 0.0
     marder_nondominance_threshold: float = 0.5
     ohmic_cfl_safety: float = 1.0
     apply_circuit_boundary: bool = True
@@ -152,6 +166,7 @@ class FirstPrinciples3DDeck:
     startup_accepted_channels: tuple[str, ...] = ()
     startup_required_channels: tuple[str, ...] = ()
     startup_missing_channels: tuple[str, ...] = ()
+    startup_payload: dict[str, Any] = field(default_factory=dict)
     device_name: str = "not_declared"
     validation_scope: str = "not_declared_engineering_smoke"
     validation_targets: tuple[dict[str, Any], ...] = ()
@@ -267,6 +282,7 @@ class FirstPrinciples3DDeck:
                 "background_density_m3": self.background_density_m3,
                 "density_floor_m3": self.density_floor_m3,
                 "initial_ionization_fraction": self.initial_ionization_fraction,
+                "pressure_density_threshold_m3": _pressure_density_threshold_m3(self),
             },
             "diagnostics": {
                 "artifact_classification": ENGINEERING_CANDIDATE_STATUS,
@@ -379,7 +395,9 @@ class FirstPrinciples3DDeck:
             "accepted_channels": list(self.startup_accepted_channels),
             "required_channels": list(self.startup_required_channels),
             "missing_channels": list(self.startup_missing_channels),
+            "startup_payload": self.startup_payload,
             "background_density_m3": self.background_density_m3,
+            "initial_ionization_fraction": self.initial_ionization_fraction,
             "electron_temperature_K": self.electron_temperature_K,
             "ion_temperature_K": self.ion_temperature_K,
             "initial_electric_field_V_m": (
@@ -488,25 +506,26 @@ class FirstPrinciples3DSession:
             if resolved.particle_absorption_enabled
             else None
         )
-        total_deuterium_density = np.full(
-            grid.shape,
-            resolved.background_density_m3,
-            dtype=float,
+        plasma_profile = _build_initial_plasma_profile(
+            resolved,
+            grid,
+            conductor_cells=conductor_cells,
         )
+        total_deuterium_density = plasma_profile.total_deuterium_density_m3
         initial_electron_density = np.maximum(
-            total_deuterium_density * resolved.initial_ionization_fraction,
+            total_deuterium_density * plasma_profile.ionization_fraction,
             1.0,
         )
         electron_closure = ElectronEnergyClosure(grid)
         electron_state = electron_closure.initialize(
-            electron_temperature_K=resolved.electron_temperature_K,
-            ion_temperature_K=resolved.ion_temperature_K,
+            electron_temperature_K=plasma_profile.electron_temperature_K,
+            ion_temperature_K=plasma_profile.ion_temperature_K,
             electron_density_m3=initial_electron_density,
         )
         ionization_transport = DeuteriumIonizationTransport(grid)
         ionization_state = ionization_transport.initialize(
             total_deuterium_density_m3=total_deuterium_density,
-            ionization_fraction=resolved.initial_ionization_fraction,
+            ionization_fraction=plasma_profile.ionization_fraction,
         )
         loop = HybridPIC3DLoop(
             grid,
@@ -519,7 +538,12 @@ class FirstPrinciples3DSession:
         state = loop.field_stepper.maxwell.empty_state()
         state.E.Ex_edge.fill(resolved.initial_E_x_V_m)
         state.B.Bz_face.fill(resolved.initial_B_z_T)
-        pic, _ = _build_initial_pic(resolved, grid, conductor_cells)
+        pic, _ = _build_initial_pic(
+            resolved,
+            grid,
+            conductor_cells,
+            plasma_profile=plasma_profile,
+        )
         active_circuit_boundary = circuit_boundary
         if resolved.apply_circuit_boundary and active_circuit_boundary is None:
             active_circuit_boundary = CircuitMagneticBoundaryDrive(
@@ -549,7 +573,7 @@ class FirstPrinciples3DSession:
                 else None
             ),
             total_deuterium_density_m3=total_deuterium_density,
-            plasma_velocity_m_s=np.zeros(grid.shape + (3,), dtype=float),
+            plasma_velocity_m_s=plasma_profile.plasma_velocity_m_s,
         )
 
     def run_segment(self, n_steps: int) -> HybridPIC3DSimulationResult:
@@ -577,6 +601,7 @@ class FirstPrinciples3DSession:
             plasma_velocity_m_s=self.plasma_velocity_m_s,
             electron_temperature_floor_K=10.0,
             heat_flux_subcycles_max=5000,
+            pressure_density_threshold_m3=_pressure_density_threshold_m3(deck),
             use_source_ordered_velocity_update=deck.use_source_ordered_velocity_update,
             circuit_state=self.circuit_state,
             apply_circuit_boundary=deck.apply_circuit_boundary,
@@ -603,6 +628,124 @@ class FirstPrinciples3DSession:
         self.circuit_state = result.circuit
         self.lagged_field_work = _last_field_work_from_simulation(result)
         return result
+
+    def run_adaptive_validity(
+        self,
+        *,
+        target_time_s: float,
+        max_steps: int,
+        min_dt_s: float | None = None,
+        max_dt_s: float | None = None,
+        shrink_factor: float = 0.5,
+        growth_factor: float = 1.1,
+    ) -> dict[str, Any]:
+        """Advance with rollback/retry when a source validity gate rejects a step."""
+
+        if target_time_s <= 0.0:
+            raise ValueError("target_time_s must be positive")
+        if int(max_steps) != max_steps or max_steps <= 0:
+            raise ValueError("max_steps must be a positive integer")
+        if shrink_factor <= 0.0 or shrink_factor >= 1.0:
+            raise ValueError("shrink_factor must satisfy 0 < shrink_factor < 1")
+        if growth_factor < 1.0:
+            raise ValueError("growth_factor must be >= 1")
+        max_dt = float(max_dt_s if max_dt_s is not None else self.deck.dt_s)
+        if max_dt <= 0.0:
+            raise ValueError("max_dt_s must be positive")
+        min_dt = float(
+            min_dt_s if min_dt_s is not None else max(max_dt * 2.0**-24, 1.0e-18)
+        )
+        if min_dt <= 0.0 or min_dt > max_dt:
+            raise ValueError("min_dt_s must be positive and <= max_dt_s")
+
+        elapsed_s = 0.0
+        accepted_steps = 0
+        rejected_steps = 0
+        dt_s = min(max_dt, float(target_time_s))
+        last_result: HybridPIC3DSimulationResult | None = None
+        rejection_records: list[dict[str, Any]] = []
+        dt_history: list[dict[str, Any]] = []
+        limiter_summary = _empty_adaptive_limiter_summary()
+        termination_reason = "target_time_reached"
+
+        while elapsed_s < float(target_time_s) and accepted_steps < int(max_steps):
+            dt_s = min(float(dt_s), float(target_time_s) - elapsed_s, max_dt)
+            snapshot = deepcopy(self)
+            self.deck = replace(
+                self.deck,
+                dt_s=float(dt_s),
+                n_steps=1,
+                history_stride=1,
+                max_step_results=1,
+                target_time_s=None,
+            )
+            result = self.run_segment(1)
+            stop_reason = str(result.telemetry.stop_reason)
+            if _adaptive_retry_required(stop_reason):
+                _restore_session_from_snapshot(self, snapshot)
+                rejected_steps += 1
+                rejection_records.append(
+                    _adaptive_rejection_record(
+                        result=result,
+                        attempted_dt_s=dt_s,
+                        elapsed_s=elapsed_s,
+                        accepted_steps=accepted_steps,
+                    )
+                )
+                dt_s *= float(shrink_factor)
+                if dt_s < min_dt:
+                    termination_reason = "adaptive_min_dt_exhausted"
+                    break
+                continue
+
+            last_result = result
+            accepted_steps += 1
+            elapsed_s += float(dt_s)
+            _merge_adaptive_limiter_summary(
+                limiter_summary,
+                result.telemetry.limiter_activation_summary,
+            )
+            dt_history.append({
+                "accepted_step": accepted_steps,
+                "time_s": elapsed_s,
+                "dt_s": float(dt_s),
+                "stop_reason": stop_reason,
+            })
+            dt_s = min(max_dt, float(dt_s) * float(growth_factor))
+
+        if accepted_steps >= int(max_steps) and elapsed_s < float(target_time_s):
+            termination_reason = "adaptive_step_budget_exhausted"
+        return {
+            "status": "candidate_adaptive_validity_run_not_validation",
+            "source": HYBRID_PIC_3D_SOURCE,
+            "source_lines": "740-792, 1074-1097, 1226-1240",
+            "target_time_s": float(target_time_s),
+            "final_time_s": float(elapsed_s),
+            "duration_request_satisfied": elapsed_s >= float(target_time_s),
+            "termination_reason": termination_reason,
+            "accepted_step_count": accepted_steps,
+            "rejected_step_count": rejected_steps,
+            "max_steps": int(max_steps),
+            "min_dt_s": min_dt,
+            "max_dt_s": max_dt,
+            "final_dt_s": float(dt_s),
+            "dt_history": dt_history[-64:],
+            "rejection_records": rejection_records[-64:],
+            "limiter_activation_summary": limiter_summary,
+            "last_step": (
+                None if last_result is None else last_result.telemetry.last_step
+            ),
+            "circuit": None if last_result is None else last_result.telemetry.circuit,
+            "state_fingerprint": (
+                None if last_result is None else last_result.telemetry.state_fingerprint
+            ),
+            "finite_state": None if last_result is None else last_result.telemetry.finite_state,
+            "can_support_first_principles_acceptance": False,
+            "limitations": [
+                "Candidate adaptive runtime controller only; it retries rejected steps but does not validate timestep convergence.",
+                "Variable-dt power-port and restart equivalence still require accepted numerical-fidelity review.",
+            ],
+        }
 
 
 class HybridEMPicFluidRun:
@@ -647,25 +790,26 @@ class HybridEMPicFluidRun:
             conductor_cells=conductor_cells,
             conductor_mask=conductor_mask_packet,
         )
-        total_deuterium_density = np.full(
-            grid.shape,
-            deck.background_density_m3,
-            dtype=float,
+        plasma_profile = _build_initial_plasma_profile(
+            deck,
+            grid,
+            conductor_cells=conductor_cells,
         )
+        total_deuterium_density = plasma_profile.total_deuterium_density_m3
         initial_electron_density = np.maximum(
-            total_deuterium_density * deck.initial_ionization_fraction,
+            total_deuterium_density * plasma_profile.ionization_fraction,
             1.0,
         )
         electron_closure = ElectronEnergyClosure(grid)
         electron_state = electron_closure.initialize(
-            electron_temperature_K=deck.electron_temperature_K,
-            ion_temperature_K=deck.ion_temperature_K,
+            electron_temperature_K=plasma_profile.electron_temperature_K,
+            ion_temperature_K=plasma_profile.ion_temperature_K,
             electron_density_m3=initial_electron_density,
         )
         ionization_transport = DeuteriumIonizationTransport(grid)
         ionization_state = ionization_transport.initialize(
             total_deuterium_density_m3=total_deuterium_density,
-            ionization_fraction=deck.initial_ionization_fraction,
+            ionization_fraction=plasma_profile.ionization_fraction,
         )
         loop = HybridPIC3DLoop(
             grid,
@@ -678,7 +822,12 @@ class HybridEMPicFluidRun:
         state = loop.field_stepper.maxwell.empty_state()
         state.E.Ex_edge.fill(deck.initial_E_x_V_m)
         state.B.Bz_face.fill(deck.initial_B_z_T)
-        pic, pic_loading_packet = _build_initial_pic(deck, grid, conductor_cells)
+        pic, pic_loading_packet = _build_initial_pic(
+            deck,
+            grid,
+            conductor_cells,
+            plasma_profile=plasma_profile,
+        )
         initial_circuit_state = deck.circuit_state or CircuitState()
         circuit_boundary = self.circuit_boundary
         if deck.apply_circuit_boundary and circuit_boundary is None:
@@ -722,9 +871,10 @@ class HybridEMPicFluidRun:
             ionization_state=ionization_state,
             use_source_backed_conductivity=True,
             mass_density_kg_m3=total_deuterium_density * deck.ion_mass_kg,
-            plasma_velocity_m_s=np.zeros(grid.shape + (3,), dtype=float),
+            plasma_velocity_m_s=plasma_profile.plasma_velocity_m_s,
             electron_temperature_floor_K=10.0,
             heat_flux_subcycles_max=5000,
+            pressure_density_threshold_m3=_pressure_density_threshold_m3(deck),
             use_source_ordered_velocity_update=deck.use_source_ordered_velocity_update,
             circuit_state=initial_circuit_state,
             apply_circuit_boundary=deck.apply_circuit_boundary,
@@ -1101,6 +1251,143 @@ def _last_field_work_from_simulation(
     return dict(field_work)
 
 
+def _restore_session_from_snapshot(
+    session: FirstPrinciples3DSession,
+    snapshot: FirstPrinciples3DSession,
+) -> None:
+    session.__dict__.clear()
+    session.__dict__.update(deepcopy(snapshot.__dict__))
+
+
+def _adaptive_retry_required(stop_reason: str) -> bool:
+    return stop_reason in {
+        "aborted_blocked_electron_energy_closure",
+        "aborted_blocked_electron_heat_flux",
+        "aborted_nonfinite_state",
+    }
+
+
+def _adaptive_rejection_record(
+    *,
+    result: HybridPIC3DSimulationResult,
+    attempted_dt_s: float,
+    elapsed_s: float,
+    accepted_steps: int,
+) -> dict[str, Any]:
+    last_step = (
+        result.telemetry.last_step
+        if isinstance(result.telemetry.last_step, Mapping)
+        else {}
+    )
+    electron_energy = (
+        last_step.get("electron_energy") if isinstance(last_step, Mapping) else None
+    )
+    closure_validity = (
+        electron_energy.get("closure_validity")
+        if isinstance(electron_energy, Mapping)
+        else None
+    )
+    return {
+        "status": "candidate_adaptive_step_rejected_and_rolled_back",
+        "attempted_dt_s": float(attempted_dt_s),
+        "elapsed_s": float(elapsed_s),
+        "accepted_steps_before_attempt": int(accepted_steps),
+        "stop_reason": result.telemetry.stop_reason,
+        "electron_energy_status": (
+            None
+            if not isinstance(electron_energy, Mapping)
+            else electron_energy.get("status")
+        ),
+        "closure_validity": closure_validity,
+        "finite_state": result.telemetry.finite_state,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _empty_adaptive_limiter_summary() -> dict[str, Any]:
+    return {
+        "status": "candidate_adaptive_limiter_inventory_not_validation",
+        "source": HYBRID_PIC_3D_SOURCE,
+        "steps_observed": 0,
+        "activation_counts": {
+            "conductivity_ohmic_cfl_limited_steps": 0,
+            "conductivity_density_blend_applied_steps": 0,
+            "marder_dominant_correction_steps": 0,
+            "electron_temperature_floor_contact_steps": 0,
+            "blocked_heat_flux_steps": 0,
+            "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps": 0,
+            "marder_correction_steps": 0,
+        },
+        "max_observed": {
+            "conductivity_cfl_limited_fraction": 0.0,
+            "marder_relative_correction_linf": 0.0,
+            "marder_residual_after_linf": 0.0,
+            "marder_nondominance_threshold": None,
+            "electron_temperature_min_K": None,
+            "electron_temperature_max_K": None,
+        },
+        "acceptance_state": {
+            "can_support_limiter_zero_acceptance": False,
+            "can_support_first_principles_acceptance": False,
+            "validated": False,
+            "review_decision": "adaptive_runtime_inventory_only",
+        },
+    }
+
+
+def _merge_adaptive_limiter_summary(
+    accumulator: dict[str, Any],
+    step_summary: Mapping[str, Any] | None,
+) -> None:
+    if not isinstance(step_summary, Mapping):
+        return
+    accumulator["steps_observed"] = int(accumulator.get("steps_observed", 0)) + int(
+        step_summary.get("steps_observed", 0) or 0
+    )
+    counts = accumulator["activation_counts"]
+    for name, value in _as_mapping(step_summary.get("activation_counts")).items():
+        if name not in counts:
+            counts[name] = 0
+        counts[name] += int(value or 0)
+    maxima = accumulator["max_observed"]
+    observed = _as_mapping(step_summary.get("max_observed"))
+    for name, value in observed.items():
+        numeric = _optional_numeric(value)
+        if numeric is None:
+            continue
+        if name in {"electron_temperature_min_K", "marder_nondominance_threshold"}:
+            current = _optional_numeric(maxima.get(name))
+            maxima[name] = numeric if current is None else min(current, numeric)
+        else:
+            current = _optional_numeric(maxima.get(name))
+            maxima[name] = numeric if current is None else max(current, numeric)
+
+
+def _as_mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _optional_numeric(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(numeric):
+        return None
+    return numeric
+
+
+def _pressure_density_threshold_m3(deck: FirstPrinciples3DDeck) -> float:
+    if deck.pressure_density_threshold_m3 is not None:
+        return float(deck.pressure_density_threshold_m3)
+    initial_electron_density = (
+        deck.background_density_m3 * deck.initial_ionization_fraction
+    )
+    return max(1.0e12, initial_electron_density * 1.0e-6)
+
+
 def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
     if int(deck.n_steps) != deck.n_steps or deck.n_steps <= 0:
         raise ValueError("n_steps must be a positive integer")
@@ -1123,6 +1410,11 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         raise ValueError("density_floor_m3 must be positive")
     if not 0.0 <= deck.initial_ionization_fraction <= 1.0:
         raise ValueError("initial_ionization_fraction must be in [0, 1]")
+    if (
+        deck.pressure_density_threshold_m3 is not None
+        and deck.pressure_density_threshold_m3 < 0.0
+    ):
+        raise ValueError("pressure_density_threshold_m3 must be non-negative")
     if deck.particle_weight <= 0.0:
         raise ValueError("particle_weight must be positive")
     if deck.ion_mass_kg <= 0.0:
@@ -1169,10 +1461,177 @@ def _validate_deck(deck: FirstPrinciples3DDeck) -> None:
         )
 
 
+def _build_initial_plasma_profile(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+    *,
+    conductor_cells: np.ndarray | None,
+) -> InitialPlasmaProfile:
+    """Build grid-shaped density, temperature, and drift startup fields."""
+
+    total_density = np.full(grid.shape, float(deck.background_density_m3), dtype=float)
+    ionization_fraction = np.full(
+        grid.shape,
+        float(deck.initial_ionization_fraction),
+        dtype=float,
+    )
+    electron_temperature = np.full(
+        grid.shape,
+        float(deck.electron_temperature_K),
+        dtype=float,
+    )
+    ion_temperature = np.full(
+        grid.shape,
+        float(deck.ion_temperature_K),
+        dtype=float,
+    )
+    plasma_velocity = np.zeros(grid.shape + (3,), dtype=float)
+    payload = deck.startup_payload if isinstance(deck.startup_payload, Mapping) else {}
+    applied_regions: list[str] = []
+    profile_status = "candidate_uniform_startup_profile_not_validation"
+
+    if _payload_profile_type(payload) == "annular_axial_sheath":
+        coordinates = _startup_profile_coordinates(deck, grid)
+        radius = coordinates["radius"]
+        axial = coordinates["z"]
+        vacuum_density = _payload_float(
+            payload,
+            "vacuum_density_floor_m3",
+            default=max(1.0, min(float(deck.background_density_m3), 1.0e12)),
+        )
+        total_density.fill(vacuum_density)
+        ionization_fraction.fill(
+            _payload_float(
+                payload,
+                "vacuum_ionization_fraction",
+                default=0.0,
+            )
+        )
+        electron_temperature.fill(
+            _payload_float(
+                payload,
+                "vacuum_temperature_K",
+                default=float(deck.electron_temperature_K),
+            )
+        )
+        ion_temperature.fill(
+            _payload_float(
+                payload,
+                "vacuum_temperature_K",
+                default=float(deck.ion_temperature_K),
+            )
+        )
+
+        if _payload_region_declared(payload, "background"):
+            background_mask = _annular_axial_mask(
+                radius=radius,
+                axial=axial,
+                r_min=_payload_float(payload, "background_radial_min_m", default=0.0),
+                r_max=_payload_float(payload, "background_radial_max_m", default=None),
+                z_min=_payload_float(payload, "background_z_min_m", default=None),
+                z_max=_payload_float(payload, "background_z_max_m", default=None),
+            )
+            if np.any(background_mask):
+                total_density[background_mask] = _payload_float(
+                    payload,
+                    "background_density_m3",
+                    default=float(deck.background_density_m3),
+                )
+                ionization_fraction[background_mask] = _payload_float(
+                    payload,
+                    "background_ionization_fraction",
+                    default=_payload_float(payload, "ionization_fraction", default=1.0),
+                )
+                background_temperature = _payload_float(
+                    payload,
+                    "background_temperature_K",
+                    default=float(deck.ion_temperature_K),
+                )
+                electron_temperature[background_mask] = background_temperature
+                ion_temperature[background_mask] = background_temperature
+                applied_regions.append("background_prefill")
+
+        sheath_mask = _annular_axial_mask(
+            radius=radius,
+            axial=axial,
+            r_min=_payload_float(payload, "sheath_radial_min_m", default=None),
+            r_max=_payload_float(payload, "sheath_radial_max_m", default=None),
+            z_min=_payload_float(payload, "sheath_z_min_m", default=None),
+            z_max=_payload_float(payload, "sheath_z_max_m", default=None),
+        )
+        if np.any(sheath_mask):
+            total_density[sheath_mask] = _payload_float(
+                payload,
+                "sheath_density_m3",
+                default=float(deck.background_density_m3),
+            )
+            ionization_fraction[sheath_mask] = _payload_float(
+                payload,
+                "sheath_ionization_fraction",
+                default=_payload_float(payload, "ionization_fraction", default=1.0),
+            )
+            sheath_temperature = _payload_float(
+                payload,
+                "sheath_temperature_K",
+                default=float(deck.ion_temperature_K),
+            )
+            electron_temperature[sheath_mask] = sheath_temperature
+            ion_temperature[sheath_mask] = sheath_temperature
+            drift = _payload_vector(
+                payload,
+                "sheath_drift_velocity_m_s",
+                default=(0.0, 0.0, 0.0),
+            )
+            plasma_velocity[sheath_mask, :] = np.asarray(drift, dtype=float)
+            applied_regions.append("preaccelerated_current_sheath")
+        profile_status = "candidate_source_backed_annular_sheath_profile_not_validation"
+
+    if conductor_cells is not None:
+        conductor_mask = np.asarray(conductor_cells, dtype=bool)
+        total_density = np.where(conductor_mask, 1.0, total_density)
+        ionization_fraction = np.where(conductor_mask, 0.0, ionization_fraction)
+        plasma_velocity = np.where(conductor_mask[..., np.newaxis], 0.0, plasma_velocity)
+
+    ionization_fraction = np.clip(ionization_fraction, 0.0, 1.0)
+    telemetry = {
+        "status": profile_status,
+        "startup_mode": deck.startup_mode,
+        "startup_source_scope": deck.startup_source_scope,
+        "profile_type": _payload_profile_type(payload) or "uniform",
+        "applied_regions": applied_regions,
+        "total_density_min_m3": float(np.min(total_density)),
+        "total_density_max_m3": float(np.max(total_density)),
+        "ionization_fraction_min": float(np.min(ionization_fraction)),
+        "ionization_fraction_max": float(np.max(ionization_fraction)),
+        "electron_temperature_min_K": float(np.min(electron_temperature)),
+        "electron_temperature_max_K": float(np.max(electron_temperature)),
+        "ion_temperature_min_K": float(np.min(ion_temperature)),
+        "ion_temperature_max_K": float(np.max(ion_temperature)),
+        "max_abs_plasma_drift_m_s": float(np.max(np.abs(plasma_velocity))),
+        "source_references": payload.get("source_references", ()),
+        "can_support_first_principles_acceptance": False,
+        "limitations": [
+            "Runtime startup profile only; not an accepted breakdown or liftoff BVP.",
+            "Annular axial profile is a Cartesian projection of source geometry.",
+            "Surface flashover, Debye sheaths, molecular D2, and electrode material ablation remain upstream blockers.",
+        ],
+    }
+    return InitialPlasmaProfile(
+        total_deuterium_density_m3=total_density,
+        ionization_fraction=ionization_fraction,
+        electron_temperature_K=electron_temperature,
+        ion_temperature_K=ion_temperature,
+        plasma_velocity_m_s=plasma_velocity,
+        telemetry=telemetry,
+    )
+
+
 def _build_initial_pic(
     deck: FirstPrinciples3DDeck,
     grid: Maxwell3DGrid,
     conductor_cells: np.ndarray | None,
+    *,
+    plasma_profile: InitialPlasmaProfile | None = None,
 ) -> tuple[HybridPIC, dict[str, Any]]:
     pic = HybridPIC(
         grid_shape=grid.shape,
@@ -1197,12 +1656,22 @@ def _build_initial_pic(
     indices = np.argwhere(active_cells)
     spacings = np.array(grid.spacing, dtype=float)
     cell_centers = (indices.astype(float) + 0.5) * spacings
-    initial_ion_density_m3 = (
-        float(deck.background_density_m3) * float(deck.initial_ionization_fraction)
+    if plasma_profile is None:
+        plasma_profile = _build_initial_plasma_profile(
+            deck,
+            grid,
+            conductor_cells=conductor_cells,
+        )
+    ion_density_m3 = (
+        plasma_profile.total_deuterium_density_m3
+        * plasma_profile.ionization_fraction
     )
-    physical_ions_per_cell = initial_ion_density_m3 * grid.cell_volume
-    thermal_speed_m_s = float(
-        np.sqrt(3.0 * K_B * float(deck.ion_temperature_K) / float(deck.ion_mass_kg))
+    active_ion_density = ion_density_m3[active_cells]
+    active_ion_temperature = plasma_profile.ion_temperature_K[active_cells]
+    active_drift_velocity = plasma_profile.plasma_velocity_m_s[active_cells]
+    physical_ions_per_cell = active_ion_density * grid.cell_volume
+    thermal_speed_m_s = np.sqrt(
+        3.0 * K_B * np.maximum(active_ion_temperature, 1.0) / float(deck.ion_mass_kg)
     )
     velocity_basis = np.array(
         [
@@ -1216,17 +1685,23 @@ def _build_initial_pic(
         dtype=float,
     )
     quadrature_count = int(velocity_basis.shape[0])
-    if cell_centers.size and physical_ions_per_cell > 0.0:
-        positions = np.repeat(cell_centers, quadrature_count, axis=0)
-        velocities = np.tile(
-            velocity_basis * thermal_speed_m_s,
-            (cell_centers.shape[0], 1),
+    loaded = physical_ions_per_cell > 0.0
+    if cell_centers.size and np.any(loaded):
+        loaded_centers = cell_centers[loaded]
+        loaded_speeds = thermal_speed_m_s[loaded]
+        loaded_drift = active_drift_velocity[loaded]
+        positions = np.repeat(loaded_centers, quadrature_count, axis=0)
+        velocities = (
+            np.repeat(loaded_drift, quadrature_count, axis=0)
+            + np.vstack([
+                velocity_basis * float(speed)
+                for speed in loaded_speeds
+            ])
         )
-        weights = np.full(
-            positions.shape[0],
-            physical_ions_per_cell / quadrature_count,
-            dtype=float,
-        )
+        weights = np.repeat(
+            physical_ions_per_cell[loaded] / quadrature_count,
+            quadrature_count,
+        ).astype(float, copy=False)
     else:
         positions = np.empty((0, 3), dtype=float)
         velocities = np.empty((0, 3), dtype=float)
@@ -1256,23 +1731,65 @@ def _build_initial_pic(
         "grid_shape": list(grid.shape),
         "total_cells": total_cells,
         "active_loaded_cells": active_count,
+        "active_cells_with_positive_ion_weight": int(np.count_nonzero(loaded)),
         "macroparticles_loaded": int(weights.size),
         "velocity_quadrature_directions_per_cell": quadrature_count,
-        "ion_thermal_speed_m_s": thermal_speed_m_s,
+        "ion_thermal_speed_m_s": (
+            float(thermal_speed_m_s[0])
+            if thermal_speed_m_s.size
+            and float(np.min(thermal_speed_m_s)) == float(np.max(thermal_speed_m_s))
+            else None
+        ),
+        "ion_thermal_speed_min_m_s": (
+            float(np.min(thermal_speed_m_s)) if thermal_speed_m_s.size else 0.0
+        ),
+        "ion_thermal_speed_max_m_s": (
+            float(np.max(thermal_speed_m_s)) if thermal_speed_m_s.size else 0.0
+        ),
         "excluded_conductor_cells": int(np.count_nonzero(conductor_mask)),
         "excluded_pml_cells": int(np.count_nonzero(pml_mask & ~conductor_mask)),
-        "initial_total_deuterium_density_m3": float(deck.background_density_m3),
-        "initial_ionization_fraction": float(deck.initial_ionization_fraction),
-        "initial_ion_density_m3": initial_ion_density_m3,
+        "initial_total_deuterium_density_m3": (
+            float(plasma_profile.telemetry["total_density_max_m3"])
+            if plasma_profile.telemetry["total_density_min_m3"]
+            == plasma_profile.telemetry["total_density_max_m3"]
+            else None
+        ),
+        "initial_total_deuterium_density_min_m3": plasma_profile.telemetry[
+            "total_density_min_m3"
+        ],
+        "initial_total_deuterium_density_max_m3": plasma_profile.telemetry[
+            "total_density_max_m3"
+        ],
+        "initial_ionization_fraction": (
+            float(plasma_profile.telemetry["ionization_fraction_max"])
+            if plasma_profile.telemetry["ionization_fraction_min"]
+            == plasma_profile.telemetry["ionization_fraction_max"]
+            else None
+        ),
+        "initial_ionization_fraction_min": plasma_profile.telemetry[
+            "ionization_fraction_min"
+        ],
+        "initial_ionization_fraction_max": plasma_profile.telemetry[
+            "ionization_fraction_max"
+        ],
+        "initial_ion_density_m3": (
+            float(np.max(ion_density_m3))
+            if float(np.min(ion_density_m3)) == float(np.max(ion_density_m3))
+            else None
+        ),
+        "initial_ion_density_min_m3": float(np.min(ion_density_m3)),
+        "initial_ion_density_max_m3": float(np.max(ion_density_m3)),
         "cell_volume_m3": float(grid.cell_volume),
         "macro_particle_weight_min": float(np.min(weights)) if weights.size else 0.0,
         "macro_particle_weight_max": float(np.max(weights)) if weights.size else 0.0,
         "represented_physical_ions": represented_ions,
+        "initial_plasma_profile": plasma_profile.telemetry,
         "nominal_deck_particle_weight": float(deck.particle_weight),
         "particle_weight_policy": (
             "runtime weights are density times cell volume so the initial ion "
             "macroparticles conserve the deck ion density; six-stream velocity "
-            "quadrature preserves zero drift and the isotropic thermal second moment"
+            "quadrature preserves the configured drift and isotropic thermal "
+            "second moment per loaded cell"
         ),
         "can_support_first_principles_acceptance": False,
         "limitations": [
@@ -1282,6 +1799,84 @@ def _build_initial_pic(
         ],
     }
     return pic, loading_packet
+
+
+def _payload_profile_type(payload: Mapping[str, Any]) -> str | None:
+    value = payload.get("profile_type", payload.get("initial_plasma_profile"))
+    if value is None:
+        return None
+    return str(value)
+
+
+def _payload_float(
+    payload: Mapping[str, Any],
+    key: str,
+    *,
+    default: float | None,
+) -> float | None:
+    value = payload.get(key, default)
+    if value is None:
+        return None
+    return float(value)
+
+
+def _payload_vector(
+    payload: Mapping[str, Any],
+    key: str,
+    *,
+    default: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    value = payload.get(key, default)
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        raise ValueError(f"{key} must be a 3-vector")
+    return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def _payload_region_declared(payload: Mapping[str, Any], prefix: str) -> bool:
+    return any(str(key).startswith(f"{prefix}_") for key in payload)
+
+
+def _startup_profile_coordinates(
+    deck: FirstPrinciples3DDeck,
+    grid: Maxwell3DGrid,
+) -> dict[str, np.ndarray]:
+    z = (np.arange(grid.nz, dtype=float) + 0.5) * grid.dz
+    axial = z[np.newaxis, np.newaxis, :]
+    if deck.conductor_mask_mode == "pf1000_rod_hollow_projection":
+        x = (np.arange(grid.nx, dtype=float) - 0.5 * (grid.nx - 1)) * grid.dx
+        y = (np.arange(grid.ny, dtype=float) - 0.5 * (grid.ny - 1)) * grid.dy
+    else:
+        x = (np.arange(grid.nx, dtype=float) + 0.5) * grid.dx
+        y = (np.arange(grid.ny, dtype=float) + 0.5) * grid.dy
+    radius = np.sqrt(
+        x[:, np.newaxis, np.newaxis] ** 2
+        + y[np.newaxis, :, np.newaxis] ** 2
+    )
+    return {
+        "radius": np.broadcast_to(radius, grid.shape),
+        "z": np.broadcast_to(axial, grid.shape),
+    }
+
+
+def _annular_axial_mask(
+    *,
+    radius: np.ndarray,
+    axial: np.ndarray,
+    r_min: float | None,
+    r_max: float | None,
+    z_min: float | None,
+    z_max: float | None,
+) -> np.ndarray:
+    mask = np.ones(radius.shape, dtype=bool)
+    if r_min is not None:
+        mask &= radius >= float(r_min)
+    if r_max is not None:
+        mask &= radius <= float(r_max)
+    if z_min is not None:
+        mask &= axial >= float(z_min)
+    if z_max is not None:
+        mask &= axial <= float(z_max)
+    return mask
 
 
 def _initial_pic_active_cells(
@@ -2164,6 +2759,7 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         "sigma0_S_m": closures.sigma0_S_m,
         "background_density_m3": startup.background_density_m3,
         "density_floor_m3": closures.density_floor_m3,
+        "initial_ionization_fraction": startup.initial_ionization_fraction,
         "electron_temperature_K": startup.electron_temperature_K,
         "ion_temperature_K": startup.ion_temperature_K,
         "ion_species_name": gas.species,
@@ -2213,8 +2809,10 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         "startup_can_support_whole_shot_acceptance": (
             startup.can_support_whole_shot_acceptance
         ),
+        "startup_accepted_channels": tuple(startup.accepted_channels),
         "startup_required_channels": tuple(startup.required_channels),
         "startup_missing_channels": tuple(startup.missing_channels),
+        "startup_payload": dict(startup.startup_payload),
     }
 
 

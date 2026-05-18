@@ -38,6 +38,7 @@ ACCEPTANCE_BLOCKING_LIMITER_COUNTS = (
 
 METHOD_REVIEW_LIMITER_COUNTS = (
     "marder_correction_steps",
+    "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps",
 )
 
 
@@ -153,6 +154,10 @@ def _review_required(
         if count > 0:
             required.append(f"resolve_acceptance_blocking_{name}")
     for name, count in method_review_counts.items():
+        if name == "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps":
+            if count > 0:
+                required.append("review_unapplied_raw_ohmic_cfl_exceedance")
+            continue
         marder_nondominant = (
             name == "marder_correction_steps"
             and _mapping(method_limiter_decisions.get("marder_correction")).get(
@@ -203,7 +208,36 @@ def _method_limiter_decisions(
                 else "candidate_method_limiter_requires_review"
             ),
             "can_support_limiter_zero_acceptance": False,
-        }
+        },
+        "conductivity_ohmic_cfl_raw_exceedance": {
+            "method_limiter": True,
+            "steps_observed": int(
+                method_review_counts.get(
+                    "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps",
+                    0,
+                )
+            ),
+            "applied_limiter_steps": int(
+                blocking_counts.get("conductivity_ohmic_cfl_limited_steps", 0)
+            ),
+            "max_raw_exceedance_fraction": _optional_float(
+                max_observed.get("conductivity_cfl_limited_fraction")
+            ),
+            "status": (
+                "candidate_raw_explicit_ohmic_cfl_exceedance_observed_not_applied"
+                if int(
+                    method_review_counts.get(
+                        "conductivity_ohmic_cfl_raw_exceeds_explicit_limit_steps",
+                        0,
+                    )
+                )
+                > 0
+                and int(blocking_counts.get("conductivity_ohmic_cfl_limited_steps", 0))
+                == 0
+                else "candidate_explicit_ohmic_cfl_limit_requires_review"
+            ),
+            "can_support_limiter_zero_acceptance": False,
+        },
     }
 
 

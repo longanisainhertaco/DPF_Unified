@@ -265,6 +265,20 @@ sequence is used until `circuit_feedback_min_current_A` is exceeded, and this
 guard remains non-promoting limiter/numerical telemetry until an accepted
 implicit or centered power-port packet replaces it.
 
+2026-05-17 PF-1000 experimental horizon update: the package-native
+PF-1000/Akel seeded-domain candidate now completes a `6.0 us` vacuum-CFL
+experimental limiter-proof run with finite state and no acceptance-blocking
+limiter activations:
+`results/experimental_limiter_proof_pf1000_seeded_power_domain_6us_2026_05_17.json`.
+The enabling implementation changes are source-domain guards: zero arbitrary
+startup volume electric field for the PF-1000 circuit-driven seed, resolved
+plasma-only `J.E`/electron-fluid/current domains, passive-sign lagged `J.E`
+feedback, and fail-closed fallback for negative `J.E` active-port feedback.
+This is an experimental runtime milestone, not acceptance. The run reports
+`26713` negative-`J.E` active-port fallbacks, so FP-6 remains blocked until an
+accepted time-centered power-port packet with sign, electrode-work,
+interface/domain, residual tolerance, convergence, and review exists.
+
 2026-05-16 runtime-sweep update: `dpf first-principles-3d` now accepts
 `--steps` and `--dt-s` overrides for both built-in source-scoped package decks
 and compact JSON decks. This lets engineers run controlled short-duration

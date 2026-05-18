@@ -316,6 +316,31 @@ def test_inverse_calibration_blocks_unique_when_fit_score_exceeds_threshold() ->
     assert classification["can_conclude_unique_parameters"] is False
 
 
+def test_inverse_calibration_ignores_nonfinite_completed_candidate_scores() -> None:
+    classification = classify_inverse_calibration_results(
+        candidate_results=(
+            {
+                "case_status": "completed_engineering_candidate_run",
+                "finite_state_all_finite": False,
+                "candidate": {
+                    "candidate_id": "candidate_nonfinite",
+                    "baseline_parameters": {"inductance": 1.0},
+                    "parameter_values": {"inductance": 1.0},
+                },
+                "scoring": {
+                    "usable": True,
+                    "score": 0.0,
+                    "metrics": {"peak_at_final_sample": False},
+                },
+            },
+        ),
+        parameter_names=("inductance",),
+    )
+
+    assert classification["status"] == "no_conclusion_no_usable_completed_candidates"
+    assert classification["can_conclude_unique_parameters"] is False
+
+
 def test_inverse_calibration_packet_flags_invariant_parameter_surfaces() -> None:
     packet = build_experimental_inverse_calibration_packet(
         declared_scope="unit",
@@ -605,6 +630,12 @@ def test_experimental_inverse_calibration_cli_fits_candidate_grid() -> None:
         "separated_candidate_grid_without_accepted_fit_tolerance",
         "separated_candidate_grid_but_fit_score_exceeds_threshold",
     }
+    evidence = payload["candidate_results"][0]["runtime_evidence_packets"]
+    assert evidence["startup"]["can_support_first_principles_acceptance"] is False
+    assert evidence["power_port"]["status"] == (
+        "candidate_engineering_power_port_not_validation"
+    )
+    assert evidence["experimental_limiter_zero_probe"]["can_support_first_principles_acceptance"] is False
     assert payload["can_support_first_principles_acceptance"] is False
 
 
@@ -691,12 +722,22 @@ def test_experimental_inverse_calibration_pressure_updates_startup_density() -> 
     assert loading["status"] == "experimental_plasma_loading_observability_not_validation"
     assert loading["history_point_count"] >= 1
     assert loading["j_dot_e_power_W_max_abs"] is not None
+    assert loading["cumulative_j_dot_e_work_J"] is not None
+    assert loading["cumulative_j_dot_e_step_count"] is not None
     assert loading["circuit_current_A_final"] is not None
     assert loading["circuit_udpf_source_counts"]
     assert "circuit_terminal_voltage_V_final_step" in loading
     assert loading["electron_density_m3_max_retained"] is not None
     assert loading["source_backed_sigma_S_m_max_retained"] is not None
     assert loading["conductivity_ohmic_cfl_limit_applied_counts"]
+    assert loading["electric_update_scheme_counts"]
+    assert loading["ohm_time_centering_theta_max_retained"] is not None
+    assert "electron_heat_flux_status_counts" in loading
+    assert "electron_heat_flux_terminal_status" in loading
+    assert "electron_heat_flux_required_subcycles_max" in loading
+    assert "conductivity_ohmic_cfl_limit_applied_terminal" in loading
+    assert "electric_update_scheme_terminal" in loading
+    assert "ohm_time_centering_theta_terminal" in loading
     pressure = payload["parameter_sensitivity"]["parameters"]["pressure"]
     group = pressure["groups"][0]
     assert "runtime_metric_ranges" in group

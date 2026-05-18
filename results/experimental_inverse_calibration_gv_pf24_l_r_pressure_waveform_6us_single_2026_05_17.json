@@ -7,23 +7,23 @@
       "metrics": {
         "horizon_covers_peak_candidate": true,
         "peak_at_final_sample": false,
-        "peak_current_relative_error": 0.03791622086018884,
-        "peak_time_relative_error": 0.01804172454816992,
-        "simulation_peak_current_A": 386372.84570254816,
-        "simulation_peak_time_s": 1.3354632546144888e-06,
-        "simulation_point_count": 59,
+        "peak_current_relative_error": 0.1816375841193857,
+        "peak_time_relative_error": 0.754956364718621,
+        "simulation_peak_current_A": 328654.3462176547,
+        "simulation_peak_time_s": 2.3867406560173244e-06,
+        "simulation_point_count": 66,
         "target_peak_current_A": 401600.0,
         "target_peak_time_s": 1.36e-06,
-        "waveform_coverage_horizon_limited": true,
-        "waveform_mae_kA": 20.732293663998952,
-        "waveform_max_abs_error_kA": 67.57098941468355,
-        "waveform_mean_signed_error_kA": 14.909770571687563,
+        "waveform_coverage_horizon_limited": false,
+        "waveform_mae_kA": 75.66472502511523,
+        "waveform_max_abs_error_kA": 176.04964402918512,
+        "waveform_mean_signed_error_kA": -29.573034864403937,
         "waveform_minimum_overlap_points": 3,
-        "waveform_nrmse_fraction": 0.06391721564209625,
-        "waveform_overlap_point_count": 59,
+        "waveform_nrmse_fraction": 0.22896724433905594,
+        "waveform_overlap_point_count": 65,
         "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
         "waveform_required_coverage_fraction": 0.95,
-        "waveform_rmse_kA": 25.669153801865853,
+        "waveform_rmse_kA": 91.95324532656487,
         "waveform_score_included": true,
         "waveform_scored_time_range_us": [
           0.0,
@@ -37,58 +37,7 @@
           -0.5,
           6.0
         ],
-        "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
-      },
-      "parameter_factors": {
-        "inductance": 0.875,
-        "pressure": 0.75,
-        "resistance": 1.5
-      },
-      "parameter_values": {
-        "inductance": 1.8375000000000004e-08,
-        "pressure": 109.99095394736844,
-        "resistance": 0.033
-      },
-      "score": 0.044153346737738505
-    },
-    {
-      "candidate_id": "candidate_0001",
-      "duration_request_satisfied": true,
-      "finite_state_all_finite": true,
-      "metrics": {
-        "horizon_covers_peak_candidate": true,
-        "peak_at_final_sample": false,
-        "peak_current_relative_error": 0.03791622086331359,
-        "peak_time_relative_error": 0.01804172454816992,
-        "simulation_peak_current_A": 386372.84570129326,
-        "simulation_peak_time_s": 1.3354632546144888e-06,
-        "simulation_point_count": 59,
-        "target_peak_current_A": 401600.0,
-        "target_peak_time_s": 1.36e-06,
-        "waveform_coverage_horizon_limited": true,
-        "waveform_mae_kA": 20.732293667246704,
-        "waveform_max_abs_error_kA": 67.57098942747545,
-        "waveform_mean_signed_error_kA": 14.9097705754966,
-        "waveform_minimum_overlap_points": 3,
-        "waveform_nrmse_fraction": 0.06391721565124697,
-        "waveform_overlap_point_count": 59,
-        "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
-        "waveform_required_coverage_fraction": 0.95,
-        "waveform_rmse_kA": 25.669153805540788,
-        "waveform_score_included": true,
-        "waveform_scored_time_range_us": [
-          0.0,
-          6.0
-        ],
-        "waveform_status": "scored_waveform_shape_overlap",
-        "waveform_target_point_count": 649,
-        "waveform_target_present": true,
-        "waveform_target_series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611",
-        "waveform_target_time_range_us": [
-          -0.5,
-          6.0
-        ],
-        "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
+        "waveform_temporal_coverage_fraction_of_target": 1.0
       },
       "parameter_factors": {
         "inductance": 0.875,
@@ -100,63 +49,12 @@
         "pressure": 146.65460526315792,
         "resistance": 0.033
       },
-      "score": 0.044153346743048535
-    },
-    {
-      "candidate_id": "candidate_0002",
-      "duration_request_satisfied": true,
-      "finite_state_all_finite": true,
-      "metrics": {
-        "horizon_covers_peak_candidate": true,
-        "peak_at_final_sample": false,
-        "peak_current_relative_error": 0.03791622086499633,
-        "peak_time_relative_error": 0.01804172454816992,
-        "simulation_peak_current_A": 386372.8457006175,
-        "simulation_peak_time_s": 1.3354632546144888e-06,
-        "simulation_point_count": 59,
-        "target_peak_current_A": 401600.0,
-        "target_peak_time_s": 1.36e-06,
-        "waveform_coverage_horizon_limited": true,
-        "waveform_mae_kA": 20.732293670079336,
-        "waveform_max_abs_error_kA": 67.5709894373989,
-        "waveform_mean_signed_error_kA": 14.909770578896532,
-        "waveform_minimum_overlap_points": 3,
-        "waveform_nrmse_fraction": 0.06391721565917673,
-        "waveform_overlap_point_count": 59,
-        "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
-        "waveform_required_coverage_fraction": 0.95,
-        "waveform_rmse_kA": 25.669153808725373,
-        "waveform_score_included": true,
-        "waveform_scored_time_range_us": [
-          0.0,
-          6.0
-        ],
-        "waveform_status": "scored_waveform_shape_overlap",
-        "waveform_target_point_count": 649,
-        "waveform_target_present": true,
-        "waveform_target_series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611",
-        "waveform_target_time_range_us": [
-          -0.5,
-          6.0
-        ],
-        "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
-      },
-      "parameter_factors": {
-        "inductance": 0.875,
-        "pressure": 1.25,
-        "resistance": 1.5
-      },
-      "parameter_values": {
-        "inductance": 1.8375000000000004e-08,
-        "pressure": 183.3182565789474,
-        "resistance": 0.033
-      },
-      "score": 0.04415334674735664
+      "score": 0.4673960931137898
     }
   ],
   "blocked_candidate_count": 0,
   "can_support_first_principles_acceptance": false,
-  "candidate_count": 3,
+  "candidate_count": 1,
   "candidate_results": [
     {
       "can_support_first_principles_acceptance": false,
@@ -169,169 +67,6 @@
         "candidate_id": "candidate_0000",
         "parameter_factors": {
           "inductance": 0.875,
-          "pressure": 0.75,
-          "resistance": 1.5
-        },
-        "parameter_scale_values": {
-          "inductance": [
-            0.875
-          ],
-          "pressure": [
-            0.75,
-            1.0,
-            1.25
-          ],
-          "resistance": [
-            1.5
-          ]
-        },
-        "parameter_values": {
-          "inductance": 1.8375000000000004e-08,
-          "pressure": 109.99095394736844,
-          "resistance": 0.033
-        },
-        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
-      },
-      "case_status": "completed_engineering_candidate_run",
-      "duration_request_satisfied": true,
-      "final_circuit_current_A": 380385.61056992173,
-      "final_time_s": 1.600044204935116e-06,
-      "finite_state_all_finite": true,
-      "n_steps_completed": 28157,
-      "plasma_loading_summary": {
-        "active_to_j_dot_e_power_ratio_final": -0.9971043405549095,
-        "can_support_first_principles_acceptance": false,
-        "circuit_active_power_W_final_step": 51667.31365626715,
-        "circuit_current_A_final": 380385.61056992173,
-        "circuit_current_A_initial": 0.0,
-        "circuit_current_A_peak_abs": 386372.84570254816,
-        "circuit_final_udpf_source": "candidate_lagged_volume_j_dot_e",
-        "circuit_terminal_current_A_final_step": 380387.8680981992,
-        "circuit_terminal_voltage_V_final_step": 0.13582797452133502,
-        "circuit_udpf_source_counts": {
-          "candidate_lagged_volume_j_dot_e": 57,
-          "input_sequence_fallback_first_step": 1
-        },
-        "conductivity_cfl_limited_fraction_max_retained": 1.0,
-        "conductivity_cfl_limited_fraction_terminal": 1.0,
-        "conductivity_effective_S_m_max_retained": 9679.191249108866,
-        "conductivity_effective_S_m_max_terminal": 9668.548231473926,
-        "conductivity_ohmic_cfl_limit_applied_counts": {
-          "False": 2
-        },
-        "conductivity_ohmic_cfl_limit_applied_terminal": false,
-        "electric_update_scheme_counts": {
-          "backward_euler_resistive_ampere_ohm": 2
-        },
-        "electric_update_scheme_terminal": "backward_euler_resistive_ampere_ohm",
-        "electron_closure_validity_terminal_status": "candidate_nonrelativistic_electron_closure_in_range",
-        "electron_current_drift_to_c_terminal": 1.871445491031086e-08,
-        "electron_density_m3_max_retained": 1.0803677388227152e+22,
-        "electron_density_m3_min_retained": 1.0723002221899194e+22,
-        "electron_energy_status_counts": {
-          "candidate_engineering_electron_energy_closure": 3
-        },
-        "electron_energy_terminal_status": "candidate_engineering_electron_energy_closure",
-        "electron_heat_flux_dt_stable_s_terminal": 4.166967950453967e-06,
-        "electron_heat_flux_max_subcycles_terminal": null,
-        "electron_heat_flux_required_subcycles_max": null,
-        "electron_heat_flux_status_counts": {
-          "candidate_braginskii_anisotropic_heat_flux_applied": 3
-        },
-        "electron_heat_flux_terminal_status": "candidate_braginskii_anisotropic_heat_flux_applied",
-        "electron_temperature_K_max_terminal": 24070.204428309902,
-        "electron_temperature_K_min_terminal": 24067.140272461813,
-        "electron_thermal_speed_to_c_terminal": 0.0028492550554158886,
-        "field_energy_J_final": 753.5159627024078,
-        "field_energy_J_initial": 0.000213020870891892,
-        "field_energy_delta_J": 753.5157496815369,
-        "history_point_count": 2,
-        "history_scope": "retained_history_summary_only",
-        "history_stride": 500,
-        "ionization_fraction_max_retained": 0.4068414726956561,
-        "j_dot_e_energy_trapezoid_J": -0.0014788185110339706,
-        "j_dot_e_power_W_final": -51817.359081511175,
-        "j_dot_e_power_W_max": -51817.359081511175,
-        "j_dot_e_power_W_max_abs": 52277.49701497256,
-        "j_dot_e_power_W_min": -52277.49701497256,
-        "max_step_results": 2,
-        "neutral_density_m3_max_retained": 1.5832372327164018e+22,
-        "ohm_time_centering_theta_max_retained": 1.0,
-        "ohm_time_centering_theta_terminal": 1.0,
-        "retained_electric_energy_J_final": 1.4038442867245458e-06,
-        "retained_field_energy_J_max": 759.0872975108132,
-        "retained_field_energy_J_min": 754.8947733686447,
-        "retained_magnetic_energy_J_final": 754.8947719648004,
-        "source_backed_resistivity_ohm_m_max_retained": 0.00010342791609126574,
-        "source_backed_resistivity_ohm_m_max_terminal": 0.00010345506609924815,
-        "source_backed_sigma_S_m_max_retained": 9679.191249108866,
-        "source_backed_sigma_S_m_max_terminal": 9668.548231473926,
-        "status": "experimental_plasma_loading_observability_not_validation"
-      },
-      "runtime_coupling": {
-        "pressure_density_coupling": {
-          "accepted_for_validation": false,
-          "background_density_m3": 2.6555374549063145e+22,
-          "density_floor_m3": 2.6555374549063145e+22,
-          "formula": "n = pressure_Pa / (k_B * gas_temperature_K)",
-          "gas_pressure_Pa": 109.99095394736844,
-          "gas_temperature_K": 300.0,
-          "status": "experimental_ideal_gas_pressure_to_startup_density"
-        }
-      },
-      "scoring": {
-        "metrics": {
-          "horizon_covers_peak_candidate": true,
-          "peak_at_final_sample": false,
-          "peak_current_relative_error": 0.03791622086018884,
-          "peak_time_relative_error": 0.01804172454816992,
-          "simulation_peak_current_A": 386372.84570254816,
-          "simulation_peak_time_s": 1.3354632546144888e-06,
-          "simulation_point_count": 59,
-          "target_peak_current_A": 401600.0,
-          "target_peak_time_s": 1.36e-06,
-          "waveform_coverage_horizon_limited": true,
-          "waveform_mae_kA": 20.732293663998952,
-          "waveform_max_abs_error_kA": 67.57098941468355,
-          "waveform_mean_signed_error_kA": 14.909770571687563,
-          "waveform_minimum_overlap_points": 3,
-          "waveform_nrmse_fraction": 0.06391721564209625,
-          "waveform_overlap_point_count": 59,
-          "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
-          "waveform_required_coverage_fraction": 0.95,
-          "waveform_rmse_kA": 25.669153801865853,
-          "waveform_score_included": true,
-          "waveform_scored_time_range_us": [
-            0.0,
-            6.0
-          ],
-          "waveform_status": "scored_waveform_shape_overlap",
-          "waveform_target_point_count": 649,
-          "waveform_target_present": true,
-          "waveform_target_series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611",
-          "waveform_target_time_range_us": [
-            -0.5,
-            6.0
-          ],
-          "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
-        },
-        "score": 0.044153346737738505,
-        "status": "scored_against_source_observables",
-        "usable": true
-      },
-      "termination_reason": "target_time_reached"
-    },
-    {
-      "can_support_first_principles_acceptance": false,
-      "candidate": {
-        "baseline_parameters": {
-          "inductance": 2.1000000000000003e-08,
-          "pressure": 146.65460526315792,
-          "resistance": 0.022
-        },
-        "candidate_id": "candidate_0001",
-        "parameter_factors": {
-          "inductance": 0.875,
           "pressure": 1.0,
           "resistance": 1.5
         },
@@ -340,9 +75,7 @@
             0.875
           ],
           "pressure": [
-            0.75,
-            1.0,
-            1.25
+            1.0
           ],
           "resistance": [
             1.5
@@ -357,78 +90,77 @@
       },
       "case_status": "completed_engineering_candidate_run",
       "duration_request_satisfied": true,
-      "final_circuit_current_A": 380385.61056829913,
-      "final_time_s": 1.600044204935116e-06,
+      "final_circuit_current_A": 110263.02172600424,
+      "final_time_s": 6.000009497541612e-06,
       "finite_state_all_finite": true,
-      "n_steps_completed": 28157,
+      "n_steps_completed": 105586,
       "plasma_loading_summary": {
-        "active_to_j_dot_e_power_ratio_final": -0.997104340802198,
+        "active_to_j_dot_e_power_ratio_final": -0.9622736838449318,
         "can_support_first_principles_acceptance": false,
-        "circuit_active_power_W_final_step": 51667.318597761005,
-        "circuit_current_A_final": 380385.61056829913,
+        "circuit_active_power_W_final_step": 739.1402545143593,
+        "circuit_current_A_final": 110263.02172600424,
         "circuit_current_A_initial": 0.0,
-        "circuit_current_A_peak_abs": 386372.84570129326,
+        "circuit_current_A_peak_abs": 328654.3462176547,
         "circuit_final_udpf_source": "candidate_lagged_volume_j_dot_e",
-        "circuit_terminal_current_A_final_step": 380387.86809657665,
-        "circuit_terminal_voltage_V_final_step": 0.13582798751258596,
+        "circuit_terminal_current_A_final_step": 110265.02037489666,
+        "circuit_terminal_voltage_V_final_step": 0.006703306742258896,
         "circuit_udpf_source_counts": {
-          "candidate_lagged_volume_j_dot_e": 57,
-          "input_sequence_fallback_first_step": 1
+          "candidate_lagged_volume_j_dot_e": 65
         },
         "conductivity_cfl_limited_fraction_max_retained": 1.0,
         "conductivity_cfl_limited_fraction_terminal": 1.0,
-        "conductivity_effective_S_m_max_retained": 9823.6955941957,
-        "conductivity_effective_S_m_max_terminal": 9814.307632696396,
+        "conductivity_effective_S_m_max_retained": 9608.42986137948,
+        "conductivity_effective_S_m_max_terminal": 9606.463386428912,
         "conductivity_ohmic_cfl_limit_applied_counts": {
-          "False": 2
+          "False": 8
         },
         "conductivity_ohmic_cfl_limit_applied_terminal": false,
         "electric_update_scheme_counts": {
-          "backward_euler_resistive_ampere_ohm": 2
+          "backward_euler_resistive_ampere_ohm": 8
         },
         "electric_update_scheme_terminal": "backward_euler_resistive_ampere_ohm",
         "electron_closure_validity_terminal_status": "candidate_nonrelativistic_electron_closure_in_range",
-        "electron_current_drift_to_c_terminal": 1.2842928407657628e-08,
-        "electron_density_m3_max_retained": 1.5753699654035292e+22,
-        "electron_density_m3_min_retained": 1.5675667711499415e+22,
+        "electron_current_drift_to_c_terminal": 1.4281989645784447e-09,
+        "electron_density_m3_max_retained": 1.754699027411557e+22,
+        "electron_density_m3_min_retained": 1.753512773132765e+22,
         "electron_energy_status_counts": {
-          "candidate_engineering_electron_energy_closure": 3
+          "candidate_engineering_electron_energy_closure": 9
         },
         "electron_energy_terminal_status": "candidate_engineering_electron_energy_closure",
-        "electron_heat_flux_dt_stable_s_terminal": 6.3979666042077085e-06,
+        "electron_heat_flux_dt_stable_s_terminal": 7.921929521172612e-06,
         "electron_heat_flux_max_subcycles_terminal": null,
         "electron_heat_flux_required_subcycles_max": null,
         "electron_heat_flux_status_counts": {
-          "candidate_braginskii_anisotropic_heat_flux_applied": 3
+          "candidate_braginskii_anisotropic_heat_flux_applied": 9
         },
         "electron_heat_flux_terminal_status": "candidate_braginskii_anisotropic_heat_flux_applied",
-        "electron_temperature_K_max_terminal": 23099.30004662458,
-        "electron_temperature_K_min_terminal": 23097.224614120092,
-        "electron_thermal_speed_to_c_terminal": 0.002791199304350111,
-        "field_energy_J_final": 753.515962696183,
+        "electron_temperature_K_max_terminal": 21876.101377838426,
+        "electron_temperature_K_min_terminal": 21872.837081363647,
+        "electron_thermal_speed_to_c_terminal": 0.002716291669991844,
+        "field_energy_J_final": 63.316092934765734,
         "field_energy_J_initial": 0.000213020870891892,
-        "field_energy_delta_J": 753.5157496753121,
-        "history_point_count": 2,
+        "field_energy_delta_J": 63.31587991389484,
+        "history_point_count": 8,
         "history_scope": "retained_history_summary_only",
-        "history_stride": 500,
-        "ionization_fraction_max_retained": 0.44493382158337225,
-        "j_dot_e_energy_trapezoid_J": -0.0014788186515998396,
-        "j_dot_e_power_W_final": -51817.364024504415,
-        "j_dot_e_power_W_max": -51817.364024504415,
-        "j_dot_e_power_W_max_abs": 52277.50196648889,
-        "j_dot_e_power_W_min": -52277.50196648889,
-        "max_step_results": 2,
-        "neutral_density_m3_max_retained": 1.9731498353918374e+22,
+        "history_stride": 1000,
+        "ionization_fraction_max_retained": 0.4955773660275401,
+        "j_dot_e_energy_trapezoid_J": -0.0003878564016939527,
+        "j_dot_e_power_W_final": -768.1185372969942,
+        "j_dot_e_power_W_max": -768.1185372969942,
+        "j_dot_e_power_W_max_abs": 1214.3569105213533,
+        "j_dot_e_power_W_min": -1214.3569105213533,
+        "max_step_results": 8,
+        "neutral_density_m3_max_retained": 1.7872038334090166e+22,
         "ohm_time_centering_theta_max_retained": 1.0,
         "ohm_time_centering_theta_terminal": 1.0,
-        "retained_electric_energy_J_final": 1.4038443697646689e-06,
-        "retained_field_energy_J_max": 759.0872975047162,
-        "retained_field_energy_J_min": 754.8947733624491,
-        "retained_magnetic_energy_J_final": 754.8947719586047,
-        "source_backed_resistivity_ohm_m_max_retained": 0.0001018855676051202,
-        "source_backed_resistivity_ohm_m_max_terminal": 0.00010190849349808326,
-        "source_backed_sigma_S_m_max_retained": 9823.6955941957,
-        "source_backed_sigma_S_m_max_terminal": 9814.307632696396,
+        "retained_electric_energy_J_final": 2.273636067860112e-08,
+        "retained_field_energy_J_max": 83.33123477616614,
+        "retained_field_energy_J_min": 64.67311156564449,
+        "retained_magnetic_energy_J_final": 64.67311154290813,
+        "source_backed_resistivity_ohm_m_max_retained": 0.00010412782227044183,
+        "source_backed_resistivity_ohm_m_max_terminal": 0.00010412941488699857,
+        "source_backed_sigma_S_m_max_retained": 9608.42986137948,
+        "source_backed_sigma_S_m_max_terminal": 9606.463386428912,
         "status": "experimental_plasma_loading_observability_not_validation"
       },
       "runtime_coupling": {
@@ -446,23 +178,23 @@
         "metrics": {
           "horizon_covers_peak_candidate": true,
           "peak_at_final_sample": false,
-          "peak_current_relative_error": 0.03791622086331359,
-          "peak_time_relative_error": 0.01804172454816992,
-          "simulation_peak_current_A": 386372.84570129326,
-          "simulation_peak_time_s": 1.3354632546144888e-06,
-          "simulation_point_count": 59,
+          "peak_current_relative_error": 0.1816375841193857,
+          "peak_time_relative_error": 0.754956364718621,
+          "simulation_peak_current_A": 328654.3462176547,
+          "simulation_peak_time_s": 2.3867406560173244e-06,
+          "simulation_point_count": 66,
           "target_peak_current_A": 401600.0,
           "target_peak_time_s": 1.36e-06,
-          "waveform_coverage_horizon_limited": true,
-          "waveform_mae_kA": 20.732293667246704,
-          "waveform_max_abs_error_kA": 67.57098942747545,
-          "waveform_mean_signed_error_kA": 14.9097705754966,
+          "waveform_coverage_horizon_limited": false,
+          "waveform_mae_kA": 75.66472502511523,
+          "waveform_max_abs_error_kA": 176.04964402918512,
+          "waveform_mean_signed_error_kA": -29.573034864403937,
           "waveform_minimum_overlap_points": 3,
-          "waveform_nrmse_fraction": 0.06391721565124697,
-          "waveform_overlap_point_count": 59,
+          "waveform_nrmse_fraction": 0.22896724433905594,
+          "waveform_overlap_point_count": 65,
           "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
           "waveform_required_coverage_fraction": 0.95,
-          "waveform_rmse_kA": 25.669153805540788,
+          "waveform_rmse_kA": 91.95324532656487,
           "waveform_score_included": true,
           "waveform_scored_time_range_us": [
             0.0,
@@ -476,228 +208,38 @@
             -0.5,
             6.0
           ],
-          "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
+          "waveform_temporal_coverage_fraction_of_target": 1.0
         },
-        "score": 0.044153346743048535,
-        "status": "scored_against_source_observables",
-        "usable": true
-      },
-      "termination_reason": "target_time_reached"
-    },
-    {
-      "can_support_first_principles_acceptance": false,
-      "candidate": {
-        "baseline_parameters": {
-          "inductance": 2.1000000000000003e-08,
-          "pressure": 146.65460526315792,
-          "resistance": 0.022
-        },
-        "candidate_id": "candidate_0002",
-        "parameter_factors": {
-          "inductance": 0.875,
-          "pressure": 1.25,
-          "resistance": 1.5
-        },
-        "parameter_scale_values": {
-          "inductance": [
-            0.875
-          ],
-          "pressure": [
-            0.75,
-            1.0,
-            1.25
-          ],
-          "resistance": [
-            1.5
-          ]
-        },
-        "parameter_values": {
-          "inductance": 1.8375000000000004e-08,
-          "pressure": 183.3182565789474,
-          "resistance": 0.033
-        },
-        "source_bound_policy": "multiplicative_scales_around_source_or_deck_value"
-      },
-      "case_status": "completed_engineering_candidate_run",
-      "duration_request_satisfied": true,
-      "final_circuit_current_A": 380385.6105670498,
-      "final_time_s": 1.600044204935116e-06,
-      "finite_state_all_finite": true,
-      "n_steps_completed": 28157,
-      "plasma_loading_summary": {
-        "active_to_j_dot_e_power_ratio_final": -0.9971043416366752,
-        "can_support_first_principles_acceptance": false,
-        "circuit_active_power_W_final_step": 51667.326351361844,
-        "circuit_current_A_final": 380385.6105670498,
-        "circuit_current_A_initial": 0.0,
-        "circuit_current_A_peak_abs": 386372.8457006175,
-        "circuit_final_udpf_source": "candidate_lagged_volume_j_dot_e",
-        "circuit_terminal_current_A_final_step": 380387.8680953274,
-        "circuit_terminal_voltage_V_final_step": 0.1358280078964393,
-        "circuit_udpf_source_counts": {
-          "candidate_lagged_volume_j_dot_e": 57,
-          "input_sequence_fallback_first_step": 1
-        },
-        "conductivity_cfl_limited_fraction_max_retained": 1.0,
-        "conductivity_cfl_limited_fraction_terminal": 1.0,
-        "conductivity_effective_S_m_max_retained": 9982.877410792353,
-        "conductivity_effective_S_m_max_terminal": 9976.695281576332,
-        "conductivity_ohmic_cfl_limit_applied_counts": {
-          "False": 2
-        },
-        "conductivity_ohmic_cfl_limit_applied_terminal": false,
-        "electric_update_scheme_counts": {
-          "backward_euler_resistive_ampere_ohm": 2
-        },
-        "electric_update_scheme_terminal": "backward_euler_resistive_ampere_ohm",
-        "electron_closure_validity_terminal_status": "candidate_nonrelativistic_electron_closure_in_range",
-        "electron_current_drift_to_c_terminal": 9.890689522824131e-09,
-        "electron_density_m3_max_retained": 2.046727454538222e+22,
-        "electron_density_m3_min_retained": 2.0405046403111963e+22,
-        "electron_energy_status_counts": {
-          "candidate_engineering_electron_energy_closure": 3
-        },
-        "electron_energy_terminal_status": "candidate_engineering_electron_energy_closure",
-        "electron_heat_flux_dt_stable_s_terminal": 8.386219704411252e-06,
-        "electron_heat_flux_max_subcycles_terminal": null,
-        "electron_heat_flux_required_subcycles_max": null,
-        "electron_heat_flux_status_counts": {
-          "candidate_braginskii_anisotropic_heat_flux_applied": 3
-        },
-        "electron_heat_flux_terminal_status": "candidate_braginskii_anisotropic_heat_flux_applied",
-        "electron_temperature_K_max_terminal": 22710.247501444836,
-        "electron_temperature_K_min_terminal": 22708.728556137212,
-        "electron_thermal_speed_to_c_terminal": 0.0027675939450292676,
-        "field_energy_J_final": 753.5159626914706,
-        "field_energy_J_initial": 0.000213020870891892,
-        "field_energy_delta_J": 753.5157496705997,
-        "history_point_count": 2,
-        "history_scope": "retained_history_summary_only",
-        "history_stride": 500,
-        "ionization_fraction_max_retained": 0.46244626532449057,
-        "j_dot_e_energy_trapezoid_J": -0.0014788188702904953,
-        "j_dot_e_power_W_final": -51817.37175725625,
-        "j_dot_e_power_W_max": -51817.37175725625,
-        "j_dot_e_power_W_max_abs": 52277.50962749374,
-        "j_dot_e_power_W_min": -52277.50962749374,
-        "max_step_results": 2,
-        "neutral_density_m3_max_retained": 2.385391117866012e+22,
-        "ohm_time_centering_theta_max_retained": 1.0,
-        "ohm_time_centering_theta_terminal": 1.0,
-        "retained_electric_energy_J_final": 1.4038445306208688e-06,
-        "retained_field_energy_J_max": 759.0872975002393,
-        "retained_field_energy_J_min": 754.8947733577922,
-        "retained_magnetic_energy_J_final": 754.8947719539477,
-        "source_backed_resistivity_ohm_m_max_retained": 0.00010023059624751576,
-        "source_backed_resistivity_ohm_m_max_terminal": 0.00010024507856058546,
-        "source_backed_sigma_S_m_max_retained": 9982.877410792353,
-        "source_backed_sigma_S_m_max_terminal": 9976.695281576332,
-        "status": "experimental_plasma_loading_observability_not_validation"
-      },
-      "runtime_coupling": {
-        "pressure_density_coupling": {
-          "accepted_for_validation": false,
-          "background_density_m3": 4.42589575817719e+22,
-          "density_floor_m3": 4.42589575817719e+22,
-          "formula": "n = pressure_Pa / (k_B * gas_temperature_K)",
-          "gas_pressure_Pa": 183.3182565789474,
-          "gas_temperature_K": 300.0,
-          "status": "experimental_ideal_gas_pressure_to_startup_density"
-        }
-      },
-      "scoring": {
-        "metrics": {
-          "horizon_covers_peak_candidate": true,
-          "peak_at_final_sample": false,
-          "peak_current_relative_error": 0.03791622086499633,
-          "peak_time_relative_error": 0.01804172454816992,
-          "simulation_peak_current_A": 386372.8457006175,
-          "simulation_peak_time_s": 1.3354632546144888e-06,
-          "simulation_point_count": 59,
-          "target_peak_current_A": 401600.0,
-          "target_peak_time_s": 1.36e-06,
-          "waveform_coverage_horizon_limited": true,
-          "waveform_mae_kA": 20.732293670079336,
-          "waveform_max_abs_error_kA": 67.5709894373989,
-          "waveform_mean_signed_error_kA": 14.909770578896532,
-          "waveform_minimum_overlap_points": 3,
-          "waveform_nrmse_fraction": 0.06391721565917673,
-          "waveform_overlap_point_count": 59,
-          "waveform_pretrigger_time_excluded_from_coverage_us": 0.5,
-          "waveform_required_coverage_fraction": 0.95,
-          "waveform_rmse_kA": 25.669153808725373,
-          "waveform_score_included": true,
-          "waveform_scored_time_range_us": [
-            0.0,
-            6.0
-          ],
-          "waveform_status": "scored_waveform_shape_overlap",
-          "waveform_target_point_count": 649,
-          "waveform_target_present": true,
-          "waveform_target_series_sha256": "933b62d0653d02f0b6bb28e5ad94dc606c6e4dcd9957d87e81725f04762bc611",
-          "waveform_target_time_range_us": [
-            -0.5,
-            6.0
-          ],
-          "waveform_temporal_coverage_fraction_of_target": 0.26667403415585267
-        },
-        "score": 0.04415334674735664,
+        "score": 0.4673960931137898,
         "status": "scored_against_source_observables",
         "usable": true
       },
       "termination_reason": "target_time_reached"
     }
   ],
-  "completed_candidate_count": 3,
+  "completed_candidate_count": 1,
   "declared_scope": "gv_pf24_krakow_16092202",
   "device_name": "PF-24-KRAKOW pf24_krakow_16092202 GV verified-shot engineering candidate",
-  "finite_candidate_count": 3,
+  "finite_candidate_count": 1,
   "horizon_recommendation": {
-    "can_conclude_without_extension": false,
-    "current_horizon_s": 1.600044204935116e-06,
-    "estimated_step_multiplier": 3.749896397545659,
-    "horizon_limited_candidate_ids": [
-      "candidate_0000",
-      "candidate_0001",
-      "candidate_0002"
-    ],
-    "reasons": [
-      "cover_full_target_waveform_time_range"
-    ],
-    "recommended_target_time_s": 6e-06,
-    "status": "extend_runtime_before_parameter_conclusion"
+    "recommended_target_time_s": null,
+    "status": "no_horizon_extension_required_by_current_classifier"
   },
   "identifiability": {
     "acceptance_policy": "non_promoting_experimental_inverse_fit",
     "accepted_fit_score_threshold": null,
-    "best_candidate_grid_separated": false,
+    "best_candidate_grid_separated": true,
     "best_candidate_id": "candidate_0000",
-    "best_score": 0.044153346737738505,
+    "best_score": 0.4673960931137898,
     "can_conclude_unique_parameters": false,
     "fit_score_within_accepted_threshold": null,
-    "horizon_limited_candidate_ids": [
-      "candidate_0000",
-      "candidate_0001",
-      "candidate_0002"
-    ],
-    "horizon_limited_reasons": {
-      "candidate_0000": [
-        "waveform_temporal_coverage_below_required"
-      ],
-      "candidate_0001": [
-        "waveform_temporal_coverage_below_required"
-      ],
-      "candidate_0002": [
-        "waveform_temporal_coverage_below_required"
-      ]
-    },
-    "near_best_candidate_count": 3,
+    "horizon_limited_candidate_ids": [],
+    "horizon_limited_reasons": {},
+    "near_best_candidate_count": 1,
     "near_best_candidate_ids": [
-      "candidate_0000",
-      "candidate_0001",
-      "candidate_0002"
+      "candidate_0000"
     ],
-    "near_best_score_threshold": 0.04856868141151236,
+    "near_best_score_threshold": 0.5141357024251688,
     "parameter_intervals": {
       "inductance": {
         "baseline": 2.1000000000000003e-08,
@@ -708,10 +250,10 @@
       },
       "pressure": {
         "baseline": 146.65460526315792,
-        "max": 183.3182565789474,
-        "min": 109.99095394736844,
-        "narrow_at_configured_threshold": false,
-        "span_fraction_of_baseline": 0.5
+        "max": 146.65460526315792,
+        "min": 146.65460526315792,
+        "narrow_at_configured_threshold": true,
+        "span_fraction_of_baseline": 0.0
       },
       "resistance": {
         "baseline": 0.022,
@@ -721,7 +263,7 @@
         "span_fraction_of_baseline": 0.0
       }
     },
-    "status": "horizon_limited_requires_longer_run"
+    "status": "separated_candidate_grid_without_accepted_fit_tolerance"
   },
   "parameter_names": [
     "inductance",
@@ -739,142 +281,11 @@
         "status": "not_varied_in_candidate_grid"
       },
       "pressure": {
-        "can_infer_parameter_sensitivity": true,
-        "conditional_group_count": 1,
-        "effect_observed_group_count": 1,
+        "can_infer_parameter_sensitivity": false,
         "factor_values": [
-          0.75,
-          1.0,
-          1.25
+          1.0
         ],
-        "groups": [
-          {
-            "candidate_count": 3,
-            "effect_observed": true,
-            "effect_observed_on_runtime_metrics": true,
-            "effect_observed_on_scored_metrics": false,
-            "held_fixed_factors": {
-              "inductance": 0.875,
-              "resistance": 1.5
-            },
-            "metric_ranges": {
-              "score": {
-                "max": 0.04415334674735664,
-                "min": 0.044153346737738505,
-                "range": 9.618132679189983e-12,
-                "relative_range": 2.1783473706363606e-10
-              },
-              "simulation_peak_current_A": {
-                "max": 386372.84570254816,
-                "min": 386372.8457006175,
-                "range": 1.9306899048388004e-06,
-                "relative_range": 4.996960646466226e-12
-              },
-              "simulation_peak_time_s": {
-                "max": 1.3354632546144888e-06,
-                "min": 1.3354632546144888e-06,
-                "range": 0.0,
-                "relative_range": 0.0
-              },
-              "waveform_nrmse_fraction": {
-                "max": 0.06391721565917673,
-                "min": 0.06391721564209625,
-                "range": 1.708047592252626e-11,
-                "relative_range": 2.6722809725636074e-10
-              }
-            },
-            "runtime_metric_available": true,
-            "runtime_metric_ranges": {
-              "circuit_active_power_W_final_step": {
-                "max": 51667.326351361844,
-                "min": 51667.31365626715,
-                "range": 0.01269509469420882,
-                "relative_range": 2.4570837298365843e-07
-              },
-              "circuit_current_A_final": {
-                "max": 380385.61056992173,
-                "min": 380385.6105670498,
-                "range": 2.8719077818095684e-06,
-                "relative_range": 7.549990593773157e-12
-              },
-              "circuit_terminal_voltage_V_final_step": {
-                "max": 0.1358280078964393,
-                "min": 0.13582797452133502,
-                "range": 3.3375104291355484e-08,
-                "relative_range": 2.4571592271898733e-07
-              },
-              "conductivity_cfl_limited_fraction_max_retained": {
-                "max": 1.0,
-                "min": 1.0,
-                "range": 0.0,
-                "relative_range": 0.0
-              },
-              "electron_density_m3_max_retained": {
-                "max": 2.046727454538222e+22,
-                "min": 1.0803677388227152e+22,
-                "range": 9.663597157155066e+21,
-                "relative_range": 0.4721487043000234
-              },
-              "field_energy_J_final": {
-                "max": 753.5159627024078,
-                "min": 753.5159626914706,
-                "range": 1.093724222300807e-08,
-                "relative_range": 1.4514944293658718e-11
-              },
-              "field_energy_delta_J": {
-                "max": 753.5157496815369,
-                "min": 753.5157496705997,
-                "range": 1.093724222300807e-08,
-                "relative_range": 1.4514948397071388e-11
-              },
-              "ionization_fraction_max_retained": {
-                "max": 0.46244626532449057,
-                "min": 0.4068414726956561,
-                "range": 0.05560479262883444,
-                "relative_range": 0.12024054857447604
-              },
-              "j_dot_e_energy_trapezoid_J": {
-                "max": -0.0014788185110339706,
-                "min": -0.0014788188702904953,
-                "range": 3.592565247026447e-10,
-                "relative_range": 2.4293477174258215e-07
-              },
-              "j_dot_e_power_W_max_abs": {
-                "max": 52277.50962749374,
-                "min": 52277.49701497256,
-                "range": 0.012612521175469737,
-                "relative_range": 2.412609411837126e-07
-              },
-              "neutral_density_m3_max_retained": {
-                "max": 2.385391117866012e+22,
-                "min": 1.5832372327164018e+22,
-                "range": 8.021538851496103e+21,
-                "relative_range": 0.3362777194656543
-              },
-              "source_backed_resistivity_ohm_m_max_retained": {
-                "max": 0.00010342791609126574,
-                "min": 0.00010023059624751576,
-                "range": 3.1973198437499722e-06,
-                "relative_range": 0.03091350927856487
-              },
-              "source_backed_sigma_S_m_max_retained": {
-                "max": 9982.877410792353,
-                "min": 9679.191249108866,
-                "range": 303.6861616834867,
-                "relative_range": 0.030420704290646278
-              }
-            },
-            "varied_factor_values": [
-              0.75,
-              1.0,
-              1.25
-            ],
-            "varied_parameter": "pressure"
-          }
-        ],
-        "runtime_effect_observed_group_count": 1,
-        "scored_effect_observed_group_count": 0,
-        "status": "observed_effect_on_candidate_runtime_metrics_not_scored_current"
+        "status": "not_varied_in_candidate_grid"
       },
       "resistance": {
         "can_infer_parameter_sensitivity": false,
@@ -889,17 +300,15 @@
   "runtime_policy": {
     "auto_step_budget": true,
     "dt_policy": "vacuum-cfl",
-    "history_stride": 500,
-    "max_auto_steps": 30000,
-    "max_step_results": 2,
+    "history_stride": 1000,
+    "max_auto_steps": 120000,
+    "max_step_results": 8,
     "parameter_scale_values": {
       "inductance": [
         0.875
       ],
       "pressure": [
-        0.75,
-        1.0,
-        1.25
+        1.0
       ],
       "resistance": [
         1.5
@@ -908,7 +317,7 @@
     "shared_candidate_scales": [
       1.0
     ],
-    "target_time_s": 1.6e-06,
+    "target_time_s": 6e-06,
     "vacuum_cfl": 0.95
   },
   "source_policy": {

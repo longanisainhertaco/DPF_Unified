@@ -167,6 +167,12 @@ CANDIDATE_INPUT_TO_REQUIRED_CHANNEL = {
     "candidate_civ_paschen_breakdown_audit": "breakdown_or_flashover_model",
     "candidate_civ_paschen_initial_ionization": "initial_density_ionization_charge_state",
     "candidate_civ_paschen_liftoff_delay": "sheath_liftoff_and_handoff_interval",
+    "candidate_source_backed_end_rundown_sheath_profile": (
+        "initial_density_ionization_charge_state"
+    ),
+    "candidate_source_backed_sheath_velocity_distribution": (
+        "initial_velocity_distribution"
+    ),
 }
 
 
@@ -185,6 +191,13 @@ def build_startup_bvp_packet(
     evidence_status = str(startup.get("evidence_status", "not_reviewed"))
     accepted = {str(channel) for channel in accepted_channels}
     accepted.update(str(channel) for channel in startup.get("accepted_channels", ()))
+    startup_payload_review = _startup_payload_review(
+        mode=mode,
+        startup=startup,
+        evidence_status=evidence_status,
+    )
+    if startup_payload_review["channel_acceptance_eligible"]:
+        accepted.update(startup_payload_review["accepted_channels"])
     candidate_inputs = _candidate_input_channels(
         startup=startup,
         device=device,
@@ -233,6 +246,7 @@ def build_startup_bvp_packet(
             candidate_inputs=candidate_inputs,
         ),
         "candidate_input_channels": sorted(candidate_inputs),
+        "startup_payload_review": startup_payload_review,
         "candidate_breakdown_audit": _candidate_breakdown_audit_packet(
             candidate_breakdown_audit
         ),
@@ -263,6 +277,7 @@ def build_startup_bvp_packet(
             "end_rundown_whole_shot_rejection_required": True,
             "unreviewed_imported_pic_state_rejection_required": True,
             "missing_field_particle_payload_rejection_required": True,
+            "startup_payload_channel_overclaim_rejection_required": True,
             "civ_paschen_scaffold_promotion_rejection_required": True,
             "cross_scope_startup_promotion_rejection_required": True,
         },
@@ -294,6 +309,126 @@ def _startup_channel_statuses(
         else:
             statuses[channel] = "not_available"
     return statuses
+
+
+def _startup_payload_review(
+    *,
+    mode: str,
+    startup: Mapping[str, Any],
+    evidence_status: str,
+) -> dict[str, Any]:
+    payload = startup.get("startup_payload")
+    if payload is None:
+        payload = startup.get("payload")
+    required_payload = tuple(MODE_REQUIRED_PAYLOADS.get(mode, ()))
+    if not isinstance(payload, Mapping) or not payload:
+        return {
+            "status": "startup_payload_not_supplied",
+            "mode": mode,
+            "required_payload": list(required_payload),
+            "payload_field_status": {
+                field: "missing_payload" for field in required_payload
+            },
+            "accepted_channels": [],
+            "missing_payload_fields": list(required_payload),
+            "missing_required_startup_channels": list(REQUIRED_STARTUP_CHANNELS),
+            "channel_acceptance_eligible": False,
+            "can_support_whole_shot_acceptance": False,
+            "can_support_first_principles_acceptance": False,
+        }
+
+    payload_mode = str(payload.get("mode", payload.get("payload_mode", mode)))
+    payload_evidence_status = str(payload.get("evidence_status", evidence_status))
+    reviewed = payload_evidence_status in {
+        "reviewed",
+        "accepted",
+        "accepted_same_scope_source",
+    }
+    declared_scope = str(startup.get("source_scope", "not_declared"))
+    payload_scope = str(payload.get("source_scope", declared_scope))
+    scope_matches = (
+        declared_scope in {"not_declared", payload_scope}
+        or payload_scope == "not_declared"
+    )
+    payload_status = {
+        field: (
+            "payload_channel_present"
+            if _payload_has_channel(payload, field)
+            else "missing_payload_channel"
+        )
+        for field in required_payload
+    }
+    missing_payload = [
+        field
+        for field, status in payload_status.items()
+        if status == "missing_payload_channel"
+    ]
+    accepted_channels = {
+        str(channel) for channel in payload.get("accepted_channels", ())
+    }
+    missing_startup_channels = sorted(
+        set(REQUIRED_STARTUP_CHANNELS) - accepted_channels
+    )
+    payload_can_support = bool(payload.get("can_support_whole_shot_acceptance"))
+    mode_matches = payload_mode == mode
+    eligible = (
+        mode in ACCEPTED_STARTUP_MODES
+        and mode_matches
+        and reviewed
+        and scope_matches
+        and payload_can_support
+        and not missing_payload
+        and not missing_startup_channels
+    )
+    if eligible:
+        status = "reviewed_startup_payload_complete"
+    elif mode not in ACCEPTED_STARTUP_MODES:
+        status = "startup_payload_for_nonaccepted_mode_not_promoting"
+    elif not reviewed:
+        status = "startup_payload_unreviewed"
+    elif not mode_matches:
+        status = "startup_payload_mode_mismatch"
+    elif not scope_matches:
+        status = "startup_payload_scope_mismatch"
+    elif missing_payload or missing_startup_channels:
+        status = "startup_payload_incomplete"
+    elif not payload_can_support:
+        status = "startup_payload_nonpromoting"
+    else:
+        status = "startup_payload_blocked"
+    return {
+        "status": status,
+        "mode": mode,
+        "payload_mode": payload_mode,
+        "evidence_status": payload_evidence_status,
+        "source_scope": declared_scope,
+        "payload_source_scope": payload_scope,
+        "required_payload": list(required_payload),
+        "payload_field_status": payload_status,
+        "accepted_channels": sorted(accepted_channels),
+        "missing_payload_fields": missing_payload,
+        "missing_required_startup_channels": missing_startup_channels,
+        "mode_matches": mode_matches,
+        "source_scope_matches": scope_matches,
+        "payload_declares_whole_shot_support": payload_can_support,
+        "channel_acceptance_eligible": eligible,
+        "can_support_whole_shot_acceptance": eligible,
+        "can_support_first_principles_acceptance": eligible,
+        "acceptance_rule": (
+            "accepted startup modes require a reviewed same-scope payload, all "
+            "mode-required payload channels, all required startup channels, "
+            "source references, hashes, units, and conservation checks"
+        ),
+    }
+
+
+def _payload_has_channel(payload: Mapping[str, Any], field: str) -> bool:
+    if payload.get(field) is not None:
+        return True
+    channels = payload.get("payload_channels")
+    if isinstance(channels, Mapping) and channels.get(field) is not None:
+        return True
+    return isinstance(channels, (list, tuple, set)) and field in channels
 
 
 def _mode_payload_status(mode: str, accepted: set[str]) -> dict[str, str]:
@@ -387,6 +522,11 @@ def _candidate_input_channels(
         channels.add("candidate_initial_magnetic_field")
     if startup.get("source_scope") is not None:
         channels.add("candidate_startup_source_scope")
+    payload = startup.get("startup_payload")
+    if isinstance(payload, Mapping) and payload.get("profile_type") == "annular_axial_sheath":
+        channels.add("candidate_source_backed_end_rundown_sheath_profile")
+        if payload.get("sheath_drift_velocity_m_s") is not None:
+            channels.add("candidate_source_backed_sheath_velocity_distribution")
     return channels
 
 

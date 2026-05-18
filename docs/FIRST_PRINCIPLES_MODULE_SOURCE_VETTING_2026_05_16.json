@@ -8,7 +8,7 @@
     "unsafe_claim_surfaces": []
   },
   "date": "2026_05_16",
-  "generated_at_utc": "2026-05-17T04:37:55.756922+00:00",
+  "generated_at_utc": "2026-05-17T16:03:14.083100+00:00",
   "modules": [
     {
       "active_first_principles_closure": false,
@@ -3239,9 +3239,16 @@
         "dataclasses.dataclass",
         "dpf.collision.spitzer",
         "dpf.collision.spitzer.braginskii_kappa",
+        "dpf.constants",
+        "dpf.constants.c",
+        "dpf.constants.e",
+        "dpf.constants.k_B",
+        "dpf.constants.m_e",
         "dpf.fields.maxwell_3d",
         "dpf.fields.maxwell_3d.HYBRID_PIC_3D_SOURCE",
         "dpf.fields.maxwell_3d.Maxwell3DGrid",
+        "dpf.fluid.implicit_diffusion",
+        "dpf.fluid.implicit_diffusion.diffuse_field_1d",
         "dpf.fluid.two_temperature",
         "dpf.fluid.two_temperature.electron_energy_from_temperature",
         "dpf.fluid.two_temperature.equilibration_convention_audit",
@@ -3249,8 +3256,9 @@
         "dpf.fluid.two_temperature.temperature_from_electron_energy",
         "dpf.fluid.two_temperature.two_temperature_model_metadata",
         "numpy",
-        "scipy.constants",
-        "scipy.constants.Boltzmann",
+        "scipy.sparse.linalg",
+        "scipy.sparse.linalg.LinearOperator",
+        "scipy.sparse.linalg.gmres",
         "typing",
         "typing.Any"
       ],
@@ -5140,6 +5148,7 @@
         "dataclasses",
         "dataclasses.asdict",
         "dataclasses.dataclass",
+        "dataclasses.field",
         "dpf",
         "dpf.constants",
         "dpf.experimental.pic.hybrid",
@@ -5788,7 +5797,7 @@
       "status": "module_vetted_nonpromoting"
     },
     {
-      "active_first_principles_closure": false,
+      "active_first_principles_closure": true,
       "can_support_first_principles_acceptance": false,
       "capability_tags": [],
       "claim_without_source": false,
@@ -11162,7 +11171,7 @@
   },
   "strict_passed": true,
   "summary": {
-    "active_first_principles_closure_count": 55,
+    "active_first_principles_closure_count": 56,
     "active_physics_unvetted_count": 0,
     "classification_counts": {
       "active_physics_source_referenced": 49,

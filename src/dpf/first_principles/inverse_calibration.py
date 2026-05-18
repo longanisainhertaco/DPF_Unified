@@ -182,6 +182,7 @@ def classify_inverse_calibration_results(
         result
         for result in candidate_results
         if result.get("case_status") == "completed_engineering_candidate_run"
+        and result.get("finite_state_all_finite") is not False
         and result.get("scoring", {}).get("usable") is True
         and math.isfinite(float(result["scoring"]["score"]))
     ]
@@ -295,6 +296,7 @@ def build_experimental_inverse_calibration_packet(
         (
             result
             for result in completed
+            if result.get("finite_state_all_finite") is not False
             if result.get("scoring", {}).get("usable") is True
         ),
         key=lambda result: float(result["scoring"]["score"]),

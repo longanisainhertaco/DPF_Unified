@@ -15,9 +15,11 @@ from typing import Any
 from pydantic import ValidationError
 
 from dpf import constants as dpf_constants
+from dpf.experimental.civ_breakdown import compute_breakdown
 from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE
 
 ELEMENTARY_CHARGE = dpf_constants.e
+K_B = dpf_constants.k_B
 
 REDUCED_MODEL_AUTHORITY_FIELDS = {
     "lee_model",
@@ -34,6 +36,14 @@ REDUCED_MODEL_AUTHORITY_FIELDS = {
     "beam_fraction",
     "empirical_yield",
 }
+
+
+def _ideal_gas_number_density_m3(pressure_Pa: float, temperature_K: float) -> float:
+    if pressure_Pa <= 0.0:
+        raise ValueError("pressure_Pa must be positive")
+    if temperature_K <= 0.0:
+        raise ValueError("temperature_K must be positive")
+    return float(pressure_Pa) / (float(K_B) * float(temperature_K))
 
 STARTUP_MODES = {
     "imported_pic_sheath_state",
@@ -253,6 +263,7 @@ class StartupPolicy:
 
     mode: str = "source_backed_end_rundown_sheath"
     background_density_m3: float = 1.0e20
+    initial_ionization_fraction: float = 0.01
     electron_temperature_K: float = 1.0e5
     ion_temperature_K: float = 1.0e5
     initial_electric_field_V_m: tuple[float, float, float] = (1.0e5, 0.0, 0.0)
@@ -279,6 +290,8 @@ class StartupPolicy:
         "surface_flashover_closure",
         "sheath_liftoff",
     )
+    accepted_channels: tuple[str, ...] = ()
+    startup_payload: dict[str, Any] = field(default_factory=dict)
     source_references: tuple[SourceReference, ...] = ()
 
     def __post_init__(self) -> None:
@@ -286,6 +299,8 @@ class StartupPolicy:
             allowed = ", ".join(sorted(STARTUP_MODES))
             raise ValueError(f"unknown startup mode {self.mode!r}; expected one of {allowed}")
         _require_positive("background_density_m3", self.background_density_m3)
+        if not 0.0 <= self.initial_ionization_fraction <= 1.0:
+            raise ValueError("initial_ionization_fraction must be in [0, 1]")
         _require_positive("electron_temperature_K", self.electron_temperature_K)
         _require_positive("ion_temperature_K", self.ion_temperature_K)
         _require_positive("particle_weight", self.particle_weight)
@@ -298,12 +313,22 @@ class StartupPolicy:
             object.__setattr__(self, "can_support_whole_shot_acceptance", False)
         if (
             self.mode == "imported_pic_sheath_state"
-            and self.evidence_status != "reviewed"
+            and self.evidence_status
+            not in {"reviewed", "accepted", "accepted_same_scope_source"}
             and self.can_support_whole_shot_acceptance
         ):
             raise ValueError(
                 "imported_pic_sheath_state can support accepted whole-shot startup "
-                "only after evidence_status='reviewed'"
+                "only after reviewed or accepted evidence_status"
+            )
+        if (
+            self.mode == "imported_pic_sheath_state"
+            and self.can_support_whole_shot_acceptance
+            and not self.startup_payload
+        ):
+            raise ValueError(
+                "imported_pic_sheath_state requires a reviewed startup_payload "
+                "before whole-shot startup support can be declared"
             )
 
     @property
@@ -315,6 +340,12 @@ class StartupPolicy:
         return cls(
             mode=str(value.get("mode", "source_backed_end_rundown_sheath")),
             background_density_m3=float(value.get("background_density_m3", 1.0e20)),
+            initial_ionization_fraction=float(
+                value.get(
+                    "initial_ionization_fraction",
+                    value.get("preionization_fraction", 0.01),
+                )
+            ),
             electron_temperature_K=float(value.get("electron_temperature_K", 1.0e5)),
             ion_temperature_K=float(value.get("ion_temperature_K", 1.0e5)),
             initial_electric_field_V_m=_triple(
@@ -366,6 +397,8 @@ class StartupPolicy:
                     ),
                 )
             ),
+            accepted_channels=_string_tuple(value.get("accepted_channels", ())),
+            startup_payload=dict(value.get("startup_payload", value.get("payload", {}))),
             source_references=_source_refs(value.get("source_references", ())),
         )
 
@@ -380,7 +413,7 @@ class ClosurePolicy:
     include_hall: bool = False
     use_predictor_corrector: bool = True
     use_source_ordered_velocity_update: bool = True
-    marder_factor_scale: float = 1.0e-6
+    marder_factor_scale: float = 0.0
     marder_nondominance_threshold: float = 0.5
     apply_circuit_boundary: bool = True
     circuit_udpf_V: float = 0.0
@@ -411,7 +444,7 @@ class ClosurePolicy:
             use_source_ordered_velocity_update=bool(
                 value.get("use_source_ordered_velocity_update", True)
             ),
-            marder_factor_scale=float(value.get("marder_factor_scale", 1.0e-6)),
+            marder_factor_scale=float(value.get("marder_factor_scale", 0.0)),
             marder_nondominance_threshold=float(
                 value.get("marder_nondominance_threshold", 0.5)
             ),
@@ -657,12 +690,19 @@ def minimal_engineering_deck(
         ),
         role="architecture_source",
     )
+    physical_radius_m = 0.015
+    physical_length_m = 0.10
+    spacing_m = (
+        2.0 * physical_radius_m / max(int(shape[0]), 1),
+        2.0 * physical_radius_m / max(int(shape[1]), 1),
+        physical_length_m / max(int(shape[2]), 1),
+    )
     return FirstPrinciplesInputDeck(
         deck_id="minimal_3d_hybrid_em_pic_fluid_engineering_candidate",
         device=DeviceGeometryDeck(
             name="LLNL-like engineering smoke geometry",
-            anode_radius_m=3.0e-3,
-            cathode_radius_m=1.0e-2,
+            anode_radius_m=1.0e-2,
+            cathode_radius_m=1.5e-2,
             anode_length_m=5.0e-2,
             insulator_length_m=5.0e-3,
             source_references=(source,),
@@ -677,8 +717,41 @@ def minimal_engineering_deck(
             source_references=(source,),
         ),
         gas=GasDeck(source_references=(source,)),
-        grid=GridDeck(shape=shape, spacing_m=(1.0e-3, 1.0e-3, 1.0e-3)),
-        startup=StartupPolicy(source_references=(source,)),
+        grid=GridDeck(shape=shape, spacing_m=spacing_m),
+        startup=StartupPolicy(
+            background_density_m3=6.7e22,
+            electron_temperature_K=300.0,
+            ion_temperature_K=300.0,
+            startup_payload={
+                "profile_type": "annular_axial_sheath",
+                "background_density_m3": 6.7e22,
+                "background_temperature_K": 300.0,
+                "background_ionization_fraction": 1.0,
+                "background_radial_min_m": 0.0,
+                "background_radial_max_m": 0.015,
+                "background_z_min_m": 0.050,
+                "background_z_max_m": 0.100,
+                "sheath_density_m3": 3.3e23,
+                "sheath_temperature_K": 7.2e5,
+                "sheath_ionization_fraction": 1.0,
+                "sheath_radial_min_m": 0.010,
+                "sheath_radial_max_m": 0.015,
+                "sheath_z_min_m": 0.0445,
+                "sheath_z_max_m": 0.0455,
+                "sheath_drift_velocity_m_s": (0.0, 0.0, 1.1e5),
+                "vacuum_density_floor_m3": 1.0,
+                "vacuum_ionization_fraction": 0.0,
+                "vacuum_temperature_K": 300.0,
+                "source_references": (
+                    {
+                        "path": HYBRID_PIC_3D_SOURCE,
+                        "lines": "632-740",
+                        "role": "end_rundown_background_and_sheath_initialization",
+                    },
+                ),
+            },
+            source_references=(source,),
+        ),
         closures=ClosurePolicy(source_references=(source,)),
         boundaries=BoundaryPolicy(
             pml_cells=1,
@@ -737,11 +810,25 @@ def pf1000_akel_16kv_engineering_deck(
         role="pf1000_electrode_geometry_source",
     )
     pressure_pa = float(pressure_torr) * 133.32236842105263
+    gas_temperature_K = 300.0
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa,
+        gas_temperature_K,
+    )
     cathode_inner_radius_m = 0.16
     cathode_rod_diameter_m = 0.080
     cathode_outer_radius_m = cathode_inner_radius_m + 0.5 * cathode_rod_diameter_m
     xy_spacing_m = (2.2 * cathode_outer_radius_m) / max(int(shape[0]) - 1, 1)
     z_spacing_m = (0.48 + 0.085) / max(int(shape[2]) - 1, 1)
+    startup_breakdown = compute_breakdown(
+        V0=1.6e4,
+        fill_pressure_Pa=pressure_pa,
+        anode_radius=0.1155,
+        cathode_radius=cathode_inner_radius_m,
+        insulator_length=0.085,
+        gas_name="D2",
+        I_seed=None,
+    )
     return FirstPrinciplesInputDeck(
         deck_id="pf1000_akel_16kv_1p2torr_shot_12581_engineering_candidate",
         device=DeviceGeometryDeck(
@@ -768,13 +855,20 @@ def pf1000_akel_16kv_engineering_deck(
         gas=GasDeck(
             species="D",
             pressure_Pa=pressure_pa,
-            temperature_K=300.0,
+            temperature_K=gas_temperature_K,
             source_references=(source,),
         ),
         startup=StartupPolicy(
-            mode="source_backed_end_rundown_sheath",
+            mode="seeded_layer",
+            background_density_m3=background_density_m3,
+            initial_ionization_fraction=startup_breakdown.ionization_fraction,
+            electron_temperature_K=startup_breakdown.Te_initial,
+            ion_temperature_K=gas_temperature_K,
+            initial_electric_field_V_m=(0.0, 0.0, 0.0),
             evidence_status="engineering_candidate_not_whole_shot",
-            source_scope="pf1000_akel_text_supported_machine_state_not_startup_bvp",
+            source_scope=(
+                "pf1000_akel_candidate_paschen_insulator_seed_layer_not_startup_bvp"
+            ),
             can_support_whole_shot_acceptance=False,
             missing_channels=(
                 "breakdown_model",
@@ -783,9 +877,63 @@ def pf1000_akel_16kv_engineering_deck(
                 "initial_current_density_distribution",
                 "sheath_liftoff",
             ),
+            startup_payload={
+                "profile_type": "annular_axial_sheath",
+                "vacuum_density_floor_m3": background_density_m3,
+                "vacuum_ionization_fraction": 0.0,
+                "vacuum_temperature_K": gas_temperature_K,
+                "sheath_radial_min_m": 0.1155,
+                "sheath_radial_max_m": cathode_inner_radius_m,
+                "sheath_z_min_m": 0.0,
+                "sheath_z_max_m": max(0.085, 1.5 * z_spacing_m),
+                "sheath_projection_note": (
+                    "Coarse-grid candidate projection expands the seed layer to "
+                    "the first non-PML axial cell when the physical insulator "
+                    "length would otherwise be swallowed by the absorbing layer."
+                ),
+                "sheath_density_m3": background_density_m3,
+                "sheath_ionization_fraction": startup_breakdown.ionization_fraction,
+                "sheath_temperature_K": startup_breakdown.Te_initial,
+                "initial_electric_field_note": (
+                    "PF-1000 bank voltage is carried by the source-circuit state; "
+                    "no reviewed startup BVP supplies a resolved chamber electric "
+                    "field, so the candidate seeded layer starts with zero volume "
+                    "electric field and is driven by the circuit boundary."
+                ),
+                "source_references": (
+                    "KnowledgeReference/auluck-2021-dpf-circuit-element.md:151-209",
+                    (
+                        "KnowledgeReference/"
+                        "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-"
+                        "acb71fa9.md:657-666,734-736"
+                    ),
+                    (
+                        "KnowledgeReference/"
+                        "unlimited-release-printed-september-2009-alegra-hedp-"
+                        "simulations-of-the-dense-plasma-focus.md:245-392"
+                    ),
+                ),
+                "candidate_breakdown_initials": {
+                    "status": "candidate_civ_paschen_initials_engineering_only",
+                    "source_status": (
+                        "civ_paschen_gas_coefficients_source_packets_missing"
+                    ),
+                    "mechanism": startup_breakdown.mechanism,
+                    "initial_electron_temperature_K": startup_breakdown.Te_initial,
+                    "initial_electron_temperature_eV": (
+                        startup_breakdown.Te_initial_eV
+                    ),
+                    "initial_ionization_fraction": (
+                        startup_breakdown.ionization_fraction
+                    ),
+                    "breakdown_time_s": startup_breakdown.breakdown_time,
+                    "can_support_first_principles_acceptance": False,
+                }
+            },
             source_references=(source,),
         ),
         closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
             apply_circuit_boundary=True,
             source_references=(source,),
         ),
@@ -847,6 +995,11 @@ def ir_mpf_100_engineering_deck(
         role="ir_mpf_100_user_validated_source",
     )
     pressure_pa = float(pressure_torr) * 133.32236842105263
+    gas_temperature_K = 300.0
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa,
+        gas_temperature_K,
+    )
     return FirstPrinciplesInputDeck(
         deck_id="ir_mpf_100_20kv_1p9torr_engineering_candidate",
         device=DeviceGeometryDeck(
@@ -869,12 +1022,15 @@ def ir_mpf_100_engineering_deck(
         gas=GasDeck(
             species="D",
             pressure_Pa=pressure_pa,
-            temperature_K=300.0,
+            temperature_K=gas_temperature_K,
             source_references=(source,),
         ),
         grid=GridDeck(shape=shape, spacing_m=(2.6e-2, 2.6e-2, 5.5e-2)),
         startup=StartupPolicy(
             mode="source_backed_end_rundown_sheath",
+            background_density_m3=background_density_m3,
+            electron_temperature_K=gas_temperature_K,
+            ion_temperature_K=gas_temperature_K,
             evidence_status="engineering_candidate_not_whole_shot",
             source_scope="ir_mpf_100_text_supported_machine_state_not_startup_bvp",
             can_support_whole_shot_acceptance=False,
@@ -889,6 +1045,7 @@ def ir_mpf_100_engineering_deck(
             source_references=(source,),
         ),
         closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
             apply_circuit_boundary=True,
             source_references=(source,),
         ),
@@ -949,6 +1106,12 @@ def compact_chinese_dpf_engineering_deck(
         role="compact_chinese_dpf_user_validated_source",
     )
     capacitance_F = 40.0e-6
+    gas_temperature_K = 300.0
+    pressure_pa = float(pressure_Pa)
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa,
+        gas_temperature_K,
+    )
     delivered_current_A = 400.0e3
     inferred_inductance_H = capacitance_F * (float(voltage_V) / delivered_current_A) ** 2
     return FirstPrinciplesInputDeck(
@@ -972,13 +1135,16 @@ def compact_chinese_dpf_engineering_deck(
         ),
         gas=GasDeck(
             species="D",
-            pressure_Pa=float(pressure_Pa),
-            temperature_K=300.0,
+            pressure_Pa=pressure_pa,
+            temperature_K=gas_temperature_K,
             source_references=(source,),
         ),
         grid=GridDeck(shape=shape, spacing_m=(1.0e-2, 1.0e-2, 4.0e-2)),
         startup=StartupPolicy(
             mode="source_backed_end_rundown_sheath",
+            background_density_m3=background_density_m3,
+            electron_temperature_K=gas_temperature_K,
+            ion_temperature_K=gas_temperature_K,
             evidence_status="engineering_candidate_not_whole_shot",
             source_scope=(
                 "compact_chinese_dpf_text_supported_machine_state_with_"
@@ -997,6 +1163,7 @@ def compact_chinese_dpf_engineering_deck(
             source_references=(source,),
         ),
         closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
             apply_circuit_boundary=True,
             source_references=(source,),
         ),
@@ -1054,6 +1221,11 @@ def willenborg_hendricks_engineering_deck(
         role="willenborg_hendricks_user_validated_source",
     )
     pressure_pa = float(pressure_torr) * 133.32236842105263
+    gas_temperature_K = 300.0
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa,
+        gas_temperature_K,
+    )
     return FirstPrinciplesInputDeck(
         deck_id="willenborg_hendricks_19kv_1torr_engineering_candidate",
         device=DeviceGeometryDeck(
@@ -1076,12 +1248,15 @@ def willenborg_hendricks_engineering_deck(
         gas=GasDeck(
             species="D",
             pressure_Pa=pressure_pa,
-            temperature_K=300.0,
+            temperature_K=gas_temperature_K,
             source_references=(source,),
         ),
         grid=GridDeck(shape=shape, spacing_m=(1.3e-2, 1.3e-2, 5.8e-2)),
         startup=StartupPolicy(
             mode="surface_breakdown_bvp",
+            background_density_m3=background_density_m3,
+            electron_temperature_K=gas_temperature_K,
+            ion_temperature_K=gas_temperature_K,
             evidence_status="engineering_candidate_not_whole_shot",
             source_scope="historical_startup_design_constraints_not_modern_startup_bvp",
             can_support_whole_shot_acceptance=False,
@@ -1097,6 +1272,7 @@ def willenborg_hendricks_engineering_deck(
             source_references=(source,),
         ),
         closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
             apply_circuit_boundary=True,
             source_references=(source,),
         ),
@@ -1147,6 +1323,12 @@ def gv_verified_engineering_deck(
     anode_length_m = float(geometry_mm["anode_length"]) * 1.0e-3
     insulator_length_m = float(geometry_mm["insulator_length"]) * 1.0e-3
     pressure_torr = float(gas["fitted_pressure_torr"])
+    gas_temperature_K = 300.0
+    pressure_pa = pressure_torr * 133.32236842105263
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa,
+        gas_temperature_K,
+    )
 
     input_source = SourceReference(
         path=f"/Users/anthonyzamora/Downloads/GV/{row['input_file']}",
@@ -1210,13 +1392,16 @@ def gv_verified_engineering_deck(
         ),
         gas=GasDeck(
             species=str(gas.get("species", "D")),
-            pressure_Pa=pressure_torr * 133.32236842105263,
-            temperature_K=300.0,
+            pressure_Pa=pressure_pa,
+            temperature_K=gas_temperature_K,
             source_references=(input_source,),
         ),
         grid=GridDeck(shape=shape, spacing_m=spacing_m),
         startup=StartupPolicy(
             mode="source_backed_end_rundown_sheath",
+            background_density_m3=background_density_m3,
+            electron_temperature_K=gas_temperature_K,
+            ion_temperature_K=gas_temperature_K,
             evidence_status="engineering_candidate_not_whole_shot",
             source_scope=(
                 "gv_verified_machine_current_waveform_candidate_not_startup_bvp"
@@ -1235,6 +1420,7 @@ def gv_verified_engineering_deck(
             source_references=(input_source, waveform_source),
         ),
         closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
             apply_circuit_boundary=True,
             source_references=(input_source,),
         ),
@@ -1443,6 +1629,11 @@ def _normalize_deck_mapping(value: dict[str, Any]) -> dict[str, Any]:
             ),
             "required_channels": startup.get("required_channels", ()),
             "missing_channels": startup.get("missing_channels", ()),
+            "accepted_channels": startup.get("accepted_channels", ()),
+            "startup_payload": startup.get(
+                "startup_payload",
+                startup.get("payload", {}),
+            ),
             "source_references": _references_from_ids(
                 startup.get("source_reference_ids", ()),
                 normalized.get("source_references", ()),

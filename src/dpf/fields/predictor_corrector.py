@@ -22,6 +22,8 @@ class CurrentPredictorCorrectorTelemetry:
     corrected_max_current_A_m2: float
     corrected_max_residual_A_m2: float
     include_hall: bool
+    ohm_time_centering_theta: float
+    electric_update_scheme: str
     can_support_first_principles_acceptance: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,6 +63,8 @@ class CurrentPredictorCorrector:
         electron_density_m3: np.ndarray,
         pressure_term_V_m: np.ndarray | None = None,
         include_hall: bool = True,
+        dt_s: float = 0.0,
+        ohm_time_centering_theta: float = 0.5,
     ) -> tuple[np.ndarray, np.ndarray, CurrentPredictorCorrectorTelemetry]:
         """Predict J* and solve the source end-of-step generalized Ohm law."""
         predicted_total, first_step = self.predict_end_step_current(
@@ -74,9 +78,10 @@ class CurrentPredictorCorrector:
             ion_current_A_m2=predicted_ion_current_A_m2,
             conductivity_S_m=conductivity_S_m,
             electron_density_m3=electron_density_m3,
-            dt_s=0.0,
+            dt_s=dt_s,
             pressure_term_V_m=pressure_term_V_m,
             include_hall=include_hall,
+            ohm_time_centering_theta=ohm_time_centering_theta,
         )
         predictor_delta = predicted_total - _as_vector(
             "midpoint_current_A_m2",
@@ -91,6 +96,8 @@ class CurrentPredictorCorrector:
             corrected_max_current_A_m2=ohm_telemetry.max_current_A_m2,
             corrected_max_residual_A_m2=ohm_telemetry.max_algebraic_residual_A_m2,
             include_hall=ohm_telemetry.include_hall,
+            ohm_time_centering_theta=ohm_telemetry.ohm_time_centering_theta,
+            electric_update_scheme=ohm_telemetry.electric_update_scheme,
         )
         return predicted_total, corrected, telemetry
 
