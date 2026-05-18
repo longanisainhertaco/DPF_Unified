@@ -78,12 +78,16 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev,server]"
-      - name: Verify first-principles source-truth exhaustion
-        run: python scripts/verify_first_principles_source_truth_exhaustion.py --strict
-      - name: Verify first-principles module source vetting
-        run: python scripts/verify_first_principles_module_source_vetting.py --strict
-      - name: Audit first-principles result artifacts
+      - name: Verify first-principles source-truth exhaustion (read-only)
+        run: python scripts/verify_first_principles_source_truth_exhaustion.py --strict --check --date 2026_05_18
+      - name: Verify first-principles module source vetting (read-only)
+        run: python scripts/verify_first_principles_module_source_vetting.py --strict --check --date 2026_05_18
+      - name: Audit first-principles result artifacts (active root)
         run: python scripts/audit_first_principles_artifacts.py 'results/*.json'
+      - name: Audit first-principles result artifacts (recursive archive policy)
+        run: python scripts/audit_first_principles_artifacts.py 'results/**/*.json'
+      - name: Assert audit gates left the worktree clean
+        run: git diff --exit-code
 
   smoke-test:
     runs-on: ubuntu-latest
