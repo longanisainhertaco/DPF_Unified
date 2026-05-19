@@ -8,7 +8,7 @@ and Codex audit findings A-1/A-2 from
 
 The linter scans first-principles runtime artifacts and rejects any artifact
 that carries a stale (pre-fix) schema or lacks required provenance. It exits
-nonzero if ANY scanned first-principles artifact fails one of seven checks:
+nonzero if ANY scanned first-principles artifact fails one of eight checks:
 
   C1  top-level ``conservation_telemetry.passed`` key present (deprecated;
       superseded by ``finite_state`` /
@@ -22,6 +22,12 @@ nonzero if ANY scanned first-principles artifact fails one of seven checks:
   C7  ``manifest.provenance_complete`` missing or false (Codex A-1: an
       artifact whose run manifest lacks complete source/command provenance
       cannot back a first-principles claim)
+  C8  active artifact was not generated from current HEAD (Codex RC-5):
+      top-level ``artifact_generation_commit``, nested
+      ``manifest.git_commit``, and nested
+      ``manifest.artifact_generation_commit`` must all equal the live HEAD
+      SHA, and ``dirty_worktree`` must be exactly ``False``; skipped
+      gracefully when git is unavailable
 
 Scope policy (Codex A-2). Three dispositions, never a silent skip of a
 PF-1000 engineering evidence surface:
@@ -47,6 +53,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,7 +68,21 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
     "C5": "missing manifest candidate_evidence.deck_diff_packet (PF-1000/Akel)",
     "C6": "can_support_first_principles_acceptance: true found anywhere",
     "C7": "manifest.provenance_complete missing or false",
+    "C8": "active artifact commit != HEAD or dirty_worktree is not False",
 }
+
+# C7 required manifest provenance fields (mirrors
+# ``dpf.first_principles.manifest.REQUIRED_PROVENANCE_FIELDS``; kept in sync
+# by the RC-7 drift test in tests/test_first_principles_artifact_linter.py).
+C7_REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
+    "command_argv",
+    "git_commit",
+    "source_truth_index_sha256",
+    "source_packet_hashes",
+    "input_deck_sha256",
+    "artifact_schema_version",
+    "artifact_generation_commit",
+)
 
 # Substrings that identify a PF-1000 / Akel-scope run from the deck name,
 # deck preset, or cited source path. Check C5 only applies to these runs.
@@ -225,10 +246,36 @@ def _exemption_reason(path: Path, doc: dict) -> str | None:
     return None
 
 
-# --- the six checks ----------------------------------------------------------
+# --- git HEAD resolution (run-scope) -----------------------------------------
 
 
-def _check_artifact(path: Path, doc: dict) -> ArtifactResult:
+def _resolve_head_commit() -> str | None:
+    """Return the current git HEAD SHA (full 40-char), or None if unavailable.
+
+    Runs once per linter invocation; callers cache the result and skip C8
+    rather than crashing when git is absent or the working tree is not inside
+    a git repository.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        print(
+            "audit: WARNING -- git unavailable; C8 (commit-match gate) skipped.",
+            file=sys.stderr,
+        )
+        return None
+
+
+# --- the eight checks --------------------------------------------------------
+
+
+def _check_artifact(path: Path, doc: dict, head_commit: str | None = None) -> ArtifactResult:
     """Apply the six WP-N0 checks to a parsed first-principles artifact."""
     result = ArtifactResult(path=path, is_first_principles=True)
     result.is_pf1000_akel = _is_pf1000_akel_run(doc)
@@ -281,22 +328,14 @@ def _check_artifact(path: Path, doc: dict) -> ArtifactResult:
     # lying manifest can carry ``provenance_complete: true`` while omitting
     # ``source_packet_hashes`` or other required fields -- this check
     # re-derives completeness from the raw manifest fields.  Required field
-    # list mirrors ``REQUIRED_PROVENANCE_FIELDS`` from
-    # ``dpf.first_principles.manifest`` (source of truth).
-    _C7_REQUIRED_PROVENANCE_FIELDS: tuple[str, ...] = (
-        "command_argv",
-        "git_commit",
-        "source_truth_index_sha256",
-        "source_packet_hashes",
-        "input_deck_sha256",
-        "artifact_schema_version",
-        "artifact_generation_commit",
-    )
+    # list is the module-level ``C7_REQUIRED_PROVENANCE_FIELDS`` constant,
+    # kept in sync with ``dpf.first_principles.manifest.REQUIRED_PROVENANCE_FIELDS``
+    # by the RC-7 drift test in tests/test_first_principles_artifact_linter.py.
     _c7_fail = False
     if not isinstance(manifest, dict) or manifest.get("provenance_complete") is not True:
         _c7_fail = True
     else:
-        for _field in _C7_REQUIRED_PROVENANCE_FIELDS:
+        for _field in C7_REQUIRED_PROVENANCE_FIELDS:
             _val = manifest.get(_field)
             if _val is None or (isinstance(_val, (str, list, dict, tuple)) and len(_val) == 0):
                 _c7_fail = True
@@ -304,18 +343,43 @@ def _check_artifact(path: Path, doc: dict) -> ArtifactResult:
     if _c7_fail:
         result.failed_checks.append("C7")
 
+    # C8 (Codex RC-5): active artifact must have been generated from the current
+    # HEAD commit with a clean worktree.  Skipped (not failed) when git is
+    # unavailable so the linter degrades safely in offline/CI environments.
+    if head_commit is not None:
+        _c8_fail = False
+        # top-level commit field
+        if doc.get("artifact_generation_commit") != head_commit:
+            _c8_fail = True
+        # nested manifest fields
+        if isinstance(manifest, dict):
+            if manifest.get("git_commit") != head_commit:
+                _c8_fail = True
+            if manifest.get("artifact_generation_commit") != head_commit:
+                _c8_fail = True
+        else:
+            _c8_fail = True
+        # dirty worktree check: must be exactly False (True or missing fails)
+        if doc.get("dirty_worktree") is not False:
+            _c8_fail = True
+        if _c8_fail:
+            result.failed_checks.append("C8")
+
     return result
 
 
-def lint_artifact(path: Path) -> ArtifactResult:
+def lint_artifact(path: Path, head_commit: str | None = None) -> ArtifactResult:
     """Load and lint a single artifact path.
 
     Disposition order (Codex A-2): a parse error is ERROR; an archived or
     non-authority artifact is EXEMPT with a printed reason; an unrelated JSON
-    is SKIP; an authority-scope first-principles artifact is checked C1-C7.
+    is SKIP; an authority-scope first-principles artifact is checked C1-C8.
     The EXEMPT branch is evaluated before the first-principles classification
     so a quarantined first-principles artifact is reported as exempt-with-
     reason rather than silently failing or being skipped.
+
+    ``head_commit`` is the current git HEAD SHA resolved once per linter run
+    by the caller.  When ``None`` (git unavailable), C8 is skipped.
     """
     try:
         with path.open("r", encoding="utf-8") as handle:
@@ -337,7 +401,7 @@ def lint_artifact(path: Path) -> ArtifactResult:
     if not _is_first_principles_artifact(doc):
         return ArtifactResult(path=path, is_first_principles=False)
 
-    return _check_artifact(path, doc)
+    return _check_artifact(path, doc, head_commit=head_commit)
 
 
 # --- CLI ---------------------------------------------------------------------
@@ -377,7 +441,7 @@ def _print_table(results: list[ArtifactResult]) -> None:
                 for check in result.failed_checks
             )
         else:
-            detail = "all 7 checks passed"
+            detail = "all checks passed"
         print(f"{result.path.name:<{name_width}}  {result.status:<6}  {detail}")
 
 
@@ -403,7 +467,8 @@ def main(argv: list[str] | None = None) -> int:
         print("audit: no files matched the given path glob(s).", file=sys.stderr)
         return 2
 
-    results = [lint_artifact(path) for path in paths]
+    head_commit = _resolve_head_commit()
+    results = [lint_artifact(path, head_commit=head_commit) for path in paths]
     _print_table(results)
 
     first_principles = [r for r in results if r.is_first_principles]
@@ -421,7 +486,7 @@ def main(argv: list[str] | None = None) -> int:
     if failures:
         print("audit: FAIL -- stale or non-provenant first-principles artifacts found.")
         return 1
-    print("audit: PASS -- all first-principles artifacts are current-schema.")
+    print("audit: PASS -- all first-principles artifacts pass C1-C8.")
     return 0
 
 

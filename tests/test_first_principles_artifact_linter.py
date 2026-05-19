@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -233,7 +234,10 @@ def test_artifact_linter_exit_code_ignores_exempt_artifacts(tmp_path: Path) -> N
     probe, and an exempt archived artifact exits 0 -- exempt artifacts never
     fail the run, while the passing artifact still passes."""
     linter = _load_linter()
-    _write_json(tmp_path / "good.json", _valid_first_principles_artifact())
+    head = _live_head()
+    # Stamp the real HEAD so C8 passes for the active artifact.
+    good_payload = _valid_current_head_artifact(head)
+    _write_json(tmp_path / "good.json", good_payload)
     _write_json(
         tmp_path / "checkpoint_probe.json",
         {"tool": "dpf experimental-checkpoint-restart", "scientific_status": "x"},
@@ -312,3 +316,181 @@ def test_artifact_linter_exit_code_fails_on_provenance_gap(tmp_path: Path) -> No
     exit_code = linter.main([str(tmp_path / "*.json")])
 
     assert exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# RC-7: C7 required-field tuple drift test
+# ---------------------------------------------------------------------------
+
+
+def test_c7_required_provenance_fields_matches_manifest_module() -> None:
+    """RC-7: the linter's module-level ``C7_REQUIRED_PROVENANCE_FIELDS``
+    constant must equal ``dpf.first_principles.manifest.REQUIRED_PROVENANCE_FIELDS``
+    exactly, so a drift in the manifest module is detected immediately."""
+    from dpf.first_principles.manifest import REQUIRED_PROVENANCE_FIELDS
+
+    linter = _load_linter()
+
+    assert linter.C7_REQUIRED_PROVENANCE_FIELDS == REQUIRED_PROVENANCE_FIELDS
+
+
+# ---------------------------------------------------------------------------
+# RC-5: C8 -- active artifact commit-match gate
+# ---------------------------------------------------------------------------
+
+
+def _live_head() -> str:
+    """Return the current git HEAD SHA for C8 fixture stamping."""
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _valid_current_head_artifact(head: str) -> dict[str, object]:
+    """Build a minimal first-principles artifact whose commit fields equal ``head``
+    and whose worktree is clean -- passes C1-C8 on the live tree."""
+    return {
+        "tool": "dpf first-principles-3d",
+        "artifact_generation_commit": head,
+        "dirty_worktree": False,
+        "command_argv": ["dpf", "first-principles-3d", "--steps", "2"],
+        "conservation_telemetry": {
+            "finite_state": True,
+            "energy_conservation_assessed": "not_assessed_no_accepted_tolerance",
+        },
+        "telemetry_packets": {
+            "power_port": {
+                "stage0_packet_scaffolds": {
+                    "status": "candidate_stage0_packet_scaffolds_not_validation",
+                },
+            },
+        },
+        "manifest": {
+            "provenance_complete": True,
+            "missing_provenance_fields": [],
+            "command_argv": ["dpf", "first-principles-3d", "--steps", "2"],
+            "git_commit": head,
+            "source_truth_index_sha256": "a" * 64,
+            "source_packet_hashes": {"hybrid_pic_3d_source": "b" * 64},
+            "input_deck_sha256": "c" * 64,
+            "artifact_schema_version": "first_principles_artifact_v1",
+            "artifact_generation_commit": head,
+            "candidate_evidence": {
+                "deck_diff_packet": {
+                    "status": "candidate_deck_diff_packet_not_validation",
+                },
+            },
+        },
+        "deck": {"preset": "pf1000_akel_16kv"},
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+# RC-6: positive current-schema fixture that passes C1-C8 (a real PASS)
+
+def test_artifact_linter_current_head_artifact_passes_all_checks(
+    tmp_path: Path,
+) -> None:
+    """RC-6: a dynamically stamped first-principles artifact whose commit fields
+    equal the live HEAD and whose worktree flag is False passes every linter
+    check C1-C8 (genuine PASS, not SKIP or EXEMPT)."""
+    linter = _load_linter()
+    head = _live_head()
+    artifact = _write_json(
+        tmp_path / "current_head.json", _valid_current_head_artifact(head)
+    )
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert result.status == "PASS", f"failed checks: {result.failed_checks}"
+    assert result.failed_checks == []
+
+
+# C8 negative controls
+
+
+def test_artifact_linter_c8_fails_stale_top_level_commit(tmp_path: Path) -> None:
+    """C8: top-level ``artifact_generation_commit`` != HEAD fails C8."""
+    linter = _load_linter()
+    head = _live_head()
+    payload = _valid_current_head_artifact(head)
+    payload["artifact_generation_commit"] = "0" * 40  # stale
+    artifact = _write_json(tmp_path / "stale_top.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert "C8" in result.failed_checks
+
+
+def test_artifact_linter_c8_fails_stale_manifest_git_commit(tmp_path: Path) -> None:
+    """C8: ``manifest.git_commit`` != HEAD fails C8."""
+    linter = _load_linter()
+    head = _live_head()
+    payload = _valid_current_head_artifact(head)
+    assert isinstance(payload["manifest"], dict)
+    payload["manifest"]["git_commit"] = "0" * 40  # stale
+    artifact = _write_json(tmp_path / "stale_git.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert "C8" in result.failed_checks
+
+
+def test_artifact_linter_c8_fails_stale_manifest_artifact_commit(
+    tmp_path: Path,
+) -> None:
+    """C8: ``manifest.artifact_generation_commit`` != HEAD fails C8."""
+    linter = _load_linter()
+    head = _live_head()
+    payload = _valid_current_head_artifact(head)
+    assert isinstance(payload["manifest"], dict)
+    payload["manifest"]["artifact_generation_commit"] = "0" * 40  # stale
+    artifact = _write_json(tmp_path / "stale_manifest_commit.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert "C8" in result.failed_checks
+
+
+def test_artifact_linter_c8_fails_dirty_worktree_true(tmp_path: Path) -> None:
+    """C8: ``dirty_worktree: true`` fails C8."""
+    linter = _load_linter()
+    head = _live_head()
+    payload = _valid_current_head_artifact(head)
+    payload["dirty_worktree"] = True
+    artifact = _write_json(tmp_path / "dirty.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert "C8" in result.failed_checks
+
+
+def test_artifact_linter_c8_fails_missing_dirty_worktree(tmp_path: Path) -> None:
+    """C8: absent ``dirty_worktree`` key fails C8 (missing is not False)."""
+    linter = _load_linter()
+    head = _live_head()
+    payload = _valid_current_head_artifact(head)
+    payload.pop("dirty_worktree", None)
+    artifact = _write_json(tmp_path / "no_dirty.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=head)
+
+    assert "C8" in result.failed_checks
+
+
+def test_artifact_linter_c8_skipped_when_head_is_none(tmp_path: Path) -> None:
+    """C8: when head_commit is None (git unavailable), C8 must NOT be appended
+    to failed_checks -- degrade gracefully, do not crash."""
+    linter = _load_linter()
+    head = _live_head()
+    # Use an otherwise-valid artifact so only C8 could fire.
+    payload = _valid_current_head_artifact(head)
+    artifact = _write_json(tmp_path / "no_git.json", payload)
+
+    result = linter.lint_artifact(artifact, head_commit=None)
+
+    assert "C8" not in result.failed_checks
