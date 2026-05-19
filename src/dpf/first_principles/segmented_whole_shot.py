@@ -57,6 +57,7 @@ from dpf.first_principles.manifest import (
     sha256_of_file,
     sha256_of_json,
     sha256_of_text,
+    stable_manifest_hash,
 )
 from dpf.first_principles.runner import (
     FirstPrinciples3DDeck,
@@ -211,6 +212,26 @@ class _CumulativeLedgers:
     telemetry resets its cumulative counters at every segment start, so the
     full-horizon totals must be summed here.  ``cap`` operations elsewhere
     cap retained samples only and never touch these counters.
+
+    S3.7 extended ledger fields (handoff
+    ``docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md``
+    §S3.7 "Required gates — cumulative ledgers"):
+
+    * ``cumulative_field_energy_delta_J``  — net change in stored EM field
+      energy across all segments (circuit + MHD field, not a power-port term).
+    * ``cumulative_pml_removed_energy_J``  — total energy removed by the PML
+      / open-boundary absorber across all segments.
+    * ``cumulative_power_port_work_J``     — cumulative circuit → plasma port
+      work (Poynting flux integral term I from power_port, separate from the
+      J·E channel which is the resistive-dissipation term).
+    * ``cumulative_ionization_step_count`` — steps where an ionization/charge-
+      state update was executed (non-zero ionization source term present).
+
+    All four fields are zero-baseline if the telemetry path does not expose
+    them (graceful degradation); they are NOT summed from per-segment deltas
+    but taken from the terminal-segment telemetry when it reports a cumulative
+    from-start value.  A future session that exposes these channels will have
+    them populated automatically without schema changes.
     """
 
     cumulative_j_dot_e_work_J: float = 0.0
@@ -219,6 +240,13 @@ class _CumulativeLedgers:
     cumulative_active_port_step_count: int = 0
     limiter_steps_observed: int = 0
     limiter_total_activations: int = 0
+    # S3.7 extended ledgers — circuit/field/particle/energy/ionization/
+    # kinetic-yield/power-port/PML-removed-energy channels.
+    cumulative_field_energy_delta_J: float = 0.0
+    cumulative_pml_removed_energy_J: float = 0.0
+    cumulative_power_port_work_J: float = 0.0
+    cumulative_ionization_step_count: int = 0
+    # Final-state snapshot fields (taken from the last executed segment).
     final_cumulative_neutrons: float | None = None
     final_circuit_current_A: float | None = None
     final_circuit_charge_C: float | None = None
@@ -246,6 +274,25 @@ class _CumulativeLedgers:
             self.limiter_steps_observed += int(summary.get("steps_observed", 0))
             self.limiter_total_activations += int(
                 summary.get("total_activations", 0)
+            )
+        # S3.7: accumulate extended ledger channels (field/PML/power-port/ionization).
+        # All paths are fail-soft: absent telemetry keys leave the counters at
+        # zero-baseline rather than crashing the run.
+        if isinstance(getattr(telemetry, "conservation_power_port", None), Mapping):
+            port = telemetry.conservation_power_port
+            self.cumulative_field_energy_delta_J += float(
+                port.get("stored_magnetic_energy_delta_J", 0.0) or 0.0
+            ) + float(port.get("stored_electric_energy_delta_J", 0.0) or 0.0)
+            self.cumulative_power_port_work_J += float(
+                port.get("cumulative_port_work_J", 0.0) or 0.0
+            )
+        if isinstance(getattr(telemetry, "pml_energy_removed_J", None), (int, float)):
+            self.cumulative_pml_removed_energy_J += float(
+                telemetry.pml_energy_removed_J or 0.0
+            )
+        if isinstance(getattr(telemetry, "ionization_steps_this_segment", None), int):
+            self.cumulative_ionization_step_count += int(
+                telemetry.ionization_steps_this_segment
             )
         kinetic = result.kinetic_yield_state
         if isinstance(kinetic, Mapping):
@@ -276,6 +323,8 @@ class _CumulativeLedgers:
 
     # Counter fields persisted to / restored from the per-checkpoint sidecar.
     # Listed explicitly so a resume rehydrates exactly the pre-resume totals.
+    # S3.7: extended ledger fields added for circuit/field/particle/energy/
+    # ionization/kinetic-yield/limiter/power-port/PML-removed-energy channels.
     _STATE_FIELDS: tuple[str, ...] = (
         "cumulative_j_dot_e_work_J",
         "cumulative_j_dot_e_step_count",
@@ -283,6 +332,12 @@ class _CumulativeLedgers:
         "cumulative_active_port_step_count",
         "limiter_steps_observed",
         "limiter_total_activations",
+        # S3.7 extended fields.
+        "cumulative_field_energy_delta_J",
+        "cumulative_pml_removed_energy_J",
+        "cumulative_power_port_work_J",
+        "cumulative_ionization_step_count",
+        # Final-state snapshots.
         "final_cumulative_neutrons",
         "final_circuit_current_A",
         "final_circuit_charge_C",
@@ -318,10 +373,16 @@ class _CumulativeLedgers:
             "cumulative_active_port_step_count",
             "limiter_steps_observed",
             "limiter_total_activations",
+            # S3.7 extended int fields.
+            "cumulative_ionization_step_count",
         }
         float_fields = {
             "cumulative_j_dot_e_work_J",
             "cumulative_active_port_work_J",
+            # S3.7 extended float fields.
+            "cumulative_field_energy_delta_J",
+            "cumulative_pml_removed_energy_J",
+            "cumulative_power_port_work_J",
         }
         for name in cls._STATE_FIELDS:
             if name not in state:
@@ -344,14 +405,28 @@ class _CumulativeLedgers:
             "ledger_status": (
                 "candidate_cumulative_segmented_ledger_not_validation"
             ),
+            # Circuit / J·E channel.
             "cumulative_j_dot_e_work_J": self.cumulative_j_dot_e_work_J,
             "cumulative_j_dot_e_step_count": self.cumulative_j_dot_e_step_count,
+            # Active-port / circuit coupling channel.
             "cumulative_active_port_work_J": self.cumulative_active_port_work_J,
             "cumulative_active_port_step_count": (
                 self.cumulative_active_port_step_count
             ),
+            # Limiter channel.
             "limiter_steps_observed": self.limiter_steps_observed,
             "limiter_total_activations": self.limiter_total_activations,
+            # S3.7 extended ledger channels.
+            # Field / stored-energy delta channel (magnetic + electric).
+            "cumulative_field_energy_delta_J": self.cumulative_field_energy_delta_J,
+            # PML / open-boundary energy removed channel.
+            "cumulative_pml_removed_energy_J": self.cumulative_pml_removed_energy_J,
+            # Power-port work channel (Poynting-flux term I, separate from J·E).
+            "cumulative_power_port_work_J": self.cumulative_power_port_work_J,
+            # Ionization-update step counter.
+            "cumulative_ionization_step_count": self.cumulative_ionization_step_count,
+            # Final-state snapshots (kinetic-yield / circuit / energy / ionization
+            # / particle channels — always the latest executed segment).
             "final_cumulative_neutrons": self.final_cumulative_neutrons,
             "final_circuit_current_A": self.final_circuit_current_A,
             "final_circuit_charge_C": self.final_circuit_charge_C,
@@ -641,6 +716,10 @@ def run_segmented_whole_shot(
         },
         "can_support_first_principles_acceptance": False,
     }
+    # S3.7: emit the run-manifest SHA-256 so the certificate gate's
+    # ``run_manifest_hash`` channel can be populated without re-reading the
+    # file.  The hash is computed over the payload EXCLUDING itself (stable).
+    run_manifest["run_manifest_sha256"] = stable_manifest_hash(run_manifest)
     _write_json(run_path / "run_manifest.json", run_manifest)
 
     if wall_time_cap_reached and raise_on_wall_time_cap:

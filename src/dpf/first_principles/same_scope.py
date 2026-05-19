@@ -232,6 +232,19 @@ def _accepted_channels_from_targets(
             })
             continue
         if observable:
+            evidence_type = str(target.get("evidence_type", "")).strip()
+            if evidence_type == "lee_model_output" and observable in BLOCKING_SAME_SCOPE_CHANNELS:
+                # Lee model outputs are NOT independent measurements.
+                # They cannot satisfy blocking same-scope channels.
+                # WP-N7 §6.1, N7-NEG-10.
+                decisions.append({
+                    "target": name,
+                    "observable": observable,
+                    "status": status,
+                    "decision": "rejected_lee_model_output_not_independent_measurement",
+                    "evidence_type": evidence_type,
+                })
+                continue
             accepted.add(observable)
             decisions.append({
                 "target": name,

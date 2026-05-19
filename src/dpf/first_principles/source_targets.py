@@ -7,6 +7,9 @@ not promote any whole-shot first-principles claim by themselves.
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 TORR_TO_PA = 133.32236842105263
 
 GV_ROOT = "/Users/anthonyzamora/Downloads/GV"
@@ -1261,5 +1264,228 @@ def _gribkov_applications_target() -> dict[str, object]:
             "mechanism_separated_current_and_particle_history",
             "source_backed_mitl_boundary_model",
             "detector_response_and_uq",
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# S3.8 — PF-1000 / Akel same-scope source-packet hash registry
+#
+# Each entry maps a KnowledgeReference canonical path to the SHA-256 of the
+# local markdown file.  The hash is computed at call time (fail-soft) so it
+# reflects the on-disk content without embedding stale hashes in the source.
+#
+# Source authority:
+#   KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md
+#   WP-N7 spec §2.1 (Akel 2021 ingestion status and evidence inventory)
+#   WP-N7 spec §3.2 (certificate channel evidence_packet_hashes)
+#   handoff §S3.8 "required certificate channels — source packet hashes"
+#
+# These hashes are CANDIDATE evidence.  They are NOT accepted comparator
+# targets and do NOT promote validation.  Every channel that can only be
+# backed by text-supported scalars (scalar I_peak, scalar neutron yield,
+# detector geometry text) is labeled ``candidate_comparator_only``.
+# ---------------------------------------------------------------------------
+
+#: KnowledgeReference paths for the PF-1000/Akel 16 kV, 1.05–1.2 Torr,
+#: shot-12581 evidence scope.  Paths are relative to the repo root so the
+#: hash function can resolve them against any checkout location.
+PF1000_AKEL_KR_SOURCE_PATHS: tuple[dict[str, str], ...] = (
+    {
+        "source_id": "akel_2021_radiation_physics_chemistry",
+        "path": (
+            "KnowledgeReference/"
+            "radiation-physics-and-chemistry-188-2021-109633.md"
+        ),
+        "scope": "pf1000_akel_16kv_1p2torr_deuterium_shot_12581",
+        "evidence_type": "text_supported_scalar_candidate",
+        "candidate_comparator_only": True,
+        "blocking_channels": [
+            "waveform_phase_packet_accepted",
+            "spatial_field_temperature_packet_accepted",
+        ],
+        "candidate_channels": [
+            "current_waveform_scalar_ipeak",
+            "neutron_scalar_yield",
+            "detector_geometry_text",
+            "phase_timing_text",
+        ],
+    },
+    {
+        "source_id": "scholz_2006_pf1000_mega_joule",
+        "path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+        "scope": "pf1000_full_energy_mj_scale",
+        "evidence_type": "cross_scope_different_operating_point",
+        "candidate_comparator_only": True,
+        "scope_mismatch": True,
+        "transfer_rule_required": True,
+        "blocking_channels": [
+            "neutron_timing_history",
+            "neutron_anisotropy",
+        ],
+        "candidate_channels": [],
+    },
+    {
+        "source_id": "scholz_gribkov_2007_pf1000_part2",
+        "path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+        "scope": "pf1000_full_energy_1mj",
+        "evidence_type": "cross_scope_inferred_temperatures",
+        "candidate_comparator_only": True,
+        "scope_mismatch": True,
+        "transfer_rule_required": True,
+        "blocking_channels": [
+            "temperature_Ti_direct_measurement",
+        ],
+        "candidate_channels": [],
+    },
+    {
+        "source_id": "zielinska_2011_interferometer",
+        "path": (
+            "KnowledgeReference/"
+            "sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md"
+        ),
+        "scope": "pf1000_different_shot_2p6hPa",
+        "evidence_type": "cross_scope_density_imaging_different_shot",
+        "candidate_comparator_only": True,
+        "scope_mismatch": True,
+        "transfer_rule_required": True,
+        "blocking_channels": [
+            "spatial_density_history",
+        ],
+        "candidate_channels": [],
+    },
+    {
+        "source_id": "kubes_2020_closed_currents",
+        "path": (
+            "KnowledgeReference/"
+            "characteristics-of-closed-currents-and-magnetic-fields-outside-the-dense-pinch-column-in-a-40d59f2d.md"
+        ),
+        "scope": "pf1000_scope_unconfirmed",
+        "evidence_type": "scope_unconfirmed_magnetic_field_measurement",
+        "candidate_comparator_only": True,
+        "scope_mismatch": None,
+        "transfer_rule_required": True,
+        "blocking_channels": [
+            "em_field_history",
+        ],
+        "candidate_channels": [],
+    },
+    {
+        "source_id": "krauz_2012_current_sheath",
+        "path": (
+            "KnowledgeReference/"
+            "experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        ),
+        "scope": "pf1000_scope_unconfirmed",
+        "evidence_type": "current_sheath_structure_measurement",
+        "candidate_comparator_only": True,
+        "scope_mismatch": None,
+        "transfer_rule_required": True,
+        "blocking_channels": [
+            "spatial_field_temperature_packet_accepted",
+        ],
+        "candidate_channels": [],
+    },
+)
+
+
+def _sha256_of_path_soft(repo_root: Path, rel_path: str) -> str | None:
+    """Return SHA-256 of a repo-relative file, or None if unreadable."""
+    candidate = repo_root / rel_path
+    if not candidate.is_file():
+        return None
+    digest = hashlib.sha256()
+    with candidate.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 16), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _find_repo_root() -> Path:
+    """Walk upward from this file to locate the dpf-unified repo root."""
+    here = Path(__file__).resolve()
+    # src/dpf/first_principles/source_targets.py → 3 parents = src/ → repo root
+    return here.parents[3]
+
+
+def pf1000_akel_source_packet_hashes(
+    repo_root: str | Path | None = None,
+) -> dict[str, object]:
+    """Return the S3.8 source-packet hash registry for the PF-1000/Akel scope.
+
+    Each entry in the registry is a dict with:
+    - ``source_id``: canonical identifier.
+    - ``path``: KnowledgeReference-relative path (repo-relative).
+    - ``sha256``: SHA-256 of the on-disk markdown file (``None`` if absent).
+    - ``scope``: evidence scope tag.
+    - ``candidate_comparator_only``: ``True`` for all channels in Sprint 3 —
+      no acceptance is possible; comparator channels are labeled accordingly.
+    - ``blocking_channels``: certificate channels this source CANNOT satisfy.
+    - ``candidate_channels``: channels this source COULD support (text only).
+
+    This registry is CANDIDATE evidence only.  No channel is accepted.
+    No PF-1000/Akel validation certificate is emitted in Sprint 3.
+
+    Source authority:
+        ``docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/
+        sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md`` §2.1–2.7, §3.1.
+        ``docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md``
+        §S3.8 required certificate channels — source packet hashes.
+    """
+    root = Path(repo_root) if repo_root is not None else _find_repo_root()
+    entries: list[dict[str, object]] = []
+    for spec in PF1000_AKEL_KR_SOURCE_PATHS:
+        sha = _sha256_of_path_soft(root, str(spec["path"]))
+        entry: dict[str, object] = {
+            "source_id": spec["source_id"],
+            "path": spec["path"],
+            "sha256": sha,
+            "scope": spec["scope"],
+            "evidence_type": spec["evidence_type"],
+            "candidate_comparator_only": spec["candidate_comparator_only"],
+            "blocking_channels": list(spec["blocking_channels"]),  # type: ignore[arg-type]
+            "candidate_channels": list(spec["candidate_channels"]),  # type: ignore[arg-type]
+        }
+        if "scope_mismatch" in spec:
+            entry["scope_mismatch"] = spec["scope_mismatch"]
+        if spec.get("transfer_rule_required"):
+            entry["transfer_rule_required"] = True
+        entries.append(entry)
+
+    accepted_any = False  # always False in Sprint 3
+    return {
+        "packet_id": "pf1000_akel_source_packet_hashes_sprint3",
+        "declared_scope": "pf1000_akel_16kv_1p2torr_deuterium_shot_12581",
+        "sprint": "sprint_3",
+        "status": "candidate_comparator_only_not_accepted",
+        "source_entries": entries,
+        "total_sources": len(entries),
+        "accepted_any": accepted_any,
+        "can_support_first_principles_acceptance": False,
+        "can_support_validation_claims": False,
+        "all_comparator_channels_labeled_candidate_comparator_only": True,
+        "validation_blocked_reason": (
+            "No same-scope digitized current waveform, density history, "
+            "T_e, T_i, B_theta, or neutron spectrum/anisotropy exists for "
+            "the Akel 16 kV, 1.05-1.2 Torr, shot-12581 scope in "
+            "KnowledgeReference/. See WP-N7 §5 missing-parameters table."
+        ),
+        "source_references": [
+            {
+                "path": (
+                    "docs/external_team_submissions/"
+                    "2026_05_18_three_sprint_blocker_packet/sprint_3/"
+                    "WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md"
+                ),
+                "lines": "1-170",
+                "role": "certificate_source_packet_hash_requirement",
+            },
+            {
+                "path": (
+                    "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md"
+                ),
+                "lines": "538-557",
+                "role": "s3_8_required_certificate_channels",
+            },
         ],
     }

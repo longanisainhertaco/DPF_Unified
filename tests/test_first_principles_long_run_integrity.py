@@ -432,3 +432,202 @@ def test_segmented_run_equals_uninterrupted_and_preserves_ledgers(
 
     # The probe must never claim acceptance.
     assert packet["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# S3.7 numerical acceptance harness tests
+# (handoff docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md
+#  §S3.7 "Required gates")
+# ---------------------------------------------------------------------------
+
+
+def test_s37_cumulative_ledger_has_extended_channels(tmp_path: Path) -> None:
+    """S3.7: cumulative ledger must emit all extended channel fields.
+
+    The handoff requires ledger channels for circuit, field, particle, energy,
+    ionization, kinetic-yield, limiter, power-port, and PML-removed-energy.
+    This test asserts that all required channel keys are present in the
+    run_manifest ``cumulative_ledgers`` block regardless of whether the
+    current session telemetry populates them (graceful degradation).
+    """
+    from dpf.first_principles.segmented_whole_shot import run_segmented_whole_shot
+
+    n_steps = 6
+    deck = _smoke_deck(n_steps=n_steps)
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "run_s37",
+        segment_steps=2,
+        explicit_total_steps=n_steps,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    ledgers = manifest["cumulative_ledgers"]
+
+    # Required channel presence (S3.7 gate list, handoff §S3.7).
+    required_channels = (
+        # Circuit / J·E.
+        "cumulative_j_dot_e_work_J",
+        "cumulative_j_dot_e_step_count",
+        # Active-port / circuit coupling.
+        "cumulative_active_port_work_J",
+        "cumulative_active_port_step_count",
+        # Limiter.
+        "limiter_steps_observed",
+        "limiter_total_activations",
+        # S3.7 extended field / PML / power-port / ionization.
+        "cumulative_field_energy_delta_J",
+        "cumulative_pml_removed_energy_J",
+        "cumulative_power_port_work_J",
+        "cumulative_ionization_step_count",
+        # Final-state kinetic-yield / circuit / energy / ionization / particle.
+        "final_cumulative_neutrons",
+        "final_circuit_current_A",
+        "final_circuit_charge_C",
+        "final_electron_energy_J",
+        "final_ion_temperature_K",
+        "final_ionization_electron_density_m3",
+        "final_particle_count",
+        # Horizon metadata.
+        "covers_executed_horizon",
+        "executed_steps",
+        "planned_horizon_steps",
+    )
+    for channel in required_channels:
+        assert channel in ledgers, (
+            f"S3.7 required ledger channel '{channel}' is absent from "
+            "cumulative_ledgers in run_manifest.json"
+        )
+
+    # Extended float channels must be non-negative (zero-baseline when the
+    # current session does not expose those telemetry paths).
+    for ch in (
+        "cumulative_field_energy_delta_J",
+        "cumulative_pml_removed_energy_J",
+        "cumulative_power_port_work_J",
+    ):
+        assert float(ledgers[ch]) >= 0.0, (
+            f"S3.7 extended float channel '{ch}' is negative ({ledgers[ch]})"
+        )
+    assert int(ledgers["cumulative_ionization_step_count"]) >= 0, (
+        "cumulative_ionization_step_count must be non-negative"
+    )
+
+
+def test_s37_run_manifest_has_run_manifest_sha256(tmp_path: Path) -> None:
+    """S3.7: run_manifest.json must carry run_manifest_sha256.
+
+    The certificate gate's ``run_manifest_hash`` channel requires the manifest
+    to carry its own deterministic SHA-256 so an external reviewer can verify
+    artifact integrity without re-running the simulation.
+    """
+    from dpf.first_principles.segmented_whole_shot import run_segmented_whole_shot
+
+    deck = _smoke_deck(n_steps=4)
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "run_sha",
+        segment_steps=2,
+        explicit_total_steps=4,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    assert "run_manifest_sha256" in manifest, (
+        "run_manifest_sha256 is absent; certificate gate cannot populate "
+        "the run_manifest_hash channel"
+    )
+    sha = manifest["run_manifest_sha256"]
+    assert isinstance(sha, str) and len(sha) == 64, (
+        f"run_manifest_sha256 must be a 64-char hex string, got {sha!r}"
+    )
+
+
+def test_s37_manifest_carries_source_packet_hashes(tmp_path: Path) -> None:
+    """S3.7: command.json must carry source_module_sha256 for all physics modules.
+
+    The manifest's source-packet-hash gate requires per-module hashes so a
+    reviewer can detect a runtime change between runs.
+    """
+    import json
+
+    from dpf.first_principles.segmented_whole_shot import (
+        _SOURCE_HASH_MODULES,
+        run_segmented_whole_shot,
+    )
+
+    deck = _smoke_deck(n_steps=2)
+    run_dir = tmp_path / "run_spkh"
+    run_segmented_whole_shot(
+        deck=deck,
+        run_dir=run_dir,
+        segment_steps=2,
+        explicit_total_steps=2,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    command = json.loads((run_dir / "command.json").read_text())
+    src_hashes = command.get("source_module_sha256", {})
+    assert src_hashes, "source_module_sha256 block is absent or empty"
+    # Every required module must be present (value may be None if not on disk,
+    # but the key must always be present).
+    for rel_path in _SOURCE_HASH_MODULES:
+        short = rel_path.split("/")[-1]
+        assert any(short in k for k in src_hashes), (
+            f"source module '{rel_path}' not represented in "
+            "command.json source_module_sha256"
+        )
+
+
+def test_s37_12us_blocker_always_present_in_manifest(tmp_path: Path) -> None:
+    """S3.7: the 12 µs compute-wall blocker must appear in every run manifest.
+
+    Even a single-segment rung-1 run that completes its small horizon must
+    still report the 12 µs blocker with status='blocked' when the planned
+    total_steps < 120,000,000 (the 12 µs step count at dt=1e-13).
+    """
+    from dpf.first_principles.segmented_whole_shot import run_segmented_whole_shot
+
+    deck = _smoke_deck(n_steps=4)
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "run_12us",
+        segment_steps=2,
+        explicit_total_steps=4,
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    verdicts = {v["id"]: v for v in manifest["blocker_verdicts"]["verdicts"]}
+    assert "B-WPN4-12US-COMPUTE-WALL" in verdicts, (
+        "12 µs compute-wall blocker verdict is absent from run_manifest"
+    )
+    b = verdicts["B-WPN4-12US-COMPUTE-WALL"]
+    assert b["status"] == "blocked", (
+        f"12 µs blocker should be 'blocked' for a 4-step run, got {b['status']!r}"
+    )
+
+
+def test_s37_horizon_complete_never_set_for_partial_run(tmp_path: Path) -> None:
+    """S3.7: horizon_complete must be False for any wall-time-truncated run.
+
+    The handoff gate 'NO horizon_complete=true unless the run actually reaches
+    the requested horizon' must hold unconditionally.  A partial run under a
+    very tight wall-time cap must not flip the flag.
+    """
+    from dpf.first_principles.segmented_whole_shot import run_segmented_whole_shot
+
+    deck = _smoke_deck(n_steps=40)
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "run_partial",
+        segment_steps=2,
+        explicit_total_steps=40,
+        wall_time_cap_s=1e-9,  # guaranteed truncation
+        checkpoint_every_segments=1,
+        verify_restart_equivalence=False,
+    )
+    assert manifest["wall_time_cap_reached"] is True
+    assert manifest["horizon_complete"] is False, (
+        "horizon_complete must be False when the wall-time cap was hit; "
+        "the flag must never be speculatively promoted"
+    )
+    assert manifest["total_steps_completed"] < 40

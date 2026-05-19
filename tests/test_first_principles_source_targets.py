@@ -13,6 +13,7 @@ from dpf.first_principles import (
     may16_validated_thesis_source_targets,
     run_first_principles_3d_deck,
 )
+from dpf.first_principles.source_targets import pf1000_akel_source_packet_hashes
 
 
 def test_may15_user_validated_targets_are_source_accepted_but_nonpromoting() -> None:
@@ -297,3 +298,144 @@ def test_may15_second_scope_decks_execute_as_engineering_candidates() -> None:
         )
         assert result.telemetry["startup"]["whole_shot_startup_blocked"] is True
         assert result.telemetry["generalization"]["can_claim_generalized_dpf_machine"] is False
+
+
+# ---------------------------------------------------------------------------
+# S3.8 — pf1000_akel_source_packet_hashes tests
+# ---------------------------------------------------------------------------
+
+
+def test_s38_source_packet_returns_expected_top_level_keys() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    required_keys = {
+        "packet_id",
+        "declared_scope",
+        "sprint",
+        "status",
+        "source_entries",
+        "total_sources",
+        "accepted_any",
+        "can_support_first_principles_acceptance",
+        "can_support_validation_claims",
+        "all_comparator_channels_labeled_candidate_comparator_only",
+        "validation_blocked_reason",
+    }
+    assert required_keys.issubset(set(packet.keys()))
+
+
+def test_s38_all_entries_are_candidate_comparator_only() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+    entries = packet["source_entries"]
+
+    assert len(entries) == 6  # PF1000_AKEL_KR_SOURCE_PATHS has 6 entries
+    for entry in entries:
+        assert entry["candidate_comparator_only"] is True, (
+            f"Entry {entry['source_id']} must be candidate_comparator_only=True"
+        )
+
+
+def test_s38_can_support_first_principles_acceptance_always_false() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    assert packet["can_support_first_principles_acceptance"] is False
+    assert packet["can_support_validation_claims"] is False
+    assert packet["accepted_any"] is False
+
+
+def test_s38_status_is_candidate_only_not_accepted() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    assert packet["status"] == "candidate_comparator_only_not_accepted"
+    assert packet["sprint"] == "sprint_3"
+
+
+def test_s38_akel_2021_entry_has_correct_source_id_and_scope() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+    entries = {e["source_id"]: e for e in packet["source_entries"]}
+
+    assert "akel_2021_radiation_physics_chemistry" in entries
+    akel = entries["akel_2021_radiation_physics_chemistry"]
+    assert akel["scope"] == "pf1000_akel_16kv_1p2torr_deuterium_shot_12581"
+    assert akel["evidence_type"] == "text_supported_scalar_candidate"
+    assert "waveform_phase_packet_accepted" in akel["blocking_channels"]
+    assert "spatial_field_temperature_packet_accepted" in akel["blocking_channels"]
+    # Akel 2021 is the primary scope — no cross-scope mismatch
+    assert akel.get("scope_mismatch") is not True
+
+
+def test_s38_cross_scope_entries_have_scope_mismatch_and_transfer_rule() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+    cross_scope_ids = {
+        "scholz_2006_pf1000_mega_joule",
+        "scholz_gribkov_2007_pf1000_part2",
+        "zielinska_2011_interferometer",
+    }
+
+    entries = {e["source_id"]: e for e in packet["source_entries"]}
+    for sid in cross_scope_ids:
+        assert sid in entries, f"Missing cross-scope entry: {sid}"
+        entry = entries[sid]
+        assert entry["scope_mismatch"] is True, (
+            f"{sid} must declare scope_mismatch=True"
+        )
+        assert entry["transfer_rule_required"] is True, (
+            f"{sid} must declare transfer_rule_required=True"
+        )
+        assert entry["candidate_channels"] == [], (
+            f"{sid} cross-scope entry must have no candidate channels"
+        )
+
+
+def test_s38_all_entries_have_required_fields() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+    required_entry_keys = {
+        "source_id",
+        "path",
+        "sha256",
+        "scope",
+        "evidence_type",
+        "candidate_comparator_only",
+        "blocking_channels",
+        "candidate_channels",
+    }
+
+    for entry in packet["source_entries"]:
+        missing = required_entry_keys - set(entry.keys())
+        assert not missing, (
+            f"Entry {entry.get('source_id', '?')} missing fields: {missing}"
+        )
+        # sha256 is either a 64-char hex string or None (file absent)
+        sha = entry["sha256"]
+        assert sha is None or (isinstance(sha, str) and len(sha) == 64), (
+            f"sha256 for {entry['source_id']} must be 64-char hex or None, got {sha!r}"
+        )
+
+
+def test_s38_declared_scope_matches_packet_id_convention() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    assert "pf1000_akel" in packet["packet_id"]
+    assert "sprint3" in packet["packet_id"]
+    assert packet["declared_scope"] == "pf1000_akel_16kv_1p2torr_deuterium_shot_12581"
+
+
+def test_s38_all_comparator_channels_labeled_flag_is_true() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    assert packet["all_comparator_channels_labeled_candidate_comparator_only"] is True
+
+
+def test_s38_validation_blocked_reason_is_non_empty_string() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    reason = packet["validation_blocked_reason"]
+    assert isinstance(reason, str)
+    assert len(reason) > 20, "validation_blocked_reason must be a substantive explanation"
+
+
+def test_s38_total_sources_matches_entries_length() -> None:
+    packet = pf1000_akel_source_packet_hashes()
+
+    assert packet["total_sources"] == len(packet["source_entries"])
+    assert packet["total_sources"] == 6
