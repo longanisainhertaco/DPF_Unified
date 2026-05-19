@@ -219,6 +219,106 @@ clean.
 
 ## Next Directions For The Engineering Team
 
+### Parallel Work Allowed Outside Sprint 2.2
+
+Sprint 2.2 is a stop-the-line cleanup sprint. It owns the current merge-blocking
+work and must not be diluted:
+
+- `src/dpf/first_principles/segmented_whole_shot_combine.py`
+- `tests/test_first_principles_segmented_whole_shot_combine.py`
+- `src/dpf/first_principles/power_port.py` docstring cleanup
+- `docs/DPF_REQUIREMENTS_BASELINE.md`
+- `docs/SRS_TRACEABILITY_MATRIX.csv`
+- `docs/SRS_TRACEABILITY_MATRIX.json`
+- `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/*`
+  traceability/changelog/test-map files
+
+Parallel teams may work outside that ownership boundary, but only on
+source-backed research packets, interface specs, test-design docs, and
+non-invasive benchmark plans. They must not promote validation or acceptance,
+must not edit the Sprint 2.2 files listed above, and must not implement physics
+from an inferred formula unless the exact source packet, equation, units, symbol
+map, and validity range are already attached.
+
+Allowed parallel lanes:
+
+1. **WP-N3 PF-1000/Akel geometry source packet**
+   - Goal: produce a complete source-backed PF-1000/Akel dimension and material
+     packet.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N3_GEOMETRY_SOURCE_PACKET.md`
+   - Required content: cathode rods, anode, hollow bore, alumina insulator,
+     backplate/source interface, chamber wall, open/PML boundary, plasma domain,
+     source citation, value, unit, uncertainty if available, conflict notes, and
+     unresolved dimensions.
+
+2. **WP-N3 `Sigma_p` runtime-interface spec**
+   - Goal: specify the exact runtime data required to compute Auluck terms
+     II/IV/V/VI without closure substitution.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md`
+   - Required content: moving/stationary boundary classification, face-centered
+     `B`, `E`, `J`, `v`, `eta`, outward `dS`, face area, centering metadata,
+     sign convention, mask hashes, blocked/missing fields, and synthetic test
+     cases.
+
+3. **WP-N2 startup BVP channel matrix**
+   - Goal: enumerate every required whole-shot startup channel and decide
+     whether it is source-supported, inferable only as a candidate, or blocked.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md`
+   - Required content: breakdown, flashover, preionization, secondary emission,
+     surface plasma, initial E/B/J, density/species, ionization, Te/Ti, sheath
+     surface, handoff interval, equations, inputs, missing parameters,
+     fail-closed behavior, and proposed runtime packet schema.
+
+4. **WP-N5 closure registry source audit**
+   - Goal: prepare the closure packet registry before runtime work begins.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N5_CLOSURE_REGISTRY_SOURCE_AUDIT.md`
+   - Required content: EOS, radiation, ablation/impurity, anomalous resistance,
+     restrike, electron inertia, collision/stopping, beam-target coupling,
+     PlasmaPy-use opportunities, validity ranges, units, equations, source
+     status, and claim impact.
+
+5. **WP-N6 neutron authority packet**
+   - Goal: design the neutron-authority runtime interface and evidence map.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N6_NEUTRON_AUTHORITY_PACKET.md`
+   - Required content: thermonuclear vs beam-target separation, ion distribution,
+     stopping, spectra, anisotropy, detector response, UQ hooks, runtime
+     fields, and same-scope evidence gaps.
+
+6. **WP-N7 comparator/UQ/certificate design**
+   - Goal: define what an external engineering review bundle must contain.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md`
+   - Required content: same-scope PF-1000/Akel targets, waveform/field/density/
+     temperature/yield histories, config hashes, source-packet hashes,
+     environment hashes, uncertainty budget, acceptance blockers, and certificate
+     failure modes.
+
+7. **WP-N4 performance planning without code ownership conflict**
+   - Goal: estimate 12 us execution cost without touching the active combiner
+     implementation.
+   - Output path:
+     `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N4_PERFORMANCE_AND_RUN_PLAN.md`
+   - Required content: current small-deck per-step timing, backend, grid size,
+     memory footprint, estimated production grid after WP-N3, restart cadence,
+     artifact volume, and explicit statement that no 12 us completion claim is
+     allowed until `horizon_complete=true`.
+
+Parallel-deliverable acceptance rules:
+
+1. Every physics or geometry claim cites a local `KnowledgeReference/` source or
+   a tracked verified extract packet.
+2. Every packet includes a blocker table with `supported`, `candidate`, and
+   `blocked` rows.
+3. Every packet includes proposed tests and fail-closed negative controls.
+4. No packet may mark a runtime feature `implemented` unless code and tests are
+   part of the same submitted diff.
+5. No packet may edit Sprint 2.2-owned files while Sprint 2.2 is open.
+
 ### Stop-the-line Sprint 2.2 - correctness and traceability cleanup
 
 Objective: make the completed Sprint 2 implementation internally consistent
