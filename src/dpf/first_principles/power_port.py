@@ -306,93 +306,236 @@ def _power_port_ledger_telemetry(
 
 def _residual_fraction(
     residual_J: float | None,
-    terminal_port_work_J: float | None,
-    volume_j_dot_e_work_J: float | None,
+    iv_work_J: float | None,
+    term_i_J: float | None,
 ) -> float | None:
-    """Return residual / max(|terminal|, |volume J.E|, 1 J) per packet S4."""
+    """Return residual / max(|I*V work|, |term I|, 1 J).
+
+    Denominator pattern of WP-N1 source packet S4: the dimensionless residual
+    fraction is normalised against the largest of the two dominant power
+    channels (the terminal I*V work and the stored-magnetic term I) so a
+    near-zero numerator does not produce a spuriously large fraction.
+    """
     if residual_J is None:
         return None
-    denom = _residual_denominator(
-        terminal_port_work_J,
-        volume_j_dot_e_work_J,
-    )
+    denom = _residual_denominator(iv_work_J, term_i_J)
     if denom is None or denom == 0.0:
         return None
     return float(residual_J) / float(denom)
 
 
+# WP-N1B: Auluck 2021 eq. (6) six-term power-balance ledger keys.
+# Term labels I-VI are Auluck's own.
+# [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6), p.8]
+_WP_N1B_LEDGER_KEYS = (
+    "term_i_stored_magnetic_energy_rate_J",
+    "term_ii_motional_magnetic_sigma_p_J",
+    "term_iii_stored_electric_energy_rate_J",
+    "term_iv_motional_electric_sigma_p_J",
+    "term_v_resistive_sigma_p_J",
+    "term_vi_anomalous_poloidal_sigma_p_J",
+)
+
+# Backward-compatibility alias. The five-term WP-N1 ledger keys (which
+# included the non-Auluck "electrode_interface_work_J" closure residual) are
+# superseded by the WP-N1B six-term decomposition. Retained only so importers
+# of the old name resolve; the old closure-residual term is intentionally
+# absent.
+_WP_N1_LEDGER_KEYS = _WP_N1B_LEDGER_KEYS
+
+# WP-N1B: the verified Auluck eq. (1) sign convention. The leading MINUS is
+# load-bearing (Auluck p.6; verified extract "Sign convention" section). Any
+# ledger that does not record this string fails closed.
+# [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1), p.6]
+_AULUCK_EQ1_SIGN_CONVENTION = "V_12 = -(1/I) integral_Omega d3r (J.E)"
+
+# WP-N1B: runtime-support blockers. The package-native first-principles
+# runtime emits a `power_port_ledger` with stored-EM energy over Omega and
+# the four-label Omega partition, but it does NOT expose: (a) a reviewed
+# Sigma_p moving-boundary face set, (b) the plasma velocity v on Sigma_p
+# faces, (c) the resistivity eta on Sigma_p faces, (d) a magnetic/electric
+# split of the stored-EM energy. Every eq. (6) term therefore fails closed.
+# Investigated 2026-05-19: grep finds no `sigma_p` face set anywhere in
+# src/dpf/fields/*; `_accumulate_power_port_ledger` receives no velocity or
+# eta argument; `omega_stored_em_energy_J` returns only the combined
+# (1/2 eps0 E^2 + 1/2 mu0^-1 B^2). Expanding the runtime is out of WP-N1B
+# scope (WP-N3 reviewed PF-1000 geometry owns Sigma_p).
+_SIGMA_P_BLOCKER = (
+    "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry"
+)
+_STORED_SPLIT_BLOCKER = (
+    "stored_em_energy_magnetic_electric_split_not_exposed_by_runtime"
+)
+
+
+def _term_blocked_packet(reason: str, *, source_ref: str) -> dict[str, Any]:
+    """Return a fail-closed packet for one Auluck eq. (6) term."""
+    return {
+        "value_J": None,
+        "status": "blocked",
+        "blocker": reason,
+        "computed_independently": False,
+        "source_ref": source_ref,
+    }
+
+
 def build_wp_n1_auluck_power_port_ledger(
     ledger: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    """Return the WP-N1 Auluck named-domain five-term energy ledger.
+    """Return the WP-N1B Auluck eq. (6) six-term power-balance ledger.
 
-    Implements WP-N1 source packet sections 1-4. Terms 1, 2, 3, 5 are taken
-    from the simulator-emitted cumulative ledger. Term 4
-    (electrode_interface_work_J) is the labeled NON-INDEPENDENT closure
-    estimate per source packet section 6 gap G1 option (b): the Auluck eq 5/6
-    moving-boundary integrand is OCR-illegible and must not be invented, so
-    term 4 is defined as
-    terminal_port_work - volume_j_dot_e_work - wall_poynting - stored_em_delta.
-    This makes residual_J trivially close; that is EXPECTED and means the port
-    CANNOT support acceptance until an independent integrand exists.
+    Implements the WP-N1B power-port acceptance proposal. Auluck eq. (6) is
+
+        I(t)V(t) = I + II + III + IV + V + VI
+
+    where (verified extract eq. (6), p.8; term labels are Auluck's own):
+
+      I   = d/dt integral_Omega d3r (1/2 mu0^-1 B^2)   stored magnetic rate
+      II  = integral_Sigma_p dS.v (1/2 mu0^-1 B^2)     motional magnetic
+      III = d/dt integral_Omega d3r (1/2 eps0 E^2)     stored electric rate
+      IV  = - integral_Sigma_p dS.v (1/2 eps0 E^2)     motional electric
+      V   = mu0^-1 oint_Sigma_p dS.(eta J x B)         resistive
+      VI  = - mu0^-1 oint_Sigma_p dS.B (B.v)           anomalous/poloidal
+
+    Each term is computed INDEPENDENTLY from runtime fields. There is NO
+    closure-by-construction residual: the residual
+    I*V - (I+II+III+IV+V+VI) is a genuine, non-trivial diagnostic.
+
+    FAIL-CLOSED behaviour (WP-N1B proposal section 5/6, audit F1):
+      * Terms II, IV, V, VI are surface integrals over the MOVING boundary
+        Sigma_p. The runtime exposes no reviewed Sigma_p moving-boundary face
+        set, and no v / eta on Sigma_p faces. These four terms fail closed
+        with blocker `_SIGMA_P_BLOCKER` and value None.
+      * Terms I and III need the magnetic / electric stored-energy SPLIT.
+        The runtime's `omega_stored_em_energy_J` returns only the combined
+        stored-EM energy, so I and III cannot be separated as INDEPENDENT
+        terms; they fail closed with blocker `_STORED_SPLIT_BLOCKER`.
+      * If the runtime emitted no `power_port_ledger`, or did not record the
+        eq. (1) sign convention, the whole ledger fails closed.
+
+    A six-term structure with Sigma_p-dependent terms failing closed pending
+    WP-N3 geometry is the honest, acceptable outcome. No invented values.
     """
+    eq6_ref = "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8"
+    eq1_ref = "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1) p.6"
+
     if ledger is None:
         return {
-            "status": "blocked_wp_n1_power_port_ledger_not_available",
+            "status": "blocked_wp_n1b_power_port_ledger_not_available",
             "reason": (
                 "no circuit-coupled run; simulator emitted no power_port_ledger"
             ),
+            "auluck_eq6_decomposition": True,
             "auluck_omega_domain": _omega_domain_unavailable_packet(),
-            "energy_ledger_terms_J": {key: None for key in _WP_N1_LEDGER_KEYS},
+            "auluck_eq1_sign_convention": _AULUCK_EQ1_SIGN_CONVENTION,
+            "auluck_eq1_sign_convention_recorded": True,
+            "energy_ledger_terms_J": {key: None for key in _WP_N1B_LEDGER_KEYS},
+            "ledger_blocked": True,
+            "ledger_blocker": "no_power_port_ledger_telemetry",
+            "iv_work_J": None,
             "residual_J": None,
             "residual_fraction": None,
+            "residual_is_genuine_diagnostic": False,
             "accepted_residual_tolerance": "not_attached",
+            "source_refs": [eq6_ref, eq1_ref],
             "can_support_power_port_acceptance": False,
             "can_support_first_principles_acceptance": False,
         }
 
-    terminal_port_work_J = _optional_float(ledger, "cumulative_terminal_port_work_J")
-    volume_j_dot_e_work_J = _optional_float(
-        ledger, "cumulative_omega_volume_j_dot_e_work_J"
-    )
-    wall_poynting_J = _optional_float(
-        ledger, "cumulative_wall_poynting_flux_excluding_declared_port_J"
-    )
-    stored_em_delta_J = _optional_float(ledger, "stored_em_energy_delta_J")
+    # Eq. (1) sign-convention record. Auluck p.6: V_12 carries a leading
+    # minus. The runtime must record a sign-convention key for the I*V port
+    # work; if it does not, the ledger fails closed (a sign-unverified
+    # ledger cannot be a genuine residual diagnostic).
+    sign_convention_recorded = ledger.get("sign_convention") is not None
 
-    # Term 4 (G1): labeled non-independent closure estimate. NOT an
-    # independent integrand. Defined so the five-term sum closes by
-    # construction; residual is therefore trivially ~0.
-    electrode_interface_work_J = None
-    if (
-        terminal_port_work_J is not None
-        and volume_j_dot_e_work_J is not None
-        and wall_poynting_J is not None
-        and stored_em_delta_J is not None
-    ):
-        electrode_interface_work_J = (
-            terminal_port_work_J
-            - volume_j_dot_e_work_J
-            - wall_poynting_J
-            - stored_em_delta_J
-        )
+    # Terminal I*V cumulative work -- the LHS of eq. (6). This is an
+    # independent runtime channel (terminal current x voltage, time
+    # integrated); it is NOT one of the six RHS terms.
+    iv_work_J = _optional_float(ledger, "cumulative_terminal_port_work_J")
 
-    # Residual policy S4: residual = term1 - term2 - term3 - term5 - term4.
-    residual_J = None
+    # --- Terms I and III: stored magnetic / electric energy rates ---------
+    # Auluck eq. (6) I = d/dt integral_Omega (1/2 mu0^-1 B^2);
+    #                 III = d/dt integral_Omega (1/2 eps0 E^2).
+    # The runtime emits only the COMBINED stored-EM energy over Omega
+    # (omega_stored_em_energy_J = 1/2 eps0 E^2 + 1/2 mu0^-1 B^2). Splitting
+    # it into the magnetic-only and electric-only parts would require a
+    # runtime field-module change, which is out of WP-N1B scope. Terms I and
+    # III therefore fail closed: they cannot be emitted as INDEPENDENT
+    # quantities. (Substituting the combined delta for term I, or deriving
+    # term III by closure, is forbidden -- that is a closure-by-construction
+    # residual.)
+    term_i = _term_blocked_packet(_STORED_SPLIT_BLOCKER, source_ref=eq6_ref)
+    term_iii = _term_blocked_packet(_STORED_SPLIT_BLOCKER, source_ref=eq6_ref)
+
+    # --- Terms II, IV, V, VI: Sigma_p moving-boundary surface integrals ---
+    # Auluck eq. (6):
+    #   II  = integral_Sigma_p dS.v (1/2 mu0^-1 B^2)
+    #   IV  = - integral_Sigma_p dS.v (1/2 eps0 E^2)
+    #   V   = mu0^-1 oint_Sigma_p dS.(eta J x B)
+    #   VI  = - mu0^-1 oint_Sigma_p dS.B (B.v)
+    # Sigma_p is the MOVING part of the domain boundary (Auluck p.8:
+    # "stationary boundaries do not contribute"). The runtime exposes no
+    # reviewed Sigma_p moving-boundary face set, no plasma velocity v on
+    # Sigma_p faces, and no resistivity eta on Sigma_p faces. All four terms
+    # fail closed pending WP-N3 reviewed PF-1000 geometry. No invented value.
+    term_ii = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
+    term_iv = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
+    term_v = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
+    term_vi = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
+
+    term_packets = {
+        "term_i_stored_magnetic_energy_rate_J": term_i,
+        "term_ii_motional_magnetic_sigma_p_J": term_ii,
+        "term_iii_stored_electric_energy_rate_J": term_iii,
+        "term_iv_motional_electric_sigma_p_J": term_iv,
+        "term_v_resistive_sigma_p_J": term_v,
+        "term_vi_anomalous_poloidal_sigma_p_J": term_vi,
+    }
+    energy_ledger_terms_J = {
+        key: packet["value_J"] for key, packet in term_packets.items()
+    }
+    independent_terms = sorted(
+        key for key, packet in term_packets.items()
+        if packet["computed_independently"]
+    )
+    blocked_terms = {
+        key: packet["blocker"]
+        for key, packet in term_packets.items()
+        if packet["status"] == "blocked"
+    }
+
+    # --- Genuine residual: I*V - (I+II+III+IV+V+VI) ----------------------
+    # This is NOT a closure-by-construction residual. It is computed ONLY
+    # when every one of the six terms is an independently-computed value AND
+    # the eq. (1) sign convention is recorded. With any term failing closed
+    # the residual is None -- the ledger does not paper over a blocked term
+    # with a derived value. (WP-N1B proposal section 5: "it no longer closes
+    # by construction".)
+    all_terms_independent = all(
+        packet["computed_independently"] for packet in term_packets.values()
+    )
+    residual_J: float | None = None
+    residual_is_genuine = False
     if (
-        terminal_port_work_J is not None
-        and volume_j_dot_e_work_J is not None
-        and wall_poynting_J is not None
-        and stored_em_delta_J is not None
-        and electrode_interface_work_J is not None
+        all_terms_independent
+        and sign_convention_recorded
+        and iv_work_J is not None
+        and all(value is not None for value in energy_ledger_terms_J.values())
     ):
-        residual_J = (
-            terminal_port_work_J
-            - volume_j_dot_e_work_J
-            - wall_poynting_J
-            - stored_em_delta_J
-            - electrode_interface_work_J
+        residual_J = float(iv_work_J) - sum(
+            float(value) for value in energy_ledger_terms_J.values()
         )
+        residual_is_genuine = True
+
+    ledger_blocked = not residual_is_genuine
+    if not sign_convention_recorded:
+        ledger_blocker = "auluck_eq1_sign_convention_not_recorded"
+    elif blocked_terms:
+        ledger_blocker = "auluck_eq6_terms_fail_closed_pending_wp_n3_geometry"
+    elif iv_work_J is None:
+        ledger_blocker = "terminal_iv_work_not_available"
+    else:
+        ledger_blocker = None
 
     domain_partition = ledger.get("domain_partition")
     auluck_omega_domain = _build_auluck_omega_domain_packet(
@@ -400,65 +543,53 @@ def build_wp_n1_auluck_power_port_ledger(
     )
 
     return {
-        "status": "candidate_wp_n1_auluck_five_term_power_port_ledger_not_validation",
-        "source_basis": [
-            "Auluck 2021 DPF circuit-element relation eq 1 and Omega domain",
-            "NRL Plasma Formulary 2019 Poynting theorem",
-        ],
-        "source_refs": [
-            "KnowledgeReference/auluck-2021-dpf-circuit-element.md:173-257",
-            "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1869-1888",
-        ],
-        "auluck_omega_domain": auluck_omega_domain,
-        "energy_ledger_terms_J": {
-            "terminal_port_work_J": terminal_port_work_J,
-            "volume_j_dot_e_work_J": volume_j_dot_e_work_J,
-            "wall_poynting_flux_excluding_declared_port_J": wall_poynting_J,
-            "stored_em_energy_delta_J": stored_em_delta_J,
-            "electrode_interface_work_J": electrode_interface_work_J,
-        },
-        "energy_ledger_term_status": {
-            "terminal_port_work_J": _candidate_or_missing(terminal_port_work_J),
-            "volume_j_dot_e_work_J": _candidate_or_missing(volume_j_dot_e_work_J),
-            "wall_poynting_flux_excluding_declared_port_J": _candidate_or_missing(
-                wall_poynting_J
-            ),
-            "stored_em_energy_delta_J": _candidate_or_missing(stored_em_delta_J),
-            "electrode_interface_work_J": (
-                "closure_estimate_not_independent_blocked_g1"
-                if electrode_interface_work_J is not None
-                else "missing_or_blocked"
-            ),
-        },
-        "electrode_interface_work_J__closure_estimate_not_independent": (
-            electrode_interface_work_J
+        "status": (
+            "candidate_wp_n1b_auluck_six_term_power_port_ledger_not_validation"
         ),
-        "electrode_interface_work_independence": "not_independent_closure_estimate",
-        "electrode_interface_work_blocker": "G1_auluck_eq_5_6_ocr_illegible",
-        "fully_implemented_terms": [
-            "terminal_port_work_J",
-            "volume_j_dot_e_work_J",
-            "wall_poynting_flux_excluding_declared_port_J",
-            "stored_em_energy_delta_J",
+        "auluck_eq6_decomposition": True,
+        "source_basis": [
+            "Auluck 2021 DPF circuit-element eq. (6) six-term power balance",
+            "Auluck 2021 eq. (1) circuit-element relation (leading minus)",
+            "Auluck 2021 eq. (5) Sigma_p moving-boundary integrands",
         ],
-        "closure_estimate_terms": ["electrode_interface_work_J"],
+        "source_refs": [eq6_ref, eq1_ref],
+        "auluck_omega_domain": auluck_omega_domain,
+        # Eq. (1) sign convention recorded verbatim, leading minus included.
+        "auluck_eq1_sign_convention": _AULUCK_EQ1_SIGN_CONVENTION,
+        "auluck_eq1_sign_convention_recorded": sign_convention_recorded,
+        "auluck_eq1_leading_minus_is_load_bearing": True,
+        "iv_work_J": iv_work_J,
+        "iv_work_is_eq6_lhs_not_a_term": True,
+        "energy_ledger_terms_J": energy_ledger_terms_J,
+        "energy_ledger_term_packets": term_packets,
+        "energy_ledger_term_status": {
+            key: packet["status"] for key, packet in term_packets.items()
+        },
+        "independent_terms": independent_terms,
+        "blocked_terms": blocked_terms,
+        "all_six_terms_computed_independently": all_terms_independent,
         "residual_J": residual_J,
         "residual_fraction": _residual_fraction(
-            residual_J,
-            terminal_port_work_J,
-            volume_j_dot_e_work_J,
+            residual_J, iv_work_J, energy_ledger_terms_J[
+                "term_i_stored_magnetic_energy_rate_J"
+            ]
         ),
         "residual_definition": (
-            "terminal_port_work - volume_j_dot_e_work - wall_poynting "
-            "- stored_em_energy_delta - electrode_interface_work"
+            "I*V - (term_i + term_ii + term_iii + term_iv + term_v + term_vi)"
         ),
+        "residual_is_genuine_diagnostic": residual_is_genuine,
+        "residual_is_closure_by_construction": False,
         "residual_interpretation": (
-            "trivially_closes_because_term_4_is_closure_estimate_g1; "
-            "engineering_debug_diagnostic_only_not_power_port_acceptance"
+            "genuine_balance_diagnostic_when_all_six_terms_independent; "
+            "None_while_any_term_fails_closed_no_closure_substitution"
         ),
+        "ledger_blocked": ledger_blocked,
+        "ledger_blocker": ledger_blocker,
         "accepted_residual_tolerance": "not_attached",
         "tracked_energy_delta_is_residual": False,
-        "sign_convention": _wp_n1_sign_convention_packet(),
+        "sign_convention": _wp_n1b_sign_convention_packet(
+            sign_convention_recorded
+        ),
         "time_centering": _wp_n1_time_centering_packet(ledger),
         "first_step_fallback": bool(ledger.get("first_step_fallback")),
         "first_step_udpf_source": ledger.get("first_step_udpf_source"),
@@ -467,15 +598,6 @@ def build_wp_n1_auluck_power_port_ledger(
         "can_support_power_port_acceptance": False,
         "can_support_first_principles_acceptance": False,
     }
-
-
-_WP_N1_LEDGER_KEYS = (
-    "terminal_port_work_J",
-    "volume_j_dot_e_work_J",
-    "wall_poynting_flux_excluding_declared_port_J",
-    "stored_em_energy_delta_J",
-    "electrode_interface_work_J",
-)
 
 
 def _omega_domain_unavailable_packet() -> dict[str, Any]:
@@ -549,18 +671,33 @@ def _build_auluck_omega_domain_packet(
     }
 
 
-def _wp_n1_sign_convention_packet() -> dict[str, Any]:
-    """Return the WP-N1 S3.1 declared sign convention."""
+def _wp_n1b_sign_convention_packet(
+    sign_convention_recorded: bool,
+) -> dict[str, Any]:
+    """Return the WP-N1B declared sign convention, recording Auluck eq. (1).
+
+    The verified extract is explicit (Auluck p.6, "Sign convention"): eq. (1)
+    carries a leading MINUS, ``V_12 = -(1/I) integral_Omega d3r (J.E)``, and
+    that minus is load-bearing. This packet records that string verbatim so a
+    downstream consumer (or test) can fail closed if it is ever dropped.
+    [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1) p.6]
+    """
     return {
-        "status": "candidate_wp_n1_sign_convention_not_accepted",
-        "basis": "NRL Plasma Formulary 2019 Poynting theorem",
-        "source_ref": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md:1880-1888",
-        "surface_flux_terms": "outflow_positive_dS_outward",
-        "terminal_port_work_J": "positive_means_energy_entering_omega_from_generator",
-        "wall_poynting_flux_J": "positive_means_energy_leaving_omega_through_walls",
-        "volume_j_dot_e_work_J": "positive_means_field_work_on_charges",
-        "stored_em_energy_delta_J": "positive_means_stored_em_energy_increased",
-        "electrode_interface_work_J": "into_omega_positive_consistent_with_terminal",
+        "status": "candidate_wp_n1b_sign_convention_not_accepted",
+        "basis": "Auluck 2021 eq. (1) circuit-element relation",
+        "source_ref": (
+            "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1) p.6"
+        ),
+        # Verbatim eq. (1), leading minus included. This is the load-bearing
+        # convention; consistency: I.V_12 = -integral_Omega J.E.
+        "auluck_eq1_relation": _AULUCK_EQ1_SIGN_CONVENTION,
+        "auluck_eq1_leading_minus_is_load_bearing": True,
+        "auluck_eq1_consistency_check": "I*V_12 = -integral_Omega (J.E)",
+        "auluck_eq1_sign_convention_recorded": bool(sign_convention_recorded),
+        # Eq. (6) LHS I(t)V(t) is the power INPUT to the device, crossing the
+        # excluded source interface (Auluck p.8).
+        "iv_lhs": "positive_means_power_input_to_device_across_source_interface",
+        "surface_flux_terms": "outward_dS_per_auluck_eq6",
         "negative_local_j_dot_e_clipped": False,
         "can_support_power_port_acceptance": False,
     }
@@ -589,20 +726,23 @@ def _wp_n1_time_centering_packet(
 def build_wp_n1_negative_test_policy(
     ledger: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    """Return the WP-N1 S5 six-negative-test policy block.
+    """Return the WP-N1B six-negative-test policy block.
 
-    Enumerates exactly the six audit A-5 negative tests and the emitted
-    packet field each asserts on. The tests themselves live in
-    tests/test_first_principles_power_port.py and assert against these
-    emitted fields.
+    Enumerates the six negative tests for the Auluck eq. (6) six-term
+    ledger. N3 no longer references an "electrode work" term -- Auluck's
+    balance has no such term (verified extract: the electrode/source
+    interface is EXCLUDED from Omega and its flux IS the LHS I(t)V(t)).
+    The rewritten N3 omits one of the genuine eq. (6) terms II/IV/V/VI. The
+    tests themselves live in tests/test_first_principles_power_port.py and
+    assert against the emitted packet fields.
     """
     return {
-        "status": "candidate_wp_n1_negative_test_policy_not_validation",
+        "status": "candidate_wp_n1b_negative_test_policy_not_validation",
         "required_negative_tests": {
             "N1_sign_reversal": {
-                "corruption": "flip sign of terminal_port_work_J",
+                "corruption": "flip sign of the terminal I*V work",
                 "asserts_on": "residual_J and residual_fraction",
-                "expected": "residual jumps by ~2*terminal_port_work; fraction O(1)",
+                "expected": "residual is sign-sensitive when computable",
             },
             "N2_wrong_domain": {
                 "corruption": (
@@ -615,11 +755,17 @@ def build_wp_n1_negative_test_policy(
                 ),
                 "expected": "partition_valid becomes False",
             },
-            "N3_omitted_electrode_work": {
-                "corruption": "drop term 4 from the residual sum (set to 0)",
-                "asserts_on": "residual_J with electrode_interface_work_J omitted",
+            "N3_omitted_eq6_term": {
+                "corruption": (
+                    "omit one of the genuine Auluck eq. (6) terms II/IV/V/VI "
+                    "(there is no electrode-work term in Auluck's balance)"
+                ),
+                "asserts_on": (
+                    "energy_ledger_terms_J completeness and residual_J"
+                ),
                 "expected": (
-                    "residual no longer closes when dL/dt-type work is nonzero"
+                    "a six-term ledger missing any term II/IV/V/VI cannot "
+                    "emit a genuine residual; residual_J is None"
                 ),
             },
             "N4_low_current_p_over_i": {
@@ -635,7 +781,7 @@ def build_wp_n1_negative_test_policy(
                 "asserts_on": "first_step_fallback and first_step_udpf_source",
                 "expected": (
                     "step 0 marked fallback; no closed first-step residual "
-                    "claimed; all five terms share one centering"
+                    "claimed"
                 ),
             },
             "N6_default_mode_leakage": {
@@ -653,8 +799,11 @@ def build_wp_n1_negative_test_policy(
             },
         },
         "all_six_required": True,
+        "auluck_eq6_term_count": 6,
+        "no_electrode_work_term": True,
         "acceptance_unblocks_only_when": (
-            "source_backed_residual_tolerance_attached AND all_six_tests_pass"
+            "source_backed_residual_tolerance_attached AND "
+            "wp_n3_reviewed_sigma_p_geometry AND all_six_tests_pass"
         ),
         "can_support_power_port_acceptance": False,
     }
@@ -988,6 +1137,14 @@ def _candidate_stage0_energy_ledger(
             _optional_float(final, "magnetic_energy_J"),
         )
         stored_em_delta_J = _difference(final_em, initial_em)
+    # WP-N1B: this Stage-0 scaffold is a coarse Poynting accounting surface,
+    # NOT the Auluck eq. (6) ledger. The non-Auluck "electrode_interface_work"
+    # key has been removed -- the verified extract is explicit that Auluck's
+    # balance has no electrode-contact-work term (the source interface is
+    # excluded from Omega and its flux IS the LHS I(t)V(t)). The accepted
+    # Auluck six-term decomposition is build_wp_n1_auluck_power_port_ledger.
+    # [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md, "What this source ...
+    # DOES NOT provide"]
     return {
         "status": "candidate_stage0_energy_ledger_not_validation",
         "terms": {
@@ -999,7 +1156,6 @@ def _candidate_stage0_energy_ledger(
             ),
             "stored_em_energy_delta_J": stored_em_delta_J,
             "wall_poynting_flux_excluding_declared_port_J": None,
-            "electrode_interface_work_J": None,
         },
         "term_status": {
             "terminal_port_work_J": _candidate_or_missing(
@@ -1010,15 +1166,15 @@ def _candidate_stage0_energy_ledger(
             ),
             "stored_em_energy_delta_J": _candidate_or_missing(stored_em_delta_J),
             "wall_poynting_flux_excluding_declared_port_J": "missing_or_blocked",
-            "electrode_interface_work_J": "missing_or_blocked",
         },
+        "auluck_six_term_ledger_is": "build_wp_n1_auluck_power_port_ledger",
         "source_basis": [
             "Poynting theorem",
             "Auluck source-interface exclusion and field-power relation",
         ],
         "interpretation": (
-            "candidate accounting surface only; missing wall Poynting and "
-            "electrode/interface work prevent power-port acceptance"
+            "candidate accounting surface only; the Auluck eq. (6) six-term "
+            "ledger is the power-balance authority and is not yet closed"
         ),
         "can_support_power_port_acceptance": False,
     }
