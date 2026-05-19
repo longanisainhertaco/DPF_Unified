@@ -159,9 +159,33 @@ added `src/dpf/first_principles/segmented_whole_shot_combine.py` and
 `UNKNOWN_AND_INFERENCE_LOG.md` under the packet, and
 `tests/test_external_team_submission_package.py`.
 
-The trailing changelog-wrapper commit modifies only this `CHANGELOG.md` and
-`tests/test_external_team_submission_package.py`; it is HEAD-exempt from the
-changelog-coverage test by construction.
+`092871b` — docs: changelog catch-up for WP-N1B/WP-N4B and HEAD-exempt
+changelog test; modified `CHANGELOG.md` and
+`tests/test_external_team_submission_package.py`.
+
+`ada801c` — docs: add Sprint 2 implementation audit and next directions
+(`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`);
+documentation-only.
+
+### Sprint 2.1 Implementation Pass — F1/F3/F4/F5
+
+`65c477f` — feat: compute Auluck power-port terms I and III, drop electrode_work
+wording (F1/F3/F5); modified `src/dpf/first_principles/power_port.py`,
+`src/dpf/fields/hybrid_simulator.py`, `src/dpf/fields/hybrid_stepper.py`,
+`tests/test_first_principles_power_port.py`, and
+`docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`.
+
+`21d4e07` — fix: harden the WP-N4B combiner with cross-restart ledger
+invariants (F4); modified
+`src/dpf/first_principles/segmented_whole_shot_combine.py`,
+`tests/test_first_principles_segmented_whole_shot_combine.py`, and
+`sprint_2/WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`.
+
+The final commit of this pass — the F2 SRS/RTM traceability sync — also updates
+this `CHANGELOG.md`; by construction it cannot list its own hash and is
+HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
+(`76480b0..HEAD~1`), the same constraint Codex audit F4 accepted for
+`AUDIT_COMMANDS.md`.
 
 ## Deleted / quarantined artifacts
 

@@ -57,34 +57,39 @@ gate Sprint 2 acceptance and are carried as rows `RC-1`…`RC-7` in
 addressed in this packet revision; RC-2/RC-4/RC-5/RC-6/RC-7 are the Sprint 1.1
 fix set.
 
-## Sprint 2 outcome — WP-N1B and WP-N4B proposals delivered
+## Sprint 2 outcome — WP-N1B and WP-N4B implementation delivered as fail-closed runtime code
 
-- **WP-N1B power port.** Auluck eqs. (1)-(14) were read directly from the
-  on-disk primary PDF and ingested verbatim into
-  `KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md` (the
-  auto-extracted KR markdown was OCR-garbled). Verified finding: the audit's
-  WP-N1B "electrode/interface work" term is a **category error** — Auluck's
-  eq. (6) is a six-term balance (stored magnetic, motional magnetic, stored
-  electric, motional electric, resistive, anomalous) with **no**
-  electrode-contact-work term; Auluck excludes the electrode interface from the
-  domain. The source-faithful implementation path is Auluck eq. (5)/(6) terms
-  II/IV/V/VI as independent `Sigma_p` surface integrals. Power-port acceptance
-  remains blocked (residual tolerance, time-centering, WP-N3 geometry). Files:
-  `sprint_2/WP_N1B_*`.
-- **WP-N4B 12 us orchestration.** 12 us at `dt = 1e-13 s` is 120,000,000 steps;
-  the per-step compute floor was measured at 5.23 ms (compact grid); the
-  production wall-clock is blocked on the WP-N3 grid size; the cross-restart
-  ledger-merge and artifact-combiner are specified but unbuilt. Files:
-  `sprint_2/WP_N4B_*`.
+- **WP-N1B power port (commit `4b080eb`).** The six-term Auluck eq. (6) ledger
+  contract is now implemented as fail-closed runtime code in
+  `src/dpf/first_principles/power_port.py`. The prior "electrode/interface work"
+  term is absent — it was a category error; Auluck excludes the electrode
+  interface from the integration domain Omega. All six terms (I: stored magnetic
+  rate; II: motional magnetic Sigma_p; III: stored electric rate; IV: motional
+  electric Sigma_p; V: resistive Sigma_p; VI: anomalous/poloidal Sigma_p) are
+  fail-closed: terms I and III are blocked on the magnetic/electric stored-EM
+  split not exposed by the runtime; terms II, IV, V, VI are blocked on the
+  reviewed Sigma_p moving-boundary geometry (requires WP-N3). The code computes
+  nothing until those blockers are resolved — no invented values, no closure
+  substitutions. 27 new tests pass (`tests/test_first_principles_power_port.py`).
+  Power-port acceptance remains blocked.
+- **WP-N4B 12 us orchestration (commit `4c8dac1`).** A candidate cross-restart
+  ledger-merge and artifact-combiner is now implemented in
+  `src/dpf/first_principles/segmented_whole_shot_combine.py`, providing
+  `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with
+  fail-closed gap/overlap/missing-manifest/empty-input checks and a two-restart
+  positive test against an uninterrupted short run. 27 new tests pass
+  (`tests/test_first_principles_segmented_whole_shot_combine.py`). The 12 us
+  compute-wall, production-grid wall-clock, and long-run restart evidence remain
+  blocked on WP-N3 grid size.
 
-Sprint 2 delivers proposals and source-status verdicts only. No physics blocker
+Sprint 2 delivers implementation as engineering candidates. No physics blocker
 is closed; no power-port or whole-shot acceptance is claimed.
 
 ## Verification headlines
 
 All audit Submission-1 commands pass (full transcript: `AUDIT_COMMANDS.md`).
 
-- Broad first-principles/hybrid suite: **275 passed**, 9 warnings.
+- Broad first-principles/hybrid suite: **298 passed**, 9 warnings.
 - Focused Submission-1 suite: 62 passed.
 - Artifact linter: active root 0 failed; recursive `results/**/*.json` 0 failed.
 - Read-only verification gates: exit 0, zero worktree writes.

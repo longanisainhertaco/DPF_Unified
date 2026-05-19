@@ -41,7 +41,7 @@ control-gate blockers A-1 through A-7 are closed:
 - A-7: `DPF-PHYS-020` and `DPF-PHYS-023` moved to `partial` with explicit
   acceptance blockers; RTM regenerated; Sprint 0 closed-with-debt.
 
-Verification: broad first-principles/hybrid suite 275 passed; ruff slice clean;
+Verification: broad first-principles/hybrid suite 275 passed at Sprint 1 baseline; ruff slice clean;
 artifact linter 0 failed on both active and recursive scans; read-only gates
 exit 0 with no worktree writes; worktree clean. Full transcript in
 `AUDIT_COMMANDS.md`.
@@ -66,33 +66,34 @@ Seven RC items gating Sprint 2 acceptance, all closed:
 Verification: 75 focused package/control tests passed; 283 broad tests passed;
 ruff clean; artifact linter 0 failed on both scans; worktree clean.
 
-## Sprint 2 — WP-N1B / WP-N4B (proposals delivered; implementation underway)
+## Sprint 2 — WP-N1B / WP-N4B (implementation delivered as fail-closed runtime code)
 
-Six proposal and source-status documents delivered under `sprint_2/`:
+Six proposal and source-status documents delivered under `sprint_2/`. Implementation
+commits `4b080eb` (WP-N1B) and `4c8dac1` (WP-N4B) followed:
 
-- `WP_N1B_POWER_PORT_ACCEPTANCE_PROPOSAL.md` — six-term Auluck ledger
-  implementation path; power-port acceptance remains blocked (residual
-  tolerance, time-centering, WP-N3 geometry).
-- `WP_N1B_AULUCK_EQ_5_6_SOURCE_STATUS.md` — eq. (5)/(6) source verdict; the
-  OCR-garbled KR extract superseded by a verified-PDF transcript.
-- `WP_N1B_RESIDUAL_TOLERANCE_SOURCE_STATUS.md` — no local KR source for the
-  residual tolerance value; remains an open source gap.
-- `WP_N1B_TIME_CENTERING_PROPOSAL.md` — time-centering strategy.
-- `WP_N4B_12US_ORCHESTRATION_PROPOSAL.md` — 12 us orchestration design;
-  per-step compute floor measured at 5.23 ms (compact grid, 12 us compute
-  wall ~120 M steps).
-- `WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md` — cross-restart
-  merge/combiner specified; unbuilt.
+- **WP-N1B six-term Auluck ledger contract (commit `4b080eb`).** The Auluck eq. (6)
+  six-term power-port ledger is implemented as fail-closed runtime code in
+  `src/dpf/first_principles/power_port.py`. The "electrode/interface work" term
+  is absent — it was a category error (Auluck excludes the electrode interface
+  from the integration domain Omega). Terms I/III fail closed pending the
+  magnetic/electric stored-EM split; terms II/IV/V/VI fail closed pending the
+  reviewed Sigma_p moving-boundary geometry from WP-N3. The code computes nothing
+  until those blockers are resolved. 27 new tests pass.
+- **WP-N4B cross-restart combiner (commit `4c8dac1`).** `merge_cumulative_ledgers()`
+  and `combine_whole_run_artifacts()` are implemented in
+  `src/dpf/first_principles/segmented_whole_shot_combine.py` with fail-closed
+  gap/overlap/missing-manifest/empty-input checks and a two-restart positive test.
+  27 new tests pass. The 12 us compute-wall, production-grid wall-clock, and
+  long-run restart evidence remain blocked.
 
-Implementation currently underway this session: WP-N1B six-term Auluck ledger
-coding and WP-N4B cross-restart merge/combiner coding (parallel agents). No
-physics blocker is closed; no acceptance is claimed.
+No physics blocker is closed; no acceptance is claimed. `can_support_first_principles_acceptance`
+is `false` for all Sprint 2 code.
 
-Key verified finding: the audit's WP-N1B "electrode/interface work" term is a
+Key verified finding (retained): the audit's WP-N1B "electrode/interface work" term is a
 category error — Auluck eq. (6) is a six-term balance (stored magnetic, motional
 magnetic, stored electric, motional electric, resistive, anomalous) with no
 electrode-contact-work term; Auluck excludes the electrode interface from the
-domain.
+domain. This verdict is now encoded in the implementation.
 
 ## Sprint 3 — physics blockers (pending)
 

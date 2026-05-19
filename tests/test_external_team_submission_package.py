@@ -8,6 +8,9 @@ Also includes package-consistency tests (Next Instruction 2):
   - No packet markdown may reference PENDING.md (the placeholder was removed).
   - README.md and THREE_SPRINT_FINAL_SUMMARY.md must agree on Sprint 2 status.
   - CHANGELOG.md must mention every commit hash present in git log 76480b0..HEAD.
+  - No authority wording "five-term" (Auluck ledger) or "electrode/interface work"
+    / "electrode-work" as a balance term may survive in SRS/RTM artifacts after
+    the Sprint 2 implementation (F2 consistency gate).
 """
 from __future__ import annotations
 
@@ -201,4 +204,127 @@ def test_changelog_covers_all_commits_since_base() -> None:
     assert not missing, (
         "CHANGELOG.md omits the following commit hashes from "
         f"git log {_CHANGELOG_BASE}..HEAD:\n  " + "\n  ".join(missing)
+    )
+
+
+# ---------------------------------------------------------------------------
+# F2 Auluck-ledger authority-wording consistency gate
+# ---------------------------------------------------------------------------
+
+# Paths in the SRS/RTM control plane that must not carry stale Auluck-ledger
+# authority wording (five-term, electrode/interface work as a balance term).
+_SRS_RTM_PATHS = [
+    REPO_ROOT / "docs" / "DPF_REQUIREMENTS_BASELINE.md",
+    REPO_ROOT / "docs" / "SRS_TRACEABILITY_MATRIX.csv",
+    REPO_ROOT / "docs" / "SRS_TRACEABILITY_MATRIX.json",
+    PACKET_DIR / "RTM_DELTA.md",
+]
+
+# Words on the same line that mark a mention as explicitly historical/retracted
+# or explicitly negating the term.
+_RETRACTION_MARKERS = (
+    "removed",
+    "retracted",
+    "category error",
+    "superseded",
+    "prior",
+    "old",
+    "replaced",
+    "there is no",
+    "no electrode",
+    "is not",
+    "is absent",
+    "excluded",
+)
+
+
+def _line_is_exempt(line: str) -> bool:
+    """Return True if the line explicitly marks itself as a retraction/negation."""
+    lower = line.lower()
+    return any(marker in lower for marker in _RETRACTION_MARKERS)
+
+
+def _check_five_term_auluck_ledger(text: str) -> list[tuple[int, str]]:
+    """Find lines that claim a five-term Auluck ledger as current authority.
+
+    Only matches "five-term" when paired with "Auluck" or "ledger" within
+    80 characters, so it targets authority claims rather than unrelated uses.
+    """
+    bad: list[tuple[int, str]] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if _line_is_exempt(line):
+            continue
+        if not re.search(r"five.term", line, re.IGNORECASE):
+            continue
+        # Must also reference ledger or Auluck on the same line to be in scope.
+        if re.search(r"(auluck|ledger|power.port|power.balance)", line, re.IGNORECASE):
+            bad.append((lineno, line.strip()))
+    return bad
+
+
+def _check_electrode_interface_work_as_balance_term(
+    text: str,
+) -> list[tuple[int, str]]:
+    """Find lines that use "electrode/interface work" as a current ledger
+    balance term.
+
+    Allowed: lines that explicitly negate or retract it (e.g., "there is no
+    electrode/interface work term", "electrode/interface work term removed",
+    "retracted ... electrode/interface work").
+    Not targeted: DPF-PHYS-016 references to circuit-power-port test
+    requirements, which test for "electrode-work" as a *test name*, not as
+    an Auluck ledger term.  DPF-PHYS-016 lines are identified by the presence
+    of "DPF-PHYS-016" on the same line.
+    """
+    bad: list[tuple[int, str]] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if _line_is_exempt(line):
+            continue
+        # DPF-PHYS-016 is a separate requirement about circuit-power-port
+        # acceptance tests, not an Auluck ledger authority claim. Skip.
+        if "DPF-PHYS-016" in line or "phys-016" in line.lower():
+            continue
+        if re.search(r"electrode[/ -]interface\s+work", line, re.IGNORECASE):
+            bad.append((lineno, line.strip()))
+    return bad
+
+
+@pytest.mark.parametrize("artifact_path", _SRS_RTM_PATHS, ids=lambda p: p.name)
+def test_srs_rtm_artifact_has_no_stale_five_term_auluck_authority(
+    artifact_path: Path,
+) -> None:
+    """SRS/RTM artifacts must not assert a five-term Auluck ledger as current
+    authority after Sprint 2 implementation (F2 consistency gate, part 1).
+
+    A line matches if it contains "five-term" alongside "auluck", "ledger",
+    "power-port", or "power-balance" without an explicit retraction marker.
+    """
+    assert artifact_path.exists(), f"SRS/RTM artifact not found: {artifact_path}"
+    text = artifact_path.read_text(encoding="utf-8")
+    bad = _check_five_term_auluck_ledger(text)
+    assert not bad, (
+        f"{artifact_path.name} contains stale five-term Auluck authority wording "
+        "(Sprint 2 F2 consistency gate):\n"
+        + "\n".join(f"  line {ln}: {ln_text!r}" for ln, ln_text in bad)
+    )
+
+
+@pytest.mark.parametrize("artifact_path", _SRS_RTM_PATHS, ids=lambda p: p.name)
+def test_srs_rtm_artifact_has_no_electrode_interface_work_as_balance_term(
+    artifact_path: Path,
+) -> None:
+    """SRS/RTM artifacts must not use electrode/interface work as a current
+    Auluck balance term after Sprint 2 implementation (F2 consistency gate, part 2).
+
+    Lines on DPF-PHYS-016 (circuit power port acceptance tests) are exempt
+    because electrode-work there is a test name, not an Auluck ledger term.
+    Lines that explicitly negate or retract the term are also exempt.
+    """
+    assert artifact_path.exists(), f"SRS/RTM artifact not found: {artifact_path}"
+    text = artifact_path.read_text(encoding="utf-8")
+    bad = _check_electrode_interface_work_as_balance_term(text)
+    assert not bad, (
+        f"{artifact_path.name} still uses electrode/interface work as an Auluck "
+        "balance term (Sprint 2 F2 consistency gate):\n"
+        + "\n".join(f"  line {ln}: {ln_text!r}" for ln, ln_text in bad)
     )

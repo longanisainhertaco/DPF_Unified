@@ -1,38 +1,49 @@
-# RTM Delta — Submission 1
+# RTM Delta — Submission 1 + Sprint 2 Implementation Update
 
-Audit finding: A-7. Commit: `fe038f7`.
+Initial delta: audit finding A-7. Commit: `fe038f7`.
+Sprint 2 implementation update: commits `4b080eb` (WP-N1B) and `4c8dac1` (WP-N4B).
 
 ## Changed requirement rows
 
 ### DPF-PHYS-020 (WP-N1 power port)
 
-- Status: `blocked` → `partial`.
-- Rationale: a candidate Auluck-style five-term power-port ledger now exists in
-  `src/dpf/first_principles/power_port.py` (terminal port work, Omega-volume
-  J·E work, wall Poynting excluding the declared port, stored EM-energy delta,
-  electrode/interface work). Term 4 is explicitly labeled
-  `electrode_interface_work_J__closure_estimate_not_independent` and
-  `can_support_first_principles_acceptance` remains `False`.
-- Acceptance remains blocked (audit P-1): non-independent electrode/interface
-  work; no accepted Auluck eq. 5/6 moving-boundary electrode-work
-  implementation; no source-backed residual tolerance; only step-consistent
-  time-centering; candidate-only geometry masks; no same-scope power-port review
-  packet.
-- Not promoted to `implemented`. `partial` = candidate exists, acceptance
-  blocked.
+- Status: `blocked` → `partial` (unchanged; remains `partial` after Sprint 2 implementation).
+- Submission-1 rationale: a candidate Auluck-style ledger was introduced in
+  `src/dpf/first_principles/power_port.py`.
+- Sprint 2 implementation update (commit `4b080eb`): the ledger is now a
+  source-faithful Auluck eq. (6) **six-term** structure. The prior
+  "electrode/interface work" term (retracted finding F2: it was a category error
+  — Auluck excludes the electrode interface from the integration domain Omega)
+  has been removed. The six terms are: I (stored magnetic energy rate), II
+  (motional magnetic Sigma_p), III (stored electric energy rate), IV (motional
+  electric Sigma_p), V (resistive Sigma_p), VI (anomalous/poloidal Sigma_p).
+  The ledger is fail-closed: all six terms return `None` because the runtime
+  does not expose the magnetic/electric stored-EM split (blocks I and III) or a
+  reviewed Sigma_p moving-boundary face set (blocks II, IV, V, VI). The residual
+  `I*V - (I+II+III+IV+V+VI)` is a genuine non-trivial diagnostic — it is emitted
+  only when all six terms are independently computed.
+- `can_support_first_principles_acceptance` remains `False`.
+- Acceptance remains blocked: magnetic/electric stored-EM split; reviewed Sigma_p
+  moving-boundary geometry (requires WP-N3); source-backed residual tolerance;
+  accepted high-order time-centering; reviewed PF-1000 geometry masks; same-scope
+  power-port review packet.
+- Not promoted to `implemented`.
 
 ### DPF-PHYS-023 (WP-N4 segmented whole-shot runtime)
 
-- Status: `blocked` → `partial`.
-- Rationale: a candidate segmented whole-shot runner now exists (static segment
-  planner, segmented execution, checkpoint roundtrip through the fail-closed
-  loader, per-segment manifests, cumulative ledgers, small-horizon
-  restart-equivalence evidence, explicit 12 us compute-wall blocker reporting).
-  Cross-restart cumulative-ledger continuity was fixed this sprint (A-6).
-- Acceptance remains blocked: the 12 us source-sign compute-wall (a ~1e-13 s
-  timestep implies ~1.2e8 steps); production orchestration / cross-restart
-  ledger-merge / artifact-combiner not built (WP-N4B); restart-equivalence
-  evidence only at small horizon.
+- Status: `blocked` → `partial` (unchanged; remains `partial` after Sprint 2 implementation).
+- Submission-1 rationale: a candidate segmented whole-shot runner was introduced
+  with cross-restart cumulative-ledger continuity (A-6).
+- Sprint 2 implementation update (commit `4c8dac1`): a candidate cross-restart
+  ledger-merge and artifact-combiner now exists at
+  `src/dpf/first_principles/segmented_whole_shot_combine.py`, providing
+  `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with
+  fail-closed gap/overlap/missing-manifest/empty-input checks. A two-restart
+  positive test against an uninterrupted short run is included.
+- Acceptance remains blocked: the 12 us source-sign compute-wall (~1.2e8 steps
+  at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size;
+  long-run cross-restart restart-equivalence evidence at production horizon not
+  yet demonstrated.
 - Not promoted to `implemented`.
 
 ## Summary count delta (`SRS_TRACEABILITY_MATRIX.json` `summary.status_counts`)
