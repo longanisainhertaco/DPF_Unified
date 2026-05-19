@@ -71,9 +71,20 @@ S3.1 scoped changes to the packet documents (no SRS/RTM edits, no src/ edits):
 - `tests/test_external_team_submission_package.py`: new S3.1 consistency tests
   added (stale-state rejection, shorthand-citation rejection).
 
-The final commit of this packet revision is a documentation-only changelog
-wrapper: it updates this `CHANGELOG.md` and `tests/test_external_team_submission_package.py`
-and, by construction, cannot list its own hash. The package-consistency test
+### Sprint 3 Implementation And Traceability (`0b8fa97`..HEAD)
+
+Sprint 3 packages S3.1–S3.9 are committed: `100d87d` (S3.1 packet hygiene),
+`0e91f08` (S3.2/S3.3 PF-1000 geometry packet + Sigma_p plumbing), `06744fd`
+(S3.4 typed startup BVP packet), `7dd1994` (S3.5 closure registry + PlasmaPy
+regime gate), `d1dc17c` (S3.6 mechanism-separated neutron authority packet),
+`6660eb9` (S3.7/S3.8 numerical acceptance gates + certificate scaffold),
+`f7bb9f8` (module-source-vetting regeneration), `e9b3c20` (S3.9 SRS/RTM and
+packet-ledger traceability). The Sprint 3 final submission is
+`sprint_3/SPRINT_3_FINAL_SUBMISSION.md`.
+
+The final commit of this packet revision is a documentation-only wrapper: it
+adds `SPRINT_3_FINAL_SUBMISSION.md` and updates this `CHANGELOG.md`, and by
+construction cannot list its own hash. The package-consistency test
 `test_changelog_covers_all_commits_since_base` exempts HEAD for exactly this
 reason (it checks `76480b0..HEAD~1`).
 
