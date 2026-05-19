@@ -15,7 +15,6 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-
 _AKEL_2021_SOURCE_PATH = (
     "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md"
 )

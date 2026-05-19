@@ -6,7 +6,7 @@ from dpf.validation import lee_model_comparison
 
 
 def test_lee_model_reflected_shock_uses_kr_rankine_hugoniot_ratio() -> None:
-    assert lee_model_comparison._D2_STRONG_SHOCK_COMPRESSION == pytest.approx(4.0)
+    assert pytest.approx(4.0) == lee_model_comparison._D2_STRONG_SHOCK_COMPRESSION
 
     source = inspect.getsource(lee_model_comparison.LeeModel.run)
     assert "8.0 * rho0" not in source

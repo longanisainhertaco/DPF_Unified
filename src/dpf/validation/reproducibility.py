@@ -21,7 +21,7 @@ import hashlib
 import json
 import platform
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -165,7 +165,7 @@ def create_reproducibility_package(
 
     package = {
         "dpf_unified_reproducibility": "1.0",
-        "created": datetime.now(timezone.utc).isoformat(),
+        "created": datetime.now(UTC).isoformat(),
         "software": {
             "name": "DPF-Unified",
             "git": git,

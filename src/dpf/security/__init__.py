@@ -5,8 +5,8 @@ from dpf.security.local_first import (
     LocalFirstPolicy,
     RuntimeAIMutationFinding,
     local_first_security_audit,
-    scan_runtime_ai_mutation_boundaries,
     scan_hardware_control_imports,
+    scan_runtime_ai_mutation_boundaries,
 )
 
 __all__ = [

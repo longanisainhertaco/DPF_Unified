@@ -246,7 +246,7 @@ class TestPresetSmoke:
 # MLX MHD validation (requires Apple Silicon + MLX)
 # ---------------------------------------------------------------------------
 
-from dpf.metal.mlx_device import HAS_MLX
+from dpf.metal.mlx_device import HAS_MLX  # noqa: E402
 
 
 @pytest.mark.validation

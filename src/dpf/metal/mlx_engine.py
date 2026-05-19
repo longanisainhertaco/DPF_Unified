@@ -19,18 +19,17 @@ from typing import Any
 
 import numpy as np
 
+from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_coupling import (
     coupling_method_authority,
     evaluate_mhd_coupling_gate,
 )
-from dpf.metal.mlx_circuit import MLXCircuitSolver
 from dpf.metal.mlx_snowplow import MLXSnowplow
 from dpf.presets import get_preset, list_presets
 from dpf.validation.first_principles_mhd import (
     annotate_first_principles_mhd_result,
     normalize_first_principles_run_mode,
 )
-
 
 _REDUCED_PHASE_MODEL_AUTHORITY: dict[str, Any] = {
     "model": "reduced_mlx_snowplow",

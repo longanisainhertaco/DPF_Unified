@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-
 HYBRID_PIC_3D_SOURCE = (
     "KnowledgeReference/"
     "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"

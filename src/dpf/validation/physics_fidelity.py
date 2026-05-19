@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-
 _KR_SOURCE_BASIS = {
     "ordinary_mhd_limits": (
         "KnowledgeReference/unlimited-release-printed-september-2009-"

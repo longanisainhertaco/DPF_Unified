@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 CALIBRATION_PROVENANCE_CLASS = "optimized_parameter_fit"
 CALIBRATION_VALIDATION_STATUS = "not_validation_evidence"
 CALIBRATION_RESULT_LABEL = "Calibration Fit"

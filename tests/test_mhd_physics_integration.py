@@ -18,8 +18,8 @@ from app_mhd import (
     _apply_post_processing,
     _first_principles_eta_field,
     _neutron_mechanism_output_summary,
-    run_pf1000_akel_first_principles,
     run_mhd_simulation,
+    run_pf1000_akel_first_principles,
 )
 from dpf.validation import pf1000_16kv_akel_table_targets
 

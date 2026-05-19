@@ -17,7 +17,6 @@ from dpf.validation.circuit_field_coupling import field_coupling_evidence_from_r
 from dpf.validation.first_principles_limiters import first_principles_limiter_status
 from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
 
-
 FIRST_PRINCIPLES_MHD_MODE = "first_principles_mhd"
 FIRST_PRINCIPLES_MHD_EXECUTION_MODE = "mhd"
 PF1000_AKEL_SOURCE_SCOPE = "pf1000_16kv_2021_akel_shot12581"

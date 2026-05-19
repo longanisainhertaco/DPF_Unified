@@ -14,11 +14,11 @@ Checks:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-import re
 
 _REQUIRED_CIRCUIT_METRICS = {"peak_current", "peak_time", "waveform_shape"}
 _REQUIRED_SNOWPLOW_PHASES = {"axial", "radial", "pinch"}
@@ -469,7 +469,7 @@ def _observed_snowplow_phase_times(
     radial_start = None
     pinch_time = None
     phases_seen: set[str] = set()
-    for time_s, label in zip(times, labels):
+    for time_s, label in zip(times, labels, strict=False):
         phases_seen.add(label)
         if radial_start is None and label in _RADIAL_PHASE_LABELS:
             radial_start = time_s
@@ -2241,9 +2241,7 @@ def scientific_accuracy_gap_report(result: dict | None = None) -> list[Scientifi
         in mhd_numerical_evidence.get("missing_or_unvalidated_evidence", [])
     ):
         tier3_status = "blocked"
-    elif isinstance(mhd_numerical_evidence, dict):
-        tier3_status = "partial"
-    elif tier3_raw_status in {"supported", "verification_only"}:
+    elif isinstance(mhd_numerical_evidence, dict) or tier3_raw_status in {"supported", "verification_only"}:
         tier3_status = "partial"
     else:
         tier3_status = "blocked"

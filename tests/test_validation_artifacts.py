@@ -20,13 +20,13 @@ from dpf.validation.artifacts import (
     backend_authority_for,
     build_run_manifest,
     build_validation_certificate,
+    classify_result,
     embed_hdf5_run_metadata,
     file_sha256,
     manifest_path_for_output,
-    classify_result,
     stable_json_hash,
-    write_validation_certificate,
     write_run_manifest,
+    write_validation_certificate,
 )
 
 

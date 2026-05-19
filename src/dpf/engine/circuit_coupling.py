@@ -870,7 +870,6 @@ def _dynamic_sheath_pressure(self) -> float:
         return fallback
 
     dr = self.config.dx
-    dz = self.config.geometry.dz if self.config.geometry.dz else dr
 
     if self.snowplow.phase == "rundown":
         # The Lee/RADPF axial equation uses cold molecular fill pressure p0.

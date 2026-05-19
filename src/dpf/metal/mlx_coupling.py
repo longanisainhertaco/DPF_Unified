@@ -15,7 +15,6 @@ import numpy as np
 from dpf.core.bases import CouplingState
 from dpf.metal.constants import MU_0
 
-
 _COUPLING_METHOD_AUTHORITY: dict[str, dict[str, Any]] = {
     "density_weighted_lp": {
         "method": "density_weighted_lp",

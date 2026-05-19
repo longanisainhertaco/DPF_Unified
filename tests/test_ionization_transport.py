@@ -1,6 +1,7 @@
 import numpy as np
 
-from dpf.constants import e as ELEMENTARY_CHARGE, m_d as DEUTERON_MASS_KG
+from dpf.constants import e as ELEMENTARY_CHARGE  # noqa: N812
+from dpf.constants import m_d as DEUTERON_MASS_KG  # noqa: N812
 from dpf.experimental.pic.hybrid import HybridPIC
 from dpf.fields.ionization_transport import (
     DeuteriumIonizationTransport,
@@ -110,7 +111,7 @@ def test_ionization_particle_source_creates_macroparticle_weight() -> None:
     assert pic.species[0].n_particles() == np.prod(grid.shape)
     np.testing.assert_allclose(
         np.sum(pic.species[0].weights),
-        np.sum((next_state.ion_density_m3 - previous.ion_density_m3))
+        np.sum(next_state.ion_density_m3 - previous.ion_density_m3)
         * grid.dx
         * grid.dy
         * grid.dz,

@@ -6,7 +6,6 @@ import math
 from collections.abc import Mapping, Sequence
 from numbers import Real
 
-
 _KR_SOURCE_BASIS = {
     "auluck_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
     "beresnyak_mhd_coupling": (
@@ -309,7 +308,7 @@ def _normalized_labels(value: object) -> set[str]:
 
 def _strictly_decreasing(values: Sequence[float]) -> bool:
     return len(values) >= 2 and all(
-        later < earlier for earlier, later in zip(values, values[1:])
+        later < earlier for earlier, later in zip(values, values[1:], strict=False)
     )
 
 

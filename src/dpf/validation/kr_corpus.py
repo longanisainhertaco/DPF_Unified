@@ -6,7 +6,6 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-
 _DPF_FILENAME_MARKERS = (
     "dense-plasma-focus",
     "plasma-focus",

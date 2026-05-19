@@ -30,7 +30,6 @@ import numpy as np
 from dpf.constants import c as c_light
 from dpf.constants import k_B
 
-
 RADIATION_TRANSPORT_MODEL_ROLE = "engineering_fld_transport_scaffold"
 RADIATION_TRANSPORT_SOURCE_STATUS = "rosseland_kramers_fld_source_packet_missing"
 RADIATION_TRANSPORT_VALIDATION_STATUS = "not_validation_evidence"

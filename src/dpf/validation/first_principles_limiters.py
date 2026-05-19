@@ -11,7 +11,6 @@ from collections.abc import Iterable, Mapping
 
 import numpy as np
 
-
 ACCEPTANCE_BLOCKING_CLASSIFICATIONS = {
     "acceptance_blocker",
     "debug_repair",

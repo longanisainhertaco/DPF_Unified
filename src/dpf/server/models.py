@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from dpf.project.lifecycle import ProjectManifest
 
 
-class SimulationStatus(str, enum.Enum):
+class SimulationStatus(enum.StrEnum):
     """Lifecycle state of a simulation."""
 
     idle = "idle"

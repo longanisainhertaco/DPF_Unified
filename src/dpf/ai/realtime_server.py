@@ -567,7 +567,7 @@ async def ai_stream(websocket: WebSocket) -> None:
                     await websocket.send_json(
                         {"type": "error", "message": f"Unknown message type: {msg_type}"}
                     )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send keepalive
                 await websocket.send_json({"type": "keepalive"})
 

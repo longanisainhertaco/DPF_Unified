@@ -1,6 +1,6 @@
 import numpy as np
 
-from dpf.constants import e as ELEMENTARY_CHARGE
+from dpf.constants import e as ELEMENTARY_CHARGE  # noqa: N812
 from dpf.experimental.pic.hybrid import HybridPIC
 from dpf.fields.kinetic_yield import (
     KineticIonYieldHistory,

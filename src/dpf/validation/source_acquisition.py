@@ -6,7 +6,6 @@ from collections.abc import Mapping
 
 from dpf.validation.kr_targets import kr_validation_same_scope_target_report
 
-
 _PHYSICS_NEED_BY_GROUP = {
     "circuit_waveform": "circuit_current_and_voltage",
     "phase_timing": "rundown_radial_pinch_phase_timing",

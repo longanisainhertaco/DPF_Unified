@@ -36,15 +36,15 @@ from dpf.config import SimulationConfig
 from dpf.constants import k_B, pi
 from dpf.constants import mu_0 as _mu_0
 from dpf.core.bases import CouplingState, StepResult
-
-# FieldManager (Phase 5)
-from dpf.engine.backend_capabilities import backend_feature_diagnostics
 from dpf.core.field_manager import FieldManager
-from dpf.engine.memory_preflight import run_memory_preflight
-from dpf.engine.runtime_telemetry import RuntimeMemoryTelemetry
 from dpf.diagnostics.energy_balance import EnergyTracker
 from dpf.diagnostics.hdf5_writer import HDF5Writer
 from dpf.diagnostics.yield_tracker import YieldTracker
+
+# FieldManager (Phase 5)
+from dpf.engine.backend_capabilities import backend_feature_diagnostics
+from dpf.engine.memory_preflight import run_memory_preflight
+from dpf.engine.runtime_telemetry import RuntimeMemoryTelemetry
 from dpf.fluid.cylindrical_mhd import CylindricalMHDSolver
 from dpf.fluid.eos import IdealEOS
 from dpf.fluid.mhd_solver import MHDSolver

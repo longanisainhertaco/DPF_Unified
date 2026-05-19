@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 import numpy as np
+import pytest
 
 from dpf.constants import k_B, m_D2
 from dpf.fluid.snowplow import SnowplowModel

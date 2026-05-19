@@ -599,8 +599,8 @@ class MLXMHDSolver(PlasmaSolverBase):
         """
         self._ensure_internals()
         mx = require_mlx()
-        from dpf.metal.mlx_timestepper import compute_dt_cfl
         from dpf.metal.constants import C_BORIS
+        from dpf.metal.mlx_timestepper import compute_dt_cfl
 
         U = self._state_mgr.from_state_dict(
             state, convert_b_si_to_hl=self._convert_b_si_to_hl

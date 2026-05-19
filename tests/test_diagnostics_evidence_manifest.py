@@ -11,7 +11,6 @@ from dpf.diagnostics.evidence_manifest import (
     diagnostics_manifest_status_counts,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DIAGNOSTICS_DIR = ROOT / "src" / "dpf" / "diagnostics"
 EXCLUDED_MODULES = {"__init__", "evidence_manifest", "test_lanes"}
@@ -28,9 +27,8 @@ def _public_symbols(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
     symbols: set[str] = set()
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if not node.name.startswith("_"):
-                symbols.add(node.name)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and not node.name.startswith("_"):
+            symbols.add(node.name)
     return symbols
 
 

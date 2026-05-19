@@ -17,6 +17,8 @@ from dpf.atomic.ionization import radiative_recombination_rate
 from dpf.fluid.ionization import coronal_radiation_power
 from dpf.radiation.improved_radiation import (
     cyclotron_power,
+)
+from dpf.radiation.improved_radiation import (
     recombination_power as improved_recombination_power,
 )
 from dpf.radiation.line_radiation import recombination_power as line_recombination_power

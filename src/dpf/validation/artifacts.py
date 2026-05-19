@@ -8,15 +8,15 @@ import platform
 import sys
 import uuid
 from collections.abc import Mapping
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class ResultLabel(str, Enum):
+class ResultLabel(StrEnum):
     """User-facing result authority labels."""
 
     REFERENCE = "Reference"
@@ -27,7 +27,7 @@ class ResultLabel(str, Enum):
     INVALID = "Invalid"
 
 
-class ValidationStatus(str, Enum):
+class ValidationStatus(StrEnum):
     """Validation state carried by manifests and certificates."""
 
     ACCEPTED = "accepted"
@@ -36,7 +36,7 @@ class ValidationStatus(str, Enum):
     NOT_EVALUATED = "not_evaluated"
 
 
-class BackendAuthority(str, Enum):
+class BackendAuthority(StrEnum):
     """Backend authority class before evidence-specific result classification."""
 
     REFERENCE_CANDIDATE = "reference_candidate"
@@ -107,7 +107,7 @@ _COMPACT_EVIDENCE_FIELDS = (
 def utc_now_iso() -> str:
     """Return a stable UTC timestamp string for artifact metadata."""
 
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def stable_json_hash(payload: Any) -> str:

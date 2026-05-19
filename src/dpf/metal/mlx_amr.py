@@ -19,7 +19,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from dpf.metal.mlx_device import HAS_MLX, require_mlx
+from dpf.metal.mlx_device import HAS_MLX, require_mlx  # noqa: E402
 
 mx = require_mlx() if HAS_MLX else None  # type: ignore[assignment]
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-
 _KR_SOURCE_BASIS = {
     "plasma_uq_review": (
         "KnowledgeReference/2022-review-of-data-driven-plasma-science.md"

@@ -11,7 +11,6 @@ from dpf.diagnostics.test_lanes import (
     diagnostics_test_lane_manifest,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 TESTS_DIR = ROOT / "tests"
 PYPROJECT = ROOT / "pyproject.toml"

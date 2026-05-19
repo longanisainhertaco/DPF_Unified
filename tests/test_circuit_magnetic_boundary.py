@@ -6,7 +6,7 @@ from dpf.fields.circuit_boundary import (
     CircuitState,
     circuit_boundary_candidate_evidence,
 )
-from dpf.fields.maxwell_3d import MU_0, Maxwell3DGrid, Maxwell3DFieldCore
+from dpf.fields.maxwell_3d import MU_0, Maxwell3DFieldCore, Maxwell3DGrid
 from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
 
 

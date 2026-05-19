@@ -30,7 +30,7 @@ import pytest
 
 mx = pytest.importorskip("mlx.core")
 
-from dpf.metal.mlx_grid import CartesianGrid  # noqa: E402, I001
+from dpf.metal.mlx_grid import CartesianGrid, CylindricalGrid  # noqa: E402, I001
 from dpf.metal.mlx_kernels import IDN  # noqa: E402
 from dpf.metal.mlx_primitives import cons_to_prim, prim_to_cons  # noqa: E402
 from dpf.metal.mlx_timestepper import compute_dt_cfl, ssp_rk3_step  # noqa: E402

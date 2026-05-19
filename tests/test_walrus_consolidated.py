@@ -1939,7 +1939,7 @@ class TestRun:
 
         def fake_run_single(idx, params):
             output_path = runner.output_dir / f"trajectory_{idx:04d}.h5"
-            output_path.write_bytes(f"trajectory {idx}".encode("utf-8"))
+            output_path.write_bytes(f"trajectory {idx}".encode())
             return idx, None
 
         runner.run_single = fake_run_single

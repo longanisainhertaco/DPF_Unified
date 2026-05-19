@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 HARDWARE_CONTROL_MODULES = frozenset(
     {

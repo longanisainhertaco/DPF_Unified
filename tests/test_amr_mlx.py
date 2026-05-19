@@ -12,7 +12,6 @@ Validates:
 import numpy as np
 import pytest
 
-from dpf.metal.mlx_device import HAS_MLX
 from dpf.metal.mlx_amr import (
     IDN,
     IEN,
@@ -25,6 +24,7 @@ from dpf.metal.mlx_amr import (
     ghost_exchange_same_level,
     prolongate_to_fine,
 )
+from dpf.metal.mlx_device import HAS_MLX
 
 
 def _sod_initial_condition(nr: int, nz: int, gamma: float = 5.0 / 3.0) -> np.ndarray:

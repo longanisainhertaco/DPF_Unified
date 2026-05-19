@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import types
-import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -152,8 +152,8 @@ def test_first_principles_command_runs_field_coupled_candidate(
 
 
 def test_first_principles_command_has_no_legacy_app_runner_loader() -> None:
-    from dpf.cli.main import cli
     import dpf.cli.main as cli_module
+    from dpf.cli.main import cli
 
     assert not hasattr(cli_module, "_load_first_principles_runner")
 

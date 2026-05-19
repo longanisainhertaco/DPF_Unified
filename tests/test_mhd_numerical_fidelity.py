@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from scripts.build_mhd_restart_reproducibility_evidence import (
-    build_restart_reproducibility_evidence,
-)
-
 from dpf.validation.circuit_field_coupling import (
     circuit_coupled_energy_evidence_from_history,
 )
@@ -16,10 +12,13 @@ from dpf.validation.mhd_numerical_fidelity import (
     mhd_numerical_fidelity_evidence_from_result,
     mhd_numerical_verification_packet_status,
     mhd_scope_limit_evidence_from_phases,
-    restart_reproducibility_evidence_from_results,
     resistive_diffusion_convergence_evidence_from_results,
+    restart_reproducibility_evidence_from_results,
 )
 from dpf.validation.quality_assessment import scientific_accuracy_gap_report
+from scripts.build_mhd_restart_reproducibility_evidence import (
+    build_restart_reproducibility_evidence,
+)
 
 
 def test_empty_result_blocks_mhd_numerical_fidelity():

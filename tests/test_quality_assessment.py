@@ -22,26 +22,26 @@ from dpf.validation.quality_assessment import (
     circuit_validation_evidence_from_waveform,
     combine_spatial_validation_evidence,
     high_fidelity_readiness_report,
-    mhd_verification_evidence_from_tests,
     mhd_verification_evidence_from_shock_tube_results,
+    mhd_verification_evidence_from_tests,
     neutron_timing_validation_evidence_from_errors,
     neutron_validation_scope_closure_report,
     predictive_readiness_report,
     scientific_accuracy_gap_report,
-    source_authority_evidence,
-    source_authority_evidence_from_result,
-    spatial_validation_scope_closure_report,
     snowplow_phase_observation_from_history,
     snowplow_validation_evidence_from_phase_errors,
     snowplow_validation_evidence_from_phase_history,
+    source_authority_evidence,
+    source_authority_evidence_from_result,
     spatial_validation_evidence_from_quantity_errors,
+    spatial_validation_scope_closure_report,
     validation_tier_report,
 )
+from dpf.validation.suite import MetricResult, ValidationResult
 from dpf.validation.uncertainty_budget import (
     uncertainty_component_evidence,
     uncertainty_evidence_from_result,
 )
-from dpf.validation.suite import MetricResult, ValidationResult
 
 
 def _kr_neutron_yield_evidence(

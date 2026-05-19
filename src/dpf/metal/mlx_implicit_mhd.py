@@ -55,8 +55,8 @@ Ryu D. et al., ApJ 452:364 (1995) — implicit B diffusion in tenuous regions.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 import numpy as np
 

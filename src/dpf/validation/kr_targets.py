@@ -551,17 +551,13 @@ def pf1000_16kv_current_waveform_digitization_candidate_evidence(
 
     if packet is None:
         status_report = scientific_closure_digitization_status(None, base_path=base_path)
-        evidence = {
-            "passed": False,
-            "missing_or_failed_checks": ["digitization_packet_missing"],
-        }
         packet_series: set[str] = set()
         task_status = {
             "status": "open",
             "missing_or_failed_checks": ["digitization_packet_missing"],
         }
     else:
-        evidence = digitization_verification_evidence(packet, base_path=base_path)
+        digitization_verification_evidence(packet, base_path=base_path)
         status_report = scientific_closure_digitization_status(
             [packet],
             base_path=base_path,
