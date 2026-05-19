@@ -46,6 +46,22 @@ class LedgerMergeError(ValueError):
     """
 
 
+def _validate_manifest_step_bounds(
+    manifest: dict[str, Any],
+    *,
+    restart_index: int,
+) -> tuple[int, int]:
+    start = int(manifest.get("resume_started_at_step", 0) or 0)
+    completed = int(manifest.get("total_steps_completed", 0) or 0)
+    if completed < start:
+        raise LedgerMergeError(
+            f"malformed manifest at restart {restart_index}: "
+            f"total_steps_completed={completed} is less than "
+            f"resume_started_at_step={start}"
+        )
+    return start, completed
+
+
 def merge_cumulative_ledgers(
     manifest_paths: list[Path | str],
 ) -> dict[str, Any]:
@@ -103,6 +119,9 @@ def merge_cumulative_ledgers(
 
     manifests.sort(key=_start_step)
 
+    for idx, manifest in enumerate(manifests):
+        _validate_manifest_step_bounds(manifest, restart_index=idx)
+
     # --- whole-run invariant: first restart must start at step 0 -------------
     # If the first restart begins after step 0 this is a suffix run, not a
     # whole run.  Fail closed rather than silently merging an incomplete prefix.
@@ -135,7 +154,7 @@ def merge_cumulative_ledgers(
                 f"{expected_next_step - actual_start} steps)"
             )
         steps_completed = int(manifest.get("total_steps_completed", 0))
-        expected_next_step = actual_start + steps_completed
+        expected_next_step = steps_completed
 
     # --- input-invariant check: every manifest's cumulative_ledgers must be ---
     # rehydrated (cumulative from step 0), not per-restart-only.  Evidence:
@@ -296,6 +315,9 @@ def combine_whole_run_artifacts(
         manifest_paths.append(manifest_path)
 
     # --- contiguity check across run_dirs order (caller-supplied order) ------
+    for k, manifest in enumerate(manifests):
+        _validate_manifest_step_bounds(manifest, restart_index=k)
+
     for k in range(1, len(manifests)):
         prev_completed = int(manifests[k - 1].get("total_steps_completed", -1))
         curr_start = int(manifests[k].get("resume_started_at_step", -1))

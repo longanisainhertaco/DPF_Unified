@@ -17,16 +17,19 @@ Sprint 2 implementation update: commits `4b080eb` (WP-N1B) and `4c8dac1` (WP-N4B
   has been removed. The six terms are: I (stored magnetic energy rate), II
   (motional magnetic Sigma_p), III (stored electric energy rate), IV (motional
   electric Sigma_p), V (resistive Sigma_p), VI (anomalous/poloidal Sigma_p).
-  The ledger is fail-closed: all six terms return `None` because the runtime
-  does not expose the magnetic/electric stored-EM split (blocks I and III) or a
-  reviewed Sigma_p moving-boundary face set (blocks II, IV, V, VI). The residual
-  `I*V - (I+II+III+IV+V+VI)` is a genuine non-trivial diagnostic — it is emitted
-  only when all six terms are independently computed.
+  The ledger is fail-closed for acceptance, but not all terms are currently
+  blocked: terms I and III are now independently computed from runtime split
+  stored-EM telemetry (`stored_magnetic_energy_delta_J` and
+  `stored_electric_energy_delta_J`). Terms II, IV, V, and VI remain blocked on
+  a reviewed Sigma_p moving-boundary face set. The residual
+  `I*V - (I+II+III+IV+V+VI)` remains blocked and is emitted only when all six
+  terms are independently computed.
 - `can_support_first_principles_acceptance` remains `False`.
-- Acceptance remains blocked: magnetic/electric stored-EM split; reviewed Sigma_p
-  moving-boundary geometry (requires WP-N3); source-backed residual tolerance;
-  accepted high-order time-centering; reviewed PF-1000 geometry masks; same-scope
-  power-port review packet.
+- Acceptance remains blocked: reviewed Sigma_p moving-boundary geometry
+  (requires WP-N3); source-backed residual tolerance; accepted high-order
+  time-centering; reviewed PF-1000 geometry masks; same-scope power-port review
+  packet. The stored-EM split is exposed by runtime telemetry now, but that does
+  not support acceptance while the Sigma_p terms and residual remain blocked.
 - Not promoted to `implemented`.
 
 ### DPF-PHYS-023 (WP-N4 segmented whole-shot runtime)
@@ -34,12 +37,13 @@ Sprint 2 implementation update: commits `4b080eb` (WP-N1B) and `4c8dac1` (WP-N4B
 - Status: `blocked` → `partial` (unchanged; remains `partial` after Sprint 2 implementation).
 - Submission-1 rationale: a candidate segmented whole-shot runner was introduced
   with cross-restart cumulative-ledger continuity (A-6).
-- Sprint 2 implementation update (commit `4c8dac1`): a candidate cross-restart
-  ledger-merge and artifact-combiner now exists at
+- Sprint 2 implementation update (commit `4c8dac1` plus Sprint 2.2 follow-up):
+  a candidate cross-restart ledger-merge and artifact-combiner now exists at
   `src/dpf/first_principles/segmented_whole_shot_combine.py`, providing
   `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with
-  fail-closed gap/overlap/missing-manifest/empty-input checks. A two-restart
-  positive test against an uninterrupted short run is included.
+  fail-closed gap/overlap/missing-manifest/empty-input/malformed-step checks.
+  It treats `total_steps_completed` as the cumulative terminal step and includes
+  synthetic plus live three-restart coverage.
 - Acceptance remains blocked: the 12 us source-sign compute-wall (~1.2e8 steps
   at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size;
   long-run cross-restart restart-equivalence evidence at production horizon not

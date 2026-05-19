@@ -105,8 +105,8 @@ def _ledger(
 
     The magnetic/electric stored-energy split (Sprint 2.3 step 1) is included
     only when ``stored_magnetic_delta_J`` / ``stored_electric_delta_J`` are
-    passed. With them absent, terms I/III also fail closed (older-ledger
-    case); with them present, terms I/III are computed independently.
+    passed. With split telemetry absent, terms I/III fail closed; with it
+    present, terms I/III are computed independently.
     """
     ledger: dict[str, Any] = {
         "cumulative_terminal_port_work_J": terminal,
@@ -231,9 +231,8 @@ def test_wp_n1b_omega_domain_emits_four_disjoint_exhaustive_labels() -> None:
 
 def test_wp_n1b_terms_i_iii_fail_closed_when_split_telemetry_absent() -> None:
     """Terms I and III need the magnetic / electric stored-energy split.
-    When the ledger does NOT carry the split (an older ledger with only the
-    combined stored-EM energy), terms I/III fail closed -- the combined delta
-    is NOT substituted for either term."""
+    When the ledger does NOT carry the split, terms I/III fail closed. An older
+    combined-only stored-EM delta must NOT be substituted for either term."""
     wp = build_wp_n1_auluck_power_port_ledger(_ledger())
     packets = wp["energy_ledger_term_packets"]
     for key in _STORED_TERMS:

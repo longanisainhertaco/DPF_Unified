@@ -321,7 +321,7 @@ def build_engineering_power_port_packet(
 def _power_port_ledger_telemetry(
     simulation_telemetry: Mapping[str, Any] | None,
 ) -> Mapping[str, Any] | None:
-    """Return the simulator-emitted WP-N1 five-term ledger, if present."""
+    """Return the simulator-emitted WP-N1B six-term ledger, if present."""
     if simulation_telemetry is None:
         return None
     ledger = simulation_telemetry.get("power_port_ledger")
@@ -465,9 +465,10 @@ def build_wp_n1_auluck_power_port_ledger(
         set, and no v / eta on Sigma_p faces. These four terms fail closed
         with blocker `_SIGMA_P_BLOCKER` and value None.
       * Terms I and III need the magnetic / electric stored-energy SPLIT.
-        The runtime's `omega_stored_em_energy_J` returns only the combined
-        stored-EM energy, so I and III cannot be separated as INDEPENDENT
-        terms; they fail closed with blocker `_STORED_SPLIT_BLOCKER`.
+        Current runtime ledgers emit that split and compute I/III
+        independently when the corresponding split channel is present. Older
+        ledgers that expose no split channel, including combined-only stored
+        EM ledgers, fail closed with blocker `_STORED_SPLIT_BLOCKER`.
       * If the runtime emitted no `power_port_ledger`, or did not record the
         eq. (1) sign convention, the whole ledger fails closed.
 

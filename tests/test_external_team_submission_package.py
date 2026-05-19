@@ -11,6 +11,9 @@ Also includes package-consistency tests (Next Instruction 2):
   - No authority wording "five-term" (Auluck ledger) or "electrode/interface work"
     / "electrode-work" as a balance term may survive in SRS/RTM artifacts after
     the Sprint 2 implementation (F2 consistency gate).
+  - SRS/RTM artifacts must not say the stored-EM magnetic/electric split is not
+    exposed after runtime code exposes stored_magnetic_energy_delta_J and
+    stored_electric_energy_delta_J.
 """
 from __future__ import annotations
 
@@ -220,6 +223,11 @@ _SRS_RTM_PATHS = [
     PACKET_DIR / "RTM_DELTA.md",
 ]
 
+_RUNTIME_STORED_SPLIT_PATHS = [
+    REPO_ROOT / "src" / "dpf" / "fields" / "hybrid_simulator.py",
+    REPO_ROOT / "src" / "dpf" / "first_principles" / "power_port.py",
+]
+
 # Words on the same line that mark a mention as explicitly historical/retracted
 # or explicitly negating the term.
 _RETRACTION_MARKERS = (
@@ -289,6 +297,53 @@ def _check_electrode_interface_work_as_balance_term(
     return bad
 
 
+def _runtime_exposes_stored_em_split() -> bool:
+    """Return True when runtime code exposes split magnetic/electric stored EM.
+
+    This gate is intentionally source-text based: it fails when traceability
+    docs lag behind the runtime telemetry contract, without importing heavy
+    simulator modules.
+    """
+    required = (
+        "stored_magnetic_energy_delta_J",
+        "stored_electric_energy_delta_J",
+    )
+    text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in _RUNTIME_STORED_SPLIT_PATHS
+        if path.exists()
+    )
+    return all(key in text for key in required)
+
+
+def _check_stored_em_split_stale_blocker(text: str) -> list[tuple[int, str]]:
+    """Find stale SRS/RTM claims that runtime does not expose the split."""
+    stale_patterns = (
+        r"stored[- ]EM split not exposed by (?:the )?runtime",
+        r"runtime does not expose the magnetic/electric stored[- ]EM split",
+        r"magnetic/electric stored[- ]EM split not exposed by (?:the )?runtime",
+        r"stored[- ]EM magnetic/electric split",
+    )
+    bad: list[tuple[int, str]] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        lower = line.lower()
+        # Historical notes are allowed only if the line also states the split is
+        # now exposed/computed; otherwise the artifact still reads as current.
+        if any(
+            ok in lower
+            for ok in (
+                "now independently computed",
+                "now exposes",
+                "exposed by runtime telemetry now",
+                "stored_magnetic_energy_delta_j",
+            )
+        ):
+            continue
+        if any(re.search(pattern, line, re.IGNORECASE) for pattern in stale_patterns):
+            bad.append((lineno, line.strip()))
+    return bad
+
+
 @pytest.mark.parametrize("artifact_path", _SRS_RTM_PATHS, ids=lambda p: p.name)
 def test_srs_rtm_artifact_has_no_stale_five_term_auluck_authority(
     artifact_path: Path,
@@ -326,5 +381,32 @@ def test_srs_rtm_artifact_has_no_electrode_interface_work_as_balance_term(
     assert not bad, (
         f"{artifact_path.name} still uses electrode/interface work as an Auluck "
         "balance term (Sprint 2 F2 consistency gate):\n"
+        + "\n".join(f"  line {ln}: {ln_text!r}" for ln, ln_text in bad)
+    )
+
+
+@pytest.mark.parametrize("artifact_path", _SRS_RTM_PATHS, ids=lambda p: p.name)
+def test_srs_rtm_artifact_does_not_claim_stored_em_split_missing_after_runtime_exposes_it(
+    artifact_path: Path,
+) -> None:
+    """SRS/RTM artifacts must track the WP-N1B runtime telemetry contract.
+
+    After runtime code exposes stored_magnetic_energy_delta_J and
+    stored_electric_energy_delta_J, traceability artifacts may still block
+    acceptance on Sigma_p, residual tolerance, time-centering, geometry masks,
+    and review packet evidence. They must not keep the old blocker that terms
+    I/III cannot be independently computed because the stored-EM split is not
+    exposed.
+    """
+    assert artifact_path.exists(), f"SRS/RTM artifact not found: {artifact_path}"
+    if not _runtime_exposes_stored_em_split():
+        pytest.skip("runtime does not expose stored-EM split telemetry yet")
+
+    text = artifact_path.read_text(encoding="utf-8")
+    bad = _check_stored_em_split_stale_blocker(text)
+    assert not bad, (
+        f"{artifact_path.name} says the stored-EM split is missing after runtime "
+        "exposes stored_magnetic_energy_delta_J and "
+        "stored_electric_energy_delta_J:\n"
         + "\n".join(f"  line {ln}: {ln_text!r}" for ln, ln_text in bad)
     )

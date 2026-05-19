@@ -59,25 +59,28 @@ fix set.
 
 ## Sprint 2 outcome — WP-N1B and WP-N4B implementation delivered as fail-closed runtime code
 
-- **WP-N1B power port (commit `4b080eb`).** The six-term Auluck eq. (6) ledger
+- **WP-N1B power port (commits `4b080eb`, `65c477f`).** The six-term Auluck eq. (6) ledger
   contract is now implemented as fail-closed runtime code in
   `src/dpf/first_principles/power_port.py`. The prior "electrode/interface work"
   term is absent — it was a category error; Auluck excludes the electrode
   interface from the integration domain Omega. All six terms (I: stored magnetic
   rate; II: motional magnetic Sigma_p; III: stored electric rate; IV: motional
-  electric Sigma_p; V: resistive Sigma_p; VI: anomalous/poloidal Sigma_p) are
-  fail-closed: terms I and III are blocked on the magnetic/electric stored-EM
-  split not exposed by the runtime; terms II, IV, V, VI are blocked on the
-  reviewed Sigma_p moving-boundary geometry (requires WP-N3). The code computes
-  nothing until those blockers are resolved — no invented values, no closure
-  substitutions. 27 new tests pass (`tests/test_first_principles_power_port.py`).
+  electric Sigma_p; V: resistive Sigma_p; VI: anomalous/poloidal Sigma_p)
+  remain fail-closed for acceptance. Terms I and III are now independently
+  computed from runtime split telemetry (`stored_magnetic_energy_delta_J` and
+  `stored_electric_energy_delta_J`); terms II, IV, V, VI remain blocked on the
+  reviewed Sigma_p moving-boundary geometry (requires WP-N3). No invented
+  values or closure substitutions are used. 27 new tests pass
+  (`tests/test_first_principles_power_port.py`), with follow-up coverage for
+  the split-telemetry path.
   Power-port acceptance remains blocked.
-- **WP-N4B 12 us orchestration (commit `4c8dac1`).** A candidate cross-restart
+- **WP-N4B 12 us orchestration (commit `4c8dac1` plus Sprint 2.2 follow-up).** A candidate cross-restart
   ledger-merge and artifact-combiner is now implemented in
   `src/dpf/first_principles/segmented_whole_shot_combine.py`, providing
   `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with
-  fail-closed gap/overlap/missing-manifest/empty-input checks and a two-restart
-  positive test against an uninterrupted short run. 27 new tests pass
+  fail-closed gap/overlap/missing-manifest/empty-input/malformed-step checks.
+  The combiner treats `total_steps_completed` as the cumulative terminal step
+  and includes synthetic plus live three-restart coverage. 12 focused tests pass
   (`tests/test_first_principles_segmented_whole_shot_combine.py`). The 12 us
   compute-wall, production-grid wall-clock, and long-run restart evidence remain
   blocked on WP-N3 grid size.

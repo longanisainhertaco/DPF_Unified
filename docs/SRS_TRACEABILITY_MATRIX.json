@@ -1921,11 +1921,13 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`). A candidate WP-N1B six-term Auluck eq. (6) fail-closed ledger contract now exists in `src/dpf/first_principles/power_port.py` (commits 4b080eb); `can_support_first_principles_acceptance` remains `False`. Remaining acceptance blockers: magnetic/electric stored-EM split not exposed by runtime (blocks terms I and III); reviewed Sigma_p moving-boundary geometry not available from runtime (blocks terms II, IV, V, VI; requires WP-N3); no source-backed residual tolerance; only step-consistent (not accepted high-order) time-centering; candidate-only PF-1000 geometry masks; no same-scope power-port review packet. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`). A candidate WP-N1B six-term Auluck eq. (6) fail-closed ledger contract now exists in `src/dpf/first_principles/power_port.py` (commits 4b080eb); runtime split magnetic/electric stored-energy telemetry now exists through `stored_magnetic_energy_delta_J` and `stored_electric_energy_delta_J`, so terms I and III are independently computed rather than closure-derived; `can_support_first_principles_acceptance` remains `False`. Remaining acceptance blockers: reviewed Sigma_p moving-boundary geometry not available from runtime (blocks terms II, IV, V, VI; requires WP-N3); no source-backed residual tolerance; only step-consistent (not accepted high-order) time-centering; candidate-only PF-1000 geometry masks without reviewed acceptance; no same-scope power-port review packet. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
       "doorstop_import": {
         "evidence_refs": [
           "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
           "src/dpf/first_principles/power_port.py",
+          "stored_magnetic_energy_delta_J",
+          "stored_electric_energy_delta_J",
           "can_support_first_principles_acceptance",
           "False",
           "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
@@ -1944,6 +1946,8 @@
       "evidence_refs": [
         "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
         "src/dpf/first_principles/power_port.py",
+        "stored_magnetic_energy_delta_J",
+        "stored_electric_energy_delta_J",
         "can_support_first_principles_acceptance",
         "False",
         "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
@@ -2035,13 +2039,15 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`). A candidate WP-N4 segmented whole-shot runner exists (static segment planner, segmented execution, checkpoint roundtrip through the fail-closed loader, per-segment manifests, cumulative ledgers, small-horizon restart-equivalence evidence, explicit 12 us compute-wall blocker reporting); a candidate cross-restart ledger-merge and artifact-combiner now exists in `src/dpf/first_principles/segmented_whole_shot_combine.py` (commit 4c8dac1), providing `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with fail-closed gap/overlap/manifest checks. Remaining acceptance blockers: the 12 us source-sign compute-wall (~1.2e8 steps at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size; long-run cross-restart restart-equivalence evidence at production horizon not yet demonstrated. Blocker IDs `DPF-PHYS-015` (numerical-fidelity packets) and `DPF-DATA-007` (deterministic restart). See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`) plus Sprint 2.2 follow-up (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`). A candidate WP-N4 segmented whole-shot runner exists (static segment planner, segmented execution, checkpoint roundtrip through the fail-closed loader, per-segment manifests, cumulative ledgers, small-horizon restart-equivalence evidence, explicit 12 us compute-wall blocker reporting); `src/dpf/first_principles/segmented_whole_shot_combine.py` provides `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with fail-closed gap/overlap/manifest/malformed-step checks, treats `total_steps_completed` as the cumulative terminal step, and has positive synthetic plus live three-restart coverage. Remaining acceptance blockers: the 12 us source-sign compute-wall (~1.2e8 steps at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size; long-run cross-restart restart-equivalence evidence at production horizon not yet demonstrated. Blocker IDs `DPF-PHYS-015` (numerical-fidelity packets) and `DPF-DATA-007` (deterministic restart). See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
       "doorstop_import": {
         "evidence_refs": [
           "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
+          "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md",
           "src/dpf/first_principles/segmented_whole_shot_combine.py",
           "merge_cumulative_ledgers()",
           "combine_whole_run_artifacts()",
+          "total_steps_completed",
           "DPF-PHYS-015",
           "DPF-DATA-007",
           "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
@@ -2059,9 +2065,11 @@
       },
       "evidence_refs": [
         "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
+        "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md",
         "src/dpf/first_principles/segmented_whole_shot_combine.py",
         "merge_cumulative_ledgers()",
         "combine_whole_run_artifacts()",
+        "total_steps_completed",
         "DPF-PHYS-015",
         "DPF-DATA-007",
         "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"

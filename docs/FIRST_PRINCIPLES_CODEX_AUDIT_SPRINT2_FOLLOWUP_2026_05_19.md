@@ -193,6 +193,12 @@ Required correction:
 Acceptance state: the traceability update is not accepted until a generated
 RTM diff and package-consistency test are present.
 
+Worker B update (2026-05-19): `DPF-PHYS-020` now states that runtime split
+magnetic/electric stored-energy telemetry exists and that terms I/III are
+independently computed. `docs/SRS_TRACEABILITY_MATRIX.{csv,json}` were
+regenerated from `docs/DPF_REQUIREMENTS_BASELINE.md`. External-team packet
+files remained assigned to Worker C during the parallel implementation.
+
 ### F3 - WP-N1B source-faithful runtime is ahead of its docstrings
 
 Severity: Low
@@ -345,6 +351,22 @@ Exit criteria:
 Do not claim WP-N4B clean until a three-restart chain passes.
 Do not claim WP-N1B traceability clean until the SRS/RTM no longer says the
 stored split is missing.
+
+Sprint 2.2 implementation update (2026-05-19):
+
+- Worker A fixed `merge_cumulative_ledgers()` so `total_steps_completed` is
+  treated as the cumulative terminal step, added malformed manifest
+  fail-closed checks, and added synthetic plus live three-restart coverage.
+- Worker B updated DPF-PHYS-020 and regenerated
+  `docs/SRS_TRACEABILITY_MATRIX.{csv,json}` so terms I/III are no longer
+  described as blocked on missing split telemetry.
+- Worker C updated the external-team packet docs and added a package
+  consistency test that fails on stale stored-split blocker wording.
+- Worker D cleaned the stale WP-N1B docstrings without changing runtime
+  behavior.
+- Targeted exit gate passed:
+  `.venv312/bin/python -m pytest tests/test_first_principles_segmented_whole_shot_combine.py tests/test_first_principles_power_port.py tests/test_external_team_submission_package.py tests/test_srs_traceability_export.py -q -rx`
+  (`68 passed`).
 
 ### Sprint 3 - reviewed PF-1000 geometry and `Sigma_p`
 

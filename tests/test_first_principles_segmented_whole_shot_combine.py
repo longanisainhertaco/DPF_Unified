@@ -60,6 +60,44 @@ def _smoke_deck(n_steps: int = 4) -> FirstPrinciples3DDeck:
     return FirstPrinciples3DDeck.from_deck({"n_steps": n_steps, "seed": 0})
 
 
+def _write_synthetic_manifest(
+    run_dir: Path,
+    *,
+    resume_started_at_step: int,
+    total_steps_completed: int,
+    total_steps: int,
+    ledgers: dict,
+) -> Path:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "resume_started_at_step": resume_started_at_step,
+        "total_steps_completed": total_steps_completed,
+        "cumulative_ledgers": ledgers,
+        "plan": {"total_steps": total_steps},
+        "segments": [],
+    }
+    manifest_path = run_dir / "run_manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return manifest_path
+
+
+def _latest_checkpoint_path(manifest: dict, run_dir: Path) -> Path:
+    checkpoint_path: Path | None = None
+    for seg in manifest.get("segments", []):
+        chk = seg.get("checkpoint")
+        if isinstance(chk, dict) and chk.get("checkpoint_path"):
+            candidate = Path(chk["checkpoint_path"])
+            if not candidate.is_absolute():
+                candidate = run_dir / "segments" / candidate.name
+            if candidate.is_file():
+                checkpoint_path = candidate
+
+    assert checkpoint_path is not None, (
+        "invocation did not write a checkpoint; cannot build restart chain"
+    )
+    return checkpoint_path
+
+
 def _run_two_restart_sequence(
     tmp_path: Path,
     *,
@@ -94,19 +132,7 @@ def _run_two_restart_sequence(
     assert completed_1 > 0, "first invocation must complete at least one step"
 
     # Locate the latest checkpoint from the first run.
-    checkpoint_path: Path | None = None
-    for seg in manifest_1.get("segments", []):
-        chk = seg.get("checkpoint")
-        if isinstance(chk, dict) and chk.get("checkpoint_path"):
-            candidate = Path(chk["checkpoint_path"])
-            if not candidate.is_absolute():
-                candidate = run_dir_1 / "segments" / candidate.name
-            if candidate.is_file():
-                checkpoint_path = candidate
-
-    assert checkpoint_path is not None, (
-        "first invocation did not write a checkpoint; cannot build restart pair"
-    )
+    checkpoint_path = _latest_checkpoint_path(manifest_1, run_dir_1)
 
     # Second invocation: resume from where the first stopped.
     run_dir_2 = tmp_path / "restart_1"
@@ -218,6 +244,144 @@ def test_combine_whole_run_artifacts_positive(tmp_path: Path) -> None:
     assert len(combined["checkpoint_inventory"]) >= 1
 
 
+def test_merge_accepts_three_restart_cumulative_terminal_manifests(
+    tmp_path: Path,
+) -> None:
+    """F1: valid cumulative terminal chain 0->2, 2->4, 4->6 merges."""
+    manifest_paths = [
+        _write_synthetic_manifest(
+            tmp_path / "r0",
+            resume_started_at_step=0,
+            total_steps_completed=2,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 10.0,
+                "cumulative_j_dot_e_step_count": 2,
+                "cumulative_active_port_work_J": 5.0,
+                "cumulative_active_port_step_count": 2,
+                "limiter_steps_observed": 2,
+                "limiter_total_activations": 0,
+                "final_cumulative_neutrons": 0.0,
+                "final_circuit_current_A": 2.0,
+                "final_circuit_charge_C": 20.0,
+                "final_particle_count": 8,
+            },
+        ),
+        _write_synthetic_manifest(
+            tmp_path / "r1",
+            resume_started_at_step=2,
+            total_steps_completed=4,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 20.0,
+                "cumulative_j_dot_e_step_count": 4,
+                "cumulative_active_port_work_J": 10.0,
+                "cumulative_active_port_step_count": 4,
+                "limiter_steps_observed": 4,
+                "limiter_total_activations": 1,
+                "final_cumulative_neutrons": 0.0,
+                "final_circuit_current_A": 4.0,
+                "final_circuit_charge_C": 40.0,
+                "final_particle_count": 8,
+            },
+        ),
+        _write_synthetic_manifest(
+            tmp_path / "r2",
+            resume_started_at_step=4,
+            total_steps_completed=6,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 30.0,
+                "cumulative_j_dot_e_step_count": 6,
+                "cumulative_active_port_work_J": 15.0,
+                "cumulative_active_port_step_count": 6,
+                "limiter_steps_observed": 6,
+                "limiter_total_activations": 1,
+                "final_cumulative_neutrons": 0.0,
+                "final_circuit_current_A": 6.0,
+                "final_circuit_charge_C": 60.0,
+                "final_particle_count": 8,
+            },
+        ),
+    ]
+
+    merged = merge_cumulative_ledgers(list(reversed(manifest_paths)))
+
+    assert merged["restart_count"] == 3
+    assert merged["executed_steps"] == 6
+    assert merged["planned_horizon_steps"] == 6
+    assert merged["covers_executed_horizon"] is True
+    assert "not_validation" in merged["ledger_status"]
+    assert merged["cumulative_j_dot_e_step_count"] == 6
+    assert merged["cumulative_j_dot_e_work_J"] == 30.0
+    assert merged["cumulative_active_port_step_count"] == 6
+    assert merged["limiter_steps_observed"] == 6
+    assert merged["limiter_total_activations"] == 1
+    assert merged["final_circuit_current_A"] == 6.0
+
+
+def test_combine_whole_run_artifacts_three_restart_live_runner(
+    tmp_path: Path,
+) -> None:
+    """F1 live smoke: three invocations tile 0->2, 2->4, 4->6."""
+    total_steps = 6
+    steps_per_restart = 2
+    deck = _smoke_deck(n_steps=total_steps)
+
+    run_dir_0 = tmp_path / "live_r0"
+    manifest_0 = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=run_dir_0,
+        segment_steps=steps_per_restart,
+        explicit_total_steps=total_steps,
+        checkpoint_every_segments=1,
+        wall_time_cap_s=1e-9,
+        verify_restart_equivalence=False,
+    )
+    assert manifest_0["resume_started_at_step"] == 0
+    assert manifest_0["total_steps_completed"] == 2
+
+    run_dir_1 = tmp_path / "live_r1"
+    manifest_1 = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=run_dir_1,
+        segment_steps=steps_per_restart,
+        explicit_total_steps=total_steps,
+        checkpoint_every_segments=1,
+        resume_from_checkpoint=_latest_checkpoint_path(manifest_0, run_dir_0),
+        wall_time_cap_s=1e-9,
+        verify_restart_equivalence=False,
+    )
+    assert manifest_1["resume_started_at_step"] == 2
+    assert manifest_1["total_steps_completed"] == 4
+
+    run_dir_2 = tmp_path / "live_r2"
+    manifest_2 = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=run_dir_2,
+        segment_steps=steps_per_restart,
+        explicit_total_steps=total_steps,
+        checkpoint_every_segments=1,
+        resume_from_checkpoint=_latest_checkpoint_path(manifest_1, run_dir_1),
+        verify_restart_equivalence=False,
+    )
+    assert manifest_2["resume_started_at_step"] == 4
+    assert manifest_2["total_steps_completed"] == 6
+    assert manifest_2["horizon_complete"] is True
+
+    combined = combine_whole_run_artifacts([run_dir_0, run_dir_1, run_dir_2])
+
+    assert combined["horizon_complete"] is True
+    assert combined["restart_count"] == 3
+    assert combined["total_steps_combined"] == total_steps
+    assert "not_validation" in combined["ledger_status"]
+    assert combined["can_support_first_principles_acceptance"] is False
+    assert (
+        combined["acceptance_state"]["can_support_first_principles_acceptance"]
+        is False
+    )
+
+
 # ---------------------------------------------------------------------------
 # N-1: step GAP between restarts fails closed
 # ---------------------------------------------------------------------------
@@ -244,14 +408,14 @@ def test_merge_fails_closed_on_step_gap(tmp_path: Path) -> None:
     run_dir_2.mkdir(parents=True, exist_ok=True)
     gapped_manifest = {
         "resume_started_at_step": 4,  # gap: step 2..4 missing
-        "total_steps_completed": 2,
+        "total_steps_completed": 6,
         "planned_total_steps": 6,
         "cumulative_ledgers": {
             "cumulative_j_dot_e_work_J": 0.0,
-            "cumulative_j_dot_e_step_count": 0,
+            "cumulative_j_dot_e_step_count": 6,
             "cumulative_active_port_work_J": 0.0,
-            "cumulative_active_port_step_count": 0,
-            "limiter_steps_observed": 2,
+            "cumulative_active_port_step_count": 6,
+            "limiter_steps_observed": 6,
             "limiter_total_activations": 0,
         },
         "plan": {"total_steps": 6},
@@ -320,6 +484,55 @@ def test_merge_fails_closed_on_step_overlap(tmp_path: Path) -> None:
 
     with pytest.raises(LedgerMergeError, match="overlap"):
         combine_whole_run_artifacts([run_dir_1, run_dir_2])
+
+
+def test_merge_fails_closed_on_terminal_step_before_resume_start(
+    tmp_path: Path,
+) -> None:
+    """Malformed cumulative manifest cannot end before its resume start."""
+    run_dir_0 = tmp_path / "r0"
+    run_dir_1 = tmp_path / "r1_malformed"
+
+    manifest_0 = _write_synthetic_manifest(
+        run_dir_0,
+        resume_started_at_step=0,
+        total_steps_completed=2,
+        total_steps=6,
+        ledgers={
+            "cumulative_j_dot_e_work_J": 10.0,
+            "cumulative_j_dot_e_step_count": 2,
+            "cumulative_active_port_work_J": 5.0,
+            "cumulative_active_port_step_count": 2,
+            "limiter_steps_observed": 2,
+            "limiter_total_activations": 0,
+        },
+    )
+    manifest_1 = _write_synthetic_manifest(
+        run_dir_1,
+        resume_started_at_step=4,
+        total_steps_completed=3,
+        total_steps=6,
+        ledgers={
+            "cumulative_j_dot_e_work_J": 20.0,
+            "cumulative_j_dot_e_step_count": 3,
+            "cumulative_active_port_work_J": 10.0,
+            "cumulative_active_port_step_count": 3,
+            "limiter_steps_observed": 3,
+            "limiter_total_activations": 0,
+        },
+    )
+
+    with pytest.raises(
+        LedgerMergeError,
+        match="total_steps_completed=3 is less than resume_started_at_step=4",
+    ):
+        merge_cumulative_ledgers([manifest_0, manifest_1])
+
+    with pytest.raises(
+        LedgerMergeError,
+        match="total_steps_completed=3 is less than resume_started_at_step=4",
+    ):
+        combine_whole_run_artifacts([run_dir_0, run_dir_1])
 
 
 # ---------------------------------------------------------------------------

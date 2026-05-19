@@ -200,6 +200,14 @@ modified
 allowed non-conflicting Sprint 3 research/spec lanes and audit acceptance
 rules.
 
+`6d015c4` — docs: update changelog for parallel directions; modified this
+`CHANGELOG.md` so the packet consistency gate covered the parallel-directions
+documentation commit.
+
+`df71d99` — docs: add Sprint 3 WP-N2/N3/N4/N5/N6/N7 research and spec packets;
+added source-backed packet drafts under
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/`.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.

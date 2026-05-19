@@ -4,7 +4,8 @@
 
 The Codex Sprint 1 audit accepted Sprint 1 engineering progress. Sprint 1.1
 hygiene (RC-1 through RC-7) is complete. Sprint 2 proposals (WP-N1B,
-WP-N4B) are delivered and Sprint 2 implementation is underway. Sprint 3 remains
+WP-N4B) are delivered and Sprint 2 implementation has fail-closed runtime code
+for WP-N1B/WP-N4B. Sprint 3 remains
 pending per the audit's submission gating.
 
 ## What this submission is
@@ -71,23 +72,27 @@ ruff clean; artifact linter 0 failed on both scans; worktree clean.
 Six proposal and source-status documents delivered under `sprint_2/`. Implementation
 commits `4b080eb` (WP-N1B) and `4c8dac1` (WP-N4B) followed:
 
-- **WP-N1B six-term Auluck ledger contract (commit `4b080eb`).** The Auluck eq. (6)
+- **WP-N1B six-term Auluck ledger contract (commits `4b080eb`, `65c477f`).** The Auluck eq. (6)
   six-term power-port ledger is implemented as fail-closed runtime code in
   `src/dpf/first_principles/power_port.py`. The "electrode/interface work" term
   is absent — it was a category error (Auluck excludes the electrode interface
-  from the integration domain Omega). Terms I/III fail closed pending the
-  magnetic/electric stored-EM split; terms II/IV/V/VI fail closed pending the
-  reviewed Sigma_p moving-boundary geometry from WP-N3. The code computes nothing
-  until those blockers are resolved. 27 new tests pass.
-- **WP-N4B cross-restart combiner (commit `4c8dac1`).** `merge_cumulative_ledgers()`
+  from the integration domain Omega). Terms I/III are now independently computed
+  from runtime split telemetry (`stored_magnetic_energy_delta_J` and
+  `stored_electric_energy_delta_J`); terms II/IV/V/VI fail closed pending the
+  reviewed Sigma_p moving-boundary geometry from WP-N3. The residual remains
+  blocked until all six terms are independently computed. 27 new tests pass,
+  with follow-up coverage for the split-telemetry path.
+- **WP-N4B cross-restart combiner (commit `4c8dac1` plus Sprint 2.2 follow-up).** `merge_cumulative_ledgers()`
   and `combine_whole_run_artifacts()` are implemented in
   `src/dpf/first_principles/segmented_whole_shot_combine.py` with fail-closed
-  gap/overlap/missing-manifest/empty-input checks and a two-restart positive test.
-  27 new tests pass. The 12 us compute-wall, production-grid wall-clock, and
-  long-run restart evidence remain blocked.
+  gap/overlap/missing-manifest/empty-input/malformed-step checks. The combiner
+  treats `total_steps_completed` as the cumulative terminal step and has
+  synthetic plus live three-restart coverage. 12 focused tests pass. The 12 us
+  compute-wall, production-grid wall-clock, and long-run restart evidence remain
+  blocked.
 
 No physics blocker is closed; no acceptance is claimed. `can_support_first_principles_acceptance`
-is `false` for all Sprint 2 code.
+is `false` for all Sprint 2 code and follow-up split-telemetry work.
 
 Key verified finding (retained): the audit's WP-N1B "electrode/interface work" term is a
 category error — Auluck eq. (6) is a six-term balance (stored magnetic, motional
@@ -106,5 +111,5 @@ reviewable runtime artifact. See `sprint_3/PENDING.md`.
 
 Every physics blocker P-1 through P-5 from the audit remains open and is carried
 in `BLOCKER_MATRIX.csv`. Sprint 1 changed no physics; Sprint 2 delivers
-proposals only. The control plane is now hardened enough for the physics work in
-Sprints 2 and 3 to be reviewable.
+fail-closed engineering candidates only. The control plane is now hardened
+enough for the physics work in Sprint 3 to be reviewable.
