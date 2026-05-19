@@ -208,6 +208,13 @@ documentation commit.
 added source-backed packet drafts under
 `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/`.
 
+`173e10d` — fix(first-principles): close Sprint 2.2 combiner and traceability
+gaps; modified `src/dpf/first_principles/segmented_whole_shot_combine.py`,
+`tests/test_first_principles_segmented_whole_shot_combine.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`, `docs/SRS_TRACEABILITY_MATRIX.{csv,json}`,
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_2/WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`,
+and `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.
