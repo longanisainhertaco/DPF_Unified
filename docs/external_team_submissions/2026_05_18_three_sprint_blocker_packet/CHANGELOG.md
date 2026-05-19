@@ -215,6 +215,10 @@ gaps; modified `src/dpf/first_principles/segmented_whole_shot_combine.py`,
 `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_2/WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`,
 and `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`.
 
+`d44601f` — docs: audit Sprint 3 research packets; added
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_PACKET_2026_05_19.md` and updated
+this `CHANGELOG.md` with the Sprint 2.2 closure commit.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.

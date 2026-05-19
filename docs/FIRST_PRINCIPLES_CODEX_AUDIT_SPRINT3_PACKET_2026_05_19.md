@@ -10,6 +10,9 @@ HEAD reviewed: `173e10da16beb5f6422d0a40656b99e70eb867bb`
 
 Audit log: `/private/tmp/dpf-unified-audit-logs/20260519T183301Z/summary.md`
 
+Completion handoff:
+`docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md`
+
 Scope: audit of the other team's Sprint 3 research/spec packet submission, audit
 of the Codex Sprint 2.2 closure work, and explicit next-sprint instructions for
 work that moves the project toward an experimental full-shot, first-principles,
@@ -478,4 +481,3 @@ Use this exact goal statement for the next engineering sprint:
 > blockers for missing inputs. The sprint exit condition is passing packet
 > hygiene tests, source-tagged geometry/mask/hash tests, `Sigma_p` fail-closed
 > power-port tests, traceability tests, and the full Codex periodic audit.
-
