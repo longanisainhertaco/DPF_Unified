@@ -298,3 +298,292 @@ def test_runner_text_declared_accepted_startup_does_not_pass_certificate() -> No
     )
     gate = result.telemetry["certificate_gate"]
     assert gate["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# Group 7: S3.4 typed startup BVP channel packet
+#
+# Handoff: docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md
+#          section "S3.4 Startup BVP Packet".
+# Research basis: WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md -- every channel is
+# candidate or blocked; 0 supported; 0 computed.
+# ---------------------------------------------------------------------------
+
+from pathlib import Path  # noqa: E402
+
+from dpf.first_principles.startup_bvp import (  # noqa: E402
+    FORBIDDEN_STARTUP_INPUTS,
+    STARTUP_BVP_CHANNELS,
+    STARTUP_CHANNEL_STATUSES,
+    StartupChannel,
+    StartupPacket,
+    StartupSourceRef,
+    build_startup_packet,
+)
+
+# The 13 startup channels the S3.4 handoff lists as required.
+S34_REQUIRED_STARTUP_CHANNELS = (
+    "gas_and_fill_conditions",
+    "breakdown_paschen_or_alternative",
+    "preionization",
+    "flashover",
+    "secondary_emission",
+    "photoemission",
+    "surface_plasma",
+    "initial_e_b_j",
+    "species_and_charge_state",
+    "ionization_recombination_status",
+    "electron_and_ion_temperature",
+    "sheath_surface_liftoff",
+    "handoff_interval_into_3d_solver",
+)
+
+# The S3.4 handoff "Required packet fields" list.
+S34_REQUIRED_PACKET_FIELDS = (
+    "channel_id",
+    "status",
+    "source_refs",
+    "units",
+    "symbol_map",
+    "input_dependencies",
+    "output_fields",
+    "blocker_reason",
+    "first_principles_claim_effect",
+)
+
+# Repository root: tests/ -> repo.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_startup_packet_has_every_required_channel() -> None:
+    """The typed startup packet must enumerate all 13 S3.4 channels."""
+    packet = build_startup_packet()
+    channel_ids = {channel.channel_id for channel in packet.channels}
+    for required in S34_REQUIRED_STARTUP_CHANNELS:
+        assert required in channel_ids, f"S3.4 channel '{required}' missing"
+    assert len(packet.channels) == len(S34_REQUIRED_STARTUP_CHANNELS)
+
+
+def test_startup_packet_channels_carry_every_required_field() -> None:
+    """Every channel record carries the S3.4 required packet fields."""
+    packet = build_startup_packet()
+    for channel in packet.channels:
+        record = channel.as_dict()
+        for field_name in S34_REQUIRED_PACKET_FIELDS:
+            assert field_name in record, (
+                f"channel '{channel.channel_id}' missing field "
+                f"'{field_name}'"
+            )
+        # Units and symbol map must be non-empty mappings.
+        assert record["units"], f"channel '{channel.channel_id}' has no units"
+        assert record["symbol_map"], (
+            f"channel '{channel.channel_id}' has no symbol map"
+        )
+        assert record["output_fields"], (
+            f"channel '{channel.channel_id}' has no output fields"
+        )
+        assert record["blocker_id"], (
+            f"channel '{channel.channel_id}' has no blocker id"
+        )
+
+
+def test_no_startup_channel_is_computed_or_supported() -> None:
+    """WP-N2: no channel reaches computed/supported for a DPF startup BVP.
+
+    Every channel must be candidate or blocked. Promoting any channel to
+    'computed' without a cited DPF-specific source is forbidden.
+    """
+    packet = build_startup_packet()
+    for channel in packet.channels:
+        assert channel.status in {"candidate", "blocked"}, (
+            f"channel '{channel.channel_id}' has status '{channel.status}'; "
+            "no channel may be computed/supported without a DPF-specific "
+            "source per WP-N2"
+        )
+        assert channel.supports_first_principles is False
+    counts = packet.status_counts()
+    assert counts["computed"] == 0
+    assert counts["candidate"] + counts["blocked"] == len(packet.channels)
+    assert "supported" not in STARTUP_CHANNEL_STATUSES or counts.get(
+        "supported", 0
+    ) == 0
+
+
+def test_startup_packet_blocks_first_principles_acceptance() -> None:
+    """The typed startup packet must block first-principles authority."""
+    packet = build_startup_packet()
+    assert packet.can_support_first_principles_acceptance is False
+    assert packet.status == "blocked_startup_channel_packet_no_computed_channel"
+    # Every non-computed channel contributes a blocker ID.
+    assert len(packet.blocker_ids) == len(packet.channels)
+    assert len(set(packet.blocker_ids)) == len(packet.blocker_ids), (
+        "blocker IDs must be unique"
+    )
+    for blocker_id in packet.blocker_ids:
+        assert blocker_id.startswith("STARTUP-BVP-CH")
+
+
+def test_startup_packet_dict_reports_blocked_authority() -> None:
+    """The serialized packet must report blocked startup authority exactly."""
+    record = build_startup_packet().as_dict()
+    assert record["packet_type"] == (
+        "first_principles_startup_bvp_channel_packet"
+    )
+    assert record["can_support_first_principles_acceptance"] is False
+    assert sorted(record["channels_blocking_startup_authority"]) == sorted(
+        S34_REQUIRED_STARTUP_CHANNELS
+    )
+    assert record["channel_status_counts"]["computed"] == 0
+    assert record["requirement_ids"] == [
+        "DPF-PHYS-010",
+        "DPF-PHYS-017",
+        "DPF-PHYS-021",
+    ]
+
+
+def test_blocked_channel_is_photoemission_without_local_source() -> None:
+    """Photoemission is blocked: handoff says 'if sourced, otherwise blocked'."""
+    packet = build_startup_packet()
+    blocked = [c for c in packet.channels if c.status == "blocked"]
+    assert [c.channel_id for c in blocked] == ["photoemission"]
+    photoemission = packet.channels_by_id["photoemission"]
+    assert photoemission.source_refs == ()
+    assert photoemission.blocker_id == "STARTUP-BVP-CH06-PHOTOEMISSION-NO-LOCAL-SOURCE"
+
+
+def test_startup_channel_source_refs_resolve_to_local_files() -> None:
+    """Every non-blocked channel cites a real local KnowledgeReference file."""
+    packet = build_startup_packet()
+    for channel in packet.channels:
+        if channel.status == "blocked":
+            assert channel.source_refs == ()
+            continue
+        assert channel.source_refs, (
+            f"non-blocked channel '{channel.channel_id}' has no source ref"
+        )
+        for ref in channel.source_refs:
+            assert ref.path.startswith("KnowledgeReference/")
+            assert (_REPO_ROOT / ref.path).is_file(), (
+                f"channel '{channel.channel_id}' cites missing source "
+                f"'{ref.path}'"
+            )
+            assert ref.lines, "source ref must carry a line range"
+            assert ref.equation_or_figure, (
+                "source ref must carry an equation/figure identifier"
+            )
+
+
+def test_startup_channel_rejects_invalid_status() -> None:
+    """A StartupChannel with an unknown status must fail closed."""
+    with pytest.raises(ValueError, match="invalid status"):
+        StartupChannel(
+            channel_id="bad",
+            status="accepted",
+            source_refs=(StartupSourceRef("KnowledgeReference/x.md", "1-2", "p"),),
+            units={"x": "m"},
+            symbol_map={"x": "x"},
+            input_dependencies=(),
+            output_fields=("x",),
+            blocker_reason="",
+            blocker_id="",
+            first_principles_claim_effect="",
+        )
+
+
+def test_blocked_startup_channel_requires_blocker_id() -> None:
+    """A blocked channel without a blocker ID must fail closed."""
+    with pytest.raises(ValueError, match="blocker_id"):
+        StartupChannel(
+            channel_id="bad",
+            status="blocked",
+            source_refs=(),
+            units={"x": "m"},
+            symbol_map={"x": "x"},
+            input_dependencies=(),
+            output_fields=("x",),
+            blocker_reason="no source",
+            blocker_id="",
+            first_principles_claim_effect="blocked",
+        )
+
+
+def test_non_blocked_startup_channel_requires_source_ref() -> None:
+    """A candidate/computed channel with no source reference must fail closed."""
+    with pytest.raises(ValueError, match="source reference"):
+        StartupChannel(
+            channel_id="bad",
+            status="candidate",
+            source_refs=(),
+            units={"x": "m"},
+            symbol_map={"x": "x"},
+            input_dependencies=(),
+            output_fields=("x",),
+            blocker_reason="",
+            blocker_id="",
+            first_principles_claim_effect="candidate",
+        )
+
+
+def test_startup_packet_records_forbidden_inputs() -> None:
+    """The packet must record the S3.4 forbidden startup inputs.
+
+    Arbitrary seed density, back-solving an initial condition from published
+    end-state results, and silent fallback to engineering defaults are all
+    forbidden as accepted startup.
+    """
+    record = build_startup_packet().as_dict()
+    forbidden = set(record["forbidden_startup_inputs"])
+    assert "arbitrary_seed_density_as_accepted_startup" in forbidden
+    assert (
+        "back_solve_initial_condition_from_published_end_state_results"
+        in forbidden
+    )
+    assert (
+        "silent_fallback_to_engineering_defaults_in_first_principles_mode"
+        in forbidden
+    )
+    assert forbidden == set(FORBIDDEN_STARTUP_INPUTS)
+
+
+def test_startup_channel_packet_embedded_in_bvp_packet() -> None:
+    """build_startup_bvp_packet must embed the typed startup channel packet."""
+    bvp = build_startup_bvp_packet({"mode": "seeded_layer"})
+    assert "startup_channel_packet" in bvp
+    channel_packet = bvp["startup_channel_packet"]
+    assert channel_packet["packet_type"] == (
+        "first_principles_startup_bvp_channel_packet"
+    )
+    assert channel_packet["can_support_first_principles_acceptance"] is False
+    assert len(channel_packet["channels"]) == len(S34_REQUIRED_STARTUP_CHANNELS)
+
+
+def test_startup_channel_packet_immune_to_accepted_mode_declaration() -> None:
+    """An accepted-mode + all-channels declaration must not promote the
+    typed startup channel packet: it stays blocked regardless of the gate."""
+    bvp = build_startup_bvp_packet(
+        {
+            "mode": "surface_breakdown_bvp",
+            "evidence_status": "accepted_same_scope_source",
+            "can_support_whole_shot_acceptance": True,
+            "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+        }
+    )
+    channel_packet = bvp["startup_channel_packet"]
+    assert channel_packet["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+    assert channel_packet["can_support_first_principles_acceptance"] is False
+    assert channel_packet["channel_status_counts"]["computed"] == 0
+
+
+def test_startup_packet_is_typed_dataclass() -> None:
+    """The startup packet must be a typed StartupPacket of StartupChannels."""
+    packet = build_startup_packet()
+    assert isinstance(packet, StartupPacket)
+    assert all(isinstance(c, StartupChannel) for c in packet.channels)
+    assert all(
+        isinstance(ref, StartupSourceRef)
+        for c in packet.channels
+        for ref in c.source_refs
+    )
+    assert packet.channels == STARTUP_BVP_CHANNELS

@@ -1,8 +1,30 @@
-"""Fail-closed startup BVP packets for first-principles DPF runs."""
+"""Fail-closed startup BVP packets for first-principles DPF runs.
+
+This module carries two layers:
+
+* ``build_startup_bvp_packet`` -- the mode-level acceptance gate that decides
+  whether a declared startup mode (imported PIC sheath, surface breakdown BVP,
+  seeded layer, ...) may support a whole-shot first-principles claim.
+* ``build_startup_channel_packet`` -- the S3.4 typed per-channel startup packet
+  required by ``docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md``
+  section "S3.4 Startup BVP Packet". It enumerates every whole-shot startup
+  channel as a typed ``StartupChannel`` record carrying its status, exact local
+  source references, units, symbol map, input dependencies, output fields,
+  blocker reason, and effect on the first-principles claim.
+
+The per-channel statuses are fixed by the WP-N2 research packet
+``docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md``,
+which classified all 11 physics channels as ``candidate`` and ``0`` as
+``supported`` for a DPF-specific startup BVP. No channel is promoted to
+``computed`` here: the local corpus does not supply a DPF-specific closure for
+any startup channel, so the typed packet always reports
+``can_support_first_principles_acceptance = False``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any
 
 STARTUP_BVP_SOURCE_REFS = (
@@ -250,6 +272,7 @@ def build_startup_bvp_packet(
             candidate_inputs=candidate_inputs,
         ),
         "candidate_input_channels": sorted(candidate_inputs),
+        "startup_channel_packet": build_startup_packet().as_dict(),
         "startup_payload_review": startup_payload_review,
         "candidate_breakdown_audit": _candidate_breakdown_audit_packet(
             candidate_breakdown_audit
@@ -597,3 +620,904 @@ def _mode_class(mode: str) -> str:
     if mode in REJECTED_STARTUP_MODES:
         return "rejected_for_accepted_claims"
     return "unknown"
+
+
+# ===========================================================================
+# S3.4 typed startup channel packet
+# ===========================================================================
+#
+# Handoff: docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md
+#          section "S3.4 Startup BVP Packet".
+# Research basis (channel status fixed here): WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md
+#   -> all channels candidate or blocked; 0 supported; 0 computed.
+#
+# A startup channel may only carry status "computed" when the local corpus
+# supplies a DPF-specific closure that produces the runtime field. WP-N2 found
+# none, so every channel below is "candidate" or "blocked". Promotion to
+# "computed" requires a cited DPF-specific source for that channel and is NOT
+# permitted from inferred formulae or back-solved end-state results.
+
+# Allowed typed-channel status values. "supported" is reserved for a future
+# DPF-specific source closure and is intentionally unused by the registry.
+STARTUP_CHANNEL_STATUSES = ("computed", "candidate", "blocked")
+
+# Statuses that count toward first-principles startup authority. Per WP-N2 no
+# channel is "computed", so the typed packet's authority is always blocked.
+STARTUP_CHANNEL_AUTHORITY_STATUSES = ("computed",)
+
+
+@dataclass(frozen=True)
+class StartupSourceRef:
+    """Exact local source reference for a startup channel claim."""
+
+    path: str
+    lines: str
+    equation_or_figure: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "path": self.path,
+            "lines": self.lines,
+            "equation_or_figure": self.equation_or_figure,
+        }
+
+
+@dataclass(frozen=True)
+class StartupChannel:
+    """Typed startup BVP channel record.
+
+    Fields are the S3.4 handoff-required packet fields: channel ID, status,
+    source refs, units, symbol map, input dependencies, output fields, blocker
+    reason, and the effect of the channel on the first-principles claim.
+    """
+
+    channel_id: str
+    status: str
+    source_refs: tuple[StartupSourceRef, ...]
+    units: Mapping[str, str]
+    symbol_map: Mapping[str, str]
+    input_dependencies: tuple[str, ...]
+    output_fields: tuple[str, ...]
+    blocker_reason: str
+    blocker_id: str
+    first_principles_claim_effect: str
+    missing_parameter_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.status not in STARTUP_CHANNEL_STATUSES:
+            raise ValueError(
+                f"startup channel '{self.channel_id}' has invalid status "
+                f"'{self.status}'; allowed: {STARTUP_CHANNEL_STATUSES}"
+            )
+        if self.status == "blocked" and not self.blocker_id:
+            raise ValueError(
+                f"blocked startup channel '{self.channel_id}' must carry a "
+                "blocker_id"
+            )
+        if self.status != "blocked" and not self.source_refs:
+            raise ValueError(
+                f"non-blocked startup channel '{self.channel_id}' must carry "
+                "at least one source reference"
+            )
+
+    @property
+    def supports_first_principles(self) -> bool:
+        return self.status in STARTUP_CHANNEL_AUTHORITY_STATUSES
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "channel_id": self.channel_id,
+            "status": self.status,
+            "source_refs": [ref.as_dict() for ref in self.source_refs],
+            "units": dict(self.units),
+            "symbol_map": dict(self.symbol_map),
+            "input_dependencies": list(self.input_dependencies),
+            "output_fields": list(self.output_fields),
+            "blocker_reason": self.blocker_reason,
+            "blocker_id": self.blocker_id,
+            "missing_parameter_ids": list(self.missing_parameter_ids),
+            "first_principles_claim_effect": self.first_principles_claim_effect,
+            "supports_first_principles_acceptance": (
+                self.supports_first_principles
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class StartupPacket:
+    """Typed S3.4 startup BVP packet.
+
+    Aggregates the per-channel ``StartupChannel`` records and exposes whether
+    the startup channels can support a first-principles acceptance claim. Per
+    WP-N2 this is always ``False``: no channel reaches ``computed`` status.
+    """
+
+    channels: tuple[StartupChannel, ...]
+    status: str
+    blocker_ids: tuple[str, ...]
+    can_support_first_principles_acceptance: bool
+    requirement_ids: tuple[str, ...] = field(
+        default=("DPF-PHYS-010", "DPF-PHYS-017", "DPF-PHYS-021")
+    )
+
+    @property
+    def channels_by_id(self) -> dict[str, StartupChannel]:
+        return {channel.channel_id: channel for channel in self.channels}
+
+    def status_counts(self) -> dict[str, int]:
+        counts = {status: 0 for status in STARTUP_CHANNEL_STATUSES}
+        for channel in self.channels:
+            counts[channel.status] += 1
+        return counts
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "packet_type": "first_principles_startup_bvp_channel_packet",
+            "requirement_ids": list(self.requirement_ids),
+            "status": self.status,
+            "source_authority": (
+                "KnowledgeReference and tracked verified extracts only"
+            ),
+            "research_basis": (
+                "docs/external_team_submissions/"
+                "2026_05_18_three_sprint_blocker_packet/sprint_3/"
+                "WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md"
+            ),
+            "channel_status_counts": self.status_counts(),
+            "channels": [channel.as_dict() for channel in self.channels],
+            "channels_blocking_startup_authority": sorted(
+                channel.channel_id
+                for channel in self.channels
+                if not channel.supports_first_principles
+            ),
+            "blocker_ids": list(self.blocker_ids),
+            "forbidden_startup_inputs": list(FORBIDDEN_STARTUP_INPUTS),
+            "can_support_first_principles_acceptance": (
+                self.can_support_first_principles_acceptance
+            ),
+            "first_principles_claim_effect": (
+                "startup authority blocked: no startup channel reaches "
+                "computed status; seeded startup stays rejected"
+            ),
+        }
+
+
+# Forbidden startup inputs (S3.4 handoff "Forbidden"). These are recorded in
+# the typed packet so a reviewer sees them; none may ever produce a "computed"
+# channel.
+FORBIDDEN_STARTUP_INPUTS = (
+    "arbitrary_seed_density_as_accepted_startup",
+    "back_solve_initial_condition_from_published_end_state_results",
+    "silent_fallback_to_engineering_defaults_in_first_principles_mode",
+)
+
+# Missing-parameter inventory from WP-N2 section 4. Each entry holds a channel
+# at "candidate" until a DPF-specific local source supplies it.
+STARTUP_MISSING_PARAMETERS: dict[str, str] = {
+    "M1": (
+        "DPF surface-flashover BVP closure (insulator-surface physics) -- no "
+        "reviewed equation set produces initial E/B/J/n/Te/Ti along the "
+        "insulator from applied voltage"
+    ),
+    "M2": (
+        "alpha, gamma, sigma_i0, eta, beta_ep, R_ph numerical values for "
+        "D2/H2/Ne/Ar at DPF voltages"
+    ),
+    "M3": (
+        "secondary-emission coefficients for DPF materials (Cu anode, "
+        "pyrex/alumina insulator)"
+    ),
+    "M4": "quantitative preionization seed-density / ionization-fraction model",
+    "M5": (
+        "closed flashover delay / voltage / striation-to-uniform timescale "
+        "model"
+    ),
+    "M6": "breakdown-phase initial E and J field distributions",
+    "M7": "start-of-shot density/species and Te/Ti fields",
+    "M8": (
+        "numerical handoff-interval definition and a same-device reviewed PIC "
+        "import payload"
+    ),
+    "M9": "DPF-specific homogeneous-field validity for the Te relation Eq. (4)",
+}
+
+
+def _ref(path: str, lines: str, equation_or_figure: str) -> StartupSourceRef:
+    return StartupSourceRef(
+        path=f"KnowledgeReference/{path}",
+        lines=lines,
+        equation_or_figure=equation_or_figure,
+    )
+
+
+# Source-file shorthands used by the registry below.
+_KR_BREAKDOWN_NOBLE = (
+    "the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-"
+    "of-noble-gases-3.md"
+)
+_KR_CURRENT_SHEATH = (
+    "effect-of-current-sheath-initiation-on-the-radial-collapse-and-"
+    "energetic-particle-accelera-b2e95b88.md"
+)
+_KR_VERSATILE = (
+    "the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-"
+    "applications.md"
+)
+_KR_GRIBKOV = "gribkov-2007-pf1000-jphysd-part2.md"
+_KR_DESIGN_CONSTRUCTION = (
+    "design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md"
+)
+_KR_HYBRID_PIC = "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"
+_KR_SAND2009 = "sand2009-6373-b93aec67.md"
+_KR_ALEGRA = (
+    "unlimited-release-printed-september-2009-alegra-hedp-simulations-of-"
+    "the-dense-plasma-focus.md"
+)
+_KR_GAS_DISCHARGE = (
+    "theory-and-finite-element-simulation-methodology-of-gas-discharge-"
+    "plasmas.md"
+)
+
+
+def _build_startup_channel_registry() -> tuple[StartupChannel, ...]:
+    """Return the 13 typed startup channels from the S3.4 handoff.
+
+    Status per channel is fixed by WP-N2: every channel is ``candidate`` (the
+    corpus supplies a relation or qualitative basis) -- none is ``computed``,
+    and none is ``blocked`` because no channel is fully source-empty. The
+    whole-shot startup is blocked as a whole because no channel reaches
+    ``computed``.
+    """
+
+    return (
+        StartupChannel(
+            channel_id="gas_and_fill_conditions",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_VERSATILE,
+                    "527-534,569-573",
+                    "prose: filamentary (high p) vs uniform (low p) "
+                    "breakdown; optimum pressure ~10 mbar",
+                ),
+                _ref(
+                    _KR_HYBRID_PIC,
+                    "661-690",
+                    "prose + Table 1: prefill n0=6.7e22 m^-3, T1~0.026 eV "
+                    "(end-of-rundown scope)",
+                ),
+            ),
+            units={
+                "fill_pressure_Pa": "Pa",
+                "fill_temperature_K": "K",
+                "background_number_density_m3": "m^-3",
+            },
+            symbol_map={
+                "p0": "fill gas pressure",
+                "T1": "background gas temperature",
+                "n0": "background number density",
+            },
+            input_dependencies=(
+                "gas.species",
+                "gas.pressure_Pa",
+                "gas.temperature_K",
+            ),
+            output_fields=(
+                "fill_pressure_Pa",
+                "fill_temperature_K",
+                "species_name",
+            ),
+            blocker_reason=(
+                "corpus supplies pressure-regime guidance and an "
+                "end-of-rundown prefill density, but no start-of-discharge "
+                "fill-condition closure for the whole-shot startup BVP"
+            ),
+            blocker_id="STARTUP-BVP-CH01-FILL-NO-DPF-CLOSURE",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M7",),
+        ),
+        StartupChannel(
+            channel_id="breakdown_paschen_or_alternative",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_BREAKDOWN_NOBLE,
+                    "130-133,150-156,196-203",
+                    "Eq. (1) first Townsend coefficient; Eq. (3) alpha(Te); "
+                    "Eq. (6) Townsend / Eq. (7) streamer breakdown",
+                ),
+                _ref(
+                    _KR_CURRENT_SHEATH,
+                    "631-639",
+                    "prose: canonical Paschen feedback 'should no longer "
+                    "apply' to DPFs",
+                ),
+            ),
+            units={
+                "alpha": "1/m",
+                "gamma": "dimensionless",
+                "d": "m",
+                "breakdown_onset_time_s": "s",
+            },
+            symbol_map={
+                "alpha": "primary (impact) ionization coefficient",
+                "gamma": "secondary electron emission coefficient",
+                "d": "inter-electrode / insulator-surface path length",
+                "x": "distance along the field",
+            },
+            input_dependencies=(
+                "device.insulator_length_m",
+                "device.insulator_material",
+                "gas.species",
+                "gas.pressure_Pa",
+                "circuit.voltage_V",
+            ),
+            output_fields=(
+                "breakdown_onset_time_s",
+                "breakdown_mechanism",
+                "breakdown_path_length_m",
+            ),
+            blocker_reason=(
+                "corpus explicitly states the canonical Paschen/Townsend "
+                "feedback loop does not describe DPF insulator breakdown; no "
+                "reviewed DPF surface-flashover BVP closure exists locally"
+            ),
+            blocker_id="STARTUP-BVP-CH02-BREAKDOWN-PASCHEN-CONTRADICTED-FOR-DPF",
+            first_principles_claim_effect=(
+                "candidate input only; corpus contradicts canonical Paschen "
+                "for DPFs, so cannot support first-principles acceptance"
+            ),
+            missing_parameter_ids=("M1", "M2"),
+        ),
+        StartupChannel(
+            channel_id="preionization",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_VERSATILE,
+                    "1490-1530",
+                    "prose: Ni-63 and U-238 preionizer measured yield deltas "
+                    "(+25%, +50+/-5%); uniform-sheet mechanism",
+                ),
+            ),
+            units={
+                "preionization_seed_density_m3": "m^-3",
+                "preionization_ionization_fraction": "dimensionless",
+            },
+            symbol_map={
+                "n_seed": "preionization seed electron number density",
+                "f_ion": "preionization ionization fraction",
+            },
+            input_dependencies=(
+                "preionizer.model_or_none",
+                "device.insulator_length_m",
+            ),
+            output_fields=(
+                "preionization_seed_density_m3",
+                "preionization_ionization_fraction",
+            ),
+            blocker_reason=(
+                "corpus documents preionization as an experimental "
+                "intervention with measured yield deltas, not a quantitative "
+                "seed-density initial-condition generator"
+            ),
+            blocker_id="STARTUP-BVP-CH03-PREIONIZATION-NO-QUANTITATIVE-MODEL",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M4",),
+        ),
+        StartupChannel(
+            channel_id="flashover",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_DESIGN_CONSTRUCTION,
+                    "512-514,583-589",
+                    "prose: breakdown along the insulator determines the "
+                    "sheath; radial striated light pattern",
+                ),
+                _ref(
+                    _KR_VERSATILE,
+                    "538-541",
+                    "prose: Kies ~100 J/cm^2 upper-limit insulator-surface "
+                    "energy density",
+                ),
+            ),
+            units={
+                "flashover_complete_time_s": "s",
+                "surface_energy_density_J_cm2": "J/cm^2",
+                "striation_to_uniform_time_s": "s",
+            },
+            symbol_map={
+                "w_surface": "insulator-surface energy density",
+                "t_flashover": "surface-flashover completion time",
+            },
+            input_dependencies=(
+                "device.insulator_length_m",
+                "device.insulator_outer_radius_m",
+                "device.insulator_material",
+                "circuit.voltage_V",
+            ),
+            output_fields=(
+                "flashover_complete_time_s",
+                "surface_energy_density_J_cm2",
+                "striation_to_uniform_time_s",
+            ),
+            blocker_reason=(
+                "corpus gives a qualitative surface-discharge description and "
+                "an upper-limit energy-density estimate, not a closed "
+                "flashover-delay / flashover-voltage model"
+            ),
+            blocker_id="STARTUP-BVP-CH04-FLASHOVER-NO-CLOSED-DELAY-MODEL",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M1", "M5"),
+        ),
+        StartupChannel(
+            channel_id="secondary_emission",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_BREAKDOWN_NOBLE,
+                    "113-117",
+                    "prose: gamma definition and range 1e-3..1e-8 "
+                    "(electrode-material dependent)",
+                ),
+                _ref(
+                    _KR_GAS_DISCHARGE,
+                    "1187-1196",
+                    "prose: secondary-emission electron flux boundary "
+                    "condition Gamma_e = gamma * c_p * |u_p|",
+                ),
+            ),
+            units={
+                "secondary_emission_coefficient_gamma": "dimensionless",
+                "Gamma_e_mol_m2_s": "mol m^-2 s^-1",
+                "c_p_mol_m3": "mol m^-3",
+                "u_p_m_s": "m s^-1",
+            },
+            symbol_map={
+                "gamma": "secondary electron emission coefficient",
+                "Gamma_e": "secondary electron number flux",
+                "c_p": "positive-ion molar concentration",
+                "u_p": "ion drift speed",
+            },
+            input_dependencies=(
+                "device.insulator_material",
+                "electrode.material",
+                "surface.ion_flux",
+            ),
+            output_fields=(
+                "secondary_emission_coefficient_gamma",
+                "Gamma_e_mol_m2_s",
+            ),
+            blocker_reason=(
+                "the cited gamma ranges are generic gas-discharge values; the "
+                "corpus supplies no DPF-material (Cu / pyrex / alumina) "
+                "ion-induced electron-emission yields"
+            ),
+            blocker_id="STARTUP-BVP-CH05-SECONDARY-EMISSION-NO-DPF-MATERIAL-GAMMA",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M2", "M3"),
+        ),
+        StartupChannel(
+            channel_id="photoemission",
+            status="blocked",
+            source_refs=(),
+            units={
+                "photoemission_electron_flux_mol_m2_s": "mol m^-2 s^-1",
+            },
+            symbol_map={
+                "Gamma_ph": "photoemission electron number flux",
+            },
+            input_dependencies=(
+                "surface.photon_flux",
+                "device.insulator_material",
+            ),
+            output_fields=("photoemission_electron_flux_mol_m2_s",),
+            blocker_reason=(
+                "no local KnowledgeReference source supplies a DPF "
+                "photoemission boundary model; WP-N2 did not enumerate a "
+                "photoemission channel and the corpus search returned no "
+                "DPF-specific photoemission closure"
+            ),
+            blocker_id="STARTUP-BVP-CH06-PHOTOEMISSION-NO-LOCAL-SOURCE",
+            first_principles_claim_effect=(
+                "blocked: no local source; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=(),
+        ),
+        StartupChannel(
+            channel_id="surface_plasma",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_DESIGN_CONSTRUCTION,
+                    "583-589,601-607,632-651",
+                    "prose: surface-discharge current path; inverse-pinch "
+                    "force F = i dL x B; 1-microsecond uniformization",
+                ),
+                _ref(
+                    _KR_GRIBKOV,
+                    "62-66",
+                    "prose: first stage surface discharge along the "
+                    "cylindrical insulator",
+                ),
+            ),
+            units={
+                "surface_sheet_thickness_m": "m",
+                "surface_sheet_conductivity_S_m": "S m^-1",
+            },
+            symbol_map={
+                "F": "per-segment magnetic force i dL x B",
+                "sigma_s": "surface-plasma sheet conductivity",
+            },
+            input_dependencies=(
+                "flashover.output",
+                "circuit.current_A",
+            ),
+            output_fields=(
+                "surface_plasma_mask",
+                "surface_sheet_thickness_m",
+                "surface_sheet_conductivity_S_m",
+            ),
+            blocker_reason=(
+                "corpus describes the surface plasma qualitatively only; no "
+                "closed surface-plasma field set (density, thickness, "
+                "conductivity, temperature) is provided"
+            ),
+            blocker_id="STARTUP-BVP-CH07-SURFACE-PLASMA-NO-CLOSED-FIELD-SET",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M1",),
+        ),
+        StartupChannel(
+            channel_id="initial_e_b_j",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_HYBRID_PIC,
+                    "748-757",
+                    "Eq. (34) B_theta = mu I / (2 pi r); Eq. (35) external "
+                    "circuit equation (implosion-phase relations)",
+                ),
+                _ref(
+                    _KR_DESIGN_CONSTRUCTION,
+                    "508-512,601-605",
+                    "prose + Fig. 2a: radial applied-voltage E-field; surface "
+                    "current density J at breakdown",
+                ),
+            ),
+            units={
+                "initial_E_field_V_m": "V m^-1",
+                "initial_B_field_T": "T",
+                "initial_J_A_m2": "A m^-2",
+            },
+            symbol_map={
+                "B_theta": "azimuthal magnetic field",
+                "I": "circuit current",
+                "r": "radius",
+                "mu": "permeability",
+            },
+            input_dependencies=(
+                "circuit.voltage_V",
+                "circuit.inductance_H",
+                "circuit.capacitance_F",
+                "circuit.resistance_ohm",
+                "device.geometry",
+            ),
+            output_fields=(
+                "initial_E_field_V_m",
+                "initial_B_field_T",
+                "initial_J_A_m2",
+            ),
+            blocker_reason=(
+                "Eq. (34)/(35) are implosion-phase circuit/boundary "
+                "relations, not breakdown-phase initial fields; no closed "
+                "source-derived initial E and J distribution exists locally"
+            ),
+            blocker_id="STARTUP-BVP-CH08-INITIAL-FIELDS-NO-BREAKDOWN-PHASE-SET",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M6",),
+        ),
+        StartupChannel(
+            channel_id="species_and_charge_state",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_HYBRID_PIC,
+                    "661-690",
+                    "prose + Table 1: deuterium species; end-of-rundown "
+                    "n0=6.7e22 m^-3, ns,0=3.3e23 m^-3",
+                ),
+            ),
+            units={
+                "total_number_density_m3": "m^-3",
+                "ion_density_m3": "m^-3",
+                "electron_density_m3": "m^-3",
+                "charge_state": "dimensionless",
+            },
+            symbol_map={
+                "n0": "background number density",
+                "ns0": "current-sheath number density",
+                "Z": "ion charge state",
+            },
+            input_dependencies=(
+                "gas.species",
+                "gas.pressure_Pa",
+                "breakdown.ionization",
+            ),
+            output_fields=(
+                "total_number_density_m3",
+                "ion_density_m3",
+                "electron_density_m3",
+                "species_name",
+                "charge_state",
+            ),
+            blocker_reason=(
+                "corpus supplies only end-of-rundown handoff densities; "
+                "start-of-discharge species/charge-state fields for the "
+                "breakdown BVP are absent"
+            ),
+            blocker_id="STARTUP-BVP-CH09-SPECIES-NO-START-OF-SHOT-FIELDS",
+            first_principles_claim_effect=(
+                "candidate input only; end-of-rundown scope, cannot support "
+                "first-principles whole-shot acceptance"
+            ),
+            missing_parameter_ids=("M7",),
+        ),
+        StartupChannel(
+            channel_id="ionization_recombination_status",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_BREAKDOWN_NOBLE,
+                    "130-133,150-156",
+                    "Eq. (1) first Townsend coefficient; Eq. (3) alpha(Te)",
+                ),
+                _ref(
+                    _KR_GAS_DISCHARGE,
+                    "256-292",
+                    "Eq. (6) electron source term R_e and coefficient "
+                    "definitions (alpha, eta, beta_ep, R0, R_ph)",
+                ),
+                _ref(
+                    _KR_CURRENT_SHEATH,
+                    "656-662",
+                    "prose: ionization path length Liz(P), Liz/Li = 2.4 at "
+                    "optimal pressure",
+                ),
+            ),
+            units={
+                "ionization_fraction": "dimensionless",
+                "ionization_source_rate_mol_m3_s": "mol m^-3 s^-1",
+                "alpha": "1/m",
+                "beta_ep_m3_s": "m^3 s^-1",
+            },
+            symbol_map={
+                "R_e": "electron hydrodynamic source term",
+                "alpha": "primary ionization coefficient",
+                "eta": "attachment coefficient",
+                "beta_ep": "electron-ion recombination coefficient",
+                "R_ph": "photoionization rate",
+            },
+            input_dependencies=(
+                "breakdown.alpha_packet",
+                "gas.species",
+                "gas.pressure_Pa",
+            ),
+            output_fields=(
+                "ionization_fraction",
+                "ionization_source_rate_mol_m3_s",
+            ),
+            blocker_reason=(
+                "R_e is a generic gas-discharge hydrodynamic source term; the "
+                "corpus supplies no DPF-specific alpha(E/p), beta_ep, R_ph and "
+                "the Liz/Li=2.4 ratio is an empirical fit, not a closure"
+            ),
+            blocker_id="STARTUP-BVP-CH10-IONIZATION-NO-DPF-COEFFICIENTS",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M2",),
+        ),
+        StartupChannel(
+            channel_id="electron_and_ion_temperature",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_BREAKDOWN_NOBLE,
+                    "160-167,169-172",
+                    "Eq. (4) Te = xi lambda e U/d (homogeneous-field only); "
+                    "Eq. (5) mean free-electron energy",
+                ),
+                _ref(
+                    _KR_CURRENT_SHEATH,
+                    "643-655",
+                    "prose: initial plasma 'a few eV'; Te ~ 4 eV analysis "
+                    "assumption",
+                ),
+            ),
+            units={
+                "electron_temperature_K": "K",
+                "ion_temperature_K": "K",
+                "lambda_m": "m",
+            },
+            symbol_map={
+                "Te": "free-electron temperature",
+                "Ti": "ion temperature",
+                "xi": "thermalization form factor",
+                "lambda": "electron mean free path",
+                "delta": "electron-mass to gas-molar-mass ratio",
+            },
+            input_dependencies=(
+                "initial_e_b_j.field",
+                "gas.species",
+                "breakdown.mean_free_path",
+            ),
+            output_fields=(
+                "electron_temperature_K",
+                "ion_temperature_K",
+            ),
+            blocker_reason=(
+                "Eq. (4) is valid only for a homogeneous/pseudo-homogeneous "
+                "field; the DPF coaxial gap is inhomogeneous, and Te ~ 4 eV "
+                "is an analysis assumption, not a DPF-valid closure"
+            ),
+            blocker_id="STARTUP-BVP-CH11-TEMPERATURE-NO-DPF-VALID-RELATION",
+            first_principles_claim_effect=(
+                "candidate input only; homogeneous-field relation invalid for "
+                "the DPF gap, cannot support first-principles acceptance"
+            ),
+            missing_parameter_ids=("M7", "M9"),
+        ),
+        StartupChannel(
+            channel_id="sheath_surface_liftoff",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_HYBRID_PIC,
+                    "607-614,703-708",
+                    "prose + Fig. 4: Yee staggered grid placement; "
+                    "end-of-rundown sheath thickness 0.15-0.20 cm",
+                ),
+                _ref(
+                    _KR_SAND2009,
+                    "317-323",
+                    "prose + Figure 1: DPF phases breakdown, lift-off, "
+                    "run-down, pinch",
+                ),
+            ),
+            units={
+                "sheath_thickness_m": "m",
+                "sheath_drift_velocity_m_s": "m s^-1",
+                "sheath_density_m3": "m^-3",
+            },
+            symbol_map={
+                "delta_sheath": "sheath axial thickness",
+                "vd": "sheath axial drift velocity",
+            },
+            input_dependencies=(
+                "surface_plasma.output",
+                "end_of_rundown_handoff.engineering_mode",
+            ),
+            output_fields=(
+                "sheath_mask",
+                "sheath_thickness_m",
+                "sheath_drift_velocity_m_s",
+                "sheath_density_m3",
+            ),
+            blocker_reason=(
+                "corpus supplies an end-of-rundown measured sheath thickness, "
+                "not a closed breakdown-BVP sheath-surface initial state "
+                "(mask, thickness, density, conductivity, velocity)"
+            ),
+            blocker_id="STARTUP-BVP-CH12-SHEATH-NO-BREAKDOWN-BVP-STATE",
+            first_principles_claim_effect=(
+                "candidate input only; end-of-rundown scope, cannot support "
+                "first-principles whole-shot acceptance"
+            ),
+            missing_parameter_ids=("M1", "M7"),
+        ),
+        StartupChannel(
+            channel_id="handoff_interval_into_3d_solver",
+            status="candidate",
+            source_refs=(
+                _ref(
+                    _KR_SAND2009,
+                    "470-475,682-690",
+                    "prose: arbitrary '1 eV thin layer' seed; ALEGRA imports "
+                    "PIC ion/electron densities, temperatures, B-field",
+                ),
+                _ref(
+                    _KR_ALEGRA,
+                    "268-272",
+                    "prose: ALEGRA capability to import PIC-derived data to "
+                    "initiate MHD simulations",
+                ),
+            ),
+            units={
+                "handoff_start_time_s": "s",
+                "handoff_end_time_s": "s",
+                "handoff_tolerance_s": "s",
+            },
+            symbol_map={
+                "t_start": "start of the voltage discharge",
+                "t_handoff": "sheath-liftoff complete; MHD rundown begins",
+            },
+            input_dependencies=(
+                "breakdown.output",
+                "flashover.output",
+                "sheath_surface_liftoff.output",
+                "mhd_solver.readiness",
+            ),
+            output_fields=(
+                "handoff_start_time_s",
+                "handoff_end_time_s",
+                "handoff_tolerance_s",
+                "handoff_mode",
+            ),
+            blocker_reason=(
+                "corpus supplies no numerical handoff-interval definition "
+                "(t_start, t_handoff, tolerance) and no same-device reviewed "
+                "PIC import payload; the '1 eV thin layer' seed is called "
+                "arbitrary by the source itself"
+            ),
+            blocker_id="STARTUP-BVP-CH13-HANDOFF-NO-NUMERICAL-DEFINITION",
+            first_principles_claim_effect=(
+                "candidate input only; cannot support first-principles "
+                "acceptance"
+            ),
+            missing_parameter_ids=("M8",),
+        ),
+    )
+
+
+STARTUP_BVP_CHANNELS: tuple[StartupChannel, ...] = _build_startup_channel_registry()
+
+
+def build_startup_packet() -> StartupPacket:
+    """Return the typed S3.4 startup BVP channel packet.
+
+    The packet enumerates every whole-shot startup channel as a typed
+    ``StartupChannel`` record. Per the WP-N2 research packet no channel is
+    source-``computed`` for a DPF-specific startup BVP closure, so the packet's
+    ``can_support_first_principles_acceptance`` is always ``False`` and every
+    non-``computed`` channel contributes a blocker ID that blocks startup
+    authority.
+    """
+
+    channels = STARTUP_BVP_CHANNELS
+    blocking_channels = tuple(
+        channel for channel in channels if not channel.supports_first_principles
+    )
+    blocker_ids = tuple(channel.blocker_id for channel in blocking_channels)
+    can_support = len(blocking_channels) == 0
+    status = (
+        "startup_channel_packet_supports_first_principles"
+        if can_support
+        else "blocked_startup_channel_packet_no_computed_channel"
+    )
+    return StartupPacket(
+        channels=channels,
+        status=status,
+        blocker_ids=blocker_ids,
+        can_support_first_principles_acceptance=can_support,
+    )

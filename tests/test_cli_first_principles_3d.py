@@ -902,3 +902,80 @@ def test_first_principles_3d_runtime_overrides_compact_json_deck(tmp_path) -> No
     assert payload["deck"]["dt_s"] == 3.0e-13
     assert payload["n_steps"] == 2
     assert payload["dt_s"] == 3.0e-13
+
+
+# ---------------------------------------------------------------------------
+# S3.4: the first-principles CLI output must report startup-packet status.
+#
+# Handoff: docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md
+#          section "S3.4 Startup BVP Packet" -> "first-principles CLI output
+#          reports startup packet status".
+# ---------------------------------------------------------------------------
+
+
+def test_first_principles_3d_cli_reports_typed_startup_channel_packet(
+    tmp_path,
+) -> None:
+    """The first-principles 3-D CLI JSON must carry the typed S3.4 startup
+    channel packet, and it must report blocked startup authority."""
+    from dpf.cli.main import cli
+
+    output = tmp_path / "first_principles_3d.json"
+    result = CliRunner().invoke(
+        cli,
+        ["first-principles-3d", "--output", str(output)],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(output.read_text())
+
+    startup = payload["telemetry_packets"]["startup"]
+    channel_packet = startup["startup_channel_packet"]
+    assert channel_packet["packet_type"] == (
+        "first_principles_startup_bvp_channel_packet"
+    )
+    # WP-N2: 0 channels computed; the whole startup BVP is blocked.
+    assert channel_packet["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+    assert channel_packet["channel_status_counts"]["computed"] == 0
+    assert channel_packet["can_support_first_principles_acceptance"] is False
+    assert len(channel_packet["channels"]) == 13
+    assert len(channel_packet["blocker_ids"]) == 13
+    assert channel_packet["requirement_ids"] == [
+        "DPF-PHYS-010",
+        "DPF-PHYS-017",
+        "DPF-PHYS-021",
+    ]
+
+
+def test_first_principles_3d_dossier_reports_startup_channel_packet(
+    tmp_path,
+) -> None:
+    """The engineering dossier must surface the blocked startup channel
+    packet as an active blocker so the CLI output reports it directly."""
+    from dpf.cli.main import cli
+
+    output = tmp_path / "first_principles_3d.json"
+    result = CliRunner().invoke(
+        cli,
+        ["first-principles-3d", "--output", str(output)],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(output.read_text())
+
+    dossier = payload["engineering_firm_dossier"]
+    summary = dossier["startup_channel_packet"]
+    assert summary["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+    assert summary["channel_status_counts"]["computed"] == 0
+    assert summary["can_support_first_principles_acceptance"] is False
+    assert len(summary["blocker_ids"]) == 13
+
+    blocker_packets = {
+        blocker["packet"] for blocker in dossier["active_blockers"]
+    }
+    assert "startup.startup_channel_packet" in blocker_packets
+    assert payload["can_support_first_principles_acceptance"] is False

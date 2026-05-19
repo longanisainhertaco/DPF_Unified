@@ -2479,7 +2479,18 @@ def _engineering_firm_dossier(payload: dict[str, Any]) -> dict[str, Any]:
         for key, status in packet_statuses.items()
         if status.startswith("blocked") or "not_available" in status
     ]
-    return {
+    startup_channel_packet = _startup_channel_packet_summary(packets)
+    if startup_channel_packet is not None and startup_channel_packet[
+        "status"
+    ].startswith("blocked"):
+        active_blockers.append(
+            {
+                "packet": "startup.startup_channel_packet",
+                "status": startup_channel_packet["status"],
+                "review_focus": _engineering_review_focus("startup"),
+            }
+        )
+    dossier = {
         "status": "engineering_firm_experimental_test_dossier_not_validation",
         "intended_use": (
             "independent engineering review of the package-native 3-D "
@@ -2536,6 +2547,31 @@ def _engineering_firm_dossier(payload: dict[str, Any]) -> dict[str, Any]:
             "Use PlasmaPy audit results only as formula/unit cross-checks, not source authority.",
         ],
         "can_support_first_principles_acceptance": False,
+    }
+    if startup_channel_packet is not None:
+        dossier["startup_channel_packet"] = startup_channel_packet
+    return dossier
+
+
+def _startup_channel_packet_summary(
+    packets: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return a compact view of the typed S3.4 startup channel packet."""
+
+    startup = packets.get("startup")
+    if not isinstance(startup, dict):
+        return None
+    channel_packet = startup.get("startup_channel_packet")
+    if not isinstance(channel_packet, dict):
+        return None
+    return {
+        "status": channel_packet.get("status", "unknown"),
+        "channel_status_counts": channel_packet.get("channel_status_counts", {}),
+        "blocker_ids": channel_packet.get("blocker_ids", []),
+        "requirement_ids": channel_packet.get("requirement_ids", []),
+        "can_support_first_principles_acceptance": channel_packet.get(
+            "can_support_first_principles_acceptance", False
+        ),
     }
 
 
