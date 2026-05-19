@@ -82,11 +82,11 @@ regime gate), `d1dc17c` (S3.6 mechanism-separated neutron authority packet),
 packet-ledger traceability). The Sprint 3 final submission is
 `sprint_3/SPRINT_3_FINAL_SUBMISSION.md`.
 
-The final commit of this packet revision is a documentation-only wrapper: it
-adds `SPRINT_3_FINAL_SUBMISSION.md` and updates this `CHANGELOG.md`, and by
-construction cannot list its own hash. The package-consistency test
-`test_changelog_covers_all_commits_since_base` exempts HEAD for exactly this
-reason (it checks `76480b0..HEAD~1`).
+`269d7d1` is the Sprint 3 final-submission wrapper commit: it adds
+`SPRINT_3_FINAL_SUBMISSION.md` and updates this `CHANGELOG.md`. The current
+package-consistency test `test_changelog_covers_all_commits_since_base` exempts
+only HEAD because the changelog is committed in the same commit that changes it
+(it checks `76480b0..HEAD~1`).
 
 ## Changed paths
 

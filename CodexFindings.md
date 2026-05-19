@@ -6148,3 +6148,29 @@ Ratchet update 2026-05-09, local method source candidate review:
   monitored preset surface, while the next real science/physics work is
   MJOLNIR restrike model coverage and source acquisition/digitization for the
   nonaccepting waveform rows.
+
+### 2026-05-19: Sprint 3 Completion Audit Rejected; Sprint 3R Required
+
+- Work completed:
+  audited the Sprint 3 final-submission claim at HEAD `269d7d1` against
+  `docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md` using five
+  focused subagent lanes and local repo inspection. Durable audit and next
+  handoff documents were added at
+  `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_COMPLETION_2026_05_19.md` and
+  `docs/FIRST_PRINCIPLES_SPRINT3R_REMEDIATION_HANDOFF_2026_05_19.md`.
+- Verdict:
+  Sprint 3 is not complete. The periodic audit passed at
+  `/private/tmp/dpf-unified-audit-logs/20260519T203626Z/summary.md`, but that
+  suite currently proves a weaker contract than the Sprint 3 handoff requires.
+- Stop-the-line blockers:
+  legacy startup BVP acceptance can still be spoofed by caller payloads;
+  neutron authority can label scalar/target-only evidence as accepted; NumPy 2
+  breaks `beam_target._trapezoid_integral`; PF-1000 material masks still use
+  heuristic projections; `Sigma_p` packet schema and dict ingestion are
+  incomplete; top-level closure effects omit electron inertia and stopping;
+  merged restart ledgers drop extended S3.7 channels; packet ledgers and RTM
+  paths remain stale.
+- Boundary:
+  no validation or engineering acceptance claim is available from Sprint 3.
+  The next required work is Sprint 3R remediation and completion gating before
+  any Sprint 4 claim.

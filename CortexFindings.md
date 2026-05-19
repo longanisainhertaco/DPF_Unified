@@ -6743,3 +6743,23 @@ Current Track A closure status after the 2026-05-12 source-intake pass:
   certificate. It makes the next science work concrete: add accepted MJOLNIR
   restrike/current-diversion parameters or a supported model path, and acquire
   or digitize same-scope waveforms for the source-gap rows.
+
+### 2026-05-19: Sprint 3 Completion Audit Rejected; Sprint 3R Required
+
+- Work completed:
+  recorded the governance outcome from the Sprint 3 completion audit at HEAD
+  `269d7d1`. The durable audit is
+  `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_COMPLETION_2026_05_19.md`; the
+  next-team instruction packet is
+  `docs/FIRST_PRINCIPLES_SPRINT3R_REMEDIATION_HANDOFF_2026_05_19.md`.
+- Planning impact:
+  Sprint 4 is blocked until Sprint 3R closes the audit findings. The next
+  sprint must repair control-plane ledgers, startup fail-closed acceptance,
+  neutron authority status, NumPy 2 beam-target integration, PF-1000 mask
+  source status, `Sigma_p` packet completeness, closure matrix completeness,
+  restart ledger merge coverage, and traceability path drift.
+- Boundary:
+  the program remains on the first-principles PF-1000/Akel path with reduced
+  models kept as baselines only. This is an audit/control-plane and runtime
+  fail-closed remediation step, not a validation certificate or whole-shot
+  acceptance step.
