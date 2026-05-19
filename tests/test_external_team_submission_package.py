@@ -410,3 +410,117 @@ def test_srs_rtm_artifact_does_not_claim_stored_em_split_missing_after_runtime_e
         "stored_electric_energy_delta_J:\n"
         + "\n".join(f"  line {ln}: {ln_text!r}" for ln, ln_text in bad)
     )
+
+
+# ---------------------------------------------------------------------------
+# S3.1 Packet hygiene tests
+# ---------------------------------------------------------------------------
+
+_SPRINT3_DIR = PACKET_DIR / "sprint_3"
+
+# Stale-state patterns that must not survive in any sprint_3 packet markdown.
+# These are the exact strings the handoff (S3.1 §2) forbids.
+_STALE_STATUS_PATTERNS: list[tuple[str, str]] = [
+    # Pattern, human-readable label
+    (r"\bSprint 2\.2 open\b", "Sprint 2.2 open"),
+    (r"\bWP-N2 not delivered\b", "WP-N2 not delivered"),
+    (r"\bWP-N5 closure registry not delivered\b", "WP-N5 closure registry not delivered"),
+    (r"\baccepted as comparator only\b", "accepted as comparator only"),
+]
+
+# Shorthand citation patterns forbidden in actionable content (S3.1 §3).
+# "[KR: same file" or "[KR: same ..." is the canonical shorthand.
+_SHORTHAND_CITATION_RE = re.compile(r"\[KR:\s+same\s+file", re.IGNORECASE)
+
+
+def _sprint3_packet_mds() -> list[Path]:
+    """Return all .md files directly under sprint_3/ (non-recursive)."""
+    if not _SPRINT3_DIR.exists():
+        return []
+    return [p for p in _SPRINT3_DIR.iterdir() if p.suffix == ".md"]
+
+
+def test_sprint3_status_ledger_exists() -> None:
+    """S3.1 req 1: SPRINT_3_STATUS_LEDGER.md must exist and PENDING.md must not.
+
+    Failure message identifies the exact missing/present paths.
+    """
+    ledger = _SPRINT3_DIR / "SPRINT_3_STATUS_LEDGER.md"
+    pending = _SPRINT3_DIR / "PENDING.md"
+
+    assert ledger.exists(), (
+        f"S3.1: sprint_3/SPRINT_3_STATUS_LEDGER.md is missing — "
+        f"expected at {ledger}"
+    )
+    assert not pending.exists(), (
+        f"S3.1: sprint_3/PENDING.md still exists at {pending}; "
+        "it must be deleted or renamed to SPRINT_3_STATUS_LEDGER.md"
+    )
+
+
+def test_sprint3_status_ledger_declares_required_fields() -> None:
+    """S3.1 req 1: the ledger must contain the three required delivery-state fields.
+
+    Failure message identifies the exact path and the missing field names.
+    """
+    ledger = _SPRINT3_DIR / "SPRINT_3_STATUS_LEDGER.md"
+    if not ledger.exists():
+        pytest.skip(f"ledger not present at {ledger}; blocked by earlier test")
+
+    text = ledger.read_text(encoding="utf-8")
+    required = [
+        "research_packets_delivered=true",
+        "runtime_implementation_delivered=false",
+        "first_principles_acceptance=false",
+    ]
+    missing = [field for field in required if field not in text]
+    assert not missing, (
+        f"{ledger}: SPRINT_3_STATUS_LEDGER.md is missing required delivery-state "
+        f"fields:\n"
+        + "\n".join(f"  {f!r}" for f in missing)
+    )
+
+
+@pytest.mark.parametrize(
+    "pattern,label",
+    _STALE_STATUS_PATTERNS,
+    ids=[label for _, label in _STALE_STATUS_PATTERNS],
+)
+def test_sprint3_packets_reject_stale_status_language(
+    pattern: str, label: str
+) -> None:
+    """S3.1 req 2: no sprint_3 packet markdown may contain stale status language.
+
+    Failure message identifies the exact file path and line number for each hit.
+    """
+    bad: list[tuple[Path, int, str]] = []
+    for md_path in _sprint3_packet_mds():
+        text = md_path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if re.search(pattern, line):
+                bad.append((md_path, lineno, line.strip()))
+
+    assert not bad, (
+        f"S3.1 stale-status gate: found forbidden pattern {label!r} in sprint_3 packets:\n"
+        + "\n".join(f"  {p}:{n}: {l}" for p, n, l in bad)
+    )
+
+
+def test_sprint3_packets_reject_shorthand_citations() -> None:
+    """S3.1 req 3: no sprint_3 packet markdown may contain [KR: same file ...] shorthand.
+
+    Shorthand citations are not acceptable in actionable content per Non-Negotiable
+    Source Rule 4.  Failure message identifies the exact file path and line number.
+    """
+    bad: list[tuple[Path, int, str]] = []
+    for md_path in _sprint3_packet_mds():
+        text = md_path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if _SHORTHAND_CITATION_RE.search(line):
+                bad.append((md_path, lineno, line.strip()))
+
+    assert not bad, (
+        "S3.1 shorthand-citation gate: found '[KR: same file ...]' shorthand "
+        "in sprint_3 packets (expand to exact local path + line range):\n"
+        + "\n".join(f"  {p}:{n}: {l}" for p, n, l in bad)
+    )

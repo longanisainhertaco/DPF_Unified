@@ -106,7 +106,7 @@ post-warm-up measurement:
 | Post-run | 177.1 MiB |
 | Checkpoint .npz (grid [5,5,5]) | 12.8 KiB |
 
-Memory at production scale is **blocked on WP-N3** (production grid unknown).
+Memory at production scale is **blocked on WP-N3** (production grid: blocked_by_missing_local_source — WP-N3 geometry packet not yet delivered as runtime code).
 
 ### 1.5 Checkpoint Artifact Volume
 
@@ -118,7 +118,7 @@ Sidecar: `.cumulative_ledger.json`, ~2–5 KiB, written at each checkpoint by
 | Grid | Checkpoint .npz | Total per checkpoint (incl. sidecar) |
 |------|----------------|---------------------------------------|
 | 5x5x5 (125 cells) | 12.8 KiB | ~18 KiB |
-| Production (unknown, ~32^3 est.) | ~3.3 MiB (estimated, scales linearly) | ~3.4 MiB (estimated) |
+| Production (blocked_by_missing_local_source, ~32^3 est.) | ~3.3 MiB (estimated, scales linearly) | ~3.4 MiB (estimated) |
 
 For 120 M-step run at segment_steps=10,000 (12,000 segments):
 
@@ -200,7 +200,7 @@ Every segment manifest (`segment_NNNN.manifest.json`) and the terminal
 |-----------|------------|---------|
 | Production grid size (nx, ny, nz) | WP-N3 PF-1000/Akel geometry packet not yet complete | WP-N3 |
 | Production-grid per-step timing | Cannot measure until production grid exists | WP-N3 |
-| Production-grid memory footprint per step | Scales as `nx * ny * nz * NVAR * 8 bytes`; NVAR=10 fields; unknown grid dimensions | WP-N3 |
+| Production-grid memory footprint per step | Scales as `nx * ny * nz * NVAR * 8 bytes`; NVAR=10 fields; blocked_by_missing_local_source (grid dimensions: WP-N3 runtime_packet_not_delivered) | WP-N3 |
 | Production-grid checkpoint .npz size | Scales linearly with cell count; ~3.3 MiB estimated at 32^3, not confirmed | WP-N3 |
 | Production-grid 12 us wall-clock | Requires production-grid per-step timing | WP-N3 |
 | dt CFL constraint at production grid | CFL-limited dt may be smaller than 1e-13 s at finer resolution; each factor of 2 reduction doubles step count | WP-N3 + physics review |

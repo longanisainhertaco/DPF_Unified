@@ -100,12 +100,16 @@ magnetic, stored electric, motional electric, resistive, anomalous) with no
 electrode-contact-work term; Auluck excludes the electrode interface from the
 domain. This verdict is now encoded in the implementation.
 
-## Sprint 3 — physics blockers (pending)
+## Sprint 3 — physics blockers (research packets delivered; runtime not delivered)
 
 WP-N2 startup BVP, WP-N3 PF-1000 geometry/material masks, WP-N5 closure
 registry, WP-N6 neutron mechanism authority, WP-N7 comparator/UQ/certificate,
-and numerical acceptance. Deferred until WP-N1B implementation produces a
-reviewable runtime artifact. See `sprint_3/PENDING.md`.
+and numerical acceptance. Seven research packets have been delivered under
+`sprint_3/`. Runtime implementation and first-principles acceptance remain
+not delivered. See `sprint_3/SPRINT_3_STATUS_LEDGER.md` for the full delivery
+state (research_packets_delivered=true; runtime_implementation_delivered=false;
+first_principles_acceptance=false). The placeholder `sprint_3/PENDING.md` has
+been superseded and deleted (no longer exists).
 
 ## Remaining physics blockers
 

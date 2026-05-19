@@ -27,8 +27,9 @@ This packet delivers **Sprint 1 (Control Gate Hardening)** and the **Sprint 2
 proposal set** (WP-N1B power port, WP-N4B 12 us orchestration). The Codex Sprint 1
 audit accepted Sprint 1 engineering progress and requested seven Sprint 1.1
 hygiene fixes (RC-1…RC-7) before Sprint 2 acceptance. Sprint 3
-(WP-N2/N3/N5/N6/N7 physics, numerical acceptance) remains deferred — see
-`sprint_3/PENDING.md`.
+(WP-N2/N3/N5/N6/N7 physics, numerical acceptance) research packets have been
+delivered — see `sprint_3/SPRINT_3_STATUS_LEDGER.md`. Runtime implementation
+and acceptance remain not delivered.
 
 No artifact, manifest, requirement, equation extract, or document in this packet
 promotes anything to accepted or validated status.
@@ -115,4 +116,4 @@ Top-level: `README.md`, `CLAIMS_LEDGER.csv`, `BLOCKER_MATRIX.csv`,
 `WP_N1B_TIME_CENTERING_PROPOSAL.md`, `WP_N4B_12US_ORCHESTRATION_PROPOSAL.md`,
 `WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`.
 
-`sprint_3/PENDING.md` — deferred per the audit's submission gating.
+`sprint_3/SPRINT_3_STATUS_LEDGER.md` — Sprint 3 status ledger (supersedes the deleted `sprint_3/PENDING.md`; research_packets_delivered=true; runtime_implementation_delivered=false; first_principles_acceptance=false). See `sprint_3/` for the seven delivered research packets.

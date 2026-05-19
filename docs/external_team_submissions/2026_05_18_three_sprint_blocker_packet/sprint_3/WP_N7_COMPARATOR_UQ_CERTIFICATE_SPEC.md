@@ -209,10 +209,10 @@ The canonical list of required certificate channels comes from
 | `neutron_authority_packet_accepted` | **blocked** | WP-N6 not yet delivered |
 | `comparator_uq_packet_accepted` | **blocked** | `build_comparator_uq_packet()` returns `blocked_comparator_uq_matrix_not_available` |
 | `numerical_fidelity_packet_accepted` | **candidate** | Code exists; requires convergence run and review |
-| `physics_closure_packet_accepted` | **blocked** | WP-N5 closure registry not delivered |
+| `physics_closure_packet_accepted` | **blocked** | WP-N5: research_packet_delivered; runtime_packet_not_delivered; accepted_packet_not_delivered |
 | `limiter_zero_or_physical_bounds_packet` | **candidate** | `limiter_readiness.py` exists; requires review |
-| `power_port_packet_accepted` | **blocked** | WP-N1B terms II/IV/V/VI blocked (Sprint 2.2 open) |
-| `startup_packet_accepted` | **blocked** | WP-N2 not delivered |
+| `power_port_packet_accepted` | **blocked** | WP-N1B terms II/IV/V/VI blocked pending reviewed Sigma_p geometry (WP-N3 runtime_packet_not_delivered) |
+| `startup_packet_accepted` | **blocked** | WP-N2: research_packet_delivered; runtime_packet_not_delivered; accepted_packet_not_delivered |
 | `dimensionality_handoff_packet_accepted` | **blocked** | Handoff packet requires review |
 | `reduced_model_rejection_proof` | **blocked** | No test proves rejection of Lee-model or snowplow-only runs |
 | `reviewer_metadata` | **blocked** | No external reviewer assigned |

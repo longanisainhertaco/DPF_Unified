@@ -50,6 +50,27 @@ are all under `docs/external_team_submissions/2026_05_18_three_sprint_blocker_pa
 | `4c8dac1` | feat(first-principles): implement WP-N4B cross-restart ledger merge and artifact combiner |
 | `93620ba` | docs: synchronize Sprint 2 packet hygiene and add consistency tests (F2/F3/F4) |
 
+### S3.1 Packet Hygiene — stale-language fixes (documentation-only, in-progress)
+
+S3.1 scoped changes to the packet documents (no SRS/RTM edits, no src/ edits):
+
+- `sprint_3/PENDING.md` deleted; superseded by `sprint_3/SPRINT_3_STATUS_LEDGER.md`
+  (research_packets_delivered=true; runtime_implementation_delivered=false;
+  first_principles_acceptance=false).
+- `sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md`: stale "Sprint 2.2 open",
+  "WP-N2 not delivered", "WP-N5 closure registry not delivered" language replaced
+  with `research_packet_delivered`, `runtime_packet_not_delivered`,
+  `accepted_packet_not_delivered` distinctions.
+- `sprint_3/WP_N4_PERFORMANCE_AND_RUN_PLAN.md`: "unknown" grid size replaced
+  with `blocked_by_missing_local_source`.
+- `sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md`: all `[KR: same file ...]`
+  shorthand citations expanded to exact local paths with line ranges.
+- `README.md`, `THREE_SPRINT_FINAL_SUMMARY.md`: `sprint_3/PENDING.md` nav
+  references updated to `sprint_3/SPRINT_3_STATUS_LEDGER.md`; Sprint 3 status
+  updated to reflect research packets delivered.
+- `tests/test_external_team_submission_package.py`: new S3.1 consistency tests
+  added (stale-state rejection, shorthand-citation rejection).
+
 The final commit of this packet revision is a documentation-only changelog
 wrapper: it updates this `CHANGELOG.md` and `tests/test_external_team_submission_package.py`
 and, by construction, cannot list its own hash. The package-consistency test
