@@ -240,6 +240,84 @@ and `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`.
 `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_PACKET_2026_05_19.md` and updated
 this `CHANGELOG.md` with the Sprint 2.2 closure commit.
 
+`0b8fa97` — docs: add sprint 3 completion handoff; added
+`docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md`.
+
+### Sprint 3 Implementation — S3.1–S3.8
+
+| Commit | Subject |
+| --- | --- |
+| `100d87d` | docs: S3.1 packet hygiene — status ledger, citation normalization, consistency tests |
+| `0e91f08` | feat(first-principles): S3.2/S3.3 source-tagged PF-1000 geometry packet and Sigma_p plumbing |
+| `06744fd` | feat(first-principles): S3.4 typed startup BVP packet (fail-closed) |
+| `7dd1994` | feat(first-principles): S3.5 closure registry and PlasmaPy regime gate |
+| `d1dc17c` | feat(first-principles): S3.6 mechanism-separated neutron authority packet |
+| `6660eb9` | feat(first-principles): S3.7/S3.8 numerical acceptance gates and certificate scaffold |
+| `f7bb9f8` | chore(first-principles): regenerate module-source-vetting after Sprint 3 implementation |
+
+### S3.1 Implementation — packet hygiene (`100d87d`)
+
+`100d87d` — docs: S3.1 packet hygiene (status ledger, citation normalization, consistency
+tests); modified
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/SPRINT_3_STATUS_LEDGER.md`
+and related sprint_3 packet docs; added or updated S3.1 consistency tests in
+`tests/test_external_team_submission_package.py`.
+
+### S3.2/S3.3 Implementation — geometry packet and Sigma_p plumbing (`0e91f08`)
+
+`0e91f08` — feat: S3.2/S3.3 source-tagged PF-1000 geometry packet and Sigma_p plumbing;
+added/modified `src/dpf/fields/source_geometry.py` (`PF1000GeometryPacket`,
+`PF1000GeometryField`, `PF1000GeometryConflict`, `PF1000MaskManifest`,
+`SigmaPSurfacePacket`; geometry: 5 source-supported, 4 conflict, 10 blocked fields;
+Sigma_p packet fail-closed; Auluck terms II/IV/V/VI stay fail-closed;
+I/III computed); modified `tests/test_source_geometry_packet.py`,
+`tests/test_first_principles_geometry.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`.
+
+### S3.4 Implementation — startup BVP packet (`06744fd`)
+
+`06744fd` — feat: S3.4 typed startup BVP packet (fail-closed); added
+`src/dpf/first_principles/startup_bvp.py` (13-channel `StartupBVPPacket`,
+0 source-supported, all candidate/blocked; startup authority blocked);
+modified `tests/test_first_principles_startup_bvp.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`.
+
+### S3.5 Implementation — closure registry and PlasmaPy regime gate (`7dd1994`)
+
+`7dd1994` — feat: S3.5 closure registry and PlasmaPy regime gate; added/modified
+`src/dpf/first_principles/closures.py` (12 closures + 2 sub-closures;
+1 active_source_backed_candidate, rest blocked/not-simulated;
+`PhysicsClosurePacket` embedding); modified `tests/test_first_principles_closures.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`.
+
+### S3.6 Implementation — neutron authority packet (`d1dc17c`)
+
+`d1dc17c` — feat: S3.6 mechanism-separated neutron authority packet; added/modified
+`src/dpf/first_principles/neutron_authority.py` (`NeutronAuthorityPacket`,
+10 channels; 5 candidate, 4-5 blocked; scalar yield comparator-only);
+modified `tests/test_first_principles_neutron_authority.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`.
+
+### S3.7/S3.8 Implementation — numerical acceptance gates and certificate scaffold (`6660eb9`)
+
+`6660eb9` — feat: S3.7/S3.8 numerical acceptance gates and certificate scaffold;
+modified `src/dpf/first_principles/segmented_whole_shot.py` (extended cumulative
+ledgers), `src/dpf/first_principles/certificate.py` (certificate scaffold with
+all channels missing — no accepted certificate); added/modified
+`tests/test_first_principles_long_run_integrity.py`,
+`tests/test_first_principles_certificate_negative_controls.py`,
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`.
+
+### S3.9 Traceability — module-source-vetting regeneration (`f7bb9f8`)
+
+`f7bb9f8` — chore: regenerate module-source-vetting after Sprint 3 implementation;
+modified `docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.

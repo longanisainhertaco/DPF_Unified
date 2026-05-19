@@ -861,14 +861,18 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Startup remains scaffolded until local source-backed startup/sheath evidence and comparator status are attached.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.4: typed `StartupBVPPacket` exists with all required channels declared and fail-closed (commit `06744fd`); no channel has accepted local-source evidence; breakdown/preionization/sheath channels are candidate with blocker IDs; photoemission blocked for missing local source; startup authority blocked until same-scope KR evidence is attached. See `tests/test_first_principles_startup_bvp.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "StartupBVPPacket",
+          "06744fd",
+          "tests/test_first_principles_startup_bvp.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-010",
         "verification": [
           "review",
@@ -876,14 +880,18 @@
           "test"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "StartupBVPPacket",
+        "06744fd",
+        "tests/test_first_principles_startup_bvp.py"
+      ],
       "id": "DPF-PHYS-010",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/V&V",
       "priority": "P0",
       "requirement": "First-principles startup shall use source-backed breakdown, preionization, electrode boundary, and initial plasma evidence.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "review",
         "analysis",
@@ -947,14 +955,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Resolved thermonuclear history exists as candidate evidence; beam-target authority and same-scope neutron packet remain blocked.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.6: mechanism-separated `NeutronAuthorityPacket` exists in `src/dpf/first_principles/neutron_authority.py` (commit `d1dc17c`); 10 channels declared; thermonuclear and beam-target histories are separate time-series channels (not scalars); scalar yield output is comparator-only and cannot pass authority; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: beam-target authority blocked (no accepted ion-distribution or stopping model); spectrum, anisotropy, detector response, and UQ channels all blocked by missing local KR source; same-scope neutron evidence absent; scalar-yield-only runtime cannot separate mechanisms. See `tests/test_first_principles_neutron_authority.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "NeutronAuthorityPacket",
+          "src/dpf/first_principles/neutron_authority.py",
+          "d1dc17c",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_neutron_authority.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-013",
         "verification": [
           "analysis",
@@ -962,14 +976,20 @@
           "test"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "NeutronAuthorityPacket",
+        "src/dpf/first_principles/neutron_authority.py",
+        "d1dc17c",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_neutron_authority.py"
+      ],
       "id": "DPF-PHYS-013",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/V&V",
       "priority": "P0",
       "requirement": "Total neutron-yield authority shall require resolved thermonuclear history, accepted kinetic/hybrid beam-target production, same-scope neutron evidence, and UQ.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "analysis",
         "review",
@@ -977,14 +997,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "A package-native candidate dimensionality/handoff packet now exists for the 3D hybrid runner, but no accepted dimensionality or handoff packet exists; source-equivalence, same-scope 3D evidence, kinetic/electron scope, and mechanism-separated neutron evidence remain blocked.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.2: source-tagged `PF1000GeometryPacket` with `PF1000MaskManifest` now defines the geometry/dimensionality scope and emits `can_support_first_principles_acceptance=false` (commit `0e91f08`); bore/insulator/backplate dimensions remain blocked by missing local KR source; mask hashes are deterministic but under-resolved for rod/insulator surfaces. Remaining acceptance blockers: no accepted dimensionality or handoff packet exists; source-equivalence, same-scope 3D evidence, kinetic/electron scope, and mechanism-separated neutron evidence remain blocked. See `tests/test_first_principles_geometry.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "PF1000GeometryPacket",
+          "PF1000MaskManifest",
+          "can_support_first_principles_acceptance=false",
+          "0e91f08",
+          "tests/test_first_principles_geometry.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/Architecture",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-014",
         "verification": [
           "analysis",
@@ -992,14 +1018,20 @@
           "review"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "PF1000GeometryPacket",
+        "PF1000MaskManifest",
+        "can_support_first_principles_acceptance=false",
+        "0e91f08",
+        "tests/test_first_principles_geometry.py"
+      ],
       "id": "DPF-PHYS-014",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/Architecture",
       "priority": "P0",
       "requirement": "First-principles acceptance shall define dimensionality and any MHD-to-kinetic handoff for the claimed interval and observables.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "analysis",
         "test",
@@ -1067,14 +1099,18 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Current startup is scaffolded engineering initialization.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.4: typed `StartupBVPPacket` with consistency-check placeholders for current-density, field, ionization, temperature, and sheath-liftoff (commit `06744fd`); all channels are candidate or blocked; no accepted BVP solution exists; engineering seeded initialization cannot pass the consistency checks; authority blocked. See `tests/test_first_principles_startup_bvp.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "StartupBVPPacket",
+          "06744fd",
+          "tests/test_first_principles_startup_bvp.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/Engine",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-017",
         "verification": [
           "test",
@@ -1082,14 +1118,18 @@
           "analysis"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "StartupBVPPacket",
+        "06744fd",
+        "tests/test_first_principles_startup_bvp.py"
+      ],
       "id": "DPF-PHYS-017",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/Engine",
       "priority": "P0",
       "requirement": "First-principles startup shall be generated as a source-backed boundary-value problem with current-density, field, ionization, temperature, and sheath-liftoff consistency checks.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "test",
         "review",
@@ -1097,14 +1137,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Closure packet registry is not complete.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.5: closure registry with 12 closures plus 2 sub-closures exists in `src/dpf/first_principles/closures.py` (commit `7dd1994`); 1 active_source_backed_candidate (partial-ionization conductivity); remaining closures are blocked or not-simulated; no closure may remain silent; `PhysicsClosurePacket` emits the full registry; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: EOS blocked without tabular packet; radiation blocked without opacity decision; ablation blocked without efficiency source; anomalous resistance and restrike claim rejected; electron inertia registered and blocked; stopping blocked; sensitivity/UQ missing for all. See `tests/test_first_principles_closures.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "src/dpf/first_principles/closures.py",
+          "7dd1994",
+          "PhysicsClosurePacket",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_closures.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-018",
         "verification": [
           "inspection",
@@ -1112,14 +1158,20 @@
           "test"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "src/dpf/first_principles/closures.py",
+        "7dd1994",
+        "PhysicsClosurePacket",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_closures.py"
+      ],
       "id": "DPF-PHYS-018",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/V&V",
       "priority": "P0",
       "requirement": "Every active or bounded-out physical closure shall have a packet with source equations, symbol map, units, validity regime, verification, sensitivity/UQ, and claim impact.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "inspection",
         "analysis",
@@ -1327,42 +1379,54 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Same-scope neutron evidence remains absent.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.6: `NeutronAuthorityPacket` channels for timing, spectrum, anisotropy, detector/activation, scalar yield, and UQ are declared and fail-closed (commit `d1dc17c`); all remain blocked by missing same-scope KR evidence; scalar-yield comparator-only gate enforced in runtime. See `tests/test_first_principles_neutron_authority.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "NeutronAuthorityPacket",
+          "d1dc17c",
+          "tests/test_first_principles_neutron_authority.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "V&V/Physics",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-VV-010",
         "verification": [
           "analysis",
           "test"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "NeutronAuthorityPacket",
+        "d1dc17c",
+        "tests/test_first_principles_neutron_authority.py"
+      ],
       "id": "DPF-VV-010",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "V&V/Physics",
       "priority": "P0",
       "requirement": "Tier 5 validation shall require same-scope neutron timing, spectrum, anisotropy, detector/activation response, scalar yield, and uncertainty.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "analysis",
         "test"
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Certificate schema rejects blocked evidence today; no accepted first-principles PF-1000/Akel packet exists.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.8: certificate scaffold exists and reports exact missing packets; all 10+ required channel categories are declared and fail-closed; no channel has accepted evidence; certificate cannot be issued; negative-control tests confirm the gate cannot be bypassed (commit `6660eb9`). Remaining acceptance blockers: all required evidence categories absent; same-scope waveform/phase/spatial/neutron/field-coupling/UQ packets remain blocked; `can_support_first_principles_acceptance=false`. See `tests/test_first_principles_certificate_negative_controls.py`.",
       "doorstop_import": {
-        "evidence_refs": [],
+        "evidence_refs": [
+          "6660eb9",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_certificate_negative_controls.py"
+        ],
         "level": "shall",
         "normative": true,
         "owner": "V&V/Data",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-VV-017",
         "verification": [
           "review",
@@ -1370,14 +1434,18 @@
           "inspection"
         ]
       },
-      "evidence_refs": [],
+      "evidence_refs": [
+        "6660eb9",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_certificate_negative_controls.py"
+      ],
       "id": "DPF-VV-017",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "V&V/Data",
       "priority": "P0",
       "requirement": "A first-principles validation certificate shall require same-scope waveform, phase, spatial, neutron, detector, field-coupling, physics-fidelity, numerical-fidelity, and UQ evidence.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "review",
         "test",
@@ -1413,17 +1481,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "`ValidationCertificate` and `write_validation_certificate()` reject blocked/cross-scope evidence before any accepted certificate can be persisted.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.8: `ValidationCertificate` and `write_validation_certificate()` reject blocked/cross-scope evidence; certificate scaffold now reports all missing packets explicitly and gates keep all channels missing (commit `6660eb9`); no accepted certificate can be persisted at this stage; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: all upstream evidence gates remain blocked; same-scope evidence required before any certificate can be produced. See `tests/test_first_principles_certificate_negative_controls.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "ValidationCertificate",
-          "write_validation_certificate()"
+          "write_validation_certificate()",
+          "6660eb9",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_certificate_negative_controls.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "V&V/Data",
         "priority": "P1",
-        "status": "implemented",
+        "status": "partial",
         "uid": "DPF-DATA-004",
         "verification": [
           "test",
@@ -1432,7 +1503,10 @@
       },
       "evidence_refs": [
         "ValidationCertificate",
-        "write_validation_certificate()"
+        "write_validation_certificate()",
+        "6660eb9",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_certificate_negative_controls.py"
       ],
       "id": "DPF-DATA-004",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -1440,7 +1514,7 @@
       "priority": "P1",
       "requirement": "The system shall produce a validation certificate artifact only when all linked gates pass.",
       "source_section": "Candidate Requirements",
-      "status": "implemented",
+      "status": "partial",
       "verification_methods": [
         "test",
         "inspection"
@@ -1513,18 +1587,19 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "`scripts/build_mhd_restart_reproducibility_evidence.py`, `results/mhd_restart_reproducibility_evidence.json`, and `tests/test_mhd_numerical_fidelity.py` cover deterministic restart comparisons for the scheduled Tier-3 fixture.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.7: small-horizon restart-equivalence gates pass; `scripts/build_mhd_restart_reproducibility_evidence.py`, `results/mhd_restart_reproducibility_evidence.json`, and `tests/test_mhd_numerical_fidelity.py` cover deterministic restart for Tier-3 fixture. Remaining acceptance blockers: production-horizon (12 us) deterministic restart evidence blocked on WP-N3 grid size and 12 us compute-wall; long-run cross-restart equivalence not yet demonstrated. See `tests/test_first_principles_long_run_integrity.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "scripts/build_mhd_restart_reproducibility_evidence.py",
           "results/mhd_restart_reproducibility_evidence.json",
-          "tests/test_mhd_numerical_fidelity.py"
+          "tests/test_mhd_numerical_fidelity.py",
+          "tests/test_first_principles_long_run_integrity.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "Engine/Data",
         "priority": "P1",
-        "status": "implemented",
+        "status": "partial",
         "uid": "DPF-DATA-007",
         "verification": [
           "test",
@@ -1534,7 +1609,8 @@
       "evidence_refs": [
         "scripts/build_mhd_restart_reproducibility_evidence.py",
         "results/mhd_restart_reproducibility_evidence.json",
-        "tests/test_mhd_numerical_fidelity.py"
+        "tests/test_mhd_numerical_fidelity.py",
+        "tests/test_first_principles_long_run_integrity.py"
       ],
       "id": "DPF-DATA-007",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -1542,7 +1618,7 @@
       "priority": "P1",
       "requirement": "Checkpoint/restart shall preserve state sufficiently for deterministic restart comparisons.",
       "source_section": "Candidate Requirements",
-      "status": "implemented",
+      "status": "partial",
       "verification_methods": [
         "test",
         "inspection"
@@ -1921,16 +1997,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`). A candidate WP-N1B six-term Auluck eq. (6) fail-closed ledger contract now exists in `src/dpf/first_principles/power_port.py` (commits 4b080eb); runtime split magnetic/electric stored-energy telemetry now exists through `stored_magnetic_energy_delta_J` and `stored_electric_energy_delta_J`, so terms I and III are independently computed rather than closure-derived; `can_support_first_principles_acceptance` remains `False`. Remaining acceptance blockers: reviewed Sigma_p moving-boundary geometry not available from runtime (blocks terms II, IV, V, VI; requires WP-N3); no source-backed residual tolerance; only step-consistent (not accepted high-order) time-centering; candidate-only PF-1000 geometry masks without reviewed acceptance; no same-scope power-port review packet. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 2 / S3.3 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`). A candidate WP-N1B six-term Auluck eq. (6) fail-closed ledger contract now exists in `src/dpf/first_principles/power_port.py`; runtime split magnetic/electric stored-energy telemetry exists through `stored_magnetic_energy_delta_J` and `stored_electric_energy_delta_J`, so terms I and III are independently computed; `SigmaPSurfacePacket` data contract implemented in `src/dpf/fields/source_geometry.py` (commit `0e91f08`) \u2014 terms II/IV/V/VI consume the packet and fail closed when it is missing; `can_support_first_principles_acceptance` remains `False`. Remaining acceptance blockers: `SigmaPSurfacePacket` requires reviewed WP-N3 geometry (currently all 10 face classes blocked); no source-backed residual tolerance; only step-consistent (not accepted high-order) time-centering; candidate-only PF-1000 geometry masks without reviewed acceptance; no same-scope power-port review packet. Terms II/IV/V/VI cannot be closure-derived. See `tests/test_first_principles_power_port.py`, `tests/test_source_geometry_packet.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
           "src/dpf/first_principles/power_port.py",
           "stored_magnetic_energy_delta_J",
           "stored_electric_energy_delta_J",
+          "SigmaPSurfacePacket",
+          "src/dpf/fields/source_geometry.py",
+          "0e91f08",
           "can_support_first_principles_acceptance",
           "False",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "tests/test_first_principles_power_port.py",
+          "tests/test_source_geometry_packet.py"
         ],
         "level": "shall",
         "normative": true,
@@ -1948,9 +2028,13 @@
         "src/dpf/first_principles/power_port.py",
         "stored_magnetic_energy_delta_J",
         "stored_electric_energy_delta_J",
+        "SigmaPSurfacePacket",
+        "src/dpf/fields/source_geometry.py",
+        "0e91f08",
         "can_support_first_principles_acceptance",
         "False",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "tests/test_first_principles_power_port.py",
+        "tests/test_source_geometry_packet.py"
       ],
       "id": "DPF-PHYS-020",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -1965,18 +2049,22 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding A-6; blocker IDs `DPF-PHYS-010` and `DPF-PHYS-017` (startup BVP). Startup remains scaffolded engineering initialization; no typed imported-PIC sheath state or solved surface-breakdown BVP packet is accepted. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.4 / audit finding A-6; blocker IDs `DPF-PHYS-010` and `DPF-PHYS-017` (startup BVP). S3.4 delivers: a typed `StartupBVPPacket` with 13 channels (gas_fill, breakdown_paschen, preionization, flashover, secondary_emission, photoemission, surface_plasma, initial_E_B_J, species_charge_state, ionization_recombination, electron_ion_temperature, sheath_surface_liftoff, handoff_interval) in `src/dpf/first_principles/startup_bvp.py` (commit `06744fd`); 0 channels are source-supported; all 13 are candidate or blocked (photoemission blocked for missing local source); packet fails closed \u2014 startup authority blocked; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: no channel has local-source-backed accepted evidence; sheath, preionization, flashover, and secondary-emission channels require same-scope KR evidence; seeded engineering initialization cannot pass the certificate gate. See `tests/test_first_principles_startup_bvp.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-PHYS-010",
           "DPF-PHYS-017",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "StartupBVPPacket",
+          "src/dpf/first_principles/startup_bvp.py",
+          "06744fd",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_startup_bvp.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-021",
         "verification": [
           "review",
@@ -1987,7 +2075,11 @@
       "evidence_refs": [
         "DPF-PHYS-010",
         "DPF-PHYS-017",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "StartupBVPPacket",
+        "src/dpf/first_principles/startup_bvp.py",
+        "06744fd",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_startup_bvp.py"
       ],
       "id": "DPF-PHYS-021",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -1995,7 +2087,7 @@
       "priority": "P0",
       "requirement": "WP-N2 startup BVP shall replace seeded startup with one source-backed channel packet per required channel (breakdown, preionization, flashover, secondary emission, surface plasma, initial E/B/J, density/species, ionization, Te/Ti, sheath surface, handoff interval) or fail closed with the exact missing channels.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "review",
         "analysis",
@@ -2003,12 +2095,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 3 / audit finding A-7; blocker IDs `DPF-PHYS-014` (dimensionality/geometry handoff) and `DPF-VV-003` (same-scope readiness). Mask hash and projection metrics exist, but per-material masks, Krauz/Akel/PF-1000 deck-diff reconciliation, and under-resolution gating for rods/bore/insulator/sheath surfaces are incomplete. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.2 / audit finding A-7; blocker IDs `DPF-PHYS-014` (dimensionality/geometry handoff) and `DPF-VV-003` (same-scope readiness). S3.2 delivers: `PF1000GeometryPacket`, `PF1000GeometryField`, `PF1000GeometryConflict`, `PF1000MaskManifest` in `src/dpf/fields/source_geometry.py` (commit `0e91f08`); 5 fields source-supported, 4 conflict-flagged, 10 blocked; all 10 material mask classes emitted with per-mask SHA-256 hashes; under-resolution gate for rods fires on coarse grids. Remaining acceptance blockers: bore/insulator/backplate source dimensions blocked by missing local KR source; reviewed dimensionality and same-scope 3D evidence remain absent; `can_support_first_principles_acceptance=false`. See `tests/test_source_geometry_packet.py`, `tests/test_first_principles_geometry.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-PHYS-014",
           "DPF-VV-003",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "PF1000GeometryPacket",
+          "PF1000GeometryField",
+          "PF1000GeometryConflict",
+          "PF1000MaskManifest",
+          "src/dpf/fields/source_geometry.py",
+          "0e91f08",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_source_geometry_packet.py",
+          "tests/test_first_principles_geometry.py"
         ],
         "level": "shall",
         "normative": true,
@@ -2024,7 +2124,15 @@
       "evidence_refs": [
         "DPF-PHYS-014",
         "DPF-VV-003",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "PF1000GeometryPacket",
+        "PF1000GeometryField",
+        "PF1000GeometryConflict",
+        "PF1000MaskManifest",
+        "src/dpf/fields/source_geometry.py",
+        "0e91f08",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_source_geometry_packet.py",
+        "tests/test_first_principles_geometry.py"
       ],
       "id": "DPF-PHYS-022",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -2039,18 +2147,14 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 2 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`) plus Sprint 2.2 follow-up (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`). A candidate WP-N4 segmented whole-shot runner exists (static segment planner, segmented execution, checkpoint roundtrip through the fail-closed loader, per-segment manifests, cumulative ledgers, small-horizon restart-equivalence evidence, explicit 12 us compute-wall blocker reporting); `src/dpf/first_principles/segmented_whole_shot_combine.py` provides `merge_cumulative_ledgers()` and `combine_whole_run_artifacts()` with fail-closed gap/overlap/manifest/malformed-step checks, treats `total_steps_completed` as the cumulative terminal step, and has positive synthetic plus live three-restart coverage. Remaining acceptance blockers: the 12 us source-sign compute-wall (~1.2e8 steps at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size; long-run cross-restart restart-equivalence evidence at production horizon not yet demonstrated. Blocker IDs `DPF-PHYS-015` (numerical-fidelity packets) and `DPF-DATA-007` (deterministic restart). See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 2 / S3.7 / audit finding F2 (`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md`) plus Sprint 2.2 follow-up. S3.7 delivers: extended cumulative ledger channels (circuit/field/particle/energy/ionization/kinetic-yield/limiter/power-port); run-manifest SHA-256 and source-packet-hashes gates; 12 us blocker always present in manifest; `horizon_complete` never set for partial runs (commit `6660eb9`). Remaining acceptance blockers: 12 us source-sign compute-wall (~1.2e8 steps at ~1e-13 s timestep); production-grid wall-clock blocked on WP-N3 grid size; long-run cross-restart restart-equivalence evidence at production horizon not yet demonstrated; numerical-fidelity tolerance packets (blocker `DPF-PHYS-015`) not complete. See `tests/test_first_principles_long_run_integrity.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
-          "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md",
-          "src/dpf/first_principles/segmented_whole_shot_combine.py",
-          "merge_cumulative_ledgers()",
-          "combine_whole_run_artifacts()",
-          "total_steps_completed",
+          "horizon_complete",
+          "6660eb9",
           "DPF-PHYS-015",
-          "DPF-DATA-007",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "tests/test_first_principles_long_run_integrity.py"
         ],
         "level": "shall",
         "normative": true,
@@ -2065,14 +2169,10 @@
       },
       "evidence_refs": [
         "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_IMPLEMENTATION_2026_05_19.md",
-        "docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md",
-        "src/dpf/first_principles/segmented_whole_shot_combine.py",
-        "merge_cumulative_ledgers()",
-        "combine_whole_run_artifacts()",
-        "total_steps_completed",
+        "horizon_complete",
+        "6660eb9",
         "DPF-PHYS-015",
-        "DPF-DATA-007",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "tests/test_first_principles_long_run_integrity.py"
       ],
       "id": "DPF-PHYS-023",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -2087,18 +2187,21 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 5 / audit finding A-8; blocker IDs `DPF-PHYS-018` (closure packet registry) and `DPF-PHYS-012` (physics-fidelity classification). The closure packet registry is incomplete; no active runtime closure may remain silent or uncategorized, and floor/limiter policy reconciliation is open. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.5 / audit finding A-8; blocker IDs `DPF-PHYS-018` (closure packet registry) and `DPF-PHYS-012` (physics-fidelity classification). S3.5 delivers: closure registry with 12 closures + 2 sub-closures; PlasmaPy regime gate implemented with candidate-only coupling; `PhysicsClosurePacket` embeds the registry (commit `7dd1994`). Remaining acceptance blockers: EOS/radiation/ablation/anomalous-resistance/restrike/electron-inertia/stopping closures all blocked or claim-rejected; sensitivity/UQ missing for all closures; physics-fidelity classification per-run expansion remains open; `can_support_first_principles_acceptance=false`. See `tests/test_first_principles_closures.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-PHYS-018",
           "DPF-PHYS-012",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "PhysicsClosurePacket",
+          "7dd1994",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_closures.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-024",
         "verification": [
           "inspection",
@@ -2109,7 +2212,10 @@
       "evidence_refs": [
         "DPF-PHYS-018",
         "DPF-PHYS-012",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "PhysicsClosurePacket",
+        "7dd1994",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_closures.py"
       ],
       "id": "DPF-PHYS-024",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -2117,7 +2223,7 @@
       "priority": "P0",
       "requirement": "WP-N5 physics closures shall give every active or bounded-out closure (EOS, radiation, ablation/impurity, anomalous resistance, restrike, electron inertia, stopping/collisions, beam-target coupling) a packet with source equation, units, symbol map, validity range, implementation lines, tests, sensitivity/UQ status, and claim impact.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "inspection",
         "analysis",
@@ -2125,18 +2231,22 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 6 / audit finding A-8; blocker IDs `DPF-PHYS-013` (neutron-yield authority) and `DPF-VV-010` (same-scope neutron evidence). Scalar-yield-only output cannot pass mechanism separation; spectrum, anisotropy, detector response, and UQ are not yet consumed by the runtime. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.6 / audit finding A-8; blocker IDs `DPF-PHYS-013` (neutron-yield authority) and `DPF-VV-010` (same-scope neutron evidence). S3.6 delivers: mechanism-separated `NeutronAuthorityPacket` interface in `src/dpf/first_principles/neutron_authority.py` (commit `d1dc17c`); thermonuclear/beam-target histories are time-series channels; detector-response and activation channels declared and blocked; ion-distribution, stopping, spectrum, anisotropy, UQ channels all present and blocked. Remaining acceptance blockers: all advanced channels blocked by missing local KR source; scalar-yield-only runtime cannot satisfy mechanism separation; same-scope neutron evidence absent; `can_support_first_principles_acceptance=false`. See `tests/test_first_principles_neutron_authority.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-PHYS-013",
           "DPF-VV-010",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "NeutronAuthorityPacket",
+          "src/dpf/first_principles/neutron_authority.py",
+          "d1dc17c",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_neutron_authority.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "Physics/V&V",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-025",
         "verification": [
           "analysis",
@@ -2147,7 +2257,11 @@
       "evidence_refs": [
         "DPF-PHYS-013",
         "DPF-VV-010",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "NeutronAuthorityPacket",
+        "src/dpf/first_principles/neutron_authority.py",
+        "d1dc17c",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_neutron_authority.py"
       ],
       "id": "DPF-PHYS-025",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -2155,7 +2269,7 @@
       "priority": "P0",
       "requirement": "WP-N6 neutron mechanism and detector authority shall split thermonuclear and beam-target neutron histories and bind ion-distribution, stopping, spectrum, anisotropy, and detector-response packet contracts consumed by one neutron-authority runtime interface.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "analysis",
         "review",
@@ -2163,18 +2277,20 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 7 / audit finding A-8; blocker IDs `DPF-VV-017` (first-principles validation certificate) and `DPF-PHYS-011` (field-circuit coupling evidence). Same-scope comparator/UQ/certificate paths are fail-closed by design and incomplete; no accepted first-principles PF-1000/Akel packet exists. See `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.8 / audit finding A-8; blocker IDs `DPF-VV-017` (first-principles validation certificate) and `DPF-PHYS-011` (field-circuit coupling evidence). S3.8 delivers: certificate scaffold reports exact missing packets and rejects validation claims; all upstream channels missing \u2014 no accepted certificate can be issued; synthetic fixture proves negative-control path; manifest rejects accepted run/validation status and acceptance flags (commit `6660eb9`); `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: same-scope comparator/UQ targets absent; no accepted waveform/phase/spatial/neutron/field-coupling/physics-fidelity/numerical-fidelity packets; external review bundle not delivered. See `tests/test_first_principles_certificate_negative_controls.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-VV-017",
           "DPF-PHYS-011",
-          "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+          "6660eb9",
+          "can_support_first_principles_acceptance=false",
+          "tests/test_first_principles_certificate_negative_controls.py"
         ],
         "level": "shall",
         "normative": true,
         "owner": "V&V/Data",
         "priority": "P0",
-        "status": "blocked",
+        "status": "partial",
         "uid": "DPF-PHYS-026",
         "verification": [
           "review",
@@ -2185,7 +2301,9 @@
       "evidence_refs": [
         "DPF-VV-017",
         "DPF-PHYS-011",
-        "docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md"
+        "6660eb9",
+        "can_support_first_principles_acceptance=false",
+        "tests/test_first_principles_certificate_negative_controls.py"
       ],
       "id": "DPF-PHYS-026",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
@@ -2193,7 +2311,7 @@
       "priority": "P0",
       "requirement": "WP-N7 comparator, UQ, and certificate path shall add manifest source-packet and environment/config hashes, a synthetic-packet positive certificate fixture, scope-matched same-scope comparator targets, and an external engineering review bundle, with validation remaining blocked until same-scope evidence exists.",
       "source_section": "Candidate Requirements",
-      "status": "blocked",
+      "status": "partial",
       "verification_methods": [
         "review",
         "test",
@@ -2240,10 +2358,10 @@
     },
     "requirement_count": 69,
     "status_counts": {
-      "blocked": 15,
+      "blocked": 4,
       "deferred": 0,
-      "implemented": 28,
-      "partial": 20,
+      "implemented": 26,
+      "partial": 33,
       "planned": 6,
       "rejected": 0
     }
