@@ -1,10 +1,11 @@
-# Changelog — Submission 1
+# Changelog — Submission 1 + Sprint 1.1 + Sprint 2
 
 Base commit (audited state): `76480b0`
-Implementation HEAD: `fe038f7` — eight commits; this submission packet is the ninth commit
 Branch: `codex/corpus`
 
 ## Commits
+
+### Sprint 1 — Control Gate Hardening (`76480b0`..`fe038f7`)
 
 | Commit | Subject |
 | --- | --- |
@@ -17,7 +18,33 @@ Branch: `codex/corpus`
 | `bf22c33` | ci(first-principles): read-only audit gates, recursive archive scan, dirty-tree assertion (A-3/A-4) |
 | `fe038f7` | docs(srs): mark DPF-PHYS-020/023 partial, regenerate RTM, close Sprint 0 with debt (A-7) |
 
+The submission packet commit for Sprint 1 (`fa9088e` — docs: add Sprint 1
+control-gate submission packet) is a documentation-only wrapper: changed paths
+are all under `docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/`.
+
+### Sprint 1 Wrappers + Sprint 1.1 + Sprint 2 — Hygiene and Proposals (`fe038f7`..`c52bed3`)
+
+| Commit | Subject |
+| --- | --- |
+| `f07d4ba` | docs: add Sprint 1 control-gate submission packet *(documentation-only wrapper)* |
+| `fa9088e` | docs: pin --date in submission audit-command transcript *(documentation-only)* |
+| `06cfd64` | docs: add Codex Sprint 1 control-gate audit |
+| `9df8d3b` | style: clear repository-wide ruff debt so the CI lint job passes (RC-2) |
+| `49e80ee` | docs(kr): ingest verified Auluck 2021 power-balance equations; refresh source-truth index |
+| `bd840f4` | docs: add Sprint 2 WP-N1B and WP-N4B proposal set |
+| `0585eec` | docs: add tracked copy of verified Auluck equations to Sprint 2 packet |
+| `0bef78c` | fix(first-principles): add artifact linter check C8 and package schema tests (RC-3/5/6/7) |
+| `c52bed3` | docs: finalize Sprint 1.1 — current-HEAD transcript block and RC statuses (RC-4) *(documentation-only wrapper)* |
+
+### Sprint 2 Audit and Periodic Runner (`c52bed3`..`6af4454`)
+
+| Commit | Subject |
+| --- | --- |
+| `6af4454` | docs: add sprint 2 audit and periodic runner |
+
 ## Changed paths
+
+### Sprint 1
 
 `3dc4c11` — added: `docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md`.
 
@@ -53,9 +80,53 @@ Branch: `codex/corpus`
 `docs/FIRST_PRINCIPLES_EXPERIMENTAL_SIMULATOR_SPRINT_PLAN_2026_05_18.md`,
 `tests/test_srs_traceability_export.py`.
 
-The Sprint 1 submission packet
-(`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/`) is
-committed separately as the final Sprint 1 commit.
+`f07d4ba` — added all files under
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/`
+*(documentation-only wrapper commit for Sprint 1 packet)*.
+
+`fa9088e` — modified:
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/AUDIT_COMMANDS.md`
+(pinned `--date 2026_05_18` on the two verification-gate commands so the
+read-only check resolves to the committed baseline when re-run on any future
+date) *(documentation-only)*.
+
+`06cfd64` — added:
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT1_CONTROL_GATE_2026_05_19.md`.
+
+### Sprint 1.1 — Hygiene
+
+`9df8d3b` — style: repository-wide ruff cleanup (RC-2); 52 files changed across
+`src/dpf/` and `tests/`; also regenerated
+`docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`.
+
+`49e80ee` — docs(kr): ingested verified Auluck 2021 equations; modified:
+`docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_18.{json,md}`,
+`docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.{json,md}`.
+
+`bd840f4` — docs: Sprint 2 proposals; modified:
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/BLOCKER_MATRIX.csv`,
+`CLAIMS_LEDGER.csv`, `README.md`, `SOURCE_PACKET_INDEX.csv`;
+removed `sprint_2/PENDING.md` (placeholder superseded by proposal files);
+added six `sprint_2/WP_N1B_*` and `sprint_2/WP_N4B_*` proposal docs.
+
+`0585eec` — docs: tracked copy of verified Auluck extract; modified:
+`SOURCE_PACKET_INDEX.csv`; added:
+`sprint_2/AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md`.
+
+`0bef78c` — fix(first-principles): artifact linter C8 + package schema tests
+(RC-3/5/6/7); modified: `scripts/audit_first_principles_artifacts.py`,
+`tests/test_first_principles_artifact_linter.py`; added:
+`tests/test_external_team_submission_package.py`.
+
+`c52bed3` — docs: finalized Sprint 1.1 (RC-4); modified:
+`docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/AUDIT_COMMANDS.md`,
+`BLOCKER_MATRIX.csv` *(documentation-only wrapper commit; RC-2..RC-7 rows closed)*.
+
+### Sprint 2 Audit and Periodic Runner
+
+`6af4454` — docs: added
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_PACKET_2026_05_19.md`,
+`scripts/run_codex_periodic_audit.py`.
 
 ## Deleted / quarantined artifacts
 
