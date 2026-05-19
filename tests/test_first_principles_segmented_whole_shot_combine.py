@@ -345,3 +345,170 @@ def test_merge_fails_closed_on_empty_input() -> None:
 
     with pytest.raises(LedgerMergeError, match="empty"):
         combine_whole_run_artifacts([])
+
+
+# ---------------------------------------------------------------------------
+# N-4: non-cumulative terminal ledger (counter lower than earlier restart)
+# ---------------------------------------------------------------------------
+
+
+def test_merge_fails_closed_on_non_cumulative_terminal_ledger(
+    tmp_path: Path,
+) -> None:
+    """N-4: later restart manifest has a cumulative counter LOWER than the
+    earlier restart's — proving it was NOT rehydrated from the A-6 sidecar.
+    The combiner must fail closed with LedgerMergeError before any merge.
+
+    This exercises the input-invariant check added per finding F4: every
+    manifest's cumulative_ledgers must be cumulative from step 0 (sidecar
+    rehydrated), not just per-restart-segment totals.
+    """
+    # Restart 0: steps 0..2, ledger carries step_count=2 (legitimate).
+    run_dir_0 = tmp_path / "r0"
+    run_dir_0.mkdir(parents=True, exist_ok=True)
+    manifest_0 = {
+        "resume_started_at_step": 0,
+        "total_steps_completed": 2,
+        "cumulative_ledgers": {
+            "cumulative_j_dot_e_work_J": 10.0,
+            "cumulative_j_dot_e_step_count": 2,
+            "cumulative_active_port_work_J": 5.0,
+            "cumulative_active_port_step_count": 2,
+            "limiter_steps_observed": 2,
+            "limiter_total_activations": 0,
+        },
+        "plan": {"total_steps": 4},
+        "segments": [],
+    }
+    (run_dir_0 / "run_manifest.json").write_text(
+        json.dumps(manifest_0), encoding="utf-8"
+    )
+
+    # Restart 1: steps 2..4, but cumulative_j_dot_e_step_count=1, which is
+    # LOWER than restart 0's 2 — this manifest was NOT rehydrated from the
+    # sidecar (it only recorded its own 1 post-resume step).
+    run_dir_1 = tmp_path / "r1_non_cumulative"
+    run_dir_1.mkdir(parents=True, exist_ok=True)
+    manifest_1 = {
+        "resume_started_at_step": 2,
+        "total_steps_completed": 4,
+        "cumulative_ledgers": {
+            "cumulative_j_dot_e_work_J": 6.0,
+            "cumulative_j_dot_e_step_count": 1,  # BAD: lower than restart 0's 2
+            "cumulative_active_port_work_J": 3.0,
+            "cumulative_active_port_step_count": 2,
+            "limiter_steps_observed": 2,
+            "limiter_total_activations": 0,
+        },
+        "plan": {"total_steps": 4},
+        "segments": [],
+    }
+    (run_dir_1 / "run_manifest.json").write_text(
+        json.dumps(manifest_1), encoding="utf-8"
+    )
+
+    with pytest.raises(LedgerMergeError, match="non-cumulative"):
+        merge_cumulative_ledgers(
+            [run_dir_0 / "run_manifest.json", run_dir_1 / "run_manifest.json"]
+        )
+
+
+# ---------------------------------------------------------------------------
+# N-5: first restart starts after step 0 (suffix run, not whole run)
+# ---------------------------------------------------------------------------
+
+
+def test_merge_fails_closed_when_first_restart_not_at_step_zero(
+    tmp_path: Path,
+) -> None:
+    """N-5: the first (earliest by step) restart starts after step 0.
+
+    In whole-run mode the combiner requires coverage from step 0.  A run
+    that starts mid-horizon is a suffix run; the merge must fail closed so
+    the caller is explicitly informed rather than silently producing an
+    incomplete ledger.
+    """
+    run_dir_0 = tmp_path / "r0_suffix"
+    run_dir_0.mkdir(parents=True, exist_ok=True)
+    # Deliberately starts at step 5, not step 0.
+    manifest_suffix = {
+        "resume_started_at_step": 5,
+        "total_steps_completed": 10,
+        "cumulative_ledgers": {
+            "cumulative_j_dot_e_work_J": 20.0,
+            "cumulative_j_dot_e_step_count": 5,
+            "cumulative_active_port_work_J": 10.0,
+            "cumulative_active_port_step_count": 5,
+            "limiter_steps_observed": 5,
+            "limiter_total_activations": 0,
+        },
+        "plan": {"total_steps": 10},
+        "segments": [],
+    }
+    (run_dir_0 / "run_manifest.json").write_text(
+        json.dumps(manifest_suffix), encoding="utf-8"
+    )
+
+    with pytest.raises(LedgerMergeError, match="suffix run"):
+        merge_cumulative_ledgers([run_dir_0 / "run_manifest.json"])
+
+
+# ---------------------------------------------------------------------------
+# N-6: non-monotonic cumulative counters across restarts
+# ---------------------------------------------------------------------------
+
+
+def test_merge_fails_closed_on_non_monotonic_cumulative_counters(
+    tmp_path: Path,
+) -> None:
+    """N-6: limiter_steps_observed decreases from restart 0 to restart 1.
+
+    The monotonicity invariant (cumulative counters must be non-decreasing
+    across restarts in step order) catches manifests where a sidecar was
+    corrupted or overwritten after a partial re-run wiped prior ledger data.
+    The combiner must fail closed before attempting any merge.
+    """
+    run_dir_0 = tmp_path / "r0"
+    run_dir_0.mkdir(parents=True, exist_ok=True)
+    manifest_0 = {
+        "resume_started_at_step": 0,
+        "total_steps_completed": 3,
+        "cumulative_ledgers": {
+            "cumulative_j_dot_e_work_J": 15.0,
+            "cumulative_j_dot_e_step_count": 3,
+            "cumulative_active_port_work_J": 7.0,
+            "cumulative_active_port_step_count": 3,
+            "limiter_steps_observed": 3,  # 3 limiter steps in prefix
+            "limiter_total_activations": 1,
+        },
+        "plan": {"total_steps": 6},
+        "segments": [],
+    }
+    (run_dir_0 / "run_manifest.json").write_text(
+        json.dumps(manifest_0), encoding="utf-8"
+    )
+
+    run_dir_1 = tmp_path / "r1_bad_monotone"
+    run_dir_1.mkdir(parents=True, exist_ok=True)
+    manifest_1 = {
+        "resume_started_at_step": 3,
+        "total_steps_completed": 6,
+        "cumulative_ledgers": {
+            "cumulative_j_dot_e_work_J": 30.0,
+            "cumulative_j_dot_e_step_count": 6,
+            "cumulative_active_port_work_J": 14.0,
+            "cumulative_active_port_step_count": 6,
+            "limiter_steps_observed": 2,  # BAD: dropped from 3 to 2
+            "limiter_total_activations": 1,
+        },
+        "plan": {"total_steps": 6},
+        "segments": [],
+    }
+    (run_dir_1 / "run_manifest.json").write_text(
+        json.dumps(manifest_1), encoding="utf-8"
+    )
+
+    with pytest.raises(LedgerMergeError, match="non-cumulative"):
+        merge_cumulative_ledgers(
+            [run_dir_0 / "run_manifest.json", run_dir_1 / "run_manifest.json"]
+        )

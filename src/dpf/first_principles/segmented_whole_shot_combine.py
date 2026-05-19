@@ -26,6 +26,17 @@ _COMBINED_STATUS = (
     "experimental_whole_run_combined_manifest_not_validation"
 )
 
+# Counter fields whose values in a rehydrated manifest must be non-decreasing
+# across restarts ordered by resume_started_at_step.  The A-6 sidecar ensures
+# each restart's cumulative_ledgers already covers all steps executed before
+# that restart, so a later restart's counters must be >= any earlier restart's.
+_MONOTONE_COUNTER_FIELDS: tuple[str, ...] = (
+    "cumulative_j_dot_e_step_count",
+    "cumulative_active_port_step_count",
+    "limiter_steps_observed",
+    "limiter_total_activations",
+)
+
 
 class LedgerMergeError(ValueError):
     """Raised when restarts are non-contiguous or a manifest is missing.
@@ -92,7 +103,20 @@ def merge_cumulative_ledgers(
 
     manifests.sort(key=_start_step)
 
+    # --- whole-run invariant: first restart must start at step 0 -------------
+    # If the first restart begins after step 0 this is a suffix run, not a
+    # whole run.  Fail closed rather than silently merging an incomplete prefix.
+    first_start = _start_step(manifests[0])
+    if first_start != 0:
+        raise LedgerMergeError(
+            f"first restart begins at step {first_start}, not step 0; "
+            "this is a suffix run, not a whole run -- whole-run merge refused"
+        )
+
     # --- contiguity check: verify restarts tile the horizon with no gap/overlap
+    # Run before the ledger invariant check so structural errors (gap, overlap)
+    # get their own attributable message rather than tripping on the counter
+    # comparison of an otherwise-corrupted manifest pair.
     expected_next_step = _start_step(manifests[0])
     for idx, manifest in enumerate(manifests):
         actual_start = _start_step(manifest)
@@ -112,6 +136,36 @@ def merge_cumulative_ledgers(
             )
         steps_completed = int(manifest.get("total_steps_completed", 0))
         expected_next_step = actual_start + steps_completed
+
+    # --- input-invariant check: every manifest's cumulative_ledgers must be ---
+    # rehydrated (cumulative from step 0), not per-restart-only.  Evidence:
+    # for manifests sorted by resume_started_at_step, each restart's counter
+    # values must be >= those of the immediately preceding restart, because the
+    # A-6 sidecar carries the full prefix into every resume.  A counter that
+    # decreases relative to an earlier restart proves the ledger was NOT
+    # rehydrated from the sidecar (or was corrupted), which invalidates the
+    # terminal-ledger approach.  Fail closed immediately.
+    for idx in range(1, len(manifests)):
+        prev_ledger = manifests[idx - 1].get("cumulative_ledgers", {})
+        curr_ledger = manifests[idx].get("cumulative_ledgers", {})
+        if not isinstance(prev_ledger, dict):
+            prev_ledger = {}
+        if not isinstance(curr_ledger, dict):
+            curr_ledger = {}
+        curr_start = _start_step(manifests[idx])
+        prev_start = _start_step(manifests[idx - 1])
+        for field in _MONOTONE_COUNTER_FIELDS:
+            prev_val = int(prev_ledger.get(field, 0) or 0)
+            curr_val = int(curr_ledger.get(field, 0) or 0)
+            if curr_val < prev_val:
+                raise LedgerMergeError(
+                    f"non-cumulative ledger detected at restart {idx} "
+                    f"(resume_started_at_step={curr_start}): "
+                    f"field '{field}' dropped from {prev_val} "
+                    f"(restart {idx - 1}, step {prev_start}) to {curr_val} -- "
+                    "manifest cumulative_ledgers were not rehydrated from the "
+                    "A-6 sidecar; terminal-ledger merge is invalid"
+                )
 
     # --- identify the terminal manifest (highest total_steps_completed) ------
     terminal = max(

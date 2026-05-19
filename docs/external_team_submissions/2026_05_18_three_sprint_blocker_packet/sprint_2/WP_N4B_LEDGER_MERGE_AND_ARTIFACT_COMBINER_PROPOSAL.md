@@ -43,16 +43,36 @@ invocations is absent**, and so is a whole-run artifact combiner.
 
 Cross-restart ledger merge — `merge_cumulative_ledgers(manifest_paths)`:
 1. Read each restart's `run_manifest.json["cumulative_ledgers"]`.
-2. Sum the additive counters across all N in step order:
-   `cumulative_j_dot_e_work_J`, `cumulative_j_dot_e_step_count`,
-   `cumulative_active_port_work_J`, `cumulative_active_port_step_count`,
-   `limiter_steps_observed`, `limiter_total_activations`.
-3. Take final-state scalars (`final_circuit_current_A`, `final_*`) from the
-   highest-step-count manifest (the latest restart's terminal state).
-4. Verify the restarts' `total_steps_completed` tile contiguously before
-   merging; fail closed on a gap or overlap.
-5. Emit a merged ledger with
-   `covers_executed_horizon = sum(executed_steps) >= planned_total_steps`.
+2. Sort manifests by `resume_started_at_step`.
+3. Verify the first restart starts at step 0; fail closed if not (suffix run,
+   not whole run).
+4. Verify that every manifest's cumulative counters are non-decreasing relative
+   to the preceding manifest in step order (monotonicity invariant); fail
+   closed with an attributable `LedgerMergeError` if any counter decreases.
+   This proves every manifest was rehydrated from the A-6 per-checkpoint
+   sidecar (which carries the full prefix into every resume), not just per-
+   restart-segment totals.
+5. Verify the restarts tile contiguously (no step gap, no step overlap); fail
+   closed otherwise.
+6. Take the whole-run additive counters **directly from the terminal restart's
+   `cumulative_ledgers`** (the manifest with the highest
+   `total_steps_completed`).  Do NOT sum the per-restart ledger blocks across
+   all N manifests.
+
+   Rationale: summing would double-count.  Because the A-6 sidecar rehydrates
+   the full prefix into every resumed run, restart k's `cumulative_ledgers`
+   already contains the totals for steps 0..k_end, not only for its own
+   post-resume steps.  Summing restart 0's ledger (steps 0..2) with restart
+   1's ledger (steps 0..4) would count steps 0..2 twice.  The terminal
+   manifest's ledger is the single correct whole-run total; we take it once.
+
+7. Take final-state scalars (`final_circuit_current_A`, `final_*`) from the
+   same terminal manifest.
+8. Emit a merged ledger with
+   `covers_executed_horizon = sum(executed_steps) >= planned_total_steps`,
+   where `executed_steps` is the sum of each restart's own contribution
+   (`total_steps_completed - resume_started_at_step`) to avoid re-counting
+   the sidecar prefix.
 
 Whole-run artifact combiner — `combine_whole_run_artifacts(run_dirs)`:
 1. Input: an ordered list of `run_dir` paths, each with `run_manifest.json`,
