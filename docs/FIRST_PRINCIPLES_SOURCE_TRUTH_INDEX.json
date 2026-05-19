@@ -1,9 +1,9 @@
 {
   "capability_index": {
     "circuit_coupling": {
-      "direct_record_count": 94,
+      "direct_record_count": 95,
       "label": "Circuit coupling",
-      "record_count": 143,
+      "record_count": 144,
       "representative_records": [
         {
           "id": "kr:2025-double-3mj-dense-plasma-focus-thermonuclear-icf",
@@ -54,6 +54,12 @@
           "verdict": "directly_needed"
         },
         {
+          "id": "kr:auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED",
+          "path": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md",
+          "title": "Auluck 2021 \u2014 DPF as a Circuit Element \u2014 Verified Equation Extract",
+          "verdict": "directly_needed"
+        },
+        {
           "id": "kr:auluck-2022-dpf-theory-part1",
           "path": "KnowledgeReference/auluck-2022-dpf-theory-part1.md",
           "title": "First steps towards a theory of the Dense Plasma Focus:",
@@ -69,12 +75,6 @@
           "id": "kr:auluck-2023-poloidal-flux-survey",
           "path": "KnowledgeReference/auluck-2023-poloidal-flux-survey.md",
           "title": "RESEARCH ARTICLE |  AUGUST 02 2023",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860",
-          "path": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
-          "title": "Bayesian inference of spectrometric data and validation with numerical simulations of plasma sheath diagnostics of a plasma focus discharge",
           "verdict": "directly_needed"
         }
       ]
@@ -238,9 +238,9 @@
       ]
     },
     "dpf_device": {
-      "direct_record_count": 154,
+      "direct_record_count": 155,
       "label": "DPF/device scope",
-      "record_count": 160,
+      "record_count": 161,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -317,9 +317,9 @@
       ]
     },
     "electrode_boundary": {
-      "direct_record_count": 144,
+      "direct_record_count": 145,
       "label": "Electrode/conductor/boundaries",
-      "record_count": 365,
+      "record_count": 366,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -396,9 +396,9 @@
       ]
     },
     "generalized_ohm": {
-      "direct_record_count": 22,
+      "direct_record_count": 23,
       "label": "Generalized Ohm/current closure",
-      "record_count": 59,
+      "record_count": 60,
       "representative_records": [
         {
           "id": "kr:a-comprehensive-analytical-model-of-the-dynamic-z-pinch",
@@ -416,6 +416,12 @@
           "id": "kr:auluck-2021-dpf-circuit-element",
           "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
           "title": "Microsoft Word - Circuit element-final-2.docx",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED",
+          "path": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md",
+          "title": "Auluck 2021 \u2014 DPF as a Circuit Element \u2014 Verified Equation Extract",
           "verdict": "directly_needed"
         },
         {
@@ -464,12 +470,6 @@
           "id": "kr:goyon-2022-mjolnir-high-low",
           "path": "KnowledgeReference/goyon-2022-mjolnir-high-low.md",
           "title": "Measuring characteristic differences between high- and low-performing discharges on the MegaJOuLe Neutron Imaging Radiography (MJOLNIR) DPF",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging",
-          "path": "KnowledgeReference/ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging.md",
-          "title": "1860821",
           "verdict": "directly_needed"
         }
       ]
@@ -554,9 +554,9 @@
       ]
     },
     "ionization_eos": {
-      "direct_record_count": 102,
+      "direct_record_count": 103,
       "label": "Ionization/EOS/transport coefficients",
-      "record_count": 336,
+      "record_count": 337,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -633,9 +633,9 @@
       ]
     },
     "maxwell_fields": {
-      "direct_record_count": 120,
+      "direct_record_count": 121,
       "label": "Maxwell/vacuum EM fields",
-      "record_count": 393,
+      "record_count": 394,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -949,14 +949,20 @@
       ]
     },
     "numerical_method": {
-      "direct_record_count": 19,
+      "direct_record_count": 20,
       "label": "Numerical method/verification",
-      "record_count": 95,
+      "record_count": 96,
       "representative_records": [
         {
           "id": "kr:a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271",
           "path": "KnowledgeReference/a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271.md",
           "title": "A Three-Dimensional Finite Volume Arbitrary Lagrangian-",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED",
+          "path": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md",
+          "title": "Auluck 2021 \u2014 DPF as a Circuit Element \u2014 Verified Equation Extract",
           "verdict": "directly_needed"
         },
         {
@@ -1018,19 +1024,13 @@
           "path": "KnowledgeReference/investigation-on-the-dynamics-of-z-pinch-in-discha.md",
           "title": "Investigation_On_The_Dynamics_Of_Z Pinch_In_Discha",
           "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:malir-2024-interferometry-dpf",
-          "path": "KnowledgeReference/malir-2024-interferometry-dpf.md",
-          "title": "RESEARCH ARTICLE |  APRIL 19 2024",
-          "verdict": "directly_needed"
         }
       ]
     },
     "poynting_power": {
-      "direct_record_count": 8,
+      "direct_record_count": 9,
       "label": "Poynting/J.E power port",
-      "record_count": 41,
+      "record_count": 42,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1048,6 +1048,12 @@
           "id": "kr:auluck-2021-dpf-circuit-element",
           "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
           "title": "Microsoft Word - Circuit element-final-2.docx",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED",
+          "path": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md",
+          "title": "Auluck 2021 \u2014 DPF as a Circuit Element \u2014 Verified Equation Extract",
           "verdict": "directly_needed"
         },
         {
@@ -2489,6 +2495,13 @@
       "path": "KnowledgeReference/asymptotic-scaling-laws-for-the-stagnation-conditions-of-z-pinch-implosions.md",
       "sha256": "477e65aa6cf0198b9db4ab6e28a04321cac05fb607cd11e357e5f30235934eac",
       "size_bytes": 74822
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md",
+      "sha256": "dbfe49f36c2e2bf6856fbaeabb481662a00f285087d4e430a06ea5d5b2cc2201",
+      "size_bytes": 8171
     },
     {
       "extension": ".json",
@@ -11374,7 +11387,7 @@
       "size_bytes": 125119
     }
   ],
-  "generated_at_utc": "2026-05-18T17:36:11.815544+00:00",
+  "generated_at_utc": "2026_05_18",
   "records": [
     {
       "accession": "",
@@ -13761,6 +13774,44 @@
       ],
       "title": "Microsoft Word - Circuit element-final-2.docx",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; Generalized Ohm/current closure; Circuit coupling; Poynting/J.E power port; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Numerical method/verification.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "markdown_sha256": "dbfe49f36c2e2bf6856fbaeabb481662a00f285087d4e430a06ea5d5b2cc2201"
+      },
+      "id": "kr:auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 0,
+      "paths": {
+        "json": null,
+        "markdown": "KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "",
+      "source_pdf_relative_path": "",
+      "source_pdf_sha256": "",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "generalized_ohm",
+        "circuit_coupling",
+        "poynting_power",
+        "electrode_boundary",
+        "ionization_eos",
+        "numerical_method"
+      ],
+      "title": "Auluck 2021 \u2014 DPF as a Circuit Element \u2014 Verified Equation Extract",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -31452,28 +31503,28 @@
       "derived_chunk": 243,
       "figure_or_image": 92,
       "source_json_metadata": 526,
-      "source_markdown": 527,
+      "source_markdown": 528,
       "system_metadata": 7
     },
     "json_metadata_count": 526,
-    "knowledge_reference_document_count": 527,
-    "knowledge_reference_file_count": 1395,
-    "markdown_source_count": 527,
+    "knowledge_reference_document_count": 528,
+    "knowledge_reference_file_count": 1396,
+    "markdown_source_count": 528,
     "tag_counts": {
-      "circuit_coupling": 143,
+      "circuit_coupling": 144,
       "collisions": 139,
       "detector_response": 74,
-      "dpf_device": 160,
-      "electrode_boundary": 365,
-      "generalized_ohm": 59,
+      "dpf_device": 161,
+      "electrode_boundary": 366,
+      "generalized_ohm": 60,
       "hybrid_pic_fluid": 97,
-      "ionization_eos": 336,
-      "maxwell_fields": 393,
+      "ionization_eos": 337,
+      "maxwell_fields": 394,
       "mhd": 232,
       "neutron_beam_target": 150,
       "neutron_thermonuclear": 139,
-      "numerical_method": 95,
-      "poynting_power": 41,
+      "numerical_method": 96,
+      "poynting_power": 42,
       "radiation": 318,
       "startup_breakdown": 216,
       "three_d_geometry": 272,
@@ -31483,7 +31534,7 @@
     },
     "verdict_counts": {
       "background_only": 16,
-      "directly_needed": 154,
+      "directly_needed": 155,
       "not_relevant": 22,
       "supporting_method": 335
     }
