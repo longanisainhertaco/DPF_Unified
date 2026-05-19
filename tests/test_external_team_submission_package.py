@@ -167,14 +167,17 @@ def test_readme_and_summary_agree_on_sprint2_status() -> None:
 
 
 def test_changelog_covers_all_commits_since_base() -> None:
-    """CHANGELOG.md must mention every commit hash in git log 76480b0..HEAD.
+    """CHANGELOG.md must mention every commit hash in git log 76480b0..HEAD~1.
 
-    Omitting a commit hash means the changelog does not account for that change,
-    which makes the packet non-self-describing.
+    HEAD is exempt: the changelog is committed *in* a commit and cannot list its
+    own hash, so the final changelog-wrapper commit is structurally unlistable
+    (the same constraint Codex audit F4 accepted for AUDIT_COMMANDS.md). Every
+    commit before HEAD must be present; omitting one means the changelog does
+    not account for that change and the packet is non-self-describing.
     """
     try:
         result = subprocess.run(
-            ["git", "log", "--oneline", f"{_CHANGELOG_BASE}..HEAD"],
+            ["git", "log", "--oneline", f"{_CHANGELOG_BASE}..HEAD~1"],
             capture_output=True,
             text=True,
             check=True,

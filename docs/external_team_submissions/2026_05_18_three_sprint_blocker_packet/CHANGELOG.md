@@ -42,6 +42,20 @@ are all under `docs/external_team_submissions/2026_05_18_three_sprint_blocker_pa
 | --- | --- |
 | `6af4454` | docs: add sprint 2 audit and periodic runner |
 
+### Sprint 2 Implementation — WP-N1B / WP-N4B (`6af4454`..HEAD)
+
+| Commit | Subject |
+| --- | --- |
+| `4b080eb` | feat(first-principles): implement WP-N1B six-term Auluck power-port ledger (fail-closed) |
+| `4c8dac1` | feat(first-principles): implement WP-N4B cross-restart ledger merge and artifact combiner |
+| `93620ba` | docs: synchronize Sprint 2 packet hygiene and add consistency tests (F2/F3/F4) |
+
+The final commit of this packet revision is a documentation-only changelog
+wrapper: it updates this `CHANGELOG.md` and `tests/test_external_team_submission_package.py`
+and, by construction, cannot list its own hash. The package-consistency test
+`test_changelog_covers_all_commits_since_base` exempts HEAD for exactly this
+reason (it checks `76480b0..HEAD~1`).
+
 ## Changed paths
 
 ### Sprint 1
@@ -127,6 +141,27 @@ added six `sprint_2/WP_N1B_*` and `sprint_2/WP_N4B_*` proposal docs.
 `6af4454` — docs: added
 `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_PACKET_2026_05_19.md`,
 `scripts/run_codex_periodic_audit.py`.
+
+### Sprint 2 Implementation — WP-N1B / WP-N4B
+
+`4b080eb` — feat: WP-N1B six-term Auluck power-port ledger; modified
+`src/dpf/first_principles/power_port.py`,
+`tests/test_first_principles_power_port.py`, and
+`docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`
+(module-source-vetting regenerated after the first-principles module edit).
+
+`4c8dac1` — feat: WP-N4B cross-restart ledger merge and artifact combiner;
+added `src/dpf/first_principles/segmented_whole_shot_combine.py` and
+`tests/test_first_principles_segmented_whole_shot_combine.py`.
+
+`93620ba` — docs: Sprint 2 packet hygiene (F2/F3/F4); modified
+`THREE_SPRINT_FINAL_SUMMARY.md`, `CHANGELOG.md`, `PATCH_SCOPE.md`,
+`UNKNOWN_AND_INFERENCE_LOG.md` under the packet, and
+`tests/test_external_team_submission_package.py`.
+
+The trailing changelog-wrapper commit modifies only this `CHANGELOG.md` and
+`tests/test_external_team_submission_package.py`; it is HEAD-exempt from the
+changelog-coverage test by construction.
 
 ## Deleted / quarantined artifacts
 
