@@ -3413,7 +3413,7 @@
         "dpf.fields.hybrid_loop.HybridPIC3DLoop",
         "dpf.fields.hybrid_loop.HybridPIC3DLoopResult",
         "dpf.fields.hybrid_stepper",
-        "dpf.fields.hybrid_stepper.omega_stored_em_energy_J",
+        "dpf.fields.hybrid_stepper.omega_stored_em_energy_split_J",
         "dpf.fields.hybrid_stepper.omega_volume_j_dot_e_power_W",
         "dpf.fields.hybrid_stepper.wall_poynting_flux_W",
         "dpf.fields.ionization_transport",

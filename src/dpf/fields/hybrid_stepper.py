@@ -432,6 +432,33 @@ def omega_stored_em_energy_J(
     omega_volume_cells. Returned as an instantaneous energy; the ledger
     forms Delta W = W(end) - W(begin).
     """
+    split = omega_stored_em_energy_split_J(
+        electric_field_V_m=electric_field_V_m,
+        magnetic_field_T=magnetic_field_T,
+        omega_volume_cells=omega_volume_cells,
+        cell_volume_m3=cell_volume_m3,
+    )
+    return split["magnetic_J"] + split["electric_J"]
+
+
+def omega_stored_em_energy_split_J(
+    *,
+    electric_field_V_m: np.ndarray,
+    magnetic_field_T: np.ndarray,
+    omega_volume_cells: np.ndarray,
+    cell_volume_m3: float,
+) -> dict[str, float]:
+    """Return magnetic and electric stored energy over Omega, kept separate.
+
+    Auluck eq. (6) term I is d/dt integral_Omega (1/2 mu0^-1 B^2) and term III
+    is d/dt integral_Omega (1/2 eps0 E^2); they need the magnetic-only and
+    electric-only stored energy, NOT the combined sum. This routes the split
+    into the WP-N1B power-port ledger so terms I and III can be computed
+    independently. ``magnetic_J`` is integral_Omega (1/2 mu0^-1 B^2) dV and
+    ``electric_J`` is integral_Omega (1/2 eps0 E^2) dV.
+    [KR: 2019nrlplasma-formulary-037290d4.md:1869-1879;
+    AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8]
+    """
     e_field = np.asarray(electric_field_V_m, dtype=float)
     b_field = np.asarray(magnetic_field_T, dtype=float)
     omega = np.asarray(omega_volume_cells, dtype=bool)
@@ -440,8 +467,11 @@ def omega_stored_em_energy_J(
     if omega.shape != e_density.shape:
         raise ValueError("omega_volume_cells shape does not match field grid")
     if not np.any(omega):
-        return 0.0
-    return float(np.sum((e_density + b_density)[omega]) * float(cell_volume_m3))
+        return {"magnetic_J": 0.0, "electric_J": 0.0}
+    return {
+        "magnetic_J": float(np.sum(b_density[omega]) * float(cell_volume_m3)),
+        "electric_J": float(np.sum(e_density[omega]) * float(cell_volume_m3)),
+    }
 
 
 def _field_work_telemetry(

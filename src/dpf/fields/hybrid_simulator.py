@@ -16,7 +16,7 @@ from dpf.fields.circuit_boundary import (
 from dpf.fields.electron_energy import ElectronEnergyState
 from dpf.fields.hybrid_loop import HybridPIC3DLoop, HybridPIC3DLoopResult
 from dpf.fields.hybrid_stepper import (
-    omega_stored_em_energy_J,
+    omega_stored_em_energy_split_J,
     omega_volume_j_dot_e_power_W,
     wall_poynting_flux_W,
 )
@@ -771,13 +771,23 @@ def _circuit_voltage_balance(
 
 
 def _new_power_port_ledger_accumulator() -> dict[str, Any]:
-    """Return a zeroed WP-N1 five-term power-port ledger accumulator."""
+    """Return a zeroed WP-N1B power-port ledger accumulator.
+
+    Accumulates the terminal I*V port work, the Omega volume J.E work, the
+    wall Poynting flux, and the stored-EM energy endpoints over Omega -- with
+    the magnetic and electric stored energy kept SEPARATE so the Auluck eq.
+    (6) terms I and III can be computed independently downstream.
+    """
     return {
         "terminal_port_work_J": 0.0,
         "volume_j_dot_e_work_J": 0.0,
         "wall_poynting_flux_excluding_declared_port_J": 0.0,
         "stored_em_energy_initial_J": None,
         "stored_em_energy_final_J": None,
+        "stored_magnetic_energy_initial_J": None,
+        "stored_magnetic_energy_final_J": None,
+        "stored_electric_energy_initial_J": None,
+        "stored_electric_energy_final_J": None,
         "steps_accumulated": 0,
         "first_step_fallback": False,
         "first_step_udpf_source": None,
@@ -803,13 +813,16 @@ def _accumulate_power_port_ledger(
     udpf_source: str | None,
     absolute_step_index: int,
 ) -> None:
-    """Accumulate one step into the WP-N1 Auluck five-term power-port ledger.
+    """Accumulate one step into the WP-N1B Auluck power-port ledger.
 
     WP-N1 source packet S2/S3. Builds the Auluck Omega partition for this
-    step, then accumulates terms 1 (terminal port work), 2 (omega volume
-    J.E), 3 (wall Poynting), and the stored-EM endpoints for term 5. Term 4
-    (electrode-interface work) is NOT computed here; it is the labeled
-    non-independent closure estimate assembled in power_port.py (gap G1).
+    step, then accumulates the terminal I*V port work, the Omega volume J.E
+    work, the wall Poynting flux, and the stored-EM energy endpoints over
+    Omega. The stored EM energy is split into magnetic-only and electric-only
+    parts so power_port.py computes Auluck eq. (6) terms I and III
+    independently. There is NO electrode-interface work term: Auluck's
+    balance has none (the source interface is excluded from Omega and its
+    Poynting flux IS the LHS I(t)V(t)).
     """
     maxwell = field_stepper.maxwell
     grid = field_stepper.grid
@@ -867,19 +880,25 @@ def _accumulate_power_port_ledger(
         + float(wall_end["wall_poynting_flux_excluding_declared_port_W"])
     )
 
-    # Term 5: stored EM energy over Omega, endpoints of this step.
-    stored_begin_J = omega_stored_em_energy_J(
+    # Stored EM energy over Omega, endpoints of this step. The magnetic and
+    # electric parts are kept SEPARATE so the WP-N1B Auluck ledger can compute
+    # term I = d/dt integral_Omega (1/2 mu0^-1 B^2) and term III = d/dt
+    # integral_Omega (1/2 eps0 E^2) independently. The combined sum is the
+    # WP-N1 S2 term-5 component.
+    split_begin = omega_stored_em_energy_split_J(
         electric_field_V_m=e_begin,
         magnetic_field_T=b_begin,
         omega_volume_cells=omega_mask,
         cell_volume_m3=cell_volume_m3,
     )
-    stored_end_J = omega_stored_em_energy_J(
+    split_end = omega_stored_em_energy_split_J(
         electric_field_V_m=e_end,
         magnetic_field_T=b_end,
         omega_volume_cells=omega_mask,
         cell_volume_m3=cell_volume_m3,
     )
+    stored_begin_J = split_begin["magnetic_J"] + split_begin["electric_J"]
+    stored_end_J = split_end["magnetic_J"] + split_end["electric_J"]
 
     # Term 1: terminal port work. Sign convention S3.1: positive = energy
     # entering Omega from the generator. I*U_DPF with the existing circuit
@@ -892,6 +911,8 @@ def _accumulate_power_port_ledger(
     first_step = accumulator["steps_accumulated"] == 0
     if first_step:
         accumulator["stored_em_energy_initial_J"] = stored_begin_J
+        accumulator["stored_magnetic_energy_initial_J"] = split_begin["magnetic_J"]
+        accumulator["stored_electric_energy_initial_J"] = split_begin["electric_J"]
         accumulator["first_step_udpf_source"] = udpf_source
         if udpf_source in {
             "input_sequence_fallback_first_step",
@@ -905,6 +926,8 @@ def _accumulate_power_port_ledger(
         wall_power_W * dt_s
     )
     accumulator["stored_em_energy_final_J"] = stored_end_J
+    accumulator["stored_magnetic_energy_final_J"] = split_end["magnetic_J"]
+    accumulator["stored_electric_energy_final_J"] = split_end["electric_J"]
     accumulator["steps_accumulated"] += 1
     accumulator["domain_partition"] = public_omega_domain_packet(omega)
     constraints = omega["partition_constraints"]
@@ -924,6 +947,12 @@ def _accumulate_power_port_ledger(
             "trapezoidal_begin_and_end_step_E_cross_H"
         ),
         "stored_em_energy_delta_J": "end_step_minus_begin_step_W_over_omega",
+        "stored_magnetic_energy_delta_J": (
+            "end_step_minus_begin_step_half_mu0_inv_B2_over_omega"
+        ),
+        "stored_electric_energy_delta_J": (
+            "end_step_minus_begin_step_half_eps0_E2_over_omega"
+        ),
         "time_centering": "candidate_step_consistent_not_accepted",
     }
     if len(accumulator["step_records"]) < 256:
@@ -934,6 +963,10 @@ def _accumulate_power_port_ledger(
             "wall_poynting_flux_W": wall_power_W,
             "stored_em_energy_begin_J": stored_begin_J,
             "stored_em_energy_end_J": stored_end_J,
+            "stored_magnetic_energy_begin_J": split_begin["magnetic_J"],
+            "stored_magnetic_energy_end_J": split_end["magnetic_J"],
+            "stored_electric_energy_begin_J": split_begin["electric_J"],
+            "stored_electric_energy_end_J": split_end["electric_J"],
             "omega_cell_count": int(j_dot_e["omega_cell_count"]),
             "udpf_source": udpf_source,
         })
@@ -949,7 +982,11 @@ def _finalize_power_port_ledger(
     n_steps_completed: int,
     apply_circuit_boundary: bool,
 ) -> dict[str, Any] | None:
-    """Assemble the cumulative WP-N1 five-term power-port ledger telemetry."""
+    """Assemble the cumulative WP-N1B power-port ledger telemetry.
+
+    Carries the magnetic-only and electric-only stored-energy deltas over
+    Omega so the Auluck eq. (6) terms I and III are independently computable.
+    """
     if not apply_circuit_boundary or accumulator["steps_accumulated"] == 0:
         return None
     initial = accumulator["stored_em_energy_initial_J"]
@@ -957,8 +994,22 @@ def _finalize_power_port_ledger(
     stored_delta_J = (
         None if initial is None or final is None else float(final) - float(initial)
     )
+    magnetic_initial = accumulator["stored_magnetic_energy_initial_J"]
+    magnetic_final = accumulator["stored_magnetic_energy_final_J"]
+    stored_magnetic_delta_J = (
+        None
+        if magnetic_initial is None or magnetic_final is None
+        else float(magnetic_final) - float(magnetic_initial)
+    )
+    electric_initial = accumulator["stored_electric_energy_initial_J"]
+    electric_final = accumulator["stored_electric_energy_final_J"]
+    stored_electric_delta_J = (
+        None
+        if electric_initial is None or electric_final is None
+        else float(electric_final) - float(electric_initial)
+    )
     return {
-        "status": "candidate_auluck_power_port_five_term_ledger_not_validation",
+        "status": "candidate_auluck_power_port_ledger_not_validation",
         "steps_accumulated": int(accumulator["steps_accumulated"]),
         "n_steps_completed": int(n_steps_completed),
         "cumulative_terminal_port_work_J": float(
@@ -973,6 +1024,16 @@ def _finalize_power_port_ledger(
         "stored_em_energy_initial_J": initial,
         "stored_em_energy_final_J": final,
         "stored_em_energy_delta_J": stored_delta_J,
+        # Magnetic / electric stored-energy SPLIT over Omega. Auluck eq. (6)
+        # term I (time-integrated) = magnetic stored-energy delta; term III
+        # (time-integrated) = electric stored-energy delta. Kept separate so
+        # power_port.py computes terms I and III independently.
+        "stored_magnetic_energy_initial_J": magnetic_initial,
+        "stored_magnetic_energy_final_J": magnetic_final,
+        "stored_magnetic_energy_delta_J": stored_magnetic_delta_J,
+        "stored_electric_energy_initial_J": electric_initial,
+        "stored_electric_energy_final_J": electric_final,
+        "stored_electric_energy_delta_J": stored_electric_delta_J,
         "first_step_fallback": bool(accumulator["first_step_fallback"]),
         "first_step_udpf_source": accumulator["first_step_udpf_source"],
         "snapshot_provenance": dict(accumulator["snapshot_provenance"]),

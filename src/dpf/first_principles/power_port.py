@@ -7,6 +7,15 @@ from typing import Any
 
 POWER_PORT_SOURCE_REFS = (
     {
+        "path": (
+            "docs/external_team_submissions/"
+            "2026_05_18_three_sprint_blocker_packet/sprint_2/"
+            "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md"
+        ),
+        "lines": "43-103,104-128,147-156",
+        "role": "auluck_eq1_eq5_eq6_verified_power_balance",
+    },
+    {
         "path": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "lines": "151-200,206-262,426-445,1026-1047",
         "role": "field_power_contract",
@@ -31,12 +40,20 @@ POWER_PORT_SOURCE_REFS = (
     },
 )
 
+# WP-N1B: the required power-port channels. There is NO `electrode_work`
+# channel -- the verified Auluck extract is explicit that the balance has no
+# electrode-contact-work term; the electrode/power-source interface is
+# EXCLUDED from Omega and its Poynting flux IS the LHS I(t)V(t). The eq. (6)
+# power balance is carried by `auluck_eq6_power_balance` (term completeness:
+# term_i through term_vi independently computed).
+# [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8;
+# "What this source ... DOES NOT provide"]
 REQUIRED_POWER_PORT_CHANNELS = (
     "interface_surface_or_volume_domain",
     "terminal_current",
     "terminal_voltage",
     "poynting_power_or_j_dot_e",
-    "electrode_work",
+    "auluck_eq6_power_balance",
     "external_circuit_energy",
     "magnetic_energy",
     "electric_energy",
@@ -52,10 +69,14 @@ REQUIRED_POWER_PORT_CHANNELS = (
     "source_references",
 )
 
+# WP-N1B acceptance-blocking channels. The Auluck eq. (6) power-balance
+# completeness blocker replaces the legacy `electrode_work_partition`: Auluck
+# has no electrode-contact-work term, so the blocking requirement is that all
+# six eq. (6) terms (term_i through term_vi) are independently computed.
 ACCEPTANCE_BLOCKING_CHANNELS = (
     "named_interface_surface_or_volume_domain",
     "poynting_or_j_dot_e_power_integral",
-    "electrode_work_partition",
+    "auluck_eq6_six_term_completeness",
     "accepted_sign_convention",
     "accepted_time_centering",
     "residual_tolerance",
@@ -191,7 +212,6 @@ def build_engineering_power_port_packet(
         "j_dot_e_domain": (
             None if field_work is None else field_work.get("domain")
         ),
-        "electrode_work_J": None,
         "time_centering": "candidate_runner_step_metadata_only",
         "sign_convention": "not_accepted",
         "required_channels": list(REQUIRED_POWER_PORT_CHANNELS),
@@ -244,13 +264,17 @@ def build_engineering_power_port_packet(
         "acceptance_gate": (
             "terminal_current_voltage_and_energy_ledger_candidates_cannot_support_"
             "power_authority_until_named_poynting_or_j_dot_e_integral_sign_"
-            "centering_electrode_work_residual_tolerance_hashes_and_review_pass"
+            "centering_auluck_eq6_term_completeness_term_i_through_term_vi_"
+            "independently_computed_residual_tolerance_hashes_and_review_pass"
         ),
         "negative_test_policy": {
             "sign_convention_reversal_required": True,
             "time_centering_mismatch_required": True,
             "poynting_j_dot_e_non_equivalence_required": True,
-            "electrode_work_omission_required": True,
+            # Auluck has no electrode-contact-work term; the negative test
+            # omits one of the genuine eq. (6) terms (term_i..term_vi) and
+            # requires the residual to refuse to close by construction.
+            "auluck_eq6_term_omission_required": True,
             "residual_tolerance_failure_required": True,
             "diagnostic_inductance_as_load_rejection_required": True,
             "low_current_p_over_i_singularity_rejection_required": True,
@@ -349,17 +373,25 @@ _WP_N1_LEDGER_KEYS = _WP_N1B_LEDGER_KEYS
 # [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1), p.6]
 _AULUCK_EQ1_SIGN_CONVENTION = "V_12 = -(1/I) integral_Omega d3r (J.E)"
 
-# WP-N1B: runtime-support blockers. The package-native first-principles
-# runtime emits a `power_port_ledger` with stored-EM energy over Omega and
-# the four-label Omega partition, but it does NOT expose: (a) a reviewed
-# Sigma_p moving-boundary face set, (b) the plasma velocity v on Sigma_p
-# faces, (c) the resistivity eta on Sigma_p faces, (d) a magnetic/electric
-# split of the stored-EM energy. Every eq. (6) term therefore fails closed.
-# Investigated 2026-05-19: grep finds no `sigma_p` face set anywhere in
-# src/dpf/fields/*; `_accumulate_power_port_ledger` receives no velocity or
-# eta argument; `omega_stored_em_energy_J` returns only the combined
-# (1/2 eps0 E^2 + 1/2 mu0^-1 B^2). Expanding the runtime is out of WP-N1B
-# scope (WP-N3 reviewed PF-1000 geometry owns Sigma_p).
+# WP-N1B: runtime-support blockers.
+#
+# Sigma_p (terms II/IV/V/VI): the runtime exposes no reviewed Sigma_p
+# moving-boundary face set, no plasma velocity v on Sigma_p faces, and no
+# resistivity eta on Sigma_p faces. Investigated 2026-05-19: grep finds no
+# `sigma_p` face set anywhere in src/dpf/fields/*; `_accumulate_power_port_
+# ledger` receives no velocity or eta argument. Terms II/IV/V/VI therefore
+# stay fail-closed; expanding the runtime to supply Sigma_p geometry is out
+# of WP-N1B/Sprint-2.3-step-1 scope (WP-N3 reviewed PF-1000 geometry owns
+# Sigma_p).
+#
+# Stored-EM split (terms I/III): the runtime DOES now emit the magnetic-only
+# and electric-only stored energy over Omega
+# (`stored_magnetic_energy_delta_J`, `stored_electric_energy_delta_J`;
+# Sprint 2.3 step 1, `omega_stored_em_energy_split_J`). Terms I and III are
+# therefore computed INDEPENDENTLY from that split telemetry. The
+# `_STORED_SPLIT_BLOCKER` string is retained only as the fail-closed reason
+# for the case where the split telemetry is ABSENT (an older ledger that
+# carries only the combined `stored_em_energy_delta_J`).
 _SIGMA_P_BLOCKER = (
     "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry"
 )
@@ -376,6 +408,32 @@ def _term_blocked_packet(reason: str, *, source_ref: str) -> dict[str, Any]:
         "blocker": reason,
         "computed_independently": False,
         "source_ref": source_ref,
+    }
+
+
+def _term_computed_packet(
+    value_J: float,
+    *,
+    source_ref: str,
+    integrand: str,
+    runtime_telemetry_key: str,
+) -> dict[str, Any]:
+    """Return a packet for one INDEPENDENTLY-computed Auluck eq. (6) term.
+
+    ``value_J`` is computed directly from a runtime field telemetry channel
+    (named by ``runtime_telemetry_key``), NOT derived by closure from the
+    terminal I*V work minus the other terms. ``integrand`` records the Auluck
+    eq. (6) integrand this term evaluates.
+    """
+    return {
+        "value_J": float(value_J),
+        "status": "computed_independently",
+        "blocker": None,
+        "computed_independently": True,
+        "source_ref": source_ref,
+        "integrand": integrand,
+        "runtime_telemetry_key": runtime_telemetry_key,
+        "derived_by_closure": False,
     }
 
 
@@ -454,18 +512,46 @@ def build_wp_n1_auluck_power_port_ledger(
     iv_work_J = _optional_float(ledger, "cumulative_terminal_port_work_J")
 
     # --- Terms I and III: stored magnetic / electric energy rates ---------
-    # Auluck eq. (6) I = d/dt integral_Omega (1/2 mu0^-1 B^2);
-    #                 III = d/dt integral_Omega (1/2 eps0 E^2).
-    # The runtime emits only the COMBINED stored-EM energy over Omega
-    # (omega_stored_em_energy_J = 1/2 eps0 E^2 + 1/2 mu0^-1 B^2). Splitting
-    # it into the magnetic-only and electric-only parts would require a
-    # runtime field-module change, which is out of WP-N1B scope. Terms I and
-    # III therefore fail closed: they cannot be emitted as INDEPENDENT
-    # quantities. (Substituting the combined delta for term I, or deriving
-    # term III by closure, is forbidden -- that is a closure-by-construction
-    # residual.)
-    term_i = _term_blocked_packet(_STORED_SPLIT_BLOCKER, source_ref=eq6_ref)
-    term_iii = _term_blocked_packet(_STORED_SPLIT_BLOCKER, source_ref=eq6_ref)
+    # Auluck eq. (6):
+    #   I   = d/dt integral_Omega d3r (1/2 mu0^-1 B^2)   stored magnetic rate
+    #   III = d/dt integral_Omega d3r (1/2 eps0 E^2)     stored electric rate
+    # The ledger integrates eq. (6) over the run, so the time-integrated
+    # term I equals [integral_Omega (1/2 mu0^-1 B^2)]_final minus _initial,
+    # i.e. the magnetic-only stored-energy DELTA over Omega; term III is the
+    # electric-only delta. The runtime now emits this split directly
+    # (Sprint 2.3 step 1: omega_stored_em_energy_split_J ->
+    # stored_magnetic_energy_delta_J / stored_electric_energy_delta_J). Each
+    # delta is computed from the runtime B / E field over Omega and is
+    # INDEPENDENT of the terminal I*V work -- it is NOT a closure-derived
+    # quantity. If the split telemetry is absent (an older ledger carrying
+    # only the combined stored_em_energy_delta_J), terms I and III fail
+    # closed: the combined delta must NOT be substituted for either term.
+    stored_magnetic_delta_J = _optional_float(
+        ledger, "stored_magnetic_energy_delta_J"
+    )
+    stored_electric_delta_J = _optional_float(
+        ledger, "stored_electric_energy_delta_J"
+    )
+    if stored_magnetic_delta_J is not None:
+        term_i = _term_computed_packet(
+            stored_magnetic_delta_J,
+            source_ref=eq6_ref,
+            integrand="d/dt integral_Omega d3r (1/2 mu0^-1 B^2)",
+            runtime_telemetry_key="stored_magnetic_energy_delta_J",
+        )
+    else:
+        term_i = _term_blocked_packet(_STORED_SPLIT_BLOCKER, source_ref=eq6_ref)
+    if stored_electric_delta_J is not None:
+        term_iii = _term_computed_packet(
+            stored_electric_delta_J,
+            source_ref=eq6_ref,
+            integrand="d/dt integral_Omega d3r (1/2 eps0 E^2)",
+            runtime_telemetry_key="stored_electric_energy_delta_J",
+        )
+    else:
+        term_iii = _term_blocked_packet(
+            _STORED_SPLIT_BLOCKER, source_ref=eq6_ref
+        )
 
     # --- Terms II, IV, V, VI: Sigma_p moving-boundary surface integrals ---
     # Auluck eq. (6):
@@ -926,7 +1012,6 @@ def _power_port_step_records(
             "poynting_power_W": None,
             "j_dot_e_power_W": _optional_float(field_work, "j_dot_e_power_W"),
             "j_dot_e_domain": None if field_work is None else field_work.get("domain"),
-            "electrode_work_J": None,
             "external_circuit_energy_J": _optional_float(
                 final_energy,
                 "circuit_energy_J",
@@ -988,7 +1073,9 @@ def _power_port_channel_statuses(
 
     statuses: dict[str, str] = {}
     for channel in REQUIRED_POWER_PORT_CHANNELS:
-        if channel in {"electrode_work", "residual"}:
+        if channel in {"auluck_eq6_power_balance", "residual"}:
+            # Auluck eq. (6) is not closed: terms II/IV/V/VI fail closed on
+            # Sigma_p geometry, so the six-term balance channel is blocked.
             statuses[channel] = "missing_or_blocked"
         elif channel == "poynting_power_or_j_dot_e" and channel in candidate_channels:
             statuses[channel] = "candidate_runtime_only_not_acceptance"

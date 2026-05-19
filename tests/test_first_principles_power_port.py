@@ -22,6 +22,9 @@ from typing import Any
 from dpf.fields.hybrid_simulator import _circuit_udpf_for_step
 from dpf.first_principles.power_port import (
     _WP_N1B_LEDGER_KEYS,
+    ACCEPTANCE_BLOCKING_CHANNELS,
+    POWER_PORT_SOURCE_REFS,
+    REQUIRED_POWER_PORT_CHANNELS,
     build_engineering_power_port_packet,
     build_wp_n1_auluck_power_port_ledger,
     build_wp_n1_negative_test_policy,
@@ -91,14 +94,19 @@ def _ledger(
     first_step_fallback: bool = False,
     first_step_udpf_source: str = "candidate_lagged_volume_j_dot_e",
     omega: dict[str, Any] | None = None,
+    stored_magnetic_delta_J: float | None = None,
+    stored_electric_delta_J: float | None = None,
 ) -> dict[str, Any]:
     """Return a synthetic simulator-emitted power_port_ledger.
 
-    The runtime emits the terminal I*V cumulative work and the Omega
-    partition, but NOT a Sigma_p moving-boundary face set, NOT v/eta on
-    Sigma_p, and NOT the magnetic/electric stored-energy split -- exactly the
-    runtime state investigated for WP-N1B. So this fixture cannot supply any
-    eq. (6) term independently; every term must fail closed.
+    By default the runtime emits the terminal I*V cumulative work and the
+    Omega partition, but NOT a Sigma_p moving-boundary face set and NOT v/eta
+    on Sigma_p -- so terms II/IV/V/VI always fail closed here.
+
+    The magnetic/electric stored-energy split (Sprint 2.3 step 1) is included
+    only when ``stored_magnetic_delta_J`` / ``stored_electric_delta_J`` are
+    passed. With them absent, terms I/III also fail closed (older-ledger
+    case); with them present, terms I/III are computed independently.
     """
     ledger: dict[str, Any] = {
         "cumulative_terminal_port_work_J": terminal,
@@ -114,6 +122,10 @@ def _ledger(
         ledger["sign_convention"] = (
             "wp_n1_packet_section_3_1_into_omega_positive"
         )
+    if stored_magnetic_delta_J is not None:
+        ledger["stored_magnetic_energy_delta_J"] = stored_magnetic_delta_J
+    if stored_electric_delta_J is not None:
+        ledger["stored_electric_energy_delta_J"] = stored_electric_delta_J
     return ledger
 
 
@@ -132,8 +144,9 @@ def test_wp_n1b_ledger_is_six_term_auluck_eq6_decomposition() -> None:
     assert "electrode_interface_work_J" not in wp
 
 
-def test_wp_n1b_all_six_terms_fail_closed_pending_runtime() -> None:
-    """No eq. (6) term can be computed: every term fails closed, value None."""
+def test_wp_n1b_all_six_terms_fail_closed_when_no_split_no_sigma_p() -> None:
+    """With neither the magnetic/electric stored-energy split nor a Sigma_p
+    face set, every eq. (6) term fails closed, value None."""
     wp = build_wp_n1_auluck_power_port_ledger(_ledger())
     terms = wp["energy_ledger_terms_J"]
     for key in _WP_N1B_LEDGER_KEYS:
@@ -216,10 +229,11 @@ def test_wp_n1b_omega_domain_emits_four_disjoint_exhaustive_labels() -> None:
 # --- per-term tests: each of I-VI fails closed for the documented reason --
 
 
-def test_wp_n1b_terms_i_iii_fail_closed_no_magnetic_electric_split() -> None:
-    """Terms I and III need the magnetic / electric stored-energy split,
-    which the runtime does not expose -- they fail closed, not closure-
-    derived from the combined stored-EM energy."""
+def test_wp_n1b_terms_i_iii_fail_closed_when_split_telemetry_absent() -> None:
+    """Terms I and III need the magnetic / electric stored-energy split.
+    When the ledger does NOT carry the split (an older ledger with only the
+    combined stored-EM energy), terms I/III fail closed -- the combined delta
+    is NOT substituted for either term."""
     wp = build_wp_n1_auluck_power_port_ledger(_ledger())
     packets = wp["energy_ledger_term_packets"]
     for key in _STORED_TERMS:
@@ -231,6 +245,180 @@ def test_wp_n1b_terms_i_iii_fail_closed_no_magnetic_electric_split() -> None:
             "stored_em_energy_magnetic_electric_split_not_exposed_by_runtime"
         ), key
         assert "eq. (6)" in packet["source_ref"]
+
+
+# --- F1 / Sprint 2.3 step 1: terms I and III computed independently -------
+
+
+def test_wp_n1b_term_i_computed_independently_from_split_telemetry() -> None:
+    """F1: when the runtime emits the magnetic stored-energy delta over
+    Omega, term I = d/dt integral_Omega (1/2 mu0^-1 B^2) is computed
+    INDEPENDENTLY -- its value is that delta, not a closure-derived figure."""
+    wp = build_wp_n1_auluck_power_port_ledger(
+        _ledger(stored_magnetic_delta_J=12.5)
+    )
+    term_i = wp["energy_ledger_term_packets"][
+        "term_i_stored_magnetic_energy_rate_J"
+    ]
+    assert term_i["value_J"] == 12.5
+    assert term_i["status"] == "computed_independently"
+    assert term_i["computed_independently"] is True
+    assert term_i["blocker"] is None
+    assert term_i["derived_by_closure"] is False
+    # The value is sourced from the magnetic-only stored-energy telemetry.
+    assert term_i["runtime_telemetry_key"] == "stored_magnetic_energy_delta_J"
+    assert term_i["integrand"] == "d/dt integral_Omega d3r (1/2 mu0^-1 B^2)"
+    assert wp["energy_ledger_terms_J"][
+        "term_i_stored_magnetic_energy_rate_J"
+    ] == 12.5
+    assert (
+        "term_i_stored_magnetic_energy_rate_J" in wp["independent_terms"]
+    )
+    assert "term_i_stored_magnetic_energy_rate_J" not in wp["blocked_terms"]
+
+
+def test_wp_n1b_term_iii_computed_independently_from_split_telemetry() -> None:
+    """F1: when the runtime emits the electric stored-energy delta over
+    Omega, term III = d/dt integral_Omega (1/2 eps0 E^2) is computed
+    INDEPENDENTLY from that delta."""
+    wp = build_wp_n1_auluck_power_port_ledger(
+        _ledger(stored_electric_delta_J=-3.0)
+    )
+    term_iii = wp["energy_ledger_term_packets"][
+        "term_iii_stored_electric_energy_rate_J"
+    ]
+    assert term_iii["value_J"] == -3.0
+    assert term_iii["status"] == "computed_independently"
+    assert term_iii["computed_independently"] is True
+    assert term_iii["blocker"] is None
+    assert term_iii["derived_by_closure"] is False
+    assert term_iii["runtime_telemetry_key"] == (
+        "stored_electric_energy_delta_J"
+    )
+    assert term_iii["integrand"] == "d/dt integral_Omega d3r (1/2 eps0 E^2)"
+    assert wp["energy_ledger_terms_J"][
+        "term_iii_stored_electric_energy_rate_J"
+    ] == -3.0
+    assert (
+        "term_iii_stored_electric_energy_rate_J" in wp["independent_terms"]
+    )
+
+
+def test_wp_n1b_terms_i_iii_independent_terms_ii_iv_v_vi_still_blocked(
+) -> None:
+    """F1: with the split present, terms I and III are independent while
+    terms II/IV/V/VI stay fail-closed on Sigma_p geometry."""
+    wp = build_wp_n1_auluck_power_port_ledger(
+        _ledger(stored_magnetic_delta_J=8.0, stored_electric_delta_J=1.0)
+    )
+    assert sorted(wp["independent_terms"]) == [
+        "term_i_stored_magnetic_energy_rate_J",
+        "term_iii_stored_electric_energy_rate_J",
+    ]
+    # The four Sigma_p terms remain blocked.
+    assert set(wp["blocked_terms"].keys()) == set(_SIGMA_P_TERMS)
+    for key in _SIGMA_P_TERMS:
+        packet = wp["energy_ledger_term_packets"][key]
+        assert packet["status"] == "blocked", key
+        assert packet["blocker"] == (
+            "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry"
+        ), key
+
+
+def test_wp_n1b_split_present_residual_stays_none_not_all_six() -> None:
+    """F1: terms I/III computed does NOT unblock the residual -- it stays
+    None because II/IV/V/VI are not independent. No residual is computed
+    from a partial six-term set; acceptance stays False."""
+    wp = build_wp_n1_auluck_power_port_ledger(
+        _ledger(stored_magnetic_delta_J=8.0, stored_electric_delta_J=1.0)
+    )
+    assert wp["all_six_terms_computed_independently"] is False
+    # Residual is NOT computed: not all six terms are independent.
+    assert wp["residual_J"] is None
+    assert wp["residual_fraction"] is None
+    assert wp["residual_is_genuine_diagnostic"] is False
+    assert wp["residual_is_closure_by_construction"] is False
+    assert wp["ledger_blocked"] is True
+    assert wp["ledger_blocker"] == (
+        "auluck_eq6_terms_fail_closed_pending_wp_n3_geometry"
+    )
+    # Acceptance stays False with no path to True.
+    assert wp["can_support_power_port_acceptance"] is False
+    assert wp["can_support_first_principles_acceptance"] is False
+
+
+def test_wp_n1b_term_i_blocks_when_only_electric_split_present() -> None:
+    """F1: the split is per-term. If only the electric delta is emitted,
+    term III is independent but term I still fails closed -- no term is
+    faked from the other."""
+    wp = build_wp_n1_auluck_power_port_ledger(
+        _ledger(stored_electric_delta_J=2.0)
+    )
+    term_i = wp["energy_ledger_term_packets"][
+        "term_i_stored_magnetic_energy_rate_J"
+    ]
+    term_iii = wp["energy_ledger_term_packets"][
+        "term_iii_stored_electric_energy_rate_J"
+    ]
+    assert term_i["status"] == "blocked"
+    assert term_i["value_J"] is None
+    assert term_i["blocker"] == (
+        "stored_em_energy_magnetic_electric_split_not_exposed_by_runtime"
+    )
+    assert term_iii["status"] == "computed_independently"
+    assert term_iii["value_J"] == 2.0
+
+
+def test_wp_n1b_runtime_emits_magnetic_electric_stored_energy_split() -> None:
+    """F1 runtime: the simulator's finalized power_port_ledger carries the
+    magnetic-only and electric-only stored-energy split over Omega, so
+    power_port.py can compute terms I and III independently."""
+    from dpf.fields.hybrid_simulator import (
+        _finalize_power_port_ledger,
+        _new_power_port_ledger_accumulator,
+    )
+    from dpf.fields.hybrid_stepper import omega_stored_em_energy_split_J
+
+    accumulator = _new_power_port_ledger_accumulator()
+    # Two steps: magnetic 2 -> 6, electric 1 -> 1.5 over Omega.
+    accumulator["stored_em_energy_initial_J"] = 3.0
+    accumulator["stored_em_energy_final_J"] = 7.5
+    accumulator["stored_magnetic_energy_initial_J"] = 2.0
+    accumulator["stored_magnetic_energy_final_J"] = 6.0
+    accumulator["stored_electric_energy_initial_J"] = 1.0
+    accumulator["stored_electric_energy_final_J"] = 1.5
+    accumulator["steps_accumulated"] = 2
+    ledger = _finalize_power_port_ledger(
+        accumulator=accumulator,
+        n_steps_completed=2,
+        apply_circuit_boundary=True,
+    )
+    assert ledger is not None
+    assert ledger["stored_magnetic_energy_delta_J"] == 4.0
+    assert ledger["stored_electric_energy_delta_J"] == 0.5
+    # The split sums to the combined delta -- consistency, not closure.
+    assert (
+        ledger["stored_magnetic_energy_delta_J"]
+        + ledger["stored_electric_energy_delta_J"]
+        == ledger["stored_em_energy_delta_J"]
+    )
+    # The split function keeps magnetic and electric separable.
+    import numpy as np
+
+    grid_shape = (2, 2, 2)
+    omega = np.ones(grid_shape, dtype=bool)
+    b_field = np.zeros((*grid_shape, 3))
+    b_field[..., 2] = 1.0
+    e_field = np.zeros((*grid_shape, 3))
+    split = omega_stored_em_energy_split_J(
+        electric_field_V_m=e_field,
+        magnetic_field_T=b_field,
+        omega_volume_cells=omega,
+        cell_volume_m3=1.0,
+    )
+    # Pure magnetic field => zero electric stored energy, positive magnetic.
+    assert split["electric_J"] == 0.0
+    assert split["magnetic_J"] > 0.0
 
 
 def test_wp_n1b_terms_ii_iv_v_vi_fail_closed_no_sigma_p_face_set() -> None:
@@ -493,3 +681,105 @@ def test_negative_n6_negative_test_policy_enumerates_all_six() -> None:
         "source_backed_residual_tolerance_attached AND "
         "wp_n3_reviewed_sigma_p_geometry AND all_six_tests_pass"
     )
+
+
+# --- F3: no electrode-work authority wording in the power-port packet -----
+
+
+def test_f3_no_electrode_work_in_required_power_port_channels() -> None:
+    """F3: REQUIRED_POWER_PORT_CHANNELS carries no electrode-work channel --
+    Auluck eq. (6) has no electrode-contact-work term."""
+    assert "electrode_work" not in REQUIRED_POWER_PORT_CHANNELS
+    # The power-balance channel is the Auluck eq. (6) six-term completeness.
+    assert "auluck_eq6_power_balance" in REQUIRED_POWER_PORT_CHANNELS
+    for channel in REQUIRED_POWER_PORT_CHANNELS:
+        assert "electrode_work" not in channel, channel
+
+
+def test_f3_no_electrode_work_in_acceptance_blocking_channels() -> None:
+    """F3: ACCEPTANCE_BLOCKING_CHANNELS no longer lists
+    electrode_work_partition; the blocking requirement is eq. (6) term
+    completeness."""
+    assert "electrode_work_partition" not in ACCEPTANCE_BLOCKING_CHANNELS
+    assert "auluck_eq6_six_term_completeness" in ACCEPTANCE_BLOCKING_CHANNELS
+    for channel in ACCEPTANCE_BLOCKING_CHANNELS:
+        assert "electrode_work" not in channel, channel
+
+
+def test_f3_acceptance_gate_states_auluck_eq6_term_completeness() -> None:
+    """F3: the emitted top-level acceptance_gate string drops electrode_work
+    and instead names Auluck eq. (6) term completeness (term_i..term_vi)."""
+    packet = build_engineering_power_port_packet(None)
+    gate = packet["acceptance_gate"]
+    assert "electrode_work" not in gate
+    assert "auluck_eq6_term_completeness" in gate
+    assert "term_i_through_term_vi" in gate
+    assert "independently_computed" in gate
+
+
+def test_f3_negative_test_policy_drops_electrode_work_omission() -> None:
+    """F3: the emitted negative_test_policy replaces
+    electrode_work_omission_required with an Auluck-eq.(6)-term-omission
+    policy."""
+    packet = build_engineering_power_port_packet(None)
+    policy = packet["negative_test_policy"]
+    assert "electrode_work_omission_required" not in policy
+    assert policy["auluck_eq6_term_omission_required"] is True
+    for key in policy:
+        assert "electrode_work" not in key, key
+
+
+def test_f3_no_electrode_work_in_required_channels_or_policy() -> None:
+    """F3 closure: no authoritative WP-N1B required channel, acceptance
+    gate, or negative-test policy key contains 'electrode_work'."""
+    packet = build_engineering_power_port_packet(None)
+    assert all(
+        "electrode_work" not in c for c in packet["required_channels"]
+    )
+    assert all(
+        "electrode_work" not in c
+        for c in packet["acceptance_blocking_channels"]
+    )
+    assert "electrode_work" not in packet["acceptance_gate"]
+    assert all(
+        "electrode_work" not in k for k in packet["negative_test_policy"]
+    )
+    # The WP-N1B six-negative-test policy keeps no electrode-work test.
+    wp_policy = packet["wp_n1_negative_test_policy"]
+    assert all(
+        "electrode_work" not in k
+        for k in wp_policy["required_negative_tests"]
+    )
+    assert wp_policy["no_electrode_work_term"] is True
+
+
+# --- F5: verified Auluck extract in the top-level source references -------
+
+
+def test_f5_power_port_source_refs_include_verified_auluck_extract() -> None:
+    """F5: POWER_PORT_SOURCE_REFS names the verified Auluck extract with the
+    role auluck_eq1_eq5_eq6_verified_power_balance."""
+    roles = {ref["role"] for ref in POWER_PORT_SOURCE_REFS}
+    assert "auluck_eq1_eq5_eq6_verified_power_balance" in roles
+    verified = next(
+        ref
+        for ref in POWER_PORT_SOURCE_REFS
+        if ref["role"] == "auluck_eq1_eq5_eq6_verified_power_balance"
+    )
+    assert "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md" in verified[
+        "path"
+    ]
+
+
+def test_f5_emitted_packet_source_references_include_verified_auluck() -> None:
+    """F5: the emitted power-port packet's source_references include the
+    verified Auluck extract, not just the OCR-garbled extract."""
+    packet = build_engineering_power_port_packet(None)
+    refs = packet["source_references"]
+    paths = [ref["path"] for ref in refs]
+    assert any(
+        "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md" in path
+        for path in paths
+    )
+    roles = {ref["role"] for ref in refs}
+    assert "auluck_eq1_eq5_eq6_verified_power_balance" in roles
