@@ -1536,8 +1536,10 @@
       "capability_tags": [
         "circuit_coupling",
         "collisions",
+        "detector_response",
         "dpf_device",
         "electrode_boundary",
+        "hybrid_pic_fluid",
         "ionization_eos",
         "maxwell_fields",
         "neutron_beam_target",
@@ -1547,6 +1549,7 @@
         "startup_breakdown",
         "three_d_geometry",
         "two_temperature",
+        "uncertainty_uq",
         "validation_target"
       ],
       "claim_without_source": false,
@@ -1568,13 +1571,15 @@
       "knowledge_reference_paths": [
         "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
         "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md",
-        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md"
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
+        "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.diagnostics.beam_target",
       "path": "src/dpf/diagnostics/beam_target.py",
       "physics_facing": true,
-      "source_reference_count": 3,
+      "source_reference_count": 5,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -1811,32 +1816,58 @@
     {
       "active_first_principles_closure": false,
       "can_support_first_principles_acceptance": false,
-      "capability_tags": [],
+      "capability_tags": [
+        "circuit_coupling",
+        "collisions",
+        "detector_response",
+        "dpf_device",
+        "electrode_boundary",
+        "ionization_eos",
+        "maxwell_fields",
+        "neutron_beam_target",
+        "neutron_thermonuclear",
+        "poynting_power",
+        "radiation",
+        "three_d_geometry",
+        "validation_target"
+      ],
       "claim_without_source": false,
       "classification": "inactive_diagnostic_surface_not_first_principles_authority",
       "docs_reference_paths": [],
-      "first_principles_verdicts": [],
+      "first_principles_verdicts": [
+        "directly_needed"
+      ],
       "imports": [
         "__future__",
         "__future__.annotations",
         "numpy"
       ],
-      "knowledge_reference_paths": [],
+      "knowledge_reference_paths": [
+        "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md"
+      ],
       "missing_source_paths": [],
       "module": "dpf.diagnostics.neutron_tof",
       "path": "src/dpf/diagnostics/neutron_tof.py",
       "physics_facing": true,
-      "source_reference_count": 0,
+      "source_reference_count": 2,
       "status": "module_vetted_nonpromoting"
     },
     {
       "active_first_principles_closure": false,
       "can_support_first_principles_acceptance": false,
-      "capability_tags": [],
+      "capability_tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "neutron_thermonuclear",
+        "two_temperature"
+      ],
       "claim_without_source": false,
       "classification": "inactive_diagnostic_surface_not_first_principles_authority",
       "docs_reference_paths": [],
-      "first_principles_verdicts": [],
+      "first_principles_verdicts": [
+        "directly_needed"
+      ],
       "imports": [
         "__future__",
         "__future__.annotations",
@@ -1847,12 +1878,14 @@
         "numba.njit",
         "numpy"
       ],
-      "knowledge_reference_paths": [],
+      "knowledge_reference_paths": [
+        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md"
+      ],
       "missing_source_paths": [],
       "module": "dpf.diagnostics.neutron_yield",
       "path": "src/dpf/diagnostics/neutron_yield.py",
       "physics_facing": true,
-      "source_reference_count": 0,
+      "source_reference_count": 1,
       "status": "module_vetted_nonpromoting"
     },
     {
@@ -3952,6 +3985,7 @@
       "capability_tags": [
         "circuit_coupling",
         "collisions",
+        "detector_response",
         "dpf_device",
         "electrode_boundary",
         "generalized_ohm",
@@ -3978,9 +4012,13 @@
       "imports": [
         "__future__",
         "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
         "dataclasses",
         "dataclasses.asdict",
         "dataclasses.dataclass",
+        "dataclasses.field",
+        "dataclasses.replace",
         "dpf.fields.maxwell_3d",
         "dpf.fields.maxwell_3d.HYBRID_PIC_3D_SOURCE",
         "dpf.fields.maxwell_3d.Maxwell3DGrid",
@@ -3990,14 +4028,21 @@
         "typing.Any"
       ],
       "knowledge_reference_paths": [
+        "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md",
         "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
-        "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md"
+        "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+        "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+        "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+        "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+        "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+        "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.fields.source_geometry",
       "path": "src/dpf/fields/source_geometry.py",
       "physics_facing": true,
-      "source_reference_count": 2,
+      "source_reference_count": 9,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -4245,6 +4290,8 @@
       ],
       "knowledge_reference_paths": [
         "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+        "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md",
+        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
         "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json",
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
         "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md"
@@ -4253,7 +4300,7 @@
       "module": "dpf.first_principles.closure_packet",
       "path": "src/dpf/first_principles/closure_packet.py",
       "physics_facing": true,
-      "source_reference_count": 4,
+      "source_reference_count": 6,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -4952,7 +4999,9 @@
       ],
       "claim_without_source": false,
       "classification": "active_physics_source_referenced",
-      "docs_reference_paths": [],
+      "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md"
+      ],
       "first_principles_verdicts": [
         "directly_needed"
       ],
@@ -4961,6 +5010,8 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dataclasses",
+        "dataclasses.dataclass",
         "typing",
         "typing.Any"
       ],
@@ -4980,7 +5031,7 @@
       "module": "dpf.first_principles.neutron_authority",
       "path": "src/dpf/first_principles/neutron_authority.py",
       "physics_facing": true,
-      "source_reference_count": 10,
+      "source_reference_count": 11,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5083,7 +5134,8 @@
         "io.StringIO",
         "numpy",
         "typing",
-        "typing.Any"
+        "typing.Any",
+        "warnings"
       ],
       "knowledge_reference_paths": [
         "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
@@ -5130,6 +5182,11 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.fields.source_geometry",
+        "dpf.fields.source_geometry.SIGMA_P_BLOCKERS",
+        "dpf.fields.source_geometry.SIGMA_P_TERM_OPERANDS",
+        "dpf.fields.source_geometry.SigmaPSurfacePacket",
+        "dpf.fields.source_geometry.build_sigma_p_surface_packet",
         "typing",
         "typing.Any"
       ],
@@ -5310,7 +5367,7 @@
         "validation_target"
       ],
       "claim_without_source": false,
-      "classification": "active_physics_source_referenced",
+      "classification": "reduced_or_baseline_only_not_first_principles_authority",
       "docs_reference_paths": [],
       "first_principles_verdicts": [
         "directly_needed"
@@ -5334,7 +5391,7 @@
       "path": "src/dpf/first_principles/same_scope.py",
       "physics_facing": true,
       "source_reference_count": 4,
-      "status": "active_module_vetted_nonpromoting"
+      "status": "baseline_only_nonpromoting"
     },
     {
       "active_first_principles_closure": false,
@@ -5345,7 +5402,8 @@
       "docs_reference_paths": [
         "docs/FIRST_PRINCIPLES_CODEX_AGENT_AUDIT_AND_NEXT_INSTRUCTIONS_2026_05_18.md",
         "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
-        "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
+        "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json",
+        "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md"
       ],
       "first_principles_verdicts": [],
       "imports": [
@@ -5367,6 +5425,7 @@
         "dpf.first_principles.manifest.sha256_of_file",
         "dpf.first_principles.manifest.sha256_of_json",
         "dpf.first_principles.manifest.sha256_of_text",
+        "dpf.first_principles.manifest.stable_manifest_hash",
         "dpf.first_principles.runner",
         "dpf.first_principles.runner.FirstPrinciples3DDeck",
         "dpf.first_principles.runner.build_first_principles_3d_session",
@@ -5389,7 +5448,7 @@
       "module": "dpf.first_principles.segmented_whole_shot",
       "path": "src/dpf/first_principles/segmented_whole_shot.py",
       "physics_facing": true,
-      "source_reference_count": 3,
+      "source_reference_count": 4,
       "status": "module_vetted_nonpromoting"
     },
     {
@@ -5447,20 +5506,26 @@
       ],
       "claim_without_source": false,
       "classification": "reduced_or_baseline_only_not_first_principles_authority",
-      "docs_reference_paths": [],
+      "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md"
+      ],
       "first_principles_verdicts": [
         "directly_needed",
         "supporting_method"
       ],
       "imports": [
         "__future__",
-        "__future__.annotations"
+        "__future__.annotations",
+        "hashlib",
+        "pathlib",
+        "pathlib.Path"
       ],
       "knowledge_reference_paths": [
         "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.json",
         "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.md",
         "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.json",
         "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
+        "KnowledgeReference/characteristics-of-closed-currents-and-magnetic-fields-outside-the-dense-pinch-column-in-a-40d59f2d.md",
         "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.json",
         "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.md",
         "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.json",
@@ -5472,17 +5537,22 @@
         "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
         "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.json",
         "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.md",
+        "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
         "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
         "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.md",
         "KnowledgeReference/original-research-f7894f85.md",
+        "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
         "KnowledgeReference/sand2009-6373-b93aec67.md",
+        "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+        "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+        "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
         "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.first_principles.source_targets",
       "path": "src/dpf/first_principles/source_targets.py",
       "physics_facing": true,
-      "source_reference_count": 20,
+      "source_reference_count": 27,
       "status": "baseline_only_nonpromoting"
     },
     {
@@ -5651,7 +5721,8 @@
       "claim_without_source": false,
       "classification": "active_physics_source_referenced",
       "docs_reference_paths": [
-        "docs/FIRST_PRINCIPLES_BLOCKER_SOURCE_SEARCH_2026_05_15.md"
+        "docs/FIRST_PRINCIPLES_BLOCKER_SOURCE_SEARCH_2026_05_15.md",
+        "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md"
       ],
       "first_principles_verdicts": [
         "directly_needed"
@@ -5661,6 +5732,9 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dataclasses",
+        "dataclasses.dataclass",
+        "dataclasses.field",
         "typing",
         "typing.Any"
       ],
@@ -5678,7 +5752,7 @@
       "module": "dpf.first_principles.startup_bvp",
       "path": "src/dpf/first_principles/startup_bvp.py",
       "physics_facing": true,
-      "source_reference_count": 9,
+      "source_reference_count": 10,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -11320,14 +11394,14 @@
     "active_first_principles_closure_count": 56,
     "active_physics_unvetted_count": 0,
     "classification_counts": {
-      "active_physics_source_referenced": 49,
+      "active_physics_source_referenced": 48,
       "inactive_backend_numerical_utility_not_first_principles_authority": 36,
       "inactive_diagnostic_surface_not_first_principles_authority": 15,
       "inactive_legacy_physics_not_first_principles_authority": 20,
       "nonphysics_infrastructure": 62,
       "package_export_surface": 32,
       "physics_source_referenced": 3,
-      "reduced_or_baseline_only_not_first_principles_authority": 28,
+      "reduced_or_baseline_only_not_first_principles_authority": 29,
       "standards_scoped_implementation_constants": 1,
       "validation_workflow_not_active_first_principles": 44
     },
@@ -11335,10 +11409,10 @@
     "missing_source_reference_count": 0,
     "module_role_review_required_count": 0,
     "physics_facing_count": 177,
-    "source_referenced_count": 64,
+    "source_referenced_count": 66,
     "status_counts": {
-      "active_module_vetted_nonpromoting": 49,
-      "baseline_only_nonpromoting": 28,
+      "active_module_vetted_nonpromoting": 48,
+      "baseline_only_nonpromoting": 29,
       "module_vetted_nonpromoting": 168,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
