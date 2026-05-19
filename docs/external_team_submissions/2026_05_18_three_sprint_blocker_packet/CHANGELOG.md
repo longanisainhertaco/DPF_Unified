@@ -190,6 +190,16 @@ WP-N1B/WP-N4B implementation (F2); modified
 directions; added
 `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`.
 
+`e984176` — docs: update Sprint 2 audit changelog after the follow-up audit;
+modified this `CHANGELOG.md` so the packet consistency gate covered the Sprint
+2 traceability and audit commits.
+
+`4e3987b` — docs: add parallel work directions to the Sprint 2 follow-up audit;
+modified
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md` with
+allowed non-conflicting Sprint 3 research/spec lanes and audit acceptance
+rules.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.
