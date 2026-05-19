@@ -55,6 +55,38 @@ BEAM_TARGET_SOURCE_REFERENCES = {
 BEAM_TARGET_SOURCE_STATUS = "baseline_or_runtime_diagnostic_not_validation"
 BEAM_TARGET_CAN_SUPPORT_FIRST_PRINCIPLES_ACCEPTANCE = False
 
+# S3.6 / WP-N6 §4 uncited-coefficient isolation.
+# The Lee/Saw beam-target form (KR eq. 1) is a fitted reduced model and is
+# tagged BEAM_TARGET_SOURCE_STATUS "baseline_or_runtime_diagnostic_not_
+# validation". The intrinsic beam-target anisotropy law used by
+# ``neutron_anisotropy`` below, A_bt = 1 + 0.3*sqrt(E_beam/100 keV), has NO
+# KnowledgeReference source — the coefficient 0.3 is uncited/empirical. KR
+# gives only anisotropy ratios and qualitative trends
+# (anisotropy-...-527cc533.md:199-204; ...z-pinch-5.md:592-613), not a closed-
+# form A_bt(E_beam) law. The coefficient is therefore labelled
+# inferred_candidate and isolated from neutron authority: the anisotropy
+# channel in dpf.first_principles.neutron_authority stays missing_or_blocked
+# until intrinsic_anisotropy_law_ref is a reviewed KR source. This constant is
+# the explicit flag; the 0.3 is NOT silently treated as a source-backed law.
+BEAM_TARGET_ANISOTROPY_LAW_STATUS = {
+    "coefficient": "beam_target_anisotropy_alpha_0p3",
+    "law": "A_bt = 1 + 0.3*sqrt(E_beam/100 keV)",
+    "status": "inferred_candidate",
+    "kr_source": "none_coefficient_0p3_uncited_empirical",
+    "kr_qualitative_only": (
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-"
+        "caused-by-the-plasma-focus-vessel-527cc533.md:199-204; "
+        "KnowledgeReference/"
+        "neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-"
+        "z-pinch-5.md:592-613"
+    ),
+    "isolation": (
+        "neutron anisotropy authority stays blocked until A_bt has a reviewed "
+        "KR-cited law (WP-N6 §4); not a source-backed default"
+    ),
+    "can_support_first_principles_acceptance": False,
+}
+
 
 def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:
     integrator = getattr(np, "trapezoid", np.trapz)
@@ -449,14 +481,17 @@ def neutron_anisotropy(
     isotropic.  The measured anisotropy is a weighted average and serves
     as a diagnostic for the dominant yield mechanism.
 
-    Beam-target anisotropy model:
+    Beam-target anisotropy model (INFERRED — NOT source-backed):
         For DD at typical DPF beam energies (50-500 keV), the CM-frame
         angular distribution is nearly isotropic, but the lab-frame
         kinematics (beam into stationary target) produce forward peaking.
-        The anisotropy ratio scales approximately as:
+        This function uses the approximate scaling:
             A_bt ~ 1 + alpha * sqrt(E_beam / E_ref)
-        where alpha ~ 0.3 and E_ref = 100 keV, giving A_bt ~ 1.3 to 2.5
-        for typical beam energies.
+        with alpha ~ 0.3 and E_ref = 100 keV. The coefficient 0.3 has NO
+        KnowledgeReference source — see ``BEAM_TARGET_ANISOTROPY_LAW_STATUS``.
+        This is a runtime diagnostic only; the anisotropy channel in
+        ``dpf.first_principles.neutron_authority`` stays ``missing_or_blocked``
+        while ``intrinsic_anisotropy_law_ref`` is absent (WP-N6 §4).
 
     The total anisotropy is the yield-weighted average:
         A_total = (Y_beam * A_bt + Y_thermal * 1.0) / (Y_beam + Y_thermal)

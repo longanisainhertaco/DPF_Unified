@@ -26,6 +26,32 @@ from numba import njit
 
 from dpf.constants import eV, k_B
 
+# S3.6 / WP-N6 §4 uncited-coefficient isolation.
+# The Bosch-Hale reactivity fit <sigma v>(Ti) is source-backed verbatim
+# (KnowledgeReference/bosch-hale-1992-fusion-reactivity.md:59-93,106-109).
+# The volumetric reaction-rate prefactor 1/4 in dY/dt = (1/4) n_D^2 <sigma v> V
+# has NO verbatim KnowledgeReference formula for the full reaction-rate
+# equation — KR supplies <sigma v> only. The 1/4 (identical-particle 1/2 x
+# neutron-branch 1/2) is standard physics but inferred, so it is labelled
+# inferred_candidate and isolated from neutron authority: the thermonuclear
+# channel in dpf.first_principles.neutron_authority stays missing_or_blocked
+# until prefactor_citation is a reviewed KR source. This constant is the
+# explicit flag; the 1/4 is NOT silently treated as a source-backed default.
+THERMONUCLEAR_VOLUMETRIC_PREFACTOR_STATUS = {
+    "coefficient": "thermonuclear_volumetric_prefactor_one_quarter",
+    "value": 0.25,
+    "status": "inferred_candidate",
+    "kr_source": "none_for_full_reaction_rate_equation",
+    "reactivity_fit_kr_source": (
+        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md:59-93,106-109"
+    ),
+    "isolation": (
+        "thermonuclear neutron authority stays blocked until the 1/4 prefactor "
+        "has a reviewed KR citation (WP-N6 §4); not a source-backed default"
+    ),
+    "can_support_first_principles_acceptance": False,
+}
+
 
 @njit(cache=True)
 def dd_reactivity(Ti_keV: float) -> float:
@@ -141,7 +167,12 @@ def neutron_yield_rate(
 
     dY/dt = (1/4) * n_D^2 * <sigma*v>(Ti) * dV
 
-    The factor 1/4 accounts for identical-particle reactions.
+    The prefactor 1/4 (identical-particle 1/2 x neutron-branch 1/2) is an
+    inferred coefficient with no verbatim KnowledgeReference formula — see
+    ``THERMONUCLEAR_VOLUMETRIC_PREFACTOR_STATUS``. This function is a runtime
+    diagnostic; it cannot support neutron authority. The thermonuclear channel
+    in ``dpf.first_principles.neutron_authority`` stays ``missing_or_blocked``
+    while the prefactor is uncited (WP-N6 §4).
 
     Args:
         n_D: Deuterium number density [m^-3], shape (nr, nz) or (nx, ny, nz).

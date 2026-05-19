@@ -1,8 +1,35 @@
-"""Fail-closed neutron mechanism-authority packets."""
+"""Fail-closed neutron mechanism-authority packets.
+
+S3.6 neutron authority packet (handoff
+``docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md`` lines
+438-483; research basis WP-N6
+``docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N6_NEUTRON_AUTHORITY_PACKET.md``).
+
+The neutron-authority interface is mechanism-separated and fail-closed:
+
+- Ten typed channels (thermonuclear history, beam-target history, ion energy
+  distribution, stopping/transport, neutron spectrum, anisotropy, detector
+  response, activation response, scatter/background, UQ). Each carries a
+  status and source references; an absent or uncited channel stays blocked.
+- Scalar total yield is never mechanism authority. It is recorded only as
+  ``same_scope_scalar_yield`` and tagged ``candidate_comparator_only``.
+- WP-N6 §2 mechanism map: ``supported`` 0, ``candidate`` 5, ``blocked`` 4.
+  Mechanism authority stays blocked until every mechanism and detector packet
+  exists with a reviewed same-scope source and a passed review certificate.
+- Uncited coefficients found by WP-N6 §4 (the ``1/4`` thermonuclear volumetric
+  prefactor, the ``82.5*sqrt(Ti)`` "Brysk 1973" Doppler width in
+  ``neutron_tof.py``, the ``1+0.3*sqrt(E/100)`` beam-target anisotropy law in
+  ``beam_target.py``, and the missing deuteron stopping model) are
+  ``inferred_candidate`` / ``blocked_by_missing_local_source`` — isolated from
+  authority, never silently kept as defaults.
+
+``can_support_first_principles_acceptance`` is ``False`` by construction.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 NEUTRON_AUTHORITY_SOURCE_REFS = (
@@ -170,6 +197,191 @@ OTHER_SCOPE_SOURCE_GROUPS = (
     },
 )
 
+# ---------------------------------------------------------------------------
+# S3.6 typed mechanism-separated neutron-authority runtime interface
+# ---------------------------------------------------------------------------
+#
+# WP-N6 §3.2 defines one structured ``NeutronAuthorityRuntime`` record per
+# accepted same-scope shot, fed into ``build_mechanism_separated_neutron_packet``.
+# Every physics channel below carries a ``KRRef`` slot; a ``None`` ref keeps the
+# channel ``missing_or_blocked``. No channel is satisfied "by naming only" —
+# acceptance requires a reviewed same-scope source AND a passed review
+# certificate (handoff lines 464-482, WP-N6 §6.1).
+
+# Mechanism channels in handoff order (S3.6 "Required channels", lines 451-462).
+NEUTRON_MECHANISM_CHANNELS = (
+    "thermonuclear_history",
+    "beam_target_history",
+    "ion_energy_distribution",
+    "stopping_transport",
+    "neutron_spectrum",
+    "anisotropy",
+    "detector_response",
+    "activation_response",
+    "scatter_background",
+    "uq",
+)
+
+# Per-channel status vocabulary. ``inferred_candidate`` and
+# ``blocked_by_missing_local_source`` are the WP-N6 §4 / §5 labels for the
+# uncited-coefficient and no-source cases; they must never become a default.
+_MECHANISM_CHANNEL_STATUSES = (
+    "missing_or_blocked",
+    "blocked_by_missing_local_source",
+    "inferred_candidate",
+    "candidate_comparator_only",
+    "source_backed_candidate",
+    "accepted_neutron_authority",
+)
+
+# Mechanisms whose first-principles source is absent from KnowledgeReference
+# (WP-N6 §2 ``blocked`` rows 3, 4, 7, 8 + the §4 missing-parameter table).
+# These cannot be promoted past ``blocked_by_missing_local_source`` no matter
+# what a runtime record carries.
+NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE = (
+    "ion_energy_distribution",
+    "stopping_transport",
+    "detector_response",
+    "activation_response",
+    "scatter_background",
+)
+
+
+@dataclass(frozen=True)
+class KRRef:
+    """A local KnowledgeReference citation slot (WP-N6 §3.2 ``KRRef``).
+
+    ``path`` is a repo-relative ``KnowledgeReference/`` file, ``lines`` an exact
+    line range, ``role`` the equation/figure/table the citation supports. A
+    channel whose ``KRRef`` is ``None`` stays ``missing_or_blocked``.
+    """
+
+    path: str
+    lines: str
+    role: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {"path": self.path, "lines": self.lines, "role": self.role}
+
+    def is_local_knowledge_reference(self) -> bool:
+        return self.path.startswith("KnowledgeReference/")
+
+
+@dataclass(frozen=True)
+class MechanismYieldHistory:
+    """A mechanism-separated yield history — a time series, NOT a scalar.
+
+    WP-N6 §6.1 rule 3: thermonuclear and beam-target channels must each carry
+    ``times_s`` / ``rate_per_s`` / ``cumulative`` arrays of equal length > 1. A
+    scalar total is rejected here and recorded only in
+    ``NeutronAuthorityRuntime.same_scope_scalar_yield``.
+    """
+
+    times_s: tuple[float, ...] = ()
+    rate_per_s: tuple[float, ...] = ()
+    cumulative: tuple[float, ...] = ()
+    # ``kinetic_ion_distribution`` or ``lee_reduced_model`` (WP-N6 §6.1 rule 4:
+    # a ``lee_reduced_model`` basis is comparator-only, never authority).
+    mechanism_basis: str | None = None
+    source_ref: KRRef | None = None
+    # The thermonuclear ``1/4`` volumetric prefactor is uncited (WP-N6 §4); a
+    # ``None`` here keeps the thermonuclear channel ``missing_or_blocked`` even
+    # when the history arrays are populated (WP-N6 §6.1 rule 5).
+    prefactor_citation: KRRef | None = None
+
+    def is_time_series(self) -> bool:
+        n = len(self.times_s)
+        return (
+            n > 1
+            and len(self.rate_per_s) == n
+            and len(self.cumulative) == n
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "n_samples": len(self.times_s),
+            "is_time_series": self.is_time_series(),
+            "mechanism_basis": self.mechanism_basis,
+            "source_ref": None if self.source_ref is None else self.source_ref.to_dict(),
+            "prefactor_citation": (
+                None
+                if self.prefactor_citation is None
+                else self.prefactor_citation.to_dict()
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class NeutronAuthorityRuntime:
+    """One mechanism-separated neutron-authority runtime record (WP-N6 §3.2).
+
+    Every field is fail-closed: absent or uncited keeps the corresponding
+    channel ``missing_or_blocked``. ``same_scope_scalar_yield`` alone never
+    satisfies mechanism separation — it is comparator-only by construction.
+    """
+
+    declared_scope: str
+    device_name: str | None = None
+
+    # --- mechanism-separated yield histories (REQUIRED for authority) ---
+    thermonuclear_yield_history: MechanismYieldHistory | None = None
+    beam_target_yield_history: MechanismYieldHistory | None = None
+    # "mechanism_separated" only when both histories are real time series with
+    # a non-reduced-model basis (WP-N6 §3.2 interface contract clause b).
+    mechanism_separation_status: str = "not_mechanism_separated"
+
+    # --- ion energy distribution (WP-N6 §1.5; blocked for Akel authority) ---
+    ion_energy_distribution_ref: KRRef | None = None
+    ion_distribution_is_core_tail_separated: bool = False
+
+    # --- transport / stopping (WP-N6 §1.6 / §4: no KR source) ---
+    beam_transport_stopping_status: str = "blocked_no_kr_source"
+    beam_transport_stopping_ref: KRRef | None = None
+
+    # --- neutron spectrum (WP-N6 §1.7) ---
+    neutron_spectrum_ref: KRRef | None = None
+    # The thermonuclear Doppler-broadening law (the ``82.5*sqrt(Ti)`` /
+    # "Brysk 1973" coefficient in ``neutron_tof.py``) has no KR source
+    # (WP-N6 §4) — a ``None`` here keeps the spectrum channel blocked.
+    doppler_width_law_ref: KRRef | None = None
+
+    # --- anisotropy (WP-N6 §1.8) ---
+    neutron_anisotropy_ref: KRRef | None = None
+    # The ``1+0.3*sqrt(E/100)`` beam-target anisotropy law in
+    # ``beam_target.py`` is uncited/empirical (WP-N6 §4).
+    intrinsic_anisotropy_law_ref: KRRef | None = None
+    vessel_scatter_anisotropy_ref: KRRef | None = None
+
+    # --- detector response (WP-N6 §1.9 / §1.10; blocked) ---
+    tof_detector_response_ref: KRRef | None = None
+    activation_counter_response_ref: KRRef | None = None
+    activation_calibration_constant: float | None = None
+
+    # --- scatter / background (WP-N6 §1.11; blocked) ---
+    direct_scattered_transport_ref: KRRef | None = None
+    scatter_fraction: float | None = None
+
+    # --- comparator + UQ ---
+    # Comparator ONLY. Recording a scalar yield never advances mechanism
+    # separation (handoff lines 466,479; WP-N6 §7.1).
+    same_scope_scalar_yield: float | None = None
+    same_scope_scalar_yield_uncertainty: float | None = None
+    same_scope_scalar_yield_ref: KRRef | None = None
+    yield_uncertainty_budget_ref: KRRef | None = None
+    electron_temperature_yield_sensitivity_ref: KRRef | None = None
+
+    # --- review certificate ---
+    # ``passed_same_scope_review`` is the only review status that can clear a
+    # blocking channel (WP-N6 §3.2 interface contract clause d).
+    source_review_status: str = "absent"
+    source_review_reviewer: str | None = None
+
+    def has_scalar_yield(self) -> bool:
+        return self.same_scope_scalar_yield is not None
+
+    def review_passed(self) -> bool:
+        return self.source_review_status == "passed_same_scope_review"
+
 
 def build_mechanism_separated_neutron_packet(
     *,
@@ -180,8 +392,19 @@ def build_mechanism_separated_neutron_packet(
     kinetic_yield: Mapping[str, Any] | None = None,
     same_scope_source: Mapping[str, Any] | None = None,
     physics_closure: Mapping[str, Any] | None = None,
+    runtime: NeutronAuthorityRuntime | None = None,
 ) -> dict[str, Any]:
-    """Return a non-promoting neutron-yield authority packet."""
+    """Return a non-promoting neutron-yield authority packet.
+
+    When ``runtime`` is supplied (a :class:`NeutronAuthorityRuntime` record),
+    the builder evaluates the ten mechanism-separated channels (WP-N6 §3.2):
+    each gets a typed status from :data:`_MECHANISM_CHANNEL_STATUSES`. A
+    cross-scope record is rejected wholesale; ``same_scope_scalar_yield`` is
+    reported only as a ``candidate_comparator_only`` comparator. The packet
+    stays ``blocked`` and ``can_support_first_principles_acceptance`` stays
+    ``False`` until every mechanism and detector channel is
+    ``accepted_neutron_authority``.
+    """
 
     accepted = {str(channel) for channel in accepted_channels}
     target_channels, target_decisions = _accepted_channels_from_targets(
@@ -198,6 +421,12 @@ def build_mechanism_separated_neutron_packet(
 
     missing = set(REQUIRED_NEUTRON_AUTHORITY_CHANNELS) - accepted
     missing.update(BLOCKING_NEUTRON_AUTHORITY_CHANNELS)
+
+    mechanism_report = _evaluate_mechanism_runtime(
+        runtime,
+        declared_scope=declared_scope,
+        device_name=device_name,
+    )
 
     return {
         "status": "blocked_mechanism_separated_neutron_authority_not_available",
@@ -238,6 +467,18 @@ def build_mechanism_separated_neutron_packet(
             "candidate_pic_yield_usable_for": "runtime_diagnostic_only",
         },
         "validation_target_scope_decisions": target_decisions,
+        "mechanism_channels": list(NEUTRON_MECHANISM_CHANNELS),
+        "mechanism_channel_status": mechanism_report["channel_status"],
+        "mechanism_channel_blockers": mechanism_report["channel_blockers"],
+        "mechanism_separation_status": mechanism_report["mechanism_separation_status"],
+        "missing_mechanism_channels": mechanism_report["missing_mechanism_channels"],
+        "blocked_by_missing_local_source_channels": (
+            mechanism_report["blocked_by_missing_local_source_channels"]
+        ),
+        "inferred_candidate_channels": mechanism_report["inferred_candidate_channels"],
+        "scalar_yield_comparator": mechanism_report["scalar_yield_comparator"],
+        "runtime_scope_decision": mechanism_report["runtime_scope_decision"],
+        "uncited_coefficient_isolation": mechanism_report["uncited_coefficient_isolation"],
         "source_references": list(NEUTRON_AUTHORITY_SOURCE_REFS),
         "same_scope_source_status": (
             None if same_scope_source is None else same_scope_source.get("status")
@@ -267,6 +508,438 @@ def _candidate_runtime_channels(kinetic_yield: Mapping[str, Any] | None) -> list
     for channel in kinetic_yield.get("mechanism_channels", ()) or ():
         channels.append(f"candidate_{channel}")
     return sorted(set(str(channel) for channel in channels))
+
+
+# ---------------------------------------------------------------------------
+# S3.6 mechanism-runtime evaluation
+# ---------------------------------------------------------------------------
+
+# The empty-record report: every mechanism channel ``missing_or_blocked`` (the
+# five no-KR-source channels are ``blocked_by_missing_local_source``). Used
+# when no runtime record is supplied and as the base for cross-scope rejection.
+def _blocked_mechanism_report(reason: str) -> dict[str, Any]:
+    status: dict[str, str] = {}
+    blockers: dict[str, str] = {}
+    for channel in NEUTRON_MECHANISM_CHANNELS:
+        if channel in NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE:
+            status[channel] = "blocked_by_missing_local_source"
+        else:
+            status[channel] = "missing_or_blocked"
+        blockers[channel] = reason
+    return {
+        "channel_status": status,
+        "channel_blockers": blockers,
+        "mechanism_separation_status": "not_mechanism_separated",
+        "missing_mechanism_channels": list(NEUTRON_MECHANISM_CHANNELS),
+        "blocked_by_missing_local_source_channels": list(
+            NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE
+        ),
+        "inferred_candidate_channels": [],
+        "scalar_yield_comparator": {
+            "status": "candidate_comparator_only",
+            "present": False,
+            "value": None,
+            "uncertainty": None,
+            "is_mechanism_authority": False,
+            "note": (
+                "Scalar total neutron yield is a baseline comparator only; it "
+                "never satisfies mechanism separation (WP-N6 §7.1)."
+            ),
+        },
+        "runtime_scope_decision": reason,
+        "uncited_coefficient_isolation": _UNCITED_COEFFICIENT_ISOLATION,
+    }
+
+
+# WP-N6 §4 uncited coefficients: each is isolated from authority. The diagnostic
+# modules tag the live coefficient ``inferred_candidate`` /
+# ``blocked_by_missing_local_source``; the authority packet records why.
+_UNCITED_COEFFICIENT_ISOLATION = (
+    {
+        "coefficient": "thermonuclear_volumetric_prefactor_one_quarter",
+        "where": "src/dpf/diagnostics/neutron_yield.py dY/dt = (1/4) n_D^2 <sigma v> V",
+        "kr_status": "no_verbatim_kr_formula_for_full_reaction_rate_equation",
+        "isolation": "inferred_candidate",
+        "effect_on_authority": (
+            "thermonuclear channel stays missing_or_blocked until "
+            "prefactor_citation is a reviewed KR source"
+        ),
+    },
+    {
+        "coefficient": "thermonuclear_doppler_width_82p5_sqrt_Ti_brysk_1973",
+        "where": "src/dpf/diagnostics/neutron_tof.py sigma = 82.5*sqrt(Ti_keV) keV",
+        "kr_status": "no_kr_source_brysk_1973_coefficient_not_in_knowledgereference",
+        "isolation": "inferred_candidate",
+        "effect_on_authority": (
+            "neutron spectrum channel stays missing_or_blocked until "
+            "doppler_width_law_ref is a reviewed KR source"
+        ),
+    },
+    {
+        "coefficient": "beam_target_anisotropy_one_plus_0p3_sqrt_E_over_100",
+        "where": "src/dpf/diagnostics/beam_target.py A_bt = 1 + 0.3*sqrt(E_beam/100 keV)",
+        "kr_status": "no_kr_source_coefficient_0p3_uncited_empirical",
+        "isolation": "inferred_candidate",
+        "effect_on_authority": (
+            "anisotropy channel stays missing_or_blocked until "
+            "intrinsic_anisotropy_law_ref is a reviewed KR source"
+        ),
+    },
+    {
+        "coefficient": "deuteron_beam_stopping_power_in_deuterium_plasma",
+        "where": "beam-target transport (no KR formula; single fixed sigma(3*Vmax))",
+        "kr_status": "no_kr_source_no_bethe_or_plasma_stopping_model_in_corpus",
+        "isolation": "blocked_by_missing_local_source",
+        "effect_on_authority": "stopping/transport channel blocked_by_missing_local_source",
+    },
+)
+
+
+def _evaluate_mechanism_runtime(
+    runtime: NeutronAuthorityRuntime | None,
+    *,
+    declared_scope: str,
+    device_name: str | None,
+) -> dict[str, Any]:
+    """Evaluate the ten mechanism-separated channels for a runtime record.
+
+    Fail-closed: an absent record blocks every channel; a cross-scope record
+    is rejected wholesale (WP-N6 §3.2 interface contract clause a); the five
+    no-KR-source channels can never exceed ``blocked_by_missing_local_source``;
+    scalar yield is always reported as ``candidate_comparator_only``.
+    """
+    if runtime is None:
+        return _blocked_mechanism_report("no_runtime_record_supplied")
+
+    if not _runtime_scope_matches(runtime, declared_scope, device_name):
+        report = _blocked_mechanism_report(
+            "rejected_cross_scope_runtime_record_declared_scope_mismatch"
+        )
+        report["scalar_yield_comparator"]["present"] = runtime.has_scalar_yield()
+        return report
+
+    review_ok = runtime.review_passed()
+    status: dict[str, str] = {}
+    blockers: dict[str, str] = {}
+
+    for channel in NEUTRON_MECHANISM_CHANNELS:
+        channel_status, blocker = _evaluate_mechanism_channel(
+            channel, runtime, review_ok=review_ok
+        )
+        status[channel] = channel_status
+        if blocker:
+            blockers[channel] = blocker
+
+    missing = [
+        channel
+        for channel in NEUTRON_MECHANISM_CHANNELS
+        if status[channel] != "accepted_neutron_authority"
+    ]
+    blocked_local = sorted(
+        channel
+        for channel in NEUTRON_MECHANISM_CHANNELS
+        if status[channel] == "blocked_by_missing_local_source"
+    )
+    inferred = sorted(
+        channel
+        for channel in NEUTRON_MECHANISM_CHANNELS
+        if status[channel] == "inferred_candidate"
+    )
+
+    return {
+        "channel_status": status,
+        "channel_blockers": dict(sorted(blockers.items())),
+        "mechanism_separation_status": _runtime_mechanism_separation_status(runtime),
+        "missing_mechanism_channels": missing,
+        "blocked_by_missing_local_source_channels": blocked_local,
+        "inferred_candidate_channels": inferred,
+        "scalar_yield_comparator": {
+            "status": "candidate_comparator_only",
+            "present": runtime.has_scalar_yield(),
+            "value": runtime.same_scope_scalar_yield,
+            "uncertainty": runtime.same_scope_scalar_yield_uncertainty,
+            "is_mechanism_authority": False,
+            "note": (
+                "Scalar total neutron yield is a baseline comparator only; a "
+                "scalar match can occur with both mechanisms wrong in "
+                "compensating directions (WP-N6 §7.1)."
+            ),
+        },
+        "runtime_scope_decision": "runtime_record_scope_matches_declared_scope",
+        "uncited_coefficient_isolation": _UNCITED_COEFFICIENT_ISOLATION,
+    }
+
+
+def _evaluate_mechanism_channel(
+    channel: str,
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    """Return ``(status, blocker)`` for one mechanism channel (fail-closed).
+
+    A channel only reaches ``accepted_neutron_authority`` when its evidence is
+    source-backed AND ``source_review_status == "passed_same_scope_review"``.
+    The five :data:`NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE` channels can never
+    exceed ``blocked_by_missing_local_source`` (WP-N6 §2 / §4).
+    """
+    if channel in NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE:
+        return _blocked_local_channel(channel, runtime)
+    if channel == "thermonuclear_history":
+        return _evaluate_thermonuclear_channel(runtime, review_ok=review_ok)
+    if channel == "beam_target_history":
+        return _evaluate_beam_target_channel(runtime, review_ok=review_ok)
+    if channel == "neutron_spectrum":
+        return _evaluate_spectrum_channel(runtime, review_ok=review_ok)
+    if channel == "anisotropy":
+        return _evaluate_anisotropy_channel(runtime, review_ok=review_ok)
+    if channel == "uq":
+        return _evaluate_uq_channel(runtime, review_ok=review_ok)
+    return "missing_or_blocked", "unknown_mechanism_channel"
+
+
+def _blocked_local_channel(
+    channel: str,
+    runtime: NeutronAuthorityRuntime,
+) -> tuple[str, str]:
+    """Channels with no first-principles KR source (WP-N6 §2 blocked rows).
+
+    Even when a runtime record carries a ref, these stay
+    ``blocked_by_missing_local_source`` — the WP-N6 §6.2 same-scope evidence
+    map found no Akel-scope source for any of them.
+    """
+    refs = {
+        "ion_energy_distribution": runtime.ion_energy_distribution_ref,
+        "stopping_transport": runtime.beam_transport_stopping_ref,
+        "detector_response": runtime.tof_detector_response_ref,
+        "activation_response": runtime.activation_counter_response_ref,
+        "scatter_background": runtime.direct_scattered_transport_ref,
+    }
+    reasons = {
+        "ion_energy_distribution": (
+            "no same-scope ion f(E) channel; PIC path does not split "
+            "thermal-core vs beam-tail (WP-N6 §1.5)"
+        ),
+        "stopping_transport": (
+            "no KR deuteron stopping-power / range model in the corpus "
+            "(WP-N6 §1.6, §4)"
+        ),
+        "detector_response": (
+            "no runtime TOF/activation detector-response model; KR gives only "
+            "the L^2/t^5 kernel and counter layout (WP-N6 §1.9)"
+        ),
+        "activation_response": (
+            "no runtime activation-counter response model; calibration "
+            "constant absent from KR (WP-N6 §1.10)"
+        ),
+        "scatter_background": (
+            "no runtime scatter-transport model; KR requires direct-vs-"
+            "scattered separation before any TOF inversion (WP-N6 §1.11)"
+        ),
+    }
+    ref = refs[channel]
+    blocker = reasons[channel]
+    if ref is not None:
+        blocker = (
+            f"{blocker}; supplied ref is other-scope schema only and cannot "
+            "promote an Akel-scope authority channel"
+        )
+    return "blocked_by_missing_local_source", blocker
+
+
+def _evaluate_thermonuclear_channel(
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    history = runtime.thermonuclear_yield_history
+    if history is None:
+        return "missing_or_blocked", "thermonuclear_yield_history not supplied"
+    if not history.is_time_series():
+        return (
+            "missing_or_blocked",
+            "thermonuclear_yield_history is not a time series "
+            "(times_s/rate_per_s/cumulative arrays of equal length > 1)",
+        )
+    if history.prefactor_citation is None:
+        # WP-N6 §6.1 rule 5: the 1/4 volumetric prefactor is uncited.
+        return (
+            "inferred_candidate",
+            "thermonuclear (1/4) volumetric prefactor has no KR citation "
+            "(prefactor_citation is None) — WP-N6 §4",
+        )
+    if history.source_ref is None or not history.source_ref.is_local_knowledge_reference():
+        return (
+            "missing_or_blocked",
+            "thermonuclear source_ref absent or not a local KnowledgeReference path",
+        )
+    if not review_ok:
+        return (
+            "source_backed_candidate",
+            "thermonuclear history source-backed but source_review_status "
+            "is not passed_same_scope_review",
+        )
+    return "accepted_neutron_authority", ""
+
+
+def _evaluate_beam_target_channel(
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    history = runtime.beam_target_yield_history
+    if history is None:
+        return "missing_or_blocked", "beam_target_yield_history not supplied"
+    if not history.is_time_series():
+        return (
+            "missing_or_blocked",
+            "beam_target_yield_history is not a time series",
+        )
+    if history.mechanism_basis == "lee_reduced_model":
+        # WP-N6 §6.1 rule 4 / §7.2: Lee/Saw eq.(1) is a fitted reduced model.
+        return (
+            "candidate_comparator_only",
+            "beam-target basis is the Lee/Saw reduced model (fitted, fc held "
+            "constant 0.7) — comparator only, never authority (WP-N6 §7.2)",
+        )
+    if history.mechanism_basis != "kinetic_ion_distribution":
+        return (
+            "missing_or_blocked",
+            "beam_target_yield_history mechanism_basis must be "
+            "kinetic_ion_distribution for an authority channel",
+        )
+    # A kinetic-ion beam-target history still requires the ion distribution and
+    # the stopping model — both blocked_by_missing_local_source (WP-N6 §1.4).
+    if runtime.ion_energy_distribution_ref is None:
+        return (
+            "missing_or_blocked",
+            "beam-target authority requires an ion energy distribution "
+            "(blocked_by_missing_local_source) — WP-N6 §1.4",
+        )
+    if runtime.beam_transport_stopping_status != "computed":
+        return (
+            "missing_or_blocked",
+            "beam-target authority requires a stopping/transport model "
+            "(blocked_by_missing_local_source) — WP-N6 §1.4, §1.6",
+        )
+    if not review_ok:
+        return (
+            "source_backed_candidate",
+            "beam-target history source-backed but not yet reviewed",
+        )
+    return "accepted_neutron_authority", ""
+
+
+def _evaluate_spectrum_channel(
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    if runtime.neutron_spectrum_ref is None:
+        return "missing_or_blocked", "neutron_spectrum_ref not supplied"
+    if runtime.doppler_width_law_ref is None:
+        # WP-N6 §4: the 82.5*sqrt(Ti) "Brysk 1973" Doppler width is uncited.
+        return (
+            "inferred_candidate",
+            "thermonuclear Doppler-broadening law (82.5*sqrt(Ti), 'Brysk 1973') "
+            "has no KR source (doppler_width_law_ref is None) — WP-N6 §4",
+        )
+    if not review_ok:
+        return (
+            "source_backed_candidate",
+            "spectrum source-backed but not yet reviewed",
+        )
+    return "accepted_neutron_authority", ""
+
+
+def _evaluate_anisotropy_channel(
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    if runtime.neutron_anisotropy_ref is None:
+        return "missing_or_blocked", "neutron_anisotropy_ref not supplied"
+    if runtime.intrinsic_anisotropy_law_ref is None:
+        # WP-N6 §4: the 1+0.3*sqrt(E/100) A_bt law is uncited/empirical.
+        return (
+            "inferred_candidate",
+            "intrinsic beam-target anisotropy law (1+0.3*sqrt(E/100 keV)) is "
+            "uncited/empirical (intrinsic_anisotropy_law_ref is None) — WP-N6 §4",
+        )
+    if runtime.vessel_scatter_anisotropy_ref is None:
+        return (
+            "missing_or_blocked",
+            "vessel-scattering anisotropy contribution not modelled "
+            "(vessel_scatter_anisotropy_ref is None) — WP-N6 §1.8",
+        )
+    if not review_ok:
+        return (
+            "source_backed_candidate",
+            "anisotropy source-backed but not yet reviewed",
+        )
+    return "accepted_neutron_authority", ""
+
+
+def _evaluate_uq_channel(
+    runtime: NeutronAuthorityRuntime,
+    *,
+    review_ok: bool,
+) -> tuple[str, str]:
+    if runtime.yield_uncertainty_budget_ref is None:
+        return (
+            "missing_or_blocked",
+            "yield_uncertainty_budget_ref not supplied — no runtime UQ budget "
+            "(WP-N6 §1.12)",
+        )
+    if runtime.electron_temperature_yield_sensitivity_ref is None:
+        return (
+            "missing_or_blocked",
+            "electron-temperature yield-sensitivity UQ absent; the Te=alpha*Ti "
+            "closure gives a factor-of-a-few yield spread (WP-N6 §1.12)",
+        )
+    if not review_ok:
+        return (
+            "source_backed_candidate",
+            "UQ budget source-backed but not yet reviewed",
+        )
+    return "accepted_neutron_authority", ""
+
+
+def _runtime_mechanism_separation_status(runtime: NeutronAuthorityRuntime) -> str:
+    """Mechanism separation holds only with two real, non-reduced histories.
+
+    WP-N6 §3.2 interface contract clause b: ``mechanism_separated`` requires
+    both ``thermonuclear_yield_history`` and ``beam_target_yield_history`` to
+    be real time series, and the beam-target basis must not be the Lee/Saw
+    reduced model. ``mechanism_separation_status`` declared on the record is
+    honoured only when the evidence actually supports it (no naming-only
+    separation — handoff line 469).
+    """
+    tn = runtime.thermonuclear_yield_history
+    bt = runtime.beam_target_yield_history
+    if tn is None or bt is None:
+        return "not_mechanism_separated"
+    if not tn.is_time_series() or not bt.is_time_series():
+        return "not_mechanism_separated"
+    if bt.mechanism_basis == "lee_reduced_model":
+        return "not_mechanism_separated"
+    if runtime.mechanism_separation_status != "mechanism_separated":
+        return "not_mechanism_separated"
+    return "mechanism_separated"
+
+
+def _runtime_scope_matches(
+    runtime: NeutronAuthorityRuntime,
+    declared_scope: str,
+    device_name: str | None,
+) -> bool:
+    """A runtime record is acceptance-eligible only if its scope matches.
+
+    WP-N6 §3.2 interface contract clause a. ``device_name`` is informational
+    only — scope identity is decided on ``declared_scope``.
+    """
+    _ = device_name
+    return _normalized_scope(runtime.declared_scope) == _normalized_scope(declared_scope)
 
 
 def _accepted_channels_from_targets(

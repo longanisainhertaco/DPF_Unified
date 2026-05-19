@@ -4,12 +4,19 @@ Computes the energy-angle distribution of D-D fusion neutrons from
 beam-target and thermonuclear production channels. The spectrum
 distinguishes the two channels by their energy distributions:
 
-- Thermonuclear: isotropic, E_n ~ 2.45 MeV ± thermal broadening
+- Thermonuclear: isotropic, E_n ~ 2.45 MeV +/- thermal broadening
 - Beam-target: anisotropic, E_n shifted by beam kinetic energy
 
-References:
-    Bernstein et al., Phys. Rev. 94:1515 (1954) — D-D kinematics.
-    Jager & Herold, NIM A 271:495 (1988) — DPF nToF diagnostics.
+This is a synthetic generator only. The thermonuclear Doppler-broadening
+width and the beam-target kinematic shift are inferred laws with no
+KnowledgeReference source (see ``THERMONUCLEAR_DOPPLER_WIDTH_STATUS`` and
+WP-N6 §4). It applies no detector response and no scatter handling. It
+cannot support neutron authority: the neutron-spectrum channel in
+``dpf.first_principles.neutron_authority`` stays ``missing_or_blocked``.
+
+Source-backed constant only:
+    KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3802-3814 —
+    D-D reaction (1b) 2.45 MeV neutron birth energy.
 """
 
 from __future__ import annotations
@@ -21,7 +28,40 @@ _Q_DD = 3.269e6 * 1.602e-19  # 3.269 MeV in Joules
 _M_N = 1.6749e-27  # neutron mass [kg]
 _M_D = 3.3436e-27  # deuteron mass [kg]
 _M_HE3 = 5.0082e-27  # He-3 mass [kg]
-_E_N_CENTER = 2.45e6  # Center-of-mass neutron energy [eV]
+# Center-of-mass neutron birth energy [eV]. Source-backed:
+# KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3802-3814 reaction
+# (1b) D + D -> He3(0.82 MeV) + n(2.45 MeV).
+_E_N_CENTER = 2.45e6
+
+# S3.6 / WP-N6 §4 uncited-coefficient isolation.
+# The thermonuclear Doppler-broadening width used below,
+# sigma = 82.5*sqrt(Ti_keV) keV (FWHM 177*sqrt(Ti_keV) keV, attributed in
+# legacy comments to "Brysk 1973"), has NO KnowledgeReference source. No KR
+# file in this corpus carries the 82.5 / 177 coefficient or a Brysk 1973
+# extract. The KR-cited alternative is the shifted-Maxwell TOF form
+# (KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-
+# by-the-plasma-focus-vessel-527cc533.md:366-378, eq. 4). The coefficient is
+# therefore labelled inferred_candidate and isolated from neutron authority:
+# the neutron-spectrum channel in dpf.first_principles.neutron_authority stays
+# missing_or_blocked until doppler_width_law_ref is a reviewed KR source. This
+# constant is the explicit flag; 82.5 is NOT a source-backed default.
+THERMONUCLEAR_DOPPLER_WIDTH_STATUS = {
+    "coefficient": "thermonuclear_doppler_width_82p5_sqrt_Ti",
+    "law": "sigma_keV = 82.5*sqrt(Ti_keV) (FWHM 177*sqrt(Ti_keV) keV)",
+    "legacy_attribution": "brysk_1973_not_in_knowledgereference",
+    "status": "inferred_candidate",
+    "kr_source": "none",
+    "kr_cited_alternative": (
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-"
+        "caused-by-the-plasma-focus-vessel-527cc533.md:366-378 (shifted-"
+        "Maxwell TOF form, eq. 4)"
+    ),
+    "isolation": (
+        "neutron-spectrum authority stays blocked until the Doppler-width law "
+        "has a reviewed KR citation (WP-N6 §4); not a source-backed default"
+    ),
+    "can_support_first_principles_acceptance": False,
+}
 
 
 def thermonuclear_spectrum(
@@ -31,8 +71,11 @@ def thermonuclear_spectrum(
 ) -> np.ndarray:
     """Generate thermonuclear D-D neutron energy spectrum.
 
-    Isotropic emission with Doppler broadening from ion thermal motion.
-    FWHM ~ 177 * sqrt(Ti_keV) keV (Brysk 1973).
+    Isotropic emission with Doppler broadening from ion thermal motion. The
+    width sigma = 82.5*sqrt(Ti_keV) keV (FWHM 177*sqrt(Ti_keV) keV) is an
+    INFERRED law with no KnowledgeReference source — see
+    ``THERMONUCLEAR_DOPPLER_WIDTH_STATUS``. Synthetic diagnostic only; cannot
+    support neutron authority (WP-N6 §4).
 
     Args:
         n_neutrons: Number of neutrons to sample.
@@ -44,7 +87,8 @@ def thermonuclear_spectrum(
     """
     rng = np.random.default_rng(seed)
     Ti_keV = Ti_eV / 1000.0
-    # Doppler broadening: sigma = 82.5 * sqrt(Ti_keV) keV
+    # Doppler width sigma = 82.5*sqrt(Ti_keV) keV — inferred_candidate, no KR
+    # source (THERMONUCLEAR_DOPPLER_WIDTH_STATUS, WP-N6 §4).
     sigma_eV = 82500.0 * np.sqrt(max(Ti_keV, 0.001))
     return rng.normal(_E_N_CENTER, sigma_eV, size=n_neutrons)
 
