@@ -5,6 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.fields.source_geometry import (
+    SIGMA_P_BLOCKERS,
+    SIGMA_P_TERM_OPERANDS,
+    SigmaPSurfacePacket,
+    build_sigma_p_surface_packet,
+)
+
 POWER_PORT_SOURCE_REFS = (
     {
         "path": (
@@ -375,14 +382,16 @@ _AULUCK_EQ1_SIGN_CONVENTION = "V_12 = -(1/I) integral_Omega d3r (J.E)"
 
 # WP-N1B: runtime-support blockers.
 #
-# Sigma_p (terms II/IV/V/VI): the runtime exposes no reviewed Sigma_p
-# moving-boundary face set, no plasma velocity v on Sigma_p faces, and no
-# resistivity eta on Sigma_p faces. Investigated 2026-05-19: grep finds no
-# `sigma_p` face set anywhere in src/dpf/fields/*; `_accumulate_power_port_
-# ledger` receives no velocity or eta argument. Terms II/IV/V/VI therefore
-# stay fail-closed; expanding the runtime to supply Sigma_p geometry is out
-# of WP-N1B/Sprint-2.3-step-1 scope (WP-N3 reviewed PF-1000 geometry owns
-# Sigma_p).
+# Sigma_p (terms II/IV/V/VI): WP-N3 S3.3 introduces the `SigmaPSurfacePacket`
+# data contract (`dpf.fields.source_geometry`). Terms II/IV/V/VI now consume
+# that packet via `_sigma_p_surface_term`: a missing Sigma_p face set, a
+# missing material velocity v, or a missing resistivity eta each fails the
+# corresponding term(s) closed with a typed, operand-naming blocker. S3.3 is
+# plumbing only -- it does NOT compute the surface integrals (Sprint 4 work),
+# so even a fully-operand Sigma_p packet leaves the terms blocked. The runtime
+# still exposes no reviewed moving-boundary face set, so the default packet is
+# `SigmaPSurfacePacket.blocked()` and `_SIGMA_P_BLOCKER` remains the
+# missing-face-set reason (now sourced from `SIGMA_P_BLOCKERS["sigma_p"]`).
 #
 # Stored-EM split (terms I/III): the runtime DOES now emit the magnetic-only
 # and electric-only stored energy over Omega
@@ -392,9 +401,7 @@ _AULUCK_EQ1_SIGN_CONVENTION = "V_12 = -(1/I) integral_Omega d3r (J.E)"
 # `_STORED_SPLIT_BLOCKER` string is retained only as the fail-closed reason
 # for the case where the split telemetry is ABSENT (an older ledger that
 # carries only the combined `stored_em_energy_delta_J`).
-_SIGMA_P_BLOCKER = (
-    "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry"
-)
+_SIGMA_P_BLOCKER = SIGMA_P_BLOCKERS["sigma_p"]
 _STORED_SPLIT_BLOCKER = (
     "stored_em_energy_magnetic_electric_split_not_exposed_by_runtime"
 )
@@ -435,6 +442,78 @@ def _term_computed_packet(
         "runtime_telemetry_key": runtime_telemetry_key,
         "derived_by_closure": False,
     }
+
+
+# WP-N3 S3.3: the integration of the Sigma_p surface integrals is Sprint 4
+# work. When every operand a term needs IS available, S3.3 plumbing still does
+# NOT compute the integral -- the term stays blocked with this reason, which
+# is distinct from a missing-operand blocker so a reader can tell "ready for
+# Sprint 4" apart from "operand absent".
+# [WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md section 0: "downstream computation
+#  ... is Sprint 4 work"]
+_SIGMA_P_INTEGRAL_IS_SPRINT4 = (
+    "sigma_p_surface_integral_is_sprint4_work_s3_3_is_plumbing_only"
+)
+
+
+def _sigma_p_packet_from_ledger(
+    ledger: Mapping[str, Any] | None,
+) -> SigmaPSurfacePacket:
+    """Return the Sigma_p surface packet a ledger carries, or a blocked one.
+
+    S3.3 plumbing. If the runtime emitted a `sigma_p_surface_packet` (a
+    `SigmaPSurfacePacket` instance or its `to_dict()` form) it is used;
+    otherwise a fully fail-closed packet is built. `power_port.py` never
+    fabricates a Sigma_p face set.
+    """
+    candidate = None if ledger is None else ledger.get("sigma_p_surface_packet")
+    if isinstance(candidate, SigmaPSurfacePacket):
+        return candidate
+    # No reviewed Sigma_p geometry from the runtime: build the blocked default.
+    return build_sigma_p_surface_packet(None)
+
+
+def _sigma_p_surface_term(
+    term_key: str,
+    *,
+    sigma_p: SigmaPSurfacePacket,
+    source_ref: str,
+    integrand: str,
+) -> dict[str, Any]:
+    """Return the fail-closed packet for one Auluck eq. (6) Sigma_p term.
+
+    Consumes the `SigmaPSurfacePacket` ONLY (never the terminal I*V work).
+    Walks the term's operand list (`SIGMA_P_TERM_OPERANDS`); the first absent
+    operand sets a typed blocker that NAMES the missing operand:
+
+      * missing Sigma_p face set -> blocks II, IV, V, VI;
+      * missing v -> blocks II, IV, VI;
+      * missing eta -> blocks V.
+
+    S3.3 is plumbing only. Even with every operand present the term is NOT
+    computed -- the surface integral is Sprint 4 work, so the term stays
+    blocked with `_SIGMA_P_INTEGRAL_IS_SPRINT4`. No term is ever derived as
+    `I*V` minus the others.
+    """
+    for operand in SIGMA_P_TERM_OPERANDS[term_key]:
+        if not sigma_p.operand_status(operand):
+            reason = sigma_p.operand_blockers.get(
+                operand, SIGMA_P_BLOCKERS.get(operand, f"{operand}_not_available")
+            )
+            packet = _term_blocked_packet(reason, source_ref=source_ref)
+            packet["integrand"] = integrand
+            packet["missing_operand"] = operand
+            packet["consumes"] = "sigma_p_surface_packet"
+            return packet
+    # all operands present: S3.3 plumbing stops here -- the integral is S4.
+    packet = _term_blocked_packet(
+        _SIGMA_P_INTEGRAL_IS_SPRINT4, source_ref=source_ref
+    )
+    packet["integrand"] = integrand
+    packet["missing_operand"] = None
+    packet["consumes"] = "sigma_p_surface_packet"
+    packet["operands_available"] = True
+    return packet
 
 
 def build_wp_n1_auluck_power_port_ledger(
@@ -561,14 +640,33 @@ def build_wp_n1_auluck_power_port_ledger(
     #   V   = mu0^-1 oint_Sigma_p dS.(eta J x B)
     #   VI  = - mu0^-1 oint_Sigma_p dS.B (B.v)
     # Sigma_p is the MOVING part of the domain boundary (Auluck p.8:
-    # "stationary boundaries do not contribute"). The runtime exposes no
-    # reviewed Sigma_p moving-boundary face set, no plasma velocity v on
-    # Sigma_p faces, and no resistivity eta on Sigma_p faces. All four terms
-    # fail closed pending WP-N3 reviewed PF-1000 geometry. No invented value.
-    term_ii = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
-    term_iv = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
-    term_v = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
-    term_vi = _term_blocked_packet(_SIGMA_P_BLOCKER, source_ref=eq6_ref)
+    # "stationary boundaries do not contribute"). WP-N3 S3.3 plumbing: these
+    # four terms consume a `SigmaPSurfacePacket` ONLY -- never the terminal
+    # I*V work. Each term fails closed naming its first absent operand
+    # (missing Sigma_p -> II/IV/V/VI; missing v -> II/IV/VI; missing eta -> V).
+    # S3.3 does not compute the integral; even with every operand present the
+    # term stays blocked pending the Sprint 4 surface-integral computation.
+    sigma_p = _sigma_p_packet_from_ledger(ledger)
+    term_ii = _sigma_p_surface_term(
+        "term_ii_motional_magnetic_sigma_p_J",
+        sigma_p=sigma_p, source_ref=eq6_ref,
+        integrand="integral_Sigma_p dS.v (1/2 mu0^-1 B^2)",
+    )
+    term_iv = _sigma_p_surface_term(
+        "term_iv_motional_electric_sigma_p_J",
+        sigma_p=sigma_p, source_ref=eq6_ref,
+        integrand="- integral_Sigma_p dS.v (1/2 eps0 E^2)",
+    )
+    term_v = _sigma_p_surface_term(
+        "term_v_resistive_sigma_p_J",
+        sigma_p=sigma_p, source_ref=eq6_ref,
+        integrand="mu0^-1 oint_Sigma_p dS.(eta J x B)",
+    )
+    term_vi = _sigma_p_surface_term(
+        "term_vi_anomalous_poloidal_sigma_p_J",
+        sigma_p=sigma_p, source_ref=eq6_ref,
+        integrand="- mu0^-1 oint_Sigma_p dS.B (B.v)",
+    )
 
     term_packets = {
         "term_i_stored_magnetic_energy_rate_J": term_i,
@@ -641,6 +739,11 @@ def build_wp_n1_auluck_power_port_ledger(
         ],
         "source_refs": [eq6_ref, eq1_ref],
         "auluck_omega_domain": auluck_omega_domain,
+        # WP-N3 S3.3 Sigma_p surface-term data contract (plumbing only). The
+        # terms II/IV/V/VI packets above are derived from this packet's
+        # per-operand status; the packet itself never carries a term value.
+        "sigma_p_surface_packet": sigma_p.to_dict(),
+        "sigma_p_surface_packet_status": sigma_p.status,
         # Eq. (1) sign convention recorded verbatim, leading minus included.
         "auluck_eq1_sign_convention": _AULUCK_EQ1_SIGN_CONVENTION,
         "auluck_eq1_sign_convention_recorded": sign_convention_recorded,

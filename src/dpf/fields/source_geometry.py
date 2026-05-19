@@ -1,9 +1,18 @@
-"""Source-scoped geometry packet for the candidate 3-D hybrid PIC path."""
+"""Source-scoped geometry packet for the candidate 3-D hybrid PIC path.
+
+This module also carries the WP-N3 PF-1000/Akel source-tagged geometry packet
+(`PF1000GeometryPacket`, S3.2) and the `Sigma_p` moving-boundary surface-term
+data contract (`SigmaPSurfacePacket`, S3.3). Neither promotes validation or
+first-principles acceptance; conflicting source dimensions are kept explicit
+and missing dimensions fail closed with typed blockers.
+"""
 
 from __future__ import annotations
 
 import hashlib
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, replace
+from dataclasses import field as dataclass_field
 from typing import Any
 
 import numpy as np
@@ -289,3 +298,1153 @@ def source_geometry_candidate_evidence(
             "No same-scope PF-1000/Akel or LLNL-like experimental validation packet is attached.",
         ],
     }
+
+
+# ===========================================================================
+# S3.2 -- WP-N3 PF-1000 / Akel source-tagged geometry packet.
+#
+# Replaces the projection-only candidate geometry with a source-tagged runtime
+# packet. Conflicting source dimensions (12 vs 24 rods, 460/480/600/450 mm
+# anode length) are kept as explicit `PF1000GeometryConflict` records and are
+# NEVER averaged. Missing dimensions (anode bore, insulator outer radius,
+# backplate, chamber wall material -- the WP-N3 packet's 9 blocked rows) are
+# typed `blocked` fields with blocker IDs and are NEVER invented.
+#
+# Authority: docs/external_team_submissions/2026_05_18_three_sprint_blocker_
+#   packet/sprint_3/WP_N3_GEOMETRY_SOURCE_PACKET.md (research packet).
+# Every numeric value below cites the local KR path with a line range; see the
+# WP-N3 packet section 1.x and section 8 for the per-line provenance.
+# ===========================================================================
+
+# WP-N3 KR source register (PF-1000 family). A test asserts each file exists.
+# [WP_N3_GEOMETRY_SOURCE_PACKET.md section 8]
+PF1000_GEOMETRY_SOURCE_REFS = (
+    "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-"
+    "current-sheath-on-the-pf-1000-facility-705bcc83.md:342-358",
+    "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md"
+    ":111-114,264-268",
+    "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md:191-225",
+    "KnowledgeReference/scholz-2006-pf1000-mega-joule.md:22-33",
+    "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:56-63",
+    "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-"
+    "plasma-focus-pf1000-device-plasma-scien-fa128cfd.md:38-43",
+    "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-"
+    "and-s-h-saw-part-1-basic-course.md:2199-2210",
+    "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-223,426-431",
+)
+
+# The 10 source-tagged material/partition mask classes the runtime must emit.
+# Labels 0-3 are the Auluck top-level partition; 4-8 are the material
+# sub-classes that refine `wall_material_faces`; 9 is the open/PML boundary.
+# [WP_N3_GEOMETRY_SOURCE_PACKET.md section 3.3; handoff S3.2 "Required masks"]
+PF1000_MASK_CLASSES = (
+    "omega_volume_cells",
+    "terminal_source_interface_faces",
+    "wall_material_faces",
+    "open_pml_faces",
+    "anode_material_faces",
+    "cathode_rod_faces",
+    "insulator_material_faces",
+    "chamber_wall_faces",
+    "backplate_source_interface_faces",
+    "pml_or_open_boundary_faces",
+)
+
+# Material sub-classes that refine `wall_material_faces` -- these must be
+# mutually disjoint and their union must equal `wall_material_faces`.
+PF1000_MATERIAL_SUBCLASSES = (
+    "anode_material_faces",
+    "cathode_rod_faces",
+    "insulator_material_faces",
+    "chamber_wall_faces",
+    "backplate_source_interface_faces",
+)
+
+
+@dataclass(frozen=True)
+class PF1000GeometryField:
+    """One source-tagged PF-1000 geometry field.
+
+    A field is `source_supported` when a single KR source backs the value,
+    `conflict` when multiple KR sources disagree (the value is then `None` and
+    the disagreement is held in a `PF1000GeometryConflict`), and `blocked`
+    when no KR source provides the dimension (value `None`, blocker ID set).
+    `candidate` marks a numerical solver parameter that is not a measured
+    device dimension.
+    """
+
+    name: str
+    value: float | int | None
+    units: str
+    status: str  # source_supported | candidate | conflict | blocked
+    scope_tag: str
+    source_ref: str | None = None
+    blocker_id: str | None = None
+    conflict_group: str | None = None
+
+    def __post_init__(self) -> None:
+        allowed = {"source_supported", "candidate", "conflict", "blocked"}
+        if self.status not in allowed:
+            raise ValueError(f"status must be one of {sorted(allowed)}")
+        if self.status in {"source_supported", "candidate"}:
+            if self.value is None:
+                raise ValueError(f"{self.name}: {self.status} field needs a value")
+            if not self.source_ref:
+                raise ValueError(f"{self.name}: {self.status} field needs source_ref")
+        if self.status == "blocked":
+            if self.value is not None:
+                raise ValueError(f"{self.name}: blocked field must have value None")
+            if not self.blocker_id:
+                raise ValueError(f"{self.name}: blocked field needs a blocker_id")
+        if self.status == "conflict":
+            if self.value is not None:
+                raise ValueError(f"{self.name}: conflict field must have value None")
+            if not self.conflict_group:
+                raise ValueError(f"{self.name}: conflict field needs a conflict_group")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PF1000GeometryConflict:
+    """An unresolved PF-1000 dimension where KR sources disagree.
+
+    Each candidate value carries its own KR source ref. The conflict is kept
+    EXPLICIT -- the runtime never averages the candidates. The WP-N3 packet
+    section 4 records that each value belongs to a distinct PF-1000 hardware
+    revision; a runtime must pin one revision via `geometry_source_tag`.
+    """
+
+    group: str
+    field_name: str
+    units: str
+    candidate_values: tuple[float | int, ...]
+    candidate_source_refs: tuple[str, ...]
+    reason: str
+
+    def __post_init__(self) -> None:
+        if len(self.candidate_values) < 2:
+            raise ValueError("a conflict needs at least two candidate values")
+        if len(self.candidate_values) != len(self.candidate_source_refs):
+            raise ValueError("each candidate value needs one source ref")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PF1000MaskManifest:
+    """Deterministic manifest for one PF-1000 source-tagged mask build."""
+
+    geometry_packet_id: str
+    geometry_source_tag: str
+    source_refs: tuple[str, ...]
+    conflict_groups: tuple[str, ...]
+    blocked_fields: tuple[str, ...]
+    grid_shape: tuple[int, int, int]
+    grid_spacing_m: tuple[float, float, float]
+    mask_sha256_by_class: dict[str, str]
+    mask_cell_counts: dict[str, int]
+    under_resolution_flags: dict[str, bool]
+    can_support_first_principles_acceptance: bool = False
+
+    def __post_init__(self) -> None:
+        missing = [
+            name for name in PF1000_MASK_CLASSES
+            if name not in self.mask_sha256_by_class
+        ]
+        if missing:
+            raise ValueError(
+                "PF1000MaskManifest is missing per-class hashes for: "
+                + ", ".join(sorted(missing))
+            )
+        if self.can_support_first_principles_acceptance:
+            raise ValueError(
+                "PF1000MaskManifest must not claim first-principles acceptance"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PF1000GeometryPacket:
+    """Source-tagged PF-1000 / Akel geometry packet (WP-N3 / S3.2).
+
+    Each constructor pins ONE self-consistent KR source set. Conflicting
+    fields differ between constructors; no constructor averages across PF-1000
+    hardware revisions. Blocked fields are typed `PF1000GeometryField` with
+    status `blocked` and a blocker ID; their numeric value stays `None`.
+    """
+
+    geometry_packet_id: str
+    geometry_source_tag: str
+    scope_tag: str
+    source_refs: tuple[str, ...]
+    fields: dict[str, PF1000GeometryField]
+    conflicts: dict[str, PF1000GeometryConflict] = dataclass_field(
+        default_factory=dict
+    )
+    geometry_review_status: str = "geometry_candidate_not_reviewed"
+    can_support_first_principles_acceptance: bool = False
+
+    def __post_init__(self) -> None:
+        if self.can_support_first_principles_acceptance:
+            raise ValueError(
+                "PF1000GeometryPacket must not claim first-principles acceptance"
+            )
+
+    def get_field(self, name: str) -> PF1000GeometryField:
+        if name not in self.fields:
+            raise KeyError(f"PF1000GeometryPacket has no field {name!r}")
+        return self.fields[name]
+
+    def blocked_field_names(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                name for name, fld in self.fields.items()
+                if fld.status == "blocked"
+            )
+        )
+
+    def source_supported_field_names(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                name for name, fld in self.fields.items()
+                if fld.status == "source_supported"
+            )
+        )
+
+    def conflict_field_names(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                name for name, fld in self.fields.items()
+                if fld.status == "conflict"
+            )
+        )
+
+    def candidate_field_names(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                name for name, fld in self.fields.items()
+                if fld.status == "candidate"
+            )
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "geometry_packet_id": self.geometry_packet_id,
+            "geometry_source_tag": self.geometry_source_tag,
+            "scope_tag": self.scope_tag,
+            "source_refs": list(self.source_refs),
+            "fields": {n: f.to_dict() for n, f in self.fields.items()},
+            "conflicts": {g: c.to_dict() for g, c in self.conflicts.items()},
+            "geometry_review_status": self.geometry_review_status,
+            "can_support_first_principles_acceptance": (
+                self.can_support_first_principles_acceptance
+            ),
+        }
+
+    # --- source-tagged constructors ---------------------------------------
+
+    @classmethod
+    def krauz_2012(cls) -> PF1000GeometryPacket:
+        """PF-1000 geometry as reported by Krauz et al. 2012 (KR-KRAUZ12).
+
+        [KR: experimental-study-of-the-structure-of-the-plasma-current-sheath-
+        on-the-pf-1000-facility-705bcc83.md:342-358] anode radius 115.5 mm,
+        anode length 460 mm, cathode-cage geometric radius 200 mm, 12 rods,
+        rod diameter 80 mm, insulator exposed length 85 mm, chamber inner
+        radius 700 mm (1400 mm diameter), chamber length 2500 mm.
+        """
+        tag = "pf1000_krauz2012"
+        scope = "pf1000_full_energy_revision"
+        krauz = (
+            "KnowledgeReference/experimental-study-of-the-structure-of-the-"
+            "plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        )
+        return cls(
+            geometry_packet_id="pf1000_geometry_packet_krauz2012",
+            geometry_source_tag=tag,
+            scope_tag=scope,
+            source_refs=PF1000_GEOMETRY_SOURCE_REFS,
+            fields=cls._fields_for(
+                scope_tag=scope,
+                anode_radius_m=0.1155,
+                anode_radius_ref=f"{krauz}:346-347",
+                anode_length_m=0.460,
+                anode_length_ref=f"{krauz}:347",
+                anode_length_status="conflict",
+                anode_length_conflict="anode_length_z0",
+                cathode_cage_radius_m=0.200,
+                cathode_cage_radius_ref=f"{krauz}:346-347",
+                cathode_cage_radius_status="conflict",
+                cathode_cage_conflict="cathode_cage_radius_b",
+                cathode_rod_count=12,
+                cathode_rod_count_ref=f"{krauz}:344-345",
+                cathode_rod_count_status="conflict",
+                cathode_rod_count_conflict="cathode_rod_count",
+                cathode_rod_diameter_m=0.080,
+                cathode_rod_diameter_ref=f"{krauz}:345",
+                insulator_exposed_length_m=0.085,
+                insulator_exposed_length_ref=f"{krauz}:349-350",
+                insulator_exposed_length_status="conflict",
+                insulator_exposed_length_conflict="insulator_exposed_length",
+                chamber_inner_radius_m=0.700,
+                chamber_inner_radius_ref=f"{krauz}:342-343",
+                chamber_length_m=2.500,
+                chamber_length_ref=f"{krauz}:343",
+            ),
+            conflicts=cls._conflicts(),
+        )
+
+    @classmethod
+    def akel_shot_12581(cls) -> PF1000GeometryPacket:
+        """PF-1000 geometry for the Akel et al. 2021 shot-12581 16 kV scope.
+
+        [KR: radiation-physics-and-chemistry-188-2021-109633.md:111-114,
+        264-268] Lee-model fit: anode radius a = 11.55 cm, anode length
+        z0 = 48 cm, cathode-cage Lee-fit radius b = 16 cm, 12 rods, rod
+        diameter 80 mm (8 cm tubes). Chamber dimensions inherit from KR-KRAUZ12
+        (Akel reports no distinct chamber bore).
+        """
+        tag = "pf1000_akel_shot12581"
+        scope = "pf1000_akel_16kv_1p2torr_shot_12581"
+        akel = "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md"
+        krauz = (
+            "KnowledgeReference/experimental-study-of-the-structure-of-the-"
+            "plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        )
+        return cls(
+            geometry_packet_id="pf1000_geometry_packet_akel_shot12581",
+            geometry_source_tag=tag,
+            scope_tag=scope,
+            source_refs=PF1000_GEOMETRY_SOURCE_REFS,
+            fields=cls._fields_for(
+                scope_tag=scope,
+                anode_radius_m=0.1155,
+                anode_radius_ref=f"{akel}:264",
+                anode_length_m=0.480,
+                anode_length_ref=f"{akel}:111,264",
+                anode_length_status="conflict",
+                anode_length_conflict="anode_length_z0",
+                cathode_cage_radius_m=0.160,
+                cathode_cage_radius_ref=f"{akel}:264",
+                cathode_cage_radius_status="conflict",
+                cathode_cage_conflict="cathode_cage_radius_b",
+                cathode_rod_count=12,
+                cathode_rod_count_ref=f"{akel}:112-114",
+                cathode_rod_count_status="conflict",
+                cathode_rod_count_conflict="cathode_rod_count",
+                cathode_rod_diameter_m=0.080,
+                cathode_rod_diameter_ref=f"{akel}:113",
+                insulator_exposed_length_m=0.085,
+                insulator_exposed_length_ref=f"{krauz}:349-350",
+                insulator_exposed_length_status="conflict",
+                insulator_exposed_length_conflict="insulator_exposed_length",
+                chamber_inner_radius_m=0.700,
+                chamber_inner_radius_ref=f"{krauz}:342-343",
+                chamber_length_m=2.500,
+                chamber_length_ref=f"{krauz}:343",
+            ),
+            conflicts=cls._conflicts(),
+        )
+
+    @classmethod
+    def scholz_gribkov_revision(cls) -> PF1000GeometryPacket:
+        """PF-1000 geometry for the Scholz/Gribkov 2006-2007 hardware revision.
+
+        [KR: scholz-2007-pf1000-part2-jphysd.md:191-225] anode diameter
+        230 mm (radius 115.0 mm), anode length 600 mm, insulator exposed
+        length 113 mm. Rod count and cathode-cage radius are NOT separately
+        numerically stated in this revision's KR extract -- they remain
+        conflict fields. This constructor exists only because it keeps the
+        revision conflicts explicit (handoff S3.2: constructor allowed "if and
+        only if the source packet can keep revision conflicts explicit").
+        """
+        tag = "pf1000_scholz_gribkov_revision"
+        scope = "pf1000_full_energy_revision"
+        scholz = "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md"
+        krauz = (
+            "KnowledgeReference/experimental-study-of-the-structure-of-the-"
+            "plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        )
+        return cls(
+            geometry_packet_id="pf1000_geometry_packet_scholz_gribkov",
+            geometry_source_tag=tag,
+            scope_tag=scope,
+            source_refs=PF1000_GEOMETRY_SOURCE_REFS,
+            fields=cls._fields_for(
+                scope_tag=scope,
+                anode_radius_m=0.1150,
+                anode_radius_ref=f"{scholz}:198",
+                anode_length_m=0.600,
+                anode_length_ref=f"{scholz}:198",
+                anode_length_status="conflict",
+                anode_length_conflict="anode_length_z0",
+                cathode_cage_radius_m=0.200,
+                cathode_cage_radius_ref=f"{krauz}:346-347",
+                cathode_cage_radius_status="conflict",
+                cathode_cage_conflict="cathode_cage_radius_b",
+                cathode_rod_count=12,
+                cathode_rod_count_ref=f"{krauz}:344-345",
+                cathode_rod_count_status="conflict",
+                cathode_rod_count_conflict="cathode_rod_count",
+                cathode_rod_diameter_m=0.080,
+                cathode_rod_diameter_ref=f"{krauz}:345",
+                insulator_exposed_length_m=0.113,
+                insulator_exposed_length_ref=f"{scholz}:223-225",
+                insulator_exposed_length_status="conflict",
+                insulator_exposed_length_conflict="insulator_exposed_length",
+                chamber_inner_radius_m=0.700,
+                chamber_inner_radius_ref=f"{krauz}:342-343",
+                chamber_length_m=2.500,
+                chamber_length_ref=f"{krauz}:343",
+            ),
+            conflicts=cls._conflicts(),
+        )
+
+    # --- internal field/conflict builders ---------------------------------
+
+    @staticmethod
+    def _conflicts() -> dict[str, PF1000GeometryConflict]:
+        """Return the WP-N3 section-4 unresolved geometry conflicts.
+
+        These are sourced dimensions where KR sources disagree because they
+        describe distinct PF-1000 hardware revisions. They are NEVER averaged.
+        [WP_N3_GEOMETRY_SOURCE_PACKET.md section 4]
+        """
+        krauz = (
+            "KnowledgeReference/experimental-study-of-the-structure-of-the-"
+            "plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md"
+        )
+        akel = "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md"
+        scholz = "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md"
+        lee = (
+            "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-"
+            "s-lee-and-s-h-saw-part-1-basic-course.md"
+        )
+        finals = (
+            "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-"
+            "the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md"
+        )
+        records = (
+            PF1000GeometryConflict(
+                group="cathode_rod_count",
+                field_name="cathode_rod_count",
+                units="count",
+                candidate_values=(12, 24),
+                candidate_source_refs=(
+                    f"{krauz}:344-345", f"{finals}:38-39",
+                ),
+                reason=(
+                    "12 rods (Krauz 2012 / Akel 2021) vs 24 rods (Final Stages)"
+                    " -- distinct PF-1000 hardware revisions; not averaged"
+                ),
+            ),
+            PF1000GeometryConflict(
+                group="cathode_cage_radius_b",
+                field_name="cathode_cage_radius_m",
+                units="m",
+                candidate_values=(0.200, 0.160),
+                candidate_source_refs=(
+                    f"{krauz}:346-347", f"{akel}:264",
+                ),
+                reason=(
+                    "200 mm geometric cage radius (Krauz 2012) vs 160 mm "
+                    "Lee-model fit b (Akel 2021 / Lee course); not averaged"
+                ),
+            ),
+            PF1000GeometryConflict(
+                group="anode_length_z0",
+                field_name="anode_length_m",
+                units="m",
+                candidate_values=(0.460, 0.480, 0.600, 0.450),
+                candidate_source_refs=(
+                    f"{krauz}:347", f"{akel}:264", f"{scholz}:198",
+                    f"{finals}:40-41",
+                ),
+                reason=(
+                    "anode length z0 is 460/480/600/450 mm across PF-1000 "
+                    "hardware revisions and Lee-fit periods; not averaged"
+                ),
+            ),
+            PF1000GeometryConflict(
+                group="insulator_exposed_length",
+                field_name="insulator_exposed_length_m",
+                units="m",
+                candidate_values=(0.085, 0.113),
+                candidate_source_refs=(
+                    f"{krauz}:349-350", f"{scholz}:223-225",
+                ),
+                reason=(
+                    "insulator exposed length 85 mm (Krauz 2012, new "
+                    "insulator) vs 113 mm (Scholz 2007 / Final Stages); "
+                    "not averaged"
+                ),
+            ),
+        )
+        _ = lee  # cited in PF1000_GEOMETRY_SOURCE_REFS; revision evidence only
+        return {record.group: record for record in records}
+
+    @staticmethod
+    def _fields_for(
+        *,
+        scope_tag: str,
+        anode_radius_m: float,
+        anode_radius_ref: str,
+        anode_length_m: float,
+        anode_length_ref: str,
+        anode_length_status: str,
+        anode_length_conflict: str,
+        cathode_cage_radius_m: float,
+        cathode_cage_radius_ref: str,
+        cathode_cage_radius_status: str,
+        cathode_cage_conflict: str,
+        cathode_rod_count: int,
+        cathode_rod_count_ref: str,
+        cathode_rod_count_status: str,
+        cathode_rod_count_conflict: str,
+        cathode_rod_diameter_m: float,
+        cathode_rod_diameter_ref: str,
+        insulator_exposed_length_m: float,
+        insulator_exposed_length_ref: str,
+        insulator_exposed_length_status: str,
+        insulator_exposed_length_conflict: str,
+        chamber_inner_radius_m: float,
+        chamber_inner_radius_ref: str,
+        chamber_length_m: float,
+        chamber_length_ref: str,
+    ) -> dict[str, PF1000GeometryField]:
+        """Build the typed geometry-field map for one source-tagged revision.
+
+        Source-supported fields carry a single KR ref. Conflict fields carry
+        value `None` and a conflict group (the chosen revision's value is held
+        in the conflict record's candidate list). The 9 WP-N3 blocked rows
+        (anode bore radius/length, insulator outer radius / wall thickness,
+        backplate radial extent / axial thickness, chamber wall material /
+        thickness, cathode rod length) become typed `blocked` fields.
+        """
+        def conflict(name: str, units: str, group: str) -> PF1000GeometryField:
+            return PF1000GeometryField(
+                name=name, value=None, units=units, status="conflict",
+                scope_tag=scope_tag, conflict_group=group,
+            )
+
+        def blocked(name: str, units: str, blocker_id: str) -> PF1000GeometryField:
+            return PF1000GeometryField(
+                name=name, value=None, units=units, status="blocked",
+                scope_tag=scope_tag, blocker_id=blocker_id,
+            )
+
+        def supported(
+            name: str, value: float | int, units: str, ref: str
+        ) -> PF1000GeometryField:
+            return PF1000GeometryField(
+                name=name, value=value, units=units, status="source_supported",
+                scope_tag=scope_tag, source_ref=ref,
+            )
+
+        fields: dict[str, PF1000GeometryField] = {}
+        # anode radius is source-supported (WP-N3 row 6).
+        fields["anode_radius_m"] = supported(
+            "anode_radius_m", anode_radius_m, "m", anode_radius_ref
+        )
+        # anode length z0 is a conflict field (WP-N3 row 7).
+        if anode_length_status == "conflict":
+            fld = conflict("anode_length_m", "m", anode_length_conflict)
+        else:
+            fld = supported(
+                "anode_length_m", anode_length_m, "m", anode_length_ref
+            )
+        fields["anode_length_m"] = fld
+        # anode material is copper (WP-N3 row 8). Encoded as a unit-flag
+        # numeric field (units name carries the material identity) so the
+        # PF1000GeometryField numeric-value contract holds.
+        fields["anode_material_is_copper"] = supported(
+            "anode_material_is_copper", 1, "copper_material_flag",
+            anode_radius_ref,
+        )
+        # anode hollow bore -- WP-N3 rows 9/10: anode is hollow but no numeric
+        # bore radius/length exists in any KR source. Blocked, never invented.
+        fields["anode_hollow_bore_radius_m"] = blocked(
+            "anode_hollow_bore_radius_m", "m",
+            "PF1000-BLK-009-anode-bore-radius-no-kr-source",
+        )
+        fields["anode_hollow_bore_length_m"] = blocked(
+            "anode_hollow_bore_length_m", "m",
+            "PF1000-BLK-010-anode-bore-length-no-kr-source",
+        )
+        # anode end-cap / lid geometry -- WP-N3 row 11: KR-SCHOLZ07 198-201 is
+        # qualitative only ("same or a slightly larger diameter"). Blocked.
+        fields["anode_end_cap_diameter_m"] = blocked(
+            "anode_end_cap_diameter_m", "m",
+            "PF1000-BLK-011-anode-end-cap-geometry-no-kr-number",
+        )
+        # cathode-cage radius is a conflict field (WP-N3 row 5).
+        if cathode_cage_radius_status == "conflict":
+            fields["cathode_cage_radius_m"] = conflict(
+                "cathode_cage_radius_m", "m", cathode_cage_conflict
+            )
+        else:
+            fields["cathode_cage_radius_m"] = supported(
+                "cathode_cage_radius_m", cathode_cage_radius_m, "m",
+                cathode_cage_radius_ref,
+            )
+        # cathode rod count is a conflict field (WP-N3 row 1).
+        if cathode_rod_count_status == "conflict":
+            fields["cathode_rod_count"] = conflict(
+                "cathode_rod_count", "count", cathode_rod_count_conflict
+            )
+        else:
+            fields["cathode_rod_count"] = supported(
+                "cathode_rod_count", cathode_rod_count, "count",
+                cathode_rod_count_ref,
+            )
+        fields["cathode_rod_diameter_m"] = supported(
+            "cathode_rod_diameter_m", cathode_rod_diameter_m, "m",
+            cathode_rod_diameter_ref,
+        )
+        # cathode rod length -- WP-N3 row 4: two unequal revisions, no number.
+        fields["cathode_rod_length_m"] = blocked(
+            "cathode_rod_length_m", "m",
+            "PF1000-BLK-004-cathode-rod-length-no-kr-source",
+        )
+        # insulator exposed length is a conflict field (WP-N3 row 13).
+        if insulator_exposed_length_status == "conflict":
+            fields["insulator_exposed_length_m"] = conflict(
+                "insulator_exposed_length_m", "m",
+                insulator_exposed_length_conflict,
+            )
+        else:
+            fields["insulator_exposed_length_m"] = supported(
+                "insulator_exposed_length_m", insulator_exposed_length_m, "m",
+                insulator_exposed_length_ref,
+            )
+        # insulator outer radius / wall thickness -- WP-N3 rows 14/15: blocked.
+        fields["insulator_outer_radius_m"] = blocked(
+            "insulator_outer_radius_m", "m",
+            "PF1000-BLK-014-insulator-outer-radius-no-kr-source",
+        )
+        fields["insulator_wall_thickness_m"] = blocked(
+            "insulator_wall_thickness_m", "m",
+            "PF1000-BLK-015-insulator-wall-thickness-no-kr-source",
+        )
+        # backplate radial extent / axial thickness -- WP-N3 rows 17/18.
+        fields["backplate_radial_extent_m"] = blocked(
+            "backplate_radial_extent_m", "m",
+            "PF1000-BLK-017-backplate-radial-extent-no-kr-source",
+        )
+        fields["backplate_axial_thickness_m"] = blocked(
+            "backplate_axial_thickness_m", "m",
+            "PF1000-BLK-018-backplate-axial-thickness-no-kr-source",
+        )
+        # chamber inner radius / length are source-supported (WP-N3 rows 19/20).
+        fields["chamber_inner_radius_m"] = supported(
+            "chamber_inner_radius_m", chamber_inner_radius_m, "m",
+            chamber_inner_radius_ref,
+        )
+        fields["chamber_length_m"] = supported(
+            "chamber_length_m", chamber_length_m, "m", chamber_length_ref
+        )
+        # chamber wall material / thickness -- WP-N3 rows 21/22: blocked.
+        # Only the inner bore (1400 mm dia) and length (2500 mm) are sourced.
+        fields["chamber_wall_material"] = blocked(
+            "chamber_wall_material", "material_name",
+            "PF1000-BLK-021-chamber-wall-material-no-kr-source",
+        )
+        fields["chamber_wall_thickness_m"] = blocked(
+            "chamber_wall_thickness_m", "m",
+            "PF1000-BLK-022-chamber-wall-thickness-no-kr-source",
+        )
+        return fields
+
+
+def _under_resolved(spacing_m: float, feature_m: float, min_cells: float) -> bool:
+    """Return True when a sourced feature is not resolved by the grid.
+
+    Under-resolution gate (WP-N3 section-6 item 8): if the grid cell size does
+    not place at least `min_cells` cells across the smallest sourced feature,
+    the mask build must fail closed rather than emit an accepted mask.
+    """
+    if feature_m <= 0.0 or spacing_m <= 0.0:
+        return True
+    return (feature_m / spacing_m) < float(min_cells)
+
+
+def build_pf1000_material_partition(
+    packet: PF1000GeometryPacket,
+    *,
+    grid: Maxwell3DGrid,
+    electron_density_m3: np.ndarray,
+    current_density_norm_A_m2: np.ndarray,
+    source_interface_z_index: int,
+    pml_layers: int,
+    electron_density_floor_m3: float,
+    min_cells_per_feature: float = 4.0,
+) -> dict[str, Any]:
+    """Return the 10-class source-tagged PF-1000 material partition.
+
+    Keeps the four Auluck top-level labels (omega_volume_cells,
+    terminal_source_interface_faces, wall_material_faces, open_pml_faces) and
+    refines `wall_material_faces` into five source-tagged material sub-classes
+    (anode / cathode-rods / insulator / chamber-wall / backplate). Adds
+    `pml_or_open_boundary_faces` as the open/PML class alias. All masks are
+    built deterministically from the static config + grid (no RNG); the same
+    config + grid always yields identical hashes.
+
+    The build fails closed (`PF1000GeometryConflict`-style typed error is
+    raised by callers; here a `ValueError`) when the grid cannot resolve the
+    smallest sourced feature, and emits per-class SHA-256 hashes in a
+    `PF1000MaskManifest`. It NEVER promotes first-principles acceptance.
+    """
+    nx, ny, nz = (int(v) for v in grid.shape)
+    dx, dy, dz = (float(s) for s in grid.spacing)
+    omega = build_auluck_omega_domain(
+        grid_shape=(nx, ny, nz),
+        electron_density_m3=electron_density_m3,
+        current_density_norm_A_m2=current_density_norm_A_m2,
+        source_interface_z_index=source_interface_z_index,
+        pml_layers=pml_layers,
+        electron_density_floor_m3=electron_density_floor_m3,
+    )
+    base_masks = omega_domain_label_masks(omega)
+    omega_cells = base_masks["omega_volume_cells"]
+    interface = base_masks["terminal_source_interface_faces"]
+    wall = base_masks["wall_material_faces"]
+    open_pml = base_masks["open_pml_faces"]
+
+    # Under-resolution gate over the smallest sourced features. Conflict and
+    # blocked fields contribute no resolvable feature, so only source-supported
+    # numeric lengths are checked.
+    rod_diameter = packet.fields["cathode_rod_diameter_m"]
+    under_resolution_flags: dict[str, bool] = {}
+    if rod_diameter.status == "source_supported" and rod_diameter.value is not None:
+        under_resolution_flags["cathode_rod_diameter_m"] = _under_resolved(
+            min(dx, dy), float(rod_diameter.value), min_cells_per_feature
+        )
+    anode_radius = packet.fields["anode_radius_m"]
+    if anode_radius.status == "source_supported" and anode_radius.value is not None:
+        under_resolution_flags["anode_radius_m"] = _under_resolved(
+            min(dx, dy), float(anode_radius.value), min_cells_per_feature
+        )
+    if any(under_resolution_flags.values()):
+        flagged = sorted(k for k, v in under_resolution_flags.items() if v)
+        raise ValueError(
+            "PF-1000 material partition fails closed: grid does not resolve "
+            f"sourced feature(s) {flagged} to {min_cells_per_feature} cells; "
+            "the build refuses to emit an under-resolved mask"
+        )
+
+    # Material sub-classes refine `wall_material_faces`. The static container
+    # surfaces are concentric radial shells about the grid axis: anode core
+    # (r < a), then the cathode-cage shell, then the chamber wall, with the
+    # breech plane (k_port) carrying the backplate/source interface and the
+    # insulator sleeving the anode lower part. Build deterministically.
+    centre_i = (nx - 1) / 2.0
+    centre_j = (ny - 1) / 2.0
+    ii = np.arange(nx, dtype=float) - centre_i
+    jj = np.arange(ny, dtype=float) - centre_j
+    radius = np.sqrt(
+        (ii[:, None] * dx) ** 2 + (jj[None, :] * dy) ** 2
+    )  # (nx, ny) cell-centre radius
+    radius3 = np.broadcast_to(radius[:, :, None], (nx, ny, nz))
+
+    a_field = packet.fields["anode_radius_m"]
+    anode_r = float(a_field.value) if a_field.value is not None else 0.0
+    domain_r = 0.5 * min(nx * dx, ny * dy)
+    # cathode-cage radius is a conflict field; the partition uses the grid
+    # half-extent as the chamber-wall onset only -- no conflicting numeric
+    # cage radius is silently chosen. The cage shell is the annulus between
+    # the anode and the outer 25% of the radial domain.
+    cage_inner = anode_r
+    cage_outer = max(anode_r, 0.75 * domain_r)
+
+    k_port = int(source_interface_z_index)
+    backplate_slab = np.zeros((nx, ny, nz), dtype=bool)
+    backplate_slab[:, :, k_port] = True
+
+    anode_core = (radius3 <= anode_r) if anode_r > 0.0 else np.zeros(
+        (nx, ny, nz), dtype=bool
+    )
+    cathode_shell = (radius3 > cage_inner) & (radius3 <= cage_outer)
+    chamber_shell = radius3 > cage_outer
+
+    anode_material = wall & anode_core & ~backplate_slab
+    cathode_rod = wall & cathode_shell & ~backplate_slab
+    chamber_wall = wall & chamber_shell & ~backplate_slab
+    backplate = wall & backplate_slab
+    # insulator sleeves the anode lower part: the anode-radius shell over the
+    # first axial decile, minus the backplate slab. Exposed-length is a
+    # conflict field, so the axial extent is a deterministic engineering decile
+    # (not a sourced numeric length) -- recorded as candidate, not supported.
+    insulator_zmax = max(k_port + 1, min(nz, k_port + 1 + max(1, nz // 10)))
+    insulator_band = np.zeros((nx, ny, nz), dtype=bool)
+    insulator_band[:, :, k_port + 1:insulator_zmax] = True
+    insulator_material = wall & anode_core & insulator_band & ~backplate_slab
+    # the insulator band is carved out of the anode-material class so the five
+    # sub-classes stay mutually disjoint.
+    anode_material = anode_material & ~insulator_material
+
+    material_masks = {
+        "anode_material_faces": anode_material,
+        "cathode_rod_faces": cathode_rod,
+        "insulator_material_faces": insulator_material,
+        "chamber_wall_faces": chamber_wall,
+        "backplate_source_interface_faces": backplate,
+    }
+    # The five material sub-classes must partition `wall_material_faces`.
+    sub_union = np.zeros((nx, ny, nz), dtype=bool)
+    sub_overlap = np.zeros((nx, ny, nz), dtype=bool)
+    for mask in material_masks.values():
+        sub_overlap |= sub_union & mask
+        sub_union |= mask
+    material_disjoint = not bool(np.any(sub_overlap))
+    material_exhaustive = bool(np.array_equal(sub_union, np.asarray(wall, bool)))
+
+    all_masks: dict[str, np.ndarray] = {
+        "omega_volume_cells": np.asarray(omega_cells, bool),
+        "terminal_source_interface_faces": np.asarray(interface, bool),
+        "wall_material_faces": np.asarray(wall, bool),
+        "open_pml_faces": np.asarray(open_pml, bool),
+        "pml_or_open_boundary_faces": np.asarray(open_pml, bool),
+    }
+    all_masks.update({k: np.asarray(v, bool) for k, v in material_masks.items()})
+
+    mask_sha256_by_class = {
+        name: _mask_sha256(all_masks[name]) for name in PF1000_MASK_CLASSES
+    }
+    mask_cell_counts = {
+        name: int(np.count_nonzero(all_masks[name])) for name in PF1000_MASK_CLASSES
+    }
+    mask_packets = {
+        name: {
+            "label": name,
+            "mask_sha256": mask_sha256_by_class[name],
+            "cell_count": mask_cell_counts[name],
+            "bounds": _mask_bounds(all_masks[name]),
+            "source_refs": list(PF1000_GEOMETRY_SOURCE_REFS),
+            "geometry_source_tag": packet.geometry_source_tag,
+        }
+        for name in PF1000_MASK_CLASSES
+    }
+
+    manifest = PF1000MaskManifest(
+        geometry_packet_id=packet.geometry_packet_id,
+        geometry_source_tag=packet.geometry_source_tag,
+        source_refs=packet.source_refs,
+        conflict_groups=tuple(sorted(packet.conflicts)),
+        blocked_fields=packet.blocked_field_names(),
+        grid_shape=(nx, ny, nz),
+        grid_spacing_m=(dx, dy, dz),
+        mask_sha256_by_class=mask_sha256_by_class,
+        mask_cell_counts=mask_cell_counts,
+        under_resolution_flags=under_resolution_flags,
+    )
+
+    return {
+        "status": "candidate_pf1000_material_partition_not_validation",
+        "geometry_source_tag": packet.geometry_source_tag,
+        "geometry_packet_id": packet.geometry_packet_id,
+        "scope_tag": packet.scope_tag,
+        "source_refs": list(PF1000_GEOMETRY_SOURCE_REFS),
+        "mask_classes": list(PF1000_MASK_CLASSES),
+        "material_subclasses": list(PF1000_MATERIAL_SUBCLASSES),
+        "_label_masks": all_masks,
+        "auluck_omega_partition": public_omega_domain_packet(omega),
+        "mask_packets": mask_packets,
+        "manifest": manifest.to_dict(),
+        "partition_constraints": {
+            "auluck_top_level_mutually_disjoint": (
+                omega["partition_constraints"]["mutually_disjoint"]
+            ),
+            "auluck_top_level_exhaustive": (
+                omega["partition_constraints"]["exhaustive"]
+            ),
+            "terminal_source_interface_disjoint_from_omega": (
+                omega["partition_constraints"][
+                    "terminal_source_interface_disjoint_from_omega"
+                ]
+            ),
+            "material_subclasses_mutually_disjoint": material_disjoint,
+            "material_subclasses_exhaust_wall_material": material_exhaustive,
+        },
+        "geometry_review_status": packet.geometry_review_status,
+        "can_support_power_port_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+# ===========================================================================
+# S3.3 -- WP-N3 Sigma_p moving-boundary surface-term data contract.
+#
+# `SigmaPSurfacePacket` is the data contract `power_port.py` consumes to fail
+# closed (or, in a future Sprint 4, compute) Auluck eq. (6) terms II/IV/V/VI.
+# S3.3 is PLUMBING ONLY: the packet carries face geometry and per-operand
+# status; it does NOT compute the surface integrals. A packet whose operands
+# are all present still does not authorise a term value -- the integral is
+# Sprint 4 work. Missing operands fail closed with typed blockers.
+#
+# Authority: docs/external_team_submissions/2026_05_18_three_sprint_blocker_
+#   packet/sprint_3/WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md section 3 schema;
+#   sprint_2/AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (5)/(6) p.8.
+# ===========================================================================
+
+# WP-N3 Sigma_p spec source refs (interface spec + verified Auluck extract).
+SIGMA_P_SURFACE_SOURCE_REFS = (
+    "docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/"
+    "sprint_3/WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md:1-439",
+    "docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/"
+    "sprint_2/AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md",
+)
+
+# The four Auluck eq. (6) Sigma_p moving-boundary terms and their operands.
+# [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (5)/(6) p.8]
+SIGMA_P_TERM_OPERANDS = {
+    "term_ii_motional_magnetic_sigma_p_J": ("sigma_p", "v", "B"),
+    "term_iv_motional_electric_sigma_p_J": ("sigma_p", "v", "E"),
+    "term_v_resistive_sigma_p_J": ("sigma_p", "eta", "J", "B"),
+    "term_vi_anomalous_poloidal_sigma_p_J": ("sigma_p", "v", "B"),
+}
+
+# Typed blockers for the absent Sigma_p operands. `power_port.py` imports
+# these so its fail-closed reasons name the exact missing operand.
+SIGMA_P_BLOCKERS = {
+    "sigma_p": "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry",
+    "v": "material_velocity_v_not_available_on_sigma_p_faces",
+    "eta": "resistivity_eta_not_available_on_sigma_p_faces",
+    "sign_convention": "sigma_p_eq6_sign_convention_not_recorded",
+}
+
+
+@dataclass(frozen=True)
+class SigmaPSurfacePacket:
+    """WP-N3 Sigma_p moving-boundary surface-term data contract (S3.3).
+
+    Carries the per-face geometry of the moving boundary Sigma_p plus the
+    per-operand availability of the fields Auluck eq. (6) terms II/IV/V/VI
+    contract. S3.3 is plumbing only: this packet never carries a term value
+    and never computes a surface integral. Every absent operand is a typed
+    blocker; a present operand only unblocks Sprint 4, never authorises a
+    Sprint 3 term value.
+
+    All per-face arrays are 1-D, indexed by a single face index `f`, so a
+    face's geometry and every field on it share one index (avoids the
+    staggered-grid hazard). A face index of length 0 is legal -- it fails
+    closed downstream.
+    """
+
+    status: str
+    source_refs: tuple[str, ...]
+    source_geometry_packet_id: str | None
+    source_geometry_hash: str | None
+    n_sigma_p_faces: int
+    face_count_total_sigma: int
+    geometry_review_status: str
+    # per-face geometry (length n_sigma_p_faces; vector arrays are (N, 3)).
+    face_ids: np.ndarray | None
+    dS_outward_m2: np.ndarray | None
+    face_area_m2: np.ndarray | None
+    outward_normal: np.ndarray | None
+    face_material_class: tuple[str, ...]
+    is_moving: np.ndarray | None
+    omega_side: str
+    excluded_interface_side: str
+    outward_normal_convention: str
+    # per-operand availability / status.
+    field_sampler_status: dict[str, str]  # keys: B, E, J
+    velocity_status: str
+    resistivity_status: str
+    centering: dict[str, str]
+    quadrature: str
+    sign_convention: dict[str, Any] | None
+    operand_blockers: dict[str, str]
+    can_support_power_port_acceptance: bool = False
+    can_support_first_principles_acceptance: bool = False
+
+    def __post_init__(self) -> None:
+        if self.can_support_power_port_acceptance:
+            raise ValueError(
+                "SigmaPSurfacePacket must not claim power-port acceptance"
+            )
+        if self.can_support_first_principles_acceptance:
+            raise ValueError(
+                "SigmaPSurfacePacket must not claim first-principles acceptance"
+            )
+        if self.n_sigma_p_faces < 0:
+            raise ValueError("n_sigma_p_faces must be non-negative")
+        if self.n_sigma_p_faces > self.face_count_total_sigma:
+            raise ValueError(
+                "n_sigma_p_faces must not exceed face_count_total_sigma"
+            )
+
+    def has_sigma_p(self) -> bool:
+        """Return True when a non-empty Sigma_p face set is present."""
+        return self.face_ids is not None and self.n_sigma_p_faces > 0
+
+    def has_velocity(self) -> bool:
+        """Return True when material velocity v is available on Sigma_p faces."""
+        return self.velocity_status == "available"
+
+    def has_resistivity(self) -> bool:
+        """Return True when resistivity eta is available on Sigma_p faces."""
+        return self.resistivity_status == "available"
+
+    def has_sign_convention(self) -> bool:
+        """Return True when the eq. (6) term-sign record is present."""
+        return isinstance(self.sign_convention, dict) and bool(
+            self.sign_convention.get("eq6_term_signs")
+        )
+
+    def operand_status(self, operand: str) -> bool:
+        """Return True when one named operand (sigma_p/v/eta) is available."""
+        if operand == "sigma_p":
+            return self.has_sigma_p()
+        if operand == "v":
+            return self.has_velocity()
+        if operand == "eta":
+            return self.has_resistivity()
+        if operand in {"B", "E", "J"}:
+            return self.field_sampler_status.get(operand) == "available"
+        raise ValueError(f"unknown Sigma_p operand {operand!r}")
+
+    def to_dict(self) -> dict[str, Any]:
+        def _arr(value: np.ndarray | None) -> list[Any] | None:
+            return None if value is None else np.asarray(value).tolist()
+
+        return {
+            "status": self.status,
+            "source_refs": list(self.source_refs),
+            "source_geometry_packet_id": self.source_geometry_packet_id,
+            "source_geometry_hash": self.source_geometry_hash,
+            "n_sigma_p_faces": self.n_sigma_p_faces,
+            "face_count_total_sigma": self.face_count_total_sigma,
+            "geometry_review_status": self.geometry_review_status,
+            "face_ids": _arr(self.face_ids),
+            "dS_outward_m2": _arr(self.dS_outward_m2),
+            "face_area_m2": _arr(self.face_area_m2),
+            "outward_normal": _arr(self.outward_normal),
+            "face_material_class": list(self.face_material_class),
+            "is_moving": _arr(self.is_moving),
+            "omega_side": self.omega_side,
+            "excluded_interface_side": self.excluded_interface_side,
+            "outward_normal_convention": self.outward_normal_convention,
+            "field_sampler_status": dict(self.field_sampler_status),
+            "velocity_status": self.velocity_status,
+            "resistivity_status": self.resistivity_status,
+            "centering": dict(self.centering),
+            "quadrature": self.quadrature,
+            "sign_convention": (
+                None if self.sign_convention is None
+                else dict(self.sign_convention)
+            ),
+            "operand_blockers": dict(self.operand_blockers),
+            "can_support_power_port_acceptance": (
+                self.can_support_power_port_acceptance
+            ),
+            "can_support_first_principles_acceptance": (
+                self.can_support_first_principles_acceptance
+            ),
+        }
+
+    @classmethod
+    def blocked(
+        cls,
+        *,
+        reason: str = "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry",
+        source_geometry_packet_id: str | None = None,
+    ) -> SigmaPSurfacePacket:
+        """Return a fully fail-closed Sigma_p packet (no face set, no operands).
+
+        This is the honest Sprint 3 default until a reviewed WP-N3 PF-1000
+        geometry supplies a moving-boundary face set. Every operand carries a
+        typed blocker; `power_port.py` consumes this and fails terms
+        II/IV/V/VI closed.
+        """
+        return cls(
+            status="blocked_sigma_p_surface_packet_not_available",
+            source_refs=SIGMA_P_SURFACE_SOURCE_REFS,
+            source_geometry_packet_id=source_geometry_packet_id,
+            source_geometry_hash=None,
+            n_sigma_p_faces=0,
+            face_count_total_sigma=0,
+            geometry_review_status="geometry_candidate_not_reviewed",
+            face_ids=None,
+            dS_outward_m2=None,
+            face_area_m2=None,
+            outward_normal=None,
+            face_material_class=(),
+            is_moving=None,
+            omega_side="omega_interior",
+            excluded_interface_side="terminal_source_interface_excluded",
+            outward_normal_convention="outward_from_omega",
+            field_sampler_status={"B": "blocked", "E": "blocked", "J": "blocked"},
+            velocity_status="blocked",
+            resistivity_status="blocked",
+            centering={
+                "b_sampling": "not_available",
+                "e_sampling": "not_available",
+                "j_sampling": "not_available",
+                "v_sampling": "not_available",
+                "eta_sampling": "not_available",
+                "time_centering": "candidate_step_consistent_not_accepted",
+                "quadrature": "not_available",
+            },
+            quadrature="not_available",
+            sign_convention=None,
+            operand_blockers={
+                "sigma_p": reason,
+                "v": SIGMA_P_BLOCKERS["v"],
+                "eta": SIGMA_P_BLOCKERS["eta"],
+                "sign_convention": SIGMA_P_BLOCKERS["sign_convention"],
+            },
+        )
+
+
+def build_sigma_p_surface_packet(
+    material_partition: dict[str, Any] | None,
+    *,
+    sigma_p_runtime: Mapping[str, Any] | None = None,
+) -> SigmaPSurfacePacket:
+    """Return the WP-N3 Sigma_p surface packet for the current runtime state.
+
+    S3.3 PLUMBING ONLY. This builder wires the data contract; it never
+    computes a surface integral. With no `sigma_p_runtime` (the Sprint 3
+    reality -- the runtime exposes no reviewed moving-boundary face set), it
+    returns `SigmaPSurfacePacket.blocked()`: every operand is a typed blocker
+    and `power_port.py` fails terms II/IV/V/VI closed.
+
+    `material_partition` is the S3.2 `build_pf1000_material_partition` result;
+    it supplies the geometry packet ID and a deterministic geometry hash so a
+    downstream reviewer can confirm which geometry the (future) Sigma_p face
+    set was derived from. The Sigma_p face set itself is NOT derived here --
+    deriving the moving boundary from reviewed material masks is Sprint 4.
+    """
+    packet_id: str | None = None
+    geometry_hash: str | None = None
+    if isinstance(material_partition, dict):
+        packet_id = material_partition.get("geometry_packet_id")
+        hashes = material_partition.get("manifest", {})
+        if isinstance(hashes, Mapping):
+            by_class = hashes.get("mask_sha256_by_class")
+            if isinstance(by_class, Mapping):
+                # a deterministic digest over the ordered per-class hashes.
+                hasher = hashlib.sha256()
+                for name in PF1000_MASK_CLASSES:
+                    hasher.update(str(by_class.get(name, "")).encode("utf-8"))
+                geometry_hash = hasher.hexdigest()
+    if sigma_p_runtime is None:
+        return SigmaPSurfacePacket.blocked(
+            source_geometry_packet_id=packet_id,
+        )
+    # A non-None sigma_p_runtime is reserved for the Sprint 4 face-set
+    # producer. S3.3 does not synthesise a face set, so any caller that
+    # supplies one without the Sprint 4 producer still fails closed: the
+    # plumbing refuses to fabricate Sigma_p geometry.
+    blocked = SigmaPSurfacePacket.blocked(source_geometry_packet_id=packet_id)
+    return replace(
+        blocked,
+        source_geometry_hash=geometry_hash,
+        status="blocked_sigma_p_surface_packet_face_set_is_sprint4_work",
+    )

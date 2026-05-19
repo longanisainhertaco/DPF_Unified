@@ -17,9 +17,16 @@ interdependency. Acceptance stays blocked regardless of residual magnitude.
 
 from __future__ import annotations
 
+from dataclasses import replace as _dc_replace
 from typing import Any
 
+import numpy as np
+import pytest
+
+# S3.3 structures imported by full dotted path (the package __init__ files are
+# not edited under the Sprint 3 file-scope rule).
 from dpf.fields.hybrid_simulator import _circuit_udpf_for_step
+from dpf.fields.source_geometry import SigmaPSurfacePacket as _SigmaPSurfacePacket
 from dpf.first_principles.power_port import (
     _WP_N1B_LEDGER_KEYS,
     ACCEPTANCE_BLOCKING_CHANNELS,
@@ -782,3 +789,193 @@ def test_f5_emitted_packet_source_references_include_verified_auluck() -> None:
     )
     roles = {ref["role"] for ref in refs}
     assert "auluck_eq1_eq5_eq6_verified_power_balance" in roles
+
+
+# ===========================================================================
+# S3.3 -- WP-N3 Sigma_p surface packet plumbing into power_port.py.
+#
+# Terms II/IV/V/VI consume a SigmaPSurfacePacket only -- never I*V minus the
+# others. Missing Sigma_p blocks II/IV/V/VI; missing v blocks II/IV/VI;
+# missing eta blocks V. S3.3 is plumbing only: it does NOT compute the surface
+# integrals (Sprint 4), so even a fully-operand packet leaves the terms
+# blocked and the residual None. Structures are imported by full dotted path.
+# ===========================================================================
+
+
+def _sigma_p_packet_with(
+    *,
+    velocity: str = "blocked",
+    resistivity: str = "blocked",
+    n_faces: int = 3,
+) -> _SigmaPSurfacePacket:
+    """Return a Sigma_p packet with a present face set and tunable v/eta."""
+    return _SigmaPSurfacePacket(
+        status="candidate_sigma_p_surface_packet_not_validation",
+        source_refs=("WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md:1-439",),
+        source_geometry_packet_id="pf1000_geometry_packet_krauz2012",
+        source_geometry_hash="deadbeef",
+        n_sigma_p_faces=n_faces,
+        face_count_total_sigma=n_faces + 5,
+        geometry_review_status="geometry_candidate_not_reviewed",
+        face_ids=np.arange(n_faces),
+        dS_outward_m2=np.zeros((n_faces, 3)),
+        face_area_m2=np.ones(n_faces),
+        outward_normal=np.zeros((n_faces, 3)),
+        face_material_class=tuple("plasma" for _ in range(n_faces)),
+        is_moving=np.ones(n_faces, dtype=bool),
+        omega_side="omega_interior",
+        excluded_interface_side="terminal_source_interface_excluded",
+        outward_normal_convention="outward_from_omega",
+        field_sampler_status={
+            "B": "available", "E": "available", "J": "available",
+        },
+        velocity_status=velocity,
+        resistivity_status=resistivity,
+        centering={"time_centering": "candidate_step_consistent_not_accepted"},
+        quadrature="midpoint_one_point_per_face",
+        sign_convention={"eq6_term_signs": {"term_ii": "+"}},
+        operand_blockers={
+            "v": "material_velocity_v_not_available_on_sigma_p_faces",
+            "eta": "resistivity_eta_not_available_on_sigma_p_faces",
+        },
+    )
+
+
+def test_s33_default_ledger_emits_a_sigma_p_surface_packet() -> None:
+    """The ledger always carries a Sigma_p surface packet (blocked by default)."""
+    wp = build_wp_n1_auluck_power_port_ledger(_ledger())
+    assert "sigma_p_surface_packet" in wp
+    assert wp["sigma_p_surface_packet_status"].startswith("blocked_")
+    assert wp["sigma_p_surface_packet"]["n_sigma_p_faces"] == 0
+
+
+def test_s33_missing_sigma_p_blocks_terms_ii_iv_v_vi() -> None:
+    """With no Sigma_p face set all four moving-boundary terms fail closed."""
+    wp = build_wp_n1_auluck_power_port_ledger(_ledger())
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        assert packets[key]["status"] == "blocked"
+        assert packets[key]["value_J"] is None
+        assert packets[key]["missing_operand"] == "sigma_p"
+        assert packets[key]["blocker"] == (
+            "sigma_p_face_set_not_available_requires_wp_n3_reviewed_geometry"
+        )
+
+
+def test_s33_missing_velocity_blocks_ii_iv_vi_but_not_v() -> None:
+    """A Sigma_p packet with no v blocks II/IV/VI on v; V blocks on eta."""
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="blocked", resistivity="available"
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    for key in (
+        "term_ii_motional_magnetic_sigma_p_J",
+        "term_iv_motional_electric_sigma_p_J",
+        "term_vi_anomalous_poloidal_sigma_p_J",
+    ):
+        assert packets[key]["missing_operand"] == "v"
+        assert packets[key]["blocker"] == (
+            "material_velocity_v_not_available_on_sigma_p_faces"
+        )
+    # term V does not use v; with eta available it advances past v/eta.
+    assert packets["term_v_resistive_sigma_p_J"]["missing_operand"] != "v"
+
+
+def test_s33_missing_eta_blocks_only_term_v() -> None:
+    """A Sigma_p packet with no eta blocks V on eta; II/IV/VI block on v only."""
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="blocked", resistivity="blocked"
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    assert packets["term_v_resistive_sigma_p_J"]["missing_operand"] == "eta"
+    assert packets["term_v_resistive_sigma_p_J"]["blocker"] == (
+        "resistivity_eta_not_available_on_sigma_p_faces"
+    )
+    for key in (
+        "term_ii_motional_magnetic_sigma_p_J",
+        "term_iv_motional_electric_sigma_p_J",
+        "term_vi_anomalous_poloidal_sigma_p_J",
+    ):
+        assert packets[key]["missing_operand"] == "v"
+
+
+def test_s33_sigma_p_terms_consume_packet_not_iv_work() -> None:
+    """Every Sigma_p term packet records that it consumes the Sigma_p packet."""
+    wp = build_wp_n1_auluck_power_port_ledger(_ledger())
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        assert packets[key]["consumes"] == "sigma_p_surface_packet"
+        # never derived by closure from the terminal I*V work.
+        assert packets[key].get("derived_by_closure") is not True
+
+
+def test_s33_full_operand_packet_still_blocks_terms_integral_is_sprint4() -> None:
+    """With Sigma_p + v + eta all present the terms stay blocked (S3.3 plumbing).
+
+    S3.3 does NOT compute the surface integral -- the integral is Sprint 4
+    work, so the term value stays None and the blocker says so explicitly.
+    """
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available", resistivity="available"
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        assert packets[key]["status"] == "blocked"
+        assert packets[key]["value_J"] is None
+        assert packets[key]["operands_available"] is True
+        assert packets[key]["blocker"] == (
+            "sigma_p_surface_integral_is_sprint4_work_s3_3_is_plumbing_only"
+        )
+
+
+def test_s33_residual_stays_none_even_with_full_operand_sigma_p_packet() -> None:
+    """The six-term residual is None while II/IV/V/VI stay blocked.
+
+    No term is computed as I*V minus the others; with Sigma_p terms blocked
+    the residual cannot be a genuine diagnostic.
+    """
+    ledger = _ledger(
+        stored_magnetic_delta_J=10.0, stored_electric_delta_J=2.0
+    )
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available", resistivity="available"
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    assert wp["residual_J"] is None
+    assert wp["all_six_terms_computed_independently"] is False
+    # terms I and III remain independently computed -- S3.3 preserves them.
+    packets = wp["energy_ledger_term_packets"]
+    assert packets["term_i_stored_magnetic_energy_rate_J"][
+        "computed_independently"
+    ] is True
+    assert packets["term_iii_stored_electric_energy_rate_J"][
+        "computed_independently"
+    ] is True
+
+
+def test_s33_terms_i_iii_stay_independent_with_sigma_p_packet_present() -> None:
+    """A Sigma_p packet never disturbs the independently-computed terms I/III."""
+    ledger = _ledger(
+        stored_magnetic_delta_J=7.0, stored_electric_delta_J=1.5
+    )
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with()
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    terms = wp["energy_ledger_terms_J"]
+    assert terms["term_i_stored_magnetic_energy_rate_J"] == 7.0
+    assert terms["term_iii_stored_electric_energy_rate_J"] == 1.5
+
+
+def test_s33_blocked_sigma_p_packet_cannot_support_acceptance() -> None:
+    """A Sigma_p packet may never lift power-port or first-principles acceptance."""
+    sp = _sigma_p_packet_with(velocity="available", resistivity="available")
+    assert sp.can_support_power_port_acceptance is False
+    assert sp.can_support_first_principles_acceptance is False
+    # forcing the acceptance flag is rejected at construction.
+    with pytest.raises(ValueError, match="must not claim"):
+        _dc_replace(sp, can_support_first_principles_acceptance=True)

@@ -1,9 +1,44 @@
+"""S3.2 WP-N3 PF-1000 / Akel source-tagged geometry packet and material masks.
+
+Authority: docs/external_team_submissions/2026_05_18_three_sprint_blocker_
+packet/sprint_3/WP_N3_GEOMETRY_SOURCE_PACKET.md and the Sprint 3 completion
+handoff section "S3.2 PF-1000/Akel Geometry And Material Masks".
+
+These tests prove the source-tagged geometry contract: conflicting source
+dimensions (12 vs 24 rods, 460/480/600/450 mm anode length) are kept explicit
+and never averaged; the WP-N3 missing dimensions stay typed `blocked` with
+blocker IDs and never get a fabricated value; the 10 material/partition masks
+are mutually disjoint where required and the Auluck partition stays
+exhaustive; per-class SHA-256 hashes are deterministic; under-resolved rods
+fail closed; a manifest missing a mask hash is rejected.
+
+New S3.2/S3.3 structures are imported by full dotted path per the Sprint 3
+file-scope rule (the package __init__ files are not edited).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+import dpf.fields.source_geometry as sg
+from dpf.fields.maxwell_3d import Maxwell3DGrid
+
+# Original source-geometry packet tests (unchanged behaviour).
 from dpf.fields.source_geometry import (
     HybridPICSourceGeometry,
     source_geometry_candidate_evidence,
 )
 from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+# ---------------------------------------------------------------------------
+# Pre-existing HybridPICSourceGeometry tests.
+# ---------------------------------------------------------------------------
 
 def test_source_geometry_packet_records_local_source_values() -> None:
     geometry = HybridPICSourceGeometry()
@@ -40,3 +75,497 @@ def test_source_geometry_candidate_evidence_does_not_satisfy_gate() -> None:
     assert evidence["status"] == "candidate"
     assert evidence["can_support_first_principles_acceptance"] is False
     assert "same_scope_3d_validation_packet" in status["missing_capabilities"]
+
+
+# ---------------------------------------------------------------------------
+# S3.2 fixtures: a grid that resolves the sourced rod diameter (80 mm) and a
+# density field with an annular dense plasma ring (so wall cells exist in
+# every material region for the partition tests).
+# ---------------------------------------------------------------------------
+
+_GRID_SHAPE = (80, 80, 20)
+_GRID_SPACING = (0.0175, 0.0175, 0.05)  # dx*4 < 0.080 m rod diameter
+
+
+def _resolved_grid() -> Maxwell3DGrid:
+    return Maxwell3DGrid(shape=_GRID_SHAPE, spacing=_GRID_SPACING)
+
+
+def _annular_density(shape: tuple[int, int, int], spacing: tuple[float, float, float],
+                     *, floor: float = 1.0e15, dense: float = 1.0e23) -> np.ndarray:
+    """Dense plasma in an annulus away from the axis; low density elsewhere."""
+    nx, ny, nz = shape
+    dx, dy, _ = spacing
+    ci, cj = (nx - 1) / 2.0, (ny - 1) / 2.0
+    ii = np.arange(nx, dtype=float) - ci
+    jj = np.arange(ny, dtype=float) - cj
+    radius = np.sqrt((ii[:, None] * dx) ** 2 + (jj[None, :] * dy) ** 2)
+    radius3 = np.broadcast_to(radius[:, :, None], (nx, ny, nz))
+    density = np.full((nx, ny, nz), floor)
+    density[(radius3 >= 0.30) & (radius3 <= 0.45)] = dense
+    return density
+
+
+def _partition(packet: sg.PF1000GeometryPacket, *, pml_layers: int = 0,
+                source_interface_z_index: int = 1,
+                grid: Maxwell3DGrid | None = None,
+                min_cells_per_feature: float = 4.0) -> dict:
+    grid = grid if grid is not None else _resolved_grid()
+    density = _annular_density(grid.shape, grid.spacing)
+    current = np.full(grid.shape, 1.0e3)
+    return sg.build_pf1000_material_partition(
+        packet,
+        grid=grid,
+        electron_density_m3=density,
+        current_density_norm_A_m2=current,
+        source_interface_z_index=source_interface_z_index,
+        pml_layers=pml_layers,
+        electron_density_floor_m3=1.0e18,
+        min_cells_per_feature=min_cells_per_feature,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Constructors preserve source conflicts without averaging.
+# ---------------------------------------------------------------------------
+
+def test_geometry_constructors_pin_one_source_revision() -> None:
+    """Each constructor pins one self-consistent KR source set."""
+    krauz = sg.PF1000GeometryPacket.krauz_2012()
+    akel = sg.PF1000GeometryPacket.akel_shot_12581()
+    scholz = sg.PF1000GeometryPacket.scholz_gribkov_revision()
+
+    assert krauz.geometry_source_tag == "pf1000_krauz2012"
+    assert akel.geometry_source_tag == "pf1000_akel_shot12581"
+    assert scholz.geometry_source_tag == "pf1000_scholz_gribkov_revision"
+    assert akel.scope_tag == "pf1000_akel_16kv_1p2torr_shot_12581"
+    for packet in (krauz, akel, scholz):
+        assert packet.can_support_first_principles_acceptance is False
+        assert packet.geometry_review_status == "geometry_candidate_not_reviewed"
+
+
+def test_conflicting_dimension_kept_explicit_not_averaged() -> None:
+    """The 12-vs-24 rod count and 460/480/600/450 mm anode length stay explicit.
+
+    [WP_N3_GEOMETRY_SOURCE_PACKET.md section 4] The conflicting candidate
+    values are held verbatim in PF1000GeometryConflict records; their
+    arithmetic mean never appears as a field value.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+
+    rod_conflict = packet.conflicts["cathode_rod_count"]
+    assert set(rod_conflict.candidate_values) == {12, 24}
+    # the arithmetic mean (18) is never an emitted value.
+    assert 18 not in rod_conflict.candidate_values
+
+    z0_conflict = packet.conflicts["anode_length_z0"]
+    assert set(z0_conflict.candidate_values) == {0.460, 0.480, 0.600, 0.450}
+    mean_z0 = sum(z0_conflict.candidate_values) / len(z0_conflict.candidate_values)
+    assert all(v != mean_z0 for v in z0_conflict.candidate_values)
+
+    # the conflicting fields carry value None and a conflict group, never a
+    # silently-chosen number.
+    assert packet.get_field("cathode_rod_count").status == "conflict"
+    assert packet.get_field("cathode_rod_count").value is None
+    assert packet.get_field("anode_length_m").status == "conflict"
+    assert packet.get_field("anode_length_m").value is None
+
+
+def test_conflict_record_rejects_single_candidate() -> None:
+    """A PF1000GeometryConflict needs at least two disagreeing candidates."""
+    with pytest.raises(ValueError, match="at least two candidate"):
+        sg.PF1000GeometryConflict(
+            group="g", field_name="f", units="m",
+            candidate_values=(0.1,), candidate_source_refs=("KR: x:1-2",),
+            reason="single value is not a conflict",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Missing bore / insulator / backplate fields remain blocked.
+# ---------------------------------------------------------------------------
+
+def test_missing_bore_insulator_backplate_fields_stay_blocked() -> None:
+    """The WP-N3 section-4 missing dimensions are typed `blocked`, never invented.
+
+    [WP_N3_GEOMETRY_SOURCE_PACKET.md section 4] anode bore radius/length,
+    anode end-cap, cathode rod length, insulator outer radius / wall, backplate
+    radial extent / axial thickness, chamber wall material / thickness.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    expected_blocked = {
+        "anode_hollow_bore_radius_m",
+        "anode_hollow_bore_length_m",
+        "anode_end_cap_diameter_m",
+        "cathode_rod_length_m",
+        "insulator_outer_radius_m",
+        "insulator_wall_thickness_m",
+        "backplate_radial_extent_m",
+        "backplate_axial_thickness_m",
+        "chamber_wall_material",
+        "chamber_wall_thickness_m",
+    }
+    assert set(packet.blocked_field_names()) == expected_blocked
+    for name in expected_blocked:
+        fld = packet.get_field(name)
+        assert fld.status == "blocked"
+        assert fld.value is None, f"{name}: blocked field must not have a value"
+        assert fld.blocker_id, f"{name}: blocked field must carry a blocker ID"
+        assert fld.blocker_id.startswith("PF1000-BLK-")
+
+
+def test_blocked_field_rejects_a_fabricated_value() -> None:
+    """A blocked PF1000GeometryField with a numeric value is rejected."""
+    with pytest.raises(ValueError, match="blocked field must have value None"):
+        sg.PF1000GeometryField(
+            name="anode_hollow_bore_radius_m", value=0.05, units="m",
+            status="blocked", scope_tag="pf1000_krauz2012",
+            blocker_id="PF1000-BLK-009-anode-bore-radius-no-kr-source",
+        )
+
+
+def test_blocked_field_requires_a_blocker_id() -> None:
+    """A blocked field with no blocker ID is rejected."""
+    with pytest.raises(ValueError, match="needs a blocker_id"):
+        sg.PF1000GeometryField(
+            name="anode_hollow_bore_radius_m", value=None, units="m",
+            status="blocked", scope_tag="pf1000_krauz2012",
+        )
+
+
+def test_source_supported_field_requires_a_source_ref() -> None:
+    """A source_supported field with no KR source ref is rejected."""
+    with pytest.raises(ValueError, match="needs source_ref"):
+        sg.PF1000GeometryField(
+            name="anode_radius_m", value=0.1155, units="m",
+            status="source_supported", scope_tag="pf1000_krauz2012",
+        )
+
+
+# ---------------------------------------------------------------------------
+# All source references exist locally.
+# ---------------------------------------------------------------------------
+
+def test_all_geometry_source_refs_exist_locally() -> None:
+    """Every KR file in PF1000_GEOMETRY_SOURCE_REFS exists under the repo."""
+    for ref in sg.PF1000_GEOMETRY_SOURCE_REFS:
+        path = ref.split(":", 1)[0]
+        assert path.startswith("KnowledgeReference/"), ref
+        assert (_REPO_ROOT / path).is_file(), f"missing KR source: {path}"
+
+
+def test_every_field_source_ref_points_at_an_existing_kr_file() -> None:
+    """Each source_supported field cites a KR file that exists locally."""
+    for ctor in (
+        sg.PF1000GeometryPacket.krauz_2012,
+        sg.PF1000GeometryPacket.akel_shot_12581,
+        sg.PF1000GeometryPacket.scholz_gribkov_revision,
+    ):
+        packet = ctor()
+        for name in packet.source_supported_field_names():
+            ref = packet.get_field(name).source_ref
+            assert ref is not None
+            path = ref.split(":", 1)[0]
+            assert (_REPO_ROOT / path).is_file(), f"{name}: missing KR {path}"
+
+
+# ---------------------------------------------------------------------------
+# The 10 masks; material sub-classes mutually disjoint; Auluck partition
+# exhaustive; Omega and source interface disjoint.
+# ---------------------------------------------------------------------------
+
+def test_partition_emits_all_ten_mask_classes() -> None:
+    """The partition emits all 10 handoff-required mask classes."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    assert set(partition["mask_packets"]) == set(sg.PF1000_MASK_CLASSES)
+    assert len(sg.PF1000_MASK_CLASSES) == 10
+
+
+def test_material_subclasses_are_mutually_disjoint() -> None:
+    """The five material sub-classes never share a cell."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    masks = partition["_label_masks"]
+    union = np.zeros(_GRID_SHAPE, dtype=bool)
+    for name in sg.PF1000_MATERIAL_SUBCLASSES:
+        mask = np.asarray(masks[name], dtype=bool)
+        assert not np.any(union & mask), f"{name} overlaps another sub-class"
+        union |= mask
+    assert partition["partition_constraints"][
+        "material_subclasses_mutually_disjoint"
+    ] is True
+
+
+def test_material_subclasses_exhaust_wall_material() -> None:
+    """The five material sub-classes partition wall_material_faces exactly."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    masks = partition["_label_masks"]
+    union = np.zeros(_GRID_SHAPE, dtype=bool)
+    for name in sg.PF1000_MATERIAL_SUBCLASSES:
+        union |= np.asarray(masks[name], dtype=bool)
+    assert np.array_equal(union, np.asarray(masks["wall_material_faces"], bool))
+    assert partition["partition_constraints"][
+        "material_subclasses_exhaust_wall_material"
+    ] is True
+
+
+def test_auluck_top_level_partition_remains_exhaustive() -> None:
+    """The four Auluck top-level labels still cover every cell exactly once."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    constraints = partition["partition_constraints"]
+    assert constraints["auluck_top_level_mutually_disjoint"] is True
+    assert constraints["auluck_top_level_exhaustive"] is True
+
+
+def test_omega_and_source_interface_are_disjoint() -> None:
+    """Omega never intersects the excluded terminal source interface."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    masks = partition["_label_masks"]
+    overlap = np.asarray(masks["omega_volume_cells"], bool) & np.asarray(
+        masks["terminal_source_interface_faces"], bool
+    )
+    assert not np.any(overlap)
+    assert partition["partition_constraints"][
+        "terminal_source_interface_disjoint_from_omega"
+    ] is True
+
+
+# ---------------------------------------------------------------------------
+# Mask hashes are stable; each material sub-class has a distinct hash.
+# ---------------------------------------------------------------------------
+
+def test_mask_hashes_are_deterministic() -> None:
+    """The same packet + grid always yields identical per-class hashes."""
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    first = _partition(packet)["manifest"]["mask_sha256_by_class"]
+    second = _partition(packet)["manifest"]["mask_sha256_by_class"]
+    assert first == second
+    for digest in first.values():
+        assert len(digest) == 64
+
+
+def test_each_material_subclass_has_a_distinct_hash() -> None:
+    """Anode/cathode/insulator/chamber/backplate masks each hash differently."""
+    partition = _partition(
+        sg.PF1000GeometryPacket.krauz_2012(),
+        pml_layers=0,
+        source_interface_z_index=1,
+    )
+    hashes = partition["manifest"]["mask_sha256_by_class"]
+    sub = [hashes[name] for name in sg.PF1000_MATERIAL_SUBCLASSES]
+    assert len(set(sub)) == len(sub), "material sub-class hashes collide"
+
+
+def test_partition_never_promotes_first_principles_acceptance() -> None:
+    """The partition packet and its manifest never claim acceptance."""
+    partition = _partition(sg.PF1000GeometryPacket.akel_shot_12581())
+    assert partition["can_support_first_principles_acceptance"] is False
+    assert partition["can_support_power_port_acceptance"] is False
+    assert partition["manifest"]["can_support_first_principles_acceptance"] is False
+    assert partition["status"].startswith("candidate_")
+
+
+# ---------------------------------------------------------------------------
+# Under-resolution gate: under-resolved rods fail closed.
+# ---------------------------------------------------------------------------
+
+def test_under_resolved_rods_fail_closed() -> None:
+    """A grid that cannot resolve the 80 mm rod diameter raises, not a mask.
+
+    [WP_N3_GEOMETRY_SOURCE_PACKET.md section 6 item 8] Under-resolution gate.
+    """
+    coarse = Maxwell3DGrid(shape=(10, 10, 10), spacing=(0.14, 0.14, 0.25))
+    with pytest.raises(ValueError, match="does not resolve"):
+        _partition(sg.PF1000GeometryPacket.krauz_2012(), grid=coarse)
+
+
+def test_resolved_grid_reports_no_under_resolution_flags() -> None:
+    """A grid that resolves the sourced features sets no under-resolution flag."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    flags = partition["manifest"]["under_resolution_flags"]
+    assert flags
+    assert not any(flags.values())
+
+
+# ---------------------------------------------------------------------------
+# Manifest validation: a manifest missing a mask hash is rejected.
+# ---------------------------------------------------------------------------
+
+def test_manifest_missing_a_mask_hash_is_rejected() -> None:
+    """PF1000MaskManifest construction fails closed when a class hash is absent."""
+    full = {name: ("0" * 64) for name in sg.PF1000_MASK_CLASSES}
+    partial = dict(full)
+    del partial["cathode_rod_faces"]
+    counts = {name: 0 for name in sg.PF1000_MASK_CLASSES}
+    with pytest.raises(ValueError, match="missing per-class hashes"):
+        sg.PF1000MaskManifest(
+            geometry_packet_id="pf1000_geometry_packet_krauz2012",
+            geometry_source_tag="pf1000_krauz2012",
+            source_refs=sg.PF1000_GEOMETRY_SOURCE_REFS,
+            conflict_groups=("cathode_rod_count",),
+            blocked_fields=("anode_hollow_bore_radius_m",),
+            grid_shape=(8, 8, 8),
+            grid_spacing_m=(0.1, 0.1, 0.1),
+            mask_sha256_by_class=partial,
+            mask_cell_counts=counts,
+            under_resolution_flags={},
+        )
+
+
+def test_manifest_rejects_a_first_principles_acceptance_claim() -> None:
+    """A manifest that claims first-principles acceptance is rejected."""
+    full = {name: ("0" * 64) for name in sg.PF1000_MASK_CLASSES}
+    counts = {name: 0 for name in sg.PF1000_MASK_CLASSES}
+    with pytest.raises(ValueError, match="must not claim first-principles"):
+        sg.PF1000MaskManifest(
+            geometry_packet_id="pf1000_geometry_packet_krauz2012",
+            geometry_source_tag="pf1000_krauz2012",
+            source_refs=sg.PF1000_GEOMETRY_SOURCE_REFS,
+            conflict_groups=(),
+            blocked_fields=(),
+            grid_shape=(8, 8, 8),
+            grid_spacing_m=(0.1, 0.1, 0.1),
+            mask_sha256_by_class=full,
+            mask_cell_counts=counts,
+            under_resolution_flags={},
+            can_support_first_principles_acceptance=True,
+        )
+
+
+def test_manifest_lists_all_mask_hashes_blocked_fields_and_source_refs() -> None:
+    """The emitted manifest carries every per-class hash, blocker, and KR ref."""
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    partition = _partition(packet)
+    manifest = partition["manifest"]
+    assert set(manifest["mask_sha256_by_class"]) == set(sg.PF1000_MASK_CLASSES)
+    assert set(manifest["mask_cell_counts"]) == set(sg.PF1000_MASK_CLASSES)
+    assert set(manifest["blocked_fields"]) == set(packet.blocked_field_names())
+    assert set(manifest["conflict_groups"]) == set(packet.conflicts)
+    assert tuple(manifest["source_refs"]) == sg.PF1000_GEOMETRY_SOURCE_REFS
+    assert manifest["geometry_source_tag"] == packet.geometry_source_tag
+
+
+# ===========================================================================
+# S3.3 -- WP-N3 SigmaPSurfacePacket structural tests.
+#
+# Authority: WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md section 3 schema; handoff
+# section "S3.3 Sigma_p Surface Packet Plumbing". S3.3 is plumbing only -- the
+# packet carries face geometry and per-operand status, never a term value.
+# ===========================================================================
+
+def test_sigma_p_blocked_packet_is_fully_fail_closed() -> None:
+    """The default blocked Sigma_p packet exposes no face set and no operands."""
+    sp = sg.SigmaPSurfacePacket.blocked()
+    assert sp.n_sigma_p_faces == 0
+    assert sp.has_sigma_p() is False
+    assert sp.has_velocity() is False
+    assert sp.has_resistivity() is False
+    assert sp.has_sign_convention() is False
+    assert sp.can_support_power_port_acceptance is False
+    assert sp.can_support_first_principles_acceptance is False
+    # every absent operand carries a typed blocker.
+    for operand in ("sigma_p", "v", "eta", "sign_convention"):
+        assert sp.operand_blockers[operand]
+
+
+def test_sigma_p_packet_rejects_a_power_port_acceptance_claim() -> None:
+    """A Sigma_p packet that claims power-port acceptance is rejected."""
+    blocked = sg.SigmaPSurfacePacket.blocked()
+    with pytest.raises(ValueError, match="must not claim power-port"):
+        replace_with_acceptance(blocked)
+
+
+def replace_with_acceptance(packet: sg.SigmaPSurfacePacket) -> sg.SigmaPSurfacePacket:
+    """Helper: rebuild a Sigma_p packet with the acceptance flag forced True."""
+    from dataclasses import replace
+
+    return replace(packet, can_support_power_port_acceptance=True)
+
+
+def test_sigma_p_packet_rejects_faces_exceeding_total_sigma() -> None:
+    """n_sigma_p_faces may never exceed face_count_total_sigma."""
+    with pytest.raises(ValueError, match="must not exceed"):
+        sg.SigmaPSurfacePacket(
+            status="candidate_sigma_p_surface_packet_not_validation",
+            source_refs=sg.SIGMA_P_SURFACE_SOURCE_REFS,
+            source_geometry_packet_id="pid",
+            source_geometry_hash="hash",
+            n_sigma_p_faces=11,
+            face_count_total_sigma=10,
+            geometry_review_status="geometry_candidate_not_reviewed",
+            face_ids=np.arange(11),
+            dS_outward_m2=np.zeros((11, 3)),
+            face_area_m2=np.ones(11),
+            outward_normal=np.zeros((11, 3)),
+            face_material_class=tuple("x" for _ in range(11)),
+            is_moving=np.ones(11, dtype=bool),
+            omega_side="omega_interior",
+            excluded_interface_side="excluded",
+            outward_normal_convention="outward_from_omega",
+            field_sampler_status={"B": "blocked", "E": "blocked", "J": "blocked"},
+            velocity_status="blocked",
+            resistivity_status="blocked",
+            centering={"time_centering": "candidate_step_consistent_not_accepted"},
+            quadrature="not_available",
+            sign_convention=None,
+            operand_blockers={},
+        )
+
+
+def test_sigma_p_builder_with_no_runtime_returns_blocked_packet() -> None:
+    """With no runtime Sigma_p face set the builder fails closed."""
+    sp = sg.build_sigma_p_surface_packet(None)
+    assert sp.status == "blocked_sigma_p_surface_packet_not_available"
+    assert sp.has_sigma_p() is False
+
+
+def test_sigma_p_builder_carries_geometry_packet_id_and_hash() -> None:
+    """The Sigma_p packet records which S3.2 geometry it was built from."""
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    partition = _partition(packet)
+    sp = sg.build_sigma_p_surface_packet(partition)
+    assert sp.source_geometry_packet_id == packet.geometry_packet_id
+
+
+def test_sigma_p_builder_does_not_fabricate_a_face_set() -> None:
+    """Even given a non-None runtime hint the builder never invents Sigma_p.
+
+    S3.3 is plumbing only; deriving the moving-boundary face set from reviewed
+    material masks is Sprint 4 work.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    partition = _partition(packet)
+    sp = sg.build_sigma_p_surface_packet(
+        partition, sigma_p_runtime={"placeholder": True}
+    )
+    assert sp.has_sigma_p() is False
+    assert sp.n_sigma_p_faces == 0
+    assert "sprint4" in sp.status
+
+
+def test_sigma_p_term_operand_map_covers_all_four_moving_terms() -> None:
+    """SIGMA_P_TERM_OPERANDS lists exactly the four Auluck eq. (6) Sigma_p terms."""
+    assert set(sg.SIGMA_P_TERM_OPERANDS) == {
+        "term_ii_motional_magnetic_sigma_p_J",
+        "term_iv_motional_electric_sigma_p_J",
+        "term_v_resistive_sigma_p_J",
+        "term_vi_anomalous_poloidal_sigma_p_J",
+    }
+    # term V is the only resistive term -- it alone needs eta.
+    assert "eta" in sg.SIGMA_P_TERM_OPERANDS["term_v_resistive_sigma_p_J"]
+    for key in (
+        "term_ii_motional_magnetic_sigma_p_J",
+        "term_iv_motional_electric_sigma_p_J",
+        "term_vi_anomalous_poloidal_sigma_p_J",
+    ):
+        assert "eta" not in sg.SIGMA_P_TERM_OPERANDS[key]
+        assert "v" in sg.SIGMA_P_TERM_OPERANDS[key]
+
+
+def test_sigma_p_packet_operand_status_reports_per_operand_availability() -> None:
+    """operand_status reflects each operand's availability flag."""
+    blocked = sg.SigmaPSurfacePacket.blocked()
+    assert blocked.operand_status("sigma_p") is False
+    assert blocked.operand_status("v") is False
+    assert blocked.operand_status("eta") is False
+    with pytest.raises(ValueError, match="unknown Sigma_p operand"):
+        blocked.operand_status("not_an_operand")
