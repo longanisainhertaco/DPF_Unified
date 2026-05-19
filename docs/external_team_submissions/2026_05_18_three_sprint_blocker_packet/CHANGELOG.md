@@ -181,11 +181,19 @@ invariants (F4); modified
 `tests/test_first_principles_segmented_whole_shot_combine.py`, and
 `sprint_2/WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`.
 
-The final commit of this pass — the F2 SRS/RTM traceability sync — also updates
-this `CHANGELOG.md`; by construction it cannot list its own hash and is
+`07fe76a` — docs: synchronize SRS/RTM and packet traceability after
+WP-N1B/WP-N4B implementation (F2); modified
+`docs/DPF_REQUIREMENTS_BASELINE.md`,
+`docs/SRS_TRACEABILITY_MATRIX.{csv,json}`, and packet traceability files.
+
+`9e1407d` — docs: add Codex Sprint 2 follow-up implementation audit and next
+directions; added
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT2_FOLLOWUP_2026_05_19.md`.
+
+The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
-(`76480b0..HEAD~1`), the same constraint Codex audit F4 accepted for
-`AUDIT_COMMANDS.md`.
+(`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.
+Every non-HEAD commit in the range must be listed here.
 
 ## Deleted / quarantined artifacts
 
