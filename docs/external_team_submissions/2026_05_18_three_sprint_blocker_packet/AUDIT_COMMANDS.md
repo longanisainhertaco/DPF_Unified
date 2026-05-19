@@ -44,3 +44,27 @@ defaults to UTC-today, and the committed baseline dated docs are
 `FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`; pinning the date
 makes the read-only check resolve to the committed baseline when re-run on any
 date. CI uses the same pinned form. See `UNKNOWN_AND_INFERENCE_LOG.md` entry I-1.
+
+## Current-HEAD verification — Sprint 1.1 (2026-05-19)
+
+Codex Sprint 1 audit RC-4 requires a verification block at the current HEAD.
+Recorded after the Sprint 1.1 hygiene fixes (RC-2…RC-7) and the Sprint 2
+proposal set were committed.
+
+- `git rev-parse HEAD`: `0bef78cdd04e933d62e404e24943f2bf28606be4`
+- `git status --short`: clean
+- `git diff --check`: clean
+- `git diff --exit-code`: clean
+- `ruff check src/ tests/`: `All checks passed!` (RC-2 — repository-wide ruff debt cleared)
+- `audit_first_principles_artifacts.py 'results/*.json'`: `PASS -- all first-principles artifacts pass C1-C8`
+- `audit_first_principles_artifacts.py 'results/**/*.json'`: `PASS -- all first-principles artifacts pass C1-C8` (C8 added per RC-5)
+- `verify_first_principles_source_truth_exhaustion.py --strict --check --date 2026_05_18`: exit 0
+- `verify_first_principles_module_source_vetting.py --strict --check --date 2026_05_18`: exit 0
+- focused Submission set (manifest, artifact-linter, segmented-whole-shot, srs-traceability, verification-check-mode, external-team-submission-package): `75 passed`
+- broad first-principles/hybrid suite (`tests/test_first_principles_*.py tests/test_hybrid_3d_*.py tests/test_cli_first_principles_3d.py`): `275 passed`
+
+A committed transcript cannot name the commit that contains it: this
+`AUDIT_COMMANDS.md` update is committed as the single documentation-only commit
+on top of `0bef78cdd04e933d62e404e24943f2bf28606be4`. The verified state above
+is that commit's tree. This is the same structural constraint documented for
+stale active artifacts in `sprint_1/ARTIFACT_REGENERATION_OR_QUARANTINE_PLAN.md`.
