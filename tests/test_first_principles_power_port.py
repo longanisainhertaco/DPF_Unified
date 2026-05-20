@@ -30,10 +30,10 @@ from dpf.fields.source_geometry import SigmaPSurfacePacket as _SigmaPSurfacePack
 from dpf.first_principles.power_port import (
     _SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED,
     _WP_N1B_LEDGER_KEYS,
-    _sigma_p_packet_from_ledger,
     ACCEPTANCE_BLOCKING_CHANNELS,
     POWER_PORT_SOURCE_REFS,
     REQUIRED_POWER_PORT_CHANNELS,
+    _sigma_p_packet_from_ledger,
     build_engineering_power_port_packet,
     build_wp_n1_auluck_power_port_ledger,
     build_wp_n1_negative_test_policy,

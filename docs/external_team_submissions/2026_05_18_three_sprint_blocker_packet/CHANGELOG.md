@@ -186,6 +186,11 @@ promote validation. A12 code-side: implementation was already named
 `certificate_gate.py` consistently in code; no in-code path corrections
 needed (the doc/RTM corrections were done in S3R.1).
 
+`b6f7698` — pre-commit linter auto-fixes + S3R.7 CHANGELOG sync. Citation form
+normalization on `WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md` and
+`WP_N5_CLOSURE_REGISTRY_SOURCE_AUDIT.md`; ruff hoisted imports in
+`tests/test_first_principles_neutron_authority.py`. No semantic change.
+
 ## Changed paths
 
 ### Sprint 1
