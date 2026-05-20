@@ -1,9 +1,9 @@
 {
   "capability_index": {
     "circuit_coupling": {
-      "direct_record_count": 96,
+      "direct_record_count": 98,
       "label": "Circuit coupling",
-      "record_count": 145,
+      "record_count": 147,
       "representative_records": [
         {
           "id": "kr:2025-double-3mj-dense-plasma-focus-thermonuclear-icf",
@@ -80,9 +80,9 @@
       ]
     },
     "collisions": {
-      "direct_record_count": 40,
+      "direct_record_count": 42,
       "label": "Collisions/stopping",
-      "record_count": 140,
+      "record_count": 143,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -159,9 +159,9 @@
       ]
     },
     "detector_response": {
-      "direct_record_count": 55,
+      "direct_record_count": 57,
       "label": "Detector/diagnostic response",
-      "record_count": 75,
+      "record_count": 77,
       "representative_records": [
         {
           "id": "kr:a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the",
@@ -238,9 +238,9 @@
       ]
     },
     "dpf_device": {
-      "direct_record_count": 157,
+      "direct_record_count": 161,
       "label": "DPF/device scope",
-      "record_count": 163,
+      "record_count": 168,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -317,9 +317,9 @@
       ]
     },
     "electrode_boundary": {
-      "direct_record_count": 146,
+      "direct_record_count": 150,
       "label": "Electrode/conductor/boundaries",
-      "record_count": 367,
+      "record_count": 371,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -554,9 +554,9 @@
       ]
     },
     "ionization_eos": {
-      "direct_record_count": 104,
+      "direct_record_count": 106,
       "label": "Ionization/EOS/transport coefficients",
-      "record_count": 338,
+      "record_count": 341,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -633,9 +633,9 @@
       ]
     },
     "maxwell_fields": {
-      "direct_record_count": 122,
+      "direct_record_count": 125,
       "label": "Maxwell/vacuum EM fields",
-      "record_count": 395,
+      "record_count": 398,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -712,9 +712,9 @@
       ]
     },
     "mhd": {
-      "direct_record_count": 71,
+      "direct_record_count": 74,
       "label": "MHD/fluid dynamics",
-      "record_count": 233,
+      "record_count": 237,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -791,9 +791,9 @@
       ]
     },
     "neutron_beam_target": {
-      "direct_record_count": 104,
+      "direct_record_count": 106,
       "label": "Beam-target neutron production",
-      "record_count": 151,
+      "record_count": 153,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -949,9 +949,9 @@
       ]
     },
     "numerical_method": {
-      "direct_record_count": 20,
+      "direct_record_count": 21,
       "label": "Numerical method/verification",
-      "record_count": 96,
+      "record_count": 98,
       "representative_records": [
         {
           "id": "kr:a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271",
@@ -1089,9 +1089,9 @@
       ]
     },
     "radiation": {
-      "direct_record_count": 143,
+      "direct_record_count": 146,
       "label": "Radiation/spectroscopy",
-      "record_count": 319,
+      "record_count": 322,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1168,9 +1168,9 @@
       ]
     },
     "startup_breakdown": {
-      "direct_record_count": 113,
+      "direct_record_count": 114,
       "label": "Startup/breakdown/liftoff",
-      "record_count": 217,
+      "record_count": 218,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1247,9 +1247,9 @@
       ]
     },
     "three_d_geometry": {
-      "direct_record_count": 79,
+      "direct_record_count": 81,
       "label": "True 3D geometry/instabilities",
-      "record_count": 273,
+      "record_count": 276,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1326,9 +1326,9 @@
       ]
     },
     "two_temperature": {
-      "direct_record_count": 59,
+      "direct_record_count": 61,
       "label": "Separate electron/ion temperature",
-      "record_count": 216,
+      "record_count": 218,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1407,7 +1407,7 @@
     "uncertainty_uq": {
       "direct_record_count": 25,
       "label": "Uncertainty/UQ",
-      "record_count": 81,
+      "record_count": 82,
       "representative_records": [
         {
           "id": "kr:bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860",
@@ -1484,9 +1484,9 @@
       ]
     },
     "validation_target": {
-      "direct_record_count": 121,
+      "direct_record_count": 125,
       "label": "Experimental validation target",
-      "record_count": 215,
+      "record_count": 219,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -2719,6 +2719,13 @@
       "path": "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
       "sha256": "9f338df658cfda87a0b0222496b337d3b99e1f01c7396bad362742d4f4dd5964",
       "size_bytes": 6858
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/braginskii-1965-table-2-TARGET-EXTRACTED.md",
+      "sha256": "ade1114f3e96536c34769d174c0b5674c94f88ec8d7ebdeac490978633bdf4ef",
+      "size_bytes": 11466
     },
     {
       "extension": ".json",
@@ -8288,6 +8295,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.json",
+      "sha256": "5bb51b5f4c4a3297b416c2d216a62fe1e57a8a908df329510d5a7d625ab4849a",
+      "size_bytes": 16408
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+      "sha256": "c35f175388712d1d55d3d160a31d98ae8357ae1a3c77d75baf4543444cff772b",
+      "size_bytes": 13988
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.json",
       "sha256": "f5d342a4b110aeb77e2ba528215db9a3bcb2b039cf95d924a2ffb63c0ca54ff5",
       "size_bytes": 158266
@@ -9590,6 +9611,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.json",
+      "sha256": "6c4bdd1c056e262345003f8dc28db6afafa20c404f5701af71da5ad455db5378",
+      "size_bytes": 15763
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md",
+      "sha256": "e18065aacb713faed88d98ec74d8896059e86878b47d9585dc0fc75732f60f1f",
+      "size_bytes": 13564
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/reducing-the-computational-complexity-of-implicit-schemes-in-the-modeling-of-kinetic-inelastic-5.json",
       "sha256": "3c5b726ff4cd4ebb8e7425bd22df59781522b4bb9b23556e9c6a0675def98222",
       "size_bytes": 230305
@@ -10696,6 +10731,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.json",
+      "sha256": "68be0177dfc26db1684428f51e3855e836f9f774079d6dec555f8aee916d4d3b",
+      "size_bytes": 15059
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.md",
+      "sha256": "90b4c11177db0038e806fe4a196bb710296e7e6711bc5887ca31d48af44c52b1",
+      "size_bytes": 12976
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/the-negative-microfilm-copy-of-this-dissertation-was-prepared-and-inspected-by-the-school-granting.json",
       "sha256": "6fc2c1a75be5f01f1497f8c0284f60e6402dddf9ea7b32f6f020e82536a020fa",
       "size_bytes": 808263
@@ -10776,6 +10825,20 @@
       "path": "KnowledgeReference/the-rigid-beam-modelfor-simulating-plasmas-generated-y-8201d8a7.md",
       "sha256": "ac4dbbf63d13a0abe74a96b9fdac6be642e3466b5ba60d1496a8f678aaf20373",
       "size_bytes": 51318
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
+      "path": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.json",
+      "sha256": "8dc1ec3bd4f93a87aba5afde63c27bbe6220e7213b4fb8966ba41b8c48eabd18",
+      "size_bytes": 23412
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.md",
+      "sha256": "d3b3e486ab9706d99e2b5b469d8a085e7e1c8e8a1b8d4cfba9a614071c06311b",
+      "size_bytes": 21120
     },
     {
       "extension": ".json",
@@ -11478,7 +11541,7 @@
       "size_bytes": 125119
     }
   ],
-  "generated_at_utc": "2026_05_20",
+  "generated_at_utc": "2026_05_18",
   "records": [
     {
       "accession": "",
@@ -14498,6 +14561,43 @@
       ],
       "title": "Bosch and Hale 1992 \u2014 Fusion Cross-Sections and Thermal Reactivities",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Supporting source for DPF/device scope; MHD/fluid dynamics; Ionization/EOS/transport coefficients; Collisions/stopping; Uncertainty/UQ; True 3D geometry/instabilities; Numerical method/verification.",
+      "first_principles_verdict": "supporting_method",
+      "hashes": {
+        "markdown_sha256": "ade1114f3e96536c34769d174c0b5674c94f88ec8d7ebdeac490978633bdf4ef"
+      },
+      "id": "kr:braginskii-1965-table-2-TARGET-EXTRACTED",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 0,
+      "paths": {
+        "json": null,
+        "markdown": "KnowledgeReference/braginskii-1965-table-2-TARGET-EXTRACTED.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "",
+      "source_pdf_relative_path": "",
+      "source_pdf_sha256": "",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "mhd",
+        "ionization_eos",
+        "collisions",
+        "uncertainty_uq",
+        "three_d_geometry",
+        "numerical_method"
+      ],
+      "title": "Braginskii 1965 Table 2 \u2014 Target-Extracted KR Packet (2026-05-20)",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -23532,6 +23632,45 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Electrode/conductor/boundaries; Radiation/spectroscopy; Beam-target neutron production; Detector/diagnostic response; Experimental validation target.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "5bb51b5f4c4a3297b416c2d216a62fe1e57a8a908df329510d5a7d625ab4849a",
+        "markdown_sha256": "c35f175388712d1d55d3d160a31d98ae8357ae1a3c77d75baf4543444cff772b"
+      },
+      "id": "kr:neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 4,
+      "paths": {
+        "json": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.json",
+        "markdown": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "szydlowski_miklaszewski_2001_nukleonika_v46s1p061.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions/szydlowski_miklaszewski_2001_nukleonika_v46s1p061.pdf",
+      "source_pdf_sha256": "dc61e78e8c97c72bad3624636afafc066cdfc73e2b73716d6e474a01bf785b2d",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "electrode_boundary",
+        "radiation",
+        "neutron_beam_target",
+        "detector_response",
+        "validation_target"
+      ],
+      "title": "Neutron and fast ion emission from PF-1000 facility equipped with new large electrodes",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Direct source candidate for Maxwell/vacuum EM fields; Hybrid PIC-fluid / kinetic ions; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Separate electron/ion temperature; Radiation/spectroscopy; Thermonuclear neutron production; additional tags omitted.",
       "first_principles_verdict": "directly_needed",
       "hashes": {
@@ -27118,6 +27257,44 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Radiation/spectroscopy; Detector/diagnostic response; Experimental validation target.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "6c4bdd1c056e262345003f8dc28db6afafa20c404f5701af71da5ad455db5378",
+        "markdown_sha256": "e18065aacb713faed88d98ec74d8896059e86878b47d9585dc0fc75732f60f1f"
+      },
+      "id": "kr:recent-progress-in-1-mj-plasma-focus-research-d3e51f6c",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 5,
+      "paths": {
+        "json": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.json",
+        "markdown": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "scholz_2001_recent_progress_1mj_pf_research.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/scholz_2001_recent_progress_1mj_pf_research.pdf",
+      "source_pdf_sha256": "d3e51f6c56f734e871f657f950486be441f75df9b75660e4524675738b002c75",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "radiation",
+        "detector_response",
+        "validation_target"
+      ],
+      "title": "Recent progress in 1 MJ Plasma-Focus research",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Supporting source for Maxwell/vacuum EM fields; MHD/fluid dynamics; Ionization/EOS/transport coefficients; Collisions/stopping; Radiation/spectroscopy; Numerical method/verification.",
       "first_principles_verdict": "supporting_method",
       "hashes": {
@@ -29565,6 +29742,46 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Separate electron/ion temperature; Collisions/stopping; True 3D geometry/instabilities.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "68be0177dfc26db1684428f51e3855e836f9f774079d6dec555f8aee916d4d3b",
+        "markdown_sha256": "90b4c11177db0038e806fe4a196bb710296e7e6711bc5887ca31d48af44c52b1"
+      },
+      "id": "kr:the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 3,
+      "paths": {
+        "json": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.json",
+        "markdown": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "bruzzone_bernal_2001_nukleonika_v46n2p059.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions/bruzzone_bernal_2001_nukleonika_v46n2p059.pdf",
+      "source_pdf_sha256": "73668d0e98604959a6fcd3e20adfd5d55d757dfad943972a2b56a9595f927112",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "electrode_boundary",
+        "ionization_eos",
+        "two_temperature",
+        "collisions",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "The need of using anomalous resistivity due to Lower Hybrid Instabilities in plasma-magnetic field interfaces",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Supporting source for Maxwell/vacuum EM fields; MHD/fluid dynamics; Ionization/EOS/transport coefficients; Collisions/stopping; Radiation/spectroscopy; Beam-target neutron production; Detector/diagnostic response; True 3D geometry/instabilities; additional tags omitted.",
       "first_principles_verdict": "supporting_method",
       "hashes": {
@@ -29784,6 +30001,50 @@
         "numerical_method"
       ],
       "title": "The Rigid Beam Modelfor Simulating Plasmas Generated y",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Circuit coupling; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Separate electron/ion temperature; Radiation/spectroscopy.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "8dc1ec3bd4f93a87aba5afde63c27bbe6220e7213b4fb8966ba41b8c48eabd18",
+        "markdown_sha256": "d3b3e486ab9706d99e2b5b469d8a085e7e1c8e8a1b8d4cfba9a614071c06311b"
+      },
+      "id": "kr:the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 5,
+      "paths": {
+        "json": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.json",
+        "markdown": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "bruzzone_2001_nukleonika_v46s1p003.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions/bruzzone_2001_nukleonika_v46s1p003.pdf",
+      "source_pdf_sha256": "66678097f945dd2e3ddc1098c7bebd373dce034640bebe08f0a20a20535df80e",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "circuit_coupling",
+        "electrode_boundary",
+        "ionization_eos",
+        "two_temperature",
+        "radiation",
+        "collisions",
+        "neutron_beam_target",
+        "three_d_geometry",
+        "validation_target",
+        "numerical_method"
+      ],
+      "title": "The role of anomalous resistivities in Plasma Focus discharges",
       "validation_status": "source_available_not_target_extracted",
       "year": null
     },
@@ -31673,41 +31934,41 @@
     "file_kind_counts": {
       "derived_chunk": 252,
       "figure_or_image": 92,
-      "source_json_metadata": 528,
-      "source_markdown": 530,
+      "source_json_metadata": 532,
+      "source_markdown": 535,
       "system_metadata": 7
     },
-    "json_metadata_count": 528,
-    "knowledge_reference_document_count": 530,
-    "knowledge_reference_file_count": 1409,
-    "markdown_source_count": 530,
+    "json_metadata_count": 532,
+    "knowledge_reference_document_count": 535,
+    "knowledge_reference_file_count": 1418,
+    "markdown_source_count": 535,
     "tag_counts": {
-      "circuit_coupling": 145,
-      "collisions": 140,
-      "detector_response": 75,
-      "dpf_device": 163,
-      "electrode_boundary": 367,
+      "circuit_coupling": 147,
+      "collisions": 143,
+      "detector_response": 77,
+      "dpf_device": 168,
+      "electrode_boundary": 371,
       "generalized_ohm": 61,
       "hybrid_pic_fluid": 97,
-      "ionization_eos": 338,
-      "maxwell_fields": 395,
-      "mhd": 233,
-      "neutron_beam_target": 151,
+      "ionization_eos": 341,
+      "maxwell_fields": 398,
+      "mhd": 237,
+      "neutron_beam_target": 153,
       "neutron_thermonuclear": 140,
-      "numerical_method": 96,
+      "numerical_method": 98,
       "poynting_power": 42,
-      "radiation": 319,
-      "startup_breakdown": 217,
-      "three_d_geometry": 273,
-      "two_temperature": 216,
-      "uncertainty_uq": 81,
-      "validation_target": 215
+      "radiation": 322,
+      "startup_breakdown": 218,
+      "three_d_geometry": 276,
+      "two_temperature": 218,
+      "uncertainty_uq": 82,
+      "validation_target": 219
     },
     "verdict_counts": {
       "background_only": 16,
-      "directly_needed": 157,
+      "directly_needed": 161,
       "not_relevant": 22,
-      "supporting_method": 335
+      "supporting_method": 336
     }
   }
 }

@@ -835,6 +835,15 @@ The user's parallel automation track for user-supplied papers
 `sprint6_user_target_extractions.py`) is a separate intake stream and
 is handled by its own commit chain.
 
+`7a34d0b` — Sprint 6 main commit (above section). A follow-up commit
+regenerates `docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`,
+`docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_18.{json,md}`, and
+`docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.{json,md}` so the new Sprint 6
+KR files (Bruzzone ×2, Miklaszewski 2001, Braginskii Table 2 target-
+extracted) are indexed and the periodic-audit `module_source_vetting` +
+`source_truth_exhaustion` gates pass with `strict_passed=true` and
+`open_issue_count=0` respectively (293 modules total, up from 291).
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

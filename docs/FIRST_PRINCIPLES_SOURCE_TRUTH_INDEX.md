@@ -1,6 +1,6 @@
 # First-Principles Source Truth Index
 
-Generated: 2026_05_20
+Generated: 2026_05_18
 
 ## Boundary
 
@@ -10,18 +10,18 @@ Generated: 2026_05_20
 
 ## Corpus Counts
 
-- KnowledgeReference files: 1409
-- Top-level source documents: 530
-- Top-level markdown source records: 530
-- Top-level JSON metadata records: 528
+- KnowledgeReference files: 1418
+- Top-level source documents: 535
+- Top-level markdown source records: 535
+- Top-level JSON metadata records: 532
 - External PDF records: 1
 
 | File kind | Count |
 | --- | ---: |
 | `derived_chunk` | 252 |
 | `figure_or_image` | 92 |
-| `source_json_metadata` | 528 |
-| `source_markdown` | 530 |
+| `source_json_metadata` | 532 |
+| `source_markdown` | 535 |
 | `system_metadata` | 7 |
 
 ## First-Principles Verdict Counts
@@ -29,34 +29,34 @@ Generated: 2026_05_20
 | Verdict | Count |
 | --- | ---: |
 | `background_only` | 16 |
-| `directly_needed` | 157 |
+| `directly_needed` | 161 |
 | `not_relevant` | 22 |
-| `supporting_method` | 335 |
+| `supporting_method` | 336 |
 
 ## Capability Coverage
 
 | Capability | Records | Direct | Representative source paths |
 | --- | ---: | ---: | --- |
-| DPF/device scope | 163 | 157 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Maxwell/vacuum EM fields | 395 | 122 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| MHD/fluid dynamics | 233 | 71 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-bennett-vorticity-a-family-of-nonlinear-shear-flow-stabiliz.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md` |
+| DPF/device scope | 168 | 161 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Maxwell/vacuum EM fields | 398 | 125 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| MHD/fluid dynamics | 237 | 74 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-bennett-vorticity-a-family-of-nonlinear-shear-flow-stabiliz.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md` |
 | Hybrid PIC-fluid / kinetic ions | 97 | 29 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md`<br>`KnowledgeReference/auluck-2023-poloidal-flux-survey.md` |
 | Generalized Ohm/current closure | 61 | 24 | `KnowledgeReference/a-comprehensive-analytical-model-of-the-dynamic-z-pinch.md`<br>`KnowledgeReference/a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the.md`<br>`KnowledgeReference/auluck-2021-dpf-circuit-element.md` |
-| Circuit coupling | 145 | 96 | `KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md`<br>`KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md` |
+| Circuit coupling | 147 | 98 | `KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md`<br>`KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md` |
 | Poynting/J.E power port | 42 | 9 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/auluck-2021-dpf-circuit-element.md` |
-| Startup/breakdown/liftoff | 217 | 113 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md` |
-| Electrode/conductor/boundaries | 367 | 146 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Ionization/EOS/transport coefficients | 338 | 104 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Separate electron/ion temperature | 216 | 59 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md` |
-| Radiation/spectroscopy | 319 | 143 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Collisions/stopping | 140 | 40 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Startup/breakdown/liftoff | 218 | 114 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md` |
+| Electrode/conductor/boundaries | 371 | 150 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Ionization/EOS/transport coefficients | 341 | 106 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Separate electron/ion temperature | 218 | 61 | `KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md`<br>`KnowledgeReference/2025-double-3mj-dense-plasma-focus-thermonuclear-icf.md`<br>`KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md` |
+| Radiation/spectroscopy | 322 | 146 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Collisions/stopping | 143 | 42 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
 | Thermonuclear neutron production | 140 | 69 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2025-bennett-vorticity-a-family-of-nonlinear-shear-flow-stabiliz.md` |
-| Beam-target neutron production | 151 | 104 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Detector/diagnostic response | 75 | 55 | `KnowledgeReference/a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the.md`<br>`KnowledgeReference/accelerationof-protonsand-deuterons-upto35mevand-generationof1-3f0ebd08.md`<br>`KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md` |
-| Uncertainty/UQ | 81 | 25 | `KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md`<br>`KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md`<br>`KnowledgeReference/experimental-investigation-of-plasma-electrode-interactions-on-the-zap-hd-sheared-flow-stabilized-z.md` |
-| True 3D geometry/instabilities | 273 | 79 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Experimental validation target | 215 | 121 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
-| Numerical method/verification | 96 | 20 | `KnowledgeReference/a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271.md`<br>`KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md`<br>`KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md` |
+| Beam-target neutron production | 153 | 106 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Detector/diagnostic response | 77 | 57 | `KnowledgeReference/a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the.md`<br>`KnowledgeReference/accelerationof-protonsand-deuterons-upto35mevand-generationof1-3f0ebd08.md`<br>`KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md` |
+| Uncertainty/UQ | 82 | 25 | `KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md`<br>`KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md`<br>`KnowledgeReference/experimental-investigation-of-plasma-electrode-interactions-on-the-zap-hd-sheared-flow-stabilized-z.md` |
+| True 3D geometry/instabilities | 276 | 81 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Experimental validation target | 219 | 125 | `KnowledgeReference/2019nrlplasma-formulary-037290d4.md`<br>`KnowledgeReference/2019nrlplasma-formulary-037290d4-2.md`<br>`KnowledgeReference/2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit.md` |
+| Numerical method/verification | 98 | 21 | `KnowledgeReference/a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271.md`<br>`KnowledgeReference/auluck-2021-dpf-circuit-element-EQUATIONS-VERIFIED.md`<br>`KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md` |
 
 ## Strongest First-Principles Source Material Found
 

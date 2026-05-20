@@ -4036,6 +4036,7 @@
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
         "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
         "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
+        "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md",
         "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
         "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md"
       ],
@@ -4043,7 +4044,7 @@
       "module": "dpf.fields.source_geometry",
       "path": "src/dpf/fields/source_geometry.py",
       "physics_facing": true,
-      "source_reference_count": 10,
+      "source_reference_count": 11,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5707,6 +5708,87 @@
       "path": "src/dpf/first_principles/sprint5_target_extractions.py",
       "physics_facing": true,
       "source_reference_count": 5,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [
+        "collisions",
+        "dpf_device",
+        "ionization_eos",
+        "mhd",
+        "numerical_method",
+        "three_d_geometry",
+        "uncertainty_uq"
+      ],
+      "claim_without_source": false,
+      "classification": "physics_source_referenced",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [
+        "supporting_method"
+      ],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [
+        "KnowledgeReference/braginskii-1965-table-2-TARGET-EXTRACTED.md"
+      ],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.sprint6_braginskii_table2_target_extraction",
+      "path": "src/dpf/first_principles/sprint6_braginskii_table2_target_extraction.py",
+      "physics_facing": true,
+      "source_reference_count": 1,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [
+        "circuit_coupling",
+        "collisions",
+        "detector_response",
+        "dpf_device",
+        "electrode_boundary",
+        "ionization_eos",
+        "maxwell_fields",
+        "mhd",
+        "radiation",
+        "startup_breakdown",
+        "three_d_geometry",
+        "two_temperature",
+        "validation_target"
+      ],
+      "claim_without_source": false,
+      "classification": "physics_source_referenced",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [
+        "directly_needed"
+      ],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [
+        "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.json",
+        "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md",
+        "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.json",
+        "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.md"
+      ],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.sprint6_user_target_extractions",
+      "path": "src/dpf/first_principles/sprint6_user_target_extractions.py",
+      "physics_facing": true,
+      "source_reference_count": 4,
       "status": "module_vetted_nonpromoting"
     },
     {
@@ -11458,8 +11540,8 @@
       "uncertainty_uq",
       "validation_target"
     ],
-    "knowledge_reference_document_count": 530,
-    "knowledge_reference_file_count": 1409,
+    "knowledge_reference_document_count": 535,
+    "knowledge_reference_file_count": 1418,
     "path": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
   },
   "strict_passed": true,
@@ -11473,7 +11555,7 @@
       "inactive_legacy_physics_not_first_principles_authority": 20,
       "nonphysics_infrastructure": 62,
       "package_export_surface": 32,
-      "physics_source_referenced": 4,
+      "physics_source_referenced": 6,
       "reduced_or_baseline_only_not_first_principles_authority": 29,
       "standards_scoped_implementation_constants": 1,
       "validation_workflow_not_active_first_principles": 44
@@ -11481,16 +11563,16 @@
     "inactive_physics_unvetted_count": 0,
     "missing_source_reference_count": 0,
     "module_role_review_required_count": 0,
-    "physics_facing_count": 178,
-    "source_referenced_count": 67,
+    "physics_facing_count": 180,
+    "source_referenced_count": 69,
     "status_counts": {
       "active_module_vetted_nonpromoting": 48,
       "baseline_only_nonpromoting": 29,
-      "module_vetted_nonpromoting": 169,
+      "module_vetted_nonpromoting": 171,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
     },
-    "total_modules": 291,
+    "total_modules": 293,
     "unsafe_claim_surface_count": 0
   }
 }
