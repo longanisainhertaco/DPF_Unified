@@ -1,0 +1,70 @@
+{
+  "pdf_path": "archive_reference_OLD/references/papers/mhd-numerics/braginskii_1965.pdf",
+  "pdf_sha256": "9687440676b43b02758373ef83d5a471730e9ca4bc207cb98f248fcafcb9d404",
+  "pdf_size_bytes": 5089370,
+  "pdf_total_pages": 56,
+  "render_dpi": 200,
+  "scan_layout_note": "Each PDF page renders as a 2-up scanned spread containing two consecutive journal pages. The Z-dependent transport-coefficient table (Table 2) occupies the RIGHT half of PDF page 26 = journal page 251.",
+  "renders": [
+    {
+      "pdf_page_one_indexed": 25,
+      "journal_pages": [
+        248,
+        249
+      ],
+      "filename": "pdf_p025_journal_p248_p249.png",
+      "width": 2195,
+      "height": 1695,
+      "dpi": 200,
+      "sha256": "26bb8a89de86970c5efa58ff35b9d6d9158b10486c2208cfacb7860f6760ea8d",
+      "contains_table_2": false,
+      "contains_eq_4_30_to_4_45_region": true
+    },
+    {
+      "pdf_page_one_indexed": 26,
+      "journal_pages": [
+        250,
+        251
+      ],
+      "filename": "pdf_p026_journal_p250_p251.png",
+      "width": 2195,
+      "height": 1695,
+      "dpi": 200,
+      "sha256": "c914283871fbf6f18a68b1ee91f08f051c7cb5d9e9feb9acceaa79c0606cb726",
+      "contains_table_2": true,
+      "contains_eq_4_30_to_4_45_region": true
+    },
+    {
+      "pdf_page_one_indexed": 27,
+      "journal_pages": [
+        252,
+        253
+      ],
+      "filename": "pdf_p027_journal_p252_p253.png",
+      "width": 2195,
+      "height": 1695,
+      "dpi": 200,
+      "sha256": "9588cc5bcd24af8d3be76708fdad96c70e38c11385e0fa691dee15ebf2d402ad",
+      "contains_table_2": false,
+      "contains_eq_4_30_to_4_45_region": true
+    },
+    {
+      "pdf_page_one_indexed": 28,
+      "journal_pages": [
+        254,
+        255
+      ],
+      "filename": "pdf_p028_journal_p254_p255.png",
+      "width": 2195,
+      "height": 1695,
+      "dpi": 200,
+      "sha256": "71ccbd5ae73ee386e2311920925982cfab021b3cec20c6052fd81a3c0f98f8da",
+      "contains_table_2": false,
+      "contains_eq_4_30_to_4_45_region": true
+    }
+  ],
+  "primary_render_for_table_2": "pdf_p026_journal_p250_p251.png",
+  "primary_render_journal_page_for_table_2": 251,
+  "primary_render_pdf_page_for_table_2": 26,
+  "table_2_position_in_render": "right half of the 2-up spread"
+}

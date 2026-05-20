@@ -1,0 +1,92 @@
+{
+  "date": "2026-05-20",
+  "sprint": "sprint6",
+  "applied": true,
+  "intake_dir": "downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions",
+  "files_scanned": 3,
+  "promoted_count": 3,
+  "skipped_existing_count": 0,
+  "failed_count": 0,
+  "promoted": [
+    {
+      "path": "bruzzone_bernal_2001_nukleonika_v46n2p059.pdf",
+      "sha256": "73668d0e98604959a6fcd3e20adfd5d55d757dfad943972a2b56a9595f927112",
+      "title": "The need of using anomalous resistivity due to Lower Hybrid Instabilities in plasma-magnetic field interfaces",
+      "authors": "Bruzzone, H.; Bernal, L.",
+      "journal": "Nukleonika 46(2):59-61 (2001)",
+      "url": "http://www.ichtj.waw.pl/ichtj/nukleon/back/full/vol46_2001/v46n2p059f.pdf",
+      "doi": "",
+      "pages": 3,
+      "nonempty_pages": 3,
+      "markdown": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.json",
+      "priority": "P1",
+      "scope": "dpf_lhi_anomalous_resistivity_quantitative_candidate",
+      "resolves_blocker_candidates": "CLOSURE-BLK-ANOM-001 (after target extraction + review)",
+      "status": "text_parity_extracted_review_needed",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "accepted_runtime_claim": false,
+      "can_support_first_principles_acceptance": false
+    },
+    {
+      "path": "bruzzone_2001_nukleonika_v46s1p003.pdf",
+      "sha256": "66678097f945dd2e3ddc1098c7bebd373dce034640bebe08f0a20a20535df80e",
+      "title": "The role of anomalous resistivities in Plasma Focus discharges",
+      "authors": "Bruzzone, H.",
+      "journal": "Nukleonika 46 suppl.1:S3-S7 (2001)",
+      "url": "http://www.ichtj.waw.pl/ichtj/nukleon/back/full/vol46_2001/v46s1p003f.pdf",
+      "doi": "",
+      "pages": 5,
+      "nonempty_pages": 5,
+      "markdown": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/the-role-of-anomalous-resistivities-in-plasma-focus-discharges-66678097.json",
+      "priority": "P1",
+      "scope": "dpf_anomalous_resistivity_dpf_scope_candidate",
+      "resolves_blocker_candidates": "CLOSURE-BLK-ANOM-001 (after target extraction + review)",
+      "status": "text_parity_extracted_review_needed",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "accepted_runtime_claim": false,
+      "can_support_first_principles_acceptance": false
+    },
+    {
+      "path": "szydlowski_miklaszewski_2001_nukleonika_v46s1p061.pdf",
+      "sha256": "dc61e78e8c97c72bad3624636afafc066cdfc73e2b73716d6e474a01bf785b2d",
+      "title": "Neutron and fast ion emission from PF-1000 facility equipped with new large electrodes",
+      "authors": "Szydlowski, A.; Scholz, M.; Karpinski, L.; Sadowski, M.; Tomaszewski, K.; Paduch, M.; Miklaszewski, R.",
+      "journal": "Nukleonika 46 suppl.1:S61-S64 (2001)",
+      "url": "http://www.ichtj.waw.pl/ichtj/nukleon/back/full/vol46_2001/v46s1p061f.pdf",
+      "doi": "",
+      "pages": 4,
+      "nonempty_pages": 4,
+      "markdown": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.json",
+      "priority": "P2",
+      "scope": "pf1000_large_electrodes_geometry_neutron_emission_candidate",
+      "resolves_blocker_candidates": "PF1000-BLK-009 hardware-scope hollow-bore (after target extraction + review)",
+      "status": "text_parity_extracted_review_needed",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      },
+      "accepted_runtime_claim": false,
+      "can_support_first_principles_acceptance": false
+    }
+  ],
+  "skipped_existing": [],
+  "failed": [],
+  "accepted_runtime_claim": false,
+  "can_support_first_principles_acceptance": false,
+  "guardrail": "Promotion is local KnowledgeReference text-parity ingestion only. Raw PDFs and text-parity KR records remain source_available_not_target_extracted until typed target extraction and review are complete. accepted_runtime_claim and can_support_first_principles_acceptance both remain False on every promoted record."
+}

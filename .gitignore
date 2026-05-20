@@ -131,3 +131,11 @@ tmp/pdfs/
 # stay out of git (mirror the pattern used for other intake directories).
 downloaded_books_papers/Research Papers/*-corpus-rescan/
 downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/
+
+# Sprint 6 free-acquisition PDF intake (Nukleonika open-access papers)
+# Tracked via docs/SPRINT6_KR_PROMOTION_2026_05_20.{json,md}; raw PDFs out of git
+downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions/
+
+# User-supplied source-intake PDFs for 2026-05-20 are tracked through
+# KnowledgeReference text records and docs/USER_SUPPLIED_PAPERS_INTAKE_*.json/md
+downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/

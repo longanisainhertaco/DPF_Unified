@@ -8,6 +8,34 @@ Plan note 2026-05-05:
 
 - The detailed forward plan requested as `CortexFindings.md` has been created in the repository. `CodexFindings.md` remains the running findings and ratchet log, while `CortexFindings.md` records the reviewed plan sequence from target authority through end-to-end high-fidelity demonstration.
 
+Ratchet update 2026-05-20, user-supplied Scholz/Bruzzone papers:
+
+- Reviewed `/Users/anthonyzamora/Downloads/scholz_Recent progress.pdf` and
+  `/Users/anthonyzamora/Downloads/The_need_of_using_anomalous_resisti.pdf`.
+- Promoted the new Scholz et al. 2001 PF-1000 hardware/diagnostics paper into
+  `KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md`
+  and `.json` as a text-parity record. SHA-256:
+  `d3e51f6c56f734e871f657f950486be441f75df9b75660e4524675738b002c75`;
+  parity passed.
+- Confirmed the Bruzzone/Bernal anomalous-resistivity file is an exact SHA
+  duplicate of the already-local KR source
+  `KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.json`.
+  No duplicate KR record was created.
+- Added `sprint6_user_supplied_target_extractions()` with a Scholz 2001
+  PF-1000 hardware packet: 24 cathode rods, 600 mm rod length, 32 mm rod
+  diameter, 400 mm outer-electrode diameter, 244 mm copper inner-electrode
+  diameter, 30 mm end-face hole, 62 mm interelectrode gap, 229 mm alumina
+  insulator diameter, 113 mm insulator length, bank/range metadata, selected
+  diagnostic geometry, and scoped neutron/X-ray context.
+- Corrected the geometry ledger language: `PF1000-BLK-004` and
+  `PF1000-BLK-015` now have Scholz 2001 source availability for the 2001
+  24-rod revision, but runtime revision mapping and mask review remain open.
+  The full hollow-bore runtime mask, insulator wall thickness, and backplate
+  dimensions remain blocked.
+- Boundary: no runtime geometry acceptance, anomalous-resistivity closure,
+  same-scope comparator, whole-shot readiness, or first-principles certificate
+  was promoted.
+
 Ratchet update 2026-05-20, Sprint 4 source-available target extractions:
 
 - Conducted the first target-extraction pass over already-local KR material

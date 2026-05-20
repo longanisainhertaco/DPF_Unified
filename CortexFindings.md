@@ -133,6 +133,20 @@ review. Do not promote its LLNL-like geometry, sheath-front comparison,
 cross-section fit, or total neutron-yield number into simulator acceptance until
 Step 2 creates typed KR target packets with same-scope traceability and review.
 
+2026-05-20 user-supplied source update: the Scholz et al. 2001 PF-1000
+hardware/diagnostics paper is now promoted into `KnowledgeReference/` and
+target-extracted in `sprint6_user_supplied_target_extractions()`. It provides
+source availability for the 2001 24-rod PF-1000 revision, including rod
+length, rod diameter, outer-electrode diameter, copper inner-electrode
+diameter, end-face hole, interelectrode gap, alumina-insulator diameter/length,
+bank operating range, and selected diagnostics. This reduces the geometry
+source gap for `PF1000-BLK-004` and `PF1000-BLK-015`; it does not accept the
+runtime 3-D mask because revision mapping, full hollow-bore authority,
+insulator wall thickness, backplate dimensions, dimensionality review, and
+same-scope evidence remain open. The user-supplied Bruzzone/Bernal LHI paper is
+an exact SHA duplicate of the already-local anomalous-resistivity KR record and
+was recorded without duplicate promotion.
+
 2026-05-20 source-target extraction update: the Sprint 4 extraction pass has
 converted six already-local KR/source-available items into typed, line-referenced
 target records in

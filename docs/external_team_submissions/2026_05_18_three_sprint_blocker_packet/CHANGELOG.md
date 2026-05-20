@@ -757,6 +757,84 @@ The structural blockers (3D-runner-vs-acceptance-gate code gap;
 `same_scope.py` forcing Te/Ti as blocking) remain open exactly as the
 Codex audit's "Structural Blockers Remain" section instructs.
 
+### Sprint 6 — Convert source leads into fail-closed KR evidence packets (2026-05-20)
+
+`97ebd94` — fix(s5-ws2): Codex Sprint 5 WS2 audit A1-A4 corrections —
+Bennett CH01 corroborative-only, Te/Ti narrow wording, "closes" → "may
+close source availability after acquisition + KR ingestion + target
+extraction + review", commit-count drift fix.
+
+`5719a69` — chore(audit): add the Codex-Claude dual-audit runner
+(`scripts/run_codex_claude_dual_audit.py` + 414-line implementation)
+and the supporting `docs/CODEX_CLAUDE_DUAL_AUDIT_AUTOMATION_2026_05_20.md`
+automation memo. No physics change; tooling only.
+
+The Sprint 6 main commit (next entry, hash assigned at commit time)
+delivers, per the Sprint 6 goal:
+
+- **WS1** Acquired three free Nukleonika PDFs (Bruzzone & Bernal 2001
+  v46n2p059, Bruzzone 2001 v46s1p003, Szydłowski/Miklaszewski 2001
+  v46s1p061) into
+  `downloaded_books_papers/Research Papers/2026-05-20-sprint6-acquisitions/`
+  with verified SHA-256 hashes; ledgered in
+  `docs/SPRINT6_KR_PROMOTION_2026_05_20.{json,md}`. Intake directory
+  added to `.gitignore`.
+- **WS2** KR text-parity ingestion via the new
+  `scripts/promote_sprint6_acquisitions_2026_05_20.py`. All three KR
+  records carry
+  `status = text_parity_extracted_review_needed`,
+  `validation_status = source_available_not_target_extracted`, and
+  `accepted_runtime_claim = false` in their `kr_ingestion` metadata.
+  PyMuPDF was installed in `.venv312` as a development-time dependency
+  for KR ingestion + render verification (not used by any runtime
+  physics path).
+- **WS3** Braginskii Table 2 target-extracted KR packet:
+  human-readable extraction at
+  `docs/extractions/BRAGINSKII_1965_TABLE_2_TARGET_EXTRACTION_2026_05_20.md`
+  + render evidence at
+  `docs/extractions/braginskii_1965_render_evidence/` (4 PNG pages at
+  200 dpi via PyMuPDF + per-page SHA-256 manifest) + Python module
+  `src/dpf/first_principles/sprint6_braginskii_table2_target_extraction.py`
+  + 14 enforcing tests in
+  `tests/test_sprint6_braginskii_table2.py`. Status transition recorded:
+  `CLOSURE-BLK-BRAG-001` from
+  `pdf_present_needs_rendered_page_or_ocr_verification` (Codex V1 row 8)
+  to
+  `target_extracted_source_supported_pending_runtime_consumption_and_review`.
+  PDF p.26 = journal pp.250-251 spread (2-up scanned); Table 2 on the
+  right half. Z=1 and Z=∞ columns two-pass verified; Z=2/3/4 cells
+  render-visible but five cells explicitly flagged
+  `review_required` for re-verification at consumption time. Runtime
+  acceptance NOT granted.
+- **WS4** Four source-equivalence review packets under
+  `docs/source_equivalence_review/`: LXCat (D₂ Townsend / e-neutral),
+  SRIM/NIST/IAEA (deuteron stopping), Munro 2012 (Brysk Doppler
+  re-derivation), PlasmaPy `formulary.braginskii` (cross-check only).
+  **No source-equivalence granted.** Each packet documents the
+  substitution argument FOR/AGAINST and lists pre-conditions for a
+  future review-session acceptance vote.
+- **WS5** Two structural-code-sprint design memos (NOT implementations):
+  `docs/SPRINT6_WS5_PACKAGE_NATIVE_3D_ACCEPTANCE_CONTRACT_DESIGN_2026_05_20.md`
+  proposes a named 3D acceptance contract function dispatching from the
+  existing readiness gate;
+  `docs/SPRINT6_WS5_CLAIM_LIMITED_TE_TI_OBSERVABLE_EXCLUSION_DESIGN_2026_05_20.md`
+  proposes an `ObservableExclusion` per-channel state (Te + Ti only)
+  with certificate-text + reviewer signoff requirements — explicitly
+  NOT a generic `caveat_accepted` lane, per the Codex Sprint 5 WS2
+  audit's structural-blockers guidance.
+- **DoD** Dual Codex-Claude audit packet at
+  `docs/SPRINT6_DUAL_CODEX_CLAUDE_AUDIT_PACKET_2026_05_20.md` records
+  both lanes (Codex directives carried forward + Claude implementation
+  evidence) and the convergence table (both lanes agree across 6
+  questions).
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance`
+remain `false` everywhere. No runtime physics is accepted by Sprint 6.
+The user's parallel automation track for user-supplied papers
+(`USER_SUPPLIED_PAPERS_INTAKE_2026_05_20.{json,md}` and
+`sprint6_user_target_extractions.py`) is a separate intake stream and
+is handled by its own commit chain.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

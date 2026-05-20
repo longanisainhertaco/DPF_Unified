@@ -1,0 +1,15 @@
+{
+  "source_pdf": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/scholz_2001_recent_progress_1mj_pf_research.pdf",
+  "source_pdf_sha256": "d3e51f6c56f734e871f657f950486be441f75df9b75660e4524675738b002c75",
+  "rendered_pages": [
+    {
+      "pdf_page": 2,
+      "journal_page": 36,
+      "artifact": "docs/extractions/scholz_2001_recent_progress_render_evidence/pdf_p002_journal_p036-2.png",
+      "artifact_sha256": "4c9657f07a2a2caf6949e677f426d0ede55a3700238214e687c874b34ae60c84",
+      "dpi": 180,
+      "purpose": "visual cross-check of Figure 1 PF-1000 geometry labels"
+    }
+  ],
+  "guardrail": "Render evidence is a cross-check for target extraction only. It does not accept runtime geometry masks or first-principles validation."
+}
