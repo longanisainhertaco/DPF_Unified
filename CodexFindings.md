@@ -6269,3 +6269,19 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   `T_e/T_i`, X-ray, neutron spectrum, and anisotropy remain blocked. The next
   useful parallel work is KR promotion plus typed target extraction, followed by
   source-index alias reconciliation.
+
+### 2026-05-20: P0 Corpus-Rescan PDFs Promoted To KR
+
+- Work completed:
+  promoted the two P0 raw-PDF candidates from the corpus rescan into
+  fail-closed `KnowledgeReference/` text-parity records using the scoped
+  wrapper `scripts/promote_corpus_rescan_2026_05_20.py`. The promotion ledger is
+  `docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.md`.
+- Promoted records:
+  `KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md`
+  with 9 page-range chunks, and
+  `KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md`.
+- Boundary:
+  promotion is source ingestion only. Figures, tables, numeric targets, runtime
+  closures, and first-principles claims remain unavailable until source-fidelity
+  review and typed target extraction are complete.

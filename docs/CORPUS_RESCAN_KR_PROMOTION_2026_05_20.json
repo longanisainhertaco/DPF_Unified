@@ -1,0 +1,63 @@
+{
+  "date": "2026-05-20",
+  "applied": true,
+  "intake_dir": "downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan",
+  "rescan_report": "docs/FIRST_PRINCIPLES_PDF_CORPUS_RESCAN_2026_05_20.md",
+  "files_scanned": 2,
+  "promoted_count": 2,
+  "skipped_existing_count": 0,
+  "failed_count": 0,
+  "promoted": [
+    {
+      "path": "plasma-04-00033.pdf",
+      "sha256": "1385adeb2220fa403ed604fd0ac43a1f069560f4633b29d7017ff48d8a14452d",
+      "title": "Update on the Scientific Status of the Plasma Focus",
+      "doi": "10.3390/plasma4030033",
+      "pages": 220,
+      "nonempty_pages": 220,
+      "markdown": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md",
+      "markdown_chunks": [
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0001-0025.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0026-0050.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0051-0075.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0076-0100.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0101-0125.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0126-0150.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0151-0175.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0176-0200.md",
+        "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0201-0220.md"
+      ],
+      "json": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.json",
+      "priority": "P0",
+      "scope": "review_source_dpf_phenomenology_models_diagnostics",
+      "status": "text_parity_extracted_review_needed",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      }
+    },
+    {
+      "path": "bernard1977.pdf",
+      "sha256": "f0a3910de0a4b04b8f070353d612a47594a081ee3fc3c573a7e013a0a85b9db9",
+      "title": "The Dense Plasma Focus - A High Intensity Neutron Source",
+      "doi": "",
+      "pages": 28,
+      "nonempty_pages": 28,
+      "markdown": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md",
+      "markdown_chunks": [],
+      "json": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.json",
+      "priority": "P0",
+      "scope": "neutron_source_diagnostics_and_mechanism_review",
+      "status": "text_parity_extracted_review_needed",
+      "parity": {
+        "passed": true,
+        "failures": [],
+        "markdown_missing_pages": []
+      }
+    }
+  ],
+  "skipped_existing": [],
+  "failed": [],
+  "guardrail": "Promotion is local KnowledgeReference ingestion only. Raw PDFs and text-parity KR records remain source_available_not_target_extracted until typed target extraction and review are complete."
+}

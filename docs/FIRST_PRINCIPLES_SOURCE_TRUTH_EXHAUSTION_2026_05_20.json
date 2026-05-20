@@ -1,0 +1,205 @@
+{
+  "authority_policy": "KnowledgeReference plus explicitly user-verified staged sources only; this audit is non-promoting and does not invoke validation workflow",
+  "date": "2026_05_20",
+  "exhausted": true,
+  "gate_docs": {
+    "expected_doc_count": 14,
+    "finish_line_plan": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
+    "fp_gate_count": 16,
+    "fp_gate_rows": [
+      {
+        "gate": "FP-0",
+        "name": "Execution focus freeze",
+        "status": "Partial"
+      },
+      {
+        "gate": "FP-1",
+        "name": "Package-native PF-1000/Akel engineering probe",
+        "status": "Source-scoped PF-1000/Akel 3D deck added; CLI/API routing improved; app routing still partial"
+      },
+      {
+        "gate": "FP-2",
+        "name": "Global limiter registry and readiness gate",
+        "status": "Source search complete for first pass; package-native packet remains blocked"
+      },
+      {
+        "gate": "FP-3",
+        "name": "Limiter-free or physically bounded candidate",
+        "status": "Source search complete for first pass; full-horizon limiter-zero proof remains blocked"
+      },
+      {
+        "gate": "FP-4",
+        "name": "Numerical reference workflow",
+        "status": "Source search complete for first pass; accepted numerical-fidelity packet remains blocked"
+      },
+      {
+        "gate": "FP-5",
+        "name": "Source-backed startup BVP",
+        "status": "Source search complete for first pass; package-native packet remains blocked for accepted whole-shot BVP"
+      },
+      {
+        "gate": "FP-6",
+        "name": "Resolved power-port circuit coupling",
+        "status": "Source search complete for first pass; candidate packet remains blocked for accepted power authority"
+      },
+      {
+        "gate": "FP-7",
+        "name": "3D hybrid PIC-fluid dimensionality and handoff",
+        "status": "Source search complete for first pass; package-native packet remains blocked for accepted whole-shot authority"
+      },
+      {
+        "gate": "FP-8",
+        "name": "Physics closure packets",
+        "status": "Source search complete for first pass; package-native closure matrix remains blocked for acceptance"
+      },
+      {
+        "gate": "FP-9",
+        "name": "Same-scope source availability decision",
+        "status": "Source search complete for first pass; PF-1000/Akel remains engineering/reference candidate only"
+      },
+      {
+        "gate": "FP-10",
+        "name": "Accepted waveform and phase evidence",
+        "status": "Source search complete for first pass; accepted waveform/phase packet remains blocked by review"
+      },
+      {
+        "gate": "FP-11",
+        "name": "Accepted spatial, field, and temperature evidence",
+        "status": "Source search complete for first pass; accepted spatial/field/temperature packet remains blocked"
+      },
+      {
+        "gate": "FP-12",
+        "name": "Mechanism-separated neutron authority",
+        "status": "Source search complete for first pass; accepted neutron-authority packet remains blocked"
+      },
+      {
+        "gate": "FP-13",
+        "name": "Comparator and UQ matrix complete",
+        "status": "Source search complete for first pass; accepted comparator/UQ matrix remains blocked"
+      },
+      {
+        "gate": "FP-14",
+        "name": "Validation certificate and release decision",
+        "status": "Source search complete for first pass; accepted certificate remains blocked"
+      },
+      {
+        "gate": "FP-15",
+        "name": "Generalized DPF-machine path",
+        "status": "Source search complete for first pass; generalized claim remains blocked"
+      }
+    ],
+    "missing_docs": [],
+    "present_doc_count": 14,
+    "source_queue": "docs/SCIENTIFIC_CLOSURE_SOURCE_QUEUE.md"
+  },
+  "generated_at_utc": "2026_05_20",
+  "inventory": {
+    "actual_file_count": 1409,
+    "changed_indexed_files": [],
+    "index_path": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json",
+    "index_stats": {
+      "external_pdf_count": 1,
+      "file_kind_counts": {
+        "derived_chunk": 252,
+        "figure_or_image": 92,
+        "source_json_metadata": 528,
+        "source_markdown": 530,
+        "system_metadata": 7
+      },
+      "json_metadata_count": 528,
+      "knowledge_reference_document_count": 530,
+      "knowledge_reference_file_count": 1409,
+      "markdown_source_count": 530,
+      "tag_counts": {
+        "circuit_coupling": 145,
+        "collisions": 140,
+        "detector_response": 75,
+        "dpf_device": 163,
+        "electrode_boundary": 367,
+        "generalized_ohm": 61,
+        "hybrid_pic_fluid": 97,
+        "ionization_eos": 338,
+        "maxwell_fields": 395,
+        "mhd": 233,
+        "neutron_beam_target": 151,
+        "neutron_thermonuclear": 140,
+        "numerical_method": 96,
+        "poynting_power": 42,
+        "radiation": 319,
+        "startup_breakdown": 217,
+        "three_d_geometry": 273,
+        "two_temperature": 216,
+        "uncertainty_uq": 81,
+        "validation_target": 215
+      },
+      "verdict_counts": {
+        "background_only": 16,
+        "directly_needed": 157,
+        "not_relevant": 22,
+        "supporting_method": 335
+      }
+    },
+    "indexed_file_count": 1409,
+    "missing_indexed_files": [],
+    "unindexed_files": []
+  },
+  "issue_groups": {
+    "changed_indexed_files": [],
+    "ledger_missing_files": [],
+    "ledger_parity_failures": [],
+    "ledger_without_kr_record": [],
+    "missing_gate_source_search_docs": [],
+    "missing_indexed_files": [],
+    "missing_triage_docs": [],
+    "promoting_source_target_packets": [],
+    "unindexed_source_files": []
+  },
+  "ledgers": {
+    "ledger_missing_files": [],
+    "ledger_parity_failures": [],
+    "ledger_without_kr_record": [],
+    "ledgers": [
+      {
+        "failed_count": 0,
+        "files_scanned": 8,
+        "path": "docs/USER_VALIDATED_PDF_KR_PROMOTION_2026_05_15.json",
+        "promoted_count": 6,
+        "skipped_existing_count": 2
+      },
+      {
+        "failed_count": 0,
+        "files_scanned": 7,
+        "path": "docs/USER_VALIDATED_THESES_KR_PROMOTION_2026_05_16.json",
+        "promoted_count": 7,
+        "skipped_existing_count": 0
+      }
+    ]
+  },
+  "next_required_actions": [
+    "source-truth exhaustion gate is clean; proceed to the next physics-code blocker"
+  ],
+  "open_issue_count": 0,
+  "scope": "first_principles_source_truth_exhaustion",
+  "source_targets": {
+    "packets": {
+      "gv_verified_shot_targets": {
+        "accepted_for_whole_shot_first_principles": false,
+        "source_status": "user_verified_local_download_not_knowledge_reference_promoted"
+      },
+      "may15_user_validated_source_targets": {
+        "accepted_for_whole_shot_first_principles": false,
+        "source_status": "all_eight_user_verified_validated_research_sources"
+      },
+      "may16_validated_thesis_source_targets": {
+        "accepted_for_whole_shot_first_principles": false,
+        "source_status": "all_seven_user_verified_validated_documents_promoted_to_knowledge_reference"
+      }
+    },
+    "promoting_source_target_packets": []
+  },
+  "triage_docs": {
+    "expected_doc_count": 3,
+    "missing_docs": [],
+    "present_doc_count": 3
+  }
+}

@@ -1,9 +1,9 @@
 {
   "capability_index": {
     "circuit_coupling": {
-      "direct_record_count": 95,
+      "direct_record_count": 96,
       "label": "Circuit coupling",
-      "record_count": 144,
+      "record_count": 145,
       "representative_records": [
         {
           "id": "kr:2025-double-3mj-dense-plasma-focus-thermonuclear-icf",
@@ -80,9 +80,9 @@
       ]
     },
     "collisions": {
-      "direct_record_count": 39,
+      "direct_record_count": 40,
       "label": "Collisions/stopping",
-      "record_count": 139,
+      "record_count": 140,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -159,9 +159,9 @@
       ]
     },
     "detector_response": {
-      "direct_record_count": 54,
+      "direct_record_count": 55,
       "label": "Detector/diagnostic response",
-      "record_count": 74,
+      "record_count": 75,
       "representative_records": [
         {
           "id": "kr:a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the",
@@ -238,9 +238,9 @@
       ]
     },
     "dpf_device": {
-      "direct_record_count": 155,
+      "direct_record_count": 157,
       "label": "DPF/device scope",
-      "record_count": 161,
+      "record_count": 163,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -317,9 +317,9 @@
       ]
     },
     "electrode_boundary": {
-      "direct_record_count": 145,
+      "direct_record_count": 146,
       "label": "Electrode/conductor/boundaries",
-      "record_count": 366,
+      "record_count": 367,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -396,9 +396,9 @@
       ]
     },
     "generalized_ohm": {
-      "direct_record_count": 23,
+      "direct_record_count": 24,
       "label": "Generalized Ohm/current closure",
-      "record_count": 60,
+      "record_count": 61,
       "representative_records": [
         {
           "id": "kr:a-comprehensive-analytical-model-of-the-dynamic-z-pinch",
@@ -554,9 +554,9 @@
       ]
     },
     "ionization_eos": {
-      "direct_record_count": 103,
+      "direct_record_count": 104,
       "label": "Ionization/EOS/transport coefficients",
-      "record_count": 337,
+      "record_count": 338,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -633,9 +633,9 @@
       ]
     },
     "maxwell_fields": {
-      "direct_record_count": 121,
+      "direct_record_count": 122,
       "label": "Maxwell/vacuum EM fields",
-      "record_count": 394,
+      "record_count": 395,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -712,9 +712,9 @@
       ]
     },
     "mhd": {
-      "direct_record_count": 70,
+      "direct_record_count": 71,
       "label": "MHD/fluid dynamics",
-      "record_count": 232,
+      "record_count": 233,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -791,9 +791,9 @@
       ]
     },
     "neutron_beam_target": {
-      "direct_record_count": 103,
+      "direct_record_count": 104,
       "label": "Beam-target neutron production",
-      "record_count": 150,
+      "record_count": 151,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -870,9 +870,9 @@
       ]
     },
     "neutron_thermonuclear": {
-      "direct_record_count": 68,
+      "direct_record_count": 69,
       "label": "Thermonuclear neutron production",
-      "record_count": 139,
+      "record_count": 140,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1089,9 +1089,9 @@
       ]
     },
     "radiation": {
-      "direct_record_count": 142,
+      "direct_record_count": 143,
       "label": "Radiation/spectroscopy",
-      "record_count": 318,
+      "record_count": 319,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1168,9 +1168,9 @@
       ]
     },
     "startup_breakdown": {
-      "direct_record_count": 112,
+      "direct_record_count": 113,
       "label": "Startup/breakdown/liftoff",
-      "record_count": 216,
+      "record_count": 217,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1247,9 +1247,9 @@
       ]
     },
     "three_d_geometry": {
-      "direct_record_count": 78,
+      "direct_record_count": 79,
       "label": "True 3D geometry/instabilities",
-      "record_count": 272,
+      "record_count": 273,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1326,9 +1326,9 @@
       ]
     },
     "two_temperature": {
-      "direct_record_count": 58,
+      "direct_record_count": 59,
       "label": "Separate electron/ion temperature",
-      "record_count": 215,
+      "record_count": 216,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1484,9 +1484,9 @@
       ]
     },
     "validation_target": {
-      "direct_record_count": 119,
+      "direct_record_count": 121,
       "label": "Experimental validation target",
-      "record_count": 213,
+      "record_count": 215,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -4469,6 +4469,69 @@
       "path": "KnowledgeReference/chunks/toro2009-433cd861/pages-0726-0738.md",
       "sha256": "2773ba511e9589014ff9cbf81b213b93b38182dee9c8388d6a510b821d8437d3",
       "size_bytes": 35078
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0001-0025.md",
+      "sha256": "09a7d6b834baee4144b5f130b07b02c94f38cd2c6350730fe125458478e5d9c8",
+      "size_bytes": 79968
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0026-0050.md",
+      "sha256": "517f43188362ce2480bd70517c867dafb8125e2652d65b29a35021b7f77f48f0",
+      "size_bytes": 74970
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0051-0075.md",
+      "sha256": "70bc39417bc8fe0bdaf5aea262e95b3604082d39e5238004f9d38cfabada7d4d",
+      "size_bytes": 87340
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0076-0100.md",
+      "sha256": "c4de0b287724eb6dd2ae4ac7a12c4fe9735dadcbd373d3d33097355cdc16b1f0",
+      "size_bytes": 62172
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0101-0125.md",
+      "sha256": "b1b153f25600e0eda818b4ea5f081b680cf2996e8934c14a19065dc057af3cf1",
+      "size_bytes": 65347
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0126-0150.md",
+      "sha256": "2ff31472d4a472a3378ace55fbaed5bc43f90d8c094de9d9f1d39877d3383fd9",
+      "size_bytes": 86817
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0151-0175.md",
+      "sha256": "6a0da7afd52d023a692d12aa3b3c05c85e2b0bbd12a51873392c6c93fd9bfb68",
+      "size_bytes": 75605
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0176-0200.md",
+      "sha256": "9c83e458250d1160000b2a1c80d8f4ed6c091b280f4afa2536978b1e73ee73eb",
+      "size_bytes": 100060
+    },
+    {
+      "extension": ".md",
+      "kind": "derived_chunk",
+      "path": "KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0201-0220.md",
+      "sha256": "9fc4fde40a045a23b9ff72c5c3af4672a33310b95dfdb73fa6f57eb716e80abb",
+      "size_bytes": 108764
     },
     {
       "extension": ".md",
@@ -10507,6 +10570,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.json",
+      "sha256": "111da90ec8dfe7b13ed27eb34b420746dfaf8a853ae3426ca6d5ccfad86de313",
+      "size_bytes": 99850
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md",
+      "sha256": "429a89efa7fa8a832c560718123a34f43fa2bee0252d4c28be5fc43242b078be",
+      "size_bytes": 94672
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.json",
       "sha256": "a1551fec1e498fd6beaff1bfc49cc31f57a732874e41e5177cf9a4637aedb0bc",
       "size_bytes": 410795
@@ -11039,6 +11116,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.json",
+      "sha256": "9e475932f80b6f215f93a23d4d490d0a5d154463d5e2b983e574bdec5b785ac1",
+      "size_bytes": 759936
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md",
+      "sha256": "c525805aa0f618447f2d21f42419a458fe292781d992b2f75be01dfe64870110",
+      "size_bytes": 1989
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/useful-relations-in-cartesian-and-in-curvilinear-coordinates.json",
       "sha256": "dc456b194c75ccfb58edd66f47c99b623364006b2adcf28c43eaf3c3850114a9",
       "size_bytes": 6031
@@ -11387,7 +11478,7 @@
       "size_bytes": 125119
     }
   ],
-  "generated_at_utc": "2026_05_18",
+  "generated_at_utc": "2026_05_20",
   "records": [
     {
       "accession": "",
@@ -29104,6 +29195,53 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Generalized Ohm/current closure; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "111da90ec8dfe7b13ed27eb34b420746dfaf8a853ae3426ca6d5ccfad86de313",
+        "markdown_sha256": "429a89efa7fa8a832c560718123a34f43fa2bee0252d4c28be5fc43242b078be"
+      },
+      "id": "kr:the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 28,
+      "paths": {
+        "json": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.json",
+        "markdown": "KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "bernard1977.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/bernard1977.pdf",
+      "source_pdf_sha256": "f0a3910de0a4b04b8f070353d612a47594a081ee3fc3c573a7e013a0a85b9db9",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "generalized_ohm",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "ionization_eos",
+        "two_temperature",
+        "radiation",
+        "collisions",
+        "neutron_thermonuclear",
+        "neutron_beam_target",
+        "detector_response",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "The Dense Plasma Focus - A High Intensity Neutron Source",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Direct source candidate for Maxwell/vacuum EM fields; Hybrid PIC-fluid / kinetic ions; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; MHD/fluid dynamics; Separate electron/ion temperature; Ionization/EOS/transport coefficients; additional tags omitted.",
       "first_principles_verdict": "directly_needed",
       "hashes": {
@@ -30598,6 +30736,39 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Experimental validation target.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "9e475932f80b6f215f93a23d4d490d0a5d154463d5e2b983e574bdec5b785ac1",
+        "markdown_sha256": "c525805aa0f618447f2d21f42419a458fe292781d992b2f75be01dfe64870110"
+      },
+      "id": "kr:update-on-the-scientific-status-of-the-plasma-focus-1385adeb",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 220,
+      "paths": {
+        "json": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.json",
+        "markdown": "KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "plasma-04-00033.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/plasma-04-00033.pdf",
+      "source_pdf_sha256": "1385adeb2220fa403ed604fd0ac43a1f069560f4633b29d7017ff48d8a14452d",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "validation_target"
+      ],
+      "title": "Update on the Scientific Status of the Plasma Focus",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "No direct first-principles use found by this keyword index; keep searchable as background unless manual review says otherwise.",
       "first_principles_verdict": "not_relevant",
       "hashes": {
@@ -31500,41 +31671,41 @@
   "stats": {
     "external_pdf_count": 1,
     "file_kind_counts": {
-      "derived_chunk": 243,
+      "derived_chunk": 252,
       "figure_or_image": 92,
-      "source_json_metadata": 526,
-      "source_markdown": 528,
+      "source_json_metadata": 528,
+      "source_markdown": 530,
       "system_metadata": 7
     },
-    "json_metadata_count": 526,
-    "knowledge_reference_document_count": 528,
-    "knowledge_reference_file_count": 1396,
-    "markdown_source_count": 528,
+    "json_metadata_count": 528,
+    "knowledge_reference_document_count": 530,
+    "knowledge_reference_file_count": 1409,
+    "markdown_source_count": 530,
     "tag_counts": {
-      "circuit_coupling": 144,
-      "collisions": 139,
-      "detector_response": 74,
-      "dpf_device": 161,
-      "electrode_boundary": 366,
-      "generalized_ohm": 60,
+      "circuit_coupling": 145,
+      "collisions": 140,
+      "detector_response": 75,
+      "dpf_device": 163,
+      "electrode_boundary": 367,
+      "generalized_ohm": 61,
       "hybrid_pic_fluid": 97,
-      "ionization_eos": 337,
-      "maxwell_fields": 394,
-      "mhd": 232,
-      "neutron_beam_target": 150,
-      "neutron_thermonuclear": 139,
+      "ionization_eos": 338,
+      "maxwell_fields": 395,
+      "mhd": 233,
+      "neutron_beam_target": 151,
+      "neutron_thermonuclear": 140,
       "numerical_method": 96,
       "poynting_power": 42,
-      "radiation": 318,
-      "startup_breakdown": 216,
-      "three_d_geometry": 272,
-      "two_temperature": 215,
+      "radiation": 319,
+      "startup_breakdown": 217,
+      "three_d_geometry": 273,
+      "two_temperature": 216,
       "uncertainty_uq": 81,
-      "validation_target": 213
+      "validation_target": 215
     },
     "verdict_counts": {
       "background_only": 16,
-      "directly_needed": 155,
+      "directly_needed": 157,
       "not_relevant": 22,
       "supporting_method": 335
     }

@@ -66,10 +66,16 @@ validation scope changes or new same-scope measurements are obtained.
 
 ## P0 Raw PDF Promotion Candidates
 
+2026-05-20 status: P0 promotion is complete. The two raw candidates below were
+staged into
+`downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/` and promoted
+as fail-closed `KnowledgeReference/` text-parity records. The promotion ledger is
+`docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.md`.
+
 | Priority | PDF | Why it matters | Required next action |
 | --- | --- | --- | --- |
-| P0 | `/Users/anthonyzamora/Downloads/plasma-04-00033.pdf` | Auluck et al. 2021, "Update on the Scientific Status of the Plasma Focus," DOI `10.3390/plasma4030033`. The spot read shows dense coverage of DPF phenomenology, beam-target versus thermonuclear interpretation, PF-1000 material, startup/sheath formation, diagnostics, ion acceleration, neutron spectra, and modeling limits. | Promote into `KnowledgeReference/`; run source-fidelity review; target-extract only blocker-relevant claims. |
-| P0 | `/Users/anthonyzamora/Downloads/bernard1977.pdf` | Bernard et al. 1977, "The Dense Plasma Focus - A High Intensity Neutron Source." The spot read shows neutron time/space/spectrum diagnostics, beam-target versus thermonuclear discrimination, density/temperature diagnostics, anisotropy, and detector method material. | Promote into `KnowledgeReference/`; target-extract neutron mechanism and diagnostic requirements. |
+| P0 | `/Users/anthonyzamora/Downloads/plasma-04-00033.pdf` | Auluck et al. 2021, "Update on the Scientific Status of the Plasma Focus," DOI `10.3390/plasma4030033`. The spot read shows dense coverage of DPF phenomenology, beam-target versus thermonuclear interpretation, PF-1000 material, startup/sheath formation, diagnostics, ion acceleration, neutron spectra, and modeling limits. | Promoted to `KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md` with 9 page-range chunks. Next: source-fidelity review and target extraction only for blocker-relevant claims. |
+| P0 | `/Users/anthonyzamora/Downloads/bernard1977.pdf` | Bernard et al. 1977, "The Dense Plasma Focus - A High Intensity Neutron Source." The spot read shows neutron time/space/spectrum diagnostics, beam-target versus thermonuclear discrimination, density/temperature diagnostics, anisotropy, and detector method material. | Promoted to `KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md`. Next: target-extract neutron mechanism and diagnostic requirements. |
 
 Expected extraction products:
 
@@ -153,19 +159,17 @@ Required improvement:
 
 ## Recommended Parallel Work While The Team Works
 
-1. Promote P0 raw PDFs into `KnowledgeReference/`:
-   `/Users/anthonyzamora/Downloads/plasma-04-00033.pdf` and
-   `/Users/anthonyzamora/Downloads/bernard1977.pdf`.
-2. Target-extract the P0/P1 already-KR records listed above into a typed source
+1. Target-extract the newly promoted P0 records and the P0/P1 already-KR records
+   listed above into a typed source
    target packet, without promoting validation state.
-3. Run a deeper full-text and table/figure pass over the top 50 rescanned PDFs,
+2. Run a deeper full-text and table/figure pass over the top 50 rescanned PDFs,
    not the full 847-PDF set, to keep the review auditable.
-4. Repair or reacquire corrupted candidate PDFs only when they map to an active
+3. Repair or reacquire corrupted candidate PDFs only when they map to an active
    blocker. The one worth tracking is the corrupted electrode-heating PDF under
    `archive_reference_OLD/references/papers/core-dpf/`.
-5. Add the source-index reconciliation check so duplicate aliases stop
+4. Add the source-index reconciliation check so duplicate aliases stop
    producing fake gaps.
-6. Keep same-scope PF-1000/Akel 16 kV comparator channels blocked until a
+5. Keep same-scope PF-1000/Akel 16 kV comparator channels blocked until a
    reviewed source is found or the validation scope changes.
 
 ## Handoff Instructions

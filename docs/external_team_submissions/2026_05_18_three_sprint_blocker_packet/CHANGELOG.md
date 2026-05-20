@@ -304,6 +304,22 @@ leave Te/Ti as model-only). Supporting doc:
 `docs/FIRST_PRINCIPLES_PDF_CORPUS_RESCAN_2026_05_20.md`. `CodexFindings.md`
 and `CortexFindings.md` updated.
 
+`da97ed2` — Sprint 4 wrap-up: housekeeping fixes. Regenerated
+`docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.json` for the new
+Sprint 4 constants (closure blocker IDs, neutron method-context labels);
+strict_passed=true, 290 modules. Applied ruff I001 import-sort to
+`tests/test_first_principles_closures.py`. Added `tmp/pdfs/` to `.gitignore`.
+
+### Sprint 4 corpus-rescan KR promotion (2026-05-20)
+
+Promoted two P0 candidate PDFs into KR as `text_parity_extracted_review_needed`:
+`bernard1977.pdf` (Bernard 1977 "The Dense Plasma Focus - A High Intensity
+Neutron Source", 28 pages) and `plasma-04-00033.pdf` ("Update on the
+Scientific Status of the Plasma Focus", 220 pages). New scoped utility
+`scripts/promote_corpus_rescan_2026_05_20.py` records the promotion;
+`docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.{json,md}` capture the ledger.
+Source-truth indices regenerated for the 2026-05-20 baseline date.
+
 ## Changed paths
 
 ### Sprint 1

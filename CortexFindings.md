@@ -6838,3 +6838,19 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   Same-scope PF-1000/Akel 16 kV `V(t)`, `T_e/T_i`, X-ray, neutron spectrum, and
   anisotropy remain blocked. The next parallel source work is KR promotion,
   target extraction, and source-index alias reconciliation.
+
+### 2026-05-20: P0 Corpus-Rescan PDFs Promoted To KR
+
+- Work completed:
+  promoted the two P0 raw-PDF candidates from the corpus rescan into
+  fail-closed `KnowledgeReference/` text-parity records using
+  `scripts/promote_corpus_rescan_2026_05_20.py`. The durable promotion ledger is
+  `docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.md`.
+- Promoted records:
+  `KnowledgeReference/update-on-the-scientific-status-of-the-plasma-focus-1385adeb.md`
+  with 9 page-range chunks, and
+  `KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md`.
+- Boundary:
+  promotion did not change validation or runtime acceptance state. The promoted
+  records remain `source_available_not_target_extracted` until source-fidelity
+  review and typed target extraction are complete.
