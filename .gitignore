@@ -105,6 +105,7 @@ docs/DPF_CRITICAL_REVIEW.md
 docs/DPF_PHASE_U_PROPOSAL.md
 docs/dpf-unified-system.mmd
 docs/gemini-strategy-query-*.md
+docs/dual_agent_audits/
 scripts/consolidate_tests.py
 tests/CONSOLIDATION_PLAN.md
 reference/

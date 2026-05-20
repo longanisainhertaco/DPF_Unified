@@ -39,7 +39,7 @@ blocker remains source-not-yet-extracted, not "closed."
 | `NEUTRON-BLK-004` (Brysk Doppler) | Brysk, H. (1973) *Plasma Phys.* 15:1282 | **Munro 2012** OSTI report (LLNL-JRNL-676641) re-derives the canonical FWHM = 82.5√(T_i[keV]) keV formula with citation | https://www.osti.gov/biblio/1240980 |
 | `CLOSURE-BLK-BRAG-001` (Braginskii Z-table) | Braginskii (1965) — PDF on disk, render-verified | **PlasmaPy** `formulary.braginskii.ClassicalTransport` hardcoded Z=1,2,3,4,∞ coefficient tables (cross-validation reference) | https://docs.plasmapy.org/en/stable/formulary/braginskii.html |
 | `STARTUP-BVP-CH02` (D₂ Townsend/Paschen) | Raizer 1991 §4 — ~$40/chapter Springer | **LXCat** Phelps/Morgan/Biagi D₂ cross-section datasets | https://www.lxcat.net (free account required) |
-| `CLOSURE-BLK-D2-EN-001` (D₂ e-neutral) | Itikawa & Mason 2005 *JPCRD* 34:1 | LXCat (same as above; one acquisition resolves both) | https://www.lxcat.net |
+| `CLOSURE-BLK-D2-EN-001` (D₂ e-neutral) | Itikawa & Mason 2005 *JPCRD* 34:1 | LXCat (same dataset family; candidate source-availability lane for both after source-equivalence review) | https://www.lxcat.net |
 
 ## 3. Combined acquisition matrix update (V2 ledger context)
 

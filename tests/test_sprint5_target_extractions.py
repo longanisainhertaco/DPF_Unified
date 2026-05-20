@@ -281,6 +281,17 @@ def test_sprint5_audit_a3_free_acquisitions_memo_softens_closes_language() -> No
         "source availability only after acquisition, KR ingestion, "
         "target extraction, and review."
     )
+    forbidden = (
+        "one acquisition resolves both",
+        "automatically closes",
+        "download closes",
+    )
+    lowered = normalized.lower()
+    for phrase in forbidden:
+        assert phrase not in lowered, (
+            "Sprint 5 free-acquisition memo still contains closure language "
+            f"that can be read as blocker acceptance: {phrase!r}"
+        )
 
 
 def test_sprint5_audit_a1_bennett_corroborative_fill_pressure() -> None:

@@ -6949,3 +6949,20 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   this audit does not promote startup, Braginskii transport, anomalous
   resistivity, neutron stopping, Te/Ti, or whole-shot first-principles runtime
   acceptance.
+
+### 2026-05-20: Sprint 5 WS2 Corrections Re-Audited And Dual-Agent Automation Added
+
+- Work completed:
+  checked correction commit `97ebd94`, tightened one leftover A3 wording issue,
+  and added `scripts/run_codex_claude_dual_audit.py` plus
+  `docs/CODEX_CLAUDE_DUAL_AUDIT_AUTOMATION_2026_05_20.md`.
+- Audit state:
+  the added A1-A3 regression tests exist and the focused audit suite now passes
+  with `56 passed`. The current local checkout is dirty due to unrelated
+  type-changed downloaded-PDF symlinks and `external/athenak`; this does not
+  change the A1-A3 verdict but must block release handoff until explicitly
+  cleaned or waived.
+- Boundary:
+  Claude automation is advisory and no-edit by default. It captures evidence
+  and optional Claude critique for Codex review; it does not accept any physics
+  claim or whole-shot runtime certificate.

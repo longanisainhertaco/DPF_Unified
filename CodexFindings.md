@@ -6409,3 +6409,24 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   no runtime physics or acceptance state changed. Braginskii Table 2 was
   independently render-checked from the local PDF, but it is still not a KR
   target-extracted runtime authority record.
+
+### 2026-05-20: Sprint 5 WS2 Corrections Re-Audited And Dual-Agent Automation Added
+
+- Work completed:
+  re-audited the team's A1-A4 correction commit `97ebd94`; added the
+  Codex-Claude automation runner
+  `scripts/run_codex_claude_dual_audit.py` and the operating instructions in
+  `docs/CODEX_CLAUDE_DUAL_AUDIT_AUTOMATION_2026_05_20.md`.
+- Audit result:
+  A1 and A2 are closed. A3 was mostly closed, but one remaining phrase in the
+  free-acquisition table still said "one acquisition resolves both"; that was
+  tightened to source-availability language and protected by a regression test.
+  The focused audit suite passes with `56 passed`.
+- Caveat:
+  the periodic audit log reports 10/10 PASS at `97ebd94`, but the current local
+  checkout later became dirty through type-changed symlinks in downloaded PDF
+  folders plus `external/athenak`; those unrelated paths were not reverted.
+- Boundary:
+  the dual-agent runner writes evidence packets and can invoke Claude as a
+  no-edit advisory reviewer. It does not promote physics, modify acceptance
+  ledgers, or replace Codex source-grounded audit.
