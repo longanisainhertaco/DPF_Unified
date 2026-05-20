@@ -88,6 +88,11 @@ package-consistency test `test_changelog_covers_all_commits_since_base` exempts
 only HEAD because the changelog is committed in the same commit that changes it
 (it checks `76480b0..HEAD~1`).
 
+`770984b` is the Codex Sprint 3 completion-audit wrapper commit: it adds
+`docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_COMPLETION_2026_05_19.md`,
+`docs/FIRST_PRINCIPLES_SPRINT3R_REMEDIATION_HANDOFF_2026_05_19.md`, and updates
+the active findings docs with the Sprint 3R gate decision.
+
 ## Changed paths
 
 ### Sprint 1
