@@ -48,7 +48,7 @@ The DPF starts with gas breakdown along the exterior of the cylindrical
 insulator at the base of the anode; this surface discharge takes "from a few
 to a hundred nanoseconds" and is non-equilibrium kinetic (avalanche,
 streamers)
-[KR: gribkov-2007-pf1000-jphysd-part2.md L62-66, prose, "first stage is gas
+[KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66]: "first stage is gas
 breakdown developing along the exterior of a cylindrical insulator ... takes
 from a few to a hundred nanoseconds"].
 
@@ -56,30 +56,24 @@ The Townsend mechanism is governed by the primary ionization coefficient
 `alpha` and the secondary coefficient `gamma`. The self-sustaining Townsend
 breakdown condition for an inhomogeneous field is
 `gamma * integral_0^d ( alpha(x) * exp( integral_0^x alpha(x') dx' ) ) dx = 1`
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L196-198, Eq. (6)]. The streamer-mechanism alternative is
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:196-198]. The streamer-mechanism alternative is
 `integral_0^d alpha(x) dx = 10.5`
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L201-203, Eq. (7)].
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:201-203].
 Symbols/units: `alpha` primary (impact) ionization coefficient [1/m]; `gamma`
 dimensionless secondary coefficient; `d` inter-electrode (or insulator surface)
 path length [m]; `x` distance along the field [m].
 Validity range: `gamma` ranges 1e-3..1e-8 and depends on electrode material,
 treatment, and gas
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L116-117, prose]. Townsend dominates when the gap is comparable
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:116-117]. Townsend dominates when the gap is comparable
 to the electron mean free path; streamer dominates when the gap greatly
 exceeds it
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L218-224, prose].
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:218-224].
 The first Townsend coefficient by definition is
 `alpha(x) = n0 * integral_{eps_i}^{inf} sigma_i(eps) * v * f(eps) deps`
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L130-133, Eq. (1)]; with a Maxwellian `f(eps)` this reduces to
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:130-133]; with a Maxwellian `f(eps)` this reduces to
 `alpha(Te) = (4 * M * sigma_i0) / (R * sqrt(pi) * p) * ((eps_i + 2*Te)/Te) *
 exp(-eps_i/Te)`
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L150-156, Eq. (3)], where `p` gas pressure, `M` gas molar mass,
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:150-156], where `p` gas pressure, `M` gas molar mass,
 `sigma_i0` effective ionization cross section at energy `eps_i`, `R` Rydberg
 constant, `Te` free-electron temperature [same units as `eps_i`].
 
@@ -88,8 +82,7 @@ that Paschen-type physics is "fragile" for DPFs: the Paschen curve refers to
 ions traveling to the cathode and releasing secondaries in a feedback loop,
 "this is not the type of breakdown that occurs in DPFs and thus, once a plasma
 is formed, such physics should no longer apply"
-[KR: effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md
-L631-639, prose]. Therefore the Townsend/Paschen equations above are
+[KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:631-639]. Therefore the Townsend/Paschen equations above are
 `candidate` for a DPF surface-flashover BVP, not `supported`, because the
 corpus explicitly says the canonical Paschen feedback loop does not describe
 DPF insulator breakdown. A DPF surface-flashover model needs a surface-physics
@@ -107,26 +100,22 @@ occurs along the insulator and this breakdown essentially determines [the
 sheath]"; the breakdown "takes place in several places around the insulator"
 and forms "a radial, striated light pattern ... a few tenths of a microsecond
 after application of the breakdown voltage"
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L512-514 and L583-589, prose]. PF-1000 confirms the same: the first stage is a
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:512-514,583-589]. PF-1000 confirms the same: the first stage is a
 surface discharge along the cylindrical insulator
 [KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66].
 
 Energy-density scaling exists in the corpus: Kies estimated an upper limit of
 energy density into the sheath of about 100 J/cm^2 that decreases with
 increasing insulator radius
-[KR: the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md
-L538-541, prose]. Symbol/unit: surface energy density [J/cm^2]; decreases with
+[KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:538-541]. Symbol/unit: surface energy density [J/cm^2]; decreases with
 insulator radius [m].
 
 Pressure regime ties breakdown morphology to sheath quality: at higher
 pressure the sheath is filamentary (detrimental to neutrons); at lower
 pressure breakdown is uniform (better pinch)
-[KR: the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md
-L527-534, prose]. The optimum operating pressure across
+[KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:527-534]. The optimum operating pressure across
 successful DPFs centers near ~10 mbar regardless of device energy
-[KR: the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md
-L569-573, prose].
+[KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:569-573].
 
 What the corpus does NOT supply: an equation for surface-flashover delay,
 striation-to-uniform transition time, or the flashover voltage as a closed
@@ -140,12 +129,10 @@ Preionization is documented as a real DPF startup control. A beta-source
 the gas; measured neutron yield rose by up to 25% (Ni-63) and by (50 +/- 5)%
 (U-238), with a broadened emission pressure range and improved shot-to-shot
 reproducibility
-[KR: the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md
-L1490-1517, prose]. The mechanism stated by the corpus: improved ionization at
+[KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:1490-1517]. The mechanism stated by the corpus: improved ionization at
 insulator breakdown creates a more uniform current sheet, and a larger active
 volume
-[KR: the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md
-L1518-1530, prose].
+[KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:1518-1530].
 
 What the corpus does NOT supply: a quantitative preionization model (seed
 electron density [m^-3] or ionization fraction as a function of source
@@ -158,8 +145,7 @@ generator.
 The secondary coefficient `gamma` is defined as the number of new free
 secondary electrons per primary avalanche; it appears in the Townsend
 condition Eq. (6) of section 1.1
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L113-117, prose]. Range: `gamma` is 1e-3..1e-8 and depends on electrode
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:113-117]. Range: `gamma` is 1e-3..1e-8 and depends on electrode
 material and surface treatment [same lines].
 
 A modelable boundary condition exists in the corpus. Secondary electron
@@ -167,8 +153,7 @@ emission from positive-ion impact on the cathode is "a crucial mechanism that
 sustains the negative corona discharge" and is modeled as an electron flux
 boundary condition `Gamma_e = gamma * c_p * |u_p|` [mol m^-2 s^-1], with
 `gamma` a dimensionless number between 1e-3 and 1e-2
-[KR: theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md
-L1187-1196, prose with the flux relation]. Symbols/units: `c_p` positive-ion
+[KR: KnowledgeReference/theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md:1187-1196]. Symbols/units: `c_p` positive-ion
 molar concentration [mol m^-3]; `u_p` ion drift speed [m s^-1]; `Gamma_e`
 electron number flux [mol m^-2 s^-1]; `gamma` dimensionless.
 
@@ -188,17 +173,14 @@ The corpus describes the surface plasma qualitatively. After flashover the
 current flows through the plasma on the insulator surface from the inner
 electrode along the insulator to the outer electrode end plate; this is the
 "surface discharge" stage of kinetic character
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L605-607, prose; gribkov-2007-pf1000-jphysd-part2.md L62-66, prose]. The
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:605-607] [KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66]. The
 initial breakdown has a multifilamentary but cylindrically symmetric pattern;
 the filaments must blend into a uniform radially symmetric sheath about 1
 microsecond after high-voltage application for a strong focus
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L585-589 and L646-651, prose]. The corpus also gives the inverse-pinch phase
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:585-589,646-651]. The corpus also gives the inverse-pinch phase
 in which `F = i dL x B` (per-segment magnetic force) drives the surface plasma
 radially outward from the insulator to the cathode
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L632-639, prose with the force relation `F = i dL x B`].
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:632-639].
 
 What the corpus does NOT supply: surface-plasma sheet density, thickness,
 conductivity, or temperature as a closed runtime field set. The 1-microsecond
@@ -210,19 +192,15 @@ Initial E-field: a radial E-field exists between the coaxial electrodes when
 high voltage is applied; the corpus states the coaxial geometry and the
 applied-voltage breakdown but does not give a closed initial-E field for the
 BVP
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L508-512, prose].
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:508-512].
 
 Initial B-field and circuit: the corpus gives the azimuthal field from the
 discharge current `B_theta = mu * I / (2 * pi * r)` [T]
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L748-751, Eq. (34)] and the external-circuit current equation
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:748-751] and the external-circuit current equation
 `d(L0 * I)/dt = V0 - r0*I - U_DPF - (1/C0) * integral I dt`
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L753-757, Eq. (35)], with `L0 = 110 nH`, `V0 = 10 kV`,
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:753-757], with `L0 = 110 nH`, `V0 = 10 kV`,
 `r0 = 12 mOhm` for that LLNL-like device
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L757-760, prose].
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:757-760].
 Symbols/units: `I` circuit current [A]; `r` radius [m]; `mu` permeability
 [H m^-1]; `L0` circuit inductance [H]; `V0` charge voltage [V]; `r0` stray
 resistance [Ohm]; `C0` capacitance [F]; `U_DPF` device voltage drop [V].
@@ -232,8 +210,7 @@ phase.
 
 Initial J: the surface current density `J` flows through the insulator-surface
 plasma at breakdown
-[KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
-L601-605, prose, Fig. 2a "the plasma carries current density indicated by the
+[KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:601-605] Fig. 2a: "the plasma carries current density indicated by the
 symbol J"], but no closed initial `J` distribution for the BVP is given.
 
 What the corpus does NOT supply: a closed, source-derived initial E, B, and J
@@ -251,15 +228,13 @@ background number density `n0 = 6.7e22 m^-3` at temperature `T1 ~ 0.026 eV`
 density `ns,0 = 3.3e23 m^-3` in a thin slab of axial thickness `delta_z ~ 1 mm`
 adjacent to the anode, at temperature `T2 ~ 7.2e5 K` (~62 eV) with an axial
 drift `vd ~ 1.1e5 m s^-1`
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L661-682, prose and Table 1; Fig. 6]. Species: deuterium (D2 / D ions).
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:661-682] (Table 1; Fig. 6). Species: deuterium (D2 / D ions).
 Symbols/units: `n0`, `ns,0` number density [m^-3]; `vd` drift speed [m s^-1];
 temperatures [K] or [eV].
 Validity range: these are end-of-rundown / start-of-implosion conditions,
 explicitly "approximates the end of rundown state seen in fully kinetic
 simulations" and "The simulation initiates at the rundown phase conclusion"
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L682-690, prose]. They are NOT whole-shot startup densities.
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:682-690]. They are NOT whole-shot startup densities.
 
 What the corpus does NOT supply: density and species fields at the START of
 the voltage discharge (the breakdown BVP). The values above are an
@@ -272,13 +247,11 @@ The avalanche/ionization buildup is governed by `alpha` and the Townsend
 condition (section 1.1, Eqs. 1, 3, 6). The hydrodynamic gas-discharge source
 term for electrons is
 `R_e = alpha*c_e*|u_e| - eta*c_e*|u_e| - NA*beta_ep*c_e*c_p + R0 + R_ph`
-[KR: theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md
-L256-258, Eq. (6)], with `eta` the attachment coefficient [1/m] (zero for
+[KR: KnowledgeReference/theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md:256-258], with `eta` the attachment coefficient [1/m] (zero for
 non-electronegative D2/H2), `beta_ep` electron-ion recombination [m^3 s^-1],
 `R0` background ionization rate, and `R_ph` photoionization rate
 [mol m^-3 s^-1]
-[KR: theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md
-L262-292, prose definitions].
+[KR: KnowledgeReference/theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md:262-292].
 Symbols/units: `c_e`, `c_p` molar concentrations [mol m^-3]; `u_e` electron
 drift speed [m s^-1]; `alpha`, `eta` [1/m]; `NA` Avogadro number [1/mol].
 
@@ -286,8 +259,7 @@ The DPF-specific source notes the ionization path length `Liz(P)` scales with
 pressure, with the optimal insulator length scaling such that
 `Liz(P) / Li = 2.4` at optimal pressure across the three insulator lengths
 studied
-[KR: effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md
-L656-662, prose]. Symbol/unit: `Liz` ionization path length [m]; `Li`
+[KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:656-662]. Symbol/unit: `Liz` ionization path length [m]; `Li`
 insulator length [m]; ratio dimensionless.
 
 What the corpus does NOT supply: a closed ionization-fraction field for the
@@ -301,25 +273,21 @@ not an ionization model.
 Free-electron temperature in the breakdown region:
 `Te = k*T = xi * lambda * e * E = xi * lambda * e * U / d`, valid only for a
 homogeneous or pseudo-homogeneous field
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L160-167, Eq. (4)]; the mean free-electron energy is
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:160-167]; the mean free-electron energy is
 `eps_mean = 0.8 * e * E * lambda / sqrt(delta)`
-[KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md
-L169-172, Eq. (5)]. Symbols/units: `xi` thermalization form
+[KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:169-172]. Symbols/units: `xi` thermalization form
 factor (dimensionless); `lambda` mean free path [m]; `E` electric field
 [V m^-1]; `U` applied voltage [V]; `d` inter-electrode distance [m]; `e`
 elementary charge [C]; `delta` ratio of electron mass to gas molar mass.
 The DPF-specific source states the initial plasma is "typically a few eV" and
 the breakdown physics depends on the evolving plasma temperature; it assumes
 `Te ~ 4 eV` for all fill pressures in its analysis
-[KR: effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md
-L643-655, prose]. The end-of-rundown sheath value is `T2 ~ 62 eV` (section
+[KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:643-655]. The end-of-rundown sheath value is `T2 ~ 62 eV` (section
 1.7).
 
 Ti: the corpus gives the end-of-rundown background at ~300 K and the sheath at
 ~62 eV (with the electron fluid initialized `Te = Ti` per cell)
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L676-682, prose].
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:676-682].
 
 What the corpus does NOT supply: a DPF-specific closed Te/Ti field for the
 breakdown BVP. Eq. (4)/(5) require a homogeneous field (the DPF coaxial gap is
@@ -330,16 +298,13 @@ values are end-of-rundown handoff values, not whole-shot startup.
 
 The corpus describes the initial sheath qualitatively: a plasma sheath "some
 millimeters thick" lifts off the insulator
-[KR: unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md
-L255-259, prose; sand2009-6373-b93aec67.md L317-321, prose]. The end-of-rundown
+[KR: KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md:255-259] [KR: KnowledgeReference/sand2009-6373-b93aec67.md:317-321]. The end-of-rundown
 sheath axial thickness from ion-density profiles is `delta_sheath ~ 0.15..0.20
 cm` (8-10 z-cells at `delta_z = 0.02 cm`)
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L703-708, prose]. The Yee/staggered grid placement is explicit: densities and
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:703-708]. The Yee/staggered grid placement is explicit: densities and
 temperatures at grid nodes; `B_theta` at cell centers; `(Er, Ez)` and
 `(Jr, Jz)` at face midpoints
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L607-614, prose; Fig. 4].
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:607-614] (Fig. 4).
 
 What the corpus does NOT supply: a closed sheath-surface initial state (mask,
 thickness, density, conductivity, velocity) for the breakdown BVP. The 0.15-
@@ -352,8 +317,7 @@ with an arbitrary seed and must instead import a first-principles breakdown
 description. ALEGRA "is completing work on a new capability to directly import
 data derived from these PIC simulations and use it to initiate our MHD
 simulations"
-[KR: unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md
-L268-272, prose]. The problem was otherwise "initialized with a uniform,
+[KR: KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md:268-272]. The problem was otherwise "initialized with a uniform,
 room-temperature deuterium gas fill, and a thin layer of higher-temperature
 gas in a thin layer along the insulator. MHD DPF simulations require choosing
 this seed ionized gas rather arbitrarily; we chose a thin layer of 1 eV
@@ -435,8 +399,7 @@ L93-112). The table below maps each WP-N2 physics channel to the concrete
 state fields it must PRODUCE (write into the startup packet) and CONSUME (read
 from device/gas/circuit inputs), plus the grid centering required by the Yee
 staggered grid
-[KR: fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md
-L607-614, Fig. 4].
+[KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:607-614] (Fig. 4).
 
 | Channel | Consumes (inputs) | Produces (state fields) | Grid centering |
 |---------|-------------------|-------------------------|----------------|
@@ -723,8 +686,7 @@ Handoff-interval rules:
 	   [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:631-639].
 
 3. The end-of-rundown sheath state is an ENGINEERING handoff only. The hybrid
-   PIC-fluid values [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md
-   L661-690] describe the start of the implosion phase, explicitly "the
+   PIC-fluid values [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:661-690] describe the start of the implosion phase, explicitly "the
    rundown phase conclusion". Used as a whole-shot startup they would skip
    breakdown, flashover, and rundown. `source_backed_end_rundown_sheath` must
    stay in `ENGINEERING_ONLY_STARTUP_MODES` with

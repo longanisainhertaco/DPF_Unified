@@ -49,8 +49,8 @@ registered. It must be added as a registry row (see sections 2.6, 6).
 ## 1. Source-Backed Findings (per closure)
 
 Each closure below records: governing source equation with KR citation, units,
-symbol map, validity range, and current code status. Local KR citations use the
-form `[KR: KnowledgeReference/<file>.md:<line-or-ranges>]`.
+symbol map, validity range, and current code status. Local KR citations use an
+exact `KnowledgeReference/<file>.md:<line-or-ranges>` path inside the citation.
 
 ### 1.1 EOS / Thermodynamics
 

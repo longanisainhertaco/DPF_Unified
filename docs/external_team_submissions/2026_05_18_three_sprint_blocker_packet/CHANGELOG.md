@@ -172,6 +172,20 @@ implemented flag, or acceptance flag. Negative tests:
 `test_electron_inertia_and_stopping_collisions_blocked`,
 `test_plasmapy_cannot_promote_or_reject_local_closure`.
 
+`dfa9169` — S3R.7 extended cumulative fields through merged ledgers +
+certificate fail-closed (closes A9, A12 code-side). All four extended S3.7
+fields (`cumulative_field_energy_delta_J`, `cumulative_pml_removed_energy_J`,
+`cumulative_power_port_work_J`, `cumulative_ionization_step_count`) now
+survive `segmented_whole_shot_combine.merge_cumulative_ledgers` —
+aggregation rule (all from terminal manifest sidecar, accumulated additively
+per segment) documented inline. Pre-S3R.7 manifests with absent extended
+fields no longer raise; from_state_dict falls back to the dataclass 0.0/0
+default. Negative tests: three-segment merge preserves all 4 fields;
+missing-field zero-baseline default; adversarial certificate fixture cannot
+promote validation. A12 code-side: implementation was already named
+`certificate_gate.py` consistently in code; no in-code path corrections
+needed (the doc/RTM corrections were done in S3R.1).
+
 ## Changed paths
 
 ### Sprint 1

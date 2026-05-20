@@ -22,7 +22,12 @@ Verified against KnowledgeReference:
 
 from __future__ import annotations
 
-from dpf.diagnostics.beam_target import BEAM_TARGET_ANISOTROPY_LAW_STATUS
+import numpy as np
+
+from dpf.diagnostics.beam_target import (
+    BEAM_TARGET_ANISOTROPY_LAW_STATUS,
+    _trapezoid_integral,
+)
 from dpf.diagnostics.neutron_tof import THERMONUCLEAR_DOPPLER_WIDTH_STATUS
 from dpf.diagnostics.neutron_yield import THERMONUCLEAR_VOLUMETRIC_PREFACTOR_STATUS
 from dpf.fields.kinetic_yield import (
@@ -973,9 +978,6 @@ def test_trapezoid_integral_works_on_active_numpy_lane() -> None:
     (np.trapezoid if available, else np.trapz) to avoid AttributeError.
     Integral of y=x from 0 to 2 == 2.0 exactly with trapezoidal rule.
     """
-    import numpy as np
-    from dpf.diagnostics.beam_target import _trapezoid_integral
-
     times = np.array([0.0, 1.0, 2.0])
     values = np.array([0.0, 1.0, 2.0])
     result = _trapezoid_integral(values, times)
