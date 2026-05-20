@@ -824,3 +824,249 @@ def test_plasmapy_outside_tolerance_sets_review_required():
     # A disagreement cannot promote or reject the local-source closure.
     assert gate["plasmapy_can_promote_closure"] is False
     assert gate["plasmapy_can_reject_closure"] is False
+
+
+# ===========================================================================
+# Sprint 4 — Priority 3: Transport and Closure Authority
+#
+# Per-closure source-audit verdicts, blocker IDs, and regime gates for the
+# five Sprint 4 transport/closure items (3a-3e).  Every row is either
+# source-supported (citing KR path + lines) or explicitly blocked with a
+# named blocker ID.  No inference, no promotion.
+# ===========================================================================
+
+
+def _sprint4_blocker_ids():
+    from dpf.first_principles.closure_packet import (
+        CLOSURE_BLK_BRAG_001,
+        CLOSURE_BLK_D2_EN_001,
+        CLOSURE_BLK_ION_001,
+        CLOSURE_BLK_ANOM_001,
+        CLOSURE_BLK_REST_001,
+    )
+    return (
+        CLOSURE_BLK_BRAG_001,
+        CLOSURE_BLK_D2_EN_001,
+        CLOSURE_BLK_ION_001,
+        CLOSURE_BLK_ANOM_001,
+        CLOSURE_BLK_REST_001,
+    )
+
+
+def test_sprint4_blocker_ids_are_exported():
+    """All five Sprint 4 blocker IDs are importable constants and
+    carry the canonical CLOSURE-BLK-* prefix."""
+    ids = _sprint4_blocker_ids()
+    assert len(ids) == 5
+    for bid in ids:
+        assert bid.startswith("CLOSURE-BLK-"), (
+            f"Blocker ID does not start with CLOSURE-BLK-: {bid!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 3a: Braginskii 1965 direct transport coefficients — BLOCKED
+# ---------------------------------------------------------------------------
+
+def test_sprint4_3a_braginskii_blocked_no_kr_extract():
+    """Braginskii 1965 PDF has no KR extract; the Z-dependent alpha/delta_e
+    coefficient table cannot serve as closure authority.
+    Blocker: CLOSURE-BLK-BRAG-001."""
+    from dpf.first_principles.closure_packet import CLOSURE_BLK_BRAG_001
+    reg = _registry()
+    rec = reg["closures"]["electrical_thermal_transport"]
+    # The transport closure itself is active_source_backed_candidate (Spitzer/NRL),
+    # but the Braginskii coefficient table is absent.
+    assert rec["classification"] == "active_source_backed_candidate"
+    # The missing-parameter absence must cite the Braginskii blocker ID.
+    missing_params = rec["missing_parameters"]
+    assert any(
+        CLOSURE_BLK_BRAG_001 in str(p) for p in missing_params
+    ), (
+        f"{CLOSURE_BLK_BRAG_001} not found in missing_parameters: {missing_params}"
+    )
+    # Acceptance is still blocked.
+    assert rec["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# 3b: D2 electron-neutral transport — BLOCKED (no KR source)
+# ---------------------------------------------------------------------------
+
+def test_sprint4_3b_d2_electron_neutral_blocked():
+    """No KR source provides D2 electron-neutral momentum-transfer
+    cross-sections; the closure remains blocked.
+    Blocker: CLOSURE-BLK-D2-EN-001."""
+    from dpf.first_principles.closure_packet import CLOSURE_BLK_D2_EN_001
+    reg = _registry()
+    rec = reg["closures"]["ionization_charge_state"]
+    assert rec["classification"] == "active_blocked"
+    missing_params = rec["missing_parameters"]
+    assert any(
+        CLOSURE_BLK_D2_EN_001 in str(p) for p in missing_params
+    ), (
+        f"{CLOSURE_BLK_D2_EN_001} not found in missing_parameters: {missing_params}"
+    )
+    assert rec["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# 3c: Ionization/recombination — BLOCKED (NRL is cross-check only)
+# ---------------------------------------------------------------------------
+
+def test_sprint4_3c_ionization_recombination_nrl_crosscheck_only():
+    """NRL formulary provides S(Z)/alpha_r/alpha_3/Saha (L4572-4659) as a
+    cross-check.  No non-NRL DPF-regime authority exists in KR.
+    Blocker: CLOSURE-BLK-ION-001."""
+    from dpf.first_principles.closure_packet import CLOSURE_BLK_ION_001
+    reg = _registry()
+    rec = reg["closures"]["ionization_charge_state"]
+    # NRL cross-check reference is present in the registry row.
+    source = rec["source_equations_or_absence"]
+    crosscheck = source.get("nrl_crosscheck_only", {})
+    assert crosscheck, "nrl_crosscheck_only key missing from ionization_charge_state source"
+    assert crosscheck["authority"] == "cross_check_only_not_dpf_closure_authority"
+    assert crosscheck["blocker_id"] == CLOSURE_BLK_ION_001
+    # The NRL cross-check cites the correct KR path and line range.
+    nrl_src = crosscheck["source"]
+    assert "2019nrlplasma-formulary-037290d4.md" in nrl_src["path"]
+    assert "4572" in nrl_src["lines"]
+    # Closure still blocked, NRL cannot promote it.
+    assert rec["classification"] == "active_blocked"
+    assert rec["can_support_first_principles_acceptance"] is False
+    missing_params = rec["missing_parameters"]
+    assert any(
+        CLOSURE_BLK_ION_001 in str(p) for p in missing_params
+    ), (
+        f"{CLOSURE_BLK_ION_001} not found in missing_parameters: {missing_params}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 3d: Anomalous resistivity DPF-regime — BLOCKED (neon Z-pinch candidate only)
+# ---------------------------------------------------------------------------
+
+def test_sprint4_3d_anomalous_resistivity_dpf_blocked_zpinch_candidate():
+    """The neon gas-puff Z-pinch LHDI formula (KR L194-266, eq.1) is a
+    candidate formula for a non-DPF Z-pinch context.  It cannot establish
+    DPF-regime anomalous transport authority.
+    Blocker: CLOSURE-BLK-ANOM-001."""
+    from dpf.first_principles.closure_packet import CLOSURE_BLK_ANOM_001
+    reg = _registry()
+    subs = reg["closures"]["restrike_anomalous_resistance"]["sub_closures"]
+    rec = subs["anomalous_resistance"]
+    assert rec["classification"] == "active_blocked"
+    assert rec["can_support_first_principles_acceptance"] is False
+
+    source = rec["source_equations_or_absence"]
+    candidate = source.get("candidate_zpinch_formula_not_dpf_authority", {})
+    assert candidate, "candidate_zpinch_formula_not_dpf_authority key missing"
+    assert candidate["blocker_id"] == CLOSURE_BLK_ANOM_001
+    assert candidate["authority"] == "zpinch_candidate_cross_check_not_dpf_closure"
+    assert candidate["dpf_applicability"] == "not_established_no_kr_source"
+    # The candidate source must cite the neon Hall paper at the correct lines.
+    neon_src = candidate["source"]
+    assert "neon-gas-puff-z-pinches" in neon_src["path"]
+    assert "194" in neon_src["lines"]
+    # Symbol map contains the key anomalous resistivity terms.
+    sym = candidate["symbol_map"]
+    assert "eta_star" in sym
+    assert "alpha" in sym
+    assert sym["eta_star"]["unit"] == "Ohm m"
+    # Validity is restricted to neon Z-pinch.
+    assert "neon" in candidate["validity"]
+    # Blocker ID surfaces in missing_parameters.
+    missing_params = rec["missing_parameters"]
+    assert any(
+        CLOSURE_BLK_ANOM_001 in str(p) for p in missing_params
+    ), (
+        f"{CLOSURE_BLK_ANOM_001} not found in missing_parameters: {missing_params}"
+    )
+
+
+def test_sprint4_3d_neon_paper_is_non_dpf_zpinch_cannot_promote():
+    """The neon Z-pinch formula cannot create DPF-regime transport authority
+    by itself — the classification and can_support_first_principles_acceptance
+    are unchanged whether or not the candidate_zpinch_formula field is present."""
+    reg = _registry()
+    subs = reg["closures"]["restrike_anomalous_resistance"]["sub_closures"]
+    rec = subs["anomalous_resistance"]
+    # candidate_zpinch_formula_not_dpf_authority exists but is a candidate only.
+    assert "candidate_zpinch_formula_not_dpf_authority" in (
+        rec["source_equations_or_absence"]
+    ), "candidate Z-pinch formula field must be present in registry row"
+    # Classification stays active_blocked despite the candidate field.
+    assert rec["classification"] == "active_blocked"
+    assert rec["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# 3e: Restrike — BLOCKED (no KR equation source)
+# ---------------------------------------------------------------------------
+
+def test_sprint4_3e_restrike_blocked_no_kr_source():
+    """No restrike physics equation exists in KnowledgeReference; restrike
+    mentions in KR papers are experimental context only.
+    Blocker: CLOSURE-BLK-REST-001."""
+    from dpf.first_principles.closure_packet import CLOSURE_BLK_REST_001
+    reg = _registry()
+    subs = reg["closures"]["restrike_anomalous_resistance"]["sub_closures"]
+    rec = subs["restrike"]
+    assert rec["classification"] == "not_simulated_and_claim_blocking"
+    assert rec["implemented"] is False
+    assert rec["can_support_first_principles_acceptance"] is False
+    # Blocker ID surfaces in the blocking_absence missing list.
+    absence = rec["source_equations_or_absence"]["blocking_absence"]
+    assert absence["local_source_present"] is False
+    missing = absence["missing_from_knowledge_reference"]
+    assert any(
+        CLOSURE_BLK_REST_001 in str(m) for m in missing
+    ), (
+        f"{CLOSURE_BLK_REST_001} not found in blocking_absence.missing: {missing}"
+    )
+    # Claim impact is propagated correctly.
+    assert "current_dip" in rec["claim_impact"] or "post_pinch" in rec["claim_impact"]
+
+
+# ---------------------------------------------------------------------------
+# 3x: Cross-cutting — all five Sprint 4 blockers surface, none promotes
+# ---------------------------------------------------------------------------
+
+def test_sprint4_no_blocker_promotes_closure():
+    """All five Sprint 4 blocker IDs surface in the correct registry rows and
+    none of them changes can_support_first_principles_acceptance to True."""
+    (
+        brag_id,
+        d2_id,
+        ion_id,
+        anom_id,
+        rest_id,
+    ) = _sprint4_blocker_ids()
+
+    reg = _registry()
+    subs = reg["closures"]["restrike_anomalous_resistance"]["sub_closures"]
+
+    # 3a Braginskii: electrical_thermal_transport
+    et = reg["closures"]["electrical_thermal_transport"]
+    assert any(brag_id in str(p) for p in et["missing_parameters"])
+    assert et["can_support_first_principles_acceptance"] is False
+
+    # 3b D2 e-n: ionization_charge_state
+    icz = reg["closures"]["ionization_charge_state"]
+    assert any(d2_id in str(p) for p in icz["missing_parameters"])
+    assert icz["can_support_first_principles_acceptance"] is False
+
+    # 3c ionization: ionization_charge_state
+    assert any(ion_id in str(p) for p in icz["missing_parameters"])
+    assert icz["can_support_first_principles_acceptance"] is False
+
+    # 3d anomalous: anomalous_resistance sub-closure
+    anom = subs["anomalous_resistance"]
+    assert any(anom_id in str(p) for p in anom["missing_parameters"])
+    assert anom["can_support_first_principles_acceptance"] is False
+
+    # 3e restrike: restrike sub-closure
+    rest = subs["restrike"]
+    absence = rest["source_equations_or_absence"]["blocking_absence"]
+    assert any(rest_id in str(m) for m in absence["missing_from_knowledge_reference"])
+    assert rest["can_support_first_principles_acceptance"] is False

@@ -136,6 +136,32 @@ _LEE_SAW_PART1 = (
     "part-1-basic-course.md"
 )
 _BOSCH_HALE = "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md"
+_NEON_HALL = (
+    "KnowledgeReference/"
+    "the-hall-term-and-anomalous-resistivity-effects-in-neon-gas-puff-z-pinches.md"
+)
+
+# ---------------------------------------------------------------------------
+# Sprint 4 blocker IDs for transport and closure authority gaps.
+# These are named blockers referenced in the registry records below and in
+# Sprint 4 tests so that every gap has a stable, searchable identifier.
+# ---------------------------------------------------------------------------
+CLOSURE_BLK_BRAG_001 = (
+    "CLOSURE-BLK-BRAG-001-braginskii-1965-not-yet-target-extracted-in-kr"
+)
+CLOSURE_BLK_D2_EN_001 = (
+    "CLOSURE-BLK-D2-EN-001-no-kr-source-for-d2-electron-neutral-transport"
+)
+CLOSURE_BLK_ION_001 = (
+    "CLOSURE-BLK-ION-001-ionization-recombination-nrl-crosscheck-only-no-kr-dpf-authority"
+)
+CLOSURE_BLK_ANOM_001 = (
+    "CLOSURE-BLK-ANOM-001-dpf-regime-anomalous-resistivity-no-kr-source-"
+    "only-zpinch-candidate"
+)
+CLOSURE_BLK_REST_001 = (
+    "CLOSURE-BLK-REST-001-dpf-restrike-equation-no-kr-source"
+)
 
 
 def _src(path: str, lines: str, equation: str, role: str) -> dict[str, str]:
@@ -237,14 +263,43 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
                     "structure",
                 ),
             ],
+            # Sprint 4 (3c): NRL formulary provides S(Z), alpha_r(Z), alpha_3,
+            # and Saha equilibrium (NRL KR L4572-4659, eqs 10-17).  These are
+            # CROSS-CHECK ONLY -- the NRL formulary is not a DPF-regime authority.
+            # No non-NRL KR source provides deuterium ionization/recombination
+            # rate coefficients.  Blocker: CLOSURE-BLK-ION-001.
+            #
+            # Sprint 4 (3b): D2 electron-neutral momentum-transfer cross-section
+            # has no KR source.  Deuterium KR files (compression-dynamics-...,
+            # deuterium-hybrid-x-pinch-..., etc.) cover DPF experiments, not
+            # electron-neutral transport data.  Blocker: CLOSURE-BLK-D2-EN-001.
+            "nrl_crosscheck_only": {
+                "role": "nrl_formulary_ionization_recombination_cross_check_not_dpf_authority",
+                "source": _src(
+                    _NRL,
+                    "4572-4659",
+                    "eqs.(10-17)",
+                    "nrl_ionization_rate_S_Z_radiative_recombination_alpha_r_"
+                    "three_body_alpha3_and_saha_equilibrium",
+                ),
+                "authority": "cross_check_only_not_dpf_closure_authority",
+                "blocker_id": CLOSURE_BLK_ION_001,
+            },
             "blocking_absence": _absent(
                 "no accepted ionization/recombination closure with a "
                 "KR-cited rate set, charge-state transport, or "
-                "conductivity/EOS charge-state feedback",
+                "conductivity/EOS charge-state feedback; the NRL formulary "
+                "covers S(Z)/alpha_r/alpha_3/Saha (L4572-4659) as a "
+                "cross-check only -- not DPF-regime authority; D2 "
+                "electron-neutral cross-section has no KR source -- "
+                f"{CLOSURE_BLK_D2_EN_001}; "
+                f"{CLOSURE_BLK_ION_001}",
                 (
                     "accepted_ionization_recombination_model",
                     "accepted_charge_state_transport",
                     "accepted_neutral_particle_source_coupling",
+                    CLOSURE_BLK_D2_EN_001,
+                    CLOSURE_BLK_ION_001,
                 ),
             ),
         },
@@ -338,11 +393,23 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
                     "nu_alpha_n0_sigma_sqrt_kT_over_m_and_sigma_alpha",
                 ),
             ],
+            # Sprint 4 (3a): Braginskii 1965 PDF exists on disk at
+            # archive_reference_OLD/references/papers/mhd-numerics/braginskii_1965.pdf
+            # but has NO KnowledgeReference extract (`ls KR | grep -i braginskii`
+            # returned empty).  The direct coefficient table cannot serve as
+            # closure authority until a KR target extraction is completed.
+            # Blocker: CLOSURE-BLK-BRAG-001
             "missing_parameter_absence": _absent(
                 "the in-code Braginskii alpha(Z)/delta_e(Z) Z-dependent "
                 "correction coefficients are not tabulated in the local NRL "
-                "extract; Braginskii (1965) Table 1 is not in the corpus",
-                ("braginskii_alpha_Z_and_delta_e_Z_table",),
+                "extract; Braginskii (1965) Table 1 is not in the corpus; "
+                "the PDF exists at archive_reference_OLD/references/papers/"
+                "mhd-numerics/braginskii_1965.pdf but has no KR extract -- "
+                f"{CLOSURE_BLK_BRAG_001}",
+                (
+                    "braginskii_alpha_Z_and_delta_e_Z_table",
+                    CLOSURE_BLK_BRAG_001,
+                ),
             ),
         },
         "symbol_map": {
@@ -668,17 +735,73 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
                             "transport_negligible",
                         ),
                     ],
+                    # Sprint 4 (3d): Neon gas-puff Z-pinch LHDI candidate.
+                    # The neon paper (PERSEUS/COBRA XMHD runs) provides
+                    # eta* = m_e*nu_eff/(n_e*e^2), with nu_eff from
+                    # Davidson-Gladd LHDI theory, capped at B/(n_e*e) when
+                    # nu_eff >= Omega_e (KR L185-266, eq.1).  Symbol map:
+                    #   eta*   [Ohm m]  anomalous resistivity
+                    #   alpha  [-]      order-unity saturation parameter
+                    #   v_de   [m/s]    perpendicular electron drift
+                    #   v_i    [m/s]    ion thermal speed
+                    #   Omega_e [rad/s] electron cyclotron frequency
+                    #   B      [T]      magnetic field
+                    #   n_e    [m^-3]   electron density
+                    # Validity: neon gas-puff Z-pinch, XMHD, magnetized
+                    # electrons (nu_eff < Omega_e required).
+                    # SCOPE: neon Z-PINCH ONLY -- not DPF-regime authority.
+                    # This formula is a CANDIDATE, not a DPF transport closure.
+                    # Blocker: CLOSURE-BLK-ANOM-001.
+                    "candidate_zpinch_formula_not_dpf_authority": {
+                        "blocker_id": CLOSURE_BLK_ANOM_001,
+                        "source": _src(
+                            _NEON_HALL,
+                            "194-266",
+                            "eq.(1)",
+                            "lhdi_driven_resistivity_eta_star_davidson_gladd_"
+                            "neon_gaspuff_zpinch_candidate_not_dpf_authority",
+                        ),
+                        "formula_si": (
+                            "eta_star = m_e * nu_eff / (n_e * e^2), "
+                            "nu_eff ~ sqrt(pi/2) * sqrt(m_e/m_i) * alpha * "
+                            "(v_de/v_i)^2 / (1 + (v_de/v_i)^2) / (eps_0 * Omega_e), "
+                            "capped at B / (n_e * e) when nu_eff >= Omega_e"
+                        ),
+                        "symbol_map": {
+                            "eta_star": {"meaning": "anomalous resistivity", "unit": "Ohm m"},
+                            "m_e": {"meaning": "electron mass", "unit": "kg"},
+                            "m_i": {"meaning": "ion mass", "unit": "kg"},
+                            "nu_eff": {"meaning": "LHDI effective collision frequency", "unit": "rad/s"},
+                            "n_e": {"meaning": "electron density", "unit": "m^-3"},
+                            "e": {"meaning": "elementary charge", "unit": "C"},
+                            "alpha": {"meaning": "order-unity saturation parameter", "unit": "-"},
+                            "v_de": {"meaning": "perp electron drift speed", "unit": "m/s"},
+                            "v_i": {"meaning": "ion thermal speed", "unit": "m/s"},
+                            "Omega_e": {"meaning": "electron cyclotron frequency", "unit": "rad/s"},
+                            "B": {"meaning": "magnetic field", "unit": "T"},
+                        },
+                        "validity": (
+                            "neon_gaspuff_z_pinch_xmhd_magnetized_electrons_only"
+                        ),
+                        "dpf_applicability": "not_established_no_kr_source",
+                        "authority": "zpinch_candidate_cross_check_not_dpf_closure",
+                    },
                     "blocking_absence": _absent(
                         "the NRL row gives the functional structure "
                         "(anomalous rate proportional to omega_pe) but the DPF "
                         "turbulence parameter alpha ~ 0.01-0.1 and the "
                         "threshold-model selection (ion-acoustic, LHDI, "
                         "Buneman, CIV) are NOT KR-closed; module self-declares "
-                        "microinstability_source_packets_missing",
+                        "microinstability_source_packets_missing; the neon "
+                        "gas-puff Z-pinch LHDI formula (KR L194-266 eq.1) is "
+                        "a non-DPF Z-pinch candidate only and cannot establish "
+                        "same-scope DPF transport authority by itself -- "
+                        f"{CLOSURE_BLK_ANOM_001}",
                         (
                             "kr_cited_alpha_saturation_amplitude",
                             "kr_cited_threshold_model_selection",
                             "kr_cited_civ_v_crit_table",
+                            CLOSURE_BLK_ANOM_001,
                         ),
                     ),
                 },
@@ -721,12 +844,27 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
                 "classification": "not_simulated_and_claim_blocking",
                 "implemented": False,
                 "source_equations_or_absence": {
+                    # Sprint 4 (3e): `grep -nE 'restrike|secondary.pinch|
+                    # post.pinch.recovery' KR/*.md` confirms restrike appears
+                    # only as experimental context (current-dip side-effect)
+                    # in Lee/Saw, Beresnyak, Faeton-I, MNJI, and optimization
+                    # papers.  No DPF-specific restrike physics equation or
+                    # governing model exists in the corpus.
+                    # Blocker: CLOSURE-BLK-REST-001.
                     "blocking_absence": _absent(
                         "there is no restrike (post-pinch current-dip "
                         "recovery) closure equation in src/dpf and none in "
                         "KnowledgeReference; 'restrike' appears only as "
-                        "config/preset wording and comparator metadata",
-                        ("restrike_post_pinch_resistance_recovery_model",),
+                        "experimental context in comparator papers (Lee/Saw "
+                        "L5232, Beresnyak L113/228, Faeton-I L75-89, MNJI "
+                        "L318-584, optimization L94-328); no governing "
+                        "restrike physics equation extracted from any KR "
+                        "source -- "
+                        f"{CLOSURE_BLK_REST_001}",
+                        (
+                            "restrike_post_pinch_resistance_recovery_model",
+                            CLOSURE_BLK_REST_001,
+                        ),
                     ),
                 },
                 "symbol_map": {

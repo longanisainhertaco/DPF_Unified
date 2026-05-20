@@ -254,6 +254,14 @@ data (`PF1000-BLK-015`, `-016`, `-017`, `-018`). 8 new tests cover all four
 verdicts across krauz_2012, akel_shot_12581, scholz_gribkov_revision
 constructors.
 
+`3d862a6` — S4-Priority 2 (Startup BVP surface tests): the source module
+already exposed all 13 channels with the right blocker IDs after S3R; this
+commit adds 13 Sprint 4 surface tests that pin each channel verdict by exact
+blocker ID and missing-parameter ID set. 0/13 channels source_supported;
+UCSD/Beg KR is labeled `candidate_method_context_not_acceptance` only (UCSD
+4.6 kJ DPF wrong scope and no closed BVP initial/boundary data); D2 Townsend
+α(E/p), Paschen A/B, and Cu/pyrex/alumina SEE γ are confirmed absent from KR.
+
 ## Changed paths
 
 ### Sprint 1
